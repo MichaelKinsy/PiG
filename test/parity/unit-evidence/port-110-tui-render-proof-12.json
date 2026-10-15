@@ -1,0 +1,11 @@
+[
+  {
+    "upstream": "packages/tui/src/tui.ts",
+    "package": "./coding/extension/host/subprocess",
+    "tests": [
+      "TestViewSurfaceHandsTheComponentEveryTuiMouseEventField"
+    ],
+    "upstream_reference": "packages/tui/src/tui.ts",
+    "mutation": "coding/extension/host/subprocess/view_kit.go: drop 'Shift: event.Shift' from the tui.TuiMouseEvent built in HandleViewMouse; coding/extension/host/subprocess/view_kit.go: drop 'Alt: event.Alt' from the tui.TuiMouseEvent built in HandleViewMouse; coding/extension/host/subprocess/view_kit.go: drop 'Ctrl: event.Ctrl' from the tui.TuiMouseEvent built in HandleViewMouse; coding/extension/host/subprocess/view_kit.go: drop 'WheelDelta: event.WheelDelta' from the tui.TuiMouseEvent built in HandleViewMouse; each compiles and fails TestViewSurfaceHandsTheComponentEveryTuiMouseEventField."
+  }
+]

@@ -1,0 +1,41 @@
+# Upstream evidence: Pi main.ts:707-714 appends the --name session_info to the SessionManager before main.ts:863 createAgentSessionRuntime, and createAgentSession then appends the start model_change and thinking_level_change (sdk.ts:453-458). A new interactive Session therefore lists session_info first.
+# Probed against the pinned Pi 1.1.0 on 2026-10-10: "entries: session_info,model_change,thinking_level_change name=named". Pig at e9635c33f5 listed model_change,thinking_level_change,session_info (fixed in 42220a24d6, coding/cli/main.go). Text, JSON and RPC mode are pinned by TestNameIsTheNewSessionsFirstEntry and TestRPCStartupNamePrecedesTheInitialModelEntries.
+name = "35-name-precedes-start-model"
+description = "--name is a new interactive Session's first entry, before the start model and thinking level"
+covers = ["packages/coding-agent/src/main.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=../extensions-runtime/testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=../extensions-runtime/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions", "--name", "named"]
+pi_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions", "--name", "named"]
+pig_extensions = ["testdata/session-entry-order-probe.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/session-entry-order-probe.mjs"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "entries:"
+capture_end_regex = 'name=\S*'
+
+[[tmux.steps]]
+keys = ["/session-entry-order-probe"]
+wait_contains = ["/session-entry-order-probe"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["entries:"]
+wait_timeout_seconds = 30
+
+[assert]
+both_reach_ready = true
+both_contain = ["entries: session_info,model_change,thinking_level_change name=named"]
+output_equal = true
+runs = 3

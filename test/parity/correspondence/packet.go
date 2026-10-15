@@ -101,8 +101,18 @@ func BuildSettingsAlignmentPacket(source, target *Inventory, report *Report) (*A
 	targetDispatch := indexDispatch(targetTable.Callbacks)
 	sourceRuntime := indexProductionCallbacks(sourceTable.ProductionCallbacks)
 	targetRuntime := indexProductionCallbacks(targetTable.ProductionCallbacks)
+	designedOut := make(map[string]struct{})
+	for _, mapping := range report.Mappings {
+		if mapping.Kind == "designed-out-table-item" {
+			designedOut[mapping.SourceID] = struct{}{}
+		}
+	}
 	questions := make([]AlignmentQuestion, 0, len(sourceTable.Items))
 	for _, sourceItem := range sourceTable.Items {
+		// A Pi item a divergence designs out has no Pig behavior to align.
+		if _, omitted := designedOut[sourceTable.ID+"#"+sourceItem.ID]; omitted {
+			continue
+		}
 		targetItem, itemOK := targetItems[sourceItem.ID]
 		sourceCase, sourceCaseOK := sourceDispatch[sourceItem.ID]
 		targetCase, targetCaseOK := targetDispatch[sourceItem.ID]
@@ -240,7 +250,7 @@ type runtimeEffectConcept struct {
 
 var settingRuntimeEffectConcepts = map[string][]runtimeEffectConcept{
 	"autocompact": {
-		{sourceAny: []string{"this.session.setAutoCompactionEnabled"}, targetAny: []string{"sc.SettingsManager.UpdateGlobal"}},
+		{sourceAny: []string{"this.session.setAutoCompactionEnabled"}, targetAny: []string{"sm.SetCompactionEnabled"}},
 		{sourceAny: []string{"this.footer.setAutoCompactEnabled"}, targetAny: []string{"m.statusLine.SetAutoCompactEnabled"}},
 	},
 	"show-images": {
@@ -260,7 +270,7 @@ var settingRuntimeEffectConcepts = map[string][]runtimeEffectConcept{
 	},
 	"output-padding": {
 		{sourceAny: []string{"this.outputPad"}, targetAny: []string{"m.outputPad"}},
-		{sourceAny: []string{"this.rebuildChatFromMessages", "child.setOutputPad"}, targetAny: []string{"m.rebuildChatFromSession", "comp.SetOutputPad"}},
+		{sourceAny: []string{"this.rebuildChatFromMessages", "child.setOutputPad"}, targetAny: []string{"m.applyOutputPad", "m.rebuildChatFromSession", "comp.SetOutputPad"}},
 	},
 	"autocomplete-max-visible": {
 		{sourceAny: []string{"this.defaultEditor.setAutocompleteMaxVisible", "this.editor.setAutocompleteMaxVisible"}, targetAny: []string{"m.editor.SetAutocompleteMaxVisible"}},

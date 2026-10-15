@@ -1,4 +1,5 @@
 import { Container, getKeybindings, Input, Spacer, sliceByColumn, Text, truncateToWidth, visibleWidth, wrapTextWithAnsi, } from "../../../../../pi-tui.mjs";
+import { formatReadLineRange } from "../../../core/tools/render-utils.js";
 import { theme } from "../theme/theme.js";
 import { DynamicBorder } from "./dynamic-border.js";
 import { formatKeyText, keyHint } from "./keybinding-hints.js";
@@ -793,15 +794,7 @@ class TreeList {
         switch (name) {
             case "read": {
                 const path = shortenPath(String(args.path || args.file_path || ""));
-                const offset = args.offset;
-                const limit = args.limit;
-                let display = path;
-                if (offset !== undefined || limit !== undefined) {
-                    const start = offset ?? 1;
-                    const end = limit !== undefined ? start + limit - 1 : "";
-                    display += `:${start}${end ? `-${end}` : ""}`;
-                }
-                return `[read: ${display}]`;
+                return `[read: ${path}${formatReadLineRange(args.offset, args.limit)}]`;
             }
             case "write": {
                 const path = shortenPath(String(args.path || args.file_path || ""));

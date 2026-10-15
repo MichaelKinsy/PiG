@@ -16,9 +16,9 @@ var (
 
 // Pi's radiusProvider exposes auth.oauth, so /login lists "Radius".
 func TestOAuthProviderListIncludesRadius(t *testing.T) {
-	m := &InteractiveMode{opts: InteractiveOptions{AgentDir: t.TempDir()}}
+	m := &InteractiveMode{opts: InteractiveModeOptions{AgentDir: t.TempDir()}}
 	got, ok := findOAuthProvider(m.oauthProviderList("login-oauth"), "radius")
-	if !ok || got.Name != "Radius" || got.AuthType != "oauth" || got.Stored {
+	if !ok || got.Name != "Radius" || got.AuthType != "oauth" || got.Status != nil {
 		t.Fatalf("radius login entry = %+v, %t", got, ok)
 	}
 }
@@ -39,7 +39,7 @@ func TestRunOAuthProviderLoginUsesContextAndPreselectedMethod(t *testing.T) {
 
 	_, err := runOAuthProviderLogin(ctx, provider, ai.OAuthLoginCallbacks{
 		OnSelect: func(ai.OAuthSelectPrompt) (string, error) { return ai.RadiusLoginMethodDeviceCode, nil },
-	})
+	}, ai.AuthInteraction{})
 	if err == nil || err.Error() != "Login cancelled" || requests != 0 {
 		t.Fatalf("cancelled login err = %v, gateway requests = %d", err, requests)
 	}

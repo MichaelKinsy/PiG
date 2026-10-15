@@ -9,10 +9,10 @@ import (
 )
 
 // Rendering is synchronous in this fixture; returning from Render is the upstream waitForRender barrier.
-func upstreamOverlayScreen(width, height int) (*TUI, func() []string) {
+func upstreamOverlayScreen(width, height int) (*TuiMainScreen, func() []string) {
 	output := new(bytes.Buffer)
 	terminal := termsim.New(height, width)
-	ui := NewWithOutput(output, width, height)
+	ui := newManualRenderTUI(output, width, height)
 	render := func() []string {
 		ui.ForceFullRender()
 		ui.Render()
@@ -59,7 +59,7 @@ func TestUpstreamOverlayOptionsOverflow(t *testing.T) {
 				base = func(int) []string { return nil }
 			}
 			ui.Add(renderFuncComponent(base))
-			ui.OpenOverlay(&recordingComponent{lines: tt.lines}, tt.opts)
+			ui.ShowOverlay(&recordingComponent{lines: tt.lines}, tt.opts)
 			viewport := render()
 			if len(viewport) == 0 {
 				t.Fatal("empty viewport")
@@ -86,7 +86,7 @@ func TestUpstreamOverlayOptionsWidth(t *testing.T) {
 			ui, render := upstreamOverlayScreen(100, 24)
 			requestedWidth := 0
 			overlay := renderFuncComponent(func(width int) []string { requestedWidth = width; return []string{"test"} })
-			ui.OpenOverlay(overlay, tt.opts)
+			ui.ShowOverlay(overlay, tt.opts)
 			render()
 			if requestedWidth != tt.want {
 				t.Fatalf("requested width=%d, want %d", requestedWidth, tt.want)
@@ -127,7 +127,7 @@ func TestUpstreamOverlayOptionsPosition(t *testing.T) {
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			ui, render := upstreamOverlayScreen(80, 24)
-			ui.OpenOverlay(&recordingComponent{lines: []string{tt.text}}, tt.opts)
+			ui.ShowOverlay(&recordingComponent{lines: []string{tt.text}}, tt.opts)
 			viewport := render()
 			col := strings.Index(viewport[tt.row], tt.text)
 			if col < tt.minCol || col > tt.maxCol {
@@ -146,7 +146,7 @@ func TestUpstreamOverlayOptionsPosition(t *testing.T) {
 	// .upstream/v0.87.1/packages/tui/test/overlay-options.test.ts:343
 	t.Run("should position with rowPercent and colPercent", func(t *testing.T) {
 		ui, render := upstreamOverlayScreen(80, 24)
-		ui.OpenOverlay(&recordingComponent{lines: []string{"PCT"}}, OverlayOptions{width: overlayCells(10), row: overlayPercent(50), col: overlayPercent(50)})
+		ui.ShowOverlay(&recordingComponent{lines: []string{"PCT"}}, OverlayOptions{width: overlayCells(10), row: overlayPercent(50), col: overlayPercent(50)})
 		found := -1
 		for row, line := range render() {
 			if strings.Contains(line, "PCT") {
@@ -175,7 +175,7 @@ func TestUpstreamOverlayOptionsMaxHeight(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			ui, render := upstreamOverlayScreen(80, tt.height)
-			ui.OpenOverlay(&recordingComponent{lines: tt.lines}, tt.opts)
+			ui.ShowOverlay(&recordingComponent{lines: tt.lines}, tt.opts)
 			content := strings.Join(render(), "\n")
 			for _, s := range tt.include {
 				if !strings.Contains(content, s) {
@@ -195,8 +195,8 @@ func TestUpstreamOverlayOptionsStacked(t *testing.T) {
 	// .upstream/v0.87.1/packages/tui/test/overlay-options.test.ts:461
 	t.Run("should render multiple overlays with later ones on top", func(t *testing.T) {
 		ui, render := upstreamOverlayScreen(80, 24)
-		ui.OpenOverlay(&recordingComponent{lines: []string{"FIRST-OVERLAY"}}, OverlayOptions{anchor: overlayTopLeft, width: overlayCells(20)})
-		ui.OpenOverlay(&recordingComponent{lines: []string{"SECOND"}}, OverlayOptions{anchor: overlayTopLeft, width: overlayCells(10)})
+		ui.ShowOverlay(&recordingComponent{lines: []string{"FIRST-OVERLAY"}}, OverlayOptions{anchor: overlayTopLeft, width: overlayCells(20)})
+		ui.ShowOverlay(&recordingComponent{lines: []string{"SECOND"}}, OverlayOptions{anchor: overlayTopLeft, width: overlayCells(10)})
 		if viewport := render(); !strings.Contains(viewport[0], "SECOND") {
 			t.Fatal(viewport)
 		}
@@ -204,8 +204,8 @@ func TestUpstreamOverlayOptionsStacked(t *testing.T) {
 	// .upstream/v0.87.1/packages/tui/test/overlay-options.test.ts:486
 	t.Run("should handle overlays at different positions without interference", func(t *testing.T) {
 		ui, render := upstreamOverlayScreen(80, 24)
-		ui.OpenOverlay(&recordingComponent{lines: []string{"TOP-LEFT"}}, OverlayOptions{anchor: overlayTopLeft, width: overlayCells(15)})
-		ui.OpenOverlay(&recordingComponent{lines: []string{"BTM-RIGHT"}}, OverlayOptions{anchor: overlayBottomRight, width: overlayCells(15)})
+		ui.ShowOverlay(&recordingComponent{lines: []string{"TOP-LEFT"}}, OverlayOptions{anchor: overlayTopLeft, width: overlayCells(15)})
+		ui.ShowOverlay(&recordingComponent{lines: []string{"BTM-RIGHT"}}, OverlayOptions{anchor: overlayBottomRight, width: overlayCells(15)})
 		viewport := render()
 		if !strings.Contains(viewport[0], "TOP-LEFT") || !strings.Contains(viewport[23], "BTM-RIGHT") {
 			t.Fatal(viewport)
@@ -214,8 +214,8 @@ func TestUpstreamOverlayOptionsStacked(t *testing.T) {
 	// .upstream/v0.87.1/packages/tui/test/overlay-options.test.ts:510
 	t.Run("should properly hide overlays in stack order", func(t *testing.T) {
 		ui, render := upstreamOverlayScreen(80, 24)
-		ui.OpenOverlay(&recordingComponent{lines: []string{"FIRST"}}, OverlayOptions{anchor: overlayTopLeft, width: overlayCells(10)})
-		ui.OpenOverlay(&recordingComponent{lines: []string{"SECOND"}}, OverlayOptions{anchor: overlayTopLeft, width: overlayCells(10)})
+		ui.ShowOverlay(&recordingComponent{lines: []string{"FIRST"}}, OverlayOptions{anchor: overlayTopLeft, width: overlayCells(10)})
+		ui.ShowOverlay(&recordingComponent{lines: []string{"SECOND"}}, OverlayOptions{anchor: overlayTopLeft, width: overlayCells(10)})
 		if viewport := render(); !strings.Contains(viewport[0], "SECOND") {
 			t.Fatal(viewport)
 		}
@@ -245,9 +245,9 @@ func TestUpstreamOverlayOptionsHidingAfterStop(t *testing.T) {
 	// overlay-options.test.ts:558.
 	t.Run("hideOverlay() leaves the cursor visible", func(t *testing.T) {
 		output := new(bytes.Buffer)
-		ui := NewWithOutput(output, 80, 24)
+		ui := newManualRenderTUI(output, 80, 24)
 		ui.Start()
-		ui.OpenOverlay(&recordingComponent{lines: []string{"OVERLAY"}}, OverlayOptions{nonCapturing: true})
+		ui.ShowOverlay(&recordingComponent{lines: []string{"OVERLAY"}}, OverlayOptions{nonCapturing: true})
 
 		ui.Stop()
 		ui.HideOverlay()
@@ -259,9 +259,9 @@ func TestUpstreamOverlayOptionsHidingAfterStop(t *testing.T) {
 	// overlay-options.test.ts:572.
 	t.Run("overlay handle hide() leaves the cursor visible", func(t *testing.T) {
 		output := new(bytes.Buffer)
-		ui := NewWithOutput(output, 80, 24)
+		ui := newManualRenderTUI(output, 80, 24)
 		ui.Start()
-		handle := ui.OpenOverlay(&recordingComponent{lines: []string{"OVERLAY"}}, OverlayOptions{nonCapturing: true})
+		handle := ui.ShowOverlay(&recordingComponent{lines: []string{"OVERLAY"}}, OverlayOptions{nonCapturing: true})
 
 		ui.Stop()
 		handle.Hide()
@@ -270,4 +270,37 @@ func TestUpstreamOverlayOptionsHidingAfterStop(t *testing.T) {
 			t.Fatalf("cursor hidden after handle.Hide() following stop(): %q", output.String())
 		}
 	})
+}
+
+// overlay-options.test.ts:259,280,301 through the public OverlaySpec: margin is `number | OverlayMargin | undefined` (tui.ts:243), a sealed union of OverlayMarginAll and OverlayMarginSpec with nil for an omitted margin.
+func TestOverlaySpecMarginUnionMatchesPi(t *testing.T) {
+	width := &OverlayValue{Value: 10}
+	cases := []struct {
+		name   string
+		margin OverlayMarginOption
+		row    int
+		col    int
+	}{
+		{"omitted margin", nil, 0, 0},
+		{"margin as number", OverlayMarginAll(5), 5, 5},
+		{"margin object", OverlayMarginSpec{Top: 2, Left: 3}, 2, 3},
+		{"negative margins clamp to zero", OverlayMarginSpec{Top: -5, Left: -10}, 0, 0},
+		{"negative number clamps to zero", OverlayMarginAll(-4), 0, 0},
+		{"margin object by pointer", &OverlayMarginSpec{Top: 2, Left: 3}, 2, 3},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			ui, render := upstreamOverlayScreen(80, 24)
+			ui.ShowOverlay(&recordingComponent{lines: []string{"MARGIN"}}, OverlaySpec{Anchor: "top-left", Width: width, Margin: tt.margin}.Options())
+			viewport := render()
+			if col := strings.Index(viewport[tt.row], "MARGIN"); col != tt.col {
+				t.Fatalf("row %d = %q, want MARGIN at col %d (got %d)", tt.row, viewport[tt.row], tt.col, col)
+			}
+			for row := range tt.row {
+				if strings.Contains(viewport[row], "MARGIN") {
+					t.Fatalf("MARGIN on row %d above the margin: %q", row, viewport[row])
+				}
+			}
+		})
+	}
 }

@@ -1,3 +1,5 @@
+//go:build !pig_strip_mistral_conversations
+
 package ai
 
 // Ports packages/ai/src/api/mistral-conversations.ts (readMistralEvents, findMistralEventBoundary, parseMistralEvent, and the `for await` in consumeChatStream that consumes them).
@@ -6,6 +8,7 @@ package ai
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -97,7 +100,10 @@ func (loop *mistralEventLoop) finally() {
 // run drives readMistralEvents and hands each event to consume. It returns nil when the generator completes, and the error a rejection carries: from the generator (a read, the abort signal, JSON.parse or event validation) or from consume, whose error leaves the for-await through AsyncIteratorClose.
 func (loop *mistralEventLoop) run(consume func(raw json.RawMessage) error) error {
 	var decoder mistralTextDecoder
-	buffer := ""
+	// buffer is Pi's `buffer`: the decoded text after the last record consumed. No boundary starts before scanned; the bytes from there may
+	// still complete one when the next chunk arrives. A record that spans many reads is appended to and searched once.
+	var buffer []byte
+	scanned := 0
 	for { // mistral-conversations.ts:453 while (true)
 		if loop.aborted != nil {
 			if reason := loop.aborted(); reason != nil { // :454 if (signal.aborted) throw signal.reason
@@ -119,20 +125,23 @@ func (loop *mistralEventLoop) run(consume func(raw json.RawMessage) error) error
 			return loop.throw(err)
 		}
 		if done {
-			buffer += decoder.flush() // :457 decoder.decode()
+			buffer = append(buffer, decoder.flush()...) // :457 decoder.decode()
 		} else {
-			buffer += decoder.decode(chunk) // :457 decoder.decode(value, { stream: true })
+			buffer = append(buffer, decoder.decode(chunk)...) // :457 decoder.decode(value, { stream: true })
 		}
+		start := 0
 		for { // :459-466
-			index, length := findMistralEventBoundary(buffer)
+			index, length := findMistralEventBoundary(buffer[scanned:])
 			if index < 0 {
 				break
 			}
-			event, isDone, err := parseMistralEvent(buffer[:index])
+			index += scanned
+			event, isDone, err := parseMistralEvent(string(buffer[start:index]))
 			if err != nil {
 				return loop.throw(err) // :461 JSON.parse or the shape check throws inside the generator.
 			}
-			buffer = buffer[index+length:]
+			start = index + length
+			scanned = start
 			if isDone { // :463 if (event === MISTRAL_STREAM_DONE) return
 				return loop.complete()
 			}
@@ -142,12 +151,17 @@ func (loop *mistralEventLoop) run(consume func(raw json.RawMessage) error) error
 				}
 			}
 		}
+		if start > 0 {
+			buffer = append(buffer[:0], buffer[start:]...)
+		}
+		// A boundary is at most 4 bytes long: only one that starts in the last 3 bytes can still appear when more text arrives.
+		scanned = max(0, len(buffer)-3)
 		if done { // :468
 			break
 		}
 	}
-	if trimJSWhitespace(buffer) != "" { // :471
-		event, isDone, err := parseMistralEvent(buffer)
+	if trimJSWhitespace(string(buffer)) != "" { // :471
+		event, isDone, err := parseMistralEvent(string(buffer))
 		if err != nil {
 			return loop.throw(err) // :472
 		}
@@ -190,29 +204,34 @@ func (loop *mistralEventLoop) throw(err error) error {
 }
 
 // findMistralEventBoundary is mistral-conversations.ts:486 (`/\r\n\r\n|\r\n\r|\r\n\n|\r\r\n|\n\r\n|\r\r|\n\r|\n\n/u.exec(buffer)`): the leftmost match, and at one position the first alternative that matches. index is -1 when the buffer has no boundary.
-func findMistralEventBoundary(buffer string) (index, length int) {
-	for i := 0; i < len(buffer); i++ {
+func findMistralEventBoundary(buffer []byte) (index, length int) {
+	for start := 0; ; {
+		found := bytes.IndexAny(buffer[start:], "\r\n")
+		if found < 0 {
+			return -1, 0
+		}
+		i := start + found
 		rest := buffer[i:]
 		switch buffer[i] {
 		case '\r':
 			switch {
-			case strings.HasPrefix(rest, "\r\n\r\n"):
+			case bytes.HasPrefix(rest, []byte("\r\n\r\n")):
 				return i, 4
-			case strings.HasPrefix(rest, "\r\n\r"), strings.HasPrefix(rest, "\r\n\n"), strings.HasPrefix(rest, "\r\r\n"):
+			case bytes.HasPrefix(rest, []byte("\r\n\r")), bytes.HasPrefix(rest, []byte("\r\n\n")), bytes.HasPrefix(rest, []byte("\r\r\n")):
 				return i, 3
-			case strings.HasPrefix(rest, "\r\r"):
+			case bytes.HasPrefix(rest, []byte("\r\r")):
 				return i, 2
 			}
 		case '\n':
 			switch {
-			case strings.HasPrefix(rest, "\n\r\n"):
+			case bytes.HasPrefix(rest, []byte("\n\r\n")):
 				return i, 3
-			case strings.HasPrefix(rest, "\n\r"), strings.HasPrefix(rest, "\n\n"):
+			case bytes.HasPrefix(rest, []byte("\n\r")), bytes.HasPrefix(rest, []byte("\n\n")):
 				return i, 2
 			}
 		}
+		start = i + 1
 	}
-	return -1, 0
 }
 
 // parseMistralEvent is mistral-conversations.ts:491-506: the `data:` lines of one record, each with its leading whitespace trimmed, joined by "\n" and trimmed, are JSON unless they are empty or [DONE]. event is nil for a record with no data.

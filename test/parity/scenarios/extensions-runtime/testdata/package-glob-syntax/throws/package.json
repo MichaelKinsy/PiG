@@ -1,0 +1,12 @@
+{
+  "name": "glob-throws",
+  "pi": {
+    "extensions": [],
+    "skills": [
+      "skills/[[:alpha:]]-*"
+    ],
+    "prompts": [
+      "prompts/*.md"
+    ]
+  }
+}

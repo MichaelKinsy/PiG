@@ -1,0 +1,1156 @@
+[
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./ai",
+  "tests": [
+   "TestBasetenModels",
+   "TestBuiltinProvidersUpstream",
+   "TestClampThinkingLevel",
+   "TestCopilotAnthropicUpstream",
+   "TestFireworksModels",
+   "TestGeneratedCatalogThinkingLevelMap",
+   "TestGetSupportedThinkingLevels",
+   "TestMaxThinkingUpstream",
+   "TestMistralReasoningEffortUsesThinkingLevelMap",
+   "TestSupportsXHighUpstream",
+   "TestThinkingMaxLevel",
+   "TestXAIResponsesRoutesEveryBuiltInModelThroughResponses"
+  ],
+  "upstream_reference": "packages/ai/src/models.ts",
+  "mutation": "ai/model_utils.go:88: replace `if ok && mapped == nil {` with `if ok && mapped != nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./ai",
+  "tests": [
+   "TestBuiltinProvidersUpstream",
+   "TestClampThinkingLevel",
+   "TestCopilotAnthropicUpstream",
+   "TestGetSupportedThinkingLevels",
+   "TestMaxThinkingUpstream",
+   "TestSupportedAndClampedThinkingLevelsAreModelThinkingLevels",
+   "TestSupportsXHighUpstream"
+  ],
+  "upstream_reference": "packages/ai/src/models.ts",
+  "mutation": "ai/model_utils.go:91: replace `if level == ThinkingXHigh || level == ThinkingMax {` with `if level != ThinkingXHigh || level == ThinkingMax {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./ai",
+  "tests": [
+   "TestCalculateCost",
+   "TestCalculateCostAcceptsAnyModelType",
+   "TestCalculateCostTierBoundaryMatchesUpstream",
+   "TestModelsRuntimeBasicUpstream"
+  ],
+  "upstream_reference": "packages/ai/src/models.ts",
+  "mutation": "ai/model_utils.go:44: replace `if inputTokens > tier.InputTokensAbove && tier.InputTokensAbove > matchedThreshold {` with `if inputTokens > tier.InputTokensAbove || tier.InputTokensAbove > matchedThreshold {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./ai",
+  "tests": [
+   "TestModelTypesUpstream",
+   "TestModelsAreEqual",
+   "TestModelsAreEqualUsesDeclaredProviderAndID"
+  ],
+  "upstream_reference": "packages/ai/src/models.ts",
+  "mutation": "ai/model_utils.go:135: replace `return GetModelType(a) == GetModelType(b) && a.ModelID() == b.ModelID() && a.ProviderID() == b.ProviderID()` with `return GetModelType(a) != GetModelType(b) && a.ModelID() == b.ModelID() && a.ProviderID() == b.ProviderID()`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./ai",
+  "tests": [
+   "TestModelTypesUpstream",
+   "TestModelsRuntimeBasicUpstream",
+   "TestStrippedAPIModelsAreNotOffered"
+  ],
+  "upstream_reference": "packages/ai/src/models.ts",
+  "mutation": "ai/models_runtime_auth.go:91: replace `if model.ID == id {` with `if model.ID != id {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./ai",
+  "tests": [
+   "TestGenerateImagesMergesTheImageModelHeaders",
+   "TestGetModelAuthMergesStaticHeadersOfEveryModelType",
+   "TestModelsRuntimeBasicUpstream"
+  ],
+  "upstream_reference": "packages/ai/src/models.ts",
+  "mutation": "ai/models_runtime_auth.go:129: replace `if err != nil || result == nil || modelHeaders == nil {` with `if err != nil || result != nil || modelHeaders == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./ai",
+  "tests": [
+   "TestGetAllAvailableAppliesTheProviderFilters"
+  ],
+  "upstream_reference": "packages/ai/src/models.ts",
+  "mutation": "ai/models_runtime_auth.go:253: replace `if err != nil {` with `if err == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./ai",
+  "tests": [
+   "TestModelsRuntimeAuthUpstream"
+  ],
+  "upstream_reference": "packages/ai/src/models.ts",
+  "mutation": "ai/models_runtime_auth.go:147: replace `if provider == nil {` with `if provider != nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./ai",
+  "tests": [
+   "TestAnthropicRequestAuthShapes",
+   "TestAnthropicWorkloadIdentityFederation",
+   "TestFauxModelsDeferredFailureAndCancellationUpstream",
+   "TestFauxModelsSubmitPollRedeemDeferredUpstream",
+   "TestFauxProviderHandleAPIAndStateMatchUpstream",
+   "TestFauxProviderStateCountersReachResponseFactories",
+   "TestFauxProviderStateCountsDeferredFetches",
+   "TestFauxProviderStateIsVisibleToFactoryUpstream",
+   "TestFauxProviderStateRecordsCancelledDeferredHandles",
+   "TestFauxResponseFactoryReceivesRequestStateAndModel",
+   "TestFauxResponseFactoryReceivesTranscriptOptionsStateAndModel",
+   "TestLazyModuleLoadUpstream",
+   "TestLightweightModelsEntryUpstream",
+   "TestModelTypesUpstream",
+   "TestModelsMixedAPIDispatchUpstream",
+   "TestModelsResolvedEnvironmentAndRequestKeyUpstream",
+   "TestModelsRuntimeBasicUpstream",
+   "TestModelsStreamDeferredStreamsThePolledStateLikeUpstream",
+   "TestTelemetryOptionsSurviveProviderAndModelsDispatchUpstream"
+  ],
+  "upstream_reference": "packages/ai/src/models.ts",
+  "mutation": "ai/models_runtime_stream.go:123: replace `if transcript.err != nil {` with `if transcript.err == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./ai",
+  "tests": [
+   "TestFauxModelsDeferredFailureAndCancellationUpstream",
+   "TestFauxModelsSubmitPollRedeemDeferredUpstream",
+   "TestFauxProviderStateCountersReachResponseFactories",
+   "TestFauxProviderStateCountsDeferredFetches",
+   "TestFauxProviderStateIsVisibleToFactoryUpstream",
+   "TestModelsDeferredResolvedRequestOptionsUpstream",
+   "TestModelsStreamDeferredStreamsThePolledStateLikeUpstream",
+   "TestTelemetryOptionsSurviveProviderAndModelsDispatchUpstream"
+  ],
+  "upstream_reference": "packages/ai/src/models.ts",
+  "mutation": "ai/models_runtime_stream.go:164: replace `if provider.FetchDeferred == nil {` with `if provider.FetchDeferred != nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/utils/transcript.ts",
+  "package": "./ai",
+  "tests": [
+   "TestSystemMessageReplayRendersCompletePromptsAndFramedUpdates",
+   "TestTranscriptToolChangesOpenAICompletionsRequests",
+   "TestTranscriptToolChangesOpenAIResponsesRequests"
+  ],
+  "upstream_reference": "packages/ai/src/utils/transcript.ts",
+  "mutation": "ai/transcript.go:223: replace `index := slices.IndexFunc(sections, func(current PromptSection) bool { return current.Name == section.Name })` with `index := slices.IndexFunc(sections, func(current PromptSection) bool { return current.Name != section.Name })`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/utils/transcript.ts",
+  "package": "./ai",
+  "tests": [
+   "TestSystemMessageReplayComparesToolDeclarationsWithoutNonDeclarationFields",
+   "TestSystemMessageReplayToolStateChangesTreatChangedDefinitionsAsRemovalPlusAddition",
+   "TestToolDeclarationsIgnorePromptOnlyMetadata"
+  ],
+  "upstream_reference": "packages/ai/src/utils/transcript.ts",
+  "mutation": "ai/transcript.go:325: replace `return leftErr == nil && rightErr == nil && string(leftJSON) == string(rightJSON)` with `return leftErr != nil && rightErr == nil && string(leftJSON) == string(rightJSON)`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/providers/all.ts",
+  "package": "./ai",
+  "tests": [
+   "TestBuiltinProvidersAreBuiltByTheirConstructors",
+   "TestProviderConstructorsMatchCatalog"
+  ],
+  "upstream_reference": "packages/ai/src/providers/all.ts",
+  "mutation": "ai/provider_constructors.go: replace `return builtinProvider(\"ant-ling\")` in AntLingProvider with `return builtinProvider(\"anthropic\")`; compiling `go test -overlay -run` the listed tests fails both (the provider id no longer matches its catalog id)."
+ },
+ {
+  "upstream": "packages/ai/src/api/pi-messages.lazy.ts",
+  "package": "./ai",
+  "tests": [
+   "TestAPIStreamsSendPlainAndSimpleOptions"
+  ],
+  "upstream_reference": "packages/ai/src/api/pi-messages.lazy.ts",
+  "mutation": "ai/api_streams.go:32: replace `if api == APIPiMessages {` with `if api != APIPiMessages {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/utils/diagnostics.ts",
+  "package": "./ai",
+  "tests": [
+   "TestErrorNameFollowsTheNameMethod",
+   "TestExtractDiagnosticErrorMatchesUpstream",
+   "TestExtractDiagnosticErrorNameIsErrorUnlessAssigned",
+   "TestFormatThrownValueMatchesUpstream"
+  ],
+  "upstream_reference": "packages/ai/src/utils/diagnostics.ts",
+  "mutation": "ai/diagnostics.go:20: replace `if message := value.Error(); message != \"\" {` with `if message := value.Error(); message == \"\" {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/api/google-shared.ts",
+  "package": "./ai",
+  "tests": [
+   "TestGoogleUnsignedToolCallsUpstream",
+   "TestRequiresToolCallId"
+  ],
+  "upstream_reference": "packages/ai/src/api/google-shared.ts",
+  "mutation": "ai/google.go:449: replace `return major >= 3` with `return major > 3`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/api/google-shared.ts",
+  "package": "./ai",
+  "tests": [
+   "TestGoogleSharedConvertToolsUpstream"
+  ],
+  "upstream_reference": "packages/ai/src/api/google-shared.ts",
+  "mutation": "ai/google.go:875: replace `if mode != \"\" {` with `if mode == \"\" {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/api/constrained-sampling.ts",
+  "package": "./ai",
+  "tests": [
+   "TestConstrainedSamplingUnsupportedSchemasUpstream",
+   "TestMakeStrictJSONSchema",
+   "TestMakeStrictJSONSchemaAppliesTheUnsupportedKeywordCheck",
+   "TestSchemaOrderHandlesEscapedPropertyPathsAndDoesNotAliasStrictOutput",
+   "TestSchemaOrderKeepsEveryKeyOfAWideObject",
+   "TestSchemaOrderUsesJavaScriptIntegerKeyEnumeration",
+   "TestStrictJSONSchemaEmptyObjectsUseRequiredArray",
+   "TestStrictJSONSchemaRequiredIsCompleteAndUnique",
+   "TestStrictJSONSchemaUnsupported",
+   "TestStrictSchemaRetainsImportedPropertyOrderAcrossTranscriptAndJSON",
+   "TestToolSchemaJSONOrderIndicesAndMutation"
+  ],
+  "upstream_reference": "packages/ai/src/api/constrained-sampling.ts",
+  "mutation": "ai/constrained_sampling.go:244: replace `if _, exists := schema[\"properties\"]; exists && !isObject {` with `if _, exists := schema[\"properties\"]; exists || !isObject {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/api/constrained-sampling.ts",
+  "package": "./ai",
+  "tests": [
+   "TestAppendGrammarToolInputJSONDelta",
+   "TestAppendGrammarToolInputJSONDeltaWritesLineTerminatorsRaw",
+   "TestAppendGrammarToolInputJSONDelta_NonMonotonic"
+  ],
+  "upstream_reference": "packages/ai/src/api/constrained-sampling.ts",
+  "mutation": "ai/constrained_sampling.go:70: replace `if !closeBuf && inputDelta == \"\" {` with `if !closeBuf && inputDelta != \"\" {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/api/constrained-sampling.ts",
+  "package": "./ai",
+  "tests": [
+   "TestCreateGrammarToolInputProperties",
+   "TestGrammarDefinitionsUseECMAScriptTrim",
+   "TestResolveGrammarConstrainedSampling"
+  ],
+  "upstream_reference": "packages/ai/src/api/constrained-sampling.ts",
+  "mutation": "ai/constrained_sampling.go:367: replace `if !hasLark && !hasRegex {` with `if !hasLark || !hasRegex {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/utils/json-parse.ts",
+  "package": "./ai",
+  "tests": [
+   "TestParseJSONWithRepairEscapesInvalidBackslashes",
+   "TestParseJSONWithRepairKeepsInvalidUnicodeEscapesLiteral",
+   "TestParseJSONWithRepairStrictRepairedAndFailing"
+  ],
+  "upstream_reference": "packages/ai/src/utils/json-parse.ts",
+  "mutation": "ai/json_repair.go:13: replace `if err == nil {` with `if err != nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/api/simple-options.ts",
+  "package": "./ai",
+  "tests": [
+   "TestAdjustMaxTokensForThinking",
+   "TestClampReasoningUpstream",
+   "TestThinkingBudgetForLevel"
+  ],
+  "upstream_reference": "packages/ai/src/api/simple-options.ts",
+  "mutation": "ai/simple_options.go:75: replace `if effort == ThinkingXHigh || effort == ThinkingMax {` with `if effort != ThinkingXHigh || effort == ThinkingMax {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/api/simple-options.ts",
+  "package": "./ai",
+  "tests": [
+   "TestClampMaxTokensToContext"
+  ],
+  "upstream_reference": "packages/ai/src/api/simple-options.ts",
+  "mutation": "ai/simple_options.go:111: replace `if contextWindow <= 0 {` with `if contextWindow < 0 {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/api/simple-options.ts",
+  "package": "./ai",
+  "tests": [
+   "TestBuildBaseOptions"
+  ],
+  "upstream_reference": "packages/ai/src/api/simple-options.ts",
+  "mutation": "ai/simple_options.go:146: replace `if apiKey != \"\" {` with `if apiKey == \"\" {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/api/simple-options.ts",
+  "package": "./ai",
+  "tests": [
+   "TestResolveSamplingParamsMergesDefaultsLevelAndRequestInOrderLikeUpstream"
+  ],
+  "upstream_reference": "packages/ai/src/api/simple-options.ts",
+  "mutation": "ai/simple_options.go:127: replace `if defaults == nil && levelParams == nil && requestParams == nil {` with `if defaults != nil && levelParams == nil && requestParams == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/utils/retry.ts",
+  "package": "./ai",
+  "tests": [
+   "TestBedrockMidStreamTransportFailureMatchesTerminated",
+   "TestBedrockRequestTransportFailureMatchesFetchFailure",
+   "TestIsRetryableAssistantErrorClassification",
+   "TestMistralFinishReasonErrorIsRetryable",
+   "TestMistralRawStopReasonsUpstream",
+   "TestOpenAIResponsesDoneBeforeTerminalEventFails",
+   "TestProviderRetryDelayErrorIsNotTransportFailure",
+   "TestProviderRetryPatternsMatchLikeJavaScript",
+   "TestProviderTLSFailureMatchesConnectionError",
+   "TestProviderTransportFailureBeforeHeadersMatchesConnectionError",
+   "TestProviderTransportFailureMidStreamMatchesTerminated",
+   "TestProvidersHandleInStreamErrorsLikePinnedSDKs",
+   "TestServerBusyProviderErrorsAreRetryable"
+  ],
+  "upstream_reference": "packages/ai/src/utils/retry.ts",
+  "mutation": "ai/assistant_retry.go:249: replace `if message.StopReason != StopReasonError || message.ErrorMessage == \"\" {` with `if message.StopReason != StopReasonError || message.ErrorMessage != \"\" {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/utils/retry.ts",
+  "package": "./ai",
+  "tests": [
+   "TestRetryDelayMsUsesSafeIntegerMagnitude"
+  ],
+  "upstream_reference": "packages/ai/src/utils/retry.ts",
+  "mutation": "ai/assistant_retry.go:119: replace `if math.Abs(delay) <= maxSafeInteger && delay == math.Trunc(delay) {` with `if math.Abs(delay) <= maxSafeInteger && delay != math.Trunc(delay) {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/compat.ts",
+  "package": "./ai",
+  "tests": [
+   "TestCompatCompleteDispatchesThroughTheRegistryAndFillsTheEnvironmentKey",
+   "TestCompatDispatchErrors",
+   "TestCompatStreamUsesTheBuiltInProviderWithTheEnvironmentKey",
+   "TestFirstRegisterAPIProviderOverridesTheBuiltInForCatalogModels",
+   "TestRegisterBuiltInAPIProvidersKeepsAnOverride",
+   "TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
+   "TestStreamSimpleContextDispatchesTheSimpleFunctionWithTheNormalizedContext"
+  ],
+  "upstream_reference": "packages/ai/src/compat.ts",
+  "mutation": "ai/compat.go:239: replace `if model == nil {` with `if model != nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/compat.ts",
+  "package": "./ai",
+  "tests": [
+   "TestCompatRegistryOrderReplacementAndReset",
+   "TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
+  ],
+  "upstream_reference": "packages/ai/src/compat.ts",
+  "mutation": "ai/compat.go:116: replace `if entry := compatRegistry.entries[api]; entry.hasSrc && entry.sourceID == sourceID {` with `if entry := compatRegistry.entries[api]; entry.hasSrc && entry.sourceID != sourceID {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/compat.ts",
+  "package": "./ai",
+  "tests": [
+   "TestGetBuiltinModelReadsOneCatalogModel"
+  ],
+  "upstream_reference": "packages/ai/src/compat.ts",
+  "mutation": "ai/compat.go:306: replace `if model.ID == modelID {` with `if model.ID != modelID {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/utils/validation.ts",
+  "package": "./ai",
+  "tests": [
+   "TestValidateToolArgumentsDoesNotMutateTheCallLikeUpstream",
+   "TestValidateToolCallFindsTheNamedTool",
+   "TestValidateToolCallPicksTheNamedToolOrFailsLikeUpstream"
+  ],
+  "upstream_reference": "packages/ai/src/utils/validation.ts",
+  "mutation": "ai/validate_arguments.go:32: replace `if err := json.Unmarshal(validated, &result); err != nil {` with `if err := json.Unmarshal(validated, &result); err == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/api/classifier-shared.ts",
+  "package": "./ai",
+  "tests": [
+   "TestProviderHeadersToRecordMergesCaseInsensitivelyInOrder"
+  ],
+  "upstream_reference": "packages/ai/src/api/classifier-shared.ts",
+  "mutation": "ai/classifier_http.go:228: replace `if len(merged) == 0 {` with `if len(merged) != 0 {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/api/classifier-shared.ts",
+  "package": "./ai",
+  "tests": [
+   "TestSystemOneSharedFailureMessages"
+  ],
+  "upstream_reference": "packages/ai/src/api/classifier-shared.ts",
+  "mutation": "ai/classifier_http.go:175: replace `if err := jsonparse.Validate(body); err != nil {` with `if err := jsonparse.Validate(body); err == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/utils/error-body.ts",
+  "package": "./ai",
+  "tests": [
+   "TestFauxProviderUpstream",
+   "TestFormatProviderErrorUpstream",
+   "TestNormalizeProviderErrorUpstream",
+   "TestSafeJsonStringifyLeavesHTMLAndFallsBackLikeUpstream"
+  ],
+  "upstream_reference": "packages/ai/src/utils/error-body.ts",
+  "mutation": "ai/errors.go:118: replace `if err := encoder.Encode(value); err != nil {` with `if err := encoder.Encode(value); err == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/utils/error-body.ts",
+  "package": "./ai",
+  "tests": [
+   "TestFormatProviderErrorUpstream",
+   "TestNormalizeProviderErrorUpstream",
+   "TestProviderErrorTrimmingMatchesJS"
+  ],
+  "upstream_reference": "packages/ai/src/utils/error-body.ts",
+  "mutation": "ai/errors.go:82: replace `text = strings.TrimFunc(text, func(r rune) bool { return r == '\\ufeff' || r != '\\u0085' && unicode.IsSpace(r) })` with `text = strings.TrimFunc(text, func(r rune) bool { return r != '\\ufeff' || r != '\\u0085' && unicode.IsSpace(r) })`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/utils/error-body.ts",
+  "package": "./ai",
+  "tests": [
+   "TestTruncateErrorTextReportsOmittedUTF16UnitsLikeUpstream"
+  ],
+  "upstream_reference": "packages/ai/src/utils/error-body.ts",
+  "mutation": "ai/errors.go:107: replace `if length <= maxChars {` with `if length < maxChars {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/providers/radius-config.ts",
+  "package": "./ai",
+  "tests": [
+   "TestGetRadiusModelsBindsLegacyCredentialCatalog",
+   "TestGetRadiusModelsFromConfigCarriesSamplingParamsByThinkingLevel",
+   "TestRadiusModelsProviderIsTheListedRadiusProvider",
+   "TestRadiusProviderModelsRestoreCachedCatalogOffline",
+   "TestRadiusProviderObjectRestoresOnlyItsOwnStoredModels",
+   "TestRadiusProviderRestoresStoredCatalogOffline",
+   "TestRadiusProviderStopsWhenPublicationIsSuperseded"
+  ],
+  "upstream_reference": "packages/ai/src/providers/radius-config.ts",
+  "mutation": "ai/radius_config.go:62: replace `if len(trimmed) == 0 {` with `if len(trimmed) != 0 {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/utils/estimate.ts",
+  "package": "./ai",
+  "tests": [
+   "TestEstimateContextTokensIgnoresStaleUsageBeforeInsertedMessage",
+   "TestEstimateMessageTokensCountsSystemToolsImagesAndUTF16"
+  ],
+  "upstream_reference": "packages/ai/src/utils/estimate.ts",
+  "mutation": "ai/estimate.go:138: replace `if len(tools) == 0 {` with `if len(tools) != 0 {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/utils/estimate.ts",
+  "package": "./ai",
+  "tests": [
+   "TestEstimateCountsJSONStringifyLength",
+   "TestEstimateMessageTokensCountsSystemToolsImagesAndUTF16"
+  ],
+  "upstream_reference": "packages/ai/src/utils/estimate.ts",
+  "mutation": "ai/estimate.go:53: replace `if encoder.Encode(value) != nil {` with `if encoder.Encode(value) == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/utils/estimate.ts",
+  "package": "./ai",
+  "tests": [
+   "TestEstimateContextTokensReserves35CharactersPerTokenForNewText"
+  ],
+  "upstream_reference": "packages/ai/src/utils/estimate.ts",
+  "mutation": "ai/estimate.go:221: replace `if index := lastAssistantUsageIndex(messages); index >= 0 {` with `if index := lastAssistantUsageIndex(messages); index > 0 {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/utils/transcript.ts",
+  "package": "./ai",
+  "tests": [
+   "TestCreateInitialSystemMessageIsEmptyOnlyWithoutPromptAndToolsLikeUpstream"
+  ],
+  "upstream_reference": "packages/ai/src/utils/transcript.ts",
+  "mutation": "ai/transcript.go:149: replace `if systemPrompt == \"\" && len(tools) == 0 {` with `if systemPrompt != \"\" && len(tools) == 0 {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/utils/transcript.ts",
+  "package": "./ai",
+  "tests": [
+   "TestDeclaredToolsAndTranscriptToolsFollowTheToolHistoryLikeUpstream"
+  ],
+  "upstream_reference": "packages/ai/src/utils/transcript.ts",
+  "mutation": "ai/transcript.go:437: replace `anchors := supportsToolAdditions && !HasNonAdditiveToolChanges(messages)` with `anchors := supportsToolAdditions || !HasNonAdditiveToolChanges(messages)`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/compat.ts",
+  "package": "./ai",
+  "tests": [
+   "TestEveryLegacyAPIAliasReturnsAStreamThatEndsWithTheRequestFailure",
+   "TestLegacyAPIAliasesSendTheirAPIsRequestWhateverTheModelsApi"
+  ],
+  "upstream_reference": "packages/ai/src/compat.ts",
+  "mutation": "ai/api_streams.go StreamAnthropic: replace `return AnthropicMessagesAPI().Stream(` with `return AzureOpenAIResponsesAPI().Stream(`; compiling `go test -overlay -run` the listed tests fails each of them (the alias would send another API's request)."
+ },
+ {
+  "upstream": "packages/ai/src/compat.ts",
+  "package": "./ai",
+  "tests": [
+   "TestEveryLegacyAPIAliasReturnsAStreamThatEndsWithTheRequestFailure"
+  ],
+  "upstream_reference": "packages/ai/src/compat.ts",
+  "mutation": "ai/api_streams.go StreamSimpleGoogle: replace `return GoogleGenerativeAIAPI().StreamSimple(` with `return AnthropicMessagesAPI().StreamSimple(`; compiling `go test -overlay -run` the listed tests fails each of them (the alias would send another API's request)."
+ },
+ {
+  "upstream": "packages/ai/src/compat.ts",
+  "package": "./ai",
+  "tests": [
+   "TestEveryLegacyAPIAliasReturnsAStreamThatEndsWithTheRequestFailure",
+   "TestLegacyAPIAliasesSendTheirAPIsRequestWhateverTheModelsApi"
+  ],
+  "upstream_reference": "packages/ai/src/compat.ts",
+  "mutation": "ai/api_streams.go StreamOpenAICompletions: replace `return OpenAICompletionsAPI().Stream(` with `return AnthropicMessagesAPI().Stream(`; compiling `go test -overlay -run` the listed tests fails each of them (the alias would send another API's request)."
+ },
+ {
+  "upstream": "packages/ai/src/utils/diagnostics.ts",
+  "package": "./ai",
+  "tests": [
+   "TestCreateAndAppendAssistantMessageDiagnosticMatchUpstream"
+  ],
+  "upstream_reference": "packages/ai/src/utils/diagnostics.ts",
+  "mutation": "ai/diagnostics.go CreateAssistantMessageDiagnostic: replace `AssistantMessageDiagnostic{Type: diagnosticType, Timestamp` with `AssistantMessageDiagnostic{Type: \"diagnostic\", Timestamp`; and AppendAssistantMessageDiagnostic: replace `diagnostics = append(diagnostics, diagnostic)` with `diagnostics = append(diagnostics[:0], diagnostic)`; compiling `go test -overlay -run` the listed test fails under each mutant."
+ },
+ {
+  "upstream": "packages/ai/src/api/google-shared.ts",
+  "package": "./ai",
+  "tests": [
+   "TestRetainThoughtSignature"
+  ],
+  "upstream_reference": "packages/ai/src/api/google-shared.ts",
+  "mutation": "ai/google.go:395: replace `if incoming != \"\" {` with `if incoming == \"\" {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/session-resources.ts",
+  "package": "./ai",
+  "tests": [
+   "TestSessionResourceCleanupCallsHooksInOrderAndUnregisters",
+   "TestSessionResourceCleanupRunsEveryHookAndAggregatesFailures"
+  ],
+  "upstream_reference": "packages/ai/src/session-resources.ts",
+  "mutation": "ai/session_resources.go: (1) replace the unregister `sessionResourceCleanups = append(sessionResourceCleanups[:i], sessionResourceCleanups[i+1:]...)` with `_ = i` (fails the unregister test); (2) replace the aggregate message `Failed to cleanup session resources` with `cleanup failed` and (3) `%w` with `%v` in the panic wrap (each fails the aggregate test); compiling `go test -overlay -run` the listed tests."
+ },
+ {
+  "upstream": "packages/ai/src/providers/cloudflare-auth.ts",
+  "package": "./ai",
+  "tests": [
+   "TestCloudflareAIGatewayAuthSendsTheGatewayAuthorizationHeader",
+   "TestCloudflareWorkersAIAuthMergesCredentialAndEnvironmentPerField",
+   "TestCloudflareAuthLoginPromptsForKeyAccountAndGateway"
+  ],
+  "upstream_reference": "packages/ai/src/providers/cloudflare-auth.ts",
+  "mutation": "ai/auth_providers.go: (1) `new(\"Bearer \" + resolved.apiKey)` -> `new(resolved.apiKey)`, (2) `\"Authorization\": nil` -> `new(\"x\")`, (3) the stored-credential source -> `cloudflareAPIKey`, (4) `(gateway && gatewayID == \"\")` -> `(false && gatewayID == \"\")`, (5) the credential key return -> `\"x\"`; ai/provider_login.go: (6) the stored gateway id replaced by a constant (`_ = gatewayID; credential.Env[cloudflareGatewayID] = \"x\"`); compiling `go test -overlay -run` the listed tests fails at least one of them under each (the gateway test under 1-4, the Workers AI test under 3 and 5, the login test under 6)."
+ },
+ {
+  "upstream": "packages/ai/src/auth/credential-store.ts",
+  "package": "./ai",
+  "tests": [
+   "TestInMemoryCredentialStoreListsProvidersInInsertionOrder",
+   "TestInMemoryCredentialStoreReadAndListFailOnAnAbortedContext",
+   "TestInMemoryCredentialStoreModifySemantics",
+   "TestInMemoryCredentialStoreSerializesWritesPerProvider"
+  ],
+  "upstream_reference": "packages/ai/src/auth/credential-store.ts",
+  "mutation": "ai/in_memory_credential_store.go, one site each: Modify's `if _, exists := s.credentials[providerID]; !exists {` -> `if true {`; the abort check after fn removed; Delete's `delete(s.credentials, providerID)` removed; Delete's order removal dropped; the per-provider `<-previous` wait removed; List's abort check removed; a nil fn result returning nil instead of the current credential; compiling `go test -overlay -run` the listed tests fails a test of the matching behaviour under each (list order, modify semantics, abort, serialization)."
+ },
+ {
+  "upstream": "packages/ai/src/auth/helpers.ts",
+  "package": "./ai",
+  "tests": [
+   "TestLazyOAuthLoadsOnFirstUseOnceAndDelegates",
+   "TestLazyOAuthLoadFailureStaysFailed"
+  ],
+  "upstream_reference": "packages/ai/src/auth/helpers.ts",
+  "mutation": "ai/auth_lazy.go, one site each: `once.Do(func() { loaded, err = input.Load() })` -> `_ = &once; loaded, err = input.Load()`; Login/Refresh/ToAuth forwarding a zero value instead of its argument; IsSubscription forced to false; compiling `go test -overlay -run` the listed tests fails TestLazyOAuthLoadsOnFirstUseOnceAndDelegates under each of them (the load-once case also fails TestLazyOAuthLoadFailureStaysFailed)."
+ },
+ {
+  "upstream": "packages/ai/src/utils/abort.ts",
+  "package": "./ai",
+  "tests": [
+   "TestRaceWithAbortSignalPrefersAnEarlierAbortOverAReadyResult",
+   "TestRaceWithAbortSignalSettlesWithTheFirstOfOperationAndAbort"
+  ],
+  "upstream_reference": "packages/ai/src/utils/abort.ts",
+  "mutation": "ai/abort_race.go:32: replace `if signal.Err() != nil {` with `if signal.Err() == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/api/transform-messages.ts",
+  "package": "./ai",
+  "tests": [
+   "TestTransformMessagesThinkingIdentityAndIncompleteHistory"
+  ],
+  "upstream_reference": "packages/ai/src/api/transform-messages.ts",
+  "mutation": "ai/transform_messages.go:85: replace `case sameModel && block.ThinkingSignature != \"\":` with `case sameModel && block.ThinkingSignature == \"\":`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/utils/abort.ts",
+  "package": "./ai",
+  "tests": [
+   "TestOperationSignalKeepsASignalAndSuppliesAnUncancelledOne"
+  ],
+  "upstream_reference": "packages/ai/src/utils/abort.ts",
+  "mutation": "ai/abort_race.go OperationSignal: replace the final `return signal` with `return context.Background()`; compiling `go test -overlay -run` the listed test fails (a given signal must be returned as is)."
+ },
+ {
+  "upstream": "packages/ai/src/providers/cloudflare-stream.ts",
+  "package": "./ai",
+  "tests": [
+   "TestCloudflareStreamsMaterializeTheModelEndpointBeforeDispatch"
+  ],
+  "upstream_reference": "packages/ai/src/providers/cloudflare-stream.ts",
+  "mutation": "ai/cloudflare_streams.go:32: replace `if streams.StreamSimple != nil {` with `if streams.StreamSimple == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/providers/cloudflare-stream.ts",
+  "package": "./ai",
+  "tests": [
+   "TestResolveCloudflareModelResolvesEachPlaceholderIndependently"
+  ],
+  "upstream_reference": "packages/ai/src/providers/cloudflare-stream.ts",
+  "mutation": "ai/cloudflare_streams.go:14: replace `if baseURL == model.ProviderMeta.BaseURL {` with `if baseURL != model.ProviderMeta.BaseURL {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/utils/overflow.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestIsRecoverableLength"
+  ],
+  "upstream_reference": "packages/ai/src/utils/overflow.ts",
+  "mutation": "internal/codingagent/auto_recovery.go:23: replace `return msg != nil && ai.IsRecoverableLength(msg.LLMMessage(), desiredMaxOutput)` with `return msg == nil && ai.IsRecoverableLength(msg.LLMMessage(), desiredMaxOutput)`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/images-api-registry.ts",
+  "package": "./ai",
+  "tests": [
+   "TestImagesAPIRegistryDispatchesByModelAPI"
+  ],
+  "upstream_reference": "packages/ai/src/images-api-registry.ts",
+  "mutation": "ai/images.go, one site each: a later registration no longer replaces the earlier one; the dispatch error text changed; the options replaced by a zero value; the registry key replaced by a constant; compiling `go test -overlay -run` the listed test fails under each."
+ },
+ {
+  "upstream": "packages/ai/src/api/openrouter-images.ts",
+  "package": "./ai",
+  "tests": [
+   "TestGenerateImagesOpenRouter_OnResponseRunsOnlyAfterSuccessfulResponse"
+  ],
+  "upstream_reference": "packages/ai/src/api/openrouter-images.ts",
+  "mutation": "ai/openrouter_images.go:135: replace `if err := options.OnResponse(ProviderResponse{Status: resp.StatusCode, Headers: headersToRecord(resp.Header)}, model); err != nil {` with `if err := options.OnResponse(ProviderResponse{Status: resp.StatusCode, Headers: headersToRecord(resp.Header)}, model); err == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/api/google-shared.ts",
+  "package": "./ai",
+  "tests": [
+   "TestGoogleConvertMessages_EmitsToolCallIdWhenRequired",
+   "TestGoogleConvertMessages_TruncatesToolCallIdTo64"
+  ],
+  "upstream_reference": "packages/ai/src/api/google-shared.ts",
+  "mutation": "ai/google.go ConvertGoogleMessages: replace the tool-call id normalizer `func(id string, _ *Model, _ AssistantMessage) string { return normalizeToolCallId(model.ID, id) }` with one that returns the id unchanged; compiling `go test -overlay -run` the listed tests fails each of them."
+ },
+ {
+  "upstream": "packages/ai/src/api/openai-completions.ts",
+  "package": "./ai",
+  "tests": [
+   "TestConvertCompletionsMessagesGrammarToolInputPropertiesReplaysACustomToolCall",
+   "TestConvertCompletionsMessagesReplaysGrammarToolCallsFromTheGivenProperties",
+   "TestConvertCompletionsMessagesUsesTheGivenGrammarToolInputProperties"
+  ],
+  "upstream_reference": "packages/ai/src/api/openai-completions.ts",
+  "mutation": "ai/openai.go ConvertCompletionsMessages: replace `options.GrammarToolInputProperties` with `nil` in the convertTranscript call; compiling `go test -overlay -run` the listed tests fails each of them."
+ },
+ {
+  "upstream": "packages/ai/src/api/openai-completions.ts",
+  "package": "./ai",
+  "tests": [
+   "TestConvertCompletionsMessagesEqualsTheStreamedRequestMessages"
+  ],
+  "upstream_reference": "packages/ai/src/api/openai-completions.ts",
+  "mutation": "ai/openai.go ConvertCompletionsMessages: replace `Compat: compat` with `Compat: nil`; compiling `go test -overlay -run` the listed test fails."
+ },
+ {
+  "upstream": "packages/ai/src/providers/cloudflare-stream.ts",
+  "package": "./ai",
+  "tests": [
+   "TestCloudflareClassifierMaterializesEndpointPlaceholdersBeforeDispatch"
+  ],
+  "upstream_reference": "packages/ai/src/providers/cloudflare-stream.ts",
+  "mutation": "ai/system_one.go CloudflareClassifier, one site each: resolve the placeholders with a nil env; write the resolved base URL into the caller's model instead of a copy; forward a zero ClassifierOptions; always take the replacement branch; compiling `go test -overlay -run` the listed test fails under each."
+ },
+ {
+  "upstream": "packages/ai/src/auth/oauth/anthropic.ts",
+  "package": "./ai",
+  "tests": [
+   "TestAnthropicAuthorizeURLKeepsUpstreamParameterOrder",
+   "TestAnthropicCopyCodeLoginImplementation",
+   "TestAnthropicUpstreamOAuth"
+  ],
+  "upstream_reference": "packages/ai/src/auth/oauth/anthropic.ts",
+  "mutation": "ai/oauth_anthropic.go: replace `if callbacks.OnAuth != nil {` (the one before the OAuthAuthInfo with the authorize URL) with `if false {`, so the login never reports its authorize URL through OnAuth; compiling `go test -overlay -run` the listed tests fails each of them."
+ },
+ {
+  "upstream": "packages/ai/src/auth/oauth/openai-codex.ts",
+  "package": "./ai",
+  "tests": [
+   "TestLoginOpenAICodexAuthorizeURLNamesPiGAsOriginator",
+   "TestOpenAICodexOAuthUpstream"
+  ],
+  "upstream_reference": "packages/ai/src/auth/oauth/openai-codex.ts",
+  "mutation": "ai/oauth_openai_codex.go: replace the `callbacks.OnAuth(OAuthAuthInfo{URL: authURL, Instructions: ...})` call with `_ = authURL`; compiling `go test -overlay -run` the listed tests fails each of them."
+ },
+ {
+  "upstream": "packages/durable/src/env/index.ts",
+  "package": "./durable/env/node",
+  "tests": [
+   "TestExecutionEnvFileSystemContract",
+   "TestFileSystemInterfaceContractThroughTheInterface",
+   "TestFilesystemReadsWritesListsAndRemovesFilesAndDirectories",
+   "TestNodeExecutionEnvFileSystemCallsMirrorPi"
+  ],
+  "upstream_reference": "packages/durable/src/env/index.ts",
+  "mutation": "durable/env/node/node.go:109: replace `if endsWithSeparator(lastNonEmpty(parts)) && !endsWithSeparator(joined) {` with `if endsWithSeparator(lastNonEmpty(parts)) || !endsWithSeparator(joined) {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/env/index.ts",
+  "package": "./durable/env/node",
+  "tests": [
+   "TestFilesystemReadsWritesListsAndRemovesFilesAndDirectories",
+   "TestNodeExecutionEnvFileSystemCallsMirrorPi",
+   "TestShellRejectsInvalidTimeoutsBeforeSpawning",
+   "TestShellReturnsAnAbortedResultForPreAbortedAndAbortedCommands"
+  ],
+  "upstream_reference": "packages/durable/src/env/index.ts",
+  "mutation": "durable/env/node/node.go:423: replace `return false, nil` with `return true, nil`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/env/index.ts",
+  "package": "./durable/env/node",
+  "tests": [
+   "TestFilesystemReadsWritesListsAndRemovesFilesAndDirectories",
+   "TestFilesystemReturnsAbortedResultsWithoutSideEffectsForPreAbortedFileOperations",
+   "TestNodeExecutionEnvFileSystemCallsMirrorPi"
+  ],
+  "upstream_reference": "packages/durable/src/env/index.ts",
+  "mutation": "durable/env/node/node.go:370: replace `if err := abortedFileError(ctx, resolved); err != nil {` with `if err := abortedFileError(ctx, resolved); err == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/env/node.ts",
+  "package": "./durable/env/node",
+  "tests": [
+   "TestNodeExecutionEnvFileSystemCallsMirrorPi",
+   "TestNodeExecutionEnvOpenDirReaderPagesEntries",
+   "TestOpenDirReaderPagesEntriesAndRefusesNonDirectories"
+  ],
+  "upstream_reference": "packages/durable/src/env/node.ts",
+  "mutation": "durable/env/node/binary_reader.go:220: replace `if err := abortedFileError(ctx, reader.path); err != nil {` with `if err := abortedFileError(ctx, reader.path); err == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/env/node.ts",
+  "package": "./durable/env/node",
+  "tests": [
+   "TestNodeExecutionEnvReaders"
+  ],
+  "upstream_reference": "packages/durable/src/env/node.ts",
+  "mutation": "durable/env/node/binary_reader.go:94: replace `if result == nil {` with `if result != nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/testing/assertions.ts",
+  "package": "./durable/durabletest",
+  "tests": [
+   "TestEnvConformanceCasesPassForNodeEnvAndFailForBrokenEnv",
+   "TestRegisterStorageConformanceUsesTheProviderOncePerCase",
+   "TestStorageConformanceAssertionsPassAndFail",
+   "TestStorageConformanceCasesPassForMemoryStorageAndFailForBrokenStorage",
+   "TestStorageConformanceOptionsSupplyAssertionsAndFreshStoragePerCase"
+  ],
+  "upstream_reference": "packages/durable/src/testing/assertions.ts",
+  "mutation": "durable/durabletest/durabletest.go:136: replace `if err := json.Unmarshal(encoded, &decoded); err != nil {` with `if err := json.Unmarshal(encoded, &decoded); err == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/types.ts",
+  "package": "./durable/core/driver",
+  "tests": [
+   "TestCoreTaskReadsCommittedDocumentsAndContextThroughTheRuntimeAndForwardsClockAndReports"
+  ],
+  "upstream_reference": "packages/durable/src/types.ts",
+  "mutation": "durable/core/driver/taskruntime.go:452: replace `if options != nil && options.At != nil {` with `if options == nil && options.At != nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/types.ts",
+  "package": "./durable/core/driver",
+  "tests": [
+   "TestCoreARequestOnALongHistoryReadsNoTranscriptThroughTheCore",
+   "TestCoreCreatesAConversationWithAnExplicitlyStagedTaskOwner",
+   "TestCoreCreatesConversationsAndEntriesWithMintedIDs",
+   "TestCoreOwnershipDecidesIdleAfterReopenFromOwnerEdgesItHasToLoadFirst",
+   "TestCoreOwnershipMarksWorkAdmittedAfterReopenBelowACancelledOwnerWhoseEdgeWasNotLoaded",
+   "TestCoreReopenReadsSettledRecordsOnDemand",
+   "TestCoreTableReadsAreAllowedOnlyBeforeTheFirstTableWrite",
+   "TestCoreTaskCommitsResultsWithEntriesKeepsMemosUntilTerminalAndRetiresDocuments"
+  ],
+  "upstream_reference": "packages/durable/src/types.ts",
+  "mutation": "durable/core/driver/session_tx.go:64: replace `if err := json.Unmarshal(raw, &out); err != nil {` with `if err := json.Unmarshal(raw, &out); err == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/types.ts",
+  "package": "./durable/core/driver",
+  "tests": [
+   "TestCoreForkUsesTheFinalDocumentStateOfTheEntryCommitAndExcludesLaterSameCommitEntries",
+   "TestCoreReopenReadsSettledRecordsOnDemand",
+   "TestCoreTableReadsAreAllowedOnlyBeforeTheFirstTableWrite",
+   "TestCoreTableScansPassLimitsAndCursors",
+   "TestCoreTaskScanPagesTheNewestFirst"
+  ],
+  "upstream_reference": "packages/durable/src/types.ts",
+  "mutation": "durable/core/driver/session_tx.go:87: replace `if err := json.Unmarshal(raw, &w); err != nil {` with `if err := json.Unmarshal(raw, &w); err == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/types.ts",
+  "package": "./durable/core/driver",
+  "tests": [
+   "TestCoreRetiredDocumentsGetANewIncarnationAtTheSameAddress",
+   "TestCoreRetirementBetweenTwoAcquisitionsCreatesAFreshIncarnation"
+  ],
+  "upstream_reference": "packages/durable/src/types.ts",
+  "mutation": "durable/core/driver/session_tx.go:415: replace `if err := p.writeDraft(open); err != nil {` with `if err := p.writeDraft(open); err == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/types.ts",
+  "package": "./durable/core/driver",
+  "tests": [
+   "TestCoreForkCopiesTheStoredVersionWithoutConsultingMigrations",
+   "TestCoreMigratesCurrentAndHistoricalRewindableValuesAndFollowsForkAncestry",
+   "TestCoreMigrationLeavesUnaccessedOlderDocumentsUntouched",
+   "TestCoreNewerTokenMigratesADocumentAnOlderTokenReadFirst",
+   "TestCoreOlderTokenReadsStorageAfterANewerTokenMigratedOnlyInMemory",
+   "TestCoreSnapshotMigratesReadOnly"
+  ],
+  "upstream_reference": "packages/durable/src/types.ts",
+  "mutation": "durable/core/driver/session_api.go:139: replace `if migrated != nil {` with `if migrated == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/types.ts",
+  "package": "./durable/core/driver",
+  "tests": [
+   "TestConversationWatchAndViewStateFollowCommits",
+   "TestCoreARequestAfterAResetSendsTheContextBehindTheHeadMarker",
+   "TestCoreOwnershipAbortsAConversationWithQueuedInputsWithdrawnWritesKeptForegroundAbortedBackgroundKept",
+   "TestCoreOwnershipWithdrawsQueuedInputsBelowTheAbortedTaskButKeepsItsOwnConversationsQueueAndQueuedWrites",
+   "TestCoreThresholdCompactionNeedsACutLikeTheReference"
+  ],
+  "upstream_reference": "packages/durable/src/types.ts",
+  "mutation": "durable/core/driver/session_api.go:527: replace `if draft.Type == durable.SubmissionTypeInput {` with `if draft.Type != durable.SubmissionTypeInput {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/types.ts",
+  "package": "./durable/core/driver",
+  "tests": [
+   "TestCoreOwnershipCancelsOnlyTheCallersWaitNeverTheSharedWork",
+   "TestCoreOwnershipDecidesIdleAfterReopenFromOwnerEdgesItHasToLoadFirst",
+   "TestCoreOwnershipKeepsAConversationBusyWhileItsOwnedForegroundSubtreeHasLiveWork",
+   "TestCoreOwnershipStopsIdleTraversalAtABackgroundOwner",
+   "TestCoreWaitForIdleCountsBlockedWorkAndIgnoresBackgroundTasks"
+  ],
+  "upstream_reference": "packages/durable/src/types.ts",
+  "mutation": "durable/core/driver/session_api.go:485: replace `if err := json.Unmarshal(raw, &graph); err != nil {` with `if err := json.Unmarshal(raw, &graph); err == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/storage/jsonl/storage.ts",
+  "package": "./durable/storage/jsonl",
+  "tests": [
+   "TestJsonlStoragePoisonsWithOneCausedErrorForEveryLaterCall"
+  ],
+  "upstream_reference": "packages/durable/src/storage/jsonl/storage.ts",
+  "mutation": "durable/storage/jsonl/storage.go:1305: replace `if jsonl.poisonError != nil {` with `if jsonl.poisonError == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/storage/memory.ts",
+  "package": "./durable/storage",
+  "tests": [
+   "TestMemoryStorageDoesNotExposeRetainedStateThroughAPreparedCommit",
+   "TestPrepareCommitAtAppliesAtTheGivenSequenceAndRejectsAStaleOne",
+   "TestPrepareCommitChangesNothingUntilApplied",
+   "TestPreparedMemoryCommitSeqIsTheApplySequence"
+  ],
+  "upstream_reference": "packages/durable/src/storage/memory.ts",
+  "mutation": "durable/storage/memory.go:1160: replace `if existing != \"\" {` with `if existing == \"\" {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/env/index.ts",
+  "package": "./durable/env",
+  "tests": [
+   "TestGetOrThrow",
+   "TestGetOrUndefinedReturnsTheValueOfAnOkResultAndNilOfAFailure",
+   "TestGetOrUndefinedReturnsTheValueOnlyForSuccess",
+   "TestGetOrUndefinedReturnsTheValueOrNil"
+  ],
+  "upstream_reference": "packages/durable/src/env/index.ts",
+  "mutation": "durable/env/env.go: Ok returns `Ok: false`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/env/index.ts",
+  "package": "./durable/env",
+  "tests": [
+   "TestGetOrThrow"
+  ],
+  "upstream_reference": "packages/durable/src/env/index.ts",
+  "mutation": "durable/env/env.go: Err returns `Ok: true`; GetOrThrow's `if !result.Ok` flipped to `if result.Ok`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/env/index.ts",
+  "package": "./durable/env",
+  "tests": [
+   "TestGetOrUndefinedReturnsTheValueOfAnOkResultAndNilOfAFailure",
+   "TestGetOrUndefinedReturnsTheValueOnlyForSuccess",
+   "TestGetOrUndefinedReturnsTheValueOrNil"
+  ],
+  "upstream_reference": "packages/durable/src/env/index.ts",
+  "mutation": "durable/env/env.go: GetOrUndefined's `if result.Ok` flipped to `if !result.Ok`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/env/index.ts",
+  "package": "./durable/env",
+  "tests": [
+   "TestFileErrorAndExecutionErrorKeepTheirArguments",
+   "TestNewFileErrorKeepsCodeMessagePathAndCause"
+  ],
+  "upstream_reference": "packages/durable/src/env/index.ts",
+  "mutation": "durable/env/env.go: NewFileError drops the cause; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/env/index.ts",
+  "package": "./durable/env",
+  "tests": [
+   "TestExecutionErrorUpstream",
+   "TestFileErrorAndExecutionErrorKeepTheirArguments",
+   "TestNewExecutionErrorKeepsCodeMessageAndCause"
+  ],
+  "upstream_reference": "packages/durable/src/env/index.ts",
+  "mutation": "durable/env/env.go: NewExecutionError drops the cause; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/env/index.ts",
+  "package": "./durable/env",
+  "tests": [
+   "TestErrorNames",
+   "TestExecutionErrorUpstream",
+   "TestFileErrorAndExecutionErrorKeepTheirArguments"
+  ],
+  "upstream_reference": "packages/durable/src/env/index.ts",
+  "mutation": "durable/env/env.go: ExecutionError.Name returns \"Error\" instead of \"ExecutionError\"; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/env/index.ts",
+  "package": "./durable/env",
+  "tests": [
+   "TestToErrorMatchesJSONStringify"
+  ],
+  "upstream_reference": "packages/durable/src/env/index.ts",
+  "mutation": "durable/env/env.go:67: replace `if err := encoder.Encode(value); err != nil {` with `if err := encoder.Encode(value); err == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/harness/types.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestAdmitSubmissionMatchesPiOnSeededPrograms",
+   "TestToolProgressAndLifetime",
+   "TestToolResults"
+  ],
+  "upstream_reference": "packages/durable/src/harness/types.ts",
+  "mutation": "durable/harness_types.go:107: replace `if control.AddTools != nil {` with `if control.AddTools == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/env/decode.ts",
+  "package": "./durable/env",
+  "tests": [
+   "TestRangeDecoderKeepsAByteOrderMark"
+  ],
+  "upstream_reference": "packages/durable/src/env/decode.ts",
+  "mutation": "durable/env/decode.go:49: replace `if suffix := data[len(data)-tail:]; utf8.RuneStart(suffix[0]) && !utf8.FullRune(suffix) {` with `if suffix := data[len(data)-tail:]; utf8.RuneStart(suffix[0]) || !utf8.FullRune(suffix) {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/types.ts",
+  "package": "./durable/core/session",
+  "tests": [
+   "TestScenariosMatchPiDurable"
+  ],
+  "upstream_reference": "packages/durable/src/types.ts",
+  "mutation": "durable/core/session/tx.go:455: replace `if tx.scope.TaskID != 0 {` with `if tx.scope.TaskID == 0 {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/types.ts",
+  "package": "./durable/session",
+  "tests": [
+   "TestDocumentDefinitions",
+   "TestSessionDocumentTransactions",
+   "TestSessionHistoricalDocumentSnapshots"
+  ],
+  "upstream_reference": "packages/durable/src/types.ts",
+  "mutation": "durable/session/session.go:133: replace `if cached := session.documents[addressId]; cached != nil && cached.Record.Id == recordId {` with `if cached := session.documents[addressId]; cached != nil && cached.Record.Id != recordId {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/types.ts",
+  "package": "./durable/session",
+  "tests": [
+   "TestAdmissionWaitingForCloseListenersDoesNotHoldTheLine"
+  ],
+  "upstream_reference": "packages/durable/src/types.ts",
+  "mutation": "durable/session/session.go:160: replace `if listenersRan != nil {` with `if listenersRan == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/types.ts",
+  "package": "./durable/session",
+  "tests": [
+   "TestDocumentDefinitions",
+   "TestSessionDocumentTransactions",
+   "TestSessionHistoricalDocumentSnapshots",
+   "TestSessionTransactionLatestHeadMarkerSubmissionByRequestAndPlaceSubmission"
+  ],
+  "upstream_reference": "packages/durable/src/types.ts",
+  "mutation": "durable/session/transaction.go:516: replace `if err := tx.host.conversationCreated(tx, record); err != nil {` with `if err := tx.host.conversationCreated(tx, record); err == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/harness/types.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestAdmitSubmissionMatchesPiOnSeededPrograms",
+   "TestOwnedConversationsFromTools",
+   "TestTaskScheduling"
+  ],
+  "upstream_reference": "packages/durable/src/harness/types.ts",
+  "mutation": "durable/harness/scheduler.go:1138: replace `if !target.roots && each.conversation == target.conversation {` with `if !target.roots && each.conversation != target.conversation {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/harness/types.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestAdmitSubmissionMatchesPiOnSeededPrograms",
+   "TestCompactionOutcomes",
+   "TestGenerationHooks"
+  ],
+  "upstream_reference": "packages/durable/src/harness/types.ts",
+  "mutation": "durable/harness/scheduler.go:1910: replace `if runtime.invocation.ctx.Err() != nil {` with `if runtime.invocation.ctx.Err() == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/harness/types.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestAdmitSubmissionMatchesPiOnSeededPrograms",
+   "TestBlockedTasks"
+  ],
+  "upstream_reference": "packages/durable/src/harness/types.ts",
+  "mutation": "durable/harness/scheduler.go:396: replace `if err := s.terminateLocked(tx, *current, anyOutcome{Status: durable.OutcomeOrphaned, Reason: &reason}); err != nil {` with `if err := s.terminateLocked(tx, *current, anyOutcome{Status: durable.OutcomeOrphaned, Reason: &reason}); err == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/harness/types.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestToolExecutionApi",
+   "TestToolExecutionApiMemoReadsTheDurableMemoOfTheToolTask"
+  ],
+  "upstream_reference": "packages/durable/src/harness/types.ts",
+  "mutation": "durable/harness/generation.go:1059: replace `if control == nil {` with `if control != nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/harness/types.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestGenerationHooks"
+  ],
+  "upstream_reference": "packages/durable/src/harness/types.ts",
+  "mutation": "durable/harness/generation.go:748: replace `if message.StopReason == ai.StopReasonDeferred && message.Deferred != nil {` with `if message.StopReason != ai.StopReasonDeferred && message.Deferred != nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/harness/types.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestAdmitSubmissionMatchesPiOnSeededPrograms",
+   "TestCodingTools",
+   "TestToolExecutionApi",
+   "TestToolProgressAndLifetime",
+   "TestToolRecovery",
+   "TestToolResults"
+  ],
+  "upstream_reference": "packages/durable/src/harness/types.ts",
+  "mutation": "durable/harness/tool.go:788: replace `if retained.Text != \"\" {` with `if retained.Text == \"\" {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/harness/types.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestAdmitSubmissionMatchesPiOnSeededPrograms",
+   "TestAgentEvents"
+  ],
+  "upstream_reference": "packages/durable/src/harness/types.ts",
+  "mutation": "durable/harness/tool.go:111: replace `if arguments == nil {` with `if arguments != nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/harness/types.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestAdmitSubmissionMatchesPiOnSeededPrograms",
+   "TestUsage"
+  ],
+  "upstream_reference": "packages/durable/src/harness/types.ts",
+  "mutation": "durable/harness/tool.go:68: replace `if err := RecordUsage(tx, conversationId, UsageTools, call.Name, usage); err != nil {` with `if err := RecordUsage(tx, conversationId, UsageTools, call.Name, usage); err == nil {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/durable/src/types.ts",
+  "package": "./durable/core/driver",
+  "tests": [
+   "TestCoreTaskRuntimeGetTaskReadsAChildRecordAndNothingForAnUnknownID"
+  ],
+  "upstream_reference": "packages/durable/src/types.ts",
+  "mutation": "durable/core/driver/taskruntime.go taskRuntime.GetTask: (1) return nil instead of the record read from the invocation; (2) read id+1 instead of id; compiling `go test -overlay -run` the listed test fails under each."
+ },
+ {
+  "upstream": "packages/durable/src/types.ts",
+  "package": "./durable/examples",
+  "tests": [
+   "TestTaskRuntimeReadsHarnessState"
+  ],
+  "upstream_reference": "packages/durable/src/types.ts",
+  "mutation": "durable/harness/scheduler.go taskRuntime.GetTask: replace `Storage.Task(ctx, id)` with `Storage.Task(ctx, id+1)`; compiling `go test -overlay -run` the listed test fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestInteractiveModeInitIsGuardedAndAFailedInitIsStoppable"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "mutation": "internal/codingagent/interactive.go InteractiveMode.Init: remove `m.backgroundCtx = nil` from the stop teardown registered by Init, so Stop after a failed Init leaves the background context; compiling `go test -overlay -run` the listed test fails (\"Stop after a failed Init left background\")."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding",
+  "tests": [
+   "TestDefineToolReturnsTheDefinitionUnchanged"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/define_tool.go DefineTool: blank the label (`tool.Label = \"\"`) before returning; compiling `go test -overlay -run` the listed test fails."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/flow.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestMCPOAuthTokenRequestUsesTheProvidersAddClientAuthentication"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/flow.ts",
+  "mutation": "mcp/oauth/flow.go: replace `if options.AddClientAuthentication != nil {` with `if false {`, so the provider's client authentication is never applied to the token request; compiling `go test -overlay -run` the listed test fails."
+ }
+]

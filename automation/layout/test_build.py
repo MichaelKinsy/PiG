@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 """Behavioral tests of the layout-build transformation, not workflow snapshots."""
 
@@ -76,14 +75,14 @@ class ScannerScopeTest(unittest.TestCase):
         source = (ROOT / name).read_text()
         after = {}
         exec(compile(rewrite(name, source), name, "exec"), after)
-        files = ("cmd/pig/main.go", "internal/core/main.go", "coding/session.go", "agent/agent.go", "ai/ai.go", "tui/tui.go", "coding/session_test.go", "internal/core/testdata/ignored.go")
+        files = ("coding/cli/main.go", "internal/core/main.go", "coding/session.go", "agent/agent.go", "ai/ai.go", "tui/tui.go", "coding/session_test.go", "internal/core/testdata/ignored.go")
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             for name in files:
                 path = root / name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.touch()
-            expected = {"cmd/pig/main.go", "internal/core/main.go", "internal/coding/session.go"}
+            expected = {"coding/cli/main.go", "internal/core/main.go", "internal/coding/session.go"}
             for package in ("agent", "ai", "coding", "tui"):
                 (root / package).rename(root / "internal" / package)
             found = [str(p.relative_to(root)) for p in after["go_files"](root)]

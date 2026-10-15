@@ -1,0 +1,848 @@
+[
+  {
+    "upstream": "packages/ai/src/utils/retry.ts",
+    "package": "./ai",
+    "tests": [
+      "TestServerBusyProviderErrorsAreRetryable",
+      "TestRetryDelayMsCapsAgentRetryDelay"
+    ],
+    "upstream_reference": "packages/ai/src/utils/retry.ts:32-34 (server_busy patterns, #10543), :128-135 (retryDelayMs)",
+    "mutation": "ai/assistant_retry.go: replace the pattern '\"server_busy\",' with '\"server_busyX\",'; go test -overlay -run TestServerBusyProviderErrorsAreRetryable ./ai fails TestServerBusyProviderErrorsAreRetryable. Replace 'math.Pow(2, max(0, float64(attempt)-1))' with 'math.Pow(3, max(0, float64(attempt)-1))'; go test -overlay -run TestRetryDelayMs ./ai fails TestRetryDelayMsCapsAgentRetryDelay (its uncapped 1..5 attempt cases were added with this evidence; the previous cases were all capped and the mutant survived)."
+  },
+  {
+    "upstream": "packages/ai/src/utils/provider-retry.ts",
+    "package": "./ai",
+    "tests": [
+      "TestRetryProviderRequestNoRetryStatuses"
+    ],
+    "upstream_reference": "packages/ai/src/utils/provider-retry.ts retryProviderRequest (noRetryStatuses)",
+    "mutation": "ai/provider_retry.go: replace 'slices.Contains(options.NoRetryStatuses, status)' with 'slices.Contains(options.NoRetryStatuses, status+1)'; go test -overlay -run TestRetryProviderRequest ./ai fails TestRetryProviderRequestNoRetryStatuses."
+  },
+  {
+    "upstream": "packages/ai/src/api/google-shared.ts",
+    "package": "./ai",
+    "tests": [
+      "TestRetryGoogleRequestRetriesAHeaderlessSDKErrorWithARetryableStatus"
+    ],
+    "upstream_reference": "packages/ai/src/api/google-shared.ts:487-510 retryGoogleRequest",
+    "mutation": "ai/google.go: in RetryGoogleRequest replace 'ProviderRetryOptions{MaxRetries: opts.MaxRetries, MaxRetryDelayMs: opts.MaxRetryDelayMs}' with 'ProviderRetryOptions{MaxRetryDelayMs: opts.MaxRetryDelayMs}'; go test -overlay -run TestRetryGoogleRequest ./ai fails TestRetryGoogleRequestRetriesAHeaderlessSDKErrorWithARetryableStatus."
+  },
+  {
+    "upstream": "packages/ai/src/models.ts",
+    "package": "./ai",
+    "tests": [
+      "TestCalculateCostTierBoundaryMatchesUpstream",
+      "TestCalculateCostAcceptsAnyModelType"
+    ],
+    "upstream_reference": "packages/ai/src/models.ts:1200 calculateCost (prompt-length pricing tiers)",
+    "mutation": "ai/model_utils.go: in calculateUsageCost replace 'inputTokens > tier.InputTokensAbove &&' with 'inputTokens >= tier.InputTokensAbove &&'; go test -overlay -run TestCalculateCost ./ai fails TestCalculateCostTierBoundaryMatchesUpstream and TestCalculateCostAcceptsAnyModelType."
+  },
+  {
+    "upstream": "packages/ai/src/models.ts",
+    "package": "./ai",
+    "tests": [
+      "TestMaxThinkingUpstream",
+      "TestGetSupportedThinkingLevels"
+    ],
+    "upstream_reference": "packages/ai/src/models.ts getSupportedThinkingLevels, clampThinkingLevel; test/max-thinking.test.ts",
+    "mutation": "ai/model_utils.go: replace 'if level == ThinkingXHigh || level == ThinkingMax {' with 'if level == ThinkingXHigh {'; go test -overlay -run 'TestGetSupportedThinkingLevels|TestClampThinkingLevel|TestMaxThinkingUpstream' ./ai fails TestGetSupportedThinkingLevels. In ClampThinkingLevel replace 'for i := requestedIndex - 1; i >= 0; i-- {' with 'for i := requestedIndex - 1; i >= 0; i -= 2 {' (fails TestMaxThinkingUpstream/is_opt-in_for_ordinary_reasoning_models) and 'i < len(extendedThinkingLevels); i++ {' with 'i < len(extendedThinkingLevels)-1; i++ {' (fails TestMaxThinkingUpstream/supports_a_hole_between_high_and_max)."
+  },
+  {
+    "upstream": "packages/ai/src/providers/radius-config.ts",
+    "package": "./ai",
+    "tests": [
+      "TestNormalizeRadiusGatewayURL",
+      "TestGetRadiusModelsBindsLegacyCredentialCatalog",
+      "TestRadiusGatewayModelFieldsReachThePiMessagesModel"
+    ],
+    "upstream_reference": "packages/ai/src/providers/radius-config.ts normalizeRadiusGatewayUrl, getRadiusModelsFromConfig, getRadiusModels",
+    "mutation": "ai/radius_config.go: replace 'strings.TrimRight(value, \"/\")' with 'strings.TrimRight(value, \"\")' (fails TestNormalizeRadiusGatewayURL); replace 'piMessagesModel(providerID, config.BaseURL, model)' with 'piMessagesModel(providerID, \"\", model)' (fails TestGetRadiusModelsBindsLegacyCredentialCatalog and TestRadiusGatewayModelFieldsReachThePiMessagesModel); replace 'GetRadiusModelsFromConfig(providerID, config)' with 'GetRadiusModelsFromConfig(\"\", config)' in GetRadiusModels (fails TestGetRadiusModelsBindsLegacyCredentialCatalog). go test -overlay -run <test> ./ai each time."
+  },
+  {
+    "upstream": "packages/ai/src/api/simple-options.ts",
+    "package": "./ai",
+    "tests": [
+      "TestAdjustMaxTokensForThinking",
+      "TestAdjustMaxTokensForThinkingClampsABudgetEqualToTheCeiling",
+      "TestClampThinkingBudgetToAnswerRoomLeavesMinAnswerTokens",
+      "TestAnthropicStreamSimpleThinkingBudgetsMatchPi",
+      "TestBedrockStreamSimpleThinkingBudgetsMatchPi"
+    ],
+    "upstream_reference": "packages/ai/src/api/simple-options.ts:81-115 thinkingBudgetForLevel, clampThinkingBudgetToAnswerRoom, adjustMaxTokensForThinking",
+    "mutation": "ai/simple_options.go: replace 'ceiling-MinAnswerTokens' with 'ceiling-MinAnswerTokens+1' (fails TestClampThinkingBudgetToAnswerRoomLeavesMinAnswerTokens); replace 'min(*baseMaxTokens+thinkingBudget, modelMaxTokens)' with 'min(*baseMaxTokens, modelMaxTokens)' (fails TestAdjustMaxTokensForThinking); replace 'if maxTokens <= thinkingBudget {' with 'if maxTokens < thinkingBudget {' (fails TestAdjustMaxTokensForThinkingClampsABudgetEqualToTheCeiling, added with this evidence: the mutant survived every earlier test); replace 'if custom.High > 0 {' with 'if false {' (fails TestAnthropicStreamSimpleThinkingBudgetsMatchPi and TestBedrockStreamSimpleThinkingBudgetsMatchPi). go test -overlay -run <test> ./ai each time."
+  },
+  {
+    "upstream": "packages/ai/src/api/google-shared.ts",
+    "package": "./ai",
+    "tests": [
+      "TestToGoogleSdkThinkingLevelUpstream",
+      "TestToGoogleThinkingLevelUpstream",
+      "TestResolveGoogleThinkingLevelUpstream",
+      "TestGetDisabledGoogleThinkingConfigFollowsTheModelsLevelControl",
+      "TestGetDisabledGoogleThinkingConfig"
+    ],
+    "upstream_reference": "packages/ai/src/api/google-shared.ts:36-42,98 toGoogleSdkThinkingLevel; toGoogleThinkingLevel, resolveGoogleThinkingLevel, getDisabledGoogleThinkingConfig",
+    "mutation": "ai/google.go: replace '\"MEDIUM\",' in googleSdkThinkingLevels with '\"MEDIUMX\",' (fails TestToGoogleSdkThinkingLevelUpstream); map ResolvedGoogleThinkingLevelMedium to GoogleThinkingLevelLow in ToGoogleThinkingLevel (fails TestToGoogleThinkingLevelUpstream); replace 'strings.ToLower(*mapped)' with '*mapped' in resolveGoogleThinkingLevel (fails TestResolveGoogleThinkingLevelUpstream); replace 'if fallback == ThinkingOff {' with 'if false {' in getDisabledGoogleThinkingConfig (fails TestGetDisabledGoogleThinkingConfig and TestGetDisabledGoogleThinkingConfigFollowsTheModelsLevelControl). go test -overlay -run Google ./ai each time."
+  },
+  {
+    "upstream": "packages/ai/src/api/github-copilot-headers.ts",
+    "package": "./ai",
+    "tests": [
+      "TestInferCopilotInitiator",
+      "TestHasCopilotVisionInput_DetectsToolResultImages",
+      "TestBuildCopilotDynamicHeaders"
+    ],
+    "upstream_reference": "packages/ai/src/api/github-copilot-headers.ts inferCopilotInitiator, hasCopilotVisionInput, buildCopilotDynamicHeaders",
+    "mutation": "ai/githubcopilot.go: replace 'switch msgs[len(msgs)-1].(type) {' with 'switch msgs[0].(type) {' (fails TestInferCopilotInitiator); in HasCopilotVisionInput's ToolResultMessage branch replace 'block.(ImageContent)' with 'block.(TextContent)' (fails TestHasCopilotVisionInput_DetectsToolResultImages); replace '\"Openai-Intent\": \"conversation-edits\"' with '\"conversation-edit\"' (fails TestBuildCopilotDynamicHeaders). go test -overlay -run Copilot ./ai each time."
+  },
+  {
+    "upstream": "packages/ai/src/api/openai-prompt-cache.ts",
+    "package": "./ai",
+    "tests": [
+      "TestClampOpenAIPromptCacheKey"
+    ],
+    "upstream_reference": "packages/ai/src/api/openai-prompt-cache.ts clampOpenAIPromptCacheKey",
+    "mutation": "ai/openai_prompt_cache.go: replace 'if i == openAIPromptCacheKeyMaxLength {' with 'if i == openAIPromptCacheKeyMaxLength+1 {'; go test -overlay -run 'PromptCache|CacheKey' ./ai fails TestClampOpenAIPromptCacheKey."
+  },
+  {
+    "upstream": "packages/ai/src/providers/opencode-headers.ts",
+    "package": "./ai",
+    "tests": [
+      "TestWithOpenCodeSessionHeaderLikeUpstream"
+    ],
+    "upstream_reference": "packages/ai/src/providers/opencode-headers.ts withOpenCodeSessionHeader",
+    "mutation": "ai/opencode_headers.go: replace 'if options.SessionID == \"\" || hasProviderHeader(options.Headers, openCodeSessionHeader) {' with 'if options.SessionID == \"\" {'; go test -overlay -run OpenCode ./ai fails TestWithOpenCodeSessionHeaderLikeUpstream."
+  },
+  {
+    "upstream": "packages/ai/src/utils/headers.ts",
+    "package": "./ai",
+    "tests": [
+      "TestHeadersToRecordMatchesHeadersEntries",
+      "TestProviderHeadersToRecordMergesCaseInsensitivelyInOrder"
+    ],
+    "upstream_reference": "packages/ai/src/utils/headers.ts headersToRecord, providerHeadersToRecord",
+    "mutation": "ai/provider_response.go: replace 'out[key] = values[len(values)-1]' (set-cookie) with 'out[key] = values[0]' (fails TestHeadersToRecordMatchesHeadersEntries); ai/classifier_http.go: replace 'delete(merged, normalized)' with '_ = normalized' in providerHeadersToRecord (fails TestProviderHeadersToRecordMergesCaseInsensitivelyInOrder). go test -overlay -run 'Header' ./ai each time."
+  },
+  {
+    "upstream": "packages/ai/src/api/openai-codex-responses.ts",
+    "package": "./ai",
+    "tests": [
+      "TestCodexLongSessionRetainsLogicalCacheIdentity",
+      "TestResetOpenAICodexWebSocketDebugStatsClearsOnlyTheNamedSession"
+    ],
+    "upstream_reference": "packages/ai/src/api/openai-codex-responses.ts:937-960 resetOpenAICodexWebSocketDebugStats, closeOpenAICodexWebSocketSessions, getOpenAICodexWebSocketDebugStats",
+    "mutation": "ai/openai_codex_websocket.go: make GetOpenAICodexWebSocketDebugStats return nil (fails TestCodexLongSessionRetainsLogicalCacheIdentity); drop the per-session 'delete(codexWebSocketSessions.sessions, sessionID[0])' in CloseOpenAICodexWebSocketSessions (fails TestCodexLongSessionRetainsLogicalCacheIdentity); drop 'delete(codexWebSocketSessions.stats, sessionID[0])' or 'clear(codexWebSocketSessions.stats)' in ResetOpenAICodexWebSocketDebugStats (fails TestResetOpenAICodexWebSocketDebugStatsClearsOnlyTheNamedSession, added with this evidence: the per-session mutant survived every earlier test). go test -overlay -run <test> ./ai each time."
+  },
+  {
+    "upstream": "packages/ai/src/api/google-shared.ts",
+    "package": "./ai",
+    "tests": [
+      "TestMapStopReasonStringIsStopLengthOrError",
+      "TestMapGoogleFinishReasonFollowsMapStopReason",
+      "TestRequiresToolCallId",
+      "TestGoogleUnsignedToolCallsUpstream",
+      "TestRetainThoughtSignature",
+      "TestGoogleThinkingSignatureUpstream",
+      "TestGoogleSharedConvertToolsUpstream",
+      "TestGoogleStrictToolSchemaWire",
+      "TestGoogleIsThinkingPartUpstream"
+    ],
+    "upstream_reference": "packages/ai/src/api/google-shared.ts mapStopReason, requiresToolCallId, retainThoughtSignature, supportsGoogleStrictToolSampling",
+    "mutation": "ai/google.go: map 'MAX_TOKENS' to StopReasonStop in mapStopReasonString (fails TestMapStopReasonStringIsStopLengthOrError); drop the 'gpt-oss-' prefix in requiresToolCallId (fails TestRequiresToolCallId and TestGoogleUnsignedToolCallsUpstream); raise its Gemini major threshold 3 -> 4 (fails TestGoogleUnsignedToolCallsUpstream); make RetainThoughtSignature prefer the existing signature (fails TestRetainThoughtSignature and TestGoogleThinkingSignatureUpstream); raise supportsGoogleStrictToolSampling's major threshold 3 -> 4 (fails TestGoogleSharedConvertToolsUpstream and TestGoogleStrictToolSchemaWire). go test -overlay -run <test> ./ai each time. In isThinkingPart treat any non-nil Thought pointer as thinking ('part.Thought != nil'); fails TestGoogleIsThinkingPartUpstream and TestGoogleThinkingSignatureUpstream."
+  },
+  {
+    "upstream": "packages/ai/src/api/simple-options.ts",
+    "package": "./ai",
+    "tests": [
+      "TestClampReasoningUpstream",
+      "TestClampMaxTokensToContext",
+      "TestResolveSamplingParamsMergesDefaultsLevelAndRequestInOrderLikeUpstream",
+      "TestSamplingParamsByThinkingLevelStreamSimpleUpstream",
+      "TestBuildBaseOptions",
+      "TestBuildBaseOptionsUnsetMaxTokensIsTheModelOutputMaximum"
+    ],
+    "upstream_reference": "packages/ai/src/api/simple-options.ts clampReasoning, clampMaxTokensToContext, resolveSamplingParams, buildBaseOptions",
+    "mutation": "ai/simple_options.go: drop ThinkingMax from ClampReasoning (fails TestClampReasoningUpstream); remove the max(minMaxTokens, ...) floor or the contextSafetyTokens reserve in ClampMaxTokensToContext (fails TestClampMaxTokensToContext); apply request params before the per-level params in ResolveSamplingParams (fails TestResolveSamplingParamsMergesDefaultsLevelAndRequestInOrderLikeUpstream); look the level up unclamped (fails TestSamplingParamsByThinkingLevelStreamSimpleUpstream); in BuildBaseOptions default MaxTokens to the context window instead of the model output maximum (fails TestBuildBaseOptionsUnsetMaxTokensIsTheModelOutputMaximum, added with this evidence: the mutant survived because the old case's two values clamp to the same number), ignore options.Thinking or skip the context clamp (fail TestBuildBaseOptions). go test -overlay -run <test> ./ai each time."
+  },
+  {
+    "upstream": "packages/ai/src/utils/estimate.ts",
+    "package": "./ai",
+    "tests": [
+      "TestEstimateTextAndImageContentTokensLikeUpstream",
+      "TestEstimateContextTokensReserves35CharactersPerTokenForNewText",
+      "TestEstimateMessageTokensCountsAssistantTextThinkingAndToolCalls"
+    ],
+    "upstream_reference": "packages/ai/src/utils/estimate.ts:46-69 estimateMessageTokens, estimateTextTokens",
+    "mutation": "ai/estimate.go: replace ceilDiv(utf16Length(text)) with utf16Length(text)/4 (fails TestEstimateTextAndImageContentTokensLikeUpstream and TestEstimateContextTokensReserves35CharactersPerTokenForNewText); drop the thinking block's chars or the tool-call name's chars in EstimateMessageTokens (fail TestEstimateMessageTokensCountsAssistantTextThinkingAndToolCalls, added with this evidence: both mutants survived). go test -overlay -run <test> ./ai each time."
+  },
+  {
+    "upstream": "packages/ai/src/utils/error-body.ts",
+    "package": "./ai",
+    "tests": [
+      "TestTruncateErrorTextReportsOmittedUTF16UnitsLikeUpstream",
+      "TestNormalizeProviderErrorUpstream",
+      "TestFormatProviderErrorUpstream"
+    ],
+    "upstream_reference": "packages/ai/src/utils/error-body.ts truncateErrorText, normalizeProviderError",
+    "mutation": "ai/errors.go: change 'length <= maxChars' to 'length < maxChars' or report 'length' instead of 'length-maxChars' omitted units in TruncateErrorText (fail TestTruncateErrorTextReportsOmittedUTF16UnitsLikeUpstream); set MessageCarriesBody always true or the non-error fallback message to empty in NormalizeProviderError (fail TestNormalizeProviderErrorUpstream and TestFormatProviderErrorUpstream). go test -overlay -run 'ErrorBody|Truncate|Normalize|Format' ./ai each time."
+  },
+  {
+    "upstream": "packages/ai/src/utils/provider-env.ts",
+    "package": "./ai",
+    "tests": [
+      "TestAnthropicCacheRetentionEnvironmentDefaults",
+      "TestBedrockForcedCacheUsesProviderEnvironment",
+      "TestAnthropicFederationEnv"
+    ],
+    "upstream_reference": "packages/ai/src/utils/provider-env.ts getProviderEnvValue",
+    "mutation": "ai/provider_env.go: accept an empty option-env value ('v, ok := env[name]; ok') or read a different process variable name in getProviderEnvValue; go test -overlay -run 'ProviderEnv|Env' ./ai fails TestAnthropicCacheRetentionEnvironmentDefaults, TestBedrockForcedCacheUsesProviderEnvironment and TestAnthropicFederationEnv."
+  },
+  {
+    "upstream": "packages/ai/src/utils/hash.ts",
+    "package": "./ai",
+    "tests": [
+      "TestResponsesConvertMessages_ForeignCopilotToolCallIDHashedToFcShape",
+      "TestResponsesToolCallID_UnattributedItemIsHashed"
+    ],
+    "upstream_reference": "packages/ai/src/utils/hash.ts shortHash",
+    "mutation": "ai/openai.go: change the multiplier 2654435761 to 2654435762 in ShortHash, or the shift 13 to 14 in the second round; go test -overlay -run 'Hash|OpenAI' ./ai fails TestResponsesConvertMessages_ForeignCopilotToolCallIDHashedToFcShape and TestResponsesToolCallID_UnattributedItemIsHashed."
+  },
+  {
+    "upstream": "packages/ai/src/utils/sanitize-unicode.ts",
+    "package": "./ai",
+    "tests": [
+      "TestProviderSurrogateSanitizationPreservesValidScalars",
+      "TestBedrockSanitizesBeforeCheckingAssistantEmptiness",
+      "TestSanitizeSurrogatesPairsTheWholeHighSurrogateRange"
+    ],
+    "upstream_reference": "packages/ai/src/utils/sanitize-unicode.ts sanitizeSurrogates",
+    "mutation": "ai/sanitize_unicode.go: narrow the high-surrogate bound 'unit < 0xdc00' to 'unit < 0xdb00' (fails TestSanitizeSurrogatesPairsTheWholeHighSurrogateRange, added with this evidence: the mutant survived every earlier test); advance 2 instead of 3 bytes after an unpaired surrogate (fails TestProviderSurrogateSanitizationPreservesValidScalars and TestBedrockSanitizesBeforeCheckingAssistantEmptiness). go test -overlay -run <test> ./ai each time."
+  },
+  {
+    "upstream": "packages/ai/src/providers/radius-config.ts",
+    "package": "./ai",
+    "tests": [
+      "TestRadiusProviderLegacyImportGuards",
+      "TestGetRadiusModelsBindsLegacyCredentialCatalog"
+    ],
+    "upstream_reference": "packages/ai/src/providers/radius-config.ts getRadiusCredentialConfig",
+    "mutation": "ai/radius_config.go: make GetRadiusCredentialConfig return an empty config and false instead of sanitizeRadiusGatewayConfig(credential.GatewayConfig); go test -overlay -run Radius ./ai fails TestRadiusProviderLegacyImportGuards and TestGetRadiusModelsBindsLegacyCredentialCatalog."
+  },
+  {
+    "upstream": "packages/ai/src/utils/hash.ts",
+    "package": "./ai",
+    "tests": [
+      "TestShortHashMatchesPiTypeScript"
+    ],
+    "upstream_reference": "packages/ai/src/utils/hash.ts shortHash (expected values computed by running the pinned function in Node)",
+    "mutation": "ai/openai.go: change the multiplier 2654435761 to 2654435762, or swap the two base-36 halves in ShortHash; go test -overlay -run TestShortHashMatchesPi ./ai fails TestShortHashMatchesPiTypeScript."
+  },
+  {
+    "upstream": "packages/ai/src/utils/estimate.ts",
+    "package": "./ai",
+    "tests": [
+      "TestEstimateTextTokensIsCeilOfUTF16LengthOverThreePointFive"
+    ],
+    "upstream_reference": "packages/ai/src/utils/estimate.ts:37-39 estimateTextTokens",
+    "mutation": "ai/estimate.go: count bytes (len(text)) instead of UTF-16 units in EstimateTextTokens; go test -overlay -run TestEstimateTextTokensIs ./ai fails TestEstimateTextTokensIsCeilOfUTF16LengthOverThreePointFive."
+  },
+  {
+    "upstream": "packages/ai/src/utils/provider-env.ts",
+    "package": "./ai",
+    "tests": [
+      "TestGetProviderEnvValueScopedOverrideThenProcessEnvironment"
+    ],
+    "upstream_reference": "packages/ai/src/utils/provider-env.ts getProviderEnvValue",
+    "mutation": "ai/provider_env.go: accept an empty scoped value ('v, ok := env[name]; ok'); go test -overlay -run TestGetProviderEnvValueScoped ./ai fails TestGetProviderEnvValueScopedOverrideThenProcessEnvironment."
+  },
+  {
+    "upstream": "packages/ai/src/providers/radius-config.ts",
+    "package": "./ai",
+    "tests": [
+      "TestGetRadiusCredentialConfigSanitizesTheCredentialsGatewayConfig"
+    ],
+    "upstream_reference": "packages/ai/src/providers/radius-config.ts:57-59 getRadiusCredentialConfig",
+    "mutation": "ai/radius_config.go: return an empty config and false instead of sanitizing the gatewayConfig, or drop the nil-credential guard; go test -overlay -run TestGetRadiusCredentialConfigSanitizes ./ai fails TestGetRadiusCredentialConfigSanitizesTheCredentialsGatewayConfig both times."
+  },
+  {
+    "upstream": "packages/ai/src/utils/transcript.ts",
+    "package": "./ai",
+    "tests": [
+      "TestCreateInitialSystemMessageIsEmptyOnlyWithoutPromptAndToolsLikeUpstream",
+      "TestMistralSelectedModelControlsSystemMessageResolution",
+      "TestTranscriptFoldsAnthropicUpdatesIntoSystemPromptWithoutNativeSupport",
+      "TestDeclaredToolsAndTranscriptToolsFollowTheToolHistoryLikeUpstream",
+      "TestTranscriptToolChangesOpenAIResponsesRequests",
+      "TestResolveTranscriptCollapsesUnsupportedMidConversationSystemMessages"
+    ],
+    "upstream_reference": "packages/ai/src/utils/transcript.ts createInitialSystemMessage, resolveTranscript, resolveTranscriptTools",
+    "mutation": "ai/transcript.go: create the initial system message when only a prompt is given (fails TestCreateInitialSystemMessageIsEmptyOnlyWithoutPromptAndToolsLikeUpstream) or give it timestamp 1 (fails it too); invert the supportsMidConversationSystemMessages branch in ResolveTranscript (fails TestMistralSelectedModelControlsSystemMessageResolution and TestTranscriptFoldsAnthropicUpdatesIntoSystemPromptWithoutNativeSupport); in ResolveTranscriptTools ignore HasNonAdditiveToolChanges, return no AnchorsAdditions for an absent initial message, or drop AnchorsAdditions from the initial-message result (each fails TestDeclaredToolsAndTranscriptToolsFollowTheToolHistoryLikeUpstream; the first also fails TestTranscriptToolChangesOpenAIResponsesRequests). go test -overlay -run 'Transcript|Text|UUID|Diagnostic|Content|System' ./ai each time. The ResolveTranscript branch inversion also fails TestResolveTranscriptCollapsesUnsupportedMidConversationSystemMessages (run with that test alone)."
+  },
+  {
+    "upstream": "packages/ai/src/utils/text.ts",
+    "package": "./ai",
+    "tests": [
+      "TestContentTextUpstream",
+      "TestBedrockFoldsMidConversationSystemMessagesUpstream"
+    ],
+    "upstream_reference": "packages/ai/src/utils/text.ts contentText",
+    "mutation": "ai/text.go: change ContentText's default separator from newline to a space (fails TestContentTextUpstream, TestTranscriptReplayMatchesPi and TestBedrockFoldsMidConversationSystemMessagesUpstream); return the empty string for SystemText content (fails TestBedrockFoldsMidConversationSystemMessagesUpstream). go test -overlay -run 'Transcript|Text|Content|System' ./ai each time."
+  },
+  {
+    "upstream": "packages/ai/src/utils/diagnostics.ts",
+    "package": "./ai",
+    "tests": [
+      "TestCreateAndAppendAssistantMessageDiagnosticMatchUpstream"
+    ],
+    "upstream_reference": "packages/ai/src/utils/diagnostics.ts createAssistantMessageDiagnostic, appendAssistantMessageDiagnostic",
+    "mutation": "ai/diagnostics.go: drop the existing diagnostics when appending, omit Details, or zero the Timestamp in CreateAssistantMessageDiagnostic; go test -overlay -run Diagnostic ./ai fails TestCreateAndAppendAssistantMessageDiagnosticMatchUpstream each time."
+  },
+  {
+    "upstream": "packages/ai/src/utils/uuid.ts",
+    "package": "./ai",
+    "tests": [
+      "TestUUIDv7MatchesPisIDsByteForByteForAFixedRandomSource",
+      "TestUUIDv7RejectsAnExhaustedSequence",
+      "TestUUIDv7GeneratesOrderedIDsWhilePreservingFollowerTimestamps",
+      "TestUUIDv7PreservesASuppliedTimestampThroughTheProcessWideGenerator"
+    ],
+    "upstream_reference": "packages/ai/src/utils/uuid.ts uuidv7",
+    "mutation": "ai/uuid.go: set the variant bits to 0x40 instead of 0x80 (fails TestUUIDv7GeneratesOrderedIDsWhilePreservingFollowerTimestamps and TestOpenAICodexWebSocketRequestIDUsesTheSharedUUIDv7Generator); shift the version nibble from sequence>>36 instead of >>37 (fails TestUUIDv7MatchesPisIDsByteForByteForAFixedRandomSource); change the exhaustion check from == to > (fails TestUUIDv7RejectsAnExhaustedSequence). go test -overlay -run UUIDv7 ./ai each time. Make the exported UUIDv7 pass nil instead of the supplied timestamp to the process-wide generator; fails TestUUIDv7PreservesASuppliedTimestampThroughTheProcessWideGenerator (added with this evidence: the mutant survived every earlier test, which only called UUIDv7(nil))."
+  },
+  {
+    "upstream": "packages/ai/src/api/constrained-sampling.ts",
+    "package": "./ai",
+    "tests": [
+      "TestGetGrammarToolInput",
+      "TestConstrainedSamplingGrammarReplayUpstream"
+    ],
+    "upstream_reference": "packages/ai/src/api/constrained-sampling.ts getGrammarToolInput",
+    "mutation": "ai/constrained_sampling.go: skip the non-string check in getGrammarToolInput, or change the error text 'requires argument %q to be a string.'; go test -overlay -run 'Grammar|Constrained' ./ai fails TestGetGrammarToolInput and TestConstrainedSamplingGrammarReplayUpstream both times."
+  },
+  {
+    "upstream": "packages/ai/src/utils/oauth-page.ts",
+    "package": "./ai",
+    "tests": [
+      "TestOAuthPageMatchesThePinnedPackage"
+    ],
+    "upstream_reference": "packages/ai/src/utils/oauth-page.ts oauthSuccessHtml, oauthErrorHtml (the test runs the pinned package in Node and compares bytes)",
+    "mutation": "ai/oauth_page.go: change the success page title to 'Authentication succeeded' (fails TestOAuthPageMatchesThePinnedPackage); drop the details from OAuthErrorHTML (fails TestOAuthPageMatchesThePinnedPackage and TestOAuthCallbackServerUpstream). go test -overlay -run 'OAuthPage|OAuth' ./ai each time."
+  },
+  {
+    "upstream": "packages/ai/src/session-resources.ts",
+    "package": "./ai",
+    "tests": [
+      "TestCleanupSessionResourcesRunsEveryRegisteredHookUntilItIsUnregistered",
+      "TestCleanupSessionResourcesRunsLaterHooksAfterAPanicAndReportsIt"
+    ],
+    "upstream_reference": "packages/ai/src/session-resources.ts registerSessionResourceCleanup, cleanupSessionResources",
+    "mutation": "ai/session_resources.go: break the unregister id match, pass an empty id to the hooks, drop the recovered panic from the error list, or return nil instead of errors.Join(errs...); go test -overlay -run TestCleanupSessionResources ./ai fails the named tests each time."
+  },
+  {
+    "upstream": "packages/ai/src/auth/helpers.ts",
+    "package": "./ai",
+    "tests": [
+      "TestLazyOAuthLoadsOnFirstUseOnce",
+      "TestLazyOAuthKeepsLoadFailure"
+    ],
+    "upstream_reference": "packages/ai/src/auth/helpers.ts:40 lazyOAuth",
+    "mutation": "ai/auth_lazy.go: load on every call instead of once (sync.Once removed), route Refresh to the login flow, or drop LoginLabel from the returned auth; go test -overlay -run LazyOAuth ./ai fails TestLazyOAuthLoadsOnFirstUseOnce (and TestLazyOAuthKeepsLoadFailure for the load-every-time mutant)."
+  },
+  {
+    "upstream": "packages/ai/src/api/lazy.ts",
+    "package": "./ai",
+    "tests": [
+      "TestLazyAPIDeferredCapabilitiesUpstream",
+      "TestLazyAPICancelDeferredCapabilityForwardsAfterLoading",
+      "TestLazyAPIStreamAndStreamSimpleDispatchToTheirOwnImplementation"
+    ],
+    "upstream_reference": "packages/ai/src/api/lazy.ts lazyApi",
+    "mutation": "ai/provider_streams.go: swap stream and streamSimple in LazyAPI's wrapper (fails TestLazyAPIStreamAndStreamSimpleDispatchToTheirOwnImplementation, added with this evidence: the mutant survived every earlier test); change the 'API does not support deferred responses' text (fails TestLazyAPIDeferredCapabilitiesUpstream); return nil for a missing cancelDeferred or invert the CancelDeferred capability flag (fail TestLazyAPICancelDeferredCapabilityForwardsAfterLoading and TestLazyAPIDeferredCapabilitiesUpstream). go test -overlay -run 'LazyAPI|Lazy' ./ai each time."
+  },
+  {
+    "upstream": "packages/ai/src/utils/event-stream.ts",
+    "package": "./ai",
+    "tests": [
+      "TestEventStreamDrainsBufferedEventsAndIgnoresPushAfterCompletion",
+      "TestEventStreamDeliversToWaitingConsumersInRegistrationOrder",
+      "TestEventStreamDrainsBufferedEventsAfterEndWithResult",
+      "TestEventStreamEndWithoutResultWakesWaitersAndLeavesResultPending",
+      "TestEventStreamKeepsTheFirstResultWhenEndedWithAnotherOne"
+    ],
+    "upstream_reference": "packages/ai/src/utils/event-stream.ts EventStream constructor, push, end, result",
+    "mutation": "ai/event_stream_generic.go: drop the push-after-done guard or deliver to the newest waiter instead of the oldest (fail TestEventStreamDrainsBufferedEventsAndIgnoresPushAfterCompletion and TestEventStreamDeliversToWaitingConsumersInRegistrationOrder); skip settling in End(result) or skip releasing waiters in finish (the tests hang, go test -timeout 30s fails them); remove the 'closed' guard in settle (fails TestEventStreamKeepsTheFirstResultWhenEndedWithAnotherOne, added with this evidence: the mutant survived every earlier test); make the constructor's extractResult return the zero value (fails TestEventStreamDrainsBufferedEventsAndIgnoresPushAfterCompletion). go test -overlay -timeout 30s -run EventStream ./ai each time."
+  },
+  {
+    "upstream": "packages/ai/src/auth/credential-store.ts",
+    "package": "./ai",
+    "tests": [
+      "TestInMemoryCredentialStoreListRejectsACancelledContext",
+      "TestInMemoryCredentialStoreDeleteRemovesOnlyTheNamedEntryLikeUpstream",
+      "TestModelsRuntimeCredentialsUpstream"
+    ],
+    "upstream_reference": "packages/ai/src/auth/credential-store.ts InMemoryCredentialStore.list",
+    "mutation": "ai/in_memory_credential_store.go: drop the credential type from the listed info or list in reverse order (fail TestInMemoryCredentialStoreDeleteRemovesOnlyTheNamedEntryLikeUpstream and TestModelsRuntimeCredentialsUpstream); drop the cancelled-context check in List (fails TestInMemoryCredentialStoreListRejectsACancelledContext, added with this evidence: the mutant survived). go test -overlay -run 'Credential|Auth|Store' ./ai each time."
+  },
+  {
+    "upstream": "packages/ai/src/models-store.ts",
+    "package": "./ai",
+    "tests": [
+      "TestInMemoryModelsStoreClonesAndDeletes",
+      "TestInMemoryModelsStoreKeepsOneCatalogPerProviderAndIgnoresCancelledWrites"
+    ],
+    "upstream_reference": "packages/ai/src/models-store.ts InMemoryModelsStore",
+    "mutation": "ai/models_store.go: return the stored entry uncloned from Read, store the written entry uncloned, drop Delete's removal, or drop the cancelled-context checks in Read and Write; go test -overlay -run 'ModelsStore|Store' ./ai fails TestInMemoryModelsStoreClonesAndDeletes each time."
+  },
+  {
+    "upstream": "packages/ai/src/providers/cloudflare-auth.ts",
+    "package": "./ai",
+    "tests": [
+      "TestCloudflareWorkersAIAuthMergesCredentialAndEnvironmentPerField",
+      "TestCloudflareAIGatewayAuthSendsTheGatewayAuthorizationHeader"
+    ],
+    "upstream_reference": "packages/ai/src/providers/cloudflare-auth.ts cloudflareWorkersAIAuth, cloudflareAIGatewayAuth",
+    "mutation": "ai/auth_providers.go: ignore a stored credential's env values, drop the gateway-id requirement, name the source 'stored' instead of 'stored credential', keep the Authorization header on the gateway auth, send the gateway key without the 'Bearer ' prefix, or drop the env from the Workers AI result; go test -overlay -run 'TestCloudflareWorkersAIAuth|TestCloudflareAIGatewayAuth' ./ai fails the named tests each time (the new direct tests were added with this evidence)."
+  },
+  {
+    "upstream": "packages/ai/src/providers/cloudflare-stream.ts",
+    "package": "./ai",
+    "tests": [
+      "TestCloudflareStreamsMaterializeTheModelEndpointBeforeDispatch",
+      "TestResolveCloudflareModelResolvesEachPlaceholderIndependently"
+    ],
+    "upstream_reference": "packages/ai/src/providers/cloudflare-stream.ts resolveCloudflareModel, cloudflareStreams",
+    "mutation": "ai/cloudflare_streams.go: always copy the model, keep the unresolved base URL, or resolve placeholders against no environment; go test -overlay -run Cloudflare ./ai fails TestResolveCloudflareModelResolvesEachPlaceholderIndependently and TestCloudflareStreamsMaterializeTheModelEndpointBeforeDispatch."
+  },
+  {
+    "upstream": "packages/ai/src/utils/abort.ts",
+    "package": "./ai",
+    "tests": [
+      "TestOperationSignalKeepsASignalAndSuppliesAnUncancelledOne",
+      "TestRaceWithAbortSignalPrefersAnEarlierAbortOverAReadyResult",
+      "TestRaceWithAbortSignalSettlesWithTheFirstOfOperationAndAbort"
+    ],
+    "upstream_reference": "packages/ai/src/utils/abort.ts operationSignal, raceWithAbortSignal",
+    "mutation": "ai/abort_race.go: always return a background context from OperationSignal; drop the already-cancelled check, return signal.Err() instead of the cause, make a nil signal return a zero value, or drop the operation's error in RaceWithAbortSignal; go test -overlay -run 'Abort|Race|Operation' ./ai fails the named tests each time."
+  },
+  {
+    "upstream": "packages/ai/src/providers/all.ts",
+    "package": "./ai",
+    "tests": [
+      "TestGetBuiltinModelDataGeneratedAtReturnsACopyOfTheManifestTime"
+    ],
+    "upstream_reference": "packages/ai/src/providers/all.ts:99 getBuiltinModelDataGeneratedAt",
+    "mutation": "ai/registry.go: return the package variable's pointer instead of a copy, or a zero time instead of nil when the manifest has none; go test -overlay -run TestGetBuiltinModelDataGeneratedAt ./ai fails TestGetBuiltinModelDataGeneratedAtReturnsACopyOfTheManifestTime both times (the test was added with this evidence)."
+  },
+  {
+    "upstream": "packages/ai/src/api/transform-messages.ts",
+    "package": "./ai",
+    "tests": [
+      "TestTransformMessagesTreatsADifferentAPIAsAForeignModel",
+      "TestTransformMessagesImageDowngradeAndNilContent",
+      "TestTransformMessagesUsesJavaScriptThinkingWhitespace",
+      "TestTransformMessagesThinkingIdentityAndIncompleteHistory",
+      "TestAnthropicToolCallIDUTF16Normalization",
+      "TestTransformMessagesCopilotOpenAIToAnthropicUpstream"
+    ],
+    "upstream_reference": "packages/ai/src/api/transform-messages.ts transformMessages",
+    "mutation": "ai/transform_messages.go: drop the API comparison from the same-model test (fails TestTransformMessagesTreatsADifferentAPIAsAForeignModel, added with this evidence: the mutant survived every earlier test); shorten either image placeholder text, drop the redacted-thinking same-model guard, keep the thinking signature for foreign models, use plain == '' instead of the JS trim for blank thinking, keep the thought signature on foreign tool calls, or stop remapping tool result ids (each fails TestTransformMessagesImageDowngradeAndNilContent, TestTransformMessagesThinkingIdentityAndIncompleteHistory, TestTransformMessagesUsesJavaScriptThinkingWhitespace, TestAnthropicToolCallIDUTF16Normalization or TestTransformMessagesCopilotOpenAIToAnthropicUpstream); reset previousWasPlaceholder after an image (fails TestTransformMessagesImageDowngradeAndNilContent). go test -overlay -run 'Transform|Handoff|Thinking|ToolCallID' ./ai each time."
+  },
+  {
+    "upstream": "packages/ai/src/api/google-shared.ts",
+    "package": "./ai",
+    "tests": [
+      "TestGoogleConvertMessagesKeepsSignaturesOnlyWhenTheProviderMatchesToo",
+      "TestGoogleConvertMessagesSkipsEmptyUserMessagesAndEmptyConversationsAreNotNull",
+      "TestGeminiConvertMessagesSameModelNeedsTheProviderToMatch",
+      "TestConvertGoogleMessagesKeepsToolResultImagesOnlyForImageModels",
+      "TestGoogleGenerativeAIPayloadMatchesPi",
+      "TestGeminiToolResultImageOrderingMatchesUpstream",
+      "TestGoogleConvertMessages_ErrorResult",
+      "TestGoogleSignedEmptyBlocksUpstream",
+      "TestGoogleAssistantBlankUsesECMAScriptTrim",
+      "TestGeminiReplayKeepsSignaturesOnlyForSameProviderAndModel",
+      "TestGoogleConvertMessages_EmitsToolCallIdWhenRequired"
+    ],
+    "upstream_reference": "packages/ai/src/api/google-shared.ts:191 convertMessages",
+    "mutation": "ai/google.go (ConvertGoogleMessages and geminiConvertMessages): drop the provider from the same-provider-and-model test in the inner conversion (fails TestGeminiConvertMessagesSameModelNeedsTheProviderToMatch and TestGoogleConvertMessagesKeepsSignaturesOnlyWhenTheProviderMatchesToo, added with this evidence), add empty user messages (fails TestGoogleConvertMessagesSkipsEmptyUserMessagesAndEmptyConversationsAreNotNull, added: survived), return a nil instead of empty contents slice (same test), join tool text with a different separator, change the '(see attached image)' or 'Tool result image:' texts, emit the error payload as output, use plain non-empty instead of the JS trim for text or thinking, drop the same-model guard on thought signatures, skip the tool-call-id requirement, skip TransformMessages or the id normalizer, or ignore the model's image input (ConvertGoogleMessages; fails TestConvertGoogleMessagesKeepsToolResultImagesOnlyForImageModels, added). go test -overlay -run 'Google|Gemini' ./ai each time."
+  },
+  {
+    "upstream": "packages/ai/src/utils/estimate.ts",
+    "package": "./agent",
+    "tests": [
+      "TestCalculateContextTokens"
+    ],
+    "upstream_reference": "packages/ai/src/utils/estimate.ts calculateContextTokens (`usage.totalTokens || input + output + cacheRead + cacheWrite`)",
+    "mutation": "agent/context_tokens.go: change 'usage.TotalTokens != 0' to 'usage.TotalTokens > 1', drop CacheWrite from the sum, or return Input instead of TotalTokens; go test -overlay -run TestCalculateContextTokens ./agent fails TestCalculateContextTokens each time (the cases 'a nonzero total beats the parts' and 'a total of one still beats the parts' were added with this evidence: two of the three mutants survived the earlier cases)."
+  },
+  {
+    "upstream": "packages/ai/src/utils/overflow.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestIsRecoverableLength",
+      "TestIsRecoverableLengthIsFalseForNoMessage"
+    ],
+    "upstream_reference": "packages/ai/src/utils/overflow.ts isRecoverableLength over an agent message",
+    "mutation": "internal/codingagent/auto_recovery.go: pass desiredMaxOutput+1 to ai.IsRecoverableLength (fails TestIsRecoverableLength); drop the 'msg != nil' guard (fails TestIsRecoverableLengthIsFalseForNoMessage, added with this evidence: the mutant survived). go test -overlay -run TestIsRecoverableLength ./internal/codingagent each time."
+  },
+  {
+    "upstream": "packages/ai/src/api/pi-messages.ts",
+    "package": "./ai",
+    "tests": [
+      "TestNewPiMessagesResponseErrorStoresItsArguments",
+      "TestModelsErrorAndPiMessagesResponseErrorCarryTheirPiNames"
+    ],
+    "upstream_reference": "packages/ai/src/api/pi-messages.ts PiMessagesResponseError constructor(message, code, diagnosticDetails)",
+    "mutation": "ai/pi_messages.go: drop the code, the message or the diagnostic details from NewPiMessagesResponseError, or return a code for an empty one in DiagnosticCode; go test -overlay -run 'PiMessagesResponseError|ErrorNames|Diagnostic' ./ai fails TestNewPiMessagesResponseErrorStoresItsArguments each time."
+  },
+  {
+    "upstream": "packages/ai/src/providers/typesafe.ts",
+    "package": "./ai",
+    "tests": [
+      "TestBuiltinProvidersAreBuiltByTheirConstructors",
+      "TestTypesafeProviderServesItsClassifierShard"
+    ],
+    "upstream_reference": "packages/ai/src/providers/typesafe.ts typesafeProvider",
+    "mutation": "ai/builtin_providers.go: make TypesafeProvider build the 'zai' provider; go test -overlay -run 'Typesafe|BuiltinProvider|Providers' ./ai fails TestBuiltinProvidersAreBuiltByTheirConstructors."
+  },
+  {
+    "upstream": "packages/ai/src/api/openai-completions.ts",
+    "package": "./ai",
+    "tests": [
+      "TestConvertCompletionsMessagesEqualsTheStreamedRequestMessages",
+      "TestConvertCompletionsMessagesSanitizesStringUserTextAndToolResultText",
+      "TestConvertCompletionsMessagesJoinsAssistantThinkingByTheReasoningFieldRules",
+      "TestConvertCompletionsMessagesSendsThinkingAsTextJoinedByBlankLines",
+      "TestConvertCompletionsMessagesKeepsTheFirstReasoningDetailsAndFallsBackToLegacyOnes",
+      "TestConvertCompletionsMessagesAddsEmptyReasoningContentOnlyWhenNoneWasCopied",
+      "TestConvertCompletionsMessagesNeedsAnAssistantBridgeAfterToolResultsOnlyWhenTheLastKeptMessageWasOne",
+      "TestConvertCompletionsMessagesSendsASanitizedMidConversationInstructionInTheInstructionRole",
+      "TestConvertCompletionsMessagesReplaysGrammarToolCallsFromTheGivenProperties",
+      "TestConvertMessagesDropsEmptyUserTextParts"
+    ],
+    "upstream_reference": "packages/ai/src/api/openai-completions.ts:1193 convertMessages",
+    "mutation": "ai/openai.go convertCompletionsMessages (the body ConvertCompletionsMessages runs): 40 single-line mutants, each run with go test -overlay -run 'OpenAI|Completions|Reasoning|Grammar|Convert|Compat' ./ai. Killed: the bridge-after-tool-result condition and text, the system-tools branch, instruction role and text sanitizing, user string and part sanitizing, empty-part filtering and the skipped-message rule (the lastRole bookkeeping), custom-call type, blank text and thinking trimming, legacy reasoning details, thinking-as-text join and gate, reasoning field choice and join, reasoning_content defaulting, assistant keep rule, tool result join, placeholders, name field, image batching and its texts. Survived and fixed with the new tests listed here: instruction role, instruction text sanitizing, string user sanitizing, empty-user skip, first-reasoning-details-wins, legacy fallback guard, thinking-as-text and reasoning joins, first non-empty thinking signature, reasoning_content defaulting guard, reasoning-details guard, tool result text sanitizing. Equivalent and left: sanitizing a grammar call's custom input (the transcript's JSON clone replaces a lone surrogate with U+FFFD before conversion, so no string reaches it) and the lastRole value after a tool result without images (completionsRole returns the same value)."
+  },
+  {
+    "upstream": "packages/ai/src/api/openai-responses-shared.ts",
+    "package": "./ai",
+    "tests": [
+      "TestProcessResponsesStreamCallsTheInjectedOptions",
+      "TestProcessResponsesStreamEdgeEventsMatchPi",
+      "TestProcessResponsesStreamEdgeEventsMatchPiOnCodex",
+      "TestProcessResponsesStreamCustomToolCallInputAccumulates",
+      "TestOpenAIResponsesResponseMatchesPi",
+      "TestOpenAICodexResponsesResponseMatchesPi",
+      "TestOpenAIResponsesTerminalMetadataAndStopReasons"
+    ],
+    "upstream_reference": "packages/ai/src/api/openai-responses-shared.ts:520-780 processResponsesStream",
+    "mutation": "ai/openai_responses.go processResponsesStream: ~65 mutants run with go test -overlay -run 'TestProcessResponsesStream|ResponseMatchesPi|TestResponses|TestOpenAIResponsesTerminal' ./ai. Killed (by the Pi-oracle tests unless noted): the final_answer phase stop reason, slot reuse, function-call id/name/arguments, custom-call property default (TestProcessResponsesStreamCustomToolCallInputAccumulates), reasoning raw-text and summary deltas and the part separator, refusal deltas, argument prefix completion, the non-prefix argument replacement, empty-argument fallbacks, namespaces, response.done handling for openai vs codex, backfilling encrypted reasoning content (id lookup, the reasoning type check on a message with the same id, the already-set guard, JS key order), usage input/cache/reasoning accounting, service tier resolution (TestProcessResponsesStreamCallsTheInjectedOptions: resolver, response-else-request fallback, pricing hook gate), incomplete details and raw stop reason, tool-use stop reason, failed-response message parts and its metadata (status only), error event text including absent fields (undefined), a created event without a response, a terminal event without a response, end_turn recording only on Codex. Survived and fixed with the new edge-event oracle probes and tests: key order of the backfilled signature, V8 TypeError messages for a missing response, `Error Code undefined: undefined`, failed responses leaking usage and id, end_turn on openai-responses, custom tool input accumulation, response-else-request tier. Survived and left: the [DONE] sentinel (the SSE decoder stops first), the empty-argument literal (an unparsable '[]' also yields no arguments), the context-cancel branches and websocket-only codex branches (covered by the codex transport tests outside this run)."
+  },
+  {
+    "upstream": "packages/ai/src/utils/event-stream.ts",
+    "package": "./ai",
+    "tests": [
+      "TestEventStreamDrainsBufferedEventsAndIgnoresPushAfterCompletion",
+      "TestEventStreamDeliversToWaitingConsumersInRegistrationOrder",
+      "TestEventStreamKeepsTheFirstResultWhenEndedWithAnotherOne",
+      "TestEventStreamResultContextWaitsForTheResultAndHonoursItsContext",
+      "TestEventStreamEndWithoutResultWakesWaitersAndLeavesResultPending",
+      "TestEventStreamDrainsBufferedEventsAfterEndWithResult"
+    ],
+    "upstream_reference": "packages/ai/src/utils/event-stream.ts EventStream",
+    "mutation": "ai/event_stream_generic.go: drop the push-after-done guard, stop marking done on a completing event, deliver to the newest waiter, drop the first-result-wins guard in settle, never settle the result in End, never release waiters in End, keep consumed events in the queue (fails the drain test), ignore the done flag when waiting, or return ctx.Err() instead of the context cause from ResultContext; go test -overlay -run TestEventStream ./ai fails one of the listed tests each time (the ResultContext test was added with this evidence). Equivalent and left: End's own done assignment (finish sets it) and ResultContext's trailing error on an already-settled stream (a select race with a live context)."
+  },
+  {
+    "upstream": "packages/ai/src/models-store.ts",
+    "package": "./ai",
+    "tests": [
+      "TestInMemoryModelsStoreClonesAndDeletes",
+      "TestInMemoryModelsStoreKeepsOneCatalogPerProviderAndIgnoresCancelledWrites"
+    ],
+    "upstream_reference": "packages/ai/src/models-store.ts InMemoryModelsStore (read and write structuredClone, abort signal on every call)",
+    "mutation": "ai/models_store.go: return the stored entry itself from Read or store the caller's entry itself in Write (shared mutation), drop the cancelled-context check from Read, Write or Delete, make Delete a no-op or clear every provider, make Read return a zero entry for a missing provider; go test -overlay -run TestInMemoryModelsStoreClonesAndDeletes ./ai fails each time (the other-provider and cancelled-write/delete checks were added with this evidence)."
+  },
+  {
+    "upstream": "packages/ai/src/image-models.ts",
+    "package": "./ai",
+    "tests": [
+      "TestGetImageProvidersAreBuiltinImageProvidersWithModels",
+      "TestBuiltinImageProviderIsTheCatalogsImageProviders"
+    ],
+    "upstream_reference": "packages/ai/src/image-models.ts getImageProviders",
+    "mutation": "ai/images_registry.go GetImageProviders: return nil, rename each provider, skip providers by model count, append a provider the catalog lacks, or drop the sort; go test -overlay -run 'ImageProviders|BuiltinImageProvider|ImageModel' ./ai fails one of the listed tests each time."
+  },
+  {
+    "upstream": "packages/ai/src/providers/cloudflare-stream.ts",
+    "package": "./ai",
+    "tests": [
+      "TestCloudflareClassifierResolvesTheEndpointPlaceholdersFromTheOptionsEnv",
+      "TestCloudflareClassifierMaterializesEndpointPlaceholdersBeforeDispatch"
+    ],
+    "upstream_reference": "packages/ai/src/providers/cloudflare-stream.ts cloudflareClassifier",
+    "mutation": "ai/system_one.go CloudflareClassifier and ai/cloudflare.go resolveCloudflarePlaceholders: mutate the shared model instead of copying, always copy, drop or blank the options, drop the request, skip resolution, resolve only the account id, replace only the first occurrence; go test -overlay -run TestCloudflareClassifierResolves ./ai fails each time (the test is new; the request-passthrough mutant survived until the request carried data)."
+  },
+  {
+    "upstream": "packages/ai/src/compat/extension-oauth-types.ts",
+    "package": "./ai",
+    "tests": [
+      "TestAnthropicOAuthCallbackWinnerCancelsAndJoinsManualPrompt",
+      "TestAnthropicAuthorizeURLKeepsUpstreamParameterOrder",
+      "TestOpenRouterLoginManualFallback",
+      "TestOpenRouterAuthorizeURLKeepsUpstreamParameterOrder",
+      "TestLoginOpenAICodexAuthorizeURLNamesPiGAsOriginator",
+      "TestCopilotLoginReportsTheVerificationURLAndUserCode",
+      "TestAnthropicCopyCodeLoginImplementation"
+    ],
+    "upstream_reference": "packages/ai/src/compat/extension-oauth-types.ts OAuthLoginCallbacks.onAuth ({url, instructions})",
+    "mutation": "ai/oauth_anthropic.go, oauth_openrouter.go, oauth_openai_codex.go, oauth_registry.go, githubcopilot.go: change or drop the instructions text of the Anthropic, OpenRouter and Codex browser flows, the authorize URL query, the Copilot 'Enter code: ' instructions, or swap the Copilot callback's URL and code arguments; go test -overlay -run 'OAuth|Login|Copilot|Anthropic|Codex|OpenRouter' ./ai fails one of the listed tests each time (the instruction assertions in the Anthropic, OpenRouter and Codex tests and the Copilot test were added with this evidence: six of the mutants survived). Not covered: the ChatGPT browser flow's instruction text (no test drives LoginOpenAIChatGPT)."
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/model-registry.ts",
+    "package": "./coding",
+    "tests": [
+      "TestModelRegistryRegisterProviderObjectUpstream",
+      "TestModelRegistryRegisterProviderObjectReturnsTheRuntimesRejection"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/model-registry.ts:210-218 registerProvider(provider)",
+    "mutation": "coding/model_registry_facade.go RegisterProviderObject: return nil without registering, or swallow the runtime's error (fails TestModelRegistryRegisterProviderObjectUpstream and the new ...ReturnsTheRuntimesRejection), or register a different provider object (fails the latter). go test -overlay -run TestModelRegistryRegisterProviderObject ./coding each time."
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/model-runtime.ts",
+    "package": "./coding",
+    "tests": [
+      "TestModelRuntimeImagesUpstream",
+      "TestModelRuntimeGetModelAuthPassesTheOverridesToTheProviderAndNeedsServices"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts:550-570 getAuth(model, overrides)",
+    "mutation": "coding/model_runtime_typed.go GetModelAuth: drop the overrides on the typed or the chat path, or drop the no-services guard (a nil runtime then panics); go test -overlay -run 'TestModelRuntimeGetModelAuthPassesTheOverrides|TestModelRuntimeImagesUpstream' ./coding fails the new test each time (three of the four mutants survived TestModelRuntimeImagesUpstream alone). The chat-dispatch branch itself is not mutated: the typed path resolves a chat model too."
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/model-registry.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestModelCatalogBindingKeepsRegistrationOrdering",
+      "TestRuntimeModelsProjectsOnlySelectionMetadata",
+      "TestExtensionCatalogEncodingCurrentContentAndOrder",
+      "TestRuntimeModelsPreservesOverlaysAndLiveNativeCatalogs"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/model-registry.ts getAll()",
+    "mutation": "internal/codingagent/model_catalog_data.go GetAllModelData: walk the providers backwards, keep only each provider's first model, or only the first provider; go test -overlay -run 'ModelCatalog|ExtensionCatalog|RuntimeModels' ./internal/codingagent fails one of the listed tests each time."
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/model-registry.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestGetAvailableModelDataIsTheCatalogOfConfiguredProvidersInCatalogOrder",
+      "TestCopilotAuthenticatedAccountAvailableModelsUpstream"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/model-registry.ts getAvailable()",
+    "mutation": "internal/codingagent/model_registry.go GetAvailableModelData: ignore the provider's configured-auth check, ignore the account filter (native availability snapshot, Copilot picker allowlist), replace the filter by an allow-all, or prepend instead of append; go test -overlay fails TestProviderRegistrationProvisionalAvailabilityUpstream, TestCopilotAuthenticatedAccountAvailableModelsUpstream or the new order test each time (the order mutant survived every earlier test)."
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/model-registry.ts",
+    "package": "./coding",
+    "tests": [
+      "TestProviderRegistrationProvisionalAvailabilityUpstream"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/model-registry.ts getAvailable()",
+    "mutation": "internal/codingagent/model_registry.go GetAvailableModelData: ignore the provider's configured-auth check, ignore the account filter (native availability snapshot, Copilot picker allowlist), replace the filter by an allow-all, or prepend instead of append; go test -overlay fails TestProviderRegistrationProvisionalAvailabilityUpstream, TestCopilotAuthenticatedAccountAvailableModelsUpstream or the new order test each time (the order mutant survived every earlier test)."
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/model-runtime.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestRefreshModelRuntimePassesItsOptionsToEachProviderAndReportsFailuresInOrder",
+      "TestCredentialRuntimeReportsAvailabilityCancellationUpstream",
+      "TestCredentialRuntimeDoesNotWaitForUnrelatedAvailabilityUpstream",
+      "TestLoginSupersedesOlderStalledCatalogRefreshUpstream"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts:750-796 refresh(options)",
+    "mutation": "internal/codingagent/native_model_runtime.go RefreshModelRuntime/refreshModelRuntime: default AllowNetwork to false or true unconditionally, drop the provider selection, drop ErrorOrder or Aborted from the result, return no error map when aborted up front, or skip the up-front abort check; go test -overlay -run 'TestRefreshModelRuntimePassesItsOptions|TestCredentialRuntime|TestLoginSupersedes' ./internal/codingagent fails one of the listed tests each time (the new test was added with this evidence: six of the nine mutants survived the earlier ones). Survived and left: dropping the covered-registration uncover after an abort and scoping yieldForRefresh to nil providers (registration-refresh coordination, observable only through timing of the queued registration refresh)."
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+    "package": "./coding",
+    "tests": [
+      "TestVirtualModelListsAndRoutesToAPhysicalModelWithAClampedThinkingLevel",
+      "TestVirtualModelReportsTheFailedRequestOfARetrySeparatelyFromTheLatestSuccessfulResponse",
+      "TestVirtualSuiteStoresRouterStateOnTheBranchAndPassesItToLaterRequests",
+      "TestVirtualModelRejectsRoutesToVirtualOrUnknownModels",
+      "TestVirtualSuiteRoutesEachRequestIncludingRetriesWhileTheSelectionStaysVirtual",
+      "TestResolveModelReportsTheLatestSuccessfulResponseAndTheMessagesToTheRouter",
+      "TestResolveModelFailsWithPisMessagesWhenTheRouteIsNotUsable"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts:1864-1899 ExtensionVirtualModel.route, called by model-runtime.ts:973-1030 resolveModel",
+    "mutation": "coding/virtual_models.go ResolveModel (the only caller of VirtualModelDefinition.Route): drop the reason, the thinking level or the state from the request, count an errored or an aborted response as the latest success, take an earlier success over a later one, drop the previous model's thinking level, the failed request's model or thinking level, the request's messages, the credentials check, the physical-model check, the clamp of the returned thinking level, the returned state, or change Pi's error texts (not registered, not a physical model, no credentials, routed-to name); go test -overlay -run 'TestVirtual|TestResolveModel' ./coding fails one of the listed tests each time (the two TestResolveModel tests were added with this evidence: nine of the eighteen mutants survived the earlier tests, among them both error-text mutants, the credentials check and the messages passthrough)."
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+    "package": "./coding/extension/host/subprocess",
+    "tests": [
+      "TestVirtualModelDeclarationRoutesThroughTheExtension",
+      "TestVirtualModelRouteCancellationAndErrors",
+      "TestJevRouterExampleRoutes",
+      "TestVirtualModelRouteSendsPreviousFailedAndMessagesToTheExtension"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts:1864-1899 ExtensionVirtualModel.route, loader.ts:485-487",
+    "mutation": "coding/extension/host/subprocess/host_extension_api.go makeVirtualModelRoute and virtualModelRouteRequest (the route of an extension's virtual model): send another virtual model id, drop the extension's error, name the provider or id from the declaration instead of the answer, drop the answer's thinking level or state, drop the request's state, force the reason, drop the thinking level, the previous model's thinking level, the failed model's thinking level or message, or encode the messages as null, or run the request on a context that ignores cancellation; go test -overlay -run 'TestVirtualModel|TestJevRouter' ./coding/extension/host/subprocess fails one of the listed tests each time (TestVirtualModelRouteSendsPreviousFailedAndMessagesToTheExtension was added with this evidence: the previous/failed thinking levels, the failed message and the messages survived the earlier tests). Survived and left: the not-connected guard and the state-sync guard (pushStateTo), which need a disconnected or failing host."
+  },
+  {
+    "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+    "package": "./tui",
+    "tests": [
+      "TestLoginDialogInputMatchesPi",
+      "TestLoginDialogRenderMatchesPi",
+      "TestLoginDialogMaskDisabledMatchesPi",
+      "TestLoginDialogFocusPropagatesToPromptInput",
+      "TestLoginDialogConstructorFollowsPi",
+      "TestLoginDialogShowAuthAddsTheInstructionsAfterASpacer",
+      "TestLoginDialogCopyKeyCopiesTheShownAuthURLOnly",
+      "TestLoginDialogRedactsEverySubmittedSecretLongestFirstAndClosesTheAnswer",
+      "TestLoginDialogShowsTheSharedInputAtEveryUnansweredPromptAndCountsOneCharacter"
+    ],
+    "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts LoginDialogComponent",
+    "mutation": "tui/login_dialog.go: 34 mutants run with go test -overlay -run 'TestLoginDialog|TestAuthURLCopyLoginDialog' ./tui. Killed by the Pi-oracle input/render tests: the title and its override, the device-code text and click hint, details/info/links/close hint, waiting and cancel hints, the placeholder line, manual vs ordinary prompt hint and color, input focus, the submit-while-pending guard, the submitted-text row, input state reset, the cancel message and the cancel/done flags, and the masked preview. Killed by unit tests: the masking default (TestLoginDialogSecretValueNeverRendered), the redaction candidate scope. Survived and fixed with the new tests: the spacer and warning color of showAuth's instructions, clearing the sign-in URL on showDeviceCode and showDetails (the copy key copied a stale URL), longest-secret-first redaction, closing the answer channel after delivery, the shared input at every unanswered prompt (login-dialog.ts:140,160), the singular '1 character' preview. Survived and left: the redaction of the waiting message text (the line redacts at render, so the argument redaction is redundant), skipping an empty secret (RedactSecretInput ignores empty candidates), the blank-body guard in wrapWithIndent."
+  },
+  {
+    "upstream": "packages/coding-agent/src/modes/interactive/components/thinking-selector.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestThinkingSelectorInputMatchesPi",
+      "TestThinkingSelectorPropagatesFocusToItsSearchInput"
+    ],
+    "upstream_reference": "packages/coding-agent/src/modes/interactive/components/thinking-selector.ts ThinkingSelectorComponent",
+    "mutation": "internal/codingagent/thinking_selector.go: invert the current-level check mark, annotate the wrong level as the default or change the annotation text, drop the search input's submit, filter on the value only, run the save binding without a save callback or select instead of saving, drop cancel from the navigation keys, skip the filter after an edit, change the hint text, drop the focus propagation, drop the initial focus, change the cycle hint; go test -overlay -run 'TestThinkingSelector' ./internal/codingagent fails TestThinkingSelectorInputMatchesPi (the pinned-Pi comparison over 15 key scripts, 6 bindings and both themes) or TestThinkingSelectorPropagatesFocusToItsSearchInput each time. Survived and left: the select list's maximum width (levels are never wider than 32) and its minimum visible rows for fewer than two levels."
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/agent-session-services.ts",
+    "package": "./coding",
+    "tests": [
+      "TestCreateAgentSessionFromServicesForwardsTheSessionInputs",
+      "TestCreateAgentSessionFromServicesRejectsInvalidToolOptions",
+      "TestCreateAgentSessionFromServicesSelectsTheInitialModelOrReportsNone",
+      "TestCreateAgentSessionFromServicesAppliesToolModifiers",
+      "TestCreateAgentSessionFromServicesRestoresTheSavedModelOrFallsBackToTheDefault",
+      "TestCreateAgentSessionFromServicesReportsASavedModelChangeThatNamesNoCatalogModel",
+      "TestCreateAgentSessionFromServicesCarriesTheToolSelectionIntoTheSession",
+      "TestCreateAgentSessionFromServicesNeedsServices",
+      "TestCreateAgentSessionBuildsItsServicesFromTheOptions",
+      "TestCreateAgentSessionForwardsTheSessionOptions",
+      "TestResolveSDKToolSelectionAllowlist"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/agent-session-services.ts:214 createAgentSessionFromServices; packages/coding-agent/src/core/sdk.ts:190-295 createAgentSession (model selection, tool selection)",
+    "mutation": "coding/create_agent_session.go (createAgentSessionOver, resolveSDKModel, resolveSDKToolSelection, CreateAgentSession): 38 mutants run with go test -overlay -run 'TestCreateAgentSession|TestResolveSDK' ./coding. Killed: the explicit-model precedence, the invalid-tools message, the session-manager default, the no-models message, forwarding of scoped models, custom tools, noTools, excluded tools, the resource loader, the session start event and the owned services, the default-tools reading and the +name/-name handling. Survived and fixed with the new tests: the missing-services error, the saved model's auth check, the restore-failure message text, the settings default provider and model, the 'Using provider/id' suffix, the allowlist and the default-tool modifiers reaching the session (a reload must not re-add a tool the -name entry removed). Survived and left as equivalent: the up-front GetToolListError call (NewSession rejects the same lists with the same text), restoring a saved model whose model_change is unresolvable (it names no catalog model either way), IsContinuing (it only matters with scoped models, which this path does not pass to findInitialModel), the settings default thinking levels (findInitialModel's thinking level is not read here), the initial active tools (derived again in NewSession) and the empty-slice normalization of the initial tools."
+  },
+  {
+    "upstream": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+    "package": "./tui",
+    "tests": [
+      "TestCustomMessageComponentChildren",
+      "TestCustomMessageComponentRebuildsWithOptions",
+      "TestCustomMessageComponentFallsBackToDefault",
+      "TestCustomMessageTextMatchesPi",
+      "TestCustomMessageComponentColorsItsDefaultTextWithTheTheme",
+      "TestCustomMessageComponentLayoutRendererLifecycleAndLiveness",
+      "TestCustomMessageBackgroundTracksTheme"
+    ],
+    "upstream_reference": "packages/coding-agent/src/modes/interactive/components/custom-message.ts CustomMessageComponent",
+    "mutation": "tui/custom_message.go: 21 mutants run with go test -overlay -run TestCustomMessage ./tui: drop the leading spacer, the box background, the dirty checks and liveness, the rebuild on expansion/padding/invalidate changes, removing the old content, the padding, the bold label, the label spacer, the renderer options, the string-content branch, the text-block filter and the newline join. All killed; the customMessageText color mutant survived the earlier tests and is killed by the test added with this evidence. Equivalent and left: dropping the recover() condition (the named result is nil either way)."
+  },
+  {
+    "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+    "package": "./tui",
+    "tests": [
+      "TestExtensionDialogsMatchPiBindingsAndPalette",
+      "TestExtensionSelectorComponentOptions",
+      "TestExtensionSelectorComponentNavigationSelectionAndCompletion",
+      "TestExtensionSelectorComponentCountdownTitleDescriptionAndReplacement",
+      "TestExtensionSelectorIsAContainerOfUpstreamChildren",
+      "TestExtensionSelectorPreviewDrawsAfterTheOptionRows",
+      "TestExtensionSelectorPreviewDropsWhenTheBodyWouldSqueeze",
+      "TestExtensionSelectorEmptyPreviewKeepsFullWidthRows",
+      "TestExtensionDialogsOwnTheirCountdown",
+      "TestExtensionSelectorComponentHasNoPreviewWithoutOptionsAndCapturesThePageKeys"
+    ],
+    "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts ExtensionSelectorComponent",
+    "mutation": "tui/extension_selector.go: 40 mutants run with go test -overlay -run 'TestExtensionSelector|TestExtensionDialogs' ./tui. Killed: the description and its spacer, the countdown conditions, first-tick render request, the hint text, the title/row/option colors, the preview floor and gap, row widths and padding, the countdown title text and its title update, replacing and disposing a countdown, cancel/done/selected-value state, the page size, the done guard in HandleInput, k/j navigation, clamping at both ends, the confirm and cancel handling, the tools-expand callback and the hint colors. Survived and fixed with the new test: drawing a preview with no options and reporting that the page keys are captured. Survived and left: the done guard of the countdown expiry (a Go-only host-polling state) and the bare '\\n' confirm (the confirm binding already matches it)."
+  },
+  {
+    "upstream": "packages/coding-agent/src/modes/interactive/components/tree-selector.ts",
+    "package": "./tui",
+    "tests": [
+      "TestNewTreeSelectorComponentFromCallbacks",
+      "TestNewTreeSelectorComponentFromEmptyTreeCancelsAfterADelay",
+      "TestNewTreeSelectorComponentFromEmptyTreeCancelsAtExactlyOneHundredMilliseconds"
+    ],
+    "upstream_reference": "packages/coding-agent/src/modes/interactive/components/tree-selector.ts TreeSelectorComponent (constructor, children, help, search line, label input)",
+    "mutation": "tui/tree_select.go TreeSelectorComponent: 30 mutants run with go test -overlay -run 'TestTree' ./internal/codingagent (the pinned-Pi tree oracles) and ./tui. Killed by the oracles: the visible-row budget (max(5, h/2)), the current-leaf and initial-selection handling, the filter mode fallback and cycle order, the title text, the spacers, the search line text and colors, the label prompt text, width and hints, the label-edit swap of the tree rows, the filter and position labels, the empty-state text. Killed by the tui tests: the select/cancel/label callbacks and the empty tree's cancel timer (its 100ms delay is pinned on a fake clock by the test added with this evidence: a 400ms delay survived the sleep-based test). The oracle tests now name the component type. Survived and left: the container order of the tree and label children (only one renders at a time), the default cursor on the last row (SetInitialCursor sets it again), the help-row truncation and negative-width clamp (the help rows are already clipped), and the negative-cursor guard."
+  },
+  {
+    "upstream": "packages/coding-agent/src/modes/interactive/components/tree-selector.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestTreeSelectorInputMatchesPi",
+      "TestTreeListBranchingRenderMatchesPiOracle"
+    ],
+    "upstream_reference": "packages/coding-agent/src/modes/interactive/components/tree-selector.ts TreeSelectorComponent (constructor, children, help, search line, label input)",
+    "mutation": "tui/tree_select.go TreeSelectorComponent: 30 mutants run with go test -overlay -run 'TestTree' ./internal/codingagent (the pinned-Pi tree oracles) and ./tui. Killed by the oracles: the visible-row budget (max(5, h/2)), the current-leaf and initial-selection handling, the filter mode fallback and cycle order, the title text, the spacers, the search line text and colors, the label prompt text, width and hints, the label-edit swap of the tree rows, the filter and position labels, the empty-state text. Killed by the tui tests: the select/cancel/label callbacks and the empty tree's cancel timer (its 100ms delay is pinned on a fake clock by the test added with this evidence: a 400ms delay survived the sleep-based test). The oracle tests now name the component type. Survived and left: the container order of the tree and label children (only one renders at a time), the default cursor on the last row (SetInitialCursor sets it again), the help-row truncation and negative-width clamp (the help rows are already clipped), and the negative-cursor guard."
+  },
+  {
+    "upstream": "packages/coding-agent/src/modes/interactive/components/tree-selector.ts",
+    "package": "./tui",
+    "tests": [
+      "TestNewTreeSelectorComponentFromCallbacks",
+      "TestNewTreeSelectorComponentFromEmptyTreeCancelsAfterADelay",
+      "TestNewTreeSelectorComponentFromEmptyTreeCancelsAtExactlyOneHundredMilliseconds"
+    ],
+    "upstream_reference": "packages/coding-agent/src/modes/interactive/components/tree-selector.ts TreeSelectorComponent (constructor, children, help, search line, label input)",
+    "mutation": "tui/tree_select.go TreeSelectorComponent: 30 mutants run with go test -overlay -run 'TestTree' ./internal/codingagent (the pinned-Pi tree oracles) and ./tui. Killed by the oracles: the visible-row budget (max(5, h/2)), the current-leaf and initial-selection handling, the filter mode fallback and cycle order, the title text, the spacers, the search line text and colors, the label prompt text, width and hints, the label-edit swap of the tree rows, the filter and position labels, the empty-state text. Killed by the tui tests: the select/cancel/label callbacks and the empty tree's cancel timer (its 100ms delay is pinned on a fake clock by the test added with this evidence: a 400ms delay survived the sleep-based test). The oracle tests now name the component type. Survived and left: the container order of the tree and label children (only one renders at a time), the default cursor on the last row (SetInitialCursor sets it again), the help-row truncation and negative-width clamp (the help rows are already clipped), and the negative-cursor guard."
+  },
+  {
+    "upstream": "packages/coding-agent/src/modes/interactive/components/tree-selector.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestTreeSelectorInputMatchesPi",
+      "TestTreeListBranchingRenderMatchesPiOracle"
+    ],
+    "upstream_reference": "packages/coding-agent/src/modes/interactive/components/tree-selector.ts TreeSelectorComponent (constructor, children, help, search line, label input)",
+    "mutation": "tui/tree_select.go TreeSelectorComponent: 30 mutants run with go test -overlay -run 'TestTree' ./internal/codingagent (the pinned-Pi tree oracles) and ./tui. Killed by the oracles: the visible-row budget (max(5, h/2)), the current-leaf and initial-selection handling, the filter mode fallback and cycle order, the title text, the spacers, the search line text and colors, the label prompt text, width and hints, the label-edit swap of the tree rows, the filter and position labels, the empty-state text. Killed by the tui tests: the select/cancel/label callbacks and the empty tree's cancel timer (its 100ms delay is pinned on a fake clock by the test added with this evidence: a 400ms delay survived the sleep-based test). The oracle tests now name the component type. Survived and left: the container order of the tree and label children (only one renders at a time), the default cursor on the last row (SetInitialCursor sets it again), the help-row truncation and negative-width clamp (the help rows are already clipped), and the negative-cursor guard."
+  },
+  {
+    "upstream": "packages/coding-agent/src/modes/interactive/components/settings-selector.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestSettingsSelectorMatchesPi",
+      "TestSettingsSelectorReportsEveryCyclingRowThroughItsCallback",
+      "TestSettingsSelectorInAContainerRedrawsAfterInput",
+      "TestMaskSecretInputSettingsMenuAppliesToNextDialog",
+      "TestSettingsModelThinkingAppliesAndClearsCurrentOverrideWithoutChangingDefaults",
+      "TestSettingsSelectorNeedsRedrawReportsTheListWithoutClearingIt"
+    ],
+    "upstream_reference": "packages/coding-agent/src/modes/interactive/components/settings-selector.ts SettingsSelectorComponent",
+    "mutation": "internal/codingagent/settings_selector.go: 64 mutants run with go test -overlay -run 'TestSettingsSelector|TestSettingsHandlerTUI|TestSettingsItems|TestSettingsModelThinking|TestMaskSecretInputSettingsMenu' ./internal/codingagent. Killed (mostly by the pinned-Pi whole-screen comparison TestSettingsSelectorMatchesPi, which now names the component type, and by the per-row callback test): every row's label, description, cycling values, current value and presence (images row, thinking and warnings rows), the row order, the search and window options, the borders, the cancel callback, and every dispatch conversion (booleans, integers, trust label, quiet-startup, output padding, wheel scroll lines, model-thinking set/clear). Survived and fixed with the new test: the live flag and the list-dirty report of NeedsRedraw (it must not clear the list's invalidation). Survived and left: swapping the order of the two-value steering-mode and output-padding rows (cycling a two-value list reaches the same value) and the stripped-row filter (needs a stripped build; D92)."
+  },
+  {
+    "upstream": "packages/coding-agent/src/modes/interactive/components/armin.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestArminFramesMatchPinnedPi",
+      "TestArminAnimationDisposalRejectsQueuedFrame",
+      "TestArminAnimationPublishesFramesAndStops",
+      "TestNewArminComponentStartsItsAnimationOnTheUI"
+    ],
+    "upstream_reference": "packages/coding-agent/src/modes/interactive/components/armin.ts ArminComponent (effect selection, grid, the seven effects, frame timing, render, dispose); the image and label are Pig's (D87)",
+    "mutation": "internal/codingagent/armin.go: 41 mutants run with go test -overlay -run Armin ./internal/codingagent. Killed (by the pinned-Pi frame comparison for every effect and render width, and by the animation lifecycle tests): the effect order and selection, the half-block pixel pairing and glyphs, the rain, dissolve and fade initialisation and shuffle, every effect's tick (typewriter rate and end, scanline end, rain settling and drop reset, resolve rate for fade and dissolve, crt midpoint and end, glitch phases, offsets and probabilities), the render cache, the slice-end handling for narrow widths, the accent color and label padding, the frame rate (60 for glitch), queued-frame rejection after dispose, version bump, render request, stopping when an effect finishes, and joining on dispose. Survived and left: the arminPixel row guard (the display grid never reads past the last pixel row)."
+  },
+  {
+    "upstream": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestInitBuildsTheInteractiveModeFromTheSettingsAndTheSession",
+      "TestInitFailingAfterTheTuiStartsStaysInitialized",
+      "TestInteractiveModeInitIsGuardedAndAFailedInitIsStoppable"
+    ],
+    "upstream_reference": "packages/coding-agent/src/modes/interactive/interactive-mode.ts:690-1030 init()",
+    "mutation": "internal/codingagent/interactive.go InteractiveMode.Init: 72 statement-level mutants run with go test -overlay against the interactive, init, startup, footer, editor and theme tests, then against the new pty test TestInitBuildsTheInteractiveModeFromTheSettingsAndTheSession (which runs the whole Init against a real coding.Session on a pseudo-terminal and reads the state it leaves, the cursor hide/show and the title reset). Killed: dropping the initialized guard, never setting isInitialized (TestInitFailingAfterTheTuiStartsStaysInitialized), leaving backgroundCtx set after Stop (TestInteractiveModeInitIsGuardedAndAFailedInitIsStoppable), not focusing the editor and not applying the resource source info provider (the new test). The new test also pins, without a killing mutant of its own, the settings' editor padding and autocomplete rows, queue modes, auto-compact indicator, hidden thinking, session name, saved transcript rendering, slash catalog, prompt templates and cleanup. Survived and left (about 60): single statements whose effect Init repeats elsewhere (the session constructor sets the queue modes and the agent timings, the footer constructor sets the name and cwd, rebindCurrentSession reloads prompt templates, resources, keybindings and the slash catalog), and statements whose only effect is a terminal escape, a timer, a signal or a watcher (hardware cursor, clear-on-shrink, theme watcher, dispatcher, raw-mode restore, terminal title and progress on Stop, async autocomplete task owner), which a pseudo-terminal capture without a terminal emulator does not distinguish. This is a weak closure: only the Init orchestration's guards, focus and resource wiring are mutation-checked."
+  }
+]

@@ -19,25 +19,45 @@ type sessionEventBarrier struct {
 // FlushEvents waits until an opted-in Events consumer acknowledges all preceding
 // events. The consumer calls AcknowledgeEvent before event conversion; it must
 // not call FlushEvents from its own event callback. Cancellation and Close
-// release the wait even when no consumer is running.
+// release the wait even when no consumer is running. After Dispose the Session
+// has no listeners, so there is nothing to wait for. After DiscardEvents the
+// barrier holds once every preceding event executed.
 func (s *Session) FlushEvents(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	if s.discardEvents.Load() && s.execMu.TryLock() {
+		// Nothing queued ahead and nothing executing: every preceding event executed.
+		idle := s.inlineReadyLocked()
+		s.execMu.Unlock()
+		if idle {
+			return nil
+		}
+	}
 	marker := &sessionEventBarrier{done: make(chan struct{})}
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-s.closeDone:
-		return context.Canceled
-	case s.rawEvents <- marker:
+	if !s.enqueueEvent(marker, ctx.Done()) {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		return s.eventsEndedErr()
 	}
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
+	case <-s.eventsDone:
+		return s.eventsEndedErr()
+	case <-marker.done:
+		return nil
+	}
+}
+
+// eventsEndedErr is FlushEvents' result once the event executor has ended:
+// context.Canceled after Close, nil after Dispose.
+func (s *Session) eventsEndedErr() error {
+	select {
 	case <-s.closeDone:
 		return context.Canceled
-	case <-marker.done:
+	default:
 		return nil
 	}
 }

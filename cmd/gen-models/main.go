@@ -25,6 +25,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 )
@@ -40,7 +41,7 @@ type modelRow struct {
 	Compat           *ModelCompat
 	ThinkingLevelMap map[string]*string
 	SamplingParams   map[string]any
-	PromptCache      map[string]int
+	PromptCache      map[string]float64
 	InputLimits      *jsonModelInputLimits
 	ContextWindow    int
 	MaxTokens        int
@@ -55,6 +56,13 @@ type modelRow struct {
 	Enabled          *bool
 	Lab              string
 	Providers        []jsonCatalogProvider
+	// Record is the entry's JSON as the catalog data spells it, compacted: Pi's model object, member order included.
+	Record string
+}
+
+type vercelGatewayRouting struct {
+	Only  []string `json:"only"`
+	Order []string `json:"order"`
 }
 
 type ModelCompat struct {
@@ -76,7 +84,7 @@ type ModelCompat struct {
 	SupportsExplicitPromptCacheMode             *bool                      `json:"supportsExplicitPromptCacheMode,omitempty"`
 	ReasoningEffortMap                          map[string]string          `json:"reasoningEffortMap,omitempty"`
 	OpenRouterRouting                           map[string]any             `json:"openRouterRouting,omitempty"`
-	VercelGatewayRouting                        map[string]any             `json:"vercelGatewayRouting,omitempty"`
+	VercelGatewayRouting                        *vercelGatewayRouting      `json:"vercelGatewayRouting,omitempty"`
 	ZaiToolStream                               *bool                      `json:"zaiToolStream,omitempty"`
 	SupportsLongCacheRetention                  *bool                      `json:"supportsLongCacheRetention,omitempty"`
 	SendSessionIdHeader                         *bool                      `json:"sendSessionIdHeader,omitempty"`
@@ -157,6 +165,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "load:", err)
 		os.Exit(1)
 	}
+	applyCarriedFixes(&catalog)
 	if len(catalog.Chat) == 0 {
 		fmt.Fprintln(os.Stderr, "gen-models: parsed 0 models: refusing to clobber output")
 		os.Exit(1)
@@ -177,7 +186,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "emit classifiers:", err)
 		os.Exit(1)
 	}
-	if err := emitProviders(*providerOut, *src, catalog.Providers); err != nil {
+	if err := emitProviders(*providerOut, *src, catalog.Providers, catalog.GeneratedAt); err != nil {
 		fmt.Fprintln(os.Stderr, "emit providers:", err)
 		os.Exit(1)
 	}
@@ -189,6 +198,28 @@ func main() {
 type modelCatalog struct {
 	Chat, Image, Classifier []modelRow
 	Providers               []string
+	// GeneratedAt is the `generatedAt` of the data manifest (providers/data/.manifest.json) in Unix milliseconds; nil when the manifest has no valid time, as providers/all.ts getBuiltinModelDataGeneratedAt returns undefined for NaN.
+	GeneratedAt *float64
+}
+
+// readModelDataGeneratedAt reads `generatedAt` of the data manifest beside the provider data files. The value is the
+// Date.parse of an ISO-8601 time: whole milliseconds since the Unix epoch.
+func readModelDataGeneratedAt(manifestPath string) (*float64, error) {
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return nil, err
+	}
+	var manifest struct {
+		GeneratedAt string `json:"generatedAt"`
+	}
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return nil, fmt.Errorf("%s: %w", manifestPath, err)
+	}
+	parsed, err := time.Parse(time.RFC3339Nano, manifest.GeneratedAt)
+	if err != nil {
+		return nil, nil //nolint:nilnil // an unparseable time is "no generation time", as upstream's NaN check returns undefined
+	}
+	return new(float64(parsed.UnixMilli())), nil
 }
 
 // collectCatalog reads the catalog barrel at src (models.generated.ts or .js) and, for every provider shard it imports,
@@ -219,7 +250,15 @@ func collectCatalog(src string) (modelCatalog, error) {
 		if dm == nil {
 			return modelCatalog{}, fmt.Errorf("provider %s: no data/<provider>.json import", shardPath)
 		}
-		rows, err := parseDataJSON(filepath.Join(filepath.Dir(shardPath), filepath.FromSlash(string(dm[1]))))
+		dataPath := filepath.Join(filepath.Dir(shardPath), filepath.FromSlash(string(dm[1])))
+		if catalog.GeneratedAt == nil {
+			generatedAt, err := readModelDataGeneratedAt(filepath.Join(filepath.Dir(dataPath), ".manifest.json"))
+			if err != nil {
+				return modelCatalog{}, err
+			}
+			catalog.GeneratedAt = generatedAt
+		}
+		rows, err := parseDataJSON(dataPath)
 		if err != nil {
 			return modelCatalog{}, fmt.Errorf("provider %s: %w", shardPath, err)
 		}
@@ -285,7 +324,7 @@ type jsonModel struct {
 	Input            []string              `json:"input"`
 	Output           []string              `json:"output"`
 	Cost             *jsonCost             `json:"cost"`
-	PromptCache      map[string]int        `json:"promptCache"`
+	PromptCache      map[string]float64    `json:"promptCache"`
 	InputLimits      *jsonModelInputLimits `json:"inputLimits"`
 	ContextWindow    int                   `json:"contextWindow"`
 	MaxTokens        int                   `json:"maxTokens"`
@@ -296,6 +335,8 @@ type jsonModel struct {
 	Enabled          *bool                 `json:"enabled"`
 	Lab              string                `json:"lab"`
 	Providers        []jsonCatalogProvider `json:"providers"`
+	// record is the compacted entry JSON.
+	record string
 }
 
 type jsonModelInputLimits struct {
@@ -334,12 +375,13 @@ func (value *jsonOptionalInt) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// jsonCost is a catalog cost; a nil Tiers is a cost with no tiers member and an empty one a cost with tiers: [].
 type jsonCost struct {
 	Input      float64        `json:"input"`
 	Output     float64        `json:"output"`
 	CacheRead  float64        `json:"cacheRead"`
 	CacheWrite float64        `json:"cacheWrite"`
-	Tiers      []jsonCostTier `json:"tiers,omitempty"`
+	Tiers      []jsonCostTier `json:"tiers,omitzero"`
 }
 
 // jsNumber marshals like JSON.stringify: a number that is not finite is null, and negative zero is 0.
@@ -356,12 +398,12 @@ func (c jsonCost) MarshalJSON() ([]byte, error) {
 		Output     jsNumber       `json:"output"`
 		CacheRead  jsNumber       `json:"cacheRead"`
 		CacheWrite jsNumber       `json:"cacheWrite"`
-		Tiers      []jsonCostTier `json:"tiers,omitempty"`
+		Tiers      []jsonCostTier `json:"tiers,omitzero"`
 	}{jsNumber(c.Input), jsNumber(c.Output), jsNumber(c.CacheRead), jsNumber(c.CacheWrite), c.Tiers})
 }
 
 type jsonCostTier struct {
-	InputTokensAbove int     `json:"inputTokensAbove"`
+	InputTokensAbove float64 `json:"inputTokensAbove"`
 	Input            float64 `json:"input"`
 	Output           float64 `json:"output"`
 	CacheRead        float64 `json:"cacheRead"`
@@ -445,6 +487,7 @@ func parseDataJSON(path string) ([]modelRow, error) {
 			Enabled:          jm.Enabled,
 			Lab:              jm.Lab,
 			Providers:        jm.Providers,
+			Record:           jm.record,
 		}
 		if jm.Cost != nil {
 			row.InputCost = jm.Cost.Input
@@ -486,6 +529,11 @@ func decodeJSONModelGroup(data []byte, seen map[string]string) ([]jsonModel, err
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", key, err)
 		}
+		var compact bytes.Buffer
+		if err := json.Compact(&compact, encoded); err != nil {
+			return nil, fmt.Errorf("%s: %w", key, err)
+		}
+		model.record = compact.String()
 		if key != model.Type+":"+model.ID {
 			return nil, fmt.Errorf("%s: mismatched type/id identity (model is %s:%s)", key, model.Type, model.ID)
 		}
@@ -643,12 +691,13 @@ func normalizeCompat(c *ModelCompat) *ModelCompat {
 }
 
 func emit(path, src string, rows []modelRow) error {
+	resetCatalogStrings()
 	var b strings.Builder
 	fmt.Fprintf(&b, "// Code generated by cmd/gen-models. DO NOT EDIT.\n")
 	// Always record source as the basename so re-runs from different
 	// working directories produce byte-identical output (required by
 	// TestCodegenByteIdentical).
-	fmt.Fprintf(&b, "// Source: %s\n", basename(src))
+	writeSourceHeader(&b, src)
 	fmt.Fprintf(&b, "// Models: %d\n\n", len(rows))
 	b.WriteString("package ai\n\n")
 	b.WriteString("// GeneratedModel is a static catalog entry for one model. Lives in\n")
@@ -663,7 +712,7 @@ func emit(path, src string, rows []modelRow) error {
 	b.WriteString("\tBaseURL              string\n")
 	b.WriteString("\tHeaders              map[string]string\n")
 	b.WriteString("\tCompat               *ModelCompat\n")
-	b.WriteString("\tThinkingLevelMap     map[ThinkingLevel]*string\n")
+	b.WriteString("\tThinkingLevelMap     map[ModelThinkingLevel]*string\n")
 	b.WriteString("\tSamplingParams       map[string]any\n")
 	b.WriteString("\tPromptCache          ModelPromptCache\n")
 	b.WriteString("\tInputLimits         *ModelInputLimits\n")
@@ -679,6 +728,8 @@ func emit(path, src string, rows []modelRow) error {
 	b.WriteString("\tEnabled              *bool\n")
 	b.WriteString("\tLab                  string\n")
 	b.WriteString("\tProviders            []ModelCatalogProvider\n")
+	b.WriteString("\t// Record is the entry's JSON as Pi's catalog data spells it: the model object Pi serializes, member order included.\n")
+	b.WriteString("\tRecord string\n")
 	b.WriteString("}\n\n")
 	fmt.Fprintf(&b, "// GeneratedModels is the static catalog (%d entries).\n", len(rows))
 	b.WriteString("var GeneratedModels = []GeneratedModel{\n")
@@ -690,7 +741,7 @@ func emit(path, src string, rows []modelRow) error {
 		fmt.Fprintf(&b, "\t\tAPI: %q,\n", r.API)
 		fmt.Fprintf(&b, "\t\tBaseURL: %q,\n", r.BaseURL)
 		if len(r.Headers) > 0 {
-			fmt.Fprintf(&b, "\t\tHeaders: %#v,\n", r.Headers)
+			fmt.Fprintf(&b, "\t\tHeaders: %s,\n", catalogHeaderMaps.ref(fmt.Sprintf("%#v", r.Headers)))
 		}
 		if r.Compat != nil {
 			compat, err := json.Marshal(r.Compat)
@@ -700,13 +751,15 @@ func emit(path, src string, rows []modelRow) error {
 			fmt.Fprintf(&b, "\t\tCompat: %s,\n", compatLiteral(string(compat)))
 		}
 		if len(r.ThinkingLevelMap) > 0 {
-			fmt.Fprintf(&b, "\t\tThinkingLevelMap: %s,\n", thinkingLevelMapLiteral(r.ThinkingLevelMap))
+			fmt.Fprintf(&b, "\t\tThinkingLevelMap: %s,\n", catalogThinkingLevelMaps.ref(thinkingLevelMapLiteral(r.ThinkingLevelMap)))
 		}
 		if len(r.SamplingParams) > 0 {
-			fmt.Fprintf(&b, "\t\tSamplingParams: %#v,\n", r.SamplingParams)
+			// %#v spells map[string]any as map[string]interface {}; the table's literals spell their element type.
+			literal := "map[string]any" + strings.TrimPrefix(fmt.Sprintf("%#v", r.SamplingParams), "map[string]interface {}")
+			fmt.Fprintf(&b, "\t\tSamplingParams: %s,\n", catalogSamplingParams.ref(literal))
 		}
 		if len(r.PromptCache) > 0 {
-			fmt.Fprintf(&b, "\t\tPromptCache: %s,\n", intMapLiteral(r.PromptCache))
+			fmt.Fprintf(&b, "\t\tPromptCache: %s,\n", promptCacheLiteral(r.PromptCache))
 		}
 		if r.InputLimits != nil {
 			fmt.Fprintf(&b, "\t\tInputLimits: %s,\n", inputLimitsLiteral(r.InputLimits))
@@ -717,7 +770,7 @@ func emit(path, src string, rows []modelRow) error {
 		fmt.Fprintf(&b, "\t\tOutputCostPerMTokens: %s,\n", floatLit(r.OutputCost))
 		fmt.Fprintf(&b, "\t\tCacheReadCost: %s,\n", floatLit(r.CacheRead))
 		fmt.Fprintf(&b, "\t\tCacheWriteCost: %s,\n", floatLit(r.CacheWrite))
-		if len(r.Tiers) > 0 {
+		if r.Tiers != nil {
 			fmt.Fprintf(&b, "\t\tTiers: %s,\n", tiersLiteral(r.Tiers))
 		}
 		fmt.Fprintf(&b, "\t\tReasoning: %t,\n", r.Reasoning)
@@ -732,7 +785,7 @@ func emit(path, src string, rows []modelRow) error {
 			b.WriteString("},\n")
 		}
 		if r.Enabled != nil {
-			fmt.Fprintf(&b, "\t\tEnabled: ptrBool(%t),\n", *r.Enabled)
+			fmt.Fprintf(&b, "\t\tEnabled: %s,\n", boolPtrLit(*r.Enabled))
 		}
 		if r.Lab != "" {
 			fmt.Fprintf(&b, "\t\tLab: %q,\n", r.Lab)
@@ -740,9 +793,16 @@ func emit(path, src string, rows []modelRow) error {
 		if len(r.Providers) > 0 {
 			fmt.Fprintf(&b, "\t\tProviders: %s,\n", catalogProvidersLiteral(r.Providers))
 		}
+		fmt.Fprintf(&b, "\t\tRecord: %q,\n", r.Record)
 		b.WriteString("\t},\n")
 	}
 	b.WriteString("}\n")
+	b.WriteString(catalogPointerValues())
+	for _, table := range catalogMapTables {
+		if len(table.list) > 0 {
+			b.WriteString(table.declaration())
+		}
+	}
 	formatted, err := format.Source([]byte(b.String()))
 	if err != nil {
 		return fmt.Errorf("format generated source: %w", err)
@@ -797,10 +857,10 @@ func emitImages(path, src string, rows []modelRow) error {
 
 // emitProviders writes the catalog barrel's provider ids in barrel order. Object.keys(MODELS) is getBuiltinProviders
 // (providers/all.ts:94-96), and a provider whose shard holds only image or classifier models is still one of its keys.
-func emitProviders(path, src string, providers []string) error {
+func emitProviders(path, src string, providers []string, generatedAt *float64) error {
 	var b strings.Builder
 	b.WriteString("// Code generated by cmd/gen-models. DO NOT EDIT.\n")
-	fmt.Fprintf(&b, "// Source: %s\n", basename(src))
+	writeSourceHeader(&b, src)
 	fmt.Fprintf(&b, "// Providers: %d\n\n", len(providers))
 	b.WriteString("package ai\n\n")
 	b.WriteString("// GeneratedProviders lists the catalog barrel's providers in barrel order (providers/all.ts getBuiltinProviders).\n")
@@ -808,7 +868,13 @@ func emitProviders(path, src string, providers []string) error {
 	for _, provider := range providers {
 		fmt.Fprintf(&b, "\t%q,\n", provider)
 	}
-	b.WriteString("}\n")
+	b.WriteString("}\n\n")
+	b.WriteString("// GeneratedModelDataGeneratedAt is the generation time shared by every built-in provider catalog, in Unix milliseconds (providers/all.ts getBuiltinModelDataGeneratedAt); nil when the data manifest carries no valid time.\n")
+	if generatedAt == nil {
+		b.WriteString("var GeneratedModelDataGeneratedAt *float64\n")
+	} else {
+		fmt.Fprintf(&b, "var GeneratedModelDataGeneratedAt = new(float64(%s))\n", strconv.FormatFloat(*generatedAt, 'f', -1, 64))
+	}
 	return writeGoSource(path, b.String())
 }
 
@@ -826,11 +892,36 @@ func emitClassifiers(path, src string, rows []modelRow) error {
 	return writeGoSource(path, b.String())
 }
 
+// writeSourceHeader writes the Source line and, when src belongs to a pi-ai package, the Upstream line that names the
+// package version the catalog was generated from. ai.TestGeneratedCatalogsRecordPinnedUpstream compares that line
+// with pigversion.UpstreamVersion, so a pin bump without regeneration fails.
+func writeSourceHeader(b *strings.Builder, src string) {
+	fmt.Fprintf(b, "// Source: %s\n", basename(src))
+	if version := publishedPackageVersion(src); version != "" {
+		fmt.Fprintf(b, "// Upstream: @earendil-works/pi-ai %s\n", version)
+	}
+}
+
+// publishedPackageVersion returns the version in the pi-ai manifest one directory above src: the published package's
+// dist/../package.json or the upstream mirror's packages/ai/src/../package.json. It returns "" when that manifest is
+// missing or names another package (the models.dev and test sources).
+func publishedPackageVersion(src string) string {
+	data, err := os.ReadFile(filepath.Join(filepath.Dir(src), "..", "package.json"))
+	if err != nil {
+		return ""
+	}
+	var manifest struct{ Name, Version string }
+	if json.Unmarshal(data, &manifest) != nil || manifest.Name != "@earendil-works/pi-ai" {
+		return ""
+	}
+	return manifest.Version
+}
+
 // writeCatalogHeader writes the header shared by every generated catalog file. The source is recorded as its basename so
 // re-runs from different working directories are byte-identical.
 func writeCatalogHeader(b *strings.Builder, src string, models int) {
 	b.WriteString("// Code generated by cmd/gen-models. DO NOT EDIT.\n")
-	fmt.Fprintf(b, "// Source: %s\n", basename(src))
+	writeSourceHeader(b, src)
 	fmt.Fprintf(b, "// Models: %d\n\n", models)
 	b.WriteString("package ai\n\n")
 }
@@ -862,9 +953,14 @@ func stringSliceLiteral(values []string) string {
 }
 
 func modelCostLiteral(row modelRow) string {
-	literal := fmt.Sprintf("ModelCost{Input: %s, Output: %s, CacheRead: %s, CacheWrite: %s", floatLit(row.InputCost), floatLit(row.OutputCost), floatLit(row.CacheRead), floatLit(row.CacheWrite))
-	if len(row.Tiers) > 0 {
-		literal += ", Tiers: " + tiersLiteral(row.Tiers)
+	return costLiteral(jsonCost{Input: row.InputCost, Output: row.OutputCost, CacheRead: row.CacheRead, CacheWrite: row.CacheWrite, Tiers: row.Tiers})
+}
+
+// costLiteral is a ModelCost literal for cost: one with no tiers member has no Tiers, and one with tiers: [] an empty Tiers.
+func costLiteral(cost jsonCost) string {
+	literal := fmt.Sprintf("ModelCost{Input: %s, Output: %s, CacheRead: %s, CacheWrite: %s", floatLit(cost.Input), floatLit(cost.Output), floatLit(cost.CacheRead), floatLit(cost.CacheWrite))
+	if cost.Tiers != nil {
+		literal += ", Tiers: " + tiersLiteral(cost.Tiers)
 	}
 	return literal + "}"
 }
@@ -885,14 +981,14 @@ func floatLit(v float64) string {
 }
 
 // tiersLiteral emits an []CostTier literal for a model's request-wide pricing
-// tiers. Only JSON-backed 0.81+ catalogs carry tiers; empty slices are omitted
-// by the caller so pre-tier catalogs stay byte-identical.
+// tiers. Callers emit it only for a cost with a tiers member (a non-nil Tiers),
+// so a cost without one keeps a nil Tiers and ModelCost writes no tiers.
 func tiersLiteral(tiers []jsonCostTier) string {
 	var b strings.Builder
 	b.WriteString("[]CostTier{")
 	for _, t := range tiers {
-		fmt.Fprintf(&b, "{InputTokensAbove: %d, InputCostPer1M: %s, OutputCostPer1M: %s, CacheReadCostPer1M: %s, CacheWriteCostPer1M: %s}, ",
-			t.InputTokensAbove, floatLit(t.Input), floatLit(t.Output), floatLit(t.CacheRead), floatLit(t.CacheWrite))
+		fmt.Fprintf(&b, "{InputTokensAbove: %s, InputCostPer1M: %s, OutputCostPer1M: %s, CacheReadCostPer1M: %s, CacheWriteCostPer1M: %s}, ",
+			floatLit(t.InputTokensAbove), floatLit(t.Input), floatLit(t.Output), floatLit(t.CacheRead), floatLit(t.CacheWrite))
 	}
 	b.WriteString("}")
 	return b.String()
@@ -937,12 +1033,12 @@ func inputLimitsLiteral(limits *jsonModelInputLimits) string {
 	return "&ModelInputLimits{" + strings.Join(fields, ", ") + "}"
 }
 
-func intMapLiteral(values map[string]int) string {
+func promptCacheLiteral(values map[string]float64) string {
 	keys := slices.Sorted(maps.Keys(values))
 	var b strings.Builder
 	b.WriteString("ModelPromptCache{")
 	for _, key := range keys {
-		fmt.Fprintf(&b, "%q: %d, ", key, values[key])
+		fmt.Fprintf(&b, "%q: %s, ", key, strconv.FormatFloat(values[key], 'g', -1, 64))
 	}
 	b.WriteString("}")
 	return b.String()
@@ -962,7 +1058,7 @@ func allowedFallbackModelsLiteral(models []jsonAllowedFallbackModel) string {
 	var b strings.Builder
 	b.WriteString("[]AnthropicAllowedFallbackModel{")
 	for _, model := range models {
-		fmt.Fprintf(&b, "{Provider: %q, Model: %q, Cost: ModelCost{Input: %s, Output: %s, CacheRead: %s, CacheWrite: %s, Tiers: %s}}, ", model.Provider, model.Model, floatLit(model.Cost.Input), floatLit(model.Cost.Output), floatLit(model.Cost.CacheRead), floatLit(model.Cost.CacheWrite), tiersLiteral(model.Cost.Tiers))
+		fmt.Fprintf(&b, "{Provider: %q, Model: %q, Cost: %s}, ", model.Provider, model.Model, costLiteral(model.Cost))
 	}
 	b.WriteString("}")
 	return b.String()
@@ -1028,8 +1124,16 @@ func compatLiteral(jsonText string) string {
 	if len(compat.OpenRouterRouting) > 0 {
 		fields = append(fields, fmt.Sprintf("OpenRouterRouting:%#v", compat.OpenRouterRouting))
 	}
-	if len(compat.VercelGatewayRouting) > 0 {
-		fields = append(fields, fmt.Sprintf("VercelGatewayRouting:%#v", compat.VercelGatewayRouting))
+	if compat.VercelGatewayRouting != nil && (compat.VercelGatewayRouting.Only != nil || compat.VercelGatewayRouting.Order != nil) {
+		routing := compat.VercelGatewayRouting
+		var parts []string
+		if routing.Only != nil {
+			parts = append(parts, fmt.Sprintf("Only:%#v", routing.Only))
+		}
+		if routing.Order != nil {
+			parts = append(parts, fmt.Sprintf("Order:%#v", routing.Order))
+		}
+		fields = append(fields, "VercelGatewayRouting:&VercelGatewayRouting{"+strings.Join(parts, ",")+"}")
 	}
 	if compat.ZaiToolStream != nil {
 		fields = append(fields, fmt.Sprintf("ZaiToolStream:%s", boolPtrLit(*compat.ZaiToolStream)))
@@ -1100,11 +1204,83 @@ func compatLiteral(jsonText string) string {
 	return "&ModelCompat{" + strings.Join(fields, ", ") + "}"
 }
 
+// The catalog's *bool and *string members point at shared package-level values instead of being built by ptrBool and ptrString calls, which run when the process starts. A pointer to a package-level variable or array element is laid out by the linker, so these members cost no start-up work. Nothing writes through them.
 func boolPtrLit(v bool) string {
 	if v {
-		return "ptrBool(true)"
+		return "&generatedTrue"
 	}
-	return "ptrBool(false)"
+	return "&generatedFalse"
+}
+
+// catalogStrings interns the strings the catalog points at, in first-use order, for one emit run.
+var catalogStrings struct {
+	index map[string]int
+	list  []string
+}
+
+func resetCatalogStrings() {
+	catalogStrings.index = map[string]int{}
+	catalogStrings.list = nil
+	for _, table := range catalogMapTables {
+		table.index, table.list = map[string]int{}, nil
+	}
+}
+
+// The catalog's map members refer to one shared map per distinct value instead of a map literal per model: every map in a package-level initializer is built when the process starts, and most models repeat a few thinking-level, header and sampling maps. Nothing writes through them; the registry copies a model's maps before handing them out.
+type catalogMapTable struct {
+	name, doc, elem string
+	index           map[string]int
+	list            []string
+}
+
+var (
+	catalogHeaderMaps        = &catalogMapTable{name: "generatedHeaders", doc: "the distinct Headers maps", elem: "map[string]string"}
+	catalogThinkingLevelMaps = &catalogMapTable{name: "generatedThinkingLevelMaps", doc: "the distinct ThinkingLevelMap maps", elem: "map[ModelThinkingLevel]*string"}
+	catalogSamplingParams    = &catalogMapTable{name: "generatedSamplingParams", doc: "the distinct SamplingParams maps", elem: "map[string]any"}
+	catalogMapTables         = []*catalogMapTable{catalogHeaderMaps, catalogThinkingLevelMaps, catalogSamplingParams}
+)
+
+// ref interns literal, a map literal spelling the table's element type, in first-use order and returns the expression naming its shared map.
+func (t *catalogMapTable) ref(literal string) string {
+	i, ok := t.index[literal]
+	if !ok {
+		i = len(t.list)
+		t.index[literal] = i
+		t.list = append(t.list, literal)
+	}
+	return fmt.Sprintf("%s[%d]", t.name, i)
+}
+
+// declaration declares the table's shared maps. The array's elements elide the element type their literals spell.
+func (t *catalogMapTable) declaration() string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "\n// %s is %s the catalog refers to.\nvar %s = [...]%s{\n", t.name, t.doc, t.name, t.elem)
+	for _, literal := range t.list {
+		fmt.Fprintf(&b, "\t%s,\n", strings.TrimPrefix(literal, t.elem))
+	}
+	b.WriteString("}\n")
+	return b.String()
+}
+
+func stringPtrLit(v string) string {
+	i, ok := catalogStrings.index[v]
+	if !ok {
+		i = len(catalogStrings.list)
+		catalogStrings.index[v] = i
+		catalogStrings.list = append(catalogStrings.list, v)
+	}
+	return fmt.Sprintf("&generatedStrings[%d]", i)
+}
+
+// catalogPointerValues is the declaration of the values the catalog's pointers refer to.
+func catalogPointerValues() string {
+	var b strings.Builder
+	b.WriteString("\n// generatedTrue, generatedFalse and generatedStrings are the values the catalog's pointer members refer to.\nvar generatedTrue, generatedFalse = true, false\n\nvar generatedStrings = [...]string{\n")
+	for _, v := range catalogStrings.list {
+		fmt.Fprintf(&b, "\t%q,\n", v)
+	}
+	b.WriteString("}\n")
+	return b.String()
 }
 
 func thinkingLevelMapLiteral(m map[string]*string) string {
@@ -1113,12 +1289,12 @@ func thinkingLevelMapLiteral(m map[string]*string) string {
 	for _, key := range keys {
 		value := m[key]
 		if value == nil {
-			parts = append(parts, fmt.Sprintf("ThinkingLevel(%q): nil", key))
+			parts = append(parts, fmt.Sprintf("ModelThinkingLevel(%q): nil", key))
 			continue
 		}
-		parts = append(parts, fmt.Sprintf("ThinkingLevel(%q): ptrString(%q)", key, *value))
+		parts = append(parts, fmt.Sprintf("ModelThinkingLevel(%q): %s", key, stringPtrLit(*value)))
 	}
-	return "map[ThinkingLevel]*string{" + strings.Join(parts, ", ") + "}"
+	return "map[ModelThinkingLevel]*string{" + strings.Join(parts, ", ") + "}"
 }
 
 func basename(p string) string {

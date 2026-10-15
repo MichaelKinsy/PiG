@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/core/tools/render-utils.ts
+
 import (
 	"encoding/json"
 	"io"
@@ -180,5 +182,20 @@ func TestShellResultRendersExecutedTruncation(t *testing.T) {
 	if !strings.Contains(rendered, "Truncated: showing 2000 of 3000") ||
 		!strings.Contains(rendered, "lines]") || strings.Contains(rendered, "[Showing lines") {
 		t.Fatalf("truncated result card: %s", rendered)
+	}
+}
+
+// Only the bash renderers read durationMs (renderers/bash.ts:101-111); every other tool keeps its own footer rules.
+func TestRecordedTookIsForShellToolsOnly(t *testing.T) {
+	own := 2 * time.Second
+	ms := int64(4200)
+	if got := recordedTook("bash", &ms, &own); got == nil || *got != 4200*time.Millisecond {
+		t.Errorf("bash with a recorded duration = %v, want 4.2s", got)
+	}
+	if got := recordedTook("bash", nil, &own); got != &own {
+		t.Errorf("bash without one = %v, want the card's own clock", got)
+	}
+	if got := recordedTook("read", &ms, nil); got != nil {
+		t.Errorf("read = %v, want no recorded duration shown", *got)
 	}
 }

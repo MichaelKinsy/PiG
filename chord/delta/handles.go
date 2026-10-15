@@ -1,21 +1,28 @@
 package delta
 
 import (
-	"maps"
+	"errors"
 	"slices"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 // Object is a draft handle of a JSON object. It is usable only while its
 // change is open; any later use panics with ErrRevoked. Containers read
 // through it are returned as *Object or *Array handles, numbers as float64.
-type Object struct{ n *node }
+type Object struct{ ref nodeRef }
 
 // Array is a draft handle of a JSON array with the same lifetime as Object.
 // Held handles follow elements through reindexing.
-type Array struct{ n *node }
+type Array struct{ ref nodeRef }
+
+// nodeRef reaches a draft node through its overlay, so a handle the caller keeps after the change settles holds no part of the draft or of a revision.
+type nodeRef struct {
+	ctx   *overlay
+	index int
+}
 
 func handle(stored any) any {
 	kid, ok := stored.(*node)
@@ -23,24 +30,41 @@ func handle(stored any) any {
 		return stored
 	}
 	if kid.isArray() {
-		return &Array{n: kid}
+		return &Array{ref: kid.ctx.refHeld(kid)}
 	}
-	return &Object{n: kid}
+	return &Object{ref: kid.ctx.refHeld(kid)}
 }
 
-func (n *node) lock() func() {
-	n.ctx.mu.Lock()
-	if n.ctx.status != statusOpen || n.ctx.root == nil {
-		n.ctx.mu.Unlock()
+// lock locks the handle's overlay and returns its node and the locked mutex, or panics with ErrRevoked once the change settled. Returning the mutex rather than its Unlock method value keeps the call allocation-free.
+func (ref nodeRef) lock() (*node, *sync.Mutex) {
+	ref.ctx.mu.Lock()
+	if ref.ctx.status != statusOpen || ref.ctx.root == nil {
+		ref.ctx.mu.Unlock()
 		panic(ErrRevoked)
 	}
-	return n.ctx.mu.Unlock
+	return ref.ctx.nodes[ref.index-1], &ref.ctx.mu
 }
 
-// place validates and clones a placement while the draft lock is held. A
-// draft handle of the same change is materialized without relocking.
-func (n *node) place(value any) (any, error) {
-	return clonePlacementHeld(value, n.ctx)
+// placements validates and clones values for a placement into ref's draft before that draft is locked. Copying a handle locks the handle's draft; holding this draft's lock meanwhile would deadlock with another goroutine's change that is placing one of this draft's handles. A settled draft panics with ErrRevoked before anything is copied, as tracker.ts asserts the overlay writable before it copies.
+func (ref nodeRef) placements(values ...any) ([]any, error) {
+	_, mu := ref.lock()
+	mu.Unlock()
+	stored := make([]any, len(values))
+	for index, value := range values {
+		placed, err := clonePlacementHeld(value, nil)
+		if err != nil {
+			return nil, err
+		}
+		stored[index] = placed
+	}
+	return stored, nil
+}
+
+// placement is placements for one value.
+func (ref nodeRef) placement(value any) (any, error) {
+	_, mu := ref.lock()
+	mu.Unlock()
+	return clonePlacementHeld(value, nil)
 }
 
 // Get returns the value at key, or nil when absent.
@@ -51,8 +75,9 @@ func (object *Object) Get(key string) any {
 
 // Lookup returns the value at key and whether it is present.
 func (object *Object) Lookup(key string) (any, bool) {
-	defer object.n.lock()()
-	value, ok := object.n.objectLookup(key)
+	n, mu := object.ref.lock()
+	defer mu.Unlock()
+	value, ok := n.objectLookup(key)
 	return handle(value), ok
 }
 
@@ -74,21 +99,19 @@ func (object *Object) Array(key string) *Array {
 	return result
 }
 
-// Keys returns the present keys in JavaScript's own-key order: integer-like keys ascending, then the other keys. The
-// other keys are the base keys in sorted order (a Go map has no insertion order), then keys added by this change in
-// write order; a key deleted and added again counts as added.
+// Keys returns the present keys in JavaScript's own-key order: array-index keys ascending, then the other keys in draft order: the base keys in their order, then keys added by this change in write order; a key deleted and added again counts as added.
 func (object *Object) Keys() []string {
-	defer object.n.lock()()
-	n := object.n
-	base := n.base.(map[string]any)
-	keys := make([]string, 0, len(base)+len(n.order))
-	for _, key := range slices.Sorted(maps.Keys(base)) {
+	n, mu := object.ref.lock()
+	defer mu.Unlock()
+	base := n.base.(*JsonObject)
+	keys := make([]string, 0, base.Len()+len(n.order))
+	for key := range base.All() {
 		if !n.deletes[key] && !n.readded[key] {
 			keys = append(keys, key)
 		}
 	}
 	for _, key := range n.writtenKeys() {
-		if _, inBase := base[key]; inBase && !n.readded[key] {
+		if base.Has(key) && !n.readded[key] {
 			continue
 		}
 		keys = append(keys, key)
@@ -138,50 +161,59 @@ func (object *Object) Len() int { return len(object.Keys()) }
 // Set places a validated clone of value at key. A value that is not strict
 // JSON returns an error and leaves the draft unchanged.
 func (object *Object) Set(key string, value any) error {
-	defer object.n.lock()()
-	stored, err := object.n.place(value)
+	stored, err := object.ref.placement(value)
 	if err != nil {
 		return err
 	}
-	if object.n.attached() {
-		object.n.objectSet(key, stored)
+	n, mu := object.ref.lock()
+	defer mu.Unlock()
+	if n.attached() {
+		n.objectSet(key, stored)
 	}
 	return nil
 }
 
 // Delete removes key; it is upstream's `draft.key = undefined` or `delete`.
 func (object *Object) Delete(key string) {
-	defer object.n.lock()()
-	if object.n.attached() {
-		object.n.objectDelete(key)
+	n, mu := object.ref.lock()
+	defer mu.Unlock()
+	if n.attached() {
+		n.objectDelete(key)
 	}
 }
 
 // Snapshot returns a detached copy of the draft's present content. Changing
 // the copy never changes the draft, its pending placements, or the base
 // revision, as a value read out of upstream's Proxy draft cannot write through.
-func (object *Object) Snapshot() map[string]any {
-	defer object.n.lock()()
-	value, _ := copyTrusted(object.n.current()).(map[string]any)
+func (object *Object) Snapshot() *JsonObject {
+	n, mu := object.ref.lock()
+	defer mu.Unlock()
+	value, _ := copyTrusted(n.current()).(*JsonObject)
 	return value
 }
 
 // Len returns the array length.
 func (array *Array) Len() int {
-	defer array.n.lock()()
-	array.n.ensureEntries()
-	return len(array.n.entries)
+	n, mu := array.ref.lock()
+	defer mu.Unlock()
+	return n.arrayLength()
 }
 
 // Get returns the element at index, or nil when out of range.
 func (array *Array) Get(index int) any {
-	defer array.n.lock()()
-	n := array.n
-	n.ensureEntries()
-	if index < 0 || index >= len(n.entries) {
+	n, mu := array.ref.lock()
+	defer mu.Unlock()
+	if index < 0 || index >= n.arrayLength() {
 		return nil
 	}
-	return handle(n.entryValue(n.entries[index]))
+	p, offset := n.arrayOverlay().locate(index)
+	sourceIndex := p.sourceIndex(offset)
+	value := n.slot(p, sourceIndex)
+	if isContainer(value) {
+		// A base container read for the first time gets the entry that holds its node.
+		value = n.entryValue(n.slotEntry(p, sourceIndex))
+	}
+	return handle(value)
 }
 
 // Object returns the object handle at index, or nil.
@@ -199,122 +231,122 @@ func (array *Array) Array(index int) *Array {
 // Set places a validated clone of value at index; index may append one past
 // the end.
 func (array *Array) Set(index int, value any) error {
-	defer array.n.lock()()
-	n := array.n
-	n.ensureEntries()
-	if index < 0 {
-		return errNotArrayIndex
+	if err := array.checkIndex(index); err != nil {
+		return err
 	}
-	if index > len(n.entries) {
-		return ErrSparseArray
-	}
-	stored, err := n.place(value)
+	stored, err := array.ref.placement(value)
 	if err != nil {
 		return err
+	}
+	n, mu := array.ref.lock()
+	defer mu.Unlock()
+	length := n.arrayLength()
+	if index > length {
+		return ErrSparseArray
 	}
 	if !n.attached() {
 		return nil
 	}
-	if index == len(n.entries) {
-		n.entries = append(n.entries, n.newEntry(stored))
-		n.structural = true
-	} else {
-		e := n.entries[index]
-		e.value = n.wrap(stored, "", e)
-		e.set = true
+	if index == length {
+		n.replacePieceRange(length, 0, n.insertPiece([]any{stored}))
+		return nil
 	}
+	p, offset := n.arrayOverlay().locate(index)
+	sourceIndex := p.sourceIndex(offset)
+	if !isContainer(stored) {
+		// Writing the value a slot already holds changes nothing; writing a base element's own value back drops its override (tracker.ts setArrayIndex).
+		if current := n.slot(p, sourceIndex); !isContainer(current) && current == stored {
+			return nil
+		}
+		if p.isBase() && n.base.([]any)[sourceIndex] == stored {
+			e := n.array.baseEntries.get(sourceIndex)
+			e.set, e.value, e.setSeq = false, nil, 0
+			n.markChanged()
+			return nil
+		}
+	}
+	e := n.slotEntry(p, sourceIndex)
+	e.value = n.wrap(stored, "", e)
+	if !e.set {
+		n.ctx.writeSeq++
+		e.setSeq = n.ctx.writeSeq
+	}
+	e.set = true
 	n.markChanged()
 	return nil
 }
 
-func (n *node) placeAll(values []any) ([]any, error) {
-	stored := make([]any, len(values))
-	for index, value := range values {
-		placed, err := n.place(value)
-		if err != nil {
-			return nil, err
-		}
-		stored[index] = placed
+// checkIndex reports the index errors of Set, which tracker.ts raises before it copies the value.
+func (array *Array) checkIndex(index int) error {
+	n, mu := array.ref.lock()
+	defer mu.Unlock()
+	if index < 0 {
+		return errNotArrayIndex
 	}
-	return stored, nil
+	if index > n.arrayLength() {
+		return ErrSparseArray
+	}
+	return nil
 }
 
-// splice removes and inserts entries and returns the removed values.
+// splice removes and inserts elements and returns the removed values.
 func (n *node) splice(start, remove int, stored []any) []any {
-	n.ensureEntries()
-	length := len(n.entries)
+	length := n.arrayLength()
 	start = min(max(start, 0), length)
 	remove = min(max(remove, 0), length-start)
 	removed := make([]any, remove)
 	for offset := range remove {
-		e := n.entries[start+offset]
-		removed[offset] = storedCurrent(n.entryValue(e))
-		e.live = false
+		removed[offset] = storedCurrent(n.valueAt(start + offset))
 	}
-	inserted := make([]*entry, len(stored))
-	for index, value := range stored {
-		inserted[index] = n.newEntry(value)
-	}
-	// A nil entry list means an untouched array (ensureEntries), so an emptied array keeps a non-nil empty list.
-	entries := make([]*entry, 0, len(n.entries)-remove+len(inserted))
-	entries = append(entries, n.entries[:start]...)
-	entries = append(entries, inserted...)
-	n.entries = append(entries, n.entries[start+remove:]...)
-	if remove > 0 || len(inserted) > 0 {
-		n.structural = true
-		n.markChanged()
-	}
+	n.replacePieceRange(start, remove, n.insertPiece(stored))
 	return removed
 }
 
 // Push appends validated clones and returns the new length. When any value
 // is not strict JSON nothing is inserted.
 func (array *Array) Push(values ...any) (int, error) {
-	defer array.n.lock()()
-	n := array.n
-	n.ensureEntries()
-	stored, err := n.placeAll(values)
+	stored, err := array.ref.placements(values...)
+	n, mu := array.ref.lock()
+	defer mu.Unlock()
 	if err != nil {
-		return len(n.entries), err
+		return n.arrayLength(), err
 	}
 	if n.attached() {
-		n.splice(len(n.entries), 0, stored)
+		n.splice(n.arrayLength(), 0, stored)
 	}
-	return len(n.entries), nil
+	return n.arrayLength(), nil
 }
 
 // Unshift inserts validated clones at the front and returns the new length.
 func (array *Array) Unshift(values ...any) (int, error) {
-	defer array.n.lock()()
-	n := array.n
-	n.ensureEntries()
-	stored, err := n.placeAll(values)
+	stored, err := array.ref.placements(values...)
+	n, mu := array.ref.lock()
+	defer mu.Unlock()
 	if err != nil {
-		return len(n.entries), err
+		return n.arrayLength(), err
 	}
 	if n.attached() {
 		n.splice(0, 0, stored)
 	}
-	return len(n.entries), nil
+	return n.arrayLength(), nil
 }
 
 // Pop removes and returns a detached copy of the last element's present value.
 func (array *Array) Pop() any {
-	defer array.n.lock()()
-	n := array.n
-	n.ensureEntries()
-	if len(n.entries) == 0 || !n.attached() {
+	n, mu := array.ref.lock()
+	defer mu.Unlock()
+	length := n.arrayLength()
+	if length == 0 || !n.attached() {
 		return nil
 	}
-	return copyTrusted(n.splice(len(n.entries)-1, 1, nil)[0])
+	return copyTrusted(n.splice(length-1, 1, nil)[0])
 }
 
 // Shift removes and returns a detached copy of the first element's present value.
 func (array *Array) Shift() any {
-	defer array.n.lock()()
-	n := array.n
-	n.ensureEntries()
-	if len(n.entries) == 0 || !n.attached() {
+	n, mu := array.ref.lock()
+	defer mu.Unlock()
+	if n.arrayLength() == 0 || !n.attached() {
 		return nil
 	}
 	return copyTrusted(n.splice(0, 1, nil)[0])
@@ -325,18 +357,17 @@ func (array *Array) Shift() any {
 // value never shares a container with the base revision, as a value removed
 // from upstream's Proxy draft cannot write through.
 func (array *Array) Splice(start, remove int, items ...any) ([]any, error) {
-	defer array.n.lock()()
-	n := array.n
-	n.ensureEntries()
-	stored, err := n.placeAll(items)
+	stored, err := array.ref.placements(items...)
 	if err != nil {
 		return nil, err
 	}
+	n, mu := array.ref.lock()
+	defer mu.Unlock()
 	if !n.attached() {
 		return []any{}, nil
 	}
 	if start < 0 {
-		start = max(len(n.entries)+start, 0)
+		start = max(n.arrayLength()+start, 0)
 	}
 	removed := n.splice(start, remove, stored)
 	for index, value := range removed {
@@ -347,30 +378,79 @@ func (array *Array) Splice(start, remove int, items ...any) ([]any, error) {
 
 // SetLen grows the array with nulls or shrinks it.
 func (array *Array) SetLen(length int) {
-	defer array.n.lock()()
-	n := array.n
-	n.ensureEntries()
+	n, mu := array.ref.lock()
+	defer mu.Unlock()
 	if !n.attached() || length < 0 {
 		return
 	}
-	if length < len(n.entries) {
-		n.splice(length, len(n.entries)-length, nil)
+	current := n.arrayLength()
+	if length < current {
+		n.splice(length, current-length, nil)
 		return
 	}
-	n.splice(len(n.entries), 0, make([]any, length-len(n.entries)))
+	n.splice(current, 0, make([]any, length-current))
 }
 
-// Reverse reverses the elements in place.
+// Reverse reverses the elements in place: tracker.ts reverse, which reverses the pieces and flips each.
 func (array *Array) Reverse() {
-	defer array.n.lock()()
-	n := array.n
-	n.ensureEntries()
-	if !n.attached() || len(n.entries) < 2 {
+	n, mu := array.ref.lock()
+	defer mu.Unlock()
+	if !n.attached() || n.arrayLength() < 2 {
 		return
 	}
-	slices.Reverse(n.entries)
-	n.structural = true
-	n.markChanged()
+	overlay := n.arrayOverlay()
+	pieces := slices.Clone(overlay.piecesOf())
+	slices.Reverse(pieces)
+	for index := range pieces {
+		p := &pieces[index]
+		p.start = p.sourceIndex(p.length - 1)
+		p.step = -p.step
+	}
+	overlay.replaceAllPieces(pieces)
+	n.markStructural()
+}
+
+// tokens names every element in order by its source and source index.
+func (overlay *arrayOverlay) tokens() []sortToken {
+	tokens := make([]sortToken, 0, overlay.root.count())
+	for _, p := range overlay.piecesOf() {
+		for offset := range p.length {
+			tokens = append(tokens, sortToken{p.source, p.sourceIndex(offset)})
+		}
+	}
+	return tokens
+}
+
+// Reorder rearranges the elements so that the element now at position i is the one that was at permutation[i], the
+// permutation of the "m" operation. It is the sort and reverse of tracker.ts with the resulting order given directly.
+// permutation must name every current position exactly once.
+func (array *Array) Reorder(permutation []int) error {
+	n, mu := array.ref.lock()
+	defer mu.Unlock()
+	if len(permutation) != n.arrayLength() {
+		return errors.New("permutation length does not match the array length")
+	}
+	seen := make([]bool, len(permutation))
+	identity := true
+	for position, source := range permutation {
+		if source < 0 || source >= len(seen) || seen[source] {
+			return errors.New("permutation must name every array position exactly once")
+		}
+		seen[source] = true
+		identity = identity && source == position
+	}
+	if !n.attached() || identity {
+		return nil
+	}
+	overlay := n.arrayOverlay()
+	current := overlay.tokens()
+	order := make([]sortToken, len(permutation))
+	for position, source := range permutation {
+		order[position] = current[source]
+	}
+	overlay.replaceAllPieces(piecesFromOrder(order))
+	n.markStructural()
+	return nil
 }
 
 // clampIndex is tracker.ts clampIndex: a negative index counts from the end, and the result lies in [0, length].
@@ -385,18 +465,18 @@ func clampIndex(index, length int) int {
 // A negative index counts from the end. As tracker.ts fill, an empty range places nothing, so value is validated only
 // when the range is not empty.
 func (array *Array) Fill(value any, start, end int) error {
-	defer array.n.lock()()
-	n := array.n
-	n.ensureEntries()
-	start, end = clampIndex(start, len(n.entries)), clampIndex(end, len(n.entries))
-	if end <= start {
+	if array.fillRangeEmpty(start, end) {
 		return nil
 	}
-	stored, err := n.place(value)
+	stored, err := array.ref.placement(value)
 	if err != nil {
 		return err
 	}
-	if !n.attached() {
+	n, mu := array.ref.lock()
+	defer mu.Unlock()
+	length := n.arrayLength()
+	start, end = clampIndex(start, length), clampIndex(end, length)
+	if end <= start || !n.attached() {
 		return nil
 	}
 	items := make([]any, end-start)
@@ -409,21 +489,27 @@ func (array *Array) Fill(value any, start, end int) error {
 	return nil
 }
 
+func (array *Array) fillRangeEmpty(start, end int) bool {
+	n, mu := array.ref.lock()
+	defer mu.Unlock()
+	length := n.arrayLength()
+	return clampIndex(end, length) <= clampIndex(start, length)
+}
+
 // CopyWithin copies the elements in [start, end) over the elements from target, by value, as Array.prototype.copyWithin.
 // A negative index counts from the end.
 func (array *Array) CopyWithin(target, start, end int) error {
-	defer array.n.lock()()
-	n := array.n
-	n.ensureEntries()
+	n, mu := array.ref.lock()
+	defer mu.Unlock()
 	if !n.attached() {
 		return nil
 	}
-	length := len(n.entries)
+	length := n.arrayLength()
 	target, start, end = clampIndex(target, length), clampIndex(start, length), clampIndex(end, length)
 	count := min(max(end-start, 0), length-target)
 	items := make([]any, count)
 	for offset := range items {
-		cloned, err := clonePlacementHeld(storedCurrent(n.entryValue(n.entries[start+offset])), n.ctx)
+		cloned, err := clonePlacementHeld(storedCurrent(n.valueAt(start+offset)), n.ctx)
 		if err != nil {
 			return err
 		}
@@ -433,77 +519,91 @@ func (array *Array) CopyWithin(target, start, end int) error {
 	return nil
 }
 
-// overrideSnapshot is an array slot's element override at the start of a sort.
+// overrideSnapshot is an element's override at the start of a sort.
 type overrideSnapshot struct {
 	set   bool
 	value any
 }
 
-// Sort stably orders the elements by less. less receives each element as a draft handle, or the value itself for a
-// primitive, and may edit the draft, including the array: element writes made through the handles stay, while the
-// result of the sort replaces the first min(length at start, length at end) slots and so overwrites slot writes and
-// insertions the comparator made there. An element the comparator left in two slots becomes an independent clone in
-// the later one.
+// sortElement is one element being sorted: its token, the value less receives, and its override at the start.
+type sortElement struct {
+	token    sortToken
+	value    any
+	snapshot overrideSnapshot
+}
+
+// entryOf is the existing entry of a token, or nil for a base element that has none.
+func (n *node) entryOf(token sortToken) *entry {
+	if token.source != nil {
+		return token.source.entries[token.index]
+	}
+	return n.array.baseEntries.get(token.index)
+}
+
+// Sort stably orders the elements by less, as tracker.ts sort. less receives each element as a draft handle, or the
+// value itself for a primitive, and may edit the draft, including the array: element writes made through the handles
+// stay, while the result of the sort replaces the first min(length at start, length at end) slots and so overwrites
+// slot writes and insertions the comparator made there. An element the comparator left in two slots becomes an
+// independent clone in the later one.
 func (array *Array) Sort(less func(a, b any) bool) {
-	n := array.n
-	unlock := n.lock()
-	n.ensureEntries()
-	if !n.attached() || len(n.entries) < 2 {
-		unlock()
+	n, mu := array.ref.lock()
+	if !n.attached() || n.arrayLength() < 2 {
+		mu.Unlock()
 		return
 	}
-	started := slices.Clone(n.entries)
-	values := make(map[*entry]any, len(started))
-	snapshots := make(map[*entry]overrideSnapshot, len(started))
-	for _, e := range started {
-		values[e] = handle(n.entryValue(e))
-		snapshots[e] = overrideSnapshot{set: e.set, value: e.value}
+	overlay := n.arrayOverlay()
+	elements := make([]sortElement, 0, n.arrayLength())
+	for _, p := range overlay.piecesOf() {
+		for offset := range p.length {
+			sourceIndex := p.sourceIndex(offset)
+			element := sortElement{token: sortToken{p.source, sourceIndex}, value: n.slot(p, sourceIndex)}
+			if isContainer(element.value) {
+				element.value = n.entryValue(n.slotEntry(p, sourceIndex))
+			}
+			element.value = handle(element.value)
+			if e := n.entryOf(element.token); e != nil {
+				element.snapshot = overrideSnapshot{set: e.set, value: e.value}
+			}
+			elements = append(elements, element)
+		}
 	}
-	unlock()
+	generation := overlay.generation
+	mu.Unlock()
 
-	sorted := slices.Clone(started)
-	sort.SliceStable(sorted, func(i, j int) bool { return less(values[sorted[i]], values[sorted[j]]) })
+	sort.SliceStable(elements, func(i, j int) bool { return less(elements[i].value, elements[j].value) })
 
-	defer n.lock()()
+	n, mu = array.ref.lock()
+	defer mu.Unlock()
 	if !n.attached() {
 		return
 	}
-	reentrant := !slices.Equal(n.entries, started)
-	for _, e := range sorted {
-		e.set, e.value, e.live = snapshots[e].set, snapshots[e].value, true
-	}
-	covered := min(len(sorted), len(n.entries))
-	if !reentrant && slices.Equal(sorted, started) {
-		return
-	}
-	for _, e := range n.entries[:covered] {
-		if _, sorting := snapshots[e]; !sorting {
-			e.live = false
+	for _, element := range elements {
+		if e := n.entryOf(element.token); e != nil {
+			e.set, e.value = element.snapshot.set, element.snapshot.value
 		}
 	}
-	entries := append(slices.Clone(sorted), n.entries[covered:]...)
-	if reentrant {
-		seen := make(map[*entry]bool, len(entries))
-		for index, e := range entries {
-			if !seen[e] {
-				seen[e] = true
-				continue
-			}
-			cloned, err := clonePlacementHeld(storedCurrent(n.entryValue(e)), n.ctx)
-			if err != nil {
-				panic(err) // tracked content is strict JSON by construction
-			}
-			entries[index] = n.newEntry(cloned)
-		}
+	comparatorWasStructural := overlay.generation != generation
+	currentLength := n.arrayLength()
+	samePrefix := currentLength >= len(elements)
+	for index := 0; samePrefix && index < len(elements); index++ {
+		samePrefix = overlay.sameTokenAt(index, elements[index].token)
 	}
-	n.entries = entries
-	n.structural = true
-	n.markChanged()
+	if !samePrefix {
+		order := make([]sortToken, len(elements))
+		for index, element := range elements {
+			order[index] = element.token
+		}
+		n.replacePieceRange(0, min(len(order), currentLength), piecesFromOrder(order))
+	}
+	if comparatorWasStructural {
+		n.deduplicate()
+	}
 }
 
 // Snapshot returns a detached copy of the present content, as Object.Snapshot.
 func (array *Array) Snapshot() []any {
-	defer array.n.lock()()
-	value, _ := copyTrusted(array.n.current()).([]any)
+	n, mu := array.ref.lock()
+	defer mu.Unlock()
+	value, _ := copyTrusted(n.current()).([]any)
 	return value
 }

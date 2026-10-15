@@ -22,11 +22,17 @@ func hostPython() string {
 
 func repoRoot(t *testing.T) string {
 	t.Helper()
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("resolve test path")
+	return testenv.ModuleRoot(t)
+}
+
+// repoScript returns the path of a repository script the test runs in place. It reads the script first: the go test cache keys a result only on files the test process opens, and the child process that runs the script is invisible to it, so without the read an edited script would replay the earlier pass.
+func repoScript(t *testing.T, path string) string {
+	t.Helper()
+	script := filepath.Join(repoRoot(t), filepath.FromSlash(path))
+	if _, err := os.ReadFile(script); err != nil {
+		t.Fatal(err)
 	}
-	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
+	return script
 }
 
 func TestNpmRuntimeRemovesAdvisoryOverridesFromBundledNpm(t *testing.T) {

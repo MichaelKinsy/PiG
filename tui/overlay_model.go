@@ -473,10 +473,19 @@ func (m *overlayModel) restoreFocus(entry *overlayEntry, except overlayID) {
 	if m.pendingRestore == 0 {
 		m.clearFocusRestore()
 	}
-	if entry != nil {
-		m.focusTarget = entry.preFocus
-	} else {
+	if entry == nil {
 		m.focusTarget = nil
+		return
+	}
+	// upstream: tui.ts:756, 771, 816, 838 call setFocus(entry.preFocus). A preFocus that is itself a mounted overlay, such as a
+	// non-capturing panel focused when this one was shown, gets focus as that overlay: its handle reports isFocused and its own
+	// hide moves focus on again.
+	m.focusTarget = entry.preFocus
+	if id := m.mountedComponentID(entry.preFocus); id != 0 {
+		m.focused = id
+		if m.overlayByID(id).visible() {
+			m.markFocusEligible(id)
+		}
 	}
 }
 

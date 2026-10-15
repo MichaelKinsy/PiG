@@ -44,7 +44,7 @@ func TestDispatchContext_AssertActiveRejectsStale(t *testing.T) {
 	}
 	r := inproc.NewRunner(exts, ".")
 	// Emit before invalidation: should work fine.
-	_, _ = r.EmitToolCall(context.Background(), extension.BashToolCallEvent{})
+	_, _ = r.EmitToolCall(context.Background(), extension.CustomToolCallEvent{})
 	if cwdErr != nil {
 		t.Fatalf("CWD() before invalidation: err = %v, want nil", cwdErr)
 	}

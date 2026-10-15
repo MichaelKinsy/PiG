@@ -1,0 +1,83 @@
+[
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionReportsItsCwdIdAndPersistence"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_accessors.go: replace `func (s *Session) GetCwd() string { return s.CWD() }` with `func (s *Session) GetCwd() string { return \"\" }`; TestSessionReportsItsCwdIdAndPersistence fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionReportsItsCwdIdAndPersistence"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_accessors.go: replace `func (s *Session) GetSessionId() string { return s.ID() }` with `func (s *Session) GetSessionId() string { return \"\" }`; TestSessionReportsItsCwdIdAndPersistence fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionReportsItsCwdIdAndPersistence"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_accessors.go: replace `func (s *Session) IsPersisted() bool { return s.Path() != \"\" }` with `func (s *Session) IsPersisted() bool { return s.Path() == \"\" }`; TestSessionReportsItsCwdIdAndPersistence fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestUsesDefaultSessionDir"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_accessors.go: replace `return s.sessionDir != \"\" && s.sessionDir == defaultSessionDir(s.CWD())` with `return s.sessionDir != \"\"`; TestUsesDefaultSessionDir fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestGetLeafEntryAndResetLeaf"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_accessors.go: replace `if s.leafID == nil {\n\t\treturn nil, false\n\t}\n\tentry, ok := s.byID[*s.leafID]` with `entry, ok := s.byID[*s.leafID]`; TestGetLeafEntryAndResetLeaf fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestGetChildrenListsDirectChildrenInAppendOrder"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_accessors.go: replace `if entry.Base().ParentID != nil && *entry.Base().ParentID == parentID {` with `if entry.Base().ParentID != nil && *entry.Base().ParentID != parentID {`; TestGetChildrenListsDirectChildrenInAppendOrder fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestGetLabelReturnsTheLatestLabelAndClears"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_accessors.go: replace `json.Unmarshal(entry.Raw(), &parsed) != nil || parsed.TargetID != id {` with `json.Unmarshal(entry.Raw(), &parsed) != nil {`; TestGetLabelReturnsTheLatestLabelAndClears fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestGetLabelReturnsTheLatestLabelAndClears"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_accessors.go: replace `label = \"\"\n\t\tif parsed.Label != nil {` with `if parsed.Label != nil {`; TestGetLabelReturnsTheLatestLabelAndClears fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestGetLabelReturnsTheLatestLabelAndClears"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_accessors.go: replace `return label, label != \"\"` with `return label, true`; TestGetLabelReturnsTheLatestLabelAndClears fails."
+ }
+]

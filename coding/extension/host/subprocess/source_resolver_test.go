@@ -147,7 +147,7 @@ func TestResolveExtConfigBuildsLinkedGoFactoryInTargetWorkspace(t *testing.T) {
 // default: a conventional Node factory (a default export, whether resolved
 // for a project-discovered extension or a `-e` command-line path -
 // ResolveExtConfig is the exact resolver pig's `-e` handling uses,
-// cmd/pig/configured_resources.go's pathToExtConfigs) packs into the
+// coding/cli/configured_resources.go's pathToExtConfigs) packs into the
 // session's one shared Node cell, matching Go/Rust/Python factories. This
 // mirrors upstream: Pi's cli/args.ts merges a `-e`/`--extension` path into
 // the same extension list as every other discovered extension with no

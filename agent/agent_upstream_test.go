@@ -19,7 +19,7 @@ import (
 // .upstream/v0.87.1/packages/agent/test/agent.test.ts:128
 // upstream: "should create an agent instance with default state"
 func TestAgent_CreatesAgentWithDefaultState(t *testing.T) {
-	a := NewAgent(AgentOptions{})
+	a := mustNewAgent(AgentOptions{})
 
 	if a.Model() == nil || a.ThinkingLevel() != ai.ThinkingOff || a.StreamingMessage() != nil || len(a.PendingToolCalls()) != 0 || a.ErrorMessage() != "" {
 		t.Fatalf("unexpected default runtime state: model=%v thinking=%v streaming=%v pending=%v error=%q", a.Model(), a.ThinkingLevel(), a.StreamingMessage(), a.PendingToolCalls(), a.ErrorMessage())
@@ -34,7 +34,7 @@ func TestAgent_CreatesAgentWithDefaultState(t *testing.T) {
 // upstream: "should create an agent instance with custom initial state".
 func TestAgent_CreatesAgentWithCustomInitialState(t *testing.T) {
 	model := scriptedModel(&scriptedProvider{respond: replyText("unused")})
-	a := NewAgent(AgentOptions{SystemPrompt: "You are a helpful assistant.", Model: model, ThinkingLevel: ai.ThinkingLow})
+	a := mustNewAgent(AgentOptions{SystemPrompt: "You are a helpful assistant.", Model: model, ThinkingLevel: ai.ThinkingLow})
 
 	initial := a.Messages()[0].System
 	if initial == nil || initial.Content != ai.SystemText("You are a helpful assistant.") || initial.Timestamp != 0 || len(initial.ToolsAdded) != 0 || len(initial.ToolsRemoved) != 0 || len(initial.Sections) != 0 {
@@ -48,7 +48,7 @@ func TestAgent_CreatesAgentWithCustomInitialState(t *testing.T) {
 // .upstream/v0.87.1/packages/agent/test/agent.test.ts:323
 // upstream: "should subscribe to events": state mutators emit no events.
 func TestAgent_SubscribesToEvents(t *testing.T) {
-	a := NewAgent(AgentOptions{})
+	a := mustNewAgent(AgentOptions{})
 	count := 0
 	unsubscribe := a.Subscribe(func(context.Context, AgentEvent) error { count++; return nil })
 	if count != 0 {
@@ -69,7 +69,7 @@ func TestAgent_SubscribesToEvents(t *testing.T) {
 // upstream: "emits full lifecycle events for thrown run failures"
 func TestAgent_EmitsFullLifecycleEventsForThrownRunFailures(t *testing.T) {
 	rec := newEventRecorder(nil)
-	a := NewAgent(AgentOptions{Model: fakeTestModel(&recordingProvider{err: errors.New("provider exploded")}), EventCh: rec.ch})
+	a := mustNewAgent(AgentOptions{Model: fakeTestModel(&recordingProvider{err: errors.New("provider exploded")}), EventCh: rec.ch})
 
 	msgs := mustSend(t, a, "hello")
 
@@ -100,7 +100,7 @@ func TestAgent_AwaitsSubscribersBeforePromptResolves(t *testing.T) {
 			close(listenerFinished)
 		}
 	})
-	a := NewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: replyText("ok")}), EventCh: rec.ch})
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: replyText("ok")}), EventCh: rec.ch})
 
 	resolved := sendAsync(t, a, "hello")
 	// The listener now holds the run open at turn_end.
@@ -141,7 +141,7 @@ func captureTool(name string, captured chan<- ToolUpdateCallback, update bool) *
 func TestAgent_IgnoresToolUpdatesAfterToolExecutionSettles(t *testing.T) {
 	captured := make(chan ToolUpdateCallback, 1)
 	rec := newEventRecorder(nil)
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model:   scriptedModel(&scriptedProvider{respond: toolCallsThenText(toolCall("call-1", "delayed_tool", nil))}),
 		Tools:   []AgentTool{captureTool("delayed_tool", captured, true)},
 		EventCh: rec.ch,
@@ -178,7 +178,7 @@ func TestAgent_IgnoresSettledParallelToolUpdateWhileAnotherToolRuns(t *testing.T
 			return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "done"}}, Terminate: true}, nil
 		}}
 	rec := newEventRecorder(nil)
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model: scriptedModel(&scriptedProvider{respond: toolCallsThenText(
 			toolCall("call-1", "settled_tool", nil), toolCall("call-2", "slow_tool", nil))}),
 		Tools:   []AgentTool{captureTool("settled_tool", captured, false), slow},
@@ -211,7 +211,7 @@ func TestAgent_IgnoresSettledParallelToolUpdateWhileAnotherToolRuns(t *testing.T
 // upstream: "should update state with mutators". appendMessages is the
 // Go slice-growth operation corresponding to upstream state.messages.push.
 func TestAgent_UpdatesStateWithMutators(t *testing.T) {
-	a := NewAgent(AgentOptions{})
+	a := mustNewAgent(AgentOptions{})
 	model := scriptedModel(&scriptedProvider{})
 	a.SetModel(model)
 	a.SetThinkingLevel(ai.ThinkingHigh)
@@ -242,7 +242,7 @@ func TestAgent_UpdatesStateWithMutators(t *testing.T) {
 // .upstream/v0.87.1/packages/agent/test/agent.test.ts:663
 // upstream: "should support steering message queue"
 func TestAgent_SupportsSteeringMessageQueue(t *testing.T) {
-	a := NewAgent(AgentOptions{})
+	a := mustNewAgent(AgentOptions{})
 	a.Steer(userMessage("Steering message"))
 	if len(a.Messages()) != 0 {
 		t.Fatalf("steering message reached the transcript: %v", a.Messages())
@@ -252,7 +252,7 @@ func TestAgent_SupportsSteeringMessageQueue(t *testing.T) {
 // .upstream/v0.87.1/packages/agent/test/agent.test.ts:673
 // upstream: "should support follow-up message queue"
 func TestAgent_SupportsFollowUpMessageQueue(t *testing.T) {
-	a := NewAgent(AgentOptions{})
+	a := mustNewAgent(AgentOptions{})
 	a.FollowUp(userMessage("Follow-up message"))
 	if len(a.Messages()) != 0 {
 		t.Fatalf("follow-up message reached the transcript: %v", a.Messages())
@@ -274,7 +274,7 @@ func TestAgent_RejectsResetWhileProcessing(t *testing.T) {
 		}()
 		return stream
 	}}
-	a := NewAgent(AgentOptions{Model: scriptedModel(provider)})
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(provider)})
 
 	done := sendAsync(t, a, "Hello")
 	waitSignal(t, started, "stream start")
@@ -300,7 +300,7 @@ func TestAgent_RejectsResetWhileProcessing(t *testing.T) {
 func busyAgent(t *testing.T) (*Agent, func()) {
 	t.Helper()
 	started := make(chan struct{}, 1)
-	a := NewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: func(_ int, req scriptedRequest) *ai.AssistantMessageEventStream {
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: func(_ int, req scriptedRequest) *ai.AssistantMessageEventStream {
 		return abortableStream(req.ctx, started)
 	}})})
 	ctx, cancel := context.WithCancel(context.Background())
@@ -336,7 +336,7 @@ func TestAgent_ThrowsWhenContinueCalledWhileStreaming(t *testing.T) {
 	a, stop := busyAgent(t)
 	defer stop()
 
-	if _, err := a.Continue(context.Background()); !errors.Is(err, ErrAlreadyProcessing) || err.Error() != "Agent is already processing. Wait for completion before continuing." {
+	if _, err := a.ContinueMessages(context.Background()); !errors.Is(err, ErrAlreadyProcessing) || err.Error() != "Agent is already processing. Wait for completion before continuing." {
 		t.Fatalf("Continue error = %v, want ErrAlreadyProcessing", err)
 	}
 }
@@ -344,11 +344,11 @@ func TestAgent_ThrowsWhenContinueCalledWhileStreaming(t *testing.T) {
 // .upstream/v0.87.1/packages/agent/test/agent.test.ts:800
 // upstream: "continue() should process queued follow-up messages after an assistant turn"
 func TestAgent_ContinueProcessesQueuedFollowUpAfterAssistantTurn(t *testing.T) {
-	a := NewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: replyText("Processed")})})
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: replyText("Processed")})})
 	a.SetMessages([]AgentMessage{userMessage("Initial"), assistantText("Initial response")})
 	a.FollowUp(userMessage("Queued follow-up"))
 
-	msgs, err := a.Continue(context.Background())
+	msgs, err := a.ContinueMessages(context.Background())
 	if err != nil {
 		t.Fatalf("Continue: %v", err)
 	}
@@ -394,12 +394,12 @@ func TestAgent_ContinueKeepsSteeringModeForAssistantTailFallback(t *testing.T) {
 	for _, mode := range []QueueMode{QueueModeOneAtATime, QueueModeAll} {
 		t.Run(string(mode), func(t *testing.T) {
 			var requests [][]string
-			a := NewAgent(AgentOptions{Model: scriptedModel(recordUsers(&requests)), SteeringMode: mode})
+			a := mustNewAgent(AgentOptions{Model: scriptedModel(recordUsers(&requests)), SteeringMode: mode})
 			a.SetMessages([]AgentMessage{userMessage("Initial"), assistantText("Initial response")})
 			a.Steer(userMessage("Steering 1"))
 			a.Steer(userMessage("Steering 2"))
 
-			if _, err := a.Continue(context.Background()); err != nil {
+			if _, err := a.ContinueMessages(context.Background()); err != nil {
 				t.Fatalf("Continue: %v", err)
 			}
 			checkSteeringRequests(t, mode, requests, "Steering 1", "Steering 2")
@@ -413,10 +413,10 @@ func TestAgent_ContinueKeepsSteeringModeForAssistantTailFallback(t *testing.T) {
 func TestAgent_KeepsPrepareNextTurnSignalCallbackBehavior(t *testing.T) {
 	provider := &scriptedProvider{respond: toolCallsThenText(toolCall("tool-1", "noop", nil))}
 	sawContext := false
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model: scriptedModel(provider),
 		Tools: []AgentTool{noopTool()},
-		PrepareNextTurn: func(ctx context.Context, _ PrepareNextTurnContext) (*AgentLoopTurnUpdate, error) {
+		PrepareNextTurn: func(ctx context.Context) (*AgentLoopTurnUpdate, error) {
 			sawContext = ctx != nil && ctx.Done() != nil
 			return nil, nil
 		},
@@ -431,6 +431,53 @@ func TestAgent_KeepsPrepareNextTurnSignalCallbackBehavior(t *testing.T) {
 	}
 }
 
+// packages/agent/test/agent.test.ts:859 "keeps legacy prepareNextTurn signal callback behavior", with the hook assigned after construction:
+// upstream's public Agent.prepareNextTurn property (packages/agent/src/agent.ts:211) is replaced between runs, and the loop runs
+// `prepareNextTurnWithContext || prepareNextTurn` (agent.ts:484-488), so a context hook set as well receives the turn instead.
+func TestAgent_SetPrepareNextTurnReplacesTheLegacyHookBetweenRuns(t *testing.T) {
+	// Each run is a tool-call turn, then the final text turn that follows it: the hook sees the turn that follows the tool call.
+	provider := &scriptedProvider{respond: func(call int, _ scriptedRequest) *ai.AssistantMessageEventStream {
+		if call%2 == 1 {
+			return doneStream(toolUseMessage(toolCall("tool-1", "noop", nil)))
+		}
+		return doneStream(textMessage("done"))
+	}}
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(provider), Tools: []AgentTool{noopTool()}})
+	var first, second, withContext int
+	a.SetPrepareNextTurn(func(context.Context) (*AgentLoopTurnUpdate, error) { first++; return nil, nil })
+	a.SetPrepareNextTurn(func(ctx context.Context) (*AgentLoopTurnUpdate, error) {
+		if ctx == nil || ctx.Done() == nil {
+			t.Error("the legacy hook received no run context")
+		}
+		second++
+		return nil, nil
+	})
+	if a.PrepareNextTurnHook() == nil {
+		t.Fatal("PrepareNextTurnHook is nil after SetPrepareNextTurn")
+	}
+	if _, err := a.Send(t.Context(), "start"); err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	if provider.calls() != 2 || first != 0 || second != 1 {
+		t.Fatalf("requests %d, replaced hook ran %d times, current hook ran %d times; want 2, 0, 1", provider.calls(), first, second)
+	}
+
+	a.SetPrepareNextTurnWithContext(func(context.Context, PrepareNextTurnContext) (*AgentLoopTurnUpdate, error) {
+		withContext++
+		return nil, nil
+	})
+	if _, err := a.Send(t.Context(), "again"); err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	if provider.calls() != 4 || withContext != 1 || second != 1 {
+		t.Fatalf("context hook ran %d times and legacy hook %d times; the context hook must win (want 1, 1)", withContext, second)
+	}
+	a.SetPrepareNextTurn(nil)
+	if a.PrepareNextTurnHook() != nil {
+		t.Fatal("SetPrepareNextTurn(nil) kept a hook")
+	}
+}
+
 // .upstream/v0.87.1/packages/agent/test/agent.test.ts:915
 // upstream: "forwards finishTurn through AgentOptions with the active abort signal".
 func TestAgent_ForwardsFinishTurnWithActiveRunContext(t *testing.T) {
@@ -439,12 +486,12 @@ func TestAgent_ForwardsFinishTurnWithActiveRunContext(t *testing.T) {
 	var sawRunContext bool
 	var contextRoles []string
 	var a *Agent
-	a = NewAgent(AgentOptions{
+	a = mustNewAgent(AgentOptions{
 		Model: scriptedModel(provider),
 		Tools: []AgentTool{noopTool()},
 		FinishTurn: func(turnCtx context.Context, turn AgentTurnContext) (*AgentTurnDecision, error) {
 			sawRunContext = turnCtx == a.Signal() && turnCtx.Done() != nil
-			contextRoles = roles(turn.Context)
+			contextRoles = roles(turn.Context.Messages)
 			return &AgentTurnDecision{Action: AgentTurnEnd}, nil
 		},
 	})
@@ -462,7 +509,7 @@ func TestAgent_ForwardsFinishTurnWithActiveRunContext(t *testing.T) {
 func TestAgent_RejectsQueuedContinuationFromEmptyContext(t *testing.T) {
 	for _, name := range []string{"empty", "system-only"} {
 		t.Run(name, func(t *testing.T) {
-			a := NewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: replyText("unexpected")})})
+			a := mustNewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: replyText("unexpected")})})
 			if name == "system-only" {
 				a.SetMessages([]AgentMessage{{System: &ai.SystemMessage{Content: ai.SystemText("system only"), Timestamp: 1}}})
 			}
@@ -470,7 +517,7 @@ func TestAgent_RejectsQueuedContinuationFromEmptyContext(t *testing.T) {
 			a.Steer(steering)
 			a.FollowUp(followUp)
 
-			if _, err := a.Continue(context.Background()); !errors.Is(err, ErrNoMessagesToContinue) || err.Error() != "No messages to continue from" {
+			if _, err := a.ContinueMessages(context.Background()); !errors.Is(err, ErrNoMessagesToContinue) || err.Error() != "No messages to continue from" {
 				t.Fatalf("Continue error = %v, want ErrNoMessagesToContinue", err)
 			}
 			if got := a.PeekQueuedMessages(); len(got) != 1 || got[0].User != steering.User {
@@ -495,11 +542,11 @@ func TestAgent_DefersFollowUpOnFirstContinuationRequest(t *testing.T) {
 	for name, messages := range map[string][]AgentMessage{"user": {userMessage("existing user")}, "toolResult": toolResultTail} {
 		t.Run(name, func(t *testing.T) {
 			var requests [][]string
-			a := NewAgent(AgentOptions{Model: scriptedModel(recordUsers(&requests))})
+			a := mustNewAgent(AgentOptions{Model: scriptedModel(recordUsers(&requests))})
 			a.SetMessages(messages)
 			a.FollowUp(userMessage("follow-up"))
 
-			if _, err := a.Continue(context.Background()); err != nil {
+			if _, err := a.ContinueMessages(context.Background()); err != nil {
 				t.Fatalf("Continue: %v", err)
 			}
 			if len(requests) != 2 || slices.Contains(requests[0], "follow-up") || !slices.Contains(requests[1], "follow-up") {
@@ -515,12 +562,12 @@ func TestAgent_PollsSteeringAtContinuationStartup(t *testing.T) {
 	for _, mode := range []QueueMode{QueueModeOneAtATime, QueueModeAll} {
 		t.Run(string(mode), func(t *testing.T) {
 			var requests [][]string
-			a := NewAgent(AgentOptions{Model: scriptedModel(recordUsers(&requests)), SteeringMode: mode})
+			a := mustNewAgent(AgentOptions{Model: scriptedModel(recordUsers(&requests)), SteeringMode: mode})
 			a.SetMessages([]AgentMessage{userMessage("existing")})
 			a.Steer(userMessage("first"))
 			a.Steer(userMessage("second"))
 
-			if _, err := a.Continue(context.Background()); err != nil {
+			if _, err := a.ContinueMessages(context.Background()); err != nil {
 				t.Fatalf("Continue: %v", err)
 			}
 			checkSteeringRequests(t, mode, requests, "first", "second")
@@ -532,12 +579,12 @@ func TestAgent_PollsSteeringAtContinuationStartup(t *testing.T) {
 // upstream: "keeps steering ahead of follow-up from a non-assistant continuation tail"
 func TestAgent_KeepsSteeringAheadOfFollowUpFromNonAssistantTail(t *testing.T) {
 	var requests [][]string
-	a := NewAgent(AgentOptions{Model: scriptedModel(recordUsers(&requests))})
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(recordUsers(&requests))})
 	a.SetMessages([]AgentMessage{userMessage("existing")})
 	a.Steer(userMessage("steering"))
 	a.FollowUp(userMessage("follow-up"))
 
-	if _, err := a.Continue(context.Background()); err != nil {
+	if _, err := a.ContinueMessages(context.Background()); err != nil {
 		t.Fatalf("Continue: %v", err)
 	}
 	if len(requests) != 2 || !slices.Contains(requests[0], "steering") || slices.Contains(requests[0], "follow-up") || !slices.Contains(requests[1], "follow-up") {
@@ -574,7 +621,7 @@ func TestAgent_KeepsQueuesOnFailedResponseDespiteContinuation(t *testing.T) {
 			steering, followUp := userMessage("steering"), userMessage("follow-up")
 			var a *Agent
 			rec := steerOnAssistantEnd(&a, steering)
-			a = NewAgent(AgentOptions{
+			a = mustNewAgent(AgentOptions{
 				Model:   scriptedModel(&scriptedProvider{respond: func(int, scriptedRequest) *ai.AssistantMessageEventStream { return errorStream(reason) }}),
 				EventCh: rec.ch,
 				FinishTurn: func(context.Context, AgentTurnContext) (*AgentTurnDecision, error) {
@@ -596,7 +643,7 @@ func TestAgent_KeepsQueuesWhenFinishTurnEndsTheRun(t *testing.T) {
 	steering, followUp := userMessage("steering"), userMessage("follow-up")
 	var a *Agent
 	rec := steerOnAssistantEnd(&a, steering)
-	a = NewAgent(AgentOptions{
+	a = mustNewAgent(AgentOptions{
 		Model:   scriptedModel(&scriptedProvider{respond: replyText("done")}),
 		EventCh: rec.ch,
 		FinishTurn: func(context.Context, AgentTurnContext) (*AgentTurnDecision, error) {
@@ -613,7 +660,7 @@ func TestAgent_KeepsQueuesWhenFinishTurnEndsTheRun(t *testing.T) {
 // .upstream/v0.87.1/packages/agent/test/agent.test.ts:1150
 // upstream: "previews the next selected queued messages without consuming them"
 func TestAgent_PreviewsNextSelectedQueuedMessagesWithoutConsuming(t *testing.T) {
-	a := NewAgent(AgentOptions{SteeringMode: QueueModeOneAtATime, FollowUpMode: QueueModeAll})
+	a := mustNewAgent(AgentOptions{SteeringMode: QueueModeOneAtATime, FollowUpMode: QueueModeAll})
 	first, second, followUp := userMessage("first steering"), userMessage("second steering"), userMessage("follow-up")
 	a.Steer(first)
 	a.Steer(second)
@@ -634,7 +681,7 @@ func TestAgent_PreviewsNextSelectedQueuedMessagesWithoutConsuming(t *testing.T) 
 // upstream: "forwards sessionId to streamFunction options"
 func TestAgent_ForwardsSessionIDToStreamOptions(t *testing.T) {
 	provider := &scriptedProvider{respond: replyText("ok")}
-	a := NewAgent(AgentOptions{Model: scriptedModel(provider), SessionID: "session-abc"})
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(provider), SessionID: "session-abc"})
 
 	mustSend(t, a, "hello")
 	a.SetSessionID("session-def")
@@ -649,7 +696,7 @@ func TestAgent_ForwardsSessionIDToStreamOptions(t *testing.T) {
 // upstream: "forwards provider stream event observers through AgentOptions"
 func TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions(t *testing.T) {
 	var providerEvents []any
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		OnProviderStreamEvent: func(_ context.Context, data any, _ *ai.Model) error {
 			providerEvents = append(providerEvents, data)
 			return nil
@@ -668,5 +715,70 @@ func TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions(t *testin
 
 	if want := []any{map[string]any{"request_cost": 0.01}}; !reflect.DeepEqual(providerEvents, want) {
 		t.Fatalf("provider events = %v, want %v", providerEvents, want)
+	}
+}
+
+// upstream: agent.ts:484-491: with both hooks set, prepareNextTurnWithContext receives the completed turn and wins; without it the legacy hook runs and sees only the run's context.
+func TestAgent_PrepareNextTurnWithContextWinsOverLegacy(t *testing.T) {
+	provider := &scriptedProvider{respond: toolCallsThenText(toolCall("tool-1", "noop", nil))}
+	var calls []string
+	a := mustNewAgent(AgentOptions{
+		Model: scriptedModel(provider),
+		Tools: []AgentTool{noopTool()},
+		PrepareNextTurn: func(context.Context) (*AgentLoopTurnUpdate, error) {
+			calls = append(calls, "legacy")
+			return nil, nil
+		},
+		PrepareNextTurnWithContext: func(_ context.Context, turn PrepareNextTurnContext) (*AgentLoopTurnUpdate, error) {
+			calls = append(calls, "withContext")
+			if turn.Message == nil || len(turn.ToolResults) != 1 {
+				t.Errorf("the hook must see the completed turn: %+v", turn)
+			}
+			return nil, nil
+		},
+	})
+	if _, err := a.Send(t.Context(), "start"); err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	if len(calls) != 1 || calls[0] != "withContext" {
+		t.Fatalf("calls = %v, want only the with-context hook", calls)
+	}
+	// The setters swap the two hooks independently.
+	a.SetPrepareNextTurnWithContext(nil)
+	if a.PrepareNextTurnWithContextHook() != nil || a.PrepareNextTurnHook() == nil {
+		t.Fatal("the legacy hook must stay when the with-context hook is cleared")
+	}
+}
+
+// upstream: agent.ts:211,484-491 prepareNextTurn is a public field read when each run starts: a hook assigned after construction runs between the
+// turns of the next run with the run's signal, and a hook cleared again (assigned undefined) is not called.
+func TestAgent_AssignedPrepareNextTurnRunsFromTheNextRun(t *testing.T) {
+	provider := &scriptedProvider{respond: toolCallsThenText(toolCall("tool-1", "noop", nil))}
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(provider), Tools: []AgentTool{noopTool()}})
+	calls := 0
+	a.SetPrepareNextTurn(func(ctx context.Context) (*AgentLoopTurnUpdate, error) {
+		calls++
+		if ctx.Done() == nil {
+			t.Error("the hook must receive the run's cancellable context")
+		}
+		return nil, nil
+	})
+	if a.PrepareNextTurnHook() == nil {
+		t.Fatal("the assigned hook is not readable")
+	}
+	if _, err := a.Send(t.Context(), "start"); err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	if calls != 1 {
+		t.Fatalf("assigned hook ran %d times between the two turns, want 1", calls)
+	}
+	a.SetPrepareNextTurn(nil)
+	provider2 := &scriptedProvider{respond: toolCallsThenText(toolCall("tool-2", "noop", nil))}
+	a.SetModel(scriptedModel(provider2))
+	if _, err := a.Send(t.Context(), "again"); err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	if calls != 1 {
+		t.Fatalf("a cleared hook ran: calls = %d", calls)
 	}
 }

@@ -2,6 +2,7 @@ package codingagent
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"sync"
 	"time"
@@ -30,11 +31,11 @@ func (m *InteractiveMode) onTerminalResize() {
 // Mirrors upstream interactive-mode.ts scrollbarTrackStyle/scrollbarThumbStyle:
 // (text) => theme.fg("scrollbarTrack"/"scrollbarThumb", text).
 func themedScrollbarTrackStyle(text string) string {
-	return tui.ActiveTheme().FgText("scrollbarTrack", text)
+	return tui.ActiveTheme().Fg("scrollbarTrack", text)
 }
 
 func themedScrollbarThumbStyle(text string) string {
-	return tui.ActiveTheme().FgText("scrollbarThumb", text)
+	return tui.ActiveTheme().Fg("scrollbarThumb", text)
 }
 
 // buildChatViewport constructs the fullscreen transcript over the input dock.
@@ -65,7 +66,7 @@ func (m *InteractiveMode) ensureLoadedResourcesContainer() {
 	}
 }
 
-// mountInteractiveTui builds the mode-appropriate layout from the shared component tree and, when start is set, starts and paints the renderer. Fullscreen arranges the transcript scroll view over the dock and enters the alt screen; regular adds the flat layout to the main screen. The initial paint does not depend on a welcome header or input. Run and live tui-mode switching reuse the same containers across renderer mounts.
+// mountInteractiveTui builds the mode-appropriate layout from the shared component tree and, when start is set, starts and paints the renderer at once, as a live tui-mode switch needs. Init starts the renderer with startInteractiveTui instead. Fullscreen arranges the transcript scroll view over the dock and enters the alt screen; regular adds the flat layout to the main screen. The initial paint does not depend on a welcome header or input. Run and live tui-mode switching reuse the same containers across renderer mounts.
 func (m *InteractiveMode) mountInteractiveTui(start bool) {
 	m.ensureLoadedResourcesContainer()
 	if m.widgetContainerBelow == nil {
@@ -84,6 +85,18 @@ func (m *InteractiveMode) mountInteractiveTui(start bool) {
 		m.statusLine,
 	}
 	m.layout = tui.NewContainer(layoutChildren...)
+	if m.surface != nil {
+		// pig additive (D91): the frontend draws the transcript and the
+		// dock as separate regions of the same component tree.
+		m.surface.SetLayout(
+			tui.NewContainer(m.headerContainer(), m.loadedResourcesContainer, m.chatContainer),
+			tui.NewContainer(m.pendingMessagesContainer, m.statusContainer, m.widgetContainer, m.editorContainer, m.widgetContainerBelow, m.extFooter, m.statusLine),
+		)
+		if start {
+			m.surface.Start()
+		}
+		return
+	}
 	if m.altScreen == nil {
 		m.tuiInst.Add(m.layout)
 		if !start {
@@ -105,6 +118,19 @@ func (m *InteractiveMode) mountInteractiveTui(start bool) {
 	}
 }
 
+// startInteractiveTui starts the renderer mountInteractiveTui(false) mounted as Pi's TUI.start does: fullscreen enters the alt screen, the renderer queries the cell size, and the first frame is requested, not painted (tui.ts start(): requestRender() defers the frame through process.nextTick and the render timer). The first frame has no earlier frame to throttle against, so the request reaches the owner loop at once, which paints it on its next turn; in Init that is the terminal color wait, after applyThemeFromSettings wrote the color query. Pi's TUI.start paints even when quietStartup omits the header.
+func (m *InteractiveMode) startInteractiveTui() {
+	switch {
+	case m.surface != nil:
+		m.surface.Start()
+	case m.altScreen != nil:
+		m.altScreen.StartRequestingRender()
+	default:
+		m.tuiInst.QueryCellSize()
+		m.tuiInst.RequestImmediateRender()
+	}
+}
+
 // switchTuiMode swaps the renderer on the owner loop while preserving the component tree and main-screen render state. The current mode is a no-op; an active overlay refuses a change. Renderer references resolve dynamically under rendererMu, and only a successful swap changes the run's mode. Without startRenderer the new renderer is mounted but neither started nor painted, as the exit path needs.
 // upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:switchTuiMode
 func (m *InteractiveMode) switchTuiMode(mode string, restoreProgress, startRenderer bool) bool {
@@ -114,6 +140,11 @@ func (m *InteractiveMode) switchTuiMode(mode string, restoreProgress, startRende
 	}
 	if mode == current {
 		return true
+	}
+	// pig additive (D91): a frontend session owns the screen, so the run
+	// keeps it until the session falls back.
+	if m.surface != nil {
+		return false
 	}
 	if m.tuiInst.HasOverlay() {
 		return false
@@ -133,7 +164,7 @@ func (m *InteractiveMode) switchTuiMode(mode string, restoreProgress, startRende
 	// so the return leg (fullscreen->regular) can restore it. Local-only state
 	// would be lost when this call returns. Mirrors upstream
 	// InteractiveMode.mainScreenRenderState.
-	if prev, ok := m.tuiInst.(*tui.TUI); ok {
+	if prev, ok := m.tuiInst.(*tui.TuiMainScreen); ok {
 		state := prev.CaptureRenderState()
 		m.mainScreenRenderState = &state
 	}
@@ -144,43 +175,31 @@ func (m *InteractiveMode) switchTuiMode(mode string, restoreProgress, startRende
 	// (no regular cursor-park newline; the alt screen leaves without dumping the
 	// transcript into scrollback). m.tuiInst and m.altScreen are the same object
 	// in fullscreen.
+	// interactive-mode.ts switchTuiMode: const onDebug = previousUi.onDebug, carried to the next renderer.
+	onDebug := m.tuiInst.OnDebug()
 	m.teardownCurrentTui()
 	if current == "fullscreen" && m.transcriptScrollView != nil {
 		m.transcriptScrollView.Dispose()
 		m.transcriptScrollView = nil
 	}
-	if m.themeState.autoSyncEnabled.Load() {
-		m.writeThemeNotifications(false)
-	}
 	m.tuiInst.StopWithOptions(tui.StopOptions{PreserveScreen: true})
+	if viewport, ok := m.tuiInst.(tui.ViewportTUI); ok && tui.IsViewportTUI(m.tuiInst) {
+		viewport.SetLayoutRoot(nil) // interactive-mode.ts:908: the outgoing viewport renderer lets go of the fullscreen layout
+	}
 	m.altScreen = nil
 
 	// Build the incoming renderer from the run's mode, independently of the settings snapshot that reload and unrelated settings changes replace.
 	m.opts.TuiMode = mode
 	m.createInteractiveTui(m.runCtx)
+	m.tuiInst.SetOnDebug(onDebug)
 
 	// Restore persisted main-screen render state when entering regular.
-	if next, ok := m.tuiInst.(*tui.TUI); ok && m.mainScreenRenderState != nil {
+	if next, ok := m.tuiInst.(*tui.TuiMainScreen); ok && m.mainScreenRenderState != nil {
 		next.RestoreRenderState(*m.mainScreenRenderState)
 	}
 
-	// Re-apply Run's renderer-level wiring to the new renderer, sourced from
-	// settings/host state so the current configuration carries across the swap.
-	// Inlined rather than shared because Run interleaves this with one-time setup
-	// (the initial extension width kick) a live swap must not repeat.
-	m.tuiInst.SetShowHardwareCursor(m.opts.Settings.GetShowHardwareCursor())
-	m.tuiInst.SetClearOnShrink(m.opts.Settings.GetClearOnShrink())
-	m.installRenderDispatcher()
-	m.tuiInst.SetOverlayCommandDispatcher(func(command func()) {
-		m.runOnMain(m.runCtx, command)
-	})
-	m.tuiInst.SetFocus(m.editor)
-	if m.opts.SubprocessHost != nil {
-		m.tuiInst.SetOnWidthChange(func(width int) { m.opts.SubprocessHost.NotifyWidth(width) })
-	}
-	// Registered unconditionally: the dialog chat cap depends on height even
-	// when no subprocess extensions are loaded.
-	m.tuiInst.SetOnHeightChange(m.onTerminalHeightChange)
+	// Re-apply Run's renderer-level wiring to the new renderer.
+	m.rewireRenderer()
 
 	// Remount the complete shared component tree into the new renderer, mirroring
 	// upstream remounting every previous child.
@@ -263,6 +282,14 @@ func (m *InteractiveMode) renderNow() {
 
 // requestRender coalesces a render on the current renderer, race-safe like
 // renderNow.
+// ClearEditor empties the editor and re-renders; it shows no status.
+//
+// upstream: interactive-mode.ts:4578 (clearEditor)
+func (m *InteractiveMode) ClearEditor() {
+	m.editor.Clear()
+	m.tuiInst.Render()
+}
+
 func (m *InteractiveMode) requestRender() {
 	m.rendererMu.RLock()
 	defer m.rendererMu.RUnlock()
@@ -282,20 +309,31 @@ func (m *InteractiveMode) createInteractiveTui(ctx context.Context) interactiveT
 	uiCtx, cancelUI := context.WithCancel(ctx)
 	reads := &sync.WaitGroup{}
 	m.clipboardCtx, m.clipboardReads = uiCtx, reads
+	// The first renderer draws on options.terminal (interactive-mode.ts:626); a renderer switch draws on the previous renderer's terminal (:897 `terminal = previousUi.terminal`).
+	terminal := m.opts.Terminal
+	// pig additive (D91): a frontend's surface draws on the frontend's terminal, not the process terminal, so the ANSI renderer that replaces it
+	// when the frontend falls back draws on the options terminal.
+	if _, isSurface := m.tuiInst.(*tui.TuiSurface); m.tuiInst != nil && !isSurface {
+		terminal = m.tuiInst.Terminal()
+	}
 	if m.opts.TuiMode != "fullscreen" {
-		m.tuiInst = CreateInteractiveTui(InteractiveTuiOptions{TuiMode: "regular", Output: m.rendererOut, LogDirectory: m.opts.AgentDir})
+		m.tuiInst = CreateInteractiveTui(InteractiveTuiOptions{TuiMode: "regular", Output: m.rendererOut, Terminal: terminal, LogDirectory: m.opts.AgentDir})
 		m.altScreen = nil
+		m.tuiInst.SetOnDebug(m.handleDebugCommand)
+		m.theme().attach()
 		m.currentTuiCleanup = func() { cancelUI(); reads.Wait() }
 		return interactiveTuiHandle{cleanup: m.currentTuiCleanup}
 	}
 	settings := &SettingsManager{merged: m.opts.Settings}
 	copyOnSelect, wheelScrollLines := settings.GetFullscreenCopyOnSelect(), tuiWheelScrollLines(settings.GetFullscreenWheelScrollLines())
 	m.tuiInst = CreateInteractiveTui(InteractiveTuiOptions{
-		TuiMode: "fullscreen", Output: m.rendererOut, LogDirectory: m.opts.AgentDir,
+		TuiMode: "fullscreen", Output: m.rendererOut, Terminal: terminal, LogDirectory: m.opts.AgentDir,
 		FullscreenCopyOnSelect: &copyOnSelect, FullscreenWheelScrollLines: &wheelScrollLines, CopySelection: m.effectiveCopyClipboard(),
 		OpenURL: func(url string) error { return m.effectiveOpenURL()(url) }, OnRightClickPaste: m.handleRightClickPaste,
 	})
 	m.altScreen = m.tuiInst.(*tui.TuiAltScreen)
+	m.tuiInst.SetOnDebug(m.handleDebugCommand)
+	m.theme().attach()
 	dispatch := m.autoScrollTickDispatcher(uiCtx)
 	m.altScreen.SetTickDispatcher(dispatch)
 	m.currentTuiCleanup = func() { cancelUI(); reads.Wait() }
@@ -337,7 +375,16 @@ func (m *InteractiveMode) stopInteractiveTui() {
 	}
 	m.tuiTornDown = true
 	m.tuiStopped.Store(true)
+	// upstream: interactive-mode.ts:7054 (stop() disposes the active selector)
+	m.disposeActiveSelector()
 	m.disposeTheme()
+	if m.statusLine != nil {
+		// upstream: interactive-mode.ts:7098 (stop() disposes the footer)
+		m.statusLine.Dispose()
+	}
+	// pig additive (D91): the frontend closes its surface before input
+	// pauses, so the drain below discards its in-flight replies.
+	m.closeFrontend()
 	if m.inputReader != nil {
 		m.inputReader.pause()
 	}
@@ -350,7 +397,7 @@ func (m *InteractiveMode) stopInteractiveTui() {
 	}
 	// A fullscreen exit that prints the transcript switches to the main-screen renderer without starting it, renders there, and stops it as a regular run stops: parked below the last line, then CRLF. The resume hint keeps the alternate screen's own preserve-screen exit.
 	// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:stopInteractiveTui
-	if m.altScreen != nil && (&SettingsManager{merged: m.opts.Settings}).GetFullscreenExitOutput() == "transcript" {
+	if m.altScreen != nil && m.fullscreenExitOutput() == FullscreenExitOutputTranscript {
 		for m.altScreen.HasOverlay() {
 			m.altScreen.HideOverlay()
 		}
@@ -367,6 +414,9 @@ func (m *InteractiveMode) stopInteractiveTui() {
 	if m.rawRestore != nil {
 		m.rawRestore()
 		m.rawRestore = nil
+	}
+	if m.frontendCloseErr != nil {
+		fmt.Fprintf(os.Stderr, "Closing native rendering failed: %v\n", m.frontendCloseErr)
 	}
 	// The fullscreen transcript view is owned here, not by the renderer's
 	// implicitScrollView, so its scrollbar-hide timer must be disposed by the

@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
-func registryWithOverride(t *testing.T, provider, id string, override map[string]any) *Services {
+func registryWithOverride(t *testing.T, provider, id string, override map[string]any) *AgentSessionServices {
 	return registryTestServices(t, "", map[string]any{provider: map[string]any{"modelOverrides": map[string]any{id: override}}})
 }
 func TestModelRegistryModelOverridesUpstream(t *testing.T) {
@@ -77,6 +77,20 @@ func TestModelRegistryModelOverridesUpstream(t *testing.T) {
 		}{{"openrouter", "custom/cached-model", ai.ModelPromptCache{"short": 120}}, {"openrouter", sonnet, ai.ModelPromptCache{"short": 300}}, {"openrouter", opus, nil}, {"anthropic", "claude-sonnet-4-6", ai.ModelPromptCache{"short": 300, "long": 1800}}} {
 			if actual := mustRegistryModel(t, s, tc.provider, tc.id).PromptCache; !reflect.DeepEqual(actual, tc.want) {
 				t.Errorf("%s/%s cache=%v, want %v", tc.provider, tc.id, actual, tc.want)
+			}
+		}
+	})
+	// Pi's ModelPromptCacheSchema (models.json validation) is Type.Number({ exclusiveMinimum: 0 }) per tier, so a lifetime need not be a whole number of seconds.
+	t.Run("custom model and model override keep fractional prompt cache lifetimes", func(t *testing.T) {
+		s := registryFromJSON(t, `{"openrouter":{"baseUrl":"https://my-proxy.example.com/v1","api":"openai-completions","models":[{"id":"custom/cached-model","promptCache":{"short":1.5}}],"modelOverrides":{"anthropic/claude-sonnet-4":{"promptCache":{"long":0.25}}}}}`)
+		assertRegistryNoError(t, s)
+		for _, tc := range []struct{ id, want string }{{"custom/cached-model", `{"short":1.5}`}, {sonnet, `{"long":0.25}`}} {
+			data, err := json.Marshal(mustRegistryModel(t, s, "openrouter", tc.id).PromptCache)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(data) != tc.want {
+				t.Errorf("%s cache=%s, want %s", tc.id, data, tc.want)
 			}
 		}
 	})

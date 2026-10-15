@@ -1,0 +1,67 @@
+# Behavior family: extensions-runtime
+# Surface: one realistic extension (robust-notes) written for the python SDK draws the screen Pi draws for the Node version.
+#
+# The extension registers a tool whose result comes from a third-party word splitter, a string flag with a default,
+# session_start and tool_result handlers that set a footer status, a command that appends a custom entry and counts it
+# in the same handler, and a command that opens a focused overlay component.
+#
+# Upstream evidence (Pi 1.1.0, tmux 100x30, test/parity/testdata/robust-notes/node on Pi): the tool row reads
+# "ext-tool-done: rw: alpha|beta gamma|delta"; the note notify reads "robust note 1: first" because pi.appendEntry is
+# visible to the same handler (session-manager.ts appendCustomEntry); the status reads "robust: tools=1"; the overlay
+# renders "robust pick (80)" because TUI.resolveOverlayLayout gives an overlay without a width min(80, available)
+# (tui.ts:1227-1233), and "j" moves the selection to "> beta". The capture ends with the overlay open.
+# /robust-settings is not driven: Pig's getSettings drops unknown settings keys (handoff F2, routed to the settings owner).
+
+name = "75-robust-notes-python"
+description = "The python robust-notes extension draws Pi's screen for its tool, flag, events, appendEntry and overlay"
+covers = [
+  "packages/tui/src/tui.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["../../testdata/robust-notes/python"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "../../testdata/robust-notes/node",
+]
+
+[tmux]
+width = 100
+height = 30
+ready_pattern_pig = "robust: ready"
+ready_pattern_pi = "robust: ready"
+ready_timeout_seconds = 240
+capture_start = "Run: ext tool robust_words"
+
+[[tmux.steps]]
+keys = ['Run: ext tool robust_words {"line":"alpha \"beta gamma\" delta"}', "Enter"]
+wait_contains = ["ext-tool-done: rw: alpha|beta gamma|delta", "robust: tools=1"]
+wait_timeout_seconds = 30
+
+[[tmux.steps]]
+keys = ["/robust-note first", "Enter"]
+wait_contains = ["robust note 1: first"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["/robust-pick", "Enter"]
+wait_contains = ["robust pick (80)"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["j"]
+settle_seconds = 1
+wait_contains = ["> beta"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ["ext-tool-done: rw: alpha|beta gamma|delta", "robust note 1: first", "robust: tools=1", "robust pick (80)", "> beta"]
+both_not_contain = ["panic:", "goroutine ", "exceeds terminal width"]
+escaped_output_equal = true
+runs = 3

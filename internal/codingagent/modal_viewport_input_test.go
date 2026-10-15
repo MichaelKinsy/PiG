@@ -1,29 +1,24 @@
 package codingagent
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-// TestEditorSlotSelectorYieldsViewportKeysInFullscreen pins upstream input
-// order for a built-in selector. TUI runs its input listeners before the
-// focused component, and in fullscreen the alternate screen's listener
-// (tui-alt-screen.ts handleViewportInput) consumes tui.altScreen.pageDown
-// unless an overlay has focus. model-selector.ts is shown in the editor slot,
-// not as an overlay, so in fullscreen PageDown scrolls the viewport and the
-// selection stays on the second match. Regular mode has no such listener:
-// PageDown reaches handleInput's search-input fallback, whose filterModels
-// selects the first match.
-func TestEditorSlotSelectorYieldsViewportKeysInFullscreen(t *testing.T) {
+// TestEditorSlotSelectorPageKeyMovesSelectionInEveryMode: model-selector.ts is shown in the editor slot, not as an overlay. In fullscreen
+// the alternate screen's listener (tui-alt-screen.ts handleViewportInput) would take PageDown for the transcript. Pi PR #7680 (Pi #7629)
+// lets a focused selection that captures the selection page keys keep them, so PageDown moves the selection a page in fullscreen as it
+// does in regular mode (before the change, regular mode refiltered the search and fullscreen scrolled).
+func TestEditorSlotSelectorPageKeyMovesSelectionInEveryMode(t *testing.T) {
 	for _, tc := range []struct {
 		name       string
 		fullscreen bool
-		want       string
 	}{
-		{name: "fullscreen", fullscreen: true, want: "fixture/model-one"},
-		{name: "regular", fullscreen: false, want: "fixture/model-two"},
+		{name: "fullscreen", fullscreen: true},
+		{name: "regular", fullscreen: false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var m *InteractiveMode
@@ -35,14 +30,18 @@ func TestEditorSlotSelectorYieldsViewportKeysInFullscreen(t *testing.T) {
 					t.Fatal("regular probe has an alternate screen")
 				}
 			}
-			items := []tui.ModelSelectorItem{{Provider: "fixture", ID: "model-two"}, {Provider: "fixture", ID: "model-one"}}
-			selector := tui.NewModelSelector("Select model", nil, items, "fixture/model-two")
+			items := make([]tui.ModelSelectorItem, 14)
+			for i := range items {
+				items[i] = tui.ModelSelectorItem{Provider: "fixture", ID: fmt.Sprintf("model-%02d", i)}
+			}
+			selector := tui.NewStaticModelSelectorComponent("Select model", nil, items, "fixture/model-00")
 			selector.SetFilter("model")
-			selector.HandleInput("\x1b[B")
 
 			result := make(chan string, 1)
 			go func() {
-				spec, _ := m.runEditorSlotModelSelector(m.runCtx, selector, nil)
+				done := m.showModelSelector(selector)
+				spec, _ := m.runModelSelectorInput(m.runCtx, selector)
+				done()
 				result <- spec
 			}()
 			input := waitForModalRoute(t, m)
@@ -50,8 +49,8 @@ func TestEditorSlotSelectorYieldsViewportKeysInFullscreen(t *testing.T) {
 			input <- []byte("\r")
 			select {
 			case got := <-result:
-				if got != tc.want {
-					t.Fatalf("selected %q after PageDown, want %q", got, tc.want)
+				if got != "fixture/model-10" {
+					t.Fatalf("selected %q after PageDown, want fixture/model-10", got)
 				}
 			case <-time.After(5 * time.Second):
 				t.Fatal("model selector did not return")

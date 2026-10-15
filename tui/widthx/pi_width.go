@@ -9,6 +9,7 @@ package widthx
 
 import (
 	"sort"
+	"sync"
 	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
@@ -98,7 +99,15 @@ var (
 	// point (all property bits fit in 16 bits), so the per-rune lookup on the
 	// segmentation and width paths is one load instead of a binary search.
 	bmpProps [0x10000]uint16
-	rgiSet   map[string]struct{}
+
+	// rgiSet holds the multi-code-point RGI emoji sequences. Only a segment of several code points reads it, so it is built on first use rather than at process start.
+	rgiSet = sync.OnceValue(func() map[string]struct{} {
+		set := make(map[string]struct{}, len(rgiSequences))
+		for _, s := range &rgiSequences {
+			set[s] = struct{}{}
+		}
+		return set
+	})
 )
 
 func init() {
@@ -113,10 +122,6 @@ func init() {
 		for cp := lo; cp <= min(hi, 0xFFFF); cp++ {
 			bmpProps[cp] = uint16(p)
 		}
-	}
-	rgiSet = make(map[string]struct{}, len(rgiSequences))
-	for _, s := range rgiSequences {
-		rgiSet[s] = struct{}{}
 	}
 }
 
@@ -345,6 +350,6 @@ func isRGIEmoji(seg string) bool {
 	if !utf8.ValidString(seg) {
 		seg = jsstring.FromUTF16(jsstring.ToUTF16(seg))
 	}
-	_, ok := rgiSet[seg]
+	_, ok := rgiSet()[seg]
 	return ok
 }

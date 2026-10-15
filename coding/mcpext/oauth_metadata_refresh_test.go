@@ -10,6 +10,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/mcpext"
+	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 	"github.com/MichaelKinsy/PiG/mcp"
 	"github.com/MichaelKinsy/PiG/mcp/oauth"
 )
@@ -39,7 +40,11 @@ func TestMcpAuthProviderRefreshUsesTheConfiguredAuthServerMetadataURL(t *testing
 	if err := store.Save(t.Context(), stored); err != nil {
 		t.Fatal(err)
 	}
-	metadataURL, _ := url.Parse(server.URL + "/idp/metadata.json")
+	metadata, err := nodeurl.ParseURL(server.URL + "/idp/metadata.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	metadataURL := &metadata
 	provider := mcpext.NewMcpAuthProvider(mcpext.McpAuthProviderOptions{
 		ServerURL: serverURL,
 		Store:     store,
@@ -127,5 +132,25 @@ func TestMcpOAuthCredentialStoreTakesLegacyStateOverANullEntry(t *testing.T) {
 	_ = backend.WithLock(func(current string, _ bool) (*string, error) { stored = current; return nil, nil })
 	if strings.Contains(stored, `"`+serverURL+`": {`) || !strings.HasPrefix(stored, "{\n  \"mcp__work|"+serverURL+"\": {\n") {
 		t.Fatalf("stored = %s", stored)
+	}
+}
+
+// runtime.ts oauthSettings: `new URL(oauth.authServerMetadataUrl)` serializes the URL, so the default port, an uppercase host, dot segments, a backslash and a space in the query reach the OAuth settings in WHATWG form.
+func TestMCPConnectionOAuthSettingsSerializeTheAuthServerMetadataURLLikeNodeURL(t *testing.T) {
+	servers := &serverSet{}
+	for raw, want := range map[string]string{
+		"HTTPS://IDP.EXAMPLE:443/x/../m":    "https://idp.example/m",
+		"http://localhost:80/m":             "http://localhost/m",
+		"https://idp.example\\idp\\m?a b=1": "https://idp.example/idp/m?a%20b=1",
+		"https://idp.exämple/m":             "https://idp.xn--exmple-cua/m",
+	} {
+		connection, _ := connect(t, mcpext.McpServerEntry{
+			Name: "fake", Source: "test",
+			Config: extension.McpServerConfig{URL: "http://unused.invalid", OAuth: &extension.McpOAuthConfig{AuthServerMetadataURL: raw}},
+		}, []transportSource{func() mcp.Transport { return createFakeTransport(servers, fakeTransportOptions{}) }}, nil)
+		settings, err := connection.OAuthSettings()
+		if err != nil || settings.AuthServerMetadataURL == nil || settings.AuthServerMetadataURL.String() != want {
+			t.Errorf("%q: settings = %#v, %v; want %q", raw, settings.AuthServerMetadataURL, err, want)
+		}
 	}
 }

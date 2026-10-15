@@ -58,9 +58,7 @@ func upstreamToContextGoName(camel string) string {
 }
 
 // deferredContextMembers records upstream members not yet on Go Context.
-var deferredContextMembers = map[string]string{
-	"thinkingLevel": "unported on extension.Context; subprocess SDKs expose it via getThinkingLevel",
-}
+var deferredContextMembers = map[string]string{}
 
 // translatedContextMembers records upstream members represented outside the
 // public Go Context type. Every current upstream member is a Go Context member

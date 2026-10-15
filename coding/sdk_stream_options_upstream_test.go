@@ -17,12 +17,12 @@ func captureSDKStreamOptions(t *testing.T, api ai.API, settings icodingagent.Set
 	t.Helper()
 	services := newTestServicesWithSettings(t, settings)
 	var captured ai.StreamOptions
-	services.Registry().RegisterProvider("capture-provider", extension.ProviderConfig{API: api, BaseURL: "https://capture.invalid/v1", APIKey: "test-api-key", Headers: map[string]string{"x-provider": "provider"}, StreamSimple: func(model extension.Model, _ extension.AIContext, raw extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
-		captured = raw.(ai.StreamOptions)
+	services.Registry().RegisterExtensionProvider("capture-provider", extension.ProviderConfig{API: api, BaseURL: "https://capture.invalid/v1", APIKey: "test-api-key", Headers: map[string]string{"x-provider": "provider"}, StreamSimple: func(model extension.Model, _ extension.AIContext, raw extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
+		captured = raw
 		stream := ai.NewAssistantMessageEventStream()
 		if len(providerEvent) != 0 {
 			if captured.OnProviderStreamEvent != nil {
-				if err := captured.OnProviderStreamEvent(context.Background(), providerEvent[0], model.(*ai.Model)); err != nil {
+				if err := captured.OnProviderStreamEvent(context.Background(), providerEvent[0], model); err != nil {
 					t.Errorf("onProviderStreamEvent: %v", err)
 				}
 			}
@@ -41,7 +41,7 @@ func captureSDKStreamOptions(t *testing.T, api ai.API, settings icodingagent.Set
 	}
 	defer func() { _ = session.Close() }()
 	if len(providerEvent) != 0 {
-		if _, err := session.Prompt(t.Context(), "test"); err != nil {
+		if err := session.Prompt(t.Context(), "test"); err != nil {
 			t.Fatal(err)
 		}
 		return captured
@@ -100,7 +100,19 @@ func TestSDKForwardsProviderRetrySettings(t *testing.T) {
 	}
 }
 
+// sdk.ts:329 `options.maxRetries ?? providerRetrySettings.maxRetries`: an unset setting stays undefined, so the provider's own default applies, while an explicit 0 reaches the request as 0.
+func TestSDKLeavesAnUnsetProviderMaxRetriesUnset(t *testing.T) {
+	if got := captureSDKStreamOptions(t, ai.APIOpenAICompletions, icodingagent.Settings{}, ai.StreamOptions{}, nil); got.MaxRetries != nil {
+		t.Fatalf("unset maxRetries = %d, want nil", *got.MaxRetries)
+	}
+	got := captureSDKStreamOptions(t, ai.APIOpenAICompletions, icodingagent.Settings{Retry: &icodingagent.RetrySettingsJSON{Provider: &icodingagent.ProviderRetrySettings{MaxRetries: new(0)}}}, ai.StreamOptions{}, nil)
+	if got.MaxRetries == nil || *got.MaxRetries != 0 {
+		t.Fatalf("explicit maxRetries = %v, want 0", got.MaxRetries)
+	}
+}
+
 // .upstream/v0.99.1/packages/coding-agent/test/sdk-stream-options.test.ts:250
+// Pi: packages/coding-agent/src/core/extensions/types.ts:892 (BeforeProviderHeadersEvent.headers).
 func TestSDKStreamOptionsRunsHeadersHookOnAssembledHeaders(t *testing.T) {
 	runner := inproc.NewRunner([]extension.Extension{{Path: "/ext/headers", Handlers: map[string][]extension.HandlerFn{"before_provider_headers": {func(args ...any) (any, error) {
 		headers := args[0].(extension.BeforeProviderHeadersEvent).Headers
@@ -148,5 +160,24 @@ func TestSDKForwardsProviderStreamEventsToExtensions(t *testing.T) {
 	want := []extension.ProviderStreamEvent{{Type: "provider_stream_event", Provider: "capture-provider", API: "openai-completions", Model: "capture-model", Data: providerEvent}}
 	if !reflect.DeepEqual(extensionEvents, want) {
 		t.Fatalf("extension events = %#v, want %#v", extensionEvents, want)
+	}
+}
+
+// The session tells the provider whether its provider_stream_event hook has a handler, so an adapter can skip parsing wire events for a hook that would do nothing (ai StreamOptions.ProviderStreamEventWanted). It answers true with a handler and false without one.
+func TestSDKReportsWhetherProviderStreamEventsAreWanted(t *testing.T) {
+	handled := inproc.NewRunner([]extension.Extension{{Path: "/ext/provider-stream-event", Handlers: map[string][]extension.HandlerFn{"provider_stream_event": {func(...any) (any, error) { return nil, nil }}}}}, t.TempDir())
+	unhandled := inproc.NewRunner([]extension.Extension{{Path: "/ext/other", Handlers: map[string][]extension.HandlerFn{"agent_start": {func(...any) (any, error) { return nil, nil }}}}}, t.TempDir())
+	for _, c := range []struct {
+		name   string
+		runner *inproc.Runner
+		want   bool
+	}{{"handler", handled, true}, {"no handler", unhandled, false}, {"no extensions", nil, false}} {
+		options := captureSDKStreamOptions(t, ai.APIOpenAICompletions, icodingagent.Settings{}, ai.StreamOptions{}, c.runner, map[string]any{"event": 1})
+		if options.OnProviderStreamEvent == nil || options.ProviderStreamEventWanted == nil {
+			t.Fatalf("%s: the provider was not given the stream event hook and its wanted check", c.name)
+		}
+		if got := options.ProviderStreamEventWanted(); got != c.want {
+			t.Errorf("%s: ProviderStreamEventWanted() = %v, want %v", c.name, got, c.want)
+		}
 	}
 }

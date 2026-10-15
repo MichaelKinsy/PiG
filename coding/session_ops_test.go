@@ -292,6 +292,8 @@ func TestDispatchSlashForkWithExplicitID(t *testing.T) {
 	sess.agent.SetMessages(sess.inner.BuildContext(nil))
 	srcPath := sess.Path()
 
+	// Pi's /fork takes no argument and opens a picker; the headless Session.DispatchSlash has no picker, so PiG's approved additive argument is
+	// the entry id to fork at (64691d5314, SlashRegistry.DispatchHeadless). The interactive submit path still matches only the exact "/fork".
 	out, err := sess.DispatchSlash("/fork " + deadEnd)
 	if err != nil {
 		t.Fatalf("/fork: %v", err)

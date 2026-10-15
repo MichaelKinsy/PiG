@@ -76,13 +76,13 @@ func (d *LsDetails) ToolResultDetails() any {
 func (d *WriteDetails) ToolResultDetails() any { return nil }
 
 // toWireTruncation converts the internal TruncationResult to the extension SDK
-// ToolTruncation wire shape. Returns nil when no truncation occurred so the
+// TruncationResult wire shape. Returns nil when no truncation occurred so the
 // `truncation` field is omitted, matching upstream's conditional attach.
-func toWireTruncation(tr *TruncationResult) *extension.ToolTruncation {
+func toWireTruncation(tr *TruncationResult) *extension.TruncationResult {
 	if tr == nil || !tr.Truncated {
 		return nil
 	}
-	return &extension.ToolTruncation{
+	return &extension.TruncationResult{
 		Content:               tr.Content,
 		Truncated:             tr.Truncated,
 		TruncatedBy:           tr.TruncatedBy,

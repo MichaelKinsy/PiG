@@ -49,7 +49,7 @@ func contextBoundaryShape(t *testing.T, messages []agent.AgentMessage) []string 
 // REFNL-003.
 func TestContextPhaseInPlaceEditKeepsSystemBoundaries(t *testing.T) {
 	edit := func(event extension.ContextEvent) {
-		event.Messages[0].(agent.AgentMessage).User.Content = ai.UserContentBlocks{ai.TextContent{Text: "edited"}}
+		event.Messages[0].User.Content = ai.UserContentBlocks{ai.TextContent{Text: "edited"}}
 	}
 	for _, tc := range []struct {
 		name    string
@@ -78,7 +78,7 @@ func TestContextPhaseInPlaceEditKeepsSystemBoundaries(t *testing.T) {
 			handler: func(args ...any) (any, error) {
 				event := args[0].(extension.ContextEvent)
 				edit(event)
-				replacement := event.Messages[0].(agent.AgentMessage)
+				replacement := event.Messages[0]
 				replacement.User = &agent.UserMessage{Role: agent.RoleUser, Content: replacement.User.Content}
 				return &extension.ContextEventResult{Messages: []extension.AgentMessage{replacement, event.Messages[1]}}, nil
 			},
@@ -147,7 +147,7 @@ func TestContextPhaseInPlaceReorderCollapsesSystemBoundaries(t *testing.T) {
 func TestContextPhaseEqualValueReplacementCollapsesSystemBoundaries(t *testing.T) {
 	contextBoundaryThroughRunner(t, extension.Extension{Path: "equal", Handlers: map[string][]extension.HandlerFn{"context": {func(args ...any) (any, error) {
 		event := args[0].(extension.ContextEvent)
-		first := event.Messages[0].(agent.AgentMessage)
+		first := event.Messages[0]
 		copyUser := *first.User
 		first.User = &copyUser
 		return &extension.ContextEventResult{Messages: []extension.AgentMessage{first, event.Messages[1]}}, nil

@@ -17,6 +17,7 @@ func TestPublicPackageDocumentation(t *testing.T) {
 		"./agent":                             "Package agent ",
 		"./ai":                                "Package ai ",
 		"./coding":                            "Package coding ",
+		"./coding/cli":                        "Package cli ",
 		"./coding/extension":                  "Package extension ",
 		"./coding/extension/host/runtimecell": "Package runtimecell ",
 		"./coding/pigletbuild":                "Package pigletbuild ",
@@ -49,7 +50,7 @@ func TestPublicPackageLayout(t *testing.T) {
 		}
 	}
 
-	_ = agent.NewAgent(agent.AgentOptions{})
+	_ = mustNewAgent(agent.AgentOptions{})
 	_ = tui.NewText("public")
 
 	packageDirs, err := os.ReadDir(filepath.Join(root, ".upstream", "current", "packages"))

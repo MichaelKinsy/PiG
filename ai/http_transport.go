@@ -4,9 +4,12 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"math"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -35,7 +38,7 @@ func (transport originFormTransport) RoundTrip(request *http.Request) (*http.Res
 	return transport.base.RoundTrip(originFormRequest(request))
 }
 
-// originFormRequest preserves the raw WHATWG path when a standard Go transport serializes a request, without changing the URL observed by a caller-supplied fetch function.
+// originFormRequest preserves the raw WHATWG path and query, without the fragment, when a standard Go transport serializes a request, without changing the URL observed by a caller-supplied fetch function.
 func originFormRequest(request *http.Request) *http.Request {
 	prefix := "//" + request.URL.Host
 	if !strings.HasPrefix(request.URL.Opaque, prefix+"/") {
@@ -43,7 +46,8 @@ func originFormRequest(request *http.Request) *http.Request {
 	}
 	copy := new(*request)
 	url := *request.URL
-	url.Opaque = strings.TrimPrefix(url.Opaque, prefix)
+	// The request target leaves out the fragment, which net/url cannot hold apart from an opaque path.
+	url.Opaque, _, _ = strings.Cut(strings.TrimPrefix(url.Opaque, prefix), "#")
 	copy.URL = &url
 	return copy
 }
@@ -80,7 +84,7 @@ func init() {
 // Mirrors upstream's configureHttpDispatcher(settingsManager.getHttpIdleTimeoutMs()).
 func ConfigureHTTPDispatcher(timeoutMs int) error {
 	if timeoutMs < 0 {
-		return fmt.Errorf("invalid HTTP idle timeout: %d", timeoutMs)
+		return fmt.Errorf("Invalid HTTP idle timeout: %d", timeoutMs)
 	}
 	configuredHTTPIdleTimeoutMs.Store(int64(timeoutMs))
 	return nil
@@ -94,7 +98,8 @@ func ConfiguredHTTPIdleTimeoutMs() int {
 
 func configuredHTTPIdleTimeout() time.Duration {
 	ms := configuredHTTPIdleTimeoutMs.Load()
-	if ms <= 0 {
+	// A delay past time.Duration's range (about 292 years) never fires in Undici's timers either; ms*time.Millisecond would wrap to an arbitrary deadline.
+	if ms <= 0 || ms > math.MaxInt64/int64(time.Millisecond) {
 		return 0
 	}
 	return time.Duration(ms) * time.Millisecond
@@ -106,12 +111,22 @@ type idleTimeoutConn struct {
 	// ready is set by the HTTP transport only after connection establishment, including proxy CONNECT and TLS, completes. Nil keeps standalone wrappers active.
 	ready    *atomic.Bool
 	bodyRead bodyReadOwner
+	// socketRead, when set, reads the dialed socket with net.Conn.Read's results but without a blocking system call entry (socketReader).
+	socketRead func([]byte) (int, error)
+}
+
+// newIdleTimeoutConn wraps a connection dialed on network for the provider transports.
+func newIdleTimeoutConn(conn net.Conn, network string) *idleTimeoutConn {
+	return &idleTimeoutConn{Conn: conn, timeout: configuredHTTPIdleTimeout, ready: new(atomic.Bool), socketRead: newSocketReader(conn, network)}
 }
 
 func (c *idleTimeoutConn) Read(p []byte) (int, error) {
 	c.bodyRead.pending()
 	c.setReadDeadline()
 	if !bodyreadhook.BeforeRead(c.Conn) {
+		if c.socketRead != nil {
+			return c.socketRead(p)
+		}
 		return c.Conn.Read(p)
 	}
 	n, err := c.Conn.Read(p)
@@ -162,7 +177,7 @@ func streamingHTTPClient() *http.Client {
 // is explicitly configured insecure.
 func newStreamingHTTPClient(insecure bool) *http.Client {
 	client := baseStreamingHTTPClient(insecure)
-	client.Transport = &retryTransport{base: &nodeFetchTransport{base: &providerRequestTransport{base: client.Transport}, connectionIdle: true}}
+	client.Transport = &retryTransport{base: &nodeFetchTransport{base: &providerRequestTransport{base: &sseIdleTransport{base: client.Transport}}, connectionIdle: true}}
 	return client
 }
 
@@ -173,8 +188,27 @@ func newStreamingHTTPClient(insecure bool) *http.Client {
 // own (disabled) retries.
 func streamingHTTPClientNoRetry() *http.Client {
 	client := baseStreamingHTTPClient(false)
-	client.Transport = &nodeFetchTransport{base: client.Transport, connectionIdle: true}
+	client.Transport = &nodeFetchTransport{base: &sseIdleTransport{base: client.Transport}, connectionIdle: true}
 	return client
+}
+
+// NodeFetch is Node's global fetch under the configured dispatcher, for code that calls fetch directly (the MCP transports and OAuth requests): a failure before the response headers rejects with TypeError("fetch failed"), an aborted request with "This operation was aborted", a body that drops with "terminated", and the idle timeouts of ConfigureHTTPDispatcher apply. It follows the environment proxy rules of the provider clients.
+type NodeFetch struct{}
+
+// NewNodeFetch returns a fetch that sends each request through the dispatcher configured at that time, sharing its connection pool with the provider clients.
+func NewNodeFetch() *NodeFetch { return &NodeFetch{} }
+
+// Do sends the request. A rejection is the fetch error itself: http.Client's "Post <url>:" decoration around it is not part of what fetch rejects with.
+// The client is resolved per request because fetch uses the global dispatcher current at the call: ConfigureHTTPDispatcher after NewNodeFetch applies, as Pi's
+// configureHttpDispatcher reinstalling the dispatcher (interactive-mode.ts applyRuntimeSettings) does.
+func (f *NodeFetch) Do(request *http.Request) (*http.Response, error) {
+	response, err := streamingHTTPClientNoRetry().Do(request)
+	if requestError, ok := err.(*url.Error); ok { //nolint:errorlint // Only the direct client.Do decoration is stripped.
+		if _, fetchRejection := requestError.Err.(*nodeTransportError); fetchRejection { //nolint:errorlint // The decoration is stripped only from the fetch rejection.
+			err = requestError.Err
+		}
+	}
+	return response, err
 }
 
 // upstream: node_modules/undici/lib/core/connect.js:buildConnector
@@ -187,6 +221,8 @@ func activateHTTPIdleTimeout(conn net.Conn) {
 			if current.ready != nil {
 				current.ready.Store(true)
 			}
+			// A pooled connection keeps a read pending while idle, with the deadline set when that read began. Undici's headersTimeout runs from the request, so each request that gets the connection restarts the read deadline; a deadline change applies to the pending read too.
+			current.setReadDeadline()
 			return
 		case *tls.Conn:
 			conn = current.NetConn()
@@ -206,7 +242,7 @@ func dialStreamingTLS(ctx context.Context, network, address string, dial func(co
 	if err != nil {
 		return nil, err
 	}
-	tracked := &idleTimeoutConn{Conn: conn, timeout: configuredHTTPIdleTimeout, ready: new(atomic.Bool)}
+	tracked := newIdleTimeoutConn(conn, network)
 	options := config.Clone()
 	if options == nil {
 		options = &tls.Config{}
@@ -233,7 +269,47 @@ func streamingDialer(dialer net.Dialer) *net.Dialer {
 	return &dialer
 }
 
+// streamingTransportKey is everything a streaming transport is built from.
+type streamingTransportKey struct {
+	insecure              bool
+	idleTimeoutMs         int64
+	httpProxy, httpsProxy string
+}
+
+// streamingTransports holds the current shared transport for each TLS mode, as Pi holds the one global dispatcher configureHttpDispatcher installed last.
+var streamingTransports struct {
+	sync.Mutex
+	current [2]struct {
+		key       streamingTransportKey
+		transport http.RoundTripper
+	}
+}
+
+// baseStreamingHTTPClient returns a client over the shared transport for the current settings. A change of idle timeout or proxy environment replaces it,
+// as configureHttpDispatcher replaces the global dispatcher; the replaced transport closes its idle connections and keeps serving requests already in flight.
+// upstream: packages/coding-agent/src/core/http-dispatcher.ts:configureHttpDispatcher installs one process-wide dispatcher, so providers reuse connections.
 func baseStreamingHTTPClient(insecure bool) *http.Client {
+	key := streamingTransportKey{
+		insecure: insecure, idleTimeoutMs: configuredHTTPIdleTimeoutMs.Load(),
+		httpProxy: proxyEnv("http_proxy", "HTTP_PROXY"), httpsProxy: proxyEnv("https_proxy", "HTTPS_PROXY"),
+	}
+	mode := 0
+	if insecure {
+		mode = 1
+	}
+	streamingTransports.Lock()
+	defer streamingTransports.Unlock()
+	slot := &streamingTransports.current[mode]
+	if slot.transport == nil || slot.key != key {
+		if closer, ok := slot.transport.(interface{ CloseIdleConnections() }); ok {
+			closer.CloseIdleConnections()
+		}
+		slot.key, slot.transport = key, newStreamingTransport(insecure)
+	}
+	return &http.Client{Transport: slot.transport}
+}
+
+func newStreamingTransport(insecure bool) http.RoundTripper {
 	dialer := streamingDialer(net.Dialer{
 		KeepAlive: 15 * time.Second,
 	})
@@ -245,7 +321,7 @@ func baseStreamingHTTPClient(insecure bool) *http.Client {
 			if err != nil {
 				return nil, err
 			}
-			return &idleTimeoutConn{Conn: conn, timeout: configuredHTTPIdleTimeout, ready: new(atomic.Bool)}, nil
+			return newIdleTimeoutConn(conn, network), nil
 		},
 		TLSClientConfig: &tls.Config{
 			//nolint:gosec // G402: opt-in per-provider insecure TLS for self-signed/internal-CA endpoints; never the default.
@@ -264,5 +340,5 @@ func baseStreamingHTTPClient(insecure bool) *http.Client {
 	transport.DialTLSContext = func(ctx context.Context, network, address string) (net.Conn, error) {
 		return dialStreamingTLS(ctx, network, address, dialer.DialContext, transport.TLSClientConfig, defaultHTTPConnectTimeout)
 	}
-	return &http.Client{Transport: newProxyTunnelTransport(transport)}
+	return newProxyTunnelTransport(transport)
 }

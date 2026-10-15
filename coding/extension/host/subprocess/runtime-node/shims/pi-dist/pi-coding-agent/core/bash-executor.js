@@ -5,7 +5,7 @@
  * - AgentSession.executeBash() for interactive and RPC modes
  * - Direct calls from modes that need bash execution
  */
-import { stripAnsi } from "../utils/ansi.js";
+import { splitIncompleteAnsiSuffix, stripAnsi } from "../utils/ansi.js";
 import { createOutputFileStream } from "../utils/output-files.js";
 import { sanitizeBinaryOutput } from "../utils/shell.js";
 import { DEFAULT_MAX_BYTES, truncateTail } from "./tools/truncate.js";
@@ -33,10 +33,14 @@ export async function executeBashWithOperations(command, cwd, operations, option
         }
     };
     const decoder = new TextDecoder();
-    const onData = (data) => {
-        totalBytes += data.length;
+    // Unfinished escape sequence at the end of the previous chunk, completed by the next chunk.
+    let pendingAnsi = "";
+    const appendText = (rawText) => {
         // Sanitize: strip ANSI, replace binary garbage, normalize newlines
-        const text = sanitizeBinaryOutput(stripAnsi(decoder.decode(data, { stream: true }))).replace(/\r/g, "");
+        const text = sanitizeBinaryOutput(stripAnsi(rawText)).replace(/\r/g, "");
+        if (!text) {
+            return;
+        }
         // Start writing to temp file if exceeds threshold
         if (totalBytes > DEFAULT_MAX_BYTES) {
             ensureTempFile();
@@ -56,51 +60,42 @@ export async function executeBashWithOperations(command, cwd, operations, option
             options.onChunk(text);
         }
     };
+    const onData = (data) => {
+        totalBytes += data.length;
+        const { complete, pending } = splitIncompleteAnsiSuffix(pendingAnsi + decoder.decode(data, { stream: true }));
+        pendingAnsi = pending;
+        appendText(complete);
+    };
+    const flushOutput = () => {
+        const rest = pendingAnsi + decoder.decode();
+        pendingAnsi = "";
+        appendText(rest);
+    };
+    let exitCode = null;
     try {
-        const result = await operations.exec(command, cwd, {
-            onData,
-            signal: options?.signal,
-        });
-        const fullOutput = outputChunks.join("");
-        const truncationResult = truncateTail(fullOutput);
-        if (truncationResult.truncated) {
-            ensureTempFile();
-        }
-        if (tempFileStream) {
-            tempFileStream.end();
-        }
-        const cancelled = options?.signal?.aborted ?? false;
-        return {
-            output: truncationResult.truncated ? truncationResult.content : fullOutput,
-            exitCode: cancelled ? undefined : (result.exitCode ?? undefined),
-            cancelled,
-            truncated: truncationResult.truncated,
-            fullOutputPath: tempFilePath,
-        };
+        ({ exitCode } = await operations.exec(command, cwd, { onData, signal: options?.signal }));
     }
     catch (err) {
-        // Check if it was an abort
-        if (options?.signal?.aborted) {
-            const fullOutput = outputChunks.join("");
-            const truncationResult = truncateTail(fullOutput);
-            if (truncationResult.truncated) {
-                ensureTempFile();
-            }
-            if (tempFileStream) {
-                tempFileStream.end();
-            }
-            return {
-                output: truncationResult.truncated ? truncationResult.content : fullOutput,
-                exitCode: undefined,
-                cancelled: true,
-                truncated: truncationResult.truncated,
-                fullOutputPath: tempFilePath,
-            };
+        // An aborted command still returns the output it produced so far
+        if (!options?.signal?.aborted) {
+            tempFileStream?.end();
+            throw err;
         }
-        if (tempFileStream) {
-            tempFileStream.end();
-        }
-        throw err;
     }
+    flushOutput();
+    const fullOutput = outputChunks.join("");
+    const truncationResult = truncateTail(fullOutput);
+    if (truncationResult.truncated) {
+        ensureTempFile();
+    }
+    tempFileStream?.end();
+    const cancelled = options?.signal?.aborted ?? false;
+    return {
+        output: truncationResult.truncated ? truncationResult.content : fullOutput,
+        exitCode: cancelled ? undefined : (exitCode ?? undefined),
+        cancelled,
+        truncated: truncationResult.truncated,
+        fullOutputPath: tempFilePath,
+    };
 }
 //# sourceMappingURL=bash-executor.js.map

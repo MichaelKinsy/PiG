@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 set -euo pipefail
 here=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
@@ -30,6 +29,10 @@ go run "./$parity/cmd/gointerfaces" -out "$parity/interfaces/pig-go.json"
 version=$(python3 - <<'PY'
 from pathlib import Path
 import re
+import os
+if os.environ.get('PIG_UPSTREAM_VERSION'):
+    print(os.environ['PIG_UPSTREAM_VERSION'])
+    raise SystemExit
 source = Path('internal/coding/pigversion/pigversion.go').read_text()
 match = re.search(r'^const UpstreamVersion = "([^"]+)"$', source, re.MULTILINE)
 if match is None:

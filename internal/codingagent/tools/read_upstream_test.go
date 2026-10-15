@@ -140,6 +140,17 @@ func TestRead_OffsetBeyondEndIsError(t *testing.T) {
 	}
 }
 
+// TOOL-10b: an offset beyond the int range is still past the end (read.ts: allLines.slice(startLine) is empty and
+// startLine >= allLines.length throws), not a Go float-to-int overflow that wraps to a negative start.
+func TestRead_HugeOffsetIsBeyondEndNotAnOverflow(t *testing.T) {
+	for _, offset := range []float64{1e19, 1e30, 1.7976931348623157e308} {
+		res := readFileTool(t, "two.txt", []byte("a\nb"), map[string]any{"offset": offset})
+		if !res.IsError || !strings.Contains(res.Text(), "beyond end of file (2 lines total)") {
+			t.Fatalf("offset %v: res = %+v", offset, res)
+		}
+	}
+}
+
 // TOOL-11: a file that is not valid UTF-8 is decoded lossily, not hidden.
 func TestRead_Latin1FileIsReadAsText(t *testing.T) {
 	res := readFileTool(t, "latin1.txt", []byte("caf\xe9 latin1\nline two\n"), map[string]any{})

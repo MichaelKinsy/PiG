@@ -54,6 +54,45 @@ func TestJSONDurationAliasRetainsPresenceAndType(t *testing.T) {
 	}
 }
 
+// Pi 1.1.0 stamps durationMs (whole milliseconds, monotonic clock) on assistant and tool-result messages and on
+// tool_execution_end. The duration_ms alias keeps the field's presence and its non-negative integer spelling.
+func TestJSONMillisecondAliasRetainsPresenceAndType(t *testing.T) {
+	rules := []JSONAliasRule{{Paths: []string{"/**/durationMs"}, Kind: "duration_ms", Reason: "Measured monotonic clock."}}
+	record := func(value string) Result {
+		return Result{Output: `{"type":"message_end","message":{"role":"assistant","stopReason":"stop","durationMs":` + value + `}}`}
+	}
+	for _, tc := range []struct {
+		name, pig, pi string
+		equal         bool
+	}{
+		{"one millisecond apart", "0", "1", true},
+		{"slow run", "1203", "0", true},
+		{"same value", "35", "35", true},
+		{"string", `"0"`, "0", false},
+		{"null", "null", "0", false},
+		{"negative", "-1", "0", false},
+		{"fraction", "0.5", "1", false},
+		{"exponent", "1e2", "101", false},
+		{"leading zero", "01", "2", false},
+		{"boolean", "false", "0", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := compareJSONResults(record(tc.pig), record(tc.pi), rules)
+			if (err == nil) != tc.equal {
+				t.Fatalf("equal=%t: %v", tc.equal, err)
+			}
+		})
+	}
+	absent := Result{Output: `{"type":"message_end","message":{"role":"assistant","stopReason":"stop"}}`}
+	if compareJSONResults(record("0"), absent, rules) == nil {
+		t.Fatal("a missing durationMs field was accepted")
+	}
+	other := Result{Output: strings.Replace(record("0").Output, `"stopReason":"stop"`, `"stopReason":"error"`, 1)}
+	if compareJSONResults(record("1"), other, rules) == nil {
+		t.Fatal("the alias hid a different stop reason")
+	}
+}
+
 // fauxBashPrompts returns the prompts for which the shared faux provider answers with a bash tool call.
 func fauxBashPrompts(t *testing.T, root string) []string {
 	t.Helper()

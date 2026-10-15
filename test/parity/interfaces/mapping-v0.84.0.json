@@ -37508,7 +37508,7 @@
         "behavior": "complete"
       },
       "production": [
-        "call:cmd/pig/rpc_mode.go#runRPCMode",
+        "call:coding/cli/rpc_mode.go#runRPCMode",
         "call:internal/codingagent/slash_session_handlers.go#compactHandler"
       ],
       "evidence": [
@@ -37532,7 +37532,7 @@
         "behavior": "complete"
       },
       "production": [
-        "call:cmd/pig/rpc_mode.go#runRPCMode",
+        "call:coding/cli/rpc_mode.go#runRPCMode",
         "call:internal/codingagent/slash_session_handlers.go#compactHandler"
       ],
       "evidence": [
@@ -38048,11 +38048,11 @@
         "behavior": "complete"
       },
       "production": [
-        "call:cmd/pig/rpc_mode.go#runRPCMode"
+        "call:coding/cli/rpc_mode.go#runRPCMode"
       ],
       "evidence": [
         "test:coding/session_test.go#TestSessionSetSessionNameEmptyClearsName",
-        "test:cmd/pig/rpc_ui_integration_test.go#TestRPCModeExtensionUIRoundTrip"
+        "test:coding/cli/rpc_ui_integration_test.go#TestRPCModeExtensionUIRoundTrip"
       ]
     },
     {
@@ -38068,11 +38068,11 @@
         "behavior": "complete"
       },
       "production": [
-        "call:cmd/pig/rpc_mode.go#runRPCMode"
+        "call:coding/cli/rpc_mode.go#runRPCMode"
       ],
       "evidence": [
         "test:coding/session_test.go#TestSessionSetSessionNameEmptyClearsName",
-        "test:cmd/pig/rpc_ui_integration_test.go#TestRPCModeExtensionUIRoundTrip"
+        "test:coding/cli/rpc_ui_integration_test.go#TestRPCModeExtensionUIRoundTrip"
       ]
     },
     {
@@ -42398,11 +42398,11 @@
         "behavior": "complete"
       },
       "production": [
-        "call:cmd/pig/rpc_mode.go#runRPCMode"
+        "call:coding/cli/rpc_mode.go#runRPCMode"
       ],
       "evidence": [
         "test:test/extension-conformance/conformance_test.go#TestConformance_TransportsMatch",
-        "test:cmd/pig/rpc_ui_integration_test.go#TestRPCModeExtensionUIRoundTrip",
+        "test:coding/cli/rpc_ui_integration_test.go#TestRPCModeExtensionUIRoundTrip",
         "test:coding/extension/host/subprocess/packed_go_test.go#TestPackedSDKFocusedComponentAndSessionActionsMatch"
       ]
     },
@@ -42427,11 +42427,11 @@
         "behavior": "complete"
       },
       "production": [
-        "call:cmd/pig/rpc_mode.go#runRPCMode"
+        "call:coding/cli/rpc_mode.go#runRPCMode"
       ],
       "evidence": [
         "test:test/extension-conformance/conformance_test.go#TestConformance_TransportsMatch",
-        "test:cmd/pig/rpc_ui_integration_test.go#TestRPCModeExtensionUIRoundTrip",
+        "test:coding/cli/rpc_ui_integration_test.go#TestRPCModeExtensionUIRoundTrip",
         "test:coding/extension/host/subprocess/packed_go_test.go#TestPackedSDKFocusedComponentAndSessionActionsMatch"
       ]
     },
@@ -42726,10 +42726,10 @@
         "behavior": "complete"
       },
       "production": [
-        "call:cmd/pig/rpc_mode.go#runRPCMode"
+        "call:coding/cli/rpc_mode.go#runRPCMode"
       ],
       "evidence": [
-        "test:cmd/pig/rpc_ui_integration_test.go#TestRPCModeExtensionUIRoundTrip",
+        "test:coding/cli/rpc_ui_integration_test.go#TestRPCModeExtensionUIRoundTrip",
         "test:test/extension-conformance/conformance_test.go#TestConformance_TransportsMatch",
         "test:coding/extension/host/subprocess/packed_go_test.go#TestPackedSDKFocusedComponentAndSessionActionsMatch"
       ],
@@ -42990,11 +42990,11 @@
         "behavior": "complete"
       },
       "production": [
-        "call:cmd/pig/rpc_mode.go#runRPCMode"
+        "call:coding/cli/rpc_mode.go#runRPCMode"
       ],
       "evidence": [
         "test:test/extension-conformance/conformance_test.go#TestConformance_TransportsMatch",
-        "test:cmd/pig/rpc_ui_integration_test.go#TestRPCModeExtensionUIRoundTrip",
+        "test:coding/cli/rpc_ui_integration_test.go#TestRPCModeExtensionUIRoundTrip",
         "test:coding/extension/host/subprocess/packed_go_test.go#TestPackedSDKFocusedComponentAndSessionActionsMatch"
       ]
     },
@@ -43019,11 +43019,11 @@
         "behavior": "complete"
       },
       "production": [
-        "call:cmd/pig/rpc_mode.go#runRPCMode"
+        "call:coding/cli/rpc_mode.go#runRPCMode"
       ],
       "evidence": [
         "test:test/extension-conformance/conformance_test.go#TestConformance_TransportsMatch",
-        "test:cmd/pig/rpc_ui_integration_test.go#TestRPCModeExtensionUIRoundTrip",
+        "test:coding/cli/rpc_ui_integration_test.go#TestRPCModeExtensionUIRoundTrip",
         "test:coding/extension/host/subprocess/packed_go_test.go#TestPackedSDKFocusedComponentAndSessionActionsMatch"
       ]
     },
@@ -50022,7 +50022,7 @@
       "disposition": "ported",
       "upstreamShapeHash": "sha256:7e6c121ec741ae6b983217fdc034bb57d1446b63662550085ca0bc965c4b95ae",
       "pigTargets": [
-        "cmd/pig/rpc_types.go#RPCCommandEnvelope"
+        "coding/cli/rpc_types.go#RPCCommandEnvelope"
       ],
       "layers": {
         "shape": "complete",
@@ -50030,10 +50030,10 @@
         "behavior": "complete"
       },
       "production": [
-        "call:cmd/pig/rpc_mode.go#runRPCMode"
+        "call:coding/cli/rpc_mode.go#runRPCMode"
       ],
       "evidence": [
-        "test:cmd/pig/rpc_command_inventory_test.go#TestRPCCommandSwitchCoversPinnedUpstreamTypes"
+        "test:coding/cli/rpc_command_inventory_test.go#TestRPCCommandSwitchCoversPinnedUpstreamTypes"
       ]
     },
     {
@@ -50053,7 +50053,7 @@
       "disposition": "ported",
       "upstreamShapeHash": "sha256:7cd242a4ae1bc207567b197f0dc43754a3aa963432bf974534efbd68537da259",
       "pigTargets": [
-        "cmd/pig/rpc_ui.go#rpcUIRequest"
+        "coding/cli/rpc_ui.go#rpcUIRequest"
       ],
       "layers": {
         "shape": "complete",
@@ -50061,10 +50061,10 @@
         "behavior": "complete"
       },
       "production": [
-        "call:cmd/pig/rpc_mode.go#runRPCMode"
+        "call:coding/cli/rpc_mode.go#runRPCMode"
       ],
       "evidence": [
-        "test:cmd/pig/rpc_ui_integration_test.go#TestRPCModeExtensionUIRoundTrip"
+        "test:coding/cli/rpc_ui_integration_test.go#TestRPCModeExtensionUIRoundTrip"
       ]
     },
     {
@@ -50072,7 +50072,7 @@
       "disposition": "ported",
       "upstreamShapeHash": "sha256:b3acc85aba422138c53cf721b6dbc62c586cc1f633349a58b2193d3a763df7ce",
       "pigTargets": [
-        "cmd/pig/rpc_ui.go#rpcUIResponse"
+        "coding/cli/rpc_ui.go#rpcUIResponse"
       ],
       "layers": {
         "shape": "complete",
@@ -50080,10 +50080,10 @@
         "behavior": "complete"
       },
       "production": [
-        "call:cmd/pig/rpc_mode.go#runRPCMode"
+        "call:coding/cli/rpc_mode.go#runRPCMode"
       ],
       "evidence": [
-        "test:cmd/pig/rpc_ui_test.go#TestRPCUISelectRoundTrip"
+        "test:coding/cli/rpc_ui_test.go#TestRPCUISelectRoundTrip"
       ]
     },
     {
@@ -50091,7 +50091,7 @@
       "disposition": "ported",
       "upstreamShapeHash": "sha256:68ded2dbbf4d3bd1748fd0700ce71386e9bab81fe6114acc76c88de02b0d217c",
       "pigTargets": [
-        "cmd/pig/rpc_types.go#RPCResponse"
+        "coding/cli/rpc_types.go#RPCResponse"
       ],
       "layers": {
         "shape": "complete",
@@ -50099,10 +50099,10 @@
         "behavior": "complete"
       },
       "production": [
-        "call:cmd/pig/rpc_mode.go#runRPCMode"
+        "call:coding/cli/rpc_mode.go#runRPCMode"
       ],
       "evidence": [
-        "test:cmd/pig/rpc_mode_test.go#TestRPCErrorResponseEchoesID"
+        "test:coding/cli/rpc_mode_test.go#TestRPCErrorResponseEchoesID"
       ]
     },
     {
@@ -50110,7 +50110,7 @@
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9b6d23f0c6c58d9c3b3e248c36fd15aa8aaf79c8130c792148f82060dc93034c",
       "pigTargets": [
-        "cmd/pig/rpc_types.go#RPCSessionState"
+        "coding/cli/rpc_types.go#RPCSessionState"
       ],
       "layers": {
         "shape": "complete",
@@ -50118,10 +50118,10 @@
         "behavior": "complete"
       },
       "production": [
-        "call:cmd/pig/rpc_mode.go#runRPCMode"
+        "call:coding/cli/rpc_mode.go#runRPCMode"
       ],
       "evidence": [
-        "test:cmd/pig/rpc_mode_test.go#TestRPCSessionStateJSONShape"
+        "test:coding/cli/rpc_mode_test.go#TestRPCSessionStateJSONShape"
       ]
     },
     {
@@ -50129,7 +50129,7 @@
       "disposition": "ported",
       "upstreamShapeHash": "sha256:8dedeaa14fdeb0759db5af53c14322ca9d1b9962f10df026ea957a3e3a91546b",
       "pigTargets": [
-        "cmd/pig/rpc_types.go#RPCSessionState"
+        "coding/cli/rpc_types.go#RPCSessionState"
       ],
       "layers": {
         "shape": "complete",
@@ -50137,10 +50137,10 @@
         "behavior": "complete"
       },
       "production": [
-        "call:cmd/pig/rpc_mode.go#runRPCMode"
+        "call:coding/cli/rpc_mode.go#runRPCMode"
       ],
       "evidence": [
-        "test:cmd/pig/rpc_mode_test.go#TestRPCSessionStateJSONShape"
+        "test:coding/cli/rpc_mode_test.go#TestRPCSessionStateJSONShape"
       ]
     },
     {
@@ -50148,7 +50148,7 @@
       "disposition": "ported",
       "upstreamShapeHash": "sha256:b0f5e57bc5f8701d726aaf0e10cb9a5aa6b0d2692babbbec199a78e00ba8709f",
       "pigTargets": [
-        "cmd/pig/rpc_types.go#RPCSessionState"
+        "coding/cli/rpc_types.go#RPCSessionState"
       ],
       "layers": {
         "shape": "complete",
@@ -50156,10 +50156,10 @@
         "behavior": "complete"
       },
       "production": [
-        "call:cmd/pig/rpc_mode.go#runRPCMode"
+        "call:coding/cli/rpc_mode.go#runRPCMode"
       ],
       "evidence": [
-        "test:cmd/pig/rpc_mode_test.go#TestRPCSessionStateJSONShape"
+        "test:coding/cli/rpc_mode_test.go#TestRPCSessionStateJSONShape"
       ]
     },
     {
@@ -50167,7 +50167,7 @@
       "disposition": "ported",
       "upstreamShapeHash": "sha256:32ad72cbd36b0e5ca8a37885f90c786ad9212a710b119e45c7bfe947c80e406f",
       "pigTargets": [
-        "cmd/pig/rpc_types.go#RPCSessionState"
+        "coding/cli/rpc_types.go#RPCSessionState"
       ],
       "layers": {
         "shape": "complete",
@@ -50175,10 +50175,10 @@
         "behavior": "complete"
       },
       "production": [
-        "call:cmd/pig/rpc_mode.go#runRPCMode"
+        "call:coding/cli/rpc_mode.go#runRPCMode"
       ],
       "evidence": [
-        "test:cmd/pig/rpc_mode_test.go#TestRPCSessionStateJSONShape"
+        "test:coding/cli/rpc_mode_test.go#TestRPCSessionStateJSONShape"
       ]
     },
     {
@@ -50186,7 +50186,7 @@
       "disposition": "ported",
       "upstreamShapeHash": "sha256:6d52672d9d1abd720415f38f3e7bd98fa12eda7416e410e06fc1ca66334f0942",
       "pigTargets": [
-        "cmd/pig/rpc_types.go#RPCSessionState"
+        "coding/cli/rpc_types.go#RPCSessionState"
       ],
       "layers": {
         "shape": "complete",
@@ -50194,10 +50194,10 @@
         "behavior": "complete"
       },
       "production": [
-        "call:cmd/pig/rpc_mode.go#runRPCMode"
+        "call:coding/cli/rpc_mode.go#runRPCMode"
       ],
       "evidence": [
-        "test:cmd/pig/rpc_mode_test.go#TestRPCSessionStateJSONShape"
+        "test:coding/cli/rpc_mode_test.go#TestRPCSessionStateJSONShape"
       ]
     },
     {
@@ -50205,7 +50205,7 @@
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9ff9ba3ddb5080e0ee9e4b89cf8bbbd2e13cc571d2913ee358260ea4f4fc6239",
       "pigTargets": [
-        "cmd/pig/rpc_types.go#RPCSessionState"
+        "coding/cli/rpc_types.go#RPCSessionState"
       ],
       "layers": {
         "shape": "complete",
@@ -50213,10 +50213,10 @@
         "behavior": "complete"
       },
       "production": [
-        "call:cmd/pig/rpc_mode.go#runRPCMode"
+        "call:coding/cli/rpc_mode.go#runRPCMode"
       ],
       "evidence": [
-        "test:cmd/pig/rpc_mode_test.go#TestRPCSessionStateJSONShape"
+        "test:coding/cli/rpc_mode_test.go#TestRPCSessionStateJSONShape"
       ]
     },
     {
@@ -50224,7 +50224,7 @@
       "disposition": "ported",
       "upstreamShapeHash": "sha256:cb86e02ed04ce553dcdd3556a942f319d9d7041d72facada38d3a00caa5e3908",
       "pigTargets": [
-        "cmd/pig/rpc_types.go#RPCSessionState"
+        "coding/cli/rpc_types.go#RPCSessionState"
       ],
       "layers": {
         "shape": "complete",
@@ -50232,10 +50232,10 @@
         "behavior": "complete"
       },
       "production": [
-        "call:cmd/pig/rpc_mode.go#runRPCMode"
+        "call:coding/cli/rpc_mode.go#runRPCMode"
       ],
       "evidence": [
-        "test:cmd/pig/rpc_mode_test.go#TestRPCSessionStateJSONShape"
+        "test:coding/cli/rpc_mode_test.go#TestRPCSessionStateJSONShape"
       ]
     },
     {
@@ -50243,7 +50243,7 @@
       "disposition": "ported",
       "upstreamShapeHash": "sha256:931da1d8bac3e420744cfa3140f67d1cf8bba5e5edf930b4151dad51e4ec48f0",
       "pigTargets": [
-        "cmd/pig/rpc_types.go#RPCSessionState"
+        "coding/cli/rpc_types.go#RPCSessionState"
       ],
       "layers": {
         "shape": "complete",
@@ -50251,10 +50251,10 @@
         "behavior": "complete"
       },
       "production": [
-        "call:cmd/pig/rpc_mode.go#runRPCMode"
+        "call:coding/cli/rpc_mode.go#runRPCMode"
       ],
       "evidence": [
-        "test:cmd/pig/rpc_mode_test.go#TestRPCSessionStateJSONShape"
+        "test:coding/cli/rpc_mode_test.go#TestRPCSessionStateJSONShape"
       ]
     },
     {
@@ -50262,7 +50262,7 @@
       "disposition": "ported",
       "upstreamShapeHash": "sha256:e24feff2029d8ca6c73d1df63c6caec78ebdd168a04414c287077ee0857fa1e0",
       "pigTargets": [
-        "cmd/pig/rpc_types.go#RPCSessionState"
+        "coding/cli/rpc_types.go#RPCSessionState"
       ],
       "layers": {
         "shape": "complete",
@@ -50270,10 +50270,10 @@
         "behavior": "complete"
       },
       "production": [
-        "call:cmd/pig/rpc_mode.go#runRPCMode"
+        "call:coding/cli/rpc_mode.go#runRPCMode"
       ],
       "evidence": [
-        "test:cmd/pig/rpc_mode_test.go#TestRPCSessionStateJSONShape"
+        "test:coding/cli/rpc_mode_test.go#TestRPCSessionStateJSONShape"
       ]
     },
     {
@@ -50281,7 +50281,7 @@
       "disposition": "ported",
       "upstreamShapeHash": "sha256:f0094ac7ed8dabeea477aee61e895490d74a9364bc993c58085a3843c4594b1c",
       "pigTargets": [
-        "cmd/pig/rpc_types.go#RPCSessionState"
+        "coding/cli/rpc_types.go#RPCSessionState"
       ],
       "layers": {
         "shape": "complete",
@@ -50289,10 +50289,10 @@
         "behavior": "complete"
       },
       "production": [
-        "call:cmd/pig/rpc_mode.go#runRPCMode"
+        "call:coding/cli/rpc_mode.go#runRPCMode"
       ],
       "evidence": [
-        "test:cmd/pig/rpc_mode_test.go#TestRPCSessionStateJSONShape"
+        "test:coding/cli/rpc_mode_test.go#TestRPCSessionStateJSONShape"
       ]
     },
     {
@@ -50300,7 +50300,7 @@
       "disposition": "ported",
       "upstreamShapeHash": "sha256:caa0d121427e282df455b4c2fbf57f39f83b9102a2b499058536ba645d15a3a6",
       "pigTargets": [
-        "cmd/pig/rpc_types.go#RPCSessionState"
+        "coding/cli/rpc_types.go#RPCSessionState"
       ],
       "layers": {
         "shape": "complete",
@@ -50308,10 +50308,10 @@
         "behavior": "complete"
       },
       "production": [
-        "call:cmd/pig/rpc_mode.go#runRPCMode"
+        "call:coding/cli/rpc_mode.go#runRPCMode"
       ],
       "evidence": [
-        "test:cmd/pig/rpc_mode_test.go#TestRPCSessionStateJSONShape"
+        "test:coding/cli/rpc_mode_test.go#TestRPCSessionStateJSONShape"
       ]
     },
     {
@@ -50319,7 +50319,7 @@
       "disposition": "ported",
       "upstreamShapeHash": "sha256:a32018b0f07c0dde5460679df7e6de3eb837221d941039238a19516d8747bd0a",
       "pigTargets": [
-        "cmd/pig/rpc_types.go#RPCSessionState"
+        "coding/cli/rpc_types.go#RPCSessionState"
       ],
       "layers": {
         "shape": "complete",
@@ -50327,10 +50327,10 @@
         "behavior": "complete"
       },
       "production": [
-        "call:cmd/pig/rpc_mode.go#runRPCMode"
+        "call:coding/cli/rpc_mode.go#runRPCMode"
       ],
       "evidence": [
-        "test:cmd/pig/rpc_mode_test.go#TestRPCSessionStateJSONShape"
+        "test:coding/cli/rpc_mode_test.go#TestRPCSessionStateJSONShape"
       ]
     },
     {
@@ -50338,7 +50338,7 @@
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9c00bdeb9897eb9e53bff97456842fa80942a740caee74cb8452a6b2f53cbcd5",
       "pigTargets": [
-        "cmd/pig/rpc_types.go#RPCSessionState"
+        "coding/cli/rpc_types.go#RPCSessionState"
       ],
       "layers": {
         "shape": "complete",
@@ -50346,10 +50346,10 @@
         "behavior": "complete"
       },
       "production": [
-        "call:cmd/pig/rpc_mode.go#runRPCMode"
+        "call:coding/cli/rpc_mode.go#runRPCMode"
       ],
       "evidence": [
-        "test:cmd/pig/rpc_mode_test.go#TestRPCSessionStateJSONShape"
+        "test:coding/cli/rpc_mode_test.go#TestRPCSessionStateJSONShape"
       ]
     },
     {
@@ -50369,7 +50369,7 @@
       "disposition": "ported",
       "upstreamShapeHash": "sha256:753831de42854fd35480bc808d422a208a2e728c2a3a7e5542b6f33c55ba2ee7",
       "pigTargets": [
-        "cmd/pig/rpc_mode.go#runRPCMode"
+        "coding/cli/rpc_mode.go#runRPCMode"
       ],
       "layers": {
         "shape": "complete",
@@ -50377,11 +50377,11 @@
         "behavior": "complete"
       },
       "production": [
-        "call:cmd/pig/rpc_mode.go#runRPCMode"
+        "call:coding/cli/rpc_mode.go#runRPCMode"
       ],
       "evidence": [
-        "test:cmd/pig/rpc_resume_integration_test.go#TestRPCModeSessionReplacementAndExport",
-        "test:cmd/pig/rpc_ui_integration_test.go#TestRPCModeExtensionUIRoundTrip"
+        "test:coding/cli/rpc_resume_integration_test.go#TestRPCModeSessionReplacementAndExport",
+        "test:coding/cli/rpc_ui_integration_test.go#TestRPCModeExtensionUIRoundTrip"
       ],
       "asyncContract": "RPC input dispatch owns prompt, Bash, extension UI, Session mutation events, Session replacement, cancellation, and shutdown tasks and cancels and drains owned work before exit."
     },
@@ -50390,7 +50390,7 @@
       "disposition": "ported",
       "upstreamShapeHash": "sha256:654e316c0594ec30f7defd16c0960729819a727671579422cb0f09edba3f18f9",
       "pigTargets": [
-        "cmd/pig/rpc_mode.go#runRPCMode"
+        "coding/cli/rpc_mode.go#runRPCMode"
       ],
       "layers": {
         "shape": "complete",
@@ -50398,11 +50398,11 @@
         "behavior": "complete"
       },
       "production": [
-        "call:cmd/pig/rpc_mode.go#runRPCMode"
+        "call:coding/cli/rpc_mode.go#runRPCMode"
       ],
       "evidence": [
-        "test:cmd/pig/rpc_resume_integration_test.go#TestRPCModeSessionReplacementAndExport",
-        "test:cmd/pig/rpc_ui_integration_test.go#TestRPCModeExtensionUIRoundTrip"
+        "test:coding/cli/rpc_resume_integration_test.go#TestRPCModeSessionReplacementAndExport",
+        "test:coding/cli/rpc_ui_integration_test.go#TestRPCModeExtensionUIRoundTrip"
       ],
       "asyncContract": "RPC input dispatch owns prompt, Bash, extension UI, Session mutation events, Session replacement, cancellation, and shutdown tasks and cancels and drains owned work before exit."
     },

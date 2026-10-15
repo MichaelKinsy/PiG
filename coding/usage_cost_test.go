@@ -18,7 +18,7 @@ import (
 // pricedModel builds a models.json model priced at 3/15/0.3/3.75 per million
 // tokens whose provider answers with 1000 uncached, 1000 cached, and 500
 // output tokens, and returns the usage cost Pi computes for that answer.
-func pricedModel(t *testing.T) (*Services, *ai.Model, ai.UsageCost) {
+func pricedModel(t *testing.T) (*AgentSessionServices, *ai.Model, ai.UsageCost) {
 	t.Helper()
 	t.Setenv("PIG_HOME", t.TempDir())
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -35,7 +35,7 @@ func pricedModel(t *testing.T) (*Services, *ai.Model, ai.UsageCost) {
 	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(models), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}

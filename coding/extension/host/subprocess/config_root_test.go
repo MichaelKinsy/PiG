@@ -52,7 +52,7 @@ func TestNewHostWithConfigRootIgnoresConflictingEnvironment(t *testing.T) {
 
 func TestBuilderUsesExplicitConfigRootInGeneratedGoMod(t *testing.T) {
 	configRoot := filepath.Join(t.TempDir(), "isolated-pig")
-	staged := filepath.Join(configRoot, "state", "pigsdk", "sdk")
+	staged := stagedSDKDir(t, configRoot, "go")
 	if err := os.MkdirAll(staged, 0o755); err != nil {
 		t.Fatal(err)
 	}

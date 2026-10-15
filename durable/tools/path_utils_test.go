@@ -1,5 +1,7 @@
 package tools
 
+// pi: packages/durable/src/tools/path-utils.ts
+
 import (
 	"context"
 	"errors"
@@ -25,6 +27,8 @@ func TestToolPathsDropALeadingAtSignAndNormalizeUnicodeSpaces(t *testing.T) {
 func TestReadFindsTheMacOSVariantOfAMissingName(t *testing.T) {
 	cases := []struct{ name, existing, requested string }{
 		{"narrow no-break space before PM", "Screenshot 10\u202fPM.png", "Screenshot 10 PM.png"},
+		// path-utils.ts:20 matches / (AM|PM)\./gi: the case of the meridiem is kept.
+		{"narrow no-break space before a lowercase am", "Screenshot 9\u202fam.png", "Screenshot 9 am.png"},
 		{"curly apostrophe", "it\u2019s.txt", "it's.txt"},
 		{"decomposed characters", "caf\u0065\u0301.txt", "caf\u00e9.txt"},
 		{"decomposed characters and a curly apostrophe", "caf\u0065\u0301\u2019.txt", "caf\u00e9'.txt"},
@@ -33,7 +37,7 @@ func TestReadFindsTheMacOSVariantOfAMissingName(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			executionEnv := createEnv(t)
 			writeText(t, executionEnv, tc.existing, "text")
-			result := mustRun(t, CreateReadTool(), map[string]any{"path": tc.requested}, executionEnv)
+			result := mustRun(t, CreateReadTool(nil), map[string]any{"path": tc.requested}, executionEnv)
 			if got := textOutput(result.ToolExecutionResult); got != "text" {
 				t.Fatalf("read %q = %q", tc.requested, got)
 			}
@@ -43,7 +47,7 @@ func TestReadFindsTheMacOSVariantOfAMissingName(t *testing.T) {
 
 func TestReadKeepsTheRequestedPathWhenNoVariantExists(t *testing.T) {
 	executionEnv := createEnv(t)
-	_, err := run(CreateReadTool(), map[string]any{"path": "missing.txt"}, executionEnv, background)
+	_, err := run(CreateReadTool(nil), map[string]any{"path": "missing.txt"}, executionEnv, background)
 	if err == nil || !strings.Contains(err.Error(), "missing.txt") {
 		t.Fatalf("error = %v", err)
 	}

@@ -38,7 +38,7 @@ func TestTreeNodeAdapterSearchableText(t *testing.T) {
 			if err := sess.AppendEntry(MessageEntry{SessionEntryBase: SessionEntryBase{Type: "message"}, Message: tc.msg}); err != nil {
 				t.Fatalf("append: %v", err)
 			}
-			entries := sess.Entries()
+			entries := sess.GetEntries()
 			adapter := &treeNodeAdapter{n: &SessionTreeNode{Entry: entries[len(entries)-1]}, f: f}
 			text := strings.ToLower(adapter.NodeSearchableText())
 			for _, w := range tc.want {
@@ -59,7 +59,7 @@ func TestTreeNodeAdapterSearchableTextHasNoAnsi(t *testing.T) {
 	if err := sess.AppendEntry(MessageEntry{SessionEntryBase: SessionEntryBase{Type: "message"}, Message: msg}); err != nil {
 		t.Fatalf("append: %v", err)
 	}
-	entries := sess.Entries()
+	entries := sess.GetEntries()
 	adapter := &treeNodeAdapter{n: &SessionTreeNode{Entry: entries[0]}, f: f}
 	if text := adapter.NodeSearchableText(); strings.Contains(text, "\x1b[") {
 		t.Fatalf("searchable text leaked ANSI: %q", text)

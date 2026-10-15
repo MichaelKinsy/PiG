@@ -1,0 +1,620 @@
+pkg:ai/.#RefreshModelsContext	ai	child-gap	ai/models_runtime.go#RefreshModelsContext
+pkg:ai/.#RefreshModelsContext::property:baseUrl	ai	member-missing	ai/models_runtime.go#RefreshModelsContext
+pkg:ai/compat#RefreshModelsContext	ai	child-gap	ai/models_runtime.go#RefreshModelsContext
+pkg:ai/compat#RefreshModelsContext::property:baseUrl	ai	member-missing	ai/models_runtime.go#RefreshModelsContext
+pkg:ai/models#RefreshModelsContext	ai	child-gap	ai/models_runtime.go#RefreshModelsContext
+pkg:ai/models#RefreshModelsContext::property:baseUrl	ai	member-missing	ai/models_runtime.go#RefreshModelsContext
+pkg:ai/providers/openrouter#personalizeOpenRouterCatalog	ai	no-go-symbol	
+pkg:ai/providers/openrouter#personalizeOpenRouterCatalog::call:0	ai	child-gap	
+pkg:ai/providers/openrouter-api#OpenRouterModel	ai	child-gap	cmd/gen-models/openrouter_catalog.go#openRouterModelListItem
+pkg:ai/providers/openrouter-api#OpenRouterModel::property:context_length	ai	not-exercised	cmd/gen-models/openrouter_catalog.go#openRouterModelListItem.ContextLength
+pkg:ai/providers/openrouter-api#OpenRouterModel::property:id	ai	not-exercised	cmd/gen-models/openrouter_catalog.go#openRouterModelListItem.ID
+pkg:ai/providers/openrouter-api#OpenRouterModel::property:pricing	ai	not-exercised	cmd/gen-models/openrouter_catalog.go#openRouterModelListItem.Pricing
+pkg:ai/providers/openrouter-api#OpenRouterModel::property:top_provider	ai	not-exercised	cmd/gen-models/openrouter_catalog.go#openRouterModelListItem.TopProvider
+pkg:ai/providers/openrouter-api#OpenRouterPricing	ai	child-gap	cmd/gen-models/openrouter_catalog.go#openRouterPricing
+pkg:ai/providers/openrouter-api#OpenRouterPricing::property:completion	ai	not-exercised	cmd/gen-models/openrouter_catalog.go#openRouterPricing.Completion
+pkg:ai/providers/openrouter-api#OpenRouterPricing::property:input_cache_read	ai	not-exercised	cmd/gen-models/openrouter_catalog.go#openRouterPricing.InputCacheRead
+pkg:ai/providers/openrouter-api#OpenRouterPricing::property:input_cache_write	ai	not-exercised	cmd/gen-models/openrouter_catalog.go#openRouterPricing.InputCacheWrite
+pkg:ai/providers/openrouter-api#OpenRouterPricing::property:overrides	ai	not-exercised	cmd/gen-models/openrouter_catalog.go#openRouterPricing.Overrides
+pkg:ai/providers/openrouter-api#OpenRouterPricing::property:prompt	ai	not-exercised	cmd/gen-models/openrouter_catalog.go#openRouterPricing.Prompt
+pkg:ai/providers/openrouter-api#OpenRouterPricingOverride	ai	not-exercised	cmd/gen-models/openrouter_catalog.go#openRouterPricingOverride
+pkg:ai/providers/openrouter-api#OpenRouterPricingOverride::property:completion	ai	not-exercised	cmd/gen-models/openrouter_catalog.go#openRouterPricingOverride.Completion
+pkg:ai/providers/openrouter-api#OpenRouterPricingOverride::property:input_cache_read	ai	not-exercised	cmd/gen-models/openrouter_catalog.go#openRouterPricingOverride.InputCacheRead
+pkg:ai/providers/openrouter-api#OpenRouterPricingOverride::property:input_cache_write	ai	not-exercised	cmd/gen-models/openrouter_catalog.go#openRouterPricingOverride.InputCacheWrite
+pkg:ai/providers/openrouter-api#OpenRouterPricingOverride::property:min_prompt_tokens	ai	not-exercised	cmd/gen-models/openrouter_catalog.go#openRouterPricingOverride.MinPromptTokens
+pkg:ai/providers/openrouter-api#OpenRouterPricingOverride::property:prompt	ai	not-exercised	cmd/gen-models/openrouter_catalog.go#openRouterPricingOverride.Prompt
+pkg:ai/providers/openrouter-api#OpenRouterPricingOverride::property:utc_days	ai	not-exercised	cmd/gen-models/openrouter_catalog.go#openRouterPricingOverride.UTCDays
+pkg:ai/providers/openrouter-api#OpenRouterPricingOverride::property:utc_end	ai	not-exercised	cmd/gen-models/openrouter_catalog.go#openRouterPricingOverride.UTCEnd
+pkg:ai/providers/openrouter-api#OpenRouterPricingOverride::property:utc_start	ai	not-exercised	cmd/gen-models/openrouter_catalog.go#openRouterPricingOverride.UTCStart
+pkg:ai/providers/openrouter-api#openRouterCost	ai	not-exercised	cmd/gen-models/openrouter_catalog.go#openRouterCost
+pkg:ai/providers/openrouter-api#openRouterCost::call:0	ai	signature-mismatch	cmd/gen-models/openrouter_catalog.go#openRouterCost
+pkg:chord/.#AcceptOptions	chord	no-go-symbol	
+pkg:chord/.#AcceptOptions::property:kind	chord	child-gap	
+pkg:chord/.#AcceptOptions::property:name	chord	child-gap	
+pkg:chord/.#AcceptOptions::property:pingInterval	chord	child-gap	
+pkg:chord/.#AcceptOptions::property:pingTimeout	chord	child-gap	
+pkg:chord/.#AcceptOptions::property:principal	chord	child-gap	
+pkg:chord/.#AcceptOptions::property:restamp	chord	child-gap	
+pkg:chord/.#Accepts	chord	no-go-symbol	
+pkg:chord/.#Adapter	chord	no-go-symbol	
+pkg:chord/.#Adapter::call:0	chord	child-gap	
+pkg:chord/.#AnyContract	chord	no-go-symbol	
+pkg:chord/.#BehaviorOf	chord	no-go-symbol	
+pkg:chord/.#Cell	chord	no-go-symbol	
+pkg:chord/.#Cell::construct:0	chord	child-gap	
+pkg:chord/.#Cell::property:change	chord	child-gap	
+pkg:chord/.#Cell::property:change::call:0	chord	child-gap	
+pkg:chord/.#Cell::property:change::call:1	chord	child-gap	
+pkg:chord/.#Cell::property:dependents	chord	child-gap	
+pkg:chord/.#Cell::property:events	chord	child-gap	
+pkg:chord/.#Cell::property:events::call:0	chord	child-gap	
+pkg:chord/.#Cell::property:key	chord	child-gap	
+pkg:chord/.#Cell::property:replace	chord	child-gap	
+pkg:chord/.#Cell::property:replace::call:0	chord	child-gap	
+pkg:chord/.#Cell::property:reset	chord	child-gap	
+pkg:chord/.#Cell::property:reset::call:0	chord	child-gap	
+pkg:chord/.#Cell::property:schema	chord	child-gap	
+pkg:chord/.#Cell::property:schemas	chord	child-gap	
+pkg:chord/.#Cell::property:seq	chord	child-gap	
+pkg:chord/.#Cell::property:subscribe	chord	child-gap	
+pkg:chord/.#Cell::property:subscribe::call:0	chord	child-gap	
+pkg:chord/.#Cell::property:validate	chord	child-gap	
+pkg:chord/.#Cell::property:validate::call:0	chord	child-gap	
+pkg:chord/.#Cell::property:value	chord	child-gap	
+pkg:chord/.#CellDecl	chord	no-go-symbol	
+pkg:chord/.#CellDecl::property:%5BSymbol.DECL%5D	chord	child-gap	
+pkg:chord/.#CellDecl::property:initial	chord	child-gap	
+pkg:chord/.#CellDecl::property:schema	chord	child-gap	
+pkg:chord/.#ChordError	chord	no-go-symbol	
+pkg:chord/.#ChordError::construct:0	chord	child-gap	
+pkg:chord/.#ChordError::property:cause	chord	child-gap	
+pkg:chord/.#ChordError::property:code	chord	child-gap	
+pkg:chord/.#ChordError::property:details	chord	child-gap	
+pkg:chord/.#ChordError::property:message	chord	child-gap	
+pkg:chord/.#ChordError::property:name	chord	child-gap	
+pkg:chord/.#ChordError::property:reason	chord	child-gap	
+pkg:chord/.#ChordError::property:retryable	chord	child-gap	
+pkg:chord/.#ChordError::property:stack	chord	child-gap	
+pkg:chord/.#ChordErrorCode	chord	no-go-symbol	
+pkg:chord/.#Ctx	chord	no-go-symbol	
+pkg:chord/.#Ctx::property:epoch	chord	child-gap	
+pkg:chord/.#Ctx::property:get	chord	child-gap	
+pkg:chord/.#Ctx::property:get::call:0	chord	child-gap	
+pkg:chord/.#Ctx::property:principal	chord	child-gap	
+pkg:chord/.#Ctx::property:rootId	chord	child-gap	
+pkg:chord/.#Ctx::property:signal	chord	child-gap	
+pkg:chord/.#DerivationDecl	chord	no-go-symbol	
+pkg:chord/.#DerivationDecl::property:%5BSymbol.DECL%5D	chord	child-gap	
+pkg:chord/.#DerivationDecl::property:fn	chord	child-gap	
+pkg:chord/.#DerivationDecl::property:fn::call:0	chord	child-gap	
+pkg:chord/.#DerivationDecl::property:sources	chord	child-gap	
+pkg:chord/.#Description	chord	no-go-symbol	
+pkg:chord/.#Description::property:input	chord	child-gap	
+pkg:chord/.#Description::property:name	chord	child-gap	
+pkg:chord/.#Description::property:scope	chord	child-gap	
+pkg:chord/.#Description::property:variants	chord	child-gap	
+pkg:chord/.#Description::property:version	chord	child-gap	
+pkg:chord/.#Facet	chord	child-gap	internal/chord/facets.go#Facet
+pkg:chord/.#Facet::property:name	chord	member-missing	internal/chord/facets.go#Facet
+pkg:chord/.#Facet::property:setup	chord	child-gap	internal/chord/facets.go#Facet.Setup
+pkg:chord/.#Facet::property:setup::call:0	chord	signature-mismatch	internal/chord/facets.go#Facet.Setup
+pkg:chord/.#Facet::property:uses	chord	member-missing	internal/chord/facets.go#Facet
+pkg:chord/.#FacetApi	chord	no-go-symbol	
+pkg:chord/.#FacetApi::property:name	chord	child-gap	
+pkg:chord/.#FacetApi::property:registry	chord	child-gap	
+pkg:chord/.#FacetApi::property:registry::call:0	chord	child-gap	
+pkg:chord/.#FacetApi::property:root	chord	child-gap	
+pkg:chord/.#FacetApi::property:root::call:0	chord	child-gap	
+pkg:chord/.#FacetApi::property:serve	chord	child-gap	
+pkg:chord/.#FacetApi::property:serve::call:0	chord	child-gap	
+pkg:chord/.#FacetApi::property:serve::call:1	chord	child-gap	
+pkg:chord/.#FacetDefinition	chord	no-go-symbol	
+pkg:chord/.#FacetDefinition::property:setup	chord	child-gap	
+pkg:chord/.#FacetDefinition::property:setup::call:0	chord	child-gap	
+pkg:chord/.#FacetDefinition::property:uses	chord	child-gap	
+pkg:chord/.#FacetLoader	chord	child-gap	internal/chord/facets.go#FacetLoader
+pkg:chord/.#FacetLoader::call:0	chord	signature-mismatch	internal/chord/facets.go#FacetLoader
+pkg:chord/.#Factory	chord	no-go-symbol	
+pkg:chord/.#Factory::call:0	chord	child-gap	
+pkg:chord/.#Frame	chord	no-go-symbol	
+pkg:chord/.#GetOptions	chord	no-go-symbol	
+pkg:chord/.#GetOptions::property:at	chord	child-gap	
+pkg:chord/.#GetOptions::property:principal	chord	child-gap	
+pkg:chord/.#Handle	chord	no-go-symbol	
+pkg:chord/.#HandleStatus	chord	no-go-symbol	
+pkg:chord/.#Host	chord	no-go-symbol	
+pkg:chord/.#Host::property:accept	chord	child-gap	
+pkg:chord/.#Host::property:accept::call:0	chord	child-gap	
+pkg:chord/.#Host::property:close	chord	child-gap	
+pkg:chord/.#Host::property:close::call:0	chord	child-gap	
+pkg:chord/.#Host::property:connect	chord	child-gap	
+pkg:chord/.#Host::property:connect::call:0	chord	child-gap	
+pkg:chord/.#Host::property:epoch	chord	child-gap	
+pkg:chord/.#Host::property:get	chord	child-gap	
+pkg:chord/.#Host::property:get::call:0	chord	child-gap	
+pkg:chord/.#Host::property:install	chord	child-gap	
+pkg:chord/.#Host::property:install::call:0	chord	child-gap	
+pkg:chord/.#Host::property:invalidatePrincipal	chord	child-gap	
+pkg:chord/.#Host::property:invalidatePrincipal::call:0	chord	child-gap	
+pkg:chord/.#Host::property:load	chord	child-gap	
+pkg:chord/.#Host::property:load::call:0	chord	child-gap	
+pkg:chord/.#Host::property:name	chord	child-gap	
+pkg:chord/.#Host::property:previousEpoch	chord	child-gap	
+pkg:chord/.#Host::property:ready	chord	child-gap	
+pkg:chord/.#Host::property:ready::call:0	chord	child-gap	
+pkg:chord/.#Host::property:registry	chord	child-gap	
+pkg:chord/.#Host::property:registry::call:0	chord	child-gap	
+pkg:chord/.#Host::property:reload	chord	child-gap	
+pkg:chord/.#Host::property:reload::call:0	chord	child-gap	
+pkg:chord/.#Host::property:root	chord	child-gap	
+pkg:chord/.#Host::property:root::call:0	chord	child-gap	
+pkg:chord/.#Host::property:route	chord	child-gap	
+pkg:chord/.#Host::property:route::call:0	chord	child-gap	
+pkg:chord/.#Host::property:serve	chord	child-gap	
+pkg:chord/.#Host::property:serve::call:0	chord	child-gap	
+pkg:chord/.#Host::property:serve::call:1	chord	child-gap	
+pkg:chord/.#HostOptions	chord	no-go-symbol	
+pkg:chord/.#HostOptions::property:dev	chord	child-gap	
+pkg:chord/.#HostOptions::property:kind	chord	child-gap	
+pkg:chord/.#HostOptions::property:loader	chord	child-gap	
+pkg:chord/.#HostOptions::property:name	chord	child-gap	
+pkg:chord/.#HostOptions::property:onError	chord	child-gap	
+pkg:chord/.#HostOptions::property:principalKey	chord	child-gap	
+pkg:chord/.#HostOptions::property:upstream	chord	child-gap	
+pkg:chord/.#HostOptions::property:upstreamOptions	chord	child-gap	
+pkg:chord/.#InputOf	chord	no-go-symbol	
+pkg:chord/.#IpcChannel	chord	no-go-symbol	
+pkg:chord/.#IpcChannel::property:connected	chord	child-gap	
+pkg:chord/.#IpcChannel::property:off	chord	child-gap	
+pkg:chord/.#IpcChannel::property:off::call:disconnect	chord	child-gap	
+pkg:chord/.#IpcChannel::property:off::call:message	chord	child-gap	
+pkg:chord/.#IpcChannel::property:on	chord	child-gap	
+pkg:chord/.#IpcChannel::property:on::call:disconnect	chord	child-gap	
+pkg:chord/.#IpcChannel::property:on::call:message	chord	child-gap	
+pkg:chord/.#IpcChannel::property:send	chord	child-gap	
+pkg:chord/.#IpcChannel::property:send::call:0	chord	child-gap	
+pkg:chord/.#Link	chord	no-go-symbol	
+pkg:chord/.#Link::property:close	chord	child-gap	
+pkg:chord/.#Link::property:close::call:0	chord	child-gap	
+pkg:chord/.#Link::property:closed	chord	child-gap	
+pkg:chord/.#Link::property:onClose	chord	child-gap	
+pkg:chord/.#Link::property:onClose::call:0	chord	child-gap	
+pkg:chord/.#Link::property:receive	chord	child-gap	
+pkg:chord/.#Link::property:receive::call:0	chord	child-gap	
+pkg:chord/.#Link::property:send	chord	child-gap	
+pkg:chord/.#Link::property:send::call:0	chord	child-gap	
+pkg:chord/.#LinkOptions	chord	no-go-symbol	
+pkg:chord/.#LinkOptions::property:pingInterval	chord	child-gap	
+pkg:chord/.#LinkOptions::property:pingTimeout	chord	child-gap	
+pkg:chord/.#ListenerDecl	chord	no-go-symbol	
+pkg:chord/.#ListenerDecl::property:%5BSymbol.DECL%5D	chord	child-gap	
+pkg:chord/.#ListenerDecl::property:fn	chord	child-gap	
+pkg:chord/.#ListenerDecl::property:fn::call:0	chord	child-gap	
+pkg:chord/.#ListenerDecl::property:select	chord	child-gap	
+pkg:chord/.#ListenerDecl::property:source	chord	child-gap	
+pkg:chord/.#LoadOptions	chord	no-go-symbol	
+pkg:chord/.#LoadOptions::property:awaitEager	chord	child-gap	
+pkg:chord/.#LocalContract	chord	no-go-symbol	
+pkg:chord/.#LocalContract::property:def	chord	child-gap	
+pkg:chord/.#LocalContract::property:description	chord	child-gap	
+pkg:chord/.#LocalContract::property:fingerprint	chord	child-gap	
+pkg:chord/.#LocalContract::property:input	chord	child-gap	
+pkg:chord/.#LocalContract::property:name	chord	child-gap	
+pkg:chord/.#LocalContract::property:scope	chord	child-gap	
+pkg:chord/.#LocalContract::property:version	chord	child-gap	
+pkg:chord/.#MembersOf	chord	no-go-symbol	
+pkg:chord/.#PluginRef	chord	no-go-symbol	
+pkg:chord/.#Principal	chord	no-go-symbol	
+pkg:chord/.#PrincipalMatch	chord	no-go-symbol	
+pkg:chord/.#Readable	chord	no-go-symbol	
+pkg:chord/.#Readable::property:events	chord	child-gap	
+pkg:chord/.#Readable::property:events::call:0	chord	child-gap	
+pkg:chord/.#Readable::property:subscribe	chord	child-gap	
+pkg:chord/.#Readable::property:subscribe::call:0	chord	child-gap	
+pkg:chord/.#Readable::property:value	chord	child-gap	
+pkg:chord/.#Registry	chord	no-go-symbol	
+pkg:chord/.#Registry::property:conflict	chord	child-gap	
+pkg:chord/.#Registry::property:name	chord	child-gap	
+pkg:chord/.#Registry::property:value	chord	child-gap	
+pkg:chord/.#RegistryTable	chord	no-go-symbol	
+pkg:chord/.#RegistryView	chord	no-go-symbol	
+pkg:chord/.#RegistryView::property:get	chord	child-gap	
+pkg:chord/.#RegistryView::property:get::call:0	chord	child-gap	
+pkg:chord/.#RegistryView::property:subscribe	chord	child-gap	
+pkg:chord/.#RegistryView::property:subscribe::call:0	chord	child-gap	
+pkg:chord/.#RegistryView::property:table	chord	child-gap	
+pkg:chord/.#RegistryView::property:table::call:0	chord	child-gap	
+pkg:chord/.#ReloadOptions	chord	no-go-symbol	
+pkg:chord/.#ReloadOptions::property:gateDeadline	chord	child-gap	
+pkg:chord/.#ReloadOptions::property:remote	chord	child-gap	
+pkg:chord/.#ReloadOptions::property:remoteRemove	chord	child-gap	
+pkg:chord/.#ReloadOptions::property:remove	chord	child-gap	
+pkg:chord/.#ReloadOptions::property:retireDeadline	chord	child-gap	
+pkg:chord/.#ReloadOptions::property:voteDeadline	chord	child-gap	
+pkg:chord/.#ReloadReport	chord	no-go-symbol	
+pkg:chord/.#ReloadReport::property:changed	chord	child-gap	
+pkg:chord/.#ReloadReport::property:children	chord	child-gap	
+pkg:chord/.#ReloadReport::property:epoch	chord	child-gap	
+pkg:chord/.#ReloadReport::property:gated	chord	child-gap	
+pkg:chord/.#ReloadReport::property:prepared	chord	child-gap	
+pkg:chord/.#ReloadReport::property:previous	chord	child-gap	
+pkg:chord/.#ReloadReport::property:removed	chord	child-gap	
+pkg:chord/.#RemoteContract	chord	no-go-symbol	
+pkg:chord/.#RemoteContract::property:def	chord	child-gap	
+pkg:chord/.#RemoteContract::property:description	chord	child-gap	
+pkg:chord/.#RemoteContract::property:fingerprint	chord	child-gap	
+pkg:chord/.#RemoteContract::property:input	chord	child-gap	
+pkg:chord/.#RemoteContract::property:name	chord	child-gap	
+pkg:chord/.#RemoteContract::property:scope	chord	child-gap	
+pkg:chord/.#RemoteContract::property:version	chord	child-gap	
+pkg:chord/.#ResourceDecl	chord	no-go-symbol	
+pkg:chord/.#ResourceDecl::property:%5BSymbol.DECL%5D	chord	child-gap	
+pkg:chord/.#ResourceDecl::property:spec	chord	child-gap	
+pkg:chord/.#ResourceSpec	chord	no-go-symbol	
+pkg:chord/.#ResourceSpec::property:close	chord	child-gap	
+pkg:chord/.#ResourceSpec::property:deps	chord	child-gap	
+pkg:chord/.#ResourceSpec::property:exclusive	chord	child-gap	
+pkg:chord/.#ResourceSpec::property:open	chord	child-gap	
+pkg:chord/.#ResourceSpec::property:open::call:0	chord	child-gap	
+pkg:chord/.#ResourceSpec::property:rev	chord	child-gap	
+pkg:chord/.#RootOptions	chord	no-go-symbol	
+pkg:chord/.#RootOptions::property:epoch	chord	child-gap	
+pkg:chord/.#RootOptions::property:principal	chord	child-gap	
+pkg:chord/.#RootOptions::property:signal	chord	child-gap	
+pkg:chord/.#Route	chord	no-go-symbol	
+pkg:chord/.#Route::property:authorize	chord	child-gap	
+pkg:chord/.#Route::property:authorize::call:0	chord	child-gap	
+pkg:chord/.#Route::property:principal	chord	child-gap	
+pkg:chord/.#Route::property:resolve	chord	child-gap	
+pkg:chord/.#Route::property:resolve::call:0	chord	child-gap	
+pkg:chord/.#Self	chord	no-go-symbol	
+pkg:chord/.#Self::property:derive	chord	child-gap	
+pkg:chord/.#Self::property:derive::call:0	chord	child-gap	
+pkg:chord/.#Self::property:expose	chord	child-gap	
+pkg:chord/.#Self::property:expose::call:0	chord	child-gap	
+pkg:chord/.#Self::property:get	chord	child-gap	
+pkg:chord/.#Self::property:get::call:0	chord	child-gap	
+pkg:chord/.#Self::property:listen	chord	child-gap	
+pkg:chord/.#Self::property:listen::call:0	chord	child-gap	
+pkg:chord/.#Self::property:register	chord	child-gap	
+pkg:chord/.#Self::property:register::call:0	chord	child-gap	
+pkg:chord/.#Self::property:resources	chord	child-gap	
+pkg:chord/.#Self::property:resources::call:0	chord	child-gap	
+pkg:chord/.#Self::property:state	chord	child-gap	
+pkg:chord/.#Self::property:state::call:0	chord	child-gap	
+pkg:chord/.#Self::property:tasks	chord	child-gap	
+pkg:chord/.#Self::property:tasks::call:0	chord	child-gap	
+pkg:chord/.#ServeOptions	chord	no-go-symbol	
+pkg:chord/.#ServeOptions::property:accepts	chord	child-gap	
+pkg:chord/.#ServeOptions::property:eager	chord	child-gap	
+pkg:chord/.#ServeOptions::property:linger	chord	child-gap	
+pkg:chord/.#ServeOptions::property:state	chord	child-gap	
+pkg:chord/.#Shape	chord	no-go-symbol	
+pkg:chord/.#Shape::property:contract	chord	child-gap	
+pkg:chord/.#Shape::property:epoch	chord	child-gap	
+pkg:chord/.#Shape::property:kind	chord	child-gap	
+pkg:chord/.#Shape::property:members	chord	child-gap	
+pkg:chord/.#StateEvent	chord	no-go-symbol	
+pkg:chord/.#Subscribable	chord	no-go-symbol	
+pkg:chord/.#Subscribable::property:subscribe	chord	child-gap	
+pkg:chord/.#Subscribable::property:subscribe::call:0	chord	child-gap	
+pkg:chord/.#WebSocketAcceptOptions	chord	no-go-symbol	
+pkg:chord/.#WebSocketAcceptOptions::property:pingInterval	chord	child-gap	
+pkg:chord/.#WebSocketAcceptOptions::property:pingTimeout	chord	child-gap	
+pkg:chord/.#WebSocketAcceptOptions::property:principal	chord	child-gap	
+pkg:chord/.#WebSocketAcceptOptions::property:principal::call:0	chord	child-gap	
+pkg:chord/.#WebSocketAcceptOptions::property:restamp	chord	child-gap	
+pkg:chord/.#WebSocketLike	chord	no-go-symbol	
+pkg:chord/.#WebSocketLike::property:addEventListener	chord	child-gap	
+pkg:chord/.#WebSocketLike::property:addEventListener::call:1	chord	child-gap	
+pkg:chord/.#WebSocketLike::property:addEventListener::call:message	chord	child-gap	
+pkg:chord/.#WebSocketLike::property:close	chord	child-gap	
+pkg:chord/.#WebSocketLike::property:close::call:0	chord	child-gap	
+pkg:chord/.#WebSocketLike::property:readyState	chord	child-gap	
+pkg:chord/.#WebSocketLike::property:send	chord	child-gap	
+pkg:chord/.#WebSocketLike::property:send::call:0	chord	child-gap	
+pkg:chord/.#WebSocketServerLike	chord	no-go-symbol	
+pkg:chord/.#WebSocketServerLike::property:on	chord	child-gap	
+pkg:chord/.#WebSocketServerLike::property:on::call:connection	chord	child-gap	
+pkg:chord/.#acceptWebSockets	chord	no-go-symbol	
+pkg:chord/.#acceptWebSockets::call:0	chord	child-gap	
+pkg:chord/.#bind	chord	no-go-symbol	
+pkg:chord/.#bind::call:0	chord	child-gap	
+pkg:chord/.#cell	chord	no-go-symbol	
+pkg:chord/.#cell::call:0	chord	child-gap	
+pkg:chord/.#coverage	chord	no-go-symbol	
+pkg:chord/.#coverage::call:0	chord	child-gap	
+pkg:chord/.#createHost	chord	no-go-symbol	
+pkg:chord/.#createHost::call:0	chord	child-gap	
+pkg:chord/.#defineFacet	chord	child-gap	internal/chord/facets.go#DefineFacet
+pkg:chord/.#defineFacet::call:0	chord	signature-mismatch	internal/chord/facets.go#DefineFacet
+pkg:chord/.#defineRegistry	chord	no-go-symbol	
+pkg:chord/.#defineRegistry::call:0	chord	child-gap	
+pkg:chord/.#derivation	chord	no-go-symbol	
+pkg:chord/.#derivation::call:0	chord	child-gap	
+pkg:chord/.#forbidden	chord	no-go-symbol	
+pkg:chord/.#forbidden::call:0	chord	child-gap	
+pkg:chord/.#hostPrincipal	chord	no-go-symbol	
+pkg:chord/.#invalid	chord	no-go-symbol	
+pkg:chord/.#invalid::call:0	chord	child-gap	
+pkg:chord/.#ipcLink	chord	no-go-symbol	
+pkg:chord/.#ipcLink::call:0	chord	child-gap	
+pkg:chord/.#isChordError	chord	no-go-symbol	
+pkg:chord/.#isChordError::call:0	chord	child-gap	
+pkg:chord/.#listener	chord	no-go-symbol	
+pkg:chord/.#listener::call:0	chord	child-gap	
+pkg:chord/.#listener::call:1	chord	child-gap	
+pkg:chord/.#local	chord	no-go-symbol	
+pkg:chord/.#local::call:0	chord	child-gap	
+pkg:chord/.#memoryLinkPair	chord	no-go-symbol	
+pkg:chord/.#memoryLinkPair::call:0	chord	child-gap	
+pkg:chord/.#method	chord	no-go-symbol	
+pkg:chord/.#method::call:0	chord	child-gap	
+pkg:chord/.#opaque	chord	no-go-symbol	
+pkg:chord/.#opaque::call:0	chord	child-gap	
+pkg:chord/.#remote	chord	no-go-symbol	
+pkg:chord/.#remote::call:0	chord	child-gap	
+pkg:chord/.#resource	chord	no-go-symbol	
+pkg:chord/.#resource::call:0	chord	child-gap	
+pkg:chord/.#webSocketLink	chord	no-go-symbol	
+pkg:chord/.#webSocketLink::call:0	chord	child-gap	
+pkg:chord/context#Context	chord	no-go-symbol	
+pkg:chord/context#Context::property:abortSignal	chord	child-gap	
+pkg:chord/context#Context::property:toString	chord	child-gap	
+pkg:chord/context#Context::property:toString::call:0	chord	child-gap	
+pkg:chord/context#Context::property:value	chord	child-gap	
+pkg:chord/context#Context::property:value::call:0	chord	child-gap	
+pkg:chord/context#ContextKey	chord	child-gap	chord/context/chordctx.go#Key
+pkg:chord/context#ContextKey::property:token	chord	undecidable	chord/context/chordctx.go#Key.Token
+pkg:chord/context#ContextKey::property:valueType	chord	member-missing	chord/context/chordctx.go#Key
+pkg:chord/node#ControlMessage	chord	undecidable	internal/experimental/coordinator_transport.go#controlMessage
+pkg:chord/node#Driver	chord	no-go-symbol	
+pkg:chord/node#Driver::property:spawn	chord	child-gap	
+pkg:chord/node#Driver::property:spawn::call:0	chord	child-gap	
+pkg:chord/node#Exit	chord	no-go-symbol	
+pkg:chord/node#Exit::property:code	chord	child-gap	
+pkg:chord/node#Exit::property:signal	chord	child-gap	
+pkg:chord/node#ForkDriverOptions	chord	no-go-symbol	
+pkg:chord/node#ForkDriverOptions::property:args	chord	child-gap	
+pkg:chord/node#ForkDriverOptions::property:entry	chord	child-gap	
+pkg:chord/node#ForkDriverOptions::property:env	chord	child-gap	
+pkg:chord/node#ForkDriverOptions::property:execArgv	chord	child-gap	
+pkg:chord/node#ForkDriverOptions::property:init	chord	child-gap	
+pkg:chord/node#ForkDriverOptions::property:lock	chord	child-gap	
+pkg:chord/node#ForkDriverOptions::property:onMessage	chord	child-gap	
+pkg:chord/node#ForkDriverOptions::property:onOutput	chord	child-gap	
+pkg:chord/node#HostManager	chord	no-go-symbol	
+pkg:chord/node#HostManager::property:instance	chord	child-gap	
+pkg:chord/node#HostManager::property:liveness	chord	child-gap	
+pkg:chord/node#HostManager::property:replace	chord	child-gap	
+pkg:chord/node#HostManager::property:replace::call:0	chord	child-gap	
+pkg:chord/node#HostManager::property:start	chord	child-gap	
+pkg:chord/node#HostManager::property:start::call:0	chord	child-gap	
+pkg:chord/node#HostManager::property:status	chord	child-gap	
+pkg:chord/node#HostManager::property:stop	chord	child-gap	
+pkg:chord/node#HostManager::property:stop::call:0	chord	child-gap	
+pkg:chord/node#HostManagerOptions	chord	no-go-symbol	
+pkg:chord/node#HostManagerOptions::property:checkInterval	chord	child-gap	
+pkg:chord/node#HostManagerOptions::property:driver	chord	child-gap	
+pkg:chord/node#HostManagerOptions::property:grace	chord	child-gap	
+pkg:chord/node#HostManagerOptions::property:keepAlive	chord	child-gap	
+pkg:chord/node#HostManagerOptions::property:onExit	chord	child-gap	
+pkg:chord/node#HostManagerOptions::property:readyTimeout	chord	child-gap	
+pkg:chord/node#Instance	chord	no-go-symbol	
+pkg:chord/node#Instance::property:exited	chord	child-gap	
+pkg:chord/node#Instance::property:killTree	chord	child-gap	
+pkg:chord/node#Instance::property:killTree::call:0	chord	child-gap	
+pkg:chord/node#Instance::property:link	chord	child-gap	
+pkg:chord/node#Instance::property:onControl	chord	child-gap	
+pkg:chord/node#Instance::property:onControl::call:0	chord	child-gap	
+pkg:chord/node#Instance::property:pid	chord	child-gap	
+pkg:chord/node#Instance::property:send	chord	child-gap	
+pkg:chord/node#Instance::property:send::call:0	chord	child-gap	
+pkg:chord/node#Liveness	chord	no-go-symbol	
+pkg:chord/node#Liveness::property:activeCalls	chord	child-gap	
+pkg:chord/node#Liveness::property:booting	chord	child-gap	
+pkg:chord/node#Liveness::property:durableTasks	chord	child-gap	
+pkg:chord/node#Liveness::property:idleFor	chord	child-gap	
+pkg:chord/node#Liveness::property:viewers	chord	child-gap	
+pkg:chord/node#childControl	chord	no-go-symbol	
+pkg:chord/node#childControl::call:0	chord	child-gap	
+pkg:chord/node#createHostManager	chord	no-go-symbol	
+pkg:chord/node#createHostManager::call:0	chord	child-gap	
+pkg:chord/node#forkDriver	chord	no-go-symbol	
+pkg:chord/node#forkDriver::call:0	chord	child-gap	
+pkg:chord/node#nodeLoader	chord	no-go-symbol	
+pkg:chord/node#nodeLoader::call:0	chord	child-gap	
+pkg:chord/node#processLock	chord	no-go-symbol	
+pkg:chord/node#processLock::call:0	chord	child-gap	
+pkg:codemode/.#CodemodeDeclaredGlobal	codemode	undecidable	
+pkg:codemode/.#CodemodeDeclaredGlobal::property:name	codemode	child-gap	
+pkg:codemode/.#CodemodeDeclaredGlobal::property:spread	codemode	child-gap	
+pkg:codemode/.#CodemodeDeclaredTool	codemode	child-gap	codemode/remote_protocol.go#VmStartTool
+pkg:codemode/.#CodemodeDeclaredTool::property:jsName	codemode	not-exercised	codemode/remote_protocol.go#VmStartTool.JSName
+pkg:codemode/.#CodemodeDuring	codemode	no-go-symbol	
+pkg:codemode/.#CodemodeDuring::property:issued	codemode	child-gap	
+pkg:codemode/.#CodemodeDuring::property:seq	codemode	child-gap	
+pkg:codemode/.#CodemodeHostCall	codemode	no-go-symbol	
+pkg:codemode/.#CodemodeHostCall::property:args	codemode	child-gap	
+pkg:codemode/.#CodemodeHostCall::property:id	codemode	child-gap	
+pkg:codemode/.#CodemodeHostCall::property:name	codemode	child-gap	
+pkg:codemode/.#CodemodeHostCall::property:target	codemode	child-gap	
+pkg:codemode/.#CodemodeOutcome	codemode	no-go-symbol	
+pkg:codemode/.#CodemodeRun	codemode	child-gap	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/.#CodemodeRun::property:deliver	codemode	member-missing	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/.#CodemodeRun::property:deliver::call:0	codemode	member-missing	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/.#CodemodeRun::property:finished	codemode	member-missing	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/.#CodemodeRun::property:result	codemode	member-missing	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/.#CodemodeRunOptions	codemode	no-go-symbol	
+pkg:codemode/.#CodemodeRunOptions::property:globals	codemode	child-gap	
+pkg:codemode/.#CodemodeRunOptions::property:onCall	codemode	child-gap	
+pkg:codemode/.#CodemodeRunOptions::property:onCall::call:0	codemode	child-gap	
+pkg:codemode/.#CodemodeRunOptions::property:onIdle	codemode	child-gap	
+pkg:codemode/.#CodemodeRunOptions::property:onStarted	codemode	child-gap	
+pkg:codemode/.#CodemodeRunOptions::property:seed	codemode	child-gap	
+pkg:codemode/.#CodemodeRunOptions::property:signal	codemode	child-gap	
+pkg:codemode/.#CodemodeRunOptions::property:startedAt	codemode	child-gap	
+pkg:codemode/.#CodemodeRunOptions::property:store	codemode	child-gap	
+pkg:codemode/.#CodemodeRunOptions::property:timeoutMs	codemode	child-gap	
+pkg:codemode/.#CodemodeRunOptions::property:tools	codemode	child-gap	
+pkg:codemode/.#CodemodeSandbox	codemode	child-gap	codemode/sandbox.go#Sandbox
+pkg:codemode/.#CodemodeSandbox::property:start	codemode	member-missing	codemode/sandbox.go#Sandbox
+pkg:codemode/.#CodemodeSandbox::property:start::call:0	codemode	member-missing	codemode/sandbox.go#Sandbox
+pkg:codemode/.#CodemodeSandboxBase	codemode	child-gap	codemode/sandbox.go#Sandbox
+pkg:codemode/.#CodemodeSandboxBase::property:start	codemode	member-missing	codemode/sandbox.go#Sandbox
+pkg:codemode/.#CodemodeSandboxBase::property:start::call:0	codemode	member-missing	codemode/sandbox.go#Sandbox
+pkg:codemode/.#InlineCodemodeSandbox	codemode	child-gap	codemode/inline.go#InlineSandbox
+pkg:codemode/.#InlineCodemodeSandbox::property:start	codemode	member-missing	codemode/inline.go#InlineSandbox
+pkg:codemode/.#InlineCodemodeSandbox::property:start::call:0	codemode	member-missing	codemode/inline.go#InlineSandbox
+pkg:codemode/.#RemoteCodemodeSandbox	codemode	child-gap	codemode/remote.go#RemoteSandbox
+pkg:codemode/.#RemoteCodemodeSandbox::property:start	codemode	member-missing	codemode/remote.go#RemoteSandbox
+pkg:codemode/.#RemoteCodemodeSandbox::property:start::call:0	codemode	member-missing	codemode/remote.go#RemoteSandbox
+pkg:codemode/cloudflare#CodemodeDeclaredGlobal	codemode	undecidable	
+pkg:codemode/cloudflare#CodemodeDeclaredGlobal::property:name	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeDeclaredGlobal::property:spread	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeDeclaredTool	codemode	child-gap	codemode/remote_protocol.go#VmStartTool
+pkg:codemode/cloudflare#CodemodeDeclaredTool::property:jsName	codemode	not-exercised	codemode/remote_protocol.go#VmStartTool.JSName
+pkg:codemode/cloudflare#CodemodeDuring	codemode	no-go-symbol	
+pkg:codemode/cloudflare#CodemodeDuring::property:issued	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeDuring::property:seq	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeHostCall	codemode	no-go-symbol	
+pkg:codemode/cloudflare#CodemodeHostCall::property:args	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeHostCall::property:id	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeHostCall::property:name	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeHostCall::property:target	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeOutcome	codemode	no-go-symbol	
+pkg:codemode/cloudflare#CodemodeRun	codemode	child-gap	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/cloudflare#CodemodeRun::property:deliver	codemode	member-missing	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/cloudflare#CodemodeRun::property:deliver::call:0	codemode	member-missing	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/cloudflare#CodemodeRun::property:finished	codemode	member-missing	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/cloudflare#CodemodeRun::property:result	codemode	member-missing	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/cloudflare#CodemodeRunOptions	codemode	no-go-symbol	
+pkg:codemode/cloudflare#CodemodeRunOptions::property:globals	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeRunOptions::property:onCall	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeRunOptions::property:onCall::call:0	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeRunOptions::property:onIdle	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeRunOptions::property:onStarted	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeRunOptions::property:seed	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeRunOptions::property:signal	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeRunOptions::property:startedAt	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeRunOptions::property:store	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeRunOptions::property:timeoutMs	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeRunOptions::property:tools	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeSandboxBase	codemode	child-gap	codemode/sandbox.go#Sandbox
+pkg:codemode/cloudflare#CodemodeSandboxBase::property:start	codemode	member-missing	codemode/sandbox.go#Sandbox
+pkg:codemode/cloudflare#CodemodeSandboxBase::property:start::call:0	codemode	member-missing	codemode/sandbox.go#Sandbox
+pkg:codemode/cloudflare#InlineCodemodeSandbox	codemode	child-gap	codemode/inline.go#InlineSandbox
+pkg:codemode/cloudflare#InlineCodemodeSandbox::property:start	codemode	member-missing	codemode/inline.go#InlineSandbox
+pkg:codemode/cloudflare#InlineCodemodeSandbox::property:start::call:0	codemode	member-missing	codemode/inline.go#InlineSandbox
+pkg:codemode/cloudflare#RemoteCodemodeSandbox	codemode	child-gap	codemode/remote.go#RemoteSandbox
+pkg:codemode/cloudflare#RemoteCodemodeSandbox::property:start	codemode	member-missing	codemode/remote.go#RemoteSandbox
+pkg:codemode/cloudflare#RemoteCodemodeSandbox::property:start::call:0	codemode	member-missing	codemode/remote.go#RemoteSandbox
+pkg:codemode/cloudflare#VmStartData	codemode	child-gap	codemode/remote_protocol.go#VmStartData
+pkg:codemode/cloudflare#VmStartData::property:deterministic	codemode	member-missing	codemode/remote_protocol.go#VmStartData
+pkg:codemode/portable#CodemodeDeclaredGlobal	codemode	undecidable	
+pkg:codemode/portable#CodemodeDeclaredGlobal::property:name	codemode	child-gap	
+pkg:codemode/portable#CodemodeDeclaredGlobal::property:spread	codemode	child-gap	
+pkg:codemode/portable#CodemodeDeclaredTool	codemode	child-gap	codemode/remote_protocol.go#VmStartTool
+pkg:codemode/portable#CodemodeDeclaredTool::property:jsName	codemode	not-exercised	codemode/remote_protocol.go#VmStartTool.JSName
+pkg:codemode/portable#CodemodeDuring	codemode	no-go-symbol	
+pkg:codemode/portable#CodemodeDuring::property:issued	codemode	child-gap	
+pkg:codemode/portable#CodemodeDuring::property:seq	codemode	child-gap	
+pkg:codemode/portable#CodemodeHostCall	codemode	no-go-symbol	
+pkg:codemode/portable#CodemodeHostCall::property:args	codemode	child-gap	
+pkg:codemode/portable#CodemodeHostCall::property:id	codemode	child-gap	
+pkg:codemode/portable#CodemodeHostCall::property:name	codemode	child-gap	
+pkg:codemode/portable#CodemodeHostCall::property:target	codemode	child-gap	
+pkg:codemode/portable#CodemodeOutcome	codemode	no-go-symbol	
+pkg:codemode/portable#CodemodeRun	codemode	child-gap	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/portable#CodemodeRun::property:deliver	codemode	member-missing	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/portable#CodemodeRun::property:deliver::call:0	codemode	member-missing	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/portable#CodemodeRun::property:finished	codemode	member-missing	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/portable#CodemodeRun::property:result	codemode	member-missing	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/portable#CodemodeRunOptions	codemode	no-go-symbol	
+pkg:codemode/portable#CodemodeRunOptions::property:globals	codemode	child-gap	
+pkg:codemode/portable#CodemodeRunOptions::property:onCall	codemode	child-gap	
+pkg:codemode/portable#CodemodeRunOptions::property:onCall::call:0	codemode	child-gap	
+pkg:codemode/portable#CodemodeRunOptions::property:onIdle	codemode	child-gap	
+pkg:codemode/portable#CodemodeRunOptions::property:onStarted	codemode	child-gap	
+pkg:codemode/portable#CodemodeRunOptions::property:seed	codemode	child-gap	
+pkg:codemode/portable#CodemodeRunOptions::property:signal	codemode	child-gap	
+pkg:codemode/portable#CodemodeRunOptions::property:startedAt	codemode	child-gap	
+pkg:codemode/portable#CodemodeRunOptions::property:store	codemode	child-gap	
+pkg:codemode/portable#CodemodeRunOptions::property:timeoutMs	codemode	child-gap	
+pkg:codemode/portable#CodemodeRunOptions::property:tools	codemode	child-gap	
+pkg:codemode/portable#CodemodeSandboxBase	codemode	child-gap	codemode/sandbox.go#Sandbox
+pkg:codemode/portable#CodemodeSandboxBase::property:start	codemode	member-missing	codemode/sandbox.go#Sandbox
+pkg:codemode/portable#CodemodeSandboxBase::property:start::call:0	codemode	member-missing	codemode/sandbox.go#Sandbox
+pkg:codemode/portable#InlineCodemodeSandbox	codemode	child-gap	codemode/inline.go#InlineSandbox
+pkg:codemode/portable#InlineCodemodeSandbox::property:start	codemode	member-missing	codemode/inline.go#InlineSandbox
+pkg:codemode/portable#InlineCodemodeSandbox::property:start::call:0	codemode	member-missing	codemode/inline.go#InlineSandbox
+pkg:codemode/portable#RemoteCodemodeSandbox	codemode	child-gap	codemode/remote.go#RemoteSandbox
+pkg:codemode/portable#RemoteCodemodeSandbox::property:start	codemode	member-missing	codemode/remote.go#RemoteSandbox
+pkg:codemode/portable#RemoteCodemodeSandbox::property:start::call:0	codemode	member-missing	codemode/remote.go#RemoteSandbox
+pkg:codemode/portable#VmStartData	codemode	child-gap	codemode/remote_protocol.go#VmStartData
+pkg:codemode/portable#VmStartData::property:deterministic	codemode	member-missing	codemode/remote_protocol.go#VmStartData
+pkg:coding-agent/.#BeforeAgentStartEvent	coding-agent	undecidable	coding/extension/events.go#BeforeAgentStartEvent
+pkg:coding-agent/.#ExtensionRunner	coding-agent	child-gap	coding/extension/host/inproc/runner.go#Runner
+pkg:coding-agent/.#ExtensionRunner::property:emitBeforeAgentStart	coding-agent	child-gap	coding/extension/host/inproc/runner.go#Runner.EmitBeforeAgentStart
+pkg:coding-agent/.#ExtensionRunner::property:emitBeforeAgentStart::call:0	coding-agent	signature-mismatch	coding/extension/host/inproc/runner.go#Runner.EmitBeforeAgentStart
+pkg:coding-agent/.#ToolDefinition	coding-agent	child-gap	coding/extension/tool.go#ToolDefinition
+pkg:coding-agent/.#ToolDefinition::property:reachesTools	coding-agent	member-missing	coding/extension/tool.go#ToolDefinition
+pkg:coding-agent/.#ToolNamespace	coding-agent	child-gap	coding/extension/tool.go#ToolNamespace
+pkg:coding-agent/.#ToolNamespace::property:aliases	coding-agent	member-missing	coding/extension/tool.go#ToolNamespace
+pkg:durable/.#CompactionFailure	durable	undecidable	durable/harness/live.go#CompactionFailure
+pkg:durable/.#ConversationHandle	durable	child-gap	durable/harness_types.go#ConversationHandle
+pkg:durable/.#ConversationHandle::property:submit	durable	child-gap	durable/harness_types.go#ConversationHandle.Submit
+pkg:durable/.#ConversationHandle::property:submit::call:0	durable	undecidable	durable/harness_types.go#ConversationHandle.Submit
+pkg:durable/.#InputEntry	durable	undecidable	durable/harness_types.go#InputEntry
+pkg:durable/.#section	durable	child-gap	durable/harness/define.go#Section
+pkg:durable/.#section::call:0	durable	signature-mismatch	durable/harness/define.go#Section
+pkg:durable/codemode#CODEMODE_MODULE_VERSION	durable	no-go-symbol	
+pkg:durable/codemode#CODEMODE_TOOL_NAME	durable	no-go-symbol	
+pkg:durable/codemode#CodemodeGlobal	durable	no-go-symbol	
+pkg:durable/codemode#CodemodeNamespace	durable	no-go-symbol	
+pkg:durable/codemode#CodemodeNestedCall	durable	no-go-symbol	
+pkg:durable/codemode#CodemodeStoreDoc	durable	no-go-symbol	
+pkg:durable/codemode#CodemodeToolDetails	durable	no-go-symbol	
+pkg:durable/codemode#CodemodeToolInput	durable	no-go-symbol	
+pkg:durable/codemode#CodemodeToolOptions	durable	no-go-symbol	
+pkg:durable/codemode#DEFAULT_CODEMODE_INLINE_BUDGET	durable	no-go-symbol	
+pkg:durable/codemode#createCodemodeExtension	durable	no-go-symbol	
+pkg:durable/codemode#createCodemodeExtension::call:0	durable	child-gap	
+pkg:durable/codemode#createCodemodeTool	durable	no-go-symbol	
+pkg:durable/codemode#createCodemodeTool::call:0	durable	child-gap	
+pkg:durable/images/node#NodePhotonImagesOptions	durable	no-go-symbol	
+pkg:durable/images/node#createNodePhotonImages	durable	child-gap	durable/images/node/node.go#CreateNodePhotonImages
+pkg:durable/images/node#createNodePhotonImages::call:0	durable	signature-mismatch	durable/images/node/node.go#CreateNodePhotonImages
+pkg:durable/tool-search#DEFAULT_TOOL_SEARCH_LIMIT	durable	no-go-symbol	
+pkg:durable/tool-search#TOOL_SEARCH_TOOL_NAME	durable	no-go-symbol	
+pkg:durable/tool-search#ToolSearchToolDetails	durable	no-go-symbol	
+pkg:durable/tool-search#createToolSearchExtension	durable	no-go-symbol	
+pkg:durable/tool-search#createToolSearchExtension::call:0	durable	child-gap	
+pkg:durable/tool-search#createToolSearchTool	durable	no-go-symbol	
+pkg:durable/tool-search#createToolSearchTool::call:0	durable	child-gap	
+pkg:env/.#RemoteTerminal	env	no-go-symbol	
+pkg:env/.#RemoteTerminal::construct:0	env	child-gap	
+pkg:env/.#RemoteTerminal::property:close	env	child-gap	
+pkg:env/.#RemoteTerminal::property:close::call:0	env	child-gap	
+pkg:env/.#RemoteTerminal::property:exited	env	child-gap	
+pkg:env/.#RemoteTerminal::property:foreground	env	child-gap	
+pkg:env/.#RemoteTerminal::property:foreground::call:0	env	child-gap	
+pkg:env/.#RemoteTerminal::property:pid	env	child-gap	
+pkg:env/.#RemoteTerminal::property:resize	env	child-gap	
+pkg:env/.#RemoteTerminal::property:resize::call:0	env	child-gap	
+pkg:env/.#RemoteTerminal::property:write	env	child-gap	
+pkg:env/.#RemoteTerminal::property:write::call:0	env	child-gap	
+pkg:env/.#TerminalForeground	env	no-go-symbol	
+pkg:env/.#TerminalForeground::property:name	env	child-gap	
+pkg:env/.#TerminalForeground::property:pid	env	child-gap	
+pkg:env/.#TerminalOptions	env	no-go-symbol	
+pkg:env/.#TerminalOptions::property:argv	env	child-gap	
+pkg:env/.#TerminalOptions::property:cols	env	child-gap	
+pkg:env/.#TerminalOptions::property:cwd	env	child-gap	
+pkg:env/.#TerminalOptions::property:env	env	child-gap	
+pkg:env/.#TerminalOptions::property:inheritEnv	env	child-gap	
+pkg:env/.#TerminalOptions::property:onData	env	child-gap	
+pkg:env/.#TerminalOptions::property:onData::call:0	env	child-gap	
+pkg:env/.#TerminalOptions::property:rows	env	child-gap	
+pkg:env/.#openTerminal	env	no-go-symbol	
+pkg:env/.#openTerminal::call:0	env	child-gap	

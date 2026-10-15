@@ -15,7 +15,7 @@ func TestUpstreamOverlayShortContent(t *testing.T) {
 		var output bytes.Buffer
 		ui := NewWithOutput(&output, 80, 24)
 		ui.Add(&recordingComponent{lines: []string{"Line 1", "Line 2", "Line 3"}})
-		ui.OpenOverlay(&recordingComponent{lines: []string{"OVERLAY_TOP", "OVERLAY_MID", "OVERLAY_BOT"}}, OverlayOptions{})
+		ui.ShowOverlay(&recordingComponent{lines: []string{"OVERLAY_TOP", "OVERLAY_MID", "OVERLAY_BOT"}}, OverlayOptions{})
 		ui.Render()
 		terminal := termsim.New(24, 80)
 		terminal.Write(output.Bytes())
@@ -66,7 +66,7 @@ func TestUpstreamOverlayStyleLeak(t *testing.T) {
 			ui := NewWithOutput(&output, 20, 6)
 			ui.Add(&recordingComponent{lines: []string{"\x1b[3m" + strings.Repeat("X", 20) + "\x1b[23m", "INPUT"}})
 			if tt.overlay {
-				ui.OpenOverlay(&recordingComponent{lines: []string{"OVR"}}, OverlayOptions{row: overlayCells(0), col: overlayCells(5), width: overlayCells(3)})
+				ui.ShowOverlay(&recordingComponent{lines: []string{"OVR"}}, OverlayOptions{row: overlayCells(0), col: overlayCells(5), width: overlayCells(3)})
 			}
 			terminal := termsim.New(6, 20)
 			ui.Render()
@@ -121,7 +121,7 @@ func TestUpstreamTabWidth(t *testing.T) {
 			}
 			return lines
 		}))
-		ui.OpenOverlay(&recordingComponent{lines: []string{"\tX"}}, OverlayOptions{width: overlayCells(4), row: overlayCells(1), col: overlayCells(4)})
+		ui.ShowOverlay(&recordingComponent{lines: []string{"\tX"}}, OverlayOptions{width: overlayCells(4), row: overlayCells(1), col: overlayCells(4)})
 		ui.Render()
 		terminal := termsim.New(3, 16)
 		terminal.Write(output.Bytes())

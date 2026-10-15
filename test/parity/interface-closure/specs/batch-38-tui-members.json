@@ -1,0 +1,191 @@
+[
+ {
+  "ids": [
+   "pkg:tui/.#Box::property:addChild"
+  ],
+  "targets": [
+   "tui/box.go#Box.AddChild"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_changelog.go#InteractiveMode.handleChangelogCommand"
+  ],
+  "evidence": [
+   "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges",
+   "test:tui/box_cache_test.go#TestBoxRenderCacheSeesInPlaceChildEdits"
+  ],
+  "rationale": "Box.addChild is the Go method Box.AddChild; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Box::property:render"
+  ],
+  "targets": [
+   "tui/box.go#Box.Render"
+  ],
+  "production": [
+   "call:internal/codingagent/tool_builtin_renderers.go#editRenderCall"
+  ],
+  "evidence": [
+   "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges",
+   "test:tui/box_cache_test.go#TestBoxRenderCacheSeesInPlaceChildEdits"
+  ],
+  "rationale": "Box.render is the Go method Box.Render; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#CancellableLoader::property:aborted"
+  ],
+  "targets": [
+   "tui/cancellable_loader.go#CancellableLoader.Aborted"
+  ],
+  "production": [
+   "public-api:tui/cancellable_loader.go#CancellableLoader.Aborted"
+  ],
+  "evidence": [
+   "test:tui/loader_image_parity_test.go#TestCancellableLoaderDisposeStopsWithoutAborting",
+   "test:tui/loader_image_parity_test.go#TestCancellableLoader_HandleInput_RouteBindings"
+  ],
+  "rationale": "CancellableLoader.aborted is the Go method CancellableLoader.Aborted; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs). Only the parity-harness probe calls it outside tests, so it closes as public-api-tested."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Loader::property:render"
+  ],
+  "targets": [
+   "tui/loader.go#Loader.Render"
+  ],
+  "production": [
+   "call:tui/tui.go#Container.Render"
+  ],
+  "evidence": [
+   "test:tui/tui_components_parity_test.go#TestLoader_Render_EmptyFrames",
+   "test:tui/tui_components_parity_test.go#TestLoader_Render_PaddingMatchesUpstream"
+  ],
+  "rationale": "Loader.render is the Go method Loader.Render; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs). Production caller: BorderedLoader.Render, which the /share and /bug flows mount (the parity-harness probe is not a production caller)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Loader::property:setMessage"
+  ],
+  "targets": [
+   "tui/loader.go#Loader.SetMessage"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_layout.go#InteractiveMode.setStatusContainerLabel"
+  ],
+  "evidence": [
+   "test:tui/editor_status_test.go#TestLoaderRelabelDefeatsChildCache"
+  ],
+  "rationale": "Loader.setMessage is the Go method Loader.SetMessage; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#TruncatedText::property:render"
+  ],
+  "targets": [
+   "tui/truncated_text.go#TruncatedText.Render"
+  ],
+  "production": [
+   "call:tui/tui.go#Container.Render"
+  ],
+  "evidence": [
+   "test:tui/component_width_sweep_test.go#TestComponentRowsMatchUpstream",
+   "test:tui/components_parity_test.go#TestTruncatedText_PreservesANSI"
+  ],
+  "rationale": "TruncatedText.render is the Go method TruncatedText.Render; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Image::property:render"
+  ],
+  "targets": [
+   "tui/image.go#Image.Render"
+  ],
+  "production": [
+   "call:internal/codingagent/earendil_announcement.go#earendilAnnouncementComponent.Render"
+  ],
+  "evidence": [
+   "test:internal/codingagent/earendil_announcement_test.go#TestEarendilEmbeddedAssetAndImageProtocols",
+   "test:internal/codingagent/image_convert_test.go#TestEnsurePngTranscoderRegistersOnKittyOnly"
+  ],
+  "rationale": "Image.render is the Go method Image.Render; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs). Production caller: the announcement component renders its body container, which holds the Image (the parity-harness probe is not a production caller)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Markdown::property:render"
+  ],
+  "targets": [
+   "tui/markdown.go#Markdown.Render"
+  ],
+  "production": [
+   "call:tui/branch_summary.go#BranchSummaryComponent.Render"
+  ],
+  "evidence": [
+   "test:internal/codingagent/w3_pi_test.go#TestW3SessionPiComparison",
+   "test:tui/assistant_thinking_markdown_test.go#TestMarkdownDefaultColorAppliesToListTextNotCode"
+  ],
+  "rationale": "Markdown.render is the Go method Markdown.Render; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#StdinBuffer::property:clear"
+  ],
+  "targets": [
+   "tui/stdin_buffer.go#StdinBuffer.Clear"
+  ],
+  "production": [
+   "call:tui/terminal_input.go#TerminalInput.Close"
+  ],
+  "evidence": [
+   "test:tui/stdin_buffer_second_half_upstream_test.go#TestStdinBufferSecondHalfPartialAndFlush"
+  ],
+  "rationale": "StdinBuffer.clear is the Go method StdinBuffer.Clear; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#StdinBuffer::property:flush"
+  ],
+  "targets": [
+   "tui/stdin_buffer.go#StdinBuffer.Flush"
+  ],
+  "production": [
+   "call:internal/experimental/client_tui.go#runClientTuiInput"
+  ],
+  "evidence": [
+   "test:internal/codingagent/input_split_test.go#TestStdinBufferDispatchChunks",
+   "test:internal/codingagent/input_split_test.go#TestStdinBufferEscapeBoundaries"
+  ],
+  "rationale": "StdinBuffer.flush is the Go method StdinBuffer.Flush; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#OverlayHandle::property:getBounds"
+  ],
+  "targets": [
+   "tui/tui.go#OverlayHandle.GetBounds"
+  ],
+  "production": [
+   "call:internal/codingagent/custom_overlay_control.go#ExtUIContext.bindOverlayControls"
+  ],
+  "evidence": [
+   "test:tui/mouse_test.go#TestOverlayBoundsAndMouseHitTesting"
+  ],
+  "rationale": "OverlayHandle.getBounds is the Go method OverlayHandle.GetBounds; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#OverlayHandle::property:hide"
+  ],
+  "targets": [
+   "tui/tui.go#OverlayHandle.Hide"
+  ],
+  "production": [
+   "call:internal/codingagent/custom_overlay_control.go#ExtUIContext.bindOverlayControls"
+  ],
+  "evidence": [
+   "test:internal/codingagent/pig_egg3d_test.go#TestPig3dPlaysOnlyInFullscreen",
+   "test:internal/codingagent/pig_logo_animation_test.go#TestHeaderPigClickIgnoredWhileAnOverlayOrTheAnimationIsOpen"
+  ],
+  "rationale": "OverlayHandle.hide is the Go method OverlayHandle.Hide; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
+ }
+]

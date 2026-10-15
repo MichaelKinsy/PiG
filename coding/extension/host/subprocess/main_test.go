@@ -67,15 +67,20 @@ func TestMain(m *testing.M) {
 		}
 	}
 	fixtureRoot = filepath.Join(testRoot, "fixtures")
-	// Cargo's default target is inside each generated cell's disposable build directory. Keep dependencies for this package run, without sharing mutable outputs with another test process.
+	// Rust SDK dependencies compile once per machine into a persistent target keyed by the SDK lock, not once per package run (more than 10 minutes under load).
 	if os.Getenv("CARGO_TARGET_DIR") == "" {
-		if err := os.Setenv("CARGO_TARGET_DIR", filepath.Join(testRoot, "cargo-target")); err != nil {
+		sdk := filepath.Join(root, "extensions", "sdk-rs")
+		target, err := testenv.SharedCargoTargetDir("subprocess", filepath.Join(sdk, "Cargo.lock"), filepath.Join(sdk, "Cargo.toml"))
+		if err == nil {
+			err = os.Setenv("CARGO_TARGET_DIR", target)
+		}
+		if err != nil {
 			fmt.Fprintln(os.Stderr, "set package Cargo target:", err)
 			_ = os.RemoveAll(testRoot)
 			os.Exit(2)
 		}
 	}
-	code := m.Run()
+	code := testenv.RunWithoutGoroutineLeaks(m)
 	if err := os.RemoveAll(testRoot); err != nil {
 		fmt.Fprintln(os.Stderr, "remove isolated test home:", err)
 		if code == 0 {

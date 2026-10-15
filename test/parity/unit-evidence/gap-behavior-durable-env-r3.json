@@ -1,0 +1,98 @@
+[
+ {
+  "upstream": "packages/chord/src/delta/tracker.ts",
+  "package": "./chord/delta",
+  "tests": [
+   "TestTrackerChangesCommitInOrderAndAbortedChangesLeaveNoTrace"
+  ],
+  "upstream_reference": "packages/chord/src/delta/tracker.ts",
+  "mutation": "chord/delta/tracker.go: replace 'func (change *Change) Abort() {' with 'func (change *Change) Abort() {\\n\\treturn'; compiling go test -overlay -run exact test -count=1 fails TestTrackerChangesCommitInOrderAndAbortedChangesLeaveNoTrace."
+ },
+ {
+  "upstream": "packages/chord/src/delta/tracker.ts",
+  "package": "./chord/delta",
+  "tests": [
+   "TestTrackerRevisionCountsAdoptions",
+   "TestTrackerOverlayLifecycle",
+   "TestTrackerSupportsRootArrays"
+  ],
+  "upstream_reference": "packages/chord/src/delta/tracker.ts",
+  "mutation": "chord/delta/tracker.go: replace '\\ttracker.revision++\\n' with '\\t_ = 0\\n'; compiling go test -overlay -run exact test -count=1 fails TestTrackerRevisionCountsAdoptions, TestTrackerOverlayLifecycle, TestTrackerSupportsRootArrays."
+ },
+ {
+  "upstream": "packages/agent/src/agent.ts",
+  "package": "./agent",
+  "tests": [
+   "TestSetBeforeProviderHookReplacesTheHookForTheNextRequest"
+  ],
+  "upstream_reference": "packages/agent/src/agent.ts",
+  "mutation": "agent/agent.go: replace 'a.beforeProviderHook = fn' with '_ = fn'; compiling go test -overlay -run exact test -count=1 fails TestSetBeforeProviderHookReplacesTheHookForTheNextRequest."
+ },
+ {
+  "upstream": "packages/agent/src/agent.ts",
+  "package": "./agent",
+  "tests": [
+   "TestSetFinishTurnInstallsTheHookTheNextRunCalls"
+  ],
+  "upstream_reference": "packages/agent/src/agent.ts",
+  "mutation": "agent/agent.go: replace 'a.opts.FinishTurn = fn' with '_ = fn'; compiling go test -overlay -run exact test -count=1 fails TestSetFinishTurnInstallsTheHookTheNextRunCalls."
+ },
+ {
+  "upstream": "packages/durable/src/env/index.ts",
+  "package": "./durable/env",
+  "tests": [
+   "TestExecutionErrorUpstream",
+   "TestNewExecutionErrorKeepsCodeMessageAndCause",
+   "TestFileErrorAndExecutionErrorKeepTheirArguments"
+  ],
+  "upstream_reference": "packages/durable/src/env/index.ts",
+  "mutation": "durable/env/env.go: replace 'func (e *ExecutionError) Unwrap() error { return e.Cause }' with 'func (e *ExecutionError) Unwrap() error { return nil }'; compiling go test -overlay -run exact test -count=1 fails TestExecutionErrorUpstream, TestNewExecutionErrorKeepsCodeMessageAndCause, TestFileErrorAndExecutionErrorKeepTheirArguments."
+ },
+ {
+  "upstream": "packages/durable/src/env/index.ts",
+  "package": "./durable/env/node",
+  "tests": [
+   "TestBinaryReaderInfoReadAndCloseFollowTheOpenedFile",
+   "TestBinaryReaderInfoDescribesTheOpenedFileAfterARename"
+  ],
+  "upstream_reference": "packages/durable/src/env/index.ts",
+  "mutation": "durable/env/node/binary_reader.go: replace 'return chunk[:bytesRead], nil' with 'return chunk[:max(bytesRead-1, 0)], nil'; compiling go test -overlay -run exact test -count=1 fails TestBinaryReaderInfoReadAndCloseFollowTheOpenedFile, TestBinaryReaderInfoDescribesTheOpenedFileAfterARename."
+ },
+ {
+  "upstream": "packages/durable/src/env/index.ts",
+  "package": "./durable/env/node",
+  "tests": [
+   "TestOpenDirReaderPagesEntriesAndRefusesNonDirectories"
+  ],
+  "upstream_reference": "packages/durable/src/env/index.ts",
+  "mutation": "durable/env/node/binary_reader.go: replace 'reader.dir.ReadDir(maxEntries - len(entries))' with 'reader.dir.ReadDir(-1)'; compiling go test -overlay -run exact test -count=1 fails TestOpenDirReaderPagesEntriesAndRefusesNonDirectories."
+ },
+ {
+  "upstream": "packages/durable/src/env/index.ts",
+  "package": "./durable/env/node",
+  "tests": [
+   "TestTextLineReaderReportsWhetherEachLineWasNewlineTerminatedAndPreservesCarriageReturns"
+  ],
+  "upstream_reference": "packages/durable/src/env/index.ts",
+  "mutation": "durable/env/node/line_reader.go: replace 'return &durableenv.TextLine{Text: text}, true' with 'return &durableenv.TextLine{Text: text, Terminated: true}, true'; compiling go test -overlay -run exact test -count=1 fails TestTextLineReaderReportsWhetherEachLineWasNewlineTerminatedAndPreservesCarriageReturns."
+ },
+ {
+  "upstream": "packages/durable/src/env/index.ts",
+  "package": "./durable/env/node",
+  "tests": [
+   "TestNodeExecutionEnvConformance"
+  ],
+  "upstream_reference": "packages/durable/src/env/index.ts",
+  "mutation": "durable/env/node/watch.go: replace 'func (watcher *nodeFileWatcher) stop() {' with 'func (watcher *nodeFileWatcher) stop() {\\n\\tif true {\\n\\t\\treturn\\n\\t}'; compiling go test -overlay -run exact test -count=1 fails TestNodeExecutionEnvConformance."
+ },
+ {
+  "upstream": "packages/durable/src/env/index.ts",
+  "package": "./durable/env/node",
+  "tests": [
+   "TestNodeExecutionEnvConformance",
+   "TestExecutionEnvFileSystemContract"
+  ],
+  "upstream_reference": "packages/durable/src/env/index.ts",
+  "mutation": "durable/env/node/watch.go: replace '\\tif watcher.closed {\\n\\t\\twatcher.mu.Unlock()\\n\\t\\treturn nil\\n\\t}\\n\\twatcher.mu.Unlock()\\n\\twatcher.stop()' with '\\tif watcher.closed {\\n\\t\\twatcher.mu.Unlock()\\n\\t\\treturn durableenv.NewFileError(durableenv.FileErrorInvalid, \"closed\", \"\", nil)\\n\\t}\\n\\twatcher.mu.Unlock()\\n\\twatcher.stop()'; compiling go test -overlay -run exact test -count=1 fails TestNodeExecutionEnvConformance, TestExecutionEnvFileSystemContract."
+ }
+]

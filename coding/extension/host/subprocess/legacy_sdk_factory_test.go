@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/agent"
 	extsource "github.com/MichaelKinsy/PiG/coding/extension/source"
 )
 
@@ -97,7 +96,7 @@ func TestHost_LegacySDKFactoryLoadsBesideCurrentSDKFactory(t *testing.T) {
 		if err != nil {
 			t.Fatalf("execute legacy tool: %v", err)
 		}
-		if got, ok := result.(agent.AgentToolResult); !ok || got.Text() != "legacy ask ok" {
+		if got, ok := result, true; !ok || got.Text() != "legacy ask ok" {
 			t.Fatalf("legacy tool result = %#v", result)
 		}
 	}

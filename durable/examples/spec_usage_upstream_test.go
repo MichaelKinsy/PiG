@@ -44,9 +44,8 @@ type (
 )
 
 var specPlanModeDoc = durable.DefineDoc(durable.DocDefinition[specPlanMode]{
-	CommonDocDefinition: durable.CommonDocDefinition[specPlanMode]{Kind: "app.plan-mode", Version: 1},
+	CommonDocDefinition: durable.CommonDocDefinition[specPlanMode]{Kind: "app.plan-mode", Version: 1, Initial: func() specPlanMode { return specPlanMode{Enabled: false} }},
 	DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkCurrent},
-	Initial:             func() specPlanMode { return specPlanMode{Enabled: false} },
 })
 
 // specNames are the names the spec leaves to the application (spec-usage.test.ts:49-80).
@@ -92,7 +91,7 @@ type specHost struct {
 
 // specUsageHarnessExamples is `examples()` of spec-usage.test.ts without the root-package examples.
 func specUsageHarnessExamples(names specNames) map[string]func(context.Context) error {
-	readTool := tools.CreateReadTool()
+	readTool := tools.CreateReadTool(nil)
 	editTool := tools.CreateEditTool()
 	bashTool := tools.CreateBashTool(nil)
 	text := func(render func() *string) func(context.Context, durable.PromptInput) (*string, error) {
@@ -122,8 +121,8 @@ func specUsageHarnessExamples(names specNames) map[string]func(context.Context) 
 	permissions := new(durable.Extension{
 		Name: "permissions",
 		Hooks: []durable.HookRegistration{
-			harness.Hook(harness.ToolTask, &harness.ToolHooks{BeforeTool: func(_ context.Context, call ai.ToolCall, _ harness.HookApi) (*harness.BeforeToolResult, error) {
-				if names.isDangerous(call) {
+			harness.Hook(harness.ToolTask, &harness.ToolHooks{BeforeTool: func(_ context.Context, call harness.ToolHookCall, _ harness.HookApi) (*harness.BeforeToolResult, error) {
+				if names.isDangerous(call.ToolCall) {
 					return &harness.BeforeToolResult{Block: new("Needs approval")}, nil
 				}
 				return nil, nil
@@ -167,12 +166,12 @@ func specUsageHarnessExamples(names specNames) map[string]func(context.Context) 
 		Hooks: []durable.HookRegistration{
 			harness.Hook(harness.ToolTask, &harness.ToolHooks{
 				// An absent document means plan mode is off.
-				BeforeTool: func(ctx context.Context, call ai.ToolCall, api harness.HookApi) (*harness.BeforeToolResult, error) {
+				BeforeTool: func(ctx context.Context, call harness.ToolHookCall, api harness.HookApi) (*harness.BeforeToolResult, error) {
 					plan, err := durable.Snapshot[specPlanMode](ctx, api, specPlanModeDoc, api.ConversationId())
 					if err != nil {
 						return nil, err
 					}
-					if plan != nil && plan.Enabled && names.writes(call) {
+					if plan != nil && plan.Enabled && names.writes(call.ToolCall) {
 						return &harness.BeforeToolResult{Block: new("Plan mode: read-only")}, nil
 					}
 					return nil, nil
@@ -215,14 +214,14 @@ func specUsageHarnessExamples(names specNames) map[string]func(context.Context) 
 							return nil, err
 						}
 						// Without this extension, the child is not offered this tool.
-						err = harness.Configure(tx, child.Id, harness.AgentChange{Extensions: harness.SetTo(harness.ExtensionChange{Remove: []*durable.Extension{subagent}})})
+						err = harness.Configure(tx, child.Id, harness.AgentChange{Extensions: harness.SetTo(harness.ExtensionChange{Edit: &harness.ExtensionEdit{Remove: []*durable.Extension{subagent}}})})
 						return child.Id, err
 					})
 					if err != nil {
 						return durable.ToolExecutionResult{}, err
 					}
 					child := created.(durable.ConversationId)
-					if err := api.Details(ctx, durable.JsonObject{"conversationId": float64(child)}); err != nil {
+					if err := api.Details(ctx, delta.JsonObjectOf("conversationId", float64(child))); err != nil {
 						return durable.ToolExecutionResult{}, err
 					}
 					handle, err := api.Conversation(ctx, child)
@@ -242,7 +241,7 @@ func specUsageHarnessExamples(names specNames) map[string]func(context.Context) 
 						return durable.ToolExecutionResult{}, fmt.Errorf("Subagent failed: %s", settled.Status)
 					}
 					answer, err := names.answerText(ctx, api, *settled.Answer)
-					return durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: answer}}}, err
+					return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{ai.TextContent{Text: answer}}}, err
 				},
 			}),
 		},
@@ -250,7 +249,7 @@ func specUsageHarnessExamples(names specNames) map[string]func(context.Context) 
 
 	subagentTools := new(durable.Extension{
 		Name:  "subagent-tools",
-		Tasks: []durable.AnyTask{names.anchor, names.reporter},
+		Tasks: []durable.AnyTask{names.anchor.Erased(), names.reporter.Erased()},
 		Tools: []*durable.ToolRegistration{names.subagentTool},
 	})
 
@@ -275,7 +274,7 @@ func specUsageHarnessExamples(names specNames) map[string]func(context.Context) 
 				// A cheaper model, only the read tool, and its own worktree; everything else stays as copied.
 				return nil, harness.Configure(tx, child.Id, harness.AgentChange{
 					Model: harness.SetTo(names.haiku),
-					Tools: harness.SetTo(harness.ToolChange{Exact: true, List: []*durable.ToolRegistration{readTool}}),
+					Tools: harness.SetTo(harness.ToolChange{List: []*durable.ToolRegistration{readTool}}),
 					Cwd:   harness.SetTo(names.worktree),
 				})
 			})
@@ -288,9 +287,8 @@ func specUsageHarnessExamples(names specNames) map[string]func(context.Context) 
 			// Absent: the conversation runs locally. Only conversations with this document run in a container.
 			// Subagents do not copy it: their creator writes it too when they should run in the container.
 			containerDoc := durable.DefineDoc(durable.DocDefinition[specContainer]{
-				CommonDocDefinition: durable.CommonDocDefinition[specContainer]{Kind: "app.container", Version: 1},
+				CommonDocDefinition: durable.CommonDocDefinition[specContainer]{Kind: "app.container", Version: 1, Initial: func() specContainer { return specContainer{Image: "node:22"} }},
 				DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkCurrent},
-				Initial:             func() specContainer { return specContainer{Image: "node:22"} },
 			})
 			_, err := harness.OpenHarness(ctx, names.storage, harness.HarnessOptions{
 				Models:   names.models,
@@ -374,9 +372,9 @@ func specUsageHarnessExamples(names specNames) map[string]func(context.Context) 
 			}
 
 			for _, change := range []harness.AgentChange{
-				{Tools: harness.SetTo(harness.ToolChange{Remove: []*durable.ToolRegistration{editTool}})},
-				{Tools: harness.SetTo(harness.ToolChange{Remove: []*durable.ToolRegistration{bashTool}})}, // edit is offered again
-				{Tools: harness.Cleared[harness.ToolChange]()},                                            // every tool of the selected extensions again
+				{Tools: harness.SetTo(harness.ToolChange{Edit: &harness.ToolEdit{Remove: []*durable.ToolRegistration{editTool}}})},
+				{Tools: harness.SetTo(harness.ToolChange{Edit: &harness.ToolEdit{Remove: []*durable.ToolRegistration{bashTool}}})}, // edit is offered again
+				{Tools: harness.Cleared[harness.ToolChange]()},                                                                     // every tool of the selected extensions again
 			} {
 				if err := root.Configure(ctx, change); err != nil {
 					return err
@@ -389,7 +387,7 @@ func specUsageHarnessExamples(names specNames) map[string]func(context.Context) 
 				}
 			}
 			conversation := root
-			if err := conversation.Configure(ctx, harness.AgentChange{Extensions: harness.SetTo(harness.ExtensionChange{Add: []*durable.Extension{venv}})}); err != nil {
+			if err := conversation.Configure(ctx, harness.AgentChange{Extensions: harness.SetTo(harness.ExtensionChange{Edit: &harness.ExtensionEdit{Add: []*durable.Extension{venv}}})}); err != nil {
 				return err
 			}
 
@@ -434,7 +432,7 @@ func specUsageHarnessExamples(names specNames) map[string]func(context.Context) 
 					return nil, err
 				}
 				return nil, harness.Configure(tx, child.Id, harness.AgentChange{
-					Extensions:   harness.SetTo(harness.ExtensionChange{Remove: []*durable.Extension{subagentTools}}),
+					Extensions:   harness.SetTo(harness.ExtensionChange{Edit: &harness.ExtensionEdit{Remove: []*durable.Extension{subagentTools}}}),
 					Instructions: harness.SetTo(fmt.Sprintf("You are the subagent %q. Answer the main agent's requests.", names.name)),
 				})
 			})
@@ -456,7 +454,7 @@ func specUsageHarnessExamples(names specNames) map[string]func(context.Context) 
 				}
 				live.Delete("generation") // document mutation remains valid
 				// further table writes are fine
-				_, err = durable.CreateTask(tx, names.followTask, durable.JsonObject{}, durable.TaskOptions{Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByConversation}, ConversationId: &names.conversationId})
+				_, err = durable.CreateTask(tx, names.followTask, delta.NewJsonObject(0), durable.TaskOptions{Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByConversation}, ConversationId: &names.conversationId})
 				return nil, err
 			})
 			return err
@@ -478,7 +476,7 @@ func specUsageHarnessExamples(names specNames) map[string]func(context.Context) 
 	return sequences
 }
 
-// spec-usage.test.ts:375
+// spec-usage.test.ts:377 it("compiles the spec's usage examples"), the durable/harness and durable/tools half.
 func TestSpecUsageCompilesTheHarnessExamples(t *testing.T) {
 	sequences := specUsageHarnessExamples(specNames{})
 	want := []string{"childInToolCommit", "containerEnv", "liveSettings", "host", "spawn", "tableRules", "revokedDraft"}
@@ -498,6 +496,9 @@ func TestSpecUsageCompilesTheHarnessExamples(t *testing.T) {
 
 // The host sequence of spec-usage.test.ts, run: it installs the examples' extensions, edits the root conversation's
 // tool and extension selection, writes the plan-mode document, and replaces and uninstalls an extension.
+// Pi source: packages/durable/src/harness/types.ts
+// mutation-checked: zeroing the results of Conversation.Agent, Conversation.Id fails it
+// mutation-checked: dropping the reads and writes of Extension.Name fails it
 func TestSpecUsageHostSequenceRuns(t *testing.T) {
 	names := specNames{
 		host:           &specHost{},

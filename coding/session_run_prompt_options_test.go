@@ -15,6 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/extensions/sdk"
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
 func runPromptTool(t *testing.T, name string, execute func()) agent.AgentTool {
@@ -67,7 +68,7 @@ func TestRunSectionsFollowLiveActiveToolsOnNextTurn(t *testing.T) {
 	})
 	session = h.session
 	session.SetActiveToolsByName([]string{"first"})
-	if _, err := session.Prompt(t.Context(), "start"); err != nil {
+	if err := session.Prompt(t.Context(), "start"); err != nil {
 		t.Fatal(err)
 	}
 	if len(providerPrompts) != 2 || !reflect.DeepEqual(providerPrompts, sessionPrompts) {
@@ -120,7 +121,7 @@ func TestForcedPromptKeepsSameHandlerSectionEdits(t *testing.T) {
 	}
 	h := newRecoveryHarness(t, harnessOptions{extension: ext}, responses...)
 	for _, text := range []string{"one", "two", "three", "four"} {
-		if _, err := h.session.Prompt(t.Context(), text); err != nil {
+		if err := h.session.Prompt(t.Context(), text); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -263,7 +264,7 @@ func assertSelectedToolsLoadout(t *testing.T, ext extension.Extension, bind func
 	session.SetActiveToolsByName([]string{"first"})
 	basePrompt := session.SystemPrompt()
 	for _, text := range []string{"one", "two"} {
-		if _, err := session.Prompt(t.Context(), text); err != nil {
+		if err := session.Prompt(t.Context(), text); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -306,7 +307,7 @@ func TestInvalidSectionRejectionKeepsAdmittedLoadout(t *testing.T) {
 				return fauxReply("unexpected", ai.StopReasonStop, 0)(request)
 			})
 			h.session.SetActiveToolsByName([]string{"first", "first"})
-			_, err := h.session.Prompt(t.Context(), "bad")
+			err := h.session.Prompt(t.Context(), "bad")
 			if err == nil || err.Error() != "Invalid system prompt section name: preamble" {
 				t.Fatalf("err=%v", err)
 			}
@@ -314,5 +315,88 @@ func TestInvalidSectionRejectionKeepsAdmittedLoadout(t *testing.T) {
 				t.Fatalf("active=%v requests=%d, want %v and none", got, requests, tc.want)
 			}
 		})
+	}
+}
+
+// _preparePromptAndToolLoadout applies the loadout (agent-session.ts:1743) and then evaluates getCurrentSystemMessage(messages) (:1746) before buildSystemPromptSections(options) (:1747), so a wrong-typed system replay's TypeError wins over an invalid section name, and the handler's loadout stays admitted.
+func TestSystemReplayErrorPrecedesInvalidSectionAndKeepsAdmittedLoadout(t *testing.T) {
+	ext := extension.Extension{Handlers: map[string][]extension.HandlerFn{"before_agent_start": {func(args ...any) (any, error) {
+		options := extension.BeforeAgentStartOptions(args[1].(context.Context))
+		options.SelectedTools = []string{"second"}
+		*options.Sections = append(*options.Sections, ai.PromptSection{Name: "preamble", Value: new("invalid")})
+		return nil, nil
+	}}}}
+	requests := 0
+	h := newRecoveryHarness(t, harnessOptions{tools: []agent.AgentTool{runPromptTool(t, "first", func() {}), runPromptTool(t, "second", func() {})}, extension: ext}, func(request []ai.Message) *ai.AssistantMessage {
+		requests++
+		return fauxReply("unexpected", ai.StopReasonStop, 0)(request)
+	})
+	h.session.SetActiveToolsByName([]string{"first"})
+	var system agent.AgentMessage
+	if err := system.UnmarshalJSON([]byte(`{"role":"system","content":"","toolsAdded":5,"timestamp":1}`)); err != nil {
+		t.Fatal(err)
+	}
+	h.session.Agent().SetMessages([]agent.AgentMessage{system})
+	err := h.session.Prompt(t.Context(), "bad")
+	if want := "number 5 is not iterable (cannot read property Symbol(Symbol.iterator))"; err == nil || err.Error() != want {
+		t.Fatalf("err=%v, want %q", err, want)
+	}
+	if got := h.session.ActiveToolNames(); !reflect.DeepEqual(got, []string{"second"}) || requests != 0 {
+		t.Fatalf("active=%v requests=%d, want [second] and none", got, requests)
+	}
+}
+
+// Interactive mode prepares its own before_agent_start run and publishes it with SetRunPrompt. The Session's request hook
+// then records the run's sections in the transcript before the first request, as for a run the Session prepared
+// (agent-session.ts:1724); an unpublished run records nothing, so an extension section such as `mcp_servers` never
+// reached an interactive session's transcript.
+func TestSetRunPromptRecordsThePublishedRunSectionsInTheTranscript(t *testing.T) {
+	h := newRecoveryHarness(t, harnessOptions{}, fauxReply("done", ai.StopReasonStop, 0))
+	user := []agent.AgentMessage{{User: &agent.UserMessage{Role: "user", Content: ai.UserText("hi")}}}
+	section := ai.OrderedSections{{Name: "mcp_servers", Value: new("- mcp__docs (codemode)")}}
+	options := *h.session.GetSystemPromptOptions()
+	options.Sections = &section
+	run, err := icodingagent.ResolveBeforeAgentStartRun(*h.session.GetSystemPromptOptions(), &extension.BeforeAgentStartCombinedResult{SystemPromptOptions: &options})
+	if err != nil {
+		t.Fatal(err)
+	}
+	hasSection := func(messages []agent.AgentMessage) bool {
+		for _, message := range messages {
+			if message.System == nil {
+				continue
+			}
+			for _, s := range message.System.Sections {
+				if s.Name == "mcp_servers" {
+					return true
+				}
+			}
+		}
+		return false
+	}
+
+	unpublished, err := h.session.preparePrompt(t.Context(), user)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hasSection(unpublished) {
+		t.Fatalf("an unpublished run recorded its section: %+v", unpublished)
+	}
+
+	h.session.SetRunPrompt(&run)
+	published, err := h.session.preparePrompt(t.Context(), user)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasSection(published) {
+		t.Fatalf("the published run's section is missing from the transcript update: %+v", published)
+	}
+
+	h.session.SetRunPrompt(nil)
+	ended, err := h.session.preparePrompt(t.Context(), user)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hasSection(ended) {
+		t.Fatalf("an ended run still recorded its section: %+v", ended)
 	}
 }

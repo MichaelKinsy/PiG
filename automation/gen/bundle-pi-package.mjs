@@ -1,11 +1,25 @@
 // Compile a pinned package graph while preserving its external module identities and source/asset URLs.
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, relative, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const require = createRequire(new URL("../../extensions/sdk-ts/package.json", import.meta.url));
-const esbuild = createRequire(new URL("../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/package.json", import.meta.url))("esbuild");
+// esbuild comes with the pinned Pi: Pi 1.1.0's pi-coding-agent depended on it; from Pi 1.2.0 only the monorepo root does
+// (package.json devDependencies), so a source-built oracle resolves it from the build's own src/ install.
+const esbuild = (() => {
+  try {
+    return createRequire(new URL("../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/package.json", import.meta.url))("esbuild");
+  } catch (error) {
+    const build = dirname(realpathSync(fileURLToPath(new URL("../../extensions/sdk-ts/node_modules", import.meta.url))));
+    try {
+      return createRequire(join(build, "src", "package.json"))("esbuild");
+    } catch {
+      throw error;
+    }
+  }
+})();
 const ts = require("typescript");
 
 export async function bundleRuntimePackage(shimArg, packageName, entryFiles, { output: outputArg, external = [], json = false } = {}) {

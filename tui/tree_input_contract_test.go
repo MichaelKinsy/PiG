@@ -22,7 +22,7 @@ func TestTreeInputBindingPriority(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			treeHelpTestKeybindings(t, map[string][]string{tc.first: {"ctrl+x"}, tc.second: {"ctrl+x"}})
-			selector := NewTreeSelect("", &fakeNode{id: "root", kids: []TreeNode{&fakeNode{id: "a", label: "a"}, &fakeNode{id: "b", label: "b"}}})
+			selector := NewTreeSelectorComponent("", &fakeNode{id: "root", kids: []TreeNode{&fakeNode{id: "a", label: "a"}, &fakeNode{id: "b", label: "b"}}})
 			selector.SetInitialCursor(tc.initial, "")
 			copied := false
 			selector.OnCopy = func(*string) { copied = true }
@@ -34,7 +34,7 @@ func TestTreeInputBindingPriority(t *testing.T) {
 	}
 	t.Run("fold before page", func(t *testing.T) {
 		treeHelpTestKeybindings(t, map[string][]string{"app.tree.foldOrUp": {"ctrl+x"}, KBSelectPageUp: {"ctrl+x"}})
-		selector := NewTreeSelect("", &fakeNode{id: "root", kids: []TreeNode{&fakeNode{id: "a", label: "a", kids: []TreeNode{&fakeNode{id: "child", label: "child"}}}, &fakeNode{id: "b", label: "b"}}})
+		selector := NewTreeSelectorComponent("", &fakeNode{id: "root", kids: []TreeNode{&fakeNode{id: "a", label: "a", kids: []TreeNode{&fakeNode{id: "child", label: "child"}}}, &fakeNode{id: "b", label: "b"}}})
 		selector.SetInitialCursor("a", "")
 		selector.HandleInput("\x18")
 		if !selector.foldedNodes["a"] {
@@ -43,7 +43,7 @@ func TestTreeInputBindingPriority(t *testing.T) {
 	})
 	t.Run("backspace before label editing", func(t *testing.T) {
 		treeHelpTestKeybindings(t, map[string][]string{KBEditorDeleteCharBack: {"ctrl+g"}, "app.tree.editLabel": {"ctrl+g"}})
-		selector := NewTreeSelect("", &fakeNode{id: "root", kids: []TreeNode{&fakeNode{id: "a", label: "a"}}})
+		selector := NewTreeSelectorComponent("", &fakeNode{id: "root", kids: []TreeNode{&fakeNode{id: "a", label: "a"}}})
 		selector.OnLabelEdit = func(string, string) {}
 		selector.HandleInput("ab")
 		selector.HandleInput("\x07")
@@ -62,7 +62,7 @@ func TestTreeTabRequiresFilterBinding(t *testing.T) {
 				bindings = map[string][]string{"app.tree.filter.cycleForward": {"tab"}, "app.tree.filter.cycleBackward": {"shift+tab"}}
 			}
 			treeHelpTestKeybindings(t, bindings)
-			selector := NewTreeSelect("", &fakeNode{id: "root", kids: []TreeNode{&fakeNode{id: "a", label: "a"}}})
+			selector := NewTreeSelectorComponent("", &fakeNode{id: "root", kids: []TreeNode{&fakeNode{id: "a", label: "a"}}})
 			selector.HandleInput("\t")
 			want := "default"
 			if bound {
@@ -82,7 +82,7 @@ func TestTreeTabRequiresFilterBinding(t *testing.T) {
 // Pi tree-selector.ts:1092 removes one UTF-16 code unit with searchQuery.slice(0, -1).
 func TestTreeSearchBackspaceUsesUTF16Units(t *testing.T) {
 	treeHelpTestKeybindings(t, nil)
-	selector := NewTreeSelect("", &fakeNode{id: "root", kids: []TreeNode{&fakeNode{id: "a", label: "a😀"}}})
+	selector := NewTreeSelectorComponent("", &fakeNode{id: "root", kids: []TreeNode{&fakeNode{id: "a", label: "a😀"}}})
 	selector.HandleInput("a😀")
 	for _, want := range [][]uint16{{'a', 0xd83d}, {'a'}, {}} {
 		selector.HandleInput("\x7f")

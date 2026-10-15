@@ -34,7 +34,12 @@ func TestMessageTextSanitizesLoneSurrogatesOnTheWire(t *testing.T) {
 					t.Error(err)
 				}
 				for _, role := range []string{"system", "user-text", "assistant", "user-block"} {
-					if !jsonContainsText(decoded, role+": "+want) {
+					expected := role + ": " + want
+					if role == "system" && tc.provider == "openai-codex" {
+						// openai-codex-responses.ts:552 sends the system message text as it is, so its lone surrogate stays: the body carries its escape, which decodes to U+FFFD.
+						expected = "system: unpaired \ufffd end"
+					}
+					if !jsonContainsText(decoded, expected) {
 						t.Errorf("%s text was not sanitized: %v", role, decoded)
 					}
 				}
@@ -98,14 +103,14 @@ func TestOpenAICompletionsSanitizesTextButNotReasoningFields(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(out) != 2 || !reflect.DeepEqual(out[0].Content, []oaiContentPart{{Type: "text", Text: ""}}) || out[1].Content != "a" || out[1].ReasoningContent == nil || *out[1].ReasoningContent != "r"+loneHigh {
+	if len(out) != 2 || !reflect.DeepEqual(out[0].Content, []oaiContentPart{{Type: "text", Text: new("")}}) || out[1].Content != "a" || out[1].ReasoningContent == nil || *out[1].ReasoningContent != "r"+loneHigh {
 		t.Fatalf("messages=%#v", out)
 	}
 	asText, err := convertMessagesInternal(messages[1:], false, nil, true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := []oaiContentPart{{Type: "text", Text: "r"}, {Type: "text", Text: "a"}}; len(asText) != 1 || !reflect.DeepEqual(asText[0].Content, want) {
+	if want := []oaiContentPart{{Type: "text", Text: new("r")}, {Type: "text", Text: new("a")}}; len(asText) != 1 || !reflect.DeepEqual(asText[0].Content, want) {
 		t.Fatalf("thinking-as-text=%#v, want %#v", asText, want)
 	}
 }

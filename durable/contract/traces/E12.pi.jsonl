@@ -1,0 +1,9 @@
+{"k":">","name":"harness.root","tick":195}
+{"k":"#","seq":1,"summary":"conversations:i document_revisions:i documents:i","tick":383,"begin":323}
+{"k":">","name":"harness.root().commit","tick":392}
+{"k":"#","seq":2,"summary":"tasks:i","tick":430,"begin":419}
+{"k":">","name":"harness.waitForTask","tick":438}
+{"k":"#","seq":3,"summary":"tasks:u","tick":490,"begin":479}
+{"k":"#","seq":4,"summary":"tasks:u","tick":552,"begin":541}
+{"k":"#","seq":5,"summary":"tasks:u","tick":616,"begin":605}
+{"k":">","name":"harness.close","tick":624}

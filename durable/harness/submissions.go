@@ -5,9 +5,9 @@ package harness
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
-	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
 )
@@ -52,12 +52,14 @@ type Submissions struct {
 // NewSubmissions subscribes to the Session's commits and close.
 func NewSubmissions(line *session.SessionImpl, storage durable.Storage, now func() float64, queueModes func() QueueModes, resume func()) *Submissions {
 	submissions := &Submissions{line: line, storage: storage, now: now, queueModes: queueModes, resume: resume}
-	line.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) { submissions.observe(publication) })
+	line.ObserveCommits(func(ctx context.Context, publication durable.CommitPublication) {
+		submissions.observe(publication)
+	})
 	line.SubscribeClose(func() {
 		submissions.closeMu.Lock()
 		submissions.closed = true
 		submissions.closeMu.Unlock()
-		submissions.waiters.RejectAll(ErrClosed)
+		submissions.waiters.RejectAll(closedError(line))
 	})
 	return submissions
 }
@@ -122,7 +124,7 @@ func (submissions *Submissions) Wait(ctx context.Context, id durable.SubmissionI
 		submissions.closeMu.Lock()
 		defer submissions.closeMu.Unlock()
 		if submissions.closed {
-			return found{}, ErrClosed
+			return found{}, closedError(submissions.line)
 		}
 		return found{waiter: submissions.waiters.Add(ctx, id)}, nil
 	})
@@ -168,7 +170,7 @@ func (submissions *Submissions) observe(publication durable.CommitPublication) {
 		if !ok || !isSettledSubmission(write.Value) {
 			continue
 		}
-		submissions.waiters.Resolve(write.Value.Id, write.Value)
+		submissions.line.DeferUntilPublished(func() { submissions.waiters.Resolve(write.Value.Id, write.Value) })
 	}
 }
 
@@ -202,12 +204,29 @@ func isSettledSubmission(record durable.SubmissionRecord) bool {
 	return record.Status == durable.SubmissionDone || record.Status == durable.SubmissionUnanswered
 }
 
+// checkInputEntry rejects an input entry whose kind is not a non-empty string outside the pi. prefix with a TypeError
+// (submissions.ts checkInputEntry).
+func checkInputEntry(entry durable.InputEntry) error {
+	if entry.Kind == "" || strings.HasPrefix(entry.Kind, "pi.") {
+		return &TypeError{Message: "An input entry's kind must be a non-empty string not starting with \"pi.\", got " + entry.Kind}
+	}
+	return nil
+}
+
 // AdmitSubmission admits a submission inside a commit (spec §6, submissions.ts:136-207); Conversation.Submit and
-// conversation-owned compactions share it. A known request ID returns its existing submission without writing. A busy
-// conversation queues it in pi.inbox, or rejects whenBusy reject input with ConversationBusy. An idle conversation with
-// queued items queues it behind them and runs a final boundary. Otherwise idle input places a user entry and starts a
-// run, and an idle write appends its entry and settles done, or stale when its head reaches before the active range.
+// conversation-owned compactions share it. A known request ID returns its existing submission without writing. A
+// display-only write (only kind and data) is appended and settled done at once, busy or not, as it changes nothing the
+// model sees; only behind a queued reset it queues, so it lands after the reset instead of before it in the context the
+// reset ends. A busy conversation queues anything else in pi.inbox, or rejects whenBusy reject input with
+// ConversationBusy. An idle conversation with queued items queues it behind them and runs a final boundary. Otherwise
+// idle input places its entry (pi.user, or the input's own) and starts a run, and an idle write appends its entry and
+// settles done, or stale when its head reaches before the active range.
 func AdmitSubmission(tx durable.Tx, conversationId durable.ConversationId, draft durable.SubmissionDraft, now float64, queueModes QueueModes) (durable.SubmissionId, error) {
+	if draft.Type == durable.SubmissionTypeInput && draft.InputEntry != nil {
+		if err := checkInputEntry(*draft.InputEntry); err != nil {
+			return 0, err
+		}
+	}
 	if draft.RequestId != nil {
 		existing, err := tx.SubmissionByRequest(conversationId, *draft.RequestId)
 		if err != nil {
@@ -218,6 +237,28 @@ func AdmitSubmission(tx durable.Tx, conversationId durable.ConversationId, draft
 				return 0, fmt.Errorf("Request %s already identifies a submission of type %s", *draft.RequestId, existing.Type)
 			}
 			return existing.Id, nil
+		}
+	}
+	if draft.Type == durable.SubmissionTypeWrite && IsDisplayOnly(*draft.Entry) {
+		draftInbox, err := docDraft(tx, InboxDoc, conversationId)
+		if err != nil {
+			return 0, err
+		}
+		inbox, err := decodeDraft[InboxState](draftInbox)
+		if err != nil {
+			return 0, err
+		}
+		if !HasQueuedReset(inbox.Items) {
+			entry, err := tx.AppendEntry(conversationId, *draft.Entry)
+			if err != nil {
+				return 0, err
+			}
+			id := entry.Id
+			record, err := tx.CreateSubmission(durable.SubmissionCreate{ConversationId: conversationId, RequestId: draft.RequestId, Type: durable.SubmissionTypeWrite, Status: durable.SubmissionDone, Entry: &id})
+			if err != nil {
+				return 0, err
+			}
+			return record.Id, nil
 		}
 	}
 	live, err := docDraft(tx, LiveDoc, conversationId)
@@ -264,6 +305,11 @@ func AdmitSubmission(tx durable.Tx, conversationId durable.ConversationId, draft
 				mode = InboxSteer
 			}
 			item = InboxItem{Id: id, Mode: mode, Content: content}
+			if draft.InputEntry != nil {
+				if item.Entry, err = pickInputEntry(*draft.InputEntry); err != nil {
+					return 0, err
+				}
+			}
 		}
 		inbox := live
 		if boundary != nil {
@@ -308,8 +354,7 @@ func AdmitSubmission(tx durable.Tx, conversationId durable.ConversationId, draft
 		}
 		return record.Id, nil
 	}
-	message := ai.UserMessage{Content: draft.Content, Timestamp: int64(now)}
-	entry, err := durable.TxAppendEntry(tx, durable.UserEntry, conversationId, durable.TypedEntryDraft[durable.Never]{Model: []ai.Message{message}})
+	entry, err := appendInput(tx, conversationId, draft.Content, draft.InputEntry, now)
 	if err != nil {
 		return 0, err
 	}

@@ -2,6 +2,12 @@
 
 The Rust SDK targets Pi's extension API through PiG's subprocess host. See [Extension authoring](../../docs/extension-authoring.md) and [API parity](../../docs/extension-api-parity.md).
 
+## Pi helper exports
+
+The crate documentation (`cargo doc`; `cargo test --doc` runs the truncation example and compile-checks the rest) shows the helpers Pi exports to extensions in snake case: `truncate_head`, `truncate_tail`, `truncate_line`, `format_size` (Pi's truncate.ts), `with_file_mutation_queue`, `is_tool_call_event_type` (Pi's `isToolCallEventType`), and `get_agent_dir`, `get_config_dir_name`, `get_version` (Pi's `getAgentDir()`, `CONFIG_DIR_NAME`, `VERSION`). The host-config getters return an `io::Error`, never a made-up path, when the process was not started by a PiG host. `Context::get_editor_component` returns the factory this extension installed with `set_editor_component`; the factory is re-callable (`Fn`), as Pi's is. Pi's `getEditorComponent` returns the factory installed by any extension, so one extension can wrap another's editor; PiG returns only the calling extension's own factory.
+
+`Context::set_working_message("")` shows an empty working label, as Pi does, and `Context::clear_working_message()` restores the default label (Pi's `setWorkingMessage()` with no argument); `clear_hidden_thinking_label()` does the same for `set_hidden_thinking_label`.
+
 ## Constrained sampling
 
 `ToolDefinition.constrained_sampling` is `Option<ToolConstrainedSampling>`. Use `None` for omission, `Some(ToolConstrainedSampling::Disabled)` for explicit false, or `Some(config.into())` for a `ConstrainedSampling` configuration. `tool_with_constrained_sampling` accepts either the configuration or the disabled variant. This retains Pi's false/config union; true is not a valid value.
@@ -45,3 +51,8 @@ Keep the subscription alive until you want to unsubscribe. Return promptly. The 
 `JsString::from_units` and `as_units` preserve every unit. `From<&str>` and `From<String>` accept ordinary Rust strings. `to_string` returns an error for unmatched units. `to_string_lossy` explicitly replaces unmatched units for display.
 
 Serialize `JsString` directly with `serde_json::to_string` or `serde_json::to_vec`. The result is valid JSON with ordinary `\u` escapes for lone surrogates. Do not first convert it through `serde_json::Value` or `json!`: `Value::String` cannot hold a lone surrogate. The SDK's typed terminal and editor host calls avoid that conversion internally.
+
+## Mouse input
+
+A `RemoteComponent` or `ViewComponent` that returns `true` from `handles_mouse` receives Pi's fullscreen mouse events in `handle_mouse(&MouseEvent)` (snake_case fields such as `screen_x`, `wheel_delta`, `click_count`; `x`/`y` local to the component), on the same serial queue as `handle_input` and with the same result meaning. Regular `tuiMode` delivers none, as in Pi. See "Mouse in custom components" in `docs/extension-authoring.md`.
+

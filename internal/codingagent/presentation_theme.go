@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -30,6 +31,11 @@ type interactiveThemeState struct {
 	terminalColors *tui.TerminalColors
 	// colorQuery is closed when the latest color query completed or timed out and its colors applied. Owner loop only.
 	colorQuery chan struct{}
+	// pendingColorQueries are the started color queries whose colors have not applied yet, oldest first. Owner loop only.
+	pendingColorQueries []*pendingColorQuery
+	// attachedTo is the renderer whose light/dark reports the theme follows, and detach unsubscribes from it. Owner loop only.
+	attachedTo tui.TUI
+	detach     func()
 }
 
 // presentationTheme is the theme-controller state machine shared by InteractiveMode and standalone presentations. Every method runs on the presentation owner loop.
@@ -37,7 +43,7 @@ type presentationTheme struct {
 	state      *interactiveThemeState
 	getSetting func() *string
 	output     func() io.Writer
-	renderer   func() tui.Renderer
+	renderer   func() tui.TUI
 	showError  func(string)
 	// changed is onChanged: it runs after every applied theme, and the caller renders.
 	changed func()
@@ -78,6 +84,7 @@ func (theme presentationTheme) resolveThemeName() string {
 
 // initTheme applies the initial theme, as the theme controller's constructor does. The system theme starts in grayscale; color follows once the terminal reports its colors.
 func (theme presentationTheme) initTheme() {
+	theme.attach()
 	name := theme.resolveThemeName()
 	theme.state.activeThemeName.Store(&name)
 	tui.MarkTerminalColorsPending()
@@ -105,7 +112,12 @@ func (theme presentationTheme) setAutoSync(enabled bool) {
 	theme.writeThemeNotifications(enabled)
 }
 
+// writeThemeNotifications turns the terminal's light/dark reports on or off through the renderer, which also restores them across Stop and Start.
 func (theme presentationTheme) writeThemeNotifications(enabled bool) {
+	if ui := theme.renderer(); ui != nil {
+		ui.SetTerminalColorSchemeNotifications(enabled)
+		return
+	}
 	sequence := "\x1b[?2031l"
 	if enabled {
 		sequence = "\x1b[?2031h"
@@ -148,6 +160,15 @@ func (theme presentationTheme) setThemeName(name string, showError bool) error {
 	return err
 }
 
+// setThemeInstance applies a theme object, as an extension's setTheme does (theme-controller.ts:138 setThemeInstance).
+func (theme presentationTheme) setThemeInstance(instance *tui.Theme) {
+	theme.setAutoSync(false)
+	tui.SetThemeInstance(instance)
+	name := tui.InMemoryThemeName
+	theme.state.activeThemeName.Store(&name)
+	theme.notifyChanged()
+}
+
 // previewTheme applies a setting or name without storing it.
 func (theme presentationTheme) previewTheme(setting string) {
 	name, ok := tui.ResolveThemeSettingPresence(&setting, tui.GetTerminalTheme())
@@ -169,35 +190,82 @@ func (theme presentationTheme) previewTheme(setting string) {
 }
 
 // queryTerminalColors queries the terminal's colors without waiting for them; waitForTerminalColors waits for this query. The colors apply on the owner loop when the query completes or times out, and again if the terminal answers after the timeout.
+//
+// Pi applies them in requestTerminalColors' `query.then(apply)`, a microtask: a reply that completes the query applies its colors before the terminal input that follows it is handled. consumeInput therefore applies a query the input completed before it returns. The timeout completes the query on the renderer's timer, so a task posted to the owner loop at the timeout applies it then.
 func (theme presentationTheme) queryTerminalColors() {
 	ui, ctx := theme.renderer(), theme.ctx()
 	if ui == nil || ctx == nil {
 		return
 	}
-	done := make(chan struct{})
-	theme.state.colorQuery = done
+	query := &pendingColorQuery{done: make(chan struct{})}
+	theme.state.colorQuery = query.done
 	// Late replies arrive at the input boundary, which runs on the owner loop.
-	results := ui.QueryTerminalColors(tui.TerminalColorQueryOptions{TimeoutMs: float64(terminalColorQueryTimeout / time.Millisecond), OnLateReply: theme.applyTerminalColors})
+	query.results = ui.QueryTerminalColors(tui.TerminalColorQueryOptions{TimeoutMs: float64(terminalColorQueryTimeout / time.Millisecond), OnLateReply: theme.applyTerminalColors})
+	theme.state.pendingColorQueries = append(theme.state.pendingColorQueries, query)
 	theme.spawn(func() {
-		var result tui.TerminalColorsResult
+		timeout := time.NewTimer(terminalColorQueryTimeout)
+		defer timeout.Stop()
 		select {
-		case result = <-results:
+		case <-timeout.C:
 		case <-ctx.Done():
-			close(done)
+			query.release()
 			return
 		}
-		// A failed query applies no colors, like a terminal that does not report them.
-		colors := result.Colors
-		if result.Err != nil {
-			colors = tui.TerminalColors{}
-		}
-		if err := theme.post(ctx, func() {
-			theme.applyTerminalColors(colors)
-			close(done)
-		}); err != nil {
-			close(done)
+		if err := theme.post(ctx, func() { theme.applyTimedOutColorQuery(ctx, query) }); err != nil {
+			query.release()
 		}
 	})
+	// A failed write completes the query at once.
+	theme.applyCompletedColorQueries()
+}
+
+// pendingColorQuery is a started terminal color query whose colors have not applied yet.
+type pendingColorQuery struct {
+	// results is QueryTerminalColors' completion. Only the owner loop receives from it.
+	results <-chan tui.TerminalColorsResult
+	// done closes once the colors applied, or when the presentation ends first.
+	done        chan struct{}
+	releaseOnce sync.Once
+}
+
+func (query *pendingColorQuery) release() { query.releaseOnce.Do(func() { close(query.done) }) }
+
+// applyCompletedColorQueries applies, oldest first, the color queries that completed. A later query never completes before an earlier one: replies answer the oldest query, and the earlier one times out first.
+func (theme presentationTheme) applyCompletedColorQueries() {
+	for len(theme.state.pendingColorQueries) > 0 {
+		query := theme.state.pendingColorQueries[0]
+		select {
+		case result := <-query.results:
+			theme.applyColorQueryResult(query, result)
+		default:
+			return
+		}
+	}
+}
+
+// applyTimedOutColorQuery applies a query whose timeout passed, unless a reply completed it before. The renderer's timer, due no later than the task's, delivers the timed-out result.
+func (theme presentationTheme) applyTimedOutColorQuery(ctx context.Context, query *pendingColorQuery) {
+	for slices.Contains(theme.state.pendingColorQueries, query) {
+		select {
+		case result := <-theme.state.pendingColorQueries[0].results:
+			theme.applyColorQueryResult(theme.state.pendingColorQueries[0], result)
+		case <-ctx.Done():
+			query.release()
+			return
+		}
+	}
+}
+
+// applyColorQueryResult applies the result of the oldest pending query. A failed query applies no colors, like a terminal that does not report them.
+func (theme presentationTheme) applyColorQueryResult(query *pendingColorQuery, result tui.TerminalColorsResult) {
+	theme.state.pendingColorQueries[0] = nil
+	theme.state.pendingColorQueries = theme.state.pendingColorQueries[1:]
+	colors := result.Colors
+	if result.Err != nil {
+		colors = tui.TerminalColors{}
+	}
+	theme.applyTerminalColors(colors)
+	query.release()
 }
 
 // applyTerminalColors records reported colors: themes use the default colors for tokens set to "", the system theme is generated from all of them, and light/dark detection uses them. It re-renders only when they changed.
@@ -256,16 +324,37 @@ func (theme presentationTheme) reapplyForTerminal() {
 	}
 }
 
-// consumeInput consumes terminal color replies and appearance reports before extension listeners, viewport input, and focused components. Reports are consumed even without automatic selection.
+// consumeInput consumes terminal color replies and appearance reports before extension listeners, viewport input, and focused components. Reports are consumed even without automatic selection. A reply that completes a color query applies its colors before this returns, as Pi's `.then(apply)` microtask runs before the next input.
 func (theme presentationTheme) consumeInput(data string) bool {
 	if ui := theme.renderer(); ui != nil && ui.ConsumeTerminalColorResponse(data) {
+		theme.applyCompletedColorQueries()
 		return true
 	}
-	if scheme := tui.ParseTerminalColorSchemeReport(data); scheme != "" {
-		theme.applyTerminalColorSchemeChange(scheme)
-		return true
+	if ui := theme.renderer(); ui != nil {
+		return ui.ConsumeTerminalColorSchemeReport(data)
 	}
 	return false
+}
+
+// attach subscribes the theme to the renderer's light/dark reports, as Pi's theme controller does with onTerminalColorSchemeChange. It follows one renderer at a time and does nothing when it already follows the current one.
+func (theme presentationTheme) attach() {
+	ui := theme.renderer()
+	if ui == nil || theme.state.attachedTo == ui {
+		return
+	}
+	if theme.state.detach != nil {
+		theme.state.detach()
+	}
+	theme.state.attachedTo = ui
+	theme.state.detach = ui.OnTerminalColorSchemeChange(theme.applyTerminalColorSchemeChange)
+}
+
+// detachRenderer stops following the renderer's reports.
+func (theme presentationTheme) detachRenderer() {
+	if theme.state.detach != nil {
+		theme.state.detach()
+	}
+	theme.state.attachedTo, theme.state.detach = nil, nil
 }
 
 // applyTerminalColorSchemeChange handles a light/dark switch report. The terminal's colors changed too, so they are queried again: they decide the appearance. The reported scheme only matters for terminals that do not report their background.
@@ -307,7 +396,7 @@ type InteractiveThemeController struct {
 }
 
 // NewInteractiveThemeController resolves the initial theme on the owner loop, as theme-controller.ts's constructor calls initTheme.
-func NewInteractiveThemeController(ctx context.Context, ui tui.Renderer, options InteractiveThemeControllerOptions) (*InteractiveThemeController, error) {
+func NewInteractiveThemeController(ctx context.Context, ui tui.TUI, options InteractiveThemeControllerOptions) (*InteractiveThemeController, error) {
 	if ui == nil || options.GetSettingsManager == nil || options.RunOnMain == nil || options.Output == nil || options.ShowError == nil || options.OnChanged == nil {
 		return nil, errors.New("Theme controller requires a renderer, settings, owner executor, output and callbacks")
 	}
@@ -317,7 +406,7 @@ func NewInteractiveThemeController(ctx context.Context, ui tui.Renderer, options
 	controller.core = presentationTheme{
 		state:      state,
 		getSetting: func() *string { return options.GetSettingsManager().GetThemeSetting() },
-		output:     func() io.Writer { return options.Output }, renderer: func() tui.Renderer { return ui },
+		output:     func() io.Writer { return options.Output }, renderer: func() tui.TUI { return ui },
 		showError: options.ShowError, changed: options.OnChanged,
 		post: func(ctx context.Context, fn func()) error {
 			return options.RunOnMain(ctx, fn)
@@ -372,7 +461,10 @@ func (controller *InteractiveThemeController) Dispose() error {
 		controller.closed = true
 		controller.cancel()
 		controller.mu.Unlock()
-		controller.disposeError = controller.options.RunOnMain(context.Background(), controller.core.dispose)
+		controller.disposeError = controller.options.RunOnMain(context.Background(), func() {
+			controller.core.detachRenderer()
+			controller.core.dispose()
+		})
 		controller.tasks.Wait()
 	})
 	return controller.disposeError

@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 // Probe the pinned renderers' numeric warning text with an unstyled fixture theme. Layout and theme escapes are covered by the existing full-render tests, not this numeric crop.
+import { PI_PACKAGE_VERSION } from "./pi-version.mjs";
 import assert from "node:assert/strict";
 import { readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 const root = realpathSync(new URL("../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/", import.meta.url));
-assert.equal(JSON.parse(readFileSync(`${root}/package.json`, "utf8")).version, "1.0.3");
+assert.equal(JSON.parse(readFileSync(`${root}/package.json`, "utf8")).version, PI_PACKAGE_VERSION);
 const observations = [];
 for (const [name, field] of [["grep", "matchLimitReached"], ["find", "resultLimitReached"], ["ls", "entryLimitReached"]]) {
   const module = await import(pathToFileURL(`${root}/dist/core/tools/renderers/${name}.js`));

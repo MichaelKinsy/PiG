@@ -1,30 +1,15 @@
 import { TUI_KEYBINDINGS, KeybindingsManager as TuiKeybindingsManager, } from "../../../pi-tui.mjs";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
+import { Compile } from "../../../typebox-compile.mjs";
 import { getAgentDir } from "../config.js";
 import { stripBom } from "../utils/text.js";
+import { KeybindingValueSchema } from "./key-id-schema.js";
 export function useWindowsKeybindings(platform = process.platform, env = process.env) {
     return platform === "win32" || (platform === "linux" && Boolean(env.WSL_DISTRO_NAME || env.WSL_INTEROP));
 }
 const windowsKeybindings = useWindowsKeybindings();
-export const KEYBINDINGS = {
-    ...TUI_KEYBINDINGS,
-    "tui.editor.undo": {
-        ...TUI_KEYBINDINGS["tui.editor.undo"],
-        defaultKeys: process.platform === "win32" ? "ctrl+z" : windowsKeybindings ? "alt+z" : "ctrl+-",
-    },
-    "tui.altScreen.previousPrompt": {
-        ...TUI_KEYBINDINGS["tui.altScreen.previousPrompt"],
-        defaultKeys: windowsKeybindings ? "ctrl+up" : ["ctrl+shift+up", "ctrl+up"],
-    },
-    "tui.altScreen.nextPrompt": {
-        ...TUI_KEYBINDINGS["tui.altScreen.nextPrompt"],
-        defaultKeys: windowsKeybindings ? "ctrl+down" : ["ctrl+shift+down", "ctrl+down"],
-    },
-    "tui.altScreen.search": {
-        ...TUI_KEYBINDINGS["tui.altScreen.search"],
-        defaultKeys: windowsKeybindings ? "ctrl+f" : "ctrl+shift+f",
-    },
+const APP_KEYBINDINGS = {
     "app.interrupt": { defaultKeys: "escape", description: "Cancel or abort" },
     "app.clear": { defaultKeys: "ctrl+c", description: "Clear editor" },
     "app.exit": { defaultKeys: "ctrl+d", description: "Exit when editor is empty" },
@@ -171,6 +156,26 @@ export const KEYBINDINGS = {
         description: "Tree filter: cycle backward",
     },
 };
+export const KEYBINDINGS = {
+    ...TUI_KEYBINDINGS,
+    "tui.editor.undo": {
+        ...TUI_KEYBINDINGS["tui.editor.undo"],
+        defaultKeys: process.platform === "win32" ? "ctrl+z" : windowsKeybindings ? "alt+z" : "ctrl+-",
+    },
+    "tui.altScreen.previousPrompt": {
+        ...TUI_KEYBINDINGS["tui.altScreen.previousPrompt"],
+        defaultKeys: windowsKeybindings ? "ctrl+up" : ["ctrl+shift+up", "ctrl+up"],
+    },
+    "tui.altScreen.nextPrompt": {
+        ...TUI_KEYBINDINGS["tui.altScreen.nextPrompt"],
+        defaultKeys: windowsKeybindings ? "ctrl+down" : ["ctrl+shift+down", "ctrl+down"],
+    },
+    "tui.altScreen.search": {
+        ...TUI_KEYBINDINGS["tui.altScreen.search"],
+        defaultKeys: windowsKeybindings ? "ctrl+f" : "ctrl+shift+f",
+    },
+    ...APP_KEYBINDINGS,
+};
 const KEYBINDING_NAME_MIGRATIONS = {
     cursorUp: "tui.editor.cursorUp",
     cursorDown: "tui.editor.cursorDown",
@@ -235,16 +240,14 @@ const KEYBINDING_NAME_MIGRATIONS = {
 function isLegacyKeybindingName(key) {
     return key in KEYBINDING_NAME_MIGRATIONS;
 }
+const validateKeybindingValue = Compile(KeybindingValueSchema);
 function toKeybindingsConfig(value) {
     const config = {};
     for (const [key, binding] of Object.entries(value)) {
-        if (typeof binding === "string") {
-            config[key] = binding;
+        if (key === "$schema")
             continue;
-        }
-        if (Array.isArray(binding) && binding.every((entry) => typeof entry === "string")) {
+        if (validateKeybindingValue.Check(binding))
             config[key] = binding;
-        }
     }
     return config;
 }

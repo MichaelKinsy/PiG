@@ -21,17 +21,19 @@ package agent
 //
 // pig routes several models through one provider (GitHub Copilot), so the
 // thinking normalization is live whenever a session switches models (e.g.
-// gpt-* to claude-*). This file is wired into convertToLLM in messages.go.
+// gpt-* to claude-*).
 //
-// NormalizeMessages is called before convertToLLM so filters work on the
+// The agent loop does not call NormalizeMessages: it hands the stream function Pi's messages, and a real provider repairs the tool flow itself (ai.RepairToolFlow, D48) and
+// runs transformMessages. Callers outside the loop use NormalizeMessages before ConvertToLLM so filters work on the
 // rich AgentMessage types (stopReason, full content), not the flattened
 // ai.Message wire format.
 
 import (
-	"strings"
+	"fmt"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // NormalizeMessages filters and normalizes msgs before they are converted to
@@ -80,13 +82,22 @@ func NormalizeMessages(msgs []AgentMessage, model *ai.Model) []AgentMessage {
 	// across a conversation: a provider may number its calls per response, so
 	// the same id reappears each turn. Taking the first match globally would
 	// answer a later turn's call with an earlier turn's output.
-	unconsumedResults := map[string][]*ToolResultMessage{}
-	for i := range msgs {
-		if tr := msgs[i].ToolResult; tr != nil && tr.ToolCallID != "" {
-			unconsumedResults[tr.ToolCallID] = append(unconsumedResults[tr.ToolCallID], tr)
-		}
-	}
+	//
+	// The queues are built at the first call that is missing its result: a
+	// history whose results arrive in order never needs them. Every result
+	// before the scan position was consumed in order as it was met, so the
+	// queues hold the results from the position on.
+	var unconsumedResults map[string][]*ToolResultMessage
+	position := 0
 	consumeResult := func(id string) *ToolResultMessage {
+		if unconsumedResults == nil {
+			unconsumedResults = map[string][]*ToolResultMessage{}
+			for i := position; i < len(msgs); i++ {
+				if tr := msgs[i].ToolResult; tr != nil && tr.ToolCallID != "" {
+					unconsumedResults[tr.ToolCallID] = append(unconsumedResults[tr.ToolCallID], tr)
+				}
+			}
+		}
 		queued := unconsumedResults[id]
 		if len(queued) == 0 {
 			return nil
@@ -137,7 +148,8 @@ func NormalizeMessages(msgs []AgentMessage, model *ai.Model) []AgentMessage {
 		seenResultIDs = map[string]bool{}
 	}
 
-	for _, msg := range msgs {
+	for i, msg := range msgs {
+		position = i
 		switch {
 		case msg.Assistant != nil:
 			// Flush orphaned tool calls from the PREVIOUS assistant message
@@ -155,7 +167,7 @@ func NormalizeMessages(msgs []AgentMessage, model *ai.Model) []AgentMessage {
 			// provider converter sees them (upstream transform-messages.ts
 			// isSameModel branch). Copy the assistant message only when a block
 			// actually changed, so unmodified turns still share their pointer.
-			if norm, changed := normalizeAssistantReplayBlocks(msg.Assistant.Content, sameModel(msg.Assistant, model)); changed {
+			if norm, changed := normalizeAssistantReplayBlocks(msg.Assistant.Content, sameModel(msg.Assistant, model), providerReplaysForeignThinking(model)); changed {
 				cp := *msg.Assistant
 				cp.Content = norm
 				msg.Assistant = &cp
@@ -176,7 +188,9 @@ func NormalizeMessages(msgs []AgentMessage, model *ai.Model) []AgentMessage {
 		case msg.ToolResult != nil:
 			// Record fulfilled tool IDs.
 			seenResultIDs[msg.ToolResult.ToolCallID] = true
-			consumeResult(msg.ToolResult.ToolCallID)
+			if unconsumedResults != nil {
+				consumeResult(msg.ToolResult.ToolCallID)
+			}
 			result = append(result, msg)
 
 		case msg.User != nil:
@@ -210,6 +224,7 @@ func NormalizeMessages(msgs []AgentMessage, model *ai.Model) []AgentMessage {
 	}
 
 	// Flush trailing orphaned tool calls.
+	position = len(msgs)
 	flushSynthetic()
 
 	// Second pass: strip orphaned tool results (results whose tool_call_id
@@ -289,7 +304,7 @@ func sameModel(a *AssistantMessage, model *ai.Model) bool {
 // from a different provider/model is unusable by the target provider, so it is
 // stripped here (transform-messages.ts:131) before the converter can leak it
 // (e.g. an OpenAI reasoning.encrypted blob into a Google request).
-func normalizeAssistantReplayBlocks(blocks []ai.AssistantContentBlock, isSameModel bool) ([]ai.AssistantContentBlock, bool) {
+func normalizeAssistantReplayBlocks(blocks []ai.AssistantContentBlock, isSameModel, leaveForeignThinking bool) ([]ai.AssistantContentBlock, bool) {
 	changed := false
 	out := make([]ai.AssistantContentBlock, 0, len(blocks))
 	for _, block := range blocks {
@@ -327,9 +342,9 @@ func normalizeAssistantReplayBlocks(blocks []ai.AssistantContentBlock, isSameMod
 			}
 		case isSameModel && thinking.ThinkingSignature != "":
 			out = append(out, block)
-		case strings.TrimSpace(thinking.Thinking) == "":
+		case jsstring.Trim(thinking.Thinking) == "": // String.prototype.trim: U+FEFF counts as whitespace, U+0085 does not
 			changed = true
-		case isSameModel:
+		case isSameModel, leaveForeignThinking:
 			out = append(out, block)
 		default:
 			out = append(out, ai.TextContent{Text: thinking.Thinking})
@@ -337,6 +352,13 @@ func normalizeAssistantReplayBlocks(blocks []ai.AssistantContentBlock, isSameMod
 		}
 	}
 	return out, changed
+}
+
+// providerReplaysForeignThinking reports whether the target is a reasoning Chat Completions model. Its provider decides from the
+// resolved compat whether another model's thinking becomes assistant text (Pi) or reasoning_content.
+// pig divergence (D126): Pi inlines the thinking here before that decision (pi-mono #6167).
+func providerReplaysForeignThinking(model *ai.Model) bool {
+	return model != nil && model.ProviderMeta.API == ai.APIOpenAICompletions && model.ProviderMeta.Reasoning
 }
 
 // hasToolResults returns true if any message in msgs is a tool result.
@@ -347,4 +369,85 @@ func hasToolResults(msgs []AgentMessage) bool {
 		}
 	}
 	return false
+}
+
+// imageOmittedPlaceholder is the text that replaces an image dropped for a model's per-request image limit.
+func imageOmittedPlaceholder(limit int) string {
+	return fmt.Sprintf("[image omitted: this model accepts at most %d images per request]", limit)
+}
+
+// limitImagesPerRequest keeps the newest model.InputLimits.Images.MaxPerRequest images of a request and replaces each older image
+// with a text placeholder, so a long run that reads many images does not hit the provider's image cap.
+// pig divergence (D137): upstream carries the limit as metadata only and sends every image (Pi #10162).
+func limitImagesPerRequest(msgs []ai.Message, model *ai.Model) []ai.Message {
+	if model == nil || model.InputLimits == nil || model.InputLimits.Images == nil || model.InputLimits.Images.MaxPerRequest <= 0 {
+		return msgs
+	}
+	limit := model.InputLimits.Images.MaxPerRequest
+	total := 0
+	for _, msg := range msgs {
+		total += countMessageImages(msg)
+	}
+	drop := total - limit
+	if drop <= 0 {
+		return msgs
+	}
+	placeholder := ai.TextContent{Text: imageOmittedPlaceholder(limit)}
+	out := make([]ai.Message, len(msgs))
+	for i, msg := range msgs {
+		out[i] = msg
+		if drop == 0 {
+			continue
+		}
+		switch m := msg.(type) {
+		case ai.UserMessage:
+			if blocks, ok := m.Content.(ai.UserContentBlocks); ok && countMessageImages(m) > 0 {
+				next := make(ai.UserContentBlocks, len(blocks))
+				for j, block := range blocks {
+					next[j] = block
+					if _, isImage := block.(ai.ImageContent); isImage && drop > 0 {
+						next[j] = placeholder
+						drop--
+					}
+				}
+				m.Content = next
+				out[i] = m
+			}
+		case ai.ToolResultMessage:
+			if countMessageImages(m) > 0 {
+				next := make([]ai.ToolResultMessageContent, len(m.Content))
+				for j, block := range m.Content {
+					next[j] = block
+					if _, isImage := block.(ai.ImageContent); isImage && drop > 0 {
+						next[j] = placeholder
+						drop--
+					}
+				}
+				m.Content = next
+				out[i] = m
+			}
+		}
+	}
+	return out
+}
+
+func countMessageImages(msg ai.Message) int {
+	count := 0
+	switch m := msg.(type) {
+	case ai.UserMessage:
+		if blocks, ok := m.Content.(ai.UserContentBlocks); ok {
+			for _, block := range blocks {
+				if _, isImage := block.(ai.ImageContent); isImage {
+					count++
+				}
+			}
+		}
+	case ai.ToolResultMessage:
+		for _, block := range m.Content {
+			if _, isImage := block.(ai.ImageContent); isImage {
+				count++
+			}
+		}
+	}
+	return count
 }

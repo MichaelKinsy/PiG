@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package sdk
@@ -134,11 +133,11 @@ const faintOpening = "\x1b[2m"
 
 // Fg colors text with the foreground of token and resets the foreground, and
 // the faint attribute of a faint token (upstream Theme.fg, theme.ts:363). An
-// unknown token leaves text uncolored.
+// unknown token panics with upstream's "Unknown theme color: <token>" error (theme.ts:374), which the dispatcher reports as an extension error as a throw is; a theme without a palette leaves text uncolored.
 func (t UITheme) Fg(token, text string) string {
 	open := t.foregrounds[token]
 	if open == "" {
-		return text
+		return t.unknownOrUncolored(token, text)
 	}
 	if strings.HasSuffix(open, faintOpening) {
 		return open + text + "\x1b[22;39m"
@@ -147,20 +146,65 @@ func (t UITheme) Fg(token, text string) string {
 }
 
 // Bg colors text with the background of token and resets only the
-// background. An unknown token leaves text uncolored.
+// background. An unknown token panics like [UITheme.Fg].
 func (t UITheme) Bg(token, text string) string {
 	open := t.backgrounds[token]
 	if open == "" {
-		return text
+		return t.unknownOrUncolored(token, text)
 	}
 	return open + text + "\x1b[49m"
 }
 
-func (t UITheme) style(open, closing, text string) string {
-	if t.noModifiers {
+func (t UITheme) unknownOrUncolored(token, text string) string {
+	if len(t.foregrounds) == 0 && len(t.backgrounds) == 0 {
 		return text
 	}
+	panic(fmt.Errorf("Unknown theme color: %s", token))
+}
+
+// style is chalk's applyStyle for one modifier, which upstream Theme's bold,
+// italic, underline, inverse and strikethrough are (theme.ts:378-396; chalk
+// 6.0.0 source/index.js applyStyle, source/utilities.js): an empty text stays
+// empty, an inner close of the style re-opens it, and each line break (CR LF
+// kept together) is closed before and re-opened after.
+func (t UITheme) style(open, closing, text string) string {
+	if t.noModifiers || text == "" {
+		return text
+	}
+	if strings.Contains(text, "\x1b") {
+		text = strings.ReplaceAll(text, closing, closing+open)
+	}
+	if strings.Contains(text, "\n") {
+		text = encaseLineBreaks(text, closing, open)
+	}
 	return open + text + closing
+}
+
+// encaseLineBreaks is chalk's stringEncaseCRLFWithFirstIndex: prefix before
+// and postfix after every "\n", a preceding "\r" staying with it.
+func encaseLineBreaks(text, prefix, postfix string) string {
+	var out strings.Builder
+	out.Grow(len(text) + strings.Count(text, "\n")*(len(prefix)+len(postfix)))
+	end := 0
+	for index := strings.IndexByte(text, '\n'); index != -1; index = indexByteFrom(text, '\n', end) {
+		if index > 0 && text[index-1] == '\r' {
+			out.WriteString(text[end : index-1])
+			out.WriteString(prefix + "\r\n" + postfix)
+		} else {
+			out.WriteString(text[end:index])
+			out.WriteString(prefix + "\n" + postfix)
+		}
+		end = index + 1
+	}
+	out.WriteString(text[end:])
+	return out.String()
+}
+
+func indexByteFrom(text string, c byte, from int) int {
+	if index := strings.IndexByte(text[from:], c); index != -1 {
+		return from + index
+	}
+	return -1
 }
 
 // Bold draws text bold.
@@ -189,11 +233,11 @@ func (t UITheme) GetFgAnsi(token string) (string, error) {
 }
 
 // GetBgAnsi returns the background escape sequence of token, or upstream's
-// "Unknown theme background color" error.
+// "Unknown theme color" error.
 func (t UITheme) GetBgAnsi(token string) (string, error) {
 	ansi := t.backgrounds[token]
 	if ansi == "" {
-		return "", fmt.Errorf("Unknown theme background color: %s", token)
+		return "", fmt.Errorf("Unknown theme color: %s", token)
 	}
 	return ansi, nil
 }

@@ -17,7 +17,9 @@ type apiStreamProvider struct {
 
 func (provider *apiStreamProvider) Stream(ctx context.Context, transcript ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 	return ai.LazyStream(ctx, provider.model, func(ctx context.Context) (*ai.AssistantMessageEventStream, error) {
-		return provider.Provider.Stream(ctx, transcript, options)
+		return ai.APIModuleStream(ctx, provider.model, func(ctx context.Context) (*ai.AssistantMessageEventStream, error) {
+			return provider.Provider.Stream(ctx, transcript, options)
+		})
 	}), nil
 }
 

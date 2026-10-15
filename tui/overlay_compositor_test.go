@@ -37,12 +37,12 @@ func TestDrawBoxClipsColoredCellsWithoutDiscardingSGR(t *testing.T) {
 
 func TestModalOverlayClipsRemoteFrameWithoutLosingColors(t *testing.T) {
 	const pixel = "\x1b[38;2;180;20;30m\x1b[48;2;10;40;90m▀"
-	regular := NewWithOutput(io.Discard, 20, 8)
+	regular := newManualRenderTUI(io.Discard, 20, 8)
 	fullscreen := NewTuiAltScreenWithOutput(io.Discard, 20, 8, TuiAltScreenOptions{})
 	for name, base := range map[string]*tuiBase{"regular": &regular.tuiBase, "fullscreen": &fullscreen.tuiBase} {
 		t.Run(name, func(t *testing.T) {
 			// Remote snapshots can arrive at terminal width before an overlay's narrower render width is known.
-			base.OpenOverlay(&recordingComponent{lines: []string{strings.Repeat(pixel, 20) + "\x1b[0m"}}, OverlayOptions{
+			base.ShowOverlay(&recordingComponent{lines: []string{strings.Repeat(pixel, 20) + "\x1b[0m"}}, OverlayOptions{
 				WidthFraction: 0.75, HeightFraction: 0.7,
 			})
 			rows := base.composeOverlayLines(nil, 20, 8)
@@ -64,8 +64,8 @@ func BenchmarkModalColoredClipping(b *testing.B) {
 	for i := range lines {
 		lines[i] = strings.Repeat(pixel, 120) + "\x1b[0m"
 	}
-	ui := NewWithOutput(io.Discard, 120, 40)
-	ui.OpenOverlay(&recordingComponent{lines: lines}, OverlayOptions{WidthFraction: 0.75, HeightFraction: 0.7})
+	ui := newManualRenderTUI(io.Discard, 120, 40)
+	ui.ShowOverlay(&recordingComponent{lines: lines}, OverlayOptions{WidthFraction: 0.75, HeightFraction: 0.7})
 	b.ReportAllocs()
 	for b.Loop() {
 		ui.composeOverlayLines(nil, 120, 40)
@@ -73,7 +73,7 @@ func BenchmarkModalColoredClipping(b *testing.B) {
 }
 
 func TestOverlayCompositorTerminalCellsRegularAndFullscreen(t *testing.T) {
-	regular := NewWithOutput(io.Discard, 20, 8)
+	regular := newManualRenderTUI(io.Discard, 20, 8)
 	fullscreen := NewTuiAltScreenWithOutput(io.Discard, 20, 8, TuiAltScreenOptions{})
 
 	for name, base := range map[string]*tuiBase{
@@ -91,8 +91,8 @@ func TestOverlayCompositorTerminalCellsRegularAndFullscreen(t *testing.T) {
 			front := &recordingComponent{lines: []string{
 				"\x1b]8;;https://example.test\x07👩‍💻X" + widthx.CursorMarker + "YZ\x1b]8;;\x07",
 			}}
-			base.OpenOverlay(lower, OverlayOptions{width: overlayCells(10), anchor: overlayTopLeft, row: overlayCells(2)})
-			base.OpenOverlay(front, OverlayOptions{width: overlayCells(8), anchor: overlayTopLeft, row: overlayCells(2), col: overlayCells(4)})
+			base.ShowOverlay(lower, OverlayOptions{width: overlayCells(10), anchor: overlayTopLeft, row: overlayCells(2)})
+			base.ShowOverlay(front, OverlayOptions{width: overlayCells(8), anchor: overlayTopLeft, row: overlayCells(2), col: overlayCells(4)})
 
 			got := base.composeOverlayLines(background, 20, 8)
 			if got[1] != image {

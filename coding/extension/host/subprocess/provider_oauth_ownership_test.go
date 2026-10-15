@@ -84,7 +84,7 @@ func TestForeignUnregisterRemovesProviderOAuth(t *testing.T) {
 	var notified bool
 	for len(author.connection().outCh) > 0 {
 		frame := <-author.connection().outCh
-		notified = notified || strings.Contains(string(frame.data), notifyProviderSuperseded)
+		notified = notified || strings.Contains(string(frame.payloadBytes()), notifyProviderSuperseded)
 	}
 	if !notified {
 		t.Fatal("the author process was not told that its root is no longer registered")

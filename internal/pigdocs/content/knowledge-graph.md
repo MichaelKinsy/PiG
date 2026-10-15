@@ -5,7 +5,7 @@ The entities Pig is built from, how they relate, where each lives, and the comma
 | Entity | What it is | Where it lives | Inspect with | Read |
 |---|---|---|---|---|
 | Pi | Upstream TypeScript coding agent; the behavior oracle. | `https://github.com/earendil-works/pi` | `pig version` | [divergences.md](divergences.md) |
-| PiG | The Go implementation; executable pig. | `internal/coding/pigversion/pigversion.go pins Pi` | `pig verify` | [README.md](README.md) |
+| PiG | The Go implementation; executable pig. | `.upstream/pin pins Pi` | `pig verify` | [README.md](README.md) |
 | Stock PiG | Product-neutral pig binary with no Piglet selected. | `cmd/pig` | `pig version` | [built-in-extensions.md](built-in-extensions.md) |
 | Session | Append-only JSONL tree of entries for one conversation. | `~/.pig/agent/sessions` | `/tree, /session` | [sessions.md](sessions.md) |
 | Model Runtime | Session-owned model lookup, auth, completion, and streaming used by every mode. | `coding/` | `/model, pig --list-models` | [models.md](models.md) |

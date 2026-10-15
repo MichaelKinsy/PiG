@@ -16,6 +16,7 @@ import (
 // event to the extension runner. The session calls this from forwardAgentEvents,
 // the single event funnel all drivers (interactive, rpc, print) share, so this
 // mapping is what every driver delivers to extensions.
+// Pi: packages/coding-agent/src/core/extensions/types.ts:1023 (TurnStartEvent.turnIndex).
 func TestDispatchAgentLoopEvent_DeliversAllAgentLoopEvents(t *testing.T) {
 	got := map[string]any{}
 	record := func(name string) extension.HandlerFn {
@@ -76,9 +77,9 @@ func TestDispatchAgentLoopEvent_DeliversAllAgentLoopEvents(t *testing.T) {
 	if !ok {
 		t.Fatalf("message_update: got %#v", got[EventMessageUpdate])
 	}
-	trackedMsg, ok := mu.Message.(agent.AgentMessage)
+	trackedMsg := mu.Message
 	wantMessage := events[3].(agent.MessageUpdateEvent).Message
-	if !ok || trackedMsg.Assistant != wantMessage.Assistant || trackedMsg.Custom != nil {
+	if trackedMsg.Assistant != wantMessage.Assistant || trackedMsg.Custom != nil {
 		t.Fatalf("message_update carried the wrong message: got %#v, want %#v", mu.Message, wantMessage)
 	}
 	delta, ok := mu.AssistantMessageEvent.(ai.TextDeltaEvent)

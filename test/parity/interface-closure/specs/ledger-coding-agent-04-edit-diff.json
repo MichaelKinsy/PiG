@@ -1,0 +1,36 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#generateDiffString"
+  ],
+  "targets": [
+   "internal/codingagent/tools/diff_string.go#GenerateDiffString"
+  ],
+  "production": [
+   "call:internal/codingagent/tools/edit.go#EditTool.editLocked"
+  ],
+  "evidence": [
+   "test:internal/codingagent/tools/diff_string_test.go#TestGenerateDiffString_MatchesUpstreamOracle",
+   "test:internal/codingagent/tools/edit_diff_context_lines_test.go#TestEditDiffContextLinesParameterMatchesUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "generateDiffString: Go GenerateDiffString takes contextLines as a variadic tail (default 4, added with a test measured against Pi's edit-diff.js) and returns (diff, firstChangedLine) with 0 for upstream undefined (line numbers start at 1)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#generateUnifiedPatch"
+  ],
+  "targets": [
+   "internal/codingagent/tools/unified_patch.go#GenerateUnifiedPatch"
+  ],
+  "production": [
+   "call:internal/codingagent/tools/edit.go#EditTool.editLocked"
+  ],
+  "evidence": [
+   "test:internal/codingagent/tools/unified_patch_test.go#TestGenerateUnifiedPatch_MatchesJsdiffOracle",
+   "test:internal/codingagent/tools/edit_diff_context_lines_test.go#TestEditDiffContextLinesParameterMatchesUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "generateUnifiedPatch: Go GenerateUnifiedPatch takes contextLines as a variadic tail (default 4, added with a test measured against Pi's edit-diff.js)."
+ }
+]

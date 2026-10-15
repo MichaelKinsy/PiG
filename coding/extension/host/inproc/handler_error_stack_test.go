@@ -19,6 +19,7 @@ func (e stackedError) ErrorStack() string { return e.stack }
 // Upstream reports a failing handler's own `err.stack` (runner.ts emitError),
 // which interactive mode prints dimmed under the error line. The host's
 // dispatch stack says nothing about the extension, so PiG never reports it.
+// Pi: packages/coding-agent/src/core/extensions/types.ts:926 (AgentStartEvent.type).
 func TestHandlerErrorsReportTheFailuresOwnStack(t *testing.T) {
 	const jsStack = "TypeError: boom\n    at onTurnStart (file:///ext/index.js:10:5)"
 	handlers := map[string]extension.HandlerFn{

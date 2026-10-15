@@ -23,6 +23,7 @@ func TestStringWidthMatchesUpstream(t *testing.T) {
 		{"ﬀ", 1},            // ligature
 		{"\u2764\ufe0f", 2}, // heart + VS16 emoji presentation forces 2
 		{"\u2764", 1},       // heart without VS16 stays 1
+		{"क्ष", 1},          // Devanagari conjunct: one Intl.Segmenter grapheme (GB9c), widest code point 1
 		{"", 0},
 	}
 	for _, c := range cases {

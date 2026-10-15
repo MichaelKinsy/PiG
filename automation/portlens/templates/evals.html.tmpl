@@ -1,0 +1,67 @@
+<h2 class="sec" style="margin-top:0">Durable bar</h2>
+<p class="sec-note">Four conditions for the Durable core, judged here from committed data: <code>{{.Bar.Baseline.Path}}</code>, <code>bench/durableperf/results/*.jsonl</code> and the cluster runner's results. Medians over the samples of each size. Whole-sample CPU seconds are the only CPU figure the results carry.</p>
+<div class="items">
+{{range .Bar.Items}}
+<div class="item">
+<header><h3>{{.N}}. {{.Title}}</h3>{{if .Met}}<span class="chip ok">met</span>{{else}}<span class="chip bad">not met</span>{{end}}</header>
+<p class="crit">{{.Criterion}}</p>
+<p class="verdict">{{.Verdict}}</p>
+{{if .Rows}}<div class="table-wrap"><table class="matrix">
+<caption class="sr">{{.Title}}: PiG against the reference, per measure and size</caption>
+<thead><tr><th scope="col">Measure</th>{{range .Sizes}}<th scope="col">{{fmtn .}} turns</th>{{end}}</tr></thead>
+<tbody>{{range .Rows}}<tr><th scope="row">{{.Measure}}</th>{{range .Cells}}<td>{{if .Present}}<span class="{{if .Met}}cell-ok{{else}}cell-bad{{end}}">{{if .Met}}met{{else}}not met{{end}}</span><div class="small muted">{{.Text}}</div>{{else}}<span class="muted">no data</span>{{end}}</td>{{end}}</tr>{{end}}</tbody></table></div>{{end}}
+</div>
+{{end}}
+</div>
+
+<h3 class="sec" style="font-size:20px">Durable timings by arm</h3>
+<p class="sec-note">Cold is store open plus the first measured turn. Warm is the median of the other nine turns. Each cell reads cold/warm in ms, whole-sample CPU in seconds and peak RSS in MB. Rows marked headline are the arm the bar judges.</p>
+<div class="table-wrap"><table class="matrix">
+<caption class="sr">Durable benchmark medians by arm and size</caption>
+<thead><tr><th scope="col">Arm</th>{{range .Bar.Sizes}}<th scope="col">{{fmtn .}} turns</th>{{end}}</tr></thead>
+<tbody>{{range .Arms}}<tr><th scope="row"><span class="mono small">{{.Name}}</span>{{if .Pi}} <span class="chip neutral">reference</span>{{end}}{{if .Headline}} <span class="chip ok">headline</span>{{end}}<div class="small mono">{{if .Link}}<a href="{{.Link}}">{{.File}}</a>{{else}}<span class="muted">{{.File}}</span>{{end}}</div></th>{{range .Cells}}<td>{{if .Present}}{{.Text}}<div class="small muted">n={{.N}}</div>{{else}}<span class="muted">–</span>{{end}}</td>{{end}}</tr>{{end}}</tbody></table></div>
+
+{{if .Gate}}
+<h2 class="sec">Durable conformance gate</h2>
+<p class="sec-note">The newest committed conformance report (<code>{{.Gate.Dir}}</code>): every candidate implementation against the reference, summed over the lanes.</p>
+<div class="table-wrap"><table class="matrix">
+<caption class="sr">Conformance gate results per implementation</caption>
+<thead><tr><th scope="col">Implementation</th><th scope="col">Pass</th><th scope="col">Fail</th><th scope="col">Pending</th><th scope="col">Skipped</th><th scope="col">Failed rows</th></tr></thead>
+<tbody>{{range .Gate.Impls}}<tr><th scope="row">{{.Name}}</th><td class="cell-ok">{{.Pass}}</td><td>{{if .Fail}}<span class="cell-bad">{{.Fail}}</span>{{else}}0{{end}}</td><td>{{.Pending}}</td><td>{{.Skipped}}</td><td style="text-align:left" class="mono small">{{range $i, $f := .Failed}}{{if $i}}, {{end}}{{$f}}{{else}}none{{end}}</td></tr>{{end}}</tbody></table></div>
+{{end}}
+
+<h2 class="sec">Performance scoreboard</h2>
+<p class="sec-note">Every hot path and resource metric with its measured count, ceiling and target. Counts do not depend on machine speed. {{if .Score.Rev}}Measured at <code>{{.Score.Rev}}</code> with {{.Score.Go}} on {{.Score.Platform}}. {{end}}{{.Score.Gates}} gates; {{.Score.Missing}} are missing and are listed as such.</p>
+<div data-filter="sc-list">
+<div class="toolbar" role="search">
+<div class="search"><label class="sr" for="sc-q">Search metrics</label><input id="sc-q" type="search" placeholder="Search metrics, gates, owners" autocomplete="off" spellcheck="false"><kbd aria-hidden="true">/</kbd></div>
+<label class="sr" for="sc-area">Area</label>
+<select id="sc-area" data-attr="area"><option value="">All areas</option>{{range .Areas}}<option value="{{.}}">{{.}}</option>{{end}}</select>
+<span class="count" aria-live="polite"></span>
+</div>
+<div class="toolbar"><div class="chips" role="group" aria-label="Gate status">{{range .Statuses}}<button type="button" class="toggle" data-attr="status" data-value="{{.}}" aria-pressed="false">{{.}}</button>{{end}}</div></div>
+<div class="table-wrap"><table id="sc-list">
+<caption class="sr">Performance scoreboard</caption>
+<thead><tr><th scope="col">Metric</th><th scope="col">Status</th><th scope="col" class="num">Impact</th><th scope="col">Target</th><th scope="col">Gates and current counts</th></tr></thead>
+<tbody>
+{{range .Metrics}}<tr data-search="{{.Search}}" data-area="{{.Area}}" data-status="{{.Status}}">
+<td><b class="mono small">{{.ID}}</b><div>{{.Title}}</div><div class="small muted">{{.Area}} · owner {{.Owner}}</div></td>
+<td><span class="chip {{scoreTone .Status}}">{{.Status}}</span></td>
+<td class="num">{{.Impact}}</td>
+<td style="max-width:360px">{{.Target}}<details><summary class="small muted" style="cursor:pointer">Basis</summary><p class="small muted">{{.Basis}}</p></details></td>
+<td>{{range .Gates}}<div class="small">{{if eq .Kind "missing"}}<span class="chip bad">missing</span> {{.Text}}{{else if eq .Kind "branch"}}<span class="chip warn">other branch</span> <span class="mono">{{.Text}}</span>{{else}}<span class="mono">{{.Text}}</span>{{end}}</div>{{end}}</td>
+</tr>{{end}}
+</tbody></table></div>
+</div>
+
+<h2 class="sec">Same-machine comparison matrices</h2>
+{{range .Matrices}}
+<h3 style="font-size:20px;margin:26px 0 8px">{{.Title}} {{if .Provisional}}<span class="chip warn">PROVISIONAL</span>{{end}}</h3>
+<p class="sec-note">{{.Note}}{{if .Machine}} Machine: {{.Machine}}.{{end}} <span class="mono">{{.File}}</span></p>
+<div class="table-wrap"><table class="matrix">
+<caption class="sr">{{.Title}}</caption>
+<thead><tr><th scope="col">Scenario</th>{{range .Arms}}<th scope="col">{{.}}</th>{{end}}</tr></thead>
+<tbody>{{range .Rows}}<tr><th scope="row">{{.Scenario}}{{if .Provisional}} <span class="chip warn">PROVISIONAL</span>{{end}}<div class="small muted">{{.Unit}}, {{if .LowerBetter}}lower is better{{else}}higher is better{{end}}</div>{{if .Link}}<div class="small"><a href="{{.Link}}">raw samples</a></div>{{else if .Samples}}<div class="small muted mono">{{.Samples}} (not in this tree)</div>{{end}}</th>{{range .Cells}}<td>{{if .Cannot}}<span class="muted">cannot run: {{.Cannot}}</span>{{else}}<span class="{{if .Best}}cell-ok{{end}}">{{.Text}}</span>{{if .Note}}<div class="small muted">{{.Note}}</div>{{end}}{{end}}</td>{{end}}</tr>{{end}}</tbody></table></div>
+{{else}}
+<p class="honest">No comparison matrix is committed in this tree. A matrix is read from <code>bench/compare/results/*.json</code> (arms by scenarios, medians with ranges, <code>PROVISIONAL</code> flags, links to raw samples). Until one is committed there is nothing to show, and nothing is shown in its place.</p>
+{{end}}

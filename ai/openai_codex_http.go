@@ -3,22 +3,24 @@ package ai
 // Ports packages/ai/src/api/openai-codex-responses.ts.
 
 import (
+	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"math"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
-var codexTerminalRateLimit = lazyregexp.New(`(?i)GoUsageLimitError|FreeUsageLimitError|Monthly usage limit reached|available balance|insufficient_quota|out of budget|quota exceeded|billing`)
-var codexRetryableMessage = lazyregexp.New(`(?i)rate.?limit|overloaded|service.?unavailable|upstream.?connect|connection.?refused`)
+var codexTerminalRateLimit = lazyregexp.NewJSIgnoreCase(`GoUsageLimitError|FreeUsageLimitError|Monthly usage limit reached|available balance|insufficient_quota|out of budget|quota exceeded|billing`)
+var codexRetryableMessage = lazyregexp.NewJSIgnoreCase(`rate.?limit|overloaded|service.?unavailable|upstream.?connect|connection.?refused`)
 
 type codexRetryDelayExceeded struct{ message string }
 
@@ -26,21 +28,14 @@ func (e *codexRetryDelayExceeded) Error() string { return e.message }
 
 func codexRetryDelay(headers http.Header, attempt, maxDelayMs int) (time.Duration, error) {
 	delay := math.NaN()
+	// openai-codex-responses.ts:140-155 reads each header with Number(headers.get(name)): Headers.get joins repeated lines with ", ", and the value is a ByteString, one code unit per byte.
 	if values, present := headers[http.CanonicalHeaderKey("retry-after-ms")]; present && len(values) > 0 {
-		value := strings.TrimSpace(values[0])
-		if value == "" {
-			delay = 0
-		} else {
-			delay, _ = strconv.ParseFloat(value, 64)
-			if _, err := strconv.ParseFloat(value, 64); err != nil {
-				delay = math.NaN()
-			}
-		}
+		delay = jsnumber.Parse(jsstring.FromLatin1(strings.Join(values, ", ")))
 	}
 	if math.IsNaN(delay) || math.IsInf(delay, 0) {
 		delay = math.NaN()
-		if value := headers.Get("retry-after"); value != "" {
-			if seconds, err := strconv.ParseFloat(strings.TrimSpace(value), 64); err == nil && !math.IsInf(seconds, 0) && !math.IsNaN(seconds) {
+		if value := strings.Join(headers.Values("retry-after"), ", "); value != "" {
+			if seconds := jsnumber.Parse(jsstring.FromLatin1(value)); !math.IsInf(seconds, 0) && !math.IsNaN(seconds) {
 				delay = seconds * 1000
 			} else if date := jsDateParse(value); !math.IsNaN(date) {
 				// openai-codex-responses.ts:158-160: Date.parse(retryAfter) is accepted unless it is NaN.
@@ -58,40 +53,49 @@ func codexRetryDelay(headers http.Header, attempt, maxDelayMs int) (time.Duratio
 	return time.Duration(delay * float64(time.Millisecond)), nil
 }
 
-func codexHTTPError(status int, raw []byte) error {
-	message := string(raw)
-	if message == "" {
-		message = http.StatusText(status)
-	}
-	var parsed struct {
-		Error struct {
-			Code     string   `json:"code"`
-			Type     string   `json:"type"`
-			Message  string   `json:"message"`
-			Plan     string   `json:"plan_type"`
-			ResetsAt *float64 `json:"resets_at"`
-		}
-	}
-	if json.Unmarshal(raw, &parsed) == nil {
-		e := parsed.Error
-		code := e.Code
-		if code == "" {
-			code = e.Type
-		}
-		if status == 429 || strings.Contains(strings.ToLower(code), "usage_limit_reached") || strings.Contains(strings.ToLower(code), "usage_not_included") || strings.Contains(strings.ToLower(code), "rate_limit_exceeded") {
-			plan := ""
-			if e.Plan != "" {
-				plan = " (" + strings.ToLower(e.Plan) + " plan)"
+// statusText is the response's reason phrase (fetchStatusText).
+func codexHTTPError(status int, statusText string, raw []byte) error {
+	// `raw || response.statusText || "Request failed"` (openai-codex-responses.ts:1598).
+	message := cmp.Or(string(raw), statusText, "Request failed")
+	// parseErrorResponse (openai-codex-responses.ts:1596-1621) reads `parsed?.error` and acts only when it is truthy; a body without one (an object
+	// without `error`, an array, null, text) keeps the raw message. Its members are JavaScript values: `code || type` is coerced to a string by the
+	// RegExp test, a truthy non-string plan_type throws inside the try (so the raw message stays), resets_at is coerced to a number, and a truthy
+	// non-string message is converted with String.
+	var top map[string]json.RawMessage
+	if json.Unmarshal(raw, &top) == nil {
+		if errValue := top["error"]; jsTruthyJSON(errValue) {
+			var fields map[string]json.RawMessage
+			_ = json.Unmarshal(errValue, &fields)
+			codeValue := fields["code"]
+			if !jsTruthyJSON(codeValue) {
+				codeValue = fields["type"]
 			}
-			when := ""
-			if e.ResetsAt != nil {
-				minutes := max(0, math.Floor((*e.ResetsAt*1000-float64(time.Now().UnixMilli()))/60000+0.5))
-				when = fmt.Sprintf(" Try again in ~%.0f min.", minutes)
+			code := ""
+			if jsTruthyJSON(codeValue) {
+				code = jsnumber.StringFromJSON(codeValue)
 			}
-			return errors.New("You have hit your ChatGPT usage limit" + plan + "." + when)
-		}
-		if e.Message != "" {
-			message = e.Message
+			if status == 429 || strings.Contains(jsstring.ToLower(code), "usage_limit_reached") || strings.Contains(jsstring.ToLower(code), "usage_not_included") || strings.Contains(jsstring.ToLower(code), "rate_limit_exceeded") {
+				plan := ""
+				if planValue := fields["plan_type"]; jsTruthyJSON(planValue) {
+					var planType string
+					if json.Unmarshal(planValue, &planType) != nil {
+						// err.plan_type.toLowerCase is not a function: the TypeError is caught and the raw message stays.
+						return errors.New(message)
+					}
+					plan = " (" + jsstring.ToLower(planType) + " plan)"
+				}
+				when := ""
+				// resets_at is checked for truthiness (openai-codex-responses.ts:1610): zero means no reset time.
+				if resetsAt := fields["resets_at"]; jsTruthyJSON(resetsAt) {
+					//portlint:allow clock openai-codex-responses.ts:1612 reads Date.now() where it formats the error; the package's clock seams belong to OAuth and backoff structs
+					minutes := math.Max(0, jsRound((float64(jsnumber.FromJSON(resetsAt)*1000)-float64(time.Now().UnixMilli()))/60000))
+					when = " Try again in ~" + jsnumber.String(minutes) + " min."
+				}
+				return errors.New(strings.TrimSpace("You have hit your ChatGPT usage limit" + plan + "." + when))
+			}
+			if messageValue := fields["message"]; jsTruthyJSON(messageValue) {
+				message = jsnumber.StringFromJSON(messageValue)
+			}
 		}
 	}
 	return errors.New(message)
@@ -165,7 +169,7 @@ func (p *openAIResponsesProvider) doCodexSSERequest(request *http.Request, opts 
 			return response, release, nil
 		}
 		if err == nil {
-			raw, readErr := io.ReadAll(response.Body)
+			raw, readErr := readWebText(response.Body)
 			_ = response.Body.Close()
 			release()
 			if readErr != nil {
@@ -177,7 +181,8 @@ func (p *openAIResponsesProvider) doCodexSSERequest(request *http.Request, opts 
 				if attempt < retries && retryable {
 					delay, err = codexRetryDelay(response.Header, attempt, maxDelay)
 				} else {
-					err = codexHTTPError(status, raw)
+					// parseErrorResponse reads `new Response(errorText)` with text() again, which drops up to two more byte order marks.
+					err = codexHTTPError(status, fetchStatusText(response.Status, status), webTextBytes(raw))
 				}
 			}
 		}
@@ -192,4 +197,31 @@ func (p *openAIResponsesProvider) doCodexSSERequest(request *http.Request, opts 
 			return nil, nil, errors.New("Request was aborted")
 		}
 	}
+}
+
+// jsTruthyJSON is the JavaScript truthiness of the value JSON.parse produces for raw; a missing member (nil raw) is undefined.
+func jsTruthyJSON(raw json.RawMessage) bool {
+	raw = bytes.TrimSpace(raw)
+	if len(raw) == 0 {
+		return false
+	}
+	switch raw[0] {
+	case 'n', 'f':
+		return false
+	case 't', '{', '[':
+		return true
+	case '"':
+		return len(raw) > 2
+	}
+	value := jsnumber.FromJSON(raw)
+	return value != 0 && !math.IsNaN(value)
+}
+
+// jsRound is Math.round: the nearest integer, a half rounding up.
+func jsRound(value float64) float64 {
+	rounded := math.Floor(value)
+	if value-rounded >= 0.5 {
+		rounded++
+	}
+	return rounded
 }

@@ -1,9 +1,10 @@
+import { PI_PACKAGE_VERSION } from "./pi-version.mjs";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { readFileSync } from "node:fs";
 import { mock } from "node:test";
 const root = fileURLToPath(new URL("../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent", import.meta.url));
-if (JSON.parse(readFileSync(join(root,"package.json"),"utf8")).version !== "1.0.3") throw new Error("Expected Pi 1.0.3");
+if (JSON.parse(readFileSync(join(root,"package.json"),"utf8")).version !== PI_PACKAGE_VERSION) throw new Error(`Expected Pi ${PI_PACKAGE_VERSION}`);
 const { TuiMainScreen, parseTerminalColorSchemeReport } = await import(pathToFileURL(join(root,"node_modules/@earendil-works/pi-tui/dist/index.js")));
 const { parseOscColorResponse } = await import(pathToFileURL(join(root,"node_modules/@earendil-works/pi-tui/dist/terminal-colors.js")));
 const lines = [];

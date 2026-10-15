@@ -1,0 +1,2442 @@
+[
+ {
+  "name": "commonmark-0.31.2-example-148",
+  "source": "<table><tr><td>\n<pre>\n**Hello**,\n\n_world_.\n</pre>\n</td></tr></table>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-149",
+  "source": "<table>\n  <tr>\n    <td>\n           hi\n    </td>\n  </tr>\n</table>\n\nokay.\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-150",
+  "source": " <div>\n  *hello*\n         <foo><a>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-151",
+  "source": "</div>\n*foo*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-152",
+  "source": "<DIV CLASS=\"foo\">\n\n*Markdown*\n\n</DIV>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-153",
+  "source": "<div id=\"foo\"\n  class=\"bar\">\n</div>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-154",
+  "source": "<div id=\"foo\" class=\"bar\n  baz\">\n</div>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-155",
+  "source": "<div>\n*foo*\n\n*bar*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-156",
+  "source": "<div id=\"foo\"\n*hi*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-157",
+  "source": "<div class\nfoo\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-158",
+  "source": "<div *???-&&&-<---\n*foo*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-159",
+  "source": "<div><a href=\"bar\">*foo*</a></div>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-160",
+  "source": "<table><tr><td>\nfoo\n</td></tr></table>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-161",
+  "source": "<div></div>\n``` c\nint x = 33;\n```\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-162",
+  "source": "<a href=\"foo\">\n*bar*\n</a>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-163",
+  "source": "<Warning>\n*bar*\n</Warning>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-164",
+  "source": "<i class=\"foo\">\n*bar*\n</i>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-165",
+  "source": "</ins>\n*bar*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-166",
+  "source": "<del>\n*foo*\n</del>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-167",
+  "source": "<del>\n\n*foo*\n\n</del>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-168",
+  "source": "<del>*foo*</del>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-169",
+  "source": "<pre language=\"haskell\"><code>\nimport Text.HTML.TagSoup\n\nmain :: IO ()\nmain = print $ parseTags tags\n</code></pre>\nokay\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-170",
+  "source": "<script type=\"text/javascript\">\n// JavaScript example\n\ndocument.getElementById(\"demo\").innerHTML = \"Hello JavaScript!\";\n</script>\nokay\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-171",
+  "source": "<textarea>\n\n*foo*\n\n_bar_\n\n</textarea>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-172",
+  "source": "<style\n  type=\"text/css\">\nh1 {color:red;}\n\np {color:blue;}\n</style>\nokay\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-173",
+  "source": "<style\n  type=\"text/css\">\n\nfoo\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-174",
+  "source": "> <div>\n> foo\n\nbar\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-175",
+  "source": "- <div>\n- foo\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-176",
+  "source": "<style>p{color:red;}</style>\n*foo*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-177",
+  "source": "<!-- foo -->*bar*\n*baz*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-178",
+  "source": "<script>\nfoo\n</script>1. *bar*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-179",
+  "source": "<!-- Foo\n\nbar\n   baz -->\nokay\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-180",
+  "source": "<?php\n\n  echo '>';\n\n?>\nokay\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-181",
+  "source": "<!DOCTYPE html>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-182",
+  "source": "<![CDATA[\nfunction matchwo(a,b)\n{\n  if (a < b && a < 0) then {\n    return 1;\n\n  } else {\n\n    return 0;\n  }\n}\n]]>\nokay\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-183",
+  "source": "  <!-- foo -->\n\n    <!-- foo -->\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-184",
+  "source": "  <div>\n\n    <div>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-185",
+  "source": "Foo\n<div>\nbar\n</div>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-186",
+  "source": "<div>\nbar\n</div>\n*foo*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-187",
+  "source": "Foo\n<a href=\"bar\">\nbaz\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-188",
+  "source": "<div>\n\n*Emphasized* text.\n\n</div>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-189",
+  "source": "<div>\n*Emphasized* text.\n</div>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-190",
+  "source": "<table>\n\n<tr>\n\n<td>\nHi\n</td>\n\n</tr>\n\n</table>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-191",
+  "source": "<table>\n\n  <tr>\n\n    <td>\n      Hi\n    </td>\n\n  </tr>\n\n</table>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-350",
+  "source": "*foo bar*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-351",
+  "source": "a * foo bar*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-352",
+  "source": "a*\"foo\"*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-353",
+  "source": "* a *\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-354",
+  "source": "*$*alpha.\n\n*£*bravo.\n\n*€*charlie.\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-355",
+  "source": "foo*bar*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-356",
+  "source": "5*6*78\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-357",
+  "source": "_foo bar_\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-358",
+  "source": "_ foo bar_\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-359",
+  "source": "a_\"foo\"_\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-360",
+  "source": "foo_bar_\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-361",
+  "source": "5_6_78\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-362",
+  "source": "пристаням_стремятся_\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-363",
+  "source": "aa_\"bb\"_cc\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-364",
+  "source": "foo-_(bar)_\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-365",
+  "source": "_foo*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-366",
+  "source": "*foo bar *\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-367",
+  "source": "*foo bar\n*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-368",
+  "source": "*(*foo)\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-369",
+  "source": "*(*foo*)*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-370",
+  "source": "*foo*bar\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-371",
+  "source": "_foo bar _\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-372",
+  "source": "_(_foo)\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-373",
+  "source": "_(_foo_)_\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-374",
+  "source": "_foo_bar\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-375",
+  "source": "_пристаням_стремятся\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-376",
+  "source": "_foo_bar_baz_\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-377",
+  "source": "_(bar)_.\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-378",
+  "source": "**foo bar**\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-379",
+  "source": "** foo bar**\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-380",
+  "source": "a**\"foo\"**\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-381",
+  "source": "foo**bar**\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-382",
+  "source": "__foo bar__\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-383",
+  "source": "__ foo bar__\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-384",
+  "source": "__\nfoo bar__\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-385",
+  "source": "a__\"foo\"__\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-386",
+  "source": "foo__bar__\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-387",
+  "source": "5__6__78\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-388",
+  "source": "пристаням__стремятся__\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-389",
+  "source": "__foo, __bar__, baz__\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-390",
+  "source": "foo-__(bar)__\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-391",
+  "source": "**foo bar **\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-392",
+  "source": "**(**foo)\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-393",
+  "source": "*(**foo**)*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-394",
+  "source": "**Gomphocarpus (*Gomphocarpus physocarpus*, syn.\n*Asclepias physocarpa*)**\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-395",
+  "source": "**foo \"*bar*\" foo**\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-396",
+  "source": "**foo**bar\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-397",
+  "source": "__foo bar __\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-398",
+  "source": "__(__foo)\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-399",
+  "source": "_(__foo__)_\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-400",
+  "source": "__foo__bar\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-401",
+  "source": "__пристаням__стремятся\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-402",
+  "source": "__foo__bar__baz__\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-403",
+  "source": "__(bar)__.\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-404",
+  "source": "*foo [bar](/url)*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-405",
+  "source": "*foo\nbar*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-406",
+  "source": "_foo __bar__ baz_\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-407",
+  "source": "_foo _bar_ baz_\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-408",
+  "source": "__foo_ bar_\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-409",
+  "source": "*foo *bar**\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-410",
+  "source": "*foo **bar** baz*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-411",
+  "source": "*foo**bar**baz*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-412",
+  "source": "*foo**bar*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-413",
+  "source": "***foo** bar*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-414",
+  "source": "*foo **bar***\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-415",
+  "source": "*foo**bar***\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-416",
+  "source": "foo***bar***baz\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-417",
+  "source": "foo******bar*********baz\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-418",
+  "source": "*foo **bar *baz* bim** bop*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-419",
+  "source": "*foo [*bar*](/url)*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-420",
+  "source": "** is not an empty emphasis\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-421",
+  "source": "**** is not an empty strong emphasis\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-422",
+  "source": "**foo [bar](/url)**\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-423",
+  "source": "**foo\nbar**\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-424",
+  "source": "__foo _bar_ baz__\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-425",
+  "source": "__foo __bar__ baz__\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-426",
+  "source": "____foo__ bar__\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-427",
+  "source": "**foo **bar****\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-428",
+  "source": "**foo *bar* baz**\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-429",
+  "source": "**foo*bar*baz**\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-430",
+  "source": "***foo* bar**\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-431",
+  "source": "**foo *bar***\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-432",
+  "source": "**foo *bar **baz**\nbim* bop**\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-433",
+  "source": "**foo [*bar*](/url)**\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-434",
+  "source": "__ is not an empty emphasis\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-435",
+  "source": "____ is not an empty strong emphasis\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-436",
+  "source": "foo ***\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-437",
+  "source": "foo *\\**\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-438",
+  "source": "foo *_*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-439",
+  "source": "foo *****\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-440",
+  "source": "foo **\\***\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-441",
+  "source": "foo **_**\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-442",
+  "source": "**foo*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-443",
+  "source": "*foo**\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-444",
+  "source": "***foo**\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-445",
+  "source": "****foo*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-446",
+  "source": "**foo***\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-447",
+  "source": "*foo****\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-448",
+  "source": "foo ___\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-449",
+  "source": "foo _\\__\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-450",
+  "source": "foo _*_\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-451",
+  "source": "foo _____\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-452",
+  "source": "foo __\\___\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-453",
+  "source": "foo __*__\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-454",
+  "source": "__foo_\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-455",
+  "source": "_foo__\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-456",
+  "source": "___foo__\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-457",
+  "source": "____foo_\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-458",
+  "source": "__foo___\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-459",
+  "source": "_foo____\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-460",
+  "source": "**foo**\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-461",
+  "source": "*_foo_*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-462",
+  "source": "__foo__\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-463",
+  "source": "_*foo*_\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-464",
+  "source": "****foo****\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-465",
+  "source": "____foo____\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-466",
+  "source": "******foo******\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-467",
+  "source": "***foo***\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-468",
+  "source": "_____foo_____\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-469",
+  "source": "*foo _bar* baz_\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-470",
+  "source": "*foo __bar *baz bim__ bam*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-471",
+  "source": "**foo **bar baz**\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-472",
+  "source": "*foo *bar baz*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-473",
+  "source": "*[bar*](/url)\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-474",
+  "source": "_foo [bar_](/url)\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-475",
+  "source": "*<img src=\"foo\" title=\"*\"/>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-476",
+  "source": "**<a href=\"**\">\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-477",
+  "source": "__<a href=\"__\">\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-478",
+  "source": "*a `*`*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-479",
+  "source": "_a `_`_\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-480",
+  "source": "**a<https://foo.bar/?q=**>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-481",
+  "source": "__a<https://foo.bar/?q=__>\n",
+  "width": 80
+ },
+ {
+  "name": "pig-underscore-em",
+  "source": "_x_",
+  "width": 80
+ },
+ {
+  "name": "pig-underscore-strong",
+  "source": "__x__",
+  "width": 80
+ },
+ {
+  "name": "pig-underscore-triple",
+  "source": "___x___",
+  "width": 80
+ },
+ {
+  "name": "pig-underscore-intraword-snake",
+  "source": "use snake_case_name here",
+  "width": 80
+ },
+ {
+  "name": "pig-underscore-dunder-file",
+  "source": "edit __init__.py now",
+  "width": 80
+ },
+ {
+  "name": "pig-underscore-trailing",
+  "source": "foo_bar_",
+  "width": 80
+ },
+ {
+  "name": "pig-underscore-multi-intraword",
+  "source": "_foo_bar_baz_",
+  "width": 80
+ },
+ {
+  "name": "pig-underscore-sentence",
+  "source": "This is _really_ important and __very__ bold.",
+  "width": 80
+ },
+ {
+  "name": "pig-underscore-nested-strong",
+  "source": "_x __y__ z_",
+  "width": 80
+ },
+ {
+  "name": "pig-underscore-in-star-strong",
+  "source": "**_x_**",
+  "width": 80
+ },
+ {
+  "name": "pig-star-strong-in-underscore",
+  "source": "_**x**_",
+  "width": 80
+ },
+ {
+  "name": "pig-underscore-punct-left",
+  "source": "(_x_)",
+  "width": 80
+ },
+ {
+  "name": "pig-underscore-unicode-punct",
+  "source": "«_x_»",
+  "width": 80
+ },
+ {
+  "name": "pig-underscore-unclosed",
+  "source": "_x",
+  "width": 80
+ },
+ {
+  "name": "pig-underscore-space-open",
+  "source": "_ x_",
+  "width": 80
+ },
+ {
+  "name": "pig-underscore-mixed-close",
+  "source": "_x*",
+  "width": 80
+ },
+ {
+  "name": "pig-star-triple",
+  "source": "***x***",
+  "width": 80
+ },
+ {
+  "name": "pig-star-triple-strong-first",
+  "source": "***x** y*",
+  "width": 80
+ },
+ {
+  "name": "pig-star-triple-em-first",
+  "source": "***x* y**",
+  "width": 80
+ },
+ {
+  "name": "pig-star-em-containing-strong",
+  "source": "*x **y** z*",
+  "width": 80
+ },
+ {
+  "name": "pig-star-strong-containing-em",
+  "source": "**x *y* z**",
+  "width": 80
+ },
+ {
+  "name": "pig-star-intraword-strong-in-em",
+  "source": "*a**b**c*",
+  "width": 80
+ },
+ {
+  "name": "pig-star-intraword-em-in-strong",
+  "source": "**a*b*c**",
+  "width": 80
+ },
+ {
+  "name": "pig-star-quad",
+  "source": "****x****",
+  "width": 80
+ },
+ {
+  "name": "pig-star-em-chain",
+  "source": "*x*y*z*",
+  "width": 80
+ },
+ {
+  "name": "pig-star-rule-of-three",
+  "source": "*foo**bar*",
+  "width": 80
+ },
+ {
+  "name": "pig-star-overlap",
+  "source": "*a **b* c**",
+  "width": 80
+ },
+ {
+  "name": "pig-star-overlap-reverse",
+  "source": "**a *b** c*",
+  "width": 80
+ },
+ {
+  "name": "pig-star-adjacent",
+  "source": "**x**y",
+  "width": 80
+ },
+ {
+  "name": "pig-star-intraword-strong",
+  "source": "x**y**z",
+  "width": 80
+ },
+ {
+  "name": "pig-star-paren-strong-in-em",
+  "source": "*(**foo**)*",
+  "width": 80
+ },
+ {
+  "name": "pig-star-five",
+  "source": "*****x*****",
+  "width": 80
+ },
+ {
+  "name": "pig-star-unbalanced-left",
+  "source": "***x*",
+  "width": 80
+ },
+ {
+  "name": "pig-star-unbalanced-right",
+  "source": "*x***",
+  "width": 80
+ },
+ {
+  "name": "pig-star-strong-unbalanced",
+  "source": "**x***",
+  "width": 80
+ },
+ {
+  "name": "pig-star-space-close",
+  "source": "*x *",
+  "width": 80
+ },
+ {
+  "name": "pig-star-escaped",
+  "source": "\\*x\\* and \\_y\\_",
+  "width": 80
+ },
+ {
+  "name": "pig-em-across-softbreak",
+  "source": "*a\nb*",
+  "width": 80
+ },
+ {
+  "name": "pig-underscore-across-softbreak",
+  "source": "_a\nb_",
+  "width": 80
+ },
+ {
+  "name": "pig-em-with-code",
+  "source": "*a `*` b*",
+  "width": 80
+ },
+ {
+  "name": "pig-underscore-with-code",
+  "source": "_a `_` b_",
+  "width": 80
+ },
+ {
+  "name": "pig-em-with-link",
+  "source": "*see [the _docs_](https://example.com) now*",
+  "width": 80
+ },
+ {
+  "name": "pig-underscore-in-link-url",
+  "source": "[x](https://example.com/a_b_c)",
+  "width": 80
+ },
+ {
+  "name": "pig-underscore-in-autolink",
+  "source": "see https://example.com/a_b_c_d and _x_",
+  "width": 80
+ },
+ {
+  "name": "pig-em-with-strike",
+  "source": "*a ~~b~~ c*",
+  "width": 80
+ },
+ {
+  "name": "pig-strike-with-em",
+  "source": "~~a _b_ c~~",
+  "width": 80
+ },
+ {
+  "name": "pig-strike-single-tilde",
+  "source": "~x~",
+  "width": 80
+ },
+ {
+  "name": "pig-strike-space",
+  "source": "~~ x~~",
+  "width": 80
+ },
+ {
+  "name": "pig-heading-underscore",
+  "source": "# Title with _emphasis_ and __strong__",
+  "width": 80
+ },
+ {
+  "name": "pig-heading-level3-underscore",
+  "source": "### _Note_: __important__",
+  "width": 80
+ },
+ {
+  "name": "pig-list-underscore",
+  "source": "- _first_ item\n- __second__ item\n- third_with_underscores",
+  "width": 80
+ },
+ {
+  "name": "pig-ordered-underscore",
+  "source": "1. _a_\n2. __b__",
+  "width": 80
+ },
+ {
+  "name": "pig-quote-underscore",
+  "source": "> _quoted_ and __strong__ text",
+  "width": 80
+ },
+ {
+  "name": "pig-table-underscore",
+  "source": "| a | b |\n|---|---|\n| _x_ | __y__ |",
+  "width": 80
+ },
+ {
+  "name": "pig-html-block-div",
+  "source": "<div>\nhello *world*\n</div>",
+  "width": 80
+ },
+ {
+  "name": "pig-html-block-comment",
+  "source": "<!-- comment -->\ntext after",
+  "width": 80
+ },
+ {
+  "name": "pig-html-block-details",
+  "source": "<details>\n<summary>Click</summary>\n\nBody _text_\n</details>",
+  "width": 80
+ },
+ {
+  "name": "pig-html-block-then-paragraph",
+  "source": "<div>\n</div>\n\nparagraph _x_",
+  "width": 80
+ },
+ {
+  "name": "pig-html-block-br",
+  "source": "<br>",
+  "width": 80
+ },
+ {
+  "name": "pig-html-block-after-paragraph",
+  "source": "para\n<div>x</div>",
+  "width": 80
+ },
+ {
+  "name": "pig-html-inline-tags",
+  "source": "a <b>bold</b> and <kbd>Ctrl</kbd>+<kbd>C</kbd> c",
+  "width": 80
+ },
+ {
+  "name": "pig-html-inline-emphasis-mask",
+  "source": "*a <span title=\"*\">b</span> c*",
+  "width": 80
+ },
+ {
+  "name": "pig-html-inline-comment",
+  "source": "x <!-- y --> z",
+  "width": 80
+ },
+ {
+  "name": "pig-table-header-from-paragraph",
+  "source": "Intro line\n| a | b |\n|---|---|\n| 1 | 2 |",
+  "width": 80
+ },
+ {
+  "name": "pig-table-header-from-paragraph-two-lines",
+  "source": "First line\nSecond line\n| a | b |\n| - | - |\n| 1 | 2 |",
+  "width": 80
+ },
+ {
+  "name": "pig-table-no-leading-pipe-after-paragraph",
+  "source": "Intro\na | b\n--|--\n1 | 2",
+  "width": 80
+ },
+ {
+  "name": "pig-table-plain-after-paragraph",
+  "source": "Intro\n\n| a | b |\n|---|---|\n| 1 | 2 |",
+  "width": 80
+ },
+ {
+  "name": "pig-assistant-message-mixed",
+  "source": "## Summary\n\nI updated `config_loader.go` so that _every_ call to __load__ checks the cache.\n\n- The `MAX_RETRIES` value is now _configurable_.\n- See **bold _and italic_** notes.\n\n> _Note_: snake_case names like my_var_name stay literal.\n\nDone — ***really*** done.",
+  "width": 80
+ },
+ {
+  "name": "pig-assistant-message-python",
+  "source": "Rename `__init__` usage: __init__ should stay, but _private_ helpers like _helper_fn use a leading underscore.",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-1",
+  "source": "\tfoo\tbaz\t\tbim\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-2",
+  "source": "  \tfoo\tbaz\t\tbim\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-3",
+  "source": "    a\ta\n    ὐ\ta\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-4",
+  "source": "  - foo\n\n\tbar\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-5",
+  "source": "- foo\n\n\t\tbar\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-6",
+  "source": ">\t\tfoo\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-7",
+  "source": "-\t\tfoo\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-8",
+  "source": "    foo\n\tbar\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-9",
+  "source": " - foo\n   - bar\n\t - baz\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-10",
+  "source": "#\tFoo\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-11",
+  "source": "*\t*\t*\t\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-12",
+  "source": "\\!\\\"\\#\\$\\%\\&\\'\\(\\)\\*\\+\\,\\-\\.\\/\\:\\;\\<\\=\\>\\?\\@\\[\\\\\\]\\^\\_\\`\\{\\|\\}\\~\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-13",
+  "source": "\\\t\\A\\a\\ \\3\\φ\\«\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-14",
+  "source": "\\*not emphasized*\n\\<br/> not a tag\n\\[not a link](/foo)\n\\`not code`\n1\\. not a list\n\\* not a list\n\\# not a heading\n\\[foo]: /url \"not a reference\"\n\\&ouml; not a character entity\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-15",
+  "source": "\\\\*emphasis*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-16",
+  "source": "foo\\\nbar\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-17",
+  "source": "`` \\[\\` ``\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-18",
+  "source": "    \\[\\]\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-19",
+  "source": "~~~\n\\[\\]\n~~~\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-20",
+  "source": "<https://example.com?find=\\*>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-21",
+  "source": "<a href=\"/bar\\/)\">\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-22",
+  "source": "[foo](/bar\\* \"ti\\*tle\")\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-23",
+  "source": "[foo]\n\n[foo]: /bar\\* \"ti\\*tle\"\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-24",
+  "source": "``` foo\\+bar\nfoo\n```\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-219",
+  "source": "aaa\n\nbbb\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-220",
+  "source": "aaa\nbbb\n\nccc\nddd\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-221",
+  "source": "aaa\n\n\nbbb\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-222",
+  "source": "  aaa\n bbb\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-223",
+  "source": "aaa\n             bbb\n                                       ccc\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-224",
+  "source": "   aaa\nbbb\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-225",
+  "source": "    aaa\nbbb\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-226",
+  "source": "aaa     \nbbb     \n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-328",
+  "source": "`foo`\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-329",
+  "source": "`` foo ` bar ``\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-330",
+  "source": "` `` `\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-331",
+  "source": "`  ``  `\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-332",
+  "source": "` a`\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-333",
+  "source": "` b `\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-334",
+  "source": "` `\n`  `\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-335",
+  "source": "``\nfoo\nbar  \nbaz\n``\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-336",
+  "source": "``\nfoo \n``\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-337",
+  "source": "`foo   bar \nbaz`\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-338",
+  "source": "`foo\\`bar`\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-339",
+  "source": "``foo`bar``\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-340",
+  "source": "` foo `` bar `\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-341",
+  "source": "*foo`*`\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-342",
+  "source": "[not a `link](/foo`)\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-343",
+  "source": "`<a href=\"`\">`\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-344",
+  "source": "<a href=\"`\">`\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-345",
+  "source": "`<https://foo.bar.`baz>`\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-346",
+  "source": "<https://foo.bar.`baz>`\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-347",
+  "source": "```foo``\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-348",
+  "source": "`foo\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-349",
+  "source": "`foo``bar``\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-594",
+  "source": "<http://foo.bar.baz>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-595",
+  "source": "<https://foo.bar.baz/test?q=hello&id=22&boolean>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-596",
+  "source": "<irc://foo.bar:2233/baz>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-597",
+  "source": "<MAILTO:FOO@BAR.BAZ>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-598",
+  "source": "<a+b+c:d>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-599",
+  "source": "<made-up-scheme://foo,bar>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-600",
+  "source": "<https://../>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-601",
+  "source": "<localhost:5001/foo>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-602",
+  "source": "<https://foo.bar/baz bim>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-603",
+  "source": "<https://example.com/\\[\\>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-604",
+  "source": "<foo@bar.example.com>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-605",
+  "source": "<foo+special@Bar.baz-bar0.com>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-606",
+  "source": "<foo\\+@bar.example.com>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-607",
+  "source": "<>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-608",
+  "source": "< https://foo.bar >\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-609",
+  "source": "<m:abc>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-610",
+  "source": "<foo.bar.baz>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-611",
+  "source": "https://example.com\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-612",
+  "source": "foo@bar.example.com\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-613",
+  "source": "<a><bab><c2c>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-614",
+  "source": "<a/><b2/>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-615",
+  "source": "<a  /><b2\ndata=\"foo\" >\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-616",
+  "source": "<a foo=\"bar\" bam = 'baz <em>\"</em>'\n_boolean zoop:33=zoop:33 />\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-617",
+  "source": "Foo <responsive-image src=\"foo.jpg\" />\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-618",
+  "source": "<33> <__>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-619",
+  "source": "<a h*#ref=\"hi\">\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-620",
+  "source": "<a href=\"hi'> <a href=hi'>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-621",
+  "source": "< a><\nfoo><bar/ >\n<foo bar=baz\nbim!bop />\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-622",
+  "source": "<a href='bar'title=title>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-623",
+  "source": "</a></foo >\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-624",
+  "source": "</a href=\"foo\">\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-625",
+  "source": "foo <!-- this is a --\ncomment - with hyphens -->\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-626",
+  "source": "foo <!--> foo -->\n\nfoo <!---> foo -->\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-627",
+  "source": "foo <?php echo $a; ?>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-628",
+  "source": "foo <!ELEMENT br EMPTY>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-629",
+  "source": "foo <![CDATA[>&<]]>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-630",
+  "source": "foo <a href=\"&ouml;\">\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-631",
+  "source": "foo <a href=\"\\*\">\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-632",
+  "source": "<a href=\"\\\"\">\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-633",
+  "source": "foo  \nbaz\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-634",
+  "source": "foo\\\nbaz\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-635",
+  "source": "foo       \nbaz\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-636",
+  "source": "foo  \n     bar\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-637",
+  "source": "foo\\\n     bar\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-638",
+  "source": "*foo  \nbar*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-639",
+  "source": "*foo\\\nbar*\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-640",
+  "source": "`code  \nspan`\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-641",
+  "source": "`code\\\nspan`\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-642",
+  "source": "<a href=\"foo  \nbar\">\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-643",
+  "source": "<a href=\"foo\\\nbar\">\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-644",
+  "source": "foo\\\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-645",
+  "source": "foo  \n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-646",
+  "source": "### foo\\\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-647",
+  "source": "### foo  \n",
+  "width": 80
+ },
+ {
+  "name": "pig-emoji-before-star",
+  "source": "😀*x* and 😀_y_",
+  "width": 80
+ },
+ {
+  "name": "pig-cjk-underscore",
+  "source": "日本_語_です and 日本*語*です",
+  "width": 80
+ },
+ {
+  "name": "pig-a-tag-suppresses-url-across-paragraphs",
+  "source": "<a href=\"x\">open\n\nhttps://example.com stays text\n\n</a> then https://example.com links",
+  "width": 80
+ },
+ {
+  "name": "pig-nested-brackets-emphasis",
+  "source": "*[a [b] c](u)* and _[x](y_z)_",
+  "width": 80
+ },
+ {
+  "name": "pig-run-of-stars",
+  "source": "********************************************************************************************************************************************************************************************************x********************************************************************************************************************************************************************************************************",
+  "width": 80
+ },
+ {
+  "name": "pig-run-of-underscores",
+  "source": "________________________________________________________________________________________________________________________________________________________________________________________________________x________________________________________________________________________________________________________________________________________________________________________________________________________",
+  "width": 80
+ },
+ {
+  "name": "pig-alternating-delimiters",
+  "source": "*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_x_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*",
+  "width": 80
+ },
+ {
+  "name": "pig-nested-brackets-deep",
+  "source": "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[x]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]](u)",
+  "width": 80
+ },
+ {
+  "name": "pig-paragraph-then-ordered-2",
+  "source": "para\n2. not a list",
+  "width": 80
+ },
+ {
+  "name": "pig-paragraph-then-ordered-1",
+  "source": "para\n1. a list",
+  "width": 80
+ },
+ {
+  "name": "pig-paragraph-then-empty-bullet",
+  "source": "para\n-\nnext",
+  "width": 80
+ },
+ {
+  "name": "pig-paragraph-hashtag",
+  "source": "para\n#hashtag line",
+  "width": 80
+ },
+ {
+  "name": "pig-indented-code-after-blank",
+  "source": "text\n\n    code _x_\n    more\n\nafter",
+  "width": 80
+ },
+ {
+  "name": "pig-indented-code-in-paragraph",
+  "source": "text\n    not code",
+  "width": 80
+ },
+ {
+  "name": "pig-table-rows-without-pipes",
+  "source": "a | b\n--|--\nplain row\n1 | 2",
+  "width": 80
+ },
+ {
+  "name": "pig-table-escaped-pipe",
+  "source": "| a | b |\n|---|---|\n| x \\| y | z |",
+  "width": 80
+ },
+ {
+  "name": "pig-table-column-mismatch",
+  "source": "| a | b |\n|---|\n| 1 | 2 |",
+  "width": 80
+ },
+ {
+  "name": "pig-html-block-in-list",
+  "source": "- item\n\n  <div>\n  *raw*\n  </div>",
+  "width": 80
+ },
+ {
+  "name": "pig-html-block-script",
+  "source": "<script>\nlet a = *b*;\n</script>\nafter *x*",
+  "width": 80
+ },
+ {
+  "name": "pig-inline-html-in-heading",
+  "source": "## Title <kbd>K</kbd> _x_",
+  "width": 80
+ },
+ {
+  "name": "pig-emoji-before-punctuated-run",
+  "source": "😀*(x)* and 😀**(y)** and ♥*(z)*",
+  "width": 80
+ },
+ {
+  "name": "pig-mid-run-opener",
+  "source": "**a*b*c and __a_b_c and ***a**b*",
+  "width": 80
+ },
+ {
+  "name": "pig-mid-run-ambiguous-closer",
+  "source": "**foo*bar*baz and *a**b*",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-192",
+  "source": "[foo]: /url \"title\"\n\n[foo]\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-193",
+  "source": "   [foo]: \n      /url  \n           'the title'  \n\n[foo]\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-194",
+  "source": "[Foo*bar\\]]:my_(url) 'title (with parens)'\n\n[Foo*bar\\]]\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-195",
+  "source": "[Foo bar]:\n<my url>\n'title'\n\n[Foo bar]\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-196",
+  "source": "[foo]: /url '\ntitle\nline1\nline2\n'\n\n[foo]\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-197",
+  "source": "[foo]: /url 'title\n\nwith blank line'\n\n[foo]\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-198",
+  "source": "[foo]:\n/url\n\n[foo]\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-199",
+  "source": "[foo]:\n\n[foo]\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-200",
+  "source": "[foo]: <>\n\n[foo]\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-201",
+  "source": "[foo]: <bar>(baz)\n\n[foo]\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-202",
+  "source": "[foo]: /url\\bar\\*baz \"foo\\\"bar\\baz\"\n\n[foo]\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-203",
+  "source": "[foo]\n\n[foo]: url\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-204",
+  "source": "[foo]\n\n[foo]: first\n[foo]: second\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-205",
+  "source": "[FOO]: /url\n\n[Foo]\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-206",
+  "source": "[ΑΓΩ]: /φου\n\n[αγω]\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-207",
+  "source": "[foo]: /url\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-208",
+  "source": "[\nfoo\n]: /url\nbar\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-209",
+  "source": "[foo]: /url \"title\" ok\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-210",
+  "source": "[foo]: /url\n\"title\" ok\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-211",
+  "source": "    [foo]: /url \"title\"\n\n[foo]\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-212",
+  "source": "```\n[foo]: /url\n```\n\n[foo]\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-213",
+  "source": "Foo\n[bar]: /baz\n\n[bar]\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-214",
+  "source": "# [Foo]\n[foo]: /url\n> bar\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-215",
+  "source": "[foo]: /url\nbar\n===\n[foo]\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-216",
+  "source": "[foo]: /url\n===\n[foo]\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-217",
+  "source": "[foo]: /foo-url \"foo\"\n[bar]: /bar-url\n  \"bar\"\n[baz]: /baz-url\n\n[foo],\n[bar],\n[baz]\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-218",
+  "source": "[foo]\n\n> [foo]: /url\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-526",
+  "source": "[foo<https://example.com/?search=](uri)>\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-527",
+  "source": "[foo][bar]\n\n[bar]: /url \"title\"\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-528",
+  "source": "[link [foo [bar]]][ref]\n\n[ref]: /uri\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-529",
+  "source": "[link \\[bar][ref]\n\n[ref]: /uri\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-530",
+  "source": "[link *foo **bar** `#`*][ref]\n\n[ref]: /uri\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-531",
+  "source": "[![moon](moon.jpg)][ref]\n\n[ref]: /uri\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-532",
+  "source": "[foo [bar](/uri)][ref]\n\n[ref]: /uri\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-533",
+  "source": "[foo *bar [baz][ref]*][ref]\n\n[ref]: /uri\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-534",
+  "source": "*[foo*][ref]\n\n[ref]: /uri\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-535",
+  "source": "[foo *bar][ref]*\n\n[ref]: /uri\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-536",
+  "source": "[foo <bar attr=\"][ref]\">\n\n[ref]: /uri\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-537",
+  "source": "[foo`][ref]`\n\n[ref]: /uri\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-538",
+  "source": "[foo<https://example.com/?search=][ref]>\n\n[ref]: /uri\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-539",
+  "source": "[foo][BaR]\n\n[bar]: /url \"title\"\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-540",
+  "source": "[ẞ]\n\n[SS]: /url\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-541",
+  "source": "[Foo\n  bar]: /url\n\n[Baz][Foo bar]\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-542",
+  "source": "[foo] [bar]\n\n[bar]: /url \"title\"\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-543",
+  "source": "[foo]\n[bar]\n\n[bar]: /url \"title\"\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-544",
+  "source": "[foo]: /url1\n\n[foo]: /url2\n\n[bar][foo]\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-545",
+  "source": "[bar][foo\\!]\n\n[foo!]: /url\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-546",
+  "source": "[foo][ref[]\n\n[ref[]: /uri\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-547",
+  "source": "[foo][ref[bar]]\n\n[ref[bar]]: /uri\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-548",
+  "source": "[[[foo]]]\n\n[[[foo]]]: /url\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-549",
+  "source": "[foo][ref\\[]\n\n[ref\\[]: /uri\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-550",
+  "source": "[bar\\\\]: /uri\n\n[bar\\\\]\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-551",
+  "source": "[]\n\n[]: /uri\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-552",
+  "source": "[\n ]\n\n[\n ]: /uri\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-553",
+  "source": "[foo][]\n\n[foo]: /url \"title\"\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-554",
+  "source": "[*foo* bar][]\n\n[*foo* bar]: /url \"title\"\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-555",
+  "source": "[Foo][]\n\n[foo]: /url \"title\"\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-556",
+  "source": "[foo] \n[]\n\n[foo]: /url \"title\"\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-557",
+  "source": "[foo]\n\n[foo]: /url \"title\"\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-558",
+  "source": "[*foo* bar]\n\n[*foo* bar]: /url \"title\"\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-559",
+  "source": "[[*foo* bar]]\n\n[*foo* bar]: /url \"title\"\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-560",
+  "source": "[[bar [foo]\n\n[foo]: /url\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-561",
+  "source": "[Foo]\n\n[foo]: /url \"title\"\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-562",
+  "source": "[foo] bar\n\n[foo]: /url\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-563",
+  "source": "\\[foo]\n\n[foo]: /url \"title\"\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-564",
+  "source": "[foo*]: /url\n\n*[foo*]\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-565",
+  "source": "[foo][bar]\n\n[foo]: /url1\n[bar]: /url2\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-566",
+  "source": "[foo][]\n\n[foo]: /url1\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-567",
+  "source": "[foo]()\n\n[foo]: /url1\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-568",
+  "source": "[foo](not a link)\n\n[foo]: /url1\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-569",
+  "source": "[foo][bar][baz]\n\n[baz]: /url\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-570",
+  "source": "[foo][bar][baz]\n\n[baz]: /url1\n[bar]: /url2\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-571",
+  "source": "[foo][bar][baz]\n\n[baz]: /url1\n[foo]: /url2\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-573",
+  "source": "![foo *bar*]\n\n[foo *bar*]: train.jpg \"train & tracks\"\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-576",
+  "source": "![foo *bar*][]\n\n[foo *bar*]: train.jpg \"train & tracks\"\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-577",
+  "source": "![foo *bar*][foobar]\n\n[FOOBAR]: train.jpg \"train & tracks\"\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-582",
+  "source": "![foo][bar]\n\n[bar]: /url\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-583",
+  "source": "![foo][bar]\n\n[BAR]: /url\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-584",
+  "source": "![foo][]\n\n[foo]: /url \"title\"\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-585",
+  "source": "![*foo* bar][]\n\n[*foo* bar]: /url \"title\"\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-586",
+  "source": "![Foo][]\n\n[foo]: /url \"title\"\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-587",
+  "source": "![foo] \n[]\n\n[foo]: /url \"title\"\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-588",
+  "source": "![foo]\n\n[foo]: /url \"title\"\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-589",
+  "source": "![*foo* bar]\n\n[*foo* bar]: /url \"title\"\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-590",
+  "source": "![[foo]]\n\n[[foo]]: /url \"title\"\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-591",
+  "source": "![Foo]\n\n[foo]: /url \"title\"\n",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-593",
+  "source": "\\![foo]\n\n[foo]: /url \"title\"\n",
+  "width": 80
+ },
+ {
+  "name": "pig-def-after-reference",
+  "source": "See [the docs] and [API][api] for details.\n\n[the docs]: https://example.com/docs\n[api]: <https://example.com/api> \"API\"",
+  "width": 80
+ },
+ {
+  "name": "pig-def-before-reference",
+  "source": "[1]: https://example.com/one\n\nAs shown in [1], it works.",
+  "width": 80
+ },
+ {
+  "name": "pig-def-first-wins",
+  "source": "[foo]: /first\n[FOO]: /second\n\n[Foo]",
+  "width": 80
+ },
+ {
+  "name": "pig-def-label-whitespace",
+  "source": "[Foo\n  Bar]: /url\n\n[foo bar] and [FOO   BAR][]",
+  "width": 80
+ },
+ {
+  "name": "pig-def-in-blockquote",
+  "source": "> [q]: /quoted\n>\n> text\n\n[q]",
+  "width": 80
+ },
+ {
+  "name": "pig-def-in-list",
+  "source": "- item [x]\n\n  [x]: /listed\n- next",
+  "width": 80
+ },
+ {
+  "name": "pig-def-undefined-reference",
+  "source": "[nope] and [also][nope] stay text\n\n[yes]: /y",
+  "width": 80
+ },
+ {
+  "name": "pig-def-only",
+  "source": "[a]: /a\n\n[b]: /b",
+  "width": 80
+ },
+ {
+  "name": "pig-def-blank-lines",
+  "source": "a\n\n[x]: /u\n\n\nb",
+  "width": 80
+ },
+ {
+  "name": "pig-def-after-table-interrupt",
+  "source": "para\n[x]: /u\n|-|",
+  "width": 80
+ },
+ {
+  "name": "pig-reflink-emphasis-mask",
+  "source": "*[foo*] and **[bar**][foo]\n\n[foo]: /f",
+  "width": 80
+ },
+ {
+  "name": "pig-reflink-holds-link",
+  "source": "[a [b] c][ref] and [x [y](/inner) z][ref]\n\n[b]: /b\n[ref]: /r",
+  "width": 80
+ },
+ {
+  "name": "pig-reflink-image",
+  "source": "![alt][img] and ![img]\n\n[img]: /i.png",
+  "width": 80
+ },
+ {
+  "name": "pig-reflink-numbered-assistant",
+  "source": "The cache is invalidated on write [1] and refreshed lazily [2]; see _snake_case_ notes[3].\n\n- step one [1]\n- step **two** [2]\n\n[1]: https://example.com/a_1\n[2]: https://example.com/b\n[3]: https://example.com/c \"C\"",
+  "width": 80
+ },
+ {
+  "name": "pig-list-five-spaces",
+  "source": "-     indented code\n-    four spaces\n1.      code",
+  "width": 80
+ },
+ {
+  "name": "pig-list-indented-code-before-sibling",
+  "source": "-      foo\n\n- bar",
+  "width": 80
+ },
+ {
+  "name": "pig-list-item-code-before-sibling",
+  "source": "- a\n\n      code\n\n- b",
+  "width": 80
+ },
+ {
+  "name": "pig-def-quote-trailing",
+  "source": "> a\n>\n> [q]: /q\n\n[q]",
+  "width": 80
+ },
+ {
+  "name": "commonmark-0.31.2-example-592",
+  "source": "!\\[foo]\n\n[foo]: /url \"title\"\n",
+  "width": 80
+ },
+ {
+  "name": "pig-latex-bracket-after-first-character",
+  "source": "a \\[foo]\n\nbar",
+  "width": 80
+ },
+ {
+  "name": "pig-latex-dollar-after-first-character-merges",
+  "source": "a $$ b\nc\n\na $$x$$ b",
+  "width": 80
+ },
+ {
+  "name": "pig-latex-bracket-after-astral-character",
+  "source": "😀\\[x] and é\\[y]",
+  "width": 80
+ },
+ {
+  "name": "pig-latex-bracket-in-list-item-text",
+  "source": "- a \\[x]\n\n> a \\[x]\n> b",
+  "width": 80
+ },
+ {
+  "name": "pig-table-double-backslash-pipe",
+  "source": "| a | b |\n|---|---|\n| x \\\\| y |",
+  "width": 40
+ },
+ {
+  "name": "pig-table-triple-backslash-pipe",
+  "source": "| a \\\\\\| b | c |\n|---|---|\n| 1 | 2 |",
+  "width": 40
+ }
+]

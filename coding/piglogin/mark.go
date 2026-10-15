@@ -41,6 +41,7 @@ func luminance(c color.RGBA) float64 {
 		}
 		return math.Pow((x+0.055)/1.055, 2.4)
 	}
+	//portlint:allow fusedmuladd D2: PiG's own text-mark contrast test, no Pi counterpart; a last-bit change cannot cross minMarkContrast for the ramp's colors
 	return 0.2126*lin(c.R) + 0.7152*lin(c.G) + 0.0722*lin(c.B)
 }
 

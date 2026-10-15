@@ -20,7 +20,7 @@ func TestSessionPersistenceErrorsMatchNode(t *testing.T) {
 			path := t.TempDir()
 			var err error
 			if op == "append" {
-				err = appendSessionLine(path, []byte("{}"))
+				_, err = appendSessionLine(path, []byte("{}"))
 			} else {
 				err = writeSessionLines(path, [][]byte{[]byte("{}")})
 			}
@@ -55,7 +55,7 @@ func TestSessionSelectorRenamePersistenceFailureReachesCrashLog(t *testing.T) {
 	defer ui.Stop()
 	editor := tui.NewEditor()
 	container := tui.NewContainer(editor)
-	mode := &InteractiveMode{opts: InteractiveOptions{AgentDir: t.TempDir()}, tuiInst: ui, editor: editor, editorContainer: container, layout: tui.NewContainer(container)}
+	mode := &InteractiveMode{opts: InteractiveModeOptions{AgentDir: t.TempDir()}, tuiInst: ui, editor: editor, editorContainer: container, layout: tui.NewContainer(container)}
 	ui.Add(mode.layout)
 	input := make(chan []byte, 1)
 	input <- []byte("\r")
@@ -63,7 +63,7 @@ func TestSessionSelectorRenamePersistenceFailureReachesCrashLog(t *testing.T) {
 	var raised any
 	func() {
 		defer func() { raised = recover() }()
-		mode.runEditorSlotSessionSelector(selector)
+		mode.runEditorSlotSessionSelector(selector, hookSessionSelectorOutcome(selector))
 	}()
 	rejection, ok := raised.(uncaughtError)
 	if !ok {

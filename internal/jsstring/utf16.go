@@ -52,6 +52,14 @@ func ToUTF16(text string) []uint16 {
 	return out
 }
 
+// StreamText is the text process.stdout.write, console.error and a "utf8" file write send for a JavaScript string: valid UTF-8 is unchanged and a lone surrogate becomes U+FFFD.
+func StreamText(text string) string {
+	if utf8.ValidString(text) {
+		return text
+	}
+	return string(ToUTF8(text))
+}
+
 // ToUTF8 replaces lone UTF-16 surrogates, matching a JavaScript string's UTF-8 encoding for operating-system byte APIs.
 func ToUTF8(text string) []byte {
 	return []byte(string(utf16.Decode(ToUTF16(text))))

@@ -389,10 +389,11 @@ func jsonText(t *testing.T, value any) string {
 	return string(encoded)
 }
 
-// types.test.ts:248 SubmissionDraft exclusivity literals (an input with an entry, a write with content, a write with a
-// busy policy). Upstream's draft is a union only the compiler enforces; Harness submit reads `entry` for a write and
-// `content`/`whenBusy` for an input (submissions.ts:166-197), so on the same inputs Pi 1.0.0 ignores the other
-// member's fields. Go's SubmissionDraft is one struct holding every member, and Submit branches on Type the same way.
+// types.test.ts:256 SubmissionDraft exclusivity literals (a write with content, a write with a busy policy). Upstream's
+// draft is a union only the compiler enforces; Harness submit reads `entry` for a write and `content`/`whenBusy` for an
+// input (submissions.ts), so on the same inputs Pi ignores the other member's fields. Go's SubmissionDraft is one
+// struct holding every member, and Submit branches on Type the same way. Pi 1.2.0's input entry is Go's InputEntry, so
+// the Entry field of an input draft is a Go-only member field, which Submit ignores as Pi 1.1.0 ignored an input's entry.
 func TestSubmissionDraftIgnoresTheFieldsOfTheOtherType(t *testing.T) {
 	t.Run("a write with content and a busy policy settles as the plain write", func(t *testing.T) {
 		harness, root := openChat(t, newControlledStorage(), chatSetup(t))
@@ -435,7 +436,7 @@ func TestSubmissionDraftIgnoresTheFieldsOfTheOtherType(t *testing.T) {
 		closeHarness(t, harness)
 	})
 
-	t.Run("a write with a reject policy queues behind a busy conversation instead of failing", func(t *testing.T) {
+	t.Run("a write that affects model context with a reject policy queues behind a busy conversation instead of failing", func(t *testing.T) {
 		setup := chatSetup(t)
 		busy := unanswered()
 		setup.Faux.SetResponses([]ai.FauxResponseStep{busy.step})
@@ -443,7 +444,7 @@ func TestSubmissionDraftIgnoresTheFieldsOfTheOtherType(t *testing.T) {
 		must(root.Submit(testContext, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("hi")}))
 		<-busy.reached
 		write := must(root.Submit(testContext, durable.SubmissionDraft{
-			Type: durable.SubmissionTypeWrite, Entry: &durable.EntryDraft{Kind: "note"}, WhenBusy: durable.WhenBusyReject,
+			Type: durable.SubmissionTypeWrite, Entry: &durable.EntryDraft{Kind: "note", Model: []ai.Message{ai.UserMessage{Content: ai.UserText("n")}}}, WhenBusy: durable.WhenBusyReject,
 		}))
 		if record := must(write.Status(testContext)); record.Status != durable.SubmissionQueued || record.Type != durable.SubmissionTypeWrite {
 			t.Fatalf("record = %+v, want a queued write", record)

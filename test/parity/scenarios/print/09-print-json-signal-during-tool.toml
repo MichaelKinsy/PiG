@@ -1,0 +1,35 @@
+# Pi print-mode.ts:50-63: SIGTERM/SIGHUP kill tracked children and run disposeRuntime (unsubscribe the JSON writer, then
+# runtimeHost.dispose: session_shutdown and AgentSession.dispose, which disconnects the Session from the Agent,
+# agent-session.ts:1393-1414), then process.exit(128+signum). A bash tool that is running when the signal lands therefore
+# leaves stdout ending at its tool_execution_update and the session file at the toolUse assistant message; no second
+# provider request starts. PiG kept writing and persisting the aborted run's tail (tool result, aborted turn, agent_end).
+# The probe compares event types, session record roles/stop reasons, request count, exit status and stderr.
+# The *-shutdown cases add an extension whose session_shutdown handler throws at once or waits 1.5 s on a timer, in JSON
+# and text mode, and compare exit status, stdout (events or text), stderr, session records and the provider request
+# count. Pi runs the disposal on its one event loop: a throwing handler ends it within microtasks, before the killed
+# tool's exit is seen, so the run stops at the tool (1 request) and stderr has the handler's error; a timer lets the loop
+# turn, so the run settles the tool, makes its second request, persists the answer and, in text mode, prints it before
+# the exit. PiG used to let the run go on during the handler's IPC round trip (2 requests where Pi made 1), to report a
+# throwing handler as "connection closed", and to print nothing in text mode after any signal.
+name = "09-print-json-signal-during-tool"
+description = "SIGTERM and SIGHUP during a tool stop output, persistence and the run where Pi does, with and without a session_shutdown handler"
+covers = ["packages/coding-agent/src/modes/print-mode.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+# The probe defaults to PIG_PARITY_PIG_BIN so it uses the verified harness build.
+pig_args = ["python3", "test/parity/testdata/session-wire.py", "--case", "json-tool-term", "--case", "json-tool-hup", "--case", "json-tool-throwing-shutdown", "--case", "json-tool-slow-shutdown", "--case", "text-tool-throwing-shutdown", "--case", "text-tool-slow-shutdown"]
+pi_args = ["python3", "test/parity/testdata/session-wire.py", "--bin", "extensions/sdk-ts/node_modules/.bin/pi", "--case", "json-tool-term", "--case", "json-tool-hup", "--case", "json-tool-throwing-shutdown", "--case", "json-tool-slow-shutdown", "--case", "text-tool-throwing-shutdown", "--case", "text-tool-slow-shutdown"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 90
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

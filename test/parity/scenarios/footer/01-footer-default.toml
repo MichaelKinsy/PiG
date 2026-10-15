@@ -42,7 +42,7 @@
 # theme.fg("dim", text). Promoted from output_normalized_equal to
 # escaped_output_equal in this loop.
 #
-# B1 source fix (this loop): cmd/pig/model.go now stores Model.ID as
+# B1 source fix (this loop): coding/cli/model.go now stores Model.ID as
 # the bare catalog id ("gpt-4o") matching upstream. The footer no longer
 # needs to strip a "provider/" prefix.
 #
@@ -94,7 +94,7 @@ both_reach_ready = true
 both_contain = ["$0.000 (sub)", "0.0%/1.0M (auto)", "gpt-5.4", "(parity-fixture)"]
 both_match_regex = ['(?m)\([a-z0-9._/-]+\)$']
 # Regression guard: FQ spec must never appear in the footer. After the
-# B1 source fix (cmd/pig/model.go stores bare catalog id), this guard
+# B1 source fix (coding/cli/model.go stores bare catalog id), this guard
 # is trivially satisfied but remains as a regression sentinel in case
 # Model.ID storage ever drifts back to FQ form.
 both_not_contain = [

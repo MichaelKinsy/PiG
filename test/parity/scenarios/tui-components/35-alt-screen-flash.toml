@@ -1,0 +1,27 @@
+# Behavior family: tui-components (AltScreenFlashContainer)
+# Pi 1.1.0 probe: AltScreenFlashContainer driven by 600 random operation sequences (flash with default, zero, negative, short, long durations,
+# dispose, expiry of every due timer, invalidate) with a manual setTimeout clock; after every operation the rendered rows (reverse video, one
+# space either side, cut to widths 0 to 80, wide and ANSI messages) and the render-request count are compared byte for byte. The Go test
+# TestAltScreenFlashContainerMatchesPi runs the same corpus against the installed Pi; this scenario compares the two printed streams.
+name = "35-alt-screen-flash"
+description = "Alt-screen flash messages render and expire as in Pi."
+covers = ["packages/tui/src/components/alt-screen-flash.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/alt-screen-flash-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/alt-screen-flash-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 240
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['Saved', 'renders']
+runs = 2

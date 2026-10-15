@@ -1,0 +1,210 @@
+{{define "stack"}}<div class="stack" role="img" aria-label="{{.Label}}">{{range .Segs}}<i class="{{.Class}}" style="width:{{.Pct}}"></i>{{end}}</div>{{end}}
+{{define "spark"}}<svg class="spark" viewBox="0 0 400 56" preserveAspectRatio="none" role="img" aria-label="{{.Label}}"><title>{{.Label}}</title><polyline points="{{.Points}}" vector-effect="non-scaling-stroke"/><circle class="dot" cx="{{.CX}}" cy="{{.CY}}" r="3"/></svg>{{end}}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="generator" content="PiG port lens">
+<title>Overview · PiG port lens</title>
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem('pl-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+<div class="header-inner">
+<a class="brand" href="#/overview" aria-label="PiG port lens, overview"><b>PiG<i>.</i></b><span>Port lens</span></a>
+<nav class="nav" aria-label="Views">
+<a href="#/overview" data-view="overview">Overview</a>
+<a href="#/portmap" data-view="portmap">Port map</a>
+<a href="#/divergences" data-view="divergences">Divergences</a>
+<a href="#/bugs" data-view="bugs">Bug ledger</a>
+<a href="#/evals" data-view="evals">Evals</a>
+</nav>
+<button class="theme-btn" id="theme" type="button">Theme: Auto</button>
+</div>
+</header>
+<main id="main">
+<noscript><div class="wrap"><p class="honest">The port map, divergences, bug ledger and evals views load their data with a small script. Enable JavaScript to read them. The overview below works without it.</p></div></noscript>
+
+<section id="view-overview" class="view" aria-labelledby="ov-h">
+<div class="wrap">
+<div class="page-intro">
+<div class="section-label">Port health</div>
+<h1 id="ov-h">PiG against Pi {{.Pin.Version}}</h1>
+<p>PiG is a Go port of Pi. This report reads the repository's own ledgers: the interface mapping, the gap baselines, the divergence records, the bug ledger and the benchmark results. Nothing here is typed in by hand, and nothing leaves this directory.</p>
+</div>
+
+<div class="grid g3">
+<div class="card">
+<h3>Pinned upstream</h3>
+<div class="big">Pi {{.Pin.Version}}</div>
+<dl class="kv" style="margin-top:14px">
+<dt>ref</dt><dd class="mono">{{.Pin.Ref}}</dd>
+<dt>commit</dt><dd class="mono">{{short .Pin.Commit 12}}</dd>
+<dt>package version</dt><dd class="mono">{{.Pin.PackageVersion}}</dd>
+<dt>source mirror</dt><dd>{{if .PiMirror}}present, used for the Pi snippets{{else}}not present: Pi snippets are marked unavailable{{end}}</dd>
+</dl>
+</div>
+{{range .Ledgers}}{{if not .Committed}}
+<div class="card">
+<h3>Main-follow target</h3>
+<div class="big">Pi {{.Version}}</div>
+<dl class="kv" style="margin-top:14px">
+<dt>rows</dt><dd class="num">{{fmtn .Total}}</dd>
+<dt>gap</dt><dd class="num"><span class="chip st-gap">{{fmtn .Gap}}</span></dd>
+<dt>gap baseline</dt><dd class="num">{{fmtn .GapBaseline}}</dd>
+<dt>closed</dt><dd class="num">{{pct (sub .Total .Gap) .Total}}</dd>
+</dl>
+<p class="small muted" style="margin:12px 0 0">The pin has not flipped to this build. The flip-gap below lists what remains.</p>
+</div>
+{{end}}{{end}}
+<div class="card">
+<h3>This report</h3>
+<dl class="kv">
+<dt>repository</dt><dd class="mono">{{.Head}}</dd>
+<dt>commit date</dt><dd class="mono">{{.HeadDate}}</dd>
+<dt>divergences</dt><dd class="num"><a href="#/divergences">{{.NDivergences}}</a></dd>
+<dt>bug ledger entries</dt><dd class="num"><a href="#/bugs">{{.NBugs}}</a></dd>
+<dt>ledger rows</dt><dd class="num"><a href="#/portmap">{{.NRows}}</a></dd>
+</dl>
+<p class="small muted" style="margin:12px 0 0">Deterministic: the same commit gives the same bytes. No network, no clock.</p>
+</div>
+</div>
+
+{{range .Ledgers}}
+<h2 class="sec" id="ledger-{{.ID}}">Ledger: Pi {{.Version}} <span class="chip neutral">{{.Role}}</span></h2>
+<p class="sec-note">One row per upstream interface. <b>Ported</b>: hand-reviewed row. <b>Derived</b>: the gap detector bound it to a Go symbol and an asserting test. <b>Designed out</b>: no Go counterpart by design, with a recorded reason. <b>Gap</b>: not closed, so it appears in the committed gap baseline or is still pending.</p>
+<div class="grid g4" style="margin-bottom:20px">
+<div class="card"><h3>Gap</h3><div class="big">{{fmtn .Gap}}<small>of {{fmtn .Total}}</small></div><p class="small muted" style="margin:10px 0 0">Baseline {{fmtn .GapBaseline}}. {{ratchetNote .Gap .GapBaseline}}</p></div>
+<div class="card"><h3>Ported</h3><div class="big">{{fmtn .Ported}}</div></div>
+<div class="card"><h3>Derived</h3><div class="big">{{fmtn .Derived}}</div></div>
+<div class="card"><h3>Designed out</h3><div class="big">{{fmtn .DesignedOut}}</div></div>
+</div>
+<div class="legend"><span><i class="c-ported"></i>ported</span><span><i class="c-derived"></i>derived</span><span><i class="c-designed-out"></i>designed out</span><span><i class="c-gap"></i>gap</span></div>
+<div class="table-wrap"><table>
+<caption class="sr">Rows per upstream package for Pi {{.Version}}</caption>
+<thead><tr><th scope="col">Package</th><th scope="col" class="num">Rows</th><th scope="col">Status</th><th scope="col" class="num">Ported</th><th scope="col" class="num">Derived</th><th scope="col" class="num">Designed out</th><th scope="col" class="num">Gap</th><th scope="col" class="num">Gap baseline</th><th scope="col" class="num">Unproven baseline</th></tr></thead>
+<tbody>
+{{$id := .ID}}{{range .Packages}}<tr>
+<th scope="row" style="background:none;font-size:13px;color:var(--ink)"><a href="#/portmap?pin={{$id}}&amp;pkg={{.Index}}">{{.Pkg}}</a></th>
+<td class="num">{{fmtn .Total}}</td>
+<td>{{template "stack" stack .}}</td>
+<td class="num">{{fmtn .Ported}}</td><td class="num">{{fmtn .Derived}}</td><td class="num">{{fmtn .DesignedOut}}</td>
+<td class="num">{{if .Gap}}<span class="cell-bad">{{fmtn .Gap}}</span>{{else}}0{{end}}</td>
+<td class="num">{{fmtn .GapBaseline}}</td><td class="num">{{fmtn .ProofBaseline}}</td>
+</tr>{{end}}
+</tbody></table></div>
+{{end}}
+
+<h2 class="sec">Trend</h2>
+<p class="sec-note">Gap rows over time, read from the history of the committed gap baseline file (every commit that changed it), or from a ledger totals log when the build passes one with <code>-totals-log</code>. Only the numbers and pin labels are read from a log.</p>
+<div class="grid g2">
+{{range .Trends}}<div class="card"><h3>{{.Name}}</h3>{{template "spark" spark .}}<div class="spark-meta"><span>{{(index .Points 0).Label}}</span><span>{{(index .Points (sub (len .Points) 1)).Label}}</span></div><p class="small muted" style="margin:8px 0 0">{{len .Points}} points, from {{(index .Points 0).Value}} to {{(index .Points (sub (len .Points) 1)).Value}}. Source: {{.Source}}.</p></div>
+{{else}}<div class="card"><p class="muted">No trend source is available (no git history and no totals log).</p></div>{{end}}
+</div>
+
+{{if .Flip}}
+<h2 class="sec">Flip-gap progress: Pi {{.FlipLabel}}</h2>
+<p class="sec-note">What stands between the pinned build and the main-follow target. Each line is one surface that has its own ledger; <i>pending</i> means a reviewed disposition is still missing.</p>
+<div class="card">
+{{range .Flip}}<div class="progress-row"><div><b>{{.Name}}</b><div class="small muted mono">{{.Source}}</div></div><div class="bar" role="img" aria-label="{{.Done}} done, {{.Pending}} pending"><i style="width:{{pctn .Done (add .Done .Pending)}}%"></i></div><div class="num mono">{{fmtn .Done}} / {{fmtn (add .Done .Pending)}}<br><span class="muted small">{{fmtn .Pending}} pending</span></div></div>{{end}}
+</div>
+{{end}}
+
+<h2 class="sec">Proof classes</h2>
+<p class="sec-note">Every closed row requires one class of behaviour proof, chosen from its kind (see <code>proofclass.py</code>). The table counts closed rows by required class. The unproven column is read from <code>build/ledger-proof-classes/unproven-behaviour.tsv</code>, which <code>make port-lens</code> and <code>make ledger-check</code> write for the pinned ledger; the committed baseline per package is in the ledger tables above.</p>
+<div class="grid g2">
+{{range .Ledgers}}<div class="table-wrap"><table>
+<caption class="sr">Required proof classes of Pi {{.Version}}</caption>
+<thead><tr><th scope="col">Class (Pi {{.Version}})</th><th scope="col" class="num">Closed rows</th><th scope="col" class="num">Unproven</th></tr></thead>
+<tbody>{{$read := .ProofRead}}{{range .Classes}}<tr><td><span class="mono">{{.Class}}</span> {{.Name}}</td><td class="num">{{fmtn .Required}}</td><td class="num">{{if $read}}{{fmtn .Unproven}}{{else}}<span class="muted">not read</span>{{end}}</td></tr>{{end}}</tbody></table></div>{{end}}
+</div>
+
+<h2 class="sec">Ratchets</h2>
+<p class="sec-note">Each count may only go down. A gate fails when a count grows, and when an entry no longer matches, so a fix deletes its entry in the same change.</p>
+<div class="table-wrap"><table>
+<caption class="sr">Ratchets</caption>
+<thead><tr><th scope="col">Ratchet</th><th scope="col" class="num">Entries</th><th scope="col">Unit</th><th scope="col">Gate</th><th scope="col">Source</th></tr></thead>
+<tbody>{{range .Ratchets}}<tr><td><b>{{.Name}}</b>{{if .Note}}<div class="small muted">{{.Note}}</div>{{end}}</td><td class="num">{{if lt .Count 0}}<span class="muted">unreadable</span>{{else}}{{fmtn .Count}}{{end}}</td><td>{{.Unit}}</td><td class="mono small">{{.Command}}</td><td class="mono small">{{.Source}}</td></tr>{{end}}</tbody></table></div>
+</div>
+</section>
+
+<section id="view-portmap" class="view" hidden aria-labelledby="pm-h">
+<div class="wrap">
+<div class="page-intro">
+<div class="section-label">Port map</div>
+<h1 id="pm-h">Every upstream interface, mapped to Go</h1>
+<p>Rows are grouped by upstream package and source file. Open a row for its mapping evidence, the Go symbol with its code, the published Pi declaration, the production path and the tests that prove it.</p>
+</div>
+<div class="toolbar" role="search">
+<div class="search"><label class="sr" for="pm-q">Search rows</label><input id="pm-q" type="search" placeholder="Search names, Go files, test names, D-numbers" autocomplete="off" spellcheck="false"><kbd aria-hidden="true">/</kbd></div>
+<label class="sr" for="pm-pin">Ledger</label>
+<select id="pm-pin">{{range .Ledgers}}<option value="{{.ID}}">Pi {{.Version}} ({{.Role}})</option>{{end}}</select>
+<label class="sr" for="pm-pkg">Package</label><select id="pm-pkg"><option value="">All packages</option></select>
+<label class="sr" for="pm-cls">Proof class</label>
+<select id="pm-cls"><option value="">All proof classes</option><option value="D">D designed out</option><option value="W">W wire</option><option value="R">R registration</option><option value="U">U union</option><option value="F">F behaviour</option><option value="N">N none</option></select>
+<label class="sr" for="pm-proof">Proof status</label>
+<select id="pm-proof"><option value="">Any proof status</option><option value="proven">proven</option><option value="unproven">unproven</option><option value="unknown">not read</option></select>
+<label class="sr" for="pm-fam">Owner family</label>
+<select id="pm-fam"><option value="">All owner families</option></select>
+</div>
+<div class="toolbar">
+<div class="chips" id="pm-status" role="group" aria-label="Status">
+<button type="button" class="toggle" aria-pressed="true"><i class="c-ported"></i>ported</button>
+<button type="button" class="toggle" aria-pressed="true"><i class="c-derived"></i>derived</button>
+<button type="button" class="toggle" aria-pressed="true"><i class="c-designed-out"></i>designed out</button>
+<button type="button" class="toggle" aria-pressed="true"><i class="c-gap"></i>gap</button>
+</div>
+<span class="count" id="pm-count" aria-live="polite"></span>
+</div>
+<div class="pm" id="pm-top">
+<nav class="tree" id="pm-tree" aria-label="Upstream packages and files"></nav>
+<div>
+<ul class="rows" id="pm-list"></ul>
+<div class="pager"><button type="button" id="pm-prev">Previous</button><span id="pm-page"></span><button type="button" id="pm-next">Next</button></div>
+<p class="small muted" style="margin-top:14px">Keys: <kbd>/</kbd> search, <kbd>j</kbd> and <kbd>k</kbd> move between rows, <kbd>Enter</kbd> opens a row. Owner family is the parity family whose scope lists the row's upstream file.</p>
+</div>
+</div>
+</div>
+</section>
+
+<section id="view-divergences" class="view" hidden aria-labelledby="dv-h">
+<div class="wrap">
+<div class="page-intro">
+<div class="section-label">Divergences</div>
+<h1 id="dv-h">Where PiG differs from Pi, and why</h1>
+<p>Every D-number from <code>docs/parity/DIVERGENCES.md</code> and <code>docs/additive-features.md</code>. Open a record for the full note, the Pi source and the Go source it cites, and the tests that pin it.</p>
+</div>
+<div id="frag-divergences"><div class="loading">Loading…</div></div>
+</div>
+</section>
+
+<section id="view-bugs" class="view" hidden aria-labelledby="bg-h">
+<div class="wrap">
+<div class="page-intro">
+<div class="section-label">Bug ledger</div>
+<h1 id="bg-h">Bugs fixed since {{.BugSince}}</h1>
+<p>Each entry has the symptom, the root cause, the fix commits, the tests that keep it fixed and the divergence it links to. Generated by <code>make bug-ledger</code>.</p>
+</div>
+<div id="frag-bugs"><div class="loading">Loading…</div></div>
+</div>
+</section>
+
+<section id="view-evals" class="view" hidden aria-labelledby="ev-h">
+<div class="wrap">
+<div class="page-intro">
+<div class="section-label">Evals and benchmarks</div>
+<h1 id="ev-h">What was measured, wins and losses alike</h1>
+<p>Results are shown as measured. A measure PiG loses is drawn the same size as one it wins, and an item with no committed evidence is marked not met.</p>
+</div>
+<div id="frag-evals"><div class="loading">Loading…</div></div>
+</div>
+</section>
+</main>
+<footer class="site-footer"><div class="wrap"><span>PiG port lens · generated from repository commit <span class="mono">{{.Head}}</span> · static report, no network</span><span>Pi is the reference implementation: <a href="https://github.com/earendil-works/pi" rel="noopener noreferrer">earendil-works/pi</a></span></div></footer>
+<script src="assets/app.js"></script>
+</body>
+</html>

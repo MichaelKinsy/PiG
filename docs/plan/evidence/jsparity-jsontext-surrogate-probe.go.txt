@@ -1,0 +1,22 @@
+// Probe for docs/design/jsparity.md: encoding/json/jsontext is not a sink for JSON.stringify bytes.
+// Run: go run in an empty module. Output with Go 1.27.2:
+//   "" jsontext: invalid surrogate pair "\\ud800 <&> \\" in string within "/a" after offset 6
+//   "{\"a\":\"� <&> \u2028 x\"}\n" <nil>
+// The default rejects the lone surrogate; AllowInvalidUTF8(true) replaces it with U+FFFD and escapes U+2028, while
+// JSON.stringify writes the \ud800 escape, <&> and U+2028 literally.
+package main
+
+import (
+	"bytes"
+	"encoding/json/jsontext"
+	"fmt"
+)
+
+func main() {
+	for _, opts := range [][]jsontext.Options{nil, {jsontext.AllowInvalidUTF8(true)}} {
+		var b bytes.Buffer
+		e := jsontext.NewEncoder(&b, opts...)
+		err := e.WriteValue(jsontext.Value(`{"a":"\ud800 <&> \u2028 x"}`))
+		fmt.Printf("%q %v\n", b.String(), err)
+	}
+}

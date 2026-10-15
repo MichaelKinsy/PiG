@@ -1,0 +1,291 @@
+[
+ {
+  "upstream": "packages/tui/src/terminal-image.ts",
+  "package": "./tui",
+  "tests": [
+   "TestImageHeaderParsersReadEachFormatsDimensions"
+  ],
+  "upstream_reference": "packages/tui/src/terminal-image.ts",
+  "mutation": "tui/terminal_image.go: replace `width := int(buf[16])<<24 | int(buf[17])<<16 | int(buf[18])<<8 | int(buf[19])\n\theight := int(buf[20])<<24` with `height := int(buf[16])<<24 | int(buf[17])<<16 | int(buf[18])<<8 | int(buf[19])\n\twidth := int(buf[20])<<24`; TestImageHeaderParsersReadEachFormatsDimensions fails."
+ },
+ {
+  "upstream": "packages/tui/src/terminal-image.ts",
+  "package": "./tui",
+  "tests": [
+   "TestImageHeaderParsersReadEachFormatsDimensions"
+  ],
+  "upstream_reference": "packages/tui/src/terminal-image.ts",
+  "mutation": "tui/terminal_image.go: replace `if buf[0] != 0x89 || buf[1] != 0x50 || buf[2] != 0x4e || buf[3] != 0x47 {\n\t\treturn nil\n\t}` with ``; TestImageHeaderParsersReadEachFormatsDimensions fails."
+ },
+ {
+  "upstream": "packages/tui/src/terminal-image.ts",
+  "package": "./tui",
+  "tests": [
+   "TestImageHeaderParsersReadEachFormatsDimensions"
+  ],
+  "upstream_reference": "packages/tui/src/terminal-image.ts",
+  "mutation": "tui/terminal_image.go: replace `height := int(buf[offset+5])<<8 | int(buf[offset+6])` with `height := int(buf[offset+6])<<8 | int(buf[offset+5])`; TestImageHeaderParsersReadEachFormatsDimensions fails."
+ },
+ {
+  "upstream": "packages/tui/src/terminal-image.ts",
+  "package": "./tui",
+  "tests": [
+   "TestImageHeaderParsersReadEachFormatsDimensions"
+  ],
+  "upstream_reference": "packages/tui/src/terminal-image.ts",
+  "mutation": "tui/terminal_image.go: replace `if marker >= 0xc0 && marker <= 0xc2 {` with `if marker >= 0xc0 && marker <= 0xc1 {`; TestImageHeaderParsersReadEachFormatsDimensions fails."
+ },
+ {
+  "upstream": "packages/tui/src/terminal-image.ts",
+  "package": "./tui",
+  "tests": [
+   "TestImageHeaderParsersReadEachFormatsDimensions"
+  ],
+  "upstream_reference": "packages/tui/src/terminal-image.ts",
+  "mutation": "tui/terminal_image.go: replace `if err != nil || len(buf) < 2 || buf[0] != 0xff || buf[1] != 0xd8 {` with `if err != nil || len(buf) < 2 {`; TestImageHeaderParsersReadEachFormatsDimensions fails."
+ },
+ {
+  "upstream": "packages/tui/src/terminal-image.ts",
+  "package": "./tui",
+  "tests": [
+   "TestImageHeaderParsersReadEachFormatsDimensions"
+  ],
+  "upstream_reference": "packages/tui/src/terminal-image.ts",
+  "mutation": "tui/terminal_image.go: replace `width := int(buf[6]) | int(buf[7])<<8\n\theight := int(buf[8]) | int(buf[9])<<8` with `width := int(buf[7]) | int(buf[6])<<8\n\theight := int(buf[9]) | int(buf[8])<<8`; TestImageHeaderParsersReadEachFormatsDimensions fails."
+ },
+ {
+  "upstream": "packages/tui/src/terminal-image.ts",
+  "package": "./tui",
+  "tests": [
+   "TestImageHeaderParsersReadEachFormatsDimensions"
+  ],
+  "upstream_reference": "packages/tui/src/terminal-image.ts",
+  "mutation": "tui/terminal_image.go: replace `if sig != \"GIF87a\" && sig != \"GIF89a\" {` with `if sig != \"GIF89a\" {`; TestImageHeaderParsersReadEachFormatsDimensions fails."
+ },
+ {
+  "upstream": "packages/tui/src/terminal-image.ts",
+  "package": "./tui",
+  "tests": [
+   "TestImageHeaderParsersReadEachFormatsDimensions"
+  ],
+  "upstream_reference": "packages/tui/src/terminal-image.ts",
+  "mutation": "tui/terminal_image.go: replace `width := (int(buf[26]) | int(buf[27])<<8) & 0x3fff` with `width := (int(buf[26]) | int(buf[27])<<8)`; TestImageHeaderParsersReadEachFormatsDimensions fails."
+ },
+ {
+  "upstream": "packages/tui/src/terminal-image.ts",
+  "package": "./tui",
+  "tests": [
+   "TestImageHeaderParsersReadEachFormatsDimensions"
+  ],
+  "upstream_reference": "packages/tui/src/terminal-image.ts",
+  "mutation": "tui/terminal_image.go: replace `width := (bits & 0x3fff) + 1` with `width := (bits & 0x3fff)`; TestImageHeaderParsersReadEachFormatsDimensions fails."
+ },
+ {
+  "upstream": "packages/tui/src/terminal-image.ts",
+  "package": "./tui",
+  "tests": [
+   "TestImageHeaderParsersReadEachFormatsDimensions"
+  ],
+  "upstream_reference": "packages/tui/src/terminal-image.ts",
+  "mutation": "tui/terminal_image.go: replace `height := ((bits >> 14) & 0x3fff) + 1` with `height := ((bits >> 13) & 0x3fff) + 1`; TestImageHeaderParsersReadEachFormatsDimensions fails."
+ },
+ {
+  "upstream": "packages/tui/src/terminal-image.ts",
+  "package": "./tui",
+  "tests": [
+   "TestImageHeaderParsersReadEachFormatsDimensions"
+  ],
+  "upstream_reference": "packages/tui/src/terminal-image.ts",
+  "mutation": "tui/terminal_image.go: replace `width := (int(buf[24]) | int(buf[25])<<8 | int(buf[26])<<16) + 1` with `width := (int(buf[24]) | int(buf[25])<<8 | int(buf[26])<<16)`; TestImageHeaderParsersReadEachFormatsDimensions fails."
+ },
+ {
+  "upstream": "packages/tui/src/terminal-image.ts",
+  "package": "./tui",
+  "tests": [
+   "TestImageHeaderParsersReadEachFormatsDimensions"
+  ],
+  "upstream_reference": "packages/tui/src/terminal-image.ts",
+  "mutation": "tui/terminal_image.go: replace `if string(buf[:4]) != \"RIFF\" || string(buf[8:12]) != \"WEBP\" {` with `if string(buf[:4]) != \"RIFF\" {`; TestImageHeaderParsersReadEachFormatsDimensions fails."
+ },
+ {
+  "upstream": "packages/tui/src/terminal-image.ts",
+  "package": "./tui",
+  "tests": [
+   "TestImageHeaderParsersReadEachFormatsDimensions"
+  ],
+  "upstream_reference": "packages/tui/src/terminal-image.ts",
+  "mutation": "tui/terminal_image.go: replace `case \"image/webp\":\n\t\treturn GetWebPDimensions(base64Data)` with `case \"image/webp\":\n\t\treturn nil`; TestImageHeaderParsersReadEachFormatsDimensions fails."
+ },
+ {
+  "upstream": "packages/tui/src/terminal-image.ts",
+  "package": "./tui",
+  "tests": [
+   "TestImageHeaderParsersReadEachFormatsDimensions"
+  ],
+  "upstream_reference": "packages/tui/src/terminal-image.ts",
+  "mutation": "tui/terminal_image.go: replace `case \"image/gif\":\n\t\treturn GetGIFDimensions(base64Data)` with `case \"image/gif\":\n\t\treturn GetPNGDimensions(base64Data)`; TestImageHeaderParsersReadEachFormatsDimensions fails."
+ },
+ {
+  "upstream": "packages/tui/src/terminal-image.ts",
+  "package": "./tui",
+  "tests": [
+   "TestDeleteKittySequences_ExactByteParity"
+  ],
+  "upstream_reference": "packages/tui/src/terminal-image.ts",
+  "mutation": "tui/terminal_image.go: replace `func DeleteAllKittyImages() string { return \"\\x1b_Ga=d,d=A,q=2\\x1b\\\\\" }` with `func DeleteAllKittyImages() string { return \"\\x1b_Ga=d,d=a,q=2\\x1b\\\\\" }`; TestDeleteKittySequences_ExactByteParity fails."
+ },
+ {
+  "upstream": "packages/tui/src/terminal-image.ts",
+  "package": "./tui",
+  "tests": [
+   "TestEncodeITerm2SizeIsTheDecodedByteLength"
+  ],
+  "upstream_reference": "packages/tui/src/terminal-image.ts",
+  "mutation": "tui/terminal_image.go: replace `if strings.HasSuffix(base64Data, \"==\") {\n\t\tsize--\n\t}` with ``; TestEncodeITerm2SizeIsTheDecodedByteLength fails."
+ },
+ {
+  "upstream": "packages/tui/src/terminal-image.ts",
+  "package": "./tui",
+  "tests": [
+   "TestEncodeITerm2SizeIsTheDecodedByteLength"
+  ],
+  "upstream_reference": "packages/tui/src/terminal-image.ts",
+  "mutation": "tui/terminal_image.go: replace `if strings.HasSuffix(base64Data, \"=\") {\n\t\tsize--\n\t}` with ``; TestEncodeITerm2SizeIsTheDecodedByteLength fails."
+ },
+ {
+  "upstream": "packages/tui/src/terminal-image.ts",
+  "package": "./tui",
+  "tests": [
+   "TestEncodeITerm2SizeIsTheDecodedByteLength"
+  ],
+  "upstream_reference": "packages/tui/src/terminal-image.ts",
+  "mutation": "tui/terminal_image.go: replace `size/4*3+size%4*3/4` with `size/4*3`; TestEncodeITerm2SizeIsTheDecodedByteLength fails."
+ },
+ {
+  "upstream": "packages/tui/src/terminal-image.ts",
+  "package": "./tui",
+  "tests": [
+   "TestEncodeITerm2OptionsCarryEveryUpstreamField"
+  ],
+  "upstream_reference": "packages/tui/src/terminal-image.ts",
+  "mutation": "tui/terminal_image.go: replace `if options.Inline != nil && !*options.Inline {\n\t\tinline = 0` with `if options.Inline != nil && *options.Inline {\n\t\tinline = 0`; TestEncodeITerm2OptionsCarryEveryUpstreamField fails."
+ },
+ {
+  "upstream": "packages/tui/src/terminal-image.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCalculateImageRows",
+   "TestCalculateImageRowsScalesToTheTargetWidth"
+  ],
+  "upstream_reference": "packages/tui/src/terminal-image.ts",
+  "mutation": "tui/terminal_image.go: replace `return CalculateImageCellSize(imageDimensions, targetWidthCells, 0, dims).Rows` with `return CalculateImageCellSize(imageDimensions, targetWidthCells, 0, dims).Columns`; TestCalculateImageRows, TestCalculateImageRowsScalesToTheTargetWidth fails."
+ },
+ {
+  "upstream": "packages/tui/src/terminal-image.ts",
+  "package": "./tui",
+  "tests": [
+   "TestGetTerminalColorMode"
+  ],
+  "upstream_reference": "packages/tui/src/terminal-image.ts",
+  "mutation": "tui/terminal_image.go: replace `if caps.TrueColor {\n\t\treturn TerminalColorModeTrueColor` with `if !caps.TrueColor {\n\t\treturn TerminalColorModeTrueColor`; TestGetTerminalColorMode fails."
+ },
+ {
+  "upstream": "packages/tui/src/terminal-image.ts",
+  "package": "./tui",
+  "tests": [
+   "TestGetTerminalColorMode"
+  ],
+  "upstream_reference": "packages/tui/src/terminal-image.ts",
+  "mutation": "tui/terminal_image.go: replace `if len(capabilities) > 0 {\n\t\tcaps = capabilities[0]` with `if len(capabilities) > 1 {\n\t\tcaps = capabilities[0]`; TestGetTerminalColorMode fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/scroll-view.ts",
+  "package": "./tui",
+  "tests": [
+   "TestScrollViewGetContentWidthReservesColumnForAlwaysScrollbar"
+  ],
+  "upstream_reference": "packages/tui/src/components/scroll-view.ts",
+  "mutation": "tui/scroll_view.go: replace `if s.currentScrollbar == ScrollbarAlways && width > 1 {\n\t\treturn width - 1` with `if s.currentScrollbar == ScrollbarAlways && width > 0 {\n\t\treturn width - 1`; TestScrollViewGetContentWidthReservesColumnForAlwaysScrollbar fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/scroll-view.ts",
+  "package": "./tui",
+  "tests": [
+   "TestScrollViewGetContentWidthReservesColumnForAlwaysScrollbar"
+  ],
+  "upstream_reference": "packages/tui/src/components/scroll-view.ts",
+  "mutation": "tui/scroll_view.go: replace `if s.currentScrollbar == ScrollbarAlways && width > 1 {\n\t\treturn width - 1` with `if s.currentScrollbar == ScrollbarAlways && width > 1 {\n\t\treturn width`; TestScrollViewGetContentWidthReservesColumnForAlwaysScrollbar fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/scroll-view.ts",
+  "package": "./tui",
+  "tests": [
+   "TestScrollViewTransientScrollbarAutoHides"
+  ],
+  "upstream_reference": "packages/tui/src/components/scroll-view.ts",
+  "mutation": "tui/scroll_view.go: replace `s.requestRenderCallback = requestRender\n\tmaxScrollTop` with `maxScrollTop`; TestScrollViewTransientScrollbarAutoHides fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/scroll-view.ts",
+  "package": "./tui",
+  "tests": [
+   "TestScrollViewFollowEndPinsToBottom"
+  ],
+  "upstream_reference": "packages/tui/src/components/scroll-view.ts",
+  "mutation": "tui/scroll_view.go: replace `if s.followingEnd {\n\t\ts.currentScrollTop = maxScrollTop` with `if s.followingEnd {\n\t\ts.currentScrollTop = 0`; TestScrollViewFollowEndPinsToBottom fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/scroll-view.ts",
+  "package": "./tui",
+  "tests": [
+   "TestScrollViewFollowEndPinsToBottom"
+  ],
+  "upstream_reference": "packages/tui/src/components/scroll-view.ts",
+  "mutation": "tui/scroll_view.go: replace `if s.followEnd && s.currentScrollTop == maxScrollTop && !s.followSuppressedAtEnd {\n\t\ts.followingEnd = true` with `if s.followEnd && s.currentScrollTop == maxScrollTop && !s.followSuppressedAtEnd {\n\t\ts.followingEnd = false`; TestScrollViewFollowEndPinsToBottom fails."
+ },
+ {
+  "upstream": "packages/tui/src/terminal-image.ts",
+  "package": "./tui",
+  "tests": [
+   "TestImageHeaderParsersReadEachFormatsDimensions"
+  ],
+  "upstream_reference": "packages/tui/src/terminal-image.ts",
+  "mutation": "tui/terminal_image.go: replace `if length < 2 {\n\t\t\treturn nil\n\t\t}` with ``; TestImageHeaderParsersReadEachFormatsDimensions fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/scroll-view.ts",
+  "package": "./tui",
+  "tests": [
+   "TestScrollViewUpdateLayoutClampsHeightsAndOffsetsAndResumesFollowing"
+  ],
+  "upstream_reference": "packages/tui/src/components/scroll-view.ts",
+  "mutation": "tui/scroll_view.go: replace `s.contentHeight = max(0, contentHeight)\n\ts.currentViewportHeight = max(0, viewportHeight)\n\ts.requestRenderCallback` with `s.contentHeight = contentHeight\n\ts.currentViewportHeight = viewportHeight\n\ts.requestRenderCallback`; TestScrollViewUpdateLayoutClampsHeightsAndOffsetsAndResumesFollowing fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/scroll-view.ts",
+  "package": "./tui",
+  "tests": [
+   "TestScrollViewUpdateLayoutClampsHeightsAndOffsetsAndResumesFollowing"
+  ],
+  "upstream_reference": "packages/tui/src/components/scroll-view.ts",
+  "mutation": "tui/scroll_view.go: replace `s.currentScrollTop = max(0, min(s.currentScrollTop, maxScrollTop))` with `s.currentScrollTop = max(0, s.currentScrollTop)`; TestScrollViewUpdateLayoutClampsHeightsAndOffsetsAndResumesFollowing fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/scroll-view.ts",
+  "package": "./tui",
+  "tests": [
+   "TestScrollViewUpdateLayoutClampsHeightsAndOffsetsAndResumesFollowing"
+  ],
+  "upstream_reference": "packages/tui/src/components/scroll-view.ts",
+  "mutation": "tui/scroll_view.go: replace `if s.currentScrollTop < maxScrollTop {\n\t\ts.followSuppressedAtEnd = false` with `if s.currentScrollTop < maxScrollTop {\n\t\ts.followSuppressedAtEnd = true`; TestScrollViewUpdateLayoutClampsHeightsAndOffsetsAndResumesFollowing fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/scroll-view.ts",
+  "package": "./tui",
+  "tests": [
+   "TestScrollViewUpdateLayoutClampsHeightsAndOffsetsAndResumesFollowing"
+  ],
+  "upstream_reference": "packages/tui/src/components/scroll-view.ts",
+  "mutation": "tui/scroll_view.go: replace `if s.contentHeight <= s.currentViewportHeight {\n\t\ts.hideTransientScrollbar()` with `if s.contentHeight < s.currentViewportHeight {\n\t\ts.hideTransientScrollbar()`; TestScrollViewUpdateLayoutClampsHeightsAndOffsetsAndResumesFollowing fails."
+ }
+]

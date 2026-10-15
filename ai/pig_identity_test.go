@@ -18,7 +18,13 @@ func TestLoginOpenAICodexAuthorizeURLNamesPiGAsOriginator(t *testing.T) {
 	stubCodexTokenEndpoint(t)
 	var authURL string
 	if _, err := LoginOpenAICodex(context.Background(), OAuthLoginCallbacks{
-		OnAuth:            func(info OAuthAuthInfo) { authURL = info.URL },
+		OnAuth: func(info OAuthAuthInfo) {
+			authURL = info.URL
+			// openai-codex.ts:376-379.
+			if want := "A browser window should open. Complete login to finish."; info.Instructions != want {
+				t.Errorf("instructions = %q, want %q", info.Instructions, want)
+			}
+		},
 		OnManualCodeInput: func() (string, error) { return "manual-code", nil },
 	}); err != nil {
 		t.Fatal(err)

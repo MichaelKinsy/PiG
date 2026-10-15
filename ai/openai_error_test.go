@@ -14,9 +14,8 @@ import (
 func TestOpenAIHTTPErrorMatchesPi(t *testing.T) {
 	t.Parallel()
 	bodies := []string{`{"error":{"message":"Authentication Fails","type":"authentication_error","param":null,"code":"invalid_request_error"}}`, `{"error":{"error":"blocked by gateway WAF"}}`, `{"error":{"message":"Provider returned error","code":403,"metadata":{"raw":"upstream WAF blocked policy XYZ"}}}`, `{"error":{"message":""}}`, `{"error":{}}`, `{"message":"outside error"}`, `proxy failure`, "", `{"error":"plain error"}`, `{"error":{"message":["one","two"]}}`, `{"error":{"message":"long","body":"` + strings.Repeat("界", 4100) + `"}}`}
-	bodies = append(bodies, `{"error":{"message":"bad","z":1,"1":2,"a":"\u754c","ratio":1.0}}`, `{"error":{"message":0.0}}`, "false")
 	// openai 7.x makeStatusError makes an object or array body whose `error` member is null or absent the error object itself.
-	bodies = append(bodies, `{"error":null,"detail":"gateway"}`, `{}`, `[]`, `["one",{"two":2}]`, `{"message":{"nested":true}}`, `"quoted body"`, `7`, `{"error":false,"message":"kept off"}`)
+	bodies = append(bodies, `{"error":{"message":"bad","z":1,"1":2,"a":"\u754c","ratio":1.0}}`, `{"error":{"message":0.0}}`, "false", `{"error":null,"detail":"gateway"}`, `{}`, `[]`, `["one",{"two":2}]`, `{"message":{"nested":true}}`, `"quoted body"`, `7`, `{"error":false,"message":"kept off"}`)
 	for _, api := range []API{APIOpenAICompletions, APIOpenAIResponses, APIAzureOpenAIResponses} {
 		for _, provider := range []string{"openai", "custom-proxy"} {
 			for i, body := range bodies {

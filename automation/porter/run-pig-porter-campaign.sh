@@ -38,6 +38,9 @@ esac
 [ "$MAX_JOBS" -gt 0 ] || { echo "pig-porter campaign: PIG_PORTER_MAX_JOBS must be positive" >&2; exit 2; }
 [ -x "$PIG_BIN" ] || { echo "pig-porter campaign: Pig binary is not executable: $PIG_BIN" >&2; exit 1; }
 
+# shellcheck source=automation/porter/hermetic-agent.sh
+. "$ROOT/automation/porter/hermetic-agent.sh"
+
 cd "$ROOT"
 if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
   echo "pig-porter campaign: tracked workspace changes exist; commit them before creating an immutable campaign" >&2
@@ -45,7 +48,7 @@ if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
 fi
 commit="$(git rev-parse HEAD)"
 short_commit="$(git rev-parse --short HEAD)"
-version="$(awk -F'"' '/^const UpstreamVersion = "/ { print $2; exit }' "$PIG_ROOT/internal/coding/pigversion/pigversion.go")"
+version="$(python3 "$PIG_ROOT/automation/pin/pin.py" get version)"
 [ -n "$version" ] || { echo "pig-porter campaign: cannot resolve coding.UpstreamVersion" >&2; exit 1; }
 upstream="$PIG_ROOT/.upstream/v$version"
 [ -d "$upstream" ] || { echo "pig-porter campaign: exact upstream mirror is missing: $upstream" >&2; exit 1; }
@@ -89,15 +92,9 @@ prepare_snapshot() {
 prepare_home() {
   local family="$1"
   local home="$work_dir/$family/home"
-  local source_home="${PIG_HOME:-$HOME/.pig}"
-  mkdir -p "$home/agent"
-  chmod 700 "$home" "$home/agent"
-  for name in auth.json settings.json models.json; do
-    if [ -f "$source_home/agent/$name" ]; then
-      cp "$source_home/agent/$name" "$home/agent/$name"
-      chmod 600 "$home/agent/$name"
-    fi
-  done
+  mkdir -p "$home"
+  chmod 700 "$home"
+  porter_hermetic_agent "$home/agent"
 }
 
 run_worker() {
@@ -116,7 +113,7 @@ run_worker() {
   {
     printf 'campaign_commit=%s\nupstream_version=%s\nmode=%s\nfamily=%s\n\n' "$commit" "$version" "$mode" "$family"
     cd "$snapshot"
-    PIG_HOME="$home" "$PIG_BIN" --piglet "$profile" --no-session "${model_args[@]}" -p "$(cat <<EOF
+    PIG_HOME="$home" PIG_CODING_AGENT_DIR="$home/agent" PI_CODING_AGENT_DIR="$home/agent" "$PIG_BIN" --piglet "$profile" --no-session "${model_args[@]}" -p "$(cat <<EOF
 You are the read-only $family worker in a parallel Pig Porter campaign.
 Campaign commit: $commit
 Exact upstream: $version

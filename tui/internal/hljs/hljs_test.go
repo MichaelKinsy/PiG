@@ -129,9 +129,9 @@ func TestGrammarsReadNoQuantifiedCaptures(t *testing.T) {
 		var readsGroupOne []pattern
 		switch node := node.(type) {
 		case *Mode:
-			patterns = append(patterns, node.begin, node.end, node.match, node.lexemes, node.beforeMatch, node.illegal)
-			patterns = append(patterns, node.illegal.list...)
-			for _, cb := range []callback{node.onBegin, node.onEnd} {
+			patterns = append(patterns, node.begin, node.end, node.rare().match, node.rare().lexemes, node.rare().beforeMatch, node.rare().illegal)
+			patterns = append(patterns, node.rare().illegal.items()...)
+			for _, cb := range []callback{node.rare().onBegin, node.rare().onEnd} {
 				if cb != nil && strings.HasPrefix(callbackName(cb), "endSameAsBegin.") {
 					readsGroupOne = append(readsGroupOne, node.begin, node.end)
 				}

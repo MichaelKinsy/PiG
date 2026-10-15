@@ -104,7 +104,7 @@ func assertPromptOptionEdits(t *testing.T, ext extension.Extension) {
 			ToolGuidelines:     map[string][]string{"read": {"base guideline"}},
 			AppendSystemPrompt: "base append",
 		}
-		result, err := runner.EmitBeforeAgentStart(t.Context(), prompt, nil, "base", base)
+		result, err := runner.EmitBeforeAgentStart(t.Context(), extension.UserPromptTrigger(prompt, nil), base)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -173,7 +173,7 @@ def new_extension():
 		source = fmt.Sprintf(`use pig_sdk::{Extension,Schema};
 pub fn new_extension()->Extension {
  let mut e=Extension::new(%q);
- e.on_event_result("before_agent_start",false,|_,data| {
+ e.on_event_result("before_agent_start",|_,data| {
   let appended=format!("{} + edited append",data["systemPromptOptions"]["appendSystemPrompt"].as_str().unwrap_or(""));
   data["systemPromptOptions"]["toolSnippets"]["read"]=Schema::String("edited read snippet".into());
   data["systemPromptOptions"]["toolGuidelines"]["read"]=Schema::Array(vec![Schema::String("edited guideline".into())]);

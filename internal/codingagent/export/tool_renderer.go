@@ -30,8 +30,8 @@ type toolHTMLRenderer struct {
 	getToolRenderers func(name string) *extension.ToolRenderers
 	cwd              string
 	width            int
-	renderedCall     map[string]any
-	renderedResult   map[string]any
+	renderedCall     map[string]extension.Component
+	renderedResult   map[string]extension.Component
 	renderedState    map[string]any
 	renderedArgsJSON map[string]json.RawMessage
 	// cardPrefix names this export's renderer cards in extension processes.
@@ -63,8 +63,8 @@ func newToolHTMLRenderer(getToolRenderers func(name string) *extension.ToolRende
 		getToolRenderers: getToolRenderers,
 		cwd:              cwd,
 		width:            width,
-		renderedCall:     map[string]any{},
-		renderedResult:   map[string]any{},
+		renderedCall:     map[string]extension.Component{},
+		renderedResult:   map[string]extension.Component{},
 		renderedState:    map[string]any{},
 		renderedArgsJSON: map[string]json.RawMessage{},
 		cardPrefix:       "export-" + strconv.FormatUint(exportCardSeq.Add(1), 10) + "-",
@@ -83,7 +83,7 @@ func (r *toolHTMLRenderer) getState(toolCallID string) any {
 	return state
 }
 
-func (r *toolHTMLRenderer) renderContext(toolCallID string, lastComponent any, expanded, isPartial, isError bool) extension.ToolRenderContext {
+func (r *toolHTMLRenderer) renderContext(toolCallID string, lastComponent extension.Component, expanded, isPartial, isError bool) extension.ToolRenderContext {
 	return extension.ToolRenderContext{
 		Args:             r.renderedArgsJSON[toolCallID],
 		ToolCallID:       toolCallID,
@@ -97,6 +97,7 @@ func (r *toolHTMLRenderer) renderContext(toolCallID string, lastComponent any, e
 		Expanded:         expanded,
 		ShowImages:       false,
 		IsError:          isError,
+		OutputPad:        1,
 		Card:             r.cardPrefix + toolCallID,
 	}
 }
@@ -153,17 +154,18 @@ func (r *toolHTMLRenderer) componentLines(toolName string, component any) (lines
 }
 
 func (r *toolHTMLRenderer) renderCall(toolCallID, toolName string, argsJSON json.RawMessage) (html string) {
-	def := r.getToolRenderers(toolName)
-	if def == nil || def.RenderCall == nil {
-		return ""
-	}
 	defer func() {
 		// upstream: packages/coding-agent/src/core/export-html/tool-renderer.ts:renderCall
 		if recover() != nil {
 			html = ""
 		}
 	}()
+	// The arguments are stored before the lookup: a result of the same call renders with them even when this tool has no call renderer.
 	r.renderedArgsJSON[toolCallID] = argsJSON
+	def := r.getToolRenderers(toolName)
+	if def == nil || def.RenderCall == nil {
+		return ""
+	}
 	component := def.RenderCall(argsJSON, tui.ActiveTheme(), r.renderContext(toolCallID, r.renderedCall[toolCallID], false, true, false))
 	r.renderedCall[toolCallID] = component
 	lines, ok := r.componentLines(toolName, component)
@@ -174,16 +176,16 @@ func (r *toolHTMLRenderer) renderCall(toolCallID, toolName string, argsJSON json
 }
 
 func (r *toolHTMLRenderer) renderResult(toolCallID, toolName string, result agent.AgentToolResult) (out renderedToolHTML) {
-	def := r.getToolRenderers(toolName)
-	if def == nil || def.RenderResult == nil {
-		return renderedToolHTML{}
-	}
 	defer func() {
 		// upstream: packages/coding-agent/src/core/export-html/tool-renderer.ts:renderResult
 		if recover() != nil {
 			out = renderedToolHTML{}
 		}
 	}()
+	def := r.getToolRenderers(toolName)
+	if def == nil || def.RenderResult == nil {
+		return renderedToolHTML{}
+	}
 	collapsedComponent := def.RenderResult(result, extension.ToolRenderResultOptions{Expanded: false, IsPartial: false}, tui.ActiveTheme(), r.renderContext(toolCallID, r.renderedResult[toolCallID], false, false, result.IsError))
 	r.renderedResult[toolCallID] = collapsedComponent
 	collapsedLines, ok := r.componentLines(toolName, collapsedComponent)

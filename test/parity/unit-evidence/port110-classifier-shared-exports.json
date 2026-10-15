@@ -1,0 +1,281 @@
+[
+ {
+  "upstream": "packages/ai/src/api/classifier-shared.ts",
+  "package": "./ai",
+  "tests": [
+   "TestIsRecordIsAnObjectButNotNullOrAnArray"
+  ],
+  "upstream_reference": "packages/ai/src/api/classifier-shared.ts",
+  "mutation": "ai/classifier_http.go: replace '_, ok := jsonObjectOf(value); return ok' in IsRecord with 'return len(value) > 0'; compiling go test -overlay -run exact test -count=1 fails TestIsRecordIsAnObjectButNotNullOrAnArray."
+ },
+ {
+  "upstream": "packages/ai/src/api/system-one-shared.ts",
+  "package": "./ai",
+  "tests": [
+   "TestRequiredNumberAcceptsOnlyAFiniteNumber"
+  ],
+  "upstream_reference": "packages/ai/src/api/system-one-shared.ts",
+  "mutation": "ai/system_one.go: replace 'returned an invalid %s' with 'returned a bad %s'; compiling go test -overlay -run exact test -count=1 fails TestRequiredNumberAcceptsOnlyAFiniteNumber."
+ },
+ {
+  "upstream": "packages/ai/src/api/classifier-shared.ts",
+  "package": "./ai",
+  "tests": [
+   "TestParseClassifierUsagePricesTheModelCatalog"
+  ],
+  "upstream_reference": "packages/ai/src/api/classifier-shared.ts",
+  "mutation": "ai/classifier_http.go: replace 'usage.TotalTokens = usage.Input + usage.Output' with 'usage.TotalTokens = usage.Input'; compiling go test -overlay -run exact test -count=1 fails TestParseClassifierUsagePricesTheModelCatalog."
+ },
+ {
+  "upstream": "packages/ai/src/api/classifier-shared.ts",
+  "package": "./ai",
+  "tests": [
+   "TestPostClassifierRequestAuthorizesWithTheBearerKeyUnlessTheModelOverridesIt"
+  ],
+  "upstream_reference": "packages/ai/src/api/classifier-shared.ts",
+  "mutation": "ai/classifier_http.go: replace '\"authorization\": \"Bearer \"' with '\"authorization\": \"Token \"'; compiling go test -overlay -run exact test -count=1 fails TestPostClassifierRequestAuthorizesWithTheBearerKeyUnlessTheModelOverridesIt."
+ },
+ {
+  "upstream": "packages/ai/src/api/classifier-shared.ts",
+  "package": "./ai",
+  "tests": [
+   "TestPostClassifierRequestWithoutAnAPIKeyFailsBeforeSending"
+  ],
+  "upstream_reference": "packages/ai/src/api/classifier-shared.ts",
+  "mutation": "ai/classifier_http.go: replace 'No API key for provider: %s' with 'API key missing: %s'; compiling go test -overlay -run exact test -count=1 fails TestPostClassifierRequestWithoutAnAPIKeyFailsBeforeSending."
+ },
+ {
+  "upstream": "packages/ai/src/api/classifier-shared.ts",
+  "package": "./ai",
+  "tests": [
+   "TestPostClassifierRequestNoRetryStatusFailsAtOnceAndOtherStatusesRetry"
+  ],
+  "upstream_reference": "packages/ai/src/api/classifier-shared.ts",
+  "mutation": "ai/classifier_http.go: replace '}, noRetryStatuses...)' with '})' (the noRetryStatuses are not passed on); compiling go test -overlay -run exact test -count=1 fails TestPostClassifierRequestNoRetryStatusFailsAtOnceAndOtherStatusesRetry."
+ },
+ {
+  "upstream": "packages/ai/src/api/system-one-shared.ts",
+  "package": "./ai",
+  "tests": [
+   "TestClassifySystemOneRunsTheTransportEnvelope"
+  ],
+  "upstream_reference": "packages/ai/src/api/system-one-shared.ts",
+  "mutation": "ai/system_one.go: replace 'transport.URL(model)' in the PostClassifierRequest call with a fixed URL; compiling go test -overlay -run exact test -count=1 fails TestClassifySystemOneRunsTheTransportEnvelope."
+ },
+ {
+  "upstream": "packages/ai/src/api/system-one-shared.ts",
+  "package": "./ai",
+  "tests": [
+   "TestClassifySystemOneRejectsAnotherAPIAndImagesWithoutSending"
+  ],
+  "upstream_reference": "packages/ai/src/api/system-one-shared.ts",
+  "mutation": "ai/system_one.go: replace '%s does not support image input' with '%s rejects images'; compiling go test -overlay -run exact test -count=1 fails TestClassifySystemOneRejectsAnotherAPIAndImagesWithoutSending."
+ },
+ {
+  "upstream": "packages/ai/src/api/system-one-shared.ts",
+  "package": "./ai",
+  "tests": [
+   "TestClassifySystemOneReportsTheBilledUsageOfMalformedAnswers"
+  ],
+  "upstream_reference": "packages/ai/src/api/system-one-shared.ts",
+  "mutation": "ai/system_one.go: replace 'output.Usage = ParseClassifierUsage(result[\"usage\"], model)' set before parseAnswers with removed; compiling go test -overlay -run exact test -count=1 fails TestClassifySystemOneReportsTheBilledUsageOfMalformedAnswers."
+ },
+ {
+  "upstream": "packages/ai/src/api/classifier-shared.ts",
+  "package": "./ai",
+  "tests": [
+   "TestPostClassifierRequestRejectsABodyThatIsNotJSONWithV8sSyntaxError"
+  ],
+  "upstream_reference": "packages/ai/src/api/classifier-shared.ts",
+  "mutation": "ai/classifier_http.go: replace 'jsonparse.Validate(body)' in classifierJSONBody with no validation; compiling go test -overlay -run exact test -count=1 fails TestPostClassifierRequestRejectsABodyThatIsNotJSONWithV8sSyntaxError."
+ },
+ {
+  "upstream": "packages/ai/src/api/classifier-shared.ts",
+  "package": "./ai",
+  "tests": [
+   "TestPostClassifierRequestParsesABodyThatStartsWithAByteOrderMark"
+  ],
+  "upstream_reference": "packages/ai/src/api/classifier-shared.ts",
+  "mutation": "ai/classifier_http.go: replace 'bytes.TrimPrefix(body, []byte(\"\\xef\\xbb\\xbf\"))' in classifierJSONBody with no trim; compiling go test -overlay -run exact test -count=1 fails TestPostClassifierRequestParsesABodyThatStartsWithAByteOrderMark."
+ },
+ {
+  "upstream": "packages/ai/src/api/openai-decisions.ts",
+  "package": "./ai",
+  "tests": [
+   "TestOpenAIDecisionsUpstream"
+  ],
+  "upstream_reference": "packages/ai/test/openai-decisions.test.ts",
+  "mutation": "ai/openai_decisions.go: replace 'options, openAIDecisionsNoRetryStatuses)' with 'options, nil)' (504 is retried); compiling go test -overlay -run exact test -count=1 fails TestOpenAIDecisionsUpstream."
+ },
+ {
+  "upstream": "packages/ai/src/api/openai-decisions.ts",
+  "package": "./ai",
+  "tests": [
+   "TestOpenAIDecisionsUpstream"
+  ],
+  "upstream_reference": "packages/ai/test/openai-decisions.test.ts",
+  "mutation": "ai/openai_decisions.go: replace 'const openAIDecisionsMaxImages = 128' with '= 129'; compiling go test -overlay -run exact test -count=1 fails TestOpenAIDecisionsUpstream."
+ },
+ {
+  "upstream": "packages/ai/src/api/openai-decisions.ts",
+  "package": "./ai",
+  "tests": [
+   "TestOpenAIDecisionsUpstream"
+  ],
+  "upstream_reference": "packages/ai/test/openai-decisions.test.ts",
+  "mutation": "ai/openai_decisions.go: replace 'output.Usage = ParseClassifierUsage(response[\"usage\"], model)' with removed (billed usage dropped); compiling go test -overlay -run exact test -count=1 fails TestOpenAIDecisionsUpstream."
+ },
+ {
+  "upstream": "packages/ai/src/api/openai-decisions.ts",
+  "package": "./ai",
+  "tests": [
+   "TestOpenAIDecisionsUpstream"
+  ],
+  "upstream_reference": "packages/ai/test/openai-decisions.test.ts",
+  "mutation": "ai/openai_decisions.go: replace 'Unsupported classifier API: %s' with 'Unsupported API: %s'; compiling go test -overlay -run exact test -count=1 fails TestOpenAIDecisionsUpstream."
+ },
+ {
+  "upstream": "packages/ai/src/api/openai-decisions.ts",
+  "package": "./ai",
+  "tests": [
+   "TestOpenAIDecisionsUpstream"
+  ],
+  "upstream_reference": "packages/ai/test/openai-decisions.test.ts",
+  "mutation": "ai/openai_decisions.go: replace 'the request timed out at the gateway.' with 'timed out.'; compiling go test -overlay -run exact test -count=1 fails TestOpenAIDecisionsUpstream."
+ },
+ {
+  "upstream": "packages/ai/src/api/openai-decisions.ts",
+  "package": "./ai",
+  "tests": [
+   "TestOpenAIDecisionsUpstream"
+  ],
+  "upstream_reference": "packages/ai/test/openai-decisions.test.ts",
+  "mutation": "ai/openai_decisions.go: replace 'serviceURL(model.BaseURL, \"decisions\")' with 'serviceURL(model.BaseURL, \"decision\")'; compiling go test -overlay -run exact test -count=1 fails TestOpenAIDecisionsUpstream."
+ },
+ {
+  "upstream": "packages/ai/src/api/openai-decisions.lazy.ts",
+  "package": "./ai",
+  "tests": [
+   "TestClassifierAPIModulesDispatchToTheirOwnClassifier"
+  ],
+  "upstream_reference": "packages/ai/src/api/openai-decisions.lazy.ts",
+  "mutation": "ai/openai_decisions.go: replace 'classifierModule(ClassifyOpenAIDecisions)' in OpenAIDecisionsAPI with 'classifierModule(ClassifyTypesafeSystemOne)'; compiling go test -overlay -run exact test -count=1 fails TestClassifierAPIModulesDispatchToTheirOwnClassifier."
+ },
+ {
+  "upstream": "packages/ai/src/api/typesafe-system-one.lazy.ts",
+  "package": "./ai",
+  "tests": [
+   "TestClassifierAPIModulesDispatchToTheirOwnClassifier"
+  ],
+  "upstream_reference": "packages/ai/src/api/typesafe-system-one.lazy.ts",
+  "mutation": "ai/system_one.go: replace 'classifierModule(ClassifyTypesafeSystemOne)' in TypesafeSystemOneAPI with 'classifierModule(ClassifyCloudflareWorkersAISystemOne)'; compiling go test -overlay -run exact test -count=1 fails TestClassifierAPIModulesDispatchToTheirOwnClassifier."
+ },
+ {
+  "upstream": "packages/ai/src/api/cloudflare-workers-ai-system-one.lazy.ts",
+  "package": "./ai",
+  "tests": [
+   "TestClassifierAPIModulesDispatchToTheirOwnClassifier"
+  ],
+  "upstream_reference": "packages/ai/src/api/cloudflare-workers-ai-system-one.lazy.ts",
+  "mutation": "ai/system_one.go: replace 'classifierModule(ClassifyCloudflareWorkersAISystemOne)' in CloudflareWorkersAISystemOneAPI with 'classifierModule(ClassifyTypesafeSystemOne)'; compiling go test -overlay -run exact test -count=1 fails TestClassifierAPIModulesDispatchToTheirOwnClassifier."
+ },
+ {
+  "upstream": "packages/ai/src/api/llama-cpp-classify.lazy.ts",
+  "package": "./ai",
+  "tests": [
+   "TestClassifierAPIModulesDispatchToTheirOwnClassifier"
+  ],
+  "upstream_reference": "packages/ai/src/api/llama-cpp-classify.lazy.ts",
+  "mutation": "ai/llama_cpp_classify.go: replace 'classifierModule(ClassifyLlamaCpp)' in LlamaCppClassifyAPI with 'classifierModule(ClassifyOpenAIDecisions)'; compiling go test -overlay -run exact test -count=1 fails TestClassifierAPIModulesDispatchToTheirOwnClassifier."
+ },
+ {
+  "upstream": "packages/ai/src/types.ts",
+  "package": "./ai",
+  "tests": [
+   "TestClassifierFunctionReceivesTheCallersArgumentsAndItsResultIsReturned"
+  ],
+  "upstream_reference": "packages/ai/src/types.ts",
+  "mutation": "ai/system_one.go: replace 'return classify(ctx, *model, request, options), nil' in classifierModule with 'return classify(context.Background(), *model, request, options), nil'; compiling go test -overlay -run exact test -count=1 fails TestClassifierFunctionReceivesTheCallersArgumentsAndItsResultIsReturned."
+ },
+ {
+  "upstream": "packages/ai/src/types.ts",
+  "package": "./ai",
+  "tests": [
+   "TestClassifierFunctionReceivesTheCallersArgumentsAndItsResultIsReturned"
+  ],
+  "upstream_reference": "packages/ai/src/types.ts",
+  "mutation": "ai/system_one.go: replace 'return classify(ctx, *model, request, options), nil' in classifierModule with 'return classify(ctx, ClassifierModel{}, request, options), nil'; compiling go test -overlay -run exact test -count=1 fails TestClassifierFunctionReceivesTheCallersArgumentsAndItsResultIsReturned."
+ },
+ {
+  "upstream": "packages/ai/src/types.ts",
+  "package": "./ai",
+  "tests": [
+   "TestClassifierFunctionReceivesTheCallersArgumentsAndItsResultIsReturned"
+  ],
+  "upstream_reference": "packages/ai/src/types.ts",
+  "mutation": "ai/system_one.go: replace 'return classify(ctx, *model, request, options), nil' in classifierModule with 'return classify(ctx, *model, ClassifierContext{}, options), nil'; compiling go test -overlay -run exact test -count=1 fails TestClassifierFunctionReceivesTheCallersArgumentsAndItsResultIsReturned."
+ },
+ {
+  "upstream": "packages/ai/src/types.ts",
+  "package": "./ai",
+  "tests": [
+   "TestClassifierFunctionReceivesTheCallersArgumentsAndItsResultIsReturned"
+  ],
+  "upstream_reference": "packages/ai/src/types.ts",
+  "mutation": "ai/system_one.go: replace 'return classify(ctx, *model, request, options), nil' in classifierModule with 'return classify(ctx, *model, request, ClassifierOptions{}), nil'; compiling go test -overlay -run exact test -count=1 fails TestClassifierFunctionReceivesTheCallersArgumentsAndItsResultIsReturned."
+ },
+ {
+  "upstream": "packages/ai/src/types.ts",
+  "package": "./ai",
+  "tests": [
+   "TestClassifierFunctionReceivesTheCallersArgumentsAndItsResultIsReturned"
+  ],
+  "upstream_reference": "packages/ai/src/types.ts",
+  "mutation": "ai/system_one.go: replace 'return classify(ctx, *model, request, options), nil' in classifierModule with 'r := classify(ctx, *model, request, options); r.Model = \"\"; return r, nil'; compiling go test -overlay -run exact test -count=1 fails TestClassifierFunctionReceivesTheCallersArgumentsAndItsResultIsReturned."
+ },
+ {
+  "upstream": "packages/coding-agent/src/extensions/codemode/index.ts",
+  "package": "./coding/extension/builtin/codemode",
+  "tests": [
+   "TestCreateCodemodeExtensionFactoryRegistersTheToolInactive"
+  ],
+  "upstream_reference": "packages/coding-agent/src/extensions/codemode/index.ts",
+  "mutation": "coding/extension/builtin/codemode/tool.go: replace 'inactive := false' in CreateCodemodeExtension with 'inactive := true'; compiling go test -overlay -run exact test -count=1 fails TestCreateCodemodeExtensionFactoryRegistersTheToolInactive."
+ },
+ {
+  "upstream": "packages/coding-agent/src/extensions/codemode/index.ts",
+  "package": "./coding/extension/builtin/codemode",
+  "tests": [
+   "TestCreateCodemodeExtensionFactoryRegistersTheToolInactive"
+  ],
+  "upstream_reference": "packages/coding-agent/src/extensions/codemode/index.ts",
+  "mutation": "coding/extension/builtin/codemode/tool.go: replace 'pi.RegisterTool(definition)' in CreateCodemodeExtension with '_ = definition'; compiling go test -overlay -run exact test -count=1 fails TestCreateCodemodeExtensionFactoryRegistersTheToolInactive."
+ },
+ {
+  "upstream": "packages/coding-agent/src/extensions/codemode/index.ts",
+  "package": "./coding/extension/builtin/codemode",
+  "tests": [
+   "TestCreateCodemodeExtensionFactoryTakesItsOptionsFromCreation"
+  ],
+  "upstream_reference": "packages/coding-agent/src/extensions/codemode/index.ts",
+  "mutation": "coding/extension/builtin/codemode/tool.go: replace 'o.Models = !o.DisableModels' in CreateCodemodeExtension with 'o.Models = o.DisableModels'; compiling go test -overlay -run exact test -count=1 fails TestCreateCodemodeExtensionFactoryTakesItsOptionsFromCreation."
+ },
+ {
+  "upstream": "packages/coding-agent/src/extensions/codemode/index.ts",
+  "package": "./coding/extension/builtin/codemode",
+  "tests": [
+   "TestCreateCodemodeExtensionFactoryReadsTheHostSettingsOnEveryUse"
+  ],
+  "upstream_reference": "packages/coding-agent/src/extensions/codemode/index.ts",
+  "mutation": "coding/extension/builtin/codemode/tool.go: replace 'o.GetSettings = pi.GetSettings' in CreateCodemodeExtension with 'o.GetSettings = nil'; compiling go test -overlay -run exact test -count=1 fails TestCreateCodemodeExtensionFactoryReadsTheHostSettingsOnEveryUse."
+ },
+ {
+  "upstream": "packages/coding-agent/src/extensions/codemode/index.ts",
+  "package": "./coding/extension/builtin/codemode",
+  "tests": [
+   "TestCreateCodemodeExtensionFactoryReadsTheHostSettingsOnEveryUse"
+  ],
+  "upstream_reference": "packages/coding-agent/src/extensions/codemode/index.ts",
+  "mutation": "coding/extension/builtin/codemode/tool.go: replace 'o.GetSettings = pi.GetSettings' in CreateCodemodeExtension with a getter that always answers codemode.mode only; compiling go test -overlay -run exact test -count=1 fails TestCreateCodemodeExtensionFactoryReadsTheHostSettingsOnEveryUse."
+ }
+]

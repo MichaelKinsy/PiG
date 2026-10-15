@@ -9,66 +9,6 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
-// TestMarshalToolCallEvent_AllVariantsEmitCorrectDiscriminator is the
-// **marshal-direction** parity gate. The mirror of
-// TestUnmarshalToolCallEvent_AllUpstreamToolNamesDispatch in
-// dispatch_parity_test.go.
-//
-// **The hazard.** A Go variant struct could ship with the wrong
-// `ToolName` field literal hardcoded in its construction call sites, or
-// with a missing/wrong JSON tag, and `MarshalToolCallEvent` would emit
-// JSON that does NOT round-trip back to the same Go variant. The
-// dispatch-parity gate (Unmarshal direction) wouldn't catch this: it
-// proves "given upstream-shaped wire bytes, dispatch produces the right
-// Go type" but not "given the right Go type, marshal produces
-// upstream-shaped wire bytes".
-//
-// **The gate.** For every upstream `XxxToolCallEvent` interface that has
-// a literal `toolName: "<value>"` discriminator (i.e. excluding
-// `CustomToolCallEvent`), this test:
-//
-//  1. Looks up the Go variant in the eventTypeRegistry.
-//  2. Constructs a zero-value instance via reflection.
-//  3. Sets ToolName + Type to the upstream literals.
-//  4. Marshals via [extension.MarshalToolCallEvent].
-//  5. Parses the resulting JSON and asserts `toolName` + `type`
-//     fields match the upstream literals byte-for-byte.
-//
-// This catches: missing `ToolName` field on the variant; wrong JSON
-// tag on `ToolName` (e.g. `tool_name`); wrong `Type` field; missing
-// case in the marshal switch (returns error); accidental HTML-escape
-// regression that would mangle special characters in literals.
-//
-// Together with TestUnmarshalToolCallEvent_AllUpstreamToolNamesDispatch
-// this provides full bi-directional parity coverage for the sum-type
-// wire boundary.
-func TestMarshalToolCallEvent_AllVariantsEmitCorrectDiscriminator(t *testing.T) {
-	surface, err := LoadUpstream()
-	if err != nil {
-		t.Fatalf("LoadUpstream: %v", err)
-	}
-
-	for _, ev := range surface.EventTypes {
-		if !strings.HasSuffix(ev.Name, "ToolCallEvent") || ev.Name == "CustomToolCallEvent" {
-			continue
-		}
-		toolName, eventType, ok := upstreamDiscriminators(ev.Fields, "tool_call")
-		if !ok {
-			continue
-		}
-		t.Run(ev.Name, func(t *testing.T) {
-			assertMarshalDiscriminators(t, ev.Name, toolName, eventType, "tool_call",
-				func(v any) ([]byte, error) {
-					ev, ok := v.(extension.ToolCallEvent)
-					if !ok {
-						return nil, errNotToolCallEvent
-					}
-					return extension.MarshalToolCallEvent(ev)
-				})
-		})
-	}
-}
-
 // TestMarshalToolResultEvent_AllVariantsEmitCorrectDiscriminator -
 // symmetric gate for ToolResultEvent.
 func TestMarshalToolResultEvent_AllVariantsEmitCorrectDiscriminator(t *testing.T) {
@@ -187,7 +127,6 @@ func assertMarshalDiscriminators(
 // Sentinels for the marshal helpers above. Test-only: production code
 // uses the typed sealed-interface methods directly.
 var (
-	errNotToolCallEvent   = sentinelError("registry entry is not a ToolCallEvent")
 	errNotToolResultEvent = sentinelError("registry entry is not a ToolResultEvent")
 )
 

@@ -1,5 +1,4 @@
 <!--
-SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 SPDX-License-Identifier: MIT
 -->
 
@@ -7,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ## Scope
 
-This model covers Stock PiG, its local configuration and caches, its extension host, Package and Piglet handling, self-update, and published release artifacts.
+This model covers Stock PiG, its local configuration and caches, its extension host, Package and Piglet handling, Piglet Binary signing and publication, the remote execution environment over SSH (`env`), self-update, and published release artifacts.
 
 Product extensions and deployment platforms have separate threat models. Their credentials, APIs, policy, and infrastructure are outside Stock PiG.
 
@@ -39,7 +38,7 @@ Extensions, skills, hooks, MCP servers, and Packages can execute code or influen
 
 ### Network boundary
 
-Model providers, package sources, catalogs, and update endpoints are external systems. TLS validation is enabled by default. Credentials must not appear in URLs, logs, command-line arguments, release records, or SBOMs.
+Model providers, package sources, catalogs, update endpoints, and remote execution hosts are external systems. TLS validation is enabled by default. A remote execution environment uses strict SSH host keys under a fixed alias and verifies the deployed `pi-env` daemon by SHA-256. Credentials must not appear in URLs, logs, command-line arguments, release records, or SBOMs.
 
 ### Release boundary
 
@@ -57,7 +56,11 @@ Release artifacts cross from protected build infrastructure to users. Checksums,
 | Secret enters source or release output | Run Gitleaks and TruffleHog; inspect generated evidence; prohibit credentials in configuration examples |
 | Update replaces the wrong executable or accepts incomplete data | Prove one installation owner; verify size and checksum; perform atomic replacement; do not fall through after a tier starts |
 | Published artifact differs from reviewed source | Build in a protected workflow; emit checksums, SBOMs, signatures, and provenance |
+| Piglet Binary is tampered with or comes from an unexpected signer | Ed25519 Binary signatures and signed release indexes; the local signer trust store (`pig piglet trust`); signer pinning on the first pull and `--accept-signer` for a change; a full hash check whenever the file identity or trust policy changes |
+| Publication leaks a registry token | `pig piglet publish` and `pig package publish` run the user's `gh` and `npm`; PiG never reads or stores the token |
+| Session history is readable by other local users | Session directories are created owner-only, mode 0700 (D132) |
 | Extension process outlives its owner | Bind process and goroutine lifetime to a context; drain shutdown; report errors |
+| Child process outlives PiG | Kill `bash` tool and `!` commands and MCP stdio server process groups on terminal close, crash, and termination signals |
 | TUI extension blocks input or mutates UI off-loop | Keep blocking IPC off the input/render loop; marshal mutations through the owned UI path |
 | SBOM omits or misidentifies a component | Reconcile scanner output with manifests, locks, embedded assets, generated data, and archive contents |
 
@@ -82,7 +85,8 @@ Review this model when a change adds or changes:
 - self-update;
 - sandbox or process isolation;
 - release publication;
-- telemetry; or
-- a new distributed artifact type.
+- telemetry;
+- a new distributed artifact type; or
+- a remote execution transport.
 
 Report vulnerabilities through [`.github/SECURITY.md`](../.github/SECURITY.md).

@@ -53,6 +53,19 @@ func Register() {
 		return
 	}
 	subprocess.SetFusedResolver(resolver{})
+	sdk.SetHostHelpers(HostHelpers())
+}
+
+// HostHelpers are the host's parsers for a fused extension. Its factory runs in this process, before any connection to the host exists, so the SDK's
+// frontmatter and Date.parse helpers call them directly.
+func HostHelpers() *sdk.HostHelpers {
+	return &sdk.HostHelpers{
+		ParseFrontmatter: func(content string) (sdk.ParsedFrontmatter, error) {
+			frontmatter, body, err := subprocess.ParseFrontmatterJSON(content)
+			return sdk.ParsedFrontmatter{Frontmatter: frontmatter, Body: body}, err
+		},
+		ParseDate: subprocess.ParseDateMs,
+	}
 }
 
 // FusedConfigs returns a name-only ExtConfig for each fused extension so the

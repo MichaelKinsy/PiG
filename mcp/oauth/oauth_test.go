@@ -31,7 +31,7 @@ type testOAuthProvider struct {
 	tokenSet         *oauth.OAuthTokens
 	verifier         string
 	discovery        *oauth.OAuthDiscoveryState
-	authorizationURL *url.URL
+	authorizationURL *oauth.URL
 }
 
 func newTestOAuthProvider(redirectURL string) *testOAuthProvider {
@@ -60,8 +60,8 @@ func (p *testOAuthProvider) SaveTokens(_ context.Context, tokens oauth.OAuthToke
 	p.tokenSet = &tokens
 	return nil
 }
-func (p *testOAuthProvider) RedirectToAuthorization(_ context.Context, u *url.URL) error {
-	p.authorizationURL = u
+func (p *testOAuthProvider) RedirectToAuthorization(_ context.Context, u oauth.URL) error {
+	p.authorizationURL = &u
 	return nil
 }
 func (p *testOAuthProvider) SaveCodeVerifier(_ context.Context, verifier string) error {
@@ -120,6 +120,7 @@ func readAll(r *http.Request) string {
 	return string(data)
 }
 
+// Pi 1.2.0 packages/mcp/test/oauth.test.ts:95 "MCP OAuth" "discovers, registers, authorizes with PKCE, and refreshes on 401"
 func TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401(t *testing.T) {
 	ctx := t.Context()
 	var expectedChallenge atomic.Value
@@ -234,14 +235,11 @@ func TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401(t *testin
 	if _, ok := errors.AsType[*oauth.McpOAuthAuthorizationRequiredError](err); !ok {
 		t.Fatalf("connect err = %v", err)
 	}
-	if provider.authorizationURL == nil || provider.authorizationURL.Query().Get("scope") != "org:read" || provider.authorizationURL.Query().Get("resource") != origin+"/mcp" {
+	if provider.authorizationURL == nil || searchParams(*provider.authorizationURL).Get("scope") != "org:read" || searchParams(*provider.authorizationURL).Get("resource") != origin+"/mcp" {
 		t.Fatalf("authorization url = %v", provider.authorizationURL)
 	}
 
-	wait, err := callback.WaitForCallback("expected-state", "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	wait := startWait(t, callback, "expected-state", "")
 	noFollow := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	authorizationResponse, err := noFollow.Get(provider.authorizationURL.String())
 	if err != nil {
@@ -253,7 +251,7 @@ func TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401(t *testin
 		t.Fatal(err)
 	}
 	_ = followed.Body.Close()
-	received, err := wait.Wait(ctx)
+	received, err := wait()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -304,6 +302,7 @@ func unauthorized(origin string, token string) mcp.UnauthorizedContext {
 	return mcp.UnauthorizedContext{Response: response, ServerURL: serverURL, Fetch: http.DefaultClient, Token: token}
 }
 
+// Pi 1.2.0 packages/mcp/test/oauth.test.ts:281 "MCP OAuth" "shares one refresh between concurrent 401s when refresh tokens rotate"
 func TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate(t *testing.T) {
 	ctx := t.Context()
 	var mu sync.Mutex
@@ -338,7 +337,7 @@ func TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate(t 
 	store := &oauth.MemoryOAuthStateStore{}
 	provider, err := oauth.NewMcpOAuthProvider(oauth.McpOAuthProviderOptions{
 		ServerURL: origin + "/mcp", RedirectURL: "http://127.0.0.1/callback", ClientMetadata: oauth.OAuthClientMetadata{ClientName: "test"},
-		ClientID: "client", Store: store, OnRedirect: func(context.Context, *url.URL) error { return nil },
+		ClientID: "client", Store: store, OnRedirect: func(context.Context, oauth.URL) error { return nil },
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -378,12 +377,20 @@ func TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate(t 
 	if state == nil || state.Tokens == nil || state.Tokens.RefreshToken != "r2" {
 		t.Fatalf("state = %#v", state)
 	}
-	if state.TokensExpireAt == nil || *state.TokensExpireAt <= time.Now().UnixMilli()+3_500_000 {
+	if state.TokensExpireAt == nil || *state.TokensExpireAt <= float64(time.Now().UnixMilli()+3_500_000) {
 		t.Fatalf("tokensExpireAt = %v", state.TokensExpireAt)
 	}
 }
 
+// Pi 1.2.0 packages/mcp/test/oauth.test.ts:350 "MCP OAuth" "asks for authorization instead of refreshing when the server needs more scope"
+// The second challenge separates scope with a lone 0xA0 byte: fetch's Headers.get reads it as U+00A0, which the challenge pattern's \s matches.
 func TestMCPOAuthAsksForAuthorizationInsteadOfRefreshingWhenTheServerNeedsMoreScope(t *testing.T) {
+	for _, challenge := range []string{`Bearer error="insufficient_scope", scope="repo admin"`, "Bearer error=\"insufficient_scope\"\xa0scope=\"repo admin\""} {
+		t.Run(challenge, func(t *testing.T) { askForMoreScope(t, challenge) })
+	}
+}
+
+func askForMoreScope(t *testing.T, challenge string) {
 	ctx := t.Context()
 	provider := newTestOAuthProvider("http://127.0.0.1/callback")
 	provider.client = &oauth.OAuthClientInformationMixed{ClientID: "client"}
@@ -405,14 +412,14 @@ func TestMCPOAuthAsksForAuthorizationInsteadOfRefreshingWhenTheServerNeedsMoreSc
 	auth := oauth.AdaptOAuthProvider(provider).(mcp.UnauthorizedHandler)
 	serverURL, _ := url.Parse(origin + "/mcp")
 	err := auth.OnUnauthorized(ctx, mcp.UnauthorizedContext{
-		Response:  &http.Response{StatusCode: 403, Body: http.NoBody, Header: http.Header{"Www-Authenticate": []string{`Bearer error="insufficient_scope", scope="repo admin"`}}},
+		Response:  &http.Response{StatusCode: 403, Body: http.NoBody, Header: http.Header{"Www-Authenticate": []string{challenge}}},
 		ServerURL: serverURL, Fetch: http.DefaultClient, Token: "a1",
 	})
 	if _, ok := errors.AsType[*oauth.McpOAuthAuthorizationRequiredError](err); !ok {
 		t.Fatalf("err = %v", err)
 	}
 	// The challenge may list only the missing scopes; the new grant keeps the old ones too.
-	if provider.authorizationURL == nil || provider.authorizationURL.Query().Get("scope") != "repo read:org admin" {
+	if provider.authorizationURL == nil || searchParams(*provider.authorizationURL).Get("scope") != "repo read:org admin" {
 		t.Fatalf("authorization url = %v", provider.authorizationURL)
 	}
 	// The working grant is kept until the user authorizes the new scope.
@@ -421,10 +428,11 @@ func TestMCPOAuthAsksForAuthorizationInsteadOfRefreshingWhenTheServerNeedsMoreSc
 	}
 }
 
+// Pi 1.2.0 packages/mcp/test/oauth.test.ts:389 "MCP OAuth" "binds persisted credentials to the exact MCP server URL"
 func TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL(t *testing.T) {
 	ctx := t.Context()
 	store := &oauth.MemoryOAuthStateStore{}
-	redirect := func(context.Context, *url.URL) error { return nil }
+	redirect := func(context.Context, oauth.URL) error { return nil }
 	first, err := oauth.NewMcpOAuthProvider(oauth.McpOAuthProviderOptions{
 		ServerURL: "https://one.example/mcp", RedirectURL: "http://127.0.0.1/callback", ClientMetadata: oauth.OAuthClientMetadata{ClientName: "test"},
 		Store: store, OnRedirect: redirect,
@@ -451,6 +459,42 @@ func TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL(t *testing.T) {
 	}
 }
 
+// Pi 1.2.0 packages/mcp/test/oauth.test.ts:412 "MCP OAuth" "registers with an application_type derived from the redirect URIs unless one is set" (#10493)
+func TestMCPOAuthRegistersWithAnApplicationTypeDerivedFromTheRedirectURIsUnlessOneIsSet(t *testing.T) {
+	var bodies []map[string]any
+	origin := listen(t, func(w http.ResponseWriter, r *http.Request, _ string) {
+		var metadata map[string]any
+		if err := json.Unmarshal([]byte(readAll(r)), &metadata); err != nil {
+			t.Error(err)
+		}
+		bodies = append(bodies, metadata)
+		metadata["client_id"] = "client"
+		jsonResponse(w, http.StatusCreated, metadata)
+	})
+	register := func(applicationType string, redirectURIs ...string) {
+		t.Helper()
+		_, err := oauth.RegisterClient(t.Context(), origin, oauth.RegisterClientOptions{
+			ClientMetadata: oauth.OAuthClientMetadata{RedirectURIs: redirectURIs, ApplicationType: applicationType},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	register("", "http://127.0.0.1:1234/callback")
+	register("", "http://[::1]/callback")
+	register("", "com.example.app:/callback")
+	register("", "https://app.example/callback")
+	register("web", "http://localhost/callback")
+	var got []any
+	for _, body := range bodies {
+		got = append(got, body["application_type"])
+	}
+	if want := []any{"native", "native", "native", "web", "web"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("application_type = %v, want %v", got, want)
+	}
+}
+
+// Pi 1.2.0 packages/mcp/test/oauth.test.ts:432 "MCP OAuth" "rejects authorization metadata whose issuer does not match discovery"
 func TestMCPOAuthRejectsAuthorizationMetadataWhoseIssuerDoesNotMatchDiscovery(t *testing.T) {
 	origin := listen(t, func(w http.ResponseWriter, r *http.Request, serverOrigin string) {
 		if r.URL.Path == "/.well-known/oauth-authorization-server" {
@@ -468,7 +512,7 @@ func TestMCPOAuthRejectsAuthorizationMetadataWhoseIssuerDoesNotMatchDiscovery(t 
 	}
 }
 
-// #10172
+// Pi 1.2.0 packages/mcp/test/oauth.test.ts:454 "MCP OAuth" "uses a configured authorization server metadata document as is" (#10172)
 func TestMCPOAuthUsesAConfiguredAuthorizationServerMetadataDocumentAsIs(t *testing.T) {
 	ctx := t.Context()
 	origin := listen(t, func(w http.ResponseWriter, r *http.Request, serverOrigin string) {
@@ -490,10 +534,10 @@ func TestMCPOAuthUsesAConfiguredAuthorizationServerMetadataDocumentAsIs(t *testi
 	})
 	provider := newTestOAuthProvider("http://127.0.0.1/callback")
 	provider.client = &oauth.OAuthClientInformationMixed{ClientID: "client"}
-	metadataURL, _ := url.Parse(origin + "/idp/metadata.json")
+	metadataURL := mustURL(t, origin+"/idp/metadata.json")
 	options := oauth.OAuthFlowOptions{
 		ServerURL:                      origin + "/mcp",
-		AuthorizationServerMetadataURL: metadataURL,
+		AuthorizationServerMetadataURL: &metadataURL,
 	}
 	result, err := oauth.AuthorizeMcp(ctx, provider, options)
 	if err != nil || result != oauth.OAuthRedirect {
@@ -503,66 +547,116 @@ func TestMCPOAuthUsesAConfiguredAuthorizationServerMetadataDocumentAsIs(t *testi
 	if authorizationURL == nil {
 		t.Fatal("no authorization url")
 	}
-	if got := authorizationURL.Scheme + "://" + authorizationURL.Host + authorizationURL.Path; got != origin+"/idp/authorize" {
+	if got := authorizationURL.Origin() + authorizationURL.Pathname; got != origin+"/idp/authorize" {
 		t.Fatalf("authorization endpoint = %s", got)
 	}
-	if got := authorizationURL.Query().Get("resource"); got != origin+"/mcp" {
+	if got := searchParams(*authorizationURL).Get("resource"); got != origin+"/mcp" {
 		t.Fatalf("resource = %s", got)
 	}
 
 	insecure := options
-	insecure.AuthorizationServerMetadataURL, _ = url.Parse("http://idp.example/metadata.json")
+	insecureURL := mustURL(t, "http://idp.example/metadata.json")
+	insecure.AuthorizationServerMetadataURL = &insecureURL
 	_, err = oauth.AuthorizeMcp(ctx, provider, insecure)
 	if _, ok := errors.AsType[*oauth.OAuthInsecureEndpointError](err); !ok {
 		t.Fatalf("insecure err = %v", err)
 	}
 }
 
+// Pi 1.2.0 packages/mcp/test/oauth.test.ts:491 "MCP OAuth" "exchanges a code only when its iss parameter names the authorization server": the
+// token endpoint answers POST only, and the last cases run without authorization server metadata.
 func TestMCPOAuthExchangesACodeOnlyWhenItsIssParameterNamesTheAuthorizationServer(t *testing.T) {
 	ctx := t.Context()
 	var mu sync.Mutex
 	var codes []string
 	origin := listen(t, func(w http.ResponseWriter, r *http.Request, _ string) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(404)
+			return
+		}
 		params, _ := url.ParseQuery(readAll(r))
 		mu.Lock()
 		codes = append(codes, params.Get("code"))
 		mu.Unlock()
 		jsonResponse(w, 200, map[string]any{"access_token": "token", "token_type": "Bearer"})
 	})
-	exchange := func(code string, iss *string, issParameterSupported bool) (oauth.OAuthFlowResult, error) {
+	exchange := func(code string, iss *string, issParameterSupported bool, withMetadata bool) (oauth.OAuthFlowResult, error) {
 		provider := newTestOAuthProvider("http://127.0.0.1/callback")
 		provider.client = &oauth.OAuthClientInformationMixed{ClientID: "client"}
 		provider.verifier = "verifier"
-		provider.discovery = &oauth.OAuthDiscoveryState{
-			AuthorizationServerURL: origin,
-			AuthorizationServerMetadata: &oauth.AuthorizationServerMetadata{
+		provider.discovery = &oauth.OAuthDiscoveryState{AuthorizationServerURL: origin}
+		if withMetadata {
+			provider.discovery.AuthorizationServerMetadata = &oauth.AuthorizationServerMetadata{
 				Issuer:                 origin,
 				AuthorizationEndpoint:  origin + "/authorize",
 				TokenEndpoint:          origin + "/token",
 				ResponseTypesSupported: []string{"code"},
 				AuthorizationResponseIssParameterSupported: new(issParameterSupported),
-			},
+			}
 		}
 		return oauth.AuthorizeMcp(ctx, provider, oauth.OAuthFlowOptions{ServerURL: origin + "/mcp", AuthorizationCode: code, Iss: iss})
 	}
-	if _, err := exchange("other", new("https://attacker.example"), false); !isIssuerMismatch(err) {
+	if _, err := exchange("other", new("https://attacker.example"), false, true); !isIssuerMismatch(err) {
 		t.Fatalf("other: err = %v", err)
 	}
-	if _, err := exchange("missing", nil, true); !isIssuerMismatch(err) {
+	if _, err := exchange("missing", nil, true, true); !isIssuerMismatch(err) {
 		t.Fatalf("missing: err = %v", err)
 	}
-	if result, err := exchange("matching", new(origin), true); err != nil || result != oauth.OAuthAuthorized {
+	if result, err := exchange("matching", new(origin), true, true); err != nil || result != oauth.OAuthAuthorized {
 		t.Fatalf("matching = %q, %v", result, err)
 	}
 	// Servers that do not promise the parameter may omit it.
-	if result, err := exchange("omitted", nil, false); err != nil || result != oauth.OAuthAuthorized {
+	if result, err := exchange("omitted", nil, false, true); err != nil || result != oauth.OAuthAuthorized {
 		t.Fatalf("omitted = %q, %v", result, err)
+	}
+	// Without metadata there is no issuer to compare with, so a server cannot skip the check by hiding it.
+	if _, err := exchange("unverifiable", new("https://attacker.example"), false, false); !isIssuerMismatch(err) {
+		t.Fatalf("unverifiable: err = %v", err)
+	}
+	if result, err := exchange("no-metadata", nil, false, false); err != nil || result != oauth.OAuthAuthorized {
+		t.Fatalf("no-metadata = %q, %v", result, err)
 	}
 	mu.Lock()
 	got := strings.Join(codes, ",")
 	mu.Unlock()
-	if got != "matching,omitted" {
+	if got != "matching,omitted,no-metadata" {
 		t.Fatalf("codes = %s", got)
+	}
+}
+
+// flow.ts runFlow (Pi main c5f5b328): the mismatch error of an `iss` checked without metadata has no expected issuer,
+// errors.ts prints it as `none`, and no code reaches the token endpoint.
+func TestMCPOAuthIssMismatchWithoutMetadataHasNoExpectedIssuer(t *testing.T) {
+	ctx := t.Context()
+	tokenRequests := 0
+	var mu sync.Mutex
+	origin := listen(t, func(w http.ResponseWriter, r *http.Request, _ string) {
+		if r.Method == http.MethodPost {
+			mu.Lock()
+			tokenRequests++
+			mu.Unlock()
+		}
+		http.NotFound(w, r)
+	})
+	provider := newTestOAuthProvider("http://127.0.0.1/callback")
+	provider.client = &oauth.OAuthClientInformationMixed{ClientID: "client"}
+	provider.verifier = "verifier"
+	provider.discovery = &oauth.OAuthDiscoveryState{AuthorizationServerURL: origin}
+	_, err := oauth.AuthorizeMcp(ctx, provider, oauth.OAuthFlowOptions{ServerURL: origin + "/mcp", AuthorizationCode: "attacker", Iss: new("https://attacker.example")})
+	mismatch, ok := errors.AsType[*oauth.OAuthIssuerMismatchError](err)
+	if !ok {
+		t.Fatalf("iss without metadata: err = %v, want an issuer mismatch", err)
+	}
+	if mismatch.Expected != nil || mismatch.Received == nil || *mismatch.Received != "https://attacker.example" {
+		t.Errorf("mismatch = %+v, want expected none, received the attacker", mismatch)
+	}
+	if want := `OAuth issuer mismatch: expected none, received "https://attacker.example"`; err.Error() != want {
+		t.Errorf("message = %s, want %s", err.Error(), want)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if tokenRequests != 0 {
+		t.Fatalf("%d token requests after a rejected iss", tokenRequests)
 	}
 }
 
@@ -571,16 +665,14 @@ func isIssuerMismatch(err error) bool {
 	return ok
 }
 
+// Pi 1.2.0 packages/mcp/test/oauth.test.ts:578 "OAuthCallbackServer pages" "renders plain text by default"
 func TestOAuthCallbackServerPagesRendersPlainTextByDefault(t *testing.T) {
 	callback, err := oauth.ListenOAuthCallbackServer(oauth.OAuthCallbackServerOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() { _ = callback.Close() }()
-	pending, err := callback.WaitForCallback("s1", "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	pending := startWait(t, callback, "s1", "")
 	//nolint:bodyclose // readAllBody closes the body
 	response, err := http.Get(callback.RedirectURL + "?code=abc&state=s1")
 	if err != nil {
@@ -593,7 +685,7 @@ func TestOAuthCallbackServerPagesRendersPlainTextByDefault(t *testing.T) {
 	if body != "Authorization complete. You may close this window." {
 		t.Fatalf("body = %q", body)
 	}
-	received, err := pending.Wait(t.Context())
+	received, err := pending()
 	if err != nil || received.Code != "abc" {
 		t.Fatalf("callback = %#v, %v", received, err)
 	}
@@ -605,6 +697,7 @@ func readAllBody(response *http.Response) string {
 	return string(data)
 }
 
+// Pi 1.2.0 packages/mcp/test/oauth.test.ts:611 "OAuthCallbackServer pages" "renders pages through renderPage"
 func TestOAuthCallbackServerPagesRendersPagesThroughRenderPage(t *testing.T) {
 	var mu sync.Mutex
 	var pages []oauth.OAuthCallbackPage
@@ -621,10 +714,7 @@ func TestOAuthCallbackServerPagesRendersPagesThroughRenderPage(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = callback.Close() }()
-	denied, err := callback.WaitForCallback("s1", "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	denied := startWait(t, callback, "s1", "")
 	//nolint:bodyclose // readAllBody closes the body
 	failure, err := http.Get(callback.RedirectURL + "?error=access_denied&error_description=Denied&state=s1")
 	if err != nil {
@@ -634,7 +724,7 @@ func TestOAuthCallbackServerPagesRendersPagesThroughRenderPage(t *testing.T) {
 	if got := failure.Header.Get("Content-Type"); got != "text/html; charset=utf-8" {
 		t.Fatalf("content type = %q", got)
 	}
-	if _, err := denied.Wait(t.Context()); err == nil || err.Error() != "Denied" {
+	if _, err := denied(); err == nil || err.Error() != "Denied" {
 		t.Fatalf("denied err = %v", err)
 	}
 	mu.Lock()
@@ -644,10 +734,7 @@ func TestOAuthCallbackServerPagesRendersPagesThroughRenderPage(t *testing.T) {
 		t.Fatalf("page = %#v", last)
 	}
 
-	pending, err := callback.WaitForCallback("s2", "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	pending := startWait(t, callback, "s2", "")
 	//nolint:bodyclose // readAllBody closes the body
 	success, err := http.Get(callback.RedirectURL + "?code=abc&state=s2")
 	if err != nil {
@@ -656,7 +743,7 @@ func TestOAuthCallbackServerPagesRendersPagesThroughRenderPage(t *testing.T) {
 	if body := readAllBody(success); body != "<p>ok</p>" {
 		t.Fatalf("body = %q", body)
 	}
-	received, err := pending.Wait(t.Context())
+	received, err := pending()
 	if err != nil || received.Code != "abc" {
 		t.Fatalf("callback = %#v, %v", received, err)
 	}
@@ -753,7 +840,7 @@ func TestMcpOAuthProviderKeepsFailingAfterAFailedWrite(t *testing.T) {
 		t.Helper()
 		provider, err := oauth.NewMcpOAuthProvider(oauth.McpOAuthProviderOptions{
 			ServerURL: "https://s.example/mcp", RedirectURL: "http://127.0.0.1/cb", ClientMetadata: oauth.OAuthClientMetadata{ClientName: "t"},
-			ClientID: clientID, Store: store, OnRedirect: func(context.Context, *url.URL) error { return nil },
+			ClientID: clientID, Store: store, OnRedirect: func(context.Context, oauth.URL) error { return nil },
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -794,7 +881,7 @@ func TestMcpOAuthProviderKeepsFailingAfterAFailedWrite(t *testing.T) {
 		if got := store.saves(); got != saves {
 			t.Errorf("store.Save ran %d more times after the failure, want 0", got-saves)
 		}
-		if err := provider.RedirectToAuthorization(ctx, &url.URL{Scheme: "https", Host: "a.example", Path: "/"}); err != nil {
+		if err := provider.RedirectToAuthorization(ctx, mustURL(t, "https://a.example/")); err != nil {
 			t.Errorf("RedirectToAuthorization after a failed save: %v", err)
 		}
 	})
@@ -848,7 +935,7 @@ func TestMcpOAuthProviderIsNotPoisonedByACancelledCall(t *testing.T) {
 	store := &flakyStateStore{}
 	provider, err := oauth.NewMcpOAuthProvider(oauth.McpOAuthProviderOptions{
 		ServerURL: "https://s.example/mcp", RedirectURL: "http://127.0.0.1/cb", ClientMetadata: oauth.OAuthClientMetadata{ClientName: "t"},
-		Store: store, OnRedirect: func(context.Context, *url.URL) error { return nil },
+		Store: store, OnRedirect: func(context.Context, oauth.URL) error { return nil },
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -883,7 +970,7 @@ func TestStartAuthorizationKeepsUpstreamParameterOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 	var got []string
-	for pair := range strings.SplitSeq(authorizationURL.RawQuery, "&") {
+	for pair := range strings.SplitSeq(authorizationURL.Query, "&") {
 		key, _, _ := strings.Cut(pair, "=")
 		got = append(got, key)
 	}
@@ -893,7 +980,7 @@ func TestStartAuthorizationKeepsUpstreamParameterOrder(t *testing.T) {
 	}
 }
 
-// .upstream/v1.0.1/packages/mcp/test/oauth.test.ts:517 (#10302)
+// Pi 1.2.0 packages/mcp/test/oauth.test.ts:592 "OAuthCallbackServer pages" "rejects a response on another path than the expected one" (#10302)
 func TestOAuthCallbackServerRejectsAResponseOnAnotherPathThanTheExpectedOne(t *testing.T) {
 	callback, err := oauth.ListenOAuthCallbackServer(oauth.OAuthCallbackServerOptions{ExtraPaths: []string{"/callback/server-id"}})
 	if err != nil {
@@ -901,10 +988,7 @@ func TestOAuthCallbackServerRejectsAResponseOnAnotherPathThanTheExpectedOne(t *t
 	}
 	defer func() { _ = callback.Close() }()
 	origin := strings.TrimSuffix(callback.RedirectURL, "/callback")
-	mixedUp, err := callback.WaitForCallback("s1", "/callback/server-id")
-	if err != nil {
-		t.Fatal(err)
-	}
+	mixedUp := startWait(t, callback, "s1", "/callback/server-id")
 	//nolint:bodyclose // readAllBody closes the body
 	wrong, err := http.Get(origin + "/callback?code=abc&state=s1")
 	if err != nil {
@@ -914,14 +998,11 @@ func TestOAuthCallbackServerRejectsAResponseOnAnotherPathThanTheExpectedOne(t *t
 	if wrong.StatusCode != http.StatusBadRequest {
 		t.Fatalf("wrong path status = %d", wrong.StatusCode)
 	}
-	if _, err := mixedUp.Wait(t.Context()); err == nil || !strings.Contains(err.Error(), "arrived on another redirect URI") {
+	if _, err := mixedUp(); err == nil || !strings.Contains(err.Error(), "arrived on another redirect URI") {
 		t.Fatalf("mixed-up wait = %v", err)
 	}
 
-	pending, err := callback.WaitForCallback("s2", "/callback/server-id")
-	if err != nil {
-		t.Fatal(err)
-	}
+	pending := startWait(t, callback, "s2", "/callback/server-id")
 	//nolint:bodyclose // readAllBody closes the body
 	right, err := http.Get(origin + "/callback/server-id?code=abc&state=s2")
 	if err != nil {
@@ -931,7 +1012,84 @@ func TestOAuthCallbackServerRejectsAResponseOnAnotherPathThanTheExpectedOne(t *t
 	if right.StatusCode != http.StatusOK {
 		t.Fatalf("right path status = %d", right.StatusCode)
 	}
-	if received, err := pending.Wait(t.Context()); err != nil || received.Code != "abc" {
+	if received, err := pending(); err != nil || received.Code != "abc" {
 		t.Fatalf("callback = %#v, %v", received, err)
 	}
+}
+
+// Pi 1.2.0 packages/mcp/test/oauth.test.ts:537 "MCP OAuth" "stops when its signal aborts, without falling back to a redirect" (#10565):
+// the flow stops when its context ends (Go's AbortSignal), without falling back to a redirect.
+func TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect(t *testing.T) {
+	var stalled []string
+	var mu sync.Mutex
+	release := make(chan struct{})
+	// Accepts every request and never answers.
+	origin := listen(t, func(_ http.ResponseWriter, r *http.Request, _ string) {
+		mu.Lock()
+		stalled = append(stalled, r.URL.Path)
+		mu.Unlock()
+		select {
+		case <-r.Context().Done():
+		case <-release:
+		}
+	})
+	t.Cleanup(func() { close(release) })
+	count := func() int {
+		mu.Lock()
+		defer mu.Unlock()
+		return len(stalled)
+	}
+	run := func(t *testing.T, provider *testOAuthProvider) string {
+		t.Helper()
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		before := count()
+		done := make(chan error, 1)
+		go func() {
+			_, err := oauth.AuthorizeMcp(ctx, provider, oauth.OAuthFlowOptions{ServerURL: origin + "/mcp"})
+			done <- err
+		}()
+		deadline := time.Now().Add(10 * time.Second)
+		for count() != before+1 {
+			if time.Now().After(deadline) {
+				t.Fatal("the flow never reached the stalled request")
+			}
+			time.Sleep(time.Millisecond)
+		}
+		cancel()
+		select {
+		case err := <-done:
+			if !errors.Is(err, context.Canceled) {
+				t.Fatalf("flow error = %v, want context.Canceled", err)
+			}
+		case <-time.After(10 * time.Second):
+			t.Fatal("the flow ignored its cancelled context")
+		}
+		if provider.authorizationURL != nil {
+			t.Fatalf("the flow fell back to an authorization redirect: %v", provider.authorizationURL)
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		return stalled[len(stalled)-1]
+	}
+
+	t.Run("discovery", func(t *testing.T) {
+		if got := run(t, newTestOAuthProvider("http://127.0.0.1/callback")); got != "/.well-known/oauth-protected-resource/mcp" {
+			t.Fatalf("stalled at %q", got)
+		}
+	})
+	t.Run("a failed refresh otherwise falls back to a new authorization", func(t *testing.T) {
+		refreshing := newTestOAuthProvider("http://127.0.0.1/callback")
+		refreshing.client = &oauth.OAuthClientInformationMixed{ClientID: "client"}
+		refreshing.tokenSet = &oauth.OAuthTokens{AccessToken: "a1", RefreshToken: "r1", TokenType: "Bearer"}
+		refreshing.discovery = &oauth.OAuthDiscoveryState{
+			AuthorizationServerURL: origin,
+			AuthorizationServerMetadata: &oauth.AuthorizationServerMetadata{
+				Issuer: origin, AuthorizationEndpoint: origin + "/authorize", TokenEndpoint: origin + "/token", ResponseTypesSupported: []string{"code"},
+			},
+		}
+		if got := run(t, refreshing); got != "/token" {
+			t.Fatalf("stalled at %q", got)
+		}
+	})
 }

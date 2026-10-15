@@ -9,6 +9,11 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+	"unicode/utf8"
+
+	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
+	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
+	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
 // ToolExecutionState is the lifecycle stage of a tool call display.
@@ -46,9 +51,11 @@ const (
 //   - bodyMaxLines: lines shown in the expanded view; overflow shows a
 //     "\u2026 (N more lines)" footer line.
 type ToolExecutionComponent struct {
-	invalidatable
+	Container
 
 	Name string
+	// ToolCallID identifies the tool call the card shows (tool-execution.ts toolCallId); renderers receive it in their context.
+	ToolCallID string
 	// Label is ignored: the fallback call header names the tool by Name, as upstream createCallFallback does.
 	//
 	// Deprecated: a registered tool's card draws its definition; Label has no effect.
@@ -71,6 +78,11 @@ type ToolExecutionComponent struct {
 	// Elapsed is shown on done/error states when > 0.
 	Elapsed time.Duration
 
+	// DurationMs is the recorded execution time of the final result in milliseconds, which survives a session reload; nil when the
+	// result carries none. A final result's recorded duration wins over the card's own clock.
+	// upstream: tool-execution.ts result.durationMs
+	DurationMs *int64
+
 	// StartedAt records when the tool began executing. Used to render a live
 	// "Elapsed X.Xs" footer while a shell tool runs (mirrors upstream bash.ts
 	// renderResult, which ticks the elapsed every second during execution).
@@ -79,17 +91,6 @@ type ToolExecutionComponent struct {
 	// Configurable thresholds. Zero values fall back to defaults.
 	AutoCollapseLines int // default 8
 	BodyMaxLines      int // default 40
-
-	// Render cache: short-circuits Render() when nothing changed.
-	cachedState       ToolExecutionState
-	cachedOutput      string
-	cachedCollapsed   bool
-	cachedWidth       int
-	cachedIsPartial   bool
-	cachedArgsPreview string
-	cachedLines       []string
-	cachedTheme       *Theme
-	cachedHeaderBody  string
 
 	// BodyRenderer, when non-nil, replaces the default plain-text body
 	// rendering. Used for per-tool rich displays: unified diff for
@@ -115,10 +116,18 @@ type ToolExecutionComponent struct {
 	// Mirrors upstream ToolExecutionOptions.imageWidthCells (default 60).
 	ImageWidthCells int
 
-	// convertedImages caches Kitty PNG conversions by image index, keyed to
-	// the source block they were made from. Mirrors upstream
-	// tool-execution.ts convertedImages.
-	convertedImages map[int]convertedToolImage
+	// imageComponents are the Image components of the current result, one per displayed image block. imageSources are their
+	// inputs, so a re-render reuses an Image (and its converted PNG data and Kitty image ID) while its source is unchanged.
+	// Mirrors tool-execution.ts imageComponents/imageSources.
+	imageComponents []*Image
+	imageSources    []toolImageSource
+
+	// frontendImages are the images a frontend session draws natively,
+	// decoded from frontendImageSources at frontendImageWidth, kept while
+	// the blocks and the width stay (frontendImagesAt).
+	frontendImages       []frontend.ViewImage
+	frontendImageSources []ImageBlock
+	frontendImageWidth   int
 
 	// userToggled is true once the user has explicitly hit the toggle
 	// key. After that we never re-apply auto-collapse, so a user who
@@ -152,10 +161,32 @@ type ToolExecutionComponent struct {
 	mouseWidth                int
 	mouseHeight               int
 	mouseDirty                atomic.Bool
+	contentBox                *Box
+	selfRenderContainer       *Container
+	legacyCard                *toolCardBox
+	outputPad                 int // horizontal padding of the card (tool-execution.ts outputPad)
+	ui                        TUI // asked for a render after an asynchronous change (tool-execution.ts ui)
 
 	// compactHeader is the collapsed read card's upstream compact label
 	// (FormatCompactReadHeader), or "" for the full header.
 	compactHeader string
+	// argumentsRaw is the call's argument JSON. arguments decodes it for a
+	// frontend session on first use after it changes.
+	argumentsRaw     json.RawMessage
+	arguments        map[string]any
+	argumentsDecoded bool
+	// aborted records that the call ended because the user aborted its turn.
+	// Only a frontend session reads it; the card draws an abort as an error.
+	aborted bool
+	// streamed is the partial arguments of a call whose text is still streaming (SetStreamedArgs), until complete
+	// arguments replace them. streamedFields is their decoded object, which a renderer that reads it receives as it is.
+	// streamedJSON is their text, encoded for a reader that needs text, at most once per update. streamedHeader reports
+	// that ArgsPreview, the compact label and a frontend's arguments show them.
+	streamed        StreamedToolArgs
+	streamedFields  map[string]any
+	streamedJSON    json.RawMessage
+	streamedEncoded bool
+	streamedHeader  bool
 }
 
 // ImageBlock describes one image from a tool result for rendering.
@@ -171,82 +202,104 @@ type ConvertedImage struct {
 	MimeType string
 }
 
-// convertedToolImage is one convertedImages entry: the conversion plus the
-// source block it came from.
-type convertedToolImage struct {
-	sourceData     string
-	sourceMimeType string
-	ConvertedImage
+// toolImageSource is the input of one Image component (tool-execution.ts imageSources).
+type toolImageSource struct {
+	data, mimeType string
+	widthCells     int
 }
 
-// KittyImageConversion names one tool-result image that needs a PNG
-// conversion before the Kitty graphics protocol can display it.
-type KittyImageConversion struct {
-	Index    int
-	Data     string
-	MimeType string
+// ToolExecutionOptions are the optional constructor settings of a tool card (tool-execution.ts:25). A nil field is
+// upstream's undefined: images show (`showImages ?? true`) and render 60 cells wide (`imageWidthCells ?? 60`).
+type ToolExecutionOptions struct {
+	ShowImages      *bool
+	ImageWidthCells *int
+	// OutputPad is options.outputPad, the horizontal padding of the card; nil keeps Pi's default of 1.
+	OutputPad *int
 }
 
-// PendingKittyImageConversions mirrors the selection half of upstream
-// maybeConvertImagesForKitty: on a Kitty terminal it returns every image block
-// with data and a MIME type that is not PNG and has no conversion cached for
-// its current source. The caller converts each one off the UI loop and hands
-// the result to ApplyConvertedImage on the loop.
-func (c *ToolExecutionComponent) PendingKittyImageConversions() []KittyImageConversion {
-	if GetCapabilities().Images != ImageProtocolKitty {
-		return nil
-	}
-	var pending []KittyImageConversion
-	for i, img := range c.ImageBlocks {
-		if img.Data == "" || img.MIMEType == "" || img.MIMEType == "image/png" {
-			continue
-		}
-		if cached, ok := c.convertedImages[i]; ok && cached.sourceData == img.Data && cached.sourceMimeType == img.MIMEType {
-			continue
-		}
-		pending = append(pending, KittyImageConversion{Index: i, Data: img.Data, MimeType: img.MIMEType})
-	}
-	return pending
+// ToolDefinitionSource is upstream's `ToolRenderers | ToolDefinition` (tool-execution.ts:66): anything that carries the renderers a tool card draws with, the bare renderers or a full tool definition. A nil source is upstream's undefined.
+type ToolDefinitionSource interface {
+	ToolRenderers() *ToolDefinitionRenderers
 }
 
-// ApplyConvertedImage mirrors the resolution half of upstream
-// maybeConvertImagesForKitty. A failed conversion (nil) or one that finishes
-// after its image block was replaced is ignored (upstream issue #8577);
-// otherwise the conversion is cached and the component invalidated. It reports
-// whether the conversion was applied, so the caller knows to request a render.
-func (c *ToolExecutionComponent) ApplyConvertedImage(req KittyImageConversion, converted *ConvertedImage) bool {
-	if converted == nil || req.Index < 0 || req.Index >= len(c.ImageBlocks) {
-		return false
-	}
-	current := c.ImageBlocks[req.Index]
-	if current.Data != req.Data || current.MIMEType != req.MimeType {
-		return false
-	}
-	if c.convertedImages == nil {
-		c.convertedImages = make(map[int]convertedToolImage)
-	}
-	c.convertedImages[req.Index] = convertedToolImage{
-		sourceData:     req.Data,
-		sourceMimeType: req.MimeType,
-		ConvertedImage: *converted,
-	}
-	c.cachedLines = nil
-	c.Invalidate()
-	return true
-}
+// ToolRenderers makes the renderers themselves a ToolDefinitionSource (upstream's bare ToolRenderers member). A nil receiver is the undefined source.
+func (r *ToolDefinitionRenderers) ToolRenderers() *ToolDefinitionRenderers { return r }
 
-// NewToolExecutionComponent returns a Running-state component for the
-// given tool. Args may be empty.
-func NewToolExecutionComponent(name, argsPreview string) *ToolExecutionComponent {
-	return &ToolExecutionComponent{
-		Name:            name,
-		ArgsPreview:     argsPreview,
+// NewToolExecutionComponent returns a Running-state component for a tool call
+// (tool-execution.ts constructor(toolName, toolCallId, args, options = {}, toolDefinition, ui, cwd)). args are the call's current
+// arguments: the card draws its header and, with a definition, its renderers from them. definition is the tool's registered renderers,
+// nil for the built-in or generic presentation: a [ToolDefinitionSource], upstream's `ToolRenderers | ToolDefinition | undefined` (tool-execution.ts:66). ui is the TUI the card asks for a render when an asynchronous change, such as the image
+// transcoder registering, needs one; nil asks for none. cwd resolves relative tool paths in the header.
+func NewToolExecutionComponent(toolName, toolCallID string, args json.RawMessage, options ToolExecutionOptions, definition ToolDefinitionSource, ui TUI, cwd string) *ToolExecutionComponent {
+	c := &ToolExecutionComponent{
+		Name:            toolName,
+		ToolCallID:      toolCallID,
+		Cwd:             cwd,
+		ui:              ui,
 		State:           ToolStateRunning,
 		Collapsed:       true,
 		ShowImages:      true,
 		ImageWidthCells: 60,
 		IsPartial:       true,
+		outputPad:       1,
 	}
+	if options.ShowImages != nil {
+		c.ShowImages = *options.ShowImages
+	}
+	if options.ImageWidthCells != nil {
+		c.ImageWidthCells = *options.ImageWidthCells
+	}
+	if options.OutputPad != nil {
+		c.outputPad = *options.OutputPad
+	}
+	c.ArgsPreview = HeaderForTool(toolName, args, cwd)
+	if len(args) > 0 {
+		c.SetHeaderArgs(args)
+	}
+	if definition != nil {
+		if renderers := definition.ToolRenderers(); renderers != nil {
+			c.SetDefinition(renderers, args)
+		}
+	}
+	c.addChildren()
+	return c
+}
+
+// addChildren adds Pi's constructor children (tool-execution.ts:93-104): a spacer, the content box, then the image spacers and images. The card and the images are private children that render from the component's current state, so a parent Container never serves a stale frame.
+func (c *ToolExecutionComponent) addChildren() {
+	c.contentBox = NewPaddedBox(c.outputPad, 1, func(text string) string { return c.definitionBg()(text) })
+	c.selfRenderContainer = NewContainer()
+	c.legacyCard = &toolCardBox{children: []Component{toolSection(c.renderLegacyHeader), toolSection(c.renderLegacyBody)}, open: c.bgOpenSGR, pad: &c.outputPad}
+	c.Add(NewSpacer(1))
+	c.Add(toolSection(c.renderCard))
+	c.Add(toolSection(c.renderToolImages))
+}
+
+// toolSection renders one section from the card's current state on every frame.
+type toolSection func(width int) []string
+
+func (f toolSection) Render(width int) []string { return f(width) }
+func (toolSection) Invalidate()                 {}
+
+// toolCardBox is the content box of a tool without a registered definition: padding one cell on every side, each row painted in the lifecycle background with paintBgWith, which keeps the tint after a body renderer's full SGR reset.
+type toolCardBox struct {
+	children []Component
+	open     func() string
+	pad      *int // horizontal padding, the component's outputPad
+}
+
+func (b *toolCardBox) Invalidate() {}
+
+func (b *toolCardBox) Render(width int) []string {
+	open := b.open()
+	pad := *b.pad
+	out := []string{paintBgWith(open, "", width)}
+	for _, child := range b.children {
+		for _, line := range child.Render(max(width-2*pad, 1)) {
+			out = append(out, paintBgWith(open, strings.Repeat(" ", pad)+line, width))
+		}
+	}
+	return append(out, paintBgWith(open, "", width))
 }
 
 // IsDirty reports whether the component needs re-rendering. While a shell
@@ -270,6 +323,9 @@ func (c *ToolExecutionComponent) IsDirty() bool {
 func (c *ToolExecutionComponent) Invalidate() {
 	c.mouseDirty.Store(true)
 	c.definitionDirty.Store(true)
+	for _, image := range c.imageComponents {
+		image.Invalidate()
+	}
 	c.invalidatable.Invalidate()
 }
 
@@ -295,15 +351,14 @@ func (c *ToolExecutionComponent) SetStreaming(snapshot string) {
 
 // UpdateArgs updates the displayed header from partial/complete args.
 // Called progressively during streaming as ToolCallDelta events arrive.
-// Mirrors upstream tool-execution.ts updateArgs.
-func (c *ToolExecutionComponent) UpdateArgs(name string, partialArgsJSON string) {
-	if name != "" {
-		c.Name = name
-	}
+// Mirrors upstream tool-execution.ts updateArgs(args): the tool name is fixed when the card is constructed.
+func (c *ToolExecutionComponent) UpdateArgs(args json.RawMessage) {
 	// Try to parse the partial JSON to get a header. Partial JSON will
 	// fail to parse: that's OK, we fall back to the tool name.
 	var raw json.RawMessage
-	if json.Unmarshal([]byte(partialArgsJSON), &raw) == nil {
+	// Arguments stream in a delta at a time and are not valid JSON until the last one arrives; the check keeps a half-received value from being scanned from its first byte on every delta.
+	if mayBeCompleteJSON(args) && json.Unmarshal(args, &raw) == nil {
+		c.clearStreamedArgs()
 		if c.definition != nil {
 			c.definitionArgs = append(c.definitionArgs[:0], raw...)
 		}
@@ -312,6 +367,94 @@ func (c *ToolExecutionComponent) UpdateArgs(name string, partialArgsJSON string)
 	}
 	c.Invalidate()
 }
+
+// StreamedToolArgs is the arguments of a tool call whose text is still streaming, as the provider's streaming JSON parser
+// has read them so far (upstream parseStreamingJson).
+type StreamedToolArgs interface {
+	// Object is the decoded argument object as the parser holds it, or nil when the arguments are not an object. The card
+	// and the renderers read it in place and never modify it; the card calls it once per update.
+	Object() map[string]any
+	// JSON is their JSON text, or nil when they cannot be encoded. The card calls it only for a reader that needs text,
+	// at most once per update.
+	JSON() json.RawMessage
+}
+
+// SetStreamedArgs is upstream updateArgs(content.arguments) on message_update (interactive-mode.ts:3548-3552): the card
+// draws the partial arguments of a streaming call, so a write card shows the lines received so far. The card reads the
+// decoded arguments as they are and encodes them only for a reader that needs their text, so neither a delta nor a frame
+// drawn by a renderer that reads them decoded costs more as the arguments grow.
+func (c *ToolExecutionComponent) SetStreamedArgs(args StreamedToolArgs) {
+	c.clearStreamedArgs()
+	c.streamed = args
+	if args != nil {
+		c.streamedFields = args.Object()
+	}
+	c.Invalidate()
+}
+
+// clearStreamedArgs drops the streamed arguments, which complete ones replace, and what the card read from them.
+func (c *ToolExecutionComponent) clearStreamedArgs() {
+	c.streamed, c.streamedFields, c.streamedJSON = nil, nil, nil
+	c.streamedEncoded, c.streamedHeader = false, false
+}
+
+// streamedArgsJSON is the text of the streamed arguments, encoded once per update.
+func (c *ToolExecutionComponent) streamedArgsJSON() json.RawMessage {
+	if !c.streamedEncoded {
+		c.streamedJSON, c.streamedEncoded = c.streamed.JSON(), true
+	}
+	return c.streamedJSON
+}
+
+// applyStreamedArgs shows the streamed arguments in ArgsPreview, the read card's compact label and a frontend's
+// arguments, as UpdateArgs shows complete ones. It runs once per update, for a reader of those: a card a definition's
+// renderers draw reads none of them.
+func (c *ToolExecutionComponent) applyStreamedArgs() {
+	if c.streamed == nil || c.streamedHeader {
+		return
+	}
+	c.streamedHeader = true
+	if fields := c.streamedFields; fields != nil && (c.Name == "write" || c.Name == "edit") {
+		// Their headers name the path only (FormatWriteHeader, FormatEditHeader), and their content and edits are the
+		// arguments that grow as a call streams, so the header reads the decoded object.
+		c.ArgsPreview = toolTitleText(c.Name) + " " + renderToolPathFromArgs(fields, c.Cwd)
+		c.compactHeader = ""
+		c.argumentsRaw, c.arguments, c.argumentsDecoded = nil, fields, true
+		return
+	}
+	raw := c.streamedArgsJSON()
+	if raw == nil {
+		return
+	}
+	c.ArgsPreview = HeaderForTool(c.Name, raw, c.Cwd)
+	c.setHeaderArgs(raw)
+}
+
+// mayBeCompleteJSON reports whether text could be a whole JSON value judging by its first and last bytes: an object ends in `}`, an array in `]`, a string in `"`, and any other value in a digit or the `e` or `l` of true, false and null, with optional whitespace around the value. It is a necessary condition only; a true result still needs a validating parse.
+func mayBeCompleteJSON(text []byte) bool {
+	start, end := 0, len(text)
+	for start < end && isJSONSpace(text[start]) {
+		start++
+	}
+	for end > start && isJSONSpace(text[end-1]) {
+		end--
+	}
+	if start == end {
+		return false
+	}
+	last := text[end-1]
+	switch text[start] {
+	case '{':
+		return last == '}'
+	case '[':
+		return last == ']'
+	case '"':
+		return last == '"'
+	}
+	return last == 'e' || last == 'l' || last >= '0' && last <= '9'
+}
+
+func isJSONSpace(b byte) bool { return b == ' ' || b == '\t' || b == '\n' || b == '\r' }
 
 // MarkExecutionStarted records that the tool has begun executing.
 // Mirrors upstream tool-execution.ts markExecutionStarted.
@@ -338,6 +481,8 @@ func (c *ToolExecutionComponent) SetResult(output string, isError bool, elapsed 
 		c.State = ToolStateError
 	} else {
 		c.State = ToolStateDone
+		// pig additive (D91): a successful result supersedes an earlier abort.
+		c.aborted = false
 	}
 	c.Output = output
 	c.Elapsed = elapsed
@@ -345,10 +490,6 @@ func (c *ToolExecutionComponent) SetResult(output string, isError bool, elapsed 
 	// never changes it.
 	if !c.userToggled && c.definition == nil {
 		switch {
-		case isError:
-			// Errors are always auto-expanded: the LLM (and the user) need
-			// to see what went wrong without an extra keystroke.
-			c.Collapsed = false
 		case c.BodyRenderer != nil:
 			// Tools with BodyRenderer handle their own preview/expanded toggle.
 			c.Collapsed = true
@@ -363,6 +504,57 @@ func (c *ToolExecutionComponent) SetResult(output string, isError bool, elapsed 
 		}
 	}
 	c.Invalidate()
+}
+
+// ToolResultContent is one block of a tool result's content: tool-execution.ts updateResult's `{ type, text?, data?, mimeType? }`.
+type ToolResultContent struct {
+	Type     string // "text" or "image"
+	Text     string
+	Data     string
+	MimeType string
+}
+
+// ToolResultUpdate is the result argument of UpdateResult: tool-execution.ts updateResult's
+// `{ content, details?, isError, durationMs? }`, plus the two Go-side carriers the card needs.
+type ToolResultUpdate struct {
+	Content []ToolResultContent
+	// Details is the tool's structured details. A card with a registered definition reads them through Result.
+	Details any
+	IsError bool
+	// DurationMs is the recorded execution time of a final result; nil for a partial result and for one stored without a duration.
+	DurationMs *int64
+	// Result is the structured result handed to the registered definition's result renderer (agent.AgentToolResult in production).
+	// Nil leaves the renderer's result unchanged. Pi passes `{ content, details }` itself; the card has no agent types.
+	Result any
+	// Elapsed is the final result's wall time for the done/error footer; zero shows none (Pi's card keeps no such footer).
+	Elapsed time.Duration
+}
+
+// UpdateResult is tool-execution.ts updateResult(result, isPartial = false): it records the result, converts its image blocks, and
+// redraws. A partial result streams its text into the running card; a final one settles the card with its error state and duration.
+func (c *ToolExecutionComponent) UpdateResult(result ToolResultUpdate, isPartial ...bool) {
+	partial := len(isPartial) > 0 && isPartial[0]
+	var text []string
+	var images []ImageBlock
+	for _, block := range result.Content {
+		switch block.Type {
+		case "text":
+			text = append(text, block.Text)
+		case "image":
+			images = append(images, ImageBlock{Data: block.Data, MIMEType: block.MimeType})
+		}
+	}
+	output := strings.Join(text, "\n")
+	if result.Result != nil {
+		c.SetResultValue(result.Result)
+	}
+	c.ImageBlocks = images
+	if partial {
+		c.SetStreaming(output)
+		return
+	}
+	c.DurationMs = result.DurationMs
+	c.SetResult(output, result.IsError, result.Elapsed)
 }
 
 // FinalizeAborted freezes a still-running tool when its turn is aborted
@@ -380,7 +572,17 @@ func (c *ToolExecutionComponent) FinalizeAborted(elapsed time.Duration) {
 		out = "Operation aborted"
 	}
 	c.SetResult(out, true, elapsed)
+	c.aborted = true // pig additive (D91): reported as cancelled
 }
+
+// pig additive (D91): MarkAborted records that the call ended because the
+// user aborted its turn, so a frontend session reports it as cancelled. It
+// changes nothing the card draws. A later error result keeps the mark, since
+// a tool reports the abort as its error; a successful result clears it.
+func (c *ToolExecutionComponent) MarkAborted() { c.aborted = true }
+
+// Aborted reports whether MarkAborted or FinalizeAborted ended the call.
+func (c *ToolExecutionComponent) Aborted() bool { return c.aborted }
 
 // SetExpanded forces the body open or closed and records the user's
 // intent so subsequent SetResult calls don't snap it back. Used by
@@ -415,6 +617,13 @@ func (c *ToolExecutionComponent) Collapse() {
 }
 
 // SetShowImages toggles image rendering. Mirrors upstream setShowImages.
+// SetOutputPad is Pi's setOutputPad(outputPad) (tool-execution.ts:207): the card's horizontal padding, applied at once to the content box (updateDisplay's renderContainer.setPaddingX) and to the default card.
+func (c *ToolExecutionComponent) SetOutputPad(outputPad int) {
+	c.outputPad = outputPad
+	c.contentBox.SetPaddingX(outputPad)
+	c.Invalidate()
+}
+
 func (c *ToolExecutionComponent) SetShowImages(show bool) {
 	c.ShowImages = show
 	c.Invalidate()
@@ -434,54 +643,37 @@ func (c *ToolExecutionComponent) renderImages(width int) []string {
 	}
 	caps := GetCapabilities()
 	if caps.Images == "" {
-		// No image protocol: render fallback text for each image.
-		var out []string
-		for _, img := range c.ImageBlocks {
-			out = append(out, "") // spacer
-			dims := GetImageDimensions(img.Data, img.MIMEType)
-			out = append(out, ImageFallback(img.MIMEType, dims, ""))
-		}
-		return out
+		// Pi builds no Image component without a terminal image protocol; the fallback text is part of the
+		// result text instead (render-utils getTextOutput, tool-execution.ts:356).
+		return nil
 	}
-	maxW := min(width-2, c.ImageWidthCells)
-	if maxW <= 0 {
-		maxW = min(width, 60)
-	}
+	previousImages, previousSources := c.imageComponents, c.imageSources
+	c.imageComponents, c.imageSources = nil, nil
 	var out []string
-	for i, img := range c.ImageBlocks {
-		// Prefer a conversion made from this exact source block. On Kitty, a
-		// non-PNG image shows its text fallback until the conversion lands, and
-		// after a failed one, as upstream's Image does without PNG data
-		// (pi-tui image.ts render, 1.0.1).
-		if cached, ok := c.convertedImages[i]; ok && cached.sourceData == img.Data && cached.sourceMimeType == img.MIMEType {
-			img = ImageBlock{Data: cached.Data, MIMEType: cached.MimeType}
-		}
-		dims := ImageDimensions{WidthPx: 800, HeightPx: 600}
-		if got := GetImageDimensions(img.Data, img.MIMEType); got != nil {
-			dims = *got
-		}
-		out = append(out, "") // spacer between images
-		if caps.Images == ImageProtocolKitty && img.MIMEType != "image/png" {
-			out = append(out, ImageFallback(img.MIMEType, &dims, ""))
+	for _, img := range c.ImageBlocks {
+		if img.Data == "" || img.MIMEType == "" {
 			continue
 		}
-		result := RenderImage(img.Data, dims, ImageRenderOptions{
-			MaxWidthCells:       maxW,
-			PreserveAspectRatio: new(true),
-			Name:                "",
-		})
-		if result != nil {
-			for range max(result.Rows-1, 0) {
-				out = append(out, "")
-			}
-			moveUp := ""
-			if result.Rows > 1 {
-				moveUp = "\x1b[" + itoa(result.Rows-1) + "A"
-			}
-			out = append(out, moveUp+result.Sequence)
+		source := toolImageSource{data: img.Data, mimeType: img.MIMEType, widthCells: c.ImageWidthCells}
+		index := len(c.imageComponents)
+		var image *Image
+		if index < len(previousSources) && previousSources[index] == source {
+			image = previousImages[index]
 		} else {
-			out = append(out, ImageFallback(img.MIMEType, &dims, ""))
+			image = NewImage(source.data, source.mimeType, ImageTheme{FallbackColor: func(s string) string { return fg(ActiveTheme().ToolOutput, s) }}, ImageOptions{MaxWidthCells: source.widthCells}, nil)
 		}
+		if source.mimeType != "image/png" {
+			ensureImageTranscoder(func() {
+				c.Invalidate()
+				if c.ui != nil {
+					c.ui.RequestRender()
+				}
+			})
+		}
+		c.imageComponents = append(c.imageComponents, image)
+		c.imageSources = append(c.imageSources, source)
+		out = append(out, "") // spacer
+		out = append(out, image.Render(width)...)
 	}
 	return out
 }
@@ -547,129 +739,93 @@ func (c *ToolExecutionComponent) handleResultMouse(event TuiMouseEvent) *TuiMous
 	return &TuiMouseEventResult{Handled: true}
 }
 
-func (c *ToolExecutionComponent) appendToolImages(lines []string, width int) []string {
-	c.mouseChild = nil
-	c.mouseWidth = width
-	c.mouseHeight = max(0, len(lines)-1)
-	return append(lines, c.renderImages(width)...)
-}
-
-// Render emits lifecycle-colored tool content followed by images. Definition-backed tools use their Box or self shell; native built-ins retain the same padded content layout.
+// Render mirrors upstream render (tool-execution.ts:262-292): a registered definition with renderShell "self" draws its components after one blank row, or nothing when they draw nothing; every other card is the Container of spacer, content box and images.
 func (c *ToolExecutionComponent) Render(width int) []string {
 	c.mouseDirty.Store(false)
 	if c.definition != nil {
-		return c.renderDefinition(width)
-	}
-	if width < 3 {
-		width = 3
-	}
-	// While a shell tool is running, the "Elapsed X.Xs" footer advances every
-	// render tick, so the line cache must not short-circuit it.
-	liveShell := c.State == ToolStateRunning && IsShellTool(c.Name) && !c.StartedAt.IsZero()
-	// Cache check: return cached lines when nothing changed.
-	if !liveShell && c.cachedLines != nil &&
-		c.cachedState == c.State &&
-		c.cachedOutput == c.Output &&
-		c.cachedCollapsed == c.Collapsed &&
-		c.cachedWidth == width &&
-		c.cachedIsPartial == c.IsPartial &&
-		c.cachedArgsPreview == c.ArgsPreview &&
-		c.cachedHeaderBody == c.headerBody() &&
-		c.cachedTheme == ActiveTheme() {
-		return c.cachedLines
-	}
-	bgOpen := c.bgOpenSGR()
-	headerInner := c.renderHeaderInner(width - 2)
-
-	// Leading blank line: mirrors upstream Spacer(1) inside ToolExecutionComponent
-	// constructor (tool-execution.ts:63) which adds one row of vertical padding
-	// before the content box, visually separating consecutive tool blocks.
-	out := make([]string, 0, 8)
-	out = append(out, "")
-
-	// Top padding row: mirrors upstream Box(paddingX=1, paddingY=1, bgFn).
-	out = append(out, paintBgWith(bgOpen, "", width))
-
-	// Header always painted, even when collapsed: lifecycle tint stays
-	// visible at-a-glance. Wrap long headers (e.g. bash commands) across
-	// multiple lines rather than truncating, matching upstream's Text
-	// component behavior.
-	headerLines := wrapText(headerInner, width-2)
-	for _, hl := range headerLines {
-		out = append(out, paintBgWith(bgOpen, " "+hl, width))
-	}
-
-	if c.Output == "" && c.BodyRenderer == nil {
-		// No output yet. While a shell tool runs, Text supplies the footer's
-		// leading separator and any wrapped continuation rows.
-		for _, line := range c.runningElapsedRows(width - 2) {
-			out = append(out, paintBgWith(bgOpen, " "+line, width))
+		if c.definitionDirty.Load() || c.definitionCall == nil {
+			c.updateDefinition()
 		}
-		out = append(out, paintBgWith(bgOpen, "", width)) // close the frame
-		out = c.appendToolImages(out, width)
-		c.saveCachedRender(width, out)
-		return out
+		if c.definition.Self {
+			return c.renderSelfShell(width)
+		}
+	} else {
+		// Only the card without a definition draws the header fields.
+		c.applyStreamedArgs()
+	}
+	return c.Container.Render(width)
+}
+
+// renderCard draws the content box: the definition's Box, or the legacy card for a tool without one. It records the card's height and width for mouse dispatch.
+func (c *ToolExecutionComponent) renderCard(width int) []string {
+	if c.definition != nil {
+		content := c.contentBox.Render(width)
+		c.mouseChild, c.mouseWidth, c.mouseHeight = c.contentBox, width, len(content)
+		return content
+	}
+	width = max(width, 3)
+	content := c.legacyCard.Render(width)
+	c.mouseChild, c.mouseWidth, c.mouseHeight = nil, width, len(content)
+	return content
+}
+
+func (c *ToolExecutionComponent) renderToolImages(width int) []string { return c.renderImages(width) }
+
+// renderLegacyHeader draws the call header, wrapped across rows like upstream's Text.
+func (c *ToolExecutionComponent) renderLegacyHeader(width int) []string {
+	if c.isUnregisteredTool() {
+		return wrapText(c.formatToolExecution(), width)
+	}
+	return wrapText(c.renderHeaderInner(width), width)
+}
+
+// isUnregisteredTool reports whether the card is for a tool with no definition and no built-in presentation, such as a name the model made up:
+// upstream's hasRendererDefinition() is false and the card is the one Text of formatToolExecution.
+func (c *ToolExecutionComponent) isUnregisteredTool() bool {
+	return c.definition == nil && c.BodyRenderer == nil && !HasBuiltInToolRenderers(c.Name)
+}
+
+// formatToolExecution is upstream formatToolExecution (tool-execution.ts:394-406): the tool name in toolTitle, its arguments as JSON.stringify(args, null, 2)
+// after a blank line, and the result text on the next line, stripped of ANSI sequences, binary control characters and carriage returns (render-utils.ts getTextOutput).
+func (c *ToolExecutionComponent) formatToolExecution() string {
+	out := toolTitleText(c.Name)
+	if len(c.argumentsRaw) > 0 {
+		if canonical, err := jsonstringify.Canonicalize(c.argumentsRaw); err == nil {
+			var indented bytes.Buffer
+			if json.Indent(&indented, canonical, "", "  ") == nil {
+				out += "\n\n" + indented.String()
+			}
+		}
+	}
+	if output := strings.ReplaceAll(text.SanitizeBinaryOutput(text.StripANSIString(c.Output)), "\r", ""); output != "" {
+		out += "\n" + output
+	}
+	return out
+}
+
+// renderLegacyBody draws what follows the header: the live elapsed footer before any output, the collapsed preview, or the separator, result body and footer.
+func (c *ToolExecutionComponent) renderLegacyBody(width int) []string {
+	if c.isUnregisteredTool() {
+		return nil
+	}
+	if c.Output == "" && c.BodyRenderer == nil {
+		return c.runningElapsedRows(width)
 	}
 	if c.Collapsed && c.BodyRenderer == nil {
 		// A registered definition without a result renderer uses upstream's
 		// first-ten-lines fallback and can be expanded by click or Ctrl+O.
-		out = append(out, paintBgWith(bgOpen, "", width)) // separator
-		for _, line := range c.renderCollapsedPreview(width - 2) {
-			out = append(out, paintBgWith(bgOpen, " "+line, width))
-		}
-		for _, line := range c.runningElapsedRows(width - 2) {
-			out = append(out, paintBgWith(bgOpen, " "+line, width))
-		}
-		out = append(out, paintBgWith(bgOpen, "", width)) // bottom pad
-		out = c.appendToolImages(out, width)
-		c.saveCachedRender(width, out)
-		return out
+		return append(append([]string{""}, c.renderCollapsedPreview(width)...), c.runningElapsedRows(width)...)
 	}
 	// Per-tool BodyRenderers receive the expanded flag and always own their
 	// preview-to-full transition. This preserves upstream tool-execution.ts
 	// behavior and keeps the collapsed bash preview visible.
-
-	// Separator line between call header and result body.
-	// Upstream's result components (bash, read, write, edit) all start
-	// their output with a leading empty line: e.g. bash.ts:246
-	// `return ["", ...(state.cachedLines ?? [])]` or read.ts:105
-	// `let text = "\n${displayLines...}"`. This separates the call
-	// header from the body content visually inside the bg-painted box.
 	//
-	// When the body renderer emits nothing (e.g. a collapsed read card,
-	// or a renderShell:"self" extension renderer with no lines), skip the
-	// separator so the empty body doesn't leave a stray blank row inside
-	// the box: mirrors upstream #5299 (read.ts collapsed returns "").
-	body := c.renderResultBody(width - 2)
-	footer := c.runningElapsedRows(width - 2)
-	if len(body) > 0 {
-		out = append(out, paintBgWith(bgOpen, "", width))
-		for _, line := range body {
-			out = append(out, paintBgWith(bgOpen, " "+line, width))
-		}
+	// Upstream's result components (bash, read, write, edit) all start their output with a leading empty line, which separates the call header from the body. When the body renderer emits nothing (a collapsed read card, or a renderShell:"self" renderer with no lines), skip the separator so the empty body leaves no stray blank row: upstream #5299 (read.ts collapsed returns "").
+	var out []string
+	if body := c.renderResultBody(width); len(body) > 0 {
+		out = append(append(out, ""), body...)
 	}
-	for _, line := range footer {
-		out = append(out, paintBgWith(bgOpen, " "+line, width))
-	}
-
-	// Bottom padding row: mirrors upstream Box paddingY=1.
-	out = append(out, paintBgWith(bgOpen, "", width))
-
-	out = c.appendToolImages(out, width)
-	c.saveCachedRender(width, out)
-	return out
-}
-
-func (c *ToolExecutionComponent) saveCachedRender(width int, lines []string) {
-	c.cachedState = c.State
-	c.cachedOutput = c.Output
-	c.cachedCollapsed = c.Collapsed
-	c.cachedWidth = width
-	c.cachedIsPartial = c.IsPartial
-	c.cachedArgsPreview = c.ArgsPreview
-	c.cachedHeaderBody = c.headerBody()
-	c.cachedLines = lines
-	c.cachedTheme = ActiveTheme()
+	return append(out, c.runningElapsedRows(width)...)
 }
 
 // bgOpenSGR returns the lifecycle bg open sequence for the current
@@ -910,99 +1066,29 @@ func strconvQuote(s string) string {
 
 // FormatReadHeader returns the styled `read <path>` header for read tool
 // calls. Mirrors upstream read.ts formatReadCall: bold toolTitle `read`,
-// the path via renderToolPath (accent + ~/ + OSC-8 link), and a warning-
-// colored `:start-end` line range.
+// the path via renderToolPath (accent + ~/ + OSC-8 link, or the invalid-arg
+// marker for a non-string path), and a warning-colored `:start-end` line
+// range.
 func FormatReadHeader(raw json.RawMessage, cwd string) string {
-	var p struct {
-		Path     string `json:"path"`
-		FilePath string `json:"file_path"`
-		Offset   *int   `json:"offset,omitempty"`
-		Limit    *int   `json:"limit,omitempty"`
-	}
-	_ = json.Unmarshal(raw, &p)
-	path := p.FilePath
-	if path == "" {
-		path = p.Path
-	}
-	header := toolTitleText("read") + " " + renderToolPath(path, cwd)
-	if p.Offset != nil || p.Limit != nil {
-		start := 1
-		if p.Offset != nil {
-			start = *p.Offset
-		}
-		rng := fmt.Sprintf(":%d", start)
-		if p.Limit != nil {
-			rng = fmt.Sprintf(":%d-%d", start, start+*p.Limit-1)
-		}
-		header += fg(ActiveTheme().Warning, rng)
-	}
-	return header
+	args := decodeToolArgs(raw)
+	return toolTitleText("read") + " " + renderToolPathFromArgs(args, cwd) + readLineRange(args)
 }
 
 // FormatWriteHeader returns the styled `write <path>` header for write
 // tool calls. Mirrors upstream write.ts formatWriteCall.
 func FormatWriteHeader(raw json.RawMessage, cwd string) string {
-	var p struct {
-		Path     string `json:"path"`
-		FilePath string `json:"file_path"`
-	}
-	_ = json.Unmarshal(raw, &p)
-	path := p.FilePath
-	if path == "" {
-		path = p.Path
-	}
-	return toolTitleText("write") + " " + renderToolPath(path, cwd)
+	return FormatWriteHeaderArgs(decodeToolArgs(raw), cwd)
+}
+
+// FormatWriteHeaderArgs is FormatWriteHeader of arguments that are already decoded.
+func FormatWriteHeaderArgs(args map[string]any, cwd string) string {
+	return toolTitleText("write") + " " + renderToolPathFromArgs(args, cwd)
 }
 
 // FormatEditHeader returns the styled `edit <path>` header for edit tool
-// calls. Mirrors upstream edit.ts formatEditCall.
+// calls. Mirrors upstream renderers/edit.ts formatEditCall.
 func FormatEditHeader(raw json.RawMessage, cwd string) string {
-	var p struct {
-		Path     string `json:"path"`
-		FilePath string `json:"file_path"`
-		Patch    string `json:"patch"`
-		Multi    []struct {
-			Path     string `json:"path"`
-			FilePath string `json:"file_path"`
-		} `json:"multi"`
-	}
-	_ = json.Unmarshal(raw, &p)
-	path := p.FilePath
-	if path == "" {
-		path = p.Path
-	}
-	paths := make([]string, 0, len(p.Multi))
-	if path != "" {
-		paths = append(paths, path)
-	}
-	for _, edit := range p.Multi {
-		editPath := edit.FilePath
-		if editPath == "" {
-			editPath = edit.Path
-		}
-		if editPath != "" && !slices.Contains(paths, editPath) {
-			paths = append(paths, editPath)
-		}
-	}
-	for line := range strings.SplitSeq(p.Patch, "\n") {
-		for _, prefix := range []string{"*** Update File: ", "*** Add File: ", "*** Delete File: "} {
-			if patchPath, ok := strings.CutPrefix(line, prefix); ok {
-				patchPath = strings.TrimSpace(patchPath)
-				if patchPath != "" && !slices.Contains(paths, patchPath) {
-					paths = append(paths, patchPath)
-				}
-				break
-			}
-		}
-	}
-	if len(paths) == 0 {
-		return toolTitleText("edit") + " " + renderToolPath("", cwd)
-	}
-	header := toolTitleText("edit") + " " + renderToolPath(paths[0], cwd)
-	if remaining := len(paths) - 1; remaining > 0 {
-		header += fg(ActiveTheme().Muted, fmt.Sprintf(" (+%d file%s)", remaining, plural(remaining)))
-	}
-	return header
+	return toolTitleText("edit") + " " + renderToolPathFromArgs(decodeToolArgs(raw), cwd)
 }
 
 // FormatGrepHeader returns the styled grep call. Mirrors upstream
@@ -1126,13 +1212,35 @@ func (c *ToolExecutionComponent) headerBody() string {
 }
 
 // SetHeaderArgs records the call arguments the collapsed read card's
-// compact label is drawn from.
+// compact label and a frontend session's tool node are drawn from. They
+// replace streamed arguments.
 func (c *ToolExecutionComponent) SetHeaderArgs(args json.RawMessage) {
+	c.clearStreamedArgs()
+	c.setHeaderArgs(args)
+	c.Invalidate()
+}
+
+func (c *ToolExecutionComponent) setHeaderArgs(args json.RawMessage) {
 	c.compactHeader = ""
 	if c.Name == "read" {
 		c.compactHeader = FormatCompactReadHeader(args, c.Cwd)
 	}
-	c.Invalidate()
+	c.argumentsRaw = append(c.argumentsRaw[:0], args...)
+	c.argumentsDecoded = false
+}
+
+// decodedArguments returns the argument object, or nil when the arguments
+// are not a complete JSON object yet.
+func (c *ToolExecutionComponent) decodedArguments() map[string]any {
+	if !c.argumentsDecoded {
+		c.arguments = nil
+		var arguments map[string]any
+		if json.Unmarshal(c.argumentsRaw, &arguments) == nil {
+			c.arguments = arguments
+		}
+		c.argumentsDecoded = true
+	}
+	return c.arguments
 }
 
 // HeaderForTool returns the fully styled call header for any tool: the
@@ -1150,11 +1258,16 @@ func HeaderForTool(name string, args json.RawMessage, cwd string) string {
 	return toolTitleText(name)
 }
 
+// truncateArg cuts s to max-1 bytes and adds an ellipsis, backing up to the start of a character so the cut never splits one.
 func truncateArg(s string, max int) string {
 	if len(s) <= max {
 		return s
 	}
-	return s[:max-1] + "\u2026"
+	cut := max - 1
+	for cut > 0 && !utf8.RuneStart(s[cut]) {
+		cut--
+	}
+	return s[:cut] + "\u2026"
 }
 
 func plural(n int) string {
@@ -1180,9 +1293,14 @@ func plural(n int) string {
 //   - OSC sequences (`ESC ]` … BEL or ST)
 //   - Lone ESC, BEL, and other C0 control bytes (except \t \n \r).
 func stripControlEscapes(s string) string {
+	// Text with nothing to drop is the common case and returns unchanged.
+	i := indexControlEscape(s)
+	if i < 0 {
+		return s
+	}
 	var out strings.Builder
 	out.Grow(len(s))
-	i := 0
+	out.WriteString(s[:i])
 	for i < len(s) {
 		c := s[i]
 		if c == 0x1b && i+1 < len(s) {
@@ -1225,18 +1343,30 @@ func stripControlEscapes(s string) string {
 				continue
 			}
 		}
-		if c == 0x1b {
-			// Lone ESC at end of string: drop.
+		if c == 0x1b || (c < 0x20 && c != '\t' && c != '\n' && c != '\r') {
+			// A lone ESC at the end of the string and the other C0 control bytes (BEL, BS, FF, ...) are dropped.
 			i++
 			continue
 		}
-		if c < 0x20 && c != '\t' && c != '\n' && c != '\r' {
-			// Other C0 control bytes (BEL, BS, FF, ...): drop.
-			i++
-			continue
+		// Copy the run of kept bytes up to the next one that needs a decision.
+		end := i + 1
+		if rest := indexControlEscape(s[end:]); rest >= 0 {
+			end += rest
+		} else {
+			end = len(s)
 		}
-		out.WriteByte(c)
-		i++
+		out.WriteString(s[i:end])
+		i = end
 	}
 	return out.String()
+}
+
+// indexControlEscape returns the index of the first byte stripControlEscapes treats specially (ESC or a C0 control other than tab, newline and carriage return), or -1.
+func indexControlEscape(s string) int {
+	for i := 0; i < len(s); i++ {
+		if c := s[i]; c < 0x20 && c != '\t' && c != '\n' && c != '\r' {
+			return i
+		}
+	}
+	return -1
 }

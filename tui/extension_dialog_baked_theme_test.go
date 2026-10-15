@@ -32,7 +32,7 @@ func TestExtensionSelectorKeepsTheThemeItWasBuiltUnder(t *testing.T) {
 	restoreBakedThemeState(t)
 	MarkTerminalColorsPending()
 	SetThemeByName(SystemThemeName)
-	selector := NewExtensionSelector("Trust project folder?", []string{"Trust", "Do not trust"})
+	selector := NewExtensionSelectorComponent("Trust project folder?", []string{"Trust", "Do not trust"}, nil, nil)
 	reportTerminalColors()
 
 	lines := selector.Render(80)
@@ -69,7 +69,7 @@ func TestExtensionInputKeepsTheThemeItWasBuiltUnder(t *testing.T) {
 	restoreBakedThemeState(t)
 	MarkTerminalColorsPending()
 	SetThemeByName(SystemThemeName)
-	input := NewExtensionInputComponent("Name", "")
+	input := NewExtensionInputComponent("Name", "", nil, nil)
 	reportTerminalColors()
 	for _, line := range input.Render(80)[1:] {
 		if strings.Contains(line, "Name") && strings.Contains(line, "\x1b[38;") {

@@ -26,7 +26,8 @@ func BenchmarkConfiguredFileURLResolution(b *testing.B) {
 			}
 			b.ReportAllocs()
 			for b.Loop() {
-				if err := packagecontent.ValidateConfiguredEntries(entries, root); err != nil {
+				// The startup validation and the collection both resolve the entries.
+				if _, err := packagecontent.ResolveConfiguredWithError(entries, root, packagecontent.Prompts); err != nil {
 					b.Fatal(err)
 				}
 				paths, err := packagecontent.ResolveConfiguredWithError(entries, root, packagecontent.Prompts)

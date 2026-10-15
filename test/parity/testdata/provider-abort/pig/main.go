@@ -27,35 +27,43 @@ func run() error {
 			panic(err)
 		}
 	}()
-	services, err := coding.NewServices(coding.ServicesOptions{AgentDir: dir, CWD: dir})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{AgentDir: dir, CWD: dir})
 	if err != nil {
 		return err
 	}
 	provider := ai.NewFauxProvider(ai.FauxConfig{})
 	provider.SetResponses([]ai.FauxResponseStep{ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("ignored")}, StopReason: "stop"})})
-	model := &ai.Model{ID: "faux-1", Provider: provider}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	request := ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Hello, how are you?")}}}
-	aborted := services.ModelRuntime().Complete(ctx, model, request, ai.StreamOptions{})
+	// pi.mjs calls compat.ts complete, which hands the request straight to the provider's stream; Pi's Model Runtime would instead fail an already-aborted request in lazyStream's auth setup with stopReason "error" (resolve.ts:53, lazy.ts createSetupErrorMessage).
+	abortedStream, err := provider.Stream(ctx, ai.NormalizeContext(request), ai.StreamOptions{})
+	if err != nil {
+		return err
+	}
+	aborted := abortedStream.Result()
 	request.Messages = append(request.Messages, *aborted, ai.UserMessage{Content: ai.UserText("What is 2 + 2?")})
-	provider.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(request ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+	provider.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(request ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
 		messages := request.Messages()
 		if len(messages) == 3 {
 			if previous, ok := messages[1].(ai.AssistantMessage); ok && previous.StopReason == ai.StopReasonAborted && len(previous.Content) == 0 {
-				return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("4")}, StopReason: "stop"}, nil
+				return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("4")}, StopReason: "stop"}.AssistantMessage(), nil
 			}
 		}
-		return ai.FauxResponse{StopReason: "error", ErrorMessage: "missing aborted history"}, nil
+		return ai.FauxResponse{StopReason: "error", ErrorMessage: "missing aborted history"}.AssistantMessage(), nil
 	})})
-	follow := services.ModelRuntime().Complete(context.Background(), model, request, ai.StreamOptions{})
+	followStream, err := provider.Stream(context.Background(), ai.NormalizeContext(request), ai.StreamOptions{})
+	if err != nil {
+		return err
+	}
+	follow := followStream.Result()
 	text := ""
 	if len(follow.Content) > 0 {
 		if block, ok := follow.Content[0].(ai.TextContent); ok {
 			text = block.Text
 		}
 	}
-	paced := ai.NewFauxProvider(ai.FauxConfig{TokensPerSecond: 100, MinTokenSize: 1, MaxTokenSize: 1})
+	paced := ai.NewFauxProvider(ai.FauxConfig{TokensPerSecond: 100, TokenSize: &ai.FauxTokenSize{Min: new(1), Max: new(1)}})
 	paced.SetResponses([]ai.FauxResponseStep{ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText(strings.Repeat("abcdefghijklmnopqrstuvwxyz", 4))}, StopReason: "stop"})})
 	midContext, stop := context.WithCancel(context.Background())
 	defer stop()

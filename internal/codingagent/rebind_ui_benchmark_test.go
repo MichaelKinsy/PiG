@@ -16,8 +16,7 @@ func BenchmarkRuntimeInteractiveRebind(b *testing.B) {
 		b.Run(fmt.Sprint(entries), func(b *testing.B) {
 			icodingagent.ObserveRebindTitles(b, func(string) {})
 			f := newRebindFixture(b, func(*coding.Session, ...any) (any, error) { return nil, nil }, nil)
-			options := &extension.NewSessionOptions{Setup: func(value extension.SessionManager) error {
-				manager := value.(*coding.SessionManager)
+			options := &extension.NewSessionOptions{Setup: func(manager extension.SessionManager) error {
 				for range entries {
 					if _, err := manager.AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: "assistant", Content: []ai.AssistantContentBlock{ai.TextContent{Text: "restored answer"}}}}); err != nil {
 						return err

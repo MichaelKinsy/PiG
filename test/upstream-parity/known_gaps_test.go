@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package parity
@@ -6,10 +5,10 @@ package parity
 import (
 	"fmt"
 	"os"
-	"path/filepath"
-	"runtime"
 	"sync"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 
 	"github.com/MichaelKinsy/PiG/test/parity/knowngaps"
 )
@@ -24,13 +23,15 @@ var (
 	observedGaps  sync.Map // key -> struct{}
 )
 
-func repoRoot() string {
-	_, thisFile, _, _ := runtime.Caller(0)
-	return filepath.Join(filepath.Dir(thisFile), "..", "..")
-}
-
 func loadKnownGaps() (map[string]knowngaps.Entry, error) {
-	knownGapsOnce.Do(func() { knownGaps, knownGapsErr = knowngaps.Load(repoRoot()) })
+	knownGapsOnce.Do(func() {
+		root, err := testenv.ModuleRootPath()
+		if err != nil {
+			knownGapsErr = err
+			return
+		}
+		knownGaps, knownGapsErr = knowngaps.Load(root)
+	})
 	return knownGaps.Scope(knownGapScope), knownGapsErr
 }
 

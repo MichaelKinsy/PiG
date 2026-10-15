@@ -15,16 +15,10 @@ import (
 	"github.com/BurntSushi/toml"
 
 	"github.com/MichaelKinsy/PiG/coding"
+	"github.com/MichaelKinsy/PiG/test/parity/upstreampackages"
 )
 
-var trackedRoots = []string{
-	"packages/agent/src",
-	"packages/ai/src",
-	"packages/codemode/src",
-	"packages/coding-agent/src",
-	"packages/mcp/src",
-	"packages/tui/src",
-}
+var trackedRoots = upstreampackages.SourceRoots()
 
 type syncManifest struct {
 	From  string      `toml:"from"`
@@ -52,6 +46,7 @@ func main() {
 	generate := flag.Bool("generate", false, "print a pending manifest for the requested version range")
 	from := flag.String("from", "", "source version for -generate")
 	to := flag.String("to", "", "target version for -generate")
+	previous := flag.String("previous", "", "with -generate, keep each reviewed row of this earlier manifest whose file is byte-identical in its target mirror and in the new target mirror")
 	flag.Parse()
 
 	if *generate {
@@ -62,7 +57,17 @@ func main() {
 		if err != nil {
 			fail("compute delta: %v", err)
 		}
-		writePendingManifest(*from, *to, deltas)
+		var carried map[string]fileAudit
+		if *previous != "" {
+			var earlier syncManifest
+			if _, err := toml.DecodeFile(*previous, &earlier); err != nil {
+				fail("load %s: %v", *previous, err)
+			}
+			if carried, err = carryAudits(earlier, deltas, *upstreamRoot, *to); err != nil {
+				fail("carry reviewed rows: %v", err)
+			}
+		}
+		writePendingManifest(*from, *to, deltas, carried)
 		return
 	}
 
@@ -91,11 +96,11 @@ func main() {
 }
 
 func computeDelta(fromRoot, toRoot string) ([]sourceDelta, error) {
-	fromFiles, err := discoverSources(fromRoot)
+	fromFiles, err := discoverSources(fromRoot, true)
 	if err != nil {
 		return nil, err
 	}
-	toFiles, err := discoverSources(toRoot)
+	toFiles, err := discoverSources(toRoot, false)
 	if err != nil {
 		return nil, err
 	}
@@ -127,11 +132,15 @@ func computeDelta(fromRoot, toRoot string) ([]sourceDelta, error) {
 	return deltas, nil
 }
 
-func discoverSources(root string) (map[string][]byte, error) {
+// discoverSources reads every tracked source file under root. A package the earlier release did not ship has no files there, so a missing root is allowed only when allowMissing is set.
+func discoverSources(root string, allowMissing bool) (map[string][]byte, error) {
 	files := make(map[string][]byte)
 	for _, trackedRoot := range trackedRoots {
 		base := filepath.Join(root, filepath.FromSlash(trackedRoot))
 		if _, err := os.Stat(base); err != nil {
+			if allowMissing && os.IsNotExist(err) {
+				continue
+			}
 			return nil, fmt.Errorf("tracked root %s: %w", base, err)
 		}
 		err := filepath.WalkDir(base, func(path string, entry os.DirEntry, walkErr error) error {
@@ -256,10 +265,57 @@ func validateAudit(audit fileAudit, repoRoot string) []string {
 	return problems
 }
 
-func writePendingManifest(from, to string, deltas []sourceDelta) {
+// carryAudits returns the reviewed rows of an earlier manifest that still hold: the file is in the new
+// delta with the same change, and its source is byte-identical in the earlier manifest's target mirror
+// and in the new target mirror. A row that was pending, or whose file moved, is not carried.
+func carryAudits(earlier syncManifest, deltas []sourceDelta, upstreamRoot, newTo string) (map[string]fileAudit, error) {
+	if earlier.To == newTo {
+		return nil, fmt.Errorf("the earlier manifest already targets %s", newTo)
+	}
+	earlierFiles, err := discoverSources(filepath.Join(upstreamRoot, "v"+earlier.To), false)
+	if err != nil {
+		return nil, err
+	}
+	newFiles, err := discoverSources(filepath.Join(upstreamRoot, "v"+newTo), false)
+	if err != nil {
+		return nil, err
+	}
+	changes := make(map[string]string, len(deltas))
+	for _, delta := range deltas {
+		changes[delta.Path] = delta.Change
+	}
+	carried := make(map[string]fileAudit)
+	for _, audit := range earlier.Files {
+		if audit.Disposition == "pending" || changes[audit.Path] != audit.Change {
+			continue
+		}
+		before, inBefore := earlierFiles[audit.Path]
+		after, inAfter := newFiles[audit.Path]
+		if audit.Change == "removed" {
+			if !inBefore && !inAfter {
+				carried[audit.Path] = audit
+			}
+			continue
+		}
+		if inBefore && inAfter && bytes.Equal(before, after) {
+			carried[audit.Path] = audit
+		}
+	}
+	return carried, nil
+}
+
+func writePendingManifest(from, to string, deltas []sourceDelta, carried map[string]fileAudit) {
 	fmt.Printf("from = %q\nto = %q\n", from, to)
 	for _, delta := range deltas {
-		fmt.Printf("\n[[files]]\npath = %q\nchange = %q\ndisposition = %q\nevidence = []\nrationale = %q\n", delta.Path, delta.Change, "pending", "")
+		audit, ok := carried[delta.Path]
+		if !ok {
+			audit = fileAudit{Path: delta.Path, Change: delta.Change, Disposition: "pending", Evidence: []string{}}
+		}
+		quoted := make([]string, len(audit.Evidence))
+		for i, evidence := range audit.Evidence {
+			quoted[i] = fmt.Sprintf("%q", evidence)
+		}
+		fmt.Printf("\n[[files]]\npath = %q\nchange = %q\ndisposition = %q\nevidence = [%s]\nrationale = %q\n", delta.Path, delta.Change, audit.Disposition, strings.Join(quoted, ", "), audit.Rationale)
 	}
 }
 

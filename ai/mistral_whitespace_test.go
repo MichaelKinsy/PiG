@@ -1,3 +1,5 @@
+//go:build !pig_strip_mistral_conversations
+
 package ai
 
 import (
@@ -28,7 +30,7 @@ func TestMistralContentWhitespaceMatchesECMAScript(t *testing.T) {
 			}
 			var payload map[string]any
 			provider := NewMistralProvider(MistralConfig{APIKey: "fixture", Model: "model"})
-			stream, err := provider.Stream(t.Context(), NormalizeContext(Context{Messages: []Message{message}}), StreamOptions{Fetch: &http.Client{Transport: FetchFunction(func(request *http.Request) (*http.Response, error) {
+			stream, err := provider.Stream(invalidRequest(t), NormalizeContext(Context{Messages: []Message{message}}), StreamOptions{Fetch: &http.Client{Transport: FetchFunction(func(request *http.Request) (*http.Response, error) {
 				if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
 					t.Error(err)
 				}
@@ -61,7 +63,7 @@ func TestMistralSSEWhitespaceAndEmptyEvents(t *testing.T) {
 		{"trimStart for each data line", "data: {\"choices\":\ndata: \ufeff[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n", StopReasonStop},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			stream, err := mistralUpstreamProvider(t).Stream(t.Context(), mistralUpstreamContext(), StreamOptions{Fetch: &http.Client{Transport: FetchFunction(func(*http.Request) (*http.Response, error) {
+			stream, err := mistralUpstreamProvider(t).Stream(invalidRequest(t), mistralUpstreamContext(), StreamOptions{Fetch: &http.Client{Transport: FetchFunction(func(*http.Request) (*http.Response, error) {
 				return mistralUpstreamSSE(tc.body), nil
 			})}})
 			if err != nil {
@@ -82,7 +84,7 @@ func TestMistralHTTPErrorWhitespaceAndStatusText(t *testing.T) {
 		{"empty status", "", "", "Mistral API error (403): Request failed with status 403"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := mistralUpstreamProvider(t).Stream(t.Context(), mistralUpstreamContext(), StreamOptions{Fetch: &http.Client{Transport: FetchFunction(func(*http.Request) (*http.Response, error) {
+			_, err := mistralUpstreamProvider(t).Stream(invalidRequest(t), mistralUpstreamContext(), StreamOptions{Fetch: &http.Client{Transport: FetchFunction(func(*http.Request) (*http.Response, error) {
 				response := mistralUpstreamSSE(tc.body)
 				response.StatusCode, response.Status = 403, tc.status
 				return response, nil

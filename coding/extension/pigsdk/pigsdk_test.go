@@ -1,3 +1,5 @@
+//go:build !pig_strip_extension_sdk_go && !pig_strip_extension_sdk_rust && !pig_strip_extension_sdk_python
+
 package pigsdk
 
 import (
@@ -19,7 +21,7 @@ func TestSDKStagingWaitsForBuildLock(t *testing.T) {
 		"ensure all": EnsureSynced,
 		"ensure one": func(root string) error { return EnsureSyncedLang(root, "go") },
 		"force sync": func(root string) error {
-			_, err := Sync(root)
+			_, _, err := Sync(root, false)
 			return err
 		},
 	}
@@ -55,38 +57,52 @@ func TestSDKStagingWaitsForBuildLock(t *testing.T) {
 
 func TestSyncStagesAllLanguages(t *testing.T) {
 	root := t.TempDir()
-	counts, err := Sync(root)
+	counts, _, err := Sync(root, false)
 	if err != nil {
 		t.Fatalf("Sync: %v", err)
+	}
+	dirs := map[string]string{}
+	for _, lang := range []string{"go", "python", "rust"} {
+		dir, err := SDKDirFor(root, lang)
+		if err != nil {
+			t.Fatalf("SDKDirFor(%s): %v", lang, err)
+		}
+		dirs[lang] = dir
 	}
 	// Go: flat module files.
 	if counts["go"] != len(sdk.BundledFiles()) {
 		t.Fatalf("go staged %d files, want %d", counts["go"], len(sdk.BundledFiles()))
 	}
 	for _, name := range sdk.BundledFiles() {
-		if _, err := os.Stat(filepath.Join(root, "state", "pigsdk", "sdk", name)); err != nil {
+		if _, err := os.Stat(filepath.Join(dirs["go"], name)); err != nil {
 			t.Fatalf("missing staged go/%s: %v", name, err)
 		}
 	}
 	// Python: subdir package must be recreated on disk.
-	if _, err := os.Stat(filepath.Join(root, "state", "pigsdk", "sdk-py", "pig_sdk", "__init__.py")); err != nil {
+	if _, err := os.Stat(filepath.Join(dirs["python"], "pig_sdk", "__init__.py")); err != nil {
 		t.Fatalf("missing staged python pig_sdk/__init__.py: %v", err)
 	}
 	// Rust: crate root + src subdir.
 	for _, rel := range []string{"Cargo.toml", filepath.Join("src", "lib.rs")} {
-		if _, err := os.Stat(filepath.Join(root, "state", "pigsdk", "sdk-rs", rel)); err != nil {
+		if _, err := os.Stat(filepath.Join(dirs["rust"], rel)); err != nil {
 			t.Fatalf("missing staged rust %s: %v", rel, err)
 		}
 	}
-	for _, lang := range []string{"go", "python", "rust"} {
-		dir, err := SDKDirFor(root, lang)
-		if err != nil {
-			t.Fatalf("SDKDirFor(%s): %v", lang, err)
-		}
+	for lang, dir := range dirs {
 		if _, err := os.Stat(filepath.Join(dir, markerFile)); err != nil {
 			t.Fatalf("missing %s marker: %v", lang, err)
 		}
 	}
+}
+
+// goSDKDir is the directory this build stages its Go SDK in under root.
+func goSDKDir(t testing.TB, root string) string {
+	t.Helper()
+	dir, err := SDKDirFor(root, "go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return dir
 }
 
 func TestEnsureSyncedIsIdempotent(t *testing.T) {
@@ -94,7 +110,7 @@ func TestEnsureSyncedIsIdempotent(t *testing.T) {
 	if err := EnsureSynced(root); err != nil {
 		t.Fatalf("first EnsureSynced: %v", err)
 	}
-	marker := filepath.Join(SDKDir(root), markerFile)
+	marker := filepath.Join(goSDKDir(t, root), markerFile)
 	info, err := os.Stat(marker)
 	if err != nil {
 		t.Fatalf("stat marker: %v", err)
@@ -148,7 +164,7 @@ func TestEnsureSyncedStalePathAcquiresStageLock(t *testing.T) {
 	if err := os.Remove(lockPath); err != nil {
 		t.Fatalf("remove prior lock file: %v", err)
 	}
-	marker := filepath.Join(SDKDir(root), markerFile)
+	marker := filepath.Join(goSDKDir(t, root), markerFile)
 	if err := os.WriteFile(marker, []byte("stale\n"), 0o644); err != nil {
 		t.Fatalf("write stale marker: %v", err)
 	}
@@ -224,7 +240,7 @@ func TestStagedSDKBuildsOffline(t *testing.T) {
 	if err := EnsureSyncedLang(configRoot, "go"); err != nil {
 		t.Fatalf("EnsureSyncedLang go: %v", err)
 	}
-	staged := SDKDir(configRoot)
+	staged := goSDKDir(t, configRoot)
 
 	extDir := t.TempDir()
 	goMod := "module example.com/interview-ext\n\ngo 1.26\n\n" +

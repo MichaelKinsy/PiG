@@ -112,11 +112,13 @@ func surfaceArgs(lines []string, width int) map[string]any {
 	return args
 }
 
-// replaceSurface retires the renderer installed for method and installs next
-// (nil for none).
+// replaceSurface retires the renderer or view installed for method and
+// installs next (nil for none).
 func (e *Extension) replaceSurface(method string, next *surfaceRenderer) {
 	e.surfaceMu.Lock()
 	previous := e.surfaces[method]
+	previousView := e.viewSurfaces[method]
+	delete(e.viewSurfaces, method)
 	if next == nil {
 		delete(e.surfaces, method)
 	} else {
@@ -128,6 +130,9 @@ func (e *Extension) replaceSurface(method string, next *surfaceRenderer) {
 	e.surfaceMu.Unlock()
 	if previous != nil {
 		previous.stop()
+	}
+	if previousView != nil {
+		previousView.stop()
 	}
 }
 
@@ -142,6 +147,16 @@ func (e *Extension) refreshSurfaces() {
 	c := Context{ext: e}
 	for _, s := range renderers {
 		s.refresh(c)
+	}
+}
+
+// refreshFooter renders the footer renderer again; the host's footer data it reads changed.
+func (e *Extension) refreshFooter() {
+	e.surfaceMu.Lock()
+	footer := e.surfaces[footerMethod]
+	e.surfaceMu.Unlock()
+	if footer != nil {
+		footer.refresh(Context{ext: e})
 	}
 }
 

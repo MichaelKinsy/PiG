@@ -106,6 +106,12 @@ func TestTotalTokensUpstream(t *testing.T) {
 					t.Error(err)
 					return
 				}
+				if r.Header.Get("Content-Encoding") == "zstd" {
+					if body, err = decodeZstdFrameForTest(body); err != nil {
+						t.Error(err)
+						return
+					}
+				}
 				question := "What is 2 + 2? Reply with just the number."
 				answer := "4"
 				if call == 2 {

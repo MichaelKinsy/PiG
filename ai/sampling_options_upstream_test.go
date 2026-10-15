@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"reflect"
@@ -9,6 +10,11 @@ import (
 
 // captureSamplingPayload mirrors the upstream onPayload exception: no request is sent.
 func captureSamplingPayload(t *testing.T, provider Provider, transcript TranscriptContext, options StreamOptions) map[string]any {
+	t.Helper()
+	return captureSamplingPayloadContext(t, t.Context(), provider, transcript, options)
+}
+
+func captureSamplingPayloadContext(t *testing.T, ctx context.Context, provider Provider, transcript TranscriptContext, options StreamOptions) map[string]any {
 	t.Helper()
 	var captured map[string]any
 	capturedError := errors.New("payload captured")
@@ -22,7 +28,7 @@ func captureSamplingPayload(t *testing.T, provider Provider, transcript Transcri
 		}
 		return nil, capturedError
 	}
-	stream, err := provider.Stream(t.Context(), transcript, options)
+	stream, err := provider.Stream(ctx, transcript, options)
 	if err == nil && stream != nil {
 		_ = stream.Result()
 	} else if !errors.Is(err, capturedError) {
@@ -163,7 +169,7 @@ func TestSamplingParamsByThinkingLevelStreamSimpleUpstream(t *testing.T) {
 		model := samplingThinkingModel(APIOpenAICompletions, map[string]any{"temperature": 1, "top_p": 0.95}, true,
 			ThinkingLevelMap{ThinkingLow: nil, ThinkingMedium: nil},
 			SamplingParamsByThinkingLevel{ThinkingHigh: {"temperature": 0.8, "top_k": 64}})
-		payload := captureSimpleSamplingPayload(t, model, StreamOptions{Thinking: ThinkingLow})
+		payload := captureSimpleSamplingPayload(t, model, StreamOptions{Thinking: ThinkingLevelLow})
 		assertSamplingPayload(t, payload, map[string]any{"temperature": 0.8, "top_p": 0.95, "top_k": float64(64)})
 	})
 	// :153 "applies off sampling params when reasoning is disabled"
@@ -177,7 +183,7 @@ func TestSamplingParamsByThinkingLevelStreamSimpleUpstream(t *testing.T) {
 	t.Run("merges stream-option keys over thinking-level keys", func(t *testing.T) {
 		// upstream: packages/ai/test/sampling-options.test.ts:164
 		model := samplingThinkingModel(APIOpenAICompletions, nil, true, nil, SamplingParamsByThinkingLevel{ThinkingLow: {"temperature": 0.6, "top_p": 0.95}})
-		payload := captureSimpleSamplingPayload(t, model, StreamOptions{Thinking: ThinkingLow, SamplingParams: map[string]any{"top_p": 0.5}})
+		payload := captureSimpleSamplingPayload(t, model, StreamOptions{Thinking: ThinkingLevelLow, SamplingParams: map[string]any{"top_p": 0.5}})
 		assertSamplingPayload(t, payload, map[string]any{"temperature": 0.6, "top_p": 0.5})
 	})
 }

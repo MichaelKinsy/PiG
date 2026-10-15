@@ -1,0 +1,43 @@
+# Behavior family: extensions-runtime
+# Surface: ExtensionRunner.emitBeforeAgentStart's renderCurrentSystemPrompt.
+#
+# Upstream (Pi 1.2.0 runner.ts:1426-1477): every before_agent_start handler
+# shares one options object, and both event.systemPrompt and
+# ctx.getSystemPrompt() render the prompt from it when read. An edit to
+# event.systemPromptOptions is visible to the same handler at once and to the
+# next handler; a systemPrompt result sets forceSystemPrompt, which a later
+# handler's prompt then is exactly. testdata/ext/current-system-prompt.mjs
+# records what three handlers read and replaces the assistant's reply with it.
+
+name = "82-before-agent-start-current-system-prompt"
+description = "before_agent_start handlers read the system prompt rendered from the current shared options"
+covers = [
+  "packages/coding-agent/src/core/extensions/runner.ts",
+  "packages/coding-agent/src/core/system-prompt.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions", "--system-prompt", "BASE PROMPT", "--no-context-files", "--no-skills"]
+pi_args = ["--system-prompt", "BASE PROMPT", "--no-context-files", "--no-skills"]
+pig_extensions = ["testdata/ext/current-system-prompt.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/current-system-prompt.mjs"]
+
+[print]
+prompt = "What is 20+22?"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = [
+  "first event=plain+base ctx=plain+base",
+  "first after-edit event=appended+base ctx=appended+base",
+  "second event=appended+base ctx=appended+base",
+  'third event="FORCED-BY-SECOND" ctx="FORCED-BY-SECOND"',
+  'third force="FORCED-BY-SECOND"',
+]
+runs = 3

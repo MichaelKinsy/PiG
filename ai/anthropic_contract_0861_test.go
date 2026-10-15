@@ -23,43 +23,43 @@ func runAnthropicEvents(t *testing.T, events string) (*AssistantMessage, []Assis
 
 func TestAnthropicStreamPreservesBlocksUsageAndMetadata(t *testing.T) {
 	events := `event: message_start
-data: {"message":{"id":"message-1","usage":{"input_tokens":10,"output_tokens":0,"cache_read_input_tokens":2,"cache_creation_input_tokens":3,"cache_creation":{"ephemeral_1h_input_tokens":1},"output_tokens_details":{"thinking_tokens":4}}}}
+data: {"type":"message_start","message":{"id":"message-1","usage":{"input_tokens":10,"output_tokens":0,"cache_read_input_tokens":2,"cache_creation_input_tokens":3,"cache_creation":{"ephemeral_1h_input_tokens":1},"output_tokens_details":{"thinking_tokens":4}}}}
 
 event: content_block_start
-data: {"index":0,"content_block":{"type":"thinking"}}
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking"}}
 
 event: content_block_delta
-data: {"index":0,"delta":{"type":"thinking_delta","thinking":"reason"}}
+data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"reason"}}
 
 event: content_block_delta
-data: {"index":0,"delta":{"type":"signature_delta","signature":"signature"}}
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"signature"}}
 
 event: content_block_stop
-data: {"index":0}
+data: {"type":"content_block_stop","index":0}
 
 event: content_block_start
-data: {"index":1,"content_block":{"type":"text"}}
+data: {"type":"content_block_start","index":1,"content_block":{"type":"text"}}
 
 event: content_block_delta
-data: {"index":1,"delta":{"type":"text_delta","text":"answer"}}
+data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"answer"}}
 
 event: content_block_stop
-data: {"index":1}
+data: {"type":"content_block_stop","index":1}
 
 event: content_block_start
-data: {"index":2,"content_block":{"type":"tool_use","id":"call-1","name":"read"}}
+data: {"type":"content_block_start","index":2,"content_block":{"type":"tool_use","id":"call-1","name":"read"}}
 
 event: content_block_delta
-data: {"index":2,"delta":{"type":"input_json_delta","partial_json":"{\"path\":\"main.go\"}"}}
+data: {"type":"content_block_delta","index":2,"delta":{"type":"input_json_delta","partial_json":"{\"path\":\"main.go\"}"}}
 
 event: content_block_stop
-data: {"index":2}
+data: {"type":"content_block_stop","index":2}
 
 event: message_delta
-data: {"delta":{"stop_reason":"tool_use"},"usage":{"output_tokens":5}}
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use"},"usage":{"output_tokens":5}}
 
 event: message_stop
-data: {}
+data: {"type":"message_stop"}
 
 `
 	result, eventsOut := runAnthropicEvents(t, events)
@@ -74,7 +74,8 @@ data: {}
 	if result.ResponseID != "message-1" || result.RawStopReason != "tool_use" || result.StopReason != StopReasonToolUse {
 		t.Fatalf("metadata = response %q raw %q stop %q", result.ResponseID, result.RawStopReason, result.StopReason)
 	}
-	if result.Usage.Input != 10 || result.Usage.Output != 5 || result.Usage.CacheRead != 2 || result.Usage.CacheWrite != 3 || result.Usage.CacheWrite1h == nil || *result.Usage.CacheWrite1h != 1 || result.Usage.Reasoning == nil || *result.Usage.Reasoning != 4 || result.Usage.TotalTokens != 20 {
+	if result.Usage.Input != 10 || result.Usage.Output != 5 || result.Usage.CacheRead != 2 || result.Usage.CacheWrite != 3 || result.Usage.CacheWrite1h == nil || *result.Usage.CacheWrite1h != 1 || result.Usage.Reasoning != nil || result.Usage.TotalTokens != 20 {
+		// message_start's output_tokens_details is ignored: Pi sets reasoning only from message_delta (anthropic-messages.ts:680-684, :849-851).
 		t.Fatalf("usage = %#v", result.Usage)
 	}
 	wantTypes := []AssistantEventType{
@@ -111,11 +112,11 @@ func TestAnthropicStopReasonMapping(t *testing.T) {
 	for _, test := range cases {
 		t.Run(test.reason, func(t *testing.T) {
 			events := "event: message_start\n" +
-				"data: {\"message\":{\"id\":\"message-1\",\"usage\":{\"input_tokens\":7}}}\n\n" +
+				"data: {\"type\":\"message_start\",\"message\":{\"id\":\"message-1\",\"usage\":{\"input_tokens\":7}}}\n\n" +
 				"event: message_delta\n" +
-				fmt.Sprintf("data: {\"delta\":{\"stop_reason\":%q},\"usage\":{\"output_tokens\":2}}\n\n", test.reason) +
+				fmt.Sprintf("data: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":%q},\"usage\":{\"output_tokens\":2}}\n\n", test.reason) +
 				"event: message_stop\n" +
-				"data: {}\n\n"
+				"data: {\"type\":\"message_stop\"}\n\n"
 			result, _ := runAnthropicEvents(t, events)
 			if result.StopReason != test.want || result.RawStopReason != test.reason || result.ErrorMessage != test.wantMessage {
 				t.Fatalf("result = reason %q raw %q error %q; want %q %q %q", result.StopReason, result.RawStopReason, result.ErrorMessage, test.want, test.reason, test.wantMessage)
@@ -135,9 +136,9 @@ func TestAnthropicStopReasonMapping(t *testing.T) {
 func TestAnthropicStreamWithoutStopReasonTerminatesWithError(t *testing.T) {
 	cases := map[string]string{
 		"message_stop without message_delta": "event: message_start\n" +
-			"data: {\"message\":{\"id\":\"message-1\",\"usage\":{}}}\n\n" +
+			"data: {\"type\":\"message_start\",\"message\":{\"id\":\"message-1\",\"usage\":{}}}\n\n" +
 			"event: message_stop\n" +
-			"data: {}\n\n",
+			"data: {\"type\":\"message_stop\"}\n\n",
 		"empty stream": "",
 	}
 	for name, events := range cases {
@@ -155,13 +156,13 @@ func TestAnthropicStreamWithoutStopReasonTerminatesWithError(t *testing.T) {
 
 func TestAnthropicStreamWithoutMessageStopTerminatesWithError(t *testing.T) {
 	events := `event: message_start
-data: {"message":{"id":"message-1","usage":{}}}
+data: {"type":"message_start","message":{"id":"message-1","usage":{}}}
 
 event: content_block_start
-data: {"index":0,"content_block":{"type":"text"}}
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text"}}
 
 event: content_block_delta
-data: {"index":0,"delta":{"type":"text_delta","text":"partial"}}
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"partial"}}
 
 `
 	result, got := runAnthropicEvents(t, events)

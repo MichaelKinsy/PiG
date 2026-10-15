@@ -2,6 +2,7 @@ package codingagent
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"sync"
 
@@ -30,11 +31,14 @@ func (m *InteractiveMode) addRemoteTerminalInputHandler(_ string, handler extens
 
 // inputChunk is one parsed terminal sequence routed to the owner loop. The
 // loop settles ticket once the chunk's terminal-input listeners are done.
-// readDone closes after the decoder processes the entire terminal read, including protocol-only suffixes. The owner loop waits for that boundary before painting, without letting later negotiation overtake earlier input listeners.
+// more reports that the rest of the chunk's terminal read follows on the same
+// channel, ending at a chunk without more (one with no data when the read
+// ended in protocol input). The owner loop handles the whole read before it
+// paints, as upstream's StdinBuffer emits one read's sequences synchronously.
 type inputChunk struct {
-	data     []byte
-	ticket   *inputTicket
-	readDone <-chan struct{}
+	data   []byte
+	ticket *inputTicket
+	more   bool
 }
 
 type inputTicketState uint8
@@ -48,20 +52,23 @@ const (
 	inputTicketSettled
 )
 
-// inputTicket follows one chunk from the input pump to the owner loop until its
-// terminal-input listeners settle. The pump routes nothing after the chunk
-// until then, so listeners see chunks, and the owner loop handles them, in
-// input order, as upstream's synchronous listeners do. A nil ticket belongs to
-// a chunk no pump is waiting on.
+// inputTicket follows one chunk from the input router to the owner loop until
+// its terminal-input listeners settle. The router routes nothing after the
+// chunk until then, so listeners see chunks, and the owner loop handles them,
+// in input order, as upstream's synchronous listeners do. A nil ticket belongs
+// to a chunk no router is waiting on.
 type inputTicket struct {
 	mu    sync.Mutex
 	state inputTicketState
-	// done closes when the chunk settles.
+	// done receives one token when the chunk settles. A router shares one
+	// buffered channel across its tickets: it takes each token before it
+	// routes the next chunk, so the buffer always has room.
 	done chan struct{}
 }
 
+// newInputTicket returns a ticket with a channel of its own.
 func newInputTicket() *inputTicket {
-	return &inputTicket{done: make(chan struct{})}
+	return &inputTicket{done: make(chan struct{}, 1)}
 }
 
 // await records that the chunk waits on a remote listener's verdict.
@@ -112,13 +119,14 @@ func (t *inputTicket) settle() {
 		return
 	}
 	t.state = inputTicketSettled
-	close(t.done)
+	t.done <- struct{}{}
 }
 
 // passTerminalInput runs data through the extension shortcut and the
 // terminal-input listeners, then gives handle what they pass on. It returns
 // handle's error when the pass ends without waiting for a remote verdict; a
 // pass that resumes after one reports handle's error to the input loop.
+// pig divergence (D105): the driver owns the terminal reader; extension input listeners run asynchronously around the renderer's listener chain.
 func (m *InteractiveMode) passTerminalInput(ctx context.Context, data string, ticket *inputTicket, handle func(context.Context, string) error) error {
 	// Modal input also passes here without dispatchInputChunk. Terminal replies
 	// precede every listener and focused component, as in tui.ts handleTerminalInput.
@@ -239,9 +247,10 @@ func (p *terminalInputPass) await(l terminalInputListener) {
 }
 
 // failInputLoop ends the input loop with err, which a keystroke handled after
-// a remote verdict returns there instead of to the loop directly.
+// a remote verdict returns there instead of to the loop directly. A phase that
+// ended because the loop already shut down is not a failure.
 func (m *InteractiveMode) failInputLoop(err error) {
-	if err != nil && m.inputLoopErr == nil {
+	if err != nil && !errors.Is(err, errInteractiveShutdown) && m.inputLoopErr == nil {
 		m.inputLoopErr = err
 	}
 }

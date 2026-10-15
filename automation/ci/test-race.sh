@@ -19,12 +19,12 @@ set -euo pipefail
 pkg=./internal/codingagent
 
 echo "== race regressions (runOnMain + off-loop UI routing) =="
-go test -race -count=1 -run \
+go test -race ${CI:+-count=1} -run \
   'TestRunOnMain_DeterministicNoLeak|TestRunOnMain_DropsOnShutdown|TestConcurrent_StatusLineInvalidate_NoRace|TestConcurrent_SIGWINCHViaPostUITask_NoRace' \
   "$pkg"
 
 echo "== goroutineleak profile =="
-leak_output="$(go test -count=1 -v -run '^TestRunOnMain_NoGoroutineLeakProfile$' "$pkg")"
+leak_output="$(go test ${CI:+-count=1} -v -run '^TestRunOnMain_NoGoroutineLeakProfile$' "$pkg")"
 printf '%s\n' "$leak_output"
 grep -F -- '--- PASS: TestRunOnMain_NoGoroutineLeakProfile' <<<"$leak_output" >/dev/null
 

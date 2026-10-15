@@ -9,7 +9,7 @@ import (
 // Ports pi-tui's stack.ts, h-stack.ts, and v-stack.ts: flexbox-style horizontal
 // and vertical stacks plus the pure size allocator the layout engine consumes.
 // Names and structure mirror upstream 1:1. Forced Go mechanics: the
-// StackChild = Component | StackEntry input union collapses to one struct
+// StackChild = Component | StackEntry input union collapses to StackEntry
 // (a bare component is an entry with zero-value options, behaviorally identical),
 // and the "grow" | "shrink" mode literal stays a string parameter.
 
@@ -30,13 +30,16 @@ type StackEntryOptions struct {
 	Visible func(viewport LayoutViewport) bool
 }
 
-// StackChild is one child passed to a stack constructor. A bare component is
-// StackChild{Component: c} with zero-value options (upstream's Component arm of
-// the Component | StackEntry union); a configured child sets the options too.
-type StackChild struct {
+// StackEntry is a component with its flexbox options (stack.ts:13). A bare component is
+// StackEntry{Component: c} with zero-value options.
+type StackEntry struct {
 	Component Component
 	StackEntryOptions
 }
+
+// StackChild is one child passed to a stack constructor (stack.ts:17 Component | StackEntry). Go has no union of a
+// component and a struct, so the Component arm is a StackEntry without options.
+type StackChild = StackEntry
 
 // StackOptions configure a stack. Gap nil defaults to 0; Align "" defaults to
 // "stretch".
@@ -263,10 +266,10 @@ func allocateStackSizes(entries []StackLayoutEntry, intrinsicSizes []int, availa
 	return sizes
 }
 
-// compositeTuiLine ports upstream compositeTuiLine (tui.ts): overlay a child's
+// CompositeTuiLine ports upstream compositeTuiLine (tui.ts): overlay a child's
 // line onto a base line at startCol, padding to keep column alignment and
 // clipping to totalWidth. Image base lines pass through untouched.
-func compositeTuiLine(baseLine, overlayLine string, startCol, overlayWidth, totalWidth int) string {
+func CompositeTuiLine(baseLine, overlayLine string, startCol, overlayWidth, totalWidth int) string {
 	if IsImageLine(baseLine) {
 		return baseLine
 	}
@@ -345,7 +348,7 @@ func (h *HStack) Render(width int) []string {
 			if target < 0 || target >= len(result) {
 				continue
 			}
-			result[target] = compositeTuiLine(result[target], lines[row], x, childWidth, safeWidth)
+			result[target] = CompositeTuiLine(result[target], lines[row], x, childWidth, safeWidth)
 		}
 		x += childWidth + h.gap
 	}

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -118,6 +119,7 @@ func messageRole(entry map[string]any) string {
 	return role
 }
 
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:251 (RpcClient.getState).
 func TestRpcModeShouldGetState(t *testing.T) {
 	f := newFauxFixture(t)
 	state, err := f.client.GetState()
@@ -157,6 +159,9 @@ func TestRpcModeShouldSaveMessagesToSessionFile(t *testing.T) {
 	}
 }
 
+// mutation-checked: zeroing the results of RpcClient.Compact fails it
+// Pi: packages/coding-agent/src/modes/rpc/rpc-client.ts:324 (compact)
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:324 (RpcClient.compact).
 func TestRpcModeShouldHandleManualCompaction(t *testing.T) {
 	f := newFauxFixture(t)
 	f.promptAndWait(t, "reply with exactly: hello")
@@ -173,6 +178,9 @@ func TestRpcModeShouldHandleManualCompaction(t *testing.T) {
 	}
 }
 
+// mutation-checked: zeroing the results of RpcClient.Bash fails it
+// Pi: packages/coding-agent/src/modes/rpc/rpc-client.ts:353 (bash)
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:353 (RpcClient.bash).
 func TestRpcModeShouldExecuteBashCommand(t *testing.T) {
 	f := newFauxFixture(t)
 	result, err := f.client.Bash("echo hello")
@@ -184,6 +192,7 @@ func TestRpcModeShouldExecuteBashCommand(t *testing.T) {
 	}
 }
 
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:353 (RpcClient.bash).
 func TestRpcModeShouldAddBashOutputToContext(t *testing.T) {
 	f := newFauxFixture(t)
 	f.promptAndWait(t, "reply with exactly: hi")
@@ -209,6 +218,9 @@ func TestRpcModeShouldAddBashOutputToContext(t *testing.T) {
 // Upstream asks a live model to repeat the bash output. test-faux cannot read
 // its context back, so this asserts the context the model received instead:
 // the bashExecution message precedes the prompt in the agent messages.
+// mutation-checked: zeroing the results of RpcClient.GetMessages fails it
+// Pi: packages/coding-agent/src/modes/rpc/rpc-client.ts:450 (getMessages)
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:353 (RpcClient.bash); packages/coding-agent/src/modes/rpc/rpc-client.ts:450 (RpcClient.getMessages).
 func TestRpcModeShouldIncludeBashOutputInLLMContext(t *testing.T) {
 	f := newFauxFixture(t)
 	unique := "unique-" + time.Now().Format("150405.000000000")
@@ -230,6 +242,7 @@ func TestRpcModeShouldIncludeBashOutputInLLMContext(t *testing.T) {
 	}
 }
 
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:251 (RpcClient.getState); packages/coding-agent/src/modes/rpc/rpc-client.ts:287 (RpcClient.setThinkingLevel).
 func TestRpcModeShouldSetAndGetThinkingLevel(t *testing.T) {
 	f := newReasoningFixture(t)
 	if err := f.client.SetThinkingLevel("high"); err != nil {
@@ -244,6 +257,9 @@ func TestRpcModeShouldSetAndGetThinkingLevel(t *testing.T) {
 	}
 }
 
+// mutation-checked: zeroing the results of RpcClient.CycleThinkingLevel fails it
+// Pi: packages/coding-agent/src/modes/rpc/rpc-client.ts:294 (cycleThinkingLevel)
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:251 (RpcClient.getState); packages/coding-agent/src/modes/rpc/rpc-client.ts:294 (RpcClient.cycleThinkingLevel).
 func TestRpcModeShouldCycleThinkingLevel(t *testing.T) {
 	f := newReasoningFixture(t)
 	initial, err := f.client.GetState()
@@ -260,6 +276,9 @@ func TestRpcModeShouldCycleThinkingLevel(t *testing.T) {
 	}
 }
 
+// mutation-checked: zeroing the results of RpcClient.GetAvailableThinkingLevels fails it
+// Pi: packages/coding-agent/src/modes/rpc/rpc-client.ts:302 (getAvailableThinkingLevels)
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:251 (RpcClient.getState); packages/coding-agent/src/modes/rpc/rpc-client.ts:294 (RpcClient.cycleThinkingLevel); packages/coding-agent/src/modes/rpc/rpc-client.ts:302 (RpcClient.getAvailableThinkingLevels).
 func TestRpcModeShouldGetAvailableThinkingLevels(t *testing.T) {
 	f := newReasoningFixture(t)
 	levels, err := f.client.GetAvailableThinkingLevels()
@@ -289,6 +308,9 @@ func TestRpcModeShouldGetAvailableThinkingLevels(t *testing.T) {
 	}
 }
 
+// mutation-checked: zeroing the results of RpcClient.GetAvailableModels fails it
+// Pi: packages/coding-agent/src/modes/rpc/rpc-client.ts:279 (getAvailableModels)
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:279 (RpcClient.getAvailableModels).
 func TestRpcModeShouldGetAvailableModels(t *testing.T) {
 	f := newFauxFixture(t)
 	models, err := f.client.GetAvailableModels()
@@ -302,6 +324,9 @@ func TestRpcModeShouldGetAvailableModels(t *testing.T) {
 	}
 }
 
+// mutation-checked: zeroing the results of RpcClient.GetSessionStats fails it
+// Pi: packages/coding-agent/src/modes/rpc/rpc-client.ts:368 (getSessionStats)
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:368 (RpcClient.getSessionStats).
 func TestRpcModeShouldGetSessionStats(t *testing.T) {
 	f := newFauxFixture(t)
 	f.promptAndWait(t, "reply with exactly: hello")
@@ -314,6 +339,7 @@ func TestRpcModeShouldGetSessionStats(t *testing.T) {
 	}
 }
 
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:243 (RpcClient.newSession); packages/coding-agent/src/modes/rpc/rpc-client.ts:251 (RpcClient.getState).
 func TestRpcModeShouldCreateNewSession(t *testing.T) {
 	f := newFauxFixture(t)
 	fresh, err := f.client.GetState()
@@ -334,6 +360,9 @@ func TestRpcModeShouldCreateNewSession(t *testing.T) {
 	}
 }
 
+// mutation-checked: zeroing the results of RpcClient.ExportHtml fails it
+// Pi: packages/coding-agent/src/modes/rpc/rpc-client.ts:376 (exportHtml)
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:376 (RpcClient.exportHtml).
 func TestRpcModeShouldExportToHTML(t *testing.T) {
 	f := newFauxFixture(t)
 	f.promptAndWait(t, "reply with exactly: hello")
@@ -353,6 +382,9 @@ func TestRpcModeShouldExportToHTML(t *testing.T) {
 	}
 }
 
+// mutation-checked: zeroing the results of RpcClient.GetLastAssistantText fails it
+// Pi: packages/coding-agent/src/modes/rpc/rpc-client.ts:435 (getLastAssistantText)
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:435 (RpcClient.getLastAssistantText).
 func TestRpcModeShouldGetLastAssistantText(t *testing.T) {
 	f := newFauxFixture(t)
 	text, err := f.client.GetLastAssistantText()
@@ -366,6 +398,9 @@ func TestRpcModeShouldGetLastAssistantText(t *testing.T) {
 	}
 }
 
+// mutation-checked: zeroing the results of RpcClient.GetEntries fails it
+// Pi: packages/coding-agent/src/modes/rpc/rpc-client.ts:419 (getEntries)
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:419 (RpcClient.getEntries).
 func TestRpcModeShouldGetSessionEntriesWithSinceCursor(t *testing.T) {
 	f := newFauxFixture(t)
 	f.promptAndWait(t, "reply with exactly: ok")
@@ -402,6 +437,9 @@ func entryIDs(entries []SessionEntry) []string {
 	return ids
 }
 
+// mutation-checked: zeroing the results of RpcClient.GetTree fails it
+// Pi: packages/coding-agent/src/modes/rpc/rpc-client.ts:427 (getTree)
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:419 (RpcClient.getEntries); packages/coding-agent/src/modes/rpc/rpc-client.ts:427 (RpcClient.getTree).
 func TestRpcModeShouldGetSessionTree(t *testing.T) {
 	f := newFauxFixture(t)
 	f.promptAndWait(t, "reply with exactly: ok")
@@ -430,6 +468,7 @@ func TestRpcModeShouldGetSessionTree(t *testing.T) {
 	}
 }
 
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:324 (RpcClient.compact); packages/coding-agent/src/modes/rpc/rpc-client.ts:419 (RpcClient.getEntries).
 func TestRpcModeShouldRetainPreCompactionEntriesInGetEntries(t *testing.T) {
 	f := newFauxFixture(t)
 	f.promptAndWait(t, "reply with exactly: ok")
@@ -452,6 +491,7 @@ func TestRpcModeShouldRetainPreCompactionEntriesInGetEntries(t *testing.T) {
 	}
 }
 
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:251 (RpcClient.getState); packages/coding-agent/src/modes/rpc/rpc-client.ts:443 (RpcClient.setSessionName).
 func TestRpcModeShouldSetAndGetSessionName(t *testing.T) {
 	f := newFauxFixture(t)
 	state, err := f.client.GetState()
@@ -469,5 +509,131 @@ func TestRpcModeShouldSetAndGetSessionName(t *testing.T) {
 	infos := entriesOfType(f.sessionFileEntries(t), "session_info")
 	if len(infos) != 1 || infos[0]["name"] != "my-test-session" {
 		t.Fatalf("session_info entries = %v", infos)
+	}
+}
+
+// rpc-client.ts ModelInfo.reasoning is the model's reasoning capability.
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:279 (RpcClient.getAvailableModels).
+func TestRpcModeGetAvailableModelsReportsReasoning(t *testing.T) {
+	f := newReasoningFixture(t)
+	models, err := f.client.GetAvailableModels()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var found *ModelInfo
+	for i := range models {
+		if models[i].Provider == "fixture" && models[i].ID == "reasoner" {
+			found = &models[i]
+		}
+	}
+	if found == nil || !found.Reasoning {
+		t.Fatalf("models = %+v, want fixture/reasoner with reasoning true", models)
+	}
+	faux := newFauxFixture(t)
+	fauxModels, err := faux.client.GetAvailableModels()
+	if err != nil || len(fauxModels) == 0 || fauxModels[0].Reasoning {
+		t.Fatalf("faux models = %+v, %v; want reasoning false", fauxModels, err)
+	}
+}
+
+// rpc-client.ts RpcEventListener receives every event the agent emits, in order, until it is detached.
+// mutation-checked: zeroing the results of RpcClient.OnEvent fails it
+// Pi: packages/coding-agent/src/modes/rpc/rpc-client.ts:172 (onEvent)
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:172 (RpcClient.onEvent); packages/coding-agent/src/modes/rpc/rpc-client.ts:403 (RpcClient.clone).
+func TestRpcEventListenerReceivesPromptEventsInOrderUntilDetached(t *testing.T) {
+	f := newFauxFixture(t)
+	var mu sync.Mutex
+	var seen []string
+	var listener RpcEventListener = func(event JsonAgentSessionEvent) {
+		mu.Lock()
+		defer mu.Unlock()
+		seen = append(seen, event.Type)
+	}
+	detach := f.client.OnEvent(listener)
+	waited := f.promptAndWait(t, "reply with exactly: hello")
+	detach()
+	snapshot := func() []string {
+		mu.Lock()
+		defer mu.Unlock()
+		return slices.Clone(seen)
+	}
+	var want []string
+	for _, event := range waited {
+		want = append(want, event.Type)
+	}
+	first := snapshot()
+	if len(want) == 0 || !slices.Equal(first, want) {
+		t.Fatalf("listener saw %v, promptAndWait collected %v", first, want)
+	}
+	f.promptAndWait(t, "reply with exactly: again")
+	if after := snapshot(); !slices.Equal(after, first) {
+		t.Fatalf("listener kept receiving after detach: %v then %v", first, after)
+	}
+}
+
+// rpc-client.ts:525-538 hands the listener `JSON.parse(line) as JsonAgentSessionEvent`: the record itself. Every event's Raw is the complete
+// record whose "type" is Type, and a message_update is in json-event.ts's shape: the message's usage, and an assistantMessageEvent without the
+// cumulative `partial` snapshot (toJsonEvent, json-event.ts:55-69).
+func TestRpcEventListenerRawIsTheCompleteJSONRecord(t *testing.T) {
+	f := newFauxFixture(t)
+	events := f.promptAndWait(t, "reply with exactly: hello")
+	var updates int
+	for _, event := range events {
+		var record map[string]json.RawMessage
+		if err := json.Unmarshal(event.Raw, &record); err != nil {
+			t.Fatalf("%s Raw = %q is not a JSON record: %v", event.Type, event.Raw, err)
+		}
+		if got := string(record["type"]); got != `"`+event.Type+`"` {
+			t.Fatalf("Raw type %s != Type %q", got, event.Type)
+		}
+		if event.Type != "message_update" {
+			continue
+		}
+		updates++
+		var update struct {
+			Usage                 *json.RawMessage `json:"usage"`
+			AssistantMessageEvent map[string]any   `json:"assistantMessageEvent"`
+		}
+		if err := json.Unmarshal(event.Raw, &update); err != nil {
+			t.Fatal(err)
+		}
+		if _, hasPartial := update.AssistantMessageEvent["partial"]; update.Usage == nil || update.AssistantMessageEvent["type"] == nil || hasPartial {
+			t.Fatalf("message_update Raw = %s, want usage and an assistantMessageEvent without partial", event.Raw)
+		}
+	}
+	if updates == 0 {
+		t.Fatalf("no message_update among %d events", len(events))
+	}
+}
+
+// rpc-client.ts ModelInfo carries the model's provider, id, contextWindow and reasoning flag as get_available_models
+// reports them (rpc-mode.ts:488-491 returns getAvailableSnapshot()). models.json supplies each value; a model that omits
+// contextWindow gets Pi's 128000 default (model-registry.ts), and one that omits reasoning reports false.
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:279 (RpcClient.getAvailableModels).
+func TestRpcModeGetAvailableModelsReportsProviderIDContextWindowAndReasoning(t *testing.T) {
+	models := `{"providers":{"fixture":{"baseUrl":"http://127.0.0.1:1/v1","apiKey":"unused","api":"openai-completions",` +
+		`"models":[{"id":"small","name":"Small","contextWindow":65536},{"id":"thinker","name":"Thinker","reasoning":true,"contextWindow":200000},{"id":"plain","name":"Plain"}]}}}`
+	f := newRpcModeFixture(t, "fixture", "small", map[string]string{"models.json": models})
+	got, err := f.client.GetAvailableModels()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]ModelInfo{
+		"small":   {Provider: "fixture", ID: "small", ContextWindow: 65536, Reasoning: false},
+		"thinker": {Provider: "fixture", ID: "thinker", ContextWindow: 200000, Reasoning: true},
+		"plain":   {Provider: "fixture", ID: "plain", ContextWindow: 128000, Reasoning: false},
+	}
+	seen := 0
+	for _, info := range got {
+		if info.Provider != "fixture" {
+			continue
+		}
+		seen++
+		if info != want[info.ID] {
+			t.Fatalf("model %s = %+v, want %+v", info.ID, info, want[info.ID])
+		}
+	}
+	if seen != len(want) {
+		t.Fatalf("fixture models = %d, want %d in %+v", seen, len(want), got)
 	}
 }

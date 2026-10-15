@@ -27,6 +27,7 @@ import (
 	"github.com/BurntSushi/toml"
 
 	"github.com/MichaelKinsy/PiG/coding"
+	"github.com/MichaelKinsy/PiG/test/parity/upstreampackages"
 )
 
 type inventory struct {
@@ -71,17 +72,24 @@ var classOrder = []classification{
 // packageSourceRoots maps each upstream npm package (as it appears in the
 // inventory's package field) to its upstream monorepo source root, which is the
 // path space PORT_MAP keys on. These are stable for a pinned upstream version.
-var packageSourceRoots = map[string]string{
-	"@earendil-works/pi-agent-core":   "packages/agent/src",
-	"@earendil-works/pi-ai":           "packages/ai/src",
-	"@earendil-works/pi-coding-agent": "packages/coding-agent/src",
-	"@earendil-works/pi-tui":          "packages/tui/src",
+var packageSourceRoots = sourceRootsByName()
+
+func sourceRootsByName() map[string]string {
+	roots := map[string]string{}
+	for name, pkg := range upstreampackages.ByName() {
+		roots[name] = pkg.SourceRoot()
+	}
+	return roots
 }
 
 var (
-	distTypeDecl  = regexp.MustCompile(`^dist/(.+)\.d\.ts$`)
-	portMapRowPat = regexp.MustCompile("^\\| `([^`]+)` \\| `([^`]+)` \\| (.+?) \\|")
-	parenNote     = regexp.MustCompile(`\s*\([^)]*\)\s*$`)
+	distTypeDecl = regexp.MustCompile(`^dist/(.+)\.d\.ts$`)
+	// The Pig cell (group 2) is everything between the upstream span and the status: code spans, or code spans followed by prose.
+	portMapRowPat        = regexp.MustCompile("^\\| `([^`]+)` \\| (.*) \\| (✅|🟡|⬜|⏸|🔴|n/a) \\|$")
+	portMapSeparatorPat  = regexp.MustCompile(`^\|[\s:|-]+\|$`)
+	portMapHeaderPat     = regexp.MustCompile(`^\| +[Uu]pstream +\|`)
+	portMapDownstreamPat = regexp.MustCompile(`^\| +_\(downstream: [^)]*\)_ +\|`)
+	parenNote            = regexp.MustCompile(`\s*\([^)]*\)\s*$`)
 )
 
 func main() {
@@ -198,18 +206,30 @@ func loadInventory(path string) ([]declaration, error) {
 	return inv.Interfaces, nil
 }
 
+// matchPortMapRow classifies one line. ok is false for lines that are not table rows to read (not starting with `|`, header, separator, downstream); otherwise the match is nil for a malformed row, so no row is dropped silently.
+func matchPortMapRow(line string) (match []string, ok bool) {
+	line = strings.TrimSpace(line)
+	if !strings.HasPrefix(line, "|") || portMapSeparatorPat.MatchString(line) || portMapHeaderPat.MatchString(line) || portMapDownstreamPat.MatchString(line) {
+		return nil, false
+	}
+	return portMapRowPat.FindStringSubmatch(line), true
+}
+
 func parsePortMap(path string) (map[string]portMapRow, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 	rows := map[string]portMapRow{}
-	for line := range strings.SplitSeq(string(data), "\n") {
-		match := portMapRowPat.FindStringSubmatch(strings.TrimSpace(line))
-		if match == nil {
+	for i, line := range strings.Split(string(data), "\n") {
+		match, ok := matchPortMapRow(line)
+		if !ok {
 			continue
 		}
-		rows[match[1]] = portMapRow{target: match[2], disposition: strings.TrimSpace(match[3])}
+		if match == nil {
+			return nil, fmt.Errorf("%s:%d: malformed PORT_MAP row (want | `upstream path` | pig cell | status |): %s", path, i+1, line)
+		}
+		rows[match[1]] = portMapRow{target: strings.ReplaceAll(match[2], "`", ""), disposition: match[3]}
 	}
 	return rows, nil
 }
@@ -474,7 +494,7 @@ func auditCovers(w io.Writer, root, scenarioPath string, rows map[string]portMap
 
 // portMapLinePat isolates the three cells of a PORT_MAP table row so the status
 // token (group 2) can be rewritten while preserving the rest of the line.
-var portMapLinePat = regexp.MustCompile("^(\\| `[^`]+` \\| `[^`]+` \\| )(.+?)( \\|.*)$")
+var portMapLinePat = regexp.MustCompile("^(\\| `[^`]+` \\| .* \\| )(⬜)( \\|\\s*)$")
 
 // flipPortMap derives PORT_MAP status from coverage. A ⬜ row flips to ✅ when
 // its mapped Go target exists and is exercised by unit or parity tests; PORT_MAP
@@ -500,23 +520,30 @@ func flipPortMap(w io.Writer, portMapPath, root string, unitCov, parityCov map[s
 	var flipped, note, missing, unverified int
 	var missingList, unverifiedList []string
 	for i, line := range lines {
-		m := portMapRowPat.FindStringSubmatch(strings.TrimSpace(line))
-		if m == nil || strings.TrimSpace(m[3]) != "⬜" {
+		m, ok := matchPortMapRow(line)
+		if !ok {
 			continue
 		}
-		files, hasGo := goTargets(root, m[2])
+		if m == nil {
+			return fmt.Errorf("%s:%d: malformed PORT_MAP row (want | `upstream path` | pig cell | status |): %s", portMapPath, i+1, line)
+		}
+		if m[3] != "⬜" {
+			continue
+		}
+		target := strings.ReplaceAll(m[2], "`", "")
+		files, hasGo := goTargets(root, target)
 		switch {
 		case !hasGo:
 			note++
 		case len(files) == 0:
 			missing++
-			missingList = append(missingList, m[1]+" → "+m[2])
+			missingList = append(missingList, m[1]+" → "+target)
 		case covered(files):
 			lines[i] = portMapLinePat.ReplaceAllString(line, "${1}✅${3}")
 			flipped++
 		default:
 			unverified++
-			unverifiedList = append(unverifiedList, m[1]+" → "+m[2])
+			unverifiedList = append(unverifiedList, m[1]+" → "+target)
 		}
 	}
 	_, _ = fmt.Fprintf(w, "# PORT_MAP flip (upstream %s)\n\n", coding.UpstreamVersion)

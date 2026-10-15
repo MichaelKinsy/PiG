@@ -33,11 +33,32 @@ func TestKeyboardProtocolNegotiationUsesDeviceAttributesFallback(t *testing.T) {
 	}
 }
 
+// terminal.ts modifyOtherKeysActive getter: false until the fallback is enabled, false again once a Kitty reply disables it.
+func TestProcessTerminalModifyOtherKeysActiveFollowsNegotiation(t *testing.T) {
+	preserveKeyboardProtocolState(t)
+	terminal := NewProcessTerminalWithOutput(nil, nil, &bytes.Buffer{})
+	if terminal.ModifyOtherKeysActive() {
+		t.Fatal("modifyOtherKeys active before negotiation")
+	}
+	terminal.queryAndEnableKittyProtocol()
+	if !terminal.handleKeyboardProtocolNegotiationSequence("\x1b[?1;2c") || !terminal.ModifyOtherKeysActive() {
+		t.Fatal("device attributes reply did not enable modifyOtherKeys")
+	}
+	if !terminal.handleKeyboardProtocolNegotiationSequence("\x1b[?7u") {
+		t.Fatal("Kitty flags reply was not consumed")
+	}
+	if terminal.ModifyOtherKeysActive() {
+		t.Fatal("modifyOtherKeys stayed active after Kitty confirmation")
+	}
+}
+
 func TestAC50KeyboardProtocolNegotiationMatchesPi083(t *testing.T) {
 	var output bytes.Buffer
 	terminal := NewProcessTerminalWithOutput(nil, nil, &output)
 	terminal.queryAndEnableKittyProtocol()
 	output.Reset()
+	// The negotiation marks the process-wide Kitty flag active; later tests read legacy Alt input with it off.
+	t.Cleanup(func() { SetKittyProtocolActive(false); modifyOtherKeysActive.Store(false) })
 	SetKittyProtocolActive(false)
 	modifyOtherKeysActive.Store(true)
 

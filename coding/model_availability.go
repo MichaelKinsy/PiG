@@ -3,6 +3,7 @@ package coding
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -82,7 +83,7 @@ func (runtime *ModelRuntime) GetAvailable(ctx context.Context, providerID ...str
 	if err != nil {
 		return nil, err
 	}
-	return runtime.virtuals.overlayAvailable(available, runtime.services.Registry().GetProviderModelData, id), nil
+	return runtime.virtuals.overlayAvailable(available, runtime.HasConfiguredAuth, runtime.providerOrder(), id), nil
 }
 
 // syncRegistration mirrors the synchronous part of Pi's registerProvider, registerNativeProvider and unregisterProvider. The queued local refresh that follows is owned by the registry (internal/codingagent/model_refresh_background.go).
@@ -185,7 +186,7 @@ func (runtime *ModelRuntime) GetAvailableSnapshot() []*ai.Model {
 	state.mu.RLock()
 	available := slices.Clone(state.snapshot.available)
 	state.mu.RUnlock()
-	return runtime.virtuals.overlayAvailable(available, runtime.services.Registry().GetProviderModelData)
+	return runtime.virtuals.overlayAvailable(available, runtime.HasConfiguredAuth, runtime.providerOrder())
 }
 
 // GetError joins model configuration errors and the latest non-cancelled availability failure.
@@ -237,6 +238,9 @@ func (runtime *ModelRuntime) GetProviderAuthStatus(providerID string) ai.AuthSta
 	if auth != nil {
 		return ai.AuthStatus{Configured: true, Source: ai.AuthSourceEnvironment, Label: auth.Source}
 	}
+	if runtime.virtualOnlyProvider(providerID) {
+		return ai.AuthStatus{Configured: true, Source: ai.AuthSourceEnvironment, Label: virtualAuthSource}
+	}
 	return ai.AuthStatus{}
 }
 
@@ -249,8 +253,9 @@ func (runtime *ModelRuntime) loadAvailableModels(ctx context.Context, providerID
 }
 
 // queueAvailabilityRefresh assigns publication generations when the availability pass starts, after any catalog work. Only a later availability pass invalidates this pass.
+// The pass reads auth.json through one view (AvailabilityReadContext) unless an extension provider takes part.
 func (runtime *ModelRuntime) queueAvailabilityRefresh(ctx context.Context) error {
-	ctx = runtime.services.Registry().ModelTaskContext(ctx)
+	ctx = runtime.services.Registry().AvailabilityReadContext(runtime.services.Registry().ModelTaskContext(ctx))
 	state := &runtime.availability
 	state.mu.Lock()
 	state.refreshSeq++
@@ -264,6 +269,8 @@ func (runtime *ModelRuntime) queueAvailabilityRefresh(ctx context.Context) error
 	var available []*ai.Model
 	var auth map[string]*ai.AuthCheck
 	var credentials []ai.CredentialInfo
+	var credentialsErr error
+	credentialsDone := make(chan struct{})
 	getAvailable, listCredentials := state.getAvailable, state.listCredentials
 	err := runtime.services.Registry().AwaitModelTasks(ctx,
 		func(ctx context.Context) error {
@@ -278,11 +285,24 @@ func (runtime *ModelRuntime) queueAvailabilityRefresh(ctx context.Context) error
 		},
 		func(ctx context.Context) error {
 			var err error
+			defer close(credentialsDone)
 			credentials, err = listCredentials(ctx)
+			credentialsErr = err
 			return err
 		},
 	)
 	if err != nil {
+		// A per-provider credential read fails for the same reason the credential listing does, and Pi's Promise.all rejects with the listing's error: it fails one await after the file read, before any provider's read reports (model-runtime.ts runAvailabilityRefresh). Any other failure settles at once, without waiting for the listing.
+		var modelsError *ai.ModelsError
+		if errors.As(err, &modelsError) && strings.HasPrefix(modelsError.Message, "Credential store read failed for ") {
+			select {
+			case <-credentialsDone:
+				if credentialsErr != nil && ctx.Err() == nil {
+					err = credentialsErr
+				}
+			case <-ctx.Done():
+			}
+		}
 		state.mu.Lock()
 		defer state.mu.Unlock()
 		if errorSeq == state.errorSeq && ctx.Err() == nil {

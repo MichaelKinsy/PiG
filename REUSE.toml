@@ -5,7 +5,7 @@ version = 1
 [[annotations]]
 path = "**"
 precedence = "closest"
-SPDX-FileCopyrightText = "Copyright Hewlett Packard Enterprise Development LP"
+SPDX-FileCopyrightText = "Copyright Michael Kinsy"
 SPDX-License-Identifier = "MIT"
 
 # Public website documents adapt Pi documentation. PiG-authored revisions
@@ -14,7 +14,7 @@ SPDX-License-Identifier = "MIT"
 path = "docs/site/docs/**"
 precedence = "closest"
 SPDX-FileCopyrightText = [
-  "Copyright Hewlett Packard Enterprise Development LP",
+  "Copyright Michael Kinsy",
   "Copyright (c) 2025 Mario Zechner",
 ]
 SPDX-License-Identifier = "MIT"
@@ -25,7 +25,7 @@ SPDX-License-Identifier = "MIT"
 path = "docs/assets/pig-project-banner.png"
 precedence = "closest"
 SPDX-FileCopyrightText = [
-  "Copyright Hewlett Packard Enterprise Development LP",
+  "Copyright Michael Kinsy",
   "Go gopher designed by Renee French",
 ]
 SPDX-License-Identifier = "MIT AND CC-BY-4.0"
@@ -46,7 +46,7 @@ path = [
 ]
 precedence = "closest"
 SPDX-FileCopyrightText = [
-  "Copyright Hewlett Packard Enterprise Development LP",
+  "Copyright Michael Kinsy",
   "Copyright (c) 2025 Mario Zechner",
 ]
 SPDX-License-Identifier = "MIT"
@@ -60,7 +60,7 @@ path = [
   "coding/extension/pigsdk/**",
 ]
 precedence = "closest"
-SPDX-FileCopyrightText = "Copyright Hewlett Packard Enterprise Development LP"
+SPDX-FileCopyrightText = "Copyright Michael Kinsy"
 SPDX-License-Identifier = "MIT"
 
 # The Mermaid renderer is a Go port of grok-mermaid 0.2.2. Files with more
@@ -69,7 +69,7 @@ SPDX-License-Identifier = "MIT"
 path = "internal/mermaid/**"
 precedence = "closest"
 SPDX-FileCopyrightText = [
-  "Copyright Hewlett Packard Enterprise Development LP",
+  "Copyright Michael Kinsy",
   "Copyright 2023-2026 SpaceXAI",
   "Copyright 2026 Alexey Zaytsev",
 ]
@@ -81,7 +81,7 @@ SPDX-License-Identifier = "Apache-2.0 AND MIT"
 path = "internal/nodesemver/**"
 precedence = "closest"
 SPDX-FileCopyrightText = [
-  "Copyright Hewlett Packard Enterprise Development LP",
+  "Copyright Michael Kinsy",
   "Copyright (c) Isaac Z. Schlueter and Contributors",
 ]
 SPDX-License-Identifier = "MIT AND ISC"
@@ -92,7 +92,7 @@ SPDX-License-Identifier = "MIT AND ISC"
 path = "internal/nodespawn/**"
 precedence = "closest"
 SPDX-FileCopyrightText = [
-  "Copyright Hewlett Packard Enterprise Development LP",
+  "Copyright Michael Kinsy",
   "Copyright Joyent, Inc. and other Node contributors",
 ]
 SPDX-License-Identifier = "MIT"
@@ -105,7 +105,7 @@ path = [
 ]
 precedence = "closest"
 SPDX-FileCopyrightText = [
-  "Copyright Hewlett Packard Enterprise Development LP",
+  "Copyright Michael Kinsy",
   "Copyright (c) 2025 Mario Zechner",
   "Copyright (c) 2025 opentui",
 ]
@@ -118,7 +118,7 @@ path = [
 ]
 precedence = "closest"
 SPDX-FileCopyrightText = [
-  "Copyright Hewlett Packard Enterprise Development LP",
+  "Copyright Michael Kinsy",
   "Copyright (c) 2025 Mario Zechner",
   "Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com)",
 ]
@@ -197,7 +197,7 @@ SPDX-License-Identifier = "BSD-3-Clause"
 path = "tui/internal/hljs/*.go"
 precedence = "closest"
 SPDX-FileCopyrightText = [
-  "Copyright Hewlett Packard Enterprise Development LP",
+  "Copyright Michael Kinsy",
   "Copyright (c) 2006, Ivan Sagalaev",
 ]
 SPDX-License-Identifier = "MIT AND BSD-3-Clause"
@@ -208,7 +208,7 @@ SPDX-License-Identifier = "MIT AND BSD-3-Clause"
 path = "internal/jsarray/sort.go"
 precedence = "closest"
 SPDX-FileCopyrightText = [
-  "Copyright Hewlett Packard Enterprise Development LP",
+  "Copyright Michael Kinsy",
   "Copyright (c) 2001-2018 Python Software Foundation",
 ]
 SPDX-License-Identifier = "MIT AND PSF-2.0"
@@ -314,6 +314,18 @@ SPDX-FileCopyrightText = "Copyright (c) Isaac Z. Schlueter and Contributors"
 SPDX-License-Identifier = "ISC"
 
 [[annotations]]
+path = "test/parity/dependency-sources/minimatch/**"
+precedence = "override"
+SPDX-FileCopyrightText = "minimatch contributors"
+SPDX-License-Identifier = "BlueOak-1.0.0"
+
+[[annotations]]
+path = "test/parity/dependency-sources/brace-expansion/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright Julian Gruber <julian@juliangruber.com>"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
 path = "coding/extension/host/subprocess/runtime-node/shims/minimatch/**"
 precedence = "override"
 SPDX-FileCopyrightText = "minimatch contributors"
@@ -379,7 +391,7 @@ SPDX-License-Identifier = "ISC"
 path = "internal/wordsegmenter/**"
 precedence = "closest"
 SPDX-FileCopyrightText = [
-  "Copyright Hewlett Packard Enterprise Development LP",
+  "Copyright Michael Kinsy",
   "© 2016 and later: Unicode, Inc. and others.",
   "Copyright (C) 2006-2016, International Business Machines Corporation and others.",
   "Copyright (C) 1999-2016, International Business Machines Corporation and others.",
@@ -391,7 +403,7 @@ SPDX-License-Identifier = "MIT AND Unicode-3.0 AND LicenseRef-ICU-CJK AND Licens
 
 # The QuickJS WebAssembly module and the codemode prelude are Pi's, embedded byte for byte.
 [[annotations]]
-path = "codemode/assets/quickjs.wasm"
+path = ["codemode/assets/quickjs.wasm", "codemode/assets/quickjs.wasm.gz"]
 precedence = "closest"
 SPDX-FileCopyrightText = [
   "Copyright (c) 2026 Vercel, Inc.",
@@ -407,3 +419,25 @@ path = "codemode/assets/prelude.js"
 precedence = "closest"
 SPDX-FileCopyrightText = "Copyright (c) 2025 Mario Zechner"
 SPDX-License-Identifier = "MIT"
+
+# PiG fork of santhosh-tekuri/jsonschema v6.0.2 (third_party/jsonschema/FORK.md).
+[[annotations]]
+path = "third_party/jsonschema/**"
+precedence = "closest"
+SPDX-FileCopyrightText = "Copyright the santhosh-tekuri/jsonschema authors"
+SPDX-License-Identifier = "Apache-2.0"
+
+# PiG fork of yuin/goldmark v1.8.5 (third_party/goldmark/FORK.md).
+[[annotations]]
+path = "third_party/goldmark/**"
+precedence = "closest"
+SPDX-FileCopyrightText = "Copyright (c) 2019 Yusuke Inuzuka"
+SPDX-License-Identifier = "MIT"
+
+# PiG fork of Masterminds/semver v3.5.0 (third_party/semver/FORK.md).
+[[annotations]]
+path = "third_party/semver/**"
+precedence = "closest"
+SPDX-FileCopyrightText = "Copyright (C) 2014-2019 Matt Butcher and Matt Farina"
+SPDX-License-Identifier = "MIT"
+

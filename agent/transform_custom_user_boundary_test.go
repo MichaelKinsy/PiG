@@ -169,7 +169,7 @@ func TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult(t *testing.T) {
 			anthropic = p.make
 		}
 	}
-	body := captureStreamWire(t, anthropicSSE, anthropic, convertToLLM(history, nil))
+	body := captureStreamWire(t, anthropicSSE, anthropic, ConvertToLLM(history))
 	var request struct {
 		Messages []struct {
 			Role    string `json:"role"`

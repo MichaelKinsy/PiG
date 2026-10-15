@@ -1,0 +1,48 @@
+# Behavior family: rpc
+# Surface: the order and the same-name winner of --prompt-template paths against the agent directory's prompts, as get_commands lists
+# them.
+#
+# Upstream evidence (Pi 1.1.0, probed 2026-10-09 natively on Windows): resource-loader.ts:610-612 merges the resolved prompts (project,
+# user and Package resources) before the --prompt-template paths, and dedupePrompts (:1156-1180) keeps the first prompt of a name.
+# get_commands lists /aa-auto with the agent directory's "Auto user prompt", then /zz-cli; the --prompt-template file named aa-auto.md
+# loses to it. PiG put the --prompt-template paths first and listed "CLI prompt with the auto name".
+
+name = "53-rpc-cli-prompt-templates-after-resolved"
+description = "--prompt-template paths come after the agent directory's prompts, which win a same-name collision"
+covers = [
+  "packages/coding-agent/src/core/resource-loader.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+input_lines = ['{"id":"cmds","type":"get_commands"}']
+cwd = "testdata/cli-prompt-order"
+timeout_seconds = 20
+settle_seconds = 1
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/cli-prompt-order/agent"]
+pig_args = ["--model", "test-faux/faux-1", "--no-session", "--prompt-template", "other/aa-auto.md", "--prompt-template", "other/zz-cli.md"]
+pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1", "PI_CODING_AGENT_DIR=testdata/cli-prompt-order/agent"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--no-session", "--prompt-template", "other/aa-auto.md", "--prompt-template", "other/zz-cli.md"]
+
+[assert]
+exit_code = 0
+runs = 3
+output_equal = true
+both_match_regex = ['"name":"aa-auto","description":"Auto user prompt".*"name":"zz-cli","description":"CLI prompt"']
+both_not_contain = ["CLI prompt with the auto name"]
+
+# normalize-rationale: each binary runs in its own snapshot of the agent fixture and of the working directory; only those roots differ.
+[[assert.normalize_replace]]
+# A Windows root begins with a drive letter and a JSON-escaped "\"; the separators after the root stay compared. The drive letter stays compared.
+pattern = '(?:/|([A-Za-z]):\\\\)[^"]*parity-snap-(PI|PIG)_CODING_AGENT_DIR-[0-9]+'
+with = '${1}<agent>'
+reason = "D2: the isolated agent-root prefix varies; retain resource paths, precedence and content."
+
+[[assert.normalize_replace]]
+pattern = 'parity-snap-cwd-[0-9]{10}'
+with = 'parity-snap-cwd-0000000000'
+reason = "Alias the isolated working-directory identity, not its contents or path suffix."

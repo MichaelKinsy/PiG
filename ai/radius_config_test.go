@@ -65,7 +65,7 @@ func TestGetRadiusModelsBindsLegacyCredentialCatalog(t *testing.T) {
 		t.Fatalf("models = %+v", models)
 	}
 	model := models[0]
-	if model.ID != "auto" || model.API != APIPiMessages || model.Provider != "radius" || model.BaseURL != "https://radius.example.com/v1" || model.Cost.CacheWrite != 0.2 {
+	if model.ID != "auto" || model.ProviderMeta.API != APIPiMessages || model.ProviderMeta.ProviderID != "radius" || model.ProviderMeta.BaseURL != "https://radius.example.com/v1" || model.Capabilities.CacheWriteCostPer1M != 0.2 {
 		t.Fatalf("model = %+v", model)
 	}
 	if got := GetRadiusModels("radius", &Credential{Type: CredentialOAuth}); len(got) != 0 {
@@ -119,5 +119,55 @@ func TestLoadRadiusGatewayConfigReportsFailures(t *testing.T) {
 	_, err = LoadRadiusGatewayConfig(context.Background(), server.URL, "key")
 	if err == nil || err.Error() != "Invalid Radius config from "+server.URL {
 		t.Fatalf("invalid config error = %v", err)
+	}
+}
+
+// fetch(new URL("/v1/config", gateway)) throws the URL constructor's TypeError, "Invalid URL", for a gateway Node cannot parse, and fetch refuses a URL with credentials
+// ("Request cannot be constructed from a URL that includes credentials: <href>") before any request; neither error names the gateway any other way.
+func TestLoadRadiusGatewayConfigThrowsFetchErrorsForInvalidAndCredentialedGateways(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		requests++
+		_, _ = writer.Write([]byte(`{"baseUrl":"https://radius.example/v1","models":[]}`))
+	}))
+	defer server.Close()
+	host := strings.TrimPrefix(server.URL, "http://")
+	for _, test := range []struct{ gateway, want string }{
+		{"https://radius.example:99999", "Invalid URL"},
+		{"radius.example", "Invalid URL"},
+		{"http://user:pw@" + host, "Request cannot be constructed from a URL that includes credentials: http://user:pw@" + host + "/v1/config"},
+		{"http://:pw@" + host, "Request cannot be constructed from a URL that includes credentials: http://:pw@" + host + "/v1/config"},
+		{"http://us er@" + host, "Request cannot be constructed from a URL that includes credentials: http://us%20er@" + host + "/v1/config"},
+	} {
+		if _, err := LoadRadiusGatewayConfig(context.Background(), test.gateway, "key"); err == nil || err.Error() != test.want {
+			t.Errorf("LoadRadiusGatewayConfig(%q) error = %v, want %q", test.gateway, err, test.want)
+		}
+	}
+	// An empty username and password are no credentials: the href drops the "@" and the request goes out.
+	if _, err := LoadRadiusGatewayConfig(context.Background(), "http://:@"+host, "key"); err != nil || requests != 1 {
+		t.Fatalf("empty userinfo: err = %v, requests = %d", err, requests)
+	}
+}
+
+// loadRadiusGatewayConfig reads the failure text with response.text() and the config with response.json() (radius-config.ts:88-93). Both drop two
+// leading byte order marks and replace each maximal ill-formed UTF-8 subpart with one U+FFFD, as Node 24's Response does.
+func TestLoadRadiusGatewayConfigReadsTheBodyAsResponseText(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Header.Get("authorization") == "" {
+			writer.WriteHeader(http.StatusBadGateway)
+			_, _ = writer.Write([]byte("\xef\xbb\xbf\xef\xbb\xbfbad \xf0\x9d\x84 end"))
+			return
+		}
+		_, _ = writer.Write([]byte("\xef\xbb\xbf\xef\xbb\xbf" + `{"baseUrl":"https://radius.example/v1","models":[]}`))
+	}))
+	defer server.Close()
+
+	_, err := LoadRadiusGatewayConfig(context.Background(), server.URL, "")
+	if want := "Could not load Radius config from " + server.URL + ": 502: bad \uFFFD end"; err == nil || err.Error() != want {
+		t.Fatalf("error = %v, want %q", err, want)
+	}
+	config, err := LoadRadiusGatewayConfig(context.Background(), server.URL, "key")
+	if err != nil || config.BaseURL != "https://radius.example/v1" {
+		t.Fatalf("config = %+v, %v; want the config behind two byte order marks", config, err)
 	}
 }

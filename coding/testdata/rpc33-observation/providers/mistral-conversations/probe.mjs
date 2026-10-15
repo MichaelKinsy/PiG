@@ -1,4 +1,4 @@
-// D82 W5 oracle for the mistral-conversations API (Pi 1.0.3, packages/ai/src/api/mistral-conversations.ts).
+// D82 W5 oracle for the mistral-conversations API (Pi 1.1.0, packages/ai/src/api/mistral-conversations.ts).
 //
 // Drives Pi's real pipeline for mistral-conversations against a loopback backend that serves the Mistral chat-completion SSE
 // protocol under five delivery shapes:
@@ -29,6 +29,9 @@
 // unchanged, so it adds no microtask.
 //
 // usage: node probe.mjs <out.json>     (env PI_PACKAGE_ROOT = the installed pi-coding-agent package)
+const PIG_UPSTREAM_VERSION = process.env.PIG_UPSTREAM_VERSION; // the pin's display version, from `eval "$(python3 automation/pin/pin.py env)"`
+if (!PIG_UPSTREAM_VERSION) throw new Error('PIG_UPSTREAM_VERSION is not set: run eval "$(python3 automation/pin/pin.py env)" before the probe');
+import { PI_PACKAGE_VERSION } from "../../../../../test/parity/testdata/pi-version.mjs";
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import assert from 'node:assert/strict';
@@ -40,7 +43,7 @@ import { join } from 'node:path';
 
 const root = process.env.PI_PACKAGE_ROOT;
 const scope = root + '/node_modules/@earendil-works/';
-for (const [path, version] of [[root, '1.0.3'], [scope + 'pi-ai', '1.0.3'], [scope + 'pi-agent-core', '1.0.3']]) {
+for (const [path, version] of [[root, PI_PACKAGE_VERSION], [scope + 'pi-ai', PI_PACKAGE_VERSION], [scope + 'pi-agent-core', PI_PACKAGE_VERSION]]) {
   assert.equal(JSON.parse(await readFile(path + '/package.json', 'utf8')).version, version);
 }
 const outPath = process.argv[2];
@@ -276,7 +279,7 @@ for (const [name, fixture, delivery, abort] of [['pending-body', 'tool', 'pendin
   cancels.push({ name, fixture, delivery, abort, ...(await runPath('direct', fixture, fixtures[fixture], delivery, abort)) });
 }
 await writeFile(outPath, JSON.stringify({
-  piVersion: '1.0.3',
+  piVersion: PIG_UPSTREAM_VERSION,
   node: process.version,
   api: 'mistral-conversations',
   bodies: Object.fromEntries(Object.entries(fixtures).map(([name, records]) => [name, wire(records).join('')])),

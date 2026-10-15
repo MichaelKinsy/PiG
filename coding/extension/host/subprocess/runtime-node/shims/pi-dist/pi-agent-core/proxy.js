@@ -3,19 +3,7 @@
  * The server manages auth and proxies requests to LLM providers.
  */
 // Internal import for JSON parsing utility
-import { EventStream, parseStreamingJson, } from "../pi-ai/sdk-bundle/index.js";
-// Create stream class matching ProxyMessageEventStream
-class ProxyMessageEventStream extends EventStream {
-    constructor() {
-        super((event) => event.type === "done" || event.type === "error", (event) => {
-            if (event.type === "done")
-                return event.message;
-            if (event.type === "error")
-                return event.error;
-            throw new Error("Unexpected event type");
-        });
-    }
-}
+import { createAssistantMessageEventStream, parseStreamingJson, } from "../pi-ai/sdk-bundle/index.js";
 /**
  * Stream function that proxies through a server instead of calling LLM providers directly.
  * The server strips the partial field from delta events to reduce bandwidth.
@@ -51,7 +39,7 @@ function buildProxyRequestOptions(options) {
     };
 }
 export function streamProxy(model, context, options) {
-    const stream = new ProxyMessageEventStream();
+    const stream = createAssistantMessageEventStream();
     (async () => {
         // Initialize the partial message that we'll build up from events
         const partial = {

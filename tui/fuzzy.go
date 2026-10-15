@@ -7,7 +7,6 @@ import (
 	"cmp"
 	"slices"
 	"strings"
-	"unicode"
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -24,21 +23,41 @@ type FuzzyMatch struct {
 
 // FuzzyMatchScore matches an ordered, case-insensitive UTF-16 subsequence and returns Pi's lower-is-better score.
 func FuzzyMatchScore(query, text string) FuzzyMatch {
-	lower := cases.Lower(language.Und)
-	q := lower.String(query)
-	t := jsstring.ToUTF16(lower.String(text))
+	return NewFuzzyText(text).Match(NewFuzzyQuery(query))
+}
 
-	primary := matchQuery(jsstring.ToUTF16(q), t)
-	if primary.Matches {
-		return primary
-	}
+// FuzzyText is a text prepared for matching many queries: its lowercase UTF-16 units.
+type FuzzyText struct{ units []uint16 }
 
+// NewFuzzyText prepares text for Match.
+func NewFuzzyText(text string) FuzzyText {
+	return FuzzyText{units: jsstring.ToUTF16(cases.Lower(language.Und).String(text))}
+}
+
+// FuzzyQuery is a query prepared for matching many texts: its lowercase UTF-16 units and those of its letter/digit swap.
+type FuzzyQuery struct {
+	units, swapped []uint16
+	hasSwap        bool
+}
+
+// NewFuzzyQuery prepares query for Match.
+func NewFuzzyQuery(query string) FuzzyQuery {
+	q := cases.Lower(language.Und).String(query)
+	prepared := FuzzyQuery{units: jsstring.ToUTF16(q)}
 	// Letter/digit half swap (e.g. user types "5opus" wanting "opus5").
-	swapped := swapAlphaDigit(q)
-	if swapped == "" {
+	if swapped := swapAlphaDigit(q); swapped != "" {
+		prepared.swapped, prepared.hasSwap = jsstring.ToUTF16(swapped), true
+	}
+	return prepared
+}
+
+// Match is FuzzyMatchScore of the query and the text.
+func (t FuzzyText) Match(query FuzzyQuery) FuzzyMatch {
+	primary := matchQuery(query.units, t.units)
+	if primary.Matches || !query.hasSwap {
 		return primary
 	}
-	sw := matchQuery(jsstring.ToUTF16(swapped), t)
+	sw := matchQuery(query.swapped, t.units)
 	if !sw.Matches {
 		return primary
 	}
@@ -65,17 +84,18 @@ func matchQuery(query, text []uint16) FuzzyMatch {
 		isWordBoundary := i == 0 || isBoundaryChar(rune(text[i-1]))
 		if lastMatch == i-1 {
 			consecutive++
-			score -= float64(consecutive) * 5
+			score -= float64(float64(consecutive) * 5)
 		} else {
 			consecutive = 0
 			if lastMatch >= 0 {
-				score += float64(i-lastMatch-1) * 2
+				score += float64(float64(i-lastMatch-1) * 2)
 			}
 		}
 		if isWordBoundary {
 			score -= 10
 		}
-		score += float64(i) * 0.1
+		// float64() forces the product to round before the add: arm64 fuses x*y+z into one FMA rounding, which JS never does.
+		score += float64(float64(i) * 0.1)
 		lastMatch = i
 		queryIdx++
 	}
@@ -94,7 +114,7 @@ func isBoundaryChar(r rune) bool {
 	case '-', '_', '.', '/', ':':
 		return true
 	}
-	return isJSWhitespace(r)
+	return jsstring.IsSpace(r)
 }
 
 // swapAlphaDigit handles the upstream convenience case: a query
@@ -149,13 +169,6 @@ func swapAlphaDigit(q string) string {
 	return q[splitAt:] + q[:splitAt]
 }
 
-// isJSWhitespace reports the characters JavaScript's `\s` class and
-// String.prototype.trim treat as whitespace: Unicode White_Space without
-// U+0085 NEXT LINE, plus the U+FEFF byte-order mark.
-func isJSWhitespace(r rune) bool {
-	return r == '\uFEFF' || (r != '\u0085' && unicode.IsSpace(r))
-}
-
 func isASCIILetter(r rune) bool { return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') }
 func isASCIIDigit(r rune) bool  { return r >= '0' && r <= '9' }
 
@@ -165,13 +178,13 @@ func isASCIIDigit(r rune) bool  { return r >= '0' && r <= '9' }
 // reordered text "gpt-5.5 openai-codex". Empty/whitespace-only query returns
 // items unchanged.
 func FuzzyFilter[T any](items []T, query string, getText func(T) string) []T {
-	q := strings.TrimFunc(query, isJSWhitespace)
+	q := strings.TrimFunc(query, jsstring.IsSpace)
 	if q == "" {
 		out := make([]T, len(items))
 		copy(out, items)
 		return out
 	}
-	tokens := strings.FieldsFunc(q, func(r rune) bool { return r == '/' || isJSWhitespace(r) })
+	tokens := strings.FieldsFunc(q, func(r rune) bool { return r == '/' || jsstring.IsSpace(r) })
 	if len(tokens) == 0 {
 		out := make([]T, len(items))
 		copy(out, items)

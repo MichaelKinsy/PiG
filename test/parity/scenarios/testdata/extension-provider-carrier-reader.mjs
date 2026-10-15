@@ -23,7 +23,7 @@ export default function (pi) {
     const auth = await provider.auth.apiKey.resolve(input);
     const interaction = { signal, prompt: async prompt => prompt.message, notify: () => {} };
     const apiLogin = await provider.auth.apiKey.login(interaction);
-    const login = await provider.auth.oauth.login(interaction);
+    const login = await provider.auth.oauth.login(interaction, { getDeviceId: () => "caller-device" });
     const rotated = await provider.auth.oauth.refresh(login, signal);
     const oauth = await provider.auth.oauth.toAuth(rotated);
     const order = [];

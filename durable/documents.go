@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"sync"
+	"sync/atomic"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 )
 
@@ -47,7 +50,8 @@ func (DocFamilyToken[T, I]) docType(T) {}
 
 // DefineDoc defines a singleton document. Scope selects a Session, conversation, or task document; conversation
 // documents also declare History and Fork. It panics when the version is not a positive integer, where upstream
-// throws a TypeError at definition time.
+// throws a TypeError at definition time, and when DocumentSemantics is not a member of upstream's union (types.ts:42-60),
+// which upstream's overloads reject at compile time.
 func DefineDoc[T any](definition DocDefinition[T]) DocToken[T] {
 	initial := definition.Initial
 	erased := eraseDocDefinition(definition.CommonDocDefinition, definition.DocumentSemantics, false, func(_ JsonValue) (JsonObject, error) {
@@ -58,10 +62,14 @@ func DefineDoc[T any](definition DocDefinition[T]) DocToken[T] {
 }
 
 // DefineDocFamily defines a keyed document family; Initial(seed) runs only when a member is absent. It panics when
-// the version is not a positive integer.
+// the version is not a positive integer, DocumentSemantics is not a member of upstream's union (types.ts:42-60), or Family is not true: upstream's FamilyInput requires `family: true` at compile time (documents.ts:31-34),
+// and the erased definition's family flag is what addressing reads (resolveAddress).
 func DefineDocFamily[T, I any](definition DocFamilyDefinition[T, I]) DocFamilyToken[T, I] {
+	if !definition.Family {
+		panic(fmt.Sprintf("Document %s family must be true", definition.Kind))
+	}
 	initial := definition.Initial
-	erased := eraseDocDefinition(definition.CommonDocDefinition, definition.DocumentSemantics, true, func(seed JsonValue) (JsonObject, error) {
+	erased := eraseDocDefinition(CommonDocDefinition[T]{Kind: definition.Kind, Version: definition.Version, Migrate: definition.Migrate, CheckpointWhen: definition.CheckpointWhen}, definition.DocumentSemantics, definition.Family, func(seed JsonValue) (JsonObject, error) {
 		typedSeed, err := FromJsonValue[I](seed)
 		if err != nil {
 			return nil, err
@@ -109,6 +117,37 @@ func validateDefinition(definition *AnyDocDefinition) {
 	if definition.Version < 1 || definition.Version > maxSafeInteger {
 		panic(fmt.Sprintf("Document %s version must be a positive integer", definition.Kind))
 	}
+	if err := validateDocumentSemantics(definition.DocumentSemantics); err != nil {
+		panic(fmt.Sprintf("Document %s %v", definition.Kind, err))
+	}
+}
+
+// validateDocumentSemantics admits the combinations of Pi's DocumentSemantics union (types.ts:42-60), which the compiler enforces upstream: a
+// session or task document declares neither history nor fork, a latest conversation document forks "current" or "initial", and a rewindable
+// one forks "asOf", "current" or "initial".
+func validateDocumentSemantics(semantics DocumentSemantics) error {
+	switch semantics.Scope {
+	case ScopeSession, ScopeTask:
+		if semantics.History != "" || semantics.Fork != "" {
+			return fmt.Errorf("semantics: only conversation documents declare history and fork, not a %s document", semantics.Scope)
+		}
+	case ScopeConversation:
+		switch semantics.History {
+		case HistoryLatest:
+			if semantics.Fork != ForkCurrent && semantics.Fork != ForkInitial {
+				return fmt.Errorf("semantics: a latest conversation document forks \"current\" or \"initial\", not %q", semantics.Fork)
+			}
+		case HistoryRewindable:
+			if semantics.Fork != ForkAsOf && semantics.Fork != ForkCurrent && semantics.Fork != ForkInitial {
+				return fmt.Errorf("semantics: a rewindable conversation document forks \"asOf\", \"current\" or \"initial\", not %q", semantics.Fork)
+			}
+		default:
+			return fmt.Errorf("semantics: a conversation document's history is \"latest\" or \"rewindable\", not %q", semantics.History)
+		}
+	default:
+		return fmt.Errorf("semantics: scope is \"session\", \"conversation\" or \"task\", not %q", semantics.Scope)
+	}
+	return nil
 }
 
 const maxSafeInteger = 1<<53 - 1
@@ -311,6 +350,208 @@ func SnapshotAsOf[T any](ctx context.Context, reader DocumentReader, token DocTo
 		return nil, err
 	}
 	return DecodeDoc[T](value)
+}
+
+// typedWatch is a document watch whose values decode as T.
+type typedWatch[T any] struct {
+	WatchHandle[JsonObject]
+	// decoded is the latest value that decoded as T; Value never panics, as upstream's getter cannot fail.
+	decoded *atomic.Pointer[typedValue[T]]
+}
+
+type typedValue[T any] struct{ value *T }
+
+// Value is the acquisition or latest delivered revision; nil once the document retired. A revision that does not
+// decode as the token's type breaks the document's definition: Start's listener fails and ends the watch with its
+// listener_error, and Value keeps returning the latest revision that decoded.
+func (watch typedWatch[T]) Value() *T {
+	if value, err := DecodeDoc[T](watch.WatchHandle.Value()); err == nil {
+		watch.decoded.Store(&typedValue[T]{value})
+		return value
+	}
+	return watch.decoded.Load().value
+}
+
+// Start installs the sole listener; a value that does not decode ends the watch with its listener_error.
+func (watch typedWatch[T]) Start(listener func(ctx context.Context, value *T, ops []Op) error) {
+	watch.WatchHandle.Start(func(ctx context.Context, value JsonObject, ops []Op) error {
+		decoded, err := DecodeDoc[T](value)
+		if err != nil {
+			return err
+		}
+		watch.decoded.Store(&typedValue[T]{decoded})
+		return listener(ctx, decoded, ops)
+	})
+}
+
+// WatchDoc returns a watch of a document's committed value decoded as T, or nil when the document is absent; the
+// value is nil once the document retires. args are the owner ID and family key as for TxDoc. The erased form is
+// DocumentObserver.WatchDocErased.
+func WatchDoc[T any](ctx context.Context, observer DocumentObserver, token DocTokenOf[T], args ...any) (DocumentWatch[T], error) {
+	watch, err := observer.WatchDocErased(ctx, token, args...)
+	if err != nil || watch == nil {
+		return nil, err
+	}
+	// The acquisition value is checked like Snapshot's.
+	acquired, err := DecodeDoc[T](watch.Value())
+	if err != nil {
+		_, _ = watch.Stop()
+		return nil, err
+	}
+	decoded := new(atomic.Pointer[typedValue[T]])
+	decoded.Store(&typedValue[T]{acquired})
+	return typedWatch[T]{watch, decoded}, nil
+}
+
+// typedStateSource is a chord.ReplicatedStateSource of *T over a document's erased state: its snapshot is the state's
+// publication at attachment and every later publication is a buffered frame, delivered once each in cursor order. It
+// observes publications through the gap-free SubscribePublications, not the public subscription, whose 100-delivery
+// window may skip a publication (a gap the attached typed state rejects) and whose hydration another goroutine's
+// delivery may run after Subscribe returns.
+type typedStateSource[T any] struct {
+	state *chord.AttachedReplicatedState[JsonObject]
+	// onError receives the failure of a revision that does not decode as T, as a source-contract failure of an attached
+	// state reaches its options' OnError.
+	onError func(error)
+
+	mu             sync.Mutex
+	snapshotValue  JsonObject
+	snapshotCursor int
+	frames         []chord.ReplicatedStateSourceFrame[*T]
+	listener       func(chord.ReplicatedStateSourceFrame[*T])
+	// delivering is set while one goroutine drains frames, so they reach the listener once each, in cursor order.
+	delivering  bool
+	disposed    bool
+	unsubscribe func()
+}
+
+// Attach captures the state's publication and buffers every later one. Subscribing before the snapshot leaves no
+// publication between them; the value and cursor are read together, so a publication after Attach is a buffered
+// frame and never part of the snapshot.
+func (source *typedStateSource[T]) Attach() (chord.ReplicatedStateSourceAttachment[*T], error) {
+	source.mu.Lock()
+	defer source.mu.Unlock()
+	source.unsubscribe = source.state.SubscribePublications(source.receive)
+	source.snapshotValue, source.snapshotCursor = source.state.InternalSnapshot()
+	if _, err := DecodeDoc[T](source.snapshotValue); err != nil {
+		source.unsubscribe()
+		return nil, err
+	}
+	return source, nil
+}
+
+func (source *typedStateSource[T]) Snapshot() chord.ReplicatedStateSnapshot[*T] {
+	source.mu.Lock()
+	defer source.mu.Unlock()
+	value, _ := DecodeDoc[T](source.snapshotValue)
+	return chord.ReplicatedStateSnapshot[*T]{Value: value, Cursor: source.snapshotCursor}
+}
+
+func (source *typedStateSource[T]) Activate(listener func(chord.ReplicatedStateSourceFrame[*T])) error {
+	source.mu.Lock()
+	source.listener = listener
+	source.mu.Unlock()
+	source.drain()
+	return nil
+}
+
+// receive gets every publication of the erased state; one already in the snapshot is dropped.
+func (source *typedStateSource[T]) receive(value JsonObject, ops []Op, sequence int, ctx context.Context) {
+	decoded, err := DecodeDoc[T](value)
+	source.mu.Lock()
+	if source.disposed || sequence <= source.snapshotCursor {
+		source.mu.Unlock()
+		return
+	}
+	if err != nil {
+		// Attach checked the snapshot, so a later value that does not decode as the token's type breaks the
+		// document's definition. Delivery stops, as an attached state's does on a source-contract failure, and the
+		// failure is reported.
+		source.disposed = true
+		source.frames = nil
+		source.mu.Unlock()
+		source.unsubscribe()
+		source.state.Dispose()
+		if source.onError != nil {
+			source.onError(fmt.Errorf("document revision does not decode: %w", err))
+		}
+		return
+	}
+	source.frames = append(source.frames, chord.ReplicatedStateSourceFrame[*T]{Cursor: sequence, Value: decoded, Ops: ops, Context: ctx})
+	source.mu.Unlock()
+	source.drain()
+}
+
+func (source *typedStateSource[T]) drain() {
+	source.mu.Lock()
+	if source.delivering || source.listener == nil {
+		source.mu.Unlock()
+		return
+	}
+	source.delivering = true
+	for !source.disposed && len(source.frames) > 0 {
+		frame := source.frames[0]
+		source.frames = source.frames[1:]
+		listener := source.listener
+		source.mu.Unlock()
+		listener(frame)
+		source.mu.Lock()
+	}
+	source.delivering = false
+	source.mu.Unlock()
+}
+
+func (source *typedStateSource[T]) Dispose() {
+	source.mu.Lock()
+	if source.disposed {
+		source.mu.Unlock()
+		return
+	}
+	source.disposed = true
+	source.frames = nil
+	source.mu.Unlock()
+	source.unsubscribe()
+	source.state.Dispose()
+}
+
+// DocumentStateOf returns a disposable replicated state of a document's committed value decoded as T, or nil when the
+// document is absent; the value is nil once the document retires. args are the owner ID and family key as for TxDoc.
+// The erased form is Session.DocumentStateErased.
+// A listener's failure goes to the Session's report, as Pi's documentState passes `onError: (error) => this.report(error)`
+// (session.ts documentState).
+func DocumentStateOf[T any](ctx context.Context, session Session, token DocTokenOf[T], args ...any) (AttachedReplicatedState[*T], error) {
+	var options chord.ReplicatedStateSourceOptions
+	if reporter, ok := session.(sessionReporter); ok {
+		options.OnError = reporter.Report
+	}
+	return DocumentStateOfWithOptions(ctx, session, token, options, args...)
+}
+
+// sessionReporter is a Session that reports the failures of its listeners to its host.
+type sessionReporter interface {
+	Report(err error)
+}
+
+// DocumentStateOfWithOptions is DocumentStateOf with the attached state's options: OnError also receives a revision
+// that does not decode as T.
+func DocumentStateOfWithOptions[T any](ctx context.Context, session Session, token DocTokenOf[T], options chord.ReplicatedStateSourceOptions, args ...any) (AttachedReplicatedState[*T], error) {
+	erased, err := session.DocumentStateErased(ctx, token, args...)
+	if err != nil || erased == nil {
+		return nil, err
+	}
+	if options.OnError == nil {
+		// The typed state stands for the erased one, so its failures go where the erased state's do: the Session's
+		// report (session.ts:360).
+		if reporter, ok := session.(interface{ Report(error) }); ok {
+			options.OnError = reporter.Report
+		}
+	}
+	typed, err := chord.AttachReplicatedStateSource[*T](&typedStateSource[T]{state: erased, onError: options.OnError}, options)
+	if err != nil {
+		erased.Dispose()
+		return nil, err
+	}
+	return typed, nil
 }
 
 // TxRetireDoc retires a document; args are the owner ID and family key as for TxDoc, without a seed.

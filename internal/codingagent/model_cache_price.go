@@ -14,7 +14,7 @@ func (r *ModelRegistry) CacheReadPrice(providerID, modelID string) float64 {
 		rate = 0
 		for _, model := range provider.GetModels() {
 			if model.ID == modelID {
-				rate = model.Cost.CacheRead
+				rate = model.Capabilities.CacheReadCostPer1M
 				break
 			}
 		}

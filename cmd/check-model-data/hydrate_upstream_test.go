@@ -1,5 +1,7 @@
 package main
 
+// pi: packages/ai/scripts/hydrate-model-catalog.ts
+
 import (
 	"encoding/json"
 	"maps"
@@ -139,5 +141,22 @@ func TestGroupProviderModelDataRejectsDuplicates(t *testing.T) {
 	entry := ModelCatalogEntry{Type: "chat", ID: "a", API: "x", JSON: json.RawMessage(`{}`)}
 	if _, _, err := GroupProviderModelData("p", []ModelCatalogEntry{entry, entry}); err == nil || err.Error() != "p/chat:a has duplicate x catalog entries" {
 		t.Fatalf("err = %v", err)
+	}
+}
+
+// Pins the fixed manifest stamp of packages/ai/scripts/hydrate-model-catalog.ts:65 ("1970-01-01T00:00:00.000Z"); the upstream hydration tests do not assert it, but identical catalogs only hydrate to identical bytes because of it.
+func TestHydrateModelCatalogStampsTheEpochGeneratedAt(t *testing.T) {
+	f := newModelDataFixture(t)
+	if err := HydrateModelCatalog(f.root, f.writeCatalog(t, map[string]any{"test-provider": []any{f.chatModel()}}), false); err != nil {
+		t.Fatal(err)
+	}
+	var manifest struct {
+		GeneratedAt string `json:"generatedAt"`
+	}
+	if err := json.Unmarshal([]byte(readModelFile(t, filepath.Join(f.dir, ModelDataManifestFile))), &manifest); err != nil {
+		t.Fatal(err)
+	}
+	if manifest.GeneratedAt != "1970-01-01T00:00:00.000Z" {
+		t.Fatalf("generatedAt = %q, want the epoch stamp", manifest.GeneratedAt)
 	}
 }

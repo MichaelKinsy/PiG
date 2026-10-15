@@ -80,7 +80,7 @@ func WriteStandaloneReceipt(exe, version, source string) error {
 	if transportCA != "" {
 		content += "update-ca-sha256=" + transportCA + "\n"
 	}
-	if _, err := io.WriteString(tmp, content); err != nil {
+	if _, err := tmp.WriteString(content); err != nil {
 		_ = tmp.Close()
 		return fmt.Errorf("write standalone receipt: %w", err)
 	}

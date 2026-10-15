@@ -287,3 +287,20 @@ func TestTranscriptFoldsOpenAICompletionsUpdatesIntoSystemPrompt(t *testing.T) {
 		t.Errorf("system content = %#v", first["content"])
 	}
 }
+
+// A Message transcript may hold a nil entry or a nil *SystemMessage; the replay skips both as non-system entries instead of calling a method on them.
+func TestSystemMessageReplaySkipsNilMessageEntries(t *testing.T) {
+	for name, messages := range map[string][]Message{
+		"nil interface":      {SystemMessage{Content: SystemText("sys")}, nil, UserMessage{Content: UserText("a")}},
+		"nil *SystemMessage": {SystemMessage{Content: SystemText("sys")}, (*SystemMessage)(nil), UserMessage{Content: UserText("a")}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if got := GetCurrentSystemPrompt(messages); got != "sys" {
+				t.Fatalf("GetCurrentSystemPrompt = %q, want %q", got, "sys")
+			}
+			if got := GetCurrentTools(TranscriptMessages[Message](messages)); len(got) != 0 {
+				t.Fatalf("GetCurrentTools = %#v, want none", got)
+			}
+		})
+	}
+}

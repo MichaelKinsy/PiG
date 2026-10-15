@@ -1,0 +1,19 @@
+[
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/program-status-reporter.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestProgramStatusReporterReportsIdleWorkingAndDone",
+   "TestProgramStatusReporterReportsOnlyTheRunOutcome",
+   "TestProgramStatusReporterReportsAFailedRecoveryCompaction",
+   "TestProgramStatusReporterReportsCompaction",
+   "TestProgramStatusReporterReportsTheMostRecentDialog",
+   "TestProgramStatusReporterSendsEachStatusOnce",
+   "TestProgramStatusReporterReturnsToIdleWhenTheSessionIsReplaced",
+   "TestInteractiveModeForwardsAgentEventsToTheProgramStatusReporter",
+   "TestProgramStatusReporterReportsAnAbortedRecoveryCompactionAsIdle"
+  ],
+  "upstream_reference": "packages/coding-agent/test/program-status-reporter.test.ts",
+  "mutation": "internal/codingagent/program_status_reporter.go: replace the AgentStartEvent runResult done state (line 67) with idle; compiling go test -run ProgramStatusReporter fails TestInteractiveModeForwardsAgentEventsToTheProgramStatusReporter. Replace the resting done state in the compaction branch (line 96) with idle; fails TestProgramStatusReporterReportsCompaction."
+ }
+]

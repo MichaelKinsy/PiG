@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/core/tools/render-utils.ts
+
 import (
 	"testing"
 

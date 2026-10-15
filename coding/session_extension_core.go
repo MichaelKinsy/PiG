@@ -17,7 +17,7 @@ func (s *Session) ExtensionSetModel(ctx context.Context, model *ai.Model) (bool,
 	if model == nil {
 		return false, errors.New("setModel requires a model")
 	}
-	if !s.modelRuntime.hasConfiguredAuth(ctx, providerID(model)) {
+	if !s.modelRuntime.hasConfiguredAuth(providerID(model)) {
 		return false, nil
 	}
 	if err := s.SetModel(model); err != nil {

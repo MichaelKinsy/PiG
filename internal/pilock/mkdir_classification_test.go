@@ -6,6 +6,8 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"sync/atomic"
 	"testing"
 )
@@ -27,12 +29,13 @@ type acquirer struct {
 	run  func(path string) (*Lock, error)
 }
 
+// acquirers are the auth loops, FileAuthStorageBackend.acquireLockSyncWithRetry and acquireLockAsync.
 var acquirers = []acquirer{
-	{"sync", AcquireSync},
+	{"sync", AcquireAuthSync},
 	{"async", func(path string) (*Lock, error) { return Acquire(context.Background(), path) }},
 }
 
-// packages/coding-agent/src/core/auth-storage.ts acquireLockSyncWithRetry / acquireLockAsync retry only ELOCKED, which proper-lockfile raises only after mkdir returned EEXIST (lib/lockfile.js:22-48): a lock held briefly delays acquisition and the next attempt succeeds once the holder releases.
+// packages/coding-agent/src/core/auth-storage.ts acquireLockSyncWithRetry / acquireLockAsync retry ELOCKED, which proper-lockfile raises only after mkdir returned EEXIST (lib/lockfile.js:22-48): a lock held briefly delays acquisition and the next attempt succeeds once the holder releases.
 func TestAcquireRetriesEEXISTUntilHolderReleases(t *testing.T) {
 	for _, a := range acquirers {
 		t.Run(a.name, func(t *testing.T) {
@@ -64,9 +67,10 @@ func TestAcquireRetriesEEXISTUntilHolderReleases(t *testing.T) {
 	}
 }
 
-// Windows returns ERROR_ACCESS_DENIED from mkdir while a just-released lock directory is pending deletion; Node reports it as EPERM, proper-lockfile passes it through (only EEXIST is contention) and Pi's retry loops rethrow any code other than ELOCKED. PiG classifies the same: contention that resolves is retried, the injected pending-delete result is surfaced after exactly one attempt and leaves no lock behind.
-func TestAcquireSurfacesNonEEXISTMkdirErrorsUnretried(t *testing.T) {
+// Windows returns ERROR_ACCESS_DENIED from mkdir while a just-released lock directory is pending deletion; Node reports it as EPERM and proper-lockfile passes it through (only EEXIST is contention). Pi's auth loops rethrow every code but ELOCKED, and since Pi 1.2.0 (#10801) retry EPERM on Windows (auth-storage.ts:24-29). PiG classifies the same: the injected error is surfaced after exactly one attempt and leaves no lock behind, except Windows EPERM, whose retry finds the removal finished and takes the lock.
+func TestAcquireRetriesOnlyWindowsEPERMAmongNonEEXISTMkdirErrors(t *testing.T) {
 	for name, injected := range nonEEXISTMkdirErrors {
+		retried := runtime.GOOS == "windows" && strings.HasPrefix(nonEEXISTMkdirMessages[name], "EPERM:")
 		for _, a := range acquirers {
 			t.Run(name+"/"+a.name, func(t *testing.T) {
 				path := filepath.Join(t.TempDir(), "auth.json")
@@ -85,10 +89,24 @@ func TestAcquireSurfacesNonEEXISTMkdirErrorsUnretried(t *testing.T) {
 						}
 						return &fs.PathError{Op: "mkdir", Path: path + ".lock", Err: injected}
 					}
-					t.Errorf("mkdir call %d: a non-EEXIST error was retried", call)
+					if !retried {
+						t.Errorf("mkdir call %d: a non-EEXIST error was retried", call)
+					}
 					return real()
 				})
 				lock, err := a.run(path)
+				if retried {
+					if err != nil {
+						t.Fatalf("err = %v, want Windows EPERM retried until the removal finished", err)
+					}
+					if got := calls.Load(); got != 3 {
+						t.Fatalf("mkdir calls = %d, want 3", got)
+					}
+					if err := lock.Release(); err != nil {
+						t.Fatal(err)
+					}
+					return
+				}
 				if err == nil {
 					_ = lock.Release()
 					t.Fatal("acquisition succeeded, want the mkdir error")

@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// The OpenAI SDK (openai@6.40.0 client.js makeRequest) rejects a fetch failure before response headers with APIConnectionError("Connection error.") and a timeout or abort of its own timer with APIConnectionTimeoutError("Request timed out."). Pi's openai-completions, openai-responses and azure-openai-responses providers surface those messages.
+// The OpenAI SDK (openai@7.19.0 client.js makeRequest, unchanged from 6.40.0 here) rejects a fetch failure before response headers with APIConnectionError("Connection error.") and a timeout or abort of its own timer with APIConnectionTimeoutError("Request timed out."). Pi's openai-completions, openai-responses and azure-openai-responses providers surface those messages.
 
 var openAISDKTransportAPIs = []API{APIOpenAICompletions, APIOpenAIResponses, APIAzureOpenAIResponses}
 

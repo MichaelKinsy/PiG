@@ -18,11 +18,11 @@ func (p *pasteInputProbe) Render(int) []string     { return nil }
 func (p *pasteInputProbe) HandleInput(data string) { p.inputs = append(p.inputs, data) }
 
 type pasteRenderProbe struct {
-	tui.Renderer
+	tui.TUI
 	requests int
 }
 
-func (p *pasteRenderProbe) RequestRender() { p.requests++; p.Renderer.RequestRender() }
+func (p *pasteRenderProbe) RequestRender(...bool) { p.requests++; p.TUI.RequestRender() }
 
 // .upstream/v0.87.1/packages/coding-agent/test/interactive-tui.test.ts:173
 func TestInteractiveTuiRightClickPasteUpstream(t *testing.T) {
@@ -35,7 +35,7 @@ func TestInteractiveTuiRightClickPasteUpstream(t *testing.T) {
 	mode := newFullscreenProbe(t)
 	target := &pasteInputProbe{}
 	mode.altScreen.SetFocus(target)
-	renderer := &pasteRenderProbe{Renderer: mode.tuiInst}
+	renderer := &pasteRenderProbe{TUI: mode.tuiInst}
 	mode.tuiInst = renderer
 	mode.handleRightClickPaste()
 	for len(target.inputs) == 0 {

@@ -30,7 +30,7 @@ func TestInputHandlerConfirmDialogAnswersThroughTheOwnerLoop(t *testing.T) {
 	m.opts.Model = model
 	m.keybindings = otherColumnKeys()
 	m.slashRegistry = NewSlashRegistry()
-	m.agent = agent.NewAgent(agent.AgentOptions{Model: model})
+	m.agent = mustNewAgent(agent.AgentOptions{Model: model})
 
 	ctx, cancel := context.WithCancel(t.Context())
 	m.runCtx = ctx
@@ -50,7 +50,7 @@ func TestInputHandlerConfirmDialogAnswersThroughTheOwnerLoop(t *testing.T) {
 	answered := make(chan bool, 1)
 	m.newRunner = inproc.NewRunner([]extension.Extension{{Path: "confirmer", Handlers: map[string][]extension.HandlerFn{
 		EventInput: {func(args ...any) (any, error) {
-			ok, err := ui.Confirm(ctx, "Send this prompt?", "", nil)
+			ok, err := ui.Confirm(ctx, "Send this prompt?", "", extension.ExtensionUIDialogOptions{})
 			answered <- ok
 			if err != nil {
 				return nil, err

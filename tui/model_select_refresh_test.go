@@ -25,7 +25,7 @@ func TestModelSelectorUpdateModels(t *testing.T) {
 		{name: "unavailable scoped retained", scoped: mkItems("p/gone"), next: mkItems("p/new"), want: "p/gone"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			selector := NewModelSelector("Select model", tc.scoped, tc.old, tc.current)
+			selector := NewStaticModelSelectorComponent("Select model", tc.scoped, tc.old, tc.current)
 			for range tc.down {
 				selector.HandleInput("\x1b[B")
 			}
@@ -45,7 +45,7 @@ func TestModelSelectorUpdateModels(t *testing.T) {
 
 func TestModelSelectorUpdateModelsRefreshesScopedMetadataAndIgnoresClosed(t *testing.T) {
 	old := []ModelSelectorItem{{Provider: "radius", ID: "current", Name: "Old"}}
-	selector := NewModelSelector("Select model", old, old, "radius/current")
+	selector := NewStaticModelSelectorComponent("Select model", old, old, "radius/current")
 	next := []ModelSelectorItem{{Provider: "radius", ID: "current", Name: "Updated"}}
 	selector.UpdateModels(next)
 	if selector.active[0].Name != "Updated" {
@@ -70,7 +70,7 @@ func BenchmarkModelSelectorCatalogRefresh(b *testing.B) {
 			for i := range items {
 				items[i] = ModelSelectorItem{Provider: fmt.Sprintf("provider-%d", i%20), ID: fmt.Sprintf("model-%d", i), Name: "Catalog model"}
 			}
-			selector := NewModelSelector("Select model", items[:20], items, items[0].FQ())
+			selector := NewStaticModelSelectorComponent("Select model", items[:20], items, items[0].FQ())
 			selector.HandleInput("\t")
 			selector.SetFilter("model-9")
 			b.ReportAllocs()

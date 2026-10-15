@@ -27,10 +27,10 @@ type TestHarness struct {
 // NewTestHarness builds a mode around opts.SessionHandle and starts its owner
 // loop. onEvent, when non-nil, runs on the loop after the mode handles each
 // Session event.
-func NewTestHarness(t testing.TB, opts InteractiveOptions, onEvent func(h *TestHarness, ev agent.AgentEvent)) *TestHarness {
+func NewTestHarness(t testing.TB, opts InteractiveModeOptions, onEvent func(h *TestHarness, ev agent.AgentEvent)) *TestHarness {
 	t.Helper()
 	restoreStartupTheme(t)
-	m := NewInteractiveMode(opts)
+	m := NewInteractiveMode(nil, opts)
 	m.chatContainer = tui.NewContainer()
 	m.loadedResourcesContainer = tui.NewContainer()
 	m.editorContainer = tui.NewContainer()
@@ -38,7 +38,7 @@ func NewTestHarness(t testing.TB, opts InteractiveOptions, onEvent func(h *TestH
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.rendererOut = io.Discard
 	m.tuiInst = tui.NewWithOutput(m.rendererOut, 100, 30)
-	m.statusLine = NewStatusLine(opts.Model, "", nil)
+	m.statusLine = NewFooterComponent(opts.Model, "", nil)
 	m.editor = tui.NewEditor()
 	m.editorContainer.Add(m.editor)
 	m.layout = tui.NewContainer(m.loadedResourcesContainer, m.chatContainer, m.editorContainer)
@@ -191,4 +191,69 @@ func (h *TestHarness) QueuedMessages() (steering, followUp int) {
 func ToolCard(t *testing.T, name, toolCallID string, args json.RawMessage, definition extension.ToolDefinition) func(width int) []string {
 	t.Helper()
 	return toolComponentRaw(t, name, toolCallID, args, &definition).card.Render
+}
+
+// RecordProgramStatus points the mode's program-status reporter at a terminal that records its reports, and returns a reader that copies the reports on the owner loop.
+func (h *TestHarness) RecordProgramStatus(sessionName string) func() []tui.ProgramStatus {
+	var terminal *programStatusTerminal
+	h.Do(func() { terminal = recordProgramStatus(h.m, sessionName) })
+	return func() []tui.ProgramStatus {
+		var reports []tui.ProgramStatus
+		h.Do(func() { reports = append(reports, terminal.reports...) })
+		return reports
+	}
+}
+
+// InitSnapshot is the state Init leaves behind, for the pty test that drives the real startup sequence.
+type InitSnapshot struct {
+	Initialized          bool
+	EditorPaddingX       int
+	AutocompleteMax      int
+	SteeringMode         string
+	FollowUpMode         string
+	AutoCompact          bool
+	StatusName           string
+	HasUI                bool
+	ExtensionSession     bool
+	TimingsBound         bool
+	StartupHeaderPending bool
+	HideThinking         bool
+	ChatChildren         int
+	WidgetChildren       int
+	Teardowns            int
+	KeybindingsSet       bool
+	SlashRegistrySet     bool
+	FocusIsEditor        bool
+	SlashCommands        []string
+	PromptTemplates      []string
+	ResourceSourceInfo   int
+	FooterCwd            string
+}
+
+// InitSnapshot reads the state of m after Init.
+func (m *InteractiveMode) InitSnapshot() InitSnapshot {
+	snapshot := InitSnapshot{
+		Initialized: m.isInitialized, EditorPaddingX: m.editor.PaddingX(), AutocompleteMax: m.editor.AutocompleteMaxVisible(),
+		AutoCompact: m.statusLine.autoCompactEnabled, StatusName: m.statusLine.name, TimingsBound: m.statusLine.timings != nil,
+		StartupHeaderPending: m.startupHeaderPending, HideThinking: m.hideThinking, ChatChildren: len(m.chatContainer.Children()),
+		WidgetChildren: len(m.widgetContainer.Children()), Teardowns: len(m.teardowns), KeybindingsSet: m.keybindings != nil, SlashRegistrySet: m.slashRegistry != nil,
+	}
+	snapshot.FocusIsEditor = m.tuiInst.GetFocusedComponent() == tui.Component(m.editor)
+	for _, command := range m.slashRegistry.All() {
+		snapshot.SlashCommands = append(snapshot.SlashCommands, command.Name)
+	}
+	for _, template := range m.promptTemplates {
+		snapshot.PromptTemplates = append(snapshot.PromptTemplates, template.Name)
+	}
+	snapshot.ResourceSourceInfo = len(m.resourceSourceInfo)
+	if m.statusLine.FooterDataProvider != nil {
+		snapshot.FooterCwd = m.statusLine.cwd
+	}
+	if m.agent != nil {
+		snapshot.SteeringMode, snapshot.FollowUpMode = string(m.agent.SteeringMode()), string(m.agent.FollowUpMode())
+	}
+	if m.extCtx != nil {
+		snapshot.HasUI, snapshot.ExtensionSession = m.extCtx.HasUI, m.extCtx.Session != nil
+	}
+	return snapshot
 }

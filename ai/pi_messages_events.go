@@ -6,8 +6,10 @@ package ai
 import (
 	"encoding/json"
 	"fmt"
-	"slices"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/jsjson"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
 // PiMessagesRewriteImpact summarizes a server-side message rewrite (for
@@ -21,29 +23,52 @@ type PiMessagesRewriteImpact struct {
 	SystemPromptChanged bool    `json:"systemPromptChanged"`
 }
 
+// PiMessagesEventType is the discriminator of the PiMessagesEvent union.
+type PiMessagesEventType string
+
+// The event types a pi-messages backend sends (pi-messages.ts PiMessagesEvent).
+const (
+	PiMessagesEventStart         PiMessagesEventType = "start"
+	PiMessagesEventTextStart     PiMessagesEventType = "text_start"
+	PiMessagesEventTextDelta     PiMessagesEventType = "text_delta"
+	PiMessagesEventTextEnd       PiMessagesEventType = "text_end"
+	PiMessagesEventThinkingStart PiMessagesEventType = "thinking_start"
+	PiMessagesEventThinkingDelta PiMessagesEventType = "thinking_delta"
+	PiMessagesEventThinkingEnd   PiMessagesEventType = "thinking_end"
+	PiMessagesEventToolcallStart PiMessagesEventType = "toolcall_start"
+	PiMessagesEventToolcallDelta PiMessagesEventType = "toolcall_delta"
+	PiMessagesEventToolcallEnd   PiMessagesEventType = "toolcall_end"
+	PiMessagesEventDone          PiMessagesEventType = "done"
+	PiMessagesEventError         PiMessagesEventType = "error"
+)
+
 // PiMessagesEvent is one serialized assistant-message event sent by a
 // pi-messages backend. Type selects which fields apply.
 type PiMessagesEvent struct {
-	Type                  string         `json:"type"`
-	ContentIndex          int            `json:"contentIndex"`
-	Delta                 string         `json:"delta"`
-	Content               string         `json:"content"`
-	ContentSignature      string         `json:"contentSignature"`
-	Redacted              bool           `json:"redacted"`
-	ID                    string         `json:"id"`
-	ToolName              string         `json:"toolName"`
-	ToolCall              *ToolCall      `json:"toolCall"`
-	Reason                StopReason     `json:"reason"`
-	Usage                 Usage          `json:"usage"`
-	ErrorMessage          string         `json:"errorMessage"`
-	ResponseID            string         `json:"responseId"`
-	ProviderThinkingLevel *string        `json:"providerThinkingLevel"`
-	Rewrite               map[string]any `json:"rewrite"`
+	Type                  PiMessagesEventType `json:"type"`
+	ContentIndex          int                 `json:"contentIndex"`
+	Delta                 string              `json:"delta"`
+	Content               string              `json:"content"`
+	ContentSignature      string              `json:"contentSignature"`
+	Redacted              bool                `json:"redacted"`
+	ID                    string              `json:"id"`
+	ToolName              string              `json:"toolName"`
+	ToolCall              *ToolCall           `json:"toolCall"`
+	Reason                StopReason          `json:"reason"`
+	Usage                 Usage               `json:"usage"`
+	ErrorMessage          string              `json:"errorMessage"`
+	ResponseID            string              `json:"responseId"`
+	ProviderThinkingLevel *string             `json:"providerThinkingLevel"`
+	Rewrite               map[string]any      `json:"rewrite"`
+	// rewriteOrder is the rewrite object's wire text, whose member order the diagnostic keeps (`{ ...rewrite }`).
+	rewriteOrder json.RawMessage
 }
 
 type piMessagesEventConverter struct {
 	partial  *AssistantMessage
 	toolJSON map[int]string
+	// streamed appends deltas to the open blocks without copying their earlier bytes again.
+	streamed streamedBlocks
 	// observe is the bound OnProviderStreamEvent callback, or nil.
 	observe func(data any) error
 	// replaced records the nested objects the last converted event assigned to partial. Shallow copies taken earlier keep the objects they retained.
@@ -62,52 +87,77 @@ func newPiMessagesEventConverter(providerID, modelID string) *piMessagesEventCon
 
 // convert returns the event to push for one backend event: createEventConverter's returned function (pi-messages.ts:190-284).
 func (c *piMessagesEventConverter) convert(raw json.RawMessage) ([]AssistantMessageEvent, error) {
+	// readPiMessagesEvents drops a falsy event (pi-messages.ts:290-292), and a truthy number, string, boolean or array has no `type` member, so
+	// createEventConverter returns `{ ...event, partial }` for it like any other unknown event (:193-272).
+	if len(raw) > 0 && raw[0] != '{' {
+		return nil, nil
+	}
 	var event PiMessagesEvent
-	if err := json.Unmarshal(raw, &event); err != nil {
+	if err := json.Unmarshal(jsjson.NormalizeIntegers(raw), &event); err != nil {
 		return nil, err
 	}
-	if event.Type == "start" {
+	if event.Rewrite != nil {
+		if parsed, err := orderedjson.Parse(raw); err == nil {
+			event.rewriteOrder, _ = parsed.Get("rewrite")
+		}
+	}
+	if event.Type == PiMessagesEventStart {
 		return []AssistantMessageEvent{StartEvent{Partial: c.partial}}, nil
 	}
-	var forwarded struct {
-		ContentSignature *string `json:"contentSignature"`
-		Redacted         *bool   `json:"redacted"`
-	}
-	if err := json.Unmarshal(raw, &forwarded); err != nil {
-		return nil, err
-	}
 	converted, err := c.apply(event)
-	if err != nil {
+	if err != nil || converted == nil {
 		return nil, err
 	}
 	switch end := converted.(type) {
 	case TextEndEvent:
+		forwarded, err := forwardedEndFields(raw)
+		if err != nil {
+			return nil, err
+		}
 		end.contentSignature = forwarded.ContentSignature
 		converted = end
 	case ThinkingEndEvent:
+		forwarded, err := forwardedEndFields(raw)
+		if err != nil {
+			return nil, err
+		}
 		end.contentSignature, end.redacted = forwarded.ContentSignature, forwarded.Redacted
 		converted = end
 	}
 	return []AssistantMessageEvent{converted}, nil
 }
 
+// piMessagesEndFields are the members of a text or thinking end event that are forwarded when present, as opposed to defaulted when absent.
+type piMessagesEndFields struct {
+	ContentSignature *string `json:"contentSignature"`
+	Redacted         *bool   `json:"redacted"`
+}
+
+// forwardedEndFields reads them from the event's JSON. Only an end event needs them: the event decode above already rejects a member of the wrong type for any event.
+func forwardedEndFields(raw json.RawMessage) (piMessagesEndFields, error) {
+	var forwarded piMessagesEndFields
+	err := json.Unmarshal(raw, &forwarded)
+	return forwarded, err
+}
+
 func (c *piMessagesEventConverter) apply(event PiMessagesEvent) (AssistantMessageEvent, error) {
 	switch event.Type {
-	case "done":
+	case PiMessagesEventDone:
 		c.finish(event)
 		return DoneEvent{Reason: event.Reason, Message: c.partial}, nil
-	case "error":
+	case PiMessagesEventError:
 		c.finish(event)
 		c.partial.ErrorMessage = event.ErrorMessage
 		return ErrorEvent{Reason: event.Reason, Error: c.partial}, nil
-	case "text_start", "thinking_start", "toolcall_start":
+	case PiMessagesEventTextStart, PiMessagesEventThinkingStart, PiMessagesEventToolcallStart:
 		return c.startBlock(event)
-	case "text_delta", "thinking_delta", "toolcall_delta":
+	case PiMessagesEventTextDelta, PiMessagesEventThinkingDelta, PiMessagesEventToolcallDelta:
 		return c.deltaBlock(event)
-	case "text_end", "thinking_end", "toolcall_end":
+	case PiMessagesEventTextEnd, PiMessagesEventThinkingEnd, PiMessagesEventToolcallEnd:
 		return c.endBlock(event)
 	}
-	return nil, fmt.Errorf("unknown pi-messages event type %q", event.Type)
+	// upstream: pi-messages.ts createEventConverter returns `{ ...event, partial }` for any other type; the stream carries it and every consumer's switch ignores it, so it changes nothing here.
+	return nil, nil
 }
 
 func (c *piMessagesEventConverter) finish(event PiMessagesEvent) {
@@ -120,9 +170,8 @@ func (c *piMessagesEventConverter) finish(event PiMessagesEvent) {
 		c.partial.ProviderThinkingLevel = *event.ProviderThinkingLevel
 	}
 	if event.Rewrite != nil {
-		// diagnostics.ts:42-47 appendAssistantMessageDiagnostic assigns a new array.
-		c.partial.Diagnostics = append(slices.Clone(c.partial.Diagnostics), AssistantMessageDiagnostic{
-			Type: "pi_messages_rewrite", Timestamp: time.Now().UnixMilli(), Details: event.Rewrite,
+		AppendAssistantMessageDiagnostic(c.partial, AssistantMessageDiagnostic{
+			Type: "pi_messages_rewrite", Timestamp: time.Now().UnixMilli(), Details: event.Rewrite, detailsOrder: event.rewriteOrder,
 		})
 		c.replaced.Diagnostics = true
 	}
@@ -136,13 +185,14 @@ func (c *piMessagesEventConverter) startBlock(event PiMessagesEvent) (AssistantM
 	var block AssistantContentBlock
 	var result AssistantMessageEvent
 	switch event.Type {
-	case "text_start":
+	case PiMessagesEventTextStart:
 		block, result = TextContent{}, TextStartEvent{ContentIndex: index, Partial: c.partial}
-	case "thinking_start":
+	case PiMessagesEventThinkingStart:
 		block, result = ThinkingContent{}, ThinkingStartEvent{ContentIndex: index, Partial: c.partial}
 	default:
 		block, result = ToolCall{ID: event.ID, Name: event.ToolName, Arguments: JsonObject{}}, ToolCallStartEvent{ContentIndex: index, Partial: c.partial}
 		c.toolJSON[index] = ""
+		c.streamed.release(index)
 	}
 	if index == len(c.partial.Content) {
 		c.partial.Content = append(c.partial.Content, block)
@@ -167,16 +217,16 @@ func (c *piMessagesEventConverter) deltaBlock(event PiMessagesEvent) (AssistantM
 	index := event.ContentIndex
 	switch block := current.(type) {
 	case TextContent:
-		block.Text += event.Delta
+		block.Text = c.streamed.appendContent(index, block.Text, event.Delta)
 		c.partial.Content[index] = block
 		return TextDeltaEvent{ContentIndex: index, Delta: event.Delta, Partial: c.partial}, nil
 	case ThinkingContent:
-		block.Thinking += event.Delta
+		block.Thinking = c.streamed.appendContent(index, block.Thinking, event.Delta)
 		c.partial.Content[index] = block
 		return ThinkingDeltaEvent{ContentIndex: index, Delta: event.Delta, Partial: c.partial}, nil
 	case ToolCall:
-		c.toolJSON[index] += event.Delta
-		block.SetStreamingArguments(c.toolJSON[index])
+		c.toolJSON[index] = c.streamed.appendArguments(index, c.toolJSON[index], event.Delta)
+		block.setParsedArguments(c.streamed.streamingArguments(index, c.toolJSON[index]))
 		c.partial.Content[index] = block
 		return ToolCallDeltaEvent{ContentIndex: index, Delta: event.Delta, Partial: c.partial}, nil
 	}
@@ -192,9 +242,11 @@ func (c *piMessagesEventConverter) endBlock(event PiMessagesEvent) (AssistantMes
 	switch block := current.(type) {
 	case TextContent:
 		c.partial.Content[index] = TextContent{Text: event.Content, TextSignature: event.ContentSignature}
+		c.streamed.release(index)
 		return TextEndEvent{ContentIndex: index, Content: event.Content, Partial: c.partial}, nil
 	case ThinkingContent:
 		c.partial.Content[index] = ThinkingContent{Thinking: event.Content, ThinkingSignature: event.ContentSignature, Redacted: event.Redacted}
+		c.streamed.release(index)
 		return ThinkingEndEvent{ContentIndex: index, Content: event.Content, Partial: c.partial}, nil
 	case ToolCall:
 		if event.ToolCall != nil {
@@ -202,6 +254,7 @@ func (c *piMessagesEventConverter) endBlock(event PiMessagesEvent) (AssistantMes
 		}
 		c.partial.Content[index] = block
 		delete(c.toolJSON, index)
+		c.streamed.release(index)
 		return ToolCallEndEvent{ContentIndex: index, ToolCall: block, Partial: c.partial}, nil
 	}
 	return nil, fmt.Errorf("pi-messages %s does not match content block %d", event.Type, index)
@@ -216,14 +269,17 @@ func mergeToolCall(existing, incoming ToolCall) ToolCall {
 	if incoming.Name != "" {
 		existing.Name = incoming.Name
 	}
-	if incoming.Arguments != nil {
-		existing.Arguments, existing.argumentOrder = incoming.Arguments, incoming.argumentOrder
+	if incoming.Arguments != nil || incoming.nonObjectArguments != nil {
+		existing.setParsedArguments(incoming.Arguments, incoming.argumentOrder, incoming.nonObjectArguments)
 	}
 	if incoming.ThoughtSignature != "" {
 		existing.ThoughtSignature = incoming.ThoughtSignature
 	}
 	if incoming.Namespace != "" {
 		existing.Namespace = incoming.Namespace
+	}
+	if incoming.ArgumentsError != "" {
+		existing.ArgumentsError = incoming.ArgumentsError
 	}
 	return existing
 }

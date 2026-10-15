@@ -1,0 +1,12 @@
+{"k":">","name":"harness.root","tick":195}
+{"k":"#","seq":1,"summary":"conversations:i document_revisions:i documents:i","tick":385,"begin":325}
+{"k":">","name":"harness.root().submit","tick":394}
+{"k":"#","seq":2,"summary":"document_revisions:d document_revisions:i entries:i submissions:i tasks:i","tick":505,"begin":477}
+{"k":">","name":"harness.root().submit().wait","tick":514}
+{"k":"#","seq":3,"summary":"tasks:u","tick":551,"begin":540}
+{"k":"#","seq":4,"summary":"entries:i tasks:u","tick":730,"begin":714}
+{"k":"#","seq":5,"summary":"document_revisions:i","tick":779,"begin":766}
+{"k":"#","seq":6,"summary":"document_revisions:d document_revisions:i entries:i submissions:u tasks:u","tick":995,"begin":960}
+{"k":">","name":"harness.root().commit","tick":1003}
+{"k":">","name":"harness.root().entries","tick":1042}
+{"k":">","name":"harness.close","tick":1067}

@@ -151,3 +151,37 @@ assert.deepEqual(themeFromPalette({...palette, appearance: undefined, colors: un
 		t.Fatalf("host theme colors: %v\n%s", err, out)
 	}
 }
+
+// The host sends the theme, keybinding table and system prompt only when they changed, so applyState keeps what a state_update leaves out and still applies an emptied system prompt.
+func TestNodeApplyStateKeepsOmittedPresentationState(t *testing.T) {
+	nodeCellRequireNode(t)
+	path, err := filepath.Abs("runtime-node/runtime.mjs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	script := fmt.Sprintf(`
+import assert from "node:assert/strict";
+import {pathToFileURL} from "node:url";
+const {Runtime} = await import(pathToFileURL(%q));
+const r = new Runtime("/ext/state.mjs");
+const palette = name => ({name, modifiers: true, foregrounds: {accent: "\x1b[38;2;1;2;3m"}, backgrounds: {}, mode: "truecolor"});
+const table = {definitions: {"app.interrupt": {defaultKeys: "escape"}}, userBindings: {}};
+r.applyState({hasUI: true, theme: palette("dark"), keybindings: table, systemPrompt: "prompt one", terminalCapabilities: {images: "kitty", trueColor: true, hyperlinks: true}});
+const encoded = r.keybindingTable;
+assert.equal(r.ctx.ui.theme.name, "dark");
+assert.equal(r.state.systemPrompt, "prompt one");
+assert.ok(encoded);
+r.applyState({isIdle: false});
+assert.equal(r.ctx.ui.theme.name, "dark", "an omitted theme is kept");
+assert.equal(r.keybindingTable, encoded, "an omitted keybinding table is kept");
+assert.equal(r.state.systemPrompt, "prompt one", "an omitted system prompt is kept");
+r.applyState({systemPrompt: ""});
+assert.equal(r.state.systemPrompt, "", "an emptied system prompt is applied");
+r.applyState({theme: palette("light")});
+assert.equal(r.ctx.ui.theme.name, "light");
+assert.equal(r.state.systemPrompt, "", "a theme-only push leaves the prompt alone");
+`, path)
+	if out, err := exec.CommandContext(t.Context(), "node", "--input-type=module", "-e", script).CombinedOutput(); err != nil {
+		t.Fatalf("applyState: %v\n%s", err, out)
+	}
+}

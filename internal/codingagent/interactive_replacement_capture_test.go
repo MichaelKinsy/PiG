@@ -39,7 +39,7 @@ func TestIdleWaitRetainsOutgoingSessionAcrossUIRebind(t *testing.T) {
 	var once sync.Once
 	release := func() { once.Do(func() { close(resume) }) }
 	t.Cleanup(func() { release(); _ = outgoing.session.Close() })
-	if err := outgoing.session.Services().Auth().Set("faux", ai.Credential{Type: ai.CredentialAPIKey, Key: "faux-key"}); err != nil {
+	if err := configureFauxAuth(outgoing.session.Services(), "faux-key"); err != nil {
 		t.Fatal(err)
 	}
 	if err := outgoing.session.SendExtensionUserMessage("captured work", nil); err != nil {

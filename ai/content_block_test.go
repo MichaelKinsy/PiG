@@ -65,3 +65,30 @@ func TestContentBlocksRoundTrip(t *testing.T) {
 		t.Fatalf("round trip = %#v, want %#v", output, input)
 	}
 }
+
+// JSON.parse keeps a lone UTF-16 unit, and so does a session line or a tool result block that carries one as an escape: the Go string holds its WTF-8 bytes and encodes back to the escape, never to U+FFFD.
+func TestUnmarshalContentBlockKeepsALoneSurrogate(t *testing.T) {
+	const lone = "a\xed\xa0\xbdb"
+	for name, test := range map[string]struct {
+		wire string
+		text func(ContentBlock) string
+	}{
+		"text":     {`{"type":"text","text":"a\ud83db"}`, func(block ContentBlock) string { return block.(TextContent).Text }},
+		"thinking": {`{"type":"thinking","thinking":"a\ud83db"}`, func(block ContentBlock) string { return block.(ThinkingContent).Thinking }},
+	} {
+		block, err := UnmarshalContentBlock([]byte(test.wire))
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if got := test.text(block); got != lone {
+			t.Errorf("%s decoded to %q, want the lone surrogate kept as %q", name, got, lone)
+		}
+		again, err := json.Marshal(block)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if got, want := string(again), test.wire; got != want {
+			t.Errorf("%s re-encoded to %s, want %s", name, got, want)
+		}
+	}
+}

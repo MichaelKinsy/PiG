@@ -1,11 +1,11 @@
 package mcpext
 
 import (
-	"net/url"
 	"slices"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 )
 
 // Pi 1.0.1 (.upstream/v1.0.1/packages/coding-agent/src/extensions/mcp/index.ts loginCommand): outside the terminal UI,
@@ -14,7 +14,7 @@ import (
 // terminal link in any mode.
 func TestMcpLoginNoticeShowsThePlainSignInURL(t *testing.T) {
 	const target = "https://auth.example/authorize?client_id=pi&state=abc"
-	authorizationURL, err := url.Parse(target)
+	authorizationURL, err := nodeurl.ParseURL(target)
 	if err != nil {
 		t.Fatal(err)
 	}

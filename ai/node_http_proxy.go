@@ -8,7 +8,9 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"unicode"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 )
 
 const UnsupportedProxyProtocolMessage = "Unsupported proxy protocol. SOCKS and PAC proxy URLs are not supported; use an HTTP or HTTPS proxy URL."
@@ -24,7 +26,7 @@ func getProxyEnv(key string, env ProviderEnv) string {
 }
 
 func proxyPort(text string) (int, bool) {
-	text = strings.TrimSpace(text)
+	text = jsstring.TrimStart(text)
 	n := 0
 	if strings.HasPrefix(text, "+") || strings.HasPrefix(text, "-") {
 		n++
@@ -41,7 +43,7 @@ func proxyPort(text string) (int, bool) {
 }
 
 func parseNoProxyEntry(entry string) (host string, port int) {
-	entry = strings.TrimSpace(strings.ToLower(entry))
+	entry = jsstring.ToLower(jsstring.Trim(entry))
 	if strings.HasPrefix(entry, "[") {
 		if end := strings.IndexByte(entry, ']'); end >= 0 {
 			rest := entry[end+1:]
@@ -60,18 +62,26 @@ func parseNoProxyEntry(entry string) (host string, port int) {
 	return entry, 0
 }
 
+// stripProxyBrackets removes one pair of enclosing brackets, and only a complete pair.
+func stripProxyBrackets(host string) string {
+	if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
+		return host[1 : len(host)-1]
+	}
+	return host
+}
+
 func shouldProxyHostname(hostname string, port int, env ProviderEnv) bool {
-	noProxy := strings.ToLower(getProxyEnv("no_proxy", env))
+	noProxy := jsstring.ToLower(getProxyEnv("no_proxy", env))
 	if noProxy == "*" {
 		return false
 	}
-	hostname = strings.ToLower(strings.TrimSuffix(strings.TrimPrefix(hostname, "["), "]"))
-	for _, entry := range strings.FieldsFunc(noProxy, func(r rune) bool { return r == ',' || unicode.IsSpace(r) }) {
+	hostname = stripProxyBrackets(jsstring.ToLower(hostname))
+	for _, entry := range strings.FieldsFunc(noProxy, func(r rune) bool { return r == ',' || jsstring.IsSpace(r) }) {
 		host, entryPort := parseNoProxyEntry(entry)
 		if entryPort != 0 && entryPort != port {
 			continue
 		}
-		host = strings.TrimSuffix(strings.TrimPrefix(host, "["), "]")
+		host = stripProxyBrackets(host)
 		if strings.HasPrefix(host, "*.") {
 			host = host[2:]
 		} else if strings.HasPrefix(host, ".") || strings.HasPrefix(host, "*") {
@@ -101,18 +111,19 @@ func defaultProxyPort(protocol string) int {
 
 // ResolveHTTPProxyURLForTarget resolves scoped/process proxy aliases and NO_PROXY exclusions. It rejects non-HTTP proxy protocols before a request is sent.
 func ResolveHTTPProxyURLForTarget(target string, env ProviderEnv) (*url.URL, error) {
-	parsed, err := url.Parse(target)
-	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+	parsed, err := nodeurl.ParseURL(target)
+	if err != nil || parsed.Hostname == "" {
 		return nil, nil
 	}
-	port, _ := proxyPort(parsed.Port())
+	protocol := strings.TrimSuffix(parsed.Protocol, ":")
+	port, _ := proxyPort(parsed.Port)
 	if port == 0 {
-		port = defaultProxyPort(parsed.Scheme)
+		port = defaultProxyPort(protocol)
 	}
-	if !shouldProxyHostname(parsed.Hostname(), port, env) {
+	if !shouldProxyHostname(parsed.Hostname, port, env) {
 		return nil, nil
 	}
-	proxy := getProxyEnv(parsed.Scheme+"_proxy", env)
+	proxy := getProxyEnv(protocol+"_proxy", env)
 	if proxy == "" {
 		proxy = getProxyEnv("all_proxy", env)
 	}
@@ -120,18 +131,15 @@ func ResolveHTTPProxyURLForTarget(target string, env ProviderEnv) (*url.URL, err
 		return nil, nil
 	}
 	if !strings.Contains(proxy, "://") {
-		proxy = parsed.Scheme + "://" + proxy
+		proxy = protocol + "://" + proxy
 	}
-	result, err := url.Parse(proxy)
-	if err != nil || result.Scheme == "" || result.Hostname() == "" {
-		return nil, fmt.Errorf("Invalid proxy URL %q: Invalid URL", proxy)
+	proxyURL, err := nodeurl.ParseURL(proxy)
+	if err != nil {
+		quoted, _ := jsstring.MarshalJSON(proxy)
+		return nil, fmt.Errorf("Invalid proxy URL %s: Invalid URL", quoted)
 	}
-	if result.Scheme != "http" && result.Scheme != "https" {
-		return nil, fmt.Errorf("%s Got %s:", UnsupportedProxyProtocolMessage, result.Scheme)
+	if proxyURL.Protocol != "http:" && proxyURL.Protocol != "https:" {
+		return nil, fmt.Errorf("%s Got %s", UnsupportedProxyProtocolMessage, proxyURL.Protocol)
 	}
-	result.Host = strings.ToLower(result.Host)
-	if result.Path == "" {
-		result.Path = "/"
-	}
-	return result, nil
+	return url.Parse(proxyURL.Href())
 }

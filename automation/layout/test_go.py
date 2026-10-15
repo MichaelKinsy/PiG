@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 """Hermetic codemod regressions. Run: python3 automation/layout/test_go.py."""
 import importlib.util
@@ -33,7 +32,7 @@ class LayoutGoTest(unittest.TestCase):
             "coding/extension/host/subprocess/path_test.go": 'package subprocess\nimport "path/filepath"\nvar root = filepath.Join("..", "..", "..", "..", "extensions", "sdk")\nvar build = "./coding/extension/host/subprocess/testdata/fixture-ext/"\n',
             "tests/upstream-parity/port_map_drift_test.go": 'package parity\nimport "path/filepath"\nvar impl = filepath.Join(root, "ai", "live.go")\n',
             "tests/docs-drift/public_claims_test.go": 'package docsdrift\nvar documents = []string{"SECURITY.md", "AGENTS.md"}\n',
-            "cmd/pig/windows.go": '//go:build windows\n\npackage main\nimport a "github.com/MichaelKinsy/PiG/ai"\nvar _ a.Model\n',
+            "coding/cli/windows.go": '//go:build windows\n\npackage main\nimport a "github.com/MichaelKinsy/PiG/ai"\nvar _ a.Model\n',
             "parity/cmd/gointerfaces/main.go": 'package main\nvar paths = []string{"./ai/...", "./tui"}\n',
         }
         subprocess.run(["git", "init", "-q", str(root)], check=True)
@@ -53,8 +52,8 @@ class LayoutGoTest(unittest.TestCase):
                 self.assertFalse((root / package).exists())
             self.assertIn('// Package agent uses github.com/MichaelKinsy/PiG/internal/ai.', (root / "internal/agent/agent.go").read_text())
             self.assertEqual((root / "internal/ai/data.json").read_text(), "{}\n")
-            self.assertIn('a "github.com/MichaelKinsy/PiG/internal/ai"', (root / "cmd/pig/windows.go").read_text())
-            self.assertTrue((root / "cmd/pig/windows.go").read_text().startswith("//go:build windows\n"))
+            self.assertIn('a "github.com/MichaelKinsy/PiG/internal/ai"', (root / "coding/cli/windows.go").read_text())
+            self.assertTrue((root / "coding/cli/windows.go").read_text().startswith("//go:build windows\n"))
             self.assertIn('"./internal/ai/..."', (root / "parity/cmd/gointerfaces/main.go").read_text())
             self.assertIn('filepath.Abs("../..")', (root / "internal/tui/path_test.go").read_text())
             self.assertIn('"..", "..", "..", "..", "..", "extensions"', (root / "internal/coding/extension/host/subprocess/path_test.go").read_text())
@@ -99,9 +98,9 @@ class LayoutGoTest(unittest.TestCase):
     def test_joined_repository_assets_move_without_rewriting_user_paths(self):
         source = b'package p\nvar theme = filepath.Join("..", "..", "tui", "theme_dark.json")\nvar provider = filepath.Join("..", "..", "coding", "testdata", "producer.mjs")\nvar settings = filepath.Join(home, "agent", "settings.json")\n'
         expected = source.replace(b'"tui", "theme_dark.json"', b'"internal", "tui", "theme_dark.json"').replace(b'"coding", "testdata"', b'"internal", "coding", "testdata"')
-        after = layout.rewrite_go("cmd/pig/assets_test.go", source, [], False)
+        after = layout.rewrite_go("coding/cli/assets_test.go", source, [], False)
         self.assertEqual(after, expected)
-        self.assertEqual(layout.rewrite_go("cmd/pig/assets_test.go", after, [], False), after)
+        self.assertEqual(layout.rewrite_go("coding/cli/assets_test.go", after, [], False), after)
 
     def test_repository_references_do_not_rewrite_runtime_agent_storage(self):
         with tempfile.TemporaryDirectory() as directory:

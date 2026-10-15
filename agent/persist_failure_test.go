@@ -18,7 +18,7 @@ func TestPersistFailureEndsRunWithErrorMessage(t *testing.T) {
 	provider := &scriptedProvider{respond: toolCallsThenText(toolCall("call-1", tool.name, ai.JsonObject{"value": "x"}))}
 	rec := newEventRecorder(nil)
 	failed := false
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model: scriptedModel(provider), Tools: []AgentTool{tool}, EventCh: rec.ch,
 		OnMessagePersist: func(m AgentMessage) error {
 			if m.Assistant != nil && !failed {
@@ -56,7 +56,7 @@ func TestPersistFailureEndsRunWithErrorMessage(t *testing.T) {
 func TestPersistFailureOfFailureMessageReturnsError(t *testing.T) {
 	writeErr := errors.New("EACCES: permission denied")
 	provider := &scriptedProvider{respond: replyText("ok")}
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model:            scriptedModel(provider),
 		OnMessagePersist: func(AgentMessage) error { return writeErr },
 	})

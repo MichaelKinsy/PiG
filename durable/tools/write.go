@@ -50,6 +50,6 @@ func executeWrite(ctx context.Context, args any, api durable.ToolExecutionApi) (
 		if ctx.Err() != nil {
 			return durable.ToolExecutionResult{}, errors.New("Operation aborted")
 		}
-		return durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "Successfully wrote to " + input.Path}}}, nil
+		return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{ai.TextContent{Text: "Successfully wrote to " + input.Path}}}, nil
 	})
 }

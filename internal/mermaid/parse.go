@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright 2023-2026 SpaceXAI
 // SPDX-FileCopyrightText: Copyright 2026 Alexey Zaytsev
 // SPDX-License-Identifier: Apache-2.0 AND MIT
@@ -8,6 +7,8 @@ package mermaid
 import (
 	"strconv"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Source-text-to-model parsing, ported from grok-mermaid parse.ts. Every parseX
@@ -16,22 +17,13 @@ import (
 
 // ---------------------------------------------------------------- whitespace
 
-// isJSSpace matches JavaScript's \s (used by trim, split(/\s+/), /\s/.test).
-func isJSSpace(r rune) bool {
-	switch r {
-	case '\t', '\n', '\v', '\f', '\r', ' ', '\u00a0', '\u1680', '\u2028', '\u2029', '\u202f', '\u205f', '\u3000', '\ufeff':
-		return true
-	}
-	return r >= '\u2000' && r <= '\u200a'
-}
+func trimJS(s string) string      { return strings.TrimFunc(s, jsstring.IsSpace) }
+func trimStartJS(s string) string { return strings.TrimLeftFunc(s, jsstring.IsSpace) }
+func trimEndJS(s string) string   { return strings.TrimRightFunc(s, jsstring.IsSpace) }
 
-func trimJS(s string) string      { return strings.TrimFunc(s, isJSSpace) }
-func trimStartJS(s string) string { return strings.TrimLeftFunc(s, isJSSpace) }
-func trimEndJS(s string) string   { return strings.TrimRightFunc(s, isJSSpace) }
+func containsJSSpace(s string) bool { return strings.IndexFunc(s, jsstring.IsSpace) >= 0 }
 
-func containsJSSpace(s string) bool { return strings.IndexFunc(s, isJSSpace) >= 0 }
-
-func words(s string) []string { return strings.FieldsFunc(s, isJSSpace) }
+func words(s string) []string { return strings.FieldsFunc(s, jsstring.IsSpace) }
 
 func firstWord(s string) string {
 	w := words(s)

@@ -1,5 +1,5 @@
-// Custom JSON marshalling for the three sealed-interface union types defined
-// in events.go: [InputEventResult], [ToolCallEvent], [ToolResultEvent].
+// Custom JSON marshalling for the sealed-interface union types defined
+// in events.go: [InputEventResult], [ToolResultEvent].
 //
 // Why custom marshalling. Sealed interfaces in Go don't have a default
 // JSON representation \u2014 unmarshalling into an interface is a compile error
@@ -18,7 +18,7 @@
 // References:
 //   - docs/parity/DIVERGENCES.md D2 (the divergence retired by these helpers)
 //   - .upstream/current/packages/coding-agent/src/core/extensions/types.ts
-//     lines 750 (InputEventResult), 810 (ToolCallEvent), 869 (ToolResultEvent)
+//     lines 750 (InputEventResult), 869 (ToolResultEvent)
 
 package extension
 
@@ -117,98 +117,10 @@ func UnmarshalInputEventResult(data []byte) (InputEventResult, error) {
 	}
 }
 
-// ─── ToolCallEvent ────────────────────────────────────────────────────────
-
-// MarshalToolCallEvent serialises any of the nine ToolCallEvent variants.
-// Each variant struct already declares upstream-faithful JSON tags; this
-// helper only narrows the interface to a concrete value before marshalling.
-func MarshalToolCallEvent(e ToolCallEvent) ([]byte, error) {
-	switch v := e.(type) {
-	case BashToolCallEvent:
-		return noEscapeJSON(v)
-	case PowerShellToolCallEvent:
-		return noEscapeJSON(v)
-	case ReadToolCallEvent:
-		return noEscapeJSON(v)
-	case EditToolCallEvent:
-		return noEscapeJSON(v)
-	case WriteToolCallEvent:
-		return noEscapeJSON(v)
-	case GrepToolCallEvent:
-		return noEscapeJSON(v)
-	case FindToolCallEvent:
-		return noEscapeJSON(v)
-	case LsToolCallEvent:
-		return noEscapeJSON(v)
-	case CustomToolCallEvent:
-		return noEscapeJSON(v)
-	case nil:
-		return []byte("null"), nil
-	default:
-		return nil, fmt.Errorf("MarshalToolCallEvent: unknown variant %T", e)
-	}
-}
-
-// UnmarshalToolCallEvent dispatches by `toolName`. Tool names that don't
-// match a known builtin variant fall through to [CustomToolCallEvent] \u2014
-// this matches upstream behaviour (custom tools share the wire shape with
-// builtins; only `toolName` distinguishes them) and keeps third-party tools
-// round-trippable through pig without code changes.
-func UnmarshalToolCallEvent(data []byte) (ToolCallEvent, error) {
-	var probe struct {
-		ToolName string `json:"toolName"`
-	}
-	if err := json.Unmarshal(data, &probe); err != nil {
-		return nil, fmt.Errorf("UnmarshalToolCallEvent: %w", err)
-	}
-	switch probe.ToolName {
-	case "bash":
-		var v BashToolCallEvent
-		err := json.Unmarshal(data, &v)
-		return v, err
-	case "powershell":
-		var v PowerShellToolCallEvent
-		err := json.Unmarshal(data, &v)
-		return v, err
-	case "read":
-		var v ReadToolCallEvent
-		err := json.Unmarshal(data, &v)
-		return v, err
-	case "edit":
-		var v EditToolCallEvent
-		err := json.Unmarshal(data, &v)
-		return v, err
-	case "write":
-		var v WriteToolCallEvent
-		err := json.Unmarshal(data, &v)
-		return v, err
-	case "grep":
-		var v GrepToolCallEvent
-		err := json.Unmarshal(data, &v)
-		return v, err
-	case "find":
-		var v FindToolCallEvent
-		err := json.Unmarshal(data, &v)
-		return v, err
-	case "ls":
-		var v LsToolCallEvent
-		err := json.Unmarshal(data, &v)
-		return v, err
-	case "":
-		return nil, fmt.Errorf("UnmarshalToolCallEvent: missing toolName discriminator")
-	default:
-		// Custom or unknown-builtin tool. Upstream treats anything not
-		// matching a builtin name as a custom tool; we mirror that.
-		var v CustomToolCallEvent
-		err := json.Unmarshal(data, &v)
-		return v, err
-	}
-}
-
 // ─── ToolResultEvent ──────────────────────────────────────────────────────
 
 // MarshalToolResultEvent serialises any of the nine ToolResultEvent
-// variants. Symmetric with [MarshalToolCallEvent].
+// variants.
 func MarshalToolResultEvent(e ToolResultEvent) ([]byte, error) {
 	switch v := e.(type) {
 	case BashToolResultEvent:
@@ -236,8 +148,7 @@ func MarshalToolResultEvent(e ToolResultEvent) ([]byte, error) {
 	}
 }
 
-// UnmarshalToolResultEvent dispatches by `toolName`. See
-// [UnmarshalToolCallEvent] for the custom-tool fallback rationale.
+// UnmarshalToolResultEvent dispatches by `toolName`. Tool names that match no built-in variant fall through to [CustomToolResultEvent], as Pi treats any other tool as a custom tool.
 func UnmarshalToolResultEvent(data []byte) (ToolResultEvent, error) {
 	var probe struct {
 		ToolName string `json:"toolName"`

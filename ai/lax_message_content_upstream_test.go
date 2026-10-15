@@ -40,7 +40,7 @@ func TestLaxMessageContentUpstream(t *testing.T) {
 	}
 	// Drive the text-only provider boundary which originally crashed in Pi.
 	provider := NewOpenAIProvider(OpenAIConfig{APIKey: "test", Model: "test-model", ProviderID: "openai", BaseURL: "https://example.invalid/v1"})
-	_ = captureSamplingPayload(t, provider, normalized, StreamOptions{})
+	_ = captureSamplingPayloadContext(t, invalidRequest(t), provider, normalized, StreamOptions{})
 	if user.Content != nil || assistant.Content != nil || tool.Content != nil {
 		t.Fatal("normalization mutated the caller's messages")
 	}

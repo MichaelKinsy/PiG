@@ -28,6 +28,7 @@ export { createSyntheticSourceInfo } from "./core/source-info.js";
 export { generateDiffString, generateUnifiedPatch } from "./core/tools/edit-diff.js";
 // Tools
 export { createBashToolDefinition, createEditToolDefinition, createFindToolDefinition, createGrepToolDefinition, createLocalBashOperations, createLocalPowerShellOperations, createLsToolDefinition, createPowerShellToolDefinition, createReadToolDefinition, createWriteToolDefinition, DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, formatSize, truncateHead, truncateLine, truncateTail, withFileMutationQueue, } from "./core/tools/index.js";
+export { formatReadLineRange } from "./core/tools/render-utils.js";
 export { hasTrustRequiringProjectResources, ProjectTrustStore, } from "./core/trust-manager.js";
 export { VIRTUAL_MODEL_STATE_ENTRY, } from "./core/virtual-models.js";
 // Built-in extensions. The CLI loads them; SDK sessions add them to their extension factories.

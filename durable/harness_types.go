@@ -3,6 +3,7 @@ package durable
 import (
 	"context"
 	"encoding/json"
+	"slices"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable/env"
@@ -31,15 +32,27 @@ const (
 	WhenBusyReject   WhenBusy = "reject"
 )
 
-// SubmissionDraft is a host submission: user input (type input, with Content and an optional WhenBusy) that may start
-// a run, or a passive entry write (type write, with Entry).
+// InputEntry is the entry an input is placed as, instead of pi.user: an application kind, and data the transcript shows,
+// such as its author. Its model message is still the input's user message (types.ts InputEntry).
+type InputEntry struct {
+	// Kind is a non-empty string that does not start with "pi.".
+	Kind string `json:"kind"`
+	// Data is the JSON payload of the placed entry; nil when absent.
+	Data JsonValue `json:"data,omitempty"`
+}
+
+// SubmissionDraft is a host submission: user input (type input, with Content, an optional WhenBusy and an optional
+// InputEntry) that may start a run, or a passive entry write (type write, with Entry).
 type SubmissionDraft struct {
 	// RequestId is nil when absent.
 	RequestId *string
 	Type      SubmissionType
 	Content   UserInput
 	WhenBusy  WhenBusy
-	Entry     *EntryDraft
+	// InputEntry places an input as that entry; nil places it as pi.user without data. Only input submissions carry it
+	// (types.ts SubmissionDraft: an input's `entry` is an InputEntry, a write's is an EntryDraft).
+	InputEntry *InputEntry
+	Entry      *EntryDraft
 }
 
 // InputSubmissionDraft is a SubmissionDraft of type input.
@@ -133,9 +146,15 @@ type ToolDiagnostic struct {
 
 // ToolExecutionResult is the result of one tool execution.
 type ToolExecutionResult struct {
-	// Content is nil when omitted: the retained output() text becomes the content.
-	Content []ai.ToolResultMessageContent
-	IsError *bool
+	// Output is for the model; nil when omitted: the retained output() text becomes the output.
+	Output []ai.ToolResultMessageContent
+	// StructuredOutput is for programs that call the tool (executeTool() callers, code mode scripts), present only when
+	// HasStructuredOutput is true. A tool that declares a structured output schema must return one unless the result is
+	// an error, and it is validated against the schema; a tool without a schema must not return one, and programs get
+	// the output itself.
+	StructuredOutput    JsonValue
+	HasStructuredOutput bool
+	IsError             *bool
 	// Details is omitted when HasDetails is false: the last details() value becomes the details.
 	Details    JsonValue
 	HasDetails bool
@@ -175,20 +194,23 @@ type ToolExecutionApi interface {
 	Registry() RegistrySnapshot
 	// Agent is the calling conversation's agent, as the tool task's phase resolved it.
 	Agent(ctx context.Context) (Agent, error)
+	// Models is HarnessOptions.models: the catalog, credentials, and request transforms generation uses.
+	Models() Models
 	// Env is built by HarnessOptions.env for this call; nil without an environment.
 	Env() env.ExecutionEnv
 	// Output appends running output, a string or []byte; it becomes the result content when the result omits
-	// Content.
-	Output(chunk any)
-	// OutputSkipping is Output of a chunk that follows output an environment omitted, as reported by an environment
-	// given OutputWindow (ShellOutputInfo.Skipped). The omitted output is more than the tail window by at least one
-	// byte or line, and only tail retention accepts it. Upstream's output(chunk, skipped) is Output and this method.
-	OutputSkipping(chunk any, skipped env.ShellOutputSkip)
+	// Content. The optional skipped marks a chunk that follows output an environment omitted, as reported by an
+	// environment given OutputWindow (ShellOutputInfo.Skipped). The omitted output is more than the tail window by at
+	// least one byte or line, and only tail retention accepts it. Only the first skipped counts.
+	Output(chunk any, skipped ...env.ShellOutputSkip)
 	// OutputWindow is the tail this call's output keeps and the pace of its progress commits, for
 	// ShellExecOptions.Window; nil when the tool keeps the head of its output, which cannot accept skips. A wrapper
 	// that replaces Output and transforms text must also replace this with nil, so skipped text cannot bypass its
 	// transform.
 	OutputWindow() *env.ShellOutputWindow
+	// RetainedOutput is the output retained so far, as the model will see it when the result omits Output, and whether
+	// earlier output was dropped; for a tool that also returns that text in its StructuredOutput.
+	RetainedOutput() (text string, truncated bool)
 	// Diagnostic records a model-visible remark about this call.
 	Diagnostic(diagnostic ToolDiagnostic)
 	// Details replaces running details; the last value becomes the result details when the result omits Details.
@@ -198,7 +220,9 @@ type ToolExecutionApi interface {
 	Memo(ctx context.Context, name string) (value JsonValue, ok bool, err error)
 	// MemoCandidate stores candidate unless a memo already exists and returns the durable winner.
 	MemoCandidate(ctx context.Context, name string, candidate JsonValue) (JsonValue, error)
-	// CreateTaskErased creates a task in the calling conversation; options.ConversationId is ignored.
+	// CreateTaskErased creates a task in one commit in the calling conversation; options.ConversationId is ignored. A
+	// child task of a tool that is not replay-safe defaults to AbandonOnRestart: the tool never resumes after a restart,
+	// so nothing awaits the child then (harness/types.ts:232-234).
 	CreateTaskErased(ctx context.Context, task AnyTask, input JsonValue, options TaskOptions) (TaskId, error)
 	// GetTask returns nil when absent.
 	GetTask(ctx context.Context, id TaskId) (*TaskRecord[JsonValue, JsonValue, JsonValue], error)
@@ -206,6 +230,47 @@ type ToolExecutionApi interface {
 	// Conversation returns an invocation-bound handle of an existing conversation, such as one this tool created in
 	// Commit; nil when absent.
 	Conversation(ctx context.Context, id ConversationId) (ConversationHandle, error)
+	// ExecuteTool calls another tool as a nested call: its own pi.tool task owned by this call, which runs validation, the
+	// ToolTask hooks (whose ToolHookCall carries the parent), and the tool, and whose result comes back here, not in
+	// the transcript. A nested call that ends in an error result still returns it; the error return is for a call that
+	// could not be made or waited for. Calls made without a key are keyed by their order, so a rerun that calls in the
+	// same order reattaches to the calls it made. Cancelling ctx stops only the wait.
+	ExecuteTool(ctx context.Context, name string, args map[string]any, options ...NestedCallOptions) (NestedToolExecutionResult, error)
+}
+
+// NestedCallOptions are the options of ExecuteTool (types.ts ToolExecutionApi.executeTool).
+type NestedCallOptions struct {
+	// Key names the call among this call's nested calls, so a rerun finds it. It is a path segment of the nested call's
+	// ID: non-empty, without "/", not "__proto__", and not a positive integer, which default keys use. Nil: the call's
+	// order among this call's nested calls.
+	Key *string
+	// Progress false commits no running output, details, or diagnostics to the call's slot; the result still gets them.
+	Progress *bool
+	// ArgumentsJSON is args as JSON text in the caller's member order, such as the text a script's object came from. A Go
+	// map has no order, and Pi keeps the order of the arguments object: the stored call, its slot, validation, hooks and
+	// the execute intent write args' members in this order. Members it lacks follow in sorted order. Nil: sorted order.
+	ArgumentsJSON json.RawMessage
+}
+
+// NestedToolExecutionResult is the result of a nested call, as ExecuteTool returns it. Programs read StructuredOutput;
+// the output for the model is not kept, and Control does not apply.
+type NestedToolExecutionResult struct {
+	// TaskId is the nested call's tool task.
+	TaskId TaskId
+	// StructuredOutput is the tool's value for programs, present when HasStructuredOutput. A tool with a schema: its
+	// validated structured output, also on an error result that has one; absent otherwise, and an error's text is then in an
+	// error diagnostic. A tool without: its bounded output, success or error, as a string for one text item, an ImageContent
+	// for one image, "" for none, and the content list otherwise. Absent on an error result the Harness wrote itself
+	// (unavailable, invalid, blocked, interrupted, aborted); Diagnostics say what went wrong.
+	StructuredOutput    JsonValue
+	HasStructuredOutput bool
+	IsError             bool
+	Details             JsonValue
+	HasDetails          bool
+	Diagnostics         []ToolDiagnostic
+	Usage               *ai.Usage
+	// DurationMs is the execution time of the attempt that produced the result; nil when it never executed.
+	DurationMs *int64
 }
 
 // ToolReplay is whether an interrupted execution may rerun on recovery.
@@ -244,7 +309,32 @@ type ToolRegistration struct {
 	// is recorded. Its result is still validated against Parameters. Nil when absent.
 	PrepareArguments func(args any) (any, error)
 	OutputLimits     *ToolOutputLimits
-	Execute          func(ctx context.Context, args any, api ToolExecutionApi) (ToolExecutionResult, error)
+	// StructuredOutputSchema is the JSON schema of StructuredOutput, which programs that call the tool receive. Nil: they
+	// receive the result's bounded output, success or error.
+	StructuredOutputSchema map[string]any
+	// Callers is who may call the tool: the model, other tools through executeTool(), or both (nil, the default). A
+	// code mode tool is {CallerModel}, so scripts cannot start scripts; tools behind code mode, such as MCP tools, can
+	// be {CallerTools}, so the model is never offered them.
+	Callers []ToolCaller
+	// Deferred tools are not offered to the model until loaded: the model gets the tool only when modelTools names it, in
+	// its exact list or its add, which a tool such as tool_search writes with the addTools control. Other tools can call it
+	// any time.
+	Deferred bool
+	Execute  func(ctx context.Context, args any, api ToolExecutionApi) (ToolExecutionResult, error)
+}
+
+// ToolCaller is a kind of caller a tool admits (types.ts ToolRegistration.callers).
+type ToolCaller string
+
+// The kinds of tool callers.
+const (
+	CallerModel ToolCaller = "model"
+	CallerTools ToolCaller = "tools"
+)
+
+// CallableBy reports whether the tool admits the caller kind: a tool without callers admits both.
+func (tool *ToolRegistration) CallableBy(caller ToolCaller) bool {
+	return tool.Callers == nil || slices.Contains(tool.Callers, caller)
 }
 
 // PromptInput is the input to system prompt section rendering for one request preparation.
@@ -275,14 +365,24 @@ type HookRegistration struct {
 	Handlers any
 }
 
-// Wrap is built by WrapTool (Tool and WrapTool set) and WrapSection (Section and WrapSection set); it targets a tool
-// name or a section key. Wrappers are pure.
-type Wrap struct {
-	Tool        string
-	WrapTool    func(tool *ToolRegistration) *ToolRegistration
-	Section     string
-	WrapSection func(section *PromptSection) *PromptSection
+// Wrap is upstream's `{ tool; wrap(tool) } | { section; wrap(section) }` (harness/types.ts:263-265): a sealed union of ToolWrap, built by WrapTool,
+// and SectionWrap, built by WrapSection. A wrap targets a tool name or a section key. Wrappers are pure.
+type Wrap interface{ isWrap() }
+
+// ToolWrap is the `{ tool: string; wrap(tool: Tool): Tool }` member of Wrap.
+type ToolWrap struct {
+	Tool string
+	Wrap func(tool *ToolRegistration) *ToolRegistration
 }
+
+// SectionWrap is the `{ section: string; wrap(section: PromptSection<Tool>): PromptSection<Tool> }` member of Wrap.
+type SectionWrap struct {
+	Section string
+	Wrap    func(section *PromptSection) *PromptSection
+}
+
+func (ToolWrap) isWrap()    {}
+func (SectionWrap) isWrap() {}
 
 // Extension is a named bundle of code, installed in a registry and selected by conversations by name.
 type Extension struct {
@@ -327,8 +427,12 @@ type Agent struct {
 	Model         *ModelRef
 	ThinkingLevel ai.ModelThinkingLevel
 	Extensions    []*Extension
-	// Tools are the tools a request offers, in order.
+	// Tools are the tools a request offers, in order: enabled, callable by the model, and selected by modelTools.
 	Tools []*ToolRegistration
+	// Callable are the tools nested calls (executeTool()) resolve among, in order: enabled and callable by tools.
+	Callable []*ToolRegistration
+	// Deferred are the enabled deferred tools the model may call and is not offered yet, in registry order: what tool_search loads.
+	Deferred []*ToolRegistration
 	// Sections are the extension sections, then instructions when set.
 	Sections     []*PromptSection
 	Instructions *string
@@ -343,7 +447,7 @@ type ConversationStreamOptions struct {
 	MaxRetries      *int               `json:"maxRetries,omitempty"`
 	MaxRetryDelayMs *int               `json:"maxRetryDelayMs,omitempty"`
 	Headers         map[string]string  `json:"headers,omitempty"`
-	Metadata        JsonObject         `json:"metadata,omitempty"`
+	Metadata        map[string]any     `json:"metadata,omitempty"`
 	CacheRetention  ai.CacheRetention  `json:"cacheRetention,omitempty"`
 	Deferred        *ai.DeferredOption `json:"deferred,omitempty"`
 }
@@ -399,6 +503,13 @@ type Settings struct {
 	ToolExecution ToolExecutionMode
 	SteeringMode  QueueMode
 	FollowUpMode  QueueMode
+	// ContextRetentionMs is how long an idle conversation keeps its last context read in memory, so its next run reads
+	// only newer entries. Busy conversations always keep it; 0 drops it once the conversation is idle.
+	ContextRetentionMs float64
+	// DocumentRetentionMs is how long a loaded document that no watch or document state observes stays in memory after
+	// its last read or write; the next access loads it from Storage. Observed documents always stay. Default ten
+	// minutes; 0 drops one right after use; +Inf keeps them.
+	DocumentRetentionMs float64
 }
 
 // ContextView is the raw active transcript and the derived model context.

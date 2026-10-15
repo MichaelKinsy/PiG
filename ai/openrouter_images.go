@@ -3,18 +3,18 @@ package ai
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"mime"
 	"net/http"
 	"net/url"
 	"slices"
 	"strings"
 	"time"
 )
+
+// Ports packages/ai/src/providers/images/register-builtins.ts (registerBuiltInImagesApiProviders and generateImagesOpenRouter; the lazy
+// import and its load-error AssistantImages are JavaScript module loading, which Go links at build time).
 
 // RegisterBuiltInImagesAPIProviders registers upstream's built-in image API
 // providers. Currently upstream ships OpenRouter image generation only.
@@ -25,7 +25,14 @@ func RegisterBuiltInImagesAPIProviders() {
 	})
 }
 
-// GenerateImagesOpenRouter implements upstream providers/images/openrouter.ts.
+// OpenRouterImagesAPI is the OpenRouter image implementation a provider lists under APIImagesOpenRouter (api/openrouter-images.lazy.ts openrouterImagesApi).
+func OpenRouterImagesAPI() *ProviderImages {
+	return &ProviderImages{GenerateImages: func(ctx context.Context, model *ImageModel, request ImagesContext, options ImagesOptions) (AssistantImages, error) {
+		return GenerateImagesOpenRouter(ctx, *model, request, options), nil
+	}}
+}
+
+// GenerateImagesOpenRouter implements upstream api/openrouter-images.ts generateImages.
 func GenerateImagesOpenRouter(ctx context.Context, model ImageModel, imagesCtx ImagesContext, options ProviderImagesOptions) AssistantImages {
 	out := AssistantImages{
 		API:        model.API,
@@ -45,7 +52,18 @@ func GenerateImagesOpenRouter(ctx context.Context, model ImageModel, imagesCtx I
 		return out
 	}
 
+	return generateOpenRouterImages(ctx, model, imagesCtx, options, out, apiKey, false)
+}
+
+// generateOpenRouterImages sends one request: to chat/completions, or with dedicated to the Images API (/images) that OpenRouter requires for
+// some image generation models.
+func generateOpenRouterImages(ctx context.Context, model ImageModel, imagesCtx ImagesContext, options ProviderImagesOptions, out AssistantImages, apiKey string, dedicated bool) AssistantImages {
 	var payload any = buildOpenRouterImagesPayload(model, imagesCtx)
+	endpoint := "/chat/completions"
+	if dedicated {
+		payload = buildOpenRouterImagesAPIPayload(model, imagesCtx)
+		endpoint = "/images"
+	}
 	if options.OnPayload != nil {
 		next, replace, err := options.OnPayload(payload, model)
 		if err != nil {
@@ -58,7 +76,7 @@ func GenerateImagesOpenRouter(ctx context.Context, model ImageModel, imagesCtx I
 		}
 	}
 
-	body, err := json.Marshal(payload)
+	body, err := marshalRequestBody(payload)
 	if err != nil {
 		out.StopReason = ImagesStopReasonError
 		out.ErrorMessage = err.Error()
@@ -66,12 +84,25 @@ func GenerateImagesOpenRouter(ctx context.Context, model ImageModel, imagesCtx I
 	}
 
 	requestCtx := ctx
+	// openrouter-images.ts:72-81 passes options.maxRetries and options.maxRetryDelayMs to retryProviderRequest for this request; the retry transport reads them from the context.
+	if options.MaxRetries != nil {
+		requestCtx = WithProviderMaxRetries(requestCtx, *options.MaxRetries)
+	}
+	if options.MaxRetryDelayMs != nil {
+		requestCtx = WithProviderRequestRetry(requestCtx, ProviderMaxRetries(requestCtx), options.MaxRetryDelayMs)
+	}
 	if options.TimeoutMs > 0 {
 		var cancel context.CancelFunc
-		requestCtx, cancel = context.WithTimeout(ctx, time.Duration(options.TimeoutMs)*time.Millisecond)
+		requestCtx, cancel = context.WithTimeout(requestCtx, time.Duration(options.TimeoutMs)*time.Millisecond)
 		defer cancel()
 	}
-	req, err := http.NewRequestWithContext(requestCtx, http.MethodPost, strings.TrimRight(model.BaseURL, "/")+"/chat/completions", bytes.NewReader(body))
+	requestURL, err := sdkBuildURL(model.BaseURL, endpoint)
+	if err != nil {
+		out.StopReason = ImagesStopReasonError
+		out.ErrorMessage = err.Error()
+		return out
+	}
+	req, err := newSDKFetchRequest(requestCtx, http.MethodPost, requestURL, bytes.NewReader(body), options.Fetch != nil)
 	if err != nil {
 		out.StopReason = ImagesStopReasonError
 		out.ErrorMessage = err.Error()
@@ -102,13 +133,20 @@ func GenerateImagesOpenRouter(ctx context.Context, model ImageModel, imagesCtx I
 		return out
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		// pig divergence (D128): Pi stops at the chat/completions 404 for an image generation model that OpenRouter serves only through /images (pi-mono #10652).
+		if !dedicated && isOpenRouterImagesAPIOnlyError(resp.StatusCode, data) {
+			return generateOpenRouterImages(ctx, model, imagesCtx, options, out, apiKey, true)
+		}
 		out.StopReason = ImagesStopReasonError
 		out.ErrorMessage = openAIHTTPError(resp.StatusCode, data).Error()
 		return out
 	}
+	if dedicated {
+		return finishOpenRouterImagesAPIResponse(model, options, resp, data, out)
+	}
 
-	var parsed openRouterImagesResponse
-	if err := json.Unmarshal(data, &parsed); err != nil {
+	response, err := parseOpenRouterImagesBody(data)
+	if err != nil {
 		out.StopReason = ImagesStopReasonError
 		out.ErrorMessage = err.Error()
 		return out
@@ -121,26 +159,9 @@ func GenerateImagesOpenRouter(ctx context.Context, model ImageModel, imagesCtx I
 			return out
 		}
 	}
-	out.ResponseID = parsed.ID
-	if parsed.Usage != nil {
-		out.Usage = parseOpenRouterImagesUsage(*parsed.Usage, model)
-	}
-	if len(parsed.Choices) > 0 {
-		choice := parsed.Choices[0]
-		if choice.Message.Content != "" {
-			out.Output = append(out.Output, TextContent{Text: choice.Message.Content})
-		}
-		for _, image := range choice.Message.Images {
-			imageURL := image.ImageURL.url()
-			if !strings.HasPrefix(imageURL, "data:") {
-				continue
-			}
-			mediaType, data, ok := parseDataImageURL(imageURL)
-			if !ok {
-				continue
-			}
-			out.Output = append(out.Output, ImageContent{MimeType: mediaType, Data: data})
-		}
+	if err := readOpenRouterImagesChat(response, model, &out); err != nil {
+		out.StopReason = ImagesStopReasonError
+		out.ErrorMessage = err.Error()
 	}
 	return out
 }
@@ -201,58 +222,22 @@ func slicesContainsString(values []string, target string) bool {
 	return slices.Contains(values, target)
 }
 
-type openRouterImagesResponse struct {
-	ID      string                   `json:"id"`
-	Choices []openRouterImagesChoice `json:"choices"`
-	Usage   *openRouterImagesUsage   `json:"usage"`
-}
-
-type openRouterImagesChoice struct {
-	Message openRouterImagesMessage `json:"message"`
-}
-
-type openRouterImagesMessage struct {
-	Content string                     `json:"content"`
-	Images  []openRouterGeneratedImage `json:"images"`
-}
-
-type openRouterGeneratedImage struct {
-	ImageURL dataImageURL `json:"image_url"`
-}
-
-type dataImageURL string
-
-func (u *dataImageURL) UnmarshalJSON(data []byte) error {
-	var asString string
-	if err := json.Unmarshal(data, &asString); err == nil {
-		*u = dataImageURL(asString)
-		return nil
-	}
-	var asObject struct {
-		URL string `json:"url"`
-	}
-	if err := json.Unmarshal(data, &asObject); err != nil {
-		return err
-	}
-	*u = dataImageURL(asObject.URL)
-	return nil
-}
-
-func (u dataImageURL) url() string { return string(u) }
-
+// parseDataImageURL is imageUrl.match(/^data:([^;]+);base64,(.+)$/) (openrouter-images.ts:101): a non-empty media type without ';' directly
+// followed by ";base64,", then a non-empty payload without a line terminator. The payload is not decoded or validated.
 func parseDataImageURL(raw string) (mediaType, data string, ok bool) {
-	prefix, encoded, found := strings.Cut(raw, ",")
-	if !found || !strings.HasPrefix(prefix, "data:") || !strings.Contains(prefix, ";base64") {
+	rest, found := strings.CutPrefix(raw, "data:")
+	if !found {
 		return "", "", false
 	}
-	mt := strings.TrimPrefix(strings.Split(prefix, ";")[0], "data:")
-	if mt == "" {
-		mt = mime.TypeByExtension(".png")
-	}
-	if _, err := base64.StdEncoding.DecodeString(encoded); err != nil {
+	mediaType, rest, found = strings.Cut(rest, ";")
+	if !found || mediaType == "" {
 		return "", "", false
 	}
-	return mt, encoded, true
+	data, found = strings.CutPrefix(rest, "base64,")
+	if !found || data == "" || strings.ContainsAny(data, "\n\r\u2028\u2029") {
+		return "", "", false
+	}
+	return mediaType, data, true
 }
 
 type openRouterImagesUsage struct {

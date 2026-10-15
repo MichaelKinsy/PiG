@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -267,7 +268,7 @@ func TestLazyProbeGoldenMatchesPi(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(live) != string(golden) {
+	if !bytes.Equal(live, golden) {
 		t.Fatalf("lazy-golden.json is stale; regenerate it with the probe.\nlive:\n%s", live)
 	}
 }

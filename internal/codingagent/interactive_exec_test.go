@@ -21,13 +21,13 @@ import (
 func TestExecHostActionRegisteredForInteractiveMode(t *testing.T) {
 	cwd := t.TempDir()
 	model := &ai.Model{ID: "m", DisplayName: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 8000}}
-	m := NewInteractiveMode(InteractiveOptions{CWD: cwd, Model: model})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: cwd, Model: model})
 	m.chatContainer = tui.NewContainer()
 	m.statusContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
-	m.statusLine = NewStatusLine(model, "", nil)
-	m.agent = agent.NewAgent(agent.AgentOptions{Model: model})
+	m.statusLine = NewFooterComponent(model, "", nil)
+	m.agent = mustNewAgent(agent.AgentOptions{Model: model})
 
 	bridge := &captureUIBridge{}
 	m.opts.SubprocessUIBridge = bridge

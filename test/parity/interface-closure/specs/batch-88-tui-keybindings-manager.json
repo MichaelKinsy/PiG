@@ -1,0 +1,123 @@
+[
+ {
+  "ids": [
+   "pkg:tui/.#KeybindingsManager"
+  ],
+  "targets": [
+   "tui/keybindings.go#TUIKeybindingsManager"
+  ],
+  "production": [
+   "call:internal/codingagent/keybindings.go#KeybindingsManager.rebuild"
+  ],
+  "evidence": [
+   "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream",
+   "test:tui/keybindings_set_user_test.go#TestTUIKeybindingsManagerSetUserBindingsReplacesOverridesAndRebuilds"
+  ],
+  "rationale": "Upstream KeybindingsManager is the Go struct TUIKeybindingsManager; every member is mapped individually.",
+  "properties": {
+   "setUserBindings": {
+    "targets": [
+     "tui/keybindings.go#TUIKeybindingsManager.SetUserBindings"
+    ],
+    "evidence": [
+     "test:tui/keybindings_set_user_test.go#TestTUIKeybindingsManagerSetUserBindingsReplacesOverridesAndRebuilds"
+    ],
+    "production": [
+     "public-api:tui/keybindings.go#TUIKeybindingsManager.SetUserBindings"
+    ],
+    "rationale": "setUserBindings(userBindings) is SetUserBindings(map): it replaces every override, rebuilds the key tables and clears them for nil."
+   },
+   "getConflicts": {
+    "targets": [
+     "tui/keybindings.go#TUIKeybindingsManager.GetConflicts"
+    ],
+    "evidence": [
+     "test:tui/keybindings_test.go#TestTUIKeybindingsManager_Conflicts",
+     "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream"
+    ],
+    "production": [
+     "public-api:tui/keybindings.go#TUIKeybindingsManager.GetConflicts"
+    ],
+    "rationale": "KeybindingsManager.getConflicts is the Go method tui.TUIKeybindingsManager.GetConflicts; signature reviewed against the upstream declaration. Closed as public-api-tested: the method is exported from the public tui package and no PiG binary calls it; test callers (go/types) are the proof."
+   },
+   "getDefinition": {
+    "targets": [
+     "tui/keybindings.go#TUIKeybindingsManager.GetDefinition"
+    ],
+    "evidence": [
+     "test:tui/keybindings_test.go#TestTUIKeybindingsManager_GetDefinition"
+    ],
+    "production": [
+     "public-api:tui/keybindings.go#TUIKeybindingsManager.GetDefinition"
+    ],
+    "rationale": "KeybindingsManager.getDefinition is the Go method tui.TUIKeybindingsManager.GetDefinition; signature reviewed against the upstream declaration. Closed as public-api-tested: the method is exported from the public tui package and no PiG binary calls it; test callers (go/types) are the proof."
+   },
+   "getKeys": {
+    "targets": [
+     "tui/keybindings.go#TUIKeybindingsManager.GetKeys"
+    ],
+    "evidence": [
+     "test:internal/codingagent/interactive_remapped_submit_test.go#TestTerminalInputPreservesRemappedSubmitBindings",
+     "test:internal/codingagent/keybindings_platform_test.go#TestKeybindingsManagerInstallsAppDefinitionsInTUIRegistry"
+    ],
+    "production": [
+     "call:coding/mcpext/manager.go#McpManagerView.keyHint"
+    ],
+    "rationale": "KeybindingsManager.getKeys is the Go method TUIKeybindingsManager.GetKeys; signature reviewed against the upstream declaration (the upstream class KeybindingsManager is tui.TUIKeybindingsManager); callers and tests attributed by go/types (methodrefs)."
+   },
+   "getResolvedBindings": {
+    "targets": [
+     "tui/keybindings.go#TUIKeybindingsManager.GetResolvedBindings"
+    ],
+    "evidence": [
+     "test:internal/codingagent/keybindings_migration_upstream_test.go#TestUpstreamKeybindingsMigration",
+     "test:tui/keybindings_test.go#TestTUIKeybindingsManager_GetUserAndResolvedBindings"
+    ],
+    "production": [
+     "public-api:tui/keybindings.go#TUIKeybindingsManager.GetResolvedBindings"
+    ],
+    "rationale": "KeybindingsManager.getResolvedBindings is the Go method tui.TUIKeybindingsManager.GetResolvedBindings; signature reviewed against the upstream declaration. Closed as public-api-tested: the method is exported from the public tui package and no PiG binary calls it; test callers (go/types) are the proof."
+   },
+   "getUserBindings": {
+    "targets": [
+     "tui/keybindings.go#TUIKeybindingsManager.GetUserBindings"
+    ],
+    "evidence": [
+     "test:tui/keybindings_test.go#TestTUIKeybindingsManager_GetUserAndResolvedBindings"
+    ],
+    "production": [
+     "public-api:tui/keybindings.go#TUIKeybindingsManager.GetUserBindings"
+    ],
+    "rationale": "KeybindingsManager.getUserBindings is the Go method tui.TUIKeybindingsManager.GetUserBindings; signature reviewed against the upstream declaration. Closed as public-api-tested: the method is exported from the public tui package and no PiG binary calls it; test callers (go/types) are the proof."
+   },
+   "matches": {
+    "targets": [
+     "tui/keybindings.go#TUIKeybindingsManager.Matches"
+    ],
+    "evidence": [
+     "test:internal/codingagent/keybindings_platform_test.go#TestKeybindingsManagerInstallsAppDefinitionsInTUIRegistry",
+     "test:internal/codingagent/keybindings_test.go#TestKeybindingsManagerLegacyShortNamesMigrateTui"
+    ],
+    "production": [
+     "call:coding/mcpext/manager.go#McpManagerView.Menu"
+    ],
+    "rationale": "KeybindingsManager.matches is the Go method TUIKeybindingsManager.Matches; signature reviewed against the upstream declaration (the upstream class KeybindingsManager is tui.TUIKeybindingsManager); callers and tests attributed by go/types (methodrefs)."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:tui/.#KeybindingsManager::construct:0"
+  ],
+  "targets": [
+   "tui/keybindings.go#NewKeybindingsManager"
+  ],
+  "production": [
+   "call:internal/codingagent/keybindings.go#KeybindingsManager.rebuild"
+  ],
+  "evidence": [
+   "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream"
+  ],
+  "rationale": "`new KeybindingsManager(definitions, userBindings?)` is NewKeybindingsManager(definitions, userBindings); nil is undefined."
+ }
+]

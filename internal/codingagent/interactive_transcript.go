@@ -4,20 +4,27 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
 func (m *InteractiveMode) rebuildChatFromSession() {
+	m.rebuildChat(false)
+}
+
+// rebuildChat clears and repaints the transcript; populateHistory is renderSessionEntries' option of the same name.
+func (m *InteractiveMode) rebuildChat(populateHistory bool) {
 	m.disposeArminComponents()
 	m.chatContainer.Clear()
 	m.tuiInst.ForceFullRender()
-	m.renderSessionEntries()
+	m.renderSessionEntriesWithHistory(populateHistory)
 }
 
 // renderSessionEntries renders session messages/entries into the chat
@@ -27,13 +34,15 @@ func (m *InteractiveMode) rebuildChatFromSession() {
 // Mirrors upstream renderInitialMessages (interactive-mode.ts:3097) for
 // the append-only case and rebuildChatFromMessages (interactive-mode.ts:3346)
 // for the clear-first case (via rebuildChatFromSession).
-// parsedEntry caches the expensive AsMessage()/WireToMessage conversion
-// for one session entry so renderSessionEntries can walk the branch for
-// usage hydration and rendering without re-unmarshaling raw JSONL.
+// parsedEntry caches the WireToMessage conversion for one session entry
+// so renderSessionEntries can walk the branch for usage hydration and
+// rendering without converting it twice.
 type parsedEntry struct {
 	entry SessionEntry
-	msg   *MessageEntry       // nil unless type=message and parse ok
-	agent *agent.AgentMessage // nil unless type=message and parse ok
+	// agent is the entry's message when hasAgent: a message entry that parsed. It is held by value, so the branch slice holds it without an
+	// allocation per message.
+	agent    agent.AgentMessage
+	hasAgent bool
 }
 
 // compactionTrimIndex returns the index into a root->leaf branch where
@@ -41,12 +50,14 @@ type parsedEntry struct {
 // (buildSessionContext): everything before the latest compaction's kept
 // tail collapses to that compaction's summary. The kept tail starts at the
 // latest compaction's FirstKeptEntryID (which precedes the compaction
-// node); an empty/absent FirstKeptEntryID keeps all prior history (0).
+// node). When no entry before the compaction has that id, or it is empty,
+// nothing is kept and rendering begins at the compaction itself, as
+// buildContextEntries compares each entry's id with it (session-manager.ts:499-507).
 // Mirrors session.go BuildContext foundFirstKept logic.
 func compactionTrimIndex(branch []parsedEntry) int {
 	lastCompactionIdx := -1
 	for i := range branch {
-		if branch[i].entry.Base.Type == "compaction" {
+		if branch[i].entry.Base().Type == "compaction" {
 			lastCompactionIdx = i
 		}
 	}
@@ -55,31 +66,136 @@ func compactionTrimIndex(branch []parsedEntry) int {
 	}
 	var ce CompactionEntry
 	if err := json.Unmarshal(branch[lastCompactionIdx].entry.Raw(), &ce); err != nil || ce.FirstKeptEntryID == "" {
-		return 0
+		return lastCompactionIdx
 	}
 	for i := 0; i < lastCompactionIdx; i++ {
-		if branch[i].entry.Base.ID == ce.FirstKeptEntryID {
+		if branch[i].entry.Base().ID == ce.FirstKeptEntryID {
 			return i
 		}
 	}
-	return 0
+	return lastCompactionIdx
+}
+
+// contextRenderOrder is branch[start:] in the order Pi paints a restored transcript, session-manager.ts buildContextEntries (:476-508): the latest
+// compaction first, then the kept entries that precede it in the file, then the entries after it. start is compactionTrimIndex(branch).
+func contextRenderOrder(branch []parsedEntry, start int) []parsedEntry {
+	c := -1
+	for i := range branch {
+		if branch[i].entry.Base().Type == "compaction" {
+			c = i
+		}
+	}
+	if c < start {
+		return branch[start:]
+	}
+	out := make([]parsedEntry, 0, len(branch)-start)
+	out = append(out, branch[c])
+	out = append(out, branch[start:c]...)
+	return append(out, branch[c+1:]...)
+}
+
+// renderInitialMessages paints the resumed transcript after the loaded resources, without clearing either, and then the project-trust warning.
+// Mirrors upstream renderInitialMessages (interactive-mode.ts:4168-4182), which ends with the compaction notice.
+func (m *InteractiveMode) renderInitialMessages() {
+	if m.opts.ResumePath != "" {
+		m.renderSessionEntriesWithHistory(true)
+	}
+	m.renderProjectTrustWarningIfNeeded()
+	m.showSessionCompactedStatus()
+}
+
+// showSessionCompactedStatus shows how many times the Session was compacted, counting every compaction entry in the file, not only the active
+// branch. Only renderInitialMessages shows it (interactive-mode.ts:4178-4182): rebuilding the transcript after a compaction or a model switch does not.
+func (m *InteractiveMode) showSessionCompactedStatus() {
+	session := m.currentSession()
+	if session == nil {
+		return
+	}
+	count := session.CountEntriesOfType("compaction")
+	if count == 0 {
+		return
+	}
+	times := "1 time"
+	if count > 1 {
+		times = fmt.Sprintf("%d times", count)
+	}
+	m.showStatus("Session compacted " + times)
+}
+
+// repaintInitialMessages clears the transcript and paints the current Session's entries and then the project-trust warning, as upstream's
+// `chatContainer.clear(); renderInitialMessages()` does after a Session replacement and a tree navigation (interactive-mode.ts:2004-2005,
+// 2201-2209, 5634-5635). rebuildChatFromSession alone is upstream's rebuildChatFromMessages, which paints no warning.
+func (m *InteractiveMode) repaintInitialMessages() {
+	m.rebuildChat(true)
+	m.renderProjectTrustWarningIfNeeded()
+	m.showSessionCompactedStatus()
 }
 
 // renderSessionEntries refreshes the footer name before painting the current Session, including an unnamed fork. Pi's footer.ts:124-128 reads the current SessionManager name rather than retaining the source name.
 func (m *InteractiveMode) renderSessionEntries() {
+	m.renderSessionEntriesWithHistory(false)
+}
+
+// renderSessionEntriesWithHistory is renderSessionEntries with upstream's populateHistory option: each rendered user message's text also goes to the
+// editor history.
+func (m *InteractiveMode) renderSessionEntriesWithHistory(populateHistory bool) {
 	var entries []SessionEntry
 	name := ""
 	if session := m.currentSession(); session != nil {
-		entries = session.GetBranch()
+		// The kept range and everything after it render the same from the context branch, and the entries before it hydrate the same state;
+		// cache-miss notices scan the whole branch, and a compaction whose kept entry is not on the branch renders the whole branch.
+		if m.showCacheMissNotices() || !session.KeptRangeOnBranch() {
+			entries = session.GetBranch()
+		} else {
+			entries = session.GetContextBranch()
+		}
 		name = session.GetSessionName()
 	}
 	if m.statusLine != nil {
 		m.statusLine.SetName(name)
 	}
-	m.renderSessionEntryList(entries, true)
+	m.renderSessionEntryListWithHistory(entries, true, populateHistory)
+}
+
+// addUserMessageToChat is addMessageToChat case "user" (interactive-mode.ts:3927-3963), shared by the live message_start path and the
+// transcript rebuild: Spacer(1) after the first chat child, a skill block as a collapsible SkillInvocationMessageComponent followed by
+// its trailing user message (#5371 spacer), otherwise the user message itself.
+func (m *InteractiveMode) addUserMessageToChat(msg agent.AgentMessage, text string) {
+	if !m.chatContainer.IsEmpty() {
+		m.chatContainer.Add(tui.NewSpacer(1))
+	}
+	parsed := ParseSkillBlock(text)
+	if parsed == nil {
+		block := m.newUserMessageBlock(text)
+		block.SetImages(userMessageImages(msg))
+		m.chatContainer.Add(block)
+		return
+	}
+	comp := tui.NewSkillInvocationMessageComponent(tui.ParsedSkillBlock{
+		Name:    parsed.Name,
+		Content: parsed.Content,
+	}, m.markdownThemeWithSettings(), m.outputPad)
+	if m.toolsExpanded {
+		comp.SetExpanded(true)
+	}
+	m.chatContainer.Add(comp)
+	if parsed.UserMessage != "" {
+		m.chatContainer.Add(tui.NewSpacer(1))
+		block := m.newUserMessageBlock(parsed.UserMessage)
+		block.SetImages(userMessageImages(msg))
+		m.chatContainer.Add(block)
+	}
 }
 
 func (m *InteractiveMode) renderSessionEntryList(entries []SessionEntry, trim bool) {
+	m.renderSessionEntryListWithHistory(entries, trim, false)
+}
+
+func (m *InteractiveMode) renderSessionEntryListWithHistory(entries []SessionEntry, trim, populateHistory bool) {
+	// Selection coordinates point into the transcript being replaced (upstream interactive-mode.ts renderSessionEntries, #9311).
+	if m.altScreen != nil {
+		m.altScreen.ResetTextSelection()
+	}
 	m.previousThinkingDroppedCount = 0
 	m.disposeMarkdownBlocks()
 	defer m.refreshFooterContextUsage()
@@ -99,41 +215,36 @@ func (m *InteractiveMode) renderSessionEntryList(entries []SessionEntry, trim bo
 
 	// Hydrate usage and count compactions in one pass over the branch.
 	// Previously this did three separate passes (two Entries() copies +
-	// one Branch() walk), each calling AsMessage() which re-unmarshals
-	// the raw JSON. For sessions with hundreds of entries, the redundant
-	// unmarshal was the main source of post-compact/post-tree latency.
+	// one Branch() walk), each converting every message again. For
+	// sessions with hundreds of entries, the redundant conversion was the
+	// main source of post-compact/post-tree latency.
 	if m.statusLine != nil {
 		m.statusLine.ResetContextUsage()
 	}
 
-	// Pre-parse branch entries once (parsedEntry caches the expensive
-	// AsMessage()/WireToMessage conversion). Walked twice below
-	// (usage/compaction scan, then render) without re-unmarshaling.
-	var branch []parsedEntry
-	var compactionCount int
-
+	// Pre-parse branch entries once (parsedEntry caches the
+	// WireToMessage conversion). Walked twice below (usage/compaction
+	// scan, then render) without converting twice.
+	branch := make([]parsedEntry, 0, len(entries))
 	sess := m.currentSession()
 	for _, e := range entries {
 		pe := parsedEntry{entry: e}
-		switch e.Base.Type {
+		switch e.Base().Type {
 		case "message":
-			decode := SessionEntry.AsMessage
+			decode := asMessage
 			if sess != nil {
 				decode = sess.messageFor
 			}
 			if me, ok := decode(e); ok {
-				pe.msg = &me
 				if me.Message.Assistant != nil {
 					m.previousThinkingDroppedCount = countDroppedThinkingBlocks(me.Message.Assistant)
 					if m.statusLine != nil && me.Message.Assistant.Usage != nil {
 						m.statusLine.SetTurnContextUsage(me.Message.Assistant.Usage)
 					}
 				}
-				message := me.Message.Clone()
-				pe.agent = &message
+				pe.agent, pe.hasAgent = me.Message.Clone(), true
 			}
 		case "compaction":
-			compactionCount++
 			// The latest summarization usage also sets the context column;
 			// token and cost totals come from the session accounting.
 			if m.statusLine != nil {
@@ -153,39 +264,49 @@ func (m *InteractiveMode) renderSessionEntryList(entries []SessionEntry, trim bo
 		branch = append(branch, pe)
 	}
 
-	if m.statusLine != nil && compactionCount > 0 {
-		times := "1 time"
-		if compactionCount > 1 {
-			times = fmt.Sprintf("%d times", compactionCount)
-		}
-		m.statusLine.Flash(fmt.Sprintf("Session compacted %s", times), 3*time.Second)
-	}
-
 	cacheMissNotices := make(map[string]string)
 	if m.showCacheMissNotices() {
-		entries := make([]cacheStatsEntry, 0, len(branch))
+		// upstream collectCacheMisses(sessionManager.getEntries()): every entry of the file in file order, not only the rendered branch, so a
+		// response compares with the request before it in the file, as the live notice does. The branch's messages keep their decoded copies.
+		branchMessages := make(map[string]*agent.AssistantMessage, len(branch))
 		for _, item := range branch {
-			entry := cacheStatsEntry{kind: item.entry.Base.Type}
-			if item.agent != nil {
-				entry.message = item.agent.Assistant
+			if item.hasAgent {
+				branchMessages[item.entry.Base().ID] = item.agent.Assistant
 			}
-			if entry.kind == "usage" {
-				if usage, ok := decodeUsageEntry(item.entry.Raw()); ok {
+		}
+		scanned := entries
+		if sess != nil {
+			scanned = sess.GetEntries()
+		}
+		statsEntries := make([]cacheStatsEntry, 0, len(scanned))
+		for _, e := range scanned {
+			entry := cacheStatsEntry{kind: e.Base().Type}
+			switch entry.kind {
+			case "message":
+				if message, ok := branchMessages[e.Base().ID]; ok {
+					entry.message = message
+				} else if sess != nil {
+					if me, ok := sess.messageFor(e); ok {
+						entry.message = me.Message.Assistant
+					}
+				}
+			case "usage":
+				if usage, ok := decodeUsageEntry(e.Raw()); ok {
 					entry.usage = &usage
 				}
 			}
-			entries = append(entries, entry)
+			statsEntries = append(statsEntries, entry)
 		}
 		var prices ModelPriceSource
 		if m.opts.ModelRegistry != nil {
 			prices = m.opts.ModelRegistry.CacheReadPrice
 		}
-		misses := collectCacheMisses(entries, prices)
+		misses := collectCacheMisses(statsEntries, prices)
 		for _, item := range branch {
-			if item.agent != nil && item.agent.Assistant != nil {
+			if item.hasAgent && item.agent.Assistant != nil {
 				message := item.agent.Assistant
 				if message.StopReason != "aborted" && message.StopReason != "error" {
-					cacheMissNotices[item.entry.Base.ID] = formatCacheMissNotice(misses[message])
+					cacheMissNotices[item.entry.Base().ID] = formatCacheMissNotice(misses[message])
 				}
 			}
 		}
@@ -209,6 +330,12 @@ func (m *InteractiveMode) renderSessionEntryList(entries []SessionEntry, trim bo
 	if trim {
 		renderStart = compactionTrimIndex(branch)
 	}
+	rendered := branch[renderStart:]
+	if trim {
+		// Pi paints a restored transcript from buildContextEntries, whose first entry is the latest compaction (interactive-mode.ts:4220-4223);
+		// only the live compaction_end rebuild appends the new summary last (:3708-3721), and renderCompactionResult does that.
+		rendered = contextRenderOrder(branch, renderStart)
+	}
 
 	pendingCalls := make(map[string]ai.ToolCall)
 	// renderMessage renders one AgentMessage (user, assistant, toolResult, bashExecution)
@@ -218,40 +345,10 @@ func (m *InteractiveMode) renderSessionEntryList(entries []SessionEntry, trim bo
 	renderMessage := func(msg agent.AgentMessage) {
 		switch {
 		case msg.User != nil:
-			var sb strings.Builder
-			for _, block := range msg.ContentBlocks() {
-				if tc, ok := block.(ai.TextContent); ok {
-					sb.WriteString(tc.Text)
-				}
-			}
-			if text := strings.TrimSpace(sb.String()); text != "" {
-				// Upstream addMessageToChat case "user" spaces every user
-				// message after the first chat child with Spacer(1); the
-				// block's own vertical padding supplies the rest.
-				if !m.chatContainer.IsEmpty() {
-					m.chatContainer.Add(tui.NewSpacer(1))
-				}
-				// Parse skill blocks in user messages.
-				// Mirrors upstream addMessageToChat case "user" which calls
-				// parseSkillBlock(textContent) → SkillInvocationMessageComponent.
-				if parsed := ParseSkillBlock(text); parsed != nil {
-					comp := tui.NewSkillInvocationMessage(tui.ParsedSkillBlock{
-						Name:    parsed.Name,
-						Content: parsed.Content,
-					})
-					if m.toolsExpanded {
-						comp.SetExpanded(true)
-					}
-					m.chatContainer.Add(comp)
-					// Render trailing user message if present. Upstream #5371
-					// (interactive-mode.ts) inserts a Spacer(1) between the skill
-					// block and the user message.
-					if parsed.UserMessage != "" {
-						m.chatContainer.Add(tui.NewSpacer(1))
-						m.chatContainer.Add(m.newUserMessageBlock(parsed.UserMessage))
-					}
-				} else {
-					m.chatContainer.Add(m.newUserMessageBlock(text))
+			if text := extractAgentMessageText(msg); text != "" {
+				m.addUserMessageToChat(msg, text)
+				if populateHistory && m.editor != nil {
+					m.editor.AddToHistory(text)
 				}
 			}
 
@@ -261,6 +358,8 @@ func (m *InteractiveMode) renderSessionEntryList(entries []SessionEntry, trim bo
 			// AssistantMessage.Thinking accumulator is not serialized, so it
 			// is empty for every message read back from the session file.
 			block := m.newAssistantMessageBlock()
+			// A message read back never streams.
+			block.FinishStreaming()
 			updateAssistantMessageBlock(block, msg.Assistant)
 			m.chatContainer.Add(block)
 			m.assistantBlocks = append(m.assistantBlocks, block)
@@ -271,26 +370,25 @@ func (m *InteractiveMode) renderSessionEntryList(entries []SessionEntry, trim bo
 					continue
 				}
 				args, _ := jsonNoEscape(call.Arguments)
-				argsPreview := tui.HeaderForTool(call.Name, json.RawMessage(args), m.opts.CWD)
-				comp := tui.NewToolExecutionComponent(call.Name, argsPreview)
-				comp.BodyRenderer = toolBodyRendererForCall(call, agent.AgentToolResult{})
-				comp.Cwd = m.opts.CWD
-				comp.SetHeaderArgs(json.RawMessage(args))
+				comp := m.newToolCard(call.Name, call.ID, json.RawMessage(args))
+				comp.BodyRenderer = toolBodyRendererForCall(call, agent.AgentToolResult{}, nil)
 				m.applyToolPresentation(comp, call.ID, call.Name, json.RawMessage(args))
 				comp.SetExpanded(m.toolsExpanded)
 				switch msg.Assistant.StopReason {
 				case ai.StopReasonAborted:
-					result := agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "Operation aborted"}}, IsError: true}
-					comp.BodyRenderer = toolBodyRendererForCall(call, result)
+					abortedText := m.abortedMessageText()
+					result := agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: abortedText}}, IsError: true}
+					comp.BodyRenderer = toolBodyRendererForCall(call, result, nil)
 					comp.SetResultValue(result)
-					comp.SetResult("Operation aborted", true, 0)
+					comp.SetResult(abortedText, true, 0)
+					comp.MarkAborted() // pig additive (D91): a frontend shows it cancelled
 				case ai.StopReasonError:
 					errorMessage := msg.Assistant.ErrorMessage
 					if errorMessage == "" {
 						errorMessage = "Error"
 					}
 					result := agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: errorMessage}}, IsError: true}
-					comp.BodyRenderer = toolBodyRendererForCall(call, result)
+					comp.BodyRenderer = toolBodyRendererForCall(call, result, nil)
 					comp.SetResultValue(result)
 					comp.SetResult(errorMessage, true, 0)
 				default:
@@ -303,6 +401,47 @@ func (m *InteractiveMode) renderSessionEntryList(entries []SessionEntry, trim bo
 				m.chatContainer.Add(comp)
 			}
 
+		case msg.Role() == agent.RoleBashExecution:
+			// Upstream addMessageToChat case "bashExecution" (interactive-mode.ts:3870-3887): a BashExecutionComponent over the
+			// command, its output appended, then completed with the exit code, cancelled and truncated flags and full-output path.
+			command, _ := msg.Custom["command"].(string)
+			excludeFromContext, _ := msg.Custom["excludeFromContext"].(bool)
+			block := tui.NewBashExecutionComponent(command, m.tuiInst, excludeFromContext, m.outputPad)
+			if output, _ := msg.Custom["output"].(string); output != "" {
+				block.AppendOutput(output)
+			}
+			var exitCode *int
+			if code, ok := msg.Custom["exitCode"].(float64); ok {
+				value := int(code)
+				exitCode = &value
+			}
+			cancelled, _ := msg.Custom["cancelled"].(bool)
+			truncated, _ := msg.Custom["truncated"].(bool)
+			fullOutputPath, _ := msg.Custom["fullOutputPath"].(string)
+			var truncationResult *tui.TruncationResult
+			if truncated {
+				truncationResult = &tui.TruncationResult{Truncated: true}
+			}
+			block.SetComplete(exitCode, cancelled, truncationResult, fullOutputPath)
+			m.toolMu.Lock()
+			m.bashOrder = append(m.bashOrder, block)
+			m.toolMu.Unlock()
+			// upstream: interactive-mode.ts:3871,7009,7037 never call setExpanded on a new BashExecutionComponent; it starts collapsed.
+			m.chatContainer.Add(block)
+		case msg.Role() == agent.RoleCustom:
+			// upstream addMessageToChat case "custom" (interactive-mode.ts:3901-3913): only a displayed message is drawn.
+			if entry, display := customMessageEntryOf(msg.Custom); display {
+				m.appendCustomMessage(entry)
+			}
+		case msg.Role() == agent.RoleCompactionSummary:
+			// upstream case "compactionSummary" (interactive-mode.ts:3915-3924): a message carries no usage, so no cost notice follows.
+			summary, _ := msg.Custom["summary"].(string)
+			tokensBefore, _ := msg.Custom["tokensBefore"].(float64)
+			m.addCompactionSummary(summary, int(tokensBefore), nil)
+		case msg.Role() == agent.RoleBranchSummary:
+			// upstream case "branchSummary" (interactive-mode.ts:3926-3935).
+			summary, _ := msg.Custom["summary"].(string)
+			m.addBranchSummary(summary, nil)
 		case msg.ToolResult != nil:
 			r := msg.ToolResult
 			call, pending := pendingCalls[r.ToolCallID]
@@ -317,52 +456,35 @@ func (m *InteractiveMode) renderSessionEntryList(entries []SessionEntry, trim bo
 			if comp == nil {
 				return
 			}
-			images := r.Images()
 			result := r.Result()
-			comp.BodyRenderer = toolBodyRendererForCall(call, result)
-			if len(images) > 0 {
-				blocks := make([]tui.ImageBlock, len(images))
-				for i, img := range images {
-					blocks[i] = tui.ImageBlock{Data: img.Data, MIMEType: img.MimeType}
-				}
-				comp.ImageBlocks = blocks
-			}
-			comp.SetResultValue(result)
-			comp.SetResult(result.Text(), r.IsError, 0)
-			m.maybeConvertImagesForKitty(comp)
-
-		case msg.Role() == agent.RoleBashExecution:
-			m.chatContainer.Add(bashExecutionBlockFromMessage(msg.Custom))
+			comp.BodyRenderer = toolBodyRendererForCall(call, result, recordedTook(call.Name, r.DurationMs, nil))
+			final := ToolExecutionResultOf(result, 0)
+			final.IsError = r.IsError
+			final.DurationMs = r.DurationMs
+			comp.UpdateResult(final, false)
 		}
 	}
 
 	// Render from pre-parsed branch entries (from the latest compaction
 	// boundary onward; see renderStart above).
-	for _, pe := range branch[renderStart:] {
-		switch pe.entry.Base.Type {
+	for _, pe := range rendered {
+		switch pe.entry.Base().Type {
 		case "message":
-			if pe.agent != nil {
-				renderMessage(*pe.agent)
-				if notice := cacheMissNotices[pe.entry.Base.ID]; notice != "" {
-					m.chatContainer.Add(tui.NewText("\033[33m" + notice + "\033[0m"))
+			if pe.hasAgent {
+				renderMessage(pe.agent)
+				if notice := cacheMissNotices[pe.entry.Base().ID]; notice != "" {
+					m.addCacheMissNotice(notice)
 				}
 			}
 		case "compaction":
 			var ce CompactionEntry
-			if err := json.Unmarshal(pe.entry.Raw(), &ce); err == nil && ce.Summary != "" {
+			if err := json.Unmarshal(pe.entry.Raw(), &ce); err == nil {
 				m.addCompactionSummary(ce.Summary, ce.TokensBefore, ce.Usage)
 			}
 		case "branch_summary":
 			var be BranchSummaryEntry
 			if err := json.Unmarshal(pe.entry.Raw(), &be); err == nil && be.Summary != "" {
-				comp := tui.NewBranchSummaryComponent(be.Summary)
-				if m.toolsExpanded {
-					comp.SetExpanded(true)
-				}
-				m.branchSummaryOrder = append(m.branchSummaryOrder, comp)
-				m.chatContainer.Add(tui.NewText(""))
-				m.chatContainer.Add(comp)
-				m.addCompactionCostNotice("branch_summary", be.Usage)
+				m.addBranchSummary(be.Summary, be.Usage)
 			}
 		case "custom_message":
 			var cm CustomMessageEntry
@@ -383,31 +505,10 @@ func (m *InteractiveMode) renderSessionEntryList(entries []SessionEntry, trim bo
 	if len(branch) == 0 && trim && m.agent != nil {
 		// Fallback: no session available: render from agent messages only.
 		for _, msg := range m.agent.Messages() {
-			renderMessage(msg)
+			renderMessage(msg.Clone())
 		}
 	}
 	m.tuiInst.Render()
-}
-
-// bashExecutionBlockFromMessage is Pi addMessageToChat case "bashExecution" (interactive-mode.ts:3847-3859): a
-// completed block for a persisted `!` or `!!` command. Its output is appended only when non-empty, it is completed
-// with the persisted exit code, cancellation, truncation and full-output path, and it is not expanded on creation.
-func bashExecutionBlockFromMessage(message map[string]any) *tui.BashExecutionBlock {
-	command, _ := message["command"].(string)
-	excludeFromContext, _ := message["excludeFromContext"].(bool)
-	block := tui.NewBashExecutionBlock(command, excludeFromContext)
-	if output, _ := message["output"].(string); output != "" {
-		block.AppendOutput(output)
-	}
-	var exitCode *int
-	if code, ok := message["exitCode"].(float64); ok {
-		exitCode = new(int(code))
-	}
-	cancelled, _ := message["cancelled"].(bool)
-	truncated, _ := message["truncated"].(bool)
-	fullOutputPath, _ := message["fullOutputPath"].(string)
-	block.SetCompleteFullOutput(exitCode, cancelled, truncated, fullOutputPath)
-	return block
 }
 
 // addCustomEntryToChat renders a custom session entry (appended via the
@@ -424,67 +525,71 @@ func (m *InteractiveMode) addCustomEntryToChat(entry CustomEntry) {
 	if renderer == nil {
 		return
 	}
-	component := renderer(entry, extension.EntryRenderOptions{Expanded: m.toolsExpanded}, nil)
-	rendered, ok := component.(tui.Component)
-	if !ok {
+	component := NewCustomEntryComponent(entry, renderer, m.outputPad)
+	component.SetExpanded(m.toolsExpanded)
+	if !component.HasContent() {
 		return
 	}
-	// Host owns transcript spacing: one blank line above the entry, mirroring
-	// upstream CustomEntryComponent's Spacer(1) (same as compaction/branch cases).
-	m.chatContainer.Add(tui.NewSpacer(1))
-	// Track expandable proxies (the subprocess renderer path) so Ctrl+O toggles
-	// re-render them; a bare component still renders, just without expand tracking.
-	if expandable, ok := rendered.(expandableCustomMessageComponent); ok {
-		m.customMessageOrder = append(m.customMessageOrder, expandable)
+	// interactive-mode.ts:3834-3840: an entry added during streaming goes before the streaming message.
+	if m.evCurrentBlock != nil && m.chatContainer.InsertBefore(m.evCurrentBlock, component) {
+		return
 	}
-	m.chatContainer.Add(rendered)
+	// setAllToolsExpanded reaches the component through chatContainer's expandable children.
+	m.chatContainer.Add(component)
 }
 
+// appendCustomMessage mounts a CustomMessageComponent for a displayed custom message, as upstream interactive-mode.ts:3861-3872
+// does: the registered renderer (if any) is handed to the component, which rebuilds it when expansion or padding changes.
 func (m *InteractiveMode) appendCustomMessage(message CustomMessageEntry) {
-	content := tui.CustomMessageText(&tui.CustomMessage{
-		CustomType: message.CustomType,
-		Content:    message.Content,
-	})
-	fallback := tui.NewCustomMessageComponent(message.CustomType, content)
-	fallback.SetOutputPad(m.outputPad)
-	fallback.SetExpanded(m.toolsExpanded)
+	var renderer tui.MessageRenderer
 	if m.newRunner != nil {
-		if renderer := m.newRunner.MessageRenderer(message.CustomType); renderer != nil {
-			customMessage := extension.CustomMessageRef{
+		if registered := m.newRunner.MessageRenderer(message.CustomType); registered != nil {
+			customMessage := extension.CustomMessage{
 				CustomType: message.CustomType,
 				Content:    message.Content,
 				Display:    message.Display,
 				Details:    message.Details,
+				Timestamp:  entryTimestampMs(message.Timestamp),
 			}
-			component := renderer(customMessage, extension.MessageRenderOptions{Expanded: m.toolsExpanded, OutputPad: m.outputPad}, nil)
-			if rendered, ok := component.(tui.Component); ok && rendered != nil {
-				if expandable, ok := rendered.(interface {
-					expandableCustomMessageComponent
-					SetOutputPad(int)
-				}); ok {
-					m.customMessageOrder = append(m.customMessageOrder, expandable)
-					m.chatContainer.Add(expandable)
-					return
-				}
-				wrapper := &rerenderingCustomMessageComponent{
-					renderer: renderer, message: customMessage, expanded: m.toolsExpanded, outputPad: m.outputPad,
-					component: rendered, fallback: fallback,
-				}
-				m.customMessageOrder = append(m.customMessageOrder, wrapper)
-				m.chatContainer.Add(wrapper)
-				return
+			renderer = func(_ *tui.CustomMessage, options tui.MessageRenderOptions) tui.Component {
+				return registered(customMessage, extension.MessageRenderOptions{Expanded: options.Expanded, OutputPad: options.OutputPad}, nil)
 			}
-			wrapper := &rerenderingCustomMessageComponent{
-				renderer: renderer, message: customMessage, expanded: m.toolsExpanded, outputPad: m.outputPad,
-				component: fallback, fallback: fallback,
-			}
-			m.customMessageOrder = append(m.customMessageOrder, wrapper)
-			m.chatContainer.Add(wrapper)
-			return
 		}
 	}
-	m.customMessageOrder = append(m.customMessageOrder, fallback)
-	m.chatContainer.Add(fallback)
+	component := tui.NewCustomMessageComponent(&tui.CustomMessage{CustomType: message.CustomType, Content: message.Content}, renderer, m.markdownThemeWithSettings(), m.outputPad)
+	component.SetExpanded(m.toolsExpanded)
+	m.customMessageOrder = append(m.customMessageOrder, component)
+	m.chatContainer.Add(component)
+}
+
+// customMessageEntryOf reads a "custom" role message as the entry appendCustomMessage draws. display is the message's
+// display member, which decides whether upstream addMessageToChat case "custom" draws it.
+func customMessageEntryOf(custom map[string]any) (entry CustomMessageEntry, display bool) {
+	display, _ = custom["display"].(bool)
+	customType, _ := custom["customType"].(string)
+	// A message built in this process holds an int64 timestamp; one decoded from JSON holds a float64.
+	var timestamp int64
+	switch value := custom["timestamp"].(type) {
+	case int64:
+		timestamp = value
+	case float64:
+		timestamp = int64(value)
+	}
+	return CustomMessageEntry{
+		SessionEntryBase: SessionEntryBase{Type: "custom_message", Timestamp: time.UnixMilli(timestamp).UTC().Format(time.RFC3339Nano)},
+		CustomType:       customType, Content: custom["content"], Display: display, Details: custom["details"],
+	}, display
+}
+
+// addBranchSummary draws a branch summary as upstream addMessageToChat case "branchSummary" (interactive-mode.ts:3926-3935)
+// does: a spacer, then the component at the current expansion. A branch_summary entry's usage adds its cost notice.
+func (m *InteractiveMode) addBranchSummary(summary string, usage *ai.Usage) {
+	component := tui.NewBranchSummaryMessageComponent(tui.BranchSummaryMessage{Summary: summary}, m.markdownThemeWithSettings(), m.outputPad)
+	component.SetExpanded(m.toolsExpanded)
+	m.branchSummaryOrder = append(m.branchSummaryOrder, component)
+	m.chatContainer.Add(tui.NewSpacer(1))
+	m.chatContainer.Add(component)
+	m.addCompactionCostNotice("branch_summary", usage)
 }
 
 // flushCompactionQueue sends all messages that were queued while a compaction
@@ -552,19 +657,19 @@ func (m *InteractiveMode) flushCompactionQueue(ctx context.Context, startTurn bo
 
 	firstIdx := -1
 	for i, msg := range queued {
-		if !strings.HasPrefix(msg.text, "/") {
+		if !m.isExtensionCommand(msg.text) {
 			firstIdx = i
 			break
 		}
 	}
 	if firstIdx == -1 {
-		// All slash commands: dispatch each; none starts a turn.
+		// All extension commands (interactive-mode.ts:4818-4825): run each; none starts a turn.
 		for _, msg := range queued {
 			m.handleSubmitWithImages(ctx, msg.text, msg.images)
 		}
 		return
 	}
-	// Dispatch any slash commands before the first prompt.
+	// Run the extension commands before the first prompt.
 	for _, msg := range queued[:firstIdx] {
 		m.handleSubmitWithImages(ctx, msg.text, msg.images)
 	}
@@ -574,14 +679,10 @@ func (m *InteractiveMode) flushCompactionQueue(ctx context.Context, startTurn bo
 	// in PiG; the idle path starts a new prompt, while a live run receives the
 	// message through its requested queue.
 	m.handleSubmitWithImages(ctx, queued[firstIdx].text, queued[firstIdx].images)
-	// Remaining messages preserve their queued mode; later slash commands
-	// still dispatch immediately. A message that finds the run already
+	// Remaining messages preserve their queued mode; later extension commands
+	// still dispatch immediately (deliverCompactionQueued). A message that finds the run already
 	// settled starts the next turn instead of waiting in a drained queue.
 	for _, msg := range queued[firstIdx+1:] {
-		if strings.HasPrefix(msg.text, "/") {
-			m.handleSubmitWithImages(ctx, msg.text, msg.images)
-			continue
-		}
 		m.deliverCompactionQueued(ctx, msg)
 	}
 }
@@ -621,7 +722,8 @@ func (m *InteractiveMode) queueCompactionMessageForActiveTurn(msg compactionQueu
 }
 
 // steerMessageWithImages queues a steering message, delivered after the
-// current tool batch and before the next model call (upstream _queueSteer).
+// current tool batch and before the next model call (upstream _queueSteer). Like Pi's onSubmit (interactive-mode.ts:3378-3383) it shows the
+// message in the pending area only, with no status line.
 func (m *InteractiveMode) steerMessageWithImages(text string, images []ai.ImageContent) {
 	msg := agent.AgentMessage{
 		User: &agent.UserMessage{
@@ -631,14 +733,12 @@ func (m *InteractiveMode) steerMessageWithImages(text string, images []ai.ImageC
 		},
 	}
 	m.agent.Steer(msg)
-	if m.statusLine != nil {
-		m.statusLine.Flash("Queued steering message", 2*time.Second)
-	}
 	m.updatePendingMessagesDisplay()
 }
 
 // followUpMessageWithImages queues a follow-up message, delivered once the
-// run has no more tool calls or steering messages (upstream _queueFollowUp).
+// run has no more tool calls or steering messages (upstream _queueFollowUp). Like Pi's handleFollowUp (interactive-mode.ts:4493-4498) it
+// shows the message in the pending area only, with no status line.
 func (m *InteractiveMode) followUpMessageWithImages(text string, images []ai.ImageContent) {
 	msg := agent.AgentMessage{
 		User: &agent.UserMessage{
@@ -648,9 +748,6 @@ func (m *InteractiveMode) followUpMessageWithImages(text string, images []ai.Ima
 		},
 	}
 	m.agent.FollowUp(msg)
-	if m.statusLine != nil {
-		m.statusLine.Flash("Queued follow-up message", 2*time.Second)
-	}
 	m.updatePendingMessagesDisplay()
 }
 
@@ -672,32 +769,51 @@ func (m *InteractiveMode) updatePendingMessagesDisplay() {
 		m.tuiInst.Render()
 		return
 	}
-	dim := tui.ActiveTheme().Muted
-	reset := "\x1b[0m"
+	theme := tui.ActiveTheme()
 	m.pendingMessagesContainer.Add(tui.NewSpacer(1))
 	// Upstream wraps each line in TruncatedText(text, 1, 0): a queued
 	// message renders as a single truncated line, never wrapped.
 	for _, text := range steeringTexts {
-		m.pendingMessagesContainer.Add(tui.NewTruncatedText(dim+"Steering: "+text+reset, 1))
+		m.pendingMessagesContainer.Add(tui.NewTruncatedText(theme.Fg("dim", "Steering: "+text), 1, 0))
 	}
 	for _, text := range followUpTexts {
-		m.pendingMessagesContainer.Add(tui.NewTruncatedText(dim+"Follow-up: "+text+reset, 1))
+		m.pendingMessagesContainer.Add(tui.NewTruncatedText(theme.Fg("dim", "Follow-up: "+text), 1, 0))
 	}
-	hint := m.keybindings.DisplayFor("app.message.dequeue")
-	m.pendingMessagesContainer.Add(tui.NewTruncatedText(dim+"↳ "+hint+" to edit all queued messages"+reset, 1))
+	// upstream: interactive-mode.ts:4736 getAppKeyDisplay is keyDisplayText: every key bound to the action, capitalized and joined by "/".
+	hint := tui.ActionKeyDisplayText("app.message.dequeue")
+	m.pendingMessagesContainer.Add(tui.NewTruncatedText(theme.Fg("dim", "↳ "+hint+" to edit all queued messages"), 1, 0))
 	m.tuiInst.Render()
 }
 
-// extractAgentMessageText pulls the first text content from an AgentMessage.
+// extractAgentMessageText is getUserMessageText (interactive-mode.ts): the text blocks of a user message joined with "".
 func extractAgentMessageText(msg agent.AgentMessage) string {
-	if msg.User != nil {
-		for _, c := range msg.ContentBlocks() {
-			if tc, ok := c.(ai.TextContent); ok {
-				return tc.Text
-			}
+	if msg.User == nil {
+		return ""
+	}
+	var text strings.Builder
+	for _, c := range msg.ContentBlocks() {
+		if tc, ok := c.(ai.TextContent); ok {
+			text.WriteString(tc.Text)
 		}
 	}
-	return ""
+	return text.String()
+}
+
+// userMessageImages are the image blocks of a user message with data and a
+// MIME type, in order, or nil. Pi's UserMessageComponent draws none; a
+// frontend session may show them with the message (pig additive, D91).
+func userMessageImages(msg agent.AgentMessage) []tui.ImageBlock {
+	if msg.User == nil {
+		return nil
+	}
+	blocks, _ := msg.User.Content.(ai.UserContentBlocks)
+	var images []tui.ImageBlock
+	for _, block := range blocks {
+		if img, ok := block.(ai.ImageContent); ok && img.Data != "" && img.MimeType != "" {
+			images = append(images, tui.ImageBlock{Data: img.Data, MIMEType: img.MimeType})
+		}
+	}
+	return images
 }
 
 // collectQueuedTexts merges the agent's steering/follow-up queues with the
@@ -732,15 +848,13 @@ func collectQueuedTexts(steering, followUps []agent.AgentMessage, compaction []c
 	return steeringTexts, followUpTexts
 }
 
-// jsonNoEscape serialises v to JSON without HTML-escaping (for display strings).
+// jsonNoEscape is JSON.stringify(v) for display strings.
 func jsonNoEscape(v any) (string, error) {
-	var buf strings.Builder
-	enc := json.NewEncoder(&buf)
-	enc.SetEscapeHTML(false)
-	if err := enc.Encode(v); err != nil {
+	encoded, err := jsstring.MarshalJSON(v)
+	if err != nil {
 		return "{}", err
 	}
-	return strings.TrimSuffix(buf.String(), "\n"), nil
+	return string(encoded), nil
 }
 
 func (m *InteractiveMode) refreshFooterContextUsage() {
@@ -749,4 +863,30 @@ func (m *InteractiveMode) refreshFooterContextUsage() {
 	}
 	tokens, window := m.opts.ContextUsage()
 	m.statusLine.SetContextUsage(tokens, window)
+}
+
+// applyOutputPad updates every transcript block that carries the horizontal padding in place, in the chat and in the pending-message area, then
+// requests a render (interactive-mode.ts onOutputPadChange). The transcript is not rebuilt.
+func (m *InteractiveMode) applyOutputPad() {
+	type outputPadded interface{ SetOutputPad(int) }
+	apply := func(component tui.Component) {
+		if padded, ok := component.(outputPadded); ok {
+			padded.SetOutputPad(m.outputPad)
+		}
+	}
+	for _, container := range []*tui.Container{m.chatContainer, m.pendingMessagesContainer} {
+		if container == nil {
+			continue
+		}
+		for _, child := range container.Children() {
+			apply(child)
+		}
+	}
+	m.pendingBashBlocksMu.Lock()
+	pending := slices.Clone(m.pendingBashBlocks)
+	m.pendingBashBlocksMu.Unlock()
+	for _, block := range pending {
+		apply(block)
+	}
+	m.tuiInst.RequestRender()
 }

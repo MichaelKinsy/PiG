@@ -1,6 +1,7 @@
+import { PI_PACKAGE_VERSION } from "./pi-version.mjs";
 import {readFileSync} from "node:fs";
 const root=new URL("../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/",import.meta.url);
-if(JSON.parse(readFileSync(new URL("package.json",root),"utf8")).version!=="1.0.3")throw new Error("Expected Pi 1.0.3");
+if(JSON.parse(readFileSync(new URL("package.json",root),"utf8")).version!==PI_PACKAGE_VERSION)throw new Error(`Expected Pi ${PI_PACKAGE_VERSION}`);
 const {complete}=await import(new URL("dist/compat.js",root));
 const cases=JSON.parse(readFileSync(new URL("./replay-history.json",import.meta.url),"utf8"));
 function canonical(value){if(Array.isArray(value))return value.map(canonical);if(value&&typeof value==="object")return Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])]));return value;}

@@ -1,0 +1,419 @@
+[
+ {
+  "upstream": "packages/coding-agent/src/utils/frontmatter.ts",
+  "package": "./internal/codingagent/frontmatter",
+  "tests": [
+   "TestStripFrontmatterMatchesUpstream",
+   "TestStripReturnsTheBodyLikePisStripFrontmatter"
+  ],
+  "upstream_reference": "packages/coding-agent/src/utils/frontmatter.ts",
+  "mutation": "internal/codingagent/frontmatter/frontmatter.go: replace `return doc.Body, doc.Err` with `return doc.Body, nil`; TestStripFrontmatterMatchesUpstream, TestStripReturnsTheBodyLikePisStripFrontmatter fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/utils/frontmatter.ts",
+  "package": "./internal/codingagent/frontmatter",
+  "tests": [
+   "TestStripFrontmatterMatchesUpstream",
+   "TestStripReturnsTheBodyLikePisStripFrontmatter"
+  ],
+  "upstream_reference": "packages/coding-agent/src/utils/frontmatter.ts",
+  "mutation": "internal/codingagent/frontmatter/frontmatter.go: replace `return doc.Body, doc.Err` with `return \"\", doc.Err`; TestStripFrontmatterMatchesUpstream, TestStripReturnsTheBodyLikePisStripFrontmatter fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/utils/frontmatter.ts",
+  "package": "./internal/codingagent/frontmatter",
+  "tests": [
+   "TestStripFrontmatterMatchesUpstream",
+   "TestStripReturnsTheBodyLikePisStripFrontmatter"
+  ],
+  "upstream_reference": "packages/coding-agent/src/utils/frontmatter.ts",
+  "mutation": "internal/codingagent/frontmatter/frontmatter.go: replace `doc := Parse(content)\n\treturn` with `doc := Parse(content + \"x\")\n\treturn`; TestStripFrontmatterMatchesUpstream, TestStripReturnsTheBodyLikePisStripFrontmatter fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/skills.ts",
+  "package": "./internal/codingagent/prompts",
+  "tests": [
+   "TestUpstreamCoreFormatSkillsForPrompt"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/skills.ts",
+  "mutation": "internal/codingagent/prompts/coding.go: replace `if !skill.DisableModelInvocation {` with `if skill.DisableModelInvocation {`; TestUpstreamCoreFormatSkillsForPrompt fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/skills.ts",
+  "package": "./internal/codingagent/prompts",
+  "tests": [
+   "TestUpstreamCoreFormatSkillsForPrompt"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/skills.ts",
+  "mutation": "internal/codingagent/prompts/coding.go: replace `if len(visible) == 0 {\n\t\treturn \"\"\n\t}` with `if len(visible) == 0 {\n\t\treturn \"\\n\"\n\t}`; TestUpstreamCoreFormatSkillsForPrompt fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/skills.ts",
+  "package": "./internal/codingagent/prompts",
+  "tests": [
+   "TestUpstreamCoreFormatSkillsForPrompt"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/skills.ts",
+  "mutation": "internal/codingagent/prompts/coding.go: replace `case \"bash\":\n\t\tload = \"Use bash to load` with `case \"bash\":\n\t\tload = \"Use the read tool to load`; TestUpstreamCoreFormatSkillsForPrompt fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/skills.ts",
+  "package": "./internal/codingagent/prompts",
+  "tests": [
+   "TestUpstreamCoreFormatSkillsForPrompt"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/skills.ts",
+  "mutation": "internal/codingagent/prompts/coding.go: replace `skillXMLEscaper.Replace(skill.Name)` with `skill.Name`; TestUpstreamCoreFormatSkillsForPrompt fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/skills.ts",
+  "package": "./internal/codingagent/prompts",
+  "tests": [
+   "TestUpstreamCoreFormatSkillsForPrompt"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/skills.ts",
+  "mutation": "internal/codingagent/prompts/coding.go: replace `skillXMLEscaper.Replace(skill.Description)` with `skill.Description`; TestUpstreamCoreFormatSkillsForPrompt fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/skills.ts",
+  "package": "./internal/codingagent/prompts",
+  "tests": [
+   "TestUpstreamCoreFormatSkillsForPrompt"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/skills.ts",
+  "mutation": "internal/codingagent/prompts/coding.go: replace `skillXMLEscaper.Replace(skill.Path)` with `skill.Path`; TestUpstreamCoreFormatSkillsForPrompt fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/skills.ts",
+  "package": "./internal/codingagent/prompts",
+  "tests": [
+   "TestUpstreamCoreFormatSkillsForPrompt"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/skills.ts",
+  "mutation": "internal/codingagent/prompts/coding.go: replace `\"<available_skills>\",` with `\"<available_skills>\",\n\t\t\"\",`; TestUpstreamCoreFormatSkillsForPrompt fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/skills.ts",
+  "package": "./internal/codingagent/prompts",
+  "tests": [
+   "TestUpstreamCoreFormatSkillsForPrompt"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/skills.ts",
+  "mutation": "internal/codingagent/prompts/coding.go: replace `lines = append(lines, \"</available_skills>\")` with `lines = append(lines, \"</available_skills>\", \"\")`; TestUpstreamCoreFormatSkillsForPrompt fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/skills.ts",
+  "package": "./internal/codingagent/prompts",
+  "tests": [
+   "TestUpstreamCoreFormatSkillsForPrompt"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/skills.ts",
+  "mutation": "internal/codingagent/prompts/coding.go: replace `\"\\n\\nThe following skills provide` with `\"The following skills provide`; TestUpstreamCoreFormatSkillsForPrompt fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/skills.ts",
+  "package": "./internal/codingagent/prompts",
+  "tests": [
+   "TestUpstreamCoreFormatSkillsForPrompt"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/skills.ts",
+  "mutation": "internal/codingagent/prompts/coding.go: replace `\"    <location>\"` with `\"    <path>\"`; TestUpstreamCoreFormatSkillsForPrompt fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/source-info.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestCreateSyntheticSourceInfoAppliesUpstreamDefaults"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/source-info.ts",
+  "mutation": "internal/codingagent/extension_host_info.go: replace `Path: path, Source: options.Source, Scope: options.Scope, Origin: options.Origin, BaseDir: options.BaseDir}` with `Path: path, Source: options.Source, Scope: options.Scope, Origin: options.Origin}`; TestCreateSyntheticSourceInfoAppliesUpstreamDefaults fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/source-info.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestCreateSyntheticSourceInfoAppliesUpstreamDefaults"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/source-info.ts",
+  "mutation": "internal/codingagent/extension_host_info.go: replace `Path: path, Source: options.Source, Scope: options.Scope, Origin: options.Origin, BaseDir: options.BaseDir}` with `Path: path, Scope: options.Scope, Origin: options.Origin, BaseDir: options.BaseDir}`; TestCreateSyntheticSourceInfoAppliesUpstreamDefaults fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/source-info.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestCreateSyntheticSourceInfoAppliesUpstreamDefaults"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/source-info.ts",
+  "mutation": "internal/codingagent/extension_host_info.go: replace `Path: path, Source: options.Source, Scope: options.Scope, Origin: options.Origin, BaseDir: options.BaseDir}` with `Source: options.Source, Scope: options.Scope, Origin: options.Origin, BaseDir: options.BaseDir}`; TestCreateSyntheticSourceInfoAppliesUpstreamDefaults fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/source-info.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestCreateSyntheticSourceInfoAppliesUpstreamDefaults"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/source-info.ts",
+  "mutation": "internal/codingagent/extension_host_info.go: replace `info.Scope = \"temporary\"` with `info.Scope = \"user\"`; TestCreateSyntheticSourceInfoAppliesUpstreamDefaults fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/source-info.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestCreateSyntheticSourceInfoAppliesUpstreamDefaults"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/source-info.ts",
+  "mutation": "internal/codingagent/extension_host_info.go: replace `info.Origin = \"top-level\"` with `info.Origin = \"package\"`; TestCreateSyntheticSourceInfoAppliesUpstreamDefaults fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/source-info.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestCreateSyntheticSourceInfoAppliesUpstreamDefaults"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/source-info.ts",
+  "mutation": "internal/codingagent/extension_host_info.go: replace `if info.Scope == \"\" {` with `if info.Scope != \"\" {`; TestCreateSyntheticSourceInfoAppliesUpstreamDefaults fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/source-info.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestCreateSyntheticSourceInfoAppliesUpstreamDefaults"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/source-info.ts",
+  "mutation": "internal/codingagent/extension_host_info.go: replace `if info.Origin == \"\" {` with `if info.Origin != \"\" {`; TestCreateSyntheticSourceInfoAppliesUpstreamDefaults fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionEntryToContextMessagesProjectsEachEntryKind"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_projection.go: replace `return sessionEntryToContextMessages(entry, asMessage)` with `return nil`; TestSessionEntryToContextMessagesProjectsEachEntryKind fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionEntryToContextMessagesProjectsEachEntryKind"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_projection.go: replace `if content == nil {\n\t\t\tcontent = []any{}\n\t\t}` with `_ = content`; TestSessionEntryToContextMessagesProjectsEachEntryKind fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionEntryToContextMessagesProjectsEachEntryKind"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_projection.go: replace `\"customType\": custom.CustomType,` with `\"customType\": \"\",`; TestSessionEntryToContextMessagesProjectsEachEntryKind fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionEntryToContextMessagesProjectsEachEntryKind"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_projection.go: replace `\"display\":    custom.Display,` with `\"display\":    true,`; TestSessionEntryToContextMessagesProjectsEachEntryKind fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionEntryToContextMessagesProjectsEachEntryKind"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_projection.go: replace `if custom.Details != nil {\n\t\t\tmessage[\"details\"] = custom.Details\n\t\t}` with `message[\"details\"] = custom.Details`; TestSessionEntryToContextMessagesProjectsEachEntryKind fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionEntryToContextMessagesProjectsEachEntryKind"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_projection.go: replace `\"timestamp\":  entryTimestampMs(custom.Timestamp),` with `\"timestamp\":  0,`; TestSessionEntryToContextMessagesProjectsEachEntryKind fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionEntryToContextMessagesProjectsEachEntryKind"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_projection.go: replace `json.Unmarshal(entry.Raw(), &summary) != nil || summary.Summary == \"\" {` with `json.Unmarshal(entry.Raw(), &summary) != nil {`; TestSessionEntryToContextMessagesProjectsEachEntryKind fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionEntryToContextMessagesProjectsEachEntryKind"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_projection.go: replace `\"fromId\":    summary.FromID,` with `\"fromId\":    \"\",`; TestSessionEntryToContextMessagesProjectsEachEntryKind fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionEntryToContextMessagesProjectsEachEntryKind"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_projection.go: replace `\"summary\":   summary.Summary,\n\t\t\t\"fromId\"` with `\"summary\":   \"\",\n\t\t\t\"fromId\"`; TestSessionEntryToContextMessagesProjectsEachEntryKind fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionEntryToContextMessagesProjectsEachEntryKind"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_projection.go: replace `\"role\":      agent.RoleBranchSummary,\n\t\t\t\"summary\":   summary.Summary,\n\t\t\t\"fromId\":    summary.FromID,\n\t\t\t\"timestamp\": entryTimestampMs(summary.Timestamp),` with `\"role\":      agent.RoleBranchSummary,\n\t\t\t\"summary\":   summary.Summary,\n\t\t\t\"fromId\":    summary.FromID,\n\t\t\t\"timestamp\": 0,`; TestSessionEntryToContextMessagesProjectsEachEntryKind fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionEntryToContextMessagesProjectsEachEntryKind"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_projection.go: replace `\"tokensBefore\": compaction.TokensBefore,` with `\"tokensBefore\": 0,`; TestSessionEntryToContextMessagesProjectsEachEntryKind fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionEntryToContextMessagesProjectsEachEntryKind"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_projection.go: replace `\"summary\":      compaction.Summary,` with `\"summary\":      \"\",`; TestSessionEntryToContextMessagesProjectsEachEntryKind fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionEntryToContextMessagesProjectsEachEntryKind"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_projection.go: replace `\"timestamp\":    entryTimestampMs(compaction.Timestamp),` with `\"timestamp\":    0,`; TestSessionEntryToContextMessagesProjectsEachEntryKind fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionEntryToContextMessagesProjectsEachEntryKind"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_projection.go: replace `if len(compaction.SystemMessage) > 0 && json.Unmarshal(compaction.SystemMessage, &system) == nil {\n\t\t\treturn []agent.AgentMessage{system, summary}\n\t\t}` with `if len(compaction.SystemMessage) > 0 && json.Unmarshal(compaction.SystemMessage, &system) == nil {\n\t\t\treturn []agent.AgentMessage{summary, system}\n\t\t}`; TestSessionEntryToContextMessagesProjectsEachEntryKind fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionEntryToContextMessagesProjectsEachEntryKind"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_projection.go: replace `return []agent.AgentMessage{system, summary}` with `return []agent.AgentMessage{summary}`; TestSessionEntryToContextMessagesProjectsEachEntryKind fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionEntryToContextMessagesProjectsEachEntryKind"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_projection.go: replace `case \"bash_execution\":\n\t\treturn bashExecutionContextMessages(entry)` with `case \"bash_execution\":\n\t\treturn nil`; TestSessionEntryToContextMessagesProjectsEachEntryKind fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionEntryToContextMessagesProjectsEachEntryKind"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_projection.go: replace `if json.Unmarshal(entry.Raw(), &wire) == nil && wire.Message != nil {` with `if json.Unmarshal(entry.Raw(), &wire) == nil {`; TestSessionEntryToContextMessagesProjectsEachEntryKind fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionEntryToContextMessagesProjectsEachEntryKind"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_projection.go: replace `\"exitCode\":  nil,` with `\"exitCode\":  float64(0),`; TestSessionEntryToContextMessagesProjectsEachEntryKind fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionEntryToContextMessagesProjectsEachEntryKind"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_projection.go: replace `if bash.ExitCode != nil {\n\t\tmessage[\"exitCode\"] = float64(*bash.ExitCode)\n\t}` with `if bash.ExitCode != nil {\n\t\tmessage[\"exitCode\"] = float64(0)\n\t}`; TestSessionEntryToContextMessagesProjectsEachEntryKind fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionEntryToContextMessagesProjectsEachEntryKind"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_projection.go: replace `if bash.FullOutputPath != \"\" {\n\t\tmessage[\"fullOutputPath\"] = bash.FullOutputPath\n\t}` with `message[\"fullOutputPath\"] = bash.FullOutputPath`; TestSessionEntryToContextMessagesProjectsEachEntryKind fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionEntryToContextMessagesProjectsEachEntryKind"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_projection.go: replace `\"command\":   bash.Command,\n\t\t\"output\":    bash.Output,` with `\"command\":   bash.Output,\n\t\t\"output\":    bash.Command,`; TestSessionEntryToContextMessagesProjectsEachEntryKind fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionEntryToContextMessagesProjectsEachEntryKind"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_projection.go: replace `if parsed, err := time.Parse(time.RFC3339Nano, timestamp); err == nil {\n\t\treturn parsed.UnixMilli()` with `if parsed, err := time.Parse(time.RFC3339Nano, timestamp); err == nil {\n\t\treturn parsed.Unix()`; TestSessionEntryToContextMessagesProjectsEachEntryKind fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/skills.ts",
+  "package": "./internal/codingagent/prompts",
+  "tests": [
+   "TestFormatSkillsLoadInstructionFollowsTheReadTool"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/skills.ts",
+  "mutation": "internal/codingagent/prompts/coding.go: replace `case \"indirect\":\n\t\tload = \"Load a skill's file when the task matches its description.\"` with `case \"indirect\":\n\t\tload = \"Use the read tool to load a skill's file when the task matches its description.\"`; TestFormatSkillsLoadInstructionFollowsTheReadTool fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionEntryToContextMessagesProjectsEachEntryKind"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_projection.go: replace `return []agent.AgentMessage{message.Message.Clone()}\n\t\t}\n\tcase \"custom_message\":` with `_ = message\n\t\t\treturn nil\n\t\t}\n\tcase \"custom_message\":`; TestSessionEntryToContextMessagesProjectsEachEntryKind fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionEntryToContextMessagesProjectsEachEntryKind"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_projection.go: replace `if bash.ExcludeFromContext != nil && *bash.ExcludeFromContext {\n\t\tmessage[\"excludeFromContext\"] = true\n\t}` with `if bash.ExcludeFromContext != nil {\n\t\tmessage[\"excludeFromContext\"] = true\n\t}`; TestSessionEntryToContextMessagesProjectsEachEntryKind fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionEntryToContextMessagesProjectsEachEntryKind"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session_manager_projection.go: replace `\"cancelled\": bash.Cancelled,\n\t\t\"truncated\": bash.Truncated,` with `\"cancelled\": bash.Truncated,\n\t\t\"truncated\": bash.Cancelled,`; TestSessionEntryToContextMessagesProjectsEachEntryKind fails."
+ }
+]

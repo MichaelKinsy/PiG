@@ -1,7 +1,9 @@
 package codingagent
 
 import (
+	"context"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/tui"
@@ -10,10 +12,24 @@ import (
 
 // Pi's setupEditorSubmitHandler handles these exact strings before compaction
 // and model dispatch; they never enter the command completion/help registry.
+// serializeArminFrames stands in for the input loop in a harness that has none: the test goroutine owns the component tree, and animation frames reach it through PostToOwner. Frames and the test's renders (taken under the returned lock) never overlap.
+func serializeArminFrames(m *InteractiveMode) *sync.Mutex {
+	var tree sync.Mutex
+	m.tuiInst.SetOwnerDispatcher(func(_ context.Context, fn func()) error {
+		tree.Lock()
+		defer tree.Unlock()
+		fn()
+		return nil
+	})
+	return &tree
+}
+
 func TestHiddenEasterEggsSubmitDuringCompaction(t *testing.T) {
 	m := newPendingDisplayHarness(t)
 	m.chatContainer = tui.NewContainer()
+	m.installRenderDispatcher()
 	t.Cleanup(m.disposeArminComponents)
+	tree := serializeArminFrames(m)
 	m.slashRegistry = NewSlashRegistry()
 	m.isCompacting = true
 	m.setupEditorSubmitHandler(t.Context())
@@ -24,7 +40,9 @@ func TestHiddenEasterEggsSubmitDuringCompaction(t *testing.T) {
 	} {
 		m.editor.SetText(tc.command)
 		m.editor.OnSubmit(tc.command)
+		tree.Lock()
 		got := widthx.StripAnsi(strings.Join(m.chatContainer.Render(80), "\n"))
+		tree.Unlock()
 		if !strings.Contains(got, tc.text) {
 			t.Errorf("%s did not render %q: %s", tc.command, tc.text, got)
 		}
@@ -44,6 +62,7 @@ func TestHiddenEasterEggsSubmitDuringCompaction(t *testing.T) {
 
 func TestHiddenEasterEggsStreamingInputAndExactMatch(t *testing.T) {
 	m, ctx, _ := newStreamingRoutingMode(t)
+	m.installRenderDispatcher()
 	t.Cleanup(func() { onLoop(m, ctx, m.disposeArminComponents) })
 	onLoop(m, ctx, func() {
 		m.setupEditorSubmitHandler(ctx)
@@ -77,7 +96,7 @@ func TestHiddenEasterEggsStreamingInputAndExactMatch(t *testing.T) {
 func TestHiddenEasterEggsClearDisposesAnimation(t *testing.T) {
 	m := newPendingDisplayHarness(t)
 	m.chatContainer = tui.NewContainer()
-	m.handleArminSaysHi(t.Context())
+	m.handleArminSaysHi()
 	a := m.arminComponents[0]
 	m.buildSlashContext(t.Context()).Clear()
 	if len(m.arminComponents) != 0 || len(m.chatContainer.Children()) != 0 {
@@ -91,21 +110,22 @@ func TestHiddenEasterEggsClearDisposesAnimation(t *testing.T) {
 }
 
 type easterEggRenderer struct {
-	tui.Renderer
+	tui.TUI
 	requests int
 }
 
-func (r *easterEggRenderer) RequestRender() { r.requests++ }
+func (r *easterEggRenderer) RequestRender(...bool) { r.requests++ }
 
 func TestArminAnimationFollowsRendererReplacement(t *testing.T) {
 	m := newPendingDisplayHarness(t)
 	m.chatContainer = tui.NewContainer()
-	oldRenderer := &easterEggRenderer{Renderer: m.tuiInst}
+	m.installRenderDispatcher()
+	oldRenderer := &easterEggRenderer{TUI: m.tuiInst}
 	m.tuiInst = oldRenderer
-	m.handleArminSaysHi(t.Context())
+	m.handleArminSaysHi()
 	t.Cleanup(m.disposeArminComponents)
 	frame := <-m.uiTaskCh
-	replacement := &easterEggRenderer{Renderer: oldRenderer.Renderer}
+	replacement := &easterEggRenderer{TUI: oldRenderer.TUI}
 	m.tuiInst = replacement
 	before := oldRenderer.requests
 	frame()
@@ -121,7 +141,9 @@ func TestHiddenEasterEggsEditorSubmitSkipsHistoryAndPromptLoop(t *testing.T) {
 	m := newPendingDisplayHarness(t)
 	m.chatContainer = tui.NewContainer()
 	m.slashRegistry = NewSlashRegistry()
+	m.installRenderDispatcher()
 	t.Cleanup(m.disposeArminComponents)
+	tree := serializeArminFrames(m)
 	m.setupEditorSubmitHandler(t.Context())
 	for _, tc := range []struct{ command, text string }{
 		{" /arminsayshi\t", "pigsayhi"},
@@ -132,7 +154,10 @@ func TestHiddenEasterEggsEditorSubmitSkipsHistoryAndPromptLoop(t *testing.T) {
 		if len(m.pendingUserInputs) != 0 {
 			t.Fatalf("%q entered the prompt loop: %q", tc.command, m.pendingUserInputs)
 		}
-		if got := widthx.StripAnsi(strings.Join(m.chatContainer.Render(80), "\n")); !strings.Contains(got, tc.text) {
+		tree.Lock()
+		got := widthx.StripAnsi(strings.Join(m.chatContainer.Render(80), "\n"))
+		tree.Unlock()
+		if !strings.Contains(got, tc.text) {
 			t.Fatalf("%q did not render %q synchronously", tc.command, tc.text)
 		}
 	}

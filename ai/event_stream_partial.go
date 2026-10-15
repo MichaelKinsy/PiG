@@ -1,38 +1,58 @@
 package ai
 
+// mapAssistantEventPartial returns event with its partial replaced by mapMessage's result. An event whose partial maps to itself is returned as it is, without a copy.
 func mapAssistantEventPartial(event AssistantMessageEvent, mapMessage func(*AssistantMessage) *AssistantMessage) AssistantMessageEvent {
-	switch event := event.(type) {
+	switch typed := event.(type) {
 	case StartEvent:
-		event.Partial = mapMessage(event.Partial)
-		return event
+		if partial := mapMessage(typed.Partial); partial != typed.Partial {
+			typed.Partial = partial
+			return typed
+		}
 	case TextStartEvent:
-		event.Partial = mapMessage(event.Partial)
-		return event
+		if partial := mapMessage(typed.Partial); partial != typed.Partial {
+			typed.Partial = partial
+			return typed
+		}
 	case TextDeltaEvent:
-		event.Partial = mapMessage(event.Partial)
-		return event
+		if partial := mapMessage(typed.Partial); partial != typed.Partial {
+			typed.Partial = partial
+			return typed
+		}
 	case TextEndEvent:
-		event.Partial = mapMessage(event.Partial)
-		return event
+		if partial := mapMessage(typed.Partial); partial != typed.Partial {
+			typed.Partial = partial
+			return typed
+		}
 	case ThinkingStartEvent:
-		event.Partial = mapMessage(event.Partial)
-		return event
+		if partial := mapMessage(typed.Partial); partial != typed.Partial {
+			typed.Partial = partial
+			return typed
+		}
 	case ThinkingDeltaEvent:
-		event.Partial = mapMessage(event.Partial)
-		return event
+		if partial := mapMessage(typed.Partial); partial != typed.Partial {
+			typed.Partial = partial
+			return typed
+		}
 	case ThinkingEndEvent:
-		event.Partial = mapMessage(event.Partial)
-		return event
+		if partial := mapMessage(typed.Partial); partial != typed.Partial {
+			typed.Partial = partial
+			return typed
+		}
 	case ToolCallStartEvent:
-		event.Partial = mapMessage(event.Partial)
-		return event
+		if partial := mapMessage(typed.Partial); partial != typed.Partial {
+			typed.Partial = partial
+			return typed
+		}
 	case ToolCallDeltaEvent:
-		event.Partial = mapMessage(event.Partial)
-		return event
+		if partial := mapMessage(typed.Partial); partial != typed.Partial {
+			typed.Partial = partial
+			return typed
+		}
 	case ToolCallEndEvent:
-		event.Partial = mapMessage(event.Partial)
-		return event
-	default:
-		return event
+		if partial := mapMessage(typed.Partial); partial != typed.Partial {
+			typed.Partial = partial
+			return typed
+		}
 	}
+	return event
 }

@@ -27,17 +27,17 @@ var orderedToolSchema = map[string]any{
 
 func TestValidateToolArgsKeepsMemberOrder(t *testing.T) {
 	const want = `{"zeta":5,"alpha":"a","nested":{"yy":1,"bb":[{"qq":1,"aa":2}]}}`
-	got, err := validateToolArgs("probe", orderedToolSchema, json.RawMessage(orderedToolArguments))
+	got, err := ai.ValidateToolArgumentsSchema("probe", orderedToolSchema, json.RawMessage(orderedToolArguments))
 	if err != nil || string(got) != want {
-		t.Fatalf("validateToolArgs = %s, %v; want %s", got, err, want)
+		t.Fatalf("ValidateToolArgumentsSchema = %s, %v; want %s", got, err, want)
 	}
 	rawSchema, _ := json.Marshal(orderedToolSchema)
-	got, err = validateToolArgsSchema("probe", rawSchema, json.RawMessage(orderedToolArguments))
+	got, err = ai.ValidateToolArgumentsJSON("probe", rawSchema, json.RawMessage(orderedToolArguments))
 	if err != nil || string(got) != want {
-		t.Fatalf("validateToolArgsSchema = %s, %v; want %s", got, err, want)
+		t.Fatalf("ValidateToolArgumentsJSON = %s, %v; want %s", got, err, want)
 	}
 	// Arguments that need no coercion come back as written.
-	got, err = validateToolArgs("probe", map[string]any{}, json.RawMessage(`{"z":1,"10":2,"a":3}`))
+	got, err = ai.ValidateToolArgumentsSchema("probe", map[string]any{}, json.RawMessage(`{"z":1,"10":2,"a":3}`))
 	if err != nil || string(got) != `{"10":2,"z":1,"a":3}` {
 		t.Fatalf("no schema = %s, %v; want integer-like keys first, then insertion order", got, err)
 	}
@@ -134,7 +134,7 @@ func TestAgentLoopDeliversToolArgumentsInModelOrder(t *testing.T) {
 		ai.DoneEvent{Reason: ai.StopReasonToolUse, Message: agentTestAssistant([]ai.AssistantContentBlock{call}, ai.StopReasonToolUse)},
 	}
 	tool := &argumentRecordingTool{}
-	agent := NewAgent(AgentOptions{Model: fakeTestModel(providerFromSeqs(events, textSeq("done"))), Tools: []AgentTool{tool}, MaxTurns: 5})
+	agent := mustNewAgent(AgentOptions{Model: fakeTestModel(providerFromSeqs(events, textSeq("done"))), Tools: []AgentTool{tool}, MaxTurns: 5})
 	var hooked string
 	agent.AddBeforeToolCallHook(func(_ context.Context, _, _ string, args json.RawMessage) ToolCallHookResult {
 		hooked = string(args)
@@ -183,7 +183,7 @@ func TestAgentLoopDeliversEditedToolArgumentsInTheHooksOrder(t *testing.T) {
 		ai.DoneEvent{Reason: ai.StopReasonToolUse, Message: agentTestAssistant([]ai.AssistantContentBlock{call}, ai.StopReasonToolUse)},
 	}
 	tool := &argumentRecordingTool{}
-	agent := NewAgent(AgentOptions{Model: fakeTestModel(providerFromSeqs(events, textSeq("done"))), Tools: []AgentTool{tool}, MaxTurns: 5})
+	agent := mustNewAgent(AgentOptions{Model: fakeTestModel(providerFromSeqs(events, textSeq("done"))), Tools: []AgentTool{tool}, MaxTurns: 5})
 	const edited = `{"zeta":5,"nested":{"yy":1},"alpha":"edited","added":true}`
 	agent.AddBeforeToolCallHook(func(_ context.Context, _, _ string, _ json.RawMessage) ToolCallHookResult {
 		return ToolCallHookResult{Args: json.RawMessage(edited)}

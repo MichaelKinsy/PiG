@@ -7,8 +7,7 @@ package codingagent
 import (
 	"fmt"
 	"os"
-
-	"golang.org/x/term"
+	"strings"
 )
 
 // AgentSessionRuntimeDiagnostic is one startup diagnostic. Type is "info",
@@ -49,11 +48,10 @@ func DeduplicateDiagnostics(diagnostics []AgentSessionRuntimeDiagnostic) []Agent
 	return out
 }
 
-// ReportDiagnostics writes diagnostics to stderr for non-interactive modes:
-// "Error: " in red, "Warning: " in yellow, and info dimmed, colored only when
-// stderr is a terminal. Mirrors upstream main.ts reportDiagnostics.
+// ReportDiagnostics writes diagnostics to stderr for non-interactive modes: "Error: " in red, "Warning: " in yellow and info dimmed. Like upstream main.ts
+// reportDiagnostics, which styles them with the default chalk instance, the colors follow chalk's stdout color level, not whether stderr is a terminal.
 func ReportDiagnostics(diagnostics []AgentSessionRuntimeDiagnostic) {
-	color := term.IsTerminal(int(os.Stderr.Fd()))
+	color := chalkModifiersEnabled()
 	for _, diagnostic := range diagnostics {
 		fmt.Fprintln(os.Stderr, formatReportedDiagnostic(diagnostic, color))
 	}
@@ -72,7 +70,7 @@ func formatReportedDiagnostic(diagnostic AgentSessionRuntimeDiagnostic, color bo
 	if !color {
 		return prefix + diagnostic.Message
 	}
-	return open + prefix + diagnostic.Message + closeSeq
+	return ChalkApply(open, closeSeq, prefix+diagnostic.Message)
 }
 
 // showStartupDiagnostics renders startup diagnostics in the chat after the
@@ -87,5 +85,28 @@ func (m *InteractiveMode) showStartupDiagnostics() {
 		default:
 			m.showStatus(diagnostic.Message)
 		}
+	}
+}
+
+// showModelsJSONError reports a models.json load error as upstream init and handleReloadCommand do.
+func (m *InteractiveMode) showModelsJSONError() {
+	if m.opts.ModelRegistry == nil {
+		return
+	}
+	if loadError := m.opts.ModelRegistry.LoadError(); loadError != "" {
+		m.showError("models.json error: " + loadError)
+	}
+}
+
+// showInitNotices shows the startup notices in upstream init order: diagnostics, migrated credentials, the models.json error, then the model fallback message, even under quiet startup.
+// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:init
+func (m *InteractiveMode) showInitNotices() {
+	m.showStartupDiagnostics()
+	if len(m.opts.MigratedProviders) > 0 {
+		m.showWarning("Migrated credentials to auth.json: " + strings.Join(m.opts.MigratedProviders, ", "))
+	}
+	m.showModelsJSONError()
+	if m.opts.ModelFallbackMessage != "" {
+		m.showWarning(m.opts.ModelFallbackMessage)
 	}
 }

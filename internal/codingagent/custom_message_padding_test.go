@@ -67,6 +67,7 @@ func TestCustomMessageOutputPadProduction(t *testing.T) {
 	}
 }
 
+// custom-message.ts:90 (Pi 1.1.0): the default box takes the transcript output padding.
 func TestCustomMessageFallbackOutputPadProduction(t *testing.T) {
 	m := &InteractiveMode{chatContainer: tui.NewContainer(), outputPad: 1}
 	message := CustomMessageEntry{CustomType: "notice", Content: "custom", Display: true}
@@ -75,7 +76,11 @@ func TestCustomMessageFallbackOutputPadProduction(t *testing.T) {
 	m.chatContainer.Clear()
 	m.outputPad = 0
 	m.appendCustomMessage(message)
-	if after := m.chatContainer.Render(40); !reflect.DeepEqual(before, after) {
-		t.Fatalf("default Box(1,1) changed with outputPad: before=%q after=%q", before, after)
+	after := m.chatContainer.Render(40)
+	if reflect.DeepEqual(before, after) {
+		t.Fatalf("default box ignored outputPad: %q", after)
+	}
+	if got := stripANSITest(after[2]); !strings.HasPrefix(got, "[notice]") {
+		t.Fatalf("output pad 0 label row = %q, want no inset", got)
 	}
 }

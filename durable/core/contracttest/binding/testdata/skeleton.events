@@ -1,0 +1,6 @@
+# Skeleton script: a Session-mode open of an empty database (the probe finds no tables, so the core applies migration 1
+# in one commit and opens with nothing to load), a close, and an event after close, which every build rejects.
+open now=1000 {"mode":"session","settings":{},"models":[],"registry":{"extensions":[]},"sidecar":"index","delta":true}
+rows now=1001 [{"id":1,"cols":1,"rows":[]}]
+close now=1002
+submit now=1003 {"type":"input","content":"late","requestId":"r2"}

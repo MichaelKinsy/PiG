@@ -1,0 +1,25 @@
+# Upstream evidence: Pi 1.1.0 packages/tui/src/components/editor.ts renderTopBorder, renderBottomBorder and createScrollBorder, run on a real Editor.
+# 360 probes: a bracketed paste of 6, 8, 14 or 40 rows, 0 to 20 Up keys, paddingX 0, 1 or 3, widths 6, 9, 12, 13, 20 and 40 (ellipsis, short indicator, centred label); the editor has a 16-row terminal, so five rows are visible.
+# Exact equality of the JSON lines (rows with both borders); no normalization. The Pig probe is a Go test whose observations the wrapper prints, so a failing test fails the run.
+name = "30-editor-scroll-borders"
+description = "Editor scroll indicators in the top and bottom borders render as in Pi."
+covers = ["packages/tui/src/components/editor.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/editor-scroll-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/editor-scroll-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 120
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['more', 'row 0']
+runs = 3

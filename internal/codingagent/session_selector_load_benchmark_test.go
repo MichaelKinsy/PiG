@@ -23,7 +23,7 @@ func BenchmarkSessionSelectorScopeLoading(b *testing.B) {
 			bindings := sessionSelectorInputBindings(b)
 			b.ReportAllocs()
 			for b.Loop() {
-				s := newSessionSelector(loader, loader, nil, nil, "", bindings)
+				s := newSessionSelectorFromListers(loader, loader, nil, nil, "", bindings)
 				for s.currentLoad != nil {
 					select {
 					case result := <-s.loadResult(sessionScopeCurrent):

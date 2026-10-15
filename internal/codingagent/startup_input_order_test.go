@@ -36,13 +36,8 @@ func TestUserInputHandoffFollowsCurrentReadBeforeNextRead(t *testing.T) {
 			m.opts.SessionHandle = recorder
 			m.inputReadCh = make(chan inputChunk, 3)
 			m.inputErrCh = make(chan error, 1)
-			var readDone chan struct{}
-			if sameRead {
-				readDone = make(chan struct{})
-				defer close(readDone)
-			}
-			m.inputReadCh <- inputChunk{data: []byte("first"), readDone: readDone}
-			m.inputReadCh <- inputChunk{data: []byte("\r"), readDone: readDone}
+			m.inputReadCh <- inputChunk{data: []byte("first"), more: sameRead}
+			m.inputReadCh <- inputChunk{data: []byte("\r"), more: sameRead}
 			m.inputReadCh <- inputChunk{data: []byte("draft")}
 			done := make(chan error, 1)
 			go func() { done <- m.inputLoop(ctx, strings.NewReader("")) }()

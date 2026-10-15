@@ -41,7 +41,7 @@ func TestExtractTypeScriptCurrentPin(t *testing.T) {
 	wantIDs := []string{
 		"autocompact", "show-images", "image-width-cells", "auto-resize-images", "block-images", "skill-commands",
 		"show-hardware-cursor", "editor-padding", "output-padding", "autocomplete-max-visible", "clear-on-shrink",
-		"terminal-progress", "steering-mode", "follow-up-mode", "transport", "http-idle-timeout", "cache-warming-mode",
+		"terminal-progress", "steering-mode", "follow-up-mode", "transport", "share-destination", "http-idle-timeout", "cache-warming-mode",
 		"hide-thinking", "mermaid-rendering", "cache-miss-notices", "collapse-changelog", "quiet-startup",
 		"install-telemetry", "default-project-trust", "double-escape-action", "tree-filter-mode", "warnings",
 		"model-thinking", "tui-mode", "fullscreen-exit-output", "fullscreen-scrollbar", "fullscreen-copy-on-select", "fullscreen-wheel-scroll-lines", "theme",

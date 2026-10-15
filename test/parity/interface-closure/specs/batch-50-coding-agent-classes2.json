@@ -1,0 +1,340 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:clearQueue"
+  ],
+  "targets": [
+   "coding/session.go#Session.ClearQueue"
+  ],
+  "production": [
+   "call:coding/cli/rpc_mode.go#runRPCMode"
+  ],
+  "evidence": [
+   "test:coding/session_queue_consumption_reentrant_test.go#TestSessionConsumedQueueSubscriberReentrantUpdates",
+   "test:coding/session_queue_reentrant_test.go#TestSessionQueueSubscriberReentrantUpdates"
+  ],
+  "rationale": "AgentSession.clearQueue is the Go method coding.Session.ClearQueue; signature reviewed against the upstream declaration (a persistence or validation failure is the returned error; undefined is nil or the empty value); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:extensionRunner"
+  ],
+  "targets": [
+   "coding/session.go#Session.ExtensionRunner"
+  ],
+  "production": [
+   "call:coding/cli/main.go#Main"
+  ],
+  "evidence": [
+   "test:coding/mcp_session_registered_upstream_test.go#TestAgentSessionMCPServersRegisteredByExtensionsReportsRegisteredServersWhenNoExtensionConnectsThem",
+   "test:coding/session_reload_extensions_test.go#TestReloadExtensionsReplacesTheRunnerAndRebuildsTools"
+  ],
+  "rationale": "AgentSession.extensionRunner is the Go method coding.Session.ExtensionRunner; signature reviewed against the upstream declaration (a persistence or validation failure is the returned error; undefined is nil or the empty value); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:getAllTools"
+  ],
+  "targets": [
+   "coding/session_tool_registry.go#Session.GetAllTools"
+  ],
+  "production": [
+   "call:coding/cli/rpc_mode_runtime.go#rpcHost.bind"
+  ],
+  "evidence": [
+   "test:coding/cli/rpc_initial_tools_test.go#TestRPCInitialActiveToolsPreserveFullRegistry",
+   "test:coding/cli/session_extension_actions_tools_test.go#TestSessionExtensionActionsBindInProcessToolActions"
+  ],
+  "rationale": "AgentSession.getAllTools is the Go method coding.Session.GetAllTools; signature reviewed against the upstream declaration (a persistence or validation failure is the returned error; undefined is nil or the empty value); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:getSessionStats"
+  ],
+  "targets": [
+   "coding/session.go#Session.GetSessionStats"
+  ],
+  "production": [
+   "call:coding/cli/rpc_mode.go#runRPCMode"
+  ],
+  "evidence": [
+   "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
+   "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels"
+  ],
+  "rationale": "AgentSession.getSessionStats is the Go method coding.Session.GetSessionStats; signature reviewed against the upstream declaration (a persistence or validation failure is the returned error; undefined is nil or the empty value); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:recordBashResult"
+  ],
+  "targets": [
+   "coding/session.go#Session.RecordBashResult"
+  ],
+  "production": [
+   "call:coding/cli/rpc_mode.go#runRPCMode"
+  ],
+  "evidence": [
+   "test:coding/session_bash_persist_failure_test.go#TestDeferredBashPersistenceFailureReachesPromptCaller",
+   "test:coding/session_bash_persistence_upstream_test.go#TestUpstreamBashPersistence"
+  ],
+  "rationale": "AgentSession.recordBashResult is the Go method coding.Session.RecordBashResult; signature reviewed against the upstream declaration (a persistence or validation failure is the returned error; undefined is nil or the empty value); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:setModel"
+  ],
+  "targets": [
+   "coding/session.go#Session.SetModel"
+  ],
+  "production": [
+   "call:coding/cli/rpc_mode.go#runRPCMode"
+  ],
+  "evidence": [
+   "test:coding/compaction_model_selection_upstream_test.go#TestCompactionCapturesModelBeforeAuthUpstream",
+   "test:coding/compaction_model_selection_upstream_test.go#TestCompactionNewModelPolicyUpstream"
+  ],
+  "rationale": "AgentSession.setModel is the Go method coding.Session.SetModel; signature reviewed against the upstream declaration (a persistence or validation failure is the returned error; undefined is nil or the empty value); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:setThinkingLevel"
+  ],
+  "targets": [
+   "coding/session.go#Session.SetThinkingLevel"
+  ],
+  "production": [
+   "call:coding/cli/rpc_mode.go#runRPCMode"
+  ],
+  "evidence": [
+   "test:coding/model_thinking_levels_test.go#TestSetModelAppliesPerModelThinkingLevel",
+   "test:coding/session_extension_hooks_test.go#TestCloneKeepsToolCallHooks"
+  ],
+  "rationale": "AgentSession.setThinkingLevel is the Go method coding.Session.SetThinkingLevel; signature reviewed against the upstream declaration (a persistence or validation failure is the returned error; undefined is nil or the empty value); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:subscribe"
+  ],
+  "targets": [
+   "coding/session.go#Session.Subscribe"
+  ],
+  "production": [
+   "call:coding/cli/print_mode.go#runPrintMode"
+  ],
+  "evidence": [
+   "test:coding/cli/session_extension_actions_name_test.go#TestSessionExtensionActionsBindSessionName",
+   "test:coding/session_bash_output_test.go#TestBashOutputPublishesSessionEventsBeforeReturn"
+  ],
+  "rationale": "AgentSession.subscribe is the Go method coding.Session.Subscribe; signature reviewed against the upstream declaration (a persistence or validation failure is the returned error; undefined is nil or the empty value); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SessionManager::property:appendContextEdit"
+  ],
+  "targets": [
+   "internal/codingagent/session_manager_projection.go#Session.AppendContextEdit"
+  ],
+  "production": [
+   "call:coding/session_boundaries.go#applyBoundaryDrafts"
+  ],
+  "evidence": [
+   "test:coding/session_recovery_test.go#TestBoundaryDoesNotTriggerThresholdCompactionFromPostEditUsageCapturedBeforeALaterCompaction",
+   "test:coding/session_recovery_test.go#TestDurableRecoveryOmitsARecoverableProjectedReplacementByItsSourceEntryID"
+  ],
+  "rationale": "SessionManager.appendContextEdit is the Go method internal/codingagent.Session.AppendContextEdit; signature reviewed against the upstream declaration (a persistence or validation failure is the returned error; undefined is nil or the empty value); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SessionManager::property:appendCustomEntry"
+  ],
+  "targets": [
+   "internal/codingagent/session.go#Session.AppendCustomEntry"
+  ],
+  "production": [
+   "call:coding/session_boundaries.go#applyBoundaryDrafts"
+  ],
+  "evidence": [
+   "test:coding/cli/plan_mode_example_test.go#TestRPCPlanModeResumeRebuildsOnlyWholeDoneMarkers",
+   "test:coding/session_name_collision_test.go#TestSessionSetNamePreservesCollidingEntry"
+  ],
+  "rationale": "SessionManager.appendCustomEntry is the Go method internal/codingagent.Session.AppendCustomEntry; signature reviewed against the upstream declaration (a persistence or validation failure is the returned error; undefined is nil or the empty value); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SessionManager::property:appendMessage"
+  ],
+  "targets": [
+   "internal/codingagent/session.go#Session.AppendMessage"
+  ],
+  "production": [
+   "call:coding/session.go#Session.persistMessage"
+  ],
+  "evidence": [
+   "test:coding/cli/plan_mode_example_test.go#TestRPCPlanModeResumeRebuildsOnlyWholeDoneMarkers",
+   "test:coding/cli/rpc_resume_integration_test.go#TestRPCModeSessionReplacementAndExport"
+  ],
+  "rationale": "SessionManager.appendMessage is the Go method internal/codingagent.Session.AppendMessage; signature reviewed against the upstream declaration (a persistence or validation failure is the returned error; undefined is nil or the empty value); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SessionManager::property:appendSessionInfo"
+  ],
+  "targets": [
+   "internal/codingagent/session.go#Session.AppendSessionInfo"
+  ],
+  "production": [
+   "call:coding/cli/main.go#Main"
+  ],
+  "evidence": [
+   "test:internal/codingagent/session_entry_collision_test.go#TestSessionGeneratedEntriesRejectExistingIDs",
+   "test:internal/codingagent/session_entry_utf16_test.go#TestSessionEntryWritersPreserveSurrogateEscapes"
+  ],
+  "rationale": "SessionManager.appendSessionInfo is the Go method internal/codingagent.Session.AppendSessionInfo; signature reviewed against the upstream declaration (a persistence or validation failure is the returned error; undefined is nil or the empty value); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRuntime::property:getModelsOfType"
+  ],
+  "targets": [
+   "coding/model_runtime_typed.go#ModelRuntime.GetModelsOfType"
+  ],
+  "production": [
+   "call:coding/model_registry_facade.go#ModelRegistry.GetModelsOfType"
+  ],
+  "evidence": [
+   "test:coding/model_runtime_images_upstream_test.go#TestModelRuntimeImagesUpstream",
+   "test:coding/model_runtime_typed_test.go#TestModelRegistryTypedFacadeMatchesTheRuntime"
+  ],
+  "rationale": "ModelRuntime.getModelsOfType is the Go method coding.ModelRuntime.GetModelsOfType; signature reviewed against the upstream declaration (a persistence or validation failure is the returned error; undefined is nil or the empty value); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRuntime::property:getProvider"
+  ],
+  "targets": [
+   "coding/model_runtime_typed.go#ModelRuntime.GetProvider"
+  ],
+  "production": [
+   "call:coding/model_runtime_classify.go#ModelRuntime.classify"
+  ],
+  "evidence": [
+   "test:coding/model_runtime_classifiers_upstream_test.go#TestModelRuntimeClassifiersUpstream",
+   "test:coding/model_runtime_images_upstream_test.go#TestModelRuntimeImagesUpstream"
+  ],
+  "rationale": "ModelRuntime.getProvider is the Go method coding.ModelRuntime.GetProvider; signature reviewed against the upstream declaration (a persistence or validation failure is the returned error; undefined is nil or the empty value); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRegistry::property:getProviderAuth"
+  ],
+  "targets": [
+   "coding/model_registry_facade.go#ModelRegistry.GetProviderAuth"
+  ],
+  "production": [
+   "call:coding/model_registry_facade.go#ModelRegistry.GetAPIKeyForProvider"
+  ],
+  "evidence": [
+   "test:coding/model_registry_namespace_test.go#TestRegistryCrossEntryOAuthCallbacksRemainCallable",
+   "test:coding/model_registry_namespace_test.go#TestRegistryCrossEntryOAuthLifecycleAndModelCallbacks"
+  ],
+  "rationale": "ModelRegistry.getProviderAuth is the Go method coding.ModelRegistry.GetProviderAuth; signature reviewed against the upstream declaration (a persistence or validation failure is the returned error; undefined is nil or the empty value); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRegistry::property:registerVirtualModel"
+  ],
+  "targets": [
+   "coding/virtual_models.go#ModelRegistry.RegisterVirtualModel"
+  ],
+  "production": [
+   "call:coding/cli/extensions.go#flushExtensionHostVirtualModels"
+  ],
+  "evidence": [
+   "test:coding/cli/startup_virtual_model_test.go#TestSelectStartupModelLeavesTheVirtualCatalogEntryUnchanged"
+  ],
+  "rationale": "ModelRegistry.registerVirtualModel is the Go method coding.ModelRegistry.RegisterVirtualModel; signature reviewed against the upstream declaration (a persistence or validation failure is the returned error; undefined is nil or the empty value); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ProjectTrustStore::property:get"
+  ],
+  "targets": [
+   "internal/codingagent/trust_manager.go#ProjectTrustStore.Get"
+  ],
+  "production": [
+   "call:coding/cli/mcp_command.go#runMcpCommand"
+  ],
+  "evidence": [
+   "test:coding/cli/project_trust_test.go#TestResolveProjectTrustedInteractiveSelectionPersists",
+   "test:coding/cli/project_trust_test.go#TestResolveProjectTrustedUsesFirstExtensionDecision"
+  ],
+  "rationale": "ProjectTrustStore.get is the Go method internal/codingagent.ProjectTrustStore.Get; signature reviewed against the upstream declaration (a persistence or validation failure is the returned error; undefined is nil or the empty value); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ProjectTrustStore::property:getEntry"
+  ],
+  "targets": [
+   "internal/codingagent/trust_manager.go#ProjectTrustStore.GetEntry"
+  ],
+  "production": [
+   "call:internal/codingagent/slash_session_handlers.go#trustHandler"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_file_diagnostics_test.go#TestTrustStoreParseErrorsMatchPi",
+   "test:internal/codingagent/trust_manager_test.go#TestProjectTrustStore_RoundTripAndInheritance"
+  ],
+  "rationale": "ProjectTrustStore.getEntry is the Go method internal/codingagent.ProjectTrustStore.GetEntry; signature reviewed against the upstream declaration (a persistence or validation failure is the returned error; undefined is nil or the empty value); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ProjectTrustStore::property:set"
+  ],
+  "targets": [
+   "internal/codingagent/trust_manager.go#ProjectTrustStore.Set"
+  ],
+  "production": [
+   "call:coding/cli/project_trust.go#resolveProjectTrusted"
+  ],
+  "evidence": [
+   "test:coding/cli/package_npm_trust_test.go#TestPackageContextNpmCommandRespectsDeniedTrust",
+   "test:coding/cli/package_npm_trust_test.go#TestPackageInstallRemoveNpmCommandTrust"
+  ],
+  "rationale": "ProjectTrustStore.set is the Go method internal/codingagent.ProjectTrustStore.Set; signature reviewed against the upstream declaration (a persistence or validation failure is the returned error; undefined is nil or the empty value); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ProjectTrustStore::property:setMany"
+  ],
+  "targets": [
+   "internal/codingagent/trust_manager.go#ProjectTrustStore.SetMany"
+  ],
+  "production": [
+   "call:coding/cli/project_trust.go#resolveProjectTrusted"
+  ],
+  "evidence": [
+   "test:internal/codingagent/trust_selector_caller_test.go#TestTrustSelectorProductionSavesParentWithoutActivatingIt"
+  ],
+  "rationale": "ProjectTrustStore.setMany is the Go method internal/codingagent.ProjectTrustStore.SetMany; signature reviewed against the upstream declaration (a persistence or validation failure is the returned error; undefined is nil or the empty value); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ }
+]

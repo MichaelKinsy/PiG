@@ -1,7 +1,10 @@
+//go:build !pig_strip_node_extensions
+
 package subprocess
 
 import (
 	"context"
+	"encoding/json"
 	"path/filepath"
 	"testing"
 	"time"
@@ -19,7 +22,7 @@ func TestNodeModelRegistryPreservesModelIdentityAndDoesNotFabricateModels(t *tes
 		"name":     "Model Name",
 		"api":      "openai-responses",
 	}
-	bridge.SetHostAction("getModelInfo", func() map[string]any { return model })
+	bridge.SetHostAction("getModelInfo", func() json.RawMessage { return modelJSON(model) })
 	h.SetUIBridge(bridge)
 	defer h.Shutdown("test done")
 
@@ -33,7 +36,7 @@ func TestNodeModelRegistryPreservesModelIdentityAndDoesNotFabricateModels(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	bridge.SetHostAction("getModels", func() []map[string]any { return []map[string]any{model} })
+	bridge.SetHostAction("getModels", func() []json.RawMessage { return modelJSONs(model) })
 
 	command, ok := ext.Commands["model_registry_identity"]
 	if !ok {

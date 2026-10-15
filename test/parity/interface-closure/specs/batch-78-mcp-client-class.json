@@ -1,0 +1,362 @@
+[
+ {
+  "ids": [
+   "pkg:mcp/.#McpClient::property:listResourceTemplatesPage"
+  ],
+  "targets": [
+   "mcp/client.go#Client.ListResourceTemplatesPage"
+  ],
+  "production": [
+   "call:coding/mcpext/runtime.go#Connection.ResourceTemplatesPage"
+  ],
+  "evidence": [
+   "test:mcp/client_methods_test.go#TestClientListResourceTemplatesPageSendsTheCursorAndReturnsOnePage"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "listResourceTemplatesPage(cursor?, options?) is ListResourceTemplatesPage(ctx, cursor *string, options RequestOptions)."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#McpClient::property:notify"
+  ],
+  "targets": [
+   "mcp/client.go#Client.Notify"
+  ],
+  "production": [
+   "public-api:mcp/client.go#Client.Notify"
+  ],
+  "evidence": [
+   "test:mcp/client_methods_test.go#TestClientNotifySendsANotificationWithoutAnIDAndFailsWhenNotConnected"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "notify(method, params?) is Notify(method, params); the Promise is the returned error."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#McpClient::property:options"
+  ],
+  "targets": [
+   "mcp/client.go#Client.Options"
+  ],
+  "production": [
+   "public-api:mcp/client.go#Client.Options"
+  ],
+  "evidence": [
+   "test:mcp/client_methods_test.go#TestClientOptionsReturnsTheConfiguration"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "The readonly options property is the method Options()."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#McpClient::property:ping"
+  ],
+  "targets": [
+   "mcp/client.go#Client.Ping"
+  ],
+  "production": [
+   "public-api:mcp/client.go#Client.Ping"
+  ],
+  "evidence": [
+   "test:mcp/client_methods_test.go#TestClientPingSendsAPingRequestAndSurfacesAServerError"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ping(options?) is Ping(ctx, options)."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#McpClient::property:request"
+  ],
+  "targets": [
+   "mcp/client.go#Client.Request"
+  ],
+  "production": [
+   "call:mcp/client.go#Client.CallTool"
+  ],
+  "evidence": [
+   "test:mcp/client_methods_test.go#TestClientRequestSendsTheMethodAndParamsAndReturnsTheRawResult"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "request<Result>(method, params?, options?) is Request(ctx, method, params, options) returning the raw JSON result for the caller to decode."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#McpClient::property:setRequestHandler"
+  ],
+  "targets": [
+   "mcp/client.go#Client.SetRequestHandler"
+  ],
+  "production": [
+   "public-api:mcp/client.go#Client.SetRequestHandler"
+  ],
+  "evidence": [
+   "test:mcp/client_methods_test.go#TestClientSetRequestHandlerAnswersServerRequestsUntilDisposed",
+   "test:mcp/client_methods_test.go#TestClientSetRequestHandlerDisposeKeepsAHandlerThatReplacedIt"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "setRequestHandler(method, handler) is SetRequestHandler(method, handler); the handler takes ctx where upstream passes {signal}."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#McpClient::property:close"
+  ],
+  "targets": [
+   "mcp/client.go#Client.Close"
+  ],
+  "production": [
+   "call:coding/mcpext/runtime.go#Connection.Close"
+  ],
+  "evidence": [
+   "test:mcp/client_cursor_test.go#TestClientEndsPaginationAtANullOrEmptyCursor",
+   "test:mcp/client_order_test.go#TestClientWritesRequestsInIDOrder"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "McpClient.close is the Go method Client.Close; types reviewed against the upstream declaration (optional request options are a RequestOptions value, a Promise is a blocking call with a context); tests are the ported client tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#McpClient::property:connect"
+  ],
+  "targets": [
+   "mcp/client.go#Client.Connect"
+  ],
+  "production": [
+   "call:coding/mcpext/runtime.go#Connection.connectOnce"
+  ],
+  "evidence": [
+   "test:mcp/client_order_test.go#TestClientWritesRequestsInIDOrder",
+   "test:mcp/client_test.go#TestClientAcceptsServersThatAnswerWithAnOlderProtocolVersion"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "McpClient.connect is the Go method Client.Connect; types reviewed against the upstream declaration (optional request options are a RequestOptions value, a Promise is a blocking call with a context); tests are the ported client tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#McpClient::property:connectionState"
+  ],
+  "targets": [
+   "mcp/client.go#Client.ConnectionState"
+  ],
+  "production": [
+   "call:coding/mcpext/runtime.go#Connection.GetClient"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientAcceptsServersThatAnswerWithAnOlderProtocolVersion",
+   "test:mcp/client_test.go#TestClientInitializesTheConnectionBeforeExposingServerInformation"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "McpClient.connectionState is the Go method Client.ConnectionState; types reviewed against the upstream declaration (optional request options are a RequestOptions value, a Promise is a blocking call with a context); tests are the ported client tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#McpClient::property:instructions"
+  ],
+  "targets": [
+   "mcp/client.go#Client.Instructions"
+  ],
+  "production": [
+   "call:coding/mcpext/runtime.go#Connection.connectOnce"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientInitializesTheConnectionBeforeExposingServerInformation"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "McpClient.instructions is the Go method Client.Instructions; types reviewed against the upstream declaration (optional request options are a RequestOptions value, a Promise is a blocking call with a context); tests are the ported client tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#McpClient::property:listResourceTemplates"
+  ],
+  "targets": [
+   "mcp/client.go#Client.ListResourceTemplates"
+  ],
+  "production": [
+   "call:coding/mcpext/runtime.go#listTemplates"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientListsAndReadsResources"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "McpClient.listResourceTemplates is the Go method Client.ListResourceTemplates; types reviewed against the upstream declaration (optional request options are a RequestOptions value, a Promise is a blocking call with a context); tests are the ported client tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#McpClient::property:listResources"
+  ],
+  "targets": [
+   "mcp/client.go#Client.ListResources"
+  ],
+  "production": [
+   "call:coding/mcpext/runtime.go#Connection.AllResources"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientListsAndReadsResources"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "McpClient.listResources is the Go method Client.ListResources; types reviewed against the upstream declaration (optional request options are a RequestOptions value, a Promise is a blocking call with a context); tests are the ported client tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#McpClient::property:listResourcesPage"
+  ],
+  "targets": [
+   "mcp/client.go#Client.ListResourcesPage"
+  ],
+  "production": [
+   "call:coding/mcpext/runtime.go#Connection.ResourcesPage"
+  ],
+  "evidence": [
+   "test:mcp/client_cursor_test.go#TestClientEndsPaginationAtANullOrEmptyCursor",
+   "test:mcp/client_test.go#TestClientListsAndReadsResources"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "McpClient.listResourcesPage is the Go method Client.ListResourcesPage; types reviewed against the upstream declaration (optional request options are a RequestOptions value, a Promise is a blocking call with a context); tests are the ported client tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#McpClient::property:listTools"
+  ],
+  "targets": [
+   "mcp/client.go#Client.ListTools"
+  ],
+  "production": [
+   "call:coding/mcpext/runtime.go#Connection.connectOnce"
+  ],
+  "evidence": [
+   "test:mcp/client_cursor_test.go#TestClientEndsPaginationAtANullOrEmptyCursor",
+   "test:mcp/client_test.go#TestClientPaginatesToolsAndPreservesProtocolToolDefinitions"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "McpClient.listTools is the Go method Client.ListTools; types reviewed against the upstream declaration (optional request options are a RequestOptions value, a Promise is a blocking call with a context); tests are the ported client tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#McpClient::property:onClose"
+  ],
+  "targets": [
+   "mcp/client.go#Client.OnClose"
+  ],
+  "production": [
+   "call:coding/mcpext/runtime.go#Connection.connectOnce"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientNotifiesCloseListenersOnceWhenTheTransportDrops"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "McpClient.onClose is the Go method Client.OnClose; types reviewed against the upstream declaration (optional request options are a RequestOptions value, a Promise is a blocking call with a context); tests are the ported client tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#McpClient::property:onError"
+  ],
+  "targets": [
+   "mcp/client.go#Client.OnError"
+  ],
+  "production": [
+   "public-api:mcp/client.go#Client.OnError"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientReportsTransportErrorsWithoutFailingPendingRequests",
+   "test:mcp/streamable_http_test.go#TestStreamableHTTPTransportFailsOnlyTheRequestWhoseSSEStreamBreaks"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "McpClient.onError is the Go method mcp.Client.OnError; signature reviewed against the upstream declaration (undefined is the empty value or nil; the returned func is the dispose function). Closed as public-api-tested: exported from the public mcp package and no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#McpClient::property:onNotification"
+  ],
+  "targets": [
+   "mcp/client.go#Client.OnNotification"
+  ],
+  "production": [
+   "call:coding/mcpext/runtime.go#Connection.connectOnce"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientAnswersRootsListAndDispatchesNotifications",
+   "test:mcp/streamable_http_test.go#TestStreamableHTTPTransportReconnectsTheGETStreamAfterItDrops"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "McpClient.onNotification is the Go method Client.OnNotification; types reviewed against the upstream declaration (optional request options are a RequestOptions value, a Promise is a blocking call with a context); tests are the ported client tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#McpClient::property:protocolVersion"
+  ],
+  "targets": [
+   "mcp/client.go#Client.ProtocolVersion"
+  ],
+  "production": [
+   "public-api:mcp/client.go#Client.ProtocolVersion"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientAcceptsServersThatAnswerWithAnOlderProtocolVersion",
+   "test:mcp/client_test.go#TestClientInitializesTheConnectionBeforeExposingServerInformation"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "McpClient.protocolVersion is the Go method mcp.Client.ProtocolVersion; signature reviewed against the upstream declaration (undefined is the empty value or nil; the returned func is the dispose function). Closed as public-api-tested: exported from the public mcp package and no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#McpClient::property:readResource"
+  ],
+  "targets": [
+   "mcp/client.go#Client.ReadResource"
+  ],
+  "production": [
+   "call:coding/mcpext/runtime.go#Connection.ReadResource"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientListsAndReadsResources"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "McpClient.readResource is the Go method Client.ReadResource; types reviewed against the upstream declaration (optional request options are a RequestOptions value, a Promise is a blocking call with a context); tests are the ported client tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#McpClient::property:serverCapabilities"
+  ],
+  "targets": [
+   "mcp/client.go#Client.ServerCapabilities"
+  ],
+  "production": [
+   "call:coding/mcpext/runtime.go#Connection.connectOnce"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientInitializesTheConnectionBeforeExposingServerInformation"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "McpClient.serverCapabilities is the Go method Client.ServerCapabilities; types reviewed against the upstream declaration (optional request options are a RequestOptions value, a Promise is a blocking call with a context); tests are the ported client tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#McpClient::property:serverInfo"
+  ],
+  "targets": [
+   "mcp/client.go#Client.ServerInfo"
+  ],
+  "production": [
+   "public-api:mcp/client.go#Client.ServerInfo"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientInitializesTheConnectionBeforeExposingServerInformation"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "McpClient.serverInfo is the Go method mcp.Client.ServerInfo; signature reviewed against the upstream declaration (undefined is the empty value or nil; the returned func is the dispose function). Closed as public-api-tested: exported from the public mcp package and no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#McpClient::construct:0"
+  ],
+  "targets": [
+   "mcp/client.go#NewClient"
+  ],
+  "production": [
+   "call:coding/mcpext/runtime.go#Connection.connectOnce"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientInitializesTheConnectionBeforeExposingServerInformation"
+  ],
+  "rationale": "`new McpClient(options)` is NewClient(ClientOptions)."
+ }
+]

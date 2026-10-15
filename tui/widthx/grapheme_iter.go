@@ -4,15 +4,7 @@ import (
 	"unicode/utf8"
 )
 
-// graphemeIter walks the extended grapheme clusters of a string with the
-// Next/Str/Width surface of uniseg.Graphemes, which it replaces on the
-// per-frame width, slice and wrap paths.
-//
-// uniseg.Graphemes.Next runs uniseg.StepString, which also computes word,
-// sentence and line-break state that these callers never read, and
-// uniseg.NewGraphemes heap-allocates the iterator. graphemeIter asks only for
-// grapheme boundaries (uniseg.FirstGraphemeClusterInString, which yields the
-// same clusters and widths) and lives on the caller's stack.
+// graphemeIter walks the extended grapheme clusters of a string (FirstGrapheme, Intl.Segmenter's boundaries) for the per-frame width, slice and wrap paths. It computes only grapheme boundaries and widths and lives on the caller's stack.
 //
 // A printable ASCII byte followed by another ASCII byte, or by the end of the
 // string, is always a complete one-cell cluster: every rule that can join a

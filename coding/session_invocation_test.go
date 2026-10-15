@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"testing"
 
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -68,8 +70,8 @@ func TestSendCustomMessagePersistsBeforeEvents(t *testing.T) {
 			t.Error("custom message event lost its role")
 		}
 		found := false
-		for _, entry := range h.session.Inner().Entries() {
-			if entry.Base.Type == "custom_message" {
+		for _, entry := range h.session.Inner().GetEntries() {
+			if entry.Base().Type == "custom_message" {
 				found = true
 			}
 		}
@@ -86,8 +88,8 @@ func TestSendCustomMessagePersistsBeforeEvents(t *testing.T) {
 	if h.provider.callCount() != 0 {
 		t.Fatal("idle custom append requested a model turn")
 	}
-	for _, entry := range h.session.Inner().Entries() {
-		if entry.Base.Type != "custom_message" {
+	for _, entry := range h.session.Inner().GetEntries() {
+		if entry.Base().Type != "custom_message" {
 			continue
 		}
 		var value map[string]json.RawMessage
@@ -171,9 +173,9 @@ func TestCustomMessageEntriesAndEventsFollowAgentOrder(t *testing.T) {
 func customMessageEntryRoles(s *Session) []string {
 	var roles []string
 	for _, entry := range s.SessionManager().GetBranch() {
-		if message, ok := entry.AsMessage(); ok {
+		if message, ok := entry.(icodingagent.MessageEntry); ok {
 			roles = append(roles, message.Message.Role())
-		} else if entry.Base.Type == "custom_message" {
+		} else if entry.Base().Type == "custom_message" {
 			roles = append(roles, "custom")
 		}
 	}
@@ -190,7 +192,7 @@ func TestCustomMessageLLMHistoryPreservesToolCallResultPair(t *testing.T) {
 	}
 	openToolCallIDs := make(map[string]bool)
 	var results int
-	for _, message := range agent.ConvertToLLM(h.session.Messages(), nil) {
+	for _, message := range agent.ConvertToLLM(agent.NormalizeMessages(h.session.Messages(), nil)) {
 		switch message := message.(type) {
 		case ai.AssistantMessage:
 			clear(openToolCallIDs)

@@ -7,7 +7,6 @@ import (
 	"slices"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
@@ -24,6 +23,8 @@ func (s *recordingPromptScope) BeginUIPrompt(kind extension.UIPromptKind, title 
 	return func() { s.record(fmt.Sprintf("end:%s:%s", kind, title)) }
 }
 
+func (s *recordingPromptScope) AwaitUIPromptEvents(context.Context) {}
+
 func (s *recordingPromptScope) record(line string) {
 	s.mu.Lock()
 	s.calls = append(s.calls, line)
@@ -36,40 +37,24 @@ func (s *recordingPromptScope) snapshot() []string {
 	return slices.Clone(s.calls)
 }
 
-func (s *recordingPromptScope) waitFor(t *testing.T, n int) []string {
-	t.Helper()
-	deadline := time.Now().Add(5 * time.Second)
-	for {
-		if calls := s.snapshot(); len(calls) >= n {
-			return calls
-		}
-		if time.Now().After(deadline) {
-			t.Fatalf("prompt scope calls = %v, want %d", s.snapshot(), n)
-		}
-		time.Sleep(5 * time.Millisecond)
-	}
-}
-
-// blockingSelectUI answers select only when released; confirm answers at
-// once.
-type blockingSelectUI struct {
+// blockingCustomUI holds a custom component open until released; confirm
+// answers at once.
+type blockingCustomUI struct {
 	extension.UIContext
 	entered chan struct{}
 	release chan struct{}
 }
 
-func (u *blockingSelectUI) Select(ctx context.Context, _ string, _ []string, _ extension.ExtensionUIDialogOptions) (string, error) {
-	u.entered <- struct{}{}
-	select {
-	case <-u.release:
-		return "first", nil
-	case <-ctx.Done():
-		return "", ctx.Err()
-	}
+func (u *blockingCustomUI) Confirm(context.Context, string, string, extension.ExtensionUIDialogOptions) (bool, error) {
+	return true, nil
 }
 
-func (u *blockingSelectUI) Confirm(context.Context, string, string, extension.ExtensionUIDialogOptions) (bool, error) {
-	return true, nil
+// RunRemoteOverlay holds a focused custom component open until released.
+func (u *blockingCustomUI) RunRemoteOverlay(_ extension.RemoteOverlayOptions, _ extension.RemoteOverlayHost, onHandle func(extension.RemoteOverlayHandle)) (any, bool) {
+	onHandle(&capturingRemoteOverlayHandle{})
+	u.entered <- struct{}{}
+	<-u.release
+	return nil, true
 }
 
 func dialogCall(method string, args map[string]any) *CallPayload {
@@ -77,67 +62,32 @@ func dialogCall(method string, args map[string]any) *CallPayload {
 	return &CallPayload{Method: method, Args: raw}
 }
 
-// A dialog that waits for another dialog's terminal focus is already a
-// prompt the extension waits on: the scope opens on arrival, not on focus.
-func TestUIBridgePromptScopeOpensBeforeFocusWait(t *testing.T) {
-	ui := &blockingSelectUI{UIContext: extension.NoopUIContext, entered: make(chan struct{}, 1), release: make(chan struct{})}
-	bridge := NewUIBridge(func() {})
-	bridge.SetUIContext(ui)
-	scope := &recordingPromptScope{}
-	bridge.SetUIPromptScope(scope)
-
-	first := make(chan error, 1)
-	go func() {
-		_, err := bridge.HandleCall("ext", dialogCall("ui.select", map[string]any{"title": "First", "options": []string{"a"}}))
-		first <- err
-	}()
-	<-ui.entered
-	second := make(chan error, 1)
-	go func() {
-		_, err := bridge.HandleCall("ext", dialogCall("ui.confirm", map[string]any{"title": "Second", "message": "m"}))
-		second <- err
-	}()
-	if got := scope.waitFor(t, 2); !slices.Equal(got, []string{"begin:select:First", "begin:confirm:Second"}) {
-		t.Fatalf("scope calls while second waits for focus = %v", got)
-	}
-	close(ui.release)
-	for _, done := range []chan error{first, second} {
-		if err := <-done; err != nil {
-			t.Fatal(err)
-		}
-	}
-	want := []string{"begin:select:First", "begin:confirm:Second", "end:select:First", "end:confirm:Second"}
-	if got := scope.snapshot(); !slices.Equal(got, want) {
-		t.Fatalf("scope calls = %v, want %v", got, want)
-	}
-}
-
-// Cancellation while waiting for focus closes the scope; custom has no
+// A dialog over a focused custom component opens its own scope and closes it
+// when it returns, while the component's scope stays open; custom has no
 // title; non-dialog calls and a missing UI surface open nothing.
-func TestUIBridgePromptScopeCancellationCustomAndNoUI(t *testing.T) {
-	ui := &blockingSelectUI{UIContext: extension.NoopUIContext, entered: make(chan struct{}, 1), release: make(chan struct{})}
+func TestUIBridgePromptScopeDialogOverCustomAndNoUI(t *testing.T) {
+	ui := &blockingCustomUI{UIContext: extension.NoopUIContext, entered: make(chan struct{}, 1), release: make(chan struct{})}
 	bridge := NewUIBridge(func() {})
 	bridge.SetUIContext(ui)
 	scope := &recordingPromptScope{}
 	bridge.SetUIPromptScope(scope)
 
+	holder := make(chan error, 1)
 	go func() {
-		_, _ = bridge.HandleCall("ext", dialogCall("ui.select", map[string]any{"title": "Holder"}))
+		_, err := bridge.HandleCall("ext", dialogCall(CallUICustom, map[string]any{"key": "holder"}))
+		holder <- err
 	}()
 	<-ui.entered
-	ctx, cancel := context.WithCancel(context.Background())
-	waiting := make(chan *CallResultPayload, 1)
-	go func() {
-		result, _ := bridge.handleCall(ctx, "ext", nil, dialogCall("ui.input", map[string]any{"title": "Queued"}))
-		waiting <- result
-	}()
-	scope.waitFor(t, 2)
-	cancel()
-	if result := <-waiting; result == nil || result.Error == nil || result.Error.Code != "cancelled" {
-		t.Fatalf("queued input result = %+v", result)
+	if _, err := bridge.HandleCall("ext", dialogCall("ui.confirm", map[string]any{"title": "Over", "message": "m"})); err != nil {
+		t.Fatal(err)
+	}
+	if got := scope.snapshot(); !slices.Equal(got, []string{"begin:custom:", "begin:confirm:Over", "end:confirm:Over"}) {
+		t.Fatalf("scope calls while the custom component is shown = %v", got)
 	}
 	close(ui.release)
-	scope.waitFor(t, 4)
+	if err := <-holder; err != nil {
+		t.Fatal(err)
+	}
 
 	_, _ = bridge.HandleCall("ext", dialogCall(CallUICustom, map[string]any{"title": "Overlay"}))
 	_, _ = bridge.HandleCall("ext", dialogCall("ui.notify", map[string]any{"message": "hi"}))
@@ -145,7 +95,7 @@ func TestUIBridgePromptScopeCancellationCustomAndNoUI(t *testing.T) {
 	_, _ = bridge.HandleCall("ext", dialogCall("ui.editor", map[string]any{"title": "Headless"}))
 
 	want := []string{
-		"begin:select:Holder", "begin:input:Queued", "end:input:Queued", "end:select:Holder",
+		"begin:custom:", "begin:confirm:Over", "end:confirm:Over", "end:custom:",
 		"begin:custom:", "end:custom:",
 	}
 	if got := scope.snapshot(); !slices.Equal(got, want) {

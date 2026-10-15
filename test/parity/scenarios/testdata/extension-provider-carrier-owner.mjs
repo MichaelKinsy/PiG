@@ -25,6 +25,21 @@ export default function (pi) {
       };
       if (options.signal.aborted) abort();
       else options.signal.addEventListener("abort", abort, { once: true });
+    } else if (options.onPayload || options.onResponse || options.onProviderStreamEvent) {
+      // The caller's request callbacks reach the Provider (types.ts ProviderRequestOptions.onPayload, StreamOptions.onResponse and onProviderStreamEvent).
+      (async () => {
+        let text = options.metadata?.method ?? "carrier answer";
+        await options.onResponse?.({ status: 207, headers: { "x-carrier": "response" } }, model);
+        await options.onProviderStreamEvent?.({ carrier: "event" }, model);
+        const replaced = await options.onPayload?.({ carrier: "payload" }, model);
+        if (replaced && typeof replaced === "object") text = replaced.text;
+        message.content = [{ type: "text", text }];
+        events.push({ type: "done", reason: "stop", message });
+      })().catch(error => {
+        message.stopReason = "error";
+        message.errorMessage = String(error?.message ?? error);
+        events.push({ type: "error", reason: "error", error: message });
+      });
     } else {
       message.content = [{ type: "text", text: options.metadata?.method ?? "carrier answer" }];
       events.push({ type: "done", reason: "stop", message });
@@ -43,16 +58,18 @@ export default function (pi) {
       },
       oauth: {
         name: "Carrier OAuth", isSubscription: true, loginLabel: "Carrier login",
-        login: async interaction => ({ type: "oauth", access: await interaction.prompt({ type: "text", message: "Carrier OAuth" }), refresh: "refresh", expires: 100 }),
+        login: async (interaction, options) => ({ type: "oauth", access: `${await interaction.prompt({ type: "text", message: "Carrier OAuth" })}@${options?.getDeviceId?.() ?? "none"}`, refresh: "refresh", expires: 100 }),
         refresh: async credential => ({ ...credential, access: "rotated", expires: 200 }),
         toAuth: async credential => ({ apiKey: credential.access, baseUrl: "https://carrier.invalid" }),
       },
     },
     getModels: () => models,
+    getAllModels: () => [...models, { ...models[0], id: "carrier-all-only" }],
     filterModels: (input, credential) => credential?.key === "selected" ? input.slice(0, 1) : [],
+    filterAllModels: (input, credential) => credential?.key === "all" ? input : [],
     refreshModels: async context => {
       if (!context.force) return;
-      await context.publish({ persist: null, update: () => { models = [...models, { ...models[0], id: "refreshed" }]; } });
+      await context.publish({ persist: null, update: () => { models = [...models, { ...models[0], id: context.baseUrl === undefined ? "refreshed" : "refreshed:" + context.baseUrl }]; } });
     },
     stream,
     streamSimple: (model, context, options) => stream(model, context, { ...options, metadata: { method: "simple" } }),

@@ -1,0 +1,195 @@
+[
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding",
+  "tests": [
+   "TestRuntimeCommandActionsForwardTheirOptionsAndReplaceTheSession"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/runtime_replacement.go: replace `bound.NewSessionContext = rt.NewSession` with `bound.NewSessionContext = bound.NewSessionContext`; TestRuntimeCommandActionsForwardTheirOptionsAndReplaceTheSession fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding",
+  "tests": [
+   "TestRuntimeCommandActionsForwardTheirOptionsAndReplaceTheSession"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/runtime_replacement.go: replace `return rt.NewSession(context.Background(), options)` with `return rt.NewSession(context.Background(), nil)`; TestRuntimeCommandActionsForwardTheirOptionsAndReplaceTheSession fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding",
+  "tests": [
+   "TestRuntimeCommandActionsForwardTheirOptionsAndReplaceTheSession"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/runtime_replacement.go: replace `result, err := rt.Fork(ctx, entryID, options)` with `result, err := rt.Fork(ctx, entryID, nil)`; TestRuntimeCommandActionsForwardTheirOptionsAndReplaceTheSession fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding",
+  "tests": [
+   "TestRuntimeCommandActionsForwardTheirOptionsAndReplaceTheSession"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/runtime_replacement.go: replace `return bound.ForkContext(context.Background(), entryID, options)` with `return bound.ForkContext(context.Background(), entryID, nil)`; TestRuntimeCommandActionsForwardTheirOptionsAndReplaceTheSession fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding",
+  "tests": [
+   "TestRuntimeCommandActionsForwardTheirOptionsAndReplaceTheSession"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/runtime_replacement.go: replace `return rt.SwitchSession(ctx, path, switchOptionsFromExtension(options))` with `return rt.SwitchSession(ctx, path, nil)`; TestRuntimeCommandActionsForwardTheirOptionsAndReplaceTheSession fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding",
+  "tests": [
+   "TestRuntimeCommandActionsForwardTheirOptionsAndReplaceTheSession"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/runtime_replacement.go: replace `return rt.SwitchSession(context.Background(), path, switchOptionsFromExtension(options))` with `return rt.SwitchSession(context.Background(), path, nil)`; TestRuntimeCommandActionsForwardTheirOptionsAndReplaceTheSession fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding",
+  "tests": [
+   "TestReplacedSession2860Switch",
+   "TestRuntimeCommandActionsForwardTheirOptionsAndReplaceTheSession"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/runtime_replacement.go: replace `return &SwitchSessionOptions{WithSession: options.WithSession}` with `return &SwitchSessionOptions{}`; TestReplacedSession2860Switch, TestRuntimeCommandActionsForwardTheirOptionsAndReplaceTheSession fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding",
+  "tests": [
+   "TestRuntimeReloadActionRunsTheModesReload",
+   "TestRuntimeCommandActionsForwardTheirOptionsAndReplaceTheSession"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/runtime_replacement.go: replace `bound.ReloadContext = func(ctx context.Context) error { return rt.reloadSession(ctx, session) }` with `bound.ReloadContext = func(ctx context.Context) error { return nil }`; TestRuntimeCommandActionsForwardTheirOptionsAndReplaceTheSession, TestRuntimeReloadActionRunsTheModesReload fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding",
+  "tests": [
+   "TestRuntimeReloadActionRunsTheModesReload",
+   "TestRuntimeCommandActionsForwardTheirOptionsAndReplaceTheSession"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/runtime_replacement.go: replace `bound.Reload = func() error { return bound.ReloadContext(context.Background()) }` with `bound.Reload = func() error { return nil }`; TestRuntimeCommandActionsForwardTheirOptionsAndReplaceTheSession, TestRuntimeReloadActionRunsTheModesReload fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding",
+  "tests": [
+   "TestSessionCommandActionsForwardTheirOptions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/session_extension_hooks.go: replace `return s.extensionNewSession(context.Background(), opts)` with `return s.extensionNewSession(context.Background(), nil)`; TestSessionCommandActionsForwardTheirOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding",
+  "tests": [
+   "TestSessionCommandActionsForwardTheirOptions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/session_extension_hooks.go: replace `return s.extensionFork(context.Background(), entryID, opts)` with `return s.extensionFork(context.Background(), entryID, nil)`; TestSessionCommandActionsForwardTheirOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding",
+  "tests": [
+   "TestSessionCommandActionsForwardTheirOptions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/session_extension_hooks.go: replace `options.Summarize = opts.Summarize` with ``; TestSessionCommandActionsForwardTheirOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding",
+  "tests": [
+   "TestSessionCommandActionsForwardTheirOptions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/session_extension_hooks.go: replace `options.CustomInstructions = opts.CustomInstructions` with ``; TestSessionCommandActionsForwardTheirOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding",
+  "tests": [
+   "TestSessionCommandActionsForwardTheirOptions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/session_extension_hooks.go: replace `if err != nil {\n\t\t\t\treturn extension.CancelledResult{}, err\n\t\t\t}\n\t\t\treturn extension.CancelledResult{Cancelled: result.Cancelled}, nil` with `_ = err\n\t\t\treturn extension.CancelledResult{Cancelled: result.Cancelled}, nil`; TestSessionCommandActionsForwardTheirOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding",
+  "tests": [
+   "TestExtensionSessionReplacementActions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/session_extension_hooks.go: replace `ForkContext: s.extensionFork,` with `ForkContext: nil,`; TestExtensionSessionReplacementActions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding",
+  "tests": [
+   "TestExtensionSessionReplacementActions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/session_extension_hooks.go: replace `NewSessionContext: s.extensionNewSession,` with `NewSessionContext: nil,`; TestExtensionSessionReplacementActions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding",
+  "tests": [
+   "TestSessionCommandActionsForwardTheirOptions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/session_extension_hooks.go: replace `SwitchSessionContext: s.extensionSwitchSession,` with `SwitchSessionContext: nil,`; TestSessionCommandActionsForwardTheirOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding",
+  "tests": [
+   "TestSessionCommandActionsForwardTheirOptions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/session_extension_hooks.go: replace `options.ReplaceInstructions = opts.ReplaceInstructions` with ``; TestSessionCommandActionsForwardTheirOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding",
+  "tests": [
+   "TestSessionCommandActionsForwardTheirOptions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/session_extension_hooks.go: replace `options.Label = opts.Label` with ``; TestSessionCommandActionsForwardTheirOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding",
+  "tests": [
+   "TestRuntimeReplacementMarksCallInitiationBeforeTheBeforeHook",
+   "TestRuntimeCommandActionsForwardTheirOptionsAndReplaceTheSession"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/runtime_replacement.go: replace `return extension.CancelledResult{Cancelled: result.Cancelled}, err` with `return extension.CancelledResult{Cancelled: result.Cancelled && false}, err`; TestRuntimeCommandActionsForwardTheirOptionsAndReplaceTheSession, TestRuntimeReplacementMarksCallInitiationBeforeTheBeforeHook fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding",
+  "tests": [
+   "TestSessionCommandActionsForwardTheirOptions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/session_extension_hooks.go: replace `return extension.CancelledResult{Cancelled: result.Cancelled}, nil` with `return extension.CancelledResult{Cancelled: result.Cancelled && false}, nil`; TestSessionCommandActionsForwardTheirOptions fails."
+ }
+]

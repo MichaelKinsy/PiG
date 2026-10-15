@@ -112,3 +112,25 @@ func TestMCPServersSectionIntroExplainsOnlyTheReachesTheListedServersUse(t *test
 		}
 	}
 }
+
+// index.ts:198 sorts the listed servers with `a.entry.name.localeCompare(b.entry.name)`: root collation puts "_" before
+// "-", a shorter prefix first and lower case before upper case, where a byte order would put "B" before "a" and "-"
+// before "_". The order below is Node's (`[...].sort((a, b) => a.localeCompare(b))`).
+func TestMCPServersSectionSortsServersByLocaleCompare(t *testing.T) {
+	var servers []mcpext.McpServerListing
+	for _, name := range []string{"zeta", "Beta", "alpha-x", "alpha_x", "Alpha", "beta"} {
+		servers = append(servers, sectionServer(name, name, ""))
+	}
+	section, ok := mcpext.RenderServersSection(servers)
+	if !ok {
+		t.Fatal("no section")
+	}
+	var got []string
+	for _, line := range strings.Split(section, "\n")[1:] {
+		_, description, _ := strings.Cut(line, ": ")
+		got = append(got, description)
+	}
+	if want := []string{"Alpha", "alpha_x", "alpha-x", "beta", "Beta", "zeta"}; !slices.Equal(got, want) {
+		t.Fatalf("servers = %q, want %q", got, want)
+	}
+}

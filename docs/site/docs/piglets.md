@@ -95,6 +95,8 @@ build:
 | `discovery` | Permit or reject ambient workspace and user Resources. |
 | `secrets` | Declare logical secret requirements without storing values. |
 | `agentEnv` | Require an image, Dev Container, or typed environment source. |
+| `slots` | Replace a part of PiG with a fused Go member. `frontend` is the only slot (D91); see [Piglet Binaries](piglet-binaries.md#frontend-members). |
+| `strip` | Strip built-in tools, slash commands, built-in extensions, model APIs, and features; a Piglet Binary compiles most of them out (D92). |
 | `release` | Set release identity. |
 | `build` | Set portable Binary target, output, and realization requirements. |
 
@@ -143,6 +145,115 @@ extensions:
 Root `tools` restricts built-in tools only, so this role cannot write, edit, or run bash. Extension tools are listed per extension under `extensions[].tools`; here the active tools are exactly `read` and `web_search`.
 
 Command-line and platform policy can narrow these lists. They do not silently widen a Piglet.
+
+## Strip built-ins
+
+A Piglet can disable PiG built-ins with `strip` (D92). Pi has no equivalent; a Stock PiG run without a Piglet strip list is unchanged.
+
+`slots` and `strip` are one model. Every part of PiG a Piglet can change is a slot, and a Piglet does one of three things with it: it keeps PiG's own part (the default), replaces it with a fused member under `slots` (today only `frontend`, D91), or strips it under `strip`. Both inherit down the `extends` chain and both come off with `extends.remove`: `remove.slots` restores PiG's part, and `remove.strip` re-enables a stripped built-in.
+
+```yaml
+name: lean-reviewer
+tools: [read, grep, find, ls, bash]
+strip:
+  tools: [bash]
+  commands: [/share, /export]
+  extensions: [mcp, codemode]
+  features: [themes]
+```
+
+Each entry is a stable ID. The IDs come from a generated table (`internal/pigstrip/ids_generated.go`) that `make generate` rebuilds from the registrations, so an unknown or renamed ID fails when the Piglet resolves, and the error names the ID.
+
+| List | IDs | Effect |
+|---|---|---|
+| `tools` | built-in tool names: `bash`, `edit`, `find`, `grep`, `ls`, `powershell`, `read`, `write` | The tool joins the `--exclude-tools` denylist. It leaves the tool registry, the active tools, and the system prompt. The effective built-in set is root `tools` minus `strip.tools`. An extension tool with the same name is excluded too. |
+| `commands` | built-in slash commands with the leading slash, for example `/share`, and the active Piglet's `/piglet` | The command leaves the command registry and autocomplete; a stripped `/piglet` also leaves RPC `get_commands` and an extension's `getCommands`. Typed text such as `/share` goes to the model like any unknown slash command, so an extension can register the name. |
+| `extensions` | built-in extensions: `codemode`, `llama.cpp`, `mcp`, `pig-login`, `tool-search` | The extension does not load: a settings entry or `-e builtin:<name>` is dropped silently, as Pi's `--no-mcp` drops MCP. A stripped `llama.cpp` starts no llama host. A stripped `mcp` makes no Radius MCP offer after a Radius `/login`. A Binary compiles each one out; `pig mcp` in a Binary without MCP reports the strip. |
+| `apis` | `bedrock-converse-stream`, `google-vertex`, `mistral-conversations` | The API's models are offered nowhere: not by `--list-models`, `/model` and the model selector, model cycling, the `--models` scope, the startup default model, RPC `get_available_models`, or an extension's model registry. `--model` or `--provider` naming one, and building one, fail with the strip message: `Provider amazon-bedrock: API bedrock-converse-stream is stripped from this Piglet (strip.apis: bedrock-converse-stream)`. A Binary compiles the implementation out (for Bedrock, the whole AWS SDK). |
+| `features` | `themes`, `skills`, `prompt-templates`, `node-extensions`, `extension-sdk-go`, `extension-sdk-rust`, `extension-sdk-python`, `syntax-highlight`, `word-dictionaries`, `mermaid`, `export-html`, `self-update`, `changelog`, `docs`, `piglet-builder` | `themes`, `skills`, and `prompt-templates` turn on Pi's `--no-themes`, `--no-skills`, and `--no-prompt-templates` and drop `--theme`, `--skill`, and `--prompt-template` paths; a Piglet cannot strip `skills` and also declare `skills` entries. `node-extensions` and the `extension-sdk-*` IDs remove the runtime for TypeScript and JavaScript extensions and the SDKs for Go, Rust and Python source extensions; such an extension then fails to load with a strip message, and a Piglet cannot strip a runtime its own extensions need. `syntax-highlight` renders code blocks without token colors, `word-dictionaries` treats a run of CJK, Thai, Lao, Khmer or Burmese text as one word, `mermaid` leaves mermaid fences raw. `export-html`, `self-update`, `docs` and `piglet-builder` make HTML export, `pig update self`, `pig docs` and `pig piglet build`/`publish` report the strip; `docs` also drops the docs section of the system prompt. `changelog` removes `/changelog` and the startup What's New notice. |
+
+A Piglet can't strip every tool and `/quit`. Stripping `/quit` alone is allowed, since Ctrl+D and a double Ctrl+C still exit, and so is stripping every built-in tool alone, which makes a chat-only Piglet. A strip list that names every built-in tool and `/quit` together, on its own or through its `extends` chain, fails when the Piglet resolves, so `pig piglet validate`, `pig piglet build` and `pig --piglet` refuse it:
+
+```text
+strip.tools and strip.commands: a Piglet can't strip every tool and /quit (strip.tools: bash, edit, find, grep, ls, powershell, read, write; strip.commands: /quit); keep at least one tool or /quit
+```
+
+### Keep mode
+
+A list under `strip.keep` turns that list around: it names the built-ins that stay, and every other ID of that list is stripped, including the IDs a later PiG adds. Use keep mode for a minimal base that should stay minimal as PiG and Pi gain built-ins; use the deny lists above for a Piglet that should take up new built-ins.
+
+```yaml
+name: pig-core
+strip:
+  commands: [/share]              # deny mode: strip these
+  keep:                           # keep mode: strip everything else in the list
+    tools: [read, bash, edit, write]
+    extensions: []                # no built-in extension, now or later
+```
+
+- One list is in deny mode or in keep mode in one Piglet file, never both: `strip.tools` and `strip.keep.tools` together fail.
+- `strip.keep` has no `keep` of its own, and keep IDs come from the same table as deny IDs, so an unknown or renamed keep ID fails and the error names it (`strip.keep.extensions[0]: unknown extension ID ...`).
+- `keep.<list>: []` keeps nothing from that list. A keep list with no value (`extensions:` alone) fails instead of keeping everything: write `[]`.
+- PiG expands keep mode when the Piglet resolves, against the strip table of the PiG that runs it: the stripped IDs are the list's IDs minus the kept ones. Everything after that (the runtime strip, a Binary's build tags, the record, `pig piglet show`) works on the expanded list, and the floor below holds for it: `keep.tools: []` with `commands: [/quit]` fails.
+- `strip.keep.tools` removes the other tools from the registry and the prompt. The root `tools:` allow-list only narrows the active set.
+
+Strip lists merge down the `extends` chain list by list:
+
+| Base | Child | Result | Widening? |
+|---|---|---|---|
+| deny `D` | `strip.<list>: [x]` | deny `D` and `x` | no |
+| keep `K` | `strip.<list>: [x]` | keep `K` without `x` | no |
+| keep `K` | `keep.<list>: K2` | keep `K2`; naming an ID outside `K` fails and points to `extends.remove.strip` | no |
+| deny `D` | `keep.<list>: K2` | keep `K2`; naming an ID in `D` fails the same way | no |
+| keep `K` | `extends.remove.strip.<list>: [x]` | keep `K` and `x` | yes: needs `extends.allowWiden: true` |
+| keep `K` | nothing for the list | keep `K`; IDs a later PiG adds stay stripped down the whole chain | no |
+
+A child can't return a keep-mode list to deny mode, because that would let in every built-in a later PiG adds. `extends.remove.strip.keep.<list>` fails and names the list; re-enable single IDs with `extends.remove.strip.<list>` instead.
+
+### Inheritance and `pig piglet show`
+
+Deny lists union down the `extends` chain. A child adds entries with its own `strip`. To re-enable an inherited entry, in either mode, name it under `extends.remove.strip` and set `extends.allowWiden: true`; without `allowWiden`, resolution fails with a capability widening error.
+
+```yaml
+name: reviewer-with-shell
+extends:
+  source: local:./lean-reviewer.yaml
+  allowWiden: true
+  remove:
+    strip:
+      tools: [bash]
+```
+
+`pig piglet show` lists the changed slots in one `Slots` section, each named by its manifest path. A keep-mode list shows its kept IDs above the expanded rows:
+
+```text
+Slots:
+  frontend  replaced(/work/pig-tern/frontend)
+  extensions  keep([])
+  tools.bash  stripped(runtime)
+  commands./share  stripped(runtime)
+  extensions.codemode  stripped(binary)
+  extensions.llama.cpp  stripped(binary)
+  extensions.mcp  stripped(binary)
+  extensions.pig-login  stripped(binary)
+  extensions.tool-search  stripped(binary)
+```
+
+Each stripped ID shows the disposition its Piglet Binary gives it: `stripped(binary)` when the Binary does not link the built-in at all, `stripped(runtime)` when it stays compiled in and is disabled at startup. Tools, commands, `themes`, `skills` and `prompt-templates` are runtime; every other ID is binary. When Stock PiG runs the Piglet, it disables every entry at runtime with the same message or fallback, except that the CLI subcommands (`pig docs`, `pig piglet build`, `pig update`, `--export`) are only removed in the Binary.
+
+`strip.tools` names exact built-in tool IDs. It takes no `*` patterns: MCP tool names depend on the servers a user configures and cannot be checked when the Piglet resolves. To drop MCP tools, strip `extensions: [mcp]`.
+
+### Strip delta report
+
+When PiG has built a Binary of the Piglet before, `pig piglet build` and `pig piglet show` compare the strip table of the running PiG with the one that Binary was built against (its record keeps it) and print what changed:
+
+```text
+Strip table: PiG 0.4.2 → 0.4.3 adds 3 built-in IDs
+  left out (keep mode):     extensions.memory, features.voice
+  now included (deny mode): commands./plan
+```
+
+"Left out" lists the new IDs a keep-mode list strips; "now included" lists the new IDs a deny-mode list leaves enabled. With no new IDs the report is one line, `Strip table: PiG 0.4.2 → 0.4.3 adds no built-in IDs`. It prints on every build, before the build runs, and `--json` output carries it as `stripDelta`. `pig piglet show` without `--effective` reads the list modes of a child Piglet from the record, since the child's file alone does not state its base's keep mode.
 
 ## Discovery
 
@@ -241,19 +352,39 @@ A remote Piglet must be portable. PiG refuses a Git URL that contains credential
 
 ### Add from a monorepo
 
-Select a repository subdirectory with the existing Git source selector and a full lowercase commit SHA (D18). The Piglet monorepo is `MichaelKinsy/pigpen`. Replace `<full-commit-sha>` with the reviewed commit:
+Select a repository subdirectory with the existing Git source selector and a full lowercase commit SHA (D18). Replace `<full-commit-sha>` with the reviewed commit:
 
 ```bash
-pig piglet add 'git:https://github.com/MichaelKinsy/pigpen.git@<full-commit-sha>#subdirectory=piglets%2Fpig-with-batteries'
+pig piglet add 'git:https://github.com/acme/agents.git@<full-commit-sha>#subdirectory=piglets%2Freviewer'
 ```
 
 PiG reads `pig.piglet` or `piglet.yaml` inside that selected directory. It never falls back to the repository-root Piglet. The checkout must match the pinned commit and contain no modified or untracked files in the selected directory.
+
+The Piglets in the Pigpen monorepo (`MichaelKinsy/pigpen`) name their Packages with paths such as `local:../../components/herdr`, outside the Piglet's directory. This form rejects them with `error: Package herdr origin "local:../../components/herdr": Piglet closure path ../../components/herdr leaves the added subdirectory; bundled local paths must stay inside it`. Pull a Pigpen Piglet as a signed Binary instead ([Add a Piglet from Pigpen](#add-a-piglet-from-pigpen)).
 
 For this pinned subdirectory form, PiG copies declared relative local Packages, extensions, skills, and prompt files into `~/.pig/piglets/<name>.source/<commit>/`. It rewrites only their paths in the registered YAML. It preserves explicit empty tool scopes and executable permissions. Each local path must exist beneath the Piglet file's directory. Absolute paths, parent traversal, symlinks, Git metadata, non-regular files, and closures exceeding 4,096 entries or 32 MiB fail before registration. Keep a Resource's required build files inside its declared local directory. Use explicit YAML fields rather than aliases or merge keys for this form. `extends`, local agent environments, Dev Containers, and file-based secrets remain unsupported for remote registration.
 
 The origin record includes the selected source, commit, original and registered Piglet digests, and each copied file's digest. Inventory checks those digests. Removing the source removes its recorded closure without touching sibling Piglets. Other remote source forms still reject local Resource origins.
 
 A Piglet with relative local Package sources or Resource origins remains source-bound, and `piglet add` rejects it. Run that source directly unless all required relative content is registered with it.
+
+### Add a Piglet from Pigpen
+
+[Pigpen](https://github.com/MichaelKinsy/pigpen) is a repository of Piglets and Packages for PiG. Each Pigpen Piglet has signed Binary releases on GitHub, tagged `<name>/v<version>`. Pull one for your computer:
+
+```bash
+pig piglet pull 'github:MichaelKinsy/pigpen/pig-with-batteries@0.1.0'
+```
+
+```text
+Pulled pig-with-batteries 0.1.0 for linux/amd64, signed by ed25519:fc4fbe0a1ba0f640a360bfd5a1c98874
+  binary: /home/you/.pig/artifacts/piglets/pig-with-batteries/0.1.0/linux/amd64/pig-pig-with-batteries
+  receipt: /home/you/.pig/receipts/piglets/pig-with-batteries/0.1.0/linux/amd64.pull
+```
+
+Run the file on the `binary:` line. It is a complete PiG with the Piglet built in, so it needs no `--piglet` option. It carries the PiG version it was built with, which `--version` prints and which can be older than your `pig`. `pig piglet list` shows it with the scope `binary`. `pig --piglet pig-with-batteries` does not run it, because no source is registered. [Piglet Binaries](/docs/latest/piglet-binaries#pull-a-published-binary) explains the signature checks.
+
+Pigpen's Packages are on npm as `@pi-in-go/pigpen-<name>`, for example `pig install npm:@pi-in-go/pigpen-dirty-repo-guard` ([Packages](/docs/latest/packages)). A Go extension built for an older extension SDK stops PiG at startup with `Extension "<name>" was written for an older SDK` and names the changed call, for example `Context.ConfigHome`, which returns an error since PiG 0.5.0. Remove such a Package with `pig remove npm:<name>` until its author publishes an update.
 
 ## Inspect the active Piglet
 
@@ -263,7 +394,7 @@ An active Piglet adds a read-only command:
 /piglet
 ```
 
-Bare Stock PiG does not register this command because no Piglet is active.
+Bare Stock PiG does not register this command because no Piglet is active. A Piglet that strips it (`strip.commands: [/piglet]`) runs without it, so typed `/piglet` goes to the model like any unknown slash command, as in Pi.
 
 Select a different Piglet in a separate `pig` invocation. Piglets do not bind existing session history to one composition. New work in a resumed session uses the current invocation's tools, policy, secrets, and environment.
 
@@ -285,7 +416,7 @@ pig piglet build research --format binary --out ./pig-research
 
 A script is a thin launcher. A Piglet Binary contains PiG and a fixed Piglet composition. See [Piglet Binaries](/docs/latest/piglet-binaries).
 
-The native builder compiles PiG from source with the host Go toolchain. It uses the PiG checkout that contains the current directory, or `PIG_SOURCE_ROOT`. A release binary without a checkout fetches the source of exactly its own version with `go mod download github.com/MichaelKinsy/PiG@v<version>` and prints `fetching PiG v<version> source (cached after first build)`. `GOPROXY` and `GOSUMDB` verify the download, and later builds reuse the Go module cache and a staged copy under `~/.pig/cache/pig-source/`. The fetch needs no Git and no checkout. A development build has no published source for its version, so it reports `source-unavailable` and asks for a checkout or `PIG_SOURCE_ROOT` (D18).
+The native builder compiles PiG from source with the host Go toolchain. It uses the PiG checkout that contains the current directory, or `PIG_SOURCE_ROOT`. The checkout must be a Git working tree: the builder records its commit, and a plain copy of the source files fails with `resolve Pig source revision: exit status 128`. A release binary without a checkout fetches the source of exactly its own version with `go mod download github.com/MichaelKinsy/PiG@v<version>` and prints `fetching PiG v<version> source (cached after first build)`. `GOPROXY` and `GOSUMDB` verify the download, and later builds reuse the Go module cache and a staged copy under `~/.pig/cache/pig-source/`. The fetch needs no Git and no checkout. A development build has no published source for its version, so it reports `source-unavailable` and asks for a checkout or `PIG_SOURCE_ROOT` (D18).
 
 Without a ready native builder, auto selection uses the built-in `container` builder; `--builder container` selects it explicitly. It runs the build in Podman or Docker: `PIG_CONTAINER_ENGINE=docker|podman` selects the engine, and otherwise Podman wins when both are on `PATH`. It pulls the digest-pinned public Go image of PiG's ci-go CI image, installs exactly the running PiG release in it with `go install`, and runs that release's native builder. The host needs no Go and no PiG source, and the target can be any `linux/<arch>` the engine runs; another architecture needs the engine's emulation. Go modules and build output are cached under `~/.pig/cache/container-go/`. The image contains only the Go toolchain, so a Piglet with packed or isolated Rust extensions needs a configured builder image that also has Cargo. A development build cannot install itself in the container, and the container builder does not sign (D18).
 
@@ -337,6 +468,100 @@ build:
 ```
 
 This setting requires every selected extension to be compiled into its Piglet Binary. A non-fusible extension stops the build.
+
+## Worked example: a read-only reviewer
+
+This example builds the smallest useful Piglet, runs it, and checks what the model receives. The outputs were captured from PiG with a test model.
+
+Save this as `agents/reviewer.yaml`:
+
+```yaml
+name: reviewer
+description: "Reviews a change and lists risks."
+
+systemPrompt:
+  text: "You review changes. List the risks first, then the questions."
+
+tools: [read, grep, find, ls]
+```
+
+Check it and look at it:
+
+```bash
+pig piglet validate ./agents/reviewer.yaml
+pig piglet show ./agents/reviewer.yaml
+```
+
+```text
+OK: reviewer (./agents/reviewer.yaml): 0 extension(s), 0 skill(s)
+```
+
+```text
+Piglet: reviewer
+  Reviews a change and lists risks.
+Source: ./agents/reviewer.yaml
+Built-in tools: read, grep, find, ls
+
+System prompt: You review changes. List the risks first, then the questions. (61 bytes)
+```
+
+Run it, in print mode so that the result is one reply:
+
+```bash
+pig --piglet ./agents/reviewer.yaml -p "Review the last commit"
+```
+
+In the interactive screen, `/piglet` prints the active Piglet and its source:
+
+```text
+ Piglet: reviewer
+ Source: /home/you/project/agents/reviewer.yaml
+```
+
+### What the model receives
+
+Checked in the provider request.
+
+**The system prompt is replaced.** Without a Piglet, the system prompt starts `You are an expert coding assistant operating inside pig, a coding agent harness.` With this Piglet it starts with your text, followed by the working directory (`<cwd>/home/you/project</cwd>`). The Piglet's text is the prompt: it does not add to PiG's. Leave `systemPrompt` out to keep PiG's.
+
+**`tools` is a ceiling, not a list to turn on.** A Piglet's `tools` limits which built-in tools can be active. It does not activate any. The active set still starts from the default (`read`, `bash`, `edit`, `write`) or from your `defaultTools` setting or `--tools` option, and the Piglet removes everything outside its list. With `tools: [read, grep, find, ls]` the model received only `read`, because `bash`, `edit` and `write` are outside the ceiling and `grep`, `find` and `ls` are not in the default set:
+
+| How PiG is started | Tools the model received |
+|---|---|
+| `pig --piglet ./agents/reviewer.yaml` | `read` |
+| `pig --piglet ./agents/reviewer.yaml --tools read,grep,ls,bash` | `read`, `grep`, `ls` (`bash` is cut) |
+| `defaultTools: ["read","grep","find","ls","bash"]` in settings | `read`, `grep`, `find`, `ls` |
+| a Piglet with `tools: []` | none |
+
+To give the reviewer `grep`, `find` and `ls`, pass `--tools read,grep,find,ls`, set `defaultTools`, or build the Piglet into a script that passes the option:
+
+```bash
+pig piglet build reviewer --format script --out ./run-reviewer
+```
+
+```text
+Piglet script written: /home/you/project/run-reviewer
+```
+
+The script is two lines. `"$@"` passes along whatever you type after its name:
+
+```sh
+#!/bin/sh
+exec pig --piglet '/home/you/.pig/piglets/reviewer.yaml' "$@"
+```
+
+For this reviewer, call it as `./run-reviewer --tools read,grep,find,ls`. The script file names the registered copy, so keep that copy ([Command line by example](/docs/latest/cli-examples#piglets) shows `pig piglet add`).
+
+### Mistakes PiG reports
+
+The Piglet format is closed. An unknown field is an error, with the line:
+
+```text
+FAIL: Piglet /home/you/project/agents/reviewer.yaml: parse piglet YAML: yaml: unmarshal errors:
+  line 3: field system not found in type piglet.Piglet
+```
+
+`systemPrompt` takes `text` or `file`. A skill needs an origin: `FAIL: skill "commit": no origin specified`. `pig piglet schema` prints every accepted field.
 
 ## Related documentation
 

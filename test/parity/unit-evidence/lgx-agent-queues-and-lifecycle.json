@@ -1,0 +1,122 @@
+[
+ {
+  "upstream": "packages/agent/src/agent.ts",
+  "package": "./agent",
+  "tests": [
+   "TestClearQueuesReturnNothingAndEmptyOnlyTheirQueues"
+  ],
+  "upstream_reference": "packages/agent/src/agent.ts",
+  "mutation": "agent/agent.go: replace `func (a *Agent) ClearSteeringQueue() { a.steeringQueue.Clear() }` with `func (a *Agent) ClearSteeringQueue() {}`; TestClearQueuesReturnNothingAndEmptyOnlyTheirQueues fails."
+ },
+ {
+  "upstream": "packages/agent/src/agent.ts",
+  "package": "./agent",
+  "tests": [
+   "TestClearQueuesReturnNothingAndEmptyOnlyTheirQueues"
+  ],
+  "upstream_reference": "packages/agent/src/agent.ts",
+  "mutation": "agent/agent.go: replace `func (a *Agent) ClearFollowUpQueue() { a.followUpQueue.Clear() }` with `func (a *Agent) ClearFollowUpQueue() {}`; TestClearQueuesReturnNothingAndEmptyOnlyTheirQueues fails."
+ },
+ {
+  "upstream": "packages/agent/src/agent.ts",
+  "package": "./agent",
+  "tests": [
+   "TestClearQueuesReturnNothingAndEmptyOnlyTheirQueues"
+  ],
+  "upstream_reference": "packages/agent/src/agent.ts",
+  "mutation": "agent/agent.go: replace `a.ClearSteeringQueue()\n\ta.ClearFollowUpQueue()\n}` with `a.ClearSteeringQueue()\n}`; TestClearQueuesReturnNothingAndEmptyOnlyTheirQueues fails."
+ },
+ {
+  "upstream": "packages/agent/src/agent.ts",
+  "package": "./agent",
+  "tests": [
+   "TestAgentResetEmptiesBothQueues"
+  ],
+  "upstream_reference": "packages/agent/src/agent.ts",
+  "mutation": "agent/agent.go: replace `func (a *Agent) HasQueuedMessages() bool {\n\treturn a.steeringQueue.HasItems() || a.followUpQueue.HasItems()` with `func (a *Agent) HasQueuedMessages() bool {\n\treturn a.steeringQueue.HasItems()`; TestAgentResetEmptiesBothQueues fails."
+ },
+ {
+  "upstream": "packages/agent/src/agent.ts",
+  "package": "./agent",
+  "tests": [
+   "TestAgent_KeepsQueuesOnFailedResponseDespiteContinuation",
+   "TestAgent_KeepsQueuesWhenFinishTurnEndsTheRun",
+   "TestAgent_PreviewsNextSelectedQueuedMessagesWithoutConsuming"
+  ],
+  "upstream_reference": "packages/agent/src/agent.ts",
+  "mutation": "agent/agent.go: replace `return a.followUpQueue.Peek()\n}` with `return nil\n}`; TestAgent_KeepsQueuesOnFailedResponseDespiteContinuation, TestAgent_KeepsQueuesWhenFinishTurnEndsTheRun, TestAgent_PreviewsNextSelectedQueuedMessagesWithoutConsuming fails."
+ },
+ {
+  "upstream": "packages/agent/src/agent.ts",
+  "package": "./agent",
+  "tests": [
+   "TestAgentLoop_InjectsQueuedMessagesAfterAllToolCallsComplete"
+  ],
+  "upstream_reference": "packages/agent/src/agent.ts",
+  "mutation": "agent/agent.go: replace `func (a *Agent) Steer(msg AgentMessage) { a.steeringQueue.Enqueue(msg) }` with `func (a *Agent) Steer(msg AgentMessage) { a.followUpQueue.Enqueue(msg) }`; TestAgentLoop_InjectsQueuedMessagesAfterAllToolCallsComplete fails."
+ },
+ {
+  "upstream": "packages/agent/src/agent.ts",
+  "package": "./agent",
+  "tests": [
+   "TestAgent_DefersFollowUpOnFirstContinuationRequest"
+  ],
+  "upstream_reference": "packages/agent/src/agent.ts",
+  "mutation": "agent/agent.go: replace `func (a *Agent) FollowUp(msg AgentMessage) { a.followUpQueue.Enqueue(msg) }` with `func (a *Agent) FollowUp(msg AgentMessage) { a.steeringQueue.Enqueue(msg) }`; TestAgent_DefersFollowUpOnFirstContinuationRequest fails."
+ },
+ {
+  "upstream": "packages/agent/src/agent.ts",
+  "package": "./agent",
+  "tests": [
+   "TestAgentResetEmptiesBothQueues"
+  ],
+  "upstream_reference": "packages/agent/src/agent.ts",
+  "mutation": "agent/agent.go: replace `a.steeringQueue.Clear()\n\ta.followUpQueue.Clear()\n\treturn nil\n}\n\n// SetFinishTurn` with `a.steeringQueue.Clear()\n\treturn nil\n}\n\n// SetFinishTurn`; TestAgentResetEmptiesBothQueues fails."
+ },
+ {
+  "upstream": "packages/agent/src/agent.ts",
+  "package": "./agent",
+  "tests": [
+   "TestAgentStreamFunctionOverrideAndRestore"
+  ],
+  "upstream_reference": "packages/agent/src/agent.ts",
+  "mutation": "agent/agent.go: replace `return a.opts.StreamFn\n}` with `return nil\n}`; TestAgentStreamFunctionOverrideAndRestore fails."
+ },
+ {
+  "upstream": "packages/agent/src/agent.ts",
+  "package": "./agent",
+  "tests": [
+   "TestAgentE2E_HandlesAbortDuringStreaming"
+  ],
+  "upstream_reference": "packages/agent/src/agent.ts",
+  "mutation": "agent/lifecycle.go: replace `if cancel != nil {\n\t\tcancel()\n\t}\n}` with `_ = cancel\n}`; TestAgentE2E_HandlesAbortDuringStreaming fails."
+ },
+ {
+  "upstream": "packages/agent/src/agent.ts",
+  "package": "./agent",
+  "tests": [
+   "TestAgent_WaitForIdleWaitsForAsyncSubscribers"
+  ],
+  "upstream_reference": "packages/agent/src/agent.ts",
+  "mutation": "agent/lifecycle.go: replace `if done != nil {\n\t\t<-done\n\t}` with `_ = done`; TestAgent_WaitForIdleWaitsForAsyncSubscribers fails."
+ },
+ {
+  "upstream": "packages/agent/src/agent.ts",
+  "package": "./agent",
+  "tests": [
+   "TestAgentE2E_EmitsLifecycleUpdatesWhileStreaming"
+  ],
+  "upstream_reference": "packages/agent/src/agent.ts",
+  "mutation": "agent/lifecycle.go: replace `a.listeners = append(a.listeners, entry)` with `_ = entry`; TestAgentE2E_EmitsLifecycleUpdatesWhileStreaming fails."
+ },
+ {
+  "upstream": "packages/agent/src/stream-fn.ts",
+  "package": "./agent",
+  "tests": [
+   "TestConfiguredDefaultStreamFn",
+   "TestAgentLoop_UsesTheConfiguredDefaultWhenAStreamFunctionIsOmitted"
+  ],
+  "upstream_reference": "packages/agent/src/stream-fn.ts",
+  "mutation": "agent/stream_fn.go: replace `defaultStream.fn = fn` with `_ = fn`; TestAgentLoop_UsesTheConfiguredDefaultWhenAStreamFunctionIsOmitted, TestConfiguredDefaultStreamFn fails."
+ }
+]

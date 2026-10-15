@@ -10,18 +10,21 @@ package codingagent
 // same algorithms over the same raw entries.
 
 import (
+	"bytes"
 	"fmt"
 	"math"
-	"net/url"
-	"path/filepath"
 	"slices"
-	"strings"
+	"sync"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
+	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 )
 
 // ExtensionSessionView names the session an extension reads and the facts
@@ -63,9 +66,42 @@ func ExtensionSessionInfo(view ExtensionSessionView) map[string]any {
 		"header":                nil,
 	}
 	if view.Session != nil {
-		info["header"] = view.Session.Header()
+		info["header"] = view.Session.GetHeader()
 	}
 	return info
+}
+
+// ExtensionSessionInfoMemo keeps the encoding of ExtensionSessionInfo between state pushes. The info is a pure function of the values read live on each call (cwd, session directory, whether the session persists, the header), so the memo is keyed by all of them and a change to any one rebuilds it.
+type ExtensionSessionInfoMemo struct {
+	mu         sync.Mutex
+	valid      bool
+	cwd        string
+	dir        string
+	persisted  bool
+	hasSession bool
+	header     SessionHeader
+	encoded    json.RawMessage
+}
+
+// Encoded returns the encoding of ExtensionSessionInfo(view).
+func (m *ExtensionSessionInfoMemo) Encoded(view ExtensionSessionView) (json.RawMessage, error) {
+	dir, persisted := view.sessionDir(), view.persisted()
+	var header SessionHeader
+	if view.Session != nil {
+		header = view.Session.GetHeader()
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.valid && m.cwd == view.CWD && m.dir == dir && m.persisted == persisted && m.hasSession == (view.Session != nil) && m.header.SameRecord(header) {
+		return m.encoded, nil
+	}
+	//portlint:allow mapkeyorder PiG-only wire snapshot of SessionManager getters (session-manager.ts:1148 usesDefaultSessionDir and siblings); every SDK reads it member by member (runtime.mjs:319-332, extensions/sdk/session_manager.go)
+	encoded, err := json.Marshal(ExtensionSessionInfo(view))
+	if err != nil {
+		return nil, err
+	}
+	m.valid, m.cwd, m.dir, m.persisted, m.hasSession, m.header, m.encoded = true, view.CWD, dir, persisted, view.Session != nil, header, encoded
+	return encoded, nil
 }
 
 // sessionReadEntry is the part of a raw session entry the reads inspect.
@@ -84,29 +120,51 @@ type sessionReadLog struct {
 	entries []*sessionReadEntry
 	byID    map[string]*sessionReadEntry
 	leafID  *string
+	// path, when set, is the current branch as GetContextBranch returns it: the projection reads take it instead of walking parent links.
+	path []*sessionReadEntry
 }
 
 func newSessionReadLog(sess *Session) (sessionReadLog, error) {
-	log := sessionReadLog{byID: map[string]*sessionReadEntry{}}
 	if sess == nil {
-		return log, nil
+		return sessionReadLog{byID: map[string]*sessionReadEntry{}}, nil
 	}
-	for _, entry := range sess.Entries() {
-		raw := entry.Raw()
+	return newSessionReadLogOf(sess, sess.entryHandles())
+}
+
+// newSessionReadLogOf is the log of the given entries of sess, which must hold every entry the read inspects.
+func newSessionReadLogOf(sess *Session, entries []SessionEntry) (sessionReadLog, error) {
+	log := sessionReadLog{byID: map[string]*sessionReadEntry{}}
+	raws, err := sessionentry.ReadRaws(entries)
+	if err != nil {
+		return log, err
+	}
+	for i, raw := range raws {
 		parsed := &sessionReadEntry{}
-		if err := json.Unmarshal(raw, parsed); err != nil {
-			return log, fmt.Errorf("decode retained session entry: %w", err)
+		// A lazy entry is a message whose record the load validated and the read verified; the members the reads take from other types are
+		// not read from a message. A record Pi keeps whatever JSON.parse made of it (an array, or an object whose id is a number) has no other
+		// member the reads take as a string.
+		if !sessionentry.IsLazy(entries[i]) && json.Unmarshal(raw, parsed) != nil {
+			*parsed = sessionReadEntry{}
 		}
+		// The session's decode keeps the JavaScript values of id and parentId that are no strings, so the reads key and walk entries as Pi does.
+		base := entries[i].Base()
+		parsed.Type, parsed.ID, parsed.ParentID, parsed.Timestamp = base.Type, base.ID, base.ParentID, base.Timestamp
 		// Upstream's SessionManager holds JSON.parse of each line, so a consumer sees the entry as JSON.stringify writes it: members in insertion order with integer-like keys first, numbers and strings in their JavaScript form.
-		canonical, err := jsonstringify.Canonicalize(raw)
-		if err != nil {
-			return log, fmt.Errorf("decode retained session entry: %w", err)
+		// A record JSON.stringify writes unchanged is the read's own copy (a lazy entry's read buffer or the session's immutable record), so it is
+		// not copied again.
+		if trimmed := bytes.TrimSpace(raw); jsonstringify.IsCanonical(trimmed) {
+			parsed.raw = trimmed
+		} else {
+			canonical, err := jsonstringify.Canonicalize(raw)
+			if err != nil {
+				return log, fmt.Errorf("decode retained session entry: %w", err)
+			}
+			parsed.raw = json.RawMessage(canonical)
 		}
-		parsed.raw = json.RawMessage(canonical)
 		log.entries = append(log.entries, parsed)
 		log.byID[parsed.ID] = parsed
 	}
-	log.leafID = sess.LeafID()
+	log.leafID = sess.GetLeafID()
 	return log, nil
 }
 
@@ -136,12 +194,12 @@ func (l sessionReadLog) branch(fromID *string) []*sessionReadEntry {
 		start = fromID
 	}
 	var path []*sessionReadEntry
-	if start == nil {
+	if start == nil || !sessionentry.Truthy(*start) {
 		return path
 	}
 	for current := l.byID[*start]; current != nil; {
 		path = append(path, current)
-		if current.ParentID == nil || *current.ParentID == "" {
+		if current.ParentID == nil || !sessionentry.Truthy(*current.ParentID) {
 			break
 		}
 		current = l.byID[*current.ParentID]
@@ -153,6 +211,9 @@ func (l sessionReadLog) branch(fromID *string) []*sessionReadEntry {
 // sessionPath mirrors upstream buildSessionPath for the current leaf: no
 // leaf means an empty path.
 func (l sessionReadLog) sessionPath() []*sessionReadEntry {
+	if l.path != nil {
+		return l.path
+	}
 	if l.leafID == nil {
 		return nil
 	}
@@ -212,11 +273,11 @@ func isRawSystemMessageEntry(entry *sessionReadEntry) bool {
 // jsTimestamp is upstream's new Date(timestamp).getTime(): milliseconds, or
 // NaN (JSON null) for a timestamp Date cannot parse.
 func jsTimestamp(timestamp string) any {
-	parsed, err := time.Parse(time.RFC3339Nano, timestamp)
-	if err != nil {
+	ms := ai.DateParse(timestamp)
+	if math.IsNaN(ms) {
 		return nil
 	}
-	return float64(parsed.UnixMilli())
+	return ms
 }
 
 // object is the entry's JSON as an insertion-ordered object, parsed once per read; callers do not modify it.
@@ -251,9 +312,17 @@ func isNullish(raw json.RawMessage) bool { return len(raw) == 0 || string(raw) =
 
 // jsTruthy is JavaScript truthiness of a parsed JSON value.
 func jsTruthy(raw json.RawMessage) bool {
-	switch string(raw) {
-	case "", "null", "false", `""`, "0", "-0":
+	raw = bytes.TrimSpace(raw)
+	if len(raw) == 0 {
 		return false
+	}
+	switch raw[0] {
+	case 'n', 'f':
+		return false
+	case '"':
+		return string(raw) != `""`
+	case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+		return jsnumber.FromJSON(raw) != 0
 	}
 	return true
 }
@@ -567,17 +636,29 @@ func ExtensionSessionRead(view ExtensionSessionView, method string, args json.Ra
 		if view.Session == nil {
 			return nil, nil
 		}
-		return view.Session.LeafID(), nil
+		if leaf := view.Session.GetLeafID(); leaf != nil && sessionentry.IsJSValue(*leaf) {
+			if value, ok := sessionentry.ValueJSON(*leaf); ok {
+				return value, nil
+			}
+			return nil, nil
+		}
+		return view.Session.GetLeafID(), nil
 	case "getHeader":
 		if view.Session == nil {
 			return nil, nil
 		}
-		return view.Session.Header(), nil
+		return view.Session.GetHeader(), nil
 	}
-	log, err := newSessionReadLog(view.Session)
+	log, err := sessionReadLogFor(view.Session, method, params.ID, params.FromID, params.ParentID)
 	if err != nil {
 		return nil, err
 	}
+	return answerSessionRead(log, method, params.ID, params.FromID, params.ParentID)
+}
+
+// answerSessionRead answers a read that inspects entries from log.
+func answerSessionRead(log sessionReadLog, method string, id, fromID, parentID *string) (any, error) {
+	params := struct{ ID, FromID, ParentID *string }{id, fromID, parentID}
 	switch method {
 	case "getEntries":
 		return rawEntries(log.entries), nil
@@ -633,12 +714,36 @@ func ExtensionSessionRead(view ExtensionSessionView, method string, args json.Ra
 // file:// URL expand, any other path stays as given), or empty for the
 // default.
 func ExtensionSessionDir(override string) string {
-	if strings.HasPrefix(override, "file://") {
-		if parsed, err := url.Parse(override); err == nil {
-			return filepath.FromSlash(parsed.Path)
-		}
+	if normalized, err := resolvepath.Normalize(override); err == nil {
+		return normalized
 	}
 	return ExpandTildePath(override)
+}
+
+// HostActionBinder is what a mode's extension bridge offers the host actions bound on it (subprocess.UIBridge.SetHostAction).
+type HostActionBinder interface {
+	SetHostAction(key string, fn any)
+}
+
+// BindAppendEntryAction binds the host's appendEntry action, which every mode serves: upstream's pi.appendEntry and ctx.sessionManager.appendCustomEntry both
+// write the session's log (agent-session.ts _bindExtensionCore). current names the Session to append to, or the error that rejects the action before one
+// exists. appended, when set, runs after a successful append for the mode's own effect (RPC's entry_appended event, the interactive transcript) and gets the
+// direct append request, which only ctx.sessionManager.appendCustomEntry carries.
+func BindAppendEntryAction(bridge HostActionBinder, current func() (*Session, error), appended func(entry CustomEntry, direct *subprocess.DirectEntryAppend) error) {
+	bridge.SetHostAction("appendEntry", func(customType string, data any, direct *subprocess.DirectEntryAppend) error {
+		sess, err := current()
+		if err != nil {
+			return err
+		}
+		entry, err := AppendExtensionEntry(sess, customType, data, direct)
+		if err != nil {
+			return err
+		}
+		if appended == nil {
+			return nil
+		}
+		return appended(entry, direct)
+	})
 }
 
 // AppendExtensionEntry validates or allocates the identity and appends under one Session mutation lock. A rejected direct identity cannot overwrite an existing entry.
@@ -652,7 +757,7 @@ func AppendExtensionEntry(sess *Session, customType string, data any, direct *su
 	if err != nil {
 		return CustomEntry{}, err
 	}
-	entry := CustomEntry{SessionEntryBase: SessionEntryBase{Type: "custom", ID: id, ParentID: sess.LeafID(), Timestamp: timestamp}, CustomType: customType, Data: data}
+	entry := CustomEntry{SessionEntryBase: SessionEntryBase{Type: "custom", ID: id, ParentID: sess.GetLeafID(), Timestamp: timestamp}, CustomType: customType, Data: data}
 	if err := sess.AppendEntry(entry); err != nil {
 		return CustomEntry{}, err
 	}
@@ -677,7 +782,7 @@ func ExtensionEntryIdentity(sess *Session, direct *subprocess.DirectEntryAppend)
 		return "", "", fmt.Errorf("entry id must not be empty")
 	}
 	if sess != nil {
-		if _, exists := sess.EntryByID(direct.ID); exists {
+		if _, exists := sess.GetEntry(direct.ID); exists {
 			return "", "", fmt.Errorf("entry id %s already exists", direct.ID)
 		}
 	}
@@ -685,4 +790,50 @@ func ExtensionEntryIdentity(sess *Session, direct *subprocess.DirectEntryAppend)
 		return "", "", fmt.Errorf("entry timestamp %q: %w", direct.Timestamp, err)
 	}
 	return direct.ID, direct.Timestamp, nil
+}
+
+// sessionReadLogFor builds the log of the entries method reads: one entry, the labels, the children, a branch or the context branch, else
+// every entry. A read of a long session then decodes only what it returns.
+func sessionReadLogFor(sess *Session, method string, id, fromID, parentID *string) (sessionReadLog, error) {
+	if sess == nil {
+		return newSessionReadLog(nil)
+	}
+	var entries []SessionEntry
+	switch method {
+	case "getLeafEntry":
+		if entry, ok := sess.GetLeafEntry(); ok {
+			entries = []SessionEntry{entry}
+		}
+	case "getEntry":
+		if id != nil {
+			if entry, ok := sess.GetEntry(*id); ok {
+				entries = []SessionEntry{entry}
+			}
+		}
+	case "getLabel":
+		entries = sess.getEntriesOfType("label")
+	case "getChildren":
+		entries = sess.getChildrenOf(parentID)
+	case "getBranch":
+		start := sess.GetLeafID()
+		if fromID != nil {
+			start = fromID
+		}
+		if start != nil {
+			entries = sess.branchHandles(*start)
+		}
+	case "buildContextEntries", "buildSessionProjection", "buildSessionContext":
+		log, err := newSessionReadLogOf(sess, sess.GetContextBranch())
+		if err != nil {
+			return log, err
+		}
+		log.path = log.entries
+		if log.path == nil {
+			log.path = []*sessionReadEntry{}
+		}
+		return log, nil
+	default:
+		return newSessionReadLog(sess)
+	}
+	return newSessionReadLogOf(sess, entries)
 }

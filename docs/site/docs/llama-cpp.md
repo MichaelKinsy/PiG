@@ -41,7 +41,7 @@ A single-file model can sit directly in the model directory. Put multimodal and 
     └── large-model-Q4_K_M-00003-of-00003.gguf
 ```
 
-Restart the router after manually adding files. For per-model context sizes and other options, use [llama.cpp model presets](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md#model-presets).
+Restart the router after manually adding files. For per-model context sizes and other options, use [llama.cpp model presets](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md#model-presets). For settings tuned to a specific NVIDIA GPU and model, see [Run PiG with NVIDIA RTX and llama.cpp](nvidia-rtx-llama-cpp.md).
 
 ## Configure PiG
 
@@ -82,13 +82,31 @@ Hugging Face search uses `HF_TOKEN` when set, then checks `$HF_TOKEN_PATH`, `$HF
 
 If other models are loaded, PiG asks whether to unload them first or keep them loaded. PiG does not silently unload models and never deletes model files. The router may be shared with other clients, so `/llama` always displays the router's current state.
 
-Only loaded models appear in `/model`. After loading a model, run `/model` to select it for the current PiG session.
+Loaded and sleeping models appear in `/model`. A sleeping model wakes when you select it. With router autoload enabled, unloaded preset models also appear and load when you select them. With `--no-models-autoload`, load a model through `/llama` before you select it.
 
 If the router disconnects, `/llama` shows **Retry** and **Close**. Retry reconnects and refreshes model state without replaying the interrupted operation.
 
 ## Thinking levels
 
 A model whose chat template reads `enable_thinking` is a reasoning model. PiG offers it the `off`, `minimal`, `low`, `medium` and `high` thinking levels. Each level other than `off` sends `chat_template_kwargs.enable_thinking: true` and a per-request `thinking_budget_tokens` of 1024, 2048, 8192 or 16384 tokens (or your `thinkingBudgets`). `off` sends `enable_thinking: false`. llama-server applies the budget only when its command line sets no `--reasoning-budget`. Pi offers only `off` and `medium` and sends no budget (D90).
+
+## Classification
+
+Classifier models answer typed `choice`, `bool`, and `score` questions about JSON state, like TypeSafe's Jev models. The model reaches them from [`codemode`](codemode.md) scripts, and extensions through `ctx.modelRegistry.classify()`; see [Use classifier models](models.md#use-classifier-models). PiG lists llama.cpp models as classifiers in two ways:
+
+- **Decision models** such as [Julia-1, Laya, Kev, lev, and OpenJev](https://huggingface.co/collections/ggml-org/decision-models-6abf80cca3c83f127060a769) answer natively through llama.cpp's `/v1/systemone` endpoint. They appear only as classifiers, with the `typesafe-system-one` API, and not in `/model`.
+- **Chat models** are also listed as classifiers with the same ID and the `llama-cpp-classify` API, which reads answers from next-token probabilities as described below.
+
+llama.cpp 0.6.0 and later report decision models in the router's model list: their `architecture.output_modalities` contains `decisions`. The router reads this from the GGUF metadata without loading the model, so PiG recognizes unloaded and sleeping decision models too. Older llama.cpp builds do not report it, and PiG lists their decision models as chat models. A model that reports both `text` and `decisions` is listed for chat as well.
+
+### Chat models as classifiers
+
+The model does not generate an answer. Each question becomes one chat prompt: the state, every question of the request, the state again, and then the question with its answers under single-token labels. Labels are letters for a choice (up to 62 options), `Yes`/`No` for a bool, and digits for a score (up to 10 levels). PiG reads the probabilities of the labels as the next token and normalizes them. A choice returns every option's probability and a confidence of `(n * peak - 1) / (n - 1)`; a score returns the expected level.
+
+- Raw label probabilities are usually overconfident. The per-request `temperature` option divides the label logits before normalizing; values above 1 soften the distribution. It changes no answer.
+- Questions run one after another. Everything before the final question is the same for all questions of a request, so the server's prompt cache evaluates it once. The state appears twice, so it needs twice its size in context.
+- Small models may follow instructions written inside the state. The prompt tells the model to judge the state as data, but that is not a guarantee.
+- Hybrid models such as Qwen3.5 cannot rewind a partially cached prompt without context checkpoints. If each question reprocesses the whole state, start the router with `--ctx-checkpoints 32 --checkpoint-min-step 0`.
 
 ## Troubleshooting
 
@@ -100,6 +118,10 @@ curl http://127.0.0.1:8080/models
 ```
 
 - **No models in `/llama`:** Check `--models-dir`, the directory layout, and restart the router.
-- **Model missing from `/model`:** Load it with `/llama` first.
+- **Model missing from `/model` with `--no-models-autoload`:** Load it with `/llama` first.
 - **Load fails or uses too much memory:** Lower `-c` or unload another model.
 - **Server is not in router mode:** Start it without `--model`, `-m`, or `-hf`.
+
+To remove the `llama.cpp` provider and `/llama`, disable `llama.cpp` under Built-in in `pig config`, or set `"extensions": ["-builtin:llama.cpp"]` in [settings](settings.md).
+
+See [upstream Pi's llama.cpp documentation](https://pi.dev/docs/latest/llama-cpp) for the reference implementation.

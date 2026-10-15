@@ -91,7 +91,10 @@ func discoverGitHubVersion(ctx context.Context, client *http.Client, github GitH
 	const pageSize, maxPages = 100, 100
 	best := ""
 	for page := 1; page <= maxPages; page++ {
-		rawURL := fmt.Sprintf("https://api.github.com/repos/%s/releases?per_page=%d&page=%d", github.Repository, pageSize, page)
+		rawURL, err := githubURL("api.github.com", fmt.Sprintf("/repos/%s/releases?per_page=%d&page=%d", github.Repository, pageSize, page))
+		if err != nil {
+			return "", err
+		}
 		data, err := fetchBounded(ctx, client, rawURL, maxIndexBytes)
 		if err != nil {
 			return "", fmt.Errorf("discover GitHub Piglet releases: %w", err)

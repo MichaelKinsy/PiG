@@ -1,4 +1,4 @@
-// D82 W5 oracle for the openai-codex-responses SSE transport (Pi 1.0.3).
+// D82 W5 oracle for the openai-codex-responses SSE transport (Pi 1.1.0).
 //
 // Drives Pi's real pipeline twice:
 //   inproc  Pi's exported `stream` (packages/ai/src/api/openai-codex-responses.ts) against a loopback server, with
@@ -13,6 +13,9 @@
 // more steps after each observation, then stops so the event loop is never starved.
 //
 // usage: PI_PACKAGE_ROOT=<pi-coding-agent dir> node probe.mjs <pi.json> [runs]
+const PIG_UPSTREAM_VERSION = process.env.PIG_UPSTREAM_VERSION; // the pin's display version, from `eval "$(python3 automation/pin/pin.py env)"`
+if (!PIG_UPSTREAM_VERSION) throw new Error('PIG_UPSTREAM_VERSION is not set: run eval "$(python3 automation/pin/pin.py env)" before the probe');
+import { PI_PACKAGE_VERSION } from "../../../../../test/parity/testdata/pi-version.mjs";
 import { createServer } from 'node:http';
 import net from 'node:net';
 import { once } from 'node:events';
@@ -25,7 +28,7 @@ import assert from 'node:assert/strict';
 
 const root = process.env.PI_PACKAGE_ROOT;
 const piAI = root + '/node_modules/@earendil-works/pi-ai/';
-for (const [dir, version] of [[root, '1.0.3'], [piAI, '1.0.3']]) {
+for (const [dir, version] of [[root, PI_PACKAGE_VERSION], [piAI, PI_PACKAGE_VERSION]]) {
   assert.equal(JSON.parse(await readFile(dir + '/package.json', 'utf8')).version, version);
 }
 const { stream } = await import(piAI + 'dist/api/openai-codex-responses.js');
@@ -182,7 +185,7 @@ async function repeat(fn) {
   return first;
 }
 
-const result = { piVersion: '1.0.3', api: 'openai-codex-responses', node: process.version, runs, fixtures: {}, inproc: {}, rpc: {} };
+const result = { piVersion: PIG_UPSTREAM_VERSION, api: 'openai-codex-responses', node: process.version, runs, fixtures: {}, inproc: {}, rpc: {} };
 for (const shape of shapes) result.fixtures[shape] = fixture(shape).join('');
 for (const mode of modes) {
   for (const shape of shapes) {

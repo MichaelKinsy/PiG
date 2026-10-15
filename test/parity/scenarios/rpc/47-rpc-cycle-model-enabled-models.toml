@@ -1,0 +1,45 @@
+# Behavior family: rpc
+# Surface: cycle_model with a scope that comes from the enabledModels setting, with no --models flag.
+#
+# Pi 1.1.0 main.ts resolves the scope from --models or settings.enabledModels (main.ts:811) and passes it to the Session; rpc-mode.ts cycle_model
+# calls session.cycleModel(), which cycles the scoped models when there are any (agent-session.ts:2519-2568) and answers isScoped true. The fixture
+# has three models and enables two: one -> three -> one -> three. Pig's rpc handler built its scope from --models only, so it cycled through all three.
+
+name = "47-rpc-cycle-model-enabled-models"
+description = "cycle_model cycles the models enabled by settings and reports isScoped."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+input_lines = [
+  '{"id":"one","type":"cycle_model"}',
+  '{"id":"two","type":"cycle_model"}',
+  '{"id":"three","type":"cycle_model"}',
+]
+timeout_seconds = 15
+settle_seconds = 1
+
+[env]
+pig = ["PIG_HOME=testdata/multi-model-scoped"]
+pi = ["PI_CODING_AGENT_DIR=testdata/multi-model-scoped/agent"]
+pig_args = ["--offline", "--no-session", "--model", "fixture/model-one"]
+pi_args = ["--offline", "--no-session", "--model", "fixture/model-one"]
+
+[assert]
+exit_code = 0
+both_contain = [
+  '"id":"one","type":"response","command":"cycle_model","success":true,"data":{"model":{"id":"model-three","name":"Model Three"',
+  '"id":"two","type":"response","command":"cycle_model","success":true,"data":{"model":{"id":"model-one","name":"Model One"',
+  '"id":"three","type":"response","command":"cycle_model","success":true,"data":{"model":{"id":"model-three","name":"Model Three"',
+  '"isScoped":true',
+]
+both_not_contain = [
+  '"success":false',
+  '"id":"model-two"',
+]
+output_normalized_equal = true
+runs = 3

@@ -13,8 +13,9 @@ use serde_json::json;
 use crate::protocol::Connection;
 
 /// Returned by a value-returning login callback when the user dismissed the
-/// host prompt.
-pub const OAUTH_CANCELLED: &str = "oauth prompt cancelled";
+/// host prompt. It is Pi's "Login cancelled", the rejection of a cancelled
+/// login prompt, so a flow that returns it ends the login as cancelled.
+pub const OAUTH_CANCELLED: &str = "Login cancelled";
 
 /// Pi's OAuth token object (`packages/ai/src/auth/types.ts` `OAuthCredentials`). Field names are the wire
 /// shape shared with the host and core.

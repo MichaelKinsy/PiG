@@ -1,0 +1,966 @@
+{
+ "strings": [
+  {
+   "input": "#fff",
+   "ok": true,
+   "kind": "rgb",
+   "rgb": {
+    "r": 255,
+    "g": 255,
+    "b": 255
+   },
+   "hex": "#ffffff",
+   "fg256": "\u001b[38;5;231m",
+   "fgTrue": "\u001b[38;2;255;255;255m",
+   "oklch": {
+    "l": 0.9999999999999997,
+    "c": 4.996003610813204e-16,
+    "h": 180
+   }
+  },
+  {
+   "input": "#FFF",
+   "ok": true,
+   "kind": "rgb",
+   "rgb": {
+    "r": 255,
+    "g": 255,
+    "b": 255
+   },
+   "hex": "#ffffff",
+   "fg256": "\u001b[38;5;231m",
+   "fgTrue": "\u001b[38;2;255;255;255m",
+   "oklch": {
+    "l": 0.9999999999999997,
+    "c": 4.996003610813204e-16,
+    "h": 180
+   }
+  },
+  {
+   "input": "#ffffff",
+   "ok": true,
+   "kind": "rgb",
+   "rgb": {
+    "r": 255,
+    "g": 255,
+    "b": 255
+   },
+   "hex": "#ffffff",
+   "fg256": "\u001b[38;5;231m",
+   "fgTrue": "\u001b[38;2;255;255;255m",
+   "oklch": {
+    "l": 0.9999999999999997,
+    "c": 4.996003610813204e-16,
+    "h": 180
+   }
+  },
+  {
+   "input": "#FfA0b1",
+   "ok": true,
+   "kind": "rgb",
+   "rgb": {
+    "r": 255,
+    "g": 160,
+    "b": 177
+   },
+   "hex": "#ffa0b1",
+   "fg256": "\u001b[38;5;217m",
+   "fgTrue": "\u001b[38;2;255;160;177m",
+   "oklch": {
+    "l": 0.8058531444606437,
+    "c": 0.11429452081797514,
+    "h": 8.330268564703886
+   }
+  },
+  {
+   "input": "#ffff",
+   "ok": false,
+   "error": "Invalid color value: #ffff"
+  },
+  {
+   "input": "#ff",
+   "ok": false,
+   "error": "Invalid color value: #ff"
+  },
+  {
+   "input": "#gggggg",
+   "ok": false,
+   "error": "Invalid color value: #gggggg"
+  },
+  {
+   "input": "# fff",
+   "ok": false,
+   "error": "Invalid color value: # fff"
+  },
+  {
+   "input": "#fff ",
+   "ok": false,
+   "error": "Invalid color value: #fff "
+  },
+  {
+   "input": " #fff",
+   "ok": false,
+   "error": "Invalid color value:  #fff"
+  },
+  {
+   "input": "fff",
+   "ok": false,
+   "error": "Invalid color value: fff"
+  },
+  {
+   "input": "oklch(50% 0.1 120)",
+   "ok": true,
+   "kind": "oklch",
+   "rgb": {
+    "r": 92,
+    "g": 107,
+    "b": 33
+   },
+   "hex": "#5c6b21",
+   "fg256": "\u001b[38;5;58m",
+   "fgTrue": "\u001b[38;2;92;107;33m",
+   "oklch": {
+    "l": 0.5,
+    "c": 0.1,
+    "h": 120
+   }
+  },
+  {
+   "input": "oklch(0.5 0.1 120)",
+   "ok": true,
+   "kind": "oklch",
+   "rgb": {
+    "r": 92,
+    "g": 107,
+    "b": 33
+   },
+   "hex": "#5c6b21",
+   "fg256": "\u001b[38;5;58m",
+   "fgTrue": "\u001b[38;2;92;107;33m",
+   "oklch": {
+    "l": 0.5,
+    "c": 0.1,
+    "h": 120
+   }
+  },
+  {
+   "input": "OKLCH(0.5 0.1 120deg)",
+   "ok": true,
+   "kind": "oklch",
+   "rgb": {
+    "r": 92,
+    "g": 107,
+    "b": 33
+   },
+   "hex": "#5c6b21",
+   "fg256": "\u001b[38;5;58m",
+   "fgTrue": "\u001b[38;2;92;107;33m",
+   "oklch": {
+    "l": 0.5,
+    "c": 0.1,
+    "h": 120
+   }
+  },
+  {
+   "input": "oklch( 0.5   0.1   120 )",
+   "ok": true,
+   "kind": "oklch",
+   "rgb": {
+    "r": 92,
+    "g": 107,
+    "b": 33
+   },
+   "hex": "#5c6b21",
+   "fg256": "\u001b[38;5;58m",
+   "fgTrue": "\u001b[38;2;92;107;33m",
+   "oklch": {
+    "l": 0.5,
+    "c": 0.1,
+    "h": 120
+   }
+  },
+  {
+   "input": "oklch(0.5 0.1 120DEG)",
+   "ok": true,
+   "kind": "oklch",
+   "rgb": {
+    "r": 92,
+    "g": 107,
+    "b": 33
+   },
+   "hex": "#5c6b21",
+   "fg256": "\u001b[38;5;58m",
+   "fgTrue": "\u001b[38;2;92;107;33m",
+   "oklch": {
+    "l": 0.5,
+    "c": 0.1,
+    "h": 120
+   }
+  },
+  {
+   "input": "oklch(50 % 0.1 120)",
+   "ok": false,
+   "error": "Invalid color value: oklch(50 % 0.1 120)"
+  },
+  {
+   "input": "oklch(.5 .1 .5)",
+   "ok": true,
+   "kind": "oklch",
+   "rgb": {
+    "r": 144,
+    "g": 73,
+    "b": 96
+   },
+   "hex": "#904960",
+   "fg256": "\u001b[38;5;95m",
+   "fgTrue": "\u001b[38;2;144;73;96m",
+   "oklch": {
+    "l": 0.5,
+    "c": 0.1,
+    "h": 0.5
+   }
+  },
+  {
+   "input": "oklch(5. 1. 1.)",
+   "ok": false,
+   "error": "l must be between 0 and 1: 5"
+  },
+  {
+   "input": "oklch(+0.5 +0.1 -30)",
+   "ok": true,
+   "kind": "oklch",
+   "rgb": {
+    "r": 131,
+    "g": 77,
+    "b": 126
+   },
+   "hex": "#834d7e",
+   "fg256": "\u001b[38;5;96m",
+   "fgTrue": "\u001b[38;2;131;77;126m",
+   "oklch": {
+    "l": 0.5,
+    "c": 0.1,
+    "h": 330
+   }
+  },
+  {
+   "input": "oklch(0.5 0.1 -30)",
+   "ok": true,
+   "kind": "oklch",
+   "rgb": {
+    "r": 131,
+    "g": 77,
+    "b": 126
+   },
+   "hex": "#834d7e",
+   "fg256": "\u001b[38;5;96m",
+   "fgTrue": "\u001b[38;2;131;77;126m",
+   "oklch": {
+    "l": 0.5,
+    "c": 0.1,
+    "h": 330
+   }
+  },
+  {
+   "input": "oklch(0.5 0.1 725)",
+   "ok": true,
+   "kind": "oklch",
+   "rgb": {
+    "r": 146,
+    "g": 73,
+    "b": 91
+   },
+   "hex": "#92495b",
+   "fg256": "\u001b[38;5;95m",
+   "fgTrue": "\u001b[38;2;146;73;91m",
+   "oklch": {
+    "l": 0.5,
+    "c": 0.1,
+    "h": 5
+   }
+  },
+  {
+   "input": "oklch(1e-1 1e-1 1e2)",
+   "ok": true,
+   "kind": "oklch",
+   "rgb": {
+    "r": 4,
+    "g": 3,
+    "b": 0
+   },
+   "hex": "#040300",
+   "fg256": "\u001b[38;5;16m",
+   "fgTrue": "\u001b[38;2;4;3;0m",
+   "oklch": {
+    "l": 0.1,
+    "c": 0.1,
+    "h": 100
+   }
+  },
+  {
+   "input": "oklch(1E-1 1E-1 1E2)",
+   "ok": true,
+   "kind": "oklch",
+   "rgb": {
+    "r": 4,
+    "g": 3,
+    "b": 0
+   },
+   "hex": "#040300",
+   "fg256": "\u001b[38;5;16m",
+   "fgTrue": "\u001b[38;2;4;3;0m",
+   "oklch": {
+    "l": 0.1,
+    "c": 0.1,
+    "h": 100
+   }
+  },
+  {
+   "input": "oklch(0.5 -0.1 10)",
+   "ok": false,
+   "error": "c must not be negative: -0.1"
+  },
+  {
+   "input": "oklch(1.5 0.1 10)",
+   "ok": false,
+   "error": "l must be between 0 and 1: 1.5"
+  },
+  {
+   "input": "oklch(150% 0.1 10)",
+   "ok": false,
+   "error": "l must be between 0 and 1: 1.5"
+  },
+  {
+   "input": "oklch(0.5 0.1)",
+   "ok": false,
+   "error": "Invalid color value: oklch(0.5 0.1)"
+  },
+  {
+   "input": "oklch(0.5,0.1,10)",
+   "ok": false,
+   "error": "Invalid color value: oklch(0.5,0.1,10)"
+  },
+  {
+   "input": "oklch(0.5 0.1 10) ",
+   "ok": false,
+   "error": "Invalid color value: oklch(0.5 0.1 10) "
+  },
+  {
+   "input": "oklch(0.5 0.1 10deg )",
+   "ok": true,
+   "kind": "oklch",
+   "rgb": {
+    "r": 147,
+    "g": 73,
+    "b": 86
+   },
+   "hex": "#934956",
+   "fg256": "\u001b[38;5;95m",
+   "fgTrue": "\u001b[38;2;147;73;86m",
+   "oklch": {
+    "l": 0.5,
+    "c": 0.1,
+    "h": 10
+   }
+  },
+  {
+   "input": "oklch(0.5 0.1 10 deg)",
+   "ok": false,
+   "error": "Invalid color value: oklch(0.5 0.1 10 deg)"
+  },
+  {
+   "input": "oklch(0.5%  0.1 10)",
+   "ok": true,
+   "kind": "oklch",
+   "rgb": {
+    "r": 0,
+    "g": 0,
+    "b": 0
+   },
+   "hex": "#000000",
+   "fg256": "\u001b[38;5;16m",
+   "fgTrue": "\u001b[38;2;0;0;0m",
+   "oklch": {
+    "l": 0.005,
+    "c": 0.1,
+    "h": 10
+   }
+  },
+  {
+   "input": "oklch(0.5 0.1% 10)",
+   "ok": false,
+   "error": "Invalid color value: oklch(0.5 0.1% 10)"
+  },
+  {
+   "input": "oklch(100% 0.3 150)",
+   "ok": true,
+   "kind": "oklch",
+   "rgb": {
+    "r": 255,
+    "g": 255,
+    "b": 255
+   },
+   "hex": "#ffffff",
+   "fg256": "\u001b[38;5;231m",
+   "fgTrue": "\u001b[38;2;255;255;255m",
+   "oklch": {
+    "l": 1,
+    "c": 0.3,
+    "h": 150
+   }
+  },
+  {
+   "input": "oklch(0% 0.3 150)",
+   "ok": true,
+   "kind": "oklch",
+   "rgb": {
+    "r": 0,
+    "g": 0,
+    "b": 0
+   },
+   "hex": "#000000",
+   "fg256": "\u001b[38;5;16m",
+   "fgTrue": "\u001b[38;2;0;0;0m",
+   "oklch": {
+    "l": 0,
+    "c": 0.3,
+    "h": 150
+   }
+  },
+  {
+   "input": "oklch(0.5 0.1 1e400)",
+   "ok": false,
+   "error": "h must be finite"
+  },
+  {
+   "input": "oklch(1e400 0.1 1)",
+   "ok": false,
+   "error": "l must be finite"
+  },
+  {
+   "input": "oklch(0.5 1e400 1)",
+   "ok": false,
+   "error": "c must be finite"
+  },
+  {
+   "input": "oklch( 0.5 0.1 10 )",
+   "ok": true,
+   "kind": "oklch",
+   "rgb": {
+    "r": 147,
+    "g": 73,
+    "b": 86
+   },
+   "hex": "#934956",
+   "fg256": "\u001b[38;5;95m",
+   "fgTrue": "\u001b[38;2;147;73;86m",
+   "oklch": {
+    "l": 0.5,
+    "c": 0.1,
+    "h": 10
+   }
+  },
+  {
+   "input": "oklch( 0.5 0.1 10)",
+   "ok": true,
+   "kind": "oklch",
+   "rgb": {
+    "r": 147,
+    "g": 73,
+    "b": 86
+   },
+   "hex": "#934956",
+   "fg256": "\u001b[38;5;95m",
+   "fgTrue": "\u001b[38;2;147;73;86m",
+   "oklch": {
+    "l": 0.5,
+    "c": 0.1,
+    "h": 10
+   }
+  },
+  {
+   "input": "oklch(﻿0.5 0.1 10)",
+   "ok": true,
+   "kind": "oklch",
+   "rgb": {
+    "r": 147,
+    "g": 73,
+    "b": 86
+   },
+   "hex": "#934956",
+   "fg256": "\u001b[38;5;95m",
+   "fgTrue": "\u001b[38;2;147;73;86m",
+   "oklch": {
+    "l": 0.5,
+    "c": 0.1,
+    "h": 10
+   }
+  },
+  {
+   "input": "oklch(0.5　0.1　10)",
+   "ok": true,
+   "kind": "oklch",
+   "rgb": {
+    "r": 147,
+    "g": 73,
+    "b": 86
+   },
+   "hex": "#934956",
+   "fg256": "\u001b[38;5;95m",
+   "fgTrue": "\u001b[38;2;147;73;86m",
+   "oklch": {
+    "l": 0.5,
+    "c": 0.1,
+    "h": 10
+   }
+  },
+  {
+   "input": "oklch(0.5 0.1 10)",
+   "ok": false,
+   "error": "Invalid color value: oklch(0.5 0.1 10)"
+  },
+  {
+   "input": "oklch(0.5\u000b0.1 10)",
+   "ok": true,
+   "kind": "oklch",
+   "rgb": {
+    "r": 147,
+    "g": 73,
+    "b": 86
+   },
+   "hex": "#934956",
+   "fg256": "\u001b[38;5;95m",
+   "fgTrue": "\u001b[38;2;147;73;86m",
+   "oklch": {
+    "l": 0.5,
+    "c": 0.1,
+    "h": 10
+   }
+  },
+  {
+   "input": "okhsl(250 100% 50%)",
+   "ok": true,
+   "kind": "rgb",
+   "rgb": {
+    "r": 0,
+    "g": 121,
+    "b": 209
+   },
+   "hex": "#0079d1",
+   "fg256": "\u001b[38;5;32m",
+   "fgTrue": "\u001b[38;2;0;121;209m",
+   "oklch": {
+    "l": 0.5679673150540463,
+    "c": 0.16174459046849388,
+    "h": 250.22865088720016
+   }
+  },
+  {
+   "input": "okhsl(250deg 1 0.5)",
+   "ok": true,
+   "kind": "rgb",
+   "rgb": {
+    "r": 0,
+    "g": 121,
+    "b": 209
+   },
+   "hex": "#0079d1",
+   "fg256": "\u001b[38;5;32m",
+   "fgTrue": "\u001b[38;2;0;121;209m",
+   "oklch": {
+    "l": 0.5679673150540463,
+    "c": 0.16174459046849388,
+    "h": 250.22865088720016
+   }
+  },
+  {
+   "input": "okhsl(250 160% 55%)",
+   "ok": false,
+   "error": "s must be between 0 and 1: 1.6"
+  },
+  {
+   "input": "okhsl(250 50% 150%)",
+   "ok": false,
+   "error": "l must be between 0 and 1: 1.5"
+  },
+  {
+   "input": "okhsl(250 0.5 0.5%)",
+   "ok": true,
+   "kind": "rgb",
+   "rgb": {
+    "r": 0,
+    "g": 0,
+    "b": 0
+   },
+   "hex": "#000000",
+   "fg256": "\u001b[38;5;16m",
+   "fgTrue": "\u001b[38;2;0;0;0m",
+   "oklch": {
+    "l": 0,
+    "c": 0,
+    "h": 0
+   }
+  },
+  {
+   "input": "OKHSL( 10  50%  50% )",
+   "ok": true,
+   "kind": "rgb",
+   "rgb": {
+    "r": 172,
+    "g": 91,
+    "b": 105
+   },
+   "hex": "#ac5b69",
+   "fg256": "\u001b[38;5;131m",
+   "fgTrue": "\u001b[38;2;172;91;105m",
+   "oklch": {
+    "l": 0.5702869216983353,
+    "c": 0.10620616958761539,
+    "h": 10.027245677739813
+   }
+  },
+  {
+   "input": "okhsl(-10 50% 50%)",
+   "ok": true,
+   "kind": "rgb",
+   "rgb": {
+    "r": 167,
+    "g": 90,
+    "b": 128
+   },
+   "hex": "#a75a80",
+   "fg256": "\u001b[38;5;132m",
+   "fgTrue": "\u001b[38;2;167;90;128m",
+   "oklch": {
+    "l": 0.5692918840083816,
+    "c": 0.11055745367269593,
+    "h": 350.2416218033871
+   }
+  },
+  {
+   "input": "okhsl(370 50% 50%)",
+   "ok": true,
+   "kind": "rgb",
+   "rgb": {
+    "r": 172,
+    "g": 91,
+    "b": 105
+   },
+   "hex": "#ac5b69",
+   "fg256": "\u001b[38;5;131m",
+   "fgTrue": "\u001b[38;2;172;91;105m",
+   "oklch": {
+    "l": 0.5702869216983353,
+    "c": 0.10620616958761539,
+    "h": 10.027245677739813
+   }
+  },
+  {
+   "input": "okhsl(1e2 5e-1 5e-1)",
+   "ok": true,
+   "kind": "rgb",
+   "rgb": {
+    "r": 129,
+    "g": 120,
+    "b": 67
+   },
+   "hex": "#817843",
+   "fg256": "\u001b[38;5;101m",
+   "fgTrue": "\u001b[38;2;129;120;67m",
+   "oklch": {
+    "l": 0.5683401978247765,
+    "c": 0.07367847158431265,
+    "h": 99.84931554035825
+   }
+  },
+  {
+   "input": "okhsl(0 0 0)",
+   "ok": true,
+   "kind": "rgb",
+   "rgb": {
+    "r": 0,
+    "g": 0,
+    "b": 0
+   },
+   "hex": "#000000",
+   "fg256": "\u001b[38;5;16m",
+   "fgTrue": "\u001b[38;2;0;0;0m",
+   "oklch": {
+    "l": 0,
+    "c": 0,
+    "h": 0
+   }
+  },
+  {
+   "input": "okhsl(0 0 1)",
+   "ok": true,
+   "kind": "rgb",
+   "rgb": {
+    "r": 255,
+    "g": 255,
+    "b": 255
+   },
+   "hex": "#ffffff",
+   "fg256": "\u001b[38;5;231m",
+   "fgTrue": "\u001b[38;2;255;255;255m",
+   "oklch": {
+    "l": 0.9999999999999997,
+    "c": 4.996003610813204e-16,
+    "h": 180
+   }
+  },
+  {
+   "input": "okhsl(0 1 1)",
+   "ok": true,
+   "kind": "rgb",
+   "rgb": {
+    "r": 255,
+    "g": 255,
+    "b": 255
+   },
+   "hex": "#ffffff",
+   "fg256": "\u001b[38;5;231m",
+   "fgTrue": "\u001b[38;2;255;255;255m",
+   "oklch": {
+    "l": 0.9999999999999997,
+    "c": 4.996003610813204e-16,
+    "h": 180
+   }
+  },
+  {
+   "input": "okhsl(0 1 0)",
+   "ok": true,
+   "kind": "rgb",
+   "rgb": {
+    "r": 0,
+    "g": 0,
+    "b": 0
+   },
+   "hex": "#000000",
+   "fg256": "\u001b[38;5;16m",
+   "fgTrue": "\u001b[38;2;0;0;0m",
+   "oklch": {
+    "l": 0,
+    "c": 0,
+    "h": 0
+   }
+  },
+  {
+   "input": "okhsl(180 100% 100%)",
+   "ok": true,
+   "kind": "rgb",
+   "rgb": {
+    "r": 255,
+    "g": 255,
+    "b": 255
+   },
+   "hex": "#ffffff",
+   "fg256": "\u001b[38;5;231m",
+   "fgTrue": "\u001b[38;2;255;255;255m",
+   "oklch": {
+    "l": 0.9999999999999997,
+    "c": 4.996003610813204e-16,
+    "h": 180
+   }
+  },
+  {
+   "input": "okhsl( 250 100% 50%)",
+   "ok": true,
+   "kind": "rgb",
+   "rgb": {
+    "r": 0,
+    "g": 121,
+    "b": 209
+   },
+   "hex": "#0079d1",
+   "fg256": "\u001b[38;5;32m",
+   "fgTrue": "\u001b[38;2;0;121;209m",
+   "oklch": {
+    "l": 0.5679673150540463,
+    "c": 0.16174459046849388,
+    "h": 250.22865088720016
+   }
+  },
+  {
+   "input": "okhsl(250 100%50%)",
+   "ok": false,
+   "error": "Invalid color value: okhsl(250 100%50%)"
+  },
+  {
+   "input": "okhsl(250 100 % 50%)",
+   "ok": false,
+   "error": "Invalid color value: okhsl(250 100 % 50%)"
+  },
+  {
+   "input": "okhsl(250% 100% 50%)",
+   "ok": false,
+   "error": "Invalid color value: okhsl(250% 100% 50%)"
+  },
+  {
+   "input": "",
+   "ok": false,
+   "error": "Invalid color value: "
+  },
+  {
+   "input": "red",
+   "ok": false,
+   "error": "Invalid color value: red"
+  },
+  {
+   "input": "rgb(1 2 3)",
+   "ok": false,
+   "error": "Invalid color value: rgb(1 2 3)"
+  },
+  {
+   "input": "oklch()",
+   "ok": false,
+   "error": "Invalid color value: oklch()"
+  },
+  {
+   "input": "oklch(a b c)",
+   "ok": false,
+   "error": "Invalid color value: oklch(a b c)"
+  },
+  {
+   "input": "okhsl(250 100% 50%) extra",
+   "ok": false,
+   "error": "Invalid color value: okhsl(250 100% 50%) extra"
+  },
+  {
+   "input": "okhsl(250,100%,50%)",
+   "ok": false,
+   "error": "Invalid color value: okhsl(250,100%,50%)"
+  },
+  {
+   "input": "oklch(0.5 0.1 10)\n",
+   "ok": false,
+   "error": "Invalid color value: oklch(0.5 0.1 10)\n"
+  },
+  {
+   "input": "\noklch(0.5 0.1 10)",
+   "ok": false,
+   "error": "Invalid color value: \noklch(0.5 0.1 10)"
+  },
+  {
+   "input": "#fff\n",
+   "ok": false,
+   "error": "Invalid color value: #fff\n"
+  },
+  {
+   "input": "#fff ",
+   "ok": false,
+   "error": "Invalid color value: #fff "
+  }
+ ],
+ "numbers": [
+  {
+   "input": "0",
+   "ok": true,
+   "index": 0,
+   "rgb": {
+    "r": 0,
+    "g": 0,
+    "b": 0
+   },
+   "fg256": "\u001b[38;5;0m",
+   "fgTrue": "\u001b[38;5;0m"
+  },
+  {
+   "input": "1",
+   "ok": true,
+   "index": 1,
+   "rgb": {
+    "r": 128,
+    "g": 0,
+    "b": 0
+   },
+   "fg256": "\u001b[38;5;1m",
+   "fgTrue": "\u001b[38;5;1m"
+  },
+  {
+   "input": "15",
+   "ok": true,
+   "index": 15,
+   "rgb": {
+    "r": 255,
+    "g": 255,
+    "b": 255
+   },
+   "fg256": "\u001b[38;5;15m",
+   "fgTrue": "\u001b[38;5;15m"
+  },
+  {
+   "input": "16",
+   "ok": true,
+   "index": 16,
+   "rgb": {
+    "r": 0,
+    "g": 0,
+    "b": 0
+   },
+   "fg256": "\u001b[38;5;16m",
+   "fgTrue": "\u001b[38;5;16m"
+  },
+  {
+   "input": "231",
+   "ok": true,
+   "index": 231,
+   "rgb": {
+    "r": 255,
+    "g": 255,
+    "b": 255
+   },
+   "fg256": "\u001b[38;5;231m",
+   "fgTrue": "\u001b[38;5;231m"
+  },
+  {
+   "input": "232",
+   "ok": true,
+   "index": 232,
+   "rgb": {
+    "r": 8,
+    "g": 8,
+    "b": 8
+   },
+   "fg256": "\u001b[38;5;232m",
+   "fgTrue": "\u001b[38;5;232m"
+  },
+  {
+   "input": "255",
+   "ok": true,
+   "index": 255,
+   "rgb": {
+    "r": 238,
+    "g": 238,
+    "b": 238
+   },
+   "fg256": "\u001b[38;5;255m",
+   "fgTrue": "\u001b[38;5;255m"
+  },
+  {
+   "input": "256",
+   "ok": false,
+   "error": "ANSI color index must be an integer from 0 to 255: 256"
+  },
+  {
+   "input": "-1",
+   "ok": false,
+   "error": "ANSI color index must be an integer from 0 to 255: -1"
+  },
+  {
+   "input": "1.5",
+   "ok": false,
+   "error": "ANSI color index must be an integer from 0 to 255: 1.5"
+  },
+  {
+   "input": "NaN",
+   "ok": false,
+   "error": "ANSI color index must be an integer from 0 to 255: NaN"
+  },
+  {
+   "input": "Infinity",
+   "ok": false,
+   "error": "ANSI color index must be an integer from 0 to 255: Infinity"
+  }
+ ]
+}

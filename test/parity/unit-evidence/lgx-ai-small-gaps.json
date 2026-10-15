@@ -1,0 +1,254 @@
+[
+ {
+  "upstream": "packages/ai/src/utils/event-stream.ts",
+  "package": "./ai",
+  "tests": [
+   "TestEventStreamQueuesSettlesAndEnds"
+  ],
+  "upstream_reference": "packages/ai/src/utils/event-stream.ts",
+  "mutation": "ai/event_stream_generic.go: replace `if s.done {\n\t\treturn\n\t}\n\tif s.isComplete(event) {` with `if s.isComplete(event) {`; TestEventStreamQueuesSettlesAndEnds fails."
+ },
+ {
+  "upstream": "packages/ai/src/utils/event-stream.ts",
+  "package": "./ai",
+  "tests": [
+   "TestEventStreamQueuesSettlesAndEnds"
+  ],
+  "upstream_reference": "packages/ai/src/utils/event-stream.ts",
+  "mutation": "ai/event_stream_generic.go: replace `if s.isComplete(event) {\n\t\ts.done = true\n\t\ts.settle(s.extractResult(event))\n\t}` with `if s.isComplete(event) {\n\t\ts.settle(s.extractResult(event))\n\t}`; TestEventStreamQueuesSettlesAndEnds fails."
+ },
+ {
+  "upstream": "packages/ai/src/utils/event-stream.ts",
+  "package": "./ai",
+  "tests": [
+   "TestEventStreamQueuesSettlesAndEnds"
+  ],
+  "upstream_reference": "packages/ai/src/utils/event-stream.ts",
+  "mutation": "ai/event_stream_generic.go: replace `s.done = true\n\t\ts.settle(s.extractResult(event))` with `s.done = true`; TestEventStreamQueuesSettlesAndEnds fails."
+ },
+ {
+  "upstream": "packages/ai/src/utils/event-stream.ts",
+  "package": "./ai",
+  "tests": [
+   "TestEventStreamQueuesSettlesAndEnds"
+  ],
+  "upstream_reference": "packages/ai/src/utils/event-stream.ts",
+  "mutation": "ai/event_stream_generic.go: replace `waiter := s.waiting[0]\n\t\ts.waiting = s.waiting[1:]\n\t\twaiter <- event\n\t\treturn` with `s.queue = append(s.queue, event)\n\t\treturn`; TestEventStreamQueuesSettlesAndEnds fails."
+ },
+ {
+  "upstream": "packages/ai/src/utils/event-stream.ts",
+  "package": "./ai",
+  "tests": [
+   "TestEventStreamQueuesSettlesAndEnds"
+  ],
+  "upstream_reference": "packages/ai/src/utils/event-stream.ts",
+  "mutation": "ai/event_stream_generic.go: replace `if len(result) > 0 {\n\t\ts.settle(result[0])\n\t}` with `if len(result) > 1 {\n\t\ts.settle(result[0])\n\t}`; TestEventStreamQueuesSettlesAndEnds fails."
+ },
+ {
+  "upstream": "packages/ai/src/utils/event-stream.ts",
+  "package": "./ai",
+  "tests": [
+   "TestEventStreamQueuesSettlesAndEnds"
+  ],
+  "upstream_reference": "packages/ai/src/utils/event-stream.ts",
+  "mutation": "ai/event_stream_generic.go: replace `for _, waiter := range s.waiting {\n\t\tclose(waiter)\n\t}\n\ts.waiting = nil` with `s.waiting = nil`; TestEventStreamQueuesSettlesAndEnds fails."
+ },
+ {
+  "upstream": "packages/ai/src/utils/event-stream.ts",
+  "package": "./ai",
+  "tests": [
+   "TestEventStreamQueuesSettlesAndEnds"
+  ],
+  "upstream_reference": "packages/ai/src/utils/event-stream.ts",
+  "mutation": "ai/event_stream_generic.go: replace `if s.closed {\n\t\treturn\n\t}\n\ts.closed = true` with `s.closed = true`; TestEventStreamQueuesSettlesAndEnds fails."
+ },
+ {
+  "upstream": "packages/ai/src/utils/event-stream.ts",
+  "package": "./ai",
+  "tests": [
+   "TestEventStreamQueuesSettlesAndEnds"
+  ],
+  "upstream_reference": "packages/ai/src/utils/event-stream.ts",
+  "mutation": "ai/event_stream_generic.go: replace `if !yield(event) {\n\t\t\t\t\treturn\n\t\t\t\t}\n\t\t\t\tcontinue` with `yield(event)\n\t\t\t\tcontinue`; TestEventStreamQueuesSettlesAndEnds fails."
+ },
+ {
+  "upstream": "packages/ai/src/utils/event-stream.ts",
+  "package": "./ai",
+  "tests": [
+   "TestEventStreamQueuesSettlesAndEnds"
+  ],
+  "upstream_reference": "packages/ai/src/utils/event-stream.ts",
+  "mutation": "ai/event_stream_generic.go: replace `if s.done {\n\t\t\t\ts.mu.Unlock()\n\t\t\t\treturn\n\t\t\t}` with `if false {\n\t\t\t\ts.mu.Unlock()\n\t\t\t\treturn\n\t\t\t}`; TestEventStreamQueuesSettlesAndEnds fails."
+ },
+ {
+  "upstream": "packages/ai/src/utils/event-stream.ts",
+  "package": "./ai",
+  "tests": [
+   "TestEventStreamQueuesSettlesAndEnds"
+  ],
+  "upstream_reference": "packages/ai/src/utils/event-stream.ts",
+  "mutation": "ai/event_stream_generic.go: replace `return zero, context.Cause(ctx)` with `return zero, ctx.Err()`; TestEventStreamQueuesSettlesAndEnds fails."
+ },
+ {
+  "upstream": "packages/ai/src/models-store.ts",
+  "package": "./ai",
+  "tests": [
+   "TestInMemoryModelsStoreReadWriteDelete"
+  ],
+  "upstream_reference": "packages/ai/src/models-store.ts",
+  "mutation": "ai/models_store.go: replace `entry, ok := s.entries[providerID]\n\tif !ok {\n\t\treturn nil, nil\n\t}\n\tcloned := entry.Clone()\n\treturn &cloned, nil` with `entry, ok := s.entries[providerID]\n\tif !ok {\n\t\treturn nil, nil\n\t}\n\treturn &entry, nil`; TestInMemoryModelsStoreReadWriteDelete fails."
+ },
+ {
+  "upstream": "packages/ai/src/models-store.ts",
+  "package": "./ai",
+  "tests": [
+   "TestInMemoryModelsStoreReadWriteDelete"
+  ],
+  "upstream_reference": "packages/ai/src/models-store.ts",
+  "mutation": "ai/models_store.go: replace `s.entries[providerID] = entry.Clone()` with `s.entries[providerID] = entry`; TestInMemoryModelsStoreReadWriteDelete fails."
+ },
+ {
+  "upstream": "packages/ai/src/models-store.ts",
+  "package": "./ai",
+  "tests": [
+   "TestInMemoryModelsStoreReadWriteDelete"
+  ],
+  "upstream_reference": "packages/ai/src/models-store.ts",
+  "mutation": "ai/models_store.go: replace `delete(s.entries, providerID)\n\treturn nil` with `return nil`; TestInMemoryModelsStoreReadWriteDelete fails."
+ },
+ {
+  "upstream": "packages/ai/src/models-store.ts",
+  "package": "./ai",
+  "tests": [
+   "TestInMemoryModelsStoreReadWriteDelete"
+  ],
+  "upstream_reference": "packages/ai/src/models-store.ts",
+  "mutation": "ai/models_store.go: replace `if err := ctx.Err(); err != nil {\n\t\treturn nil, err\n\t}\n\ts.mu.Lock()` with `s.mu.Lock()`; TestInMemoryModelsStoreReadWriteDelete fails."
+ },
+ {
+  "upstream": "packages/ai/src/models-store.ts",
+  "package": "./ai",
+  "tests": [
+   "TestInMemoryModelsStoreReadWriteDelete"
+  ],
+  "upstream_reference": "packages/ai/src/models-store.ts",
+  "mutation": "ai/models_store.go: replace `if err := ctx.Err(); err != nil {\n\t\treturn err\n\t}\n\ts.mu.Lock()\n\tdefer s.mu.Unlock()\n\ts.entries[providerID]` with `s.mu.Lock()\n\tdefer s.mu.Unlock()\n\ts.entries[providerID]`; TestInMemoryModelsStoreReadWriteDelete fails."
+ },
+ {
+  "upstream": "packages/ai/src/models-store.ts",
+  "package": "./ai",
+  "tests": [
+   "TestInMemoryModelsStoreReadWriteDelete"
+  ],
+  "upstream_reference": "packages/ai/src/models-store.ts",
+  "mutation": "ai/models_store.go: replace `if err := ctx.Err(); err != nil {\n\t\treturn err\n\t}\n\ts.mu.Lock()\n\tdefer s.mu.Unlock()\n\tdelete` with `s.mu.Lock()\n\tdefer s.mu.Unlock()\n\tdelete`; TestInMemoryModelsStoreReadWriteDelete fails."
+ },
+ {
+  "upstream": "packages/ai/src/models-store.ts",
+  "package": "./ai",
+  "tests": [
+   "TestInMemoryModelsStoreReadWriteDelete"
+  ],
+  "upstream_reference": "packages/ai/src/models-store.ts",
+  "mutation": "ai/models_store.go: replace `return &InMemoryModelsStore{entries: map[string]ModelsStoreEntry{}}` with `return &InMemoryModelsStore{entries: map[string]ModelsStoreEntry{\"p\": {ETag: \"seed\"}}}`; TestInMemoryModelsStoreReadWriteDelete fails."
+ },
+ {
+  "upstream": "packages/ai/src/image-models.ts",
+  "package": "./ai",
+  "tests": [
+   "TestGetImageProvidersListsTheCatalogProvidersSorted"
+  ],
+  "upstream_reference": "packages/ai/src/image-models.ts",
+  "mutation": "ai/images_registry.go: replace `providers := make([]BuiltinImageProvider, 0, len(imageModelRegistry))\n\tfor provider := range imageModelRegistry {` with `providers := make([]BuiltinImageProvider, 0, len(imageModelRegistry))\n\tfor provider := range imageModelRegistry {\n\t\tif provider == \"openrouter\" {\n\t\t\tcontinue\n\t\t}`; TestGetImageProvidersListsTheCatalogProvidersSorted fails."
+ },
+ {
+  "upstream": "packages/ai/src/providers/typesafe.ts",
+  "package": "./ai",
+  "tests": [
+   "TestTypesafeProviderIsTheTypesafeProvider"
+  ],
+  "upstream_reference": "packages/ai/src/providers/typesafe.ts",
+  "mutation": "ai/builtin_providers.go: replace `func TypesafeProvider() *ModelsProvider { return builtinProvider(\"typesafe\") }` with `func TypesafeProvider() *ModelsProvider { return builtinProvider(\"cloudflare-workers-ai\") }`; TestTypesafeProviderIsTheTypesafeProvider fails."
+ },
+ {
+  "upstream": "packages/ai/src/providers/typesafe.ts",
+  "package": "./ai",
+  "tests": [
+   "TestTypesafeProviderIsTheTypesafeProvider"
+  ],
+  "upstream_reference": "packages/ai/src/providers/typesafe.ts",
+  "mutation": "ai/builtin_providers.go: replace `func TypesafeProvider() *ModelsProvider { return builtinProvider(\"typesafe\") }` with `var typesafeShared *ModelsProvider\n\nfunc TypesafeProvider() *ModelsProvider {\n\tif typesafeShared == nil {\n\t\ttypesafeShared = builtinProvider(\"typesafe\")\n\t}\n\treturn typesafeShared\n}`; TestTypesafeProviderIsTheTypesafeProvider fails."
+ },
+ {
+  "upstream": "packages/ai/src/api/pi-messages.ts",
+  "package": "./ai",
+  "tests": [
+   "TestPiMessagesResponseErrorCarriesCodeAndDetails"
+  ],
+  "upstream_reference": "packages/ai/src/api/pi-messages.ts",
+  "mutation": "ai/pi_messages.go: replace `e := &PiMessagesResponseError{Message: message, Code: code, DiagnosticDetails: diagnosticDetails}` with `e := &PiMessagesResponseError{Message: message, Code: message, DiagnosticDetails: diagnosticDetails}`; TestPiMessagesResponseErrorCarriesCodeAndDetails fails."
+ },
+ {
+  "upstream": "packages/ai/src/api/pi-messages.ts",
+  "package": "./ai",
+  "tests": [
+   "TestPiMessagesResponseErrorCarriesCodeAndDetails"
+  ],
+  "upstream_reference": "packages/ai/src/api/pi-messages.ts",
+  "mutation": "ai/pi_messages.go: replace `e := &PiMessagesResponseError{Message: message, Code: code, DiagnosticDetails: diagnosticDetails}` with `e := &PiMessagesResponseError{Message: message, Code: code}`; TestPiMessagesResponseErrorCarriesCodeAndDetails fails."
+ },
+ {
+  "upstream": "packages/ai/src/api/pi-messages.ts",
+  "package": "./ai",
+  "tests": [
+   "TestPiMessagesResponseErrorCarriesCodeAndDetails"
+  ],
+  "upstream_reference": "packages/ai/src/api/pi-messages.ts",
+  "mutation": "ai/pi_messages.go: replace `e := &PiMessagesResponseError{Message: message, Code: code, DiagnosticDetails: diagnosticDetails}` with `e := &PiMessagesResponseError{Message: code, Code: code, DiagnosticDetails: diagnosticDetails}`; TestPiMessagesResponseErrorCarriesCodeAndDetails fails."
+ },
+ {
+  "upstream": "packages/ai/src/providers/cloudflare-stream.ts",
+  "package": "./ai",
+  "tests": [
+   "TestCloudflareClassifierResolvesPlaceholdersBeforeDispatch"
+  ],
+  "upstream_reference": "packages/ai/src/providers/cloudflare-stream.ts",
+  "mutation": "ai/system_one.go: replace `if baseURL := resolveCloudflarePlaceholders(model.BaseURL, options.Env); baseURL != model.BaseURL {\n\t\t\tresolved := *model\n\t\t\tresolved.BaseURL = baseURL\n\t\t\tmodel = &resolved\n\t\t}` with `if baseURL := resolveCloudflarePlaceholders(model.BaseURL, options.Env); baseURL != model.BaseURL {\n\t\t\tmodel.BaseURL = baseURL\n\t\t}`; TestCloudflareClassifierResolvesPlaceholdersBeforeDispatch fails."
+ },
+ {
+  "upstream": "packages/ai/src/providers/cloudflare-stream.ts",
+  "package": "./ai",
+  "tests": [
+   "TestCloudflareClassifierResolvesPlaceholdersBeforeDispatch"
+  ],
+  "upstream_reference": "packages/ai/src/providers/cloudflare-stream.ts",
+  "mutation": "ai/system_one.go: replace `if baseURL := resolveCloudflarePlaceholders(model.BaseURL, options.Env); baseURL != model.BaseURL {\n\t\t\tresolved := *model` with `if baseURL := resolveCloudflarePlaceholders(model.BaseURL, options.Env); true {\n\t\t\tresolved := *model`; TestCloudflareClassifierResolvesPlaceholdersBeforeDispatch fails."
+ },
+ {
+  "upstream": "packages/ai/src/providers/cloudflare-stream.ts",
+  "package": "./ai",
+  "tests": [
+   "TestCloudflareClassifierResolvesPlaceholdersBeforeDispatch"
+  ],
+  "upstream_reference": "packages/ai/src/providers/cloudflare-stream.ts",
+  "mutation": "ai/system_one.go: replace `return &ProviderClassifier{Classify: func(ctx context.Context, model *ClassifierModel, request ClassifierContext, options ClassifierOptions) (ClassifierResult, error) {\n\t\tif baseURL` with `return &ProviderClassifier{Classify: func(ctx context.Context, model *ClassifierModel, request ClassifierContext, options ClassifierOptions) (ClassifierResult, error) {\n\t\toptions.Env = nil\n\t\tif baseURL`; TestCloudflareClassifierResolvesPlaceholdersBeforeDispatch fails."
+ },
+ {
+  "upstream": "packages/ai/src/providers/cloudflare-stream.ts",
+  "package": "./ai",
+  "tests": [
+   "TestCloudflareClassifierResolvesPlaceholdersBeforeDispatch"
+  ],
+  "upstream_reference": "packages/ai/src/providers/cloudflare-stream.ts",
+  "mutation": "ai/system_one.go: replace `return classifier.Classify(ctx, model, request, options)\n\t}}` with `return classifier.Classify(ctx, model, request, ClassifierOptions{})\n\t}}`; TestCloudflareClassifierResolvesPlaceholdersBeforeDispatch fails."
+ },
+ {
+  "upstream": "packages/ai/src/image-models.ts",
+  "package": "./ai",
+  "tests": [
+   "TestGetImageProvidersSortsAMultiProviderRegistry"
+  ],
+  "upstream_reference": "packages/ai/src/image-models.ts",
+  "mutation": "ai/images_registry.go: replace `slices.Sort(providers)\n\treturn providers` with `return providers`; TestGetImageProvidersSortsAMultiProviderRegistry fails."
+ }
+]

@@ -1,5 +1,7 @@
 package sqlite_test
 
+// pi: packages/durable/src/storage/sqlite/storage.ts
+
 // Ports packages/durable/test/sqlite-storage.test.ts
 
 import (
@@ -11,6 +13,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	chorddelta "github.com/MichaelKinsy/PiG/chord/delta"
 
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/durabletest"
@@ -293,7 +297,7 @@ func TestPicoSqliteStorage(t *testing.T) {
 		id := mint[durable.DocumentId](t, storage)
 		commit(t, storage, durable.DocumentCreateWrite{
 			Record:  durable.DocumentCreate{Id: id, Kind: "corrupt", Scope: sessionScope},
-			Content: base(durable.JsonObject{"retained": true}),
+			Content: base(chorddelta.JsonObjectOf("retained", true)),
 		})
 		database := openInspector(t, path, false)
 		mustDo(t, must(database.Prepare("DELETE FROM document_revisions WHERE document_id = ?")).Run(int64(id)))
@@ -308,7 +312,7 @@ func TestPicoSqliteStorage(t *testing.T) {
 		id := mint[durable.DocumentId](t, storage)
 		commit(t, storage, durable.DocumentCreateWrite{
 			Record:  durable.DocumentCreate{Id: id, Kind: "replay", Scope: sessionScope},
-			Content: base(durable.JsonObject{"nested": map[string]any{"value": 1}, "rows": []any{}}),
+			Content: base(chorddelta.JsonObjectOf("nested", map[string]any{"value": 1}, "rows", []any{})),
 		})
 		commit(t, storage, durable.DocumentChangeWrite{Id: id, Content: delta(
 			durable.Op{"r", map[string]any{"nested": map[string]any{"value": 2}, "rows": []any{map[string]any{"id": 1}}}},
@@ -323,8 +327,8 @@ func TestPicoSqliteStorage(t *testing.T) {
 		expected := map[string]any{"nested": map[string]any{"value": 4}, "rows": []any{map[string]any{"id": 2}, map[string]any{"id": 1}}}
 		first := must(storage.Document(testContext, id, durable.CurrentPoint))
 		expectEqual(t, first.Value, expected)
-		first.Value["nested"].(map[string]any)["value"] = 99
-		first.Value["rows"].([]any)[0].(map[string]any)["id"] = 99
+		first.Value.Value("nested").(*chorddelta.JsonObject).Set("value", 99)
+		first.Value.Value("rows").([]any)[0].(*chorddelta.JsonObject).Set("id", 99)
 		expectEqual(t, must(storage.Document(testContext, id, durable.CurrentPoint)).Value, expected)
 
 		database := openInspector(t, path, false)
@@ -379,12 +383,12 @@ func TestPicoSqliteStorage(t *testing.T) {
 			Scope:   durable.DocumentRecordScope{Kind: durable.ScopeConversation, ConversationId: durable.ROOT_CONVERSATION_ID},
 			History: durable.HistoryRewindable, Fork: durable.ForkAsOf,
 		}
-		createdAt := commit(t, storage, durable.DocumentCreateWrite{Record: record, Content: base(durable.JsonObject{"count": 0})})
+		createdAt := commit(t, storage, durable.DocumentCreateWrite{Record: record, Content: base(chorddelta.JsonObjectOf("count", 0))})
 		ancientAt, recentAt := createdAt, createdAt
 		for count := 1; count <= 40; count++ {
 			content := delta(durable.Op{"s", []any{"count"}, count})
 			if count == 20 {
-				content = base(durable.JsonObject{"count": count})
+				content = base(chorddelta.JsonObjectOf("count", count))
 			}
 			recentAt = commit(t, storage, durable.DocumentChangeWrite{Id: id, Content: content})
 			if count == 5 {
@@ -454,7 +458,7 @@ func TestPicoSqliteStorage(t *testing.T) {
 		createRoot(t, storage)
 		id := mint[durable.DocumentId](t, storage)
 		commit(t, storage, durable.DocumentCreateWrite{
-			Record: durable.DocumentCreate{Id: id, Kind: "latest", Scope: sessionScope}, Content: base(durable.JsonObject{"count": 0}),
+			Record: durable.DocumentCreate{Id: id, Kind: "latest", Scope: sessionScope}, Content: base(chorddelta.JsonObjectOf("count", 0)),
 		})
 		for count := 1; count <= 10; count++ {
 			commit(t, storage, durable.DocumentChangeWrite{Id: id, Content: delta(durable.Op{"s", []any{"count"}, count})})
@@ -470,7 +474,7 @@ func TestPicoSqliteStorage(t *testing.T) {
 		var lastOps any
 		mustDo(t, json.Unmarshal([]byte(row["content"].(string)), &lastOps))
 		expectEqual(t, lastOps, []any{[]any{"s", []any{"count"}, 10}})
-		commit(t, storage, durable.DocumentChangeWrite{Id: id, Content: base(durable.JsonObject{"count": 11})})
+		commit(t, storage, durable.DocumentChangeWrite{Id: id, Content: base(chorddelta.JsonObjectOf("count", 11))})
 		if count := revisionCount(t, path, id); count != 1 {
 			t.Fatalf("revisions after base = %d, want 1", count)
 		}
@@ -513,9 +517,9 @@ func TestPicoSqliteStorage(t *testing.T) {
 		id := mint[durable.DocumentId](t, storage)
 		large := strings.Repeat("x", 512*1024)
 		commit(t, storage, durable.DocumentCreateWrite{
-			Record: durable.DocumentCreate{Id: id, Kind: "reuse", Scope: sessionScope}, Content: base(durable.JsonObject{"text": large}),
+			Record: durable.DocumentCreate{Id: id, Kind: "reuse", Scope: sessionScope}, Content: base(chorddelta.JsonObjectOf("text", large)),
 		})
-		commit(t, storage, durable.DocumentChangeWrite{Id: id, Content: base(durable.JsonObject{"text": "small"})})
+		commit(t, storage, durable.DocumentChangeWrite{Id: id, Content: base(chorddelta.JsonObjectOf("text", "small"))})
 		before := openInspector(t, path, true)
 		pagesAfterDelete := scalar(t, before, "SELECT page_count AS value FROM pragma_page_count() ")
 		freeAfterDelete := scalar(t, before, "SELECT freelist_count AS value FROM pragma_freelist_count() ")
@@ -523,7 +527,7 @@ func TestPicoSqliteStorage(t *testing.T) {
 		if freeAfterDelete <= 0 {
 			t.Fatalf("freelist after delete = %d", freeAfterDelete)
 		}
-		commit(t, storage, durable.DocumentChangeWrite{Id: id, Content: base(durable.JsonObject{"text": large})})
+		commit(t, storage, durable.DocumentChangeWrite{Id: id, Content: base(chorddelta.JsonObjectOf("text", large))})
 		after := openInspector(t, path, true)
 		defer func() { mustDo(t, after.Close()) }()
 		pagesAfterReuse := scalar(t, after, "SELECT page_count AS value FROM pragma_page_count() ")
@@ -548,7 +552,7 @@ func TestPicoSqliteStorage(t *testing.T) {
 			Id: documentId, Kind: "size.history",
 			Scope:   durable.DocumentRecordScope{Kind: durable.ScopeConversation, ConversationId: durable.ROOT_CONVERSATION_ID},
 			History: durable.HistoryRewindable, Fork: durable.ForkAsOf,
-		}, Content: base(durable.JsonObject{"count": 0})})
+		}, Content: base(chorddelta.JsonObjectOf("count", 0))})
 		for count := 1; count <= 100; count++ {
 			commit(t, storage, durable.DocumentChangeWrite{Id: documentId, Content: delta(durable.Op{"s", []any{"count"}, count})})
 		}
@@ -557,4 +561,16 @@ func TestPicoSqliteStorage(t *testing.T) {
 			t.Fatalf("database size = %d", size)
 		}
 	})
+}
+
+// Records read back from SQLite keep their dynamic members' key order, as JSON.parse gives Pi.
+func TestSqliteStorageKeepsRecordKeyOrder(t *testing.T) {
+	storage, err := node.OpenNodeSqliteStorage(filepath.Join(t.TempDir(), "storage.sqlite"), node.NodeSqliteStorageOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = storage.Close(testContext) }()
+	if err := durabletest.CheckRecordKeyOrder(storage); err != nil {
+		t.Fatal(err)
+	}
 }

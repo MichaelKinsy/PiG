@@ -45,7 +45,7 @@ Leave `model` out when any consumer-enabled model is acceptable. Explicit/curren
 selection wins, then consumer default. Do not write `model: any` or
 `model: default`.
 
-A present model is a preference under Pig's normal CLI-over-Piglet precedence.
+A present model is a preference under PiG's normal CLI-over-Piglet precedence.
 
 ## Piglet schema
 
@@ -82,11 +82,11 @@ discovery:
   skills: [workspace]
 ```
 
-Omitted root `tools` means Pig's normal built-ins; `tools: []` exposes none.
+Omitted root `tools` means PiG's normal built-ins; `tools: []` exposes none.
 Omitted extension tools means all tools from that extension; an empty list
 exposes none. CLI and platform policy may narrow these lists but never widen
 them. Discovery controls ambient additions only. In an active Piglet, omitted
-or empty discovery lists mean no ambient Resources; bare Pig keeps ordinary
+or empty discovery lists mean no ambient Resources; bare PiG keeps ordinary
 upstream discovery.
 
 Read-only role with extension tools:
@@ -126,7 +126,7 @@ Piglet artifact contract then assigns each executable component:
 - materialization: binary, Piglet release, `agentEnv`, or external.
 
 A Piglet Binary may use both fused and subprocess extensions because it remains
-Pig and retains Pig's subprocess host. Subprocess use does not create
+PiG and retains PiG's subprocess host. Subprocess use does not create
 a different binary kind.
 
 Set `build.extensionRealization: fused` to require native compilation of every
@@ -273,12 +273,12 @@ Pull by installed Piglet name and the reserved Image, `--locked`, and `--record`
 
 Piglets do not change the Session wire or bind a transcript to one composition.
 Resume, clone, and fork use the current invocation's tools, environment, secrets,
-and policy for new work. Select another Piglet in a separate Pig invocation;
+and policy for new work. Select another Piglet in a separate PiG invocation;
 that invocation may resume the same Session when you explicitly choose it.
 
 ## Piglet Binary
 
-A Piglet Binary is a target-native Pig executable for one immutable Piglet composition. Its record captures component realization and materialization.
+A Piglet Binary is a target-native PiG executable for one immutable Piglet composition. Its record captures component realization and materialization.
 
 A Piglet Binary file does not automatically promise that every component is
 in-process or contained in that one file. Its Piglet release says what is
@@ -286,7 +286,7 @@ fused, what runs as a subprocess, where required bytes/runtimes come from, and
 what remains external.
 
 A Piglet Binary is an agent executable, not a Piglet YAML editor. It supports
-normal execution and its built-in Piglet. Use raw Pig to validate, register,
+normal execution and its built-in Piglet. Use raw PiG to validate, register,
 and build Piglet source.
 
 ## Sign and verify a Piglet Binary
@@ -353,13 +353,13 @@ Sigstore keyless provenance is separate CI identity evidence. Verify it explicit
 
 ### Planned (not in this release): Piglet Image
 
-A Piglet Image will contain exact Pig, redistributable component/runtime closure, and environment. It will perform no first-run code/runtime installation. Network services, secret values, user configuration, and non-redistributable programs will remain explicit requirements.
+A Piglet Image will contain exact PiG, redistributable component/runtime closure, and environment. It will perform no first-run code/runtime installation. Network services, secret values, user configuration, and non-redistributable programs will remain explicit requirements.
 
 ## Version and records
 
 - `release.version` is Piglet release SemVer;
 - Piglet records use one strict current unversioned shape with resolution and binary kinds; the image kind is reserved;
-- extension wire changes ship atomically with the running Pig binary, staged SDKs, generated cells, and validation rather than carrying an independent version.
+- extension wire changes ship atomically with the running PiG binary, staged SDKs, generated cells, and validation rather than carrying an independent version.
 
 Piglet records live outside source discovery and bind source/effective/graph,
 Resource closure, executable component plan, target, builder, artifact/environment,

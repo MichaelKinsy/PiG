@@ -1,0 +1,36 @@
+[
+ {
+  "ids": [
+   "pkg:mcp/oauth#discoverOAuthServerInfo"
+  ],
+  "targets": [
+   "mcp/oauth/discovery.go#DiscoverOAuthServerInfo"
+  ],
+  "production": [
+   "call:mcp/oauth/flow.go#runFlow"
+  ],
+  "evidence": [
+   "test:mcp/oauth/discovery_info_test.go#TestDiscoverOAuthServerInfoFallsBackToTheServerOriginWithoutResourceMetadata",
+   "test:mcp/oauth/discovery_info_test.go#TestDiscoverOAuthServerInfoFollowsTheFirstAuthorizationServerOfTheResourceMetadata"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. The upstream options object is the DiscoveryOptions struct (it carries every option of every discovery function); the upstream try/catch that swallows non-network errors from the resource-metadata lookup is isNetworkError.",
+  "rationale": "discoverOAuthServerInfo: Go DiscoverOAuthServerInfo has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:mcp/oauth#discoverProtectedResourceMetadata"
+  ],
+  "targets": [
+   "mcp/oauth/discovery.go#DiscoverProtectedResourceMetadata"
+  ],
+  "production": [
+   "call:mcp/oauth/discovery.go#DiscoverOAuthServerInfo"
+  ],
+  "evidence": [
+   "test:mcp/oauth/discovery_info_test.go#TestDiscoverProtectedResourceMetadataTriesThePathAwareURLThenTheRoot",
+   "test:mcp/oauth/discovery_info_test.go#TestDiscoverProtectedResourceMetadataUsesAnExplicitURLWithoutFallingBack"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. The upstream options object is the DiscoveryOptions struct (it carries every option of every discovery function); the upstream try/catch that swallows non-network errors from the resource-metadata lookup is isNetworkError.",
+  "rationale": "discoverProtectedResourceMetadata: Go DiscoverProtectedResourceMetadata has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ }
+]

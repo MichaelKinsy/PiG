@@ -1,4 +1,3 @@
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 #
 # Pinned toolchain archives for automation/dev/setup.sh.
@@ -7,3 +6,12 @@
 # Columns: tool version os arch source url sha256
 # A row names a host other than go.dev: Google's download host, which serves the go.dev archive, or actions/go-versions.
 go	1.27.2	linux	amd64	dl.google.com	https://dl.google.com/go/go1.27.2.linux-amd64.tar.gz	ecbadb99091a3f46e31f5f934b068b1864eafa7995211b39eaddf76996045fe5
+#
+# tinygo rows pin the TinyGo that builds the Durable core: durable/core/budget/build-wasm.sh refuses any other version, and
+# tinygo-install.sh downloads the archive and checks its digest. The pin is the version the runtime fork in
+# durable/core/budget/tinygo applies to. Changing it means porting that fork (its README lists each change). These rows are
+# not a fallback for setup.sh: no index covers them.
+tinygo	0.42.0	linux	amd64	tinygo-org/tinygo	https://github.com/tinygo-org/tinygo/releases/download/v0.42.0/tinygo0.42.0.linux-amd64.tar.gz	b87688fa2e19cee7d813cad7fd7dadb71dff3198e47125aba66ba4af5e490438
+tinygo	0.42.0	linux	arm64	tinygo-org/tinygo	https://github.com/tinygo-org/tinygo/releases/download/v0.42.0/tinygo0.42.0.linux-arm64.tar.gz	f2f3f863e63728b87772e7306bd6030df6e6c89773a7082eb0122113cf9e453d
+tinygo	0.42.0	darwin	amd64	tinygo-org/tinygo	https://github.com/tinygo-org/tinygo/releases/download/v0.42.0/tinygo0.42.0.darwin-amd64.tar.gz	ef7b96cf59de5714a7493a696e9db141a85a99459620b00c42cb3bad14be2af2
+tinygo	0.42.0	darwin	arm64	tinygo-org/tinygo	https://github.com/tinygo-org/tinygo/releases/download/v0.42.0/tinygo0.42.0.darwin-arm64.tar.gz	493da3585e66c5da677a4be39402faf2041b4e45a61eb456e4547eca753a544e

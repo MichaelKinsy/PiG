@@ -122,6 +122,7 @@ func (tracker *pending) run(drains []func()) {
 // runs it outside the publishing call.
 func (tracker *pending) schedule(job func()) {
 	tracker.begin()
+	//portlint:allow asyncorder joined by pending.wait (begin/end count); watch frames are taken under watch.mu in publish order and one runs at a time, as observation.ts:239-275 #schedule/#drain
 	go func() {
 		defer tracker.end()
 		job()
@@ -366,6 +367,8 @@ type CommittedWatch[T any] struct {
 	scheduler *pending
 	detach    func()
 	replace   func() T
+	// report receives a listener's failure, which also ends the watch; nil drops it.
+	report    func(error)
 	pending   []watchFrame[T]
 	closed    chan struct{}
 	value     T
@@ -384,7 +387,9 @@ type CommittedWatch[T any] struct {
 // when the watch ends; replace gives the value an overflow delivers, and nil delivers the newest value. Ports
 // observation.ts:174 CommittedWatch constructor (view.ts:104, events.ts:132).
 func NewCommittedWatch[T any](session *SessionImpl, value T, detach func(), replace func() T) *CommittedWatch[T] {
-	return newCommittedWatch(value, detach, replace, session.scheduler)
+	watch := newCommittedWatch(value, detach, replace, session.scheduler)
+	watch.report = session.report
+	return watch
 }
 
 func newCommittedWatch[T any](value T, detach func(), replace func() T, scheduler *pending) *CommittedWatch[T] {
@@ -455,7 +460,12 @@ func (watch *CommittedWatch[T]) Cancel() {
 	watch.terminate(durable.WatchEnd{Reason: durable.WatchCancelled})
 }
 
-func (watch *CommittedWatch[T]) CloseSession() {
+// CloseSession ends the watch with session_closed, or with session_failed and the error when the Session failed.
+func (watch *CommittedWatch[T]) CloseSession(failure error) {
+	if failure != nil {
+		watch.terminate(durable.WatchEnd{Reason: durable.WatchSessionFailed, Error: failure})
+		return
+	}
 	watch.terminate(durable.WatchEnd{Reason: durable.WatchSessionClosed})
 }
 
@@ -541,7 +551,14 @@ func (watch *CommittedWatch[T]) drain(frame watchFrame[T]) {
 		watch.mu.Lock()
 		if err != nil {
 			if watch.end == nil {
-				watch.terminateLocked(durable.WatchEnd{Reason: durable.WatchListenerError, Error: err})
+				if watch.report != nil {
+					watch.mu.Unlock()
+					watch.report(err)
+					watch.mu.Lock()
+				}
+				if watch.end == nil {
+					watch.terminateLocked(durable.WatchEnd{Reason: durable.WatchListenerError, Error: err})
+				}
 			}
 			break
 		}
@@ -609,3 +626,30 @@ func (watch *CommittedWatch[T]) finishIfReadyLocked() {
 	}
 	close(watch.closed)
 }
+
+// DeliveryScheduler runs watch deliveries for a host that has no SessionImpl: each scheduled delivery is queued as upstream's
+// microtask is, and Wait returns once every scheduled delivery has drained.
+type DeliveryScheduler struct{ pending *pending }
+
+// NewDeliveryScheduler returns an idle delivery scheduler.
+func NewDeliveryScheduler() *DeliveryScheduler { return &DeliveryScheduler{pending: newPending()} }
+
+// Wait blocks until no scheduled delivery is queued or running.
+func (s *DeliveryScheduler) Wait() { s.pending.wait() }
+
+// NewCommittedWatchOn is NewCommittedWatch for a host whose deliveries run on scheduler (the native Durable core driver).
+// report receives a listener's failure, which also ends the watch, as the Session's report does for NewCommittedWatch.
+func NewCommittedWatchOn[T any](scheduler *DeliveryScheduler, value T, detach func(), replace func() T, report func(error)) *CommittedWatch[T] {
+	watch := newCommittedWatch(value, detach, replace, scheduler.pending)
+	watch.report = report
+	return watch
+}
+
+// NewCommittedStateSourceOn is NewCommittedStateSource for a host whose deliveries run on scheduler (the native Durable core driver).
+func NewCommittedStateSourceOn[T any](scheduler *DeliveryScheduler, value T, release func()) *CommittedStateSource[T] {
+	return newCommittedStateSource(value, release, scheduler.pending)
+}
+
+// RunDrains runs the queued state attachment drains on the calling goroutine: upstream's drain microtask, which the publishing
+// commit runs before its caller resumes.
+func (s *DeliveryScheduler) RunDrains() { s.pending.runDrains() }

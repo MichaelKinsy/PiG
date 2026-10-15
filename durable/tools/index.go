@@ -6,8 +6,14 @@ package tools
 
 import "github.com/MichaelKinsy/PiG/durable"
 
-// CodingTools is the extension of read, write, edit, and bash.
-var CodingTools = &durable.Extension{
-	Name:  "coding-tools",
-	Tools: []*durable.ToolRegistration{CreateReadTool(), CreateWriteTool(), CreateEditTool(), CreateBashTool(nil)},
+// CreateCodingTools is the coding-tools extension: read, write, edit, and bash; nothing installs it automatically.
+// CreatePowerShellTool adds powershell. options.Images prepares the images read returns (see ReadToolOptions).
+func CreateCodingTools(options *ReadToolOptions) *durable.Extension {
+	return &durable.Extension{
+		Name:  "coding-tools",
+		Tools: []*durable.ToolRegistration{CreateReadTool(options), CreateWriteTool(), CreateEditTool(), CreateBashTool(nil)},
+	}
 }
+
+// CodingTools is CreateCodingTools without an image processor.
+var CodingTools = CreateCodingTools(nil)

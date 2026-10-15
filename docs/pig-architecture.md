@@ -1,10 +1,6 @@
 # Pig architecture
 
-This page maps Pig's parity core, governed additions, extension runtime, package
-and Piglet surfaces, local state, and product boundary. Read the
-[ecosystem ontology](piglet-resource-ontology.md) first so entity, carrier,
-component-realization, materialization, and environment axes stay separate.
-Return to the [maintainer docs router](README.md) for focused references.
+This page maps Pig's parity core, governed additions, extension runtime, package and Piglet surfaces, local state, and product boundary. Read the [ecosystem ontology](piglet-resource-ontology.md) first so entity, carrier, component-realization, materialization, and environment axes stay separate. Return to the [maintainer docs router](README.md) for focused references.
 
 ## Layer map
 
@@ -16,8 +12,9 @@ pig binary
 │   ├── builtin tools
 │   └── Pi-compatible package management
 ├── generic Pig additions
-│   ├── Piglets: compose, scope, launch, build, inventory
+│   ├── Piglets: compose, scope, strip, launch, build, inventory, publish
 │   ├── extension SDK, host, and runtime-cell support
+│   ├── Piglet frontend members (D91)
 │   └── embedded reference documentation
 ├── extension host
 │   ├── subprocess wire
@@ -40,7 +37,7 @@ pig binary
 
 ## Public package map
 
-PiG keeps Go package boundaries close to the public Pi packages:
+PiG keeps Go package boundaries close to the packages of the Pi monorepo:
 
 | Pi package | PiG package | Purpose |
 |---|---|---|
@@ -48,14 +45,18 @@ PiG keeps Go package boundaries close to the public Pi packages:
 | `packages/ai` | `ai` | Models, providers, authentication, and stream types |
 | `packages/coding-agent` | `coding` and `cmd/pig` | Embedding API and command-line application |
 | `packages/tui` | `tui` | Terminal UI components and renderer |
+| `packages/chord` | `chord` | Application-composition runtime (`chord/delta`, `chord/context`) |
+| `packages/durable` | `durable` | Detached durable Session runtime |
+| `packages/env` | `env` | Durable execution environment on another machine over SSH; the daemon `env/cmd/pi-env` is a Go program (D96) |
+| `packages/codemode` | `codemode` | Sandboxed code-execution runtime |
+| `packages/mcp` | `mcp` | Model Context Protocol client library |
+| `packages/telemetry` | `telemetry` | Standalone telemetry library |
+| `packages/client`, `packages/protocol`, `packages/server` | `internal/experimental/...` | Experimental remote Session stack, built only with the `pig_experimental` build tag |
+| `packages/evals` | `internal/evals` and `cmd/pig-evals` | Evaluation tooling |
 
-Private command-line implementation stays under `internal/codingagent`. PiG does
-not copy TypeScript `src` directories or barrel modules because those are npm
-package mechanics.
+Private command-line implementation stays under `internal/codingagent`. PiG does not copy TypeScript `src` directories or barrel modules because those are npm package mechanics.
 
-PiG does not currently implement Pi's experimental remote Session packages or
-its standalone telemetry and evaluation packages. `docs/parity/PORT_MAP.md` defines the
-exact package scope.
+`docs/parity/PORT_MAP.md` defines the exact package scope and the port status of each file.
 
 ## User entity map
 
@@ -67,19 +68,13 @@ exact package scope.
 | Piglet | consume direct, Plugin, and/or Package resources; compose, launch, build, and ship an agent |
 | Piglet release | pin source/component closure and group optional binary/image artifacts |
 | Piglet Binary | target-native Pig executable for one immutable Piglet composition; components may be fused, subprocess, or external |
-| Piglet Image | OCI artifact materializing the same Piglet/component plan and environment closure |
+| Piglet Image | OCI artifact materializing the same Piglet/component plan and environment closure; reserved, `pig piglet build --format image` reports `Piglet Image build is not implemented` |
 
-See [packages versus piglets](pig-packages-vs-piglets.md) and
-[piglet design](pig-piglet-spec.md).
+See [packages versus piglets](pig-packages-vs-piglets.md) and [piglet design](pig-piglet-spec.md).
 
 ## Extension runtime
 
-Normal third-party extensions use subprocess hosting. A Piglet
-Binary is still Pig and may host the same subprocess extensions while additionally
-fusing compatible Go factories. Piglet planning records realization
-(`fused|subprocess|external`) and materialization
-(`binary|release|agentEnv|external`) per component. These are execution and
-delivery facts, not new authoring entities or binary kinds.
+Normal third-party extensions use subprocess hosting. A Piglet Binary is still Pig and may host the same subprocess extensions while additionally fusing compatible Go factories. Piglet planning records realization (`fused|subprocess|external`) and materialization (`binary|release|agentEnv|external`) per component. These are execution and delivery facts, not new authoring entities or binary kinds.
 
 | Runtime responsibility | Correct home |
 |---|---|
@@ -94,20 +89,21 @@ For details read [extension runtime cells](extension-runtime-cells.md).
 
 ## Local and deployed roots
 
-Pig separates writable product state from the agent resource/configuration
-root. Local defaults nest them; deployed products may mount them separately:
+Pig separates writable product state from the agent resource/configuration root. Local defaults nest them; deployed products may mount them separately:
 
 ```text
 $PIG_HOME/                         # default ~/.pig; writable
 ├── piglets/                     # editable user piglet YAML
-├── artifacts/piglets/           # content-addressed managed binary/image outputs
+├── artifacts/piglets/           # content-addressed managed Binary outputs; Image outputs are reserved
 ├── receipts/piglets/            # resolution/artifact records and locks
+├── receipts/piglet-publications/ # npm source publications made from this machine
 ├── state/<extension-id>/         # namespaced additive capability state
+├── state/piglet-verify/          # Piglet Binary startup verification cache
 └── docs/                         # managed embedded user manual
 
 $PIG_CODING_AGENT_DIR/            # default $PIG_HOME/agent
 ├── settings.json
-├── sessions/
+├── sessions/                     # created owner-only, mode 0700 (D132)
 ├── npm/                          # upstream npm package materialization
 ├── git/                          # upstream Git package materialization
 ├── catalog/                      # downloaded catalog bundle roots
@@ -119,7 +115,10 @@ $PIG_CODING_AGENT_DIR/            # default $PIG_HOME/agent
 ├── hooks/
 ├── mcp/
 ├── models.json
-└── SYSTEM.md
+├── SYSTEM.md
+├── crashes.json                  # crash records
+├── exit.log                      # interactive exits no user action asked for (D102)
+└── crash-output/                 # goroutine panic output, read at the next start (D102)
 ```
 
 Project-local resources mirror the agent root under the workspace:
@@ -139,32 +138,18 @@ Project-local resources mirror the agent root under the workspace:
 └── state/<extension-id>/
 ```
 
-Materialize npm and Git sources once in their upstream-compatible directories.
-Catalog-only archives use `catalog/`. Package and Plugin records may point to
-the same materialized source root while retaining separate protocol identities;
-Pig does not copy that root into parallel caches.
+Materialize npm and Git sources once in their upstream-compatible directories. Catalog-only archives use `catalog/`. Package and Plugin records may point to the same materialized source root while retaining separate protocol identities; Pig does not copy that root into parallel caches.
 
-A managed deployment can mount an immutable release bundle and point
-`PIG_PIGLET_PATH` at its Piglet. It keeps `PIG_HOME` and
-`PIG_CODING_AGENT_DIR` writable. Piglet origins and the dependency lock refer
-to immutable Package or Plugin roots. Sessions, settings, dynamic installs, and
-caches stay in the writable agent tree. This uses existing configuration roles
-and does not require one directory to be both immutable product input and
-writable runtime state.
+A managed deployment can mount an immutable release bundle and point `PIG_PIGLET_PATH` at its Piglet. It keeps `PIG_HOME` and `PIG_CODING_AGENT_DIR` writable. Piglet origins and the dependency lock refer to immutable Package or Plugin roots. Sessions, settings, dynamic installs, and caches stay in the writable agent tree. This uses existing configuration roles and does not require one directory to be both immutable product input and writable runtime state.
 
-Piglet records do not live in source discovery directories. Cache and
-materialization paths never become source or reproducibility identity.
+Piglet records do not live in source discovery directories. Cache and materialization paths never become source or reproducibility identity.
 
 ## Boundary invariants
 
-- Upstream-compatible behavior stays in parity core unless a numbered divergence
-  says otherwise.
-- Generic Pig-only mechanics live under `coding/`, `internal/`, and the public
-  extension SDKs. Stock Pig activates no product Resource.
-- PiG Standard Resources live under `piglets/standard/` and load only when the
-  user explicitly selects that Piglet.
-- Pig emits facts, plans, Piglet records, and generic artifacts; products add policy,
-  authentication, transport, scanning, signing, and curation.
+- Upstream-compatible behavior stays in parity core unless a numbered divergence says otherwise.
+- Generic Pig-only mechanics live under `coding/`, `internal/`, and the public extension SDKs. Stock Pig activates no product Resource.
+- PiG Standard Resources live under `piglets/standard/` and load only when the user explicitly selects that Piglet.
+- Pig emits facts, plans, Piglet records, and generic artifacts; products add policy, authentication, transport, scanning, signing, and curation.
 - Core command paths win. Products may contribute only unclaimed exact paths.
 - A Piglet runtime and its records contain no literal secrets.
 - Building a source entry script writes only the explicit output; Binary/Image builds never mutate shell configuration or PATH.

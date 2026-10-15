@@ -1,13 +1,12 @@
 package codingagent
 
 import (
-	"encoding/json"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
-	"github.com/MichaelKinsy/PiG/internal/codingagent/llama"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 )
@@ -15,38 +14,52 @@ import (
 // PiSourceInfo is upstream's SourceInfo (source-info.ts) as it travels to
 // extensions and RPC clients: where a tool, command, template or skill came
 // from.
-type PiSourceInfo struct {
-	Path    string `json:"path"`
-	Source  string `json:"source"`
-	Scope   string `json:"scope"`
-	Origin  string `json:"origin"`
-	BaseDir string `json:"baseDir,omitempty"`
-}
+type PiSourceInfo = extension.SourceInfo
 
-// PiSlashCommand mirrors upstream SlashCommandInfo (slash-commands.ts), the
+// SlashCommandInfo mirrors upstream SlashCommandInfo (core/slash-commands.ts), the
 // entry type of pi.getCommands() and of RPC get_commands.
-type PiSlashCommand struct {
-	Name        string       `json:"name"`
-	Description string       `json:"description,omitempty"`
-	Source      string       `json:"source"`
-	SourceInfo  PiSourceInfo `json:"sourceInfo"`
-}
+type SlashCommandInfo = extension.SlashCommandInfo
 
 // LlamaExtensionPath is the source path upstream gives the built-in llama.cpp
 // extension (`builtin:${name}`).
 // Ports .upstream/v0.99.1/packages/coding-agent/src/extensions/index.ts:8 and core/resource-loader.ts:706-735.
 const LlamaExtensionPath = BuiltinPathPrefix + "llama.cpp"
 
-// IsLlamaCommand reports whether command is the /llama command of the built-in llama.cpp extension. A mode runs it with its own
-// command context instead of the extension handler.
-func IsLlamaCommand(command extension.ResolvedCommand) bool {
-	return command.Name == llama.CommandName && command.SourceInfo != nil && PiSourceInfoValue(command.SourceInfo).Path == LlamaExtensionPath
-}
-
 // ExtensionCommandLister is the extension runner surface the command catalog
 // reads.
 type ExtensionCommandLister interface {
 	Commands() []extension.ResolvedCommand
+}
+
+// extensionCommandsVersioned is the optional member of an ExtensionCommandLister that reports a counter moving with every change to the commands it lists.
+type extensionCommandsVersioned interface {
+	CommandsVersion() (uint64, bool)
+}
+
+// CommandCatalogVersion numbers the states of the command catalog an extension host reads, so the host re-encodes the catalog only when it changed. A state is a published catalog (source, whose identity changes with each publication), the runner that lists the extension commands and the version of those commands; a runner without a version, or a nil source, makes every reading a new state.
+type CommandCatalogVersion struct {
+	mu      sync.Mutex
+	state   uint64
+	source  any
+	lister  ExtensionCommandLister
+	runner  uint64
+	counted bool
+}
+
+// Version returns the number of the catalog's current state. source and lister must be comparable, such as pointers.
+func (v *CommandCatalogVersion) Version(source any, lister ExtensionCommandLister) uint64 {
+	var runner uint64
+	versioned := lister == nil
+	if counter, ok := lister.(extensionCommandsVersioned); ok {
+		runner, versioned = counter.CommandsVersion()
+	}
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	if !versioned || !v.counted || v.source != source || v.lister != lister || v.runner != runner {
+		v.state++
+		v.source, v.lister, v.runner, v.counted = source, lister, runner, versioned
+	}
+	return v.state
 }
 
 // SlashCommandCatalog lists the commands upstream AgentSession's getCommands
@@ -62,29 +75,42 @@ type SlashCommandCatalog struct {
 }
 
 // Commands returns the catalog in upstream order.
-func (c SlashCommandCatalog) Commands() []PiSlashCommand {
-	commands := make([]PiSlashCommand, 0)
+func (c SlashCommandCatalog) Commands() []SlashCommandInfo {
+	commands := make([]SlashCommandInfo, 0)
 	if c.Runner != nil {
 		for _, command := range c.Runner.Commands() {
-			commands = append(commands, PiSlashCommand{
+			commands = append(commands, SlashCommandInfo{
 				Name: strings.TrimPrefix(command.InvocationName, "/"), Description: command.Description,
-				Source: "extension", SourceInfo: PiSourceInfoValue(command.SourceInfo),
+				Source: string(SlashSourceExtension), SourceInfo: PiSourceInfoValue(command.SourceInfo),
 			})
 		}
 	}
 	for _, template := range c.PromptTemplates {
-		commands = append(commands, PiSlashCommand{
-			Name: template.Name, Description: template.Description, Source: "prompt",
-			SourceInfo: c.SourceInfoForPath(template.FilePath, "prompts"),
+		commands = append(commands, SlashCommandInfo{
+			Name: template.Name, Description: template.Description, Source: string(SlashSourcePrompt),
+			SourceInfo: c.resourceSourceInfo(template.SourceInfo, template.FilePath, "prompts"),
 		})
 	}
 	for _, skill := range c.Skills {
-		commands = append(commands, PiSlashCommand{
-			Name: "skill:" + skill.Name, Description: skill.Description, Source: "skill",
-			SourceInfo: c.SourceInfoForPath(skill.Path, "skills"),
+		commands = append(commands, SlashCommandInfo{
+			Name: "skill:" + skill.Name, Description: skill.Description, Source: string(SlashSourceSkill),
+			SourceInfo: c.resourceSourceInfo(skill.SourceInfo, skill.FilePath, "skills"),
 		})
 	}
 	return commands
+}
+
+// resourceSourceInfo is the sourceInfo a prompt template or skill carries (agent-session.ts getCommands reads template.sourceInfo and skill.sourceInfo). A resource a mode loaded without one gets the provenance resolved from its path.
+func (c SlashCommandCatalog) resourceSourceInfo(own PiSourceInfo, path, kind string) PiSourceInfo {
+	// upstream: resource-loader.ts:880-882 (updatePromptsFromPaths) gives a prompt findSourceInfoForPath(filePath) before the
+	// source info it was loaded with, so a path an extension or the package resolver recorded beats the loader's default.
+	if info, found := c.recordedSourceInfo(path); found {
+		return info
+	}
+	if own != (PiSourceInfo{}) {
+		return own
+	}
+	return c.defaultSourceInfo(path, kind)
 }
 
 // SubprocessCommands returns [SlashCommandCatalog.Commands] in the subprocess
@@ -104,10 +130,31 @@ func (c SlashCommandCatalog) WithSkillSources(skills []*SkillDef) []*SkillDef {
 	out := make([]*SkillDef, 0, len(skills))
 	for _, skill := range skills {
 		copy := *skill
-		if skill.Path != "" && skill.SourceInfo.Source != "inline" {
-			copy.SourceInfo = c.SourceInfoForPath(skill.Path, "skills")
+		if skill.FilePath != "" && skill.SourceInfo.Source != "inline" {
+			copy.SourceInfo = c.SourceInfoForPath(skill.FilePath, "skills")
 		}
 		out = append(out, &copy)
+	}
+	return out
+}
+
+// WithPromptSources returns templates carrying the sourceInfo command discovery reports for them: the provenance recorded for their path, else their own, else the default for their path (resource-loader.ts:880-882 updatePromptsFromPaths).
+func (c SlashCommandCatalog) WithPromptSources(templates []PromptTemplate) []PromptTemplate {
+	out := make([]PromptTemplate, len(templates))
+	for i, template := range templates {
+		out[i] = template
+		out[i].SourceInfo = c.resourceSourceInfo(template.SourceInfo, template.FilePath, "prompts")
+	}
+	return out
+}
+
+// WithSkillCommandSources returns skills carrying the sourceInfo [SlashCommandCatalog.Commands] reports for them: the provenance recorded for their path, else their own, else the default for their path.
+func (c SlashCommandCatalog) WithSkillCommandSources(skills []*SkillDef) []*SkillDef {
+	out := make([]*SkillDef, len(skills))
+	for i, skill := range skills {
+		copy := *skill
+		copy.SourceInfo = c.resourceSourceInfo(skill.SourceInfo, skill.FilePath, "skills")
+		out[i] = &copy
 	}
 	return out
 }
@@ -115,11 +162,19 @@ func (c SlashCommandCatalog) WithSkillSources(skills []*SkillDef) []*SkillDef {
 // SourceInfoForPath returns the SourceInfo of a resource of kind
 // ("extensions", "prompts" or "skills") loaded from path.
 func (c SlashCommandCatalog) SourceInfoForPath(path, kind string) PiSourceInfo {
+	if info, found := c.recordedSourceInfo(path); found {
+		return info
+	}
+	return c.defaultSourceInfo(path, kind)
+}
+
+// recordedSourceInfo is resource-loader.ts findSourceInfoForPath: the SourceInfo extension discovery or the package resolver recorded for path, if any.
+func (c SlashCommandCatalog) recordedSourceInfo(path string) (PiSourceInfo, bool) {
 	// Upstream findSourceInfoForPath checks the paths extensions discovered
 	// first, for the path or any directory above it.
 	for current := path; current != ""; {
 		if info, ok := c.SourceInfo[current]; ok && strings.HasPrefix(info.Source, "extension:") {
-			return PiSourceInfo{Path: path, Source: info.Source, Scope: info.Scope, Origin: info.Origin, BaseDir: info.BaseDir}
+			return PiSourceInfo{Path: path, Source: info.Source, Scope: info.Scope, Origin: info.Origin, BaseDir: info.BaseDir}, true
 		}
 		parent := filepath.Dir(current)
 		if parent == current {
@@ -143,10 +198,15 @@ func (c SlashCommandCatalog) SourceInfoForPath(path, kind string) PiSourceInfo {
 			}
 			// Upstream createSourceInfo: the recorded metadata's baseDir, which
 			// a settings entry does not have.
-			return PiSourceInfo{Path: path, Source: source, Scope: scope, Origin: origin, BaseDir: info.BaseDir}
+			return PiSourceInfo{Path: path, Source: source, Scope: scope, Origin: origin, BaseDir: info.BaseDir}, true
 		}
 	}
-	info := PiSourceInfo{Path: path, Source: "local", Scope: "temporary", Origin: "top-level"}
+	return PiSourceInfo{}, false
+}
+
+// defaultSourceInfo is resource-loader.ts getDefaultSourceInfoForPath: a user or project resource by directory, else a temporary one.
+func (c SlashCommandCatalog) defaultSourceInfo(path, kind string) PiSourceInfo {
+	info := CreateSyntheticSourceInfo(path, SyntheticSourceInfoOptions{Source: "local"})
 	if path == "builtin:piglet" {
 		info.Source = "piglet"
 		return info
@@ -173,21 +233,33 @@ const CLISourceName = "cli"
 // CLISourceInfo is the SourceInfo upstream stamps on a resource named on the
 // command line.
 func CLISourceInfo(path string) PiSourceInfo {
-	return PiSourceInfo{Path: path, Source: CLISourceName, Scope: "temporary", Origin: "top-level"}
+	return CreateSyntheticSourceInfo(path, SyntheticSourceInfoOptions{Source: CLISourceName})
 }
 
-// PiSourceInfoValue converts an extension's opaque SourceInfo to its wire
-// shape.
-func PiSourceInfoValue(value extension.SourceInfo) PiSourceInfo {
-	if sourceInfo, ok := value.(PiSourceInfo); ok {
-		return sourceInfo
+// SyntheticSourceInfoOptions is the options object of upstream's createSyntheticSourceInfo; an empty Scope or Origin takes upstream's default.
+type SyntheticSourceInfoOptions struct {
+	Source  string
+	Scope   string
+	Origin  string
+	BaseDir string
+}
+
+// CreateSyntheticSourceInfo is upstream's createSyntheticSourceInfo (source-info.ts:41): a SourceInfo for a resource without a file source, with scope "temporary" and origin "top-level" unless the options name others.
+func CreateSyntheticSourceInfo(path string, options SyntheticSourceInfoOptions) PiSourceInfo {
+	info := PiSourceInfo{Path: path, Source: options.Source, Scope: options.Scope, Origin: options.Origin, BaseDir: options.BaseDir}
+	if info.Scope == "" {
+		info.Scope = "temporary"
 	}
-	encoded, err := json.Marshal(value)
-	if err == nil {
-		var sourceInfo PiSourceInfo
-		if json.Unmarshal(encoded, &sourceInfo) == nil && sourceInfo.Path != "" {
-			return sourceInfo
-		}
+	if info.Origin == "" {
+		info.Origin = "top-level"
+	}
+	return info
+}
+
+// PiSourceInfoValue is the wire value of an extension's SourceInfo: the value itself, or upstream's local temporary default when the source has no path.
+func PiSourceInfoValue(value extension.SourceInfo) PiSourceInfo {
+	if value.Path != "" {
+		return value
 	}
 	return PiSourceInfo{Source: "local", Scope: "temporary", Origin: "top-level"}
 }
@@ -226,22 +298,15 @@ type ExtensionToolLister interface {
 // allowed is nil when no allowlist is in force; an empty allowlist admits
 // nothing, as --no-tools does.
 func ExtensionToolInfos(runner ExtensionToolLister, allowed, excluded map[string]struct{}) []subprocess.ToolInfo {
-	admitted := func(name string) bool {
-		if allowed != nil {
-			if _, ok := allowed[name]; !ok {
-				return false
-			}
-		}
-		_, denied := excluded[name]
-		return !denied
-	}
+	// Entries are names or `*` patterns, and MCP tools stay registered unless the allowlist filters them (agent-session.ts _isAllowedTool).
+	admitted := extension.NewToolFilter(allowed, excluded).Allows
 	out := make([]subprocess.ToolInfo, 0)
 	index := make(map[string]int)
 	for _, schema := range tools.BuiltinToolSchemas() {
 		if !admitted(schema.Name) {
 			continue
 		}
-		parameters, err := json.Marshal(schema.Parameters)
+		parameters, err := schema.ParametersJSON()
 		if err != nil {
 			// Built-in schemas are static maps of JSON values.
 			panic("marshal built-in tool schema " + schema.Name + ": " + err.Error())
@@ -250,7 +315,7 @@ func ExtensionToolInfos(runner ExtensionToolLister, allowed, excluded map[string
 		out = append(out, subprocess.ToolInfo{
 			Name: schema.Name, Description: schema.Description, Parameters: parameters,
 			PromptGuidelines: schema.PromptGuidelines,
-			SourceInfo:       PiSourceInfo{Path: BuiltinPathPrefix + schema.Name, Source: "builtin", Scope: "temporary", Origin: "top-level"},
+			SourceInfo:       CreateSyntheticSourceInfo(BuiltinPathPrefix+schema.Name, SyntheticSourceInfoOptions{Source: "builtin"}),
 			Exposure:         extension.ToolExposureDirect,
 			Source:           "builtin",
 		})
@@ -268,7 +333,9 @@ func ExtensionToolInfos(runner ExtensionToolLister, allowed, excluded map[string
 			Name: name, Description: tool.Definition.Description, Parameters: tool.Definition.Parameters,
 			PromptGuidelines: tool.Definition.PromptGuidelines, SourceInfo: PiSourceInfoValue(sourceInfo),
 			Exposure: tool.Definition.Exposure,
-			Source:   toolSource(tool),
+			// upstream: agent-session.ts:1507 (getAllTools copies the definition's reachesTools)
+			ReachesTools: subprocess.ToolInfoReachesTools(tool.Definition.ReachesTools),
+			Source:       toolSource(tool),
 		}
 		if info.Exposure == "" {
 			info.Exposure = extension.ToolExposureDirect
@@ -292,8 +359,8 @@ func ExtensionToolInfos(runner ExtensionToolLister, allowed, excluded map[string
 // toolSource is a tool's D23 source attribution: its declared source, or the
 // registering extension's name, which the loader stamps as SourceInfo.
 func toolSource(tool extension.RegisteredTool) string {
-	if source, ok := tool.SourceInfo.(string); ok && source != "" {
-		return source
+	if tool.Source != "" {
+		return tool.Source
 	}
 	return "builtin"
 }

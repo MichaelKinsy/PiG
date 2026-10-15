@@ -1,5 +1,7 @@
 package ai
 
+// pi: packages/ai/src/auth/oauth/radius.ts
+
 import (
 	"context"
 	"errors"
@@ -53,7 +55,7 @@ func TestRadiusProviderAuthRefreshesAtItsGateway(t *testing.T) {
 		_, _ = w.Write([]byte(`{"access_token":"new-access","refresh_token":"new-refresh","expires_in":3600,"scope":"models"}`))
 	}))
 	defer server.Close()
-	auth := RadiusProviderAuth(NewRadiusProvider(RadiusProviderOptions{ID: "radius-dev", Name: "Dev Gateway", Gateway: server.URL}))
+	auth := NewRadiusGatewayProvider(RadiusProviderOptions{ID: "radius-dev", Name: "Dev Gateway", Gateway: server.URL}).Auth()
 	if auth.OAuth.Name != "Dev Gateway" || auth.OAuth.IsSubscription || auth.APIKey.Name != "Radius API key" {
 		t.Fatalf("auth = %+v / %+v", auth.OAuth, auth.APIKey)
 	}

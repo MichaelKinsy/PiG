@@ -109,7 +109,9 @@ auth.json
 
 # Side-by-side mirror of upstream pi sources, materialised by
 # automation/gen/mirror-upstream.sh. Read-only reference material, not vendored.
-.upstream/
+# .upstream/pin is the committed upstream pin (automation/pin/pinlib.py).
+.upstream/*
+!.upstream/pin
 
 /pig
 .gopi/
@@ -165,3 +167,13 @@ coding/extension/host/runtimecell/**/*.py[cod]
 
 # node_modules symlinks to a shared checkout are not directories, so node_modules/ does not match them.
 node_modules
+internal/evals/.eval/
+
+# built tool binary of test/parity/interface-closure/autobind
+/test/parity/interface-closure/autobind/autobind
+
+# A `go build` in a command directory writes its binary there.
+/durable/core/contracttest/cmd/*/benchhost
+/durable/core/contracttest/cmd/*/replayhost
+/durable/core/contracttest/cmd/*/countgate
+/durable/core/contracttest/cmd/*/scprovider

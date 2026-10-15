@@ -98,7 +98,7 @@ func assertPromptSections(t *testing.T, ext extension.Extension) {
 	runner.AddErrorListener(func(err *extension.ExtensionError) { reported = append(reported, err.Error) })
 	for _, prompt := range []string{"ordinary", "error", "result"} {
 		sections := ai.OrderedSections{{Name: "z_base", Value: new("retained")}}
-		result, err := runner.EmitBeforeAgentStart(t.Context(), prompt, nil, "base", extension.BuildSystemPromptOptions{Sections: &sections})
+		result, err := runner.EmitBeforeAgentStart(t.Context(), extension.UserPromptTrigger(prompt, nil), extension.BuildSystemPromptOptions{Sections: &sections})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -169,7 +169,7 @@ def new_extension():
 		source = fmt.Sprintf(`use pig_sdk::{Extension,Schema};
 pub fn new_extension()->Extension {
  let mut e=Extension::new(%q);
- e.on_event_result("before_agent_start",false,|_,data| {
+ e.on_event_result("before_agent_start",|_,data| {
   data["systemPromptOptions"]["sections"]["plan_mode"]=Schema::String("Plan only.".into());
   if data["prompt"]=="error" {return Err("section failure".into())}
   if data["prompt"]=="result" {let mut result=Schema::Object(Default::default());result["systemPrompt"]=Schema::String("Exact prompt.".into());return Ok(Some(result))};Ok(None)

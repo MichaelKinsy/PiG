@@ -1,12 +1,11 @@
 <!--
-SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 SPDX-License-Identifier: MIT
 -->
 
 # Pig Porter
 
 Pig Porter is the repository workbench for maintaining behavioral parity with
-the Pi release pinned in `internal/coding/pigversion/pigversion.go`.
+the Pi build pinned in `.upstream/pin`.
 
 It combines:
 
@@ -32,6 +31,8 @@ make porter-smoke
 `porter-campaign` accepts only `inventory` and `verify`. It runs against
 read-only disposable snapshots. Porting and proof-tightening tasks stay
 serialized in the canonical working tree.
+
+The launchers run Pig in a private agent directory that is removed on exit. It holds a copy of your `settings.json` without `packages`, `extensions`, `skills`, `prompts`, `themes` and `enabledModels`, plus your `models.json`, and it trusts the project folder for the run. `make porter` and `make porter-task` link `auth.json` and `sessions/` to your agent directory, so a login, a token refresh and `--continue` behave as in your own directory. A settings change made inside the run is discarded. Campaign workers use copies of `auth.json`.
 
 Pig Porter never owns Git commits, pushes, pull requests, tags, releases, or
 repository visibility. A maintainer performs those actions after reviewing the

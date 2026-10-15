@@ -21,7 +21,6 @@ import (
 func TestAnthropicOAuthPoisonedHistoryRequest(t *testing.T) {
 	t.Setenv("ANTHROPIC_AUTH_TOKEN", "")
 	t.Setenv("PI_CACHE_RETENTION", "")
-	target := &ai.Model{ID: "claude-haiku-4-5", ProviderMeta: ai.ProviderMetadata{ProviderID: "anthropic", API: ai.APIAnthropicMessages}}
 	history := []AgentMessage{
 		{User: &UserMessage{Role: RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "start"}}}},
 		{Assistant: &AssistantMessage{
@@ -72,8 +71,8 @@ func TestAnthropicOAuthPoisonedHistoryRequest(t *testing.T) {
 			}))
 			defer server.Close()
 			provider := ai.NewAnthropicProvider(ai.AnthropicConfig{APIKey: tc.apiKey, Model: "claude-haiku-4-5", BaseURL: server.URL})
-			transcript := ai.NormalizeContext(ai.Context{SystemPrompt: "System prompt.", Messages: convertToLLM(history, target), Tools: tools})
-			stream, err := provider.Stream(context.Background(), transcript, ai.StreamOptions{})
+			transcript := ai.NormalizeContext(ai.Context{SystemPrompt: "System prompt.", Messages: ConvertToLLM(history), Tools: tools})
+			stream, err := provider.Stream(context.Background(), transcript, ai.StreamOptions{RepairToolFlow: true})
 			if err != nil {
 				t.Fatal(err)
 			}

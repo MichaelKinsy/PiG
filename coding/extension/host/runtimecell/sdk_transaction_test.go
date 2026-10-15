@@ -16,7 +16,7 @@ func TestGoPackedCellBuildWaitsForSDKStageLock(t *testing.T) {
 	configRoot := t.TempDir()
 	t.Setenv("PIG_HOME", configRoot)
 	t.Setenv("PIG_SDK_GO_ROOT", "")
-	sdkRoot := filepath.Join(configRoot, "state", "pigsdk", "sdk")
+	sdkRoot := testStagedSDKDir(t, configRoot, "go")
 	sdkSource, err := filepath.Abs(filepath.Join("..", "..", "..", "..", "extensions", "sdk"))
 	if err != nil {
 		t.Fatal(err)
@@ -53,7 +53,7 @@ func TestGoPackedCellBuildWaitsWhileSDKRootIsBeingReplaced(t *testing.T) {
 	t.Setenv("PIG_SOURCE_ROOT", "")
 	t.Setenv("HOME", t.TempDir())
 
-	sdkRoot := filepath.Join(configRoot, "state", "pigsdk", "sdk")
+	sdkRoot := testStagedSDKDir(t, configRoot, "go")
 	if err := os.MkdirAll(sdkRoot, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestGoPackedCellWarmEntryDoesNotWaitForSDKStageLock(t *testing.T) {
 	configRoot := t.TempDir()
 	t.Setenv("PIG_HOME", configRoot)
 	t.Setenv("PIG_SDK_GO_ROOT", "")
-	sdkRoot := filepath.Join(configRoot, "state", "pigsdk", "sdk")
+	sdkRoot := testStagedSDKDir(t, configRoot, "go")
 	sdkSource, err := filepath.Abs(filepath.Join("..", "..", "..", "..", "extensions", "sdk"))
 	if err != nil {
 		t.Fatal(err)
@@ -160,7 +160,7 @@ func TestRustPackedCellWarmEntryDoesNotWaitForSDKStageLock(t *testing.T) {
 	configRoot := t.TempDir()
 	t.Setenv("PIG_HOME", configRoot)
 	t.Setenv("PIG_SDK_RS_ROOT", "")
-	sdkRoot := filepath.Join(configRoot, "state", "pigsdk", "sdk-rs")
+	sdkRoot := testStagedSDKDir(t, configRoot, "rust")
 	if err := os.MkdirAll(sdkRoot, 0o755); err != nil {
 		t.Fatal(err)
 	}

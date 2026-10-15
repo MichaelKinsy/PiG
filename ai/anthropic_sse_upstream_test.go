@@ -182,7 +182,7 @@ func TestAnthropicUpstreamSSEParsing(t *testing.T) {
 		}
 	})
 	// .upstream/v0.87.1/packages/ai/test/anthropic-sse-parsing.test.ts:264
-	// Go has no SDK client object: upstream's params.betas reach the wire only as the anthropic-beta header, so both managed betas are asserted there.
+	// The HTTP-transport form: params.betas reach the wire as the anthropic-beta header. TestAnthropicUpstreamSSEParsingInjectedClient ports the injected-client form.
 	t.Run("passes managed beta features to HTTP transport", func(t *testing.T) {
 		result, _, headers := streamAnthropicFixture(t, AnthropicConfig{Model: "claude-fable-5-1"}, anthropicMinimalFixture(), StreamOptions{})
 		if result.StopReason != StopReasonStop || result.ErrorMessage != "" {

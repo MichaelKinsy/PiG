@@ -1,9 +1,11 @@
 package codingagent
 
+// pi: packages/coding-agent/src/utils/fs-watch.ts
+// FS_WATCH_RETRY_DELAY_MS (5000) and watchWithErrorHandler: TestFooterRetriesGitWatchersFiveSecondsAfterAsyncWatchError.
+
 import (
 	"context"
 	"errors"
-	"github.com/fsnotify/fsnotify"
 	"os"
 	"path/filepath"
 	"slices"
@@ -11,6 +13,8 @@ import (
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/fsnotify/fsnotify"
 )
 
 func TestFooterGitCommandArguments(t *testing.T) {
@@ -183,7 +187,7 @@ func TestFooterUpdatesCachedBranchWhenReftableDirectoryChanges(t *testing.T) {
 		return "main"
 	}
 	t.Cleanup(func() { resolveBranchWithGit = previous })
-	sl := NewStatusLine(nil, "", nil)
+	sl := NewFooterComponent(nil, "", nil)
 	sl.SetCwd(worktree)
 	calls.Store(0)
 	notifications := make(chan struct{}, 1)
@@ -205,7 +209,9 @@ func TestFooterUpdatesCachedBranchWhenReftableDirectoryChanges(t *testing.T) {
 	writeGitFixtureFile(t, table, "1\n")
 	select {
 	case <-notifications:
-	case <-time.After(3 * time.Second):
+	// Real fs watcher events can arrive late under full-suite load; Pi 1.1.0 allows 10 s
+	// (footer-data-provider.test.ts "updates cached branch when the reftable directory changes", e9163107).
+	case <-time.After(10 * time.Second):
 		t.Fatal("reftable change never reached cached branch")
 	}
 	if got := sl.GitBranch(); got != "foo" {
@@ -227,7 +233,7 @@ func BenchmarkFooterWatchLifetime(b *testing.B) {
 		}
 	}
 	writeGitFixtureFileForBenchmark(filepath.Join(dir, ".git", "HEAD"), "ref: refs/heads/main\n")
-	sl := NewStatusLine(nil, "", nil)
+	sl := NewFooterComponent(nil, "", nil)
 	sl.SetCwd(dir)
 	b.ReportAllocs()
 	for b.Loop() {

@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 //go:build ignore
@@ -39,7 +38,6 @@ func main() {
 
 	var b strings.Builder
 	// REUSE-IgnoreStart
-	b.WriteString("// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP\n")
 	b.WriteString("// SPDX-FileCopyrightText: Copyright 2023-2026 SpaceXAI\n")
 	b.WriteString("// SPDX-FileCopyrightText: Copyright 2026 Alexey Zaytsev\n")
 	b.WriteString("// SPDX-FileCopyrightText: Copyright (c) 2015 The Rust Project Developers\n")

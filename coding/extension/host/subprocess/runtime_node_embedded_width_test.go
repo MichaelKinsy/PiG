@@ -1,3 +1,5 @@
+//go:build !pig_strip_node_extensions
+
 package subprocess
 
 import (
@@ -9,7 +11,7 @@ import (
 // get-east-asian-width when an extension imports pi-tui.
 func TestEmbeddedNodeRuntimeWidthUtilities(t *testing.T) {
 	runtimeRoot := t.TempDir()
-	if err := copyEmbeddedTree(nodeRuntimeFS, "runtime-node", runtimeRoot); err != nil {
+	if err := extractNodeRuntime(runtimeRoot); err != nil {
 		t.Fatal(err)
 	}
 	command := exec.CommandContext(t.Context(), "node",

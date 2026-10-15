@@ -38,6 +38,8 @@ func TestInteractiveQuitPrintsOneHintAfterTerminalRestore(t *testing.T) {
 	setStdoutTTY(t, true)
 	for _, key := range []string{"\x04", "\x03\x03", "extension"} {
 		t.Run(fmt.Sprintf("%q", key), func(t *testing.T) {
+			// The faint label follows chalk's stdout level; FORCE_COLOR pins it to 1 whatever the test's stdout is.
+			t.Setenv("FORCE_COLOR", "1")
 			session, err := tempSessionMgr(t).Create("exit-regression", "")
 			if err != nil {
 				t.Fatal(err)
@@ -46,7 +48,7 @@ func TestInteractiveQuitPrintsOneHintAfterTerminalRestore(t *testing.T) {
 				t.Fatal(err)
 			}
 			m := &InteractiveMode{
-				opts:    InteractiveOptions{SessionHandle: &recordingCompactHandle{inner: session}},
+				opts:    InteractiveModeOptions{SessionHandle: &recordingCompactHandle{inner: session}},
 				tuiInst: tui.NewWithOutput(io.Discard, 80, 24),
 				editor:  tui.NewEditor(), keybindings: DefaultKeybindingsManager(), isIdle: true,
 			}

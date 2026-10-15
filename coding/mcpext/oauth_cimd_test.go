@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/mcpext"
+	"github.com/MichaelKinsy/PiG/mcp/oauth"
 )
 
 // Ports packages/coding-agent/test/mcp-oauth-refresh.test.ts ("MCP OAuth client ID metadata documents", #10302).
@@ -162,7 +163,8 @@ type pastePrompt struct {
 	ready chan struct{}
 }
 
-func (p *pastePrompt) ShowAuthorizationURL(u *url.URL) {
+func (p *pastePrompt) ShowAuthorizationURL(shown oauth.URL) {
+	u, _ := url.Parse(shown.Href())
 	p.mu.Lock()
 	p.shown = u
 	p.mu.Unlock()

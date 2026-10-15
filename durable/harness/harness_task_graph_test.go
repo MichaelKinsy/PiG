@@ -124,21 +124,19 @@ func TestTaskGraphView(t *testing.T) {
 	t.Run("follows every live task through its statuses, owner edges, and owned conversations", func(t *testing.T) {
 		childGate, lateGate := deferred(), deferred()
 		parentTask, childTask := graphFamily(graphGates{child: childGate, late: lateGate})
-		harness, _, _ := openTasks(t, storage.NewMemoryStorage(), []durable.AnyTask{parentTask, childTask})
+		harness, _, _ := openTasks(t, storage.NewMemoryStorage(), []durable.AnyTask{parentTask.Erased(), childTask.Erased()})
 		root := mustRoot(t, harness, nil)
 		var mu sync.Mutex
 		var seen []TaskGraph
 		observe := func() durable.AttachedReplicatedState[TaskGraph] {
 			opened := must(harness.TaskGraph(testContext))
-			if _, err := opened.Subscribe(func(value TaskGraph, _ context.Context, delivery chord.ReplicatedStateDelivery) {
+			opened.Subscribe(func(value TaskGraph, _ context.Context, delivery chord.ReplicatedStateDelivery) {
 				if delivery.Kind == chord.DeliveryUpdate {
 					mu.Lock()
 					seen = append(seen, value)
 					mu.Unlock()
 				}
-			}); err != nil {
-				t.Fatal(err)
-			}
+			})
 			return opened
 		}
 		graph := observe()
@@ -277,7 +275,7 @@ func TestTaskGraphView(t *testing.T) {
 			}
 			return store
 		}
-		firstHarness, _, _ := openTasks(t, openSqlite(), []durable.AnyTask{work})
+		firstHarness, _, _ := openTasks(t, openSqlite(), []durable.AnyTask{work.Erased()})
 		firstRoot := mustRoot(t, firstHarness, nil)
 		type created struct {
 			foreground, background durable.TaskId
@@ -312,7 +310,7 @@ func TestTaskGraphView(t *testing.T) {
 		mustClose(t, firstHarness)
 
 		// Acquired after reopen: built from the committed records and owner edges; open reconciled running to pending.
-		harness, _, _ := openTasks(t, openSqlite(), []durable.AnyTask{work})
+		harness, _, _ := openTasks(t, openSqlite(), []durable.AnyTask{work.Erased()})
 		watch := must(harness.WatchTaskGraph(testContext))
 		expectSameJSON(t, graphStatuses(watch.Value()), map[string]any{foregroundKey: "pending", backgroundKey: "pending"})
 		expectSameJSON(t, watch.Value().Tasks[taskKey(ids.foreground)].Conversations, []any{float64(ids.owned)})
@@ -322,18 +320,18 @@ func TestTaskGraphView(t *testing.T) {
 
 		// Exact frames: replaying their operations from the acquisition revision gives each delivered value.
 		var mu sync.Mutex
-		replica := jsonOf(t, watch.Value())
+		replica := orderedJSONOf(t, watch.Value())
 		var frames [][]durable.Op
 		var replayErr error
 		watch.Start(func(_ context.Context, value TaskGraph, ops []durable.Op) error {
 			mu.Lock()
 			defer mu.Unlock()
 			converted := make([]durable.Op, len(ops))
-			for i, op := range jsonOf(t, ops).([]any) {
+			for i, op := range orderedJSONOf(t, ops).([]any) {
 				converted[i] = op.([]any)
 			}
 			next, err := delta.ApplyImmutable(replica, converted)
-			if err == nil && !reflect.DeepEqual(next, jsonOf(t, value)) {
+			if err == nil && !reflect.DeepEqual(jsonOf(t, next), jsonOf(t, value)) {
 				err = fmt.Errorf("replica %v, delivered %v", next, jsonOf(t, value))
 			}
 			if err != nil && replayErr == nil {
@@ -374,7 +372,7 @@ func TestTaskGraphView(t *testing.T) {
 		}
 		expectSameJSON(t, recorded[len(recorded)-1], []any{[]any{"d", []any{"tasks", taskKey(ids.background)}}})
 		var keys []string
-		for key := range finalReplica.(map[string]any)["tasks"].(map[string]any) {
+		for key := range finalReplica.(*delta.JsonObject).Value("tasks").(*delta.JsonObject).All() {
 			keys = append(keys, key)
 		}
 		expectStrings(t, keys, []string{taskKey(ids.foreground)})
@@ -426,7 +424,7 @@ func TestTaskGraphView(t *testing.T) {
 			},
 			Abort: func(context.Context, spawnRecord, spawnRuntime) error { return nil },
 		})
-		harness, _, _ := openTasks(t, storage.NewMemoryStorage(), []durable.AnyTask{spawner})
+		harness, _, _ := openTasks(t, storage.NewMemoryStorage(), []durable.AnyTask{spawner.Erased()})
 		root := mustRoot(t, harness, nil)
 		graph := must(harness.TaskGraph(testContext))
 		id := commitValue(t, root, func(tx durable.Tx) (durable.TaskId, error) {
@@ -522,7 +520,7 @@ func TestTaskGraphView(t *testing.T) {
 			},
 			Abort: func(context.Context, stepRecord, stepRuntime) error { return nil },
 		})
-		harness, _, _ := openTasks(t, storage.NewMemoryStorage(), []durable.AnyTask{memo})
+		harness, _, _ := openTasks(t, storage.NewMemoryStorage(), []durable.AnyTask{memo.Erased()})
 		root := mustRoot(t, harness, nil)
 		rootId := root.Id()
 		id := commitValue(t, root, func(tx durable.Tx) (durable.TaskId, error) {
@@ -535,7 +533,7 @@ func TestTaskGraphView(t *testing.T) {
 		}
 		var mu sync.Mutex
 		var updates []string
-		if _, err := first.Subscribe(func(value TaskGraph, _ context.Context, delivery chord.ReplicatedStateDelivery) {
+		first.Subscribe(func(value TaskGraph, _ context.Context, delivery chord.ReplicatedStateDelivery) {
 			if delivery.Kind != chord.DeliveryUpdate {
 				return
 			}
@@ -546,9 +544,7 @@ func TestTaskGraphView(t *testing.T) {
 			mu.Lock()
 			updates = append(updates, status)
 			mu.Unlock()
-		}); err != nil {
-			t.Fatal(err)
-		}
+		})
 		snapshot := func() []string {
 			harness.(*harnessImpl).WaitDeliveries()
 			mu.Lock()

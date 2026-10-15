@@ -11,11 +11,13 @@ import (
 
 // Ports packages/durable/src/types.ts
 
-// JsonValue is a strict JSON value: nil, bool, float64 or another JSON number, string, []any, or map[string]any.
+// JsonValue is a strict JSON value: nil, bool, float64 or another JSON number, string, []any, or an object. Objects that
+// durable decodes or copies are *delta.JsonObject, which keeps JavaScript's property order; a Go map a caller supplies has
+// no order and is copied in own-key order.
 type JsonValue = any
 
 // JsonObject is the JSON object used as the root of every durable document.
-type JsonObject = map[string]any
+type JsonObject = *delta.JsonObject
 
 // Op is one Chord delta operation (packages/chord/src/delta).
 type Op = delta.Op
@@ -93,18 +95,44 @@ type DocumentSemantics struct {
 	Fork    DocumentFork
 }
 
+// LatestConversationSemantics is a conversation document that retains only its current state: the DocumentSemantics member
+// {scope: "conversation", history: "latest"} whose fork is current or initial (types.ts:41-46). Go has no literal types, so
+// NewLatestConversationSemantics fixes the scope and history and DefineDoc rejects a fork a latest document cannot have.
+type LatestConversationSemantics struct {
+	DocumentSemantics
+}
+
+// NewLatestConversationSemantics is the latest conversation semantics with the given fork, ForkCurrent or ForkInitial.
+func NewLatestConversationSemantics(fork DocumentFork) LatestConversationSemantics {
+	return LatestConversationSemantics{DocumentSemantics{Scope: ScopeConversation, History: HistoryLatest, Fork: fork}}
+}
+
+// RewindableConversationSemantics is a conversation document whose history remains addressable for as-of reads: the
+// DocumentSemantics member {scope: "conversation", history: "rewindable"} whose fork is asOf, current or initial (types.ts:48-53).
+type RewindableConversationSemantics struct {
+	DocumentSemantics
+}
+
+// NewRewindableConversationSemantics is the rewindable conversation semantics with the given fork, ForkAsOf, ForkCurrent or ForkInitial.
+func NewRewindableConversationSemantics(fork DocumentFork) RewindableConversationSemantics {
+	return RewindableConversationSemantics{DocumentSemantics{Scope: ScopeConversation, History: HistoryRewindable, Fork: fork}}
+}
+
 // CheckpointInfo is the stored replay state supplied to a document's checkpoint predicate.
 type CheckpointInfo struct {
 	// DeltasSinceBase counts deltas already stored after the newest base, excluding the change being evaluated.
 	DeltasSinceBase int
 }
 
-// CommonDocDefinition holds the definition fields shared by singleton documents and document families.
+// CommonDocDefinition holds the definition fields shared by singleton documents and document families (types.ts:69-79).
+// The singleton definition embeds it; a family definition has its fields except Initial, as upstream's `Omit<CommonDocDefinition<T>, "initial">`.
 type CommonDocDefinition[T any] struct {
 	// Kind is the stable persisted kind; part of the public protocol.
 	Kind string
 	// Version is the positive integer version of the stored value shape.
 	Version int
+	// Initial returns the document's first value.
+	Initial func() T
 	// Migrate converts a value stored by an older version; nil when absent.
 	Migrate func(value JsonObject, fromVersion int) (T, error)
 	// CheckpointWhen returns true to store this ordinary change as a complete base instead of a delta; nil when
@@ -116,13 +144,23 @@ type CommonDocDefinition[T any] struct {
 type DocDefinition[T any] struct {
 	CommonDocDefinition[T]
 	DocumentSemantics
-	Initial func() T
 }
 
-// DocFamilyDefinition is a keyed document family definition; Initial(seed) runs only when a member is absent.
+// DocFamilyDefinition is a keyed document family definition; Initial(seed) runs only when a member is absent. It has the fields of
+// CommonDocDefinition except Initial, which takes the seed (types.ts:84-89 `Omit<CommonDocDefinition<T>, "initial"> & ...`).
 type DocFamilyDefinition[T, I any] struct {
-	CommonDocDefinition[T]
+	// Kind is the stable persisted kind; part of the public protocol.
+	Kind string
+	// Version is the positive integer version of the stored value shape.
+	Version int
+	// Migrate converts a value stored by an older version; nil when absent.
+	Migrate func(value JsonObject, fromVersion int) (T, error)
+	// CheckpointWhen returns true to store this ordinary change as a complete base instead of a delta; nil when
+	// absent.
+	CheckpointWhen func(value T, ops []Op, info CheckpointInfo) bool
 	DocumentSemantics
+	// Family is upstream's required literal `family: true` (documents.ts FamilyInput); DefineDocFamily panics when it is false.
+	Family  bool
 	Initial func(seed I) T
 }
 
@@ -221,6 +259,12 @@ type TaskRuntime[I, S, R any, H any] interface {
 	GetTask(ctx context.Context, id TaskId) (*TaskRecord[JsonValue, JsonValue, JsonValue], error)
 	// WaitForTask returns the task's terminal receipt; it fails when the invocation ends.
 	WaitForTask(ctx context.Context, id TaskId) (SettledTask[JsonValue], error)
+	// AbortOwned aborts a task this task owns, as Harness.AbortTask does, and returns once it is terminal. It fails
+	// for a task another owns, and returns at once for a terminal one.
+	AbortOwned(ctx context.Context, id TaskId) error
+	// OwnedTasks returns the live tasks this task owns directly, in ID order: also those an earlier invocation created,
+	// before a restart. Tasks in conversations it owns are not included. The records are copies of the committed ones.
+	OwnedTasks(ctx context.Context) ([]TaskRecord[JsonValue, JsonValue, JsonValue], error)
 	// Outcomes returns the outcomes of terminal tasks, in order; it fails when one is missing or not terminal.
 	Outcomes(ctx context.Context, ids []TaskId) ([]TaskOutcome[JsonValue], error)
 	// Conversation returns an invocation-bound handle of an existing conversation; nil when absent. Its operations
@@ -228,9 +272,9 @@ type TaskRuntime[I, S, R any, H any] interface {
 	Conversation(ctx context.Context, id ConversationId) (ConversationHandle, error)
 	// Entry returns a committed entry visible from the task's conversation; nil when absent.
 	Entry(ctx context.Context, id EntryId) (*EntryRecord, error)
-	// Context returns the committed raw active transcript and model context, cut off at the visible entry at when at
-	// is not nil.
-	Context(ctx context.Context, conversationId ConversationId, at *EntryId) (ContextView, error)
+	// Context returns the committed raw active transcript and model context, cut off at the visible entry
+	// options.At when it is set.
+	Context(ctx context.Context, conversationId ConversationId, options *ContextOptions) (ContextView, error)
 	// Now returns the Harness clock.
 	Now() float64
 	// Report forwards a non-fatal failure to HarnessOptions.onReport.
@@ -297,6 +341,12 @@ type TaskOptions struct {
 	// Background applies to conversation-owned tasks only: excluded from ordinary idle waits, conversation aborts, and
 	// cascades.
 	Background bool
+	// AbandonOnRestart marks a task whose creator awaits it only in memory and does not resume after a restart, so it is
+	// pointless once the Harness that created it is gone. When scheduling starts in a later Harness, the task, if still
+	// live, is abort-marked with reason "restart", and the mark cascades to its ordinary owned work, before any of it
+	// runs again. Nil is unset: a task a tool that is not replay-safe creates through its api then defaults to true
+	// (tool.ts:338); false keeps it off.
+	AbandonOnRestart *bool
 }
 
 // ConversationOwnershipKind is "ownerless" or "task".
@@ -374,8 +424,9 @@ type EntryDraft struct {
 	Model []ai.Message  `json:"model,omitempty"`
 	Data  JsonValue     `json:"data,omitempty"`
 	Edits []ContextEdit `json:"edits,omitempty"`
-	// Head starts active context at an entry; HeadSelf starts it at the newly assigned entry ID.
-	Head     *EntryId `json:"-"`
+	// Head starts active context at an entry; HeadSelf starts it at the newly assigned entry ID. MarshalJSON writes either as the
+	// wire member head: an entry ID, or "self".
+	Head     *EntryId `json:"head,omitempty"`
 	HeadSelf bool     `json:"-"`
 }
 
@@ -531,6 +582,12 @@ type TaskState[S, R any] struct {
 	Outcome    *TaskOutcome[R] `json:"outcome,omitempty"`
 }
 
+// TaskAbortReason is why a task's abort mark was set when not by an abort request.
+type TaskAbortReason string
+
+// AbortedByRestart marks a task abandoned after a restart (TaskOptions.AbandonOnRestart), or below one.
+const AbortedByRestart TaskAbortReason = "restart"
+
 // TaskRecord is the complete replacement record for one durable task state machine.
 type TaskRecord[I, S, R any] struct {
 	Id             TaskId         `json:"id"`
@@ -547,10 +604,22 @@ type TaskRecord[I, S, R any] struct {
 	// aborts, and cascades.
 	Background bool `json:"background"`
 	// AbortRequested is the durable abort mark checked before run-mode progress is committed.
-	AbortRequested bool            `json:"abortRequested"`
-	State          TaskState[S, R] `json:"state"`
+	AbortRequested bool `json:"abortRequested"`
+	// AbortReason is why the mark was set when not by an abort request: "restart" for a task abandoned after a restart
+	// (TaskOptions.AbandonOnRestart) or below one. Such a task waits for its definition instead of becoming orphaned. A
+	// later abort request clears it. Empty when absent.
+	AbortReason TaskAbortReason `json:"abortReason,omitempty"`
+	// AbandonOnRestart is set from TaskOptions.AbandonOnRestart. Immutable.
+	AbandonOnRestart bool            `json:"abandonOnRestart,omitempty"`
+	State            TaskState[S, R] `json:"state"`
 	// Memos are small first-writer-wins values retained while the task can run; nil once completing or terminal.
 	Memos map[string]JsonValue `json:"memos,omitempty"`
+	// StartedAt is the wall-clock time in milliseconds of the first change to running, stamped by the Session. It is
+	// kept through waits and recovery, so the span to EndedAt includes them. Nil before the task first runs, and on
+	// records written by earlier versions.
+	StartedAt *float64 `json:"startedAt,omitempty"`
+	// EndedAt is the wall-clock time in milliseconds of the change to terminal, stamped by the Session; nil while live.
+	EndedAt *float64 `json:"endedAt,omitempty"`
 }
 
 // DocumentRecordScope is the owner of a document incarnation.
@@ -597,22 +666,43 @@ type Page[T, C any] struct {
 	Next *C
 }
 
-// Cursor is backend-owned JSON continuation state that callers only round-trip to the same scan.
+// Cursor is backend-owned JSON continuation state that callers only round-trip to the same scan. It carries the scan's
+// order: a scan given a cursor continues in that order, and rejects a different Order in its query.
 type Cursor = map[string]JsonValue
+
+// ScanOrder is the ID order of a scan.
+type ScanOrder string
+
+const (
+	// ScanAscending is oldest first.
+	ScanAscending ScanOrder = "ascending"
+	// ScanDescending is newest first.
+	ScanDescending ScanOrder = "descending"
+)
+
+// ContextOptions is the optional argument of a context read.
+type ContextOptions struct {
+	// At cuts the context off at this visible entry: the view Fork(At) would start with.
+	At *EntryId
+}
 
 // ConversationQuery holds optional filters for an ordered conversation scan.
 type ConversationQuery struct {
 	OwnerConversationId *ConversationId
 	OwnerTaskId         *TaskId
+	// Order defaults to ScanAscending; with a cursor, the cursor's order.
+	Order *ScanOrder
 }
 
-// EntryQuery holds inclusive ID bounds for a newest-first scan of one conversation's fork-aware history.
+// EntryQuery holds inclusive ID bounds for a scan of one conversation's fork-aware history.
 type EntryQuery struct {
 	ConversationId ConversationId
 	// MinEntryId is the oldest entry ID that may be returned.
 	MinEntryId *EntryId
 	// MaxEntryId is the newest entry ID that may be returned.
 	MaxEntryId *EntryId
+	// Order defaults to ScanDescending; with a cursor, the cursor's order.
+	Order *ScanOrder
 }
 
 // TaskQuery holds optional filters for an ordered scan of durable task records.
@@ -622,12 +712,16 @@ type TaskQuery struct {
 	Status         *TaskStatus
 	AbortRequested *bool
 	Background     *bool
+	// Order defaults to ScanAscending; with a cursor, the cursor's order.
+	Order *ScanOrder
 }
 
 // SubmissionQuery holds optional filters for an ordered scan of submission records.
 type SubmissionQuery struct {
 	ConversationId *ConversationId
 	Status         *SubmissionStatus
+	// Order defaults to ScanAscending; with a cursor, the cursor's order.
+	Order *ScanOrder
 }
 
 // DocumentPoint is the current state (Current) or one historical commit sequence used for document membership and
@@ -872,9 +966,11 @@ const (
 	WatchSessionClosed WatchEndReason = "session_closed"
 	WatchRetired       WatchEndReason = "retired"
 	WatchListenerError WatchEndReason = "listener_error"
+	// WatchSessionFailed ends a watch when the Session failed; Error is the failure.
+	WatchSessionFailed WatchEndReason = "session_failed"
 )
 
-// WatchEnd is the terminal result of one document watch; Error is set only for listener_error.
+// WatchEnd is the terminal result of one document watch; Error is set only for listener_error and session_failed.
 type WatchEnd struct {
 	Reason WatchEndReason
 	Error  error
@@ -914,11 +1010,25 @@ type DocumentObserver interface {
 	WatchDocErased(ctx context.Context, token AnyDocToken, args ...any) (WatchHandle[JsonObject], error)
 }
 
+// SessionEndReason is how a Session ended: closed by its owner, or failed.
+type SessionEndReason string
+
+const (
+	SessionEndClosed SessionEndReason = "closed"
+	SessionEndFailed SessionEndReason = "failed"
+)
+
+// SessionEnd is the terminal result of one Session; Error is the first error that failed it, set only for failed.
+type SessionEnd struct {
+	Reason SessionEndReason
+	Error  error
+}
+
 // Session owns one mutation line, its records, and its tracked documents.
 type Session interface {
 	DocumentObserver
 	DocumentReader
-	// Commit runs one atomic transaction on the Session mutation line.
+	// Commit runs one atomic transaction on the Session mutation line. Inside the callback read only through tx: Snapshot, DocumentState, WatchDoc, GetTask and the other Session and runtime reads may queue on the line the callback holds, and then never return.
 	Commit(ctx context.Context, change func(tx Tx) (any, error)) (any, error)
 	// Close seals admission, settles admitted commits, then closes storage.
 	Close(ctx context.Context) error
@@ -928,9 +1038,13 @@ type Session interface {
 	// SubscribeClose observes close synchronously when it begins. The listener must not panic, block, or call
 	// Session APIs.
 	SubscribeClose(listener func()) func()
-	// DocumentStateErased returns a disposable state of the document's JSON value, or nil when absent. Typed states
-	// use the DocumentStateOf helper.
-	DocumentStateErased(ctx context.Context, token AnyDocToken, args ...any) (AttachedReplicatedState[JsonObject], error)
+	// Closed returns a channel closed once the Session ended: after close reached the backend, or a failure ended it.
+	Closed() <-chan struct{}
+	// End returns how the Session ended once Closed is closed.
+	End() SessionEnd
+	// DocumentStateErased returns a disposable state of the document's JSON value, or nil when absent. Typed
+	// states use the DocumentStateOf helper.
+	DocumentStateErased(ctx context.Context, token AnyDocToken, args ...any) (DocumentState[JsonObject], error)
 }
 
 // Committer runs one atomic Session commit: a Session, a Conversation, or a tool's ToolExecutionApi.
@@ -968,7 +1082,7 @@ type Storage interface {
 	MintId() (int64, error)
 	// Conversation looks up one conversation by exact ID; nil when absent.
 	Conversation(ctx context.Context, id ConversationId) (*ConversationRecord, error)
-	// ScanConversations scans conversations in ascending ID order.
+	// ScanConversations scans conversations in query.Order (default ascending) by ID.
 	ScanConversations(ctx context.Context, query ConversationQuery, limit int, cursor Cursor) (Page[ConversationRecord, Cursor], error)
 	// Entry looks up one global entry and the sequence of the commit that persisted it; nil when absent.
 	Entry(ctx context.Context, id EntryId) (*EntryAt, error)
@@ -977,15 +1091,15 @@ type Storage interface {
 	// FindLatestHeadMarker returns the newest visible entry with a Head at or below the optional inclusive cutoff.
 	// The returned entry is the marker; its Head is the range's actual lower bound.
 	FindLatestHeadMarker(ctx context.Context, conversationId ConversationId, atOrBeforeEntryId *EntryId) (*EntryRecord, error)
-	// ScanEntries scans the inclusive visible range newest-first, returning at most limit entries.
+	// ScanEntries scans the inclusive visible range in query.Order (default descending), returning at most limit entries.
 	ScanEntries(ctx context.Context, query EntryQuery, limit int, cursor Cursor) (Page[EntryRecord, Cursor], error)
 	// Task looks up the latest complete record for one task; nil when absent.
 	Task(ctx context.Context, id TaskId) (*TaskRecord[JsonValue, JsonValue, JsonValue], error)
-	// ScanTasks scans task records matching every supplied filter.
+	// ScanTasks scans task records matching every supplied filter in query.Order (default ascending) by ID.
 	ScanTasks(ctx context.Context, query TaskQuery, limit int, cursor Cursor) (Page[TaskRecord[JsonValue, JsonValue, JsonValue], Cursor], error)
 	// Submission looks up the latest complete record for one admitted submission; nil when absent.
 	Submission(ctx context.Context, id SubmissionId) (*SubmissionRecord, error)
-	// ScanSubmissions scans submissions matching every supplied filter in ascending ID order.
+	// ScanSubmissions scans submissions matching every supplied filter in query.Order (default ascending) by ID.
 	ScanSubmissions(ctx context.Context, query SubmissionQuery, limit int, cursor Cursor) (Page[SubmissionRecord, Cursor], error)
 	// SubmissionByRequest finds a submission by its conversation-scoped host deduplication key; nil when absent.
 	SubmissionByRequest(ctx context.Context, conversationId ConversationId, requestId string) (*SubmissionRecord, error)

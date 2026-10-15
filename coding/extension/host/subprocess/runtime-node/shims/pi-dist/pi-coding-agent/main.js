@@ -40,7 +40,7 @@ import { loadMcpCommand } from "./extensions/mcp/cli.lazy.js";
 import { runMigrations, showDeprecationWarnings } from "./migrations.js";
 import { InteractiveMode, runPrintMode, runRpcMode } from "./modes/index.js";
 import { initTheme, setThemeJsonValidator, stopThemeWatcher } from "./modes/interactive/theme/theme.js";
-import { validateThemeJson } from "./modes/interactive/theme/theme-json.js";
+import { validateThemeJson } from "./modes/interactive/theme/theme-schema.js";
 import { cleanupManagedInstall, handleConfigCommand, handlePackageCommand } from "./package-manager-cli.js";
 import { isLocalPath, normalizePath, resolvePath } from "./utils/paths.js";
 import { cleanupWindowsSelfUpdateQuarantine } from "./utils/windows-self-update.js";
@@ -368,6 +368,7 @@ function buildSessionOptions(parsed, scopedModels, hasExistingSession, modelRunt
             cliProvider: parsed.provider,
             cliModel: parsed.model,
             cliThinking: parsed.thinking,
+            inlineApiKey: Boolean(parsed.apiKey),
             modelRuntime,
         });
         if (resolved.warning) {
@@ -448,6 +449,8 @@ async function promptForMissingSessionCwd(issue, settingsManager) {
 }
 export async function main(args, options) {
     resetTimings();
+    // Commands and startup selectors can load user-authored themes before runtime creation.
+    setThemeJsonValidator(validateThemeJson);
     const extensionFactories = [...builtInExtensions, ...(options?.extensionFactories ?? [])];
     const offlineMode = args.includes("--offline") || isTruthyEnvFlag(process.env.PI_OFFLINE);
     if (offlineMode) {
@@ -631,6 +634,7 @@ export async function main(args, options) {
                 additionalPromptTemplatePaths: resolvedPromptTemplatePaths,
                 additionalThemePaths: resolvedThemePaths,
                 noExtensions: parsed.noExtensions,
+                disabledBuiltinExtensions: parsed.noMcp ? ["mcp"] : undefined,
                 noSkills: parsed.noSkills,
                 noPromptTemplates: parsed.noPromptTemplates,
                 noThemes: parsed.noThemes,
@@ -730,8 +734,6 @@ export async function main(args, options) {
     time("readPipedStdin");
     const { initialMessage, initialImages } = await prepareInitialMessage(parsed, stdinContent);
     time("prepareInitialMessage");
-    // pi reads user-authored themes, so it opts into full validation before any theme loads.
-    setThemeJsonValidator(validateThemeJson);
     initTheme(settingsManager.getTheme(), appMode === "interactive");
     time("initTheme");
     // Show deprecation warnings in interactive mode

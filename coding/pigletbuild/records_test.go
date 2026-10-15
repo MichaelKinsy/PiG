@@ -1,6 +1,7 @@
 package pigletbuild
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -148,7 +149,7 @@ func TestWriteBinaryRecordsWritesOnlyManagedRecordsAndArtifact(t *testing.T) {
 		strings.TrimPrefix(records.Binary.Binary.Artifact.Digest, "sha256:"), "pig-release",
 	)
 	managedData, err := os.ReadFile(managedArtifact)
-	if err != nil || string(managedData) != string(artifactData) {
+	if err != nil || !bytes.Equal(managedData, artifactData) {
 		t.Fatalf("managed artifact data=%q err=%v", managedData, err)
 	}
 	if _, err := os.Stat(artifactPath + ".receipt.json"); !os.IsNotExist(err) {

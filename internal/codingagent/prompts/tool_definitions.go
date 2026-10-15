@@ -40,7 +40,7 @@ func WithToolDefinitions(options Options, definitions []extension.RegisteredTool
 
 // FromExtensionOptions converts the resource and tool inputs exposed to extensions into prompt-builder inputs.
 func FromExtensionOptions(input extension.BuildSystemPromptOptions) Options {
-	options := Options{Cwd: input.Cwd, Tools: input.SelectedTools, ToolHints: input.ToolSnippets, ToolGuidelines: input.ToolGuidelines, PromptGuidelines: input.PromptGuidelines, CustomPrompt: input.CustomPrompt, AppendSystemPrompt: input.AppendSystemPrompt}
+	options := Options{Cwd: input.Cwd, Tools: input.SelectedTools, HiddenTools: input.HiddenTools, ToolHints: input.ToolSnippets, ToolGuidelines: input.ToolGuidelines, PromptGuidelines: input.PromptGuidelines, CustomPrompt: input.CustomPrompt, AppendSystemPrompt: input.AppendSystemPrompt, ForceSystemPrompt: input.ForceSystemPrompt}
 	if input.CustomPrompt != "" {
 		options.AppendMode = "replace"
 	}

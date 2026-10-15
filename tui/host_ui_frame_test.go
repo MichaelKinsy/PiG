@@ -1,5 +1,7 @@
 package tui
 
+// pi: packages/coding-agent/src/modes/interactive/components/model-selector.ts
+
 import (
 	"strings"
 	"testing"
@@ -16,7 +18,7 @@ func TestEditorFrameDoesNotOwnHostSpacer(t *testing.T) {
 
 // Pi model-selector.ts uses Spacer, which renders an empty string, not padded Text.
 func TestModelSelectorSpacersMatchUpstream(t *testing.T) {
-	m := NewModelSelector("", nil, []ModelSelectorItem{{Provider: "p", ID: "m", Name: "M"}}, "p/m")
+	m := NewStaticModelSelectorComponent("", nil, []ModelSelectorItem{{Provider: "p", ID: "m", Name: "M"}}, "p/m")
 	if row := m.Render(100)[1]; row != "" {
 		t.Fatalf("model spacer = %q; want empty Spacer row", row)
 	}
@@ -25,12 +27,12 @@ func TestModelSelectorSpacersMatchUpstream(t *testing.T) {
 // Pi tree-selector.ts:1383-1394 owns a leading spacer and keeps the bottom spacer in the empty state.
 func TestTreeFrameSpacingAndTitleStyles(t *testing.T) {
 	treeHelpTestKeybindings(t, nil)
-	ts := NewTreeSelect("", nil)
+	ts := NewTreeSelectorComponent("", nil)
 	rows := ts.Render(100)
 	if rows[0] != "" {
 		t.Fatalf("tree leading spacer = %q", rows[0])
 	}
-	want := NewPaddedText("\x1b[1m  Session Tree\x1b[0m", 1, 0, nil).Render(100)[0]
+	want := NewPaddedText("\x1b[1m  Session Tree\x1b[22m", 1, 0, nil).Render(100)[0]
 	if rows[2] != want {
 		t.Fatalf("title = %q, want %q", rows[2], want)
 	}

@@ -23,7 +23,7 @@ const queue = [];
 let wake;
 runtime.connect = async () => {
   const conn = runtime.attachConnection({ on() {}, off() {}, write() { return true; }, waitUntil() {} });
-  conn.send = (env) => { frames.push(env); return true; };
+  conn.send = (...envs) => { frames.push(...envs); return true; };
   conn.next = () => (queue.length ? Promise.resolve(queue.shift()) : new Promise((resolve) => { wake = resolve; }));
   runtime.conn = conn;
 };

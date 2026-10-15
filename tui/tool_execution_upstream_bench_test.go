@@ -6,7 +6,7 @@ import (
 )
 
 func BenchmarkToolDefinitionRender(b *testing.B) {
-	card := NewToolExecutionComponent("custom_tool", "")
+	card := newToolCardForTest("custom_tool", "")
 	card.SetDefinition(&ToolDefinitionRenderers{Call: func(ToolRenderInput) (Component, bool) { return NewText("call"), true }, Result: func(ToolRenderInput) (Component, bool) { return NewText(strings.Repeat("result line\n", 10)), true }}, nil)
 	card.SetResult("result", false, 0)
 	card.Render(120)

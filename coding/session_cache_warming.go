@@ -9,7 +9,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/coding/extension"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
@@ -19,11 +18,37 @@ import (
 
 // sessionCacheWarming holds the warmer bound to the current inner Session. Retired warmers are owned only until their cancelled refreshes drain; Close joins those tasks without retaining completed Sessions.
 type sessionCacheWarming struct {
-	mu        sync.Mutex
-	warmer    *icodingagent.CacheWarmer
+	mu     sync.Mutex
+	warmer *icodingagent.CacheWarmer
+	// supplied is the caller's warmer (SessionOptions.CacheWarmer) while it serves the Session's first inner session; nil once a replacement installs the Session's own.
+	supplied  CacheWarmer
 	sessionID string
 	closed    bool
 	retired   sync.WaitGroup
+}
+
+// CacheWarmer is the part of a cache warmer that a Session drives: Pi's AgentSessionConfig.cacheWarmer, `Pick<CacheWarmer, "cancel" | "status" | "onAgentSettled" | "onModeChanged" | "onWarmed">` (agent-session.ts:266).
+// The caller's stream function starts it; the Session does not.
+type CacheWarmer interface {
+	Cancel()
+	Status() icodingagent.CacheWarmingStatus
+	OnAgentSettled()
+	OnModeChanged()
+	// SetOnWarmed assigns the callback that reports a persisted cache-warming usage entry (Pi's `onWarmed` property).
+	SetOnWarmed(onWarmed func(context.Context, icodingagent.UsageEntry))
+}
+
+// cacheWarmerHooks is the warmer whose status and lifecycle hooks the Session reports: the caller's while it serves, otherwise the Session's own.
+func (s *Session) cacheWarmerHooks() CacheWarmer {
+	s.warming.mu.Lock()
+	defer s.warming.mu.Unlock()
+	if s.warming.supplied != nil {
+		return s.warming.supplied
+	}
+	if s.warming.warmer != nil {
+		return s.warming.warmer
+	}
+	return nil
 }
 
 // cacheWarmingStreamFn installs response observers and restarts cache warming
@@ -33,13 +58,15 @@ func cacheWarmingStreamFn(session func() *Session) agent.StreamFn {
 		if s := session(); s != nil {
 			options.OnResponse = s.extensionProviderResponseHook
 			options.OnProviderStreamEvent = s.extensionProviderStreamEventHook
+			options.ProviderStreamEventWanted = s.extensionProviderStreamEventWanted
 			var err error
 			options, err = s.buildRequestOptions(model, options)
 			if err != nil {
 				return nil, err
 			}
 			s.startCacheWarming(model, transcript, options)
-			return s.modelRuntime.StreamSimple(ctx, model, ai.Context{Messages: transcript.Messages()}, options), nil
+			// The transcript is validated and immutable, so the runtime shares its messages and does not validate them again.
+			return s.modelRuntime.StreamSimple(ctx, model, transcript.FrozenContext(), options), nil
 		}
 		if options.MaxRetries != nil {
 			ctx = ai.WithProviderMaxRetries(ctx, *options.MaxRetries)
@@ -50,7 +77,7 @@ func cacheWarmingStreamFn(session func() *Session) agent.StreamFn {
 
 // buildRequestOptions mirrors sdk.ts:310-338. Request presence wins over settings, including explicit zero, and the Session header hook runs after provider/header assembly.
 func (s *Session) buildRequestOptions(model *ai.Model, options ai.StreamOptions) (ai.StreamOptions, error) {
-	settings := s.services.SettingsManager()
+	settings := s.SettingsManager()
 	retry := settings.GetProviderRetrySettings()
 	if options.TimeoutMs == nil {
 		timeout, err := settings.GetProviderRequestTimeoutMs()
@@ -73,7 +100,8 @@ func (s *Session) buildRequestOptions(model *ai.Model, options ai.StreamOptions)
 		options.WebSocketConnectTimeoutMs = timeout
 	}
 	if options.MaxRetries == nil {
-		options.MaxRetries = new(retry.MaxRetries)
+		// upstream: sdk.ts:329 `options.maxRetries ?? providerRetrySettings.maxRetries`; an unset setting stays unset.
+		options.MaxRetries = retry.MaxRetries
 	}
 	if options.MaxRetryDelayMs == nil {
 		options.MaxRetryDelayMs = new(retry.MaxRetryDelayMs)
@@ -90,11 +118,22 @@ func (s *Session) streamWarmRequest(ctx context.Context, model *ai.Model, transc
 
 // installCacheWarmer binds a fresh warmer to inner and retires the previous
 // one.
-func (s *Session) installCacheWarmer(inner *icodingagent.Session) {
+func (s *Session) installCacheWarmer(inner *icodingagent.Session, supplied CacheWarmer) {
 	inner.SetCacheReadPriceSource(s.services.Registry().CacheReadPrice)
 	s.warming.mu.Lock()
 	defer s.warming.mu.Unlock()
 	if s.warming.closed {
+		return
+	}
+	// A replacement tears the caller's warmer down, as Pi's dispose of the outgoing session clears its onWarmed and cancels it (agent-session.ts:1409-1412).
+	if previous := s.warming.supplied; previous != nil {
+		previous.SetOnWarmed(nil)
+		previous.Cancel()
+		s.warming.supplied = nil
+	}
+	if supplied != nil {
+		supplied.SetOnWarmed(s.emitEntryAppended)
+		s.warming.supplied, s.warming.sessionID = supplied, inner.ID()
 		return
 	}
 	if previous := s.warming.warmer; previous != nil {
@@ -105,7 +144,7 @@ func (s *Session) installCacheWarmer(inner *icodingagent.Session) {
 			s.cleanupRetiredSessionResources(previousID)
 		})
 	}
-	warmer := icodingagent.NewCacheWarmer(s.streamWarmRequest, inner, s.services.SettingsManager().GetCacheWarmingMode, s.decideCacheWarming)
+	warmer := icodingagent.NewCacheWarmer(s.streamWarmRequest, inner, s.SettingsManager().GetCacheWarmingMode, s.decideCacheWarming)
 	warmer.SetOnWarmed(s.emitEntryAppended)
 	s.warming.warmer, s.warming.sessionID = warmer, inner.ID()
 }
@@ -127,6 +166,7 @@ func (s *Session) cleanupRetiredSessionResources(sessionID string) {
 	_ = ai.CleanupSessionResources(sessionID)
 }
 
+// cacheWarmer is the Session's own warmer, which its stream function starts; nil while the caller's warmer serves.
 func (s *Session) cacheWarmer() (*icodingagent.CacheWarmer, string) {
 	s.warming.mu.Lock()
 	defer s.warming.mu.Unlock()
@@ -172,11 +212,8 @@ func (s *Session) decideCacheWarming(ctx context.Context, event icodingagent.Cac
 	if runner == nil {
 		return event.Action, nil
 	}
-	action, err := runner.EmitCacheWarmingDecision(ctx, extension.CacheWarmingDecisionEvent{
-		Type: event.Type, WarmCost: event.WarmCost, MissCost: event.MissCost,
-		ContinuationProbability: event.ContinuationProbability, Action: extension.CacheWarmingAction(event.Action),
-	})
-	return icodingagent.CacheWarmingAction(action), err
+	action, err := runner.EmitCacheWarmingDecision(ctx, event)
+	return action, err
 }
 
 // emitEntryAppended reports a persisted cache-warming usage entry on the
@@ -184,10 +221,10 @@ func (s *Session) decideCacheWarming(ctx context.Context, event icodingagent.Cac
 // gives up as soon as ctx ends: the warmer was closed, and its Close is
 // waiting for this call to return before it does. The actual send reuses
 // emitOrderedEvent's already-reviewed funnel/recover, run in a background
-// goroutine bounded by s.closeDone, so a full channel during a warmer
-// replacement (ctx cancelled, s.closeDone not yet closed) cannot make Close
+// goroutine bounded by s.eventsDone, so a full channel during a warmer
+// replacement (ctx cancelled, s.eventsDone not yet closed) cannot make Close
 // wait on channel capacity: the goroutine keeps trying to deliver the event
-// until either it succeeds or the session itself closes.
+// until either it succeeds or the event executor ends.
 func (s *Session) emitEntryAppended(ctx context.Context, entry icodingagent.UsageEntry) {
 	raw, err := json.Marshal(entry)
 	if err != nil || ctx.Err() != nil {
@@ -208,7 +245,7 @@ func (s *Session) emitEntryAppended(ctx context.Context, entry icodingagent.Usag
 // inputs that produced it, or nil when the Session has no warmer. Mirrors
 // upstream AgentSession.cacheWarmingStatus.
 func (s *Session) CacheWarmingStatus() *icodingagent.CacheWarmingStatus {
-	warmer, _ := s.cacheWarmer()
+	warmer := s.cacheWarmerHooks()
 	if warmer == nil {
 		return nil
 	}
@@ -219,10 +256,10 @@ func (s *Session) CacheWarmingStatus() *icodingagent.CacheWarmingStatus {
 // SetCacheWarmingMode persists the cache-warming mode and immediately
 // reconciles active warming. Mirrors upstream AgentSession.setCacheWarmingMode.
 func (s *Session) SetCacheWarmingMode(mode icodingagent.CacheWarmingMode) error {
-	if err := s.services.SettingsManager().SetCacheWarmingMode(mode); err != nil {
+	if err := s.SettingsManager().SetCacheWarmingMode(mode); err != nil {
 		return err
 	}
-	if warmer, _ := s.cacheWarmer(); warmer != nil {
+	if warmer := s.cacheWarmerHooks(); warmer != nil {
 		warmer.OnModeChanged()
 	}
 	return nil
@@ -231,7 +268,7 @@ func (s *Session) SetCacheWarmingMode(mode icodingagent.CacheWarmingMode) error 
 // OnAgentSettled tells the cache warmer that an agent run settled, the first
 // step of upstream AgentSession._emitAgentSettled.
 func (s *Session) OnAgentSettled() {
-	if warmer, _ := s.cacheWarmer(); warmer != nil {
+	if warmer := s.cacheWarmerHooks(); warmer != nil {
 		warmer.OnAgentSettled()
 	}
 }
@@ -240,8 +277,13 @@ func (s *Session) OnAgentSettled() {
 func (s *Session) closeCacheWarming() {
 	s.warming.mu.Lock()
 	s.warming.closed = true
-	warmer := s.warming.warmer
+	warmer, supplied := s.warming.warmer, s.warming.supplied
 	s.warming.mu.Unlock()
+	// agent-session.ts:1409-1412 dispose clears onWarmed before it cancels the warmer.
+	if supplied != nil {
+		supplied.SetOnWarmed(nil)
+		supplied.Cancel()
+	}
 	if warmer != nil {
 		warmer.Close()
 	}

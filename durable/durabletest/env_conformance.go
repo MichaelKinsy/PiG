@@ -35,8 +35,10 @@ type EnvConformanceOptions struct {
 	WithEnv    EnvConformanceProvider
 	// Shell is the program and flag that run a POSIX shell script from the next argument; default {"sh", "-c"}.
 	Shell []string
-	// NoSymlinks is set when the shell's `ln -s` does not create symbolic links (upstream symlinks: false).
-	NoSymlinks bool
+	// Symlinks is false when the shell's `ln -s` does not create symbolic links; nil means true (env-conformance.ts symlinks, default true).
+	Symlinks *bool
+	// ListFiles is whether the environment implements the optional env.FileLister, which the suite then checks; default false.
+	ListFiles bool
 }
 
 // EnvConformanceCase is one named environment conformance case.
@@ -82,6 +84,27 @@ func readAllPages(executionEnv env.ExecutionEnv, path string, maxEntries int) (p
 		}
 	}
 	return pages, false
+}
+
+// listedFiles is a listing as `<kind letter> <path>` lines (`f`, `d`, `l`), with its truncation.
+type listedFiles struct {
+	Entries   []string
+	Truncated bool
+}
+
+// listed is env-conformance.ts listed: the environment's ListFiles result as lines.
+func listed(executionEnv env.ExecutionEnv, path string, options *env.ListFilesOptions) listedFiles {
+	lister, ok := executionEnv.(env.FileLister)
+	if !ok {
+		panic(caseFailure{err: errors.New("The environment does not implement listFiles")})
+	}
+	listing := must(lister.ListFiles(conformanceContext, path, options))
+	letters := map[env.FileKind]string{env.FileKindFile: "f", env.FileKindDirectory: "d", env.FileKindSymlink: "l"}
+	result := listedFiles{Entries: []string{}, Truncated: listing.Truncated}
+	for _, entry := range listing.Entries {
+		result.Entries = append(result.Entries, letters[entry.Kind]+" "+entry.Path)
+	}
+	return result
 }
 
 // covers reports whether a change reports path: an overflow, or a reported path at or above it.
@@ -183,17 +206,32 @@ func execCollect(executionEnv env.ExecutionEnv, command any, cwd string) collect
 	return collected{err: err, exitCode: result.ExitCode, stdout: stdout.String(), stderr: stderr.String()}
 }
 
-// RegisterEnvConformance runs every environment conformance case as a subtest of a test named name. shell is the shell
-// program and flag (default sh -c); noSymlinks drops the symbolic link case.
-func RegisterEnvConformance(t *testing.T, name string, withEnv EnvConformanceProvider, shell []string, noSymlinks bool) {
+// EnvConformanceRegisterOptions is Pick<EnvConformanceOptions, "shell" | "symlinks" | "listFiles">, the options of RegisterEnvConformance.
+type EnvConformanceRegisterOptions struct {
+	// Shell is the program and flag that run a POSIX shell script from the next argument; default {"sh", "-c"}.
+	Shell []string
+	// Symlinks is false when the shell's `ln -s` does not create symbolic links; nil means true.
+	Symlinks *bool
+	// ListFiles is whether the environment implements the optional env.FileLister, which the suite then checks; default false.
+	ListFiles bool
+}
+
+// conformanceOptions is `{ ...options, assertions, withEnv }` (testing/runner.ts:34).
+func (options EnvConformanceRegisterOptions) conformanceOptions(assertions EnvConformanceAssertions, withEnv EnvConformanceProvider) EnvConformanceOptions {
+	return EnvConformanceOptions{Assertions: assertions, WithEnv: withEnv, Shell: options.Shell, Symlinks: options.Symlinks, ListFiles: options.ListFiles}
+}
+
+// RegisterEnvConformance runs every environment conformance case as a subtest of a test named name (runner-independent
+// cases registered with the Go test runner, testing/runner.ts:28).
+func RegisterEnvConformance(t *testing.T, name string, withEnv EnvConformanceProvider, options EnvConformanceRegisterOptions) {
 	t.Helper()
 	t.Run(name, func(t *testing.T) {
-		options := func(t *testing.T) EnvConformanceOptions {
-			return EnvConformanceOptions{Assertions: CreateTestingAssertions(t), WithEnv: withEnv, Shell: shell, NoSymlinks: noSymlinks}
+		conformanceOptions := func(t *testing.T) EnvConformanceOptions {
+			return options.conformanceOptions(CreateTestingAssertions(t), withEnv)
 		}
-		for index, testCase := range CreateEnvConformance(options(t)) {
+		for index, testCase := range CreateEnvConformance(conformanceOptions(t)) {
 			t.Run(testCase.Name, func(t *testing.T) {
-				if err := CreateEnvConformance(options(t))[index].Run(); err != nil {
+				if err := CreateEnvConformance(conformanceOptions(t))[index].Run(); err != nil {
 					t.Fatal(err)
 				}
 			})
@@ -452,6 +490,26 @@ func CreateEnvConformance(options EnvConformanceOptions) []EnvConformanceCase {
 			})
 		}),
 
+		watchCase("watch keeps recursive coverage where a non-recursive target overlaps", func(executionEnv env.ExecutionEnv) {
+			check(executionEnv.WriteFile(ctx, "skills/a/one.md", "one"))
+			targets := []env.WatchTarget{{Path: "skills"}, {Path: "skills", Recursive: true}}
+			watching(executionEnv, targets, func(helpers watchHelpers) {
+				helpers.expectChange("skills/a/two.md", func() { check(executionEnv.WriteFile(ctx, "skills/a/two.md", "two")) })
+			})
+		}),
+
+		watchCase("watch follows a directory replaced at the same path", func(executionEnv env.ExecutionEnv) {
+			check(executionEnv.WriteFile(ctx, "skills/a/x.md", "x"))
+			watching(executionEnv, []env.WatchTarget{{Path: "skills", Recursive: true}}, func(helpers watchHelpers) {
+				helpers.expectChange("skills/a", func() {
+					check(executionEnv.RenameFile(ctx, "skills/a", "skills-old"))
+					check(executionEnv.CreateDir(ctx, "skills/a", nil))
+				})
+				helpers.expectChange("skills/a/y.md", func() { check(executionEnv.WriteFile(ctx, "skills/a/y.md", "y")) })
+				helpers.expectChange("skills/a/y.md", func() { check(executionEnv.WriteFile(ctx, "skills/a/y.md", "yy")) })
+			})
+		}),
+
 		watchCase("watch stops reporting once closed", func(executionEnv env.ExecutionEnv) {
 			log := &watchLog{}
 			watcher := must(executionEnv.Watch(ctx, []env.WatchTarget{{Path: "file.txt"}}, log.add))
@@ -550,8 +608,93 @@ func CreateEnvConformance(options EnvConformanceOptions) []EnvConformanceCase {
 		}),
 	}
 
-	if !options.NoSymlinks {
-		cases = append(cases, plain("binary reader follows symlinks unless noFollow refuses the final one", func(executionEnv env.ExecutionEnv) {
+	if options.ListFiles {
+		writeAll := func(executionEnv env.ExecutionEnv, files ...string) {
+			for _, file := range files {
+				check(executionEnv.WriteFile(ctx, file, ""))
+			}
+		}
+		listFiles := func(executionEnv env.ExecutionEnv, path string, listOptions *env.ListFilesOptions) error {
+			_, err := executionEnv.(env.FileLister).ListFiles(ctx, path, listOptions)
+			return err
+		}
+		cases = append(cases,
+			plain("listFiles lists files and directories depth first in name order", func(executionEnv env.ExecutionEnv) {
+				writeAll(executionEnv, "b.txt", "a/z.txt", "a/b/c.txt", ".hidden/x", "A.txt")
+				check(executionEnv.CreateDir(ctx, "empty", nil))
+				assert.DeepEqual(listed(executionEnv, ".", nil), listedFiles{
+					Entries:   []string{"d .hidden", "f .hidden/x", "f A.txt", "d a", "d a/b", "f a/b/c.txt", "f a/z.txt", "f b.txt", "d empty"},
+					Truncated: false,
+				})
+				assert.DeepEqual(listed(executionEnv, ".", &env.ListFilesOptions{Hidden: new(false)}).Entries,
+					[]string{"f A.txt", "d a", "d a/b", "f a/b/c.txt", "f a/z.txt", "f b.txt", "d empty"})
+				expected := listedFiles{Entries: []string{"d b", "f b/c.txt", "f z.txt"}, Truncated: false}
+				assert.DeepEqual(listed(executionEnv, "a", nil), expected)
+				assert.DeepEqual(listed(executionEnv, must(executionEnv.AbsolutePath(ctx, "a")), nil), expected)
+				assert.DeepEqual(listed(executionEnv, "empty", nil), listedFiles{Entries: []string{}, Truncated: false})
+			}),
+
+			plain("listFiles skips what git ignores in work trees, .git, and excluded names", func(executionEnv env.ExecutionEnv) {
+				writeAll(executionEnv, "keep.txt", "out/x.js", "sub/keep.txt", "sub/drop.log", "node_modules/m/i.js")
+				check(executionEnv.WriteFile(ctx, ".gitignore", "out/\n*.log\n"))
+				check(executionEnv.WriteFile(ctx, "sub/.gitignore", "!keep.txt\n"))
+				// Not a work tree yet: `.gitignore` files have no effect.
+				assert.Ok(slices.Contains(listed(executionEnv, ".", nil).Entries, "f out/x.js"))
+				check(executionEnv.WriteFile(ctx, ".git/HEAD", "ref: refs/heads/main\n"))
+				check(executionEnv.WriteFile(ctx, ".git/info/exclude", "keep.txt\n"))
+				assert.DeepEqual(listed(executionEnv, ".", &env.ListFilesOptions{Exclude: []string{"node_modules"}}).Entries,
+					[]string{"f .gitignore", "d sub", "f sub/.gitignore", "f sub/keep.txt"})
+				// A directory inside the work tree applies its parents' rules.
+				assert.DeepEqual(listed(executionEnv, "sub", nil).Entries, []string{"f .gitignore", "f keep.txt"})
+				all := listed(executionEnv, ".", &env.ListFilesOptions{Gitignore: new(false)}).Entries
+				assert.Ok(slices.Contains(all, "f out/x.js") && slices.Contains(all, "f node_modules/m/i.js") && slices.Contains(all, "f keep.txt"))
+				assert.Ok(!slices.ContainsFunc(all, func(entry string) bool { return strings.Contains(entry, ".git/") || entry == "d .git" }))
+			}),
+
+			plain("listFiles stops at its bounds and reports truncated", func(executionEnv env.ExecutionEnv) {
+				writeAll(executionEnv, "a", "b", "c")
+				assert.DeepEqual(listed(executionEnv, ".", &env.ListFilesOptions{MaxEntries: new(2.0)}), listedFiles{Entries: []string{"f a", "f b"}, Truncated: true})
+				assert.DeepEqual(listed(executionEnv, ".", &env.ListFilesOptions{MaxEntries: new(3.0)}), listedFiles{Entries: []string{"f a", "f b", "f c"}, Truncated: false})
+				// Each entry counts its path plus two bytes.
+				assert.DeepEqual(listed(executionEnv, ".", &env.ListFilesOptions{MaxBytes: new(6.0)}), listedFiles{Entries: []string{"f a", "f b"}, Truncated: true})
+				assert.DeepEqual(listed(executionEnv, ".", &env.ListFilesOptions{MaxEntries: new(0.0)}), listedFiles{Entries: []string{}, Truncated: true})
+				assert.StrictEqual(errorCode(listFiles(executionEnv, ".", &env.ListFilesOptions{MaxEntries: new(-1.0)})), "invalid")
+				assert.StrictEqual(errorCode(listFiles(executionEnv, ".", &env.ListFilesOptions{TimeoutMs: new(1.5)})), "invalid")
+			}),
+
+			plain("listFiles fails on missing directories, files, and aborts", func(executionEnv env.ExecutionEnv) {
+				check(executionEnv.WriteFile(ctx, "file.txt", ""))
+				assert.StrictEqual(errorCode(listFiles(executionEnv, "missing", nil)), "not_found")
+				assert.StrictEqual(errorCode(listFiles(executionEnv, "file.txt", nil)), "not_directory")
+				_, err := executionEnv.(env.FileLister).ListFiles(abortedConformanceContext(), ".", nil)
+				assert.StrictEqual(errorCode(err), "aborted")
+			}),
+		)
+	}
+
+	if options.ListFiles && (options.Symlinks == nil || *options.Symlinks) {
+		cases = append(cases, plain("listFiles lists symbolic links without following them", func(executionEnv env.ExecutionEnv) {
+			check(executionEnv.WriteFile(ctx, "dir/inner.txt", ""))
+			linked, err := executionEnv.Exec(ctx, argv("ln -s dir link && ln -s missing dangling && ln -s .. dir/loop"), nil)
+			check(err)
+			assert.StrictEqual(linked.ExitCode, 0)
+			assert.DeepEqual(listed(executionEnv, ".", nil).Entries, []string{"l dangling", "d dir", "f dir/inner.txt", "l dir/loop", "l link"})
+			// The listed directory itself may be a link.
+			assert.DeepEqual(listed(executionEnv, "link", nil).Entries, []string{"f inner.txt", "l loop"})
+		}))
+	}
+
+	if options.Symlinks == nil || *options.Symlinks {
+		cases = append(cases, watchCase("watch reports changes to the file a watched symbolic link points to", func(executionEnv env.ExecutionEnv) {
+			check(executionEnv.WriteFile(ctx, "data/real.md", "one"))
+			check(executionEnv.CreateDir(ctx, "config", nil))
+			linked, err := executionEnv.Exec(ctx, argv("ln -s ../data/real.md config/AGENTS.md"), nil)
+			check(err)
+			assert.StrictEqual(linked.ExitCode, 0)
+			watching(executionEnv, []env.WatchTarget{{Path: "config/AGENTS.md"}}, func(helpers watchHelpers) {
+				helpers.expectChange("config/AGENTS.md", func() { check(executionEnv.WriteFile(ctx, "data/real.md", "two!")) })
+			})
+		}), plain("binary reader follows symlinks unless noFollow refuses the final one", func(executionEnv env.ExecutionEnv) {
 			check(executionEnv.WriteFile(ctx, "target.txt", "target"))
 			check(executionEnv.CreateDir(ctx, "sub", nil))
 			check(executionEnv.WriteFile(ctx, "sub/inner.txt", "inner"))

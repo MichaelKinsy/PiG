@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 #
 # Usage: test-shard-pattern.sh <shard> <shards> <package>
@@ -68,7 +67,7 @@ if [[ -f $weights ]]; then
           echo "test-shard-pattern: bad line in $weights: $first $second" >&2
           exit 1
         fi
-        # CI passes ./cmd/pig, make passes the import path; both name the package.
+        # CI passes ./coding/cli, make passes the import path; both name the package.
         if [[ ( $package == "$w_package" || $package == */"${w_package#./}" ) && $w_shards == "$shards" ]]; then
           if ((first > shards)); then
             echo "test-shard-pattern: $weights pins $second to shard $first of $shards" >&2

@@ -1,0 +1,37 @@
+# Behavior family: rpc
+# Surface: get_messages returns each message of a loaded Session as JSON.stringify writes the number Pi parsed, whatever its spelling in the file.
+# JSON.parse keeps any number, so Pi keeps every message: integral values spelled with a fraction or an exponent (1.767225602e12, 10.0, 2e0, 1.5e3, a tool argument 1e1, a nested call argumentsBytes 2.0e0) come back as integers, and a fractional timestamp, usage count or nested call duration (1767225604000.25, 10.5, 7.5) and a timestamp beyond int64 (1e300, written 1e+300) come back as JSON.stringify writes them. Python json writes an integral float as 10.0.
+
+name = "57-rpc-session-number-spelling"
+description = "RPC get_messages after switch_session to a Session file whose numbers use fraction and exponent spellings returns Pi's JSON.stringify of each parsed message."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/core/session-manager.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+cwd = "testdata/number-spelling-session"
+timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"switch","type":"switch_session","sessionPath":"sessions/numbers.jsonl"}'
+wait_contains = ['"id":"switch","type":"response","command":"switch_session"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"messages","type":"get_messages"}'
+wait_contains = ['"id":"messages","type":"response","command":"get_messages"']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

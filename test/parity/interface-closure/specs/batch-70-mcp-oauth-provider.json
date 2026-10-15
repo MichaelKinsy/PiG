@@ -1,0 +1,210 @@
+[
+ {
+  "ids": [
+   "pkg:mcp/oauth#McpOAuthProvider"
+  ],
+  "targets": [
+   "mcp/oauth/provider.go#McpOAuthProvider"
+  ],
+  "production": [
+   "call:coding/mcpext/oauth.go#createProvider"
+  ],
+  "evidence": [
+   "test:mcp/oauth/oauth_test.go#TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL",
+   "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderDefaultsClientMetadataFromTheRedirectURL"
+  ],
+  "rationale": "McpOAuthProvider is the Go struct McpOAuthProvider built by NewMcpOAuthProvider(McpOAuthProviderOptions); the constructor returns an error where upstream throws on a bad serverUrl.",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection (a failed load, a failed save, or the missing-verifier Error) is the returned error; undefined is nil or the empty value. The upstream write chain (this.writes) is Go's mutex plus the sticky write error; no detached goroutine.",
+  "properties": {
+   "clientInformation": {
+    "targets": [
+     "mcp/oauth/provider.go#McpOAuthProvider.ClientInformation"
+    ],
+    "evidence": [
+     "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderConfiguredClientWinsAndIgnoresSavedRegistrations",
+     "test:mcp/oauth/oauth_test.go#TestMcpOAuthProviderKeepsFailingAfterAFailedWrite"
+    ],
+    "production": [
+     "call:mcp/oauth/flow.go#runFlow"
+    ],
+    "rationale": "McpOAuthProvider.clientInformation is the Go method McpOAuthProvider.ClientInformation; a Promise is the returned error."
+   },
+   "clientMetadata": {
+    "targets": [
+     "mcp/oauth/provider.go#McpOAuthProvider.ClientMetadata"
+    ],
+    "evidence": [
+     "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderDefaultsClientMetadataFromTheRedirectURL"
+    ],
+    "production": [
+     "call:mcp/oauth/flow.go#runFlow"
+    ],
+    "rationale": "The readonly property clientMetadata is the method ClientMetadata(); the defaults for redirect_uris, grant_types, response_types and token_endpoint_auth_method are applied in NewMcpOAuthProvider."
+   },
+   "clientMetadataDocument": {
+    "targets": [
+     "mcp/oauth/provider.go#McpOAuthProvider.ClientMetadataDocument"
+    ],
+    "evidence": [
+     "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderForwardsTheClientMetadataDocumentCallback"
+    ],
+    "production": [
+     "call:mcp/oauth/flow.go#runFlow"
+    ],
+    "rationale": "The optional callback property is the method ClientMetadataDocument(metadata) (nil callback yields nil), which the flow reaches through the ClientMetadataDocumentProvider interface."
+   },
+   "codeVerifier": {
+    "targets": [
+     "mcp/oauth/provider.go#McpOAuthProvider.CodeVerifier"
+    ],
+    "evidence": [
+     "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderCodeVerifierRoundTripsAndFailsWhenNoneIsStored"
+    ],
+    "production": [
+     "call:mcp/oauth/flow.go#runFlow"
+    ],
+    "rationale": "McpOAuthProvider.codeVerifier is the Go method McpOAuthProvider.CodeVerifier; a Promise is the returned error."
+   },
+   "discoveryState": {
+    "targets": [
+     "mcp/oauth/provider.go#McpOAuthProvider.DiscoveryState"
+    ],
+    "evidence": [
+     "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderDiscoveryStateRoundTrips"
+    ],
+    "production": [
+     "call:mcp/oauth/flow.go#runFlow"
+    ],
+    "rationale": "McpOAuthProvider.discoveryState is the Go method McpOAuthProvider.DiscoveryState; a Promise is the returned error."
+   },
+   "invalidateCredentials": {
+    "targets": [
+     "mcp/oauth/provider.go#McpOAuthProvider.InvalidateCredentials"
+    ],
+    "evidence": [
+     "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderInvalidatesOnlyTheNamedCredentialKind"
+    ],
+    "production": [
+     "call:mcp/oauth/flow.go#AuthorizeMcp"
+    ],
+    "rationale": "invalidateCredentials(kind) is InvalidateCredentials(ctx, kind) with the kind as a string (\"all\", \"client\", \"tokens\", \"verifier\", \"discovery\")."
+   },
+   "redirectToAuthorization": {
+    "targets": [
+     "mcp/oauth/provider.go#McpOAuthProvider.RedirectToAuthorization"
+    ],
+    "evidence": [
+     "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderRedirectsThroughTheConfiguredHook"
+    ],
+    "production": [
+     "call:mcp/oauth/flow.go#runFlow"
+    ],
+    "rationale": "redirectToAuthorization(url) is RedirectToAuthorization(ctx, *url.URL), which calls the configured OnRedirect hook."
+   },
+   "redirectUrl": {
+    "targets": [
+     "mcp/oauth/provider.go#McpOAuthProvider.RedirectURL"
+    ],
+    "evidence": [
+     "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderDefaultsClientMetadataFromTheRedirectURL"
+    ],
+    "production": [
+     "call:mcp/oauth/flow.go#runFlow"
+    ],
+    "rationale": "The readonly property redirectUrl is the method RedirectURL()."
+   },
+   "saveClientInformation": {
+    "targets": [
+     "mcp/oauth/provider.go#McpOAuthProvider.SaveClientInformation"
+    ],
+    "evidence": [
+     "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderConfiguredClientWinsAndIgnoresSavedRegistrations",
+     "test:mcp/oauth/oauth_test.go#TestMcpOAuthProviderKeepsFailingAfterAFailedWrite"
+    ],
+    "production": [
+     "call:mcp/oauth/flow.go#runFlow"
+    ],
+    "rationale": "McpOAuthProvider.saveClientInformation is the Go method McpOAuthProvider.SaveClientInformation; a Promise is the returned error."
+   },
+   "saveCodeVerifier": {
+    "targets": [
+     "mcp/oauth/provider.go#McpOAuthProvider.SaveCodeVerifier"
+    ],
+    "evidence": [
+     "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderCodeVerifierRoundTripsAndFailsWhenNoneIsStored"
+    ],
+    "production": [
+     "call:mcp/oauth/flow.go#runFlow"
+    ],
+    "rationale": "McpOAuthProvider.saveCodeVerifier is the Go method McpOAuthProvider.SaveCodeVerifier; a Promise is the returned error."
+   },
+   "saveDiscoveryState": {
+    "targets": [
+     "mcp/oauth/provider.go#McpOAuthProvider.SaveDiscoveryState"
+    ],
+    "evidence": [
+     "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderDiscoveryStateRoundTrips"
+    ],
+    "production": [
+     "call:mcp/oauth/flow.go#runFlow"
+    ],
+    "rationale": "McpOAuthProvider.saveDiscoveryState is the Go method McpOAuthProvider.SaveDiscoveryState; a Promise is the returned error."
+   },
+   "saveTokens": {
+    "targets": [
+     "mcp/oauth/provider.go#McpOAuthProvider.SaveTokens"
+    ],
+    "evidence": [
+     "test:mcp/oauth/oauth_test.go#TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL",
+     "test:mcp/oauth/oauth_test.go#TestMcpOAuthProviderIsNotPoisonedByACancelledCall"
+    ],
+    "production": [
+     "call:mcp/oauth/flow.go#runFlow"
+    ],
+    "rationale": "McpOAuthProvider.saveTokens is the Go method McpOAuthProvider.SaveTokens; a Promise is the returned error."
+   },
+   "state": {
+    "targets": [
+     "mcp/oauth/provider.go#McpOAuthProvider.State"
+    ],
+    "evidence": [
+     "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderStateIsStableRandomHexUntilAllCredentialsAreInvalidated"
+    ],
+    "production": [
+     "call:coding/mcpext/oauth.go#SignInMcpServer"
+    ],
+    "rationale": "McpOAuthProvider.state is the Go method McpOAuthProvider.State; a Promise is the returned error."
+   },
+   "tokens": {
+    "targets": [
+     "mcp/oauth/provider.go#McpOAuthProvider.Tokens"
+    ],
+    "evidence": [
+     "test:mcp/oauth/oauth_test.go#TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL",
+     "test:mcp/oauth/oauth_test.go#TestMcpOAuthProviderKeepsFailingAfterAFailedWrite"
+    ],
+    "production": [
+     "call:mcp/oauth/flow.go#runFlow"
+    ],
+    "rationale": "McpOAuthProvider.tokens is the Go method McpOAuthProvider.Tokens; a Promise is the returned error."
+   }
+  }
+ },
+ {
+  "production": [
+   "call:coding/mcpext/oauth.go#createProvider"
+  ],
+  "evidence": [
+   "test:mcp/oauth/oauth_test.go#TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL",
+   "test:mcp/oauth/provider_state_test.go#TestMcpOAuthProviderDefaultsClientMetadataFromTheRedirectURL"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection (a failed load, a failed save, or the missing-verifier Error) is the returned error; undefined is nil or the empty value. The upstream write chain (this.writes) is Go's mutex plus the sticky write error; no detached goroutine.",
+  "ids": [
+   "pkg:mcp/oauth#McpOAuthProvider::construct:0"
+  ],
+  "targets": [
+   "mcp/oauth/provider.go#NewMcpOAuthProvider"
+  ],
+  "rationale": "McpOAuthProvider's constructor is NewMcpOAuthProvider(McpOAuthProviderOptions); it returns an error where upstream throws on a bad serverUrl."
+ }
+]

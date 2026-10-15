@@ -1,0 +1,66 @@
+# Behavior family: interactive-rendering
+# Surface: BashExecutionComponent: the rows between two consecutive `!cmd`
+#          blocks.
+#
+# Upstream evidence (pi 1.1.0, 2026-10-08, captured by this scenario at
+# 100x35 with the faux provider):
+#   send: "!echo aaa" Enter, then "!echo bbb" Enter
+#   crop: capture_start="$ echo aaa", capture_end_regex='\$ echo bbb'
+#   cropped upstream rows:
+#     $ echo aaa
+#                                                <- blank (`\n` prefix)
+#      aaa
+#                                                <- blank (echo's trailing \n)
+#     <bottom border of the first block>
+#                                                <- the second block's Spacer(1)
+#     <top border of the second block>
+#      $ echo bbb
+#
+# bash-execution.ts constructor adds a spacer, the top border, the content
+# and the bottom border; the block draws nothing after its bottom border.
+# PiG added a trailing Spacer(1), so two blank rows separated consecutive
+# blocks; this scenario failed on that row before the fix.
+name = "44-bash-execution-consecutive-blocks"
+description = "Two consecutive `!cmd` blocks are separated by exactly the second block's leading spacer row."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/bash-execution.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/bash-wrap-cwd"
+capture_start = "$ echo aaa"
+capture_end_regex = '\$ echo bbb'
+
+[[tmux.steps]]
+keys = ["!echo aaa", "Enter"]
+settle_seconds = 3
+wait_contains = ["$ echo aaa"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["!echo bbb", "Enter"]
+settle_seconds = 3
+wait_contains = ["$ echo bbb"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_equal = true
+# runs=3 because bash-execution timing has natural jitter on completion.
+runs = 3

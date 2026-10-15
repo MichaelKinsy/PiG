@@ -2,10 +2,28 @@ package tools
 
 import (
 	"encoding/binary"
+	"os"
+	"path/filepath"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/imageprocessing"
 )
 
-func TestSupportedImageMime(t *testing.T) {
+// supportedImageMime sniffs data through the read tool's default detection: a file on disk, as utils/mime.ts detectSupportedImageMimeTypeFromFile reads it.
+func supportedImageMime(t *testing.T, data []byte) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "sample")
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	mime, err := imageprocessing.DetectSupportedImageMimeTypeFromFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return mime
+}
+
+func TestSupportedImageMimeFromFile(t *testing.T) {
 	validPNG := []byte{0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a,
 		0, 0, 0, 13, 'I', 'H', 'D', 'R',
 		0, 0, 0, 1, 0, 0, 0, 1, 8, 2, 0, 0, 0,
@@ -39,9 +57,9 @@ func TestSupportedImageMime(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := SupportedImageMime(tc.data)
+			got := supportedImageMime(t, tc.data)
 			if got != tc.want {
-				t.Errorf("SupportedImageMime = %q, want %q", got, tc.want)
+				t.Errorf("supportedImageMime = %q, want %q", got, tc.want)
 			}
 		})
 	}

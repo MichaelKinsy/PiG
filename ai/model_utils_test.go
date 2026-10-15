@@ -19,51 +19,51 @@ func TestGetSupportedThinkingLevels(t *testing.T) {
 	cases := []struct {
 		name string
 		m    *Model
-		want []ThinkingLevel
+		want []ModelThinkingLevel
 	}{
 		{
 			name: "nil model",
 			m:    nil,
-			want: []ThinkingLevel{ThinkingOff},
+			want: []ModelThinkingLevel{ThinkingOff},
 		},
 		{
 			name: "reasoning without explicit map",
 			m: &Model{
-				Capabilities: ModelCapabilities{MaxThinking: ThinkingHigh},
+				Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh},
 			},
-			want: []ThinkingLevel{ThinkingOff, ThinkingMinimal, ThinkingLow, ThinkingMedium, ThinkingHigh},
+			want: []ModelThinkingLevel{ThinkingOff, ThinkingMinimal, ThinkingLow, ThinkingMedium, ThinkingHigh},
 		},
 		{
 			name: "map removes off and enables xhigh",
 			m: &Model{
-				Capabilities:     ModelCapabilities{MaxThinking: ThinkingXHigh},
+				Capabilities:     ModelCapabilities{MaxThinking: ThinkingLevelXHigh},
 				ThinkingLevelMap: ThinkingLevelMap{ThinkingOff: nil, ThinkingXHigh: ptr("xhigh")},
 			},
-			want: []ThinkingLevel{ThinkingMinimal, ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh},
+			want: []ModelThinkingLevel{ThinkingMinimal, ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh},
 		},
 		{
 			name: "map enables max and excludes xhigh (opus-4-6 shape)",
 			m: &Model{
-				Capabilities:     ModelCapabilities{MaxThinking: ThinkingMax},
+				Capabilities:     ModelCapabilities{MaxThinking: ThinkingLevelMax},
 				ThinkingLevelMap: ThinkingLevelMap{ThinkingMax: ptr("max")},
 			},
-			want: []ThinkingLevel{ThinkingOff, ThinkingMinimal, ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingMax},
+			want: []ModelThinkingLevel{ThinkingOff, ThinkingMinimal, ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingMax},
 		},
 		{
 			// Pi models.ts:924-932 reads the supplied model.reasoning, not a synthesized capability field.
 			name: "selected model reasoning without synthesized capabilities",
 			m:    &Model{ProviderMeta: ProviderMetadata{Reasoning: true}},
-			want: []ThinkingLevel{ThinkingOff, ThinkingMinimal, ThinkingLow, ThinkingMedium, ThinkingHigh},
+			want: []ModelThinkingLevel{ThinkingOff, ThinkingMinimal, ThinkingLow, ThinkingMedium, ThinkingHigh},
 		},
 		{
 			name: "selected model map constrains reasoning",
 			m:    &Model{ProviderMeta: ProviderMetadata{Reasoning: true}, ThinkingLevelMap: ThinkingLevelMap{ThinkingOff: nil, ThinkingLow: nil, ThinkingXHigh: ptr("highest")}},
-			want: []ThinkingLevel{ThinkingMinimal, ThinkingMedium, ThinkingHigh, ThinkingXHigh},
+			want: []ModelThinkingLevel{ThinkingMinimal, ThinkingMedium, ThinkingHigh, ThinkingXHigh},
 		},
 		{
 			name: "non reasoning model",
 			m:    &Model{},
-			want: []ThinkingLevel{ThinkingOff},
+			want: []ModelThinkingLevel{ThinkingOff},
 		},
 	}
 	for _, tc := range cases {
@@ -79,7 +79,7 @@ func TestGetSupportedThinkingLevels(t *testing.T) {
 func TestClampThinkingLevel(t *testing.T) {
 	ptr := func(v string) *string { return &v }
 	model := &Model{
-		Capabilities: ModelCapabilities{MaxThinking: ThinkingXHigh},
+		Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelXHigh},
 		ThinkingLevelMap: ThinkingLevelMap{
 			ThinkingOff:    nil,
 			ThinkingMedium: nil,
@@ -88,13 +88,13 @@ func TestClampThinkingLevel(t *testing.T) {
 	}
 	cases := []struct {
 		name  string
-		level ThinkingLevel
-		want  ThinkingLevel
+		level ModelThinkingLevel
+		want  ModelThinkingLevel
 	}{
 		{name: "available level passthrough", level: ThinkingLow, want: ThinkingLow},
 		{name: "off clamps upward when disabled", level: ThinkingOff, want: ThinkingMinimal},
 		{name: "medium clamps upward first", level: ThinkingMedium, want: ThinkingHigh},
-		{name: "unknown falls back to first available", level: ThinkingLevel("mystery"), want: ThinkingMinimal},
+		{name: "unknown falls back to first available", level: ModelThinkingLevel("mystery"), want: ThinkingMinimal},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -105,6 +105,8 @@ func TestClampThinkingLevel(t *testing.T) {
 		})
 	}
 }
+
+var thinkingLevelMapSink ThinkingLevelMap
 
 func TestCloneThinkingLevelMap(t *testing.T) {
 	in := ThinkingLevelMap{ThinkingOff: nil, ThinkingXHigh: new("max")}
@@ -121,6 +123,27 @@ func TestCloneThinkingLevelMap(t *testing.T) {
 	*out[ThinkingXHigh] = "changed"
 	if *in[ThinkingXHigh] != "max" {
 		t.Fatal("cloneThinkingLevelMap did not deep copy values")
+	}
+
+	levels := ThinkingLevelMap{ThinkingLow: new("low-effort"), ThinkingMedium: new("medium-effort"), ThinkingHigh: new("high-effort"), ThinkingXHigh: new("max")}
+	clone := cloneThinkingLevelMap(levels)
+	if len(clone) != len(levels) {
+		t.Fatalf("clone has %d levels, want %d", len(clone), len(levels))
+	}
+	for level, value := range levels {
+		if clone[level] == value || clone[level] == nil || *clone[level] != *value {
+			t.Fatalf("%s mapping = %v, want an own copy of %q", level, clone[level], *value)
+		}
+	}
+	*clone[ThinkingLow] = "changed"
+	for level, value := range clone {
+		if level != ThinkingLow && *value != *levels[level] {
+			t.Fatalf("writing the low mapping changed the %s mapping to %q", level, *value)
+		}
+	}
+	// The map and one array of values: not one allocation per level.
+	if allocs := testing.AllocsPerRun(20, func() { thinkingLevelMapSink = cloneThinkingLevelMap(levels) }); allocs > 3 {
+		t.Fatalf("cloning %d levels allocated %.0f times, want at most 3", len(levels), allocs)
 	}
 }
 
@@ -151,12 +174,12 @@ func TestThinkingMaxLevel(t *testing.T) {
 	ptr := func(v string) *string { return &v }
 	maxMap := ThinkingLevelMap{ThinkingMax: ptr("max")} // opus-4-6 shape
 
-	if got := thinkingMaxLevel(true, maxMap); got != ThinkingMax {
+	if got := thinkingMaxLevel(true, maxMap); got != ThinkingLevelMax {
 		t.Fatalf("thinkingMaxLevel = %q, want max", got)
 	}
 
 	model := &Model{
-		Capabilities:     ModelCapabilities{MaxThinking: ThinkingMax},
+		Capabilities:     ModelCapabilities{MaxThinking: ThinkingLevelMax},
 		ThinkingLevelMap: maxMap,
 	}
 	if got := mapThinkingLevelToEffort(model, ThinkingMax); got != "max" {

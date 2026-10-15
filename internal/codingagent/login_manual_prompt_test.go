@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/utils/open-browser.ts
+
 import (
 	"context"
 	"errors"
@@ -62,7 +64,7 @@ func TestBrowserCallbackCompletesLoginWhileTheManualCodePromptIsOpen(t *testing.
 	m.layout = tui.NewContainer(m.chatContainer, m.editorContainer)
 	done := make(chan error, 1)
 	go func() {
-		done <- m.runLoginRegisteredOAuth(t.Context(), callbackFirstProvider{parityOAuthProvider{id: "callback-probe", name: "Callback Probe"}}, "")
+		done <- m.runLoginRegisteredOAuth(t.Context(), callbackFirstProvider{parityOAuthProvider{id: "callback-probe", name: "Callback Probe"}}, "Callback Probe", "")
 	}()
 	select {
 	case err := <-done:

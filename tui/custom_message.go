@@ -2,80 +2,128 @@ package tui
 
 // custom_message.go: renders custom extension messages.
 //
-// Ports upstream custom-message.ts (99 LOC).
-// The Box/Spacer/Markdown composition is rendered as lines: the label, a
-// spacer, and the Markdown body wrapped to the box's inner width.
+// Ports upstream packages/coding-agent/src/modes/interactive/components/custom-message.ts.
 
 import (
 	"encoding/json"
 	"strings"
 )
 
-// CustomMessageComponent renders a custom message entry from extensions.
+// MessageRenderOptions is upstream MessageRenderOptions: the state a custom message renderer lays out for.
+type MessageRenderOptions struct {
+	Expanded  bool
+	OutputPad int
+}
+
+// MessageRenderer is upstream MessageRenderer: it returns a styled component for a custom message, or nil to use the default
+// box. A panic is treated as nil.
+type MessageRenderer func(message *CustomMessage, options MessageRenderOptions) Component
+
+// CustomMessageComponent renders a custom message entry from extensions with distinct styling.
+// Mirrors upstream CustomMessageComponent extends Container (custom-message.ts:13).
 type CustomMessageComponent struct {
-	invalidatable
-	CustomType string
-	Content    string // text content (may contain markdown)
-	Expanded   bool
-	markdown   *Markdown
+	Container
+	message         *CustomMessage
+	customRenderer  MessageRenderer
+	box             *Box
+	customComponent Component
+	markdownTheme   *MarkdownTheme
+	expanded        bool
+	outputPad       int
 }
 
-// NewCustomMessageComponent creates a custom message renderer.
-func NewCustomMessageComponent(customType, content string) *CustomMessageComponent {
-	return &CustomMessageComponent{
-		CustomType: customType,
-		Content:    content,
+// NewCustomMessageComponent mirrors the upstream constructor (custom-message.ts:23): customRenderer may be nil, a nil
+// markdownTheme selects the active theme's, and outputPad is the horizontal padding handed to customRenderer (upstream default 1).
+func NewCustomMessageComponent(message *CustomMessage, customRenderer MessageRenderer, markdownTheme *MarkdownTheme, outputPad int) *CustomMessageComponent {
+	c := &CustomMessageComponent{message: message, customRenderer: customRenderer, markdownTheme: markdownTheme, outputPad: outputPad}
+	c.Add(NewSpacer(1))
+	// Box with the custom message background (used for default rendering).
+	c.box = NewPaddedBox(1, 1, func(text string) string { return paintBgWith(ActiveTheme().CustomMessageBg, text, 0) })
+	c.rebuild()
+	return c
+}
+
+// IsDirty reports a renderer component whose output changed on its own (an extension renderer proxy whose lines arrive after the first frame), so the parent container that caches this component re-renders it.
+func (c *CustomMessageComponent) IsDirty() bool {
+	if c.Container.IsDirty() {
+		return true
 	}
+	dirty, ok := c.customComponent.(interface{ IsDirty() bool })
+	return ok && dirty.IsDirty()
 }
 
-// SetExpanded toggles between collapsed and expanded rendering.
+// pig additive (D91): SurfaceLive reports a renderer component that changes on its own, which
+// IsDirty reads, so a TuiSurface rebuilds the message every frame.
+func (c *CustomMessageComponent) SurfaceLive() bool {
+	_, ok := c.customComponent.(interface{ IsDirty() bool })
+	return ok
+}
+
+// SetExpanded rebuilds the content when the expansion state changes (custom-message.ts:41).
 func (c *CustomMessageComponent) SetExpanded(expanded bool) {
-	c.Expanded = expanded
-	c.Invalidate()
+	if c.expanded != expanded {
+		c.expanded = expanded
+		c.rebuild()
+	}
 }
 
-// SetOutputPad invalidates the default renderer, whose box keeps its fixed inset.
-// Only registered custom renderers consume the configured horizontal padding.
-func (c *CustomMessageComponent) SetOutputPad(_ int) {
-	c.Invalidate()
+// SetOutputPad rebuilds the content when the padding changes (custom-message.ts:48).
+func (c *CustomMessageComponent) SetOutputPad(outputPad int) {
+	if c.outputPad != outputPad {
+		c.outputPad = outputPad
+		c.rebuild()
+	}
 }
 
-// Render produces the custom message lines.
-// Mirrors upstream CustomMessageComponent which extends Container with a Box(1,1,bgFn).
-// The Box adds paddingX=1 (space indent) and paddingY=1 (blank rows) with bg tint.
-func (c *CustomMessageComponent) Render(width int) []string {
-	if width < 4 {
-		width = 4
+// Invalidate rebuilds the content, so a theme change reaches the box colors (custom-message.ts:55).
+func (c *CustomMessageComponent) Invalidate() {
+	c.Container.Invalidate()
+	c.rebuild()
+}
+
+func (c *CustomMessageComponent) rebuild() {
+	// Remove the previous content component.
+	if c.customComponent != nil {
+		c.Remove(c.customComponent)
+		c.customComponent = nil
 	}
-	t := ActiveTheme()
-	customMsgBgOpen := t.CustomMessageBg
-	var lines []string
+	c.Remove(c.box)
 
-	// The component spacer is outside the box's background-painted top padding.
-	lines = append(lines, "", paintBgWith(customMsgBgOpen, "", width))
-
-	const padding = " "
-	// Label: [customType] in bold.
-	labelStyled := t.CustomMessageLabel + "\x1b[1m[" + c.CustomType + "]\x1b[22m\x1b[0m"
-	lines = append(lines, paintBgWith(customMsgBgOpen, padding+labelStyled, width))
-
-	// Structural blank (upstream: Spacer(1) inside Box between label and content).
-	lines = append(lines, paintBgWith(customMsgBgOpen, "", width))
-
-	// Upstream renders the text as Markdown in the customMessageText color
-	// inside Box(1, 1): wrapped to the box's inner width, one column of
-	// padding on each side.
-	if c.markdown == nil {
-		c.markdown = NewMarkdown(c.Content)
-	}
-	c.markdown.Content = c.Content
-	c.markdown.SetDefaultColor(t.CustomMessageText)
-	for _, line := range c.markdown.Render(width - 2) {
-		lines = append(lines, paintBgWith(customMsgBgOpen, padding+line, width))
+	// The custom renderer goes first; it handles its own styling.
+	if c.customRenderer != nil {
+		if component := c.renderCustom(); component != nil {
+			c.customComponent = component
+			c.Add(component)
+			return
+		}
 	}
 
-	lines = append(lines, paintBgWith(customMsgBgOpen, "", width))
-	return lines
+	// Default rendering uses the box.
+	c.Add(c.box)
+	c.box.Clear()
+	c.box.SetPaddingX(c.outputPad) // custom-message.ts:90
+
+	// Label, then the content.
+	label := ActiveTheme().Fg("customMessageLabel", "\x1b[1m["+c.message.CustomType+"]\x1b[22m")
+	c.box.AddChild(NewText(label))
+	c.box.AddChild(NewSpacer(1))
+
+	markdown := NewMarkdownWithOptions(CustomMessageText(c.message), 0, 0, c.markdownTheme, &DefaultTextStyle{
+		Color: func(text string) string { return ActiveTheme().Fg("customMessageText", text) },
+	}, nil)
+	c.box.AddChild(markdown)
+}
+
+// renderCustom returns the custom renderer's component, or nil when it returns none or panics (custom-message.ts:68-83 falls
+// through to the default rendering on a throw).
+func (c *CustomMessageComponent) renderCustom() (component Component) {
+	defer func() {
+		// upstream: packages/coding-agent/src/modes/interactive/components/custom-message.ts:customRenderer
+		if recover() != nil {
+			component = nil
+		}
+	}()
+	return c.customRenderer(c.message, MessageRenderOptions{Expanded: c.expanded, OutputPad: c.outputPad})
 }
 
 // CustomMessage holds the data for a custom message entry.

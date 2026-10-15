@@ -1,0 +1,19 @@
+# Fix-titled commits since 0.4.1 that change files outside tests and documents but are not bugs in a release.
+# "<commit> <category>: <reason>" counts the commit under its category on the public bug ledger page.
+# "<commit> see <commit>" joins the commit to the ledger entry that lists the second commit, for a follow-up of the same bug.
+# A new fix-titled commit prefers a "Bug-Ledger: exempt <category>: <reason>" or "Bug-Ledger: see <commit>" trailer in its own message; this file covers commits that were made before the ledger existed.
+0f0f46269b Repair of a merge between development branches: restored error classes and a test option the merge dropped
+c274c3aad6 Repair of a merge between development branches: compile and lint fallout of a merge
+9e0b2d12e9 Repair of a merge between development branches: compile fallout of a merge
+6a5b2b5236 Repair of a merge between development branches: conflicting key tables and a duplicated test
+b1c1bcf955 Repair of a merge between development branches: an interface the merge changed
+620a75d9a0 Repair of a merge between development branches: a field the merge duplicated
+1900b4c17f Repair of a merge between development branches: duplicate declarations after a merge
+42b51d78ac Repair of a merge between development branches: test fallout of a merge
+884b85520b Failure found by the integration build of unreleased work: test fixtures and declarations
+3a48c3f903 Failure found by the integration build of unreleased work: lint, mapping and ratchet checks
+fb6263b95d Review follow-up to unreleased work: corrections to a batch not yet released
+1eb814e5d0 Review follow-up to unreleased work: header cleanup
+f680b9591a see a81ec0dc55
+75c06b6556 see 433d232815
+6bfc7f1afc Fix reverted before release: DashScope quota retry (D123) was removed again by owner sign-off in 49938a5421

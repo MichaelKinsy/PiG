@@ -252,7 +252,7 @@ func (t *TuiAltScreen) applyMouseDispatchResult(event TuiMouseEvent, result *Tui
 		focusTarget = result.Target.Component
 	}
 	focusTarget = t.resolveMouseFocusTarget(focusTarget)
-	focusChanged := result.Focus && t.FocusedComponent() != focusTarget
+	focusChanged := result.Focus && t.GetFocusedComponent() != focusTarget
 	if result.Focus {
 		t.SetFocus(focusTarget)
 	}
@@ -469,23 +469,19 @@ func (t *TuiAltScreen) wheelDelta(wheel wheelEvent) int {
 	return wheel.direction * lines
 }
 
-// handleWheel offers a wheel event to mouse-aware components, then scrolls.
-// It returns false to defer the raw report to a focused overlay. Mirrors the
+// handleWheel offers a wheel event to mouse-aware components, then scrolls,
+// even when a focused overlay does not handle it (Pi #10769). Mirrors the
 // wheel branch of upstream handleViewportInput.
-func (t *TuiAltScreen) handleWheel(wheel wheelEvent) bool {
+func (t *TuiAltScreen) handleWheel(wheel wheelEvent) {
 	delta := t.wheelDelta(wheel)
 	event := t.createMouseEvent(MouseWheel, wheel.button, wheel.x, wheel.y, delta, 0)
 	if result := t.dispatchMouseToScreen(event); result != nil {
 		if t.applyMouseDispatchResult(event, result) {
 			t.RequestRender()
 		}
-		return true
-	}
-	if t.shouldDeferViewportInputToOverlay() {
-		return false
+		return
 	}
 	t.routeWheel(wheel, delta)
-	return true
 }
 
 // routeWheel scrolls the scroll views under the pointer, chaining leftover
@@ -659,7 +655,7 @@ func (t *TuiAltScreen) compositeScrollToEndIndicator(screen []string, layout *La
 		return screen
 	}
 	result := slices.Clone(screen)
-	result[row] = compositeTuiLine(result[row], text, column, textWidth, width)
+	result[row] = CompositeTuiLine(result[row], text, column, textWidth, width)
 	t.scrollToEndIndicatorRect = &scrollToEndIndicatorRect{row: row, column: column, width: textWidth}
 	return result
 }

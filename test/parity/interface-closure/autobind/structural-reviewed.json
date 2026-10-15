@@ -1,0 +1,56 @@
+{
+ "ai:Model": {
+  "go": [
+   "ai.PiMessagesModel"
+  ],
+  "reason": "Pi radius-config.ts:61 getRadiusModelsFromConfig spreads each sanitized gateway model into a Model<\"pi-messages\"> (api, provider and baseUrl added). PiG's PiMessagesModel embeds RadiusGatewayModel, which carries every spread member of Model (ai/radius_config.go:23-43, including samplingParamsByThinkingLevel), and adds API, Provider and BaseURL; it is that value, not another model type."
+ },
+ "agent:AgentState": {
+  "go": [
+   "agent.AgentInitialState"
+  ],
+  "reason": "AgentOptions.initialState is Partial<Omit<AgentState, ...>> (Pi agent/src/agent.ts:115). Pi reads each omitted member as a default (agent.ts:83-93: tools and messages [], model DEFAULT_MODEL, thinkingLevel \"off\", and ai/src/utils/transcript.ts:14 treats an absent and an empty system prompt alike); PiG's AgentInitialState uses the zero value for the same defaults (agent/agent.go:849 keeps the default thinking level for \"\", a nil Model the default model)."
+ },
+ "agent:ThinkingBudgets": {
+  "go": [
+   "agent.ProxyThinkingBudgets"
+  ],
+  "reason": "Pi ai/src/types.ts:104 ThinkingBudgets has four optional levels; the proxy request (Pi agent/src/proxy.ts) sends the object as given, so PiG's proxy form keeps each level as a nilable field with omitempty. ai.ThinkingBudgets is the resolved-default form."
+ },
+ "ai:TextContent": {
+  "go": [
+   "ai.FauxContentBlock"
+  ],
+  "reason": "Pi ai/src/providers/faux.ts FauxContentBlock = TextContent | ThinkingContent | ToolCall, and fauxText returns the TextContent arm. PiG's ai.FauxContentBlock is that union as one struct: Type is the arm's discriminator (FauxContentText, FauxContentThinking, FauxContentToolCall) and every member of each arm is a field that marshals under its Pi name with omitempty (T9t verifies every TextContent member is present with an agreeing type). The faux builders FauxText, FauxThinking and FauxToolCall return a block of that arm; a sealed interface per arm would change every scripted-response literal and slice of FauxContentBlock the faux provider and its callers use without adding an observable difference."
+ },
+ "ai:ThinkingContent": {
+  "go": [
+   "ai.FauxContentBlock"
+  ],
+  "reason": "Pi ai/src/providers/faux.ts FauxContentBlock = TextContent | ThinkingContent | ToolCall, and fauxThinking returns the ThinkingContent arm. PiG's ai.FauxContentBlock is that union as one struct: Type is the arm's discriminator (FauxContentText, FauxContentThinking, FauxContentToolCall) and every member of each arm is a field that marshals under its Pi name with omitempty (T9t verifies every ThinkingContent member is present with an agreeing type). The faux builders FauxText, FauxThinking and FauxToolCall return a block of that arm; a sealed interface per arm would change every scripted-response literal and slice of FauxContentBlock the faux provider and its callers use without adding an observable difference."
+ },
+ "ai:ToolCall": {
+  "go": [
+   "ai.FauxContentBlock"
+  ],
+  "reason": "Pi ai/src/providers/faux.ts FauxContentBlock = TextContent | ThinkingContent | ToolCall, and fauxToolCall returns the ToolCall arm. PiG's ai.FauxContentBlock is that union as one struct: Type is the arm's discriminator (FauxContentText, FauxContentThinking, FauxContentToolCall) and every member of each arm is a field that marshals under its Pi name with omitempty (T9t verifies every ToolCall member is present with an agreeing type). The faux builders FauxText, FauxThinking and FauxToolCall return a block of that arm; a sealed interface per arm would change every scripted-response literal and slice of FauxContentBlock the faux provider and its callers use without adding an observable difference."
+ },
+ "coding-agent:Skill": {
+  "go": [
+   "extension.SystemPromptSkill"
+  ],
+  "reason": "Pi coding-agent/src/core/skills.ts:74 Skill reaches extensions through BuildSystemPromptOptions.skills; coding/extension cannot import internal/codingagent, so it declares the same members (T9t checks every member and type)."
+ },
+ "coding-agent:TruncationResult": {
+  "go": [
+   "extension.ToolTruncation"
+  ],
+  "reason": "Pi coding-agent/src/core/tools/truncate.ts:15 TruncationResult is the truncation field of the tool details events carry; coding/extension holds the wire copy beside the typed *ToolResultEvent variants because it cannot import internal/codingagent/tools (T9t checks every member and type)."
+ },
+ "tui:TuiMouseEventResult": {
+  "go": [
+   "tui.TuiMouseDispatchResult"
+  ],
+  "reason": "Pi tui/src/tui.ts:46 TuiMouseEventResult is what handleMouse returns; PiG's handler returns TuiMouseDispatchResult, which embeds TuiMouseEventResult and whose target stays empty until the renderer binds it, as Pi's dispatcher does after the handler returns."
+ }
+}

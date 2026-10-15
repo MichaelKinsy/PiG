@@ -273,6 +273,24 @@ func TestFilterByTagsRequiresEveryRequestedTag(t *testing.T) {
 	}
 }
 
+// A run that leaves the owner-credentials scenarios to the owner keeps every other scenario and returns the excluded ones,
+// so the run can name them; any one excluded tag is enough.
+func TestFilterOutTagsKeepsTheRestAndReturnsTheExcluded(t *testing.T) {
+	owner := &Scenario{Name: "owner", Tags: []string{"live", "real-llm", "owner-credentials"}}
+	live := &Scenario{Name: "live", Tags: []string{"live"}}
+	hermetic := &Scenario{Name: "hermetic", Tags: []string{"hermetic"}}
+	kept, excluded := FilterOutTags([]*Scenario{owner, live, hermetic}, []string{"owner-credentials", "deferred"})
+	if len(kept) != 2 || kept[0] != live || kept[1] != hermetic {
+		t.Fatalf("kept = %#v, want live and hermetic", kept)
+	}
+	if len(excluded) != 1 || excluded[0] != owner {
+		t.Fatalf("excluded = %#v, want the owner-credentials scenario", excluded)
+	}
+	if kept, excluded := FilterOutTags([]*Scenario{owner, live}, nil); len(kept) != 2 || excluded != nil {
+		t.Fatalf("no exclusion: kept %d, excluded %#v", len(kept), excluded)
+	}
+}
+
 func TestFilterByDriversAcceptsRequestedAlternatives(t *testing.T) {
 	cli := &Scenario{Driver: "cli-mode"}
 	rpc := &Scenario{Driver: "rpc-mode"}

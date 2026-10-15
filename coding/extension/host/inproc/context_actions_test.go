@@ -20,11 +20,11 @@ func TestContextActions_ToolScoping(t *testing.T) {
 
 	// Simulate a tool registry.
 	allTools := []extension.ToolInfo{
-		{Name: "read", Description: "Read a file", SourceInfo: "builtin"},
-		{Name: "write", Description: "Write a file", SourceInfo: "builtin"},
-		{Name: "bash", Description: "Execute bash", SourceInfo: "builtin"},
-		{Name: "dispatch_subagent", Description: "Dispatch", SourceInfo: "subagent"},
-		{Name: "web_search", Description: "Search", SourceInfo: "web-search"},
+		{Name: "read", Description: "Read a file", Source: "builtin"},
+		{Name: "write", Description: "Write a file", Source: "builtin"},
+		{Name: "bash", Description: "Execute bash", Source: "builtin"},
+		{Name: "dispatch_subagent", Description: "Dispatch", Source: "subagent"},
+		{Name: "web_search", Description: "Search", Source: "web-search"},
 	}
 	activeTools := []string{"read", "write", "bash", "dispatch_subagent", "web_search"}
 
@@ -199,11 +199,11 @@ func TestContextActions_NilSafe(t *testing.T) {
 // were never wired, making piglet scoping silently no-op.
 func TestContextActions_PigletScopeIntegration(t *testing.T) {
 	allTools := []extension.ToolInfo{
-		{Name: "read", SourceInfo: "builtin"},
-		{Name: "bash", SourceInfo: "builtin"},
-		{Name: "dispatch_subagent", SourceInfo: "subagent"},
-		{Name: "web_search", SourceInfo: "web-search"},
-		{Name: "secret_tool", SourceInfo: "evil-ext"},
+		{Name: "read", Source: "builtin"},
+		{Name: "bash", Source: "builtin"},
+		{Name: "dispatch_subagent", Source: "subagent"},
+		{Name: "web_search", Source: "web-search"},
+		{Name: "secret_tool", Source: "evil-ext"},
 	}
 
 	var finalActiveTools []string
@@ -235,7 +235,7 @@ func TestContextActions_PigletScopeIntegration(t *testing.T) {
 					}
 					var active []string
 					for _, tool := range tools {
-						src, _ := tool.SourceInfo.(string)
+						src := tool.Source
 						if allowedSources[src] {
 							active = append(active, tool.Name)
 						}

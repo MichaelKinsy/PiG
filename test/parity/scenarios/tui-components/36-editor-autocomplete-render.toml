@@ -1,0 +1,28 @@
+# Behavior family: tui-components (Editor.render with the autocomplete popup)
+# Pi 1.1.0 probe: the Editor with the coding-agent editor theme (muted border, select-list theme) and a slash-command provider, driven by 824
+# key sequences (slash, letters, up/down/page keys, tab, escape, backspace, live changes of the popup's row limit) with 0 to 40 commands, long,
+# wide and ANSI descriptions, both themes, padding 0 to 4, widths 2 to 120; after every key the text and the rendered rows (borders, cursor
+# marker, popup window, columns, scroll counter) are compared byte for byte. The Go test TestEditorAutocompleteRenderMatchesPi runs the same
+# corpus against the installed Pi; this scenario compares the two printed streams.
+name = "36-editor-autocomplete-render"
+description = "The editor frame and its autocomplete popup render as in Pi."
+covers = ["packages/tui/src/components/editor.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/editor-autocomplete-render-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/editor-autocomplete-render-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 240
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['alpha', 'text']
+runs = 2

@@ -23,7 +23,7 @@ func builtinImageModelsOf(providerID string) []*ai.ImageModel {
 		builtinImageModels.byID = map[string][]*ai.ImageModel{}
 		for _, provider := range ai.GetImageProviders() {
 			for _, model := range ai.GetImageModels(provider) {
-				builtinImageModels.byID[provider] = append(builtinImageModels.byID[provider], new(model))
+				builtinImageModels.byID[string(provider)] = append(builtinImageModels.byID[string(provider)], new(model))
 			}
 		}
 	})
@@ -48,7 +48,7 @@ func builtinClassifierModelsOf(providerID string) []*ai.ClassifierModel {
 
 // builtinTypedBase assembles a built-in provider with its chat, image and classifier models. It returns nil when the provider has no built-in model of any type.
 func builtinTypedBase(id string, fallback ai.ModelsStreamFunction) *ai.ModelsProvider {
-	chat := ai.ListModels(id)
+	chat := builtinChatCatalog(id)
 	images := builtinImageModelsOf(id)
 	classifiers := builtinClassifierModelsOf(id)
 	if len(chat) == 0 && len(images) == 0 && len(classifiers) == 0 {
@@ -57,14 +57,14 @@ func builtinTypedBase(id string, fallback ai.ModelsStreamFunction) *ai.ModelsPro
 	auth, _ := ai.BuiltinProviderAuth(id)
 	chatModels := func() []*ai.Model {
 		models := make([]*ai.Model, 0, len(chat))
-		for _, generated := range ai.ListModels(id) {
+		for _, generated := range chat {
 			model := generated.ToModel()
 			model.Capabilities = generated.ToCapabilities()
 			models = append(models, model)
 		}
 		return models
 	}
-	base := &ai.ModelsProvider{ID: id, Name: ai.ProviderDisplayName(id), Auth: auth, GetModels: func() ([]*ai.Model, error) { return chatModels(), nil }, Stream: fallback, StreamSimple: fallback}
+	base := &ai.ModelsProvider{ID: id, Name: ai.ProviderDisplayName(id), BaseURL: ai.ProviderBaseURL(id), Auth: auth, GetModels: func() ([]*ai.Model, error) { return chatModels(), nil }, Stream: fallback, StreamSimple: fallback}
 	base.GetAllModels = func() ([]ai.AnyModel, error) {
 		all := ai.AnyModels(chatModels())
 		for _, image := range images {
@@ -122,6 +122,7 @@ func (r *ModelRegistry) GetTypedProvider(id string, fallback ai.ModelsStreamFunc
 	if registered {
 		input = new(providerModelInput(id, dynamic))
 	}
+	base = r.withNativeAuth(id, base)
 	provider, err := r.composeNativeProvider(base, input)
 	if err != nil {
 		return nil
@@ -136,6 +137,18 @@ func (r *ModelRegistry) GetTypedProvider(id string, fallback ai.ModelsStreamFunc
 		}
 	}
 	return provider
+}
+
+// withNativeAuth returns base with the auth of the provider object the extension registered for id, if any, so a composition keeps that object's OAuth method, loginLabel and API-key login.
+// upstream: model-runtime.ts:302 composeProvider (`nativeExtensionProviders.get(providerId) ?? builtins.get(providerId)`): the provider object is the composition's base.
+func (r *ModelRegistry) withNativeAuth(id string, base *ai.ModelsProvider) *ai.ModelsProvider {
+	native := r.NativeProvider(id)
+	if native == nil {
+		return base
+	}
+	copy := *base
+	copy.Auth = native.Auth
+	return &copy
 }
 
 // typedModelProviderIDs lists, in provider order, the providers that can hold a non-chat model: those with built-in image or classifier models and those an extension registered.

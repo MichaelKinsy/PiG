@@ -103,3 +103,24 @@ func BenchmarkTerminalInputJSON(b *testing.B) {
 		})
 	}
 }
+
+// JavaScript joins a high and a low surrogate that end up adjacent into one code point, so JSON.stringify("\ud83d" + "\ude00") is
+// '"😀"' (node 24). A Go string that concatenates two WTF-8 halves holds the pair as two three-byte sequences; only an unpaired unit is
+// an escape (node: "\ude00\ud83d" and "\ud83d😀").
+func TestSplitSurrogatePairEncodesAsItsCharacter(t *testing.T) {
+	const high, low = "\xed\xa0\xbd", "\xed\xb8\x80"
+	for _, tc := range []struct{ in, want string }{
+		{high + low, `"😀"`},
+		{"a" + high + low + "b", `"a😀b"`},
+		{low + high, `"\ude00\ud83d"`},
+		{high + high + low, `"\ud83d😀"`},
+	} {
+		got, err := json.Marshal(tc.in)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(got) != tc.want {
+			t.Errorf("Marshal(%q) = %s, want %s", tc.in, got, tc.want)
+		}
+	}
+}

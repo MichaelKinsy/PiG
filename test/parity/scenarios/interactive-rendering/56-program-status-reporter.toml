@@ -1,0 +1,28 @@
+# Behavior family: interactive-rendering (OSC 7501 program status reporter)
+# Pi 1.1.0 probe: ProgramStatusReporter (program-status-reporter.ts) driven through 400 seeded sequences of session events (agent_start, message_end of every
+# role and stop reason, compaction_start/end with every reason, abort and error text, agent_settled, session_info_changed), dialogs opened, reopened and cleared by
+# source, resets, explicit reports and session renames; each sequence's list of terminal reports (state, kind, message, in order, with repeated statuses suppressed)
+# is compared as one JSON line. The Go test TestProgramStatusReporterRandomSequencesMatchPi runs the same corpus against the installed Pi; this scenario compares the
+# two printed streams. The app name (pi, pig) is the program's own and is left out of both sides.
+name = "56-program-status-reporter"
+description = "The program status reporter sends the same OSC 7501 reports as Pi for every event sequence."
+covers = ["packages/coding-agent/src/modes/interactive/program-status-reporter.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/program-status-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/program-status-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 240
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"state":"working"', '"state":"blocked"', '"state":"error"', '"state":"done"', '"state":"idle"', '"message":"Compacting context"']
+runs = 2

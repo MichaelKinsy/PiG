@@ -137,7 +137,7 @@ func TestPromptPathLengthsBalance(t *testing.T) {
 	digits := strings.Repeat("0", snapshotIDDigits)
 	pigHome := filepath.Join(promptPathRoot, pigHomePrefix+digits)
 	piPackage := filepath.Join(promptPathRoot, piPackagePrefix+digits, piPackageLink)
-	pig := 2*(len(pigHome)+len("/docs")) + d22ConstantGap
+	pig := 2*(len(pigHome)+len("/docs")+pigBundleDirLen) + d22ConstantGap
 	pi := 3 * len(piPackage)
 	if pig != pi {
 		t.Fatalf("docs path characters: pig %d, pi %d; the system prompts would differ in length", pig, pi)

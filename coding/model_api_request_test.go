@@ -18,7 +18,7 @@ func BenchmarkIndependentAPIRequest(b *testing.B) {
 		_, _ = w.Write([]byte("data: {\"choices\":[{\"delta\":{\"content\":\"done\"},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n"))
 	}))
 	defer server.Close()
-	services, err := NewServices(ServicesOptions{CWD: b.TempDir(), AgentDir: b.TempDir()})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: b.TempDir(), AgentDir: b.TempDir()})
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -43,7 +43,7 @@ func TestIndependentAPIRequestAbortDuringResponse(t *testing.T) {
 				w.WriteHeader(http.StatusOK)
 			}))
 			defer server.Close()
-			services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+			services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -100,11 +100,11 @@ func TestIndependentAPIRequestSkipsRegisteredProviderCallback(t *testing.T) {
 						_, _ = w.Write([]byte(tc.response))
 					}))
 					defer server.Close()
-					services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+					services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 					if err != nil {
 						t.Fatal(err)
 					}
-					if err := services.Registry().RegisterProvider(providerID, extension.ProviderConfig{API: registration.api, BaseURL: "https://extension.invalid", APIKey: "key", Models: []extension.ProviderModelConfig{{ID: "model", Name: "Model", ContextWindow: 128, MaxTokens: 16}}, StreamSimple: func(extension.Model, extension.AIContext, extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
+					if err := services.Registry().RegisterExtensionProvider(providerID, extension.ProviderConfig{API: registration.api, BaseURL: "https://extension.invalid", APIKey: "key", Models: []extension.ProviderModelConfig{{ID: "model", Name: "Model", ContextWindow: 128, MaxTokens: 16}}, StreamSimple: func(extension.Model, extension.AIContext, extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
 						callbacks.Add(1)
 						stream := ai.NewAssistantMessageEventStream()
 						stream.End(&ai.AssistantMessage{Provider: providerID, Model: "model", StopReason: ai.StopReasonError, ErrorMessage: "registered streamSimple re-entered"})
@@ -127,5 +127,33 @@ func TestIndependentAPIRequestSkipsRegisteredProviderCallback(t *testing.T) {
 				})
 			}
 		}
+	}
+}
+
+// An extension's call into a pi-ai API module (the bridged openAICompletionsApi() etc.) reaches the API implementation itself, which sends
+// model.baseUrl as given (openai-completions.ts:795 createClient baseURL). Only a provider's cloudflareStreams wrapper materializes the
+// Cloudflare placeholders (cloudflare-stream.ts:21-28), and it runs in the extension's own pi-ai before the bridge, so the host must not
+// resolve them a second time on the API leaf.
+func TestIndependentAPIRequestSendsTheModelEndpointAsGiven(t *testing.T) {
+	var paths []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		paths = append(paths, r.URL.Path)
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = w.Write([]byte("data: {\"choices\":[{\"delta\":{\"content\":\"done\"},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n"))
+	}))
+	defer server.Close()
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := extension.WithModelStreamRequest(t.Context(), extension.ModelStreamRequest{API: true})
+	model := &ai.Model{ID: "workers-ai/model", ProviderMeta: ai.ProviderMetadata{ProviderID: "cloudflare-ai-gateway", BaseURL: server.URL + "/{CLOUDFLARE_ACCOUNT_ID}", API: ai.APIOpenAICompletions}}
+	request := ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("hello")}}}
+	result := services.ModelRuntime().Stream(ctx, model, request, ai.StreamOptions{APIKey: "key", Env: ai.ProviderEnv{"CLOUDFLARE_ACCOUNT_ID": "acct"}}).Result()
+	if result.StopReason != ai.StopReasonStop {
+		t.Fatalf("result = %#v", result)
+	}
+	if len(paths) != 1 || paths[0] != "/{CLOUDFLARE_ACCOUNT_ID}/chat/completions" {
+		t.Fatalf("API leaf requested %q, want the model endpoint as given", paths)
 	}
 }

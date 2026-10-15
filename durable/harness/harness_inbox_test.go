@@ -2,6 +2,8 @@
 
 package harness
 
+// pi: packages/durable/src/harness/inbox.ts
+
 import (
 	"context"
 	"path/filepath"
@@ -11,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/storage"
 )
@@ -31,12 +34,12 @@ func gatedResponse(response ai.FauxResponse) gatedAnswer {
 	return gatedAnswer{
 		reached: reached,
 		gate:    gate,
-		step: ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+		step: ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
 			reached.resolve()
 			if err := gate.wait(options.Signal); err != nil {
-				return ai.FauxResponse{}, err
+				return ai.FauxResponse{}.AssistantMessage(), err
 			}
-			return response, nil
+			return response.AssistantMessage(), nil
 		}),
 	}
 }
@@ -53,11 +56,11 @@ func (answer gatedAnswer) release() { answer.gate.resolve() }
 // holdTool registers a hold tool whose calls wait for gate and then return result.
 func holdTool(t *testing.T, setup *chatState, gate *deferredGate, result ...durable.ToolExecutionResult) {
 	t.Helper()
-	returned := durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{}}
+	returned := durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}}
 	if len(result) > 0 {
 		returned = result[0]
 	}
-	addTool(t, setup.Registry, new(durable.ToolRegistration{
+	addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
 		ToolSchema: ai.ToolSchema{Name: "hold", Description: "Waits for the test", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
 		Execute: func(ctx context.Context, _ any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			if err := gate.wait(ctx); err != nil {
@@ -69,7 +72,7 @@ func holdTool(t *testing.T, setup *chatState, gate *deferredGate, result ...dura
 }
 
 func holdStep() ai.FauxResponseStep {
-	return toolCallStep(ai.FauxToolCall("hold", map[string]any{}, "c1"))
+	return toolCallStep(ai.FauxToolCall("hold", map[string]any{}, &ai.FauxToolCallOptions{ID: "c1"}))
 }
 
 func status(t *testing.T, submission durable.Submission) durable.SubmissionRecord {
@@ -78,6 +81,11 @@ func status(t *testing.T, submission durable.Submission) durable.SubmissionRecor
 }
 
 // transcript is the kind and text of each entry, skipping system entries.
+// queuedNote is a write that affects model context, so it queues while busy; a data-only write would be appended at once.
+func queuedNote(text string) durable.EntryDraft {
+	return durable.EntryDraft{Kind: "note", Model: []ai.Message{ai.UserMessage{Content: ai.UserText(text), Timestamp: 0}}}
+}
+
 func transcript(entries []durable.EntryRecord) []string {
 	lines := []string{}
 	for _, entry := range entries {
@@ -170,6 +178,8 @@ func appendNote(t *testing.T, conversation Conversation, kind string) durable.En
 	})
 }
 
+// TestInbox Conversation.reset admits a pi.reset write that starts a new context, carrying the handoff as a user message (packages/durable/src/harness/types.ts:519-523).
+// mutation-checked: Conversation.Reset returning without admitting the write fails it.
 func TestInbox(t *testing.T) {
 	t.Run("queues busy submissions and places writes before user items at the final boundary, one follow-up per run", func(t *testing.T) {
 		setup := chatSetup(t)
@@ -179,7 +189,7 @@ func TestInbox(t *testing.T) {
 		input := submit(t, root, inputDraft("a"))
 		first.awaitReached(t)
 		f1 := submit(t, root, inputDraft("f1"))
-		write := submit(t, root, writeDraft(durable.EntryDraft{Kind: "note", Data: "w"}))
+		write := submit(t, root, writeDraft(queuedNote("w")))
 		f2 := submit(t, root, inputDraft("f2", durable.WhenBusyFollowUp))
 		for _, submission := range []durable.Submission{f1, write, f2} {
 			if record := status(t, submission); record.Status != durable.SubmissionQueued {
@@ -191,7 +201,7 @@ func TestInbox(t *testing.T) {
 
 		first.release()
 		must(f2.Wait(testContext))
-		expectTranscript(t, root, "pi.user:a", "pi.assistant:first", "note", "pi.user:f1", "pi.assistant:second", "pi.user:f2", "pi.assistant:third")
+		expectTranscript(t, root, "pi.user:a", "pi.assistant:first", "note:w", "pi.user:f1", "pi.assistant:second", "pi.user:f2", "pi.assistant:third")
 		answers := assistants(t, root)
 		expectAnswered(t, status(t, input), answers[0].Id)
 		expectSettled(t, status(t, write), durable.SubmissionDone, "")
@@ -227,7 +237,7 @@ func TestInbox(t *testing.T) {
 		first := gatedReply("first")
 		setup.Faux.SetResponses([]ai.FauxResponseStep{first.step, fauxAnswer("both")})
 		yielded := deferred()
-		addHooks(t, setup.Registry, GenerationTask, &GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, HookApi) (*YieldContinue, error) {
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, HookApi) (*YieldContinue, error) {
 			yielded.resolve()
 			return nil, nil
 		}})
@@ -240,9 +250,8 @@ func TestInbox(t *testing.T) {
 		// Occupy the line, let the answer queue its boundary commit behind it, then change the mode.
 		held := store.holdCommits()
 		markerDoc := durable.DefineDoc(durable.DocDefinition[markerState]{
-			CommonDocDefinition: durable.CommonDocDefinition[markerState]{Kind: "test.marker", Version: 1},
+			CommonDocDefinition: durable.CommonDocDefinition[markerState]{Kind: "test.marker", Version: 1, Initial: func() markerState { return markerState{} }},
 			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeSession},
-			Initial:             func() markerState { return markerState{} },
 		})
 		occupying := make(chan error, 1)
 		go func() {
@@ -303,7 +312,7 @@ func TestInbox(t *testing.T) {
 		holdTool(t, setup, gate)
 		var mu sync.Mutex
 		requests := [][]string{}
-		record := ai.FauxFactoryStep(func(request ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+		record := ai.FauxFactoryStep(func(request ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
 			lines := []string{}
 			for _, message := range request.Messages() {
 				text, _ := textOf(message)
@@ -312,7 +321,7 @@ func TestInbox(t *testing.T) {
 			mu.Lock()
 			requests = append(requests, lines)
 			mu.Unlock()
-			return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("fresh")}}, nil
+			return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("fresh")}}.AssistantMessage(), nil
 		})
 		setup.Faux.SetResponses([]ai.FauxResponseStep{holdStep(), record})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
@@ -329,9 +338,9 @@ func TestInbox(t *testing.T) {
 				t.Fatalf("reset head = %v, want itself", entry.Head)
 			}
 		}
-		// The follow-up's request starts at the reset: the follow-up, then the complete system baseline after the cut.
+		// The follow-up's request starts at the reset: the complete system baseline after the cut leads the follow-up.
 		mu.Lock()
-		expectEqualJSON(t, requests, `[["user:f","system:"]]`)
+		expectEqualJSON(t, requests, `[["system:","user:f"]]`)
 		mu.Unlock()
 		if calls := setup.Faux.CallCount(); calls != 2 {
 			t.Fatalf("calls = %d, want 2", calls)
@@ -354,7 +363,7 @@ func TestInbox(t *testing.T) {
 		}
 		expectSettled(t, status(t, input), durable.SubmissionDone, "")
 		expectTranscript(t, root, "pi.user:a", "pi.assistant:first", "pi.reset:handoff")
-		expectLike(t, must(root.Context(testContext)).Messages, `[{"role":"user","content":"handoff","timestamp":"$number"}]`)
+		expectLike(t, must(root.Context(testContext, nil)).Messages, `[{"role":"user","content":"handoff","timestamp":"$number"}]`)
 		closeHarness(t, harness)
 	})
 
@@ -364,13 +373,13 @@ func TestInbox(t *testing.T) {
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		appendNote(t, root, "note")
 		resetTo(t, root, nil)
-		view := must(root.Context(testContext))
+		view := must(root.Context(testContext, nil))
 		if view.Head == nil || view.Head.Kind != "pi.reset" || view.Head.Model != nil {
 			t.Fatalf("head = %s", jsonText(t, view.Head))
 		}
 		expectEqualJSON(t, view.Messages, `[]`)
 		resetTo(t, root, new("carry on"))
-		view = must(root.Context(testContext))
+		view = must(root.Context(testContext, nil))
 		if view.Head.Head == nil || *view.Head.Head != view.Head.Id {
 			t.Fatalf("head = %s", jsonText(t, view.Head))
 		}
@@ -385,7 +394,7 @@ func TestInbox(t *testing.T) {
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		old := appendNote(t, root, "note")
 		resetTo(t, root, nil)
-		reset := must(root.Context(testContext)).Head
+		reset := must(root.Context(testContext, nil)).Head
 		input := submit(t, root, inputDraft("a"))
 		first.awaitReached(t)
 		stale := submit(t, root, writeDraft(durable.EntryDraft{Kind: "summary", Head: &old.Id}))
@@ -432,7 +441,7 @@ func TestInbox(t *testing.T) {
 		setup := chatSetup(t)
 		gate := deferred()
 		gate.resolve()
-		holdTool(t, setup, gate, durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{}, Control: &durable.ToolControl{Handoff: new("continue here")}})
+		holdTool(t, setup, gate, durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}, Control: &durable.ToolControl{Handoff: new("continue here")}})
 		setup.Faux.SetResponses([]ai.FauxResponseStep{holdStep()})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		settled := must(submit(t, root, inputDraft("a")).Wait(testContext))
@@ -454,7 +463,7 @@ func TestInbox(t *testing.T) {
 		setup := chatSetup(t)
 		first := gatedReply("first")
 		setup.Faux.SetResponses([]ai.FauxResponseStep{first.step, fauxAnswer("second")})
-		addHooks(t, setup.Registry, GenerationTask, continueOnce("more"))
+		addHooks(t, setup.Registry, GenerationTask.Erased(), continueOnce("more"))
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		input := submit(t, root, inputDraft("a"))
 		first.awaitReached(t)
@@ -473,7 +482,7 @@ func TestInbox(t *testing.T) {
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		input := submit(t, root, inputDraft("a"))
 		first.awaitReached(t)
-		kept := submit(t, root, writeDraft(durable.EntryDraft{Kind: "note"}))
+		kept := submit(t, root, writeDraft(queuedNote("kept")))
 		withdrawn := submit(t, root, inputDraft("f"))
 		if result := must(withdrawn.Abort(testContext)); result != durable.SubmissionAborted {
 			t.Fatalf("abort = %s, want aborted", result)
@@ -552,13 +561,13 @@ func TestInbox(t *testing.T) {
 		})
 		input := submit(t, root, inputDraft("a"))
 		first.awaitReached(t)
-		w1 := submit(t, root, writeDraft(durable.EntryDraft{Kind: "note"}))
+		w1 := submit(t, root, writeDraft(queuedNote("w")))
 		f1 := submit(t, root, inputDraft("f1"))
-		w2 := submit(t, root, writeDraft(durable.EntryDraft{Kind: "note"}))
+		w2 := submit(t, root, writeDraft(queuedNote("w")))
 		f2 := submit(t, root, inputDraft("f2"))
-		w3 := submit(t, root, writeDraft(durable.EntryDraft{Kind: "note"}))
+		w3 := submit(t, root, writeDraft(queuedNote("w")))
 		write := func(index int, id durable.SubmissionId) []any {
-			return []any{[]any{"p", []any{"items"}, index, 0, []any{map[string]any{"id": id, "mode": "write", "entry": map[string]any{"kind": "note"}}}}}
+			return []any{[]any{"p", []any{"items"}, index, 0, []any{map[string]any{"id": id, "mode": "write", "entry": map[string]any{"kind": "note", "model": []any{map[string]any{"role": "user", "content": "w", "timestamp": 0}}}}}}}
 		}
 		followUp := func(index int, id durable.SubmissionId, content string) []any {
 			return []any{[]any{"p", []any{"items"}, index, 0, []any{map[string]any{"id": id, "mode": "followUp", "content": content}}}}
@@ -625,15 +634,15 @@ func TestInbox(t *testing.T) {
 		setup := chatSetup(t)
 		first := gatedReply("first")
 		setup.Faux.SetResponses([]ai.FauxResponseStep{first.step, fauxAnswer("second")})
-		addHooks(t, setup.Registry, GenerationTask, continueOnce("more"))
+		addHooks(t, setup.Registry, GenerationTask.Erased(), continueOnce("more"))
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		input := submit(t, root, inputDraft("a"))
 		first.awaitReached(t)
-		write := submit(t, root, writeDraft(durable.EntryDraft{Kind: "note"}))
+		write := submit(t, root, writeDraft(queuedNote("w")))
 		first.release()
 		must(input.Wait(testContext))
 		entries := allEntries(t, root)
-		expectEqualJSON(t, transcript(entries), `["pi.user:a","pi.assistant:first","note","pi.user:more","pi.assistant:second"]`)
+		expectEqualJSON(t, transcript(entries), `["pi.user:a","pi.assistant:first","note:w","pi.user:more","pi.assistant:second"]`)
 		expectAnswered(t, status(t, input), entries[len(entries)-1].Id)
 		expectSettled(t, status(t, write), durable.SubmissionDone, "")
 		closeHarness(t, harness)
@@ -643,7 +652,7 @@ func TestInbox(t *testing.T) {
 		setup := chatSetup(t)
 		first := gatedReply("first")
 		setup.Faux.SetResponses([]ai.FauxResponseStep{first.step})
-		addHooks(t, setup.Registry, GenerationTask, &GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, HookApi) (*YieldContinue, error) {
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, HookApi) (*YieldContinue, error) {
 			return &YieldContinue{Continue: ai.UserText("more")}, nil
 		}})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
@@ -712,7 +721,7 @@ func TestInbox(t *testing.T) {
 	t.Run("starts a queued follow-up after a terminating round", func(t *testing.T) {
 		setup := chatSetup(t)
 		gate := deferred()
-		holdTool(t, setup, gate, durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{}, Control: &durable.ToolControl{Terminate: true}})
+		holdTool(t, setup, gate, durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}, Control: &durable.ToolControl{Terminate: true}})
 		setup.Faux.SetResponses([]ai.FauxResponseStep{holdStep(), fauxAnswer("follow-up")})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		input := submit(t, root, inputDraft("a"))
@@ -728,17 +737,17 @@ func TestInbox(t *testing.T) {
 	t.Run("writes the last handoff in call order and then runs queued follow-ups in the new context", func(t *testing.T) {
 		setup := chatSetup(t)
 		firstGate, secondGate := deferred(), deferred()
-		holdTool(t, setup, firstGate, durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{}, Control: &durable.ToolControl{Handoff: new("one")}})
-		addTool(t, setup.Registry, new(durable.ToolRegistration{
+		holdTool(t, setup, firstGate, durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}, Control: &durable.ToolControl{Handoff: new("one")}})
+		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
 			ToolSchema: ai.ToolSchema{Name: "later", Description: "Finishes first", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
 			Execute: func(ctx context.Context, _ any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 				if err := secondGate.wait(ctx); err != nil {
 					return durable.ToolExecutionResult{}, err
 				}
-				return durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{}, Control: &durable.ToolControl{Handoff: new("two")}}, nil
+				return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}, Control: &durable.ToolControl{Handoff: new("two")}}, nil
 			},
 		}))
-		setup.Faux.SetResponses([]ai.FauxResponseStep{toolCallStep(ai.FauxToolCall("hold", map[string]any{}, "c1"), ai.FauxToolCall("later", map[string]any{}, "c2")), fauxAnswer("follow-up")})
+		setup.Faux.SetResponses([]ai.FauxResponseStep{toolCallStep(ai.FauxToolCall("hold", map[string]any{}, &ai.FauxToolCallOptions{ID: "c1"}), ai.FauxToolCall("later", map[string]any{}, &ai.FauxToolCallOptions{ID: "c2"})), fauxAnswer("follow-up")})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		input := submit(t, root, inputDraft("a"))
 		toolRunning(t, harness, root)
@@ -855,7 +864,7 @@ func TestInbox(t *testing.T) {
 	t.Run("keeps a complete inbox base exactly while it is empty, and a usage base on every change", func(t *testing.T) {
 		info := durable.CheckpointInfo{DeltasSinceBase: 1000}
 		checkpoint := func(token durable.AnyDocToken, value string) bool {
-			return must(token.AnyDefinition().CheckpointWhen(must(jsonValue(value)).(map[string]any), nil, info))
+			return must(token.AnyDefinition().CheckpointWhen(must(delta.DecodeJson([]byte(value))).(*delta.JsonObject), nil, info))
 		}
 		if !checkpoint(InboxDoc, `{"items":[]}`) || checkpoint(InboxDoc, `{"items":[{"id":1,"mode":"followUp","content":"x"}]}`) || !checkpoint(UsageDoc, `{"models":{},"tools":{}}`) {
 			t.Fatal("checkpoint predicates disagree with upstream")
@@ -869,7 +878,7 @@ func TestUsage(t *testing.T) {
 		spent := ai.Usage{Input: 1, Output: 2, CacheRead: 3, CacheWrite: 4, TotalTokens: 10, Cost: ai.UsageCost{Input: 0.1, Output: 0.2, CacheRead: 0.3, CacheWrite: 0.4, Total: 1}}
 		gate := deferred()
 		gate.resolve()
-		holdTool(t, setup, gate, durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{}, Usage: &spent})
+		holdTool(t, setup, gate, durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}, Usage: &spent})
 		setup.Faux.SetResponses([]ai.FauxResponseStep{holdStep(), fauxAnswer("done"), fauxAnswer("other")})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		must(submit(t, root, inputDraft("a")).Wait(testContext))
@@ -904,12 +913,12 @@ func TestUsage(t *testing.T) {
 	})
 
 	t.Run("counts failed attempts, converted partials, and tool usage replaced by afterTool", func(t *testing.T) {
-		setup := chatSetup(t, ai.FauxConfig{TokensPerSecond: 200, MinTokenSize: 1, MaxTokenSize: 1})
+		setup := chatSetup(t, ai.FauxConfig{TokensPerSecond: 200, TokenSize: &ai.FauxTokenSize{Min: new(1), Max: new(1)}})
 		spent := ai.Usage{Input: 5, TotalTokens: 5}
 		gate := deferred()
 		gate.resolve()
 		holdTool(t, setup, gate)
-		addHooks(t, setup.Registry, ToolTask, &ToolHooks{AfterTool: func(_ context.Context, _ ai.ToolCall, result durable.ToolExecutionResult, _ HookApi) (*durable.ToolExecutionResult, error) {
+		addHooks(t, setup.Registry, ToolTask.Erased(), &ToolHooks{AfterTool: func(_ context.Context, _ ToolHookCall, result durable.ToolExecutionResult, _ HookApi) (*durable.ToolExecutionResult, error) {
 			result.Usage = &spent
 			return &result, nil
 		}})
@@ -968,7 +977,7 @@ func TestUsage(t *testing.T) {
 
 	t.Run("keeps usage totals exact across reopen, counting a partial converted after reopen once", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "session.sqlite")
-		setup := chatSetup(t, ai.FauxConfig{TokensPerSecond: 200, MinTokenSize: 1, MaxTokenSize: 1})
+		setup := chatSetup(t, ai.FauxConfig{TokensPerSecond: 200, TokenSize: &ai.FauxTokenSize{Min: new(1), Max: new(1)}})
 		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer("first"), fauxAnswer(strings.Repeat("x", 400)), fauxAnswer("again")})
 		harness, root := openAt(t, path, setup)
 		must(submit(t, root, inputDraft("a")).Wait(testContext))
@@ -1112,7 +1121,7 @@ func (store *inboxRecordingStorage) Commit(ctx context.Context, writes []durable
 		if !ok || store.inboxId == nil || change.Id != *store.inboxId {
 			continue
 		}
-		items, _ := change.Content.Value["items"].([]any)
+		items, _ := change.Content.Value.Value("items").([]any)
 		empty := change.Content.Kind == "base" && len(items) == 0
 		store.written = append(store.written, inboxWrite{Kind: string(change.Content.Kind), Empty: empty})
 	}

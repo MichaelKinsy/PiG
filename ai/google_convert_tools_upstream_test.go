@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"bytes"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -29,7 +30,7 @@ func TestGoogleSharedConvertToolsUpstream(t *testing.T) {
 			if err := json.Unmarshal([]byte(tc.input), &parameters); err != nil {
 				t.Fatal(err)
 			}
-			tools, _, err := geminiConvertTools([]ToolSchema{{Name: "test_tool", Description: "A test tool", Parameters: parameters}}, tc.useParameters, true)
+			tools, err := geminiConvertTools([]ToolSchema{{Name: "test_tool", Description: "A test tool", Parameters: parameters}}, tc.useParameters, true)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -37,19 +38,30 @@ func TestGoogleSharedConvertToolsUpstream(t *testing.T) {
 				t.Fatalf("tools=%#v", tools)
 			}
 			decl := tools[0].FunctionDeclarations[0]
-			var got map[string]any
+			// convertTools declares {name, description, parameters|parametersJsonSchema} (google-shared.ts:388-397).
+			schemaKey := "parametersJsonSchema"
 			if tc.useParameters {
-				got = decl.Parameters
-				if decl.ParametersJSONSchema != nil {
-					t.Fatal("unexpected parametersJsonSchema")
-				}
-			} else {
-				got = decl.ParametersJSONSchema
-				if decl.Parameters != nil {
-					t.Fatal("unexpected parameters")
-				}
+				schemaKey = "parameters"
 			}
-			assertCompletionsJSON(t, got, tc.want)
+			if len(decl) != 3 || decl[0] != (geminiDeclMember{"name", "test_tool"}) || decl[1] != (geminiDeclMember{"description", "A test tool"}) || decl[2].Key != schemaKey {
+				t.Fatalf("declaration = %#v", decl)
+			}
+			schema, ok := decl[2].Value.(jsonSchemaToolParameters)
+			if !ok {
+				t.Fatalf("schema = %#v", decl[2].Value)
+			}
+			encoded, err := json.Marshal(decl)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var members map[string]json.RawMessage
+			if err := json.Unmarshal(encoded, &members); err != nil {
+				t.Fatal(err)
+			}
+			if _, present := members[schemaKey]; !present || len(members) != 3 || !bytes.HasPrefix(encoded, []byte(`{"name":"test_tool","description":"A test tool","`+schemaKey+`":`)) {
+				t.Fatalf("declaration JSON = %s", encoded)
+			}
+			assertCompletionsJSON(t, schema.Schema, tc.want)
 			assertCompletionsJSON(t, parameters, tc.input)
 		})
 	}
@@ -59,13 +71,15 @@ func TestGoogleSharedConvertToolsUpstream(t *testing.T) {
 		if !supportsGoogleStrictToolSampling("gemini-3.1-pro-preview") || supportsGoogleStrictToolSampling("gemini-2.5-pro") {
 			t.Fatal("strict model support mismatch")
 		}
-		_, strict, err := geminiConvertTools([]ToolSchema{tool}, false, true)
-		if err != nil || !strict {
-			t.Fatalf("strict=%v err=%v", strict, err)
+		if mode, err := resolveGoogleFunctionCallingMode([]ToolSchema{tool}, "", true); err != nil || mode != "VALIDATED" {
+			t.Fatalf("mode=%q err=%v", mode, err)
 		}
-		_, _, err = geminiConvertTools([]ToolSchema{tool}, false, false)
+		_, err := resolveGoogleFunctionCallingMode([]ToolSchema{tool}, "", false)
 		if err == nil || !strings.Contains(err.Error(), `Tool "test_tool" requires JSON-schema constrained sampling`) {
 			t.Fatalf("required strict error=%v", err)
+		}
+		if _, err := geminiConvertTools([]ToolSchema{tool}, false, false); err == nil || !strings.Contains(err.Error(), `Tool "test_tool" requires JSON-schema constrained sampling`) {
+			t.Fatalf("convertTools required strict error=%v", err)
 		}
 		body := captureShapeRequest(t, func(url string) Provider {
 			return NewGoogleProvider(GoogleConfig{Model: "gemini-3.1-pro-preview", APIKey: "test", BaseURL: url})
@@ -75,7 +89,7 @@ func TestGoogleSharedConvertToolsUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/ai/test/google-shared-convert-tools.test.ts:199
 	t.Run("returns undefined for empty tool list", func(t *testing.T) {
 		for _, useParameters := range []bool{false, true} {
-			tools, _, err := geminiConvertTools([]ToolSchema{}, useParameters, true)
+			tools, err := geminiConvertTools([]ToolSchema{}, useParameters, true)
 			if err != nil || tools != nil {
 				t.Fatalf("tools=%#v err=%v", tools, err)
 			}

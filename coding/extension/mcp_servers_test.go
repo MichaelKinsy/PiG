@@ -1,5 +1,7 @@
 package extension
 
+// pi: packages/coding-agent/src/core/mcp-servers.ts
+
 import (
 	"encoding/json"
 	"strings"

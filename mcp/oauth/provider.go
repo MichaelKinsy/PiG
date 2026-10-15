@@ -5,7 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
-	"net/url"
+	"math"
 	"sync"
 	"time"
 )
@@ -21,13 +21,13 @@ type McpOAuthState struct {
 	Tokens            *OAuthTokens            `json:"tokens,omitempty"`
 	// TokensExpireAt is when the access token expires, in milliseconds since
 	// the epoch, from expires_in at the time it was saved.
-	TokensExpireAt *int64               `json:"tokensExpireAt,omitempty"`
+	TokensExpireAt *float64             `json:"tokensExpireAt,omitempty"`
 	CodeVerifier   string               `json:"codeVerifier,omitempty"`
 	OAuthState     string               `json:"oauthState,omitempty"`
 	Discovery      *OAuthDiscoveryState `json:"discovery,omitempty"`
 }
 
-// Clone returns a deep copy.
+// Clone returns a deep copy. Like structuredClone it keeps a non-finite TokensExpireAt, which JSON writes as null.
 func (s McpOAuthState) Clone() McpOAuthState {
 	data, err := json.Marshal(s)
 	if err != nil {
@@ -37,7 +37,51 @@ func (s McpOAuthState) Clone() McpOAuthState {
 	if json.Unmarshal(data, &out) != nil {
 		return s
 	}
+	if s.TokensExpireAt != nil {
+		out.TokensExpireAt = new(*s.TokensExpireAt)
+	}
 	return out
+}
+
+// mcpOAuthStateFields is McpOAuthState without its JSON methods.
+type mcpOAuthStateFields McpOAuthState
+
+// MarshalJSON writes the state as JSON.stringify does: a TokensExpireAt that
+// overflowed to ±Infinity (Date.now() + expires_in * 1000) is null.
+func (s McpOAuthState) MarshalJSON() ([]byte, error) {
+	if s.TokensExpireAt == nil || !math.IsNaN(*s.TokensExpireAt) && !math.IsInf(*s.TokensExpireAt, 0) {
+		return json.Marshal(mcpOAuthStateFields(s))
+	}
+	return json.Marshal(struct {
+		mcpOAuthStateFields
+		TokensExpireAt json.RawMessage `json:"tokensExpireAt"`
+	}{mcpOAuthStateFields(s), json.RawMessage("null")})
+}
+
+// UnmarshalJSON reads a null tokensExpireAt as 0: the only reader computes
+// tokensExpireAt - skew <= Date.now(), where null is 0, so the token counts
+// as expired.
+func (s *McpOAuthState) UnmarshalJSON(data []byte) error {
+	var fields struct {
+		mcpOAuthStateFields
+		TokensExpireAt json.RawMessage `json:"tokensExpireAt"`
+	}
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	*s = McpOAuthState(fields.mcpOAuthStateFields)
+	switch raw := fields.TokensExpireAt; {
+	case raw == nil:
+	case string(raw) == "null":
+		s.TokensExpireAt = new(0.0)
+	default:
+		var at float64
+		if err := json.Unmarshal(raw, &at); err != nil {
+			return err
+		}
+		s.TokensExpireAt = &at
+	}
+	return nil
 }
 
 // McpOAuthStateStore stores the state of one provider. Applications inject
@@ -86,7 +130,7 @@ type McpOAuthProviderOptions struct {
 	ClientID               string
 	ClientSecret           string
 	Store                  McpOAuthStateStore
-	OnRedirect             func(ctx context.Context, url *url.URL) error
+	OnRedirect             func(ctx context.Context, url URL) error
 }
 
 // McpOAuthProvider is the default stateful [OAuthClientProvider] for one exact
@@ -101,7 +145,7 @@ type McpOAuthProvider struct {
 	serverURL        string
 	configuredClient *OAuthClientInformation
 	store            McpOAuthStateStore
-	onRedirect       func(ctx context.Context, url *url.URL) error
+	onRedirect       func(ctx context.Context, url URL) error
 	mu               sync.Mutex
 	// writeErr is the error that rejected the write chain: provider.ts keeps `this.writes` rejected, so every later load and update fails with it.
 	writeErr error
@@ -118,13 +162,13 @@ func (p *McpOAuthProvider) ClientMetadataDocument(metadata *AuthorizationServerM
 
 // NewMcpOAuthProvider returns a provider. It fails when the server URL does not parse.
 func NewMcpOAuthProvider(options McpOAuthProviderOptions) (*McpOAuthProvider, error) {
-	server, err := parseURL(options.ServerURL)
+	server, err := ParseURL(options.ServerURL)
 	if err != nil {
 		return nil, err
 	}
 	p := &McpOAuthProvider{
 		redirectURL:    options.RedirectURL,
-		serverURL:      server.String(),
+		serverURL:      server.Href(),
 		store:          options.Store,
 		onRedirect:     options.OnRedirect,
 		clientDocument: options.ClientMetadataDocument,
@@ -213,9 +257,9 @@ func (p *McpOAuthProvider) Tokens(ctx context.Context) (*OAuthTokens, error) {
 
 // SaveTokens stores tokens and their expiry.
 func (p *McpOAuthProvider) SaveTokens(ctx context.Context, tokens OAuthTokens) error {
-	var expiresAt *int64
+	var expiresAt *float64
 	if tokens.ExpiresIn != nil {
-		value := time.Now().UnixMilli() + int64(*tokens.ExpiresIn*1000)
+		value := float64(time.Now().UnixMilli()) + float64(*tokens.ExpiresIn*1000)
 		expiresAt = &value
 	}
 	return p.update(ctx, func(s *McpOAuthState) {
@@ -225,7 +269,7 @@ func (p *McpOAuthProvider) SaveTokens(ctx context.Context, tokens OAuthTokens) e
 }
 
 // RedirectToAuthorization hands the authorization URL to the application.
-func (p *McpOAuthProvider) RedirectToAuthorization(ctx context.Context, authorizationURL *url.URL) error {
+func (p *McpOAuthProvider) RedirectToAuthorization(ctx context.Context, authorizationURL URL) error {
 	return p.onRedirect(ctx, authorizationURL)
 }
 

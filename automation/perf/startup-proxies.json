@@ -6,7 +6,7 @@
     "TestToModelCatalogAllocationBudget",
     "TestToCapabilitiesMatchesSupportedThinkingLevelSelection"
   ],
-  "./cmd/pig": [
+  "./coding/cli": [
     "TestLinkedPackagesCompileNoRegexpAtInit",
     "TestLazyRegexpPatternsAllCompile",
     "TestPackageInitWorkBudget"
@@ -69,7 +69,7 @@
     "TestCatalogCacheHitIgnoresOnlyRuntimeProvider",
     "TestCatalogSnapshotAvoidsMetadataSerialization",
     "TestCloneCatalogInputDoesNotAllocateInlineStructs",
-    "TestModelCatalogBindingReusesFirstEncoding",
+    "TestModelCatalogBindingPublishesTheFinishedBindingOnce",
     "TestModelCatalogBindingKeepsPublicationBytesAndCalls",
     "TestModelCatalogBindingKeepsRegistrationOrdering"
   ],

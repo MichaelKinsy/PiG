@@ -161,6 +161,17 @@ func TestLintRules(t *testing.T) {
 			wantRules: []string{"hermetic-requires-auth"},
 		},
 		{
+			name:   "a real model call needs the owner's credentials",
+			source: "# live scenario\n",
+			sc: scenario{
+				Name:   "live-call",
+				Driver: "print-mode",
+				Tags:   []string{"live", "real-llm"},
+				Assert: assertBlock{BothContain: []string{"4"}},
+			},
+			wantRules: []string{"real-llm-owner-credentials"},
+		},
+		{
 			name:   "runs alone are not a behavioral assertion",
 			source: "# no oracle\n",
 			sc: scenario{

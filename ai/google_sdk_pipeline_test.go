@@ -204,6 +204,7 @@ func TestGoogleProviderConsumerMatchesNodeTickOrder(t *testing.T) {
 					t.Error(err)
 				}
 				value["timestamp"] = 0.0
+				googleOracleDuration(value)
 				return value
 			}
 			// The provider timeline: every push, with the message as it is when the provider pushes (Pi pushes a reference to `output`).
@@ -293,6 +294,7 @@ func TestGoogleProviderConsumerMatchesNodeTickOrder(t *testing.T) {
 			for _, stamp := range c.Provider {
 				if stamp.Event == "push" {
 					stamp.Snapshot["timestamp"] = 0.0
+					googleOracleDuration(stamp.Snapshot)
 					wantPushes = append(wantPushes, stamp)
 				}
 			}
@@ -310,6 +312,7 @@ func TestGoogleProviderConsumerMatchesNodeTickOrder(t *testing.T) {
 			for _, stamp := range c.Consumer {
 				if stamp.Event == "event" && stamp.Snapshot != nil {
 					stamp.Snapshot["timestamp"] = 0.0
+					googleOracleDuration(stamp.Snapshot)
 				}
 				want = append(want, stamp)
 			}
@@ -365,7 +368,7 @@ func TestGoogleSSEDelimiterMatchesTheSDKScan(t *testing.T) {
 	alphabet := []byte{'\r', '\n', 'x'}
 	var walk func(prefix []byte)
 	walk = func(prefix []byte) {
-		gotIndex, gotLength := googleSSEDelimiter(string(prefix))
+		gotIndex, gotLength := googleSSEDelimiter(prefix)
 		wantIndex, wantLength := naive(string(prefix))
 		if gotIndex != wantIndex || gotLength != wantLength {
 			t.Fatalf("%q: got (%d, %d), SDK scan (%d, %d)", prefix, gotIndex, gotLength, wantIndex, wantLength)
@@ -378,4 +381,11 @@ func TestGoogleSSEDelimiterMatchesTheSDKScan(t *testing.T) {
 		}
 	}
 	walk(nil)
+}
+
+// googleOracleDuration keeps only the presence of durationMs, which Pi 1.1.0 sets from wall time on the final message (event-stream.ts:127-128), and which the earlier snapshots show once the message is final because they share its object.
+func googleOracleDuration(message map[string]any) {
+	if _, ok := message["durationMs"]; ok {
+		message["durationMs"] = 0.0
+	}
 }

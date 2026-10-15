@@ -59,10 +59,16 @@ func (m *mockUIContext) SetStatus(key, text string) {
 	m.statusCalls = append(m.statusCalls, struct{ key, text string }{key, text})
 }
 func (m *mockUIContext) SetTitle(title string) { m.titleCalls = append(m.titleCalls, title) }
+func (m *mockUIContext) ClearWorkingMessage() {
+	m.workingMsgCalls = append(m.workingMsgCalls, "<default>")
+}
 func (m *mockUIContext) SetWorkingMessage(msg string) {
 	m.workingMsgCalls = append(m.workingMsgCalls, msg)
 }
 func (m *mockUIContext) SetWorkingVisible(bool) {}
+func (m *mockUIContext) ClearHiddenThinkingLabel() {
+	m.thinkingLabelCalls = append(m.thinkingLabelCalls, "<default>")
+}
 func (m *mockUIContext) SetHiddenThinkingLabel(label string) {
 	m.thinkingLabelCalls = append(m.thinkingLabelCalls, label)
 }
@@ -76,14 +82,16 @@ func (m *mockUIContext) SetEditorText(text string) {
 	m.setEditorTextCalls = append(m.setEditorTextCalls, text)
 }
 func (m *mockUIContext) GetEditorText() string { return m.editorText }
-func (m *mockUIContext) SetFooter(factory any) {
+func (m *mockUIContext) SetFooter(build extension.FooterFactory) {
+	factory := frameOf(build, 3)
 	m.footerValue = factory
 	m.footerCalls = append(m.footerCalls, factory)
 	if factory == nil {
 		m.footerCleared = true
 	}
 }
-func (m *mockUIContext) SetHeader(factory any) {
+func (m *mockUIContext) SetHeader(build extension.HeaderFactory) {
+	factory := frameOf(build, 2)
 	m.headerCalls = append(m.headerCalls, factory)
 	if lines, ok := factory.([]string); factory == nil || ok && len(lines) == 0 {
 		m.headerCleared = true
@@ -93,14 +101,14 @@ func (m *mockUIContext) SetLogin(definition extension.LoginDefinition) error {
 	m.loginCalls = append(m.loginCalls, definition)
 	return m.loginErr
 }
-func (m *mockUIContext) SetEditorComponent(factory any) {
+func (m *mockUIContext) SetEditorComponent(factory extension.EditorFactory) {
 	if factory == nil {
 		m.editorCompCleared = true
 	}
 }
-func (m *mockUIContext) GetEditorComponent() any        { return nil }
-func (m *mockUIContext) GetToolsExpanded() bool         { return m.toolsExpanded }
-func (m *mockUIContext) SetToolsExpanded(expanded bool) { m.toolsExpanded = expanded }
+func (m *mockUIContext) GetEditorComponent() extension.EditorFactory { return nil }
+func (m *mockUIContext) GetToolsExpanded() bool                      { return m.toolsExpanded }
+func (m *mockUIContext) SetToolsExpanded(expanded bool)              { m.toolsExpanded = expanded }
 func (m *mockUIContext) RunRemoteOverlay(extension.RemoteOverlayOptions, extension.RemoteOverlayHost, func(extension.RemoteOverlayHandle)) (any, bool) {
 	return nil, false
 }
@@ -119,18 +127,24 @@ func (m *mockUIContext) Input(_ context.Context, _, _ string, _ extension.Extens
 func (m *mockUIContext) Editor(_ context.Context, _, _ string) (string, error) {
 	return m.editorResult, m.editorErr
 }
-func (m *mockUIContext) SetTheme(theme any) extension.SetThemeResult { return m.themeResult }
-func (m *mockUIContext) Theme() extension.Theme                      { return m.theme }
-func (m *mockUIContext) GetAllThemes() []extension.ThemeMeta         { return m.allThemes }
+func (m *mockUIContext) SetTheme(theme extension.ThemeSelection) extension.SetThemeResult {
+	return m.themeResult
+}
+func (m *mockUIContext) Theme() extension.Theme              { return m.theme }
+func (m *mockUIContext) GetAllThemes() []extension.ThemeMeta { return m.allThemes }
 func (m *mockUIContext) GetTheme(name string) (extension.Theme, error) {
 	if m.namedTheme == nil {
 		return nil, nil
 	}
 	return m.namedTheme, nil
 }
-func (m *mockUIContext) SetWidget(string, any, extension.ExtensionWidgetOptions) {}
-func (m *mockUIContext) OnTerminalInput(extension.TerminalInputHandler) func()   { return func() {} }
-func (m *mockUIContext) Custom(context.Context, any, any) (any, error)           { return nil, nil }
+func (m *mockUIContext) SetWidget(string, []string, *extension.ExtensionWidgetOptions) {}
+func (m *mockUIContext) SetWidgetFactory(string, extension.WidgetFactory, *extension.ExtensionWidgetOptions) {
+}
+func (m *mockUIContext) OnTerminalInput(extension.TerminalInputHandler) func() { return func() {} }
+func (m *mockUIContext) Custom(context.Context, extension.CustomFactory, *extension.CustomOptions) (any, error) {
+	return nil, nil
+}
 func (m *mockUIContext) AddAutocompleteProvider(extension.AutocompleteProviderFactory) error {
 	return nil
 }
@@ -167,7 +181,8 @@ func TestUIBridge_HandleCall_Notify(t *testing.T) {
 	}
 }
 
-func TestUIBridge_HandleCall_Notify_DefaultLevel(t *testing.T) {
+// ExtensionUIContext.notify's type is optional (types.ts); an omitted one reaches the UI context empty, which shows it as info and which RPC writes without notifyType (rpc-mode.ts notify).
+func TestUIBridge_HandleCall_Notify_OmittedLevelStaysEmpty(t *testing.T) {
 	mock := &mockUIContext{}
 	b := newTestBridge(mock)
 	// No notifyFunc set: falls back to ui.Notify
@@ -176,8 +191,8 @@ func TestUIBridge_HandleCall_Notify_DefaultLevel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(mock.notifyCalls) != 1 || mock.notifyCalls[0].kind != "info" {
-		t.Errorf("expected default level 'info', got %+v", mock.notifyCalls)
+	if len(mock.notifyCalls) != 1 || mock.notifyCalls[0].kind != "" {
+		t.Errorf("expected the omitted level to stay empty, got %+v", mock.notifyCalls)
 	}
 }
 
@@ -221,6 +236,49 @@ func TestUIBridge_HandleCall_SetStatus_BroadcastsStateChange(t *testing.T) {
 	}
 	if broadcasts != 1 {
 		t.Fatalf("OnStateChanged called %d times, want 1", broadcasts)
+	}
+}
+
+// pig additive (D107): SetFrontend reaches every snapshot as
+// StatePayload.frontend and pushes one state_update per change, never one for
+// a repeated value.
+func TestUIBridge_SetFrontendPushesTheFlagOncePerChange(t *testing.T) {
+	b := newTestBridge(&mockUIContext{})
+	t.Cleanup(b.StopFrontendPushes)
+	pushed := make(chan string, 8)
+	b.OnStateChanged = func() {
+		encoded, err := json.Marshal(map[string]any{"state": b.Snapshot(nil, 0, false)})
+		if err != nil {
+			t.Error(err)
+		}
+		pushed <- string(encoded)
+	}
+	next := func() string {
+		t.Helper()
+		select {
+		case got := <-pushed:
+			return got
+		case <-time.After(5 * time.Second):
+			t.Fatal("no state_update was pushed")
+			return ""
+		}
+	}
+	if b.Snapshot(nil, 0, false).Frontend {
+		t.Fatal("a bridge without a frontend reported one")
+	}
+	b.SetFrontend(true)
+	if got := next(); !strings.Contains(got, `"frontend":true`) {
+		t.Fatalf("state_update after SetFrontend(true) = %s", got)
+	}
+	b.SetFrontend(true)
+	b.SetFrontend(false)
+	if got := next(); strings.Contains(got, `"frontend"`) {
+		t.Fatalf("state_update after SetFrontend(false) = %s", got)
+	}
+	select {
+	case got := <-pushed:
+		t.Fatalf("a repeated value pushed state: %s", got)
+	case <-time.After(50 * time.Millisecond):
 	}
 }
 
@@ -269,6 +327,65 @@ func TestUIBridge_HandleCall_SetWorkingMessage(t *testing.T) {
 	}
 	if len(mock.workingMsgCalls) != 1 || mock.workingMsgCalls[0] != "loading..." {
 		t.Errorf("got %v", mock.workingMsgCalls)
+	}
+}
+
+// Pi's setWorkingMessage(message?: string) shows `message ?? default` (interactive-mode.ts:2644): an absent or null message restores the default label and an
+// empty string is a message. The bridge must hand the UI that distinction.
+func TestUIBridge_HandleCall_SetWorkingMessageDistinguishesAbsentFromEmpty(t *testing.T) {
+	for _, tc := range []struct{ args, want string }{
+		{`{"message":""}`, ""},
+		{`{"message":"x"}`, "x"},
+		{`{}`, "<default>"},
+		{`{"message":null}`, "<default>"},
+	} {
+		mock := &mockUIContext{}
+		if _, err := call(newTestBridge(mock), "ui.setWorkingMessage", tc.args); err != nil {
+			t.Fatal(err)
+		}
+		if len(mock.workingMsgCalls) != 1 || mock.workingMsgCalls[0] != tc.want {
+			t.Errorf("%s reached the UI as %q, want one call %q", tc.args, mock.workingMsgCalls, tc.want)
+		}
+	}
+}
+
+// Pi's setHiddenThinkingLabel(label?: string) shows `label ?? defaultHiddenThinkingLabel` (interactive-mode.ts:2383): an absent or null label restores the default and an empty
+// string is a label. The bridge hands the UI that distinction, and a UIContext without the clearer receives the empty string for an absent label.
+func TestUIBridge_HandleCall_SetHiddenThinkingLabelDistinguishesAbsentFromEmpty(t *testing.T) {
+	for _, tc := range []struct{ args, want string }{
+		{`{"label":""}`, ""},
+		{`{"label":"x"}`, "x"},
+		{`{}`, "<default>"},
+		{`{"label":null}`, "<default>"},
+	} {
+		mock := &mockUIContext{}
+		if _, err := call(newTestBridge(mock), "ui.setHiddenThinkingLabel", tc.args); err != nil {
+			t.Fatal(err)
+		}
+		if len(mock.thinkingLabelCalls) != 1 || mock.thinkingLabelCalls[0] != tc.want {
+			t.Errorf("%s reached the UI as %q, want one call %q", tc.args, mock.thinkingLabelCalls, tc.want)
+		}
+	}
+	mock := &mockUIContext{}
+	if _, err := call(newTestBridge(plainWorkingUI{mock}), "ui.setHiddenThinkingLabel", `{}`); err != nil {
+		t.Fatal(err)
+	}
+	if len(mock.thinkingLabelCalls) != 1 || mock.thinkingLabelCalls[0] != "" {
+		t.Errorf("an absent label reached a plain UIContext as %q, want one empty label", mock.thinkingLabelCalls)
+	}
+}
+
+// plainWorkingUI exposes only the UIContext interface, as a UIContext written before WorkingMessageClearer existed does: the mock's ClearWorkingMessage is hidden.
+type plainWorkingUI struct{ extension.UIContext }
+
+// A UIContext that does not implement WorkingMessageClearer keeps its old behavior: an absent message reaches it as the empty string.
+func TestUIBridge_HandleCall_SetWorkingMessageWithoutAClearerFallsBackToEmpty(t *testing.T) {
+	mock := &mockUIContext{}
+	if _, err := call(newTestBridge(plainWorkingUI{mock}), "ui.setWorkingMessage", `{}`); err != nil {
+		t.Fatal(err)
+	}
+	if len(mock.workingMsgCalls) != 1 || mock.workingMsgCalls[0] != "" {
+		t.Errorf("an absent message reached a plain UIContext as %q, want one empty message", mock.workingMsgCalls)
 	}
 }
 
@@ -412,7 +529,7 @@ func TestUIBridge_HandleWidgetPush_ViaCall(t *testing.T) {
 	b := NewUIBridge(func() { invalidated = true })
 	b.SetUIContext(&mockUIContext{})
 
-	b.HandleWidgetPush("ext1", &WidgetPushPayload{Key: "w1", Lines: []string{"line1", "line2"}})
+	b.HandleWidgetPush("ext1", nil, &WidgetPushPayload{Key: "w1", Lines: []string{"line1", "line2"}})
 
 	proxy := b.GetWidget("ext1", "w1")
 	if proxy == nil {
@@ -432,11 +549,11 @@ func TestUIBridge_HandleWidgetPush_ViaCall(t *testing.T) {
 func TestUIBridge_WidgetPushedBeforeSetInvalidateUsesLiveCallback(t *testing.T) {
 	b := NewUIBridge(func() {})
 	b.SetUIContext(&mockUIContext{})
-	b.HandleWidgetPush("ext1", &WidgetPushPayload{Key: "clock", Lines: []string{"12:00"}})
+	b.HandleWidgetPush("ext1", nil, &WidgetPushPayload{Key: "clock", Lines: []string{"12:00"}})
 
 	var renders atomic.Int32
 	b.SetInvalidate(func() { renders.Add(1) })
-	b.HandleWidgetPush("ext1", &WidgetPushPayload{Key: "clock", Lines: []string{"12:01"}})
+	b.HandleWidgetPush("ext1", nil, &WidgetPushPayload{Key: "clock", Lines: []string{"12:01"}})
 	if got := renders.Load(); got != 1 {
 		t.Fatalf("update of an early widget requested %d renders, want 1", got)
 	}
@@ -449,9 +566,9 @@ func TestUIBridge_WidgetPushedBeforeSetInvalidateUsesLiveCallback(t *testing.T) 
 func TestUIBridge_ClearExtension_AllKeys(t *testing.T) {
 	b := NewUIBridge(func() {})
 	b.SetUIContext(&mockUIContext{})
-	b.HandleWidgetPush("ext1", &WidgetPushPayload{Key: "a", Lines: []string{"x"}})
-	b.HandleWidgetPush("ext1", &WidgetPushPayload{Key: "b", Lines: []string{"y"}})
-	b.HandleWidgetPush("ext2", &WidgetPushPayload{Key: "c", Lines: []string{"z"}})
+	b.HandleWidgetPush("ext1", nil, &WidgetPushPayload{Key: "a", Lines: []string{"x"}})
+	b.HandleWidgetPush("ext1", nil, &WidgetPushPayload{Key: "b", Lines: []string{"y"}})
+	b.HandleWidgetPush("ext2", nil, &WidgetPushPayload{Key: "c", Lines: []string{"z"}})
 
 	b.ClearExtension("ext1")
 
@@ -563,6 +680,7 @@ func TestUIBridge_HandleCall_SetWidget_Clear(t *testing.T) {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/extensions/types.ts:127 (ExtensionWidgetOptions.placement).
 func TestUIBridge_HandleCall_SetWidget_RequestObserverPreservesPlacement(t *testing.T) {
 	b := NewUIBridge(func() {})
 	b.SetUIContext(&mockUIContext{})
@@ -571,15 +689,12 @@ func TestUIBridge_HandleCall_SetWidget_RequestObserverPreservesPlacement(t *test
 	var placement string
 	var cachedUpdates int
 	b.SetWidgetSyncFunc(func(map[string]*PushProxy) { cachedUpdates++ })
-	b.SetWidgetRequestFunc(func(_ string, gotKey string, gotLines []string, opts extension.ExtensionWidgetOptions) {
+	b.SetWidgetRequestFunc(func(_ string, gotKey string, gotLines []string, opts *extension.ExtensionWidgetOptions) {
 		key = gotKey
 		lines = gotLines
-		data, _ := json.Marshal(opts)
-		var value struct {
-			Placement string `json:"placement"`
+		if opts != nil {
+			placement = string(opts.Placement)
 		}
-		_ = json.Unmarshal(data, &value)
-		placement = value.Placement
 	})
 	if _, err := call(b, "ui.setWidget", `{"key":"w","content":["a","b"],"options":{"placement":"belowEditor"}}`); err != nil {
 		t.Fatal(err)
@@ -589,6 +704,28 @@ func TestUIBridge_HandleCall_SetWidget_RequestObserverPreservesPlacement(t *test
 	}
 	if cachedUpdates != 0 || b.GetWidget("test-ext", "w") != nil {
 		t.Fatal("serialized RPC widget request must not also publish a cached TUI widget")
+	}
+}
+
+// upstream: packages/coding-agent/src/core/extensions/types.ts:122-128 placement is "aboveEditor" (default) or "belowEditor".
+func TestUIBridge_HandleCall_SetWidget_PlacementOptions(t *testing.T) {
+	for _, tc := range []struct{ name, options, want string }{
+		{"absent options", ``, "aboveEditor"},
+		{"empty options", `,"options":{}`, "aboveEditor"},
+		{"above", `,"options":{"placement":"aboveEditor"}`, "aboveEditor"},
+		{"below", `,"options":{"placement":"belowEditor"}`, "belowEditor"},
+		{"unknown placement stays above", `,"options":{"placement":"sideways"}`, "aboveEditor"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			b := newTestBridge(&mockUIContext{})
+			if _, err := call(b, "ui.setWidget", `{"key":"w","content":["a"]`+tc.options+`}`); err != nil {
+				t.Fatal(err)
+			}
+			proxy := b.GetWidget("test-ext", "w")
+			if proxy == nil || proxy.placement != tc.want {
+				t.Fatalf("widget = %+v, want placement %q", proxy, tc.want)
+			}
+		})
 	}
 }
 
@@ -760,14 +897,14 @@ func TestFocusedInputDeliveryFailureClosesOverlay(t *testing.T) {
 
 func TestRegisterExtConnPublishesBootstrapOnlyToNewConnection(t *testing.T) {
 	bridge := NewUIBridge(func() {})
-	bridge.SetHostAction("getModels", func() []map[string]any {
-		return []map[string]any{{"provider": "test", "id": "model"}}
+	bridge.SetHostAction("getModels", func() []json.RawMessage {
+		return modelJSONs(map[string]any{"provider": "test", "id": "model"})
 	})
 	oldHost, oldPeer := net.Pipe()
 	defer func() { _ = oldHost.Close() }()
 	defer func() { _ = oldPeer.Close() }()
 	oldConn := NewConn("old", oldHost)
-	bridge.RegisterExtConn("old", oldConn)
+	bridge.RegisterExtConn("old", oldConn, true)
 	select {
 	case <-oldConn.outCh:
 	case <-time.After(time.Second):
@@ -778,7 +915,7 @@ func TestRegisterExtConnPublishesBootstrapOnlyToNewConnection(t *testing.T) {
 	defer func() { _ = newHost.Close() }()
 	defer func() { _ = newPeer.Close() }()
 	newConn := NewConn("new", newHost)
-	bridge.RegisterExtConn("new", newConn)
+	bridge.RegisterExtConn("new", newConn, true)
 	select {
 	case <-newConn.outCh:
 	case <-time.After(time.Second):
@@ -798,9 +935,9 @@ func TestRegisterExtConnPublishesBootstrapOnlyToNewConnection(t *testing.T) {
 func TestPublishModelCatalogBuildsNothingWithoutConnections(t *testing.T) {
 	bridge := NewUIBridge(func() {})
 	builds := 0
-	bridge.SetHostAction("getModels", func() []map[string]any {
+	bridge.SetHostAction("getModels", func() []json.RawMessage {
 		builds++
-		return []map[string]any{{"provider": "test", "id": "model"}}
+		return modelJSONs(map[string]any{"provider": "test", "id": "model"})
 	})
 	bridge.PublishModelCatalog()
 	bridge.PublishModelCatalog()
@@ -812,7 +949,7 @@ func TestPublishModelCatalogBuildsNothingWithoutConnections(t *testing.T) {
 	defer func() { _ = host.Close() }()
 	defer func() { _ = peer.Close() }()
 	conn := NewConn("ext", host)
-	bridge.RegisterExtConn("ext", conn)
+	bridge.RegisterExtConn("ext", conn, true)
 	<-conn.outCh
 	bridge.PublishModelCatalog()
 	select {
@@ -835,10 +972,10 @@ func TestFocusedReloadCleanupCannotCloseReplacementGeneration(t *testing.T) {
 	defer func() { _ = newPeer.Close() }()
 	oldConn := NewConn("old", oldHost)
 	newConn := NewConn("new", newHost)
-	bridge.RegisterExtConn("ext", oldConn)
+	bridge.RegisterExtConn("ext", oldConn, false)
 	oldTarget := &recordingRemoteOverlayHandle{closed: make(chan struct{})}
 	bridge.customOverlayProxyFor("ext", oldConn, "focused").SetTarget(oldTarget)
-	bridge.RegisterExtConn("ext", newConn)
+	bridge.RegisterExtConn("ext", newConn, false)
 	newTarget := &recordingRemoteOverlayHandle{closed: make(chan struct{})}
 	bridge.customOverlayProxyFor("ext", newConn, "focused").SetTarget(newTarget)
 
@@ -881,70 +1018,109 @@ func (u *serialFocusedUI) RunRemoteOverlay(opts extension.RemoteOverlayOptions, 
 	return opts.Title, true
 }
 
-func TestFocusedOverlaysSerializeTerminalFocus(t *testing.T) {
+// Pi 1.2.0 interactive-mode.ts:2966-3043: showExtensionCustom has no cross-call mutex. A second custom component, overlay or not, opens
+// while the first is shown and goes over it; none waits for another to close. Focus and input then follow the TUI's focus stack: the
+// component on top reads the keys, and focus returns to the one below when it closes (internal/codingagent ext_ui_custom_stack_test.go).
+func TestFocusedCustomComponentsStack(t *testing.T) {
 	ui := &serialFocusedUI{
 		UIContext: extension.NoopUIContext,
-		entered:   make(chan string, 2),
-		release:   make(chan struct{}, 2),
+		entered:   make(chan string, 3),
+		release:   make(chan struct{}, 3),
 	}
 	bridge := NewUIBridge(func() {})
 	bridge.SetUIContext(ui)
-	callOverlay := func(key, title string) <-chan error {
-		done := make(chan error, 1)
-		args, err := json.Marshal(RemoteOverlayOpenPayload{Key: key, Title: title})
+	type outcome struct {
+		value any
+		err   error
+	}
+	open := func(key, title string, overlay bool) <-chan outcome {
+		done := make(chan outcome, 1)
+		args, err := json.Marshal(RemoteOverlayOpenPayload{Key: key, Title: title, Overlay: overlay})
 		if err != nil {
-			done <- err
-			return done
+			t.Fatal(err)
 		}
 		go func() {
 			result, err := bridge.handleCall(context.Background(), "ext", nil, &CallPayload{Method: CallUICustom, Args: args})
 			if err == nil && result.Error != nil {
 				err = result.Error.ToError()
 			}
-			done <- err
+			var value any
+			if err == nil {
+				var decoded struct {
+					Result any `json:"result"`
+				}
+				err = json.Unmarshal(result.Result, &decoded)
+				value = decoded.Result
+			}
+			done <- outcome{value, err}
 		}()
 		return done
 	}
-
-	firstDone := callOverlay("custom-1", "first")
-	select {
-	case got := <-ui.entered:
-		if got != "first" {
-			t.Fatalf("first focused overlay = %q", got)
+	// Every component is released at the end, whatever the assertions found, so no call outlives the test.
+	var calls []<-chan outcome
+	defer func() {
+		for range calls {
+			ui.release <- struct{}{}
 		}
-	case <-time.After(time.Second):
-		t.Fatal("first focused overlay did not acquire focus")
-	}
-	secondDone := callOverlay("custom-2", "second")
-	select {
-	case got := <-ui.entered:
-		t.Fatalf("second focused overlay entered while first still owned focus: %q", got)
-	case <-time.After(50 * time.Millisecond):
-	}
-
-	ui.release <- struct{}{}
-	if err := <-firstDone; err != nil {
-		t.Fatal(err)
-	}
-	select {
-	case got := <-ui.entered:
-		if got != "second" {
-			t.Fatalf("second focused overlay = %q", got)
+	}()
+	for _, component := range []struct {
+		title   string
+		overlay bool
+	}{{"back", true}, {"middle", false}, {"front", true}} {
+		calls = append(calls, open("custom-"+component.title, component.title, component.overlay))
+		select {
+		case got := <-ui.entered:
+			if got != component.title {
+				t.Fatalf("custom component shown = %q, want %q", got, component.title)
+			}
+		case <-time.After(time.Second):
+			t.Fatalf("custom component %q waited for the one below it to close instead of opening over it", component.title)
 		}
-	case <-time.After(time.Second):
-		t.Fatal("second focused overlay did not acquire released focus")
 	}
-	ui.release <- struct{}{}
-	if err := <-secondDone; err != nil {
-		t.Fatal(err)
+	for range calls {
+		ui.release <- struct{}{}
+	}
+	shown := map[any]bool{}
+	for _, call := range calls {
+		got := <-call
+		if got.err != nil {
+			t.Fatal(got.err)
+		}
+		shown[got.value] = true
+	}
+	calls = nil
+	if !shown["back"] || !shown["middle"] || !shown["front"] {
+		t.Fatalf("custom results = %v, want back, middle and front", shown)
 	}
 }
 
-func TestInteractiveDialogsWaitForFocusedOverlay(t *testing.T) {
-	ui := &serialFocusedUI{
-		UIContext: extension.NoopUIContext,
-		entered:   make(chan string, 2),
-		release:   make(chan struct{}, 2),
+// dialogOverOverlayUI answers its selector on answer, apart from the custom component it releases on release.
+type dialogOverOverlayUI struct {
+	serialFocusedUI
+	answer chan struct{}
+}
+
+func (u *dialogOverOverlayUI) Select(ctx context.Context, title string, _ []string, _ extension.ExtensionUIDialogOptions) (string, error) {
+	u.entered <- title
+	select {
+	case <-u.answer:
+		return "selected", nil
+	case <-ctx.Done():
+		return "", ctx.Err()
+	}
+}
+
+// Pi 1.2.0 interactive-mode.ts:2690-2857: a dialog that opens while a focused custom component holds the terminal shows at once and takes
+// focus from it (this.ui.setFocus(dialog)); the TUI hands focus back to the component when the dialog closes (tui.ts:598-665). The bridge
+// opens the dialog without waiting for the component, and the component stays open, its call pending, until it closes itself.
+func TestInteractiveDialogOpensOverFocusedOverlay(t *testing.T) {
+	ui := &dialogOverOverlayUI{
+		serialFocusedUI: serialFocusedUI{
+			UIContext: extension.NoopUIContext,
+			entered:   make(chan string, 2),
+			release:   make(chan struct{}, 1),
+		},
+		answer: make(chan struct{}, 1),
 	}
 	bridge := NewUIBridge(func() {})
 	bridge.SetUIContext(ui)
@@ -961,149 +1137,79 @@ func TestInteractiveDialogsWaitForFocusedOverlay(t *testing.T) {
 	}
 
 	selectArgs := json.RawMessage(`{"title":"selector","options":["selected"]}`)
-	selectDone := make(chan struct{})
+	selectDone := make(chan *CallResultPayload, 1)
 	go func() {
-		_, _ = bridge.handleCall(context.Background(), "other", nil, &CallPayload{Method: "ui.select", Args: selectArgs})
-		close(selectDone)
+		result, _ := bridge.handleCall(context.Background(), "other", nil, &CallPayload{Method: "ui.select", Args: selectArgs})
+		selectDone <- result
 	}()
-	select {
-	case got := <-ui.entered:
-		t.Fatalf("selector entered while custom overlay owned focus: %q", got)
-	case <-time.After(50 * time.Millisecond):
-	}
-	ui.release <- struct{}{}
-	<-customDone
 	select {
 	case got := <-ui.entered:
 		if got != "selector" {
-			t.Fatalf("queued selector title = %q", got)
+			t.Fatalf("dialog title = %q", got)
 		}
 	case <-time.After(time.Second):
-		t.Fatal("selector did not acquire released focus")
+		t.Fatal("selector waited for the focused custom component instead of opening at once")
 	}
-	ui.release <- struct{}{}
-	<-selectDone
-}
-
-func TestFocusedOverlayWaitCancelsWithoutTakingFocus(t *testing.T) {
-	ui := &serialFocusedUI{
-		UIContext: extension.NoopUIContext,
-		entered:   make(chan string, 2),
-		release:   make(chan struct{}, 1),
-	}
-	bridge := NewUIBridge(func() {})
-	bridge.SetUIContext(ui)
-	firstArgs, _ := json.Marshal(RemoteOverlayOpenPayload{Key: "custom-1", Title: "first"})
-	firstDone := make(chan struct{})
-	go func() {
-		_, _ = bridge.handleCall(context.Background(), "ext", nil, &CallPayload{Method: CallUICustom, Args: firstArgs})
-		close(firstDone)
-	}()
+	ui.answer <- struct{}{}
 	select {
-	case <-ui.entered:
-	case <-time.After(time.Second):
-		t.Fatal("first focused overlay did not acquire focus")
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	secondArgs, _ := json.Marshal(RemoteOverlayOpenPayload{Key: "custom-2", Title: "second"})
-	secondDone := make(chan *CallResultPayload, 1)
-	go func() {
-		result, _ := bridge.handleCall(ctx, "ext", nil, &CallPayload{Method: CallUICustom, Args: secondArgs})
-		secondDone <- result
-	}()
-	cancel()
-	select {
-	case result := <-secondDone:
-		if result == nil || result.Error == nil || result.Error.Code != "cancelled" {
-			t.Fatalf("cancelled focus waiter result = %+v", result)
+	case result := <-selectDone:
+		if result == nil || result.Error != nil {
+			t.Fatalf("selector result = %+v", result)
 		}
 	case <-time.After(time.Second):
-		t.Fatal("cancelled focus waiter did not return")
-	}
-
-	ui.release <- struct{}{}
-	select {
-	case <-firstDone:
-	case <-time.After(time.Second):
-		t.Fatal("first focused overlay did not close")
+		t.Fatal("selector did not resolve")
 	}
 	select {
-	case got := <-ui.entered:
-		t.Fatalf("cancelled overlay later acquired focus: %q", got)
-	case <-time.After(50 * time.Millisecond):
-	}
-}
-
-func TestManyFocusedWaitersCancelWithoutLeakingFocus(t *testing.T) {
-	ui := &serialFocusedUI{
-		UIContext: extension.NoopUIContext,
-		entered:   make(chan string, 2),
-		release:   make(chan struct{}, 2),
-	}
-	bridge := NewUIBridge(func() {})
-	bridge.SetUIContext(ui)
-	firstArgs, _ := json.Marshal(RemoteOverlayOpenPayload{Key: "custom-owner", Title: "owner"})
-	firstDone := make(chan struct{})
-	go func() {
-		_, _ = bridge.handleCall(context.Background(), "owner", nil, &CallPayload{Method: CallUICustom, Args: firstArgs})
-		close(firstDone)
-	}()
-	select {
-	case <-ui.entered:
-	case <-time.After(time.Second):
-		t.Fatal("focus owner did not enter")
-	}
-
-	const waiters = 128
-	results := make(chan *CallResultPayload, waiters)
-	cancels := make([]context.CancelFunc, 0, waiters)
-	for index := range waiters {
-		ctx, cancel := context.WithCancel(context.Background())
-		cancels = append(cancels, cancel)
-		args, _ := json.Marshal(RemoteOverlayOpenPayload{Key: fmt.Sprintf("custom-%d", index), Title: fmt.Sprintf("waiter-%d", index)})
-		go func() {
-			result, _ := bridge.handleCall(ctx, "waiter", nil, &CallPayload{Method: CallUICustom, Args: args})
-			results <- result
-		}()
-	}
-	for _, cancel := range cancels {
-		cancel()
-	}
-	for range waiters {
-		select {
-		case result := <-results:
-			if result == nil || result.Error == nil || result.Error.Code != "cancelled" {
-				t.Fatalf("focus waiter result = %+v", result)
-			}
-		case <-time.After(2 * time.Second):
-			t.Fatal("focus waiter did not cancel")
-		}
-	}
-	select {
-	case entered := <-ui.entered:
-		t.Fatalf("cancelled waiter acquired focus: %q", entered)
+	case <-customDone:
+		t.Fatal("the custom component closed with the dialog")
 	default:
 	}
+	ui.release <- struct{}{}
+	<-customDone
+}
 
-	ui.release <- struct{}{}
-	<-firstDone
-	finalArgs, _ := json.Marshal(RemoteOverlayOpenPayload{Key: "custom-final", Title: "final"})
-	finalDone := make(chan struct{})
-	go func() {
-		_, _ = bridge.handleCall(context.Background(), "final", nil, &CallPayload{Method: CallUICustom, Args: finalArgs})
-		close(finalDone)
-	}()
-	select {
-	case entered := <-ui.entered:
-		if entered != "final" {
-			t.Fatalf("focus after waiter cancellation = %q", entered)
-		}
-	case <-time.After(time.Second):
-		t.Fatal("focus token leaked after waiter cancellation")
+// Pi 1.2.0 interactive-mode.ts:2690-2857: an extension dialog never waits for another. A second dialog opens at once and
+// displaces the first, whose call stays pending, and an open dialog does not keep a focused overlay waiting.
+func TestInteractiveDialogsDoNotWaitForEachOther(t *testing.T) {
+	ui := &serialFocusedUI{
+		UIContext: extension.NoopUIContext,
+		entered:   make(chan string, 3),
+		release:   make(chan struct{}, 3),
 	}
-	ui.release <- struct{}{}
-	<-finalDone
+	bridge := NewUIBridge(func() {})
+	bridge.SetUIContext(ui)
+	open := func(method string, args json.RawMessage) <-chan struct{} {
+		done := make(chan struct{})
+		go func() {
+			_, _ = bridge.handleCall(context.Background(), "ext", nil, &CallPayload{Method: method, Args: args})
+			close(done)
+		}()
+		return done
+	}
+	expect := func(want string) {
+		t.Helper()
+		select {
+		case got := <-ui.entered:
+			if got != want {
+				t.Fatalf("entered %q, want %q", got, want)
+			}
+		case <-time.After(time.Second):
+			t.Fatalf("%s did not open while another dialog was shown", want)
+		}
+	}
+	firstDone := open("ui.select", json.RawMessage(`{"title":"first","options":["a"]}`))
+	expect("first")
+	secondDone := open("ui.select", json.RawMessage(`{"title":"second","options":["b"]}`))
+	expect("second")
+	overlayArgs, _ := json.Marshal(RemoteOverlayOpenPayload{Key: "custom-1", Title: "overlay"})
+	overlayDone := open(CallUICustom, overlayArgs)
+	expect("overlay")
+	for range 3 {
+		ui.release <- struct{}{}
+	}
+	<-firstDone
+	<-secondDone
+	<-overlayDone
 }
 
 func TestFocusedLateFrameDoesNotRecreateCompletedOverlay(t *testing.T) {
@@ -1210,7 +1316,7 @@ func TestUIBridgeClearExtensionRemovesWidgetsFromMountedSet(t *testing.T) {
 	bridge.SetUIContext(&mockUIContext{})
 	counts := make(chan int, 2)
 	bridge.SetWidgetSyncFunc(func(widgets map[string]*PushProxy) { counts <- len(widgets) })
-	bridge.HandleWidgetPush("ext", &WidgetPushPayload{Key: "status", Lines: []string{"ready"}})
+	bridge.HandleWidgetPush("ext", nil, &WidgetPushPayload{Key: "status", Lines: []string{"ready"}})
 	bridge.ClearExtension("ext")
 	for _, want := range []int{1, 0} {
 		select {
@@ -1260,8 +1366,8 @@ func TestUIBridgeReplaysBoundStatusAndFooterOnRebind(t *testing.T) {
 func TestUIBridge_AllWidgets(t *testing.T) {
 	b := NewUIBridge(func() {})
 	b.SetUIContext(&mockUIContext{})
-	b.HandleWidgetPush("e1", &WidgetPushPayload{Key: "a", Lines: []string{"1"}})
-	b.HandleWidgetPush("e2", &WidgetPushPayload{Key: "b", Lines: []string{"2"}})
+	b.HandleWidgetPush("e1", nil, &WidgetPushPayload{Key: "a", Lines: []string{"1"}})
+	b.HandleWidgetPush("e2", nil, &WidgetPushPayload{Key: "b", Lines: []string{"2"}})
 
 	all := b.AllWidgets()
 	if len(all) != 2 {
@@ -1382,16 +1488,24 @@ func TestUIBridge_WaitForIdle(t *testing.T) {
 	}
 }
 
-func TestUIBridge_NewSession_Unsupported(t *testing.T) {
+// runner.ts:383-387,557-562: a command context whose actions are not bound answers { cancelled: false } for newSession, fork, navigateTree and
+// switchSession, and a resolved no-op for reload, so the bridge never fails these calls with "not available".
+func TestUIBridge_UnboundSessionActionsAnswerLikePi(t *testing.T) {
 	b := newTestBridge(&mockUIContext{})
-	// No NewSession callback set → unsupported
-
-	res, err := call(b, "newSession", `{}`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if res.Error == nil || res.Error.Code != "unsupported" {
-		t.Errorf("expected unsupported, got %+v", res.Error)
+	for _, tc := range []struct{ method, args, want string }{
+		{"newSession", `{}`, `{"cancelled":false}`},
+		{"fork", `{"entryId":"e1"}`, `{"cancelled":false}`},
+		{"navigateTree", `{"targetId":"e1"}`, `{"cancelled":false}`},
+		{"switchSession", `{"sessionPath":"/s.jsonl"}`, `{"cancelled":false}`},
+		{"reload", `{}`, ``},
+	} {
+		res, err := call(b, tc.method, tc.args)
+		if err != nil {
+			t.Fatalf("%s: %v", tc.method, err)
+		}
+		if res.Error != nil || string(res.Result) != tc.want {
+			t.Errorf("%s = %+v, want result %q and no error", tc.method, res, tc.want)
+		}
 	}
 }
 
@@ -1640,7 +1754,7 @@ func TestUIBridgeSetLoginDefensivelyCopiesPendingData(t *testing.T) {
 	if err != nil || result.Error != nil {
 		t.Fatalf("set login = (%+v, %v)", result, err)
 	}
-	copy(raw, []byte(strings.Repeat(" ", len(raw))))
+	copy(raw, strings.Repeat(" ", len(raw)))
 	ui := &mockUIContext{}
 	bridge.SetUIContext(ui)
 	if len(ui.loginCalls) != 1 || ui.loginCalls[0].Name != "original" || ui.loginCalls[0].Palette["A"] != "#112233" {
@@ -1670,6 +1784,7 @@ func TestUIBridgePendingLoginSurvivesUIApplyError(t *testing.T) {
 
 // BindCommandActions exposes the session actions to subprocess extensions;
 // the flat wire arguments reach the bound action.
+// Pi: packages/coding-agent/src/core/extensions/types.ts:2208 (CommandActions.navigateTree).
 func TestUIBridge_BindCommandActionsNavigateTree(t *testing.T) {
 	b := NewUIBridge(func() {})
 	var gotTarget string
@@ -1718,7 +1833,8 @@ type blockingFooterUI struct {
 	applied []string
 }
 
-func (u *blockingFooterUI) SetFooter(factory any) {
+func (u *blockingFooterUI) SetFooter(build extension.FooterFactory) {
+	factory := frameOf(build, 3)
 	lines, _ := factory.([]string)
 	if len(lines) == 1 && lines[0] == "STALE" {
 		close(u.entered)
@@ -1777,8 +1893,14 @@ func (u *blockingReplayUI) apply(slot string, factory any) {
 	u.applied[slot] = append(u.applied[slot], lines...)
 }
 
-func (u *blockingReplayUI) SetFooter(factory any) { u.apply("footer", factory) }
-func (u *blockingReplayUI) SetHeader(factory any) { u.apply("header", factory) }
+func (u *blockingReplayUI) SetFooter(build extension.FooterFactory) {
+	factory := frameOf(build, 3)
+	u.apply("footer", factory)
+}
+func (u *blockingReplayUI) SetHeader(build extension.HeaderFactory) {
+	factory := frameOf(build, 2)
+	u.apply("header", factory)
+}
 
 // SetUIContext replays the header and footer onto a rebound UI. A live call that arrives during the replay must apply after it, or the replayed older value replaces the newer one (Pi applies setHeader/setFooter in program order, interactive-mode.ts:2427-2488).
 func TestUIBridgeSlotReplayAndLiveCallAreAtomic(t *testing.T) {
@@ -1877,7 +1999,7 @@ func TestUIBridgeSurfaceReplacementRetiresPreviousComponent(t *testing.T) {
 			select {
 			case frame := <-conn.outCh:
 				var env Envelope
-				if err := json.Unmarshal(frame.data, &env); err != nil {
+				if err := json.Unmarshal(frame.payloadBytes(), &env); err != nil {
 					t.Fatal(err)
 				}
 				want := `{"kind":"` + strings.ToLower(strings.TrimPrefix(method, "ui.set")) + `","surfaceId":17}`
@@ -1936,5 +2058,46 @@ func TestUIBridgeLoginRetiresHeaderOnlyWhenAccepted(t *testing.T) {
 				t.Fatalf("header calls = %#v, rejected = %v", ui.headerCalls, rejected)
 			}
 		})
+	}
+}
+
+// pig additive (D107): SetFrontend's state_update runs on the bridge's owned
+// worker. StopFrontendPushes, which Host.Shutdown calls, waits for a push in
+// flight, and a change after it updates the flag without pushing.
+func TestUIBridge_StopFrontendPushesJoinsTheWorker(t *testing.T) {
+	b := newTestBridge(&mockUIContext{})
+	entered, release := make(chan struct{}), make(chan struct{})
+	var pushes atomic.Int32
+	b.OnStateChanged = func() {
+		if pushes.Add(1) == 1 {
+			close(entered)
+			<-release
+		}
+	}
+	b.SetFrontend(true)
+	<-entered
+	stopped := make(chan struct{})
+	go func() {
+		b.StopFrontendPushes()
+		close(stopped)
+	}()
+	select {
+	case <-stopped:
+		t.Fatal("StopFrontendPushes returned while a push was in flight")
+	case <-time.After(50 * time.Millisecond):
+	}
+	close(release)
+	select {
+	case <-stopped:
+	case <-time.After(5 * time.Second):
+		t.Fatal("StopFrontendPushes did not return after the push finished")
+	}
+	b.SetFrontend(false)
+	if b.Snapshot(nil, 0, false).Frontend {
+		t.Fatal("SetFrontend(false) after stop left the flag set")
+	}
+	time.Sleep(50 * time.Millisecond)
+	if got := pushes.Load(); got != 1 {
+		t.Fatalf("pushes = %d, want only the one before stop", got)
 	}
 }

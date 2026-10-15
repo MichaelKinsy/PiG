@@ -64,6 +64,8 @@ func TestSetProgramSearchesThePathOfTheChildEnvironment(t *testing.T) {
 	copyProgram(t, cwd, "pig-cwd-command", 0o755)
 	inParent := filepath.Join(root, "only-in-parent")
 	copyProgram(t, inParent, "pig-parent-path-command", 0o755)
+	// The oracle process keeps the PATH the test started with: a node launcher script (a version-manager shim) finds the real node through it.
+	oracleEnv := os.Environ()
 	t.Setenv("PATH", inParent)
 	// hop links to nest/deep, so the kernel resolves hop/.. to nest, while a
 	// cleaned hop/../bin is root/bin, which does not exist.
@@ -121,6 +123,7 @@ process.stdout.write(JSON.stringify(cases.map(({ file, cwd, env }) => {
   return { image: result.stdout.trim() ? JSON.parse(result.stdout) : "" };
 })));
 `)
+	node.Env = oracleEnv
 	node.Stdin = bytes.NewReader(data)
 	out, err := node.Output()
 	if err != nil {

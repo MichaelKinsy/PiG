@@ -19,15 +19,17 @@ import (
 // TestAgent_Send_NilModel_ReturnsErrorNotPanic.
 func TestHandleSubmit_NoModel_ShowsGuidanceNoPanic(t *testing.T) {
 	var out bytes.Buffer
-	m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir(), Model: nil})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir(), Model: nil})
 	m.editor = tui.NewEditor()
 	m.chatContainer = tui.NewContainer()
 	m.statusContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(&out, 100, 30)
 	m.tuiInst.Add(m.chatContainer)
-	m.statusLine = NewStatusLine(nil, "", nil)
-	m.agent = agent.NewAgent(agent.AgentOptions{Model: nil})
+	m.statusLine = NewFooterComponent(nil, "", nil)
+	m.agent = mustNewAgent(agent.AgentOptions{Model: nil})
+	// NewAgent installs Pi's unknown placeholder model; SetModel(nil) is the no-model state.
+	m.agent.SetModel(nil)
 	m.keybindings = DefaultKeybindingsManager()
 	m.runCtx = context.Background()
 	m.abortCtx = context.Background()

@@ -130,7 +130,7 @@ func TestOpenAICompletionsToolChoiceStreamUpstream(t *testing.T) {
 		if response.StopReason != StopReasonToolUse {
 			t.Fatal(response)
 		}
-		assertCompletionsJSON(t, response.Content, `[{"type":"text","text":"answer 1 answer 2\n"},{"type":"thinking","thinking":"think 1 think 2","thinkingSignature":"reasoning_content"},{"type":"toolCall","id":"tc_read_initial","name":"read","arguments":{"path":"README.md"}},{"type":"toolCall","id":"tc_grep_initial","name":"grep","arguments":{"pattern":"TODO","path":"src"}},{"type":"toolCall","id":"tc_list_no_index","name":"list","arguments":{"path":"packages/ai"}},{"type":"toolCall","id":"tc_write_no_index","name":"write","arguments":{"path":"out.txt","content":"ok"}}]`)
+		assertCompletionsJSON(t, response.Content, `[{"type":"thinking","thinking":"think 1 think 2","thinkingSignature":"reasoning_content"},{"type":"text","text":"answer 1 answer 2\n"},{"type":"toolCall","id":"tc_read_initial","name":"read","arguments":{"path":"README.md"}},{"type":"toolCall","id":"tc_grep_initial","name":"grep","arguments":{"pattern":"TODO","path":"src"}},{"type":"toolCall","id":"tc_list_no_index","name":"list","arguments":{"path":"packages/ai"}},{"type":"toolCall","id":"tc_write_no_index","name":"write","arguments":{"path":"out.txt","content":"ok"}}]`)
 	})
 	for _, tc := range []struct {
 		name                              string

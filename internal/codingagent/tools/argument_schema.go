@@ -6,35 +6,40 @@ import (
 	"maps"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
 // ArgumentSchema retains the TypeBox metadata and property order used by Pi's
 // built-in argument validator. Schema remains plain JSON for provider requests.
-func (t *ReadTool) ArgumentSchema() json.RawMessage {
-	return nativeToolArgumentSchema(t.Schema(), "path", "offset", "limit")
-}
-func (t *BashTool) ArgumentSchema() json.RawMessage {
-	return nativeToolArgumentSchema(t.Schema(), "command", "timeout")
-}
-func (t *PowerShellTool) ArgumentSchema() json.RawMessage {
-	return nativeToolArgumentSchema(t.Schema(), "command", "timeout")
-}
-func (t *EditTool) ArgumentSchema() json.RawMessage {
-	return nativeToolArgumentSchema(t.Schema(), "path", "edits")
-}
-func (t *WriteTool) ArgumentSchema() json.RawMessage {
-	return nativeToolArgumentSchema(t.Schema(), "path", "content")
-}
-func (t *GrepTool) ArgumentSchema() json.RawMessage {
-	return nativeToolArgumentSchema(t.Schema(), "pattern", "path", "glob", "ignoreCase", "literal", "context", "limit")
-}
-func (t *FindTool) ArgumentSchema() json.RawMessage {
-	return nativeToolArgumentSchema(t.Schema(), "pattern", "path", "limit")
-}
-func (t *LsTool) ArgumentSchema() json.RawMessage {
-	return nativeToolArgumentSchema(t.Schema(), "path", "limit")
+// Each tool's parameters are source constants (the bash and PowerShell variants
+// differ only in guidelines), so the bytes are encoded once per tool.
+func (t *ReadTool) ArgumentSchema() json.RawMessage       { return readArgumentSchema() }
+func (t *BashTool) ArgumentSchema() json.RawMessage       { return bashArgumentSchema() }
+func (t *PowerShellTool) ArgumentSchema() json.RawMessage { return powerShellArgumentSchema() }
+func (t *EditTool) ArgumentSchema() json.RawMessage       { return editArgumentSchema() }
+func (t *WriteTool) ArgumentSchema() json.RawMessage      { return writeArgumentSchema() }
+func (t *GrepTool) ArgumentSchema() json.RawMessage       { return grepArgumentSchema() }
+func (t *FindTool) ArgumentSchema() json.RawMessage       { return findArgumentSchema() }
+func (t *LsTool) ArgumentSchema() json.RawMessage         { return lsArgumentSchema() }
+
+var (
+	readArgumentSchema       = argumentSchemaOnce(func() ai.ToolSchema { return (&ReadTool{}).Schema() }, "path", "offset", "limit")
+	bashArgumentSchema       = argumentSchemaOnce(func() ai.ToolSchema { return (&BashTool{}).Schema() }, "command", "timeout")
+	powerShellArgumentSchema = argumentSchemaOnce(func() ai.ToolSchema { return (&PowerShellTool{}).Schema() }, "command", "timeout")
+	editArgumentSchema       = argumentSchemaOnce(func() ai.ToolSchema { return (&EditTool{}).Schema() }, "path", "edits")
+	writeArgumentSchema      = argumentSchemaOnce(func() ai.ToolSchema { return (&WriteTool{}).Schema() }, "path", "content")
+	grepArgumentSchema       = argumentSchemaOnce(func() ai.ToolSchema { return (&GrepTool{}).Schema() }, "pattern", "path", "glob", "ignoreCase", "literal", "context", "limit")
+	findArgumentSchema       = argumentSchemaOnce(func() ai.ToolSchema { return (&FindTool{}).Schema() }, "pattern", "path", "limit")
+	lsArgumentSchema         = argumentSchemaOnce(func() ai.ToolSchema { return (&LsTool{}).Schema() }, "path", "limit")
+)
+
+// argumentSchemaOnce encodes a tool's argument schema once; each call returns its own copy of those bytes, so a caller may
+// keep or edit them, at the cost of one copy instead of a schema clone and encode.
+func argumentSchemaOnce(schema func() ai.ToolSchema, order ...string) func() json.RawMessage {
+	encoded := sync.OnceValue(func() json.RawMessage { return nativeToolArgumentSchema(schema(), order...) })
+	return func() json.RawMessage { return slices.Clone(encoded()) }
 }
 
 func nativeToolArgumentSchema(schema ai.ToolSchema, order ...string) json.RawMessage {

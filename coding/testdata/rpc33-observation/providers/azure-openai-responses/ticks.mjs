@@ -1,4 +1,4 @@
-// Azure OpenAI Responses microtask-tick probe. Pi 1.0.3 / OpenAI 7.19.0.
+// Azure OpenAI Responses microtask-tick probe. Pi 1.1.0 / OpenAI 7.19.0.
 // Usage: node ticks.mjs <ticks.json>
 //
 // Drives the real Pi provider (packages/ai/src/api/azure-openai-responses.ts) and, for the runtime path, the real
@@ -16,6 +16,9 @@
 //   buffered  headers and the complete body in one write; the body is already in the client's socket buffer at `start`.
 //   pending   headers flushed alone; the whole body is written in a later macrotask after the consumer sees `start`.
 //   chunked   headers flushed; each SSE record is its own write, one macrotask apart, released after `start`.
+const PIG_UPSTREAM_VERSION = process.env.PIG_UPSTREAM_VERSION; // the pin's display version, from `eval "$(python3 automation/pin/pin.py env)"`
+if (!PIG_UPSTREAM_VERSION) throw new Error('PIG_UPSTREAM_VERSION is not set: run eval "$(python3 automation/pin/pin.py env)" before the probe');
+import { PI_PACKAGE_VERSION } from "../../../../../test/parity/testdata/pi-version.mjs";
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import assert from 'node:assert/strict';
@@ -25,7 +28,7 @@ import { join } from 'node:path';
 
 const root = process.env.PI_PACKAGE_ROOT;
 const base = root + '/node_modules/@earendil-works/';
-for (const [path, version] of [[root, '1.0.3'], [base + 'pi-ai', '1.0.3'], [base + 'pi-agent-core', '1.0.3'], [base + '../openai', '7.19.0']]) {
+for (const [path, version] of [[root, PI_PACKAGE_VERSION], [base + 'pi-ai', PI_PACKAGE_VERSION], [base + 'pi-agent-core', PI_PACKAGE_VERSION], [base + '../openai', '7.19.0']]) {
   assert.equal(JSON.parse(await readFile(path + '/package.json', 'utf8')).version, version);
 }
 const GAP_CAP = 64;
@@ -107,4 +110,4 @@ for (const layers of axes.layers) for (const shape of axes.shapes) for (const fi
   results.push(r);
   console.log(JSON.stringify({layers, shape, fixture, gaps: r.events.map(e => e.type + ':' + e.gap + (e.io ? '*' : ''))}));
 }
-await writeFile(process.argv[2], JSON.stringify({piVersion:'1.0.3', openaiVersion:'7.19.0', gapCap:GAP_CAP, axes, bodies:Object.fromEntries(axes.shapes.map(shape => [shape, records(shape)])), results}, null, 2) + '\n');
+await writeFile(process.argv[2], JSON.stringify({piVersion: PIG_UPSTREAM_VERSION, openaiVersion:'7.19.0', gapCap:GAP_CAP, axes, bodies:Object.fromEntries(axes.shapes.map(shape => [shape, records(shape)])), results}, null, 2) + '\n');

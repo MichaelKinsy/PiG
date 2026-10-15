@@ -1,5 +1,6 @@
 import { APP_NAME, CONFIG_DIR_NAME } from "../config.js";
 import { emitProjectTrustEvent } from "./extensions/runner.js";
+import { SETTINGS_DEFAULTS } from "./settings-defaults.js";
 import { getProjectTrustOptions, hasTrustRequiringProjectResources, } from "./trust-manager.js";
 function formatProjectTrustPrompt(cwd) {
     return `Trust project folder?\n${cwd}\n\nThis allows ${APP_NAME} to load ${CONFIG_DIR_NAME} settings and resources, install missing project packages, and execute project extensions.`;
@@ -38,7 +39,7 @@ export async function resolveProjectTrusted(options) {
     if (decision !== null) {
         return decision;
     }
-    switch (options.defaultProjectTrust ?? "ask") {
+    switch (options.defaultProjectTrust ?? SETTINGS_DEFAULTS.defaultProjectTrust) {
         case "always":
             return true;
         case "never":

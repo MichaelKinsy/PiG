@@ -4,7 +4,12 @@ version = "0.1.0"
 edition = "2024"
 description = "Rust SDK for building pig subprocess extensions"
 license = "MIT"
+readme = "README.md"
+repository = "https://github.com/MichaelKinsy/PiG"
+homepage = "https://github.com/MichaelKinsy/PiG"
+keywords = ["pig", "extensions", "sdk", "subprocess"]
+categories = ["development-tools"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1", features = ["preserve_order", "raw_value"] }
+serde_json = { version = "1", features = ["preserve_order", "raw_value", "unbounded_depth", "float_roundtrip"] }

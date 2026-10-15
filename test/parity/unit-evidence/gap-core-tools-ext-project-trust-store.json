@@ -1,0 +1,12 @@
+[
+ {
+  "upstream": "packages/coding-agent/src/core/trust-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestProjectTrustStoreNearestAncestorWinsAndPersists",
+   "TestProjectTrustStoreSetReportsAWriteFailure"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/trust-manager.ts:9 (ProjectTrustDecision), :217-249 (ProjectTrustStore get/getEntry/set/setMany), :122-132 (writeTrustFile rethrows the write error); packages/coding-agent/test/trust-manager.test.ts",
+  "mutation": "An operator-flip and semantic sweep of internal/codingagent/trust_manager.go (28 mutants: comparisons, && / ||, Get returning nil, Set storing the negated decision, delete skipped, the nil-entry check dropped) left 4 surviving: the write-error branch (os.WriteFile err != nil flipped, swallowing the write failure) is now killed by TestProjectTrustStoreSetReportsAWriteFailure; the other three are unreachable fallbacks (ResolvePath failing in normalizeTrustCwd and NewProjectTrustStore, the HOME-empty fallback to UserHomeDir yielding the same path). Each mutation compiled and ran."
+ }
+]

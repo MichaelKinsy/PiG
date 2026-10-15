@@ -7,9 +7,10 @@ import (
 )
 
 // .upstream/v0.87.1/packages/coding-agent/src/modes/interactive/components/assistant-message.ts:164
+// Pi: packages/coding-agent/src/modes/interactive/components/assistant-message.ts:58 (AssistantMessageComponent.setHideThinkingBlock).
 func TestAssistantThinkingClicksThroughTerminal(t *testing.T) {
 	h := newAltHarness(t, 80, 24, TuiAltScreenOptions{})
-	block := NewAssistantMessageBlock(false)
+	block := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
 	content := []AssistantSegment{{Thinking: true, Text: "first reasoning"}, {Text: "answer"}, {Thinking: true, Text: "second reasoning"}}
 	block.SetContent(content)
 	h.tui.Add(block)
@@ -17,7 +18,7 @@ func TestAssistantThinkingClicksThroughTerminal(t *testing.T) {
 	// Pi's alternate screen consumes zone marks internally rather than writing them (tui-alt-screen.ts:1670).
 	var output bytes.Buffer
 	regular := NewWithOutput(&output, 80, 24)
-	zoneBlock := NewAssistantMessageBlock(false)
+	zoneBlock := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
 	zoneBlock.SetContent(content)
 	regular.Add(zoneBlock)
 	regular.Render()
@@ -33,8 +34,8 @@ func TestAssistantThinkingClicksThroughTerminal(t *testing.T) {
 	if h.viewportHas("first reasoning") {
 		t.Fatal("streaming update lost the individual override")
 	}
-	block.SetHiddenThinking(true)
-	block.SetHiddenThinking(false)
+	block.SetHideThinkingBlock(true)
+	block.SetHideThinkingBlock(false)
 	h.render()
 	if !h.viewportHas("first reasoning") || !h.viewportHas("second reasoning") {
 		t.Fatal("global thinking toggle did not clear individual overrides")
@@ -51,7 +52,7 @@ func TestAssistantThinkingClicksThroughTerminal(t *testing.T) {
 }
 
 func BenchmarkAssistantThinkingClick(b *testing.B) {
-	block := NewAssistantMessageBlock(false)
+	block := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
 	block.SetContent([]AssistantSegment{{Thinking: true, Text: strings.Repeat("reasoning ", 10000)}})
 	block.Render(80)
 	event := componentMouseEvent(MouseClick, 1, 1)

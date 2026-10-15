@@ -3,9 +3,9 @@ package durable
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/truncate"
 )
 
 // Ports packages/durable/src/truncate.ts
@@ -89,17 +89,6 @@ func Utf8ByteLength(content string) int {
 	return len(content)
 }
 
-func splitLinesForCounting(content string) []string {
-	if content == "" {
-		return nil
-	}
-	lines := strings.Split(content, "\n")
-	if strings.HasSuffix(content, "\n") {
-		lines = lines[:len(lines)-1]
-	}
-	return lines
-}
-
 // FormatSize formats bytes as a human-readable size.
 func FormatSize(bytes int) string {
 	switch {
@@ -118,7 +107,7 @@ func FormatSize(bytes int) string {
 // It never returns partial lines. When the first line exceeds the byte limit, it returns empty content with
 // FirstLineExceedsLimit set.
 func TruncateHead(content string, options TruncationOptions) TruncationResult {
-	return TruncateHeadOf(content, TruncationTotals{Lines: len(splitLinesForCounting(content)), Bytes: Utf8ByteLength(content)}, options)
+	return TruncateHeadOf(content, TruncationTotals{Lines: truncate.CountLines(content), Bytes: Utf8ByteLength(content)}, options)
 }
 
 // TruncationTotals are the line and byte counts of a whole text: lines counted like TruncateHead, ignoring a trailing
@@ -142,7 +131,6 @@ func TruncateHeadOf(prefix string, totals TruncationTotals, options TruncationOp
 	}
 
 	totalBytes := totals.Bytes
-	lines := splitLinesForCounting(prefix)
 	totalLines := totals.Lines
 
 	if totalLines <= maxLines && totalBytes <= maxBytes {
@@ -157,8 +145,9 @@ func TruncateHeadOf(prefix string, totals TruncationTotals, options TruncationOp
 		}
 	}
 
-	// Upstream reads lines[0] even for empty content; its undefined byte length is then NaN and never exceeds.
-	if len(lines) > 0 && Utf8ByteLength(lines[0]) > maxBytes {
+	// Upstream reads lines[0] even for empty content and Buffer.byteLength(undefined) throws a TypeError there, reachable only past a
+	// negative limit; an empty text is then truncated to nothing instead of failing.
+	if prefix != "" && truncate.FirstLineBytes(prefix) > maxBytes {
 		return TruncationResult{
 			Truncated:             true,
 			TruncatedBy:           TruncatedByBytes,
@@ -170,41 +159,23 @@ func TruncateHeadOf(prefix string, totals TruncationTotals, options TruncationOp
 		}
 	}
 
-	output := make([]string, 0, min(len(lines), max(maxLines, 0)))
-	outputBytes := 0
-	truncatedBy := TruncatedByLines
-	for i := 0; i < len(lines) && i < maxLines; i++ {
-		lineBytes := Utf8ByteLength(lines[i])
-		if i > 0 {
-			lineBytes++
-		}
-		if outputBytes+lineBytes > maxBytes {
-			truncatedBy = TruncatedByBytes
-			break
-		}
-		output = append(output, lines[i])
-		outputBytes += lineBytes
-	}
-
+	// The kept lines are a prefix of the text: the walk finds where they end, and the content is that substring.
+	cut := truncate.CutHead(prefix, maxBytes, maxLines)
+	truncatedBy := TruncatedByBytes
 	// Without a byte break, only omitted lines prove the line limit was reached; otherwise a trailing newline exceeded
 	// bytes.
-	if truncatedBy != TruncatedByBytes {
-		if len(output) < totalLines {
-			truncatedBy = TruncatedByLines
-		} else {
-			truncatedBy = TruncatedByBytes
-		}
+	if !cut.ByBytes && cut.Lines < totalLines {
+		truncatedBy = TruncatedByLines
 	}
 
-	outputContent := strings.Join(output, "\n")
 	return TruncationResult{
-		Content:     outputContent,
+		Content:     prefix[:cut.End],
 		Truncated:   true,
 		TruncatedBy: truncatedBy,
 		TotalLines:  totalLines,
 		TotalBytes:  totalBytes,
-		OutputLines: len(output),
-		OutputBytes: Utf8ByteLength(outputContent),
+		OutputLines: cut.Lines,
+		OutputBytes: cut.End,
 		MaxLines:    maxLines,
 		MaxBytes:    maxBytes,
 	}

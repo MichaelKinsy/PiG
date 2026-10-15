@@ -1,0 +1,1223 @@
+[
+ {
+  "name": "value only",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [],
+    "value": "done",
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 1234,
+   "generatedImages": 0,
+   "maxOutputTokens": 10000,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 100000
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 1.2 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "done"
+    }
+   ]
+  },
+  "written": []
+ },
+ {
+  "name": "object value",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [],
+    "value": {
+     "a": [
+      1,
+      "x"
+     ],
+     "b": null
+    },
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 250,
+   "generatedImages": 0,
+   "maxOutputTokens": 10000,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 100000
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 0.3 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "{\"a\":[1,\"x\"],\"b\":null}"
+    }
+   ]
+  },
+  "written": []
+ },
+ {
+  "name": "text items and console",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [
+     {
+      "type": "text",
+      "text": "one"
+     },
+     {
+      "type": "text",
+      "text": "log a",
+      "console": true
+     },
+     {
+      "type": "text",
+      "text": "two"
+     },
+     {
+      "type": "text",
+      "text": "log b",
+      "console": true
+     }
+    ],
+    "value": 7,
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 99,
+   "generatedImages": 0,
+   "maxOutputTokens": 10000,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 100000
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 0.1 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "==> text 1/3 <==\none\n==> text 2/3 <==\ntwo\n==> text 3/3 <==\n7\n<console_output>\nlog a\nlog b\n</console_output>"
+    }
+   ]
+  },
+  "written": []
+ },
+ {
+  "name": "single text and console",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [
+     {
+      "type": "text",
+      "text": "one"
+     },
+     {
+      "type": "text",
+      "text": "log",
+      "console": true
+     }
+    ],
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 0,
+   "generatedImages": 0,
+   "maxOutputTokens": 10000,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 100000
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "one\n<console_output>\nlog\n</console_output>"
+    }
+   ]
+  },
+  "written": []
+ },
+ {
+  "name": "images saved once",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [
+     {
+      "type": "image",
+      "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+      "mimeType": "image/png"
+     },
+     {
+      "type": "text",
+      "text": "between"
+     },
+     {
+      "type": "image",
+      "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+      "mimeType": "image/png"
+     },
+     {
+      "type": "image",
+      "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+      "mimeType": "image/jpeg"
+     }
+    ],
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 15050,
+   "generatedImages": 0,
+   "maxOutputTokens": 10000,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 100000
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 15.1 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "[Image saved to /out/image-1.png (image/png, 70 bytes)]"
+    },
+    {
+     "type": "image",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+     "mimeType": "image/png"
+    },
+    {
+     "type": "text",
+     "text": "between\n[Image saved to /out/image-1.png (image/png, 70 bytes)]"
+    },
+    {
+     "type": "image",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+     "mimeType": "image/png"
+    },
+    {
+     "type": "text",
+     "text": "[Image saved to /out/image-1.png (image/png, 70 bytes)]"
+    },
+    {
+     "type": "image",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+     "mimeType": "image/jpeg"
+    }
+   ]
+  },
+  "written": [
+   {
+    "name": "image-1.png",
+    "size": 70
+   }
+  ]
+ },
+ {
+  "name": "unknown image type",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [
+     {
+      "type": "image",
+      "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+      "mimeType": "image/bmp"
+     }
+    ],
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 1,
+   "generatedImages": 0,
+   "maxOutputTokens": 10000,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 100000
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "[Image saved to /out/image-1.bin (image/bmp, 70 bytes)]"
+    },
+    {
+     "type": "image",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+     "mimeType": "image/bmp"
+    }
+   ]
+  },
+  "written": [
+   {
+    "name": "image-1.bin",
+    "size": 70
+   }
+  ]
+ },
+ {
+  "name": "script error",
+  "input": {
+   "result": {
+    "ok": false,
+    "output": [
+     {
+      "type": "text",
+      "text": "partial"
+     }
+    ],
+    "error": {
+     "kind": "script",
+     "name": "TypeError",
+     "message": "x is not a function",
+     "stack": "TypeError: x is not a function\n    at <eval>:1"
+    },
+    "calls": []
+   },
+   "wallMs": 500,
+   "generatedImages": 0,
+   "maxOutputTokens": 10000,
+   "calls": [
+    {
+     "name": "echo",
+     "status": "ok"
+    },
+    {
+     "name": "fails",
+     "status": "error"
+    }
+   ],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 100000
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script failed\nWall time 0.5 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "partial\nScript error:\nTypeError: x is not a function\n    at <eval>:1\n\nTool calls made before the failure (they are not undone): echo (ok), fails (error)"
+    }
+   ]
+  },
+  "written": []
+ },
+ {
+  "name": "script error without stack",
+  "input": {
+   "result": {
+    "ok": false,
+    "output": [],
+    "error": {
+     "kind": "script",
+     "message": "boom"
+    },
+    "calls": []
+   },
+   "wallMs": 500,
+   "generatedImages": 0,
+   "maxOutputTokens": 10000,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 100000
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script failed\nWall time 0.5 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "Script error:\nError: boom\n\nNo tool calls were made."
+    }
+   ]
+  },
+  "written": []
+ },
+ {
+  "name": "named script error without stack",
+  "input": {
+   "result": {
+    "ok": false,
+    "output": [],
+    "error": {
+     "kind": "script",
+     "name": "RangeError",
+     "message": "bad"
+    },
+    "calls": []
+   },
+   "wallMs": 500,
+   "generatedImages": 0,
+   "maxOutputTokens": 10000,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 100000
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script failed\nWall time 0.5 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "Script error:\nRangeError: bad\n\nNo tool calls were made."
+    }
+   ]
+  },
+  "written": []
+ },
+ {
+  "name": "timeout",
+  "input": {
+   "result": {
+    "ok": false,
+    "output": [],
+    "error": {
+     "kind": "timeout",
+     "message": "after 300 ms"
+    },
+    "calls": []
+   },
+   "wallMs": 300000,
+   "generatedImages": 0,
+   "maxOutputTokens": 10000,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 100000
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script failed\nWall time 300.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "Script error:\nScript timed out: after 300 ms\n\nNo tool calls were made."
+    }
+   ]
+  },
+  "written": []
+ },
+ {
+  "name": "aborted",
+  "input": {
+   "result": {
+    "ok": false,
+    "output": [],
+    "error": {
+     "kind": "aborted",
+     "message": "stopped"
+    },
+    "calls": []
+   },
+   "wallMs": 12,
+   "generatedImages": 0,
+   "maxOutputTokens": 10000,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 100000
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script failed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "Script error:\nScript aborted: stopped\n\nNo tool calls were made."
+    }
+   ]
+  },
+  "written": []
+ },
+ {
+  "name": "sandbox",
+  "input": {
+   "result": {
+    "ok": false,
+    "output": [],
+    "error": {
+     "kind": "sandbox",
+     "message": "crashed"
+    },
+    "calls": []
+   },
+   "wallMs": 12,
+   "generatedImages": 0,
+   "maxOutputTokens": 10000,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 100000
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script failed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "Script error:\nScript sandbox failed: crashed\n\nNo tool calls were made."
+    }
+   ]
+  },
+  "written": []
+ },
+ {
+  "name": "generated images not shown",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [
+     {
+      "type": "text",
+      "text": "x"
+     }
+    ],
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 1,
+   "generatedImages": 2,
+   "maxOutputTokens": 10000,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 100000
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "x\nNote: models.generateImages() returned 2 images that the script did not show. Show each image block of result.output with image(block)."
+    }
+   ]
+  },
+  "written": []
+ },
+ {
+  "name": "one generated image not shown",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [],
+    "value": "v",
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 1,
+   "generatedImages": 1,
+   "maxOutputTokens": 10000,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 100000
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "v\nNote: models.generateImages() returned 1 image that the script did not show. Show each image block of result.output with image(block)."
+    }
+   ]
+  },
+  "written": []
+ },
+ {
+  "name": "generated images shown",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [
+     {
+      "type": "image",
+      "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+      "mimeType": "image/png"
+     }
+    ],
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 1,
+   "generatedImages": 3,
+   "maxOutputTokens": 10000,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 100000
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "[Image saved to /out/image-1.png (image/png, 70 bytes)]"
+    },
+    {
+     "type": "image",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+     "mimeType": "image/png"
+    }
+   ]
+  },
+  "written": [
+   {
+    "name": "image-1.png",
+    "size": 70
+   }
+  ]
+ },
+ {
+  "name": "truncated",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [
+     {
+      "type": "text",
+      "text": "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+     }
+    ],
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 1,
+   "generatedImages": 0,
+   "maxOutputTokens": 10,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 100000
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "Warning: truncated output (original token count: 75)\nTotal output lines: 1\n\n01234567890123456789…65 tokens truncated…01234567890123456789\n\n[Full output: /out/output.txt (read with offset/limit)]"
+    }
+   ],
+   "fullOutputPath": "/out/output.txt"
+  },
+  "written": [
+   {
+    "name": "output.txt",
+    "size": 300,
+    "text": "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+   }
+  ]
+ },
+ {
+  "name": "truncated lines",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [
+     {
+      "type": "text",
+      "text": "line 0\nline 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\nline 31\nline 32\nline 33\nline 34\nline 35\nline 36\nline 37\nline 38\nline 39\nline 40\nline 41\nline 42\nline 43\nline 44\nline 45\nline 46\nline 47\nline 48\nline 49"
+     }
+    ],
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 1,
+   "generatedImages": 0,
+   "maxOutputTokens": 20,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 100000
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "Warning: truncated output (original token count: 98)\nTotal output lines: 50\n\nline 0\nline 1\nline 2\nline 3\nline 4\nline …78 tokens truncated…\nline 45\nline 46\nline 47\nline 48\nline 49\n\n[Full output: /out/output.txt (read with offset/limit)]"
+    }
+   ],
+   "fullOutputPath": "/out/output.txt"
+  },
+  "written": [
+   {
+    "name": "output.txt",
+    "size": 389,
+    "text": "line 0\nline 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\nline 31\nline 32\nline 33\nline 34\nline 35\nline 36\nline 37\nline 38\nline 39\nline 40\nline 41\nline 42\nline 43\nline 44\nline 45\nline 46\nline 47\nline 48\nline 49"
+   }
+  ]
+ },
+ {
+  "name": "truncated with images and console",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [
+     {
+      "type": "text",
+      "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     {
+      "type": "image",
+      "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+      "mimeType": "image/png"
+     },
+     {
+      "type": "text",
+      "text": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "console": true
+     }
+    ],
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 1,
+   "generatedImages": 0,
+   "maxOutputTokens": 10,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 100000
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "Warning: truncated output (original token count: 59)\nTotal output lines: 4\n\naaaaaaaaaaaaaaaaaaaa…49 tokens truncated…cc\n</console_output>\n\n[Full output: /out/output.txt (read with offset/limit)]\n[Image saved to /out/image-1.png (image/png, 70 bytes)]"
+    },
+    {
+     "type": "image",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+     "mimeType": "image/png"
+    }
+   ],
+   "fullOutputPath": "/out/output.txt"
+  },
+  "written": [
+   {
+    "name": "output.txt",
+    "size": 236,
+    "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n<console_output>\ncccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\n</console_output>"
+   },
+   {
+    "name": "image-1.png",
+    "size": 70
+   }
+  ]
+ },
+ {
+  "name": "truncated utf16",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [
+     {
+      "type": "text",
+      "text": "😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é"
+     }
+    ],
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 1,
+   "generatedImages": 0,
+   "maxOutputTokens": 10,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 100000
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "Warning: truncated output (original token count: 30)\nTotal output lines: 1\n\n😀é😀é😀é😀é😀é😀é😀…20 tokens truncated…\ude00é😀é😀é😀é😀é😀é😀é\n\n[Full output: /out/output.txt (read with offset/limit)]"
+    }
+   ],
+   "fullOutputPath": "/out/output.txt"
+  },
+  "written": [
+   {
+    "name": "output.txt",
+    "size": 120,
+    "text": "😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é😀é"
+   }
+  ]
+ },
+ {
+  "name": "truncated write fails",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [
+     {
+      "type": "text",
+      "text": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+     }
+    ],
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 1,
+   "generatedImages": 0,
+   "maxOutputTokens": 10,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 100000
+   },
+   "writeFails": true
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "Warning: truncated output (original token count: 50)\nTotal output lines: 1\n\nzzzzzzzzzzzzzzzzzzzz…40 tokens truncated…zzzzzzzzzzzzzzzzzzzz\n\n[Could not save the full output: disk full]"
+    }
+   ]
+  },
+  "written": [
+   {
+    "name": "output.txt",
+    "size": 200,
+    "text": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+   }
+  ]
+ },
+ {
+  "name": "image write fails",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [
+     {
+      "type": "image",
+      "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+      "mimeType": "image/png"
+     }
+    ],
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 1,
+   "generatedImages": 0,
+   "maxOutputTokens": 10000,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 100000
+   },
+   "writeFails": true
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "[Image (image/png, 70 bytes) could not be saved: disk full]"
+    },
+    {
+     "type": "image",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+     "mimeType": "image/png"
+    }
+   ]
+  },
+  "written": [
+   {
+    "name": "image-1.png",
+    "size": 70
+   }
+  ]
+ },
+ {
+  "name": "limit lines",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [
+     {
+      "type": "text",
+      "text": "row 0\nrow 1\nrow 2\nrow 3\nrow 4\nrow 5\nrow 6\nrow 7\nrow 8\nrow 9\nrow 10\nrow 11\nrow 12\nrow 13\nrow 14\nrow 15\nrow 16\nrow 17\nrow 18\nrow 19\nrow 20\nrow 21\nrow 22\nrow 23\nrow 24\nrow 25\nrow 26\nrow 27\nrow 28\nrow 29"
+     }
+    ],
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 1,
+   "generatedImages": 0,
+   "maxOutputTokens": 10000,
+   "calls": [],
+   "limits": {
+    "maxBytes": 1000,
+    "maxLines": 110
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "Warning: truncated output (original token count: 50)\nTotal output lines: 30\n\nrow 0\nrow 1\nrow 2\nrow 3\nrow 4…34 tokens truncated…row 25\nrow 26\nrow 27\nrow 28\nrow 29\n\n[Full output: /out/output.txt (read with offset/limit)]"
+    }
+   ],
+   "fullOutputPath": "/out/output.txt"
+  },
+  "written": [
+   {
+    "name": "output.txt",
+    "size": 199,
+    "text": "row 0\nrow 1\nrow 2\nrow 3\nrow 4\nrow 5\nrow 6\nrow 7\nrow 8\nrow 9\nrow 10\nrow 11\nrow 12\nrow 13\nrow 14\nrow 15\nrow 16\nrow 17\nrow 18\nrow 19\nrow 20\nrow 21\nrow 22\nrow 23\nrow 24\nrow 25\nrow 26\nrow 27\nrow 28\nrow 29"
+   }
+  ]
+ },
+ {
+  "name": "limit lines tiny",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [
+     {
+      "type": "text",
+      "text": "row 0\nrow 1\nrow 2\nrow 3\nrow 4\nrow 5\nrow 6\nrow 7\nrow 8\nrow 9\nrow 10\nrow 11\nrow 12\nrow 13\nrow 14\nrow 15\nrow 16\nrow 17\nrow 18\nrow 19\nrow 20\nrow 21\nrow 22\nrow 23\nrow 24\nrow 25\nrow 26\nrow 27\nrow 28\nrow 29"
+     }
+    ],
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 1,
+   "generatedImages": 0,
+   "maxOutputTokens": 10000,
+   "calls": [],
+   "limits": {
+    "maxBytes": 100000,
+    "maxLines": 100
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "Warning: truncated output (original token count: 50)\nTotal output lines: 30\n\n…0 tokens truncated…row 0\nrow 1\nrow 2\nrow 3\nrow 4\nrow 5\nrow 6\nrow 7\nrow 8\nrow 9\nrow 10\nrow 11\nrow 12\nrow 13\nrow 14\nrow 15\nrow 16\nrow 17\nrow 18\nrow 19\nrow 20\nrow 21\nrow 22\nrow 23\nrow 24\nrow 25\nrow 26\nrow 27\nrow 28\nrow 29\n\n[Full output: /out/output.txt (read with offset/limit)]"
+    }
+   ],
+   "fullOutputPath": "/out/output.txt"
+  },
+  "written": [
+   {
+    "name": "output.txt",
+    "size": 199,
+    "text": "row 0\nrow 1\nrow 2\nrow 3\nrow 4\nrow 5\nrow 6\nrow 7\nrow 8\nrow 9\nrow 10\nrow 11\nrow 12\nrow 13\nrow 14\nrow 15\nrow 16\nrow 17\nrow 18\nrow 19\nrow 20\nrow 21\nrow 22\nrow 23\nrow 24\nrow 25\nrow 26\nrow 27\nrow 28\nrow 29"
+   }
+  ]
+ },
+ {
+  "name": "byte limit below the token budget",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [
+     {
+      "type": "text",
+      "text": "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"
+     }
+    ],
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 1,
+   "generatedImages": 0,
+   "maxOutputTokens": 10000,
+   "calls": [],
+   "limits": {
+    "maxBytes": 400,
+    "maxLines": 100000
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "Warning: truncated output (original token count: 75)\nTotal output lines: 1\n\nqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq…50 tokens truncated…qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq\n\n[Full output: /out/output.txt (read with offset/limit)]"
+    }
+   ],
+   "fullOutputPath": "/out/output.txt"
+  },
+  "written": [
+   {
+    "name": "output.txt",
+    "size": 300,
+    "text": "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"
+   }
+  ]
+ },
+ {
+  "name": "trailing newline then text",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [
+     {
+      "type": "text",
+      "text": "a\n"
+     },
+     {
+      "type": "text",
+      "text": "b"
+     }
+    ],
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 1,
+   "generatedImages": 0,
+   "maxOutputTokens": 10000,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 100000
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "==> text 1/2 <==\na\n==> text 2/2 <==\nb"
+    }
+   ]
+  },
+  "written": []
+ },
+ {
+  "name": "within budget",
+  "input": {
+   "result": {
+    "ok": true,
+    "output": [
+     {
+      "type": "text",
+      "text": "short"
+     }
+    ],
+    "calls": [],
+    "storeWrites": {
+     "set": {},
+     "delete": []
+    }
+   },
+   "wallMs": 1,
+   "generatedImages": 0,
+   "maxOutputTokens": 10,
+   "calls": [],
+   "limits": {
+    "maxBytes": 4194304,
+    "maxLines": 100000
+   },
+   "writeFails": false
+  },
+  "formatted": {
+   "content": [
+    {
+     "type": "text",
+     "text": "Script completed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "text",
+     "text": "short"
+    }
+   ]
+  },
+  "written": []
+ }
+]

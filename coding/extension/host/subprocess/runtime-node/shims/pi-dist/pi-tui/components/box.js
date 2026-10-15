@@ -35,6 +35,10 @@ export class Box {
         this.bgFn = bgFn;
         // Don't invalidate here - we'll detect bgFn changes by sampling output
     }
+    setPaddingX(paddingX) {
+        this.paddingX = paddingX;
+        this.invalidateCache();
+    }
     invalidateCache() {
         this.cache = undefined;
     }

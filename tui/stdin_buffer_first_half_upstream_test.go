@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 opentui
 // SPDX-License-Identifier: MIT
 
@@ -55,6 +54,8 @@ func TestStdinBufferFirstHalfSequences(t *testing.T) {
 	}
 }
 
+// Pi source: packages/tui/src/stdin-buffer.ts
+// mutation-checked: zeroing the results of StdinBuffer.GetBuffer fails it
 func TestStdinBufferFirstHalfPartialWithPendingBuffer(t *testing.T) {
 	// packages/tui/test/stdin-buffer.test.ts:87 (should buffer incomplete mouse SGR sequence).
 	t.Run("should buffer incomplete mouse SGR sequence", func(t *testing.T) {

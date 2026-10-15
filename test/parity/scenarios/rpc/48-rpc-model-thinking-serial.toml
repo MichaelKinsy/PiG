@@ -1,0 +1,166 @@
+# Behavior family: rpc
+# Surface: set_model, set_thinking_level, cycle_thinking_level and the available lists on a plain, a reasoning and an xhigh model, one command at a time.
+#
+# Pi 1.1.0 rpc-mode.ts handles a stdin chunk synchronously, so an awaited command (set_model) answers after the rest of its chunk; each step here waits for
+# its response, which isolates the commands from that ordering (scenarios 23, 31 and 32 pin the pipelined order). Measured against Pi 1.1.0 with no
+# difference: clamping per model, cycling per model, error text for an unknown model.
+
+name = "48-rpc-model-thinking-serial"
+description = "Serialized model and thinking commands across plain, reasoning and xhigh models."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+canonical_json = true
+timeout_seconds = 30
+[[rpc.steps]]
+line = '''{"id":"a1","type":"get_available_thinking_levels"}'''
+wait_contains = ['"id":"a1","type":"response"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '''{"id":"a2","type":"set_thinking_level","level":"high"}'''
+wait_contains = ['"id":"a2","type":"response"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '''{"id":"a3","type":"get_state"}'''
+wait_contains = ['"id":"a3","type":"response"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '''{"id":"a4","type":"cycle_thinking_level"}'''
+wait_contains = ['"id":"a4","type":"response"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '''{"id":"a5","type":"set_thinking_level","level":"bogus"}'''
+wait_contains = ['"id":"a5","type":"response"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '''{"id":"a6","type":"set_thinking_level"}'''
+wait_contains = ['"id":"a6","type":"response"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '''{"id":"a7","type":"set_model","provider":"fixture","modelId":"thinker"}'''
+wait_contains = ['"id":"a7","type":"response"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '''{"id":"a8","type":"get_available_thinking_levels"}'''
+wait_contains = ['"id":"a8","type":"response"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '''{"id":"a9","type":"set_thinking_level","level":"xhigh"}'''
+wait_contains = ['"id":"a9","type":"response"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '''{"id":"b1","type":"get_state"}'''
+wait_contains = ['"id":"b1","type":"response"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '''{"id":"b2","type":"cycle_thinking_level"}'''
+wait_contains = ['"id":"b2","type":"response"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '''{"id":"b3","type":"cycle_thinking_level"}'''
+wait_contains = ['"id":"b3","type":"response"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '''{"id":"b4","type":"set_model","provider":"fixture","modelId":"xthinker"}'''
+wait_contains = ['"id":"b4","type":"response"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '''{"id":"b5","type":"get_available_thinking_levels"}'''
+wait_contains = ['"id":"b5","type":"response"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '''{"id":"b6","type":"set_thinking_level","level":"minimal"}'''
+wait_contains = ['"id":"b6","type":"response"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '''{"id":"b7","type":"get_state"}'''
+wait_contains = ['"id":"b7","type":"response"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '''{"id":"b8","type":"cycle_thinking_level"}'''
+wait_contains = ['"id":"b8","type":"response"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '''{"id":"b9","type":"set_model","provider":"fixture","modelId":"nope"}'''
+wait_contains = ['"id":"b9","type":"response"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '''{"id":"c1","type":"set_model","provider":1,"modelId":"plain"}'''
+wait_contains = ['"id":"c1","type":"response"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '''{"id":"c2","type":"set_model"}'''
+wait_contains = ['"id":"c2","type":"response"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '''{"id":"c3","type":"set_thinking_level","level":5}'''
+wait_contains = ['"id":"c3","type":"response"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '''{"id":"c4","type":"get_available_models"}'''
+wait_contains = ['"id":"c4","type":"response"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '''{"id":"c5","type":"cycle_model"}'''
+wait_contains = ['"id":"c5","type":"response"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '''{"id":"c6","type":"get_state"}'''
+wait_contains = ['"id":"c6","type":"response"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '''{"id":"c7","type":"set_thinking_level","level":"off"}'''
+wait_contains = ['"id":"c7","type":"response"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '''{"id":"c8","type":"cycle_thinking_level"}'''
+wait_contains = ['"id":"c8","type":"response"']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_HOME=testdata/model-thinking"]
+pi = ["PI_CODING_AGENT_DIR=testdata/model-thinking/agent"]
+pig_args = ["--offline", "--no-session", "--model", "fixture/plain"]
+pi_args = ["--offline", "--no-session", "--model", "fixture/plain"]
+
+[assert]
+exit_code = 0
+output_normalized_equal = true
+runs = 3
+
+# normalize-rationale: sessionId is a random UUID each process draws; the rule masks only that value inside its "sessionId" field, so the
+# surrounding JSON, every other field and the field order stay compared byte for byte.
+[[assert.normalize_replace]]
+pattern = '"sessionId":"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"'
+with = '"sessionId":"00000000-0000-0000-0000-000000000000"'
+reason = "Each process draws its own random UUID session id; retain the field placement and the UUID syntax."

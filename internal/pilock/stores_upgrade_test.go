@@ -1,6 +1,7 @@
 package pilock_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -44,7 +45,7 @@ func TestStoresUpgradeLegacySidecars(t *testing.T) {
 			case "models-store.json":
 				store := ai.NewFileModelsStore(path)
 				write = func(ctx context.Context) error {
-					return store.Write(ctx, "upgrade", ai.ModelsStoreEntry{Models: []json.RawMessage{json.RawMessage(`{"id":"preserved"}`)}})
+					return store.Write(ctx, "upgrade", ai.ModelsStoreEntry{Models: mustStoredModels([]json.RawMessage{json.RawMessage(`{"id":"preserved"}`)})})
 				}
 				verify = func() {
 					got, err := store.Read(t.Context(), "upgrade")
@@ -54,7 +55,7 @@ func TestStoresUpgradeLegacySidecars(t *testing.T) {
 					if err != nil || got == nil || len(got.Models) != 1 {
 						t.Fatalf("models: %+v %v", got, err)
 					}
-					if err := json.Unmarshal(got.Models[0], &model); err != nil || model.ID != "preserved" {
+					if model.ID = got.Models[0].ModelID(); model.ID != "preserved" {
 						t.Fatalf("model: %+v %v", model, err)
 					}
 				}
@@ -116,7 +117,7 @@ func TestStoresUpgradeLegacySidecars(t *testing.T) {
 				t.Fatalf("held legacy writer: %v", err)
 			}
 			after, err := os.ReadFile(path)
-			if err != nil || string(before) != string(after) {
+			if err != nil || !bytes.Equal(before, after) {
 				t.Fatalf("write while held: %s %v", after, err)
 			}
 			if err := legacy.Unlock(); err != nil {

@@ -1,0 +1,42 @@
+--- a/bench/targets.ts
++++ b/bench/targets.ts
+@@ -29,5 +29,7 @@
+   "pig-tinygo": { entry: "src/pig.ts", objects: { PI: "PiDO" }, version: process.env.PIG_VERSION ?? "head", core: "core-tinygo.wasm" },
+   "pig-go": { entry: "src/pig.ts", objects: { PI: "PiDO" }, version: process.env.PIG_VERSION ?? "head", core: "core-go.wasm" },
+-} as Record<string, { entry: string; objects: Record<string, string>; version: string; core?: string }>
++  // The empty-target floor (src/empty.ts): the same request path with no agent; it has no history to seed.
++  empty: { entry: "src/empty.ts", objects: { PI: "PiDO" }, version: "floor", empty: true },
++} as Record<string, { entry: string; objects: Record<string, string>; version: string; core?: string; empty?: boolean }>
+ 
+ // Resolves @earendil-works packages to the TypeScript sources of the pi checkout through their export maps.
+@@ -86,4 +88,5 @@
+ export function stage(name: Target, turns: number) {
+   const dir = mkdtempSync(join(tmpdir(), "durable-bench-"))
++  if (TARGETS[name]!.empty) return dir
+   cpSync(fixture(name, turns), dir, { recursive: true })
+   for (const file of readdirSync(dir, { recursive: true, withFileTypes: true })) if (file.isFile()) readFileSync(join(file.parentPath, file.name))
+--- /dev/null
++++ b/src/empty.ts
+@@ -0,0 +1,22 @@
++// The floor: durable-bench's request path (Worker fetch, JSON body, Durable Object call, SQLite-backed object) with no
++// agent behind it. A target's latency net of this floor is what its agent costs.
++import { DurableObject } from "cloudflare:workers"
++import type { Turn } from "./plan.ts"
++import { serve, tables, type Bench } from "./serve.ts"
++
++export class PiDO extends DurableObject implements Bench {
++  async wake() {}
++
++  async turn(_turn: Turn) {}
++
++  async seed(_turns: Turn[]) {
++    return ""
++  }
++
++  async stats() {
++    const sql = this.ctx.storage.sql
++    return { bytes: sql.databaseSize, tables: tables(sql) }
++  }
++}
++
++export default serve<{ PI: DurableObjectNamespace<PiDO> }>((env, object) => env.PI.getByName(object))

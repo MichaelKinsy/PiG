@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"sync"
 )
 
 // EnvAPIKeyAuth is standard API-key auth: a stored credential key wins,
@@ -440,15 +441,19 @@ func oauthProviderAuth(providerID string, provider OAuthProviderInterface) *OAut
 		// A registered flow outside the catalog carries its own isSubscription, as Pi's adaptOAuth does (provider-composer.ts:356).
 		subscription = flagged.IsSubscription()
 	}
-	return &OAuthAuth{
-		Name:           name,
-		LoginLabel:     loginLabel,
-		IsSubscription: subscription,
-		Login:          oauthNativeLogin(provider),
-		Refresh:        oauthRefresh(provider),
-		ToAuth:         oauthToAuth(providerID, provider),
-		store:          oauthCredentialStore(provider),
-	}
+	// providers/openai.ts:14 and its siblings advertise OAuth through lazyOAuth: the flow is built on the first login, refresh or toAuth call.
+	auth := LazyOAuth(LazyOAuthInput{Name: name, IsSubscription: subscription, LoginLabel: loginLabel, Load: func() (*OAuthAuth, error) {
+		return &OAuthAuth{
+			Name:           name,
+			LoginLabel:     loginLabel,
+			IsSubscription: subscription,
+			Login:          oauthNativeLogin(provider),
+			Refresh:        oauthRefresh(provider),
+			ToAuth:         oauthToAuth(providerID, provider),
+		}, nil
+	}})
+	auth.store = oauthCredentialStore(provider)
+	return auth
 }
 
 // oauthCredentialStore returns the extension-owned credential store an OAuth provider contributes (pig additive (D40)), or nil when its credentials belong in the core store.
@@ -458,23 +463,38 @@ func oauthCredentialStore(provider OAuthProviderInterface) OAuthCredentialStore 
 }
 
 // builtinAPIKeyAuth mirrors each built-in upstream provider's api-key auth.
-// openai-codex is OAuth-only.
+// openai-codex is OAuth-only. Like Pi's provider modules, which each construct their auth once, every built-in provider has one API-key method that all callers share; the methods are stateless and nothing modifies them.
 func builtinAPIKeyAuth(providerID string) (*APIKeyAuth, bool) {
-	switch providerID {
-	case "amazon-bedrock":
-		return bedrockAuth(), true
-	case "anthropic":
-		return anthropicAPIKeyAuth(), true
-	case "cloudflare-ai-gateway":
-		return cloudflareAIGatewayAuth(), true
-	case "cloudflare-workers-ai":
-		return cloudflareWorkersAIAuth(), true
-	case "google-vertex":
-		return vertexAuth(), true
-	case "openai-codex":
-		return nil, true
+	auth, ok := builtinAPIKeyAuths()[providerID]
+	return auth, ok
+}
+
+var builtinAPIKeyAuths = sync.OnceValue(func() map[string]*APIKeyAuth {
+	auths := make(map[string]*APIKeyAuth, len(builtinAPIKeyNames())+len(builtinAPIKeyAuthMethods))
+	for providerID := range builtinAPIKeyNames() {
+		auths[providerID], _ = newBuiltinAPIKeyAuth(providerID)
 	}
-	name, ok := builtinAPIKeyNames[providerID]
+	for providerID := range builtinAPIKeyAuthMethods {
+		auths[providerID], _ = newBuiltinAPIKeyAuth(providerID)
+	}
+	return auths
+})
+
+// builtinAPIKeyAuthMethods are the providers whose API-key auth is not the environment-variable method of builtinAPIKeyNames.
+var builtinAPIKeyAuthMethods = map[string]func() *APIKeyAuth{
+	"amazon-bedrock":        bedrockAuth,
+	"anthropic":             anthropicAPIKeyAuth,
+	"cloudflare-ai-gateway": cloudflareAIGatewayAuth,
+	"cloudflare-workers-ai": cloudflareWorkersAIAuth,
+	"google-vertex":         vertexAuth,
+	"openai-codex":          func() *APIKeyAuth { return nil },
+}
+
+func newBuiltinAPIKeyAuth(providerID string) (*APIKeyAuth, bool) {
+	if method, ok := builtinAPIKeyAuthMethods[providerID]; ok {
+		return method(), true
+	}
+	name, ok := builtinAPIKeyNames()[providerID]
 	if !ok {
 		return nil, false
 	}
@@ -483,59 +503,46 @@ func builtinAPIKeyAuth(providerID string) (*APIKeyAuth, bool) {
 
 // builtinAPIKeyNames mirrors each envApiKeyAuth display name; the variables
 // come from the env-api-keys table.
-var builtinAPIKeyNames = map[string]string{
-	"ant-ling":                   "Ant Ling API key",
-	"azure":                      "Azure OpenAI API key",
-	"baseten":                    "Baseten API key",
-	"cerebras":                   "Cerebras API key",
-	"deepseek":                   "DeepSeek API key",
-	"fireworks":                  "Fireworks API key",
-	"github-copilot":             "GitHub Copilot token",
-	"google":                     "Gemini API key",
-	"groq":                       "Groq API key",
-	"huggingface":                "Hugging Face token",
-	"kimi-coding":                "Kimi API key",
-	"meta":                       "Meta Model API key",
-	"minimax":                    "MiniMax API key",
-	"minimax-cn":                 "MiniMax CN API key",
-	"mistral":                    "Mistral API key",
-	"moonshotai":                 "Moonshot AI API key",
-	"moonshotai-cn":              "Moonshot AI API key",
-	"nvidia":                     "NVIDIA API key",
-	"openai":                     "OpenAI API key",
-	"opencode":                   "OpenCode API key",
-	"opencode-go":                "OpenCode API key",
-	"openrouter":                 "OpenRouter API key",
-	"qwen-token-plan":            "Qwen Token Plan API key",
-	"qwen-token-plan-cn":         "Qwen Token Plan CN API key",
-	"qwen-token-plan-individual": "Qwen Token Plan Individual API key",
-	"radius":                     "Radius API key",
-	"together":                   "Together API key",
-	"typesafe":                   "TypeSafe API key",
-	"vercel-ai-gateway":          "Vercel AI Gateway API key",
-	"xai":                        "xAI API key",
-	"xiaomi":                     "Xiaomi API key",
-	"xiaomi-token-plan-ams":      "Xiaomi Token Plan AMS API key",
-	"xiaomi-token-plan-cn":       "Xiaomi Token Plan CN API key",
-	"xiaomi-token-plan-sgp":      "Xiaomi Token Plan SGP API key",
-	"zai":                        "Z.AI API key",
-	"zai-coding-cn":              "Z.AI Coding CN API key",
-}
-
-// RadiusProviderAuth mirrors the auth of upstream radiusProvider: the
-// RADIUS_API_KEY api-key method and the provider's gateway OAuth, for the
-// built-in provider and every models.json "oauth": "radius" gateway.
-func RadiusProviderAuth(provider *RadiusProvider) ProviderAuth {
-	oauth := provider.OAuth()
-	return ProviderAuth{
-		APIKey: EnvAPIKeyAuth(builtinAPIKeyNames[RadiusProviderID], getAPIKeyEnvVars(RadiusProviderID)...),
-		OAuth: &OAuthAuth{
-			Name:    provider.Name(),
-			Refresh: oauthRefresh(oauth),
-			ToAuth:  oauthToAuth(provider.ID(), oauth),
-		},
+var builtinAPIKeyNames = sync.OnceValue(func() map[string]string {
+	return map[string]string{
+		"ant-ling":                   "Ant Ling API key",
+		"azure":                      "Azure OpenAI API key",
+		"baseten":                    "Baseten API key",
+		"cerebras":                   "Cerebras API key",
+		"deepseek":                   "DeepSeek API key",
+		"fireworks":                  "Fireworks API key",
+		"github-copilot":             "GitHub Copilot token",
+		"google":                     "Gemini API key",
+		"groq":                       "Groq API key",
+		"huggingface":                "Hugging Face token",
+		"kimi-coding":                "Kimi API key",
+		"meta":                       "Meta Model API key",
+		"minimax":                    "MiniMax API key",
+		"minimax-cn":                 "MiniMax CN API key",
+		"mistral":                    "Mistral API key",
+		"moonshotai":                 "Moonshot AI API key",
+		"moonshotai-cn":              "Moonshot AI API key",
+		"nvidia":                     "NVIDIA API key",
+		"openai":                     "OpenAI API key",
+		"opencode":                   "OpenCode API key",
+		"opencode-go":                "OpenCode API key",
+		"openrouter":                 "OpenRouter API key",
+		"qwen-token-plan":            "Qwen Token Plan API key",
+		"qwen-token-plan-cn":         "Qwen Token Plan CN API key",
+		"qwen-token-plan-individual": "Qwen Token Plan Individual API key",
+		"radius":                     "Radius API key",
+		"together":                   "Together API key",
+		"typesafe":                   "TypeSafe API key",
+		"vercel-ai-gateway":          "Vercel AI Gateway API key",
+		"xai":                        "xAI API key",
+		"xiaomi":                     "Xiaomi API key",
+		"xiaomi-token-plan-ams":      "Xiaomi Token Plan AMS API key",
+		"xiaomi-token-plan-cn":       "Xiaomi Token Plan CN API key",
+		"xiaomi-token-plan-sgp":      "Xiaomi Token Plan SGP API key",
+		"zai":                        "Z.AI API key",
+		"zai-coding-cn":              "Z.AI Coding CN API key",
 	}
-}
+})
 
 // BuiltinProviderAuth returns a built-in provider's auth methods. The OAuth
 // method is present when the provider's OAuth flow is ported.

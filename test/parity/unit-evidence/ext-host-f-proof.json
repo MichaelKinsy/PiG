@@ -1,0 +1,552 @@
+[
+ {
+  "upstream": "packages/coding-agent/src/core/tools/file-mutation-queue.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestWithFileMutationQueueReturnsTheResultAndReleasesOnFailure",
+   "TestWithFileMutationQueueReturnsResultsAndReleasesOnFailure"
+  ],
+  "upstream_reference": "packages/coding-agent/test/file-mutation-queue.test.ts",
+  "mutation": "internal/codingagent/tools/mutation_queue.go WithFileMutationQueue: the callback returns fn's error -> the callback returns nil (the error is swallowed); compiled tests FAIL, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/file-mutation-queue.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestFileMutationQueueUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/test/file-mutation-queue.test.ts",
+  "mutation": "internal/codingagent/tools/mutation_queue.go canonicalKey: key by the resolved real path -> key by the unresolved absolute path (symlink aliases stop sharing a queue); and Reserve: prev = q.chains[key] -> no previous holder (nothing serialises); both compiled, tests FAIL, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/wrapper.ts",
+  "package": "./coding",
+  "tests": [
+   "TestWrapRegisteredToolUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/test/extensions-runner.test.ts",
+  "mutation": "coding/extension_bridge.go WrapRegisteredTool: tool.runner = runner -> the runner is not bound (calls lose the runner's tool context); compiled tests FAIL, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/wrapper.ts",
+  "package": "./coding",
+  "tests": [
+   "TestWrapRegisteredToolsUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/test/extensions-runner.test.ts",
+  "mutation": "coding/extension_bridge.go WrapRegisteredTools: three mutations, each compiled and each FAILING the new test while the baseline PASSES: a failing tool is skipped (err != nil -> continue), the tools are wrapped in reverse order, and the runner is replaced by nil"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/source-info.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestCreateSyntheticSourceInfoAppliesUpstreamDefaults"
+  ],
+  "upstream_reference": "packages/coding-agent/test/resource-loader.test.ts",
+  "mutation": "internal/codingagent/extension_host_info.go CreateSyntheticSourceInfo: three mutations, each compiled and FAILING the test while the baseline PASSES: scope default \"temporary\" -> \"project\", origin default \"top-level\" -> \"package\", BaseDir dropped from the result"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/virtual-models.ts",
+  "package": "./test/extension-conformance",
+  "tests": [
+   "TestExtensionAPIVirtualModelRouteRunsInTheExtensionGo"
+  ],
+  "upstream_reference": "packages/coding-agent/test/virtual-models.test.ts",
+  "mutation": "coding/extension/host/subprocess/host_extension_api.go makeVirtualModelRoute and extensions/sdk/virtual_models.go dispatchVirtualModelRoute: request state dropped from the wire request (State: request.State removed), the routed thinking level dropped on the host side (routed.ThinkingLevel -> \"\"), and on the SDK side (routed.ThinkingLevel -> \"\"); each compiled, the test FAILS, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/extensions/tool-search/index.ts",
+  "package": "./coding/extension/builtin/toolsearch",
+  "tests": [
+   "TestToolSearchExtensionRegistersTheToolInactive"
+  ],
+  "upstream_reference": "packages/coding-agent/test/extensions-runner.test.ts",
+  "mutation": "coding/extension/builtin/toolsearch/tool.go CreateToolSearchExtension: DefaultActive false -> true, and the pi.RegisterTool call removed; each compiled, the test FAILS, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/extensions/mcp/index.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestRegression10285RendersThemInHTMLExportsToo",
+   "TestRegression10285RendersCallsToMCPToolsThatAreNotRegistered"
+  ],
+  "upstream_reference": "packages/coding-agent/test/extensions-runner.test.ts",
+  "mutation": "coding/mcpext/register.go Factory (CreateMcpExtension's registration): the tool-renderer resolver no longer defers to next() first, and the resolver returns nil instead of CreateMcpToolRenderers for an MCP tool name; each compiled, the tests FAIL, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/runner.ts",
+  "package": "./coding/extension/host/inproc",
+  "tests": [
+   "TestUpstreamRunnerResolvesToolRenderersInExtensionLoadOrderEachAbleToDeferToTheNext",
+   "TestUpstreamRunnerToolRendererResolversThatClaimTheSameToolAreWonByTheFirstLoaded"
+  ],
+  "upstream_reference": "packages/coding-agent/test/extensions-runner.test.ts",
+  "mutation": "coding/extension/host/inproc/runner.go ResolveToolRenderers: next() calls base() instead of the next resolver; the base answer replaced by nil; resolvers collected in reverse load order (only the new first-loaded-wins test kills this one; the old test survived it); each compiled, FAIL, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/runner.ts",
+  "package": "./coding/extension",
+  "tests": [
+   "TestNoopUIContextOnTerminalInputNeverCallsTheHandlerAndReturnsAnUnsubscribe"
+  ],
+  "upstream_reference": "packages/coding-agent/test/extensions-runner.test.ts",
+  "mutation": "coding/extension/ui.go noopUIContext.OnTerminalInput: the handler is called -> FAIL; the unsubscribe is nil -> FAIL; each compiled, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/bash.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestBashSpawnHookAdjustsCommandCwdAndEnv",
+   "TestBashSpawnHookSeesSessionEnvironmentAndSupportsOptingOut",
+   "TestPowerShellSpawnHookUsesTheBashTypes"
+  ],
+  "upstream_reference": "packages/coding-agent/test/agent-session-dynamic-tools.test.ts",
+  "mutation": "internal/codingagent/tools/shell_tool.go executeShellTool and bash.go/powershell.go: the hook's command, cwd and env results each ignored (three mutations), the hook result discarded (spawn = hook(spawn) -> _ = hook(spawn)), and the hook not passed to the shell config by BashTool or PowerShellTool (SpawnHook dropped); each compiled, the tests FAIL, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/runner.ts",
+  "package": "./coding/extension/host/inproc",
+  "tests": [
+   "TestRunnerMarkdownTransformerCollectionOrder"
+  ],
+  "upstream_reference": "packages/coding-agent/test/extensions-runner.test.ts",
+  "mutation": "coding/extension/host/inproc/runner.go GetMarkdownTransformers: extensions visited in reverse load order, and an extension without a transformer appended as a nil transformer; each compiled, FAIL, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/extensions/mcp/index.ts",
+  "package": "./coding/mcpext",
+  "tests": [
+   "TestMCPConnectionsCallTheTransportFactoryWithEntryCwdAndAuthProvider"
+  ],
+  "upstream_reference": "packages/coding-agent/test/mcp-extension.test.ts",
+  "mutation": "coding/mcpext/runtime.go connection: createTransport(c.Entry, c.cwd, authProvider) called with an empty cwd, and with an empty entry; each compiled, FAIL, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/runner.ts",
+  "package": "./coding/extension/host/inproc",
+  "tests": [
+   "TestExtensionHandlerTypesTheHandlerTheRunnerRunsPerEvent",
+   "TestRunnerEmitToolCallStopsAtTheFirstBlockingHandler"
+  ],
+  "upstream_reference": "packages/coding-agent/test/extensions-runner.test.ts",
+  "mutation": "coding/extension/host/inproc/runner.go EmitToolCall: a failing handler's error swallowed (return nil, err -> continue) kills the first test; the first blocking handler no longer ends the chain (if typed.Block -> if false) survived the old test and is killed by the new one; each compiled, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestAutocompleteFactoriesRebuildOnOwnerLoop"
+  ],
+  "upstream_reference": "packages/coding-agent/test/interactive-mode-status.test.ts",
+  "mutation": "coding/extension/autocomplete.go SetupAutocompleteProvider (the fold the interactive mode runs over its AutocompleteProviderFactory list): factories applied in reverse order, and the folded provider not carried to the next factory; each compiled, FAIL, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/utils/shell.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestGetShellConfig_CustomPathUsesDashC",
+   "TestGetShellConfig_IgnoresSHELL",
+   "TestGetShellConfig_MissingCustomPathErrors"
+  ],
+  "upstream_reference": "packages/coding-agent/test/tools.test.ts",
+  "mutation": "internal/codingagent/tools/shell_config.go GetShellConfig: the custom path no longer checked for existence, an empty path treated as custom, the missing-path message reworded, a custom path resolved to the platform default; each compiled, FAIL, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/utils/shell.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestPowerShellConfigResolvesPwshBeforeWindowsPowerShellOnWindowsOnly",
+   "TestGetPowerShellConfigPlatformGate"
+  ],
+  "upstream_reference": "packages/coding-agent/test/tools.test.ts",
+  "mutation": "internal/codingagent/tools/powershell.go powerShellConfigFor: the Windows gate removed, powershell.exe tried before pwsh.exe, the shared PowerShellArgs aliased instead of copied (the last two survived the old test, which only ran the Windows branch on Windows); each compiled, the new test FAILS, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/powershell.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestLocalPowerShellOperationsWrapCommandsWithTheUTF8OutputSwitch",
+   "TestLocalPowerShellOperationsResolveTheShellWithGetPowerShellConfig"
+  ],
+  "upstream_reference": "packages/coding-agent/test/tools.test.ts",
+  "mutation": "internal/codingagent/tools/powershell.go NewLocalPowerShellOperations: ResolveShell replaced by the bash default, ShellName \"PowerShell\" -> \"bash\", the UTF-8 output prefix dropped from WrapCommand; each compiled, FAIL, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/skills.ts",
+  "package": "./internal/codingagent/prompts",
+  "tests": [
+   "TestUpstreamCoreFormatSkillsForPrompt",
+   "TestFormatSkillsKeepsTheGivenOrderAndSkipsHiddenSkills"
+  ],
+  "upstream_reference": "packages/coding-agent/test/skills.test.ts",
+  "mutation": "internal/codingagent/prompts/coding.go formatSkills: hidden skills no longer filtered, the description not XML-escaped, the bash load sentence replaced by the read one, the skills listed in reverse order (only the new test kills the reversal); each compiled, FAIL, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/find.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestFindCustomGlobRootPort",
+   "TestFindOperationsCancellationAndErrors",
+   "TestFindOperationsPreserveNumericLimitDetails",
+   "TestFindGlobFailureIsReportedWithItsOwnMessage"
+  ],
+  "upstream_reference": "packages/coding-agent/test/tools.test.ts",
+  "mutation": "internal/codingagent/tools/find.go custom-operations branch: operations.Glob called with \".\" instead of the search path, without the node_modules/.git ignore list, with limit 0, results not relativized, and the glob error replaced by a fixed message (the last survived the old tests and is killed by the new one); each compiled, FAIL, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/grep.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestGrepOperationsIsDirectoryErrorIsPathNotFound",
+   "TestGrepOperationsSupplyDirectoryCheckAndContextLines",
+   "TestGrepOperationsIsDirectoryReceivesTheResolvedPathAndItsAnswerPicksThePathForm"
+  ],
+  "upstream_reference": "packages/coding-agent/test/tools.test.ts",
+  "mutation": "internal/codingagent/tools/grep.go: the Path not found message shortened, operations.IsDirectory asked about the raw path argument instead of the resolved one, and its answer inverted (the last two survived the old tests and are killed by the new one); each compiled, FAIL, baseline PASS; the tests skip without ripgrep"
+ },
+ {
+  "upstream": "packages/coding-agent/src/utils/frontmatter.ts",
+  "package": "./internal/codingagent/frontmatter",
+  "tests": [
+   "TestStripFrontmatterMatchesUpstream",
+   "TestStripReturnsTheBodyLikePisStripFrontmatter"
+  ],
+  "upstream_reference": "packages/coding-agent/test/frontmatter.test.ts",
+  "mutation": "internal/codingagent/frontmatter/frontmatter.go Strip: the parse error swallowed (doc.Err -> nil), and the whole content returned instead of the body; each compiled, FAIL, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-registry.ts",
+  "package": "./coding",
+  "tests": [
+   "TestModelRegistryRegisterProviderObjectUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/test/model-registry.test.ts",
+  "mutation": "coding/model_registry_facade.go RegisterProviderObject: the call to runtime.RegisterNativeProvider replaced by return nil (the Provider object's models never reach the catalog); compiled, FAIL, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-registry.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestGetAllModelDataListsBuiltInThenRegisteredProvidersEachModelOnce"
+  ],
+  "upstream_reference": "packages/coding-agent/test/model-registry.test.ts",
+  "mutation": "internal/codingagent/model_catalog_data.go GetAllModelData: providers visited in reverse, every provider's models appended twice, the catalog cut after three models; each compiled, the new test FAILS (the cache tests compare the catalog with itself and passed), baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestTerminalInputListenersRewriteInput"
+  ],
+  "upstream_reference": "packages/tui/src/tui.ts",
+  "mutation": "internal/codingagent/terminal_input_queue.go terminalInputPass (the production caller of every TerminalInputHandler): a Consume result ignored in apply; a Data rewrite ignored in apply; listeners called in reverse registration order (slices.Reverse in passTerminalInput); input rewritten to empty delivered instead of dropped; each compiled, the test FAILS, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/agent-session.ts",
+  "package": "./coding",
+  "tests": [
+   "TestCreateReplacedSessionContextUpstream",
+   "TestCreateReplacedSessionContextSendMessageAwaitsTheTriggeredTurn"
+  ],
+  "upstream_reference": "packages/coding-agent/test/agent-session-runtime-events.test.ts",
+  "mutation": "coding/session_replaced.go CreateReplacedSessionContext: sendMessage's options dropped (passed nil) and sendUserMessage's options dropped (the second survived the old tests and is killed by the new 'hands its options to the Session' subtests, which expand a prompt template through ExpandPromptTemplates); each compiled, FAIL, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./coding",
+  "tests": [
+   "TestSessionEntryToContextMessagesProjectsEachEntryKindLikePi"
+  ],
+  "upstream_reference": "packages/coding-agent/test/session-manager/build-context.test.ts",
+  "mutation": "internal/codingagent/session_manager_projection.go sessionEntryToContextMessages: an empty branch summary projected, the compaction's systemMessage dropped, fromId dropped from branchSummary, tokensBefore dropped from compactionSummary, a custom message's details dropped; each compiled, the new test FAILS (the old lax-content test covered only message and custom_message content), baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSetSessionFileSwitchesThePersistedManager",
+   "TestSetSessionFileOnAnInMemoryManagerDoesNotPersist",
+   "TestSetSessionFileOnAnInMemoryManagerWritesNothing"
+  ],
+  "upstream_reference": "packages/coding-agent/test/session-manager/load-entries.test.ts",
+  "mutation": "internal/codingagent/session_branch_runtime.go Session.SetSessionFile: the loaded session's cwd not kept (effectiveCWD), the rejected-file path not adopted, an in-memory manager given the file path (persists), the empty-file size check disabled, and the manager's session directory not kept (the last survived the old test because the file sat in the manager's own directory; the test now loads a file from another directory); each compiled, FAIL, baseline PASS. Not killed: dropping s.revision++ in replaceSessionLog (a cache counter with no Pi counterpart)"
+ },
+ {
+  "upstream": "packages/coding-agent/src/utils/image-resize.ts",
+  "package": "./internal/imageprocessing",
+  "tests": [
+   "TestResizeImageUpstream",
+   "TestResizeImageReportsTheDeclaredMimeType",
+   "TestResizeModelInputLimitImpossibleEncodedSize",
+   "TestResizeImageHonoursMaxHeightAndJPEGQualityOnTheirOwn"
+  ],
+  "upstream_reference": "packages/coding-agent/test/image-processing.test.ts",
+  "mutation": "internal/imageprocessing/images.go ResizeImage: options.MaxWidth, MaxHeight, MaxBytes and JPEGQuality each ignored, and the default MIME type for an undeclared input changed from image/png (MaxHeight and JPEGQuality survived the upstream-ported tests, which set both dimension limits together and only reach the PNG candidate; the new test sets maxHeight alone and a noisy image whose JPEG candidate wins); each compiled, FAIL, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestChatNoticesFollowThemeChangesUpstream",
+   "TestInstallChangeWarningRestartCommand",
+   "TestInstallChangeWarningShownOnce",
+   "TestChatNoticesCarryTheirPaddingAndTheEditorClearRerenders"
+  ],
+  "upstream_reference": "packages/coding-agent/test/interactive-mode-status.test.ts",
+  "mutation": "internal/codingagent/interactive_chat.go showError and interactive_helpers.go showWarning: the error notice's outputPad padding dropped, the warning's one column of padding dropped, the notice color changed, the install-change warning dropped from showError, the warning's immediate Render dropped (the padding and Render mutants survived the color test and are killed by the new TestChatNoticesCarryTheirPaddingAndTheEditorClearRerenders); each compiled, FAIL, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestClearEditorEmptiesTheEditor",
+   "TestChatNoticesCarryTheirPaddingAndTheEditorClearRerenders"
+  ],
+  "upstream_reference": "packages/coding-agent/test/interactive-mode-status.test.ts",
+  "mutation": "internal/codingagent/interactive_tui.go ClearEditor: editor.Clear() dropped, and the re-render after it dropped (the second survived the old test; the new test counts Render calls); each compiled, FAIL, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestShowPackageUpdateNotificationAddsTheNotice"
+  ],
+  "upstream_reference": "packages/coding-agent/test/interactive-mode-status.test.ts",
+  "mutation": "internal/codingagent/interactive_chat.go ShowPackageUpdateNotification: the notice's horizontal padding 1 -> 0, and the package list emptied; each compiled, FAIL, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/sdk.ts",
+  "package": "./coding",
+  "tests": [
+   "TestCreateAgentSessionBuildsItsServicesFromTheOptions",
+   "TestCreateAgentSessionForwardsTheSessionOptions",
+   "TestCreateAgentSessionReturnsTheLoadersExtensionsResult",
+   "TestCreateAgentSessionSharesACallerModelRuntime",
+   "TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions",
+   "TestCreateAgentSessionFromServicesForwardsTheSessionInputs",
+   "TestCreateAgentSessionFromServicesSelectsTheInitialModelOrReportsNone"
+  ],
+  "upstream_reference": "packages/coding-agent/test/sdk-skills.test.ts",
+  "mutation": "coding/create_agent_session.go CreateAgentSession and createAgentSessionOver: the services built without options.CWD, without options.ModelRuntime (killed by TestCreateAgentSessionSharesACallerModelRuntime, which the row's evidence list did not name), the session options Model/ThinkingLevel, ScopedModels/Tools/ExcludeTools/NoTools, CustomTools/SessionStartEvent each not forwarded, the built services not recorded as owned by the session, and the tool selection ignoring ExcludeTools; each compiled, FAIL, baseline PASS. Not killed: closing the built services when the session build fails (no test can observe an internally built runtime closing)"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/trust-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestProjectTrustStoreNearestAncestorWinsAndPersists",
+   "TestProjectTrustStoreMatchesPi"
+  ],
+  "upstream_reference": "packages/coding-agent/test/trust-manager.test.ts",
+  "mutation": "internal/codingagent/trust_manager.go ProjectTrustStore: GetEntry matching only the exact path (no ancestor walk), SetMany not deleting a nil-decision entry, SetMany storing true for every decision, Get returning true for every entry, the store file renamed from trust.json, SetMany applying only its first update; each compiled, FAIL on TestProjectTrustStoreNearestAncestorWinsAndPersists, baseline PASS (the Pi-oracle TestProjectTrustStoreMatchesPi compares corrupted/wrong-typed/missing files against Pi's own store)"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSetSessionFileSwitchesThePersistedManager",
+   "TestSetSessionFileOnAnInMemoryManagerDoesNotPersist",
+   "TestSetSessionFileOnAnInMemoryManagerWritesNothing",
+   "TestSetSessionFileChangesTheRevision"
+  ],
+  "upstream_reference": "packages/coding-agent/test/session-manager/load-entries.test.ts",
+  "mutation": "internal/codingagent/session_branch_runtime.go Session.SetSessionFile: the loaded session's cwd not kept (effectiveCWD), the rejected-file path not adopted, an in-memory manager given the file path (persists), the empty-file size check disabled, and the manager's session directory not kept (the last survived the old test because the file sat in the manager's own directory; the test now loads a file from another directory); each compiled, FAIL, baseline PASS. Dropping s.revision++ in replaceSessionLog survived these tests; it keys coding.Session.ContextUsage's memo, so the stale estimate would be observable, and TestSetSessionFileChangesTheRevision now kills it (compiled, FAIL, baseline PASS)"
+ },
+ {
+  "upstream": "packages/coding-agent/src/utils/image-resize.ts",
+  "package": "./internal/imageprocessing",
+  "tests": [
+   "TestResizeImageUpstream",
+   "TestResizeImageReportsTheDeclaredMimeType",
+   "TestResizeModelInputLimitImpossibleEncodedSize",
+   "TestResizeModelInputLimits",
+   "TestResizeModelProfileJPEGQualityAndSizeOnlyHint",
+   "TestResizeImageHonoursMaxHeightAndJPEGQualityOnTheirOwn"
+  ],
+  "upstream_reference": "packages/coding-agent/test/image-processing.test.ts",
+  "mutation": "internal/imageprocessing/images.go ResizeImage: options.MaxWidth, MaxHeight, MaxBytes and JPEGQuality each ignored, and the default MIME type for an undeclared input changed from image/png (MaxHeight and JPEGQuality survived the upstream-ported tests, which set both dimension limits together and only reach the PNG candidate; the new test sets maxHeight alone and a noisy image whose JPEG candidate wins; the package's own TestResizeModelInputLimits height case and TestResizeModelProfileJPEGQualityAndSizeOnlyHint already failed under both mutants); each compiled, FAIL, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionCompactedStatusIsShownByInitialRenderOnly",
+   "TestRenderInitialMessagesPaintsTheTranscriptThenTheTrustWarning",
+   "TestRepaintAfterReplacementOrNavigationShowsTheTrustWarning",
+   "TestInitialRenderPopulatesTheEditorHistory",
+   "TestRenderInitialMessagesShowsTheTrustWarningBeforeTheCompactionNotice"
+  ],
+  "upstream_reference": "packages/coding-agent/test/interactive-mode-status.test.ts",
+  "mutation": "internal/codingagent/interactive_transcript.go renderInitialMessages: entries painted without history, painted for a fresh session, the trust warning dropped, the compaction notice dropped, and the warning and notice swapped (the swap survived every old test; killed by the new TestRenderInitialMessagesShowsTheTrustWarningBeforeTheCompactionNotice); each compiled, FAIL, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestUpstreamInteractiveStartupInput",
+   "TestGetUserInputCallbackIsOneShot",
+   "TestStartupAwaitQueuesSubmittedInput",
+   "TestGetUserInputTakesQueuedPromptsInOrderThenWaitsForTheCallback"
+  ],
+  "upstream_reference": "packages/coding-agent/test/interactive-mode-status.test.ts",
+  "mutation": "internal/codingagent/startup_input.go getUserInput: taking the newest queued prompt instead of the oldest, clearing the rest of the queue after one prompt, the one-shot callback left installed, the queue threshold changed (> 0 to > 1); the first two survived the old tests (one queued prompt only) and are killed by the new TestGetUserInputTakesQueuedPromptsInOrderThenWaitsForTheCallback; the slot-zeroing before reslicing is a GC detail with no Pi counterpart; each killed mutant compiled, FAIL, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/print-mode.ts",
+  "package": "./coding/cli",
+  "tests": [
+   "TestRunPrintModeReturnsExitCodeZeroOnSuccessAndOneOnFailureAndDisposesTheRuntime"
+  ],
+  "upstream_reference": "packages/coding-agent/test/print-mode.test.ts",
+  "mutation": "coding/cli/print_mode.go runPrintMode: the failure exit code 1 changed to 2, the error-to-exit-code-1 mapping removed, the success code changed to 1, and the teardown close at the end of the run removed (the run then never ends and the test fails by timeout); each compiled, FAIL, baseline PASS. The first of the two idempotent rt.Close defers (top of runPrintModeIn) is equivalent: the later one still closes the runtime"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestDiscoverExtensionPathsFollowsPisLoaderOrderAndRules",
+   "TestDiscoverAndLoadExtensionsLoadsWhatItDiscoversAndReportsFailures",
+   "TestDiscoverAndLoadExtensionsReturnsTheRuntimeTheExtensionsShare",
+   "TestDiscoverExtensionPathsMatchesPisDiscoveryCases",
+   "TestDiscoverExtensionPathsReadsManifestsLinksAndConfiguredPathsAsPi",
+   "TestDiscoverExtensionPathsDefaultsTheAgentDirectoryToTheConfiguredOne"
+  ],
+  "upstream_reference": "packages/coding-agent/test/extensions-discovery.test.ts",
+  "mutation": "coding/discover_extensions.go DiscoverAndLoadExtensions/discoverExtensionPaths: project and global discovery order swapped, project discovery removed, global discovery removed, the dedupe by resolved path removed, a configured directory's entries not taking the continue (also discovering its files), the unicode-space normalization of a configured path removed, only the first path loaded, and the default agent directory removed (the last survived every old test and is killed by the new TestDiscoverExtensionPathsDefaultsTheAgentDirectoryToTheConfiguredOne); the row's earlier evidence list named only the two load tests, which kill none of the discovery mutants; each compiled, FAIL, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/rpc/rpc-client.ts",
+  "package": "./coding/rpcclient",
+  "tests": [
+   "TestRpcClientCommandMethodsMatchPiWireAndResults",
+   "TestRpcClientEventHelpersStderrAndStop",
+   "TestRpcClientNullResultsAndErrorResponses",
+   "TestRpcClientReadStdoutParsesSplitInvalidBlankAndUnterminatedRecords",
+   "TestRPCListenerPanicIsConfinedToItsLine",
+   "TestRpcClientListenerUnsubscribeDuringDispatchDoesNotSkipLaterListeners",
+   "TestRpcClientStartReportsEarlyExit",
+   "TestRPCRequestTimeoutIncludesBlockedWrite",
+   "TestRpcModeShouldExecuteBashCommand",
+   "TestRpcClientAnswersAPendingRequestOnceAndEmitsLaterResponsesWithItsIdAsEvents"
+  ],
+  "upstream_reference": "packages/coding-agent/test/rpc.test.ts",
+  "mutation": "coding/rpcclient/rpc_client.go RpcClient: handleLine matching a response by id without the response type, the event dropping its raw line, the recover around listener dispatch removed, null JSON no longer ignored, the listener snapshot reversed, the process-exit error without the stderr tail, the request timeout doubled, and the pending request kept after its response (a second response with the same id then blocks the reader; survived every old test, killed by the new TestRpcClientAnswersAPendingRequestOnceAndEmitsLaterResponsesWithItsIdAsEvents); each compiled, FAIL, baseline PASS. Equivalent: dropping the empty-id guard (an empty id never has a pending request)"
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/settings-selector.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsSelectorReportsEveryCyclingRowThroughItsCallback",
+   "TestSettingsSelectorInAContainerRedrawsAfterInput",
+   "TestSettingsSelectorMatchesPi",
+   "TestSettingsSelectorCyclingRowsPersistThroughTheirSetters",
+   "TestModelThinkingSubmenuOrderingSearchBackAndEmpty",
+   "TestSettingsModelThinkingAppliesAndClearsCurrentOverrideWithoutChangingDefaults",
+   "TestSettingsSelectorUpstream",
+   "TestAutomaticThemeSubmenuCancelRestoresPendingPair",
+   "TestQuietStartupSettingReadsAsPi",
+   "TestQuietStartupUnmodifiedValueSurvivesAnotherSave",
+   "TestQuietStartupValueSpelling",
+   "TestTuiModeSettingItemUpstream",
+   "TestMaskSecretInputSettingsRoundTrip",
+   "TestMaskSecretInputSettingsMenuAppliesToNextDialog",
+   "TestMaskedLoginErrorDoesNotEnterFramesOrSession",
+   "TestPiIgnoresMaskSecretInputInSharedSettings",
+   "TestLoginMaskSettingReachesStandardDialog"
+  ],
+  "upstream_reference": "packages/coding-agent/test/settings-selector.test.ts",
+  "mutation": "internal/codingagent/settings_selector.go SettingsSelectorComponent.dispatch: each of the 33 callback invocations in the dispatch switch replaced in turn by a no-op (autocompact, images, steering, transport, http idle timeout, cache warming, mermaid, quiet startup, project trust, double escape, tree filter, secret mask, cursor, paddings, autocomplete rows, clear on shrink, terminal progress, tui mode, fullscreen options and the rest), the quiet-startup value mapping collapsed to false, the output pad mapping dropped; each compiled, FAIL (TestSettingsSelectorReportsEveryCyclingRowThroughItsCallback, TestSettingsSelectorMatchesPi, TestMaskSecretInputSettingsRoundTrip and others), baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/agent-session.ts",
+  "package": "./coding",
+  "tests": [
+   "TestNewAgentSessionBuildsTheSessionFromOneConfig",
+   "TestNewAgentSessionUsesDefaultToolsOnlyWhenTheConfigSaysSo",
+   "TestNewAgentSessionDrivesTheSuppliedAgentAndChainsItsHooks"
+  ],
+  "upstream_reference": "packages/coding-agent/test/agent-session-concurrent.test.ts",
+  "mutation": "coding/session.go NewAgentSession: the omitted UsesDefaultTools defaulting to true instead of false (agent-session.ts:500 `config.usesDefaultTools ?? false`), the default dropped, and the config's Services not handed to NewSession; each compiled, FAIL, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/armin.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestArminFramesMatchPinnedPi",
+   "TestArminAnimationDisposalRejectsQueuedFrame",
+   "TestArminAnimationPublishesFramesAndStops",
+   "TestArminSaysHiDrawsThePigHead",
+   "TestNewArminComponentStartsItsAnimationOnTheUI",
+   "TestInstallRenderDispatcherRoutesOwnerWorkToTheMainLoop",
+   "TestArminRenderWhileTheAnimationRunsInlineIsRaceFree",
+   "TestArminRenderClipsRowsToTheWidthPadsThemAndCachesUntilInvalidated"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/armin.ts (Pi has no test for it; TestArminFramesMatchPinnedPi runs this ArminComponent as the frame oracle)",
+  "mutation": "internal/codingagent/armin.go ArminComponent ticks: typewriter pixels per frame 3 -> 2, scanline advance 1 -> 2, the rain drop restart range, the CRT end condition (> to >=), the glitch phase count 8 -> 7 and its offset range, the resolve end index, the CRT expansion step; each compiled, FAIL (TestArminFramesMatchPinnedPi compares every frame of every effect with Pi's own ArminComponent, plus the draw and animation-lifecycle tests), baseline PASS; Render and Invalidate: the cache check ignoring the width, Invalidate not clearing the cached width, the clip end not capped at the image width, the row and label padding off by one, the label unpadded, the clip end not leaving the leading space column (the render tests are the new TestArminRenderClipsRowsToTheWidthPadsThemAndCachesUntilInvalidated, which names ArminComponent); each compiled, FAIL, baseline PASS"
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerRemoveDeletesGitCheckoutsAndKeepsSharedOnes",
+   "TestPackageManagerAddAndRemoveSourceInTheScopeSettings",
+   "TestPackageManagerInstallAndRemoveAndPersistOrderErrorsBeforeSettings",
+   "TestPackageManagerRemoveKeepsAGitCheckoutAnotherConfiguredSourceShares"
+  ],
+  "upstream_reference": "packages/coding-agent/test/package-manager.test.ts",
+  "mutation": "internal/packagemanager/package_manager.go PackageManager: Remove without the untrusted-project refusal, without the Git update marker removal, without the empty-parent prune (Pi removeGit, package-manager.ts:2033-2038), RemoveAndPersist without the removal first, AddSourceToSettings without the same-ref early return and with the match not stopping at the first, RemoveSourceFromSettings without the unchanged early return; each compiled, FAIL, baseline PASS. The shared-checkout keep (ConfiguredGitCheckoutInUse, D110: Pi has no subdirectory form) survived every package test (only coding/cli's drove it), and so did its scope and repository equality tests; new TestPackageManagerRemoveKeepsAGitCheckoutAnotherConfiguredSourceShares kills the keep, the user/project scope choice (both directions) and the repository match. Not killed: InstallAndPersist without VerifyContributesResources (D57; installing an npm/Git extension needs the network)"
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "package": "./coding/cli",
+  "tests": [
+   "TestRunRpcModeWithoutItsModeStateServesNothing",
+   "TestRPCStartupResourceErrorDoesNotWaitForEventForwarder"
+  ],
+  "upstream_reference": "packages/coding-agent/test/rpc.test.ts",
+  "mutation": "coding/cli/rpc_mode.go runRpcMode: the missing-state guard disabled (the test panics reading a nil options slot) and the serve result no longer stored in the exit-code slot (TestRPCStartupResourceErrorDoesNotWaitForEventForwarder, a spawned binary, then exits 0 instead of 1); each compiled, FAIL, baseline PASS. Equivalent: storing a constant 1 instead of the serve result, because a normal end (stdin end, ctx.shutdown, signal) leaves the process through serveRPCMode's exitRPC (os.Exit) before this assignment runs; verified with a mutant binary that exits 0 on stdin end"
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCustomMessageComponentChildren",
+   "TestCustomMessageComponentRebuildsWithOptions",
+   "TestCustomMessageComponentFallsBackToDefault",
+   "TestCustomMessageComponentUsesMarkdownTheme",
+   "TestCustomMessageTextMatchesPi",
+   "TestCustomMessageComponentIsAContainerWhoseLabelWrapsInsideTheBox",
+   "TestCustomMessageLabelFollowsAThemeChange",
+   "TestCustomMessageComponentRendersItsBoxPaddingLabelAndReplacesRebuiltContent",
+   "TestCustomMessageComponentLayoutRendererLifecycleAndLiveness",
+   "TestCustomMessageDefaultBoxFollowsOutputPad"
+  ],
+  "upstream_reference": "packages/coding-agent/test/interactive-mode-status.test.ts",
+  "mutation": "tui/custom_message.go CustomMessageComponent: SetExpanded, SetOutputPad and Invalidate each not rebuilding, the renderer's panic not recovered, the content join changed, the text-block filter dropped, Expanded and OutputPad not handed to the renderer, and (each killed by the new TestCustomMessageComponentRendersItsBoxPaddingLabelAndReplacesRebuiltContent and by the older TestCustomMessageComponentLayoutRendererLifecycleAndLiveness of lgx-tui-message-components.json; the padding also by TestCustomMessageDefaultBoxFollowsOutputPad) the box padding fixed at 1 instead of the output pad (custom-message.ts:90), the label's bold escapes dropped (:93), SurfaceLive always false, and the previous renderer component not removed on rebuild; each compiled, FAIL, baseline PASS. Equivalent: IsDirty ignoring the renderer component, because the Container's own IsDirty already reads its children"
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorIsAContainerOfUpstreamChildren",
+   "TestExtensionSelectorListFollowsSelectionAndCountdown",
+   "TestExtensionSelectorComponentNavigationSelectionAndCompletion",
+   "TestExtensionSelectorComponentCountdownTitleDescriptionAndReplacement",
+   "TestExtensionSelectorMultilineTitleRendersOneLinePerSegment",
+   "TestExtensionSelectorMultilineTitleUsesScopedBoldAndDimKeys",
+   "TestExtensionSelectorHandleInput_TogglesToolsExpandedShortcut",
+   "TestExtensionSelectorHandleInput_CancelStillWins",
+   "TestExtensionDialogsRenderDescriptionUnderTitle",
+   "TestExtensionSelectorHintWrapsAtNarrowWidth",
+   "TestExtensionSelectorComponentChildrenFollowUpstream",
+   "TestExtensionSelectorPreviewDrawsAfterTheOptionRows",
+   "TestExtensionSelectorPreviewDropsWhenTheBodyWouldSqueeze",
+   "TestExtensionSelectorWithoutPreviewKeepsFullWidthRows",
+   "TestExtensionSelectorEmptyPreviewKeepsFullWidthRows",
+   "TestExtensionSelectorComponentCallsSelectAndCancelCallbacks",
+   "TestExtensionSelectorComponentOptions",
+   "TestExtensionSelectorComponentNewlineConfirmsEmptyOptionsStayOpenAndExpiryAfterSelectionIsIgnored"
+  ],
+  "upstream_reference": "packages/coding-agent/test/extension-selector.test.ts",
+  "mutation": "tui/extension_selector.go ExtensionSelectorComponent: the up step 1 -> 2, the down bound off by one, the k and j aliases dropped, the confirm of an empty selection, the cancel flag dropped, the page size 8 -> 7, the countdown title format, the render request on the first tick, the description cleared on SetDescription, the selected-value bound, the tools-expand callback dropped, and the expiry done guard (survived every old test; killed by the new TestExtensionSelectorComponentNewlineConfirmsEmptyOptionsStayOpenAndExpiryAfterSelectionIsIgnored together with the empty-selection confirm guard); each compiled, FAIL, baseline PASS. Equivalent: dropping the literal newline alternative of confirm, because the confirm binding already matches a newline; the TUI-required guard on the countdown (opts.TUI nil) is killed by the options test"
+ }
+]

@@ -15,10 +15,13 @@ import (
 	"math"
 	"os"
 	"slices"
+	"strconv"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/configvalue"
+	"github.com/MichaelKinsy/PiG/internal/jsonparse"
+	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"github.com/MichaelKinsy/PiG/internal/pilock"
 )
 
@@ -62,6 +65,7 @@ func cloneCredential(credential Credential) Credential {
 	credential.Env = maps.Clone(credential.Env)
 	credential.AvailableModelIDs = slices.Clone(credential.AvailableModelIDs)
 	credential.GatewayConfig = slices.Clone(credential.GatewayConfig)
+	credential.opaque = slices.Clone(credential.opaque)
 	return credential
 }
 
@@ -69,7 +73,30 @@ func cloneCredential(credential Credential) Credential {
 type authStorageData struct {
 	values map[string]Credential
 	order  []string
+	// root is the JSON kind of the file's top-level value. auth-storage.ts keeps whatever JSON.parse returns: a null root makes every operation throw,
+	// an array reads and lists as an object keyed by index and is rewritten as an array by a delete, and another scalar reads as an empty object and is rewritten as itself by a delete.
+	root authRootKind
+	// arrayLen is the element count of an array root, which a delete keeps (a deleted element serializes as null).
+	arrayLen int
+	// scalar is the canonical JSON of a scalar root.
+	scalar []byte
 }
+
+type authRootKind int
+
+const (
+	authRootObject authRootKind = iota
+	authRootNull
+	authRootArray
+	authRootScalar
+)
+
+// errAuthNullRead and errAuthNullEntries are V8's TypeErrors for `null[provider]` and for Object.entries or delete on null.
+func errAuthNullRead(providerID string) error {
+	return fmt.Errorf("Cannot read properties of null (reading '%s')", providerID)
+}
+
+var errAuthNullEntries = errors.New("Cannot convert undefined or null to object")
 
 func newAuthStorageData(values map[string]Credential) *authStorageData {
 	data := &authStorageData{values: make(map[string]Credential, len(values))}
@@ -81,6 +108,8 @@ func newAuthStorageData(values map[string]Credential) *authStorageData {
 }
 
 func (data *authStorageData) set(providerID string, credential Credential) {
+	// {...currentData, [provider]: next} is an object whatever the file held.
+	data.root, data.arrayLen, data.scalar = authRootObject, 0, nil
 	if _, exists := data.values[providerID]; !exists {
 		data.order = javascriptObjectKeyOrder(append(data.order, providerID))
 	}
@@ -92,15 +121,45 @@ func (data *authStorageData) delete(providerID string) {
 	data.order = slices.DeleteFunc(data.order, func(key string) bool { return key == providerID })
 }
 
-func (data *authStorageData) infos() []CredentialInfo {
+// infos lists provider ids and types like Object.entries(data).map(([providerId, credential]) => ({ providerId, type: credential.type })), which throws on a null entry.
+func (data *authStorageData) infos() ([]CredentialInfo, error) {
+	if data.root == authRootNull {
+		return nil, errAuthNullEntries
+	}
 	infos := make([]CredentialInfo, 0, len(data.order))
 	for _, providerID := range data.order {
-		infos = append(infos, CredentialInfo{ProviderID: providerID, Type: data.values[providerID].Type})
+		credential := data.values[providerID]
+		if string(credential.opaque) == "null" {
+			return nil, errors.New("Cannot read properties of null (reading 'type')")
+		}
+		infos = append(infos, CredentialInfo{ProviderID: providerID, Type: credential.Type})
 	}
-	return infos
+	return infos, nil
 }
 
 func (data *authStorageData) MarshalJSON() ([]byte, error) {
+	if data.root == authRootScalar {
+		return slices.Clone(data.scalar), nil
+	}
+	if data.root == authRootArray {
+		var out bytes.Buffer
+		out.WriteByte('[')
+		for i := range data.arrayLen {
+			if i > 0 {
+				out.WriteByte(',')
+			}
+			value := []byte("null")
+			if credential, ok := data.values[strconv.Itoa(i)]; ok {
+				var err error
+				if value, err = json.Marshal(credential); err != nil {
+					return nil, err
+				}
+			}
+			out.Write(value)
+		}
+		out.WriteByte(']')
+		return out.Bytes(), nil
+	}
 	var out bytes.Buffer
 	out.WriteByte('{')
 	for i, providerID := range data.order {
@@ -164,6 +223,9 @@ func (a *AuthStorage) Read(ctx context.Context, providerID string) (*Credential,
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	if credentials.root == authRootNull {
+		return nil, errAuthNullRead(providerID)
+	}
 	credential, ok := credentials.values[providerID]
 	if !ok {
 		return nil, nil
@@ -183,7 +245,7 @@ func (a *AuthStorage) List(ctx context.Context) ([]CredentialInfo, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	return credentials.infos(), nil
+	return credentials.infos()
 }
 
 // Modify implements CredentialStore under the auth.json file lock. A caller waiting for process-local ownership can cancel without waiting for the active callback.
@@ -205,6 +267,9 @@ func (a *AuthStorage) Modify(ctx context.Context, providerID string, fn func(cur
 		credentials, err := a.loadLocked()
 		if err != nil {
 			return err
+		}
+		if credentials.root == authRootNull {
+			return errAuthNullRead(providerID)
 		}
 		var current *Credential
 		if credential, ok := credentials.values[providerID]; ok {
@@ -319,9 +384,9 @@ func (s *InMemoryAuthStorage) Read(ctx context.Context, providerID string) (*Cre
 // List implements CredentialStore after preceding store operations settle.
 func (s *InMemoryAuthStorage) List(ctx context.Context) ([]CredentialInfo, error) {
 	var infos []CredentialInfo
-	if err := s.withLockAsync(ctx, func() error {
-		infos = s.credentials.infos()
-		return nil
+	if err := s.withLockAsync(ctx, func() (err error) {
+		infos, err = s.credentials.infos()
+		return err
 	}); err != nil {
 		return nil, err
 	}
@@ -391,10 +456,14 @@ func (s *ReadOnlyAuthStorage) load() (*authStorageData, error) {
 		return s.credentials, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("Failed to read auth.json: %w", err)
+		return nil, fmt.Errorf("Failed to read auth.json: %w", nodeerrno.FromPathError(err))
 	}
 	// Use the same lossless key decoder as writable storage before validating each credential.
 	data = bytes.TrimPrefix(data, []byte("\uFEFF"))
+	// auth-storage.ts load reports JSON.parse's SyntaxError with V8's message after "Failed to read auth.json: ".
+	if err := jsonparse.Validate(data); err != nil {
+		return nil, fmt.Errorf("Failed to read auth.json: %w", err)
+	}
 	var object map[string]json.RawMessage
 	if err := json.Unmarshal(data, &object); err != nil {
 		if _, ok := errors.AsType[*json.UnmarshalTypeError](err); ok {
@@ -548,7 +617,7 @@ func (s *ReadOnlyAuthStorage) List(ctx context.Context) ([]CredentialInfo, error
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	return credentials.infos(), nil
+	return credentials.infos()
 }
 
 // Modify always fails: the store is read-only.

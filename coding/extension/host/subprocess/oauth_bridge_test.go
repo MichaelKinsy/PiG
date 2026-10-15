@@ -108,7 +108,7 @@ func TestOAuthCallbackInitiationFollowsRealCallbackEntry(t *testing.T) {
 			return err
 		}},
 		{name: "manual code", run: func(session oauthLoginSession, ctx context.Context) error {
-			_, err := session.OnManualCodeInput(ctx)
+			_, err := session.OnManualCodeInput(ctx, ai.AuthManualCodePrompt{})
 			return err
 		}},
 	}
@@ -279,5 +279,53 @@ func TestOAuthProxy_CredentialStoreIsConditional(t *testing.T) {
 	withStore := &oauthProxyWithStore{oauthProxy: base}
 	if _, ok := any(withStore).(ai.OAuthCredentialStore); !ok {
 		t.Fatal("oauthProxyWithStore must implement OAuthCredentialStore")
+	}
+}
+
+// oauth.cb.onManualCodeInput answers a flow's manual_code prompt with its message and placeholder when the call carries them (Pi showAuthPrompt,
+// interactive-mode.ts:6282-6283), and with Pi's default message when it carries none; a caller without a prompt callback is answered through its plain manual-code input.
+func TestOAuthManualCodeCallbackCarriesThePrompt(t *testing.T) {
+	prompts := func(got *[]ai.AuthManualCodePrompt, plain *int) ai.OAuthLoginCallbacks {
+		return ai.OAuthLoginCallbacks{
+			OnManualCodePromptContext: func(_ context.Context, prompt ai.AuthManualCodePrompt) (string, error) {
+				*got = append(*got, prompt)
+				return "prompted", nil
+			},
+			OnManualCodeInput: func() (string, error) { *plain++; return "plain", nil },
+		}
+	}
+	answer := func(t *testing.T, callbacks ai.OAuthLoginCallbacks, args string) string {
+		t.Helper()
+		h := &Host{}
+		h.setOAuthLoginSession("ext", callbacks)
+		result, err := h.handleOAuthCallback(context.Background(), "ext", &CallPayload{Method: CallOAuthOnManualCodeInput, Args: json.RawMessage(args)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var value OAuthInputResult
+		if err := json.Unmarshal(result.Result, &value); err != nil {
+			t.Fatal(err)
+		}
+		return value.Value
+	}
+	var got []ai.AuthManualCodePrompt
+	plain := 0
+	if value := answer(t, prompts(&got, &plain), `{"type":"manual_code","message":"Enter the emailed code","placeholder":"123456"}`); value != "prompted" ||
+		len(got) != 1 || got[0] != (ai.AuthManualCodePrompt{Message: "Enter the emailed code", Placeholder: "123456"}) || plain != 0 {
+		t.Fatalf("a prompt-carrying call answered %q through prompts %+v and %d plain inputs", value, got, plain)
+	}
+	// A legacy onManualCodeInput() with no prompt is asked as Pi's adaptOAuth does (provider-composer.ts:363): the manual_code prompt "Paste the authorization code".
+	got, plain = nil, 0
+	for _, args := range []string{``, `{}`, `null`} {
+		if value := answer(t, prompts(&got, &plain), args); value != "prompted" {
+			t.Fatalf("a call with args %q answered %q, want the prompt callback", args, value)
+		}
+	}
+	if want := (ai.AuthManualCodePrompt{Message: "Paste the authorization code"}); len(got) != 3 || got[0] != want || got[1] != want || got[2] != want || plain != 0 {
+		t.Fatalf("promptless calls ran prompts %+v and %d plain inputs, want three %+v", got, plain, want)
+	}
+	plain = 0
+	if value := answer(t, ai.OAuthLoginCallbacks{OnManualCodeInput: func() (string, error) { plain++; return "plain", nil }}, `{"message":"Enter the emailed code"}`); value != "plain" || plain != 1 {
+		t.Fatalf("a caller without a prompt callback answered %q after %d plain inputs", value, plain)
 	}
 }

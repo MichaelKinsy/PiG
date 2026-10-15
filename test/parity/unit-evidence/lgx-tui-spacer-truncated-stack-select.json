@@ -1,0 +1,219 @@
+[
+ {
+  "upstream": "packages/tui/src/components/spacer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSpacerAndTruncatedTextRender"
+  ],
+  "upstream_reference": "packages/tui/src/components/spacer.ts",
+  "mutation": "tui/spacer.go: replace `func NewSpacer(n int) *Spacer { return &Spacer{Lines: n} }` with `func NewSpacer(n int) *Spacer { return &Spacer{Lines: n + 1} }`; TestSpacerAndTruncatedTextRender fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/spacer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSpacerAndTruncatedTextRender"
+  ],
+  "upstream_reference": "packages/tui/src/components/spacer.ts",
+  "mutation": "tui/spacer.go: replace `s.Lines = n` with `s.Lines = n + 1`; TestSpacerAndTruncatedTextRender fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/spacer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSpacerAndTruncatedTextRender"
+  ],
+  "upstream_reference": "packages/tui/src/components/spacer.ts",
+  "mutation": "tui/spacer.go: replace `s.Lines = n\n\ts.Invalidate()` with `s.Invalidate()`; TestSpacerAndTruncatedTextRender fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/truncated-text.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSpacerAndTruncatedTextRender"
+  ],
+  "upstream_reference": "packages/tui/src/components/truncated-text.ts",
+  "mutation": "tui/truncated_text.go: replace `return &TruncatedText{Content: content, PaddingX: paddingX, PaddingY: paddingY}` with `return &TruncatedText{Content: content, PaddingX: paddingY, PaddingY: paddingX}`; TestSpacerAndTruncatedTextRender fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/truncated-text.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSpacerAndTruncatedTextRender"
+  ],
+  "upstream_reference": "packages/tui/src/components/truncated-text.ts",
+  "mutation": "tui/truncated_text.go: replace `for range t.PaddingY {\n\t\tresult = append(result, emptyLine)\n\t}\n\n\t// pig` with `// pig`; TestSpacerAndTruncatedTextRender fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/truncated-text.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSpacerAndTruncatedTextRender"
+  ],
+  "upstream_reference": "packages/tui/src/components/truncated-text.ts",
+  "mutation": "tui/truncated_text.go: replace `text := t.Content\n\tif idx := strings.Index(text, \"\\n\"); idx >= 0 {\n\t\ttext = text[:idx]\n\t}` with `text := t.Content`; TestSpacerAndTruncatedTextRender fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/truncated-text.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSpacerAndTruncatedTextRender"
+  ],
+  "upstream_reference": "packages/tui/src/components/truncated-text.ts",
+  "mutation": "tui/truncated_text.go: replace `widthx.TruncateToWidth(text, avail, \"...\", false)` with `widthx.TruncateToWidth(text, avail, \"\", false)`; TestSpacerAndTruncatedTextRender fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/truncated-text.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSpacerAndTruncatedTextRender"
+  ],
+  "upstream_reference": "packages/tui/src/components/truncated-text.ts",
+  "mutation": "tui/truncated_text.go: replace `avail := max(1, width-paddingX*2)` with `avail := max(1, width)`; TestSpacerAndTruncatedTextRender fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/truncated-text.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSpacerAndTruncatedTextRender"
+  ],
+  "upstream_reference": "packages/tui/src/components/truncated-text.ts",
+  "mutation": "tui/truncated_text.go: replace `if pad := width - widthx.VisibleWidth(line); pad > 0 {\n\t\tline += strings.Repeat(\" \", pad)\n\t}` with ``; TestSpacerAndTruncatedTextRender fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/truncated-text.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSpacerAndTruncatedTextRender"
+  ],
+  "upstream_reference": "packages/tui/src/components/truncated-text.ts",
+  "mutation": "tui/truncated_text.go: replace `left := strings.Repeat(\" \", paddingX)\n\tright := strings.Repeat(\" \", paddingX)` with `left := \"\"\n\tright := strings.Repeat(\" \", paddingX)`; TestSpacerAndTruncatedTextRender fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/h-stack.ts",
+  "package": "./tui",
+  "tests": [
+   "TestHStackAndVStackLayOutChildren"
+  ],
+  "upstream_reference": "packages/tui/src/components/h-stack.ts",
+  "mutation": "tui/stack.go: replace `return &HStack{Stack: newStack(\"hstack\", children, options)}` with `return &HStack{Stack: newStack(\"vstack\", children, options)}`; TestHStackAndVStackLayOutChildren fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/v-stack.ts",
+  "package": "./tui",
+  "tests": [
+   "TestHStackAndVStackLayOutChildren"
+  ],
+  "upstream_reference": "packages/tui/src/components/v-stack.ts",
+  "mutation": "tui/stack.go: replace `return &VStack{Stack: newStack(\"vstack\", children, options)}` with `return &VStack{Stack: newStack(\"hstack\", children, options)}`; TestHStackAndVStackLayOutChildren fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/h-stack.ts",
+  "package": "./tui",
+  "tests": [
+   "TestHStackAndVStackLayOutChildren"
+  ],
+  "upstream_reference": "packages/tui/src/components/h-stack.ts",
+  "mutation": "tui/stack.go: replace `safeWidth := max(1, width)\n\tviewport := LayoutViewport{Width: safeWidth, Height: maxSafeInteger}\n\tentries := visibleStackEntries(h.entries, viewport)` with `safeWidth := max(1, width)\n\tviewport := LayoutViewport{Width: safeWidth, Height: maxSafeInteger}\n\tentries := visibleStackEntries(h.entries[:1], viewport)`; TestHStackAndVStackLayOutChildren fails."
+ },
+ {
+  "upstream": "packages/tui/src/tui-alt-screen.ts",
+  "package": "./tui",
+  "tests": [
+   "TestAltScreenSetCopyOnSelectTogglesAutomaticCopy"
+  ],
+  "upstream_reference": "packages/tui/src/tui-alt-screen.ts",
+  "mutation": "tui/tui_alt_screen.go: replace `t.copyOnSelect = enabled` with `t.copyOnSelect = !enabled`; TestAltScreenSetCopyOnSelectTogglesAutomaticCopy fails."
+ },
+ {
+  "upstream": "packages/tui/src/tui-alt-screen.ts",
+  "package": "./tui",
+  "tests": [
+   "TestAltScreenSetCopyOnSelectTogglesAutomaticCopy"
+  ],
+  "upstream_reference": "packages/tui/src/tui-alt-screen.ts",
+  "mutation": "tui/tui_alt_screen.go: replace `t.copyOnSelect = enabled` with ``; TestAltScreenSetCopyOnSelectTogglesAutomaticCopy fails."
+ },
+ {
+  "upstream": "packages/tui/src/tui-alt-screen.ts",
+  "package": "./tui",
+  "tests": [
+   "TestAltScreenGetScreenLinesReturnsTheLastFrame"
+  ],
+  "upstream_reference": "packages/tui/src/tui-alt-screen.ts",
+  "mutation": "tui/tui_alt_screen.go: replace `return slices.Clone(t.previousScreen)` with `return t.previousScreen`; TestAltScreenGetScreenLinesReturnsTheLastFrame fails."
+ },
+ {
+  "upstream": "packages/tui/src/tui-alt-screen.ts",
+  "package": "./tui",
+  "tests": [
+   "TestAltScreenGetScreenLinesReturnsTheLastFrame"
+  ],
+  "upstream_reference": "packages/tui/src/tui-alt-screen.ts",
+  "mutation": "tui/tui_alt_screen.go: replace `return slices.Clone(t.previousScreen)` with `return nil`; TestAltScreenGetScreenLinesReturnsTheLastFrame fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/select-list.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSelectListBehavior",
+   "TestSelectListSetSelectedIndexClampsBothEnds"
+  ],
+  "upstream_reference": "packages/tui/src/components/select-list.ts",
+  "mutation": "tui/select_list.go: replace `l.selectedIndex = max(0, min(index, len(l.filteredItems)-1))\n\tl.Invalidate()` with `l.selectedIndex = max(0, min(index, len(l.filteredItems)))\n\tl.Invalidate()`; TestSelectListBehavior, TestSelectListSetSelectedIndexClampsBothEnds fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/select-list.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSelectListSetSelectedIndexClampsBothEnds"
+  ],
+  "upstream_reference": "packages/tui/src/components/select-list.ts",
+  "mutation": "tui/select_list.go: replace `l.selectedIndex = max(0, min(index, len(l.filteredItems)-1))\n\tl.Invalidate()` with `l.selectedIndex = min(index, len(l.filteredItems)-1)\n\tl.Invalidate()`; TestSelectListSetSelectedIndexClampsBothEnds fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/theme/theme.ts",
+  "package": "./tui",
+  "tests": [
+   "TestGetSelectListThemeColorsFromTheActiveTheme"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/theme/theme.ts",
+  "mutation": "tui/select_list.go: replace `return SelectListTheme{SelectedPrefix: accent, SelectedText: accent, Description: muted, ScrollInfo: muted, NoMatch: muted}` with `return SelectListTheme{SelectedPrefix: muted, SelectedText: accent, Description: muted, ScrollInfo: muted, NoMatch: muted}`; TestGetSelectListThemeColorsFromTheActiveTheme fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/theme/theme.ts",
+  "package": "./tui",
+  "tests": [
+   "TestGetSelectListThemeColorsFromTheActiveTheme"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/theme/theme.ts",
+  "mutation": "tui/select_list.go: replace `Description: muted, ScrollInfo: muted, NoMatch: muted}` with `Description: accent, ScrollInfo: muted, NoMatch: muted}`; TestGetSelectListThemeColorsFromTheActiveTheme fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/theme/theme.ts",
+  "package": "./tui",
+  "tests": [
+   "TestGetSelectListThemeColorsFromTheActiveTheme"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/theme/theme.ts",
+  "mutation": "tui/select_list.go: replace `Description: muted, ScrollInfo: muted, NoMatch: muted}` with `Description: muted, ScrollInfo: accent, NoMatch: muted}`; TestGetSelectListThemeColorsFromTheActiveTheme fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/theme/theme.ts",
+  "package": "./tui",
+  "tests": [
+   "TestGetSelectListThemeColorsFromTheActiveTheme"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/theme/theme.ts",
+  "mutation": "tui/select_list.go: replace `Description: muted, ScrollInfo: muted, NoMatch: muted}` with `Description: muted, ScrollInfo: muted, NoMatch: accent}`; TestGetSelectListThemeColorsFromTheActiveTheme fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/theme/theme.ts",
+  "package": "./tui",
+  "tests": [
+   "TestGetSelectListThemeColorsFromTheActiveTheme"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/theme/theme.ts",
+  "mutation": "tui/select_list.go: replace `return fg(selectListColor(ActiveTheme().Muted, \"\\x1b[38;2;128;128;128m\"), text)` with `return fg(selectListColor(ActiveTheme().Accent, \"\\x1b[38;2;128;128;128m\"), text)`; TestGetSelectListThemeColorsFromTheActiveTheme fails."
+ }
+]

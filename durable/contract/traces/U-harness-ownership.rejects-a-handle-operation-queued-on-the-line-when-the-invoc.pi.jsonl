@@ -1,0 +1,18 @@
+{"k":">","name":"harness.root","tick":3825119}
+{"k":"#","seq":1,"summary":"conversation document.create","tick":3825203,"begin":3825202}
+{"k":">","name":"harness.root().submit","tick":3825210}
+{"k":"#","seq":2,"summary":"document.change entry submission task","tick":3825259,"begin":3825258}
+{"k":"#","seq":3,"summary":"task","tick":3825280,"begin":3825279}
+{"k":"#","seq":4,"summary":"entry task","tick":3825369,"begin":3825368}
+{"k":"#","seq":5,"summary":"document.change","tick":3825401,"begin":3825400}
+{"k":"#","seq":6,"summary":"document.change entry task","tick":3825509,"begin":3825508}
+{"k":"#","seq":7,"summary":"task","tick":3825525,"begin":3825524}
+{"k":"#","seq":8,"summary":"document.change task","tick":3825583,"begin":3825582}
+{"k":"#","seq":9,"summary":"conversation document.create","tick":3825677,"begin":3825676}
+{"k":">","name":"harness.root().commit","tick":3825697}
+{"k":">","name":"harness.abortTask","tick":3825697}
+{"k":"#","seq":10,"summary":"task","tick":3825717,"begin":3825716}
+{"k":">","name":"harness.conversation","tick":3825767}
+{"k":">","name":"harness.conversation().entries","tick":3825787}
+{"k":"#","seq":11,"summary":"document.change entry task","tick":3825829,"begin":3825828}
+{"k":">","name":"harness.close","tick":3825850}

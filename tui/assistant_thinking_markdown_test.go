@@ -8,7 +8,7 @@ import (
 )
 
 func TestAssistantThinkingTransformIsSeparateAndTracksState(t *testing.T) {
-	b := NewAssistantMessageBlock(false)
+	b := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
 	state := "streaming"
 	b.SetMarkdownTransform(func(text string, _ int) string { return "text:" + text })
 	b.SetThinkingMarkdownTransform(func(text string, width int) string {
@@ -26,7 +26,7 @@ func TestAssistantThinkingTransformIsSeparateAndTracksState(t *testing.T) {
 	if b.Text() != "answer" || b.Thinking() != "reason" {
 		t.Fatal("transforms changed stored content")
 	}
-	b.SetHiddenThinking(true)
+	b.SetHideThinkingBlock(true)
 	b.SetThinkingMarkdownTransform(func(string, int) string {
 		t.Fatal("hidden thinking must not invoke its Markdown transformer")
 		return ""
@@ -38,7 +38,7 @@ func TestAssistantThinkingTransformIsSeparateAndTracksState(t *testing.T) {
 // tokens, not to headings, code spans, code fences or list markers. This exact
 // foreground/decorations oracle comes from the review's bold/code/list vector.
 func TestAssistantThinkingMarkdownUsesTokenStyles(t *testing.T) {
-	b := NewAssistantMessageBlock(false)
+	b := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
 	b.SetContent([]AssistantSegment{{Thinking: true, Text: "**Resumed bold** and `code`\n\n- first\n- second"}})
 	th := ActiveTheme()
 	style := "\x1b[3m" + th.ThinkingText

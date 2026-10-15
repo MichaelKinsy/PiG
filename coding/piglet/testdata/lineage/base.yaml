@@ -1,0 +1,10 @@
+name: base
+description: root of the lineage fixture
+release:
+  version: 1.0.0
+tools: [read, bash]
+skills:
+  - name: alpha
+    content: first
+  - name: beta
+    content: second

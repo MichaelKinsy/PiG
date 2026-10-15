@@ -13,13 +13,17 @@ import (
 
 // DecodeMessage decodes one JSON message by its role.
 func DecodeMessage(data []byte) (ai.Message, error) {
-	var probe struct {
-		Role string `json:"role"`
+	role, ok := leadingRole(data)
+	if !ok {
+		var probe struct {
+			Role string `json:"role"`
+		}
+		if err := json.Unmarshal(data, &probe); err != nil {
+			return nil, fmt.Errorf("message: %w", err)
+		}
+		role = probe.Role
 	}
-	if err := json.Unmarshal(data, &probe); err != nil {
-		return nil, fmt.Errorf("message: %w", err)
-	}
-	switch probe.Role {
+	switch role {
 	case "user":
 		type plain ai.UserMessage
 		var wire struct {
@@ -65,7 +69,28 @@ func DecodeMessage(data []byte) (ai.Message, error) {
 		message.Content = content
 		return message, nil
 	}
-	return nil, fmt.Errorf("message has unknown role %q", probe.Role)
+	return nil, fmt.Errorf("message has unknown role %q", role)
+}
+
+// leadingRole reads the role of a message whose first member is `"role":"<plain text>"`, the order every encoder writes
+// (marshalMessage puts the role first) and Pi stores. It reports false for anything else (another member first, an escape in
+// the role, whitespace), which DecodeMessage then decodes by role through a full decode; a record the fast path takes is still
+// validated by the typed decode that follows.
+func leadingRole(data []byte) (string, bool) {
+	const prefix = `{"role":"`
+	if len(data) <= len(prefix) || string(data[:len(prefix)]) != prefix {
+		return "", false
+	}
+	rest := data[len(prefix):]
+	for i, b := range rest {
+		switch {
+		case b == '"':
+			return string(rest[:i]), true
+		case b == '\\' || b < 0x20 || i > 16:
+			return "", false
+		}
+	}
+	return "", false
 }
 
 // DecodeUserContent decodes user message content held as a JSON value: a string or an array of text and image

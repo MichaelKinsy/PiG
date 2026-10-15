@@ -8,7 +8,7 @@ import (
 
 func TestAvailabilityFixtureClosesServicesBeforeTempCleanup(t *testing.T) {
 	// Availability setup owns Services separately from Session. Its background work must settle while the fixture paths still exist.
-	var services *Services
+	var services *AgentSessionServices
 	finished := make(chan error, 1)
 	defer func() {
 		if services != nil {

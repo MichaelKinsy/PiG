@@ -1,0 +1,307 @@
+[
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentNavigationSelectionAndCompletion"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `if e.done {\n\t\treturn\n\t}\n\tkb := GetTUIKeybindings()` with `kb := GetTUIKeybindings()`; TestExtensionSelectorComponentNavigationSelectionAndCompletion fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentNavigationSelectionAndCompletion"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `e.cursor = max(0, e.cursor-1)` with `e.cursor = e.cursor-1`; TestExtensionSelectorComponentNavigationSelectionAndCompletion fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentNavigationSelectionAndCompletion"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `e.cursor = min(len(e.options)-1, e.cursor+1)` with `e.cursor = e.cursor+1`; TestExtensionSelectorComponentNavigationSelectionAndCompletion fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentNavigationSelectionAndCompletion"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `kb.Matches(data, KBSelectUp) || data == \"k\"` with `kb.Matches(data, KBSelectUp)`; TestExtensionSelectorComponentNavigationSelectionAndCompletion fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentCallsSelectAndCancelCallbacks",
+   "TestExtensionSelectorComponentChildrenFollowUpstream",
+   "TestExtensionSelectorListFollowsSelectionAndCountdown"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `kb.Matches(data, KBSelectDown) || data == \"j\"` with `kb.Matches(data, KBSelectDown)`; TestExtensionSelectorComponentCallsSelectAndCancelCallbacks, TestExtensionSelectorComponentChildrenFollowUpstream, TestExtensionSelectorListFollowsSelectionAndCountdown fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentCallsSelectAndCancelCallbacks"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `kb.Matches(data, KBSelectUp) || data == \"k\"` with `data == \"k\"`; TestExtensionSelectorComponentCallsSelectAndCancelCallbacks fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentNavigationSelectionAndCompletion",
+   "TestExtensionSelectorComponentCallsSelectAndCancelCallbacks"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `kb.Matches(data, KBSelectDown) || data == \"j\"` with `data == \"j\"`; TestExtensionSelectorComponentCallsSelectAndCancelCallbacks, TestExtensionSelectorComponentNavigationSelectionAndCompletion fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentNavigationSelectionAndCompletion",
+   "TestExtensionSelectorComponentChildrenFollowUpstream",
+   "TestExtensionSelectorListFollowsSelectionAndCountdown"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `e.cursor = min(len(e.options)-1, e.cursor+1)\n\t\te.updateList()` with `e.cursor = min(len(e.options)-1, e.cursor+1)`; TestExtensionSelectorComponentChildrenFollowUpstream, TestExtensionSelectorComponentNavigationSelectionAndCompletion, TestExtensionSelectorListFollowsSelectionAndCountdown fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentNavigationSelectionAndCompletion"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `e.cursor, _ = PageSelectionIndex(kb, data, e.cursor, len(e.options), extensionSelectorPageSize)` with `_, _ = PageSelectionIndex(kb, data, e.cursor, len(e.options), extensionSelectorPageSize)`; TestExtensionSelectorComponentNavigationSelectionAndCompletion fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentNavigationSelectionAndCompletion",
+   "TestExtensionSelectorComponentCallsSelectAndCancelCallbacks"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `if selected := e.SelectedValue(); selected != \"\" {\n\t\t\te.done = true` with `if selected := e.SelectedValue(); selected != \"\" {`; TestExtensionSelectorComponentCallsSelectAndCancelCallbacks, TestExtensionSelectorComponentNavigationSelectionAndCompletion fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentCallsSelectAndCancelCallbacks",
+   "TestExtensionSelectorHandleInput_CancelStillWins"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `case kb.Matches(data, KBSelectCancel):\n\t\te.done = true\n\t\te.cancel = true` with `case kb.Matches(data, KBSelectCancel):\n\t\te.done = true`; TestExtensionSelectorComponentCallsSelectAndCancelCallbacks, TestExtensionSelectorHandleInput_CancelStillWins fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorHandleInput_CancelStillWins"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `case kb.Matches(data, KBSelectCancel):\n\t\te.done = true\n\t\te.cancel = true` with `case kb.Matches(data, KBSelectCancel):\n\t\te.cancel = true`; TestExtensionSelectorHandleInput_CancelStillWins fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentNavigationSelectionAndCompletion"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `func (e *ExtensionSelectorComponent) Cancel() {\n\tif e.done {\n\t\treturn\n\t}\n\te.done = true\n\te.cancel = true\n\te.Invalidate()` with `func (e *ExtensionSelectorComponent) Cancel() {\n\te.done = true\n\te.cancel = true\n\te.Invalidate()`; TestExtensionSelectorComponentNavigationSelectionAndCompletion fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentNavigationSelectionAndCompletion",
+   "TestExtensionSelectorComponentOptions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `func (e *ExtensionSelectorComponent) Cancel() {\n\tif e.done {\n\t\treturn\n\t}\n\te.done = true\n\te.cancel = true` with `func (e *ExtensionSelectorComponent) Cancel() {\n\tif e.done {\n\t\treturn\n\t}\n\te.done = true`; TestExtensionSelectorComponentNavigationSelectionAndCompletion, TestExtensionSelectorComponentOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentNavigationSelectionAndCompletion"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `if e.cancel {\n\t\treturn -1\n\t}` with `if false {\n\t\treturn -1\n\t}`; TestExtensionSelectorComponentNavigationSelectionAndCompletion fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentNavigationSelectionAndCompletion"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `if e.cancel || e.cursor < 0 || e.cursor >= len(e.options) {` with `if e.cursor < 0 || e.cursor >= len(e.options) {`; TestExtensionSelectorComponentNavigationSelectionAndCompletion fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentCallsSelectAndCancelCallbacks"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `if e.cancel || e.cursor < 0 || e.cursor >= len(e.options) {` with `if e.cancel || e.cursor < 0 {`; TestExtensionSelectorComponentCallsSelectAndCancelCallbacks fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentCountdownTitleDescriptionAndReplacement",
+   "TestExtensionSelectorComponentOptions",
+   "TestExtensionSelectorListFollowsSelectionAndCountdown"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `return title + \" (\" + strconv.Itoa(seconds) + \"s)\"` with `return title + \" \" + strconv.Itoa(seconds) + \"s\"`; TestExtensionSelectorComponentCountdownTitleDescriptionAndReplacement, TestExtensionSelectorComponentOptions, TestExtensionSelectorListFollowsSelectionAndCountdown fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentChildrenFollowUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `if e.descriptionText != \"\" {\n\t\te.Add(NewSpacer(1))` with `if e.descriptionText != \"\" {`; TestExtensionSelectorComponentChildrenFollowUpstream fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentCountdownTitleDescriptionAndReplacement",
+   "TestExtensionSelectorComponentChildrenFollowUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `e.description = description\n\te.descriptionText = \"\"\n\tif description != \"\" {` with `e.description = description\n\tif description != \"\" {`; TestExtensionSelectorComponentChildrenFollowUpstream, TestExtensionSelectorComponentCountdownTitleDescriptionAndReplacement fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentCountdownTitleDescriptionAndReplacement",
+   "TestExtensionSelectorComponentChildrenFollowUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `e.buildChildren()\n\te.Invalidate()\n}\n\n// SetCountdown` with `e.Invalidate()\n}\n\n// SetCountdown`; TestExtensionSelectorComponentChildrenFollowUpstream, TestExtensionSelectorComponentCountdownTitleDescriptionAndReplacement fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentCountdownTitleDescriptionAndReplacement"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `func (e *ExtensionSelectorComponent) StartCountdown(timeout time.Duration, dispatch func(func()), onTick, onExpire func()) {\n\te.Dispose()` with `func (e *ExtensionSelectorComponent) StartCountdown(timeout time.Duration, dispatch func(func()), onTick, onExpire func()) {`; TestExtensionSelectorComponentCountdownTitleDescriptionAndReplacement fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentCountdownTitleDescriptionAndReplacement"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `e.SetCountdown(seconds)\n\t\tonTick()` with `onTick()`; TestExtensionSelectorComponentCountdownTitleDescriptionAndReplacement fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentOptions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `if e.countdown != nil {\n\t\te.countdown.Dispose()\n\t\te.countdown = nil\n\t}` with `if e.countdown != nil {\n\t\te.countdown.Dispose()\n\t}`; TestExtensionSelectorComponentOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentNavigationSelectionAndCompletion",
+   "TestExtensionSelectorComponentCountdownTitleDescriptionAndReplacement",
+   "TestExtensionSelectorComponentChildrenFollowUpstream",
+   "TestExtensionSelectorListFollowsSelectionAndCountdown"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `return t.Fg(\"accent\", \"→ \") + t.Fg(\"accent\", e.options[i])` with `return \"  \" + t.Fg(\"text\", e.options[i])`; TestExtensionSelectorComponentChildrenFollowUpstream, TestExtensionSelectorComponentCountdownTitleDescriptionAndReplacement, TestExtensionSelectorComponentNavigationSelectionAndCompletion, TestExtensionSelectorListFollowsSelectionAndCountdown fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentNavigationSelectionAndCompletion",
+   "TestExtensionSelectorComponentChildrenFollowUpstream",
+   "TestExtensionSelectorListFollowsSelectionAndCountdown"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `if i == e.cursor {` with `if i == 0 {`; TestExtensionSelectorComponentChildrenFollowUpstream, TestExtensionSelectorComponentNavigationSelectionAndCompletion, TestExtensionSelectorListFollowsSelectionAndCountdown fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentNavigationSelectionAndCompletion"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `e.cursor = max(0, e.cursor-1)\n\t\te.updateList()` with `e.cursor = max(0, e.cursor-1)`; TestExtensionSelectorComponentNavigationSelectionAndCompletion fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentNavigationSelectionAndCompletion"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `e.cursor, _ = PageSelectionIndex(kb, data, e.cursor, len(e.options), extensionSelectorPageSize)\n\t\te.updateList()` with `e.cursor, _ = PageSelectionIndex(kb, data, e.cursor, len(e.options), extensionSelectorPageSize)`; TestExtensionSelectorComponentNavigationSelectionAndCompletion fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentNavigationSelectionAndCompletion"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `const extensionSelectorPageSize = 8` with `const extensionSelectorPageSize = 4`; TestExtensionSelectorComponentNavigationSelectionAndCompletion fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentCountdownTitleDescriptionAndReplacement"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `e.title = countdownTitle(e.baseTitle, seconds)` with `e.title = countdownTitle(e.title, seconds)`; TestExtensionSelectorComponentCountdownTitleDescriptionAndReplacement fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentCountdownTitleDescriptionAndReplacement"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `e.SetCountdown(seconds)\n\t\tonTick()` with `onTick()\n\t\te.SetCountdown(seconds)`; TestExtensionSelectorComponentCountdownTitleDescriptionAndReplacement fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "package": "./tui",
+  "tests": [
+   "TestExtensionSelectorComponentCountdownTitleDescriptionAndReplacement"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "mutation": "tui/extension_selector.go: replace `e.Cancel()\n\t\tonExpire()` with `onExpire()`; TestExtensionSelectorComponentCountdownTitleDescriptionAndReplacement fails."
+ }
+]

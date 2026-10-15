@@ -15,7 +15,7 @@ const altScreenFlashDefaultDurationMS = 1000
 type flashEntry struct {
 	id      int
 	message string
-	timer   *time.Timer
+	stop    func() bool
 }
 
 // AltScreenFlashContainer holds transient reverse-video messages composited by
@@ -34,12 +34,14 @@ type AltScreenFlashContainer struct {
 	entries       []flashEntry
 	nextID        int
 	requestRender func()
+	// afterFunc schedules a removal and returns its cancel; time.AfterFunc in production, a manual clock in the Pi comparison test.
+	afterFunc func(d time.Duration, f func()) (stop func() bool)
 }
 
 // NewAltScreenFlashContainer constructs a flash container that calls
 // requestRender whenever the visible set changes.
 func NewAltScreenFlashContainer(requestRender func()) *AltScreenFlashContainer {
-	return &AltScreenFlashContainer{requestRender: requestRender}
+	return &AltScreenFlashContainer{requestRender: requestRender, afterFunc: func(d time.Duration, f func()) func() bool { return time.AfterFunc(d, f).Stop }}
 }
 
 // Flash shows message in reverse video for durationMs, then removes it. The
@@ -51,7 +53,7 @@ func (c *AltScreenFlashContainer) Flash(message string, durationMs int) {
 	c.mu.Lock()
 	id := c.nextID
 	c.nextID++
-	timer := time.AfterFunc(time.Duration(durationMs)*time.Millisecond, func() {
+	stop := c.afterFunc(time.Duration(durationMs)*time.Millisecond, func() {
 		c.mu.Lock()
 		removed := false
 		for i, entry := range c.entries {
@@ -66,7 +68,7 @@ func (c *AltScreenFlashContainer) Flash(message string, durationMs int) {
 			c.requestRender()
 		}
 	})
-	c.entries = append(c.entries, flashEntry{id: id, message: message, timer: timer})
+	c.entries = append(c.entries, flashEntry{id: id, message: message, stop: stop})
 	c.mu.Unlock()
 	c.requestRender()
 }
@@ -75,7 +77,7 @@ func (c *AltScreenFlashContainer) Flash(message string, durationMs int) {
 func (c *AltScreenFlashContainer) Dispose() {
 	c.mu.Lock()
 	for _, entry := range c.entries {
-		entry.timer.Stop()
+		entry.stop()
 	}
 	c.entries = nil
 	c.mu.Unlock()

@@ -12,10 +12,10 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
-// CreateToolContext returns ctx with the extension [extension.Context] and the [extension.ToolContext] of the tool call toolCallID attached. ctx is the default cancellation of nested calls. Tool wrappers call it once per call, as upstream's wrapToolDefinition calls its context factory with the call id and signal.
+// CreateToolContext returns the [extension.ToolContext] of the tool call toolCallID: the extension context plus the callable tools and executeTool. ctx is the default cancellation of nested calls (upstream's `signal`).
 //
-// upstream: runner.ts:948-985 (createToolContext), wrapper.ts:14-19
-func (r *Runner) CreateToolContext(ctx context.Context, toolCallID string) context.Context {
+// upstream: runner.ts:958-985 (createToolContext(toolCallId, signal): ExtensionToolContext)
+func (r *Runner) CreateToolContext(ctx context.Context, toolCallID string) *extension.ToolContext {
 	ctx = r.dispatchContext(ctx)
 	base := extension.FromContext(ctx)
 	actions := extension.ToolActions{
@@ -26,7 +26,15 @@ func (r *Runner) CreateToolContext(ctx context.Context, toolCallID string) conte
 	if actions.ExecuteTool == nil {
 		actions.ExecuteTool = unavailableNestedCall
 	}
-	return extension.WithToolContext(ctx, extension.NewToolContext(base, toolCallID, ctx, actions))
+	return extension.NewToolContext(base, toolCallID, ctx, actions)
+}
+
+// ToolCallContext returns ctx with the extension [extension.Context] and the tool call's [extension.ToolContext] attached. Tool wrappers call it once per call, as upstream's wrapToolDefinition calls its context factory with the call id and signal.
+//
+// upstream: wrapper.ts:14-19, tool-definition-wrapper.ts:7-30
+func (r *Runner) ToolCallContext(ctx context.Context, toolCallID string) context.Context {
+	ctx = r.dispatchContext(ctx)
+	return extension.WithToolContext(ctx, r.CreateToolContext(ctx, toolCallID))
 }
 
 // unavailableNestedCall is upstream's outcome when the runner has no executeTool action: an error whose call id is `<caller>/0`.

@@ -2,7 +2,6 @@ package ai
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -31,24 +30,14 @@ func (s modelsRuntimeCatalogStore) Delete(ctx context.Context, id string) error 
 
 func modelsRuntimeStored(t *testing.T, models ...*Model) ModelsStoreEntry {
 	t.Helper()
-	raw, err := encodeModelsCatalog(AnyModels(models))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return ModelsStoreEntry{Models: raw}
+	return ModelsStoreEntry{Models: AnyModels(models)}
 }
 func modelsRuntimeStoredID(t *testing.T, entry *ModelsStoreEntry) string {
 	t.Helper()
 	if entry == nil || len(entry.Models) == 0 {
 		t.Fatal("missing stored model")
 	}
-	var value struct {
-		ID string `json:"id"`
-	}
-	if err := json.Unmarshal(entry.Models[0], &value); err != nil {
-		t.Fatal(err)
-	}
-	return value.ID
+	return entry.Models[0].ModelID()
 }
 func modelsRuntimeFactory(id string, auth ProviderAuth, fetch func(RefreshModelsContext) ([]AnyModel, error)) *ModelsProvider {
 	return CreateProvider(CreateProviderOptions{ID: id, Auth: auth, Models: []AnyModel{}, FetchModels: fetch, API: &ProviderStreams{Stream: func(context.Context, *Model, TranscriptContext, StreamOptions) (*AssistantMessageEventStream, error) {
@@ -212,6 +201,24 @@ func TestModelsRuntimeRefreshUpstream(t *testing.T) {
 		models.Refresh(t.Context(), ModelsRefreshOptions{Force: new(true)})
 		if !reflect.DeepEqual(effective, &Credential{Type: CredentialAPIKey, Key: "ambient-key"}) || force == nil || !*force || unconfigured != 0 {
 			t.Fatalf("credential=%+v force=%v unconfigured=%d", effective, force, unconfigured)
+		}
+	})
+	// pi-mono ee409a85 packages/ai/test/models-runtime.test.ts "passes the registered provider's base URL, including wrapper overrides, to refreshModels".
+	t.Run("passes the registered provider's base URL, including wrapper overrides, to refreshModels", func(t *testing.T) {
+		// A models.json baseUrl (e.g. a regional OpenRouter host) is applied by a wrapper around the built-in provider. The built-in refresh must still request that URL.
+		var baseURLs []string
+		inner := modelsRuntimeProvider(modelsRuntimeProviderInput{id: "dynamic", refreshModels: func(refresh RefreshModelsContext) error {
+			baseURLs = append(baseURLs, refresh.BaseURL)
+			return nil
+		}})
+		inner.BaseURL = "https://default.example.test/v1"
+		wrapper := *inner
+		wrapper.BaseURL = "https://regional.example.test/v1"
+		models := CreateModels()
+		models.SetProvider(&wrapper)
+		models.Refresh(t.Context())
+		if want := []string{"https://regional.example.test/v1", "https://regional.example.test/v1"}; !reflect.DeepEqual(baseURLs, want) {
+			t.Fatalf("base URLs = %v, want %v", baseURLs, want)
 		}
 	})
 	// .upstream/v0.87.1/packages/ai/test/models-runtime.test.ts:428

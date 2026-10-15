@@ -1,0 +1,247 @@
+// Prototype evidence for docs/design/jsparity.md (not compiled in the tree).
+// Run: mkdir -p tmp/jsparityproto && cp docs/plan/evidence/jsparity-prototype_test.go.txt tmp/jsparityproto/proto_test.go &&
+// go test ./tmp/jsparityproto -run 'TestShape|TestToolResultShape' -bench . -benchtime 200x
+// TestShape and TestToolResultShape assert the append writer bytes equal the current Pi-facing bytes; the benchmarks are the cost table.
+package jsparityproto
+
+import (
+	"bytes"
+	"encoding/json"
+	"math"
+	"strconv"
+	"testing"
+	"unicode/utf8"
+
+	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/sessionentry"
+)
+
+const hex = "0123456789abcdef"
+
+func appendString(dst []byte, s string) []byte {
+	dst = append(dst, '"')
+	start := 0
+	for i := 0; i < len(s); {
+		c := s[i]
+		if c >= 0x20 && c != '"' && c != '\\' && c < utf8.RuneSelf {
+			i++
+			continue
+		}
+		if c < utf8.RuneSelf {
+			dst = append(dst, s[start:i]...)
+			switch c {
+			case '"', '\\':
+				dst = append(dst, '\\', c)
+			case '\n':
+				dst = append(dst, '\\', 'n')
+			case '\r':
+				dst = append(dst, '\\', 'r')
+			case '\t':
+				dst = append(dst, '\\', 't')
+			case '\b':
+				dst = append(dst, '\\', 'b')
+			case '\f':
+				dst = append(dst, '\\', 'f')
+			default:
+				dst = append(dst, '\\', 'u', '0', '0', hex[c>>4], hex[c&15])
+			}
+			i++
+			start = i
+			continue
+		}
+		_, size := utf8.DecodeRuneInString(s[i:])
+		i += size
+	}
+	dst = append(dst, s[start:]...)
+	return append(dst, '"')
+}
+
+func appendNumber(dst []byte, f float64) []byte {
+	if math.IsNaN(f) || math.IsInf(f, 0) {
+		return append(dst, "null"...)
+	}
+	if f == 0 {
+		return append(dst, '0')
+	}
+	if f == math.Trunc(f) && math.Abs(f) < 1<<53 {
+		return strconv.AppendInt(dst, int64(f), 10)
+	}
+	return strconv.AppendFloat(dst, f, 'g', -1, 64)
+}
+
+func appendAssistant(dst []byte, m *agent.AssistantMessage) []byte {
+	dst = append(dst, `{"role":"assistant","content":[`...)
+	for i, block := range m.Content {
+		if i > 0 {
+			dst = append(dst, ',')
+		}
+		switch b := block.(type) {
+		case ai.ThinkingContent:
+			dst = append(dst, `{"type":"thinking","thinking":`...)
+			dst = appendString(dst, b.Thinking)
+			if b.ThinkingSignature != "" {
+				dst = append(dst, `,"thinkingSignature":`...)
+				dst = appendString(dst, b.ThinkingSignature)
+			}
+			dst = append(dst, '}')
+		case ai.TextContent:
+			dst = append(dst, `{"type":"text","text":`...)
+			dst = appendString(dst, b.Text)
+			dst = append(dst, '}')
+		case ai.ToolCall:
+			dst = append(dst, `{"type":"toolCall","id":`...)
+			dst = appendString(dst, b.ID)
+			dst = append(dst, `,"name":`...)
+			dst = appendString(dst, b.Name)
+			dst = append(dst, `,"arguments":{`...)
+			first := true
+			for k, v := range b.Arguments {
+				if !first {
+					dst = append(dst, ',')
+				}
+				first = false
+				dst = appendString(dst, k)
+				dst = append(dst, ':')
+				dst = appendString(dst, v.(string))
+			}
+			dst = append(dst, "}}"...)
+		}
+	}
+	dst = append(dst, `],"api":`...)
+	dst = appendString(dst, string(m.API))
+	dst = append(dst, `,"provider":`...)
+	dst = appendString(dst, m.Provider)
+	dst = append(dst, `,"model":`...)
+	dst = appendString(dst, m.ModelID)
+	u := m.Usage
+	dst = append(dst, `,"usage":{"input":`...)
+	dst = appendNumber(dst, float64(u.Input))
+	dst = append(dst, `,"output":`...)
+	dst = appendNumber(dst, float64(u.Output))
+	dst = append(dst, `,"cacheRead":`...)
+	dst = appendNumber(dst, float64(u.CacheRead))
+	dst = append(dst, `,"cacheWrite":`...)
+	dst = appendNumber(dst, float64(u.CacheWrite))
+	dst = append(dst, `,"totalTokens":`...)
+	dst = appendNumber(dst, float64(u.TotalTokens))
+	dst = append(dst, `,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}}`...)
+	dst = append(dst, `,"stopReason":`...)
+	dst = appendString(dst, string(m.StopReason))
+	dst = append(dst, `,"timestamp":`...)
+	dst = appendNumber(dst, float64(m.Timestamp))
+	return append(dst, '}')
+}
+
+func message() agent.AgentMessage {
+	return agent.AgentMessage{Assistant: &agent.AssistantMessage{
+		Role: agent.RoleAssistant, API: ai.API("openai-responses"), Provider: "openai", ModelID: "gpt-5",
+		Content: []ai.AssistantContentBlock{
+			ai.ThinkingContent{Thinking: "considering the next operation", ThinkingSignature: "sig"},
+			ai.TextContent{Text: "I will inspect the requested files."},
+			ai.ToolCall{ID: "call-1", Name: "read", Arguments: ai.JsonObject{"path": "README.md"}},
+		},
+		Usage:      &ai.Usage{Input: 1000, Output: 50, CacheRead: 900, TotalTokens: 1950},
+		StopReason: "toolUse", Timestamp: 1_700_000_000_000,
+	}}
+}
+
+func TestShape(t *testing.T) {
+	m := message()
+	want, _ := json.Marshal(m)
+	got := appendAssistant(nil, m.Assistant)
+	if !bytes.Equal(want, got) {
+		t.Fatalf("len=%d\nwant %s\ngot  %s", len(want), want, got)
+	}
+}
+
+func appendToolResult(dst []byte, m *agent.ToolResultMessage) []byte {
+	dst = append(dst, `{"role":"toolResult","toolCallId":"call-1","toolName":"read","content":[{"type":"text","text":`...)
+	dst = appendString(dst, m.Content[0].(ai.TextContent).Text)
+	return append(dst, `}],"isError":false,"timestamp":1700000000000}`...)
+}
+
+// The Pi-facing bytes of a tool result are the message member of its session line: JSON.stringify writes <, > and & literally.
+// json.Marshal(AgentMessage) is not Pi-facing: it escapes them as \u003c, \u003e and \u0026.
+func TestToolResultShape(t *testing.T) {
+	m := toolResult()
+	got := appendToolResult(nil, m.ToolResult)
+	entry := sessionentry.MessageEntry{SessionEntryBase: sessionentry.SessionEntryBase{Type: "message", ID: "a1b2c3d4", ParentID: new("00ff00ff"), Timestamp: "2026-10-10T10:00:00.000Z"}, Message: m}
+	line, err := entry.MarshalJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	prefix := []byte(`{"type":"message","id":"a1b2c3d4","parentId":"00ff00ff","timestamp":"2026-10-10T10:00:00.000Z","message":`)
+	if want := append(append(prefix, got...), '}'); !bytes.Equal(line, want) {
+		t.Fatalf("session line differs from the writer")
+	}
+	if plain, _ := json.Marshal(m); bytes.Equal(plain, got) || !bytes.Contains(plain, []byte(`\u003cworld\u003e`)) {
+		t.Fatalf("json.Marshal(AgentMessage) no longer HTML-escapes; update the design's cost table")
+	}
+}
+
+func BenchmarkCurrent(b *testing.B) {
+	m := message()
+	b.ReportAllocs()
+	for b.Loop() {
+		_, _ = json.Marshal(m)
+	}
+}
+
+func BenchmarkAppendWriter(b *testing.B) {
+	m := message()
+	buf := make([]byte, 0, 1024)
+	b.ReportAllocs()
+	for b.Loop() {
+		buf = appendAssistant(buf[:0], m.Assistant)
+	}
+}
+
+func bigText() string {
+	b := make([]byte, 0, 50000)
+	for len(b) < 50000 {
+		b = append(b, "func main() {\n\tfmt.Println(\"hello <world> & co\")\n}\n"...)
+	}
+	return string(b)
+}
+
+func toolResult() agent.AgentMessage {
+	return agent.AgentMessage{ToolResult: &agent.ToolResultMessage{
+		ToolCallID: "call-1", ToolName: "read",
+		Content:    []ai.ToolResultMessageContent{ai.TextContent{Text: bigText()}},
+		Timestamp:  1_700_000_000_000,
+	}}
+}
+
+func BenchmarkToolResultCurrent(b *testing.B) {
+	m := toolResult()
+	b.ReportAllocs()
+	for b.Loop() {
+		_, _ = json.Marshal(m)
+	}
+}
+
+func BenchmarkToolResultAppend(b *testing.B) {
+	m := toolResult()
+	buf := make([]byte, 0, 64<<10)
+	b.ReportAllocs()
+	for b.Loop() {
+		buf = appendToolResult(buf[:0], m.ToolResult)
+	}
+}
+
+func BenchmarkSessionLineToolResultCurrent(b *testing.B) {
+	entry := sessionentry.MessageEntry{SessionEntryBase: sessionentry.SessionEntryBase{Type: "message", ID: "a1b2c3d4", ParentID: new("00ff00ff"), Timestamp: "2026-10-10T10:00:00.000Z"}, Message: toolResult()}
+	b.ReportAllocs()
+	for b.Loop() {
+		_, _ = entry.MarshalJSON()
+	}
+}
+
+func BenchmarkSessionLineAssistantCurrent(b *testing.B) {
+	entry := sessionentry.MessageEntry{SessionEntryBase: sessionentry.SessionEntryBase{Type: "message", ID: "a1b2c3d4", ParentID: new("00ff00ff"), Timestamp: "2026-10-10T10:00:00.000Z"}, Message: message()}
+	b.ReportAllocs()
+	for b.Loop() {
+		_, _ = entry.MarshalJSON()
+	}
+}

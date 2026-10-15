@@ -122,6 +122,10 @@ export async function runPrintMode(runtimeHost, options) {
                             writeRawStdout(`${content.text}\n`);
                         }
                     }
+                    if (assistantMsg.stopReason === "length") {
+                        console.error("Response was truncated: the model reached its output token limit.");
+                        exitCode = 1;
+                    }
                 }
             }
         }

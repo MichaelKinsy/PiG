@@ -404,7 +404,21 @@ func NpmInstallArgs(manager, spec, installRoot, registry string) []string {
 	return args
 }
 
+// requireAbsoluteManagedPath rejects a managed package path that is not absolute. Pi resolves its agentDir and cwd to absolute paths
+// in the DefaultPackageManager constructor (package-manager.ts:823 resolvePath), and both are required, so every root it writes is
+// absolute. A Go caller that leaves the agent directory or cwd empty would otherwise write npm/ or git/ into the process directory.
+func requireAbsoluteManagedPath(path string) error {
+	if !filepath.IsAbs(path) {
+		return fmt.Errorf("managed package path %q is not absolute: the agent directory or cwd is empty", path)
+	}
+	return nil
+}
+
+// EnsureManagedPackageRoot creates a managed npm project at root (package-manager.ts ensureNpmProject). root must be absolute.
 func EnsureManagedPackageRoot(root string) error {
+	if err := requireAbsoluteManagedPath(root); err != nil {
+		return err
+	}
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		return err
 	}
@@ -443,6 +457,9 @@ func InstallManagedGit(cwd, agentDir string, sm *codingagent.SettingsManager, so
 
 // InstallGitCheckout shares update, dependency repair, and failed-clone cleanup between installed and temporary sources. An empty root leaves temporary-cache parents intact, as Pi does.
 func InstallGitCheckout(sm *codingagent.SettingsManager, ref sourceref.Ref, checkout, packageRoot, root string) (err error) {
+	if err := requireAbsoluteManagedPath(checkout); err != nil {
+		return err
+	}
 	if _, statErr := os.Stat(checkout); statErr == nil {
 		if err := RequireGitSubdirectoryWithinCheckout(checkout, packageRoot); err != nil {
 			return err

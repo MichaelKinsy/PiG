@@ -20,7 +20,7 @@ func TestEditorFullWidthInvalidUTF8DoesNotPanic(t *testing.T) {
 	if len(rows) == 0 {
 		t.Fatal("render returned no rows")
 	}
-	if !strings.Contains(rows[0], "\033[7mx\033[0m") {
+	if !strings.Contains(rows[0], widthx.RenderFakeCursor("x")) {
 		t.Fatalf("cursor did not highlight the final grapheme: %q", rows[0])
 	}
 }
@@ -32,7 +32,7 @@ func TestEditorFullWidthCursorHighlightsFinalGrapheme(t *testing.T) {
 
 	width := widthx.VisibleWidth(text)
 	rows := e.buildVisualLines(width, width)
-	if !strings.Contains(rows[0], "\033[7me\u0301\033[0m") {
+	if !strings.Contains(rows[0], widthx.RenderFakeCursor("e\u0301")) {
 		t.Fatalf("cursor did not highlight the final grapheme: %q", rows[0])
 	}
 }

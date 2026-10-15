@@ -30,6 +30,16 @@ func decodeUsageEntry(raw json.RawMessage) (UsageEntry, bool) {
 // gets its transcript notice. Mirrors the entry_appended case of upstream
 // interactive-mode.ts handleEvent.
 func (m *InteractiveMode) handleEntryAppended(raw json.RawMessage) {
+	var head struct {
+		Type string `json:"type"`
+	}
+	if json.Unmarshal(raw, &head) == nil && head.Type == "context_edit" {
+		// Pi's footer asks session.getContextUsage() on every render (footer.ts:143), so an edit that drops a message from the projection (a
+		// length-truncated reply, a recovered attempt) changes the percentage at once; PiG's footer holds a stored estimate to refresh.
+		m.refreshFooterContextUsage()
+		m.tuiInst.RequestRender()
+		return
+	}
 	entry, ok := decodeUsageEntry(raw)
 	if !ok {
 		return

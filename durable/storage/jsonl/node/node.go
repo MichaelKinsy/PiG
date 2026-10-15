@@ -155,6 +155,9 @@ func (fileSystem *NodeFileSystem) WriteFile(ctx context.Context, path string, co
 	if err := os.MkdirAll(filepath.Dir(resolved), 0o777); err != nil {
 		return toFileError(err, resolved)
 	}
+	if err := aborted(ctx, resolved); err != nil {
+		return err
+	}
 	if err := os.WriteFile(resolved, contentBytes(content), 0o666); err != nil {
 		return toFileError(err, resolved)
 	}
@@ -172,6 +175,9 @@ func (fileSystem *NodeFileSystem) AppendFile(ctx context.Context, path string, c
 	}
 	if err := os.MkdirAll(filepath.Dir(resolved), 0o777); err != nil {
 		return toFileError(err, resolved)
+	}
+	if err := aborted(ctx, resolved); err != nil {
+		return err
 	}
 	file, err := os.OpenFile(resolved, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0o666)
 	if err != nil {
@@ -331,14 +337,14 @@ func (fileSystem *NodeFileSystem) Remove(ctx context.Context, path string, optio
 	}
 	recursive := options != nil && options.Recursive
 	force := options != nil && options.Force
-	if recursive {
-		if _, statErr := os.Lstat(resolved); statErr != nil {
-			err = statErr
-		} else {
-			err = os.RemoveAll(resolved)
-		}
-	} else {
-		err = os.Remove(resolved)
+	// Node's rm refuses a directory, empty or not, unless recursive is set.
+	stats, err := os.Lstat(resolved)
+	switch {
+	case err != nil:
+	case stats.IsDir() && !recursive:
+		return env.NewFileError(env.FileErrorUnknown, "Path is a directory: rm returned EISDIR (is a directory) "+resolved, resolved, nil)
+	default:
+		err = os.RemoveAll(resolved)
 	}
 	if err != nil {
 		if force && errors.Is(err, fs.ErrNotExist) {

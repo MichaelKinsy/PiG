@@ -216,9 +216,13 @@ func generateModelsDev(ctx context.Context, options modelsDevGeneratorOptions) e
 	if err != nil {
 		return err
 	}
-	// models.dev takes priority over OpenRouter for an id both list (generate-models.ts:3443, `??=`).
+	aiGateway, err := fetchAiGatewayModels(ctx, aiGatewayModelsURL, options.Strict)
+	if err != nil {
+		return err
+	}
+	// models.dev takes priority over OpenRouter, and both over the AI Gateway, for an id they list (generate-models.ts:2723-2725 order, 3443 `??=`).
 	catalogs := generatedCatalogs{Chat: make(map[string]map[string]generatedCatalogModel), Image: make(map[string]map[string]openRouterImageModel), Classifier: make(map[string]map[string]openRouterClassifierModel)}
-	for _, model := range append(models, openRouter.Chat...) {
+	for _, model := range slices.Concat(models, openRouter.Chat, aiGateway.Chat) {
 		if catalogs.Chat[model.Provider] == nil {
 			catalogs.Chat[model.Provider] = make(map[string]generatedCatalogModel)
 		}
@@ -234,7 +238,7 @@ func generateModelsDev(ctx context.Context, options modelsDevGeneratorOptions) e
 			catalogs.Image[model.Provider][model.ID] = model
 		}
 	}
-	for _, model := range openRouter.Classifiers {
+	for _, model := range slices.Concat(openRouter.Classifiers, aiGateway.Classifiers) {
 		if catalogs.Classifier[model.Provider] == nil {
 			catalogs.Classifier[model.Provider] = make(map[string]openRouterClassifierModel)
 		}

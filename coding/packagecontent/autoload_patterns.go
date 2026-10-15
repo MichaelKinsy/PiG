@@ -9,8 +9,8 @@ type PatternState struct {
 	Enabled bool
 }
 
-// ApplyAutoloadDisabledPatterns returns only paths touched by a pattern, with later patterns replacing their state. Plus/minus match exact paths; other entries use glob matching.
-func ApplyAutoloadDisabledPatterns(allPaths, patterns []string, baseDir string, kind Kind) []PatternState {
+// ApplyAutoloadDisabledPatterns returns only paths touched by a pattern, with later patterns replacing their state. Plus/minus match exact paths; other entries use minimatch, and fail where its Minimatch constructor throws (applyAutoloadDisabledPatterns, package-manager.ts:793-810).
+func ApplyAutoloadDisabledPatterns(allPaths, patterns []string, baseDir string, kind Kind) ([]PatternState, error) {
 	result := make([]PatternState, 0)
 	indices := map[string]int{}
 	for _, pattern := range patterns {
@@ -20,12 +20,17 @@ func ApplyAutoloadDisabledPatterns(allPaths, patterns []string, baseDir string, 
 		}
 		enabled := !strings.HasPrefix(pattern, "-") && !strings.HasPrefix(pattern, "!")
 		exact := strings.HasPrefix(pattern, "+") || strings.HasPrefix(pattern, "-")
+		filters := newFilterPatterns([]string{target})
 		for _, file := range allPaths {
-			matches := false
+			var matches bool
+			var err error
 			if exact {
-				matches = matchesAnyExactPattern(file, []string{target}, baseDir, kind)
+				matches, err = matchesAnyExactPattern(file, []string{target}, baseDir, kind)
 			} else {
-				matches = matchesAnyPattern(file, []string{target}, baseDir, kind)
+				matches, err = matchesAnyPattern(file, filters, baseDir, kind)
+			}
+			if err != nil {
+				return nil, err
 			}
 			if !matches {
 				continue
@@ -38,5 +43,5 @@ func ApplyAutoloadDisabledPatterns(allPaths, patterns []string, baseDir string, 
 			}
 		}
 	}
-	return result
+	return result, nil
 }

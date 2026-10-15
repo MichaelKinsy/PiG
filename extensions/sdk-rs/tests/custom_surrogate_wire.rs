@@ -87,6 +87,8 @@ fn custom_component_receives_lone_units_without_disconnect() {
     );
     let thread = std::thread::spawn(move || ext.run_with_socket(socket.to_str().unwrap()));
     let (stream, _) = listener.accept().unwrap();
+    // A missing frame fails the test after 10 s instead of hanging it.
+    stream.set_read_timeout(Some(std::time::Duration::from_secs(10))).unwrap();
     let mut runtime = Runtime {
         stream,
         thread: Some(thread),

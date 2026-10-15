@@ -33,7 +33,7 @@ func TestSessionSelectorDeleteRefreshImmediatelyRemovesSession(t *testing.T) {
 			currentKeep, allKeep := scopeSession("current-keep"), scopeSession("all-keep")
 			currentKeep.Name, allKeep.Name = "current-survivor", "all-survivor"
 			if tc.child {
-				currentKeep.ParentSession = victim.Path
+				currentKeep.ParentSessionPath = victim.Path
 			}
 			current, all := []SessionInfo{victim}, []SessionInfo{victim}
 			if !tc.only {
@@ -58,7 +58,7 @@ func TestSessionSelectorDeleteRefreshImmediatelyRemovesSession(t *testing.T) {
 					return result
 				}
 			}
-			var s *sessionSelector
+			var s *SessionSelectorComponent
 			s = newSessionSelectorWithLoaders(loader(current), loader(all), nil, unlinkDeleter(func(path string) error {
 				if path != victim.Path {
 					t.Fatalf("deleted path=%q", path)

@@ -3,6 +3,7 @@ package subprocess
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"runtime"
 	"sync"
@@ -10,9 +11,9 @@ import (
 	"time"
 	"weak"
 
-	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -122,7 +123,10 @@ type toolRenderProxy struct {
 	width      int
 	generation uint64
 	requesting bool
+	retry      renderRetry
 	dirty      bool
+	// view is the view of the renderer's results (D107).
+	view rendererView
 }
 
 // makeToolRenderCall returns the renderCall the host registers for a
@@ -180,6 +184,8 @@ func (h *Host) toolRenderProxyFor(me *managedExt, toolName, phase string, contex
 		Expanded:         context.Expanded,
 		ShowImages:       context.ShowImages,
 		IsError:          context.IsError,
+		OutputPad:        context.OutputPad,
+		DurationMs:       context.DurationMs,
 	}
 	proxy.update(payload)
 	return proxy
@@ -189,17 +195,7 @@ func (h *Host) toolRenderProxyFor(me *managedExt, toolName, phase string, contex
 // {content, details} shape.
 func renderToolResultPayload(result extension.AgentToolResult) *RenderToolResult {
 	out := &RenderToolResult{Content: []RenderToolContent{}}
-	var toolResult agent.AgentToolResult
-	switch value := result.(type) {
-	case agent.AgentToolResult:
-		toolResult = value
-	case *agent.AgentToolResult:
-		if value != nil {
-			toolResult = *value
-		}
-	default:
-		return out
-	}
+	toolResult := result
 	for _, block := range toolResult.Content {
 		switch value := block.(type) {
 		case ai.TextContent:
@@ -264,8 +260,17 @@ func (p *toolRenderProxy) Render(width int) []string {
 			start = true
 		}
 	}
+	// pig divergence (D56): the first frame after an abandoned render's retry came due asks the extension again.
+	if p.retry.takeDue() && !start && !p.requesting && p.width > 0 {
+		p.requesting = true
+		start = true
+	}
 	failed, fallback := p.failed, p.fallback
-	lines := append([]string(nil), widthx.FrameAt(p.lines, p.linesWidth, width)...)
+	lines := widthx.FrameAt(p.lines, p.linesWidth, width)
+	if live, ok := p.view.live(width); ok && p.linesWidth == width {
+		lines = live
+	}
+	lines = append([]string(nil), lines...)
 	p.mu.Unlock()
 	if start {
 		go p.requestLoop()
@@ -283,15 +288,20 @@ func (p *toolRenderProxy) Render(width int) []string {
 // failed reports a renderer that threw.
 func (p *toolRenderProxy) RenderNow(width int) (lines []string, failed, answered bool) {
 	p.mu.Lock()
+	generation := p.generation
 	payload := p.payload
 	payload.Width = width
 	payload.Rerender = p.rerender
 	p.rerender = false
 	p.mu.Unlock()
-	lines, failed, answered = p.request(payload)
+	lines, failed, answered, _ = p.request(payload)
 	p.mu.Lock()
 	if answered {
 		p.lines, p.linesWidth, p.failed = lines, width, failed
+		// An answer to the current inputs at the current width ends a pending retry.
+		if generation == p.generation && width == p.width {
+			p.retry.answered()
+		}
 	} else if payload.Rerender {
 		p.rerender = true
 	}
@@ -315,7 +325,7 @@ func (p *toolRenderProxy) requestLoop() {
 		p.rerender = false
 		p.mu.Unlock()
 
-		lines, failed, ok := p.request(payload)
+		lines, failed, ok, stall := p.request(payload)
 
 		p.mu.Lock()
 		if !ok && payload.Rerender {
@@ -330,9 +340,20 @@ func (p *toolRenderProxy) requestLoop() {
 		}
 		if current {
 			p.requesting = false
+			var epoch uint64
+			var backoff time.Duration
+			var settled <-chan struct{}
+			if stall != nil {
+				epoch, backoff, settled = p.retry.abandoned(p.inactivity, stall.Settled)
+			} else {
+				p.retry.answered()
+			}
 			p.mu.Unlock()
 			if ok && p.repaint != nil {
 				p.repaint()
+			}
+			if stall != nil {
+				p.session.conn.afterRetryBackoff(settled, backoff, func() { p.retryDue(epoch) }, nil)
 			}
 			return
 		}
@@ -340,28 +361,62 @@ func (p *toolRenderProxy) requestLoop() {
 	}
 }
 
+// retryDue makes the retry of abandonment epoch due and asks for the frame
+// that sends it. The proxy reports itself dirty, so the card renders it again
+// instead of reusing its cached lines.
+func (p *toolRenderProxy) retryDue(epoch uint64) {
+	p.mu.Lock()
+	due := p.retry.comeDue(epoch)
+	if due {
+		p.dirty = true
+	}
+	p.mu.Unlock()
+	if due && p.repaint != nil {
+		p.repaint()
+	}
+}
+
 // request runs one render in the extension. failed reports a renderer that
-// threw; ok is false when no answer arrived.
-func (p *toolRenderProxy) request(payload RenderToolPayload) (lines []string, failed, ok bool) {
+// threw; ok is false when no answer arrived, and stall is set when the
+// renderer inactivity boundary abandoned the request.
+func (p *toolRenderProxy) request(payload RenderToolPayload) (lines []string, failed, ok bool, stall *HandlerStalledError) {
 	args, err := json.Marshal(payload)
 	if err != nil {
-		return nil, false, false
+		return nil, false, false, nil
 	}
 	// pig divergence (D56): a tool renderer generation has the renderer
-	// inactivity boundary off the TUI loop and keeps the last frame.
+	// inactivity boundary off the TUI loop and keeps the last frame;
+	// renderRetry asks again once the extension can answer.
 	resp, err := p.session.conn.requestWithInactivity(context.Background(), &Envelope{
 		Type:    MsgRequest,
 		Request: &RequestPayload{Method: RequestRenderTool, Tool: p.tool, Args: args},
 	}, p.inactivity, RequestRenderTool+" "+p.tool)
+	if abandoned, isStall := errors.AsType[*HandlerStalledError](err); isStall {
+		return nil, false, false, abandoned
+	}
 	if err != nil || resp == nil || resp.Response == nil {
-		return nil, false, false
+		return nil, false, false, nil
 	}
 	if resp.Response.Error != nil {
-		return nil, true, true
+		return nil, true, true, nil
 	}
 	var result RenderResult
 	if err := json.Unmarshal(resp.Response.Result, &result); err != nil {
-		return nil, true, true
+		return nil, true, true, nil
 	}
-	return result.Lines, false, true
+	// A rejected view keeps the last frame, as a missing answer does.
+	lines, ok = p.view.apply(p.session.conn, p.repaint, result, payload.Width)
+	return lines, false, ok, nil
+}
+
+// FrontendView reports the structure of the renderer's result to a D91
+// frontend (D107) while the result shown is the one laid out at width.
+func (p *toolRenderProxy) FrontendView(width int) *frontend.View {
+	p.mu.Lock()
+	current := len(p.lines) > 0 && p.linesWidth == width && !p.failed
+	p.mu.Unlock()
+	if !current {
+		return nil
+	}
+	return p.view.frontendView(width)
 }

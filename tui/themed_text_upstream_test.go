@@ -1,5 +1,7 @@
 package tui
 
+// pi: packages/coding-agent/src/modes/interactive/components/themed-text.ts
+
 import (
 	"strings"
 	"testing"
@@ -16,7 +18,7 @@ func TestThemedTextUpstream(t *testing.T) {
 		builds := 0
 		text := NewThemedText(func() string {
 			builds++
-			return ActiveTheme().FgText("accent", "hello")
+			return ActiveTheme().Fg("accent", "hello")
 		}, 1, 1)
 		if builds != 0 {
 			t.Fatalf("builds = %d before the first render, want 0", builds)
@@ -28,8 +30,8 @@ func TestThemedTextUpstream(t *testing.T) {
 			t.Errorf("render after a theme change without invalidation = %q, want the cached %q", got, dark)
 		}
 		text.Invalidate()
-		if got := strings.Join(text.Render(20), ""); !strings.Contains(got, ActiveTheme().Fg("accent")) {
-			t.Errorf("render after invalidation = %q, want the light accent %q", got, ActiveTheme().Fg("accent"))
+		if got := strings.Join(text.Render(20), ""); !strings.Contains(got, ActiveTheme().GetFgAnsi("accent")) {
+			t.Errorf("render after invalidation = %q, want the light accent %q", got, ActiveTheme().GetFgAnsi("accent"))
 		}
 		if builds != 2 {
 			t.Errorf("builds = %d, want 2", builds)

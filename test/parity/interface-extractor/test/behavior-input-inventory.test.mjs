@@ -1,3 +1,4 @@
+import { PI_PACKAGE_VERSION } from "../../testdata/pi-version.mjs";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
@@ -109,6 +110,29 @@ class Handler { handleInput(data: string) { if (kb.matches(data, "tui.altScreen.
   const inventory = extractBehaviorInputInventory({ sourceRoot: root, upstreamVersion: "0.86.1" });
   assert.equal(inventory.keybindings[0].description, "Jump to next prompt");
   assert.deepEqual(inventory.keybindings[0].defaults.linux, ["ctrl+shift+down", "ctrl+down"]);
+});
+
+test("reads app keybindings declared in APP_KEYBINDINGS and spread into KEYBINDINGS (Pi 42a3497d layout)", () => {
+  const root = scratchDir("pig-app-keybindings-");
+  const file = path.join(root, "packages/coding-agent/src/core/keybindings.ts");
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, `
+const windowsKeybindings = useWindowsKeybindings();
+const APP_KEYBINDINGS = {
+  "app.clear": { defaultKeys: "ctrl+c", description: "Clear editor" },
+  "app.suspend": { defaultKeys: process.platform === "win32" ? [] : "ctrl+z", description: "Suspend to background" },
+} as const;
+type AppKeybinding = keyof typeof APP_KEYBINDINGS;
+type AppKeybindings = { [K in AppKeybinding]: true };
+const KEYBINDINGS = { ...TUI_KEYBINDINGS, ...APP_KEYBINDINGS } as const;
+class Handler { handleInput(data: string) { if (kb.matches(data, "app.clear")) this.clear(); } }
+`);
+  const inventory = extractBehaviorInputInventory({ sourceRoot: root, upstreamVersion: PI_PACKAGE_VERSION });
+  assert.deepEqual(inventory.keybindings.map((binding) => binding.id), ["app.clear", "app.suspend"]);
+  assert.equal(inventory.keybindings[0].description, "Clear editor");
+  assert.deepEqual(inventory.keybindings[1].defaults.linux, ["ctrl+z"]);
+  assert.deepEqual(inventory.keybindings[1].defaults.win32, []);
+  assert.equal(inventory.keybindings[0].consumers.length, 1);
 });
 
 test("fills spread descriptions when the TUI base file is visited after the coding override", () => {

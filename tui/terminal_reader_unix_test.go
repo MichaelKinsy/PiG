@@ -30,7 +30,7 @@ func TestStoppedTerminalReaderDoesNotEatNextKeystroke(t *testing.T) {
 		terminal.forwardInput(ctx, func(data []byte) { got <- data }, nil)
 	}()
 
-	if _, err := w.Write([]byte("\r")); err != nil {
+	if _, err := w.WriteString("\r"); err != nil {
 		t.Fatal(err)
 	}
 	if data := <-got; string(data) != "\r" {
@@ -64,7 +64,7 @@ func TestStoppedTerminalReaderDoesNotEatNextKeystroke(t *testing.T) {
 			mainInput <- data
 		}
 	}()
-	if _, err := w.Write([]byte("/")); err != nil {
+	if _, err := w.WriteString("/"); err != nil {
 		t.Fatal(err)
 	}
 	select {

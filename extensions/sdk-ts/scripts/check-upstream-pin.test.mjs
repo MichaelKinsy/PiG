@@ -29,12 +29,12 @@ async function fixture(t, { mismatch, source, legacyVersion, onlyLegacy = false,
   if (!onlyLegacy) {
     const pin = join(root, "internal", "coding", "pigversion", "pigversion.go");
     await mkdir(dirname(pin), { recursive: true });
-    await writeFile(pin, source ?? `package pigversion\nconst UpstreamVersion = "${version}"\n`);
+    await writeFile(pin, source ?? `package pigversion\nconst UpstreamPackageVersion = "${version}"\n`);
   }
   if (legacyVersion || onlyLegacy) {
     const pin = join(root, "coding", "pigversion", "pigversion.go");
     await mkdir(dirname(pin), { recursive: true });
-    await writeFile(pin, `package pigversion\nconst UpstreamVersion = "${legacyVersion ?? version}"\n`);
+    await writeFile(pin, `package pigversion\nconst UpstreamPackageVersion = "${legacyVersion ?? version}"\n`);
   }
   return () => spawnSync(process.execPath, [script], { cwd: tmpdir(), encoding: "utf8" });
 }
@@ -66,7 +66,7 @@ test("rejects a Go source without the upstream version constant", async (t) => {
   const run = await fixture(t, { source: "package pigversion\n" });
   const result = run();
   assert.notEqual(result.status, 0);
-  assert.ok(result.stderr.includes("cannot read coding.UpstreamVersion"), result.stderr);
+  assert.ok(result.stderr.includes("cannot read coding.UpstreamPackageVersion"), result.stderr);
 });
 
 test("does not fall back to a legacy-only repository layout", async (t) => {

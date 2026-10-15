@@ -14,7 +14,7 @@ import (
 )
 
 func BenchmarkSessionRegistryMetadataRefresh(b *testing.B) {
-	services, err := NewServices(ServicesOptions{CWD: b.TempDir(), AgentDir: b.TempDir()})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: b.TempDir(), AgentDir: b.TempDir()})
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -31,7 +31,7 @@ func BenchmarkSessionRegistryMetadataRefresh(b *testing.B) {
 	})
 	b.ReportAllocs()
 	for b.Loop() {
-		if err := services.Registry().RegisterProvider("anthropic", extension.ProviderConfig{BaseURL: "https://metadata.test"}); err != nil {
+		if err := services.Registry().RegisterExtensionProvider("anthropic", extension.ProviderConfig{BaseURL: "https://metadata.test"}); err != nil {
 			b.Error(err)
 		}
 	}
@@ -44,7 +44,7 @@ func TestRegisteredModelSessionHeadersAssembleBeforeHook(t *testing.T) {
 		observed = args[0].(extension.BeforeProviderHeadersEvent).Headers
 		return nil, nil
 	}}}}}, services.CWD())
-	if err := services.Registry().RegisterProvider("header-refresh", extension.ProviderConfig{API: ai.APIOpenAICompletions, BaseURL: "https://headers.test", APIKey: "key", Headers: map[string]string{"provider": "provider"}, Models: []extension.ProviderModelConfig{{ID: "model", Name: "Model", Headers: map[string]string{"model": "model"}}}, StreamSimple: func(extension.Model, extension.AIContext, extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
+	if err := services.Registry().RegisterExtensionProvider("header-refresh", extension.ProviderConfig{API: ai.APIOpenAICompletions, BaseURL: "https://headers.test", APIKey: "key", Headers: map[string]string{"provider": "provider"}, Models: []extension.ProviderModelConfig{{ID: "model", Name: "Model", Headers: map[string]string{"model": "model"}}}, StreamSimple: func(extension.Model, extension.AIContext, extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
 		stream := ai.NewAssistantMessageEventStream()
 		stream.End(&ai.AssistantMessage{StopReason: ai.StopReasonStop})
 		return stream
@@ -80,14 +80,14 @@ func TestSessionRegistryRefreshDoesNotResolveCredentials(t *testing.T) {
 	if err := os.WriteFile(script, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	services, err := NewServices(ServicesOptions{CWD: dir, AgentDir: dir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: dir, AgentDir: dir})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(services.Close)
 	providerID := "refresh-no-auth"
 	config := extension.ProviderConfig{API: "openai-completions", BaseURL: "https://before.test", APIKey: "!node " + strconv.Quote(script), Models: []extension.ProviderModelConfig{{ID: "model", Name: "Model", ContextWindow: 128000, MaxTokens: 16384}}}
-	if err := services.Registry().RegisterProvider(providerID, config); err != nil {
+	if err := services.Registry().RegisterExtensionProvider(providerID, config); err != nil {
 		t.Error(err)
 	}
 	model := services.ModelRuntime().GetModel(providerID, "model")
@@ -103,22 +103,22 @@ func TestSessionRegistryRefreshDoesNotResolveCredentials(t *testing.T) {
 			t.Error(err)
 		}
 	}()
-	before := len(session.Inner().Entries())
-	if err := services.Registry().RegisterProvider(providerID, extension.ProviderConfig{BaseURL: "https://after.test"}); err != nil {
+	before := len(session.Inner().GetEntries())
+	if err := services.Registry().RegisterExtensionProvider(providerID, extension.ProviderConfig{BaseURL: "https://after.test"}); err != nil {
 		t.Error(err)
 	}
 	if got := session.Model().ProviderMeta.BaseURL; got != "https://after.test" {
 		t.Fatalf("metadata URL=%q", got)
 	}
-	if len(session.Inner().Entries()) != before {
+	if len(session.Inner().GetEntries()) != before {
 		t.Fatal("metadata refresh appended a transcript entry")
 	}
 	if data, err := os.ReadFile(counter); !os.IsNotExist(err) {
 		t.Fatalf("metadata refresh resolved credentials: %q, %v", data, err)
 	}
 	// Metadata defers work; it does not erase request auth or registry-local callbacks.
-	if err := services.Registry().RegisterProvider(providerID, extension.ProviderConfig{API: ai.APIOpenAICompletions, StreamSimple: func(_ extension.Model, _ extension.AIContext, options extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
-		requestOptions := options.(ai.StreamOptions)
+	if err := services.Registry().RegisterExtensionProvider(providerID, extension.ProviderConfig{API: ai.APIOpenAICompletions, StreamSimple: func(_ extension.Model, _ extension.AIContext, options extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
+		requestOptions := options
 		if requestOptions.APIKey != "configured-key" {
 			t.Errorf("request key=%q", requestOptions.APIKey)
 		}

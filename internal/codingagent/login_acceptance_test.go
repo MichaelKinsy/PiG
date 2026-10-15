@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/modes/interactive/components/oauth-selector.ts
+
 import (
 	"slices"
 	"strings"
@@ -12,9 +14,9 @@ import (
 // Pi oauth-selector.ts:103-108 searches provider method names as well as names,
 // IDs and auth types. "open" matches Anthropic through "Anthropic API key".
 func TestLoginSearchIncludesProviderMethod(t *testing.T) {
-	m := NewInteractiveMode(InteractiveOptions{AgentDir: t.TempDir()})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{AgentDir: t.TempDir()})
 	providers := m.oauthProviderList("login-api-key")
-	selector := tui.NewOAuthSelector("login", providers)
+	selector := tui.NewOAuthSelectorComponent("login", providers, nil, nil)
 	selector.HandleInput("open")
 	var ids []string
 	for range len(providers) {
@@ -33,9 +35,9 @@ func TestLoginSearchIncludesProviderMethod(t *testing.T) {
 
 func TestLoginOAuthListReportsEnvironmentKey(t *testing.T) {
 	t.Setenv("OPENROUTER_API_KEY", "fake-env")
-	m := NewInteractiveMode(InteractiveOptions{AgentDir: t.TempDir()})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{AgentDir: t.TempDir()})
 	providers := m.oauthProviderList("login-oauth")
-	selector := tui.NewOAuthSelector("login", providers)
+	selector := tui.NewOAuthSelectorComponent("login", providers, nil, nil)
 	selector.HandleInput("openrouter")
 	if text := plainRender(selector); !strings.Contains(text, "API key configured") {
 		t.Fatalf("OAuth status: %s", text)
@@ -53,7 +55,7 @@ func TestLogoutIncludesStoredAPIKeyProviders(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	m := NewInteractiveMode(InteractiveOptions{AgentDir: dir})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{AgentDir: dir})
 	options := m.oauthProviderList("logout")
 	for _, id := range []string{"openai", "cloudflare-ai-gateway", "removed-extension"} {
 		index := slices.IndexFunc(options, func(p tui.OAuthProvider) bool { return p.ID == id })
@@ -61,7 +63,7 @@ func TestLogoutIncludesStoredAPIKeyProviders(t *testing.T) {
 			t.Errorf("missing stored provider %s", id)
 			continue
 		}
-		selector := tui.NewOAuthSelector("logout", options[index:index+1])
+		selector := tui.NewOAuthSelectorComponent("logout", options[index:index+1], nil, nil)
 		if text := plainRender(selector); !strings.Contains(text, "✓ configured") {
 			t.Errorf("logout status: %s", text)
 		}

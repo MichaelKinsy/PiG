@@ -74,7 +74,7 @@ func contextEventResult(data map[string]any, snapshot []any, result any) any {
 // handler error. A null messages value is not handled here: like upstream's
 // `handlerResult?.messages ?? ...`, the in-place list decides.
 func typedContextEventResult(result any) (any, bool) {
-	raw, err := json.Marshal(result)
+	raw, err := json.MarshalJS(result)
 	if err != nil {
 		return result, true
 	}

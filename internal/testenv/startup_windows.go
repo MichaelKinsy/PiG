@@ -53,6 +53,7 @@ func ReportStartupIfRequested() {
 	if os.Getenv(StartupHelper) != "1" {
 		return
 	}
+	//portlint:allow jsonescape test-helper report of an int and two booleans to the parent test; nothing to escape and not Pi-facing
 	if err := json.NewEncoder(os.Stdout).Encode(CurrentStartup()); err != nil {
 		os.Exit(1)
 	}

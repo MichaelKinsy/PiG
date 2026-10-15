@@ -2,6 +2,8 @@
 
 PiG lists Packages and Piglets that authors publish to npm, the way Pi's gallery lists Pi packages. Publishing is ordinary npm publishing plus one npm keyword. This page covers both commands, signed Piglet Binaries, how the pi-in-go.dev catalog finds what you publish, and npm authentication, including CI.
 
+You need an account on https://www.npmjs.com and the `npm` command, which Node.js installs. Signed Piglet Binaries also need the GitHub CLI (`gh`), signed in to GitHub. `pig package publish` and `pig piglet publish` are dry runs until you add `--yes`, so you can try them first. Plain `npm publish` has no such step.
+
 ## What gets listed
 
 | You publish | npm keyword | Install command shown | Publish with |
@@ -153,4 +155,4 @@ Publish the Packages before the Piglet that names them, as above. In the Piglet 
 
 ## Additive
 
-Publishing to npm has no Pi counterpart. Pi's package workflow is plain `npm publish` with the `pi-package` keyword, and PiG keeps that working unchanged. `pig package publish --to npm` and `pig piglet publish --to npm` are PiG additions (D18). The PiG repository records them in `docs/additive-features.md`.
+Publishing to npm has no Pi counterpart. Pi's package workflow is plain `npm publish` with the `pi-package` keyword ([Pi's packages reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/packages.md)), and PiG keeps that working unchanged. `pig package publish --to npm` and `pig piglet publish --to npm` are PiG additions (D18). The PiG repository records them in `docs/additive-features.md`.

@@ -5,20 +5,22 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
 )
 
 type aptFixture struct {
-	bin, sources, apt, curl, timeout string
-	list, mirrors                    string
-	dir                              string
-	env                              []string
+	bin, sources, apt, curl, timeout, clock string
+	list, mirrors                           string
+	dir                                     string
+	env                                     []string
 }
 
 // newAptFixture builds the runner's apt layout and fake commands. curl exits curlStatus; apt-get exits 1 for its first aptFailures update calls.
 // timeout logs its arguments and runs the command without a deadline, so a test reads the deadlines the script chose.
+// The script reads its elapsed time from the fixture's clock (APT_CLOCK), which stands still unless APT_TEST_TICK makes each timeout call advance it, so the deadlines never depend on how long the machine takes.
 func newAptFixture(t *testing.T, curlStatus string, aptFailures int) aptFixture {
 	t.Helper()
 	if runtime.GOOS != "linux" {
@@ -28,8 +30,9 @@ func newAptFixture(t *testing.T, curlStatus string, aptFailures int) aptFixture 
 	f := aptFixture{
 		dir: dir, bin: filepath.Join(dir, "bin"), sources: filepath.Join(dir, "sources.list.d"),
 		apt: filepath.Join(dir, "apt.log"), curl: filepath.Join(dir, "curl.log"), timeout: filepath.Join(dir, "timeout.log"), list: filepath.Join(dir, "sources.list"),
-		mirrors: filepath.Join(dir, "apt-mirrors.txt"),
+		mirrors: filepath.Join(dir, "apt-mirrors.txt"), clock: filepath.Join(dir, "clock"),
 	}
+	f.env = []string{"APT_CLOCK=" + filepath.Join(f.bin, "clock")}
 	for _, d := range []string{f.bin, f.sources} {
 		if err := os.Mkdir(d, 0o700); err != nil {
 			t.Fatal(err)
@@ -44,8 +47,10 @@ func newAptFixture(t *testing.T, curlStatus string, aptFailures int) aptFixture 
 	write(filepath.Join(f.sources, "microsoft-prod.list"), "deb https://packages.microsoft.com/ubuntu/24.04/prod noble main\n", 0o600)
 	write(f.list, "", 0o600)
 	write(filepath.Join(f.bin, "curl"), "#!/bin/sh\necho \"$@\" >> '"+f.curl+"'\nexit "+curlStatus+"\n", 0o700)
+	write(f.clock, "0\n", 0o600)
+	write(filepath.Join(f.bin, "clock"), "#!/bin/sh\ncat '"+f.clock+"'\n", 0o700)
 	write(filepath.Join(f.bin, "sleep"), "#!/bin/sh\nexit 0\n", 0o700)
-	write(filepath.Join(f.bin, "timeout"), "#!/bin/sh\necho \"$1 $2 $3\" >> '"+f.timeout+"'\nshift 2\nexec \"$@\"\n", 0o700)
+	write(filepath.Join(f.bin, "timeout"), "#!/bin/sh\necho \"$1 $2 $3\" >> '"+f.timeout+"'\necho $(($(cat '"+f.clock+"') + ${APT_TEST_TICK:-0})) > '"+f.clock+"'\nshift 2\nexec \"$@\"\n", 0o700)
 	write(filepath.Join(f.bin, "apt-get"), `#!/bin/sh
 echo "$*" >> '`+f.apt+`'
 case " $* " in
@@ -281,6 +286,18 @@ func TestInstallAptPackagesBudgetCapsDeadlines(t *testing.T) {
 	if first, _, _ := strings.Cut(f.read(t, f.timeout), "\n"); !strings.HasPrefix(first, "--kill-after=10s 50s apt-get") {
 		t.Fatalf("first deadline %q was not capped to the 60s budget minus the kill grace", first)
 	}
+	// Each call advances the clock by 20s: the budget left caps the next deadline (60-20-10, then 60-40-10).
+	h := newAptFixture(t, "0", 99).withEnv("APT_BUDGET_SECONDS=60", "APT_TEST_TICK=20")
+	if _, err := h.run(t, "tmux"); err == nil {
+		t.Fatal("persistent failure was reported as success")
+	}
+	var got []string
+	for line := range strings.SplitSeq(strings.TrimSpace(h.read(t, h.timeout)), "\n") {
+		got = append(got, strings.TrimSuffix(line, " apt-get"))
+	}
+	if want := []string{"--kill-after=10s 50s", "--kill-after=10s 30s", "--kill-after=10s 10s"}; !slices.Equal(got, want) {
+		t.Fatalf("deadlines as the budget runs down = %q, want %q", got, want)
+	}
 	g := newAptFixture(t, "0", 99).withEnv("APT_BUDGET_SECONDS=5")
 	out, err := g.run(t, "tmux")
 	if err == nil || !strings.Contains(out, "budget of 5s is spent") {
@@ -337,5 +354,38 @@ func TestInstallAptPackagesKeepsMirrorListWhenAzureIsReachable(t *testing.T) {
 	}
 	if got := f.read(t, f.mirrors); got != before {
 		t.Fatalf("a reachable Azure mirror was replaced:\n%s", got)
+	}
+}
+
+// The budget counts the clock APT_CLOCK names when it is set, so a test's deadlines do not depend on how long the machine takes: wall time before the first apt call does not shorten a deadline (it did while the fixture ran on bash's SECONDS: 49s instead of 50s on a loaded runner).
+func TestInstallAptPackagesBudgetIgnoresTimeBeforeTheFirstCall(t *testing.T) {
+	f := newAptFixture(t, "0", 99).withEnv("APT_BUDGET_SECONDS=60")
+	// The release check takes real time before apt runs.
+	if err := os.WriteFile(filepath.Join(f.bin, "curl"), []byte("#!/bin/sh\n/bin/sleep 1.2\nexit 0\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.run(t, "tmux"); err == nil {
+		t.Fatal("persistent failure was reported as success")
+	}
+	if first, _, _ := strings.Cut(f.read(t, f.timeout), "\n"); !strings.HasPrefix(first, "--kill-after=10s 50s apt-get") {
+		t.Fatalf("first deadline %q lost wall time to the budget", first)
+	}
+}
+
+// Without APT_CLOCK the budget counts wall time from the script's start (bash's SECONDS), because the workflow step limit does: time the release check takes before the first apt call comes off its deadline.
+func TestInstallAptPackagesBudgetCountsWallTimeWithoutAClock(t *testing.T) {
+	f := newAptFixture(t, "0", 99).withEnv("APT_BUDGET_SECONDS=60", "APT_CLOCK=")
+	// At least two whole seconds pass before apt runs, so SECONDS has advanced by at least 2.
+	if err := os.WriteFile(filepath.Join(f.bin, "curl"), []byte("#!/bin/sh\n/bin/sleep 2.2\nexit 0\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.run(t, "tmux"); err == nil {
+		t.Fatal("persistent failure was reported as success")
+	}
+	first, _, _ := strings.Cut(f.read(t, f.timeout), "\n")
+	limit, ok := strings.CutPrefix(first, "--kill-after=10s ")
+	seconds, err := strconv.Atoi(strings.TrimSuffix(strings.TrimSuffix(limit, " apt-get"), "s"))
+	if !ok || err != nil || seconds > 48 || seconds < 1 {
+		t.Fatalf("first deadline %q did not count the wall time before it against the 60s budget minus the kill grace", first)
 	}
 }

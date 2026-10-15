@@ -1,17 +1,10 @@
 # Piglet design: lean composition and direct outputs
 
-This is the normative maintainer contract for Piglet source, validation,
-registration, invocation, build outputs, records, environments, and external product bindings. Read
-the [ecosystem ontology](piglet-resource-ontology.md) first. Package details are
-in [Package structure](pig-package-spec.md); extension hosting is in
-[runtime cells](extension-runtime-cells.md).
+This is the normative maintainer contract for Piglet source, validation, registration, invocation, build outputs, records, environments, and external product bindings. Read the [ecosystem ontology](piglet-resource-ontology.md) first. Package details are in [Package structure](pig-package-spec.md); extension hosting is in [runtime cells](extension-runtime-cells.md).
 
 ## Purpose
 
-A Piglet turns explicit Pig Resources and policy into one named agent without
-changing upstream Package behavior. It is the only authored whole-agent entity.
-A Piglet must stay understandable enough to write/read directly while retaining
-advanced derivation, origin, discovery, environment, and secret controls.
+A Piglet turns explicit Pig Resources and policy into one named agent without changing upstream Package behavior. It is the only authored whole-agent entity. A Piglet must stay understandable enough to write/read directly while retaining advanced derivation, origin, discovery, environment, and secret controls.
 
 ## Closed source shape
 
@@ -80,18 +73,14 @@ Allowed root fields are exactly:
 
 ```text
 name description extends packages extensions skills tools model
-systemPrompt discovery agentEnv secrets release build
+systemPrompt discovery agentEnv secrets release build slots strip
 ```
 
-The schema is closed: every field outside that root vocabulary fails without an
-alias.
+The schema is closed: every field outside that root vocabulary fails without an alias. `pig piglet schema` prints it as JSON Schema.
 
 ## Packages and origins
 
-`packages` maps an author alias to one typed source. Declaring it materializes no
-member and mutates no Package settings. Extension/skill `origins` are ordered
-typed source strings. The first exact successful origin wins and enters
-resolution identity.
+`packages` maps an author alias to one typed source. Declaring it materializes no member and mutates no Package settings. Extension/skill `origins` are ordered typed source strings. The first exact successful origin wins and enters resolution identity.
 
 Supported source families use the shared parser:
 
@@ -106,14 +95,11 @@ http(s):<source>
 
 A contributed scheme works only when installed product code registers its resolver. Stock PiG does not provide a `marketplace:` or `catalog:` resolver.
 
-Local Piglet-owned origins resolve from the declaring Piglet's directory.
-`agentEnv.devContainer` resolves from invocation `workspace:`. Absolute,
-escaping, and symlink-escaping paths fail.
+Local Piglet-owned origins resolve from the declaring Piglet's directory. `agentEnv.devContainer` resolves from invocation `workspace:`. Absolute, escaping, and symlink-escaping paths fail.
 
 ## Tools
 
-Root `tools` controls Pig built-in model tools. Extension `tools` controls only
-tools registered by that extension. Both are exact lists:
+Root `tools` controls Pig built-in model tools. Extension `tools` controls only tools registered by that extension. Both are exact lists:
 
 | Shape | Root | Extension |
 |---|---|---|
@@ -127,8 +113,19 @@ Effective tools are:
 runtime registration ∩ Piglet allowlists ∩ CLI narrowing ∩ platform authorization
 ```
 
-CLI/platform inputs never silently widen a Piglet. Slash commands and shortcuts
-are not Piglet capability policy and are absent from source.
+CLI/platform inputs never silently widen a Piglet. Slash commands and shortcuts are not Piglet capability policy. A Piglet can only remove built-in slash commands, through `strip.commands`.
+
+## Strip lists
+
+`strip` disables built-ins (D92). It has five lists: `tools`, `commands` (with the leading slash; `/piglet` included), `extensions`, `apis` (model API implementations), and `features`. `internal/pigstrip/ids_generated.go` holds the valid IDs, and `make piglet-strip-ids` regenerates it. A list is in deny mode (the IDs it names are stripped) or in keep mode through `strip.keep.<list>` (every ID it does not name is stripped, including IDs a later PiG adds). One file cannot use both modes for one list.
+
+Strip lists inherit through `extends`. `extends.remove.strip` re-enables IDs and requires `extends.allowWiden`. A child can narrow keep mode but cannot leave it. Validation refuses a strip list that removes every built-in tool together with `/quit`.
+
+A Piglet Binary leaves the code of a stripped built-in extension, model API, or feature out of the executable. Binary records keep the strip table of the PiG that built them (`stripTable`) and the keep lists (`stripKeep`). `pig piglet build` and `pig piglet show` print a strip delta report when this PiG's table has new IDs since that record. The user guide is `site/docs/piglets.md`, section "Strip built-ins".
+
+## Slots
+
+`slots` names members that replace a part of PiG. `slots.frontend` is the only slot: a Go module whose root package exports `func Frontend() frontend.Frontend` (`extensions/sdk/frontend`). `pig piglet build --format binary` fuses it, and the member draws the interactive mode in place of the ANSI renderer (D91). A child inherits the slot, replaces it by naming it, or removes it with `extends.remove.slots`. Source invocation and Stock PiG fuse no frontend member. The user guide is `site/docs/piglet-binaries.md`, section "Frontend members".
 
 ## Discovery
 
@@ -140,81 +137,43 @@ discovery:
   skills: [workspace]
 ```
 
-Allowed sources initially are `workspace` and `user`. Empty or omitted lists in
-an active Piglet mean no ambient Resources of that kind. Explicit Piglet
-entries always load; explicit caller additions remain subject to current runtime
-policy and artifact restrictions. Bare Pig without a Piglet keeps upstream
-Package/discovery behavior.
+Allowed sources initially are `workspace` and `user`. Empty or omitted lists in an active Piglet mean no ambient Resources of that kind. Explicit Piglet entries always load; explicit caller additions remain subject to current runtime policy and artifact restrictions. Bare Pig without a Piglet keeps upstream Package/discovery behavior.
 
-External-harness adapters belong to the harness extension and its own
-namespaced config, not Piglet schema.
+External-harness adapters belong to the harness extension and its own namespaced config, not Piglet schema.
 
 ## Derivation
 
-`extends` owns source, version constraint, widening intent, and removals. Depth
-is eight with cycle detection and exact source digests. Every base/child resolves
-its own paths before merge. Whole fields replace; named collections preserve
-base order, replace by identity, append new identities, and remove only existing
-identities. Unsafe widening and dangling Package aliases fail. Release/build/
-derivation metadata does not inherit into effective composition.
+`extends` owns source, version constraint, widening intent, and removals. Depth is eight with cycle detection and exact source digests. Every base/child resolves its own paths before merge. Whole fields replace; named collections preserve base order, replace by identity, append new identities, and remove only existing identities. Unsafe widening and dangling Package aliases fail. Release/build/ derivation metadata does not inherit into effective composition.
 
 ## Model and prompt
 
-Omitted `model` means unconstrained consumer selection. Present model is a simple
-preference using provider/public name, context window, and thinking level. It is
-not a hard policy. `any`, `default`, capability, fallback, and policy fields are
-rejected until a concrete enforced requirement is approved.
+Omitted `model` means unconstrained consumer selection. Present model is a simple preference using provider/public name, context window, and thinking level. It is not a hard policy. `any`, `default`, capability, fallback, and policy fields are rejected until a concrete enforced requirement is approved.
 
-`systemPrompt` accepts inline text or one Piglet-anchored file. Additional prompt
-Resources should be selected through Packages/extensions rather than a dormant
-`agentPrompts` array.
+`systemPrompt` accepts inline text or one Piglet-anchored file. Additional prompt Resources should be selected through Packages/extensions rather than a dormant `agentPrompts` array.
 
 ## MCP boundary
 
-Piglet source contains no MCP endpoint, command, args, headers, credentials, or
-config path. MCP clients and portable definitions are Resources selected through
-extensions and Packages. A deployment can supply MCP bindings, authorization,
-and credentials at runtime. MCP tools are scoped through their
-owning adapter extension's `tools` list.
+Piglet source contains no MCP endpoint, command, args, headers, credentials, or config path. MCP clients and portable definitions are Resources selected through extensions and Packages. A deployment can supply MCP bindings, authorization, and credentials at runtime. MCP tools are scoped through their owning adapter extension's `tools` list.
 
 ## Product bindings
 
-A product uses the same Piglet schema as any other consumer. It can select
-product extensions, adapters, skills, tools, discovery, and environment
-requirements. Product URLs, remote identities, model bindings, MCP endpoints,
-credentials, trace context, and deployment policy stay outside portable Piglet
-YAML.
+A product uses the same Piglet schema as any other consumer. It can select product extensions, adapters, skills, tools, discovery, and environment requirements. Product URLs, remote identities, model bindings, MCP endpoints, credentials, trace context, and deployment policy stay outside portable Piglet YAML.
 
 ## Secrets
 
-Secrets are logical declarations with one `env|file|ref` source. Consumers use
-typed secret bindings. Values never enter Piglet source metadata, records,
-sessions, logs, argv, image layers, or hashes. Raw Pig has no built-in secret
-store; contributed resolvers handle `ref` values. Missing or
-unauthorized required values fail before startup. `--unsafe-host` never bypasses
-secret requirements.
+Secrets are logical declarations with one `env|file|ref` source. Consumers use typed secret bindings. Values never enter Piglet source metadata, records, sessions, logs, argv, image layers, or hashes. Raw Pig has no built-in secret store; contributed resolvers handle `ref` values. Missing or unauthorized required values fail before startup. `--unsafe-host` never bypasses secret requirements.
 
 ## Environments
 
-`agentEnv` accepts exactly one of direct image, standard Dev Container path, or
-typed source resolving one environment. Omission preserves host execution.
-Presence constrains direct source invocation, generated script, and Piglet Binary today; a future Piglet Image or managed deployment must honor the same requirement. The whole PiG process enters or verifies it before startup; code-execution sandbox is separate.
+`agentEnv` accepts exactly one of direct image, standard Dev Container path, or typed source resolving one environment. Omission preserves host execution. Presence constrains direct source invocation, generated script, and Piglet Binary. A Piglet Image or managed deployment must honor the same requirement. The whole PiG process enters or verifies it before startup; code-execution sandbox is separate.
 
 ## Sessions
 
-Piglets do not change the upstream Session header or bind a transcript to a
-Piglet, carrier, component plan, or environment. Resume, clone, and fork load
-the selected conversation under the current process composition; current tool,
-secret, environment, and platform policy governs every new action. `/piglet`
-inspects the Piglet active in this process and writes nothing to the Session.
-A different Piglet is selected with another `pig --piglet` invocation, which
-may resume the same Session when the caller chooses it.
+Piglets do not change the upstream Session header or bind a transcript to a Piglet, carrier, component plan, or environment. Resume, clone, and fork load the selected conversation under the current process composition; current tool, secret, environment, and platform policy governs every new action. `/piglet` inspects the Piglet active in this process and writes nothing to the Session; a Piglet that strips it (`strip.commands: [/piglet]`) runs without it. A different Piglet is selected with another `pig --piglet` invocation, which may resume the same Session when the caller chooses it.
 
 ## YAML lifecycle
 
-Piglet YAML is authored directly by a user, editor, or agent. The closed schema
-is the power-user surface; Pig applies no inferred directory, Session, or
-installed-Resource selection policy.
+Piglet YAML is authored directly by a user, editor, or agent. The closed schema is the power-user surface; Pig applies no inferred directory, Session, or installed-Resource selection policy.
 
 ```text
 pig piglet schema
@@ -253,7 +212,7 @@ pig piglet build reviewer --format script --out -
 pig piglet build reviewer --format binary --out ./pig-reviewer
 ```
 
-A script is an executable POSIX wrapper:
+On Unix a script is an executable POSIX wrapper. On Windows it is a two-line cmd.exe launcher (D69). The Unix form is:
 
 ```sh
 #!/bin/sh
@@ -262,7 +221,9 @@ exec pig --piglet '/canonical/reviewer.yaml' "$@"
 
 It is untracked, receives no record, and is never removed by Pig. A Binary executes directly and uses Piglet records. Each current build invocation requires exactly one `script|binary` format.
 
-### Planned (not in this release): Image and locked artifact builds
+A Binary build of a Piglet that lists no extensions produces Stock PiG's own parts with that Piglet baked in. A Piglet that lists extensions that resolve to none fails with `piglet resolves to no extensions`. A Binary embeds the sources of each TypeScript or JavaScript extension and runs them with the installed Node (22.13 or newer), as Stock PiG does.
+
+### Reserved: Image and locked artifact builds
 
 ```text
 pig piglet build reviewer --format image --out registry/reviewer
@@ -270,23 +231,26 @@ pig piglet build reviewer --format binary|image --locked
 pig piglet build reviewer --format binary|image --record <path>
 ```
 
-`--format image`, `--locked`, and `--record` are reserved CLI shapes. They currently fail without writing output.
+`--format image`, `--locked`, and `--record` are reserved CLI shapes. They fail without writing output.
 
-Set `build.extensionRealization: fused` when every selected extension must be
-compiled into the Piglet Binary. A Binary build then rejects every extension
-that is not a fuse-compatible Go factory. It does not fall back to a subprocess
-component. This requirement does not change source invocation.
+Set `build.extensionRealization: fused` when every selected extension must be compiled into the Piglet Binary. A Binary build then rejects every extension that is not a fuse-compatible Go factory. It does not fall back to a subprocess component. This requirement does not change source invocation.
 
 ## Records and inventory
 
 Piglet records use one strict current unversioned shape with current kinds `piglet-resolution` and `piglet-binary`; `piglet-image` is reserved until an Image producer exists. They bind source/effective/graph, Resource/component closure, target, builder/toolchain, environment/external requirements, artifact digest, and verification. Records verify; they do not launch.
 
 ```text
-pig piglet list
+pig piglet list [--json]
 pig piglet show <name>
 pig piglet show --record <path>
+pig piglet tree [name] [--depth <n>] [--json]
+pig piglet lineage <name|path|binary> [--source <name|path>] [--json]
+pig piglet verify <binary> [--source <name|path>]
 pig piglet remove <name> --source|--binary|--all
+pig piglet prune [--keep <n>] [--max-size <size>] [--dry-run]
 ```
+
+`prune` removes old built Binaries and keeps the newest `n` of each Piglet and target (default 2). Pulled installs stay. `verify` checks a Binary's signature, and with `--source` its recorded Piglet digests against that source, without running it. `pig piglet keygen <key-path>` creates an Ed25519 signing key pair, and `pig piglet trust [list|add|revoke|require]` manages trusted signer keys.
 
 ### Pull signed Binary releases
 
@@ -326,20 +290,16 @@ Publication validates the Piglet as `piglet validate` does and refuses what `pig
 
 The generated `package.json` takes `name` from `--npm-name`, a `package.json` beside the Piglet, or the Piglet name, and `version` from `release.version`. It adds the keyword `pig-piglet`, so catalogs find the package by npm keyword search, and the block `"pig": {"piglet": "piglet.yaml", "binaries": {"ref": "github:<owner>/<repo>[/<name>]@<version>", "signer": "<key id>"}}`. `pig.piglet` is the path `piglet add` reads. `pig.binaries` is present when the version has a signed GitHub Binary release: `--binaries github:<owner/repo>` reads the signed release index, and otherwise a release this machine published with `publish --to github --yes` is recorded in `receipts/piglet-publications/`. `license`, `author`, `repository`, `homepage`, `bugs`, `funding`, and `publishConfig` come from a `package.json` beside the Piglet; scripts and dependencies do not. `pig piglet add npm:<name>` accepts exactly what publication produces.
 
-### Planned (not in this release): pull by name
+### Reserved: pull by name
 
-```text
-pig piglet pull <name>
-```
-
-This command will pull a release by installed Piglet name. Stock PiG has no pull by name in this release. `pig piglet update <name>` updates an installed signed GitHub Binary release within its signed namespace.
+`pig piglet pull <name>` does not exist. `pig piglet pull` takes an explicit release index URL or GitHub release reference. `pig piglet update <name>` updates an installed signed GitHub Binary release within its signed namespace.
 
 Remote agent creation and update belong to the consuming platform.
 
 ## State
 
-Editable source lives in `~/.pig/piglets/`. Managed Binary outputs and records live under `~/.pig/artifacts/piglets/` and `~/.pig/receipts/piglets/`. Image artifacts are reserved. Explicit scripts live only at user-selected paths. Pig writes no `.pi` state; managed Piglet state stays within those Piglet roots.
+Editable source lives in `~/.pig/piglets/`. Managed Binary outputs and records live under `~/.pig/artifacts/piglets/` and `~/.pig/receipts/piglets/`. npm source publications are recorded under `~/.pig/receipts/piglet-publications/`. A signed Binary records a passing startup check in `~/.pig/state/piglet-verify/verified.json`, keyed by its resolved path, file identity, signature block, and trust policy, so a later start with no change skips the whole-file hash. Image artifacts are reserved. Explicit scripts live only at user-selected paths. Pig writes no `.pi` state; managed Piglet state stays within those Piglet roots.
 
 ## Current implementation boundary
 
-The lean closed source schema, typed Package/origin vocabulary, derivation object, direct source invocation, Piglet Binary producer, remote npm/Git registration, GitHub Binary publication, npm source publication, and signed-index pull are implemented. `pig piglet update <name>` updates a pulled GitHub Binary release. Pull by installed Piglet name, locked records, and Piglet Image production are planned and not available in this release.
+The lean closed source schema, typed Package/origin vocabulary, derivation object, strip lists, the frontend slot, direct source invocation, Piglet Binary producer, remote npm/Git registration, GitHub Binary publication, npm source publication, signed-index pull, and `pig piglet update <name>` are implemented. Pull by installed Piglet name, locked records, and Piglet Image production do not exist.

@@ -3,17 +3,14 @@ package parity
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 func TestMirrorUpstreamWritesREADMEWithoutCommandSubstitution(t *testing.T) {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller failed")
-	}
-	root := filepath.Join(filepath.Dir(thisFile), "..", "..")
+	root := testenv.ModuleRoot(t)
 	data, err := os.ReadFile(filepath.Join(root, "automation", "gen", "mirror-upstream.sh"))
 	if err != nil {
 		t.Fatal(err)

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 """Generate and pack PiG's npm packages from verified release archives.
 
@@ -80,7 +79,7 @@ def binary_name(goos: str) -> str:
 
 def upstream_version(path: pathlib.Path = PIGVERSION_GO) -> str | None:
     try:
-        match = re.search(r'^const UpstreamVersion = "([^"]+)"$', path.read_text(), re.M)
+        match = re.search(r'^const UpstreamPackageVersion = "([^"]+)"$', path.read_text(), re.M)
     except OSError:
         return None
     return match.group(1) if match else None
@@ -289,8 +288,25 @@ def npm_pack(pkg_dir: pathlib.Path, out: pathlib.Path) -> pathlib.Path:
         text=True,
         shell=sys.platform == "win32",
     )
-    filename = json.loads(result.stdout)[0]["filename"]
-    return out / filename
+    name = json.loads((pkg_dir / "package.json").read_text())["name"]
+    return out / packed_filename(json.loads(result.stdout), name)
+
+
+def packed_filename(parsed: object, name: str) -> str:
+    """Return the tarball name from `npm pack --json` output.
+
+    npm 11 prints a one-element array of pack results; npm 12 prints an object
+    keyed by package name (Pi 6fb2e781, scripts/package-artifacts.mjs).
+    """
+    if isinstance(parsed, list):
+        packed = parsed[0] if len(parsed) == 1 else None
+    elif isinstance(parsed, dict):
+        packed = parsed.get(name)
+    else:
+        packed = None
+    if not isinstance(packed, dict) or packed.get("name") != name or not isinstance(packed.get("filename"), str):
+        raise PackError(f"npm pack returned an unexpected result for {name}")
+    return packed["filename"]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -311,7 +327,11 @@ def main(argv: list[str] | None = None) -> int:
         for pkg_dir in order:
             print(pkg_dir)
         return 0
-    tarballs = [npm_pack(pkg_dir, args.out) for pkg_dir in order]
+    try:
+        tarballs = [npm_pack(pkg_dir, args.out) for pkg_dir in order]
+    except PackError as err:
+        print(f"pack_npm: error: {err}", file=sys.stderr)
+        return 1
     names = [json.loads((d / "package.json").read_text())["name"] for d in order]
     (args.out / "publish-order.txt").write_text("".join(f"{n} {t.name}\n" for n, t in zip(names, tarballs)))
     for tarball in tarballs:

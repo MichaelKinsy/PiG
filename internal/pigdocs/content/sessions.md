@@ -42,6 +42,8 @@ Run `/share` to upload the active branch, including an in-memory Session, to `ht
 
 A share is unlisted, not private. Anyone with its URL can read and download it. The service accepts artifacts up to 8 MiB and deletes them after 30 days. Press `Escape` while the upload indicator is open to cancel the request. PiG never uploads a Session automatically. Use `/export` instead when the Session must stay local.
 
+Pi's `sessionShareDestination` setting (`auto`, `gist`, or `radius`) has no effect in PiG. PiG never uploads a share to Radius or a GitHub gist (D64).
+
 ## The session tree
 
 `/tree` shows the session as its entries. Move to an entry and continue from

@@ -518,8 +518,11 @@ func TestUpstreamPromptTemplatesArguments(t *testing.T) {
 	})
 	// .upstream/v0.87.1/packages/coding-agent/test/prompt-templates.test.ts:385
 	t.Run("parseCommandArgs/should handle quoted empty string", func(t *testing.T) {
-		if got, want := ParsePromptArgs("\"\" \" \""), []string{" "}; !slices.Equal(got, want) {
-			t.Fatalf("got %q; want %q", got, want)
+		// Empty quotes keep their position as an empty argument (Pi 9fe3f371, #10867)
+		for input, want := range map[string][]string{"\"\" \" \"": {"", " "}, "a '' c": {"a", "", "c"}, "a \"\"": {"a", ""}} {
+			if got := ParsePromptArgs(input); !slices.Equal(got, want) {
+				t.Fatalf("%q: got %q; want %q", input, got, want)
+			}
 		}
 	})
 	// .upstream/v0.87.1/packages/coding-agent/test/prompt-templates.test.ts:390
@@ -568,6 +571,15 @@ func TestUpstreamPromptTemplatesArguments(t *testing.T) {
 	t.Run("parseCommandArgs/should handle leading spaces", func(t *testing.T) {
 		if got, want := ParsePromptArgs("   a b c"), []string{"a", "b", "c"}; !slices.Equal(got, want) {
 			t.Fatalf("got %q; want %q", got, want)
+		}
+	})
+	// Pi 9fe3f371 (#10867)
+	t.Run("expandPromptTemplate/should use positional default for empty quoted argument without shifting later args", func(t *testing.T) {
+		templates := []PromptTemplate{{Name: "review", Description: "test", Content: "Review $2. Focus: ${1:-correctness}.", FilePath: "/tmp/review.md"}}
+		for _, input := range []string{`/review "" src/index.ts`, `/review '' src/index.ts`} {
+			if got, want := upstreamExpandPrompt(t, input, templates), "Review src/index.ts. Focus: correctness."; got != want {
+				t.Fatalf("%q: got %q; want %q", input, got, want)
+			}
 		}
 	})
 	// .upstream/v0.87.1/packages/coding-agent/test/prompt-templates.test.ts:436

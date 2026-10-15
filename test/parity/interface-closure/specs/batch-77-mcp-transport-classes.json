@@ -1,0 +1,304 @@
+[
+ {
+  "ids": [
+   "pkg:mcp/.#StdioTransport"
+  ],
+  "targets": [
+   "mcp/stdio.go#StdioTransport"
+  ],
+  "production": [
+   "call:coding/mcpext/runtime.go#CreateDefaultTransport"
+  ],
+  "evidence": [
+   "test:mcp/stdio_options_test.go#TestStdioTransportRunsTheServerInTheConfiguredCwd",
+   "test:mcp/stdio_options_test.go#TestStdioTransportRejectsAStdoutLineLongerThanMaxMessageBytes"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the error.",
+  "rationale": "StdioTransport is the Go struct StdioTransport; every member was closed individually and the class closes with them.",
+  "properties": {
+   "close": {
+    "targets": [
+     "mcp/stdio.go#StdioTransport.Close"
+    ],
+    "evidence": [
+     "test:mcp/stdio_test.go#TestStdioTransportConnectsToANewlineDelimitedMCPServerAndCapturesStderr",
+     "test:mcp/streamable_http_test.go#TestStreamableHTTPTransportHandlesJSONAndSSEResponsesWithSessionAndProtocolHeaders"
+    ],
+    "production": [
+     "call:mcp/client.go#Client.Close"
+    ],
+    "rationale": "StdioTransport.close is the Go method StdioTransport.Close; the client calls it through the Transport interface and CreateDefaultTransport constructs the type; evidence drives the concrete transport."
+   },
+   "onClose": {
+    "targets": [
+     "mcp/transport.go#TransportEvents.OnClose"
+    ],
+    "evidence": [
+     "test:mcp/client_test.go#TestClientNotifiesCloseListenersOnceWhenTheTransportDrops",
+     "test:mcp/stdio_test.go#TestStdioTransportConnectsToANewlineDelimitedMCPServerAndCapturesStderr"
+    ],
+    "production": [
+     "call:mcp/client.go#Client.Connect"
+    ],
+    "rationale": "StdioTransport.onClose is the Go method StdioTransport.OnClose; the client calls it through the Transport interface and CreateDefaultTransport constructs the type; evidence drives the concrete transport."
+   },
+   "onError": {
+    "targets": [
+     "mcp/transport.go#TransportEvents.OnError"
+    ],
+    "evidence": [
+     "test:mcp/stdio_options_test.go#TestStdioTransportRejectsAStdoutLineLongerThanMaxMessageBytes"
+    ],
+    "production": [
+     "call:mcp/client.go#Client.Connect"
+    ],
+    "rationale": "StdioTransport.onError is the Go method StdioTransport.OnError; the client calls it through the Transport interface and CreateDefaultTransport constructs the type; evidence drives the concrete transport."
+   },
+   "onMessage": {
+    "targets": [
+     "mcp/transport.go#TransportEvents.OnMessage"
+    ],
+    "evidence": [
+     "test:mcp/stdio_test.go#TestStdioTransportConnectsToANewlineDelimitedMCPServerAndCapturesStderr"
+    ],
+    "production": [
+     "call:mcp/client.go#Client.Connect"
+    ],
+    "rationale": "StdioTransport.onMessage is the Go method StdioTransport.OnMessage; the client calls it through the Transport interface and CreateDefaultTransport constructs the type; evidence drives the concrete transport."
+   },
+   "options": {
+    "targets": [
+     "mcp/stdio.go#StdioTransport.Options"
+    ],
+    "evidence": [
+     "test:mcp/stdio_test.go#TestStdioTransportConnectsToANewlineDelimitedMCPServerAndCapturesStderr"
+    ],
+    "production": [
+     "call:mcp/client.go#Client.initialize"
+    ],
+    "rationale": "StdioTransport.options is the Go method StdioTransport.Options; the client calls it through the Transport interface and CreateDefaultTransport constructs the type; evidence drives the concrete transport."
+   },
+   "pid": {
+    "targets": [
+     "mcp/stdio.go#StdioTransport.PID"
+    ],
+    "evidence": [
+     "test:mcp/stdio_test.go#TestStdioTransportConnectsToANewlineDelimitedMCPServerAndCapturesStderr"
+    ],
+    "production": [
+     "call:mcp/client.go#Client.initialize"
+    ],
+    "rationale": "StdioTransport.pid is the Go method StdioTransport.PID; the client calls it through the Transport interface and CreateDefaultTransport constructs the type; evidence drives the concrete transport."
+   },
+   "send": {
+    "targets": [
+     "mcp/stdio.go#StdioTransport.Send"
+    ],
+    "evidence": [
+     "test:mcp/stdio_test.go#TestStdioTransportConnectsToANewlineDelimitedMCPServerAndCapturesStderr",
+     "test:mcp/streamable_http_test.go#TestStreamableHTTPTransportHandlesJSONAndSSEResponsesWithSessionAndProtocolHeaders"
+    ],
+    "production": [
+     "call:mcp/client.go#Client.requestInternal"
+    ],
+    "rationale": "StdioTransport.send is the Go method StdioTransport.Send; the client calls it through the Transport interface and CreateDefaultTransport constructs the type; evidence drives the concrete transport."
+   },
+   "start": {
+    "targets": [
+     "mcp/stdio.go#StdioTransport.Start"
+    ],
+    "evidence": [
+     "test:mcp/stdio_test.go#TestStdioTransportConnectsToANewlineDelimitedMCPServerAndCapturesStderr"
+    ],
+    "production": [
+     "call:mcp/client.go#Client.initialize"
+    ],
+    "rationale": "StdioTransport.start is the Go method StdioTransport.Start; the client calls it through the Transport interface and CreateDefaultTransport constructs the type; evidence drives the concrete transport."
+   },
+   "stderr": {
+    "targets": [
+     "mcp/stdio.go#StdioTransport.Stderr"
+    ],
+    "evidence": [
+     "test:mcp/stdio_test.go#TestStdioTransportConnectsToANewlineDelimitedMCPServerAndCapturesStderr"
+    ],
+    "production": [
+     "call:mcp/client.go#Client.initialize"
+    ],
+    "rationale": "StdioTransport.stderr is the Go method StdioTransport.Stderr; the client calls it through the Transport interface and CreateDefaultTransport constructs the type; evidence drives the concrete transport."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#StdioTransport::construct:0"
+  ],
+  "targets": [
+   "mcp/stdio.go#NewStdioTransport"
+  ],
+  "production": [
+   "call:coding/mcpext/runtime.go#CreateDefaultTransport"
+  ],
+  "evidence": [
+   "test:mcp/stdio_options_test.go#TestStdioTransportRunsTheServerInTheConfiguredCwd"
+  ],
+  "rationale": "`new StdioTransport(options)` is NewStdioTransport(StdioTransportOptions)."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#StreamableHttpTransport"
+  ],
+  "targets": [
+   "mcp/streamable_http.go#StreamableHTTPTransport"
+  ],
+  "production": [
+   "call:coding/mcpext/runtime.go#CreateDefaultTransport"
+  ],
+  "evidence": [
+   "test:mcp/streamable_http_options_test.go#TestStreamableHTTPTransportSendsTheConfiguredHeadersOnEveryRequest",
+   "test:mcp/streamable_http_options_test.go#TestStreamableHTTPTransportRejectsAnSSEEventLargerThanMaxMessageBytes"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the error.",
+  "rationale": "StreamableHttpTransport is the Go struct StreamableHTTPTransport (Go capitalises the acronym).",
+  "properties": {
+   "url": {
+    "targets": [
+     "mcp/streamable_http.go#StreamableHTTPTransport.URL"
+    ],
+    "evidence": [
+     "test:mcp/streamable_http_options_test.go#TestStreamableHTTPTransportSendsTheConfiguredHeadersOnEveryRequest"
+    ],
+    "production": [
+     "call:coding/mcpext/runtime.go#CreateDefaultTransport"
+    ],
+    "rationale": "The readonly url property is the exported *url.URL field URL."
+   },
+   "close": {
+    "targets": [
+     "mcp/streamable_http.go#StreamableHTTPTransport.Close"
+    ],
+    "evidence": [
+     "test:mcp/stdio_test.go#TestStdioTransportConnectsToANewlineDelimitedMCPServerAndCapturesStderr",
+     "test:mcp/streamable_http_test.go#TestStreamableHTTPTransportHandlesJSONAndSSEResponsesWithSessionAndProtocolHeaders"
+    ],
+    "production": [
+     "call:mcp/client.go#Client.Close"
+    ],
+    "rationale": "StreamableHttpTransport.close is the Go method StreamableHTTPTransport.Close; the client calls it through the Transport interface and CreateDefaultTransport constructs the type; evidence drives the concrete transport."
+   },
+   "onClose": {
+    "targets": [
+     "mcp/transport.go#TransportEvents.OnClose"
+    ],
+    "evidence": [
+     "test:mcp/client_test.go#TestClientNotifiesCloseListenersOnceWhenTheTransportDrops",
+     "test:mcp/stdio_test.go#TestStdioTransportConnectsToANewlineDelimitedMCPServerAndCapturesStderr"
+    ],
+    "production": [
+     "call:mcp/client.go#Client.Connect"
+    ],
+    "rationale": "StreamableHttpTransport.onClose is the Go method StreamableHTTPTransport.OnClose; the client calls it through the Transport interface and CreateDefaultTransport constructs the type; evidence drives the concrete transport."
+   },
+   "onError": {
+    "targets": [
+     "mcp/transport.go#TransportEvents.OnError"
+    ],
+    "evidence": [
+     "test:mcp/stdio_options_test.go#TestStdioTransportRejectsAStdoutLineLongerThanMaxMessageBytes"
+    ],
+    "production": [
+     "call:mcp/client.go#Client.Connect"
+    ],
+    "rationale": "StreamableHttpTransport.onError is the Go method StreamableHTTPTransport.OnError; the client calls it through the Transport interface and CreateDefaultTransport constructs the type; evidence drives the concrete transport."
+   },
+   "onMessage": {
+    "targets": [
+     "mcp/transport.go#TransportEvents.OnMessage"
+    ],
+    "evidence": [
+     "test:mcp/stdio_test.go#TestStdioTransportConnectsToANewlineDelimitedMCPServerAndCapturesStderr"
+    ],
+    "production": [
+     "call:mcp/client.go#Client.Connect"
+    ],
+    "rationale": "StreamableHttpTransport.onMessage is the Go method StreamableHTTPTransport.OnMessage; the client calls it through the Transport interface and CreateDefaultTransport constructs the type; evidence drives the concrete transport."
+   },
+   "options": {
+    "targets": [
+     "mcp/streamable_http.go#StreamableHTTPTransport.Options"
+    ],
+    "evidence": [
+     "test:mcp/streamable_http_test.go#TestStreamableHTTPTransportHandlesJSONAndSSEResponsesWithSessionAndProtocolHeaders"
+    ],
+    "production": [
+     "call:mcp/client.go#Client.initialize"
+    ],
+    "rationale": "StreamableHttpTransport.options is the Go method StreamableHTTPTransport.Options; the client calls it through the Transport interface and CreateDefaultTransport constructs the type; evidence drives the concrete transport."
+   },
+   "send": {
+    "targets": [
+     "mcp/streamable_http.go#StreamableHTTPTransport.Send"
+    ],
+    "evidence": [
+     "test:mcp/stdio_test.go#TestStdioTransportConnectsToANewlineDelimitedMCPServerAndCapturesStderr",
+     "test:mcp/streamable_http_test.go#TestStreamableHTTPTransportHandlesJSONAndSSEResponsesWithSessionAndProtocolHeaders"
+    ],
+    "production": [
+     "call:mcp/client.go#Client.requestInternal"
+    ],
+    "rationale": "StreamableHttpTransport.send is the Go method StreamableHTTPTransport.Send; the client calls it through the Transport interface and CreateDefaultTransport constructs the type; evidence drives the concrete transport."
+   },
+   "sessionId": {
+    "targets": [
+     "mcp/streamable_http.go#StreamableHTTPTransport.SessionID"
+    ],
+    "evidence": [
+     "test:mcp/streamable_http_test.go#TestStreamableHTTPTransportHandlesJSONAndSSEResponsesWithSessionAndProtocolHeaders"
+    ],
+    "production": [
+     "call:mcp/client.go#Client.initialize"
+    ],
+    "rationale": "StreamableHttpTransport.sessionId is the Go method StreamableHTTPTransport.SessionID; the client calls it through the Transport interface and CreateDefaultTransport constructs the type; evidence drives the concrete transport."
+   },
+   "setProtocolVersion": {
+    "targets": [
+     "mcp/streamable_http.go#StreamableHTTPTransport.SetProtocolVersion"
+    ],
+    "evidence": [
+     "test:mcp/streamable_http_test.go#TestStreamableHTTPTransportHandlesJSONAndSSEResponsesWithSessionAndProtocolHeaders"
+    ],
+    "production": [
+     "call:mcp/client.go#Client.initialize"
+    ],
+    "rationale": "StreamableHttpTransport.setProtocolVersion is the Go method StreamableHTTPTransport.SetProtocolVersion; the client calls it through the Transport interface and CreateDefaultTransport constructs the type; evidence drives the concrete transport."
+   },
+   "start": {
+    "targets": [
+     "mcp/streamable_http.go#StreamableHTTPTransport.Start"
+    ],
+    "evidence": [
+     "test:mcp/stdio_test.go#TestStdioTransportConnectsToANewlineDelimitedMCPServerAndCapturesStderr"
+    ],
+    "production": [
+     "call:mcp/client.go#Client.initialize"
+    ],
+    "rationale": "StreamableHttpTransport.start is the Go method StreamableHTTPTransport.Start; the client calls it through the Transport interface and CreateDefaultTransport constructs the type; evidence drives the concrete transport."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#StreamableHttpTransport::construct:0"
+  ],
+  "targets": [
+   "mcp/streamable_http.go#NewStreamableHTTPTransport"
+  ],
+  "production": [
+   "call:coding/mcpext/runtime.go#CreateDefaultTransport"
+  ],
+  "evidence": [
+   "test:mcp/streamable_http_options_test.go#TestStreamableHTTPTransportSendsTheConfiguredHeadersOnEveryRequest"
+  ],
+  "rationale": "`new StreamableHttpTransport(options)` is NewStreamableHTTPTransport(options), which returns an error where upstream throws on an invalid URL."
+ }
+]

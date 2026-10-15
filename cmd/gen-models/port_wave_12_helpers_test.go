@@ -222,8 +222,8 @@ func upstreamAIPackage(t *testing.T) string {
 	if err := json.Unmarshal(data, &manifest); err != nil {
 		t.Fatal(err)
 	}
-	if manifest.Version != pigversion.UpstreamVersion {
-		t.Fatalf("published pi-ai version = %q, want %q", manifest.Version, pigversion.UpstreamVersion)
+	if manifest.Version != pigversion.UpstreamPackageVersion {
+		t.Fatalf("published pi-ai version = %q, want %q", manifest.Version, pigversion.UpstreamPackageVersion)
 	}
 	data, err = os.ReadFile(filepath.Join(published, "dist", "providers", "data", ".manifest.json"))
 	if err != nil {

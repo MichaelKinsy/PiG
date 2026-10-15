@@ -8,6 +8,7 @@ import (
 )
 
 // A custom entry's `data` and a custom message's `details` are the JavaScript objects an extension wrote (session-manager.ts appendCustomEntry, appendCustomMessageEntry); the file holds JSON.stringify of them and a session that is loaded again hands them on as JSON.parse read them, in the order written. Neither the file nor the context built from it may sort their members.
+// Pi: packages/coding-agent/src/core/session-manager.ts:163 (CustomMessageEntry.details).
 func TestSessionKeepsExtensionObjectsInWrittenMemberOrder(t *testing.T) {
 	const value = `{"zeta":1,"alpha":{"yy":2,"bb":3},"mid":[{"qq":1,"aa":2}]}`
 	sm := tempSessionMgr(t)
@@ -18,7 +19,7 @@ func TestSessionKeepsExtensionObjectsInWrittenMemberOrder(t *testing.T) {
 	if _, err := session.AppendCustomEntry("probe-entry", json.RawMessage(value)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := session.AppendCustomMessage("probe-msg", "note", true, json.RawMessage(value)); err != nil {
+	if _, err := session.AppendCustomMessageEntry("probe-msg", "note", true, json.RawMessage(value)); err != nil {
 		t.Fatal(err)
 	}
 	flushSession(t, session)
@@ -37,8 +38,8 @@ func TestSessionKeepsExtensionObjectsInWrittenMemberOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 	var sawEntry, sawMessage bool
-	for _, entry := range reloaded.Entries() {
-		switch entry.Base.Type {
+	for _, entry := range reloaded.GetEntries() {
+		switch entry.Base().Type {
 		case "custom":
 			var custom CustomEntry
 			if err := json.Unmarshal(entry.Raw(), &custom); err != nil {

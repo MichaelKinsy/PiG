@@ -126,15 +126,15 @@ func run() error {
 	if err := emit("stock-nested-style", tui.NewMarkdownWithOptions("**nested**", 0, 0, nil, &tui.DefaultTextStyle{Bold: true}, nil).Render(24)); err != nil {
 		return err
 	}
-	if err := emit("user-preserve-options", tui.NewUserMessageBlock("1. first\n1. second\n\n\"\\\"").Render(24)); err != nil {
+	if err := emit("user-preserve-options", tui.NewUserMessageComponent("1. first\n1. second\n\n\"\\\"", nil, 1, nil).Render(24)); err != nil {
 		return err
 	}
-	if err := emit("user-zones", tui.NewUserMessageBlock("hello").Render(20)); err != nil {
+	if err := emit("user-zones", tui.NewUserMessageComponent("hello", nil, 1, nil).Render(20)); err != nil {
 		return err
 	}
 	var order []string
 	var widths []int
-	user := tui.NewUserMessageBlock("The input is $x^2$.")
+	user := tui.NewUserMessageComponent("The input is $x^2$.", nil, 1, nil)
 	user.SetMarkdownTransform(func(s string, w int) string {
 		order = append(order, "formula")
 		widths = append(widths, w)
@@ -152,7 +152,7 @@ func run() error {
 		return err
 	}
 	suffix := "before"
-	user = tui.NewUserMessageBlock("Message")
+	user = tui.NewUserMessageComponent("Message", nil, 1, nil)
 	user.SetMarkdownTransform(func(s string, _ int) string { return s + " " + suffix })
 	before := user.Render(80)
 	suffix = "after"
@@ -165,7 +165,7 @@ func run() error {
 		return err
 	}
 	suffix = "before"
-	user = tui.NewUserMessageBlock("Message")
+	user = tui.NewUserMessageComponent("Message", nil, 1, nil)
 	var workers sync.WaitGroup
 	user.SetMarkdownTransformState(func() string { return suffix })
 	user.SetAsyncMarkdownTransform(&tui.AsyncMarkdownTransform{
@@ -189,7 +189,7 @@ func run() error {
 	}{"user-padding-transform", paddingFrames}); err != nil {
 		return err
 	}
-	assistant := tui.NewAssistantMessageBlock(false)
+	assistant := tui.NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
 	assistant.SetContent([]tui.AssistantSegment{{Text: "日本語テスト hello world 你好世界 test"}})
 	assistant.SetHasToolCalls(true)
 	return emit("assistant-padding", assistant.Render(32))

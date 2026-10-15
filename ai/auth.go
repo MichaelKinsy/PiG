@@ -4,19 +4,24 @@ package ai
 // Credentials use Pi's JSON shape and proper-lockfile directory lock, including across Pi and PiG processes.
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io/fs"
 	"os"
-	"path/filepath"
 	"slices"
+	"strconv"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/configvalue"
+	"github.com/MichaelKinsy/PiG/internal/jsonparse"
+	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
+	"github.com/MichaelKinsy/PiG/internal/nodepath"
 	"github.com/MichaelKinsy/PiG/internal/ownerfile"
 	"github.com/MichaelKinsy/PiG/internal/pilock"
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
@@ -101,6 +106,9 @@ type Credential struct {
 	GatewayConfig json.RawMessage `json:"gatewayConfig,omitempty"`
 
 	expiry credentialExpiry
+	order  credentialKeyOrder
+	// opaque is a stored entry no typed credential can hold (a wrong-typed field, a value that is not an object). Pi keeps it as written and lists it; so does the store.
+	opaque json.RawMessage
 }
 
 // rawCredential mirrors Credential but also accepts the legacy `apiKey`
@@ -122,6 +130,7 @@ type rawCredential struct {
 	AvailableModelIDs json.RawMessage            `json:"availableModelIds,omitempty"`
 
 	expiry credentialExpiry
+	order  credentialKeyOrder
 }
 
 func (r rawCredential) normalize() Credential {
@@ -147,7 +156,46 @@ func (r rawCredential) normalize() Credential {
 	if c.Key == "" && r.LegacyAPIKey != "" {
 		c.Key = r.LegacyAPIKey
 	}
+	c.order = r.order.renamed("apiKey", "key").retainedFor(c.marshalFields)
 	return c
+}
+
+// decodeStoredCredential reads one entry of auth.json. An entry the typed credential cannot hold exactly (a wrong-typed field, a value that is not an object, a member the typed form would add or drop) keeps its source: Pi holds any JSON value per provider and rewrites the entry only when it changes, so an unrelated write leaves it as it was.
+func decodeStoredCredential(entry json.RawMessage) Credential {
+	var r rawCredential
+	if err := json.Unmarshal(entry, &r); err != nil {
+		var object struct {
+			Type string `json:"type"`
+		}
+		_ = json.Unmarshal(entry, &object)
+		return Credential{Type: CredentialType(object.Type), opaque: bytes.Clone(entry)}
+	}
+	credential := r.normalize()
+	if r.LegacyAPIKey != "" || r.Type == legacyCredentialAPIKey {
+		// An entry an older PiG wrote is migrated by the next write, as the migration documents.
+		return credential
+	}
+	written, err := credential.marshalTyped()
+	canonical, canonicalErr := jsonstringify.Canonicalize(entry)
+	if err != nil || canonicalErr != nil || !bytes.Equal(written, canonical) {
+		credential.opaque = bytes.Clone(entry)
+	}
+	return credential
+}
+
+// sourceUnchanged reports whether a credential that kept its source still equals what that source decodes to; a caller that changed it gets the typed form written.
+func (c Credential) sourceUnchanged() bool {
+	var r rawCredential
+	var baseline Credential
+	if err := json.Unmarshal(c.opaque, &r); err != nil {
+		baseline = Credential{Type: c.Type}
+	} else {
+		baseline = r.normalize()
+	}
+	// The typed form is what a change would write: equal bytes mean no field changed.
+	current, currentErr := c.marshalTyped()
+	original, originalErr := baseline.marshalTyped()
+	return currentErr == nil && originalErr == nil && bytes.Equal(current, original)
 }
 
 // AuthStorage is the persistent credential store at <agentDir>/auth.json.
@@ -162,7 +210,12 @@ func NewAuthStorage(path string) (*AuthStorage, error) {
 	if path == "" {
 		return nil, errors.New("auth: empty path")
 	}
-	dir := filepath.Dir(path)
+	// AuthStorage.create (auth-storage.ts:348) opens normalizePath(authPath): `~` and `~/x` expand to the home directory and a file:// URL becomes its path.
+	path, err := resolvepath.Normalize(path)
+	if err != nil {
+		return nil, err
+	}
+	dir := nodepath.Dirname(path)
 	if err := nodeerrno.MkdirAll(dir, 0o700); err != nil {
 		return nil, err
 	}
@@ -221,15 +274,43 @@ func (a *AuthStorage) loadLocked() (*authStorageData, error) {
 	}
 	// Preserve UTF-16 provider-key identity before building the map; JSON.parse keeps lone surrogates distinct from U+FFFD.
 	data = text.StripBomBytes(data)
-	raw := map[string]rawCredential{}
+	// JSON.parse's SyntaxError is what the caller reports, with V8's message.
+	if err := jsonparse.Validate(data); err != nil {
+		return nil, err
+	}
+	// JSON.parse returns any JSON value; auth-storage.ts keeps it as it is.
+	switch root := bytes.TrimSpace(data)[0]; {
+	case root == 'n':
+		return &authStorageData{values: map[string]Credential{}, root: authRootNull}, nil
+	case root == '[':
+		var items []json.RawMessage
+		if err := json.Unmarshal(data, &items); err != nil {
+			return nil, fmt.Errorf("auth: parse: %w", err)
+		}
+		array := &authStorageData{values: make(map[string]Credential, len(items)), root: authRootArray, arrayLen: len(items)}
+		for i, item := range items {
+			key := strconv.Itoa(i)
+			array.values[key] = decodeStoredCredential(item)
+			array.order = append(array.order, key)
+		}
+		return array, nil
+	case root != '{':
+		canonical, err := jsonstringify.Canonicalize(data)
+		if err != nil {
+			return nil, err
+		}
+		return &authStorageData{values: map[string]Credential{}, root: authRootScalar, scalar: canonical}, nil
+	}
+	raw := map[string]json.RawMessage{}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return nil, fmt.Errorf("auth: parse: %w", err)
 	}
 	// Legacy shapes are normalized in memory only: upstream never writes on
 	// read, and the next write stores the current shape.
+	// An entry that does not decode into a credential stays as written: Pi holds any JSON value per provider and the other providers keep working.
 	creds := make(map[string]Credential, len(raw))
-	for k, r := range raw {
-		creds[k] = r.normalize()
+	for k, entry := range raw {
+		creds[k] = decodeStoredCredential(entry)
 	}
 	order, err := authStorageObjectKeys(data)
 	if err != nil {
@@ -345,16 +426,36 @@ func (a *AuthStorage) Delete(ctx context.Context, provider string) error {
 		if err != nil {
 			return err
 		}
+		if creds.root == authRootNull {
+			return errAuthNullEntries
+		}
 		creds.delete(provider)
 		return a.writeLocked(creds, lock)
 	})
 }
 
+// stringifyAuthStorage is JSON.stringify(data, null, 2) (auth-storage.ts:358,467,479): two-space indentation, no HTML escaping, and JS number and key order.
+func stringifyAuthStorage(creds *authStorageData) ([]byte, error) {
+	compact, err := creds.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	canonical, err := jsonstringify.Canonicalize(compact)
+	if err != nil {
+		return nil, err
+	}
+	var out bytes.Buffer
+	if err := json.Indent(&out, canonical, "", "  "); err != nil {
+		return nil, err
+	}
+	return out.Bytes(), nil
+}
+
 func (a *AuthStorage) writeLocked(creds *authStorageData, lock *pilock.Lock) error {
 	a.read.mu.Lock()
-	a.read.revision = ""
+	a.read.revision = fileRevision{}
 	a.read.mu.Unlock()
-	data, err := json.MarshalIndent(creds, "", "  ")
+	data, err := stringifyAuthStorage(creds)
 	if err != nil {
 		return fmt.Errorf("auth: marshal: %w", err)
 	}
@@ -377,7 +478,7 @@ func (a *AuthStorage) writeLocked(creds *authStorageData, lock *pilock.Lock) err
 
 // ensureFileExists is FileAuthStorageBackend's ensureParentDir and ensureFileExists (auth-storage.ts:55-68): it creates the directory and then the store as "{}" when existsSync finds neither, and returns Node's fs errors.
 func (a *AuthStorage) ensureFileExists() error {
-	if dir := filepath.Dir(a.path); !pathExists(dir) {
+	if dir := nodepath.Dirname(a.path); !pathExists(dir) {
 		if err := nodeerrno.MkdirAll(dir, 0o700); err != nil {
 			return err
 		}
@@ -426,7 +527,7 @@ func (a *AuthStorage) withFileLock(ctx context.Context, asynchronous bool, fn fu
 	if asynchronous {
 		lock, err = acquireAuthFileLock(ctx, a.path)
 	} else {
-		lock, err = pilock.AcquireSync(a.path)
+		lock, err = pilock.AcquireAuthSync(a.path)
 	}
 	if err != nil {
 		// FileAuthStorageBackend rethrows proper-lockfile's error unchanged (auth-storage.ts:82,141).

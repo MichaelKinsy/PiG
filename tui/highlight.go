@@ -10,8 +10,9 @@ import (
 	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
-	"github.com/MichaelKinsy/PiG/tui/internal/hljs"
 )
+
+// pig additive (D92): highlightEngine, highlightRegistry and highlightStripped live in highlight_hljs_on.go, or in highlight_hljs_off.go for a Piglet Binary built without syntax-highlight.
 
 // HighlightFormatter styles the text of one highlight.js scope.
 type HighlightFormatter func(text string) string
@@ -27,17 +28,18 @@ type HighlightOptions struct {
 	Theme          HighlightTheme
 }
 
-// highlightRegistry is the highlight.js instance with the languages syntax-highlight.ts registers when it loads.
-var highlightRegistry = sync.OnceValue(hljs.NewRegistry)
-
 var loadAllHighlightLanguagesOnce sync.Once
 
 // LoadAllHighlightLanguages registers every highlight.js language, as loadAllHighlightLanguages does, and returns when they are available. It runs once; later calls wait for that load. Highlighted code cached before the load is discarded, because more languages now highlight.
 func LoadAllHighlightLanguages() {
+	// pig additive (D92): a Piglet that strips syntax-highlight loads no grammar.
+	if highlightStripped() {
+		return
+	}
 	loadAllHighlightLanguagesOnce.Do(func() {
 		highlightRegistry().LoadAllLanguages()
 		hlMu.Lock()
-		clear(hlCache)
+		resetHighlightCacheLocked()
 		hlGeneration++
 		hlMu.Unlock()
 	})
@@ -45,16 +47,25 @@ func LoadAllHighlightLanguages() {
 
 // SupportsLanguage reports whether highlight.js has a language or alias of that name.
 func SupportsLanguage(name string) bool {
+	// pig additive (D92): a Piglet that strips syntax-highlight supports no language.
+	if highlightStripped() {
+		return false
+	}
 	return highlightRegistry().SupportsLanguage(name)
 }
 
 // Highlight highlights code with highlight.js and renders its scopes with the theme. An error is an exception highlight.js throws, such as an unknown language.
 func Highlight(code string, options HighlightOptions) (string, error) {
+	// pig additive (D92): a Piglet that strips syntax-highlight highlights as highlight.js does with no language registered.
+	if highlightStripped() {
+		out, err := highlightPlain(code, options)
+		return terminalText(out), err
+	}
 	out, err := highlightWith(highlightRegistry(), code, options)
 	return terminalText(out), err
 }
 
-func highlightWith(registry *hljs.Registry, code string, options HighlightOptions) (string, error) {
+func highlightWith(registry highlightEngine, code string, options HighlightOptions) (string, error) {
 	var html string
 	var err error
 	if options.Language != "" {
@@ -88,7 +99,7 @@ func getScopeFromSpanTag(tag string) (string, bool) {
 func spanClassValue(tag string) (string, bool) {
 	for i := 0; i < len(tag); {
 		r, size := jsstring.DecodeRuneInString(tag[i:])
-		if !isJSWhitespace(r) || !strings.HasPrefix(tag[i+size:], "class") {
+		if !jsstring.IsSpace(r) || !strings.HasPrefix(tag[i+size:], "class") {
 			i += size
 			continue
 		}
@@ -109,7 +120,7 @@ func spanClassValue(tag string) (string, bool) {
 func skipJSWhitespace(text string, i int) int {
 	for i < len(text) {
 		r, size := jsstring.DecodeRuneInString(text[i:])
-		if !isJSWhitespace(r) {
+		if !jsstring.IsSpace(r) {
 			break
 		}
 		i += size
@@ -123,7 +134,7 @@ func splitJSWhitespace(text string) []string {
 	start := 0
 	for i := 0; i < len(text); {
 		r, size := jsstring.DecodeRuneInString(text[i:])
-		if !isJSWhitespace(r) {
+		if !jsstring.IsSpace(r) {
 			i += size
 			continue
 		}
@@ -248,7 +259,15 @@ func renderHighlightedHTML(html string, theme HighlightTheme) (output string, er
 			return
 		}
 		if f, ok := getActiveFormatter(scopes, theme); ok {
-			out.WriteString(f(textBuffer.String()))
+			// Each non-empty line takes the formatter on its own, so a token that spans lines (a multiline string or comment) keeps its color on every line after a terminal wraps or splits the output (#10143).
+			for i, line := range strings.Split(textBuffer.String(), "\n") {
+				if i > 0 {
+					out.WriteByte('\n')
+				}
+				if line != "" {
+					out.WriteString(f(line))
+				}
+			}
 		} else {
 			out.WriteString(textBuffer.String())
 		}
@@ -371,7 +390,7 @@ func jsParseInt(text string, radix int) float64 {
 		if d >= radix {
 			break
 		}
-		value = value*float64(radix) + float64(d)
+		value = float64(value*float64(radix)) + float64(d)
 		digits++
 	}
 	if digits == 0 {
@@ -383,7 +402,7 @@ func jsParseInt(text string, radix int) float64 {
 // cliHighlightTheme is theme.ts buildCliHighlightTheme for a theme.
 func cliHighlightTheme(t *Theme) HighlightTheme {
 	fg := func(token string) HighlightFormatter {
-		return func(s string) string { return t.FgText(token, s) }
+		return func(s string) string { return t.Fg(token, s) }
 	}
 	return HighlightTheme{
 		"keyword":     fg("syntaxKeyword"),
@@ -392,6 +411,7 @@ func cliHighlightTheme(t *Theme) HighlightTheme {
 		"number":      fg("syntaxNumber"),
 		"regexp":      fg("syntaxString"),
 		"string":      fg("syntaxString"),
+		"subst":       fg("text"),
 		"comment":     fg("syntaxComment"),
 		"doctag":      fg("syntaxComment"),
 		"meta":        fg("muted"),
@@ -419,39 +439,82 @@ func HighlightCode(code, lang string) []string {
 	return highlightCodeLines(code, lang, false)
 }
 
+// HighlightEpoch is what HighlightCode's lines depend on besides its arguments: the active theme and the highlight.js
+// languages loaded. Within one epoch HighlightCode returns the same lines for the same code and language, so a caller may
+// keep lines it highlighted instead of highlighting the same code again.
+type HighlightEpoch struct {
+	theme      *Theme
+	generation int
+}
+
+// CurrentHighlightEpoch is the epoch HighlightCode highlights in now.
+func CurrentHighlightEpoch() HighlightEpoch {
+	theme := ActiveTheme()
+	hlMu.Lock()
+	defer hlMu.Unlock()
+	return HighlightEpoch{theme: theme, generation: hlGeneration}
+}
+
 // highlightMarkdownCode is getMarkdownTheme().highlightCode, which styles a failed highlight with the mdCodeBlock color too.
 func highlightMarkdownCode(code, lang string) []string {
 	return highlightCodeLines(code, lang, true)
 }
 
+// highlightCodeLines is highlightCode with the memo and the resume state (D112). Both keep the lines they computed, so
+// each caller gets its own copy: theme.ts highlightCode returns a new array on every call, and its callers write into
+// it (write.ts updateWriteHighlightCacheIncremental sets highlightedLines[i]), which must not change a later call's lines.
 func highlightCodeLines(code, lang string, codeBlockOnError bool) []string {
 	t := ActiveTheme()
+	// pig additive (D92): a Piglet that strips syntax-highlight renders every code block as Pi renders a language highlight.js does not support.
+	if highlightStripped() {
+		return codeBlockLines(code, t)
+	}
 	key := hlKey{lang: lang, code: code, codeBlockOnError: codeBlockOnError}
 
 	hlMu.Lock()
 	if t != hlTheme {
 		// The active theme changed (e.g. /theme): drop the colors cached for the old one.
-		clear(hlCache)
+		resetHighlightCacheLocked()
 		hlTheme = t
 	}
 	if v, ok := hlCache[key]; ok {
 		hlMu.Unlock()
-		return v
+		return slices.Clone(v)
 	}
 	generation := hlGeneration
 	hlMu.Unlock()
 
-	out := highlightCodeUncached(highlightRegistry(), code, lang, codeBlockOnError, t)
+	out, ok := highlightResumable(highlightRegistry(), code, lang, codeBlockOnError, t)
+	if !ok {
+		out = highlightCodeUncached(highlightRegistry(), code, lang, codeBlockOnError, t)
+	}
 
 	hlMu.Lock()
 	if t == hlTheme && generation == hlGeneration {
-		if len(hlCache) >= hlCacheMax {
-			clear(hlCache)
-		}
-		hlCache[key] = out
+		storeHighlightLocked(key, out)
 	}
 	hlMu.Unlock()
-	return out
+	return slices.Clone(out)
+}
+
+// storeHighlightLocked caches out for key; hlMu must be held. A streamed code block is highlighted once per frame with a longer prefix of its code, and only the newest prefix can be asked for again, so the entry this one extends is dropped. Past hlCacheMax entries or hlCacheMaxBytes the memo starts over; an entry larger than the budget is not cached.
+func storeHighlightLocked(key hlKey, out []string) {
+	size := hlEntrySize(key, out)
+	if size > hlCacheMaxBytes {
+		return
+	}
+	if last := hlLast; last.lang == key.lang && last.codeBlockOnError == key.codeBlockOnError && strings.HasPrefix(key.code, last.code) {
+		if lines, ok := hlCache[last]; ok {
+			delete(hlCache, last)
+			hlCacheBytes -= hlEntrySize(last, lines)
+		}
+	}
+	if len(hlCache) >= hlCacheMax || hlCacheBytes+size > hlCacheMaxBytes {
+		resetHighlightCacheLocked()
+	}
+	hlCache[key] = out
+	hlCacheBytes += size
+	hlLast = key
 }
 
 // hlKey memoizes highlighted lines for the active theme and loaded languages.
@@ -460,18 +523,44 @@ type hlKey struct {
 	codeBlockOnError bool
 }
 
+// pig additive (D112): Pi keeps no highlight memo: its Markdown component reuses its rendered lines only while its text and width are unchanged, and highlights every code block again on any change (markdown.ts render). The memo and its bounds are a Go CPU choice, and a miss, an eviction or a reset returns the same lines as a hit.
 // hlCacheMax bounds the memo so a long session cannot grow it without limit; clearing on overflow keeps memory bounded at the cost of an occasional cold re-highlight.
 const hlCacheMax = 1024
+
+// hlCacheMaxBytes bounds the bytes the memo retains. Streaming a code block re-highlights a longer prefix every frame, and each prefix is a new key that is never asked for again, so the entry count alone lets a large block pin hundreds of megabytes.
+// An entry larger than the budget is not cached.
+// pig additive (D112): see hlCacheMax.
+const hlCacheMaxBytes = 8 << 20
 
 var (
 	hlMu         sync.Mutex
 	hlTheme      *Theme
 	hlGeneration int
 	hlCache      = map[hlKey][]string{}
+	hlCacheBytes int
+	// hlLast is the entry stored last, which the next prefix of a streamed block replaces.
+	hlLast hlKey
 )
 
-// highlightCodeUncached is the pure highlighter behind the memo: streaming re-parses a message every frame, so closed code blocks would otherwise re-highlight with unchanged input. Callers treat the returned slice as read-only.
-func highlightCodeUncached(registry *hljs.Registry, code, lang string, codeBlockOnError bool, t *Theme) []string {
+// hlEntrySize is the bytes a memo entry retains: the code held by its key and the highlighted lines.
+func hlEntrySize(key hlKey, lines []string) int {
+	size := len(key.code) + len(key.lang)
+	for _, line := range lines {
+		size += len(line)
+	}
+	return size
+}
+
+// resetHighlightCacheLocked empties the memo; hlMu must be held.
+func resetHighlightCacheLocked() {
+	clear(hlCache)
+	hlCacheBytes = 0
+	hlLast = hlKey{}
+	resetHighlightResumesLocked()
+}
+
+// highlightCodeUncached is the pure highlighter behind the memo: streaming re-parses a message every frame, so closed code blocks would otherwise re-highlight with unchanged input.
+func highlightCodeUncached(registry highlightEngine, code, lang string, codeBlockOnError bool, t *Theme) []string {
 	if lang == "" || !registry.SupportsLanguage(lang) {
 		return codeBlockLines(code, t)
 	}
@@ -488,7 +577,7 @@ func highlightCodeUncached(registry *hljs.Registry, code, lang string, codeBlock
 func codeBlockLines(code string, t *Theme) []string {
 	lines := strings.Split(code, "\n")
 	for i, line := range lines {
-		lines[i] = t.FgText("mdCodeBlock", line)
+		lines[i] = t.Fg("mdCodeBlock", line)
 	}
 	return lines
 }
@@ -500,67 +589,69 @@ func LanguageFromPath(path string) string {
 		return ""
 	}
 	// strings.ToLower maps U+0130 to "i"; toLowerCase maps it to "i\u0307" (SpecialCasing.txt). Every other character lowercases to the same ASCII letters in both.
-	return extToLang[strings.ToLower(strings.ReplaceAll(ext, "\u0130", "i\u0307"))]
+	return extToLang()[strings.ToLower(strings.ReplaceAll(ext, "\u0130", "i\u0307"))]
 }
 
-// extToLang is getLanguageFromPath's extension table.
-var extToLang = map[string]string{
-	"ts":         "typescript",
-	"tsx":        "typescript",
-	"js":         "javascript",
-	"jsx":        "javascript",
-	"mjs":        "javascript",
-	"cjs":        "javascript",
-	"py":         "python",
-	"rb":         "ruby",
-	"rs":         "rust",
-	"go":         "go",
-	"java":       "java",
-	"kt":         "kotlin",
-	"swift":      "swift",
-	"c":          "c",
-	"h":          "c",
-	"cpp":        "cpp",
-	"cc":         "cpp",
-	"cxx":        "cpp",
-	"hpp":        "cpp",
-	"cs":         "csharp",
-	"php":        "php",
-	"sh":         "bash",
-	"bash":       "bash",
-	"zsh":        "bash",
-	"fish":       "fish",
-	"ps1":        "powershell",
-	"sql":        "sql",
-	"html":       "html",
-	"htm":        "html",
-	"css":        "css",
-	"scss":       "scss",
-	"sass":       "sass",
-	"less":       "less",
-	"json":       "json",
-	"yaml":       "yaml",
-	"yml":        "yaml",
-	"toml":       "toml",
-	"xml":        "xml",
-	"md":         "markdown",
-	"markdown":   "markdown",
-	"dockerfile": "dockerfile",
-	"makefile":   "makefile",
-	"cmake":      "cmake",
-	"lua":        "lua",
-	"perl":       "perl",
-	"r":          "r",
-	"scala":      "scala",
-	"clj":        "clojure",
-	"ex":         "elixir",
-	"exs":        "elixir",
-	"erl":        "erlang",
-	"hs":         "haskell",
-	"ml":         "ocaml",
-	"vim":        "vim",
-	"graphql":    "graphql",
-	"proto":      "protobuf",
-	"tf":         "hcl",
-	"hcl":        "hcl",
-}
+// extToLang is getLanguageFromPath's extension table, built on first use, not on every start.
+var extToLang = sync.OnceValue(func() map[string]string {
+	return map[string]string{
+		"ts":         "typescript",
+		"tsx":        "typescript",
+		"js":         "javascript",
+		"jsx":        "javascript",
+		"mjs":        "javascript",
+		"cjs":        "javascript",
+		"py":         "python",
+		"rb":         "ruby",
+		"rs":         "rust",
+		"go":         "go",
+		"java":       "java",
+		"kt":         "kotlin",
+		"swift":      "swift",
+		"c":          "c",
+		"h":          "c",
+		"cpp":        "cpp",
+		"cc":         "cpp",
+		"cxx":        "cpp",
+		"hpp":        "cpp",
+		"cs":         "csharp",
+		"php":        "php",
+		"sh":         "bash",
+		"bash":       "bash",
+		"zsh":        "bash",
+		"fish":       "fish",
+		"ps1":        "powershell",
+		"sql":        "sql",
+		"html":       "html",
+		"htm":        "html",
+		"css":        "css",
+		"scss":       "scss",
+		"sass":       "sass",
+		"less":       "less",
+		"json":       "json",
+		"yaml":       "yaml",
+		"yml":        "yaml",
+		"toml":       "toml",
+		"xml":        "xml",
+		"md":         "markdown",
+		"markdown":   "markdown",
+		"dockerfile": "dockerfile",
+		"makefile":   "makefile",
+		"cmake":      "cmake",
+		"lua":        "lua",
+		"perl":       "perl",
+		"r":          "r",
+		"scala":      "scala",
+		"clj":        "clojure",
+		"ex":         "elixir",
+		"exs":        "elixir",
+		"erl":        "erlang",
+		"hs":         "haskell",
+		"ml":         "ocaml",
+		"vim":        "vim",
+		"graphql":    "graphql",
+		"proto":      "protobuf",
+		"tf":         "hcl",
+		"hcl":        "hcl",
+	}
+})

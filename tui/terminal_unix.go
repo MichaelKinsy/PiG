@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"golang.org/x/sys/unix"
@@ -23,6 +24,18 @@ func terminalInputBuffered(*os.File) bool { return false }
 // terminalInputPending reports, after file became readable, whether a read
 // returns without blocking. A readable descriptor always does.
 func terminalInputPending(*os.File) (bool, error) { return true, nil }
+
+// terminalHungUp reports whether the terminal behind file has been hung up, as when the master side of a pseudo-terminal closes.
+func terminalHungUp(file *os.File) bool {
+	pollfds := []unix.PollFd{{Fd: int32(file.Fd()), Events: unix.POLLIN}}
+	for {
+		n, err := unix.Poll(pollfds, 0)
+		if errors.Is(err, unix.EINTR) {
+			continue
+		}
+		return err == nil && n > 0 && pollfds[0].Revents&unix.POLLHUP != 0
+	}
+}
 
 // pollReadable waits up to ms milliseconds for fd to become readable. It
 // returns n>0 when readable, 0 on timeout. EINTR is retried internally so the
@@ -121,6 +134,24 @@ func (t *ProcessTerminal) startResizeWatcher(ctx context.Context, onResize func(
 		return syscall.Kill(pid, syscall.SIGWINCH)
 	})
 	return func() { signal.Stop(winchCh) }
+}
+
+// CacheSizeUntilResize makes Columns and Rows reuse the size they last read, as Node keeps process.stdout.columns and rows
+// and refreshes them only when SIGWINCH arrives (lib/tty.js WriteStream._refreshSize), instead of reading the size from the
+// terminal for every frame. The caller must own SIGWINCH delivery and run invalidate on every SIGWINCH before it renders for
+// it; stop ends the caching once every holder has stopped.
+func (t *ProcessTerminal) CacheSizeUntilResize() (invalidate, stop func()) {
+	cache := &t.sizeCache
+	forget := func(holders int) {
+		cache.mu.Lock()
+		cache.holders += holders
+		cache.generation++
+		cache.valid = false
+		cache.mu.Unlock()
+	}
+	forget(1)
+	var once sync.Once
+	return func() { forget(0) }, func() { once.Do(func() { forget(-1) }) }
 }
 
 // enableVTProcessing is a no-op on unix; ANSI output needs no console mode

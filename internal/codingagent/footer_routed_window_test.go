@@ -12,13 +12,13 @@ func TestFooterContextWindowFollowsTheRoutedModel(t *testing.T) {
 	footer.model.Capabilities.ContextWindow = 1_000_000
 	footer.contextTokens = 50_000
 	physical := footerTestModel("faux", "large", 0, 0)
-	footer.SetRoutedModelSource(func() *RoutedModelSelection {
-		return &RoutedModelSelection{Model: physical, ThinkingLevel: ai.ThinkingLevel("medium")}
-	})
+	footer.SetSession(testFooterSession{routed: func() *RoutedModelSelection {
+		return &RoutedModelSelection{Model: physical, ThinkingLevel: ai.ModelThinkingLevel("medium")}
+	}})
 	// 50000 / 200000 of the routed model, not 5.0%/1.0M of the virtual selection.
 	assertUpstreamFooterStats(t, footer, "25.0%/200k")
 
 	// Without a routed response, the selected model's window applies.
-	footer.SetRoutedModelSource(func() *RoutedModelSelection { return nil })
+	footer.SetSession(testFooterSession{})
 	assertUpstreamFooterStats(t, footer, "5.0%/1.0M")
 }

@@ -14,7 +14,7 @@ import (
 func TestAssistantEqualContentRerunsMarkdownTransformer(t *testing.T) {
 	var workers sync.WaitGroup
 	var calls atomic.Int32
-	block := NewAssistantMessageBlock(false)
+	block := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
 	block.SetAsyncMarkdownTransforms(&AsyncMarkdownTransform{Context: t.Context(), Start: workers.Go, Prepare: func(text string, _ int) func(context.Context) string {
 		return func(context.Context) string { return fmt.Sprintf("%s version%d", text, calls.Add(1)) }
 	}}, nil)
@@ -50,7 +50,7 @@ func TestDroppedAssistantMarkdownCancelsGeneration(t *testing.T) {
 		var workers sync.WaitGroup
 		started, release := make(chan struct{}), make(chan struct{})
 		var cancelled bool
-		block := NewAssistantMessageBlock(false)
+		block := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
 		block.SetAsyncMarkdownTransforms(&AsyncMarkdownTransform{Context: t.Context(), Start: workers.Go, Prepare: func(string, int) func(context.Context) string {
 			return func(ctx context.Context) string {
 				close(started)

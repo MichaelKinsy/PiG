@@ -64,3 +64,7 @@ reason = "Generated entry keys vary per run; one bijection retains identity reus
 paths = ["/**/timestamp"]
 kind = "timestamp"
 reason = "Session entry wall clocks differ between processes; field presence, type and valid timestamp syntax remain checked."
+[[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi 1.1.0 times each response and tool run with a monotonic clock (event-stream.ts, agent-loop.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."

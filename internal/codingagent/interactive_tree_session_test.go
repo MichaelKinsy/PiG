@@ -19,10 +19,10 @@ func TestInteractiveTreeSummaryRetryEscapePreservesLeaf(t *testing.T) {
 	)
 	pair.harness.Do(func() { pair.harness.Enter("first question") })
 	pair.harness.WaitIdle(t, 10*time.Second)
-	target := *pair.session.Inner().LeafID()
+	target := *pair.session.Inner().GetLeafID()
 	pair.harness.Do(func() { pair.harness.Enter("second question") })
 	pair.harness.WaitIdle(t, 10*time.Second)
-	oldLeaf := *pair.session.Inner().LeafID()
+	oldLeaf := *pair.session.Inner().GetLeafID()
 
 	type result struct {
 		navigation icodingagent.NavigateTreeResult
@@ -60,14 +60,14 @@ func TestInteractiveTreeSummaryRetryEscapePreservesLeaf(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("Esc did not join the summary operation")
 	}
-	if leaf := pair.session.Inner().LeafID(); leaf == nil || *leaf != oldLeaf {
+	if leaf := pair.session.Inner().GetLeafID(); leaf == nil || *leaf != oldLeaf {
 		t.Fatalf("aborted summary changed the leaf: %v, want %s", leaf, oldLeaf)
 	}
 	if kind, label := pair.harness.Status(); kind != "" || label != "" {
 		t.Fatalf("aborted summary retained status: %s %s", kind, label)
 	}
-	for _, entry := range pair.session.Inner().Entries() {
-		if entry.Base.Type == "branch_summary" {
+	for _, entry := range pair.session.Inner().GetEntries() {
+		if entry.Base().Type == "branch_summary" {
 			t.Fatal("aborted summary was persisted")
 		}
 	}

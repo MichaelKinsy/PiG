@@ -1,0 +1,42 @@
+{"role":"user","content":"timestamp string","timestamp":"x"}
+{"role":"user","content":"timestamp bool","timestamp":true}
+{"role":"user","content":"timestamp array","timestamp":[1]}
+{"role":"user","content":5,"timestamp":1}
+{"role":"user","content":{"a":1},"timestamp":2}
+{"role":"user","content":true,"timestamp":3}
+{"role":"user","content":[{"type":"text","text":5}],"timestamp":4}
+{"role":"user","content":[{"type":5,"text":"block type number"}],"timestamp":5}
+{"role":"user","content":[{"type":"image","data":5,"mimeType":true}],"timestamp":6}
+{"role":"user","content":["bare string block",7,null],"timestamp":7}
+{"role":"user","content":[{"type":"text","text":"ok","textSignature":5}],"timestamp":8}
+{"role":"assistant","content":"assistant content string","api":"openai-completions","provider":"p","model":"m","usage":{"input":1,"output":1,"cacheRead":0,"cacheWrite":0,"totalTokens":2,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop","timestamp":9}
+{"role":"assistant","content":[{"type":"text","text":"api number"}],"api":5,"provider":[],"model":{},"usage":{"input":1,"output":1,"cacheRead":0,"cacheWrite":0,"totalTokens":2,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":5,"timestamp":10}
+{"role":"assistant","content":[{"type":"text","text":"usage string"}],"api":"openai-completions","provider":"p","model":"m","usage":"x","stopReason":"stop","timestamp":11}
+{"role":"assistant","content":[{"type":"text","text":"usage members"}],"api":"openai-completions","provider":"p","model":"m","usage":{"input":"1","output":true,"cacheRead":[],"cacheWrite":{},"totalTokens":"2","cost":"x"},"stopReason":"stop","timestamp":12}
+{"role":"assistant","content":[{"type":"text","text":"cost members"}],"api":"openai-completions","provider":"p","model":"m","usage":{"input":1,"output":1,"cacheRead":0,"cacheWrite":0,"totalTokens":2,"cost":{"input":"0","output":false,"cacheRead":0,"cacheWrite":0,"total":"x"}},"stopReason":"stop","timestamp":13}
+{"role":"assistant","content":[{"type":"text","text":"error members"}],"api":"openai-completions","provider":"p","model":"m","usage":{"input":1,"output":1,"cacheRead":0,"cacheWrite":0,"totalTokens":2,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"error","errorMessage":5,"responseId":6,"responseModel":7,"durationMs":"x","endTurn":"yes","thinkingLevel":8,"providerThinkingLevel":9,"timestamp":14}
+{"role":"assistant","content":[{"type":"text","text":"records"}],"api":"openai-completions","provider":"p","model":"m","usage":{"input":1,"output":1,"cacheRead":0,"cacheWrite":0,"totalTokens":2,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop","diagnostics":"x","deferred":5,"timestamp":15}
+{"role":"assistant","content":[{"type":"text","text":"record members"}],"api":"openai-completions","provider":"p","model":"m","usage":{"input":1,"output":1,"cacheRead":0,"cacheWrite":0,"totalTokens":2,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop","diagnostics":[{"type":5,"timestamp":"x","message":[]},"bare"],"deferred":{"id":5,"provider":"p","expiresAt":"x"},"timestamp":16}
+{"role":"assistant","content":[{"type":"toolCall","id":5,"name":["n"],"arguments":"x"},{"type":"thinking","thinking":5,"thinkingSignature":6,"redacted":"no"},{"type":"text","text":{"t":1}}],"api":"openai-completions","provider":"p","model":"m","usage":{"input":1,"output":1,"cacheRead":0,"cacheWrite":0,"totalTokens":2,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"toolUse","timestamp":17}
+{"role":"assistant","content":[{"type":"toolCall","id":"c1","name":"read","arguments":[1,2]},{"type":7}],"api":"openai-completions","provider":"p","model":"m","usage":{"input":1,"output":1,"cacheRead":0,"cacheWrite":0,"totalTokens":2,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"toolUse","timestamp":18}
+{"role":"toolResult","toolCallId":5,"toolName":true,"content":[{"type":"text","text":"ids"}],"isError":"no","timestamp":19}
+{"role":"toolResult","toolCallId":"c1","toolName":"read","content":"result string","isError":false,"timestamp":20}
+{"role":"toolResult","toolCallId":"c1","toolName":"read","content":{"x":1},"isError":false,"details":"anything","timestamp":21}
+{"role":"toolResult","toolCallId":"c1","toolName":"read","content":[{"type":"text","text":"nested"}],"isError":false,"nestedCalls":"x","usage":5,"durationMs":[],"timestamp":22}
+{"role":"toolResult","toolCallId":"c1","toolName":"read","content":[{"type":"text","text":"nested members"}],"isError":false,"nestedCalls":{"calls":[{"id":5,"name":6,"status":7,"argumentsBytes":"x"},"bare"],"complete":"yes"},"timestamp":23}
+{"role":"toolResult","toolCallId":"c1","toolName":"read","content":[{"type":"text","text":"calls string"}],"isError":false,"nestedCalls":{"calls":"x"},"timestamp":24}
+{"role":"system","content":5,"timestamp":25}
+{"role":"system","content":"sections","sections":"x","toolsAdded":5,"toolsRemoved":[1],"timestamp":"x"}
+{"role":"bashExecution","command":5,"output":[],"exitCode":"x","cancelled":"no","truncated":1,"timestamp":27}
+{"role":"custom","customType":5,"content":7,"display":"yes","details":1,"timestamp":28}
+{"role":5,"content":"role number","timestamp":29}
+{"content":"role missing","timestamp":30}
+{"timestamp":"content missing","role":"user"}
+{"role":"assistant","content":null,"api":"a","provider":"p","model":"m","usage":{"input":1,"output":2,"cacheRead":0,"cacheWrite":0,"totalTokens":3,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":5,"timestamp":32}
+{"role":"toolResult","toolCallId":"c9","toolName":"read","isError":0,"timestamp":33}
+5
+"a string message"
+[1,2]
+true
+false
+{"role":"user","content":"last","timestamp":31}

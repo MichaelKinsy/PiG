@@ -33,7 +33,7 @@ func TestToolParameterBytesMatchPi(t *testing.T) {
 		}
 		expected[tool.Name] = tool.Parameters
 	}
-	for _, tool := range CreateAllTools(t.TempDir(), nil, "") {
+	for _, tool := range CreateAllTools(t.TempDir(), nil) {
 		t.Run(tool.Name(), func(t *testing.T) {
 			schema := tool.Schema()
 			for _, declaration := range []ai.ToolSchema{schema, ai.ToToolDeclaration(schema)} {

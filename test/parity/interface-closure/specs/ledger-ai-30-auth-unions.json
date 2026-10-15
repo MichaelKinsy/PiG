@@ -1,0 +1,34 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#AuthPrompt",
+   "pkg:ai/compat#AuthPrompt"
+  ],
+  "targets": [
+   "ai/auth_interaction.go#AuthPrompt"
+  ],
+  "production": [
+   "call:ai/oauth_callback_server.go#manualCodeInteraction"
+  ],
+  "evidence": [
+   "test:ai/wire_shape_upstream_test.go#TestAuthPromptAndEventVariantsMatchUpstreamShapes"
+  ],
+  "rationale": "AuthPrompt is a closed union: Go declares the interface implemented by one type per upstream variant, and the wire test marshals every variant and compares the exact JSON (type literal first, then the upstream property names). The per-prompt AbortSignal is the context passed to AuthInteraction.Prompt."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#AuthEvent",
+   "pkg:ai/compat#AuthEvent"
+  ],
+  "targets": [
+   "ai/auth_interaction.go#AuthEvent"
+  ],
+  "production": [
+   "call:ai/auth_native_login.go#oauthNativeLogin"
+  ],
+  "evidence": [
+   "test:ai/wire_shape_upstream_test.go#TestAuthPromptAndEventVariantsMatchUpstreamShapes"
+  ],
+  "rationale": "AuthEvent is a closed union: Go declares the interface implemented by one type per upstream variant, and the wire test marshals every variant and compares the exact JSON (type literal first, then the upstream property names). The per-prompt AbortSignal is the context passed to AuthInteraction.Prompt."
+ }
+]

@@ -1,0 +1,34 @@
+# Behavior family: rpc
+# Surface: --continue when the session directory holds no session.
+#
+# Pi 1.1.0 main.ts passes the flag to SessionManager.continueRecent (session-manager.ts:1793), which creates a session when none exists, without a message. Pig
+# printed "warning: no prior session in <dir>; starting fresh" on stderr (coding/cli/main.go, unrecorded); stderr_equal pins the silence.
+
+name = "51-rpc-continue-without-prior-session"
+description = "--continue with no earlier session starts fresh without a warning"
+covers = [
+  "packages/coding-agent/src/main.ts",
+  "packages/coding-agent/src/core/session-manager.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+canonical_json = false
+timeout_seconds = 15
+[[rpc.steps]]
+line = '{"id":"s1","type":"get_commands"}'
+wait_contains = ['"id":"s1","type":"response"']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--model", "test-faux/faux-1", "--system-prompt", "RPC chat probe.", "--no-context-files", "--no-skills", "--session-dir", "{{TEMP}}/sessions", "--continue"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--system-prompt", "RPC chat probe.", "--no-context-files", "--no-skills", "--session-dir", "{{TEMP}}/sessions", "--continue"]
+
+[assert]
+exit_code = 0
+output_normalized_equal = true
+stderr_equal = true
+runs = 3

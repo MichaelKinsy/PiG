@@ -32,7 +32,7 @@ type x11Property struct {
 
 func (p *x11Property) appendProperty(chunk x11Property) bool {
 	if (chunk.format != 8 && chunk.format != 16 && chunk.format != 32) || chunk.typeID == 0 ||
-		uint64(chunk.items)*uint64(chunk.format/8) != uint64(len(chunk.data)) ||
+		uint64(chunk.items)*uint64(chunk.format/8) != uint64(len(chunk.data)) || //portlint:allow numbers linux-platform-x11.c:120 `chunk->items * (chunk->format / 8)` divides integers in C too
 		(p.typeID != 0 && (p.typeID != chunk.typeID || p.format != chunk.format)) ||
 		chunk.items > math.MaxUint32-p.items || len(chunk.data) > maxClipboardBytes-len(p.data) {
 		return false
@@ -58,6 +58,7 @@ type x11Clipboard struct {
 func x11Request(opcode, detail byte, size int) []byte {
 	packet := make([]byte, size)
 	packet[0], packet[1] = opcode, detail
+	//portlint:allow numbers an X11 request length counts 4-byte units (xcb_send_request); every caller passes a size padded to a multiple of 4
 	x11Order.PutUint16(packet[2:], uint16(size/4))
 	return packet
 }
@@ -182,6 +183,7 @@ func (c *x11Clipboard) readProperty(remove bool) (x11Property, error) {
 	}
 	format := reply[1]
 	typeID, after, items := x11Order.Uint32(reply[8:]), x11Order.Uint32(reply[12:]), x11Order.Uint32(reply[16:])
+	//portlint:allow numbers linux-platform-x11.c:105 `reply->value_len * (reply->format / 8)` divides integers in C too
 	length := uint64(items) * uint64(format/8)
 	if after != 0 || typeID == 0 || (format != 8 && format != 16 && format != 32) || length > maxClipboardBytes || length > uint64(len(reply)-32) {
 		return x11Property{}, errX11Clipboard

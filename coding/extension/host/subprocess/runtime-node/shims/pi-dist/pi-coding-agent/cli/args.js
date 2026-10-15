@@ -3,6 +3,7 @@
  */
 import chalk from "../../../chalk/source/index.js";
 import { APP_NAME, CONFIG_DIR_NAME, ENV_AGENT_DIR, ENV_SESSION_DIR } from "../config.js";
+import { getToolListError } from "../core/settings-manager.js";
 const VALID_THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
 export function isValidThinkingLevel(level) {
     return VALID_THINKING_LEVELS.includes(level);
@@ -111,10 +112,17 @@ export function parseArgs(args) {
             result.noBuiltinTools = true;
         }
         else if ((arg === "--tools" || arg === "-t") && i + 1 < args.length) {
-            result.tools = args[++i]
+            const tools = args[++i]
                 .split(",")
                 .map((s) => s.trim())
                 .filter((name) => name.length > 0);
+            const error = getToolListError(tools);
+            if (error) {
+                result.diagnostics.push({ type: "error", message: `${arg}: ${error}` });
+            }
+            else {
+                result.tools = tools;
+            }
         }
         else if ((arg === "--exclude-tools" || arg === "-xt") && i + 1 < args.length) {
             result.excludeTools = args[++i]
@@ -151,6 +159,9 @@ export function parseArgs(args) {
         }
         else if (arg === "--no-extensions" || arg === "-ne") {
             result.noExtensions = true;
+        }
+        else if (arg === "--no-mcp") {
+            result.noMcp = true;
         }
         else if (arg === "--skill" && i + 1 < args.length) {
             result.skills = result.skills ?? [];
@@ -299,13 +310,15 @@ ${chalk.bold("Options:")}
                                  Supports globs (anthropic/*, *sonnet*) and fuzzy matching
   --no-tools, -nt                Disable all tools by default (built-in and extension)
   --no-builtin-tools, -nbt       Disable built-in tools by default but keep extension/custom tools enabled
-  --tools, -t <tools>            Comma-separated allowlist of tool names to enable
-                                 Applies to built-in, extension, and custom tools
-  --exclude-tools, -xt <tools>   Comma-separated denylist of tool names to disable
-                                 Applies to built-in, extension, and custom tools
+  --tools, -t <tools>            Comma-separated allowlist of tool names or patterns (*) to enable
+                                 Keeps MCP tools unless an entry starts with mcp__
+                                 Only +name/-name entries add to or remove from the defaults
+  --exclude-tools, -xt <tools>   Comma-separated denylist of tool names or patterns (*) to disable
+                                 Applies to all tools, MCP tools included
   --thinking <level>             Set thinking level: off, minimal, low, medium, high, xhigh, max
   --extension, -e <path>         Load an extension file or builtin:<name> (can be used multiple times)
   --no-extensions, -ne           Disable extension discovery and built-in extensions (explicit -e paths still work)
+  --no-mcp                       Disable built-in MCP support: no servers connect and no MCP tools
   --skill <path>                 Load a skill file or directory (can be used multiple times)
   --no-skills, -ns               Disable skills discovery and loading
   --prompt-template <path>       Load a prompt template file or directory (can be used multiple times)
@@ -381,6 +394,12 @@ ${chalk.bold("Examples:")}
 
   # Read-only mode (no file modifications possible)
   ${APP_NAME} --tools read,grep,find,ls -p "Review the code in src/"
+
+  # Add codemode to the default tools
+  ${APP_NAME} --tools +codemode
+
+  # Codemode with only the tools of one MCP server
+  ${APP_NAME} --tools read,bash,codemode,'mcp__radius__*'
 
   # Disable one tool while keeping the rest available
   ${APP_NAME} --exclude-tools ask_question

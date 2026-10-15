@@ -1,0 +1,17 @@
+name: pig-aot
+description: "Experimental: compiles a session's TypeScript extensions into one executable in the background and runs it from the next start."
+
+release:
+  version: 0.5.0-dev
+
+build:
+  extensionRealization: fused
+
+extensions:
+  - name: aotruntime
+    origins:
+      - local:extensions/aotruntime
+
+discovery:
+  extensions: []
+  skills: []

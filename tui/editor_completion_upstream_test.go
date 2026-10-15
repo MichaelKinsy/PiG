@@ -23,11 +23,8 @@ type completionUpstreamProvider struct {
 	apply    func([]string, int, int, AutocompleteItem, string) ([]string, int, int)
 }
 
-func (p *completionUpstreamProvider) GetSuggestions(lines []string, row, col int) *AutocompleteSuggestions {
-	return p.query(lines[row][:col], false)
-}
-func (p *completionUpstreamProvider) GetSuggestionsForce(lines []string, row, col int) *AutocompleteSuggestions {
-	return p.query(lines[row][:col], true)
+func (p *completionUpstreamProvider) GetSuggestions(ctx context.Context, lines []string, row, col int, options AutocompleteSuggestionOptions) *AutocompleteSuggestions {
+	return p.query(lines[row][:col], options.Force)
 }
 func (p *completionUpstreamProvider) TriggerCharacters() []string { return p.triggers }
 func (p *completionUpstreamProvider) ApplyCompletion(lines []string, row, col int, item AutocompleteItem, prefix string) ([]string, int, int) {
@@ -453,7 +450,7 @@ func TestUpstreamEditorCompletionRequeriesOnCursorMove(t *testing.T) {
 // the pending @ request. It does not install the old additive provider fanout.
 type completionAbortProvider struct{ aborts int }
 
-func (*completionAbortProvider) GetSuggestions([]string, int, int) *AutocompleteSuggestions {
+func (*completionAbortProvider) GetSuggestions(context.Context, []string, int, int, AutocompleteSuggestionOptions) *AutocompleteSuggestions {
 	return nil
 }
 func (*completionAbortProvider) ApplyCompletion(lines []string, row, col int, item AutocompleteItem, prefix string) ([]string, int, int) {

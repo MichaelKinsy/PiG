@@ -2,6 +2,10 @@
 
 package harness
 
+// pi: packages/durable/src/harness/registry.ts
+
+// pi: packages/durable/src/harness/define.ts
+
 import (
 	"context"
 	"errors"
@@ -19,7 +23,7 @@ func registryTool(name string, edit ...func(*durable.ToolRegistration)) *durable
 	tool := &durable.ToolRegistration{
 		ToolSchema: ai.ToolSchema{Name: name, Description: name + " tool", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
 		Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
-			return durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{}}, nil
+			return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}}, nil
 		},
 	}
 	for _, apply := range edit {
@@ -124,10 +128,26 @@ func expectStrings(t *testing.T, got, want []string) {
 }
 
 func sameTask(a, b durable.AnyTask) bool {
-	return a != nil && b != nil && a.AnyDefinition() == b.AnyDefinition()
+	return a.Definition != nil && b.Definition != nil && a.Definition == b.Definition
 }
 
+// harness-registry.test.ts:141 it("keeps the default of a progress interval given as undefined")
+// A nil field of the patch is JavaScript's undefined: it leaves the built-in default, whichever the sibling field says.
+func TestSettingsKeepTheDefaultOfAProgressIntervalGivenAsUndefined(t *testing.T) {
+	progress := ResolveSettings(&HarnessSettings{Progress: &ProgressPolicyPatch{PartialIntervalMs: nil, OutputIntervalMs: new(250.0)}}).Progress
+	if progress.PartialIntervalMs != 100 || progress.OutputIntervalMs != 250 {
+		t.Fatalf("progress = %+v, want partialIntervalMs 100 and outputIntervalMs 250", progress)
+	}
+	if got := ResolveSettings(&HarnessSettings{Progress: &ProgressPolicyPatch{}}).Progress; got != DefaultProgressPolicy {
+		t.Fatalf("an empty patch resolved to %+v, want the defaults %+v", got, DefaultProgressPolicy)
+	}
+}
+
+// Pi source: packages/durable/src/harness/registry.ts
+// mutation-checked: zeroing the results of Registry.Install fails it
+// packages/durable/src/harness/types.ts:298-303: Registry.install(extension) installs or replaces by name in place and publishes at once; Registry.uninstall(extension) removes by name whichever object it is, and a later install appends.
 func TestRegistry(t *testing.T) {
+	// harness-registry.test.ts:72 it("installs, replaces in place, and uninstalls extensions by name")
 	t.Run("installs, replaces in place, and uninstalls extensions by name", func(t *testing.T) {
 		registry := CreateRegistry()
 		var listener []string
@@ -166,9 +186,10 @@ func TestRegistry(t *testing.T) {
 		expectStrings(t, listener, []string{"a", "a,b", "a,b", "b", "b,a"})
 	})
 
+	// harness-registry.test.ts:104 it("validates the registry as it would be after an install and publishes nothing when invalid")
 	t.Run("validates the registry as it would be after an install and publishes nothing when invalid", func(t *testing.T) {
 		registry := CreateRegistry()
-		tasks := new(durable.Extension{Name: "tasks", Tasks: []durable.AnyTask{registryTask("app.index")}})
+		tasks := new(durable.Extension{Name: "tasks", Tasks: []durable.AnyTask{registryTask("app.index").Erased()}})
 		mustInstall(t, registry, tasks)
 		published := 0
 		registry.Subscribe(func() { published++ })
@@ -181,8 +202,8 @@ func TestRegistry(t *testing.T) {
 			{new(durable.Extension{Name: "x", Sections: []*durable.PromptSection{Section("a", text("1")), Section("a", text("2"))}}), "two sections"},
 			{new(durable.Extension{Name: "x", Sections: []*durable.PromptSection{Section("Bad Key", text(""))}}), "must match"},
 			{new(durable.Extension{Name: "x", Sections: []*durable.PromptSection{Section("instructions", text(""))}}), "reserved"},
-			{new(durable.Extension{Name: "x", Tasks: []durable.AnyTask{registryTask("pi.generation")}}), "already installed"},
-			{new(durable.Extension{Name: "x", Tasks: []durable.AnyTask{registryTask("app.index")}}), "already installed"},
+			{new(durable.Extension{Name: "x", Tasks: []durable.AnyTask{registryTask("pi.generation").Erased()}}), "already installed"},
+			{new(durable.Extension{Name: "x", Tasks: []durable.AnyTask{registryTask("app.index").Erased()}}), "already installed"},
 		}
 		for _, item := range invalid {
 			err := registry.Install(item.extension)
@@ -197,12 +218,13 @@ func TestRegistry(t *testing.T) {
 			t.Fatalf("published %d", published)
 		}
 		// Replacing the extension that holds a task name is valid: the check runs on the state after replacement.
-		mustInstall(t, registry, new(durable.Extension{Name: "tasks", Tasks: []durable.AnyTask{registryTask("app.index", 2)}}))
+		mustInstall(t, registry, new(durable.Extension{Name: "tasks", Tasks: []durable.AnyTask{registryTask("app.index", 2).Erased()}}))
 		if got := registry.Snapshot().Task("app.index").AnyDefinition().Version; got != 2 {
 			t.Fatalf("version %d", got)
 		}
 	})
 
+	// harness-registry.test.ts:127 it("always holds the built-in tasks, which are not an extension")
 	t.Run("always holds the built-in tasks, which are not an extension", func(t *testing.T) {
 		registry := CreateRegistry()
 		if len(registry.Snapshot().Installed()) != 0 {
@@ -220,15 +242,15 @@ func TestRegistry(t *testing.T) {
 				}
 			}
 		}
-		expectTasks(GenerationTask, ToolTask, CompactionTask)
+		expectTasks(GenerationTask.Erased(), ToolTask.Erased(), CompactionTask.Erased())
 		custom := registryTask("app.custom")
-		mustInstall(t, registry, new(durable.Extension{Name: "custom", Tasks: []durable.AnyTask{custom}}))
-		expectTasks(GenerationTask, ToolTask, CompactionTask, custom)
-		if !sameTask(registry.Snapshot().Task("app.custom"), custom) {
+		mustInstall(t, registry, new(durable.Extension{Name: "custom", Tasks: []durable.AnyTask{custom.Erased()}}))
+		expectTasks(GenerationTask.Erased(), ToolTask.Erased(), CompactionTask.Erased(), custom.Erased())
+		if !sameTask(registry.Snapshot().Task("app.custom"), custom.Erased()) {
 			t.Fatal("app.custom is not the installed task")
 		}
 		registry.Uninstall(new(durable.Extension{Name: "custom"}))
-		if registry.Snapshot().Task("app.custom") != nil {
+		if registry.Snapshot().Task("app.custom").Definition != nil {
 			t.Fatal("app.custom survived uninstall")
 		}
 	})
@@ -249,6 +271,7 @@ func TestAgentResolution(t *testing.T) {
 	mustInstall(t, registry, coding, skills, reviewer)
 	snapshot := registry.Snapshot()
 
+	// harness-registry.test.ts:164 it("selects the default, an array, or the default edited by add and remove")
 	t.Run("selects the default, an array, or the default edited by add and remove", func(t *testing.T) {
 		expectStrings(t, extensionNamesOf(resolveWith(nil, snapshot, nil, nil).Extensions), []string{"coding", "skills", "reviewer"})
 		settings := &HarnessSettings{Extensions: []*durable.Extension{coding, skills}}
@@ -266,6 +289,7 @@ func TestAgentResolution(t *testing.T) {
 		}
 	})
 
+	// harness-registry.test.ts:180 it("skips uninstalled names and resolves them again once they are installed")
 	t.Run("skips uninstalled names and resolves them again once they are installed", func(t *testing.T) {
 		local := CreateRegistry()
 		mustInstall(t, local, coding)
@@ -275,6 +299,7 @@ func TestAgentResolution(t *testing.T) {
 		expectStrings(t, extensionNamesOf(resolveWith(state, local.Snapshot(), nil, nil).Extensions), []string{"coding", "skills"})
 	})
 
+	// harness-registry.test.ts:189 it("replaces same-name tools in place, wraps the winner, then applies the filter")
 	t.Run("replaces same-name tools in place, wraps the winner, then applies the filter", func(t *testing.T) {
 		local := CreateRegistry()
 		venvBash := registryTool("bash", func(tool *durable.ToolRegistration) { tool.Description = "venv bash" })
@@ -321,6 +346,7 @@ func TestAgentResolution(t *testing.T) {
 		expectStrings(t, toolNamesOf(removed.Tools), []string{"read", "edit"})
 	})
 
+	// harness-registry.test.ts:223 it("drops a tool or section whose wrapper throws or renames it and reports the failure")
 	t.Run("drops a tool or section whose wrapper throws or renames it and reports the failure", func(t *testing.T) {
 		local := CreateRegistry()
 		broken := new(durable.Extension{
@@ -351,6 +377,7 @@ func TestAgentResolution(t *testing.T) {
 		expectStrings(t, messages, []string{"wrapper failed", "Wrapper renamed edit to renamed", "section wrapper failed"})
 	})
 
+	// harness-registry.test.ts:250 it("orders sections by extension, replaces same keys in place, and renders instructions last and unwrapped")
 	t.Run("orders sections by extension, replaces same keys in place, and renders instructions last and unwrapped", func(t *testing.T) {
 		local := CreateRegistry()
 		override := new(durable.Extension{
@@ -393,10 +420,11 @@ func TestAgentResolution(t *testing.T) {
 		}
 	})
 
+	// harness-registry.test.ts:279 it("collects hooks of the selected extensions in extension order and applies field defaults")
 	t.Run("collects hooks of the selected extensions in extension order and applies field defaults", func(t *testing.T) {
 		local := CreateRegistry()
-		first := &ToolHooks{BeforeTool: func(context.Context, ai.ToolCall, HookApi) (*BeforeToolResult, error) { return nil, nil }}
-		second := &ToolHooks{BeforeTool: func(context.Context, ai.ToolCall, HookApi) (*BeforeToolResult, error) { return nil, nil }}
+		first := &ToolHooks{BeforeTool: func(context.Context, ToolHookCall, HookApi) (*BeforeToolResult, error) { return nil, nil }}
+		second := &ToolHooks{BeforeTool: func(context.Context, ToolHookCall, HookApi) (*BeforeToolResult, error) { return nil, nil }}
 		onYield := &GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, HookApi) (*YieldContinue, error) { return nil, nil }}
 		mustInstall(t, local,
 			new(durable.Extension{Name: "a", Hooks: []durable.HookRegistration{Hook(ToolTask, first), Hook(GenerationTask, onYield)}}),
@@ -428,4 +456,26 @@ func TestAgentResolution(t *testing.T) {
 			t.Fatalf("configured %+v", configured)
 		}
 	})
+}
+
+// packages/durable/src/harness/registry.ts:68-71 (RegistryReader.subscribe, types.ts:292): subscribe returns a function that deletes the
+// listener from the set, so later publications do not call it, other listeners are untouched, and unsubscribing twice is harmless.
+// mutation-checked: making the returned unsubscribe a no-op fails it.
+func TestRegistryReaderSubscribeReturnsUnsubscribe(t *testing.T) {
+	registry := CreateRegistry()
+	var reader RegistryReader = registry
+	var first, second int
+	stopFirst := reader.Subscribe(func() { first++ })
+	reader.Subscribe(func() { second++ })
+	mustInstall(t, registry, new(durable.Extension{Name: "a"}))
+	if first != 1 || second != 1 {
+		t.Fatalf("after the first publication: first=%d second=%d, want 1 1", first, second)
+	}
+	stopFirst()
+	stopFirst()
+	mustInstall(t, registry, new(durable.Extension{Name: "b"}))
+	if first != 1 || second != 2 {
+		t.Fatalf("after unsubscribing the first listener: first=%d second=%d, want 1 2", first, second)
+	}
+	expectStrings(t, extensionNamesOf(reader.Snapshot().Installed()), []string{"a", "b"})
 }

@@ -1,3 +1,5 @@
+//go:build !pig_strip_docs
+
 package prompts
 
 import (
@@ -24,7 +26,7 @@ func TestDocsSectionCitesOnlyShippedPages(t *testing.T) {
 		t.Fatal(err)
 	}
 	shipped := pigdocs.List()
-	section := docsSection(docsDir)
+	section := docsSectionAt(docsDir, "", "")
 	cited := regexp.MustCompile(`\(docs/([A-Za-z0-9_.-]+\.md)[,)]`).FindAllStringSubmatch(section, -1)
 	if len(cited) < 10 {
 		t.Fatalf("found %d cited docs in the section, want at least 10; the pattern or the section changed:\n%s", len(cited), section)

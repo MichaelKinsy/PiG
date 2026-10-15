@@ -35,8 +35,8 @@ func TestDeviceCodeLoginOpensNoBrowser(t *testing.T) {
 	var launches []string
 	openBrowser = func(url string) error { launches = append(launches, url); return nil }
 	completed := make(chan struct{})
-	mode := NewInteractiveMode(InteractiveOptions{AgentDir: t.TempDir()})
-	if err := mode.runLoginRegisteredOAuth(t.Context(), deviceCodeOAuthProvider{done: completed}, ""); err != nil {
+	mode := NewInteractiveMode(nil, InteractiveModeOptions{AgentDir: t.TempDir()})
+	if err := mode.runLoginRegisteredOAuth(t.Context(), deviceCodeOAuthProvider{done: completed}, "Device Code Probe", ""); err != nil {
 		t.Fatal(err)
 	}
 	<-completed

@@ -14,7 +14,17 @@ import (
 
 // installResizeHandler drives onTerminalResize from SIGWINCH. Returns a stop
 // func; the goroutine also exits when ctx is cancelled.
+//
+// While it runs, the process terminal keeps its size between SIGWINCHs, as
+// Node keeps process.stdout.columns and rows, instead of reading it for every
+// frame; each SIGWINCH drops the kept size before the resize render is posted.
 func (m *InteractiveMode) installResizeHandler(ctx context.Context) func() {
+	invalidateSize, stopSize := func() {}, func() {}
+	if m.tuiInst != nil {
+		if terminal, ok := m.tuiInst.Terminal().(*tui.ProcessTerminal); ok {
+			invalidateSize, stopSize = terminal.CacheSizeUntilResize()
+		}
+	}
 	winchCh := make(chan os.Signal, 1)
 	signal.Notify(winchCh, syscall.SIGWINCH)
 	go func() {
@@ -23,11 +33,12 @@ func (m *InteractiveMode) installResizeHandler(ctx context.Context) func() {
 			case <-ctx.Done():
 				return
 			case <-winchCh:
+				invalidateSize()
 				m.onTerminalResize()
 			}
 		}
 	}()
-	return func() { signal.Stop(winchCh) }
+	return func() { signal.Stop(winchCh); stopSize() }
 }
 
 // ignoreSuspendInterrupt changes dispatch-time listener state without discarding pending kernel signals. SIGINT delivered after resume cleanup follows the ordinary interrupt handler, as in Pi's process.removeListener path.
@@ -53,12 +64,16 @@ func (m *InteractiveMode) suspendOperations() suspendOperations {
 		ignoreInterrupt: m.ignoreSuspendInterrupt,
 		continued:       m.onSuspendContinue,
 		stop: func() {
+			// pig additive (D91): a frontend session learns of the stop
+			// while PiG still reads its input, and keeps its frames.
+			if m.surface != nil {
+				m.surface.Suspend()
+			}
 			if m.inputReader != nil {
 				m.inputReader.pause()
 			}
-			m.tuiInst.Stop()
-			if m.themeState.autoSyncEnabled.Load() {
-				m.writeThemeNotifications(false)
+			if m.surface == nil {
+				m.tuiInst.Stop()
 			}
 			if m.rawRestore != nil {
 				m.rawRestore()
@@ -77,14 +92,21 @@ func (m *InteractiveMode) suspendOperations() suspendOperations {
 			if m.inputReader != nil {
 				m.inputReader.resume()
 			}
-			if m.themeState.autoSyncEnabled.Load() {
-				m.writeThemeNotifications(true)
+			if m.surface != nil {
+				m.surface.Resume()
+			} else {
+				m.tuiInst.Start()
 			}
-			m.tuiInst.Start()
 			return nil
 		},
-		requestRender: func() { m.tuiInst.ForceFullRender(); m.tuiInst.Render() },
-		kill:          func(pid int) error { return syscall.Kill(pid, syscall.SIGTSTP) },
+		requestRender: func() {
+			// pig additive (D91): Resume already drew what changed.
+			if m.surface == nil {
+				m.tuiInst.ForceFullRender()
+				m.tuiInst.Render()
+			}
+		},
+		kill: func(pid int) error { return syscall.Kill(pid, syscall.SIGTSTP) },
 	}
 }
 

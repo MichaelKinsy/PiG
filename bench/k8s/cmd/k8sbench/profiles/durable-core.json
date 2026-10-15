@@ -1,0 +1,36 @@
+{
+	"name": "durable-core",
+	"rule": "core",
+	"about": "durable-bench's workload (a scripted model calls a lookup tool; ten measured eight-tool turns on a seeded store) run by durable/interop/bench.mjs on Node: on pi-durable, pi-ai and chord from the Pi sources at durable/contract/PIN main (the conformance gate's reference), and on PiG's Durable core built with TinyGo through durable/core/host/cf's pi-durable-compatible facade on node:sqlite (both programs built by durable/core/host/cf/bench/build.mjs); and the same workload on the core built natively (durable/core/sqlhost/cmd/bench seed and sample, the Go port of bench.mjs's scripted model). Every target seeds its own store from zero and must reproduce durable-bench's history fingerprint and the same measured transcript.",
+	"fingerprints": {
+		"50": "b017b487524e44a4",
+		"250": "dcea9f30b0917245",
+		"1000": "ac520308146f2a8f",
+		"3500": "0a8c8e4b0d9a0794"
+	},
+	"targets": [
+		{
+			"name": "pig-tinygo",
+			"role": "pig",
+			"rule": "core-tinygo",
+			"seed": ["node", "--no-warnings", "--expose-gc", "{root}/core/bench-pig.mjs", "seed", "{dir}", "{turns}"],
+			"seedMeta": "{dir}/pi-{turns}.sqlite.json",
+			"sample": ["node", "--no-warnings", "--expose-gc", "{root}/core/bench-pig.mjs", "sample", "{dir}/pi-{turns}.sqlite", "{turns}", "{sample}"]
+		},
+		{
+			"name": "pig-native",
+			"role": "pig",
+			"rule": "core-native",
+			"seed": ["sqlhost-bench", "seed", "{dir}", "{turns}"],
+			"seedMeta": "{dir}/pig-native-{turns}.sqlite.json",
+			"sample": ["sqlhost-bench", "sample", "{dir}/pig-native-{turns}.sqlite", "{turns}", "{sample}"]
+		},
+		{
+			"name": "pi",
+			"role": "reference",
+			"seed": ["node", "--no-warnings", "--expose-gc", "{root}/core/bench-pi.mjs", "seed", "{dir}", "{turns}"],
+			"seedMeta": "{dir}/pi-{turns}.sqlite.json",
+			"sample": ["node", "--no-warnings", "--expose-gc", "{root}/core/bench-pi.mjs", "sample", "{dir}/pi-{turns}.sqlite", "{turns}", "{sample}"]
+		}
+	]
+}

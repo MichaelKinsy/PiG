@@ -8,7 +8,7 @@
 # "[parity-modified]", which the faux provider reports as "modified:parity-modified". A host that applies
 # the new object runs `echo reassigned` and answers "not-modified" (the first fix for issue #165 did).
 #
-# Upstream evidence (2026-10-06, Pi 1.0.3):
+# Upstream evidence (2026-10-06, Pi 1.0.3; re-probed against Pi 1.0.4 on the integration branch, both pass):
 #   PI_CODING_AGENT_DIR=testdata/pi-agent pi --no-extensions \
 #     -e ../../testdata/test-faux-provider.ts -e testdata/ext/parity-tool-call-reassign.mjs \
 #     --model test-faux/faux-1 --print "Run: bash modified"

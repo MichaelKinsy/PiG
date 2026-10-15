@@ -1,5 +1,6 @@
 # RP-003: Pi 0.87.1 api/bedrock-converse-stream.ts:912-918,970-1036,1085-1093 uses ECMAScript emptiness tests without trimming nonblank payload bytes.
 # Compare complete serialized HTTP message arrays for string/block users, assistant text and persisted unsigned signatures, and tool results across Claude and Nova. The 400 fixture response terminates capture; this is payload evidence, not live inference or auth proof.
+# D116: the Pi probe merges adjacent same-role messages (bedrock-whitespace-pi.mjs mergeAdjacentRoles), because PiG merges them and Pi 1.1.0 does not.
 name = "29-bedrock-ecmascript-whitespace"
 description = "Bedrock keeps NEL, removes BOM-only text, and preserves signature fallback on the real Converse wire."
 covers = ["packages/ai/src/api/bedrock-converse-stream.ts"]

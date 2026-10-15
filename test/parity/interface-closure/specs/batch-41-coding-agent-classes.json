@@ -1,0 +1,595 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:createCommandContext"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/runner.go#Runner.CreateCommandContext"
+  ],
+  "production": [
+   "call:coding/extension/host/inproc/runner.go#Runner.ExecuteCommand"
+  ],
+  "evidence": [
+   "test:coding/cli/session_extension_actions_prompt_options_test.go#TestHeadlessNativeCommandContextReadsSessionPromptOptions",
+   "test:coding/cli/session_extension_actions_tools_test.go#TestSessionExtensionActionsBindInProcessToolActions"
+  ],
+  "rationale": "ExtensionRunner.createCommandContext is the Go method Runner.CreateCommandContext; signature reviewed against the upstream declaration (upstream class ExtensionRunner is Go Runner); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:emit"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/runner.go#Runner.Emit"
+  ],
+  "production": [
+   "call:coding/cli/extension_login_preview_command.go#runExtensionLoginPreview"
+  ],
+  "evidence": [
+   "test:coding/cli/extension_login_preview_command_test.go#TestGeneratedLoginExtensionIsIdentifiedThroughPigletResolution",
+   "test:coding/extension/host/inproc/cancelled_dispatch_test.go#TestCancelledDispatchIsNotReportedAsAHandlerError"
+  ],
+  "rationale": "ExtensionRunner.emit is the Go method Runner.Emit; signature reviewed against the upstream declaration (upstream class ExtensionRunner is Go Runner); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:emitBeforeProviderHeaders"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/runner.go#Runner.EmitBeforeProviderHeaders"
+  ],
+  "production": [
+   "call:coding/session_extension_hooks.go#Session.extensionProviderHeadersHook"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/null_result_test.go#TestBeforeProviderHeadersSubprocessResultReplacesHeaders",
+   "test:coding/extension/host/inproc/upstream_context_headers_test.go#TestUpstreamRunnerContextAndHeaders"
+  ],
+  "rationale": "ExtensionRunner.emitBeforeProviderHeaders is the Go method Runner.EmitBeforeProviderHeaders; signature reviewed against the upstream declaration (upstream class ExtensionRunner is Go Runner); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:emitBeforeProviderRequest"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/runner.go#Runner.EmitBeforeProviderRequest"
+  ],
+  "production": [
+   "call:coding/session_extension_hooks.go#Session.extensionProviderRequestHook"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/chain_dispatch_test.go#TestEmitBPR_ChainCompounds",
+   "test:coding/extension/host/inproc/chain_dispatch_test.go#TestEmitBPR_NilHandlerResultDoesNotChangeChain"
+  ],
+  "rationale": "ExtensionRunner.emitBeforeProviderRequest is the Go method Runner.EmitBeforeProviderRequest; signature reviewed against the upstream declaration (upstream class ExtensionRunner is Go Runner); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:emitCacheWarmingDecision"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/cache_warming.go#Runner.EmitCacheWarmingDecision"
+  ],
+  "production": [
+   "call:coding/session_cache_warming.go#Session.decideCacheWarming"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/cache_warming_test.go#TestCacheWarmingDecisionAwaitsAndReportsHandlers",
+   "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+  ],
+  "rationale": "ExtensionRunner.emitCacheWarmingDecision is the Go method Runner.EmitCacheWarmingDecision; signature reviewed against the upstream declaration (upstream class ExtensionRunner is Go Runner); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:emitError"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/runner.go#Runner.EmitError"
+  ],
+  "production": [
+   "call:coding/cli/session_extension_actions.go#bindSessionExtensionActions"
+  ],
+  "evidence": [
+   "test:internal/codingagent/interactive_extension_errors_test.go#TestInteractiveShowsExtensionRunnerErrors"
+  ],
+  "rationale": "ExtensionRunner.emitError is the Go method Runner.EmitError; signature reviewed against the upstream declaration (upstream class ExtensionRunner is Go Runner); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:emitToolCall"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/runner.go#Runner.EmitToolCall"
+  ],
+  "production": [
+   "call:coding/session_extension_hooks.go#Session.toolCallHook"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/context_test.go#TestDispatchContext_AssertActiveRejectsStale",
+   "test:coding/extension/host/inproc/null_result_test.go#TestObserveOnlyHandlersReturnNoResult"
+  ],
+  "rationale": "ExtensionRunner.emitToolCall is the Go method Runner.EmitToolCall; signature reviewed against the upstream declaration (upstream class ExtensionRunner is Go Runner); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:emitToolResult"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/runner.go#Runner.EmitToolResult"
+  ],
+  "production": [
+   "call:coding/session_extension_hooks.go#Session.toolResultHook"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/null_result_test.go#TestObserveOnlyHandlersReturnNoResult",
+   "test:coding/extension/host/inproc/tool_dispatch_test.go#TestEmitToolResult_ContentOnlyKeepsIsError"
+  ],
+  "rationale": "ExtensionRunner.emitToolResult is the Go method Runner.EmitToolResult; signature reviewed against the upstream declaration (upstream class ExtensionRunner is Go Runner); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:emitUserBash"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/runner.go#Runner.EmitUserBash"
+  ],
+  "production": [
+   "call:coding/cli/rpc_mode.go#rpcUserBashOverride"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/chain_dispatch_test.go#TestEmitUserBash_AcceptsTypedGoResult",
+   "test:coding/extension/host/inproc/chain_dispatch_test.go#TestEmitUserBash_AcceptsValidResultOverride"
+  ],
+  "rationale": "ExtensionRunner.emitUserBash is the Go method Runner.EmitUserBash; signature reviewed against the upstream declaration (upstream class ExtensionRunner is Go Runner); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:getMarkdownTransformers"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/runner.go#Runner.GetMarkdownTransformers"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_chat.go#InteractiveMode.asyncMarkdownTransform"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder",
+   "test:coding/extension/host/subprocess/upstream_runner_markdown_test.go#TestUpstreamRunnerMarkdownSourceFactories"
+  ],
+  "rationale": "ExtensionRunner.getMarkdownTransformers is the Go method Runner.GetMarkdownTransformers; signature reviewed against the upstream declaration (upstream class ExtensionRunner is Go Runner); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:getToolDefinition"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/runner.go#Runner.GetToolDefinition"
+  ],
+  "production": [
+   "call:internal/codingagent/tool_definition_renderers.go#InteractiveMode.bindToolCard"
+  ],
+  "evidence": [
+   "test:coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamExtensionConflicts",
+   "test:coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts"
+  ],
+  "rationale": "ExtensionRunner.getToolDefinition is the Go method Runner.GetToolDefinition; signature reviewed against the upstream declaration (upstream class ExtensionRunner is Go Runner); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:getUIContext"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/runner.go#Runner.GetUIContext"
+  ],
+  "production": [
+   "call:coding/extension/host/inproc/runner.go#NewRunner"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/upstream_modes_test.go#TestRunnerCapturedContextsFollowUIBinding",
+   "test:internal/codingagent/ext_ui_editor_snapshot_test.go#TestExtensionEditorSnapshotConcurrentInput"
+  ],
+  "rationale": "ExtensionRunner.getUIContext is the Go method Runner.GetUIContext; signature reviewed against the upstream declaration (upstream class ExtensionRunner is Go Runner); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:hasHandlers"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/runner.go#Runner.HasHandlers"
+  ],
+  "production": [
+   "call:coding/cli/headless_reload.go#cliRuntimeBuilder.reloadHeadless"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/registry_test.go#TestHasHandlers_AcrossMultipleExtensions",
+   "test:coding/extension/host/inproc/registry_test.go#TestHasHandlers_EmptyHandlerSliceCountsAsAbsent"
+  ],
+  "rationale": "ExtensionRunner.hasHandlers is the Go method Runner.HasHandlers; signature reviewed against the upstream declaration (upstream class ExtensionRunner is Go Runner); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:invalidate"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/runner.go#Runner.Invalidate"
+  ],
+  "production": [
+   "call:coding/cli/headless_reload.go#cliRuntimeBuilder.reloadHeadless"
+  ],
+  "evidence": [
+   "test:coding/cli/builtin_extension_order_test.go#TestBuiltinExtensionsLoadInIndexOrderWithLlamaFirst",
+   "test:coding/cli/builtin_extension_order_test.go#TestBuiltinLlamaIsNotReplaceableByAnotherLlamaCommand"
+  ],
+  "rationale": "ExtensionRunner.invalidate is the Go method Runner.Invalidate; signature reviewed against the upstream declaration (upstream class ExtensionRunner is Go Runner); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:reportUnhandledMcpServers"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/mcp_servers.go#Runner.ReportUnhandledMcpServers"
+  ],
+  "production": [
+   "call:coding/extension/host/inproc/mcp_servers.go#Runner.onMcpServersChange"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/mcp_servers_registration_test.go#TestRunnerDoesNotReportMcpServersWhenAnExtensionHandlesThem",
+   "test:coding/extension/host/inproc/mcp_servers_registration_test.go#TestRunnerReportsRegisteredMcpServersWhenNoExtensionHandlesThem"
+  ],
+  "rationale": "ExtensionRunner.reportUnhandledMcpServers is the Go method Runner.ReportUnhandledMcpServers; signature reviewed against the upstream declaration (upstream class ExtensionRunner is Go Runner); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:setUIContext"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/runner.go#Runner.SetUIContext"
+  ],
+  "production": [
+   "call:coding/cli/extension_login_preview_command.go#runExtensionLoginPreview"
+  ],
+  "evidence": [
+   "test:coding/cli/extension_login_preview_command_test.go#TestGeneratedLoginExtensionIsIdentifiedThroughPigletResolution",
+   "test:coding/extension/host/inproc/context_binding_lifetime_test.go#TestRunnerContextQueriesDuringUIReplacement"
+  ],
+  "rationale": "ExtensionRunner.setUIContext is the Go method Runner.SetUIContext; signature reviewed against the upstream declaration (upstream class ExtensionRunner is Go Runner); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#RpcClient::property:getStderr"
+  ],
+  "targets": [
+   "coding/rpcclient/rpc_client.go#RpcClient.GetStderr"
+  ],
+  "production": [
+   "call:coding/rpcclient/rpc_client.go#RpcClient.finishCollecting"
+  ],
+  "evidence": [
+   "test:coding/rpcclient/rpc_client_unix_test.go#TestRpcClientStopDoesNotCloseStdoutBeforeChildExits",
+   "test:coding/rpcclient/rpc_client_unix_test.go#TestRpcStopClosesInheritedOutputDescriptors"
+  ],
+  "rationale": "RpcClient.getStderr is the Go method RpcClient.GetStderr; signature reviewed against the upstream declaration (upstream class RpcClient is Go RpcClient); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#RpcClient::property:prompt"
+  ],
+  "targets": [
+   "coding/rpcclient/commands.go#RpcClient.Prompt"
+  ],
+  "production": [
+   "call:coding/rpcclient/commands.go#RpcClient.PromptAndWait"
+  ],
+  "evidence": [
+   "test:coding/rpcclient/rpc_client_test.go#TestRpcClientDispositionOfAResponseWithoutDataIsAnError",
+   "test:coding/rpcclient/rpc_client_test.go#TestRpcClientPromptSteerAndFollowUpReturnTheDisposition"
+  ],
+  "rationale": "RpcClient.prompt is the Go method RpcClient.Prompt; signature reviewed against the upstream declaration (upstream class RpcClient is Go RpcClient); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#Theme::property:appearance"
+  ],
+  "targets": [
+   "tui/theme.go#Theme.Appearance"
+  ],
+  "production": [
+   "call:internal/codingagent/ext_ui_context.go#ExtensionThemePalette"
+  ],
+  "evidence": [
+   "test:internal/codingagent/pig_logo_animation_test.go#TestPigLogoAnimationColors",
+   "test:internal/codingagent/theme_controller_native_upstream_test.go#TestThemeControllerNativeUpstream"
+  ],
+  "rationale": "Theme.appearance is the Go method Theme.Appearance; signature reviewed against the upstream declaration (upstream class Theme is Go Theme); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ToolExecutionComponent::property:invalidate"
+  ],
+  "targets": [
+   "tui/tool_execution.go#ToolExecutionComponent.Invalidate"
+  ],
+  "production": [
+   "call:internal/codingagent/tool_definition_renderers.go#InteractiveMode.toolDefinitionRenderers"
+  ],
+  "evidence": [
+   "test:internal/codingagent/tool_execution_component_upstream_test.go#TestToolExecutionBashDurationUpstream",
+   "test:internal/experimental/client_tui_component_test.go#TestClientTuiToolCardDisposalJoinsUnfinishedShell"
+  ],
+  "rationale": "ToolExecutionComponent.invalidate is the Go method ToolExecutionComponent.Invalidate; signature reviewed against the upstream declaration (upstream class ToolExecutionComponent is Go ToolExecutionComponent); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ToolExecutionComponent::property:markExecutionStarted"
+  ],
+  "targets": [
+   "tui/tool_execution.go#ToolExecutionComponent.MarkExecutionStarted"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_events.go#InteractiveMode.handleAgentEvent"
+  ],
+  "evidence": [
+   "test:internal/codingagent/interactive_resume_thinking_test.go#TestInteractiveModeThinkingTogglePreservesPartialBashOutputUpstream",
+   "test:internal/codingagent/interactive_test.go#TestInteractiveMode_EscAbortFreezesRunningTool"
+  ],
+  "rationale": "ToolExecutionComponent.markExecutionStarted is the Go method ToolExecutionComponent.MarkExecutionStarted; signature reviewed against the upstream declaration (upstream class ToolExecutionComponent is Go ToolExecutionComponent); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ToolExecutionComponent::property:render"
+  ],
+  "targets": [
+   "tui/tool_execution.go#ToolExecutionComponent.Render"
+  ],
+  "production": [
+   "call:tui/tool_execution.go#ToolExecutionComponent.HandleMouse"
+  ],
+  "evidence": [
+   "test:internal/codingagent/edit_tool_no_redraw_upstream_test.go#TestEditToolNoFullRedrawUpstream",
+   "test:internal/codingagent/image_convert_test.go#TestToolCardRegistersTheTranscoderAndConvertsNonPNGImages"
+  ],
+  "rationale": "ToolExecutionComponent.render is the Go method ToolExecutionComponent.Render; signature reviewed against the upstream declaration (upstream class ToolExecutionComponent is Go ToolExecutionComponent); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ToolExecutionComponent::property:setArgsComplete"
+  ],
+  "targets": [
+   "tui/tool_execution.go#ToolExecutionComponent.SetArgsComplete"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_events.go#InteractiveMode.handleAgentEvent"
+  ],
+  "evidence": [
+   "test:internal/codingagent/edit_tool_no_redraw_upstream_test.go#TestEditToolNoFullRedrawUpstream",
+   "test:tui/tool_execution_test.go#TestToolExecution_SetArgsComplete"
+  ],
+  "rationale": "ToolExecutionComponent.setArgsComplete is the Go method ToolExecutionComponent.SetArgsComplete; signature reviewed against the upstream declaration (upstream class ToolExecutionComponent is Go ToolExecutionComponent); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ToolExecutionComponent::property:setExpanded"
+  ],
+  "targets": [
+   "tui/tool_execution.go#ToolExecutionComponent.SetExpanded"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_events.go#InteractiveMode.handleAgentEvent"
+  ],
+  "evidence": [
+   "test:internal/codingagent/tool_call_fallback_test.go#TestRegisteredToolWithoutRenderersDrawsTheFallbackHeaderThroughTheEventPath",
+   "test:internal/codingagent/tool_execution_component_upstream_test.go#TestBashDoesNotDuplicateFinalTruncationDetailsUpstream"
+  ],
+  "rationale": "ToolExecutionComponent.setExpanded is the Go method ToolExecutionComponent.SetExpanded; signature reviewed against the upstream declaration (upstream class ToolExecutionComponent is Go ToolExecutionComponent); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#BashExecutionComponent::property:appendOutput"
+  ],
+  "targets": [
+   "tui/bash_execution.go#BashExecutionBlock.AppendOutput"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_turn.go#InteractiveMode.handleBashCommand"
+  ],
+  "evidence": [
+   "test:tui/bash_execution_test.go#TestBashExecutionBlockCollapsedLimitUsesVisualRows",
+   "test:tui/bash_execution_test.go#TestBashExecutionBlockDurableTruncationIsIndependentOfPreviewCollapse"
+  ],
+  "rationale": "BashExecutionComponent.appendOutput is the Go method BashExecutionBlock.AppendOutput; signature reviewed against the upstream declaration (upstream class BashExecutionComponent is Go BashExecutionBlock); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#BashExecutionComponent::property:setExpanded"
+  ],
+  "targets": [
+   "tui/bash_execution.go#BashExecutionBlock.SetExpanded"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_turn.go#InteractiveMode.handleBashCommand"
+  ],
+  "evidence": [
+   "test:tui/bash_execution_test.go#TestBashExecutionBlockCollapsedLimitUsesVisualRows",
+   "test:tui/bash_execution_test.go#TestBashExecutionBlock_CollapsePreviewLimit"
+  ],
+  "rationale": "BashExecutionComponent.setExpanded is the Go method BashExecutionBlock.SetExpanded; signature reviewed against the upstream declaration (upstream class BashExecutionComponent is Go BashExecutionBlock); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AssistantMessageComponent::property:setOutputPad"
+  ],
+  "targets": [
+   "tui/assistant_message_block.go#AssistantMessageBlock.SetOutputPad"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_chat.go#InteractiveMode.newAssistantMessageBlock"
+  ],
+  "evidence": [
+   "test:internal/codingagent/assistant_message_upstream_test.go#TestAssistantMessageUpstream",
+   "test:tui/message_padding_test.go#TestAssistantMessageConfiguredOutputPadding"
+  ],
+  "rationale": "AssistantMessageComponent.setOutputPad is the Go method AssistantMessageBlock.SetOutputPad; signature reviewed against the upstream declaration (upstream class AssistantMessageComponent is Go AssistantMessageBlock); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#LoginDialogComponent::property:showAuth"
+  ],
+  "targets": [
+   "tui/login_dialog.go#LoginDialog.ShowAuth"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_api_key_login.go#InteractiveMode.runAuthDialog"
+  ],
+  "evidence": [
+   "test:tui/auth_url_copy_upstream_test.go#TestAuthURLCopyLoginDialogCopiesTheAuthURLInsteadOfTypingIntoTheCodeInput",
+   "test:tui/login_dialog_oauth_prompt_upstream_test.go#TestLoginDialogPreservesAuthInstructionsWithPromptUpstream"
+  ],
+  "rationale": "LoginDialogComponent.showAuth is the Go method LoginDialog.ShowAuth; signature reviewed against the upstream declaration (upstream class LoginDialogComponent is Go LoginDialog); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#LoginDialogComponent::property:showDetails"
+  ],
+  "targets": [
+   "tui/login_dialog.go#LoginDialog.ShowDetails"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_api_key_login.go#InteractiveMode.runAPIKeyLogin"
+  ],
+  "evidence": [
+   "test:tui/login_dialog_oauth_prompt_upstream_test.go#TestLoginDialogPreservesSetupDetailsUpstream",
+   "test:tui/login_dialog_test.go#TestLoginDialogOAuthPromptsUpstream"
+  ],
+  "rationale": "LoginDialogComponent.showDetails is the Go method LoginDialog.ShowDetails; signature reviewed against the upstream declaration (upstream class LoginDialogComponent is Go LoginDialog); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#LoginDialogComponent::property:showInfo"
+  ],
+  "targets": [
+   "tui/login_dialog.go#LoginDialog.ShowInfo"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_api_key_login.go#InteractiveMode.runAPIKeyLogin"
+  ],
+  "evidence": [
+   "test:tui/login_dialog_oauth_prompt_upstream_test.go#TestLoginDialogPreservesNeutralInformationAndLinksUpstream",
+   "test:tui/login_dialog_test.go#TestLoginDialogOAuthPromptsUpstream"
+  ],
+  "rationale": "LoginDialogComponent.showInfo is the Go method LoginDialog.ShowInfo; signature reviewed against the upstream declaration (upstream class LoginDialogComponent is Go LoginDialog); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#LoginDialogComponent::property:showProgress"
+  ],
+  "targets": [
+   "tui/login_dialog.go#LoginDialog.ShowProgress"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_api_key_login.go#InteractiveMode.runAuthDialog"
+  ],
+  "evidence": [
+   "test:tui/login_dialog_pi_test.go#TestLoginDialogMaskDisabledMatchesPi",
+   "test:tui/login_dialog_test.go#TestLoginDialogMaskedPreview"
+  ],
+  "rationale": "LoginDialogComponent.showProgress is the Go method LoginDialog.ShowProgress; signature reviewed against the upstream declaration (upstream class LoginDialogComponent is Go LoginDialog); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#LoginDialogComponent::property:showWaiting"
+  ],
+  "targets": [
+   "tui/login_dialog.go#LoginDialog.ShowWaiting"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_api_key_login.go#InteractiveMode.runAuthDialog"
+  ],
+  "evidence": [
+   "test:tui/login_dialog_test.go#TestLoginDialog_ShowDeviceCode",
+   "test:tui/login_dialog_test.go#TestLoginDialog_ShowWaiting"
+  ],
+  "rationale": "LoginDialogComponent.showWaiting is the Go method LoginDialog.ShowWaiting; signature reviewed against the upstream declaration (upstream class LoginDialogComponent is Go LoginDialog); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSessionRuntime::property:session"
+  ],
+  "targets": [
+   "coding/runtime_replacement.go#Runtime.Session"
+  ],
+  "production": [
+   "call:coding/cli/main.go#Main"
+  ],
+  "evidence": [
+   "test:coding/runtime_before_cancel_test.go#TestRuntimeCancelsThroughJSONBeforeResults",
+   "test:coding/runtime_call_initiation_test.go#TestRuntimeReplacementMarksCallInitiationBeforeTheBeforeHook"
+  ],
+  "rationale": "AgentSessionRuntime.session is the Go method Runtime.Session; signature reviewed against the upstream declaration (upstream class AgentSessionRuntime is Go Runtime); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSessionRuntime::property:setBeforeSessionInvalidate"
+  ],
+  "targets": [
+   "coding/runtime.go#Runtime.SetBeforeSessionInvalidate"
+  ],
+  "production": [
+   "call:coding/cli/interactive_build.go#interactiveRuntime.SetBeforeSessionInvalidate"
+  ],
+  "evidence": [
+   "test:coding/runtime_test.go#TestRuntimeBeforeSessionInvalidateHook"
+  ],
+  "rationale": "AgentSessionRuntime.setBeforeSessionInvalidate is the Go method Runtime.SetBeforeSessionInvalidate; signature reviewed against the upstream declaration (upstream class AgentSessionRuntime is Go Runtime); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSessionRuntime::property:setRebindSession"
+  ],
+  "targets": [
+   "coding/runtime_replacement.go#Runtime.SetRebindSession"
+  ],
+  "production": [
+   "call:coding/cli/interactive_build.go#interactiveRuntime.SetRebindSession"
+  ],
+  "evidence": [
+   "test:coding/session_replaced_lifetime_test.go#TestWithSessionDoesNotRunAfterCancellationOrRebindFailure",
+   "test:coding/session_replaced_lifetime_test.go#TestWithSessionFollowsSetupAndRebind"
+  ],
+  "rationale": "AgentSessionRuntime.setRebindSession is the Go method Runtime.SetRebindSession; signature reviewed against the upstream declaration (upstream class AgentSessionRuntime is Go Runtime); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ }
+]

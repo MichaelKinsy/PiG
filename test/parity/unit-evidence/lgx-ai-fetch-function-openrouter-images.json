@@ -1,0 +1,120 @@
+[
+ {
+  "upstream": "packages/ai/src/providers/images/register-builtins.ts",
+  "package": "./ai",
+  "tests": [
+   "TestRegisterBuiltInImagesAPIProvidersRegistersOpenRouter"
+  ],
+  "upstream_reference": "packages/ai/src/providers/images/register-builtins.ts",
+  "mutation": "ai/openrouter_images.go: replace `API:            APIImagesOpenRouter,\n\t\tGenerateImages: GenerateImagesOpenRouter,` with `API:            APIImagesOpenRouter,\n\t\tGenerateImages: nil,`; TestRegisterBuiltInImagesAPIProvidersRegistersOpenRouter fails."
+ },
+ {
+  "upstream": "packages/ai/src/providers/images/register-builtins.ts",
+  "package": "./ai",
+  "tests": [
+   "TestRegisterBuiltInImagesAPIProvidersRegistersOpenRouter"
+  ],
+  "upstream_reference": "packages/ai/src/providers/images/register-builtins.ts",
+  "mutation": "ai/openrouter_images.go: replace `API:            APIImagesOpenRouter,\n\t\tGenerateImages: GenerateImagesOpenRouter,` with `API:            \"other-images\",\n\t\tGenerateImages: GenerateImagesOpenRouter,`; TestRegisterBuiltInImagesAPIProvidersRegistersOpenRouter fails."
+ },
+ {
+  "upstream": "packages/ai/src/providers/images/register-builtins.ts",
+  "package": "./ai",
+  "tests": [
+   "TestRegisterBuiltInImagesAPIProvidersRegistersOpenRouter"
+  ],
+  "upstream_reference": "packages/ai/src/providers/images/register-builtins.ts",
+  "mutation": "ai/openrouter_images.go: replace `GenerateImages: GenerateImagesOpenRouter,\n\t})` with `GenerateImages: func(context.Context, ImageModel, ImagesContext, ProviderImagesOptions) AssistantImages { return AssistantImages{} },\n\t})`; TestRegisterBuiltInImagesAPIProvidersRegistersOpenRouter fails."
+ },
+ {
+  "upstream": "packages/ai/src/api/openrouter-images.ts",
+  "package": "./ai",
+  "tests": [
+   "TestOpenRouterImagesAPIForwardsTheKeyedRequestToTheServer"
+  ],
+  "upstream_reference": "packages/ai/src/api/openrouter-images.ts",
+  "mutation": "ai/openrouter_images.go: replace `return GenerateImagesOpenRouter(ctx, *model, request, options), nil` with `return GenerateImagesOpenRouter(ctx, *model, request, ImagesOptions{}), nil`; TestOpenRouterImagesAPIForwardsTheKeyedRequestToTheServer fails."
+ },
+ {
+  "upstream": "packages/ai/src/api/openrouter-images.ts",
+  "package": "./ai",
+  "tests": [
+   "TestOpenRouterImagesAPIForwardsTheKeyedRequestToTheServer",
+   "TestOpenRouterImagesAPIForwardsToTheImplementation"
+  ],
+  "upstream_reference": "packages/ai/src/api/openrouter-images.ts",
+  "mutation": "ai/openrouter_images.go: replace `return GenerateImagesOpenRouter(ctx, *model, request, options), nil` with `return GenerateImagesOpenRouter(ctx, *model, request, options), errors.New(\"x\")`; TestOpenRouterImagesAPIForwardsTheKeyedRequestToTheServer, TestOpenRouterImagesAPIForwardsToTheImplementation fails."
+ },
+ {
+  "upstream": "packages/ai/src/api/openrouter-images.ts",
+  "package": "./ai",
+  "tests": [
+   "TestRegisterBuiltInImagesAPIProvidersRegistersOpenRouter"
+  ],
+  "upstream_reference": "packages/ai/src/api/openrouter-images.ts",
+  "mutation": "ai/openrouter_images.go: replace `Provider:   model.Provider,\n\t\tModel:      model.ID,\n\t\tOutput:     []ContentBlock{},` with `Provider:   model.Provider,\n\t\tModel:      \"x\",\n\t\tOutput:     []ContentBlock{},`; TestRegisterBuiltInImagesAPIProvidersRegistersOpenRouter fails."
+ },
+ {
+  "upstream": "packages/ai/src/api/openrouter-images.ts",
+  "package": "./ai",
+  "tests": [
+   "TestRegisterBuiltInImagesAPIProvidersRegistersOpenRouter"
+  ],
+  "upstream_reference": "packages/ai/src/api/openrouter-images.ts",
+  "mutation": "ai/openrouter_images.go: replace `API:        model.API,\n\t\tProvider:   model.Provider,\n\t\tModel:      model.ID,\n\t\tOutput:     []ContentBlock{},` with `API:        model.API,\n\t\tProvider:   \"x\",\n\t\tModel:      model.ID,\n\t\tOutput:     []ContentBlock{},`; TestRegisterBuiltInImagesAPIProvidersRegistersOpenRouter fails."
+ },
+ {
+  "upstream": "packages/ai/src/api/openrouter-images.ts",
+  "package": "./ai",
+  "tests": [
+   "TestOpenRouterImagesUsesTheImagesAPIWhenChatCompletionsRefusesTheModel"
+  ],
+  "upstream_reference": "packages/ai/src/api/openrouter-images.ts",
+  "mutation": "ai/openrouter_images.go: replace `return generateOpenRouterImages(ctx, model, imagesCtx, options, out, apiKey, false)` with `return generateOpenRouterImages(ctx, model, imagesCtx, options, out, apiKey, true)`; TestOpenRouterImagesUsesTheImagesAPIWhenChatCompletionsRefusesTheModel fails."
+ },
+ {
+  "upstream": "packages/ai/src/types.ts",
+  "package": "./ai",
+  "tests": [
+   "TestFetchFunctionIsAnHTTPTransportThatReturnsItsResponseAndError"
+  ],
+  "upstream_reference": "packages/ai/src/types.ts",
+  "mutation": "ai/types.go: replace `func (fetch FetchFunction) RoundTrip(request *http.Request) (*http.Response, error) {\n\treturn fetch(request)` with `func (fetch FetchFunction) RoundTrip(request *http.Request) (*http.Response, error) {\n\t_, _ = fetch(request)\n\treturn nil, nil`; TestFetchFunctionIsAnHTTPTransportThatReturnsItsResponseAndError fails."
+ },
+ {
+  "upstream": "packages/ai/src/types.ts",
+  "package": "./ai",
+  "tests": [
+   "TestFetchFunctionIsAnHTTPTransportThatReturnsItsResponseAndError"
+  ],
+  "upstream_reference": "packages/ai/src/types.ts",
+  "mutation": "ai/types.go: replace `return fetch(request)\n}` with `response, _ := fetch(request)\n\treturn response, nil\n}`; TestFetchFunctionIsAnHTTPTransportThatReturnsItsResponseAndError fails."
+ },
+ {
+  "upstream": "packages/ai/src/api/openrouter-images.ts",
+  "package": "./ai",
+  "tests": [
+   "TestOpenRouterImagesAPIForwardsTheKeyedRequestToTheServer"
+  ],
+  "upstream_reference": "packages/ai/src/api/openrouter-images.ts",
+  "mutation": "ai/openrouter_images.go: replace `return GenerateImagesOpenRouter(ctx, *model, request, options), nil` with `return GenerateImagesOpenRouter(ctx, *model, ImagesContext{}, options), nil`; TestOpenRouterImagesAPIForwardsTheKeyedRequestToTheServer fails."
+ },
+ {
+  "upstream": "packages/ai/src/api/openrouter-images.ts",
+  "package": "./ai",
+  "tests": [
+   "TestOpenRouterImagesAPIForwardsTheKeyedRequestToTheServer"
+  ],
+  "upstream_reference": "packages/ai/src/api/openrouter-images.ts",
+  "mutation": "ai/openrouter_images.go: replace `if apiKey == \"\" {\n\t\tout.StopReason = ImagesStopReasonError\n\t\tout.ErrorMessage = fmt.Sprintf(\"No API key for provider: %s\", model.Provider)` with `if apiKey == \"\" {\n\t\tout.StopReason = ImagesStopReasonError\n\t\tout.ErrorMessage = fmt.Sprintf(\"No API key for provider: %s\", \"x\")`; TestOpenRouterImagesAPIForwardsTheKeyedRequestToTheServer fails."
+ },
+ {
+  "upstream": "packages/ai/src/types.ts",
+  "package": "./ai",
+  "tests": [
+   "TestFetchFunctionIsAnHTTPTransportThatReturnsItsResponseAndError"
+  ],
+  "upstream_reference": "packages/ai/src/types.ts",
+  "mutation": "ai/types.go: replace `func (fetch FetchFunction) RoundTrip(request *http.Request) (*http.Response, error) {\n\treturn fetch(request)` with `func (fetch FetchFunction) RoundTrip(request *http.Request) (*http.Response, error) {\n\treturn fetch(&http.Request{Method: request.Method, URL: request.URL, Header: http.Header{}})`; TestFetchFunctionIsAnHTTPTransportThatReturnsItsResponseAndError fails."
+ }
+]

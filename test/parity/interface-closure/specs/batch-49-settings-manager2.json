@@ -1,0 +1,209 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:applyOverrides"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.ApplyOverrides"
+  ],
+  "production": [
+   "call:coding/cli/startup_settings.go#startupUIOptions"
+  ],
+  "evidence": [
+   "test:coding/cli/main_test.go#TestConfigureHTTPDispatcherFromSettings_UsesSettingsIdleTimeout",
+   "test:coding/cli/main_test.go#TestConfigureHTTPDispatcherFromSettings_WiresProviderRetry"
+  ],
+  "rationale": "SettingsManager.applyOverrides is the Go method SettingsManager.ApplyOverrides; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getBranchSummarySettings"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetBranchSummarySettings"
+  ],
+  "production": [
+   "call:coding/session.go#Session.navigateTree"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_explicit_values_test.go#TestSettingsAbsentValuesUseDefaults",
+   "test:internal/codingagent/settings_explicit_values_test.go#TestSettingsExplicitZeroKeepsItsValue"
+  ],
+  "rationale": "SettingsManager.getBranchSummarySettings is the Go method SettingsManager.GetBranchSummarySettings; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getDefaultProvider"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetDefaultProvider"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_models.go#InteractiveMode.pickModel"
+  ],
+  "evidence": [
+   "test:coding/session_model_default_test.go#TestSessionModelSwitchDoesNotRewriteGlobalDefault",
+   "test:internal/codingagent/interactive_post_login_integration_test.go#TestIntegratedAPIKeyLoginSelectsProviderDefault"
+  ],
+  "rationale": "SettingsManager.getDefaultProvider is the Go method SettingsManager.GetDefaultProvider; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getLastChangelogVersion"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetLastChangelogVersion"
+  ],
+  "production": [
+   "call:internal/codingagent/install_telemetry.go#recordChangelogVersionAndMaybeReportInstall"
+  ],
+  "evidence": [
+   "test:internal/codingagent/install_telemetry_test.go#TestRecordChangelogVersionAndMaybeReportInstall_FreshInstallPingsAndRecordsNoBanner",
+   "test:internal/codingagent/install_telemetry_test.go#TestRecordChangelogVersionAndMaybeReportInstall_UpdateWithNewEntriesPingsAndShowsBanner"
+  ],
+  "rationale": "SettingsManager.getLastChangelogVersion is the Go method SettingsManager.GetLastChangelogVersion; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getModelThinkingLevel"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetModelThinkingLevel"
+  ],
+  "production": [
+   "call:coding/session.go#Session.thinkingLevelForModelSwitch"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_explicit_values_test.go#TestSettingsReadsUpstreamOnlyKeys",
+   "test:internal/codingagent/settings_selector_test.go#TestSettingsModelThinkingAppliesAndClearsCurrentOverrideWithoutChangingDefaults"
+  ],
+  "rationale": "SettingsManager.getModelThinkingLevel is the Go method SettingsManager.GetModelThinkingLevel; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getNpmCommand"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetNpmCommand"
+  ],
+  "production": [
+   "call:internal/packagemanager/manager.go#DefaultNpmCommand"
+  ],
+  "evidence": [
+   "test:coding/cli/package_npm_trust_test.go#TestPackageNpmCommandRetainsOverrides",
+   "test:coding/cli/package_npm_trust_test.go#TestPackageRemoveRetainsCommandOverridesAndSettingsOnFailure"
+  ],
+  "rationale": "SettingsManager.getNpmCommand is the Go method SettingsManager.GetNpmCommand; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getSettings"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetSettings"
+  ],
+  "production": [
+   "call:coding/cli/builtin_extensions.go#codemodeSettings"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_0991_test.go#TestCodemodeSettingsRoundTripAndMerge",
+   "test:internal/codingagent/settings_0991_test.go#TestGetSettingsReturnsAnIndependentCopy"
+  ],
+  "rationale": "SettingsManager.getSettings is the Go method SettingsManager.GetSettings; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getWarnings"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetWarnings"
+  ],
+  "production": [
+   "call:internal/codingagent/auth_warnings.go#anthropicExtraUsageWarningEnabled"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_test.go#TestSettingsManager_DefaultAndValidationParity",
+   "test:internal/codingagent/settings_warnings_submenu_test.go#TestSettingsWarningsSubmenuHasNoSearch"
+  ],
+  "rationale": "SettingsManager.getWarnings is the Go method SettingsManager.GetWarnings; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:reload"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.Reload"
+  ],
+  "production": [
+   "call:coding/cli/extension_set.go#extensionSetLoader.Reload"
+  ],
+  "evidence": [
+   "test:coding/cli/config_command_test.go#TestConfigSelectorDisablesEnabledMissingPackageMember",
+   "test:coding/cli/config_command_test.go#TestProjectConfigCyclesInheritedMissingMemberToUnload"
+  ],
+  "rationale": "SettingsManager.reload is the Go method SettingsManager.Reload; signature reviewed against the upstream declaration.",
+  "async": "An awaited Promise is a blocking Go call. Upstream's reload awaits the write queue and then records load errors; PiG writes synchronously (Flush is a no-op), so Reload has nothing to await and records load errors the same way (DrainErrors). No detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:removeModelThinkingLevel"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.RemoveModelThinkingLevel"
+  ],
+  "production": [
+   "call:internal/codingagent/slash_session_handlers.go#settingsHandlerTUI"
+  ],
+  "evidence": [
+   "test:internal/codingagent/slash_session_handlers_test.go#TestSettingsHandlerTUI_ModelThinkingSubmenuClearsOverride"
+  ],
+  "rationale": "SettingsManager.removeModelThinkingLevel is the Go method SettingsManager.RemoveModelThinkingLevel; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:setDefaultModelAndProvider"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.SetDefaultModelAndProvider"
+  ],
+  "production": [
+   "call:coding/session.go#Session.beginModelChangeState"
+  ],
+  "evidence": [
+   "test:coding/session_model_default_test.go#TestSessionModelSwitchDoesNotRewriteGlobalDefault",
+   "test:coding/session_model_mutation_test.go#TestModelMutationsAreSessionOnly"
+  ],
+  "rationale": "SettingsManager.setDefaultModelAndProvider is the Go method SettingsManager.SetDefaultModelAndProvider; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:setProjectThemePaths"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.SetProjectThemePaths"
+  ],
+  "production": [
+   "call:coding/cli/config_command.go#applyProjectConfigOverride"
+  ],
+  "evidence": [
+   "test:coding/cli/configured_resources_test.go#TestCollectThemePathsFollowsUpstreamPrecedence"
+  ],
+  "rationale": "SettingsManager.setProjectThemePaths is the Go method SettingsManager.SetProjectThemePaths; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getOrCreateDeviceId"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetOrCreateDeviceID"
+  ],
+  "production": [
+   "call:coding/cli/auth_commands.go#runLoginCommand"
+  ],
+  "evidence": [
+   "test:coding/cli/auth_device_id_test.go#TestRunLoginCommandPassesSettingsDeviceID",
+   "test:internal/codingagent/auth_warnings_test.go#TestInteractiveLoginDeviceIDComesFromSettings"
+  ],
+  "rationale": "SettingsManager.getOrCreateDeviceId is the Go method SettingsManager.GetOrCreateDeviceID (Id spelled ID); () => string on both sides; callers and tests attributed by go/types (methodrefs)."
+ }
+]

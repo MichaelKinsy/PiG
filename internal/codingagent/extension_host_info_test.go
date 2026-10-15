@@ -1,6 +1,8 @@
 package codingagent
 
 import (
+	"encoding/json"
+	"reflect"
 	"slices"
 	"testing"
 
@@ -82,7 +84,7 @@ func TestExtensionToolInfosReportExposureNamespaceAndAnnotations(t *testing.T) {
 	if rich.Exposure != extension.ToolExposureDeferred {
 		t.Errorf("rich exposure = %q, want deferred", rich.Exposure)
 	}
-	if rich.Namespace == nil || *rich.Namespace != (extension.ToolNamespace{Name: "docs", Description: "Docs server"}) {
+	if rich.Namespace == nil || !reflect.DeepEqual(*rich.Namespace, extension.ToolNamespace{Name: "docs", Description: "Docs server"}) {
 		t.Errorf("rich namespace = %v", rich.Namespace)
 	}
 	if rich.Annotations == nil || rich.Annotations.ReadOnlyHint == nil || !*rich.Annotations.ReadOnlyHint {
@@ -92,4 +94,49 @@ func TestExtensionToolInfosReportExposureNamespaceAndAnnotations(t *testing.T) {
 	if rich.Annotations != nil && rich.Annotations == runner.Tools()[1].Definition.Annotations {
 		t.Error("rich annotations alias the definition's object")
 	}
+}
+
+// getAllTools copies a definition's reachesTools onto its ToolInfo, so a subprocess extension can run it; a tool without the hook has none.
+// upstream: agent-session.ts:1507 (getAllTools), types.ts:2122-2130 (ToolInfo)
+func TestExtensionToolInfosCarryTheDefinitionsReachesTools(t *testing.T) {
+	runner := inproc.NewRunner([]extension.Extension{{
+		Name: "ext",
+		Tools: map[string]extension.RegisteredTool{
+			"plain": {Definition: extension.ToolDefinition{Name: "plain"}},
+			"finder": {Definition: extension.ToolDefinition{Name: "finder", ReachesTools: func(json.RawMessage) extension.ToolReach {
+				return extension.ToolReach{Words: []string{"docs"}}
+			}}},
+		},
+		ToolOrder: []string{"plain", "finder"},
+	}}, t.TempDir())
+	byName := map[string]subprocess.ToolInfo{}
+	for _, info := range ExtensionToolInfos(runner, nil, nil) {
+		byName[info.Name] = info
+	}
+	if byName["plain"].ReachesTools != nil || byName["read"].ReachesTools != nil {
+		t.Error("a tool without reachesTools has one in getAllTools")
+	}
+	finder := byName["finder"].ReachesTools
+	if finder == nil {
+		t.Fatal("finder's reachesTools is missing from getAllTools")
+	}
+	if got := finder(json.RawMessage(`{}`)); got.All || !reflect.DeepEqual(got.Words, []string{"docs"}) {
+		t.Errorf("finder reach = %+v, want the definition's answer", got)
+	}
+}
+
+// getAllTools hands an extension the built-in read tool's TypeBox parameters, which JSON.stringify writes in declaration order (read.ts readSchema).
+func TestExtensionToolInfosKeepTheBuiltinParameterMemberOrder(t *testing.T) {
+	runner := inproc.NewRunner(nil, t.TempDir())
+	for _, tool := range ExtensionToolInfos(runner, nil, nil) {
+		if tool.Name != "read" {
+			continue
+		}
+		want := `{"type":"object","required":["path"],"properties":{"path":{"type":"string","description":"Path to the file to read (relative or absolute)"},"offset":{"type":"number","description":"Line number to start reading from (1-indexed)"},"limit":{"type":"number","description":"Maximum number of lines to read"}}}`
+		if string(tool.Parameters) != want {
+			t.Fatalf("read parameters = %s\nwant %s", tool.Parameters, want)
+		}
+		return
+	}
+	t.Fatal("read is not listed")
 }

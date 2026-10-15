@@ -44,7 +44,7 @@ func TestRuntimeBranchingLiveUpstream(t *testing.T) {
 				t.Fatal("in-memory session has a file before prompting")
 			}
 			for _, prompt := range tc.prompts {
-				if _, err := runtime.Session().Prompt(ctx, prompt); err != nil {
+				if err := runtime.Session().Prompt(ctx, prompt); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -100,7 +100,7 @@ func liveBranchingRuntime(t *testing.T, ctx context.Context, key string, memory 
 		}
 	}
 	factory := func(_ context.Context, target CreateAgentSessionRuntimeOptions) (CreateAgentSessionRuntimeResult, error) {
-		services, err := NewServices(ServicesOptions{CWD: target.CWD, AgentDir: target.AgentDir})
+		services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: target.CWD, AgentDir: target.AgentDir})
 		if err != nil {
 			return CreateAgentSessionRuntimeResult{}, err
 		}
@@ -113,7 +113,7 @@ func liveBranchingRuntime(t *testing.T, ctx context.Context, key string, memory 
 			t.Fatal("pinned Anthropic claude-sonnet-4-5 model is unavailable")
 		}
 		session, err := NewSession(services, SessionOptions{SessionManager: target.SessionManager, Model: model,
-			ActiveBuiltinTools: map[string]struct{}{"read": {}, "bash": {}, "edit": {}, "write": {}}})
+			InitialActiveToolNames: []string{"read", "bash", "edit", "write"}})
 		if err != nil {
 			return CreateAgentSessionRuntimeResult{}, err
 		}

@@ -1,0 +1,53 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRuntime::property:complete"
+  ],
+  "targets": [
+   "coding/services.go#ModelRuntime.Complete"
+  ],
+  "production": [
+   "call:coding/model.go#ModelRegistry.Complete"
+  ],
+  "evidence": [
+   "test:ai/abort_upstream_test.go#TestAbortMatrixUpstream",
+   "test:ai/anthropic_setup_caller_test.go#TestAnthropicModelRuntimePreservesSetupResult"
+  ],
+  "rationale": "ModelRuntime.complete is Complete(ctx, model, request, options ai.StreamOptions) *ai.AssistantMessage; the optional options is a zero-value struct.",
+  "async": "An awaited Promise is a blocking Go call that returns the value; AbortSignal is the context.Context first argument; a provider failure is reported in the returned message or stream as upstream does, resolveModel's throw is the returned error; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRuntime::property:resolveModel"
+  ],
+  "targets": [
+   "coding/virtual_models.go#ModelRuntime.ResolveModel"
+  ],
+  "production": [
+   "call:coding/session_summarization_auth.go#Session.prepareSummarizationRequest"
+  ],
+  "evidence": [
+   "test:coding/virtual_models_upstream_test.go#TestVirtualModelListsAndRoutesToAPhysicalModelWithAClampedThinkingLevel",
+   "test:coding/virtual_models_upstream_test.go#TestVirtualModelRejectsRoutesToVirtualOrUnknownModels"
+  ],
+  "rationale": "ModelRuntime.resolveModel is ResolveModel(ctx, model, messages, ResolveModelOptions{Reason, ThinkingLevel, Failed, State}) (ModelRoute, error); signal is ctx.",
+  "async": "An awaited Promise is a blocking Go call that returns the value; AbortSignal is the context.Context first argument; a provider failure is reported in the returned message or stream as upstream does, resolveModel's throw is the returned error; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRuntime::property:stream"
+  ],
+  "targets": [
+   "coding/services.go#ModelRuntime.Stream"
+  ],
+  "production": [
+   "call:coding/model.go#ModelRegistry.Stream"
+  ],
+  "evidence": [
+   "test:ai/abort_upstream_test.go#TestAbortMatrixUpstream",
+   "test:coding/cloudflare_runtime_test.go#TestCloudflareModelRuntimeRequestEnvironment"
+  ],
+  "rationale": "ModelRuntime.stream is Stream(ctx, model, request, options ai.StreamOptions) *ai.AssistantMessageEventStream; the optional options is a zero-value struct.",
+  "async": "An awaited Promise is a blocking Go call that returns the value; AbortSignal is the context.Context first argument; a provider failure is reported in the returned message or stream as upstream does, resolveModel's throw is the returned error; no detached goroutine."
+ }
+]

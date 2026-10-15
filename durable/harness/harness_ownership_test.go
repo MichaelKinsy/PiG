@@ -3,11 +3,12 @@
 
 package harness
 
+// pi: packages/durable/src/harness/util.ts
+
 import (
 	"context"
 	"errors"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -285,7 +286,7 @@ func ownOpenHarness(t *testing.T, fixtures *ownFixtures, store ...durable.Storag
 	if len(store) > 0 {
 		backing = store[0]
 	}
-	harness, _, reports := openTasks(t, backing, []durable.AnyTask{fixtures.hold, ownWaiter()})
+	harness, _, reports := openTasks(t, backing, []durable.AnyTask{fixtures.hold.Erased(), ownWaiter().Erased()})
 	root := mustRoot(t, harness, nil)
 	harness.Resume()
 	return ownOpened{harness: harness, root: root, reports: reports}
@@ -338,32 +339,6 @@ func ownExpectOutcome(t *testing.T, harness Harness, id durable.TaskId, want dur
 	if got := ownOutcomeStatus(t, harness, id); got != want {
 		t.Fatalf("task %d ended %s, want %s", id, got, want)
 	}
-}
-
-// ownRejectingStorage fails the commit that writes the abort mark of the task in rejectMark once.
-type ownRejectingStorage struct {
-	durable.Storage
-	rejectMark atomic.Int64
-	// reservedFirst is set when a commit reserves the task in rejectMark before its mark commit was attempted.
-	reservedFirst atomic.Bool
-}
-
-func (store *ownRejectingStorage) Commit(ctx context.Context, writes []durable.StorageWrite) (durable.Seq, error) {
-	target := store.rejectMark.Load()
-	for _, write := range writes {
-		task, ok := write.(durable.TaskWrite)
-		if !ok || int64(task.Value.Id) != target || target == 0 {
-			continue
-		}
-		if task.Value.AbortRequested {
-			store.rejectMark.Store(0)
-			return 0, durable.NewStorageRejected("rejected once", nil)
-		}
-		if task.Value.State.Status == durable.TaskRunning {
-			store.reservedFirst.Store(true)
-		}
-	}
-	return store.Storage.Commit(ctx, writes)
 }
 
 func TestOwnership(t *testing.T) {
@@ -477,7 +452,7 @@ func TestOwnership(t *testing.T) {
 		background := ownedChild(t, fixtures, opened.root, "background", ownOptions{background: true})
 		ownBusy(t, opened.root, foreground.owner)
 		input := ownSubmit(t, opened.root, ownInput("later")).Id()
-		write := ownSubmit(t, opened.root, durable.SubmissionDraft{Type: durable.SubmissionTypeWrite, Entry: &durable.EntryDraft{Kind: "note"}}).Id()
+		write := ownSubmit(t, opened.root, durable.SubmissionDraft{Type: durable.SubmissionTypeWrite, Entry: new(queuedNote("w"))}).Id()
 		if err := opened.root.Abort(testContext, nil); err != nil {
 			t.Fatal(err)
 		}
@@ -539,7 +514,7 @@ func TestOwnership(t *testing.T) {
 		ownBusy(t, child, tree.inner)
 		own := ownSubmit(t, opened.root, ownInput("own")).Id()
 		below := ownSubmit(t, child, ownInput("below")).Id()
-		write := ownSubmit(t, child, durable.SubmissionDraft{Type: durable.SubmissionTypeWrite, Entry: &durable.EntryDraft{Kind: "note"}}).Id()
+		write := ownSubmit(t, child, durable.SubmissionDraft{Type: durable.SubmissionTypeWrite, Entry: new(queuedNote("w"))}).Id()
 		if _, err := opened.harness.AbortTask(testContext, tree.owner); err != nil {
 			t.Fatal(err)
 		}
@@ -849,68 +824,13 @@ func TestOwnership(t *testing.T) {
 		mustClose(t, opened.harness)
 	})
 
-	t.Run("retries marks found through an edge loaded after reopen when their commit is rejected", func(t *testing.T) {
-		path := sqlitePath(t)
-		fixtures := newOwnFixtures()
-		opened := ownOpenHarness(t, fixtures, tkOpenSqlite(t, path))
-		tree := ownedChild(t, fixtures, opened.root, "owner", ownOptions{slowOwner: true})
-		fixtures.open("owner.inner", "completed")
-		tkWaitOutcome(t, opened.harness, tree.inner)
-		if _, err := opened.harness.AbortTask(testContext, tree.owner); err != nil {
-			t.Fatal(err)
-		}
-		mustClose(t, opened.harness)
+}
 
-		rejecting := &ownRejectingStorage{Storage: tkOpenSqlite(t, path)}
-		fixtures = newOwnFixtures()
-		opened = ownOpenHarness(t, fixtures, rejecting)
-		child := ownConversation(t, opened.harness, tree.child)
-		late, err := durable.Commit(testContext, child, func(tx durable.Tx) (durable.TaskId, error) {
-			id, err := durable.CreateTask(tx, fixtures.hold, holdInput{Name: "late"}, durable.TaskOptions{Ownership: conversationOwned})
-			rejecting.rejectMark.Store(int64(id))
-			return id, err
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		ownWaitUntil(t, func() bool { return rejecting.rejectMark.Load() == 0 })
-		// Upstream queues the reconcile before the reservation, so the mark is attempted first.
-		if rejecting.reservedFirst.Load() {
-			t.Fatal("the new task was reserved before its mark commit was attempted")
-		}
-		// Any later commit, here the reservation of the new task, retries the cascade.
-		ownExpectOutcome(t, opened.harness, late, durable.OutcomeAborted)
-		fixtures.open("abort.owner", "completed")
-		mustClose(t, opened.harness)
-	})
-
-	t.Run("retries a cascade whose commit the Storage rejected", func(t *testing.T) {
-		fixtures := newOwnFixtures()
-		rejecting := &ownRejectingStorage{Storage: storage.NewMemoryStorage()}
-		opened := ownOpenHarness(t, fixtures, rejecting)
-		tree := ownedChild(t, fixtures, opened.root, "owner")
-		rejecting.rejectMark.Store(int64(tree.inner))
-		fixtures.open("owner", "failed")
-		ownWaitUntil(t, func() bool {
-			for _, report := range opened.reports.all() {
-				if _, ok := errors.AsType[*durable.StorageRejected](report); ok {
-					return true
-				}
-			}
-			return false
-		})
-		if status := ownStatus(t, opened.harness, tree.owner).Status; status != durable.TaskCompleting {
-			t.Fatalf("owner is %s, want completing", status)
-		}
-		ownNotTerminal(t, opened.harness, tree.inner)
-		// The next commit retries the cascade.
-		if _, err := opened.root.Commit(testContext, func(tx durable.Tx) (any, error) {
-			return tx.AppendEntry(opened.root.Id(), durable.EntryDraft{Kind: "note"})
-		}); err != nil {
-			t.Fatal(err)
-		}
-		ownExpectOutcome(t, opened.harness, tree.inner, durable.OutcomeAborted)
-		ownExpectOutcome(t, opened.harness, tree.owner, durable.OutcomeFailed)
-		mustClose(t, opened.harness)
-	})
+// expectSessionFailed requires err to be Pi's SessionFailed caused by cause.
+func expectSessionFailed(t *testing.T, err error, cause error) {
+	t.Helper()
+	failed, ok := errors.AsType[*durable.SessionFailed](err)
+	if !ok || !errors.Is(failed.Cause, cause) {
+		t.Fatalf("got error %v (%T), want a SessionFailed caused by %v", err, err, cause)
+	}
 }

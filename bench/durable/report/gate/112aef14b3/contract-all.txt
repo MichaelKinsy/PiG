@@ -1,0 +1,14 @@
+per-lane results (pass/fail/pending/skipped)
+lane               pi                     native                 wasm-tinygo            wasm-go               
+dcore-host         7/0/0/3                7/0/0/3                7/0/0/3                7/0/0/3               
+dcore-loop         45/0/2/2               45/0/2/2               45/0/2/2               45/0/2/2              
+dcore-session      36/0/0/0               36/0/0/0               36/0/0/0               36/0/0/0              
+dcore-store        17/0/0/2               17/0/0/2               17/0/0/2               17/0/0/2              
+native: built with `sh durable/core/budget/build-native.sh`
+wasm-tinygo: built with `make -C durable/core build-tinygo`
+wasm-go: built with `make -C durable/core build-go`
+totals pi: pass 105  fail 0  pending 2  skipped 7
+totals native: pass 105  fail 0  pending 2  skipped 7
+totals wasm-tinygo: pass 105  fail 0  pending 2  skipped 7
+totals wasm-go: pass 105  fail 0  pending 2  skipped 7
+EXIT 0

@@ -1,7 +1,7 @@
 package codingagent
 
 import (
-	"bytes"
+	"strings"
 	"testing"
 	"time"
 
@@ -15,7 +15,8 @@ import (
 // marker the extension's focused input renders is stripped, so the terminal never receives "\x1b_pi:c\a". The
 // Windows console prints that unknown APC sequence as "pi:c" and wraps the editor row.
 func TestRemoteOverlayLeavesNoCursorMarkerInTerminalOutput(t *testing.T) {
-	var out bytes.Buffer
+	// RunRemoteOverlay renders on its own goroutine after the handle opens, while this test resets and reads the output.
+	var out synchronizedOutput
 	ui := tui.NewWithOutput(&out, 100, 30)
 	t.Cleanup(ui.CancelPendingRender)
 	editor := tui.NewEditor()
@@ -51,11 +52,11 @@ func TestRemoteOverlayLeavesNoCursorMarkerInTerminalOutput(t *testing.T) {
 	if editor.Focused {
 		t.Fatal("the editor kept focus under a focused extension overlay")
 	}
-	if bytes.Contains(out.Bytes(), []byte(widthx.CursorMarker)) {
-		t.Fatalf("terminal output carries the cursor marker: %q", out.String())
+	if output := out.String(); strings.Contains(output, widthx.CursorMarker) {
+		t.Fatalf("terminal output carries the cursor marker: %q", output)
 	}
-	if !bytes.Contains(out.Bytes(), []byte("Search:")) {
-		t.Fatalf("overlay was not rendered: %q", out.String())
+	if output := out.String(); !strings.Contains(output, "Search:") {
+		t.Fatalf("overlay was not rendered: %q", output)
 	}
 
 	handle.Close(nil)

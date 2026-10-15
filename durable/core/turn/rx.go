@@ -1,0 +1,223 @@
+// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+// SPDX-License-Identifier: MIT
+
+package turn
+
+// A small backtracking matcher for the case-insensitive JavaScript patterns of pi-ai's overflow and retry classifiers
+// (utils/overflow.ts, utils/retry.ts). The core cannot import regexp (it uses sync), so the subset those patterns use is
+// implemented here: literals, `.`, `\d`, `\s`, character classes of ranges and `\d`, groups `(?:…)`, alternation, the
+// quantifiers `*`, `+` and `?`, and the `^` anchor. Matching is unanchored search over code points, folding ASCII letters
+// only, as the non-Unicode `i` flag does for a pattern of ASCII letters.
+
+type rxKind uint8
+
+const (
+	rxChar rxKind = iota
+	rxAny
+	rxDigit
+	rxSpace
+	rxClass
+	rxGroup
+	rxStart
+)
+
+type rxNode struct {
+	kind     rxKind
+	ch       rune
+	ranges   []rune // rxClass: lo, hi pairs
+	digits   bool   // rxClass includes \d
+	alts     [][]rxNode
+	min, max int // max < 0: unbounded
+}
+
+type rxProgram struct{ alts [][]rxNode }
+
+// compileRx parses the pattern; it panics on a pattern outside the subset, which only a code change can introduce.
+func compileRx(pattern string) *rxProgram {
+	p := rxParser{s: []rune(pattern)}
+	alts := p.alternation()
+	if p.i != len(p.s) {
+		panic("turn: unsupported pattern " + pattern)
+	}
+	return &rxProgram{alts: alts}
+}
+
+type rxParser struct {
+	s []rune
+	i int
+}
+
+func (p *rxParser) alternation() [][]rxNode {
+	var alts [][]rxNode
+	for {
+		alts = append(alts, p.sequence())
+		if p.i < len(p.s) && p.s[p.i] == '|' {
+			p.i++
+			continue
+		}
+		return alts
+	}
+}
+
+func (p *rxParser) sequence() []rxNode {
+	var seq []rxNode
+	for p.i < len(p.s) && p.s[p.i] != '|' && p.s[p.i] != ')' {
+		n := p.atom()
+		n.min, n.max = 1, 1
+		if p.i < len(p.s) {
+			switch p.s[p.i] {
+			case '*':
+				n.min, n.max = 0, -1
+				p.i++
+			case '+':
+				n.min, n.max = 1, -1
+				p.i++
+			case '?':
+				n.min, n.max = 0, 1
+				p.i++
+			}
+		}
+		seq = append(seq, n)
+	}
+	return seq
+}
+
+func (p *rxParser) atom() rxNode {
+	c := p.s[p.i]
+	p.i++
+	switch c {
+	case '^':
+		return rxNode{kind: rxStart}
+	case '.':
+		return rxNode{kind: rxAny}
+	case '(':
+		if p.i+1 < len(p.s) && p.s[p.i] == '?' && p.s[p.i+1] == ':' {
+			p.i += 2
+		}
+		alts := p.alternation()
+		p.i++ // ')'
+		return rxNode{kind: rxGroup, alts: alts}
+	case '[':
+		n := rxNode{kind: rxClass}
+		for p.s[p.i] != ']' {
+			lo := p.s[p.i]
+			p.i++
+			if lo == '\\' {
+				e := p.s[p.i]
+				p.i++
+				if e == 'd' {
+					n.digits = true
+					continue
+				}
+				lo = e
+			}
+			hi := lo
+			if p.s[p.i] == '-' && p.s[p.i+1] != ']' {
+				hi = p.s[p.i+1]
+				p.i += 2
+			}
+			n.ranges = append(n.ranges, lo, hi)
+		}
+		p.i++
+		return n
+	case '\\':
+		e := p.s[p.i]
+		p.i++
+		switch e {
+		case 'd':
+			return rxNode{kind: rxDigit}
+		case 's':
+			return rxNode{kind: rxSpace}
+		}
+		return rxNode{kind: rxChar, ch: e}
+	}
+	return rxNode{kind: rxChar, ch: c}
+}
+
+func foldASCII(r rune) rune {
+	if r >= 'A' && r <= 'Z' {
+		return r + 'a' - 'A'
+	}
+	return r
+}
+
+// jsSpace is the JavaScript \s set.
+func jsSpace(r rune) bool {
+	switch r {
+	case ' ', '\t', '\n', '\v', '\f', '\r', 0xA0, 0x1680, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000, 0xFEFF:
+		return true
+	}
+	return r >= 0x2000 && r <= 0x200A
+}
+
+func (n *rxNode) one(r rune) bool {
+	switch n.kind {
+	case rxChar:
+		return foldASCII(r) == foldASCII(n.ch)
+	case rxAny:
+		return r != '\n' && r != '\r' && r != 0x2028 && r != 0x2029
+	case rxDigit:
+		return r >= '0' && r <= '9'
+	case rxSpace:
+		return jsSpace(r)
+	case rxClass:
+		if n.digits && r >= '0' && r <= '9' {
+			return true
+		}
+		f := foldASCII(r)
+		for i := 0; i < len(n.ranges); i += 2 {
+			lo, hi := n.ranges[i], n.ranges[i+1]
+			if (r >= lo && r <= hi) || (f >= foldASCII(lo) && f <= foldASCII(hi) && lo < 128 && hi < 128) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// matchRx reports whether the pattern matches anywhere in s.
+func (prog *rxProgram) matchRx(s string) bool {
+	text := []rune(s)
+	for start := 0; start <= len(text); start++ {
+		if matchAlts(prog.alts, text, start, func(int) bool { return true }) {
+			return true
+		}
+	}
+	return false
+}
+
+func matchAlts(alts [][]rxNode, text []rune, pos int, k func(int) bool) bool {
+	for _, seq := range alts {
+		if matchSeq(seq, text, pos, k) {
+			return true
+		}
+	}
+	return false
+}
+
+func matchSeq(seq []rxNode, text []rune, pos int, k func(int) bool) bool {
+	if len(seq) == 0 {
+		return k(pos)
+	}
+	n := &seq[0]
+	rest := seq[1:]
+	if n.kind == rxStart {
+		return pos == 0 && matchSeq(rest, text, pos, k)
+	}
+	var try func(count, pos int) bool
+	try = func(count, pos int) bool {
+		// Greedy: take another repetition first, then continue with the rest.
+		if n.max < 0 || count < n.max {
+			more := func(next int) bool { return next != pos && try(count+1, next) }
+			if n.kind == rxGroup {
+				if matchAlts(n.alts, text, pos, more) {
+					return true
+				}
+			} else if pos < len(text) && n.one(text[pos]) && try(count+1, pos+1) {
+				return true
+			}
+		}
+		return count >= n.min && matchSeq(rest, text, pos, k)
+	}
+	return try(0, pos)
+}

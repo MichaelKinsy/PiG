@@ -1,0 +1,67 @@
+# Behavior family: rpc
+# Surface: an abort while a tool runs ends the tool with "Command aborted", and the agent loop still starts the next turn (agent-loop.ts executeToolCallsSequential breaks only the tool batch). That request's signal is already aborted, so its setup fails: auth resolution throws the signal's reason (packages/ai/src/auth/resolve.ts:53 signal.throwIfAborted()) and lazyStream reports the setup rejection as stopReason "error" (packages/ai/src/api/lazy.ts createSetupErrorMessage). Pi 1.1.0 records {"stopReason":"error","errorMessage":"This operation was aborted"}; PiG reported {"stopReason":"aborted","errorMessage":"context canceled"} before coding/services.go and ai/auth_resolve.go used ai.AbortReason.
+# The abort is sent only after the tool's first output update, so it always lands while the tool runs; no fixed delay decides the order.
+
+name = "55-rpc-abort-during-tool-next-request"
+description = "RPC abort during a tool call: the next turn's request ends as Pi's setup error with the signal's reason."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/ai/src/api/lazy.ts",
+  "packages/ai/src/auth/resolve.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+canonical_json = true
+timeout_seconds = 30
+settle_seconds = 1
+
+[[rpc.steps]]
+line = '{"id":"prompt","type":"prompt","message":"Run: ext tool bash {\"command\":\"echo start; sleep 20; echo end\"}"}'
+# bash.ts emits an empty update at start and a throttled update with the output; wait for the output so the abort never races it.
+wait_contains = ['"type":"tool_execution_update"', '"text":"start\n"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"abort","type":"abort"}'
+wait_contains = ['"type":"agent_settled"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"messages","type":"get_messages"}'
+wait_contains = ['"id":"messages","type":"response","command":"get_messages","success":true']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--model", "test-faux/faux-1", "--system-prompt", "RPC abort probe.", "--no-context-files", "--no-skills", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--system-prompt", "RPC abort probe.", "--no-context-files", "--no-skills", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+json_output_equal = true
+stderr_equal = true
+runs = 3
+both_contain = [
+  'Command aborted',
+  '"stopReason":"error"',
+  '"errorMessage":"This operation was aborted"',
+]
+both_not_contain = [
+  'context canceled',
+  'end\n',
+]
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Independent message clocks vary; retain event order, field presence and timestamp type."
+[[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi 1.1.0 times each response and tool run with a monotonic clock (event-stream.ts, agent-loop.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+[[assert.json_aliases]]
+paths = ["/**/sections/cwd"]
+kind = "path"
+reason = "D2: alias only the exact isolated cwd in the system section."

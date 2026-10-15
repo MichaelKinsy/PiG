@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -11,6 +12,11 @@ import (
 
 // captureShapeRequest exercises the public provider boundary and the actual JSON encoder.
 func captureShapeRequest(t *testing.T, factory func(string) Provider, messages []Message, opts StreamOptions, reply string) map[string]json.RawMessage {
+	t.Helper()
+	return captureShapeRequestContext(t, t.Context(), factory, messages, opts, reply)
+}
+
+func captureShapeRequestContext(t *testing.T, ctx context.Context, factory func(string) Provider, messages []Message, opts StreamOptions, reply string) map[string]json.RawMessage {
 	t.Helper()
 	requests := make(chan map[string]json.RawMessage, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -29,7 +35,7 @@ func captureShapeRequest(t *testing.T, factory func(string) Provider, messages [
 			t.Error(err)
 		}
 	}()
-	stream, err := provider.Stream(t.Context(), NormalizeContext(Context{Messages: messages}), opts)
+	stream, err := provider.Stream(ctx, NormalizeContext(Context{Messages: messages}), opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,19 +109,25 @@ func TestResponsesRequestEmptyContentDoesNotConsumeMessageID(t *testing.T) {
 // google-shared.ts preserves all user text, but only signed empty assistant text/thinking.
 // Non-text parts must not acquire a text field when preserving empty text on the wire.
 func TestGoogleRequestPreservesEmptyText(t *testing.T) {
+	imageModel := &Model{ID: "test", Input: []string{"text", "image"}}
 	for _, providerID := range []string{"google", "google-vertex"} {
 		t.Run(providerID, func(t *testing.T) {
+			// Pi's assistant messages always carry the API of the model that produced them; only the same API counts as the same model.
+			api := APIGoogleGenerativeAI
+			if providerID == "google-vertex" {
+				api = APIGoogleVertex
+			}
 			body := captureShapeRequest(t, func(url string) Provider {
 				if providerID == "google-vertex" {
-					return NewGoogleVertexProvider(GoogleVertexConfig{BaseURL: url, APIKey: "test", Model: "test", ProviderID: providerID})
+					return newGoogleVertexTestProvider(GoogleVertexConfig{BaseURL: url, APIKey: "test", Model: "test", ProviderID: providerID, ModelMetadata: imageModel}, nil)
 				}
-				return NewGoogleProvider(GoogleConfig{BaseURL: url, APIKey: "test", Model: "test", ProviderID: providerID})
+				return NewGoogleProvider(GoogleConfig{BaseURL: url, APIKey: "test", Model: "test", ProviderID: providerID, ModelMetadata: imageModel})
 			}, []Message{
 				UserMessage{Content: UserText("")},
 				UserMessage{Content: UserText(" \t")},
 				UserMessage{Content: UserContentBlocks{}},
 				UserMessage{Content: UserContentBlocks{TextContent{}, TextContent{Text: " \t"}, TextContent{Text: "hello"}, ImageContent{MimeType: "image/png", Data: "aGk="}}},
-				AssistantMessage{Provider: providerID, Model: "test", StopReason: StopReasonStop, Content: []AssistantContentBlock{
+				AssistantMessage{Provider: providerID, API: api, Model: "test", StopReason: StopReasonStop, Content: []AssistantContentBlock{
 					TextContent{}, TextContent{Text: " \t"}, ThinkingContent{},
 					TextContent{TextSignature: "c2ln"}, ThinkingContent{ThinkingSignature: "c2ln"}, TextContent{Text: "answer"},
 				}},

@@ -12,17 +12,9 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
-func bashHasPending(session *Session) bool {
-	session.pendingBashMu.Lock()
-	defer session.pendingBashMu.Unlock()
-	return len(session.pendingBashMessages) > 0
-}
+func bashHasPending(session *Session) bool { return session.HasPendingBashMessages() }
 
-func bashIsRunning(session *Session) bool {
-	session.bashMu.Lock()
-	defer session.bashMu.Unlock()
-	return len(session.bashCancels) > 0
-}
+func bashIsRunning(session *Session) bool { return session.IsBashRunning() }
 
 type bashPersistenceWaitTool struct{ release <-chan struct{} }
 
@@ -113,7 +105,7 @@ func startBashPersistenceCall(t *testing.T, session *Session, command string, op
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		result, err = session.ExecuteBashWithOperations(t.Context(), command, false, nil, operations, nil)
+		result, err = session.ExecuteBash(t.Context(), command, nil, &ExecuteBashOptions{Operations: operations})
 	}()
 	join := func() BashResult {
 		<-done

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"unicode/utf16"
 )
 
 // detectLineEnding returns "\r\n" if content uses CRLF, else "\n".
@@ -53,23 +54,37 @@ type fuzzyMatchResult struct {
 	contentForReplacement string
 }
 
+// fuzzyContent is the content an edit is matched against and its normalizeForFuzzyMatch form, which is computed once however many edits look at it (a 167 KB file with 50 edits normalized it 100 times). normalizeForFuzzyMatch is idempotent, so the normalized form of already-normalized content is itself.
+type fuzzyContent struct {
+	text       string
+	normalized string
+	ready      bool
+}
+
+func (c *fuzzyContent) fuzzy() string {
+	if !c.ready {
+		c.normalized, c.ready = normalizeForFuzzyMatch(c.text), true
+	}
+	return c.normalized
+}
+
 // fuzzyFindText tries exact match first, then fuzzy. When fuzzy is used,
 // contentForReplacement is the normalized content.
-func fuzzyFindText(content, oldText string) fuzzyMatchResult {
-	if i := strings.Index(content, oldText); i != -1 {
+func fuzzyFindText(content *fuzzyContent, oldText string) fuzzyMatchResult {
+	if i := strings.Index(content.text, oldText); i != -1 {
 		return fuzzyMatchResult{
 			found:                 true,
 			index:                 i,
 			matchLength:           len(oldText),
 			usedFuzzyMatch:        false,
-			contentForReplacement: content,
+			contentForReplacement: content.text,
 		}
 	}
-	fc := normalizeForFuzzyMatch(content)
+	fc := content.fuzzy()
 	fo := normalizeForFuzzyMatch(oldText)
 	i := strings.Index(fc, fo)
 	if i == -1 {
-		return fuzzyMatchResult{contentForReplacement: content}
+		return fuzzyMatchResult{contentForReplacement: content.text}
 	}
 	return fuzzyMatchResult{
 		found:                 true,
@@ -81,11 +96,12 @@ func fuzzyFindText(content, oldText string) fuzzyMatchResult {
 }
 
 // countOccurrences counts occurrences via fuzzy-normalized strings, matching upstream.
-func countOccurrences(content, oldText string) int {
-	fc := normalizeForFuzzyMatch(content)
+func countOccurrences(content *fuzzyContent, oldText string) int {
+	fc := content.fuzzy()
 	fo := normalizeForFuzzyMatch(oldText)
 	if fo == "" {
-		return 0
+		// fuzzyContent.split("") yields one element per UTF-16 code unit (none for an empty string), so an oldText that normalizes to nothing "occurs" once less than the content has code units, which the caller reports as a duplicate.
+		return len(utf16.Encode([]rune(fc))) - 1
 	}
 	return strings.Count(fc, fo)
 }
@@ -128,26 +144,29 @@ func applyEditsToNormalizedContent(normalizedContent string, edits []editEntry, 
 
 	// First probe: decide whether any edit needs fuzzy matching.
 	usedFuzzyAny := false
+	original := &fuzzyContent{text: normalizedContent}
 	for _, e := range normEdits {
-		m := fuzzyFindText(normalizedContent, e.OldText)
+		m := fuzzyFindText(original, e.OldText)
 		if m.usedFuzzyMatch {
 			usedFuzzyAny = true
 		}
 	}
-	baseContent := normalizedContent
+	base := original
 	if usedFuzzyAny {
-		baseContent = normalizeForFuzzyMatch(normalizedContent)
+		// The base is the normalized form; normalizing it again gives it back.
+		base = &fuzzyContent{text: original.fuzzy(), normalized: original.fuzzy(), ready: true}
 	}
+	baseContent := base.text
 
 	// Second probe: locate each edit in baseContent.
 	matched := make([]matchedEdit, 0, len(normEdits))
 	for i, e := range normEdits {
-		m := fuzzyFindText(baseContent, e.OldText)
+		m := fuzzyFindText(base, e.OldText)
 		if !m.found {
 			return appliedEditsResult{}, notFoundErr(path, i, len(normEdits))
 		}
 		// Count in baseContent (or its fuzzy normalization, same as upstream).
-		occ := countOccurrences(baseContent, e.OldText)
+		occ := countOccurrences(base, e.OldText)
 		if occ > 1 {
 			return appliedEditsResult{}, duplicateErr(path, i, len(normEdits), occ)
 		}
@@ -254,12 +273,18 @@ func getReplacementLineRange(lines []lineSpan, r matchedEdit) (int, int, error) 
 // applyReplacements mirrors upstream applyReplacements: replacements sorted
 // by position, applied from the end so offsets stay valid.
 func applyReplacements(content string, replacements []matchedEdit, offset int) string {
-	result := content
-	for _, r := range slices.Backward(replacements) {
+	// The replacements are in ascending order and do not overlap (the caller checked), so one forward pass builds what applying them from the end builds, without copying the content once per replacement.
+	var result strings.Builder
+	result.Grow(len(content))
+	position := 0
+	for _, r := range replacements {
 		i := r.matchIndex - offset
-		result = result[:i] + r.newText + result[i+r.matchLength:]
+		result.WriteString(content[position:i])
+		result.WriteString(r.newText)
+		position = i + r.matchLength
 	}
-	return result
+	result.WriteString(content[position:])
+	return result.String()
 }
 
 // applyReplacementsPreservingUnchangedLines mirrors the upstream function of

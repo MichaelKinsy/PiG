@@ -1,3 +1,5 @@
+//go:build !pig_strip_mistral_conversations
+
 package ai
 
 import (
@@ -223,68 +225,105 @@ func TestMistralHTTPTransportUpstream(t *testing.T) {
 		}
 		stream.Result()
 	})
-	// Ports packages/ai/test/mistral-http-transport.test.ts:370,395. Default/zero deadlines additionally exercise requestMistralStream's nullish timeout selection at packages/ai/src/api/mistral-conversations.ts:306.
+	// Ports packages/ai/test/mistral-http-transport.test.ts:370 (abort while waiting for an SSE chunk).
+	t.Run("aborts while waiting for an SSE chunk", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			reader, writer := io.Pipe()
+			defer reader.Close()
+			defer writer.Close()
+			body := &mistralObservedResponseBody{ReadCloser: reader, closed: make(chan struct{})}
+			opts := StreamOptions{Fetch: &http.Client{Transport: FetchFunction(func(*http.Request) (*http.Response, error) {
+				resp := mistralUpstreamSSE("")
+				resp.Body = body
+				return resp, nil
+			})}}
+			stream, err := mistralUpstreamProvider(t).Stream(ctx, mistralUpstreamContext(), opts)
+			if err != nil {
+				t.Fatal(err)
+			}
+			done := make(chan *AssistantMessage, 1)
+			go func() { done <- stream.Result() }()
+			synctest.Wait()
+			cancel()
+			synctest.Wait()
+			select {
+			case m := <-done:
+				if m.StopReason != StopReasonAborted {
+					t.Fatal(m)
+				}
+			default:
+				t.Fatal("result did not settle while waiting for an SSE chunk")
+			}
+			select {
+			case <-body.closed:
+			default:
+				t.Fatal("request settled without closing the stalled response body")
+			}
+		})
+	})
+	// Ports packages/ai/test/mistral-http-transport.test.ts:472 (42a3497d: the timeout covers only the wait for response headers). Default/zero deadlines additionally exercise requestMistralStream's nullish timeout selection at packages/ai/src/api/mistral-conversations.ts:308.
 	for _, tc := range []struct {
 		name    string
-		abort   bool
 		timeout *int
 		elapsed time.Duration
+		want    string
 	}{
-		{name: "aborts while waiting for an SSE chunk", abort: true},
-		{name: "applies the request timeout while waiting for an SSE chunk", timeout: new(5), elapsed: 5 * time.Millisecond},
-		{name: "uses the default request timeout while waiting for an SSE chunk", elapsed: 60 * time.Second},
-		{name: "keeps an explicit zero request timeout armed", timeout: new(0)},
+		{name: "applies the request timeout while waiting for response headers", timeout: new(5), elapsed: 5 * time.Millisecond, want: "Mistral response headers timed out after 5ms"},
+		{name: "uses the default request timeout while waiting for response headers", elapsed: 60 * time.Second, want: "Mistral response headers timed out after 60000ms"},
+		{name: "keeps an explicit zero request timeout armed", timeout: new(0), want: "Mistral response headers timed out after 0ms"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
-				ctx, cancel := context.WithCancel(t.Context())
-				defer cancel()
-				reader, writer := io.Pipe()
-				defer reader.Close()
-				defer writer.Close()
-				body := &mistralObservedResponseBody{ReadCloser: reader, closed: make(chan struct{})}
-				opts := StreamOptions{TimeoutMs: tc.timeout, Fetch: &http.Client{Transport: FetchFunction(func(*http.Request) (*http.Response, error) {
-					resp := mistralUpstreamSSE("")
-					resp.Body = body
-					return resp, nil
+				opts := StreamOptions{TimeoutMs: tc.timeout, Fetch: &http.Client{Transport: FetchFunction(func(r *http.Request) (*http.Response, error) {
+					<-r.Context().Done()
+					return nil, context.Cause(r.Context())
 				})}}
 				start := time.Now()
-				stream, err := mistralUpstreamProvider(t).Stream(ctx, mistralUpstreamContext(), opts)
-				if err != nil {
-					t.Fatal(err)
-				}
-				done := make(chan *AssistantMessage, 1)
-				go func() { done <- stream.Result() }()
-				synctest.Wait()
-				if tc.abort {
-					cancel()
-				} else {
-					time.Sleep(tc.elapsed)
-				}
-				synctest.Wait()
-				select {
-				case m := <-done:
-					if tc.abort {
-						if m.StopReason != StopReasonAborted {
-							t.Fatal(m)
-						}
-					} else if m.StopReason != StopReasonError || !strings.Contains(strings.ToLower(m.ErrorMessage), "timeout") {
-						t.Fatal(m)
-					}
-				default:
-					t.Fatal("result did not settle while waiting for an SSE chunk")
+				stream, err := mistralUpstreamProvider(t).Stream(t.Context(), mistralUpstreamContext(), opts)
+				// Direct Go APIs return pre-generation errors instead of manufacturing an event stream.
+				if stream != nil || err == nil || err.Error() != tc.want {
+					t.Fatalf("stream=%v err=%v, want %q", stream, err, tc.want)
 				}
 				if elapsed := time.Since(start); elapsed != tc.elapsed {
 					t.Errorf("request settled after %s, want %s", elapsed, tc.elapsed)
 				}
-				select {
-				case <-body.closed:
-				default:
-					t.Fatal("request settled without closing the stalled response body")
-				}
 			})
 		})
 	}
+	// Ports packages/ai/test/mistral-http-transport.test.ts:493 (#10609): an active stream must not be cut off after timeoutMs.
+	t.Run("does not abort an active stream that lasts longer than the request timeout", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			reader, writer := io.Pipe()
+			defer reader.Close()
+			thinking := `data: {"choices":[{"index":0,"delta":{"content":[{"type":"thinking","thinking":[{"type":"text","text":"x"}]}]}}]}` + "\r\n\r\n"
+			go func() {
+				for range 5 {
+					_, _ = writer.Write([]byte(thinking))
+					time.Sleep(10 * time.Millisecond)
+				}
+				_, _ = writer.Write([]byte(mistralUpstreamTerminal))
+				_ = writer.Close()
+			}()
+			opts := StreamOptions{TimeoutMs: new(20), Fetch: &http.Client{Transport: FetchFunction(func(*http.Request) (*http.Response, error) {
+				resp := mistralUpstreamSSE("")
+				resp.Body = reader
+				return resp, nil
+			})}}
+			stream, err := mistralUpstreamProvider(t).Stream(t.Context(), mistralUpstreamContext(), opts)
+			if err != nil {
+				t.Fatal(err)
+			}
+			m := stream.Result()
+			if m.StopReason != StopReasonStop || len(m.Content) != 1 {
+				t.Fatalf("%+v", m)
+			}
+			if block, ok := m.Content[0].(ThinkingContent); !ok || block.Thinking != "xxxxx" {
+				t.Fatalf("%+v", m.Content)
+			}
+		})
+	})
 	// Ports packages/ai/test/mistral-http-transport.test.ts:418.
 	t.Run("preserves HTTP status and response bodies in errors", func(t *testing.T) {
 		stream, err := mistralUpstreamProvider(t).Stream(t.Context(), mistralUpstreamContext(), StreamOptions{Fetch: &http.Client{Transport: FetchFunction(func(*http.Request) (*http.Response, error) {

@@ -1,6 +1,7 @@
 package source
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -479,5 +480,28 @@ func TestResolveGoModuleThroughDirectoryLinkKeepsTargetWorkspace(t *testing.T) {
 	slices.Sort(want)
 	if linked.Root != link || !slices.Equal(linked.GoWorkspaceModules, want) {
 		t.Fatalf("linked root %q workspace %q, want root %q workspace %q", linked.Root, linked.GoWorkspaceModules, link, want)
+	}
+}
+
+// TestResolveFileWithoutLoaderMatchesNode keeps a non-executable file Node has
+// no loader for, such as a packed .tgz a user installs, from being run as a
+// program: it fails as upstream's import does.
+func TestResolveFileWithoutLoaderMatchesNode(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "pkg-0.1.0.tgz")
+	if err := os.WriteFile(path, []byte("\x1f\x8b\x08\x00"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	real, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = Resolve(path)
+	var unknown *UnknownFileExtensionError
+	if !errors.As(err, &unknown) {
+		t.Fatalf("Resolve(%s) error = %v, want UnknownFileExtensionError", path, err)
+	}
+	if want := `Unknown file extension ".tgz" for ` + real; err.Error() != want {
+		t.Fatalf("error = %q, want %q", err.Error(), want)
 	}
 }

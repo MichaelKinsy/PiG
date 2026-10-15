@@ -12,8 +12,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 function version() {
-	const m = readFileSync("internal/coding/pigversion/pigversion.go", "utf8").match(/UpstreamVersion = "([^"]+)"/);
-	if (!m) throw new Error("cannot read UpstreamVersion");
+	const m = readFileSync("internal/coding/pigversion/pigversion.go", "utf8").match(/UpstreamPackageVersion = "([^"]+)"/);
+	if (!m) throw new Error("cannot read UpstreamPackageVersion");
 	return m[1];
 }
 

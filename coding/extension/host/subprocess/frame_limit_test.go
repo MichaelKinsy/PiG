@@ -79,7 +79,7 @@ func TestMarshalEnvelope_OversizedCompactResultSkipsEncoding(t *testing.T) {
 	c := &Conn{}
 	var before, after runtime.MemStats
 	runtime.ReadMemStats(&before)
-	_, err = c.marshalEnvelope(env)
+	_, err = c.encodeEnvelope(env)
 	runtime.ReadMemStats(&after)
 	tooLarge, ok := errors.AsType[*FrameTooLargeError](err)
 	if !ok || tooLarge.Size != want || tooLarge.Max != MaxFrameSize {
@@ -90,14 +90,14 @@ func TestMarshalEnvelope_OversizedCompactResultSkipsEncoding(t *testing.T) {
 	}
 }
 
-// resultAllocation runs marshalEnvelope on a call result and returns its error and the bytes it allocated.
+// resultAllocation runs encodeEnvelope on a call result and returns its error and the bytes it allocated.
 func resultAllocation(t *testing.T, raw json.RawMessage) (uint64, error) {
 	t.Helper()
 	env := &Envelope{Type: MsgCallResult, ID: "1", CallResult: &CallResultPayload{Result: raw}}
 	c := &Conn{}
 	var before, after runtime.MemStats
 	runtime.ReadMemStats(&before)
-	_, err := c.marshalEnvelope(env)
+	_, err := c.encodeEnvelope(env)
 	runtime.ReadMemStats(&after)
 	return after.TotalAlloc - before.TotalAlloc, err
 }
@@ -138,7 +138,7 @@ func TestMarshalEnvelope_OversizedRawThatCompactsWithinLimitIsSent(t *testing.T)
 	}
 }
 
-// TestEncodedRawSize_MatchesEncoder proves encodedRawSize equals the length the wire codec that marshalEnvelope uses emits for valid raw JSON.
+// TestEncodedRawSize_MatchesEncoder proves encodedRawSize equals the length the wire codec that encodeEnvelope uses emits for valid raw JSON.
 func TestEncodedRawSize_MatchesEncoder(t *testing.T) {
 	for _, raw := range []string{
 		`0`, " [ 1 , 2 ]\n", "\"a b\\t\"", `"say \"hi\" "`, `"back\\"`, `"back\\" `,
@@ -171,7 +171,7 @@ func TestMarshalEnvelope_OversizedCompactResultReportsEscapedSize(t *testing.T) 
 		t.Fatalf("encoder should have expanded the payload: %d <= %d", len(full), len(raw))
 	}
 	c := &Conn{}
-	_, err = c.marshalEnvelope(env)
+	_, err = c.encodeEnvelope(env)
 	tooLarge, ok := errors.AsType[*FrameTooLargeError](err)
 	if !ok || tooLarge.Size != len(full) || tooLarge.Max != MaxFrameSize {
 		t.Fatalf("want FrameTooLargeError size %d (len of json.Marshal), got %v", len(full), err)
@@ -225,7 +225,7 @@ func TestMarshalEnvelope_LargeErrorShellIsMeasured(t *testing.T) {
 	}
 	var before, after runtime.MemStats
 	runtime.ReadMemStats(&before)
-	_, err = (&Conn{}).marshalEnvelope(env)
+	_, err = (&Conn{}).encodeEnvelope(env)
 	runtime.ReadMemStats(&after)
 	if tooLarge, ok := errors.AsType[*FrameTooLargeError](err); !ok || tooLarge.Size != len(full) {
 		t.Fatalf("want FrameTooLargeError size %d, got %v", len(full), err)

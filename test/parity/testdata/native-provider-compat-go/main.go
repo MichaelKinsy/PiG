@@ -38,7 +38,7 @@ func run() (resultErr error) {
 	}
 	defer func() { resultErr = errors.Join(resultErr, os.RemoveAll(root)) }()
 	result := map[string]any{}
-	create := func(name, config string) (*coding.Services, *ai.InMemoryModelsStore, error) {
+	create := func(name, config string) (*coding.AgentSessionServices, *ai.InMemoryModelsStore, error) {
 		dir := filepath.Join(root, name)
 		if err := os.MkdirAll(dir, 0o700); err != nil {
 			return nil, nil, err
@@ -48,7 +48,7 @@ func run() (resultErr error) {
 				return nil, nil, err
 			}
 		}
-		services, err := coding.NewServices(coding.ServicesOptions{CWD: dir, AgentDir: dir})
+		services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: dir, AgentDir: dir})
 		if err != nil {
 			return nil, nil, err
 		}

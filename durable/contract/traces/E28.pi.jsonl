@@ -1,0 +1,27 @@
+{"k":">","name":"harness.root","tick":1000001}
+{"k":"#","seq":1,"summary":"conversations:i document_revisions:i documents:i","tick":1000001,"begin":1000001}
+{"k":">","name":"harness.createConversation","tick":1000001}
+{"k":"#","seq":2,"summary":"conversations:i document_revisions:i documents:i","tick":1000001,"begin":1000001}
+{"k":">","name":"harness.createConversation().agent","tick":1000001}
+{"k":">","name":"harness.createConversation().submit","tick":1000001}
+{"k":"#","seq":3,"summary":"document_revisions:d document_revisions:i entries:i submissions:i tasks:i","tick":1000001,"begin":1000001}
+{"k":">","name":"harness.createConversation().submit().wait","tick":1000001}
+{"k":"#","seq":4,"summary":"tasks:u","tick":1000001,"begin":1000001}
+{"k":"#","seq":5,"summary":"entries:i tasks:u","tick":1000001,"begin":1000001}
+{"k":"#","seq":6,"summary":"document_revisions:i","tick":1000001,"begin":1000001}
+{"k":"#","seq":7,"summary":"document_revisions:d document_revisions:i entries:i tasks:i tasks:u","tick":1000001,"begin":1000001}
+{"k":"#","seq":8,"summary":"tasks:u","tick":1000001,"begin":1000001}
+{"k":"#","seq":9,"summary":"document_revisions:i tasks:u","tick":1000001,"begin":1000001}
+{"k":"#","seq":10,"summary":"document_revisions:d document_revisions:i entries:i tasks:u","tick":1000001,"begin":1000001}
+{"k":"#","seq":11,"summary":"tasks:u","tick":1000001,"begin":1000001}
+{"k":"#","seq":12,"summary":"document_revisions:d document_revisions:i tasks:i tasks:u","tick":1000001,"begin":1000001}
+{"k":"#","seq":13,"summary":"tasks:u","tick":1000001,"begin":1000001}
+{"k":"#","seq":14,"summary":"tasks:u","tick":1000001,"begin":1000001}
+{"k":"#","seq":15,"summary":"document_revisions:i","tick":1000001,"begin":1000001}
+{"k":"#","seq":16,"summary":"document_revisions:d document_revisions:i entries:i tasks:i tasks:u","tick":1000001,"begin":1000001}
+{"k":"#","seq":17,"summary":"tasks:u","tick":1000001,"begin":1000001}
+{"k":"#","seq":18,"summary":"tasks:u","tick":1000001,"begin":1000001}
+{"k":"#","seq":19,"summary":"document_revisions:i","tick":1000001,"begin":1000001}
+{"k":"#","seq":20,"summary":"document_revisions:d document_revisions:i entries:i submissions:u tasks:u","tick":1000001,"begin":1000001}
+{"k":">","name":"harness.createConversation().entries","tick":1000001}
+{"k":">","name":"harness.close","tick":1000001}

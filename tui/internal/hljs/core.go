@@ -30,11 +30,12 @@ type response struct {
 func (r *response) ignoreMatch() { r.isMatchIgnored = true }
 
 func newRuleResponse(mode *Mode) *response {
-	if mode.data == nil {
-		mode.data = &responseData{}
+	compiled := mode.setComp()
+	if compiled.data == nil {
+		compiled.data = &responseData{}
 		mode.present |= keyData
 	}
-	return &response{data: mode.data}
+	return &response{data: compiled.data}
 }
 
 // frame is `Object.create(mode, { parent: { value: top } })`: a stack entry that reads through to its mode. The language itself is the bottom of the stack, so its frame is unique per language and writes reach the language object.
@@ -50,8 +51,8 @@ func (f *frame) response() *response {
 		return newRuleResponse(f.mode)
 	}
 	if f.data == nil {
-		if f.mode.data != nil {
-			return &response{data: f.mode.data}
+		if data := f.mode.comp().data; data != nil {
+			return &response{data: data}
 		}
 		f.data = &responseData{}
 	}
@@ -116,6 +117,7 @@ type multiRegex struct {
 	matcherRe    *jsRegExp
 	empty        bool
 	lastIndex    int
+	dispatch     *branchDispatch
 }
 
 func newMultiRegex() *multiRegex {
@@ -138,14 +140,23 @@ func (m *multiRegex) compile(language *Mode) {
 	for i, r := range m.regexes {
 		terminators[i] = r.re
 	}
-	m.matcherRe = langRe(language, stringPattern(join(terminators)))
+	// The joined terminators are alternatives of patterns compileMode recorded, so they add no reach, and recording them would make a language's reach depend on the matchers its first texts happened to compile.
+	m.matcherRe = compileLangRe(language, stringPattern(join(terminators)))
+	if dispatchEnabled {
+		m.dispatch = newBranchDispatch(m.regexes, language.caseInsensitive)
+	}
 }
 
 func (m *multiRegex) exec(s []rune) *enhancedMatch {
 	if m.empty {
 		return nil
 	}
-	match := m.matcherRe.exec(s, m.lastIndex)
+	var match *jsMatch
+	if m.dispatch != nil {
+		match = m.dispatch.exec(m.matcherRe, s, m.lastIndex, m.matchAt-1)
+	} else {
+		match = m.matcherRe.exec(s, m.lastIndex)
+	}
 	if match == nil {
 		return nil
 	}
@@ -293,6 +304,14 @@ func escapeRegExp(value string) *jsRegExp {
 
 // langRe is compileLanguage's langRe: new RegExp(source(value), "m" + (case_insensitive ? "i" : "")). source(value) of a falsy value is null, which RegExp reads as "null".
 func langRe(language *Mode, value pattern) *jsRegExp {
+	re := compileLangRe(language, value)
+	props := language.setLang()
+	props.sources = append(props.sources, re.source)
+	return re
+}
+
+// compileLangRe is langRe without recording the pattern among the language's sources.
+func compileLangRe(language *Mode, value pattern) *jsRegExp {
 	source, ok := value.source()
 	if !ok {
 		source = "null"
@@ -358,15 +377,15 @@ func skipIfhasPrecedingDot(match *enhancedMatch, response *response) {
 }
 
 func extBeginKeywords(mode, parent *Mode) {
-	if parent == nil || mode.beginKeywords == "" {
+	if parent == nil || mode.rare().beginKeywords == "" {
 		return
 	}
-	mode.begin = stringPattern(`\b(` + strings.Join(strings.Split(mode.beginKeywords, " "), "|") + `)(?!\.)(?=\b|\s)`)
+	mode.begin = stringPattern(`\b(` + strings.Join(strings.Split(mode.rare().beginKeywords, " "), "|") + `)(?!\.)(?=\b|\s)`)
 	mode.present |= keyBegin
-	mode.beforeBegin = skipIfhasPrecedingDot
+	mode.setComp().beforeBegin = skipIfhasPrecedingDot
 	mode.present |= keyBeforeBegin
-	if !mode.keywords.truthy() {
-		mode.keywords = keywordsValue{kind: keywordsKindString, text: mode.beginKeywords}
+	if !mode.rare().keywords.truthy() {
+		mode.setRare().keywords = keywordsValue{kind: keywordsKindString, text: mode.rare().beginKeywords}
 	}
 	mode.present |= keyKeywords
 	deleteKey(mode, keyBeginKeywords)
@@ -377,20 +396,20 @@ func extBeginKeywords(mode, parent *Mode) {
 }
 
 func extCompileIllegal(mode, _ *Mode) {
-	if mode.illegal.kind != patternList {
+	if mode.rare().illegal.kind != patternList {
 		return
 	}
-	mode.illegal = stringPattern(either(mode.illegal.list))
+	mode.setRare().illegal = stringPattern(either(mode.rare().illegal.items()))
 }
 
 func extCompileMatch(mode, _ *Mode) {
-	if !mode.match.truthy() {
+	if !mode.rare().match.truthy() {
 		return
 	}
 	if mode.begin.truthy() || mode.end.truthy() {
 		throw("begin & end are not supported with match")
 	}
-	mode.begin = mode.match
+	mode.begin = mode.rare().match
 	mode.present |= keyBegin
 	deleteKey(mode, keyMatch)
 }
@@ -404,8 +423,9 @@ func extCompileRelevance(mode, _ *Mode) {
 
 // compileLanguage is highlight.js compileLanguage. It runs on every highlight; compileMode returns a compiled mode unchanged.
 func compileLanguage(language *Mode) *Mode {
-	if language.present&keyCompilerExtensions == 0 || language.compilerExtensions == nil {
-		language.compilerExtensions = []compilerExtension{}
+	props := language.setLang()
+	if language.present&keyCompilerExtensions == 0 || props.compilerExtensions == nil {
+		props.compilerExtensions = []compilerExtension{}
 		language.present |= keyCompilerExtensions
 	}
 	for _, c := range language.contains {
@@ -413,9 +433,9 @@ func compileLanguage(language *Mode) *Mode {
 			throw("ERR: contains `self` is not supported at the top-level of a language.  See documentation.")
 		}
 	}
-	aliases := make(map[string]string, len(language.classNameAliases))
-	maps.Copy(aliases, language.classNameAliases)
-	language.classNameAliases = aliases
+	aliases := make(map[string]string, len(props.classNameAliases))
+	maps.Copy(aliases, props.classNameAliases)
+	props.classNameAliases = aliases
 	language.present |= keyClassNameAliases
 	return compileMode(language, language, nil)
 }
@@ -425,10 +445,12 @@ func compileMode(language, mode, parent *Mode) *Mode {
 		return mode
 	}
 	extCompileMatch(mode, parent)
-	for _, ext := range language.compilerExtensions {
+	for _, ext := range language.lang().compilerExtensions {
 		ext(mode, parent)
 	}
-	mode.beforeBegin = nil
+	if mode.compiled != nil {
+		mode.compiled.beforeBegin = nil
+	}
 	mode.present |= keyBeforeBegin
 	extBeginKeywords(mode, parent)
 	extCompileIllegal(mode, parent)
@@ -437,27 +459,27 @@ func compileMode(language, mode, parent *Mode) *Mode {
 	mode.present |= keyIsCompiled
 
 	var keywordPattern pattern
-	if mode.keywords.kind == keywordsKindObject {
-		object := mode.keywords.object
+	if mode.rare().keywords.kind == keywordsKindObject {
+		object := mode.rare().keywords.object
 		if object.hasPattern {
 			keywordPattern = object.pattern
 		}
 		object.pattern, object.hasPattern = pattern{}, false
 	}
-	if mode.keywords.truthy() {
-		mode.keywords = keywordsValue{kind: keywordsKindCompiled, compiled: compileKeywordsValue(mode.keywords, language.caseInsensitive)}
+	if mode.rare().keywords.truthy() {
+		mode.setRare().keywords = keywordsValue{kind: keywordsKindCompiled, compiled: compileKeywordsValue(mode.rare().keywords, language.caseInsensitive)}
 	}
-	if mode.lexemes.truthy() && keywordPattern.truthy() {
+	if mode.rare().lexemes.truthy() && keywordPattern.truthy() {
 		throw("ERR: Prefer `keywords.$pattern` to `mode.lexemes`, BOTH are not allowed. (see mode reference) ")
 	}
 	switch {
 	case keywordPattern.truthy():
-	case mode.lexemes.truthy():
-		keywordPattern = mode.lexemes
+	case mode.rare().lexemes.truthy():
+		keywordPattern = mode.rare().lexemes
 	default:
 		keywordPattern = regExpPattern(`\w+`)
 	}
-	mode.keywordPatternRe = langRe(language, keywordPattern)
+	mode.setComp().keywordPatternRe = langRe(language, keywordPattern)
 	mode.present |= keyKeywordPatternRe
 
 	if parent != nil {
@@ -465,7 +487,7 @@ func compileMode(language, mode, parent *Mode) *Mode {
 			mode.begin = regExpPattern(`\B|\b`)
 			mode.present |= keyBegin
 		}
-		mode.beginRe = langRe(language, mode.begin)
+		mode.setComp().beginRe = langRe(language, mode.begin)
 		mode.present |= keyBeginRe
 		if mode.endSameAsBegin {
 			mode.end = mode.begin
@@ -476,20 +498,21 @@ func compileMode(language, mode, parent *Mode) *Mode {
 			mode.present |= keyEnd
 		}
 		if mode.end.truthy() {
-			mode.endRe = langRe(language, mode.end)
+			mode.setComp().endRe = langRe(language, mode.end)
 			mode.present |= keyEndRe
 		}
-		mode.terminatorEnd, _ = mode.end.source()
+		compiled := mode.setComp()
+		compiled.terminatorEnd, _ = mode.end.source()
 		mode.present |= keyTerminatorEnd
-		if mode.endsWithParent && parent.terminatorEnd != "" {
+		if parentEnd := parent.comp().terminatorEnd; mode.endsWithParent && parentEnd != "" {
 			if mode.end.truthy() {
-				mode.terminatorEnd += "|"
+				compiled.terminatorEnd += "|"
 			}
-			mode.terminatorEnd += parent.terminatorEnd
+			compiled.terminatorEnd += parentEnd
 		}
 	}
-	if mode.illegal.truthy() {
-		mode.illegalRe = langRe(language, mode.illegal)
+	if mode.rare().illegal.truthy() {
+		mode.setComp().illegalRe = langRe(language, mode.rare().illegal)
 		mode.present |= keyIllegalRe
 	}
 	contains := []*Mode{}
@@ -511,7 +534,7 @@ func compileMode(language, mode, parent *Mode) *Mode {
 	if mode.starts != nil {
 		compileMode(language, mode.starts, parent)
 	}
-	mode.matcher = buildModeRegex(language, mode)
+	mode.setComp().matcher = buildModeRegex(language, mode)
 	mode.present |= keyMatcher
 	return mode
 }
@@ -521,11 +544,11 @@ func buildModeRegex(language, mode *Mode) *resumableMultiRegex {
 	for _, term := range mode.contains {
 		mm.addRule(term.mode.begin, &matchOptions{rule: term.mode, typ: "begin"})
 	}
-	if mode.terminatorEnd != "" {
-		mm.addRule(stringPattern(mode.terminatorEnd), &matchOptions{typ: "end"})
+	if terminatorEnd := mode.comp().terminatorEnd; terminatorEnd != "" {
+		mm.addRule(stringPattern(terminatorEnd), &matchOptions{typ: "end"})
 	}
-	if mode.illegal.truthy() {
-		mm.addRule(mode.illegal, &matchOptions{typ: "illegal"})
+	if mode.rare().illegal.truthy() {
+		mm.addRule(mode.rare().illegal, &matchOptions{typ: "illegal"})
 	}
 	return mm
 }
@@ -544,11 +567,11 @@ func expandOrCloneMode(mode *Mode) []*Mode {
 		for i, variant := range mode.variants {
 			variants[i] = inherit(mode, &Mode{present: keyVariants}, variant)
 		}
-		mode.cachedVariants, mode.hasCachedVariants = variants, true
+		mode.setComp().cachedVariants, mode.hasCachedVariants = variants, true
 		mode.present |= keyCachedVariants
 	}
 	if mode.hasCachedVariants {
-		return mode.cachedVariants
+		return mode.comp().cachedVariants
 	}
 	if dependencyOnParent(mode) {
 		override := &Mode{present: keyStarts}
@@ -572,6 +595,19 @@ type Result struct {
 	Illegal     bool
 	emitter     *tokenTreeEmitter
 	top         *frame
+	// failed is set when run recovered a highlight.js exception and returned the escaped code instead of a token tree.
+	failed bool
+	// checkpoints are the resumable states the run passed, when it recorded them.
+	checkpoints []checkpoint
+	// iterations is the scan iterations the run counted, those before its starting checkpoint included.
+	iterations int
+}
+
+// checkpoint is a state at the start of a scan iteration from which a run over the same code, with more text after it, continues identically: the root mode is on top, nothing is buffered or open, and the emitter holds the finished children before it. iterations is the count of the iterations before it, which a resumed run starts from, so highlight.js's iteration limit throws at the same match as in a whole run.
+type checkpoint struct {
+	unit       int
+	children   int
+	iterations int
 }
 
 type highlightRun struct {
@@ -589,10 +625,21 @@ type highlightRun struct {
 	iterations     int
 	resume         bool
 	lastMatch      *enhancedMatch
+	record         bool
+	checkpoints    []checkpoint
 }
+
+// highlightJSIterationLimit is the iterations after which highlight.js throws, when they also exceed three times the match index.
+// upstream: packages/coding-agent/src/core/export-html/vendor/highlight.min.js:iterations
+const highlightJSIterationLimit = 100000
 
 // highlight is highlight.js _highlight(languageName, codeToHighlight, ignoreIllegals, continuation).
 func (r *Registry) highlight(languageName string, code []rune, ignoreIllegals bool, continuation *frame) Result {
+	return r.highlightFrom(languageName, code, ignoreIllegals, continuation, checkpoint{}, false)
+}
+
+// highlightFrom is highlight starting the scan at the unit and iteration count of from, which must be a checkpoint of an earlier run over a prefix of code (the zero checkpoint for the whole code), and optionally recording this run's checkpoints.
+func (r *Registry) highlightFrom(languageName string, code []rune, ignoreIllegals bool, continuation *frame, from checkpoint, record bool) Result {
 	language := r.getLanguage(languageName)
 	if language == nil {
 		throw(`Unknown language: "` + languageName + `"`)
@@ -606,6 +653,9 @@ func (r *Registry) highlight(languageName string, code []rune, ignoreIllegals bo
 		language:       md,
 		continuations:  map[string]*frame{},
 		emitter:        newTokenTreeEmitter(),
+		index:          from.unit,
+		iterations:     from.iterations,
+		record:         record,
 	}
 	run.top = continuation
 	if run.top == nil {
@@ -616,10 +666,11 @@ func (r *Registry) highlight(languageName string, code []rune, ignoreIllegals bo
 }
 
 func languageFrame(language *Mode) *frame {
-	if language.rootFrame == nil {
-		language.rootFrame = &frame{mode: language, language: true}
+	props := language.setLang()
+	if props.rootFrame == nil {
+		props.rootFrame = &frame{mode: language, language: true}
 	}
-	return language.rootFrame
+	return props.rootFrame
 }
 
 func (h *highlightRun) run() (result Result) {
@@ -633,21 +684,24 @@ func (h *highlightRun) run() (result Result) {
 			panic(recovered)
 		}
 		if strings.Contains(err.message, "Illegal") {
-			result = Result{Illegal: true, Value: escapeHTML(unitsToString(h.code)), emitter: h.emitter}
+			result = Result{Illegal: true, Value: escapeHTML(unitsToString(h.code)), emitter: h.emitter, failed: true}
 			return
 		}
-		result = Result{Value: escapeHTML(unitsToString(h.code)), Language: h.languageName, HasLanguage: true, emitter: h.emitter, top: h.top}
+		result = Result{Value: escapeHTML(unitsToString(h.code)), Language: h.languageName, HasLanguage: true, emitter: h.emitter, top: h.top, failed: true}
 	}()
-	h.top.mode.matcher.considerAll()
+	h.top.mode.comp().matcher.considerAll()
 	for {
 		h.iterations++
+		if h.record {
+			h.recordCheckpoint()
+		}
 		if h.resume {
 			h.resume = false
 		} else {
-			h.top.mode.matcher.considerAll()
+			h.top.mode.comp().matcher.considerAll()
 		}
-		h.top.mode.matcher.lastIndex = h.index
-		match := h.top.mode.matcher.exec(h.code)
+		h.top.mode.comp().matcher.lastIndex = h.index
+		match := h.top.mode.comp().matcher.exec(h.code)
 		if match == nil {
 			break
 		}
@@ -664,26 +718,65 @@ func (h *highlightRun) run() (result Result) {
 		HasLanguage: true,
 		emitter:     h.emitter,
 		top:         h.top,
+		checkpoints: h.checkpoints,
+		iterations:  h.iterations,
 	}
 }
+
+// languageReach is the greatest reach of any pattern of the compiled language.
+func languageReach(language *Mode) reach {
+	props := language.setLang()
+	if !props.reachDone {
+		props.reach = reach{}
+		for _, source := range props.sources {
+			r := patternReach(source)
+			props.reach.lines = max(props.reach.lines, r.lines)
+			props.reach.unbounded = props.reach.unbounded || r.unbounded
+			props.reach.spaceRun = props.reach.spaceRun || r.spaceRun
+		}
+		props.reachDone = true
+	}
+	return props.reach
+}
+
+// recordCheckpoint records the state at the start of this iteration when a run over more text would reach it unchanged.
+func (h *highlightRun) recordCheckpoint() {
+	if h.resume || !h.top.language || len(h.modeBuffer) != 0 || len(h.continuations) != 0 || len(h.emitter.stack) != 1 || h.index == 0 || h.index >= len(h.code) {
+		return
+	}
+	// Only a begin match at the position of the next match changes how that match is read, and a resumed run has no last match.
+	if h.lastMatch != nil && h.lastMatch.matchType() == "begin" && h.lastMatch.index >= h.index {
+		return
+	}
+	if isLowSurrogate(h.code[h.index]) || isHighSurrogate(h.code[h.index-1]) {
+		return
+	}
+	if n := len(h.checkpoints); n > 0 && h.checkpoints[n-1].unit == h.index {
+		return
+	}
+	h.checkpoints = append(h.checkpoints, checkpoint{unit: h.index, children: len(h.emitter.root.children), iterations: h.iterations - 1})
+}
+
+func isHighSurrogate(u rune) bool { return u >= 0xd800 && u <= 0xdbff }
+func isLowSurrogate(u rune) bool  { return u >= 0xdc00 && u <= 0xdfff }
 
 func (h *highlightRun) keywordData(mode *Mode, lexeme []rune) (keywordData, bool) {
 	matchText := unitsToString(lexeme)
 	if h.language.caseInsensitive {
 		matchText = toLowerCase(matchText)
 	}
-	data, ok := mode.keywords.compiled[matchText]
+	data, ok := mode.rare().keywords.compiled[matchText]
 	return data, ok
 }
 
 func (h *highlightRun) processKeywords() {
 	top := h.top.mode
-	if !top.keywords.truthy() {
+	if !top.rare().keywords.truthy() {
 		h.emitter.addText(unitsToString(h.modeBuffer))
 		return
 	}
 	lastIndex := 0
-	match := top.keywordPatternRe.exec(h.modeBuffer, 0)
+	match := top.comp().keywordPatternRe.exec(h.modeBuffer, 0)
 	var buf []rune
 	for match != nil {
 		buf = append(buf, substring(h.modeBuffer, lastIndex, match.index)...)
@@ -695,7 +788,7 @@ func (h *highlightRun) processKeywords() {
 			if strings.HasPrefix(data.kind, "_") {
 				buf = append(buf, text...)
 			} else {
-				cssClass := h.language.classNameAliases[data.kind]
+				cssClass := h.language.lang().classNameAliases[data.kind]
 				if cssClass == "" {
 					cssClass = data.kind
 				}
@@ -705,7 +798,7 @@ func (h *highlightRun) processKeywords() {
 			buf = append(buf, text...)
 		}
 		lastIndex = match.spans[1]
-		match = top.keywordPatternRe.exec(h.modeBuffer, lastIndex)
+		match = top.comp().keywordPatternRe.exec(h.modeBuffer, lastIndex)
 	}
 	buf = append(buf, substr(h.modeBuffer, lastIndex)...)
 	h.emitter.addText(unitsToString(buf))
@@ -717,17 +810,17 @@ func (h *highlightRun) processSubLanguage() {
 	}
 	top := h.top.mode
 	var result Result
-	if !top.subLanguage.isList {
-		if h.registry.languages[top.subLanguage.name] == nil {
+	if !top.rare().subLanguage.isList {
+		if h.registry.languages[top.rare().subLanguage.name] == nil {
 			h.emitter.addText(unitsToString(h.modeBuffer))
 			return
 		}
-		result = h.registry.highlight(top.subLanguage.name, h.modeBuffer, true, h.continuations[top.subLanguage.name])
-		h.continuations[top.subLanguage.name] = result.top
+		result = h.registry.highlight(top.rare().subLanguage.name, h.modeBuffer, true, h.continuations[top.rare().subLanguage.name])
+		h.continuations[top.rare().subLanguage.name] = result.top
 	} else {
 		var subset []string
-		if len(top.subLanguage.list) > 0 {
-			subset = top.subLanguage.list
+		if len(top.rare().subLanguage.list) > 0 {
+			subset = top.rare().subLanguage.list
 		}
 		result = h.registry.highlightAuto(h.modeBuffer, subset)
 	}
@@ -738,7 +831,7 @@ func (h *highlightRun) processSubLanguage() {
 }
 
 func (h *highlightRun) processBuffer() {
-	if h.top.mode.subLanguage.set {
+	if h.top.mode.rare().subLanguage.set {
 		h.processSubLanguage()
 	} else {
 		h.processKeywords()
@@ -748,7 +841,7 @@ func (h *highlightRun) processBuffer() {
 
 func (h *highlightRun) startNewMode(mode *Mode) *frame {
 	if mode.className != "" {
-		className := h.language.classNameAliases[mode.className]
+		className := h.language.lang().classNameAliases[mode.className]
 		if className == "" {
 			className = mode.className
 		}
@@ -759,11 +852,12 @@ func (h *highlightRun) startNewMode(mode *Mode) *frame {
 }
 
 func (h *highlightRun) endOfMode(mode *frame, match *enhancedMatch, matchPlusRemainder []rune) *frame {
-	matched := mode.mode.endRe != nil && mode.mode.endRe.matchesAtStart(matchPlusRemainder)
+	endRe := mode.mode.comp().endRe
+	matched := endRe != nil && endRe.matchesAtStart(matchPlusRemainder)
 	if matched {
-		if mode.mode.onEnd != nil {
+		if mode.mode.rare().onEnd != nil {
 			resp := mode.response()
-			mode.mode.onEnd(match, resp)
+			mode.mode.rare().onEnd(match, resp)
 			if resp.isMatchIgnored {
 				matched = false
 			}
@@ -783,7 +877,7 @@ func (h *highlightRun) endOfMode(mode *frame, match *enhancedMatch, matchPlusRem
 
 // doIgnore keeps scanning at the same position when other rules remain, or moves past one code unit.
 func (h *highlightRun) doIgnore(lexeme []rune) int {
-	if h.top.mode.matcher.regexIndex == 0 {
+	if h.top.mode.comp().matcher.regexIndex == 0 {
 		if len(lexeme) == 0 {
 			// lexeme[0] of an empty lexeme is undefined, which string concatenation spells out.
 			h.modeBuffer = append(h.modeBuffer, []rune("undefined")...)
@@ -800,7 +894,7 @@ func (h *highlightRun) doBeginMatch(match *enhancedMatch) int {
 	lexeme := match.lexeme()
 	newMode := match.rule()
 	resp := newRuleResponse(newMode)
-	for _, cb := range []callback{newMode.beforeBegin, newMode.onBegin} {
+	for _, cb := range []callback{newMode.comp().beforeBegin, newMode.rare().onBegin} {
 		if cb == nil {
 			continue
 		}
@@ -810,7 +904,7 @@ func (h *highlightRun) doBeginMatch(match *enhancedMatch) int {
 		}
 	}
 	if newMode.endSameAsBegin {
-		newMode.endRe = escapeRegExp(unitsToString(lexeme))
+		newMode.setComp().endRe = escapeRegExp(unitsToString(lexeme))
 		newMode.present |= keyEndRe
 	}
 	if newMode.skip {
@@ -856,7 +950,7 @@ func (h *highlightRun) doEndMatch(match *enhancedMatch) int {
 		if h.top.mode.className != "" {
 			h.emitter.closeNode()
 		}
-		if !h.top.mode.skip && !h.top.mode.subLanguage.truthy() {
+		if !h.top.mode.skip && !h.top.mode.rare().subLanguage.truthy() {
 			h.relevance += h.top.mode.relevance
 		}
 		h.top = h.top.parent
@@ -866,7 +960,7 @@ func (h *highlightRun) doEndMatch(match *enhancedMatch) int {
 	}
 	if endMode.mode.starts != nil {
 		if endMode.mode.endSameAsBegin {
-			endMode.mode.starts.endRe = endMode.mode.endRe
+			endMode.mode.starts.setComp().endRe = endMode.mode.comp().endRe
 			endMode.mode.starts.present |= keyEndRe
 		}
 		h.startNewMode(endMode.mode.starts)
@@ -918,7 +1012,7 @@ func (h *highlightRun) processLexeme(textBeforeMatch []rune, match *enhancedMatc
 	if match.matchType() == "illegal" && len(lexeme) == 0 {
 		return 1
 	}
-	if h.iterations > 100000 && h.iterations > match.index*3 {
+	if h.iterations > highlightJSIterationLimit && h.iterations > match.index*3 {
 		throw("potential infinite loop, way more iterations than matches")
 	}
 	h.modeBuffer = append(h.modeBuffer, lexeme...)
@@ -945,10 +1039,10 @@ func (r *Registry) highlightAuto(code []rune, languageSubset []string) Result {
 			return b.Relevance - a.Relevance
 		}
 		if a.HasLanguage && b.HasLanguage {
-			if r.getLanguage(a.Language).supersetOf == b.Language {
+			if r.getLanguage(a.Language).lang().supersetOf == b.Language {
 				return 1
 			}
-			if r.getLanguage(b.Language).supersetOf == a.Language {
+			if r.getLanguage(b.Language).lang().supersetOf == a.Language {
 				return -1
 			}
 		}

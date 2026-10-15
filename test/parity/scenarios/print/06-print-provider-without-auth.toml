@@ -1,0 +1,43 @@
+# Behavior family: print
+# Scenario: print and JSON mode reject a prompt whose provider has no usable auth before the turn starts.
+#
+# Upstream evidence (Pi 1.1.0, probed 2026-10-10): print-mode.ts sends the prompt through session.prompt(), and
+# AgentSession.prompt (agent-session.ts:2037-2050) checks hasConfiguredAuth/checkAuth for the selected provider first:
+#
+#   pi --offline --no-extensions --no-session --model openai/gpt-4o --mode json -p hello   (no OpenAI credentials)
+#
+# writes only the session header to stdout, writes "No API key found for openai." with the login guidance to stderr,
+# and exits 1. PiG sent the prompt straight to Session.SendContent, so JSON mode ran the whole turn (agent_start,
+# the user message, an assistant error "provider is not configured: openai") and exited 0, and text mode printed
+# "provider is not configured: openai".
+#
+# The guidance names the distribution's documentation root (D2/D22); only that prefix is aliased.
+# normalize-rationale: the session header's id, timestamp and cwd are fresh per run, and the docs root differs by distribution (D2/D22). Masking them keeps every key, the line order, the guidance text and the file names, so drift in the error, the exit or the events still fails.
+
+name = "06-print-provider-without-auth"
+description = "Print and JSON mode fail a prompt for a provider without auth before the turn, with Pi's guidance"
+covers = [
+  "packages/coding-agent/src/modes/print-mode.ts",
+  "packages/coding-agent/src/core/auth-guidance.ts",
+]
+tags = ["hermetic", "fast", "cli"]
+driver = "cli-mode"
+
+[cli]
+args = ["--offline", "--no-extensions", "--no-context-files", "--no-skills", "--no-session", "--model", "openai/gpt-4o", "--mode", "json", "-p", "hello"]
+timeout_seconds = 20
+
+[env]
+pig = ["PIG_HOME=../rpc/testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=../rpc/testdata/pi-home/agent", "PI_SKIP_VERSION_CHECK=1"]
+
+[assert]
+exit_code = 1
+both_contain = ["No API key found for openai.", "Use /login to log into a provider via OAuth or API key. See:"]
+both_not_contain = ["agent_start", "provider is not configured"]
+output_normalized_equal = true
+normalize_replace = [
+  { pattern = '"(id|timestamp|cwd)":"[^"]*"', with = '"$1":"<X>"', reason = "The session header's id, timestamp and cwd are per run; keep its key order and the rest of the line." },
+  { pattern = '/[^ \n]*/docs/(?:bundle-[0-9a-f]+/)?(providers|models)\.md', with = '<DOCS>/$1.md', reason = "D2/D22: the documentation root is distribution-specific; keep the file names and the guidance text." },
+]
+runs = 3

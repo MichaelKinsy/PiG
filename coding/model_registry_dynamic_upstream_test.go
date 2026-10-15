@@ -38,20 +38,20 @@ func registryInput(baseURL, api string, ids ...string) ProviderConfigInput {
 	}
 	return input
 }
-func registerRegistryInput(t *testing.T, s *Services, id string, input ProviderConfigInput) {
+func registerRegistryInput(t *testing.T, s *AgentSessionServices, id string, input ProviderConfigInput) {
 	t.Helper()
-	if err := s.Registry().RegisterProviderConfig(id, input); err != nil {
+	if err := s.Registry().RegisterProvider(id, input); err != nil {
 		t.Fatal(err)
 	}
 }
-func registryProviderIDs(s *Services, id string) []string {
+func registryProviderIDs(s *AgentSessionServices, id string) []string {
 	var ids []string
 	for _, m := range registryModelsForProvider(s.Registry(), id) {
 		ids = append(ids, m.ModelID)
 	}
 	return ids
 }
-func registryRefresh(t *testing.T, s *Services) {
+func registryRefresh(t *testing.T, s *AgentSessionServices) {
 	t.Helper()
 	result := s.ModelRuntime().Refresh(t.Context(), ai.ModelsRefreshOptions{AllowNetwork: new(false)})
 	if result.Aborted || len(result.Errors) > 0 {
@@ -59,6 +59,7 @@ func registryRefresh(t *testing.T, s *Services) {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/model-registry.ts:233 (ModelRegistry.getRegisteredProviderConfig).
 func TestModelRegistryDynamicProvidersUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/model-registry.test.ts:1107
 	t.Run("getProviderDisplayName resolves registered, OAuth, built-in, and fallback names", func(t *testing.T) {
@@ -98,7 +99,7 @@ func TestModelRegistryDynamicProvidersUpstream(t *testing.T) {
 		registerRegistryInput(t, s, "extension-provider", input)
 		m := mustRegistryModel(t, s, "extension-provider", "extension-model")
 		want := ai.ThinkingLevelMap{ai.ThinkingOff: nil, ai.ThinkingMinimal: nil, ai.ThinkingLow: nil, ai.ThinkingMedium: nil, ai.ThinkingXHigh: new("max")}
-		if m.DisplayName != "Overridden Extension Model" || !reflect.DeepEqual(m.ThinkingLevelMap, want) || !reflect.DeepEqual(ai.GetSupportedThinkingLevels(m), []ai.ThinkingLevel{ai.ThinkingHigh, ai.ThinkingXHigh}) {
+		if m.DisplayName != "Overridden Extension Model" || !reflect.DeepEqual(m.ThinkingLevelMap, want) || !reflect.DeepEqual(ai.GetSupportedThinkingLevels(m), []ai.ModelThinkingLevel{ai.ThinkingHigh, ai.ThinkingXHigh}) {
 			t.Fatalf("model=%+v levels=%v", m, ai.GetSupportedThinkingLevels(m))
 		}
 		auth := s.Registry().GetAPIKeyAndHeaders(t.Context(), m)
@@ -151,7 +152,7 @@ func TestModelRegistryDynamicProvidersUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/model-registry.test.ts:1306
 	t.Run("failed registerProvider does not persist invalid streamSimple config", func(t *testing.T) {
 		s := registryTestServices(t, "", nil)
-		err := s.Registry().RegisterProviderConfig("broken-provider", ProviderConfigInput{StreamSimple: func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+		err := s.Registry().RegisterProvider("broken-provider", ProviderConfigInput{StreamSimple: func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 			return nil, errors.New("should not run")
 		}})
 		if err == nil || !strings.Contains(err.Error(), `Provider broken-provider: "api" is required when registering streamSimple.`) {
@@ -173,7 +174,7 @@ func TestModelRegistryDynamicProvidersUpstream(t *testing.T) {
 		input.Models = []ai.AnyModel{new(*input.Models[0].(*ai.Model))}
 		input.Models[0].(*ai.Model).ID = "broken-model"
 		input.Models[0].(*ai.Model).DisplayName = "Broken Model"
-		err := s.Registry().RegisterProviderConfig("demo-provider", input)
+		err := s.Registry().RegisterProvider("demo-provider", input)
 		if err == nil || !strings.Contains(err.Error(), `Provider demo-provider, model broken-model: no "api" specified.`) {
 			t.Fatalf("error=%v", err)
 		}

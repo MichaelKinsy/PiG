@@ -30,11 +30,8 @@
 name = "03-tool-execution-bash"
 description = "Bash tool result box renders with correct padding, colors, and spacing."
 covers = [
-  "packages/coding-agent/src/core/timings.ts",
   "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
 ]
-# timings.ts: the "Took Xs" footer is rendered from RecordTool() timing
-# data. If timings broke, the duration would be absent or wrong.
 tags = ["fast", "hermetic", "tui"]
 driver = "interactive-tmux"
 model = "test-faux/faux-1"

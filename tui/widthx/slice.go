@@ -129,7 +129,9 @@ func ExtractSegments(line string, beforeEnd, afterStart, afterLen int, strictAft
 			switch {
 			case currentCol < beforeEnd:
 				pendingAnsiBefore += code
-			case currentCol >= afterStart && currentCol < afterEnd && afterStarted:
+			case currentCol >= afterStart && currentCol < afterEnd && (afterStarted || strings.HasPrefix(code, "\x1b_")):
+				// SGR codes are only kept once "after" started (its styling is already prepended). A zero-width APC marker such
+				// as CursorMarker is not tracked styling, so it stays at the boundary too.
 				after.WriteString(code)
 			}
 			i += n

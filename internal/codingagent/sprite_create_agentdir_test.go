@@ -34,7 +34,11 @@ func TestSpriteCreatePromptNamesTheRunsExtensionsDirectory(t *testing.T) {
 				t.Setenv(name, tc.env[name])
 			}
 			want := "`" + filepath.Join(AgentDir(), "extensions", "<id>.ts") + "`"
-			if prompt := piglogin.CreatePrompt(); !strings.Contains(prompt, want) {
+			prompt, err := piglogin.CreatePrompt()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(prompt, want) {
 				t.Fatalf("prompt does not name %s:\n%s", want, prompt)
 			}
 		})

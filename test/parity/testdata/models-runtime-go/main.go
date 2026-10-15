@@ -67,7 +67,11 @@ func run() error {
 		return err
 	}
 	var storedModels []any
-	for _, raw := range stored.Models {
+	for _, model := range stored.Models {
+		raw, err := ai.EncodeStoredModel(model)
+		if err != nil {
+			return err
+		}
 		var value any
 		if err := json.Unmarshal(raw, &value); err != nil {
 			return err

@@ -1,3 +1,5 @@
+//go:build !pig_strip_bedrock_converse_stream
+
 package ai
 
 import (
@@ -11,8 +13,9 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	btypes "github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
 	"github.com/aws/smithy-go"
+
+	btypes "github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime/types"
 )
 
 // golden.json is the output of testdata/bedrock-eventstream/probe.mjs: what Pi's real AWS SDK and @smithy/core event-stream stack yields or throws for each byte sequence, recorded on Node 24.19.0. Node 26.7.0 prints the same file.

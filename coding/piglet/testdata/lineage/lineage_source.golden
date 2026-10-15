@@ -1,0 +1,9 @@
+Piglet lineage: leaf (source)
+  base 1.0.0  sha256:e0f4ad4519fc23faa75a62cf06c97430a263ad92ee740b5b87405e884b3d3d37  local:base.yaml
+  └─ mid 1.1.0  sha256:c874ed756ec22825ff683c9e692e698e022b3fcc079abe0582afeff66a51c02e  local:mid.yaml
+       + skills added: gamma
+       - skills removed: beta
+       - tools removed: bash
+     └─ leaf 2.0.0  sha256:5e372489a8a7708d7fd4651c0a44b47e277fa5ec1495aa31bcc5efb15f2b33b7  local:leaf.yaml
+          ~ skills changed: alpha
+Advisories: none recorded

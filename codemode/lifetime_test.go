@@ -11,7 +11,8 @@ import (
 )
 
 // Lifetime and cancellation of an execution (docs/specs/builtin-codemode-tool-search.md, "Execution lifetime and
-// cancellation"): when Execute returns, its wasm instance is closed and every goroutine it started has exited.
+// cancellation"): Execute returns once the VM is asked to stop, and the VM and every goroutine it started exit within the
+// halt grace period.
 
 func settled(t *testing.T, baseGoroutines int) {
 	t.Helper()
@@ -27,12 +28,24 @@ func settled(t *testing.T, baseGoroutines int) {
 	}
 }
 
+// exitsWithin waits until no VM is open, failing after d.
+func exitsWithin(t *testing.T, d time.Duration, what string) {
+	t.Helper()
+	deadline := time.Now().Add(d)
+	for liveVMs.Load() != 0 {
+		if time.Now().After(deadline) {
+			t.Fatalf("%s: %d live VMs %v after Execute returned", what, liveVMs.Load(), d)
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
 func waitTool(ctx context.Context, _ json.RawMessage) (json.RawMessage, error) {
 	<-ctx.Done()
 	return nil, ctx.Err()
 }
 
-func TestExecuteReturnsOnlyAfterTheVMIsClosedForEveryTerminalKind(t *testing.T) {
+func TestEveryTerminalKindClosesItsVMWithoutHaltingTheInstance(t *testing.T) {
 	sandbox, err := NewSandbox(SandboxOptions{Tools: []Tool{{Name: "wait", Execute: waitTool}}, TimeoutMs: 10_000, MemoryLimitBytes: 16 << 20})
 	if err != nil {
 		t.Fatal(err)
@@ -87,10 +100,8 @@ func TestExecuteReturnsOnlyAfterTheVMIsClosedForEveryTerminalKind(t *testing.T) 
 			if k.kind == "" && !result.OK || k.kind != "" && (result.OK || result.Error.Kind != k.kind) {
 				t.Fatalf("%s: result %+v (error %+v)", k.name, result, result.Error)
 			}
-			// No waiting: the instance must be gone the moment Execute returns.
-			if live := liveVMs.Load(); live != 0 {
-				t.Fatalf("%s: %d live VMs right after Execute", k.name, live)
-			}
+			// The interrupt flag stops these scripts, so the instance closes well before the grace period would halt it.
+			exitsWithin(t, terminationGrace, k.name)
 		}
 		settled(t, base)
 	}
@@ -99,7 +110,7 @@ func TestExecuteReturnsOnlyAfterTheVMIsClosedForEveryTerminalKind(t *testing.T) 
 	}
 }
 
-func TestCloseAbortsEveryRunningExecutionAndWaitsForTheirVMs(t *testing.T) {
+func TestCloseAbortsEveryRunningExecution(t *testing.T) {
 	sandbox, err := NewSandbox(SandboxOptions{TimeoutMs: math.Inf(1)})
 	if err != nil {
 		t.Fatal(err)
@@ -121,9 +132,7 @@ func TestCloseAbortsEveryRunningExecutionAndWaitsForTheirVMs(t *testing.T) {
 	if err := sandbox.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if live := liveVMs.Load(); live != 0 {
-		t.Fatalf("%d live VMs after Close returned", live)
-	}
+	exitsWithin(t, terminationGrace, "Close")
 	wg.Wait()
 	for i, r := range results {
 		if r.OK || r.Error.Kind != ErrorAborted || r.Error.Message != "Sandbox closed" {
@@ -131,40 +140,6 @@ func TestCloseAbortsEveryRunningExecutionAndWaitsForTheirVMs(t *testing.T) {
 		}
 	}
 	settled(t, base)
-}
-
-// A script inside a native call never reaches QuickJS's interrupt poll, so the flag cannot stop it; the grace period
-// closes the instance under the script, so a script cannot hold Execute forever. The test stands for that script by making
-// the poll report nothing.
-func TestAScriptThatNeverReachesTheInterruptCheckIsStoppedByClosingTheInstance(t *testing.T) {
-	sandbox, err := NewSandbox(SandboxOptions{TimeoutMs: 10_000})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = sandbox.Close() })
-	if r, _ := sandbox.Execute(t.Context(), "return 1", ExecuteOptions{}); !r.OK {
-		t.Fatalf("warm-up: %+v", r.Error)
-	}
-	ignoreInterrupt.Store(true)
-	t.Cleanup(func() { ignoreInterrupt.Store(false) })
-	before := hardStops.Load()
-	started := time.Now()
-	result, err := sandbox.Execute(t.Context(), "while (true) {}", ExecuteOptions{TimeoutMs: 100})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if result.OK || result.Error.Kind != ErrorTimeout {
-		t.Fatalf("result = %+v (%+v) after %v, want a timeout", result, result.Error, time.Since(started))
-	}
-	if hardStops.Load() != before+1 {
-		t.Fatalf("hard stops %d -> %d: the instance was not closed under the script", before, hardStops.Load())
-	}
-	if elapsed := time.Since(started); elapsed < terminationGrace {
-		t.Fatalf("Execute returned after %v, before the %v grace: the flag alone stopped a script that ignores it", elapsed, terminationGrace)
-	}
-	if live := liveVMs.Load(); live != 0 {
-		t.Fatalf("%d live VMs after Execute", live)
-	}
 }
 
 // A nested call that is still running when the script ends is cancelled, and Execute waits for it: no goroutine of

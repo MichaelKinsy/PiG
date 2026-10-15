@@ -1,3 +1,5 @@
+//go:build !pig_strip_bedrock_converse_stream
+
 package ai
 
 import (
@@ -5,7 +7,8 @@ import (
 	"errors"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	btypes "github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
+
+	btypes "github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime/types"
 )
 
 // bedrockStreamState is the loop state of bedrock-converse-stream.ts's `for await (const item of response.stream!)` body and the statements after it. handle is one iteration; finish is the code after the loop.
@@ -87,12 +90,14 @@ func (state *bedrockStreamState) handleItem(item bedrockStreamItem) error {
 	case *btypes.ConverseStreamOutputMemberMessageStop:
 		rawStopReason := string(e.Value.StopReason)
 		builder.setResponseMetadata("", "", rawStopReason, "", nil)
-		state.stopReason, state.stopErrMsg = mapBedrockStopReason(rawStopReason)
+		stopErrMsg := ""
+		state.stopReason, stopErrMsg = mapBedrockStopReason(rawStopReason)
 		state.hasStopReason = true
-		// output.stopReason and output.errorMessage change in place: later partials carry them before `done`.
+		// output.stopReason and output.errorMessage change in place: later partials carry them before `done`. A later messageStop replaces the stop reason but keeps an errorMessage an earlier one set (bedrock-converse-stream.ts:313-318).
 		builder.partial.StopReason = state.stopReason
-		if state.stopErrMsg != "" {
-			builder.partial.ErrorMessage = state.stopErrMsg
+		if stopErrMsg != "" {
+			state.stopErrMsg = stopErrMsg
+			builder.partial.ErrorMessage = stopErrMsg
 		}
 
 	case *btypes.ConverseStreamOutputMemberMetadata:
@@ -134,7 +139,7 @@ func (state *bedrockStreamState) finish(ctx context.Context, streamErr error, re
 		failBedrockResponse(ctx, builder, errors.New(message), requestID, true)
 		return
 	}
-	builder.done(state.stopReason, nil, "")
+	builder.done(state.stopReason, nil, state.stopErrMsg)
 }
 
 // bedrockBlockScratch is the streaming `index` field. Pi's output blocks carry it until the block stops, visible to any consumer whose tick falls before then; a builder outside the executor pushes emission-time snapshots (D82), which do not model that window, so the field is only published when the producer runs as an executor turn.

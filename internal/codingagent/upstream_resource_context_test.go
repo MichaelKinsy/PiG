@@ -27,7 +27,12 @@ func TestUpstreamResourceLoaderContextFiles(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.Name, func(t *testing.T) {
-			root := t.TempDir()
+			// Relative inputs resolve against process.cwd() (resource-loader.ts resolvePath), the physical directory: /private/var/… for
+			// macOS's /var/… temp dir. Building the tree under the physical root keeps every expected path the one Pi reports.
+			root, err := filepath.EvalSymlinks(t.TempDir())
+			if err != nil {
+				t.Fatal(err)
+			}
 			mkdir := func(path string) {
 				t.Helper()
 				if err := os.MkdirAll(filepath.Join(root, path), 0o755); err != nil {

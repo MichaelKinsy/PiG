@@ -10,7 +10,7 @@ import (
 	"os"
 	"sync/atomic"
 
-	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
+	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime"
 
 	"github.com/MichaelKinsy/PiG/ai"
 )

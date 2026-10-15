@@ -13,8 +13,8 @@ func TestPrepareToolResultRunsAfterLateExtensionHooksBeforeHistory(t *testing.T)
 	provider := providerFromSeqs(toolCallSeq(struct{ id, name string }{"image", "image-tool"}), textSeq("done"))
 	initial := []ai.ToolResultMessageContent{ai.TextContent{Text: "original"}, ai.ImageContent{MimeType: "image/png", Data: "initial"}}
 	prepared := false
-	a := NewAgent(AgentOptions{Model: fakeTestModel(provider), Tools: []AgentTool{tool}, MaxTurns: 5,
-		AfterToolCall: []AfterToolCallHook{func(context.Context, string, string, json.RawMessage, AgentToolResult) AfterToolCallResult {
+	a := mustNewAgent(AgentOptions{Model: fakeTestModel(provider), Tools: []AgentTool{tool}, MaxTurns: 5,
+		AfterToolCallHooks: []AfterToolCallHook{func(context.Context, string, string, json.RawMessage, AgentToolResult) AfterToolCallResult {
 			return AfterToolCallResult{Content: initial}
 		}},
 		PrepareToolResult: func(ctx context.Context, result AgentToolResult) AgentToolResult {

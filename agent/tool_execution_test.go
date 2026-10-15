@@ -56,7 +56,7 @@ func TestSend_ToolExecuteError_BecomesLinkedErrorResult(t *testing.T) {
 		toolCallSeq(struct{ id, name string }{"tc-err", "boom"}),
 		textSeq("recovered"),
 	)
-	a := NewAgent(AgentOptions{Model: fakeTestModel(prov), Tools: []AgentTool{tool}, MaxTurns: 5})
+	a := mustNewAgent(AgentOptions{Model: fakeTestModel(prov), Tools: []AgentTool{tool}, MaxTurns: 5})
 
 	msgs, err := a.Send(context.Background(), "run boom")
 	if err != nil {
@@ -101,7 +101,7 @@ func TestSend_InvalidToolArgs_BecomesLinkedErrorResult(t *testing.T) {
 		toolCallSeq(struct{ id, name string }{"tc-bad", "needs-path"}),
 		textSeq("done"),
 	)
-	a := NewAgent(AgentOptions{Model: fakeTestModel(prov), Tools: []AgentTool{tool}, MaxTurns: 5})
+	a := mustNewAgent(AgentOptions{Model: fakeTestModel(prov), Tools: []AgentTool{tool}, MaxTurns: 5})
 
 	msgs, err := a.Send(context.Background(), "call with bad args")
 	if err != nil {
@@ -128,7 +128,7 @@ func TestSend_UnknownTool_BecomesLinkedErrorResult(t *testing.T) {
 		toolCallSeq(struct{ id, name string }{"tc-ghost", "ghost"}),
 		textSeq("done"),
 	)
-	a := NewAgent(AgentOptions{Model: fakeTestModel(prov), Tools: nil, MaxTurns: 5})
+	a := mustNewAgent(AgentOptions{Model: fakeTestModel(prov), Tools: nil, MaxTurns: 5})
 
 	msgs, err := a.Send(context.Background(), "call ghost")
 	if err != nil {

@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package coding
@@ -16,50 +15,55 @@ import (
 
 // Ports packages/coding-agent/src/core/agent-session.ts (_getSummarizationRequestAuth).
 type summarizationRequest struct {
-	model     *ai.Model
+	model *ai.Model
+	// apiKey, headers and env are the request auth of the summary model; headers omit the ones the auth deletes.
+	apiKey    string
+	headers   map[string]string
+	env       map[string]string
 	completer compaction.SimpleCompleter
 	streamFn  compaction.StreamFn
 	// thinkingLevel is the thinking level of the summary request: the session's, or the router's for a virtual selection.
-	thinkingLevel ai.ThinkingLevel
+	thinkingLevel ai.ModelThinkingLevel
 }
 
-// runDefaultCompaction generates Pi's built-in compaction summary for manual and automatic compaction. It resolves the request only when Pi summarizes itself, so a summary supplied by an extension needs no auth and no routing.
-//
-// upstream: agent-session.ts:2633-2661 (_runDefaultCompaction)
 func (s *Session) runDefaultCompaction(ctx context.Context, prep compaction.CompactionPreparation, model *ai.Model, customInstructions, reason string) (compaction.CompactionResult, error) {
 	request, err := s.prepareSummarizationRequest(ctx, model)
 	if err != nil {
 		return compaction.CompactionResult{}, err
 	}
-	return compaction.Compact(ctx, prep, request.model, request.completer, request.streamFn, customInstructions, request.thinkingLevel, s.summarizationRetryOptions("compaction", reason), "")
-}
-
-type authenticatedSummaryCompleter struct {
-	delegate compaction.SimpleCompleter
-	options  ai.StreamOptions
-}
-
-func (c *authenticatedSummaryCompleter) CompleteSimple(ctx context.Context, model *ai.Model, system string, messages []agent.AgentMessage, options ai.StreamOptions) (string, *ai.Usage, error) {
-	return c.delegate.CompleteSimple(ctx, model, system, messages, summaryAuthOptions(options, c.options))
-}
-func summaryAuthOptions(options, auth ai.StreamOptions) ai.StreamOptions {
-	options.APIKey = auth.APIKey
-	options.Headers = ai.MergeProviderHeaders(auth.Headers, options.Headers)
-	env := maps.Clone(auth.Env)
-	if env == nil && options.Env != nil {
-		env = make(ai.ProviderEnv)
+	retry, retryCallbacks := s.summarizationRetryOptions("compaction", reason)
+	if s.completer == nil && s.agent.StreamFunction() == nil {
+		// upstream compact(preparation, model, apiKey, headers, customInstructions, signal, thinkingLevel, streamFn, env, retry, callbacks, sessionId): the provider's own stream.
+		return compaction.Compact(ctx, prep, request.model, request.apiKey, request.headers, customInstructions, request.thinkingLevel, request.streamFn, request.env, retry, retryCallbacks, "")
 	}
-	maps.Copy(env, options.Env)
-	options.Env = env
-	return options
+	return compaction.CompactUsing(ctx, prep, request.model, request.apiKey, request.headers, customInstructions, request.thinkingLevel, request.completer, request.streamFn, request.env, retry, retryCallbacks, "")
 }
 
-// prepareSummarizationRequest uses the same Services-owned request preparation as ModelRuntime streaming. Explicit custom streams may operate without registry auth; caller-supplied Go providers own their own auth callbacks.
+// withoutDeletedHeaders drops the headers an auth result deletes; summary requests take only header values.
+// upstream: packages/coding-agent/src/core/agent-session.ts:withoutDeletedHeaders
+func withoutDeletedHeaders(headers ai.ProviderHeaders) map[string]string {
+	if headers == nil {
+		return nil
+	}
+	values := make(map[string]string, len(headers))
+	for name, value := range headers {
+		if value != nil {
+			values[name] = *value
+		}
+	}
+	return values
+}
+
+// prepareSummarizationRequest resolves the summary model and its request auth (agent-session.ts:560 _getSummarizationRequestAuth).
 func (s *Session) prepareSummarizationRequest(ctx context.Context, model *ai.Model) (summarizationRequest, error) {
 	thinking := s.ThinkingLevel()
+	// Pi's getAuth rejects with the signal's reason when the signal is already aborted (resolve.ts:33-44), before any request exists. A caller-owned Go provider has no getAuth: it is not called once the signal has aborted, with the same reason (pinned by TestCompactCancelsSynchronouslyFromStartEvent).
+	if ctx.Err() != nil {
+		return summarizationRequest{model: model, thinkingLevel: thinking}, abortSignalReason(ctx)
+	}
 	// Route a virtual model first: summaries size their input and output from the model they get. upstream: agent-session.ts:541-548
 	if IsVirtualModel(model) {
-		route, err := s.modelRuntime.ResolveModel(ctx, model, agent.ConvertToLLM(s.agent.Messages(), model), ResolveModelOptions{Reason: ModelRouteReasonDirect, ThinkingLevel: thinking})
+		route, err := s.modelRuntime.ResolveModel(ctx, model, agent.ConvertToLLM(agent.NormalizeMessages(s.agent.Messages(), model)), ResolveModelOptions{Reason: ModelRouteReasonDirect, ThinkingLevel: thinking})
 		if err != nil {
 			return summarizationRequest{model: model, thinkingLevel: thinking}, err
 		}
@@ -73,6 +77,10 @@ func (s *Session) prepareSummarizationRequest(ctx context.Context, model *ai.Mod
 	var err error
 	if registryBuilt || nativeAuth {
 		prepared, provider, options, err = s.modelRuntime.prepare(ctx, model, ai.StreamOptions{})
+		if ctx.Err() != nil {
+			// Pi's getAuth races its signal and rejects with the signal's reason (resolve.ts:33-44), which _getSummarizationRequestAuth rethrows.
+			return request, abortSignalReason(ctx)
+		}
 	}
 	if err != nil {
 		if (s.streamFn != nil || s.agent.StreamFunction() != nil || !registryBuilt) && ctx.Err() == nil {
@@ -86,11 +94,21 @@ func (s *Session) prepareSummarizationRequest(ctx context.Context, model *ai.Mod
 	clone := *prepared
 	clone.Provider = provider
 	request.model = &clone
-	request.completer = &authenticatedSummaryCompleter{delegate: request.completer, options: options}
-	if original := request.streamFn; original != nil {
-		request.streamFn = func(ctx context.Context, model *ai.Model, system string, messages []agent.AgentMessage, base ai.StreamOptions) (string, *ai.Usage, error) {
-			return original(ctx, model, system, messages, summaryAuthOptions(base, options))
-		}
-	}
+	request.apiKey, request.headers, request.env = options.APIKey, withoutDeletedHeaders(options.Headers), maps.Clone(options.Env)
 	return request, nil
+}
+
+// errOperationAborted is DOMException AbortError's message: the reason a plainly aborted AbortSignal rejects with.
+var errOperationAborted = errors.New("This operation was aborted")
+
+// abortSignalReason is the reason an aborted signal rejects with: AbortError for a plain abort, TimeoutError for AbortSignal.timeout(), or the caller's cause.
+func abortSignalReason(ctx context.Context) error {
+	cause := context.Cause(ctx)
+	switch {
+	case cause == nil || errors.Is(cause, context.Canceled):
+		return errOperationAborted
+	case errors.Is(cause, context.DeadlineExceeded):
+		return errors.New("The operation was aborted due to timeout")
+	}
+	return cause
 }

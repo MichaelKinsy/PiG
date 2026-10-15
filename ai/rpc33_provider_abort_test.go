@@ -47,6 +47,7 @@ func TestOpenAIProviderAbortAfterAdmission(t *testing.T) {
 				t.Parallel()
 				ctx, cancel := context.WithCancel(t.Context())
 				prefix, admitted, wantContent := providerAbortPrefix(api, shape)
+				wantContent = completionsAbortContent(api, shape, wantContent)
 				var requests atomic.Int32
 				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 					requests.Add(1)
@@ -118,6 +119,7 @@ func TestOpenAIProviderAbortAtParserReadBoundaries(t *testing.T) {
 				ctx, cancel := context.WithCancel(t.Context())
 				defer cancel()
 				prefix, _, wantContent := providerAbortPrefix(api, "function")
+				wantContent = completionsAbortContent(api, "function", wantContent)
 				frames := []string{prefix}
 				if boundary == "next-event" {
 					frames = append(frames, "data: {}\n\n")
@@ -170,4 +172,12 @@ func TestOpenAIProviderAbortDoesNotRewriteUnrelatedErrors(t *testing.T) {
 			})
 		}
 	}
+}
+
+// completionsAbortContent is the content after a Completions abort: Pi's stream() finishes its open blocks before it throws the abort, and a finished call with cut-off arguments reports them instead of keeping the parsed prefix (Pi 87f9a364).
+func completionsAbortContent(api API, shape, want string) string {
+	if api == APIOpenAICompletions && shape == "function" {
+		return `[{"type":"toolCall","id":"call","name":"run","arguments":{},"argumentsError":"Unterminated string in JSON at position 18 (line 1 column 19)\n\nReceived arguments:\n{\"input\":\"retained"}]`
+	}
+	return want
 }

@@ -308,7 +308,7 @@ func TestUIBridge_HandleWidgetPush(t *testing.T) {
 	bridge := NewUIBridge(func() { invalidated.Add(1) })
 	bridge.SetUIContext(fake)
 
-	bridge.HandleWidgetPush("ext1", &WidgetPushPayload{
+	bridge.HandleWidgetPush("ext1", nil, &WidgetPushPayload{
 		Key:   "status",
 		Lines: []string{"◆ 3 files, 42 symbols indexed"},
 	})
@@ -336,7 +336,7 @@ func TestUIBridge_HandleSetWidget_Clear(t *testing.T) {
 	bridge.SetUIContext(fake)
 
 	// Set a widget.
-	bridge.HandleWidgetPush("ext1", &WidgetPushPayload{
+	bridge.HandleWidgetPush("ext1", nil, &WidgetPushPayload{
 		Key:   "counter",
 		Lines: []string{"count: 5"},
 	})
@@ -359,9 +359,9 @@ func TestUIBridge_ClearExtension(t *testing.T) {
 	bridge := NewUIBridge(func() {})
 	bridge.SetUIContext(fake)
 
-	bridge.HandleWidgetPush("ext1", &WidgetPushPayload{Key: "a", Lines: []string{"1"}})
-	bridge.HandleWidgetPush("ext1", &WidgetPushPayload{Key: "b", Lines: []string{"2"}})
-	bridge.HandleWidgetPush("ext2", &WidgetPushPayload{Key: "c", Lines: []string{"3"}})
+	bridge.HandleWidgetPush("ext1", nil, &WidgetPushPayload{Key: "a", Lines: []string{"1"}})
+	bridge.HandleWidgetPush("ext1", nil, &WidgetPushPayload{Key: "b", Lines: []string{"2"}})
+	bridge.HandleWidgetPush("ext2", nil, &WidgetPushPayload{Key: "c", Lines: []string{"3"}})
 
 	bridge.ClearExtension("ext1")
 

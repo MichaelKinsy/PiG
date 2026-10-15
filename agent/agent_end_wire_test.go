@@ -8,7 +8,7 @@ import (
 // Pi 0.87.1 packages/agent/src/agent-loop.ts:110,164-319 emits newMessages for this run, not the retained conversation.
 func TestAgentEndContainsOnlyCurrentRunMessages(t *testing.T) {
 	rec := newEventRecorder(nil)
-	a := NewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: replyText("reply")}), EventCh: rec.ch})
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: replyText("reply")}), EventCh: rec.ch})
 	mustSend(t, a, "first")
 	mustSend(t, a, "second")
 	var ended [][]AgentMessage

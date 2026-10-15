@@ -13,9 +13,12 @@ import (
 
 // extensionCatalogEncoding caches only the model projection: the chat catalog and the typed (image and classifier) models. It compares an owned snapshot of the composed metadata and registration order for the chat catalog, and drops the typed encoding on every committed registry change (invalidateTyped, called from the registry change observer that also publishes the catalog) or chat catalog change; provider auth and errors are read on every publication. The cache is owned by one bridge binding and retains one catalog, not a history of revisions.
 type extensionCatalogEncoding struct {
-	mu     sync.Mutex
-	input  []*ai.Model
-	models json.RawMessage
+	mu    sync.Mutex
+	input []*ai.Model
+	// records is ai.CatalogRecordOf of each input model: the snapshot leaves unexported members out, and a model's catalog
+	// record decides the member order of its model object.
+	records []string
+	models  json.RawMessage
 	// typed is the encoding of registry.extensionTypedModels for typedRegistry, valid while typedGeneration is unchanged since it was computed.
 	typed           json.RawMessage
 	typedProviders  []string
@@ -45,7 +48,7 @@ func (c *extensionCatalogEncoding) typedModels(registry *ModelRegistry) (json.Ra
 	generation := c.typedGeneration
 	c.mu.Unlock()
 	list := registry.extensionTypedModels()
-	typed, err := json.Marshal(list)
+	typed, err := extension.MarshalModelObjects(list)
 	if err != nil {
 		return nil, nil
 	}
@@ -63,7 +66,7 @@ func (c *extensionCatalogEncoding) state(registry *ModelRegistry, catalog []*ai.
 		if model == nil {
 			continue
 		}
-		// ModelInfo owns fallback Provider.ID evaluation; a cache key must not invoke it.
+		// ModelObject owns fallback Provider.ID evaluation; a cache key must not invoke it.
 		if (model.ProviderMeta.ProviderID == "" && model.Provider != nil) || !catalogMapCacheable(model.SamplingParams) {
 			return c.uncached(registry, catalog)
 		}
@@ -74,7 +77,7 @@ func (c *extensionCatalogEncoding) state(registry *ModelRegistry, catalog []*ai.
 		}
 		if compat := model.ProviderMeta.Compat; compat != nil &&
 			(!catalogMapCacheable(compat.OpenRouterRouting) || !catalogMapCacheable(compat.ChatTemplateKwargs) ||
-				!catalogMapCacheable(compat.VercelGatewayRouting) || !catalogMapCacheable(compat.ChatTemplateArgs)) {
+				!catalogMapCacheable(compat.ChatTemplateArgs)) {
 			return c.uncached(registry, catalog)
 		}
 	}
@@ -95,13 +98,15 @@ func (c *extensionCatalogEncoding) state(registry *ModelRegistry, catalog []*ai.
 		}
 	}
 	c.mu.Lock()
-	if c.models == nil || !equalCatalogModels(c.input, ordered) {
+	if c.models == nil || !equalCatalogModels(c.input, ordered) || !equalCatalogRecords(c.records, ordered) {
 		normalized := make([]ai.Model, len(ordered))
 		values := make([]*ai.Model, len(ordered))
+		records := make([]string, len(ordered))
 		for i, model := range ordered {
 			normalized[i] = *model
 			normalized[i].Provider = nil
 			values[i] = &normalized[i]
+			records[i] = ai.CatalogRecordOf(model)
 		}
 		input, ok := cloneCatalogInput(reflect.ValueOf(values))
 		if !ok {
@@ -109,17 +114,14 @@ func (c *extensionCatalogEncoding) state(registry *ModelRegistry, catalog []*ai.
 			return c.uncached(registry, catalog)
 		}
 		snapshot := input.Interface().([]*ai.Model)
-		models := make([]map[string]any, 0, len(snapshot))
-		for _, model := range snapshot {
-			models = append(models, extension.ModelInfo(model))
-		}
-		encoded, err := json.Marshal(models)
+		// The copies keep each model's catalog record, which orders its model object's members; the snapshot does not.
+		encoded, err := extension.MarshalModelObjects(values)
 		if err != nil {
 			c.mu.Unlock()
 			return c.uncached(registry, catalog)
 		}
 		c.models = encoded
-		c.input = snapshot
+		c.input, c.records = snapshot, records
 		c.typedGeneration++
 		c.typed = nil
 	}

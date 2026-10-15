@@ -1,7 +1,7 @@
 # Python factory example
 
 This extension exposes one conventional `new_extension()` factory in
-`python_factory.py`. It registers the `hello` tool.
+`python_factory.py`. It registers the `hello` tool and `count_words`, a tool with a required `text` parameter that answers an error result when it is missing.
 
 Validate it:
 

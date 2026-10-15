@@ -1,10 +1,11 @@
+import { PI_PACKAGE_VERSION } from "./pi-version.mjs";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve, join, basename } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const packageRoot = resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-if (JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")).version !== "1.0.3") throw new Error("unexpected Pi version");
+if (JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")).version !== PI_PACKAGE_VERSION) throw new Error("unexpected Pi version");
 const { discoverAndLoadExtensions } = await import(pathToFileURL(join(packageRoot, "dist/core/extensions/loader.js")));
 const root = mkdtempSync(join(tmpdir(), "discovery-renderers-"));
 try {

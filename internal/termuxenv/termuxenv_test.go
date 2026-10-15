@@ -219,3 +219,12 @@ func TestConfigureSetsTheTermuxDefaults(t *testing.T) {
 		t.Fatalf("TMPDIR = %q, want %q", os.Getenv("TMPDIR"), want)
 	}
 }
+
+// A resolv.conf line longer than bufio.Scanner's 64 KiB token limit must not hide the nameservers after it.
+func TestParseNameServersReadsPastAVeryLongLine(t *testing.T) {
+	long := "# " + string(make([]byte, 100<<10))
+	servers := parseNameServers([]byte("nameserver 1.1.1.1\n" + long + "\nnameserver 8.8.8.8\n"))
+	if want := []string{"1.1.1.1:53", "8.8.8.8:53"}; !slices.Equal(servers, want) {
+		t.Fatalf("servers = %v, want %v", servers, want)
+	}
+}

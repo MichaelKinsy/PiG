@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/internal/usagetotals"
 )
 
@@ -166,7 +166,7 @@ func (r *run) modelGlobals(models modelRuntime) []sandbox.Tool {
 			if err != nil {
 				return nil, err
 			}
-			return toModelInfos(models.GetModelsOfType(modelType, provider...)), nil
+			return toModelInfos(models.GetModelsOfType(modelType, provider...))
 		},
 		"models.getAvailableOfType": func(ctx context.Context, args []json.RawMessage) (any, error) {
 			modelType, err := toModelType(argOrUndefined(args, 0))
@@ -181,7 +181,7 @@ func (r *run) modelGlobals(models modelRuntime) []sandbox.Tool {
 			if err != nil {
 				return nil, err
 			}
-			return toModelInfos(available), nil
+			return toModelInfos(available)
 		},
 		"models.getModelOfType": func(_ context.Context, args []json.RawMessage) (any, error) {
 			provider, okProvider := stringArg(argOrUndefined(args, 1))
@@ -201,7 +201,7 @@ func (r *run) modelGlobals(models modelRuntime) []sandbox.Tool {
 			if model == nil {
 				return undefined{}, nil
 			}
-			return toModelInfo(model), nil
+			return toModelInfo(model)
 		},
 		"models.classify": func(ctx context.Context, args []json.RawMessage) (any, error) {
 			var request ai.ClassifierContext
@@ -360,40 +360,29 @@ func toProvider(raw json.RawMessage) ([]string, error) {
 	return []string{value}, nil
 }
 
-// extensionWireModelAliases are the keys the extension wire adds to a model object that Pi's model objects do not have.
-var extensionWireModelAliases = []string{"modelId", "displayName", "maxOutputTokens", "inputCostPer1M", "outputCostPer1M", "cacheReadCostPer1M", "cacheWriteCostPer1M"}
-
-// toModelInfo is the catalog entry for scripts: Pi's model object ({ ...model }). Headers are dropped because models.json headers can carry credentials.
-func toModelInfo(model ai.AnyModel) map[string]any {
-	info := extension.AnyModelInfo(model)
-	delete(info, "headers")
-	for _, key := range extensionWireModelAliases {
-		delete(info, key)
+// toModelInfo is the catalog entry for scripts: Pi's model object ({ ...model }) in its member order (extension.ModelObject).
+// Headers are dropped because models.json headers can carry credentials.
+func toModelInfo(model ai.AnyModel) (*orderedjson.Object, error) {
+	data, err := extension.ModelObject(model)
+	if err != nil || data == nil {
+		return nil, err
 	}
-	// An optional field the model does not set is absent from Pi's object, not null.
-	for key, value := range info {
-		if isNilValue(value) {
-			delete(info, key)
-		}
+	object, err := orderedjson.Parse(data)
+	if err != nil {
+		return nil, err
 	}
-	return info
+	object.Delete("headers")
+	return object, nil
 }
 
-func isNilValue(value any) bool {
-	if value == nil {
-		return true
-	}
-	switch reflected := reflect.ValueOf(value); reflected.Kind() {
-	case reflect.Map, reflect.Pointer, reflect.Slice, reflect.Interface:
-		return reflected.IsNil()
-	}
-	return false
-}
-
-func toModelInfos(models []ai.AnyModel) []map[string]any {
-	infos := make([]map[string]any, 0, len(models))
+func toModelInfos(models []ai.AnyModel) ([]*orderedjson.Object, error) {
+	infos := make([]*orderedjson.Object, 0, len(models))
 	for _, model := range models {
-		infos = append(infos, toModelInfo(model))
+		info, err := toModelInfo(model)
+		if err != nil {
+			return nil, err
+		}
+		infos = append(infos, info)
 	}
-	return infos
+	return infos, nil
 }

@@ -193,55 +193,99 @@ func TestAnthropicUpstreamOAuth(t *testing.T) {
 			t.Fatalf("manual prompt signal not aborted: %v", manualSignal.Err())
 		}
 	})
-	// .upstream/v1.0.0/packages/ai/test/anthropic-oauth.test.ts:212
+	// anthropic-oauth.test.ts "completes login through the browser callback and shows the sign-in page" (1.1.0: the exchange carries the redirect URI the authorization URL named).
 	t.Run("completes login through the browser callback and shows the sign-in page", func(t *testing.T) {
-		var exchangedCode string
-		mockAnthropicOAuthToken(t, `{"access_token":"access","refresh_token":"refresh","expires_in":3600}`, func(_ *http.Request, body map[string]string) { exchangedCode = body["code"] })
-		host := os.Getenv("PI_OAUTH_CALLBACK_HOST")
-		type page struct {
-			status int
-			body   string
+		login := loginThroughAnthropicBrowserCallback(t)
+		if login.credential.Access != "access" || login.exchangedCode != "browser-code" || login.exchangedRedirectURI != login.redirectURI {
+			t.Fatalf("credential=%+v code=%q exchanged redirect_uri=%q authorization redirect_uri=%q", login.credential, login.exchangedCode, login.exchangedRedirectURI, login.redirectURI)
 		}
-		callbackPage := make(chan page, 1)
-
-		credential, err := (AnthropicOAuthProvider{}).LoginContext(t.Context(), OAuthLoginCallbacks{
-			OnSelect: selectAnthropicBrowserLogin,
-			OnAuth: func(info OAuthAuthInfo) {
-				parsed, err := url.Parse(info.URL)
-				if err != nil {
-					t.Error(err)
-					return
-				}
-				state := parsed.Query().Get("state")
-				go func() {
-					response, err := oauthNativeClient.Get("http://" + host + ":53692/callback?code=browser-code&state=" + url.QueryEscape(state))
-					if err != nil {
-						t.Error(err)
-						callbackPage <- page{}
-						return
-					}
-					defer func() { _ = response.Body.Close() }()
-					body, _ := io.ReadAll(response.Body)
-					callbackPage <- page{response.StatusCode, string(body)}
-				}()
-			},
-			OnManualCodeInputContext: func(ctx context.Context) (string, error) {
-				<-ctx.Done()
-				return "", errors.New("aborted")
-			},
-		})
+		if login.pageStatus != 200 || !strings.Contains(login.pageBody, "Signed in to Anthropic.") {
+			t.Fatalf("callback page=%d %q", login.pageStatus, login.pageBody)
+		}
+	})
+	// anthropic-oauth.test.ts "falls back to a free callback port when the preferred port cannot be bound" (#10571).
+	t.Run("falls back to a free callback port when the preferred port cannot be bound", func(t *testing.T) {
+		blocker, err := net.Listen("tcp", net.JoinHostPort(isolateAnthropicCallbackHost(t), "53692"))
 		if err != nil {
 			t.Fatal(err)
 		}
-
-		if credential.Access != "access" || exchangedCode != "browser-code" {
-			t.Fatalf("credential=%+v code=%q", credential, exchangedCode)
+		defer func() { _ = blocker.Close() }()
+		login := loginThroughAnthropicBrowserCallback(t)
+		redirect, err := url.Parse(login.redirectURI)
+		if err != nil {
+			t.Fatal(err)
 		}
-		response := <-callbackPage
-		if response.status != 200 || !strings.Contains(response.body, "Signed in to Anthropic.") {
-			t.Fatalf("callback page=%d %q", response.status, response.body)
+		if redirect.Hostname() != "localhost" || redirect.Path != "/callback" || redirect.Port() == "53692" || redirect.Port() == "" {
+			t.Fatalf("redirect_uri=%q, want localhost on a free port with /callback", login.redirectURI)
+		}
+		if login.credential.Access != "access" || login.exchangedRedirectURI != login.redirectURI || login.pageStatus != 200 {
+			t.Fatalf("credential=%+v exchanged redirect_uri=%q page=%d", login.credential, login.exchangedRedirectURI, login.pageStatus)
 		}
 	})
+}
+
+type anthropicBrowserLogin struct {
+	credential           OAuthCredentials
+	redirectURI          string
+	exchangedCode        string
+	exchangedRedirectURI string
+	pageStatus           int
+	pageBody             string
+}
+
+// loginThroughAnthropicBrowserCallback is loginThroughBrowserCallback of anthropic-oauth.test.ts: the browser follows the authorization URL's redirect_uri to the loopback callback.
+func loginThroughAnthropicBrowserCallback(t *testing.T) anthropicBrowserLogin {
+	t.Helper()
+	var login anthropicBrowserLogin
+	mockAnthropicOAuthToken(t, `{"access_token":"access","refresh_token":"refresh","expires_in":3600}`, func(_ *http.Request, body map[string]string) {
+		login.exchangedCode, login.exchangedRedirectURI = body["code"], body["redirect_uri"]
+	})
+	host := os.Getenv("PI_OAUTH_CALLBACK_HOST")
+	type page struct {
+		status int
+		body   string
+	}
+	callbackPage := make(chan page, 1)
+	credential, err := (AnthropicOAuthProvider{}).LoginContext(t.Context(), OAuthLoginCallbacks{
+		OnSelect: selectAnthropicBrowserLogin,
+		OnAuth: func(info OAuthAuthInfo) {
+			parsed, err := url.Parse(info.URL)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			login.redirectURI = parsed.Query().Get("redirect_uri")
+			callback, err := url.Parse(login.redirectURI)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			callback.Host = net.JoinHostPort(host, callback.Port())
+			callback.RawQuery = url.Values{"code": {"browser-code"}, "state": {parsed.Query().Get("state")}}.Encode()
+			go func() {
+				response, err := oauthNativeClient.Get(callback.String())
+				if err != nil {
+					t.Error(err)
+					callbackPage <- page{}
+					return
+				}
+				defer func() { _ = response.Body.Close() }()
+				body, _ := io.ReadAll(response.Body)
+				callbackPage <- page{response.StatusCode, string(body)}
+			}()
+		},
+		OnManualCodeInputContext: func(ctx context.Context) (string, error) {
+			<-ctx.Done()
+			return "", errors.New("aborted")
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	login.credential = credential
+	response := <-callbackPage
+	login.pageStatus, login.pageBody = response.status, response.body
+	return login
 }
 
 // Implementation-derived cases for the Pi 1.0.0 Anthropic login method prompt and copy code flow, which the upstream

@@ -1,3 +1,5 @@
+//go:build !pig_strip_google_vertex && !pig_strip_mistral_conversations
+
 package ai
 
 import (
@@ -69,7 +71,7 @@ func TestMistralWireCacheKeyAndAssistantPrefix(t *testing.T) {
 		{name: "none", session: "session-1", retention: CacheRetentionNone},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			body := captureShapeRequest(t, func(url string) Provider {
+			body := captureShapeRequestContext(t, invalidRequest(t), func(url string) Provider {
 				return NewMistralProvider(MistralConfig{BaseURL: url, APIKey: "test", Model: "mistral-large-latest"})
 			}, []Message{
 				UserMessage{Content: UserText("hello")},
@@ -104,7 +106,7 @@ func TestMistralAffinityUsesPromptCachePolicy(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			server, requests := rejectingProviderServer(t)
 			provider := NewMistralProvider(MistralConfig{BaseURL: server.URL, APIKey: "test", Model: "mistral-large-latest", ExtraHeaders: tc.headers})
-			if _, err := provider.Stream(t.Context(), providerWireTranscript(), StreamOptions{SessionID: "session-1", CacheRetention: tc.retention}); err == nil {
+			if _, err := provider.Stream(invalidRequest(t), providerWireTranscript(), StreamOptions{SessionID: "session-1", CacheRetention: tc.retention}); err == nil {
 				t.Fatal("expected the capture server's HTTP rejection")
 			}
 			request := <-requests
@@ -128,9 +130,12 @@ func TestMistralAssistantReplayPrefixAndToolIndex(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	body, err := json.Marshal(wire["messages"].([]any)[0])
-	if err != nil {
-		t.Fatal(err)
+	var payload struct {
+		Messages []json.RawMessage `json:"messages"`
 	}
+	if err := json.Unmarshal(wire, &payload); err != nil || len(payload.Messages) != 1 {
+		t.Fatalf("wire %s: %v", wire, err)
+	}
+	body := payload.Messages[0]
 	assertShapeJSON(t, body, `{"role":"assistant","prefix":false,"content":[{"type":"thinking","thinking":[{"type":"text","text":"reason"}]},{"type":"text","text":"answer"}],"tool_calls":[{"id":"abc123456","type":"function","function":{"name":"lookup","arguments":"{\"query\":\"pi\"}"},"index":0}]}`)
 }

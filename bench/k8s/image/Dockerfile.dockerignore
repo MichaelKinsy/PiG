@@ -1,0 +1,15 @@
+# The build context is the repository root. Leave out version-control state, installed packages, local outputs and
+# the private values file.
+.git
+**/node_modules
+.upstream
+bin
+tmp
+out
+handoffs
+**/target
+durable/contract/.cache
+durable/core/host/cf/dist
+bench/k8s/out
+bench/k8s/values.local.yaml
+**/*.local.yaml

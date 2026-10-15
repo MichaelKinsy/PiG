@@ -1,0 +1,5857 @@
+{
+ "pi": {
+  "lanes": {
+   "dcore-session": {
+    "pass": 36,
+    "fail": 0,
+    "pending": 0,
+    "skipped": 0,
+    "failed": []
+   },
+   "dcore-store": {
+    "pass": 17,
+    "fail": 0,
+    "pending": 0,
+    "skipped": 2,
+    "failed": []
+   },
+   "dcore-loop": {
+    "pass": 77,
+    "fail": 0,
+    "pending": 2,
+    "skipped": 2,
+    "failed": []
+   },
+   "dcore-host": {
+    "pass": 17,
+    "fail": 0,
+    "pending": 0,
+    "skipped": 3,
+    "failed": []
+   },
+   "dcore-history": {
+    "pass": 2,
+    "fail": 0,
+    "pending": 0,
+    "skipped": 0,
+    "failed": []
+   }
+  },
+  "results": [
+   {
+    "id": "E00",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "pi",
+    "ms": 3798,
+    "status": "pass",
+    "detail": "2 commits"
+   },
+   {
+    "id": "E01",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "pi",
+    "ms": 4007,
+    "status": "pass",
+    "detail": "4 commits"
+   },
+   {
+    "id": "E02",
+    "owner": "dcore-store",
+    "family": "example",
+    "impl": "pi",
+    "ms": 3815,
+    "status": "pass",
+    "detail": "6 commits"
+   },
+   {
+    "id": "E03",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "pi",
+    "ms": 3809,
+    "status": "pass",
+    "detail": "3 commits"
+   },
+   {
+    "id": "E04",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "pi",
+    "ms": 3820,
+    "status": "pass",
+    "detail": "3 commits"
+   },
+   {
+    "id": "E05",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "pi",
+    "ms": 3802,
+    "status": "pass",
+    "detail": "3 commits"
+   },
+   {
+    "id": "E06",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "pi",
+    "ms": 4070,
+    "status": "pass",
+    "detail": "2 commits"
+   },
+   {
+    "id": "E07",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "pi",
+    "ms": 4035,
+    "status": "pass",
+    "detail": "5 commits"
+   },
+   {
+    "id": "E08",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "pi",
+    "ms": 3976,
+    "status": "pass",
+    "detail": "6 commits"
+   },
+   {
+    "id": "E09",
+    "owner": "dcore-store",
+    "family": "example",
+    "impl": "pi",
+    "ms": 4017,
+    "status": "pass",
+    "detail": "13 commits"
+   },
+   {
+    "id": "E10",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "pi",
+    "ms": 4107,
+    "status": "pass",
+    "detail": "2 commits"
+   },
+   {
+    "id": "E11",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "pi",
+    "ms": 4330,
+    "status": "pass",
+    "detail": "22 commits"
+   },
+   {
+    "id": "E12",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "pi",
+    "ms": 4035,
+    "status": "pass",
+    "detail": "6 commits"
+   },
+   {
+    "id": "E13",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "pi",
+    "ms": 4184,
+    "status": "pass",
+    "detail": "16 commits"
+   },
+   {
+    "id": "E14",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "pi",
+    "ms": 4118,
+    "status": "pass",
+    "detail": "7 commits"
+   },
+   {
+    "id": "E15",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "pi",
+    "ms": 4036,
+    "status": "pass",
+    "detail": "19 commits"
+   },
+   {
+    "id": "E16",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "pi",
+    "ms": 0,
+    "status": "pending",
+    "detail": "pending-owner: needs the owner's OPENAI_API_KEY or a cassette recorded with it (CONTRACT section 6)"
+   },
+   {
+    "id": "E17",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "pi",
+    "ms": 4560,
+    "status": "pass",
+    "detail": "45 commits"
+   },
+   {
+    "id": "E18",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "pi",
+    "ms": 4371,
+    "status": "pass",
+    "detail": "17 commits"
+   },
+   {
+    "id": "E19",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "pi",
+    "ms": 4363,
+    "status": "pass",
+    "detail": "17 commits"
+   },
+   {
+    "id": "E20",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "pi",
+    "ms": 3981,
+    "status": "pass",
+    "detail": "16 commits"
+   },
+   {
+    "id": "E21",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "pi",
+    "ms": 4482,
+    "status": "pass",
+    "detail": "29 commits"
+   },
+   {
+    "id": "E22",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "pi",
+    "ms": 4084,
+    "status": "pass",
+    "detail": "23 commits"
+   },
+   {
+    "id": "E23",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "pi",
+    "ms": 6520,
+    "status": "pass",
+    "detail": "123 commits"
+   },
+   {
+    "id": "E24",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "pi",
+    "ms": 3993,
+    "status": "pass",
+    "detail": "37 commits"
+   },
+   {
+    "id": "E25",
+    "owner": "dcore-store",
+    "family": "example",
+    "impl": "pi",
+    "ms": 4929,
+    "status": "pass",
+    "detail": "59 commits"
+   },
+   {
+    "id": "E26",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "pi",
+    "ms": 5786,
+    "status": "pass",
+    "detail": "33 commits"
+   },
+   {
+    "id": "E27",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "pi",
+    "ms": 5724,
+    "status": "pass",
+    "detail": "29 commits"
+   },
+   {
+    "id": "E28",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "pi",
+    "ms": 4531,
+    "status": "pass",
+    "detail": "21 commits"
+   },
+   {
+    "id": "E29",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "pi",
+    "ms": 4587,
+    "status": "pass",
+    "detail": "31 commits"
+   },
+   {
+    "id": "E30",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "pi",
+    "ms": 6655,
+    "status": "pass",
+    "detail": "33 commits"
+   },
+   {
+    "id": "E31",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "pi",
+    "ms": 6330,
+    "status": "pass",
+    "detail": "30 commits"
+   },
+   {
+    "id": "U-chord-guide",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 24522,
+    "status": "pass",
+    "detail": "3 tests"
+   },
+   {
+    "id": "U-env-line-scan",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 22447,
+    "status": "pass",
+    "detail": "4 tests"
+   },
+   {
+    "id": "U-env-node-conformance",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 22380,
+    "status": "pass",
+    "detail": "51 tests"
+   },
+   {
+    "id": "U-env-node-spill",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 22370,
+    "status": "pass",
+    "detail": "1 tests"
+   },
+   {
+    "id": "U-env-node",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 21282,
+    "status": "pass",
+    "detail": "48 tests"
+   },
+   {
+    "id": "U-env-truncate",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 21226,
+    "status": "pass",
+    "detail": "8 tests"
+   },
+   {
+    "id": "U-harness-compaction",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 20277,
+    "status": "pass",
+    "detail": "103 tests"
+   },
+   {
+    "id": "U-harness-context",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 20207,
+    "status": "pass",
+    "detail": "16 tests"
+   },
+   {
+    "id": "U-harness-conversations",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 0,
+    "status": "pass",
+    "detail": "12 tests"
+   },
+   {
+    "id": "U-harness-events",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 0,
+    "status": "pass",
+    "detail": "14 tests"
+   },
+   {
+    "id": "U-harness-generation-recovery",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 0,
+    "status": "pass",
+    "detail": "7 tests"
+   },
+   {
+    "id": "U-harness-generation",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 0,
+    "status": "pass",
+    "detail": "24 tests"
+   },
+   {
+    "id": "U-harness-inbox",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 0,
+    "status": "pass",
+    "detail": "32 tests"
+   },
+   {
+    "id": "U-harness-inspect",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 0,
+    "status": "pass",
+    "detail": "2 tests"
+   },
+   {
+    "id": "U-harness-lifecycle",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 0,
+    "status": "pass",
+    "detail": "14 tests"
+   },
+   {
+    "id": "U-harness-live-deltas",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 0,
+    "status": "pass",
+    "detail": "11 tests"
+   },
+   {
+    "id": "U-harness-output-skip",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 0,
+    "status": "pass",
+    "detail": "4 tests"
+   },
+   {
+    "id": "U-harness-output",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 0,
+    "status": "pass",
+    "detail": "20 tests"
+   },
+   {
+    "id": "U-harness-ownership",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 0,
+    "status": "pass",
+    "detail": "26 tests"
+   },
+   {
+    "id": "U-harness-prompt",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 0,
+    "status": "pass",
+    "detail": "9 tests"
+   },
+   {
+    "id": "U-harness-registry",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 0,
+    "status": "pass",
+    "detail": "10 tests"
+   },
+   {
+    "id": "U-harness-structured",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 0,
+    "status": "pass",
+    "detail": "50 tests"
+   },
+   {
+    "id": "U-harness-submissions",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 0,
+    "status": "pass",
+    "detail": "10 tests"
+   },
+   {
+    "id": "U-harness-task-graph",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 0,
+    "status": "pass",
+    "detail": "5 tests"
+   },
+   {
+    "id": "U-harness-tasks-recovery",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 1,
+    "status": "pass",
+    "detail": "24 tests"
+   },
+   {
+    "id": "U-harness-tasks",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 1,
+    "status": "pass",
+    "detail": "39 tests"
+   },
+   {
+    "id": "U-harness-tools-recovery",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 1,
+    "status": "pass",
+    "detail": "9 tests"
+   },
+   {
+    "id": "U-harness-tools",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 1,
+    "status": "pass",
+    "detail": "38 tests"
+   },
+   {
+    "id": "U-harness-view",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 1,
+    "status": "pass",
+    "detail": "14 tests"
+   },
+   {
+    "id": "U-jsonl-storage",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 0,
+    "status": "skipped",
+    "detail": "the upstream storage conformance suite this file registers runs against the core as row SC (CONTRACT 3.10); the rest tests this Storage class's own internals, which no candidate can run without handing the reference's own class back"
+   },
+   {
+    "id": "U-memory-storage",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 0,
+    "status": "skipped",
+    "detail": "the upstream storage conformance suite this file registers runs against the core as row SC (CONTRACT 3.10); the rest tests this Storage class's own internals, which no candidate can run without handing the reference's own class back"
+   },
+   {
+    "id": "U-provider-session-cache-e2e",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 1,
+    "status": "skipped",
+    "detail": "the reference passes no test of provider-session-cache-e2e.test.ts here (1 skipped)"
+   },
+   {
+    "id": "U-session-checkpoints-migrations",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 1,
+    "status": "pass",
+    "detail": "20 tests"
+   },
+   {
+    "id": "U-session-definitions",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 1,
+    "status": "pass",
+    "detail": "3 tests"
+   },
+   {
+    "id": "U-session-documents",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 0,
+    "status": "pass",
+    "detail": "27 tests"
+   },
+   {
+    "id": "U-session-forks",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 0,
+    "status": "pass",
+    "detail": "14 tests"
+   },
+   {
+    "id": "U-session-states",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 0,
+    "status": "pass",
+    "detail": "10 tests"
+   },
+   {
+    "id": "U-session-tables",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 0,
+    "status": "pass",
+    "detail": "12 tests"
+   },
+   {
+    "id": "U-session-watches",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 0,
+    "status": "pass",
+    "detail": "21 tests"
+   },
+   {
+    "id": "U-spec-usage",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 3,
+    "status": "pass",
+    "detail": "1 tests"
+   },
+   {
+    "id": "U-sqlite-cloudflare",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 4,
+    "status": "pass",
+    "detail": "29 tests"
+   },
+   {
+    "id": "U-sqlite-facade",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 0,
+    "status": "skipped",
+    "detail": "the upstream storage conformance suite this file registers runs against the core as row SC (CONTRACT 3.10); the rest tests this Storage class's own internals, which no candidate can run without handing the reference's own class back"
+   },
+   {
+    "id": "U-sqlite-migrations",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 0,
+    "status": "skipped",
+    "detail": "the upstream storage conformance suite this file registers runs against the core as row SC (CONTRACT 3.10); the rest tests this Storage class's own internals, which no candidate can run without handing the reference's own class back"
+   },
+   {
+    "id": "U-sqlite-storage",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 0,
+    "status": "skipped",
+    "detail": "the upstream storage conformance suite this file registers runs against the core as row SC (CONTRACT 3.10); the rest tests this Storage class's own internals, which no candidate can run without handing the reference's own class back"
+   },
+   {
+    "id": "U-storage-runtime-boundary",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 4,
+    "status": "pass",
+    "detail": "4 tests"
+   },
+   {
+    "id": "U-system-order-cache-e2e",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 851,
+    "status": "skipped",
+    "detail": "the reference passes no test of system-order-cache-e2e.test.ts here (1 skipped)"
+   },
+   {
+    "id": "U-tools-read-differential",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 851,
+    "status": "pass",
+    "detail": "2 tests"
+   },
+   {
+    "id": "U-tools",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 851,
+    "status": "pass",
+    "detail": "35 tests"
+   },
+   {
+    "id": "U-types",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "pi",
+    "ms": 851,
+    "status": "pass",
+    "detail": "3 tests"
+   },
+   {
+    "id": "SC",
+    "owner": "dcore-store",
+    "family": "storage-conformance",
+    "impl": "pi",
+    "ms": 8145,
+    "status": "pass",
+    "detail": "24 cases"
+   },
+   {
+    "id": "I",
+    "owner": "dcore-host",
+    "family": "interop",
+    "impl": "pi",
+    "ms": 9338,
+    "status": "pass",
+    "detail": "41 commits"
+   },
+   {
+    "id": "F-gate-1",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 9814,
+    "status": "pass",
+    "detail": "97 commits"
+   },
+   {
+    "id": "F-gate-2",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 9996,
+    "status": "pass",
+    "detail": "84 commits"
+   },
+   {
+    "id": "F-gate-3",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 9399,
+    "status": "pass",
+    "detail": "89 commits"
+   },
+   {
+    "id": "F-gate-4",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 10236,
+    "status": "pass",
+    "detail": "104 commits"
+   },
+   {
+    "id": "F-gate-5",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 8596,
+    "status": "pass",
+    "detail": "64 commits"
+   },
+   {
+    "id": "F-gate-6",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 10253,
+    "status": "pass",
+    "detail": "76 commits"
+   },
+   {
+    "id": "F-gate-7",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 5627,
+    "status": "pass",
+    "detail": "10 commits"
+   },
+   {
+    "id": "F-gate-8",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 7630,
+    "status": "pass",
+    "detail": "150 commits"
+   },
+   {
+    "id": "F-gate-9",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 6592,
+    "status": "pass",
+    "detail": "72 commits"
+   },
+   {
+    "id": "F-gate-10",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 6305,
+    "status": "pass",
+    "detail": "78 commits"
+   },
+   {
+    "id": "F-gate-11",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 6610,
+    "status": "pass",
+    "detail": "159 commits"
+   },
+   {
+    "id": "F-gate-12",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 6140,
+    "status": "pass",
+    "detail": "75 commits"
+   },
+   {
+    "id": "F-gate-13",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 5747,
+    "status": "pass",
+    "detail": "49 commits"
+   },
+   {
+    "id": "F-gate-14",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 7506,
+    "status": "pass",
+    "detail": "190 commits"
+   },
+   {
+    "id": "F-gate-15",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 5102,
+    "status": "pass",
+    "detail": "20 commits"
+   },
+   {
+    "id": "F-gate-16",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 7528,
+    "status": "pass",
+    "detail": "116 commits"
+   },
+   {
+    "id": "F-node-1",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 7107,
+    "status": "pass",
+    "detail": "97 commits"
+   },
+   {
+    "id": "F-node-2",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 7112,
+    "status": "pass",
+    "detail": "84 commits"
+   },
+   {
+    "id": "F-node-3",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 7712,
+    "status": "pass",
+    "detail": "89 commits"
+   },
+   {
+    "id": "F-node-4",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 7787,
+    "status": "pass",
+    "detail": "104 commits"
+   },
+   {
+    "id": "F-node-5",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 6549,
+    "status": "pass",
+    "detail": "64 commits"
+   },
+   {
+    "id": "F-node-6",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 8026,
+    "status": "pass",
+    "detail": "76 commits"
+   },
+   {
+    "id": "F-node-7",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 5972,
+    "status": "pass",
+    "detail": "10 commits"
+   },
+   {
+    "id": "F-node-8",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 7658,
+    "status": "pass",
+    "detail": "150 commits"
+   },
+   {
+    "id": "F-node-9",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 6805,
+    "status": "pass",
+    "detail": "72 commits"
+   },
+   {
+    "id": "F-node-10",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 6990,
+    "status": "pass",
+    "detail": "78 commits"
+   },
+   {
+    "id": "F-node-11",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 7338,
+    "status": "pass",
+    "detail": "159 commits"
+   },
+   {
+    "id": "F-node-12",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 6199,
+    "status": "pass",
+    "detail": "75 commits"
+   },
+   {
+    "id": "F-node-13",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 6830,
+    "status": "pass",
+    "detail": "49 commits"
+   },
+   {
+    "id": "F-node-14",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 7436,
+    "status": "pass",
+    "detail": "190 commits"
+   },
+   {
+    "id": "F-node-15",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 5441,
+    "status": "pass",
+    "detail": "20 commits"
+   },
+   {
+    "id": "F-node-16",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 6680,
+    "status": "pass",
+    "detail": "116 commits"
+   },
+   {
+    "id": "F-ticks-gate",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 4579,
+    "status": "pass",
+    "detail": "12 commits"
+   },
+   {
+    "id": "F-ticks-node",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 4600,
+    "status": "pass",
+    "detail": "12 commits"
+   },
+   {
+    "id": "F-split-generation-gate",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 4521,
+    "status": "pass",
+    "detail": "12 commits"
+   },
+   {
+    "id": "F-split-generation-node",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 4519,
+    "status": "pass",
+    "detail": "12 commits"
+   },
+   {
+    "id": "F-split-client-gate",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 4481,
+    "status": "pass",
+    "detail": "12 commits"
+   },
+   {
+    "id": "F-split-client-node",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 4479,
+    "status": "pass",
+    "detail": "12 commits"
+   },
+   {
+    "id": "F-split-context-gate",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 4470,
+    "status": "pass",
+    "detail": "11 commits"
+   },
+   {
+    "id": "F-split-context-node",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 4101,
+    "status": "pass",
+    "detail": "11 commits"
+   },
+   {
+    "id": "F-ticks-runtime-gate",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 4063,
+    "status": "pass",
+    "detail": "19 commits"
+   },
+   {
+    "id": "F-ticks-runtime-node",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "pi",
+    "ms": 4576,
+    "status": "pass",
+    "detail": "19 commits"
+   },
+   {
+    "id": "T1-250",
+    "owner": "dcore-history",
+    "family": "timetravel",
+    "impl": "pi",
+    "ms": 2555,
+    "status": "pass",
+    "detail": "15 commits"
+   },
+   {
+    "id": "T1-3500",
+    "owner": "dcore-history",
+    "family": "timetravel",
+    "impl": "pi",
+    "ms": 3918,
+    "status": "pass",
+    "detail": "15 commits"
+   },
+   {
+    "id": "W1-50",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "pi",
+    "ms": 4669,
+    "status": "pass",
+    "detail": "770 commits; +1.0 MiB/turn rss 112 MiB over 10 turns"
+   },
+   {
+    "id": "W1-250",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "pi",
+    "ms": 6190,
+    "status": "pass",
+    "detail": "770 commits; +2.3 MiB/turn rss 130 MiB over 10 turns"
+   },
+   {
+    "id": "W1-1000",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "pi",
+    "ms": 11224,
+    "status": "pass",
+    "detail": "770 commits; +8.3 MiB/turn rss 228 MiB over 10 turns"
+   },
+   {
+    "id": "W1-3500",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "pi",
+    "ms": 28308,
+    "status": "pass",
+    "detail": "770 commits; +3.7 MiB/turn rss 286 MiB over 10 turns"
+   },
+   {
+    "id": "W2-50",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "pi",
+    "ms": 4586,
+    "status": "pass",
+    "detail": "770 commits; +0.8 MiB/turn rss 111 MiB over 10 turns"
+   },
+   {
+    "id": "W2-250",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "pi",
+    "ms": 6215,
+    "status": "pass",
+    "detail": "770 commits; +2.5 MiB/turn rss 134 MiB over 10 turns"
+   },
+   {
+    "id": "W2-1000",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "pi",
+    "ms": 11680,
+    "status": "pass",
+    "detail": "770 commits; +6.9 MiB/turn rss 229 MiB over 10 turns"
+   },
+   {
+    "id": "W2-3500",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "pi",
+    "ms": 28105,
+    "status": "pass",
+    "detail": "770 commits; +8.2 MiB/turn rss 308 MiB over 10 turns"
+   },
+   {
+    "id": "W3-50-100",
+    "owner": "dcore-loop",
+    "family": "streaming",
+    "impl": "pi",
+    "ms": 3489,
+    "status": "pass",
+    "detail": "70 commits"
+   },
+   {
+    "id": "W3-50-250",
+    "owner": "dcore-loop",
+    "family": "streaming",
+    "impl": "pi",
+    "ms": 3362,
+    "status": "pass",
+    "detail": "54 commits"
+   },
+   {
+    "id": "W3-1000-100",
+    "owner": "dcore-loop",
+    "family": "streaming",
+    "impl": "pi",
+    "ms": 4156,
+    "status": "pass",
+    "detail": "70 commits"
+   },
+   {
+    "id": "W4a-1000",
+    "owner": "dcore-store",
+    "family": "bench",
+    "impl": "pi",
+    "ms": 5680,
+    "status": "pass",
+    "detail": "770 commits; +2.0 MiB/turn rss 125 MiB over 10 turns"
+   },
+   {
+    "id": "W4a-3500",
+    "owner": "dcore-store",
+    "family": "bench",
+    "impl": "pi",
+    "ms": 6602,
+    "status": "pass",
+    "detail": "770 commits; +2.2 MiB/turn rss 133 MiB over 10 turns"
+   },
+   {
+    "id": "W4b-50",
+    "owner": "dcore-store",
+    "family": "bench",
+    "impl": "pi",
+    "ms": 27751,
+    "status": "pass",
+    "detail": "770 commits"
+   },
+   {
+    "id": "W4b-1000",
+    "owner": "dcore-store",
+    "family": "bench",
+    "impl": "pi",
+    "ms": 47010,
+    "status": "pass",
+    "detail": "770 commits"
+   },
+   {
+    "id": "W4b-3500",
+    "owner": "dcore-store",
+    "family": "bench",
+    "impl": "pi",
+    "ms": 17358,
+    "status": "pass",
+    "detail": "231 commits"
+   },
+   {
+    "id": "W4c-50",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "pi",
+    "ms": 3050,
+    "status": "pass",
+    "detail": "164 commits; +1.6 MiB/turn rss 116 MiB over 4 turns"
+   },
+   {
+    "id": "W4c-1000",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "pi",
+    "ms": 4776,
+    "status": "pass",
+    "detail": "164 commits; +8.5 MiB/turn rss 168 MiB over 4 turns"
+   },
+   {
+    "id": "W4d",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "pi",
+    "ms": 2366,
+    "status": "pass",
+    "detail": "72 commits; +1.2 MiB/turn rss 109 MiB over 4 turns"
+   },
+   {
+    "id": "W4e",
+    "owner": "dcore-session",
+    "family": "bench",
+    "impl": "pi",
+    "ms": 2230,
+    "status": "pass",
+    "detail": "42 commits"
+   },
+   {
+    "id": "W4f",
+    "owner": "dcore-loop",
+    "family": "wire",
+    "impl": "pi",
+    "ms": 0,
+    "status": "pending",
+    "detail": "pending-owner: needs provider cassettes recorded with the owner's API keys (RISKS-AND-QUESTIONS Q6)"
+   },
+   {
+    "id": "W4g",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "pi",
+    "ms": 2307,
+    "status": "pass",
+    "detail": "31 commits"
+   },
+   {
+    "id": "X1",
+    "owner": "dcore-store",
+    "family": "mutation",
+    "impl": "pi",
+    "ms": 4787,
+    "status": "pass",
+    "detail": "770 commits; +0.8 MiB/turn rss 109 MiB over 10 turns"
+   },
+   {
+    "id": "X1-live",
+    "owner": "dcore-session",
+    "family": "mutation",
+    "impl": "pi",
+    "ms": 45872,
+    "status": "pass",
+    "detail": "39 handoffs over 12 crash points"
+   },
+   {
+    "id": "H-50",
+    "owner": "dcore-loop",
+    "family": "handoff",
+    "impl": "pi",
+    "ms": 200295,
+    "status": "pass",
+    "detail": "234 handoffs over 77 crash points"
+   },
+   {
+    "id": "H-1000",
+    "owner": "dcore-loop",
+    "family": "handoff",
+    "impl": "pi",
+    "ms": 231759,
+    "status": "pass",
+    "detail": "234 handoffs over 77 crash points"
+   },
+   {
+    "id": "H-3500",
+    "owner": "dcore-loop",
+    "family": "handoff",
+    "impl": "pi",
+    "ms": 74390,
+    "status": "pass",
+    "detail": "33 handoffs over 10 crash points"
+   },
+   {
+    "id": "H-W3",
+    "owner": "dcore-loop",
+    "family": "handoff",
+    "impl": "pi",
+    "ms": 111115,
+    "status": "pass",
+    "detail": "108 handoffs over 35 crash points"
+   },
+   {
+    "id": "H-W4d",
+    "owner": "dcore-loop",
+    "family": "handoff",
+    "impl": "pi",
+    "ms": 60525,
+    "status": "pass",
+    "detail": "57 handoffs over 18 crash points"
+   },
+   {
+    "id": "R-104-50",
+    "owner": "dcore-session",
+    "family": "legacy",
+    "impl": "pi",
+    "ms": 4578,
+    "status": "pass",
+    "detail": "231 commits; +0.0 MiB/turn rss 100 MiB over 3 turns"
+   },
+   {
+    "id": "H-R-104",
+    "owner": "dcore-session",
+    "family": "legacy",
+    "impl": "pi",
+    "ms": 195638,
+    "status": "pass",
+    "detail": "234 handoffs over 77 crash points"
+   }
+  ]
+ },
+ "native": {
+  "built": "built with `sh durable/core/budget/build-native.sh`",
+  "lanes": {
+   "dcore-session": {
+    "pass": 36,
+    "fail": 0,
+    "pending": 0,
+    "skipped": 0,
+    "failed": []
+   },
+   "dcore-store": {
+    "pass": 17,
+    "fail": 0,
+    "pending": 0,
+    "skipped": 2,
+    "failed": []
+   },
+   "dcore-loop": {
+    "pass": 77,
+    "fail": 0,
+    "pending": 2,
+    "skipped": 2,
+    "failed": []
+   },
+   "dcore-host": {
+    "pass": 17,
+    "fail": 0,
+    "pending": 0,
+    "skipped": 3,
+    "failed": []
+   },
+   "dcore-history": {
+    "pass": 2,
+    "fail": 0,
+    "pending": 0,
+    "skipped": 0,
+    "failed": []
+   }
+  },
+  "results": [
+   {
+    "id": "E00",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "native",
+    "ms": 2237,
+    "status": "pass",
+    "detail": "2 commits"
+   },
+   {
+    "id": "E01",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "native",
+    "ms": 2289,
+    "status": "pass",
+    "detail": "4 commits"
+   },
+   {
+    "id": "E02",
+    "owner": "dcore-store",
+    "family": "example",
+    "impl": "native",
+    "ms": 2281,
+    "status": "pass",
+    "detail": "6 commits"
+   },
+   {
+    "id": "E03",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "native",
+    "ms": 2248,
+    "status": "pass",
+    "detail": "3 commits"
+   },
+   {
+    "id": "E04",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "native",
+    "ms": 2201,
+    "status": "pass",
+    "detail": "3 commits"
+   },
+   {
+    "id": "E05",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "native",
+    "ms": 2273,
+    "status": "pass",
+    "detail": "3 commits"
+   },
+   {
+    "id": "E06",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "native",
+    "ms": 2296,
+    "status": "pass",
+    "detail": "2 commits"
+   },
+   {
+    "id": "E07",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "native",
+    "ms": 2308,
+    "status": "pass",
+    "detail": "5 commits"
+   },
+   {
+    "id": "E08",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "native",
+    "ms": 2289,
+    "status": "pass",
+    "detail": "6 commits"
+   },
+   {
+    "id": "E09",
+    "owner": "dcore-store",
+    "family": "example",
+    "impl": "native",
+    "ms": 2210,
+    "status": "pass",
+    "detail": "13 commits"
+   },
+   {
+    "id": "E10",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "native",
+    "ms": 2176,
+    "status": "pass",
+    "detail": "2 commits"
+   },
+   {
+    "id": "E11",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "native",
+    "ms": 2328,
+    "status": "pass",
+    "detail": "22 commits"
+   },
+   {
+    "id": "E12",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "native",
+    "ms": 2204,
+    "status": "pass",
+    "detail": "6 commits"
+   },
+   {
+    "id": "E13",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "native",
+    "ms": 2288,
+    "status": "pass",
+    "detail": "16 commits"
+   },
+   {
+    "id": "E14",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "native",
+    "ms": 2222,
+    "status": "pass",
+    "detail": "7 commits"
+   },
+   {
+    "id": "E15",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "native",
+    "ms": 2326,
+    "status": "pass",
+    "detail": "19 commits"
+   },
+   {
+    "id": "E16",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "native",
+    "ms": 1,
+    "status": "pending",
+    "detail": "pending-owner: needs the owner's OPENAI_API_KEY or a cassette recorded with it (CONTRACT section 6)"
+   },
+   {
+    "id": "E17",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "native",
+    "ms": 2544,
+    "status": "pass",
+    "detail": "45 commits"
+   },
+   {
+    "id": "E18",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "native",
+    "ms": 2358,
+    "status": "pass",
+    "detail": "17 commits"
+   },
+   {
+    "id": "E19",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "native",
+    "ms": 2393,
+    "status": "pass",
+    "detail": "17 commits"
+   },
+   {
+    "id": "E20",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "native",
+    "ms": 2148,
+    "status": "pass",
+    "detail": "16 commits"
+   },
+   {
+    "id": "E21",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "native",
+    "ms": 2407,
+    "status": "pass",
+    "detail": "29 commits"
+   },
+   {
+    "id": "E22",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "native",
+    "ms": 2177,
+    "status": "pass",
+    "detail": "23 commits"
+   },
+   {
+    "id": "E23",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "native",
+    "ms": 4122,
+    "status": "pass",
+    "detail": "123 commits"
+   },
+   {
+    "id": "E24",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "native",
+    "ms": 2358,
+    "status": "pass",
+    "detail": "37 commits"
+   },
+   {
+    "id": "E25",
+    "owner": "dcore-store",
+    "family": "example",
+    "impl": "native",
+    "ms": 4426,
+    "status": "pass",
+    "detail": "59 commits"
+   },
+   {
+    "id": "E26",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "native",
+    "ms": 4296,
+    "status": "pass",
+    "detail": "33 commits"
+   },
+   {
+    "id": "E27",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "native",
+    "ms": 4236,
+    "status": "pass",
+    "detail": "29 commits"
+   },
+   {
+    "id": "E28",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "native",
+    "ms": 4140,
+    "status": "pass",
+    "detail": "21 commits"
+   },
+   {
+    "id": "E29",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "native",
+    "ms": 4106,
+    "status": "pass",
+    "detail": "31 commits"
+   },
+   {
+    "id": "E30",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "native",
+    "ms": 4113,
+    "status": "pass",
+    "detail": "33 commits"
+   },
+   {
+    "id": "E31",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "native",
+    "ms": 4098,
+    "status": "pass",
+    "detail": "30 commits"
+   },
+   {
+    "id": "U-chord-guide",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 14858,
+    "status": "pass",
+    "detail": "3 tests"
+   },
+   {
+    "id": "U-env-line-scan",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 6984,
+    "status": "pass",
+    "detail": "4 tests"
+   },
+   {
+    "id": "U-env-node-conformance",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 27847,
+    "status": "pass",
+    "detail": "51 tests"
+   },
+   {
+    "id": "U-env-node-spill",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 9394,
+    "status": "pass",
+    "detail": "1 tests"
+   },
+   {
+    "id": "U-env-node",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 13546,
+    "status": "pass",
+    "detail": "48 tests"
+   },
+   {
+    "id": "U-env-truncate",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 7834,
+    "status": "pass",
+    "detail": "8 tests"
+   },
+   {
+    "id": "U-harness-compaction",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 23721,
+    "status": "pass",
+    "detail": "103 tests"
+   },
+   {
+    "id": "U-harness-context",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 16395,
+    "status": "pass",
+    "detail": "16 tests"
+   },
+   {
+    "id": "U-harness-conversations",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 9693,
+    "status": "pass",
+    "detail": "12 tests"
+   },
+   {
+    "id": "U-harness-events",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 11898,
+    "status": "pass",
+    "detail": "14 tests"
+   },
+   {
+    "id": "U-harness-generation-recovery",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 10485,
+    "status": "pass",
+    "detail": "7 tests"
+   },
+   {
+    "id": "U-harness-generation",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 9332,
+    "status": "pass",
+    "detail": "24 tests"
+   },
+   {
+    "id": "U-harness-inbox",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 12726,
+    "status": "pass",
+    "detail": "32 tests"
+   },
+   {
+    "id": "U-harness-inspect",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 8708,
+    "status": "pass",
+    "detail": "2 tests"
+   },
+   {
+    "id": "U-harness-lifecycle",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 9566,
+    "status": "pass",
+    "detail": "14 tests"
+   },
+   {
+    "id": "U-harness-live-deltas",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 10762,
+    "status": "pass",
+    "detail": "11 tests"
+   },
+   {
+    "id": "U-harness-output-skip",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 3822,
+    "status": "pass",
+    "detail": "4 tests"
+   },
+   {
+    "id": "U-harness-output",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 3391,
+    "status": "pass",
+    "detail": "20 tests"
+   },
+   {
+    "id": "U-harness-ownership",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 5015,
+    "status": "pass",
+    "detail": "26 tests"
+   },
+   {
+    "id": "U-harness-prompt",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 4230,
+    "status": "pass",
+    "detail": "9 tests"
+   },
+   {
+    "id": "U-harness-registry",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 3581,
+    "status": "pass",
+    "detail": "10 tests"
+   },
+   {
+    "id": "U-harness-structured",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 5503,
+    "status": "pass",
+    "detail": "50 tests"
+   },
+   {
+    "id": "U-harness-submissions",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 3375,
+    "status": "pass",
+    "detail": "10 tests"
+   },
+   {
+    "id": "U-harness-task-graph",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 3103,
+    "status": "pass",
+    "detail": "5 tests"
+   },
+   {
+    "id": "U-harness-tasks-recovery",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 3870,
+    "status": "pass",
+    "detail": "24 tests"
+   },
+   {
+    "id": "U-harness-tasks",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 4068,
+    "status": "pass",
+    "detail": "39 tests"
+   },
+   {
+    "id": "U-harness-tools-recovery",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 5459,
+    "status": "pass",
+    "detail": "9 tests"
+   },
+   {
+    "id": "U-harness-tools",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 6008,
+    "status": "pass",
+    "detail": "38 tests"
+   },
+   {
+    "id": "U-harness-view",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 4104,
+    "status": "pass",
+    "detail": "14 tests"
+   },
+   {
+    "id": "U-jsonl-storage",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 0,
+    "status": "skipped",
+    "detail": "the upstream storage conformance suite this file registers runs against the core as row SC (CONTRACT 3.10); the rest tests this Storage class's own internals, which no candidate can run without handing the reference's own class back"
+   },
+   {
+    "id": "U-memory-storage",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 0,
+    "status": "skipped",
+    "detail": "the upstream storage conformance suite this file registers runs against the core as row SC (CONTRACT 3.10); the rest tests this Storage class's own internals, which no candidate can run without handing the reference's own class back"
+   },
+   {
+    "id": "U-provider-session-cache-e2e",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 4958,
+    "status": "skipped",
+    "detail": "the reference passes no test of provider-session-cache-e2e.test.ts here (1 skipped)"
+   },
+   {
+    "id": "U-session-checkpoints-migrations",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 3246,
+    "status": "pass",
+    "detail": "20 tests"
+   },
+   {
+    "id": "U-session-definitions",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 3825,
+    "status": "pass",
+    "detail": "3 tests"
+   },
+   {
+    "id": "U-session-documents",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 3611,
+    "status": "pass",
+    "detail": "27 tests"
+   },
+   {
+    "id": "U-session-forks",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 3422,
+    "status": "pass",
+    "detail": "14 tests"
+   },
+   {
+    "id": "U-session-states",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 2141,
+    "status": "pass",
+    "detail": "10 tests"
+   },
+   {
+    "id": "U-session-tables",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 2173,
+    "status": "pass",
+    "detail": "12 tests"
+   },
+   {
+    "id": "U-session-watches",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 2535,
+    "status": "pass",
+    "detail": "21 tests"
+   },
+   {
+    "id": "U-spec-usage",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 2077,
+    "status": "pass",
+    "detail": "1 tests"
+   },
+   {
+    "id": "U-sqlite-cloudflare",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 1171,
+    "status": "pass",
+    "detail": "29 tests"
+   },
+   {
+    "id": "U-sqlite-facade",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 0,
+    "status": "skipped",
+    "detail": "the upstream storage conformance suite this file registers runs against the core as row SC (CONTRACT 3.10); the rest tests this Storage class's own internals, which no candidate can run without handing the reference's own class back"
+   },
+   {
+    "id": "U-sqlite-migrations",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 0,
+    "status": "skipped",
+    "detail": "the upstream storage conformance suite this file registers runs against the core as row SC (CONTRACT 3.10); the rest tests this Storage class's own internals, which no candidate can run without handing the reference's own class back"
+   },
+   {
+    "id": "U-sqlite-storage",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 0,
+    "status": "skipped",
+    "detail": "the upstream storage conformance suite this file registers runs against the core as row SC (CONTRACT 3.10); the rest tests this Storage class's own internals, which no candidate can run without handing the reference's own class back"
+   },
+   {
+    "id": "U-storage-runtime-boundary",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 747,
+    "status": "pass",
+    "detail": "4 tests"
+   },
+   {
+    "id": "U-system-order-cache-e2e",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 3327,
+    "status": "skipped",
+    "detail": "the reference passes no test of system-order-cache-e2e.test.ts here (1 skipped)"
+   },
+   {
+    "id": "U-tools-read-differential",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 2670,
+    "status": "pass",
+    "detail": "2 tests"
+   },
+   {
+    "id": "U-tools",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 1584,
+    "status": "pass",
+    "detail": "35 tests"
+   },
+   {
+    "id": "U-types",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "native",
+    "ms": 1990,
+    "status": "pass",
+    "detail": "3 tests"
+   },
+   {
+    "id": "SC",
+    "owner": "dcore-store",
+    "family": "storage-conformance",
+    "impl": "native",
+    "ms": 7802,
+    "status": "pass",
+    "detail": "24 cases"
+   },
+   {
+    "id": "I",
+    "owner": "dcore-host",
+    "family": "interop",
+    "impl": "native",
+    "ms": 2400,
+    "status": "pass",
+    "detail": "41 commits"
+   },
+   {
+    "id": "F-gate-1",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 3634,
+    "status": "pass",
+    "detail": "97 commits"
+   },
+   {
+    "id": "F-gate-2",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 3574,
+    "status": "pass",
+    "detail": "84 commits"
+   },
+   {
+    "id": "F-gate-3",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 3798,
+    "status": "pass",
+    "detail": "89 commits"
+   },
+   {
+    "id": "F-gate-4",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 7532,
+    "status": "pass",
+    "detail": "104 commits"
+   },
+   {
+    "id": "F-gate-5",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 5730,
+    "status": "pass",
+    "detail": "64 commits"
+   },
+   {
+    "id": "F-gate-6",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 6217,
+    "status": "pass",
+    "detail": "76 commits"
+   },
+   {
+    "id": "F-gate-7",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 3042,
+    "status": "pass",
+    "detail": "10 commits"
+   },
+   {
+    "id": "F-gate-8",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 7367,
+    "status": "pass",
+    "detail": "150 commits"
+   },
+   {
+    "id": "F-gate-9",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 4256,
+    "status": "pass",
+    "detail": "72 commits"
+   },
+   {
+    "id": "F-gate-10",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 6529,
+    "status": "pass",
+    "detail": "78 commits"
+   },
+   {
+    "id": "F-gate-11",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 5731,
+    "status": "pass",
+    "detail": "159 commits"
+   },
+   {
+    "id": "F-gate-12",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 4190,
+    "status": "pass",
+    "detail": "75 commits"
+   },
+   {
+    "id": "F-gate-13",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 5371,
+    "status": "pass",
+    "detail": "49 commits"
+   },
+   {
+    "id": "F-gate-14",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 6649,
+    "status": "pass",
+    "detail": "190 commits"
+   },
+   {
+    "id": "F-gate-15",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 5551,
+    "status": "pass",
+    "detail": "20 commits"
+   },
+   {
+    "id": "F-gate-16",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 8022,
+    "status": "pass",
+    "detail": "116 commits"
+   },
+   {
+    "id": "F-node-1",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 3297,
+    "status": "pass",
+    "detail": "97 commits"
+   },
+   {
+    "id": "F-node-2",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 3333,
+    "status": "pass",
+    "detail": "84 commits"
+   },
+   {
+    "id": "F-node-3",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 3269,
+    "status": "pass",
+    "detail": "89 commits"
+   },
+   {
+    "id": "F-node-4",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 3228,
+    "status": "pass",
+    "detail": "104 commits"
+   },
+   {
+    "id": "F-node-5",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 3905,
+    "status": "pass",
+    "detail": "64 commits"
+   },
+   {
+    "id": "F-node-6",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 6663,
+    "status": "pass",
+    "detail": "76 commits"
+   },
+   {
+    "id": "F-node-7",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 6375,
+    "status": "pass",
+    "detail": "10 commits"
+   },
+   {
+    "id": "F-node-8",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 4554,
+    "status": "pass",
+    "detail": "150 commits"
+   },
+   {
+    "id": "F-node-9",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 4284,
+    "status": "pass",
+    "detail": "72 commits"
+   },
+   {
+    "id": "F-node-10",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 4189,
+    "status": "pass",
+    "detail": "78 commits"
+   },
+   {
+    "id": "F-node-11",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 5511,
+    "status": "pass",
+    "detail": "159 commits"
+   },
+   {
+    "id": "F-node-12",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 4088,
+    "status": "pass",
+    "detail": "75 commits"
+   },
+   {
+    "id": "F-node-13",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 4296,
+    "status": "pass",
+    "detail": "49 commits"
+   },
+   {
+    "id": "F-node-14",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 7018,
+    "status": "pass",
+    "detail": "190 commits"
+   },
+   {
+    "id": "F-node-15",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 4451,
+    "status": "pass",
+    "detail": "20 commits"
+   },
+   {
+    "id": "F-node-16",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "native",
+    "ms": 6841,
+    "status": "pass",
+    "detail": "116 commits"
+   },
+   {
+    "id": "F-ticks-gate",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "native",
+    "ms": 5032,
+    "status": "pass",
+    "detail": "12 commits"
+   },
+   {
+    "id": "F-ticks-node",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "native",
+    "ms": 4130,
+    "status": "pass",
+    "detail": "12 commits"
+   },
+   {
+    "id": "F-split-generation-gate",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "native",
+    "ms": 4962,
+    "status": "pass",
+    "detail": "12 commits"
+   },
+   {
+    "id": "F-split-generation-node",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "native",
+    "ms": 4797,
+    "status": "pass",
+    "detail": "12 commits"
+   },
+   {
+    "id": "F-split-client-gate",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "native",
+    "ms": 6645,
+    "status": "pass",
+    "detail": "12 commits"
+   },
+   {
+    "id": "F-split-client-node",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "native",
+    "ms": 5619,
+    "status": "pass",
+    "detail": "12 commits"
+   },
+   {
+    "id": "F-split-context-gate",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "native",
+    "ms": 6835,
+    "status": "pass",
+    "detail": "11 commits"
+   },
+   {
+    "id": "F-split-context-node",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "native",
+    "ms": 5959,
+    "status": "pass",
+    "detail": "11 commits"
+   },
+   {
+    "id": "F-ticks-runtime-gate",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "native",
+    "ms": 5965,
+    "status": "pass",
+    "detail": "19 commits"
+   },
+   {
+    "id": "F-ticks-runtime-node",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "native",
+    "ms": 5792,
+    "status": "pass",
+    "detail": "19 commits"
+   },
+   {
+    "id": "T1-250",
+    "owner": "dcore-history",
+    "family": "timetravel",
+    "impl": "native",
+    "ms": 3664,
+    "status": "pass",
+    "detail": "15 commits"
+   },
+   {
+    "id": "T1-3500",
+    "owner": "dcore-history",
+    "family": "timetravel",
+    "impl": "native",
+    "ms": 5207,
+    "status": "pass",
+    "detail": "15 commits"
+   },
+   {
+    "id": "W1-50",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "native",
+    "ms": 5745,
+    "status": "pass",
+    "detail": "770 commits; +0.3 MiB/turn rss 36 MiB over 10 turns"
+   },
+   {
+    "id": "W1-250",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "native",
+    "ms": 5899,
+    "status": "pass",
+    "detail": "770 commits; +0.4 MiB/turn rss 37 MiB over 10 turns"
+   },
+   {
+    "id": "W1-1000",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "native",
+    "ms": 7532,
+    "status": "pass",
+    "detail": "770 commits; +0.3 MiB/turn rss 43 MiB over 10 turns"
+   },
+   {
+    "id": "W1-3500",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "native",
+    "ms": 8093,
+    "status": "pass",
+    "detail": "770 commits; +0.2 MiB/turn rss 54 MiB over 10 turns"
+   },
+   {
+    "id": "W2-50",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "native",
+    "ms": 6473,
+    "status": "pass",
+    "detail": "770 commits; +0.4 MiB/turn rss 36 MiB over 10 turns"
+   },
+   {
+    "id": "W2-250",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "native",
+    "ms": 4531,
+    "status": "pass",
+    "detail": "770 commits; +0.3 MiB/turn rss 37 MiB over 10 turns"
+   },
+   {
+    "id": "W2-1000",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "native",
+    "ms": 8743,
+    "status": "pass",
+    "detail": "770 commits; +0.3 MiB/turn rss 42 MiB over 10 turns"
+   },
+   {
+    "id": "W2-3500",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "native",
+    "ms": 11700,
+    "status": "pass",
+    "detail": "770 commits; +0.4 MiB/turn rss 56 MiB over 10 turns"
+   },
+   {
+    "id": "W3-50-100",
+    "owner": "dcore-loop",
+    "family": "streaming",
+    "impl": "native",
+    "ms": 3637,
+    "status": "pass",
+    "detail": "70 commits"
+   },
+   {
+    "id": "W3-50-250",
+    "owner": "dcore-loop",
+    "family": "streaming",
+    "impl": "native",
+    "ms": 5595,
+    "status": "pass",
+    "detail": "54 commits"
+   },
+   {
+    "id": "W3-1000-100",
+    "owner": "dcore-loop",
+    "family": "streaming",
+    "impl": "native",
+    "ms": 2085,
+    "status": "pass",
+    "detail": "70 commits"
+   },
+   {
+    "id": "W4a-1000",
+    "owner": "dcore-store",
+    "family": "bench",
+    "impl": "native",
+    "ms": 5614,
+    "status": "pass",
+    "detail": "770 commits; +0.3 MiB/turn rss 36 MiB over 10 turns"
+   },
+   {
+    "id": "W4a-3500",
+    "owner": "dcore-store",
+    "family": "bench",
+    "impl": "native",
+    "ms": 4745,
+    "status": "pass",
+    "detail": "770 commits; +0.3 MiB/turn rss 36 MiB over 10 turns"
+   },
+   {
+    "id": "W4b-50",
+    "owner": "dcore-store",
+    "family": "bench",
+    "impl": "native",
+    "ms": 11792,
+    "status": "pass",
+    "detail": "770 commits"
+   },
+   {
+    "id": "W4b-1000",
+    "owner": "dcore-store",
+    "family": "bench",
+    "impl": "native",
+    "ms": 19155,
+    "status": "pass",
+    "detail": "770 commits"
+   },
+   {
+    "id": "W4b-3500",
+    "owner": "dcore-store",
+    "family": "bench",
+    "impl": "native",
+    "ms": 6570,
+    "status": "pass",
+    "detail": "231 commits"
+   },
+   {
+    "id": "W4c-50",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "native",
+    "ms": 4309,
+    "status": "pass",
+    "detail": "164 commits; +1.1 MiB/turn rss 35 MiB over 4 turns"
+   },
+   {
+    "id": "W4c-1000",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "native",
+    "ms": 3969,
+    "status": "pass",
+    "detail": "164 commits; +0.8 MiB/turn rss 43 MiB over 4 turns"
+   },
+   {
+    "id": "W4d",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "native",
+    "ms": 1696,
+    "status": "pass",
+    "detail": "72 commits; +0.3 MiB/turn rss 32 MiB over 4 turns"
+   },
+   {
+    "id": "W4e",
+    "owner": "dcore-session",
+    "family": "bench",
+    "impl": "native",
+    "ms": 897,
+    "status": "pass",
+    "detail": "42 commits"
+   },
+   {
+    "id": "W4f",
+    "owner": "dcore-loop",
+    "family": "wire",
+    "impl": "native",
+    "ms": 0,
+    "status": "pending",
+    "detail": "pending-owner: needs provider cassettes recorded with the owner's API keys (RISKS-AND-QUESTIONS Q6)"
+   },
+   {
+    "id": "W4g",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "native",
+    "ms": 1596,
+    "status": "pass",
+    "detail": "31 commits"
+   },
+   {
+    "id": "X1",
+    "owner": "dcore-store",
+    "family": "mutation",
+    "impl": "native",
+    "ms": 2772,
+    "status": "pass",
+    "detail": "770 commits; +0.4 MiB/turn rss 36 MiB over 10 turns"
+   },
+   {
+    "id": "X1-live",
+    "owner": "dcore-session",
+    "family": "mutation",
+    "impl": "native",
+    "ms": 46007,
+    "status": "pass",
+    "detail": "39 handoffs over 12 crash points"
+   },
+   {
+    "id": "H-50",
+    "owner": "dcore-loop",
+    "family": "handoff",
+    "impl": "native",
+    "ms": 153155,
+    "status": "pass",
+    "detail": "234 handoffs over 77 crash points"
+   },
+   {
+    "id": "H-1000",
+    "owner": "dcore-loop",
+    "family": "handoff",
+    "impl": "native",
+    "ms": 180135,
+    "status": "pass",
+    "detail": "234 handoffs over 77 crash points"
+   },
+   {
+    "id": "H-3500",
+    "owner": "dcore-loop",
+    "family": "handoff",
+    "impl": "native",
+    "ms": 52719,
+    "status": "pass",
+    "detail": "33 handoffs over 10 crash points"
+   },
+   {
+    "id": "H-W3",
+    "owner": "dcore-loop",
+    "family": "handoff",
+    "impl": "native",
+    "ms": 95026,
+    "status": "pass",
+    "detail": "108 handoffs over 35 crash points"
+   },
+   {
+    "id": "H-W4d",
+    "owner": "dcore-loop",
+    "family": "handoff",
+    "impl": "native",
+    "ms": 53809,
+    "status": "pass",
+    "detail": "57 handoffs over 18 crash points"
+   },
+   {
+    "id": "R-104-50",
+    "owner": "dcore-session",
+    "family": "legacy",
+    "impl": "native",
+    "ms": 1955,
+    "status": "pass",
+    "detail": "231 commits; +0.7 MiB/turn rss 34 MiB over 3 turns"
+   },
+   {
+    "id": "H-R-104",
+    "owner": "dcore-session",
+    "family": "legacy",
+    "impl": "native",
+    "ms": 152963,
+    "status": "pass",
+    "detail": "234 handoffs over 77 crash points"
+   }
+  ]
+ },
+ "wasm-tinygo": {
+  "built": "built with `make -C durable/core build-tinygo`",
+  "lanes": {
+   "dcore-session": {
+    "pass": 36,
+    "fail": 0,
+    "pending": 0,
+    "skipped": 0,
+    "failed": []
+   },
+   "dcore-store": {
+    "pass": 17,
+    "fail": 0,
+    "pending": 0,
+    "skipped": 2,
+    "failed": []
+   },
+   "dcore-loop": {
+    "pass": 77,
+    "fail": 0,
+    "pending": 2,
+    "skipped": 2,
+    "failed": []
+   },
+   "dcore-host": {
+    "pass": 17,
+    "fail": 0,
+    "pending": 0,
+    "skipped": 3,
+    "failed": []
+   },
+   "dcore-history": {
+    "pass": 2,
+    "fail": 0,
+    "pending": 0,
+    "skipped": 0,
+    "failed": []
+   }
+  },
+  "results": [
+   {
+    "id": "E00",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2278,
+    "status": "pass",
+    "detail": "2 commits"
+   },
+   {
+    "id": "E01",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2220,
+    "status": "pass",
+    "detail": "4 commits"
+   },
+   {
+    "id": "E02",
+    "owner": "dcore-store",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2294,
+    "status": "pass",
+    "detail": "6 commits"
+   },
+   {
+    "id": "E03",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2270,
+    "status": "pass",
+    "detail": "3 commits"
+   },
+   {
+    "id": "E04",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2206,
+    "status": "pass",
+    "detail": "3 commits"
+   },
+   {
+    "id": "E05",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2261,
+    "status": "pass",
+    "detail": "3 commits"
+   },
+   {
+    "id": "E06",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2367,
+    "status": "pass",
+    "detail": "2 commits"
+   },
+   {
+    "id": "E07",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2375,
+    "status": "pass",
+    "detail": "5 commits"
+   },
+   {
+    "id": "E08",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2382,
+    "status": "pass",
+    "detail": "6 commits"
+   },
+   {
+    "id": "E09",
+    "owner": "dcore-store",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2330,
+    "status": "pass",
+    "detail": "13 commits"
+   },
+   {
+    "id": "E10",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2297,
+    "status": "pass",
+    "detail": "2 commits"
+   },
+   {
+    "id": "E11",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2566,
+    "status": "pass",
+    "detail": "22 commits"
+   },
+   {
+    "id": "E12",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2350,
+    "status": "pass",
+    "detail": "6 commits"
+   },
+   {
+    "id": "E13",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2564,
+    "status": "pass",
+    "detail": "16 commits"
+   },
+   {
+    "id": "E14",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2435,
+    "status": "pass",
+    "detail": "7 commits"
+   },
+   {
+    "id": "E15",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2451,
+    "status": "pass",
+    "detail": "19 commits"
+   },
+   {
+    "id": "E16",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 0,
+    "status": "pending",
+    "detail": "pending-owner: needs the owner's OPENAI_API_KEY or a cassette recorded with it (CONTRACT section 6)"
+   },
+   {
+    "id": "E17",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2883,
+    "status": "pass",
+    "detail": "45 commits"
+   },
+   {
+    "id": "E18",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2617,
+    "status": "pass",
+    "detail": "17 commits"
+   },
+   {
+    "id": "E19",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2770,
+    "status": "pass",
+    "detail": "17 commits"
+   },
+   {
+    "id": "E20",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2478,
+    "status": "pass",
+    "detail": "16 commits"
+   },
+   {
+    "id": "E21",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2828,
+    "status": "pass",
+    "detail": "29 commits"
+   },
+   {
+    "id": "E22",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2587,
+    "status": "pass",
+    "detail": "23 commits"
+   },
+   {
+    "id": "E23",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 4029,
+    "status": "pass",
+    "detail": "123 commits"
+   },
+   {
+    "id": "E24",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2547,
+    "status": "pass",
+    "detail": "37 commits"
+   },
+   {
+    "id": "E25",
+    "owner": "dcore-store",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2746,
+    "status": "pass",
+    "detail": "59 commits"
+   },
+   {
+    "id": "E26",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2686,
+    "status": "pass",
+    "detail": "33 commits"
+   },
+   {
+    "id": "E27",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2721,
+    "status": "pass",
+    "detail": "29 commits"
+   },
+   {
+    "id": "E28",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2577,
+    "status": "pass",
+    "detail": "21 commits"
+   },
+   {
+    "id": "E29",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2622,
+    "status": "pass",
+    "detail": "31 commits"
+   },
+   {
+    "id": "E30",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2735,
+    "status": "pass",
+    "detail": "33 commits"
+   },
+   {
+    "id": "E31",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "wasm-tinygo",
+    "ms": 2563,
+    "status": "pass",
+    "detail": "30 commits"
+   },
+   {
+    "id": "U-chord-guide",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 3485,
+    "status": "pass",
+    "detail": "3 tests"
+   },
+   {
+    "id": "U-env-line-scan",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 2246,
+    "status": "pass",
+    "detail": "4 tests"
+   },
+   {
+    "id": "U-env-node-conformance",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 14403,
+    "status": "pass",
+    "detail": "51 tests"
+   },
+   {
+    "id": "U-env-node-spill",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 2287,
+    "status": "pass",
+    "detail": "1 tests"
+   },
+   {
+    "id": "U-env-node",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 5267,
+    "status": "pass",
+    "detail": "48 tests"
+   },
+   {
+    "id": "U-env-truncate",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 1016,
+    "status": "pass",
+    "detail": "8 tests"
+   },
+   {
+    "id": "U-harness-compaction",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 10771,
+    "status": "pass",
+    "detail": "103 tests"
+   },
+   {
+    "id": "U-harness-context",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 7059,
+    "status": "pass",
+    "detail": "16 tests"
+   },
+   {
+    "id": "U-harness-conversations",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 8183,
+    "status": "pass",
+    "detail": "12 tests"
+   },
+   {
+    "id": "U-harness-events",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 9885,
+    "status": "pass",
+    "detail": "14 tests"
+   },
+   {
+    "id": "U-harness-generation-recovery",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 8744,
+    "status": "pass",
+    "detail": "7 tests"
+   },
+   {
+    "id": "U-harness-generation",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 9233,
+    "status": "pass",
+    "detail": "24 tests"
+   },
+   {
+    "id": "U-harness-inbox",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 6087,
+    "status": "pass",
+    "detail": "32 tests"
+   },
+   {
+    "id": "U-harness-inspect",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 4053,
+    "status": "pass",
+    "detail": "2 tests"
+   },
+   {
+    "id": "U-harness-lifecycle",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 3156,
+    "status": "pass",
+    "detail": "14 tests"
+   },
+   {
+    "id": "U-harness-live-deltas",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 5711,
+    "status": "pass",
+    "detail": "11 tests"
+   },
+   {
+    "id": "U-harness-output-skip",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 2130,
+    "status": "pass",
+    "detail": "4 tests"
+   },
+   {
+    "id": "U-harness-output",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 1203,
+    "status": "pass",
+    "detail": "20 tests"
+   },
+   {
+    "id": "U-harness-ownership",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 3856,
+    "status": "pass",
+    "detail": "26 tests"
+   },
+   {
+    "id": "U-harness-prompt",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 3127,
+    "status": "pass",
+    "detail": "9 tests"
+   },
+   {
+    "id": "U-harness-registry",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 3007,
+    "status": "pass",
+    "detail": "10 tests"
+   },
+   {
+    "id": "U-harness-structured",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 4158,
+    "status": "pass",
+    "detail": "50 tests"
+   },
+   {
+    "id": "U-harness-submissions",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 2766,
+    "status": "pass",
+    "detail": "10 tests"
+   },
+   {
+    "id": "U-harness-task-graph",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 2832,
+    "status": "pass",
+    "detail": "5 tests"
+   },
+   {
+    "id": "U-harness-tasks-recovery",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 2876,
+    "status": "pass",
+    "detail": "24 tests"
+   },
+   {
+    "id": "U-harness-tasks",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 2951,
+    "status": "pass",
+    "detail": "39 tests"
+   },
+   {
+    "id": "U-harness-tools-recovery",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 4413,
+    "status": "pass",
+    "detail": "9 tests"
+   },
+   {
+    "id": "U-harness-tools",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 4357,
+    "status": "pass",
+    "detail": "38 tests"
+   },
+   {
+    "id": "U-harness-view",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 2694,
+    "status": "pass",
+    "detail": "14 tests"
+   },
+   {
+    "id": "U-jsonl-storage",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 0,
+    "status": "skipped",
+    "detail": "the upstream storage conformance suite this file registers runs against the core as row SC (CONTRACT 3.10); the rest tests this Storage class's own internals, which no candidate can run without handing the reference's own class back"
+   },
+   {
+    "id": "U-memory-storage",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 0,
+    "status": "skipped",
+    "detail": "the upstream storage conformance suite this file registers runs against the core as row SC (CONTRACT 3.10); the rest tests this Storage class's own internals, which no candidate can run without handing the reference's own class back"
+   },
+   {
+    "id": "U-provider-session-cache-e2e",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 3850,
+    "status": "skipped",
+    "detail": "the reference passes no test of provider-session-cache-e2e.test.ts here (1 skipped)"
+   },
+   {
+    "id": "U-session-checkpoints-migrations",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 2605,
+    "status": "pass",
+    "detail": "20 tests"
+   },
+   {
+    "id": "U-session-definitions",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 2274,
+    "status": "pass",
+    "detail": "3 tests"
+   },
+   {
+    "id": "U-session-documents",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 2700,
+    "status": "pass",
+    "detail": "27 tests"
+   },
+   {
+    "id": "U-session-forks",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 2675,
+    "status": "pass",
+    "detail": "14 tests"
+   },
+   {
+    "id": "U-session-states",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 2549,
+    "status": "pass",
+    "detail": "10 tests"
+   },
+   {
+    "id": "U-session-tables",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 2468,
+    "status": "pass",
+    "detail": "12 tests"
+   },
+   {
+    "id": "U-session-watches",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 2720,
+    "status": "pass",
+    "detail": "21 tests"
+   },
+   {
+    "id": "U-spec-usage",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 2402,
+    "status": "pass",
+    "detail": "1 tests"
+   },
+   {
+    "id": "U-sqlite-cloudflare",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 1340,
+    "status": "pass",
+    "detail": "29 tests"
+   },
+   {
+    "id": "U-sqlite-facade",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 0,
+    "status": "skipped",
+    "detail": "the upstream storage conformance suite this file registers runs against the core as row SC (CONTRACT 3.10); the rest tests this Storage class's own internals, which no candidate can run without handing the reference's own class back"
+   },
+   {
+    "id": "U-sqlite-migrations",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 0,
+    "status": "skipped",
+    "detail": "the upstream storage conformance suite this file registers runs against the core as row SC (CONTRACT 3.10); the rest tests this Storage class's own internals, which no candidate can run without handing the reference's own class back"
+   },
+   {
+    "id": "U-sqlite-storage",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 0,
+    "status": "skipped",
+    "detail": "the upstream storage conformance suite this file registers runs against the core as row SC (CONTRACT 3.10); the rest tests this Storage class's own internals, which no candidate can run without handing the reference's own class back"
+   },
+   {
+    "id": "U-storage-runtime-boundary",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 908,
+    "status": "pass",
+    "detail": "4 tests"
+   },
+   {
+    "id": "U-system-order-cache-e2e",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 3766,
+    "status": "skipped",
+    "detail": "the reference passes no test of system-order-cache-e2e.test.ts here (1 skipped)"
+   },
+   {
+    "id": "U-tools-read-differential",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 3157,
+    "status": "pass",
+    "detail": "2 tests"
+   },
+   {
+    "id": "U-tools",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 1665,
+    "status": "pass",
+    "detail": "35 tests"
+   },
+   {
+    "id": "U-types",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "wasm-tinygo",
+    "ms": 2214,
+    "status": "pass",
+    "detail": "3 tests"
+   },
+   {
+    "id": "SC",
+    "owner": "dcore-store",
+    "family": "storage-conformance",
+    "impl": "wasm-tinygo",
+    "ms": 5101,
+    "status": "pass",
+    "detail": "24 cases"
+   },
+   {
+    "id": "I",
+    "owner": "dcore-host",
+    "family": "interop",
+    "impl": "wasm-tinygo",
+    "ms": 2753,
+    "status": "pass",
+    "detail": "41 commits"
+   },
+   {
+    "id": "F-gate-1",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 3274,
+    "status": "pass",
+    "detail": "97 commits"
+   },
+   {
+    "id": "F-gate-2",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 3469,
+    "status": "pass",
+    "detail": "84 commits"
+   },
+   {
+    "id": "F-gate-3",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 3763,
+    "status": "pass",
+    "detail": "89 commits"
+   },
+   {
+    "id": "F-gate-4",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 4080,
+    "status": "pass",
+    "detail": "104 commits"
+   },
+   {
+    "id": "F-gate-5",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 3240,
+    "status": "pass",
+    "detail": "64 commits"
+   },
+   {
+    "id": "F-gate-6",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 4290,
+    "status": "pass",
+    "detail": "76 commits"
+   },
+   {
+    "id": "F-gate-7",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 3089,
+    "status": "pass",
+    "detail": "10 commits"
+   },
+   {
+    "id": "F-gate-8",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 4321,
+    "status": "pass",
+    "detail": "150 commits"
+   },
+   {
+    "id": "F-gate-9",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 3708,
+    "status": "pass",
+    "detail": "72 commits"
+   },
+   {
+    "id": "F-gate-10",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 3986,
+    "status": "pass",
+    "detail": "78 commits"
+   },
+   {
+    "id": "F-gate-11",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 4502,
+    "status": "pass",
+    "detail": "159 commits"
+   },
+   {
+    "id": "F-gate-12",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 3670,
+    "status": "pass",
+    "detail": "75 commits"
+   },
+   {
+    "id": "F-gate-13",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 3646,
+    "status": "pass",
+    "detail": "49 commits"
+   },
+   {
+    "id": "F-gate-14",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 4118,
+    "status": "pass",
+    "detail": "190 commits"
+   },
+   {
+    "id": "F-gate-15",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 2973,
+    "status": "pass",
+    "detail": "20 commits"
+   },
+   {
+    "id": "F-gate-16",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 3919,
+    "status": "pass",
+    "detail": "116 commits"
+   },
+   {
+    "id": "F-node-1",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 4025,
+    "status": "pass",
+    "detail": "97 commits"
+   },
+   {
+    "id": "F-node-2",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 4586,
+    "status": "pass",
+    "detail": "84 commits"
+   },
+   {
+    "id": "F-node-3",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 4184,
+    "status": "pass",
+    "detail": "89 commits"
+   },
+   {
+    "id": "F-node-4",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 4167,
+    "status": "pass",
+    "detail": "104 commits"
+   },
+   {
+    "id": "F-node-5",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 3826,
+    "status": "pass",
+    "detail": "64 commits"
+   },
+   {
+    "id": "F-node-6",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 4279,
+    "status": "pass",
+    "detail": "76 commits"
+   },
+   {
+    "id": "F-node-7",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 3331,
+    "status": "pass",
+    "detail": "10 commits"
+   },
+   {
+    "id": "F-node-8",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 4243,
+    "status": "pass",
+    "detail": "150 commits"
+   },
+   {
+    "id": "F-node-9",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 3383,
+    "status": "pass",
+    "detail": "72 commits"
+   },
+   {
+    "id": "F-node-10",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 3320,
+    "status": "pass",
+    "detail": "78 commits"
+   },
+   {
+    "id": "F-node-11",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 3510,
+    "status": "pass",
+    "detail": "159 commits"
+   },
+   {
+    "id": "F-node-12",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 2992,
+    "status": "pass",
+    "detail": "75 commits"
+   },
+   {
+    "id": "F-node-13",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 3147,
+    "status": "pass",
+    "detail": "49 commits"
+   },
+   {
+    "id": "F-node-14",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 3993,
+    "status": "pass",
+    "detail": "190 commits"
+   },
+   {
+    "id": "F-node-15",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 2795,
+    "status": "pass",
+    "detail": "20 commits"
+   },
+   {
+    "id": "F-node-16",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 4188,
+    "status": "pass",
+    "detail": "116 commits"
+   },
+   {
+    "id": "F-ticks-gate",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 2777,
+    "status": "pass",
+    "detail": "12 commits"
+   },
+   {
+    "id": "F-ticks-node",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 3058,
+    "status": "pass",
+    "detail": "12 commits"
+   },
+   {
+    "id": "F-split-generation-gate",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 2835,
+    "status": "pass",
+    "detail": "12 commits"
+   },
+   {
+    "id": "F-split-generation-node",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 2929,
+    "status": "pass",
+    "detail": "12 commits"
+   },
+   {
+    "id": "F-split-client-gate",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 3004,
+    "status": "pass",
+    "detail": "12 commits"
+   },
+   {
+    "id": "F-split-client-node",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 2951,
+    "status": "pass",
+    "detail": "12 commits"
+   },
+   {
+    "id": "F-split-context-gate",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 2818,
+    "status": "pass",
+    "detail": "11 commits"
+   },
+   {
+    "id": "F-split-context-node",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 2422,
+    "status": "pass",
+    "detail": "11 commits"
+   },
+   {
+    "id": "F-ticks-runtime-gate",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 2356,
+    "status": "pass",
+    "detail": "19 commits"
+   },
+   {
+    "id": "F-ticks-runtime-node",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "wasm-tinygo",
+    "ms": 2349,
+    "status": "pass",
+    "detail": "19 commits"
+   },
+   {
+    "id": "T1-250",
+    "owner": "dcore-history",
+    "family": "timetravel",
+    "impl": "wasm-tinygo",
+    "ms": 1341,
+    "status": "pass",
+    "detail": "15 commits"
+   },
+   {
+    "id": "T1-3500",
+    "owner": "dcore-history",
+    "family": "timetravel",
+    "impl": "wasm-tinygo",
+    "ms": 1934,
+    "status": "pass",
+    "detail": "15 commits"
+   },
+   {
+    "id": "W1-50",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "wasm-tinygo",
+    "ms": 2405,
+    "status": "pass",
+    "detail": "770 commits; +0.0 MiB/turn linear 1 MiB over 10 turns"
+   },
+   {
+    "id": "W1-250",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "wasm-tinygo",
+    "ms": 3207,
+    "status": "pass",
+    "detail": "770 commits; +0.0 MiB/turn linear 1 MiB over 10 turns"
+   },
+   {
+    "id": "W1-1000",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "wasm-tinygo",
+    "ms": 5351,
+    "status": "pass",
+    "detail": "770 commits; +0.0 MiB/turn linear 1 MiB over 10 turns"
+   },
+   {
+    "id": "W1-3500",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "wasm-tinygo",
+    "ms": 13308,
+    "status": "pass",
+    "detail": "770 commits; +0.0 MiB/turn linear 1 MiB over 10 turns"
+   },
+   {
+    "id": "W2-50",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "wasm-tinygo",
+    "ms": 2280,
+    "status": "pass",
+    "detail": "770 commits; +0.0 MiB/turn linear 1 MiB over 10 turns"
+   },
+   {
+    "id": "W2-250",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "wasm-tinygo",
+    "ms": 3010,
+    "status": "pass",
+    "detail": "770 commits; +0.0 MiB/turn linear 1 MiB over 10 turns"
+   },
+   {
+    "id": "W2-1000",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "wasm-tinygo",
+    "ms": 5305,
+    "status": "pass",
+    "detail": "770 commits; +0.0 MiB/turn linear 1 MiB over 10 turns"
+   },
+   {
+    "id": "W2-3500",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "wasm-tinygo",
+    "ms": 11821,
+    "status": "pass",
+    "detail": "770 commits; +0.0 MiB/turn linear 1 MiB over 10 turns"
+   },
+   {
+    "id": "W3-50-100",
+    "owner": "dcore-loop",
+    "family": "streaming",
+    "impl": "wasm-tinygo",
+    "ms": 1811,
+    "status": "pass",
+    "detail": "70 commits"
+   },
+   {
+    "id": "W3-50-250",
+    "owner": "dcore-loop",
+    "family": "streaming",
+    "impl": "wasm-tinygo",
+    "ms": 1704,
+    "status": "pass",
+    "detail": "54 commits"
+   },
+   {
+    "id": "W3-1000-100",
+    "owner": "dcore-loop",
+    "family": "streaming",
+    "impl": "wasm-tinygo",
+    "ms": 2199,
+    "status": "pass",
+    "detail": "70 commits"
+   },
+   {
+    "id": "W4a-1000",
+    "owner": "dcore-store",
+    "family": "bench",
+    "impl": "wasm-tinygo",
+    "ms": 2596,
+    "status": "pass",
+    "detail": "770 commits; +0.0 MiB/turn linear 1 MiB over 10 turns"
+   },
+   {
+    "id": "W4a-3500",
+    "owner": "dcore-store",
+    "family": "bench",
+    "impl": "wasm-tinygo",
+    "ms": 3113,
+    "status": "pass",
+    "detail": "770 commits; +0.0 MiB/turn linear 1 MiB over 10 turns"
+   },
+   {
+    "id": "W4b-50",
+    "owner": "dcore-store",
+    "family": "bench",
+    "impl": "wasm-tinygo",
+    "ms": 14900,
+    "status": "pass",
+    "detail": "770 commits"
+   },
+   {
+    "id": "W4b-1000",
+    "owner": "dcore-store",
+    "family": "bench",
+    "impl": "wasm-tinygo",
+    "ms": 23231,
+    "status": "pass",
+    "detail": "770 commits"
+   },
+   {
+    "id": "W4b-3500",
+    "owner": "dcore-store",
+    "family": "bench",
+    "impl": "wasm-tinygo",
+    "ms": 8203,
+    "status": "pass",
+    "detail": "231 commits"
+   },
+   {
+    "id": "W4c-50",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "wasm-tinygo",
+    "ms": 1396,
+    "status": "pass",
+    "detail": "164 commits; +0.0 MiB/turn linear 2 MiB over 4 turns"
+   },
+   {
+    "id": "W4c-1000",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "wasm-tinygo",
+    "ms": 2258,
+    "status": "pass",
+    "detail": "164 commits; +0.0 MiB/turn linear 2 MiB over 4 turns"
+   },
+   {
+    "id": "W4d",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "wasm-tinygo",
+    "ms": 1203,
+    "status": "pass",
+    "detail": "72 commits; +0.0 MiB/turn linear 1 MiB over 4 turns"
+   },
+   {
+    "id": "W4e",
+    "owner": "dcore-session",
+    "family": "bench",
+    "impl": "wasm-tinygo",
+    "ms": 1195,
+    "status": "pass",
+    "detail": "42 commits"
+   },
+   {
+    "id": "W4f",
+    "owner": "dcore-loop",
+    "family": "wire",
+    "impl": "wasm-tinygo",
+    "ms": 0,
+    "status": "pending",
+    "detail": "pending-owner: needs provider cassettes recorded with the owner's API keys (RISKS-AND-QUESTIONS Q6)"
+   },
+   {
+    "id": "W4g",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "wasm-tinygo",
+    "ms": 1137,
+    "status": "pass",
+    "detail": "31 commits"
+   },
+   {
+    "id": "X1",
+    "owner": "dcore-store",
+    "family": "mutation",
+    "impl": "wasm-tinygo",
+    "ms": 2292,
+    "status": "pass",
+    "detail": "770 commits; +0.0 MiB/turn linear 1 MiB over 10 turns"
+   },
+   {
+    "id": "X1-live",
+    "owner": "dcore-session",
+    "family": "mutation",
+    "impl": "wasm-tinygo",
+    "ms": 52969,
+    "status": "pass",
+    "detail": "39 handoffs over 12 crash points"
+   },
+   {
+    "id": "H-50",
+    "owner": "dcore-loop",
+    "family": "handoff",
+    "impl": "wasm-tinygo",
+    "ms": 174461,
+    "status": "pass",
+    "detail": "234 handoffs over 77 crash points"
+   },
+   {
+    "id": "H-1000",
+    "owner": "dcore-loop",
+    "family": "handoff",
+    "impl": "wasm-tinygo",
+    "ms": 204407,
+    "status": "pass",
+    "detail": "234 handoffs over 77 crash points"
+   },
+   {
+    "id": "H-3500",
+    "owner": "dcore-loop",
+    "family": "handoff",
+    "impl": "wasm-tinygo",
+    "ms": 65826,
+    "status": "pass",
+    "detail": "33 handoffs over 10 crash points"
+   },
+   {
+    "id": "H-W3",
+    "owner": "dcore-loop",
+    "family": "handoff",
+    "impl": "wasm-tinygo",
+    "ms": 100349,
+    "status": "pass",
+    "detail": "108 handoffs over 35 crash points"
+   },
+   {
+    "id": "H-W4d",
+    "owner": "dcore-loop",
+    "family": "handoff",
+    "impl": "wasm-tinygo",
+    "ms": 62367,
+    "status": "pass",
+    "detail": "57 handoffs over 18 crash points"
+   },
+   {
+    "id": "R-104-50",
+    "owner": "dcore-session",
+    "family": "legacy",
+    "impl": "wasm-tinygo",
+    "ms": 2499,
+    "status": "pass",
+    "detail": "231 commits; +0.0 MiB/turn linear 1 MiB over 3 turns"
+   },
+   {
+    "id": "H-R-104",
+    "owner": "dcore-session",
+    "family": "legacy",
+    "impl": "wasm-tinygo",
+    "ms": 171303,
+    "status": "pass",
+    "detail": "234 handoffs over 77 crash points"
+   }
+  ]
+ },
+ "wasm-go": {
+  "built": "built with `make -C durable/core build-go`",
+  "lanes": {
+   "dcore-session": {
+    "pass": 36,
+    "fail": 0,
+    "pending": 0,
+    "skipped": 0,
+    "failed": []
+   },
+   "dcore-store": {
+    "pass": 17,
+    "fail": 0,
+    "pending": 0,
+    "skipped": 2,
+    "failed": []
+   },
+   "dcore-loop": {
+    "pass": 77,
+    "fail": 0,
+    "pending": 2,
+    "skipped": 2,
+    "failed": []
+   },
+   "dcore-host": {
+    "pass": 17,
+    "fail": 0,
+    "pending": 0,
+    "skipped": 3,
+    "failed": []
+   },
+   "dcore-history": {
+    "pass": 2,
+    "fail": 0,
+    "pending": 0,
+    "skipped": 0,
+    "failed": []
+   }
+  },
+  "results": [
+   {
+    "id": "E00",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2354,
+    "status": "pass",
+    "detail": "2 commits"
+   },
+   {
+    "id": "E01",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2403,
+    "status": "pass",
+    "detail": "4 commits"
+   },
+   {
+    "id": "E02",
+    "owner": "dcore-store",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2363,
+    "status": "pass",
+    "detail": "6 commits"
+   },
+   {
+    "id": "E03",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2416,
+    "status": "pass",
+    "detail": "3 commits"
+   },
+   {
+    "id": "E04",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2370,
+    "status": "pass",
+    "detail": "3 commits"
+   },
+   {
+    "id": "E05",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2394,
+    "status": "pass",
+    "detail": "3 commits"
+   },
+   {
+    "id": "E06",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2426,
+    "status": "pass",
+    "detail": "2 commits"
+   },
+   {
+    "id": "E07",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2410,
+    "status": "pass",
+    "detail": "5 commits"
+   },
+   {
+    "id": "E08",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2246,
+    "status": "pass",
+    "detail": "6 commits"
+   },
+   {
+    "id": "E09",
+    "owner": "dcore-store",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2039,
+    "status": "pass",
+    "detail": "13 commits"
+   },
+   {
+    "id": "E10",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2022,
+    "status": "pass",
+    "detail": "2 commits"
+   },
+   {
+    "id": "E11",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2442,
+    "status": "pass",
+    "detail": "22 commits"
+   },
+   {
+    "id": "E12",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2006,
+    "status": "pass",
+    "detail": "6 commits"
+   },
+   {
+    "id": "E13",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2701,
+    "status": "pass",
+    "detail": "16 commits"
+   },
+   {
+    "id": "E14",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2474,
+    "status": "pass",
+    "detail": "7 commits"
+   },
+   {
+    "id": "E15",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2379,
+    "status": "pass",
+    "detail": "19 commits"
+   },
+   {
+    "id": "E16",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 1,
+    "status": "pending",
+    "detail": "pending-owner: needs the owner's OPENAI_API_KEY or a cassette recorded with it (CONTRACT section 6)"
+   },
+   {
+    "id": "E17",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2565,
+    "status": "pass",
+    "detail": "45 commits"
+   },
+   {
+    "id": "E18",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2446,
+    "status": "pass",
+    "detail": "17 commits"
+   },
+   {
+    "id": "E19",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2482,
+    "status": "pass",
+    "detail": "17 commits"
+   },
+   {
+    "id": "E20",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2240,
+    "status": "pass",
+    "detail": "16 commits"
+   },
+   {
+    "id": "E21",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2470,
+    "status": "pass",
+    "detail": "29 commits"
+   },
+   {
+    "id": "E22",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2392,
+    "status": "pass",
+    "detail": "23 commits"
+   },
+   {
+    "id": "E23",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 3973,
+    "status": "pass",
+    "detail": "123 commits"
+   },
+   {
+    "id": "E24",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2356,
+    "status": "pass",
+    "detail": "37 commits"
+   },
+   {
+    "id": "E25",
+    "owner": "dcore-store",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2738,
+    "status": "pass",
+    "detail": "59 commits"
+   },
+   {
+    "id": "E26",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2613,
+    "status": "pass",
+    "detail": "33 commits"
+   },
+   {
+    "id": "E27",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2531,
+    "status": "pass",
+    "detail": "29 commits"
+   },
+   {
+    "id": "E28",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2489,
+    "status": "pass",
+    "detail": "21 commits"
+   },
+   {
+    "id": "E29",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2589,
+    "status": "pass",
+    "detail": "31 commits"
+   },
+   {
+    "id": "E30",
+    "owner": "dcore-loop",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2532,
+    "status": "pass",
+    "detail": "33 commits"
+   },
+   {
+    "id": "E31",
+    "owner": "dcore-session",
+    "family": "example",
+    "impl": "wasm-go",
+    "ms": 2658,
+    "status": "pass",
+    "detail": "30 commits"
+   },
+   {
+    "id": "U-chord-guide",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 4525,
+    "status": "pass",
+    "detail": "3 tests"
+   },
+   {
+    "id": "U-env-line-scan",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 1837,
+    "status": "pass",
+    "detail": "4 tests"
+   },
+   {
+    "id": "U-env-node-conformance",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 13906,
+    "status": "pass",
+    "detail": "51 tests"
+   },
+   {
+    "id": "U-env-node-spill",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 2074,
+    "status": "pass",
+    "detail": "1 tests"
+   },
+   {
+    "id": "U-env-node",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 4853,
+    "status": "pass",
+    "detail": "48 tests"
+   },
+   {
+    "id": "U-env-truncate",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 1618,
+    "status": "pass",
+    "detail": "8 tests"
+   },
+   {
+    "id": "U-harness-compaction",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 13441,
+    "status": "pass",
+    "detail": "103 tests"
+   },
+   {
+    "id": "U-harness-context",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 8437,
+    "status": "pass",
+    "detail": "16 tests"
+   },
+   {
+    "id": "U-harness-conversations",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 8552,
+    "status": "pass",
+    "detail": "12 tests"
+   },
+   {
+    "id": "U-harness-events",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 11845,
+    "status": "pass",
+    "detail": "14 tests"
+   },
+   {
+    "id": "U-harness-generation-recovery",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 8773,
+    "status": "pass",
+    "detail": "7 tests"
+   },
+   {
+    "id": "U-harness-generation",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 7697,
+    "status": "pass",
+    "detail": "24 tests"
+   },
+   {
+    "id": "U-harness-inbox",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 7145,
+    "status": "pass",
+    "detail": "32 tests"
+   },
+   {
+    "id": "U-harness-inspect",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 3113,
+    "status": "pass",
+    "detail": "2 tests"
+   },
+   {
+    "id": "U-harness-lifecycle",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 3454,
+    "status": "pass",
+    "detail": "14 tests"
+   },
+   {
+    "id": "U-harness-live-deltas",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 5781,
+    "status": "pass",
+    "detail": "11 tests"
+   },
+   {
+    "id": "U-harness-output-skip",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 2149,
+    "status": "pass",
+    "detail": "4 tests"
+   },
+   {
+    "id": "U-harness-output",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 1669,
+    "status": "pass",
+    "detail": "20 tests"
+   },
+   {
+    "id": "U-harness-ownership",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 4562,
+    "status": "pass",
+    "detail": "26 tests"
+   },
+   {
+    "id": "U-harness-prompt",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 2315,
+    "status": "pass",
+    "detail": "9 tests"
+   },
+   {
+    "id": "U-harness-registry",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 2098,
+    "status": "pass",
+    "detail": "10 tests"
+   },
+   {
+    "id": "U-harness-structured",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 4771,
+    "status": "pass",
+    "detail": "50 tests"
+   },
+   {
+    "id": "U-harness-submissions",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 2536,
+    "status": "pass",
+    "detail": "10 tests"
+   },
+   {
+    "id": "U-harness-task-graph",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 2261,
+    "status": "pass",
+    "detail": "5 tests"
+   },
+   {
+    "id": "U-harness-tasks-recovery",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 3035,
+    "status": "pass",
+    "detail": "24 tests"
+   },
+   {
+    "id": "U-harness-tasks",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 3089,
+    "status": "pass",
+    "detail": "39 tests"
+   },
+   {
+    "id": "U-harness-tools-recovery",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 4427,
+    "status": "pass",
+    "detail": "9 tests"
+   },
+   {
+    "id": "U-harness-tools",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 4772,
+    "status": "pass",
+    "detail": "38 tests"
+   },
+   {
+    "id": "U-harness-view",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 2625,
+    "status": "pass",
+    "detail": "14 tests"
+   },
+   {
+    "id": "U-jsonl-storage",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 0,
+    "status": "skipped",
+    "detail": "the upstream storage conformance suite this file registers runs against the core as row SC (CONTRACT 3.10); the rest tests this Storage class's own internals, which no candidate can run without handing the reference's own class back"
+   },
+   {
+    "id": "U-memory-storage",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 0,
+    "status": "skipped",
+    "detail": "the upstream storage conformance suite this file registers runs against the core as row SC (CONTRACT 3.10); the rest tests this Storage class's own internals, which no candidate can run without handing the reference's own class back"
+   },
+   {
+    "id": "U-provider-session-cache-e2e",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 3453,
+    "status": "skipped",
+    "detail": "the reference passes no test of provider-session-cache-e2e.test.ts here (1 skipped)"
+   },
+   {
+    "id": "U-session-checkpoints-migrations",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 2850,
+    "status": "pass",
+    "detail": "20 tests"
+   },
+   {
+    "id": "U-session-definitions",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 2204,
+    "status": "pass",
+    "detail": "3 tests"
+   },
+   {
+    "id": "U-session-documents",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 2777,
+    "status": "pass",
+    "detail": "27 tests"
+   },
+   {
+    "id": "U-session-forks",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 2797,
+    "status": "pass",
+    "detail": "14 tests"
+   },
+   {
+    "id": "U-session-states",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 2336,
+    "status": "pass",
+    "detail": "10 tests"
+   },
+   {
+    "id": "U-session-tables",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 2358,
+    "status": "pass",
+    "detail": "12 tests"
+   },
+   {
+    "id": "U-session-watches",
+    "owner": "dcore-session",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 2868,
+    "status": "pass",
+    "detail": "21 tests"
+   },
+   {
+    "id": "U-spec-usage",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 2244,
+    "status": "pass",
+    "detail": "1 tests"
+   },
+   {
+    "id": "U-sqlite-cloudflare",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 1196,
+    "status": "pass",
+    "detail": "29 tests"
+   },
+   {
+    "id": "U-sqlite-facade",
+    "owner": "dcore-host",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 0,
+    "status": "skipped",
+    "detail": "the upstream storage conformance suite this file registers runs against the core as row SC (CONTRACT 3.10); the rest tests this Storage class's own internals, which no candidate can run without handing the reference's own class back"
+   },
+   {
+    "id": "U-sqlite-migrations",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 0,
+    "status": "skipped",
+    "detail": "the upstream storage conformance suite this file registers runs against the core as row SC (CONTRACT 3.10); the rest tests this Storage class's own internals, which no candidate can run without handing the reference's own class back"
+   },
+   {
+    "id": "U-sqlite-storage",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 0,
+    "status": "skipped",
+    "detail": "the upstream storage conformance suite this file registers runs against the core as row SC (CONTRACT 3.10); the rest tests this Storage class's own internals, which no candidate can run without handing the reference's own class back"
+   },
+   {
+    "id": "U-storage-runtime-boundary",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 842,
+    "status": "pass",
+    "detail": "4 tests"
+   },
+   {
+    "id": "U-system-order-cache-e2e",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 3713,
+    "status": "skipped",
+    "detail": "the reference passes no test of system-order-cache-e2e.test.ts here (1 skipped)"
+   },
+   {
+    "id": "U-tools-read-differential",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 3138,
+    "status": "pass",
+    "detail": "2 tests"
+   },
+   {
+    "id": "U-tools",
+    "owner": "dcore-loop",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 1798,
+    "status": "pass",
+    "detail": "35 tests"
+   },
+   {
+    "id": "U-types",
+    "owner": "dcore-store",
+    "family": "upstream-test",
+    "impl": "wasm-go",
+    "ms": 2320,
+    "status": "pass",
+    "detail": "3 tests"
+   },
+   {
+    "id": "SC",
+    "owner": "dcore-store",
+    "family": "storage-conformance",
+    "impl": "wasm-go",
+    "ms": 4954,
+    "status": "pass",
+    "detail": "24 cases"
+   },
+   {
+    "id": "I",
+    "owner": "dcore-host",
+    "family": "interop",
+    "impl": "wasm-go",
+    "ms": 2866,
+    "status": "pass",
+    "detail": "41 commits"
+   },
+   {
+    "id": "F-gate-1",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 3744,
+    "status": "pass",
+    "detail": "97 commits"
+   },
+   {
+    "id": "F-gate-2",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 3688,
+    "status": "pass",
+    "detail": "84 commits"
+   },
+   {
+    "id": "F-gate-3",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 3887,
+    "status": "pass",
+    "detail": "89 commits"
+   },
+   {
+    "id": "F-gate-4",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 4210,
+    "status": "pass",
+    "detail": "104 commits"
+   },
+   {
+    "id": "F-gate-5",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 3371,
+    "status": "pass",
+    "detail": "64 commits"
+   },
+   {
+    "id": "F-gate-6",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 4304,
+    "status": "pass",
+    "detail": "76 commits"
+   },
+   {
+    "id": "F-gate-7",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 2865,
+    "status": "pass",
+    "detail": "10 commits"
+   },
+   {
+    "id": "F-gate-8",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 4448,
+    "status": "pass",
+    "detail": "150 commits"
+   },
+   {
+    "id": "F-gate-9",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 3746,
+    "status": "pass",
+    "detail": "72 commits"
+   },
+   {
+    "id": "F-gate-10",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 3943,
+    "status": "pass",
+    "detail": "78 commits"
+   },
+   {
+    "id": "F-gate-11",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 4414,
+    "status": "pass",
+    "detail": "159 commits"
+   },
+   {
+    "id": "F-gate-12",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 3371,
+    "status": "pass",
+    "detail": "75 commits"
+   },
+   {
+    "id": "F-gate-13",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 3481,
+    "status": "pass",
+    "detail": "49 commits"
+   },
+   {
+    "id": "F-gate-14",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 4173,
+    "status": "pass",
+    "detail": "190 commits"
+   },
+   {
+    "id": "F-gate-15",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 2817,
+    "status": "pass",
+    "detail": "20 commits"
+   },
+   {
+    "id": "F-gate-16",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 3741,
+    "status": "pass",
+    "detail": "116 commits"
+   },
+   {
+    "id": "F-node-1",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 3272,
+    "status": "pass",
+    "detail": "97 commits"
+   },
+   {
+    "id": "F-node-2",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 3413,
+    "status": "pass",
+    "detail": "84 commits"
+   },
+   {
+    "id": "F-node-3",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 3494,
+    "status": "pass",
+    "detail": "89 commits"
+   },
+   {
+    "id": "F-node-4",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 3686,
+    "status": "pass",
+    "detail": "104 commits"
+   },
+   {
+    "id": "F-node-5",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 3018,
+    "status": "pass",
+    "detail": "64 commits"
+   },
+   {
+    "id": "F-node-6",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 3746,
+    "status": "pass",
+    "detail": "76 commits"
+   },
+   {
+    "id": "F-node-7",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 2585,
+    "status": "pass",
+    "detail": "10 commits"
+   },
+   {
+    "id": "F-node-8",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 4083,
+    "status": "pass",
+    "detail": "150 commits"
+   },
+   {
+    "id": "F-node-9",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 3398,
+    "status": "pass",
+    "detail": "72 commits"
+   },
+   {
+    "id": "F-node-10",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 3516,
+    "status": "pass",
+    "detail": "78 commits"
+   },
+   {
+    "id": "F-node-11",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 3964,
+    "status": "pass",
+    "detail": "159 commits"
+   },
+   {
+    "id": "F-node-12",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 3108,
+    "status": "pass",
+    "detail": "75 commits"
+   },
+   {
+    "id": "F-node-13",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 3184,
+    "status": "pass",
+    "detail": "49 commits"
+   },
+   {
+    "id": "F-node-14",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 4195,
+    "status": "pass",
+    "detail": "190 commits"
+   },
+   {
+    "id": "F-node-15",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 2961,
+    "status": "pass",
+    "detail": "20 commits"
+   },
+   {
+    "id": "F-node-16",
+    "owner": "dcore-loop",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 3587,
+    "status": "pass",
+    "detail": "116 commits"
+   },
+   {
+    "id": "F-ticks-gate",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 2402,
+    "status": "pass",
+    "detail": "12 commits"
+   },
+   {
+    "id": "F-ticks-node",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 2600,
+    "status": "pass",
+    "detail": "12 commits"
+   },
+   {
+    "id": "F-split-generation-gate",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 2659,
+    "status": "pass",
+    "detail": "12 commits"
+   },
+   {
+    "id": "F-split-generation-node",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 2672,
+    "status": "pass",
+    "detail": "12 commits"
+   },
+   {
+    "id": "F-split-client-gate",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 2658,
+    "status": "pass",
+    "detail": "12 commits"
+   },
+   {
+    "id": "F-split-client-node",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 2637,
+    "status": "pass",
+    "detail": "12 commits"
+   },
+   {
+    "id": "F-split-context-gate",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 2386,
+    "status": "pass",
+    "detail": "11 commits"
+   },
+   {
+    "id": "F-split-context-node",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 2375,
+    "status": "pass",
+    "detail": "11 commits"
+   },
+   {
+    "id": "F-ticks-runtime-gate",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 2402,
+    "status": "pass",
+    "detail": "19 commits"
+   },
+   {
+    "id": "F-ticks-runtime-node",
+    "owner": "dcore-host",
+    "family": "differential",
+    "impl": "wasm-go",
+    "ms": 2513,
+    "status": "pass",
+    "detail": "19 commits"
+   },
+   {
+    "id": "T1-250",
+    "owner": "dcore-history",
+    "family": "timetravel",
+    "impl": "wasm-go",
+    "ms": 1311,
+    "status": "pass",
+    "detail": "15 commits"
+   },
+   {
+    "id": "T1-3500",
+    "owner": "dcore-history",
+    "family": "timetravel",
+    "impl": "wasm-go",
+    "ms": 1856,
+    "status": "pass",
+    "detail": "15 commits"
+   },
+   {
+    "id": "W1-50",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "wasm-go",
+    "ms": 2593,
+    "status": "pass",
+    "detail": "770 commits; +0.3 MiB/turn linear 10 MiB over 10 turns"
+   },
+   {
+    "id": "W1-250",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "wasm-go",
+    "ms": 3384,
+    "status": "pass",
+    "detail": "770 commits; +0.3 MiB/turn linear 10 MiB over 10 turns"
+   },
+   {
+    "id": "W1-1000",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "wasm-go",
+    "ms": 5719,
+    "status": "pass",
+    "detail": "770 commits; +0.3 MiB/turn linear 10 MiB over 10 turns"
+   },
+   {
+    "id": "W1-3500",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "wasm-go",
+    "ms": 13663,
+    "status": "pass",
+    "detail": "770 commits; +0.3 MiB/turn linear 10 MiB over 10 turns"
+   },
+   {
+    "id": "W2-50",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "wasm-go",
+    "ms": 2723,
+    "status": "pass",
+    "detail": "770 commits; +0.3 MiB/turn linear 10 MiB over 10 turns"
+   },
+   {
+    "id": "W2-250",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "wasm-go",
+    "ms": 3426,
+    "status": "pass",
+    "detail": "770 commits; +0.3 MiB/turn linear 10 MiB over 10 turns"
+   },
+   {
+    "id": "W2-1000",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "wasm-go",
+    "ms": 5880,
+    "status": "pass",
+    "detail": "770 commits; +0.3 MiB/turn linear 10 MiB over 10 turns"
+   },
+   {
+    "id": "W2-3500",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "wasm-go",
+    "ms": 13253,
+    "status": "pass",
+    "detail": "770 commits; +0.3 MiB/turn linear 10 MiB over 10 turns"
+   },
+   {
+    "id": "W3-50-100",
+    "owner": "dcore-loop",
+    "family": "streaming",
+    "impl": "wasm-go",
+    "ms": 1808,
+    "status": "pass",
+    "detail": "70 commits"
+   },
+   {
+    "id": "W3-50-250",
+    "owner": "dcore-loop",
+    "family": "streaming",
+    "impl": "wasm-go",
+    "ms": 1754,
+    "status": "pass",
+    "detail": "54 commits"
+   },
+   {
+    "id": "W3-1000-100",
+    "owner": "dcore-loop",
+    "family": "streaming",
+    "impl": "wasm-go",
+    "ms": 2387,
+    "status": "pass",
+    "detail": "70 commits"
+   },
+   {
+    "id": "W4a-1000",
+    "owner": "dcore-store",
+    "family": "bench",
+    "impl": "wasm-go",
+    "ms": 3397,
+    "status": "pass",
+    "detail": "770 commits; +0.2 MiB/turn linear 10 MiB over 10 turns"
+   },
+   {
+    "id": "W4a-3500",
+    "owner": "dcore-store",
+    "family": "bench",
+    "impl": "wasm-go",
+    "ms": 3805,
+    "status": "pass",
+    "detail": "770 commits; +0.2 MiB/turn linear 10 MiB over 10 turns"
+   },
+   {
+    "id": "W4b-50",
+    "owner": "dcore-store",
+    "family": "bench",
+    "impl": "wasm-go",
+    "ms": 16268,
+    "status": "pass",
+    "detail": "770 commits"
+   },
+   {
+    "id": "W4b-1000",
+    "owner": "dcore-store",
+    "family": "bench",
+    "impl": "wasm-go",
+    "ms": 23747,
+    "status": "pass",
+    "detail": "770 commits"
+   },
+   {
+    "id": "W4b-3500",
+    "owner": "dcore-store",
+    "family": "bench",
+    "impl": "wasm-go",
+    "ms": 7871,
+    "status": "pass",
+    "detail": "231 commits"
+   },
+   {
+    "id": "W4c-50",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "wasm-go",
+    "ms": 1572,
+    "status": "pass",
+    "detail": "164 commits; +0.9 MiB/turn linear 10 MiB over 4 turns"
+   },
+   {
+    "id": "W4c-1000",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "wasm-go",
+    "ms": 2506,
+    "status": "pass",
+    "detail": "164 commits; +0.9 MiB/turn linear 10 MiB over 4 turns"
+   },
+   {
+    "id": "W4d",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "wasm-go",
+    "ms": 1372,
+    "status": "pass",
+    "detail": "72 commits; +0.7 MiB/turn linear 8 MiB over 4 turns"
+   },
+   {
+    "id": "W4e",
+    "owner": "dcore-session",
+    "family": "bench",
+    "impl": "wasm-go",
+    "ms": 1274,
+    "status": "pass",
+    "detail": "42 commits"
+   },
+   {
+    "id": "W4f",
+    "owner": "dcore-loop",
+    "family": "wire",
+    "impl": "wasm-go",
+    "ms": 0,
+    "status": "pending",
+    "detail": "pending-owner: needs provider cassettes recorded with the owner's API keys (RISKS-AND-QUESTIONS Q6)"
+   },
+   {
+    "id": "W4g",
+    "owner": "dcore-loop",
+    "family": "bench",
+    "impl": "wasm-go",
+    "ms": 1262,
+    "status": "pass",
+    "detail": "31 commits"
+   },
+   {
+    "id": "X1",
+    "owner": "dcore-store",
+    "family": "mutation",
+    "impl": "wasm-go",
+    "ms": 2699,
+    "status": "pass",
+    "detail": "770 commits; +0.3 MiB/turn linear 10 MiB over 10 turns"
+   },
+   {
+    "id": "X1-live",
+    "owner": "dcore-session",
+    "family": "mutation",
+    "impl": "wasm-go",
+    "ms": 48412,
+    "status": "pass",
+    "detail": "39 handoffs over 12 crash points"
+   },
+   {
+    "id": "H-50",
+    "owner": "dcore-loop",
+    "family": "handoff",
+    "impl": "wasm-go",
+    "ms": 208241,
+    "status": "pass",
+    "detail": "234 handoffs over 77 crash points"
+   },
+   {
+    "id": "H-1000",
+    "owner": "dcore-loop",
+    "family": "handoff",
+    "impl": "wasm-go",
+    "ms": 248886,
+    "status": "pass",
+    "detail": "234 handoffs over 77 crash points"
+   },
+   {
+    "id": "H-3500",
+    "owner": "dcore-loop",
+    "family": "handoff",
+    "impl": "wasm-go",
+    "ms": 71329,
+    "status": "pass",
+    "detail": "33 handoffs over 10 crash points"
+   },
+   {
+    "id": "H-W3",
+    "owner": "dcore-loop",
+    "family": "handoff",
+    "impl": "wasm-go",
+    "ms": 123901,
+    "status": "pass",
+    "detail": "108 handoffs over 35 crash points"
+   },
+   {
+    "id": "H-W4d",
+    "owner": "dcore-loop",
+    "family": "handoff",
+    "impl": "wasm-go",
+    "ms": 65931,
+    "status": "pass",
+    "detail": "57 handoffs over 18 crash points"
+   },
+   {
+    "id": "R-104-50",
+    "owner": "dcore-session",
+    "family": "legacy",
+    "impl": "wasm-go",
+    "ms": 3948,
+    "status": "pass",
+    "detail": "231 commits; +1.0 MiB/turn linear 10 MiB over 3 turns"
+   },
+   {
+    "id": "H-R-104",
+    "owner": "dcore-session",
+    "family": "legacy",
+    "impl": "wasm-go",
+    "ms": 207493,
+    "status": "pass",
+    "detail": "234 handoffs over 77 crash points"
+   }
+  ]
+ }
+}

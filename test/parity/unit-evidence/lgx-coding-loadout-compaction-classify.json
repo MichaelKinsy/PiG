@@ -1,0 +1,201 @@
+[
+ {
+  "upstream": "packages/coding-agent/src/core/compaction/compaction.ts",
+  "package": "./coding",
+  "tests": [
+   "TestCompactionHelpersWorkOnASessionsEntries"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/compaction/compaction.ts",
+  "mutation": "coding/compaction_api.go: replace `return compaction.FindCutPoint(entries, startIndex, endIndex, keepRecentTokens)` with `return compaction.FindCutPoint(entries, startIndex, len(entries), 1)`; TestCompactionHelpersWorkOnASessionsEntries fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/compaction/compaction.ts",
+  "package": "./coding",
+  "tests": [
+   "TestCompactionHelpersWorkOnASessionsEntries"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/compaction/compaction.ts",
+  "mutation": "coding/compaction_api.go: replace `return compaction.FindCutPoint(entries, startIndex, endIndex, keepRecentTokens)` with `return compaction.FindCutPoint(entries, startIndex, endIndex, 1_000_000)`; TestCompactionHelpersWorkOnASessionsEntries fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/compaction/compaction.ts",
+  "package": "./coding",
+  "tests": [
+   "TestCompactionHelpersWorkOnASessionsEntries"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/compaction/compaction.ts",
+  "mutation": "coding/compaction_api.go: replace `return compaction.FindTurnStartIndex(entries, entryIndex, startIndex)` with `return compaction.FindTurnStartIndex(entries, entryIndex, 0)`; TestCompactionHelpersWorkOnASessionsEntries fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/compaction/compaction.ts",
+  "package": "./coding",
+  "tests": [
+   "TestCompactionHelpersWorkOnASessionsEntries"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/compaction/compaction.ts",
+  "mutation": "coding/compaction_api.go: replace `return compaction.FindTurnStartIndex(entries, entryIndex, startIndex)` with `return -1`; TestCompactionHelpersWorkOnASessionsEntries fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/compaction/compaction.ts",
+  "package": "./coding",
+  "tests": [
+   "TestCompactionHelpersWorkOnASessionsEntries"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/compaction/compaction.ts",
+  "mutation": "coding/compaction_api.go: replace `return compaction.GetLastAssistantUsage(entries)` with `return nil`; TestCompactionHelpersWorkOnASessionsEntries fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/agent-session.ts",
+  "package": "./coding",
+  "tests": [
+   "TestPrepareLoadoutHookReadsExposureNamespaceAndGuidelinesOfRegisteredTools"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/agent-session.ts",
+  "mutation": "coding/session_loadout.go: replace `exposures[definition.Name] = toolExposureOf(definition)` with `exposures[definition.Name] = extension.ToolExposureDirect`; TestPrepareLoadoutHookReadsExposureNamespaceAndGuidelinesOfRegisteredTools fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/agent-session.ts",
+  "package": "./coding",
+  "tests": [
+   "TestPrepareLoadoutHookReadsExposureNamespaceAndGuidelinesOfRegisteredTools"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/agent-session.ts",
+  "mutation": "coding/session_loadout.go: replace `namespaces[definition.Name] = definition.Namespace` with ``; TestPrepareLoadoutHookReadsExposureNamespaceAndGuidelinesOfRegisteredTools fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/agent-session.ts",
+  "package": "./coding",
+  "tests": [
+   "TestPrepareLoadoutHookReadsExposureNamespaceAndGuidelinesOfRegisteredTools"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/agent-session.ts",
+  "mutation": "coding/session_loadout.go: replace `guidelines[definition.Name] = normalizePromptGuidelines(definition.PromptGuidelines)` with `guidelines[definition.Name] = definition.PromptGuidelines`; TestPrepareLoadoutHookReadsExposureNamespaceAndGuidelinesOfRegisteredTools fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/agent-session.ts",
+  "package": "./coding",
+  "tests": [
+   "TestPrepareLoadoutHookReadsExposureNamespaceAndGuidelinesOfRegisteredTools"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/agent-session.ts",
+  "mutation": "coding/session_loadout.go: replace `if _, known := exposures[definition.Name]; !known {` with `if _, known := exposures[definition.Name]; known {`; TestPrepareLoadoutHookReadsExposureNamespaceAndGuidelinesOfRegisteredTools fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/agent-session.ts",
+  "package": "./coding",
+  "tests": [
+   "TestPrepareLoadoutHookReadsExposureNamespaceAndGuidelinesOfRegisteredTools"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/agent-session.ts",
+  "mutation": "coding/session_loadout.go: replace `return extension.ToolExposureDirect\n\t\t},\n\t\tGetNamespace` with `return extension.ToolExposureHidden\n\t\t},\n\t\tGetNamespace`; TestPrepareLoadoutHookReadsExposureNamespaceAndGuidelinesOfRegisteredTools fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/agent-session.ts",
+  "package": "./coding",
+  "tests": [
+   "TestPrepareLoadoutHookReadsExposureNamespaceAndGuidelinesOfRegisteredTools"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/agent-session.ts",
+  "mutation": "coding/session_loadout.go: replace `GetNamespace: func(name string) *extension.ToolNamespace { return namespaces[name] },` with `GetNamespace: func(name string) *extension.ToolNamespace { return nil },`; TestPrepareLoadoutHookReadsExposureNamespaceAndGuidelinesOfRegisteredTools fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/agent-session.ts",
+  "package": "./coding",
+  "tests": [
+   "TestPrepareLoadoutHookReadsExposureNamespaceAndGuidelinesOfRegisteredTools"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/agent-session.ts",
+  "mutation": "coding/session_loadout.go: replace `GetPromptGuidelines: func(name string) []string { return guidelines[name] },` with `GetPromptGuidelines: func(name string) []string { return nil },`; TestPrepareLoadoutHookReadsExposureNamespaceAndGuidelinesOfRegisteredTools fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/agent-session.ts",
+  "package": "./coding",
+  "tests": [
+   "TestPrepareLoadoutHookReadsExposureNamespaceAndGuidelinesOfRegisteredTools"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/agent-session.ts",
+  "mutation": "coding/session_loadout.go: replace `registered = append(registered, toolView(definition))` with ``; TestPrepareLoadoutHookReadsExposureNamespaceAndGuidelinesOfRegisteredTools fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/agent-session.ts",
+  "package": "./coding",
+  "tests": [
+   "TestPrepareLoadoutHookReadsExposureNamespaceAndGuidelinesOfRegisteredTools"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/agent-session.ts",
+  "mutation": "coding/session_tools.go: replace `guideline := widthx.JSTrim(raw)` with `guideline := raw`; TestPrepareLoadoutHookReadsExposureNamespaceAndGuidelinesOfRegisteredTools fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/agent-session.ts",
+  "package": "./coding",
+  "tests": [
+   "TestPrepareLoadoutHookReadsExposureNamespaceAndGuidelinesOfRegisteredTools"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/agent-session.ts",
+  "mutation": "coding/session_tools.go: replace `if _, duplicate := seen[guideline]; guideline == \"\" || duplicate {` with `if _, duplicate := seen[guideline]; guideline == \"\" || duplicate && false {`; TestPrepareLoadoutHookReadsExposureNamespaceAndGuidelinesOfRegisteredTools fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/agent-session.ts",
+  "package": "./coding",
+  "tests": [
+   "TestPrepareLoadoutHookReadsExposureNamespaceAndGuidelinesOfRegisteredTools"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/agent-session.ts",
+  "mutation": "coding/session_tools.go: replace `if _, duplicate := seen[guideline]; guideline == \"\" || duplicate {` with `if _, duplicate := seen[guideline]; duplicate {`; TestPrepareLoadoutHookReadsExposureNamespaceAndGuidelinesOfRegisteredTools fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-runtime.ts",
+  "package": "./coding",
+  "tests": [
+   "TestModelRuntimeClassifiersUpstream",
+   "TestModelRegistryClassifyForwardsOptionsAndACancelledRequestIsAborted"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "coding/model_runtime_classify.go: replace `if len(options) > 0 {\n\t\topts = options[0]\n\t}\n\tresult, err := runtime.classify` with `result, err := runtime.classify`; TestModelRegistryClassifyForwardsOptionsAndACancelledRequestIsAborted, TestModelRuntimeClassifiersUpstream fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/compaction/compaction.ts",
+  "package": "./coding",
+  "tests": [
+   "TestCompactionHelpersWorkOnASessionsEntries"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/compaction/compaction.ts",
+  "mutation": "coding/compaction_api.go: replace `return compaction.FindCutPoint(entries, startIndex, endIndex, keepRecentTokens)` with `return compaction.FindCutPoint(entries, 0, endIndex, keepRecentTokens)`; TestCompactionHelpersWorkOnASessionsEntries fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/compaction/compaction.ts",
+  "package": "./coding",
+  "tests": [
+   "TestCompactionHelpersWorkOnASessionsEntries"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/compaction/compaction.ts",
+  "mutation": "coding/compaction_api.go: replace `return compaction.GetLastAssistantUsage(entries)` with `return compaction.GetLastAssistantUsage(entries[:len(entries)-1])`; TestCompactionHelpersWorkOnASessionsEntries fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-runtime.ts",
+  "package": "./coding",
+  "tests": [
+   "TestModelRegistryClassifyForwardsOptionsAndACancelledRequestIsAborted"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "coding/model_runtime_classify.go: replace `return ai.ClassifierErrorResult(model, err, ctx.Err() != nil)` with `return ai.ClassifierErrorResult(model, err, false)`; TestModelRegistryClassifyForwardsOptionsAndACancelledRequestIsAborted fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-registry.ts",
+  "package": "./coding",
+  "tests": [
+   "TestModelRegistryClassifyForwardsOptionsAndACancelledRequestIsAborted"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-registry.ts",
+  "mutation": "coding/model_runtime_classify.go: replace `return registry.runtime.Classify(ctx, model, request, options...)` with `return registry.runtime.Classify(ctx, model, request)`; TestModelRegistryClassifyForwardsOptionsAndACancelledRequestIsAborted fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-registry.ts",
+  "package": "./coding",
+  "tests": [
+   "TestModelRegistryClassifyForwardsOptionsAndACancelledRequestIsAborted"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-registry.ts",
+  "mutation": "coding/model_runtime_classify.go: replace `return registry.runtime.GenerateImages(ctx, model, request, options...)` with `return registry.runtime.GenerateImages(ctx, model, request)`; TestModelRegistryClassifyForwardsOptionsAndACancelledRequestIsAborted fails."
+ }
+]

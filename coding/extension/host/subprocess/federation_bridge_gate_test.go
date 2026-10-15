@@ -1,7 +1,10 @@
+//go:build !pig_strip_node_extensions
+
 package subprocess
 
 import (
 	"context"
+	"encoding/json"
 	"path/filepath"
 	"testing"
 	"time"
@@ -35,8 +38,8 @@ func TestNodeBridgeFederationGate(t *testing.T) {
 				{"id": "anthropic/claude-test", "modelId": "claude-test", "provider": map[string]any{"id": "anthropic"}, "api": "anthropic-messages"},
 				{"id": "minimax/claude-test", "modelId": "claude-test", "provider": map[string]any{"id": "minimax"}, "api": "anthropic-messages"},
 			}
-			bridge.SetHostAction("getModelInfo", func() map[string]any { return models[0] })
-			bridge.SetHostAction("getModels", func() []map[string]any { return models })
+			bridge.SetHostAction("getModelInfo", func() json.RawMessage { return modelJSON(models[0]) })
+			bridge.SetHostAction("getModels", func() []json.RawMessage { return modelJSONs(models...) })
 			var calls int
 			bridge.SetHostAction("streamModel", func(_ context.Context, _ map[string]any, _ map[string]any) (*ai.AssistantMessageEventStream, error) {
 				calls++

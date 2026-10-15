@@ -3,6 +3,7 @@ package tools
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -36,7 +37,37 @@ func (t *WriteTool) operations() WriteOperations {
 	if t.Operations != nil {
 		return *t.Operations
 	}
-	return WriteOperations{WriteFile: func(path, content string) error { return os.WriteFile(path, []byte(content), 0o644) }, Mkdir: func(path string) error { return os.MkdirAll(path, 0o755) }}
+	return WriteOperations{WriteFile: writeFileString, Mkdir: func(path string) error { return os.MkdirAll(path, 0o755) }}
+}
+
+// writeFileString is os.WriteFile(path, []byte(content), 0o644) without copying content: File.WriteString writes the string's bytes.
+func writeFileString(path, content string) error {
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
+	if err != nil {
+		return err
+	}
+	_, err = f.WriteString(content)
+	if closeErr := f.Close(); closeErr != nil && err == nil {
+		err = closeErr
+	}
+	return err
+}
+
+// unreadString is a string member decoded for its type only. It fails exactly where decoding into a string fails (any JSON value but a
+// string or null) without unquoting the text, so a reservation that needs only the path does not copy the content.
+type unreadString struct{}
+
+func (*unreadString) UnmarshalJSON(raw []byte) error {
+	if raw[0] == '"' || string(raw) == "null" {
+		return nil
+	}
+	return errors.New("tools: value is not a string")
+}
+
+// writeReservation is writeParams for ReserveMutationOrder: it decodes the path and checks the content's type.
+type writeReservation struct {
+	Path    string       `json:"path"`
+	Content unreadString `json:"content"`
 }
 
 func (t *WriteTool) Name() string  { return "write" }
@@ -70,7 +101,7 @@ func (t *WriteTool) ReserveMutationOrder(rawParams json.RawMessage) (*agent.Muta
 	if t.Queue == nil {
 		return nil, false
 	}
-	var p writeParams
+	var p writeReservation
 	if err := json.Unmarshal(rawParams, &p); err != nil {
 		return nil, false
 	}

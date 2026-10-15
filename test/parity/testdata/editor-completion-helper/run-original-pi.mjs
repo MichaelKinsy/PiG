@@ -1,5 +1,6 @@
 // Runs the 23 assigned editor.test.ts cases against the installed, pinned Pi implementation.
 // Only TypeScript annotations and the terminal/theme construction are adapted.
+import { PI_PACKAGE_VERSION } from "../pi-version.mjs";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -24,7 +25,7 @@ function walk(node) {
 walk(source);
 if (selected.size) throw new Error(`Missing original cases: ${[...selected]}`);
 const pkg = path.join(root, "extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-if (JSON.parse(fs.readFileSync(path.join(pkg, "package.json"), "utf8")).version !== "1.0.3") throw new Error("Pi version mismatch");
+if (JSON.parse(fs.readFileSync(path.join(pkg, "package.json"), "utf8")).version !== PI_PACKAGE_VERSION) throw new Error("Pi version mismatch");
 const dist = path.join(pkg, "node_modules/@earendil-works/pi-tui/dist");
 const harness = `
 import assert from "node:assert";

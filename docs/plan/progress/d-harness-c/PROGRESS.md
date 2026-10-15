@@ -1,6 +1,6 @@
 # d-harness-c: pi-durable task, tool, graph, and ownership tests
 
-Lane: d-harness-c. Branch `team/smc1/d-harness-c`, from staging `agg-100`, merged with d-foundation, d-storage, d-session, d-harness-a, d-harness-b, and d-env-tools. Upstream `.upstream/v1.0.0/packages/durable`.
+Lane: d-harness-c. Branch `team/the bench host/d-harness-c`, from staging `agg-100`, merged with d-foundation, d-storage, d-session, d-harness-a, d-harness-b, and d-env-tools. Upstream `.upstream/v1.0.0/packages/durable`.
 
 ## Status
 

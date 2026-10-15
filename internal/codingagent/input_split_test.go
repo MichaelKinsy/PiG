@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/modes/interactive/components/custom-editor.ts
+
 import (
 	"reflect"
 	"testing"
@@ -78,7 +80,7 @@ func TestStdinBufferDispatch_DropsKittyKeyRelease(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			var b StdinBuffer
-			got := dropKeyReleases(tui.NewExtensionInputComponent("t", "p"), b.ProcessString(tc.in))
+			got := dropKeyReleases(tui.NewExtensionInputComponent("t", "p", nil, nil), b.ProcessString(tc.in))
 			if len(got) != len(tc.want) {
 				t.Fatalf("delivery of StdinBuffer input %q =\n  got  %#v\n  want %#v", tc.in, got, tc.want)
 			}
@@ -259,7 +261,7 @@ func TestStdinBufferEscapeBoundaries(t *testing.T) {
 // (updated: "minimal" added between "off" and "low").
 func TestThinkingCycleLevels(t *testing.T) {
 	// Full model (MaxThinking = High) should cycle off→minimal→low→medium→high→off.
-	fullModel := &ai.Model{Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingHigh}}
+	fullModel := &ai.Model{Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelHigh}}
 	maxIdx := maxThinkingIndex(fullModel)
 	if maxIdx != 4 {
 		t.Fatalf("full model maxIdx: got %d want 4", maxIdx)
@@ -282,7 +284,7 @@ func TestThinkingCycleLevels_XHigh(t *testing.T) {
 	// XHigh model cycles through all 6 levels including "xhigh".
 	xh := "xhigh"
 	xhighModel := &ai.Model{
-		Capabilities:     ai.ModelCapabilities{MaxThinking: ai.ThinkingXHigh},
+		Capabilities:     ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelXHigh},
 		ThinkingLevelMap: ai.ThinkingLevelMap{ai.ThinkingXHigh: &xh},
 	}
 	maxIdx := maxThinkingIndex(xhighModel)
@@ -303,7 +305,7 @@ func TestThinkingCycleLevels_XHigh(t *testing.T) {
 
 func TestThinkingCycleLevels_NoSupport(t *testing.T) {
 	// Model with no MaxThinking: maxIdx = 0 → no cycling.
-	noneModel := &ai.Model{Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingNone}}
+	noneModel := &ai.Model{Capabilities: ai.ModelCapabilities{MaxThinking: ""}}
 	if maxThinkingIndex(noneModel) != 0 {
 		t.Error("non-reasoning model: maxIdx should be 0")
 	}
@@ -313,7 +315,7 @@ func TestThinkingCycleLevels_NoSupport(t *testing.T) {
 }
 
 func TestThinkingCycleLevels_Capped(t *testing.T) {
-	medModel := &ai.Model{Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingMedium}}
+	medModel := &ai.Model{Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelMedium}}
 	maxIdx := maxThinkingIndex(medModel)
 	if maxIdx != 3 {
 		t.Fatalf("medium model maxIdx: got %d want 3", maxIdx)
@@ -332,7 +334,7 @@ func TestThinkingCycleLevels_Capped(t *testing.T) {
 
 func TestThinkingCycleLevels_MinimalOnly(t *testing.T) {
 	// Minimal-cap model should cycle off→minimal→off.
-	minModel := &ai.Model{Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingMinimal}}
+	minModel := &ai.Model{Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelMinimal}}
 	maxIdx := maxThinkingIndex(minModel)
 	if maxIdx != 1 {
 		t.Fatalf("minimal model maxIdx: got %d want 1", maxIdx)

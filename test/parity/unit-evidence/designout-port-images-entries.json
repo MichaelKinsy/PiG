@@ -1,0 +1,20 @@
+[
+  {
+    "upstream": "packages/durable/src/images/node.ts",
+    "package": "./durable/images/node",
+    "tests": [
+      "TestTheNodeAndCloudflareProcessorsPrepareA1x1GIF"
+    ],
+    "upstream_reference": "packages/durable/src/images/node.ts; packages/durable/test/images-wasm-module.test.ts",
+    "mutation": "durable/images/node/node.go: replace 'return images.CreatePhotonImages(), nil' with '_ = images.CreatePhotonImages(); return nil, nil'; go test ./durable/images/node -run TestTheNodeAndCloudflareProcessorsPrepareA1x1GIF fails with a nil pointer dereference (the processor is nil)."
+  },
+  {
+    "upstream": "packages/durable/src/images/cloudflare.ts",
+    "package": "./durable/images/node",
+    "tests": [
+      "TestTheNodeAndCloudflareProcessorsPrepareA1x1GIF"
+    ],
+    "upstream_reference": "packages/durable/src/images/cloudflare.ts; packages/durable/test/images-wasm-module.test.ts",
+    "mutation": "durable/images/cloudflare/cloudflare.go: replace 'return images.CreatePhotonImages()' with '_ = images.CreatePhotonImages(); return nil'; go test ./durable/images/node -run TestTheNodeAndCloudflareProcessorsPrepareA1x1GIF fails with a nil pointer dereference (the processor is nil)."
+  }
+]

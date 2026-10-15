@@ -15,8 +15,8 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// inputSchema is upstream's toolSearchSchema.
-var inputSchema = json.RawMessage(`{"type":"object","properties":{"query":{"description":"Search query for deferred tools.","type":"string"},"limit":{"description":"Maximum number of tools to return. Defaults to 8.","type":"number"}},"required":["query"]}`)
+// inputSchema is upstream's toolSearchSchema in TypeBox's key order (type, required, properties; type before description): the order reaches the model's tool declaration and the validation messages.
+var inputSchema = json.RawMessage(`{"type":"object","required":["query"],"properties":{"query":{"type":"string","description":"Search query for deferred tools."},"limit":{"type":"number","description":"Maximum number of tools to return. Defaults to 8."}}}`)
 
 // Details are the details of a tool_search result.
 type Details struct {
@@ -78,23 +78,26 @@ func Definition() extension.ToolDefinition {
 		Parameters:    inputSchema,
 		// Searching is not something scripts need; it changes what the model sees.
 		Exposure: extension.ToolExposureModelOnly,
+		// A query can match any tool that is not declared yet.
+		// upstream: tool-search/tool.ts (createToolSearchToolDefinition, reachesTools)
+		ReachesTools: func(json.RawMessage) extension.ToolReach { return extension.ToolReach{All: true} },
 		Execute: func(ctx context.Context, _ string, params json.RawMessage, _ extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
 			var input struct {
 				Query string   `json:"query"`
 				Limit *float64 `json:"limit"`
 			}
 			if err := json.Unmarshal(params, &input); err != nil {
-				return nil, fmt.Errorf("invalid tool_search input: %w", err)
+				return extension.AgentToolResult{}, fmt.Errorf("invalid tool_search input: %w", err)
 			}
 			if jsstring.Trim(input.Query) == "" {
-				return nil, errors.New("query must not be empty")
+				return extension.AgentToolResult{}, errors.New("query must not be empty")
 			}
 			limit := float64(DefaultLimit)
 			if input.Limit != nil {
 				limit = *input.Limit
 			}
 			if limit != math.Trunc(limit) || limit <= 0 {
-				return nil, errors.New("limit must be a positive integer")
+				return extension.AgentToolResult{}, errors.New("limit must be a positive integer")
 			}
 			var found []resultTool
 			if tc := extension.FromContext(ctx); tc != nil {
@@ -122,16 +125,16 @@ func Definition() extension.ToolDefinition {
 	}
 }
 
-// Extension is the `builtin:tool-search` extension: the tool registered inactive. Activate it with `--tools`, the
+// CreateToolSearchExtension is the factory of the `builtin:tool-search` extension: it registers the tool inactive. Activate it with `--tools`, the
 // `defaultTools` setting or `setActiveTools()`.
 //
 // Ports packages/coding-agent/src/extensions/tool-search/index.ts (createToolSearchExtension).
-func Extension() (extension.Extension, error) {
-	definition := Definition()
-	inactive := false
-	definition.DefaultActive = &inactive
-	return extension.Extension{
-		Tools:     map[string]extension.RegisteredTool{ToolName: {Definition: definition}},
-		ToolOrder: []string{ToolName},
-	}, nil
+func CreateToolSearchExtension() extension.ExtensionFactory {
+	return func(pi extension.API) error {
+		definition := Definition()
+		inactive := false
+		definition.DefaultActive = &inactive
+		pi.RegisterTool(definition)
+		return nil
+	}
 }

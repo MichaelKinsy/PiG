@@ -15,6 +15,7 @@ override_base_args = true
 pig_bin = "/usr/bin/env"
 pi_bin = "/usr/bin/env"
 pig_args = ["bash", "./test/parity/testdata/edit-access-pig.sh"]
+pig_go_tests = ["./internal/codingagent/tools"]
 pi_args = ["node", "./test/parity/testdata/edit-access-pi.mjs"]
 
 [cli]

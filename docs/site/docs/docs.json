@@ -1,6 +1,10 @@
 {
   "provenance": {
+    "applied-use-cases.md": "pig-authored",
+    "benchmarking.md": "pig-authored",
+    "bug-ledger.md": "pig-authored",
     "cli-integration.md": "adapted-pi",
+    "cli-examples.md": "pig-authored",
     "cli.md": "adapted-pi",
     "codemode.md": "adapted-pi",
     "compaction.md": "adapted-pi",
@@ -13,6 +17,8 @@
     "environment-variables.md": "adapted-pi",
     "evals.md": "pig-authored",
     "extensions.md": "adapted-pi",
+    "first-extension.md": "pig-authored",
+    "first-run.md": "pig-authored",
     "how-pig-works.md": "adapted-pi",
     "index.md": "pig-authored",
     "install-troubleshooting.md": "pig-authored",
@@ -23,6 +29,7 @@
     "mcp.md": "adapted-pi",
     "message-types.md": "adapted-pi",
     "models.md": "adapted-pi",
+    "nvidia-rtx-llama-cpp.md": "adapted-pi",
     "packages.md": "adapted-pi",
     "piglet-binaries.md": "pig-authored",
     "piglets.md": "pig-authored",
@@ -37,6 +44,7 @@
     "security.md": "pig-authored",
     "session-format.md": "adapted-pi",
     "sessions.md": "adapted-pi",
+    "settings-examples.md": "pig-authored",
     "settings.md": "adapted-pi",
     "shell-aliases.md": "adapted-pi",
     "skills.md": "adapted-pi",
@@ -46,7 +54,13 @@
     "themes.md": "adapted-pi",
     "tmux.md": "adapted-pi",
     "tui.md": "adapted-pi",
+    "typescript-runtimes.md": "pig-authored",
     "usage.md": "adapted-pi",
+    "usecase-clean-spreadsheet.md": "pig-authored",
+    "usecase-draft-document.md": "pig-authored",
+    "usecase-organise-files.md": "pig-authored",
+    "usecase-summarise-pdfs.md": "pig-authored",
+    "usecase-weekly-report.md": "pig-authored",
     "virtual-models.md": "adapted-pi",
     "windows.md": "adapted-pi"
   },
@@ -63,8 +77,41 @@
           "path": "quickstart.md"
         },
         {
+          "title": "Your First Ten Minutes",
+          "path": "first-run.md"
+        },
+        {
           "title": "How PiG Works",
           "path": "how-pig-works.md"
+        }
+      ]
+    },
+    {
+      "title": "Applied Use Cases",
+      "items": [
+        {
+          "title": "Overview and Safety",
+          "path": "applied-use-cases.md"
+        },
+        {
+          "title": "Summarise a Folder of PDFs",
+          "path": "usecase-summarise-pdfs.md"
+        },
+        {
+          "title": "Clean a Spreadsheet",
+          "path": "usecase-clean-spreadsheet.md"
+        },
+        {
+          "title": "Draft and Edit a Document",
+          "path": "usecase-draft-document.md"
+        },
+        {
+          "title": "Automate a Weekly Report",
+          "path": "usecase-weekly-report.md"
+        },
+        {
+          "title": "Organise Files",
+          "path": "usecase-organise-files.md"
         }
       ]
     },
@@ -105,6 +152,10 @@
             {
               "title": "Run Local Models",
               "path": "llama-cpp.md"
+            },
+            {
+              "title": "Run Local Models on NVIDIA RTX",
+              "path": "nvidia-rtx-llama-cpp.md"
             },
             {
               "title": "Configure Your Terminal",
@@ -165,6 +216,10 @@
           "title": "Build on PiG",
           "items": [
             {
+              "title": "Your First Extension",
+              "path": "first-extension.md"
+            },
+            {
               "title": "Build Extensions",
               "path": "extensions.md"
             },
@@ -196,12 +251,20 @@
           "path": "cli.md"
         },
         {
+          "title": "Command Line by Example",
+          "path": "cli-examples.md"
+        },
+        {
           "title": "Slash Commands",
           "path": "slash-commands.md"
         },
         {
           "title": "Settings",
           "path": "settings.md"
+        },
+        {
+          "title": "Settings by Example",
+          "path": "settings-examples.md"
         },
         {
           "title": "Environment Variables",
@@ -261,6 +324,10 @@
           "path": "piglet-binaries.md"
         },
         {
+          "title": "TypeScript Extension Runtimes",
+          "path": "typescript-runtimes.md"
+        },
+        {
           "title": "Derivative Harnesses",
           "path": "derivative-harnesses.md"
         },
@@ -275,6 +342,14 @@
         {
           "title": "Harness Benchmarks",
           "path": "evals.md"
+        },
+        {
+          "title": "Benchmarks on Kubernetes",
+          "path": "benchmarking.md"
+        },
+        {
+          "title": "Bug Fix Ledger",
+          "path": "bug-ledger.md"
         },
         {
           "title": "Develop PiG",

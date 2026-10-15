@@ -1,0 +1,19 @@
+[
+ {
+  "ids": [
+   "pkg:tui/.#parseKey"
+  ],
+  "targets": [
+   "tui/key_parse.go#ParseKey"
+  ],
+  "production": [
+   "public-api:tui/key_parse.go#ParseKey"
+  ],
+  "evidence": [
+   "test:tui/key_parse_test.go#TestParseKey_KittyModeAwareLegacyCases",
+   "test:tui/key_parse_test.go#TestParseKey_RawBackspaceWindowsTerminalHeuristic"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "parseKey: Go ParseKey has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ }
+]

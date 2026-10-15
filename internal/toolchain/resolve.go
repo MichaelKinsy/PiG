@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go/version"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/configroot"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 )
@@ -45,6 +47,25 @@ func (t GoToolchain) Environ(environ []string) []string {
 	return append(out, "GOROOT="+t.Root)
 }
 
+// WorkDirEnv returns environ with PWD naming dir, the working directory of a
+// command started with an explicit environment. os/exec sets PWD for a
+// command's Dir only when its Env is nil, so the command would otherwise
+// inherit this process's PWD, which names another directory. The go command
+// then takes the physical working directory, and a dir reached through a
+// symbolic link (/tmp or /var on macOS) no longer matches the paths it was
+// given, such as GOWORK and the go.work `use .` it names. Windows and Plan 9
+// do not use PWD.
+func WorkDirEnv(dir string, environ []string) []string {
+	if runtime.GOOS == "windows" || runtime.GOOS == "plan9" {
+		return environ
+	}
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return environ
+	}
+	return append(slices.DeleteFunc(slices.Clone(environ), func(kv string) bool { return envKey(kv, "PWD") }), "PWD="+abs)
+}
+
 // envKey reports whether kv assigns key. Windows compares variable names
 // without regard to case.
 func envKey(kv, key string) bool {
@@ -62,8 +83,44 @@ var (
 	resolveMemo = map[resolveKey]GoToolchain{}
 )
 
+// MinGoVersion is the oldest Go release that builds extensions: the go directive
+// of extensions/sdk/go.mod. Builds run with GOTOOLCHAIN=local semantics, so an
+// older go cannot switch to a newer release by itself.
+const MinGoVersion = "1.26"
+
+// Version is the release of the installation, read from its VERSION file, such
+// as "go1.26.1". It is empty when the release cannot be read.
+func (t GoToolchain) Version() string {
+	if t.Root == "" {
+		return ""
+	}
+	data, err := os.ReadFile(filepath.Join(t.Root, "VERSION"))
+	if err != nil {
+		return ""
+	}
+	line, _, _ := strings.Cut(string(data), "\n")
+	if line = strings.TrimSpace(line); !version.IsValid(line) {
+		return ""
+	}
+	return line
+}
+
+// BelowFloor reports whether the installation is a known release older than
+// MinGoVersion.
+func (t GoToolchain) BelowFloor() bool {
+	v := t.Version()
+	return v != "" && version.Compare(v, "go"+MinGoVersion) < 0
+}
+
+// FloorRemedy is the one line that tells the user the go found is too old to
+// build extensions and how to fix it.
+func (t GoToolchain) FloorRemedy() string {
+	return fmt.Sprintf("%s at %s is older than Go %s, the minimum the extension SDK needs; run `pig setup go` (PiG then uses that toolchain in place of the older go on PATH) or install Go %s or newer from https://go.dev/dl/", t.Version(), t.Command, MinGoVersion, MinGoVersion)
+}
+
 // ResolveGo selects the Go installation for builds: the go command on PATH, else
-// the PiG-managed toolchain. It resolves once per selection and process, so
+// the PiG-managed toolchain. A go on PATH older than MinGoVersion gives way to a
+// PiG-managed toolchain that meets it. It resolves once per selection and process, so
 // concurrent extension builds cannot pick different installations. Nothing is
 // run when the command lives inside its own installation, which is the case for
 // a release archive, Homebrew and every version manager's real install. A shim or
@@ -76,7 +133,7 @@ func ResolveGo() (GoToolchain, error) {
 		return GoToolchain{}, err
 	}
 	cwd, _ := os.Getwd()
-	home, _ := ConfigRoot()
+	home, _ := configroot.Resolve()
 	key := resolveKey{command, os.Getenv("GOROOT"), os.Getenv("GOTOOLCHAIN"), cwd, home}
 	resolveMu.Lock()
 	defer resolveMu.Unlock()
@@ -87,6 +144,11 @@ func ResolveGo() (GoToolchain, error) {
 	if t.Command == "" {
 		if t, err = resolveGoCommand(command); err != nil {
 			return GoToolchain{}, err
+		}
+		if t.BelowFloor() {
+			if managed, ok := managedGo(); ok && !managed.BelowFloor() {
+				t = managed
+			}
 		}
 	}
 	resolveMemo[key] = t
@@ -99,15 +161,24 @@ func goCommand() (string, GoToolchain, error) {
 	if path, err := exec.LookPath("go"); err == nil {
 		return path, GoToolchain{}, nil
 	}
-	root, err := ConfigRoot()
-	if err == nil {
-		goRoot := ManagedGoRoot(root)
-		managed := filepath.Join(goRoot, "bin", exeName("go"))
-		if info, statErr := os.Stat(managed); statErr == nil && !info.IsDir() {
-			return managed, GoToolchain{Command: managed, Root: goRoot}, nil
-		}
+	if managed, ok := managedGo(); ok {
+		return managed.Command, managed, nil
 	}
 	return "", GoToolchain{}, fmt.Errorf("go is not on PATH and no PiG-managed Go toolchain is installed; run `pig setup go`: %w", exec.ErrNotFound)
+}
+
+// managedGo is the toolchain `pig setup go` installed, when there is one.
+func managedGo() (GoToolchain, bool) {
+	root, err := configroot.Resolve()
+	if err != nil {
+		return GoToolchain{}, false
+	}
+	goRoot := ManagedGoRoot(root)
+	command := filepath.Join(goRoot, "bin", exeName("go"))
+	if !fileExists(command) {
+		return GoToolchain{}, false
+	}
+	return GoToolchain{Command: command, Root: goRoot}, true
 }
 
 func resolveGoCommand(command string) (GoToolchain, error) {

@@ -49,7 +49,7 @@ func fakeModuleTree(t *testing.T) string {
 	files := map[string]string{
 		"go.mod":             "module github.com/MichaelKinsy/PiG\n\ngo 1.26.0\n",
 		"go.work":            "go 1.26.0\n\nuse ./extensions/sdk\n",
-		"cmd/pig/main.go":    "package main\n\nfunc main() {}\n",
+		"coding/cli/main.go": "package main\n\nfunc main() {}\n",
 		"coding/upstream.go": "package coding\n",
 	}
 	for name, content := range files {
@@ -375,5 +375,19 @@ func TestRunningPigReleaseRequiresTheExactStampedVersion(t *testing.T) {
 		if ok != test.release || (ok && version != want) || (!ok && version != "") {
 			t.Fatalf("stamp %q: runningPigRelease() = %q, %v; want release %v", test.stamp, version, ok, test.release)
 		}
+	}
+}
+
+func TestSourceRevisionOutsideGitCheckoutNamesDirectory(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("GIT_CEILING_DIRECTORIES", filepath.Dir(root))
+	t.Setenv("PIG_SOURCE_ROOT", root)
+	_, err := pigSource{Root: root}.revision()
+	if err == nil {
+		t.Fatal("revision() succeeded outside a Git checkout")
+	}
+	want := "PIG_SOURCE_ROOT " + root + " is not a Git checkout: the Piglet builder records the PiG commit it builds from; clone PiG with git, or unset PIG_SOURCE_ROOT to fetch the release source"
+	if err.Error() != want {
+		t.Fatalf("error = %q, want %q", err.Error(), want)
 	}
 }

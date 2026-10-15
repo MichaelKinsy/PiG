@@ -1,6 +1,7 @@
 package subprocess
 
 import (
+	"encoding/json"
 	"io"
 	"net"
 	"sync"
@@ -148,9 +149,15 @@ func TestReplacedGenerationCallsFailWithThePiStaleMessage(t *testing.T) {
 			old.commands.begin()
 			defer old.commands.end()
 			h.commitStaged([]stagedManagedExt{{name: "busy", me: &managedExt{config: ExtConfig{Name: "busy"}}}}, nil, "reload replaced")
+			// The replaced generation first learns it is stale, so the members it answers locally throw too (agent-session.ts:3660-3664).
+			env := readFramed(t, peer)
+			var invalidate InvalidateArgs
+			if env.Type != MsgNotify || env.Notify == nil || env.Notify.Method != NotifyInvalidate || json.Unmarshal(env.Notify.Args, &invalidate) != nil || invalidate.Message != (&inproc.StaleError{}).Error() {
+				t.Fatalf("first frame after the reload = %+v, want an invalidate notify with Pi's stale message", env)
+			}
 
 			go h.runCall(old, conn, "c1", &CallPayload{Method: "getActiveTools"}, nil)
-			env := readFramed(t, peer)
+			env = readFramed(t, peer)
 			if env.Type != MsgCallResult || env.ID != "c1" || env.CallResult == nil || env.CallResult.Error == nil {
 				t.Fatalf("result = %+v, want an error result for c1", env)
 			}

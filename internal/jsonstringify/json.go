@@ -10,13 +10,32 @@ import (
 	"math"
 	"slices"
 	"strconv"
-	"strings"
-	"unicode/utf16"
 	"unicode/utf8"
+
+	"github.com/MichaelKinsy/PiG/durable/core/jv"
+	"github.com/MichaelKinsy/PiG/internal/jsparity"
 )
 
-// Canonicalize applies JSON.parse/stringify semantics to validated JSON, preserving object insertion order and lone UTF-16 surrogates.
+// Canonicalize applies JSON.parse/stringify semantics to validated JSON, preserving object insertion order and lone UTF-16 surrogates. Text that JSON.stringify would write unchanged is copied, without a decode and re-encode.
 func Canonicalize(raw []byte) ([]byte, error) {
+	return AppendCanonical(nil, raw)
+}
+
+// AppendCanonical appends Canonicalize(raw) to dst. Text that JSON.stringify writes unchanged is appended without an intermediate copy, so a caller that reuses dst allocates nothing for it. On an error dst is returned unchanged.
+func AppendCanonical(dst, raw []byte) ([]byte, error) {
+	raw = bytes.TrimSpace(raw)
+	if IsCanonical(raw) {
+		return append(dst, raw...), nil
+	}
+	canonical, err := canonicalize(raw)
+	if err != nil {
+		return dst, err
+	}
+	return append(dst, canonical...), nil
+}
+
+// canonicalize is the complete JSON.parse/stringify rewrite that Canonicalize skips for text IsCanonical accepts.
+func canonicalize(raw []byte) ([]byte, error) {
 	raw = bytes.TrimSpace(raw)
 	if len(raw) == 0 {
 		return nil, errors.New("empty JSON")
@@ -34,7 +53,7 @@ func Canonicalize(raw []byte) ([]byte, error) {
 			if i > 0 {
 				out = append(out, ',')
 			}
-			encoded, err := Canonicalize(value)
+			encoded, err := canonicalize(value)
 			if err != nil {
 				return nil, err
 			}
@@ -46,17 +65,12 @@ func Canonicalize(raw []byte) ([]byte, error) {
 	case 't', 'f', 'n':
 		return raw, nil
 	default:
+		// JSON.parse reads a number too large for a double as Infinity, which JSON.stringify writes as null, and one too small as 0.
 		value, err := strconv.ParseFloat(string(raw), 64)
-		if math.IsInf(value, 0) {
-			return []byte("null"), nil
-		}
-		if err != nil {
+		if err != nil && !errors.Is(err, strconv.ErrRange) {
 			return nil, err
 		}
-		if value == 0 {
-			return []byte("0"), nil
-		}
-		return json.Marshal(value)
+		return jsparity.AppendNumber(nil, value), nil
 	}
 }
 
@@ -83,7 +97,7 @@ func object(raw []byte) ([]byte, error) {
 		if err := decoder.Decode(&value); err != nil {
 			return nil, err
 		}
-		encoded, err := Canonicalize(value)
+		encoded, err := canonicalize(value)
 		if err != nil {
 			return nil, err
 		}
@@ -120,64 +134,17 @@ func object(raw []byte) ([]byte, error) {
 	return append(out, '}'), nil
 }
 
+// stringToken is JSON.stringify(JSON.parse(raw)) for a JSON string token: the string decodes as UTF-16 code units held in WTF-8 (a lone
+// surrogate escape stays one unit) and jsparity.AppendString writes it.
 func stringToken(raw []byte) []byte {
 	if !bytes.ContainsRune(raw, '\\') && utf8.Valid(raw) {
 		return raw
 	}
-	out := []byte{'"'}
-	for i := 1; i < len(raw)-1; {
-		if raw[i] != '\\' {
-			value, size := utf8.DecodeRune(raw[i:])
-			out = utf8.AppendRune(out, value)
-			i += size
-			continue
-		}
-		if raw[i+1] != 'u' {
-			if raw[i+1] == '/' {
-				out = append(out, '/')
-			} else {
-				out = append(out, raw[i:i+2]...)
-			}
-			i += 2
-			continue
-		}
-		value, _ := strconv.ParseUint(string(raw[i+2:i+6]), 16, 16)
-		i += 6
-		r := rune(value)
-		if utf16.IsSurrogate(r) {
-			if r >= 0xd800 && r <= 0xdbff && i+6 < len(raw) && raw[i] == '\\' && raw[i+1] == 'u' {
-				low, _ := strconv.ParseUint(string(raw[i+2:i+6]), 16, 16)
-				if low >= 0xdc00 && low <= 0xdfff {
-					out = utf8.AppendRune(out, utf16.DecodeRune(r, rune(low)))
-					i += 6
-					continue
-				}
-			}
-			out = append(out, strings.ToLower(string(raw[i-6:i]))...)
-			continue
-		}
-		switch r {
-		case '"':
-			out = append(out, '\\', '"')
-		case '\\':
-			out = append(out, '\\', '\\')
-		case '\b':
-			out = append(out, '\\', 'b')
-		case '\f':
-			out = append(out, '\\', 'f')
-		case '\n':
-			out = append(out, '\\', 'n')
-		case '\r':
-			out = append(out, '\\', 'r')
-		case '\t':
-			out = append(out, '\\', 't')
-		default:
-			if r < 0x20 {
-				out = append(out, strings.ToLower(string(raw[i-6:i]))...)
-			} else {
-				out = utf8.AppendRune(out, r)
-			}
-		}
+	value, err := jv.Parse(raw)
+	text, ok := value.(string)
+	if err != nil || !ok {
+		// The caller validated the token, so this is unreachable; keep the text rather than lose it.
+		return raw
 	}
-	return append(out, '"')
+	return jsparity.AppendString(nil, text)
 }

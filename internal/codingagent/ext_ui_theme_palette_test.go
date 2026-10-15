@@ -6,8 +6,10 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
+	"weak"
 
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -54,7 +56,7 @@ func TestExtensionThemePaletteCarriesAppearanceColorsAndMode(t *testing.T) {
 		if !ok {
 			t.Fatalf("%s: colors is %T", mode, palette["colors"])
 		}
-		values := theme.ColorValues()
+		values := theme.Colors()
 		if len(got) != len(values) {
 			t.Errorf("%s: %d colors, want one per token (%d)", mode, len(got), len(values))
 		}
@@ -152,4 +154,109 @@ func TestExtensionThemePaletteOmitsNonFiniteColors(t *testing.T) {
 	if _, ok := palette.Colors["accent"]; !ok {
 		t.Errorf("colors lost the finite accent: %v", palette.Colors)
 	}
+}
+
+// The palette the host encodes for a subprocess extension is shared while no input of ExtensionThemePalette changes, and is rebuilt, equal to a fresh ExtensionThemePalette, as soon as the active theme, the terminal's reported colors or the theme's color mode change.
+func TestActiveExtensionThemeWireIsSharedUntilAnInputChanges(t *testing.T) {
+	previous := tui.ActiveTheme()
+	t.Cleanup(func() {
+		tui.SetThemeInstance(previous)
+		tui.SetTerminalColors(tui.TerminalColors{})
+	})
+	data, err := os.ReadFile(filepath.Join("..", "..", "tui", "theme_dark.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var source map[string]any
+	if err := json.Unmarshal(data, &source); err != nil {
+		t.Fatal(err)
+	}
+	source["colors"].(map[string]any)["text"] = ""
+	load := func(name string, mode tui.TerminalColorMode) *tui.Theme {
+		t.Helper()
+		source["name"] = name
+		encoded, _ := json.Marshal(source)
+		path := filepath.Join(t.TempDir(), name+".json")
+		if err := os.WriteFile(path, encoded, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		theme, err := tui.LoadThemeFromPath(path, mode)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return theme
+	}
+	pointer := func(palette any) uintptr { return reflect.ValueOf(palette).Pointer() }
+	assertFresh := func(step string) {
+		t.Helper()
+		got, want := ActiveExtensionThemeWire(), ExtensionThemePalette(tui.ActiveTheme())
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("%s: the shared palette differs from a fresh one", step)
+		}
+	}
+
+	tui.SetThemeInstance(load("wire-a", tui.TerminalColorModeTrueColor))
+	tui.SetTerminalColors(tui.TerminalColors{Foreground: &tui.RgbColor{R: 200, G: 210, B: 220}, Background: &tui.RgbColor{R: 10, G: 20, B: 30}})
+	first := ActiveExtensionThemeWire()
+	assertFresh("first")
+	if again := ActiveExtensionThemeWire(); pointer(again) != pointer(first) {
+		t.Fatal("an unchanged theme rebuilt the palette")
+	}
+
+	tui.SetTerminalColors(tui.TerminalColors{Foreground: &tui.RgbColor{R: 1, G: 2, B: 3}, Background: &tui.RgbColor{R: 250, G: 250, B: 250}})
+	second := ActiveExtensionThemeWire()
+	assertFresh("terminal colors")
+	if pointer(second) == pointer(first) || reflect.DeepEqual(second, first) {
+		t.Fatal("new terminal colors left the old palette in place")
+	}
+
+	tui.SetThemeInstance(load("wire-b", tui.TerminalColorModeTrueColor))
+	third := ActiveExtensionThemeWire()
+	assertFresh("theme")
+	if pointer(third) == pointer(second) || third.(map[string]any)["name"] != "wire-b" {
+		t.Fatalf("a new active theme kept the old palette: %v", third.(map[string]any)["name"])
+	}
+
+	tui.SetThemeInstance(load("wire-b", tui.TerminalColorMode256))
+	assertFresh("color mode")
+}
+
+// The memo identifies the terminal-resolved colors by the address of the map Colors returned. It holds that map, so the collector cannot free it and hand its address to a later colors map with other values, which would leave the old palette in place.
+func TestActiveExtensionThemeWireHoldsTheColorsMapItIsKeyedOn(t *testing.T) {
+	pinHeaderTerminal(t, tui.TerminalColorModeTrueColor) // truecolor whatever COLORTERM the shell exports
+	previous := tui.ActiveTheme()
+	t.Cleanup(func() {
+		tui.SetThemeInstance(previous)
+		tui.SetTerminalColors(tui.TerminalColors{})
+	})
+	data, err := os.ReadFile(filepath.Join("..", "..", "tui", "theme_dark.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "wire-held.json")
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	theme, err := tui.LoadThemeFromPath(path, tui.TerminalColorModeTrueColor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tui.SetThemeInstance(theme)
+	tui.SetTerminalColors(tui.TerminalColors{Foreground: &tui.RgbColor{R: 200, G: 210, B: 220}, Background: &tui.RgbColor{R: 10, G: 20, B: 30}})
+	ActiveExtensionThemeWire()
+	keyed := weakColorsMap(theme.Colors())
+
+	// The theme now caches another map and no longer holds the keyed one.
+	tui.SetTerminalColors(tui.TerminalColors{Foreground: &tui.RgbColor{R: 1, G: 2, B: 3}, Background: &tui.RgbColor{R: 250, G: 250, B: 250}})
+	theme.Colors()
+	runtime.GC()
+	runtime.GC()
+	if keyed.Value() == nil {
+		t.Fatal("the colors map the memo is keyed on was collected; its address can be reused by a map with other colors")
+	}
+}
+
+// weakColorsMap is a weak pointer to the allocation a map value refers to.
+func weakColorsMap(colors map[string]tui.Color) weak.Pointer[byte] {
+	return weak.Make((*byte)(reflect.ValueOf(colors).UnsafePointer()))
 }

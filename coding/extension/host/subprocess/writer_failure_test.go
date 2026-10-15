@@ -53,10 +53,7 @@ func TestQueuedRequestsFailWhenTheWriterFails(t *testing.T) {
 	// The peer never reads, so the first write blocks and the rest queue.
 	// Wait until every request has committed its frame to the writer.
 	for {
-		conn.workMu.Lock()
-		work := conn.work
-		conn.workMu.Unlock()
-		if work >= n {
+		if conn.work.Load() >= n {
 			break
 		}
 		time.Sleep(time.Millisecond)

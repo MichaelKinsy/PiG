@@ -2,12 +2,15 @@ package extensionconformance
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 )
 
 // A provider registered after the factory finished behaves like one registered in it: Pi's pi.registerProvider takes the whole ProviderConfig, callbacks included, at any time (.upstream/v0.99.2/packages/coding-agent/src/core/extensions/types.ts:1766-1803,1875-1903, loader.ts:449-457, runner.ts:517-523). Each SDK registers the provider from a tool through ctx.modelRegistry.registerProvider. The host must hold a ProviderConfig whose images, classifiers and streamSimple run in the extension. Every value asserted is one the extension's callbacks produce: the key the host resolved, the prompt, the reversed question order, and the model and key in the streamed text.
@@ -57,7 +60,7 @@ func runLateOperations(t *testing.T, config extension.ProviderConfig) {
 	}
 	chat := &ai.Model{ID: "chat", ProviderMeta: ai.ProviderMetadata{ProviderID: "late", API: "late-chat-api", BaseURL: "https://late.test/v1"}}
 	transcript := ai.NormalizeContext(ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("hello")}}})
-	stream := config.StreamSimple(chat, transcript, ai.StreamOptions{APIKey: "sk-stream"}).(*ai.AssistantMessageEventStream)
+	stream := config.StreamSimple(chat, transcript, ai.StreamOptions{APIKey: "sk-stream"})
 	message := stream.Result()
 	if message == nil || message.StopReason != ai.StopReasonStop || len(message.Content) != 1 || message.Content[0].(ai.TextContent).Text != "late:chat:sk-stream" {
 		t.Fatalf("stream result = %+v", message)
@@ -112,5 +115,30 @@ func TestLateProviderUnregisterDropsOperationsAcrossSDKs(t *testing.T) {
 		if result, err := images.GenerateImages(context.Background(), imageModel, modelTypesPrompt, ai.ImagesOptions{}); err == nil {
 			t.Fatalf("an unregistered provider's implementation ran: %+v", result)
 		}
+	})
+}
+
+// model-runtime.ts:921-940: Pi keeps one effective registration per provider and merges a later registration's defined values over it, whichever extension makes it. A partial re-registration by another extension process therefore leaves the earlier registrant's streamSimple, images and classifiers in the effective registration, and the host keeps calling them in the earlier registrant's process after it told that process provider_superseded. The successor runs in its own process and defines no operation, so every value asserted comes from the superseded author's callbacks.
+// The authors are the native SDKs, whose registration no successor merges. A Node author is not in this row: the Node runtime's provider_superseded handler drops those callbacks (runtime.mjs forgetProviderOwnership), so a Node author superseded by a successor that does not merge its root fails it.
+func TestLateProviderSupersededByAnotherExtensionKeepsOperationsAcrossSDKs(t *testing.T) {
+	eachModelTypesPlacementOf(t, []string{"go", "rust", "python"}, func(t *testing.T, r *modelTypesRig) {
+		r.toolWith("late_provider", map[string]any{"mode": "register"})
+		successor := filepath.Join(t.TempDir(), "late-successor.mjs")
+		if err := os.WriteFile(successor, []byte(`export default function (pi) { pi.registerProvider("late", { baseUrl: "https://late.test/v2" }); }`+"\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		cfg, _, err := subprocess.ResolveExtConfigWithIdentity(successor, "late-successor")
+		if err != nil {
+			t.Fatal(err)
+		}
+		cfg.Isolation = "isolated"
+		if _, err := r.host.Load(t.Context(), cfg); err != nil {
+			t.Fatal(err)
+		}
+		configs := r.lateRegistrations(t)
+		if len(configs) != 2 || configs[1].BaseURL != "https://late.test/v2" || configs[1].StreamSimple != nil || configs[1].Images != nil || configs[1].Classifiers != nil {
+			t.Fatalf("the successor's registration = %+v (of %d)", configs[len(configs)-1], len(configs))
+		}
+		runLateOperations(t, configs[0])
 	})
 }

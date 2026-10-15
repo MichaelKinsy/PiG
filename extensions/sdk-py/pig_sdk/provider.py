@@ -82,6 +82,17 @@ class AuthInteraction:
 
 
 @dataclass
+class LoginOptions:
+    """Pi's LoginOptions (packages/ai/src/auth/types.ts:202-214), which the app passes to an OAuth login.
+
+    get_device_id returns the stable ID of this app installation; call it only when the flow needs it, because the
+    app creates the ID on first use. None means the app supplies none. agent_name is the name the app introduces
+    itself with; None means the flow's own default."""
+    get_device_id: Callable[[], str] | None = None
+    agent_name: str | None = None
+
+
+@dataclass
 class APIKeyAuth:
     name: str
     resolve: Callable[[APIKeyAuthInput], AuthResult | None]
@@ -92,7 +103,7 @@ class APIKeyAuth:
 @dataclass
 class OAuthAuth:
     name: str
-    login: Callable[[AuthInteraction], dict]
+    login: Callable[[AuthInteraction, LoginOptions], dict]
     refresh: Callable[[dict, ProviderSignal], dict]
     to_auth: Callable[[dict], dict]
     is_subscription: bool | None = None
@@ -111,7 +122,11 @@ class ProviderStreamOptions:
     signal: ProviderSignal | None = None
     on_payload: Callable[[Any, dict], Any] | None = None
     on_response: Callable[[dict, dict], None] | None = None
-    transform_headers: Callable[[dict], dict] | None = None
+    on_provider_stream_event: Callable[[Any, dict], None] | None = None
+
+
+# The request callbacks a Provider stream's options carry, in wire order (upstream types.ts ProviderRequestOptions.onPayload, StreamOptions.onResponse and onProviderStreamEvent). Pi's Models strips transformHeaders before Provider.stream (model-runtime.ts:671), so it is not one of them.
+PROVIDER_STREAM_CALLBACKS = (("onPayload", "on_payload"), ("onResponse", "on_response"), ("onProviderStreamEvent", "on_provider_stream_event"))
 
 
 @dataclass
@@ -138,6 +153,8 @@ class RefreshModelsContext:
     allow_network: bool = False
     force: bool | None = None
     signal: ProviderSignal | None = None
+    # The registered provider's base URL, including configuration overrides that wrappers apply outside the provider; None when it has none.
+    base_url: str | None = None
 
 
 @dataclass
@@ -151,6 +168,9 @@ class Provider:
     base_url: str | None = None
     headers: dict | None = None
     filter_models: Callable[[list[dict], dict | None], list[dict]] | None = None
+    # ``get_all_models`` lists the models of every type (without it ``get_models`` does) and ``filter_all_models`` filters them by credential (without it ``filter_models`` filters the chat models). Pi ``Provider.getAllModels`` / ``filterAllModels``.
+    get_all_models: Callable[[], list[dict]] | None = None
+    filter_all_models: Callable[[list[dict], dict | None], list[dict]] | None = None
     refresh_models: Callable[[RefreshModelsContext], None] | None = None
     fetch_deferred: Callable[[dict, dict, ProviderStreamOptions], Any] | None = None
     cancel_deferred: Callable[[dict, dict, ProviderStreamOptions], None] | None = None
@@ -160,7 +180,7 @@ class Provider:
 
 
 def _method(provider, method):
-    aliases = {"getModels": "get_models", "filterModels": "filter_models", "refreshModels": "refresh_models", "streamSimple": "stream_simple", "fetchDeferred": "fetch_deferred", "cancelDeferred": "cancel_deferred", "generateImages": "generate_images", "apiKey": "api_key", "toAuth": "to_auth"}
+    aliases = {"getModels": "get_models", "getAllModels": "get_all_models", "filterModels": "filter_models", "filterAllModels": "filter_all_models", "refreshModels": "refresh_models", "streamSimple": "stream_simple", "fetchDeferred": "fetch_deferred", "cancelDeferred": "cancel_deferred", "generateImages": "generate_images", "apiKey": "api_key", "toAuth": "to_auth"}
     obj = provider
     for part in method.split("."):
         obj = getattr(obj, aliases.get(part, part), None)
@@ -169,14 +189,14 @@ def _method(provider, method):
     return obj
 
 
-METHODS = ("getModels", "filterModels", "refreshModels", "stream", "streamSimple", "fetchDeferred", "cancelDeferred", "generateImages", "classify", "auth.apiKey.check", "auth.apiKey.resolve", "auth.apiKey.login", "auth.oauth.login", "auth.oauth.refresh", "auth.oauth.toAuth")
+METHODS = ("getModels", "getAllModels", "filterModels", "filterAllModels", "refreshModels", "stream", "streamSimple", "fetchDeferred", "cancelDeferred", "generateImages", "classify", "auth.apiKey.check", "auth.apiKey.resolve", "auth.apiKey.login", "auth.oauth.login", "auth.oauth.refresh", "auth.oauth.toAuth")
 
 
 def declaration(provider, key):
     if not provider.id.strip():
         raise ValueError("Provider id must not be empty")
     try:
-        models = provider.get_models()
+        models = provider.get_all_models() if provider.get_all_models else provider.get_models()
     except Exception:
         # Pi Models treats a throwing getModels as an empty catalog at registration.
         models = []
@@ -235,9 +255,9 @@ def dispatch_provider(extension, ctx, request):
     if fn is None:
         raise RuntimeError(f"Provider method {method} is absent")
     signal = ctx._cancelled
-    if method == "getModels":
+    if method in ("getModels", "getAllModels"):
         return fn()
-    if method == "filterModels":
+    if method in ("filterModels", "filterAllModels"):
         models = args["models"]
         result = fn(models, args.get("credential"))
         return {"models": result, "indices": [next((i for i, original in enumerate(models) if original is model), -1) for model in result]}
@@ -245,7 +265,15 @@ def dispatch_provider(extension, ctx, request):
         result = fn(APIKeyAuthInput(AuthContext(lambda name: callback("env", {"name": name}), lambda path: callback("fileExists", {"path": path})), args.get("credential"), signal))
         return {k: v for k, v in asdict(result).items() if v is not None} if result else None
     if method.endswith(".login"):
-        return fn(AuthInteraction(lambda prompt: callback("prompt", {"prompt": prompt}), lambda event: callback("notify", {"event": event}), signal))
+        interaction = AuthInteraction(lambda prompt: callback("prompt", {"prompt": prompt}), lambda event: callback("notify", {"event": event}), signal)
+        if method == "auth.apiKey.login":
+            return fn(interaction)
+        # The host lists the LoginOptions the app supplies; get_device_id stays a call back to it.
+        wire = args.get("options") or {}
+        options = LoginOptions(agent_name=wire.get("agentName"))
+        if wire.get("getDeviceId"):
+            options.get_device_id = lambda: callback("getDeviceId", {})
+        return fn(interaction, options)
     if method == "auth.oauth.refresh":
         return fn(args["credential"], signal)
     if method == "auth.oauth.toAuth":
@@ -262,14 +290,14 @@ def dispatch_provider(extension, ctx, request):
             finally:
                 with extension._provider_lock:
                     extension._provider_updates.pop(token, None)
-        return fn(RefreshModelsContext(publish, args.get("credential"), args.get("stored"), args.get("allowNetwork", False), args.get("force"), signal))
+        return fn(RefreshModelsContext(publish, args.get("credential"), args.get("stored"), args.get("allowNetwork", False), args.get("force"), signal, args.get("baseUrl")))
     if method in ("generateImages", "classify"):
         return fn(args["model"], args["context"], ProviderOperationOptions(args.get("options") or {}, signal))
     options = ProviderStreamOptions(args.get("options") or {}, signal)
     if args.get("aborted"):
         options.signal = ProviderSignal()
         options.signal.set()
-    for wire, field_name in (("onPayload", "on_payload"), ("onResponse", "on_response"), ("transformHeaders", "transform_headers")):
+    for wire, field_name in PROVIDER_STREAM_CALLBACKS:
         if wire in args.get("callbacks", []):
             setattr(options, field_name, lambda value, model=None, wire=wire: callback(wire, {"value": value, "model": model}))
     if method == "cancelDeferred":
@@ -342,7 +370,16 @@ def remote_provider(context, decl):
         auth.api_key = APIKeyAuth(decl["auth"]["apiKey"]["name"], resolve, check if "auth.apiKey.check" in methods else None, (lambda input: invoke("auth.apiKey.login", {}, interaction(input), input.signal)) if "auth.apiKey.login" in methods else None)
     if decl["auth"].get("oauth"):
         data = decl["auth"]["oauth"]
-        auth.oauth = OAuthAuth(data["name"], lambda input: invoke("auth.oauth.login", {}, interaction(input), input.signal), lambda credential, signal: invoke("auth.oauth.refresh", {"credential": credential}, signal=signal), lambda credential: invoke("auth.oauth.toAuth", {"credential": credential}), data.get("isSubscription"), data.get("loginLabel"))
+        def oauth_login(input, options=None):
+            options = options or LoginOptions()
+            wire, callbacks = {}, interaction(input)
+            if options.get_device_id is not None:
+                wire["getDeviceId"] = True
+                callbacks["getDeviceId"] = lambda args: options.get_device_id()
+            if options.agent_name is not None:
+                wire["agentName"] = options.agent_name
+            return invoke("auth.oauth.login", {"options": wire}, callbacks, input.signal)
+        auth.oauth = OAuthAuth(data["name"], oauth_login, lambda credential, signal: invoke("auth.oauth.refresh", {"credential": credential}, signal=signal), lambda credential: invoke("auth.oauth.toAuth", {"credential": credential}), data.get("isSubscription"), data.get("loginLabel"))
     def streaming(method):
         def start(model, transcript, options=None):
             from . import ModelEventStream, _model_stream_error_event
@@ -352,10 +389,10 @@ def remote_provider(context, decl):
             with extension._model_stream_lock:
                 extension._model_streams[stream_id] = stream
             callbacks = {}
-            for wire, name in (("onPayload", "on_payload"), ("onResponse", "on_response"), ("transformHeaders", "transform_headers")):
+            for wire, name in PROVIDER_STREAM_CALLBACKS:
                 fn = getattr(options, name)
                 if fn:
-                    callbacks[wire] = (lambda args, fn=fn: fn(args["value"])) if wire == "transformHeaders" else (lambda args, fn=fn: fn(args["value"], model))
+                    callbacks[wire] = lambda args, fn=fn: fn(args.get("value"), model)
             params = {"model": model, "handle" if method == "fetchDeferred" else "context": transcript, "options": options.values, "callbacks": list(callbacks), "aborted": bool(options.signal and options.signal.is_set())}
             pending, cleanup = begin(method, params, callbacks, options.signal, stream_id)
             def run():
@@ -385,22 +422,25 @@ def remote_provider(context, decl):
     for wire, field_name in (("generateImages", "generate_images"), ("classify", "classify")):
         if wire in methods:
             setattr(provider, field_name, lambda model, request, options=None, wire=wire: invoke(wire, {"model": model, "context": request, "options": options.values if options else {}}, signal=options.signal if options else None))
-    if "filterModels" in methods:
-        def filter_models(models, credential):
-            result = invoke("filterModels", {"models": models, "credential": credential})
-            for i, index in enumerate(result["indices"]):
-                if index >= 0:
-                    models[index].clear()
-                    models[index].update(result["models"][i])
-                    result["models"][i] = models[index]
-            return result["models"]
-        provider.filter_models = filter_models
+    if "getAllModels" in methods:
+        provider.get_all_models = lambda: invoke("getAllModels")
+    for wire, field_name in (("filterModels", "filter_models"), ("filterAllModels", "filter_all_models")):
+        if wire in methods:
+            def filter_models(models, credential, wire=wire):
+                result = invoke(wire, {"models": models, "credential": credential})
+                for i, index in enumerate(result["indices"]):
+                    if index >= 0:
+                        models[index].clear()
+                        models[index].update(result["models"][i])
+                        result["models"][i] = models[index]
+                return result["models"]
+            setattr(provider, field_name, filter_models)
     if "refreshModels" in methods:
         def refresh(input):
             def publish(args):
                 value = args["publication"]
                 return input.publish(ModelsPublication(value.get("persist", OMITTED), (lambda: invoke("update", {"token": args["token"]})) if args.get("token") else None))
-            return invoke("refreshModels", {"credential": input.credential, "stored": input.stored, "allowNetwork": input.allow_network, "force": input.force}, {"publish": publish}, input.signal)
+            return invoke("refreshModels", {"credential": input.credential, "stored": input.stored, "allowNetwork": input.allow_network, "force": input.force, **({"baseUrl": input.base_url} if input.base_url else {})}, {"publish": publish}, input.signal)
         provider.refresh_models = refresh
     if "fetchDeferred" in methods:
         provider.fetch_deferred = streaming("fetchDeferred")

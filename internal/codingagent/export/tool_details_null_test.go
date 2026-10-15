@@ -1,6 +1,7 @@
 package export
 
 import (
+	"bytes"
 	"encoding/json"
 	"testing"
 
@@ -32,7 +33,7 @@ func TestRenderCustomToolsKeepsStoredNullDetails(t *testing.T) {
 				Definition: extension.ToolDefinition{
 					Name: "custom-tool",
 					RenderResult: func(result extension.AgentToolResult, _ extension.ToolRenderResultOptions, _ extension.Theme, _ extension.ToolRenderContext) extension.Component {
-						seen = append(seen, result.(agent.AgentToolResult))
+						seen = append(seen, result)
 						return testComponent{lines: []string{"RESULT"}}
 					},
 				},
@@ -47,7 +48,7 @@ func TestRenderCustomToolsKeepsStoredNullDetails(t *testing.T) {
 				}
 				got, _ := json.Marshal(result.Details)
 				want, _ := json.Marshal(tc.details)
-				if string(got) != string(want) {
+				if !bytes.Equal(got, want) {
 					t.Fatalf("details %s, want %s", got, want)
 				}
 			}

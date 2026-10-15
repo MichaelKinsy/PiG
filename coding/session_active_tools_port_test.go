@@ -46,8 +46,11 @@ func TestExtensionActiveToolsNextTurnPort(t *testing.T) {
 			var ext extension.Extension
 			if tc.override {
 				ext = extension.Extension{Handlers: map[string][]extension.HandlerFn{"before_agent_start": {func(args ...any) (any, error) {
-					event := args[0].(extension.BeforeAgentStartEvent)
-					return &extension.BeforeAgentStartEventResult{SystemPrompt: new(event.SystemPrompt + "\n\nkeep this run override")}, nil
+					prompt, err := args[0].(extension.BeforeAgentStartEvent).SystemPrompt.Get()
+					if err != nil {
+						return nil, err
+					}
+					return &extension.BeforeAgentStartEventResult{SystemPrompt: new(prompt + "\n\nkeep this run override")}, nil
 				}}}}
 			}
 			var providerNames [][]string

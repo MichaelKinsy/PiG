@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package main
@@ -16,11 +15,12 @@ const bareRecoverName = "bare-recover"
 // recover()` where r is only compared with nil. The panic then vanishes
 // with no event, error or log. A panicking listener silently ended the
 // session event forwarder, and the next run hung (AGENT-16). Pi surfaces a
-// listener's exception as a failed run.
+// listener's exception as a failed run. The check scans every non-test Go
+// file in the repository: a swallowed panic hides a failure in any package.
 var bareRecover = check{
 	Name:    bareRecoverName,
 	Doc:     "recover() whose panic value is discarded",
-	Applies: inHot,
+	Applies: func(string) bool { return true },
 	Run:     runBareRecover,
 }
 
@@ -66,7 +66,15 @@ func recoverValueUsed(call *ast.CallExpr, stack []ast.Node) bool {
 		if id.Name == "_" {
 			return false
 		}
-		return usedBeyondNilCheck(id.Name, enclosingFunc(stack), p)
+		fn := enclosingFunc(stack)
+		if p.Tok == token.ASSIGN && !declaredWithin(fn, id.Name) {
+			owner := declaringFunc(stack, fn, id.Name)
+			if owner == nil || isNamedResult(owner, id.Name) {
+				return true // a package variable or a result the caller receives
+			}
+			return usedBeyondNilCheck(id.Name, owner, p)
+		}
+		return usedBeyondNilCheck(id.Name, fn, p)
 	}
 	return true
 }
@@ -81,8 +89,99 @@ func enclosingFunc(stack []ast.Node) ast.Node {
 	return nil
 }
 
+// declaringFunc returns the nearest function enclosing inner that declares
+// name, or nil for a package-level variable.
+func declaringFunc(stack []ast.Node, inner ast.Node, name string) ast.Node {
+	passed := false
+	for _, s := range slices.Backward(stack) {
+		switch s.(type) {
+		case *ast.FuncLit, *ast.FuncDecl:
+			if s == inner {
+				passed = true
+				continue
+			}
+			if passed && declaredWithin(s, name) {
+				return s
+			}
+		}
+	}
+	return nil
+}
+
+// isNamedResult reports whether name is a named result of fn.
+func isNamedResult(fn ast.Node, name string) bool {
+	var ftype *ast.FuncType
+	switch f := fn.(type) {
+	case *ast.FuncLit:
+		ftype = f.Type
+	case *ast.FuncDecl:
+		ftype = f.Type
+	}
+	if ftype == nil || ftype.Results == nil {
+		return false
+	}
+	for _, field := range ftype.Results.List {
+		for _, n := range field.Names {
+			if n.Name == name {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// declaredWithin reports whether name is declared by fn itself: a parameter,
+// a named result, a `:=` or a var declaration. An identifier that is not is
+// captured from an outer scope.
+func declaredWithin(fn ast.Node, name string) bool {
+	if fn == nil {
+		return false
+	}
+	var ftype *ast.FuncType
+	switch f := fn.(type) {
+	case *ast.FuncLit:
+		ftype = f.Type
+	case *ast.FuncDecl:
+		ftype = f.Type
+	}
+	for _, list := range []*ast.FieldList{ftype.Params, ftype.Results} {
+		if list == nil {
+			continue
+		}
+		for _, field := range list.List {
+			for _, n := range field.Names {
+				if n.Name == name {
+					return true
+				}
+			}
+		}
+	}
+	declared := false
+	ast.Inspect(fn, func(n ast.Node) bool {
+		switch d := n.(type) {
+		case *ast.AssignStmt:
+			if d.Tok == token.DEFINE {
+				for _, lhs := range d.Lhs {
+					if id, ok := lhs.(*ast.Ident); ok && id.Name == name {
+						declared = true
+					}
+				}
+			}
+		case *ast.ValueSpec:
+			for _, id := range d.Names {
+				if id.Name == name {
+					declared = true
+				}
+			}
+		}
+		return !declared
+	})
+	return declared
+}
+
 // usedBeyondNilCheck reports a use of name in fn, other than its defining
-// assignment, that is not one side of `== nil` or `!= nil`.
+// assignment or var declaration, that is not one side of `== nil` or
+// `!= nil`.
 func usedBeyondNilCheck(name string, fn ast.Node, def *ast.AssignStmt) bool {
 	if fn == nil {
 		return true
@@ -99,6 +198,12 @@ func usedBeyondNilCheck(name string, fn ast.Node, def *ast.AssignStmt) bool {
 		if len(stack) > 0 {
 			if b, ok := stack[len(stack)-1].(*ast.BinaryExpr); ok && (b.Op == token.EQL || b.Op == token.NEQ) && (isNil(b.X) || isNil(b.Y)) {
 				return true
+			}
+			if spec, ok := stack[len(stack)-1].(*ast.ValueSpec); ok && slices.Contains(spec.Names, id) {
+				return true // the declaration of an outer variable
+			}
+			if field, ok := stack[len(stack)-1].(*ast.Field); ok && slices.Contains(field.Names, id) {
+				return true // a parameter or result declaration
 			}
 		}
 		used = true

@@ -90,15 +90,41 @@ func TestDocumentedSlashCommandsExist(t *testing.T) {
 	fromExtensions := map[string]string{
 		"/llama":     "built-in llama.cpp extension (extensions/index.ts builtInExtensions)",
 		"/mcp":       "built-in mcp extension (mcp.md)",
+		"/acp":       "command of the Pigpen acp Package (packages.md)",
 		"/piglet":    "generic Piglet runtime extension",
 		"/sprite":    "PiG Standard piglogin extension",
 		"/review":    "example prompt template a user creates (prompt-templates.md)",
 		"/component": "example prompt template a user creates (prompt-templates.md)",
+		"/greet":     "command of the tour extension the reader writes in first-extension.md",
+		"/ask":       "command of the tour extension the reader writes in first-extension.md",
+		// piglets/README.md and piglets/standard/README.md document the commands their Piglets register.
+		"/pig-porter":  "the porter Piglet's command (piglets/porter)",
+		"/angry-pigs":  "the PiG Standard game extension (piglets/standard)",
+		"/bun-runtime": "the PiG Standard Bun runtime extension (piglets/standard/extensions/bunruntime)",
+		"/aot-runtime": "the pig-aot Piglet's compiled-extensions runtime extension (piglets/aot/extensions/aotruntime)",
+		// The bug ledger entry for tui.showOverlay names the commands of Pi's overlay QA example extension.
+		"/overlay-focus":     "Pi's overlay QA example extension (coding-agent examples/extensions/overlay-qa-tests.ts)",
+		"/overlay-passive":   "Pi's overlay QA example extension (coding-agent examples/extensions/overlay-qa-tests.ts)",
+		"/overlay-streaming": "Pi's overlay QA example extension (coding-agent examples/extensions/overlay-qa-tests.ts)",
 	}
-	for name, body := range docFiles(t) {
-		for _, match := range backtickedSlash.FindAllStringSubmatch(body, -1) {
+	// Words in backticks that start with a slash and are paths, not commands.
+	paths := map[string]string{
+		"/bundle":         "a path inside the benchmark image (benchmarking.md)",
+		"/tmp":            "a directory inside the benchmark image (benchmarking.md)",
+		"/images":         "OpenRouter's Images API path, quoted in the bug ledger entry for D128",
+		"/proc":           "the Linux process file system, named by the benchmark notes (benchmarking.md)",
+		"/callback":       "the OAuth redirect path of an MCP sign-in (mcp.md)",
+		"/bin":            "a Termux directory (termux.md)",
+		"/cost":           "the removed /cost summary, named by the bug ledger entry BF-2a0fb96 about the order of its tool lines",
+		"/credential-env": "the tail of an inline list (`!command`/credential-env) in the bug ledger entry for AuthStorage file semantics, not a command",
+		"/models":         "the llama.cpp router's model list endpoint (nvidia-rtx-llama-cpp.md)",
+		"/i":              "the case-insensitive flag of Pi's regex, named by the bug ledger entry for URL scheme matching (review-ca-3ce6bcb129.md)",
+	}
+	for _, src := range corpus(t) {
+		name := src.Rel
+		for _, match := range backtickedSlash.FindAllStringSubmatch(src.Body, -1) {
 			cmd := match[1]
-			if known[cmd] || fromExtensions[cmd] != "" || documentedAsAbsent[cmd] != "" || hidden[cmd] != "" {
+			if known[cmd] || fromExtensions[cmd] != "" || documentedAsAbsent[cmd] != "" || hidden[cmd] != "" || paths[cmd] != "" {
 				continue
 			}
 			t.Errorf("%s documents %s, which is not a builtin command and has no "+
@@ -112,8 +138,8 @@ func TestDocumentedSlashCommandsExist(t *testing.T) {
 func TestListableSlashCommandsAreDocumented(t *testing.T) {
 	_, listable := builtinNames(t)
 	var joined strings.Builder
-	for _, body := range docFiles(t) {
-		joined.WriteString(body)
+	for _, src := range corpus(t) {
+		joined.WriteString(src.Body)
 	}
 	all := joined.String()
 
@@ -130,7 +156,7 @@ func TestListableSlashCommandsAreDocumented(t *testing.T) {
 		}
 	}
 	if len(undocumented) > 0 {
-		t.Errorf("%d command(s) ship in /help but appear nowhere in the docs bundle:\n  %s",
+		t.Errorf("%d command(s) ship in /help but appear nowhere in the user documentation:\n  %s",
 			len(undocumented), strings.Join(undocumented, "\n  "))
 	}
 }

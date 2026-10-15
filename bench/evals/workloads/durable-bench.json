@@ -1,0 +1,45 @@
+{
+  "name": "durable-bench workload (method re-implemented, no code copied)",
+  "reference": "github.com/clavia-labs/durable-bench: no licence found, so only the published method is mirrored",
+  "sizes": [
+    50,
+    250,
+    1000,
+    3500
+  ],
+  "measured_turns": 10,
+  "tool_calls_per_measured_turn": 8,
+  "history_pattern_tool_calls": [
+    1,
+    1,
+    0
+  ],
+  "samples": 3,
+  "cold": "open + first measured turn",
+  "warm": "the nine warm turns of every sample, pooled; the reported value is the median (and p95, max) of the pooled turns, not a median of per-sample medians",
+  "cpu_idle_gate": {
+    "max_busy_fraction": 0.08,
+    "window_s": 1.0,
+    "max_wait_s": 600
+  },
+  "published_fingerprints": {
+    "50": "b017b487524e44a4",
+    "250": "dcea9f30b0917245",
+    "1000": "ac520308146f2a8f",
+    "3500": "0a8c8e4b0d9a0794"
+  },
+  "runtimes": {
+    "pig-durable": "bench/durableperf (Go), scripted walk model with the faux provider",
+    "pi-durable": "durable/interop/bench.mjs (Node), pi-durable at the version locked in durable/interop/package-lock.json"
+  },
+  "reporting": {
+    "min_warm_turns_per_cell": 100,
+    "rounds_for_that": 12,
+    "loss_if_slower_than": 1.03,
+    "win_if_faster_by": 1.3,
+    "slightly_better_below": 0.97,
+    "rules": "Rounds are the outer loop and sizes the inner one, and the order of the two runtimes alternates every round, so every size sees the whole session's load. Only ratios measured in the same session are claims. Absolute times are host-specific."
+  },
+  "not_measured_here": "The empty-target floor (same Worker, request and Durable Object path, no agent) and retained heap exist only in the Miniflare runner (bench/durable/report/runner) and k8sbench's durable-core profile; this bench runs the native runners directly.",
+  "trap": "Pi main renamed ToolExecutionResult.content to output (pi-mono eba84973); a bench tool that still returns content gets empty tool results there and a different fingerprint. The pi-durable pinned in durable/interop/package-lock.json predates the rename; the seeded and post-run fingerprints are checked, so a drift fails the run."
+}

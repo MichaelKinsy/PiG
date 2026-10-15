@@ -43,7 +43,7 @@ func TestAssistantDiagnosticsNewSessionResetsThinkingDropComparison(t *testing.T
 	pair.harness.Do(func() { pair.harness.Enter("first") })
 	pair.harness.WaitIdle(t, 10*time.Second)
 	// /new resolves a fresh Model Runtime from the catalog. Register the scripted provider so the replacement uses the same replies without rebinding an outgoing model.
-	if err := pair.session.Services().Registry().RegisterProviderConfig("faux", coding.ProviderConfigInput{
+	if err := pair.session.Services().Registry().RegisterProvider("faux", coding.ProviderConfigInput{
 		API: ai.APIOpenAICompletions, APIKey: "fixture-key", BaseURL: "https://faux.invalid/v1", Models: []ai.AnyModel{pair.session.Model()},
 		StreamSimple: func(ctx context.Context, _ *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 			return pair.provider.Stream(ctx, transcript, options)

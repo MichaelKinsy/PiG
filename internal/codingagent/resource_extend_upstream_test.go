@@ -18,8 +18,8 @@ import (
 func extensionResourceMode(t *testing.T, cwd, extensionPath string, result extension.ResourcesDiscoverResult) *InteractiveMode {
 	t.Helper()
 	return &InteractiveMode{
-		opts:  InteractiveOptions{CWD: cwd, AgentDir: t.TempDir()},
-		agent: agent.NewAgent(agent.AgentOptions{}),
+		opts:  InteractiveModeOptions{CWD: cwd, AgentDir: t.TempDir()},
+		agent: mustNewAgent(agent.AgentOptions{}),
 		newRunner: inproc.NewRunner([]extension.Extension{{
 			Path: extensionPath,
 			Handlers: map[string][]extension.HandlerFn{
@@ -81,7 +81,7 @@ func TestUpstreamExtendResourcesLoadsSkillsAndPromptsWithExtensionMetadata(t *te
 	if i < 0 {
 		t.Fatalf("extra-skill not loaded: %#v", m.opts.Skills)
 	}
-	info := m.loadedResourceFor(m.opts.Skills[i].Path, "skills").info
+	info := m.loadedResourceFor(m.opts.Skills[i].FilePath, "skills").info
 	if info.Source != "extension:extra" || info.Path != skillPath || info.Scope != "temporary" || info.Origin != "top-level" {
 		t.Fatalf("skill source info = %+v, want extension:extra at %s", info, skillPath)
 	}
@@ -117,7 +117,7 @@ func TestUpstreamExtendResourcesLoadsFileURLs(t *testing.T) {
 	if i < 0 {
 		t.Fatalf("file-url-skill not loaded: %#v (paths %q)", m.opts.Skills, m.opts.SkillPaths)
 	}
-	if got := m.opts.Skills[i].Path; got != skillPath {
+	if got := m.opts.Skills[i].FilePath; got != skillPath {
 		t.Fatalf("skill path = %q, want %q", got, skillPath)
 	}
 	if info := m.loadedResourceFor(skillPath, "skills").info; info.Source != "extension:file-url" {
@@ -280,7 +280,7 @@ func invalidFileURLMessage() string {
 // `Reload failed: <error.message>` with the bare message.
 func TestReloadFailureShowsPiText(t *testing.T) {
 	root := t.TempDir()
-	m := reloadTestMode(InteractiveOptions{CWD: root})
+	m := reloadTestMode(InteractiveModeOptions{CWD: root})
 	m.newRunner = inproc.NewRunner([]extension.Extension{{
 		Path: filepath.Join(root, "bad.ts"),
 		Handlers: map[string][]extension.HandlerFn{
@@ -298,7 +298,7 @@ func TestReloadFailureShowsPiText(t *testing.T) {
 // A snapshot error (an invalid settings file: URL, package-manager.ts:2340)
 // fails /reload with `Reload failed: <error.message>`.
 func TestReloadFailureFromSettingsSnapshotShowsPiText(t *testing.T) {
-	m := reloadTestMode(InteractiveOptions{CWD: t.TempDir()})
+	m := reloadTestMode(InteractiveModeOptions{CWD: t.TempDir()})
 	m.opts.SkillPaths = []string{"existing-skill"}
 	m.opts.PromptPaths = []string{"existing-prompt"}
 	m.opts.ReloadResourceProvider = func() ReloadResourceSnapshot {

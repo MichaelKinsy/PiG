@@ -77,7 +77,7 @@ func TestToolResultEventOverridePreservesNonStringFields(t *testing.T) {
 }
 
 func TestToolResultEventOverrideCarriesUsage(t *testing.T) {
-	override := ToolResultEventOverride(&extension.ToolResultEventResult{Usage: map[string]any{"input": float64(3), "output": float64(4)}})
+	override := ToolResultEventOverride(&extension.ToolResultEventResult{Usage: &ai.Usage{Input: 3, Output: 4}})
 	if override.Usage == nil || override.Usage.Input != 3 || override.Usage.Output != 4 {
 		t.Fatalf("usage override = %+v", override.Usage)
 	}

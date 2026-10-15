@@ -9,9 +9,14 @@ import (
 	"maps"
 	"math"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
+
+	"github.com/MichaelKinsy/PiG/internal/nodebase64"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -19,7 +24,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
-	"github.com/MichaelKinsy/PiG/internal/imageprocessing"
+	"github.com/MichaelKinsy/PiG/internal/ecmascript"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/outputfiles"
 )
@@ -33,7 +38,37 @@ const (
 	memoryLimitBytes = 256 * 1024 * 1024
 	// defaultMaxOutputTokens is the default token budget for script output.
 	defaultMaxOutputTokens = 10_000
+	// maxConcurrentCodemodeWorkers bounds the codemode VMs alive across calls and sessions. It allows one replacement
+	// while a cancelled VM is still exiting.
+	maxConcurrentCodemodeWorkers = 2
 )
+
+// codemodeWorkers is the admission shared by every codemode call in the process.
+var codemodeWorkers = workerAdmission{limit: maxConcurrentCodemodeWorkers}
+
+// workerAdmission counts live codemode VMs. A VM holds its slot until it actually exits, not until its result is
+// returned.
+//
+// Ports packages/coding-agent/src/extensions/codemode/execute.ts (activeCodemodeWorkers, acquireWorker).
+type workerAdmission struct {
+	limit  int
+	mu     sync.Mutex
+	active int
+}
+
+func (a *workerAdmission) acquire() (func(), error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.active >= a.limit {
+		return nil, fmt.Errorf("Codemode worker limit reached (%d workers are still running or shutting down). Retry after they exit.", a.limit)
+	}
+	a.active++
+	return func() {
+		a.mu.Lock()
+		a.active--
+		a.mu.Unlock()
+	}, nil
+}
 
 // StoreEntryType is the custom entry type holding one script's `store()` writes: StoreEntryData.
 const StoreEntryType = "codemode-store"
@@ -42,6 +77,35 @@ const StoreEntryType = "codemode-store"
 type StoreEntryData struct {
 	Set    map[string]json.RawMessage `json:"set"`
 	Delete []string                   `json:"delete"`
+	// Keys is the order MarshalJSON writes Set's keys in (StoreWrites.SetKeys); keys it lacks follow in JavaScript enumeration order.
+	Keys []string `json:"-"`
+}
+
+// MarshalJSON writes the keys with their UTF-16 units, so an unpaired surrogate in a key reaches the entry as its \u escape rather than as U+FFFD.
+func (d StoreEntryData) MarshalJSON() ([]byte, error) {
+	set := []byte{'{'}
+	for i, key := range sandbox.OrderStoreKeys(d.Set, d.Keys) {
+		name, err := ecmascript.String(key).MarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		if i > 0 {
+			set = append(set, ',')
+		}
+		set = append(append(append(set, name...), ':'), d.Set[key]...)
+	}
+	deleted := make([]ecmascript.String, len(d.Delete))
+	for i, key := range d.Delete {
+		deleted[i] = ecmascript.String(key)
+	}
+	encoded, err := json.Marshal(deleted)
+	if err != nil {
+		return nil, err
+	}
+	out := append([]byte(`{"set":`), set...)
+	out = append(out, `},"delete":`...)
+	out = append(out, encoded...)
+	return append(out, '}'), nil
 }
 
 // NestedCall is one nested tool call as the tool result reports it.
@@ -80,20 +144,7 @@ func truncateText(text string, maxChars int) string {
 	if jsstring.Length(text) <= maxChars {
 		return text
 	}
-	units := []rune(text)
-	kept, count := 0, 0
-	for kept < len(units) {
-		width := 1
-		if units[kept] >= 0x10000 {
-			width = 2
-		}
-		if count+width > maxChars-3 {
-			break
-		}
-		count += width
-		kept++
-	}
-	return string(units[:kept]) + "..."
+	return jsstring.Slice(text, 0, maxChars-3) + "..."
 }
 
 func previewArgs(args json.RawMessage) string {
@@ -121,7 +172,7 @@ func textOf(result agent.AgentToolResult) string {
 // `structuredContent`, also for error results that carry one (such as MCP results with `isError`); any other tool
 // resolves to its text content. Other failures reject with the tool's error text.
 func toScriptValue(tool extension.AgentTool, outcome extension.AgentToolCallOutcome) (json.RawMessage, error) {
-	result, _ := outcome.Result.(agent.AgentToolResult)
+	result := outcome.Result
 	if len(tool.OutputSchema) > 0 && result.StructuredContent != nil {
 		return result.StructuredContent, nil
 	}
@@ -135,13 +186,74 @@ func toScriptValue(tool extension.AgentTool, outcome extension.AgentToolCallOutc
 	return json.Marshal(text)
 }
 
-// valueText is like the script's `text()`: strings as is, other values as compact JSON.
+// valueText is like the script's `text()`: strings as is, other values (null included) as compact JSON.
+//
+// upstream: execute.ts:251-254 valueText.
 func valueText(value json.RawMessage) string {
 	var text string
-	if json.Unmarshal(value, &text) == nil {
+	// sdkjson keeps an unpaired surrogate escape as WTF-8, as it stays a lone unit in a JavaScript string; encoding/json would make it U+FFFD.
+	if len(value) > 0 && value[0] == '"' && sdkjson.Unmarshal(value, &text) == nil {
 		return text
 	}
 	return string(value)
+}
+
+// storeEntryData is the data of a codemode-store entry when it passes upstream's isStoreEntryData: `set` is a non-null
+// object (an array applies its indexes as keys, as Object.entries does) and `delete` is an array of strings.
+func storeEntryData(raw json.RawMessage) (set map[string]json.RawMessage, deleted []string, ok bool) {
+	var fields struct {
+		Set    json.RawMessage   `json:"set"`
+		Delete []json.RawMessage `json:"delete"`
+	}
+	if json.Unmarshal(raw, &fields) != nil || fields.Delete == nil {
+		return nil, nil, false
+	}
+	deleted = make([]string, len(fields.Delete))
+	for i, member := range fields.Delete {
+		var key ecmascript.String
+		if len(member) == 0 || member[0] != '"' || key.UnmarshalJSON(member) != nil {
+			return nil, nil, false
+		}
+		deleted[i] = string(key)
+	}
+	if set, ok := decodeObjectMembers(fields.Set); ok {
+		return set, deleted, true
+	}
+	var items []json.RawMessage
+	if json.Unmarshal(fields.Set, &items) != nil || items == nil {
+		return nil, nil, false
+	}
+	set = make(map[string]json.RawMessage, len(items))
+	for i, item := range items {
+		set[strconv.Itoa(i)] = item
+	}
+	return set, deleted, true
+}
+
+// decodeObjectMembers reads the members of a JSON object, keeping the code units of a key as JSON.parse does: an unpaired surrogate escape stays
+// distinct from every other (WTF-8 in the Go key) instead of becoming U+FFFD. A repeated key keeps its last value.
+func decodeObjectMembers(raw json.RawMessage) (map[string]json.RawMessage, bool) {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	if token, err := decoder.Token(); err != nil || token != json.Delim('{') {
+		return nil, false
+	}
+	members := map[string]json.RawMessage{}
+	for decoder.More() {
+		start := decoder.InputOffset()
+		if _, err := decoder.Token(); err != nil {
+			return nil, false
+		}
+		var key ecmascript.String
+		if key.UnmarshalJSON(bytes.TrimLeft(raw[start:decoder.InputOffset()], ", \t\r\n")) != nil {
+			return nil, false
+		}
+		var value json.RawMessage
+		if decoder.Decode(&value) != nil {
+			return nil, false
+		}
+		members[string(key)] = value
+	}
+	return members, true
 }
 
 // storeOf reads the values of `load()`: the `codemode-store` entries on the branch, applied from the root. Entries
@@ -149,27 +261,25 @@ func valueText(value json.RawMessage) string {
 func storeOf(branch []codingagent.SessionEntry) map[string]json.RawMessage {
 	store := map[string]json.RawMessage{}
 	for _, entry := range branch {
-		if entry.Base.Type != "custom" {
+		if entry.Base().Type != "custom" {
 			continue
 		}
 		var fields struct {
-			CustomType string `json:"customType"`
-			Data       *struct {
-				Set    map[string]json.RawMessage `json:"set"`
-				Delete []string                   `json:"delete"`
-			} `json:"data"`
+			CustomType string          `json:"customType"`
+			Data       json.RawMessage `json:"data"`
 		}
 		raw, err := json.Marshal(entry)
 		if err != nil || json.Unmarshal(raw, &fields) != nil || fields.CustomType != StoreEntryType {
 			continue
 		}
-		if fields.Data == nil || fields.Data.Set == nil || fields.Data.Delete == nil {
+		set, deleted, ok := storeEntryData(fields.Data)
+		if !ok {
 			continue
 		}
-		for _, key := range fields.Data.Delete {
+		for _, key := range deleted {
 			delete(store, key)
 		}
-		maps.Copy(store, fields.Data.Set)
+		maps.Copy(store, set)
 	}
 	return store
 }
@@ -179,10 +289,8 @@ func storeOf(branch []codingagent.SessionEntry) map[string]json.RawMessage {
 //
 // upstream: codemode/execute.ts:285 (`ctx.sessionManager.getBranch()`), 301 (`options.appendEntry`, which index.ts:35 binds to `pi.appendEntry`).
 type session struct {
-	manager interface {
-		GetBranch() []codingagent.SessionEntry
-	}
-	tool *extension.ToolContext
+	manager extension.ReadonlySessionManager
+	tool    *extension.ToolContext
 }
 
 func (s session) branch() []codingagent.SessionEntry { return s.manager.GetBranch() }
@@ -200,13 +308,7 @@ func sessionOf(tc *extension.ToolContext) *session {
 	if err != nil || manager == nil {
 		return nil
 	}
-	branch, ok := manager.(interface {
-		GetBranch() []codingagent.SessionEntry
-	})
-	if !ok {
-		return nil
-	}
-	return &session{manager: branch, tool: tc}
+	return &session{manager: manager, tool: tc}
 }
 
 func spillOutput(text string) (string, error) {
@@ -244,7 +346,7 @@ func saveImages(items []ai.ToolResultMessageContent) ([]ai.ToolResultMessageCont
 		labels[image.Data] = entry
 		order = append(order, entry)
 		wg.Go(func() {
-			data := imageprocessing.DecodeNodeBase64(image.Data)
+			data := nodebase64.Decode(image.Data)
 			kind := image.MimeType + ", " + tools.FormatSize(len(data))
 			extension, known := imageExtensions[image.MimeType]
 			if !known {
@@ -273,6 +375,79 @@ func saveImages(items []ai.ToolResultMessageContent) ([]ai.ToolResultMessageCont
 		out = append(out, item)
 	}
 	return out, nil
+}
+
+// formatOutput lays out the script's output so the model can tell items apart: providers join adjacent text blocks with
+// a newline or with nothing. With more than one text item (`text()` or the returned value), each starts with a
+// `==> text N/M <==` line. `console.*` lines follow all other output in one `<console_output>` block.
+//
+// upstream: execute.ts formatOutput
+func formatOutput(output []sandbox.OutputItem) []ai.ToolResultMessageContent {
+	total := 0
+	for _, item := range output {
+		if item.Type == sandbox.OutputItemText && !item.Console {
+			total++
+		}
+	}
+	items := make([]ai.ToolResultMessageContent, 0, len(output)+1)
+	var consoleLines []string
+	index := 0
+	for _, item := range output {
+		switch {
+		case item.Type != sandbox.OutputItemText:
+			items = append(items, ai.ImageContent{Data: item.Data, MimeType: item.MimeType})
+		case item.Console:
+			consoleLines = append(consoleLines, item.Text)
+		default:
+			index++
+			text := item.Text
+			if total > 1 {
+				text = fmt.Sprintf("==> text %d/%d <==\n%s", index, total, item.Text)
+			}
+			items = append(items, ai.TextContent{Text: text})
+		}
+	}
+	if len(consoleLines) > 0 {
+		items = append(items, ai.TextContent{Text: "<console_output>\n" + strings.Join(consoleLines, "\n") + "\n</console_output>"})
+	}
+	return items
+}
+
+// joinAdjacentText joins adjacent text items into one, each part starting on its own line, in one pass per run of text items as
+// Pi 1.2.0 does (Pi #10678).
+//
+// upstream: execute.ts joinAdjacentText
+func joinAdjacentText(items []ai.ToolResultMessageContent) []ai.ToolResultMessageContent {
+	joined := make([]ai.ToolResultMessageContent, 0, len(items))
+	var run strings.Builder
+	inRun := false
+	flush := func() {
+		if inRun {
+			joined = append(joined, ai.TextContent{Text: run.String()})
+			run.Reset()
+			inRun = false
+		}
+	}
+	for _, item := range items {
+		text, isText := item.(ai.TextContent)
+		if !isText {
+			flush()
+			joined = append(joined, item)
+			continue
+		}
+		if !inRun {
+			inRun = true
+			run.Grow(len(text.Text))
+			run.WriteString(text.Text)
+			continue
+		}
+		if all := run.String(); all != "" && !strings.HasSuffix(all, "\n") {
+			run.WriteByte('\n')
+		}
+		run.WriteString(text.Text)
+	}
+	flush()
+	return joined
 }
 
 // truncateOutput applies the token budget: when the combined text exceeds it, the text items become one item that
@@ -372,6 +547,8 @@ func Execute(ctx context.Context, toolCallID string, params json.RawMessage, onU
 	}
 	tc := extension.ToolContextFromContext(ctx)
 	run := &run{toolCallID: toolCallID, onUpdate: onUpdate, tc: tc, options: options}
+	// Show the script as running before its first nested call, so the row's timer starts.
+	run.publish()
 
 	var callable []extension.AgentTool
 	if tc != nil {
@@ -382,9 +559,20 @@ func Execute(ctx context.Context, toolCallID string, params json.RawMessage, onU
 		callable = callableTools(tools)
 	}
 	// ALL_TOOLS entries carry the declaration.
+	// upstream: index.ts getToolGuidelines reads pi.getAllTools().
+	guidelines := map[string][]string{}
+	if tc != nil {
+		for _, info := range tc.GetAllTools() {
+			guidelines[info.Name] = info.PromptGuidelines
+		}
+	}
 	samples := make(map[string]string, len(callable))
 	for _, tool := range callable {
-		samples[tool.Name] = sandbox.RenderToolSample(toDeclaration(tool), 0)
+		sample, err := sandbox.RenderToolSample(toDeclaration(tool, guidelines[tool.Name]), sandbox.ToolRenderOptions{})
+		if err != nil {
+			return agent.AgentToolResult{}, err
+		}
+		samples[tool.Name] = sample
 	}
 	sandboxTools := make([]sandbox.Tool, len(callable))
 	for i, tool := range callable {
@@ -406,6 +594,7 @@ func Execute(ctx context.Context, toolCallID string, params json.RawMessage, onU
 		TimeoutMs:        timeoutMs,
 		MemoryLimitBytes: memoryLimitBytes,
 		CacheDir:         options.CacheDir,
+		AcquireWorker:    codemodeWorkers.acquire,
 	})
 	if err != nil {
 		return agent.AgentToolResult{}, err
@@ -423,18 +612,11 @@ func Execute(ctx context.Context, toolCallID string, params json.RawMessage, onU
 	// Calls still marked running were cut off by the script ending, a timeout, or an abort.
 	calls := run.finishCalls()
 
-	items := make([]ai.ToolResultMessageContent, 0, len(result.Output)+2)
-	for _, item := range result.Output {
-		if item.Type == "text" {
-			items = append(items, ai.TextContent{Text: item.Text})
-		} else {
-			items = append(items, ai.ImageContent{Data: item.Data, MimeType: item.MimeType})
-		}
-	}
+	scriptOutput := slices.Clone(result.Output)
 	if result.OK {
 		writes := result.StoreWrites
 		if session := sessionOf(tc); session != nil && (len(writes.Set) > 0 || len(writes.Delete) > 0) {
-			data := StoreEntryData{Set: writes.Set, Delete: writes.Delete}
+			data := StoreEntryData{Set: writes.Set, Delete: writes.Delete, Keys: writes.SetKeys()}
 			if data.Set == nil {
 				data.Set = map[string]json.RawMessage{}
 			}
@@ -448,9 +630,11 @@ func Execute(ctx context.Context, toolCallID string, params json.RawMessage, onU
 		}
 		// pi extension: a returned value is appended like text().
 		if result.Value != nil {
-			items = append(items, ai.TextContent{Text: valueText(result.Value)})
+			scriptOutput = append(scriptOutput, sandbox.OutputItem{Type: sandbox.OutputItemText, Text: valueText(result.Value)})
 		}
-	} else {
+	}
+	items := formatOutput(scriptOutput)
+	if !result.OK {
 		items = append(items, ai.TextContent{Text: "Script error:\n" + formatError(result.Error, calls)})
 	}
 	if generated := run.imagesGenerated(); generated > 0 && !slices.ContainsFunc(items, func(item ai.ToolResultMessageContent) bool {
@@ -468,13 +652,14 @@ func Execute(ctx context.Context, toolCallID string, params json.RawMessage, onU
 	if parsed.Options.MaxOutputTokens != nil {
 		maxTokens = *parsed.Options.MaxOutputTokens
 	}
-	truncated, fullOutputPath := truncateOutput(items, maxTokens)
+	truncated, fullOutputPath := truncateOutput(joinAdjacentText(items), maxTokens)
 	// After truncation, which joins the text items and moves images after them, so each path stays next to its image
 	// and is never cut.
-	output, err := saveImages(truncated)
+	saved, err := saveImages(truncated)
 	if err != nil {
 		return agent.AgentToolResult{}, err
 	}
+	output := joinAdjacentText(saved)
 	title := "Script failed"
 	if result.OK {
 		title = "Script completed"

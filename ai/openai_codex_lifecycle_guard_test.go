@@ -36,3 +36,27 @@ func TestToolSchemaConstrainedSamplingFalseWire(t *testing.T) {
 		t.Fatal("true is not a constrained-sampling union member")
 	}
 }
+
+// openai-codex-responses.ts resetOpenAICodexWebSocketDebugStats(sessionId): with a session id it clears that session's counters and its websocket-fallback flag, and leaves every other session's counters alone.
+func TestResetOpenAICodexWebSocketDebugStatsClearsOnlyTheNamedSession(t *testing.T) {
+	peer := newCodexWSPeer(t, func(int, int, map[string]any) []string { return []string{codexWSTerminal("resp_reset")} })
+	first, second := "session-reset-a", "session-reset-b"
+	for _, session := range []string{first, second} {
+		_, _ = codexWSResult(t, peer.provider(t, "acc_test"), codexUpstreamContext(), StreamOptions{Transport: TransportAuto, SessionID: session})
+	}
+	t.Cleanup(func() { CloseOpenAICodexWebSocketSessions(first, second); ResetOpenAICodexWebSocketDebugStats() })
+	if GetOpenAICodexWebSocketDebugStats(first) == nil || GetOpenAICodexWebSocketDebugStats(second) == nil {
+		t.Fatal("both sessions should have counters after a request")
+	}
+	ResetOpenAICodexWebSocketDebugStats(first)
+	if GetOpenAICodexWebSocketDebugStats(first) != nil {
+		t.Error("the named session's counters survived the reset")
+	}
+	if GetOpenAICodexWebSocketDebugStats(second) == nil {
+		t.Error("another session's counters were cleared")
+	}
+	ResetOpenAICodexWebSocketDebugStats()
+	if GetOpenAICodexWebSocketDebugStats(second) != nil {
+		t.Error("a reset with no session id left counters behind")
+	}
+}

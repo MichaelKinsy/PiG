@@ -1,0 +1,64 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#TranscriptTools",
+   "pkg:ai/compat#TranscriptTools",
+   "pkg:ai/utils/transcript#TranscriptTools"
+  ],
+  "targets": [
+   "ai/transcript.go#TranscriptTools"
+  ],
+  "production": [
+   "call:ai/openai.go#openAIProvider.Stream"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestDeclaredToolsAndTranscriptToolsFollowTheToolHistoryLikeUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "TranscriptTools: every upstream property maps to a Go field (types reviewed against the upstream declaration); production and tests attributed by go/types.",
+  "properties": {
+   "anchorsAdditions": {
+    "targets": [
+     "ai/transcript.go#TranscriptTools.AnchorsAdditions"
+    ],
+    "evidence": [
+     "test:ai/interface_ledger_test.go#TestDeclaredToolsAndTranscriptToolsFollowTheToolHistoryLikeUpstream"
+    ],
+    "production": [
+     "call:ai/openai.go#openAIProvider.Stream"
+    ],
+    "rationale": "The upstream property anchorsAdditions is the Go field TranscriptTools.AnchorsAdditions."
+   },
+   "requestTools": {
+    "targets": [
+     "ai/transcript.go#TranscriptTools.RequestTools"
+    ],
+    "evidence": [
+     "test:ai/interface_ledger_test.go#TestDeclaredToolsAndTranscriptToolsFollowTheToolHistoryLikeUpstream"
+    ],
+    "production": [
+     "call:ai/openai.go#openAIProvider.Stream"
+    ],
+    "rationale": "The upstream property requestTools is the Go field TranscriptTools.RequestTools."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/.#TranscriptContext",
+   "pkg:ai/compat#TranscriptContext",
+   "pkg:ai/utils/transcript#TranscriptContext"
+  ],
+  "targets": [
+   "ai/transcript.go#TranscriptContext"
+  ],
+  "production": [
+   "call:ai/models_runtime_stream.go#Models.stream"
+  ],
+  "evidence": [
+   "test:ai/transcript_test.go#TestNormalizeContextDeepCopiesEveryAcceptedJSONContainer",
+   "test:ai/transcript_test.go#TestNormalizeContextDoesNotExposeMutableState"
+  ],
+  "rationale": "TranscriptContext is the branded normalized request {messages, [transcriptContextBrand]}: Go declares an opaque struct only NormalizeContext and the replay helpers construct (the brand), and Messages() returns the deep-copied normalized messages."
+ }
+]

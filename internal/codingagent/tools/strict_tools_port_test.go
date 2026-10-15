@@ -18,7 +18,7 @@ func TestBuiltinStrictSamplingEnvironmentPort(t *testing.T) {
 			}
 			TestBuiltinToolsPreferStrictSampling(t)
 			definitions := BuiltinToolSchemas()
-			for i, tool := range CreateAllTools(t.TempDir(), nil, "") {
+			for i, tool := range CreateAllTools(t.TempDir(), nil) {
 				if !reflect.DeepEqual(tool.Schema().ConstrainedSampling, definitions[i].ConstrainedSampling) {
 					t.Fatalf("%s tool and definition strict metadata differ", tool.Name())
 				}

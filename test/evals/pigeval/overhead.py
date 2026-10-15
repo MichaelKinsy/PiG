@@ -1,4 +1,3 @@
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 """Measure harness overhead: startup, one prompt round trip, and a resumed large Session."""
 import json

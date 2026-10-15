@@ -27,7 +27,7 @@ import { gt, maxSatisfying, rcompare, satisfies, valid, validRange } from "../..
 import { CONFIG_DIR_NAME } from "../config.js";
 import { spawnProcess, spawnProcessSync } from "../utils/child-process.js";
 import { parseGitUrl } from "../utils/git.js";
-import { canonicalizePath, isLocalPath, markPathIgnoredByCloudSync, resolvePath } from "../utils/paths.js";
+import { canonicalizePath, isLocalPath, markPathIgnoredByCloudSync, normalizePath, resolvePath, } from "../utils/paths.js";
 import { stripBom } from "../utils/text.js";
 import { isStdoutTakenOver } from "./output-guard.js";
 import { readPiManifest } from "./pi-manifest.js";
@@ -480,7 +480,7 @@ function matchesAnyPattern(filePath, patterns, baseDir) {
     const parentName = isSkillFile ? basename(parentDir) : undefined;
     const parentDirPosix = isSkillFile ? toPosixPath(parentDir) : undefined;
     return patterns.some((pattern) => {
-        const normalizedPattern = toPosixPath(pattern);
+        const normalizedPattern = toPosixPath(normalizePath(pattern));
         if (minimatch(rel, normalizedPattern) ||
             minimatch(name, normalizedPattern) ||
             minimatch(filePathPosix, normalizedPattern)) {
@@ -495,7 +495,7 @@ function matchesAnyPattern(filePath, patterns, baseDir) {
 }
 function normalizeExactPattern(pattern) {
     const normalized = pattern.startsWith("./") || pattern.startsWith(".\\") ? pattern.slice(2) : pattern;
-    return toPosixPath(normalized);
+    return toPosixPath(normalizePath(normalized));
 }
 function matchesAnyExactPattern(filePath, patterns, baseDir) {
     if (patterns.length === 0)

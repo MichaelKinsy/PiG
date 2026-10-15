@@ -343,3 +343,46 @@ func TestOpaqueBodyReadinessIsAlwaysPending(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// A delivered completion runs the executor's jobs on the goroutine that delivers it, and a job starts the next read. The reader goroutine must be free to take that request, or the stream that asked for it never ends.
+func TestObservedBodyReadinessDeliverMayStartTheNextRead(t *testing.T) {
+	release := make(chan struct{}, 2)
+	body := pipeResponseBody(t, func(conn net.Conn) {
+		_, _ = io.WriteString(conn, "HTTP/1.1 200 OK\r\nContent-Length: 10\r\n\r\n")
+		<-release
+		_, _ = io.WriteString(conn, "first")
+		<-release
+		_, _ = io.WriteString(conn, "other")
+	})
+	readiness := newObservedBodyReadiness(body)
+	defer func() { _ = readiness.Close() }()
+	second := make(chan bodyReadSignal, 1)
+	first := make(chan struct{})
+	_, ready := readiness.begin(func(result bodyReadSignal) {
+		defer close(first)
+		if string(result.data) != "first" {
+			t.Errorf("first read = %q", result.data)
+		}
+		release <- struct{}{}
+		if next, ready := readiness.begin(func(result bodyReadSignal) { second <- result }); ready {
+			second <- next
+		}
+	})
+	if ready {
+		t.Fatal("a read with no buffered bytes reported ready")
+	}
+	release <- struct{}{}
+	select {
+	case <-first:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the first delivery never finished")
+	}
+	select {
+	case result := <-second:
+		if string(result.data) != "other" {
+			t.Fatalf("second read = %q", result.data)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the read started from inside a delivery never completed")
+	}
+}

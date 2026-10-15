@@ -52,8 +52,8 @@ func TestARejectedNestedCallLeavesItsRowRunningUntilTheScriptEnds(t *testing.T) 
 // discoveryFixture is the nested tools of two MCP servers and a plain tool, with the namespaces ctx.tools reports, as
 // execute.ts createDiscoveryGlobals sees them.
 func discoveryFixture() (tools []extension.AgentTool, tc *extension.ToolContext) {
-	docs := &extension.ToolNamespace{Name: "mcp__docs", Description: "Search the product docs", Instructions: "Always search before reading."}
-	radius := &extension.ToolNamespace{Name: "mcp__dev_radius", Description: "Developer radius"}
+	docs := &extension.ToolNamespace{Name: "mcp__docs", Aliases: []string{"docs"}, Description: "Search the product docs", Instructions: "Always search before reading."}
+	radius := &extension.ToolNamespace{Name: "mcp__dev_radius", Aliases: []string{"dev-radius"}, Description: "Developer radius"}
 	infos := []extension.ToolInfo{
 		{Name: "read", Description: "Read a file."},
 		{Name: "mcp__docs__search", Description: "Search the docs.", Namespace: docs},
@@ -110,6 +110,27 @@ func TestDescribeNamespaceReturnsTheNamespaceItsInstructionsAndItsToolNames(t *t
 	}
 	if _, err := callGlobal(t, globals, "describeNamespace", `[7]`); err == nil || err.Error() != "describeNamespace() expects a namespace name" {
 		t.Errorf("describeNamespace(7) error = %v", err)
+	}
+}
+
+// Pi 24382bed (execute.ts isNamespaceName): a namespace is found by its name or an alias, as written or as the same script
+// identifier; the part after its last `__` is no longer a name (that was MCP's rule, now MCP declares the server name as an
+// alias). agent-session-mcp.test.ts "describeNamespace("slow-docs" ...)" resolves one namespace for four spellings.
+func TestNamespaceLookupUsesNamesAndAliasesNotTheSuffixAfterDoubleUnderscore(t *testing.T) {
+	slow := &extension.ToolNamespace{Name: "mcp__slow_docs", Aliases: []string{"slow-docs"}}
+	bare := &extension.ToolNamespace{Name: "mcp__bare"}
+	for _, name := range []string{"slow-docs", "slow_docs", "mcp__slow-docs", "mcp__slow_docs"} {
+		if !isNamespaceName(slow, name) {
+			t.Errorf("isNamespaceName(slow, %q) = false", name)
+		}
+	}
+	for _, name := range []string{"bare", "docs", "mcp"} {
+		if isNamespaceName(bare, name) {
+			t.Errorf("isNamespaceName(bare, %q) = true: the suffix after __ is not a name", name)
+		}
+	}
+	if isNamespaceName(slow, "docs") || isNamespaceName(slow, "slow") {
+		t.Error("a namespace is not named by a part of its name")
 	}
 }
 

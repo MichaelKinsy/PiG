@@ -1,15 +1,13 @@
 package ai
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
-	"slices"
 	"strings"
 	"sync"
-	"unicode/utf8"
 )
 
 // This file models the promise chain between a Google Generative AI response's headers and the chunks Pi's `for await (const chunk of googleStream)` receives, at the granularity of promise reactions. Pi runs `client.models.generateContentStream(params)` from @google/genai 2.21.0, whose async functions, `.then` chains and tslib generators (google_sdk_generator.go) each add reactions; the order in which they run relative to the consumer of the event stream decides which partial message that consumer observes. Line numbers refer to packages/ai/src/api/google-generative-ai.ts (Pi) and dist/node/index.mjs (SDK).
@@ -50,8 +48,14 @@ func (response *googleHTTPResponse) json(executor *continuationExecutor, rounds 
 	promise := newTslibPromise(executor)
 	afterReactions(executor, rounds, func() {
 		var chunk geminiStreamChunk
-		if err := json.Unmarshal([]byte(response.text), &chunk); err != nil {
-			promise.reject(fmt.Errorf("google: invalid SSE JSON: %w", err))
+		// generateContentResponseFromMldev reads members by path, so a number, string, boolean or array becomes an empty GenerateContentResponse.
+		if top := response.text; top != "" && top[0] != '{' && top[0] != 'n' && json.Valid([]byte(top)) {
+			chunk.raw = json.RawMessage(`{}`)
+			promise.resolve(&chunk)
+			return
+		}
+		if err := decodeGeminiChunk(response.text, &chunk); err != nil {
+			promise.reject(googleChunkJSONError(response.text, err))
 			return
 		}
 		chunk.raw = json.RawMessage(response.text)
@@ -162,8 +166,11 @@ func googleProcessStreamResponse(executor *continuationExecutor, response *googl
 			return nil, err
 		}
 		defer reader.releaseGeneric() // finally { reader.releaseLock(); } (index.mjs:13858)
-		decoder := googleTextDecoder{}
-		buffer := ""
+		decoder := webTextDecoder{}   // new TextDecoder('utf-8') (index.mjs:13785)
+		// buffer is the SDK's `buffer`: the decoded text after the last record consumed. No delimiter starts before scanned; the bytes from
+		// there may still complete one when the next chunk arrives. A record that spans many reads is appended to and searched once.
+		var buffer []byte
+		scanned := 0
 		for {
 			// `const { done, value } = yield __await(reader.read());` (index.mjs:13793)
 			value, err := y.Await(googleRead(reader))
@@ -172,24 +179,28 @@ func googleProcessStreamResponse(executor *continuationExecutor, response *googl
 			}
 			read := value.(webReadResult)
 			if read.done {
-				if trimJSWhitespace(buffer) != "" {
+				if trimJSWhitespace(string(buffer)) != "" {
 					return nil, errors.New("Incomplete JSON segment at the end") // index.mjs:13796
 				}
 				return nil, nil
 			}
-			chunkString := decoder.decode(read.value)
+			// `const chunkString = decoder.decode(value, { stream: true })` and `buffer += chunkString` (index.mjs:13799, 13820)
+			appended := len(buffer)
+			buffer = decoder.decodeTo(buffer, read.value, true)
 			// A raw chunk that is a JSON error envelope with a 4xx/5xx code is an ApiError (index.mjs:13800-13820).
-			if err := googleRawChunkError([]byte(chunkString)); err != nil {
+			if err := googleRawChunkError(buffer[appended:]); err != nil {
 				return nil, err
 			}
-			buffer += chunkString
+			consumed := 0
 			for {
-				index, length := googleSSEDelimiter(buffer)
+				index, length := googleSSEDelimiter(buffer[scanned:])
 				if index < 0 {
 					break
 				}
-				event := trimJSWhitespace(buffer[:index])
-				buffer = buffer[index+length:]
+				index += scanned
+				event := trimJSWhitespace(string(buffer[consumed:index]))
+				consumed = index + length
+				scanned = consumed
 				data, ok := strings.CutPrefix(event, "data:")
 				if !ok {
 					continue
@@ -199,6 +210,11 @@ func googleProcessStreamResponse(executor *continuationExecutor, response *googl
 					return nil, err
 				}
 			}
+			if consumed > 0 {
+				buffer = append(buffer[:0], buffer[consumed:]...)
+			}
+			// A delimiter is at most 4 bytes long: only one that starts in the last 3 bytes can still appear when more text arrives.
+			scanned = max(0, len(buffer)-3)
 		}
 	})
 }
@@ -223,52 +239,21 @@ func googleGenerateContentStreamInternal(executor *continuationExecutor, apiResp
 }
 
 // googleSSEDelimiter finds the earliest of the SDK's record delimiters "\n\n", "\r\r" and "\r\n\r\n" (index.mjs:13803, 13820-13834). The SDK asks indexOf for each delimiter and keeps the smallest index; no two delimiters can start at the same index, so scanning the line-break candidates in order finds the same one without re-reading the buffer once per delimiter.
-func googleSSEDelimiter(buffer string) (index, length int) {
+func googleSSEDelimiter(buffer []byte) (index, length int) {
 	for start := 0; ; {
-		found := strings.IndexAny(buffer[start:], "\r\n")
+		found := bytes.IndexAny(buffer[start:], "\r\n")
 		if found < 0 {
 			return -1, 0
 		}
 		found += start
 		switch rest := buffer[found:]; {
-		case strings.HasPrefix(rest, "\n\n"), strings.HasPrefix(rest, "\r\r"):
+		case bytes.HasPrefix(rest, []byte("\n\n")), bytes.HasPrefix(rest, []byte("\r\r")):
 			return found, 2
-		case strings.HasPrefix(rest, "\r\n\r\n"):
+		case bytes.HasPrefix(rest, []byte("\r\n\r\n")):
 			return found, 4
 		}
 		start = found + 1
 	}
-}
-
-// googleTextDecoder is `new TextDecoder('utf-8')` with `decode(value, { stream: true })`: a code point split between chunks is held for the next call and invalid bytes become U+FFFD.
-type googleTextDecoder struct {
-	partial []byte
-}
-
-func (decoder *googleTextDecoder) decode(chunk []byte) string {
-	data := slices.Concat(decoder.partial, chunk)
-	decoder.partial = nil
-	// A trailing incomplete sequence is at most three bytes.
-	for tail := 1; tail <= utf8.UTFMax-1 && tail <= len(data); tail++ {
-		if start := len(data) - tail; utf8.RuneStart(data[start]) {
-			if !utf8.FullRune(data[start:]) {
-				decoder.partial = append([]byte(nil), data[start:]...)
-				data = data[:start]
-			}
-			break
-		}
-	}
-	var text strings.Builder
-	for len(data) > 0 {
-		character, size := utf8.DecodeRune(data)
-		if character == utf8.RuneError && size == 1 {
-			text.WriteRune(utf8.RuneError)
-		} else {
-			text.Write(data[:size])
-		}
-		data = data[size:]
-	}
-	return text.String()
 }
 
 // googleUndiciBody feeds the response body into a Web ReadableStream the way Node's undici does: the stream is a byte stream that pulls its source only while a read waits. A chunk the Go transport has already buffered settles the read googleUndiciBufferedReadRounds after the call. A chunk that needs a socket read completes as an external completion, like the macrotask that delivers it in Node, and settles googleUndiciPendingReadRounds later. The end of the body is a process.nextTick callback in undici: it runs when the microtask queue is empty, before the next macrotask.

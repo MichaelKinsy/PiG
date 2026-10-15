@@ -60,7 +60,7 @@ func TestBuildLocksAreShared(t *testing.T) {
 }
 
 func TestBuildLockForStagedRootsWaitsForStageLock(t *testing.T) {
-	for _, directory := range []string{"sdk", "sdk-rs", "sdk-py"} {
+	for _, directory := range []string{"sdk-0123456789abcdef", "sdk-rs-0123456789abcdef", "sdk-py-0123456789abcdef"} {
 		t.Run(directory, func(t *testing.T) {
 			configRoot := t.TempDir()
 			sdkRoot := filepath.Join(configRoot, "state", "pigsdk", directory)

@@ -5,9 +5,6 @@ package codingagent
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
-	"encoding/hex"
-	"fmt"
 	"image/png"
 	"os"
 	"path/filepath"
@@ -15,7 +12,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/MichaelKinsy/PiG/internal/imageprocessing"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -184,7 +184,7 @@ func tryWlPasteContext(parent context.Context) ([]byte, string, clipboardImageRe
 	if err != nil {
 		return nil, "", clipboardImageFailed
 	}
-	preferred := selectPreferredImageMIME(strings.Split(string(listOut), "\n"))
+	preferred := selectPreferredImageMIME(strings.Split(jsstring.FromUTF8(listOut), "\n"))
 	if preferred == "" {
 		return nil, "", clipboardImageNone
 	}
@@ -209,7 +209,7 @@ func tryXclipContext(parent context.Context) ([]byte, string, clipboardImageResu
 		return nil, "", clipboardImageFailed
 	}
 	// The preferred type keeps its advertised spelling.
-	preferred := selectPreferredImageMIME(strings.Split(string(targetsOut), "\n"))
+	preferred := selectPreferredImageMIME(strings.Split(jsstring.FromUTF8(targetsOut), "\n"))
 	if preferred == "" {
 		return nil, "", clipboardImageNone
 	}
@@ -228,16 +228,14 @@ func tryXclipContext(parent context.Context) ([]byte, string, clipboardImageResu
 // the Linux clipboard does not receive Windows screenshots. Mirrors upstream
 // readClipboardImageViaPowerShell.
 func readClipboardImageViaPowerShellContext(parent context.Context) ([]byte, bool) {
-	suffix := make([]byte, 16)
-	_, _ = rand.Read(suffix)
-	tmpFile := filepath.Join(os.TempDir(), "pi-wsl-clip-"+hex.EncodeToString(suffix)+".png")
+	tmpFile := filepath.Join(os.TempDir(), "pi-wsl-clip-"+uuid.NewString()+".png")
 	defer func() { _ = os.Remove(tmpFile) }()
 
 	out, err := runClipboardImageCommandContext(parent, clipboardListTimeout, "wslpath", "-w", tmpFile)
 	if err != nil {
 		return nil, false
 	}
-	winPath := strings.TrimSpace(string(out))
+	winPath := jsstring.Trim(jsstring.FromUTF8(out))
 	if winPath == "" {
 		return nil, false
 	}
@@ -249,7 +247,7 @@ func readClipboardImageViaPowerShellContext(parent context.Context) ([]byte, boo
 		"if ($img) { $img.Save($path, [System.Drawing.Imaging.ImageFormat]::Png); Write-Output 'ok' } else { Write-Output 'empty' }",
 	}, "; ")
 	out, err = runClipboardImageCommandContext(parent, clipboardPowerShellTimeout, "powershell.exe", "-NoProfile", "-Command", script)
-	if err != nil || strings.TrimSpace(string(out)) != "ok" {
+	if err != nil || jsstring.Trim(jsstring.FromUTF8(out)) != "ok" {
 		return nil, false
 	}
 	data, err := os.ReadFile(tmpFile)
@@ -266,7 +264,7 @@ func selectPreferredImageMIME(types []string) string {
 	type entry struct{ raw, base string }
 	var es []entry
 	for _, t := range types {
-		t = strings.TrimSpace(t)
+		t = jsstring.Trim(t)
 		if t == "" {
 			continue
 		}
@@ -293,7 +291,7 @@ func baseMIME(mime string) string {
 	if i := strings.Index(mime, ";"); i >= 0 {
 		mime = mime[:i]
 	}
-	return strings.ToLower(strings.TrimSpace(mime))
+	return jsstring.ToLower(jsstring.Trim(mime))
 }
 
 // ExtensionForImageMIME returns the canonical file extension for a
@@ -315,7 +313,7 @@ func ExtensionForImageMIME(mime string) string {
 }
 
 // SaveClipboardImageToTempFile writes the bytes to
-// $TMPDIR/pig-clipboard-<nanos>.<ext> and returns the absolute path.
+// $TMPDIR/pi-clipboard-<uuid>.<ext> and returns the absolute path.
 // The caller is responsible for cleanup; for a paste-into-editor flow
 // we leave the file around so the model can read it back.
 func SaveClipboardImageToTempFile(bytes []byte, mime string) (string, error) {
@@ -323,9 +321,10 @@ func SaveClipboardImageToTempFile(bytes []byte, mime string) (string, error) {
 	if ext == "" {
 		ext = "png"
 	}
-	name := fmt.Sprintf("pig-clipboard-%d.%s", time.Now().UnixNano(), ext)
+	name := "pi-clipboard-" + uuid.NewString() + "." + ext
 	path := filepath.Join(os.TempDir(), name)
-	if err := os.WriteFile(path, bytes, 0o600); err != nil {
+	// Node's writeFileSync creates the file with mode 0o666 less the umask.
+	if err := os.WriteFile(path, bytes, 0o666); err != nil {
 		return "", err
 	}
 	return path, nil

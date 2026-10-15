@@ -17,7 +17,7 @@ import (
 func e2eAgent(cfg ai.FauxConfig, steps ...ai.FauxResponseStep) *Agent {
 	provider := ai.NewFauxProvider(cfg)
 	provider.SetResponses(steps)
-	return NewAgent(AgentOptions{SystemPrompt: "You are a helpful assistant.", Model: &ai.Model{ID: "faux-1", Provider: provider, ProviderMeta: ai.ProviderMetadata{API: "faux", ProviderID: "faux"}}, ThinkingLevel: ai.ThinkingOff})
+	return mustNewAgent(AgentOptions{SystemPrompt: "You are a helpful assistant.", Model: &ai.Model{ID: "faux-1", Provider: provider, ProviderMeta: ai.ProviderMetadata{API: "faux", ProviderID: "faux"}}, ThinkingLevel: ai.ThinkingOff})
 }
 func e2eText(text string) ai.FauxResponseStep {
 	return ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText(text)}})
@@ -66,7 +66,7 @@ func TestAgentE2E_HandlesBasicTextPrompt(t *testing.T) {
 
 // .upstream/v0.87.1/packages/agent/test/e2e.test.ts:193
 func TestAgentE2E_ExecutesToolsAndTracksPendingToolCalls(t *testing.T) {
-	a := e2eAgent(ai.FauxConfig{}, ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("Let me calculate that."), ai.FauxToolCall("calculate", map[string]any{"expression": "123 * 456"}, "calc-1")}, StopReason: "toolUse"}), e2eText("The result is 56088."))
+	a := e2eAgent(ai.FauxConfig{}, ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("Let me calculate that."), ai.FauxToolCall("calculate", map[string]any{"expression": "123 * 456"}, &ai.FauxToolCallOptions{ID: "calc-1"})}, StopReason: "toolUse"}), e2eText("The result is 56088."))
 	a.SetTools([]AgentTool{e2eCalculateTool()})
 	a.SetSystemPrompt("You are a helpful assistant. Always use the calculator tool for math.")
 	var pending [][]string
@@ -90,9 +90,11 @@ func TestAgentE2E_ExecutesToolsAndTracksPendingToolCalls(t *testing.T) {
 }
 
 // .upstream/v0.87.1/packages/agent/test/e2e.test.ts:208
+// Pi source: packages/ai/src/providers/faux.ts
+// mutation-checked: dropping the reads and writes of FauxConfig.TokensPerSecond fails it
 func TestAgentE2E_HandlesAbortDuringStreaming(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		a := e2eAgent(ai.FauxConfig{TokensPerSecond: 20, MinTokenSize: 2, MaxTokenSize: 2}, e2eText("one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen"))
+		a := e2eAgent(ai.FauxConfig{TokensPerSecond: 20, TokenSize: &ai.FauxTokenSize{Min: new(2), Max: new(2)}}, e2eText("one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen"))
 		done := sendAsync(t, a, "Count slowly from 1 to 20.")
 		time.Sleep(30 * time.Millisecond)
 		a.Abort()
@@ -110,7 +112,7 @@ func TestAgentE2E_HandlesAbortDuringStreaming(t *testing.T) {
 
 // .upstream/v0.87.1/packages/agent/test/e2e.test.ts:221
 func TestAgentE2E_EmitsLifecycleUpdatesWhileStreaming(t *testing.T) {
-	a := e2eAgent(ai.FauxConfig{MinTokenSize: 1, MaxTokenSize: 1}, e2eText("1 2 3 4 5"))
+	a := e2eAgent(ai.FauxConfig{TokenSize: &ai.FauxTokenSize{Min: new(1), Max: new(1)}}, e2eText("1 2 3 4 5"))
 	var events []string
 	a.Subscribe(func(_ context.Context, event AgentEvent) error {
 		if name := eventType(event); name != "" {
@@ -134,12 +136,12 @@ func TestAgentE2E_EmitsLifecycleUpdatesWhileStreaming(t *testing.T) {
 
 // .upstream/v0.87.1/packages/agent/test/e2e.test.ts:227
 func TestAgentE2E_MaintainsContextAcrossMultipleTurns(t *testing.T) {
-	a := e2eAgent(ai.FauxConfig{}, e2eText("Nice to meet you, Alice."), ai.FauxFactoryStep(func(transcript ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+	a := e2eAgent(ai.FauxConfig{}, e2eText("Nice to meet you, Alice."), ai.FauxFactoryStep(func(transcript ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
 		response := "I do not know your name."
 		if slices.ContainsFunc(userTexts(transcript), func(text string) bool { return strings.Contains(text, "Alice") }) {
 			response = "Your name is Alice."
 		}
-		return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText(response)}}, nil
+		return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText(response)}}.AssistantMessage(), nil
 	}))
 	if messages := mustSend(t, a, "My name is Alice."); len(messages) != 3 {
 		t.Fatalf("messages=%v", messages)
@@ -164,7 +166,7 @@ func TestAgentE2E_PreservesThinkingContentBlocks(t *testing.T) {
 // .upstream/v0.87.1/packages/agent/test/e2e.test.ts:270
 func TestAgentE2E_ThrowsWhenNoMessagesInContext(t *testing.T) {
 	a := e2eAgent(ai.FauxConfig{})
-	if _, err := a.Continue(t.Context()); err != ErrNoMessagesToContinue || err.Error() != "No messages to continue from" {
+	if _, err := a.ContinueMessages(t.Context()); err != ErrNoMessagesToContinue || err.Error() != "No messages to continue from" {
 		t.Fatalf("Continue error=%v", err)
 	}
 }
@@ -173,7 +175,7 @@ func TestAgentE2E_ThrowsWhenNoMessagesInContext(t *testing.T) {
 func TestAgentE2E_ThrowsWhenLastMessageIsAssistant(t *testing.T) {
 	a := e2eAgent(ai.FauxConfig{})
 	a.SetMessages([]AgentMessage{assistantText("Hello")})
-	if _, err := a.Continue(t.Context()); err == nil || err.Error() != "Cannot continue from message role: assistant" {
+	if _, err := a.ContinueMessages(t.Context()); err == nil || err.Error() != "Cannot continue from message role: assistant" {
 		t.Fatalf("Continue error=%v", err)
 	}
 }
@@ -182,7 +184,7 @@ func TestAgentE2E_ThrowsWhenLastMessageIsAssistant(t *testing.T) {
 func TestAgentE2E_ContinuesAndGetsResponseFromUserTail(t *testing.T) {
 	a := e2eAgent(ai.FauxConfig{}, e2eText("HELLO WORLD"))
 	a.SetMessages([]AgentMessage{userMessage("Say exactly: HELLO WORLD")})
-	messages, err := a.Continue(t.Context())
+	messages, err := a.ContinueMessages(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -199,7 +201,7 @@ func TestAgentE2E_ContinuesAndProcessesToolResults(t *testing.T) {
 	assistant.Assistant.Content = append(assistant.Assistant.Content, toolCall("calc-1", "calculate", ai.JsonObject{"expression": "5 + 3"}))
 	assistant.Assistant.StopReason = ai.StopReasonToolUse
 	a.SetMessages([]AgentMessage{userMessage("What is 5 + 3?"), assistant, {ToolResult: &ToolResultMessage{Role: RoleToolResult, ToolCallID: "calc-1", ToolName: "calculate", Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "5 + 3 = 8"}}}}})
-	messages, err := a.Continue(t.Context())
+	messages, err := a.ContinueMessages(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}

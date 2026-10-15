@@ -2,7 +2,7 @@
 
 STATUS: READY for what is done (see READY.md). The remaining items moved to lanes xd-models-iface, xd-coding-harness, xd-transcript-bridge and xd-harness-retire.
 
-Lane exp-durable. Branch `smc1/exp-durable` from `agg-100`, pushed to `team/smc1/exp-durable`. Upstream `.upstream/v1.0.0/packages/coding-agent/src/experimental` and `test/experimental-*`. Merged staging `d-foundation` (durable root types) once.
+Lane exp-durable. Branch `the bench host/exp-durable` from `agg-100`, pushed to `team/the bench host/exp-durable`. Upstream `.upstream/v1.0.0/packages/coding-agent/src/experimental` and `test/experimental-*`. Merged staging `d-foundation` (durable root types) once.
 
 ## HANDOFF
 
@@ -15,7 +15,7 @@ Lane exp-durable. Branch `smc1/exp-durable` from `agg-100`, pushed to `team/smc1
 - Tests ported to the 1.0.0 cases over `internal/experimental/durabletest` (stand-in for pi-durable's MemoryStorage Harness + faux provider; file-backed `OpenFile`): agent-controller (3), transcript-provider, plugin-reload, client-tui (3 rows), remote-runtime prompt cases and duplicate Session ID, session-worker lifecycle and manager (earlier commit), worker task-graph retention. Services package is green except Node-oracle tests that also fail on the base (node lacks `--experimental-transform-types`).
 
 ### State at the last push (`34e22359d`)
-- Merged into this branch: d-foundation, d-storage, d-session, chord-100, d-harness-a, d-harness-b, d-env-tools (rerere + `/tmp/exp/mergejson.py`-style per-entry merge for `test-mapping-v1.0.0.json`). `team/smc1/d-harness-c` conflicts with d-harness-b in `durable/harness/{stubs,task_graph,tool}.go` and `harness_task_graph_test.go` (their lanes' files), so it is not merged.
+- Merged into this branch: d-foundation, d-storage, d-session, chord-100, d-harness-a, d-harness-b, d-env-tools (rerere + `/tmp/exp/mergejson.py`-style per-entry merge for `test-mapping-v1.0.0.json`). `team/the bench host/d-harness-c` conflicts with d-harness-b in `durable/harness/{stubs,task_graph,tool}.go` and `harness_task_graph_test.go` (their lanes' files), so it is not merged.
 - The services, worker, client TUI and remote-runtime tests now run on the real `durable/harness` Harness: `internal/experimental/durableadapter.Session` implements `services.AgentHarness`, `AgentConversation`, `ModelsServiceConversation`, `TranscriptConversation`, `AgentDocument` (via `DocumentStateErased(AgentDoc)`) and `TaskGraphActivity`; `services.ConversationView` is `harness.ConversationView`; `durabletest` opens `OpenHarness` over `storage.NewMemoryStorage` or `sqlitenode.OpenNodeSqliteStorage` with the faux provider.
 - `go test ./internal/experimental/...` is green (the Node-oracle tests now pass too); `-race` clean for the worker/client/remote-runtime tests; `golangci-lint` clean. `make test-porting-release` fails only on the chord-100 and 2860 owner-approval rows.
 - Test mapping: agent-controller, transcript-provider, plugin-reload and client-tui are `ported`; remote-runtime stays `partial` (production `openCodingHarness`).

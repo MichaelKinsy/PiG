@@ -1,5 +1,4 @@
 <!--
-SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 SPDX-License-Identifier: MIT
 -->
 
@@ -189,7 +188,7 @@ Created go extension "hello" in /tmp/qs-home/demo/hello
   go.mod
   extension.go
 
-SDK: /tmp/qs-home/.pig/state/pigsdk/sdk
+SDK: /tmp/qs-home/.pig/state/pigsdk/sdk-72e2fd4b0a74d9b5
 
 Next steps:
   pig install /tmp/qs-home/demo/hello --validate-only --json

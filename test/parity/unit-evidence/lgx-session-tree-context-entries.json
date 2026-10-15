@@ -1,0 +1,140 @@
+[
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionEntryCountCountsDistinctIDsOfALoadedFile"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session.go: replace `return len(s.byID)\n}\n\n// GetLeafID` with `return len(s.entries)\n}\n\n// GetLeafID`; TestSessionEntryCountCountsDistinctIDsOfALoadedFile fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionEntryCountExcludesTheHeader",
+   "TestSessionEntryCountCountsDistinctIDsOfALoadedFile"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session.go: replace `return len(s.byID)\n}\n\n// GetLeafID` with `return len(s.byID) + 1\n}\n\n// GetLeafID`; TestSessionEntryCountCountsDistinctIDsOfALoadedFile, TestSessionEntryCountExcludesTheHeader fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestBuildContextEntriesOfAnEmptySessionIsAnEmptyList"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session.go: replace `if s.leafID == nil {\n\t\treturn []SessionEntry{}\n\t}\n\treturn buildContextEntries(` with `if s.leafID == nil {\n\t\treturn nil\n\t}\n\treturn buildContextEntries(`; TestBuildContextEntriesOfAnEmptySessionIsAnEmptyList fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSessionBuildSessionContextAndContextEntriesFollowTheLeaf"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session.go: replace `return buildContextEntries(s.pathToLocked(*s.leafID), s.messageFor)` with `return buildContextEntries(s.entries, s.messageFor)`; TestSessionBuildSessionContextAndContextEntriesFollowTheLeaf fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestGetLatestCompactionEntryOverASessionBranch"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session.go: replace `if entry.Base().Type != \"compaction\" {\n\t\t\tcontinue\n\t\t}\n\t\tcompaction, ok` with `if entry.Base().Type != \"compaction\" {\n\t\t\treturn nil\n\t\t}\n\t\tcompaction, ok`; TestGetLatestCompactionEntryOverASessionBranch fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestGetLatestCompactionEntryKeepsAnUndecodableNewestEntry",
+   "TestGetLatestCompactionEntryOverASessionBranch"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session.go: replace `for _, entry := range slices.Backward(entries) {\n\t\tif entry.Base().Type != \"compaction\" {` with `for _, entry := range entries {\n\t\tif entry.Base().Type != \"compaction\" {`; TestGetLatestCompactionEntryKeepsAnUndecodableNewestEntry, TestGetLatestCompactionEntryOverASessionBranch fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestGetLatestCompactionEntryKeepsAnUndecodableNewestEntry"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session.go: replace `compaction = CompactionEntry{SessionEntryBase: entry.Base()}` with `compaction = CompactionEntry{}`; TestGetLatestCompactionEntryKeepsAnUndecodableNewestEntry fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestGetTreeResolvesLabelsAndSortsEveryLevelOfChildren"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session.go: replace `for _, e := range s.entries {\n\t\tnodes[e.Base().ID] = &SessionTreeNode{Entry: e}` with `for _, e := range s.entries[:1] {\n\t\tnodes[e.Base().ID] = &SessionTreeNode{Entry: e}`; TestGetTreeResolvesLabelsAndSortsEveryLevelOfChildren fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestGetTreeResolvesLabelsAndSortsEveryLevelOfChildren"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session.go: replace `if le.Label != nil && *le.Label != \"\" {` with `if le.Label != nil {`; TestGetTreeResolvesLabelsAndSortsEveryLevelOfChildren fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestGetTreeResolvesLabelsAndSortsEveryLevelOfChildren"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session.go: replace `n.LabelTimestamp = e.Base().Timestamp` with `n.LabelTimestamp = \"\"`; TestGetTreeResolvesLabelsAndSortsEveryLevelOfChildren fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestGetTreeRootsAndChildOrderFollowUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session.go: replace `if e.Base().ParentID == nil || *e.Base().ParentID == e.Base().ID {` with `if e.Base().ParentID == nil {`; TestGetTreeRootsAndChildOrderFollowUpstream fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestGetTreeRootsAndChildOrderFollowUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session.go: replace `parent, ok := nodes[*e.Base().ParentID]\n\t\tif !ok {\n\t\t\troots = append(roots, n)\n\t\t\tcontinue\n\t\t}` with `parent, ok := nodes[*e.Base().ParentID]\n\t\tif !ok {\n\t\t\tcontinue\n\t\t}`; TestGetTreeRootsAndChildOrderFollowUpstream fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestGetTreeResolvesLabelsAndSortsEveryLevelOfChildren",
+   "TestGetTreeRootsAndChildOrderFollowUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session.go: replace `delta := ai.DateParse(a.Entry.Base().Timestamp) - ai.DateParse(b.Entry.Base().Timestamp)` with `delta := ai.DateParse(b.Entry.Base().Timestamp) - ai.DateParse(a.Entry.Base().Timestamp)`; TestGetTreeResolvesLabelsAndSortsEveryLevelOfChildren, TestGetTreeRootsAndChildOrderFollowUpstream fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestGetTreeResolvesLabelsAndSortsEveryLevelOfChildren"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session.go: replace `stack = append(stack, n.Children...)\n\t}\n\treturn roots` with `}\n\treturn roots`; TestGetTreeResolvesLabelsAndSortsEveryLevelOfChildren fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/session-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestGetTreeResolvesLabelsAndSortsEveryLevelOfChildren"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/session-manager.ts",
+  "mutation": "internal/codingagent/session.go: replace `stack := slices.Clone(roots)` with `stack := slices.Clone(roots)[:0]`; TestGetTreeResolvesLabelsAndSortsEveryLevelOfChildren fails."
+ }
+]

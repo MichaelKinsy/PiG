@@ -1,0 +1,30 @@
+{
+ "tasks": {
+  "work": {"name":"t.work","version":1,"phases":{
+     "start":[{"log":"start"},{"commit":{"ops":[{"op":"appendEntry","draft":{"kind":"e","data":1}}],"next":{"status":"running","checkpoint":{"phase":"finish"}}}}],
+     "finish":[{"memo":["m","first"]},{"commit":{"next":{"status":"terminal","outcome":{"status":"completed","result":42}}}}]
+  }},
+  "bad": {"name":"t.bad","version":1,"phases":{"start":[{"throw":"boom"}]}},
+  "noprogress": {"name":"t.np","version":1,"phases":{"start":[{"log":"noop"}]}},
+  "parent": {"name":"t.parent","version":1,"phases":{
+     "start":[{"commit":{"ops":[{"op":"childTask","task":"work"},{"op":"childTask","task":"work"}],"next":{"status":"waiting","checkpoint":{"phase":"join"},"on":["$c0","$c1"],"policy":"allSettled"}}}],
+     "join":[{"commit":{"next":{"status":"terminal","outcome":{"status":"completed","result":"joined"}}}}]
+  }},
+  "gated": {"name":"t.gated","version":1,"phases":{
+     "start":[{"await":"g1"},{"commit":{"next":{"status":"terminal","outcome":{"status":"completed"}}}}]
+  },"abort":[{"commit":{"next":{"status":"terminal","outcome":{"status":"aborted","reason":"by abort handler"}}}}]}
+ },
+ "cmds": [
+  {"cmd":"commit","ops":[{"op":"rootConversation"},{"op":"createConversation"}]},
+  {"cmd":"open"},
+  {"cmd":"commit","ops":[{"op":"createTask","task":"work","opts":{"conversationId":1}}]},
+  {"cmd":"resume"},
+  {"cmd":"commit","ops":[{"op":"createTask","task":"bad","opts":{"conversationId":1}},{"op":"createTask","task":"noprogress","opts":{"conversationId":2}}]},
+  {"cmd":"commit","ops":[{"op":"createTask","task":"parent","opts":{"conversationId":1}}]},
+  {"cmd":"commit","ops":[{"op":"createTask","task":"gated","opts":{"conversationId":2}}]},
+  {"cmd":"waitForIdle","conv":1},
+  {"cmd":"abort","id":12},
+  {"cmd":"release","gate":"g1"},
+  {"cmd":"waitForIdle"}
+ ]
+}

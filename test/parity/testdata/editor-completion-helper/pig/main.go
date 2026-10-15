@@ -26,11 +26,8 @@ type testCase struct {
 
 type provider struct{ testCase }
 
-func (p provider) GetSuggestions(lines []string, row, col int) *tui.AutocompleteSuggestions {
-	return p.query(lines[row][:col], false)
-}
-func (p provider) GetSuggestionsForce(lines []string, row, col int) *tui.AutocompleteSuggestions {
-	return p.query(lines[row][:col], true)
+func (p provider) GetSuggestions(ctx context.Context, lines []string, row, col int, options tui.AutocompleteSuggestionOptions) *tui.AutocompleteSuggestions {
+	return p.query(lines[row][:col], options.Force)
 }
 func (p provider) query(before string, force bool) *tui.AutocompleteSuggestions {
 	prefix, values, filter := before, p.Values, p.Filter

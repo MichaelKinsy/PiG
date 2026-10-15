@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,12 +11,12 @@ import (
 	"os"
 	"os/exec"
 	"slices"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/crossspawn"
 	"github.com/MichaelKinsy/PiG/internal/jsonparse"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
@@ -96,7 +97,7 @@ func (t *StdioTransport) PID() int {
 func (t *StdioTransport) Stderr() string {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	return strings.ToValidUTF8(string(t.stderr), "\uFFFD")
+	return jsstring.FromUTF8(t.stderr)
 }
 
 func (t *StdioTransport) environment() []nodespawn.EnvProperty {
@@ -124,7 +125,7 @@ func (t *StdioTransport) Start() error {
 	}
 	if t.closed {
 		t.mu.Unlock()
-		return NewConnectionClosedError()
+		return NewMcpConnectionClosedError("")
 	}
 	t.started = true
 	t.mu.Unlock()
@@ -219,18 +220,19 @@ func stdioStderrMode(mode string) nodespawn.Stdio {
 	return nodespawn.Pipe
 }
 
-// Send writes one message as a line on the server's stdin.
-func (t *StdioTransport) Send(message JSONRPCMessage) error {
-	return t.SendOrdered(message, nil)
+// Send writes one message as a line on the server's stdin. Like Pi's stdio
+// send (stdio.ts:143) it ignores the send signal (ctx): a line is written at once.
+func (t *StdioTransport) Send(ctx context.Context, message JSONRPCMessage) error {
+	return t.SendOrdered(ctx, message, nil)
 }
 
 // SendOrdered is Send that calls placed, if not nil, once the write holds its place: a later Send writes after it.
-func (t *StdioTransport) SendOrdered(message JSONRPCMessage, placed func()) error {
+func (t *StdioTransport) SendOrdered(_ context.Context, message JSONRPCMessage, placed func()) error {
 	t.mu.Lock()
 	stdin, ok := t.stdin, t.started && !t.closed && !t.stdinClosed && t.stdin != nil && t.cmd != nil
 	t.mu.Unlock()
 	if !ok {
-		return NewConnectionClosedError()
+		return NewMcpConnectionClosedError("")
 	}
 	payload, err := json.Marshal(message)
 	if err != nil {
@@ -315,7 +317,7 @@ func (t *StdioTransport) closePipes() {
 // longer than the limit is dropped with an error.
 func (t *StdioTransport) readStdout(r io.Reader) {
 	buf := make([]byte, stdoutReadChunkBytes)
-	var pending []byte
+	var lines lineSplitter
 	maxBytes := t.options.MaxMessageBytes
 	if maxBytes == 0 {
 		maxBytes = DefaultMaxMessageBytes
@@ -323,39 +325,40 @@ func (t *StdioTransport) readStdout(r io.Reader) {
 	for {
 		n, err := r.Read(buf)
 		if n > 0 {
-			pending = append(pending, buf[:n]...)
-			pending = t.drainLines(pending, maxBytes)
+			lines.write(buf[:n])
+			t.drainLines(&lines, maxBytes)
 		}
 		if err != nil {
 			t.mu.Lock()
-			t.stdoutRemainder = pending
+			t.stdoutRemainder = lines.pending()
 			t.mu.Unlock()
 			return
 		}
 	}
 }
 
-func (t *StdioTransport) drainLines(pending []byte, maxBytes int) []byte {
+func (t *StdioTransport) drainLines(lines *lineSplitter, maxBytes int) {
 	for {
-		newline := bytes.IndexByte(pending, '\n')
-		if newline < 0 {
-			if len(pending) > maxBytes {
+		line, ok := lines.next()
+		if !ok {
+			if lines.pendingLen() > maxBytes {
 				t.EmitError(fmt.Errorf("MCP stdio message exceeds %d bytes", maxBytes))
-				return nil
+				lines.reset()
 			}
-			return pending
+			return
 		}
-		line := pending[:newline]
-		pending = pending[newline+1:]
 		if len(line) > maxBytes {
 			t.EmitError(fmt.Errorf("MCP stdio message exceeds %d bytes", maxBytes))
 			continue
 		}
-		text := strings.TrimSuffix(string(line), "\r")
-		if strings.TrimSpace(text) == "" {
+		line = bytes.TrimSuffix(line, []byte{'\r'})
+		// bytes.TrimFunc decodes runes as strings.TrimFunc does, so this is
+		// jsstring.Trim(text) == "" without copying the line.
+		if len(bytes.TrimFunc(line, jsstring.IsSpace)) == 0 {
 			continue
 		}
-		message, err := parseWireMessage([]byte(text))
+		// The line aliases the splitter's buffer; parsing copies what it keeps.
+		message, err := parseWireMessage(line)
 		if err != nil {
 			t.EmitError(err)
 			continue
@@ -363,6 +366,52 @@ func (t *StdioTransport) drainLines(pending []byte, maxBytes int) []byte {
 		t.EmitMessage(message)
 	}
 }
+
+// lineSplitter frames "\n"-terminated lines from appended reads. It remembers
+// how far the pending bytes were searched, so a line spanning many reads is
+// searched once, and it compacts consumed bytes only when they outweigh the
+// pending ones, so copying stays linear too.
+type lineSplitter struct {
+	buf     []byte
+	start   int // first pending byte
+	scanned int // bytes before scanned hold no '\n'
+}
+
+func (s *lineSplitter) write(p []byte) {
+	if s.start > 0 && s.start >= len(s.buf)-s.start {
+		n := copy(s.buf, s.buf[s.start:])
+		s.buf = s.buf[:n]
+		s.scanned -= s.start
+		s.start = 0
+	}
+	s.buf = append(s.buf, p...)
+}
+
+// next returns the next line without its "\n". The line aliases the buffer
+// and is valid until the next write.
+func (s *lineSplitter) next() ([]byte, bool) {
+	i := bytes.IndexByte(s.buf[s.scanned:], '\n')
+	if i < 0 {
+		s.scanned = len(s.buf)
+		return nil, false
+	}
+	end := s.scanned + i
+	line := s.buf[s.start:end]
+	s.start, s.scanned = end+1, end+1
+	return line, true
+}
+
+func (s *lineSplitter) pendingLen() int { return len(s.buf) - s.start }
+
+// pending returns the unterminated tail, or nil when there is none.
+func (s *lineSplitter) pending() []byte {
+	if s.start == len(s.buf) {
+		return nil
+	}
+	return s.buf[s.start:]
+}
+
+func (s *lineSplitter) reset() { s.buf, s.start, s.scanned = s.buf[:0], 0, 0 }
 
 // parseWireMessage parses JSON text and validates it as a JSON-RPC message.
 // A syntax error carries the message JSON.parse throws.
@@ -380,7 +429,7 @@ func (t *StdioTransport) finishStdout() {
 	rest := t.stdoutRemainder
 	t.stdoutRemainder = nil
 	t.mu.Unlock()
-	if strings.TrimSpace(string(rest)) != "" {
+	if jsstring.Trim(string(rest)) != "" {
 		t.EmitError(errors.New("MCP stdio server closed with an incomplete JSON-RPC message"))
 	}
 }
@@ -402,7 +451,7 @@ func (t *StdioTransport) readStderr(r io.Reader) {
 			}
 			t.mu.Unlock()
 			if t.options.OnStderr != nil {
-				t.options.OnStderr(strings.ToValidUTF8(string(chunk), "\uFFFD"))
+				t.options.OnStderr(jsstring.FromUTF8(chunk))
 			}
 		}
 		if err != nil {

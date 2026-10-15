@@ -8,7 +8,7 @@ READY. This branch unblocks item 1 of the exp-durable handoff (`docs/plan/progre
 
 ## Base
 
-Merged, in order: `staging/team/smc1/exp-durable` (which carries d-foundation, d-storage, d-session, chord-100, d-harness-a, d-harness-b, d-env-tools), then `team/smc1/d-harness-c`, `team/smc1/d-env-tools` (its later chord-guide and examples commits) and `team/smc1/sg-durable-tools`.
+Merged, in order: `staging/team/the bench host/exp-durable` (which carries d-foundation, d-storage, d-session, chord-100, d-harness-a, d-harness-b, d-env-tools), then `team/the bench host/d-harness-c`, `team/the bench host/d-env-tools` (its later chord-guide and examples commits) and `team/the bench host/sg-durable-tools`.
 
 - d-harness-c and d-harness-a both ported `task-graph.ts` and `harness-task-graph.test.ts`. The merge keeps d-harness-a's `durable/harness/task_graph.go` and `harness_task_graph_test.go`, because `internal/experimental/durableadapter` uses its typed `TaskGraph`. d-harness-c's JSON-object port is dropped; its other files are taken whole.
 - `durable/harness/stubs.go` stays deleted (d-harness-a's `view.go` replaced the view stubs; `task_graph.go` replaced the graph stubs).
@@ -30,9 +30,9 @@ Pi passes the coding Model Runtime as the Harness's models (`session-worker.ts:7
 
 ## Pre-existing failures (also on the lane tips, not caused here)
 
-- `durable/storage` `TestDurableStorageRuntimeBoundaries`: `durable/env` imports `os`, `os/exec`, `path/filepath`, `syscall` because `node.go` lives in the portable `durable/env` package. Fails identically on `staging/team/smc1/exp-durable`. Owner: d-env-tools / sg-durable-tools.
-- `durable/harness` `TestToolProgressAndLifetime/settles_details()_promises...`: `details map[n:2], want n: 3` in about 7 of 10 runs. Fails at the same rate on `staging/team/smc1/d-harness-c`. Owner: d-harness-c / d-harness-b (`tool.go`).
-- `internal/experimental/services` `TestModelsConcurrentCatalogRevisionsAreDistinct`: `got 71..99, want 100` in about half the runs. Fails on `staging/team/smc1/exp-durable`. Owner: exp-durable.
+- `durable/storage` `TestDurableStorageRuntimeBoundaries`: `durable/env` imports `os`, `os/exec`, `path/filepath`, `syscall` because `node.go` lives in the portable `durable/env` package. Fails identically on `staging/team/the bench host/exp-durable`. Owner: d-env-tools / sg-durable-tools.
+- `durable/harness` `TestToolProgressAndLifetime/settles_details()_promises...`: `details map[n:2], want n: 3` in about 7 of 10 runs. Fails at the same rate on `staging/team/the bench host/d-harness-c`. Owner: d-harness-c / d-harness-b (`tool.go`).
+- `internal/experimental/services` `TestModelsConcurrentCatalogRevisionsAreDistinct`: `got 71..99, want 100` in about half the runs. Fails on `staging/team/the bench host/exp-durable`. Owner: exp-durable.
 - Node-oracle tests in `internal/experimental` and `agent/harness/pico3` fail in this worktree only because `extensions/sdk-ts/node_modules` and `test/parity/interface-extractor/node_modules` are not installed.
 - `golangci-lint` on `durable/...`: `drafts.go` unused `setIndexJSON`, `harness_inbox_test.go` goimports, `tool.go` gocritic appendAssign x2 and gosec G103. All present on the lane tips.
 - `make generate` stops at `known-gaps`: the release policy row for `packages/chord/test/delta-tracker/tracker.test.ts` lists `designedOutCases` without `SCRUTINIZED:approved` (chord-100 owner approval). The steps after it (`custom-factory-ledger`, `coverage`) were run directly.

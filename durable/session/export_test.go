@@ -13,3 +13,10 @@ func IsSealed(tx *Transaction) bool {
 	defer tx.mu.Unlock()
 	return tx.sealed
 }
+
+// CloseSubscriptions reports the number of live close subscriptions.
+func CloseSubscriptions(session *SessionImpl) int {
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	return len(session.closeOrder)
+}

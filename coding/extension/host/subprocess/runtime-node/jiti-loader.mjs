@@ -1,22 +1,25 @@
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { shims } from "./loader.mjs";
 import { cacheImportedModules } from "./compile-cache.mjs";
+import { compiledFactory, runtimeRequire, runtimeSource } from "./runtime-modules.mjs";
 import { getRuntimeCacheDir } from "./shims/pig-config.mjs";
 
 // Ports packages/coding-agent/src/core/extensions/loader.ts: loadExtensionModule.
 // The published Node distribution uses jiti's Babel transform, virtual modules,
 // disabled module caching, and disabled native imports for each extension.
 const require = createRequire(import.meta.url);
-const createJiti = require("./shims/jiti/lib/jiti.cjs");
+// jiti is the largest module of the runtime tree and only an extension that is not compiled into the host needs it, so it loads on the first such extension.
+let createJitiOnce;
+const createJiti = (...args) => (createJitiOnce ??= runtimeRequire("./shims/jiti/lib/jiti.cjs"))(...args);
 
 // Jiti validates each source's contents, not its mtime, before reusing a transform. Separate compiler/runtime versions and environment-controlled transform options as well: jiti's internal cache revision alone is not a release identity.
-const compilerIdentity = createHash("sha256")
-  .update(readFileSync(new URL("./jiti-loader.mjs", import.meta.url)))
-  .update(require("./shims/jiti/package.json").version)
+let compilerIdentityOnce;
+const compilerIdentity = () => compilerIdentityOnce ??= createHash("sha256")
+  .update(runtimeSource("./jiti-loader.mjs"))
+  .update(runtimeRequire("./shims/jiti/package.json").version)
   .update(process.version)
   .digest("hex");
 
@@ -29,7 +32,7 @@ function booleanEnv(name, fallback) {
 function transformCacheDir() {
   if (!booleanEnv("JITI_FS_CACHE", booleanEnv("JITI_CACHE", true))) return false;
   const options = Object.entries(process.env).filter(([key]) => key.startsWith("JITI_")).sort(([a], [b]) => a.localeCompare(b));
-  const identity = createHash("sha256").update(compilerIdentity).update(JSON.stringify(options)).digest("hex");
+  const identity = createHash("sha256").update(compilerIdentity()).update(JSON.stringify(options)).digest("hex");
   return join(getRuntimeCacheDir(), "jiti", identity);
 }
 
@@ -44,6 +47,9 @@ for (const [specifier, url] of shims) {
 
 /** Imports an extension's entry the way Pi does and returns its default export. */
 export async function importExtension(entry) {
+  // A host that compiled this extension in serves its factory, keyed by the entry path the host passes.
+  const compiled = compiledFactory(entry);
+  if (compiled !== undefined) return compiled;
   const jiti = createJiti(import.meta.url, {
     moduleCache: false,
     fsCache: transformCacheDir(),

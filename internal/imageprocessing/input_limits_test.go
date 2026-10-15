@@ -27,14 +27,14 @@ func TestResizeModelInputLimits(t *testing.T) {
 		{"both", &ai.ModelImageResizeOptions{MaxWidth: 100, MaxHeight: 40}, 80, 40},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := prepareImageForLLM(input, tc.options)
+			result, err := resizeDetected(input, tc.options)
 			if err != nil {
 				t.Fatal(err)
 			}
 			if result.Width != tc.width || result.Height != tc.height {
 				t.Fatalf("size=%dx%d, want %dx%d", result.Width, result.Height, tc.width, tc.height)
 			}
-			if tc.options == nil && !bytes.Equal(result.Data, input) {
+			if tc.options == nil && !bytes.Equal(result.Bytes(), input) {
 				t.Fatal("within-limit input was re-encoded")
 			}
 		})
@@ -43,7 +43,7 @@ func TestResizeModelInputLimits(t *testing.T) {
 
 func TestResizeModelInputLimitImpossibleEncodedSize(t *testing.T) {
 	input := makePNGImage(t, 8, 8, color.RGBA{10, 20, 30, 255})
-	if _, err := prepareImageForLLM(input, &ai.ModelImageResizeOptions{MaxBytes: 1}); !errors.Is(err, ErrImageTooLarge) {
+	if _, err := resizeDetected(input, &ai.ModelImageResizeOptions{MaxBytes: 1}); !errors.Is(err, ErrImageTooLarge) {
 		t.Fatalf("error=%v, want ErrImageTooLarge", err)
 	}
 }
@@ -89,7 +89,7 @@ func TestProcessImageOmissionHints(t *testing.T) {
 }
 
 func TestResizeModelProfileRoundsAspectRatio(t *testing.T) {
-	result, err := prepareImageForLLM(makePNGImage(t, 30, 17, color.RGBA{10, 20, 30, 255}), &ai.ModelImageResizeOptions{MaxWidth: 10})
+	result, err := resizeDetected(makePNGImage(t, 30, 17, color.RGBA{10, 20, 30, 255}), &ai.ModelImageResizeOptions{MaxWidth: 10})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,12 +118,12 @@ func TestResizeModelProfileJPEGQualityAndSizeOnlyHint(t *testing.T) {
 	if encodedSizeBase64(input) < limit {
 		t.Fatal("fixture does not exercise JPEG re-encoding")
 	}
-	result, err := prepareImageForLLM(input, &ai.ModelImageResizeOptions{MaxBytes: limit, JPEGQuality: 20})
+	result, err := resizeDetected(input, &ai.ModelImageResizeOptions{MaxBytes: limit, JPEGQuality: 20})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.MIME != "image/jpeg" || !bytes.Equal(result.Data, want) {
-		t.Fatalf("custom quality not selected: %s, %d bytes", result.MIME, len(result.Data))
+	if result.MimeType != "image/jpeg" || !bytes.Equal(result.Bytes(), want) {
+		t.Fatalf("custom quality not selected: %s, %d bytes", result.MimeType, len(result.Bytes()))
 	}
 	if !result.WasResized || !strings.Contains(formatDimensionNote(result), "displayed at 96x96") {
 		t.Fatal("size-only re-encode must carry upstream dimension hint")
@@ -153,5 +153,30 @@ func TestProcessImagePreservesNormalizedDeclaredMIMEWithoutResize(t *testing.T) 
 	}
 	if mime != "image/jpeg" || hint != "" || !bytes.Equal(data, input) {
 		t.Fatalf("unmodified image: mime=%s hint=%q bytes=%d", mime, hint, len(data))
+	}
+}
+
+// resizeDetected is ResizeImage declared with the MIME type its bytes carry.
+func resizeDetected(in []byte, options *ai.ModelImageResizeOptions) (ResizedImage, error) {
+	return ResizeImage(in, mimeForFormat(detectFormat(in)), options)
+}
+
+// upstream: packages/coding-agent/src/utils/image-resize-core.ts:80 returns the caller's mimeType (image/png when none)
+// for an image already within every limit, and the encoder's type once it has to resize.
+func TestResizeImageReportsTheDeclaredMimeType(t *testing.T) {
+	input := makePNGImage(t, 8, 8, color.RGBA{10, 20, 30, 255})
+	for _, tc := range []struct{ declared, want string }{
+		{"image/webp", "image/webp"},
+		{"image/jpeg", "image/jpeg"},
+		{"", "image/png"},
+	} {
+		result, err := ResizeImage(input, tc.declared, nil)
+		if err != nil || result.WasResized || result.MimeType != tc.want {
+			t.Fatalf("ResizeImage(declared %q) = %q resized=%v err=%v, want %q unresized", tc.declared, result.MimeType, result.WasResized, err, tc.want)
+		}
+	}
+	resized, err := ResizeImage(makePNGImage(t, 30, 17, color.RGBA{10, 20, 30, 255}), "image/webp", &ai.ModelImageResizeOptions{MaxWidth: 10})
+	if err != nil || !resized.WasResized || resized.MimeType == "image/webp" {
+		t.Fatalf("resized image reports %q resized=%v err=%v; it must carry the encoder's type", resized.MimeType, resized.WasResized, err)
 	}
 }

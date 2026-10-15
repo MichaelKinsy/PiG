@@ -16,7 +16,8 @@ func (runtime *ModelRuntime) GetProvider(id string) *ai.ModelsProvider {
 	if runtime == nil || runtime.services == nil || id == "" {
 		return nil
 	}
-	return runtime.services.Registry().GetTypedProvider(id, runtime.builtinStream(id))
+	provider := runtime.services.Registry().GetTypedProvider(id, runtime.builtinStream(id))
+	return runtime.virtuals.withVirtualModels(id, provider)
 }
 
 // GetAllModels lists the last-known models of every type from one provider or all providers. Chat models are the same bound models GetModel returns.
@@ -38,7 +39,8 @@ func (runtime *ModelRuntime) GetAllModels(providerID ...string) []ai.AnyModel {
 			models[i] = runtime.bindCatalogModel(chat)
 		}
 	}
-	return models
+	// models.getAllModels lists a provider's virtual models after its physical ones (virtual-models.ts withVirtualModels).
+	return runtime.virtuals.overlayAllAny(models, runtime.providerOrder(), providerID...)
 }
 
 // GetModelsOfType lists the last-known models of one type from one provider or all providers.
@@ -184,6 +186,8 @@ func (runtime *ModelRuntime) failedStream(model *ai.Model, err error) *ai.Assist
 func (runtime *ModelRuntime) builtinStream(id string) ai.ModelsStreamFunction {
 	return func(ctx context.Context, model *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 		entry := icodingagent.NativeModelEntry(model)
+		// pig additive (D36): the provider's TLS opt-in reaches the transport its API builds.
+		entry.Insecure = runtime.services.Registry().ProviderInsecure(id)
 		provider, err := buildProviderForEntry(id, model.ID, model.ProviderMeta.API, entry, runtime.services, options.APIKey, true, false)
 		if err != nil {
 			return nil, err

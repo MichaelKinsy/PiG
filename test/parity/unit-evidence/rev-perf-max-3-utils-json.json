@@ -1,0 +1,11 @@
+[
+ {
+  "upstream": "packages/coding-agent/src/utils/json.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestStripJSONCommentsMatchesPi"
+  ],
+  "upstream_reference": "packages/coding-agent/src/utils/json.ts",
+  "mutation": "internal/codingagent/model_registry.go: replace 'end = strings.IndexByte(s, '\\n')' with 'end = strings.IndexAny(s, \"\\r\\n\")'; compiling go test -run exact test -count=1 fails TestStripJSONCommentsMatchesPi (344 of 6007 inputs differ from Pi's stripJsonComments)."
+ }
+]

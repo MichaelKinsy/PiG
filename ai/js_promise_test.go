@@ -22,7 +22,7 @@ func assertJSExecutorDrained(t *testing.T, executor *continuationExecutor) {
 	t.Helper()
 	executor.mu.Lock()
 	defer executor.mu.Unlock()
-	if executor.ready != nil || executor.external != nil || executor.active != nil || executor.draining {
+	if queueRetainsJobs(executor.ready) || queueRetainsJobs(executor.external) || executor.active != nil || executor.draining {
 		t.Fatal("executor retained queue entries or execution ownership")
 	}
 }

@@ -11,10 +11,13 @@ import (
 	"encoding"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math"
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"unicode"
 	"unicode/utf16"
 	"unicode/utf8"
@@ -102,7 +105,8 @@ func Unmarshal(data []byte, v any) error {
 	// Check for well-formedness.
 	// Avoids filling out half a data structure
 	// before discovering a JSON syntax error.
-	var d decodeState
+	d := decodeStatePool.Get().(*decodeState)
+	defer releaseDecodeState(d)
 	err := checkValid(data, &d.scan)
 	if err != nil {
 		return err
@@ -110,6 +114,49 @@ func Unmarshal(data []byte, v any) error {
 
 	d.init(data)
 	return d.unmarshal(v)
+}
+
+// UnmarshalTrusted is [Unmarshal] for data this process encoded itself, which is known to hold one valid JSON value: it skips the validity
+// pass Unmarshal makes before decoding. On data that is not valid JSON its result is unspecified (an error, or a partly decoded value;
+// trailing data is ignored). Tests validate the data first, as Unmarshal does.
+func UnmarshalTrusted(data []byte, v any) error {
+	d := decodeStatePool.Get().(*decodeState)
+	defer releaseDecodeState(d)
+	if verifyTrusted {
+		if err := checkValid(data, &d.scan); err != nil {
+			panic("json: UnmarshalTrusted of invalid JSON: " + err.Error())
+		}
+	}
+	d.init(data)
+	return d.unmarshal(v)
+}
+
+// decodeStatePool keeps the decode state of Unmarshal, with its scanner's
+// parse-state stack and error context, so a decode of a small message does not
+// allocate them.
+// pig additive (D19): the host and Go SDK decode every wire frame here.
+var decodeStatePool = sync.Pool{New: func() any { return new(decodeState) }}
+
+// releaseDecodeState clears d, so it holds neither the input nor a decoded
+// value, and returns it to the pool with a bounded parse-state stack.
+func releaseDecodeState(d *decodeState) {
+	parseState := d.scan.parseState
+	if cap(parseState) > 1024 {
+		parseState = nil
+	}
+	context := d.errorContext
+	if context != nil {
+		context.Struct = nil
+		if cap(context.FieldStack) > 64 {
+			context.FieldStack = nil
+		}
+		clear(context.FieldStack)
+		context.FieldStack = context.FieldStack[:0]
+	}
+	*d = decodeState{}
+	d.scan.parseState = parseState[:0]
+	d.errorContext = context
+	decodeStatePool.Put(d)
 }
 
 // Unmarshaler is the interface implemented by types
@@ -825,10 +872,16 @@ func (d *decodeState) convertNumber(s string) (any, error) {
 		return Number(s), nil
 	}
 	f, err := strconv.ParseFloat(s, 64)
-	if err != nil {
+	if err != nil && !isInfinityOfRange(f, err) {
 		return nil, &UnmarshalTypeError{Value: "number " + s, Type: reflect.TypeFor[float64](), Offset: int64(d.off)}
 	}
 	return f, nil
+}
+
+// isInfinityOfRange reports whether ParseFloat refused a number only because it is outside the float64 range. JSON.parse reads such a number
+// (1e400) as Infinity, and the SDK decodes the frames of an extension that runs under Pi's reading of JSON.
+func isInfinityOfRange(f float64, err error) bool {
+	return errors.Is(err, strconv.ErrRange) && math.IsInf(f, 0)
 }
 
 var numberType = reflect.TypeFor[Number]()
@@ -1002,7 +1055,7 @@ func (d *decodeState) literalStore(item []byte, v reflect.Value, fromQuoted bool
 
 		case reflect.Float32, reflect.Float64:
 			n, err := strconv.ParseFloat(string(item), v.Type().Bits())
-			if err != nil || v.OverflowFloat(n) {
+			if (err != nil && !(v.Type().Bits() == 64 && isInfinityOfRange(n, err))) || v.OverflowFloat(n) {
 				d.saveError(&UnmarshalTypeError{Value: "number " + string(item), Type: v.Type(), Offset: int64(d.readIndex())})
 				break
 			}
@@ -1192,6 +1245,11 @@ func unquoteBytes(s []byte) (t []byte, ok bool) {
 		}
 		rr, size := utf8.DecodeRune(s[r:])
 		if rr == utf8.RuneError && size == 1 {
+			if isWTF8Surrogate(s[r:]) {
+				// pig: a lone surrogate in internal/jsstring's WTF-8 form is one JavaScript string unit, kept as is.
+				r += 3
+				continue
+			}
 			break
 		}
 		r += size
@@ -1279,6 +1337,11 @@ func unquoteBytes(s []byte) (t []byte, ok bool) {
 			r++
 			w++
 
+		// pig: keep a lone surrogate in WTF-8 form (one JavaScript string unit); coerce anything else to well-formed UTF-8.
+		case isWTF8Surrogate(s[r:]):
+			w += copy(b[w:], s[r:r+3])
+			r += 3
+
 		// Coerce to well-formed UTF-8.
 		default:
 			rr, size := utf8.DecodeRune(s[r:])
@@ -1287,4 +1350,10 @@ func unquoteBytes(s []byte) (t []byte, ok bool) {
 		}
 	}
 	return b[0:w], true
+}
+
+// isWTF8Surrogate reports whether p starts with a UTF-16 surrogate code unit in WTF-8 form (ED A0..BF 80..BF), the encoding
+// internal/jsstring gives a lone surrogate. Go's UTF-8 decoder rejects it, so without this check it would become U+FFFD.
+func isWTF8Surrogate(p []byte) bool {
+	return len(p) >= 3 && p[0] == 0xed && p[1] >= 0xa0 && p[1] <= 0xbf && p[2] >= 0x80 && p[2] <= 0xbf
 }

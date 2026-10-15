@@ -8,6 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
+// Pi: packages/coding-agent/src/core/extensions/types.ts:422 (CommandContext.navigateTree); packages/coding-agent/src/core/extensions/types.ts:434 (CommandContext.reload).
 func TestCommandActionsForwardTheRequestContext(t *testing.T) {
 	type requestKey struct{}
 	request, cancel := context.WithCancel(context.WithValue(t.Context(), requestKey{}, "request-value"))
@@ -57,6 +58,7 @@ func TestCommandActionsForwardTheRequestContext(t *testing.T) {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/extensions/runner.ts:546 (Runner.bindCommandContext).
 func TestCommandActionRebindingReplacesBothInvocationForms(t *testing.T) {
 	runner := NewRunner(nil, t.TempDir())
 	want := errors.New("replacement")

@@ -1,0 +1,62 @@
+# Behavior family: slash-commands
+# Surface: Enter on a server in the `/mcp` manager opens its menu (extensions/mcp/index.ts, ui.ts)
+#
+# Upstream evidence (pinned pi 1.0.4, probed 2026-10-06 in tmux 100x35): the pinned Pi is run with an agent directory whose `mcp.json` holds two disabled
+# servers, so nothing connects and the menu is static. `/mcp` Enter opens the manager view: a bordered frame titled
+# "MCP servers", the servers sorted by name with their state and exposure, and the confirm/cancel key hints.
+# The crop runs from the server's state to the key hint: the state, the two actions with their descriptions and the
+# hint. The lines above it (the title, the transport, and the path of the global `mcp.json`, a per-run snapshot named
+# for each binary's environment variable) are left out, so no normalization rule is needed. The comparator is
+# output_equal.
+
+name = "15-mcp-server-detail"
+description = "Both binaries open a server of the /mcp manager: its transport, config file, state and actions."
+covers = [
+  "packages/coding-agent/src/extensions/mcp/ui.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+# The extension commands bind with the startup resource listing, so "[Context]" is readiness: the keys of an earlier
+# step land before `/mcp` exists (the same reason as extensions-runtime/27-command-argument-completions).
+ready_pattern_pig = "[Context]"
+ready_pattern_pi = "[Context]"
+ready_timeout_seconds = 25
+capture_start = "State: disabled"
+capture_end = "back"
+capture_start_last = true
+
+# Enter races the asynchronous completion request of the slash-command menu when it follows the text at once, so the
+# text settles first.
+[[tmux.steps]]
+keys = ["/mcp"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["MCP servers", "docs"]
+wait_timeout_seconds = 8
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["MCP server docs", "State: disabled"]
+wait_timeout_seconds = 8
+settle_seconds = 1
+
+[env]
+# The built-in MCP extension is part of the surface: the default --no-extensions would remove /mcp.
+override_base_args = true
+pig = ["PIG_CODING_AGENT_DIR=testdata/mcp-pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/mcp-pi-agent"]
+pig_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_equal = true
+runs = 3

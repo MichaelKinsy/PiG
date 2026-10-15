@@ -8,10 +8,13 @@ Use a container, virtual machine, or another operating-system boundary when you 
 
 A repository can contain project settings and Resources that change PiG behavior. PiG requires a trust decision before it loads project-controlled executable or configuration input.
 
+Project trust is not a complete startup boundary. As in Pi, PiG reads the project `sessionDir` setting while it selects or creates a session, before it resolves project trust. Project trust also does not limit what tool calls can access: enabled tools use the operating-system permissions of the PiG process.
+
 Trust-sensitive project paths include:
 
 ```text
 .pig/settings.json
+.pig/mcp.json
 .pig/extensions/
 .pig/skills/
 .pig/prompts/
@@ -21,9 +24,26 @@ Trust-sensitive project paths include:
 .agents/skills/
 ```
 
-PiG stores decisions by canonical directory under its user configuration. The closest saved decision for the current directory or a parent applies.
+A bare `.pig` directory does not require project trust. Context files such as `AGENTS.override.md`, `AGENTS.md` and `CLAUDE.md` load whatever the trust decision is, unless you disable context loading. Treat instructions in a folder as untrusted input even when you decline project trust.
+
+A Piglet in `.pig/piglets/` is also project input. `--piglet <name>` uses it only with a saved trust decision, `defaultProjectTrust: "always"` or `--approve`, and a bare name is never read from the working directory.
+
+PiG chooses a trust decision as Pi does:
+
+1. A command-line `--approve` or `--no-approve` applies first.
+2. User-level and command-line extensions can handle the `project_trust` event. The first extension that returns yes or no owns the decision.
+3. Otherwise PiG uses the saved decision for the current directory or its closest parent. Decisions are stored by canonical directory in `~/.pig/agent/trust.json`.
+4. Otherwise PiG follows the global `defaultProjectTrust` setting, whose default is `"ask"`.
+
+Print, JSON and RPC modes cannot show the trust prompt. Without an override, extension or saved decision, `defaultProjectTrust: "always"` loads the protected project files, and `"ask"` or `"never"` skips them.
 
 Use `/trust` to manage the current project decision. The selector shows the saved decision and the current session's trust state separately. A checkmark stays on the saved choice while you browse. Select **Trust parent folder** to trust the parent and clear the current project's override. Restart PiG after changing trust so startup discovery runs under the new decision.
+
+## Sessions and credentials
+
+Sessions can contain prompts, tool arguments, command output, file contents and credentials that appeared in the conversation. Review a session before you export or share it.
+
+PiG creates the agent directory, the `sessions` directory and each project's session directory with mode 0700 when it creates them. Pi creates them with the umask default, usually 0755 (D132, Pi #10770). A directory that already exists keeps its mode. `auth.json` is created owner-only (mode 0600 on POSIX, an owner-only DACL on Windows, D68).
 
 ## Extensions
 
@@ -102,7 +122,7 @@ See [Extensions](/docs/latest/extensions#connection-and-liveness-model).
 
 ## Piglet Binary verification
 
-A Piglet Binary verifies its embedded Piglet and component plan before command dispatch. A Binary built with `--sign-key` also verifies its Ed25519 signature offline and refuses to run when its executable, manifest, or signature changed.
+A Piglet Binary verifies its embedded Piglet and component plan before command dispatch. A Binary built with `--sign-key` also verifies its Ed25519 signature offline and refuses to run when its executable, manifest, or signature changed. When its file is unchanged since its last passing start, it skips the hash of its executable bytes. See [Verification cache](/docs/latest/piglet-binaries#verification-cache) for what that keeps and gives up. The startup check is a self-check: it does not stop an attacker who can rewrite the Binary.
 
 Use `pig verify <binary>` to report the signature status without running the Binary. Use `pig piglet trust add <key.pub>` to trust a reviewed publisher key, `pig piglet trust revoke <key-id>` to reject it, and `pig piglet trust require on` to require signatures by locally trusted keys. An embedded author key proves continuity from that key, not the human identity of its holder.
 
@@ -120,9 +140,7 @@ Review the publisher, license, source, and integrity evidence before use.
 
 ## Report a vulnerability
 
-Do not open a public issue for an undisclosed vulnerability. Follow the private reporting instructions in the repository's `.github/SECURITY.md` after the public repository enables private vulnerability reporting.
-
-Until that route is enabled, do not publish exploit details. Contact the maintainer through a verified private channel.
+Do not open a public issue for an undisclosed vulnerability. Follow the private reporting instructions in the repository's `.github/SECURITY.md`. Do not publish exploit details.
 
 ## Related documentation
 
@@ -130,3 +148,5 @@ Until that route is enabled, do not publish exploit details. Contact the maintai
 - [Packages](/docs/latest/packages)
 - [Piglets](/docs/latest/piglets)
 - [Piglet Binaries](/docs/latest/piglet-binaries)
+- [Containerization](/docs/latest/containerization)
+- [upstream Pi's security documentation](https://pi.dev/docs/latest/security)

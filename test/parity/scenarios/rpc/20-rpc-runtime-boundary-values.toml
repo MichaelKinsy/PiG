@@ -25,7 +25,7 @@ line = '''{"id":"model","type":"set_model","provider":"","modelId":""}
 {"id":"switch","type":"switch_session","sessionPath":""}
 {"id":"fork","type":"fork","entryId":""}
 {"id":"prompt","type":"prompt","message":""}'''
-wait_event = '{"type":"agent_settled"}'
+wait_event = '{"type":"agent_settled","aborted":false}'
 wait_timeout_seconds = 10
 
 [[rpc.steps]]
@@ -81,3 +81,8 @@ reason = "Only the exact isolated cwd varies in the explicit system prompt; reta
 paths = ["/**/timestamp"]
 kind = "timestamp"
 reason = "Independent entry and message clocks vary; preserve field presence, timestamp type and syntax."
+
+[[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."

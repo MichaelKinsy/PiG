@@ -9,7 +9,6 @@
 package termuxenv
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"net"
@@ -114,9 +113,8 @@ func resolverFromFile(path string) *net.Resolver {
 // holds an IP address, in file order.
 func parseNameServers(resolvConf []byte) []string {
 	var servers []string
-	scanner := bufio.NewScanner(bytes.NewReader(resolvConf))
-	for scanner.Scan() {
-		fields := strings.Fields(scanner.Text())
+	for line := range bytes.Lines(resolvConf) {
+		fields := strings.Fields(string(line))
 		if len(fields) < 2 || fields[0] != "nameserver" {
 			continue
 		}

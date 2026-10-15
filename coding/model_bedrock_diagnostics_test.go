@@ -39,7 +39,7 @@ func TestModelRuntimePreservesBedrockFailureDiagnostics(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "models.json"), raw, 0600); err != nil {
 		t.Fatal(err)
 	}
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: dir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: dir})
 	if err != nil {
 		t.Fatal(err)
 	}

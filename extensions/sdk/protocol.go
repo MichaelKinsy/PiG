@@ -3,6 +3,7 @@ package sdk
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -123,13 +124,17 @@ type toolDef struct {
 	// PreparesArguments reports that the tool defines PrepareArguments; the host asks for it with tool_prepare_arguments before it validates the arguments.
 	PreparesArguments bool `json:"prepares_arguments,omitempty"`
 
+	// ReachesTools reports that the tool defines ReachesTools; the host asks for it with tool_reaches_tools.
+	ReachesTools bool `json:"reaches_tools,omitempty"`
+
+	// reachesTools is the tool's ReachesTools.
+	reachesTools ToolReachesToolsFunc
 	// prepareLoadout is the tool's PrepareLoadout; the host asks for it with tool_prepare_loadout when PreparesLoadout is set.
 	prepareLoadout ToolPrepareLoadoutFunc
 }
 
 type handlerDef struct {
 	Event     string `json:"event"`
-	CanBlock  bool   `json:"can_block"`
 	HandlerID int    `json:"handler_id"`
 }
 
@@ -184,6 +189,11 @@ type requestMsg struct {
 	HandlerID  int             `json:"handler_id,omitempty"`
 	ToolCallID string          `json:"tool_call_id,omitempty"`
 	Args       json.RawMessage `json:"args,omitempty"`
+	Stream     *eventStreamMsg `json:"stream,omitempty"`
+
+	// streamData and streamErr are the payload a stream request produced, or why it could not be produced (applyEventStream).
+	streamData map[string]any
+	streamErr  error
 }
 
 type responseMsg struct {
@@ -210,11 +220,24 @@ type callResultMsg struct {
 	notifySeq uint64
 }
 
-// widgetPushMsg carries a string list widget. It has no width: the host lays
-// the list out at its own width, as Pi does for setWidget(key, string[]).
+// widgetPushMsg carries a string list widget or a widget view. It has no
+// width: the host lays the list out, and renders the view, at its own width,
+// as Pi does for setWidget(key, string[]). A view push carries no lines.
 type widgetPushMsg struct {
-	Key   string   `json:"key"`
-	Lines []string `json:"lines"`
+	Key   string          `json:"key"`
+	Lines []string        `json:"lines"`
+	View  json.RawMessage `json:"view,omitempty"`
+}
+
+func (m widgetPushMsg) MarshalJSON() ([]byte, error) {
+	if m.View != nil {
+		return json.MarshalJS(struct {
+			Key  string          `json:"key"`
+			View json.RawMessage `json:"view"`
+		}{m.Key, m.View})
+	}
+	type lines widgetPushMsg
+	return json.MarshalJS(lines(m))
 }
 
 type cancelMsg struct {
@@ -246,7 +269,9 @@ type errorInfo struct {
 // conn manages the socket connection with read/write goroutines and
 // request/response correlation for extension→host calls.
 type conn struct {
-	nc      net.Conn
+	nc net.Conn
+	// fused reports a fused extension's connection (framePartsReader): the extension runs in the host's process.
+	fused   bool
 	writeMu sync.Mutex // serializes writes
 
 	// callID generates unique IDs for extension→host calls.
@@ -273,6 +298,10 @@ type conn struct {
 	// can wait until the loop has applied every notification that preceded
 	// its result.
 	notifications atomic.Uint64
+
+	// images is the set of image refs whose bytes a frame on this
+	// connection carried (D107).
+	images sentImages
 }
 
 type pendingCall struct {
@@ -285,8 +314,10 @@ type pendingCall struct {
 }
 
 func newConn(nc net.Conn) *conn {
+	_, fused := nc.(framePartsReader)
 	return &conn{
 		nc:             nc,
+		fused:          fused,
 		pending:        make(map[string]chan *callResultMsg),
 		pendingParents: make(map[string]string),
 		incoming:       make(chan envelope, 16),
@@ -315,14 +346,28 @@ func (c *conn) readLoop() {
 		close(c.done)
 	}()
 	defer close(c.incoming)
+	parts, _ := c.nc.(framePartsReader)
 	for {
-		data, err := c.readFrame()
+		var data, args []byte
+		var err error
+		if parts != nil {
+			data, args, err = parts.ReadFrameParts()
+		} else {
+			data, err = c.readFrame()
+		}
 		if err != nil {
 			return
 		}
 		var env envelope
 		if err := json.Unmarshal(data, &env); err != nil {
-			continue // skip malformed
+			// The Node, Python and Rust SDKs end the connection on a frame they cannot decode, as the host does; skipping it would leave the host waiting for the answer to a request it carried.
+			return
+		}
+		if args != nil {
+			if env.Request == nil {
+				return
+			}
+			env.Request.Args = args
 		}
 		if env.Type == msgPing && env.Ping != nil {
 			if err := c.send(envelope{Type: msgPong, Pong: &pongMsg{Nonce: env.Ping.Nonce}}); err != nil {
@@ -355,6 +400,11 @@ func (c *conn) readLoop() {
 	}
 }
 
+// framePartsReader is the connection of a fused extension (D31), which runs in the host's process: ReadFrameParts returns each host frame's JSON with the placeholder 0 in place of a request's Args, and the Args bytes the host encoded, by reference and never written again, or nil when the frame has none. The extension decodes the small envelope and reads Args where they are, without copying or validating them. A socket does not have the method, so an extension in its own process reads byte frames.
+type framePartsReader interface {
+	ReadFrameParts() (shell, args []byte, err error)
+}
+
 func (c *conn) readFrame() ([]byte, error) {
 	var hdr [4]byte
 	if _, err := io.ReadFull(c.nc, hdr[:]); err != nil {
@@ -378,14 +428,22 @@ func (c *conn) writeFrame(data []byte) error {
 }
 
 func (c *conn) writeFrameLocked(data []byte) error {
-	var hdr [4]byte
-	binary.BigEndian.PutUint32(hdr[:], uint32(len(data)))
-	if _, err := c.nc.Write(hdr[:]); err != nil {
+	// One write: a header and a body written apart cost the host two reads and, on a stream socket, two segments. A small frame is copied behind its header; a large one goes out as one vectored write instead of being copied.
+	if len(data) <= smallFrameBytes {
+		frame := make([]byte, 4, 4+len(data))
+		binary.BigEndian.PutUint32(frame, uint32(len(data)))
+		_, err := c.nc.Write(append(frame, data...))
 		return err
 	}
-	_, err := c.nc.Write(data)
+	hdr := make([]byte, 4)
+	binary.BigEndian.PutUint32(hdr, uint32(len(data)))
+	buffers := net.Buffers{hdr, data}
+	_, err := buffers.WriteTo(c.nc)
 	return err
 }
+
+// smallFrameBytes is the largest frame copied behind its header to be written with one call.
+const smallFrameBytes = 64 << 10
 
 func (c *conn) send(env envelope) error {
 	data, err := marshalEnvelope(env)
@@ -404,15 +462,18 @@ func (c *conn) sendLocked(env envelope) error {
 }
 
 func marshalEnvelope(env envelope) ([]byte, error) {
-	data, err := json.Marshal(env)
+	data, err := json.MarshalJS(env)
 	if err != nil {
 		return nil, err
 	}
 	if len(data) > MaxFrameSize {
-		return nil, fmt.Errorf("frame too large: %d bytes exceeds %d", len(data), MaxFrameSize)
+		return nil, fmt.Errorf("%w: %d bytes exceeds %d", errFrameTooLarge, len(data), MaxFrameSize)
 	}
 	return data, nil
 }
+
+// errFrameTooLarge is the failure of a frame past MaxFrameSize.
+var errFrameTooLarge = errors.New("frame too large")
 
 // call sends a call message and blocks until the host replies with call_result.
 func (c *conn) call(method string, args any) (*callResultMsg, error) {
@@ -441,7 +502,7 @@ func (c *conn) beginParentCall(parent *requestParent, method string, args any) (
 func (c *conn) beginCall(parentRequestID string, parent *requestParent, method string, args any) (pendingCall, error) {
 	id := fmt.Sprintf("c%d", c.callID.Add(1))
 
-	argsJSON, err := json.Marshal(args)
+	argsJSON, err := json.MarshalJS(args)
 	if err != nil {
 		return pendingCall{}, err
 	}
@@ -544,7 +605,7 @@ func (c *conn) cancelParentCalls(parentRequestID string) {
 }
 
 func (c *conn) notify(method string, args any) error {
-	argsJSON, err := json.Marshal(args)
+	argsJSON, err := json.MarshalJS(args)
 	if err != nil {
 		return err
 	}
@@ -556,6 +617,9 @@ func (c *conn) notify(method string, args any) error {
 
 // respond sends a response to a host request.
 func (c *conn) respond(id string, result any, respErr error) error {
+	// The response is encoded before the write lock is taken: a result of hundreds of MiB takes seconds to encode, and the same lock carries the
+	// heartbeat's pong, which the host answers by closing a connection that stays silent.
+	response, encodeErr := encodeResponse(id, result, respErr)
 	c.writeMu.Lock()
 	defer c.writeMu.Unlock()
 	c.pendingMu.Lock()
@@ -576,19 +640,32 @@ func (c *conn) respond(id string, result any, respErr error) error {
 	if err := c.sendLocked(envelope{Type: msgRequestState, RequestState: &requestStateMsg{RequestID: id, State: "completed"}}); err != nil {
 		return err
 	}
+	if encodeErr != nil {
+		return encodeErr
+	}
+	return c.writeFrameLocked(response)
+}
+
+// encodeResponse is the response frame of a request. A result that cannot be encoded, or that cannot be framed (past MaxFrameSize), is answered with that
+// failure, as the Node and Python SDKs answer it, rather than leaving the host waiting for a response until the call is aborted.
+func encodeResponse(id string, result any, respErr error) ([]byte, error) {
 	resp := &responseMsg{}
 	if respErr != nil {
 		resp.Error = &errorInfo{Message: respErr.Error()}
 	}
 	if result != nil {
-		data, err := json.Marshal(result)
+		data, err := json.MarshalJS(result)
 		if err != nil {
 			resp.Error = &errorInfo{Message: err.Error()}
 		} else {
 			resp.Result = data
 		}
 	}
-	return c.sendLocked(envelope{Type: msgResponse, ID: id, Response: resp})
+	frame, err := marshalEnvelope(envelope{Type: msgResponse, ID: id, Response: resp})
+	if errors.Is(err, errFrameTooLarge) {
+		return marshalEnvelope(envelope{Type: msgResponse, ID: id, Response: &responseMsg{Error: &errorInfo{Message: err.Error()}}})
+	}
+	return frame, err
 }
 
 func (c *conn) requestState(id, state, reason string) error {
@@ -603,5 +680,13 @@ func (c *conn) pushWidget(key string, lines []string) error {
 	return c.send(envelope{
 		Type:       msgWidgetPush,
 		WidgetPush: &widgetPushMsg{Key: key, Lines: lines},
+	})
+}
+
+// pushWidgetView sends a widget_push message carrying a view and no lines.
+func (c *conn) pushWidgetView(key string, view json.RawMessage) error {
+	return c.send(envelope{
+		Type:       msgWidgetPush,
+		WidgetPush: &widgetPushMsg{Key: key, View: view},
 	})
 }

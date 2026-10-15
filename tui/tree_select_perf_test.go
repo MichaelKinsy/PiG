@@ -22,7 +22,7 @@ func TestTreeSelectLargeNavigationFast(t *testing.T) {
 	root := branchingTree(branches, depth)
 
 	start := time.Now()
-	ts := NewTreeSelect("big", root)
+	ts := NewTreeSelectorComponent("big", root)
 	if len(ts.rows) < branches*depth {
 		t.Fatalf("expected >= %d rows, got %d", branches*depth, len(ts.rows))
 	}
@@ -61,7 +61,7 @@ func branchingTree(branches, depth int) TreeNode {
 }
 
 func BenchmarkTreeSelectSearchAndClear(b *testing.B) {
-	ts := NewTreeSelect("", branchingTree(60, 40))
+	ts := NewTreeSelectorComponent("", branchingTree(60, 40))
 	ts.SetInitialCursor("b0d39", "")
 	b.ReportAllocs()
 	for b.Loop() {

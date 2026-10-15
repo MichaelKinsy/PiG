@@ -1,0 +1,38 @@
+[
+  {
+    "upstream": "packages/tui/src/components/stack.ts",
+    "package": "./tui",
+    "tests": [
+      "TestVStackStacksChildrenTopToBottomWithTheGap"
+    ],
+    "upstream_reference": "packages/tui/src/components/stack.ts",
+    "mutation": "tui/stack.go: replace 'for g := 0; g < v.gap; g++ {' with 'for g := 0; g < 0; g++ {'; compiling go test -run exact test -count=1 fails TestVStackStacksChildrenTopToBottomWithTheGap."
+  },
+  {
+    "upstream": "packages/tui/src/native-platform.ts",
+    "package": "./tui",
+    "tests": [
+      "TestGetNativeClipboardReturnsThePlatformClipboard"
+    ],
+    "upstream_reference": "packages/tui/src/native-platform.ts",
+    "mutation": "tui/native_platform.go: replace 'func GetNativeClipboard() *NativeClipboard      { return nativeplatform.GetNativeClipboard() }' with 'func GetNativeClipboard() *NativeClipboard      { return nil }'; compiling go test -run exact test -count=1 fails TestGetNativeClipboardReturnsThePlatformClipboard."
+  },
+  {
+    "upstream": "packages/tui/src/keybindings.ts",
+    "package": "./tui",
+    "tests": [
+      "TestTUIKeybindingsUpstream"
+    ],
+    "upstream_reference": "packages/tui/src/keybindings.ts",
+    "mutation": "tui/keybindings.go: replace 'KBInputNewLine:            {DefaultKeys: []string{\"shift+enter\", \"ctrl+j\"}, Description: \"Insert newline\"},' with 'KBInputNewLine:            {DefaultKeys: []string{\"shift+enter\"}, Description: \"Insert newline\"},'; compiling go test -run exact test -count=1 fails TestTUIKeybindingsUpstream."
+  },
+  {
+    "upstream": "packages/tui/src/stdin-buffer.ts",
+    "package": "./tui",
+    "tests": [
+      "TestStdinBuffer_WezTermDoubleEscapeKittyRelease"
+    ],
+    "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+    "mutation": "tui/stdin_buffer.go: replace 'if end == 2 && candidate[1] == 0x1b && end < len(remaining)' with 'if end == 2 && candidate[1] == 0x1c && end < len(remaining)'; compiling go test -run exact test -count=1 fails TestStdinBuffer_WezTermDoubleEscapeKittyRelease."
+  }
+]

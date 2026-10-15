@@ -1,0 +1,43 @@
+{{define "snip"}}<figure class="code" style="margin:0 0 12px"><figcaption class="cap"><span>{{.Path}}{{if .Start}}:{{.Start}}{{if ne .End .Start}}-{{.End}}{{end}}{{end}}{{if .Truncated}} (cut){{end}}</span><span>{{.Lang}}</span></figcaption>{{if .Unavailable}}<div class="un">{{.Unavailable}}</div>{{else}}<pre tabindex="0"><code>{{raw .HTML}}</code></pre>{{end}}</figure>{{end}}
+<div data-filter="dv-list">
+<div class="toolbar" role="search">
+<div class="search"><label class="sr" for="dv-q">Search divergences</label><input id="dv-q" type="search" placeholder="Search D-numbers, titles, tests, text" autocomplete="off" spellcheck="false"><kbd aria-hidden="true">/</kbd></div>
+<span class="count" aria-live="polite"></span>
+</div>
+<div class="toolbar">
+<div class="chips" role="group" aria-label="Class">{{range .Classes}}<button type="button" class="toggle" data-attr="class" data-value="{{.Name}}" aria-pressed="false">{{.Name}} <span class="mono small">{{.N}}</span></button>{{end}}</div>
+</div>
+<div class="toolbar">
+<div class="chips" role="group" aria-label="Status">{{range .Statuses}}<button type="button" class="toggle" data-attr="status" data-value="{{.Name}}" aria-pressed="false">{{.Name}} <span class="mono small">{{.N}}</span></button>{{end}}</div>
+</div>
+<p class="small muted">Class is derived: <i>additive</i> if the record is in <code>docs/additive-features.md</code>, <i>Pi bug fix</i> if a bug ledger entry fixed it ahead of Pi or the record cites a Pi issue, then <i>perf</i> and <i>platform</i> from the title, else <i>other difference</i>. The basis is shown in each record.</p>
+<div id="dv-list">
+{{range .Items}}
+<details class="dv" id="{{.ID}}" data-search="{{.Search}}" data-class="{{.Class}}" data-status="{{.Status}}">
+<summary><span class="did">{{.ID}}</span><span class="dt">{{.Title}}</span><span class="chips"><span class="chip neutral">{{.Class}}</span>{{if ne .Status .Class}}<span class="chip {{statusTone .Status}}">{{.Status}}</span>{{end}}{{range .PiIssues}}<span class="chip warn">{{.Label}}</span>{{end}}</span></summary>
+<div class="dv-body">
+<dl class="meta">
+<div><dt>Class</dt><dd>{{.Class}}<div class="small muted">{{.ClassWhy}}</div></dd></div>
+<div><dt>Status</dt><dd>{{.Status}}{{if .Scrutinized}} · SCRUTINIZED:approved{{end}}</dd></div>
+<div><dt>Record</dt><dd class="mono small">{{.Source}}</dd></div>
+{{if .RemoveWhen}}<div><dt>Remove when</dt><dd>{{.RemoveWhen}}</dd></div>{{end}}
+{{if .PiIssues}}<div><dt>Pi issues</dt><dd>{{range .PiIssues}}<a class="chip warn" href="{{.URL}}" rel="noopener noreferrer">{{.Label}}</a> {{end}}</dd></div>{{end}}
+{{if .BugIDs}}<div><dt>Bug ledger</dt><dd>{{range .BugIDs}}<a class="chip neutral" href="#{{.}}">{{.}}</a> {{end}}</dd></div>{{end}}
+</dl>
+<h4>Note</h4>
+<div class="prose">{{raw .NoteHTML}}</div>
+{{if or .PiSnips .GoSnips}}
+<h4>Pi and PiG side by side</h4>
+<div class="pair">
+<div><h5>Pi {{$.PiVersion}}: cited ranges</h5>{{range .PiSnips}}{{template "snip" .}}{{else}}<p class="small muted">{{if eq .Status "additive"}}Additive: Pi has no counterpart.{{else}}The note cites no Pi source range.{{end}}</p>{{end}}</div>
+<div><h5>PiG: marker call sites</h5>{{range .GoSnips}}{{template "snip" .}}{{else}}<p class="small muted">No <code>pig divergence</code> marker for this record was found in source.</p>{{end}}</div>
+</div>
+{{end}}
+{{if .Tests}}<h4>Tests that pin it ({{len .Tests}})</h4><ul class="reflist">{{range .Tests}}<li>{{.Name}}{{if .File}} <span class="muted">{{.File}}:{{.Line}}</span>{{else}} <span class="muted">(declaration not found)</span>{{end}}</li>{{end}}</ul>{{end}}
+{{if .Scenarios}}<h4>Parity scenarios</h4><ul class="reflist">{{range .Scenarios}}<li>test/parity/scenarios/{{.}}.toml</li>{{end}}</ul>{{end}}
+{{if .CallSites}}<h4>Call-site markers ({{len .CallSites}})</h4><ul class="reflist">{{range .CallSites}}<li>{{.File}}:{{.Line}}</li>{{end}}</ul>{{end}}
+</div>
+</details>
+{{end}}
+</div>
+</div>

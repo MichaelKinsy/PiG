@@ -70,14 +70,15 @@ func TestFindSDKRoot_ExplicitExtensionOverrideWins(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte(goMod), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	staged := filepath.Join(t.TempDir(), "state", "pigsdk", "sdk")
+	stagedHome := t.TempDir()
+	staged := testStagedSDKDir(t, stagedHome, "go")
 	if err := os.MkdirAll(staged, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(staged, "go.mod"), []byte("module github.com/MichaelKinsy/PiG/extensions/sdk\ngo 1.26\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("PIG_HOME", filepath.Dir(filepath.Dir(filepath.Dir(staged))))
+	t.Setenv("PIG_HOME", stagedHome)
 
 	got, err := findSDKRoot([]GoExtension{{Root: root}})
 	if err != nil {
@@ -95,7 +96,7 @@ func TestFindSDKRoot_DefaultUsesRunningConfigStage(t *testing.T) {
 		t.Fatal(err)
 	}
 	pigHome := t.TempDir()
-	staged := filepath.Join(pigHome, "state", "pigsdk", "sdk")
+	staged := testStagedSDKDir(t, pigHome, "go")
 	if err := os.MkdirAll(staged, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +137,7 @@ func TestFindRustSDKRootExplicitOverrideWins(t *testing.T) {
 func TestFindPythonSDKRootUsesRunningConfigStage(t *testing.T) {
 	t.Setenv("PIG_SDK_PY_ROOT", "")
 	pigHome := t.TempDir()
-	staged := filepath.Join(pigHome, "state", "pigsdk", "sdk-py", "pig_sdk")
+	staged := filepath.Join(testStagedSDKDir(t, pigHome, "python"), "pig_sdk")
 	if err := os.MkdirAll(staged, 0o755); err != nil {
 		t.Fatal(err)
 	}

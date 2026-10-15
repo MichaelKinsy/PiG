@@ -27,11 +27,11 @@ func run() (resultErr error) {
 		return err
 	}
 	defer func() { resultErr = errors.Join(resultErr, os.RemoveAll(dir)) }()
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: dir, AgentDir: dir})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: dir, AgentDir: dir})
 	if err != nil {
 		return err
 	}
-	raw := []*ai.Model{{ID: "faux-1", DisplayName: "One", Input: []string{"text"}, Capabilities: ai.ModelCapabilities{ContextWindow: 128000, MaxThinking: ai.ThinkingHigh}, ProviderMeta: ai.ProviderMetadata{ProviderID: "faux", API: ai.APIOpenAICompletions, BaseURL: "https://faux.invalid", Reasoning: true}}, {ID: "faux-2", DisplayName: "Two", Input: []string{"text"}, Capabilities: ai.ModelCapabilities{ContextWindow: 128000}, ProviderMeta: ai.ProviderMetadata{ProviderID: "faux", API: ai.APIOpenAICompletions, BaseURL: "https://faux.invalid"}}}
+	raw := []*ai.Model{{ID: "faux-1", DisplayName: "One", Input: []string{"text"}, Capabilities: ai.ModelCapabilities{ContextWindow: 128000, MaxThinking: ai.ThinkingLevelHigh}, ProviderMeta: ai.ProviderMetadata{ProviderID: "faux", API: ai.APIOpenAICompletions, BaseURL: "https://faux.invalid", Reasoning: true}}, {ID: "faux-2", DisplayName: "Two", Input: []string{"text"}, Capabilities: ai.ModelCapabilities{ContextWindow: 128000}, ProviderMeta: ai.ProviderMetadata{ProviderID: "faux", API: ai.APIOpenAICompletions, BaseURL: "https://faux.invalid"}}}
 	configured := true
 	providerUser := ""
 	stream := func(_ context.Context, model *ai.Model, request ai.TranscriptContext, _ ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
@@ -118,7 +118,7 @@ func run() (resultErr error) {
 		return errors.New("scoped preference lost")
 	}
 	firstModel.ThinkingLevelMap = ai.ThinkingLevelMap{ai.ThinkingXHigh: new("xhigh"), ai.ThinkingMax: new("max")}
-	var levels []ai.ThinkingLevel
+	var levels []ai.ModelThinkingLevel
 	for range 3 {
 		level, err := session.CycleThinkingLevel()
 		if err != nil {
@@ -132,14 +132,14 @@ func run() (resultErr error) {
 		return errors.New("unauthenticated model accepted")
 	}
 	configured = true
-	if _, err := session.Prompt(ctx, "hello"); err != nil {
+	if err := session.Prompt(ctx, "hello"); err != nil {
 		return err
 	}
-	if _, err := session.Prompt(ctx, "ping"); err != nil {
+	if err := session.Prompt(ctx, "ping"); err != nil {
 		return err
 	}
 	for range 2 {
-		if _, err := session.Prompt(ctx, "/inspect-options"); err != nil {
+		if err := session.Prompt(ctx, "/inspect-options"); err != nil {
 			return err
 		}
 	}
@@ -156,11 +156,11 @@ func run() (resultErr error) {
 	}
 	priorOptions := slices.Clone(options[0].SelectedTools)
 	session.SetActiveToolsByName([]string{"read"})
-	if _, err := session.Prompt(ctx, "/inspect-options"); err != nil {
+	if err := session.Prompt(ctx, "/inspect-options"); err != nil {
 		return err
 	}
 	output := map[string]any{"optionsRebuilt": options[2] != options[0], "rebuiltSelection": options[2].SelectedTools, "priorOptionsRetained": slices.Equal(options[0].SelectedTools, priorOptions), "first": first.Model.ID, "second": second.Model.ID, "levels": levels, "rejectedUnauthenticated": true, "input": providerUser, "users": users, "optionsShared": options[0] == options[1], "optionsRead": hasRead, "optionsMutation": hasMutation}
-	if _, err := session.Prompt(ctx, "literal-command"); err != nil {
+	if err := session.Prompt(ctx, "literal-command"); err != nil {
 		return err
 	}
 	output["literalCommandCalls"] = len(options) - 3

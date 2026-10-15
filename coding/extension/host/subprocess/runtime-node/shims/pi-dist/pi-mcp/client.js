@@ -57,13 +57,13 @@ function validateReadResourceResult(value) {
     }
     return value;
 }
-/** `content` is required by the spec, but servers that only return `structuredContent` omit it (the SDK defaults it too). */
+/**
+ * `content` is required by the spec, but servers that only return `structuredContent` omit it (the SDK defaults it too).
+ * `structuredContent` may be any JSON value, as MCP 2026-07-28 allows.
+ */
 function validateCallToolResult(value) {
     if (!isObject(value) || (value.content !== undefined && !Array.isArray(value.content))) {
         throw new McpError(JSON_RPC_ERROR_CODES.invalidRequest, "Invalid MCP tools/call result");
-    }
-    if (value.structuredContent !== undefined && !isObject(value.structuredContent)) {
-        throw new McpError(JSON_RPC_ERROR_CODES.invalidRequest, "Invalid MCP tools/call structured content");
     }
     return (value.content === undefined ? { ...value, content: [] } : value);
 }
@@ -265,6 +265,7 @@ export class McpClient {
                 signal: options.signal,
                 // The spec forbids cancelling `initialize`.
                 onAbort: () => this.cancelPending(id, new McpAbortError(), method !== "initialize", String(options.signal?.reason ?? "Aborted")),
+                sendController: new AbortController(),
                 cancellable: method !== "initialize",
                 onProgress: options.onProgress,
                 progressToken,
@@ -274,7 +275,9 @@ export class McpClient {
                 this.progressRequests.set(progressToken, id);
             options.signal?.addEventListener("abort", entry.onAbort, { once: true });
             this.armTimeout(id, entry);
-            transport.send(message).catch((error) => this.cancelPending(id, error, false));
+            transport
+                .send(message, { signal: entry.sendController.signal })
+                .catch((error) => this.cancelPending(id, error, false));
         });
     }
     async notifyInternal(method, params, allowConnecting) {
@@ -415,6 +418,7 @@ export class McpClient {
         if (entry.progressToken !== undefined)
             this.progressRequests.delete(entry.progressToken);
         entry.signal?.removeEventListener("abort", entry.onAbort);
+        entry.sendController.abort();
     }
     rejectPending(error) {
         for (const [id, entry] of this.pending) {

@@ -2,9 +2,12 @@ package codingagent
 
 import (
 	"context"
+	"runtime"
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -25,7 +28,7 @@ func TestNameCommandUsesPaddedThemeText(t *testing.T) {
 		}
 	}
 	rows := m.chatContainer.Render(80)
-	want := []string{"", tui.NewPaddedText(tui.ActiveTheme().FgText("dim", "Session name set: **literal**"), 1, 0, nil).Render(80)[0], "", tui.NewPaddedText(tui.ActiveTheme().FgText("dim", "Session name: **literal**"), 1, 0, nil).Render(80)[0]}
+	want := []string{"", tui.NewPaddedText(tui.ActiveTheme().Fg("dim", "Session name set: **literal**"), 1, 0, nil).Render(80)[0], "", tui.NewPaddedText(tui.ActiveTheme().Fg("dim", "Session name: **literal**"), 1, 0, nil).Render(80)[0]}
 	if strings.Join(rows, "\n") != strings.Join(want, "\n") {
 		t.Fatalf("name rows = %q; want %q", rows, want)
 	}
@@ -60,7 +63,7 @@ func TestHostSpacerSurvivesEditorReplacementAndWidgetClear(t *testing.T) {
 	m.syncWidgets(nil)
 	slot := tui.NewContainer(m.editor)
 	layout := tui.NewContainer(m.widgetContainer, slot)
-	for _, component := range []tui.Component{m.editor, tui.NewModelSelector("", nil, nil, ""), m.editor} {
+	for _, component := range []tui.Component{m.editor, tui.NewStaticModelSelectorComponent("", nil, nil, ""), m.editor} {
 		slot.SetChildren(component)
 		rows := layout.Render(80)
 		if rows[0] != "" || widthx.StripAnsi(rows[1]) != strings.Repeat("─", 80) {
@@ -79,5 +82,84 @@ func BenchmarkHotkeysCommandRender(b *testing.B) {
 		m.chatContainer.Clear()
 		m.handleHotkeysCommand()
 		m.chatContainer.Render(100)
+	}
+}
+
+// altKeyText is how Pi shows the alt modifier: keybinding-hints.ts:13 (formatKeyPart) writes "option" on darwin, so the capitalized
+// key text is "Option" there and "Alt" elsewhere.
+func altKeyText() string {
+	if runtime.GOOS == "darwin" {
+		return "Option"
+	}
+	return "Alt"
+}
+
+// interactive-mode.ts:6902-6916: extension shortcuts get an "Extensions" table after the built-in ones, each row the capitalized key
+// text and the shortcut's description, or its extension path without one. Without shortcuts there is no such table.
+func TestHotkeysCommandListsExtensionShortcuts(t *testing.T) {
+	previous := tui.GetTUIKeybindings()
+	t.Cleanup(func() { tui.SetKeybindings(previous) })
+	m := modelPickerTestMode(t)
+	m.keybindings = DefaultKeybindingsManager()
+	m.keybindings.syncToTUI()
+	m.newRunner = inproc.NewRunner([]extension.Extension{{
+		Name: "demo",
+		Shortcuts: map[extension.KeyID]extension.ExtensionShortcut{
+			"ctrl+shift+x": {Shortcut: "ctrl+shift+x", Description: "Do the demo thing", ExtensionPath: "/ext/demo.ts"},
+			"alt+q":        {Shortcut: "alt+q", ExtensionPath: "/ext/demo.ts"},
+		},
+	}}, t.TempDir())
+	plain := widthx.StripAnsi(hotkeysMarkdown(m.extensionShortcutsForHotkeys()))
+	for _, want := range []string{"**Extensions**\n| Key | Action |\n|-----|--------|\n", "| `" + altKeyText() + "+Q` | /ext/demo.ts |", "| `Ctrl+Shift+X` | Do the demo thing |"} {
+		if !strings.Contains(plain, want) {
+			t.Errorf("hotkeys missing %q:\n%s", want, plain)
+		}
+	}
+	if !strings.HasSuffix(plain, "| `Ctrl+Shift+X` | Do the demo thing |") {
+		t.Errorf("the Extensions table is not last:\n%s", plain)
+	}
+	if err := hotkeysHandler(m.buildSlashContext(context.Background())); err != nil {
+		t.Fatal(err)
+	}
+	if rendered := widthx.StripAnsi(strings.Join(m.chatContainer.Render(100), "\n")); !strings.Contains(rendered, "Do the demo thing") {
+		t.Fatalf("the /hotkeys command did not list the extension shortcut:\n%s", rendered)
+	}
+	if none := hotkeysMarkdown(nil); strings.Contains(none, "Extensions") {
+		t.Fatalf("a table without shortcuts:\n%s", none)
+	}
+}
+
+// interactive-mode.ts:6905-6916 iterates getShortcuts' Map: extensions in load order, shortcuts in registration order, a re-registered key
+// at its first position. /hotkeys lists them so, not by path or key.
+func TestHotkeysCommandListsExtensionShortcutsInRegistrationOrder(t *testing.T) {
+	previous := tui.GetTUIKeybindings()
+	t.Cleanup(func() { tui.SetKeybindings(previous) })
+	m := modelPickerTestMode(t)
+	m.keybindings = DefaultKeybindingsManager()
+	m.keybindings.syncToTUI()
+	first := extension.Extension{Name: "z", Path: "/ext/z.ts"}
+	second := extension.Extension{Name: "a", Path: "/ext/a.ts"}
+	for _, row := range []struct {
+		ext         *extension.Extension
+		key, action string
+	}{{&first, "ctrl+shift+x", "zx"}, {&first, "alt+q", "zq"}, {&first, "f5", "zf5"}, {&second, "alt+a", "aa"}, {&second, "alt+q", "aq"}} {
+		row.ext.SetRegisteredShortcut(extension.KeyID(row.key), extension.ExtensionShortcut{Shortcut: extension.KeyID(row.key), Description: row.action, ExtensionPath: row.ext.Path})
+	}
+	m.newRunner = inproc.NewRunner([]extension.Extension{first, second}, t.TempDir())
+	plain := widthx.StripAnsi(hotkeysMarkdown(m.extensionShortcutsForHotkeys()))
+	start := strings.Index(plain, "**Extensions**")
+	if start < 0 {
+		t.Fatalf("hotkeys markdown has no Extensions section:\n%s", plain)
+	}
+	rows := plain[start:]
+	alt := altKeyText()
+	want := []string{"`Ctrl+Shift+X` | zx", "`" + alt + "+Q` | aq", "`F5` | zf5", "`" + alt + "+A` | aa"}
+	last := -1
+	for _, row := range want {
+		at := strings.Index(rows, row)
+		if at <= last {
+			t.Fatalf("row %q is missing or out of order:\n%s", row, rows)
+		}
+		last = at
 	}
 }

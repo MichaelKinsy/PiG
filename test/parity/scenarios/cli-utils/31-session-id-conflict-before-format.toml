@@ -1,0 +1,22 @@
+# Behavior family: cli-utils
+# Pi 1.1.0 main.ts:315-334 validateSessionIdFlags names the conflicting flags before it checks the id's format, and prints the format error with a
+# capital "Session id" (session-manager.ts:271). Pig checked the format first (so "--session-id a/b --session x" reported the format) and wrote
+# "session id" in lower case.
+name = "31-session-id-conflict-before-format"
+description = "--session-id with an invalid id and --session reports the flag conflict, as Pi does"
+covers = ["packages/coding-agent/src/main.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+
+[cli]
+args = ["--session-id", "a/b", "--session", "x.jsonl", "-p", "hi"]
+timeout_seconds = 10
+
+[assert]
+exit_code = 1
+output_equal = true
+stderr_equal = true
+runs = 3

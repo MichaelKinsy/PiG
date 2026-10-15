@@ -1,3 +1,5 @@
+//go:build !pig_strip_mermaid
+
 package codingagent
 
 // Ports packages/coding-agent/src/modes/interactive/components/mermaid.ts (Marked definition ownership).
@@ -5,9 +7,9 @@ package codingagent
 import (
 	"strings"
 
-	"github.com/yuin/goldmark/ast"
-	gmparser "github.com/yuin/goldmark/parser"
-	gmtext "github.com/yuin/goldmark/text"
+	"github.com/MichaelKinsy/PiG/third_party/goldmark/ast"
+	gmparser "github.com/MichaelKinsy/PiG/third_party/goldmark/parser"
+	gmtext "github.com/MichaelKinsy/PiG/third_party/goldmark/text"
 
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )

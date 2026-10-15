@@ -18,6 +18,10 @@ func (m *Models) Refresh(ctx context.Context, options ...ModelsRefreshOptions) M
 		return result
 	}
 	allowNetwork := opts.AllowNetwork == nil || *opts.AllowNetwork
+	// An offline refresh inside an operation that runs no extension code and reads only this package's own stores (ProvidersRunOnCaller) does no
+	// I/O but its file reads, so its providers restore one after another on the caller and settle in provider order, as Pi's settle at one await
+	// depth.
+	inline := !allowNetwork && ProvidersRunOnCaller(ctx)
 	var errorsMu sync.Mutex
 	var wg sync.WaitGroup
 	for _, provider := range m.GetProviders() {
@@ -28,42 +32,72 @@ func (m *Models) Refresh(ctx context.Context, options ...ModelsRefreshOptions) M
 		if signal == nil {
 			continue
 		}
-		wg.Go(func() {
-			_, err := awaitModelsOperation(signal, &m.operations, func() (struct{}, error) {
-				stored, credentialErr := readProviderCredential(signal, m.credentials, provider.ID)
-				if err := m.runProviderRefreshPhase(provider, stored, false, nil, generation, signal); err != nil {
-					return struct{}{}, err
+		// The operation runs on the collection's operations, and the refresh settles when it returns or when its signal is cancelled (Pi's
+		// raceWithAbortSignal), whichever is first: the signal's AfterFunc settles a cancelled wait without a waiting goroutine.
+		var settleOnce sync.Once
+		settle := func(err error) {
+			settleOnce.Do(func() {
+				if err != nil && signal.Err() == nil {
+					errorsMu.Lock()
+					result.Errors[provider.ID] = err
+					result.ErrorOrder = append(result.ErrorOrder, provider.ID)
+					errorsMu.Unlock()
 				}
-				if credentialErr != nil {
-					return struct{}{}, credentialErr
+				m.mu.Lock()
+				if m.refreshControllers[provider.ID] == signal {
+					delete(m.refreshControllers, provider.ID)
 				}
-				if !allowNetwork || signal.Err() != nil {
-					return struct{}{}, nil
-				}
-				credential, err := m.resolveRefreshCredential(signal, provider, stored)
-				if err != nil || credential == nil {
-					return struct{}{}, err
-				}
-				return struct{}{}, m.runProviderRefreshPhase(provider, credential, true, opts.Force, generation, signal)
+				m.mu.Unlock()
+				wg.Done()
 			})
-			if err != nil && signal.Err() == nil {
-				errorsMu.Lock()
-				result.Errors[provider.ID] = err
-				result.ErrorOrder = append(result.ErrorOrder, provider.ID)
-				errorsMu.Unlock()
+		}
+		wg.Add(1)
+		if signal.Err() != nil {
+			settle(context.Cause(signal))
+			continue
+		}
+		run := func() error {
+			stored, credentialErr := readProviderCredential(signal, m.credentials, provider.ID)
+			if err := m.runProviderRefreshPhase(provider, stored, false, nil, generation, signal); err != nil {
+				return err
 			}
-			m.mu.Lock()
-			if m.refreshControllers[provider.ID] == signal {
-				delete(m.refreshControllers, provider.ID)
+			if credentialErr != nil {
+				return credentialErr
 			}
-			m.mu.Unlock()
+			if !allowNetwork || signal.Err() != nil {
+				return nil
+			}
+			credential, err := m.resolveRefreshCredential(signal, provider, stored)
+			if err != nil || credential == nil {
+				return err
+			}
+			return m.runProviderRefreshPhase(provider, credential, true, opts.Force, generation, signal)
+		}
+		if inline {
+			err := run()
+			if signal.Err() != nil {
+				err = context.Cause(signal)
+			}
+			settle(err)
+			continue
+		}
+		stop := context.AfterFunc(signal, func() { settle(context.Cause(signal)) })
+		m.operations.Go(func() {
+			err := run()
+			stop()
+			if signal.Err() != nil {
+				err = context.Cause(signal)
+			}
+			settle(err)
 		})
 	}
-	done := make(chan struct{})
-	m.operations.Go(func() { wg.Wait(); close(done) })
-	select {
-	case <-done:
-	case <-ctx.Done():
+	if !inline {
+		done := make(chan struct{})
+		m.operations.Go(func() { wg.Wait(); close(done) })
+		select {
+		case <-done:
+		case <-ctx.Done():
+		}
 	}
 	errorsMu.Lock()
 	defer errorsMu.Unlock()
@@ -76,9 +110,10 @@ func (m *Models) runProviderRefreshPhase(provider *ModelsProvider, credential *C
 		return err
 	}
 	if stored != nil {
-		stored = withKnownModelTypes(new(stored.Clone()))
+		// Records of model types this version does not know stay aside in the entry and never reach the provider.
+		stored = new(stored.Clone())
 	}
-	return provider.RefreshModels(RefreshModelsContext{Credential: credential, Stored: stored, AllowNetwork: allowNetwork, Force: force, Signal: signal, Publish: func(publication ModelsPublication) (bool, error) {
+	return provider.RefreshModels(RefreshModelsContext{Credential: credential, Stored: stored, AllowNetwork: allowNetwork, Force: force, Signal: signal, BaseURL: provider.BaseURL, Publish: func(publication ModelsPublication) (bool, error) {
 		return m.publishProviderModels(provider.ID, generation, signal, publication)
 	}})
 }
@@ -89,8 +124,7 @@ func (m *Models) publishProviderModels(providerID string, generation uint64, sig
 	done := make(chan struct{})
 	m.publicationChains[providerID] = done
 	m.mu.Unlock()
-	result := make(chan modelsOperationResult[bool], 1)
-	m.operations.Go(func() {
+	publish := func() modelsOperationResult[bool] {
 		defer func() {
 			m.mu.Lock()
 			if m.publicationChains[providerID] == done {
@@ -108,8 +142,7 @@ func (m *Models) publishProviderModels(providerID string, generation uint64, sig
 			return signal.Err() == nil && m.refreshGenerations[providerID] == generation
 		}
 		if !current() {
-			result <- modelsOperationResult[bool]{}
-			return
+			return modelsOperationResult[bool]{}
 		}
 		var err error
 		if publication.Persist != nil {
@@ -118,21 +151,29 @@ func (m *Models) publishProviderModels(providerID string, generation uint64, sig
 			err = m.modelsStore.Delete(signal, providerID)
 		}
 		if err != nil {
-			result <- modelsOperationResult[bool]{err: err}
-			return
+			return modelsOperationResult[bool]{err: err}
 		}
 		m.mu.Lock()
+		defer m.mu.Unlock()
 		if signal.Err() != nil || m.refreshGenerations[providerID] != generation {
-			m.mu.Unlock()
-			result <- modelsOperationResult[bool]{}
-			return
+			return modelsOperationResult[bool]{}
 		}
 		if publication.Update != nil {
 			publication.Update()
 		}
-		m.mu.Unlock()
-		result <- modelsOperationResult[bool]{value: true}
-	})
+		return modelsOperationResult[bool]{value: true}
+	}
+	if previous == nil && publication.Persist == nil && !publication.PersistSet {
+		// No earlier publication to wait for and nothing to write: Pi's queued publication runs on an already-settled chain without I/O
+		// (models.ts publishProviderModels), so it runs here rather than on a goroutine the caller would wait for.
+		next := publish()
+		if signal.Err() != nil {
+			return false, context.Cause(signal)
+		}
+		return next.value, next.err
+	}
+	result := make(chan modelsOperationResult[bool], 1)
+	m.operations.Go(func() { result <- publish() })
 	if signal.Err() != nil {
 		return false, context.Cause(signal)
 	}

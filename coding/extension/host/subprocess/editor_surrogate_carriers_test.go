@@ -1,3 +1,5 @@
+//go:build !pig_strip_node_extensions
+
 package subprocess
 
 import (
@@ -200,9 +202,9 @@ type editorCarrierRemoteUI struct {
 	installed chan extension.RemoteEditor
 }
 
-func (u *editorCarrierRemoteUI) SetEditorComponent(value any) {
+func (u *editorCarrierRemoteUI) SetEditorComponent(value extension.EditorFactory) {
 	u.testUIContext.SetEditorComponent(value)
-	if editor, ok := value.(extension.RemoteEditor); ok {
+	if editor := remoteEditorOfFactory(value); editor != nil {
 		u.installed <- editor
 	}
 }

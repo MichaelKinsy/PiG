@@ -1,0 +1,67 @@
+[
+ {
+  "upstream": "packages/chord/src/json.ts",
+  "package": "./chord",
+  "tests": [
+   "TestCopyJSONDetachesSharedAliases"
+  ],
+  "upstream_reference": "packages/chord/src/json.ts",
+  "mutation": "chord/json.go: replace `func CopyJSON(value any) (any, error) { return delta.CloneJSON(value) }` with `func CopyJSON(value any) (any, error) { return value, nil }`; TestCopyJSONDetachesSharedAliases fails."
+ },
+ {
+  "upstream": "packages/chord/src/context/index.ts",
+  "package": "./chord/context",
+  "tests": [
+   "TestContextLayersTypedValuesWithoutModifyingParents",
+   "TestContextMasksCallerCancellationForMandatoryCleanup"
+  ],
+  "upstream_reference": "packages/chord/src/context/index.ts",
+  "mutation": "chord/context/chordctx.go: replace `return &valueContext{Context: parent, key: key.token, value: value}` with `return parent`; TestContextLayersTypedValuesWithoutModifyingParents, TestContextMasksCallerCancellationForMandatoryCleanup fails."
+ },
+ {
+  "upstream": "packages/chord/src/context/index.ts",
+  "package": "./chord/context",
+  "tests": [
+   "TestContextMasksCallerCancellationForMandatoryCleanup"
+  ],
+  "upstream_reference": "packages/chord/src/context/index.ts",
+  "mutation": "chord/context/chordctx.go: replace `return &abortContext{Context: context.WithoutCancel(parent), parent: parent}` with `return &abortContext{Context: parent, parent: parent}`; TestContextMasksCallerCancellationForMandatoryCleanup fails."
+ },
+ {
+  "upstream": "packages/chord/src/delta/index.ts",
+  "package": "./chord/delta",
+  "tests": [
+   "TestPathErrorConstructorsAndTheApplierRaisingThem"
+  ],
+  "upstream_reference": "packages/chord/src/delta/index.ts",
+  "mutation": "chord/delta/delta.go: replace `err := &PathError{Path: path}` with `err := &PathError{}`; TestPathErrorConstructorsAndTheApplierRaisingThem fails."
+ },
+ {
+  "upstream": "packages/chord/src/delta/index.ts",
+  "package": "./chord/delta",
+  "tests": [
+   "TestPathErrorConstructorsAndTheApplierRaisingThem"
+  ],
+  "upstream_reference": "packages/chord/src/delta/index.ts",
+  "mutation": "chord/delta/delta.go: replace `err := &UnsafePathError{Segment: segment}` with `err := &UnsafePathError{}`; TestPathErrorConstructorsAndTheApplierRaisingThem fails."
+ },
+ {
+  "upstream": "packages/chord/src/delta/index.ts",
+  "package": "./chord/delta",
+  "tests": [
+   "TestIsBaseAndIsReplace",
+   "TestIsReplaceUpstream"
+  ],
+  "upstream_reference": "packages/chord/src/delta/index.ts",
+  "mutation": "chord/delta/delta.go: replace `func IsReplace(op Op) bool { return Verb(op) == \"r\" }` with `func IsReplace(op Op) bool { return Verb(op) != \"\" }`; TestIsBaseAndIsReplace, TestIsReplaceUpstream fails."
+ },
+ {
+  "upstream": "packages/chord/src/context/index.ts",
+  "package": "./chord/context",
+  "tests": [
+   "TestNewKeyKeepsItsDescriptionAndStaysDistinctFromEqualDescriptions"
+  ],
+  "upstream_reference": "packages/chord/src/context/index.ts",
+  "mutation": "chord/context/chordctx.go: replace `return Key[T]{token: &keyToken{description: description}}` with `return Key[T]{token: &keyToken{}}`; TestNewKeyKeepsItsDescriptionAndStaysDistinctFromEqualDescriptions fails."
+ }
+]

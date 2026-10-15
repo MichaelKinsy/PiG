@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -49,12 +50,13 @@ func shortenPath(p string) string {
 }
 
 // debugLog writes to pig-debug.log in the temporary directory when PIG_DEBUG is set. Used for
-// diagnosing TUI event flow without polluting the alt-screen.
+// diagnosing TUI event flow without polluting the alt-screen. The file is private to the user and is never reached
+// through a symlink (openDebugLog); the shared temporary directory is writable by every local user.
 func debugLog(format string, args ...any) {
 	if os.Getenv("PIG_DEBUG") == "" {
 		return
 	}
-	f, err := os.OpenFile(filepath.Join(os.TempDir(), "pig-debug.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := openDebugLog(filepath.Join(os.TempDir(), "pig-debug.log"))
 	if err != nil {
 		return
 	}
@@ -124,21 +126,22 @@ func (m *InteractiveMode) setupExtensionShortcutListener(ctx context.Context) {
 	if m.newRunner == nil {
 		return
 	}
-	shortcuts := m.newRunner.Shortcuts(m.keybindings.ResolvedBindings())
+	shortcuts := m.newRunner.Shortcuts(m.keybindings.effectiveBindings())
 	if len(shortcuts) == 0 {
 		return
 	}
 	m.extensionShortcutListener = func(data string) bool {
-		for keyID, sc := range shortcuts {
-			if tui.MatchesKeyID(data, keyID) {
+		for _, entry := range shortcuts {
+			if tui.MatchesKeyID(data, entry.Key) {
 				go func() {
-					if err := sc.Handler(ctx); err != nil {
+					if err := entry.Shortcut.Handler(ctx); err != nil {
 						// pig divergence (D56): the lifecycle handler reports a failed subprocess connection once, including interrupted shortcuts.
 						if _, owned := errors.AsType[*invocation.LifecycleError](err); owned {
 							return
 						}
 						m.runOnMain(m.runCtx, func() {
-							m.showWarning(fmt.Sprintf("Shortcut handler error: %v", err))
+							// upstream: interactive-mode.ts:2289-2291 reports a failed shortcut handler through showError.
+							m.showError(fmt.Sprintf("Shortcut handler error: %v", err))
 						})
 					}
 				}()
@@ -158,4 +161,21 @@ func (m *InteractiveMode) projectTrusted() bool {
 		return true
 	}
 	return m.opts.SettingsManager.IsProjectTrusted()
+}
+
+// redactKeyChunk is the chunk PIG_DEBUG_KEYS may log. Escape and control sequences are what a keybinding diagnosis needs,
+// so they stay; typed or pasted text can be a secret entered at a masked login prompt, so it is replaced by its length.
+func redactKeyChunk(chunk string) string {
+	if strings.HasPrefix(chunk, "\x1b[200~") {
+		return fmt.Sprintf("paste(%d bytes)", len(chunk))
+	}
+	if strings.HasPrefix(chunk, "\x1b") {
+		return fmt.Sprintf("%q", chunk)
+	}
+	for _, r := range chunk {
+		if r >= 0x20 && r != 0x7f {
+			return fmt.Sprintf("text(%d chars)", utf8.RuneCountInString(chunk))
+		}
+	}
+	return fmt.Sprintf("%q", chunk)
 }

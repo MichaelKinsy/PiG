@@ -1,5 +1,4 @@
 <!--
-SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 SPDX-License-Identifier: MIT
 -->
 
@@ -13,7 +12,7 @@ Pi is the upstream TypeScript project at <https://github.com/earendil-works/pi>.
 
 ## PiG
 
-PiG is the Go implementation in this repository. The executable is `pig`. PiG follows the exact Pi release pinned in `internal/coding/pigversion/pigversion.go`.
+PiG is the Go implementation in this repository. The executable is `pig`. PiG follows the exact Pi build pinned in `.upstream/pin` (a release tag, or a pinned commit).
 
 ## Stock PiG
 

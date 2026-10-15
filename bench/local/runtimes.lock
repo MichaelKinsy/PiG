@@ -1,0 +1,25 @@
+{
+  "runtimes": {
+    "llama.cpp": {
+      "assets": {
+        "darwin-arm64": {
+          "name": "llama-b11429-bin-macos-arm64.tar.gz",
+          "sha256": "740288ec6887be94280a5dfa25b5e23a78285cab104519e6c7e218904ee82459",
+          "size": 11971406
+        },
+        "linux-amd64": {
+          "name": "llama-b11429-bin-ubuntu-x64.tar.gz",
+          "sha256": "f6d25dde8f51133143d1453da4fd5f73b145127177612a283bf7995957af3392",
+          "size": 17693462
+        }
+      },
+      "license": "MIT",
+      "note": "llama-server release builds of github.com/ggml-org/llama.cpp, run unmodified. v0.6.0's nightly-tag.txt points at b11429.",
+      "release": {
+        "base": "https://github.com/ggml-org/llama.cpp/releases/download/b11429/",
+        "member": "llama-server"
+      },
+      "version": "b11429"
+    }
+  }
+}

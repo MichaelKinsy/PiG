@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/modelgen"
 )
 
@@ -22,12 +23,7 @@ type openRouterModelListItem struct {
 		InputModalities  []string `json:"input_modalities"`
 		OutputModalities []string `json:"output_modalities"`
 	} `json:"architecture"`
-	Pricing *struct {
-		Prompt          string `json:"prompt"`
-		Completion      string `json:"completion"`
-		InputCacheRead  string `json:"input_cache_read"`
-		InputCacheWrite string `json:"input_cache_write"`
-	} `json:"pricing"`
+	Pricing     *ai.OpenRouterPricing `json:"pricing"`
 	TopProvider *struct {
 		ContextLength       int `json:"context_length"`
 		MaxCompletionTokens int `json:"max_completion_tokens"`
@@ -92,23 +88,14 @@ func roundCost(value float64) float64 {
 	return math.Copysign(result, value)
 }
 
-// openRouterCost converts $/token pricing to $/million tokens (openrouter-catalog.ts cost).
+// openRouterCost is openrouter-catalog.ts cost: ai.OpenRouterCost, the conversion the runtime shares (openrouter-api.ts openRouterCost), written as the generated-model cost.
 func openRouterCost(model openRouterModelListItem) jsonCost {
-	price := func(value string) float64 {
-		if value == "" {
-			value = "0"
-		}
-		prefix := openRouterFloatPrefix.FindString(strings.TrimLeft(value, jsWhitespace))
-		if prefix == "" {
-			return math.NaN()
-		}
-		parsed, _ := strconv.ParseFloat(prefix, 64)
-		return roundCost(parsed * 1_000_000)
+	cost := ai.OpenRouterCost(model.Pricing)
+	out := jsonCost{Input: cost.Input, Output: cost.Output, CacheRead: cost.CacheRead, CacheWrite: cost.CacheWrite}
+	for _, tier := range cost.Tiers {
+		out.Tiers = append(out.Tiers, jsonCostTier{InputTokensAbove: tier.InputTokensAbove, Input: tier.InputCostPer1M, Output: tier.OutputCostPer1M, CacheRead: tier.CacheReadCostPer1M, CacheWrite: tier.CacheWriteCostPer1M})
 	}
-	if model.Pricing == nil {
-		return jsonCost{Input: price(""), Output: price(""), CacheRead: price(""), CacheWrite: price("")}
-	}
-	return jsonCost{Input: price(model.Pricing.Prompt), Output: price(model.Pricing.Completion), CacheRead: price(model.Pricing.InputCacheRead), CacheWrite: price(model.Pricing.InputCacheWrite)}
+	return out
 }
 
 // openRouterModalities keeps the distinct text and image entries in order.

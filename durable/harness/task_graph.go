@@ -3,6 +3,7 @@
 package harness
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"maps"
@@ -11,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/chord"
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
 )
@@ -29,15 +31,15 @@ type TaskGraphState struct {
 func (state TaskGraphState) MarshalJSON() ([]byte, error) {
 	switch state.Status {
 	case durable.TaskPending, durable.TaskRunning:
-		return json.Marshal(map[string]any{"status": state.Status, "phase": state.Phase})
+		return json.Marshal(delta.JsonObjectOf("status", state.Status, "phase", state.Phase))
 	case durable.TaskWaiting:
 		on := state.On
 		if on == nil {
 			on = []durable.TaskId{}
 		}
-		return json.Marshal(map[string]any{"status": state.Status, "phase": state.Phase, "on": on, "policy": state.Policy})
+		return json.Marshal(delta.JsonObjectOf("status", state.Status, "phase", state.Phase, "on", on, "policy", state.Policy))
 	}
-	return json.Marshal(map[string]any{"status": state.Status, "outcome": state.Outcome})
+	return json.Marshal(delta.JsonObjectOf("status", state.Status, "outcome", state.Outcome))
 }
 
 // TaskGraphNode is one live task of the graph.
@@ -66,8 +68,15 @@ type TaskGraphWatch = durable.WatchHandle[TaskGraph]
 // taskGraphObserver is a CommittedStateSource or a CommittedWatch of the graph.
 type taskGraphObserver interface {
 	Advance(ctx context.Context, value TaskGraph, ops []durable.Op)
-	CloseSession()
+	CloseSession(failure error)
 }
+
+// stateGraphObserver adapts a CommittedStateSource, which ends the same way whether the Session closed or failed.
+type stateGraphObserver struct {
+	*session.CommittedStateSource[TaskGraph]
+}
+
+func (observer stateGraphObserver) CloseSession(error) { observer.CommittedStateSource.CloseSession() }
 
 type taskGraphMount struct {
 	value     TaskGraph
@@ -91,7 +100,7 @@ type TaskGraphView struct {
 // NewTaskGraphView subscribes the mount to the Session's commits and close.
 func NewTaskGraphView(sessionImpl *session.SessionImpl, storage durable.Storage) *TaskGraphView {
 	view := &TaskGraphView{session: sessionImpl, storage: storage}
-	sessionImpl.SubscribeCommits(func(ctx context.Context, publication durable.CommitPublication) {
+	sessionImpl.ObserveCommits(func(ctx context.Context, publication durable.CommitPublication) {
 		view.mu.Lock()
 		mount := view.mount
 		var observers []taskGraphObserver
@@ -100,10 +109,11 @@ func NewTaskGraphView(sessionImpl *session.SessionImpl, storage durable.Storage)
 		}
 		view.mu.Unlock()
 		if mount != nil {
-			advanceTaskGraph(ctx, mount, observers, publication)
+			advanceTaskGraph(ctx, mount, observers, publication, view.session.Report)
 		}
 	})
 	sessionImpl.SubscribeClose(func() {
+		failure := view.session.Failure()
 		view.mu.Lock()
 		view.closed = true
 		var observers []taskGraphObserver
@@ -113,7 +123,7 @@ func NewTaskGraphView(sessionImpl *session.SessionImpl, storage durable.Storage)
 		view.mount = nil
 		view.mu.Unlock()
 		for _, observer := range observers {
-			observer.CloseSession()
+			session.Contained(func() { observer.CloseSession(failure) }, view.session.Report)
 		}
 	})
 	return view
@@ -124,12 +134,12 @@ func (view *TaskGraphView) State(ctx context.Context) (durable.AttachedReplicate
 	var source *session.CommittedStateSource[TaskGraph]
 	detach, err := view.attach(ctx, func(value TaskGraph, release func()) taskGraphObserver {
 		source = session.NewCommittedStateSource(view.session, value, release)
-		return source
+		return stateGraphObserver{source}
 	})
 	if err != nil {
 		return nil, err
 	}
-	state, err := chord.AttachReplicatedStateSource[TaskGraph](source, chord.ReplicatedStateSourceOptions{})
+	state, err := chord.AttachReplicatedStateSource[TaskGraph](source, chord.ReplicatedStateSourceOptions{OnError: view.session.Report})
 	if err != nil {
 		detach()
 		return nil, err
@@ -183,7 +193,7 @@ func (view *TaskGraphView) attach(ctx context.Context, create func(value TaskGra
 		defer view.mu.Unlock()
 		// Close or cancellation may begin while the mount builds; register nothing then.
 		if view.closed {
-			return nil, closedError()
+			return nil, closedError(view.session)
 		}
 		if ctx.Err() != nil {
 			return nil, context.Cause(ctx)
@@ -234,7 +244,7 @@ func (view *TaskGraphView) build(ctx context.Context) (TaskGraph, error) {
 func taskKey(id durable.TaskId) string { return strconv.FormatInt(int64(id), 10) }
 
 // advanceTaskGraph derives the mount's operations from one publication, applies them, and hands the revision to every observer.
-func advanceTaskGraph(ctx context.Context, mount *taskGraphMount, observers []taskGraphObserver, publication durable.CommitPublication) {
+func advanceTaskGraph(ctx context.Context, mount *taskGraphMount, observers []taskGraphObserver, publication durable.CommitPublication, report func(error)) {
 	var ops []durable.Op
 	// Nodes this publication set (non-nil) or deleted (nil), over the mount's value.
 	changed := map[string]*TaskGraphNode{}
@@ -322,7 +332,7 @@ func advanceTaskGraph(ctx context.Context, mount *taskGraphMount, observers []ta
 	mount.value = TaskGraph{Tasks: tasks}
 	frameContext := context.WithoutCancel(ctx)
 	for _, observer := range observers {
-		observer.Advance(frameContext, mount.value, ops)
+		session.Contained(func() { observer.Advance(frameContext, mount.value, ops) }, report)
 	}
 }
 
@@ -333,7 +343,7 @@ func sameNode(a, b TaskGraphNode) bool {
 	if errLeft != nil || errRight != nil {
 		panic("durable/harness: task graph node is not JSON")
 	}
-	return string(left) == string(right)
+	return bytes.Equal(left, right)
 }
 
 func taskGraphNodeOf(record durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue], conversations []durable.ConversationId) TaskGraphNode {
@@ -369,7 +379,6 @@ func phaseOf(checkpoint *durable.JsonValue) string {
 	if checkpoint == nil {
 		return ""
 	}
-	object, _ := (*checkpoint).(map[string]any)
-	phase, _ := object["phase"].(string)
+	phase, _ := jsonMember(*checkpoint, "phase").(string)
 	return phase
 }

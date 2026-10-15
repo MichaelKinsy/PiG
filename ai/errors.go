@@ -5,13 +5,13 @@ package ai
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 	"unicode"
 
-	smithyhttp "github.com/aws/smithy-go/transport/http"
+	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 )
 
 const MaxProviderErrorBodyChars = 4000
@@ -31,6 +31,9 @@ type providerError struct {
 	message string
 	prefix  []string
 }
+
+// ProviderStatus is the HTTP status of the response the error reports; a retry policy reads it.
+func (err *providerError) ProviderStatus() *int { return err.status }
 
 func (err *providerError) Error() string {
 	return FormatProviderError(NormalizeProviderError(err), err.prefix...)
@@ -54,8 +57,9 @@ func NormalizeProviderError(value any) NormalizedProviderError {
 		return NormalizedProviderError{Message: SafeJsonStringify(value)}
 	}
 	result := NormalizedProviderError{Message: err.Error(), MessageCarriesBody: true}
-	if response, ok := errors.AsType[*smithyhttp.ResponseError](err); ok {
-		result.Status = new(response.HTTPStatusCode())
+	// pig additive (D92): only the Bedrock provider (the AWS SDK) produces a status-carrying response error; a build without it has none.
+	if status, ok := awsResponseErrorStatus(err); ok {
+		result.Status = new(status)
 	}
 	return result
 }
@@ -112,13 +116,58 @@ func TruncateErrorText(text string, maxChars int) string {
 	return fmt.Sprintf("%s... [truncated %d chars]", truncateUTF16(text, maxChars), length-maxChars)
 }
 
-// SafeJsonStringify formats JSON-compatible values without HTML escaping and falls back to their Go string representation when JSON encoding fails.
+// SafeJsonStringify formats JSON-compatible values without HTML escaping and falls back to their Go string representation when encoding fails.
 func SafeJsonStringify(value any) string {
-	var buffer bytes.Buffer
-	encoder := json.NewEncoder(&buffer)
-	encoder.SetEscapeHTML(false)
-	if err := encoder.Encode(value); err != nil {
-		return fmt.Sprint(value)
+	state := safeJSONEncoders.Get().(*safeJSONEncoder)
+	defer state.release()
+	return string(state.stringify(value))
+}
+
+// appendSafeJsonStringify appends SafeJsonStringify(value) to dst without building the string.
+func appendSafeJsonStringify(dst []byte, value any) []byte {
+	state := safeJSONEncoders.Get().(*safeJSONEncoder)
+	defer state.release()
+	return append(dst, state.stringify(value)...)
+}
+
+// maxPooledSafeJSONBuffer bounds the buffers a pooled safeJSONEncoder keeps (golang/go#23199): one large tool argument must not pin them.
+// pig additive (D112): Pi keeps no encoder between JSON.stringify calls; a state that is not pooled is made again and stringifies the same.
+const maxPooledSafeJSONBuffer = 64 << 10
+
+// release returns state to the pool unless its buffers grew past maxPooledSafeJSONBuffer; the pool makes a fresh state when it is empty.
+func (state *safeJSONEncoder) release() {
+	if state.buffer.Cap() > maxPooledSafeJSONBuffer || cap(state.canonical) > maxPooledSafeJSONBuffer {
+		return
 	}
-	return strings.TrimSuffix(buffer.String(), "\n")
+	safeJSONEncoders.Put(state)
+}
+
+// safeJSONEncoder keeps an encoder and its buffers between calls: the transcript estimate of the faux provider stringifies every tool call of the whole history on every model call.
+type safeJSONEncoder struct {
+	buffer    bytes.Buffer
+	encoder   *json.Encoder
+	canonical []byte
+}
+
+var safeJSONEncoders = sync.Pool{New: func() any {
+	state := &safeJSONEncoder{}
+	state.encoder = json.NewEncoder(&state.buffer)
+	state.encoder.SetEscapeHTML(false)
+	return state
+}}
+
+// stringify is SafeJsonStringify(value); the result is valid until the encoder's next call.
+func (state *safeJSONEncoder) stringify(value any) []byte {
+	state.buffer.Reset()
+	if err := state.encoder.Encode(value); err != nil {
+		return append(state.canonical[:0], fmt.Sprint(value)...)
+	}
+	encoded := bytes.TrimSuffix(state.buffer.Bytes(), []byte("\n"))
+	// JSON.stringify writes U+2028 and U+2029 raw, -0 as 0, numbers in ECMAScript form and integer keys first; encoding/json differs on each.
+	canonical, err := jsonstringify.AppendCanonical(state.canonical[:0], encoded)
+	if err != nil {
+		return encoded
+	}
+	state.canonical = canonical
+	return canonical
 }

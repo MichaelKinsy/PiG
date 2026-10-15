@@ -1,5 +1,5 @@
 {
- "pi": "1.0.3",
+ "pi": "1.2.0+b06c1f2c",
  "node": "v24.19.0",
  "results": [
   {
@@ -35,7 +35,7 @@
          }
         },
         "stopReason": "pending",
-        "timestamp": 1791196576945
+        "timestamp": 1792030241153
        }
       }
      },
@@ -147,297 +147,8 @@
          }
         },
         "stopReason": "stop",
-        "timestamp": 1791196576945,
-        "thinkingLevel": "off"
-       }
-      }
-     }
-    ],
-    [
-     {
-      "kind": "serialize",
-      "pushed": 5,
-      "record": {
-       "type": "message_start",
-       "message": {
-        "role": "assistant",
-        "content": [],
-        "api": "test-faux",
-        "provider": "test-faux",
-        "model": "faux-1",
-        "usage": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "totalTokens": 0,
-         "cost": {
-          "input": 0,
-          "output": 0,
-          "cacheRead": 0,
-          "cacheWrite": 0,
-          "total": 0
-         }
-        },
-        "stopReason": "pending",
-        "timestamp": 1791196577327
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 5,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_start",
-        "contentIndex": 0
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 5,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "42"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 5,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_end",
-        "contentIndex": 0,
-        "content": "42"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 5,
-      "record": {
-       "type": "message_end",
-       "message": {
-        "role": "assistant",
-        "content": [
-         {
-          "type": "text",
-          "text": "42"
-         }
-        ],
-        "api": "test-faux",
-        "provider": "test-faux",
-        "model": "faux-1",
-        "usage": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "totalTokens": 0,
-         "cost": {
-          "input": 0,
-          "output": 0,
-          "cacheRead": 0,
-          "cacheWrite": 0,
-          "total": 0
-         }
-        },
-        "stopReason": "stop",
-        "timestamp": 1791196577327,
-        "thinkingLevel": "off"
-       }
-      }
-     }
-    ],
-    [
-     {
-      "kind": "serialize",
-      "pushed": 5,
-      "record": {
-       "type": "message_start",
-       "message": {
-        "role": "assistant",
-        "content": [],
-        "api": "test-faux",
-        "provider": "test-faux",
-        "model": "faux-1",
-        "usage": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "totalTokens": 0,
-         "cost": {
-          "input": 0,
-          "output": 0,
-          "cacheRead": 0,
-          "cacheWrite": 0,
-          "total": 0
-         }
-        },
-        "stopReason": "pending",
-        "timestamp": 1791196577734
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 5,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_start",
-        "contentIndex": 0
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 5,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "42"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 5,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_end",
-        "contentIndex": 0,
-        "content": "42"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 5,
-      "record": {
-       "type": "message_end",
-       "message": {
-        "role": "assistant",
-        "content": [
-         {
-          "type": "text",
-          "text": "42"
-         }
-        ],
-        "api": "test-faux",
-        "provider": "test-faux",
-        "model": "faux-1",
-        "usage": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "totalTokens": 0,
-         "cost": {
-          "input": 0,
-          "output": 0,
-          "cacheRead": 0,
-          "cacheWrite": 0,
-          "total": 0
-         }
-        },
-        "stopReason": "stop",
-        "timestamp": 1791196577734,
+        "timestamp": 1792030241153,
+        "durationMs": 1,
         "thinkingLevel": "off"
        }
       }
@@ -474,7 +185,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1791196577804
+         "timestamp": 1792030241227
         }
        }
       },
@@ -509,7 +220,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196577804
+         "timestamp": 1792030241227,
+         "durationMs": 1
         }
        }
       },
@@ -545,7 +257,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196577804
+         "timestamp": 1792030241227,
+         "durationMs": 1
         }
        }
       },
@@ -581,7 +294,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196577804
+         "timestamp": 1792030241227,
+         "durationMs": 1
         }
        }
       },
@@ -616,7 +330,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196577804
+         "timestamp": 1792030241227,
+         "durationMs": 1
         }
        }
       },
@@ -648,7 +363,8 @@
          }
         },
         "stopReason": "stop",
-        "timestamp": 1791196577804
+        "timestamp": 1792030241227,
+        "durationMs": 1
        }
       }
      ]
@@ -682,7 +398,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1791196577813
+         "timestamp": 1792030241236
         }
        }
       },
@@ -719,7 +435,8 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196577813
+          "timestamp": 1792030241236,
+          "durationMs": 1
          }
         },
         "message": {
@@ -748,7 +465,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196577813
+         "timestamp": 1792030241236,
+         "durationMs": 1
         }
        }
       },
@@ -786,7 +504,8 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196577813
+          "timestamp": 1792030241236,
+          "durationMs": 1
          }
         },
         "message": {
@@ -815,7 +534,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196577813
+         "timestamp": 1792030241236,
+         "durationMs": 1
         }
        }
       },
@@ -853,7 +573,8 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196577813
+          "timestamp": 1792030241236,
+          "durationMs": 1
          }
         },
         "message": {
@@ -882,7 +603,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196577813
+         "timestamp": 1792030241236,
+         "durationMs": 1
         }
        }
       },
@@ -916,7 +638,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196577813,
+         "timestamp": 1792030241236,
+         "durationMs": 1,
          "thinkingLevel": "off"
         }
        }
@@ -952,7 +675,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1791196577819
+         "timestamp": 1792030241243
         }
        }
       },
@@ -987,7 +710,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196577819
+         "timestamp": 1792030241243,
+         "durationMs": 1
         }
        }
       },
@@ -1023,7 +747,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196577819
+         "timestamp": 1792030241243,
+         "durationMs": 1
         }
        }
       },
@@ -1059,7 +784,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196577819
+         "timestamp": 1792030241243,
+         "durationMs": 1
         }
        }
       },
@@ -1094,7 +820,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196577819
+         "timestamp": 1792030241243,
+         "durationMs": 1
         }
        }
       },
@@ -1126,7 +853,8 @@
          }
         },
         "stopReason": "stop",
-        "timestamp": 1791196577819
+        "timestamp": 1792030241243,
+        "durationMs": 1
        }
       }
      ]
@@ -1160,7 +888,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1791196577825
+         "timestamp": 1792030241249
         }
        }
       },
@@ -1197,7 +925,8 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196577825
+          "timestamp": 1792030241249,
+          "durationMs": 1
          }
         },
         "message": {
@@ -1226,7 +955,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196577825
+         "timestamp": 1792030241249,
+         "durationMs": 1
         }
        }
       },
@@ -1264,7 +994,8 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196577825
+          "timestamp": 1792030241249,
+          "durationMs": 1
          }
         },
         "message": {
@@ -1293,7 +1024,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196577825
+         "timestamp": 1792030241249,
+         "durationMs": 1
         }
        }
       },
@@ -1331,7 +1063,8 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196577825
+          "timestamp": 1792030241249,
+          "durationMs": 1
          }
         },
         "message": {
@@ -1360,7 +1093,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196577825
+         "timestamp": 1792030241249,
+         "durationMs": 1
         }
        }
       },
@@ -1394,7 +1128,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196577825,
+         "timestamp": 1792030241249,
+         "durationMs": 1,
          "thinkingLevel": "off"
         }
        }
@@ -1430,7 +1165,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1791196577831
+         "timestamp": 1792030241256
         }
        }
       },
@@ -1465,7 +1200,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196577831
+         "timestamp": 1792030241256,
+         "durationMs": 1
         }
        }
       },
@@ -1501,7 +1237,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196577831
+         "timestamp": 1792030241256,
+         "durationMs": 1
         }
        }
       },
@@ -1537,7 +1274,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196577831
+         "timestamp": 1792030241256,
+         "durationMs": 1
         }
        }
       },
@@ -1572,7 +1310,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196577831
+         "timestamp": 1792030241256,
+         "durationMs": 1
         }
        }
       },
@@ -1604,7 +1343,8 @@
          }
         },
         "stopReason": "stop",
-        "timestamp": 1791196577831
+        "timestamp": 1792030241256,
+        "durationMs": 1
        }
       }
      ]
@@ -1638,7 +1378,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1791196577837
+         "timestamp": 1792030241262
         }
        }
       },
@@ -1675,7 +1415,8 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196577837
+          "timestamp": 1792030241262,
+          "durationMs": 1
          }
         },
         "message": {
@@ -1704,7 +1445,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196577837
+         "timestamp": 1792030241262,
+         "durationMs": 1
         }
        }
       },
@@ -1742,7 +1484,8 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196577837
+          "timestamp": 1792030241262,
+          "durationMs": 1
          }
         },
         "message": {
@@ -1771,7 +1514,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196577837
+         "timestamp": 1792030241262,
+         "durationMs": 1
         }
        }
       },
@@ -1809,7 +1553,8 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196577837
+          "timestamp": 1792030241262,
+          "durationMs": 1
          }
         },
         "message": {
@@ -1838,7 +1583,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196577837
+         "timestamp": 1792030241262,
+         "durationMs": 1
         }
        }
       },
@@ -1872,7 +1618,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196577837,
+         "timestamp": 1792030241262,
+         "durationMs": 1,
          "thinkingLevel": "off"
         }
        }
@@ -1960,7 +1707,7 @@
          }
         },
         "stopReason": "pending",
-        "timestamp": 1791196578198
+        "timestamp": 1792030241641
        }
       }
      },
@@ -2085,7 +1832,8 @@
          }
         },
         "stopReason": "toolUse",
-        "timestamp": 1791196578198,
+        "timestamp": 1792030241641,
+        "durationMs": 1,
         "thinkingLevel": "off"
        }
       }
@@ -2116,7 +1864,7 @@
          }
         },
         "stopReason": "pending",
-        "timestamp": 1791196578207
+        "timestamp": 1792030241651
        }
       }
      },
@@ -2228,609 +1976,8 @@
          }
         },
         "stopReason": "stop",
-        "timestamp": 1791196578207,
-        "thinkingLevel": "off"
-       }
-      }
-     }
-    ],
-    [
-     {
-      "kind": "serialize",
-      "pushed": 5,
-      "record": {
-       "type": "message_start",
-       "message": {
-        "role": "assistant",
-        "content": [],
-        "api": "test-faux",
-        "provider": "test-faux",
-        "model": "faux-1",
-        "usage": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "totalTokens": 0,
-         "cost": {
-          "input": 0,
-          "output": 0,
-          "cacheRead": 0,
-          "cacheWrite": 0,
-          "total": 0
-         }
-        },
-        "stopReason": "pending",
-        "timestamp": 1791196578590
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 5,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "toolcall_start",
-        "contentIndex": 0,
-        "id": "call_test_faux_1",
-        "toolName": "read"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 5,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "toolcall_delta",
-        "contentIndex": 0,
-        "delta": "{\"path\":\"parity-read-target.txt\"}"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 5,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "toolcall_end",
-        "contentIndex": 0,
-        "toolCall": {
-         "type": "toolCall",
-         "id": "call_test_faux_1",
-         "name": "read",
-         "arguments": {
-          "path": "parity-read-target.txt"
-         }
-        }
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 5,
-      "record": {
-       "type": "message_end",
-       "message": {
-        "role": "assistant",
-        "content": [
-         {
-          "type": "toolCall",
-          "id": "call_test_faux_1",
-          "name": "read",
-          "arguments": {
-           "path": "parity-read-target.txt"
-          }
-         }
-        ],
-        "api": "test-faux",
-        "provider": "test-faux",
-        "model": "faux-1",
-        "usage": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "totalTokens": 0,
-         "cost": {
-          "input": 0,
-          "output": 0,
-          "cacheRead": 0,
-          "cacheWrite": 0,
-          "total": 0
-         }
-        },
-        "stopReason": "toolUse",
-        "timestamp": 1791196578590,
-        "thinkingLevel": "off"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 10,
-      "record": {
-       "type": "message_start",
-       "message": {
-        "role": "assistant",
-        "content": [],
-        "api": "test-faux",
-        "provider": "test-faux",
-        "model": "faux-1",
-        "usage": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "totalTokens": 0,
-         "cost": {
-          "input": 0,
-          "output": 0,
-          "cacheRead": 0,
-          "cacheWrite": 0,
-          "total": 0
-         }
-        },
-        "stopReason": "pending",
-        "timestamp": 1791196578599
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 10,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_start",
-        "contentIndex": 0
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 10,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "done"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 10,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_end",
-        "contentIndex": 0,
-        "content": "done"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 10,
-      "record": {
-       "type": "message_end",
-       "message": {
-        "role": "assistant",
-        "content": [
-         {
-          "type": "text",
-          "text": "done"
-         }
-        ],
-        "api": "test-faux",
-        "provider": "test-faux",
-        "model": "faux-1",
-        "usage": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "totalTokens": 0,
-         "cost": {
-          "input": 0,
-          "output": 0,
-          "cacheRead": 0,
-          "cacheWrite": 0,
-          "total": 0
-         }
-        },
-        "stopReason": "stop",
-        "timestamp": 1791196578599,
-        "thinkingLevel": "off"
-       }
-      }
-     }
-    ],
-    [
-     {
-      "kind": "serialize",
-      "pushed": 5,
-      "record": {
-       "type": "message_start",
-       "message": {
-        "role": "assistant",
-        "content": [],
-        "api": "test-faux",
-        "provider": "test-faux",
-        "model": "faux-1",
-        "usage": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "totalTokens": 0,
-         "cost": {
-          "input": 0,
-          "output": 0,
-          "cacheRead": 0,
-          "cacheWrite": 0,
-          "total": 0
-         }
-        },
-        "stopReason": "pending",
-        "timestamp": 1791196578959
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 5,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "toolcall_start",
-        "contentIndex": 0,
-        "id": "call_test_faux_1",
-        "toolName": "read"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 5,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "toolcall_delta",
-        "contentIndex": 0,
-        "delta": "{\"path\":\"parity-read-target.txt\"}"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 5,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "toolcall_end",
-        "contentIndex": 0,
-        "toolCall": {
-         "type": "toolCall",
-         "id": "call_test_faux_1",
-         "name": "read",
-         "arguments": {
-          "path": "parity-read-target.txt"
-         }
-        }
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 5,
-      "record": {
-       "type": "message_end",
-       "message": {
-        "role": "assistant",
-        "content": [
-         {
-          "type": "toolCall",
-          "id": "call_test_faux_1",
-          "name": "read",
-          "arguments": {
-           "path": "parity-read-target.txt"
-          }
-         }
-        ],
-        "api": "test-faux",
-        "provider": "test-faux",
-        "model": "faux-1",
-        "usage": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "totalTokens": 0,
-         "cost": {
-          "input": 0,
-          "output": 0,
-          "cacheRead": 0,
-          "cacheWrite": 0,
-          "total": 0
-         }
-        },
-        "stopReason": "toolUse",
-        "timestamp": 1791196578959,
-        "thinkingLevel": "off"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 10,
-      "record": {
-       "type": "message_start",
-       "message": {
-        "role": "assistant",
-        "content": [],
-        "api": "test-faux",
-        "provider": "test-faux",
-        "model": "faux-1",
-        "usage": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "totalTokens": 0,
-         "cost": {
-          "input": 0,
-          "output": 0,
-          "cacheRead": 0,
-          "cacheWrite": 0,
-          "total": 0
-         }
-        },
-        "stopReason": "pending",
-        "timestamp": 1791196578969
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 10,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_start",
-        "contentIndex": 0
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 10,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "done"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 10,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_end",
-        "contentIndex": 0,
-        "content": "done"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 10,
-      "record": {
-       "type": "message_end",
-       "message": {
-        "role": "assistant",
-        "content": [
-         {
-          "type": "text",
-          "text": "done"
-         }
-        ],
-        "api": "test-faux",
-        "provider": "test-faux",
-        "model": "faux-1",
-        "usage": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "totalTokens": 0,
-         "cost": {
-          "input": 0,
-          "output": 0,
-          "cacheRead": 0,
-          "cacheWrite": 0,
-          "total": 0
-         }
-        },
-        "stopReason": "stop",
-        "timestamp": 1791196578969,
+        "timestamp": 1792030241651,
+        "durationMs": 0,
         "thinkingLevel": "off"
        }
       }
@@ -2867,7 +2014,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1791196578978
+         "timestamp": 1792030241660
         }
        }
       },
@@ -2906,7 +2053,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196578978
+         "timestamp": 1792030241660,
+         "durationMs": 1
         }
        }
       },
@@ -2946,7 +2094,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196578978
+         "timestamp": 1792030241660,
+         "durationMs": 1
         }
        }
       },
@@ -2993,7 +2142,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196578978
+         "timestamp": 1792030241660,
+         "durationMs": 1
         }
        }
       },
@@ -3032,7 +2182,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196578978
+         "timestamp": 1792030241660,
+         "durationMs": 1
         }
        }
       },
@@ -3068,7 +2219,8 @@
          }
         },
         "stopReason": "toolUse",
-        "timestamp": 1791196578978
+        "timestamp": 1792030241660,
+        "durationMs": 1
        }
       }
      ]
@@ -3102,7 +2254,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1791196578984
+         "timestamp": 1792030241667
         }
        }
       },
@@ -3143,7 +2295,8 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1791196578984
+          "timestamp": 1792030241667,
+          "durationMs": 1
          }
         },
         "message": {
@@ -3176,7 +2329,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196578984
+         "timestamp": 1792030241667,
+         "durationMs": 1
         }
        }
       },
@@ -3218,7 +2372,8 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1791196578984
+          "timestamp": 1792030241667,
+          "durationMs": 1
          }
         },
         "message": {
@@ -3251,7 +2406,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196578984
+         "timestamp": 1792030241667,
+         "durationMs": 1
         }
        }
       },
@@ -3300,7 +2456,8 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1791196578984
+          "timestamp": 1792030241667,
+          "durationMs": 1
          }
         },
         "message": {
@@ -3333,7 +2490,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196578984
+         "timestamp": 1792030241667,
+         "durationMs": 1
         }
        }
       },
@@ -3371,7 +2529,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196578984,
+         "timestamp": 1792030241667,
+         "durationMs": 1,
          "thinkingLevel": "off"
         }
        }
@@ -3407,7 +2566,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1791196578991
+         "timestamp": 1792030241675
         }
        }
       },
@@ -3446,7 +2605,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196578991
+         "timestamp": 1792030241675,
+         "durationMs": 1
         }
        }
       },
@@ -3486,7 +2646,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196578991
+         "timestamp": 1792030241675,
+         "durationMs": 1
         }
        }
       },
@@ -3533,7 +2694,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196578991
+         "timestamp": 1792030241675,
+         "durationMs": 1
         }
        }
       },
@@ -3572,7 +2734,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196578991
+         "timestamp": 1792030241675,
+         "durationMs": 1
         }
        }
       },
@@ -3608,7 +2771,8 @@
          }
         },
         "stopReason": "toolUse",
-        "timestamp": 1791196578991
+        "timestamp": 1792030241675,
+        "durationMs": 1
        }
       }
      ]
@@ -3642,7 +2806,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1791196578997
+         "timestamp": 1792030241681
         }
        }
       },
@@ -3683,7 +2847,8 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1791196578997
+          "timestamp": 1792030241681,
+          "durationMs": 1
          }
         },
         "message": {
@@ -3716,7 +2881,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196578997
+         "timestamp": 1792030241681,
+         "durationMs": 1
         }
        }
       },
@@ -3758,7 +2924,8 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1791196578997
+          "timestamp": 1792030241681,
+          "durationMs": 1
          }
         },
         "message": {
@@ -3791,7 +2958,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196578997
+         "timestamp": 1792030241681,
+         "durationMs": 1
         }
        }
       },
@@ -3840,7 +3008,8 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1791196578997
+          "timestamp": 1792030241681,
+          "durationMs": 1
          }
         },
         "message": {
@@ -3873,7 +3042,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196578997
+         "timestamp": 1792030241681,
+         "durationMs": 1
         }
        }
       },
@@ -3911,7 +3081,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196578997,
+         "timestamp": 1792030241681,
+         "durationMs": 1,
          "thinkingLevel": "off"
         }
        }
@@ -3947,7 +3118,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1791196579003
+         "timestamp": 1792030241687
         }
        }
       },
@@ -3986,7 +3157,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196579003
+         "timestamp": 1792030241687,
+         "durationMs": 1
         }
        }
       },
@@ -4026,7 +3198,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196579003
+         "timestamp": 1792030241687,
+         "durationMs": 1
         }
        }
       },
@@ -4073,7 +3246,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196579003
+         "timestamp": 1792030241687,
+         "durationMs": 1
         }
        }
       },
@@ -4112,7 +3286,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196579003
+         "timestamp": 1792030241687,
+         "durationMs": 1
         }
        }
       },
@@ -4148,7 +3323,8 @@
          }
         },
         "stopReason": "toolUse",
-        "timestamp": 1791196579003
+        "timestamp": 1792030241687,
+        "durationMs": 1
        }
       }
      ]
@@ -4182,7 +3358,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1791196579008
+         "timestamp": 1792030241693
         }
        }
       },
@@ -4223,7 +3399,8 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1791196579008
+          "timestamp": 1792030241693,
+          "durationMs": 1
          }
         },
         "message": {
@@ -4256,7 +3433,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196579008
+         "timestamp": 1792030241693,
+         "durationMs": 1
         }
        }
       },
@@ -4298,7 +3476,8 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1791196579008
+          "timestamp": 1792030241693,
+          "durationMs": 1
          }
         },
         "message": {
@@ -4331,7 +3510,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196579008
+         "timestamp": 1792030241693,
+         "durationMs": 1
         }
        }
       },
@@ -4380,7 +3560,8 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1791196579008
+          "timestamp": 1792030241693,
+          "durationMs": 1
          }
         },
         "message": {
@@ -4413,7 +3594,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196579008
+         "timestamp": 1792030241693,
+         "durationMs": 1
         }
        }
       },
@@ -4451,7 +3633,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196579008,
+         "timestamp": 1792030241693,
+         "durationMs": 1,
          "thinkingLevel": "off"
         }
        }
@@ -4539,7 +3722,7 @@
          }
         },
         "stopReason": "pending",
-        "timestamp": 1791196579390
+        "timestamp": 1792030242066
        }
       }
      },
@@ -4760,7 +3943,8 @@
          }
         },
         "stopReason": "toolUse",
-        "timestamp": 1791196579390,
+        "timestamp": 1792030242066,
+        "durationMs": 1,
         "thinkingLevel": "off"
        }
       }
@@ -4791,7 +3975,7 @@
          }
         },
         "stopReason": "pending",
-        "timestamp": 1791196579418
+        "timestamp": 1792030242085
        }
       }
      },
@@ -4903,801 +4087,8 @@
          }
         },
         "stopReason": "stop",
-        "timestamp": 1791196579418,
-        "thinkingLevel": "off"
-       }
-      }
-     }
-    ],
-    [
-     {
-      "kind": "serialize",
-      "pushed": 8,
-      "record": {
-       "type": "message_start",
-       "message": {
-        "role": "assistant",
-        "content": [],
-        "api": "test-faux",
-        "provider": "test-faux",
-        "model": "faux-1",
-        "usage": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "totalTokens": 0,
-         "cost": {
-          "input": 0,
-          "output": 0,
-          "cacheRead": 0,
-          "cacheWrite": 0,
-          "total": 0
-         }
-        },
-        "stopReason": "pending",
-        "timestamp": 1791196579769
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 8,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "toolcall_start",
-        "contentIndex": 0,
-        "id": "call_test_faux_1",
-        "toolName": "read"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 8,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "toolcall_delta",
-        "contentIndex": 0,
-        "delta": "{\"path\":\"parity-read-target.txt\"}"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 8,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "toolcall_end",
-        "contentIndex": 0,
-        "toolCall": {
-         "type": "toolCall",
-         "id": "call_test_faux_1",
-         "name": "read",
-         "arguments": {
-          "path": "parity-read-target.txt"
-         }
-        }
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 8,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "toolcall_start",
-        "contentIndex": 1,
-        "id": "call_test_faux_2",
-        "toolName": "bash"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 8,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "toolcall_delta",
-        "contentIndex": 1,
-        "delta": "{\"command\":\"echo parallel-ok\",\"timeout\":10}"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 8,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "toolcall_end",
-        "contentIndex": 1,
-        "toolCall": {
-         "type": "toolCall",
-         "id": "call_test_faux_2",
-         "name": "bash",
-         "arguments": {
-          "command": "echo parallel-ok",
-          "timeout": 10
-         }
-        }
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 8,
-      "record": {
-       "type": "message_end",
-       "message": {
-        "role": "assistant",
-        "content": [
-         {
-          "type": "toolCall",
-          "id": "call_test_faux_1",
-          "name": "read",
-          "arguments": {
-           "path": "parity-read-target.txt"
-          }
-         },
-         {
-          "type": "toolCall",
-          "id": "call_test_faux_2",
-          "name": "bash",
-          "arguments": {
-           "command": "echo parallel-ok",
-           "timeout": 10
-          }
-         }
-        ],
-        "api": "test-faux",
-        "provider": "test-faux",
-        "model": "faux-1",
-        "usage": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "totalTokens": 0,
-         "cost": {
-          "input": 0,
-          "output": 0,
-          "cacheRead": 0,
-          "cacheWrite": 0,
-          "total": 0
-         }
-        },
-        "stopReason": "toolUse",
-        "timestamp": 1791196579769,
-        "thinkingLevel": "off"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 13,
-      "record": {
-       "type": "message_start",
-       "message": {
-        "role": "assistant",
-        "content": [],
-        "api": "test-faux",
-        "provider": "test-faux",
-        "model": "faux-1",
-        "usage": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "totalTokens": 0,
-         "cost": {
-          "input": 0,
-          "output": 0,
-          "cacheRead": 0,
-          "cacheWrite": 0,
-          "total": 0
-         }
-        },
-        "stopReason": "pending",
-        "timestamp": 1791196579790
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 13,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_start",
-        "contentIndex": 0
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 13,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "parallel-done"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 13,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_end",
-        "contentIndex": 0,
-        "content": "parallel-done"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 13,
-      "record": {
-       "type": "message_end",
-       "message": {
-        "role": "assistant",
-        "content": [
-         {
-          "type": "text",
-          "text": "parallel-done"
-         }
-        ],
-        "api": "test-faux",
-        "provider": "test-faux",
-        "model": "faux-1",
-        "usage": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "totalTokens": 0,
-         "cost": {
-          "input": 0,
-          "output": 0,
-          "cacheRead": 0,
-          "cacheWrite": 0,
-          "total": 0
-         }
-        },
-        "stopReason": "stop",
-        "timestamp": 1791196579790,
-        "thinkingLevel": "off"
-       }
-      }
-     }
-    ],
-    [
-     {
-      "kind": "serialize",
-      "pushed": 8,
-      "record": {
-       "type": "message_start",
-       "message": {
-        "role": "assistant",
-        "content": [],
-        "api": "test-faux",
-        "provider": "test-faux",
-        "model": "faux-1",
-        "usage": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "totalTokens": 0,
-         "cost": {
-          "input": 0,
-          "output": 0,
-          "cacheRead": 0,
-          "cacheWrite": 0,
-          "total": 0
-         }
-        },
-        "stopReason": "pending",
-        "timestamp": 1791196580145
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 8,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "toolcall_start",
-        "contentIndex": 0,
-        "id": "call_test_faux_1",
-        "toolName": "read"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 8,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "toolcall_delta",
-        "contentIndex": 0,
-        "delta": "{\"path\":\"parity-read-target.txt\"}"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 8,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "toolcall_end",
-        "contentIndex": 0,
-        "toolCall": {
-         "type": "toolCall",
-         "id": "call_test_faux_1",
-         "name": "read",
-         "arguments": {
-          "path": "parity-read-target.txt"
-         }
-        }
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 8,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "toolcall_start",
-        "contentIndex": 1,
-        "id": "call_test_faux_2",
-        "toolName": "bash"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 8,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "toolcall_delta",
-        "contentIndex": 1,
-        "delta": "{\"command\":\"echo parallel-ok\",\"timeout\":10}"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 8,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "toolcall_end",
-        "contentIndex": 1,
-        "toolCall": {
-         "type": "toolCall",
-         "id": "call_test_faux_2",
-         "name": "bash",
-         "arguments": {
-          "command": "echo parallel-ok",
-          "timeout": 10
-         }
-        }
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 8,
-      "record": {
-       "type": "message_end",
-       "message": {
-        "role": "assistant",
-        "content": [
-         {
-          "type": "toolCall",
-          "id": "call_test_faux_1",
-          "name": "read",
-          "arguments": {
-           "path": "parity-read-target.txt"
-          }
-         },
-         {
-          "type": "toolCall",
-          "id": "call_test_faux_2",
-          "name": "bash",
-          "arguments": {
-           "command": "echo parallel-ok",
-           "timeout": 10
-          }
-         }
-        ],
-        "api": "test-faux",
-        "provider": "test-faux",
-        "model": "faux-1",
-        "usage": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "totalTokens": 0,
-         "cost": {
-          "input": 0,
-          "output": 0,
-          "cacheRead": 0,
-          "cacheWrite": 0,
-          "total": 0
-         }
-        },
-        "stopReason": "toolUse",
-        "timestamp": 1791196580145,
-        "thinkingLevel": "off"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 13,
-      "record": {
-       "type": "message_start",
-       "message": {
-        "role": "assistant",
-        "content": [],
-        "api": "test-faux",
-        "provider": "test-faux",
-        "model": "faux-1",
-        "usage": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "totalTokens": 0,
-         "cost": {
-          "input": 0,
-          "output": 0,
-          "cacheRead": 0,
-          "cacheWrite": 0,
-          "total": 0
-         }
-        },
-        "stopReason": "pending",
-        "timestamp": 1791196580165
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 13,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_start",
-        "contentIndex": 0
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 13,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "parallel-done"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 13,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_end",
-        "contentIndex": 0,
-        "content": "parallel-done"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 13,
-      "record": {
-       "type": "message_end",
-       "message": {
-        "role": "assistant",
-        "content": [
-         {
-          "type": "text",
-          "text": "parallel-done"
-         }
-        ],
-        "api": "test-faux",
-        "provider": "test-faux",
-        "model": "faux-1",
-        "usage": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "totalTokens": 0,
-         "cost": {
-          "input": 0,
-          "output": 0,
-          "cacheRead": 0,
-          "cacheWrite": 0,
-          "total": 0
-         }
-        },
-        "stopReason": "stop",
-        "timestamp": 1791196580165,
+        "timestamp": 1792030242085,
+        "durationMs": 0,
         "thinkingLevel": "off"
        }
       }
@@ -5734,7 +4125,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1791196580178
+         "timestamp": 1792030242094
         }
        }
       },
@@ -5782,7 +4173,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580178
+         "timestamp": 1792030242094,
+         "durationMs": 1
         }
        }
       },
@@ -5831,7 +4223,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580178
+         "timestamp": 1792030242094,
+         "durationMs": 1
         }
        }
       },
@@ -5887,7 +4280,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580178
+         "timestamp": 1792030242094,
+         "durationMs": 1
         }
        }
       },
@@ -5935,7 +4329,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580178
+         "timestamp": 1792030242094,
+         "durationMs": 1
         }
        }
       },
@@ -5984,7 +4379,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580178
+         "timestamp": 1792030242094,
+         "durationMs": 1
         }
        }
       },
@@ -6041,7 +4437,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580178
+         "timestamp": 1792030242094,
+         "durationMs": 1
         }
        }
       },
@@ -6089,7 +4486,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580178
+         "timestamp": 1792030242094,
+         "durationMs": 1
         }
        }
       },
@@ -6134,7 +4532,8 @@
          }
         },
         "stopReason": "toolUse",
-        "timestamp": 1791196580178
+        "timestamp": 1792030242094,
+        "durationMs": 1
        }
       }
      ]
@@ -6168,7 +4567,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1791196580189
+         "timestamp": 1792030242101
         }
        }
       },
@@ -6218,7 +4617,8 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1791196580189
+          "timestamp": 1792030242101,
+          "durationMs": 1
          }
         },
         "message": {
@@ -6260,7 +4660,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580189
+         "timestamp": 1792030242101,
+         "durationMs": 1
         }
        }
       },
@@ -6311,7 +4712,8 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1791196580189
+          "timestamp": 1792030242101,
+          "durationMs": 1
          }
         },
         "message": {
@@ -6353,7 +4755,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580189
+         "timestamp": 1792030242101,
+         "durationMs": 1
         }
        }
       },
@@ -6411,7 +4814,8 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1791196580189
+          "timestamp": 1792030242101,
+          "durationMs": 1
          }
         },
         "message": {
@@ -6453,7 +4857,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580189
+         "timestamp": 1792030242101,
+         "durationMs": 1
         }
        }
       },
@@ -6503,7 +4908,8 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1791196580189
+          "timestamp": 1792030242101,
+          "durationMs": 1
          }
         },
         "message": {
@@ -6545,7 +4951,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580189
+         "timestamp": 1792030242101,
+         "durationMs": 1
         }
        }
       },
@@ -6596,7 +5003,8 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1791196580189
+          "timestamp": 1792030242101,
+          "durationMs": 1
          }
         },
         "message": {
@@ -6638,7 +5046,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580189
+         "timestamp": 1792030242101,
+         "durationMs": 1
         }
        }
       },
@@ -6697,7 +5106,8 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1791196580189
+          "timestamp": 1792030242101,
+          "durationMs": 1
          }
         },
         "message": {
@@ -6739,7 +5149,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580189
+         "timestamp": 1792030242101,
+         "durationMs": 1
         }
        }
       },
@@ -6786,7 +5197,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580189,
+         "timestamp": 1792030242101,
+         "durationMs": 1,
          "thinkingLevel": "off"
         }
        }
@@ -6822,7 +5234,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1791196580196
+         "timestamp": 1792030242108
         }
        }
       },
@@ -6870,7 +5282,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580196
+         "timestamp": 1792030242108,
+         "durationMs": 1
         }
        }
       },
@@ -6919,7 +5332,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580196
+         "timestamp": 1792030242108,
+         "durationMs": 1
         }
        }
       },
@@ -6975,7 +5389,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580196
+         "timestamp": 1792030242108,
+         "durationMs": 1
         }
        }
       },
@@ -7023,7 +5438,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580196
+         "timestamp": 1792030242108,
+         "durationMs": 1
         }
        }
       },
@@ -7072,7 +5488,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580196
+         "timestamp": 1792030242108,
+         "durationMs": 1
         }
        }
       },
@@ -7129,7 +5546,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580196
+         "timestamp": 1792030242108,
+         "durationMs": 1
         }
        }
       },
@@ -7177,7 +5595,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580196
+         "timestamp": 1792030242108,
+         "durationMs": 1
         }
        }
       },
@@ -7222,7 +5641,8 @@
          }
         },
         "stopReason": "toolUse",
-        "timestamp": 1791196580196
+        "timestamp": 1792030242108,
+        "durationMs": 1
        }
       }
      ]
@@ -7256,7 +5676,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1791196580203
+         "timestamp": 1792030242114
         }
        }
       },
@@ -7306,7 +5726,8 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1791196580203
+          "timestamp": 1792030242114,
+          "durationMs": 1
          }
         },
         "message": {
@@ -7348,7 +5769,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580203
+         "timestamp": 1792030242114,
+         "durationMs": 1
         }
        }
       },
@@ -7399,7 +5821,8 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1791196580203
+          "timestamp": 1792030242114,
+          "durationMs": 1
          }
         },
         "message": {
@@ -7441,7 +5864,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580203
+         "timestamp": 1792030242114,
+         "durationMs": 1
         }
        }
       },
@@ -7499,7 +5923,8 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1791196580203
+          "timestamp": 1792030242114,
+          "durationMs": 1
          }
         },
         "message": {
@@ -7541,7 +5966,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580203
+         "timestamp": 1792030242114,
+         "durationMs": 1
         }
        }
       },
@@ -7591,7 +6017,8 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1791196580203
+          "timestamp": 1792030242114,
+          "durationMs": 1
          }
         },
         "message": {
@@ -7633,7 +6060,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580203
+         "timestamp": 1792030242114,
+         "durationMs": 1
         }
        }
       },
@@ -7684,7 +6112,8 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1791196580203
+          "timestamp": 1792030242114,
+          "durationMs": 1
          }
         },
         "message": {
@@ -7726,7 +6155,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580203
+         "timestamp": 1792030242114,
+         "durationMs": 1
         }
        }
       },
@@ -7785,7 +6215,8 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1791196580203
+          "timestamp": 1792030242114,
+          "durationMs": 1
          }
         },
         "message": {
@@ -7827,7 +6258,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580203
+         "timestamp": 1792030242114,
+         "durationMs": 1
         }
        }
       },
@@ -7874,7 +6306,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580203,
+         "timestamp": 1792030242114,
+         "durationMs": 1,
          "thinkingLevel": "off"
         }
        }
@@ -7910,7 +6343,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1791196580209
+         "timestamp": 1792030242120
         }
        }
       },
@@ -7958,7 +6391,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580209
+         "timestamp": 1792030242120,
+         "durationMs": 1
         }
        }
       },
@@ -8007,7 +6441,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580209
+         "timestamp": 1792030242120,
+         "durationMs": 1
         }
        }
       },
@@ -8063,7 +6498,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580209
+         "timestamp": 1792030242120,
+         "durationMs": 1
         }
        }
       },
@@ -8111,7 +6547,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580209
+         "timestamp": 1792030242120,
+         "durationMs": 1
         }
        }
       },
@@ -8160,7 +6597,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580209
+         "timestamp": 1792030242120,
+         "durationMs": 1
         }
        }
       },
@@ -8217,7 +6655,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580209
+         "timestamp": 1792030242120,
+         "durationMs": 1
         }
        }
       },
@@ -8265,7 +6704,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580209
+         "timestamp": 1792030242120,
+         "durationMs": 1
         }
        }
       },
@@ -8310,7 +6750,8 @@
          }
         },
         "stopReason": "toolUse",
-        "timestamp": 1791196580209
+        "timestamp": 1792030242120,
+        "durationMs": 1
        }
       }
      ]
@@ -8344,7 +6785,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1791196580215
+         "timestamp": 1792030242126
         }
        }
       },
@@ -8394,7 +6835,8 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1791196580215
+          "timestamp": 1792030242126,
+          "durationMs": 1
          }
         },
         "message": {
@@ -8436,7 +6878,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580215
+         "timestamp": 1792030242126,
+         "durationMs": 1
         }
        }
       },
@@ -8487,7 +6930,8 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1791196580215
+          "timestamp": 1792030242126,
+          "durationMs": 1
          }
         },
         "message": {
@@ -8529,7 +6973,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580215
+         "timestamp": 1792030242126,
+         "durationMs": 1
         }
        }
       },
@@ -8587,7 +7032,8 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1791196580215
+          "timestamp": 1792030242126,
+          "durationMs": 1
          }
         },
         "message": {
@@ -8629,7 +7075,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580215
+         "timestamp": 1792030242126,
+         "durationMs": 1
         }
        }
       },
@@ -8679,7 +7126,8 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1791196580215
+          "timestamp": 1792030242126,
+          "durationMs": 1
          }
         },
         "message": {
@@ -8721,7 +7169,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580215
+         "timestamp": 1792030242126,
+         "durationMs": 1
         }
        }
       },
@@ -8772,7 +7221,8 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1791196580215
+          "timestamp": 1792030242126,
+          "durationMs": 1
          }
         },
         "message": {
@@ -8814,7 +7264,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580215
+         "timestamp": 1792030242126,
+         "durationMs": 1
         }
        }
       },
@@ -8873,7 +7324,8 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1791196580215
+          "timestamp": 1792030242126,
+          "durationMs": 1
          }
         },
         "message": {
@@ -8915,7 +7367,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580215
+         "timestamp": 1792030242126,
+         "durationMs": 1
         }
        }
       },
@@ -8962,7 +7415,8 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1791196580215,
+         "timestamp": 1792030242126,
+         "durationMs": 1,
          "thinkingLevel": "off"
         }
        }
@@ -9050,7 +7504,7 @@
          }
         },
         "stopReason": "pending",
-        "timestamp": 1791196580602
+        "timestamp": 1792030242497
        }
       }
      },
@@ -9080,136 +7534,9 @@
          }
         },
         "stopReason": "error",
-        "timestamp": 1791196580602,
+        "timestamp": 1792030242497,
         "errorMessage": "test-faux: unhandled request \"unhandled request for the fixture\"",
-        "thinkingLevel": "off"
-       }
-      }
-     }
-    ],
-    [
-     {
-      "kind": "serialize",
-      "pushed": 2,
-      "record": {
-       "type": "message_start",
-       "message": {
-        "role": "assistant",
-        "content": [],
-        "api": "test-faux",
-        "provider": "test-faux",
-        "model": "faux-1",
-        "usage": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "totalTokens": 0,
-         "cost": {
-          "input": 0,
-          "output": 0,
-          "cacheRead": 0,
-          "cacheWrite": 0,
-          "total": 0
-         }
-        },
-        "stopReason": "pending",
-        "timestamp": 1791196580962
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 2,
-      "record": {
-       "type": "message_end",
-       "message": {
-        "role": "assistant",
-        "content": [],
-        "api": "test-faux",
-        "provider": "test-faux",
-        "model": "faux-1",
-        "usage": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "totalTokens": 0,
-         "cost": {
-          "input": 0,
-          "output": 0,
-          "cacheRead": 0,
-          "cacheWrite": 0,
-          "total": 0
-         }
-        },
-        "stopReason": "error",
-        "timestamp": 1791196580962,
-        "errorMessage": "test-faux: unhandled request \"unhandled request for the fixture\"",
-        "thinkingLevel": "off"
-       }
-      }
-     }
-    ],
-    [
-     {
-      "kind": "serialize",
-      "pushed": 2,
-      "record": {
-       "type": "message_start",
-       "message": {
-        "role": "assistant",
-        "content": [],
-        "api": "test-faux",
-        "provider": "test-faux",
-        "model": "faux-1",
-        "usage": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "totalTokens": 0,
-         "cost": {
-          "input": 0,
-          "output": 0,
-          "cacheRead": 0,
-          "cacheWrite": 0,
-          "total": 0
-         }
-        },
-        "stopReason": "pending",
-        "timestamp": 1791196581326
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 2,
-      "record": {
-       "type": "message_end",
-       "message": {
-        "role": "assistant",
-        "content": [],
-        "api": "test-faux",
-        "provider": "test-faux",
-        "model": "faux-1",
-        "usage": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "totalTokens": 0,
-         "cost": {
-          "input": 0,
-          "output": 0,
-          "cacheRead": 0,
-          "cacheWrite": 0,
-          "total": 0
-         }
-        },
-        "stopReason": "error",
-        "timestamp": 1791196581326,
-        "errorMessage": "test-faux: unhandled request \"unhandled request for the fixture\"",
+        "durationMs": 1,
         "thinkingLevel": "off"
        }
       }
@@ -9246,7 +7573,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1791196581340
+         "timestamp": 1792030242510
         }
        }
       },
@@ -9276,8 +7603,9 @@
           }
          },
          "stopReason": "error",
-         "timestamp": 1791196581340,
-         "errorMessage": "test-faux: unhandled request \"unhandled request for the fixture\""
+         "timestamp": 1792030242510,
+         "errorMessage": "test-faux: unhandled request \"unhandled request for the fixture\"",
+         "durationMs": 1
         }
        }
       },
@@ -9304,8 +7632,9 @@
          }
         },
         "stopReason": "error",
-        "timestamp": 1791196581340,
-        "errorMessage": "test-faux: unhandled request \"unhandled request for the fixture\""
+        "timestamp": 1792030242510,
+        "errorMessage": "test-faux: unhandled request \"unhandled request for the fixture\"",
+        "durationMs": 1
        }
       }
      ]
@@ -9339,7 +7668,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1791196581346
+         "timestamp": 1792030242517
         }
        }
       },
@@ -9368,8 +7697,9 @@
           }
          },
          "stopReason": "error",
-         "timestamp": 1791196581346,
+         "timestamp": 1792030242517,
          "errorMessage": "test-faux: unhandled request \"unhandled request for the fixture\"",
+         "durationMs": 1,
          "thinkingLevel": "off"
         }
        }
@@ -9405,7 +7735,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1791196581352
+         "timestamp": 1792030242522
         }
        }
       },
@@ -9435,8 +7765,9 @@
           }
          },
          "stopReason": "error",
-         "timestamp": 1791196581352,
-         "errorMessage": "test-faux: unhandled request \"unhandled request for the fixture\""
+         "timestamp": 1792030242522,
+         "errorMessage": "test-faux: unhandled request \"unhandled request for the fixture\"",
+         "durationMs": 1
         }
        }
       },
@@ -9463,8 +7794,9 @@
          }
         },
         "stopReason": "error",
-        "timestamp": 1791196581352,
-        "errorMessage": "test-faux: unhandled request \"unhandled request for the fixture\""
+        "timestamp": 1792030242522,
+        "errorMessage": "test-faux: unhandled request \"unhandled request for the fixture\"",
+        "durationMs": 1
        }
       }
      ]
@@ -9498,7 +7830,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1791196581357
+         "timestamp": 1792030242528
         }
        }
       },
@@ -9527,8 +7859,9 @@
           }
          },
          "stopReason": "error",
-         "timestamp": 1791196581357,
+         "timestamp": 1792030242528,
          "errorMessage": "test-faux: unhandled request \"unhandled request for the fixture\"",
+         "durationMs": 1,
          "thinkingLevel": "off"
         }
        }
@@ -9564,7 +7897,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1791196581363
+         "timestamp": 1792030242533
         }
        }
       },
@@ -9594,8 +7927,9 @@
           }
          },
          "stopReason": "error",
-         "timestamp": 1791196581363,
-         "errorMessage": "test-faux: unhandled request \"unhandled request for the fixture\""
+         "timestamp": 1792030242533,
+         "errorMessage": "test-faux: unhandled request \"unhandled request for the fixture\"",
+         "durationMs": 1
         }
        }
       },
@@ -9622,8 +7956,9 @@
          }
         },
         "stopReason": "error",
-        "timestamp": 1791196581363,
-        "errorMessage": "test-faux: unhandled request \"unhandled request for the fixture\""
+        "timestamp": 1792030242533,
+        "errorMessage": "test-faux: unhandled request \"unhandled request for the fixture\"",
+        "durationMs": 1
        }
       }
      ]
@@ -9657,7 +7992,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1791196581368
+         "timestamp": 1792030242539
         }
        }
       },
@@ -9686,8 +8021,9 @@
           }
          },
          "stopReason": "error",
-         "timestamp": 1791196581368,
+         "timestamp": 1792030242539,
          "errorMessage": "test-faux: unhandled request \"unhandled request for the fixture\"",
+         "durationMs": 1,
          "thinkingLevel": "off"
         }
        }
@@ -9780,7 +8116,7 @@
          }
         },
         "stopReason": "stop",
-        "timestamp": 1791196581726
+        "timestamp": 1792030242906
        }
       }
      },
@@ -10490,1503 +8826,8 @@
          }
         },
         "stopReason": "stop",
-        "timestamp": 1791196581726,
-        "thinkingLevel": "off"
-       }
-      }
-     }
-    ],
-    [
-     {
-      "kind": "serialize",
-      "pushed": 3,
-      "record": {
-       "type": "message_start",
-       "message": {
-        "role": "assistant",
-        "content": [
-         {
-          "type": "text",
-          "text": "LIVE-STREAM-01\n"
-         }
-        ],
-        "api": "test-faux",
-        "provider": "test-faux",
-        "model": "faux-1",
-        "usage": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "totalTokens": 0,
-         "cost": {
-          "input": 0,
-          "output": 0,
-          "cacheRead": 0,
-          "cacheWrite": 0,
-          "total": 0
-         }
-        },
-        "stopReason": "stop",
-        "timestamp": 1791196583061
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 3,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_start",
-        "contentIndex": 0
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 3,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-01\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 4,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-02\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 5,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-03\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 6,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-04\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 7,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-05\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 8,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-06\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 9,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-07\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 10,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-08\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 11,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-09\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 12,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-10\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 13,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-11\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 14,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-12\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 15,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-13\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 16,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-14\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 17,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-15\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 18,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-16\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 19,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-17\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 20,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-18\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 21,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-19\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 22,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-20\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 23,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-21\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 24,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-22\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 25,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-23\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 26,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-24\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 28,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_end",
-        "contentIndex": 0,
-        "content": "LIVE-STREAM-01\nLIVE-STREAM-02\nLIVE-STREAM-03\nLIVE-STREAM-04\nLIVE-STREAM-05\nLIVE-STREAM-06\nLIVE-STREAM-07\nLIVE-STREAM-08\nLIVE-STREAM-09\nLIVE-STREAM-10\nLIVE-STREAM-11\nLIVE-STREAM-12\nLIVE-STREAM-13\nLIVE-STREAM-14\nLIVE-STREAM-15\nLIVE-STREAM-16\nLIVE-STREAM-17\nLIVE-STREAM-18\nLIVE-STREAM-19\nLIVE-STREAM-20\nLIVE-STREAM-21\nLIVE-STREAM-22\nLIVE-STREAM-23\nLIVE-STREAM-24\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 28,
-      "record": {
-       "type": "message_end",
-       "message": {
-        "role": "assistant",
-        "content": [
-         {
-          "type": "text",
-          "text": "LIVE-STREAM-01\nLIVE-STREAM-02\nLIVE-STREAM-03\nLIVE-STREAM-04\nLIVE-STREAM-05\nLIVE-STREAM-06\nLIVE-STREAM-07\nLIVE-STREAM-08\nLIVE-STREAM-09\nLIVE-STREAM-10\nLIVE-STREAM-11\nLIVE-STREAM-12\nLIVE-STREAM-13\nLIVE-STREAM-14\nLIVE-STREAM-15\nLIVE-STREAM-16\nLIVE-STREAM-17\nLIVE-STREAM-18\nLIVE-STREAM-19\nLIVE-STREAM-20\nLIVE-STREAM-21\nLIVE-STREAM-22\nLIVE-STREAM-23\nLIVE-STREAM-24\n"
-         }
-        ],
-        "api": "test-faux",
-        "provider": "test-faux",
-        "model": "faux-1",
-        "usage": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "totalTokens": 0,
-         "cost": {
-          "input": 0,
-          "output": 0,
-          "cacheRead": 0,
-          "cacheWrite": 0,
-          "total": 0
-         }
-        },
-        "stopReason": "stop",
-        "timestamp": 1791196583061,
-        "thinkingLevel": "off"
-       }
-      }
-     }
-    ],
-    [
-     {
-      "kind": "serialize",
-      "pushed": 3,
-      "record": {
-       "type": "message_start",
-       "message": {
-        "role": "assistant",
-        "content": [
-         {
-          "type": "text",
-          "text": "LIVE-STREAM-01\n"
-         }
-        ],
-        "api": "test-faux",
-        "provider": "test-faux",
-        "model": "faux-1",
-        "usage": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "totalTokens": 0,
-         "cost": {
-          "input": 0,
-          "output": 0,
-          "cacheRead": 0,
-          "cacheWrite": 0,
-          "total": 0
-         }
-        },
-        "stopReason": "stop",
-        "timestamp": 1791196584466
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 3,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_start",
-        "contentIndex": 0
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 3,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-01\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 4,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-02\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 5,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-03\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 6,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-04\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 7,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-05\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 8,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-06\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 9,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-07\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 10,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-08\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 11,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-09\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 12,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-10\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 13,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-11\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 14,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-12\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 15,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-13\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 16,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-14\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 17,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-15\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 18,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-16\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 19,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-17\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 20,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-18\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 21,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-19\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 22,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-20\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 23,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-21\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 24,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-22\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 25,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-23\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 26,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_delta",
-        "contentIndex": 0,
-        "delta": "LIVE-STREAM-24\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 28,
-      "record": {
-       "type": "message_update",
-       "usage": {
-        "input": 0,
-        "output": 0,
-        "cacheRead": 0,
-        "cacheWrite": 0,
-        "totalTokens": 0,
-        "cost": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "total": 0
-        }
-       },
-       "assistantMessageEvent": {
-        "type": "text_end",
-        "contentIndex": 0,
-        "content": "LIVE-STREAM-01\nLIVE-STREAM-02\nLIVE-STREAM-03\nLIVE-STREAM-04\nLIVE-STREAM-05\nLIVE-STREAM-06\nLIVE-STREAM-07\nLIVE-STREAM-08\nLIVE-STREAM-09\nLIVE-STREAM-10\nLIVE-STREAM-11\nLIVE-STREAM-12\nLIVE-STREAM-13\nLIVE-STREAM-14\nLIVE-STREAM-15\nLIVE-STREAM-16\nLIVE-STREAM-17\nLIVE-STREAM-18\nLIVE-STREAM-19\nLIVE-STREAM-20\nLIVE-STREAM-21\nLIVE-STREAM-22\nLIVE-STREAM-23\nLIVE-STREAM-24\n"
-       }
-      }
-     },
-     {
-      "kind": "serialize",
-      "pushed": 28,
-      "record": {
-       "type": "message_end",
-       "message": {
-        "role": "assistant",
-        "content": [
-         {
-          "type": "text",
-          "text": "LIVE-STREAM-01\nLIVE-STREAM-02\nLIVE-STREAM-03\nLIVE-STREAM-04\nLIVE-STREAM-05\nLIVE-STREAM-06\nLIVE-STREAM-07\nLIVE-STREAM-08\nLIVE-STREAM-09\nLIVE-STREAM-10\nLIVE-STREAM-11\nLIVE-STREAM-12\nLIVE-STREAM-13\nLIVE-STREAM-14\nLIVE-STREAM-15\nLIVE-STREAM-16\nLIVE-STREAM-17\nLIVE-STREAM-18\nLIVE-STREAM-19\nLIVE-STREAM-20\nLIVE-STREAM-21\nLIVE-STREAM-22\nLIVE-STREAM-23\nLIVE-STREAM-24\n"
-         }
-        ],
-        "api": "test-faux",
-        "provider": "test-faux",
-        "model": "faux-1",
-        "usage": {
-         "input": 0,
-         "output": 0,
-         "cacheRead": 0,
-         "cacheWrite": 0,
-         "totalTokens": 0,
-         "cost": {
-          "input": 0,
-          "output": 0,
-          "cacheRead": 0,
-          "cacheWrite": 0,
-          "total": 0
-         }
-        },
-        "stopReason": "stop",
-        "timestamp": 1791196584466,
+        "timestamp": 1792030242906,
+        "durationMs": 963,
         "thinkingLevel": "off"
        }
       }
@@ -12028,7 +8869,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196585447
+         "timestamp": 1792030243879
         }
        }
       },
@@ -12063,7 +8904,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196585447
+         "timestamp": 1792030243879
         }
        }
       },
@@ -12099,7 +8940,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196585447
+         "timestamp": 1792030243879
         }
        }
       },
@@ -12135,7 +8976,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196585447
+         "timestamp": 1792030243879
         }
        }
       },
@@ -12171,7 +9012,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196585447
+         "timestamp": 1792030243879
         }
        }
       },
@@ -12207,7 +9048,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196585447
+         "timestamp": 1792030243879
         }
        }
       },
@@ -12243,7 +9084,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196585447
+         "timestamp": 1792030243879
         }
        }
       },
@@ -12279,7 +9120,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196585447
+         "timestamp": 1792030243879
         }
        }
       },
@@ -12315,7 +9156,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196585447
+         "timestamp": 1792030243879
         }
        }
       },
@@ -12351,7 +9192,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196585447
+         "timestamp": 1792030243879
         }
        }
       },
@@ -12387,7 +9228,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196585447
+         "timestamp": 1792030243879
         }
        }
       },
@@ -12423,7 +9264,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196585447
+         "timestamp": 1792030243879
         }
        }
       },
@@ -12459,7 +9300,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196585447
+         "timestamp": 1792030243879
         }
        }
       },
@@ -12495,7 +9336,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196585447
+         "timestamp": 1792030243879
         }
        }
       },
@@ -12531,7 +9372,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196585447
+         "timestamp": 1792030243879
         }
        }
       },
@@ -12567,7 +9408,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196585447
+         "timestamp": 1792030243879
         }
        }
       },
@@ -12603,7 +9444,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196585447
+         "timestamp": 1792030243879
         }
        }
       },
@@ -12639,7 +9480,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196585447
+         "timestamp": 1792030243879
         }
        }
       },
@@ -12675,7 +9516,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196585447
+         "timestamp": 1792030243879
         }
        }
       },
@@ -12711,7 +9552,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196585447
+         "timestamp": 1792030243879
         }
        }
       },
@@ -12747,7 +9588,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196585447
+         "timestamp": 1792030243879
         }
        }
       },
@@ -12783,7 +9624,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196585447
+         "timestamp": 1792030243879
         }
        }
       },
@@ -12819,7 +9660,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196585447
+         "timestamp": 1792030243879
         }
        }
       },
@@ -12855,7 +9696,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196585447
+         "timestamp": 1792030243879
         }
        }
       },
@@ -12891,7 +9732,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196585447
+         "timestamp": 1792030243879
         }
        }
       },
@@ -12927,7 +9768,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196585447
+         "timestamp": 1792030243879
         }
        }
       },
@@ -12963,7 +9804,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196585447
+         "timestamp": 1792030243879,
+         "durationMs": 963
         }
        }
       },
@@ -12998,7 +9840,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196585447
+         "timestamp": 1792030243879,
+         "durationMs": 963
         }
        }
       },
@@ -13030,7 +9873,8 @@
          }
         },
         "stopReason": "stop",
-        "timestamp": 1791196585447
+        "timestamp": 1792030243879,
+        "durationMs": 963
        }
       }
      ]
@@ -13069,7 +9913,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196586419
+         "timestamp": 1792030244849
         }
        }
       },
@@ -13106,7 +9950,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196586419
+          "timestamp": 1792030244849
          }
         },
         "message": {
@@ -13135,7 +9979,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196586419
+         "timestamp": 1792030244849
         }
        }
       },
@@ -13173,7 +10017,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196586419
+          "timestamp": 1792030244849
          }
         },
         "message": {
@@ -13202,7 +10046,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196586419
+         "timestamp": 1792030244849
         }
        }
       },
@@ -13240,7 +10084,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196586419
+          "timestamp": 1792030244849
          }
         },
         "message": {
@@ -13269,7 +10113,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196586419
+         "timestamp": 1792030244849
         }
        }
       },
@@ -13307,7 +10151,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196586419
+          "timestamp": 1792030244849
          }
         },
         "message": {
@@ -13336,7 +10180,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196586419
+         "timestamp": 1792030244849
         }
        }
       },
@@ -13374,7 +10218,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196586419
+          "timestamp": 1792030244849
          }
         },
         "message": {
@@ -13403,7 +10247,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196586419
+         "timestamp": 1792030244849
         }
        }
       },
@@ -13441,7 +10285,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196586419
+          "timestamp": 1792030244849
          }
         },
         "message": {
@@ -13470,7 +10314,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196586419
+         "timestamp": 1792030244849
         }
        }
       },
@@ -13508,7 +10352,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196586419
+          "timestamp": 1792030244849
          }
         },
         "message": {
@@ -13537,7 +10381,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196586419
+         "timestamp": 1792030244849
         }
        }
       },
@@ -13575,7 +10419,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196586419
+          "timestamp": 1792030244849
          }
         },
         "message": {
@@ -13604,7 +10448,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196586419
+         "timestamp": 1792030244849
         }
        }
       },
@@ -13642,7 +10486,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196586419
+          "timestamp": 1792030244849
          }
         },
         "message": {
@@ -13671,7 +10515,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196586419
+         "timestamp": 1792030244849
         }
        }
       },
@@ -13709,7 +10553,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196586419
+          "timestamp": 1792030244849
          }
         },
         "message": {
@@ -13738,7 +10582,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196586419
+         "timestamp": 1792030244849
         }
        }
       },
@@ -13776,7 +10620,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196586419
+          "timestamp": 1792030244849
          }
         },
         "message": {
@@ -13805,7 +10649,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196586419
+         "timestamp": 1792030244849
         }
        }
       },
@@ -13843,7 +10687,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196586419
+          "timestamp": 1792030244849
          }
         },
         "message": {
@@ -13872,7 +10716,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196586419
+         "timestamp": 1792030244849
         }
        }
       },
@@ -13910,7 +10754,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196586419
+          "timestamp": 1792030244849
          }
         },
         "message": {
@@ -13939,7 +10783,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196586419
+         "timestamp": 1792030244849
         }
        }
       },
@@ -13977,7 +10821,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196586419
+          "timestamp": 1792030244849
          }
         },
         "message": {
@@ -14006,7 +10850,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196586419
+         "timestamp": 1792030244849
         }
        }
       },
@@ -14044,7 +10888,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196586419
+          "timestamp": 1792030244849
          }
         },
         "message": {
@@ -14073,7 +10917,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196586419
+         "timestamp": 1792030244849
         }
        }
       },
@@ -14111,7 +10955,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196586419
+          "timestamp": 1792030244849
          }
         },
         "message": {
@@ -14140,7 +10984,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196586419
+         "timestamp": 1792030244849
         }
        }
       },
@@ -14178,7 +11022,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196586419
+          "timestamp": 1792030244849
          }
         },
         "message": {
@@ -14207,7 +11051,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196586419
+         "timestamp": 1792030244849
         }
        }
       },
@@ -14245,7 +11089,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196586419
+          "timestamp": 1792030244849
          }
         },
         "message": {
@@ -14274,7 +11118,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196586419
+         "timestamp": 1792030244849
         }
        }
       },
@@ -14312,7 +11156,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196586419
+          "timestamp": 1792030244849
          }
         },
         "message": {
@@ -14341,7 +11185,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196586419
+         "timestamp": 1792030244849
         }
        }
       },
@@ -14379,7 +11223,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196586419
+          "timestamp": 1792030244849
          }
         },
         "message": {
@@ -14408,7 +11252,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196586419
+         "timestamp": 1792030244849
         }
        }
       },
@@ -14446,7 +11290,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196586419
+          "timestamp": 1792030244849
          }
         },
         "message": {
@@ -14475,7 +11319,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196586419
+         "timestamp": 1792030244849
         }
        }
       },
@@ -14513,7 +11357,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196586419
+          "timestamp": 1792030244849
          }
         },
         "message": {
@@ -14542,7 +11386,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196586419
+         "timestamp": 1792030244849
         }
        }
       },
@@ -14580,7 +11424,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196586419
+          "timestamp": 1792030244849
          }
         },
         "message": {
@@ -14609,7 +11453,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196586419
+         "timestamp": 1792030244849
         }
        }
       },
@@ -14647,7 +11491,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196586419
+          "timestamp": 1792030244849
          }
         },
         "message": {
@@ -14676,7 +11520,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196586419
+         "timestamp": 1792030244849
         }
        }
       },
@@ -14714,7 +11558,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196586419
+          "timestamp": 1792030244849
          }
         },
         "message": {
@@ -14743,7 +11587,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196586419
+         "timestamp": 1792030244849
         }
        }
       },
@@ -14781,7 +11625,8 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196586419
+          "timestamp": 1792030244849,
+          "durationMs": 963
          }
         },
         "message": {
@@ -14810,7 +11655,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196586419
+         "timestamp": 1792030244849,
+         "durationMs": 963
         }
        }
       },
@@ -14844,7 +11690,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196586419,
+         "timestamp": 1792030244849,
+         "durationMs": 963,
          "thinkingLevel": "off"
         }
        }
@@ -14885,7 +11732,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196587388
+         "timestamp": 1792030245819
         }
        }
       },
@@ -14920,7 +11767,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196587388
+         "timestamp": 1792030245819
         }
        }
       },
@@ -14956,7 +11803,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196587388
+         "timestamp": 1792030245819
         }
        }
       },
@@ -14992,7 +11839,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196587388
+         "timestamp": 1792030245819
         }
        }
       },
@@ -15028,7 +11875,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196587388
+         "timestamp": 1792030245819
         }
        }
       },
@@ -15064,7 +11911,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196587388
+         "timestamp": 1792030245819
         }
        }
       },
@@ -15100,7 +11947,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196587388
+         "timestamp": 1792030245819
         }
        }
       },
@@ -15136,7 +11983,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196587388
+         "timestamp": 1792030245819
         }
        }
       },
@@ -15172,7 +12019,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196587388
+         "timestamp": 1792030245819
         }
        }
       },
@@ -15208,7 +12055,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196587388
+         "timestamp": 1792030245819
         }
        }
       },
@@ -15244,7 +12091,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196587388
+         "timestamp": 1792030245819
         }
        }
       },
@@ -15280,7 +12127,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196587388
+         "timestamp": 1792030245819
         }
        }
       },
@@ -15316,7 +12163,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196587388
+         "timestamp": 1792030245819
         }
        }
       },
@@ -15352,7 +12199,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196587388
+         "timestamp": 1792030245819
         }
        }
       },
@@ -15388,7 +12235,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196587388
+         "timestamp": 1792030245819
         }
        }
       },
@@ -15424,7 +12271,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196587388
+         "timestamp": 1792030245819
         }
        }
       },
@@ -15460,7 +12307,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196587388
+         "timestamp": 1792030245819
         }
        }
       },
@@ -15496,7 +12343,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196587388
+         "timestamp": 1792030245819
         }
        }
       },
@@ -15532,7 +12379,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196587388
+         "timestamp": 1792030245819
         }
        }
       },
@@ -15568,7 +12415,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196587388
+         "timestamp": 1792030245819
         }
        }
       },
@@ -15604,7 +12451,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196587388
+         "timestamp": 1792030245819
         }
        }
       },
@@ -15640,7 +12487,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196587388
+         "timestamp": 1792030245819
         }
        }
       },
@@ -15676,7 +12523,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196587388
+         "timestamp": 1792030245819
         }
        }
       },
@@ -15712,7 +12559,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196587388
+         "timestamp": 1792030245819
         }
        }
       },
@@ -15748,7 +12595,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196587388
+         "timestamp": 1792030245819
         }
        }
       },
@@ -15784,7 +12631,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196587388
+         "timestamp": 1792030245819
         }
        }
       },
@@ -15820,7 +12667,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196587388
+         "timestamp": 1792030245819,
+         "durationMs": 962
         }
        }
       },
@@ -15855,7 +12703,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196587388
+         "timestamp": 1792030245819,
+         "durationMs": 962
         }
        }
       },
@@ -15887,7 +12736,8 @@
          }
         },
         "stopReason": "stop",
-        "timestamp": 1791196587388
+        "timestamp": 1792030245819,
+        "durationMs": 962
        }
       }
      ]
@@ -15926,7 +12776,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196588362
+         "timestamp": 1792030246787
         }
        }
       },
@@ -15963,7 +12813,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196588362
+          "timestamp": 1792030246787
          }
         },
         "message": {
@@ -15992,7 +12842,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196588362
+         "timestamp": 1792030246787
         }
        }
       },
@@ -16030,7 +12880,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196588362
+          "timestamp": 1792030246787
          }
         },
         "message": {
@@ -16059,7 +12909,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196588362
+         "timestamp": 1792030246787
         }
        }
       },
@@ -16097,7 +12947,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196588362
+          "timestamp": 1792030246787
          }
         },
         "message": {
@@ -16126,7 +12976,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196588362
+         "timestamp": 1792030246787
         }
        }
       },
@@ -16164,7 +13014,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196588362
+          "timestamp": 1792030246787
          }
         },
         "message": {
@@ -16193,7 +13043,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196588362
+         "timestamp": 1792030246787
         }
        }
       },
@@ -16231,7 +13081,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196588362
+          "timestamp": 1792030246787
          }
         },
         "message": {
@@ -16260,7 +13110,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196588362
+         "timestamp": 1792030246787
         }
        }
       },
@@ -16298,7 +13148,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196588362
+          "timestamp": 1792030246787
          }
         },
         "message": {
@@ -16327,7 +13177,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196588362
+         "timestamp": 1792030246787
         }
        }
       },
@@ -16365,7 +13215,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196588362
+          "timestamp": 1792030246787
          }
         },
         "message": {
@@ -16394,7 +13244,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196588362
+         "timestamp": 1792030246787
         }
        }
       },
@@ -16432,7 +13282,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196588362
+          "timestamp": 1792030246787
          }
         },
         "message": {
@@ -16461,7 +13311,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196588362
+         "timestamp": 1792030246787
         }
        }
       },
@@ -16499,7 +13349,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196588362
+          "timestamp": 1792030246787
          }
         },
         "message": {
@@ -16528,7 +13378,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196588362
+         "timestamp": 1792030246787
         }
        }
       },
@@ -16566,7 +13416,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196588362
+          "timestamp": 1792030246787
          }
         },
         "message": {
@@ -16595,7 +13445,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196588362
+         "timestamp": 1792030246787
         }
        }
       },
@@ -16633,7 +13483,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196588362
+          "timestamp": 1792030246787
          }
         },
         "message": {
@@ -16662,7 +13512,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196588362
+         "timestamp": 1792030246787
         }
        }
       },
@@ -16700,7 +13550,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196588362
+          "timestamp": 1792030246787
          }
         },
         "message": {
@@ -16729,7 +13579,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196588362
+         "timestamp": 1792030246787
         }
        }
       },
@@ -16767,7 +13617,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196588362
+          "timestamp": 1792030246787
          }
         },
         "message": {
@@ -16796,7 +13646,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196588362
+         "timestamp": 1792030246787
         }
        }
       },
@@ -16834,7 +13684,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196588362
+          "timestamp": 1792030246787
          }
         },
         "message": {
@@ -16863,7 +13713,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196588362
+         "timestamp": 1792030246787
         }
        }
       },
@@ -16901,7 +13751,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196588362
+          "timestamp": 1792030246787
          }
         },
         "message": {
@@ -16930,7 +13780,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196588362
+         "timestamp": 1792030246787
         }
        }
       },
@@ -16968,7 +13818,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196588362
+          "timestamp": 1792030246787
          }
         },
         "message": {
@@ -16997,7 +13847,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196588362
+         "timestamp": 1792030246787
         }
        }
       },
@@ -17035,7 +13885,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196588362
+          "timestamp": 1792030246787
          }
         },
         "message": {
@@ -17064,7 +13914,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196588362
+         "timestamp": 1792030246787
         }
        }
       },
@@ -17102,7 +13952,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196588362
+          "timestamp": 1792030246787
          }
         },
         "message": {
@@ -17131,7 +13981,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196588362
+         "timestamp": 1792030246787
         }
        }
       },
@@ -17169,7 +14019,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196588362
+          "timestamp": 1792030246787
          }
         },
         "message": {
@@ -17198,7 +14048,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196588362
+         "timestamp": 1792030246787
         }
        }
       },
@@ -17236,7 +14086,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196588362
+          "timestamp": 1792030246787
          }
         },
         "message": {
@@ -17265,7 +14115,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196588362
+         "timestamp": 1792030246787
         }
        }
       },
@@ -17303,7 +14153,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196588362
+          "timestamp": 1792030246787
          }
         },
         "message": {
@@ -17332,7 +14182,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196588362
+         "timestamp": 1792030246787
         }
        }
       },
@@ -17370,7 +14220,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196588362
+          "timestamp": 1792030246787
          }
         },
         "message": {
@@ -17399,7 +14249,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196588362
+         "timestamp": 1792030246787
         }
        }
       },
@@ -17437,7 +14287,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196588362
+          "timestamp": 1792030246787
          }
         },
         "message": {
@@ -17466,7 +14316,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196588362
+         "timestamp": 1792030246787
         }
        }
       },
@@ -17504,7 +14354,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196588362
+          "timestamp": 1792030246787
          }
         },
         "message": {
@@ -17533,7 +14383,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196588362
+         "timestamp": 1792030246787
         }
        }
       },
@@ -17571,7 +14421,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196588362
+          "timestamp": 1792030246787
          }
         },
         "message": {
@@ -17600,7 +14450,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196588362
+         "timestamp": 1792030246787
         }
        }
       },
@@ -17638,7 +14488,8 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196588362
+          "timestamp": 1792030246787,
+          "durationMs": 962
          }
         },
         "message": {
@@ -17667,7 +14518,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196588362
+         "timestamp": 1792030246787,
+         "durationMs": 962
         }
        }
       },
@@ -17701,7 +14553,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196588362,
+         "timestamp": 1792030246787,
+         "durationMs": 962,
          "thinkingLevel": "off"
         }
        }
@@ -17742,7 +14595,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196589333
+         "timestamp": 1792030247755
         }
        }
       },
@@ -17777,7 +14630,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196589333
+         "timestamp": 1792030247755
         }
        }
       },
@@ -17813,7 +14666,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196589333
+         "timestamp": 1792030247755
         }
        }
       },
@@ -17849,7 +14702,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196589333
+         "timestamp": 1792030247755
         }
        }
       },
@@ -17885,7 +14738,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196589333
+         "timestamp": 1792030247755
         }
        }
       },
@@ -17921,7 +14774,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196589333
+         "timestamp": 1792030247755
         }
        }
       },
@@ -17957,7 +14810,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196589333
+         "timestamp": 1792030247755
         }
        }
       },
@@ -17993,7 +14846,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196589333
+         "timestamp": 1792030247755
         }
        }
       },
@@ -18029,7 +14882,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196589333
+         "timestamp": 1792030247755
         }
        }
       },
@@ -18065,7 +14918,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196589333
+         "timestamp": 1792030247755
         }
        }
       },
@@ -18101,7 +14954,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196589333
+         "timestamp": 1792030247755
         }
        }
       },
@@ -18137,7 +14990,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196589333
+         "timestamp": 1792030247755
         }
        }
       },
@@ -18173,7 +15026,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196589333
+         "timestamp": 1792030247755
         }
        }
       },
@@ -18209,7 +15062,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196589333
+         "timestamp": 1792030247755
         }
        }
       },
@@ -18245,7 +15098,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196589333
+         "timestamp": 1792030247755
         }
        }
       },
@@ -18281,7 +15134,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196589333
+         "timestamp": 1792030247755
         }
        }
       },
@@ -18317,7 +15170,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196589333
+         "timestamp": 1792030247755
         }
        }
       },
@@ -18353,7 +15206,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196589333
+         "timestamp": 1792030247755
         }
        }
       },
@@ -18389,7 +15242,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196589333
+         "timestamp": 1792030247755
         }
        }
       },
@@ -18425,7 +15278,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196589333
+         "timestamp": 1792030247755
         }
        }
       },
@@ -18461,7 +15314,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196589333
+         "timestamp": 1792030247755
         }
        }
       },
@@ -18497,7 +15350,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196589333
+         "timestamp": 1792030247755
         }
        }
       },
@@ -18533,7 +15386,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196589333
+         "timestamp": 1792030247755
         }
        }
       },
@@ -18569,7 +15422,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196589333
+         "timestamp": 1792030247755
         }
        }
       },
@@ -18605,7 +15458,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196589333
+         "timestamp": 1792030247755
         }
        }
       },
@@ -18641,7 +15494,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196589333
+         "timestamp": 1792030247755
         }
        }
       },
@@ -18677,7 +15530,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196589333
+         "timestamp": 1792030247755,
+         "durationMs": 963
         }
        }
       },
@@ -18712,7 +15566,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196589333
+         "timestamp": 1792030247755,
+         "durationMs": 963
         }
        }
       },
@@ -18744,7 +15599,8 @@
          }
         },
         "stopReason": "stop",
-        "timestamp": 1791196589333
+        "timestamp": 1792030247755,
+        "durationMs": 963
        }
       }
      ]
@@ -18783,7 +15639,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196590303
+         "timestamp": 1792030248724
         }
        }
       },
@@ -18820,7 +15676,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196590303
+          "timestamp": 1792030248724
          }
         },
         "message": {
@@ -18849,7 +15705,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196590303
+         "timestamp": 1792030248724
         }
        }
       },
@@ -18887,7 +15743,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196590303
+          "timestamp": 1792030248724
          }
         },
         "message": {
@@ -18916,7 +15772,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196590303
+         "timestamp": 1792030248724
         }
        }
       },
@@ -18954,7 +15810,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196590303
+          "timestamp": 1792030248724
          }
         },
         "message": {
@@ -18983,7 +15839,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196590303
+         "timestamp": 1792030248724
         }
        }
       },
@@ -19021,7 +15877,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196590303
+          "timestamp": 1792030248724
          }
         },
         "message": {
@@ -19050,7 +15906,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196590303
+         "timestamp": 1792030248724
         }
        }
       },
@@ -19088,7 +15944,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196590303
+          "timestamp": 1792030248724
          }
         },
         "message": {
@@ -19117,7 +15973,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196590303
+         "timestamp": 1792030248724
         }
        }
       },
@@ -19155,7 +16011,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196590303
+          "timestamp": 1792030248724
          }
         },
         "message": {
@@ -19184,7 +16040,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196590303
+         "timestamp": 1792030248724
         }
        }
       },
@@ -19222,7 +16078,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196590303
+          "timestamp": 1792030248724
          }
         },
         "message": {
@@ -19251,7 +16107,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196590303
+         "timestamp": 1792030248724
         }
        }
       },
@@ -19289,7 +16145,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196590303
+          "timestamp": 1792030248724
          }
         },
         "message": {
@@ -19318,7 +16174,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196590303
+         "timestamp": 1792030248724
         }
        }
       },
@@ -19356,7 +16212,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196590303
+          "timestamp": 1792030248724
          }
         },
         "message": {
@@ -19385,7 +16241,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196590303
+         "timestamp": 1792030248724
         }
        }
       },
@@ -19423,7 +16279,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196590303
+          "timestamp": 1792030248724
          }
         },
         "message": {
@@ -19452,7 +16308,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196590303
+         "timestamp": 1792030248724
         }
        }
       },
@@ -19490,7 +16346,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196590303
+          "timestamp": 1792030248724
          }
         },
         "message": {
@@ -19519,7 +16375,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196590303
+         "timestamp": 1792030248724
         }
        }
       },
@@ -19557,7 +16413,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196590303
+          "timestamp": 1792030248724
          }
         },
         "message": {
@@ -19586,7 +16442,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196590303
+         "timestamp": 1792030248724
         }
        }
       },
@@ -19624,7 +16480,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196590303
+          "timestamp": 1792030248724
          }
         },
         "message": {
@@ -19653,7 +16509,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196590303
+         "timestamp": 1792030248724
         }
        }
       },
@@ -19691,7 +16547,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196590303
+          "timestamp": 1792030248724
          }
         },
         "message": {
@@ -19720,7 +16576,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196590303
+         "timestamp": 1792030248724
         }
        }
       },
@@ -19758,7 +16614,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196590303
+          "timestamp": 1792030248724
          }
         },
         "message": {
@@ -19787,7 +16643,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196590303
+         "timestamp": 1792030248724
         }
        }
       },
@@ -19825,7 +16681,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196590303
+          "timestamp": 1792030248724
          }
         },
         "message": {
@@ -19854,7 +16710,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196590303
+         "timestamp": 1792030248724
         }
        }
       },
@@ -19892,7 +16748,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196590303
+          "timestamp": 1792030248724
          }
         },
         "message": {
@@ -19921,7 +16777,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196590303
+         "timestamp": 1792030248724
         }
        }
       },
@@ -19959,7 +16815,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196590303
+          "timestamp": 1792030248724
          }
         },
         "message": {
@@ -19988,7 +16844,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196590303
+         "timestamp": 1792030248724
         }
        }
       },
@@ -20026,7 +16882,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196590303
+          "timestamp": 1792030248724
          }
         },
         "message": {
@@ -20055,7 +16911,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196590303
+         "timestamp": 1792030248724
         }
        }
       },
@@ -20093,7 +16949,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196590303
+          "timestamp": 1792030248724
          }
         },
         "message": {
@@ -20122,7 +16978,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196590303
+         "timestamp": 1792030248724
         }
        }
       },
@@ -20160,7 +17016,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196590303
+          "timestamp": 1792030248724
          }
         },
         "message": {
@@ -20189,7 +17045,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196590303
+         "timestamp": 1792030248724
         }
        }
       },
@@ -20227,7 +17083,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196590303
+          "timestamp": 1792030248724
          }
         },
         "message": {
@@ -20256,7 +17112,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196590303
+         "timestamp": 1792030248724
         }
        }
       },
@@ -20294,7 +17150,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196590303
+          "timestamp": 1792030248724
          }
         },
         "message": {
@@ -20323,7 +17179,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196590303
+         "timestamp": 1792030248724
         }
        }
       },
@@ -20361,7 +17217,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196590303
+          "timestamp": 1792030248724
          }
         },
         "message": {
@@ -20390,7 +17246,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196590303
+         "timestamp": 1792030248724
         }
        }
       },
@@ -20428,7 +17284,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196590303
+          "timestamp": 1792030248724
          }
         },
         "message": {
@@ -20457,7 +17313,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196590303
+         "timestamp": 1792030248724
         }
        }
       },
@@ -20495,7 +17351,8 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1791196590303
+          "timestamp": 1792030248724,
+          "durationMs": 964
          }
         },
         "message": {
@@ -20524,7 +17381,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196590303
+         "timestamp": 1792030248724,
+         "durationMs": 964
         }
        }
       },
@@ -20558,7 +17416,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1791196590303,
+         "timestamp": 1792030248724,
+         "durationMs": 964,
          "thinkingLevel": "off"
         }
        }

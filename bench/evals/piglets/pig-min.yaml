@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: MIT
+# Stripped Piglet "pig-min" for the pigbench footprint comparison: keep mode, so every built-in extension, extra
+# provider API and feature that PiG does not list here is compiled out. The built-in tools and slash commands stay,
+# so the scripted model's requests carry the same tool declarations as the other arms. It has no Node, Go, Rust or
+# Python extension runtime, so it cannot load extensions.
+name: pig-min
+strip:
+  keep:
+    extensions: []
+    apis: []
+    features: []

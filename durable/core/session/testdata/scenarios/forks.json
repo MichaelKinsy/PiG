@@ -1,0 +1,450 @@
+{
+ "docs": {
+  "note": {
+   "kind": "t.note",
+   "version": 1,
+   "scope": "conversation",
+   "history": "rewindable",
+   "fork": "asOf",
+   "initial": {
+    "text": "",
+    "log": []
+   }
+  },
+  "cur": {
+   "kind": "t.cur",
+   "version": 1,
+   "scope": "conversation",
+   "history": "rewindable",
+   "fork": "current",
+   "initial": {
+    "n": 0
+   }
+  },
+  "ini": {
+   "kind": "t.ini",
+   "version": 1,
+   "scope": "conversation",
+   "history": "latest",
+   "fork": "initial",
+   "initial": {
+    "x": 1
+   },
+   "checkpoint": "always"
+  },
+  "lat": {
+   "kind": "t.lat",
+   "version": 1,
+   "scope": "conversation",
+   "history": "latest",
+   "fork": "current",
+   "initial": {
+    "y": 1
+   }
+  },
+  "fam": {
+   "kind": "t.fam",
+   "version": 1,
+   "scope": "conversation",
+   "history": "rewindable",
+   "fork": "asOf",
+   "family": true,
+   "initial": {
+    "v": 0
+   }
+  },
+  "note2": {
+   "kind": "t.note",
+   "version": 2,
+   "scope": "conversation",
+   "history": "rewindable",
+   "fork": "asOf",
+   "initial": {
+    "text": "",
+    "log": []
+   },
+   "migrate": {
+    "migrated": true
+   }
+  }
+ },
+ "tasks": {
+  "gen": {
+   "name": "t.gen",
+   "version": 1
+  }
+ },
+ "steps": [
+  {
+   "ops": [
+    {
+     "op": "rootConversation"
+    },
+    {
+     "op": "appendEntry",
+     "conversationId": 1,
+     "draft": {
+      "kind": "e",
+      "model": [
+       {
+        "role": "user",
+        "content": "1"
+       }
+      ]
+     }
+    },
+    {
+     "op": "appendEntry",
+     "conversationId": 1,
+     "draft": {
+      "kind": "e",
+      "model": [
+       {
+        "role": "user",
+        "content": "2"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "doc",
+     "doc": "note",
+     "owner": 1,
+     "edit": [
+      {
+       "path": [],
+       "op": "set",
+       "key": "text",
+       "value": "first"
+      }
+     ]
+    },
+    {
+     "op": "doc",
+     "doc": "cur",
+     "owner": 1,
+     "edit": [
+      {
+       "path": [],
+       "op": "set",
+       "key": "n",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "op": "doc",
+     "doc": "ini",
+     "owner": 1,
+     "edit": [
+      {
+       "path": [],
+       "op": "set",
+       "key": "x",
+       "value": 2
+      }
+     ]
+    },
+    {
+     "op": "doc",
+     "doc": "lat",
+     "owner": 1,
+     "edit": []
+    },
+    {
+     "op": "doc",
+     "doc": "fam",
+     "owner": 1,
+     "key": "k1",
+     "seed": "s1",
+     "edit": [
+      {
+       "path": [],
+       "op": "set",
+       "key": "v",
+       "value": 7
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "appendEntry",
+     "conversationId": 1,
+     "draft": {
+      "kind": "e",
+      "model": [
+       {
+        "role": "assistant",
+        "content": "3"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "doc",
+     "doc": "note",
+     "owner": 1,
+     "edit": [
+      {
+       "path": [],
+       "op": "set",
+       "key": "text",
+       "value": "first second"
+      },
+      {
+       "path": [
+        "log"
+       ],
+       "op": "push",
+       "values": [
+        "a",
+        "b"
+       ]
+      }
+     ]
+    },
+    {
+     "op": "doc",
+     "doc": "cur",
+     "owner": 1,
+     "edit": [
+      {
+       "path": [],
+       "op": "set",
+       "key": "n",
+       "value": 2
+      }
+     ]
+    },
+    {
+     "op": "doc",
+     "doc": "fam",
+     "owner": 1,
+     "key": "k1",
+     "edit": [
+      {
+       "path": [],
+       "op": "set",
+       "key": "v",
+       "value": 8
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "appendEntry",
+     "conversationId": 1,
+     "draft": {
+      "kind": "e",
+      "model": [
+       {
+        "role": "assistant",
+        "content": "4"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "fork",
+     "parent": 1,
+     "at": 9
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "doc",
+     "doc": "note",
+     "owner": 11,
+     "edit": [
+      {
+       "path": [
+        "log"
+       ],
+       "op": "push",
+       "values": [
+        "child"
+       ]
+      }
+     ]
+    },
+    {
+     "op": "appendEntry",
+     "conversationId": 11,
+     "draft": {
+      "kind": "e",
+      "head": "self",
+      "model": [
+       {
+        "role": "user",
+        "content": "c1"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "fork",
+     "parent": 11,
+     "at": 16
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "fork",
+     "parent": 1,
+     "at": 3
+    },
+    {
+     "op": "doc",
+     "doc": "lat",
+     "owner": 1,
+     "edit": [
+      {
+       "path": [],
+       "op": "set",
+       "key": "y",
+       "value": 2
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "fork",
+     "parent": 1,
+     "at": 3
+    },
+    {
+     "op": "retireDoc",
+     "doc": "cur",
+     "owner": 1
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "fork",
+     "parent": 1,
+     "at": 999
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "doc",
+     "doc": "note2",
+     "owner": 1,
+     "edit": [
+      {
+       "path": [
+        "log"
+       ],
+       "op": "push",
+       "values": [
+        "v2"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "doc",
+     "doc": "note2",
+     "owner": 1,
+     "edit": [
+      {
+       "path": [],
+       "op": "set",
+       "key": "text",
+       "value": "after migration"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "doc",
+     "doc": "note",
+     "owner": 1,
+     "edit": []
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "fork",
+     "parent": 1,
+     "at": 10
+    },
+    {
+     "op": "appendEntry",
+     "conversationId": 1,
+     "draft": {
+      "kind": "x"
+     }
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "createConversation"
+    },
+    {
+     "op": "fork",
+     "parent": 1,
+     "at": 2
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "readConversation",
+     "id": 11
+    },
+    {
+     "op": "doc",
+     "doc": "note",
+     "owner": 11,
+     "edit": []
+    }
+   ]
+  }
+ ]
+}

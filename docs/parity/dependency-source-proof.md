@@ -36,6 +36,33 @@ The provider scenario executes the actual pinned Pi dispatcher and provider. Its
 
 The capture follows the same steps as for undici, with `lib/credentials/types.mjs`, `lib/credentials/oidc-federation.mjs` and `LICENSE` extracted from the 0.129.0 archive (unchanged from 0.124.0) after its `dist.integrity` matched.
 
+## TypeBox error limit
+
+| Property | Proof |
+|---|---|
+| Upstream owner | `.upstream/current/packages/coding-agent/package.json` |
+| Exact dependency | `typebox` 1.3.27 |
+| Source | `test/parity/dependency-sources/typebox/1.3.27/build/system/settings/settings.mjs` |
+| License | `test/parity/dependency-sources/typebox/1.3.27/LICENSE` |
+| Symbol | `maxErrors` |
+| Rule | TypeBox stops collecting validation errors after 8, so Pi's models.json error text lists at most 8 |
+| Literal consumer | `internal/codingagent/configschema/validate.go` (`maxSchemaErrors`) |
+
+## Smithy retry constants
+
+| Property | Proof |
+|---|---|
+| Upstream owner | `.upstream/current/package-lock.json` (`node_modules/@smithy/core`), a transitive dependency of `@aws-sdk/client-bedrock-runtime` 3.1127.0 that Pi's build bundles into its Bedrock client |
+| Exact dependency | `@smithy/core` 3.33.3, with the lockfile's archive integrity |
+| Source | `test/parity/dependency-sources/@smithy/core/3.33.3/dist-cjs/submodules/retry/index.js` |
+| License | `test/parity/dependency-sources/@smithy/core/3.33.3/LICENSE` |
+| Symbols | `DEFAULT_RETRY_DELAY_BASE`, `THROTTLING_RETRY_DELAY_BASE`, `MAXIMUM_RETRY_DELAY`, `THROTTLING_ERROR_CODES`, `refreshRetryTokenForRetry` |
+| Rule | The SDK's standard retry waits floor(random() * min(base * 2^attempts, 20 * 1000)) ms, with base 500 for a throttling error and 100 otherwise, and raises it to a retry-after hint by at most 5_000 ms |
+| Literal consumer | `ai/bedrock_retry_backoff.go` |
+| Behavioral proof | `ai/bedrock_retry_backoff_test.go` |
+
+A package that no workspace manifest declares is admitted through the root lockfile: the guard requires the record's version and archive integrity to equal the lockfile entry's.
+
 ## Capture and review
 
 1. Read the exact dependency version from the current upstream manifest.

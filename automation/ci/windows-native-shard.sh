@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 #
 # Usage: windows-native-shard.sh <shard>
@@ -20,13 +19,13 @@ ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 module=github.com/MichaelKinsy/PiG
 all=$("$ROOT/automation/ci/windows-test-packages.sh")
 # grep -v exits 1 when nothing remains; an empty list is caught below.
-all=$(printf '%s\n' "$all" | grep -v -x -e "$module/coding/extension/host/runtimecell" -e "$module/coding/extension/host/subprocess" -e "$module/cmd/pig" || true)
+all=$(printf '%s\n' "$all" | grep -v -x -e "$module/coding/extension/host/runtimecell" -e "$module/coding/extension/host/subprocess" -e "$module/coding/cli" || true)
 shard1=("$module/coding" "$module/tui")
-shard2=("$module/internal/experimental" "$module/ai")
+shard2=("$module/ai")
 case $1 in
   1) printf '%s\n' "${shard1[@]}" ;;
   2) printf '%s\n' "${shard2[@]}" ;;
-  3) printf '%s\n' "$all" | grep -v -x -F -e "${shard1[0]}" -e "${shard1[1]}" -e "${shard2[0]}" -e "${shard2[1]}" || true ;;
+  3) printf '%s\n' "$all" | grep -v -x -F -e "${shard1[0]}" -e "${shard1[1]}" -e "${shard2[0]}" || true ;;
 esac | while IFS= read -r pkg; do
   # Every named package must still be in the list, so a rename fails loudly. The list comes from a here-string, not a
   # pipe: under pipefail, `grep -q` exiting on its match would leave a piping printf to die of SIGPIPE.

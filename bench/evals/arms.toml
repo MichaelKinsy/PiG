@@ -1,0 +1,81 @@
+# SPDX-License-Identifier: MIT
+#
+# How each arm is run. What it is (version, source, checksums) is pinned in arms.lock, never here.
+#
+#   family        pig | pi | claude | codex | copilot: how the harness is pointed at the mock endpoint
+#   no_extensions the arm cannot load extensions (its runtime is stripped)
+#   piglet        a Piglet file built into a stripped Binary by the pig-0.5 arm
+#   version_args  argv whose output must contain the pinned version
+
+[arms.pig-0_5]
+name = "PiG 0.5.0 line (this checkout, stock build)"
+family = "pig"
+
+[arms.pig-0_4_1]
+name = "PiG 0.4.1 (release binary)"
+family = "pig"
+
+[arms.pi-1_1_0]
+name = "Pi 1.1.0"
+family = "pi"
+
+[arms.claude]
+name = "Claude Code"
+family = "claude"
+
+[arms.codex]
+name = "OpenAI Codex CLI"
+family = "codex"
+
+[arms.copilot]
+name = "GitHub Copilot CLI (BYOK)"
+family = "copilot"
+
+[arms.pig-core]
+name = "Piglet pig-core (deny-mode strip, built from this checkout)"
+family = "pig"
+piglet = "piglets/pig-core.yaml"
+
+[arms.pig-min]
+name = "Piglet pig-min (keep-mode strip, built from this checkout)"
+family = "pig"
+piglet = "piglets/pig-min.yaml"
+no_extensions = true
+
+# The Rust port of Pi run from its own release binary (built with the release flags of their authors). They read Pi's models.json, so the
+# harness treats it as Pi-compatible; it does not load TypeScript extensions. pi_agent_rust is not an arm: its licence is undetermined (owner decision pending).
+[arms.rpi]
+name = "rpi (Rust port of Pi, bigfish1913/pi-rust)"
+family = "pi"
+no_extensions = true
+third_party = true
+agent_dir_env = "RPI_CODING_AGENT_DIR"
+env = { RPI_DISABLE_UPDATE_CHECK = "1" }
+rpc = { prompt_field = "content" }
+
+# Pi-Bolt: a Pi-compatible runtime that runs Pi extensions and reads Pi's configuration. Linux x64 and macOS arm64 builds, no Windows build.
+# It differs from Pi in three output paths (README.md, the arm table), so a Pi-Bolt number on those paths is a number for different work.
+[arms.pibolt]
+name = "Pi-Bolt 0.7.4 (opensec-git/Pi-Bolt)"
+family = "pi"
+third_party = true
+
+# omp (oh-my-pi): a Pi-derived runtime with its own configuration files (models.yml, config.yml with setupVersion 2 and the setup wizard off).
+# It loads only part of Pi's TypeScript extensions, so the extension rows exclude it.
+[arms.omp]
+name = "omp 18.8.8 (can1357/oh-my-pi)"
+family = "omp"
+third_party = true
+no_extensions = true
+
+# OpenCode: the non-interactive `opencode run` only; its TUI is diff-rendered and cannot be driven through a byte stream.
+[arms.opencode]
+name = "OpenCode 1.18.35 (anomalyco/opencode)"
+family = "opencode"
+third_party = true
+no_extensions = true
+
+# The same checkout built with the locked CPU profile (locks/pig-0.5.pgo): the Go half of the build 2x2 (default vs profile-guided).
+[arms.pig-0_5-pgo]
+name = "PiG 0.5.0 line (this checkout, profile-guided build)"
+family = "pig"

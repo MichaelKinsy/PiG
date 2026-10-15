@@ -1,5 +1,4 @@
 <!--
-SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 SPDX-License-Identifier: MIT
 -->
 
@@ -89,8 +88,8 @@ Status values:
 
 | Pin | Source | Copies that `make compliance` checks |
 |---|---|---|
-| Go toolchain | `.go-version` | Workflows read it (`go-version-file`); devcontainer; CI image Dockerfiles and tags; documented setup. The `go.mod` and `go.work` `toolchain` lines are the oldest release PiG builds with and must not exceed it |
+| Go toolchain | `.go-version` | Workflows read it (`go-version-file`); devcontainer; CI image Dockerfiles and tags; documented setup. The `go.mod` and `go.work` `toolchain` lines name the same release. Build scripts read `.go-version` instead of repeating it, and `make compliance` rejects any other Go release in a build, CI, image or setup file |
 | Node | `.node-version` | Workflows read it (`node-version-file`); devcontainer; CI parity image tag |
 | Rust | `ci.yml` `RUST_VERSION` | Devcontainer; CI parity image tag |
-| Pi | `internal/coding/pigversion/pigversion.go` `UpstreamVersion` (re-exported as `coding.UpstreamVersion`) | `extensions/sdk-ts` dependencies; CI parity oracle image; `test/parity/known-gaps.toml`; `test/parity/behavior-contracts.toml`; README badge. `ci.yml` reads the source directly. |
+| Pi | `.upstream/pin` (`make pin-sync` derives every copy; `internal/coding/pigversion/pigversion.go` is generated from it) | `extensions/sdk-ts` dependencies; CI parity oracle image; `test/parity/known-gaps.toml`; `test/parity/behavior-contracts.toml`; README badge. `ci.yml` checks the installed oracle with `automation/pin/pin.py check-oracle`. |
 | Reviewed Pi baseline | `coding/upstream.go` `UpstreamReviewedVersion` | The Makefile derives the leap ledgers from it |

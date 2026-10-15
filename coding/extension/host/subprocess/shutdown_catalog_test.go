@@ -2,6 +2,7 @@ package subprocess
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -19,11 +20,11 @@ func TestHostShutdownDetachesCatalogBeforeProviderRemoval(t *testing.T) {
 				h, bridge, peers := shutdownCatalogHost(t.Context(), count)
 				defer peers.Wait()
 				builds := 0
-				bridge.SetHostAction("getModels", func() []map[string]any {
+				bridge.SetHostAction("getModels", func() []json.RawMessage {
 					builds++
 					// Make a redundant read observably slow without a wall-clock timeout.
 					time.Sleep(time.Second)
-					return []map[string]any{{"provider": "fixture", "id": "model"}}
+					return modelJSONs(map[string]any{"provider": "fixture", "id": "model"})
 				})
 				builds = 0 // SetHostAction publishes the live setup snapshot.
 				start := time.Now()
@@ -97,7 +98,7 @@ func shutdownCatalogHost(ctx context.Context, count int) (*Host, *UIBridge, *syn
 			defer func() { _ = peer.Close() }()
 			_, _ = io.Copy(io.Discard, peer)
 		})
-		bridge.RegisterExtConn(name, conn)
+		bridge.RegisterExtConn(name, conn, true)
 		bridge.RecordProviderRegistration(name, []byte(`{"baseUrl":"http://fixture.invalid"}`))
 		h.exts[name] = withConn(&managedExt{config: ExtConfig{Name: name}, providerNames: []string{name}}, conn)
 	}
@@ -107,15 +108,15 @@ func shutdownCatalogHost(ctx context.Context, count int) (*Host, *UIBridge, *syn
 func BenchmarkHostShutdownProviderCatalog(b *testing.B) {
 	for _, count := range []int{0, 1, 20} {
 		b.Run(fmt.Sprint(count), func(b *testing.B) {
-			models := make([]map[string]any, 2000)
+			models := make([]json.RawMessage, 2000)
 			for i := range models {
-				models[i] = map[string]any{"id": fmt.Sprint(i), "provider": "fixture", "contextWindow": 128000, "maxTokens": 8192}
+				models[i] = modelJSON(map[string]any{"id": fmt.Sprint(i), "provider": "fixture", "contextWindow": 128000, "maxTokens": 8192})
 			}
 			b.ReportAllocs()
 			for b.Loop() {
 				b.StopTimer()
 				h, bridge, peers := shutdownCatalogHost(b.Context(), count)
-				bridge.SetHostAction("getModels", func() []map[string]any { return models })
+				bridge.SetHostAction("getModels", func() []json.RawMessage { return models })
 				b.StartTimer()
 				h.Shutdown("quit")
 				b.StopTimer()

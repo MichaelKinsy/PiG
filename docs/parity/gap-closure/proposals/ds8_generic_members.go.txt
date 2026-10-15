@@ -1,0 +1,106 @@
+package rules
+
+import (
+	"go/token"
+	"go/types"
+	"sort"
+	"strings"
+	"unicode"
+	"unicode/utf8"
+)
+
+// DS8: Go has no generic methods, so a generic method of an upstream interface or class is a package-level generic function of
+// the owner's package. The function is named for the property (snapshot -> Snapshot, documentState -> DocumentStateOf,
+// use -> UseService), takes a value of the owner's type as its first parameter and has type parameters of its own. The rule
+// applies only to that shape and refuses when two unrelated functions fit.
+type genericMethodFunc struct{}
+
+func (genericMethodFunc) Name() string { return "DS8" }
+
+func init() { RegisterMember(DataShapes, genericMethodFunc{}) }
+
+func (genericMethodFunc) Member(_ Env, prop Property, owner *types.TypeName) (types.Object, bool) {
+	if owner == nil || owner.Pkg() == nil || prop.Name == "" {
+		return nil, false
+	}
+	r, size := utf8.DecodeRuneInString(prop.Name)
+	if !unicode.IsLetter(r) {
+		return nil, false
+	}
+	base := string(unicode.ToUpper(r)) + prop.Name[size:]
+	scope := owner.Pkg().Scope()
+	var candidates []*types.Func
+	for _, name := range scope.Names() {
+		if !token.IsExported(name) || !strings.HasPrefix(name, base) {
+			continue
+		}
+		// The rest of the name is a new word (SnapshotAsOf, DocumentStateOf, UseService), never a lowercase continuation.
+		if rest := name[len(base):]; rest != "" {
+			if next, _ := utf8.DecodeRuneInString(rest); !unicode.IsUpper(next) {
+				continue
+			}
+		}
+		fn, ok := scope.Lookup(name).(*types.Func)
+		if !ok {
+			continue
+		}
+		sig := fn.Type().(*types.Signature)
+		if sig.Recv() != nil || sig.TypeParams().Len() == 0 || sig.Params().Len() == 0 {
+			continue
+		}
+		// A leading context.Context is the call's context (S1), not the receiver.
+		first := 0
+		if isContextType(sig.Params().At(0).Type()) && sig.Params().Len() > 1 {
+			first = 1
+		}
+		if receiverFits(sig.Params().At(first).Type(), owner) {
+			candidates = append(candidates, fn)
+		}
+	}
+	if len(candidates) == 0 {
+		return nil, false
+	}
+	// An exact name wins; otherwise the shortest name must be a prefix of every other candidate (DocumentStateOf and
+	// DocumentStateOfWithOptions), else the property is ambiguous.
+	sort.Slice(candidates, func(i, j int) bool { return len(candidates[i].Name()) < len(candidates[j].Name()) })
+	shortest := candidates[0]
+	for _, c := range candidates[1:] {
+		if !strings.HasPrefix(c.Name(), shortest.Name()) {
+			return nil, false
+		}
+	}
+	return shortest, true
+}
+
+// receiverFits reports whether a value of the owner's type can be the function's first parameter: the parameter is the owner, a
+// pointer to it, or an interface whose methods the owner has.
+func receiverFits(param types.Type, owner *types.TypeName) bool {
+	base := derefType(param)
+	if n := named(base); n != nil && n.Obj() == owner {
+		return true
+	}
+	iface, ok := base.Underlying().(*types.Interface)
+	if !ok || iface.NumMethods() == 0 {
+		return false
+	}
+	have := map[string]bool{}
+	ownerType := owner.Type()
+	ms := types.NewMethodSet(ownerType)
+	if !types.IsInterface(ownerType) {
+		ms = types.NewMethodSet(types.NewPointer(ownerType))
+	}
+	for sel := range ms.Methods() {
+		have[sel.Obj().Name()] = true
+	}
+	for method := range iface.Methods() {
+		if !have[method.Name()] {
+			return false
+		}
+	}
+	return true
+}
+
+func isContextType(t types.Type) bool {
+	n := named(t)
+	return n != nil && n.Obj().Pkg() != nil && n.Obj().Pkg().Path() == "context" && n.Obj().Name() == "Context"
+}

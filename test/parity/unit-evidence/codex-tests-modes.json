@@ -18,13 +18,13 @@
     "mutation": "internal/codingagent/chat_viewport.go: shrinking(options.Editor, 3) -> shrinking(options.Editor, 2); targeted compiled test FAIL; codex-tests-modes/viewport-red.log"
   },
   {
-    "upstream": "packages/coding-agent/src/modes/interactive/theme/theme-json.ts",
+    "upstream": "packages/coding-agent/src/modes/interactive/theme/theme-schema.ts",
     "package": "./tui",
     "tests": [
       "TestLoadThemeFileRejectsSlashInName"
     ],
-    "upstream_reference": "packages/coding-agent/src/modes/interactive/theme/theme-json.ts validateThemeJson rejects names containing slash",
-    "mutation": "tui/theme_json.go: if strings.Contains(name, \"/\") { -> if false && strings.Contains(name, \"/\") {; targeted compiled test FAIL; codex-tests-modes/theme-json-red.log"
+    "upstream_reference": "packages/coding-agent/src/modes/interactive/theme/theme-schema.ts validateThemeJson rejects names containing slash",
+    "mutation": "tui/theme_json.go: ok && strings.Contains(name, \"/\") { -> ok && false && strings.Contains(name, \"/\") {; targeted compiled test FAIL; codex-tests-modes/theme-json-red.log"
   },
   {
     "upstream": "packages/coding-agent/src/modes/interactive/bug-report.ts",

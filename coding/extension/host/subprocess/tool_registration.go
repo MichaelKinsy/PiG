@@ -57,5 +57,7 @@ func (h *Host) handleToolRegistration(ctx context.Context, me *managedExt, conn 
 		return nil, err
 	}
 	result, err := json.Marshal(map[string]any{"allTools": allTools.Tools, "activeTools": activeTools.Tools})
+	// The runtime applies this result to its replica outside a state_update, so the next push to it is a full snapshot.
+	me.runtimeStateGen.Add(1)
 	return &CallResultPayload{Result: result}, err
 }

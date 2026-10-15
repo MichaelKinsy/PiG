@@ -9,7 +9,6 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"slices"
 	"strings"
@@ -132,10 +131,32 @@ func resolveFile(path string, info os.FileInfo) (Definition, error) {
 		}
 		return Definition{}, fmt.Errorf("Python extension %s has no def new_extension() factory and is not an executable standalone", path)
 	}
+	if info.Mode().IsRegular() && !executableMode(info) && filepath.Ext(path) != "" {
+		// Upstream imports any file a source names, so a file Node has no loader
+		// for, such as a packed .tgz, fails with Node's ERR_UNKNOWN_FILE_EXTENSION
+		// message for the real path.
+		real, err := filepath.EvalSymlinks(path)
+		if err != nil {
+			real = path
+		}
+		return Definition{}, &UnknownFileExtensionError{Ext: filepath.Ext(path), Path: real}
+	}
 	if !info.Mode().IsRegular() || !executableMode(info) {
 		return Definition{}, fmt.Errorf("extension standalone %s is not an executable regular file", path)
 	}
 	return Definition{Language: "binary", Form: Standalone, Root: filepath.Dir(path), Entrypoint: path}, nil
+}
+
+// UnknownFileExtensionError is a non-executable file whose extension Node has
+// no loader for. Its message is Node's ERR_UNKNOWN_FILE_EXTENSION, which
+// upstream's loader reports for such a file.
+type UnknownFileExtensionError struct {
+	Ext  string
+	Path string
+}
+
+func (e *UnknownFileExtensionError) Error() string {
+	return fmt.Sprintf("Unknown file extension %q for %s", e.Ext, e.Path)
 }
 
 func detectLanguages(root string) []string {
@@ -565,6 +586,9 @@ func resolveRust(root string) (Definition, error) {
 	return Definition{}, fmt.Errorf("Rust extension %s has no src/lib.rs pub fn new_extension() factory or src/main.rs standalone", root)
 }
 
+// pythonModuleName is an importable Python module name.
+var pythonModuleName = lazyregexp.New(`^[A-Za-z_][A-Za-z0-9_]*$`)
+
 var pythonFactory = lazyregexp.New(`(?m)^def[ \t]+new_extension[ \t]*\([ \t]*\)[ \t]*->[ \t]*(?:pig_sdk\.)?Extension[ \t]*:`)
 
 func resolvePython(root string) (Definition, error) {
@@ -596,7 +620,7 @@ func resolvePython(root string) (Definition, error) {
 	}
 	if len(factories) == 1 {
 		module := strings.TrimSuffix(filepath.Base(factories[0]), filepath.Ext(factories[0]))
-		if !regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`).MatchString(module) {
+		if !pythonModuleName.MatchString(module) {
 			return Definition{}, fmt.Errorf("Python extension module %q is not importable; use letters, digits, and underscores, and do not start with a digit", module)
 		}
 		return Definition{Language: "python", Form: Factory, Root: root, Package: module, Factory: "new_extension", Packable: true}, nil

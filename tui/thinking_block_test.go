@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"slices"
 	"strings"
 	"testing"
 )
@@ -104,5 +105,16 @@ func TestThinkingBlock_EmojiNoStripe(t *testing.T) {
 	// Should produce 2 lines of 2 emoji each (4 cols per line).
 	if len(lines) != 2 {
 		t.Fatalf("emoji wrap: got %d lines want 2 (content=%v)", len(lines), lines)
+	}
+}
+
+// wrapLineByWidth breaks only between Intl.Segmenter graphemes (utils.ts graphemeSegmenter): a Devanagari conjunct (GB9c) and an emoji ZWJ sequence each stay whole even when one is wider than the line.
+// mutation-checked: Unicode 15 grapheme clusters (rivo/uniseg) split क्ष into क् and ष.
+func TestWrapLineByWidthKeepsIntlSegmenterGraphemesWhole(t *testing.T) {
+	if got, want := wrapLineByWidth("क्षक्षक्ष", 1), []string{"क्ष", "क्ष", "क्ष"}; !slices.Equal(got, want) {
+		t.Errorf("wrapLineByWidth(conjuncts, 1) = %q, want %q", got, want)
+	}
+	if got, want := wrapLineByWidth("👨\u200d👩\u200d👧x", 1), []string{"👨\u200d👩\u200d👧", "x"}; !slices.Equal(got, want) {
+		t.Errorf("wrapLineByWidth(ZWJ family, 1) = %q, want %q", got, want)
 	}
 }

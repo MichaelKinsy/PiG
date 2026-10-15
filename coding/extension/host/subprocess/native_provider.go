@@ -29,6 +29,8 @@ type nativeProviderProxy struct {
 	declaration  NativeProviderDeclaration
 	mu           sync.Mutex
 	publications map[string]nativeProviderCallback
+	// retired are the connections of the Provider objects this registration displaced in other processes; publishNativeProvider tells them provider_superseded. Guarded by host.mu.
+	retired []*Conn
 }
 
 func (p *nativeProviderProxy) call(ctx context.Context, args map[string]any, update func(json.RawMessage), publish nativeProviderCallback) (json.RawMessage, error) {
@@ -51,7 +53,7 @@ func (p *nativeProviderProxy) call(ctx context.Context, args map[string]any, upd
 	}
 	tool := p.declaration.Key
 	env := &Envelope{Type: MsgRequest, ID: fmt.Sprintf("r%d", p.conn.nextID.Add(1)), Request: &RequestPayload{Method: MethodProviderCall, Tool: tool, Args: data}}
-	if args["method"] == "getModels" || args["method"] == "filterModels" || args["method"] == "update" {
+	if args["method"] == "getModels" || args["method"] == "getAllModels" || args["method"] == "filterModels" || args["method"] == "filterAllModels" || args["method"] == "update" {
 		env.Request.Method = MethodProviderSync
 	}
 	if args["method"] == "stream" || args["method"] == "streamSimple" || args["method"] == "fetchDeferred" {
@@ -86,35 +88,65 @@ func (p *nativeProviderProxy) carrier() *extension.NativeProvider {
 	if p.declaration.BaseURL != nil {
 		baseURL = *p.declaration.BaseURL
 	}
+	var headers ai.ProviderHeaders
+	if p.declaration.Headers != nil {
+		headers = ai.ProviderHeadersFromStrings(*p.declaration.Headers)
+	}
 	carrier := &extension.NativeProvider{
+		Headers: headers,
 		IsCurrent: func() bool {
 			p.host.mu.Lock()
 			defer p.host.mu.Unlock()
 			return p.host.nativeProviders[p.conn][p.declaration.ID] == p
 		},
 		ID: p.declaration.ID, Name: p.declaration.Name, BaseURL: baseURL, Models: p.declaration.Models,
+		Auth:                     p.auth(context.Background()),
 		FilterModels:             p.filterModels,
 		CheckAuth:                p.checkAuth,
 		ResolveAuth:              p.resolveAuth,
 		ResolveRefreshCredential: p.refreshCredential,
 		RefreshModels:            p.refreshModels,
-		Stream:                   p.stream,
+		Stream: func(ctx context.Context, model *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+			return p.stream(ctx, model, transcript, options, false)
+		},
+		StreamSimple: func(ctx context.Context, model *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+			return p.stream(ctx, model, transcript, options, true)
+		},
 	}
 	p.operations(carrier)
 	return carrier
 }
 
 func (p *nativeProviderProxy) stream(ctx context.Context, model *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions, simple bool) (*ai.AssistantMessageEventStream, error) {
-	stream := ai.NewAssistantMessageEventStream()
 	method := "stream"
 	if simple {
 		method = "streamSimple"
 	}
-	callbacks := []string{}
-	if options.OnPayload != nil {
-		callbacks = append(callbacks, "onPayload")
+	return p.streamMethod(ctx, method, model, "context", map[string]any{"messages": transcript.Messages()}, nativeStreamOptions(options), options)
+}
+
+// fetchDeferred is Pi's Provider.fetchDeferred: the provider object resolves a deferred response from its handle and streams the result.
+// upstream: packages/ai/src/models.ts:209-213 (Provider.fetchDeferred), models.ts StreamDeferred
+func (p *nativeProviderProxy) fetchDeferred(ctx context.Context, model *ai.Model, handle ai.DeferredHandle, options ai.DeferredFetchOptions) (*ai.AssistantMessageEventStream, error) {
+	wire := nativeStreamOptions(options.StreamOptions)
+	if options.Wait != nil {
+		wire["wait"] = *options.Wait
 	}
-	args := map[string]any{"method": method, "params": map[string]any{"model": extension.ModelInfo(model), "context": map[string]any{"messages": transcript.Messages()}, "options": nativeStreamOptions(options), "callbacks": callbacks}}
+	return p.streamMethod(ctx, "fetchDeferred", model, "handle", handle, wire, options.StreamOptions)
+}
+
+// cancelDeferred is Pi's Provider.cancelDeferred.
+// upstream: packages/ai/src/models.ts:214 (Provider.cancelDeferred)
+func (p *nativeProviderProxy) cancelDeferred(ctx context.Context, model *ai.Model, handle ai.DeferredHandle, options ai.DeferredCancelOptions) error {
+	_, err := p.objectCall(ctx, "cancelDeferred", map[string]any{"model": extension.ModelValue{Model: model}, "handle": handle, "options": nativeStreamOptions(options), "callbacks": []string{}}, nil)
+	return err
+}
+
+// streamMethod runs one streaming provider method (stream, streamSimple or fetchDeferred): payloadKey names the method's second argument, the transcript or the deferred handle.
+func (p *nativeProviderProxy) streamMethod(ctx context.Context, method string, model *ai.Model, payloadKey string, payload any, wireOptions map[string]any, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+	stream := ai.NewAssistantMessageEventStream()
+	args := map[string]any{"method": method, "params": map[string]any{"model": extension.ModelValue{Model: model}, payloadKey: payload, "options": wireOptions, "callbacks": nativeStreamCallbackNames(options)}}
+	//portlint:allow asyncorder Pi's Provider.stream returns the event stream at once and the provider fills it later (models.ts:213); the stream is the ordering point, every event and the terminal reaching the caller through stream.Push in order
 	go func() {
 		operation, cancel := context.WithCancelCause(ctx)
 		defer cancel(nil)
@@ -139,24 +171,7 @@ func (p *nativeProviderProxy) stream(ctx context.Context, model *ai.Model, trans
 				return
 			}
 			terminal = event.EventType() == ai.EventDone || event.EventType() == ai.EventError
-		}, func(raw json.RawMessage) (json.RawMessage, error) {
-			if options.OnPayload == nil {
-				return nil, errors.New("native stream has no payload callback")
-			}
-			var callback struct {
-				Params struct {
-					Payload any `json:"value"`
-				} `json:"params"`
-			}
-			if err := json.Unmarshal(raw, &callback); err != nil {
-				return nil, err
-			}
-			result, err := options.OnPayload(callback.Params.Payload, model)
-			if err != nil {
-				return nil, err
-			}
-			return json.Marshal(result)
-		})
+		}, nativeStreamCallback(operation, options, model))
 		if terminal {
 			return
 		}
@@ -175,13 +190,74 @@ func (p *nativeProviderProxy) stream(ctx context.Context, model *ai.Model, trans
 	return stream, nil
 }
 
+// nativeStreamCallbackNames lists the request callbacks the Provider object receives in its stream options. Pi passes the caller's onPayload, onResponse and onProviderStreamEvent to Provider.stream and strips transformHeaders, which Models applies itself (model-runtime.ts:671-689, sdk.ts:425-427).
+func nativeStreamCallbackNames(options ai.StreamOptions) []string {
+	names := []string{}
+	if options.OnPayload != nil {
+		names = append(names, "onPayload")
+	}
+	if options.OnResponse != nil {
+		names = append(names, "onResponse")
+	}
+	if options.OnProviderStreamEvent != nil {
+		names = append(names, "onProviderStreamEvent")
+	}
+	return names
+}
+
+// nativeStreamCallback answers a Provider object's provider.callback for one stream by the callback's name: each name is one of the caller's request callbacks (types.ts ProviderRequestOptions.onPayload, StreamOptions.onResponse and onProviderStreamEvent), invoked with the value and the request's model.
+func nativeStreamCallback(ctx context.Context, options ai.StreamOptions, model *ai.Model) nativeProviderCallback {
+	return func(raw json.RawMessage) (json.RawMessage, error) {
+		var callback struct {
+			Method string `json:"method"`
+			Params struct {
+				Value json.RawMessage `json:"value"`
+			} `json:"params"`
+		}
+		if err := json.Unmarshal(raw, &callback); err != nil {
+			return nil, err
+		}
+		switch {
+		case callback.Method == "onPayload" && options.OnPayload != nil:
+			var payload any
+			if err := decodeCallbackValue(callback.Params.Value, &payload); err != nil {
+				return nil, err
+			}
+			result, err := options.OnPayload(payload, model)
+			if err != nil {
+				return nil, err
+			}
+			return json.Marshal(result)
+		case callback.Method == "onResponse" && options.OnResponse != nil:
+			var response ai.ProviderResponse
+			if err := decodeCallbackValue(callback.Params.Value, &response); err != nil {
+				return nil, err
+			}
+			return json.RawMessage("null"), options.OnResponse(ctx, response, model)
+		case callback.Method == "onProviderStreamEvent" && options.OnProviderStreamEvent != nil:
+			var data any
+			if err := decodeCallbackValue(callback.Params.Value, &data); err != nil {
+				return nil, err
+			}
+			return json.RawMessage("null"), options.OnProviderStreamEvent(ctx, data, model)
+		default:
+			return nil, fmt.Errorf("Provider callback %s is absent", callback.Method)
+		}
+	}
+}
+
+// decodeCallbackValue decodes a callback's value; an absent value is JavaScript's undefined, which leaves target at its zero value.
+func decodeCallbackValue(raw json.RawMessage, target any) error {
+	if len(raw) == 0 {
+		return nil
+	}
+	return json.Unmarshal(raw, target)
+}
+
 func nativeStreamOptions(o ai.StreamOptions) map[string]any {
 	out := providerOptionsWire(o)
 	if o.APIKey == "" {
 		delete(out, "apiKey")
-	}
-	if o.OnPayload != nil {
-		out["hasOnPayload"] = true
 	}
 	return out
 }
@@ -236,7 +312,8 @@ func (h *Host) registerNativeProvider(ctx context.Context, me *managedExt, conn 
 	declaration.Handle = rand.Text()
 	p := &nativeProviderProxy{host: h, owner: me, registered: true, references: map[*Conn]map[string]struct{}{}, conn: conn, declaration: *declaration, publications: map[string]nativeProviderCallback{}}
 	h.mu.Lock()
-	released := h.retireNativeProviderLocked(declaration.ID)
+	released, retired := h.retireNativeProviderLocked(me, conn, declaration.ID)
+	p.retired = retired
 	if h.nativeProviderHandles == nil {
 		h.nativeProviderHandles = map[string]*nativeProviderProxy{}
 	}
@@ -250,12 +327,9 @@ func (h *Host) registerNativeProvider(ctx context.Context, me *managedExt, conn 
 	h.nativeProviders[conn][declaration.ID] = p
 	h.mu.Unlock()
 	h.releaseProviderCallbacks(released)
-	if h.onRegisterNativeProvider == nil {
-		return errors.New("native provider registry is not bound")
-	}
 	var published sync.Once
 	publish := func() { published.Do(func() { h.publishNativeProvider(p) }); extension.CallInitiated(ctx) }
-	if err := h.onRegisterNativeProvider(extension.WithCallInitiation(ctx, publish), p.carrier()); err != nil {
+	if err := h.providerRuntime.RegisterNativeProviderCarrier(extension.WithCallInitiation(ctx, publish), p.carrier(), extConfigOrigin(me.config)); err != nil {
 		return err
 	}
 	publish()
@@ -276,7 +350,8 @@ func (h *Host) publishNativeProvider(p *nativeProviderProxy) {
 	if h.nativeProviders[p.conn][declaration.ID] != p {
 		return
 	}
-	notifySuperseded = h.transferProviderOwnershipLocked(me, p.conn, declaration.ID)
+	notifySuperseded = h.transferProviderOwnershipLocked(me, p.conn, declaration.ID, p.retired...)
+	p.retired = nil
 	if declaration.OAuth != nil {
 		ai.RegisterOAuthProvider(declaration.ID, &nativeOAuthProxy{proxy: p, host: h, owner: me.config.Name})
 		if !slices.Contains(me.oauthProviderNames, declaration.ID) {

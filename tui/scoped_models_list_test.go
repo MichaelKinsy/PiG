@@ -1,5 +1,7 @@
 package tui
 
+// pi: packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts
+
 import (
 	"fmt"
 	"slices"
@@ -545,5 +547,20 @@ func TestScopedModels_HeaderAndFrameMatchUpstream(t *testing.T) {
 	}
 	if plain[len(plain)-1] != strings.Repeat("─", 100) {
 		t.Fatalf("last row = %q, want the bottom border", plain[len(plain)-1])
+	}
+}
+
+// ScopedModelsSelectorComponent extends Container (scoped-models-selector.ts:97): border, spacer, title, hint, spacer, search
+// input, spacer, list container, spacer, refresh status, footer, border; a key rebuilds the list and the footer.
+func TestScopedModelsListIsAContainerWhoseKeysRebuildTheListAndFooter(t *testing.T) {
+	sl := NewScopedModelsList(ScopedModelsConfig{AllModels: testModels(), EnabledModelIDs: nil})
+	if got := len(sl.Children()); got != 12 {
+		t.Fatalf("children = %d, want 12", got)
+	}
+	before := stripANSI(strings.Join(sl.Render(80), "\n"))
+	sl.HandleInput("\r")
+	after := stripANSI(strings.Join(sl.Render(80), "\n"))
+	if before == after || !strings.Contains(after, "(unsaved)") {
+		t.Fatalf("toggle did not change the list and footer:\n%s", after)
 	}
 }

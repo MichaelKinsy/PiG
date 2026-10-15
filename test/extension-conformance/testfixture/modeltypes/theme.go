@@ -89,13 +89,84 @@ func registerThemeProbe(e *sdk.Extension) {
 			fgTokens, _ := args["fgTokens"].([]any)
 			for _, raw := range fgTokens {
 				token, _ := raw.(string)
-				fgs[token] = theme.Fg(token, "x")
+				fgs[token] = themeFg(theme, token)
 			}
 			var appearance any
 			if value := theme.Appearance(); value != "" {
 				appearance = string(value)
 			}
-			return text(map[string]any{"appearance": appearance, "colors": colors, "styles": styles, "fgs": fgs})
+			return text(map[string]any{"appearance": appearance, "colors": colors, "styles": styles, "fgs": fgs, "queries": themeQueries(theme, args)})
 		},
 	})
+}
+
+// themeFg is theme.fg(token, "x"), or "throw:" and the message when the SDK raises, so one unknown token does not hide the others.
+func themeFg(theme sdk.UITheme, token string) (result string) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			result = fmt.Sprintf("throw:%v", recovered)
+		}
+	}()
+	return theme.Fg(token, "x")
+}
+
+// attempt is fn(), or "throw:" and the message when the SDK raises or returns an error.
+func attempt(fn func() (string, error)) (result string) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			result = fmt.Sprintf("throw:%v", recovered)
+		}
+	}()
+	value, err := fn()
+	if err != nil {
+		return "throw:" + err.Error()
+	}
+	return value
+}
+
+// themeQueries is the rest of ctx.ui.theme: modifiers, GetFgAnsi/GetBgAnsi/Bg for the tokens the test passes, GetColorMode, the border colors and SourcePath.
+func themeQueries(theme sdk.UITheme, args map[string]any) any {
+	if enabled, _ := args["queries"].(bool); !enabled {
+		return nil
+	}
+	tokens, _ := args["ansiTokens"].([]any)
+	byToken := func(fn func(token string) (string, error)) map[string]any {
+		out := map[string]any{}
+		for _, raw := range tokens {
+			token, _ := raw.(string)
+			out[token] = attempt(func() (string, error) { return fn(token) })
+		}
+		return out
+	}
+	thinking := map[string]any{}
+	levels, _ := args["levels"].([]any)
+	for _, raw := range levels {
+		level, _ := raw.(string)
+		thinking[level] = attempt(func() (string, error) { return theme.GetThinkingBorderColor(level)("x"), nil })
+	}
+	modifierTexts := map[string]any{}
+	texts, _ := args["modifierTexts"].([]any)
+	for name, modifier := range map[string]func(string) string{"bold": theme.Bold, "italic": theme.Italic, "underline": theme.Underline, "inverse": theme.Inverse, "strikethrough": theme.Strikethrough} {
+		drawn := []any{}
+		for _, raw := range texts {
+			text, _ := raw.(string)
+			drawn = append(drawn, modifier(text))
+		}
+		modifierTexts[name] = drawn
+	}
+	var sourcePath any
+	if theme.SourcePath != "" {
+		sourcePath = theme.SourcePath
+	}
+	return map[string]any{
+		"modifiers":     map[string]any{"bold": theme.Bold("x"), "italic": theme.Italic("x"), "underline": theme.Underline("x"), "inverse": theme.Inverse("x"), "strikethrough": theme.Strikethrough("x")},
+		"modifierTexts": modifierTexts,
+		"fgAnsi":        byToken(theme.GetFgAnsi),
+		"bgAnsi":        byToken(theme.GetBgAnsi),
+		"bgs":           byToken(func(token string) (string, error) { return theme.Bg(token, "x"), nil }),
+		"mode":          theme.GetColorMode(),
+		"thinking":      thinking,
+		"bash":          attempt(func() (string, error) { return theme.GetBashModeBorderColor()("x"), nil }),
+		"sourcePath":    sourcePath,
+	}
 }

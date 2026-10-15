@@ -29,8 +29,8 @@ func (p *initiationCaptureOAuthProvider) Login(callbacks ai.OAuthLoginCallbacks)
 // eventually answers.
 func TestRegisteredOAuthUsesInitiationAwareCallbacks(t *testing.T) {
 	provider := &initiationCaptureOAuthProvider{callbacks: make(chan ai.OAuthLoginCallbacks, 1)}
-	mode := NewInteractiveMode(InteractiveOptions{AgentDir: t.TempDir()})
-	if err := mode.runLoginRegisteredOAuth(t.Context(), provider, ""); err != nil {
+	mode := NewInteractiveMode(nil, InteractiveModeOptions{AgentDir: t.TempDir()})
+	if err := mode.runLoginRegisteredOAuth(t.Context(), provider, testOAuthLoginName(provider), ""); err != nil {
 		t.Fatal(err)
 	}
 	callbacks := <-provider.callbacks

@@ -1,0 +1,16 @@
+[
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/custom-editor.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestCustomEditorRunsTheRegisteredAppActionAndReplacesIt",
+   "TestCustomEditorActionHandlersRunInRegistrationOrderAndKeepAReplacedPlace",
+   "TestCustomEditorActionLoopSkipsInterruptAndExit",
+   "TestCustomEditorEscapePrefersOnEscapeThenTheInterruptActionThenTheEditor",
+   "TestCustomEditorExitOnlyWhenTheEditorIsEmpty",
+   "TestCustomEditorGivesSelectionPageKeysToAnOpenAutocomplete"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/custom-editor.ts:14-19 (actionHandlers Map), :82-85 (onAction), :87-145 (handleInput: registered handlers in insertion order, interrupt/exit skipped in the loop); D155 for the open-autocomplete page keys",
+  "mutation": "A 31-mutant sweep of CustomEditor.OnAction/ActionHandler/HandleInput (internal/codingagent/custom_editor.go: &&/||/==/!= flips and deletion of return, superInput, handler and onPaste/onEscape calls): 29 killed. Survivors: the replace-branch `return` in OnAction (equivalent: the duplicate entry is never reached because the first match wins) and the superInput call of the D155 open-autocomplete page-key branch (the existing test asserted only that the bound action did not run, so swallowing the key survived). TestCustomEditorGivesSelectionPageKeysToAnOpenAutocomplete now also asserts the key reaches the editor and pages the list; swallowing the key, a branch that never fires and a branch without the autocomplete-open check all FAIL it."
+ }
+]

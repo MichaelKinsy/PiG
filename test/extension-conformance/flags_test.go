@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 )
 
@@ -25,8 +26,24 @@ func conformanceFlagDeclarations() map[string]extension.ExtensionFlag {
 	}
 }
 
+// runnerFlagAPI is the Go reference for extension.API.GetFlag: the production Runner's flag values, restricted to the flags the loaded
+// extension declared (loader.ts:307-347), which is what the host answers for every SDK.
+type runnerFlagAPI struct {
+	extension.API
+	runner *inproc.Runner
+}
+
+func (a runnerFlagAPI) GetFlag(name string) any {
+	if _, declared := a.runner.Flags()[name]; !declared {
+		return nil
+	}
+	return a.runner.GetFlagValues()[name]
+}
+
 // loader.ts:307-347 initializes first defaults, preserves falsy overrides, and
-// restricts getFlag to the requesting extension's declarations. Every nonempty
+// restricts getFlag to the requesting extension's declarations (Pi getFlag,
+// packages/coding-agent/src/core/extensions/types.ts:1669). The default phases read the Runner through extension.API and require it to
+// equal the literal list, so neither the Runner nor the literal can drift alone. Every nonempty
 // override differs from its SDK fallback; the empty override must not default.
 func TestFlagValuesAcrossSDKs(t *testing.T) {
 	t.Parallel()
@@ -41,6 +58,14 @@ func TestFlagValuesAcrossSDKs(t *testing.T) {
 					h.host.Shutdown("test done")
 				}
 			})
+			var api extension.API = runnerFlagAPI{runner: h.runner}
+			runnerDefaults := make([]any, 0, len(conformanceFlagNames))
+			for _, name := range conformanceFlagNames {
+				runnerDefaults = append(runnerDefaults, api.GetFlag(name))
+			}
+			if literal := []any{true, false, "default", "", nil, nil}; !reflect.DeepEqual(runnerDefaults, literal) {
+				t.Fatalf("the Runner's flag defaults = %#v, want %#v", runnerDefaults, literal)
+			}
 			cmd, ok := findCommand(h.runner, "flag-probe")
 			if !ok {
 				t.Fatal("flag-probe missing")
@@ -50,9 +75,9 @@ func TestFlagValuesAcrossSDKs(t *testing.T) {
 				overrides map[string]any
 				want      []any
 			}{
-				{"defaults", nil, []any{true, false, "default", "", nil, nil}},
+				{"defaults", nil, runnerDefaults},
 				{"overrides", map[string]any{"flag-true": false, "flag-false": true, "flag-string": "", "flag-empty": "configured", "flag-unset": "supplied", "unregistered": "must-not-leak"}, []any{false, true, "", "configured", "supplied", nil}},
-				{"defaults-restored", nil, []any{true, false, "default", "", nil, nil}},
+				{"defaults-restored", nil, runnerDefaults},
 				{"shared-default", nil, []any{true, false, "default", "", "peer-default", nil}},
 			} {
 				t.Run(phase.name, func(t *testing.T) {

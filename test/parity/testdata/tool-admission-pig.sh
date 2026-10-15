@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-if ! output=$(go test -count=1 -run '^TestSession(BlockedToolTerminatesWithoutAnotherResponse|ParallelPreflightAbortPreventsPreparedEffects)$' -v ./coding); then
+if ! output=$(./test/parity/testdata/prebuilt-go-test.sh -count=1 -run '^TestSession(BlockedToolTerminatesWithoutAnotherResponse|ParallelPreflightAbortPreventsPreparedEffects)$' -v ./coding); then
     printf '%s\n' "$output"
     exit 1
 fi

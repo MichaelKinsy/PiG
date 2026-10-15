@@ -16,7 +16,7 @@ import (
 
 // Pi rebuilds the initial registry before reload's session_start. A name from the retired factory is newly registered again, even if the old tool was disabled.
 func TestReloadDynamicToolsClearsRetiredRegistry(t *testing.T) {
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,7 +26,7 @@ func TestReloadDynamicToolsClearsRetiredRegistry(t *testing.T) {
 		ext.InitializeToolRegistry()
 		ext.Handlers = map[string][]extension.HandlerFn{"session_start": {func(...any) (any, error) {
 			ext.SetRegisteredTool(extension.RegisteredTool{Definition: extension.ToolDefinition{Name: "late", Description: "dynamic", Parameters: []byte(`{}`), Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
-				return nil, nil
+				return extension.AgentToolResult{}, nil
 			}}})
 			return nil, session.RefreshTools()
 		}}}
@@ -39,8 +39,8 @@ func TestReloadDynamicToolsClearsRetiredRegistry(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = session.Close() })
-	h := icodingagent.NewTestHarness(t, icodingagent.InteractiveOptions{CWD: services.CWD(), AgentDir: services.AgentDir(), SessionHandle: session, SettingsManager: services.SettingsManager(), Settings: services.SettingsManager().Get(), ExtensionRunner: runner, BuiltinExtensions: []extension.Extension{ext}, ReloadBuiltinExtensions: func() []extension.Extension { return []extension.Extension{factory()} }, NoSkills: true, NoThemes: true, NoPromptTemplates: true, ActiveBuiltinTools: map[string]struct{}{}}, nil)
-	if err := session.BindExtensions(t.Context()); err != nil {
+	h := icodingagent.NewTestHarness(t, icodingagent.InteractiveModeOptions{CWD: services.CWD(), AgentDir: services.AgentDir(), SessionHandle: session, SettingsManager: services.SettingsManager(), Settings: services.SettingsManager().Get(), ExtensionRunner: runner, BuiltinExtensions: []extension.Extension{ext}, ReloadBuiltinExtensions: func() []extension.Extension { return []extension.Extension{factory()} }, NoSkills: true, NoThemes: true, NoPromptTemplates: true, ActiveBuiltinTools: map[string]struct{}{}}, nil)
+	if err := session.BindExtensions(t.Context(), coding.ExtensionBindings{}); err != nil {
 		t.Fatal(err)
 	}
 	session.SetActiveToolsByName(nil)
@@ -54,7 +54,7 @@ func TestReloadDynamicToolsClearsRetiredRegistry(t *testing.T) {
 
 // agent-session.ts:3591-3609 (#10245): the interactive /reload path reloads settings through the Session, so a tool the setting newly adds is active after the runtime rebuild, a removed one stays active, and a tool disabled during the session stays off.
 func TestReloadActivatesToolsNewlyAddedToDefaultTools(t *testing.T) {
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,8 +63,8 @@ func TestReloadActivatesToolsNewlyAddedToDefaultTools(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = session.Close() })
-	h := icodingagent.NewTestHarness(t, icodingagent.InteractiveOptions{CWD: services.CWD(), AgentDir: services.AgentDir(), SessionHandle: session, SettingsManager: services.SettingsManager(), Settings: services.SettingsManager().Get(), NoSkills: true, NoThemes: true, NoPromptTemplates: true}, nil)
-	if err := session.BindExtensions(t.Context()); err != nil {
+	h := icodingagent.NewTestHarness(t, icodingagent.InteractiveModeOptions{CWD: services.CWD(), AgentDir: services.AgentDir(), SessionHandle: session, SettingsManager: services.SettingsManager(), Settings: services.SettingsManager().Get(), NoSkills: true, NoThemes: true, NoPromptTemplates: true}, nil)
+	if err := session.BindExtensions(t.Context(), coding.ExtensionBindings{}); err != nil {
 		t.Fatal(err)
 	}
 	session.SetActiveToolsByName([]string{"read", "edit", "write"})

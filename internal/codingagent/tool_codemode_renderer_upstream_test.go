@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/extensions/codemode/renderer.ts
+
 import (
 	"regexp"
 	"strconv"
@@ -11,7 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
-// Ports packages/coding-agent/test/codemode-renderer.test.ts (v0.99.2) with its original results and expectations.
+// Ports packages/coding-agent/test/codemode-renderer.test.ts (v1.1.0) with its original results and expectations.
 // The details are the map form of the tool's ToolDetails, as a result read back from a session carries them.
 
 var codemodeANSI = regexp.MustCompile("\x1b\\[[0-9;]*m")
@@ -24,7 +26,7 @@ func renderCodemodeResult(t *testing.T, result agent.AgentToolResult, isError bo
 // renderCodemodeResultAt is render(result, isError, expanded, width) of codemode-renderer.test.ts (0.99.2).
 func renderCodemodeResultAt(t *testing.T, result agent.AgentToolResult, isError, expanded bool, width int) string {
 	t.Helper()
-	context := extension.ToolRenderContext{Args: map[string]any{"code": ""}, ToolCallID: "call", Invalidate: func() {}, Cwd: "/", ExecutionStarted: true, ArgsComplete: true, Expanded: expanded, IsError: isError}
+	context := extension.ToolRenderContext{Args: map[string]any{"code": ""}, ToolCallID: "call", Invalidate: func() {}, Cwd: "/", ExecutionStarted: true, ArgsComplete: true, Expanded: expanded, IsError: isError, OutputPad: 1}
 	component := codemodeRenderResult(result, extension.ToolRenderResultOptions{Expanded: expanded}, nil, context)
 	var lines []string
 	for _, line := range component.(interface{ Render(int) []string }).Render(width) {

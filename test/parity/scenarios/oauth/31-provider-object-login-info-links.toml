@@ -1,0 +1,36 @@
+# Upstream evidence (Pi 1.1.0): /login runs a provider object's auth.oauth.login with the login dialog's AuthInteraction (interactive-mode.ts:6315-6336 loginProvider). notifyAuthDialog shows an info event with showInfo (:6308-6309): the message, then each link as "<label>: <url>" or the bare URL, hyperlinked in the accent color (login-dialog.ts:189-203). A progress event follows as a dim line and the text prompt stays in the dialog (:6310-6311, login-dialog.ts:154-176).
+# Both binaries load the same Node provider object, testdata/provider-object-info/info.mjs. The capture is the open dialog, from its title to the prompt's key hint.
+name = "31-provider-object-login-info-links"
+description = "A provider object's OAuth login shows an info event's message and links, then its progress and prompt, in the /login dialog"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts", "packages/coding-agent/src/modes/interactive/components/login-dialog.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 120
+height = 40
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 120
+capture_start = "Login to Info Node"
+capture_end = "to submit)"
+settle_seconds = 1
+cwd = "../selectors/testdata/login-empty-project"
+
+[[tmux.steps]]
+keys = ["/login info-node", "Escape", "Enter"]
+wait_visible_contains = ["Use your work account", "Paste the sign-in code"]
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/provider-object-info/agent", "PI_CODING_AGENT_DIR=", "PIG_HOME=../selectors/testdata/pig-home-noauth", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]
+pi = ["PI_CODING_AGENT_DIR=testdata/provider-object-info/agent", "PIG_CODING_AGENT_DIR=", "PIG_HOME=", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/provider-object-info/info.mjs"]
+pi_extensions = ["testdata/provider-object-info/info.mjs"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["Use your work account", "Help: https://example.invalid/help", "https://example.invalid/terms", "Checking the workspace", "Paste the sign-in code"]
+escaped_output_equal = true
+runs = 3

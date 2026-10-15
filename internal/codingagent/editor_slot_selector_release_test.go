@@ -25,14 +25,14 @@ func TestEditorSlotSelectorsDropKeyReleases(t *testing.T) {
 		{Provider: "p", ID: "three"},
 		{Provider: "p", ID: "four"},
 	}
-	newSelector := func() *tui.ModelSelector {
-		return tui.NewModelSelector("Select model", items, items, "p/one")
+	newSelector := func() *tui.ModelSelectorComponent {
+		return tui.NewStaticModelSelectorComponent("Select model", items, items, "p/one")
 	}
 	// The highlighted row is what the user sees move, so compare frames.
-	render := func(s *tui.ModelSelector) string { return strings.Join(s.Render(80), "\n") }
+	render := func(s *tui.ModelSelectorComponent) string { return strings.Join(s.Render(80), "\n") }
 
 	// Drive production-equivalent decoding followed by focused delivery.
-	feed := func(s *tui.ModelSelector, b *StdinBuffer, data string) {
+	feed := func(s *tui.ModelSelectorComponent, b *StdinBuffer, data string) {
 		for _, chunk := range dropKeyReleases(s, b.ProcessString(data)) {
 			s.HandleInput(chunk)
 		}

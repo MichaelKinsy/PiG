@@ -41,3 +41,14 @@ func BenchmarkSanitizeSurrogates(b *testing.B) {
 		})
 	}
 }
+
+// utils/sanitize-unicode.ts: a high surrogate at the top of its range (U+DBFF) followed by a low one is a valid pair and survives as the astral scalar; an unpaired one is dropped.
+func TestSanitizeSurrogatesPairsTheWholeHighSurrogateRange(t *testing.T) {
+	const highMax, lowMin = "\xed\xaf\xbf", "\xed\xb0\x80" // WTF-8 of U+DBFF and U+DC00
+	if got := sanitizeSurrogates("a" + highMax + lowMin + "b"); got != "a\U0010FC00b" {
+		t.Errorf("paired U+DBFF U+DC00 = %q, want a\\U0010FC00b", got)
+	}
+	if got := sanitizeSurrogates("a" + highMax + "b"); got != "ab" {
+		t.Errorf("unpaired U+DBFF = %q, want ab", got)
+	}
+}

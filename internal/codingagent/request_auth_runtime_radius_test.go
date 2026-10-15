@@ -23,15 +23,10 @@ func TestRequestAuthRuntimeComposesRadiusGateways(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "models.json"), []byte(config), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	stored, err := json.Marshal(ai.PiMessagesModel{
-		RadiusGatewayModel: ai.RadiusGatewayModel{ID: "dev-model", Name: "Dev Model", Input: []string{"text"}},
-		API:                ai.APIPiMessages, Provider: "radius-dev", BaseURL: "https://gateway.example/v1",
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	gatewayConfig, _ := ai.GetRadiusCredentialConfig(&ai.Credential{GatewayConfig: json.RawMessage(`{"baseUrl":"https://gateway.example/v1","models":[{"id":"dev-model","name":"Dev Model","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":0,"maxTokens":0}]}`)})
+	stored := ai.GetRadiusModelsFromConfig("radius-dev", gatewayConfig)[0]
 	store := ai.NewInMemoryModelsStore()
-	if err := store.Write(context.Background(), "radius-dev", ai.ModelsStoreEntry{Models: []json.RawMessage{stored}}); err != nil {
+	if err := store.Write(context.Background(), "radius-dev", ai.ModelsStoreEntry{Models: []ai.AnyModel{stored}}); err != nil {
 		t.Fatal(err)
 	}
 	credentials := ai.NewInMemoryAuthStorage(map[string]ai.Credential{

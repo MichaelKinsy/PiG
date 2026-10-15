@@ -1,0 +1,196 @@
+pkg:codemode/.#CodemodeDeclaredGlobal	codemode	undecidable	
+pkg:codemode/.#CodemodeDeclaredGlobal::property:name	codemode	child-gap	
+pkg:codemode/.#CodemodeDeclaredGlobal::property:spread	codemode	child-gap	
+pkg:codemode/.#CodemodeDuring	codemode	no-go-symbol	
+pkg:codemode/.#CodemodeDuring::property:issued	codemode	child-gap	
+pkg:codemode/.#CodemodeDuring::property:seq	codemode	child-gap	
+pkg:codemode/.#CodemodeHostCall	codemode	no-go-symbol	
+pkg:codemode/.#CodemodeHostCall::property:args	codemode	child-gap	
+pkg:codemode/.#CodemodeHostCall::property:id	codemode	child-gap	
+pkg:codemode/.#CodemodeHostCall::property:name	codemode	child-gap	
+pkg:codemode/.#CodemodeHostCall::property:target	codemode	child-gap	
+pkg:codemode/.#CodemodeOutcome	codemode	no-go-symbol	
+pkg:codemode/.#CodemodeRemoteMessage	codemode	type-mismatch	codemode/remote_protocol.go#RemoteMessage
+pkg:codemode/.#CodemodeRemoteReply	codemode	type-mismatch	codemode/remote_protocol.go#RemoteReply
+pkg:codemode/.#CodemodeResult	codemode	type-mismatch	codemode/types.go#Result
+pkg:codemode/.#CodemodeRun	codemode	child-gap	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/.#CodemodeRun::property:deliver	codemode	member-missing	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/.#CodemodeRun::property:deliver::call:0	codemode	member-missing	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/.#CodemodeRun::property:finished	codemode	member-missing	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/.#CodemodeRun::property:result	codemode	member-missing	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/.#CodemodeRunOptions	codemode	no-go-symbol	
+pkg:codemode/.#CodemodeRunOptions::property:globals	codemode	child-gap	
+pkg:codemode/.#CodemodeRunOptions::property:onCall	codemode	child-gap	
+pkg:codemode/.#CodemodeRunOptions::property:onCall::call:0	codemode	child-gap	
+pkg:codemode/.#CodemodeRunOptions::property:onIdle	codemode	child-gap	
+pkg:codemode/.#CodemodeRunOptions::property:onStarted	codemode	child-gap	
+pkg:codemode/.#CodemodeRunOptions::property:seed	codemode	child-gap	
+pkg:codemode/.#CodemodeRunOptions::property:signal	codemode	child-gap	
+pkg:codemode/.#CodemodeRunOptions::property:startedAt	codemode	child-gap	
+pkg:codemode/.#CodemodeRunOptions::property:store	codemode	child-gap	
+pkg:codemode/.#CodemodeRunOptions::property:timeoutMs	codemode	child-gap	
+pkg:codemode/.#CodemodeRunOptions::property:tools	codemode	child-gap	
+pkg:codemode/.#CodemodeSandbox	codemode	child-gap	codemode/sandbox.go#Sandbox
+pkg:codemode/.#CodemodeSandbox::property:start	codemode	member-missing	codemode/sandbox.go#Sandbox
+pkg:codemode/.#CodemodeSandbox::property:start::call:0	codemode	member-missing	codemode/sandbox.go#Sandbox
+pkg:codemode/.#CodemodeSandboxBase	codemode	child-gap	codemode/sandbox.go#Sandbox
+pkg:codemode/.#CodemodeSandboxBase::property:start	codemode	member-missing	codemode/sandbox.go#Sandbox
+pkg:codemode/.#CodemodeSandboxBase::property:start::call:0	codemode	member-missing	codemode/sandbox.go#Sandbox
+pkg:codemode/.#InlineCodemodeSandbox	codemode	child-gap	codemode/inline.go#InlineSandbox
+pkg:codemode/.#InlineCodemodeSandbox::property:start	codemode	member-missing	codemode/inline.go#InlineSandbox
+pkg:codemode/.#InlineCodemodeSandbox::property:start::call:0	codemode	member-missing	codemode/inline.go#InlineSandbox
+pkg:codemode/.#RemoteCodemodeSandbox	codemode	child-gap	codemode/remote.go#RemoteSandbox
+pkg:codemode/.#RemoteCodemodeSandbox::property:start	codemode	member-missing	codemode/remote.go#RemoteSandbox
+pkg:codemode/.#RemoteCodemodeSandbox::property:start::call:0	codemode	member-missing	codemode/remote.go#RemoteSandbox
+pkg:codemode/cloudflare#CodemodeDeclaredGlobal	codemode	undecidable	
+pkg:codemode/cloudflare#CodemodeDeclaredGlobal::property:name	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeDeclaredGlobal::property:spread	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeDuring	codemode	no-go-symbol	
+pkg:codemode/cloudflare#CodemodeDuring::property:issued	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeDuring::property:seq	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeHostCall	codemode	no-go-symbol	
+pkg:codemode/cloudflare#CodemodeHostCall::property:args	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeHostCall::property:id	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeHostCall::property:name	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeHostCall::property:target	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeOutcome	codemode	no-go-symbol	
+pkg:codemode/cloudflare#CodemodeRemoteMessage	codemode	type-mismatch	codemode/remote_protocol.go#RemoteMessage
+pkg:codemode/cloudflare#CodemodeRemoteReply	codemode	type-mismatch	codemode/remote_protocol.go#RemoteReply
+pkg:codemode/cloudflare#CodemodeResult	codemode	type-mismatch	codemode/types.go#Result
+pkg:codemode/cloudflare#CodemodeRun	codemode	child-gap	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/cloudflare#CodemodeRun::property:deliver	codemode	member-missing	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/cloudflare#CodemodeRun::property:deliver::call:0	codemode	member-missing	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/cloudflare#CodemodeRun::property:finished	codemode	member-missing	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/cloudflare#CodemodeRun::property:result	codemode	member-missing	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/cloudflare#CodemodeRunOptions	codemode	no-go-symbol	
+pkg:codemode/cloudflare#CodemodeRunOptions::property:globals	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeRunOptions::property:onCall	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeRunOptions::property:onCall::call:0	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeRunOptions::property:onIdle	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeRunOptions::property:onStarted	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeRunOptions::property:seed	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeRunOptions::property:signal	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeRunOptions::property:startedAt	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeRunOptions::property:store	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeRunOptions::property:timeoutMs	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeRunOptions::property:tools	codemode	child-gap	
+pkg:codemode/cloudflare#CodemodeSandboxBase	codemode	child-gap	codemode/sandbox.go#Sandbox
+pkg:codemode/cloudflare#CodemodeSandboxBase::property:start	codemode	member-missing	codemode/sandbox.go#Sandbox
+pkg:codemode/cloudflare#CodemodeSandboxBase::property:start::call:0	codemode	member-missing	codemode/sandbox.go#Sandbox
+pkg:codemode/cloudflare#HostToWorkerMessage	codemode	type-mismatch	codemode/remote_protocol.go#HostToWorkerMessage
+pkg:codemode/cloudflare#InlineCodemodeSandbox	codemode	child-gap	codemode/inline.go#InlineSandbox
+pkg:codemode/cloudflare#InlineCodemodeSandbox::property:start	codemode	member-missing	codemode/inline.go#InlineSandbox
+pkg:codemode/cloudflare#InlineCodemodeSandbox::property:start::call:0	codemode	member-missing	codemode/inline.go#InlineSandbox
+pkg:codemode/cloudflare#RemoteCodemodeSandbox	codemode	child-gap	codemode/remote.go#RemoteSandbox
+pkg:codemode/cloudflare#RemoteCodemodeSandbox::property:start	codemode	member-missing	codemode/remote.go#RemoteSandbox
+pkg:codemode/cloudflare#RemoteCodemodeSandbox::property:start::call:0	codemode	member-missing	codemode/remote.go#RemoteSandbox
+pkg:codemode/cloudflare#VmStartData	codemode	child-gap	codemode/remote_protocol.go#VmStartData
+pkg:codemode/cloudflare#VmStartData::property:deterministic	codemode	member-missing	codemode/remote_protocol.go#VmStartData
+pkg:codemode/cloudflare#WorkerToHostMessage	codemode	type-mismatch	codemode/remote_protocol.go#WorkerToHostMessage
+pkg:codemode/portable#CodemodeDeclaredGlobal	codemode	undecidable	
+pkg:codemode/portable#CodemodeDeclaredGlobal::property:name	codemode	child-gap	
+pkg:codemode/portable#CodemodeDeclaredGlobal::property:spread	codemode	child-gap	
+pkg:codemode/portable#CodemodeDuring	codemode	no-go-symbol	
+pkg:codemode/portable#CodemodeDuring::property:issued	codemode	child-gap	
+pkg:codemode/portable#CodemodeDuring::property:seq	codemode	child-gap	
+pkg:codemode/portable#CodemodeHostCall	codemode	no-go-symbol	
+pkg:codemode/portable#CodemodeHostCall::property:args	codemode	child-gap	
+pkg:codemode/portable#CodemodeHostCall::property:id	codemode	child-gap	
+pkg:codemode/portable#CodemodeHostCall::property:name	codemode	child-gap	
+pkg:codemode/portable#CodemodeHostCall::property:target	codemode	child-gap	
+pkg:codemode/portable#CodemodeOutcome	codemode	no-go-symbol	
+pkg:codemode/portable#CodemodeRemoteMessage	codemode	type-mismatch	codemode/remote_protocol.go#RemoteMessage
+pkg:codemode/portable#CodemodeRemoteReply	codemode	type-mismatch	codemode/remote_protocol.go#RemoteReply
+pkg:codemode/portable#CodemodeResult	codemode	type-mismatch	codemode/types.go#Result
+pkg:codemode/portable#CodemodeRun	codemode	child-gap	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/portable#CodemodeRun::property:deliver	codemode	member-missing	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/portable#CodemodeRun::property:deliver::call:0	codemode	member-missing	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/portable#CodemodeRun::property:finished	codemode	member-missing	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/portable#CodemodeRun::property:result	codemode	member-missing	coding/extension/builtin/codemode/run.go#run
+pkg:codemode/portable#CodemodeRunOptions	codemode	no-go-symbol	
+pkg:codemode/portable#CodemodeRunOptions::property:globals	codemode	child-gap	
+pkg:codemode/portable#CodemodeRunOptions::property:onCall	codemode	child-gap	
+pkg:codemode/portable#CodemodeRunOptions::property:onCall::call:0	codemode	child-gap	
+pkg:codemode/portable#CodemodeRunOptions::property:onIdle	codemode	child-gap	
+pkg:codemode/portable#CodemodeRunOptions::property:onStarted	codemode	child-gap	
+pkg:codemode/portable#CodemodeRunOptions::property:seed	codemode	child-gap	
+pkg:codemode/portable#CodemodeRunOptions::property:signal	codemode	child-gap	
+pkg:codemode/portable#CodemodeRunOptions::property:startedAt	codemode	child-gap	
+pkg:codemode/portable#CodemodeRunOptions::property:store	codemode	child-gap	
+pkg:codemode/portable#CodemodeRunOptions::property:timeoutMs	codemode	child-gap	
+pkg:codemode/portable#CodemodeRunOptions::property:tools	codemode	child-gap	
+pkg:codemode/portable#CodemodeSandboxBase	codemode	child-gap	codemode/sandbox.go#Sandbox
+pkg:codemode/portable#CodemodeSandboxBase::property:start	codemode	member-missing	codemode/sandbox.go#Sandbox
+pkg:codemode/portable#CodemodeSandboxBase::property:start::call:0	codemode	member-missing	codemode/sandbox.go#Sandbox
+pkg:codemode/portable#HostToWorkerMessage	codemode	type-mismatch	codemode/remote_protocol.go#HostToWorkerMessage
+pkg:codemode/portable#InlineCodemodeSandbox	codemode	child-gap	codemode/inline.go#InlineSandbox
+pkg:codemode/portable#InlineCodemodeSandbox::property:start	codemode	member-missing	codemode/inline.go#InlineSandbox
+pkg:codemode/portable#InlineCodemodeSandbox::property:start::call:0	codemode	member-missing	codemode/inline.go#InlineSandbox
+pkg:codemode/portable#RemoteCodemodeSandbox	codemode	child-gap	codemode/remote.go#RemoteSandbox
+pkg:codemode/portable#RemoteCodemodeSandbox::property:start	codemode	member-missing	codemode/remote.go#RemoteSandbox
+pkg:codemode/portable#RemoteCodemodeSandbox::property:start::call:0	codemode	member-missing	codemode/remote.go#RemoteSandbox
+pkg:codemode/portable#VmStartData	codemode	child-gap	codemode/remote_protocol.go#VmStartData
+pkg:codemode/portable#VmStartData::property:deterministic	codemode	member-missing	codemode/remote_protocol.go#VmStartData
+pkg:codemode/portable#WorkerToHostMessage	codemode	type-mismatch	codemode/remote_protocol.go#WorkerToHostMessage
+pkg:coding-agent/.#BeforeAgentStartEvent	coding-agent	type-mismatch	coding/extension/events.go#BeforeAgentStartEvent
+pkg:coding-agent/.#ExtensionRunner	coding-agent	child-gap	coding/extension/host/inproc/runner.go#Runner
+pkg:coding-agent/.#ExtensionRunner::property:emitBeforeAgentStart	coding-agent	child-gap	coding/extension/host/inproc/runner.go#Runner.EmitBeforeAgentStart
+pkg:coding-agent/.#ExtensionRunner::property:emitBeforeAgentStart::call:0	coding-agent	signature-mismatch	coding/extension/host/inproc/runner.go#Runner.EmitBeforeAgentStart
+pkg:coding-agent/.#ToolDefinition	coding-agent	child-gap	coding/extension/tool.go#ToolDefinition
+pkg:coding-agent/.#ToolDefinition::property:reachesTools	coding-agent	member-missing	coding/extension/tool.go#ToolDefinition
+pkg:coding-agent/.#ToolInfo	coding-agent	type-mismatch	coding/extension/tool.go#ToolInfo
+pkg:coding-agent/.#ToolNamespace	coding-agent	child-gap	coding/extension/tool.go#ToolNamespace
+pkg:coding-agent/.#ToolNamespace::property:aliases	coding-agent	member-missing	coding/extension/tool.go#ToolNamespace
+pkg:durable/.#Agent	durable	type-mismatch	durable/harness_types.go#Agent
+pkg:durable/.#AgentState	durable	undecidable	durable/harness/agent.go#AgentState
+pkg:durable/.#ToolRegistration	durable	type-mismatch	durable/harness_types.go#ToolRegistration
+pkg:durable/codemode#CODEMODE_MODULE_VERSION	durable	no-go-symbol	
+pkg:durable/codemode#CODEMODE_TOOL_NAME	durable	no-go-symbol	
+pkg:durable/codemode#CodemodeGlobal	durable	no-go-symbol	
+pkg:durable/codemode#CodemodeNamespace	durable	no-go-symbol	
+pkg:durable/codemode#CodemodeNestedCall	durable	no-go-symbol	
+pkg:durable/codemode#CodemodeStoreDoc	durable	no-go-symbol	
+pkg:durable/codemode#CodemodeToolDetails	durable	no-go-symbol	
+pkg:durable/codemode#CodemodeToolInput	durable	no-go-symbol	
+pkg:durable/codemode#CodemodeToolOptions	durable	no-go-symbol	
+pkg:durable/codemode#DEFAULT_CODEMODE_INLINE_BUDGET	durable	no-go-symbol	
+pkg:durable/codemode#createCodemodeExtension	durable	no-go-symbol	
+pkg:durable/codemode#createCodemodeExtension::call:0	durable	child-gap	
+pkg:durable/codemode#createCodemodeTool	durable	no-go-symbol	
+pkg:durable/codemode#createCodemodeTool::call:0	durable	child-gap	
+pkg:durable/images/node#NodePhotonImagesOptions	durable	no-go-symbol	
+pkg:durable/images/node#createNodePhotonImages	durable	child-gap	durable/images/node/node.go#CreateNodePhotonImages
+pkg:durable/images/node#createNodePhotonImages::call:0	durable	signature-mismatch	durable/images/node/node.go#CreateNodePhotonImages
+pkg:durable/tool-search#DEFAULT_TOOL_SEARCH_LIMIT	durable	no-go-symbol	
+pkg:durable/tool-search#TOOL_SEARCH_TOOL_NAME	durable	no-go-symbol	
+pkg:durable/tool-search#ToolSearchToolDetails	durable	no-go-symbol	
+pkg:durable/tool-search#createToolSearchExtension	durable	no-go-symbol	
+pkg:durable/tool-search#createToolSearchExtension::call:0	durable	child-gap	
+pkg:durable/tool-search#createToolSearchTool	durable	no-go-symbol	
+pkg:durable/tool-search#createToolSearchTool::call:0	durable	child-gap	
+pkg:env/.#RemoteTerminal	env	no-go-symbol	
+pkg:env/.#RemoteTerminal::construct:0	env	child-gap	
+pkg:env/.#RemoteTerminal::property:close	env	child-gap	
+pkg:env/.#RemoteTerminal::property:close::call:0	env	child-gap	
+pkg:env/.#RemoteTerminal::property:exited	env	child-gap	
+pkg:env/.#RemoteTerminal::property:foreground	env	child-gap	
+pkg:env/.#RemoteTerminal::property:foreground::call:0	env	child-gap	
+pkg:env/.#RemoteTerminal::property:pid	env	child-gap	
+pkg:env/.#RemoteTerminal::property:resize	env	child-gap	
+pkg:env/.#RemoteTerminal::property:resize::call:0	env	child-gap	
+pkg:env/.#RemoteTerminal::property:write	env	child-gap	
+pkg:env/.#RemoteTerminal::property:write::call:0	env	child-gap	
+pkg:env/.#TerminalForeground	env	no-go-symbol	
+pkg:env/.#TerminalForeground::property:name	env	child-gap	
+pkg:env/.#TerminalForeground::property:pid	env	child-gap	
+pkg:env/.#TerminalOptions	env	no-go-symbol	
+pkg:env/.#TerminalOptions::property:argv	env	child-gap	
+pkg:env/.#TerminalOptions::property:cols	env	child-gap	
+pkg:env/.#TerminalOptions::property:cwd	env	child-gap	
+pkg:env/.#TerminalOptions::property:env	env	child-gap	
+pkg:env/.#TerminalOptions::property:inheritEnv	env	child-gap	
+pkg:env/.#TerminalOptions::property:onData	env	child-gap	
+pkg:env/.#TerminalOptions::property:onData::call:0	env	child-gap	
+pkg:env/.#TerminalOptions::property:rows	env	child-gap	
+pkg:env/.#openTerminal	env	no-go-symbol	
+pkg:env/.#openTerminal::call:0	env	child-gap	

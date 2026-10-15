@@ -226,7 +226,7 @@ function collectKeybindingMetadata(sourceFile, relativePath, definitions, declar
         if (ts.isStringLiteralLike(member.name)) declarations.add(member.name.text);
       }
     }
-    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && (node.name.text === "TUI_KEYBINDINGS" || node.name.text === "KEYBINDINGS") && node.initializer) {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && (node.name.text === "TUI_KEYBINDINGS" || node.name.text === "APP_KEYBINDINGS" || node.name.text === "KEYBINDINGS") && node.initializer) {
       const object = unwrapExpression(node.initializer);
       if (!ts.isObjectLiteralExpression(object)) throw new Error(`${node.name.text} is not an object literal`);
       for (const candidate of object.properties) {
@@ -250,6 +250,8 @@ function collectKeybindingMetadata(sourceFile, relativePath, definitions, declar
             throw new Error(`duplicate keybinding definition ${id}`);
           }
         }
+        // `type AppKeybinding = keyof typeof APP_KEYBINDINGS` declares every app id; there is no interface member to read.
+        if (node.name.text === "APP_KEYBINDINGS") declarations.add(id);
         const startLine = sourceFile.getLineAndCharacterOfPosition(candidate.getStart(sourceFile)).line + 1;
         definitions.set(id, {
           id,

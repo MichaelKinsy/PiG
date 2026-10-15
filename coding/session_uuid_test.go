@@ -22,7 +22,7 @@ func TestNewSessionUsesUUIDv7Identity(t *testing.T) {
 		if err != nil || id.Version() != 7 {
 			t.Errorf("NewSession(NoSession=%v).ID() = %q, want UUIDv7", noSession, session.ID())
 		}
-		if session.Inner().Header().ID != session.ID() {
+		if session.Inner().GetHeader().ID != session.ID() {
 			t.Fatal("runtime and persisted header disagree on session identity")
 		}
 		if !noSession && !strings.HasSuffix(filepath.Base(session.Path()), "_"+session.ID()+".jsonl") {

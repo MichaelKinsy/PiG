@@ -2,10 +2,15 @@ package ai
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"io"
+	"iter"
+	"net"
 	"sync"
+
+	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 )
 
 // bodyReadiness is the transport side of the readiness bridge. It reports whether a body read completes in the current turn or becomes an external completion, using only what the transport knows: bytes its own buffer already holds are ready; a read that must wait for the network is pending. No sleep, goroutine schedule, or channel length decides it.
@@ -16,47 +21,131 @@ type bodyReadiness interface {
 	Close() error
 }
 
-// observedBodyReadiness reads an HTTP/1 response body on an owned goroutine. The connection announces a network wait through bodyReadOwner before it blocks; a read that returns without the announcement was served from the transport's buffer.
+// bodyReadSize is the most one body read asks for.
+const bodyReadSize = bufio.MaxScanTokenSize
+
+var bodyReadBuffers = sync.Pool{New: func() any {
+	buffer := make([]byte, bodyReadSize)
+	return &buffer
+}}
+
+// bodyReadBuffer is the buffer of one body's reads: taken from the pool at its first read and returned when the body fails, ends or closes, so
+// a collection between two reads of a stream does not cost the next read a new buffer, and back-to-back responses share one. A body has one
+// read outstanding at a time, so its reads share it.
+type bodyReadBuffer struct {
+	buffer *[]byte
+}
+
+// read reads once into the buffer and returns a copy of the bytes read, so a chunk the stream queues costs its own length rather than the read
+// size. A read that fails or ends the body returns the buffer to the pool.
+func (buffer *bodyReadBuffer) read(body io.Reader) ([]byte, error) {
+	if buffer.buffer == nil {
+		buffer.buffer = bodyReadBuffers.Get().(*[]byte)
+	}
+	count, err := body.Read(*buffer.buffer)
+	data := []byte{}
+	if count > 0 {
+		data = bytes.Clone((*buffer.buffer)[:count])
+	}
+	if err != nil {
+		buffer.release()
+	}
+	return data, err
+}
+
+// release returns the buffer to the pool once no read can use it.
+func (buffer *bodyReadBuffer) release() {
+	if buffer.buffer != nil {
+		//perf:ok fixed-size pool: every buffer is bodyReadSize and Read never grows it, so a Put cannot retain a larger one
+		bodyReadBuffers.Put(buffer.buffer)
+		buffer.buffer = nil
+	}
+}
+
+// observedBodyReadiness reads an HTTP/1 response body. Each read runs in a coroutine that the caller resumes: a read that the transport's buffers serve completes in the caller's turn with no goroutine hand-off. The connection announces a network wait through bodyReadOwner before it blocks; the announcement suspends the read there and returns pending to the caller, and waitBody, the one goroutine the source owns, resumes the read, blocks for the network and delivers the result.
 type observedBodyReadiness struct {
-	body     *observedResponseBody
-	requests chan *bodyReadOperation
-	joined   chan struct{}
-	close    sync.Once
-	err      error
+	body   *observedResponseBody
+	read   bodyReadOperation
+	buffer bodyReadBuffer
+	// next resumes the read coroutine: it starts a read, or finishes one suspended at its network wait. Calls never overlap: the caller resumes a read only when none is outstanding, and waitBody resumes only the one handed to it.
+	next func() (bodyReadSignal, bool)
+	stop func()
+	// waits hands a read suspended at its network wait to waitBody with its delivery. Only one read is outstanding, so a send never blocks.
+	waits  chan func(bodyReadSignal)
+	joined chan struct{}
+	// release, when set, closes the body in place of body.Close: a reader whose request owns the body's close.
+	release func()
+	close   sync.Once
+	err     error
 }
 
 func newObservedBodyReadiness(body *observedResponseBody) *observedBodyReadiness {
-	readiness := &observedBodyReadiness{body: body, requests: make(chan *bodyReadOperation), joined: make(chan struct{})}
-	go readiness.readBody()
+	readiness := &observedBodyReadiness{body: body, waits: make(chan func(bodyReadSignal), 1), joined: make(chan struct{})}
+	readiness.next, readiness.stop = iter.Pull(readiness.reads)
+	//portlint:allow golifetime waitBody ends when Close closes waits, and Close waits on joined
+	go readiness.waitBody()
 	return readiness
 }
 
-func (readiness *observedBodyReadiness) readBody() {
+// reads is the read coroutine. It yields each read's result, and a pending signal when the connection announces that the read waits for the network. A body that failed or ended is not read again: the transport may already serve another request on the connection, whose reads must not reach this body's owner.
+//
+//perf:hot
+func (readiness *observedBodyReadiness) reads(yield func(bodyReadSignal) bool) {
+	readiness.read.yield = yield
+	readiness.read.owner = goroutineid.Current()
+	// The coroutine ends when Close stops it, after waitBody delivered any read that was waiting; no read runs after it.
+	defer readiness.buffer.release()
+	var failed error
+	for {
+		signal := bodyReadSignal{err: failed}
+		if failed == nil {
+			readiness.read.announced.Store(false)
+			readiness.body.begin(&readiness.read)
+			signal.data, signal.err = readiness.buffer.read(readiness.body)
+			readiness.body.clear(&readiness.read)
+			failed = signal.err
+		}
+		if !yield(signal) {
+			return
+		}
+	}
+}
+
+// waitBody finishes each read that waits for the network and delivers it. A delivery may drain the executor's jobs on this goroutine, and a job may start the next read: that read runs in the coroutine, and if it waits too it is queued on waits for this loop.
+func (readiness *observedBodyReadiness) waitBody() {
+	//portlint:allow doubleclose only waitBody closes joined, once, when it returns
 	defer close(readiness.joined)
-	for operation := range readiness.requests {
-		buffer := make([]byte, bufio.MaxScanTokenSize)
-		readiness.body.begin(operation)
-		count, err := readiness.body.Read(buffer)
-		readiness.body.clear(operation)
-		operation.complete(buffer[:count], err)
+	for deliver := range readiness.waits {
+		signal, _ := readiness.next()
+		deliver(signal)
 	}
 }
 
+//perf:hot
 func (readiness *observedBodyReadiness) begin(deliver func(bodyReadSignal)) (bodyReadSignal, bool) {
-	operation := &bodyReadOperation{signals: make(chan bodyReadSignal, 1), onPendingComplete: deliver}
-	readiness.requests <- operation
-	signal := <-operation.signals
-	if signal.pending {
-		return bodyReadSignal{}, false
+	signal, ok := readiness.next()
+	if !ok {
+		return bodyReadSignal{err: net.ErrClosed}, true
 	}
-	return signal, true
+	if !signal.pending {
+		return signal, true
+	}
+	//perf:ok one hand-off per network read that must wait (pending); buffered reads return above without a hop
+	readiness.waits <- deliver
+	return bodyReadSignal{}, false
 }
 
+// Close closes the body, which fails a read blocked on the network, joins waitBody after it delivers that read, and ends the coroutine.
 func (readiness *observedBodyReadiness) Close() error {
 	readiness.close.Do(func() {
-		readiness.err = readiness.body.Close()
-		close(readiness.requests)
+		if readiness.release != nil {
+			readiness.release()
+		} else {
+			readiness.err = readiness.body.Close()
+		}
+		close(readiness.waits)
 		<-readiness.joined
+		readiness.stop()
 	})
 	return readiness.err
 }
@@ -64,6 +153,7 @@ func (readiness *observedBodyReadiness) Close() error {
 // opaqueBodyReadiness reads a body that cannot report its buffer state, such as an HTTP/2 stream or a caller-supplied fetch body. Every read is an external completion, as it is for a network body in Node.
 type opaqueBodyReadiness struct {
 	body    io.ReadCloser
+	buffer  bodyReadBuffer
 	readers sync.WaitGroup
 	close   sync.Once
 	err     error
@@ -75,9 +165,8 @@ func newOpaqueBodyReadiness(body io.ReadCloser) *opaqueBodyReadiness {
 
 func (readiness *opaqueBodyReadiness) begin(deliver func(bodyReadSignal)) (bodyReadSignal, bool) {
 	readiness.readers.Go(func() {
-		buffer := make([]byte, bufio.MaxScanTokenSize)
-		count, err := readiness.body.Read(buffer)
-		deliver(bodyReadSignal{data: buffer[:count], err: err})
+		data, err := readiness.buffer.read(readiness.body)
+		deliver(bodyReadSignal{data: data, err: err})
 	})
 	return bodyReadSignal{}, false
 }
@@ -86,6 +175,7 @@ func (readiness *opaqueBodyReadiness) Close() error {
 	readiness.close.Do(func() {
 		readiness.err = readiness.body.Close()
 		readiness.readers.Wait()
+		readiness.buffer.release()
 	})
 	return readiness.err
 }
@@ -106,6 +196,11 @@ type bodyStream struct {
 	hops bodyReadHops
 	// afterData records that the last chunk with bytes waited for the transport.
 	afterData bool
+	// deliver and settle are deliverPending and settlePending, bound once so that a read allocates no closure for its completion.
+	deliver func(bodyReadSignal)
+	settle  func()
+	// pendingResult carries a read that waited for the network from deliverPending to its external reaction. Only one read is outstanding.
+	pendingResult bodyReadSignal
 }
 
 // bodyReadHops counts the promise reactions between a byte source's readiness and the settlement of the reader.read() promise the consumer awaits. The values depend on how the data reached the stream, not on the consumer.
@@ -147,10 +242,31 @@ func newBodyStreamWithFirstRead(ctx context.Context, executor *continuationExecu
 // newBodyStreamWithHops is newBodyStreamWithFirstRead whose settlements trail the source by hops reactions.
 func newBodyStreamWithHops(ctx context.Context, executor *continuationExecutor, readiness bodyReadiness, onCancel func(), firstReadRounds int, hops bodyReadHops) *webReadableStream {
 	source := &bodyStream{ctx: ctx, executor: executor, readiness: readiness, onCancel: onCancel, firstReadRounds: firstReadRounds, hops: hops}
+	source.deliver, source.settle = source.deliverPending, source.settlePending
 	source.stream = newWebReadableStream(executor, false)
 	source.stream.pull = source.pull
 	source.stream.cancelSource = source.cancel
 	return source.stream
+}
+
+// deliverPending completes a read that waited for the network: the readiness source calls it from its own goroutine, and the result reaches the stream as an external reaction.
+func (source *bodyStream) deliverPending(result bodyReadSignal) {
+	source.pendingResult = result
+	source.executor.postExternal(source.settle)
+}
+
+func (source *bodyStream) settlePending() {
+	result := source.pendingResult
+	source.pendingResult = bodyReadSignal{}
+	hops := source.hops.data
+	if len(result.data) == 0 && result.err != nil {
+		hops = source.endHops()
+	}
+	if hops <= 0 {
+		source.apply(result, true)
+		return
+	}
+	settleAfterHops(source.executor, hops, func() { source.apply(result, true) })
 }
 
 func (source *bodyStream) pull() {
@@ -164,15 +280,7 @@ func (source *bodyStream) pull() {
 	source.reading = true
 	first := !source.started
 	source.started = true
-	result, ready := source.readiness.begin(func(result bodyReadSignal) {
-		source.executor.postExternal(func() {
-			hops := source.hops.data
-			if len(result.data) == 0 && result.err != nil {
-				hops = source.endHops()
-			}
-			settleAfterHops(source.executor, hops, func() { source.apply(result, true) })
-		})
-	})
+	result, ready := source.readiness.begin(source.deliver)
 	if !ready {
 		return
 	}

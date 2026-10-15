@@ -35,7 +35,7 @@ func TestCrossProviderHandoffUpstream(t *testing.T) {
 		{"qwen-token-plan-individual", "deepseek-v4-flash-0731", "qwen-token-plan-individual-deepseek-v4-flash-0731", ""}, {"qwen-token-plan-individual", "glm-5.2", "qwen-token-plan-individual-glm-5.2", ""},
 	}
 	tool := ai.ToolSchema{Name: "double_number", Description: "Doubles a number and returns the result", Parameters: map[string]any{"type": "object", "properties": map[string]any{"value": map[string]any{"type": "number", "description": "A number to double"}}, "required": []string{"value"}}}
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +63,7 @@ func TestCrossProviderHandoffUpstream(t *testing.T) {
 		case ai.APIMistralConversations:
 			id = fmt.Sprintf("call%05d", index)
 		}
-		provider.SetResponses([]ai.FauxResponseStep{ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxThinking("Double 21 to get 42"), ai.FauxToolCall("double_number", map[string]any{"value": 21}, id)}, StopReason: "toolUse"}), ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("42")}, StopReason: "stop"})})
+		provider.SetResponses([]ai.FauxResponseStep{ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxThinking("Double 21 to get 42"), ai.FauxToolCall("double_number", map[string]any{"value": 21}, &ai.FauxToolCallOptions{ID: id})}, StopReason: "toolUse"}), ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("42")}, StopReason: "stop"})})
 		user := ai.UserMessage{Content: ai.UserText("Please double the number 21 using the double_number tool.")}
 		target := &ai.Model{ID: pair.model, Provider: provider}
 		first := services.ModelRuntime().Complete(t.Context(), target, ai.Context{SystemPrompt: "You are a helpful assistant. Use the provided tool to complete the task.", Messages: []ai.Message{user}, Tools: []ai.ToolSchema{tool}}, ai.StreamOptions{})
@@ -109,11 +109,11 @@ func TestCrossProviderHandoffUpstream(t *testing.T) {
 			calls, results := handoffToolCounts(t, payload)
 			paired := len(calls) > 0 && reflect.DeepEqual(calls, results)
 			provider := ai.NewFauxProvider(ai.FauxConfig{ProviderID: pair.provider, Model: pair.model})
-			provider.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(context ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+			provider.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(context ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
 				if !paired || len(context.Messages()) != len(messages)+1 {
-					return ai.FauxResponse{StopReason: "error", ErrorMessage: "handoff lost history or tool pairing"}, nil
+					return ai.FauxResponse{StopReason: "error", ErrorMessage: "handoff lost history or tool pairing"}.AssistantMessage(), nil
 				}
-				return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("Hello, handoff successful!")}, StopReason: "stop"}, nil
+				return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("Hello, handoff successful!")}, StopReason: "stop"}.AssistantMessage(), nil
 			})})
 			response := services.ModelRuntime().Complete(t.Context(), &ai.Model{ID: pair.model, Provider: provider}, request, ai.StreamOptions{})
 			if response.StopReason == ai.StopReasonError {

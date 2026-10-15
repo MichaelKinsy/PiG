@@ -1,0 +1,20 @@
+[
+ {
+  "upstream": "packages/env/src/ssh.ts",
+  "package": "./env",
+  "tests": [
+   "TestLocalDaemonSystems"
+  ],
+  "upstream_reference": "packages/env/src/ssh.ts",
+  "mutation": "env/ssh.go: replace `case \"386\":` with `case \"386x\":`; TestLocalDaemonSystems fails."
+ },
+ {
+  "upstream": "packages/env/src/ssh.ts",
+  "package": "./env",
+  "tests": [
+   "TestLocalDaemonRunningSystem"
+  ],
+  "upstream_reference": "packages/env/src/ssh.ts",
+  "mutation": "env/ssh.go: replace `localDaemonFor(runtime.GOOS, runtime.GOARCH)` with `localDaemonFor(runtime.GOOS, \"386\")`; TestLocalDaemonRunningSystem fails."
+ }
+]

@@ -13,12 +13,13 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding"
+	"github.com/MichaelKinsy/PiG/internal/requestvalidity"
 )
 
 // TestEmptyMessagesUpstream ports the four helpers at .upstream/v0.99.1/packages/ai/test/empty.test.ts:19-144 for every case site in that file.
 // The compiler-derived inventory supplies each exact case name and source line. Real provider conversion/error handling and faux success both run; remote model acceptance remains live-only because the upstream assertions allow either success or a provider error.
 func TestEmptyMessagesUpstream(t *testing.T) {
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,11 +56,11 @@ func TestEmptyMessagesUpstream(t *testing.T) {
 			request := emptyUpstreamContext(t, tc.ID, metadata)
 			options := ai.StreamOptions{Env: ai.ProviderEnv{"AWS_BEDROCK_SKIP_AUTH": "1", "AWS_REGION": "us-east-1"}, Transport: ai.TransportSSE}
 			if spec.provider == "baseten" {
-				options.Thinking = ai.ThinkingHigh
+				options.Thinking = ai.ThinkingLevelHigh
 				options.IsReasoning = true
 			}
 			real := matrixProvider(t, metadata, server.URL)
-			response := services.ModelRuntime().Complete(t.Context(), &ai.Model{ID: metadata.ID, Provider: real}, request, options)
+			response := services.ModelRuntime().Complete(requestvalidity.Allow(t.Context()), &ai.Model{ID: metadata.ID, Provider: real}, request, options)
 			assertEmptyUpstreamResult(t, response, strings.Contains(tc.ID, "empty assistant"))
 			faux := ai.NewFauxProvider(ai.FauxConfig{ProviderID: spec.provider, Model: spec.model})
 			faux.SetResponses([]ai.FauxResponseStep{ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("Please respond this time.")}, StopReason: "stop"})})
@@ -165,11 +166,19 @@ func matrixProvider(t *testing.T, model *ai.GeneratedModel, url string) ai.Provi
 	case ai.APIGoogleGenerativeAI:
 		return ai.NewGoogleProvider(ai.GoogleConfig{APIKey: "test-key", Model: model.ID, ProviderID: model.Provider, BaseURL: url})
 	case ai.APIGoogleVertex:
-		return ai.NewGoogleVertexProvider(ai.GoogleVertexConfig{APIKey: "test-key", Model: model.ID, ProviderID: model.Provider, BaseURL: url})
+		provider, err := ai.NewGoogleVertexAPIProvider(ai.GoogleVertexConfig{APIKey: "test-key", Model: model.ID, ProviderID: model.Provider, BaseURL: url})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return provider
 	case ai.APIMistralConversations:
-		return ai.NewMistralProvider(ai.MistralConfig{APIKey: "test-key", Model: model.ID, ProviderID: model.Provider, BaseURL: url})
+		provider, err := ai.NewMistralAPIProvider(ai.MistralConfig{APIKey: "test-key", Model: model.ID, ProviderID: model.Provider, BaseURL: url})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return provider
 	case ai.APIBedrockConverseStream:
-		return ai.NewBedrockProvider(model.ID, url)
+		return ai.NewBedrockTestProvider(model.ID, "", url)
 	case ai.APIOpenAICodexResponses:
 		return ai.NewOpenAICodexResponsesProvider(ai.OpenAICodexResponsesConfig{APIKey: "header." + base64.RawURLEncoding.EncodeToString([]byte(`{"https://api.openai.com/auth":{"chatgpt_account_id":"account"}}`)) + ".signature", Model: model.ID, BaseURL: url})
 	default:

@@ -151,8 +151,7 @@ func TestAnIDReusedAcrossTurnsKeepsEveryTurnsResult(t *testing.T) {
 	const reused = "test-faux-tool-1"
 	var msgs []AgentMessage
 	for turn := range 3 {
-		msgs = append(msgs, toolUseTurn(reused, "bash"))
-		msgs = append(msgs, toolResultFor(reused, fmt.Sprintf("output of turn %d", turn)))
+		msgs = append(msgs, toolUseTurn(reused, "bash"), toolResultFor(reused, fmt.Sprintf("output of turn %d", turn)))
 	}
 
 	got := NormalizeMessages(msgs, nil)

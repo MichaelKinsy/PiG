@@ -1,9 +1,12 @@
+//go:build !pig_strip_bedrock_converse_stream
+
 package ai
 
 // Ports packages/ai/src/api/bedrock-converse-stream.ts
 // ConverseStream uses the AWS SDK transport with request-scoped proxy, region, and credential selection.
 
 import (
+	"cmp"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -12,24 +15,30 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 	"unicode"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/nodeurl"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
-	awsconfig "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
-	bdoc "github.com/aws/aws-sdk-go-v2/service/bedrockruntime/document"
-	btypes "github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
 	"github.com/aws/smithy-go"
 	smithybearer "github.com/aws/smithy-go/auth/bearer"
 	smithymiddleware "github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
+
+	awsconfig "github.com/MichaelKinsy/PiG/third_party/awssdk/config"
+	"github.com/MichaelKinsy/PiG/third_party/awssdk/credentials"
+	"github.com/MichaelKinsy/PiG/third_party/awssdk/credentials/stscreds"
+	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime"
+	btypes "github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime/types"
+	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/sts"
 )
 
 // BedrockProvider implements the Provider interface backed by AWS
@@ -79,6 +88,10 @@ func (p *BedrockProvider) Close() error { return nil }
 
 // Stream runs ConverseStream and translates its events into one terminal assistant result. Request failures preserve available HTTP status, AWS error code, and request identity as diagnostics. An explicit CacheRetention overrides the legacy environment preference. Nil contexts are rejected before stream construction.
 func (p *BedrockProvider) Stream(ctx context.Context, transcript TranscriptContext, opts StreamOptions) (*AssistantMessageEventStream, error) {
+	// pig divergence (D48): the agent loop asks for the tool-flow repair.
+	if opts.RepairToolFlow {
+		transcript = transcript.withRepairedToolFlow()
+	}
 	requestErr := validateProviderRequest(ctx, transcript)
 	if requestErr != nil && (ctx == nil || ctx.Err() == nil) {
 		return nil, fmt.Errorf("amazon-bedrock: invalid transcript: %w", requestErr)
@@ -90,7 +103,7 @@ func (p *BedrockProvider) Stream(ctx context.Context, transcript TranscriptConte
 		failBedrockResponse(ctx, builder, requestErr, "", false)
 		return builder.stream, nil
 	}
-	cfg, err := loadBedrockConfig(ctx, p.baseURL, p.model, opts)
+	cfg, runtimeHTTPClient, err := loadBedrockConfig(ctx, p.baseURL, p.model, opts)
 	if err != nil {
 		if ctx.Err() != nil {
 			failBedrockResponse(ctx, builder, err, "", false)
@@ -98,13 +111,10 @@ func (p *BedrockProvider) Stream(ctx context.Context, transcript TranscriptConte
 		}
 		return nil, fmt.Errorf("amazon-bedrock: %w", err)
 	}
-	client := bedrockruntime.NewFromConfig(cfg, func(options *bedrockruntime.Options) {
-		if cfg.BearerAuthTokenProvider != nil {
-			options.BearerAuthSigner = bedrockBearerSigner{}
-		}
-	})
+	client := bedrockruntime.NewFromConfig(cfg, bedrockClientOptions(cfg, runtimeHTTPClient))
 
-	modelMeta := &Model{ID: p.model, DisplayName: p.modelName}
+	// A model outside the catalog is still a bedrock-converse-stream model of this provider, as every Pi Model is: transformMessages' isSameModel compares provider, api and id.
+	modelMeta := &Model{ID: p.model, DisplayName: p.modelName, ProviderMeta: ProviderMetadata{ProviderID: p.ID(), API: APIBedrockConverseStream}}
 	if p.selectedModel != nil {
 		modelMeta = new(*p.selectedModel)
 	} else if generated, ok := LookupModel(p.ID() + "/" + p.model); ok {
@@ -114,11 +124,13 @@ func (p *BedrockProvider) Stream(ctx context.Context, transcript TranscriptConte
 		modelMeta.DisplayName = p.modelName
 	}
 	// Bedrock has no mid-conversation system messages. Later system messages always fold into the leading prompt, whatever the model compat claims.
-	resolved := prepareProviderToolFlow(CollapseSystemMessages(transcript))
-	messages := resolved.Messages()
+	// upstream: packages/ai/src/api/bedrock-converse-stream.ts:convertMessages runs transformMessages with normalizeToolCallId: images the model cannot take, foreign thinking and foreign tool-call ids are rewritten there.
+	messages := TransformMessages(collapsedMessages(transcript), modelMeta, func(id string, _ *Model, _ AssistantMessage) string {
+		return normalizeBedrockToolID(id)
+	})
 	cacheRetention := resolveBedrockCacheRetention(opts.CacheRetention, opts.Env)
 	system := buildBedrockSystemPrompt(p.model, p.modelName, GetCurrentSystemPrompt(messages[:min(1, len(messages))]), cacheRetention, opts.Env)
-	conversation := WithoutInitialSystemMessage(messages)
+	conversation := withoutInitialSystemMessage(messages)
 	convertedMessages, err := convertBedrockMessages(conversation, p.model, p.modelName, cacheRetention, opts.Env)
 	if err != nil {
 		return nil, fmt.Errorf("amazon-bedrock: convert messages: %w", err)
@@ -131,6 +143,15 @@ func (p *BedrockProvider) Stream(ctx context.Context, transcript TranscriptConte
 
 	inf := &btypes.InferenceConfiguration{}
 	maxTokens := opts.MaxTokens
+	// upstream: packages/ai/src/api/bedrock-converse-stream.ts:streamSimple sends adjustMaxTokensForThinking's maxTokens, clamped to the context, with the matching thinking budget.
+	var adjusted int
+	var thinkingBudget *int
+	if !opts.rawThinking {
+		adjusted, thinkingBudget = adjustBedrockBudgetThinking(modelMeta, p.modelName, transcript, opts)
+	}
+	if adjusted > 0 {
+		maxTokens = adjusted
+	}
 	// upstream: packages/ai/src/api/bedrock-converse-stream.ts:inferenceMaxTokens
 	if maxTokens == 0 && isAnthropicClaudeBedrockModel(modelMeta.ID, modelMeta.DisplayName) {
 		maxTokens = modelMeta.Capabilities.MaxOutputTokens
@@ -152,8 +173,12 @@ func (p *BedrockProvider) Stream(ctx context.Context, transcript TranscriptConte
 		ToolConfig:      tools,
 		RequestMetadata: opts.RequestMetadata,
 	}
-	if extra := buildBedrockAdditionalFields(modelMeta, p.modelName, opts); extra != nil {
-		input.AdditionalModelRequestFields = bdoc.NewLazyDocument(extra)
+	if extra := buildBedrockAdditionalFieldsWithBudget(modelMeta, p.modelName, opts, thinkingBudget); extra != nil {
+		encoded, err := marshalSchemaWithOrder(extra, bedrockAdditionalFieldsOrder, "")
+		if err != nil {
+			return nil, fmt.Errorf("amazon-bedrock: additional model request fields: %w", err)
+		}
+		input.AdditionalModelRequestFields = newBedrockDocument(extra, encoded)
 	}
 	if opts.OnPayload != nil {
 		next, err := opts.OnPayload(input, modelMeta)
@@ -171,6 +196,7 @@ func (p *BedrockProvider) Stream(ctx context.Context, transcript TranscriptConte
 		}
 	}
 
+	checkBedrockRequest(ctx, input)
 	converse := p.converseStream
 	if converse == nil {
 		converse = client.ConverseStream
@@ -210,10 +236,10 @@ func (p *BedrockProvider) streamResponse(ctx, requestContext context.Context, co
 				}), smithymiddleware.Before)
 			})
 		}
-		options.APIOptions = append(options.APIOptions, withBedrockHeaders(opts.Headers))
+		options.APIOptions = append(options.APIOptions, withBedrockHeaders(opts.Headers), withBedrockConverseBody(opts.RequestMetadataOrder))
 	})
 	if err != nil {
-		failBedrockResponse(ctx, builder, err, "", false)
+		failBedrockResponse(ctx, builder, tap.piError(bedrockSendError(ctx, err, p.baseURL, opts.Env)), "", false)
 		return
 	}
 	stream := resp.GetStream()
@@ -241,18 +267,45 @@ func maxTokensPtr(v int) *int {
 
 // ─── Region / endpoint / auth resolution ─────────────────────────────────
 
+// bedrockClientOptions sets the runtime client's HTTP client (the only one that carries the Bedrock proxy), the JavaScript SDK's retry backoff in the client's resolved retry mode, and the bearer signer when the config has a bearer token.
+func bedrockClientOptions(cfg aws.Config, httpClient bedrockruntime.HTTPClient) func(*bedrockruntime.Options) {
+	return func(options *bedrockruntime.Options) {
+		if httpClient != nil {
+			options.HTTPClient = httpClient
+		}
+		options.Retryer = newBedrockRetryer(options.RetryMode)
+		if cfg.BearerAuthTokenProvider != nil {
+			options.BearerAuthSigner = bedrockBearerSigner{}
+		}
+	}
+}
+
 // loadBedrockConfig preserves explicit/scoped profile ownership, ambient key precedence, and ARN region precedence. A configured region or ambient profile unpins standard AWS endpoints; caller-supplied custom endpoints remain fixed.
-func loadBedrockConfig(ctx context.Context, baseURL, modelID string, options StreamOptions) (aws.Config, error) {
+//
+// The proxy follows bedrock-converse-stream.ts: resolveHttpProxyUrlForTarget(model.baseUrl) is resolved once, and only the runtime client's
+// requestHandler carries it. The credential clients keep the SDK's own handlers, which use no proxy: IMDS and the container provider call node:http
+// directly, and the SSO client takes only the logger from its parent. The STS client inherits the parent's requestHandler only when that handler
+// is not HTTP/2, which is when the proxy was found, so STS uses the runtime client's proxy and nothing else.
+func loadBedrockConfig(ctx context.Context, baseURL, modelID string, options StreamOptions) (aws.Config, *awshttp.BuildableClient, error) {
 	env := options.Env
-	httpClient := awshttp.NewBuildableClient().WithTransportOptions(func(transport *http.Transport) {
-		transport.Proxy = func(request *http.Request) (*url.URL, error) {
-			return ResolveHTTPProxyURLForTarget(request.URL.String(), env)
-		}
-		if transport.DialContext != nil {
-			transport.DialContext = bedrockObservedDial(transport.DialContext)
-		}
-	})
-	opts := []func(*awsconfig.LoadOptions) error{awsconfig.WithHTTPClient(httpClient)}
+	proxyURL, proxyErr := ResolveHTTPProxyURLForTarget(baseURL, env)
+	runtimeHTTPClient := newBedrockHTTPClient(func(*http.Request) (*url.URL, error) { return proxyURL, proxyErr })
+	credentialHTTPClient := newBedrockHTTPClient(nil)
+	opts := []func(*awsconfig.LoadOptions) error{awsconfig.WithHTTPClient(credentialHTTPClient)}
+	if proxyURL != nil || proxyErr != nil {
+		opts = append(opts,
+			awsconfig.WithAssumeRoleCredentialOptions(func(o *stscreds.AssumeRoleOptions) {
+				if client, ok := o.Client.(*sts.Client); ok {
+					o.Client = bedrockProxiedSTS{client: client, httpClient: runtimeHTTPClient}
+				}
+			}),
+			awsconfig.WithWebIdentityRoleCredentialOptions(func(o *stscreds.WebIdentityRoleOptions) {
+				if client, ok := o.Client.(*sts.Client); ok {
+					o.Client = bedrockProxiedSTS{client: client, httpClient: runtimeHTTPClient}
+				}
+			}),
+		)
+	}
 
 	configuredRegion := firstNonEmptyString(options.Region, getProviderEnvValue("AWS_REGION", env), getProviderEnvValue("AWS_DEFAULT_REGION", env))
 	ambientProfile := getProviderEnvValue("AWS_PROFILE", nil)
@@ -264,9 +317,6 @@ func loadBedrockConfig(ctx context.Context, baseURL, modelID string, options Str
 	region := resolveBedrockRegionWithEnv(baseURL, modelID, regionEnv)
 	if region != "" {
 		opts = append(opts, awsconfig.WithRegion(region))
-	}
-	if trimmed := strings.TrimSpace(baseURL); useEndpoint && trimmed != "" {
-		opts = append(opts, awsconfig.WithBaseEndpoint(strings.TrimRight(trimmed, "/")))
 	}
 	optionsProfile := firstNonEmptyString(options.Profile, env["AWS_PROFILE"])
 	if profile := firstNonEmptyString(optionsProfile, ambientProfile); profile != "" {
@@ -286,13 +336,44 @@ func loadBedrockConfig(ctx context.Context, baseURL, modelID string, options Str
 
 	cfg, err := awsconfig.LoadDefaultConfig(ctx, opts...)
 	if err != nil {
-		return aws.Config{}, fmt.Errorf("load AWS config: %w", err)
+		return aws.Config{}, nil, fmt.Errorf("load AWS config: %w", err)
 	}
-	if token := firstNonEmptyString(options.APIKey, getProviderEnvValue("AWS_BEARER_TOKEN_BEDROCK", env)); token != "" && !skipAuth {
+	// config.endpoint belongs to the BedrockRuntimeClient alone. It is set after loading, because the credential providers' STS, SSO and IMDS
+	// clients are built from the configuration while it loads.
+	if trimmed := strings.TrimSpace(baseURL); useEndpoint && trimmed != "" {
+		cfg.BaseEndpoint = aws.String(strings.TrimRight(trimmed, "/"))
+	}
+	if token := firstNonEmptyString(options.BearerToken, options.APIKey, getProviderEnvValue("AWS_BEARER_TOKEN_BEDROCK", env)); token != "" && !skipAuth {
 		cfg.BearerAuthTokenProvider = staticBearerTokenProvider(token)
 		cfg.AuthSchemePreference = []string{"httpBearerAuth"}
 	}
-	return cfg, nil
+	return cfg, runtimeHTTPClient, nil
+}
+
+// newBedrockHTTPClient builds the SDK's client with the given proxy function; a nil function means no proxy, as Node's handlers without an agent.
+func newBedrockHTTPClient(proxy func(*http.Request) (*url.URL, error)) *awshttp.BuildableClient {
+	return awshttp.NewBuildableClient().WithTransportOptions(func(transport *http.Transport) {
+		transport.Proxy = proxy
+		if transport.DialContext != nil {
+			transport.DialContext = bedrockObservedDial(transport.DialContext)
+		}
+	})
+}
+
+// bedrockProxiedSTS sends the STS calls of an assumed-role or web-identity credential through the runtime client's proxy.
+type bedrockProxiedSTS struct {
+	client     *sts.Client
+	httpClient sts.HTTPClient
+}
+
+func (c bedrockProxiedSTS) useHTTPClient(options *sts.Options) { options.HTTPClient = c.httpClient }
+
+func (c bedrockProxiedSTS) AssumeRole(ctx context.Context, input *sts.AssumeRoleInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleOutput, error) {
+	return c.client.AssumeRole(ctx, input, append(optFns, c.useHTTPClient)...)
+}
+
+func (c bedrockProxiedSTS) AssumeRoleWithWebIdentity(ctx context.Context, input *sts.AssumeRoleWithWebIdentityInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleWithWebIdentityOutput, error) {
+	return c.client.AssumeRoleWithWebIdentity(ctx, input, append(optFns, c.useHTTPClient)...)
 }
 
 // bedrockARNRegionRE extracts the region embedded in an inference-profile ARN
@@ -326,15 +407,16 @@ func resolveBedrockRegionWithEnv(baseURL, modelID string, env ProviderEnv) strin
 
 var bedrockEndpointHostRE = lazyregexp.New(`^bedrock-runtime(-fips)?\.([a-z0-9-]+)\.amazonaws\.com(\.cn)?$`)
 
+// bedrockEndpointRegion is getStandardBedrockEndpointRegion: the region of a standard Bedrock runtime host in the WHATWG hostname of baseURL, or "".
 func bedrockEndpointRegion(baseURL string) string {
 	if baseURL == "" {
 		return ""
 	}
-	u, err := url.Parse(baseURL)
+	u, err := nodeurl.ParseURL(baseURL)
 	if err != nil {
 		return ""
 	}
-	m := bedrockEndpointHostRE.FindStringSubmatch(strings.ToLower(u.Hostname()))
+	m := bedrockEndpointHostRE.FindStringSubmatch(strings.ToLower(u.Hostname))
 	if len(m) < 3 {
 		return ""
 	}
@@ -371,7 +453,7 @@ type bedrockHeadersMiddleware struct {
 func (middleware bedrockHeadersMiddleware) ID() string { return "pi-ai-custom-headers" }
 
 func isReservedBedrockHeader(name string) bool {
-	name = strings.ToLower(name)
+	name = jsstring.ToLower(name)
 	return name == "authorization" || name == "host" || strings.HasPrefix(name, "x-amz-")
 }
 
@@ -430,33 +512,42 @@ func resolveBedrockCacheRetention(cacheRetention CacheRetention, env ProviderEnv
 	return bedrockCacheShort
 }
 
+// bedrockModelMatchCandidates is getModelMatchCandidates: the lowercased model id and, when it is not empty, name, each followed by itself with every run of whitespace, "_", "." and ":" rewritten to one "-".
 func bedrockModelMatchCandidates(modelID, modelName string) []string {
 	values := []string{modelID}
-	if strings.TrimSpace(modelName) != "" {
+	if modelName != "" {
 		values = append(values, modelName)
 	}
 	out := make([]string, 0, len(values)*2)
 	for _, value := range values {
-		lower := strings.ToLower(strings.TrimSpace(value))
-		if lower == "" {
-			continue
-		}
-		out = append(out, lower)
-		normalized := strings.NewReplacer(" ", "-", "_", "-", ".", "-", ":", "-").Replace(lower)
-		if normalized != lower {
-			out = append(out, normalized)
-		}
+		lower := jsstring.ToLower(value)
+		out = append(out, lower, bedrockSeparatorRuns(lower))
 	}
 	return out
 }
 
-func isAnthropicClaudeBedrockModel(modelID, modelName string) bool {
-	for _, candidate := range bedrockModelMatchCandidates(modelID, modelName) {
-		if strings.Contains(candidate, "anthropic.claude") || strings.Contains(candidate, "anthropic/claude") || strings.Contains(candidate, "claude") {
-			return true
+// bedrockSeparatorRuns is `text.replace(/[\s_.:]+/g, "-")`.
+func bedrockSeparatorRuns(text string) string {
+	var out strings.Builder
+	inRun := false
+	for _, r := range text {
+		if r == '_' || r == '.' || r == ':' || jsstring.IsSpace(r) {
+			if !inRun {
+				out.WriteByte('-')
+			}
+			inRun = true
+			continue
 		}
+		inRun = false
+		out.WriteRune(r)
 	}
-	return false
+	return out.String()
+}
+
+// isAnthropicClaudeBedrockModel is isAnthropicClaudeModel: the lowercased id carries an anthropic.claude or anthropic/claude prefix, or the lowercased name carries one or the word claude.
+func isAnthropicClaudeBedrockModel(modelID, modelName string) bool {
+	id, name := jsstring.ToLower(modelID), jsstring.ToLower(modelName)
+	return strings.Contains(id, "anthropic.claude") || strings.Contains(id, "anthropic/claude") || strings.Contains(name, "anthropic.claude") || strings.Contains(name, "anthropic/claude") || strings.Contains(name, "claude")
 }
 
 // supportsBedrockPromptCaching checks the model and request-scoped force opt-in before falling back to the process environment.
@@ -476,7 +567,7 @@ func supportsBedrockPromptCaching(modelID, modelName string, env ProviderEnv) bo
 		return getProviderEnvValue("AWS_BEDROCK_FORCE_CACHE", env) == "1"
 	}
 	for _, candidate := range candidates {
-		if strings.Contains(candidate, "fable-5") || strings.Contains(candidate, "opus-5") || strings.Contains(candidate, "sonnet-5") {
+		if strings.Contains(candidate, "fable-5") || strings.Contains(candidate, "opus-5") || strings.Contains(candidate, "sonnet-5") || strings.Contains(candidate, "haiku-5") {
 			return true
 		}
 	}
@@ -494,7 +585,7 @@ func supportsBedrockThinkingSignatureWithName(modelID, modelName string) bool {
 
 func supportsBedrockAdaptiveThinkingWithName(modelID, modelName string) bool {
 	for _, candidate := range bedrockModelMatchCandidates(modelID, modelName) {
-		if strings.Contains(candidate, "opus-4-6") || strings.Contains(candidate, "opus-4-7") || strings.Contains(candidate, "opus-4-8") || strings.Contains(candidate, "opus-5") || strings.Contains(candidate, "sonnet-4-6") || strings.Contains(candidate, "sonnet-5") || strings.Contains(candidate, "fable-5") {
+		if strings.Contains(candidate, "opus-4-6") || strings.Contains(candidate, "opus-4-7") || strings.Contains(candidate, "opus-4-8") || strings.Contains(candidate, "opus-5") || strings.Contains(candidate, "sonnet-4-6") || strings.Contains(candidate, "sonnet-5") || strings.Contains(candidate, "haiku-5") || strings.Contains(candidate, "fable-5") {
 			return true
 		}
 	}
@@ -533,6 +624,14 @@ func bedrockCacheTTL(retention bedrockCacheRetention) btypes.CacheTTL {
 // coalescing into a single user message that Bedrock requires. User, assistant and tool-result text uses ECMAScript emptiness checks without trimming nonblank payloads. System messages are skipped: the caller has already folded them into the leading prompt.
 func convertBedrockMessages(msgs []Message, modelID, modelName string, cacheRetention bedrockCacheRetention, env ProviderEnv) ([]btypes.Message, error) {
 	out := make([]btypes.Message, 0, len(msgs))
+	// pig divergence (D116): Pi pushes every user message and run of tool results as its own message, so two user messages can sit side by side (a prompt after tool results, a dropped assistant turn); Converse requires alternating roles, so adjacent messages of one role share a message.
+	push := func(role btypes.ConversationRole, blocks []btypes.ContentBlock) {
+		if last := len(out) - 1; last >= 0 && out[last].Role == role {
+			out[last].Content = append(out[last].Content, blocks...)
+			return
+		}
+		out = append(out, btypes.Message{Role: role, Content: blocks})
+	}
 
 	for i := 0; i < len(msgs); i++ {
 		switch message := msgs[i].(type) {
@@ -544,7 +643,7 @@ func convertBedrockMessages(msgs []Message, modelID, modelName string, cacheRete
 			if len(blocks) == 0 {
 				continue
 			}
-			out = append(out, btypes.Message{Role: btypes.ConversationRoleUser, Content: blocks})
+			push(btypes.ConversationRoleUser, blocks)
 
 		case AssistantMessage:
 			blocks, err := bedrockAssistantContent(message.Content, modelID, modelName)
@@ -555,7 +654,7 @@ func convertBedrockMessages(msgs []Message, modelID, modelName string, cacheRete
 				// Mirrors upstream: skip empty assistant messages.
 				continue
 			}
-			out = append(out, btypes.Message{Role: btypes.ConversationRoleAssistant, Content: blocks})
+			push(btypes.ConversationRoleAssistant, blocks)
 
 		case ToolResultMessage:
 			// Collect this tool-result + all immediately following
@@ -566,7 +665,7 @@ func convertBedrockMessages(msgs []Message, modelID, modelName string, cacheRete
 				return nil, err
 			}
 			if len(combined) > 0 {
-				out = append(out, btypes.Message{Role: btypes.ConversationRoleUser, Content: combined})
+				push(btypes.ConversationRoleUser, combined)
 			}
 			i += consumed - 1
 
@@ -640,17 +739,22 @@ func bedrockAssistantContent(blocks []AssistantContentBlock, modelID, modelName 
 			}
 			out = append(out, &btypes.ContentBlockMemberText{Value: text})
 		case ToolCall:
-			arguments, err := sanitizeBedrockDocument(block.Arguments)
+			// Pi: input = sanitizeBedrockDocument(c.arguments), a non-object value included (bedrock-converse-stream.ts:1035).
+			arguments, err := sanitizeBedrockDocument(block.argumentsValue())
 			if err != nil {
 				return nil, err
 			}
-			if arguments == nil {
+			if arguments == nil && block.nonObjectArguments == nil {
 				arguments = map[string]any{}
 			}
+			encoded, err := marshalInRecordedOrder(arguments, block.argumentOrder)
+			if err != nil {
+				return nil, err
+			}
 			out = append(out, &btypes.ContentBlockMemberToolUse{Value: btypes.ToolUseBlock{
-				ToolUseId: aws.String(normalizeBedrockToolID(block.ID)),
+				ToolUseId: aws.String(block.ID),
 				Name:      aws.String(block.Name),
-				Input:     bdoc.NewLazyDocument(arguments),
+				Input:     newBedrockDocument(arguments, encoded),
 			}})
 		case ThinkingContent:
 			// upstream: packages/ai/src/api/bedrock-converse-stream.ts:convertMessages
@@ -783,7 +887,7 @@ func bedrockToolResultBlock(message ToolResultMessage) (btypes.ContentBlock, err
 		status = btypes.ToolResultStatusError
 	}
 	return &btypes.ContentBlockMemberToolResult{Value: btypes.ToolResultBlock{
-		ToolUseId: aws.String(normalizeBedrockToolID(message.ToolCallID)),
+		ToolUseId: aws.String(message.ToolCallID),
 		Content:   parts,
 		Status:    status,
 	}}, nil
@@ -848,7 +952,7 @@ func convertBedrockTools(tools []ToolSchema, toolChoice any, supportsStrictMode 
 		}
 		toolChoice = value
 	}
-	choice, _ := toolChoice.(string)
+	choice, _ := toolChoiceName(toolChoice)
 	if choice == "none" {
 		return nil, nil
 	}
@@ -858,17 +962,22 @@ func convertBedrockTools(tools []ToolSchema, toolChoice any, supportsStrictMode 
 		if err != nil {
 			return nil, err
 		}
-		parameters, err := getJSONSchemaToolParameters(tool, strict)
+		toolParameters, err := getJSONSchemaToolParameters(tool, strict)
 		if err != nil {
 			return nil, err
 		}
+		parameters := toolParameters.Schema
 		if parameters == nil {
 			parameters = map[string]any{}
+		}
+		schema, err := marshalToolParameters(parameters, toolParameters.order)
+		if err != nil {
+			return nil, err
 		}
 		toolSpec := btypes.ToolSpecification{
 			Name:        aws.String(tool.Name),
 			Description: aws.String(tool.Description),
-			InputSchema: &btypes.ToolInputSchemaMemberJson{Value: bdoc.NewLazyDocument(parameters)},
+			InputSchema: &btypes.ToolInputSchemaMemberJson{Value: newBedrockDocument(parameters, schema)},
 		}
 		if strict != nil && *strict {
 			toolSpec.Strict = new(true)
@@ -906,30 +1015,59 @@ func isGovCloudBedrockTarget(model *Model, opts StreamOptions) bool {
 	if region == "" {
 		region = getProviderEnvValue("AWS_DEFAULT_REGION", opts.Env)
 	}
-	id := strings.ToLower(model.ID)
-	return strings.HasPrefix(strings.ToLower(region), "us-gov-") || strings.HasPrefix(id, "us-gov.") || strings.HasPrefix(id, "arn:aws-us-gov:")
+	id := jsstring.ToLower(model.ID)
+	return strings.HasPrefix(jsstring.ToLower(region), "us-gov-") || strings.HasPrefix(id, "us-gov.") || strings.HasPrefix(id, "arn:aws-us-gov:")
 }
 
 // buildBedrockAdditionalFields omits thinking.display for GovCloud targets in both adaptive and budget-based requests.
 func buildBedrockAdditionalFields(model *Model, modelName string, opts StreamOptions) map[string]any {
-	if opts.Thinking == "" || opts.Thinking == ThinkingOff || !opts.IsReasoning {
+	return buildBedrockAdditionalFieldsWithBudget(model, modelName, opts, nil)
+}
+
+// bedrockBudgetThinking reports whether the request uses budget-based Claude thinking.
+func bedrockBudgetThinking(model *Model, modelName string, opts StreamOptions) bool {
+	return opts.Thinking != "" && model != nil && isAnthropicClaudeBedrockModel(model.ID, modelName) && !supportsBedrockAdaptiveThinkingWithName(model.ID, modelName)
+}
+
+// adjustBedrockBudgetThinking is the budget-based branch of upstream streamSimple (bedrock-converse-stream.ts:552-575): the request's maxTokens becomes adjustMaxTokensForThinking's, clamped to the context, and the thinking budget is capped to leave 1024 tokens of answer room. It returns 0 and nil when the request does not use budget-based thinking or the model has no output cap.
+func adjustBedrockBudgetThinking(model *Model, modelName string, transcript TranscriptContext, opts StreamOptions) (maxTokens int, budget *int) {
+	if !bedrockBudgetThinking(model, modelName, opts) || model.Capabilities.MaxOutputTokens <= 0 {
+		return 0, nil
+	}
+	adjustedMax, adjustedBudget := AdjustMaxTokensForThinking(maxTokensPtr(opts.MaxTokens), model.Capabilities.MaxOutputTokens, string(ModelThinkingLevel(opts.Thinking)), opts.ThinkingBudgets)
+	maxTokens = ClampMaxTokensToContext(model, transcript, adjustedMax)
+	return maxTokens, new(min(adjustedBudget, max(0, maxTokens-MinAnswerTokens)))
+}
+
+// bedrockAdditionalFieldsOrder is the member order buildAdditionalModelRequestFields creates (bedrock-converse-stream.ts:1279-1327); a
+// request has a subset of these members.
+var bedrockAdditionalFieldsOrder = schemaObjectOrder{
+	"":          {"thinking", "output_config", "anthropic_beta", "reasoning_effort", "reasoning"},
+	"/thinking": {"type", "budget_tokens", "display", "block_binding"},
+}
+
+func buildBedrockAdditionalFieldsWithBudget(model *Model, modelName string, opts StreamOptions, budgetOverride *int) map[string]any {
+	if opts.Thinking == "" || !opts.IsReasoning {
 		return nil
 	}
-	if model == nil || !isAnthropicClaudeBedrockModel(model.ID, modelName) {
+	if model == nil {
 		return nil
+	}
+	if !isAnthropicClaudeBedrockModel(model.ID, modelName) {
+		return bedrockOpenAIReasoningFields(model, modelName, ModelThinkingLevel(opts.Thinking))
 	}
 
 	thinking := map[string]any{}
 	isGovCloud := isGovCloudBedrockTarget(model, opts)
 	if !isGovCloud {
-		thinking["display"] = "summarized"
+		thinking["display"] = string(cmp.Or(opts.ThinkingDisplay, AnthropicThinkingDisplaySummarized))
 	}
 
 	if supportsBedrockAdaptiveThinkingWithName(model.ID, modelName) {
 		thinking["type"] = "adaptive"
 		result := map[string]any{
 			"thinking":      thinking,
-			"output_config": map[string]any{"effort": mapBedrockThinkingEffort(model, opts.Thinking)},
+			"output_config": map[string]any{"effort": mapBedrockThinkingEffort(model, ModelThinkingLevel(opts.Thinking))},
 		}
 		// Replayed signed thinking blocks are bound to the system prompt and tools they were
 		// created with. Bedrock 400s on replay after either changes unless stale blocks are
@@ -941,23 +1079,16 @@ func buildBedrockAdditionalFields(model *Model, modelName string, opts StreamOpt
 		return result
 	}
 
-	budget := 0
-	if model.Capabilities.MaxOutputTokens > 0 {
-		adjustedMax, adjustedBudget := AdjustMaxTokensForThinking(maxTokensPtr(opts.MaxTokens), model.Capabilities.MaxOutputTokens, string(opts.Thinking), nil)
-		_ = adjustedMax // Mirrors upstream: the helper owns the budget calculation; Bedrock sends only the thinking budget here.
-		budget = adjustedBudget
-	} else {
-		defaults := map[ThinkingLevel]int{
-			ThinkingMinimal: 1024,
-			ThinkingLow:     2048,
-			ThinkingMedium:  8192,
-			ThinkingHigh:    16384,
-			ThinkingXHigh:   16384,
-			ThinkingMax:     16384,
-		}
-		budget = defaults[opts.Thinking]
-		if budget <= 0 {
-			budget = defaults[ThinkingHigh]
+	// upstream: bedrock-converse-stream.ts:buildAdditionalModelRequestFields: thinkingBudgets[level] ?? defaultBudgets[reasoning], with xhigh and max reading the high budget.
+	var budget int
+	switch {
+	case budgetOverride != nil:
+		budget = *budgetOverride
+	default:
+		level := ClampReasoning(ModelThinkingLevel(opts.Thinking))
+		budget = DefaultThinkingBudgets().High
+		if level == ThinkingMinimal || level == ThinkingLow || level == ThinkingMedium || level == ThinkingHigh {
+			budget = ThinkingBudgetForLevel(string(level), opts.ThinkingBudgets)
 		}
 	}
 	thinking["type"], thinking["budget_tokens"] = "enabled", budget
@@ -969,13 +1100,31 @@ func buildBedrockAdditionalFields(model *Model, modelName string, opts StreamOpt
 	return result
 }
 
+// bedrockOpenAIReasoningFields is the reasoning request field of an OpenAI model on Bedrock: gpt-oss takes a flat reasoning_effort that only accepts low, medium and high; other GPT models (GPT-5.x, GPT-6) take a nested reasoning.effort and reject minimal. Other models get none (#9331).
+// upstream: packages/ai/src/api/bedrock-converse-stream.ts:buildAdditionalModelRequestFields, OPENAI_GPT_EFFORT, OPENAI_GPT_OSS_EFFORT
+func bedrockOpenAIReasoningFields(model *Model, modelName string, level ModelThinkingLevel) map[string]any {
+	candidates := bedrockModelMatchCandidates(model.ID, modelName)
+	if slices.ContainsFunc(candidates, func(s string) bool { return strings.Contains(s, "gpt-oss") }) {
+		effort := map[ModelThinkingLevel]string{ThinkingMinimal: "low", ThinkingLow: "low", ThinkingMedium: "medium", ThinkingHigh: "high", ThinkingXHigh: "high", ThinkingMax: "high"}[level]
+		return map[string]any{"reasoning_effort": effort}
+	}
+	if slices.ContainsFunc(candidates, func(s string) bool { return strings.Contains(s, "gpt-") }) {
+		effort := map[ModelThinkingLevel]string{ThinkingMinimal: "low", ThinkingLow: "low", ThinkingMedium: "medium", ThinkingHigh: "high", ThinkingXHigh: "xhigh", ThinkingMax: "max"}[level]
+		if mapped := model.ThinkingLevelMap[level]; mapped != nil {
+			effort = *mapped
+		}
+		return map[string]any{"reasoning": map[string]any{"effort": effort}}
+	}
+	return nil
+}
+
 // supportsBedrockThinkingBlockBinding reports whether the model accepts
 // thinking.block_binding. Opus 4.6 and Sonnet 4.6 reject it with
 // "thinking.adaptive.block_binding: Extra inputs are not permitted".
 // upstream: packages/ai/src/api/bedrock-converse-stream.ts:supportsThinkingBlockBinding
 func supportsBedrockThinkingBlockBinding(modelID, modelName string) bool {
 	for _, s := range bedrockModelMatchCandidates(modelID, modelName) {
-		if strings.Contains(s, "opus-4-7") || strings.Contains(s, "opus-4-8") || strings.Contains(s, "opus-5") || strings.Contains(s, "sonnet-5") || strings.Contains(s, "fable-5") {
+		if strings.Contains(s, "opus-4-7") || strings.Contains(s, "opus-4-8") || strings.Contains(s, "opus-5") || strings.Contains(s, "sonnet-5") || strings.Contains(s, "haiku-5") || strings.Contains(s, "fable-5") {
 			return true
 		}
 	}
@@ -989,14 +1138,14 @@ func supportsNativeXhighEffort(model *Model) bool {
 		return false
 	}
 	for _, s := range bedrockModelMatchCandidates(model.ID, model.DisplayName) {
-		if strings.Contains(s, "opus-4-7") || strings.Contains(s, "opus-4-8") || strings.Contains(s, "opus-5") || strings.Contains(s, "sonnet-5") || strings.Contains(s, "fable-5") {
+		if strings.Contains(s, "opus-4-7") || strings.Contains(s, "opus-4-8") || strings.Contains(s, "opus-5") || strings.Contains(s, "sonnet-5") || strings.Contains(s, "haiku-5") || strings.Contains(s, "fable-5") {
 			return true
 		}
 	}
 	return false
 }
 
-func mapBedrockThinkingEffort(model *Model, level ThinkingLevel) string {
+func mapBedrockThinkingEffort(model *Model, level ModelThinkingLevel) string {
 	// upstream: packages/ai/src/api/bedrock-converse-stream.ts:mapThinkingLevelToEffort
 	if level == ThinkingXHigh && supportsNativeXhighEffort(model) {
 		return "xhigh"
@@ -1127,6 +1276,8 @@ func handleBedrockUsage(u *btypes.TokenUsage, builder *assistantStreamBuilder, u
 	usage.CacheRead = int(aws.ToInt32(u.CacheReadInputTokens))
 	usage.CacheWrite = int(aws.ToInt32(u.CacheWriteInputTokens))
 	usage.CacheWrite1h = nil
+	// bedrock-converse-stream.ts:715 assigns cacheWrite1h after cost, undefined when there are no cache details.
+	usage.splitsAfterCost = true
 	if u.CacheDetails != nil {
 		longWrite := 0
 		for _, detail := range u.CacheDetails {
@@ -1195,7 +1346,7 @@ func (p *BedrockProvider) handleBedrockDeltaFields(ev btypes.ContentBlockDeltaEv
 		if reasoning.signature != nil && *reasoning.signature != "" {
 			thinking := builder.partial.Content[block.contentIndex].(ThinkingContent)
 			if !thinking.Redacted {
-				thinking.ThinkingSignature += *reasoning.signature
+				thinking.ThinkingSignature = builder.appendSignature(block.contentIndex, thinking.ThinkingSignature, *reasoning.signature)
 				thinking.thinkingSignatureEmpty = thinking.ThinkingSignature == ""
 				builder.partial.Content[block.contentIndex] = thinking
 			}
@@ -1258,9 +1409,10 @@ func normalizeBedrockDiagnosticValue(value string) string {
 }
 
 func appendBedrockFailureDiagnostic(message *AssistantMessage, err error, fallbackRequestID string) {
-	details := map[string]any{}
-	if response, ok := errors.AsType[*smithyhttp.ResponseError](err); ok && response.Response != nil && response.Response.Response != nil {
-		details["status"] = response.HTTPStatusCode()
+	details := newDiagnosticDetails()
+	// The SDK wraps a transport failure in a ResponseError whose response was never received (status 0); Pi's SDK error then has no $metadata.httpStatusCode.
+	if response, ok := errors.AsType[*smithyhttp.ResponseError](err); ok && response.Response != nil && response.Response.Response != nil && response.HTTPStatusCode() != 0 {
+		details.set("status", response.HTTPStatusCode(), nil)
 	}
 	code := ""
 	if apiError, ok := errors.AsType[smithy.APIError](err); ok {
@@ -1268,7 +1420,7 @@ func appendBedrockFailureDiagnostic(message *AssistantMessage, err error, fallba
 	}
 	if strings.HasSuffix(code, "Exception") {
 		if code = normalizeBedrockDiagnosticValue(code); code != "" {
-			details["errorCode"] = code
+			details.set("errorCode", code, nil)
 		}
 	}
 	requestID := ""
@@ -1279,12 +1431,12 @@ func appendBedrockFailureDiagnostic(message *AssistantMessage, err error, fallba
 		requestID = normalizeBedrockDiagnosticValue(fallbackRequestID)
 	}
 	if requestID != "" {
-		details["requestId"] = requestID
+		details.set("requestId", requestID, nil)
 	}
-	if len(details) == 0 {
+	if len(details.values) == 0 {
 		return
 	}
-	message.Diagnostics = append(message.Diagnostics, AssistantMessageDiagnostic{Type: "bedrock_response_failure", Timestamp: time.Now().UnixMilli(), Details: details})
+	AppendAssistantMessageDiagnostic(message, details.attach(AssistantMessageDiagnostic{Type: "bedrock_response_failure", Timestamp: time.Now().UnixMilli()}))
 }
 
 func failBedrockResponse(ctx context.Context, builder *assistantStreamBuilder, err error, requestID string, streaming bool) {
@@ -1322,6 +1474,9 @@ func formatBedrockError(err error) string {
 	if err == nil {
 		return ""
 	}
+	if responseErr, ok := errors.AsType[*bedrockResponseError](err); ok {
+		return responseErr.text
+	}
 	norm := NormalizeProviderError(err)
 	core := FormatProviderError(norm)
 	if apiErr, ok := errors.AsType[smithy.APIError](err); ok {
@@ -1341,10 +1496,62 @@ func formatBedrockError(err error) string {
 // Bedrock error indicates the model rejected the configured data retention
 // mode. Mirrors upstream formatBedrockError's dataRetentionHint (#5561).
 func bedrockDataRetentionHint(message string) string {
-	if strings.Contains(strings.ToLower(message), "data retention mode") {
+	if strings.Contains(jsstring.ToLower(message), "data retention mode") {
 		return " See https://docs.aws.amazon.com/bedrock/latest/userguide/data-retention.html for supported data retention modes."
 	}
 	return ""
+}
+
+// mapBedrockTransportError applies the same categories at the AWS SDK boundary. Modeled HTTP/service errors remain untouched so status and Bedrock exception classification continue to control overflow and retry behavior.
+func mapBedrockTransportError(ctx context.Context, err error, message string) error {
+	if err == nil {
+		return nil
+	}
+	if contextErr := contextTransportError(ctx); contextErr != nil {
+		return contextErr
+	}
+	if _, mapped := errors.AsType[*nodeTransportError](err); mapped || !isGoTransportError(err) {
+		return err
+	}
+	return &nodeTransportError{message: message, cause: err}
+}
+
+// bedrockSendError is the error Pi's AWS SDK client rejects with when the request could not be sent. Its Node handlers report a
+// failed connect or lookup with Node's own error, not a fetch rejection. Through NodeHttpHandler (an HTTP proxy for the endpoint,
+// or AWS_BEDROCK_FORCE_HTTP1=1; bedrock-converse-stream.ts:220-232) that is the net error itself, "connect ECONNREFUSED …", which
+// retry.ts does not retry. The default NodeHttp2Handler cancels the pending stream with it as the cause, which retry.ts retries.
+func bedrockSendError(ctx context.Context, err error, baseURL string, env ProviderEnv) error {
+	if ctx.Err() != nil || !isGoTransportError(err) {
+		return err
+	}
+	reason, ok := nodeNetErrorMessage(err)
+	if !ok {
+		return err
+	}
+	// Pi resolves the proxy for model.baseUrl itself; a model without one has no proxy target and keeps NodeHttp2Handler.
+	if proxy, _ := ResolveHTTPProxyURLForTarget(baseURL, env); proxy != nil || getProviderEnvValue("AWS_BEDROCK_FORCE_HTTP1", env) == "1" {
+		return &nodeTransportError{message: reason, cause: err}
+	}
+	return &nodeTransportError{message: "The pending stream has been canceled (caused by: " + reason + ")", cause: err}
+}
+
+// awsResponseErrorStatus reports the HTTP status of an AWS SDK response error in err's chain.
+func awsResponseErrorStatus(err error) (int, bool) {
+	response, ok := errors.AsType[*smithyhttp.ResponseError](err)
+	if !ok || response.HTTPStatusCode() == 0 {
+		// A transport failure carries a ResponseError without a received response; Pi's SDK error has no status then.
+		return 0, false
+	}
+	return response.HTTPStatusCode(), true
+}
+
+// NewBedrockAPIProvider builds the bedrock-converse-stream provider for model, the provider every model-to-provider factory uses.
+func NewBedrockAPIProvider(model Model) (Provider, error) {
+	// pig additive (D92): a Piglet's strip.apis disables Bedrock at runtime the way a pig_strip_bedrock_converse_stream build compiles it out.
+	if pigstrip.Has(pigstrip.ListAPIs, string(APIBedrockConverseStream)) {
+		return nil, strippedBedrockError(&model)
+	}
+	return NewBedrockProviderWithModel(model), nil
 }
 
 func init() {

@@ -111,7 +111,8 @@ func TestUpstreamTerminalNegotiation(t *testing.T) {
 	}{
 		// .upstream/v0.87.1/packages/tui/test/terminal.test.ts:132
 		{"queries Kitty mode before enabling modifyOtherKeys fallback", func(t *testing.T, h *terminalNegotiationHarness) {
-			if h.writes[0] != "\x1b[>7u\x1b[?u\x1b[c" {
+			// upstream: 1.1.0 terminal.test.ts:135 (#10607): the OSC 7501 support query sits between the Kitty query and the DA sentinel.
+			if h.writes[0] != "\x1b[>7u\x1b[?u\x1b]7501;?\x1b\\\x1b[c" {
 				t.Fatalf("first write=%q", h.writes[0])
 			}
 			if slices.Contains(h.writes, "\x1b[>4;2m") || h.terminal.KittyProtocolActive() {
@@ -192,6 +193,7 @@ func TestUpstreamTerminalNegotiation(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("PI_PROGRAM_STATUS", "")
 			synctest.Test(t, func(t *testing.T) { tc.run(t, newTerminalNegotiationHarness(t)) })
 		})
 	}

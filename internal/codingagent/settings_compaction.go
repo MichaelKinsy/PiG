@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -10,7 +9,8 @@ import (
 	"fmt"
 	"maps"
 	"math"
-	"strconv"
+
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 )
 
 // Ports packages/coding-agent/src/core/settings-manager.ts (getCompactionTokenSetting).
@@ -122,17 +122,10 @@ func compactionJSONText(raw json.RawMessage) string {
 	}
 	return jsStringValue(value)
 }
-func compactionNumberText(value float64) string {
-	switch {
-	case math.IsNaN(value):
-		return "NaN"
-	case math.IsInf(value, 1):
-		return "Infinity"
-	case math.IsInf(value, -1):
-		return "-Infinity"
-	}
-	return strconv.FormatFloat(value, 'f', -1, 64)
-}
+
+// compactionNumberText is String(value), as Pi interpolates a configured number into text.
+func compactionNumberText(value float64) string { return jsnumber.String(value) }
+
 func validateCompactionToken(field string, value *float64, invalid json.RawMessage) error {
 	if invalid != nil {
 		return fmt.Errorf("Invalid %s setting: %s. Expected a non-negative safe integer.", field, compactionJSONText(invalid))

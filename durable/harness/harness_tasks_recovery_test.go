@@ -176,7 +176,7 @@ func TestTaskRecovery(t *testing.T) {
 		interrupt.Store(true)
 		transfer := tkTransferTask(service, &interrupt)
 
-		first, _, _ := openTasks(t, tkOpenSqlite(t, path), []durable.AnyTask{transfer})
+		first, _, _ := openTasks(t, tkOpenSqlite(t, path), []durable.AnyTask{transfer.Erased()})
 		root := mustRoot(t, first, nil)
 		id, err := durable.Commit(testContext, root, func(tx durable.Tx) (durable.TaskId, error) {
 			return durable.CreateTask(tx, transfer, transferInput{Amount: 7}, durable.TaskOptions{Ownership: conversationOwned})
@@ -188,12 +188,12 @@ func TestTaskRecovery(t *testing.T) {
 		eventually(t, func() bool { return service.callCount() == 1 })
 		mustClose(t, first)
 
-		second, _, _ := openTasks(t, tkOpenSqlite(t, path), []durable.AnyTask{transfer})
+		second, _, _ := openTasks(t, tkOpenSqlite(t, path), []durable.AnyTask{transfer.Erased()})
 		// Open reconciled running to pending and kept the checkpoint and memos; nothing ran yet.
 		record := tkTaskRecord(t, second, id)
 		tkExpectState(t, record, durable.TaskPending, false)
 		if !reflect.DeepEqual(record.Memos, map[string]durable.JsonValue{"requested": float64(7)}) ||
-			!reflect.DeepEqual(*record.State.Checkpoint, map[string]any{"phase": "apply", "key": fmt.Sprintf("transfer-%d", id)}) {
+			!reflect.DeepEqual(plainObject(*record.State.Checkpoint), map[string]any{"phase": "apply", "key": fmt.Sprintf("transfer-%d", id)}) {
 			t.Fatalf("record %+v keeps neither memos nor the checkpoint", record)
 		}
 		if service.callCount() != 1 {
@@ -210,11 +210,62 @@ func TestTaskRecovery(t *testing.T) {
 		}
 		mustClose(t, second)
 
-		third, _, _ := openTasks(t, tkOpenSqlite(t, path), []durable.AnyTask{transfer})
-		if stored := tkTaskRecord(t, third, id); !reflect.DeepEqual(stored, receipt) {
-			t.Fatalf("stored %+v differs from the receipt %+v", stored, receipt)
-		}
+		third, _, _ := openTasks(t, tkOpenSqlite(t, path), []durable.AnyTask{transfer.Erased()})
+		// toEqual: the stored record and the receipt have the same JSON members.
+		expectSameJSON(t, tkTaskRecord(t, third, id), receipt)
 		mustClose(t, third)
+	})
+
+	// #10549
+	t.Run("keeps a task's startedAt across close and reopen and stamps endedAt when it settles", func(t *testing.T) {
+		path := sqlitePath(t)
+		service := &transferService{}
+		var interrupt atomic.Bool
+		interrupt.Store(true)
+		transfer := tkTransferTask(service, &interrupt)
+		var clock atomic.Int64
+		clock.Store(2_000)
+		now := func() float64 { return float64(clock.Load()) }
+		times := func(record durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue]) [2]float64 {
+			started, ended := -1.0, -1.0
+			if record.StartedAt != nil {
+				started = *record.StartedAt
+			}
+			if record.EndedAt != nil {
+				ended = *record.EndedAt
+			}
+			return [2]float64{started, ended}
+		}
+
+		first, _, _ := openTasks(t, tkOpenSqlite(t, path), []durable.AnyTask{transfer.Erased()}, openTasksOptions{now: now})
+		root := mustRoot(t, first, nil)
+		id, err := durable.Commit(testContext, root, func(tx durable.Tx) (durable.TaskId, error) {
+			return durable.CreateTask(tx, transfer, transferInput{Amount: 7}, durable.TaskOptions{Ownership: conversationOwned})
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		first.Resume()
+		eventually(t, func() bool { return service.callCount() == 1 })
+		clock.Store(3_000)
+		mustClose(t, first)
+
+		clock.Store(9_000)
+		second, _, _ := openTasks(t, tkOpenSqlite(t, path), []durable.AnyTask{transfer.Erased()}, openTasksOptions{now: now})
+		reopened := tkTaskRecord(t, second, id)
+		tkExpectState(t, reopened, durable.TaskPending, false)
+		if got := times(reopened); got != [2]float64{2_000, -1} {
+			t.Fatalf("reopened times %v, want startedAt 2000 and no endedAt", got)
+		}
+		second.Resume()
+		receipt, err := second.WaitForTask(testContext, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := times(receipt); got != [2]float64{2_000, 9_000} {
+			t.Fatalf("receipt times %v, want 2000 and 9000", got)
+		}
+		mustClose(t, second)
 	})
 
 	t.Run("resumes abort work after close at every direct-task abort stage", func(t *testing.T) {
@@ -246,11 +297,11 @@ func TestTaskRecovery(t *testing.T) {
 				})
 			},
 		})
-		tasks := []durable.AnyTask{abortable}
+		tasks := []durable.AnyTask{abortable.Erased()}
 
 		// Stage 1: the mark is committed while the run invocation is still active.
 		opened, _, _ := openTasks(t, tkOpenSqlite(t, path), tasks)
-		id := tkCreateIn(t, opened, abortable)
+		id := tkCreateIn(t, opened, abortable.Erased())
 		opened.Resume()
 		eventually(t, func() bool { return log.len() == 1 })
 		aborting := tkMarkDurably(t, opened, id)
@@ -307,9 +358,7 @@ func TestTaskRecovery(t *testing.T) {
 
 // tkCrashTask is a task whose run ignores its signal and whose abort handler blocks while blockAbort is set.
 func tkCrashTask(log *syncList[string], blockAbort bool) stepTask {
-	forever := func() error {
-		select {}
-	}
+	forever := parkLikeACrashedProcess
 	return durable.DefineTask(durable.TaskDefinition[durable.JsonValue, stepState, durable.JsonValue, any]{
 		Name:    "test.crash",
 		Version: 1,
@@ -336,7 +385,7 @@ func tkCrashTask(log *syncList[string], blockAbort bool) stepTask {
 func tkRecover(t *testing.T, store *controlledStorage, log *syncList[string]) (Harness, durable.TaskId) {
 	t.Helper()
 	store.crash()
-	harness, _, _ := openTasks(t, store, []durable.AnyTask{tkCrashTask(log, false)})
+	harness, _, _ := openTasks(t, store, []durable.AnyTask{tkCrashTask(log, false).Erased()})
 	kind := "test.crash"
 	page, err := durable.Commit(testContext, harness, func(tx durable.Tx) (durable.Page[durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue], durable.Cursor], error) {
 		return tx.ScanTasks(durable.TaskQuery{Kind: &kind}, 1, nil)
@@ -351,8 +400,8 @@ func tkCrashedRun(t *testing.T, log *syncList[string]) (*controlledStorage, Harn
 	t.Helper()
 	store := newControlledStorage()
 	crash := tkCrashTask(log, true)
-	harness, _, _ := openTasks(t, store, []durable.AnyTask{crash})
-	id := tkCreateIn(t, harness, crash)
+	harness, _, _ := openTasks(t, store, []durable.AnyTask{crash.Erased()})
+	id := tkCreateIn(t, harness, crash.Erased())
 	harness.Resume()
 	eventually(t, func() bool { return log.len() == 1 })
 	return store, harness, id
@@ -406,8 +455,8 @@ func TestTaskCrashRecovery(t *testing.T) {
 		log := &syncList[string]{}
 		store := newControlledStorage()
 		crash := tkCrashTask(log, true)
-		harness, _, _ := openTasks(t, store, []durable.AnyTask{crash})
-		id := tkCreateIn(t, harness, crash)
+		harness, _, _ := openTasks(t, store, []durable.AnyTask{crash.Erased()})
+		id := tkCreateIn(t, harness, crash.Erased())
 		if _, err := harness.AbortTask(testContext, id); err != nil {
 			t.Fatal(err)
 		}
@@ -450,8 +499,8 @@ func TestTaskCrashRecovery(t *testing.T) {
 				})
 			},
 		})
-		harness, _, _ := openTasks(t, store, []durable.AnyTask{crash})
-		id := tkCreateIn(t, harness, crash)
+		harness, _, _ := openTasks(t, store, []durable.AnyTask{crash.Erased()})
+		id := tkCreateIn(t, harness, crash.Erased())
 		if _, err := harness.AbortTask(testContext, id); err != nil {
 			t.Fatal(err)
 		}
@@ -477,8 +526,8 @@ func TestTaskCrashRecovery(t *testing.T) {
 		log := &syncList[string]{}
 		store := newControlledStorage()
 		crash := tkCrashTask(log, false)
-		harness, _, _ := openTasks(t, store, []durable.AnyTask{crash})
-		id := tkCreateIn(t, harness, crash)
+		harness, _, _ := openTasks(t, store, []durable.AnyTask{crash.Erased()})
+		id := tkCreateIn(t, harness, crash.Erased())
 		if _, err := harness.AbortTask(testContext, id); err != nil {
 			t.Fatal(err)
 		}
@@ -502,8 +551,8 @@ func TestTaskCrashRecovery(t *testing.T) {
 		log := &syncList[string]{}
 		store := newControlledStorage()
 		crash := tkCrashTask(log, false)
-		harness, _, _ := openTasks(t, store, []durable.AnyTask{crash})
-		id := tkCreateIn(t, harness, crash)
+		harness, _, _ := openTasks(t, store, []durable.AnyTask{crash.Erased()})
+		id := tkCreateIn(t, harness, crash.Erased())
 		held := store.holdCommits()
 		harness.Resume()
 		if err := held.entered.wait(testContext); err != nil {
@@ -532,7 +581,7 @@ func TestBlockedTasks(t *testing.T) {
 	t.Run("keeps a task with a missing definition pending, and live for idle waits, until registration", func(t *testing.T) {
 		v1 := tkVersioned(1, "v1")
 		harness, registry, _ := openTasks(t, storage.NewMemoryStorage(), nil)
-		id := tkCreateIn(t, harness, v1)
+		id := tkCreateIn(t, harness, v1.Erased())
 		harness.Resume()
 		flush()
 		if status := tkTaskRecord(t, harness, id).State.Status; status != durable.TaskPending {
@@ -541,7 +590,7 @@ func TestBlockedTasks(t *testing.T) {
 		idle := make(chan error, 1)
 		go func() { idle <- harness.WaitForIdle(testContext) }()
 		flush()
-		addTask(t, registry, v1)
+		addTask(t, registry, v1.Erased())
 		if err := tkWaitErr(t, idle); err != nil {
 			t.Fatal(err)
 		}
@@ -551,16 +600,16 @@ func TestBlockedTasks(t *testing.T) {
 
 	t.Run("keeps a task stored by a newer version pending until a fitting definition is registered", func(t *testing.T) {
 		registry := CreateRegistry()
-		addTask(t, registry, tkVersioned(1, "old"))
+		addTask(t, registry, tkVersioned(1, "old").Erased())
 		harness, _, _ := openTasks(t, storage.NewMemoryStorage(), nil, openTasksOptions{registry: registry})
-		id := tkCreateIn(t, harness, tkVersioned(2, "new"))
+		id := tkCreateIn(t, harness, tkVersioned(2, "new").Erased())
 		harness.Resume()
 		flush()
 		if status := tkTaskRecord(t, harness, id).State.Status; status != durable.TaskPending {
 			t.Fatalf("task is %s, want pending", status)
 		}
 		// The same extension name replaces the old one in place.
-		addTask(t, registry, tkVersioned(2, "new"))
+		addTask(t, registry, tkVersioned(2, "new").Erased())
 		expectOutcome(t, tkWaitOutcome(t, harness, id), outcomeCompleted("new"))
 		mustClose(t, harness)
 	})
@@ -568,7 +617,7 @@ func TestBlockedTasks(t *testing.T) {
 	t.Run("migrates at reservation, leaves the record unchanged when migration fails, and retries only for a new definition", func(t *testing.T) {
 		path := sqlitePath(t)
 		opened, _, _ := openTasks(t, tkOpenSqlite(t, path), nil)
-		id := tkCreateIn(t, opened, tkVersioned(1, "v1"))
+		id := tkCreateIn(t, opened, tkVersioned(1, "v1").Erased())
 		mustClose(t, opened)
 
 		registry := CreateRegistry()
@@ -576,7 +625,7 @@ func TestBlockedTasks(t *testing.T) {
 		addTask(t, registry, tkVersioned(2, "v2", func(durable.JsonValue, durable.JsonValue, int) (durable.JsonValue, stepState, error) {
 			failures.Add(1)
 			return nil, stepState{}, errors.New("cannot migrate")
-		}))
+		}).Erased())
 		harness, _, reports := openTasks(t, tkOpenSqlite(t, path), nil, openTasksOptions{registry: registry})
 		harness.Resume()
 		eventually(t, func() bool { return len(reports.all()) == 1 })
@@ -597,7 +646,7 @@ func TestBlockedTasks(t *testing.T) {
 		addTask(t, registry, tkVersioned(2, "v2", func(_, checkpoint durable.JsonValue, fromVersion int) (durable.JsonValue, stepState, error) {
 			migrations.add(fromVersion)
 			return nil, stepState{Phase: phaseName(checkpoint)}, nil
-		}))
+		}).Erased())
 		receipt, err := harness.WaitForTask(testContext, id)
 		if err != nil {
 			t.Fatal(err)
@@ -615,9 +664,9 @@ func TestBlockedTasks(t *testing.T) {
 	t.Run("blocks an older record whose newer definition has no migration", func(t *testing.T) {
 		path := sqlitePath(t)
 		opened, _, _ := openTasks(t, tkOpenSqlite(t, path), nil)
-		id := tkCreateIn(t, opened, tkVersioned(1, "v1"))
+		id := tkCreateIn(t, opened, tkVersioned(1, "v1").Erased())
 		mustClose(t, opened)
-		harness, _, reports := openTasks(t, tkOpenSqlite(t, path), []durable.AnyTask{tkVersioned(2, "v2")})
+		harness, _, reports := openTasks(t, tkOpenSqlite(t, path), []durable.AnyTask{tkVersioned(2, "v2").Erased()})
 		harness.Resume()
 		eventually(t, func() bool { return len(reports.all()) == 1 })
 		if !strings.Contains(reports.all()[0].Error(), "has no migration from 1") {
@@ -636,14 +685,13 @@ func TestBlockedTasks(t *testing.T) {
 			N int `json:"n"`
 		}
 		scratch := durable.DefineDoc(durable.DocDefinition[scratchState]{
-			CommonDocDefinition: durable.CommonDocDefinition[scratchState]{Kind: "test.orphan-scratch", Version: 1},
+			CommonDocDefinition: durable.CommonDocDefinition[scratchState]{Kind: "test.orphan-scratch", Version: 1, Initial: func() scratchState { return scratchState{} }},
 			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeTask},
-			Initial:             func() scratchState { return scratchState{} },
 		})
 		harness, _, _ := openTasks(t, storage.NewMemoryStorage(), nil)
 		root := mustRoot(t, harness, nil)
 		id, err := durable.Commit(testContext, root, func(tx durable.Tx) (durable.TaskId, error) {
-			created, err := tx.CreateTaskErased(tkVersioned(1, "x"), nil, durable.TaskOptions{Ownership: conversationOwned})
+			created, err := tx.CreateTaskErased(tkVersioned(1, "x").Erased(), nil, durable.TaskOptions{Ownership: conversationOwned})
 			if err != nil {
 				return 0, err
 			}
@@ -678,9 +726,9 @@ func TestBlockedTasks(t *testing.T) {
 			return abortedBy(runtime.Signal())
 		}, func(context.Context, stepRuntime) error { return errors.New("must not run") })
 		registry := CreateRegistry()
-		registration := addTask(t, registry, running)
+		registration := addTask(t, registry, running.Erased())
 		harness, _, _ := openTasks(t, storage.NewMemoryStorage(), nil, openTasksOptions{registry: registry})
-		id := tkCreateIn(t, harness, running)
+		id := tkCreateIn(t, harness, running.Erased())
 		harness.Resume()
 		if err := reached.wait(testContext); err != nil {
 			t.Fatal(err)
@@ -697,8 +745,8 @@ func TestBlockedTasks(t *testing.T) {
 
 	t.Run("orphans a reopened abort-marked task without a definition once scheduling resumes", func(t *testing.T) {
 		path := sqlitePath(t)
-		opened, _, _ := openTasks(t, tkOpenSqlite(t, path), []durable.AnyTask{tkVersioned(1, "x")})
-		id := tkCreateIn(t, opened, tkVersioned(1, "x"))
+		opened, _, _ := openTasks(t, tkOpenSqlite(t, path), []durable.AnyTask{tkVersioned(1, "x").Erased()})
+		id := tkCreateIn(t, opened, tkVersioned(1, "x").Erased())
 		if result, err := opened.AbortTask(testContext, id); err != nil || result != "marked" {
 			t.Fatalf("AbortTask %q %v", result, err)
 		}
@@ -806,13 +854,13 @@ type startedHandover struct {
 func tkStartHandover(t *testing.T, log *syncList[string], gates handoverGates, store ...durable.Storage) startedHandover {
 	t.Helper()
 	registry := CreateRegistry()
-	old := addTask(t, registry, tkHandoverTask("old", 1, log, handoverOptions{gates: gates}))
+	old := addTask(t, registry, tkHandoverTask("old", 1, log, handoverOptions{gates: gates}).Erased())
 	var backing durable.Storage = storage.NewMemoryStorage()
 	if len(store) > 0 {
 		backing = store[0]
 	}
 	harness, _, reports := openTasks(t, backing, nil, openTasksOptions{registry: registry})
-	id := tkCreateIn(t, harness, tkHandoverTask("old", 1, log))
+	id := tkCreateIn(t, harness, tkHandoverTask("old", 1, log).Erased())
 	harness.Resume()
 	eventually(t, func() bool { return log.len() == 1 })
 	return startedHandover{harness: harness, registry: registry, reports: reports, old: old, id: id}
@@ -824,7 +872,7 @@ func TestDefinitionHandover(t *testing.T) {
 		gate := deferred()
 		started := tkStartHandover(t, log, handoverGates{a: gate})
 		// The same extension name replaces the old one in place.
-		addTask(t, started.registry, tkHandoverTask("new", 1, log))
+		addTask(t, started.registry, tkHandoverTask("new", 1, log).Erased())
 		gate.resolve()
 		tkWaitOutcome(t, started.harness, started.id)
 		want := []string{"old:a start", "old:a end", "new:b start", "new:b end", "new:c"}
@@ -876,14 +924,14 @@ func TestDefinitionHandover(t *testing.T) {
 			})
 		}
 		registry := CreateRegistry()
-		addTask(t, registry, memoTask("old"))
+		addTask(t, registry, memoTask("old").Erased())
 		harness, _, _ := openTasks(t, storage.NewMemoryStorage(), nil, openTasksOptions{registry: registry})
-		id := tkCreateIn(t, harness, memoTask("old"))
+		id := tkCreateIn(t, harness, memoTask("old").Erased())
 		harness.Resume()
 		if err := reached.wait(testContext); err != nil {
 			t.Fatal(err)
 		}
-		addTask(t, registry, memoTask("new"))
+		addTask(t, registry, memoTask("new").Erased())
 		gate.resolve()
 		expectOutcome(t, tkWaitOutcome(t, harness, id), outcomeCompleted("old"))
 		if !reflect.DeepEqual(log.all(), []string{"new:b old"}) {
@@ -899,7 +947,7 @@ func TestDefinitionHandover(t *testing.T) {
 		// The same extension name replaces the old one in place.
 		addTask(t, started.registry, tkHandoverTask("v2", 2, log, handoverOptions{migrate: func(durable.JsonValue, durable.JsonValue, int) (durable.JsonValue, handoverState, error) {
 			return nil, handoverState{Phase: "c"}, nil
-		}}))
+		}}).Erased())
 		gate.resolve()
 		receipt, err := started.harness.WaitForTask(testContext, started.id)
 		if err != nil || receipt.Version != 2 {
@@ -919,7 +967,7 @@ func TestDefinitionHandover(t *testing.T) {
 		// The same extension name replaces the old one in place.
 		addTask(t, started.registry, tkHandoverTask("broken", 2, log, handoverOptions{migrate: func(durable.JsonValue, durable.JsonValue, int) (durable.JsonValue, handoverState, error) {
 			return nil, handoverState{}, errors.New("broken migration")
-		}}))
+		}}).Erased())
 		gate.resolve()
 		eventually(t, func() bool { return len(started.reports.all()) == 1 })
 		flush()
@@ -942,7 +990,7 @@ func TestDefinitionHandover(t *testing.T) {
 		gateA.resolve()
 		eventually(t, func() bool { return slicesContains(log.all(), "old:b start") })
 		// A newer definition without a migration cannot take the task either.
-		addTask(t, started.registry, tkHandoverTask("incompatible", 2, log))
+		addTask(t, started.registry, tkHandoverTask("incompatible", 2, log).Erased())
 		gateB.resolve()
 		tkWaitOutcome(t, started.harness, started.id)
 		want := []string{"old:a start", "old:a end", "old:b start", "old:b end", "old:c"}
@@ -997,14 +1045,14 @@ func TestDefinitionHandover(t *testing.T) {
 			},
 			Abort: tkNoopAbort[durable.JsonValue, handoverState, durable.JsonValue, any],
 		})
-		addTask(t, registry, old)
+		addTask(t, registry, old.Erased())
 		harness, _, _ := openTasks(t, store, nil, openTasksOptions{registry: registry})
 		harnessRef.Store(&harness)
-		id := tkCreateIn(t, harness, old)
+		id := tkCreateIn(t, harness, old.Erased())
 		harness.Resume()
 		eventually(t, oldRuntime.isSet)
 		// The same extension name replaces the old one in place.
-		addTask(t, registry, tkHandoverTask("new", 1, log))
+		addTask(t, registry, tkHandoverTask("new", 1, log).Erased())
 		gate.resolve()
 		eventually(t, heldGate.isSet)
 		held, _ := heldGate.get()
@@ -1045,7 +1093,7 @@ func TestDefinitionHandover(t *testing.T) {
 		}}
 		started := tkStartHandover(t, log, gates, store)
 		// The same extension name replaces the old one in place.
-		addTask(t, started.registry, tkHandoverTask("new", 1, log))
+		addTask(t, started.registry, tkHandoverTask("new", 1, log).Erased())
 		gate.resolve()
 		eventually(t, heldGate.isSet)
 		held, _ := heldGate.get()
@@ -1094,17 +1142,19 @@ func slicesContains(items []string, item string) bool {
 	return slices.Contains(items, item)
 }
 
+// Pi source: packages/durable/src/storage/memory.ts
+// mutation-checked: zeroing the results of MemoryStorage.Task fails it
 func TestTaskRecoveryHarnessOpen(t *testing.T) {
 	t.Run("releases its registry subscription and closes the Session when open fails", func(t *testing.T) {
 		store := newControlledStorage()
 		log := &syncList[string]{}
 		stuck := tkOneStep("test.stuck", func(context.Context, stepRecord, stepRuntime) error {
 			log.add("run")
-			select {}
+			return parkLikeACrashedProcess()
 		})
 		// Leave a running task behind so open has a reconciliation commit to fail.
-		first, _, _ := openTasks(t, store, []durable.AnyTask{stuck})
-		tkCreateIn(t, first, stuck)
+		first, _, _ := openTasks(t, store, []durable.AnyTask{stuck.Erased()})
+		tkCreateIn(t, first, stuck.Erased())
 		first.Resume()
 		eventually(t, func() bool { return log.len() == 1 })
 

@@ -1,0 +1,13 @@
+[
+ {
+  "upstream": "packages/coding-agent/src/core/diagnostics.ts",
+  "package": "./coding/extension",
+  "tests": [
+   "TestResourceDiagnosticTypeLiteralsMatchPisUnion",
+   "TestResourceDiagnosticWireMatchesPisObjectLiterals",
+   "TestRunnerShortcutConflictIsAWarningDiagnosticWithThePath"
+  ],
+  "upstream_reference": "packages/coding-agent/test/extensions-runner.test.ts",
+  "mutation": "coding/extension/diagnostics.go: dropping omitempty from the ResourceDiagnostic path, ResourceDiagnostic collision or ResourceCollision loserSource tag fails TestResourceDiagnosticWireMatchesPisObjectLiterals; changing DiagnosticCollision to \"collide\" fails TestResourceDiagnosticTypeLiteralsMatchPisUnion; coding/extension/host/inproc/runner.go: reporting the reserved-shortcut diagnostic as DiagnosticError fails TestRunnerShortcutConflictIsAWarningDiagnosticWithThePath. Each mutation compiled and ran."
+ }
+]

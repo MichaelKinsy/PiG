@@ -16,8 +16,6 @@ import (
 	"strings"
 
 	"golang.org/x/term"
-	"golang.org/x/text/collate"
-	"golang.org/x/text/language"
 
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
@@ -203,19 +201,25 @@ func ErroredObservation(task EvalTask) EvalObservation {
 	return EvalObservation{EvalRunIdentity: taskIdentity(task), Outcome: EvalOutcomeErrored}
 }
 
+// taskIdentityDigest is the SHA-256 of JSON.stringify([evalSet, caseId, variant, model, runNumber]), which names a
+// task's artifact directories.
+func taskIdentityDigest(task EvalTask) ([sha256.Size]byte, error) {
+	identity, err := json.Marshal([]any{task.EvalSet, task.CaseID, task.Variant, task.Model, task.RunNumber})
+	if err == nil {
+		identity, err = jsonstringify.Canonicalize(identity)
+	}
+	return sha256.Sum256(identity), err
+}
+
 func persistSession(run *harnessRunResult, task EvalTask, artifactDirectory string) error {
 	var session string
 	if raw, ok := run.Artifacts[PiSessionSnapshotArtifact]; !ok || isNull(raw) || json.Unmarshal(raw, &session) != nil {
 		return nil
 	}
-	identity, err := json.Marshal([]any{task.EvalSet, task.CaseID, task.Variant, task.Model, task.RunNumber})
+	digest, err := taskIdentityDigest(task)
 	if err != nil {
 		return err
 	}
-	if identity, err = jsonstringify.Canonicalize(identity); err != nil {
-		return err
-	}
-	digest := sha256.Sum256(identity)
 	directory := filepath.Join(artifactDirectory, string(task.Variant), "sessions", hex.EncodeToString(digest[:]))
 	if err := os.MkdirAll(directory, 0o700); err != nil {
 		return err
@@ -375,7 +379,7 @@ func groupPairs(expectedRuns []ExpectedEvalRun, observations []EvalObservation) 
 		group := getGroup(observation.EvalRunIdentity)
 		group.observations[observation.Variant] = append(group.observations[observation.Variant], observation)
 	}
-	collator := collate.New(language.Und)
+	collator := jsstring.NewCollator()
 	slices.SortStableFunc(order, func(left, right *pairGroup) int {
 		if c := collator.CompareString(left.evalSet, right.evalSet); c != 0 {
 			return c
@@ -546,7 +550,7 @@ func SummarizeEvalObservations(protocolDigest string, expectedRuns []ExpectedEva
 			pairsByEvalSet[group.evalSet] = append(pairsByEvalSet[group.evalSet], *p)
 		}
 	}
-	collator := collate.New(language.Und)
+	collator := jsstring.NewCollator()
 	slices.SortStableFunc(evalSets, collator.CompareString)
 	comparisons := []EvalSetComparison{}
 	for _, evalSet := range evalSets {
@@ -732,8 +736,7 @@ func FormatEvalComparisonReport(report EvalComparisonReport) string {
 	}
 	lines := []string{bold("Documentation Eval Comparisons")}
 	for _, comparison := range report.Comparisons {
-		lines = append(lines, "  "+comparison.EvalSet)
-		lines = append(lines, fmt.Sprintf("         Pairs  %d/%d eligible", comparison.EligiblePairs, comparison.TotalPairs))
+		lines = append(lines, "  "+comparison.EvalSet, fmt.Sprintf("         Pairs  %d/%d eligible", comparison.EligiblePairs, comparison.TotalPairs))
 		switch {
 		case comparison.Lift != nil:
 			lines = append(lines, fmt.Sprintf("     Pass rate  %s pp (with %s, without %s)", signed(*comparison.Lift*100, 1),
@@ -750,9 +753,7 @@ func FormatEvalComparisonReport(report EvalComparisonReport) string {
 			}
 			lines = append(lines, "         Flags  "+strings.Join(flags, ", "))
 		}
-		lines = append(lines, pairedMetric("Tokens", comparison.TotalTokens, ""))
-		lines = append(lines, pairedMetric("Tools", comparison.ToolCalls, ""))
-		lines = append(lines, pairedMetric("Latency", comparison.TotalMs, "ms"))
+		lines = append(lines, pairedMetric("Tokens", comparison.TotalTokens, ""), pairedMetric("Tools", comparison.ToolCalls, ""), pairedMetric("Latency", comparison.TotalMs, "ms"))
 		cost := comparison.EstimatedCostUsd
 		if cost.MeanDelta == nil || cost.ControlMean == nil || cost.TreatmentMean == nil {
 			lines = append(lines, "     Est. cost  unavailable")

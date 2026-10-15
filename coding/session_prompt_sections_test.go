@@ -24,9 +24,7 @@ func TestSessionBeforeAgentStartSectionsArePerRun(t *testing.T) {
 			}}}}}, t.TempDir())
 			provider := &scriptedProvider{responses: []scriptedResponse{fauxReply("one", ai.StopReasonStop, 0), fauxReply("two", ai.StopReasonStop, 0), fauxReply("three", ai.StopReasonStop, 0)}}
 			services := newTestServices(t)
-			if err := services.Auth().Set(provider.ID(), ai.Credential{Type: ai.CredentialAPIKey, Key: "faux-key"}); err != nil {
-				t.Fatal(err)
-			}
+			configureFauxAuth(t, services)
 			session, err := NewSession(services, SessionOptions{Model: fakeModelWithProvider(provider), Runner: runner, SystemPrompt: custom, SkipBuiltinTools: true})
 			if err != nil {
 				t.Fatal(err)
@@ -34,7 +32,7 @@ func TestSessionBeforeAgentStartSectionsArePerRun(t *testing.T) {
 			drainSessionEvents(t, session)
 			t.Cleanup(func() { _ = session.Close() })
 			for _, prompt := range []string{"first", "second", "third"} {
-				if _, err := session.Prompt(t.Context(), prompt); err != nil {
+				if err := session.Prompt(t.Context(), prompt); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -59,7 +57,7 @@ func TestPreparedPromptSectionValidationAndBaseOptions(t *testing.T) {
 	h := newRecoveryHarness(t, harnessOptions{})
 	base := ai.OrderedSections{{Name: "preamble", Value: new("invalid")}}
 	h.session.GetSystemPromptOptions().Sections = &base
-	if _, err := h.session.Prompt(t.Context(), "rejected"); err == nil || err.Error() != "Invalid system prompt section name: preamble" {
+	if err := h.session.Prompt(t.Context(), "rejected"); err == nil || err.Error() != "Invalid system prompt section name: preamble" {
 		t.Fatalf("validation=%v", err)
 	}
 	if len(h.session.Messages()) != 0 {

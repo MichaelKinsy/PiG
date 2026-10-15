@@ -10,6 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
+// Pi: packages/coding-agent/src/main.ts:849 (SessionOptions.customTools).
 func TestSessionToolPromptUsesJavaScriptWhitespace(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/src/core/agent-session.ts:1347-1368 uses JS \s and trim, which include BOM but exclude NEL.
 	definition := registryTool("custom", "Custom", "Custom operation", "\ufeffRun\n \u00a0custom  action\ufeff", "\ufeffkeep\ufeff", "keep", " \u0085 ")

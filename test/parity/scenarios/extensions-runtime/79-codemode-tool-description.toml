@@ -1,0 +1,28 @@
+# Behavior family: extensions-runtime (codemode tool description)
+# Pi 1.2.0 probe: extensions/codemode/tool.ts createCodemodeDescription (toCodemodeDeclaration, renderToolSection, selectCatalog, describeGlobals) over 600 seeded tool sets:
+# identifier-hostile names, descriptions with padding, NEL, BOM and non-ASCII, guidelines with blank entries, nested input schemas, output schemas including MCP structuredContent shapes, namespaces
+# (ordered by name), deferred tools, the models flag and inline budgets from none to a few tokens (tools and namespaces that do not fit are named as not listed). Each description is compared as one
+# JSON line; the docs path is replaced because each binary names its own docs directory (D22). The Go test TestCodemodeDescriptionMatchesPi runs the same corpus against the vendored Pi module;
+# this scenario compares the two printed streams.
+name = "79-codemode-tool-description"
+description = "The codemode tool's model-facing description, with its tool sections and budget, is the same text as Pi's."
+covers = ["packages/coding-agent/src/extensions/codemode/tool.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/codemode-description-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/codemode-description-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 240
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['Nested tools:', '(tools not listed)', 'resolves on failure too', 'structuredContent?: {', 'Read <docs> first', '### `']
+runs = 2

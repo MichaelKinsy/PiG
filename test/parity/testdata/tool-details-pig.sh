@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-if ! output=$(go test -count=1 -run '^TestBuiltinToolDetailsParityProbe$' -v ./internal/codingagent/tools); then
+if ! output=$(./test/parity/testdata/prebuilt-go-test.sh -count=1 -run '^TestBuiltinToolDetailsParityProbe$' -v ./internal/codingagent/tools); then
     printf '%s\n' "$output"
     exit 1
 fi

@@ -88,7 +88,7 @@ func TestRadiusOAuthDeviceLoginUsesGatewayEndpoints(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := OAuthCredentials{Access: "access-token", Refresh: "refresh-token", Expires: now.UnixMilli() + 3600*1000 - 60_000, Scope: "gateway offline_access"}
+	want := OAuthCredentials{Access: "access-token", Refresh: "refresh-token", Expires: now.UnixMilli() + 3600*1000 - 60_000, Scope: "gateway offline_access", order: credentialKeyOrder{keys: radiusCredentialMembers}}
 	if !reflect.DeepEqual(credentials, want) {
 		t.Fatalf("credentials = %+v, want %+v", credentials, want)
 	}
@@ -136,6 +136,29 @@ func TestRadiusOAuthBrowserDiscoveryRequiresAuthorizationEndpoint(t *testing.T) 
 	}
 	if !slices.Equal(recorder.paths, []string{"/v1/oauth"}) {
 		t.Fatalf("requests = %v", recorder.paths)
+	}
+}
+
+// requestOAuthToken rethrows fetch's TypeError when the request was not aborted: a gateway with credentials is refused before any request, and the authorization
+// endpoint Pi cannot parse throws the URL constructor's "Invalid URL".
+func TestRadiusOAuthThrowsFetchErrorsForCredentialedGatewayAndInvalidEndpoint(t *testing.T) {
+	recorder := &radiusGatewayRecorder{}
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		recorder.record(t, request)
+		writeRadiusJSON(writer, 200, map[string]any{"authorizationEndpoint": "https://radius.example:99999/authorize"})
+	}))
+	defer server.Close()
+	credentialed := strings.Replace(server.URL, "http://", "http://user:pw@", 1)
+	_, err := newTestRadiusOAuth(credentialed, time.Now()).RefreshToken(OAuthCredentials{Access: "a", Refresh: "r"})
+	if want := "Request cannot be constructed from a URL that includes credentials: " + credentialed + "/v1/oauth/token"; err == nil || err.Error() != want {
+		t.Fatalf("refresh error = %v, want %q", err, want)
+	}
+	if len(recorder.paths) != 0 {
+		t.Fatalf("requests = %v", recorder.paths)
+	}
+	_, err = newTestRadiusOAuth(server.URL, time.Now()).LoginContext(context.Background(), OAuthLoginCallbacks{OnSelect: selectRadiusMethod(RadiusLoginMethodBrowser)})
+	if err == nil || err.Error() != "Invalid URL" {
+		t.Fatalf("browser login error = %v", err)
 	}
 }
 

@@ -5,6 +5,7 @@ package ai
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -93,6 +94,50 @@ func ownedContinuationTurn(ctx context.Context, executor *continuationExecutor) 
 	return nil
 }
 
+// lazySetupError is a failure a Go provider raises from Stream for work Pi performs in lazyStream's setup outside the API module (azure.ts azureStreams resolving the endpoint), so it stays a setup rejection.
+type lazySetupError struct{ err error }
+
+func (e *lazySetupError) Error() string { return e.err.Error() }
+func (e *lazySetupError) Unwrap() error { return e.err }
+
+// APIModuleStream calls an API module's Go stream. Pi's API modules catch their own failures inside the stream they return
+// (for example google-generative-ai.ts:288-298, azure-openai-responses.ts:115-125), so a Go provider's Stream error ends
+// that stream instead: the module's message, timestamp from the call before errorMessage, with the abort-aware stop reason
+// (`options?.signal?.aborted ? "aborted" : "error"`). A lazySetupError stays a returned error for lazyStream's setup.
+func APIModuleStream(ctx context.Context, model *Model, stream func(context.Context) (*AssistantMessageEventStream, error)) (*AssistantMessageEventStream, error) {
+	var api API
+	if model != nil {
+		api = model.ProviderMeta.API
+	}
+	return apiModuleStreamAs(ctx, api, model, stream)
+}
+
+// apiModuleStreamAs is APIModuleStream for a module whose output message carries api, which is not the model's for every module (apiModuleOutputAPI).
+func apiModuleStreamAs(ctx context.Context, api API, model *Model, stream func(context.Context) (*AssistantMessageEventStream, error)) (*AssistantMessageEventStream, error) {
+	//portlint:allow clock the module's output literal takes Date.now() when its stream starts (lazy.ts:50 for setup); ai's clock seams are per-struct (oauth, bedrock backoff), none covers module streams
+	startedAt := time.Now().UnixMilli()
+	inner, err := stream(ctx)
+	if err == nil {
+		return inner, nil
+	}
+	return apiModuleFailure(ctx, api, model, startedAt, err)
+}
+
+// apiModuleFailure is the catch block of an API module's stream: the module's message ends its stream with the abort-aware stop reason. A lazySetupError or a missing model stays the returned error.
+func apiModuleFailure(ctx context.Context, api API, model *Model, startedAt int64, err error) (*AssistantMessageEventStream, error) {
+	if _, setup := errors.AsType[*lazySetupError](err); setup || model == nil {
+		return nil, err
+	}
+	reason := StopReasonError
+	if ctx.Err() != nil {
+		reason = StopReasonAborted
+	}
+	builder := newObservedProviderBuilder(ctx, api, modelProviderID(model), model.ID)
+	builder.partial.Timestamp = startedAt
+	builder.fail(reason, err)
+	return builder.stream, nil
+}
+
 // forwardLazySetup is lazy.ts:48-60. A rejected setup reaches the catch handler two reactions after it settles: the .then passthrough, then the handler.
 func forwardLazySetup(ctx context.Context, turn *continuationTurn, executor *continuationExecutor, outer *AssistantMessageEventStream, model *Model, inner *AssistantMessageEventStream, err error) {
 	if err == nil && inner == nil {
@@ -100,13 +145,9 @@ func forwardLazySetup(ctx context.Context, turn *continuationTurn, executor *con
 	}
 	if err == nil {
 		observation := context.WithValue(context.WithoutCancel(ctx), continuationTurnKey{}, turn)
-		for event := range inner.events(observation, false) {
-			if err = outer.Push(event); err != nil {
-				break
-			}
-		}
-		if err == nil {
-			outer.End(awaitContinuation(turn, inner.resultContinuation(executor)))
+		var result *AssistantMessage
+		if result, err = forwardEvents(turn, observation, inner, outer.Push); err == nil {
+			outer.End(result)
 			return
 		}
 	} else {
@@ -114,7 +155,8 @@ func forwardLazySetup(ctx context.Context, turn *continuationTurn, executor *con
 		passthrough.resolve(struct{}{})
 		awaitContinuation(turn, passthrough)
 	}
-	message := &AssistantMessage{Content: []AssistantContentBlock{}, StopReason: StopReasonError, ErrorMessage: err.Error(), Timestamp: time.Now().UnixMilli()}
+	// lazy.ts createSetupErrorMessage builds the message with errorMessage before timestamp. A failure an API module catches inside its own stream ends the provider's stream instead (for example google.go's request failure).
+	message := &AssistantMessage{Content: []AssistantContentBlock{}, StopReason: StopReasonError, ErrorMessage: err.Error(), ErrorBeforeTimestamp: true, Timestamp: outer.startedAt}
 	if model != nil {
 		message.API = model.ProviderMeta.API
 		message.Provider = modelProviderID(model)

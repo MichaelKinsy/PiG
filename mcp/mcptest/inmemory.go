@@ -2,6 +2,7 @@
 package mcptest
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"sync"
@@ -52,7 +53,7 @@ func (t *InMemoryTransport) Start() error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.closed {
-		return mcp.NewConnectionClosedError()
+		return mcp.NewMcpConnectionClosedError("")
 	}
 	if !t.started {
 		t.started = true
@@ -78,27 +79,28 @@ func (t *InMemoryTransport) deliverLoop() {
 	}
 }
 
-// Send copies message and queues it on the peer.
-func (t *InMemoryTransport) Send(message mcp.JSONRPCMessage) error {
-	return t.SendOrdered(message, nil)
+// Send copies message and queues it on the peer. Like Pi's in-memory send
+// (in-memory.ts:19) it ignores the send signal (ctx).
+func (t *InMemoryTransport) Send(ctx context.Context, message mcp.JSONRPCMessage) error {
+	return t.SendOrdered(ctx, message, nil)
 }
 
 // SendOrdered is Send that calls placed, if not nil, once the message has its place in the peer's queue.
-func (t *InMemoryTransport) SendOrdered(message mcp.JSONRPCMessage, placed func()) error {
+func (t *InMemoryTransport) SendOrdered(_ context.Context, message mcp.JSONRPCMessage, placed func()) error {
 	t.mu.Lock()
 	started, closed, peer := t.started, t.closed, t.peer
 	t.mu.Unlock()
 	if !started || closed {
-		return mcp.NewConnectionClosedError()
+		return mcp.NewMcpConnectionClosedError("")
 	}
 	if peer == nil {
-		return &mcp.McpConnectionClosedError{Message: "In-memory MCP peer is not connected"}
+		return mcp.NewMcpConnectionClosedError("In-memory MCP peer is not connected")
 	}
 	peer.mu.Lock()
 	peerOK := peer.started && !peer.closed
 	peer.mu.Unlock()
 	if !peerOK {
-		return &mcp.McpConnectionClosedError{Message: "In-memory MCP peer is not connected"}
+		return mcp.NewMcpConnectionClosedError("In-memory MCP peer is not connected")
 	}
 	data, err := json.Marshal(message)
 	if err != nil {

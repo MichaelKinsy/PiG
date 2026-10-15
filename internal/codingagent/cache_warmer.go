@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"math/big"
 	"os"
 	"runtime/debug"
 	"slices"
@@ -15,6 +14,8 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Port of upstream core/cache-warmer.ts.
@@ -35,16 +36,17 @@ const (
 )
 
 // GetCacheWarmingDelayMs refreshes at 90% of the TTL while preserving at least
-// ten seconds of margin. The bool is false when the TTL is too short.
-func GetCacheWarmingDelayMs(ttlMs int64) (int64, bool) {
+// ten seconds of margin. The bool is false when the TTL is too short. The delay is a float64 like the JavaScript
+// number: a lifetime from a models.json promptCache can exceed the int64 range.
+func GetCacheWarmingDelayMs(ttlMs float64) (float64, bool) {
 	if ttlMs <= 10_000 {
 		return 0, false
 	}
-	return max(1, int64(math.Floor(math.Min(float64(ttlMs)*0.9, float64(ttlMs-10_000))))), true
+	return max(1, math.Floor(math.Min(ttlMs*0.9, ttlMs-10_000))), true
 }
 
 // GetPromptCacheTtlMs returns the model's prompt-cache lifetime for the request's retention. Explicit retention wins over the environment; none or a missing tier has no lifetime.
-func GetPromptCacheTtlMs(model *ai.Model, options ai.StreamOptions) (int64, bool) {
+func GetPromptCacheTtlMs(model *ai.Model, options ai.StreamOptions) (float64, bool) {
 	retention := string(options.CacheRetention)
 	if retention == "" {
 		retention = "short"
@@ -59,7 +61,7 @@ func GetPromptCacheTtlMs(model *ai.Model, options ai.StreamOptions) (int64, bool
 	if !ok {
 		return 0, false
 	}
-	return int64(seconds) * 1000, true
+	return seconds * 1000, true
 }
 
 // cacheWarmingEnvValue mirrors getProviderEnvValue: request env first, then
@@ -76,7 +78,7 @@ func cacheWarmingEnvValue(name string, env ai.ProviderEnv) string {
 // derives budget_tokens from max_tokens, and Anthropic keys the message cache
 // on that budget, so only adaptive thinking replays safely.
 func IsReplayable(model *ai.Model, options ai.StreamOptions) bool {
-	reasoning := options.Thinking != "" && options.Thinking != ai.ThinkingOff
+	reasoning := options.Thinking != ""
 	if !reasoning || model.ProviderMeta.API != ai.APIAnthropicMessages {
 		return true
 	}
@@ -86,10 +88,31 @@ func IsReplayable(model *ai.Model, options ai.StreamOptions) bool {
 
 // lastPromptTokens is the prompt size of the most recent real request on the
 // branch, as reported by the provider.
+// warmerBranch is the branch whose newest assistant usage the warmer prices. A Session supplies its context branch, which holds the same newest
+// assistant message without reading history the context no longer holds.
+func warmerBranch(manager CacheWarmerSessionManager) []SessionEntry {
+	if session, ok := manager.(interface{ GetContextBranch() []SessionEntry }); ok {
+		return session.GetContextBranch()
+	}
+	return manager.GetBranch()
+}
+
 func lastPromptTokens(entries []SessionEntry) int {
 	for _, entry := range slices.Backward(entries) {
-		if entry.Base.Type != "message" {
+		if entry.Base().Type != "message" {
 			continue
+		}
+		// A decoded entry carries its role and usage: the session holds an appended message without its record, which a probe would encode.
+		if typed, ok := asMessage(entry); ok {
+			assistant := typed.Message.Assistant
+			if assistant == nil {
+				continue
+			}
+			var usage ai.Usage
+			if assistant.Usage != nil {
+				usage = *assistant.Usage
+			}
+			return usage.Input + usage.CacheRead + usage.CacheWrite
 		}
 		var probe struct {
 			Message struct {
@@ -97,7 +120,7 @@ func lastPromptTokens(entries []SessionEntry) int {
 				Usage ai.Usage `json:"usage"`
 			} `json:"message"`
 		}
-		if json.Unmarshal(entry.raw, &probe) != nil || probe.Message.Role != "assistant" {
+		if json.Unmarshal(entry.Raw(), &probe) != nil || probe.Message.Role != "assistant" {
 			continue
 		}
 		usage := probe.Message.Usage
@@ -110,12 +133,12 @@ func price(model *ai.Model, usage ai.Usage) float64 {
 	return ai.CalculateCost(model, &usage).Total
 }
 
-// CacheWarmingAction is Pi's warm-or-stop decision.
-type CacheWarmingAction string
+// CacheWarmingAction is Pi's warm-or-stop decision, the one type the extension API carries (types.ts CacheWarmingDecisionEvent.action).
+type CacheWarmingAction = extension.CacheWarmingAction
 
 const (
-	CacheWarmingActionWarm CacheWarmingAction = "warm"
-	CacheWarmingActionStop CacheWarmingAction = "stop"
+	CacheWarmingActionWarm = extension.CacheWarmingActionWarm
+	CacheWarmingActionStop = extension.CacheWarmingActionStop
 )
 
 // CacheWarmingDecision holds the inputs and outcome of one warm-or-stop
@@ -140,16 +163,9 @@ type CacheWarmingDecision struct {
 	Action CacheWarmingAction `json:"action"`
 }
 
-// CacheWarmingDecisionEvent is fired before each refresh with Pi's decision
-// filled in; an extension may override Action. Field order matches the
-// payload upstream emits.
-type CacheWarmingDecisionEvent struct {
-	Type                    string             `json:"type"`
-	WarmCost                float64            `json:"warmCost"`
-	MissCost                float64            `json:"missCost"`
-	ContinuationProbability float64            `json:"continuationProbability"`
-	Action                  CacheWarmingAction `json:"action"`
-}
+// CacheWarmingDecisionEvent is fired before each refresh with Pi's decision filled in; an extension may override Action. It is the event
+// the extension API delivers to cache_warming_decision handlers.
+type CacheWarmingDecisionEvent = extension.CacheWarmingDecisionEvent
 
 // CacheWarmingStatus is the warmer state /session reports.
 type CacheWarmingStatus struct {
@@ -178,7 +194,7 @@ type CacheWarmRequest struct {
 // Pick<SessionManager, "appendUsage" | "getBranch">.
 type CacheWarmerSessionManager interface {
 	AppendUsage(kind, provider, model string, usage ai.Usage, note string) (UsageEntry, error)
-	GetBranch() []SessionEntry
+	GetBranch(fromID ...string) []SessionEntry
 }
 
 // CacheWarmingDecide lets an extension override a decision. An error falls
@@ -190,8 +206,8 @@ type cacheWarmingRun struct {
 	// isCurrent is false once the session's model or messages no longer
 	// match the request.
 	isCurrent func() bool
-	ttlMs     int64
-	delayMs   int64
+	ttlMs     float64
+	delayMs   float64
 	// refreshDeadlineAt is the latest safe time to send this refresh,
 	// leaving half the original expiry margin.
 	refreshDeadlineAt int64
@@ -433,19 +449,20 @@ func (w *CacheWarmer) stopLocked(reason string, decision *CacheWarmingDecision, 
 func (w *CacheWarmer) scheduleLocked(run *cacheWarmingRun) {
 	run.extensionOverride = false
 	now := cacheWarmingNowMs()
-	run.nextWarmAt = now + run.delayMs
-	// A timer can run late after sleep or a stalled process. Keep half of the
-	// planned pre-expiry margin for that delay and request dispatch; a late
-	// refresh is likely a full-price cache write, not a cache warm.
-	run.refreshDeadlineAt = run.nextWarmAt + (run.ttlMs-run.delayMs)/2
+	next := float64(now) + run.delayMs
 	limit, reason := maxWarmingAgeMs, "one-hour safety limit reached"
 	if run.phase == "idle" {
 		limit, reason = maxIdleWarmingAgeMs, "30-minute idle safety limit reached"
 	}
-	if deadline := run.startedAt + limit; run.nextWarmAt > deadline || now >= deadline {
+	if deadline := run.startedAt + limit; next > float64(deadline) || now >= deadline {
 		w.stopLocked(reason, nil, false)
 		return
 	}
+	run.nextWarmAt = int64(next)
+	// A timer can run late after sleep or a stalled process. Keep half of the
+	// planned pre-expiry margin for that delay and request dispatch; a late
+	// refresh is likely a full-price cache write, not a cache warm.
+	run.refreshDeadlineAt = run.nextWarmAt + int64(math.Floor((run.ttlMs-run.delayMs)/2))
 	w.tasks.Add(1)
 	run.timer = time.AfterFunc(time.Duration(max(0, run.nextWarmAt-now))*time.Millisecond, func() {
 		defer w.tasks.Done()
@@ -627,7 +644,7 @@ func (w *CacheWarmer) modeStopReason(run *cacheWarmingRun) string {
 
 func (w *CacheWarmer) evaluate(run *cacheWarmingRun) CacheWarmingDecision {
 	model := run.Model
-	promptTokens := lastPromptTokens(w.sessionManager.GetBranch())
+	promptTokens := lastPromptTokens(warmerBranch(w.sessionManager))
 	cacheHitCost := price(model, ai.Usage{CacheRead: promptTokens})
 	missUsage := ai.Usage{Input: promptTokens}
 	if model.Capabilities.CacheWriteCostPer1M > 0 {
@@ -640,7 +657,7 @@ func (w *CacheWarmer) evaluate(run *cacheWarmingRun) CacheWarmingDecision {
 	if run.phase == "idle" {
 		continuationProbability = idleContinuationProbability
 	}
-	expectedSavings := continuationProbability*missCost - warmCost
+	expectedSavings := float64(continuationProbability*missCost) - warmCost
 	action := CacheWarmingActionStop
 	if expectedSavings >= cacheWarmingMinimumExpectedSavings {
 		action = CacheWarmingActionWarm
@@ -656,31 +673,11 @@ func (w *CacheWarmer) evaluate(run *cacheWarmingRun) CacheWarmingDecision {
 	}
 }
 
-// jsToFixed mirrors JavaScript Number.prototype.toFixed for a finite value:
-// it rounds the exact binary value, and an exact tie rounds away from zero.
-func jsToFixed(value float64, digits int) string {
-	sign := ""
-	if value < 0 {
-		sign, value = "-", -value
-	}
-	scale := new(big.Float).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(digits)), nil))
-	scaled := new(big.Float).SetPrec(512).Mul(new(big.Float).SetFloat64(value), scale)
-	whole, _ := scaled.Int(nil)
-	if new(big.Float).SetPrec(512).Sub(scaled, new(big.Float).SetInt(whole)).Cmp(big.NewFloat(0.5)) >= 0 {
-		whole.Add(whole, big.NewInt(1))
-	}
-	text := fmt.Sprintf("%0*s", digits+1, whole.String())
-	if whole.Sign() == 0 {
-		sign = ""
-	}
-	return sign + text[:len(text)-digits] + "." + text[len(text)-digits:]
-}
-
 func formatDollars(value float64) string {
 	if value < 0 {
-		return "-$" + jsToFixed(math.Abs(value), 3)
+		return "-$" + jsstring.ToFixed(math.Abs(value), 3)
 	}
-	return "$" + jsToFixed(value, 3)
+	return "$" + jsstring.ToFixed(value, 3)
 }
 
 func formatCacheWarmingEconomics(decision CacheWarmingDecision) string {
@@ -696,7 +693,7 @@ func formatCacheWarmingEconomics(decision CacheWarmingDecision) string {
 	if decision.Action == CacheWarmingActionWarm {
 		comparison = ">="
 	}
-	return fmt.Sprintf("%s, expected savings %s %s $%s", probabilityText, formatDollars(decision.ExpectedSavings), comparison, jsToFixed(cacheWarmingMinimumExpectedSavings, 3))
+	return fmt.Sprintf("%s, expected savings %s %s $%s", probabilityText, formatDollars(decision.ExpectedSavings), comparison, jsstring.ToFixed(cacheWarmingMinimumExpectedSavings, 3))
 }
 
 func formatCacheWarmingDecisionTime(nextWarmAt, now int64) string {
@@ -753,7 +750,7 @@ func FormatCacheWarmingUsage(entry UsageEntry) string {
 	if entry.Note != "" {
 		note = " (" + entry.Note + ")"
 	}
-	cost := jsToFixed(entry.Usage.Cost.Total, 6)
+	cost := jsstring.ToFixed(entry.Usage.Cost.Total, 6)
 	// Keep at least three decimals and drop trailing zeros after them.
 	if dot := strings.IndexByte(cost, '.'); dot >= 0 && len(cost) > dot+4 {
 		cost = cost[:dot+4] + strings.TrimRight(cost[dot+4:], "0")

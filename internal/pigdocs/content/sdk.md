@@ -30,7 +30,7 @@ module tag.
 
 A program normally:
 
-1. creates a `coding.Services` container;
+1. creates a `coding.AgentSessionServices` container;
 2. creates a `coding.Runtime`;
 3. resolves a model;
 4. creates or opens a `coding.Session`;
@@ -49,7 +49,7 @@ import (
 )
 
 func main() {
-    services, err := coding.NewServices(coding.ServicesOptions{
+    services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{
         CWD:      ".",
         AgentDir: coding.DefaultAgentDir(),
     })
@@ -90,7 +90,7 @@ The repository contains a complete example at `examples/sdk/main.go`.
 
 ## Services
 
-`coding.Services` owns shared collaborators such as settings, authentication, model registry state, and paths. Pass it to the Runtime instead of constructing hidden global dependencies.
+`coding.AgentSessionServices` owns shared collaborators such as settings, authentication, model registry state, and paths. Pass it to the Runtime instead of constructing hidden global dependencies.
 
 Set the working directory and agent directory explicitly when your application does not use command-line defaults.
 
@@ -116,6 +116,12 @@ Create a fresh Session with `Runtime.New`. Open an existing Session with the Run
 
 Subscribe to Session events before sending when your application needs streaming updates.
 
+### Supply an Agent or a cache warmer
+
+`SessionOptions.Agent` is an `*agent.Agent` you built. The Session drives it instead of building its own, as Pi's `AgentSessionConfig.agent` does (`agent-session.ts:253,486`). The Session installs its hooks into it: it chains a `FinishTurn`, `PrepareRequest`, `PrepareNextTurn` and `TransformLLMMessages` hook the Agent already had, replaces `BeforeToolCall`, `AfterToolCall`, `PreparePrompt`, `PrepareToolResult` and `SessionFile`, and sets the tools and session ID. You own the rest of the Agent's configuration: the stream function, `TransformContext`, `OnPayload` and header hooks (so no `before_provider_request` or `before_provider_headers` event fires unless your hooks emit it), steering and follow-up modes, thinking budgets, transport and image conversion. A nil `Model` and `ThinkingLevel` take the Agent's, so the Session does not restore them from history. An Agent serves one Session: `Clone` and replacements build their own. Without it the Session builds its Agent with the cache-warming stream function. Pi's `extensionRunnerRef` cell does not exist in PiG (D113): read `Session.ExtensionRunner()` after construction.
+
+`SessionOptions.CacheWarmer` is a `coding.CacheWarmer` you built, as Pi's `AgentSessionConfig.cacheWarmer` is (`agent-session.ts:266,494-497`). The Session wires its `OnWarmed` to the `entry_appended` event, reports its `Status`, forwards `OnAgentSettled` and `OnModeChanged`, and cancels it when the Session closes. Your stream function starts it. A Session replacement builds its own warmer for the new Session.
+
 ## Models and authentication
 
 `coding.BuildModel` resolves a provider and model through the Services container. Authenticate with the standalone `pig` command or provide the application-specific credential mechanism before creating the model.
@@ -127,6 +133,12 @@ pig --print --model github-copilot/gpt-4o-mini "hello"
 ```
 
 Do not copy credentials into source code.
+
+### Send Anthropic requests through your own client
+
+`ai.StreamOptions.AnthropicClient` replaces the Anthropic Messages provider's client construction, as Pi's `AnthropicOptions.client` does (`anthropic-messages.ts:286-290`, `607-609`). The provider sends its request through it and skips federation, OAuth and API-key header assembly. Other providers ignore it. Use it for an alternative client that shares the Messages API, such as Anthropic on Vertex.
+
+An `ai.AnthropicClient` has one method, `CreateMessage(ctx, ai.AnthropicCreateParams, ai.AnthropicRequestOptions) (*http.Response, error)`. `ctx` carries the request's abort. The provider reads the streamed events from the response body and handles a non-success status itself. A retryable failure that implements `ProviderRequestError` is retried within `StreamOptions.MaxRetries`. `AnthropicCreateParams.Body` is the JSON request body without the betas list, and `Betas` is the comma-joined `anthropic-beta` header value (nil sends no header). `AnthropicRequestOptions.TimeoutMs` is `StreamOptions.TimeoutMs`.
 
 ## Tools
 
@@ -152,6 +164,10 @@ Close resources in this order:
 4. release application-owned Services dependencies.
 
 Do not replay a failed extension operation automatically unless the application knows that the operation is idempotent.
+
+### Contexts that print and cancel like Pi's
+
+`github.com/MichaelKinsy/PiG/chord/context` (package `chordctx`) ports Pi's `@earendil-works/chord/context` onto `context.Context`. An abort signal is cancellation, and the abort reason is the cancellation cause. `Background()` and `TODO()` are Pi's `BACKGROUND_CONTEXT` and `TODO_CONTEXT`, and contexts derived from them print as Pi's do. `NewKey` makes a typed key from a description that names it in diagnostics only. `WithValue` and `Value` store and read a value, and the parent is unchanged. `WithAbortSignal(parent, signal)` is cancelled by the parent or the signal, whichever is first, with that one's cause. `WithoutAbortSignal` keeps every value and ignores caller cancellation, for mandatory cleanup only. `WithCancel` returns a child and a `cancel(cause)` function. `Await[T](ctx, work)` returns the work's outcome, or the cancellation cause from this waiter only: it does not cancel the work.
 
 ## RPC alternative
 

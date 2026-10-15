@@ -36,7 +36,7 @@ func BenchmarkMarkdownStreaming(b *testing.B) {
 	for range b.N {
 		for f := 1; f <= frames; f++ {
 			hlMu.Lock()
-			clear(hlCache) // no memo: re-highlight everything every frame
+			resetHighlightCacheLocked() // no memo: re-highlight everything every frame
 			hlMu.Unlock()
 			end := finalLen * f / frames
 			md := NewMarkdown(full[:end])

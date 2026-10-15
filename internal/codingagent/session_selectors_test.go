@@ -1,6 +1,7 @@
 package codingagent
 
 import (
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -18,27 +19,18 @@ func TestUserMessageSelectorItemsExtractsUserMessagesOldestFirst(t *testing.T) {
 	id3, _ := sess.AppendMessage(mkUserMsg("second user msg"))
 	_, _ = sess.AppendMessage(mkAssistantMsg("assistant reply 2"))
 
-	ids, labels := userMessageSelectorItems(sess)
-	if len(ids) != 2 {
-		t.Fatalf("expected 2 user messages, got %d", len(ids))
-	}
-	if ids[0] != id1 || ids[1] != id3 {
-		t.Errorf("ids order wrong: got %v want [id1=%s id3=%s]", ids, id1, id3)
-	}
-	if labels[0] != "first user msg" {
-		t.Errorf("labels[0] = %q, want %q", labels[0], "first user msg")
-	}
-	if labels[1] != "second user msg" {
-		t.Errorf("labels[1] = %q, want %q", labels[1], "second user msg")
+	items := userMessageSelectorItems(sess)
+	want := []tui.UserMessageItem{{ID: id1, Text: "first user msg"}, {ID: id3, Text: "second user msg"}}
+	if !slices.Equal(items, want) {
+		t.Fatalf("items = %+v, want %+v (user messages only, oldest first)", items, want)
 	}
 }
 
 func TestUserMessageSelectorItemsEmptySession(t *testing.T) {
 	sm := tempSessionMgr(t)
 	sess, _ := sm.Create("sess-empty-msg", "")
-	ids, labels := userMessageSelectorItems(sess)
-	if len(ids) != 0 || len(labels) != 0 {
-		t.Errorf("expected empty slices, got %d ids / %d labels", len(ids), len(labels))
+	if items := userMessageSelectorItems(sess); len(items) != 0 {
+		t.Errorf("expected no items, got %+v", items)
 	}
 }
 
@@ -46,16 +38,16 @@ func TestTreeNodeAdapterLabelsAndChildren(t *testing.T) {
 	sm := tempSessionMgr(t)
 	sess, _ := sm.Create("sess-adapter", "")
 	id1, _ := sess.AppendMessage(mkUserMsg("hello"))
-	_ = sess.Fork(id1)
+	_ = sess.Branch(id1)
 	_, _ = sess.AppendMessage(mkUserMsg("branch-a-msg"))
 
-	root := sess.Tree()
+	root := sess.treeRoot()
 	if root == nil || len(root.Children) == 0 {
 		t.Fatal("expected non-empty tree")
 	}
 	// 3.1d-e: label format is upstream-style "user: <preview>" -
 	// no id prefix, no timestamp, no " · " separator. Connector
-	// glyphs come from tui.TreeSelect.flatten, not NodeLabel.
+	// glyphs come from tui.TreeSelectorComponent.flatten, not NodeLabel.
 	a := &treeNodeAdapter{n: root, f: newTreeRowFormatter(sess)}
 	kids := a.NodeChildren()
 	if len(kids) != 1 {
@@ -274,8 +266,7 @@ func TestSlashHandlerTreeCancelIsSilent(t *testing.T) {
 // j: tool-call-only assistant messages are hidden from the
 // /tree picker (mirrors upstream tree-selector.ts:287-296). The
 // suppression happens at the treeNodeAdapter.NodeChildren layer:
-// suppressed nodes are skipped and their visible children are pulled
-// up to the suppressed node's slot. The current leaf is exempt so the
+// suppressed nodes are tagged "hidden" (the list's filter drops them in every mode) and the tree keeps its full shape. The current leaf is exempt so the
 // active position is always visible.
 func TestTreeNodeAdapterSuppressesToolCallOnlyAssistant(t *testing.T) {
 	sess := NewSession("sess-suppress", "")
@@ -311,7 +302,7 @@ func TestTreeNodeAdapterSuppressesToolCallOnlyAssistant(t *testing.T) {
 		t.Fatalf("append asst-text: %v", err)
 	}
 
-	root := sess.Tree()
+	root := sess.treeRoot()
 	if root == nil {
 		t.Fatal("nil tree")
 	}
@@ -326,7 +317,10 @@ func TestTreeNodeAdapterSuppressesToolCallOnlyAssistant(t *testing.T) {
 			if !ok {
 				continue
 			}
-			labels = append(labels, ad.NodeLabel())
+			// Hidden rows stay in the tree and carry the "hidden" filter tag (applyFilter hides them in every mode).
+			if !slices.Contains(ad.NodeFilterTags(), "hidden") {
+				labels = append(labels, ad.NodeLabel())
+			}
 			walk(ad)
 		}
 	}
@@ -358,7 +352,7 @@ func TestTreeNodeAdapterSuppressesToolCallOnlyAssistant(t *testing.T) {
 	if err := sess.SetLeafID(&asstToolID); err != nil {
 		t.Fatalf("SetLeafID: %v", err)
 	}
-	a2 := &treeNodeAdapter{n: sess.Tree(), f: newTreeRowFormatter(sess)}
+	a2 := &treeNodeAdapter{n: sess.treeRoot(), f: newTreeRowFormatter(sess)}
 	var labels2 []string
 	var walk2 func(node *treeNodeAdapter)
 	walk2 = func(node *treeNodeAdapter) {
@@ -414,7 +408,7 @@ func TestThemeSubmenuMarksCurrentTheme(t *testing.T) {
 // SettingsSelectorComponent frames the settings list and its submenus with
 // DynamicBorders (settings-selector.ts).
 func TestSettingsFrameDrawsBordersAroundContent(t *testing.T) {
-	sl := tui.NewSettingsList([]tui.SettingItem{{ID: "a", Label: "Auto-compact", CurrentValue: "true", Values: []string{"true", "false"}}})
+	sl := tui.NewSettingsList([]tui.SettingItem{{ID: "a", Label: "Auto-compact", CurrentValue: "true", Values: []string{"true", "false"}}}, 10, tui.GetSettingsListTheme(), nil, nil, tui.SettingsListOptions{EnableSearch: true})
 	lines := settingsFrame(sl).Render(40)
 	border := strings.Repeat("─", 40)
 	if stripANSI(lines[0]) != border || stripANSI(lines[len(lines)-1]) != border {

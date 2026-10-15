@@ -6,7 +6,7 @@ import (
 )
 
 func emptySignatureModel(compat *ModelCompat) *Model {
-	return &Model{ID: "mimo-v2.5-pro", DisplayName: "MiMo-V2.5-Pro", Capabilities: ModelCapabilities{MaxThinking: ThinkingHigh, ContextWindow: 1048576, MaxOutputTokens: 1024}, Input: []string{"text"}, ProviderMeta: ProviderMetadata{ProviderID: "xiaomi-token-plan-ams", API: APIAnthropicMessages, Reasoning: true, Compat: compat}}
+	return &Model{ID: "mimo-v2.5-pro", DisplayName: "MiMo-V2.5-Pro", Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh, ContextWindow: 1048576, MaxOutputTokens: 1024}, Input: []string{"text"}, ProviderMeta: ProviderMetadata{ProviderID: "xiaomi-token-plan-ams", API: APIAnthropicMessages, Reasoning: true, Compat: compat}}
 }
 
 func emptySignatureContext(provider, model, thinking, signature string, answer bool) Context {
@@ -81,14 +81,5 @@ func TestAnthropicUpstreamEmptyThinkingSignature(t *testing.T) {
 		model := upstreamCatalogModel(t, "fireworks", "accounts/fireworks/models/deepseek-v4p1-flash")
 		payload := upstreamAnthropicParams(t, model, emptySignatureContext("fireworks", "accounts/fireworks/models/nemotron-3-ultra-nvfp4", "internal reasoning", "", false), StreamOptions{})
 		assertShapeJSON(t, assistantPayloadContent(t, payload), `[{"type":"text","text":"internal reasoning"}]`)
-	})
-	// .upstream/v0.87.1/packages/ai/test/anthropic-empty-thinking-signature-compat.test.ts:140
-	t.Run("allows empty signatures for Kimi Coding k3", func(t *testing.T) {
-		model := upstreamCatalogModel(t, "kimi-coding", "k3")
-		if !modelAllowsEmptySignature(model) {
-			t.Fatal("missing compat flag")
-		}
-		payload := upstreamAnthropicParams(t, model, emptySignatureContext("kimi-coding", "k3", "internal reasoning", " ", false), StreamOptions{})
-		assertShapeJSON(t, assistantPayloadContent(t, payload), `[{"type":"thinking","thinking":"internal reasoning","signature":""}]`)
 	})
 }

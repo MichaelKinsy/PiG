@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -21,7 +20,7 @@ type compactionDecisionCall struct {
 
 func autoQueueSession(t *testing.T, smallKeep bool) *Session {
 	t.Helper()
-	var services *Services
+	var services *AgentSessionServices
 	if smallKeep {
 		services = newTestServicesSmallKeep(t)
 	} else {
@@ -219,7 +218,7 @@ func TestPrePromptCompactionDoesNotContinueFromAssistant(t *testing.T) {
 
 func BenchmarkCheckCompactionDecision(b *testing.B) {
 	b.Setenv("PIG_HOME", b.TempDir())
-	services, err := NewServices(ServicesOptions{CWD: b.TempDir()})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: b.TempDir()})
 	if err != nil {
 		b.Fatal(err)
 	}

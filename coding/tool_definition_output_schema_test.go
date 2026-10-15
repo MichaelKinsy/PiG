@@ -2,8 +2,12 @@ package coding
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 )
 
@@ -28,11 +32,55 @@ func TestToolDefinitionCarriesOutputSchemaOfBuiltinTools(t *testing.T) {
 		t.Errorf("ctx.tools view outputSchema = %s", view.OutputSchema)
 	}
 
-	read, err := toolDefinition(&tools.ReadTool{CWD: t.TempDir()})
+	// Pi 1.0.4's read tool declares an output schema: the text, or an image block (read.ts readOutputSchema).
+	readTool := &tools.ReadTool{CWD: t.TempDir()}
+	read, err := toolDefinition(readTool)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(read.OutputSchema) != 0 {
-		t.Errorf("the read definition has outputSchema %s; Pi's read tool declares none", read.OutputSchema)
+	if len(read.OutputSchema) == 0 || !bytes.Equal(read.OutputSchema, readTool.OutputSchema()) {
+		t.Errorf("the read definition has outputSchema %s, want %s", read.OutputSchema, readTool.OutputSchema())
+	}
+}
+
+// plainTool is a custom AgentTool that declares no output schema; schemaTool is upstream's runToolCall "echo" tool, which declares
+// `outputSchema: Type.Object({ value: Type.String() })` (packages/agent/test/agent-loop.test.ts:2140, AgentTool.outputSchema, types.ts:478).
+type plainTool struct{}
+
+func (plainTool) Name() string  { return "plain" }
+func (plainTool) Label() string { return "Plain" }
+func (plainTool) Schema() ai.ToolSchema {
+	return ai.ToolSchema{Name: "plain", Description: "Plain tool", Parameters: map[string]any{"type": "object"}}
+}
+func (plainTool) Execute(context.Context, string, json.RawMessage, agent.ToolUpdateCallback) (agent.AgentToolResult, error) {
+	return agent.AgentToolResult{}, nil
+}
+func (plainTool) ExecutionMode() agent.ToolExecutionMode { return "" }
+
+type schemaTool struct{ plainTool }
+
+func (schemaTool) OutputSchema() json.RawMessage {
+	return json.RawMessage(`{"type":"object","properties":{"value":{"type":"string"}},"required":["value"]}`)
+}
+
+// tool-definition-wrapper.ts:52 copies outputSchema of any AgentTool into its definition, and an AgentTool without one has none: only a tool that
+// implements OutputSchemaProvider carries a schema (codemode renders `Promise<unknown>` for the others, declarations.ts:195).
+func TestToolDefinitionCarriesTheOutputSchemaOfAnyAgentToolThatDeclaresOne(t *testing.T) {
+	with, err := toolDefinition(schemaTool{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := (schemaTool{}).OutputSchema(); !bytes.Equal(with.OutputSchema, want) {
+		t.Fatalf("outputSchema = %s, want %s", with.OutputSchema, want)
+	}
+	if view := toolView(with); !bytes.Equal(view.OutputSchema, with.OutputSchema) {
+		t.Fatalf("ctx.tools view outputSchema = %s, want %s", view.OutputSchema, with.OutputSchema)
+	}
+	without, err := toolDefinition(plainTool{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(without.OutputSchema) != 0 {
+		t.Fatalf("a tool without an output schema got %s", without.OutputSchema)
 	}
 }

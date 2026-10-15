@@ -8,13 +8,21 @@
 // go.mod `replace`, Python via sys.path, Rust via a Cargo `path` dependency.
 // Those SDK modules are nested/unpublished, so a machine with only the pig
 // binary has nothing to point at and packed cells fail to build. The host SDK
-// resolvers (coding/extension/host/runtimecell) use the staged copy under
-// <config-root>/state/pigsdk/sdk{,-py,-rs}.
+// resolvers (coding/extension/host/runtimecell) use the staged copy, found
+// through pigsdklock.StagedSDKDir.
 //
 // The SDK bytes are embedded in the pig binary, so a staged copy always matches
-// the running binary. Each language's stage is keyed on a content hash: any
-// change to the embedded SDK re-stages on the next start; warm starts do a
+// the running binary. Each build stages each language into its own directory
+// named for the SDK's content hash, so PiG builds that share a config root (two
+// installed versions, or stock PiG beside a Piglet Binary) never restage each
+// other's SDKs or strand each other's extension builds. A warm start does a
 // single marker read per language.
+//
+// After a stage, the least recently used SDK directories of other builds beyond
+// contentdirs.Keep per language are removed, and extension builds whose SDK is
+// no longer staged are pruned. The unhashed directories a PiG that predates
+// per-build directories stages into are never removed, and their builds are
+// kept.
 //
 // # Boundary
 //
@@ -23,9 +31,9 @@
 // Pig, not an optional product extension.
 //
 //	<config-root>/state/pigsdk/
-//	  sdk/      go.mod + *.go              (Go)
-//	  sdk-py/   pig_sdk/__init__.py + ...  (Python)
-//	  sdk-rs/   Cargo.toml + src/*.rs      (Rust)
+//	  sdk-<hash16>/      go.mod + *.go              (Go)
+//	  sdk-py-<hash16>/   pig_sdk/__init__.py + ...  (Python)
+//	  sdk-rs-<hash16>/   Cargo.toml + src/*.rs      (Rust)
 //	each with a .pig-sdk-version content-hash marker.
 package pigsdk
 
@@ -48,23 +56,20 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
+	"github.com/MichaelKinsy/PiG/internal/configroot"
+	"github.com/MichaelKinsy/PiG/internal/contentdirs"
 	"github.com/MichaelKinsy/PiG/internal/pigsdklock"
-
-	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
-	pysdk "github.com/MichaelKinsy/PiG/extensions/sdk-py"
-	rssdk "github.com/MichaelKinsy/PiG/extensions/sdk-rs"
 )
 
 // markerFile records a staged SDK's content hash so warm starts skip work and
 // any SDK change forces a re-stage. One lives in each language's staged dir.
 const markerFile = ".pig-sdk-version"
 
-// sdkBundle describes one language's embedded SDK and where it stages.
+// sdkBundle describes one language's embedded SDK.
 type sdkBundle struct {
-	lang   string // "go" | "python" | "rust"
-	relDir string // staged dir relative to config root, forward slashes
-	files  []string
-	fsys   fs.FS
+	lang  string // "go" | "python" | "rust"
+	files []string
+	fsys  fs.FS
 }
 
 type bundleHashCache struct {
@@ -77,15 +82,40 @@ var bundleHashes = map[string]*bundleHashCache{
 	"go": {}, "python": {}, "rust": {},
 }
 
-// Staged SDK directories relative to the config root. Checking that one exists must not enumerate the embedded files, which bundles does.
-var stagedSDKDirs = [...]string{"state/pigsdk/sdk", "state/pigsdk/sdk-py", "state/pigsdk/sdk-rs"}
+// sdkBases names each language's staged directories under <config-root>/state/pigsdk: a build stages into <base>-<hash16>, and a PiG that predates per-build directories stages into <base> itself. It covers every language, embedded by this build or not, because another build sharing the config root may embed one this build strips.
+var sdkBases = [...]struct{ lang, base string }{{"go", "sdk"}, {"python", "sdk-py"}, {"rust", "sdk-rs"}}
 
-func bundles() []sdkBundle {
-	return []sdkBundle{
-		{lang: "go", relDir: stagedSDKDirs[0], files: sdk.BundledFiles(), fsys: sdk.Source},
-		{lang: "python", relDir: stagedSDKDirs[1], files: pysdk.BundledFiles(), fsys: pysdk.Source},
-		{lang: "rust", relDir: stagedSDKDirs[2], files: rssdk.BundledFiles(), fsys: rssdk.Source},
+// sdkBase returns lang's directory base from sdkBases.
+func sdkBase(lang string) string {
+	for _, entry := range sdkBases {
+		if entry.lang == lang {
+			return entry.base
+		}
 	}
+	return ""
+}
+
+// registerBundle makes lang's staged directory resolvable through pigsdklock.StagedSDKDir. Its hash fails with the strip error while the active Piglet strips lang at run time.
+func registerBundle(lang string, bundle func() (sdkBundle, bool)) {
+	pigsdklock.RegisterSDK(lang, sdkBase(lang), func() (string, error) {
+		b, ok := bundle()
+		if !ok {
+			return "", unknownLanguage("", lang)
+		}
+		return b.hash()
+	})
+}
+
+// bundles lists the embedded SDKs in staging order (go, python, rust).
+// pig additive (D92): each language's SDK lives in its sdk_<lang>_on.go shim, which a Piglet Binary compiles out with pig_strip_extension_sdk_<lang>; a stripped language is left out.
+func bundles() []sdkBundle {
+	out := make([]sdkBundle, 0, 3)
+	for _, bundle := range [...]func() (sdkBundle, bool){goBundle, pythonBundle, rustBundle} {
+		if b, ok := bundle(); ok {
+			out = append(out, b)
+		}
+	}
+	return out
 }
 
 func bundleFor(lang string) (sdkBundle, bool) {
@@ -97,20 +127,28 @@ func bundleFor(lang string) (sdkBundle, bool) {
 	return sdkBundle{}, false
 }
 
-// SDKDir returns the staged Go SDK directory. Kept for callers that scaffold Go
-// extensions (pig extension init).
-func SDKDir(configRoot string) string {
-	return filepath.Join(configRoot, filepath.FromSlash("state/pigsdk/sdk"))
+// unknownLanguage is the error for a language with no embedded SDK; prefix
+// leads the stock unknown-language message.
+// pig additive (D92): a language the active Piglet strips reports the strip, not an unknown language.
+func unknownLanguage(prefix, lang string) error {
+	if err := runtimecell.StrippedSDKError(lang); err != nil {
+		return err
+	}
+	return fmt.Errorf("%sunknown language %q", prefix, lang)
 }
 
-// SDKDirFor returns the staged directory for a language, or an error for an
-// unknown language.
+// SDKDirFor returns the directory this binary stages a language's SDK in, or an error for an unknown language.
 func SDKDirFor(configRoot, lang string) (string, error) {
 	b, ok := bundleFor(lang)
 	if !ok {
-		return "", fmt.Errorf("pig reload: unknown language %q", lang)
+		return "", unknownLanguage("pig reload: ", lang)
 	}
-	return filepath.Join(configRoot, filepath.FromSlash(b.relDir)), nil
+	return b.stagedDir(configRoot)
+}
+
+// stagedDir is the directory this binary stages b in: <config-root>/state/pigsdk/<base>-<hash16>.
+func (b sdkBundle) stagedDir(configRoot string) (string, error) {
+	return pigsdklock.StagedSDKDir(configRoot, b.lang)
 }
 
 func (b sdkBundle) hash() (string, error) {
@@ -121,12 +159,16 @@ func (b sdkBundle) hash() (string, error) {
 	return cache.hash, cache.err
 }
 
+// hashBuffers shares the copy buffer of the bundle hashes: the three bundles are hashed one after another at startup. Reads from the embedded files are memory copies, so a larger buffer would only add to every start's allocations.
+var hashBuffers = sync.Pool{New: func() any { buffer := make([]byte, 8<<10); return &buffer }}
+
 func (b sdkBundle) computeHash() (string, error) {
 	h := sha256.New()
 	_, _ = h.Write([]byte("staging-v2\x00"))
-	buffer := make([]byte, 64<<10)
+	buffer := hashBuffers.Get().(*[]byte)
+	defer hashBuffers.Put(buffer)
 	for _, name := range b.files {
-		if err := hashEmbeddedFile(h, b, name, buffer); err != nil {
+		if err := hashEmbeddedFile(h, b, name, *buffer); err != nil {
 			return "", fmt.Errorf("pig reload: read embedded %s/%s: %w", b.lang, name, err)
 		}
 	}
@@ -157,9 +199,12 @@ func hashEmbeddedFile(h io.Writer, b sdkBundle, name string, buffer []byte) erro
 	return nil
 }
 
-// sync replaces the staged directory with the embedded SDK. It builds the new tree beside the old one and swaps it in by renames that keep the previous tree until the new one is in place, so the marker only ever appears with every file it vouches for and a failed swap leaves the previous SDK. Callers hold the SDK stage lock, which excludes builds reading the tree.
+// sync replaces this build's staged directory with the embedded SDK. It builds the new tree beside the old one and swaps it in by renames that keep the previous tree until the new one is in place, so the marker only ever appears with every file it vouches for and a failed swap leaves the previous SDK. Callers hold the SDK stage lock, which excludes builds reading the tree.
 func (b sdkBundle) sync(configRoot string) ([]string, error) {
-	dir := filepath.Join(configRoot, filepath.FromSlash(b.relDir))
+	dir, err := b.stagedDir(configRoot)
+	if err != nil {
+		return nil, err
+	}
 	hash, err := b.hash()
 	if err != nil {
 		return nil, err
@@ -167,8 +212,8 @@ func (b sdkBundle) sync(configRoot string) ([]string, error) {
 	if err := os.MkdirAll(filepath.Dir(dir), 0o755); err != nil {
 		return nil, fmt.Errorf("pig reload: mkdir %s: %w", filepath.Dir(dir), err)
 	}
-	b.settleStaging(configRoot)
-	staging, err := os.MkdirTemp(filepath.Dir(dir), ".stage-"+b.lang+"-")
+	settleStaging(dir)
+	staging, err := os.MkdirTemp(filepath.Dir(dir), stagePrefix(dir))
 	if err != nil {
 		return nil, fmt.Errorf("pig reload: stage %s SDK: %w", b.lang, err)
 	}
@@ -211,13 +256,12 @@ func (b sdkBundle) sync(configRoot string) ([]string, error) {
 	return written, nil
 }
 
-// stagePrefix names the private trees this bundle's syncs build beside its directory, and the aside copies of the tree they replace.
-func (b sdkBundle) stagePrefix() string { return ".stage-" + b.lang + "-" }
+// stagePrefix names the private trees syncs build beside the staged directory dir, and the aside copies of the tree they replace. It names dir itself, so a sync never touches another build's trees.
+func stagePrefix(dir string) string { return ".stage-" + filepath.Base(dir) + "-" }
 
-// settleStaging removes the trees that syncs stranded by dying or failing mid-swap. The caller holds the SDK stage lock, so no tree found is owned by a live sync. An aside copy (`.old`) may be the only intact SDK, when the swap died or failed to restore it after moving it aside, so a missing target is restored from one before any tree is removed. If that restore fails, the aside copies stay.
-func (b sdkBundle) settleStaging(configRoot string) {
-	dir := filepath.Join(configRoot, filepath.FromSlash(b.relDir))
-	leftovers, _ := filepath.Glob(filepath.Join(filepath.Dir(dir), b.stagePrefix()+"*"))
+// settleStaging removes the trees that syncs of dir stranded by dying or failing mid-swap. The caller holds the SDK stage lock, so no tree found is owned by a live sync. An aside copy (`.old`) may be the only intact SDK, when the swap died or failed to restore it after moving it aside, so a missing target is restored from one before any tree is removed. If that restore fails, the aside copies stay.
+func settleStaging(dir string) {
+	leftovers, _ := filepath.Glob(filepath.Join(filepath.Dir(dir), stagePrefix(dir)+"*"))
 	if _, err := os.Lstat(dir); errors.Is(err, fs.ErrNotExist) {
 		if asides := slices.DeleteFunc(slices.Clone(leftovers), func(path string) bool { return !strings.HasSuffix(path, ".old") }); len(asides) > 0 {
 			// Glob returns lexical order; any aside is a complete previous tree.
@@ -248,9 +292,9 @@ func stagingNames(configRoot string) []string {
 	return names
 }
 
-// ownsAny reports whether one of names is a staging entry of this bundle.
-func (b sdkBundle) ownsAny(names []string) bool {
-	return slices.ContainsFunc(names, func(name string) bool { return strings.HasPrefix(name, b.stagePrefix()) })
+// ownsStaging reports whether one of names is a staging entry of the staged directory dir.
+func ownsStaging(dir string, names []string) bool {
+	return slices.ContainsFunc(names, func(name string) bool { return strings.HasPrefix(name, stagePrefix(dir)) })
 }
 
 // renameDir is os.Rename; tests replace it to fail a swap step.
@@ -280,29 +324,32 @@ func replaceDir(dir, staging string) error {
 	return nil
 }
 
-func (b sdkBundle) current(configRoot string) (bool, error) {
+// current reports whether the staged directory dir holds b's embedded SDK.
+func (b sdkBundle) current(dir string) (bool, error) {
 	hash, err := b.hash()
 	if err != nil {
 		return false, err
 	}
-	marker := filepath.Join(configRoot, filepath.FromSlash(b.relDir), markerFile)
-	data, err := os.ReadFile(marker)
+	data, err := os.ReadFile(filepath.Join(dir, markerFile))
 	if err != nil {
 		return false, nil
 	}
 	return strings.TrimSpace(string(data)) == hash, nil
 }
 
-// ensure stages the bundle when the on-disk marker is missing or stale. It
-// reports whether a stage actually happened, which is the event that strands
-// every extension build compiled against the previous SDK.
+// ensure stages the bundle into this build's directory when its marker is missing or stale, and otherwise records the directory's use. It reports whether a stage actually happened. Other builds' directories are never touched.
 func (b sdkBundle) ensure(configRoot string) (bool, error) {
-	current, err := b.current(configRoot)
+	dir, err := b.stagedDir(configRoot)
+	if err != nil {
+		return false, err
+	}
+	current, err := b.current(dir)
 	if err != nil {
 		return false, err
 	}
 	if current {
-		b.settleStaging(configRoot)
+		contentdirs.Touch(dir)
+		settleStaging(dir)
 		return false, nil
 	}
 	if _, err := b.sync(configRoot); err != nil {
@@ -312,12 +359,11 @@ func (b sdkBundle) ensure(configRoot string) (bool, error) {
 }
 
 // StageStatus reports one language SDK's staged state against the SDK embedded
-// in the running binary. A staged copy that does not match the binary silently
-// builds extensions against the wrong SDK, so the mismatch has to be
-// observable rather than inferred from an extension misbehaving.
+// in the running binary. This build reads only its own staged directory, so it
+// is either current or not staged yet.
 type StageStatus struct {
 	Lang     string // "go" | "python" | "rust"
-	Dir      string // absolute staged directory
+	Dir      string // absolute directory this build stages the SDK in
 	Staged   bool   // a marker file exists
 	Current  bool   // the marker matches the embedded SDK
 	Embedded string // hash of the SDK compiled into this binary
@@ -334,7 +380,10 @@ func Status(configRoot string) ([]StageStatus, error) {
 		if err != nil {
 			return nil, err
 		}
-		dir := filepath.Join(configRoot, filepath.FromSlash(b.relDir))
+		dir, err := b.stagedDir(configRoot)
+		if err != nil {
+			return nil, err
+		}
 		st := StageStatus{Lang: b.lang, Dir: dir, Embedded: embedded}
 		if data, err := os.ReadFile(filepath.Join(dir, markerFile)); err == nil {
 			st.OnDisk = strings.TrimSpace(string(data))
@@ -345,6 +394,11 @@ func Status(configRoot string) ([]StageStatus, error) {
 	}
 	return out, nil
 }
+
+// A program that links the SDKs is the only one whose hosts can build Go and Rust extensions (pigsdklock.StagedSDKDir names no SDK
+// otherwise), so linking them also installs the check that a staged copy matches them for the hosts library entry points start
+// (coding.DiscoverAndLoadExtensions).
+func init() { subprocess.SetDefaultStagedSDKVerifier(VerifyStaged) }
 
 // VerifyStaged reports whether the staged SDK for a build type matches the SDK
 // embedded in this binary. Build types map to languages: "go" and "rust" stage
@@ -377,47 +431,69 @@ func VerifyStaged(configRoot string) func(stagedDir, buildType string) error {
 	}
 }
 
-// LiveFingerprints returns the staged-SDK fingerprint per build type. A cached
-// extension build is reachable only while its recorded fingerprint appears
-// here, because the build's cache key folds the SDK in.
-func LiveFingerprints(configRoot string) (map[string]string, error) {
-	live := map[string]string{}
-	for _, lang := range []string{"go", "rust", "python"} {
-		b, ok := bundleFor(lang)
-		if !ok {
-			continue
-		}
-		dir := filepath.Join(configRoot, filepath.FromSlash(b.relDir))
-		fp, err := subprocess.StagedSDKFingerprint(dir, lang)
+// stagedSDK is one staged SDK directory and the language it holds.
+type stagedSDK struct{ lang, dir string }
+
+// stagedSDKs lists every staged SDK directory under configRoot, whichever build staged it: each language's per-build directories and the unhashed directory a PiG that predates them stages into.
+func stagedSDKs(configRoot string) ([]stagedSDK, error) {
+	parent := filepath.Join(configRoot, "state", "pigsdk")
+	var out []stagedSDK
+	for _, entry := range sdkBases {
+		dirs, err := contentdirs.Dirs(parent, entry.base)
 		if err != nil {
-			// An unstaged SDK has no live builds; leaving it out of the map is
-			// the correct answer rather than an error.
+			return nil, err
+		}
+		for _, dir := range dirs {
+			out = append(out, stagedSDK{entry.lang, dir})
+		}
+		unhashed := filepath.Join(parent, entry.base)
+		if info, err := os.Stat(unhashed); err == nil && info.IsDir() {
+			out = append(out, stagedSDK{entry.lang, unhashed})
+		}
+	}
+	return out, nil
+}
+
+// LiveFingerprints returns the fingerprints of every staged SDK still on disk:
+// this build's, the other builds' retained ones, and the unhashed ones an older
+// PiG uses. A cached extension build stays reachable while its recorded
+// fingerprint is among them, because the build's cache key folds the SDK in.
+func LiveFingerprints(configRoot string) (map[string]struct{}, error) {
+	sdks, err := stagedSDKs(configRoot)
+	if err != nil {
+		return nil, err
+	}
+	live := make(map[string]struct{}, len(sdks))
+	for _, sdk := range sdks {
+		fp, err := subprocess.StagedSDKFingerprint(sdk.dir, sdk.lang)
+		if err != nil {
+			// A directory that cannot be read has no live builds; leaving it
+			// out is the correct answer rather than an error.
 			continue
 		}
-		live[lang] = fp
+		live[fp] = struct{}{}
 	}
 	return live, nil
 }
 
-// anyStagedSDK reports whether any language has a staged directory.
-func anyStagedSDK(configRoot string) bool {
-	for _, relDir := range stagedSDKDirs {
-		if info, err := os.Stat(filepath.Join(configRoot, filepath.FromSlash(relDir))); err == nil && info.IsDir() {
-			return true
-		}
-	}
-	return false
+// Prune drops extension builds no staged SDK can select.
+func Prune(configRoot string, _ bool, dryRun bool) (runtimecell.CacheReport, error) {
+	return prune(configRoot, dryRun, true)
 }
 
-// Prune drops extension builds the staged SDKs can no longer select.
-func Prune(configRoot string, _ bool, dryRun bool) (runtimecell.CacheReport, error) {
+// prune is Prune, with the report's byte counts left zero unless sized is set.
+func prune(configRoot string, dryRun, sized bool) (runtimecell.CacheReport, error) {
 	cacheRoot := filepath.Join(configRoot, "cache")
 	// Fingerprints only classify existing entries. With none, hashing every staged tree cannot change the report, so a first start skips it and still requires a staged SDK. HasCacheEntries reads outside the cache GC lock, so the empty answer is confirmed by a dry run under that lock; a build published in between takes the classified path below.
 	if entries, err := runtimecell.HasCacheEntries(cacheRoot); err == nil && !entries {
-		if !anyStagedSDK(configRoot) {
+		sdks, err := stagedSDKs(configRoot)
+		if err != nil {
+			return runtimecell.CacheReport{}, err
+		}
+		if len(sdks) == 0 {
 			return runtimecell.CacheReport{}, fmt.Errorf("no staged SDK found under %s; run `pig reload` first", configRoot)
 		}
-		confirmed, err := runtimecell.PruneCaches(runtimecell.CacheLifecycleOptions{CacheRoot: cacheRoot, DryRun: true})
+		confirmed, err := runtimecell.PruneCaches(runtimecell.CacheLifecycleOptions{CacheRoot: cacheRoot, DryRun: true, Unsized: !sized})
 		if err != nil || len(confirmed.Entries) == 0 {
 			return confirmed, err
 		}
@@ -429,22 +505,37 @@ func Prune(configRoot string, _ bool, dryRun bool) (runtimecell.CacheReport, err
 	if len(live) == 0 {
 		return runtimecell.CacheReport{}, fmt.Errorf("no staged SDK found under %s; run `pig reload` first", configRoot)
 	}
-	fingerprints := make(map[string]struct{}, len(live))
-	for _, fingerprint := range live {
-		fingerprints[fingerprint] = struct{}{}
-	}
 	return runtimecell.PruneCaches(runtimecell.CacheLifecycleOptions{
-		CacheRoot: cacheRoot, LiveFingerprints: fingerprints, DryRun: dryRun,
+		CacheRoot: cacheRoot, LiveFingerprints: live, DryRun: dryRun, Unsized: !sized,
 	})
 }
 
-// EnsureSynced stages every language SDK whose on-disk marker is missing or
-// stale, then drops builds the new SDK can no longer select.
+// evictAndPrune follows a stage under the SDK stage lock. It removes other builds' staged SDK directories beyond the contentdirs.Keep most recently used of each language this build stages, never this build's own, then drops the extension builds no remaining SDK can select.
+// The report's byte counts are read only when sized is set.
+func evictAndPrune(configRoot string, sized bool) (runtimecell.CacheReport, error) {
+	var errs []error
+	for _, b := range bundles() {
+		own, err := b.stagedDir(configRoot)
+		if err != nil {
+			return runtimecell.CacheReport{}, err
+		}
+		if _, err := contentdirs.Evict(filepath.Dir(own), sdkBase(b.lang), own); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if err := errors.Join(errs...); err != nil {
+		return runtimecell.CacheReport{}, fmt.Errorf("evict staged SDKs: %w", err)
+	}
+	return prune(configRoot, false, sized)
+}
+
+// EnsureSynced stages every language SDK whose marker in this build's staged
+// directory is missing or stale, then evicts the least recently used staged
+// SDKs of other builds and drops the builds no remaining SDK can select.
 //
-// Staging is the event that strands builds: the cache key folds the SDK in, so
-// the moment a re-stage happens every build against the previous SDK becomes
-// unreachable. Pruning here rather than on a timer means the cache is bounded
-// by how often the SDK actually changes.
+// Staging is the event that changes which builds are reachable, so eviction
+// and pruning run only after a stage rather than on a timer. A warm start only
+// records that this build's directories are in use.
 func EnsureSynced(configRoot string) error {
 	return EnsureSyncedContext(context.Background(), configRoot)
 }
@@ -453,19 +544,29 @@ func EnsureSynced(configRoot string) error {
 func EnsureSyncedContext(ctx context.Context, configRoot string) error {
 	current := true
 	leftovers := stagingNames(configRoot)
-	for _, b := range bundles() {
-		bundleCurrent, err := b.current(configRoot)
+	embedded := bundles()
+	dirs := make([]string, 0, len(embedded))
+	for _, b := range embedded {
+		dir, err := b.stagedDir(configRoot)
 		if err != nil {
 			return err
 		}
-		current = current && bundleCurrent && !b.ownsAny(leftovers)
+		bundleCurrent, err := b.current(dir)
+		if err != nil {
+			return err
+		}
+		current = current && bundleCurrent && !ownsStaging(dir, leftovers)
+		dirs = append(dirs, dir)
 	}
 	if current {
+		for _, dir := range dirs {
+			contentdirs.Touch(dir)
+		}
 		return nil
 	}
 	return withSDKStageLock(ctx, configRoot, func() error {
 		restaged := false
-		for _, b := range bundles() {
+		for _, b := range embedded {
 			changed, err := b.ensure(configRoot)
 			if err != nil {
 				return err
@@ -473,8 +574,8 @@ func EnsureSyncedContext(ctx context.Context, configRoot string) error {
 			restaged = restaged || changed
 		}
 		if restaged {
-			// Automatic prune drops only builds proven stale by fingerprint.
-			if _, err := Prune(configRoot, false, false); err != nil {
+			// Automatic prune drops only builds proven stale by fingerprint. Nothing reads its report, so it does not stat every cached file for sizes.
+			if _, err := evictAndPrune(configRoot, false); err != nil {
 				return fmt.Errorf("prune after SDK restage: %w", err)
 			}
 		}
@@ -487,13 +588,18 @@ func EnsureSyncedContext(ctx context.Context, configRoot string) error {
 func EnsureSyncedLang(configRoot, lang string) error {
 	b, ok := bundleFor(lang)
 	if !ok {
-		return fmt.Errorf("pig reload: unknown language %q", lang)
+		return unknownLanguage("pig reload: ", lang)
 	}
-	current, err := b.current(configRoot)
+	dir, err := b.stagedDir(configRoot)
 	if err != nil {
 		return err
 	}
-	if current && !b.ownsAny(stagingNames(configRoot)) {
+	current, err := b.current(dir)
+	if err != nil {
+		return err
+	}
+	if current && !ownsStaging(dir, stagingNames(configRoot)) {
+		contentdirs.Touch(dir)
 		return nil
 	}
 	return withSDKStageLock(context.Background(), configRoot, func() error {
@@ -502,10 +608,12 @@ func EnsureSyncedLang(configRoot, lang string) error {
 	})
 }
 
-// Sync force-stages every language SDK, returning the count written per
-// language.
-func Sync(configRoot string) (map[string]int, error) {
+// Sync force-stages every language SDK into this build's directories, then
+// evicts and prunes as EnsureSynced does after a stage, all under the SDK stage
+// lock. It returns the count written per language and the prune report.
+func Sync(configRoot string, _ bool) (map[string]int, runtimecell.CacheReport, error) {
 	counts := make(map[string]int, len(bundles()))
+	var report runtimecell.CacheReport
 	err := withSDKStageLock(context.Background(), configRoot, func() error {
 		for _, b := range bundles() {
 			written, err := b.sync(configRoot)
@@ -514,9 +622,11 @@ func Sync(configRoot string) (map[string]int, error) {
 			}
 			counts[b.lang] = len(written)
 		}
-		return nil
+		var err error
+		report, err = evictAndPrune(configRoot, true)
+		return err
 	})
-	return counts, err
+	return counts, report, err
 }
 
 func withSDKStageLock(ctx context.Context, configRoot string, work func() error) (err error) {
@@ -556,8 +666,8 @@ func writeFile(path string, data []byte, mode os.FileMode) error {
 //
 // Both mean the same thing: make what is loaded match what is on disk. The
 // interactive one reloads a live session's resources; this one stages the SDKs
-// this binary embeds and drops extension builds their fingerprint proves came
-// from an older SDK, so the next build compiles against the current source.
+// this binary embeds and drops extension builds no staged SDK can select, so the
+// next build compiles against the current source.
 // Staging also happens at startup and inside /reload, so this is the explicit
 // form for a shell, not a step a user has to remember.
 //
@@ -569,7 +679,7 @@ func RunCommand(args []string, stdout, stderr io.Writer) int {
 		return -1
 	}
 	rest := args[1:]
-	root, err := configRoot()
+	root, err := configroot.Resolve()
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "pig reload: %v\n", err)
 		return 1
@@ -586,7 +696,7 @@ func RunCommand(args []string, stdout, stderr io.Writer) int {
 		{"--sdk-version", func(lang string) (string, error) {
 			b, ok := bundleFor(lang)
 			if !ok {
-				return "", fmt.Errorf("unknown language %q", lang)
+				return "", unknownLanguage("", lang)
 			}
 			return b.hash()
 		}},
@@ -622,7 +732,7 @@ func RunCommand(args []string, stdout, stderr io.Writer) int {
 		}
 		for _, st := range statuses {
 			if !st.Staged || !st.Current {
-				_, _ = fmt.Fprintf(stdout, "pig reload: would stage %s (embedded %s)\n", st.Lang, st.Embedded)
+				_, _ = fmt.Fprintf(stdout, "pig reload: would stage %s to %s (embedded %s)\n", st.Lang, st.Dir, st.Embedded)
 			}
 		}
 		// Prune needs a staged SDK to decide what is reachable. On a root that
@@ -639,20 +749,23 @@ func RunCommand(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 
-	counts, err := Sync(root)
-	if err != nil {
-		_, _ = fmt.Fprintf(stderr, "pig reload: %v\n", err)
-		return 1
-	}
+	// Pruning follows staging under the same stage lock because a stage is
+	// what changes which builds are reachable: dropping them separately leaves
+	// a window where the SDKs are current but the builds selected against them
+	// are not.
+	counts, result, err := Sync(root, slices.Contains(rest, "--all"))
 	for _, b := range bundles() {
-		_, _ = fmt.Fprintf(stdout, "pig reload: staged %s (%d files) to %s\n",
-			b.lang, counts[b.lang], filepath.Join(root, filepath.FromSlash(b.relDir)))
+		written, ok := counts[b.lang]
+		if !ok {
+			continue
+		}
+		dir, dirErr := b.stagedDir(root)
+		if dirErr != nil {
+			err = errors.Join(err, dirErr)
+			continue
+		}
+		_, _ = fmt.Fprintf(stdout, "pig reload: staged %s (%d files) to %s\n", b.lang, written, dir)
 	}
-
-	// Pruning follows staging in the same command because a restage is what
-	// makes a build stale: dropping them separately leaves a window where the
-	// SDK is current but the builds selected against it are not.
-	result, err := Prune(root, slices.Contains(rest, "--all"), false)
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "pig reload: %v\n", err)
 		return 1
@@ -682,43 +795,15 @@ func flagValue(args []string, name string) (string, bool) {
 func printUsage(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "Usage: pig reload [--all] [--dry-run] [--sdk-path [lang]] [--sdk-version [lang]]")
 	_, _ = fmt.Fprintln(w, "")
-	_, _ = fmt.Fprintln(w, "Stages the extension SDKs this binary embeds and drops extension builds")
-	_, _ = fmt.Fprintln(w, "that came from an older one, so the next build compiles against current")
-	_, _ = fmt.Fprintln(w, "source. The pre-session form of /reload; both make what is loaded match")
-	_, _ = fmt.Fprintln(w, "what is on disk.")
+	_, _ = fmt.Fprintln(w, "Stages the extension SDKs this binary embeds into its own directories and")
+	_, _ = fmt.Fprintln(w, "drops extension builds whose SDK is no longer staged, so the next build")
+	_, _ = fmt.Fprintln(w, "compiles against current source. The pre-session form of /reload; both")
+	_, _ = fmt.Fprintln(w, "make what is loaded match what is on disk.")
 	_, _ = fmt.Fprintln(w, "")
 	_, _ = fmt.Fprintln(w, "  --all             also drop builds with no SDK fingerprint")
 	_, _ = fmt.Fprintln(w, "  --dry-run         report what would be dropped, stage nothing")
-	_, _ = fmt.Fprintln(w, "  --sdk-path [lang]     print a staged SDK directory (go|python|rust, default go)")
+	_, _ = fmt.Fprintln(w, "  --sdk-path [lang]     print this binary's staged SDK directory (go|python|rust, default go)")
 	_, _ = fmt.Fprintln(w, "  --sdk-version [lang]  print an embedded SDK content hash")
 	_, _ = fmt.Fprintln(w, "")
 	_, _ = fmt.Fprintln(w, "Staged-versus-embedded status is reported by `pig diagnose`.")
-}
-
-// configRoot mirrors codingagent.ConfigRoot without importing it. The SDK
-// command runs before runtime services are constructed.
-func configRoot() (string, error) {
-	if v := os.Getenv("PIG_HOME"); v != "" {
-		return expandTilde(v), nil
-	}
-	if v := os.Getenv("XDG_CONFIG_HOME"); v != "" {
-		return filepath.Join(expandTilde(v), "pig"), nil
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(home, ".pig"), nil
-}
-
-func expandTilde(p string) string {
-	if p == "~" || strings.HasPrefix(p, "~/") {
-		if home, err := os.UserHomeDir(); err == nil {
-			if p == "~" {
-				return home
-			}
-			return filepath.Join(home, p[2:])
-		}
-	}
-	return p
 }

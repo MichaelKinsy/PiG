@@ -272,8 +272,8 @@ async function loginOpenAICodexDeviceCode(interaction) {
     const code = await pollOpenAICodexDeviceAuth(device, interaction.signal);
     return exchangeAuthorizationCodeForCredentials(code.authorizationCode, code.codeVerifier, DEVICE_REDIRECT_URI, interaction.signal);
 }
-async function loginOpenAICodex(interaction) {
-    const { verifier, state, url } = await createAuthorizationFlow();
+async function loginOpenAICodex(interaction, options) {
+    const { verifier, state, url } = await createAuthorizationFlow(options?.agentName);
     // Port 1455 is shared with the Codex CLI; when it is taken, fall back to the pasted redirect URL.
     const callback = await startOAuthCallbackServer({
         providerName: "OpenAI",
@@ -321,7 +321,7 @@ async function refreshOpenAICodexToken(refreshToken, signal) {
 export const openaiCodexOAuth = {
     name: "OpenAI (ChatGPT Plus/Pro)",
     isSubscription: true,
-    async login(interaction) {
+    async login(interaction, options) {
         const method = await interaction.prompt({
             type: "select",
             message: "Select OpenAI Codex login method:",
@@ -336,7 +336,7 @@ export const openaiCodexOAuth = {
         if (method !== OPENAI_CODEX_BROWSER_LOGIN_METHOD) {
             throw new Error(`Unknown OpenAI Codex login method: ${method}`);
         }
-        return loginOpenAICodex(interaction);
+        return loginOpenAICodex(interaction, options);
     },
     refresh: (credential, signal) => refreshOpenAICodexToken(credential.refresh, signal),
     async toAuth(credential) {

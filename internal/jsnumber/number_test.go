@@ -1,6 +1,7 @@
 package jsnumber
 
 import (
+	"encoding/json"
 	"math"
 	"strconv"
 	"testing"
@@ -58,6 +59,69 @@ func TestFromJSONAppliesToNumber(t *testing.T) {
 	for _, raw := range []string{"", "{}", "[1,2]", `"abc"`, "[{}]", "[true]"} {
 		if got := FromJSON([]byte(raw)); !math.IsNaN(got) {
 			t.Errorf("FromJSON(%q) = %v, want NaN", raw, got)
+		}
+	}
+}
+
+// TestRoundMatchesMathRound pins Round to Node's Math.round (node -e 'console.log(Math.round(x))' for each input).
+func TestRoundMatchesMathRound(t *testing.T) {
+	negativeZero := math.Copysign(0, -1)
+	cases := []struct{ in, want float64 }{
+		{0.49999999999999994, 0},
+		{-0.5, negativeZero},
+		{-0.4, negativeZero},
+		{0.4, 0},
+		{0.5, 1},
+		{1.5, 2},
+		{2.5, 3},
+		{-1.5, -1},
+		{-2.5, -2},
+		{-2.6, -3},
+		{254.5, 255},
+		{4503599627370497, 4503599627370497},
+		{-4503599627370497, -4503599627370497},
+		{negativeZero, negativeZero},
+		{math.Inf(1), math.Inf(1)},
+		{math.Inf(-1), math.Inf(-1)},
+	}
+	for _, c := range cases {
+		got := Round(c.in)
+		if got != c.want || math.Signbit(got) != math.Signbit(c.want) {
+			t.Errorf("Round(%v) = %v (signbit %v), Math.round gives %v (signbit %v)", c.in, got, math.Signbit(got), c.want, math.Signbit(c.want))
+		}
+	}
+	if !math.IsNaN(Round(math.NaN())) {
+		t.Error("Round(NaN) is not NaN")
+	}
+}
+
+// Safe integers print as their decimal digits, which is how encoding/json formats them too; the fast path must not change any result. Above 2^53 an integer prints in its shortest form, as V8 does: 2^55+24 is 36028797018963990.
+func TestStringSafeIntegersMatchTheGeneralPath(t *testing.T) {
+	for _, value := range []float64{1, -1, 7, 10, 99999, -100000, 1 << 31, 1<<53 - 1, 1 << 53, -(1 << 53), 123456789012345, 1<<53 + 2, 1<<55 + 24, -(1<<55 + 24)} {
+		encoded, err := json.Marshal(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := String(value); got != string(encoded) {
+			t.Errorf("String(%v) = %q, want %q", value, got, encoded)
+		}
+	}
+	if got := String(1<<55 + 24); got != "36028797018963990" {
+		t.Errorf("String(2^55+24) = %q, want V8's 36028797018963990", got)
+	}
+}
+
+// Number.parseInt(text, 10): a decimal prefix after JS whitespace (U+FEFF and U+00A0 count, U+0085 does not), an optional sign, NaN without a digit.
+func TestParseIntReadsADecimalPrefix(t *testing.T) {
+	for _, tc := range []struct {
+		text string
+		want float64
+	}{
+		{"3", 3}, {"3beta", 3}, {"\ufeff\u00a03.9", 3}, {"+7x", 7}, {"-2", -2}, {"007", 7}, {"1e3", 1}, {"0x10", 0}, {"99999999999999999999", 1e20}, {"٣", math.NaN()}, {"\u00853", math.NaN()}, {"", math.NaN()}, {"-", math.NaN()}, {" . 5", math.NaN()},
+	} {
+		got := ParseInt(tc.text)
+		if got != tc.want && !(math.IsNaN(got) && math.IsNaN(tc.want)) {
+			t.Errorf("ParseInt(%q) = %v, want %v", tc.text, got, tc.want)
 		}
 	}
 }

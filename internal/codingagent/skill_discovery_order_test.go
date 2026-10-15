@@ -39,7 +39,7 @@ func TestSkillDiscoveryOrderSurvivesFrontmatterNamesAndReload(t *testing.T) {
 		}
 	})
 	t.Run("interactive reload", func(t *testing.T) {
-		m := &InteractiveMode{opts: InteractiveOptions{SkillPaths: []string{root}}}
+		m := &InteractiveMode{opts: InteractiveModeOptions{SkillPaths: []string{root}}}
 		m.reloadSkillsFromPaths()
 		if got := names(m.opts.Skills); !reflect.DeepEqual(got, want) {
 			t.Fatalf("reload order = %v, want %v", got, want)

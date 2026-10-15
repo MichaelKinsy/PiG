@@ -9,9 +9,10 @@ import (
 )
 
 type toolRegistry struct {
-	mu    sync.RWMutex
-	tools map[string]RegisteredTool
-	order []string
+	mu      sync.RWMutex
+	tools   map[string]RegisteredTool
+	order   []string
+	version uint64
 }
 
 // InitializeToolRegistry enables synchronized runtime registration before an Extension is shared with runners.
@@ -35,6 +36,7 @@ func (e *Extension) SetRegisteredTool(tool RegisteredTool) {
 		state.order = append(state.order, name)
 	}
 	state.tools[name] = tool
+	state.version++
 }
 
 // ReplaceRegisteredTools replaces the shared registry when the owning runtime restarts.
@@ -51,6 +53,19 @@ func (e *Extension) ReplaceRegisteredTools(source *Extension) {
 		state.tools[name] = tool
 		state.order = append(state.order, name)
 	}
+	state.version++
+}
+
+// ToolRegistryVersion reports how many registrations have mutated this
+// extension's tool registry. Snapshot consumers use it to detect that the
+// registered-tool list may have changed without walking every definition.
+func (e *Extension) ToolRegistryVersion() uint64 {
+	if state := e.toolState; state != nil {
+		state.mu.RLock()
+		defer state.mu.RUnlock()
+		return state.version
+	}
+	return 0
 }
 
 // RegisteredTool looks up the current definition without copying the registry.
@@ -65,31 +80,51 @@ func (e *Extension) RegisteredTool(name string) (RegisteredTool, bool) {
 	return tool, ok
 }
 
+// RegisteredToolNames are the keys of the extension's tools (upstream `extension.tools.keys()`): registration order, then any name
+// the order does not list, sorted. It includes tools registered after load.
+func (e *Extension) RegisteredToolNames() []string {
+	names, _ := e.registeredTools()
+	return names
+}
+
 // RegisteredTools returns an ordered snapshot, including tools registered after load.
 func (e *Extension) RegisteredTools() []RegisteredTool {
+	names, tools := e.registeredTools()
+	out := make([]RegisteredTool, 0, len(names))
+	for _, name := range names {
+		out = append(out, tools[name])
+	}
+	return out
+}
+
+func (e *Extension) registeredTools() ([]string, map[string]RegisteredTool) {
 	tools, order := e.Tools, e.ToolOrder
 	if state := e.toolState; state != nil {
 		state.mu.RLock()
 		defer state.mu.RUnlock()
 		tools, order = state.tools, state.order
 	}
-	out := make([]RegisteredTool, 0, len(tools))
+	names := make([]string, 0, len(tools))
 	seen := make(map[string]struct{}, len(tools))
 	for _, name := range order {
-		tool, ok := tools[name]
-		if _, duplicate := seen[name]; !ok || duplicate {
+		if _, ok := tools[name]; !ok {
+			continue
+		}
+		if _, duplicate := seen[name]; duplicate {
 			continue
 		}
 		seen[name] = struct{}{}
-		out = append(out, tool)
+		names = append(names, name)
 	}
-	if len(seen) == len(tools) {
-		return out
-	}
-	for _, name := range slices.Sorted(maps.Keys(tools)) {
-		if _, exists := seen[name]; !exists {
-			out = append(out, tools[name])
+	if len(seen) != len(tools) {
+		for _, name := range slices.Sorted(maps.Keys(tools)) {
+			if _, exists := seen[name]; !exists {
+				names = append(names, name)
+			}
 		}
 	}
-	return out
+	// The caller reads tools after the lock is released, so hand back a copy.
+	snapshot := make(map[string]RegisteredTool, len(tools))
+	maps.Copy(snapshot, tools)
+	return names, snapshot
 }

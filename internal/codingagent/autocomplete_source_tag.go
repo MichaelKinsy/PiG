@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/coding/source"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // autocompleteSourceTag is the `[tag]` an autocomplete entry shows for the resource that defines it, or "" for none.
@@ -23,7 +24,7 @@ func autocompleteSourceTag(info *PiSourceInfo) string {
 	case "project":
 		scopePrefix = "p"
 	}
-	src := strings.TrimSpace(info.Source)
+	src := jsstring.Trim(info.Source)
 	if src == "auto" || src == "local" || src == "cli" {
 		return scopePrefix
 	}

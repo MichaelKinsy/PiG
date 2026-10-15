@@ -21,8 +21,17 @@ import (
 func SetCommandLine(*exec.Cmd) {}
 
 // start is cmd.Start: SetProgram arranges the trampoline for an environment
-// that os/exec would change.
-func start(cmd *exec.Cmd) error { return cmd.Start() }
+// that os/exec would change. Node's spawn without an env option passes
+// process.env as it is (normalizeSpawnArguments in lib/child_process.js), so a
+// child that start gives cmd.Dir keeps PiG's PWD; os/exec, given no Env, would
+// set PWD to cmd.Dir instead, and a shell's pwd would print that name rather
+// than the physical directory.
+func start(cmd *exec.Cmd) error {
+	if cmd.Env == nil {
+		cmd.Env = ProcessEnv()
+	}
+	return cmd.Start()
+}
 
 // HideWindow does nothing outside Windows, where libuv ignores windowsHide.
 func HideWindow(*exec.Cmd, ...Stdio) {}
@@ -82,10 +91,9 @@ func runWithShell(cmd *exec.Cmd, name string) {
 }
 
 // runsWithShell reports that execve fails with ENOEXEC for name, which the
-// child looks up after it changes to cwd, as execveErrno describes. It is not
-// the whole kernel rule: a file that a binfmt_misc handler recognizes is not
-// run with /bin/sh. libuv searches the path itself with posix_spawn on macOS,
-// where this is not applied.
+// child looks up after it changes to cwd, as execveErrno describes. libuv
+// searches the path itself with posix_spawn on macOS, where this is not
+// applied.
 func runsWithShell(name, cwd string) bool {
 	if runtime.GOOS == "darwin" {
 		return false
@@ -225,8 +233,8 @@ func candidateErrno(path, cwd string) syscall.Errno {
 }
 
 // maxInterpreterDepth is the deepest interpreter chain execve follows: the
-// kernel's search_binary_handler (fs/exec.c) fails with ELOOP for a chain of
-// six interpreters, as in a script that names a script that names a script.
+// kernel's exec_binprm (fs/exec.c) fails with ELOOP for a chain of six
+// interpreters, as in a script that names a script that names a script.
 const maxInterpreterDepth = 5
 
 // binprmBufSize is the kernel's BINPRM_BUF_SIZE, the head of the file that its
@@ -239,13 +247,23 @@ const binprmBufSize = 256
 // binary format handler recognizes the file, so that execvp runs it with
 // /bin/sh. It reads the file's head with a non-blocking open, because a FIFO
 // fails with EACCES and must not block. It applies on Linux the rules of the
-// kernel's "#!" handler (fs/binfmt_script.c, as scriptInterpreter describes;
-// the interpreter's own errno is the script's) and of its ELF handlers (as
-// elfErrno describes); other systems start every executable regular file.
+// kernel's handlers in the order it tries them: the enabled binfmt_misc
+// handlers, which binfmt_misc inserts ahead of the others (insert_binfmt,
+// fs/binfmt_misc.c; as miscErrno describes), then the "#!" handler
+// (fs/binfmt_script.c, as scriptInterpreter describes; the interpreter's own
+// errno is the script's) and the ELF handlers (as elfErrno describes). Other
+// systems start every executable regular file.
 //
 // The kernel reads the head of a file that the user may execute but not read.
 // PiG cannot, so it asks the kernel with probeExecve.
 func execveErrno(path, cwd string, depth int) syscall.Errno {
+	return execveLevelErrno(path, cwd, depth, false)
+}
+
+// execveLevelErrno is execveErrno for the file at depth, where execfd reports
+// that a binfmt_misc handler with flag O claimed a file before it, so that
+// exec_binprm (fs/exec.c) lets no handler of this file set an interpreter.
+func execveLevelErrno(path, cwd string, depth int, execfd bool) syscall.Errno {
 	if errno := executableErrno(path); errno != 0 {
 		return errno
 	}
@@ -265,17 +283,34 @@ func execveErrno(path, cwd string, depth int) syscall.Errno {
 		return 0
 	}
 	defer func() { _ = file.Close() }()
+	if errno, ok := miscErrno(path, cwd, head, depth, execfd); ok {
+		return errno
+	}
 	if bytes.HasPrefix(head, []byte("#!")) {
 		interpreter, ok := scriptInterpreter(head)
 		if !ok {
 			return syscall.ENOEXEC
 		}
-		return execveErrno(inDirectory(cwd, startName(interpreter)), cwd, depth+1)
+		return interpreterErrno(inDirectory(cwd, startName(interpreter)), cwd, depth, execfd, execfd)
 	}
 	if bytes.HasPrefix(head, []byte("\x7fELF")) {
 		return elfErrno(file, head, cwd)
 	}
 	return syscall.ENOEXEC
+}
+
+// interpreterErrno is the errno of the interpreter that a handler of the file
+// at depth opens: the errno of opening it, then ENOEXEC when execfd reports an
+// earlier binfmt_misc handler with flag O, and otherwise the errno of the
+// interpreter one level deeper, where nextExecfd is the state that follows.
+func interpreterErrno(interpreter, cwd string, depth int, execfd, nextExecfd bool) syscall.Errno {
+	if errno := executableErrno(interpreter); errno != 0 {
+		return errno
+	}
+	if execfd {
+		return syscall.ENOEXEC
+	}
+	return execveLevelErrno(interpreter, cwd, depth+1, nextExecfd)
 }
 
 // executableErrno is the errno of opening path for execve: what a stat

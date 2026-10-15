@@ -1,0 +1,1 @@
+{"id": "rangesum", "prompt": "The tests in test_rangesum.py fail. Fix the bug in rangesum.py so they pass, without changing the tests. Run them with: python3 -m unittest -q", "check": ["python3", "-m", "unittest", "-q"], "editable": ["rangesum.py"]}

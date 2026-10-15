@@ -12,7 +12,7 @@ import (
 func registryProviderWithKey(key string) map[string]any {
 	return map[string]any{"baseUrl": "https://example.com/v1", "apiKey": key, "api": "anthropic-messages", "models": []any{map[string]any{"id": "test-model", "name": "Test Model", "reasoning": false, "input": []string{"text"}, "cost": map[string]any{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}, "contextWindow": 100000, "maxTokens": 8000}}}
 }
-func registryTestServices(t *testing.T, dir string, providers map[string]any) *Services {
+func registryTestServices(t *testing.T, dir string, providers map[string]any) *AgentSessionServices {
 	t.Helper()
 	if dir == "" {
 		dir = t.TempDir()
@@ -24,7 +24,7 @@ func registryTestServices(t *testing.T, dir string, providers map[string]any) *S
 	if err := os.WriteFile(filepath.Join(dir, "models.json"), data, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	services, err := NewServices(ServicesOptions{CWD: dir, AgentDir: dir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: dir, AgentDir: dir})
 	if err != nil {
 		t.Fatal(err)
 	}

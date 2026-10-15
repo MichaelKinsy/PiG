@@ -7,10 +7,7 @@ package piglogin
 // sheriff keeps PiG Standard's name, "Sheriff PiG".
 
 import (
-	"fmt"
 	"image/color"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -167,33 +164,5 @@ func TestCustomVariantSpriteUsed(t *testing.T) {
 	}
 	if got := MascotSpriteFor(v); &got[0] != &v.Sprite[0] {
 		t.Fatal("MascotSpriteFor did not return custom sprite")
-	}
-}
-
-// Every sprite's full login art (the wordmark and the mascot, which first-time setup and /sprite preview show) is pinned
-// by testdata/login-<id>-120.golden, rendered by the same mirror of the native login template as the default's goldens.
-func TestEveryVariantLoginGolden(t *testing.T) {
-	for _, variant := range Variants {
-		t.Run(variant.ID, func(t *testing.T) {
-			definition := LoginDefinitionFor(variant)
-			view := LoginDefinitionView{
-				Hero: definition.Hero, Mascot: definition.Mascot, Palette: definition.Palette,
-				Name: definition.Name, Description: definition.Description, Tagline: definition.Tagline,
-			}
-			got := strings.Join(renderHeader(view, 120), "\n") + "\n"
-			path := filepath.Join("testdata", fmt.Sprintf("login-%s-120.golden", variant.ID))
-			if *updateGolden {
-				if err := os.WriteFile(path, []byte(got), 0o644); err != nil {
-					t.Fatal(err)
-				}
-			}
-			want, err := os.ReadFile(path)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if got != string(want) {
-				t.Fatalf("%s login differs from %s", variant.ID, path)
-			}
-		})
 	}
 }

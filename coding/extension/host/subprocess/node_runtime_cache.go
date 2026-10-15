@@ -5,16 +5,24 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
+	"sync"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
+	"github.com/MichaelKinsy/PiG/internal/fspublish"
+	"github.com/MichaelKinsy/PiG/internal/procpolicy"
 )
 
 // materializeNodeRuntime publishes one immutable tree per runtime content and version. Each launcher keeps a self-contained hard-linked tree, so cache pruning and Piglet artifact copies never depend on a shared path surviving. Filesystems without hard links receive ordinary copies.
 func materializeNodeRuntime(ctx context.Context, cacheDir, destination string) (err error) {
+	// pig additive (D92): a Piglet that strips node-extensions has no runtime to publish.
+	if err := nodeRuntimeUnavailable(); err != nil {
+		return err
+	}
 	digest := sha256.Sum256(append([]byte(nodeRuntimeVersion), nodeRuntimeDigest()...))
 	hash := hex.EncodeToString(digest[:])
 	root := filepath.Join(cacheDir, "node-runtime-"+hash)
@@ -24,7 +32,7 @@ func materializeNodeRuntime(ctx context.Context, cacheDir, destination string) (
 		if err := os.Mkdir(runtimeDir, 0o755); err != nil {
 			return "", err
 		}
-		if err := copyEmbeddedTree(nodeRuntimeFS, "runtime-node", runtimeDir); err != nil {
+		if err := extractNodeRuntime(runtimeDir); err != nil {
 			return "", err
 		}
 		marker := filepath.Join(scratch, "content.sha256")
@@ -43,7 +51,11 @@ func materializeNodeRuntime(ctx context.Context, cacheDir, destination string) (
 	}
 	defer func() { err = errors.Join(err, lease.Release()) }()
 	source := filepath.Join(entry.Dir, "runtime")
-	return filepath.WalkDir(source, func(path string, entry fs.DirEntry, err error) error {
+	// The walk creates every directory in order; the links are independent, so they run on GOMAXPROCS workers. The error reported is
+	// the walk-order first one.
+	type link struct{ source, target string }
+	var links []link
+	if err := filepath.WalkDir(source, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -58,24 +70,54 @@ func materializeNodeRuntime(ctx context.Context, cacheDir, destination string) (
 		if entry.IsDir() {
 			return os.MkdirAll(target, 0o755)
 		}
-		if err := os.Link(path, target); err == nil {
-			return nil
-		}
-		return copyNodeRuntimeFile(path, target)
-	})
+		links = append(links, link{path, target})
+		return nil
+	}); err != nil {
+		return err
+	}
+	return linkInWalkOrder(ctx, len(links), func(i int) error { return fspublish.LinkOrCopy(links[i].source, links[i].target) })
 }
 
-func copyNodeRuntimeFile(source, destination string) (err error) {
-	input, err := os.Open(source)
-	if err != nil {
-		return err
+// linkInWalkOrder runs link(0..n-1) on GOMAXPROCS workers and returns the error of the lowest failing index, the one a sequential loop returns. After a failure at index f a worker skips only indices above f, so every index below the lowest failure runs.
+func linkInWalkOrder(ctx context.Context, n int, link func(int) error) error {
+	errs := make([]error, n)
+	var next atomic.Int64
+	var firstFailed atomic.Int64
+	firstFailed.Store(int64(n))
+	if n > 1 {
+		// pig additive (D174): a Node extension's launch waits on these links; they run at the runtime default width.
+		defer procpolicy.Widen()()
 	}
-	defer func() { err = errors.Join(err, input.Close()) }()
-	output, err := os.OpenFile(destination, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
-	if err != nil {
-		return err
+	var workers sync.WaitGroup
+	for range min(runtime.GOMAXPROCS(0), n) {
+		workers.Go(func() {
+			for {
+				i := next.Add(1) - 1
+				if i >= int64(n) || i > firstFailed.Load() {
+					return
+				}
+				if err := ctx.Err(); err != nil {
+					errs[i] = err
+				} else {
+					errs[i] = link(int(i))
+				}
+				if errs[i] == nil {
+					continue
+				}
+				for {
+					failed := firstFailed.Load()
+					if i >= failed || firstFailed.CompareAndSwap(failed, i) {
+						break
+					}
+				}
+			}
+		})
 	}
-	defer func() { err = errors.Join(err, output.Close()) }()
-	_, err = io.Copy(output, input)
-	return err
+	workers.Wait()
+	for _, err := range errs {
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"testing"
 )
 
+// Pi: packages/coding-agent/src/core/agent-session.ts:478 (Session.scopedModels); packages/coding-agent/src/core/extensions/types.ts:344 (SessionOptions.scopedModels); packages/coding-agent/src/core/settings-manager.ts:1429 (SettingsManager.getEnabledModels).
 func TestModelResolverPersistedScopeUpstream(t *testing.T) {
 	for _, tc := range []struct {
 		name            string

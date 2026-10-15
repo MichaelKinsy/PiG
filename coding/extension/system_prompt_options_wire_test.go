@@ -18,7 +18,7 @@ func TestBuildSystemPromptOptionsMarshalsCollectionComplete(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := map[string]any{
-		"selectedTools": []any{}, "toolSnippets": map[string]any{}, "toolGuidelines": map[string]any{},
+		"selectedTools": []any{}, "hiddenTools": []any{}, "toolSnippets": map[string]any{}, "toolGuidelines": map[string]any{},
 		"promptGuidelines": []any{}, "appendSystemPrompt": "", "sections": map[string]any{},
 		"cwd": "/work", "contextFiles": []any{}, "skills": []any{},
 	}

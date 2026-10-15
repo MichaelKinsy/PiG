@@ -1,3 +1,5 @@
+//go:build !pig_strip_word_dictionaries
+
 package wordsegmenter
 
 import (

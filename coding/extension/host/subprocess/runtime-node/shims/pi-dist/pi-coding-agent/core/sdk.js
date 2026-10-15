@@ -7,13 +7,14 @@ import { AgentSession } from "./agent-session.js";
 import { formatNoModelsAvailableMessage } from "./auth-guidance.js";
 import { CacheWarmer } from "./cache-warmer.js";
 import { DEFAULT_THINKING_LEVEL } from "./defaults.js";
+import { createToolNameMatcher } from "./mcp-servers.js";
 import { convertToLlm } from "./messages.js";
 import { findInitialModel } from "./model-resolver.js";
 import { ModelRuntime } from "./model-runtime.js";
 import { mergeProviderAttributionHeaders } from "./provider-attribution.js";
 import { DefaultResourceLoader } from "./resource-loader.js";
 import { getDefaultSessionDir, SessionManager } from "./session-manager.js";
-import { DEFAULT_TOOL_NAMES, SettingsManager } from "./settings-manager.js";
+import { applyToolModifiers, DEFAULT_TOOL_NAMES, getToolListError, isToolModifier, SettingsManager, } from "./settings-manager.js";
 import { time } from "./timings.js";
 import { createBashTool, createCodingTools, createEditTool, createFindTool, createGrepTool, createLsTool, createPowerShellTool, createReadOnlyTools, createReadTool, createWriteTool, withFileMutationQueue, } from "./tools/index.js";
 import { getBranchSelection } from "./virtual-models.js";
@@ -141,11 +142,22 @@ export async function createAgentSession(options = {}) {
     else {
         thinkingLevel = clampThinkingLevel(model, thinkingLevel);
     }
-    const configuredDefaultToolNames = settingsManager.getDefaultTools();
-    const allowedToolNames = options.tools ?? (options.noTools === "all" ? [] : undefined);
+    const toolListError = options.tools ? getToolListError(options.tools) : undefined;
+    if (toolListError)
+        throw new Error(`Invalid tools option: ${toolListError}`);
+    const defaultToolNames = options.noTools ? [] : (settingsManager.getDefaultTools() ?? DEFAULT_TOOL_NAMES);
+    // A `tools` list of only `+name`/`-name` entries changes the default selection instead of
+    // replacing it, like the `defaultTools` setting.
+    const toolModifiers = options.tools?.some(isToolModifier) ? options.tools : undefined;
+    const selectedToolNames = toolModifiers ? applyToolModifiers(defaultToolNames, toolModifiers) : options.tools;
+    const allowedToolNames = toolModifiers
+        ? options.noTools === "all"
+            ? selectedToolNames
+            : undefined
+        : (options.tools ?? (options.noTools === "all" ? [] : undefined));
     const excludedToolNames = options.excludeTools;
-    const excludedToolNameSet = excludedToolNames ? new Set(excludedToolNames) : undefined;
-    const initialActiveToolNames = (options.tools ?? (options.noTools ? [] : (configuredDefaultToolNames ?? DEFAULT_TOOL_NAMES))).filter((name) => !excludedToolNameSet?.has(name));
+    const isExcludedTool = excludedToolNames ? createToolNameMatcher(excludedToolNames) : undefined;
+    const initialActiveToolNames = (selectedToolNames ?? defaultToolNames).filter((name) => !isExcludedTool?.(name));
     // Create convertToLlm wrapper that filters images if blockImages is enabled (defense-in-depth)
     const convertToLlmWithBlockImages = (messages) => {
         const converted = convertToLlm(messages);
@@ -299,7 +311,8 @@ export async function createAgentSession(options = {}) {
         modelRuntime,
         cacheWarmer,
         initialActiveToolNames,
-        usesDefaultTools: options.tools === undefined && !options.noTools,
+        usesDefaultTools: (options.tools === undefined || toolModifiers !== undefined) && !options.noTools,
+        defaultToolModifiers: toolModifiers,
         allowedToolNames,
         excludedToolNames,
         extensionRunnerRef,

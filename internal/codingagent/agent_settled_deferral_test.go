@@ -33,3 +33,21 @@ func TestAgentSettledDefersRunStartingActionsUntilAllHandlersReturn(t *testing.T
 		t.Fatalf("lifecycle = %v, want %v", lifecycle, want)
 	}
 }
+
+// Pi 1.1.0 agent-session.ts _emitAgentSettled passes `aborted` to the extension runner (#10607): interactive mode, which drives its own settlement, reports it too.
+func TestAgentSettledReportsAbortedToExtensions(t *testing.T) {
+	var got []bool
+	ext := extension.Extension{Path: "settled", Handlers: map[string][]extension.HandlerFn{
+		EventAgentSettled: {func(args ...any) (any, error) {
+			got = append(got, args[0].(extension.AgentSettledEvent).Aborted)
+			return nil, nil
+		}},
+	}}
+	mode := &InteractiveMode{}
+	runner := inproc.NewRunner([]extension.Extension{ext}, t.TempDir())
+	mode.emitAgentSettledFor(runner, true)
+	mode.emitAgentSettledFor(runner, false)
+	if want := []bool{true, false}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("aborted = %v, want %v", got, want)
+	}
+}

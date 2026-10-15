@@ -1,9 +1,14 @@
+//go:build !pig_strip_bedrock_converse_stream
+
 package ai
 
 import (
 	"context"
 	"errors"
 	"io"
+	"net/http"
+
+	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // This file runs Pi's Bedrock stream loop (packages/ai/src/api/bedrock-converse-stream.ts:280-330) over a Node http.IncomingMessage as one executor turn. Each `await`, `yield` and `for await` step of the SDK's async generator chain is one suspendContinuation (an already-settled await) or one awaitContinuation (a pending promise), in the order the JavaScript source resumes them. The reaction counts follow the JavaScript source and are checked against the Node oracle in coding/testdata/rpc33-observation/providers/bedrock-converse-stream/pi.json (bedrock_observation_test.go).
@@ -251,7 +256,7 @@ func (p *BedrockProvider) runBedrockPipeline(ctx context.Context, turn *continua
 		chain.hops(bedrockNoResponseHookReturnHops)
 	}
 	if err != nil {
-		fail(err)
+		fail(bedrockFirstEventError(err))
 		return
 	}
 	if done {
@@ -300,3 +305,13 @@ var errBedrockBodyAborted = errors.New("aborted")
 
 // errBedrockRequestWasAborted is the error Pi throws after the loop when the signal is aborted (bedrock-converse-stream.ts:334).
 var errBedrockRequestWasAborted = errors.New("Request was aborted")
+
+// bedrockFirstEventError is an event payload that is not JSON as the SDK's deserializer middleware reports it when the first event of the stream is the one that fails: the read happens inside client.send, so the middleware appends its hint (an error with no $metadata) and the failed response is the 200 that carried the stream. A later event fails inside Pi's for-await with the bare SyntaxError.
+func bedrockFirstEventError(err error) error {
+	syntax, ok := errors.AsType[*bedrockEventJSONError](err)
+	if !ok {
+		return err
+	}
+	core := syntax.Error() + "\n  " + bedrockDeserializationHint
+	return &bedrockResponseError{err: &smithyhttp.ResponseError{Response: &smithyhttp.Response{Response: &http.Response{StatusCode: http.StatusOK}}, Err: err}, text: core + bedrockDataRetentionHint(core)}
+}

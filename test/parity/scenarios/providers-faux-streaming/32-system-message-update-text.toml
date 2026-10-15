@@ -1,0 +1,26 @@
+# Behavior family: providers-faux-streaming (system message text)
+# Pi 1.1.0 probe: utils/text.ts getSystemMessageText and renderSystemMessageUpdate over 3000 seeded system messages decoded from JSON (text or block content; sections named with
+# integer-like, duplicate, empty and unicode keys; null and empty values, so removed and updated sections are framed by name); each message's two results are compared as one line.
+# The Go test TestSystemMessageTextMatchesPi runs the same corpus against the installed Pi; this scenario compares the two printed streams.
+name = "32-system-message-update-text"
+description = "A system message's text and its request-time update framing are the same strings as Pi's."
+covers = ["packages/ai/src/utils/text.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/system-message-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/system-message-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 240
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['Updated system prompt section', 'Removed system prompt section']
+runs = 2

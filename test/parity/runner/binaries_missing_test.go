@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/coding"
 )
 
 // A parity run that cannot find its comparator or its pig must fail, not skip: a skipped TestParity exits 0 with zero scenarios compared, which `make parity-family` used to report as ok. PIG_PARITY_ALLOW_ZERO=1 is the explicit request to accept that outcome, the same opt-out require-parity-ran honors.
@@ -42,6 +44,10 @@ func runMissingBinaryHelper(t *testing.T, resolver string, extraEnv ...string) h
 	env = append(env, extraEnv...)
 	cmd := exec.Command(os.Args[0], "-test.run", "^TestMissingBinaryHelperProcess$", "-test.v")
 	cmd.Env = env
+	if resolver == "pi" {
+		// The resolver finds the source-built oracle by walking up from the working directory to extensions/sdk-ts; a directory outside the repository has none.
+		cmd.Dir = t.TempDir()
+	}
 	out, err := cmd.CombinedOutput()
 	outcome := helperOutcome{output: string(out)}
 	var exitErr *exec.ExitError
@@ -103,5 +109,27 @@ func TestResolvePigBinMissingSkipsOnlyWithExplicitOptOut(t *testing.T) {
 	outcome := runMissingBinaryHelper(t, "pig", "PIG_PARITY_PIG_BIN=", "PIG_BIN=", "PIG_PARITY_ALLOW_ZERO=1")
 	if outcome.failed || !outcome.skipped {
 		t.Fatalf("no pig binary with PIG_PARITY_ALLOW_ZERO=1: %+v, want skipped=true\n%s", outcome, outcome.output)
+	}
+}
+
+// A published Pi that mise installed must not become the oracle on its own: a run without PIG_PARITY_PI_PUBLISHED=1 and without a
+// source-built oracle fails instead of comparing against the published release (the silent fallback an unset PIG_PARITY_PI_BIN used to take).
+func TestResolveUpstreamPiBinNeverFallsBackToAMiseInstallWithoutOptIn(t *testing.T) {
+	home := t.TempDir()
+	bin := filepath.Join(home, ".local", "share", "mise", "installs", upstreamPiInstallDirs[0], coding.UpstreamPackageVersion, "bin", "pi")
+	if err := os.MkdirAll(filepath.Dir(bin), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(bin, []byte("#!/bin/sh\necho "+coding.UpstreamPackageVersion+"\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	env := []string{"HOME=" + home, "USERPROFILE=" + home, "PIG_PARITY_PI_BIN=", "PIG_PARITY_REAL_AUTH=", "PIG_PARITY_ALLOW_ZERO="}
+	if outcome := runMissingBinaryHelper(t, "pi", append(env, "PIG_PARITY_PI_PUBLISHED=")...); !outcome.failed {
+		t.Fatalf("a mise-installed Pi was used without the opt-in: %+v\n%s", outcome, outcome.output)
+	}
+	if coding.UpstreamVersion == coding.UpstreamPackageVersion {
+		if outcome := runMissingBinaryHelper(t, "pi", append(env, "PIG_PARITY_PI_PUBLISHED=1")...); outcome.failed {
+			t.Fatalf("the mise-installed Pi was refused despite the opt-in: %+v\n%s", outcome, outcome.output)
+		}
 	}
 }

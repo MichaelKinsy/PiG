@@ -17,6 +17,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // Every driver copies its cwd fixture under a validated temporary root. Ancestor context discovery remains enabled in both binaries, so the root must be outside the checkout and have no discoverable ancestor context files.
@@ -111,7 +113,7 @@ func mkdirFixed(root, prefix string) (string, error) {
 // different percentages. The runner therefore places both under the fixed
 // promptPathRoot with lengths that make the two prompts equally long:
 //
-//	3*len(piPackageDir) == 2*(len(pigHome)+len("/docs")) + d22ConstantGap
+//	3*len(piPackageDir) == 2*(len(pigHome)+len("/docs")+pigBundleDirLen) + d22ConstantGap
 //
 // d22ConstantGap is how many more characters pig's fixed docs and preamble
 // text has than Pi's, measured against Pi 0.87.1. TestPromptPathLengthsBalance
@@ -142,17 +144,20 @@ func checkPromptPathRoot() error {
 const (
 	pigHomePrefix   = "parity-snap-PIG_HOME-"
 	piPackagePrefix = "parity-pi-pkg-"
-	piPackageLink   = "pi-coding-pkg"
-	d22ConstantGap  = 47
+	// piPackageLink is padded so that Pi's three package paths are as long as pig's two docs paths, which name the docs bundle directory.
+	piPackageLink  = "pi-coding-pkg-with-bundle-pad"
+	d22ConstantGap = 47
+	// pigBundleDirLen is len("/bundle-") plus the 16 hex digits of the content hash that names pig's docs bundle directory (internal/pigdocs).
+	pigBundleDirLen = len("/bundle-") + 16
 )
 
 // defaultCWDFixture returns test/parity/testdata/default-cwd.
 func defaultCWDFixture() string {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
+	dir, err := testenv.PackageDirPath()
+	if err != nil {
 		return filepath.Join("test/parity", "testdata", "default-cwd")
 	}
-	return filepath.Join(filepath.Dir(filepath.Dir(thisFile)), "testdata", "default-cwd")
+	return filepath.Join(filepath.Dir(dir), "testdata", "default-cwd")
 }
 
 // defaultCWD returns a fresh per-binary snapshot of the default cwd fixture.

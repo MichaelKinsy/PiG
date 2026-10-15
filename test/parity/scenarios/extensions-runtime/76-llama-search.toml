@@ -1,0 +1,28 @@
+# Behavior family: extensions-runtime (the /llama download search)
+# Pi 1.1.0 probe: LlamaView.searchModels (HuggingFaceSearch) over 600 seeded scenarios on a virtual clock: typing, deleting and cursor keys edit the query; a query of two or
+# more characters starts a search after the 500 ms debounce (cached by lower-cased query, aborted by a newer one or by closing, failing with its message); results filter by
+# fuzzy match with the "(n/total)" line, navigation wraps, enter takes an owner/repository query as typed or the selected result, escape closes; searches answer after 0,
+# 1, 60, 150 or 1000 ms. Every frame's bytes at three widths, what each step settled and the searches that completed (with whether each had been aborted) are compared.
+# The Go test TestLlamaSearchMatchesPi runs the same scenarios against the installed Pi; this scenario compares the two printed streams.
+name = "76-llama-search"
+description = "The /llama download search debounces, searches, filters and answers keys as Pi's does."
+covers = ["packages/coding-agent/src/extensions/llama/ui.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/llama-search-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/llama-search-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 240
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['Download', 'calls']
+runs = 2

@@ -10,18 +10,24 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/tui"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
+// newPendingDisplayHarness publishes the harness's non-Windows key column as the process-wide registry the dequeue hint reads
+// (tui.ActionKeyDisplayText), and restores the previous registry and key text resolver when the test ends, so the hint does not
+// depend on which keybindings an earlier test left installed and building the harness's manager leaks nothing to later tests.
 func newPendingDisplayHarness(t *testing.T) *InteractiveMode {
 	t.Helper()
+	restoreTUIKeybindings(t)
 	model := &ai.Model{ID: "m", DisplayName: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 8000}}
-	m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir(), Model: model})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir(), Model: model})
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
-	m.agent = agent.NewAgent(agent.AgentOptions{Model: model})
-	m.statusLine = NewStatusLine(model, "", nil)
+	m.agent = mustNewAgent(agent.AgentOptions{Model: model})
+	m.statusLine = NewFooterComponent(model, "", nil)
 	m.editor = tui.NewEditor()
 	m.keybindings = otherColumnKeys()
+	m.keybindings.syncToTUI()
 	return m
 }
 
@@ -94,7 +100,7 @@ func (p *blockingProvider) Stream(_ context.Context, _ ai.TranscriptContext, _ a
 func TestPendingDisplay_EnterWhileWorkingQueuesSteering(t *testing.T) {
 	m := newPendingDisplayHarness(t)
 	provider := &blockingProvider{started: make(chan struct{}), release: make(chan struct{})}
-	m.agent = agent.NewAgent(agent.AgentOptions{Model: &ai.Model{ID: "m", Provider: provider}})
+	m.agent = mustNewAgent(agent.AgentOptions{Model: &ai.Model{ID: "m", Provider: provider}})
 	ctx := t.Context()
 	result := make(chan error, 1)
 	go func() {
@@ -137,7 +143,7 @@ func TestPendingDisplay_EnterAfterAgentStoppedStartsNewTurn(t *testing.T) {
 	m := newPendingDisplayHarness(t)
 	provider := &blockingProvider{started: make(chan struct{}), release: make(chan struct{})}
 	close(provider.release)
-	m.agent = agent.NewAgent(agent.AgentOptions{Model: &ai.Model{ID: "m", Provider: provider}})
+	m.agent = mustNewAgent(agent.AgentOptions{Model: &ai.Model{ID: "m", Provider: provider}})
 	m.chatContainer = tui.NewContainer()
 	m.abortCtx = context.Background()
 	m.runCtx = context.Background()
@@ -237,5 +243,75 @@ func TestPendingDisplay_ClearsSteeringOnInjectedUserMessage(t *testing.T) {
 
 	if out := renderPending(m); strings.Contains(out, "Steering:") {
 		t.Fatalf("pending steering display lingered after injection:\n%q", out)
+	}
+}
+
+// interactive-mode.ts:4690-4698 adds each queued line as new TruncatedText(text, 1, 0): one column of padding on each side, so every
+// steering, follow-up and hint row starts with a space and is exactly the render width. The width leaves room for the macOS hint,
+// "↳ Option+Up to edit all queued messages", which needs 41 columns with its padding.
+func TestPendingDisplay_RowsHavePiHorizontalPadding(t *testing.T) {
+	const width = 48
+	m := newPendingDisplayHarness(t)
+	m.compactionQueue = []compactionQueuedMessage{{text: "steer", mode: compactionQueueSteer}, {text: "later", mode: compactionQueueFollowUp}}
+
+	m.updatePendingMessagesDisplay()
+	rows := m.pendingMessagesContainer.Render(width)
+	if len(rows) != 4 {
+		t.Fatalf("rows = %q, want spacer, steering, follow-up, hint", rows)
+	}
+	for i, want := range []string{"Steering: steer", "Follow-up: later", "to edit all queued messages"} {
+		row := rows[i+1]
+		if plain := widthx.StripAnsi(row); !strings.HasPrefix(plain, " ") || !strings.Contains(plain, want) || widthx.VisibleWidth(row) != width {
+			t.Fatalf("row %d = %q, want %q after one column of padding, width %d", i+1, row, want, width)
+		}
+	}
+}
+
+// interactive-mode.ts:4736 getAppKeyDisplay("app.message.dequeue") is keyDisplayText: every bound key, capitalized, joined by "/"; an
+// unbound action gives the empty text, not the action name.
+func TestPendingDisplayDequeueHintNamesEveryBoundKey(t *testing.T) {
+	alt := altKeyText()
+	for _, tc := range []struct {
+		name string
+		keys []KeyID
+		want string
+	}{
+		{"default", nil, "↳ " + alt + "+Up to edit all queued messages"},
+		{"two keys", []KeyID{"alt+q", "ctrl+é"}, "↳ " + alt + "+Q/Ctrl+É to edit all queued messages"},
+		{"unbound", []KeyID{}, "↳  to edit all queued messages"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := newPendingDisplayHarness(t)
+			if tc.keys != nil {
+				useKeybindings(t, map[string][]KeyID{"app.message.dequeue": tc.keys})
+			}
+			m.compactionQueue = []compactionQueuedMessage{{text: "x", mode: compactionQueueSteer}}
+			m.updatePendingMessagesDisplay()
+			if out := stripANSITest(renderPending(m)); !strings.Contains(out, tc.want) {
+				t.Fatalf("pending display = %q, want it to contain %q", out, tc.want)
+			}
+		})
+	}
+}
+
+// interactive-mode.ts:4729-4737: each queued line and the dequeue hint are theme.fg("dim", ...) in a TruncatedText(text, 1, 0), so they use the dim token (not muted) and close only the foreground.
+func TestPendingDisplayLinesUseTheDimForeground(t *testing.T) {
+	m := newPendingDisplayHarness(t)
+	m.compactionQueue = []compactionQueuedMessage{{text: "steer me", mode: compactionQueueSteer}, {text: "then this", mode: compactionQueueFollowUp}}
+	m.updatePendingMessagesDisplay()
+	theme := tui.ActiveTheme()
+	rows := m.pendingMessagesContainer.Render(100)
+	hint := "↳ " + tui.ActionKeyDisplayText("app.message.dequeue") + " to edit all queued messages"
+	var want []string
+	for _, text := range []string{"Steering: steer me", "Follow-up: then this", hint} {
+		want = append(want, tui.NewTruncatedText(theme.Fg("dim", text), 1, 0).Render(100)...)
+	}
+	if len(rows) != 1+len(want) {
+		t.Fatalf("rows = %q", rows)
+	}
+	for i, line := range want {
+		if rows[1+i] != line {
+			t.Errorf("row %d = %q, want %q", i, rows[1+i], line)
+		}
 	}
 }

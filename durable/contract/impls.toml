@@ -1,0 +1,54 @@
+# Implementations the gate can run (CONTRACT section 7.5). `pi` is the reference and is always available. A candidate is
+# available when its paths exist; a missing path makes its rows `pending`, never `pass`.
+#
+#   candidate_dir  a directory laid out like packages/durable/src whose modules replace the reference's (the JS facade of ADR D12);
+#                  runs the E, U and SC rows. Its storage modules open stores with globalThis[Symbol.for("pig.contract")].openStore.
+#   wasm           the core module the facade runs (passed as DCORE_WASM); rows stay pending until the build produces it
+#   setup          a module of the candidate imported before the scenario program (it calls useCore with DCORE_WASM)
+#   env            environment passed to every run of the candidate (a table)
+#   bench          a Node module exporting `runBench(options)` for the W, X1 and H rows (see lib/impl.mjs for the options).
+#   native_exe     a native bench host (the command line in impls/native.mjs); runs the W, X1 and H rows
+#   native_core    the core built natively as cmd/corenative; the facade runs it for the E, U and SC rows (DCORE_NATIVE)
+#   sc_exe         a Go Storage provider for the SC row (contracttest/cmd/scprovider): the bench-slice engine only. A production
+#                  candidate runs SC through its facade (contract-sc-provider.ts over the core's storage mode), so the row proves the core.
+#   build          the command that produces the paths above; every gate run runs it first, and a failed build stops the run.
+#   lanes          the lanes whose code this build contains; a failed row is reported against the row's owner.
+
+# The JS facade is durable/core/host/cf/src/facade (dcore-host): index.ts replaces packages/durable/src/index.ts, and the
+# modules the examples import by path (env/node.ts, tools/index.ts, storage/sqlite/node.ts, storage/jsonl/node.ts) must exist
+# beside it. `env` is passed to every run of the candidate (the facade picks the core build by DURABLE_CORE_TOOLCHAIN).
+[[impl]]
+name = "wasm-tinygo"
+about = "the core built with TinyGo (-target=wasip1 -scheduler=none), in the JS host"
+candidate_dir = "durable/core/host/cf/src/facade"
+env = { DURABLE_CORE_TOOLCHAIN = "tinygo" }
+wasm = "durable/core/host/cf/dist/core-tinygo.wasm"
+setup = "durable/core/host/cf/src/facade/contract-setup.ts"
+build = "make -C durable/core build-tinygo"
+
+[[impl]]
+name = "wasm-go"
+about = "the same source built with Go (GOOS=wasip1 reactor), in the JS host"
+candidate_dir = "durable/core/host/cf/src/facade"
+env = { DURABLE_CORE_TOOLCHAIN = "go" }
+wasm = "durable/core/host/cf/dist/core-go.wasm"
+setup = "durable/core/host/cf/src/facade/contract-setup.ts"
+build = "make -C durable/core build-go"
+
+[[impl]]
+name = "native"
+about = "the same source built natively: the E, U and SC rows run it in the JS host through cmd/corenative (DCORE_NATIVE); the W, X1 and H rows run a Go bench host (modernc SQLite) whose statement trace is replayed through capsql (impls/native.mjs)"
+candidate_dir = "durable/core/host/cf/src/facade"
+native_exe = "durable/core/sqlhost/bin/bench"
+setup = "durable/core/host/cf/src/facade/contract-setup.ts"
+native_core = "durable/core/host/cf/dist/corenative"
+build = "sh durable/core/budget/build-native.sh"
+
+[[impl]]
+name = "native-bench"
+about = "the bench slice on the production store, rec and history packages with the contracttest bench engine (contracttest/cmd/benchhost); its statement trace is replayed through capsql (impls/native.mjs)"
+slice = "bench"
+native_exe = "durable/core/contracttest/bin/benchhost"
+sc_exe = "durable/core/contracttest/bin/scprovider"
+build = "make -C durable/core build-native-bench"
+sc_build = "make -C durable/core build-native-bench"

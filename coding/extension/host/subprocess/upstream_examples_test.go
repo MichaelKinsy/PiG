@@ -1,3 +1,5 @@
+//go:build !pig_strip_node_extensions
+
 package subprocess
 
 import (
@@ -58,6 +60,7 @@ func loadUpstreamExample(t *testing.T, name, cwd string, results map[string]exte
 	return inproc.NewRunner(loaded, cwd), calls
 }
 
+// Pi: packages/coding-agent/src/core/exec.ts:25 (ExecResult.stderr); packages/coding-agent/src/core/exec.ts:26 (ExecResult.code).
 func TestInputTransformStreamingExample(t *testing.T) {
 	t.Parallel()
 	const diff = " src/index.ts | 5 ++---\n 1 file changed, 2 insertions(+), 3 deletions(-)"
@@ -106,6 +109,7 @@ func TestInputTransformStreamingExample(t *testing.T) {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/exec.ts:25 (ExecResult.stderr); packages/coding-agent/src/core/exec.ts:26 (ExecResult.code).
 func TestGitMergeAndResolveExample(t *testing.T) {
 	t.Parallel()
 	ok := extension.ExecResult{}

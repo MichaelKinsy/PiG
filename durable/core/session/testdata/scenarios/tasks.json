@@ -1,0 +1,584 @@
+{
+ "docs": {
+  "tdoc": {
+   "kind": "t.tdoc",
+   "version": 1,
+   "scope": "task",
+   "initial": {
+    "state": "x",
+    "list": []
+   }
+  },
+  "tfam": {
+   "kind": "t.tfam",
+   "version": 1,
+   "scope": "task",
+   "family": true,
+   "initial": {
+    "v": 0
+   }
+  },
+  "live": {
+   "kind": "t.live",
+   "version": 1,
+   "scope": "conversation",
+   "history": "latest",
+   "fork": "initial",
+   "initial": {}
+  }
+ },
+ "tasks": {
+  "gen": {
+   "name": "t.gen",
+   "version": 1
+  },
+  "tool": {
+   "name": "t.tool",
+   "version": 2
+  }
+ },
+ "steps": [
+  {
+   "ops": [
+    {
+     "op": "rootConversation"
+    },
+    {
+     "op": "createConversation"
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "createTask",
+     "task": "gen",
+     "input": {
+      "a": 1
+     },
+     "opts": {
+      "conversationId": 1
+     }
+    },
+    {
+     "op": "doc",
+     "doc": "tdoc",
+     "owner": 3,
+     "edit": [
+      {
+       "path": [
+        "list"
+       ],
+       "op": "push",
+       "values": [
+        1,
+        2
+       ]
+      }
+     ]
+    },
+    {
+     "op": "doc",
+     "doc": "tfam",
+     "owner": 3,
+     "key": "k",
+     "seed": 5,
+     "edit": []
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "createTask",
+     "task": "tool",
+     "input": {
+      "b": 2
+     },
+     "opts": {
+      "ownerTask": 3
+     }
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "createTask",
+     "task": "tool",
+     "input": {
+      "b": 2
+     },
+     "opts": {
+      "ownerTask": 3,
+      "background": true
+     }
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "createTask",
+     "task": "tool",
+     "input": {
+      "b": 2
+     },
+     "opts": {
+      "ownerTask": 3,
+      "conversationId": 2
+     }
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "createTask",
+     "task": "tool",
+     "input": {
+      "b": 2
+     }
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "createTask",
+     "task": "tool",
+     "input": {
+      "b": 2
+     },
+     "opts": {
+      "conversationId": 77
+     }
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "createTask",
+     "task": "tool",
+     "input": {
+      "b": 2
+     },
+     "opts": {
+      "ownerTask": 999
+     }
+    }
+   ]
+  },
+  {
+   "scope": {
+    "conversationId": 2,
+    "taskId": 3
+   },
+   "ops": [
+    {
+     "op": "createTask",
+     "task": "gen",
+     "input": null
+    },
+    {
+     "op": "appendEntry",
+     "conversationId": 2,
+     "draft": {
+      "kind": "e",
+      "edits": [
+       {
+        "target": 2,
+        "action": "omit"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "createConversation",
+     "ownerTask": 3
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "fork",
+     "parent": 1,
+     "at": 999,
+     "ownerTask": 3
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "updateTask",
+     "id": 3,
+     "patch": {
+      "state": {
+       "status": "running",
+       "checkpoint": {
+        "phase": "p"
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "updateTask",
+     "id": 3,
+     "patch": {
+      "state": {
+       "status": "waiting",
+       "checkpoint": {
+        "phase": "p"
+       },
+       "on": [
+        4
+       ],
+       "policy": "failFast"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "updateTask",
+     "id": 3,
+     "patch": {
+      "memos": {
+       "m": 1
+      }
+     }
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "updateTask",
+     "id": 3,
+     "patch": {
+      "abortRequested": true
+     }
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "createTask",
+     "task": "tool",
+     "input": {
+      "b": 3
+     },
+     "opts": {
+      "ownerTask": 3
+     }
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "createConversation",
+     "ownerTask": 3
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "updateTask",
+     "id": 3,
+     "patch": {
+      "state": {
+       "status": "completing",
+       "outcome": {
+        "status": "aborted"
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "createConversation",
+     "ownerTask": 3
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "updateTask",
+     "id": 3,
+     "patch": {
+      "state": {
+       "status": "terminal",
+       "outcome": {
+        "status": "aborted"
+       }
+      }
+     }
+    },
+    {
+     "op": "updateTask",
+     "id": 3,
+     "patch": {
+      "state": {
+       "status": "terminal",
+       "outcome": {
+        "status": "completed"
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "updateTask",
+     "id": 3,
+     "patch": {
+      "state": {
+       "status": "terminal",
+       "outcome": {
+        "status": "aborted"
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "updateTask",
+     "id": 3,
+     "patch": {
+      "state": {
+       "status": "pending",
+       "checkpoint": {}
+      }
+     }
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "createSubmission",
+     "create": {
+      "type": "write",
+      "conversationId": 1,
+      "status": "queued",
+      "requestId": "q",
+      "entry": {
+       "kind": "x"
+      }
+     }
+    },
+    {
+     "op": "createSubmission",
+     "create": {
+      "type": "input",
+      "conversationId": 2,
+      "status": "queued",
+      "content": "hi"
+     }
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "place",
+     "id": 14,
+     "entry": 2
+    },
+    {
+     "op": "place",
+     "id": 15,
+     "entry": 2
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "settle",
+     "id": 15,
+     "settlement": {
+      "status": "unanswered",
+      "reason": "aborted",
+      "detail": {
+       "k": 1
+      }
+     }
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "settle",
+     "id": 15,
+     "settlement": {
+      "status": "done",
+      "answer": 2
+     }
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "settle",
+     "id": 14,
+     "settlement": {
+      "status": "done",
+      "answer": 2
+     }
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "createSubmission",
+     "create": {
+      "type": "input",
+      "conversationId": 2,
+      "status": "queued",
+      "content": "again"
+     }
+    },
+    {
+     "op": "settle",
+     "id": 16,
+     "settlement": {
+      "status": "done",
+      "answer": 2
+     }
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "doc",
+     "doc": "live",
+     "owner": 1,
+     "edit": [
+      {
+       "path": [],
+       "op": "set",
+       "key": "a",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "op": "retireDoc",
+     "doc": "live",
+     "owner": 1
+    },
+    {
+     "op": "doc",
+     "doc": "live",
+     "owner": 1,
+     "edit": [
+      {
+       "path": [],
+       "op": "set",
+       "key": "b",
+       "value": 2
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "doc",
+     "doc": "live",
+     "owner": 1,
+     "edit": [
+      {
+       "path": [],
+       "op": "delete",
+       "key": "b"
+      },
+      {
+       "path": [],
+       "op": "set",
+       "key": "b",
+       "value": 3
+      }
+     ]
+    },
+    {
+     "op": "retireDoc",
+     "doc": "live",
+     "owner": 1
+    },
+    {
+     "op": "retireDoc",
+     "doc": "live",
+     "owner": 1
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "retireDoc",
+     "doc": "live",
+     "owner": 2
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "doc",
+     "doc": "live",
+     "owner": 55
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "doc",
+     "doc": "tdoc",
+     "owner": 3
+    }
+   ]
+  },
+  {
+   "ops": [
+    {
+     "op": "doc",
+     "doc": "tdoc",
+     "owner": 4
+    }
+   ]
+  }
+ ]
+}

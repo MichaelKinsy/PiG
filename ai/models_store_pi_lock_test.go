@@ -1,5 +1,7 @@
 package ai
 
+// pi: packages/coding-agent/src/core/models-store.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -28,7 +30,7 @@ func TestFileModelsStoreCancelledWriteDoesNotCommitLater(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Millisecond)
 	defer cancel()
 	store := NewFileModelsStore(path)
-	err = store.Write(ctx, "two", ModelsStoreEntry{Models: []json.RawMessage{json.RawMessage(`{"id":"cancelled"}`)}})
+	err = store.Write(ctx, "two", ModelsStoreEntry{Models: mustStoredModels([]json.RawMessage{json.RawMessage(`{"id":"cancelled"}`)})})
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Errorf("cancelled write: %v", err)
 	}
@@ -44,7 +46,7 @@ func TestFileModelsStoreCancelledWriteDoesNotCommitLater(t *testing.T) {
 func TestFileModelsStoreUsesPiDirectoryLock(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "models-store.json")
 	store := NewFileModelsStore(path)
-	if err := store.Write(t.Context(), "probe", ModelsStoreEntry{Models: []json.RawMessage{json.RawMessage(`{"id":"probe"}`)}}); err != nil {
+	if err := store.Write(t.Context(), "probe", ModelsStoreEntry{Models: mustStoredModels([]json.RawMessage{json.RawMessage(`{"id":"probe"}`)})}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(path + ".lock"); !os.IsNotExist(err) {

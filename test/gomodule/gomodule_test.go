@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 // Package gomodule guards the public Go module contract. Dependency versions and checksums describe published modules, independently of the PiG development version. Workspace builds use the local SDK; the separate module-publication CI gate verifies that required tags exist remotely.
@@ -12,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/internal/testenv"
+
 	"go.yaml.in/yaml/v3"
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/module"
@@ -24,11 +25,7 @@ const rootModule = "github.com/MichaelKinsy/PiG"
 
 func repoRoot(t *testing.T) string {
 	t.Helper()
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("resolve test path")
-	}
-	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
+	return testenv.ModuleRoot(t)
 }
 
 func parseMod(t *testing.T, path string) *modfile.File {

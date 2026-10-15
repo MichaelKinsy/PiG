@@ -1,0 +1,26 @@
+# Upstream evidence: Pi 1.1.0 packages/tui/src/tui.ts Container.render (394-406) and components/mouse-region.ts render, replayed on real components.
+# Eight edit scripts (children added, edited, removed and cleared; a nested container; a mouse region; widths; invalidate) print the rows of every render.
+# Pig's Container caches the flattened rows and Pi concatenates on every render, so any stale cache shows as a different row.
+# Exact equality of the JSON lines; no normalization. The Pig probe is a Go test whose observations the wrapper prints, so a failing test fails the run.
+name = "28-container-render"
+description = "Container and MouseRegion render the same rows as Pi through child edits."
+covers = ["packages/tui/src/components/mouse-region.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/container-render-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/container-render-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 120
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['region child', 'deep']
+runs = 3

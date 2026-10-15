@@ -1,0 +1,490 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:drainErrors"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.DrainErrors"
+  ],
+  "production": [
+   "call:coding/cli/package_commands.go#reportSettingsErrors"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager",
+   "test:internal/codingagent/settings_upstream_test.go#TestSettingsManagerOriginalStorage"
+  ],
+  "rationale": "SettingsManager.drainErrors is the Go method SettingsManager.DrainErrors; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getBlockImages"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetBlockImages"
+  ],
+  "production": [
+   "call:coding/session.go#NewSession"
+  ],
+  "evidence": [
+   "test:internal/codingagent/block_images_upstream_test.go#TestBlockImagesSettingsUpstream"
+  ],
+  "rationale": "SettingsManager.getBlockImages is the Go method SettingsManager.GetBlockImages; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getCacheWarmingMode"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetCacheWarmingMode"
+  ],
+  "production": [
+   "call:coding/session_cache_warming.go#Session.installCacheWarmer"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager",
+   "test:internal/codingagent/settings_upstream_test.go#TestSettingsManagerOriginalValues"
+  ],
+  "rationale": "SettingsManager.getCacheWarmingMode is the Go method SettingsManager.GetCacheWarmingMode; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getCompactionEnabled"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetCompactionEnabled"
+  ],
+  "production": [
+   "call:coding/cli/rpc_mode.go#runRPCMode"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_memory_upstream_test.go#TestInMemorySettingsReloadUpstream"
+  ],
+  "rationale": "SettingsManager.getCompactionEnabled is the Go method SettingsManager.GetCompactionEnabled; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getDefaultModel"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetDefaultModel"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_models.go#InteractiveMode.pickModel"
+  ],
+  "evidence": [
+   "test:internal/codingagent/credential_refresh_hang_upstream_test.go#TestPostLoginModelDiscoveryUpstream",
+   "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager"
+  ],
+  "rationale": "SettingsManager.getDefaultModel is the Go method SettingsManager.GetDefaultModel; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getDefaultProjectTrust"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetDefaultProjectTrust"
+  ],
+  "production": [
+   "call:coding/cli/config_command.go#runConfigCommand"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager",
+   "test:internal/codingagent/settings_upstream_test.go#TestSettingsManagerOriginalStorage"
+  ],
+  "rationale": "SettingsManager.getDefaultProjectTrust is the Go method SettingsManager.GetDefaultProjectTrust; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getDefaultThinkingLevel"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetDefaultThinkingLevel"
+  ],
+  "production": [
+   "call:coding/session.go#Session.thinkingLevelForModelSwitch"
+  ],
+  "evidence": [
+   "test:coding/cli/max_thinking_upstream_test.go#TestMaxThinkingCodingAgentUpstream",
+   "test:internal/codingagent/settings_memory_upstream_test.go#TestInMemorySettingsReloadUpstream"
+  ],
+  "rationale": "SettingsManager.getDefaultThinkingLevel is the Go method SettingsManager.GetDefaultThinkingLevel; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getDefaultTools"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetDefaultTools"
+  ],
+  "production": [
+   "call:internal/codingagent/settings.go#SettingsManager.ResolvedDefaultTools"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager",
+   "test:internal/codingagent/settings_upstream_test.go#TestSettingsManagerOriginalValues"
+  ],
+  "rationale": "SettingsManager.getDefaultTools is the Go method SettingsManager.GetDefaultTools; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getEnabledModels"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetEnabledModels"
+  ],
+  "production": [
+   "call:coding/session_scoped_models.go#Session.addPersistedDefaultToNonEmptyScope"
+  ],
+  "evidence": [
+   "test:coding/model_resolver_scope_upstream_test.go#TestModelResolverPersistedScopeUpstream"
+  ],
+  "rationale": "SettingsManager.getEnabledModels is the Go method SettingsManager.GetEnabledModels; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getFullscreenExitOutput"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetFullscreenExitOutput"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_tui.go#InteractiveMode.stopInteractiveTui"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager",
+   "test:internal/codingagent/settings_selector_upstream_test.go#TestSettingsSelectorUpstream"
+  ],
+  "rationale": "SettingsManager.getFullscreenExitOutput is the Go method SettingsManager.GetFullscreenExitOutput; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getFullscreenScrollbar"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetFullscreenScrollbar"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_tui.go#InteractiveMode.buildChatViewport"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager",
+   "test:internal/codingagent/settings_selector_upstream_test.go#TestSettingsSelectorUpstream"
+  ],
+  "rationale": "SettingsManager.getFullscreenScrollbar is the Go method SettingsManager.GetFullscreenScrollbar; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getFullscreenWheelScrollLines"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetFullscreenWheelScrollLines"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_tui.go#InteractiveMode.createInteractiveTui"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager",
+   "test:internal/codingagent/settings_selector_upstream_test.go#TestSettingsSelectorUpstream"
+  ],
+  "rationale": "SettingsManager.getFullscreenWheelScrollLines is the Go method SettingsManager.GetFullscreenWheelScrollLines; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getGlobalSettings"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetGlobalSettings"
+  ],
+  "production": [
+   "call:coding/cli/auth_contributions.go#authExtensionConfigs"
+  ],
+  "evidence": [
+   "test:coding/cli/config_builtin_upstream_test.go#TestConfigListsHostedBuiltinLlamaExtension",
+   "test:coding/cli/config_builtin_upstream_test.go#TestUpstreamConfigTogglesBuiltinExtensionsInGlobalMode"
+  ],
+  "rationale": "SettingsManager.getGlobalSettings is the Go method SettingsManager.GetGlobalSettings; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getMermaidRenderingMode"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetMermaidRenderingMode"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_chat.go#InteractiveMode.mermaidRenderingMode"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager",
+   "test:internal/codingagent/settings_upstream_test.go#TestSettingsManagerOriginalValues"
+  ],
+  "rationale": "SettingsManager.getMermaidRenderingMode is the Go method SettingsManager.GetMermaidRenderingMode; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getProjectSettings"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetProjectSettings"
+  ],
+  "production": [
+   "call:coding/cli/auth_contributions.go#authExtensionConfigs"
+  ],
+  "evidence": [
+   "test:coding/cli/config_builtin_upstream_test.go#TestUpstreamConfigCyclesProjectBuiltinExtensionOverridesInLocalMode",
+   "test:coding/cli/package_local_identity_upstream_test.go#TestPackageIdentityDeduplicationUpstream"
+  ],
+  "rationale": "SettingsManager.getProjectSettings is the Go method SettingsManager.GetProjectSettings; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getThemeSetting"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetThemeSetting"
+  ],
+  "production": [
+   "call:coding/cli/theme_init.go#initTheme"
+  ],
+  "evidence": [
+   "test:internal/codingagent/missing_theme_export_upstream_test.go#TestMissingConfiguredThemeExportsWithActiveFallback",
+   "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager"
+  ],
+  "rationale": "SettingsManager.getThemeSetting is the Go method SettingsManager.GetThemeSetting; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getTuiMode"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetTuiMode"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive.go#NewInteractiveMode"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager",
+   "test:internal/codingagent/settings_upstream_test.go#TestSettingsManagerOriginalValues"
+  ],
+  "rationale": "SettingsManager.getTuiMode is the Go method SettingsManager.GetTuiMode; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:setCacheWarmingMode"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.SetCacheWarmingMode"
+  ],
+  "production": [
+   "call:coding/session_cache_warming.go#Session.SetCacheWarmingMode"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager",
+   "test:internal/codingagent/settings_upstream_test.go#TestSettingsManagerOriginalValues"
+  ],
+  "rationale": "SettingsManager.setCacheWarmingMode is the Go method SettingsManager.SetCacheWarmingMode; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:setDefaultThinkingLevel"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.SetDefaultThinkingLevel"
+  ],
+  "production": [
+   "call:coding/session.go#Session.setThinkingLevelState"
+  ],
+  "evidence": [
+   "test:coding/cli/max_thinking_upstream_test.go#TestMaxThinkingCodingAgentUpstream",
+   "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager"
+  ],
+  "rationale": "SettingsManager.setDefaultThinkingLevel is the Go method SettingsManager.SetDefaultThinkingLevel; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:setExtensionPaths"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.SetExtensionPaths"
+  ],
+  "production": [
+   "call:coding/cli/config_command.go#applyTopLevelToggle"
+  ],
+  "evidence": [
+   "test:coding/cli/config_builtin_upstream_test.go#TestUpstreamConfigCyclesProjectBuiltinExtensionOverridesInLocalMode",
+   "test:coding/cli/package_patterns_upstream_test.go#TestPackagePatternCasesUpstream"
+  ],
+  "rationale": "SettingsManager.setExtensionPaths is the Go method SettingsManager.SetExtensionPaths; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:setModelThinkingLevel"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.SetModelThinkingLevel"
+  ],
+  "production": [
+   "call:internal/codingagent/slash_session_handlers.go#settingsHandlerTUI"
+  ],
+  "evidence": [
+   "test:coding/session_model_extension_upstream_test.go#TestSessionModelExtensionExistingUpstream"
+  ],
+  "rationale": "SettingsManager.setModelThinkingLevel is the Go method SettingsManager.SetModelThinkingLevel; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:setPackages"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.SetPackages"
+  ],
+  "production": [
+   "call:coding/cli/config_command.go#applyPackageToggle"
+  ],
+  "evidence": [
+   "test:coding/cli/git_update_upstream_test.go#TestGitUpdatesUpstream",
+   "test:coding/cli/package_auto_discovery_upstream_test.go#TestPackageAutoDiscoveryLayoutUpstream"
+  ],
+  "rationale": "SettingsManager.setPackages is the Go method SettingsManager.SetPackages; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:setProjectExtensionPaths"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.SetProjectExtensionPaths"
+  ],
+  "production": [
+   "call:coding/cli/config_command.go#applyProjectConfigOverride"
+  ],
+  "evidence": [
+   "test:coding/cli/package_resource_upstream_test.go#TestPackageResolveOriginalCases"
+  ],
+  "rationale": "SettingsManager.setProjectExtensionPaths is the Go method SettingsManager.SetProjectExtensionPaths; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:setProjectPackages"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.SetProjectPackages"
+  ],
+  "production": [
+   "call:coding/cli/config_command.go#applyPackageToggle"
+  ],
+  "evidence": [
+   "test:coding/cli/package_autoload_upstream_test.go#TestPackageAutoloadDefaultsDoNotInferDeltas",
+   "test:coding/cli/package_autoload_upstream_test.go#TestPackageAutoloadDisabledOriginal"
+  ],
+  "rationale": "SettingsManager.setProjectPackages is the Go method SettingsManager.SetProjectPackages; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:setProjectPromptTemplatePaths"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.SetProjectPromptTemplatePaths"
+  ],
+  "production": [
+   "call:coding/cli/config_command.go#applyProjectConfigOverride"
+  ],
+  "evidence": [
+   "test:coding/cli/package_resource_upstream_test.go#TestPackageResolveOriginalCases"
+  ],
+  "rationale": "SettingsManager.setProjectPromptTemplatePaths is the Go method SettingsManager.SetProjectPromptTemplatePaths; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:setProjectTrusted"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.SetProjectTrusted"
+  ],
+  "production": [
+   "call:coding/cli/cli_runtime_build.go#cliRuntimeBuilder.buildResources"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_compaction_upstream_test.go#TestSettingsManagerCompactionUpstream",
+   "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager"
+  ],
+  "rationale": "SettingsManager.setProjectTrusted is the Go method SettingsManager.SetProjectTrusted; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:setPromptTemplatePaths"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.SetPromptTemplatePaths"
+  ],
+  "production": [
+   "call:coding/cli/config_command.go#applyTopLevelToggle"
+  ],
+  "evidence": [
+   "test:coding/cli/package_patterns_upstream_test.go#TestPackagePatternCasesUpstream",
+   "test:coding/cli/package_resource_upstream_test.go#TestPackageResolveOriginalCases"
+  ],
+  "rationale": "SettingsManager.setPromptTemplatePaths is the Go method SettingsManager.SetPromptTemplatePaths; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:setSkillPaths"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.SetSkillPaths"
+  ],
+  "production": [
+   "call:coding/cli/config_command.go#applyTopLevelToggle"
+  ],
+  "evidence": [
+   "test:coding/cli/package_agents_skills_upstream_test.go#TestPackageAgentsSkillDiscoveryOriginal",
+   "test:coding/cli/package_patterns_upstream_test.go#TestPackagePatternCasesUpstream"
+  ],
+  "rationale": "SettingsManager.setSkillPaths is the Go method SettingsManager.SetSkillPaths; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:setThemePaths"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.SetThemePaths"
+  ],
+  "production": [
+   "call:coding/cli/config_command.go#applyTopLevelToggle"
+  ],
+  "evidence": [
+   "test:coding/cli/package_patterns_upstream_test.go#TestPackagePatternCasesUpstream"
+  ],
+  "rationale": "SettingsManager.setThemePaths is the Go method SettingsManager.SetThemePaths; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:setTuiMode"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.SetTuiMode"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_commands.go#InteractiveMode.buildSlashContext"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager",
+   "test:internal/codingagent/settings_upstream_test.go#TestSettingsManagerOriginalValues"
+  ],
+  "rationale": "SettingsManager.setTuiMode is the Go method SettingsManager.SetTuiMode; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:setWarnings"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.SetWarnings"
+  ],
+  "production": [
+   "call:internal/codingagent/slash_session_handlers.go#settingsHandlerTUI"
+  ],
+  "evidence": [
+   "test:internal/codingagent/auth_warnings_upstream_test.go#TestAnthropicSubscriptionWarningUpstream"
+  ],
+  "rationale": "SettingsManager.setWarnings is the Go method SettingsManager.SetWarnings; types reviewed against the upstream declaration (string-literal unions are Go strings; undefined is the empty string or nil; a persistence failure is the returned error); tests are upstream-ported files attributed by go/types (methodrefs)."
+ }
+]

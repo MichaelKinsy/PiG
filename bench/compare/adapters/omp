@@ -1,0 +1,10 @@
+#!/bin/sh
+# Arm adapter: omp (oh-my-pi) reads models.yml and config.yml from PI_CODING_AGENT_DIR; the harness writes models.json
+# (JSON is YAML, so the same bytes are valid) and omp must not show its first-run setup wizard.
+D="$PI_CODING_AGENT_DIR"
+if [ ! -f "$D/config.yml" ]; then
+  cp "$D/models.json" "$D/models.yml"
+  printf 'setupVersion: 2\nstartup:\n  setupWizard: false\n' > "$D/config.yml"
+fi
+HOME="$D/home"; mkdir -p "$HOME"; export HOME
+exec "@EXE@" "$@"

@@ -32,7 +32,7 @@ func TestQuietStartupBindShowsDiagnosticsOnly(t *testing.T) {
 	old := tui.ActiveThemeRegistry()
 	t.Cleanup(func() { tui.SetThemeRegistry(old) })
 	tui.SetThemeRegistry(tui.NewThemeRegistry())
-	f := newRebindFixture(t, func(*coding.Session, ...any) (any, error) { return nil, nil }, nil, func(o *icodingagent.InteractiveOptions) {
+	f := newRebindFixture(t, func(*coding.Session, ...any) (any, error) { return nil, nil }, nil, func(o *icodingagent.InteractiveModeOptions) {
 		o.PromptPaths = []string{first, second}
 		o.ThemePaths = []string{missingTheme}
 	})

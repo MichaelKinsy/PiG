@@ -10,6 +10,7 @@ import (
 
 // Upstream runner.ts reports every handler failure with extensionPath:
 // ext.path, the path the extension was loaded from, not its resolved form.
+// Pi: packages/coding-agent/src/core/extensions/types.ts:926 (AgentStartEvent.type).
 func TestHandlerErrorsReportTheExtensionPath(t *testing.T) {
 	ext := extension.Extension{
 		Path:         "exts/failing.ts",
@@ -38,7 +39,7 @@ func TestProjectTrustErrorsReportTheExtensionPath(t *testing.T) {
 		},
 	}
 	runner := NewRunner([]extension.Extension{ext}, t.TempDir())
-	_, reported, err := EmitProjectTrust(runner, context.Background(), extension.ProjectTrustEvent{})
+	_, reported, err := EmitProjectTrust(runner, context.Background(), extension.ProjectTrustEvent{}, extension.ProjectTrustContext{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -2,6 +2,7 @@ package parity
 
 import (
 	"bytes"
+	"context"
 	"strings"
 	"testing"
 
@@ -11,7 +12,7 @@ import (
 
 type singleSuggestionProvider struct{}
 
-func (singleSuggestionProvider) GetSuggestions(lines []string, cursorLine, cursorCol int) *tui.AutocompleteSuggestions {
+func (singleSuggestionProvider) GetSuggestions(_ context.Context, lines []string, cursorLine, cursorCol int, _ tui.AutocompleteSuggestionOptions) *tui.AutocompleteSuggestions {
 	if len(lines) == 0 || !strings.HasPrefix(lines[cursorLine], "/") {
 		return nil
 	}
@@ -36,14 +37,19 @@ func TestParityEditorRender_EmitsCursorMarkerWhenFocused(t *testing.T) {
 	}
 }
 
-func TestParityEditorRender_SuppressesCursorMarkerWhenAutocompleteOpen(t *testing.T) {
+// packages/tui/src/components/editor.ts:569 `const emitCursorMarker = this.focused`: an open autocomplete list does not
+// remove the marker, so the hardware cursor stays in the editor line while the list shows.
+func TestParityEditorRender_EmitsCursorMarkerWhenAutocompleteOpen(t *testing.T) {
 	ed := tui.NewEditor()
 	ed.Focused = true
 	ed.SetAutocomplete(singleSuggestionProvider{})
 	ed.HandleInput("/")
+	if !ed.AutocompleteOpen() {
+		t.Fatal("the autocomplete list did not open")
+	}
 	buf := strings.Join(ed.Render(40), "\n")
-	if strings.Contains(buf, widthx.CursorMarker) {
-		t.Fatalf("editor with open autocomplete should suppress CURSOR_MARKER, got %q", buf)
+	if strings.Count(buf, widthx.CursorMarker) != 1 {
+		t.Fatalf("editor with open autocomplete should emit one CURSOR_MARKER as Pi's does, got %q", buf)
 	}
 }
 

@@ -10,12 +10,12 @@ import (
 func TestOpenRouterReasoningPayloadsUpstream(t *testing.T) {
 	mandatory := ThinkingLevelMap{}
 	for level, value := range modelgen.GetOpenRouterThinkingLevelMap(&modelgen.OpenRouterReasoningMetadata{Mandatory: true, SupportedEfforts: []*string{new("max"), new("high"), new("low")}}) {
-		mandatory[ThinkingLevel(level)] = value
+		mandatory[ModelThinkingLevel(level)] = value
 	}
 	for _, tc := range []struct {
 		name    string
 		mapping ThinkingLevelMap
-		level   ThinkingLevel
+		level   ModelThinkingLevel
 		want    any
 	}{
 		// .upstream/v0.87.1/packages/ai/test/openrouter-reasoning-options.test.ts:95
@@ -27,7 +27,7 @@ func TestOpenRouterReasoningPayloadsUpstream(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			provider := NewOpenAIProvider(OpenAIConfig{APIKey: "test", ProviderID: "openrouter", Model: "stealth/ox-alpha", BaseURL: "https://example.invalid/v1", Compat: &OpenAICompat{ThinkingFormat: "openrouter"}, ThinkingLevelMap: tc.mapping})
-			payload := captureSamplingPayload(t, provider, NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("Hello")}}}), StreamOptions{Thinking: tc.level, IsReasoning: true})
+			payload := captureSamplingPayload(t, provider, NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("Hello")}}}), StreamOptions{Thinking: tc.level.ReasoningOption(), IsReasoning: true})
 			if !reflect.DeepEqual(payload["reasoning"], tc.want) {
 				t.Fatalf("reasoning=%#v, want %#v", payload["reasoning"], tc.want)
 			}
@@ -43,7 +43,7 @@ func TestOpenRouterReasoningPayloadsUpstream(t *testing.T) {
 func TestConfiguredThinkingMapAndUnsetReasoningAcrossOpenAIPaths(t *testing.T) {
 	mapping := ThinkingLevelMap{ThinkingOff: nil, ThinkingMinimal: nil, ThinkingLow: new("vendor-low"), ThinkingMedium: nil, ThinkingHigh: new("vendor-high"), ThinkingXHigh: nil, ThinkingMax: nil}
 	for _, api := range []API{APIOpenAICompletions, APIOpenAIResponses} {
-		for _, level := range []ThinkingLevel{"", ThinkingLow} {
+		for _, level := range []ModelThinkingLevel{"", ThinkingLow} {
 			t.Run(string(api)+"/"+string(level), func(t *testing.T) {
 				var provider Provider
 				if api == APIOpenAICompletions {
@@ -51,7 +51,7 @@ func TestConfiguredThinkingMapAndUnsetReasoningAcrossOpenAIPaths(t *testing.T) {
 				} else {
 					provider = NewOpenAIResponsesProvider(OpenAIResponsesConfig{APIKey: "test", ProviderID: "custom", Model: "mapped", BaseURL: "https://example.invalid", IsReasoning: true, ThinkingLevelMap: mapping})
 				}
-				payload := captureSamplingPayload(t, provider, NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("Hello")}}}), StreamOptions{Thinking: level, IsReasoning: true})
+				payload := captureSamplingPayload(t, provider, NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("Hello")}}}), StreamOptions{Thinking: level.ReasoningOption(), IsReasoning: true})
 				reasoning, present := payload["reasoning"]
 				if level == "" {
 					if present {

@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"maps"
@@ -11,6 +12,12 @@ import (
 )
 
 const cloudflareTestTemplate = "https://example.test/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/{CLOUDFLARE_ACCOUNT_ID}/{OTHER}/end"
+
+// cloudflareResolve is resolveCloudflareModel (cloudflare-stream.ts:7-17) applied to a model with the template endpoint.
+func cloudflareResolve(baseURL string, env ProviderEnv) string {
+	model := &Model{ProviderMeta: ProviderMetadata{BaseURL: baseURL}}
+	return ResolveCloudflareModel(model, env).ProviderMeta.BaseURL
+}
 
 type cloudflareEnvCase struct {
 	name string
@@ -39,9 +46,8 @@ func TestAIAuthCloudflareUnresolvedParity(t *testing.T) {
 	for _, tc := range cloudflareEnvCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			before := maps.Clone(tc.env)
-			got, err := ResolveCloudflareBaseURL("cloudflare-ai-gateway", cloudflareTestTemplate, tc.env)
-			if err != nil || got != tc.want {
-				t.Errorf("resolved = %q, %v; want %q, nil", got, err, tc.want)
+			if got := cloudflareResolve(cloudflareTestTemplate, tc.env); got != tc.want {
+				t.Errorf("resolved = %q; want %q", got, tc.want)
 			}
 			if !reflect.DeepEqual(tc.env, before) {
 				t.Fatal("mutated supplied env")
@@ -50,11 +56,8 @@ func TestAIAuthCloudflareUnresolvedParity(t *testing.T) {
 	}
 	t.Setenv("CLOUDFLARE_ACCOUNT_ID", "")
 	t.Setenv("CLOUDFLARE_GATEWAY_ID", "")
-	if got, err := ResolveCloudflareBaseURL("cloudflare-ai-gateway", cloudflareTestTemplate, ProviderEnv{}); err != nil || got != cloudflareTestTemplate {
-		t.Errorf("missing values = %q, %v", got, err)
-	}
-	if got, err := ResolveCloudflareBaseURL("custom", cloudflareTestTemplate, ProviderEnv{"CLOUDFLARE_ACCOUNT_ID": "ignored"}); err != nil || got != cloudflareTestTemplate {
-		t.Errorf("non-Cloudflare = %q, %v", got, err)
+	if got := cloudflareResolve(cloudflareTestTemplate, ProviderEnv{}); got != cloudflareTestTemplate {
+		t.Errorf("missing values = %q", got)
 	}
 }
 
@@ -71,9 +74,8 @@ func TestCloudflareReplacementStringTokens(t *testing.T) {
 		{"$$&$", "L$&$R$&$T"},
 	} {
 		t.Run(tc.value, func(t *testing.T) {
-			got, err := ResolveCloudflareBaseURL("cloudflare-ai-gateway", input, ProviderEnv{"CLOUDFLARE_ACCOUNT_ID": tc.value})
-			if err != nil || got != tc.want {
-				t.Fatalf("replacement %q = %q, %v; want %q", tc.value, got, err, tc.want)
+			if got := cloudflareResolve(input, ProviderEnv{"CLOUDFLARE_ACCOUNT_ID": tc.value}); got != tc.want {
+				t.Fatalf("replacement %q = %q; want %q", tc.value, got, tc.want)
 			}
 		})
 	}
@@ -108,29 +110,39 @@ func TestCloudflareProductionRequestsUseExplicitEnv(t *testing.T) {
 				}
 				return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"text/event-stream"}}, Body: io.NopCloser(strings.NewReader(reply))}, nil
 			})}
-			var provider Provider
 			suffix := "/chat/completions"
 			switch api {
-			case APIOpenAICompletions:
-				p := NewOpenAIProvider(OpenAIConfig{BaseURL: cloudflareTestTemplate, APIKey: "fixture", Model: "test", ProviderID: "cloudflare-ai-gateway"}).(*openAIProvider)
-				p.client = client
-				provider = p
 			case APIOpenAIResponses:
-				p := NewOpenAIResponsesProvider(OpenAIResponsesConfig{BaseURL: cloudflareTestTemplate, APIKey: "fixture", Model: "test", ProviderID: "cloudflare-ai-gateway"}).(*openAIResponsesProvider)
-				p.client = client
-				provider = p
 				suffix = "/responses"
 			case APIAnthropicMessages:
-				p := NewAnthropicProvider(AnthropicConfig{BaseURL: cloudflareTestTemplate, APIKey: "fixture", Model: "test", ProviderID: "cloudflare-ai-gateway"}).(*anthropicProvider)
-				p.client = client
-				provider = p
 				suffix = "/v1/messages"
 			}
-			defer func() {
-				if err := provider.Close(); err != nil {
-					t.Error(err)
+			// The inner implementation reads only the model's endpoint, as an API module does: the wrapper has resolved it by then.
+			inner := &ProviderStreams{Stream: func(ctx context.Context, model *Model, transcript TranscriptContext, options StreamOptions) (*AssistantMessageEventStream, error) {
+				var provider Provider
+				switch api {
+				case APIOpenAICompletions:
+					p := NewOpenAIProvider(OpenAIConfig{BaseURL: model.ProviderMeta.BaseURL, APIKey: "fixture", Model: "test", ProviderID: "cloudflare-ai-gateway"}).(*openAIProvider)
+					p.client = client
+					provider = p
+				case APIOpenAIResponses:
+					p := NewOpenAIResponsesProvider(OpenAIResponsesConfig{BaseURL: model.ProviderMeta.BaseURL, APIKey: "fixture", Model: "test", ProviderID: "cloudflare-ai-gateway"}).(*openAIResponsesProvider)
+					p.client = client
+					provider = p
+				case APIAnthropicMessages:
+					p := NewAnthropicProvider(AnthropicConfig{BaseURL: model.ProviderMeta.BaseURL, APIKey: "fixture", Model: "test", ProviderID: "cloudflare-ai-gateway"}).(*anthropicProvider)
+					p.client = client
+					provider = p
 				}
-			}()
+				t.Cleanup(func() {
+					if err := provider.Close(); err != nil {
+						t.Error(err)
+					}
+				})
+				return provider.Stream(ctx, transcript, options)
+			}}
+			streams := CloudflareStreams(inner)
+			model := &Model{ID: "test", ProviderMeta: ProviderMetadata{ProviderID: "cloudflare-ai-gateway", API: api, BaseURL: cloudflareTestTemplate}}
 			input := Context{Messages: []Message{UserMessage{Content: UserText("hello")}}}
 			for _, tc := range append(cloudflareEnvCases(), cloudflareEnvCases()[0]) {
 				t.Run(tc.name, func(t *testing.T) {
@@ -138,7 +150,7 @@ func TestCloudflareProductionRequestsUseExplicitEnv(t *testing.T) {
 					before := maps.Clone(tc.env)
 					requestURL = ""
 					body = nil
-					stream, err := provider.Stream(t.Context(), NormalizeContext(input), options)
+					stream, err := streams.Stream(t.Context(), model, NormalizeContext(input), options)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -165,11 +177,62 @@ func TestCloudflareProductionRequestsUseExplicitEnv(t *testing.T) {
 					if !reflect.DeepEqual(body[messagesKey], []any{map[string]any{"role": "user", "content": content}}) || body[maxTokensKey] != float64(options.MaxTokens) {
 						t.Errorf("context/options not forwarded: %v", body)
 					}
+					if model.ProviderMeta.BaseURL != cloudflareTestTemplate {
+						t.Fatalf("request mutated the model endpoint: %q", model.ProviderMeta.BaseURL)
+					}
 					if !reflect.DeepEqual(tc.env, before) || !reflect.DeepEqual(options.Headers, ProviderHeaders{"X-Request": new("kept")}) || input.Messages[0].(UserMessage).Content != UserText("hello") {
 						t.Fatal("mutated caller input")
 					}
 				})
 			}
 		})
+	}
+}
+
+// providers/cloudflare-workers-ai.ts:20 and cloudflare-ai-gateway.ts:22-24 wrap their APIs with cloudflareStreams; every other provider's API is
+// dispatched with the endpoint it has. Registration decides, so no provider is recognized by its ID inside an API implementation.
+func TestOnlyTheCloudflareProvidersWrapTheirStreams(t *testing.T) {
+	inner := &ProviderStreams{Stream: StreamSimple, StreamSimple: StreamSimple}
+	for _, id := range []string{"cloudflare-workers-ai", "cloudflare-ai-gateway"} {
+		if got := withBuiltinStreamWrapper(id, inner); got == inner {
+			t.Errorf("%s streams are not wrapped", id)
+		}
+	}
+	for _, id := range []string{"openai", "anthropic", "openrouter", "cloudflare-other", "custom"} {
+		if got := withBuiltinStreamWrapper(id, inner); got != inner {
+			t.Errorf("%s streams are wrapped", id)
+		}
+	}
+}
+
+// cloudflare-stream.ts:19-31 cloudflareStreams resolves the model for both stream and streamSimple from options.env, passes the caller's
+// model through when nothing changes, and never mutates it.
+func TestCloudflareStreamsResolveTheModelForBothEntryPoints(t *testing.T) {
+	var seen []*Model
+	record := func(_ context.Context, model *Model, _ TranscriptContext, _ StreamOptions) (*AssistantMessageEventStream, error) {
+		seen = append(seen, model)
+		return nil, nil
+	}
+	wrapped := CloudflareStreams(&ProviderStreams{Stream: record, StreamSimple: record})
+	model := &Model{ID: "m", ProviderMeta: ProviderMetadata{BaseURL: "https://gateway.test/{CLOUDFLARE_ACCOUNT_ID}/x"}}
+	env := ProviderEnv{"CLOUDFLARE_ACCOUNT_ID": "acct"}
+	for name, call := range map[string]ModelsStreamFunction{"stream": wrapped.Stream, "streamSimple": wrapped.StreamSimple} {
+		seen = nil
+		if _, err := call(t.Context(), model, TranscriptContext{}, StreamOptions{Env: env}); err != nil {
+			t.Fatal(err)
+		}
+		if len(seen) != 1 || seen[0] == model || seen[0].ProviderMeta.BaseURL != "https://gateway.test/acct/x" || seen[0].ID != "m" {
+			t.Fatalf("%s dispatched %+v, want a copy of the model with the resolved endpoint", name, seen)
+		}
+		if model.ProviderMeta.BaseURL != "https://gateway.test/{CLOUDFLARE_ACCOUNT_ID}/x" {
+			t.Fatalf("%s mutated the caller's model", name)
+		}
+		seen = nil
+		if _, err := call(t.Context(), model, TranscriptContext{}, StreamOptions{}); err != nil {
+			t.Fatal(err)
+		}
+		if len(seen) != 1 || seen[0] != model {
+			t.Fatalf("%s without env dispatched %+v, want the caller's model", name, seen)
+		}
 	}
 }

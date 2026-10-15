@@ -1,3 +1,5 @@
+//go:build !pig_strip_node_extensions
+
 package subprocess
 
 import (
@@ -6,7 +8,7 @@ import (
 	"testing"
 )
 
-// Pi's virtual-modules.ts shares export values; ModelRuntime.prepareRequest throws the same ModelsError exported by pi-ai. Library bundling must not create a second core or import the unbundled catalog as well.
+// Pi's virtual-modules.ts shares export values; ModelRuntime.prepareRequest throws the same ModelsError exported by pi-ai. Library bundling must not create a second core or import the unbundled catalog as well. The compat and model schemas are catalog-free typebox leaves that coding-agent's model-config and settings-schema import by their package subpath, so they load unbundled.
 func TestNodeLibraryBundlesKeepSharedIdentitiesWithoutRawCatalogLoads(t *testing.T) {
 	root := filepath.Join(findModuleRoot(t), "coding", "extension", "host", "subprocess", "runtime-node")
 	script := `import assert from "node:assert/strict";
@@ -14,7 +16,7 @@ import {registerHooks} from "node:module";
 import {pathToFileURL} from "node:url";
 import {join} from "node:path";
 registerHooks({load(url,context,next) {
- if (url.includes("/pi-ai/providers/") && !url.endsWith("/radius-config.js")) assert.fail("unbundled provider/catalog loaded: " + url);
+ if (url.includes("/pi-ai/providers/") && !url.endsWith("/radius-config.js") && !/\/(compat|model)-schema\.js$/.test(url)) assert.fail("unbundled provider/catalog loaded: " + url);
  if (url.endsWith("/pi-ai/models.generated.js") || url.includes("/pi-tui/components/")) assert.fail("unbundled library graph loaded: " + url);
  return next(url,context);
 }});

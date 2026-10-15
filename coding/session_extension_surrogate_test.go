@@ -8,8 +8,8 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
+	"github.com/MichaelKinsy/PiG/internal/boundarywire"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
-	"github.com/MichaelKinsy/PiG/internal/codingagent/compaction"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
@@ -37,8 +37,8 @@ func TestExtensionCompactionPreservesLoneSurrogates(t *testing.T) {
 	})
 	s.ReplaceRunner(inproc.NewRunner([]extension.Extension{{Path: "ext", Handlers: map[string][]extension.HandlerFn{
 		"session_before_compact": {func(args ...any) (any, error) {
-			prep := args[0].(extension.SessionBeforeCompactEvent).Preparation.(*compaction.CompactionPreparation)
-			return extension.SessionBeforeCompactResult{Compaction: map[string]any{"summary": "s" + lone, "firstKeptEntryId": prep.FirstKeptEntryID, "tokensBefore": prep.TokensBefore, "details": map[string]any{"d": lone}}}, nil
+			prep := args[0].(extension.SessionBeforeCompactEvent).Preparation
+			return extension.SessionBeforeCompactResult{Compaction: &extension.CompactionResult{Summary: "s" + lone, FirstKeptEntryID: prep.FirstKeptEntryID, TokensBefore: prep.TokensBefore, Details: map[string]any{"d": lone}}}, nil
 		}},
 	}}}, t.TempDir()))
 	for _, prompt := range []string{"one", "two"} {
@@ -47,7 +47,7 @@ func TestExtensionCompactionPreservesLoneSurrogates(t *testing.T) {
 		}
 		drainEvents(t, s)
 	}
-	result, err := s.CompactResult(t.Context(), "")
+	result, err := s.Compact(t.Context(), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,8 +55,8 @@ func TestExtensionCompactionPreservesLoneSurrogates(t *testing.T) {
 		t.Fatalf("summary units=%x, want %x", jsstring.ToUTF16(result.Summary), jsstring.ToUTF16("s"+lone))
 	}
 	var line string
-	for _, entry := range s.inner.Entries() {
-		if entry.Base.Type == "compaction" {
+	for _, entry := range s.inner.GetEntries() {
+		if entry.Base().Type == "compaction" {
 			line = string(entry.Raw())
 		}
 	}
@@ -72,7 +72,7 @@ func TestBoundaryContextEditPreservesLoneSurrogates(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = sess.Close() }()
-	target, err := sess.inner.AppendCustomMessage("note", "x"+jsstring.FromUTF16([]uint16{0xdfff}), true, nil)
+	target, err := sess.inner.AppendCustomMessageEntry("note", "x"+jsstring.FromUTF16([]uint16{0xdfff}), true, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,8 +83,13 @@ func TestBoundaryContextEditPreservesLoneSurrogates(t *testing.T) {
 	if line := string(appended[0].Raw()); !strings.Contains(line, `"replacement":{"content":"r\ud800"}`) {
 		t.Fatalf("context_edit entry=%s, want the replacement escape", line)
 	}
-	preview, err := sess.buildBoundaryContext(nil, icodingagent.EventTurnEnd)
+	// A Go handler receives the preview through Deliver, which decodes each source from its record.
+	_, wire := boundarywire.WithCache(t.Context())
+	preview, err := sess.recordedBoundaryContext(wire, nil, icodingagent.EventTurnEnd)
 	if err != nil {
+		t.Fatal(err)
+	}
+	if err := wire.Deliver(preview); err != nil {
 		t.Fatal(err)
 	}
 	for _, entry := range preview.ContextEntries {

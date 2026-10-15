@@ -1,0 +1,6 @@
+[
+  { "row": "U-harness-ownership", "file": "harness-ownership.test.ts", "test": "marks work admitted after reopen below a cancelled owner whose edge was not loaded" },
+  { "row": "U-harness-ownership", "file": "harness-ownership.test.ts", "test": "rejects a handle operation queued on the line when the invocation ends before it runs" },
+  { "row": "U-harness-tasks", "file": "harness-tasks.test.ts", "test": "signals and joins the run before returning, then runs the abort handler" },
+  { "row": "U-harness-tasks", "file": "harness-tasks.test.ts", "test": "starts no next phase when close seals during a step that decided to continue" }
+]

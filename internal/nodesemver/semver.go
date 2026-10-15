@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"unicode"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
@@ -267,18 +266,7 @@ func isDigits(text string) bool {
 	return true
 }
 
-// isJSWhitespace is JavaScript's WhiteSpace or LineTerminator, the \s class and the set String.prototype.trim removes. It differs from unicode.IsSpace in U+FEFF (JavaScript whitespace) and U+0085 (not JavaScript whitespace).
-func isJSWhitespace(r rune) bool {
-	switch r {
-	case 0xFEFF:
-		return true
-	case 0x85:
-		return false
-	}
-	return unicode.IsSpace(r)
-}
-
-func jsTrim(text string) string { return strings.TrimFunc(text, isJSWhitespace) }
+func jsTrim(text string) string { return strings.TrimFunc(text, jsstring.IsSpace) }
 
 // jsSplitWhitespace is text.split(/\s+/), which keeps empty leading and trailing fields.
 func jsSplitWhitespace(text string) []string {
@@ -286,14 +274,14 @@ func jsSplitWhitespace(text string) []string {
 	start := 0
 	for i := 0; i < len(text); {
 		r, size := jsstring.DecodeRuneInString(text[i:])
-		if !isJSWhitespace(r) {
+		if !jsstring.IsSpace(r) {
 			i += size
 			continue
 		}
 		fields = append(fields, text[start:i])
 		for i < len(text) {
 			r, size = jsstring.DecodeRuneInString(text[i:])
-			if !isJSWhitespace(r) {
+			if !jsstring.IsSpace(r) {
 				break
 			}
 			i += size

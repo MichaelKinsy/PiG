@@ -1,3 +1,5 @@
+//go:build !pig_strip_node_extensions
+
 package subprocess_test
 
 import (
@@ -54,6 +56,11 @@ export default pi=>{
     msg.content=[{type:"text",text:payload.message}];
     s.push({type:"start",partial:structuredClone(msg)});s.push({type:"done",reason:"stop",message:msg});return;
    }
+   if(request==="response"){
+    await options.onResponse({status:201,headers:{"x-trace":"abc"}},model);
+    msg.content=[{type:"text",text:"responded"}];
+    s.push({type:"start",partial:structuredClone(msg)});s.push({type:"done",reason:"stop",message:msg});return;
+   }
    s.push({type:"start",partial:structuredClone(msg)});
    if(request==="cancel"){
     options.signal.addEventListener("abort",()=>{msg.stopReason="aborted";msg.errorMessage="native cancelled";s.push({type:"error",reason:"aborted",error:msg})},{once:true});return;
@@ -61,19 +68,19 @@ export default pi=>{
    msg.content=[{type:"text",text:"native result"}];s.push({type:"done",reason:"stop",message:msg});
   });return s;
  };
- pi.registerProvider({id:"native-test",name:"Native",baseUrl:model.baseUrl,getModels:()=>refreshed?[model,{...model,id:"new-model"}]:[model],auth:{apiKey:{name:"API key",check:async()=>({type:"api_key",source:"native"}),resolve:async input=>{if(waitAuth)await wait(input.signal,"auth");if(failAuth)throw new Error("native auth exploded");return {auth:{apiKey:"key",headers:{"X-Auth":"yes"}},source:"native"}}}},refreshModels:async ctx=>{if(waitRefresh)await wait(ctx.signal,"refresh");if(failRefresh)throw new Error("native refresh exploded");if(ctx.allowNetwork)await ctx.publish({persist:{models:[{id:"persisted"}]},update:()=>{if(!readFileSync("agent/models-store.json","utf8").includes("persisted"))throw new Error("publication was not persisted before update");refreshed=true}})},stream,streamSimple:stream});
+ pi.registerProvider({id:"native-test",name:"Native",baseUrl:model.baseUrl,getModels:()=>refreshed?[model,{...model,id:"new-model"}]:[model],auth:{apiKey:{name:"API key",check:async()=>({type:"api_key",source:"native"}),resolve:async input=>{if(waitAuth)await wait(input.signal,"auth");if(failAuth)throw new Error("native auth exploded");return {auth:{apiKey:"key",headers:{"X-Auth":"yes"}},source:"native"}}}},refreshModels:async ctx=>{if(waitRefresh)await wait(ctx.signal,"refresh");if(failRefresh)throw new Error("native refresh exploded");if(ctx.allowNetwork&&ctx.baseUrl!==model.baseUrl)throw new Error("refresh baseUrl "+ctx.baseUrl);if(ctx.allowNetwork)await ctx.publish({persist:{models:[{id:"persisted"}]},update:()=>{if(!readFileSync("agent/models-store.json","utf8").includes("persisted"))throw new Error("publication was not persisted before update");refreshed=true}})},stream,streamSimple:stream});
 };`
 			if err := os.WriteFile(entry, []byte(source), 0600); err != nil {
 				t.Fatal(err)
 			}
-			services, err := coding.NewServices(coding.ServicesOptions{CWD: dir, AgentDir: filepath.Join(dir, "agent")})
+			services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: dir, AgentDir: filepath.Join(dir, "agent")})
 			if err != nil {
 				t.Fatal(err)
 			}
 			t.Cleanup(services.Close)
 			host := subprocess.NewHost(dir)
 			defer host.Shutdown("done")
-			host.SetProviderCallbacks(services.Registry().RegisterProvider, services.Registry().UnregisterProvider)
+			host.SetProviderCallbacks(services.Registry().RegisterExtensionProvider, services.Registry().UnregisterProvider)
 			host.SetNativeProviderCallback(services.Registry().RegisterNativeProvider)
 			ui := &nativeTestUI{UIContext: extension.NoopUIContext, started: make(chan string, 1)}
 			bridge := subprocess.NewUIBridge(nil)
@@ -102,7 +109,7 @@ export default pi=>{
 			if _, err := services.ModelRuntime().GetAvailable(t.Context()); err != nil {
 				t.Fatal(err)
 			}
-			if !services.Registry().HasConfiguredAuth("native-test") {
+			if !services.Registry().ModelRegistry.HasConfiguredAuth("native-test") {
 				t.Fatal("native auth check not used")
 			}
 			for _, tc := range []struct {
@@ -152,6 +159,20 @@ export default pi=>{
 			}})
 			if !payloadCalled || payloadResult.StopReason != ai.StopReasonStop || payloadResult.Content[0].(ai.TextContent).Text != "rewritten" {
 				t.Fatalf("payload callback: %+v called=%v", payloadResult, payloadCalled)
+			}
+			// Pi sdk.ts:387-433 gives every provider call the session's onResponse, which emits after_provider_response; models.ts hands it to Provider.stream, so a native Provider object reaches it with the response's status and headers.
+			var responses []ai.ProviderResponse
+			var responseModels []string
+			responseResult := services.ModelRuntime().Complete(t.Context(), model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("response")}}}, ai.StreamOptions{OnResponse: func(_ context.Context, response ai.ProviderResponse, model *ai.Model) error {
+				responses = append(responses, response)
+				responseModels = append(responseModels, model.ID)
+				return nil
+			}})
+			if responseResult.StopReason != ai.StopReasonStop || responseResult.Content[0].(ai.TextContent).Text != "responded" {
+				t.Fatalf("response callback result: %+v", responseResult)
+			}
+			if len(responses) != 1 || responses[0].Status != 201 || responses[0].Headers["x-trace"] != "abc" || responseModels[0] != "model" {
+				t.Fatalf("onResponse calls = %+v models = %v, want one 201 with x-trace abc for model", responses, responseModels)
 			}
 			control := loaded.Commands["native-control"]
 			for _, kind := range []string{"auth", "refresh"} {

@@ -1,10 +1,13 @@
 package llama
 
+// pi: packages/coding-agent/src/extensions/llama/index.ts
+
 import (
 	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
@@ -139,7 +142,7 @@ func commandFixture(t *testing.T, url string) (*commandSession, *[]notification)
 	clearLlamaEnv(t)
 	t.Setenv("HF_TOKEN", "hf-test")
 	dir := t.TempDir()
-	host, _, credentials := newTestHost(t, dir)
+	models, controller, credentials := newTestModels(t, dir)
 	if err := credentials.Set(LlamaProviderID, ai.Credential{Type: ai.CredentialAPIKey, Env: map[string]string{"LLAMA_BASE_URL": url}}); err != nil {
 		t.Fatal(err)
 	}
@@ -147,11 +150,12 @@ func commandFixture(t *testing.T, url string) (*commandSession, *[]notification)
 	ctx := CommandContext{Ctx: context.Background(), Mode: "tui", Notify: func(message, kind string) {
 		notices = append(notices, notification{message, kind})
 	}}
-	client, err := host.configuredClient(ctx)
+	registry := testRegistry{models}
+	client, err := configuredClient(ctx, registry)
 	if err != nil || client == nil {
 		t.Fatalf("configuredClient = %v, %v", client, err)
 	}
-	return &commandSession{host: host, ctx: ctx, client: client}, &notices
+	return &commandSession{registry: registry, controller: controller, ctx: ctx, client: client}, &notices
 }
 
 func model(id string, status LlamaModelStatus) LlamaModelInfo {
@@ -160,7 +164,7 @@ func model(id string, status LlamaModelStatus) LlamaModelInfo {
 
 func TestLlamaCommandRequiresInteractiveModeAndConfiguration(t *testing.T) {
 	clearLlamaEnv(t)
-	host, _, _ := newTestHost(t, t.TempDir())
+	models, controller, _ := newTestModels(t, t.TempDir())
 	var notices []notification
 	customCalled := false
 	ctx := CommandContext{
@@ -169,11 +173,11 @@ func TestLlamaCommandRequiresInteractiveModeAndConfiguration(t *testing.T) {
 		Notify: func(message, kind string) { notices = append(notices, notification{message, kind}) },
 		Custom: func(func(requestRender, done func()) CustomComponent) { customCalled = true },
 	}
-	if err := host.HandleCommand(ctx); err != nil {
+	if err := RunCommand(ctx, testRegistry{models}, controller); err != nil {
 		t.Fatal(err)
 	}
 	ctx.Mode = "tui"
-	if err := host.HandleCommand(ctx); err != nil {
+	if err := RunCommand(ctx, testRegistry{models}, controller); err != nil {
 		t.Fatal(err)
 	}
 	want := []notification{
@@ -206,7 +210,7 @@ func TestLlamaCommandLoadsKeepingOrReplacingLoadedModels(t *testing.T) {
 			if want := []notification{{"Loaded beta", "info"}}; !reflect.DeepEqual(*notices, want) {
 				t.Fatalf("notices = %+v", *notices)
 			}
-			if got := modelIDs(session.host.Provider().GetModels()); !slices.Contains(got, "beta") {
+			if got := modelIDs(session.controller.Provider.GetModels()); !slices.Contains(got, "beta") {
 				t.Fatalf("provider models after load = %v", got)
 			}
 		})
@@ -266,7 +270,7 @@ func TestLlamaCommandDownloadsAfterAccessAndQuantizationChoices(t *testing.T) {
 	}))
 	defer huggingFace.Close()
 	session, notices := commandFixture(t, url)
-	session.host.huggingFaceURL = huggingFace.URL
+	session.huggingFaceURL = huggingFace.URL
 	ui := &fakeUI{t: t, search: "owner/repo", actions: []LlamaManagerAction{{Type: LlamaManagerActionDownload}}, selects: map[string]string{
 		"Hugging Face access required": "Continue",
 		"Select quantization":          "Q4_K_M · 4.00 KiB · recommended",
@@ -317,5 +321,40 @@ func TestParseHuggingFaceModel(t *testing.T) {
 		if repository != want[0] || quantization != want[1] {
 			t.Errorf("parseHuggingFaceModel(%q) = %q, %q; want %q", input, repository, quantization, want)
 		}
+	}
+}
+
+// /llama's catalog sync refreshes the llama.cpp provider with allowNetwork true even when the session is offline (index.ts:52-58), so the
+// refresh lists the server again and persists the catalog: a later cache-only startup restores the model /llama loaded.
+func TestLlamaCommandSyncPersistsTheCatalogItLoaded(t *testing.T) {
+	clearLlamaEnv(t)
+	t.Setenv("HF_TOKEN", "hf-test")
+	_, url := newRouterServer(t, [2]string{"beta", "unloaded"})
+	dir := t.TempDir()
+	models, controller, credentials := newTestModels(t, dir)
+	if err := credentials.Set(LlamaProviderID, ai.Credential{Type: ai.CredentialAPIKey, Env: map[string]string{"LLAMA_BASE_URL": url}}); err != nil {
+		t.Fatal(err)
+	}
+	ctx := CommandContext{Ctx: context.Background(), Mode: "tui", Notify: func(string, string) {}}
+	registry := testRegistry{models}
+	client, err := configuredClient(ctx, registry)
+	if err != nil || client == nil {
+		t.Fatalf("configuredClient = %v, %v", client, err)
+	}
+	session := &commandSession{registry: registry, controller: controller, ctx: ctx, client: client}
+	ui := &fakeUI{t: t, actions: []LlamaManagerAction{{Type: LlamaManagerActionModel, Model: model("beta", LlamaModelStatusUnloaded)}}}
+	if err := session.manage(ui); err != nil {
+		t.Fatal(err)
+	}
+	entry, err := ai.NewFileModelsStore(filepath.Join(dir, "models-store.json")).Read(context.Background(), LlamaProviderID)
+	if err != nil || entry == nil {
+		t.Fatalf("models store entry = %+v, %v", entry, err)
+	}
+	var ids []string
+	for _, raw := range entry.Models {
+		ids = append(ids, raw.ModelID())
+	}
+	if !slices.Contains(ids, "beta") {
+		t.Fatalf("persisted llama.cpp models = %v, want the loaded beta", ids)
 	}
 }

@@ -1,0 +1,204 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#BorderedLoader::property:render"
+  ],
+  "targets": [
+   "tui/tui.go#Container.Render"
+  ],
+  "production": [
+   "public-api:tui/tui.go#Container.Render"
+  ],
+  "evidence": [
+   "test:tui/bordered_loader_test.go#TestBorderedLoader_Render_Structure"
+  ],
+  "rationale": "BorderedLoader.render is inherited from Container (BorderedLoader embeds Container), the Go method Container.Render; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CustomMessageComponent::property:render"
+  ],
+  "targets": [
+   "tui/tui.go#Container.Render"
+  ],
+  "production": [
+   "public-api:tui/tui.go#Container.Render"
+  ],
+  "evidence": [
+   "test:tui/message_padding_test.go#TestCustomMessageDefaultOutputPadKeepsBoxInset",
+   "test:tui/exit_layout_test.go#TestCustomMessageRetainsBoxVerticalPadding"
+  ],
+  "rationale": "CustomMessageComponent.render is the Go method CustomMessageComponent.Render; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionEditorComponent::property:render"
+  ],
+  "targets": [
+   "tui/tui.go#Container.Render"
+  ],
+  "production": [
+   "public-api:tui/tui.go#Container.Render"
+  ],
+  "evidence": [
+   "test:internal/codingagent/extension_editor_test.go#TestExtensionEditorComponentChildrenFollowUpstream"
+  ],
+  "rationale": "ExtensionEditorComponent.render is the Go method ExtensionEditorComponent.Render; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionInputComponent::property:render"
+  ],
+  "targets": [
+   "tui/tui.go#Container.Render"
+  ],
+  "production": [
+   "public-api:tui/tui.go#Container.Render"
+  ],
+  "evidence": [
+   "test:tui/extension_dialog_baked_theme_test.go#TestExtensionInputKeepsTheThemeItWasBuiltUnder",
+   "test:tui/extension_dialog_bindings_test.go#TestExtensionDialogCountdownMatchesPi"
+  ],
+  "rationale": "ExtensionInputComponent.render is the Go method ExtensionInputComponent.Render; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionSelectorComponent::property:render"
+  ],
+  "targets": [
+   "tui/tui.go#Container.Render"
+  ],
+  "production": [
+   "call:internal/codingagent/radius_login_selector.go#radiusLoginMenu.Render"
+  ],
+  "evidence": [
+   "test:tui/extension_selector_test.go#TestExtensionDialogsRenderDescriptionUnderTitle"
+  ],
+  "rationale": "ExtensionSelectorComponent.render is the Go method ExtensionSelectorComponent.Render; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#LoginDialogComponent::property:render"
+  ],
+  "targets": [
+   "tui/login_dialog.go#LoginDialog.Render"
+  ],
+  "production": [
+   "public-api:tui/login_dialog.go#LoginDialog.Render"
+  ],
+  "evidence": [
+   "test:tui/login_dialog_pi_test.go#TestLoginDialogMaskDisabledMatchesPi",
+   "test:tui/login_dialog_test.go#TestLoginDialogManualInputLayout"
+  ],
+  "rationale": "LoginDialogComponent.render is the Go method LoginDialog.Render; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelSelectorComponent::property:render"
+  ],
+  "targets": [
+   "tui/model_select.go#ModelSelector.Render"
+  ],
+  "production": [
+   "public-api:tui/model_select.go#ModelSelector.Render"
+  ],
+  "evidence": [
+   "test:tui/model_select_test.go#TestModelSelector_ScopeTextMatchesUpstream",
+   "test:tui/model_select_test.go#TestModelSelector_CurrentModelPinnedFirst"
+  ],
+  "rationale": "ModelSelectorComponent.render is the Go method ModelSelector.Render; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#OAuthSelectorComponent::property:render"
+  ],
+  "targets": [
+   "tui/tui.go#Container.Render"
+  ],
+  "production": [
+   "public-api:tui/tui.go#Container.Render"
+  ],
+  "evidence": [
+   "test:tui/oauth_selector_test.go#TestOAuthSelector_AuthTypeLabelsForMixedLists",
+   "test:tui/oauth_selector_account_label_test.go#TestOAuthSelectorLabelsNonSubscriptionOAuthAsAccount"
+  ],
+  "rationale": "OAuthSelectorComponent.render is the Go method OAuthSelector.Render; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ShowImagesSelectorComponent::property:render"
+  ],
+  "targets": [
+   "tui/tui.go#Container.Render"
+  ],
+  "production": [
+   "public-api:tui/tui.go#Container.Render"
+  ],
+  "evidence": [
+   "test:tui/show_images_upstream_test.go#TestShowImagesUpstreamRender",
+   "test:tui/show_images_selector_test.go#TestShowImagesSelector_Render"
+  ],
+  "rationale": "ShowImagesSelectorComponent.render is the Go method ShowImagesSelectorComponent.Render; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#UserMessageSelectorComponent::property:render"
+  ],
+  "targets": [
+   "tui/user_message_selector.go#UserMessageSelector.Render"
+  ],
+  "production": [
+   "public-api:tui/user_message_selector.go#UserMessageSelector.Render"
+  ],
+  "evidence": [
+   "test:tui/user_message_selector_test.go#TestUserMessageSelectorEmptyState"
+  ],
+  "rationale": "UserMessageSelectorComponent.render is the Go method UserMessageSelector.Render; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AssistantMessageComponent::property:render"
+  ],
+  "targets": [
+   "tui/assistant_message_block.go#AssistantMessageBlock.Render"
+  ],
+  "production": [
+   "public-api:tui/assistant_message_block.go#AssistantMessageBlock.Render"
+  ],
+  "evidence": [
+   "test:internal/codingagent/assistant_message_upstream_test.go#TestAssistantMessageUpstream"
+  ],
+  "rationale": "AssistantMessageComponent.render is the Go method AssistantMessageBlock.Render; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#BashExecutionComponent::property:render"
+  ],
+  "targets": [
+   "tui/bash_execution.go#bashPreview.Render"
+  ],
+  "production": [
+   "public-api:tui/bash_execution.go#bashPreview.Render"
+  ],
+  "evidence": [
+   "test:tui/bash_execution_test.go#TestBashExecutionBlockCollapsedLimitUsesVisualRows",
+   "test:tui/bash_command_wrap_regression_test.go#TestBashCommandHeaderUsesPaddedTextLayout"
+  ],
+  "rationale": "BashExecutionComponent.render is the Go method BashExecutionBlock.Render; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#UserMessageComponent::property:render"
+  ],
+  "targets": [
+   "tui/user_message_block.go#UserMessageBlock.Render"
+  ],
+  "production": [
+   "public-api:tui/user_message_block.go#UserMessageBlock.Render"
+  ],
+  "evidence": [
+   "test:tui/user_message_upstream_test.go#TestUpstreamUserMessageOSCMarkers"
+  ],
+  "rationale": "UserMessageComponent.render is the Go method UserMessageBlock.Render; signature reviewed against the upstream declaration."
+ }
+]

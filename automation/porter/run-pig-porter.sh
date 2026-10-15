@@ -11,5 +11,11 @@ PIG_BIN="${PIG_BIN:-$ROOT/bin/pig-parity}"
   exit 1
 }
 
+# shellcheck source=automation/porter/hermetic-agent.sh
+. "$ROOT/automation/porter/hermetic-agent.sh"
+home="$(mktemp -d "${TMPDIR:-/tmp}/pig-porter-home.XXXXXXXX")"
+trap 'chmod -R u+rwX "$home" 2>/dev/null || true; rm -rf "$home"' EXIT
+porter_export_hermetic_agent "$home/agent"
+
 "$PIG_BIN" piglet validate "$PROFILE"
-exec "$PIG_BIN" --piglet "$PROFILE" "$@"
+"$PIG_BIN" --piglet "$PROFILE" "$@"

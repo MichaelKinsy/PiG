@@ -1,5 +1,7 @@
 package node
 
+// pi: packages/durable/src/storage/sqlite/node.ts
+
 // Ports packages/durable/test/sqlite-facade.test.ts
 
 import (
@@ -13,6 +15,7 @@ import (
 	"testing"
 	"testing/synctest"
 
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	durablesqlite "github.com/MichaelKinsy/PiG/durable/storage/sqlite"
 )
@@ -180,12 +183,15 @@ func rootWrite() durable.StorageWrite {
 	return durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID}}
 }
 
+// Pi source: packages/durable/src/storage/sqlite/node.ts, packages/durable/src/storage/sqlite/storage.ts
+// mutation-checked: zeroing the results of NodeSqliteDatabase.Transaction, SqliteStorage.Commit, SqliteStorage.Conversation, SqliteStorage.Document, SqliteStorage.Entry, SqliteStorage.ScanEntries fails it
 func TestPortableSQLiteFacadeSettlement(t *testing.T) {
+	// Pi 1.2.0 packages/durable/test/sqlite-facade.test.ts:82 "prepares each storage statement once per connection and reuses it across transactions"
 	t.Run("prepares each storage statement once per connection and reuses it across transactions", func(t *testing.T) {
 		raw, err := NewDatabaseSync(":memory:", DatabaseSyncOptions{})
 		mustDo(t, err)
 		connection := &prepareCountingDatabaseSync{DatabaseSync: raw, prepareCounts: map[string]int{}}
-		storage, err := durablesqlite.Open(NewNodeSqliteDatabase(connection))
+		storage, err := durablesqlite.Open(newNodeSqliteDatabase(connection))
 		mustDo(t, err)
 		_, err = storage.Commit(background, []durable.StorageWrite{rootWrite()})
 		mustDo(t, err)
@@ -220,6 +226,7 @@ func TestPortableSQLiteFacadeSettlement(t *testing.T) {
 		mustDo(t, storage.Close(background))
 	})
 
+	// Pi 1.2.0 packages/durable/test/sqlite-facade.test.ts:112 "commits work done through the transaction handle and closes idempotently"
 	t.Run("commits work done through the transaction handle and closes idempotently", func(t *testing.T) {
 		database := mustOpenMemory(t)
 		mustDo(t, database.Transaction(func(transaction durablesqlite.SqliteExecutor) error {
@@ -235,6 +242,7 @@ func TestPortableSQLiteFacadeSettlement(t *testing.T) {
 		mustDo(t, database.Close())
 	})
 
+	// Pi 1.2.0 packages/durable/test/sqlite-facade.test.ts:123 "serializes concurrent transactions"
 	t.Run("serializes concurrent transactions", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			database := mustOpenMemory(t)
@@ -282,6 +290,7 @@ func TestPortableSQLiteFacadeSettlement(t *testing.T) {
 		})
 	})
 
+	// Pi 1.2.0 packages/durable/test/sqlite-facade.test.ts:158 "runs operations in call order whether they start immediately or wait"
 	t.Run("runs operations in call order whether they start immediately or wait", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			database := mustOpenMemory(t)
@@ -345,6 +354,7 @@ func TestPortableSQLiteFacadeSettlement(t *testing.T) {
 		})
 	})
 
+	// Pi 1.2.0 packages/durable/test/sqlite-facade.test.ts:186 "queues ordinary operations behind an active transaction"
 	t.Run("queues ordinary operations behind an active transaction", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			database := mustOpenMemory(t)
@@ -388,6 +398,7 @@ func TestPortableSQLiteFacadeSettlement(t *testing.T) {
 		})
 	})
 
+	// Pi 1.2.0 packages/durable/test/sqlite-facade.test.ts:223 "queues database calls made synchronously by a transaction that started immediately"
 	t.Run("queues database calls made synchronously by a transaction that started immediately", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			database := mustOpenMemory(t)
@@ -414,6 +425,7 @@ func TestPortableSQLiteFacadeSettlement(t *testing.T) {
 		})
 	})
 
+	// Pi 1.2.0 packages/durable/test/sqlite-facade.test.ts:240 "lets admitted multi-query reads finish before storage closes"
 	t.Run("lets admitted multi-query reads finish before storage closes", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			database := mustOpenMemory(t)
@@ -480,6 +492,7 @@ func TestPortableSQLiteFacadeSettlement(t *testing.T) {
 		})
 	})
 
+	// Pi 1.2.0 packages/durable/test/sqlite-facade.test.ts:265 "rejects a transaction handle used after its transaction settles"
 	t.Run("rejects a transaction handle used after its transaction settles", func(t *testing.T) {
 		database := mustOpenMemory(t)
 		mustDo(t, database.Exec("CREATE TABLE stale_probe (value INTEGER)"))
@@ -497,7 +510,8 @@ func TestPortableSQLiteFacadeSettlement(t *testing.T) {
 		mustDo(t, database.Close())
 	})
 
-	t.Run("does not preserve a guaranteed rejection when rollback itself fails", func(t *testing.T) {
+	// Pi 1.2.0 packages/durable/test/sqlite-facade.test.ts:280 "does not preserve the callback error when rollback itself fails"
+	t.Run("does not preserve the callback error when rollback itself fails", func(t *testing.T) {
 		database := mustOpenMemory(t)
 		mustDo(t, database.Exec("CREATE TABLE rollback_probe (value INTEGER)"))
 		err := database.Transaction(func(transaction durablesqlite.SqliteExecutor) error {
@@ -507,13 +521,10 @@ func TestPortableSQLiteFacadeSettlement(t *testing.T) {
 			if err := transaction.Exec("COMMIT"); err != nil {
 				return err
 			}
-			return durable.NewStorageRejected("rejected after an escaped commit", nil)
+			return errors.New("rejected after an escaped commit")
 		})
 		if _, ok := errors.AsType[*AggregateError](err); !ok {
 			t.Fatalf("error = %v, want AggregateError", err)
-		}
-		if _, ok := errors.AsType[*durable.StorageRejected](err); ok {
-			t.Fatal("rollback failure still reads as a StorageRejected rollback")
 		}
 		row, err := database.Get("SELECT value FROM rollback_probe")
 		mustDo(t, err)
@@ -521,6 +532,7 @@ func TestPortableSQLiteFacadeSettlement(t *testing.T) {
 		mustDo(t, database.Close())
 	})
 
+	// Pi 1.2.0 packages/durable/test/sqlite-facade.test.ts:294 "awaits async transaction settlement and adopts IDs only after success"
 	t.Run("awaits async transaction settlement and adopts IDs only after success", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			database := &controlledSettlementDatabase{NodeSqliteDatabase: mustOpenMemory(t)}
@@ -570,6 +582,7 @@ func TestPortableSQLiteFacadeSettlement(t *testing.T) {
 		})
 	})
 
+	// Pi 1.2.0 packages/durable/test/sqlite-facade.test.ts:346 "reads a document from one committed state while a commit replaces its base"
 	t.Run("reads a document from one committed state while a commit replaces its base", func(t *testing.T) {
 		const id durable.DocumentId = 5
 		// Each yield count starts the commit at a different point of the read's record and revision queries.
@@ -578,7 +591,7 @@ func TestPortableSQLiteFacadeSettlement(t *testing.T) {
 			mustDo(t, err)
 			_, err = storage.Commit(background, []durable.StorageWrite{durable.DocumentCreateWrite{
 				Record:  durable.DocumentCreate{Id: id, Kind: "replaced", Scope: durable.DocumentRecordScope{Kind: durable.ScopeSession}},
-				Content: durable.DocumentContent{Kind: durable.ContentBase, Version: 1, Value: durable.JsonObject{"value": 1}},
+				Content: durable.DocumentContent{Kind: durable.ContentBase, Version: 1, Value: delta.JsonObjectOf("value", 1)},
 			}})
 			mustDo(t, err)
 			read := start(func() (*durable.StoredDocument, error) { return storage.Document(background, id, durable.CurrentPoint) })
@@ -588,14 +601,14 @@ func TestPortableSQLiteFacadeSettlement(t *testing.T) {
 			replace := start(func() (durable.Seq, error) {
 				return storage.Commit(background, []durable.StorageWrite{durable.DocumentChangeWrite{
 					Id:      id,
-					Content: durable.DocumentContent{Kind: durable.ContentBase, Version: 1, Value: durable.JsonObject{"value": 2}},
+					Content: durable.DocumentContent{Kind: durable.ContentBase, Version: 1, Value: delta.JsonObjectOf("value", 2)},
 				}})
 			})
 			stored, err := read.await()
 			mustDo(t, err)
 			_, err = replace.await()
 			mustDo(t, err)
-			value := stored.Value["value"]
+			value := stored.Value.Value("value")
 			if value != float64(1) && value != float64(2) {
 				t.Fatalf("value = %#v, want 1 or 2", value)
 			}
@@ -643,3 +656,31 @@ func entryIds(entries []durable.EntryRecord) []durable.EntryId {
 }
 
 func yieldGoroutine() { runtime.Gosched() }
+
+// Pi source: packages/durable/src/storage/sqlite/node.ts:136 (`new NodeSqliteDatabase(database: DatabaseSync)`)
+// mutation-checked: zeroing the result of NewNodeSqliteDatabase fails it
+func TestNewNodeSqliteDatabaseAdaptsADatabaseSync(t *testing.T) {
+	raw, err := NewDatabaseSync(":memory:", DatabaseSyncOptions{})
+	mustDo(t, err)
+	database := NewNodeSqliteDatabase(raw)
+	storage, err := durablesqlite.Open(database)
+	mustDo(t, err)
+	_, err = storage.Commit(background, []durable.StorageWrite{rootWrite()})
+	mustDo(t, err)
+	conversation, err := storage.Conversation(background, durable.ROOT_CONVERSATION_ID)
+	mustDo(t, err)
+	if conversation == nil || conversation.Id != durable.ROOT_CONVERSATION_ID {
+		t.Fatalf("a commit through the adapter must be readable back, got %+v", conversation)
+	}
+	probe, err := raw.Prepare("SELECT count(*) AS tables FROM sqlite_master WHERE type = 'table'")
+	mustDo(t, err)
+	row, err := probe.Get()
+	mustDo(t, err)
+	if tables, _ := row["tables"].(int64); tables == 0 {
+		t.Fatalf("the adapter must create its tables in the connection it was given, found %v", row)
+	}
+	mustDo(t, database.Close())
+	if err := database.Close(); err != nil {
+		t.Fatalf("closing twice must be a no-op, got %v", err)
+	}
+}

@@ -30,7 +30,7 @@ func TestOAuthLoginCancellationDoesNotCompleteAuthentication(t *testing.T) {
 			m.layout = tui.NewContainer(m.chatContainer, m.editorContainer)
 			provider := cancellableLoginProvider{parityOAuthProvider{id: "anthropic", name: "Anthropic"}, make(chan struct{})}
 			done := make(chan error, 1)
-			go func() { done <- m.runLoginRegisteredOAuth(t.Context(), provider, "") }()
+			go func() { done <- m.runLoginRegisteredOAuth(t.Context(), provider, testOAuthLoginName(provider), "") }()
 			waitForRender(t, m.editorContainer, "Enter login code:")
 			deliverModalInput(t, m, []byte(key))
 			select {
@@ -52,7 +52,7 @@ func TestOAuthLoginCancellationDoesNotCompleteAuthentication(t *testing.T) {
 			if _, stored, err := auth.Get("anthropic"); stored || err != nil {
 				t.Fatalf("cancelled credential stored=%v, err=%v", stored, err)
 			}
-			if err := m.runLoginRegisteredOAuth(t.Context(), successfulLoginProvider{provider.parityOAuthProvider}, ""); err != nil {
+			if err := m.runLoginRegisteredOAuth(t.Context(), successfulLoginProvider{provider.parityOAuthProvider}, testOAuthLoginName(provider), ""); err != nil {
 				t.Fatal(err)
 			}
 			waitPostLoginStatus(t, m, "Logged in to Anthropic. Selected claude-opus-4-8.")

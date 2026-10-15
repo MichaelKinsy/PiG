@@ -4,11 +4,14 @@ package ai
 
 import (
 	"bytes"
+	"errors"
 	"maps"
 	"reflect"
+	"slices"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 )
 
 // Credential properties are case-sensitive JSON keys. Filter by exact tags before the Go struct decoder can fold opaque provider metadata into a known field. Extra is still collected from the original object.
@@ -98,6 +101,24 @@ func credentialExtra(data []byte, known []byte, oauth bool) (map[string]json.Raw
 	return all, nil
 }
 func (c Credential) MarshalJSON() ([]byte, error) {
+	if c.opaque != nil && c.sourceUnchanged() {
+		return jsonstringify.Canonicalize(c.opaque)
+	}
+	return c.marshalTyped()
+}
+
+var apiKeyFirstCredentialMembers = []string{"type", "key", "env"}
+
+// marshalTyped writes the typed form of a credential, in the member order it was decoded with.
+func (c Credential) marshalTyped() ([]byte, error) {
+	data, err := c.marshalFields()
+	if err != nil {
+		return nil, err
+	}
+	return c.order.apply(data)
+}
+
+func (c Credential) marshalFields() ([]byte, error) {
 	type plain Credential
 	data, err := json.Marshal(plain(c))
 	if err != nil || (len(c.Extra) == 0 && c.Type != CredentialOAuth) {
@@ -122,7 +143,19 @@ func (c Credential) MarshalJSON() ([]byte, error) {
 		}
 	}
 	maps.Copy(fields, known)
-	return json.Marshal(fields)
+	encoded, err := json.Marshal(fields)
+	if err != nil {
+		return encoded, err
+	}
+	if c.Type == CredentialAPIKey {
+		// Pi's api-key credential literal is { type, key, env } (auth-storage.ts set from a login), so a credential built here without a decoded order writes that order first.
+		return credentialKeyOrder{keys: apiKeyFirstCredentialMembers}.apply(encoded)
+	}
+	if c.Type != CredentialOAuth {
+		return encoded, err
+	}
+	// A credential built without a provider's order has the one Pi's anthropic, github-copilot and meta literals write.
+	return credentialKeyOrder{keys: refreshFirstCredentialMembers}.apply(encoded)
 }
 func (c *Credential) UnmarshalJSON(data []byte) error {
 	type plain Credential
@@ -142,7 +175,9 @@ func (c *Credential) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	*c = Credential(decoded)
+	value := Credential(decoded)
+	value.order = decodedCredentialOrder(data).retainedFor(value.marshalFields)
+	*c = value
 	return nil
 }
 func (c *rawCredential) UnmarshalJSON(data []byte) error {
@@ -168,10 +203,19 @@ func (c *rawCredential) UnmarshalJSON(data []byte) error {
 	if len(decoded.Extra) == 0 {
 		decoded.Extra = nil
 	}
+	decoded.order = decodedCredentialOrder(data)
 	*c = rawCredential(decoded)
 	return nil
 }
 func (c OAuthCredentials) MarshalJSON() ([]byte, error) {
+	data, err := c.marshalFields()
+	if err != nil {
+		return nil, err
+	}
+	return c.order.apply(data)
+}
+
+func (c OAuthCredentials) marshalFields() ([]byte, error) {
 	type plain OAuthCredentials
 	data, err := json.Marshal(plain(c))
 	if err != nil || (len(c.Extra) == 0 && !c.expiry.current(c.Expires)) {
@@ -214,30 +258,47 @@ func (c *OAuthCredentials) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	*c = OAuthCredentials(decoded)
+	value := OAuthCredentials(decoded)
+	// The order keeps the position of the discriminator the store adds back (credentialFromOAuth). Pi stores { ...credential, type: "oauth" } (packages/coding-agent/src/core/provider-composer.ts:367 adaptOAuth): a flow's own type keeps its place, and apply writes an added one after the flow's properties.
+	order := decodedCredentialOrder(data)
+	value.order = order.retainedFor(value.marshalFields, value.storeFields)
+	*c = value
 	return nil
 }
 
 // credentialFromOAuth preserves provider-owned fields while promoting fields understood by the credential store into its typed representation.
 func credentialFromOAuth(value OAuthCredentials) (Credential, error) {
-	data, err := json.Marshal(value)
+	data, err := value.storeFields()
 	if err != nil {
 		return Credential{}, err
 	}
+	if data, err = value.order.apply(data); err != nil {
+		return Credential{}, err
+	}
 	// Decode as an OAuth credential so provider-owned fields that share an API-key or convenience name keep their JSON shape.
-	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(data, &fields); err != nil {
-		return Credential{}, err
-	}
-	fields["type"] = json.RawMessage(`"oauth"`)
-	if data, err = json.Marshal(fields); err != nil {
-		return Credential{}, err
-	}
 	var credential Credential
 	if err := json.Unmarshal(data, &credential); err != nil {
 		return Credential{}, err
 	}
 	return credential, nil
+}
+
+// storeFields is the stored form of the credential without its decoded order: its properties and the oauth discriminator.
+func (c OAuthCredentials) storeFields() ([]byte, error) {
+	data, err := c.marshalFields()
+	if err != nil {
+		return nil, err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return nil, err
+	}
+	fields["type"] = json.RawMessage(`"oauth"`)
+	encoded, err := json.Marshal(fields)
+	if err != nil {
+		return nil, err
+	}
+	return credentialKeyOrder{keys: refreshFirstCredentialMembers}.apply(encoded)
 }
 
 func cloneCredentialExtra(extra map[string]json.RawMessage) map[string]json.RawMessage {
@@ -249,4 +310,149 @@ func cloneCredentialExtra(extra map[string]json.RawMessage) map[string]json.RawM
 		out[key] = bytes.Clone(value)
 	}
 	return out
+}
+
+// credentialKeyOrder is the property order of a credential decoded from JSON: its top-level keys and the keys of its env object. Pi stores the object a login or refresh returned and writes it with JSON.stringify, which keeps that order (packages/coding-agent/src/core/auth-storage.ts:465-467), so a decoded credential writes its properties back in their decoded order. A credential built in Go has no order and keeps the codec's order. A property added after decoding follows the decoded ones, as a spread does.
+type credentialKeyOrder struct {
+	keys []string
+	env  []string
+}
+
+// decodedCredentialOrder reads the property order of a credential object and its env object.
+func decodedCredentialOrder(data []byte) credentialKeyOrder {
+	keys, values, err := jsonObjectEntries(data)
+	if err != nil {
+		return credentialKeyOrder{}
+	}
+	order := credentialKeyOrder{keys: keys}
+	if env, ok := values["env"]; ok && isJSONObject(env) {
+		order.env, _, _ = jsonObjectEntries(env)
+	}
+	return order
+}
+
+// retainedFor drops an order that matches every default encoding, so a credential whose properties already follow the codec's order carries none.
+func (o credentialKeyOrder) retainedFor(defaults ...func() ([]byte, error)) credentialKeyOrder {
+	for _, encode := range defaults {
+		data, err := encode()
+		if err != nil {
+			return o
+		}
+		keys, values, err := jsonObjectEntries(data)
+		if err != nil || !slices.Equal(orderedKeys(o.keys, keys, values), keys) {
+			return o
+		}
+		if env, ok := values["env"]; ok && o.env != nil && isJSONObject(env) {
+			envKeys, envValues, err := jsonObjectEntries(env)
+			if err != nil || !slices.Equal(orderedKeys(o.env, envKeys, envValues), envKeys) {
+				return o
+			}
+		}
+	}
+	return credentialKeyOrder{}
+}
+
+// renamed is the order with the property from renamed to, unless to is already present.
+func (o credentialKeyOrder) renamed(from, to string) credentialKeyOrder {
+	if slices.Contains(o.keys, to) {
+		return o
+	}
+	if index := slices.Index(o.keys, from); index >= 0 {
+		o.keys = slices.Clone(o.keys)
+		o.keys[index] = to
+	}
+	return o
+}
+
+// apply writes the JSON object data with the decoded properties first, in their decoded order, and the others after them in data's order.
+func (o credentialKeyOrder) apply(data []byte) ([]byte, error) {
+	if o.keys == nil && o.env == nil {
+		return data, nil
+	}
+	keys, values, err := jsonObjectEntries(data)
+	if err != nil {
+		return nil, err
+	}
+	if env, ok := values["env"]; ok && o.env != nil && isJSONObject(env) {
+		envKeys, envValues, err := jsonObjectEntries(env)
+		if err != nil {
+			return nil, err
+		}
+		if values["env"], err = writeOrderedJSONObject(orderedKeys(o.env, envKeys, envValues), envValues); err != nil {
+			return nil, err
+		}
+	}
+	return writeOrderedJSONObject(orderedKeys(o.keys, keys, values), values)
+}
+
+// orderedKeys lists the present keys: those named in first, in that order, then the others in their present order, with integer keys first as a JavaScript object lists them.
+func orderedKeys(first, present []string, values map[string]json.RawMessage) []string {
+	keys := make([]string, 0, len(present))
+	for _, key := range first {
+		if _, ok := values[key]; ok && !slices.Contains(keys, key) {
+			keys = append(keys, key)
+		}
+	}
+	for _, key := range present {
+		if !slices.Contains(keys, key) {
+			keys = append(keys, key)
+		}
+	}
+	return javascriptObjectKeyOrder(keys)
+}
+
+// jsonObjectEntries reads a JSON object's keys at their first position and each key's last value, as JSON.parse keeps them. Keys and values come from one decoder, so a lone UTF-16 surrogate key matches its value.
+func jsonObjectEntries(data []byte) ([]string, map[string]json.RawMessage, error) {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	if token, err := decoder.Token(); err != nil {
+		return nil, nil, err
+	} else if token != json.Delim('{') {
+		return nil, nil, errors.New("credential JSON is not an object")
+	}
+	var keys []string
+	values := map[string]json.RawMessage{}
+	for decoder.More() {
+		token, err := decoder.Token()
+		if err != nil {
+			return nil, nil, err
+		}
+		key, ok := token.(string)
+		if !ok {
+			return nil, nil, errors.New("credential object key is not a string")
+		}
+		var value json.RawMessage
+		if err := decoder.Decode(&value); err != nil {
+			return nil, nil, err
+		}
+		if _, seen := values[key]; !seen {
+			keys = append(keys, key)
+		}
+		values[key] = value
+	}
+	return javascriptObjectKeyOrder(keys), values, nil
+}
+
+func isJSONObject(value json.RawMessage) bool {
+	trimmed := bytes.TrimSpace(value)
+	return len(trimmed) > 0 && trimmed[0] == '{'
+}
+
+// writeOrderedJSONObject encodes each key with the shared codec, which keeps a lone UTF-16 surrogate distinct from U+FFFD.
+func writeOrderedJSONObject(keys []string, object map[string]json.RawMessage) ([]byte, error) {
+	var out bytes.Buffer
+	out.WriteByte('{')
+	for i, key := range keys {
+		if i > 0 {
+			out.WriteByte(',')
+		}
+		name, err := json.Marshal(key)
+		if err != nil {
+			return nil, err
+		}
+		out.Write(name)
+		out.WriteByte(':')
+		out.Write(object[key])
+	}
+	out.WriteByte('}')
+	return out.Bytes(), nil
 }

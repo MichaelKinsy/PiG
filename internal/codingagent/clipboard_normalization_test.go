@@ -9,6 +9,8 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/internal/nodebase64"
+
 	"golang.org/x/image/bmp"
 )
 
@@ -49,7 +51,7 @@ func BenchmarkClipboardBMPNormalization(b *testing.B) {
 
 // Pi clipboard-image.ts:70-86,238-249 decodes unsupported formats without EXIF rotation, omits failed conversions, and passes declared supported formats through unchanged.
 func TestClipboardImageNormalization(t *testing.T) {
-	jpeg := decodeNodeBase64(jpegWithXmpBeforeOrientation(t))
+	jpeg := nodebase64.Decode(jpegWithXmpBeforeOrientation(t))
 	for _, tc := range []struct {
 		name, mime        string
 		data              []byte

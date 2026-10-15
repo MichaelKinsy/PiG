@@ -95,7 +95,7 @@ func TestInteractiveShutdownLeavesTerminalFileForNextReader(t *testing.T) {
 	if err := mode.inputLoop(t.Context(), input); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := writer.Write([]byte("x")); err != nil {
+	if _, err := writer.WriteString("x"); err != nil {
 		t.Fatal(err)
 	}
 	var data [1]byte

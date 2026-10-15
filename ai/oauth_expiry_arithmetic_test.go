@@ -1,5 +1,7 @@
 package ai
 
+// pi: packages/ai/src/auth/oauth/openai-codex.ts
+
 import (
 	"math"
 	"net/http"
@@ -56,6 +58,8 @@ func TestBuiltinOAuthExpiryUsesJavaScriptArithmetic(t *testing.T) {
 		}{
 			{`"expires_in":0.0005,`, func(now float64) float64 { return now + 0.5 - 60_000 }},
 			{``, func(float64) float64 { return math.NaN() }},
+			// The product rounds before the sum: node -e 'console.log(1700000000000 + 3600.0000003662108*1000 - 60000)' prints 1700003540000.0005; one fused multiply-add gives 1700003540000.0002.
+			{`"expires_in":3600.0000003662108,`, func(float64) float64 { return 1700003540000.0005 }},
 		} {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
@@ -81,6 +85,28 @@ func TestBuiltinOAuthExpiryUsesJavaScriptArithmetic(t *testing.T) {
 					t.Fatalf("NaN expires serialized as %s, want null", encoded)
 				}
 			}
+		}
+	})
+	// The product rounds before the sum, as in JavaScript: node -e 'console.log(1700000000000 + 3600.0000003662108*1000)' prints 1700003600000.0005, where one fused multiply-add gives 1700003600000.0002.
+	t.Run("kimi", func(t *testing.T) {
+		withNowMillis(t, 1_700_000_000_000)
+		creds, err := kimiCredentials(kimiTokenResponse{AccessToken: "a", RefreshToken: "r", ExpiresIn: 3600.0000003662108})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got, want := creds.ExpiresMillis(), 1700003600000.0005; got != want {
+			t.Fatalf("expires = %v, want %v", got, want)
+		}
+	})
+	// node -e 'console.log(1000000 + 3600.0000000000014*1000 - 300000)' prints 4300000.000000002; one fused multiply-add gives 4300000.000000001.
+	t.Run("xai", func(t *testing.T) {
+		expiresIn := 3600.0000000000014
+		creds, err := testXaiProvider("", "").credentialsFromToken(xaiBody{AccessToken: "a", RefreshToken: new("r"), ExpiresIn: &expiresIn}, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got, want := creds.ExpiresMillis(), 4300000.000000002; got != want {
+			t.Fatalf("expires = %v, want %v", got, want)
 		}
 	})
 }

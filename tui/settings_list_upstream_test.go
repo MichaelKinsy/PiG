@@ -9,7 +9,7 @@ import (
 func TestUpstreamSettingsList(t *testing.T) {
 	type change struct{ id, value string }
 	newList := func() *SettingsList {
-		return NewSettingsListWithOptions([]SettingItem{{ID: "tui-mode", Label: "TUI mode", CurrentValue: "regular", Values: []string{"regular", "fullscreen"}}}, 10, true)
+		return NewSettingsList([]SettingItem{{ID: "tui-mode", Label: "TUI mode", CurrentValue: "regular", Values: []string{"regular", "fullscreen"}}}, 10, GetSettingsListTheme(), nil, nil, SettingsListOptions{EnableSearch: true})
 	}
 	// The Go caller consumes ChangedID/ChangedValue and Reset after each input, instead of receiving the upstream onChange callback.
 	input := func(list *SettingsList, data string, changes *[]change) {

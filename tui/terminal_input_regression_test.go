@@ -3,7 +3,6 @@ package tui
 import (
 	"bytes"
 	"slices"
-	"strconv"
 	"strings"
 	"testing"
 	"testing/synctest"
@@ -42,30 +41,39 @@ func TestTerminalNegotiationFragmentTransitions(t *testing.T) {
 }
 
 func TestTerminalNegotiationPrefixDeadlineBoundaries(t *testing.T) {
-	// terminal.ts sets a fresh150ms fragment timeout after each prefix extension.
-	for _, extend := range []bool{false, true} {
-		t.Run(strconv.FormatBool(extend), func(t *testing.T) {
-			synctest.Test(t, func(t *testing.T) {
-				h := newTerminalNegotiationHarness(t)
-				h.send("\x1b[")
-				time.Sleep(50 * time.Millisecond)
-				synctest.Wait()
-				h.noInput(t)
-				want := "\x1b["
-				if extend {
-					time.Sleep(100 * time.Millisecond)
-					h.send("?7")
-					want += "?7"
-				}
-				time.Sleep(149 * time.Millisecond)
-				synctest.Wait()
-				h.noInput(t)
-				time.Sleep(time.Millisecond)
-				synctest.Wait()
-				h.lastInput(t, want)
-			})
-		})
-	}
+	// terminal.ts replays a bare `ESC[` 150 ms after StdinBuffer's 50 ms sequence timeout delivers it.
+	synctest.Test(t, func(t *testing.T) {
+		h := newTerminalNegotiationHarness(t)
+		h.send("\x1b[")
+		time.Sleep(50 * time.Millisecond)
+		synctest.Wait()
+		h.noInput(t)
+		time.Sleep(149 * time.Millisecond)
+		synctest.Wait()
+		h.noInput(t)
+		time.Sleep(time.Millisecond)
+		synctest.Wait()
+		h.lastInput(t, "\x1b[")
+	})
+}
+
+func TestTerminalNegotiationPrivateCSIPrefixWaitsForItsFinalByte(t *testing.T) {
+	// D143 (Pi #10657 reference fix): extending `ESC[` to `ESC[?7` cancels the bare-CSI timeout, and no timeout replays a private CSI
+	// prefix. Pi 1.1.0 replays it 150 ms after the extension. Input that cannot continue it releases the prefix first, in order.
+	synctest.Test(t, func(t *testing.T) {
+		h := newTerminalNegotiationHarness(t)
+		h.send("\x1b[")
+		time.Sleep(100 * time.Millisecond)
+		synctest.Wait()
+		h.send("?7")
+		time.Sleep(10 * time.Second)
+		synctest.Wait()
+		h.noInput(t)
+		h.send("a")
+		if want := []string{"\x1b[?7", "a"}; !slices.Equal(h.input(), want) {
+			t.Fatalf("input=%q, want %q", h.input(), want)
+		}
+	})
 }
 
 func TestTerminalNegotiationPasteBypassesPrefixAndCloseCancelsTimer(t *testing.T) {
@@ -110,6 +118,7 @@ type stalledProgressWriter struct {
 	release chan struct{}
 }
 
+//nolint:gocritic // preferStringWriter: this is the WriteString method itself.
 func (w *stalledProgressWriter) WriteString(s string) (int, error) { return w.Write([]byte(s)) }
 
 func (w *stalledProgressWriter) Write(p []byte) (int, error) {

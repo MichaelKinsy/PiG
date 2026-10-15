@@ -17,7 +17,7 @@ func TestGetShellConfig_IgnoresSHELL(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("SHELL", fake)
-	cfg, err := GetShellConfig(nil)
+	cfg, err := GetShellConfig("")
 	if err != nil {
 		t.Fatalf("resolve: %v", err)
 	}
@@ -35,7 +35,7 @@ func TestGetShellConfig_IgnoresSHELL(t *testing.T) {
 
 func TestGetShellConfig_MissingCustomPathErrors(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "nope", "bash")
-	_, err := GetShellConfig(fakeSettings{path: missing})
+	_, err := GetShellConfig(missing)
 	if err == nil || err.Error() != "Custom shell path not found: "+missing {
 		t.Fatalf("err = %v, want upstream's custom-path error", err)
 	}
@@ -46,7 +46,7 @@ func TestGetShellConfig_CustomPathUsesDashC(t *testing.T) {
 	if err := os.WriteFile(custom, []byte("#!/bin/sh\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := GetShellConfig(fakeSettings{path: custom})
+	cfg, err := GetShellConfig(custom)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,5 +82,19 @@ func TestBashToolMissingCustomShell(t *testing.T) {
 	}
 	if !res.IsError || res.Text() != "Custom shell path not found: "+missing {
 		t.Fatalf("res = %+v", res)
+	}
+}
+
+type failingShellSettings struct{}
+
+func (failingShellSettings) GetShellPath() (string, error) { return "", os.ErrInvalid }
+
+// The shell path is read from the settings when a command runs, so a settings error fails that command (bash.ts getShellConfig(settingsManager.getShellPath())).
+func TestResolveShellConfigReportsASettingsError(t *testing.T) {
+	if _, err := resolveShellConfig(failingShellSettings{}); err == nil {
+		t.Fatal("a failing shell path lookup must fail the resolution")
+	}
+	if cfg, err := resolveShellConfig(nil); err != nil || cfg.Path == "" {
+		t.Fatalf("nil settings resolve the platform default, got %+v, %v", cfg, err)
 	}
 }

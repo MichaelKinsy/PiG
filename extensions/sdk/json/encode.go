@@ -50,6 +50,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"math"
+	"math/bits"
 	"reflect"
 	"slices"
 	"strconv"
@@ -202,7 +203,7 @@ import (
 // an error.
 func Marshal(v any) ([]byte, error) {
 	e := newEncodeState()
-	defer encodeStatePool.Put(e)
+	defer putEncodeState(e)
 
 	err := e.marshal(v, encOpts{escapeHTML: true})
 	if err != nil {
@@ -211,6 +212,68 @@ func Marshal(v any) ([]byte, error) {
 	buf := append([]byte(nil), e.Bytes()...)
 
 	return buf, nil
+}
+
+// MarshalJS is like [Marshal] but writes numbers as JavaScript's JSON.stringify does: NaN and the infinities are null rather than an
+// [UnsupportedValueError], and negative zero is 0. The extension wire carries what JSON.stringify would write.
+func MarshalJS(v any) ([]byte, error) {
+	e := newEncodeState()
+	defer putEncodeState(e)
+
+	err := e.marshal(v, encOpts{escapeHTML: true, jsNumbers: true})
+	if err != nil {
+		return nil, err
+	}
+	return append([]byte(nil), e.Bytes()...), nil
+}
+
+// pig additive (lw-json): the JSON.stringify mode.
+
+// stringifyOpts is the JSON.stringify mode: numbers as [MarshalJS] writes them, strings with only the escapes JSON.stringify writes (no HTML
+// escaping, U+2028 and U+2029 raw), and [Marshaler] output rewritten to match (see [MarshalStringify]).
+var stringifyOpts = encOpts{jsNumbers: true, jsStrings: true}
+
+// MarshalStringify returns the JSON.stringify text of v. It is [MarshalJS] without HTML escaping, with U+2028 and U+2029 raw, and with the
+// U+FFFD that replaces each maximal ill-formed UTF-8 subpart written raw (as a JavaScript string decoded from those bytes holds it). It
+// rewrites what a nested [Marshaler] returns into the same form while compacting it: the escapes \u003c, \u003e (either hex case), \u0026,
+// \u2028, \u2029 and \ufffd (any hex case) become the characters, and a negative number equal to zero (a json.Number "-0" too) becomes 0.
+// Other escapes are kept. A [StringifyAppender] appends its text directly, without that pass.
+func MarshalStringify(v any) ([]byte, error) {
+	e := newEncodeState()
+	defer putEncodeState(e)
+	if err := e.marshal(v, stringifyOpts); err != nil {
+		return nil, err
+	}
+	// A buffer too large to pool becomes the result when little of it is spare; otherwise the result is an exact copy.
+	if size := len(e.buf); cap(e.buf) > maxPooledEncodeBuffer && cap(e.buf)-size <= size/4 {
+		out := e.buf
+		e.buf = nil
+		return out, nil
+	}
+	return append([]byte(nil), e.buf...), nil
+}
+
+// AppendStringify appends [MarshalStringify] of v to dst, encoding into dst itself. On an error it returns dst with its original length.
+func AppendStringify(dst []byte, v any) ([]byte, error) {
+	e := newEncodeState()
+	pooled := e.buf
+	e.buf = dst
+	err := e.marshal(v, stringifyOpts)
+	out := e.buf
+	e.buf = pooled
+	putEncodeState(e)
+	if err != nil {
+		return dst[:len(dst):len(dst)], err
+	}
+	return out, nil
+}
+
+// A StringifyAppender is a [Marshaler] that can also append its JSON.stringify text (what [MarshalStringify] of its MarshalJSON result
+// writes: compact, JSON.stringify escaping and numbers) to dst. In the JSON.stringify mode the encoder splices that text without reading it
+// again; every other mode calls MarshalJSON. Tests check each appended text against the compaction it skips.
+type StringifyAppender interface {
+	Marshaler
+	AppendStringify(dst []byte) ([]byte, error)
 }
 
 // MarshalIndent is like [Marshal] but applies [Indent] to format the output.
@@ -293,9 +356,10 @@ func (e *MarshalerError) Unwrap() error { return e.Err }
 
 const hex = "0123456789abcdef"
 
-// An encodeState encodes JSON into a bytes.Buffer.
+// An encodeState encodes JSON into buf.
+// pig: a plain slice rather than an embedded bytes.Buffer, so a [StringifyAppender] and [AppendStringify] append to the output itself.
 type encodeState struct {
-	bytes.Buffer // accumulated output
+	buf []byte // accumulated output
 
 	// Keep track of what pointers we've seen in the current recursive call
 	// path, to avoid cycles that could lead to a stack overflow. Only do
@@ -306,14 +370,49 @@ type encodeState struct {
 	ptrSeen  map[any]struct{}
 }
 
+// Bytes returns the output.
+func (e *encodeState) Bytes() []byte { return e.buf }
+
+// AvailableBuffer returns an empty slice at the end of the output, for an append whose result is passed to Write.
+func (e *encodeState) AvailableBuffer() []byte { return e.buf[len(e.buf):] }
+
+// Write appends p. A p appended to AvailableBuffer without reallocating is already in place and only extends the output.
+func (e *encodeState) Write(p []byte) {
+	if n := len(e.buf); len(p) > 0 && cap(e.buf) > n && &e.buf[:n+1][n] == &p[0] {
+		e.buf = e.buf[:n+len(p)]
+		return
+	}
+	e.buf = append(e.buf, p...)
+}
+
+func (e *encodeState) WriteString(s string) { e.buf = append(e.buf, s...) }
+
+// WriteByte appends c. It returns nil, with io.ByteWriter's signature.
+func (e *encodeState) WriteByte(c byte) error {
+	e.buf = append(e.buf, c)
+	return nil
+}
+
+// Grow makes room for n more bytes, doubling the capacity rather than growing by append's smaller steps.
+func (e *encodeState) Grow(n int) {
+	if cap(e.buf)-len(e.buf) < n {
+		grown := make([]byte, len(e.buf), 2*cap(e.buf)+n)
+		copy(grown, e.buf)
+		e.buf = grown
+	}
+}
+
 const startDetectingCyclesAfter = 1000
 
 var encodeStatePool sync.Pool
 
+// maxPooledEncodeBuffer bounds the buffer an encode state keeps in the pool (golang/go#23199): one large value must not pin its buffer.
+const maxPooledEncodeBuffer = 64 << 10
+
 func newEncodeState() *encodeState {
 	if v := encodeStatePool.Get(); v != nil {
 		e := v.(*encodeState)
-		e.Reset()
+		e.buf = e.buf[:0]
 		if len(e.ptrSeen) > 0 {
 			panic("ptrEncoder.encode should have emptied ptrSeen via defers")
 		}
@@ -321,6 +420,14 @@ func newEncodeState() *encodeState {
 		return e
 	}
 	return &encodeState{ptrSeen: make(map[any]struct{})}
+}
+
+// putEncodeState returns e to the pool without a buffer larger than maxPooledEncodeBuffer.
+func putEncodeState(e *encodeState) {
+	if cap(e.buf) > maxPooledEncodeBuffer {
+		e.buf = nil
+	}
+	encodeStatePool.Put(e)
 }
 
 // jsonError is an error wrapper type for internal use only.
@@ -370,6 +477,23 @@ type encOpts struct {
 	quoted bool
 	// escapeHTML causes '<', '>', and '&' to be escaped in JSON strings.
 	escapeHTML bool
+	// jsNumbers makes numbers print as JavaScript's JSON.stringify does: a non-finite number is null and negative zero is 0.
+	jsNumbers bool
+	// jsStrings is the JSON.stringify mode of MarshalStringify: U+2028 and U+2029 stay raw, Marshaler output is rewritten by
+	// appendCompactJS, and a StringifyAppender appends its own text. pig additive (lw-json).
+	jsStrings bool
+}
+
+// stringEscapes is the set of optional escapes appendString writes for opts.
+func (opts encOpts) stringEscapes() stringEscapes {
+	var escapes stringEscapes
+	if opts.escapeHTML {
+		escapes |= escapeHTMLChars
+	}
+	if !opts.jsStrings {
+		escapes |= escapeLineSeparators | escapeReplacement
+	}
+	return escapes
 }
 
 type encoderFunc func(e *encodeState, v reflect.Value, opts encOpts)
@@ -478,16 +602,7 @@ func marshalerEncoder(e *encodeState, v reflect.Value, opts encOpts) {
 		e.WriteString("null")
 		return
 	}
-	b, err := m.MarshalJSON()
-	if err == nil {
-		e.Grow(len(b))
-		out := e.AvailableBuffer()
-		out, err = appendCompact(out, b, opts.escapeHTML)
-		e.Write(out)
-	}
-	if err != nil {
-		e.error(&MarshalerError{v.Type(), err, "MarshalJSON"})
-	}
+	e.marshaler(m, v.Type(), opts)
 }
 
 func addrMarshalerEncoder(e *encodeState, v reflect.Value, opts encOpts) {
@@ -497,15 +612,50 @@ func addrMarshalerEncoder(e *encodeState, v reflect.Value, opts encOpts) {
 		return
 	}
 	m, _ := reflect.TypeAssert[Marshaler](va)
+	e.marshaler(m, v.Type(), opts)
+}
+
+// marshaler writes the output of m, a value of type t. In the JSON.stringify mode a StringifyAppender appends its text to the output; any
+// other Marshaler's output is compacted (and in that mode rewritten by appendCompactJS) into it.
+func (e *encodeState) marshaler(m Marshaler, t reflect.Type, opts encOpts) {
+	if opts.jsStrings {
+		if appender, ok := m.(StringifyAppender); ok {
+			start := len(e.buf)
+			out, err := appender.AppendStringify(e.buf)
+			if err != nil {
+				// The same error MarshalJSON reports: AppendStringify is its JSON.stringify form.
+				e.error(&MarshalerError{t, err, "MarshalJSON"})
+			}
+			e.buf = out
+			if verifyTrusted {
+				verifyAppended(m, t, out[start:])
+			}
+			return
+		}
+	}
 	b, err := m.MarshalJSON()
 	if err == nil {
 		e.Grow(len(b))
-		out := e.AvailableBuffer()
-		out, err = appendCompact(out, b, opts.escapeHTML)
-		e.Write(out)
+		if opts.jsStrings {
+			e.buf, err = appendCompactJS(e.buf, b)
+		} else {
+			e.buf, err = appendCompact(e.buf, b, opts.escapeHTML)
+		}
 	}
 	if err != nil {
-		e.error(&MarshalerError{v.Type(), err, "MarshalJSON"})
+		e.error(&MarshalerError{t, err, "MarshalJSON"})
+	}
+}
+
+// verifyAppended panics unless appended is what the encoder writes for MarshalJSON's output in the JSON.stringify mode.
+func verifyAppended(m Marshaler, t reflect.Type, appended []byte) {
+	b, err := m.MarshalJSON()
+	if err != nil {
+		panic(fmt.Sprintf("json: %s.AppendStringify succeeded where MarshalJSON failed: %v", t, err))
+	}
+	want, err := appendCompactJS(nil, b)
+	if err != nil || !bytes.Equal(want, appended) {
+		panic(fmt.Sprintf("json: %s.AppendStringify wrote %q, MarshalJSON in the JSON.stringify mode %q (%v)", t, appended, want, err))
 	}
 }
 
@@ -523,7 +673,7 @@ func textMarshalerEncoder(e *encodeState, v reflect.Value, opts encOpts) {
 	if err != nil {
 		e.error(&MarshalerError{v.Type(), err, "MarshalText"})
 	}
-	e.Write(appendString(e.AvailableBuffer(), b, opts.escapeHTML))
+	e.Write(appendString(e.AvailableBuffer(), b, opts.stringEscapes()))
 }
 
 func addrTextMarshalerEncoder(e *encodeState, v reflect.Value, opts encOpts) {
@@ -537,7 +687,7 @@ func addrTextMarshalerEncoder(e *encodeState, v reflect.Value, opts encOpts) {
 	if err != nil {
 		e.error(&MarshalerError{v.Type(), err, "MarshalText"})
 	}
-	e.Write(appendString(e.AvailableBuffer(), b, opts.escapeHTML))
+	e.Write(appendString(e.AvailableBuffer(), b, opts.stringEscapes()))
 }
 
 func boolEncoder(e *encodeState, v reflect.Value, opts encOpts) {
@@ -569,7 +719,14 @@ type floatEncoder int // number of bits
 func (bits floatEncoder) encode(e *encodeState, v reflect.Value, opts encOpts) {
 	f := v.Float()
 	if math.IsInf(f, 0) || math.IsNaN(f) {
+		if opts.jsNumbers {
+			e.WriteString("null")
+			return
+		}
 		e.error(&UnsupportedValueError{v, strconv.FormatFloat(f, 'g', -1, int(bits))})
+	}
+	if opts.jsNumbers && f == 0 {
+		f = 0 // JSON.stringify(-0) is "0"
 	}
 
 	// Convert as if by ES6 number to string conversion.
@@ -616,6 +773,12 @@ func stringEncoder(e *encodeState, v reflect.Value, opts encOpts) {
 		if !isValidNumber(numStr) {
 			e.error(fmt.Errorf("json: invalid number literal %q", numStr))
 		}
+		if opts.jsStrings && !opts.quoted && numStr[0] == '-' {
+			// JSON.stringify writes negative zero as 0, whatever digits spell it.
+			if value, err := strconv.ParseFloat(numStr, 64); value == 0 && err == nil {
+				numStr = "0"
+			}
+		}
 		b := e.AvailableBuffer()
 		b = mayAppendQuote(b, opts.quoted)
 		b = append(b, numStr...)
@@ -624,10 +787,18 @@ func stringEncoder(e *encodeState, v reflect.Value, opts encOpts) {
 		return
 	}
 	if opts.quoted {
-		b := appendString(nil, v.String(), opts.escapeHTML)
-		e.Write(appendString(e.AvailableBuffer(), b, false)) // no need to escape again since it is already escaped
+		// The inner text keeps U+2028, U+2029 and the U+FFFD of ill-formed UTF-8 escaped in every mode, so the outer quoting escapes its
+		// backslash.
+		b := appendString(nil, v.String(), opts.stringEscapes()|escapeLineSeparators|escapeReplacement)
+		e.Write(appendString(e.AvailableBuffer(), b, escapeLineSeparators)) // no need to escape again since it is already escaped
 	} else {
-		e.Write(appendString(e.AvailableBuffer(), v.String(), opts.escapeHTML))
+		s := v.String()
+		// Room for the text and its quotes and a few escapes, so a long string does not grow the output by append's small steps. Output that
+		// already holds the text and its quotes is not regrown for the escapes it may not have: a buffer sized for its content stays the one.
+		if cap(e.buf)-len(e.buf) < len(s)+2 {
+			e.Grow(len(s) + len(s)/8 + 2)
+		}
+		e.Write(appendString(e.AvailableBuffer(), s, opts.stringEscapes()))
 	}
 }
 
@@ -760,6 +931,39 @@ type mapEncoder struct {
 	elemEnc encoderFunc
 }
 
+// arrayIndexKey reports whether key is a canonical array index: an integer from 0 to 2^32-2 without leading zeros or a sign.
+func arrayIndexKey(key string) (uint64, bool) {
+	if key == "" || len(key) > 10 || (len(key) > 1 && key[0] == '0') {
+		return 0, false
+	}
+	var value uint64
+	for i := 0; i < len(key); i++ {
+		if key[i] < '0' || key[i] > '9' {
+			return 0, false
+		}
+		value = value*10 + uint64(key[i]-'0')
+	}
+	if value >= 1<<32-1 {
+		return 0, false
+	}
+	return value, true
+}
+
+// compareJSKeys orders object keys as JavaScript enumerates them for a map without insertion order: array indexes ascending, then the rest in byte order.
+func compareJSKeys(a, b string) int {
+	x, xIndex := arrayIndexKey(a)
+	y, yIndex := arrayIndexKey(b)
+	switch {
+	case xIndex && yIndex:
+		return cmp.Compare(x, y)
+	case xIndex:
+		return -1
+	case yIndex:
+		return 1
+	}
+	return strings.Compare(a, b)
+}
+
 func (me mapEncoder) encode(e *encodeState, v reflect.Value, opts encOpts) {
 	if v.IsNil() {
 		e.WriteString("null")
@@ -789,15 +993,21 @@ func (me mapEncoder) encode(e *encodeState, v reflect.Value, opts encOpts) {
 		}
 		sv[i].v = mi.Value()
 	}
-	slices.SortFunc(sv, func(i, j reflectWithString) int {
-		return strings.Compare(i.ks, j.ks)
-	})
+	if opts.jsNumbers {
+		// JSON.stringify writes the array-index keys of an object first in ascending numeric order, then the other keys; a Go map has no insertion
+		// order, so the other keys stay in byte order.
+		slices.SortFunc(sv, func(i, j reflectWithString) int { return compareJSKeys(i.ks, j.ks) })
+	} else {
+		slices.SortFunc(sv, func(i, j reflectWithString) int {
+			return strings.Compare(i.ks, j.ks)
+		})
+	}
 
 	for i, kv := range sv {
 		if i > 0 {
 			e.WriteByte(',')
 		}
-		e.Write(appendString(e.AvailableBuffer(), kv.ks, opts.escapeHTML))
+		e.Write(appendString(e.AvailableBuffer(), kv.ks, opts.stringEscapes()))
 		e.WriteByte(':')
 		me.elemEnc(e, kv.v, opts)
 	}
@@ -994,12 +1204,100 @@ func resolveKeyName(k reflect.Value) (string, error) {
 	panic("unexpected map key type")
 }
 
-func appendString[Bytes []byte | string](dst []byte, src Bytes, escapeHTML bool) []byte {
+// stringEscapes selects the escapes appendString writes beyond those every JSON string needs. pig additive (lw-json): the JSON.stringify
+// mode writes neither.
+type stringEscapes uint8
+
+const (
+	escapeHTMLChars      stringEscapes = 1 << iota // <, > and & as \u003c, \u003e and \u0026
+	escapeLineSeparators                           // U+2028 and U+2029 as \u2028 and \u2029
+	escapeReplacement                              // the U+FFFD that replaces ill-formed UTF-8 as \ufffd
+)
+
+// maximalSubpart is the length of the ill-formed sequence at s[i] that a WHATWG UTF-8 decoder (Node's Buffer and TextDecoder) replaces with
+// one U+FFFD: a lead byte with the continuation bytes it accepts before the sequence breaks off, or one byte that cannot start a sequence.
+func maximalSubpart[Bytes []byte | string](s Bytes, i int) int {
+	c := s[i]
+	need, lo, hi := 0, byte(0x80), byte(0xBF)
+	switch {
+	case c >= 0xC2 && c <= 0xDF:
+		need = 2
+	case c == 0xE0:
+		need, lo = 3, 0xA0
+	case c == 0xED:
+		need, hi = 3, 0x9F
+	case c >= 0xE1 && c <= 0xEF:
+		need = 3
+	case c == 0xF0:
+		need, lo = 4, 0x90
+	case c >= 0xF1 && c <= 0xF3:
+		need = 4
+	case c == 0xF4:
+		need, hi = 4, 0x8F
+	default:
+		return 1
+	}
+	n := 1
+	if i+n < len(s) && s[i+n] >= lo && s[i+n] <= hi {
+		n++
+		for n < need && i+n < len(s) && s[i+n]&0xC0 == 0x80 {
+			n++
+		}
+	}
+	return n
+}
+
+// The SWAR scan reads eight bytes as one little-endian word: lane k is byte k.
+const (
+	swarLSB = 0x0101010101010101
+	swarMSB = 0x8080808080808080
+)
+
+// load8 reads block, eight bytes long, as one word (one load, one bounds check).
+func load8[Bytes []byte | string](block Bytes) uint64 {
+	_ = block[7]
+	return uint64(block[0]) | uint64(block[1])<<8 | uint64(block[2])<<16 | uint64(block[3])<<24 |
+		uint64(block[4])<<32 | uint64(block[5])<<40 | uint64(block[6])<<48 | uint64(block[7])<<56
+}
+
+// swarZero marks (with the lane's top bit) each zero lane of x. A borrow can mark a lane above a zero lane falsely, never one below, so the
+// lowest mark is exact.
+func swarZero(x uint64) uint64 { return (x - swarLSB) &^ x }
+
+// stringStopIndex is the index of the first byte at or after i that appendString must look at, or len(src): a byte below 0x20, '"', '\\', a
+// byte from 0x80 (the start or part of a multi-byte sequence) and, with html, '<', '>' and '&'. It reads eight bytes at a time; only the
+// lowest mark of a word is exact, which is the one it uses.
+func stringStopIndex[Bytes []byte | string](src Bytes, i int, html bool) int {
+	for ; i+8 <= len(src); i += 8 {
+		w := load8(src[i : i+8])
+		// (w - 0x20 per lane) &^ w marks a lane below 0x20; w itself marks a lane from 0x80.
+		stops := (w-swarLSB*0x20)&^w | swarZero(w^(swarLSB*'"')) | swarZero(w^(swarLSB*'\\')) | w
+		if html {
+			stops |= swarZero(w^(swarLSB*'<')) | swarZero(w^(swarLSB*'>')) | swarZero(w^(swarLSB*'&'))
+		}
+		if stops &= swarMSB; stops != 0 {
+			return i + bits.TrailingZeros64(stops)>>3
+		}
+	}
+	for ; i < len(src); i++ {
+		if b := src[i]; b >= utf8.RuneSelf || !htmlSafeSet[b] && (html || !safeSet[b]) {
+			return i
+		}
+	}
+	return i
+}
+
+func appendString[Bytes []byte | string](dst []byte, src Bytes, escapes stringEscapes) []byte {
+	html := escapes&escapeHTMLChars != 0
 	dst = append(dst, '"')
 	start := 0
 	for i := 0; i < len(src); {
+		// Skip the bytes that need no escape, eight at a time.
+		if i = stringStopIndex(src, i, html); i == len(src) {
+			break
+		}
 		if b := src[i]; b < utf8.RuneSelf {
-			if htmlSafeSet[b] || (!escapeHTML && safeSet[b]) {
+			if htmlSafeSet[b] || (!html && safeSet[b]) {
 				i++
 				continue
 			}
@@ -1033,6 +1331,14 @@ func appendString[Bytes []byte | string](dst []byte, src Bytes, escapeHTML bool)
 		if len(src)-i >= 3 && src[i] == 0xed && src[i+1] >= 0xa0 && src[i+1] <= 0xbf && src[i+2] >= 0x80 && src[i+2] <= 0xbf {
 			unit := uint16(src[i]&15)<<12 | uint16(src[i+1]&63)<<6 | uint16(src[i+2]&63)
 			dst = append(dst, src[start:i]...)
+			// A high unit directly followed by a low unit is one code point in a JavaScript string; JSON.stringify writes the character.
+			if unit < 0xdc00 && len(src)-i >= 6 && src[i+3] == 0xed && src[i+4] >= 0xb0 && src[i+4] <= 0xbf && src[i+5] >= 0x80 && src[i+5] <= 0xbf {
+				low := uint16(src[i+3]&15)<<12 | uint16(src[i+4]&63)<<6 | uint16(src[i+5]&63)
+				dst = utf8.AppendRune(dst, 0x10000+(rune(unit)-0xd800)<<10+rune(low)-0xdc00)
+				i += 6
+				start = i
+				continue
+			}
 			dst = append(dst, '\\', 'u', hex[unit>>12], hex[(unit>>8)&15], hex[(unit>>4)&15], hex[unit&15])
 			i += 3
 			start = i
@@ -1045,9 +1351,15 @@ func appendString[Bytes []byte | string](dst []byte, src Bytes, escapeHTML bool)
 		n := min(len(src)-i, utf8.UTFMax)
 		c, size := utf8.DecodeRuneInString(string(src[i : i+n]))
 		if c == utf8.RuneError && size == 1 {
+			// pig (LW-JSON-1): one U+FFFD per maximal subpart, as a JavaScript string decoded from these bytes holds, where encoding/json
+			// writes one per byte. JSON.stringify writes it raw; the other modes keep the escape.
 			dst = append(dst, src[start:i]...)
-			dst = append(dst, `\ufffd`...)
-			i += size
+			if escapes&escapeReplacement != 0 {
+				dst = append(dst, `\ufffd`...)
+			} else {
+				dst = append(dst, "\ufffd"...)
+			}
+			i += maximalSubpart(src, i)
 			start = i
 			continue
 		}
@@ -1056,9 +1368,10 @@ func appendString[Bytes []byte | string](dst []byte, src Bytes, escapeHTML bool)
 		// They are both technically valid characters in JSON strings,
 		// but don't work in JSONP, which has to be evaluated as JavaScript,
 		// and can lead to security holes there. It is valid JSON to
-		// escape them, so we do so unconditionally.
+		// escape them, so we do so in every mode but the JSON.stringify one
+		// (which writes them raw, as JavaScript does).
 		// See https://en.wikipedia.org/wiki/JSON#Safety.
-		if c == '\u2028' || c == '\u2029' {
+		if escapes&escapeLineSeparators != 0 && (c == '\u2028' || c == '\u2029') {
 			dst = append(dst, src[start:i]...)
 			dst = append(dst, '\\', 'u', '2', '0', '2', hex[c&0xF])
 			i += size

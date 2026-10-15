@@ -1,6 +1,10 @@
 package tui
 
+// pi: packages/coding-agent/src/modes/interactive/components/config-selector.ts
+
 import (
+	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -44,7 +48,7 @@ func TestConfigSelectorProjectStatesMatchUpstreamRendering(t *testing.T) {
 	cs := NewScopedConfigSelector(groups, groups, 0, "project", true)
 	rendered := strings.Join(cs.Render(120), "\n")
 	theme := ActiveTheme()
-	reset := "\x1b[0m"
+	reset := "\x1b[39m" // theme.fg closes with SGR 39, as in Pi
 	for _, want := range []string{
 		theme.Dim + "[x]" + reset + " " + theme.Dim + "inherited.md" + reset + theme.Dim + "  inherited global" + reset,
 		theme.Success + "[+]" + reset + " load.md" + theme.Muted + "  project load" + reset,
@@ -192,6 +196,7 @@ func TestConfigSelectorCancelAndExitKeys(t *testing.T) {
 		{"rebound escape cancels", map[string][]string{"tui.select.cancel": {"escape"}}, true, "\x1b[27u", true, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			restoreKeybindingsAfterTest(t)
 			SetTUIKeybindings(NewTUIKeybindingsManager(tc.bindings))
 			SetKittyProtocolActive(tc.kitty)
 			cs := NewConfigSelector(nil, 0)
@@ -203,5 +208,44 @@ func TestConfigSelectorCancelAndExitKeys(t *testing.T) {
 				t.Fatalf("%q: cancelled=%v exited=%v, want %v/%v", tc.key, cancelled, exited, tc.wantCancel, tc.wantExit)
 			}
 		})
+	}
+}
+
+// config-selector.ts:910-939: ConfigSelectorComponent extends Container with spacer, border, spacer, header, spacer, resource list, spacer, border.
+func TestConfigSelectorIsAContainerOfPisConstructorChildren(t *testing.T) {
+	items := []ResourceItem{{Path: "/g/a.md", ResourceType: ResourcePrompts, DisplayName: "a.md", Enabled: true, Scope: "user", Origin: "top-level", Source: "auto"}}
+	cs := NewScopedConfigSelector(BuildResourceGroups(items), BuildResourceGroups(items), 0, "global", true)
+	if got := len(cs.Children()); got != 8 {
+		t.Fatalf("children = %d, want 8", got)
+	}
+	if got := strings.Join(cs.Render(60), "\n"); !strings.Contains(got, "Global Resources") {
+		t.Fatalf("missing global header: %s", got)
+	}
+	cs.HandleInput("\t")
+	if got := strings.Join(cs.Render(60), "\n"); !strings.Contains(got, "Project Local Resources") {
+		t.Fatalf("scope switch not visible in the header child: %s", got)
+	}
+}
+
+// config-selector.ts:105,166-173: groups come from a Map in first-seen order and
+// Array.sort is stable, so groups that tie on origin, scope and source (auto
+// resources from different base directories) keep the order of their first resource.
+func TestBuildResourceGroupsTiesKeepFirstSeenOrder(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("USERPROFILE", os.Getenv("HOME"))
+	var resources []ResourceItem
+	var want []string
+	for i := range 12 {
+		dir := filepath.Join(os.Getenv("HOME"), fmt.Sprintf("d%02d", 11-i), ".pig")
+		resources = append(resources, ResourceItem{Path: filepath.Join(dir, "prompts", "a.md"), ResourceType: ResourcePrompts, Scope: "user", Origin: "top-level", Source: "auto", BaseDir: dir})
+		want = append(want, "User (~/"+fmt.Sprintf("d%02d", 11-i)+"/.pig/)")
+	}
+	for run := range 20 {
+		groups := BuildResourceGroups(append([]ResourceItem(nil), resources...))
+		for i, g := range groups {
+			if g.Label != want[i] {
+				t.Fatalf("run %d: group %d = %q, want %q", run, i, g.Label, want[i])
+			}
+		}
 	}
 }

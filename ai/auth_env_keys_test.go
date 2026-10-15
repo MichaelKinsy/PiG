@@ -27,7 +27,7 @@ func clearEnvKeyVars(t *testing.T) {
 		"GOOGLE_APPLICATION_CREDENTIALS", "GOOGLE_CLOUD_PROJECT", "GCLOUD_PROJECT", "GOOGLE_CLOUD_LOCATION",
 		"AWS_PROFILE", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_BEARER_TOKEN_BEDROCK",
 		"AWS_CONTAINER_CREDENTIALS_RELATIVE_URI", "AWS_CONTAINER_CREDENTIALS_FULL_URI", "AWS_WEB_IDENTITY_TOKEN_FILE"}
-	for _, envVar := range envAPIKeyVars {
+	for _, envVar := range envAPIKeyVars() {
 		names = append(names, envVar)
 	}
 	for _, name := range names {
@@ -164,8 +164,8 @@ func TestEnvAPIKeysTableMatchesUpstream(t *testing.T) {
 		"xiaomi-token-plan-ams": {"XIAOMI_TOKEN_PLAN_AMS_API_KEY"},
 		"xiaomi-token-plan-sgp": {"XIAOMI_TOKEN_PLAN_SGP_API_KEY"},
 	}
-	if len(envAPIKeyVars) != len(want)-2 {
-		t.Fatalf("env table has %d single-variable entries, want %d", len(envAPIKeyVars), len(want)-2)
+	if len(envAPIKeyVars()) != len(want)-2 {
+		t.Fatalf("env table has %d single-variable entries, want %d", len(envAPIKeyVars()), len(want)-2)
 	}
 	for provider, vars := range want {
 		if got := getAPIKeyEnvVars(provider); !slices.Equal(got, vars) {

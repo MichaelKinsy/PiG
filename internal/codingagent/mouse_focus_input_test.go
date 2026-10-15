@@ -22,11 +22,13 @@ func (p *focusedInputProbe) HandleInput(data string) {
 // coding-agent driver must not send its later input to the application editor.
 func TestDispatchKeyRoutesInputToRendererFocusedOverlay(t *testing.T) {
 	renderer := tui.NewWithOutput(&bytes.Buffer{}, 80, 24)
+	// The test owns the renderer's output; the overlay's frame request must not render on a timer goroutine.
+	renderer.SetRenderDispatcher(func(func()) {})
 	t.Cleanup(renderer.CancelPendingRender)
 	editor := tui.NewEditor()
 	probe := &focusedInputProbe{}
 	renderer.SetFocus(editor)
-	handle := renderer.OpenOverlay(probe, tui.OverlayOptions{})
+	handle := renderer.ShowOverlay(probe, tui.OverlayOptions{})
 	t.Cleanup(handle.Close)
 	mode := &InteractiveMode{tuiInst: renderer, editor: editor, isIdle: true}
 

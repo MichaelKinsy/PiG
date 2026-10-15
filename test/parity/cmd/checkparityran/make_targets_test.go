@@ -27,6 +27,12 @@ func TestEveryParityTargetRequiresScenariosToRun(t *testing.T) {
 		t.Fatalf("make is required: %v", err)
 	}
 	root := repoRoot(t)
+	// make reads the targets from the Makefile and its fragments in a child process, which the go test cache does not see. Reading them here keys the result on them, so an edit reruns the test.
+	for _, source := range []string{filepath.Join(root, "Makefile"), filepath.Join(root, "automation", "make", "parity.mk"), filepath.Join(root, "automation", "make", "ci.mk")} {
+		if _, err := os.ReadFile(source); err != nil {
+			t.Fatal(err)
+		}
+	}
 	for _, target := range []string{
 		"parity", "parity-fast", "parity-family FAMILY=tools", "parity-driver DRIVER=rpc-mode",
 		"parity-stress", "parity-durable", "parity-live", "parity-perf",

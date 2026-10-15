@@ -31,4 +31,4 @@ The patch makes `scripts/build-npm-catalog.mjs` read that value for the Piglets 
 
 ## Ordering
 
-The cards show the pull command only for Piglets published with a PiG that writes `pig.binaries` (PiG 0.4.2). Older listings are unchanged. The `/docs/latest/publishing` page ships with PiG 0.4.2, so link to it after the docs sync.
+The cards show the pull command only for Piglets published with a PiG that writes `pig.binaries` (PiG 0.5.0). Older listings are unchanged. The `/docs/latest/publishing` page ships with PiG 0.5.0, so link to it after the docs sync.

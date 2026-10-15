@@ -1,6 +1,9 @@
 package codingagent
 
+// pi: packages/coding-agent/src/core/telemetry.ts
+
 import (
+	"bytes"
 	"encoding/json"
 	"math"
 	"os"
@@ -254,6 +257,7 @@ func TestSettingsManager_GetSessionDir_ExpandsHomeForms(t *testing.T) {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/settings-manager.ts:1335 (SettingsManager.getShowTerminalProgress); packages/coding-agent/src/core/settings-manager.ts:955 (SettingsManager.getCompactionReserveTokens); packages/coding-agent/src/core/settings-manager.ts:959 (SettingsManager.getCompactionKeepRecentTokens); packages/coding-agent/src/core/settings-manager.ts:983 (SettingsManager.getBranchSummarySkipPrompt); packages/coding-agent/src/core/settings-manager.ts:987 (SettingsManager.getRetryEnabled).
 func TestSettingsManager_GettersExposeUpstreamHelperSurface(t *testing.T) {
 	falseVal := false
 	trueVal := true
@@ -413,6 +417,7 @@ func mustTimeout(t *testing.T) func(int, error) int {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/settings-manager.ts:1013 (SettingsManager.setHttpIdleTimeoutMs).
 func TestSettingsManager_SetHttpIdleTimeoutMs_FloorsAndPersists(t *testing.T) {
 	cwd := t.TempDir()
 	agentDir := t.TempDir()
@@ -442,6 +447,7 @@ func TestSettingsManager_SetHttpIdleTimeoutMs_RejectsInvalid(t *testing.T) {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/settings-manager.ts:904 (SettingsManager.getTransport).
 func TestSettingsManager_ApplyOverridesIsNonPersistent(t *testing.T) {
 	cwd := t.TempDir()
 	agentDir := t.TempDir()
@@ -613,7 +619,7 @@ func TestSettingsManager_UpdateGlobalRefusesToClobberInvalidFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(after) != string(before) {
+	if !bytes.Equal(after, before) {
 		t.Fatal("invalid settings file was clobbered")
 	}
 }
@@ -988,6 +994,7 @@ func TestModelRegistryUpstreamSchema_PerModelCompat(t *testing.T) {
 		"providers": {
 			"custom": {
 				"baseUrl": "http://localhost:8080/v1",
+				"api": "openai-completions",
 				"apiKey": "test",
 				"compat": {
 					"supportsDeveloperRole": false
@@ -1040,7 +1047,7 @@ func TestModelRegistryLoadError(t *testing.T) {
 		{"blank", "", "Failed to parse models.json: Unexpected end of JSON input"},
 		{"malformed", "{\n  \"providers\": {\n", "Failed to parse models.json: Expected property name or '}' in JSON at position 19 (line 3 column 1)"},
 		{"invalid token", `{ invalid json }`, "Failed to parse models.json: Expected property name or '}' in JSON at position 2 (line 1 column 3)"},
-		{"schema", `{"providers":{"custom":{"models":[{}]}}}`, "Invalid models.json schema:\nprovider \"custom\": model at index 0: \"id\" is required"},
+		{"schema", `{"providers":{"custom":{"models":[{}]}}}`, "Invalid models.json schema:\n  - providers.custom.models.0.id: must have required properties id"},
 		{"ordinary", `{"providers":{}}`, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1095,7 +1102,7 @@ func TestModelRegistryValidation_MissingID(t *testing.T) {
 	if r.LoadError() == "" {
 		t.Error("expected validation error for empty model id")
 	}
-	if !strings.Contains(r.LoadError(), "\"id\" is required") {
+	if !strings.Contains(r.LoadError(), "providers.my-proxy.models.0.id: must not have fewer than 1 characters") {
 		t.Errorf("unexpected error: %s", r.LoadError())
 	}
 }
@@ -1105,6 +1112,7 @@ func TestModelRegistryValidation_MissingBaseUrl(t *testing.T) {
 	_ = os.WriteFile(filepath.Join(dir, "models.json"), []byte(`{
 		"providers": {
 			"custom-provider": {
+				"api": "openai-completions",
 				"apiKey": "key",
 				"models": [{"id": "model-1"}]
 			}
@@ -1182,6 +1190,7 @@ func TestSettings_NewFieldClamp(t *testing.T) {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/settings-manager.ts:1318 (SettingsManager.getClearOnShrink); packages/coding-agent/src/core/settings-manager.ts:1456 (SettingsManager.getTreeFilterMode); packages/coding-agent/src/core/settings-manager.ts:1524 (SettingsManager.getWarnings).
 func TestSettingsManager_DefaultAndValidationParity(t *testing.T) {
 	t.Setenv("PI_CLEAR_ON_SHRINK", "1")
 	sm := &SettingsManager{global: Settings{DefaultProjectTrust: "sometimes"}, merged: Settings{TreeFilterMode: "sometimes"}}
@@ -1392,6 +1401,7 @@ func TestSettingsManager_084DisplaySettingsPersist(t *testing.T) {
 	)
 }
 
+// Pi: packages/coding-agent/src/core/settings-manager.ts:1468 (SettingsManager.getShowHardwareCursor); packages/coding-agent/src/core/settings-manager.ts:904 (SettingsManager.getTransport).
 func TestSettingsManager_NewGetters(t *testing.T) {
 	dir := t.TempDir()
 	cwd := t.TempDir()
@@ -1434,6 +1444,7 @@ func TestSettingsManager_NewGetters(t *testing.T) {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/settings-manager.ts:1046 (SettingsManager.getHideThinkingBlock); packages/coding-agent/src/core/settings-manager.ts:1141 (SettingsManager.getEnableInstallTelemetry); packages/coding-agent/src/core/settings-manager.ts:1335 (SettingsManager.getShowTerminalProgress); packages/coding-agent/src/core/settings-manager.ts:1446 (SettingsManager.getDoubleEscapeAction); packages/coding-agent/src/core/settings-manager.ts:1456 (SettingsManager.getTreeFilterMode); packages/coding-agent/src/core/settings-manager.ts:1468 (SettingsManager.getShowHardwareCursor); packages/coding-agent/src/core/settings-manager.ts:1478 (SettingsManager.getEditorPaddingX); packages/coding-agent/src/core/settings-manager.ts:1482 (SettingsManager.setEditorPaddingX); packages/coding-agent/src/core/settings-manager.ts:1498 (SettingsManager.getAutocompleteMaxVisible); packages/coding-agent/src/core/settings-manager.ts:1502 (SettingsManager.setAutocompleteMaxVisible).
 func TestSettingsManager_Setters(t *testing.T) {
 	dir := t.TempDir()
 	cwd := t.TempDir()
@@ -1578,7 +1589,7 @@ func TestSettings_JSONUsesUpstreamWireShape(t *testing.T) {
 	}
 }
 
-func TestSettings_UnmarshalAcceptsUpstreamAndLegacyShapes(t *testing.T) {
+func TestSettings_UnmarshalAcceptsUpstreamShape(t *testing.T) {
 	payload := []byte(`{
 		"shellCommandPrefix": "set -e; ",
 		"terminal": {"showImages": false, "imageWidthCells": 70, "clearOnShrink": true},
@@ -1603,21 +1614,54 @@ func TestSettings_UnmarshalAcceptsUpstreamAndLegacyShapes(t *testing.T) {
 	if s.GetHideThinkingBlock() != false || s.GetQuietStartup() != QuietStartupTrue || s.GetCollapseChangelog() != false {
 		t.Fatalf("bool settings not decoded correctly: %+v", s)
 	}
+}
 
-	legacy := []byte(`{
-		"commandPrefix": "legacy",
-		"showImages": true,
-		"imageWidthCells": 55,
-		"clearOnShrink": false,
-		"imageAutoResize": true,
-		"blockImages": false
-	}`)
-	var s2 Settings
-	if err := json.Unmarshal(legacy, &s2); err != nil {
+// Pi has no top-level commandPrefix, showImages, imageWidthCells, clearOnShrink, imageAutoResize or blockImages. migrateSettings (settings-manager.ts:395-452) moves only queueMode, websockets, skills and retry.maxDelayMs,
+// and the getters read shellCommandPrefix, terminal.* and images.* (:1003, :1180, :1193, :1210, :1298, :1311). So these flat keys are unknown members: every getter keeps its default, and a save leaves the keys in the file as written.
+func TestSettingsFlatKeysStayUnknownAsInPi(t *testing.T) {
+	t.Setenv("PI_CLEAR_ON_SHRINK", "")
+	cwd, agentDir := t.TempDir(), t.TempDir()
+	path := filepath.Join(agentDir, "settings.json")
+	flat := map[string]any{"commandPrefix": "set -e", "showImages": false, "imageWidthCells": float64(55), "clearOnShrink": true, "imageAutoResize": false, "blockImages": true}
+	body, err := json.Marshal(flat)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if s2.CommandPrefix != "legacy" || s2.GetShowImages() != true || s2.GetImageWidthCells() != 55 || s2.GetImageAutoResize() != true || s2.GetBlockImages() != false {
-		t.Fatalf("legacy settings not decoded correctly: %+v", s2)
+	writeSettingsFixture(t, path, string(body))
+	manager := NewSettingsManager(cwd, agentDir)
+	for name, got := range map[string]any{
+		"getShellCommandPrefix": manager.GetShellCommandPrefix(),
+		"getShowImages":         manager.GetShowImages(),
+		"getImageWidthCells":    manager.GetImageWidthCells(),
+		"getClearOnShrink":      manager.GetClearOnShrink(),
+		"getImageAutoResize":    manager.GetImageAutoResize(),
+		"getBlockImages":        manager.GetBlockImages(),
+	} {
+		want := map[string]any{"getShellCommandPrefix": "", "getShowImages": true, "getImageWidthCells": 60, "getClearOnShrink": false, "getImageAutoResize": true, "getBlockImages": false}[name]
+		if got != want {
+			t.Errorf("%s() = %v, want the default %v: the flat key is not a setting", name, got, want)
+		}
+	}
+	if err := manager.SetTheme("light"); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var saved map[string]any
+	if err := json.Unmarshal(data, &saved); err != nil {
+		t.Fatal(err)
+	}
+	for key, want := range flat {
+		if got, ok := saved[key]; !ok || got != want {
+			t.Errorf("saved %s = %v (present %t), want %v kept as written", key, got, ok, want)
+		}
+	}
+	for _, key := range []string{"shellCommandPrefix", "terminal", "images"} {
+		if _, ok := saved[key]; ok {
+			t.Errorf("save wrote %s = %v from a flat key: %s", key, saved[key], data)
+		}
 	}
 }
 
@@ -1653,7 +1697,7 @@ func TestMergeSettings_DeepMergeAndFalseOverride(t *testing.T) {
 		blockImagesSet:       true,
 		BranchSummary:        &BranchSummaryConfig{ReserveTokens: 1000, SkipPrompt: globalSkip, skipPromptSet: true},
 		ThinkingBudgets:      &ThinkingBudgetsSettings{Low: &globalLow},
-		Markdown:             &MarkdownSettings{CodeBlockIndent: "  "},
+		Markdown:             &MarkdownSettings{CodeBlockIndent: new("  ")},
 	}
 	project := Settings{
 		HideThinkingBlock:    projectHide,
@@ -1668,7 +1712,7 @@ func TestMergeSettings_DeepMergeAndFalseOverride(t *testing.T) {
 		blockImagesSet:       true,
 		BranchSummary:        &BranchSummaryConfig{SkipPrompt: projectSkip, skipPromptSet: true},
 		ThinkingBudgets:      &ThinkingBudgetsSettings{High: &projectHigh},
-		Markdown:             &MarkdownSettings{CodeBlockIndent: "\t"},
+		Markdown:             &MarkdownSettings{CodeBlockIndent: new("\t")},
 	}
 	merged := mergeSettings(global, project)
 	if merged.GetHideThinkingBlock() != false || merged.GetQuietStartup() != QuietStartupFalse || merged.GetCollapseChangelog() != false {
@@ -1683,7 +1727,7 @@ func TestMergeSettings_DeepMergeAndFalseOverride(t *testing.T) {
 	if merged.ThinkingBudgets == nil || merged.ThinkingBudgets.Low == nil || *merged.ThinkingBudgets.Low != 100 || merged.ThinkingBudgets.High == nil || *merged.ThinkingBudgets.High != 400 {
 		t.Fatalf("thinking budgets deep merge failed: %+v", merged.ThinkingBudgets)
 	}
-	if merged.Markdown == nil || merged.Markdown.CodeBlockIndent != "\t" {
+	if merged.Markdown == nil || merged.Markdown.CodeBlockIndent == nil || *merged.Markdown.CodeBlockIndent != "\t" {
 		t.Fatalf("markdown merge failed: %+v", merged.Markdown)
 	}
 }
@@ -1704,5 +1748,48 @@ func TestPackageSource_ObjectFormWithoutFilters_IsFiltered(t *testing.T) {
 	}
 	if !src.Filtered() {
 		t.Fatal("Filtered() should be true for object-form JSON")
+	}
+}
+
+// The closed literal unions of SettingsConfig/SettingsCallbacks are typed values, each with the getter default Pi gives it:
+// FullscreenExitOutput = "transcript" | "resume-hint" (settings-manager.ts:55,1358-1365), MermaidRenderingMode =
+// "off" | "final" | "streaming" (settings-manager.ts:79,1512-1519), outputPad 0 | 1 (settings-manager.ts:173,1488-1494).
+func TestSettingsClosedUnionsAreTypedAndKeepTheirDefaults(t *testing.T) {
+	if FullscreenExitOutputTranscript != "transcript" || FullscreenExitOutputResumeHint != "resume-hint" ||
+		MermaidRenderingOff != "off" || MermaidRenderingFinal != "final" || MermaidRenderingStreaming != "streaming" ||
+		OutputPadNone != 0 || OutputPadOne != 1 {
+		t.Fatal("a union constant lost its Pi literal")
+	}
+	cases := []struct {
+		name string
+		get  func(*SettingsManager) any
+		set  func(*SettingsManager) error
+		def  any
+		want any
+	}{
+		{"fullscreenExitOutput", func(m *SettingsManager) any { return m.GetFullscreenExitOutput() },
+			func(m *SettingsManager) error { return m.SetFullscreenExitOutput(FullscreenExitOutputResumeHint) },
+			FullscreenExitOutputTranscript, FullscreenExitOutputResumeHint},
+		{"mermaid", func(m *SettingsManager) any { return m.GetMermaidRenderingMode() },
+			func(m *SettingsManager) error { return m.SetMermaidRenderingMode(MermaidRenderingOff) },
+			MermaidRenderingStreaming, MermaidRenderingOff},
+		{"outputPad", func(m *SettingsManager) any { return m.GetOutputPad() },
+			func(m *SettingsManager) error { return m.SetOutputPad(OutputPadNone) },
+			OutputPadOne, OutputPadNone},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			dir := t.TempDir()
+			manager := NewSettingsManager(t.TempDir(), dir)
+			if got := c.get(manager); got != c.def {
+				t.Fatalf("default = %#v, want %#v", got, c.def)
+			}
+			if err := c.set(manager); err != nil {
+				t.Fatal(err)
+			}
+			if got := c.get(NewSettingsManager(t.TempDir(), dir)); got != c.want {
+				t.Fatalf("stored = %#v, want %#v", got, c.want)
+			}
+		})
 	}
 }

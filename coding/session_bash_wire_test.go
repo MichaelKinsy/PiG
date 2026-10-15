@@ -22,7 +22,7 @@ func TestDeferredBashRetainsCompletionState(t *testing.T) {
 	code := 7
 	before := time.Now().UnixMilli()
 	sess.mu.Lock()
-	recordErr := sess.RecordBashResult("deferred", BashResult{Output: "done", ExitCode: &code}, false)
+	recordErr := sess.RecordBashResult("deferred", BashResult{Output: "done", ExitCode: &code}, nil)
 	code = 8 // Pi copies the numeric status, not the caller's mutable storage.
 	if len(sess.pendingBashMessages) != 1 {
 		sess.mu.Unlock()
@@ -51,7 +51,7 @@ func TestDeferredBashRetainsCompletionState(t *testing.T) {
 func TestCancelledBashWireAndPersistence(t *testing.T) {
 	sess := newBashTestSession(t, `{}`)
 	before := time.Now().UnixMilli()
-	result, err := sess.ExecuteBashWithOperations(t.Context(), "held", false, func(string) { sess.AbortBash() }, cancelledWireOperations{}, nil)
+	result, err := sess.ExecuteBash(t.Context(), "held", func(string) { sess.AbortBash() }, &ExecuteBashOptions{Operations: cancelledWireOperations{}})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -3,12 +3,12 @@ package extension
 import (
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"regexp"
 	"slices"
 	"strings"
 	"sync"
 
+	"github.com/MichaelKinsy/PiG/internal/configvalue"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 
@@ -86,6 +86,22 @@ type McpOAuthConfig struct {
 	// server or none. The document is trusted as configured. It must use
 	// https, except on loopback hosts.
 	AuthServerMetadataURL string `json:"authServerMetadataUrl,omitempty"`
+}
+
+// UnmarshalJSON reads `callbackPort` as a JavaScript number, so `8080.0` and `8e3` are the integers validation accepts.
+func (c *McpOAuthConfig) UnmarshalJSON(data []byte) error {
+	type plain McpOAuthConfig
+	aux := struct {
+		*plain
+		CallbackPort *float64 `json:"callbackPort"`
+	}{plain: (*plain)(c)}
+	err := json.Unmarshal(data, &aux)
+	c.CallbackPort = nil
+	if aux.CallbackPort != nil && *aux.CallbackPort == float64(int(*aux.CallbackPort)) {
+		port := int(*aux.CallbackPort)
+		c.CallbackPort = &port
+	}
+	return err
 }
 
 // McpAuthConfig sends the token of a pi provider (`/login <provider>`) as the
@@ -410,7 +426,7 @@ func validateOAuth(fields map[string]json.RawMessage, name string) string {
 		if raw, ok := oauth["callbackUrl"]; ok {
 			var s string
 			if isString(raw) && json.Unmarshal(raw, &s) == nil {
-				if u, err := nodeurl.ParseHTTPURL(s); err == nil && (u.Hostname == "[::1]" || callbackPathname(s) != "/callback") {
+				if u, err := nodeurl.ParseHTTPURL(s); err == nil && (u.Hostname == "[::1]" || u.Pathname != "/callback") {
 					return `oauth.clientRegistration "cimd" requires oauth.callbackUrl on localhost or 127.0.0.1 with path /callback`
 				}
 			}
@@ -426,21 +442,6 @@ func validateOAuth(fields map[string]json.RawMessage, name string) string {
 		}
 	}
 	return ""
-}
-
-// callbackPathname is `new URL(raw).pathname` for a validated loopback
-// callback URL: dot segments removed and an empty path reported as "/".
-func callbackPathname(raw string) string {
-	u, err := url.Parse(raw)
-	if err != nil {
-		return ""
-	}
-	// Resolving the path against itself removes "." and ".." segments as the WHATWG parser does.
-	path := u.ResolveReference(&url.URL{Path: u.Path, RawPath: u.RawPath}).EscapedPath()
-	if path == "" {
-		return "/"
-	}
-	return path
 }
 
 func objectMap(raw json.RawMessage) (map[string]json.RawMessage, bool) {
@@ -527,15 +528,21 @@ func ValidateMcpServerConfig(name string, value json.RawMessage) (McpServerConfi
 			return McpServerConfig{}, fmt.Sprintf(`server "%s": timeout must be a positive number of seconds`, name)
 		}
 	}
-	typ, _ := stringField(fields, "type")
+	// upstream: mcp-servers.ts validateMcpServerConfig (`type === undefined || type === "http"`): a `type` that is present but not a string names no transport.
+	typ, typeIsString := stringField(fields, "type")
+	_, typePresent := fields["type"]
+	typeIs := func(names ...string) bool {
+		return !typePresent || (typeIsString && slices.Contains(names, typ))
+	}
 	if typ == "sse" {
 		return McpServerConfig{}, fmt.Sprintf(`server "%s": legacy SSE transport is not supported; use the streamable HTTP URL`, name)
 	}
 
 	rawURL, hasURL := stringField(fields, "url")
-	if hasURL && (typ == "" || typ == "http" || typ == "streamable-http") {
+	if hasURL && typeIs("http", "streamable-http") {
 		// upstream: mcp-servers.ts validateMcpServerConfig (`URL.canParse(value.url) && /^https?:$/.test(new URL(value.url).protocol)`).
-		parsedURL, err := nodeurl.ParseHTTPURL(rawURL)
+		// pig divergence (D156): the URL is checked after environment expansion, as headers and env values are resolved (Pi #10654).
+		parsedURL, err := nodeurl.ParseHTTPURL(ExpandMcpURL(rawURL))
 		if err != nil {
 			return McpServerConfig{}, fmt.Sprintf(`server "%s": url must be an http or https URL`, name)
 		}
@@ -555,9 +562,9 @@ func ValidateMcpServerConfig(name string, value json.RawMessage) (McpServerConfi
 				return McpServerConfig{}, fmt.Sprintf(`server "%s": auth requires an https URL, or http on localhost, 127.0.0.1, or [::1]`, name)
 			}
 		}
-		return decodeMcpServerConfig(name, value)
+		return decodeMcpServerConfig(value), ""
 	}
-	if _, hasCommand := stringField(fields, "command"); hasCommand && (typ == "" || typ == "stdio") {
+	if _, hasCommand := stringField(fields, "command"); hasCommand && typeIs("stdio") {
 		if raw, ok := fields["args"]; ok {
 			var args []json.RawMessage
 			valid := len(raw) > 0 && raw[0] == '[' && json.Unmarshal(raw, &args) == nil
@@ -574,17 +581,32 @@ func ValidateMcpServerConfig(name string, value json.RawMessage) (McpServerConfi
 		if raw, ok := fields["cwd"]; ok && !isString(raw) {
 			return McpServerConfig{}, fmt.Sprintf(`server "%s": cwd must be a string`, name)
 		}
-		return decodeMcpServerConfig(name, value)
+		return decodeMcpServerConfig(value), ""
 	}
 	return McpServerConfig{}, fmt.Sprintf(`server "%s" needs either "command" (stdio) or "url" (streamable HTTP)`, name)
 }
 
-func decodeMcpServerConfig(name string, value json.RawMessage) (McpServerConfig, string) {
-	var config McpServerConfig
-	if err := json.Unmarshal(value, &config); err != nil {
-		return McpServerConfig{}, fmt.Sprintf(`server "%s": %s`, name, err)
+// ExpandMcpURL expands the environment references of a server URL the way header and env values are resolved
+// (`$VAR`, `${VAR}`, `$$`). A URL that cannot be expanded now (a `!command`, or a variable that is unset) stays as
+// written, so a literal URL that contains a `$` keeps working. Validation, the transport and the OAuth URL use the
+// expansion; the stored config keeps the reference.
+//
+// pig divergence (D156): Pi uses the URL as written (Pi #10654).
+func ExpandMcpURL(raw string) string {
+	if configvalue.IsCommandConfigValue(raw) || !configvalue.IsConfigValueConfigured(raw, nil) {
+		return raw
 	}
-	return config, ""
+	return configvalue.Resolve(raw, nil)
+}
+
+// decodeMcpServerConfig reads the members the host uses from a validated entry. Validation checks only the members of the entry's transport, so a member of the other transport (or an unused one) with a value of another type is ignored, as it is in Pi's untyped object.
+//
+// upstream: mcp-servers.ts validateMcpServerConfig (returns the entry as is after checking the transport's members)
+func decodeMcpServerConfig(value json.RawMessage) McpServerConfig {
+	var config McpServerConfig
+	// The value is valid JSON; an error names the first member that does not fit its Go type, and the decoder keeps every member that does.
+	_ = json.Unmarshal(value, &config)
+	return config
 }
 
 // RegisteredMcpServer is a server an extension registered with

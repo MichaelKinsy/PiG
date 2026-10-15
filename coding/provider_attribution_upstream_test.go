@@ -58,7 +58,7 @@ func TestSDKProviderAttributionUpstream(t *testing.T) {
 			if modelID == "" {
 				modelID = tc.provider + "-test-model"
 			}
-			services.Registry().RegisterProvider(tc.provider, extension.ProviderConfig{API: ai.APIOpenAICompletions, APIKey: "test-api-key", BaseURL: tc.url, Headers: tc.providerHeaders, Models: []extension.ProviderModelConfig{{ID: modelID, Name: tc.provider + " Test Model", API: ai.APIOpenAICompletions, Input: []string{"text"}, ContextWindow: 128000, MaxTokens: 4096}}})
+			services.Registry().RegisterExtensionProvider(tc.provider, extension.ProviderConfig{API: ai.APIOpenAICompletions, APIKey: "test-api-key", BaseURL: tc.url, Headers: tc.providerHeaders, Models: []extension.ProviderModelConfig{{ID: modelID, Name: tc.provider + " Test Model", API: ai.APIOpenAICompletions, Input: []string{"text"}, ContextWindow: 128000, MaxTokens: 4096}}})
 			model, err := BuildModel(tc.provider+"/"+modelID, services)
 			if err != nil {
 				t.Fatal(err)

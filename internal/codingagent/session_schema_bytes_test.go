@@ -43,7 +43,7 @@ func TestCompactionToolSchemaBytesMatchPi(t *testing.T) {
 		t.Fatal(err)
 	}
 	declarations := []ai.ToolSchema{}
-	for _, tool := range tools.CreateAllTools(t.TempDir(), nil, "") {
+	for _, tool := range tools.CreateAllTools(t.TempDir(), nil) {
 		declarations = append(declarations, ai.ToToolDeclaration(tool.Schema()))
 	}
 	if _, err := session.AppendMessage(agent.AgentMessage{System: &ai.SystemMessage{Content: ai.SystemText(""), ToolsAdded: declarations, Timestamp: 1}}); err != nil {

@@ -7,6 +7,9 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/testenv"
+
+	// A binary that embeds the documentation bundle registers its name; the system prompt names the docs only then (D22).
+	_ "github.com/MichaelKinsy/PiG/internal/pigdocs"
 )
 
 func TestMain(m *testing.M) {
@@ -32,7 +35,7 @@ func TestMain(m *testing.M) {
 		_ = os.RemoveAll(testRoot)
 		os.Exit(2)
 	}
-	code := m.Run()
+	code := testenv.RunWithoutGoroutineLeaks(m)
 	if err := os.RemoveAll(testRoot); err != nil {
 		fmt.Fprintln(os.Stderr, "remove isolated test config root:", err)
 		if code == 0 {

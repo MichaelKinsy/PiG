@@ -6,7 +6,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
-var wslReleasePattern = lazyregexp.New(`(?i)microsoft|wsl`)
+var wslReleasePattern = lazyregexp.NewJSIgnoreCase(`microsoft|wsl`)
 
 // IsWSL reports whether the process runs under Windows Subsystem for Linux,
 // where Windows executables are reachable through interop. Ports

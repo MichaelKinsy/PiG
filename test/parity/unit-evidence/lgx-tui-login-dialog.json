@@ -1,0 +1,401 @@
+[
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentPromptFlow"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `if providerName == \"\" {\n\t\tproviderName = providerID\n\t}` with `_ = providerID`; TestLoginDialogComponentPromptFlow fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentPromptFlow"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `\"Login to \" + providerName` with `\"Login \" + providerName`; TestLoginDialogComponentPromptFlow fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentPromptFlow"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `if len(titleOverride) > 0 {\n\t\tdialog.title = titleOverride[0]\n\t}` with `_ = titleOverride`; TestLoginDialogComponentPromptFlow fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentSecretMaskingAndRedaction"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `maskSecretInput: true, content` with `maskSecretInput: false, content`; TestLoginDialogComponentSecretMaskingAndRedaction fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentCancelAndFocus"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `if d.input != nil {\n\t\td.input.SetFocused(focused)\n\t}` with `_ = focused`; TestLoginDialogComponentCancelAndFocus fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentCancelAndFocus"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `d.input.Focused = d.focused` with `d.input.Focused = false`; TestLoginDialogComponentCancelAndFocus fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentCancelAndFocus"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `d.focused = focused\n\tif d.input` with `if d.input`; TestLoginDialogComponentCancelAndFocus fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentSecretMaskingAndRedaction"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `d.maskSecretInput = enabled` with `d.maskSecretInput = !enabled`; TestLoginDialogComponentSecretMaskingAndRedaction fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `d.resetContent()\n\td.addSpacer()\n\td.content.Add(&loginDialogAuthURL` with `d.addSpacer()\n\td.content.Add(&loginDialogAuthURL`; TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `if instructions != \"\" {\n\t\td.addSpacer()\n\t\td.addLine(\" \" + ActiveTheme().Fg(\"warning\", d.redactLocked(instructions)))` with `if instructions == \"\" {\n\t\td.addSpacer()\n\t\td.addLine(\" \" + ActiveTheme().Fg(\"warning\", d.redactLocked(instructions)))`; TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `d.authURL = nil\n\td.resetContent()\n\td.addSpacer()\n\tfor _, line := range linkedURLLines(verificationURI) {` with `d.resetContent()\n\td.addSpacer()\n\tfor _, line := range linkedURLLines(verificationURI) {`; TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `d.authURL = nil\n\td.resetContent()\n\td.addSpacer()\n\tfor _, line := range linkedURLLines(verificationURI) {` with `d.authURL = nil\n\td.addSpacer()\n\tfor _, line := range linkedURLLines(verificationURI) {`; TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `\"Enter code: \"+userCode` with `\"Code: \"+userCode`; TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `d.authURL = nil\n\td.resetContent()\n\td.addSpacer()\n\tfor _, line := range lines {` with `d.authURL = nil\n\td.addSpacer()\n\tfor _, line := range lines {`; TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `if link.Label != \"\" {` with `if link.Label == \"\" {`; TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `text = link.Label + \": \" + link.URL` with `text = link.Label`; TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `if showCloseHint {` with `if !showCloseHint {`; TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `\"to close\"` with `\"to cancel\"`; TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentSecretMaskingAndRedaction"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `if d.inputActive && d.inputMasked && d.input != nil {` with `if false {`; TestLoginDialogComponentSecretMaskingAndRedaction fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentSecretMaskingAndRedaction"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `values := slices.Clone(d.secrets)` with `values := d.secrets[:0:0]`; TestLoginDialogComponentSecretMaskingAndRedaction fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentSecretMaskingAndRedaction"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `d.inputMasked = secret && d.maskSecretInput` with `d.inputMasked = secret`; TestLoginDialogComponentSecretMaskingAndRedaction fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentPromptFlow"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `d.inputMasked = secret && d.maskSecretInput` with `d.inputMasked = d.maskSecretInput`; TestLoginDialogComponentPromptFlow fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentSecretMaskingAndRedaction"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `hint = loginKeyHint(KBSelectCancel, \"to cancel\")\n\t}` with `hint = loginKeyHint(KBSelectCancel, \"to cancel\") + \" \" + loginKeyHint(KBSelectConfirm, \"to submit\")\n\t}`; TestLoginDialogComponentSecretMaskingAndRedaction fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentPromptFlow"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `if placeholder != \"\" {\n\t\td.addLine(\" \" + t.Fg(\"dim\", \"e.g., \"` with `if placeholder == \"\" {\n\t\td.addLine(\" \" + t.Fg(\"dim\", \"e.g., \"`; TestLoginDialogComponentPromptFlow fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentPromptFlow"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `\"e.g., \"+d.redactLocked(placeholder)` with `\"eg \"+placeholder`; TestLoginDialogComponentPromptFlow fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentPromptFlow",
+   "TestLoginDialogComponentSecretMaskingAndRedaction"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `if d.inputMasked {\n\t\td.addLine(\" \" + t.Fg(\"dim\", secretInputHint))\n\t}` with `if !d.inputMasked {\n\t\td.addLine(\" \" + t.Fg(\"dim\", secretInputHint))\n\t}`; TestLoginDialogComponentPromptFlow, TestLoginDialogComponentSecretMaskingAndRedaction fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentSecretMaskingAndRedaction"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `if value != \"\" {\n\t\t\t\td.secrets = append(d.secrets, value)\n\t\t\t}` with `if value != \"\" {\n\t\t\t\td.secrets = append(d.secrets, \"\")\n\t\t\t}`; TestLoginDialogComponentSecretMaskingAndRedaction fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentPromptFlow",
+   "TestLoginDialogComponentSecretMaskingAndRedaction"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `&loginDialogLine{dialog: d, line: \"> \" + submitted}` with `&loginDialogLine{dialog: d, line: submitted}`; TestLoginDialogComponentPromptFlow, TestLoginDialogComponentSecretMaskingAndRedaction fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentPromptFlow",
+   "TestLoginDialogComponentSecretMaskingAndRedaction"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `d.inputCh <- value\n\t\t\tclose(d.inputCh)` with `close(d.inputCh)`; TestLoginDialogComponentPromptFlow, TestLoginDialogComponentSecretMaskingAndRedaction fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentPromptFlow"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `d.inputActive = false\n\t\td.input = nil\n\t}` with `d.input = nil\n\t}`; TestLoginDialogComponentPromptFlow fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentCancelAndFocus"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `if GetTUIKeybindings().Matches(data, KBSelectCancel) {\n\t\td.done = true\n\t\td.cancelled = true` with `if GetTUIKeybindings().Matches(data, KBSelectCancel) {\n\t\td.cancelled = true`; TestLoginDialogComponentCancelAndFocus fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentCancelAndFocus"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `if GetTUIKeybindings().Matches(data, KBSelectCancel) {\n\t\td.done = true\n\t\td.cancelled = true` with `if GetTUIKeybindings().Matches(data, KBSelectCancel) {\n\t\td.done = true`; TestLoginDialogComponentCancelAndFocus fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentCancelAndFocus"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `d.onComplete(false, \"Login cancelled\")` with `d.onComplete(true, \"Login cancelled\")`; TestLoginDialogComponentCancelAndFocus fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentCancelAndFocus"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `d.onComplete(false, \"Login cancelled\")` with `d.onComplete(false, \"cancelled\")`; TestLoginDialogComponentCancelAndFocus fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentCancelAndFocus"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `if d.inputCh != nil {\n\t\t\tclose(d.inputCh)\n\t\t\td.inputCh = nil\n\t\t}\n\t\treturn` with `return`; TestLoginDialogComponentCancelAndFocus fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestAuthURLCopyLoginDialogCopiesTheAuthURLInsteadOfTypingIntoTheCodeInput"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `if d.authURL != nil && GetTUIKeybindings().Matches(data, \"app.message.copy\") {\n\t\td.authURL.Copy()\n\t\treturn\n\t}` with ``; TestAuthURLCopyLoginDialogCopiesTheAuthURLInsteadOfTypingIntoTheCodeInput fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentPromptFlow"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `func (d *LoginDialogComponent) Success() {\n\td.mu.Lock()\n\tdefer d.mu.Unlock()\n\td.done = true` with `func (d *LoginDialogComponent) Success() {\n\td.mu.Lock()\n\tdefer d.mu.Unlock()`; TestLoginDialogComponentPromptFlow fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentPromptFlow"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `d.done = true\n\td.Invalidate()\n}\n\nvar _` with `d.done = true\n\td.cancelled = true\n\td.Invalidate()\n}\n\nvar _`; TestLoginDialogComponentPromptFlow fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `d.authURL = nil\n\td.resetContent()\n\td.addSpacer()\n\tfor _, line := range lines {` with `d.resetContent()\n\td.addSpacer()\n\tfor _, line := range lines {`; TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `d.addLine(\" \" + line)\n\t}\n\td.Invalidate()\n}\n\n// AuthInfoLink` with `d.addLine(line)\n\t}\n\td.Invalidate()\n}\n\n// AuthInfoLink`; TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentPromptFlow"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `d.addSpacer()\n\td.addLine(\" \" + ActiveTheme().Fg(\"dim\", d.redactLocked(msg)))\n\td.addLine(\" (\" + loginKeyHint(KBSelectCancel, \"to cancel\") + \")\")` with `d.addLine(\" \" + ActiveTheme().Fg(\"dim\", d.redactLocked(msg)))\n\td.addLine(\" (\" + loginKeyHint(KBSelectCancel, \"to cancel\") + \")\")`; TestLoginDialogComponentPromptFlow fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentSecretMaskingAndRedaction"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `color = \"dim\"\n\t\thint = loginKeyHint(KBSelectCancel, \"to cancel\")` with `color = \"text\"\n\t\thint = loginKeyHint(KBSelectCancel, \"to cancel\")`; TestLoginDialogComponentSecretMaskingAndRedaction fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentCancelAndFocus"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `if d.inputCh == nil {\n\t\t\treturn\n\t\t}\n\t\tsubmitted := value` with `submitted := value`; TestLoginDialogComponentCancelAndFocus fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "package": "./tui",
+  "tests": [
+   "TestLoginDialogComponentPromptFlow"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "mutation": "tui/login_dialog.go: replace `d.inputActive = false\n\t\td.input = nil\n\t}` with `d.inputActive = false\n\t}`; TestLoginDialogComponentPromptFlow fails."
+ }
+]

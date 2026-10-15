@@ -44,7 +44,16 @@ func TestToLLMContentPassesTextAndImagesThroughAndReplacesOtherBlocksWithText(t 
 }
 
 func TestToLLMContentFallsBackToTheStructuredContentAsJSONWhenThereAreNoBlocks(t *testing.T) {
-	got := mcp.ToLLMContent(mcp.CallToolResult{Content: []mcp.ContentBlock{}, StructuredContent: json.RawMessage(`{"n":1}`)})
+	// content.test.ts (67996ab75, #10416): structured content may be any JSON value.
+	got := mcp.ToLLMContent(mcp.CallToolResult{Content: []mcp.ContentBlock{}, StructuredContent: json.RawMessage(`[1,2]`)})
+	if len(got) != 1 || got[0] != (mcp.LLMContent{Type: "text", Text: "[\n  1,\n  2\n]"}) {
+		t.Fatalf("array: got %#v", got)
+	}
+	got = mcp.ToLLMContent(mcp.CallToolResult{Content: []mcp.ContentBlock{}, StructuredContent: json.RawMessage(`null`)})
+	if len(got) != 1 || got[0] != (mcp.LLMContent{Type: "text", Text: "null"}) {
+		t.Fatalf("null: got %#v", got)
+	}
+	got = mcp.ToLLMContent(mcp.CallToolResult{Content: []mcp.ContentBlock{}, StructuredContent: json.RawMessage(`{"n":1}`)})
 	if len(got) != 1 || got[0] != (mcp.LLMContent{Type: "text", Text: "{\n  \"n\": 1\n}"}) {
 		t.Fatalf("got %#v", got)
 	}

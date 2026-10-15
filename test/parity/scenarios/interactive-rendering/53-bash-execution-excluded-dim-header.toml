@@ -1,0 +1,45 @@
+# Behavior family: interactive-rendering
+# Upstream evidence: real Pi 1.1.0 (extensions/sdk-ts/node_modules) run side by side with PiG in tmux at 100x35. Pi 1.0.4 colored the `!!` header with bashMode once
+# the command completed (updateDisplay ignored the dim key; fixed by #10557); the border, spinner and header now all use `dim`.
+# Surface: `!!echo hello world` (excluded from context). The crop runs from the top border through the output line so the border and header colors are inside
+# it, and the comparison is the byte-exact escaped capture.
+
+name = "53-bash-execution-excluded-dim-header"
+description = "`!!` command blocks keep the dim color on the header, border and output once the command completes."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/bash-execution.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/bash-wrap-cwd"
+capture_start = "────────────────────────────────────────────────────────────────────────────────"
+capture_end = "hello world"
+
+[[tmux.steps]]
+keys = ["!!echo hello world", "Enter"]
+settle_seconds = 3
+wait_contains = ["$ echo hello world", "hello world"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine ", "exit 0", "(exit 0)"]
+escaped_output_equal = true
+runtime_ratio_max = 2.0
+# runs=3 because bash-execution timing has natural jitter on completion.
+runs = 3

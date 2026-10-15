@@ -1,7 +1,7 @@
 # Environment variables
 
-Pig reads these variables at startup. Each one has a setting or a default that
-covers the normal case, so set a variable only when you need to change Pig from
+PiG reads these variables at startup. Each one has a setting or a default that
+covers the normal case, so set a variable only when you need to change PiG from
 outside its configuration: in a container, in CI, or while debugging.
 
 Variables named `PI_*` are read for compatibility with upstream Pi. Directory variables use the spellings selected by `PIG_USE_PI_DIRS`; other paired variables accept both spellings.
@@ -36,7 +36,7 @@ slowly when the network is blocked.
 
 Offline mode, from `--offline`, `PIG_OFFLINE` or `PI_OFFLINE`, sets
 `PI_OFFLINE=1` and `PI_SKIP_VERSION_CHECK=1` in the environment extensions
-inherit, as Pi does. Pi extensions that check `PI_OFFLINE` see Pig's offline
+inherit, as Pi does. Pi extensions that check `PI_OFFLINE` see PiG's offline
 mode.
 
 ## Diagnostics
@@ -44,20 +44,20 @@ mode.
 | Variable | Effect |
 |---|---|
 | `PIG_DEBUG` | Write a debug log |
-| `PIG_DEBUG_KEYS` | Log every key as Pig decodes it |
+| `PIG_DEBUG_KEYS` | Log every key as PiG decodes it |
 | `PIG_DEBUG_TOOLS` | Print the number of tools sent with each OpenAI Chat Completions request to stderr. Needs the exact value `1` |
 | `PIG_RENDER_DEBUG` | Write render diagnostics |
 | `PI_TUI_DEBUG_REDRAW` | Log why the screen was fully repainted. Needs the exact value `1` |
 | `PIG_STARTUP_TRACE` | Time each startup step |
-| `PIG_PROFILE` | Write Go runtime profiles when Pig exits. Takes a comma-separated list of `cpu`, `heap`, `allocs`, `block`, `mutex`, `goroutine` and `trace` |
+| `PIG_PROFILE` | Write Go runtime profiles when PiG exits. Takes a comma-separated list of `cpu`, `heap`, `allocs`, `block`, `mutex`, `goroutine`, `trace`, `metrics` and `flight`. `metrics` writes `pig-<pid>-metrics.json`: allocation and GC counts for the whole run, live heap, peak RSS, and the goroutines, open files and child processes left at exit. `flight` keeps the last 10 seconds of the execution trace in memory and writes it as `<agent dir>/crash-output/<pid>.flight.trace` (mode 0600) when the session ends without a user request, beside the crash output file; it writes nothing at a normal exit |
 | `PIG_PROFILE_DIR` | Directory for `PIG_PROFILE` output. Default: the working directory |
 
 Use `PIG_DEBUG_KEYS` when a keybinding does not respond: it shows whether the key
-reached Pig at all. See [terminal setup](terminal-setup.md).
+reached PiG at all. See [terminal setup](terminal-setup.md).
 
-Use `PI_TUI_DEBUG_REDRAW=1` when the view jumps while output arrives. The log records each full repaint's cause in `pi-tui-debug.log` in the configured TUI log directory, normally the agent directory. Standalone TUI instances without a configured log directory do not write redraw logs. Pi reads the same variable. Pig ignores the names `PIG_DEBUG_REDRAW` and `PI_DEBUG_REDRAW`.
+Use `PI_TUI_DEBUG_REDRAW=1` when the view jumps while output arrives. The log records each full repaint's cause in `pi-tui-debug.log` in the configured TUI log directory, normally the agent directory. Standalone TUI instances without a configured log directory do not write redraw logs. Pi reads the same variable. PiG ignores the names `PIG_DEBUG_REDRAW` and `PI_DEBUG_REDRAW`.
 
-When a session ends without you asking it to, look in the agent directory (`~/.pig/agent`, or `$PIG_HOME/agent`, or the directory `PIG_CODING_AGENT_DIR` names). `exit.log` has one line for each signal (`SIGHUP`, `SIGTERM`, `SIGINT`) and each closed terminal, with the time, the pid and the parent pid. If only the input closes while the terminal stays open, Pig keeps running, as Pi does. `crashes.json` has the panics and fatal errors, and the next start announces the newest one. A session that the operating system killed leaves no line of its own, so the next start adds one to `exit.log`. `pig diagnose` prints these paths and the newest `exit.log` lines. The `PIG_DEBUG` log is `pig-debug.log` in the temporary directory (`$TMPDIR` on macOS, a per-user folder).
+When a session ends without you asking it to, look in the agent directory (`~/.pig/agent`, or `$PIG_HOME/agent`, or the directory `PIG_CODING_AGENT_DIR` names). `exit.log` has one line for each signal (`SIGHUP`, `SIGTERM`, `SIGINT`) and each closed terminal, with the time, the pid and the parent pid. If only the input closes while the terminal stays open, PiG keeps running, as Pi does. `crashes.json` has the panics and fatal errors, and the next start announces the newest one. A session that the operating system killed leaves no line of its own, so the next start adds one to `exit.log`. `pig diagnose` prints these paths and the newest `exit.log` lines. The `PIG_DEBUG` log is `pig-debug.log` in the temporary directory (`$TMPDIR` on macOS, a per-user folder).
 
 `PIG_DEBUG_TOOLS` and `PI_TUI_DEBUG_REDRAW` need the exact value `1`. The other
 diagnostic variables accept any non-empty value.
@@ -78,13 +78,13 @@ diagnostic variables accept any non-empty value.
 
 ## Updates and deployments
 
-These variables describe how Pig was installed, so `pig update` can give the right
+These variables describe how PiG was installed, so `pig update` can give the right
 instruction. A product deployment sets them. You do not need them for a normal
 install.
 
 | Variable | Effect |
 |---|---|
-| `PIG_INSTALL_TIER` | Declare the installation type when Pig cannot detect it: `container`, `image`, `immutable-binary` or `piglet-binary`. Any other value is an error |
+| `PIG_INSTALL_TIER` | Declare the installation type when PiG cannot detect it: `container`, `image`, `immutable-binary` or `piglet-binary`. Any other value is an error |
 | `PIG_IMAGE_REF` | Image reference that `pig update` names for a container or image install |
 | `PIG_IMAGE_PULL_CMD` | Pull command that `pig update` prints for a container or image install |
 | `PIG_REDEPLOY_INSTRUCTION` | Exact redeploy instruction that `pig update` prints for a container or image install |
@@ -96,6 +96,7 @@ install.
 |---|---|
 | `PI_HARDWARE_CURSOR` | Show the terminal's own cursor |
 | `PI_CLEAR_ON_SHRINK` | Repaint when content shrinks |
+| `PI_CLIPBOARD_OSC52` | Set to `1` to also send copied text to the terminal with OSC 52 after the local clipboard write, as PiG does over SSH or Mosh. Use it when a remote client reaches PiG without SSH variables, such as a multiplexer attached from another machine or a remote IDE daemon |
 | `PI_HYPERLINKS` | Override OSC 8 hyperlink detection with `1`, `0`, or `auto` |
 | `PI_IMAGE_PROTOCOL` | Override inline image detection with `kitty`, `iterm2`, `none`, or `auto` |
 | `PI_TRUE_COLOR` | Override true-color detection with `1`, `0`, or `auto`. With true color off, themes use the 256-color palette |
@@ -113,9 +114,13 @@ Each has a setting that does the same thing. A `terminal.hyperlinks`,
 | `PIG_SDK_PY_ROOT` | Python SDK used when building an extension |
 | `PIG_SDK_RS_ROOT` | Rust SDK used when building an extension |
 | `PIG_CELL_BUILD_TIMEOUT` | Time an extension build may take |
+| `PIG_TS_RUNTIME` | Runtime that runs TypeScript and JavaScript extensions for this process: `node` or an installed runtime's name. Overrides the `extensionsTypescriptRuntime` setting (D19). |
+| `PIG_TS_RUNTIMES_DIR` | Runtime slot directory. Default `<agent dir>/runtimes/typescript` |
 | `PIG_BUILDERS_FILE` | Container builder configuration for `pig piglet build`. Default `$PIG_HOME/state/pigletbuild/builders.json` |
 | `PIG_CONTAINER_ENGINE` | Engine of the built-in `container` builder for `pig piglet build`: `docker` or `podman`. Default: Podman when on `PATH`, else Docker |
-| `PIG_LOGO_GLYPHFREE` | `1` renders the logo without special glyphs in `pig extension preview-login`, and `0` keeps the glyphs. Unset, Pig drops the glyphs only in Apple Terminal |
+| `PIG_PIGLET_PULL_ALLOW_LOOPBACK_HTTP` | Allow `pig piglet pull`, `pig piglet update` and `pig piglet publish --to npm --binaries` to use an `http://localhost` or loopback release URL. Accepts `1`, `true` or `yes`. For testing a release server |
+| `PIG_PIGLET_GITHUB_URL` | Loopback origin, such as `http://127.0.0.1:8080`, that replaces `github.com` and `api.github.com` for `github:` release refs (`pig piglet pull`, `pig piglet publish --to npm --binaries`) and `pig piglet update` discovery. Requires `PIG_PIGLET_PULL_ALLOW_LOOPBACK_HTTP`; any other host is refused. For testing a release server |
+| `PIG_LOGO_GLYPHFREE` | `1` renders the logo without special glyphs in `pig extension preview-login`, and `0` keeps the glyphs. Unset, PiG drops the glyphs only in Apple Terminal |
 
 The `PIG_SDK_*` variables point a build at an SDK checkout instead of the staged
 copy. Use them while developing the SDK itself. See
@@ -123,7 +128,7 @@ copy. Use them while developing the SDK itself. See
 
 ## Process markers
 
-Pig sets two markers that every child process inherits, as Pi does:
+PiG sets two markers that every child process inherits, as Pi does:
 
 | Variable | Effect |
 |---|---|
@@ -134,5 +139,5 @@ Pig sets two markers that every child process inherits, as Pi does:
 
 - [Providers](providers.md) lists the credential variables for each provider.
 - [Settings](settings.md) covers the same behavior in configuration.
-- [Config](config.md) lists the files Pig reads.
+- [Config](config.md) lists the files PiG reads.
 - [Terminal setup](terminal-setup.md) covers display and key problems.

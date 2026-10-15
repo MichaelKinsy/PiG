@@ -32,7 +32,9 @@ for (const kind of ["duplicates", "mixed", "null", "repair", "reassign", "getter
   const session = Object.create(AgentSession.prototype);
   const registry = new Map(["read", "bash", "write"].map(name => [name, { name }]));
   Object.assign(session, {
-    agent: { state: { model: { provider: "probe" }, messages: [], tools: [registry.get("read")] } },
+    // Pi 1.2.0 agent-session.ts _startRun (:1826-1877) prepares the run, then calls agent.prompt: the Provider run,
+    // replaced by the recording sink. The run loop and settle hooks around it are inert for one prompt.
+    agent: { state: { model: { provider: "probe" }, messages: [], tools: [registry.get("read")] }, prompt: async () => { observed.push("run"); } },
     _toolRegistry: registry,
     _toolDefinitions: new Map(),
     _baseSystemPromptOptions: normalizeBuildSystemPromptOptions({ cwd: "/probe", customPrompt: "base", selectedTools: ["read"] }),
@@ -46,7 +48,12 @@ for (const kind of ["duplicates", "mixed", "null", "repair", "reassign", "getter
     _flushPendingCustomMessages() {},
     _findLastAssistantMessage() {},
     _normalizePromptImages: async () => ({ images: [], hints: [] }),
-    _runAgentPrompt: async () => { observed.push("run"); },
+    _recordSelection() {},
+    _pendingToolNames: new Set(),
+    _agentRunAbortRequested: false,
+    _handlePostAgentRun: async () => false,
+    _runBeforeSettleBoundary: async () => false,
+    _emitAgentSettled: async () => {},
   });
   let error = null;
   try { await session.prompt("probe"); } catch (err) { error = err.message; }

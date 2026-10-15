@@ -1,4 +1,3 @@
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 
 * text=auto eol=lf
@@ -22,8 +21,6 @@ coding/extension/host/subprocess/runtime-node/shims/*/** -text whitespace=-blank
 
 # Terminal goldens preserve blank screen rows and mixed space/tab indentation.
 tui/**/testdata/** whitespace=-blank-at-eof,-space-before-tab
-# Markdown's exact-width rows require trailing padding in this byte-faithful snapshot.
-tui/testdata/goldens/markdown-render.txt whitespace=-blank-at-eol,-blank-at-eof,-space-before-tab
 
 # Keep generated and vendored material out of GitHub language statistics and
 # review navigation without excluding it from source archives.

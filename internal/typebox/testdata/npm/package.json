@@ -1,0 +1,6 @@
+{
+	"name": "pig-protocol-oracle-typebox",
+	"private": true,
+	"description": "Pinned to the typebox version in .upstream/current/package-lock.json (packages/protocol dependency). Install with: npm ci --ignore-scripts",
+	"dependencies": { "typebox": "1.3.27" }
+}

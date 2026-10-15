@@ -88,7 +88,7 @@ if (process.argv[3] === "reject") {
 
 	// Change the loader and the pinned compiler identity independently. Neither may consume the prior release's transform, even with identical extension bytes.
 	changedRoot := t.TempDir()
-	for _, name := range []string{"jiti-loader.mjs", "loader.mjs", "compile-cache.mjs", "shims/pig-config.mjs", "shims/jiti/package.json", "shims/jiti/lib/jiti.cjs", "shims/jiti/dist/jiti.cjs", "shims/jiti/dist/babel.cjs"} {
+	for _, name := range []string{"jiti-loader.mjs", "runtime-modules.mjs", "loader.mjs", "compile-cache.mjs", "shims/pig-config.mjs", "shims/jiti/package.json", "shims/jiti/lib/jiti.cjs", "shims/jiti/dist/jiti.cjs", "shims/jiti/dist/babel.cjs"} {
 		data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(name)))
 		if err != nil {
 			t.Fatal(err)

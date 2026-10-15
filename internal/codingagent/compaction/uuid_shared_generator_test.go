@@ -25,7 +25,7 @@ func TestCompleteSummarizationRoutingSessionUsesTheSharedUUIDv7Generator(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := completeSummarization(t.Context(), createSummaryModel(false, 8192, nil), recorder, nil, nil, "Summarize", nil, ai.StreamOptions{}); err != nil {
+	if _, _, err := completeSummarization(t.Context(), createSummaryModel(false, 8192, nil), recorder, nil, nil, ai.RetryCallbacks{}, "Summarize", nil, ai.StreamOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	sessionID := recorder.calls[0].options.SessionID

@@ -1,6 +1,9 @@
 package codingagent
 
+// pi: packages/coding-agent/src/core/remote-catalog-provider.ts
+
 import (
+	"encoding/json"
 	"net/http"
 	"slices"
 	"testing"
@@ -98,4 +101,54 @@ func modelDisplayName(model ai.AnyModel) string {
 		return m.Name
 	}
 	return ""
+}
+
+// remote-catalog-provider.ts:139-146 stores Date.parse(last-modified): any date text V8 reads is a time, and text it does not read is 0.
+func TestRemoteCatalogStoresTheLastModifiedHeaderAsDateParseReadsIt(t *testing.T) {
+	for header, want := range map[string]float64{
+		"Thu, 01 Jan 2099 00:00:00 GMT":    4070908800000,
+		"2099-01-01T00:00:00Z":             4070908800000,
+		"2099-01-01T00:00:00.5+01:00":      4070905200500,
+		"Thu, 01 Jan 2099 01:00:00 +0100":  4070908800000,
+		"Thursday, 01-Jan-99 00:00:00 GMT": 915148800000,
+		"not a date":                       0,
+		"":                                 0,
+	} {
+		t.Run(header, func(t *testing.T) {
+			headers := map[string]string{}
+			if header != "" {
+				headers["last-modified"] = header
+			}
+			server := newCatalogServer(t, false, catalogJSONResponse(headers, map[string]any{"dynamic": catalogChatModel("dynamic")}))
+			provider := remoteCatalogTestProvider(server.URL, nil)
+			store := ai.NewInMemoryModelsStore()
+			requireNoRefreshError(t, refreshCatalogProvider(t, provider, store, refreshOverrides{}))
+			stored, err := store.Read(t.Context(), "test-provider")
+			if err != nil || stored == nil || stored.LastModified == nil {
+				t.Fatalf("stored = %+v, err = %v", stored, err)
+			}
+			if *stored.LastModified != want {
+				t.Fatalf("lastModified = %v, want %v", *stored.LastModified, want)
+			}
+		})
+	}
+}
+
+// parseCatalog maps every model to { ...model, provider: providerId } (remote-catalog-provider.ts:49): the requested provider id replaces a missing or foreign provider field, and an entry without an id or with an unsupported type is dropped (:47-48).
+func TestParseRemoteCatalogStampsTheRequestedProvider(t *testing.T) {
+	models, err := parseRemoteCatalog("test-provider", []byte(`[{"id":"a","provider":"other"},{"id":"b"},{"provider":"x"},{"id":"c","type":"video"}]`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, model := range models {
+		var fields struct{ ID, Provider string }
+		if err := json.Unmarshal(model, &fields); err != nil {
+			t.Fatal(err)
+		}
+		got = append(got, fields.ID+"/"+fields.Provider)
+	}
+	if want := []string{"a/test-provider", "b/test-provider"}; !slices.Equal(got, want) {
+		t.Fatalf("parsed models = %v, want %v", got, want)
+	}
 }

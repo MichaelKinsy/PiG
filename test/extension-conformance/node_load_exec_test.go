@@ -15,6 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime"
 )
 
 // Pi's loader gives the factory a pi.exec that spawns the child directly (loader.ts:411-414, core/exec.ts), so a factory can run a program before the extension registers and before any session binds. The fixture's factory awaits several children while it loads and its command reports each outcome. The host's exec is the production ExecCommand and the in-process call is the reference, so every outcome must equal it, including the loader's working directory when the call names none (`options?.cwd ?? cwd`), the rejection message of an empty command and a timeout's kill. A host that serves exec only after registration rejects each call with "extension connection closed or replaced".
@@ -22,16 +23,6 @@ func TestNodeFactoryExecDuringLoad(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
-	node, err := exec.LookPath("node")
-	if err != nil {
-		t.Fatalf("node is required for SDK conformance: %v", err)
-	}
-	// The fixture runs process.execPath, the node that runs the extension.
-	printed, err := exec.Command(node, "-p", "process.execPath").Output()
-	if err != nil {
-		t.Fatalf("node -p process.execPath: %v", err)
-	}
-	execPath := strings.TrimSpace(string(printed))
 	outcome := func(cwd, command string, args []string, opts *extension.ExecOptions) string {
 		result, err := extension.ExecCommand(context.Background(), cwd, command, args, opts)
 		if err != nil {
@@ -40,14 +31,18 @@ func TestNodeFactoryExecDuringLoad(t *testing.T) {
 		return "resolved:" + strings.Join([]string{strconv.Itoa(result.Code), result.Stdout, result.Stderr, strconv.FormatBool(result.Killed)}, ":")
 	}
 	cwd := t.TempDir()
-	want := []string{
-		"ok=" + outcome(cwd, execPath, []string{"-e", "process.stdout.write('load-exec-ok');process.stderr.write('err')"}, nil),
-		"exit=" + outcome(cwd, execPath, []string{"-e", "process.exit(3)"}, nil),
-		"defaultCwd=" + outcome(cwd, execPath, []string{"-e", "process.stdout.write(process.cwd())"}, nil),
-		"cwd=" + outcome(cwd, execPath, []string{"-e", "process.stdout.write(process.cwd())"}, &extension.ExecOptions{CWD: filepath.Dir(execPath)}),
-		"timeout=" + outcome(cwd, execPath, []string{"-e", "setTimeout(() => {}, 60000)"}, &extension.ExecOptions{Timeout: 200}),
-		"empty=" + outcome(cwd, "", []string{}, nil),
-		"background=resolved:background",
+	// The fixture runs process.execPath, the runtime that runs the extension, and reports it last: the selected TypeScript runtime need not be the node on PATH.
+	wantFor := func(execPath string) []string {
+		return []string{
+			"ok=" + outcome(cwd, execPath, []string{"-e", "process.stdout.write('load-exec-ok');process.stderr.write('err')"}, nil),
+			"exit=" + outcome(cwd, execPath, []string{"-e", "process.exit(3)"}, nil),
+			"defaultCwd=" + outcome(cwd, execPath, []string{"-e", "process.stdout.write(process.cwd())"}, nil),
+			"cwd=" + outcome(cwd, execPath, []string{"-e", "process.stdout.write(process.cwd())"}, &extension.ExecOptions{CWD: filepath.Dir(execPath)}),
+			"timeout=" + outcome(cwd, execPath, []string{"-e", "setTimeout(() => {}, 60000)"}, &extension.ExecOptions{Timeout: 200}),
+			"empty=" + outcome(cwd, "", []string{}, nil),
+			"background=resolved:background",
+			"execPath=" + execPath,
+		}
 	}
 	for _, packed := range []bool{false, true} {
 		name := "subprocess-node"
@@ -59,6 +54,29 @@ func TestNodeFactoryExecDuringLoad(t *testing.T) {
 			notice := runNodeExecProbe(t, cwd, "node-load-exec-fixture", "load-exec-probe", packed)
 			if err := json.Unmarshal([]byte(notice), &got); err != nil {
 				t.Fatalf("outcomes %q: %v", notice, err)
+			}
+			if len(got) == 0 || !strings.HasPrefix(got[len(got)-1], "execPath=") {
+				t.Fatalf("outcomes %q: no execPath entry", got)
+			}
+			reported := strings.TrimPrefix(got[len(got)-1], "execPath=")
+			// With no other runtime requested the extension runs on the node on PATH.
+			if runtime := os.Getenv(tsruntime.EnvRuntime); runtime == "" || runtime == tsruntime.Node {
+				node, err := exec.LookPath("node")
+				if err != nil {
+					t.Fatalf("node is required for SDK conformance: %v", err)
+				}
+				printed, err := exec.Command(node, "-p", "process.execPath").Output()
+				if err != nil {
+					t.Fatalf("node -p process.execPath: %v", err)
+				}
+				if want := strings.TrimSpace(string(printed)); reported != want {
+					t.Fatalf("the extension ran on %q, want the node on PATH %q", reported, want)
+				}
+			}
+			want := wantFor(reported)
+			// The reported runtime must run a script, so a wrong path cannot make the reference fail the same way.
+			if want[0] != "ok=resolved:0:load-exec-ok:err:false" {
+				t.Fatalf("reference run with the reported execPath = %q", want[0])
 			}
 			if !slices.Equal(got, want) {
 				t.Errorf("load-time exec outcomes\n got %q\nwant %q", got, want)

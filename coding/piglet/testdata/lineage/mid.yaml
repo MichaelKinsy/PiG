@@ -1,0 +1,13 @@
+name: mid
+description: adds a skill, drops one, and narrows the built-in tools
+release:
+  version: 1.1.0
+extends:
+  source: local:./base.yaml
+  version: ^1.0
+  remove:
+    skills: [beta]
+tools: [read]
+skills:
+  - name: gamma
+    content: third

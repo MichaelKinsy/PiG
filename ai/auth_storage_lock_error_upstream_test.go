@@ -2,7 +2,6 @@ package ai
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"os"
 	"os/exec"
@@ -131,7 +130,7 @@ func TestFileModelsStoreLockErrorIsProperLockfileErrorUpstream(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "models-store.json")
 	staleNonEmptyLock(t, path+".lock")
 	want := runPiLockedStore(t, "models-write", path)
-	err := NewFileModelsStore(path).Write(t.Context(), "probe", ModelsStoreEntry{Models: []json.RawMessage{}})
+	err := NewFileModelsStore(path).Write(t.Context(), "probe", ModelsStoreEntry{Models: []AnyModel{}})
 	if err == nil || nodeerrno.ErrorCode(err) != "ENOTEMPTY" {
 		t.Fatalf("Write = %v, want rmdir's ENOTEMPTY", err)
 	}
@@ -303,7 +302,7 @@ func TestFileModelsStoreLockWaitAbortedAfterCreatingTheStoreUpstream(t *testing.
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
 	defer cancel()
-	err = NewFileModelsStore(path).Write(ctx, "probe", ModelsStoreEntry{Models: []json.RawMessage{}})
+	err = NewFileModelsStore(path).Write(ctx, "probe", ModelsStoreEntry{Models: []AnyModel{}})
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("Write with the lock held = %v, want the deadline", err)
 	}

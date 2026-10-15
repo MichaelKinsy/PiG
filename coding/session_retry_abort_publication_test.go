@@ -28,7 +28,7 @@ func TestRetryFailureAbortClearsWillRetryBeforePromptReturns(t *testing.T) {
 			retryEnds = append(retryEnds, event)
 		}
 	})
-	if _, err := h.session.Prompt(t.Context(), "test"); err != nil {
+	if err := h.session.Prompt(t.Context(), "test"); err != nil {
 		t.Fatal(err)
 	}
 	if attempt := h.session.retryAttempt.Load(); attempt != 0 {

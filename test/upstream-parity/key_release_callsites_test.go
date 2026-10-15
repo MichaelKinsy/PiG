@@ -117,7 +117,8 @@ var rawInputLoops = map[string]string{
 func TestInputDispatchFiltersKeyReleases(t *testing.T) {
 	root := repoRootForKeyRelease(t)
 
-	filters := []string{"dropKeyReleases(", "ShouldDeliverKey("}
+	// HandleTerminalInput and DispatchFocusedInput (tui/tui_input.go) deliver to the focused component through ShouldDeliverKey.
+	filters := []string{"dropKeyReleases(", "ShouldDeliverKey(", "HandleTerminalInput(", "DispatchFocusedInput("}
 	hasFilter := func(s string) bool {
 		for _, f := range filters {
 			if strings.Contains(s, f) {

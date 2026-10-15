@@ -9,7 +9,7 @@ import (
 )
 
 func BenchmarkExtensionHeaderContainer(b *testing.B) {
-	m := &InteractiveMode{opts: InteractiveOptions{LoginVisible: true}, extHeader: newSpecialLinesComponent(nil)}
+	m := &InteractiveMode{opts: InteractiveModeOptions{LoginVisible: true}, extHeader: newSpecialLinesComponent(nil)}
 	m.extHeader.SetLinesAt([]string{"header", "", "model", "context", "last row"}, 100)
 	header := m.headerContainer()
 	b.ReportAllocs()
@@ -29,7 +29,7 @@ func TestExtensionHeaderKeepsHostSpacers(t *testing.T) {
 		m.mountInteractiveTui(true)
 		ui := &ExtUIContext{m: m}
 		for _, lines := range [][]string{{"first"}, {"", "second", ""}, {}, {"last"}} {
-			ui.SetHeader(extension.WidthLines{Lines: lines, Width: 80})
+			ui.SetHeader(extension.FrameHeader(lines, 80))
 			want := slices.Clone(lines)
 			if visible {
 				want = append(append([]string{""}, want...), "")
@@ -52,6 +52,39 @@ func TestExtensionHeaderKeepsHostSpacers(t *testing.T) {
 			}
 		} else if got[0] != "after-header" {
 			t.Fatalf("quiet restoration: %q", got)
+		}
+	}
+}
+
+// Pi's headerContainer has no children until startup has the terminal's colors (interactive-mode.ts init(): ui.start(), then
+// applyFromSettings() and await waitForTerminalColors(), then Spacer, header, Spacer). The container already mounted in the first
+// layout stays empty while the query is pending and gains the spacers and header afterwards.
+func TestStartupHeaderStaysOutOfTheFirstPaintUntilTheColorsArrive(t *testing.T) {
+	for _, visible := range []bool{true, false} {
+		m := newSwitchTuiProbe(t)
+		m.opts.LoginVisible = visible
+		m.startupHeaderPending = true
+		first := m.headerContainer()
+		if first != m.headerContainer() {
+			t.Fatalf("visible=%v: a pending header must be one container shared by every mount", visible)
+		}
+		if got := first.Render(80); len(got) != 0 {
+			t.Fatalf("visible=%v: header rendered %q before the terminal's colors arrived", visible, got)
+		}
+		m.mountStartupHeader()
+		got := first.Render(80)
+		if visible && (len(got) < 3 || got[0] != "" || got[len(got)-1] != "") {
+			t.Fatalf("visible=%v: header after the colors lacks its host spacers: %q", visible, got)
+		}
+		if !visible && len(got) != 0 {
+			t.Fatalf("visible=%v: a silenced startup header rendered %q", visible, got)
+		}
+		want := got
+		if m.startupHeaderPending {
+			t.Fatalf("visible=%v: still pending after mountStartupHeader", visible)
+		}
+		if fresh := m.headerContainer(); fresh == first || len(fresh.Render(80)) != len(want) {
+			t.Fatalf("visible=%v: a later mount must build its own populated container", visible)
 		}
 	}
 }

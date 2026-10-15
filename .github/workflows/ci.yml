@@ -1,4 +1,3 @@
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 
 name: CI
@@ -20,7 +19,7 @@ concurrency:
   cancel-in-progress: true
 
 # Go comes from .go-version, Node from .node-version, and Pi from
-# internal/coding/pigversion/pigversion.go. make compliance checks every other copy
+# .upstream/pin (a release tag or a pinned commit). make compliance checks every other copy
 # of these pins.
 env:
   NPM_VERSION: 12.1.0
@@ -86,6 +85,15 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: ./automation/ci/check-dco.sh "$BASE_SHA" "$HEAD_SHA"
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: true
+      - name: Check test expectations edited with their code
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: go run ./test/parity/cmd/testprune lint -base "$BASE_SHA" -head "$HEAD_SHA"
 
   linux:
     name: Linux / ${{ matrix.shard }}
@@ -125,8 +133,17 @@ jobs:
             automation/images/ci-parity/package-lock.json
             automation/images/npm-runtime/package-lock.json
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        id: python
         with:
           python-version: '3.12'
+      # make test-sdk-py keeps its hash-locked venv under $PIG_CACHE_HOME/pig-sdk-py (~/.cache here) and names it by
+      # the lock and interpreter, so this key changes exactly when the script would build a new venv.
+      - name: Restore the Python SDK venv
+        if: matrix.shard == 'sdk'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-sdk-py
+          key: sdk-py-${{ runner.os }}-${{ steps.python.outputs.python-version }}-${{ hashFiles('extensions/sdk-py/requirements-dev.txt') }}
       # An unresponsive package mirror fails this step within its timeout instead of holding the job.
       - name: Install native test packages
         shell: bash
@@ -161,7 +178,24 @@ jobs:
           test "$(node --version)" = "v$(cat .node-version)"
           test "$(npm --version)" = "$NPM_VERSION"
           test "$(rustc --version | cut -d' ' -f2)" = "$RUST_VERSION"
-          test "$(extensions/sdk-ts/node_modules/.bin/pi --version)" = "$(awk -F'"' '/^const UpstreamVersion = "/ { print $2; exit }' internal/coding/pigversion/pigversion.go)"
+          python3 automation/pin/pin.py check-oracle
+      # Rust SDK dependencies and Pi's env daemon build into persistent targets (internal/testenv.SharedCargoTargetDir) named for a hash of their lockfiles, so a lock change selects a new directory and a hit skips the compile.
+      - name: Restore the Cargo registry and test targets
+        if: startsWith(matrix.shard, 'test-') || matrix.shard == 'sdk' || matrix.shard == 'race'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cache/pig-dev/cargo-target
+          key: cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-${{ hashFiles('extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-
+      - name: Warm the fixture caches
+        if: startsWith(matrix.shard, 'test-')
+        env:
+          CI: '1'
+        run: make test-warm
       - name: Run PiG verification shard
         env:
           CI: '1'
@@ -358,9 +392,9 @@ jobs:
           cygpath -w "$bin" >> "$GITHUB_PATH"
           export PATH="$bin:$PATH"
           test "$(npm --version)" = "$NPM_VERSION"
-          npm ci --prefix extensions/sdk-ts --ignore-scripts --no-audit --no-fund
-          # internal/experimental's pinned Radius probe transpiles Pi's source with this TypeScript.
-          npm ci --prefix test/parity/interface-extractor --ignore-scripts --no-audit --no-fund
+          # Builds Pi from source at the pin and links it as the oracle (automation/pin/oracle.py); the published package is not the oracle.
+          # setup-python on Windows provides python, not always python3.
+          "$(command -v python3 || command -v python)" automation/pin/pin.py install-oracle
       - name: Mirror the pinned Pi source
         # The extension host's parity tests read Pi's source from
         # .upstream/current, as on Linux (make upstream-mirror).
@@ -422,8 +456,8 @@ jobs:
           mkdir -p "$acceptance"
           export PIG_HOME="$acceptance/config with spaces"
           export PIG_CODING_AGENT_DIR="$PIG_HOME/agent"
-          run=$(automation/ci/test-shard-pattern.sh "${CLI_SHARD#cli-}" 8 ./cmd/pig)
-          go test -timeout 30m -run "$run" ./cmd/pig
+          run=$(automation/ci/test-shard-pattern.sh "${CLI_SHARD#cli-}" 8 ./coding/cli)
+          go test -timeout 30m -run "$run" ./coding/cli
       - name: Select this job's extension tests
         # Each extension job runs its half of the package's tests, split by automation/ci/test-shard-pattern.sh so every test runs in exactly one of the two jobs.
         if: startsWith(matrix.shard, 'extension-')
@@ -483,11 +517,23 @@ jobs:
           key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
 
   macos:
-    name: macOS native
+    name: macOS ${{ matrix.shard }}
     needs: [changes]
     if: needs.changes.outputs.product == 'true'
     runs-on: macos-15
-    timeout-minutes: 30
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        # native: the smoke run of the packages with macOS-specific code.
+        # cli-1 to cli-8: one job for each of the eight cmd/pig shards that
+        # make test-cli runs on Linux (automation/ci/test-shard-pattern.sh).
+        # extension-host-1 and extension-host-2: the subprocess extension host
+        # tests, split in two. packages: the remaining
+        # packages whose tests bind Unix sockets, watch paths or resolve
+        # symlinked temporary directories, which macOS spells differently from
+        # Linux (104-byte socket paths, /var -> /private/var).
+        shard: [native, cli-1, cli-2, cli-3, cli-4, cli-5, cli-6, cli-7, cli-8, extension-host-1, extension-host-2, packages]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -500,7 +546,20 @@ jobs:
         with:
           node-version-file: .node-version
           cache: npm
-          cache-dependency-path: extensions/sdk-ts/package-lock.json
+          cache-dependency-path: |
+            extensions/sdk-ts/package-lock.json
+            test/parity/interface-extractor/package-lock.json
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Select the qualified Rust toolchain
+        # The cmd/pig and extension host tests build Rust extensions with the toolchain Linux and Windows pin.
+        if: matrix.shard != 'native'
+        run: |
+          set -euo pipefail
+          rustup toolchain install "$RUST_VERSION" --profile minimal
+          rustup default "$RUST_VERSION"
+          test "$(rustc --version | cut -d' ' -f2)" = "$RUST_VERSION"
       - name: Install native test tools and pinned Pi oracle
         shell: bash
         run: |
@@ -512,17 +571,71 @@ jobs:
           echo "$bin" >> "$GITHUB_PATH"
           export PATH="$bin:$PATH"
           test "$(npm --version)" = "$NPM_VERSION"
-          npm ci --prefix extensions/sdk-ts --ignore-scripts --no-audit --no-fund
+          # Builds Pi from source at the pin and links it as the oracle (automation/pin/oracle.py); the published package is not the oracle.
+          python3 automation/pin/pin.py install-oracle
       - name: Mirror the pinned Pi source
         # The ai package's upstream tests read Pi's source from
         # .upstream/current, as on Linux (make upstream-mirror) and Windows.
         run: ./automation/gen/mirror-upstream.sh
+      - name: Install a current bash for the shard selection script
+        # test-shard-pattern.sh needs bash 4; macOS ships 3.2 as /bin/bash.
+        # Only the bash keg goes on PATH: the Homebrew bin directory also holds the image's default node and npm, which would shadow the pinned toolchain.
+        if: startsWith(matrix.shard, 'cli-') || startsWith(matrix.shard, 'extension-host-')
+        run: |
+          set -euo pipefail
+          brew install bash
+          echo "$(brew --prefix bash)/bin" >> "$GITHUB_PATH"
+      - name: Verify toolchain identities
+        # The Pi oracle and the Node extensions run under the node on PATH, so every later step must see the pinned toolchain.
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(go env GOVERSION)" = "go$(tr -d '\r\n' < .go-version)"
+          test "$(node --version)" = "v$(cat .node-version)"
+          test "$(npm --version)" = "$NPM_VERSION"
+          python3 automation/pin/pin.py check-oracle
       - name: Build and test native macOS paths
+        if: matrix.shard == 'native'
         run: |
           set -euo pipefail
           go build -trimpath -o bin/pig ./cmd/pig
           ./bin/pig --version
           go test ./ai ./internal/codingagent/tools ./internal/nativeplatform ./tui
+      - name: Test cmd/pig, shard ${{ matrix.shard }} of 8
+        # Each cli-N shard is its own job running shard N of automation/ci/test-shard-pattern.sh, as make test-cli runs the shards on Linux: each in its own go test process and timeout.
+        if: startsWith(matrix.shard, 'cli-')
+        env:
+          CLI_SHARD: ${{ matrix.shard }}
+        run: |
+          set -euo pipefail
+          acceptance="$RUNNER_TEMP/pig native acceptance"
+          mkdir -p "$acceptance"
+          export PIG_HOME="$acceptance/config with spaces"
+          export PIG_CODING_AGENT_DIR="$PIG_HOME/agent"
+          run=$(automation/ci/test-shard-pattern.sh "${CLI_SHARD#cli-}" 8 ./coding/cli)
+          go test -timeout 30m -run "$run" ./coding/cli
+      - name: Test the extension host, half ${{ matrix.shard }}
+        # Each extension-host-N job runs its half of the package's tests, split by automation/ci/test-shard-pattern.sh so every test runs in exactly one of the two jobs.
+        if: startsWith(matrix.shard, 'extension-host-')
+        env:
+          EXTENSION_SHARD: ${{ matrix.shard }}
+        run: |
+          set -euo pipefail
+          acceptance="$RUNNER_TEMP/pig native acceptance"
+          mkdir -p "$acceptance"
+          export PIG_HOME="$acceptance/config with spaces"
+          export PIG_CODING_AGENT_DIR="$PIG_HOME/agent"
+          run=$(automation/ci/test-shard-pattern.sh "${EXTENSION_SHARD##*-}" 2 ./coding/extension/host/subprocess)
+          go test -timeout 30m -run "$run" ./coding/extension/host/subprocess
+      - name: Test env and coding/piglet
+        if: matrix.shard == 'packages'
+        run: |
+          set -euo pipefail
+          acceptance="$RUNNER_TEMP/pig native acceptance"
+          mkdir -p "$acceptance"
+          export PIG_HOME="$acceptance/config with spaces"
+          export PIG_CODING_AGENT_DIR="$PIG_HOME/agent"
+          go test -timeout 30m ./env ./coding/piglet
 
   android:
     name: Android build

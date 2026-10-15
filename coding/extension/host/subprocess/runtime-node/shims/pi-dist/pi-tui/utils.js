@@ -1213,8 +1213,11 @@ export function extractSegments(line, beforeEnd, afterStart, afterLen, strictAft
             if (currentCol < beforeEnd) {
                 pendingAnsiBefore += ansi.code;
             }
-            else if (currentCol >= afterStart && currentCol < afterEnd && afterStarted) {
-                // Only include after we've started "after" (styling already prepended)
+            else if (currentCol >= afterStart &&
+                currentCol < afterEnd &&
+                (afterStarted || ansi.code.startsWith("\x1b_"))) {
+                // SGR codes are only included after "after" started (styling already prepended). Zero-width APC
+                // markers like CURSOR_MARKER are not tracked styling, so keep them at the boundary too.
                 after += ansi.code;
             }
             i += ansi.length;

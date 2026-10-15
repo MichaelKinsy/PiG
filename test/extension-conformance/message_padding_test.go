@@ -32,7 +32,7 @@ func TestMessageOutputPadAcrossSDKs(t *testing.T) {
 				if err := json.Unmarshal([]byte(wire), &options); err != nil {
 					t.Fatal(err)
 				}
-				component, ok := renderer(extension.CustomMessageRef{CustomType: "conformance-message", Content: "padding-options", Display: true}, options, nil).(interface{ Render(int) []string })
+				component, ok := renderer(extension.CustomMessage{CustomType: "conformance-message", Content: "padding-options", Display: true}, options, nil).(interface{ Render(int) []string })
 				if !ok {
 					t.Fatal("renderer returned no component")
 				}

@@ -246,3 +246,51 @@ func TestResolveGoKeepsACommandThatCannotReportItsRoot(t *testing.T) {
 		t.Fatalf("GOROOT still inherited (%d entries)", n)
 	}
 }
+
+// installManagedGo lays out a PiG-managed toolchain, as `pig setup go` leaves
+// it, under the PIG_HOME that selectGo set.
+func installManagedGo(t *testing.T, version string) string {
+	t.Helper()
+	root := ManagedGoRoot(os.Getenv("PIG_HOME"))
+	src := fakeGoRoot(t, version)
+	if err := os.MkdirAll(filepath.Dir(root), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(src, root); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
+// A go on PATH older than the extension SDK's go directive cannot build
+// extensions under GOTOOLCHAIN=local; the toolchain `pig setup go` installed
+// is used instead.
+func TestResolveGoPrefersManagedGoOverAPathGoBelowTheFloor(t *testing.T) {
+	old := fakeGoRoot(t, "go1.22.2")
+	selectGo(t, filepath.Join(old, "bin"), "")
+	managed := installManagedGo(t, "go1.27.2\ntime 2026-01-01T00:00:00Z\n")
+
+	tc, err := ResolveGo()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := filepath.Join(managed, "bin", "go"); tc.Command != want || tc.Root != managed {
+		t.Fatalf("ResolveGo = %+v, want the managed toolchain %s", tc, want)
+	}
+}
+
+// A go on PATH that meets the floor stays the selection even when a managed
+// toolchain exists.
+func TestResolveGoKeepsAPathGoMeetingTheFloor(t *testing.T) {
+	current := fakeGoRoot(t, "go1.26.1")
+	selectGo(t, filepath.Join(current, "bin"), "")
+	installManagedGo(t, "go1.27.2")
+
+	tc, err := ResolveGo()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tc.Root != current {
+		t.Fatalf("ResolveGo root = %s, want the PATH install %s", tc.Root, current)
+	}
+}

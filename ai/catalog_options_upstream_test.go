@@ -176,7 +176,7 @@ func TestModelCatalogTypes(t *testing.T) {
 			if m.API != APIOpenAIResponses || m.ContextWindow != 1000000 || m.MaxOutputTokens != 128000 {
 				t.Fatalf("model = %+v", m)
 			}
-			assertThinkingLevelMap(t, m, map[ThinkingLevel]string{ThinkingOff: "none", ThinkingMax: "max"})
+			assertThinkingLevelMap(t, m, map[ModelThinkingLevel]string{ThinkingOff: "none", ThinkingMax: "max"})
 		}
 	})
 }

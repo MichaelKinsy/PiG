@@ -1,3 +1,5 @@
+//go:build !pig_strip_node_extensions
+
 package subprocess
 
 import (
@@ -9,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
@@ -89,6 +92,10 @@ func TestNodeLoadFailureReportsPiLoaderMessage(t *testing.T) {
 	want := map[string]string{
 		"throws":     "Failed to load extension: pi.notAThing is not a function",
 		"no-factory": "Extension does not export a valid factory function: " + noFactory,
+	}
+	if request := TypeScriptRuntimeRequest(); request.ID != tsruntime.Node {
+		// A factory's own error is the load error on every runtime. The Bun row runs JavaScriptCore, which writes its own message for the call (docs/site/docs/typescript-runtimes.md, kind bun).
+		want["throws"] = "Failed to load extension: pi.notAThing is not a function. (In 'pi.notAThing()', 'pi.notAThing' is undefined)"
 	}
 	if len(errs) != len(want) {
 		t.Fatalf("errs = %v, want one per failed extension", errs)

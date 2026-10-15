@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"maps"
 	"strconv"
+	"sync"
 	"syscall"
 )
 
@@ -225,14 +226,14 @@ var windowsTranslations = [...]struct {
 	{193, "ERROR_BAD_EXE_FORMAT", "EFTYPE"},
 }
 
-// windowsCodes maps each Windows error of windowsTranslations to its code.
-var windowsCodes = func() map[syscall.Errno]string {
+// windowsCodes maps each Windows error of windowsTranslations to its code. The tables derived from codes are built on first use, not on every start.
+var windowsCodes = sync.OnceValue(func() map[syscall.Errno]string {
 	translated := make(map[syscall.Errno]string, len(windowsTranslations))
 	for _, entry := range windowsTranslations {
 		translated[entry.errno] = entry.code
 	}
 	return translated
-}()
+})
 
 // commonPosixCodes names the errnos, among libuv's codes, that the syscall
 // package defines on Linux, macOS and Windows. On Windows these are the POSIX
@@ -308,15 +309,15 @@ var commonPosixCodes = map[syscall.Errno]string{
 
 // posixCodes names every errno, among libuv's codes, that the running
 // platform's syscall package defines.
-var posixCodes = func() map[syscall.Errno]string {
+var posixCodes = sync.OnceValue(func() map[syscall.Errno]string {
 	named := maps.Clone(commonPosixCodes)
 	maps.Copy(named, platformPosixCodes)
 	return named
-}()
+})
 
 // codeByErrno is the code libuv's uv_err_name gives each errno on the running
 // platform.
-var codeByErrno = func() map[int]string {
+var codeByErrno = sync.OnceValue(func() map[int]string {
 	named := make(map[int]string, len(codes))
 	for code := range codes {
 		if errno, ok := Errno(code); ok {
@@ -324,19 +325,19 @@ var codeByErrno = func() map[int]string {
 		}
 	}
 	return named
-}()
+})
 
 // windowsCode returns the Node error code libuv reports on Windows for the
 // system error errno.
 func windowsCode(errno syscall.Errno) (string, bool) {
-	code, ok := windowsCodes[errno]
+	code, ok := windowsCodes()[errno]
 	return code, ok
 }
 
 // posixCode returns the Node error code for one of the running platform's
 // syscall errnos.
 func posixCode(errno syscall.Errno) (string, bool) {
-	code, ok := posixCodes[errno]
+	code, ok := posixCodes()[errno]
 	return code, ok
 }
 
@@ -365,7 +366,7 @@ func Description(code string) (string, bool) {
 // running platform. libuv names an errno it does not know "Unknown system
 // error <errno>" in both (src/uv-common.c uv__unknown_err_code).
 func Name(errno int) (code, description string) {
-	if code, ok := codeByErrno[errno]; ok {
+	if code, ok := codeByErrno()[errno]; ok {
 		return code, codes[code].description
 	}
 	unknown := "Unknown system error " + strconv.Itoa(errno)

@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 
@@ -21,12 +22,18 @@ import (
 //  1. Explicit path (already absolute or relative)
 //  2. PIG_PIGLET_PATH env var
 //  3. PIG_PIGLET_NAME env var → search paths
-//  4. Workspace: .pig/piglets/<name>.yaml
+//  4. Workspace: .pig/piglets/<name>.yaml, only when the project is trusted
 //  5. User: ~/.pig/piglets/<name>.yaml
 //  6. System: /etc/pig/piglets/<name>.yaml
-func Resolve(nameOrPath string) (string, error) {
+//
+// The workspace is project config, so it follows project trust: a stored decision for the project, no prompt. Resolve reads that decision;
+// ResolveWithTrust takes the run's --approve / --no-approve override ahead of it.
+func Resolve(nameOrPath string) (string, error) { return ResolveWithTrust(nameOrPath, nil) }
+
+// ResolveWithTrust is Resolve with a project trust override: nil defers to the stored decision for the working directory.
+func ResolveWithTrust(nameOrPath string, trustOverride *bool) (string, error) {
 	// 1. Explicit path: if it looks like a path, use it directly
-	if nameOrPath != "" && (strings.Contains(nameOrPath, "/") || strings.HasSuffix(nameOrPath, ".yaml") || strings.HasSuffix(nameOrPath, ".yml")) {
+	if isExplicitPigletPath(nameOrPath) {
 		if _, err := os.Stat(nameOrPath); err != nil {
 			return "", fmt.Errorf("piglet path %s: %w", nameOrPath, err)
 		}
@@ -51,32 +58,87 @@ func Resolve(nameOrPath string) (string, error) {
 	}
 
 	// 3-6. Search paths
-	candidates := searchPaths(name)
+	workspaceTrusted := workspacePigletsTrusted(trustOverride)
+	candidates := searchPaths(name, workspaceTrusted)
 	for _, path := range candidates {
 		if _, err := os.Stat(path); err == nil {
 			return path, nil
 		}
 	}
-	return "", fmt.Errorf("piglet %q not found in search paths:\n  %s",
-		name, strings.Join(candidates, "\n  "))
+	message := fmt.Sprintf("piglet %q not found in search paths:\n  %s", name, strings.Join(candidates, "\n  "))
+	if !workspaceTrusted {
+		if ignored := workspacePigletPath(name); ignored != "" {
+			if _, err := os.Stat(ignored); err == nil {
+				message += fmt.Sprintf("\n%s is ignored because the project is not trusted. Use /trust in the project to save a trust decision, or pass --approve.", ignored)
+			}
+		}
+	}
+	return "", errors.New(message)
+}
+
+// workspacePigletsTrusted reports whether the working directory's project config may supply a Piglet. It resolves project trust as startup does
+// without a UI: the run's override, else a stored trust decision for the project, else the global defaultProjectTrust setting, where only
+// "always" trusts. An undecided project under "ask" is not trusted here: a Piglet is chosen before startup can ask.
+func workspacePigletsTrusted(override *bool) bool {
+	if override != nil {
+		return *override
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return false
+	}
+	agentDir := codingagent.AgentDir()
+	decision, err := codingagent.NewProjectTrustStore(agentDir).Get(cwd)
+	if err != nil {
+		return false
+	}
+	if decision != nil {
+		return *decision
+	}
+	settings := codingagent.NewSettingsManagerWithOptions(cwd, agentDir, codingagent.SettingsManagerCreateOptions{ProjectTrusted: new(false)})
+	return settings.GetDefaultProjectTrust() == codingagent.DefaultProjectTrustAlways
+}
+
+// ShadowedWorkspacePiglet returns the name the run selected when the project defines a Piglet of that name in its config directory and project trust
+// withholds it, or "" when nothing is withheld. An explicit path and an empty selection are never shadowed.
+func ShadowedWorkspacePiglet(nameOrPath string, trustOverride *bool) string {
+	if nameOrPath == "" || isExplicitPigletPath(nameOrPath) || workspacePigletsTrusted(trustOverride) {
+		return ""
+	}
+	if _, err := os.Stat(workspacePigletPath(nameOrPath)); err != nil {
+		return ""
+	}
+	return nameOrPath
+}
+
+// isExplicitPigletPath reports whether a --piglet value is a file path, used as given, rather than a name searched in the Piglet directories.
+func isExplicitPigletPath(nameOrPath string) bool {
+	return nameOrPath != "" && (strings.Contains(nameOrPath, "/") || strings.HasSuffix(nameOrPath, ".yaml") || strings.HasSuffix(nameOrPath, ".yml"))
+}
+
+func workspacePigletPath(name string) string {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(codingagent.ProjectConfigDir(cwd), "piglets", pigletFilename(name))
 }
 
 // searchPaths returns the ordered list of candidate paths for a piglet name.
-func searchPaths(name string) []string {
+func searchPaths(name string, includeWorkspace bool) []string {
 	var paths []string
 	filename := pigletFilename(name)
 
 	// Workspace: .pig/piglets/<name>.yaml
-	cwd, err := os.Getwd()
-	if err == nil {
-		paths = append(paths, filepath.Join(codingagent.ProjectConfigDir(cwd), "piglets", filename))
+	if workspace := workspacePigletPath(name); includeWorkspace && workspace != "" {
+		paths = append(paths, workspace)
 	}
 
-	// User Piglet source (honors PIG_HOME), matching `pig piglet add`.
+	// User Piglet source (honors PIG_HOME), matching `pig piglet add`, then the system one: /etc/pig/piglets/<name>.yaml
 	paths = append(paths, filepath.Join(codingagent.PigletsDir(), filename))
-
-	// System: /etc/pig/piglets/<name>.yaml
-	paths = append(paths, filepath.Join("/etc", "pig", "piglets", filename))
+	if system := SystemPigletsDir(); system != "" {
+		paths = append(paths, filepath.Join(system, filename))
+	}
 
 	return paths
 }
@@ -103,6 +165,10 @@ type RecordInfo struct {
 	BinaryDigest        string
 	CurrentPath         string
 	Components          []RecordComponent
+	// Strip lists the built-ins the Binary record says its Piglet strips.
+	Strip []StrippedID
+	// StripKeep lists the Binary's keep-mode strip lists and their kept IDs.
+	StripKeep []StripIDList
 }
 
 // RecordComponent is one executable component's realization and materialization
@@ -176,9 +242,16 @@ func List() ([]PigletInfo, error) {
 			piglets[i].Records = append(piglets[i].Records, record.RecordInfo)
 			matched = true
 		}
-		if !matched {
-			piglets = append(piglets, PigletInfo{Name: record.Piglet, Location: "binary", Records: []RecordInfo{record.RecordInfo}})
+		if matched {
+			continue
 		}
+		// Every release and target of a Piglet without a matching source is one binary-only Piglet.
+		binaryOnly := slices.IndexFunc(piglets, func(info PigletInfo) bool { return info.Path == "" && info.Name == record.Piglet })
+		if binaryOnly < 0 {
+			piglets = append(piglets, PigletInfo{Name: record.Piglet, Location: "binary"})
+			binaryOnly = len(piglets) - 1
+		}
+		piglets[binaryOnly].Records = append(piglets[binaryOnly].Records, record.RecordInfo)
 	}
 	if len(errs) > 0 {
 		return nil, errors.Join(errs...)
@@ -333,6 +406,7 @@ func listManagedRecords() ([]managedRecord, []error) {
 			ComponentPlanDigest: resolution.Resolution.ComponentPlan.Digest,
 			ResolutionDigest:    resolution.Digest, BinaryDigest: binary.Digest,
 			Components: recordComponents(&resolution.Resolution.ComponentPlan),
+			Strip:      recordStrip(binary.Binary.Strip), StripKeep: recordStripKeep(binary.Binary.StripKeep),
 		}})
 	}
 	pulled, pullErrs := pigletrelease.ListInstalled()
@@ -489,9 +563,35 @@ func allPigletDirs() []string {
 	}
 
 	dirs = append(dirs, codingagent.PigletsDir())
-
-	dirs = append(dirs, filepath.Join("/etc", "pig", "piglets"))
+	if system := SystemPigletsDir(); system != "" {
+		dirs = append(dirs, system)
+	}
 	return dirs
+}
+
+// SystemPigletsDir is the machine-wide Piglet directory, or "" where PiG has none. A rooted path without a volume is drive-relative on Windows
+// (C:\etc\pig\piglets), a place any local user can create, so Windows has no ambient system Piglet directory.
+func SystemPigletsDir() string { return systemPigletsDirFor(runtime.GOOS) }
+
+func systemPigletsDirFor(goos string) string {
+	if goos == "windows" {
+		return ""
+	}
+	return "/etc/pig/piglets"
+}
+
+// AmbientPigletPath is the Piglet file a container image bakes in at /opt/pig/piglet.yaml, or "" when there is none or the platform has no such location.
+func AmbientPigletPath() string { return ambientPigletPathFor(runtime.GOOS) }
+
+func ambientPigletPathFor(goos string) string {
+	if goos == "windows" {
+		return ""
+	}
+	const path = "/opt/pig/piglet.yaml"
+	if _, err := os.Stat(path); err != nil {
+		return ""
+	}
+	return path
 }
 
 func classifyLocation(dir string) string {
@@ -502,7 +602,7 @@ func classifyLocation(dir string) string {
 		return "workspace"
 	case dir == codingagent.PigletsDir():
 		return "user"
-	case strings.HasPrefix(dir, "/etc/"):
+	case SystemPigletsDir() != "" && dir == SystemPigletsDir():
 		return "system"
 	default:
 		return "unknown"

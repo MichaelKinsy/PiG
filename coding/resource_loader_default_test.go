@@ -1,5 +1,7 @@
 package coding
 
+// pi: packages/coding-agent/src/core/resource-loader.ts
+
 import (
 	"os"
 	"path/filepath"
@@ -57,7 +59,7 @@ func skillNames(loader ResourceLoader) []string {
 
 func (f resourceLoaderFixture) session(t *testing.T, trusted bool, loader ResourceLoader) *Session {
 	t.Helper()
-	services, err := NewServices(ServicesOptions{CWD: f.cwd, AgentDir: f.agentDir, ProjectTrusted: &trusted})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: f.cwd, AgentDir: f.agentDir, ProjectTrusted: &trusted})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -195,7 +197,7 @@ func TestSessionDefaultPromptComesFromItsResourceLoader(t *testing.T) {
 	})
 	t.Run("supplied loader", func(t *testing.T) {
 		loader := fixedResourceLoader{
-			skills: []*Skill{{Name: "custom-skill", Description: "A custom skill", Path: "/fake/SKILL.md", Dir: "/fake"}},
+			skills: []*Skill{{Name: "custom-skill", Description: "A custom skill", FilePath: "/fake/SKILL.md", BaseDir: "/fake"}},
 			files:  []ContextFile{{Path: "/fake/AGENTS.md", Content: "custom context"}}, system: "custom system prompt", appended: []string{"first", "second"},
 		}
 		session := f.session(t, true, loader)
@@ -228,7 +230,7 @@ func TestSessionDefaultPromptComesFromItsResourceLoader(t *testing.T) {
 		}
 	})
 	t.Run("an explicit prompt stays the caller's", func(t *testing.T) {
-		services, err := NewServices(ServicesOptions{CWD: f.cwd, AgentDir: f.agentDir})
+		services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: f.cwd, AgentDir: f.agentDir})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -264,7 +266,20 @@ func TestSetPromptResourcesKeepsTheLoadersPromptInputs(t *testing.T) {
 }
 
 // fixedResourceLoader is a supplied loader with every resource fixed.
+// resourceLoaderMutations supplies the ResourceLoader members a fixed test loader does not exercise: it has no extensions or themes and cannot be extended or reloaded.
+type resourceLoaderMutations struct{}
+
+func (resourceLoaderMutations) GetExtensions() LoadExtensionsResult { return LoadExtensionsResult{} }
+func (resourceLoaderMutations) GetThemes() ThemesResult             { return ThemesResult{} }
+func (resourceLoaderMutations) ExtendResources(ResourceExtensionPaths) error {
+	return errStaticResourceLoader
+}
+func (resourceLoaderMutations) Reload(...ResourceLoaderReloadOptions) error {
+	return errStaticResourceLoader
+}
+
 type fixedResourceLoader struct {
+	resourceLoaderMutations
 	skills   []*Skill
 	files    []ContextFile
 	system   string
@@ -280,6 +295,10 @@ func (l fixedResourceLoader) GetAgentsFiles() AgentsFilesResult {
 }
 func (l fixedResourceLoader) GetSystemPrompt() (string, bool) { return l.system, l.system != "" }
 func (l fixedResourceLoader) GetAppendSystemPrompt() []string { return l.appended }
+func (fixedResourceLoader) GetSystemPromptSource() (ResourceSource, bool) {
+	return ResourceSource{}, false
+}
+func (fixedResourceLoader) GetAppendSystemPromptSources() []ResourceSource { return nil }
 
 // Reload rediscovers on demand, following the settings' project trust at that moment (resource-loader.ts reload).
 func TestDefaultLoaderReloadFollowsTrustAndDisk(t *testing.T) {
@@ -317,7 +336,7 @@ func (l *mutableResourceLoader) GetSkills() SkillsResult { return l.fixedResourc
 // A clone of a Session that builds its default prompt from its loader keeps doing so: Pi's replacement AgentSession rebuilds its prompt from the resource loader it is given (agent-session.ts:1379-1391), so the clone reports the loader's skills in systemPromptOptions and renders what the loader holds at its next rebuild. A clone of a Session bound to NoResources keeps leaving the loader out of its prompt.
 func TestCloneKeepsBuildingTheDefaultPromptFromTheLoader(t *testing.T) {
 	f := newResourceLoaderFixture(t)
-	loader := &mutableResourceLoader{fixedResourceLoader{skills: []*Skill{{Name: "first-skill", Description: "The first skill.", Path: "/fake/first/SKILL.md", Dir: "/fake/first"}}}}
+	loader := &mutableResourceLoader{fixedResourceLoader{skills: []*Skill{{Name: "first-skill", Description: "The first skill.", FilePath: "/fake/first/SKILL.md", BaseDir: "/fake/first"}}}}
 	session := f.session(t, true, loader)
 	clone, err := session.Clone()
 	if err != nil {
@@ -336,7 +355,7 @@ func TestCloneKeepsBuildingTheDefaultPromptFromTheLoader(t *testing.T) {
 		t.Fatalf("clone options = customPromptSet %v, customPrompt %q, skills %#v; want the loader's skills and no custom prompt", options.CustomPromptSet, options.CustomPrompt, options.Skills)
 	}
 
-	loader.skills = []*Skill{{Name: "second-skill", Description: "The second skill.", Path: "/fake/second/SKILL.md", Dir: "/fake/second"}}
+	loader.skills = []*Skill{{Name: "second-skill", Description: "The second skill.", FilePath: "/fake/second/SKILL.md", BaseDir: "/fake/second"}}
 	clone.SetActiveToolsByName(clone.ActiveToolNames())
 	if prompt := clone.SystemPrompt(); !strings.Contains(prompt, "second-skill") || strings.Contains(prompt, "first-skill") {
 		t.Fatalf("clone did not rebuild its prompt from the loader:\n%s", prompt)
@@ -345,7 +364,7 @@ func TestCloneKeepsBuildingTheDefaultPromptFromTheLoader(t *testing.T) {
 	t.Run("NoResources with prompt resources set", func(t *testing.T) {
 		writeSkill(t, filepath.Join(f.agentDir, "skills"), "user-skill")
 		source := f.session(t, true, NoResources)
-		source.SetPromptResources(nil, []*Skill{{Name: "overlay-skill", Description: "An overlay skill.", Path: "/fake/overlay/SKILL.md", Dir: "/fake/overlay"}})
+		source.SetPromptResources(nil, []*Skill{{Name: "overlay-skill", Description: "An overlay skill.", FilePath: "/fake/overlay/SKILL.md", BaseDir: "/fake/overlay"}})
 		source.SetActiveToolsByName(source.ActiveToolNames())
 		clone, err := source.Clone()
 		if err != nil {
@@ -376,7 +395,7 @@ func TestNewSessionReloadsSettingsLikeCreateAgentSession(t *testing.T) {
 	writeSkill(t, filepath.Join(f.agentDir, "extra"), "override-skill")
 	writeSkill(t, filepath.Join(f.agentDir, "late"), "late-skill")
 	trusted := true
-	services, err := NewServices(ServicesOptions{CWD: f.cwd, AgentDir: f.agentDir, ProjectTrusted: &trusted})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: f.cwd, AgentDir: f.agentDir, ProjectTrusted: &trusted})
 	if err != nil {
 		t.Fatal(err)
 	}

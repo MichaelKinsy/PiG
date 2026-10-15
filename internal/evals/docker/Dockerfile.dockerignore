@@ -1,0 +1,7 @@
+.git
+**/.eval
+**/node_modules
+tmp
+bin
+**/.env
+**/.env.*

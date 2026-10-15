@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package sdk
@@ -80,10 +79,19 @@ type ToolDefinition struct {
 	// PrepareLoadout adjusts how the loadout is presented to the model while this tool is active. The host calls it whenever the active tools change.
 	// upstream: types.ts:607 (prepareLoadout)
 	PrepareLoadout ToolPrepareLoadoutFunc
+	// ReachesTools is for tools that reach other tools: which tools a call with the given input may reach. Extensions that register tools late use it from their tool_call handler to finish registering the tools a call needs before it runs.
+	// upstream: types.ts:621 (reachesTools)
+	ReachesTools ToolReachesToolsFunc
 	// RenderCall renders the tool call; nil uses the host's default.
 	RenderCall ToolRenderCallFunc
 	// RenderResult renders the tool result; nil uses the host's default.
 	RenderResult ToolRenderResultFunc
+	// RenderCallView renders the tool call as a kit view (D107); it wins
+	// over RenderCall.
+	RenderCallView ToolRenderCallViewFunc
+	// RenderResultView renders the tool result as a kit view (D107); it wins
+	// over RenderResult.
+	RenderResultView ToolRenderResultViewFunc
 }
 
 // RegisterTool registers a tool from its full definition, as pi.registerTool
@@ -107,8 +115,10 @@ func (e *Extension) RegisterTool(def ToolDefinition) {
 		DefaultActive:   def.DefaultActive,
 		PreparesLoadout: def.PrepareLoadout != nil,
 		prepareLoadout:  def.PrepareLoadout,
+		ReachesTools:    def.ReachesTools != nil,
+		reachesTools:    def.ReachesTools,
 	}
-	e.registerTool(decl, def.Execute, def.PrepareArguments, ToolRenderers{Shell: def.RenderShell, Call: def.RenderCall, Result: def.RenderResult})
+	e.registerTool(decl, def.Execute, def.PrepareArguments, ToolRenderers{Shell: def.RenderShell, Call: def.RenderCall, Result: def.RenderResult, CallView: def.RenderCallView, ResultView: def.RenderResultView})
 }
 
 func (e *Extension) registerTool(decl toolDef, handler ToolFunc, prepare ToolPrepareArgumentsFunc, renderers ToolRenderers) {
@@ -118,7 +128,7 @@ func (e *Extension) registerTool(decl toolDef, handler ToolFunc, prepare ToolPre
 	if renderers.Shell == ToolRenderShellSelf {
 		decl.RenderShell = string(ToolRenderShellSelf)
 	}
-	decl.RendersCall, decl.RendersResult = renderers.Call != nil, renderers.Result != nil
+	decl.RendersCall, decl.RendersResult = renderers.rendersCall(), renderers.rendersResult()
 	decl.PreparesArguments = prepare != nil
 	replaced := false
 	for i := range e.tools {
@@ -137,6 +147,11 @@ func (e *Extension) registerTool(decl toolDef, handler ToolFunc, prepare ToolPre
 		e.toolLoadoutFuncs[decl.Name] = decl.prepareLoadout
 	} else {
 		delete(e.toolLoadoutFuncs, decl.Name)
+	}
+	if decl.reachesTools != nil {
+		e.toolReachFuncs[decl.Name] = decl.reachesTools
+	} else {
+		delete(e.toolReachFuncs, decl.Name)
 	}
 	e.toolRenderMu.Lock()
 	if e.toolRenderers == nil {

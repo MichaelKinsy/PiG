@@ -115,6 +115,10 @@ func runChild(mode string) int {
 		return 0
 	case "canned":
 		return runCannedChild()
+	case "scripted":
+		return runScriptedChild()
+	case "report-launch":
+		return runReportLaunchChild()
 	case "emit":
 		fmt.Print("not json\n\n{\"type\":\"custom\",\"n\":1}\r\nnull\n[1]\n")
 		fmt.Print("{\"type\":\"response\",\"id\":\"req_99\",\"command\":\"x\",\"success\":true}\n")
@@ -125,6 +129,21 @@ func runChild(mode string) int {
 		return 0
 	}
 	return 2
+}
+
+// runReportLaunchChild records how it was launched (arguments after the program name, working directory and the
+// variable the test sets through RpcClientOptions.Env), then waits for stdin to close.
+func runReportLaunchChild() int {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return 3
+	}
+	report, _ := json.Marshal(map[string]any{"args": os.Args[1:], "cwd": cwd, "env": os.Getenv("PIG_RPCCLIENT_TEST_MARK"), "inherited": os.Getenv(childModeEnv)})
+	if err := os.WriteFile(os.Getenv("PIG_RPCCLIENT_TEST_LOG"), report, 0o600); err != nil {
+		return 3
+	}
+	_, _ = io.Copy(io.Discard, os.Stdin)
+	return 0
 }
 
 func runCannedChild() int {
@@ -193,6 +212,9 @@ func loggedCommands(t *testing.T, logPath string) []string {
 }
 
 // Upstream rpc-client-clear-queue.test.ts.
+// mutation-checked: zeroing the results of RpcClient.ClearQueue fails it
+// Pi: packages/coding-agent/src/modes/rpc/rpc-client.ts:233 (clearQueue)
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:74 (RpcClient.start); packages/coding-agent/src/modes/rpc/rpc-client.ts:233 (RpcClient.clearQueue).
 func TestRpcClientClearQueueSendsTheClearQueueCommand(t *testing.T) {
 	client, logPath := childClient(t, "canned")
 	if err := client.Start(); err != nil {
@@ -212,6 +234,7 @@ func TestRpcClientClearQueueSendsTheClearQueueCommand(t *testing.T) {
 }
 
 // Upstream rpc-client-clone.test.ts.
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:74 (RpcClient.start); packages/coding-agent/src/modes/rpc/rpc-client.ts:403 (RpcClient.clone).
 func TestRpcClientCloneSendsTheCloneCommand(t *testing.T) {
 	client, logPath := childClient(t, "canned")
 	if err := client.Start(); err != nil {
@@ -228,6 +251,9 @@ func TestRpcClientCloneSendsTheCloneCommand(t *testing.T) {
 
 // Upstream rpc-client-process-exit.test.ts: an in-flight request is rejected
 // when the child process exits.
+// mutation-checked: zeroing the results of RpcClient.GetCommands fails it
+// Pi: packages/coding-agent/src/modes/rpc/rpc-client.ts:458 (getCommands)
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:74 (RpcClient.start); packages/coding-agent/src/modes/rpc/rpc-client.ts:251 (RpcClient.getState); packages/coding-agent/src/modes/rpc/rpc-client.ts:458 (RpcClient.getCommands).
 func TestRpcClientRejectsInFlightRequestWhenChildExits(t *testing.T) {
 	client, _ := childClient(t, "exit-on-stdin")
 	if err := client.Start(); err != nil {
@@ -243,6 +269,7 @@ func TestRpcClientRejectsInFlightRequestWhenChildExits(t *testing.T) {
 	}
 }
 
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:74 (RpcClient.start); packages/coding-agent/src/modes/rpc/rpc-client.ts:198 (RpcClient.prompt); packages/coding-agent/src/modes/rpc/rpc-client.ts:210 (RpcClient.steer); packages/coding-agent/src/modes/rpc/rpc-client.ts:218 (RpcClient.followUp); packages/coding-agent/src/modes/rpc/rpc-client.ts:243 (RpcClient.newSession); packages/coding-agent/src/modes/rpc/rpc-client.ts:259 (RpcClient.setModel); packages/coding-agent/src/modes/rpc/rpc-client.ts:287 (RpcClient.setThinkingLevel); packages/coding-agent/src/modes/rpc/rpc-client.ts:324 (RpcClient.compact); packages/coding-agent/src/modes/rpc/rpc-client.ts:332 (RpcClient.setAutoCompaction); packages/coding-agent/src/modes/rpc/rpc-client.ts:376 (RpcClient.exportHtml).
 func TestRpcClientSerializesCommandsLikeJSONStringify(t *testing.T) {
 	client, logPath := childClient(t, "canned")
 	if err := client.Start(); err != nil {
@@ -287,6 +314,7 @@ func TestRpcClientSerializesCommandsLikeJSONStringify(t *testing.T) {
 	}
 }
 
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:74 (RpcClient.start); packages/coding-agent/src/modes/rpc/rpc-client.ts:419 (RpcClient.getEntries).
 func TestRpcClientSurfacesErrorResponses(t *testing.T) {
 	client, _ := childClient(t, "canned")
 	if err := client.Start(); err != nil {
@@ -302,6 +330,7 @@ func TestRpcClientSurfacesErrorResponses(t *testing.T) {
 // trailing CR stripped, non-JSON and null lines ignored, unmatched responses
 // and non-object JSON delivered to listeners, and a final unterminated record
 // delivered at end of stream.
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:74 (RpcClient.start); packages/coding-agent/src/modes/rpc/rpc-client.ts:172 (RpcClient.onEvent).
 func TestRpcClientDeliversStdoutRecordsToListeners(t *testing.T) {
 	client, _ := childClient(t, "emit")
 	var events []JsonAgentSessionEvent
@@ -339,6 +368,9 @@ func TestRpcClientDeliversStdoutRecordsToListeners(t *testing.T) {
 // Upstream 0.99.1 iterates a snapshot of the listeners, so a listener that
 // unsubscribes itself while handling an event does not make a later listener
 // miss that event (rpc-client.ts:535-537).
+// mutation-checked: zeroing the results of RpcClient.OnEvent fails it
+// Pi: packages/coding-agent/src/modes/rpc/rpc-client.ts:172 (onEvent)
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:172 (RpcClient.onEvent).
 func TestRpcClientListenerUnsubscribeDuringDispatchDoesNotSkipLaterListeners(t *testing.T) {
 	client := NewRpcClient(RpcClientOptions{})
 	var calls []string
@@ -356,6 +388,7 @@ func TestRpcClientListenerUnsubscribeDuringDispatchDoesNotSkipLaterListeners(t *
 // A listener subscribed during dispatch is not called for the event being
 // dispatched: upstream iterates a copy taken before the first call
 // (rpc-client.ts:535).
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:172 (RpcClient.onEvent).
 func TestRpcClientListenerSubscribedDuringDispatchWaitsForTheNextEvent(t *testing.T) {
 	client := NewRpcClient(RpcClientOptions{})
 	var calls []string
@@ -376,6 +409,12 @@ func TestRpcClientListenerSubscribedDuringDispatchWaitsForTheNextEvent(t *testin
 
 // prompt, steer and followUp return the disposition of the response data
 // (rpc-client.ts:198-221); a prompt carries streamingBehavior after images.
+// mutation-checked: zeroing the results of RpcClient.FollowUp, RpcClient.Steer fails it
+// Pi: packages/coding-agent/src/modes/rpc/rpc-client.ts:218 (followUp)
+// Pi: packages/coding-agent/src/modes/rpc/rpc-client.ts:210 (steer)
+// mutation-checked: zeroing the results of RpcClient.Prompt fails it
+// Pi: packages/coding-agent/src/modes/rpc/rpc-client.ts:198 (prompt)
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:74 (RpcClient.start); packages/coding-agent/src/modes/rpc/rpc-client.ts:198 (RpcClient.prompt); packages/coding-agent/src/modes/rpc/rpc-client.ts:210 (RpcClient.steer); packages/coding-agent/src/modes/rpc/rpc-client.ts:218 (RpcClient.followUp).
 func TestRpcClientPromptSteerAndFollowUpReturnTheDisposition(t *testing.T) {
 	client, logPath := childClient(t, "canned")
 	if err := client.Start(); err != nil {
@@ -427,6 +466,9 @@ func TestRpcClientPromptSteerAndFollowUpReturnTheDisposition(t *testing.T) {
 
 // A success response without data cannot yield a disposition: upstream reads
 // response.data.disposition and throws a TypeError (rpc-client.ts:203,212,220).
+// mutation-checked: zeroing the results of RpcClient.Prompt fails it
+// Pi: packages/coding-agent/src/modes/rpc/rpc-client.ts:198 (prompt)
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:74 (RpcClient.start); packages/coding-agent/src/modes/rpc/rpc-client.ts:198 (RpcClient.prompt); packages/coding-agent/src/modes/rpc/rpc-client.ts:210 (RpcClient.steer); packages/coding-agent/src/modes/rpc/rpc-client.ts:218 (RpcClient.followUp).
 func TestRpcClientDispositionOfAResponseWithoutDataIsAnError(t *testing.T) {
 	client, _ := childClient(t, "canned")
 	if err := client.Start(); err != nil {
@@ -444,6 +486,9 @@ func TestRpcClientDispositionOfAResponseWithoutDataIsAnError(t *testing.T) {
 	}
 }
 
+// mutation-checked: zeroing the results of RpcClient.Start fails it
+// Pi: packages/coding-agent/src/modes/rpc/rpc-client.ts:74 (start)
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:74 (RpcClient.start); packages/coding-agent/src/modes/rpc/rpc-client.ts:145 (RpcClient.stop); packages/coding-agent/src/modes/rpc/rpc-client.ts:251 (RpcClient.getState).
 func TestRpcClientLifecycleErrors(t *testing.T) {
 	client, _ := childClient(t, "canned")
 	if _, err := client.GetState(); err == nil || err.Error() != "Client not started" {
@@ -465,6 +510,7 @@ func TestRpcClientLifecycleErrors(t *testing.T) {
 	}
 }
 
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:74 (RpcClient.start); packages/coding-agent/src/modes/rpc/rpc-client.ts:251 (RpcClient.getState).
 func TestRpcClientStartReportsEarlyExit(t *testing.T) {
 	client := NewRpcClient(RpcClientOptions{CliPath: os.Args[0], Env: map[string]string{childModeEnv: "unknown-mode"}})
 	t.Cleanup(client.Stop)
@@ -479,6 +525,7 @@ func TestRpcClientStartReportsEarlyExit(t *testing.T) {
 	}
 }
 
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:74 (RpcClient.start).
 func TestRpcClientStartReportsSpawnFailure(t *testing.T) {
 	client := NewRpcClient(RpcClientOptions{CliPath: filepath.Join(t.TempDir(), "missing-pig")})
 	err := client.Start()

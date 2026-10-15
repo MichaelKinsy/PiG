@@ -1,5 +1,7 @@
 package coding
 
+// pi: packages/coding-agent/src/core/model-runtime.ts
+
 import (
 	"encoding/json"
 	"net/http"
@@ -26,7 +28,7 @@ func TestCustomModelReasoningSurvivesRuntimeWire(t *testing.T) {
 			}))
 			defer server.Close()
 			services := newTestServices(t)
-			if err := services.Registry().RegisterProvider("neuralwatt", extension.ProviderConfig{BaseURL: server.URL, API: ai.API(api), APIKey: "test-key"}); err != nil {
+			if err := services.Registry().RegisterExtensionProvider("neuralwatt", extension.ProviderConfig{BaseURL: server.URL, API: ai.API(api), APIKey: "test-key"}); err != nil {
 				t.Error(err)
 			}
 			model, err := BuildModel("neuralwatt/custom", services)
@@ -34,8 +36,8 @@ func TestCustomModelReasoningSurvivesRuntimeWire(t *testing.T) {
 				t.Fatal(err)
 			}
 			model.ProviderMeta.Reasoning = true
-			model.Capabilities.MaxThinking = ai.ThinkingHigh
-			message := services.ModelRuntime().CompleteSimple(t.Context(), model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("hello")}}}, ai.StreamOptions{Thinking: ai.ThinkingHigh})
+			model.Capabilities.MaxThinking = ai.ThinkingLevelHigh
+			message := services.ModelRuntime().CompleteSimple(t.Context(), model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("hello")}}}, ai.StreamOptions{Thinking: ai.ThinkingLevelHigh})
 			if message.StopReason != ai.StopReasonError {
 				t.Fatalf("fixture error response = %+v", message)
 			}
@@ -62,7 +64,7 @@ func TestCustomModelReasoningSurvivesRequestPreparation(t *testing.T) {
 	for _, api := range []string{"openai-completions", "openai-responses"} {
 		t.Run(api, func(t *testing.T) {
 			services := newTestServices(t)
-			if err := services.Registry().RegisterProvider("neuralwatt", extension.ProviderConfig{BaseURL: "https://fixture.invalid/v1", API: ai.API(api), APIKey: "test-key"}); err != nil {
+			if err := services.Registry().RegisterExtensionProvider("neuralwatt", extension.ProviderConfig{BaseURL: "https://fixture.invalid/v1", API: ai.API(api), APIKey: "test-key"}); err != nil {
 				t.Error(err)
 			}
 			model, err := BuildModel("neuralwatt/zai-org/GLM-5.1-FP8", services)
@@ -70,8 +72,8 @@ func TestCustomModelReasoningSurvivesRequestPreparation(t *testing.T) {
 				t.Fatal(err)
 			}
 			model.ProviderMeta.Reasoning = true
-			model.Capabilities.MaxThinking = ai.ThinkingHigh
-			_, _, options, err := services.ModelRuntime().prepareRequest(t.Context(), model, ai.StreamOptions{Thinking: ai.ThinkingHigh})
+			model.Capabilities.MaxThinking = ai.ThinkingLevelHigh
+			_, _, options, err := services.ModelRuntime().prepareRequest(t.Context(), model, ai.StreamOptions{Thinking: ai.ThinkingLevelHigh})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -36,7 +36,7 @@ func TestRuntimeOpenUsesTheValidatedSessionSnapshot(t *testing.T) {
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	session, err := runtime.startSessionWithFactory(SessionStartOptions{ResumePath: path, Model: fakeModel(), NoSession: true, NoTools: "all"}, func(s *Services, options SessionOptions) (*Session, error) {
+	session, err := runtime.startSessionWithFactory(SessionStartOptions{ResumePath: path, Model: fakeModel(), NoSession: true, NoTools: "all"}, func(s *AgentSessionServices, options SessionOptions) (*Session, error) {
 		// The factory receives ownership after validation. A later filesystem change must not reopen or replace that snapshot.
 		if err := os.Remove(path); err != nil {
 			t.Fatal(err)

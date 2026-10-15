@@ -18,8 +18,12 @@ func (r *ModelRegistry) registryAuthConfig(id string) (ai.ProviderAuth, provider
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	if radius := r.radiusProviderLocked(id); radius != nil {
-		base = ai.RadiusProviderAuth(radius)
+		base = radius.Auth()
 		baseErr = nil
+	}
+	// upstream: model-runtime.ts composeProvider (`nativeExtensionProviders.get(providerId) ?? builtins.get(providerId)`): a provider object's own auth is the base, so its declared OAuth and API-key methods, logins and loginLabel are the provider's.
+	if native := r.native[id].provider; native != nil {
+		base, baseErr = native.Auth, nil
 	}
 	config, configured := r.effectiveProviderConfigLocked(id)
 	if !configured {
@@ -47,7 +51,7 @@ func (r *ModelRegistry) effectiveProviderConfigLocked(id string) (providerConfig
 	if r.config != nil {
 		config, configured = r.config.Providers[id]
 	}
-	dynamic, registered := r.dynamic[id]
+	dynamic, registered := r.registrationLocked(id)
 	if !registered {
 		return config, configured
 	}
@@ -74,7 +78,29 @@ func (r *ModelRegistry) effectiveProviderConfigLocked(id string) (providerConfig
 // source as "fallback" rather than "models_json_key" in the same case
 // (provider-composer.ts:configuredRequestAuthStatus). The caller holds r.mu.
 func (r *ModelRegistry) effectiveAPIKeyFromRegistration(id string) bool {
-	return r.dynamic[id].APIKey != ""
+	registration, _ := r.registrationLocked(id)
+	return registration.APIKey != ""
+}
+
+// registrationLocked is the provider's active registration: an extension registration, or the input of a core registerProvider(name, config) call as the request-auth fields of a providerConfig (provider-composer.ts reads both as one `extension` input). The caller holds r.mu.
+func (r *ModelRegistry) registrationLocked(id string) (providerConfig, bool) {
+	if dynamic, ok := r.dynamic[id]; ok {
+		return dynamic, true
+	}
+	r.nativeMu.Lock()
+	input := r.nativeInputs[id]
+	r.nativeMu.Unlock()
+	if input == nil {
+		return providerConfig{}, false
+	}
+	registration := providerConfig{APIKey: input.APIKey, AuthHeader: input.AuthHeader}
+	if input.Headers != nil {
+		registration.Headers = make(map[string]*string, len(input.Headers))
+		for name, value := range input.Headers {
+			registration.Headers[name] = &value
+		}
+	}
+	return registration, true
 }
 
 // CheckRegistryAuth checks provider configuration without resolving command-backed fallback keys.
@@ -177,7 +203,7 @@ func (r *ModelRegistry) ResolveCompatibilityModelAuth(ctx context.Context, model
 		case configErr != nil:
 			err = configErr
 		case authHeader:
-			err = fmt.Errorf("authHeader requires a resolved API key")
+			err = errAuthHeaderNeedsAPIKey
 		default:
 			return &ai.AuthResult{Auth: ai.ModelAuth{Headers: headers}}, nil
 		}
@@ -186,7 +212,7 @@ func (r *ModelRegistry) ResolveCompatibilityModelAuth(ctx context.Context, model
 		if cause := errors.Unwrap(err); cause != nil {
 			err = cause
 		}
-		if err.Error() == "authHeader requires a resolved API key" {
+		if errors.Is(err, errAuthHeaderNeedsAPIKey) {
 			err = fmt.Errorf(`No API key found for "%s"`, model.ProviderMeta.ProviderID)
 		}
 		return nil, err
@@ -200,6 +226,12 @@ func (r *ModelRegistry) ProviderInsecure(providerID string) bool {
 	defer r.mu.RUnlock()
 	if dynamic, ok := r.dynamic[providerID]; ok {
 		return dynamic.Insecure
+	}
+	r.nativeMu.Lock()
+	composed := r.nativeInputs[providerID]
+	r.nativeMu.Unlock()
+	if composed != nil {
+		return composed.Insecure
 	}
 	if r.config != nil {
 		return r.config.Providers[providerID].Insecure

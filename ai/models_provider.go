@@ -155,11 +155,7 @@ func CreateProvider(input CreateProviderOptions) *ModelsProvider {
 			if refresh.Signal.Err() != nil {
 				return nil
 			}
-			raw, err := encodeModelsCatalog(models)
-			if err != nil {
-				return err
-			}
-			_, err = refresh.Publish(ModelsPublication{Persist: &ModelsStoreEntry{Models: raw, CheckedAt: new(float64(time.Now().UnixMilli()))}, Update: func() { mu.Lock(); dynamic = models; mu.Unlock() }})
+			_, err = refresh.Publish(ModelsPublication{Persist: &ModelsStoreEntry{Models: models, CheckedAt: new(float64(time.Now().UnixMilli()))}, Update: func() { mu.Lock(); dynamic = models; mu.Unlock() }})
 			return err
 		}
 	}

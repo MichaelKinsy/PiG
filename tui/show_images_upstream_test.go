@@ -14,7 +14,7 @@ func TestShowImagesUpstreamRender(t *testing.T) {
 	for _, current := range []bool{true, false} {
 		for _, width := range []int{20, 80} {
 			t.Run(fmt.Sprintf("current_%t_width_%d", current, width), func(t *testing.T) {
-				s := NewShowImagesSelector(current, nil, nil)
+				s := NewShowImagesSelectorComponent(current, nil, nil)
 				yes, no := "  Yes", "  No"
 				if current {
 					yes = "→ Yes"
@@ -39,14 +39,16 @@ func TestShowImagesUpstreamRender(t *testing.T) {
 	}
 }
 
+// show-images-selector.ts:47 getSelectList returns the live SelectList whose onSelect (:34) and onCancel (:38) are the constructor's callbacks, with the current value preselected (:31).
 func TestShowImagesListInputKeepsCallbacksLive(t *testing.T) {
 	old := GetTUIKeybindings()
+	restoreKeybindingsAfterTest(t)
 	SetTUIKeybindings(NewTUIKeybindingsManager(map[string][]string{"tui.select.down": {"ctrl+r"}}))
 	t.Cleanup(func() { SetTUIKeybindings(old) })
 	var calls []string
-	s := NewShowImagesSelector(true, func(value bool) { calls = append(calls, fmt.Sprint(value)) }, func() { calls = append(calls, "cancel") })
+	s := NewShowImagesSelectorComponent(true, func(value bool) { calls = append(calls, fmt.Sprint(value)) }, func() { calls = append(calls, "cancel") })
 	for _, input := range []string{"ignored", "\x1b[B", "\r", "\x12", "\r", "\x1b", "\r"} {
-		s.List().HandleInput(input)
+		s.GetSelectList().HandleInput(input)
 	}
 	if want := []string{"true", "false", "cancel", "false"}; !slices.Equal(calls, want) {
 		t.Fatalf("direct list callbacks = %v, want %v", calls, want)
@@ -62,7 +64,7 @@ func TestShowImagesUpstreamCallbacks(t *testing.T) {
 			t.Run(fmt.Sprintf("current_%t_input_%q", current, input), func(t *testing.T) {
 				var selected []bool
 				cancels := 0
-				s := NewShowImagesSelector(current, func(v bool) { selected = append(selected, v) }, func() { cancels++ })
+				s := NewShowImagesSelectorComponent(current, func(v bool) { selected = append(selected, v) }, func() { cancels++ })
 				want := current
 				if input != "" {
 					s.HandleInput(input)
@@ -79,7 +81,7 @@ func TestShowImagesUpstreamCallbacks(t *testing.T) {
 		}
 		t.Run(fmt.Sprintf("cancel_%t", current), func(t *testing.T) {
 			selects, cancels := 0, 0
-			s := NewShowImagesSelector(current, func(bool) { selects++ }, func() { cancels++ })
+			s := NewShowImagesSelectorComponent(current, func(bool) { selects++ }, func() { cancels++ })
 			s.HandleInput("\x1b")
 			if selects != 0 || cancels != 1 {
 				t.Fatalf("select/cancel = %d/%d, want 0/1", selects, cancels)

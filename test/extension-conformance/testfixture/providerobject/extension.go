@@ -43,6 +43,26 @@ func makeProvider() *sdk.Provider {
 			if method, ok := meta["method"].(string); ok {
 				text = method
 			}
+			// The caller's request callbacks reach the Provider by name (types.ts ProviderRequestOptions.onPayload, StreamOptions.onResponse and onProviderStreamEvent).
+			if options.OnResponse != nil {
+				if err := options.OnResponse(map[string]any{"status": 207, "headers": map[string]any{"x-carrier": "response"}}, m); err != nil {
+					return nil, err
+				}
+			}
+			if options.OnProviderStreamEvent != nil {
+				if err := options.OnProviderStreamEvent(map[string]any{"carrier": "event"}, m); err != nil {
+					return nil, err
+				}
+			}
+			if options.OnPayload != nil {
+				replaced, err := options.OnPayload(map[string]any{"carrier": "payload"}, m)
+				if err != nil {
+					return nil, err
+				}
+				if replacement, ok := replaced.(map[string]any); ok {
+					text, _ = replacement["text"].(string)
+				}
+			}
 			message["content"] = []any{map[string]any{"type": "text", "text": text}}
 			s.Push(map[string]any{"type": "done", "reason": "stop", "message": message})
 		}
@@ -61,30 +81,39 @@ func makeProvider() *sdk.Provider {
 					if key != nil {
 						auth["apiKey"] = *key
 					}
-					if value, ok := input.Credential["key"]; ok {
+					if value, ok := input.Credential.Get("key"); ok {
 						auth["apiKey"] = value
 					}
 					return &sdk.AuthResult{Auth: auth, Source: new("caller context")}, err
 				},
-				Login: func(input sdk.AuthInteraction) (map[string]any, error) {
+				Login: func(input sdk.AuthInteraction) (*sdk.Credential, error) {
 					key, err := input.Prompt(map[string]any{"type": "secret", "message": "Carrier key"})
-					return map[string]any{"type": "api_key", "key": key}, err
+					return sdk.NewCredential("type", "api_key", "key", key), err
 				},
 			},
 			OAuth: &sdk.OAuthAuth{Name: "Carrier OAuth", IsSubscription: new(true), LoginLabel: new("Carrier login"),
-				Login: func(input sdk.AuthInteraction) (map[string]any, error) {
+				Login: func(input sdk.AuthInteraction, options sdk.LoginOptions) (*sdk.Credential, error) {
 					key, err := input.Prompt(map[string]any{"type": "text", "message": "Carrier OAuth"})
-					return map[string]any{"type": "oauth", "access": key, "refresh": "refresh", "expires": 100}, err
+					if err != nil {
+						return nil, err
+					}
+					device := "none"
+					if options.GetDeviceID != nil {
+						if device, err = options.GetDeviceID(); err != nil {
+							return nil, err
+						}
+					}
+					return sdk.NewCredential("type", "oauth", "access", key+"@"+device, "refresh", "refresh", "expires", 100), nil
 				},
-				Refresh: func(input map[string]any, _ context.Context) (map[string]any, error) {
-					result := map[string]any{}
-					maps.Copy(result, input)
-					result["access"] = "rotated"
-					result["expires"] = 200
+				Refresh: func(input *sdk.Credential, _ context.Context) (*sdk.Credential, error) {
+					result := input.Clone()
+					result.Set("access", "rotated")
+					result.Set("expires", 200)
 					return result, nil
 				},
-				ToAuth: func(input map[string]any) (map[string]any, error) {
-					return map[string]any{"apiKey": input["access"], "baseUrl": "https://carrier.invalid"}, nil
+				ToAuth: func(input *sdk.Credential) (map[string]any, error) {
+					value, _ := input.Get("access")
+					return map[string]any{"apiKey": value, "baseUrl": "https://carrier.invalid"}, nil
 				},
 			},
 		},
@@ -93,8 +122,23 @@ func makeProvider() *sdk.Provider {
 			defer mu.Unlock()
 			return append([]map[string]any{}, models...), nil
 		},
-		FilterModels: func(models []map[string]any, credential map[string]any) ([]map[string]any, error) {
-			if credential["key"] == "selected" {
+		// GetAllModels lists a model of the all-types catalog that getModels (chat) does not, and FilterAllModels shows every model to the "all" credential.
+		GetAllModels: func() ([]map[string]any, error) {
+			mu.Lock()
+			defer mu.Unlock()
+			extra := map[string]any{}
+			maps.Copy(extra, model)
+			extra["id"] = "carrier-all-only"
+			return append(append([]map[string]any{}, models...), extra), nil
+		},
+		FilterAllModels: func(models []map[string]any, credential *sdk.Credential) ([]map[string]any, error) {
+			if credential.String("key") == "all" {
+				return models, nil
+			}
+			return []map[string]any{}, nil
+		},
+		FilterModels: func(models []map[string]any, credential *sdk.Credential) ([]map[string]any, error) {
+			if credential.String("key") == "selected" {
 				return models[:1], nil
 			}
 			return []map[string]any{}, nil
@@ -108,7 +152,8 @@ func makeProvider() *sdk.Provider {
 				defer mu.Unlock()
 				extra := map[string]any{}
 				maps.Copy(extra, model)
-				extra["id"] = "refreshed"
+				// The refreshed model carries the base URL the refresh context gave: an SDK that drops RefreshModelsContext.baseUrl publishes "refreshed:".
+				extra["id"] = "refreshed:" + input.BaseURL
 				models = append(models, extra)
 				return nil
 			}})
@@ -144,7 +189,7 @@ func probe(ctx sdk.Context, path string) error {
 		return err
 	}
 	model := models[0]
-	filtered, err := p.FilterModels(models, map[string]any{"type": "api_key", "key": "selected"})
+	filtered, err := p.FilterModels(models, sdk.NewCredential("type", "api_key", "key", "selected"))
 	if err != nil {
 		return err
 	}
@@ -165,7 +210,7 @@ func probe(ctx sdk.Context, path string) error {
 	if err != nil {
 		return err
 	}
-	login, err := p.Auth.OAuth.Login(interaction)
+	login, err := p.Auth.OAuth.Login(interaction, sdk.LoginOptions{GetDeviceID: func() (string, error) { return "caller-device", nil }})
 	if err != nil {
 		return err
 	}
@@ -178,7 +223,7 @@ func probe(ctx sdk.Context, path string) error {
 		return err
 	}
 	order := []string{}
-	err = p.RefreshModels(sdk.RefreshModelsContext{Force: new(true), Signal: context.Background(), Publish: func(publication sdk.ModelsPublication) (bool, error) {
+	err = p.RefreshModels(sdk.RefreshModelsContext{Force: new(true), BaseURL: "https://regional.invalid/v1", Signal: context.Background(), Publish: func(publication sdk.ModelsPublication) (bool, error) {
 		if string(publication.Persist) != "null" {
 			return false, errors.New("persist presence lost")
 		}

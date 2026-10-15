@@ -3,7 +3,6 @@ package codingagent
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -15,86 +14,106 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-func TestSettingsSelectorUpstream(t *testing.T) {
+// initSettingsSelectorTheme is the test file's beforeAll: initTheme("dark") and setKeybindings(new KeybindingsManager()).
+func initSettingsSelectorTheme(t *testing.T) {
+	t.Helper()
 	previousKeys, previousTheme := tui.GetTUIKeybindings(), tui.ActiveTheme().Name
 	_ = DefaultKeybindingsManager()
 	tui.SetThemeByName("dark")
 	t.Cleanup(func() { tui.SetTUIKeybindings(previousKeys); tui.SetThemeByName(previousTheme) })
+}
 
-	// packages/coding-agent/test/settings-selector.test.ts:24 (upstream 0.99.1)
+// packages/ai/src/providers/faux.ts:141-154,668 (FauxProviderHandle.appendResponses, unregister).
+// Pi: packages/coding-agent/src/modes/interactive/components/settings-selector.ts:115 (SettingsCallbacks.onModelThinkingLevelChange); packages/coding-agent/src/modes/interactive/components/settings-selector.ts:116 (SettingsCallbacks.onModelThinkingLevelRemove).
+func TestSettingsSelectorUpstream(t *testing.T) {
+	initSettingsSelectorTheme(t)
+
+	// packages/coding-agent/test/settings-selector.test.ts:24
 	t.Run("cycles through fullscreen settings", func(t *testing.T) {
-		for _, tc := range []struct {
-			label string
-			want  []string
-			read  func(*SettingsManager) string
-		}{
-			{"Fullscreen exit output", []string{"resume-hint", "transcript"}, (*SettingsManager).GetFullscreenExitOutput},
-			{"Fullscreen scrollbar", []string{"always", "hidden", "auto"}, (*SettingsManager).GetFullscreenScrollbar},
-			{"Fullscreen copy on select", []string{"false", "true"}, func(sm *SettingsManager) string { return fmt.Sprint(sm.GetFullscreenCopyOnSelect()) }},
-			// #9758: custom values from settings.json stay in the cycle.
-			{"Fullscreen wheel scrolling", []string{"10", "auto", "1"}, func(sm *SettingsManager) string {
-				if lines := sm.GetFullscreenWheelScrollLines(); !lines.Auto {
-					return fmt.Sprint(lines.Lines)
-				}
-				return "auto"
-			}},
-		} {
-			t.Run(tc.label, func(t *testing.T) {
-				sm := NewSettingsManager(t.TempDir(), t.TempDir())
-				if err := sm.UpdateGlobal(func(s *Settings) {
-					s.FullscreenExitOutput = "transcript"
-					s.FullscreenScrollbar = "auto"
-					s.FullscreenCopyOnSelect = new(true)
-					s.FullscreenWheelScrollLines = json.RawMessage("7")
-				}); err != nil {
-					t.Fatal(err)
-				}
-				var changes []string
-				sc := &SlashContext{SettingsManager: sm, Append: func(s string) { t.Fatalf("unexpected output: %s", s) }, OnSettingApplied: func(_ string, value string) {
-					changes = append(changes, value)
-					if saved := tc.read(sm); saved != value {
-						t.Fatalf("saved value=%q, callback=%q", saved, value)
-					}
-				}}
-				sc.ShowSettingsList = func(items []tui.SettingItem, onChange func(string, string) string) {
-					list := tui.NewSettingsList(items)
-					for _, char := range tc.label {
-						list.HandleInput(string(char))
-					}
-					for range tc.want {
-						list.HandleInput("\r")
-						if !list.Done() || list.ChangedID == "" {
-							t.Fatalf("setting %q did not cycle", tc.label)
-						}
-						id, value := list.ChangedID, list.ChangedValue
-						list.Reset()
-						list.UpdateValue(id, onChange(id, value))
-					}
-				}
-				if err := settingsHandlerTUI(sc); err != nil {
-					t.Fatal(err)
-				}
-				if !slices.Equal(changes, tc.want) {
-					t.Fatalf("changes=%v, want %v", changes, tc.want)
-				}
-			})
+		var exitOutput, scrollbar, copyOnSelect, wheelScrollLines []string
+		config := SettingsConfig{
+			FullscreenExitOutput:       "transcript",
+			FullscreenScrollbar:        "auto",
+			FullscreenCopyOnSelect:     true,
+			FullscreenWheelScrollLines: WheelScrollLines{Lines: 7},
+			DefaultModel:               "not set",
+		}
+		callbacks := SettingsCallbacks{
+			OnFullscreenExitOutputChange:   func(output FullscreenExitOutput) { exitOutput = append(exitOutput, string(output)) },
+			OnFullscreenScrollbarChange:    func(mode string) { scrollbar = append(scrollbar, mode) },
+			OnFullscreenCopyOnSelectChange: func(enabled bool) { copyOnSelect = append(copyOnSelect, fmt.Sprint(enabled)) },
+			OnFullscreenWheelScrollLinesChange: func(lines WheelScrollLines) {
+				wheelScrollLines = append(wheelScrollLines, wheelScrollLinesLabel(lines))
+			},
+		}
+		cycle := func(label string, count int) {
+			list := NewSettingsSelectorComponent(config, callbacks).GetSettingsList()
+			for _, char := range label {
+				list.HandleInput(string(char))
+			}
+			for range count {
+				list.HandleInput("\r")
+			}
+		}
+		cycle("Fullscreen exit output", 2)
+		if want := []string{"resume-hint", "transcript"}; !slices.Equal(exitOutput, want) {
+			t.Fatalf("exit output changes = %v, want %v", exitOutput, want)
+		}
+		cycle("Fullscreen scrollbar", 3)
+		if want := []string{"always", "hidden", "auto"}; !slices.Equal(scrollbar, want) {
+			t.Fatalf("scrollbar changes = %v, want %v", scrollbar, want)
+		}
+		cycle("Fullscreen copy on select", 2)
+		if want := []string{"false", "true"}; !slices.Equal(copyOnSelect, want) {
+			t.Fatalf("copy on select changes = %v, want %v", copyOnSelect, want)
+		}
+		// #9758: custom values from settings.json stay in the cycle.
+		cycle("Fullscreen wheel scrolling", 3)
+		if want := []string{"10", "auto", "1"}; !slices.Equal(wheelScrollLines, want) {
+			t.Fatalf("wheel scroll lines changes = %v, want %v", wheelScrollLines, want)
 		}
 	})
-	// packages/coding-agent/test/settings-selector.test.ts:65 (upstream 0.99.1): the system theme comes first, then automatic.
+	// packages/coding-agent/test/settings-selector.test.ts:65: the system theme comes first, then automatic.
 	t.Run("keeps the configured fixed theme marked while browsing", func(t *testing.T) {
-		frames := captureSettingsThemeBrowsing(t, "dark", "dark", []string{"system", "dark", "light"}, "\x1b[B", "\x1b")
-		assertSettingsFrameMarkers(t, frames, 0, "→ ✓ dark")
-		listing := regexp.MustCompile(` {4}system +Theme created from your terminal's colors\n {4}automatic +Use separate themes`)
-		if !slices.ContainsFunc(frames, func(frame settingsSelectorFrame) bool { return frame.consumed == 0 && listing.MatchString(frame.text) }) {
-			t.Fatalf("no first frame lists the system theme before automatic: %+v", frames)
+		config := SettingsConfig{DefaultModel: "not set", CurrentTheme: "dark", TerminalTheme: "dark", AvailableThemes: []string{"system", "dark", "light"}}
+		list := NewSettingsSelectorComponent(config, SettingsCallbacks{OnThemePreview: func(string) {}, OnCancel: func() {}}).GetSettingsList()
+		list.SelectItem("theme")
+		list.HandleInput("\r")
+		output := stripANSITest(strings.Join(list.Render(120), "\n"))
+		if !regexp.MustCompile(` {4}system +Theme created from your terminal's colors\n {4}automatic +Use separate themes`).MatchString(output) {
+			t.Fatalf("the list does not put the system theme before automatic:\n%s", output)
 		}
-		assertSettingsFrameMarkers(t, frames, 1, "  ✓ dark", "→   light")
+		if !strings.Contains(output, "→ ✓ dark") {
+			t.Fatalf("the fixed theme is not marked:\n%s", output)
+		}
+		list.HandleInput("\x1b[B")
+		output = stripANSITest(strings.Join(list.Render(120), "\n"))
+		for _, marker := range []string{"  ✓ dark", "→   light"} {
+			if !strings.Contains(output, marker) {
+				t.Fatalf("missing %q after browsing:\n%s", marker, output)
+			}
+		}
 	})
 	// packages/coding-agent/test/settings-selector.test.ts:85
 	t.Run("keeps a configured automatic theme marked while browsing", func(t *testing.T) {
-		frames := captureSettingsThemeBrowsing(t, "light/dark", "dark", []string{"dark", "light", "other"}, "\r", "\x1b[B", "\x1b", "\x1b")
-		assertSettingsFrameMarkers(t, frames, 1, "Automatic Theme", "Choose themes for terminal light and dark appearance.", "Light/dark detection requires terminal support.", "Light Theme", "→ ✓ light")
-		assertSettingsFrameMarkers(t, frames, 2, "Automatic Theme", "Light Theme", "  ✓ light", "→   other")
+		config := SettingsConfig{DefaultModel: "not set", CurrentTheme: "light/dark", TerminalTheme: "dark", AvailableThemes: []string{"dark", "light", "other"}}
+		list := NewSettingsSelectorComponent(config, SettingsCallbacks{OnThemePreview: func(string) {}, OnCancel: func() {}}).GetSettingsList()
+		list.SelectItem("theme")
+		list.HandleInput("\r")
+		list.HandleInput("\r")
+		output := stripANSITest(strings.Join(list.Render(120), "\n"))
+		for _, marker := range []string{"Automatic Theme", "Choose themes for terminal light and dark appearance.", "Light/dark detection requires terminal support.", "Light Theme", "→ ✓ light"} {
+			if !strings.Contains(output, marker) {
+				t.Fatalf("missing %q:\n%s", marker, output)
+			}
+		}
+		list.HandleInput("\x1b[B")
+		output = stripANSITest(strings.Join(list.Render(120), "\n"))
+		for _, marker := range []string{"  ✓ light", "→   other"} {
+			if !strings.Contains(output, marker) {
+				t.Fatalf("missing %q after browsing:\n%s", marker, output)
+			}
+		}
 	})
 	// packages/coding-agent/test/settings-selector.test.ts:110; the harness model comes from the same faux model factory semantics.
 	t.Run("keeps the configured per-model thinking level marked while browsing", func(t *testing.T) {
@@ -102,39 +121,29 @@ func TestSettingsSelectorUpstream(t *testing.T) {
 		t.Cleanup(faux.Unregister)
 		model := faux.GetModel("thinking-model")
 		key := modelSpec(model)
-		sm := NewSettingsManager(t.TempDir(), t.TempDir())
-		if err := sm.UpdateGlobal(func(s *Settings) {
-			s.DefaultProvider, s.DefaultModel = model.ProviderMeta.ProviderID, model.ID
-			s.DefaultThinkingLevel = "high"
-			s.ModelThinkingLevels = map[string]string{key: "medium"}
-		}); err != nil {
-			t.Fatal(err)
+		config := SettingsConfig{
+			DefaultModel:           key,
+			AvailableDefaultModels: []*ai.Model{model},
+			ThinkingLevel:          "high",
+			ModelThinkingLevels:    map[string]string{key: "medium"},
 		}
-		sc := &SlashContext{SettingsManager: sm, Append: func(s string) { t.Fatalf("unexpected output: %s", s) }}
-		sc.ModelThinkingSubmenu = func(_ string, done func(*string)) tui.Component {
-			return newModelThinkingSubmenu(sm.Get(), []*ai.Model{model}, "", func(*ai.Model, string) { t.Fatal("browsing applied a thinking level") }, func() { done(nil) })
+		callbacks := SettingsCallbacks{
+			OnCancel:                   func() {},
+			OnModelThinkingLevelChange: func(string, string, string) { t.Fatal("browsing applied a thinking level") },
+			OnModelThinkingLevelRemove: func(string, string) { t.Fatal("browsing cleared an override") },
 		}
-		sc.ShowSettingsList = func(items []tui.SettingItem, _ func(string, string) string) {
-			list := tui.NewSettingsList(items)
-			selectSettingsItem(t, list, items, "model-thinking")
-			list.HandleInput("\r")
-			list.HandleInput("\r")
-			assertSettingsMarkers(t, list, "→ ✓ medium", "    (clear override)")
-			list.HandleInput("\x1b[B")
-			assertSettingsMarkers(t, list, "  ✓ medium", "→   high")
-			list.HandleInput("\x1b")
-			list.HandleInput("\x1b")
-		}
-		if err := settingsHandlerTUI(sc); err != nil {
-			t.Fatal(err)
-		}
-		if got := sm.Get().ModelThinkingLevels[key]; got != "medium" {
-			t.Fatalf("browsing changed override to %q", got)
-		}
+		list := NewSettingsSelectorComponent(config, callbacks).GetSettingsList()
+		list.SelectItem("model-thinking")
+		list.HandleInput("\r")
+		list.HandleInput("\r")
+		assertSettingsMarkers(t, list, "→ ✓ medium", "    (clear override)")
+		list.HandleInput("\x1b[B")
+		assertSettingsMarkers(t, list, "  ✓ medium", "→   high")
 	})
 }
 
 // ThemeSubmenu.createThemeSelect restores the parent's pending automatic pair on cancel, not the edited branch's fixed theme or the saved original pair.
+// Pi: packages/coding-agent/src/modes/interactive/components/settings-selector.ts:117 (SettingsCallbacks.onThemeChange).
 func TestAutomaticThemeSubmenuCancelRestoresPendingPair(t *testing.T) {
 	restoreStartupTheme(t)
 	previous := tui.GetCapabilities()
@@ -154,29 +163,41 @@ func assertAutomaticThemeSubmenuCancelRestoresPendingPair(t *testing.T) {
 	for _, tc := range []struct {
 		name, appearance, want string
 		keys                   []string
-		checkpoint             int
 	}{
-		{"dark terminal", "dark", "dark", []string{"\r", "\x1b[B", "\x1b", "\x1b[C", "\x1b"}, 4},
-		{"pending light edit", "light", "other", []string{"\r", "\x1b[B", "\r", "\x1b[B", "\r", "\x1b[B", "\x1b", "\x1b[C", "\x1b"}, 8},
+		{"dark terminal", "dark", "dark", []string{"\r", "\x1b[B", "\x1b"}},
+		{"pending light edit", "light", "other", []string{"\r", "\x1b[B", "\r", "\x1b[B", "\r", "\x1b[B", "\x1b"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			frames := captureSettingsThemeBrowsing(t, "light/dark", tc.appearance, []string{"dark", "light", "other"}, tc.keys...)
-			for _, frame := range frames {
-				if frame.consumed == tc.checkpoint && strings.Contains(frame.text, "Automatic Theme") {
-					if frame.theme != tc.want {
-						t.Fatalf("parent preview=%q after child cancel, want %q", frame.theme, tc.want)
-					}
-					return
-				}
+			var previews []string
+			var active []string
+			list := newThemeBrowsingList(t, "light/dark", tc.appearance, []string{"dark", "light", "other"}, func(setting string) {
+				previews = append(previews, setting)
+				name, _ := tui.ResolveThemeSettingPresence(&setting, tui.GetTerminalTheme())
+				tui.SetThemeByName(name)
+				active = append(active, tui.ActiveTheme().Name)
+			})
+			list.SelectItem("theme")
+			list.HandleInput("\r")
+			for _, key := range tc.keys {
+				list.HandleInput(key)
 			}
-			t.Fatalf("no parent frame at checkpoint %d: %+v", tc.checkpoint, frames)
+			if len(previews) == 0 || len(active) == 0 {
+				t.Fatalf("browsing previewed nothing: %v", previews)
+			}
+			if got := active[len(active)-1]; got != tc.want {
+				t.Fatalf("parent preview=%q (settings %v) after child cancel, want %q", got, previews, tc.want)
+			}
+			if !strings.Contains(stripANSITest(strings.Join(list.Render(120), "\n")), "Automatic Theme") {
+				t.Fatal("the automatic menu is not back after the child cancel")
+			}
 		})
 	}
 }
 
 func BenchmarkAutomaticThemeChildPicker(b *testing.B) {
-	menu := newAutomaticThemeMenu("light", "dark")
-	menu.submenu = tui.NewSelectSubmenu("Light Theme", "Select the theme to use for light terminal appearance", themeSelectItems([]string{"dark", "light", "other"}, "light"), "light")
+	names := []string{"dark", "light", "other"}
+	menu := newThemeSubmenu("light/dark", "dark", names, SettingsCallbacks{}, func(*string) {})
+	menu.HandleInput("\r")
 	b.ReportAllocs()
 	for b.Loop() {
 		if rows := menu.Render(120); len(rows) == 0 {
@@ -185,34 +206,8 @@ func BenchmarkAutomaticThemeChildPicker(b *testing.B) {
 	}
 }
 
-func selectSettingsItem(t *testing.T, list *tui.SettingsList, items []tui.SettingItem, id string) {
-	t.Helper()
-	for index, item := range items {
-		if item.ID == id {
-			for range index {
-				list.HandleInput("\x1b[B")
-			}
-			return
-		}
-	}
-	t.Fatalf("settings row %q is absent", id)
-}
-
-type settingsSelectorFrame struct {
-	consumed int
-	text     string
-	theme    string
-}
-
-type settingsCaptureRenderer struct {
-	*tui.TUI
-	capture func()
-}
-
-func (r *settingsCaptureRenderer) Render()          { r.capture() }
-func (r *settingsCaptureRenderer) ForceFullRender() { r.capture() }
-
-func captureSettingsThemeBrowsing(t *testing.T, current, appearance string, names []string, keys ...string) []settingsSelectorFrame {
+// newThemeBrowsingList returns the selector's list for a registry of names with the given terminal appearance; onPreview receives each previewed theme setting and no change may reach OnThemeChange.
+func newThemeBrowsingList(t *testing.T, current, appearance string, names []string, onPreview func(string)) *tui.SettingsList {
 	t.Helper()
 	oldRegistry, oldTheme := tui.ActiveThemeRegistry(), tui.ActiveTheme().Name
 	t.Cleanup(func() { tui.SetThemeRegistry(oldRegistry); tui.SetThemeByName(oldTheme) })
@@ -246,52 +241,15 @@ func captureSettingsThemeBrowsing(t *testing.T, current, appearance string, name
 	}
 	tui.SetThemeRegistry(registry)
 	tui.SetThemeByName("dark")
-	sm := NewSettingsManager(t.TempDir(), t.TempDir())
-	if err := sm.UpdateGlobal(func(s *Settings) { s.Theme = current }); err != nil {
-		t.Fatal(err)
-	}
-	input := make(chan []byte, len(keys))
-	for _, key := range keys {
-		input <- []byte(key)
-	}
-	close(input)
-	m := &InteractiveMode{opts: InteractiveOptions{SettingsManager: sm, Settings: sm.Get()}, editor: tui.NewEditor(), editorContainer: tui.NewContainer(), modalInputCh: input}
-	// upstream 0.99.1 interactive-mode.ts:4804 reads the appearance from themeController.getTerminalTheme(), which is theme.ts getTerminalTheme(): the process-wide terminal appearance rather than controller state.
 	tui.SetTerminalColorScheme(tui.TerminalTheme(appearance))
 	t.Cleanup(func() { tui.SetTerminalColorScheme("") })
-	var frames []settingsSelectorFrame
-	m.tuiInst = &settingsCaptureRenderer{TUI: tui.NewWithOutput(io.Discard, 120, 30), capture: func() {
-		frames = append(frames, settingsSelectorFrame{consumed: len(keys) - len(input), text: stripANSITest(strings.Join(m.editorContainer.Render(120), "\n")), theme: tui.ActiveTheme().Name})
-	}}
-	t.Cleanup(m.tuiInst.Stop)
-	sc := m.buildSlashContext(t.Context())
-	sc.OnSettingApplied = func(string, string) { t.Fatal("browsing saved a theme") }
-	sc.ShowSettingsList = func(items []tui.SettingItem, onChange func(string, string) string) {
-		list := tui.NewSettingsList(items)
-		selectSettingsItem(t, list, items, "theme")
-		list.HandleInput("\r")
-		if !list.Done() {
-			t.Fatal("theme row did not open")
-		}
-		if saved := onChange(list.ChangedID, list.ChangedValue); saved != current {
-			t.Fatalf("saved theme=%q, want %q", saved, current)
-		}
+	config := SettingsConfig{DefaultModel: "not set", CurrentTheme: current, TerminalTheme: tui.GetTerminalTheme(), AvailableThemes: registry.Names()}
+	callbacks := SettingsCallbacks{
+		OnThemePreview: onPreview,
+		OnThemeChange:  func(setting string) { t.Fatalf("browsing saved theme %q", setting) },
+		OnCancel:       func() {},
 	}
-	if err := settingsHandlerTUI(sc); err != nil {
-		t.Fatal(err)
-	}
-	return frames
-}
-
-func assertSettingsFrameMarkers(t *testing.T, frames []settingsSelectorFrame, consumed int, markers ...string) {
-	t.Helper()
-	for _, frame := range frames {
-		if frame.consumed != consumed || slices.ContainsFunc(markers, func(marker string) bool { return !strings.Contains(frame.text, marker) }) {
-			continue
-		}
-		return
-	}
-	t.Fatalf("no frame after %d keys contains %q: %+v", consumed, markers, frames)
+	return NewSettingsSelectorComponent(config, callbacks).GetSettingsList()
 }
 
 func assertSettingsMarkers(t *testing.T, component tui.Component, markers ...string) {

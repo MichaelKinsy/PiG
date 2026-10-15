@@ -20,13 +20,13 @@ func BenchmarkTreeSelectorUpstreamPath(b *testing.B) {
 		b.Run(fmt.Sprintf("construct/%d", size), func(b *testing.B) {
 			b.ReportAllocs()
 			for b.Loop() {
-				selector := NewTreeSelect("Session tree", root)
+				selector := NewTreeSelectorComponent("Session tree", root)
 				selector.SetInitialCursor(fmt.Sprint(size-1), "")
 				selector.Render(120)
 			}
 		})
 		b.Run(fmt.Sprintf("navigate/%d", size), func(b *testing.B) {
-			selector := NewTreeSelect("Session tree", root)
+			selector := NewTreeSelectorComponent("Session tree", root)
 			selector.SetInitialCursor(fmt.Sprint(size/2), "")
 			selector.Render(120)
 			b.ReportAllocs()

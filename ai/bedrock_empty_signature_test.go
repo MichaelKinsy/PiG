@@ -1,3 +1,5 @@
+//go:build !pig_strip_bedrock_converse_stream
+
 package ai
 
 import (
@@ -5,7 +7,8 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	btypes "github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
+
+	btypes "github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime/types"
 )
 
 // PR-3-5 / RP-004: Pi assigns the explicit empty signature before publishing the redacted placeholder delta (bedrock-converse-stream.ts:663-671).

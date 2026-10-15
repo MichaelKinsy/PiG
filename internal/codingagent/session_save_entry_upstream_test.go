@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -26,7 +25,7 @@ func TestSessionSavesCustomEntriesAndIncludesThemInTreeTraversal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := session.AppendEntry(CustomEntry{SessionEntryBase: SessionEntryBase{Type: "custom", ID: customID, ParentID: session.LeafID(), Timestamp: RFC3339NowNano()}, CustomType: "my_data", Data: map[string]any{"foo": "bar"}}); err != nil {
+	if err := session.AppendEntry(CustomEntry{SessionEntryBase: SessionEntryBase{Type: "custom", ID: customID, ParentID: session.GetLeafID(), Timestamp: RFC3339NowNano()}, CustomType: "my_data", Data: map[string]any{"foo": "bar"}}); err != nil {
 		t.Fatal(err)
 	}
 	assistant := mkAssistantMsg("hi")
@@ -40,7 +39,7 @@ func TestSessionSavesCustomEntriesAndIncludesThemInTreeTraversal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	entries := session.Entries()
+	entries := session.GetEntries()
 	if len(entries) != 3 {
 		t.Fatalf("entries = %v", entries)
 	}
@@ -56,7 +55,7 @@ func TestSessionSavesCustomEntriesAndIncludesThemInTreeTraversal(t *testing.T) {
 	path := session.GetBranch()
 	var ids []string
 	for _, e := range path {
-		ids = append(ids, e.Base.ID)
+		ids = append(ids, e.Base().ID)
 	}
 	if !reflect.DeepEqual(ids, []string{msgID, customID, msg2ID}) {
 		t.Fatalf("branch = %v", ids)

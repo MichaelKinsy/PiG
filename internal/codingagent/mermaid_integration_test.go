@@ -1,3 +1,5 @@
+//go:build !pig_strip_mermaid
+
 package codingagent
 
 import (
@@ -5,13 +7,14 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/markdowntransform"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
 func TestMermaidAssistantBlockPreservesNestedCode(t *testing.T) {
 	const markdown = "````text\n```mermaid\nflowchart LR\n A --> B\n```\n````\n"
-	block := tui.NewAssistantMessageBlock(false)
-	block.SetMarkdownTransform(createMarkdownTransform(extension.MarkdownMessageAssistant, false, []extension.MarkdownTransformer{createMermaidMarkdownTransformer(func() string { return "streaming" }, nil)}))
+	block := tui.NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+	block.SetMarkdownTransform(markdowntransform.CreateMarkdownTransform(extension.MarkdownMessageAssistant, false, []extension.MarkdownTransformer{createMermaidMarkdownTransformer(func() string { return "streaming" }, nil)}))
 	block.SetTextDelta(markdown)
 	output := strings.Join(block.Render(100), "\n")
 	if !strings.Contains(output, "```mermaid") || !strings.Contains(output, "flowchart LR") || strings.Contains(output, "┌───┐") {
@@ -20,7 +23,7 @@ func TestMermaidAssistantBlockPreservesNestedCode(t *testing.T) {
 }
 
 // TestMermaidBlockWiring pins the integration seam: a ```mermaid block set on an
-// AssistantMessageBlock is replaced by a rendered diagram at the block's render
+// AssistantMessageComponent is replaced by a rendered diagram at the block's render
 // width via the Markdown.Transform hook, and the MermaidRenderingMode gating
 // applies. Themed output is not byte-comparable to pi (pig's theme colours
 // differ), so this asserts the structural outcome; the transform itself is
@@ -32,8 +35,8 @@ func TestMermaidBlockWiring(t *testing.T) {
 		transformers := []extension.MarkdownTransformer{
 			createMermaidMarkdownTransformer(func() string { return mode }, tui.ActiveTheme()),
 		}
-		block := tui.NewAssistantMessageBlock(false)
-		block.SetMarkdownTransform(createMarkdownTransform(extension.MarkdownMessageAssistant, streaming, transformers))
+		block := tui.NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
+		block.SetMarkdownTransform(markdowntransform.CreateMarkdownTransform(extension.MarkdownMessageAssistant, streaming, transformers))
 		block.SetTextDelta(src)
 		return strings.Join(block.Render(80), "\n")
 	}

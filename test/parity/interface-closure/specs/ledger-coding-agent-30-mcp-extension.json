@@ -1,0 +1,64 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#McpExtensionOptions"
+  ],
+  "targets": [
+   "coding/mcpext/extension.go#Options"
+  ],
+  "struct": {
+   "file": "coding/mcpext/extension.go",
+   "type": "Options",
+   "fields": {
+    "startupWaitMs": "StartupWait"
+   }
+  },
+  "production": [
+   "call:coding/mcpext/extension.go#Extension.createConnection"
+  ],
+  "evidence": [
+   "test:coding/mcpext/extension_test.go#TestAgentSessionMCPDeclaresDirectlyExposedMCPToolsToTheModel",
+   "test:coding/mcpext/extension_test.go#TestAgentSessionMCPHoldsTheFirstPromptForServersWithDirectToolsOnlyUpToTheStartupWait",
+   "test:coding/mcpext/manager_test.go#TestMcpManagerServerMenuAndDisable",
+   "test:coding/mcp_oauth_session_upstream_test.go#TestAgentSessionMCPOAuthSignsInThroughTheBrowserRefreshesExpiredTokensAndSignsOut"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "McpExtensionOptions: Go mcpext.Options. startupWaitMs is StartupWait, a time.Duration (the Go convention for a Ms number); loadConfig takes EventContext, updateConfig returns an error for upstream's throw; unset fields default as upstream documents."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#McpTransportFactory",
+   "pkg:coding-agent/.#McpTransportFactory::call:0"
+  ],
+  "targets": [
+   "coding/mcpext/runtime.go#TransportFactory"
+  ],
+  "production": [
+   "call:coding/mcpext/extension.go#Extension.createConnection"
+  ],
+  "evidence": [
+   "test:coding/mcpext/extension_test.go#TestAgentSessionMCPDeclaresDirectlyExposedMCPToolsToTheModel",
+   "test:coding/mcpext/extension_test.go#TestAgentSessionMCPWithdrawsAndRestoresMCPToolsTheServerChanges"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "McpTransportFactory: Go func(entry, cwd, authProvider mcp.AuthProvider) (mcp.Transport, error); the error stands for upstream's throw and a nil authProvider for undefined."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#createMcpExtension",
+   "pkg:coding-agent/.#createMcpExtension::call:0"
+  ],
+  "targets": [
+   "coding/mcpext/register.go#Factory"
+  ],
+  "production": [
+   "call:coding/mcpext/builtin.go#NewBuiltin"
+  ],
+  "evidence": [
+   "test:coding/mcpext/command_test.go#TestMcpFactoryRegistersTheCommand",
+   "test:coding/mcpext/extension_test.go#TestAgentSessionMCPWithdrawsAndRestoresMCPToolsTheServerChanges"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "createMcpExtension: Go mcpext.Factory(options) returns the extension factory (func(api) *Extension); the optional options object is a zero-value Options; NewBuiltin runs it for the builtin:mcp entry."
+ }
+]

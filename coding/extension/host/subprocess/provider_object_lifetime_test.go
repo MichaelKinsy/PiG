@@ -22,10 +22,14 @@ func TestProviderObjectReferenceLifetime(t *testing.T) {
 	reference("provider.retain", "first")
 	reference("provider.retain", "second")
 	h.mu.Lock()
-	released := h.retireNativeProviderLocked("provider")
+	released, superseded := h.retireNativeProviderLocked(reader, reader.connection(), "provider")
 	h.mu.Unlock()
 	if len(released) != 0 || h.nativeProviderHandles["handle"] != provider {
 		t.Fatal("unregister destroyed a captured Provider")
+	}
+	// The retired owner runs in another process than the caller, so its local registration is superseded (Pi keeps one effective registration per provider).
+	if len(superseded) != 1 || superseded[0] != owner.connection() {
+		t.Fatalf("superseded = %v, want the retired owner's connection", superseded)
 	}
 	if len(owner.providerNames) != 0 {
 		t.Fatal("retired owner can still unregister a replacement")
@@ -48,7 +52,7 @@ func TestProviderObjectReferenceLifetime(t *testing.T) {
 		t.Fatal("unreferenced retired Provider was retained")
 	}
 	var message Envelope
-	if err := json.Unmarshal((<-owner.connection().outCh).data, &message); err != nil {
+	if err := json.Unmarshal((<-owner.connection().outCh).payloadBytes(), &message); err != nil {
 		t.Fatal(err)
 	}
 	if message.Notify == nil || message.Notify.Method != "provider_release" || string(message.Notify.Args) != `{"key":"callback"}` {

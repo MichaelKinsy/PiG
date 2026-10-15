@@ -1,4 +1,4 @@
-// Pi 1.0.3 extension loaded into the real `pi --mode rpc` process. It registers packages/ai/src/providers/faux.ts
+// Pi 1.1.0 extension loaded into the real `pi --mode rpc` process. It registers packages/ai/src/providers/faux.ts
 // (createFauxCore) as a provider through the same registerProvider/model-runtime path any provider uses, and it
 // records the single-thread interleaving of `stream.push` calls with RPC serialization of assistant records.
 // The recorder is synchronous (appendFileSync), so it adds no microtask or timer.

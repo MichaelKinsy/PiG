@@ -17,8 +17,21 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
-// Pi loader.ts:273-284 and agent-session.ts:3144-3235 require immediate publication, in-place replacement, and activation only for newly admitted names.
+// sessionAPI is the Go reference for the tool members of extension.API: the production Session behind getActiveTools, getAllTools
+// and setActiveTools, the actions the host wires for every SDK.
+type sessionAPI struct {
+	extension.API
+	session *coding.Session
+}
+
+func (a sessionAPI) GetActiveTools() []string          { return a.session.ActiveToolNames() }
+func (a sessionAPI) GetAllTools() []extension.ToolInfo { return a.session.GetAllTools() }
+func (a sessionAPI) SetActiveTools(names []string)     { a.session.SetActiveToolsByName(names) }
+
+// Pi pi.registerTool (packages/coding-agent/src/core/extensions/types.ts:1632, loader.ts:289-301) and agent-session.ts:3481-3579 _refreshToolRegistry require immediate publication, in-place replacement, and activation only for newly admitted names.
 func TestDynamicToolRegistrationAcrossSDKs(t *testing.T) {
+	requireAPIMember(t, "GetActiveTools", extension.API.GetActiveTools)
+	requireAPIMember(t, "SetActiveTools", extension.API.SetActiveTools)
 	t.Parallel()
 	root := findModuleRoot(t)
 	for _, language := range []string{"go", "python", "rust", "node", "fused-go"} {
@@ -65,7 +78,7 @@ func TestDynamicToolRegistrationAcrossSDKs(t *testing.T) {
 					}
 				}
 				runner := inproc.NewRunner(loaded, t.TempDir())
-				services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+				services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -74,19 +87,20 @@ func TestDynamicToolRegistrationAcrossSDKs(t *testing.T) {
 					t.Fatal(err)
 				}
 				t.Cleanup(func() { _ = session.Close() })
+				var api extension.API = sessionAPI{session: session}
 				bridge.SetHostAction("refreshTools", session.RefreshTools)
 				bridge.SetHostAction("setActiveTools", session.SetActiveToolsByName)
 				bridge.SetHostAction("getActiveTools", session.ActiveToolNames)
 				bridge.SetHostAction("getAllTools", func() []subprocess.ToolInfo {
 					return codingagent.ExtensionToolInfos(runner, map[string]struct{}{"late": {}, "stable": {}, "shout": {}}, nil)
 				})
-				if got := session.ActiveToolNames(); !slices.Equal(got, []string{"stable"}) {
+				if got := api.GetActiveTools(); !slices.Equal(got, []string{"stable"}) {
 					t.Fatal(got)
 				}
-				if err := session.BindExtensions(t.Context()); err != nil {
+				if err := session.BindExtensions(t.Context(), coding.ExtensionBindings{}); err != nil {
 					t.Fatal(err)
 				}
-				if got := session.ActiveToolNames(); !slices.Equal(got, []string{"stable", "late"}) {
+				if got := api.GetActiveTools(); !slices.Equal(got, []string{"stable", "late"}) {
 					t.Fatalf("startup active=%v", got)
 				}
 				executeDynamicTool(t, session, "late", "v1:hello")
@@ -94,10 +108,10 @@ func TestDynamicToolRegistrationAcrossSDKs(t *testing.T) {
 				if err := command.Handler(t.Context(), ""); err != nil {
 					t.Fatal(err)
 				}
-				if got := session.ActiveToolNames(); !slices.Equal(got, []string{"stable", "shout"}) {
-					t.Fatalf("replacement reactivated disabled tool or failed to activate new tool: %v", got)
+				if got := api.GetActiveTools(); !slices.Equal(got, []string{"stable", "shout"}) {
+					t.Fatalf("registerTool replacement reactivated disabled tool or failed to activate new tool: %v", got)
 				}
-				infos := session.GetAllTools()
+				infos := api.GetAllTools()
 				names := make([]string, len(infos))
 				for i, info := range infos {
 					names[i] = info.Name
@@ -106,10 +120,13 @@ func TestDynamicToolRegistrationAcrossSDKs(t *testing.T) {
 					t.Fatalf("ordered registry=%v", names)
 				}
 				def, ok := session.GetToolDefinition("late")
-				if !ok || def.Description != "v2" || def.PromptSnippet != "summary v2" || !reflect.DeepEqual(def.PromptGuidelines, []string{"Use late v2"}) {
+				if !ok || def.Label != "Label late v2" || def.Description != "v2" || def.PromptSnippet != "summary v2" || !reflect.DeepEqual(def.PromptGuidelines, []string{"Use late v2"}) {
 					t.Fatalf("replacement metadata=%+v", def)
 				}
-				session.SetActiveToolsByName([]string{"late", "shout"})
+				if shout, ok := session.GetToolDefinition("shout"); !ok || shout.Label != "Label shout new" {
+					t.Fatalf("a tool registered after startup keeps its label: %+v", shout)
+				}
+				api.SetActiveTools([]string{"late", "shout"})
 				executeDynamicTool(t, session, "late", "v2:hello")
 				executeDynamicTool(t, session, "shout", "new:hello")
 			})
@@ -135,7 +152,7 @@ func dynamicGoExtension() *sdk.Extension {
 	e := sdk.New("dynamic")
 	e.Tool("stable", "stable", sdk.Schema{}, func(sdk.Context, map[string]any) (any, error) { return "stable", nil })
 	def := func(name, value string) sdk.ToolDefinition {
-		return sdk.ToolDefinition{Name: name, Label: name, Description: value, PromptSnippet: "summary " + value, PromptGuidelines: []string{"Use " + name + " " + value}, Parameters: sdk.Schema{"type": "object", "properties": map[string]any{"message": map[string]any{"type": "string"}}, "required": []string{"message"}}, Execute: func(_ sdk.Context, args map[string]any) (any, error) {
+		return sdk.ToolDefinition{Name: name, Label: "Label " + name + " " + value, Description: value, PromptSnippet: "summary " + value, PromptGuidelines: []string{"Use " + name + " " + value}, Parameters: sdk.Schema{"type": "object", "properties": map[string]any{"message": map[string]any{"type": "string"}}, "required": []string{"message"}}, Execute: func(_ sdk.Context, args map[string]any) (any, error) {
 			return value + ":" + args["message"].(string), nil
 		}}
 	}
@@ -164,7 +181,7 @@ func dynamicToolFactory(t *testing.T, root, language, name string) subprocess.Ex
 	if language == "node" {
 		path := filepath.Join(t.TempDir(), name+".mjs")
 		code := `export default function(pi){
-const def=(name,value)=>({name,label:name,description:value,promptSnippet:"summary "+value,promptGuidelines:["Use "+name+" "+value],parameters:{type:"object",properties:{message:{type:"string"}},required:["message"]},execute:async(_id,args)=>({content:[{type:"text",text:value+":"+args.message}]})});
+const def=(name,value)=>({name,label:"Label "+name+" "+value,description:value,promptSnippet:"summary "+value,promptGuidelines:["Use "+name+" "+value],parameters:{type:"object",properties:{message:{type:"string"}},required:["message"]},execute:async(_id,args)=>({content:[{type:"text",text:value+":"+args.message}]})});
 pi.registerTool({name:"stable",label:"stable",description:"stable",parameters:{},execute:async()=>({content:[]})});
 pi.on("session_start",()=>pi.registerTool(def("late","v1")));
 pi.events.on("inspect-dynamic-tools",values=>values.push(pi.getAllTools().some(t=>t.name==="shout")));
@@ -186,7 +203,7 @@ import("fmt";"slices";sdk "github.com/MichaelKinsy/PiG/extensions/sdk")
 func Extension()*sdk.Extension{
 e:=sdk.New(%q)
 e.Tool("stable","stable",sdk.Schema{},func(sdk.Context,map[string]any)(any,error){return "stable",nil})
-def:=func(name,value string)sdk.ToolDefinition{return sdk.ToolDefinition{Name:name,Label:name,Description:value,PromptSnippet:"summary "+value,PromptGuidelines:[]string{"Use "+name+" "+value},Parameters:sdk.Schema{"type":"object","properties":map[string]any{"message":map[string]any{"type":"string"}},"required":[]string{"message"}},Execute:func(_ sdk.Context,args map[string]any)(any,error){return value+":"+args["message"].(string),nil}}}
+def:=func(name,value string)sdk.ToolDefinition{return sdk.ToolDefinition{Name:name,Label:"Label "+name+" "+value,Description:value,PromptSnippet:"summary "+value,PromptGuidelines:[]string{"Use "+name+" "+value},Parameters:sdk.Schema{"type":"object","properties":map[string]any{"message":map[string]any{"type":"string"}},"required":[]string{"message"}},Execute:func(_ sdk.Context,args map[string]any)(any,error){return value+":"+args["message"].(string),nil}}}
 e.OnSessionStart(func(ctx sdk.Context,_ map[string]any)(any,error){e.RegisterTool(def("late","v1"));return nil,nil})
 e.Command("change","",func(ctx sdk.Context,_ string)error{ctx.SetActiveTools([]string{"stable"});ctx.RegisterTool(def("late","v2"));ctx.RegisterTool(def("shout","new"));if got,err:=ctx.GetActiveTools();err!=nil||!slices.Equal(got,[]string{"stable","shout"}){return fmt.Errorf("immediate active tools=%%v %%v",got,err)};return nil})
 return e
@@ -196,7 +213,7 @@ return e
 		code = fmt.Sprintf(`import pig_sdk
 schema={"type":"object","properties":{"message":{"type":"string"}},"required":["message"]}
 def definition(name,value):
- return pig_sdk.ToolDefinition(name=name,label=name,description=value,prompt_snippet="summary "+value,prompt_guidelines=["Use "+name+" "+value],parameters=schema,execute=lambda ctx,args:value+":"+args["message"])
+ return pig_sdk.ToolDefinition(name=name,label="Label "+name+" "+value,description=value,prompt_snippet="summary "+value,prompt_guidelines=["Use "+name+" "+value],parameters=schema,execute=lambda ctx,args:value+":"+args["message"])
 def new_extension():
  e=pig_sdk.Extension(%q)
  e.tool("stable","stable",{},lambda ctx,args:"stable")
@@ -214,13 +231,13 @@ def new_extension():
 		code = fmt.Sprintf(`use pig_sdk::{Extension,ToolDefinition,ToolResult,CommandResult,Schema};
 fn definition(name:&str,value:&str)->ToolDefinition{
  let value=value.to_owned();let result=value.clone();
- let mut d=ToolDefinition::new(name,name,&value,r#"{"type":"object","properties":{"message":{"type":"string"}},"required":["message"]}"#.parse::<Schema>().unwrap(),move|_,args|ToolResult::text(format!("{}:{}",result,args["message"].as_str().unwrap())));
+ let mut d=ToolDefinition::new(name,format!("Label {} {}",name,value),&value,r#"{"type":"object","properties":{"message":{"type":"string"}},"required":["message"]}"#.parse::<Schema>().unwrap(),move|_,args|ToolResult::text(format!("{}:{}",result,args["message"].as_str().unwrap())));
  d.prompt_snippet=Some(format!("summary {}",value));d.prompt_guidelines=vec![format!("Use {} {}",name,value)];d
 }
 pub fn new_extension()->Extension{
  let mut e=Extension::new(%q);
  e.tool("stable","stable","{}".parse::<Schema>().unwrap(),|_,_|ToolResult::text("stable"));
- e.on_event("session_start",false,|ctx,_|{ctx.register_tool(definition("late","v1")).unwrap();None});
+ e.on_event("session_start",|ctx,_|{ctx.register_tool(definition("late","v1")).unwrap();None});
  e.command("change","",|ctx,_|{ctx.set_active_tools(&["stable"]);if let Err(e)=ctx.register_tool(definition("late","v2")).and_then(|_|ctx.register_tool(definition("shout","new"))){return CommandResult::Error(e.to_string())};if ctx.get_active_tools().unwrap()!=vec!["stable","shout"]{return CommandResult::Error("immediate active tools".into())};CommandResult::Ok});
  e
 }`, name)

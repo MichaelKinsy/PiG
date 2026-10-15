@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/ignorerules"
+	"github.com/MichaelKinsy/PiG/internal/nodefs"
 )
 
 // NodeManifestEntries returns the extension entry files a Node package's
@@ -49,7 +50,7 @@ func NodeDirectoryEntries(dir string) []string {
 	if entries := nodeRootEntries(dir); entries != nil {
 		return entries
 	}
-	listing, err := os.ReadDir(dir)
+	listing, err := nodefs.ReadDir(dir)
 	if err != nil {
 		return nil
 	}
@@ -62,17 +63,17 @@ func NodeDirectoryEntries(dir string) []string {
 		}
 		full := filepath.Join(dir, name)
 		// Upstream follows symbolic links to classify the target.
-		info, err := os.Stat(full)
-		if err != nil {
+		isDir, isFile, ok := nodefs.EntryKind(dir, entry)
+		if !ok {
 			continue
 		}
-		if ignorerules.Ignored(full, info.IsDir(), dir, rules) {
+		if ignorerules.Ignored(full, isDir, dir, rules) {
 			continue
 		}
 		switch {
-		case info.Mode().IsRegular() && (strings.HasSuffix(name, ".ts") || strings.HasSuffix(name, ".js")):
+		case isFile && (strings.HasSuffix(name, ".ts") || strings.HasSuffix(name, ".js")):
 			entries = append(entries, full)
-		case info.IsDir():
+		case isDir:
 			entries = append(entries, nodeRootEntries(full)...)
 		}
 	}

@@ -8,7 +8,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
@@ -59,15 +58,7 @@ func renderCall(label string) extension.ToolRenderCallFunc {
 // upstream: packages/coding-agent/src/extensions/mcp/tools.ts:283-311
 func renderResult(result extension.AgentToolResult, options extension.ToolRenderResultOptions, theme extension.Theme, context extension.ToolRenderContext) extension.Component {
 	th := themeOf(theme)
-	var value agent.AgentToolResult
-	switch r := result.(type) {
-	case agent.AgentToolResult:
-		value = r
-	case *agent.AgentToolResult:
-		if r != nil {
-			value = *r
-		}
-	}
+	value := result
 	component, _ := context.LastComponent.(*tui.Container)
 	if component == nil {
 		component = tui.NewContainer()
@@ -83,7 +74,7 @@ func renderResult(result extension.AgentToolResult, options extension.ToolRender
 	}
 	lines := strings.Split(strings.ReplaceAll(output, "\t", "   "), "\n")
 	for i, line := range lines {
-		lines[i] = th.FgText(color, line)
+		lines[i] = th.Fg(color, line)
 	}
 	styled := strings.Join(lines, "\n")
 	component.Add(tui.NewSpacer(1))
@@ -97,12 +88,12 @@ func renderResult(result extension.AgentToolResult, options extension.ToolRender
 		MaxVisualLines: outputPreviewLines,
 		Keep:           tui.VisualKeepStart,
 		FormatHint: func(hidden int) string {
-			return th.FgText("muted", fmt.Sprintf("... (%d more lines,", hidden)) + " " +
-				tui.KeyHint(tui.AppKeyText("app.tools.expand", "ctrl+o"), "to expand") + th.FgText("muted", ")")
+			return th.Fg("muted", fmt.Sprintf("... (%d more lines,", hidden)) + " " +
+				tui.KeyHint(tui.AppKeyText("app.tools.expand", "ctrl+o"), "to expand") + th.Fg("muted", ")")
 		},
 	}))
 	if path := fullOutputPathOf(value.Details); path != "" {
-		component.Add(tui.NewPaddedText(th.FgText("muted", "Full output: "+path), 0, 0, nil))
+		component.Add(tui.NewPaddedText(th.Fg("muted", "Full output: "+path), 0, 0, nil))
 	}
 	return component
 }

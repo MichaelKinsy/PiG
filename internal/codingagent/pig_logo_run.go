@@ -191,6 +191,7 @@ func pigRunPalette(variant piglogin.Variant) map[byte]logoRgb {
 	derive('b', logoRgb{232, 120, 140}, 0.5)
 	derive('e', logoRgb{0, 0, 0}, 0.12)
 	colors['D'] = logoMix(body, logoRgb{0, 0, 0}, 0.22)
+	//portlint:allow fusedmuladd D87: the running pig is PiG's own, with no Pi counterpart to match bit for bit
 	if 0.299*body[0]+0.587*body[1]+0.114*body[2] < 48 {
 		colors['O'] = toRgb('p')
 		colors['D'] = toRgb('s')
@@ -322,6 +323,7 @@ func (a *pigLogoAnimation) runner(time float64) *pigRunner {
 // for its blocks (appendBoxes).
 func (r *pigRunner) pose(head logoPose) logoPose {
 	turn := math.Pi * 2
+	//portlint:allow fusedmuladd D87: the running pig is PiG's own, with no Pi counterpart to match bit for bit
 	head.yaw += (math.Round(head.yaw/turn)*turn - head.yaw) * r.facing
 	head.pitch *= 1 - r.facing
 	head.roll *= 1 - r.facing
@@ -332,7 +334,7 @@ func (r *pigRunner) pose(head logoPose) logoPose {
 
 // pigRunDotThreshold is a dot's place in the dissolve between the head and the running pig, from 0 to 1.
 func pigRunDotThreshold(dot int) float64 {
-	return logoHash(float64(dot)*0.7548776662 + 0.5698402910)
+	return logoHash(float64(dot)*0.7548776662 + 0.5698402910) //portlint:allow fusedmuladd D87: PiG's running pig, no Pi counterpart
 }
 
 // appendBoxes appends a block per pixel of the running pig, centered on the origin, with the head's depth.
@@ -367,6 +369,6 @@ func (a *pigLogoAnimation) runTime(time float64) (float64, bool) {
 		return 0, false
 	}
 	cycle := math.Floor((time - logoPuzzleStart) / logoPuzzleCycle)
-	local := time - logoPuzzleStart - cycle*logoPuzzleCycle
+	local := time - logoPuzzleStart - cycle*logoPuzzleCycle //portlint:allow fusedmuladd D87: PiG's running pig, no Pi counterpart
 	return local, local < logoShuffleEnd
 }

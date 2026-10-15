@@ -45,6 +45,7 @@ func (w *clipboardWorker) run(ctx context.Context, image bool) clipboardReadResu
 		w.mu.Unlock()
 		return clipboardReadResult{}
 	}
+	//portlint:allow ctxmapping clipboard-worker.h:53-54 runs the read on a detached thread that outlives the caller's bounded wait; close cancels it at shutdown
 	privateCtx, cancel := context.WithCancel(context.Background())
 	task := &clipboardReadTask{cancel: cancel, done: make(chan struct{}), waiting: true}
 	w.task = task

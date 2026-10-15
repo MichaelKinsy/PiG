@@ -1,11 +1,12 @@
 // Execute the original three tests against the published Pi 0.87.1 components.
+import { PI_PACKAGE_VERSION } from "./pi-version.mjs";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import ts from "../interface-extractor/node_modules/typescript/lib/typescript.js";
 const root = process.env.PI_PACKAGE_ROOT ?? resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, "1.0.3");
+assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, PI_PACKAGE_VERSION);
 const packageURL = pathToFileURL(join(root, "package.json")).href;
 const moduleURL = code => "data:text/javascript;base64," + Buffer.from(code).toString("base64");
 const state = { cases: [], before: [], each: [] };

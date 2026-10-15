@@ -1,0 +1,465 @@
+[
+ {
+  "upstream": "packages/tui/src/components/mouse-region.ts",
+  "package": "./tui",
+  "tests": [
+   "TestMouseRegionDelegatesRenderAndInvalidate"
+  ],
+  "upstream_reference": "packages/tui/src/components/mouse-region.ts",
+  "mutation": "tui/mouse_region.go: replace `func (r *MouseRegion) Render(width int) []string { return r.child.Render(width) }` with `func (r *MouseRegion) Render(width int) []string { return nil }`; TestMouseRegionDelegatesRenderAndInvalidate fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/mouse-region.ts",
+  "package": "./tui",
+  "tests": [
+   "TestMouseRegionHandlerRunsForEventsNoChildHandled"
+  ],
+  "upstream_reference": "packages/tui/src/components/mouse-region.ts",
+  "mutation": "tui/mouse_region.go: replace `if result := DispatchMouseEvent(r.child, event); result != nil {\n\t\treturn result\n\t}` with ``; TestMouseRegionHandlerRunsForEventsNoChildHandled fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/mouse-region.ts",
+  "package": "./tui",
+  "tests": [
+   "TestMouseRegionHandlerRunsForEventsNoChildHandled"
+  ],
+  "upstream_reference": "packages/tui/src/components/mouse-region.ts",
+  "mutation": "tui/mouse_region.go: replace `if result := DispatchMouseEvent(r.child, event); result != nil {\n\t\treturn result\n\t}` with `if result := DispatchMouseEvent(r.child, event); result == nil {\n\t\treturn result\n\t}`; TestMouseRegionHandlerRunsForEventsNoChildHandled fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/mouse-region.ts",
+  "package": "./tui",
+  "tests": [
+   "TestMouseRegionHandlerRunsForEventsNoChildHandled"
+  ],
+  "upstream_reference": "packages/tui/src/components/mouse-region.ts",
+  "mutation": "tui/mouse_region.go: replace `result := r.onMouse(event)\n\tif result == nil {\n\t\treturn nil\n\t}` with `result := r.onMouse(event)`; TestMouseRegionHandlerRunsForEventsNoChildHandled fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/mouse-region.ts",
+  "package": "./tui",
+  "tests": [
+   "TestMouseRegionHandlerRunsForEventsNoChildHandled"
+  ],
+  "upstream_reference": "packages/tui/src/components/mouse-region.ts",
+  "mutation": "tui/mouse_region.go: replace `return &TuiMouseDispatchResult{TuiMouseEventResult: *result}` with `return &TuiMouseDispatchResult{}`; TestMouseRegionHandlerRunsForEventsNoChildHandled fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/mouse-region.ts",
+  "package": "./tui",
+  "tests": [
+   "TestMouseRegionDelegatesRenderAndInvalidate"
+  ],
+  "upstream_reference": "packages/tui/src/components/mouse-region.ts",
+  "mutation": "tui/mouse_region.go: replace `func (r *MouseRegion) Invalidate() { r.child.Invalidate() }` with `func (r *MouseRegion) Invalidate() {}`; TestMouseRegionDelegatesRenderAndInvalidate fails."
+ },
+ {
+  "upstream": "packages/tui/src/tui.ts",
+  "package": "./tui",
+  "tests": [
+   "TestOverlayBoundsAndMouseHitTesting"
+  ],
+  "upstream_reference": "packages/tui/src/tui.ts",
+  "mutation": "tui/tui.go: replace `if layout.id == h.id {\n\t\t\treturn layout.bounds, true` with `if layout.id != h.id {\n\t\t\treturn layout.bounds, true`; TestOverlayBoundsAndMouseHitTesting fails."
+ },
+ {
+  "upstream": "packages/tui/src/tui.ts",
+  "package": "./tui",
+  "tests": [
+   "TestOverlayBoundsAndMouseHitTesting"
+  ],
+  "upstream_reference": "packages/tui/src/tui.ts",
+  "mutation": "tui/tui.go: replace `return layout.bounds, true\n\t\t}\n\t}\n\treturn OverlayBounds{}, false\n}\n\n// IsFocused` with `return layout.bounds, true\n\t\t}\n\t}\n\treturn OverlayBounds{}, true\n}\n\n// IsFocused`; TestOverlayBoundsAndMouseHitTesting fails."
+ },
+ {
+  "upstream": "packages/tui/src/tui.ts",
+  "package": "./tui",
+  "tests": [
+   "TestOverlayBoundsAndMouseHitTesting"
+  ],
+  "upstream_reference": "packages/tui/src/tui.ts",
+  "mutation": "tui/tui.go: replace `entry := h.tui.overlayModel.overlayByID(h.id)\n\tif entry == nil || !entry.visible() {\n\t\treturn OverlayBounds{}, false\n\t}\n\tfor _, layout` with `entry := h.tui.overlayModel.overlayByID(h.id)\n\tif entry == nil {\n\t\treturn OverlayBounds{}, false\n\t}\n\tfor _, layout`; TestOverlayBoundsAndMouseHitTesting fails."
+ },
+ {
+  "upstream": "packages/tui/src/native-platform.ts",
+  "package": "./tui",
+  "tests": [
+   "TestGetNativeClipboardIsThePlatformClipboard"
+  ],
+  "upstream_reference": "packages/tui/src/native-platform.ts",
+  "mutation": "tui/native_platform.go: replace `func GetNativeClipboard() *NativeClipboard      { return nativeplatform.GetNativeClipboard() }` with `func GetNativeClipboard() *NativeClipboard      { return &NativeClipboard{} }`; TestGetNativeClipboardIsThePlatformClipboard fails."
+ },
+ {
+  "upstream": "packages/tui/src/tui.ts",
+  "package": "./tui",
+  "tests": [
+   "TestOverlayBoundsAndMouseHitTesting"
+  ],
+  "upstream_reference": "packages/tui/src/tui.ts",
+  "mutation": "tui/tui.go: replace `if entry == nil || !entry.visible() {\n\t\treturn OverlayBounds{}, false\n\t}\n\tfor _, layout := range h.tui.renderedOverlayLayouts {` with `_ = entry\n\tfor _, layout := range h.tui.renderedOverlayLayouts {`; TestOverlayBoundsAndMouseHitTesting fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferFlushTimeoutFollowsTheBufferedRemainder",
+   "TestStdinBufferFirstHalfTimers"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `return &StdinBuffer{timeout: options.Timeout, escapeTimeout: options.EscapeTimeout}` with `return &StdinBuffer{timeout: options.Timeout}`; TestStdinBufferFirstHalfTimers, TestStdinBufferFlushTimeoutFollowsTheBufferedRemainder fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferFlushTimeoutFollowsTheBufferedRemainder",
+   "TestStdinBufferFirstHalfTimers",
+   "TestStdinBufferSecondHalfTimeoutAndDestroy"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `return &StdinBuffer{timeout: options.Timeout, escapeTimeout: options.EscapeTimeout}` with `return &StdinBuffer{escapeTimeout: options.EscapeTimeout}`; TestStdinBufferFirstHalfTimers, TestStdinBufferFlushTimeoutFollowsTheBufferedRemainder, TestStdinBufferSecondHalfTimeoutAndDestroy fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferFlushTimeoutFollowsTheBufferedRemainder",
+   "TestStdinBufferFirstHalfTimers",
+   "TestStdinBufferSecondHalfTimeoutAndDestroy"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `if b.buffer == escByte {\n\t\treturn cmp.Or(b.escapeTimeout, defaultEscapeTimeout)` with `if b.buffer != escByte {\n\t\treturn cmp.Or(b.escapeTimeout, defaultEscapeTimeout)`; TestStdinBufferFirstHalfTimers, TestStdinBufferFlushTimeoutFollowsTheBufferedRemainder, TestStdinBufferSecondHalfTimeoutAndDestroy fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferFlushTimeoutFollowsTheBufferedRemainder",
+   "TestStdinBufferFirstHalfTimers",
+   "TestStdinBufferSecondHalfTimeoutAndDestroy"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `return cmp.Or(b.escapeTimeout, defaultEscapeTimeout)\n\t}\n\treturn cmp.Or(b.timeout, defaultSequenceTimeout)` with `return cmp.Or(b.timeout, defaultEscapeTimeout)\n\t}\n\treturn cmp.Or(b.escapeTimeout, defaultSequenceTimeout)`; TestStdinBufferFirstHalfTimers, TestStdinBufferFlushTimeoutFollowsTheBufferedRemainder, TestStdinBufferSecondHalfTimeoutAndDestroy fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferFlushTimeoutFollowsTheBufferedRemainder",
+   "TestStdinBufferSecondHalfTimeoutAndDestroy"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `cmp.Or(b.escapeTimeout, defaultEscapeTimeout)` with `b.escapeTimeout`; TestStdinBufferFlushTimeoutFollowsTheBufferedRemainder, TestStdinBufferSecondHalfTimeoutAndDestroy fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferFlushTimeoutFollowsTheBufferedRemainder",
+   "TestStdinBufferFirstHalfTimers"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `cmp.Or(b.timeout, defaultSequenceTimeout)` with `b.timeout`; TestStdinBufferFirstHalfTimers, TestStdinBufferFlushTimeoutFollowsTheBufferedRemainder fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferHoldsSplitUTF8CharactersAcrossReads",
+   "TestStdinSupplementaryTerminalByteSplits"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `if len(b.utf8Pending) > 0 {\n\t\tdata = append(b.utf8Pending, data...)\n\t\tb.utf8Pending = nil\n\t}` with `b.utf8Pending = nil`; TestStdinBufferHoldsSplitUTF8CharactersAcrossReads, TestStdinSupplementaryTerminalByteSplits fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferHoldsSplitUTF8CharactersAcrossReads"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `b.utf8Pending = bytes.Clone(data[len(data)-cut:])\n\t\tdata = data[:len(data)-cut]\n\t\tif len(data) == 0 {\n\t\t\treturn nil\n\t\t}` with `b.utf8Pending = bytes.Clone(data[len(data)-cut:])\n\t\tdata = data[:len(data)-cut]`; TestStdinBufferHoldsSplitUTF8CharactersAcrossReads fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferHoldsSplitUTF8CharactersAcrossReads",
+   "TestStdinSupplementaryTerminalByteSplits"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `if cut := incompleteUTF8Suffix(data); cut > 0 {` with `if cut := incompleteUTF8Suffix(data); cut > 1 {`; TestStdinBufferHoldsSplitUTF8CharactersAcrossReads, TestStdinSupplementaryTerminalByteSplits fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferHoldsSplitUTF8CharactersAcrossReads",
+   "TestStdinBufferFirstHalfTimers",
+   "TestStdinBufferSecondHalfTimeoutAndDestroy",
+   "TestStdinSupplementaryTerminalByteSplits"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `if c < utf8.RuneSelf {\n\t\t\treturn 0\n\t\t}` with `if c < utf8.RuneSelf {\n\t\t\treturn back\n\t\t}`; TestStdinBufferFirstHalfTimers, TestStdinBufferHoldsSplitUTF8CharactersAcrossReads, TestStdinBufferSecondHalfTimeoutAndDestroy, TestStdinSupplementaryTerminalByteSplits fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferHoldsSplitUTF8CharactersAcrossReads"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `if utf8.FullRune(data[len(data)-back:]) {\n\t\t\t\treturn 0\n\t\t\t}` with `if false {\n\t\t\t\treturn 0\n\t\t\t}`; TestStdinBufferHoldsSplitUTF8CharactersAcrossReads fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferHoldsSplitUTF8CharactersAcrossReads",
+   "TestStdinSupplementaryTerminalByteSplits"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `for back := 1; back <= utf8.UTFMax-1 && back <= len(data); back++ {` with `for back := 1; back <= utf8.UTFMax-2 && back <= len(data); back++ {`; TestStdinBufferHoldsSplitUTF8CharactersAcrossReads, TestStdinSupplementaryTerminalByteSplits fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferProcessBytesAndEmptyInput"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `if len(data) == 0 {\n\t\tif b.buffer == \"\" {\n\t\t\treturn []string{\"\"}\n\t\t}\n\t\treturn nil\n\t}` with `if len(data) == 0 {\n\t\treturn nil\n\t}`; TestStdinBufferProcessBytesAndEmptyInput fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferProcessBytesAndEmptyInput"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `if len(data) == 1 && data[0] > 127 {` with `if len(data) == 1 && data[0] > 128 {`; TestStdinBufferProcessBytesAndEmptyInput fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferProcessBytesAndEmptyInput"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `s = escByte + string(rune(data[0]-128))` with `s = escByte + string(rune(data[0]))`; TestStdinBufferProcessBytesAndEmptyInput fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferProcessBytesAndEmptyInput",
+   "TestStdinBufferSecondHalfSequences"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `if s == \"\" {\n\t\tif b.buffer == \"\" {\n\t\t\treturn b.emitDataSequence(nil, \"\")\n\t\t}\n\t\treturn nil\n\t}` with `if s == \"\" {\n\t\treturn nil\n\t}`; TestStdinBufferProcessBytesAndEmptyInput, TestStdinBufferSecondHalfSequences fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferProcessBytesAndEmptyInput",
+   "TestStdinBufferSecondHalfSequences"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `if s == \"\" {\n\t\tif b.buffer == \"\" {` with `if s == \"\" {\n\t\tif b.buffer != \"\" {`; TestStdinBufferProcessBytesAndEmptyInput, TestStdinBufferSecondHalfSequences fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferBracketedPasteFramingStateAndEvents",
+   "TestStdinBufferSecondHalfPaste"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `b.pasteBuffer = jsstring.Canonical(b.pasteBuffer + b.buffer)\n\t\tb.buffer = \"\"` with `b.pasteBuffer = b.pasteBuffer + b.buffer`; TestStdinBufferBracketedPasteFramingStateAndEvents, TestStdinBufferSecondHalfPaste fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferBracketedPasteFramingStateAndEvents"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `out := []string{bracketedPasteStart + payload + bracketedPasteEnd}\n\t\t\tb.Emit(StdinBufferEventPaste, payload)` with `out := []string{bracketedPasteStart + payload + bracketedPasteEnd}`; TestStdinBufferBracketedPasteFramingStateAndEvents fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferBracketedPasteFramingStateAndEvents",
+   "TestStdinBufferSecondHalfPaste"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `out := []string{bracketedPasteStart + payload + bracketedPasteEnd}` with `out := []string{payload}`; TestStdinBufferBracketedPasteFramingStateAndEvents, TestStdinBufferSecondHalfPaste fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferBracketedPasteFramingStateAndEvents"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `remaining := b.pasteBuffer[end+len(bracketedPasteEnd):]\n\t\t\tb.pasteMode = false\n\t\t\tb.pasteBuffer = \"\"\n\t\t\tb.pendingKittyCP = 0\n\t\t\tout := []string{` with `remaining := \"\"\n\t\t\tb.pasteMode = false\n\t\t\tb.pasteBuffer = \"\"\n\t\t\tb.pendingKittyCP = 0\n\t\t\tout := []string{`; TestStdinBufferBracketedPasteFramingStateAndEvents fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferBracketedPasteFramingStateAndEvents"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `b.pasteMode = false\n\t\t\tb.pasteBuffer = \"\"\n\t\t\tb.pendingKittyCP = 0\n\t\t\tout := []string{` with `b.pasteBuffer = \"\"\n\t\t\tb.pendingKittyCP = 0\n\t\t\tout := []string{`; TestStdinBufferBracketedPasteFramingStateAndEvents fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferBracketedPasteFramingStateAndEvents"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `if remaining != \"\" {\n\t\t\t\tout = append(out, b.ProcessString(remaining)...)\n\t\t\t}\n\t\t\treturn out` with `_ = remaining\n\t\t\treturn out`; TestStdinBufferBracketedPasteFramingStateAndEvents fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferBracketedPasteFramingStateAndEvents",
+   "TestStdinBufferClearAndFlushResetEveryPendingState",
+   "TestStdinBufferSecondHalfPaste"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `b.buffer = b.buffer[start+len(bracketedPasteStart):]\n\t\tb.pasteMode = true` with `b.buffer = b.buffer[start:]\n\t\tb.pasteMode = true`; TestStdinBufferBracketedPasteFramingStateAndEvents, TestStdinBufferClearAndFlushResetEveryPendingState, TestStdinBufferSecondHalfPaste fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferBracketedPasteFramingStateAndEvents",
+   "TestStdinBufferSecondHalfPaste"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `b.pasteBuffer = b.buffer\n\t\tb.buffer = \"\"\n\t\tif end` with `b.pasteBuffer = b.buffer\n\t\tif end`; TestStdinBufferBracketedPasteFramingStateAndEvents, TestStdinBufferSecondHalfPaste fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferBracketedPasteFramingStateAndEvents"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `out = append(out, bracketedPasteStart+payload+bracketedPasteEnd)\n\t\t\tb.Emit(StdinBufferEventPaste, payload)` with `out = append(out, bracketedPasteStart+payload+bracketedPasteEnd)`; TestStdinBufferBracketedPasteFramingStateAndEvents fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferFlushTimeoutFollowsTheBufferedRemainder",
+   "TestStdinBufferProcessBytesAndEmptyInput",
+   "TestStdinBufferClearAndFlushResetEveryPendingState",
+   "TestStdinBufferFirstHalfSequences",
+   "TestStdinBufferFirstHalfPartialWithPendingBuffer",
+   "TestStdinBufferFirstHalfTimers",
+   "TestStdinBufferSecondHalfSequences",
+   "TestStdinBufferSecondHalfPartialAndFlush",
+   "TestStdinBufferSecondHalfTimeoutAndDestroy"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `result, remainder := extractCompleteSequences(b.buffer)\n\tb.buffer = remainder` with `result, _ := extractCompleteSequences(b.buffer)\n\tb.buffer = \"\"`; TestStdinBufferClearAndFlushResetEveryPendingState, TestStdinBufferFirstHalfPartialWithPendingBuffer, TestStdinBufferFirstHalfSequences, TestStdinBufferFirstHalfTimers, TestStdinBufferFlushTimeoutFollowsTheBufferedRemainder, TestStdinBufferProcessBytesAndEmptyInput, TestStdinBufferSecondHalfPartialAndFlush, TestStdinBufferSecondHalfSequences, TestStdinBufferSecondHalfTimeoutAndDestroy fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferClearAndFlushResetEveryPendingState",
+   "TestStdinBufferSecondHalfPartialAndFlush",
+   "TestStdinBufferEmptyFlushPreservesKittyDuplicateState"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `if b.buffer == \"\" {\n\t\treturn nil\n\t}\n\tout := b.emitDataSequence(nil, b.buffer)\n\tb.buffer = \"\"\n\tb.pendingKittyCP = 0\n\treturn out` with `out := b.emitDataSequence(nil, b.buffer)\n\tb.buffer = \"\"\n\tb.pendingKittyCP = 0\n\treturn out`; TestStdinBufferClearAndFlushResetEveryPendingState, TestStdinBufferEmptyFlushPreservesKittyDuplicateState, TestStdinBufferSecondHalfPartialAndFlush fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferClearAndFlushResetEveryPendingState",
+   "TestStdinBufferFirstHalfTimers",
+   "TestStdinBufferSecondHalfPartialAndFlush",
+   "TestStdinBufferSecondHalfTimeoutAndDestroy"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `out := b.emitDataSequence(nil, b.buffer)\n\tb.buffer = \"\"\n\tb.pendingKittyCP = 0` with `out := b.emitDataSequence(nil, b.buffer)\n\tb.pendingKittyCP = 0`; TestStdinBufferClearAndFlushResetEveryPendingState, TestStdinBufferFirstHalfTimers, TestStdinBufferSecondHalfPartialAndFlush, TestStdinBufferSecondHalfTimeoutAndDestroy fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferBracketedPasteFramingStateAndEvents"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `func (b *StdinBuffer) GetBuffer() string { return b.buffer }` with `func (b *StdinBuffer) GetBuffer() string { return b.buffer + b.pasteBuffer }`; TestStdinBufferBracketedPasteFramingStateAndEvents fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferBracketedPasteFramingStateAndEvents"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `return b.buffer != \"\"\n}` with `return b.buffer != \"\" || b.pasteMode\n}`; TestStdinBufferBracketedPasteFramingStateAndEvents fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferClearAndFlushResetEveryPendingState",
+   "TestStdinBufferSecondHalfTimeoutAndDestroy",
+   "TestStdinBufferDestroyClearsEveryPendingState"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `func (b *StdinBuffer) Destroy() { b.Clear() }` with `func (b *StdinBuffer) Destroy() {}`; TestStdinBufferClearAndFlushResetEveryPendingState, TestStdinBufferDestroyClearsEveryPendingState, TestStdinBufferSecondHalfTimeoutAndDestroy fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferClearAndFlushResetEveryPendingState",
+   "TestStdinBufferDestroyClearsEveryPendingState"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `b.buffer = \"\"\n\tb.pasteMode = false\n\tb.pasteBuffer = \"\"\n\tb.pendingKittyCP = 0\n\tb.utf8Pending = nil` with `b.buffer = \"\"\n\tb.pasteBuffer = \"\"\n\tb.pendingKittyCP = 0\n\tb.utf8Pending = nil`; TestStdinBufferClearAndFlushResetEveryPendingState, TestStdinBufferDestroyClearsEveryPendingState fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferSecondHalfPartialAndFlush",
+   "TestStdinBufferSecondHalfTimeoutAndDestroy",
+   "TestStdinBufferDestroyClearsEveryPendingState"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `b.buffer = \"\"\n\tb.pasteMode = false\n\tb.pasteBuffer = \"\"\n\tb.pendingKittyCP = 0\n\tb.utf8Pending = nil` with `b.pasteMode = false\n\tb.pasteBuffer = \"\"\n\tb.pendingKittyCP = 0\n\tb.utf8Pending = nil`; TestStdinBufferDestroyClearsEveryPendingState, TestStdinBufferSecondHalfPartialAndFlush, TestStdinBufferSecondHalfTimeoutAndDestroy fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferClearAndFlushResetEveryPendingState"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `b.pasteBuffer = \"\"\n\tb.pendingKittyCP = 0\n\tb.utf8Pending = nil\n}` with `b.pasteBuffer = \"\"\n\tb.utf8Pending = nil\n}`; TestStdinBufferClearAndFlushResetEveryPendingState fails."
+ },
+ {
+  "upstream": "packages/tui/src/stdin-buffer.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStdinBufferHoldsSplitUTF8CharactersAcrossReads"
+  ],
+  "upstream_reference": "packages/tui/src/stdin-buffer.ts",
+  "mutation": "tui/stdin_buffer.go: replace `b.pendingKittyCP = 0\n\tb.utf8Pending = nil\n}` with `b.pendingKittyCP = 0\n}`; TestStdinBufferHoldsSplitUTF8CharactersAcrossReads fails."
+ }
+]

@@ -1,7 +1,6 @@
 package codingagent
 
 import (
-	"strings"
 	"testing"
 	"time"
 
@@ -11,27 +10,28 @@ import (
 
 const pageDownKey = "\x1b[6~"
 
-func newTwoModelSelector() *tui.ModelSelector {
+func newTwoModelSelector() *tui.ModelSelectorComponent {
 	items := []tui.ModelSelectorItem{{Provider: "p", ID: "one"}, {Provider: "p", ID: "two"}}
-	sel := tui.NewModelSelector("Select model", items, items, "p/one")
+	sel := tui.NewStaticModelSelectorComponent("Select model", items, items, "p/one")
 	sel.SetFilter("p")
 	sel.HandleInput("\x1b[B")
 	return sel
 }
 
-// TestFullscreenViewportKeysPrecedeEditorSlotSelector pins upstream's input
-// listener order in fullscreen mode: TuiAltScreen.handleViewportInput
-// (tui-alt-screen.ts:740-751) consumes PageDown before the focused
-// editor-slot selector, so the model selector never refilters on it. The
-// selector loops read input directly from the driver, so the driver must apply
-// the viewport first, as the editor path does.
-func TestFullscreenViewportKeysPrecedeEditorSlotSelector(t *testing.T) {
+// TestFullscreenSelectionKeepsItsPageKeys pins Pi PR #7680 (Pi #7629) for the editor-slot selectors. TuiAltScreen.handleViewportInput
+// would consume tui.select.pageDown, which shares its default key with tui.altScreen.pageDown, before the selector. A focused component that
+// captures the selection page keys keeps them, so the model selector moves its selection a page and the transcript does not scroll. Every
+// other key, and the page key for a component that does not capture it, still follows the listener order of tui-alt-screen.ts:740-751.
+// The selector loops read input directly from the driver, so the driver applies the viewport first and skips it for a capturing selector.
+func TestFullscreenSelectionKeepsItsPageKeys(t *testing.T) {
 	m := newFullscreenProbe(t)
 	sel := newTwoModelSelector()
-	before := strings.Join(sel.Render(80), "\n")
-
-	if got := m.modalInputChunks(sel, []string{pageDownKey}); len(got) != 0 {
-		t.Fatalf("PageDown reached the fullscreen selector: %q", got)
+	if got := m.modalInputChunks(sel, []string{pageDownKey}); len(got) != 1 || got[0] != pageDownKey {
+		t.Fatalf("PageDown = %q, want it delivered to the capturing selector", got)
+	}
+	plain := tui.NewText("not a selection")
+	if got := m.modalInputChunks(plain, []string{pageDownKey}); len(got) != 0 {
+		t.Fatalf("PageDown reached a component that does not capture it: %q", got)
 	}
 	if got := m.modalInputChunks(sel, []string{"x"}); len(got) != 1 || got[0] != "x" {
 		t.Fatalf("printable key = %q, want it delivered to the selector", got)
@@ -41,23 +41,18 @@ func TestFullscreenViewportKeysPrecedeEditorSlotSelector(t *testing.T) {
 	input <- []byte(pageDownKey)
 	input <- []byte("x")
 	if buf, ok := m.readModalInput(input); !ok || string(buf) != "x" {
-		t.Fatalf("readModalInput = %q, %v; want the key after PageDown", buf, ok)
+		t.Fatalf("readModalInput = %q, %v; want the key after PageDown, which yields to the viewport", buf, ok)
 	}
-
 	input <- []byte(pageDownKey)
-	m.drainModalInput(sel, input, func(chunk string) bool {
-		sel.HandleInput(chunk)
-		return false
-	})
-	if after := strings.Join(sel.Render(80), "\n"); after != before {
-		t.Fatalf("PageDown changed the fullscreen selector:\n%s\nwant:\n%s", after, before)
+	input <- []byte("x")
+	if buf, ok := m.readModalInputFor(sel, input); !ok || string(buf) != pageDownKey {
+		t.Fatalf("readModalInputFor = %q, %v; want PageDown for a capturing selector", buf, ok)
 	}
 }
 
-// TestRegularModeSelectorReceivesPageDown keeps the main-screen contract: no
-// viewport listener exists, so PageDown reaches the model selector's search
-// input and refilters (model-selector.ts handleInput, filterModels).
-func TestRegularModeSelectorReceivesPageDown(t *testing.T) {
+// TestRegularModeSelectorPageKeyMovesItsSelection: with no viewport listener PageDown reaches the model selector, which moves its selection a
+// page (model-selector.ts handleInput, getPageSelectionIndex) and does not refilter the search.
+func TestRegularModeSelectorPageKeyMovesItsSelection(t *testing.T) {
 	m := newSwitchTuiProbe(t)
 	if m.altScreen != nil {
 		t.Fatal("probe started in fullscreen")

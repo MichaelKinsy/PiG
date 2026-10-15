@@ -140,7 +140,7 @@ func TestCancelledRenameRefreshWakesOwnerLoops(t *testing.T) {
 				m.setModalInputChannel(input)
 				send = func(data string) { input <- []byte(data) }
 				go func() {
-					_, selected := m.runEditorSlotSessionSelector(s)
+					_, selected := m.runEditorSlotSessionSelector(s, hookSessionSelectorOutcome(s))
 					if selected {
 						done <- fmt.Errorf("cancel selected a Session")
 					} else {

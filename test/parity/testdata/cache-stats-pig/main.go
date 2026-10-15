@@ -20,11 +20,11 @@ func main() {
 			panic(err)
 		}
 	}()
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: dir, AgentDir: dir})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: dir, AgentDir: dir})
 	if err != nil {
 		panic(err)
 	}
-	if err := services.Registry().RegisterProvider("test", extension.ProviderConfig{API: ai.APIOpenAICompletions, BaseURL: "https://example.invalid", Models: []extension.ProviderModelConfig{{ID: "test-model", Name: "Test", Cost: extension.ProviderModelCost{CacheRead: .3}}}}); err != nil {
+	if err := services.Registry().RegisterExtensionProvider("test", extension.ProviderConfig{API: ai.APIOpenAICompletions, BaseURL: "https://example.invalid", Models: []extension.ProviderModelConfig{{ID: "test-model", Name: "Test", Cost: extension.ProviderModelCost{CacheRead: .3}}}}); err != nil {
 		panic(err)
 	}
 	session, err := coding.NewSession(services, coding.SessionOptions{Model: &ai.Model{ID: "faux-1", Provider: ai.NewFauxProvider(ai.FauxConfig{})}, SkipBuiltinTools: true})

@@ -1,5 +1,4 @@
 <!--
-SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 SPDX-License-Identifier: MIT
 -->
 
@@ -31,7 +30,7 @@ The release metadata identifies both the PiG version and the Pi version that def
 
 Change the version only with `make set-version VERSION=x.y.z`.
 
-`internal/coding/pigversion/pigversion.go` is the version authority. The command updates its PiG pin, the Standard development version, and the newest changelog heading. An ordinary version bump preserves every `go.mod` and `go.sum`. Dependency versions describe published modules, not the next PiG release. Workspace builds use the developing SDK through `go.work`.
+`internal/coding/pigversion/pigversion.go` is the version authority. The command updates its PiG pin, the Standard development version, the newest changelog heading, and the versions of the Python SDK (`extensions/sdk-py/pyproject.toml`) and the TypeScript declarations (`extensions/sdk-ts/package.json` and `package-lock.json`). It leaves the Rust `pig-sdk` crate on 0.1.x, because Pig resolves an extension's un-pathed `pig-sdk` requirement through a Cargo patch that applies only within semver. An ordinary version bump preserves every `go.mod` and `go.sum`. Dependency versions describe published modules, not the next PiG release. Workspace builds use the developing SDK through `go.work`.
 
 ```bash
 make set-version VERSION=0.3.0 SET_VERSION_ARGS=--dry-run

@@ -58,11 +58,11 @@ func TestInteractiveRunPromptRefreshesBaseSnippetsBeforeLaterTurns(t *testing.T)
 		t.Fatal(err)
 	}
 	cwd := t.TempDir()
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: cwd, AgentDir: agentDir})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: cwd, AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := services.Auth().Set("faux", ai.Credential{Type: ai.CredentialAPIKey, Key: "faux-key"}); err != nil {
+	if err := configureFauxAuth(services, "faux-key"); err != nil {
 		t.Fatal(err)
 	}
 	ext := extension.Extension{Name: "edit", Handlers: map[string][]extension.HandlerFn{"before_agent_start": {func(args ...any) (any, error) {
@@ -80,7 +80,7 @@ func TestInteractiveRunPromptRefreshesBaseSnippetsBeforeLaterTurns(t *testing.T)
 	}
 	t.Cleanup(func() { _ = session.Close() })
 	options := extension.BuildSystemPromptOptions{Cwd: cwd, SelectedTools: session.ActiveToolNames(), ToolSnippets: prompts.DefaultToolSnippets()}
-	h := icodingagent.NewTestHarness(t, icodingagent.InteractiveOptions{
+	h := icodingagent.NewTestHarness(t, icodingagent.InteractiveModeOptions{
 		CWD: cwd, AgentDir: agentDir, Model: model, SessionHandle: session,
 		SettingsManager: services.SettingsManager(), Settings: services.SettingsManager().Get(), ExtensionRunner: runner,
 		SystemPromptOptions: options, SystemPrompt: prompts.BuildDefaultPrompt(prompts.FromExtensionOptions(options)),

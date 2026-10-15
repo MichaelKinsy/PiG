@@ -1,0 +1,6 @@
+{"k":">","name":"harness.root","tick":177}
+{"k":"#","seq":1,"summary":"conversations:i document_revisions:i documents:i","tick":365,"begin":305}
+{"k":">","name":"harness.root().agent","tick":374}
+{"k":">","name":"harness.root().agent","tick":377}
+{"k":">","name":"harness.root().agent","tick":380}
+{"k":">","name":"harness.close","tick":383}

@@ -23,24 +23,27 @@ func TestNativeProviderPublicationSurvivesLaterRefreshError(t *testing.T) {
 		return &ai.AuthCheck{Type: ai.CredentialAPIKey}, nil
 	}, ResolveAuth: func(context.Context, *ai.Credential, ai.AuthResolutionOverrides) (*ai.AuthResult, *ai.Credential, error) {
 		return &ai.AuthResult{Auth: ai.ModelAuth{APIKey: "key"}}, nil, nil
-	}, Stream: func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions, bool) (*ai.AssistantMessageEventStream, error) {
+	}, Stream: func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 		return nil, errors.New("unused")
 	}}
 	p.ResolveRefreshCredential = func(context.Context, *ai.Credential) (*ai.Credential, *ai.Credential, error) {
 		return &ai.Credential{Type: ai.CredentialAPIKey, Key: "key"}, nil, nil
 	}
-	p.RefreshModels = func(_ context.Context, _ *ai.Credential, _ *ai.ModelsStoreEntry, network bool, force *bool, publish func(extension.NativeProviderPublication) error) ([]extension.ProviderModelConfig, error) {
-		if !network {
-			return p.Models, nil
+	// The provider object owns its model list; a publication's update changes it and the registry publishes the list it then reports.
+	current := []*ai.Model{{ID: "old", ProviderMeta: ai.ProviderMetadata{ProviderID: "native", API: original.API, BaseURL: original.BaseURL}}}
+	p.GetModels = func(context.Context) ([]*ai.Model, error) { return current, nil }
+	p.RefreshModels = func(refresh ai.RefreshModelsContext) error {
+		if !refresh.AllowNetwork {
+			return nil
 		}
-		if force == nil || !*force {
+		if refresh.Force == nil || !*refresh.Force {
 			t.Fatal("force was not delivered")
 		}
-		next := []extension.ProviderModelConfig{{ID: "published", API: original.API, BaseURL: original.BaseURL}}
-		if err := publish(extension.NativeProviderPublication{Models: &next}); err != nil {
-			return nil, err
+		next := []*ai.Model{{ID: "published", ProviderMeta: ai.ProviderMetadata{ProviderID: "native", API: original.API, BaseURL: original.BaseURL}}}
+		if _, err := refresh.Publish(ai.ModelsPublication{Update: func() { current = next }}); err != nil {
+			return err
 		}
-		return nil, errors.New("failure after publication")
+		return errors.New("failure after publication")
 	}
 	if err := r.RegisterNativeProvider(t.Context(), p); err != nil {
 		t.Fatal(err)

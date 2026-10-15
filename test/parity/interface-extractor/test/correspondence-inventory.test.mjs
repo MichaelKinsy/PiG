@@ -6,7 +6,7 @@ import test from "node:test";
 import { extractCorrespondenceInventory } from "../src/correspondence-inventory.mjs";
 import { scratchDir } from "./scratch.mjs";
 
-const VERSION = fs.readFileSync(new URL("../../../../internal/coding/pigversion/pigversion.go", import.meta.url), "utf8").match(/const UpstreamVersion = "([^"]+)"/)[1];
+const VERSION = process.env.PIG_UPSTREAM_VERSION || fs.readFileSync(new URL("../../../../internal/coding/pigversion/pigversion.go", import.meta.url), "utf8").match(/const UpstreamVersion = "([^"]+)"/)[1];
 
 function fixture() {
   const root = scratchDir("pig-correspondence-");

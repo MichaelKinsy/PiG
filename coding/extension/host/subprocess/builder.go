@@ -15,7 +15,11 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/configroot"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 
@@ -60,10 +64,27 @@ func (b *Builder) SetStagedSDKVerifier(fn func(stagedDir, buildType string) erro
 	b.verifyStagedSDK = fn
 }
 
+var stagedSDKVerifierFactory atomic.Pointer[func(configRoot string) func(stagedDir, buildType string) error]
+
+// SetDefaultStagedSDKVerifier registers the factory of the staged-SDK freshness check that hosts started by library entry points
+// (coding.DiscoverAndLoadExtensions) install. Linking coding/extension/pigsdk, which embeds and stages the SDKs, registers it, so
+// a program that imports the coding library without the SDKs does not link the SDK sources the check compares against.
+func SetDefaultStagedSDKVerifier(factory func(configRoot string) func(stagedDir, buildType string) error) {
+	stagedSDKVerifierFactory.Store(&factory)
+}
+
+// DefaultStagedSDKVerifier is the registered check for the configuration root, or nil when no program registered one.
+func DefaultStagedSDKVerifier(configRoot string) func(stagedDir, buildType string) error {
+	if factory := stagedSDKVerifierFactory.Load(); factory != nil {
+		return (*factory)(configRoot)
+	}
+	return nil
+}
+
 // NewBuilder creates a builder with the given cache directory.
 // Typically <config-root>/cache/ext/.
 func NewBuilder(cacheDir string) *Builder {
-	return NewBuilderWithConfigRoot(cacheDir, resolveConfigRoot())
+	return NewBuilderWithConfigRoot(cacheDir, configroot.Dir())
 }
 
 // NewBuilderWithConfigRoot creates a builder pinned to the same writable
@@ -74,23 +95,12 @@ func NewBuilderWithConfigRoot(cacheDir, configRoot string) *Builder {
 		cacheDir = abs
 	}
 	if strings.TrimSpace(configRoot) == "" {
-		configRoot = resolveConfigRoot()
+		configRoot = configroot.Dir()
 	}
 	if abs, err := filepath.Abs(configRoot); err == nil {
 		configRoot = abs
 	}
 	return &Builder{cacheDir: cacheDir, configRoot: configRoot}
-}
-
-func resolveConfigRoot() string {
-	if root := strings.TrimSpace(os.Getenv("PIG_HOME")); root != "" {
-		return root
-	}
-	if root := strings.TrimSpace(os.Getenv("XDG_CONFIG_HOME")); root != "" {
-		return filepath.Join(root, "pig")
-	}
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".pig")
 }
 
 // Build compiles the extension source at srcDir if needed. Returns the path
@@ -125,6 +135,12 @@ func (b *Builder) BuildContext(ctx context.Context, name, srcDir string) (*Build
 	buildType, err := detectBuildType(srcDir)
 	if err != nil {
 		return nil, err
+	}
+	if buildType == "node" {
+		// pig additive (D92): a Piglet that strips node-extensions reports it before any cache work.
+		if err := nodeRuntimeUnavailable(); err != nil {
+			return nil, err
+		}
 	}
 	// reuseOnly returns a published entry, or nil without building or waiting.
 	build := func(reuseOnly bool) (*BuildResult, error) {
@@ -220,7 +236,7 @@ func (b *Builder) BuildContext(ctx context.Context, name, srcDir string) (*Build
 
 		return &BuildResult{BinaryPath: entry.ArtifactPath, Cached: entry.Reused, Hash: hash, Language: buildType}, nil
 	}
-	if buildNeedsStagedSDK(srcDir, buildType) {
+	if b.needsStagedSDK(srcDir, buildType) {
 		// A warm entry is found without the staged-SDK lease: its content hash
 		// covers the staged SDK, so a hash read during another process's restage
 		// names no published entry and falls through to the leased path.
@@ -232,12 +248,17 @@ func (b *Builder) BuildContext(ctx context.Context, name, srcDir string) (*Build
 	return build(false)
 }
 
-func buildNeedsStagedSDK(srcDir, buildType string) bool {
+// needsStagedSDK reports whether a build of srcDir compiles against the SDK
+// staged under b's config root rather than the extension's own local SDK.
+func (b *Builder) needsStagedSDK(srcDir, buildType string) bool {
+	// A config root that stages no SDK for buildType has no retired stagings to
+	// recognize; the empty directory leaves every resolving local SDK in force.
+	stagedDir, _ := pigsdklock.StagedSDKDir(b.configRoot, buildType)
 	switch buildType {
 	case "go":
-		return goNeedsStagedSDK(srcDir)
+		return goNeedsStagedSDK(srcDir, stagedDir)
 	case "rust":
-		return rustNeedsStagedSDK(srcDir)
+		return rustNeedsStagedSDK(srcDir, stagedDir)
 	default:
 		return false
 	}
@@ -351,6 +372,20 @@ func hashSourceDir(src, buildType string) (string, error) {
 // filepath.WalkDir order. Hidden, vendor, build-output, and dependency
 // directories are skipped to match what the compiler actually reads.
 func hashDirSources(h hash.Hash, root string, exts []string) error {
+	return walkDirSources(root, exts, func(path, rel string) error {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		h.Write([]byte(rel))
+		h.Write(data)
+		return nil
+	})
+}
+
+// walkDirSources calls visit with the path, and the path relative to root, of
+// each source file hashDirSources mixes, in its order.
+func walkDirSources(root string, exts []string, visit func(path, rel string) error) error {
 	physicalRoot, err := filepath.Abs(root)
 	if err != nil {
 		return err
@@ -386,14 +421,8 @@ func hashDirSources(h hash.Hash, root string, exts []string) error {
 		}
 		for _, ext := range exts {
 			if strings.HasSuffix(path, ext) {
-				data, err := os.ReadFile(path)
-				if err != nil {
-					return err
-				}
 				rel, _ := filepath.Rel(root, path)
-				h.Write([]byte(rel))
-				h.Write(data)
-				break
+				return visit(path, rel)
 			}
 		}
 		return nil
@@ -498,23 +527,25 @@ func (b *Builder) buildSDKFingerprint(srcDir, stagedSDK, buildType string) (stri
 }
 
 func (b *Builder) resolveStagedSDK(srcDir, buildType string) (string, error) {
-	var needed bool
-	var stagedDir string
 	var label string
 	switch buildType {
 	case "go":
-		needed = goNeedsStagedSDK(srcDir)
-		stagedDir = filepath.Join(b.configRoot, "state", "pigsdk", "sdk")
 		label = "Go"
 	case "rust":
-		needed = rustNeedsStagedSDK(srcDir)
-		stagedDir = filepath.Join(b.configRoot, "state", "pigsdk", "sdk-rs")
 		label = "Rust"
 	default:
 		return "", nil
 	}
-	if !needed {
+	if !b.needsStagedSDK(srcDir, buildType) {
 		return "", nil
+	}
+	// pig additive (D92): this binary staged no SDK for a language the active Piglet strips.
+	if err := runtimecell.StrippedSDKError(buildType); err != nil {
+		return "", err
+	}
+	stagedDir, err := pigsdklock.StagedSDKDir(b.configRoot, buildType)
+	if err != nil {
+		return "", err
 	}
 	if info, err := os.Stat(stagedDir); err != nil || !info.IsDir() {
 		return "", fmt.Errorf("staged %s SDK is missing at %s; run `pig reload` with the active config root", label, stagedDir)
@@ -527,7 +558,9 @@ func (b *Builder) resolveStagedSDK(srcDir, buildType string) (string, error) {
 	return stagedDir, nil
 }
 
-func goNeedsStagedSDK(srcDir string) bool {
+// goNeedsStagedSDK reports whether srcDir's module must build against
+// stagedDir, the Go SDK staged now, instead of its own SDK replace.
+func goNeedsStagedSDK(srcDir, stagedDir string) bool {
 	path := filepath.Join(srcDir, "go.mod")
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -565,16 +598,22 @@ func goNeedsStagedSDK(srcDir string) bool {
 			if !filepath.IsAbs(resolved) {
 				resolved = filepath.Join(srcDir, resolved)
 			}
-			if _, err := os.Stat(resolved); err == nil {
-				return false
+			if _, err := os.Stat(resolved); err != nil {
+				return true
 			}
-			return true
+			// A replace into the config root's SDK staging area that misses
+			// stagedDir names an SDK an earlier host build staged and never
+			// deleted (a link made to it before an update keeps resolving), so
+			// it is overridden like a dead path.
+			return runtimecell.RetiredStagedSDK(resolved, stagedDir)
 		}
 	}
 	return true
 }
 
-func rustNeedsStagedSDK(srcDir string) bool {
+// rustNeedsStagedSDK reports whether srcDir's crate must build against
+// stagedDir, the Rust SDK staged now, instead of its own SDK path dependency.
+func rustNeedsStagedSDK(srcDir, stagedDir string) bool {
 	var manifest struct {
 		Dependencies map[string]any `toml:"dependencies"`
 	}
@@ -597,7 +636,9 @@ func rustNeedsStagedSDK(srcDir string) bool {
 			if !filepath.IsAbs(resolved) {
 				resolved = filepath.Join(srcDir, resolved)
 			}
-			if _, err := os.Stat(filepath.Join(resolved, "Cargo.toml")); err == nil {
+			// A path into the staging area that misses stagedDir is a retired
+			// staging, overridden like a dead path (see goNeedsStagedSDK).
+			if _, err := os.Stat(filepath.Join(resolved, "Cargo.toml")); err == nil && !runtimecell.RetiredStagedSDK(resolved, stagedDir) {
 				return false
 			}
 		}
@@ -605,18 +646,115 @@ func rustNeedsStagedSDK(srcDir string) bool {
 	return true
 }
 
+// hashWithStagedSDK folds the staged SDK's source digest into baseHash, the
+// extension's own source hash.
 func hashWithStagedSDK(baseHash, sdkDir, buildType string) (string, error) {
+	digest, err := sdkSourceDigest(sdkDir, buildType)
+	if err != nil {
+		return "", err
+	}
 	h := sha256.New()
 	_, _ = io.WriteString(h, baseHash)
 	_, _ = io.WriteString(h, "\x00staged-sdk\x00"+buildType+"\x00")
-	exts := []string{".go", ".mod", ".sum"}
-	if buildType == "rust" {
-		exts = []string{".rs", ".toml", ".lock"}
+	_, _ = io.WriteString(h, digest)
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// sdkSourceExts names the files that define an SDK of buildType.
+func sdkSourceExts(buildType string) []string {
+	switch buildType {
+	case "rust":
+		return []string{".rs", ".toml", ".lock"}
+	case "python":
+		return []string{".py", ".toml", ".lock"}
+	case "node":
+		return []string{".js", ".mjs", ".cjs", ".ts", ".json"}
 	}
-	if err := hashDirSources(h, sdkDir, exts); err != nil {
+	return []string{".go", ".mod", ".sum"}
+}
+
+type sdkDigestKey struct{ dir, buildType string }
+
+// sdkFileStamp is what a stat says of one SDK source file.
+type sdkFileStamp struct {
+	rel     string
+	size    int64
+	modTime time.Time
+}
+
+type sdkDigest struct {
+	files []sdkFileStamp // in walk order
+	hex   string
+}
+
+// sdkDigests holds sdkSourceDigest per physical SDK directory and build type
+// for the life of the process, with the stamp of every source file it read.
+var sdkDigests sync.Map // sdkDigestKey -> sdkDigest
+
+// sdkSourceDigest is the hex SHA-256 of the SDK sources in sdkDir that
+// hashDirSources mixes for buildType. Every Go or Rust extension build of a
+// process folds the same staged SDK (about 150 files, 1 MB) into its cache
+// key: the first one reads and hashes it, and the others stat its source
+// files, so a restage, or an edit in place, is hashed again.
+func sdkSourceDigest(sdkDir, buildType string) (string, error) {
+	physical, err := filepath.Abs(sdkDir)
+	if err != nil {
 		return "", err
 	}
-	return hex.EncodeToString(h.Sum(nil)), nil
+	if physical, err = filepath.EvalSymlinks(physical); err != nil {
+		return "", err
+	}
+	exts := sdkSourceExts(buildType)
+	key := sdkDigestKey{physical, buildType}
+	if cached, ok := sdkDigests.Load(key); ok {
+		if d := cached.(sdkDigest); sdkStampsMatch(physical, exts, d.files) {
+			return d.hex, nil
+		}
+	}
+	h := sha256.New()
+	var files []sdkFileStamp
+	err = walkDirSources(physical, exts, func(path, rel string) error {
+		// The stamp is taken before the read: a change after it leaves a stamp the next call does not match.
+		info, err := os.Stat(path) //perf:ok once per staged SDK file per extension build, which runs a Go/Rust toolchain build
+		if err != nil {
+			return err
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		files = append(files, sdkFileStamp{rel: rel, size: info.Size(), modTime: info.ModTime()})
+		h.Write([]byte(rel))
+		h.Write(data)
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	digest := hex.EncodeToString(h.Sum(nil))
+	sdkDigests.Store(key, sdkDigest{files: files, hex: digest})
+	return digest, nil
+}
+
+// sdkStampsMatch reports whether the source files under root are the stamped
+// files, in order, each with its size and modification time unchanged.
+func sdkStampsMatch(root string, exts []string, files []sdkFileStamp) bool {
+	matched := 0
+	stale := false
+	err := walkDirSources(root, exts, func(path, rel string) error {
+		info, err := os.Stat(path) //perf:ok one stat per staged SDK file per extension build replaces reading and hashing the file
+		if err != nil || matched == len(files) {
+			stale = true
+			return fs.SkipAll
+		}
+		if f := files[matched]; f.rel != rel || f.size != info.Size() || !f.modTime.Equal(info.ModTime()) {
+			stale = true
+			return fs.SkipAll
+		}
+		matched++
+		return nil
+	})
+	return err == nil && !stale && matched == len(files)
 }
 
 // ensureBuildToolchain fails early with actionable guidance when the toolchain a
@@ -627,6 +765,10 @@ func hashWithStagedSDK(baseHash, sdkDir, buildType string) (string, error) {
 // ship a compiled binary and need no toolchain. Unknown build types are a no-op.
 func ensureBuildToolchain(ctx context.Context, buildType string) error {
 	if buildType == "node" {
+		// pig additive (D19): a process that requests another TypeScript runtime checks Node only when a launch falls back to it.
+		if !typeScriptBuildNeedsNode() {
+			return nodeRuntimeUnavailable()
+		}
 		_, err := ensureNodeRuntime(ctx)
 		return err
 	}
@@ -667,7 +809,7 @@ func buildGo(ctx context.Context, cacheRoot, srcDir, outPath, stagedSDK string) 
 	buildprogress.Phase(ctx, "Compiling Go member", srcDir+" (module resolution, compile, link)")
 	cmd := linkerexec.CommandContext(ctx, goToolchain.Command, buildprogress.ToolArgs(ctx, "go", args)...)
 	cmd.Dir = srcDir
-	cmd.Env = append(goToolchain.Environ(goBuildEnvironment(srcDir, os.Environ())), runtimecell.GoBuildCgoEnv(runtime.GOOS, runtime.GOARCH), "GOWORK=off")
+	cmd.Env = toolchain.WorkDirEnv(srcDir, append(goToolchain.Environ(goBuildEnvironment(srcDir, os.Environ())), runtimecell.GoBuildCgoEnv(runtime.GOOS, runtime.GOARCH), "GOWORK=off"))
 	out, err := buildprogress.CombinedOutput(ctx, cmd)
 	if err != nil {
 		_ = os.Remove(tmpPath) // Clean up partial.
@@ -768,12 +910,13 @@ func buildRust(ctx context.Context, cacheRoot, srcDir, outPath, stagedSDK string
 	cmd := linkerexec.CommandContext(ctx, "cargo", buildprogress.ToolArgs(ctx, "rust", args)...)
 	cmd.Dir = buildDir
 	cmd.Env = withoutGitEnvironmentOverrides(os.Environ())
+	cargoStarted := time.Now()
 	out, err := buildprogress.CombinedOutput(ctx, cmd)
 	if err != nil {
 		if ctx.Err() != nil {
 			return fmt.Errorf("cargo build: %w", err)
 		}
-		failure, _ := runtimecell.RustBuildFailure(cacheRoot, srcDir, buildDir, err, out)
+		failure, _ := runtimecell.RustBuildFailure(cacheRoot, srcDir, buildDir, err, out, runtimecell.BuildRun{Elapsed: time.Since(cargoStarted)})
 		return failure
 	}
 

@@ -97,11 +97,17 @@ func TestAnthropicBetaFeaturesUseECMAScriptTrim(t *testing.T) {
 	}
 }
 
+// anthropicCodeAndState is parseAuthorizationInput without its state presence.
+func anthropicCodeAndState(input string) (code, state string) {
+	code, state, _ = parseAuthorizationInput(input)
+	return code, state
+}
+
 func TestOAuthPastedInputUsesECMAScriptTrim(t *testing.T) {
 	// auth/oauth/{anthropic,openai-codex,openrouter}.ts:53,74,53 trim the pasted value before URL/query/bare-code parsing.
 	for _, tc := range ecmaTrimCases {
 		t.Run(tc.name, func(t *testing.T) {
-			for name, parse := range map[string]func(string) (string, string){"anthropic": parseAuthorizationInput, "codex": parseCodexAuthorizationInput} {
+			for name, parse := range map[string]func(string) (string, string){"anthropic": anthropicCodeAndState, "codex": parseCodexAuthorizationInput} {
 				if code, state := parse(tc.input); code != tc.want || state != "" {
 					t.Errorf("%s code=%q state=%q want=%q", name, code, state, tc.want)
 				}
@@ -113,7 +119,7 @@ func TestOAuthPastedInputUsesECMAScriptTrim(t *testing.T) {
 	}
 	// BOM around a redirect must be removed before the URL parser chooses the query branch.
 	redirect := "\ufeffhttp://localhost/callback?code=abc&state=xyz\ufeff"
-	for _, parse := range []func(string) (string, string){parseAuthorizationInput, parseCodexAuthorizationInput} {
+	for _, parse := range []func(string) (string, string){anthropicCodeAndState, parseCodexAuthorizationInput} {
 		if code, state := parse(redirect); code != "abc" || state != "xyz" {
 			t.Errorf("redirect code=%q state=%q", code, state)
 		}
@@ -152,7 +158,11 @@ func TestErrorDetailsUseECMAScriptTrim(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			cause := errors.New(tc.input)
 			want := "failed"
-			if tc.want != "" {
+			switch {
+			case tc.input == "":
+				// utils/diagnostics.ts:18 formatThrownValue: an Error with an empty message contributes its name.
+				want += ": Error"
+			case tc.want != "":
 				want += ": " + tc.want
 			}
 			got := NewModelsError(ModelsErrorAuth, "failed", cause)
@@ -164,7 +174,7 @@ func TestErrorDetailsUseECMAScriptTrim(t *testing.T) {
 			if tc.want != "" {
 				detail = ": " + tc.want
 			}
-			if got := metaErrorDetail(body); got != detail {
+			if got := metaErrorDetail(metaBody{members: body}); got != detail {
 				t.Errorf("Meta detail=%q want=%q", got, detail)
 			}
 			provider := testMetaProvider(func(*http.Request) (*http.Response, error) { return metaJSONResponse(400, body), nil })

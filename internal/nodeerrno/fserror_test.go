@@ -9,14 +9,20 @@ import (
 )
 
 // MkdirAll and FromPathError report failures as Node's fs.mkdirSync(dir, {recursive: true}), fs.writeFileSync and fs.readFileSync do on the same paths: a recursive mkdir names the requested path and reports EEXIST for a file in its place and ENOTDIR for a file above it; an open names its path; a read names none.
+// A directory missing from the file-system root fails as the OS refuses it: EACCES for a non-root user on Linux, and on macOS, whose
+// root is read-only, ENOENT, because node_file.cc MKDirpSync stats the directory after an EROFS and reports the stat's error.
 func TestMkdirAllAndFromPathErrorMatchNode(t *testing.T) {
 	root := t.TempDir()
+	underRoot := "/nonexistent-dir-for-pig-mkdir/a"
+	if os.Geteuid() == 0 {
+		underRoot = filepath.Join(root, "new", "dir") // root could create it under /
+	}
 	file := filepath.Join(root, "file")
 	if err := os.WriteFile(file, []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	const script = `const fs = require('node:fs');
-const [file, root] = process.argv.slice(1);
+const [file, root, underRoot] = process.argv.slice(1);
 const path = require('node:path');
 const run = (f) => { try { f(); return 'ok'; } catch (err) { return err.message; } };
 console.log(JSON.stringify([
@@ -25,8 +31,9 @@ console.log(JSON.stringify([
   run(() => fs.mkdirSync(path.join(root, 'new', 'dir'), { recursive: true })),
   run(() => fs.writeFileSync(path.join(file, 'store.json'), '{}')),
   run(() => fs.readFileSync(root, 'utf-8')),
+  run(() => fs.mkdirSync(underRoot, { recursive: true })),
 ]));`
-	out, err := exec.CommandContext(t.Context(), "node", "-e", script, file, root).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "node", "-e", script, file, root, underRoot).CombinedOutput()
 	if err != nil {
 		t.Fatalf("node: %v\n%s", err, out)
 	}
@@ -47,6 +54,7 @@ console.log(JSON.stringify([
 		message(MkdirAll(filepath.Join(root, "new", "dir"), 0o700)),
 		message(FromPathError(os.WriteFile(filepath.Join(file, "store.json"), []byte("{}"), 0o600))),
 		message(FromPathError(readErr)),
+		message(MkdirAll(underRoot, 0o700)),
 	}
 	for i := range node {
 		if got[i] != node[i] {

@@ -36,7 +36,7 @@ func TestSessionFileWithLineOver16MiBLoads(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	entries := sess.Entries()
+	entries := sess.GetEntries()
 	if len(entries) != 1 || len(entries[0].Raw()) < textBytes {
 		t.Fatalf("entries = %d, want the one large entry intact", len(entries))
 	}

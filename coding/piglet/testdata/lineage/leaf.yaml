@@ -1,0 +1,9 @@
+name: leaf
+description: rewrites one inherited skill
+release:
+  version: 2.0.0
+extends:
+  source: local:./mid.yaml
+skills:
+  - name: alpha
+    content: first, rewritten

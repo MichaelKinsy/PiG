@@ -150,7 +150,17 @@ func ScanAll[T any](scan func(cursor durable.Cursor) (durable.Page[T, durable.Cu
 // ErrClosed is the error of an operation on a closed Harness.
 var ErrClosed = errors.New("Harness is closed")
 
-func closedError() error { return ErrClosed }
+// failureSource is a Session that can say it failed.
+type failureSource interface{ Failure() error }
+
+// closedError is what a closed Harness rejects with: SessionFailed with the cause when it closed because the Session failed
+// (util.ts closedError).
+func closedError(session failureSource) error {
+	if failure := session.Failure(); failure != nil {
+		return durable.NewSessionFailed(failure)
+	}
+	return ErrClosed
+}
 
 // jsonQuote is JSON.stringify of a string.
 func jsonQuote(text string) string {

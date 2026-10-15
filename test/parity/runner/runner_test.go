@@ -15,7 +15,6 @@ package runner
 import (
 	"context"
 	"flag"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -29,6 +28,7 @@ var (
 	flagScenarioDir = flag.String("pig-parity.dir", "", "override scenario directory")
 	flagTags        = flag.String("pig-parity.tags", "", "comma-separated tags all required for inclusion (empty = all)")
 	flagDrivers     = flag.String("pig-parity.drivers", "", "comma-separated scenario drivers to include (empty = all)")
+	flagExcludeTags = flag.String("pig-parity.exclude-tags", "", "comma-separated tags; a scenario carrying any of them is not run here, and the run names it")
 	flagResultsOut  = flag.String("pig-parity.results", "", "write JSON results to this path")
 	flagSerial      = flag.Bool("pig-parity.serial", false, "force serial execution (default: parallel where safe)")
 	flagGroupLimits = flag.String("pig-parity.group-limits", defaultParityGroupLimits, "bounded concurrency buckets (name=n,name=n)")
@@ -70,6 +70,14 @@ func TestParity(t *testing.T) {
 		tags = strings.Split(s, ",")
 	}
 	scenarios = FilterByTags(scenarios, tags)
+	var excludeTags []string
+	if s := strings.TrimSpace(*flagExcludeTags); s != "" {
+		excludeTags = strings.Split(s, ",")
+	}
+	scenarios, excluded := FilterOutTags(scenarios, excludeTags)
+	for _, sc := range excluded {
+		t.Logf("not run here (tagged %v; a run without -pig-parity.exclude-tags runs it): %s (%s)", excludeTags, sc.Name, sc.SourcePath)
+	}
 	var drivers []string
 	if value := strings.TrimSpace(*flagDrivers); value != "" {
 		drivers = strings.Split(value, ",")
@@ -108,6 +116,12 @@ func TestParity(t *testing.T) {
 	t.Logf("pig freshness: binary=%s newest_source=%s fresh=%t",
 		freshness.BinaryModTime.Format("2006-01-02T15:04:05Z07:00"), freshness.NewestPath, freshness.Fresh)
 	t.Logf("schedule: %s", formatScheduleSummary(scenarios, groupLimits))
+
+	t.Cleanup(func() {
+		if err := goPrebuilds.removeAll(); err != nil {
+			t.Errorf("remove the prebuilt Go probes: %v", err)
+		}
+	})
 
 	hasAuth := credentialsAvailable()
 
@@ -285,27 +299,6 @@ func TestParity(t *testing.T) {
 				t.Errorf("write results: %v", err)
 			}
 		})
-	}
-}
-
-// findRepoRoot walks up from CWD looking for go.mod with the pig module path.
-func findRepoRoot() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	for {
-		modfile := filepath.Join(dir, "go.mod")
-		if data, err := os.ReadFile(modfile); err == nil {
-			if strings.Contains(string(data), "module github.com/MichaelKinsy/PiG") {
-				return dir, nil
-			}
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			return "", fmt.Errorf("repo root not found")
-		}
-		dir = parent
 	}
 }
 

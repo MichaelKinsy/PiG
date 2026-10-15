@@ -2,6 +2,8 @@
 
 package node
 
+// pi: packages/durable/src/env/node-watch.ts
+
 import (
 	"bytes"
 	"errors"
@@ -41,17 +43,19 @@ func TestNodeExecutionEnvConformance(t *testing.T) {
 	// upstream: packages/durable/test/env-node-conformance.test.ts:33
 	durabletest.RegisterEnvConformance(t, "NodeExecutionEnv conformance", func(use func(durableenv.ExecutionEnv) error) error {
 		return withTestEnv(t, NodeExecutionEnvOptions{})(use)
-	}, shell, noSymlinks)
+	}, durabletest.EnvConformanceRegisterOptions{Shell: shell, Symlinks: new(!noSymlinks)})
 	// upstream: packages/durable/test/env-node-conformance.test.ts:48
 	durabletest.RegisterEnvConformance(t, "NodeExecutionEnv conformance with polling watches", func(use func(durableenv.ExecutionEnv) error) error {
-		return withTestEnv(t, NodeExecutionEnvOptions{Watch: NodeWatchOptions{Mode: durableenv.WatchPolling, PollIntervalMs: 100}})(use)
-	}, shell, noSymlinks)
+		return withTestEnv(t, NodeExecutionEnvOptions{Watch: NodeWatchOptions{Mode: durableenv.WatchPolling, PollIntervalMs: new(100)}})(use)
+	}, durabletest.EnvConformanceRegisterOptions{Shell: shell, Symlinks: new(!noSymlinks)})
 }
 
+// mutation-checked: zeroing the results of NodeExecutionEnv.Watch fails it
+// mutation-checked: dropping the reads and writes of NodeWatchOptions.MaxDirectories, WatchTarget.Path, WatchTarget.Recursive fails it
 func TestNodeExecutionEnvWatchLimits(t *testing.T) {
 	t.Run("refuses a tree over the directory budget and stops with an error when one grows past it", func(t *testing.T) {
 		// upstream: packages/durable/test/env-node-conformance.test.ts:63
-		env := NewNodeExecutionEnv(NodeExecutionEnvOptions{Cwd: t.TempDir(), Watch: NodeWatchOptions{MaxDirectories: 3}})
+		env := NewNodeExecutionEnv(NodeExecutionEnvOptions{Cwd: t.TempDir(), Watch: NodeWatchOptions{MaxDirectories: new(3)}})
 		mustDo(t, env.CreateDir(background, "tree/a/b", nil))
 		mustDo(t, env.CreateDir(background, "tree/c", nil))
 		_, err := env.Watch(background, []durableenv.WatchTarget{{Path: "tree", Recursive: true}}, func(durableenv.WatchChange) {})
@@ -81,6 +85,40 @@ func TestNodeExecutionEnvWatchLimits(t *testing.T) {
 	})
 }
 
+// packages/durable/src/env/node-watch.ts (1.0.4) fails a watch with permission_denied when a target, or a watched
+// directory itself, cannot be read for lack of permission. Upstream has no test for it.
+// packages/durable/src/env/node-watch.ts:14-16: NodeWatchOptions.mode forces native or polling and pollIntervalMs sets the polling interval.
+func TestNodeExecutionEnvWatchPermissionDenied(t *testing.T) {
+	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+		t.Skip("permission bits do not deny this process")
+	}
+	for _, mode := range []durableenv.WatchMode{durableenv.WatchNative, durableenv.WatchPolling} {
+		t.Run(string(mode), func(t *testing.T) {
+			_, root := newTestEnv(t)
+			env := NewNodeExecutionEnv(NodeExecutionEnvOptions{Cwd: root, Watch: NodeWatchOptions{Mode: mode, PollIntervalMs: new(100)}})
+			mustDo(t, os.MkdirAll(filepath.Join(root, "locked", "inner"), 0o700))
+			mustDo(t, os.Chmod(filepath.Join(root, "locked"), 0))
+			t.Cleanup(func() { _ = os.Chmod(filepath.Join(root, "locked"), 0o700) })
+			// The target itself cannot be stat'ed.
+			_, err := env.Watch(background, []durableenv.WatchTarget{{Path: "locked/inner"}}, func(durableenv.WatchChange) {})
+			if fileErr, ok := errors.AsType[*durableenv.FileError](err); !ok || fileErr.Code != durableenv.FileErrorPermissionDenied {
+				t.Fatalf("Watch error = %v, want a permission_denied FileError", err)
+			}
+			// A target directory that cannot be listed.
+			mustDo(t, os.Chmod(filepath.Join(root, "locked"), 0o700))
+			mustDo(t, os.Chmod(filepath.Join(root, "locked", "inner"), 0))
+			t.Cleanup(func() { _ = os.Chmod(filepath.Join(root, "locked", "inner"), 0o700) })
+			_, err = env.Watch(background, []durableenv.WatchTarget{{Path: "locked/inner"}}, func(durableenv.WatchChange) {})
+			if fileErr, ok := errors.AsType[*durableenv.FileError](err); !ok || fileErr.Code != durableenv.FileErrorPermissionDenied {
+				t.Fatalf("Watch error = %v, want a permission_denied FileError", err)
+			}
+		})
+	}
+}
+
+// mutation-checked: zeroing the results of NodeExecutionEnv.OpenBinaryReader fails it
+// mutation-checked: dropping the reads and writes of FileError.Code fails it
+// mutation-checked: negating the condition at binary_reader.go:81 or :94 fails it.
 func TestNodeExecutionEnvReaders(t *testing.T) {
 	t.Run("reads ranges spanning several internal chunks exactly", func(t *testing.T) {
 		// upstream: packages/durable/test/env-node-conformance.test.ts:103

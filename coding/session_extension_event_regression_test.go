@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -19,7 +21,7 @@ import (
 func TestSessionEventSettlementPreservesMessageOrderUpstream(t *testing.T) {
 	ext := extension.Extension{Handlers: map[string][]extension.HandlerFn{
 		"message_end": {func(args ...any) (any, error) {
-			message := args[0].(extension.MessageEndEvent).Message.(agent.AgentMessage)
+			message := args[0].(extension.MessageEndEvent).Message
 			if message.Assistant != nil {
 				// The upstream handler deliberately yields for 20ms; this is the stimulus, not a wait for test completion.
 				time.Sleep(20 * time.Millisecond)
@@ -36,7 +38,7 @@ func TestSessionEventSettlementPreservesMessageOrderUpstream(t *testing.T) {
 					ai.ToolCall{ID: "echo-two", Name: "echo", Arguments: ai.JsonObject{"text": "two"}},
 				}}
 		}, fauxReply("done", ai.StopReasonStop, 0))
-	if _, err := h.session.Prompt(t.Context(), "run tools"); err != nil {
+	if err := h.session.Prompt(t.Context(), "run tools"); err != nil {
 		t.Fatal(err)
 	}
 	roles := settlementBranchRoles(h.session)
@@ -64,7 +66,7 @@ func TestSessionEventSettlementPrecedesToolCallUpstream(t *testing.T) {
 	h := newRecoveryHarness(t, harnessOptions{tools: []agent.AgentTool{&modelExtensionEchoTool{}}, extension: ext},
 		modelExtensionToolCall, fauxReply("done", ai.StopReasonStop, 0))
 	session = h.session
-	if _, err := session.Prompt(t.Context(), "run tool"); err != nil {
+	if err := session.Prompt(t.Context(), "run tool"); err != nil {
 		t.Fatal(err)
 	}
 	want := [][]string{{"system", "user", "assistant"}}
@@ -76,7 +78,7 @@ func TestSessionEventSettlementPrecedesToolCallUpstream(t *testing.T) {
 func settlementBranchRoles(session *Session) []string {
 	var roles []string
 	for _, entry := range session.Inner().GetBranch() {
-		if message, ok := entry.AsMessage(); ok {
+		if message, ok := entry.(icodingagent.MessageEntry); ok {
 			roles = append(roles, message.Message.Role())
 		}
 	}
@@ -119,13 +121,13 @@ func TestTurnEndIncludesPersistedEntryIDs(t *testing.T) {
 		{first.ToolResultEntryIds[0], first.ToolResults[0]},
 		{second.MessageEntryID, second.Message},
 	} {
-		entry, ok := h.session.Inner().EntryByID(pair.id)
+		entry, ok := h.session.Inner().GetEntry(pair.id)
 		if !ok {
 			t.Fatalf("turn_end ID %q does not resolve to a persisted entry", pair.id)
 		}
-		message, ok := entry.AsMessage()
+		message, ok := entry.(icodingagent.MessageEntry)
 		if !ok {
-			t.Fatalf("turn_end ID %q resolved to a %s entry", pair.id, entry.Base.Type)
+			t.Fatalf("turn_end ID %q resolved to a %s entry", pair.id, entry.Base().Type)
 		}
 		got, err := json.Marshal(message.Message)
 		if err != nil {

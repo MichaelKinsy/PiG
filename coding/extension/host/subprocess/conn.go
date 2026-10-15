@@ -1,6 +1,7 @@
 package subprocess
 
 import (
+	"bufio"
 	"context"
 	"encoding/binary"
 	"errors"
@@ -8,6 +9,7 @@ import (
 	"io"
 	"math"
 	"net"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -18,11 +20,25 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/invocation"
 )
 
+// ToolAbortGrace is how long an aborted extension tool call waits for the tool to settle after its AbortSignal fires.
+//
+// pig divergence (D111): Pi awaits an aborted tool indefinitely (agent-loop.ts:831-853); a subprocess call must not block the agent loop forever.
+const ToolAbortGrace = 3 * time.Second
+
+// readBufferBytes sizes the connection's read buffer: a burst of small frames costs one socket read.
+// pig additive (D112): Pi loads extensions in process and has no IPC reads; a frame longer than the buffer is read across refills with the same bytes.
+const readBufferBytes = 64 << 10
+
+// ErrToolAborted fails an aborted extension tool call that did not settle within ToolAbortGrace. Its text is Pi's abort tool result (agent-loop.ts:623).
+var ErrToolAborted = errors.New("Operation aborted")
+
 // livenessClock supplies monotonic timers to the connection state machine.
 // Tests inject a manual clock; production uses the runtime monotonic clock.
 type livenessTimer interface {
 	C() <-chan time.Time
 	Stop() bool
+	// Reset re-arms the timer for d, stopped or fired, so a waiter that re-arms a deadline reuses one timer; C may change.
+	Reset(d time.Duration)
 }
 
 type livenessClock interface {
@@ -35,8 +51,9 @@ type realLivenessTimer struct{ timer *time.Timer }
 func (realLivenessClock) NewTimer(d time.Duration) livenessTimer {
 	return realLivenessTimer{timer: time.NewTimer(d)}
 }
-func (t realLivenessTimer) C() <-chan time.Time { return t.timer.C }
-func (t realLivenessTimer) Stop() bool          { return t.timer.Stop() }
+func (t realLivenessTimer) C() <-chan time.Time   { return t.timer.C }
+func (t realLivenessTimer) Stop() bool            { return t.timer.Stop() }
+func (t realLivenessTimer) Reset(d time.Duration) { t.timer.Reset(d) }
 
 // pig divergence (D56): heartbeat interval and pong deadline are the host's
 // only liveness bound on a subprocess; upstream extensions run in process.
@@ -75,6 +92,8 @@ type HandlerStalledError struct {
 	Extension        string
 	Operation        string
 	HeartbeatHealthy bool
+	// Settled closes when the abandoned handler's late response arrives or the connection ends. Nil when the request had nothing left to settle.
+	Settled <-chan struct{}
 }
 
 func (e *HandlerStalledError) Error() string {
@@ -105,12 +124,30 @@ type Conn struct {
 	beforeCancel func()
 	// inbound observes each decoded frame on the read loop, in wire order, before routing. Cross-process reference accounting uses it so a later release on this connection can never overtake an earlier transmission.
 	inbound func(*Envelope)
+	// outbound observes each frame's JSON on the write loop, in write order, before it is written (Host.SetOutboundObserver).
+	outbound func(frame []byte)
+	// parts is conn when it takes frames by parts (a fused extension's fusedConn); nil for a socket.
+	parts framePartsWriter
+	// onLoopTurned runs on the read loop for each NotifyLoopTurned frame, with its arguments, before the frames after it are read.
+	onLoopTurned func(args json.RawMessage)
+	// onLoopTurnTaken runs on the read loop for each NotifyLoopTurnTaken frame, with its arguments.
+	onLoopTurnTaken func(args json.RawMessage)
+	// loopTurnsClosed is set under the Host's loopTurns mutex once the read loop ended, so the connection is no recipient a forwarded turn waits for.
+	loopTurnsClosed bool
 	// onClosed runs once when the read loop ends.
 	onClosed func()
-	name     string
-	conn     net.Conn
-	closing  atomic.Bool
-	closed   atomic.Bool
+	// viewImages holds the image bytes this connection's views sent (D107).
+	viewImagesOnce sync.Once
+	viewImages     *viewImageStore
+	// reportView reports a rejected view of this connection's extension
+	// (D107). Set by the Host before the connection starts reading.
+	reportView func(surface string, err error)
+	name       string
+	conn       net.Conn
+	closing    atomic.Bool
+	closed     atomic.Bool
+	// modelRegistry records RegisterPayload.WantsModelRegistry. UIBridge.RegisterExtConn sets it and PublishModelCatalog reads it, both under the bridge's mutex.
+	modelRegistry bool
 
 	// Outgoing message queue. Writer goroutine drains this. A frame that is
 	// queued or being written is outstanding work, so the heartbeat runs while
@@ -118,12 +155,20 @@ type Conn struct {
 	// accepted, which proves liveness while a large frame drains slowly.
 	outCh         chan outboundFrame
 	writeProgress atomic.Uint64
+	// writeMu serializes socket writes between the writer goroutine and a caller that writes its own frame (writeInline). queued counts the frames enqueued and not yet written or abandoned: a caller writes inline only when it is zero, so no frame overtakes one queued before it. writerStarted is set once Start launched the writer that owns the queue.
+	writeMu       sync.Mutex
+	queued        atomic.Int64
+	writerStarted atomic.Bool
 
 	// Pending request tracking: maps request ID → response channel, and
 	// request ID → the sink for that request's tool_update notifications.
 	pendingMu sync.Mutex
 	pending   map[string]chan *Envelope
-	updates   map[string]func(json.RawMessage)
+	// abandoned holds the channel each stalled request closes when its late response or the connection end settles it; guarded by pendingMu.
+	abandoned map[string]chan struct{}
+	// abandonedClosed is set once the reader has exited: no late response can arrive.
+	abandonedClosed bool
+	updates         map[string]func(json.RawMessage)
 	// answered runs on the read loop when the response of a request routes to its waiter.
 	answered map[string]func()
 	// hostCalls counts, per request, the host calls the host applies for it.
@@ -140,7 +185,9 @@ type Conn struct {
 	runSignal runSignalSync
 
 	stateMu       sync.Mutex
-	requestStates map[string]chan RequestStatePayload
+	requestStates map[string]requestStateSink
+	// writeResults pools the channels that carry a frame's write result (writeResult).
+	writeResults sync.Pool
 	// suspending counts the suspension frames of a request that the read loop queued for the host and the host has not yet delivered. suspensionsSettled is closed and replaced whenever a count drops.
 	suspending         map[string]int
 	suspendedRequests  map[string]bool
@@ -180,17 +227,22 @@ type Conn struct {
 	clock             livenessClock
 	heartbeatInterval time.Duration
 	heartbeatTimeout  time.Duration
-	workMu            sync.Mutex
-	work              int
-	workChanged       chan struct{}
-	pongCh            chan string
-	heartbeatReady    chan struct{}
-	heartbeatIdle     chan struct{}
-	heartbeatID       atomic.Uint64
-	failOnce          sync.Once
-	retiring          atomic.Bool
-	failureMu         sync.Mutex
-	failure           error
+	// work counts outstanding work. Its idle/busy transitions arm and stop the heartbeat interval.
+	work        atomic.Int64
+	workChanged chan struct{}
+	// armMu guards the heartbeat interval timer (made at the first busy transition), whether it runs, and whether a ping is in flight.
+	armMu          sync.Mutex
+	interval       livenessTimer
+	intervalArmed  bool
+	pongPhase      bool
+	pongCh         chan string
+	heartbeatReady chan struct{}
+	heartbeatIdle  chan struct{}
+	heartbeatID    atomic.Uint64
+	failOnce       sync.Once
+	retiring       atomic.Bool
+	failureMu      sync.Mutex
+	failure        error
 
 	// cancel signals all goroutines to stop.
 	cancel   context.CancelFunc
@@ -214,11 +266,14 @@ func newConnWithOptions(name string, c net.Conn, options connOptions) *Conn {
 	if options.HeartbeatTimeout <= 0 {
 		options.HeartbeatTimeout = defaultHeartbeatTimeout
 	}
+	parts, _ := c.(framePartsWriter)
 	return &Conn{
 		name:               name,
 		conn:               c,
+		parts:              parts,
 		outCh:              make(chan outboundFrame, 64),
 		pending:            make(map[string]chan *Envelope),
+		abandoned:          make(map[string]chan struct{}),
 		updates:            make(map[string]func(json.RawMessage)),
 		answered:           make(map[string]func()),
 		hostCallCounts:     make(map[string]func(dialog bool, delta int)),
@@ -226,7 +281,7 @@ func newConnWithOptions(name string, c net.Conn, options connOptions) *Conn {
 		drainCovered:       make(map[*Envelope][]func()),
 		inCh:               make(chan *Envelope, 32),
 		done:               make(chan struct{}),
-		requestStates:      make(map[string]chan RequestStatePayload),
+		requestStates:      make(map[string]requestStateSink),
 		suspending:         make(map[string]int),
 		suspendedRequests:  make(map[string]bool),
 		suspensionsSettled: make(chan struct{}),
@@ -258,6 +313,7 @@ func (c *Conn) Start(ctx context.Context) {
 		defer wg.Done()
 		c.writeLoop(ctx)
 	}()
+	c.writerStarted.Store(true)
 	go func() {
 		defer wg.Done()
 		c.heartbeatLoop(ctx)
@@ -277,11 +333,15 @@ func (c *Conn) Start(ctx context.Context) {
 }
 
 type outboundFrame struct {
+	// data is a complete payload without its length prefix. Frames the connection encodes itself carry frame instead, which holds the prefix too.
 	data   []byte
+	frame  *encodedFrame
 	result chan error
 	// work marks a frame counted as outstanding work until written. Heartbeat
 	// pings are not work: an idle connection must be able to go quiet.
 	work bool
+	// queued marks a frame counted in Conn.queued until written or abandoned.
+	queued bool
 }
 
 // FrameTooLargeError reports that a marshaled envelope exceeds MaxFrameSize and
@@ -303,12 +363,18 @@ func (e *FrameTooLargeError) Error() string {
 // notification would leave the extension waiting forever. The wait ends when
 // the peer drains the queue or the connection fails, which the heartbeat
 // guarantees for a peer that stops reading.
+//
+//perf:hot
 func (c *Conn) Send(env *Envelope) error {
-	data, err := c.marshalEnvelope(env)
+	frame, err := c.encodeEnvelope(env)
 	if err != nil {
 		return err
 	}
-	return c.enqueue(context.Background(), outboundFrame{data: data, work: true})
+	if err := c.enqueue(context.Background(), outboundFrame{frame: frame, work: true}); err != nil {
+		frame.release()
+		return err
+	}
+	return nil
 }
 
 // enqueue commits frame to the writer queue, waiting for space until ctx ends
@@ -317,15 +383,19 @@ func (c *Conn) enqueue(ctx context.Context, frame outboundFrame) error {
 	if frame.work {
 		c.beginWork()
 	}
+	frame.queued = true
+	c.queued.Add(1)
 	select {
 	case c.outCh <- frame:
 		return nil
 	case <-ctx.Done():
+		c.queued.Add(-1)
 		if frame.work {
 			c.endWork()
 		}
 		return ctx.Err()
 	case <-c.done:
+		c.queued.Add(-1)
 		if frame.work {
 			c.endWork()
 		}
@@ -336,16 +406,62 @@ func (c *Conn) enqueue(ctx context.Context, frame outboundFrame) error {
 	}
 }
 
+// writeInline writes frame on the caller when the writer has nothing queued ahead of it, which saves the hand-off to the writer goroutine and back. written is false when the frame must take the queue instead: frames are queued ahead of it, or no writer owns the connection yet. A write failure fails the connection as the writer's does; the writer then finds the socket closed and abandons what is queued.
+//
+//perf:hot
+func (c *Conn) writeInline(frame *encodedFrame) (written bool, err error) {
+	if !c.writerStarted.Load() {
+		return false, nil
+	}
+	// A write in progress, inline or the writer's, sends the frame to the queue rather than holding the caller behind it.
+	if !c.writeMu.TryLock() {
+		return false, nil
+	}
+	if c.queued.Load() != 0 {
+		c.writeMu.Unlock()
+		return false, nil
+	}
+	if err := c.checkSendState(); err != nil {
+		c.writeMu.Unlock()
+		frame.release()
+		return true, err
+	}
+	c.beginWork()
+	err = c.writeOne(outboundFrame{frame: frame, work: true})
+	c.writeMu.Unlock()
+	frame.release()
+	c.endWork()
+	if err != nil {
+		err = &TransportError{Extension: c.name, Operation: "write", Err: err}
+		c.fail(err)
+	}
+	return true, err
+}
+
+// writeResult returns an empty one-slot channel for a frame's write result. The pool belongs to the connection, not the package: a channel made inside a testing/synctest bubble is bound to it, and a package pool would hand it to a connection of another bubble or of none.
+func (c *Conn) writeResult() chan error {
+	if result, ok := c.writeResults.Get().(chan error); ok {
+		return result
+	}
+	return make(chan error, 1)
+}
+
+// The writer answers a queued frame exactly once and the sender receives that answer before it returns the channel, so a pooled channel is empty and no writer holds it. A channel whose answer was not received is never returned.
 func (c *Conn) sendAndWait(ctx context.Context, env *Envelope) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	data, err := c.marshalEnvelope(env)
+	frame, err := c.encodeEnvelope(env)
 	if err != nil {
 		return err
 	}
-	result := make(chan error, 1)
-	if err := c.enqueue(ctx, outboundFrame{data: data, result: result, work: true}); err != nil {
+	if written, err := c.writeInline(frame); written {
+		return err
+	}
+	result := c.writeResult()
+	if err := c.enqueue(ctx, outboundFrame{frame: frame, result: result, work: true}); err != nil {
+		frame.release()
+		c.writeResults.Put(result)
 		return err
 	}
 	// Queueing commits the frame. Wait for the writer result even if ctx is
@@ -354,10 +470,12 @@ func (c *Conn) sendAndWait(ctx context.Context, env *Envelope) error {
 	// ends the wait with its terminal error: no writer remains to answer.
 	select {
 	case err := <-result:
+		c.writeResults.Put(result)
 		return err
 	case <-c.done:
 		select {
 		case err := <-result:
+			c.writeResults.Put(result)
 			return err
 		default:
 		}
@@ -366,6 +484,22 @@ func (c *Conn) sendAndWait(ctx context.Context, env *Envelope) error {
 		}
 		return errors.New("connection closed")
 	}
+}
+
+// sendOrdered is sendAndWait for a frame whose contents follow the frames queued before it. The order's mutex is held from prepare until the writer answers, so the next frame is prepared against one known to be written or failed; the peer's response is waited for after it is released.
+func (c *Conn) sendOrdered(ctx context.Context, env *Envelope, order *sendOrder) error {
+	if order == nil {
+		return c.sendAndWait(ctx, env)
+	}
+	order.mu.Lock()
+	if err := order.prepare(); err != nil {
+		order.mu.Unlock()
+		return err
+	}
+	err := c.sendAndWait(ctx, env)
+	order.sent(err)
+	order.mu.Unlock()
+	return err
 }
 
 // encodedEnvelope contains complete JSON produced by a host encoder. It is immutable while queued, so one notification can share its bytes across connections.
@@ -404,21 +538,22 @@ func checkFrameSize(data []byte) error {
 	return nil
 }
 
-func (c *Conn) marshalEnvelope(env *Envelope) ([]byte, error) {
+func (c *Conn) encodeEnvelope(env *Envelope) (*encodedFrame, error) {
 	if err := c.checkSendState(); err != nil {
 		return nil, err
 	}
 	if err := checkResultFrameSize(env); err != nil {
 		return nil, err
 	}
-	data, err := json.Marshal(env)
+	frame, err := encodeFrame(env)
 	if err != nil {
 		return nil, fmt.Errorf("marshal envelope: %w", err)
 	}
-	if err := checkFrameSize(data); err != nil {
-		return nil, err
+	if size := frame.size(); size > MaxFrameSize {
+		frame.release()
+		return nil, &FrameTooLargeError{Size: size, Max: MaxFrameSize}
 	}
-	return data, nil
+	return frame, nil
 }
 
 // checkResultFrameSize rejects a call result whose frame the encoder would build above the frame limit, without building it. Marshaling validates the raw JSON and copies every byte of it before the size check fails, and a rejected payload must not cost memory proportional to itself. The encoder removes only whitespace outside strings and adds bytes only by escaping <, >, & (five bytes each) and U+2028, U+2029 (three bytes each), so one pass over the raw bytes gives the exact size of json.Marshal(env) for valid JSON. Invalid JSON takes the marshal path so its error keeps the "marshal envelope" classification instead of becoming a size error. Sizes are int64 so a result that encodes above the largest int of a 32-bit build is still measured as oversized.
@@ -427,7 +562,7 @@ func checkResultFrameSize(env *Envelope) error {
 		return nil
 	}
 	raw := env.CallResult.Result
-	// The encoder grows a byte to at most six, so the frame is at most six times the bytes it carries plus the envelope's fixed text. Frames that cannot reach the limit skip the measurement; the general check in marshalEnvelope still bounds them.
+	// The encoder grows a byte to at most six, so the frame is at most six times the bytes it carries plus the envelope's fixed text. Frames that cannot reach the limit skip the measurement; the general check in encodeEnvelope still bounds them.
 	if int64(len(raw))*6+resultShellBound(env) <= MaxFrameSize {
 		return nil
 	}
@@ -492,6 +627,18 @@ func (c *Conn) Request(ctx context.Context, env *Envelope) (*Envelope, error) {
 	return c.request(ctx, env, 0, "")
 }
 
+// sendOrder makes the frame's contents depend on the frames queued before it: prepare fills the request while the order's mutex is held, the frame is queued under it, and sent reports whether it was. The next frame prepares only after that.
+type sendOrder struct {
+	mu      *sync.Mutex
+	prepare func() error
+	sent    func(error)
+}
+
+// requestOrdered is Request for a frame whose contents are computed against the frames queued before it.
+func (c *Conn) requestOrdered(ctx context.Context, env *Envelope, order *sendOrder) (*Envelope, error) {
+	return c.requestWithOrder(ctx, env, 0, "", order)
+}
+
 // requestWithInactivity applies a host-owned activity lease. Heartbeat pongs
 // prove transport liveness but never renew this lease.
 func (c *Conn) requestWithInactivity(ctx context.Context, env *Envelope, inactivity time.Duration, operation string) (*Envelope, error) {
@@ -504,7 +651,7 @@ func (c *Conn) requestWithInactivity(ctx context.Context, env *Envelope, inactiv
 // before the response has run when this returns.
 func (c *Conn) requestWithUpdates(ctx context.Context, env *Envelope, onUpdate func(json.RawMessage)) (*Envelope, error) {
 	if env.ID == "" {
-		env.ID = fmt.Sprintf("r%d", c.nextID.Add(1))
+		env.ID = "r" + strconv.FormatUint(c.nextID.Add(1), 10)
 	}
 	updates := newCallLanes()
 	var queued sync.WaitGroup
@@ -526,6 +673,10 @@ func (c *Conn) requestWithUpdates(ctx context.Context, env *Envelope, onUpdate f
 }
 
 func (c *Conn) request(ctx context.Context, env *Envelope, inactivity time.Duration, operation string) (*Envelope, error) {
+	return c.requestWithOrder(ctx, env, inactivity, operation, nil)
+}
+
+func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity time.Duration, operation string, order *sendOrder) (*Envelope, error) {
 	if c.closed.Load() {
 		if failure := c.failureError(); failure != nil {
 			return nil, failure
@@ -535,10 +686,14 @@ func (c *Conn) request(ctx context.Context, env *Envelope, inactivity time.Durat
 
 	// Assign a unique ID if not already set.
 	if env.ID == "" {
-		env.ID = fmt.Sprintf("r%d", c.nextID.Add(1))
+		env.ID = "r" + strconv.FormatUint(c.nextID.Add(1), 10)
 	}
-	if operation == "" {
-		operation = requestOperation(env)
+	// The operation names the request in an error only, so it is built when one is returned.
+	operationName := func() string {
+		if operation == "" {
+			operation = requestOperation(env)
+		}
+		return operation
 	}
 
 	// Register the pending response channel.
@@ -555,9 +710,13 @@ func (c *Conn) request(ctx context.Context, env *Envelope, inactivity time.Durat
 		c.drainable[env.ID] = &drainableRequest{drained: fn}
 	}
 	c.pendingMu.Unlock()
-	stateCh := make(chan RequestStatePayload, 8)
+	// A request with no inactivity lease and no suspension report has nothing to do on a started or progress state, and its blocked and completed states only release the invocation acknowledgment, which the read loop applies itself (deliverRequestState). Only a request that reacts to its states waits for them.
+	var stateCh chan RequestStatePayload
+	if inactivity > 0 || requestReportsSuspension(ctx) {
+		stateCh = make(chan RequestStatePayload, 8)
+	}
 	c.stateMu.Lock()
-	c.requestStates[env.ID] = stateCh
+	c.requestStates[env.ID] = requestStateSink{ch: stateCh, ctx: ctx}
 	c.stateMu.Unlock()
 
 	// Clean up on exit.
@@ -588,7 +747,7 @@ func (c *Conn) request(ctx context.Context, env *Envelope, inactivity time.Durat
 	if c.onDispatch != nil {
 		c.onDispatch()
 	}
-	if err := c.sendAndWait(ctx, env); err != nil {
+	if err := c.sendOrdered(ctx, env, order); err != nil {
 		return nil, err
 	}
 	if issued := requestIssued(ctx); issued != nil {
@@ -607,6 +766,7 @@ func (c *Conn) request(ctx context.Context, env *Envelope, inactivity time.Durat
 	}
 	// Wait for response or meaningful request activity.
 	cancelled := ctx.Done()
+	var abortGraceC <-chan time.Time
 	suspensionApplied := false
 	for {
 		select {
@@ -626,7 +786,7 @@ func (c *Conn) request(ctx context.Context, env *Envelope, inactivity time.Durat
 			if resp != nil && resp.Response != nil && resp.Response.Error != nil {
 				switch resp.Response.Error.Code {
 				case "extension_unresponsive":
-					return nil, &ExtensionUnresponsiveError{Extension: c.name, RequestID: env.ID, Operation: operation}
+					return nil, &ExtensionUnresponsiveError{Extension: c.name, RequestID: env.ID, Operation: operationName()}
 				case "extension_transport":
 					c.failureMu.Lock()
 					failure := c.failure
@@ -647,14 +807,13 @@ func (c *Conn) request(ctx context.Context, env *Envelope, inactivity time.Durat
 				invocation.Complete(ctx)
 			}
 			if inactivity > 0 && (state.State == "started" || state.State == "progress" || state.State == "blocked") {
-				inactivityTimer.Stop()
-				inactivityTimer = c.clock.NewTimer(inactivity)
+				inactivityTimer.Reset(inactivity)
 				inactivityC = inactivityTimer.C()
 			}
 		case <-inactivityC:
 			_ = c.Send(&Envelope{Type: MsgCancel, ID: env.ID, Cancel: &CancelPayload{RequestID: env.ID, Reason: "handler inactivity"}})
 			c.cancelHostCalls(env.ID)
-			return nil, &HandlerStalledError{Extension: c.name, Operation: operation, HeartbeatHealthy: !c.closed.Load()}
+			return nil, &HandlerStalledError{Extension: c.name, Operation: operationName(), HeartbeatHealthy: !c.closed.Load(), Settled: c.abandon(env.ID)}
 		case <-cancelled:
 			if c.beforeCancel != nil {
 				c.beforeCancel()
@@ -669,13 +828,25 @@ func (c *Conn) request(ctx context.Context, env *Envelope, inactivity time.Durat
 				},
 			})
 			c.cancelHostCalls(env.ID)
-			if env.Request != nil && env.Request.Method == MethodProviderStream && (errors.Is(context.Cause(ctx), context.Canceled) || errors.Is(context.Cause(ctx), context.DeadlineExceeded)) {
+			if env.Request != nil && (env.Request.Method == MethodProviderStream || env.Request.Method == RequestUserBashExec) && (errors.Is(context.Cause(ctx), context.Canceled) || errors.Is(context.Cause(ctx), context.DeadlineExceeded)) {
 				// Pi forwards the native stream's own terminal event after signaling
-				// abort. The connection still owns liveness and closes on shutdown.
+				// abort, and executeBashWithOperations awaits operations.exec until it
+				// settles after its signal aborts (bash-executor.ts:120-128). The
+				// connection still owns liveness and closes on shutdown.
 				cancelled = nil
 				continue
 			}
+			if env.Request != nil && env.Request.Method == MethodToolCall {
+				// pig divergence (D111): the call waits ToolAbortGrace for the tool to settle, as Pi awaits tool.execute after its signal aborts (agent-loop.ts:831-853), and then fails as aborted instead of awaiting a tool that ignores its signal forever.
+				cancelled = nil
+				grace := c.clock.NewTimer(ToolAbortGrace)
+				defer grace.Stop()
+				abortGraceC = grace.C()
+				continue
+			}
 			return nil, ctx.Err()
+		case <-abortGraceC:
+			return nil, ErrToolAborted
 		}
 	}
 }
@@ -715,10 +886,12 @@ func (c *Conn) Close(reason string) error {
 		defer c.holdLiveness()()
 	}
 	c.beginWork()
+	c.queued.Add(1)
 	select {
-	case c.outCh <- outboundFrame{data: shutdown, result: writeResult, work: true}:
+	case c.outCh <- outboundFrame{data: shutdown, result: writeResult, work: true, queued: true}:
 		queued = true
 	default:
+		c.queued.Add(-1)
 		c.endWork()
 	}
 	var shutdownErr error
@@ -771,7 +944,7 @@ func (c *Conn) Close(reason string) error {
 	return shutdownErr
 }
 
-// startProducerTask admits a stream worker before close and joins it with connection shutdown. Pending requests wake on connection closure, so producer cleanup cannot outlive Close.
+// startProducerTask admits a stream worker or a retry waiter (afterRetryBackoff) before close and joins it with connection shutdown. Pending requests wake on connection closure, so producer cleanup cannot outlive Close.
 func (c *Conn) startProducerTask(run func()) bool {
 	c.pendingMu.Lock()
 	defer c.pendingMu.Unlock()
@@ -818,6 +991,8 @@ func (c *Conn) RecentOversizedFrame() (uint64, bool) {
 // ── Internal ─────────────────────────────────────────────────────────────────
 
 // readLoop reads length-prefixed JSON frames from the socket and dispatches them.
+//
+//perf:hot
 func (c *Conn) readLoop(ctx context.Context) {
 	defer func() {
 		if c.cancel != nil {
@@ -825,12 +1000,17 @@ func (c *Conn) readLoop(ctx context.Context) {
 		}
 		// On reader exit, close inCh so the host knows we're done.
 		close(c.inCh)
+		c.settleAllAbandoned()
 		c.stopAbortForwards()
 		if c.onClosed != nil {
 			c.onClosed()
 		}
 	}()
 
+	// One length buffer for the connection: it escapes through the conn interface, so a buffer declared per frame would be allocated per frame.
+	var lenBuf [4]byte
+	// The runtime answers a request with its started state, its completed state and the response, often in one write; a buffered reader takes such a batch in one read instead of two per frame. A frame larger than the buffer is read straight into its own buffer.
+	reader := bufio.NewReaderSize(c.conn, readBufferBytes)
 	for {
 		// Check context before each frame.
 		if ctx.Err() != nil || c.closed.Load() {
@@ -845,8 +1025,7 @@ func (c *Conn) readLoop(ctx context.Context) {
 		//
 		// Instead, we close the socket from Close() which unblocks ReadFull
 		// with an error.
-		var lenBuf [4]byte
-		_, err := io.ReadFull(c.conn, lenBuf[:])
+		_, err := io.ReadFull(reader, lenBuf[:])
 		if err != nil {
 			if ctx.Err() != nil || c.closed.Load() {
 				return
@@ -863,16 +1042,17 @@ func (c *Conn) readLoop(ctx context.Context) {
 		}
 
 		// Read the JSON payload.
-		buf := make([]byte, msgLen)
-		_, err = io.ReadFull(c.conn, buf)
+		frame, err := readFrameBuffer(reader, int(msgLen))
 		if err != nil {
 			c.fail(&TransportError{Extension: c.name, Operation: "read", Err: err})
 			return
 		}
 
-		// Decode the envelope.
+		// Decode the envelope. Unmarshal copies every string and json.RawMessage it keeps, so the frame is free once it returns.
 		var env Envelope
-		if err := json.Unmarshal(buf, &env); err != nil {
+		err = json.Unmarshal(frame.data, &env)
+		frame.release()
+		if err != nil {
 			c.fail(&TransportError{Extension: c.name, Operation: "decode frame", Err: err})
 			return
 		}
@@ -881,6 +1061,9 @@ func (c *Conn) readLoop(ctx context.Context) {
 			c.inbound(&env)
 		}
 		if env.Type == MsgRequestState && env.RequestState != nil {
+			if env.RequestState.State == "blocked" || env.RequestState.State == "suspended" {
+				c.reportRequestPhase(env.RequestState.RequestID, invocation.Suspended)
+			}
 			if env.RequestState.State == "suspended" {
 				// A suspension reports that the calls sent before it are in flight. The host loop delivers it after those calls applied their synchronous parts.
 				c.stateMu.Lock()
@@ -903,6 +1086,19 @@ func (c *Conn) readLoop(ctx context.Context) {
 			c.deliverToolUpdate(env.Notify.Args)
 			continue
 		}
+		// The host forwards a turn before this reader routes the response that follows it, so the forwarded frame precedes on every other connection whatever the host sends after that response.
+		if env.Type == MsgNotify && env.Notify != nil && env.Notify.Method == NotifyLoopTurned {
+			if c.onLoopTurned != nil {
+				c.onLoopTurned(env.Notify.Args)
+			}
+			continue
+		}
+		if env.Type == MsgNotify && env.Notify != nil && env.Notify.Method == NotifyLoopTurnTaken {
+			if c.onLoopTurnTaken != nil {
+				c.onLoopTurnTaken(env.Notify.Args)
+			}
+			continue
+		}
 		if env.Type == MsgPong && env.Pong != nil {
 			select {
 			case c.pongCh <- env.Pong.Nonce:
@@ -917,6 +1113,9 @@ func (c *Conn) readLoop(ctx context.Context) {
 				ch, ok := c.pending[env.ID]
 				answered := c.answered[env.ID]
 				c.pendingMu.Unlock()
+				if !ok {
+					c.settleAbandoned(env.ID)
+				}
 				if ok {
 					select {
 					case ch <- &env:
@@ -940,6 +1139,9 @@ func (c *Conn) readLoop(ctx context.Context) {
 		// A call frame owns its parent-scoped context from the moment it is read, while the frames before a response are still ahead of it.
 		if env.Type == MsgCall && env.Call != nil && env.ID != "" {
 			c.reserveHostCall(env.Call.ParentRequestID, env.ID)
+			if startsRun(env.Call.Method) && env.Call.ParentRequestID != "" {
+				c.reportRequestPhase(env.Call.ParentRequestID, invocation.Resumed)
+			}
 		}
 
 		// Everything else goes to the host.
@@ -948,6 +1150,25 @@ func (c *Conn) readLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		}
+	}
+}
+
+// startsRun reports whether method is a call Pi makes inside the handler's synchronous part and that can start a run:
+// pi.sendMessage and pi.sendUserMessage return to the handler before the run they start emits agent_start (agent-session.ts
+// sendCustomMessage, sendUserMessage). A runtime reports the call's suspension before it sends the call, because its handler
+// waits for the answer, so the call itself reports that the handler runs again.
+func startsRun(method string) bool {
+	return method == "sendMessage" || method == "sendUserMessage"
+}
+
+// reportRequestPhase reports a change of the request's run phase to the RunPhase bound to its context. The read loop reports
+// in frame order, so a suspension reported before a call is followed by the call's own report.
+func (c *Conn) reportRequestPhase(requestID string, report func(context.Context)) {
+	c.stateMu.Lock()
+	sink, ok := c.requestStates[requestID]
+	c.stateMu.Unlock()
+	if ok && sink.ctx != nil {
+		report(sink.ctx)
 	}
 }
 
@@ -1003,34 +1224,134 @@ func drainRequestStates(ctx context.Context, stateCh <-chan RequestStatePayload)
 	}
 }
 
+// requestStateSink is where a request's lifecycle frames go: its waiting goroutine's channel, or, for a request that does not react to them (a nil ch), the read loop applies them to the request's context.
+type requestStateSink struct {
+	ch  chan RequestStatePayload
+	ctx context.Context
+}
+
+// requestReportsSuspension reports whether ctx reports the request's suspension, which the request's own goroutine applies in frame order.
+func requestReportsSuspension(ctx context.Context) bool {
+	suspension, _ := ctx.Value(requestSuspensionKey{}).(requestSuspension)
+	return suspension.report != nil
+}
+
 // deliverRequestState hands a request lifecycle frame to the request waiting for it.
 func (c *Conn) deliverRequestState(state RequestStatePayload) {
 	c.stateMu.Lock()
-	ch := c.requestStates[state.RequestID]
-	if ch != nil && state.State == "suspended" {
+	sink, ok := c.requestStates[state.RequestID]
+	if ok && state.State == "suspended" {
 		c.suspendedRequests[state.RequestID] = true
 	}
 	c.stateMu.Unlock()
-	if ch != nil {
-		select {
-		case ch <- state:
-		default:
+	if !ok {
+		return
+	}
+	if sink.ch == nil {
+		// What the request's goroutine would do with the state, without waking it.
+		switch state.State {
+		case "blocked":
+			invocation.Acknowledge(sink.ctx)
+		case "completed":
+			invocation.Complete(sink.ctx)
 		}
+		return
+	}
+	select {
+	case sink.ch <- state:
+	default:
 	}
 }
 
-// writeLoop serializes outgoing messages to the socket.
+// writeBatchFrames and writeBatchBytes bound the encoded frames the writer coalesces into one socket write.
+const (
+	writeBatchFrames = 16
+	writeBatchBytes  = writeChunk
+)
+
+// coalescable reports whether the writer may put frame in a coalesced write: an encoded frame no larger than a batch. Pings and frames that drain in chunks are written on their own.
+func coalescable(frame outboundFrame) bool {
+	return frame.frame != nil && frame.frame.argsAt == 0 && len(frame.frame.buf) <= writeBatchBytes
+}
+
+// writeLoop serializes outgoing messages to the socket. Encoded frames that are queued together leave in one write.
 func (c *Conn) writeLoop(ctx context.Context) {
-	write := func(frame outboundFrame) error {
-		err := c.writeFrame(frame.data, frame.work)
+	finish := func(frame outboundFrame, err error) {
+		if frame.frame != nil {
+			frame.frame.release()
+		}
+		if frame.queued {
+			c.queued.Add(-1)
+		}
 		if frame.work {
 			c.endWork()
 		}
+		if frame.result != nil {
+			frame.result <- err
+		}
+	}
+	var batch []outboundFrame
+	var buffers net.Buffers
+	// write writes first and the encoded frames queued right behind it. The frames stay counted in queued until their bytes are on the socket, so a caller cannot write inline ahead of them. A frame that cannot join the batch is written after it, on its own.
+	write := func(first outboundFrame) error {
+		batch = append(batch[:0], first)
+		var tail outboundFrame
+		hasTail := false
+		if c.parts == nil && coalescable(first) {
+			size := len(first.frame.buf)
+		gather:
+			for len(batch) < writeBatchFrames {
+				select {
+				case next := <-c.outCh:
+					if c.parts != nil || !coalescable(next) || size+len(next.frame.buf) > writeBatchBytes {
+						tail, hasTail = next, true
+						break gather
+					}
+					size += len(next.frame.buf)
+					batch = append(batch, next)
+				default:
+					break gather
+				}
+			}
+		}
+		c.writeMu.Lock()
+		var err, tailErr error
+		if len(batch) == 1 {
+			err = c.writeOne(first)
+		} else {
+			buffers = buffers[:0]
+			work := 0
+			for _, frame := range batch {
+				c.observeOutbound(frame)
+				buffers = append(buffers, frame.frame.buf)
+				if frame.work {
+					work += len(frame.frame.buf)
+				}
+			}
+			var n int64
+			n, err = buffers.WriteTo(c.conn)
+			c.writeProgress.Add(uint64(min(n, int64(work))))
+		}
+		if hasTail && err == nil {
+			tailErr = c.writeOne(tail)
+		}
+		c.writeMu.Unlock()
 		if err != nil {
 			err = &TransportError{Extension: c.name, Operation: "write", Err: err}
 		}
-		if frame.result != nil {
-			frame.result <- err
+		for _, frame := range batch {
+			finish(frame, err)
+		}
+		clear(batch)
+		if hasTail {
+			// A tail behind a failed batch was never written and fails with it.
+			if err != nil {
+				tailErr = err
+			} else if tailErr != nil {
+				tailErr = &TransportError{Extension: c.name, Operation: "write", Err: tailErr}
+				err = tailErr
+			}
+			finish(tail, tailErr)
 		}
 		return err
 	}
@@ -1055,6 +1376,32 @@ func (c *Conn) writeLoop(ctx context.Context) {
 	}
 }
 
+// writeOne writes one queued frame; the caller holds writeMu.
+func (c *Conn) writeOne(frame outboundFrame) error {
+	c.observeOutbound(frame)
+	switch {
+	case c.parts != nil:
+		return c.writeFrameParts(frame)
+	case frame.frame != nil && frame.frame.argsAt != 0:
+		return c.writeSplit(frame.frame, frame.work)
+	case frame.frame != nil:
+		return c.writeBytes(frame.frame.buf, frame.work)
+	}
+	return c.writeFrame(frame.data, frame.work)
+}
+
+// observeOutbound reports a frame to the outbound hook before it is written.
+func (c *Conn) observeOutbound(frame outboundFrame) {
+	if c.outbound == nil {
+		return
+	}
+	if frame.frame != nil {
+		c.outbound(frame.frame.payload())
+	} else {
+		c.outbound(frame.data)
+	}
+}
+
 // abandonQueuedFrames completes every frame still queued when the writer
 // stops after a write failure, so no waiter blocks on a frame nothing will
 // write.
@@ -1062,6 +1409,12 @@ func (c *Conn) abandonQueuedFrames(err error) {
 	for {
 		select {
 		case frame := <-c.outCh:
+			if frame.frame != nil {
+				frame.frame.release()
+			}
+			if frame.queued {
+				c.queued.Add(-1)
+			}
 			if frame.work {
 				c.endWork()
 			}
@@ -1215,20 +1568,70 @@ func requestOperation(env *Envelope) string {
 	return env.Request.Method + " " + name
 }
 
+// beginWork and endWork count outstanding work. Only the idle/busy transitions concern liveness, and the goroutine that makes one arms or stops the heartbeat interval itself (workBusy, workIdle), so a dispatch wakes the heartbeat only when its interval fires.
 func (c *Conn) beginWork() {
-	c.workMu.Lock()
-	c.work++
-	c.workMu.Unlock()
-	c.signalWorkChanged()
+	if c.work.Add(1) == 1 {
+		c.workBusy()
+	}
 }
 
 func (c *Conn) endWork() {
-	c.workMu.Lock()
-	if c.work > 0 {
-		c.work--
+	for {
+		work := c.work.Load()
+		if work <= 0 {
+			return
+		}
+		if c.work.CompareAndSwap(work, work-1) {
+			if work == 1 {
+				c.workIdle()
+			}
+			return
+		}
 	}
-	c.workMu.Unlock()
-	c.signalWorkChanged()
+}
+
+// workBusy starts the interval after an idle→busy transition. Transitions race each other, so the arming follows the count read under armMu, not the transition that called it: the last of two racing calls leaves the timer as the count is.
+func (c *Conn) workBusy() {
+	c.armMu.Lock()
+	defer c.armMu.Unlock()
+	if c.work.Load() <= 0 || c.intervalArmed || c.pongPhase {
+		// A ping already in flight re-arms the interval when it settles.
+		return
+	}
+	c.intervalArmed = true
+	if c.interval == nil {
+		c.interval = c.clock.NewTimer(c.heartbeatInterval)
+		// The heartbeat waits for a timer it does not have yet.
+		c.signalWorkChanged()
+		return
+	}
+	c.interval.Reset(c.heartbeatInterval)
+}
+
+// workIdle stops the interval after a busy→idle transition; a ping in flight is abandoned.
+func (c *Conn) workIdle() {
+	c.armMu.Lock()
+	defer c.armMu.Unlock()
+	if c.work.Load() > 0 {
+		return
+	}
+	if c.intervalArmed {
+		c.interval.Stop()
+		c.intervalArmed = false
+	}
+	if c.pongPhase {
+		c.signalWorkChanged()
+		return
+	}
+	c.noteHeartbeatIdle()
+}
+
+// noteHeartbeatIdle reports to a test that the liveness machine is idle: no interval runs and no ping is in flight.
+func (c *Conn) noteHeartbeatIdle() {
+	select {
+	case c.heartbeatIdle <- struct{}{}:
+	default:
+	}
 }
 
 // holdLiveness keeps heartbeat active for registered live state not represented
@@ -1247,54 +1650,35 @@ func (c *Conn) signalWorkChanged() {
 }
 
 func (c *Conn) hasWork() bool {
-	c.workMu.Lock()
-	defer c.workMu.Unlock()
-	return c.work > 0
+	return c.work.Load() > 0
 }
 
+// heartbeatLoop pings the peer each interval the connection stays busy and fails it when a pong misses its deadline. The interval is armed and stopped by the idle/busy transitions (workBusy, workIdle), so this goroutine sleeps until the interval fires; it is woken otherwise only to pick up the interval timer once and, while a ping is in flight, when work ends.
 func (c *Conn) heartbeatLoop(ctx context.Context) {
 	close(c.heartbeatReady)
-heartbeat:
+	c.noteHeartbeatIdle()
+	// The deadline timer is made once and re-armed with Reset at each ping.
+	var deadline livenessTimer
 	for {
-		for !c.hasWork() {
-			select {
-			case c.heartbeatIdle <- struct{}{}:
-			default:
-			}
-			select {
-			case <-ctx.Done():
-				return
-			case <-c.workChanged:
-			}
+		c.armMu.Lock()
+		var fire <-chan time.Time
+		if c.interval != nil {
+			fire = c.interval.C()
 		}
+		c.armMu.Unlock()
 		select {
+		case <-ctx.Done():
+			return
 		case <-c.workChanged:
 			continue
-		default:
+		case <-fire:
 		}
-		interval := c.clock.NewTimer(c.heartbeatInterval)
-		fired := false
-		for !fired {
-			select {
-			case <-ctx.Done():
-				interval.Stop()
-				return
-			case <-c.workChanged:
-				// A work-count change while the interval is already running
-				// (e.g. an unrelated request beginning or its frame finishing
-				// its write) does not restart the cadence: only an actual
-				// idle transition does. Restarting on every such signal would
-				// let a steady trickle of unrelated work starve the interval
-				// forever, so re-check only whether work dropped to zero.
-				if !c.hasWork() {
-					interval.Stop()
-					continue heartbeat
-				}
-			case <-interval.C():
-				fired = true
-			}
-		}
-		if !c.hasWork() {
+		c.armMu.Lock()
+		c.intervalArmed = false
+		busy := c.work.Load() > 0
+		c.pongPhase = busy
+		c.armMu.Unlock()
+		if !busy {
 			continue
 		}
 		nonce := fmt.Sprintf("h%d", c.heartbeatID.Add(1))
@@ -1308,8 +1692,13 @@ heartbeat:
 		// reading leaves the queue full. Bytes the peer accepts meanwhile prove
 		// it is alive, so a large frame draining slowly renews the deadline.
 		progress := c.writeProgress.Load()
-		deadline := c.clock.NewTimer(c.heartbeatTimeout)
+		if deadline == nil {
+			deadline = c.clock.NewTimer(c.heartbeatTimeout)
+		} else {
+			deadline.Reset(c.heartbeatTimeout)
+		}
 		pingQueued := false
+	pong:
 		for {
 			var queue chan outboundFrame
 			if !pingQueued {
@@ -1324,24 +1713,67 @@ heartbeat:
 			case <-c.workChanged:
 				if !c.hasWork() {
 					deadline.Stop()
-					goto next
+					break pong
 				}
 			case got := <-c.pongCh:
 				if got == nonce {
 					deadline.Stop()
-					goto next
+					break pong
 				}
 			case <-deadline.C():
 				if current := c.writeProgress.Load(); current != progress {
 					progress = current
-					deadline = c.clock.NewTimer(c.heartbeatTimeout)
+					deadline.Reset(c.heartbeatTimeout)
 					continue
 				}
 				c.fail(&ExtensionUnresponsiveError{Extension: c.name, Operation: "outstanding request"})
 				return
 			}
 		}
-	next:
+		// The next interval starts when the ping settles, as long as the connection stays busy.
+		c.armMu.Lock()
+		c.pongPhase = false
+		if c.work.Load() > 0 {
+			c.intervalArmed = true
+			c.interval.Reset(c.heartbeatInterval)
+		} else {
+			c.noteHeartbeatIdle()
+		}
+		c.armMu.Unlock()
+	}
+}
+
+// abandon records a request whose caller stopped waiting and returns the channel that closes when its handler answers late or the connection ends.
+func (c *Conn) abandon(id string) <-chan struct{} {
+	c.pendingMu.Lock()
+	defer c.pendingMu.Unlock()
+	done := make(chan struct{})
+	if c.abandonedClosed {
+		close(done)
+		return done
+	}
+	c.abandoned[id] = done
+	return done
+}
+
+func (c *Conn) settleAbandoned(id string) {
+	c.pendingMu.Lock()
+	done, ok := c.abandoned[id]
+	delete(c.abandoned, id)
+	c.pendingMu.Unlock()
+	if ok {
+		close(done)
+	}
+}
+
+func (c *Conn) settleAllAbandoned() {
+	c.pendingMu.Lock()
+	abandoned := c.abandoned
+	c.abandoned = make(map[string]chan struct{})
+	c.abandonedClosed = true
+	c.pendingMu.Unlock()
+	for _, done := range abandoned {
+		close(done)
 	}
 }
 
@@ -1374,25 +1806,86 @@ func (c *Conn) fail(err error) {
 // writeFrame writes a length-prefixed JSON frame to the socket.
 // Only work frames count toward writeProgress: the heartbeat's own ping says
 // nothing about whether the peer is reading.
+//
+//perf:hot
 func (c *Conn) writeFrame(data []byte, countProgress bool) error {
-	// Note any frame larger than the legacy cap so a subsequent disconnect
-	// can be attributed to an extension whose receive cap is below ours.
-	if n := uint64(len(data)); n > legacyFrameSize {
-		c.lastLargeSize.Store(n)
-		c.lastLargeAtNs.Store(time.Now().UnixNano())
-	}
+	c.noteLargeFrame(len(data))
 	var lenBuf [4]byte
 	binary.BigEndian.PutUint32(lenBuf[:], uint32(len(data)))
-
-	// No write deadline: a peer that stops reading is detected by the heartbeat
-	// (D56), which counts every accepted byte as liveness and closes the
-	// socket on failure, unblocking this write.
+	if len(data) <= writeChunk {
+		// One writev for the prefix and the payload: the peer wakes once per frame.
+		buffers := net.Buffers{lenBuf[:], data}
+		n, err := buffers.WriteTo(c.conn)
+		if countProgress {
+			c.writeProgress.Add(uint64(n))
+		}
+		return err
+	}
 	if _, err := c.conn.Write(lenBuf[:]); err != nil {
 		return err
 	}
 	if countProgress {
 		c.writeProgress.Add(uint64(len(lenBuf)))
 	}
+	return c.writeChunks(data, countProgress)
+}
+
+// writeSplit writes a split frame (encodedFrame) as one vectored write of its length, the envelope before Args, Args and the rest, when it fits one chunk; a larger one goes out in chunks so writeProgress advances while it drains.
+func (c *Conn) writeSplit(frame *encodedFrame, countProgress bool) error {
+	c.noteLargeFrame(frame.size())
+	prefix, args, suffix := frame.parts()
+	if frame.size() <= writeChunk {
+		buffers := net.Buffers{frame.buf[:4], prefix, args, suffix}
+		n, err := buffers.WriteTo(c.conn)
+		if countProgress {
+			c.writeProgress.Add(uint64(n))
+		}
+		return err
+	}
+	for _, part := range [][]byte{frame.buf[:4+len(prefix)], args, suffix} {
+		if err := c.writeChunks(part, countProgress); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// writeFrameParts hands a frame to an in-process peer (framePartsWriter) without copying it into a byte stream. The peer has taken the frame when the call returns; it copies the envelope's bytes and keeps only Args, which are immutable.
+func (c *Conn) writeFrameParts(frame outboundFrame) error {
+	var prefix, args, suffix []byte
+	if frame.frame != nil {
+		prefix, args, suffix = frame.frame.parts()
+	} else {
+		prefix = frame.data
+	}
+	c.noteLargeFrame(len(prefix) + len(args) + len(suffix))
+	if err := c.parts.WriteFrameParts(prefix, args, suffix); err != nil {
+		return err
+	}
+	if frame.work {
+		c.writeProgress.Add(uint64(4 + len(prefix) + len(args) + len(suffix)))
+	}
+	return nil
+}
+
+// noteLargeFrame notes any frame larger than the legacy cap so a subsequent disconnect can be attributed to an extension whose receive cap is below ours.
+func (c *Conn) noteLargeFrame(payload int) {
+	if n := uint64(payload); n > legacyFrameSize {
+		c.lastLargeSize.Store(n)
+		c.lastLargeAtNs.Store(time.Now().UnixNano())
+	}
+}
+
+// writeBytes writes a length-prefixed frame. A frame that fits one chunk is one socket write; a larger one is written in chunks so writeProgress advances while it drains.
+func (c *Conn) writeBytes(frame []byte, countProgress bool) error {
+	c.noteLargeFrame(len(frame) - 4)
+	return c.writeChunks(frame, countProgress)
+}
+
+func (c *Conn) writeChunks(data []byte, countProgress bool) error {
+	// No write deadline: a peer that stops reading is detected by the heartbeat
+	// (D56), which counts every accepted byte as liveness and closes the
+	// socket on failure, unblocking this write.
 	for len(data) > 0 {
 		chunk := data[:min(len(data), writeChunk)]
 		if _, err := c.conn.Write(chunk); err != nil {

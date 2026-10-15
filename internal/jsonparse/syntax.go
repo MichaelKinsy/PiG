@@ -6,7 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"unicode/utf16"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Validate returns the error JSON.parse throws for input, with V8's message, or nil when input parses.
@@ -15,7 +16,7 @@ func Validate(input []byte) error {
 		return nil
 	}
 	if message := SyntaxError(input); message != nil {
-		return errors.New(string(utf16.Decode(message)))
+		return errors.New(jsstring.FromUTF16(message))
 	}
 	return nil
 }
@@ -23,7 +24,7 @@ func Validate(input []byte) error {
 // SyntaxError returns the message of the SyntaxError V8's JSON.parse throws for input, in UTF-16 units, or nil when
 // input parses. Callers own validation and call it only for rejected JSON; positions and excerpts count UTF-16 units.
 func SyntaxError(input []byte) []uint16 {
-	p := parser{text: utf16.Encode([]rune(string(input)))}
+	p := parser{text: jsstring.ToUTF16(string(input))}
 	if message := p.value(); message != nil {
 		return message
 	}
@@ -65,22 +66,29 @@ func (p *parser) at(message string) []uint16 {
 	if !strings.HasSuffix(message, "JSON") {
 		message += " in JSON"
 	}
-	return utf16.Encode([]rune(fmt.Sprintf("%s at position %d (line %d column %d)", message, p.pos, line, column)))
+	return encode(fmt.Sprintf("%s at position %d (line %d column %d)", message, p.pos, line, column))
 }
 func (p *parser) unexpected() []uint16 {
 	if p.pos == len(p.text) {
-		return utf16.Encode([]rune("Unexpected end of JSON input"))
+		return encode("Unexpected end of JSON input")
 	}
-	source := string(utf16.Decode(p.text))
+	// V8 reports a token that starts a number or a string by its kind and position.
+	switch c := p.text[p.pos]; {
+	case c == '"':
+		return p.at("Unexpected string")
+	case c == '-' || (c >= '0' && c <= '9'):
+		return p.at("Unexpected number")
+	}
+	source := jsstring.FromUTF16(p.text)
 	switch source {
 	case "undefined", "NaN", "Infinity", "[object Object]":
-		return utf16.Encode([]rune(fmt.Sprintf("\"%s\" is not valid JSON", source)))
+		return encode(fmt.Sprintf("\"%s\" is not valid JSON", source))
 	}
 	start, end := 0, len(p.text)
 	if len(p.text) > 20 {
 		start, end = max(0, p.pos-10), min(len(p.text), p.pos+10)
 	}
-	message := utf16.Encode([]rune("Unexpected token '"))
+	message := encode("Unexpected token '")
 	message = append(message, p.text[p.pos], '\'', ',', ' ')
 	if len(p.text) > 20 && p.pos >= 10 {
 		message = append(message, '.', '.', '.')
@@ -91,7 +99,7 @@ func (p *parser) unexpected() []uint16 {
 	if end < len(p.text) {
 		message = append(message, '.', '.', '.')
 	}
-	return append(message, utf16.Encode([]rune(" is not valid JSON"))...)
+	return append(message, encode(" is not valid JSON")...)
 }
 func (p *parser) value() []uint16 {
 	p.space()
@@ -241,6 +249,10 @@ func (p *parser) stringValue() []uint16 {
 			}
 		} else {
 			if !strings.ContainsRune(`"\/bfnrt`, rune(c)) {
+				// V8 looks escape characters up in a table of the first 256 code units; a later unit is an unexpected token.
+				if c > 0xff {
+					return p.unexpected()
+				}
 				return p.at("Bad escaped character")
 			}
 			p.pos++
@@ -248,3 +260,6 @@ func (p *parser) stringValue() []uint16 {
 	}
 	return p.at("Unterminated string")
 }
+
+// encode is the UTF-16 units of a message built here, which holds no lone surrogate.
+func encode(text string) []uint16 { return jsstring.ToUTF16(text) }

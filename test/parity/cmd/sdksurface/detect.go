@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -61,6 +62,14 @@ type goPackage struct {
 	jsonTags map[string][]string // struct type → JSON names (embedded structs flattened later)
 	embeds   map[string][]string // struct type → embedded struct type names
 	literals map[string]bool     // every string literal and JSON tag name
+	aliases  []goAlias           // type X = pkg.Y declarations whose target lives in another package
+}
+
+// goAlias is a type alias of a type declared in another package of this module; its wire fields are the target's.
+type goAlias struct {
+	name       string // the alias, as declared in this package
+	importPath string
+	target     string
 }
 
 func parseGoPackage(dir string) (*goPackage, error) {
@@ -75,6 +84,7 @@ func parseGoPackage(dir string) (*goPackage, error) {
 		if err != nil {
 			return nil, err
 		}
+		imports := importNames(file)
 		for _, decl := range file.Decls {
 			switch d := decl.(type) {
 			case *ast.FuncDecl:
@@ -98,6 +108,10 @@ func parseGoPackage(dir string) (*goPackage, error) {
 							pkg.symbols[name] = true
 						}
 						switch t := s.Type.(type) {
+						case *ast.SelectorExpr:
+							if pkgIdent, ok := t.X.(*ast.Ident); ok && s.Assign.IsValid() && imports[pkgIdent.Name] != "" {
+								pkg.aliases = append(pkg.aliases, goAlias{name: name, importPath: imports[pkgIdent.Name], target: t.Sel.Name})
+							}
 						case *ast.StructType:
 							for _, field := range t.Fields.List {
 								tag := jsonTag(field)
@@ -162,6 +176,44 @@ func parseGoPackage(dir string) (*goPackage, error) {
 		})
 	}
 	return pkg, nil
+}
+
+// importNames maps a file's import names to their paths; an unnamed import is named by its last path element.
+func importNames(file *ast.File) map[string]string {
+	out := map[string]string{}
+	for _, imp := range file.Imports {
+		path, err := strconv.Unquote(imp.Path.Value)
+		if err != nil {
+			continue
+		}
+		name := path[strings.LastIndex(path, "/")+1:]
+		if imp.Name != nil {
+			name = imp.Name.Name
+		}
+		out[name] = path
+	}
+	return out
+}
+
+// resolveAliases gives every alias of a type declared in another package of this module that type's JSON fields: a type alias is the
+// same type, so a field decoded through the alias is a field of the target (coding/extension re-exports markdowntransform.MarkdownTransformContext).
+func (p *goPackage) resolveAliases(root, modulePath string) error {
+	for _, a := range p.aliases {
+		rel, ok := strings.CutPrefix(a.importPath, modulePath+"/")
+		if !ok {
+			continue
+		}
+		target, err := parseGoPackage(filepath.Join(root, rel))
+		if err != nil {
+			return fmt.Errorf("%s: %w", rel, err)
+		}
+		p.jsonTags[a.name] = append(p.jsonTags[a.name], target.jsonTags[a.target]...)
+		p.embeds[a.name] = append(p.embeds[a.name], target.embeds[a.target]...)
+		for _, tag := range target.jsonTags[a.target] {
+			p.literals[tag] = true
+		}
+	}
+	return nil
 }
 
 // jsonFields returns a struct's JSON field names, with embedded structs'
@@ -486,7 +538,8 @@ var (
 	pyAssignRE = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\s*(?::[^=]*)?=`)
 	pyMemberRE = regexp.MustCompile(`^    (?:(?:async\s+)?def\s+([A-Za-z_][A-Za-z0-9_]*)|([A-Za-z_][A-Za-z0-9_]*)\s*:)`)
 	pySelfRE   = regexp.MustCompile(`^\s+self\.([A-Za-z_][A-Za-z0-9_]*)\s*(?::[^=]*)?=`)
-	pySigEndRE = regexp.MustCompile(`\)\s*(?:->[^:]*)?:\s*(?:#.*)?$`)
+	// A signature ends at its colon, or at a one-line stub body (`: ...`).
+	pySigEndRE = regexp.MustCompile(`\)\s*(?:->[^:]*)?:\s*(?:\.\.\.\s*)?(?:#.*)?$`)
 	pyParamRE  = regexp.MustCompile(`^\*{0,2}([A-Za-z_][A-Za-z0-9_]*)`)
 )
 
@@ -525,6 +578,11 @@ func parsePython(dir string) (symbolSet, error) {
 	if err != nil {
 		return nil, err
 	}
+	return parsePythonFiles(files)
+}
+
+// parsePythonFiles reads the classes, members and parameters of files.
+func parsePythonFiles(files []string) (symbolSet, error) {
 	syms := symbolSet{}
 	for _, f := range files {
 		raw, err := os.ReadFile(f)

@@ -201,3 +201,15 @@ func TestUUIDv7MatchesPisIDsByteForByteForAFixedRandomSource(t *testing.T) {
 		t.Fatalf("ids =\n%q\nwant\n%q", got, want)
 	}
 }
+
+// uuid.ts uuidv7(timestampMs): a supplied timestamp is preserved exactly in the first 48 bits of the id, whatever the process-wide generator last issued.
+func TestUUIDv7PreservesASuppliedTimestampThroughTheProcessWideGenerator(t *testing.T) {
+	timestamp := int64(0x0123456789ab)
+	id, err := UUIDv7(&timestamp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := id[:8] + id[9:13]; got != "0123456789ab" || !uuidV7Pattern.MatchString(id) {
+		t.Fatalf("id = %q, want the timestamp 0123456789ab in its first 48 bits", id)
+	}
+}

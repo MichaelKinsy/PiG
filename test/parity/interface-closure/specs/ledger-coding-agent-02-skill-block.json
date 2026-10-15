@@ -1,0 +1,36 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#parseSkillBlock"
+  ],
+  "targets": [
+   "internal/codingagent/skills.go#ParseSkillBlock"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_transcript.go#InteractiveMode.renderSessionEntryList"
+  ],
+  "evidence": [
+   "test:internal/codingagent/skill_block_parse_test.go#TestParseSkillBlockMatchesUpstream"
+  ],
+  "rationale": "parseSkillBlock: Go ParseSkillBlock(text) returns *ParsedSkillBlockFromText (nil for upstream null) with the same regexp; the trailing user message uses String.prototype.trim semantics (widthx.JSTrim; was strings.TrimSpace, which differs on U+FEFF and U+0085, red test TestParseSkillBlockMatchesUpstream)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ParsedSkillBlock"
+  ],
+  "targets": [
+   "internal/codingagent/skills.go#ParsedSkillBlockFromText"
+  ],
+  "struct": {
+   "file": "internal/codingagent/skills.go",
+   "type": "ParsedSkillBlockFromText"
+  },
+  "production": [
+   "call:internal/codingagent/interactive_transcript.go#InteractiveMode.renderSessionEntryList"
+  ],
+  "evidence": [
+   "test:internal/codingagent/skill_block_parse_test.go#TestParseSkillBlockMatchesUpstream"
+  ],
+  "rationale": "ParsedSkillBlock: Go ParsedSkillBlockFromText has name, location, content and userMessage (string, empty for undefined), the value ParseSkillBlock returns."
+ }
+]

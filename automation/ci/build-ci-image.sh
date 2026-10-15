@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 set -euo pipefail
 
@@ -120,7 +119,7 @@ case "$image" in
     node_version="$(tr -d '\r\n' < "$root/.node-version")"
     npm_version="$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["dependencies"]["npm"])' "$root/automation/images/npm-runtime/package.json")"
     rust_version="$(awk '$1 == "RUST_VERSION:" { print $2; exit }' "$root/.github/workflows/ci.yml")"
-    pi_version="$(awk -F'"' '/^const UpstreamVersion = "/ { print $2; exit }' "$root/internal/coding/pigversion/pigversion.go")"
+    pi_version="$(python3 "$root/automation/pin/pin.py" get package_version)"
     python_version="$(awk -F= '/^python-[0-9]+\.[0-9]+=/ { sub(/^python-/, "", $1); print $1; exit }' "$root/automation/images/ci-parity/packages.lock")"
     for pin in "$node_version" "$npm_version" "$rust_version" "$pi_version" "$python_version"; do
       [ -n "$pin" ] || { echo "missing parity toolchain pin" >&2; exit 2; }

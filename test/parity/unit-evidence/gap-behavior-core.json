@@ -1,0 +1,486 @@
+[
+  {
+    "upstream": "packages/tui/src/colors.ts",
+    "package": "./tui",
+    "tests": [
+      "TestUpstreamColors",
+      "TestColorsMatchUpstreamOracle",
+      "TestParseColorMatchesPiOracle"
+    ],
+    "upstream_reference": "packages/tui/test/colors.test.ts:15-47 (parseColor, oklch gamut mapping, okhsl round trip, styleText reverse-order closes); packages/tui/src/colors.ts:62-340 (Pi-run oracle fixture testdata/colors-oracle.json covers mixColors, ANSI sequences, 256-color mapping)",
+    "mutation": "tui/colors.go: `if spread < 10 &&` -> `if spread < 20 &&` (TestColorsMatchUpstreamOracle, TestColorsMatchUpstreamOracle/ANSI_sequences FAIL); tui/colors.go: `a.L+(b.L-a.L)*amount, a.C+(b.C-a.C)*amount, firstHue+hueDelta*amount` -> `a.L+(b.L-a.L)*amount, a.C+(b.C-a.C)*amount, firstHue+hueDelta*amount*0.9` (TestColorsMatchUpstreamOracle, TestColorsMatchUpstreamOracle/mix FAIL); tui/colors.go: `suffix = \"\\x1b[49m\" + suffix` -> `suffix = suffix + \"\\x1b[49m\"` (TestUpstreamColors, TestUpstreamColors/styles_text_and_closes_sequences_in_reverse_order FAIL); tui/colors.go: `jsMod(secondHue-firstHue+540, 360) - 180` -> `jsMod(secondHue-firstHue+360, 360) - 180` (TestColorsMatchUpstreamOracle, TestColorsMatchUpstreamOracle/mix FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/tui/src/oklab.ts",
+    "package": "./tui",
+    "tests": [
+      "TestUpstreamColors",
+      "TestColorsMatchUpstreamOracle",
+      "TestParseColorMatchesPiOracle"
+    ],
+    "upstream_reference": "packages/tui/src/oklab.ts (OKHSL/OKLab <-> sRGB, gamut cusp, saturation fit); exercised through colors.test.ts:23-39 and the Pi-run oracle testdata/colors-oracle.json (seeded oklchToRgb/okhslToRgb/hexToOkhsl/hexToOklch)",
+    "mutation": "tui/oklab.go: `return 0.5 * (t + math.Sqrt(t*t+4*okhslK2*okhslK3*x))` -> `return 0.4 * (t + math.Sqrt(t*t+4*okhslK2*okhslK3*x))` (TestColorsMatchUpstreamOracle, TestColorsMatchUpstreamOracle/hex_to_okhsl, TestUpstreamColors FAIL); tui/oklab.go: `saturation = 0.8 + 0.2*(offset/` -> `saturation = 0.8 + 0.3*(offset/` (TestColorsMatchUpstreamOracle, TestColorsMatchUpstreamOracle/hex_to_okhsl FAIL); tui/oklab.go: `c0Low, c0High := lightness*0.4, (1-lightness)*0.8` -> `c0Low, c0High := lightness*0.4, (1-lightness)*0.7` (TestColorsMatchUpstreamOracle, TestColorsMatchUpstreamOracle/okhsl_to_sRGB, TestColorsMatchUpstreamOracle/hex_to_okhsl FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/tui/src/wheel-scroll.ts",
+    "package": "./tui",
+    "tests": [
+      "TestUpstreamWheelScrollAccelerator",
+      "TestUpstreamAltScreenAppliesRuntimeWheelLineCountUpdates"
+    ],
+    "upstream_reference": "packages/tui/test/wheel-scroll.test.ts:11-47; packages/tui/test/tui-alt-screen.test.ts:507-530 (runtime wheel line count update); packages/tui/src/wheel-scroll.ts:6-80",
+    "mutation": "tui/wheel_scroll.go: `wheelBurstGapMs = 5` -> `wheelBurstGapMs = 3` (TestUpstreamWheelScrollAccelerator, TestUpstreamWheelScrollAccelerator/does_not_accelerate_bursts_of_events_for_a_single_notch FAIL); tui/wheel_scroll.go: `a.carry = lines - whole` -> `a.carry = 0` (TestUpstreamWheelScrollAccelerator, TestUpstreamWheelScrollAccelerator/carries_fractional_lines_between_events FAIL); tui/wheel_scroll.go: `wheelMaxAutoLines = 6` -> `wheelMaxAutoLines = 7` (TestUpstreamWheelScrollAccelerator, TestUpstreamWheelScrollAccelerator/scales_auto_mode_with_wheel_velocity FAIL); tui/wheel_scroll.go: `wheelReferenceGapMs = 100` -> `wheelReferenceGapMs = 120` (TestUpstreamWheelScrollAccelerator, TestUpstreamWheelScrollAccelerator/scales_auto_mode_with_wheel_velocity, TestUpstreamWheelScrollAccelerator/resets_acceleration_on_direction_changes_and_pauses FAIL); tui/wheel_scroll.go: `direction == a.lastDirection && gap <= wheelGestureGapMs` -> `gap <= wheelGestureGapMs` (TestUpstreamWheelScrollAccelerator, TestUpstreamWheelScrollAccelerator/resets_acceleration_on_direction_changes_and_pauses FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/modes/interactive/components/themed-text.ts",
+    "package": "./tui",
+    "tests": [
+      "TestThemedTextUpstream"
+    ],
+    "upstream_reference": "packages/coding-agent/test/themed-text.test.ts:9-26 (lazy build, rebuild with the current theme only after invalidate); packages/coding-agent/src/modes/interactive/components/themed-text.ts",
+    "mutation": "tui/themed_text.go: `t.Text.Invalidate() ⏎ \tt.stale = true` -> `t.Text.Invalidate()` (TestThemedTextUpstream, TestThemedTextUpstream/builds_lazily_and_rebuilds_with_the_current_theme_after_invalidation FAIL); tui/themed_text.go: `return &ThemedText{Text: NewPaddedText(\"\", paddingX, paddingY, nil), build: build, stale: true}` -> `t0 := &ThemedText{Text: NewPaddedText(\"\", paddingX, paddingY, nil), build: build, stale: true} ⏎ \tt0.SetText(build()) ⏎ \tt0.stale = false ⏎ \treturn t0` (TestThemedTextUpstream, TestThemedTextUpstream/builds_lazily_and_rebuilds_with_the_current_theme_after_invalidation FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/modes/interactive/theme/system-theme.ts",
+    "package": "./tui",
+    "tests": [
+      "TestGenerateSystemThemeColorsUpstream",
+      "TestSystemThemeUpstream",
+      "TestGenerateSystemThemeColorsMatchesUpstream"
+    ],
+    "upstream_reference": "packages/coding-agent/test/system-theme.test.ts:47-137 (WCAG 4.5:1 body text, role ordering by contrast, palette hues, pastel preservation, grayscale, no-background fallback, SGR 2 faint); Pi-run oracle comparison in system_theme_oracle_test.go",
+    "mutation": "tui/system_theme.go: `const systemTextMinimumWcagContrast = 4.5` -> `const systemTextMinimumWcagContrast = 7` (TestGenerateSystemThemeColorsMatchesUpstream, TestGenerateSystemThemeColorsUpstream, TestGenerateSystemThemeColorsUpstream/orders_foreground_roles_by_contrast_and_keeps_panels_close_to_the_background FAIL); tui/system_theme.go: `\"neutral\":            {231.49, 0.02, 0.08, 8},` -> `\"neutral\":            {231.49, 0.02, 0.09, 8},` (TestGenerateSystemThemeColorsMatchesUpstream FAIL); tui/system_theme.go: `math.Exp(-((x - 0.5) * (x - 0.5)) / (2 * (0.25 * 0.25)))` -> `math.Exp(-((x - 0.5) * (x - 0.5)) / (2 * (0.3 * 0.3)))` (TestGenerateSystemThemeColorsMatchesUpstream FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/tui/src/native-module-path.ts",
+    "package": "./coding/extension/host/subprocess",
+    "tests": [
+      "TestNativeModulePathUpstreamCases"
+    ],
+    "upstream_reference": "packages/tui/test/native-module-path.test.ts:8-45 (getNativeModuleCandidates, both cases run unchanged against the vendored runtime-node/shims/pi-dist/pi-tui/native-module-path.js; the Go host has no Node module lookup, so the Node extension runtime is the production consumer); packages/tui/src/native-module-path.ts",
+    "mutation": "coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-tui/native-module-path.js (the file is read from disk, so the mutant was applied in place and restored): candidates.push(join(moduleDir, \"..\", nativePath), join(moduleDir, nativePath), ...) -> candidates.push(join(moduleDir, \"..\", nativePath), ...) (TestNativeModulePathUpstreamCases FAIL: \"keeps standalone binary fallbacks when the TUI package is unavailable\"); catch {} -> catch (e) { throw e; } (TestNativeModulePathUpstreamCases FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/ai/src/auth/oauth/openai-chatgpt.ts",
+    "package": "./ai",
+    "tests": [
+      "TestOpenAIChatGPTOAuthUpstream",
+      "TestChatGPTManualInputErrorsFollowURLParsing",
+      "TestChatGPTManualInputUsesTheWHATWGURL",
+      "TestChatGPTTokenScopesSplitOnJavaScriptWhitespace",
+      "TestChatGPTCallbackServerResponseMatchesSendHtml",
+      "TestOpenAIChatGPTLoginFailsWhenTheCallbackPortIsInUse"
+    ],
+    "upstream_reference": "packages/ai/test/openai-chatgpt-oauth.test.ts:69-179 (dynamic client registration, issued client ID and granted scopes stored, direct token scope required, device ID required, refresh rotation and replacement scopes); packages/ai/src/auth/oauth/openai-chatgpt.ts",
+    "mutation": "ai/oauth_openai_chatgpt.go: `if !slices.Contains(scopes, chatgptDirectTokenScope) {` -> `if false {` (TestChatGPTTokenScopesSplitOnJavaScriptWhitespace, TestOpenAIChatGPTOAuthUpstream, TestOpenAIChatGPTOAuthUpstream/rejects_a_token_response_that_did_not_grant_direct_token_use FAIL); ai/oauth_openai_chatgpt.go: `\"refresh_token\": {credentials.Refresh}, ⏎ \t\t\"resource\":      {chatgptResource},` -> `\"refresh_token\": {credentials.Refresh}, ⏎ \t\t\"resource\":      {chatgptResource + \"x\"},` (TestOpenAIChatGPTOAuthUpstream, TestOpenAIChatGPTOAuthUpstream/refreshes_with_the_credential's_issued_client_ID_and_stores_replacement_scopes FAIL); ai/oauth_openai_chatgpt.go: `\"refresh_token\": {credentials.Refresh},` -> `\"refresh_token\": {credentials.Access},` (TestOpenAIChatGPTOAuthUpstream, TestOpenAIChatGPTOAuthUpstream/refreshes_with_the_credential's_issued_client_ID_and_stores_replacement_scopes FAIL); ai/oauth_openai_chatgpt.go: `return chatgptAuthorizationResult{}, errors.New(\"OAuth state mismatch\")` -> `return chatgptAuthorizationResult{}, errors.New(\"state mismatch\")` (TestChatGPTManualInputErrorsFollowURLParsing FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/modes/interactive/components/show-images-selector.ts",
+    "package": "./tui",
+    "tests": [
+      "TestShowImagesUpstreamRender",
+      "TestShowImagesUpstreamCallbacks",
+      "TestShowImagesListInputKeepsCallbacksLive"
+    ],
+    "upstream_reference": "packages/coding-agent/src/modes/interactive/components/show-images-selector.ts:5-50 (Yes/No items with descriptions, SHOW_IMAGES_SELECT_LIST_LAYOUT 12/32, preselect by currentValue, onSelect(item.value === \"yes\"), onCancel); Pi-oracle-probed render lines at widths 20 and 80",
+    "mutation": "tui/show_images_selector.go: `onSelect(index == 0)` -> `onSelect(index == 1)` (TestShowImagesListInputKeepsCallbacksLive, TestShowImagesUpstreamCallbacks, TestShowImagesUpstreamCallbacks/current_true_input_\"\" FAIL); tui/show_images_selector.go: `list.MinPrimaryColumnWidth = 12` -> `list.MinPrimaryColumnWidth = 14` (TestShowImagesUpstreamRender, TestShowImagesUpstreamRender/current_true_width_80, TestShowImagesUpstreamRender/current_false_width_80 FAIL); tui/show_images_selector.go: `\"Show text placeholder instead\"` -> `\"Show a text placeholder instead\"` (TestShowImagesUpstreamRender, TestShowImagesUpstreamRender/current_true_width_80, TestShowImagesUpstreamRender/current_false_width_80 FAIL); tui/show_images_selector.go: `list.SetCursor(0) ⏎ \t} else { ⏎ \t\tlist.SetCursor(1)` -> `list.SetCursor(1) ⏎ \t} else { ⏎ \t\tlist.SetCursor(0)` (TestShowImagesUpstreamRender, TestShowImagesUpstreamRender/current_true_width_20, TestShowImagesUpstreamRender/current_true_width_80 FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/mcp-servers.ts",
+    "package": "./coding/extension",
+    "tests": [
+      "TestMcpServerRegistryKeepsOwnershipOrderAndCopies",
+      "TestValidateMcpServerConfigMessages",
+      "TestIsLoopbackRedirectURI",
+      "TestValidateMcpServerConfigAcceptsProviderAuthOnLoopbackHostsAsTheURLParserNormalizesThem",
+      "TestValidateMcpServerConfigTrimsTheOAuthClientNameAsJavaScriptDoes",
+      "TestValidateMcpServerConfigChecksTheDescriptionBeforeTheTimeout",
+      "TestValidateMcpServerConfigRejectsClientNamesThatStringTrimEmpties",
+      "TestValidateMcpServerConfigParsesTheURLAsTheWHATWGParserDoes",
+      "TestValidateMcpServerConfigMatchesPi",
+      "TestValidateMcpServerConfigKeepsAnIntegralCallbackPortWrittenAsAnyNumberForm",
+      "TestMcpHelpersMatchPi",
+      "TestRegisteredMcpServersKeepTheConfigAsRegistered"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/mcp-servers.ts (registry ownership/order/copies, validateMcpServerConfig messages, loopback redirect URI, exposure resolution); Pi-run oracle mcp_servers_oracle_test.go",
+    "mutation": "coding/extension/mcp_servers.go: `if !ok || server.ExtensionPath != extensionPath {` -> `if !ok || server.ExtensionPath != server.ExtensionPath {` (TestMcpServerRegistryKeepsOwnershipOrderAndCopies FAIL); coding/extension/mcp_servers.go: `func(n string) bool { return n == name })` -> `func(n string) bool { return false })` (TestMcpServerRegistryKeepsOwnershipOrderAndCopies FAIL); coding/extension/mcp_servers.go: `if config.Exposure != \"\" { ⏎ \t\treturn config.Exposure ⏎ \t} ⏎ \treturn McpExposureCodemode` -> `if config.Exposure != \"\" { ⏎ \t\treturn config.Exposure ⏎ \t} ⏎ \treturn McpExposureDirect` (TestValidateMcpServerConfigMatchesPi FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/utils/version-check.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestVersionChecks",
+      "TestComparePackageVersions",
+      "TestIsNewerPackageVersion",
+      "TestFetchUpdateManifest",
+      "TestCheckForBinaryUpdate"
+    ],
+    "upstream_reference": "packages/coding-agent/test/version-check.test.ts:28-130 (compare package versions, only newer versions, user agent and accept headers, explicit retry vs one automatic request, nested network error details, notes, disabled automatic checks); packages/coding-agent/src/utils/version-check.ts (D39 signed manifest replaces the pi.dev API, D65 product user agent)",
+    "mutation": "internal/codingagent/selfupdate.go: `maxRetries = 2` -> `maxRetries = 1` (TestVersionChecks, TestVersionChecks/retries_a_transient_version_request_when_explicitly_requested FAIL); internal/codingagent/selfupdate.go: `req.Header.Set(\"Accept\", \"application/json\")` -> `req.Header.Set(\"Accept\", \"text/plain\")` (TestVersionChecks, TestVersionChecks/sends_the_identity_and_accept_headers_with_the_version_check_request FAIL); internal/codingagent/selfupdate.go: `return comparison > 0 ⏎ \t} ⏎ \treturn jsstring.Trim(candidate) != jsstring.Trim(current)` -> `return comparison >= 0 ⏎ \t} ⏎ \treturn jsstring.Trim(candidate) != jsstring.Trim(current)` (TestIsNewerPackageVersion, TestCheckForBinaryUpdate, TestVersionChecks FAIL); internal/codingagent/selfupdate.go: `return jsstring.Trim(candidate) != jsstring.Trim(current)` -> `return candidate != current` (TestIsNewerPackageVersion FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/utils/open-browser.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestOpenBrowserLaunchesADetachedLauncherWithIgnoredStdio",
+      "TestOpenBrowserLauncherFailureDoesNotPanic"
+    ],
+    "upstream_reference": "packages/coding-agent/src/utils/open-browser.ts:11-24 (open / rundll32 url.dll,FileProtocolHandler / xdg-open with the target as one argument, no shell, stdio ignore, detached, launcher failure swallowed); the win32 argv and CREATE_NEW_PROCESS_GROUP cases are covered by open_browser_windows_test.go on Windows CI",
+    "mutation": "internal/codingagent/open_browser_unix.go: `Setsid: true` -> `Setsid: false` (TestOpenBrowserLaunchesADetachedLauncherWithIgnoredStdio FAIL); internal/codingagent/interactive_auth.go: `cmd = \"xdg-open\" ⏎ \t\targs = []string{target}` -> `cmd = \"xdg-open\" ⏎ \t\targs = []string{\"--\", target}` (TestOpenBrowserLaunchesADetachedLauncherWithIgnoredStdio FAIL); internal/codingagent/interactive_auth.go: `cmd = \"xdg-open\"` -> `cmd = \"x-www-browser\"` (TestOpenBrowserLaunchesADetachedLauncherWithIgnoredStdio FAIL); internal/codingagent/interactive_auth.go: `command := exec.Command(cmd, args...)` -> `command := exec.Command(cmd, args...) ⏎ \tcommand.Stdin = strings.NewReader(\"x\")` (TestOpenBrowserLaunchesADetachedLauncherWithIgnoredStdio FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/crash-log.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestFindExtensionStackMatches",
+      "TestCrashAttributionFromSacrificialProcess",
+      "TestFormatCrashExtensionHint",
+      "TestRecordCrashKeepsTheNewestFive",
+      "TestReadCrashLogFiltersInvalidRecords",
+      "TestTakeUnnotifiedCrashAnnouncesOnce",
+      "TestCrashMessagesMatchUpstream",
+      "TestUncaughtCrashPrintsRecordsAndInstructs",
+      "TestUncaughtCrashAttributesLoadedExtension",
+      "TestHandleFatalRuntimeErrorRecordsAndRequestsFailureExit",
+      "TestFatalSessionReplacementHandlersUseCrashPath",
+      "TestReviewBuiltinForkFailureIsNotFatal",
+      "TestShowCrashNoticeAnnouncesPendingCrash",
+      "TestBugReportAttachesAndClearsTheCrashLog",
+      "TestRunRecordsACrashAndReportsErrInteractiveCrashed",
+      "TestUncaughtCrashPrintsRenderOverflowAsError",
+      "TestForwardRenderCrashReraisesOverflowOnOwnerLoop",
+      "TestStackFrameFormsAreJavaScriptAtFramesAndGoPanicLocations",
+      "TestCrashNoticeNamesAnUnreadableTimestampAsInvalidDate",
+      "TestCrashLogMatchesPi",
+      "TestFindExtensionStackMatchesMatchesPi"
+    ],
+    "upstream_reference": "packages/coding-agent/test/crash-log.test.ts; packages/coding-agent/src/core/crash-log.ts (MAX_RECORDS, MAX_AGE, record/read filtering, notified marker, extension stack attribution, messages) compared with Pi 1.0.4 in crash_log_oracle_test.go; interactive-mode.ts recordCrash/uncaughtException paths",
+    "mutation": "internal/codingagent/crash_log.go: `maxCrashRecords = 5` -> `maxCrashRecords = 6` (TestCrashLogMatchesPi, TestRecordCrashKeepsTheNewestFive FAIL); internal/codingagent/crash_log.go: `maxCrashAge     = 7 * 24 * time.Hour` -> `maxCrashAge     = 8 * 24 * time.Hour` (TestTakeUnnotifiedCrashAnnouncesOnce FAIL); internal/codingagent/crash_log.go: `r.members.Set(\"notified\", json.RawMessage(\"true\"))` -> `r.members.Set(\"notified\", json.RawMessage(\"false\"))` (TestCrashLogMatchesPi, TestTakeUnnotifiedCrashAnnouncesOnce FAIL); internal/codingagent/crash_log.go: `if len(lines) > 0 { ⏎ \t\tlines = lines[1:]` -> `if len(lines) > 1 { ⏎ \t\tlines = lines[2:]` (TestFindExtensionStackMatchesMatchesPi, TestFindExtensionStackMatches, TestFindExtensionStackMatches/normalizes_Windows_paths_and_deduplicates_package_extensions FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/index.ts",
+    "package": "./coding/extension/host/subprocess",
+    "tests": [
+      "TestNodeBarrelExportsEveryValuePiExports"
+    ],
+    "upstream_reference": "packages/coding-agent/src/index.ts (the published Pi 1.0.4 entry point exports 156 runtime values); the Node barrel runtime-node/shims/pi-coding-agent.mjs is compared with the published dist/index.js by a Pi-run oracle; type exports are the pinned declarations checked by make test-sdk-ts; main-process identity is D73 and built-in provider APIs are D74",
+    "mutation": "coding/extension/host/subprocess/runtime-node/shims/pi-coding-agent.mjs (read from disk, so the mutant was applied in place and restored): `export * from \"./pi-dist/pi-coding-agent/sdk-bundle/index.js\"` -> `export { createAgentSession } from ...` (TestNodeBarrelExportsEveryValuePiExports FAIL: the Node barrel does not export \"AgentSession\" and 150 more names); appended `export const surplusExport = 1;` (TestNodeBarrelExportsEveryValuePiExports FAIL: the Node barrel exports \"surplusExport\", which Pi does not); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/extensions/mcp/cli.ts",
+    "package": "./coding/mcpext",
+    "tests": [
+      "TestMcpCommandReportsArgumentErrors",
+      "TestMcpCommandAddsHTTPServersAndKeepsOtherContentOfTheFile",
+      "TestMcpCommandRejectsATimeoutThatIsNotPositive"
+    ],
+    "upstream_reference": "packages/coding-agent/test/mcp-command.test.ts (pi mcp list/get/add/remove/enable/disable/test/login/logout: usage errors, option applicability, header and bearer composition, oauth options, trusted/untrusted project note); packages/coding-agent/src/extensions/mcp/cli.ts",
+    "mutation": "TestMcpCommandReportsArgumentErrors: `\"--%s only applies to %s.\"` -> `\"--%s applies only to %s.\"` (TestMcpCommandReportsArgumentErrors FAIL); TestMcpCommandAddsHTTPServersAndKeepsOtherContentOfTheFile: `_ = headers.SetValue(\"Authorization\", \"Bearer ${\"+bearer+\"}\")` -> `_ = headers.SetValue(\"Authorization\", \"Bearer \"+bearer)` (TestMcpCommandAddsHTTPServersAndKeepsOtherContentOfTheFile FAIL); TestMcpCommandRejectsATimeoutThatIsNotPositive: `c.error(\"--timeout must be a positive number of seconds.\")` -> `c.error(\"--timeout must be positive.\")` (TestMcpCommandRejectsATimeoutThatIsNotPositive FAIL); TestMcpCommandReportsArgumentErrors: `c.error(fmt.Sprintf(\"Unknown option %s.\\n%s\", arg, c.helpHint()))` -> `c.error(fmt.Sprintf(\"Unknown flag %s.\\n%s\", arg, c.helpHint()))` (TestMcpCommandReportsArgumentErrors FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/extensions/mcp/config.ts",
+    "package": "./coding/mcpext",
+    "tests": [
+      "TestMCPConfigLetsProjectEntriesOverrideEnabledAndExposureOfGlobalServers",
+      "TestLoadMcpConfigReportsUnreadableFilesLikeUpstream",
+      "TestMCPConfigValidatesExposureAndReadsAutoEnableCodemodeWithProjectPrecedence",
+      "TestMCPConfigRejectsServerNamesThatDifferOnlyInDashAndUnderscore"
+    ],
+    "upstream_reference": "packages/coding-agent/test/mcp-extension.test.ts (mcp.json loading: global and project files, JSON error text, mcpServers shape, autoEnableCodemode type, name conflicts, project override keys, untrusted project OAuth); packages/coding-agent/src/extensions/mcp/config.ts",
+    "mutation": "TestMCPConfigLetsProjectEntriesOverrideEnabledAndExposureOfGlobalServers: `var overrideKeys = []string{\"enabled\", \"exposure\", \"toolExposure\"}` -> `var overrideKeys = []string{\"enabled\", \"exposure\"}` (TestMCPConfigLetsProjectEntriesOverrideEnabledAndExposureOfGlobalServers FAIL); TestMCPConfigValidatesExposureAndReadsAutoEnableCodemodeWithProjectPrecedence: `s.errors = append(s.errors, fmt.Sprintf(\"%s: autoEnableCodemode must be a boolean\", path))` -> `s.errors = append(s.errors, fmt.Sprintf(\"%s: autoEnableCodemode must be boolean\", path))` (TestLoadMcpConfigReportsUnreadableFilesLikeUpstream, TestMCPConfigValidatesExposureAndReadsAutoEnableCodemodeWithProjectPrecedence FAIL); TestMCPConfigRejectsServerNamesThatDifferOnlyInDashAndUnderscore: `conflicts with \"%s\"` -> `collides with \"%s\"` (TestMCPConfigRejectsServerNamesThatDifferOnlyInDashAndUnderscore FAIL); TestMCPConfigLetsProjectEntriesOverrideEnabledAndExposureOfGlobalServers: `needs \"command\" or \"url\", or a global server to override` -> `needs \"command\" or \"url\"` (TestMCPConfigLetsProjectEntriesOverrideEnabledAndExposureOfGlobalServers FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/extensions/mcp/log.ts",
+    "package": "./coding/mcpext",
+    "tests": [
+      "TestMcpServerLogRotatesAFileThatGrewPastTheLimit",
+      "TestMcpServerLogRotatesOnTheWriteAfterTheLimitIsCrossed",
+      "TestMCPConnectionsAppendsServerLogMessagesToTheLogFile",
+      "TestFormatMcpLogMessageHandlesNonObjectParams",
+      "TestMcpServerLogDoesNotRotateAFileAnotherProcessAlreadyRotated",
+      "TestMcpServerLogComparesTheTrackedAndTheCurrentSizeStrictlyWithTheLimit"
+    ],
+    "upstream_reference": "packages/coding-agent/src/extensions/mcp/log.ts:3-69 (MAX_LOG_BYTES = 5 MiB, one append per notifications/message, rotation to mcp.log.1 when the tracked and current size pass the limit, continuation lines indented 4 spaces); packages/coding-agent/test/mcp-extension.test.ts for the logging notifications",
+    "mutation": "TestMcpServerLogRotatesOnTheWriteAfterTheLimitIsCrossed: `const maxLogBytes = 5 * 1024 * 1024` -> `const maxLogBytes = 6 * 1024 * 1024` (TestMcpServerLogRotatesAFileThatGrewPastTheLimit, TestMcpServerLogRotatesOnTheWriteAfterTheLimitIsCrossed FAIL); TestFormatMcpLogMessageHandlesNonObjectParams: `lineBreak.ReplaceAllString(formatLogData(data), \"\\n    \")` -> `lineBreak.ReplaceAllString(formatLogData(data), \"\\n  \")` (TestMCPConnectionsAppendsServerLogMessagesToTheLogFile, TestFormatMcpLogMessageHandlesNonObjectParams FAIL); TestMcpServerLogComparesTheTrackedAndTheCurrentSizeStrictlyWithTheLimit/file_at_the_limit: `if fileSize(l.Path) > maxLogBytes {` -> `if true {` (TestMcpServerLogDoesNotRotateAFileAnotherProcessAlreadyRotated, TestMcpServerLogComparesTheTrackedAndTheCurrentSizeStrictlyWithTheLimit, TestMcpServerLogComparesTheTrackedAndTheCurrentSizeStrictlyWithTheLimit/file_at_the_limit FAIL); TestMcpServerLogRotatesOnTheWriteAfterTheLimitIsCrossed: `os.Rename(l.Path, l.Path+\".1\")` -> `os.Rename(l.Path, l.Path+\".old\")` (TestMcpServerLogRotatesAFileThatGrewPastTheLimit, TestMcpServerLogRotatesOnTheWriteAfterTheLimitIsCrossed FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/extensions/mcp/index.ts",
+    "package": "./coding/mcpext",
+    "tests": [
+      "TestAgentSessionMCPDoesNotActivateCodemodeWhenAutoEnableCodemodeIsFalse",
+      "TestAgentSessionMCPWarnsWhenDeferredMCPToolsHaveNeitherToolSearchNorCodemode",
+      "TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServerOfTheSameName",
+      "TestMCPServersSectionLeavesOutTheLastServersWhenTheirNamesAloneDoNotFit",
+      "TestMcpReconnectReportsTheStateOfTheServer",
+      "TestMcpCommandAsksWhichServerWhenSeveralQualify",
+      "TestMcpCommandCompletions",
+      "TestMcpLogoutFailureIsTheCommandsError",
+      "TestMcpManagerServersMenu",
+      "TestMcpManagerServerMenuAndDisable",
+      "TestMcpManagerReconnectRunsInTheBackgroundWithoutAStatusScreen",
+      "TestMcpManagerServersMenuListsFailedServersFirst"
+    ],
+    "upstream_reference": "packages/coding-agent/test/mcp-extension.test.ts; packages/coding-agent/test/mcp-command.test.ts (extension load notifications, server status lines, tool exposure sections, override and unreachable-tool warnings, sign-in flow messages); packages/coding-agent/src/extensions/mcp/index.ts",
+    "mutation": "TestAgentSessionMCPWarnsWhenDeferredMCPToolsHaveNeitherToolSearchNorCodemode: `but neither is active%s; they cannot be called.` -> `but none is active%s; they cannot be called.` (TestAgentSessionMCPDoesNotActivateCodemodeWhenAutoEnableCodemodeIsFalse, TestAgentSessionMCPWarnsWhenDeferredMCPToolsHaveNeitherToolSearchNorCodemode FAIL); TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServerOfTheSameName/my_docs: `is overridden by \"%s\" in %s` -> `is shadowed by \"%s\" in %s` (TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServerOfTheSameName, TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServerOfTheSameName/my-docs, TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServerOfTheSameName/my_docs FAIL); TestMCPServersSectionLeavesOutTheLastServersWhenTheirNamesAloneDoNotFit: `- … %d more server%s; find their tools with searchTools()` -> `- … %d more server%s; use searchTools()` (TestMCPServersSectionLeavesOutTheLastServersWhenTheirNamesAloneDoNotFit FAIL); TestMcpManagerServersMenuListsFailedServersFirst: `return \"connected · \" + plural(len(connection.Tools()), \"tool\") + resourceCount` -> `return \"ok · \" + plural(len(connection.Tools()), \"tool\") + resourceCount` (TestMcpReconnectReportsTheStateOfTheServer, TestMcpCommandAsksWhichServerWhenSeveralQualify, TestMcpCommandCompletions FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/extensions/codemode/execute.ts",
+    "package": "./coding/extension/builtin/codemode",
+    "tests": [
+      "TestSaveImagesFailsForAnImageTypeWithoutAnExtension"
+    ],
+    "upstream_reference": "packages/coding-agent/src/extensions/codemode/execute.ts:281-287 (saveImages: an image type without a file extension fails the call); the rest of execute.ts is evidenced by the ./coding record below",
+    "mutation": "TestSaveImagesFailsForAnImageTypeWithoutAnExtension: `errors.New(\"No file extension for image type \" + image.MimeType)` -> `errors.New(\"No extension for image type \" + image.MimeType)` (TestSaveImagesFailsForAnImageTypeWithoutAnExtension FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/extensions/codemode/execute.ts",
+    "package": "./coding",
+    "tests": [
+      "TestCodemodeNestedCallPreviewsAndTheDefaultOutputBudget",
+      "TestUpstreamAgentSessionCodemodeTool",
+      "TestUpstreamCodemodeOptionsAndStore",
+      "TestCodemodeTimeoutCancelsARunningNestedCall"
+    ],
+    "upstream_reference": "packages/coding-agent/test/suite/agent-session-codemode.test.ts (ported in coding/codemode_session_upstream_test.go: script header, nested calls, options, store, output truncation); packages/coding-agent/src/extensions/codemode/execute.ts:46-66 (ARGS_PREVIEW_CHARS 200, ERROR_PREVIEW_CHARS 500, truncateText slice(0, max - 3) + \"...\") and :231-233 (DEFAULT_MAX_OUTPUT_TOKENS 10_000, CHARS_PER_TOKEN 4), which Pi's tests do not assert",
+    "mutation": "coding/extension/builtin/codemode/execute.go: `argsPreviewChars  = 200` -> `argsPreviewChars  = 201` (TestCodemodeNestedCallPreviewsAndTheDefaultOutputBudget FAIL); coding/extension/builtin/codemode/execute.go: `errorPreviewChars = 500` -> `errorPreviewChars = 501` (TestCodemodeNestedCallPreviewsAndTheDefaultOutputBudget FAIL); coding/extension/builtin/codemode/execute.go: `defaultMaxOutputTokens = 10_000` -> `defaultMaxOutputTokens = 10_001` (TestCodemodeNestedCallPreviewsAndTheDefaultOutputBudget FAIL); coding/extension/builtin/codemode/execute.go: `if count+width > maxChars-3 {` -> `if count+width > maxChars-2 {` (TestCodemodeNestedCallPreviewsAndTheDefaultOutputBudget FAIL); coding/extension/builtin/codemode/execute.go: `title := \"Script failed\"` -> `title := \"Script failure\"` (TestCodemodeTimeoutCancelsARunningNestedCall, TestUpstreamAgentSessionCodemodeTool, TestUpstreamCodemodeOptionsAndStore FAIL); coding/extension/builtin/codemode/execute.go: `IsError: !result.OK,` -> `IsError: false,` (TestCodemodeTimeoutCancelsARunningNestedCall, TestUpstreamAgentSessionCodemodeTool, TestUpstreamCodemodeOptionsAndStore FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/extensions/codemode/tool.ts",
+    "package": "./coding/extension/builtin/codemode",
+    "tests": [
+      "TestCodemodePromptContributionAndSchemaAreTheLeanerOnes"
+    ],
+    "upstream_reference": "packages/coding-agent/test/codemode-worker-config.test.ts; packages/coding-agent/src/extensions/codemode/tool.ts (prompt snippet and guidelines, input schema, description catalog and loadout)",
+    "mutation": "TestCodemodePromptContributionAndSchemaAreTheLeanerOnes: `const promptSnippet = \"Run JavaScript that calls other tools\"` -> `const promptSnippet = \"Run JavaScript that calls tools\"` (TestCodemodePromptContributionAndSchemaAreTheLeanerOnes FAIL); TestCodemodePromptContributionAndSchemaAreTheLeanerOnes: `batch independent tool calls (Promise.allSettled)` -> `batch tool calls (Promise.allSettled)` (TestCodemodePromptContributionAndSchemaAreTheLeanerOnes FAIL); TestCodemodePromptContributionAndSchemaAreTheLeanerOnes: `\"description\":\"Raw JavaScript source.\"` -> `\"description\":\"JavaScript source.\"` (TestCodemodePromptContributionAndSchemaAreTheLeanerOnes FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/extensions/codemode/index.ts",
+    "package": "./coding/extension/builtin/codemode",
+    "tests": [
+      "TestExtensionOptionsOverrideTheCodemodeSettings"
+    ],
+    "upstream_reference": "packages/coding-agent/src/extensions/codemode/index.ts:20-48 (settings-driven codemode mode, only-mode, inline budget validation, appendEntry binding); packages/coding-agent/test/codemode-worker-config.test.ts",
+    "mutation": "TestExtensionOptionsOverrideTheCodemodeSettings: `codemode[\"mode\"] == ModeOnly` -> `codemode[\"mode\"] == ModeOnly+\"x\"` (TestExtensionOptionsOverrideTheCodemodeSettings FAIL); TestExtensionOptionsOverrideTheCodemodeSettings: `budget >= 0 {` -> `budget > 0 {` (TestExtensionOptionsOverrideTheCodemodeSettings FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/extensions/codemode/renderer.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestCodemodeCardUsesTheDefinitionsRenderers",
+      "TestAnotherCodemodeToolGetsNoBuiltInRenderers",
+      "TestCodemodeRendererCutsArgumentsInUTF16Units",
+      "TestCodemodeRendererOutputIsSanitizedAndImagesFollowTheText",
+      "TestCodemodeRenderCallFlagsOnlyANonStringCode",
+      "TestCodemodeRendererExpandHintNamesTheBoundKey",
+      "TestCodemodeRendererHidesTheScriptHeaderAndShowsTheOutput",
+      "TestCodemodeRendererShowsTheCostOfModelCallsAndTheirTotal",
+      "TestCodemodeRendererShowsResultsWithoutAHeaderSuchAsRejectedOptions",
+      "TestCodemodeRendererLimitsCollapsedOutputToWrappedLinesNotLogicalLines"
+    ],
+    "upstream_reference": "packages/coding-agent/test/codemode-renderer.test.ts; packages/coding-agent/src/extensions/codemode/renderer.ts (call title, collapsed output limit with expand hint, duration and cost of model calls, sanitized output, images after text)",
+    "mutation": "internal/codingagent/tool_codemode_renderer.go: `\"... (%d more %s,\"` -> `\"... (%d further %s,\"` (TestCodemodeRendererExpandHintNamesTheBoundKey, TestCodemodeRendererLimitsCollapsedOutputToWrappedLinesNotLogicalLines FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/extensions/tool-search/tool.ts",
+    "package": "./coding/extension/builtin/toolsearch",
+    "tests": [
+      "TestBm25ScoresMatchUpstream",
+      "TestDocumentsWithEqualScoresKeepDocumentOrder"
+    ],
+    "upstream_reference": "packages/coding-agent/test/tool-search.test.ts (BM25 ranking with k1 1.2 and b 0.75, tokenization with plural stemming, documents from names, descriptions and schema property names, limit handling, namespace filter); packages/coding-agent/src/extensions/tool-search/tool.ts",
+    "mutation": "TestBm25ScoresMatchUpstream: `K1: 1.2, B: 0.75` -> `K1: 1.3, B: 0.75` (TestBm25ScoresMatchUpstream FAIL); TestBm25ScoresMatchUpstream: `K1: 1.2, B: 0.75` -> `K1: 1.2, B: 0.7` (TestBm25ScoresMatchUpstream FAIL); TestDocumentsWithEqualScoresKeepDocumentOrder: `math.Log(1 + (float64(len(documents)-frequency)+0.5)/(float64(frequency)+0.5))` -> `math.Log(2 + (float64(len(documents)-frequency)+0.5)/(float64(frequency)+0.5))` (TestBm25ScoresMatchUpstream, TestDocumentsWithEqualScoresKeepDocumentOrder FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/extensions/tool-search/index.ts",
+    "package": "./coding/extension/builtin/toolsearch",
+    "tests": [
+      "TestToolSearchRejectsAnEmptyQueryAndANonPositiveOrFractionalLimit",
+      "TestToolSearchReportsNoMatchesWithoutChangingTheActiveTools",
+      "TestToolSearchLoadsMatchesOfNonActiveSearchableToolsAndNamesTheFirstDescriptionLine"
+    ],
+    "upstream_reference": "packages/coding-agent/test/tool-search.test.ts (tool_search registration, parameters, results text, deferred tool activation); packages/coding-agent/src/extensions/tool-search/index.ts",
+    "mutation": "TestToolSearchRejectsAnEmptyQueryAndANonPositiveOrFractionalLimit: `errors.New(\"query must not be empty\")` -> `errors.New(\"query is empty\")` (TestToolSearchRejectsAnEmptyQueryAndANonPositiveOrFractionalLimit FAIL); TestToolSearchReportsNoMatchesWithoutChangingTheActiveTools: `text := \"No matching tools found.\"` -> `text := \"No tools found.\"` (TestToolSearchReportsNoMatchesWithoutChangingTheActiveTools FAIL); TestToolSearchLoadsMatchesOfNonActiveSearchableToolsAndNamesTheFirstDescriptionLine: `They are available from your next call:` -> `They are available next call:` (TestToolSearchLoadsMatchesOfNonActiveSearchableToolsAndNamesTheFirstDescriptionLine FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/ai/scripts/hydrate-model-catalog.ts",
+    "package": "./cmd/check-model-data",
+    "tests": [
+      "TestHydrateModelCatalogUpstream",
+      "TestGroupProviderModelDataRejectsDuplicates",
+      "TestHydrateModelCatalogStampsTheEpochGeneratedAt"
+    ],
+    "upstream_reference": "packages/ai/test/model-data-validation.test.ts:82- (published model catalog hydration: deterministic output, grouping by API keyed type:id, validate-only keeps data, incomplete catalogs and invalid api/provider/cost keep the current data); packages/ai/scripts/hydrate-model-catalog.ts; groupProviderModelData in packages/ai/scripts/model-data.ts",
+    "mutation": "cmd/check-model-data/hydrate.go: `if validateOnly { ⏎ \t\treturn nil ⏎ \t}` -> `if false { ⏎ \t\treturn nil ⏎ \t}` (TestHydrateModelCatalogUpstream, TestHydrateModelCatalogUpstream/validates_without_replacing_existing_data FAIL); cmd/check-model-data/hydrate.go: `|| len(raws) == 0 {` -> `{` (TestHydrateModelCatalogUpstream, TestHydrateModelCatalogUpstream/rejects_incomplete_catalogs_without_replacing_existing_data:_{\"test-provider\":[]} FAIL); cmd/check-model-data/hydrate.go: `if seen[identity] {` -> `if false {` (TestGroupProviderModelDataRejectsDuplicates FAIL); cmd/check-model-data/hydrate.go: `identity := model.Type + \":\" + model.ID` -> `identity := model.ID` (TestHydrateModelCatalogUpstream, TestHydrateModelCatalogUpstream/hydrates_a_clean_checkout_deterministically_without_changing_generated_TypeScript, TestHydrateModelCatalogUpstream/groups_models_by_API_and_keys_them_by_type_and_id FAIL); cmd/check-model-data/hydrate.go: `\"1970-01-01T00:00:00.000Z\"` -> `\"1970-01-01T00:00:01.000Z\"` (TestHydrateModelCatalogStampsTheEpochGeneratedAt FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/ai/src/auth/oauth/callback-server.ts",
+    "package": "./ai",
+    "tests": [
+      "TestOAuthCallbackServerUpstream",
+      "TestWaitForCallbackOrManualInputUpstream",
+      "TestOAuthCallbackServerRejectsLateRedirectsBeforeReadingThem",
+      "TestWaitForCallbackOrManualInputJoinsTheManualPrompt",
+      "TestWaitForCallbackOrManualInputReportsLoginCancelled",
+      "TestOAuthCallbackServerMatchesTheWHATWGPathname"
+    ],
+    "upstream_reference": "packages/ai/test/oauth-callback-server.test.ts:52-250 (stray requests ignored, redirect host, completion failure page and rejection, provider error, first callback only, cancel, abort and timeout messages, port-taken failure, manual input vs browser callback); packages/ai/src/auth/oauth/callback-server.ts",
+    "mutation": "ai/oauth_callback_server.go: `s.sendPage(w, http.StatusBadRequest, OAuthErrorHTML(\"State mismatch.\", \"\"))` -> `s.sendPage(w, http.StatusOK, OAuthErrorHTML(\"State mismatch.\", \"\"))` (TestOAuthCallbackServerUpstream, TestOAuthCallbackServerUpstream/ignores_stray_requests_and_resolves_with_the_completed_code FAIL); ai/oauth_callback_server.go: `fmt.Errorf(\"%s sign-in timed out\", options.ProviderName)` -> `fmt.Errorf(\"%s timed out\", options.ProviderName)` (TestOAuthCallbackServerUpstream, TestOAuthCallbackServerUpstream/rejects_the_wait_on_abort_and_on_timeout FAIL); ai/oauth_callback_server.go: `s.sendPage(w, http.StatusBadGateway, OAuthErrorHTML(providerName+\" sign-in failed.\", err.Error()))` -> `s.sendPage(w, http.StatusOK, OAuthErrorHTML(providerName+\" sign-in failed.\", err.Error()))` (TestOAuthCallbackServerUpstream, TestOAuthCallbackServerUpstream/shows_completion_failures_on_the_page_and_rejects_the_wait FAIL); ai/oauth_callback_server.go: `errors.New(\"Login cancelled\")) })` -> `errors.New(\"Cancelled\")) })` (TestWaitForCallbackOrManualInputReportsLoginCancelled, TestOAuthCallbackServerUpstream, TestOAuthCallbackServerUpstream/rejects_the_wait_on_abort_and_on_timeout FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/remote-catalog-provider.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestRemoteCatalogProviderUpstream",
+      "TestRemoteCatalogRouteResolvesAgainstTheBaseURLOrigin",
+      "TestRemoteCatalogRejectsBodiesThatAreNotCatalogs",
+      "TestMergeRemoteCatalogModelsKeysByTypeAndIDInFirstSeenOrder",
+      "TestRemoteCatalogStoresTheLastModifiedHeaderAsDateParseReadsIt",
+      "TestParseRemoteCatalogStampsTheRequestedProvider"
+    ],
+    "upstream_reference": "packages/coding-agent/test/remote-catalog-provider.test.ts:75-291 (keyed catalogs, version headers, refresh TTL and forced refresh, image/classifier overlay and unknown types dropped, newer-of-generated-and-remote, etag revalidation and 304, stale etag drop, transient failure keeps etag, stalled older request bypass, 404/501 as unavailable overlay); packages/coding-agent/src/core/remote-catalog-provider.ts:62-158",
+    "mutation": "internal/codingagent/remote_catalog_provider.go: `request.Header.Set(\"if-none-match\", validator)` -> `request.Header.Set(\"if-none-match\", validator+\"x\")` (TestRemoteCatalogProviderUpstream, TestRemoteCatalogProviderUpstream/revalidates_a_stored_catalog_with_its_etag_and_keeps_the_overlay_on_304, TestRemoteCatalogProviderUpstream/keeps_the_etag_and_overlay_after_a_transient_failure FAIL); internal/codingagent/remote_catalog_provider.go: `response.StatusCode == http.StatusNotImplemented` -> `response.StatusCode == http.StatusBadGateway` (TestRemoteCatalogRouteResolvesAgainstTheBaseURLOrigin, TestRemoteCatalogRouteResolvesAgainstTheBaseURLOrigin/origin, TestRemoteCatalogRouteResolvesAgainstTheBaseURLOrigin/base_path FAIL); internal/codingagent/remote_catalog_provider.go: `response.StatusCode < 200 || response.StatusCode > 299` -> `response.StatusCode < 200 || response.StatusCode > 599` (TestRemoteCatalogProviderUpstream, TestRemoteCatalogProviderUpstream/keeps_the_etag_and_overlay_after_a_transient_failure FAIL); internal/codingagent/remote_catalog_provider.go: `fields[\"provider\"] = provider` -> `_ = provider` (TestParseRemoteCatalogStampsTheRequestedProvider FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/nested-tool-calls.ts",
+    "package": "./coding",
+    "tests": [
+      "TestNestedCallLimitsAreUpstreamsLiterals",
+      "TestNestedToolCallRunnerSequentialHostSerializesParallelTools",
+      "TestNestedToolCallRunnerNestedCallsOfAQueueHolderDoNotWaitOnTheQueue",
+      "TestNestedToolCallRunnerUpdateCallbackFailureRejectsTheCallBeforeItsEndAndAfterHook",
+      "TestNestedToolCallRunnerAssignsIDsBelowTheCallerEmitsEventsWithTheParentIDAndRecordsTheCalls",
+      "TestNestedToolCallRunnerRecordsCallsOfNestedToolsOnTheModelIssuedCall",
+      "TestNestedToolCallRunnerSumsTheUsageOfNestedResultsAtEveryDepth",
+      "TestNestedToolCallRunnerSerializesConcurrentCallsToSequentialTools",
+      "TestNestedCallRecorderOmitsOversizedArgumentsAndDropsCallsBeyondTheLimit",
+      "TestNestedCallRecorderCapsTheTotalArgumentSizeAndMarksUnfinishedCallsIncomplete",
+      "TestNestedCallRecorderKeepsArgumentsOfExactlyTheLimits"
+    ],
+    "upstream_reference": "packages/coding-agent/test/nested-tool-calls.test.ts; packages/coding-agent/test/compaction-nested-calls.test.ts; packages/coding-agent/src/core/nested-tool-calls.ts:26-261 (NESTED_CALL_LIMITS, recorder caps, usage summing, sequential-tool queue, update callback rejection); review rev-gap-behavior-core: nested-tool-calls.ts:62-72 keeps arguments of exactly the per-call and total limits, :200-216 a call that holds the queue because the host is sequential does not queue its own nested calls",
+    "mutation": "coding/nested_tool_calls.go: `MaxCalls: 256` -> `MaxCalls: 255` (TestNestedCallLimitsAreUpstreamsLiterals FAIL); coding/nested_tool_calls.go: `MaxArgumentBytesTotal: 32 * 1024` -> `MaxArgumentBytesTotal: 33 * 1024` (TestNestedCallLimitsAreUpstreamsLiterals FAIL); coding/nested_tool_calls.go: `combined := usagetotals.CombineUsage(*r.usage, usage) ⏎ \tr.usage = &combined` -> `combined := usagetotals.CombineUsage(usage, usage) ⏎ \tr.usage = &combined` (TestNestedToolCallRunnerSumsTheUsageOfNestedResultsAtEveryDepth FAIL); coding/nested_tool_calls.go: `if call.Status == ai.NestedToolCallUnfinished { ⏎ \t\t\tcomplete = false` -> `if call.Status == ai.NestedToolCallUnfinished { ⏎ \t\t\t_ = complete` (TestNestedToolCallRunnerUpdateCallbackFailureRejectsTheCallBeforeItsEndAndAfterHook FAIL); coding/nested_tool_calls.go: `if size > NestedCallLimits.MaxArgumentBytesPerCall ||` -> `if size >= NestedCallLimits.MaxArgumentBytesPerCall ||` (TestNestedCallRecorderKeepsArgumentsOfExactlyTheLimits FAIL); coding/nested_tool_calls.go: `r.argBytes+size > NestedCallLimits.MaxArgumentBytesTotal` -> `r.argBytes+size >= NestedCallLimits.MaxArgumentBytesTotal` (TestNestedCallRecorderKeepsArgumentsOfExactlyTheLimits FAIL); coding/nested_tool_calls.go: `exclusive := !scope.holdsQueue && r.host.IsSequential()` -> `exclusive := r.host.IsSequential()` (TestNestedToolCallRunnerNestedCallsOfAQueueHolderDoNotWaitOnTheQueue FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/virtual-models.ts",
+    "package": "./coding",
+    "tests": [
+      "TestVirtualModelListsAndRoutesToAPhysicalModelWithAClampedThinkingLevel",
+      "TestVirtualModelReportsTheFailedRequestOfARetrySeparatelyFromTheLatestSuccessfulResponse",
+      "TestVirtualModelsListSeveralUnderAProviderWithPhysicalModels",
+      "TestVirtualModelRejectsRoutesToVirtualOrUnknownModels",
+      "TestVirtualModelRoutesDirectStreamSimpleCallsWithinTheRoutedModelsLimits",
+      "TestVirtualModelDoesNotForwardCallerCredentialsToARoutedModelOfAnotherProvider",
+      "TestVirtualModelFailsUnroutedStreamCallsOnVirtualModels",
+      "TestVirtualSessionRestoresTheVirtualSelectionInsteadOfThePhysicalModelThatAnswered",
+      "TestVirtualSessionFallsBackToThePhysicalModelWhenTheVirtualModelIsNotRegistered",
+      "TestGetBranchSelectionLooksUpOnlyTheLastModelChange",
+      "TestVirtualSuiteStoresRouterStateOnTheBranchAndPassesItToLaterRequests",
+      "TestBranchSelectionAndStateMatchPi"
+    ],
+    "upstream_reference": "packages/coding-agent/test/virtual-models.test.ts (routing, clamped thinking level, rejection of virtual/unknown targets, credential isolation, restore of the virtual selection, branch state); packages/coding-agent/src/core/virtual-models.ts; Pi-run oracle virtual_models_oracle_test.go",
+    "mutation": "coding/virtual_models.go: `fmt.Errorf(\"%s, which is not a physical model.\", routed)` -> `fmt.Errorf(\"%s, which is no physical model.\", routed)` (TestVirtualModelRejectsRoutesToVirtualOrUnknownModels FAIL); coding/virtual_models.go: `ThinkingLevel: ai.ClampThinkingLevel(target, route.ThinkingLevel), State: route.State}` -> `ThinkingLevel: route.ThinkingLevel, State: route.State}` (TestVirtualModelListsAndRoutesToAPhysicalModelWithAClampedThinkingLevel FAIL); coding/virtual_models.go: `input = []string{\"text\", \"image\"}` -> `input = []string{\"text\"}` (TestVirtualModelListsAndRoutesToAPhysicalModelWithAClampedThinkingLevel FAIL); coding/virtual_models.go: `reasoning = reasoning || level != ai.ThinkingOff` -> `reasoning = reasoning && level != ai.ThinkingOff` (TestVirtualSuiteStoresRouterStateOnTheBranchAndPassesItToLaterRequests, TestVirtualModelListsAndRoutesToAPhysicalModelWithAClampedThinkingLevel FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/modes/interactive/components/first-time-setup.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestFirstTimeSetupLogoIsThePigHeadAndPreviewsTheSprite",
+      "TestFirstTimeSetupThemePreviewAndEscSkip",
+      "TestFirstTimeSetupSpriteStepListsExtensionSpritesAndSubmits",
+      "TestShowFirstTimeSetupSavesTheChoiceBeforeTheTUI",
+      "TestShowFirstTimeSetupSkipSavesNothing",
+      "TestFirstTimeSetupKeepsTheHighlightedSpriteThroughAnalyticsAndSubmit",
+      "TestFirstTimeSetupHintUsesLowercaseKeyText",
+      "TestFirstTimeSetupCreateYourOwnShowsTheHintAndKeepsTheSprite",
+      "TestFirstTimeSetupRendersPisStepsAndNavigates"
+    ],
+    "upstream_reference": "packages/coding-agent/src/modes/interactive/components/first-time-setup.ts (theme step, analytics opt-in step, selection list with arrow marker and (n/m) counter, keyHint text from the bound keys, skip with cancel); cli/startup-ui.ts:182-218 and main.ts:672-676 for the save-before-TUI flow; Pi has no component test, D88 records the sprite step and logo",
+    "mutation": "internal/codingagent/first_time_setup.go: `t.FgText(\"accent\", \"→ \")` -> `t.FgText(\"accent\", \"> \")` (TestFirstTimeSetupSpriteStepListsExtensionSpritesAndSubmits, TestFirstTimeSetupKeepsTheHighlightedSpriteThroughAnalyticsAndSubmit, TestFirstTimeSetupCreateYourOwnShowsTheHintAndKeepsTheSprite FAIL); internal/codingagent/first_time_setup.go: `prefix, text := \"  \", t.FgText(\"text\", label)` -> `prefix, text := \"- \", t.FgText(\"text\", label)` (TestFirstTimeSetupRendersPisStepsAndNavigates FAIL); internal/codingagent/first_time_setup.go: `{false, \"Don't share\"}` -> `{false, \"Do not share\"}` (TestFirstTimeSetupRendersPisStepsAndNavigates FAIL); internal/codingagent/first_time_setup.go: `tui.RawKeyHint(strings.Join(tui.GetTUIKeybindings().GetKeys(tui.KBSelectCancel), \"/\"), \"skip setup\")` -> `tui.RawKeyHint(strings.Join(tui.GetTUIKeybindings().GetKeys(tui.KBSelectCancel), \"/\"), \"cancel\")` (TestFirstTimeSetupHintUsesLowercaseKeyText, TestFirstTimeSetupRendersPisStepsAndNavigates FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/extensions/mcp/oauth.ts",
+    "package": "./coding/mcpext",
+    "tests": [
+      "TestResponseFromRedirectURLMessagesAndOrder",
+      "TestResponseFromRedirectURLTrimsLikeJavaScript",
+      "TestMCPOAuthCIMDUsesPisDocumentWhenAuthorizationResponsesNameTheirIssuer",
+      "TestMCPOAuthCIMDUsesADocumentAndCallbackPathSpecificToTheMCPServerWithoutTheIssParameter",
+      "TestMCPOAuthCIMDReplacesARegisteredClientWhenSwitchingToTheDocument"
+    ],
+    "upstream_reference": "packages/coding-agent/test/mcp-oauth-refresh.test.ts; packages/coding-agent/test/mcp-oauth-store.test.ts; packages/coding-agent/src/extensions/mcp/oauth.ts (REFRESH_SKEW_MS 30s, REFRESH_REQUEST_TIMEOUT_MS, REFRESH_LOCK_STALE_MS 20s, REFRESH_LOCK_WAIT_MS 25s, REFRESH_LOCK_RETRY_MS, redirect URL validation messages, client metadata URL)",
+    "mutation": "TestResponseFromRedirectURLMessagesAndOrder/empty_code: `errors.New(\"The redirect URL does not contain an authorization code\")` -> `errors.New(\"The redirect URL has no authorization code\")` (TestResponseFromRedirectURLMessagesAndOrder, TestResponseFromRedirectURLMessagesAndOrder/missing_code, TestResponseFromRedirectURLMessagesAndOrder/empty_code FAIL); TestResponseFromRedirectURLMessagesAndOrder/not_a_URL: `errors.New(\"Expected the full redirect URL from the browser address bar\")` -> `errors.New(\"Expected the redirect URL\")` (TestResponseFromRedirectURLTrimsLikeJavaScript, TestResponseFromRedirectURLMessagesAndOrder, TestResponseFromRedirectURLMessagesAndOrder/not_a_URL FAIL); TestResponseFromRedirectURLMessagesAndOrder/state_wins_over_a_missing_code: `errors.New(\"The redirect URL belongs to a different sign-in\")` -> `errors.New(\"The redirect URL is for a different sign-in\")` (TestResponseFromRedirectURLMessagesAndOrder, TestResponseFromRedirectURLMessagesAndOrder/wrong_state, TestResponseFromRedirectURLMessagesAndOrder/missing_state FAIL); TestMCPOAuthCIMDReplacesARegisteredClientWhenSwitchingToTheDocument: `clientMetadataBaseURL = \"https://pi.dev/oauth\"` -> `clientMetadataBaseURL = \"https://pi.dev/oauth2\"` (TestMCPOAuthCIMDUsesPisDocumentWhenAuthorizationResponsesNameTheirIssuer, TestMCPOAuthCIMDUsesADocumentAndCallbackPathSpecificToTheMCPServerWithoutTheIssParameter, TestMCPOAuthCIMDReplacesARegisteredClientWhenSwitchingToTheDocument FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/extensions/mcp/resources.ts",
+    "package": "./coding/mcpext",
+    "tests": [
+      "TestResourceToolsErrorsListingsAndReads",
+      "TestAgentSessionMCPListsAndReadsResourcesWithCodexResourceTools",
+      "TestResourceToolDefinitionsCarryPisDescriptionsAndParameters"
+    ],
+    "upstream_reference": "packages/coding-agent/test/mcp-extension.test.ts (list_mcp_resources, list_mcp_resource_templates, read_mcp_resource: server filter, cursor needs a server, listing errors, binary contents); packages/coding-agent/src/extensions/mcp/resources.ts:1-250",
+    "mutation": "TestResourceToolsErrorsListingsAndReads: `errors.New(\"cursor can only be used when a server is specified\")` -> `errors.New(\"cursor needs a server\")` (TestResourceToolsErrorsListingsAndReads FAIL); TestAgentSessionMCPListsAndReadsResourcesWithCodexResourceTools: `available = \". Servers with resources: \" + available` -> `available = \". Servers: \" + available` (TestResourceToolsErrorsListingsAndReads, TestAgentSessionMCPListsAndReadsResourcesWithCodexResourceTools FAIL); TestResourceToolDefinitionsCarryPisDescriptionsAndParameters: `Opaque cursor from a previous call with the same server; omit for the first page.` -> `Opaque cursor from a previous call.` (TestResourceToolDefinitionsCarryPisDescriptionsAndParameters FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/extensions/mcp/runtime.ts",
+    "package": "./coding/mcpext",
+    "tests": [
+      "TestMCPConnectionsRetriesResourceReadsButNotToolCallsAfterATransientHTTPError",
+      "TestMCPConnectionsRetriesATransientHTTPFailureTwiceAndThenFails",
+      "TestMCPConnectionsStartsANewSessionAndRetriesOnceWhenTheSessionExpired",
+      "TestConnectRetryDelaysAreUpstreamsLiterals"
+    ],
+    "upstream_reference": "packages/coding-agent/test/mcp-extension.test.ts (connection manager: HTTP connect retry delays, one retry of read-only requests after a transient HTTP error, session expiry reconnect, shutdown while connecting); packages/coding-agent/src/extensions/mcp/runtime.ts; review rev-gap-behavior-core: runtime.ts:51 CONNECT_RETRY_DELAYS_MS values and runtime.ts:362 no retries for a stdio server",
+    "mutation": "TestMCPConnectionsRetriesResourceReadsButNotToolCallsAfterATransientHTTPError: `if readOnly && attempt == 1 && errors.As(err, &httpErr) && isTransientError(err) {` -> `if attempt == 1 && errors.As(err, &httpErr) && isTransientError(err) {` (TestMCPConnectionsRetriesResourceReadsButNotToolCallsAfterATransientHTTPError FAIL); TestMCPConnectionsRetriesATransientHTTPFailureTwiceAndThenFails: `retries = connectRetryDelays` -> `retries = connectRetryDelays[:1]` (TestMCPConnectionsRetriesATransientHTTPFailureTwiceAndThenFails FAIL); TestMCPConnectionsStartsANewSessionAndRetriesOnceWhenTheSessionExpired: `if errors.As(err, &expired) && attempt == 1 {` -> `if errors.As(err, &expired) && attempt == 0 {` (TestMCPConnectionsStartsANewSessionAndRetriesOnceWhenTheSessionExpired FAIL); coding/mcpext/runtime.go: `var connectRetryDelays = []time.Duration{250 * time.Millisecond, 1_000 * time.Millisecond}` -> `var connectRetryDelays = []time.Duration{300 * time.Millisecond, 1_000 * time.Millisecond}` (TestConnectRetryDelaysAreUpstreamsLiterals FAIL); coding/mcpext/runtime.go: `var connectRetryDelays = []time.Duration{250 * time.Millisecond, 1_000 * time.Millisecond}` -> `var connectRetryDelays = []time.Duration{250 * time.Millisecond, 2_000 * time.Millisecond}` (TestConnectRetryDelaysAreUpstreamsLiterals FAIL); coding/mcpext/runtime.go: `if c.Entry.Config.IsHTTP() { ⏎ \t\tretries = connectRetryDelays` -> `if true { ⏎ \t\tretries = connectRetryDelays` (TestMCPConnectionsRetriesATransientHTTPFailureTwiceAndThenFails FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/extensions/mcp/tools.ts",
+    "package": "./coding/mcpext",
+    "tests": [
+      "TestMCPToolsConvertsResultsPassingTheCallToolResultToScriptsAndFlaggingErrors",
+      "TestMCPToolsPointsResourceLinksToReadMCPResourceAndSavesBinaryResources",
+      "TestCreateMcpToolDefinitionMatchesUpstreamProbes",
+      "TestMCPToolsKeepAnExplicitEmptyTitle"
+    ],
+    "upstream_reference": "packages/coding-agent/test/mcp-extension.test.ts (MCP tool conversion: error results, truncation warning with token count, binary resource saving, tool description, structured content without _meta); packages/coding-agent/src/extensions/mcp/tools.ts",
+    "mutation": "TestMCPToolsConvertsResultsPassingTheCallToolResultToScriptsAndFlaggingErrors: `\"MCP tool %s/%s returned an error\"` -> `\"MCP tool %s/%s failed\"` (TestMCPToolsConvertsResultsPassingTheCallToolResultToScriptsAndFlaggingErrors FAIL); TestMCPToolsPointsResourceLinksToReadMCPResourceAndSavesBinaryResources: `\"[Binary resource %s (%s) saved to %s]\"` -> `\"[Binary resource %s (%s) was saved to %s]\"` (TestMCPToolsPointsResourceLinksToReadMCPResourceAndSavesBinaryResources FAIL); TestMCPToolsKeepAnExplicitEmptyTitle: `description = fmt.Sprintf(\"MCP tool %s from server %s\", tool.Name, server)` -> `description = fmt.Sprintf(\"MCP tool %s on server %s\", tool.Name, server)` (TestCreateMcpToolDefinitionMatchesUpstreamProbes, TestMCPToolsKeepAnExplicitEmptyTitle FAIL); TestMCPToolsConvertsResultsPassingTheCallToolResultToScriptsAndFlaggingErrors: `obj.Delete(\"_meta\")` -> `` (TestMCPToolsConvertsResultsPassingTheCallToolResultToScriptsAndFlaggingErrors FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/tools/renderers/edit.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestBuiltInRenderersMatchPi104"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/tools/renderers/edit.ts renderCall and renderResult rows for every committed probe case (internal/codingagent/testdata/pi104-render-probe, recorded from Pi 1.0.4's built renderers)",
+    "mutation": "internal/codingagent/tool_builtin_renderers.go: token = \"toolSuccessBg\" -> \"toolPendingBg\" in editRenderCall; compiled test FAIL, baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/tools/renderers/write.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestBuiltInRenderersMatchPi104"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/tools/renderers/write.ts renderCall and renderResult rows for every committed probe case (internal/codingagent/testdata/pi104-render-probe, recorded from Pi 1.0.4's built renderers)",
+    "mutation": "internal/codingagent/tool_builtin_renderers.go: \"[invalid content arg - expected string]\" -> \"[invalid content arg]\" in writeRenderCall; compiled test FAIL, baseline PASS"
+  },
+  {
+    "upstream": "packages/ai/src/model-catalog.ts",
+    "package": "./cmd/gen-models",
+    "tests": [
+      "TestCollectCatalogSplitsTypesInBarrelOrder",
+      "TestCollectCatalogOrdersNumericIDsLikeObjectFromEntries"
+    ],
+    "upstream_reference": "packages/ai/src/model-catalog.ts flattenModelCatalog (57-63): every API group's models of one type, in insertion order with canonical array-index ids first in ascending order; PiG runs it at generation time (cmd/gen-models flattenModelCatalog) and ai/builtin_catalog_upstream_test.go compares the generated records with the pinned provider data",
+    "mutation": "cmd/gen-models/main.go: if row.Type == modelType { -> if true { (TestCollectCatalogSplitsTypesInBarrelOrder FAIL); case xok: return -1 -> return 1 (TestCollectCatalogOrdersNumericIDsLikeObjectFromEntries FAIL); compiled tests, baseline PASS"
+  },
+  {
+    "upstream": "packages/codemode/src/declarations.ts",
+    "package": "./codemode",
+    "tests": [
+      "TestSchemaToTypeMatchesPi",
+      "TestToolSignatureAndSampleMatchPi",
+      "TestRenderDeclarationsMatchesPi"
+    ],
+    "upstream_reference": "packages/codemode/src/declarations.ts schemaToType, renderToolSignature, renderToolSample and renderDeclarations: Pi's own functions run by codemode/testdata/upstream-oracle.mjs on a deterministic corpus and seeded-random schemas, compared with the Go renderers",
+    "mutation": "codemode/declarations.go: slices.SortFunc(names, compareUTF16) -> _ = compareUTF16 (property order; oracle tests FAIL); strings.ReplaceAll(text, \"*/\", \"*\\\\/\") -> text (comment terminator escaping; oracle tests FAIL); compiled tests, baseline PASS"
+  }
+]

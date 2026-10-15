@@ -1,0 +1,38 @@
+[
+ {
+  "upstream": "packages/chord/src/delta/index.ts",
+  "package": "./chord/delta",
+  "tests": [
+   "TestOverlapProbeAndCandidateLimits"
+  ],
+  "upstream_reference": "packages/chord/src/delta/index.ts",
+  "mutation": "chord/delta/overlap.go: replace `probeLimit = limits[0]` with ``; TestOverlapProbeAndCandidateLimits fails."
+ },
+ {
+  "upstream": "packages/chord/src/delta/index.ts",
+  "package": "./chord/delta",
+  "tests": [
+   "TestOverlapProbeAndCandidateLimits"
+  ],
+  "upstream_reference": "packages/chord/src/delta/index.ts",
+  "mutation": "chord/delta/overlap.go: replace `candidateLimit = limits[1]` with ``; TestOverlapProbeAndCandidateLimits fails."
+ },
+ {
+  "upstream": "packages/chord/src/delta/index.ts",
+  "package": "./chord/delta",
+  "tests": [
+   "TestOverlapScansOnlyTheTailAndSpendsItsWholeCandidateBudget"
+  ],
+  "upstream_reference": "packages/chord/src/delta/index.ts",
+  "mutation": "chord/delta/overlap.go: replace `if tried > candidateLimit {` with `if tried >= candidateLimit {`; TestOverlapScansOnlyTheTailAndSpendsItsWholeCandidateBudget fails."
+ },
+ {
+  "upstream": "packages/chord/src/delta/index.ts",
+  "package": "./chord/delta",
+  "tests": [
+   "TestOverlapScansOnlyTheTailAndSpendsItsWholeCandidateBudget"
+  ],
+  "upstream_reference": "packages/chord/src/delta/index.ts",
+  "mutation": "chord/delta/overlap.go: replace `tail = a[len(a)-scan:]` with `tail = a`; TestOverlapScansOnlyTheTailAndSpendsItsWholeCandidateBudget fails."
+ }
+]

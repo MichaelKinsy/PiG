@@ -25,7 +25,7 @@ func TestAutoloadDisabledPatternsKeepTouchedPathsAndLastState(t *testing.T) {
 		{"first insertion last value", []string{"+bar.ts", "foo.ts", "-bar.ts"}, []PatternState{{bar, false}, {foo, true}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := ApplyAutoloadDisabledPatterns([]string{foo, bar}, tc.patterns, root, Extensions)
+			got := mustAutoloadStates(t, []string{foo, bar}, tc.patterns, root, Extensions)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Fatalf("states=%v want=%v", got, tc.want)
 			}
@@ -36,7 +36,7 @@ func TestAutoloadDisabledPatternsKeepTouchedPathsAndLastState(t *testing.T) {
 func TestAutoloadDisabledSkillParentMatch(t *testing.T) {
 	root := t.TempDir()
 	skill := filepath.Join(root, "skills", "foo", "SKILL.md")
-	got := ApplyAutoloadDisabledPatterns([]string{skill}, []string{"+skills/foo"}, root, Skills)
+	got := mustAutoloadStates(t, []string{skill}, []string{"+skills/foo"}, root, Skills)
 	if !reflect.DeepEqual(got, []PatternState{{skill, true}}) {
 		t.Fatalf("states=%v", got)
 	}

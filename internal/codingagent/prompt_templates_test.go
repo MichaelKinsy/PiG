@@ -396,7 +396,9 @@ func TestPromptDiagnosticsReachInteractiveReload(t *testing.T) {
 	m.loadedResourcesContainer = tui.NewContainer()
 	m.showLoadedResources(false, true)
 	output := stripANSITest(strings.Join(m.loadedResourcesContainer.Render(300), "\n"))
-	if !strings.Contains(output, "[Prompt conflicts]") || !strings.Contains(output, path) || !strings.Contains(output, m.promptDiagnostics[0].Message) {
+	// A YAML error message carries the offending line and a caret below its first line; the renderer pads each line, so the first line is the unit that reaches the screen unchanged.
+	firstLine, _, _ := strings.Cut(m.promptDiagnostics[0].Message, "\n")
+	if !strings.Contains(output, "[Prompt conflicts]") || !strings.Contains(output, path) || !strings.Contains(output, firstLine) {
 		t.Fatalf("warning missing: %q", output)
 	}
 }

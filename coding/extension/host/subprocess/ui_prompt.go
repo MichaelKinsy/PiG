@@ -1,6 +1,8 @@
 package subprocess
 
 import (
+	"context"
+
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -14,6 +16,8 @@ import (
 // bridge rather than the runner's UI surface, so the bridge opens the scope.
 type UIPromptScope interface {
 	BeginUIPrompt(kind extension.UIPromptKind, title string) (end func())
+	// AwaitUIPromptEvents returns once every prompt event queued so far has reached its handlers, or when ctx ends.
+	AwaitUIPromptEvents(ctx context.Context)
 }
 
 // SetUIPromptScope binds the runner that reports subprocess prompts. The
@@ -59,4 +63,17 @@ var uiPromptKinds = map[string]extension.UIPromptKind{
 	"ui.input":   extension.UIPromptKindInput,
 	"ui.editor":  extension.UIPromptKindEditor,
 	CallUICustom: extension.UIPromptKindCustom,
+}
+
+// awaitUIPromptEvents holds a dialog call's answer until the prompt events it queued have reached their handlers, as Pi runs them in microtasks before the dialog's promise settles.
+func (b *UIBridge) awaitUIPromptEvents(ctx context.Context, call *CallPayload) {
+	if _, ok := uiPromptKinds[call.Method]; !ok {
+		return
+	}
+	b.mu.RLock()
+	scope := b.promptScope
+	b.mu.RUnlock()
+	if scope != nil {
+		scope.AwaitUIPromptEvents(ctx)
+	}
 }

@@ -11,20 +11,6 @@ import (
 	"time"
 )
 
-func TestReadPinRequiresVersionAndCommit(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "upstream.go")
-	if err := os.WriteFile(path, []byte("const UpstreamVersion = \"0.84.0\"\nconst UpstreamCommit = \"abc\"\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	version, commit, err := readPin(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if version != "0.84.0" || commit != "abc" {
-		t.Fatalf("pin = %q %q", version, commit)
-	}
-}
-
 func TestHashFilesIncludesNamesAndBytesDeterministically(t *testing.T) {
 	root := t.TempDir()
 	first := filepath.Join(root, "a.ts")

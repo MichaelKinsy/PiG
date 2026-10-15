@@ -1,0 +1,214 @@
+# Behavior family: rpc
+# Surface: read-only and session commands after one faux conversation: get_messages, get_session_stats, get_last_assistant_text, get_fork_messages,
+# get_entries, get_tree, get_commands, set_session_name, get_state, export_html, clone and new_session.
+#
+# Measured against Pi 1.1.0 with no difference; the scenario guards those answers (entry ids, session ids, clocks and temp paths are normalized).
+
+name = "50-rpc-session-queries-after-chat"
+description = "Session query commands after a faux conversation answer like Pi 1.1.0."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+canonical_json = false
+timeout_seconds = 40
+[[rpc.steps]]
+line = '{"id":"p1","type":"prompt","message":"What is 20+22?"}'
+wait_contains = ['"type":"agent_settled"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"c00","type":"get_messages"}'
+wait_contains = ['"id":"c00","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"c01","type":"get_session_stats"}'
+wait_contains = ['"id":"c01","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"c02","type":"get_last_assistant_text"}'
+wait_contains = ['"id":"c02","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"c03","type":"get_fork_messages"}'
+wait_contains = ['"id":"c03","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"c04","type":"get_entries"}'
+wait_contains = ['"id":"c04","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"c05","type":"get_tree"}'
+wait_contains = ['"id":"c05","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"c06","type":"get_commands"}'
+wait_contains = ['"id":"c06","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"c07","type":"set_session_name","name":"  probe name  "}'
+wait_contains = ['"id":"c07","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"c08","type":"get_state"}'
+wait_contains = ['"id":"c08","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"c09","type":"get_session_stats"}'
+wait_contains = ['"id":"c09","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"c10","type":"get_tree"}'
+wait_contains = ['"id":"c10","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"c11","type":"get_commands"}'
+wait_contains = ['"id":"c11","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"c12","type":"export_html","outputPath":"{{TEMP}}/out.html"}'
+wait_contains = ['"id":"c12","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"c13","type":"prompt","message":"second"}'
+wait_contains = ['"type":"agent_settled"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"e00","type":"get_messages"}'
+wait_contains = ['"id":"e00","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"e01","type":"get_entries"}'
+wait_contains = ['"id":"e01","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"e02","type":"get_last_assistant_text"}'
+wait_contains = ['"id":"e02","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"e03","type":"get_session_stats"}'
+wait_contains = ['"id":"e03","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"d00","type":"clone"}'
+wait_contains = ['"id":"d00","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"d01","type":"get_state"}'
+wait_contains = ['"id":"d01","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"d02","type":"get_messages"}'
+wait_contains = ['"id":"d02","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"d03","type":"get_fork_messages"}'
+wait_contains = ['"id":"d03","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"d04","type":"get_tree"}'
+wait_contains = ['"id":"d04","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"d05","type":"new_session"}'
+wait_contains = ['"id":"d05","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"d06","type":"get_state"}'
+wait_contains = ['"id":"d06","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"d07","type":"get_messages"}'
+wait_contains = ['"id":"d07","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"d08","type":"get_last_assistant_text"}'
+wait_contains = ['"id":"d08","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"d09","type":"get_session_stats"}'
+wait_contains = ['"id":"d09","type":"response"']
+wait_timeout_seconds = 15
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--model", "test-faux/faux-1", "--system-prompt", "RPC chat probe.", "--no-context-files", "--no-skills", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--system-prompt", "RPC chat probe.", "--no-context-files", "--no-skills", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+output_normalized_equal = true
+runs = 3
+
+# normalize-rationale: Only independent clocks and the isolated cwd identity vary; retain every other byte and property order.
+# Snapshot cwd roots differ only by their isolated random suffix.
+[[assert.normalize_replace]]
+pattern = 'parity-snap-cwd-[0-9]{10}'
+with = 'parity-snap-cwd-0000000000'
+reason = "Alias the isolated working-directory identity while preserving path suffixes and content."
+
+[[assert.normalize_replace]]
+pattern = '"timestamp":[0-9]+'
+with = '"timestamp":0'
+reason = "Independent numeric wall clocks vary; retain field placement, type and every other byte."
+[[assert.normalize_replace]]
+pattern = '"timestamp":"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z"'
+with = '"timestamp":"2000-01-01T00:00:00.000Z"'
+reason = "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
+
+[[assert.normalize_replace]]
+pattern = '"durationMs":[0-9]+'
+with = '"durationMs":0'
+reason = "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain field placement, type and every other byte."
+
+[[assert.normalize_replace]]
+pattern = '"(id|parentId|leafId|entryId|targetId)":"[0-9a-f]{8}"'
+with = '"$1":"00000000"'
+reason = "Session entry ids are random 8-hex strings per process; retain the field and the id syntax."
+
+[[assert.normalize_replace]]
+pattern = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+with = '00000000-0000-0000-0000-000000000000'
+reason = "Each process draws its own random UUID session id; the session file name carries it too."
+
+[[assert.normalize_replace]]
+pattern = 'parity-rpc-[0-9a-z-]+-(pi|pig)-[0-9]+'
+with = 'parity-rpc-run'
+reason = "Each run's isolated temp directory is named for its binary and a random suffix; keep the path suffix and every other byte."
+
+[[assert.normalize_replace]]
+pattern = '2[0-9]{3}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{3}Z'
+with = '2000-01-01T00-00-00-000Z'
+reason = "The session file name starts with its creation time, which differs per process."

@@ -1,0 +1,56 @@
+[
+ {
+  "upstream": "packages/env/src/watch.ts",
+  "package": "./env",
+  "tests": [
+   "TestRemoteWatcherTakesItsModeFromTheDaemonsEvents"
+  ],
+  "upstream_reference": "packages/env/src/watch.ts",
+  "mutation": "env/watch.go: replace `defer w.mu.Unlock()\n\treturn w.mode` with `defer w.mu.Unlock()\n\treturn durableenv.WatchNative`; TestRemoteWatcherTakesItsModeFromTheDaemonsEvents fails."
+ },
+ {
+  "upstream": "packages/env/src/watch.ts",
+  "package": "./env",
+  "tests": [
+   "TestRemoteWatcherDeliversAnOverflowChangeOnlyForOverflowTrue"
+  ],
+  "upstream_reference": "packages/env/src/watch.ts",
+  "mutation": "env/watch.go: replace `if event[\"overflow\"] == true {` with `if false {`; TestRemoteWatcherDeliversAnOverflowChangeOnlyForOverflowTrue fails."
+ },
+ {
+  "upstream": "packages/env/src/watch.ts",
+  "package": "./env",
+  "tests": [
+   "TestRemoteWatcherTakesItsModeFromTheDaemonsEvents"
+  ],
+  "upstream_reference": "packages/env/src/watch.ts",
+  "mutation": "env/watch.go: replace `case \"change\":\n\t\t\tif event[\"mode\"] == \"polling\" {` with `case \"change\":\n\t\t\tif false {`; TestRemoteWatcherTakesItsModeFromTheDaemonsEvents fails."
+ },
+ {
+  "upstream": "packages/env/src/watch.ts",
+  "package": "./env",
+  "tests": [
+   "TestRemoteWatcherReportsTheDaemonsWatchErrors"
+  ],
+  "upstream_reference": "packages/env/src/watch.ts",
+  "mutation": "env/watch.go: replace `if event[\"code\"] == \"permission_denied\" {` with `if false {`; TestRemoteWatcherReportsTheDaemonsWatchErrors fails."
+ },
+ {
+  "upstream": "packages/env/src/watch.ts",
+  "package": "./env",
+  "tests": [
+   "TestRemoteWatcherIsolatesAThrowingCallbackAndStopsAfterAnErrorOrClose"
+  ],
+  "upstream_reference": "packages/env/src/watch.ts",
+  "mutation": "env/watch.go: replace `templateString(event, \"message\"), \"\", nil)})\n\t\t\tw.stop()` with `templateString(event, \"message\"), \"\", nil)})`; TestRemoteWatcherIsolatesAThrowingCallbackAndStopsAfterAnErrorOrClose fails."
+ },
+ {
+  "upstream": "packages/env/src/watch.ts",
+  "package": "./env",
+  "tests": [
+   "TestRemoteWatcherIsolatesAThrowingCallbackAndStopsAfterAnErrorOrClose"
+  ],
+  "upstream_reference": "packages/env/src/watch.ts",
+  "mutation": "env/watch.go: replace `if w.isClosed() {\n\t\treturn\n\t}\n\tdefer func() { _ = recover() }()` with `defer func() { _ = recover() }()`; TestRemoteWatcherIsolatesAThrowingCallbackAndStopsAfterAnErrorOrClose fails."
+ }
+]

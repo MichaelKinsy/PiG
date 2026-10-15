@@ -75,9 +75,9 @@ type VirtualModelRouteArgs struct {
 	Request VirtualModelRouteRequest `json:"request"`
 }
 
-// VirtualModelRouteRequest is upstream's ModelRouteRequest as JSON. Models are the extension-facing Model objects (extension.ModelInfo), Messages are session messages.
+// VirtualModelRouteRequest is upstream's ModelRouteRequest as JSON. Models are Pi's model objects (extension.ModelObject), Messages are session messages.
 type VirtualModelRouteRequest struct {
-	Model         map[string]any             `json:"model"`
+	Model         json.RawMessage            `json:"model"`
 	ThinkingLevel string                     `json:"thinkingLevel"`
 	Reason        string                     `json:"reason"`
 	Previous      *VirtualModelRoutePrevious `json:"previous,omitempty"`
@@ -88,13 +88,13 @@ type VirtualModelRouteRequest struct {
 
 // VirtualModelRoutePrevious is the physical model and thinking level of the latest successful response.
 type VirtualModelRoutePrevious struct {
-	Model         map[string]any `json:"model"`
-	ThinkingLevel string         `json:"thinkingLevel,omitempty"`
+	Model         json.RawMessage `json:"model"`
+	ThinkingLevel string          `json:"thinkingLevel,omitempty"`
 }
 
 // VirtualModelRouteFailed is the failed request of a retry; Message is its AssistantMessage.
 type VirtualModelRouteFailed struct {
-	Model         map[string]any  `json:"model"`
+	Model         json.RawMessage `json:"model"`
 	ThinkingLevel string          `json:"thinkingLevel,omitempty"`
 	Message       json.RawMessage `json:"message"`
 }
@@ -149,6 +149,8 @@ type ExecuteToolOutcome struct {
 	ToolCall ai.ToolCall     `json:"toolCall"`
 	Result   json.RawMessage `json:"result"`
 	IsError  bool            `json:"isError"`
+	// DurationMs is the milliseconds execute() took, measured with a monotonic clock; absent when the tool did not run. upstream: agent/src/types.ts:454 AgentToolCallOutcome.durationMs
+	DurationMs *int64 `json:"durationMs,omitempty"`
 }
 
 // CallGetCallableTools (ext→host) lists the tools ctx.executeTool can call at the moment of the call (runner.ts:958-961). The result is a CallableToolsResult.
@@ -164,16 +166,65 @@ type CallableToolsResult struct {
 // RequestPrepareArguments (host→ext) runs a tool's prepareArguments. RequestPayload.Tool names the tool and Args is the model's arguments; the response is the prepared arguments.
 const RequestPrepareArguments = "tool_prepare_arguments"
 
+// ── reachesTools ─────────────────────────────────────────────────────────────
+
+// RequestReachesTools (host→ext) runs a tool's reachesTools. RequestPayload.Tool names the tool and Args is the call's input; the response is the string "all", or an array of the words of the input that may name the tools the call reaches (upstream's `"all" | readonly string[]`).
+const RequestReachesTools = "tool_reaches_tools"
+
+// CallToolReachesTools (ext→host) runs the reachesTools of a tool getAllTools lists (upstream ToolInfo.reachesTools, which an extension's tool_call handler calls with the call's input). getAllTools marks such a tool `"reachesTools": true`, since a function cannot cross the wire, and an SDK's ToolInfo turns the mark into a function that makes this call. Args is ToolReachesToolsArgs; the result is the string "all", or the array of words. A tool getAllTools no longer lists with the hook fails the call, and so does the hook's throw.
+const CallToolReachesTools = "tool.reachesTools"
+
+// ToolReachesToolsArgs are the arguments of CallToolReachesTools: the tool's name and the input to ask about. An absent input is an empty object.
+type ToolReachesToolsArgs struct {
+	Tool  string          `json:"tool"`
+	Input json.RawMessage `json:"input,omitempty"`
+}
+
 // ── prepareLoadout ───────────────────────────────────────────────────────────
 
 // RequestPrepareLoadout (host→ext) runs a tool's prepareLoadout. RequestPayload.Tool names the tool and Args is a ToolLoadoutPayload; the response is an extension.ToolLoadoutChanges, or null for no changes.
 const RequestPrepareLoadout = "tool_prepare_loadout"
 
-// ToolLoadoutPayload is upstream's ToolLoadout as JSON. Exposures and Namespaces answer getExposure and getNamespace for every registered tool.
+// ToolLoadoutPayload is upstream's ToolLoadout as JSON. Exposures, Namespaces and PromptGuidelines answer getExposure, getNamespace and getPromptGuidelines for every registered tool.
 type ToolLoadoutPayload struct {
 	Declared   []extension.AgentTool               `json:"declared"`
 	Callable   []extension.AgentTool               `json:"callable"`
 	Registered []extension.AgentTool               `json:"registered"`
 	Exposures  map[string]extension.ToolExposure   `json:"exposures"`
 	Namespaces map[string]*extension.ToolNamespace `json:"namespaces,omitempty"`
+	// PromptGuidelines lists the guidelines of each registered tool that has any.
+	PromptGuidelines map[string][]string `json:"promptGuidelines,omitempty"`
+}
+
+// ── Pure helpers ─────────────────────────────────────────────────────────────
+
+// CallParseFrontmatter (ext→host) is Pi's parseFrontmatter (utils/frontmatter.ts): the YAML header and trimmed body of a markdown document, parsed by the same
+// parser the host uses for skills and prompt templates. The args are a ParseFrontmatterArgs and the result a ParseFrontmatterResult. It reads no session or
+// extension state, so it may arrive before the register frame, from a factory that dialled lazily.
+const CallParseFrontmatter = "frontmatter.parse"
+
+// CallParseDate (ext→host) is `Date.parse(text)` (V8's parser, legacy formats included), the time value `new Date(text).getTime()` reads. The args are a
+// ParseDateArgs and the result a ParseDateResult. It may arrive before the register frame.
+const CallParseDate = "date.parse"
+
+// ParseFrontmatterArgs is the argument of CallParseFrontmatter.
+type ParseFrontmatterArgs struct {
+	Content string `json:"content"`
+}
+
+// ParseFrontmatterResult is the result of CallParseFrontmatter. Frontmatter is the JSON of `parse(yaml) ?? {}`: an object lists its keys in the order a
+// JavaScript object enumerates them (array-index keys first, ascending, then insertion order), and any other YAML document is its scalar or array.
+type ParseFrontmatterResult struct {
+	Frontmatter json.RawMessage `json:"frontmatter"`
+	Body        string          `json:"body"`
+}
+
+// ParseDateArgs is the argument of CallParseDate.
+type ParseDateArgs struct {
+	Text string `json:"text"`
+}
+
+// ParseDateResult is the result of CallParseDate: the time value in milliseconds, null when Date.parse reads NaN.
+type ParseDateResult struct {
+	Ms *float64 `json:"ms"`
 }

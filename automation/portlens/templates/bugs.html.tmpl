@@ -1,0 +1,44 @@
+{{define "code"}}{{range .}}{{if .Code}}<code>{{.Text}}</code>{{else}}{{.Text}}{{end}}{{end}}{{end}}
+<div class="grid g4" style="margin-bottom:22px">
+<div class="card"><h3>Bugs</h3><div class="big">{{len .Items}}</div></div>
+{{range .Classes}}<div class="card"><h3>{{.Name}}</h3><div class="big">{{.N}}</div></div>{{end}}
+</div>
+<div data-filter="bg-list">
+<div class="toolbar" role="search">
+<div class="search"><label class="sr" for="bg-q">Search bugs</label><input id="bg-q" type="search" placeholder="Search symptoms, causes, tests, D-numbers, commits" autocomplete="off" spellcheck="false"><kbd aria-hidden="true">/</kbd></div>
+<label class="sr" for="bg-plat">Platform</label>
+<select id="bg-plat" data-attr="platform"><option value="">All platforms</option>{{range .Platforms}}<option value="{{.}}">{{.}}</option>{{end}}</select>
+<label class="sr" for="bg-rel">Fixed in</label>
+<select id="bg-rel" data-attr="rel"><option value="">All releases</option>{{range .Releases}}<option value="{{.}}">{{.}}</option>{{end}}</select>
+<span class="count" aria-live="polite"></span>
+</div>
+<div class="toolbar"><div class="chips" role="group" aria-label="Source class">{{range .Classes}}<button type="button" class="toggle" data-attr="class" data-value="{{.Name}}" aria-pressed="false">{{.Name}}</button>{{end}}</div></div>
+<div id="bg-list">
+{{range .Items}}
+<details class="bg" id="{{.ID}}" data-search="{{.Search}}" data-class="{{.ClassLabel}}" data-platform="{{.Platform}}" data-rel="{{.FixedIn}}">
+<summary><span class="bid">{{.ID}}</span><span class="dt">{{template "code" code .Title}}</span><span class="chips"><span class="chip neutral">{{.ClassLabel}}</span><span class="chip neutral">{{.Platform}}</span><span class="chip neutral">{{.FixedIn}}</span></span></summary>
+<div class="bg-body">
+<dl class="meta">
+<div><dt>User impact</dt><dd>{{.Impact}}</dd></div>
+<div><dt>Platform</dt><dd>{{.Platform}}</dd></div>
+<div><dt>Fixed in</dt><dd>{{.FixedIn}}</dd></div>
+{{if .Divergence}}<div><dt>Divergence</dt><dd>{{range .DLinks}}<a class="chip neutral" href="#{{.}}">{{.}}</a> {{end}}</dd></div>{{end}}
+{{if .PiIssue}}<div><dt>Pi issue</dt><dd><a class="chip warn" href="{{.PiIssue}}" rel="noopener noreferrer">{{.PiIssueLabel}}</a></dd></div>{{end}}
+{{if .RemoveWhen}}<div><dt>Remove when</dt><dd>{{.RemoveWhen}}</dd></div>{{end}}
+</dl>
+<h4>Symptom</h4>
+<div class="prose"><p>{{template "code" code .Symptom}}</p></div>
+<h4>Root cause <span class="plain">({{.CauseFrom}})</span></h4>
+<div class="prose"><p>{{template "code" code .RootCause}}</p></div>
+<h4>Fix commits ({{len .Commits}}){{if .CommitsFrom}} <span class="plain">(listed commit wrote the {{.CommitsFrom}})</span>{{end}}</h4>
+{{if .Commits}}<ul class="reflist">{{range .Commits}}<li>{{.Hash}} <span class="muted">{{.Date}}{{if .PR}} · PR #{{.PR}}{{end}}</span></li>{{end}}</ul>{{else}}<p class="small muted">Not yet committed.</p>{{end}}
+<h4>Tests ({{len .Tests}})</h4>
+{{if .Tests}}<ul class="reflist">{{range .Tests}}<li>{{.}}</li>{{end}}</ul>{{else}}<p class="small"><span class="chip bad">none recorded</span></p>{{end}}
+</div>
+</details>
+{{end}}
+</div>
+</div>
+<h2 class="sec">Fix commits that are not product bugs</h2>
+<p class="sec-note">Commits titled as fixes that change only tests, tooling, generated files or the repair of a merge are counted, not listed.</p>
+<div class="table-wrap"><table><thead><tr><th scope="col">Reason</th><th scope="col" class="num">Commits</th></tr></thead><tbody>{{range .Exempt}}<tr><td>{{.Name}}</td><td class="num">{{.N}}</td></tr>{{end}}</tbody></table></div>

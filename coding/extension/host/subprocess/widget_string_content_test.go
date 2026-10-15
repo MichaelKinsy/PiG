@@ -21,7 +21,7 @@ import (
 // The expected rows are the output of Pi's pi-tui Text.render for the same
 // input (probed against the pinned package), not PiG's Text.
 func TestSetWidgetStringContentUsesPiTextLayout(t *testing.T) {
-	muted := tui.ActiveTheme().FgText("muted", "... (widget truncated)")
+	muted := tui.ActiveTheme().Fg("muted", "... (widget truncated)")
 	cases := []struct {
 		name    string
 		content []string

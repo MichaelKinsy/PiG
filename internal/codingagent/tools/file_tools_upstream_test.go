@@ -1,5 +1,7 @@
 package tools
 
+// pi: packages/coding-agent/src/core/tools/write.ts
+
 import (
 	"context"
 	"encoding/json"

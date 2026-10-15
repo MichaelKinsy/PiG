@@ -7,41 +7,27 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 )
 
-// ensureManagedTools awaits both installers before enabling input. The owner goroutine renders each status as it arrives, while downloads run concurrently and share the startup cancellation lifetime.
+// ensureManagedTools awaits both installers before enabling input. Pi executes each ensureTool up to its first await in Promise.all argument order (fd, then rg): a present tool, or one offline mode does not download, reports its status and settles there, without reading input. Only downloads run concurrently, sharing the startup cancellation lifetime, while the owner goroutine gives terminal input to the startup editor and renders each status as it arrives.
 func (m *InteractiveMode) ensureManagedTools(ctx context.Context, tm *tools.ToolsManager) {
-	statuses := make(chan tools.ToolStatus)
-	var initialStatuses []chan tools.ToolStatus
-	var wg sync.WaitGroup
+	var downloads []func(context.Context, func(tools.ToolStatus)) string
 	for _, name := range []string{"fd", "rg"} {
-		initial := make(chan tools.ToolStatus)
-		initialStatuses = append(initialStatuses, initial)
-		wg.Go(func() {
-			first := true
-			tm.EnsureTool(ctx, name, func(status tools.ToolStatus) {
-				if first {
-					first = false
-					initial <- status
-					close(initial)
-				} else {
-					statuses <- status
-				}
-			})
-			if first {
-				close(initial)
-			}
-		})
+		if _, download := tm.BeginEnsureTool(name, m.showManagedToolStatus); download != nil {
+			downloads = append(downloads, download)
+		}
+	}
+	if len(downloads) == 0 {
+		return
+	}
+	statuses := make(chan tools.ToolStatus)
+	var wg sync.WaitGroup
+	for _, download := range downloads {
+		wg.Go(func() { download(ctx, func(status tools.ToolStatus) { statuses <- status }) })
 	}
 	go func() {
 		wg.Wait()
 		close(statuses)
 	}()
-	// Pi executes each ensureTool up to its first await in Promise.all argument order. Initial reports therefore precede asynchronous completion reports, with fd before rg.
 	readCh := m.inputReadCh
-	for _, initial := range initialStatuses {
-		if status, ok := receiveDuringStartup(m, initial, &readCh); ok {
-			m.showManagedToolStatus(status)
-		}
-	}
 	for {
 		status, ok := receiveDuringStartup(m, statuses, &readCh)
 		if !ok {

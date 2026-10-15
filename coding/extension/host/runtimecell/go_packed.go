@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/configroot"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 
@@ -154,7 +155,7 @@ func buildGoPackedCell(ctx context.Context, cacheRoot, key string, extensions []
 	}
 	lockCandidates := []string{preferredSDKRoot, os.Getenv("PIG_SDK_GO_ROOT")}
 	for _, extension := range normalized {
-		lockCandidates = append(lockCandidates, GoSDKPathOverride(extension.Root))
+		lockCandidates = append(lockCandidates, goSDKPathOverride(extension.Root, currentGoStagedSDK(preferredSDKRoot)))
 	}
 	lockCandidates = append(lockCandidates, stagedGoSDKRoots()...)
 	return pigsdklock.WithBuildCandidates(ctx, lockCandidates, func() (*GoPackedCell, error) {
@@ -184,21 +185,8 @@ func buildGoPackedCell(ctx context.Context, cacheRoot, key string, extensions []
 					return "", fmt.Errorf("create generated Go build directory: %w", err)
 				}
 				defer func() { _ = os.RemoveAll(buildDir) }()
-				if requiresLegacyGoSDK(normalized) {
-					if err := StageLegacyGoSDK(sdkRoot, filepath.Join(buildDir, legacyGoSDKDir)); err != nil {
-						return "", err
-					}
-				}
-				if err := os.WriteFile(filepath.Join(buildDir, "go.mod"), []byte(renderGoMod(normalized, sdkRoot)), 0o644); err != nil {
-					return "", fmt.Errorf("write generated go.mod: %w", err)
-				}
-				if goSum := mergeGoSum(normalized); goSum != "" {
-					if err := os.WriteFile(filepath.Join(buildDir, "go.sum"), []byte(goSum), 0o644); err != nil {
-						return "", fmt.Errorf("write merged go.sum: %w", err)
-					}
-				}
-				if err := os.WriteFile(filepath.Join(buildDir, "main.go"), []byte(renderGoRunner(normalized)), 0o644); err != nil {
-					return "", fmt.Errorf("write generated runner: %w", err)
+				if err := writeGoBuildDir(buildDir, normalized, sdkRoot); err != nil {
+					return "", err
 				}
 				out := filepath.Join(scratch, artifactName)
 				goToolchain, err := toolchain.ResolveGo()
@@ -213,7 +201,7 @@ func buildGoPackedCell(ctx context.Context, cacheRoot, key string, extensions []
 				args := append(append([]string{"build"}, goPackedBuildFlags...), "-o", out, ".")
 				cmd := linkerexec.CommandContext(ctx, goToolchain.Command, buildprogress.ToolArgs(ctx, "go", args)...)
 				cmd.Dir = buildDir
-				cmd.Env = append(goToolchain.Environ(cacheBuildEnvironment(buildDir)), GoBuildCgoEnv(runtime.GOOS, runtime.GOARCH), "GOWORK=off")
+				cmd.Env = toolchain.WorkDirEnv(buildDir, append(goToolchain.Environ(cacheBuildEnvironment(buildDir)), GoBuildCgoEnv(runtime.GOOS, runtime.GOARCH), "GOWORK=off"))
 				if combined, err := buildprogress.CombinedOutput(ctx, cmd); err != nil {
 					invalidateCommandVersion(cacheRoot, goToolchain.Command, "version")
 					if explained, ok := explainMissingToolchain("go", err); ok {
@@ -360,7 +348,7 @@ func findSDKRoot(extensions []GoExtension) (string, error) {
 
 func findSDKRootWithPreferred(extensions []GoExtension, preferred string) (string, error) {
 	for _, ext := range extensions {
-		if candidate := GoSDKPathOverride(ext.Root); candidate != "" {
+		if candidate := goSDKPathOverride(ext.Root, currentGoStagedSDK(preferred)); candidate != "" {
 			return candidate, nil
 		}
 	}
@@ -377,6 +365,10 @@ func findSDKRootWithPreferred(extensions []GoExtension, preferred string) (strin
 				return abs, nil
 			}
 		}
+	}
+	// pig additive (D92): only an author override serves a Go SDK the active Piglet strips; this binary staged none.
+	if err := StrippedSDKError("go"); err != nil {
+		return "", err
 	}
 	for _, sdk := range stagedGoSDKRoots() {
 		if _, err := os.Stat(filepath.Join(sdk, "go.mod")); err == nil {
@@ -407,8 +399,24 @@ func findSDKRootWithPreferred(extensions []GoExtension, preferred string) (strin
 	return "", fmt.Errorf("cannot locate github.com/MichaelKinsy/PiG SDK; install pig (so ~/.pig/source exists), run inside the pig source tree, or set PIG_SDK_GO_ROOT")
 }
 
-// GoSDKPathOverride returns an extension module's explicit local SDK replace.
+// GoSDKPathOverride returns an extension module's explicit local SDK replace,
+// judging a retired staged SDK against the config root the environment names.
 func GoSDKPathOverride(root string) string {
+	return goSDKPathOverride(root, ambientStagedSDKDir("go"))
+}
+
+// currentGoStagedSDK is the Go SDK staged now: the caller's preferred staged
+// directory, else the one under the environment's config root.
+func currentGoStagedSDK(preferred string) string {
+	if preferred = strings.TrimSpace(preferred); preferred != "" {
+		return preferred
+	}
+	return ambientStagedSDKDir("go")
+}
+
+// goSDKPathOverride returns an extension module's explicit local SDK replace
+// unless it is missing or a retired staging of stagedDir's config root.
+func goSDKPathOverride(root, stagedDir string) string {
 	data, err := os.ReadFile(filepath.Join(root, "go.mod"))
 	if err != nil {
 		return ""
@@ -426,15 +434,22 @@ func GoSDKPathOverride(root string) string {
 			candidate = filepath.Join(root, candidate)
 		}
 		candidate = filepath.Clean(candidate)
-		if _, err := os.Stat(filepath.Join(candidate, "go.mod")); err == nil {
-			return candidate
+		if _, err := os.Stat(filepath.Join(candidate, "go.mod")); err != nil {
+			continue
 		}
+		// A replace into the config root's SDK staging area that misses the
+		// current staging is left from an earlier host build; it is treated as
+		// absent so the build uses the SDK staged now.
+		if RetiredStagedSDK(candidate, stagedDir) {
+			continue
+		}
+		return candidate
 	}
 	return ""
 }
 
 func stagedGoSDKRoots() []string {
-	return stagedSDKRoots("sdk")
+	return stagedSDKRoots("go")
 }
 
 // statHasFile reports whether dir/name exists. It validates a candidate SDK root
@@ -446,30 +461,30 @@ func statHasFile(dir, name string) bool {
 	return err == nil
 }
 
-func stagedSDKRoots(name string) []string {
-	if root := strings.TrimSpace(os.Getenv("PIG_HOME")); root != "" {
-		return []string{filepath.Join(root, "state", "pigsdk", name)}
+// stagedSDKRoots returns the directory this binary stages lang's SDK in under the active config root, or nil when the root cannot be resolved or this binary embeds no SDK for lang.
+func stagedSDKRoots(lang string) []string {
+	root, err := configroot.Resolve()
+	if err != nil {
+		return nil
 	}
-	if root := strings.TrimSpace(os.Getenv("XDG_CONFIG_HOME")); root != "" {
-		return []string{filepath.Join(root, "pig", "state", "pigsdk", name)}
+	dir, err := pigsdklock.StagedSDKDir(root, lang)
+	if err != nil {
+		return nil
 	}
-	if home, err := os.UserHomeDir(); err == nil && home != "" {
-		return []string{filepath.Join(home, ".pig", "state", "pigsdk", name)}
-	}
-	return nil
+	return []string{dir}
 }
 
 // installedPigSourceRoots returns candidate pig source roots staged outside the
-// build cwd: PIG_SOURCE_ROOT and the data-dir copy at ~/.pig/source that pig
-// writes at install time. These let an installed pig resolve its SDK with no
+// build cwd: PIG_SOURCE_ROOT and the copy under the config root (source/) that
+// pig writes at install time. These let an installed pig resolve its SDK with no
 // per-extension configuration.
 func installedPigSourceRoots() []string {
 	var roots []string
 	if r := strings.TrimSpace(os.Getenv("PIG_SOURCE_ROOT")); r != "" {
 		roots = append(roots, r)
 	}
-	if home, err := os.UserHomeDir(); err == nil && home != "" {
-		roots = append(roots, filepath.Join(home, ".pig", "source"))
+	if root, err := configroot.Resolve(); err == nil {
+		roots = append(roots, filepath.Join(root, "source"))
 	}
 	return roots
 }
@@ -697,7 +712,7 @@ func modulePathAt(root string) (string, error) {
 func renderGoRunner(extensions []GoExtension) string {
 	var b strings.Builder
 	b.WriteString("package main\n\nimport (\n")
-	b.WriteString("\t\"bufio\"\n\t\"fmt\"\n\t\"net\"\n\t\"os\"\n\t\"slices\"\n\t\"strings\"\n\t\"sync\"\n\n")
+	b.WriteString("\t\"bufio\"\n\t\"errors\"\n\t\"fmt\"\n\t\"net\"\n\t\"os\"\n\t\"slices\"\n\t\"strings\"\n\t\"sync\"\n\n")
 	for _, ext := range extensions {
 		pkgName := extPackageName(ext.Name)
 		fmt.Fprintf(&b, "\t%s %q\n", pkgName, ext.Package)
@@ -705,16 +720,38 @@ func renderGoRunner(extensions []GoExtension) string {
 	b.WriteString(")\n\n")
 	b.WriteString("func main() {\n")
 	b.WriteString("\ttype item struct { name string; env string; run func(string) error }\n")
+	b.WriteString(goRunnerFactoryScope)
 	b.WriteString("\titems := []item{\n")
 	for _, ext := range extensions {
 		pkgName := extPackageName(ext.Name)
-		fmt.Fprintf(&b, "\t\t{name: %q, env: %q, run: func(sock string) error { return %s.%s().RunWithSocket(sock) }},\n", ext.Name, SocketEnvName(ext.Name), pkgName, ext.Factory)
+		fmt.Fprintf(&b, "\t\t{name: %q, env: %q, run: func(sock string) error { return build(sock, func() runnable { return %s.%s() }).RunWithSocket(sock) }},\n", ext.Name, SocketEnvName(ext.Name), pkgName, ext.Factory)
 	}
 	b.WriteString("\t}\n")
 	b.WriteString(goRunnerBody)
 	b.WriteString("}\n")
 	return b.String()
 }
+
+// goRunnerFactoryScope builds one member at a time with PIG_EXT_SOCKET set to that member's socket, which is what an isolated extension's factory sees: a
+// helper the factory calls before Run (the SDK's ParseFrontmatter, ParseDate) dials that socket. The members' factories run one at a time, as Pi loads
+// extensions one at a time.
+const goRunnerFactoryScope = `	type runnable interface{ RunWithSocket(string) error }
+	var factoryMu sync.Mutex
+	build := func(sock string, factory func() runnable) runnable {
+		factoryMu.Lock()
+		defer factoryMu.Unlock()
+		previous, had := os.LookupEnv("PIG_EXT_SOCKET")
+		_ = os.Setenv("PIG_EXT_SOCKET", sock)
+		defer func() {
+			if had {
+				_ = os.Setenv("PIG_EXT_SOCKET", previous)
+			} else {
+				_ = os.Unsetenv("PIG_EXT_SOCKET")
+			}
+		}()
+		return factory()
+	}
+`
 
 // goRunnerBody starts each member's factory, then admits a further generation of a member's factory for every "admit" line on stdin: Pi re-invokes an extension's factory in the process that already holds its package state. The runner exits once every generation has ended, unless the host parked it for a replacement Session. A "park" line names a socket the runner connects to once it holds the process open, so the host retires its last generation only after the notice took effect.
 const goRunnerBody = `	var mu sync.Mutex
@@ -727,7 +764,7 @@ const goRunnerBody = `	var mu sync.Mutex
 		mu.Unlock()
 		go func() {
 			err := it.run(sock)
-			if err != nil && !strings.Contains(err.Error(), "use of closed network connection") {
+			if err != nil && !errors.Is(err, net.ErrClosed) {
 				fmt.Fprintf(os.Stderr, "%s: %v\n", it.name, err)
 				if c, dialErr := net.Dial("unix", sock); dialErr == nil { _ = c.Close() }
 				mu.Lock()
@@ -920,4 +957,25 @@ func CurrentGoPackedCellEntry(cacheRoot, key string, extensions []GoExtension) (
 			return entry, valid, nil
 		})
 	})
+}
+
+// writeGoBuildDir writes the generated module a build of extensions compiles: its go.mod, merged go.sum, runner and, for a legacy SDK import, the staged SDK copy.
+func writeGoBuildDir(buildDir string, extensions []GoExtension, sdkRoot string) error {
+	if requiresLegacyGoSDK(extensions) {
+		if err := StageLegacyGoSDK(sdkRoot, filepath.Join(buildDir, legacyGoSDKDir)); err != nil {
+			return err
+		}
+	}
+	if err := os.WriteFile(filepath.Join(buildDir, "go.mod"), []byte(renderGoMod(extensions, sdkRoot)), 0o644); err != nil {
+		return fmt.Errorf("write generated go.mod: %w", err)
+	}
+	if goSum := mergeGoSum(extensions); goSum != "" {
+		if err := os.WriteFile(filepath.Join(buildDir, "go.sum"), []byte(goSum), 0o644); err != nil {
+			return fmt.Errorf("write merged go.sum: %w", err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(buildDir, "main.go"), []byte(renderGoRunner(extensions)), 0o644); err != nil {
+		return fmt.Errorf("write generated runner: %w", err)
+	}
+	return nil
 }

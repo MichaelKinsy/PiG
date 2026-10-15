@@ -1,0 +1,119 @@
+{
+  "engines": {
+    "vllm": {
+      "image": "docker.io/vllm/vllm-openai:v0.30.0@sha256:8a69ffad015f138d7170c4ddc429e230a3bc1c1719f67e14324749df200a4b90",
+      "published": "2026-09-22"
+    },
+    "llama.cpp": {
+      "image": "ghcr.io/ggml-org/llama.cpp:server-cuda-b11347@sha256:d87b02aafa74797a2d599b281c50468704bd0bcdc57bfcf31b570d593f1d285b",
+      "published": "2026-10-02"
+    }
+  },
+  "models": {
+    "qwen3-coder-30b-a3b-fp8": {
+      "engine": "vllm",
+      "repo": "Qwen/Qwen3-Coder-30B-A3B-Instruct-FP8",
+      "revision": "dcaee4d4dfc5ee71ad501f01f530e5652438fde0",
+      "published": "2025-12-03",
+      "license": "apache-2.0",
+      "contextWindow": 131072,
+      "maxTokens": 16384,
+      "args": [
+        "--enable-auto-tool-choice",
+        "--tool-call-parser",
+        "qwen3_coder"
+      ],
+      "files": [
+        {
+          "path": "LICENSE",
+          "size": 11343,
+          "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e"
+        },
+        {
+          "path": "chat_template.jinja",
+          "size": 6211,
+          "sha256": "5a38bfa05833266240066aedc497decc9b00cc0d3e3b8cceea98cf530196ab06"
+        },
+        {
+          "path": "config.json",
+          "size": 7156,
+          "sha256": "2705ed03bb322c864470bc282738b4713daca31b54ee4a639fe198bd7b9523f4"
+        },
+        {
+          "path": "generation_config.json",
+          "size": 180,
+          "sha256": "c99723ab3ba28630d26ae23def77603b540a46924895af5cf234740d3b27b51d"
+        },
+        {
+          "path": "merges.txt",
+          "size": 1671853,
+          "sha256": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5"
+        },
+        {
+          "path": "model-00001-of-00004.safetensors",
+          "size": 10001462368,
+          "sha256": "04665458e2332cc10409cd51298c95627000ed44cf29134663203e3f15c3c053"
+        },
+        {
+          "path": "model-00002-of-00004.safetensors",
+          "size": 10000577408,
+          "sha256": "3d2228cdb569b07b2eb18b342c98ffb4c425264a5324446014046d402c80c1a2"
+        },
+        {
+          "path": "model-00003-of-00004.safetensors",
+          "size": 10000577448,
+          "sha256": "7a6b5fd146a07c319f475589d08dd8d583b1e0919905c73a1e5af745244fc1db"
+        },
+        {
+          "path": "model-00004-of-00004.safetensors",
+          "size": 1173001360,
+          "sha256": "6438b5403255c6fbf02bd20f9c75985e8a98ebc46f9f45899283ea374c25383a"
+        },
+        {
+          "path": "model.safetensors.index.json",
+          "size": 3565670,
+          "sha256": "270f54aead2ae634567310218340069621fd8dfa2ad80001b69888ea5cc03477"
+        },
+        {
+          "path": "qwen3coder_tool_parser.py",
+          "size": 31613,
+          "sha256": "f1ef95f6cf76354b6d7f5bc19e65976ae315981315c22f07874c9eff9720de84"
+        },
+        {
+          "path": "tokenizer.json",
+          "size": 11422654,
+          "sha256": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 13055,
+          "sha256": "60f6e8cb15c98dd07300a3cc465ea662de245d2095e4245616af21b2324db3fc"
+        },
+        {
+          "path": "vocab.json",
+          "size": 2776833,
+          "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+        }
+      ]
+    },
+    "qwen3-coder-30b-a3b-q4km": {
+      "engine": "llama.cpp",
+      "repo": "unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF",
+      "revision": "b17cb02dd882d5b6ab62fc777ad2995f19668350",
+      "published": "2026-01-30",
+      "license": "apache-2.0",
+      "contextWindow": 32768,
+      "maxTokens": 8192,
+      "args": [
+        "--jinja"
+      ],
+      "files": [
+        {
+          "path": "Qwen3-Coder-30B-A3B-Instruct-Q4_K_M.gguf",
+          "size": 18556689568,
+          "sha256": "fadc3e5f8d42bf7e894a785b05082e47daee4df26680389817e2093056f088ad"
+        }
+      ]
+    }
+  }
+}

@@ -30,9 +30,11 @@ func TestCustomEntryUsesRegisteredEntryRenderer(t *testing.T) {
 	ext := extension.Extension{
 		EntryRenderers: map[string]extension.EntryRenderer{
 			"note": func(entry extension.CustomEntry, options extension.EntryRenderOptions, _ extension.Theme) extension.Component {
-				ce, ok := entry.(CustomEntry)
-				if !ok {
-					t.Fatalf("entry type = %T", entry)
+				ce := entry
+				// session-manager.ts:128 CustomEntry: the renderer receives the whole entry, not only its type and data.
+				parent := "parent-1"
+				if ce.Type != "custom" || ce.ID != "entry-1" || ce.ParentID == nil || *ce.ParentID != parent || ce.Timestamp != "2026-01-01T00:00:00.000Z" {
+					t.Errorf("renderer got %+v, want the entry's type, id, parentId and timestamp", ce)
 				}
 				gotType = ce.CustomType
 				gotExpanded = options.Expanded
@@ -45,7 +47,8 @@ func TestCustomEntryUsesRegisteredEntryRenderer(t *testing.T) {
 		chatContainer: tui.NewContainer(),
 		toolsExpanded: true,
 	}
-	m.addCustomEntryToChat(CustomEntry{CustomType: "note", Data: "hi"})
+	parent := "parent-1"
+	m.addCustomEntryToChat(CustomEntry{SessionEntryBase: SessionEntryBase{Type: "custom", ID: "entry-1", ParentID: &parent, Timestamp: "2026-01-01T00:00:00.000Z"}, CustomType: "note", Data: "hi"})
 
 	// Host owns transcript spacing: a Spacer(1) blank line above the content.
 	lines := m.chatContainer.Render(80)
@@ -96,5 +99,35 @@ func TestCustomEntryRendersBareComponent(t *testing.T) {
 	lines := m.chatContainer.Render(80)
 	if len(lines) != 2 || strings.TrimSpace(lines[0]) != "" || strings.TrimSpace(lines[1]) != "bare-entry" {
 		t.Fatalf("bare-component render = %#v", lines)
+	}
+}
+
+// interactive-mode.ts:3834-3840: an entry added while an assistant message streams goes before that message; with none streaming it appends.
+func TestCustomEntryIsInsertedBeforeTheStreamingMessage(t *testing.T) {
+	ext := extension.Extension{
+		EntryRenderers: map[string]extension.EntryRenderer{
+			"note": func(entry extension.CustomEntry, options extension.EntryRenderOptions, _ extension.Theme) extension.Component {
+				return &toggleEntryComponent{content: "note", expanded: options.Expanded}
+			},
+		},
+	}
+	streaming := tui.NewText("streaming")
+	m := &InteractiveMode{
+		newRunner:     inproc.NewRunner([]extension.Extension{ext}, t.TempDir()),
+		chatContainer: tui.NewContainer(tui.NewText("earlier"), streaming),
+	}
+	m.addCustomEntryToChat(CustomEntry{CustomType: "note"})
+	if got := m.chatContainer.Children(); len(got) != 3 || got[1] != tui.Component(streaming) {
+		t.Fatalf("without a streaming message the entry must append: %v", got)
+	}
+	m.chatContainer.Clear()
+	m.chatContainer.Add(tui.NewText("earlier"))
+	block := m.newAssistantMessageBlock()
+	m.chatContainer.Add(block)
+	m.evCurrentBlock = block
+	m.addCustomEntryToChat(CustomEntry{CustomType: "note"})
+	children := m.chatContainer.Children()
+	if len(children) != 3 || children[2] != tui.Component(block) {
+		t.Fatalf("entry must precede the streaming block: %v", children)
 	}
 }

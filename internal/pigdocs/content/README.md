@@ -1,13 +1,14 @@
-# Pig docs
+# PiG docs
 
-This is Pig's user manual and the canonical local reference for coding agents
-helping users manage Pig. It is embedded in the binary and materialized under
-`~/.pig/docs` by `pig docs`. Pig also checks the bundle marker at startup. A
-newer binary replaces older synchronized docs, and an older binary does not
-downgrade newer docs. Do not edit the materialized copy; edit the bundled source
-and sync again.
+This is PiG's user manual and the canonical local reference for coding agents
+helping users manage PiG. It is embedded in the binary and materialized under
+`~/.pig/docs/bundle-<hash>/` by `pig docs`, one directory per build, named by
+the content hash of its pages. PiG also checks the bundle marker at startup.
+Two PiG builds that share a config root each keep their own bundle, so neither
+rewrites the other's. `pig docs path` prints this build's directory. Do not edit
+the materialized copy; edit the bundled source and sync again.
 
-Pig is the Go-native port of upstream Pi. Numbered differences are summarized in
+PiG is the Go-native port of upstream Pi. Numbered differences are summarized in
 [divergences](divergences.md).
 
 ## Start by task
@@ -17,7 +18,8 @@ Read the one row that matches the task, then follow only its direct links.
 | I want to... | Start here | Then read |
 |---|---|---|
 | start from zero, guided | [Onboarding](onboarding.md) | [Install](install.md) |
-| install Pig and run a first session | [Install](install.md) | [Providers](providers.md) |
+| do everyday work for a user who does not program (PDFs, spreadsheets, documents, reports, files) | [Applied use cases](applied-use-cases.md) | [Sessions](sessions.md) |
+| install PiG and run a first session | [Install](install.md) | [Providers](providers.md) |
 | understand the small mental model | [Concepts](concepts.md) | [Packages](packages.md) or [Piglets](piglets.md) |
 | install or share capabilities | [Packages](packages.md) | [Extensions](extensions.md) or [Skills](skills.md) |
 | publish a Package or Piglet to npm | [Publishing](publishing.md) | [Packages](packages.md) or [Piglets](piglets.md) |
@@ -25,7 +27,7 @@ Read the one row that matches the task, then follow only its direct links.
 | write an extension | [Extensions](extensions.md) | [Extension API](extension-api.md) |
 | configure models and credentials | [Providers](providers.md) | [Models](models.md) |
 | look up a command or path | [Commands](commands.md) | [Config](config.md) |
-| run Pig in CI or a container | [Environment variables](environment-variables.md) | [Config](config.md) |
+| run PiG in CI or a container | [Environment variables](environment-variables.md) | [Config](config.md) |
 | change a setting | [Settings](settings.md) | [Project trust](trust.md) |
 | resume, branch, or export work | [Sessions](sessions.md) | [Compaction](compaction.md) |
 | change or look up a key | [Keybindings](keybindings.md) | [Terminal setup](terminal-setup.md) |
@@ -36,11 +38,19 @@ Read the one row that matches the task, then follow only its direct links.
 | route requests to different models | [Virtual models](virtual-models.md) | [Extensions](extensions.md) |
 | change colors | [Themes](themes.md) | [Settings](settings.md) |
 | build terminal UI for an extension | [TUI components](tui.md) | [Extension API](extension-api.md) |
-| embed Pig in a program | [SDK](sdk.md) | [Extensions](extensions.md) |
+| embed PiG in a program | [SDK](sdk.md) | [Extensions](extensions.md) |
 | add a provider or model endpoint | [Custom providers](custom-provider.md) | [Models](models.md) |
 | understand Stock Pig and explicit compositions | [Stock Pig and PiG Standard](built-in-extensions.md) | [Divergences](divergences.md) |
 | map entities, paths, and the command that inspects each | [Knowledge graph](knowledge-graph.md) | [Concepts](concepts.md) |
+| run PiG from a script or another program | [CLI integration](cli-integration.md) | [JSON mode](json.md) or [RPC](rpc.md) |
+| use JSON mode or RPC | [JSON mode](json.md), [RPC](rpc.md) | [RPC commands](rpc-commands.md), [RPC extension UI](rpc-extension-ui.md) |
+| read the file and message formats | [Session format](session-format.md) | [Message types](message-types.md) |
+| run a local llama.cpp model | [llama.cpp](llama-cpp.md) | [Models](models.md) |
+| check what PiG can reach and run | [Security](security.md) | [Project trust](trust.md) |
+| see usage and cost | [Usage](usage.md) | [Settings](settings.md) |
 | fix an install, trust, toolchain, or display problem | [Troubleshooting](troubleshooting.md) | [Install](install.md) |
+
+The platform pages on the site (tmux, Termux, Windows, containerization, shell aliases) are not in this bundle on purpose. They are setup guides for a particular terminal or host, not behavior of the program, and the site keeps them. `troubleshooting.md` and `terminal-setup.md` link them. This is a documentation choice, not a numbered divergence.
 
 ## The model in one table
 
@@ -50,7 +60,7 @@ Read the one row that matches the task, then follow only its direct links.
 | Package | distribute available Resources | install from local/git/npm or a contributed resolver |
 | Piglet | select/scope Resources and define one named agent | `pig --piglet research` |
 | Piglet release | pin exact Resource closure and executable component plan plus optional artifacts | source plus Piglet Binary/Piglet Image facets |
-| Piglet Binary | target-native Pig executable for one immutable Piglet composition | may use fused, subprocess, and external components |
+| Piglet Binary | target-native PiG executable for one immutable Piglet composition | may use fused, subprocess, and external components |
 | Piglet Image | OCI materialization of Piglet component/environment closure | environment-complete carrier |
 
 The two authored management concepts to remember are **Package** and **Piglet**.
@@ -59,7 +69,7 @@ carriers, component realization, materialization, and environments distinct.
 
 ## Authoritative summary
 
-Pig is one Go binary whose config root defaults to `~/.pig` and can be overridden
+PiG is one Go binary whose config root defaults to `~/.pig` and can be overridden
 with `PIG_HOME`. Normal extensions run as subprocesses over the current subprocess wire; compatible
 Go factories may also fuse into a Piglet Binary. These are per-component
 execution choices, not different binary kinds. Piglet releases record exact
@@ -70,13 +80,13 @@ mapping.
 Extension identity comes from its selected source. Runtime registration declares capabilities.
 Packages distribute resources. Piglets select and scope them into agents.
 Products may contribute authentication targets and install
-resolvers, and publishing commands without becoming part of raw Pig.
+resolvers, and publishing commands without becoming part of raw PiG.
 
 ## Conventions
 
 - `~` means the user's home directory.
 - Shell examples assume bash/zsh and `pig` on `PATH`.
-- "Upstream" means upstream Pi; "Pig" means this Go binary.
+- "Upstream" means upstream Pi; "PiG" means this Go binary.
 - "Carrier" means Host Piglet, Piglet Binary, or Piglet Image.
 - "Realization" means fused, subprocess, or external component execution.
 - "Materialization" means binary, release, environment, or external delivery.
@@ -86,9 +96,9 @@ resolvers, and publishing commands without becoming part of raw Pig.
 ## Guidance for coding agents
 
 The system prompt points here instead of carrying this advice in every request.
-Read it when a user asks you to configure Pig or to extend it.
+Read it when a user asks you to configure PiG or to extend it.
 
-Configuring Pig: a Package makes Resources available; a Piglet selects
+Configuring PiG: a Package makes Resources available; a Piglet selects
 Resources, built-in tools, discovery, defaults, and environment; a Piglet
 Binary is a direct executable build output. Packages never contain or activate
 Piglets. A Piglet without a model uses normal model selection, and a Piglet
@@ -99,13 +109,13 @@ capabilities, `pig --piglet` for source execution, and
 `pig piglet build <name> --format binary --out <path>` only for a direct Binary
 handoff. Read [Concepts](concepts.md) before advising.
 
-Extending Pig:
+Extending PiG:
 
 - Read [Extensions](extensions.md) first (factory and standalone forms,
   lifecycle, discovery, validation), then [Extension API](extension-api.md) for
   the host API and the per-language SDK quickstart.
-- This bundle is a sufficient reference. Do not look for a Pig source checkout
-  or installed extensions to copy unless the user asks you to inspect Pig
+- This bundle is a sufficient reference. Do not look for a PiG source checkout
+  or installed extensions to copy unless the user asks you to inspect PiG
   internals. Author the extension as a self-contained project in the current
   workspace, then validate it with `pig install <path> --validate-only --json`.
 - Scaffold with `pig extension init <dir>`. Prefer Go (native, fusible into a
@@ -115,7 +125,7 @@ Extending Pig:
 - Pick the simplest dev loop: packaged artifact, subprocess wrapper, or
   linked/channel only when a restart or binary update is acceptable.
 - Do not add Wasm, embedded JavaScript, dynamic Go plugins, or in-process
-  production runtimes without an approved Pig spec or divergence.
-- Change Pig core only for upstream parity, provider or session behavior,
+  production runtimes without an approved PiG spec or divergence.
+- Change PiG core only for upstream parity, provider or session behavior,
   package or runtime infrastructure, or generic extension host APIs.
 

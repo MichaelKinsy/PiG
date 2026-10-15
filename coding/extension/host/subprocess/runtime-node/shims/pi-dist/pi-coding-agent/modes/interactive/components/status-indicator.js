@@ -42,12 +42,12 @@ export class RetryStatusIndicator extends StatusIndicator {
     }
 }
 export class CompactionStatusIndicator extends StatusIndicator {
-    constructor(ui, reason) {
+    constructor(ui, reason, colorFn) {
         const cancelHint = `(${keyText("app.interrupt")} to cancel)`;
         const label = reason === "manual"
             ? `Compacting context... ${cancelHint}`
             : `${reason === "overflow" ? "Context overflow detected, " : ""}Auto-compacting... ${cancelHint}`;
-        super("compaction", ui, (spinner) => theme.fg("accent", spinner), (text) => theme.fg("muted", text), label);
+        super("compaction", ui, colorFn ?? ((spinner) => theme.fg("accent", spinner)), colorFn ?? ((text) => theme.fg("muted", text)), label);
     }
 }
 export class BranchSummaryStatusIndicator extends StatusIndicator {

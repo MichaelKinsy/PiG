@@ -1,5 +1,5 @@
-import { isJsonRpcRequest, isJsonRpcResponse, JSON_RPC_ERROR_CODES, McpConnectionClosedError, parseJsonRpcMessage, toError, } from "../protocol/jsonrpc.js";
-import { DEFAULT_MAX_MESSAGE_BYTES, TransportEvents } from "./transport.js";
+import { isJsonRpcRequest, isJsonRpcResponse, JSON_RPC_ERROR_CODES, McpAbortError, McpConnectionClosedError, parseJsonRpcMessage, toError, } from "../protocol/jsonrpc.js";
+import { DEFAULT_MAX_MESSAGE_BYTES, TransportEvents, } from "./transport.js";
 const MAX_ERROR_BODY_BYTES = 8 * 1024;
 const ERROR_MESSAGE_BODY_CHARS = 500;
 const DEFAULT_RECONNECT_INITIAL_DELAY_MS = 1_000;
@@ -138,6 +138,8 @@ export class StreamableHttpTransport extends TransportEvents {
     sessionIdValue;
     protocolVersion;
     getStreamStarted = false;
+    /** Access token of the latest request, which `close()` reuses instead of asking the auth provider. */
+    lastToken;
     constructor(options) {
         super();
         this.options = Object.freeze({ ...options, headers: options.headers ? { ...options.headers } : undefined });
@@ -160,13 +162,13 @@ export class StreamableHttpTransport extends TransportEvents {
     setProtocolVersion(version) {
         this.protocolVersion = version;
     }
-    async send(message) {
+    async send(message, { signal } = {}) {
         if (!this.started || this.closed)
             throw new McpConnectionClosedError();
         const response = await this.authorizedFetch("POST", {
             headers: { accept: "application/json, text/event-stream", "content-type": "application/json" },
             body: JSON.stringify(message),
-        });
+        }, signal);
         await this.checkResponse(response);
         this.captureSession(response);
         if (!isJsonRpcRequest(message)) {
@@ -200,31 +202,34 @@ export class StreamableHttpTransport extends TransportEvents {
         this.closed = true;
         this.controller.abort();
         if (this.started && this.sessionIdValue) {
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 1_000);
+            // Best effort: the session expires on the server anyway. The auth provider may refresh tokens
+            // over the network, so it is not asked here and closing never waits for a refresh.
             try {
-                const { headers } = await this.headers();
-                await this.fetch(this.url, { method: "DELETE", headers, signal: controller.signal })
-                    .then(discard)
-                    .catch(() => undefined);
+                const response = await this.fetch(this.url, {
+                    method: "DELETE",
+                    headers: this.buildHeaders({}, this.lastToken),
+                    signal: AbortSignal.timeout(1_000),
+                });
+                await discard(response);
             }
-            catch {
-                // Resolving auth headers failed; the session will expire on the server.
-            }
-            finally {
-                clearTimeout(timeout);
-            }
+            catch { }
         }
         this.emitClose();
     }
     /**
      * Fetch with auth headers. A 401 (or a 403 asking for more scope) is handed to the auth provider
      * once, and the request is retried with whatever credentials it left behind.
+     *
+     * `signal` only stops dispatch: getting a token or the authorization recovery can take a while, and a
+     * request its sender gave up on in the meantime must not reach the server. It does not abort the shared
+     * recovery, which other requests may wait for.
      */
-    async authorizedFetch(method, init) {
+    async authorizedFetch(method, init, signal) {
         const onUnauthorized = this.options.authProvider?.onUnauthorized?.bind(this.options.authProvider);
         for (let attempt = 0;; attempt++) {
             const { headers, token } = await this.headers(init.headers);
+            if (signal?.aborted)
+                throw new McpAbortError();
             const response = await this.fetch(this.url, {
                 method,
                 headers,
@@ -242,6 +247,11 @@ export class StreamableHttpTransport extends TransportEvents {
         }
     }
     async headers(extra = {}) {
+        const token = await this.options.authProvider?.token();
+        this.lastToken = token;
+        return { headers: this.buildHeaders(extra, token), ...(token ? { token } : {}) };
+    }
+    buildHeaders(extra, token) {
         const headers = new Headers(this.options.headers);
         for (const [name, value] of Object.entries(extra))
             headers.set(name, value);
@@ -249,10 +259,9 @@ export class StreamableHttpTransport extends TransportEvents {
             headers.set("Mcp-Session-Id", this.sessionIdValue);
         if (this.protocolVersion)
             headers.set("MCP-Protocol-Version", this.protocolVersion);
-        const token = await this.options.authProvider?.token();
         if (token)
             headers.set("Authorization", `Bearer ${token}`);
-        return { headers, ...(token ? { token } : {}) };
+        return headers;
     }
     captureSession(response) {
         const sessionId = response.headers.get("mcp-session-id");

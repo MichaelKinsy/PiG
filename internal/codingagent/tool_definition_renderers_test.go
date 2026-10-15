@@ -24,6 +24,7 @@ import (
 // component, renderResult gets the streamed partial result and then the final
 // one, and a result never changes the expansion. PiG used to draw every
 // extension tool with its generic header.
+// Pi: packages/coding-agent/src/core/extensions/types.ts:463 (ToolRenderResultOptions.isPartial).
 func TestInteractiveModeDrawsToolDefinitionRenderers(t *testing.T) {
 	var lastCalls []extension.Component
 	definition := extension.ToolDefinition{
@@ -34,7 +35,7 @@ func TestInteractiveModeDrawsToolDefinitionRenderers(t *testing.T) {
 			return tui.NewText(fmt.Sprintf("CALL %s partial=%t", args, context.IsPartial))
 		},
 		RenderResult: func(result extension.AgentToolResult, options extension.ToolRenderResultOptions, _ extension.Theme, context extension.ToolRenderContext) extension.Component {
-			value := result.(agent.AgentToolResult)
+			value := result
 			return tui.NewText(fmt.Sprintf("RESULT %s %v partial=%t expanded=%t topic=%s", value.Text(), value.Details, options.IsPartial, options.Expanded, context.State.(map[string]any)["topic"]))
 		},
 	}
@@ -75,7 +76,7 @@ func TestInteractiveModePartialResultIsNeverAnError(t *testing.T) {
 	definition := extension.ToolDefinition{
 		Name: "renders",
 		RenderResult: func(result extension.AgentToolResult, _ extension.ToolRenderResultOptions, _ extension.Theme, _ extension.ToolRenderContext) extension.Component {
-			seen = append(seen, result.(agent.AgentToolResult))
+			seen = append(seen, result)
 			return tui.NewText("RESULT")
 		},
 	}
@@ -131,11 +132,11 @@ func TestBuiltInOverrideFillsMissingRenderer(t *testing.T) {
 	if filled.RenderResult == nil {
 		t.Fatal("renderResult was not filled from the built-in write renderers")
 	}
-	if got := plainRows(filled.RenderCall(nil, nil, extension.ToolRenderContext{}).(tui.Component).Render(40)); strings.TrimSpace(got) != "OVERRIDE CALL" {
+	if got := plainRows(filled.RenderCall(nil, nil, extension.ToolRenderContext{}).Render(40)); strings.TrimSpace(got) != "OVERRIDE CALL" {
 		t.Fatalf("the override's renderCall was replaced: %q", got)
 	}
 	failed := agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "disk full"}}, IsError: true}
-	rows := filled.RenderResult(failed, extension.ToolRenderResultOptions{}, nil, extension.ToolRenderContext{IsError: true, State: map[string]any{}}).(tui.Component).Render(40)
+	rows := filled.RenderResult(failed, extension.ToolRenderResultOptions{}, nil, extension.ToolRenderContext{IsError: true, State: map[string]any{}}).Render(40)
 	if got := plainRows(rows); got != "\ndisk full" {
 		t.Fatalf("built-in write renderResult = %q", got)
 	}
@@ -157,7 +158,7 @@ func TestBuiltInOverrideDrawsBuiltInWriteCall(t *testing.T) {
 		tuiInst:       tui.NewWithOutput(io.Discard, 80, 30),
 		toolByID:      make(map[string]*tui.ToolExecutionComponent),
 		toolStarts:    make(map[string]time.Time),
-		opts:          InteractiveOptions{CWD: t.TempDir()},
+		opts:          InteractiveModeOptions{CWD: t.TempDir()},
 	}
 	lines := make([]string, 12)
 	for i := range lines {
@@ -190,7 +191,7 @@ func TestBuiltInEditRenderersPreviewAndResultDiff(t *testing.T) {
 	state := map[string]any{}
 	invalidated := make(chan struct{}, 1)
 	context := extension.ToolRenderContext{Args: args, Cwd: dir, State: state, ArgsComplete: true, Invalidate: func() { invalidated <- struct{}{} }}
-	component := call(args, nil, context).(tui.Component)
+	component := call(args, nil, context)
 	select {
 	case <-invalidated:
 	case <-time.After(5 * time.Second):
@@ -201,11 +202,11 @@ func TestBuiltInEditRenderersPreviewAndResultDiff(t *testing.T) {
 		t.Fatalf("edit call preview = %q", got)
 	}
 	done := agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "ok"}}, Details: &tools.EditToolDetails{Diff: "-2 two\n+2 TWO"}}
-	if rows := result(done, extension.ToolRenderResultOptions{}, nil, context).(tui.Component).Render(60); len(rows) != 0 {
+	if rows := result(done, extension.ToolRenderResultOptions{}, nil, context).Render(60); len(rows) != 0 {
 		t.Fatalf("result repeated the call's diff: %q", rows)
 	}
 	other := extension.ToolRenderContext{Args: args, Cwd: dir, State: map[string]any{}}
-	rows := result(done, extension.ToolRenderResultOptions{}, nil, other).(tui.Component).Render(60)
+	rows := result(done, extension.ToolRenderResultOptions{}, nil, other).Render(60)
 	if got := plainRows(rows); !strings.Contains(got, "-2 two") {
 		t.Fatalf("result without the built-in call omitted the diff: %q", got)
 	}
@@ -217,11 +218,11 @@ func TestBuiltInShellRenderersShowDuration(t *testing.T) {
 	call, result := builtInToolRenderers("bash")
 	state := map[string]any{}
 	context := extension.ToolRenderContext{State: state, ExecutionStarted: true}
-	header := plainRows(call(json.RawMessage(`{"command":"ls"}`), nil, context).(tui.Component).Render(60))
+	header := plainRows(call(json.RawMessage(`{"command":"ls"}`), nil, context).Render(60))
 	if !strings.Contains(header, "$ ls") {
 		t.Fatalf("bash call = %q", header)
 	}
-	rows := result(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "a\nb"}}}, extension.ToolRenderResultOptions{}, nil, context).(tui.Component).Render(60)
+	rows := result(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "a\nb"}}}, extension.ToolRenderResultOptions{}, nil, context).Render(60)
 	if got := plainRows(rows); !strings.Contains(got, "a") || !strings.Contains(got, "Took ") {
 		t.Fatalf("bash result = %q", got)
 	}
@@ -231,10 +232,10 @@ func TestBuiltInShellRenderersShowDuration(t *testing.T) {
 // formatReadResult does.
 func TestBuiltInReadResultCollapsedIsEmpty(t *testing.T) {
 	_, result := builtInToolRenderers("read")
-	if rows := result(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "text"}}}, extension.ToolRenderResultOptions{}, nil, extension.ToolRenderContext{State: map[string]any{}}).(tui.Component).Render(60); len(rows) != 0 {
+	if rows := result(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "text"}}}, extension.ToolRenderResultOptions{}, nil, extension.ToolRenderContext{State: map[string]any{}}).Render(60); len(rows) != 0 {
 		t.Fatalf("collapsed read result = %q", rows)
 	}
-	rows := result(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "text"}}}, extension.ToolRenderResultOptions{Expanded: true}, nil, extension.ToolRenderContext{State: map[string]any{}}).(tui.Component).Render(60)
+	rows := result(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "text"}}}, extension.ToolRenderResultOptions{Expanded: true}, nil, extension.ToolRenderContext{State: map[string]any{}}).Render(60)
 	if got := plainRows(rows); got != "\ntext" {
 		t.Fatalf("expanded read result = %q", got)
 	}

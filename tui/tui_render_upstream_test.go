@@ -13,7 +13,7 @@ import (
 )
 
 type upstreamRenderHarness struct {
-	ui      *TUI
+	ui      *TuiMainScreen
 	content *recordingComponent
 	output  bytes.Buffer
 	vt      *scrollVT

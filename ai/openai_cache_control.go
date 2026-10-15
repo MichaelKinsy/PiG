@@ -15,11 +15,7 @@ func (p *openAIProvider) getCompatCacheControl(opts StreamOptions) *oaiCacheCont
 		return nil
 	}
 	cc := &oaiCacheControl{Type: "ephemeral"}
-	supportsLong := true
-	if detected := detectCompat(p.cfg.ProviderID, p.cfg.BaseURL); detected != nil && detected.SupportsLongCacheRetention != nil {
-		supportsLong = *detected.SupportsLongCacheRetention
-	}
-	if retention == CacheRetentionLong && p.compatBool(func(c *OpenAICompat) *bool { return c.SupportsLongCacheRetention }, supportsLong) {
+	if retention == CacheRetentionLong && *p.compat().SupportsLongCacheRetention {
 		cc.TTL = "1h"
 	}
 	return cc
@@ -52,7 +48,7 @@ func addCacheControlToTextContent(message *oaiMessage, cc *oaiCacheControl) bool
 		if content == "" {
 			return false
 		}
-		message.Content = []oaiContentPart{{Type: "text", Text: content, CacheControl: cc}}
+		message.Content = []oaiContentPart{{Type: "text", Text: &content, CacheControl: cc}}
 		return true
 	case []oaiContentPart:
 		for i := len(content) - 1; i >= 0; i-- {

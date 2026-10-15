@@ -177,7 +177,11 @@ export function loadProjectContextFiles(options) {
     let currentDir = resolvedCwd;
     while (true) {
         const contextFile = loadContextFileFromDir(currentDir);
-        const isShadowed = shadowedContextFile !== undefined && canonicalizePath(contextFile?.path ?? "") === shadowedContextFile;
+        // Compare the directory's real path, not the file's: a worktree AGENTS.md that
+        // symlinks to the main repo's file resolves to the shadowed path itself.
+        const isShadowed = shadowedContextFile !== undefined &&
+            contextFile !== null &&
+            join(canonicalizePath(currentDir), basename(contextFile.path)) === shadowedContextFile;
         if (contextFile && !isShadowed && !seenPaths.has(contextFile.path)) {
             ancestorContextFiles.unshift(contextFile);
             seenPaths.add(contextFile.path);
@@ -203,6 +207,7 @@ export class DefaultResourceLoader {
     extensionFactories;
     builtinExtensions;
     noExtensions;
+    disabledBuiltinExtensions;
     noSkills;
     noPromptTemplates;
     noThemes;
@@ -255,6 +260,7 @@ export class DefaultResourceLoader {
         this.additionalPromptTemplatePaths = options.additionalPromptTemplatePaths ?? [];
         this.additionalThemePaths = options.additionalThemePaths ?? [];
         this.noExtensions = options.noExtensions ?? false;
+        this.disabledBuiltinExtensions = new Set(options.disabledBuiltinExtensions);
         this.noSkills = options.noSkills ?? false;
         this.noPromptTemplates = options.noPromptTemplates ?? false;
         this.noThemes = options.noThemes ?? false;
@@ -400,9 +406,8 @@ export class DefaultResourceLoader {
         const cliEnabledSkills = getEnabledPaths(cliExtensionPaths.skills);
         const cliEnabledPrompts = getEnabledPaths(cliExtensionPaths.prompts);
         const cliEnabledThemes = getEnabledPaths(cliExtensionPaths.themes);
-        const extensionPaths = this.noExtensions
-            ? cliEnabledExtensions
-            : this.mergePaths(cliEnabledExtensions, enabledExtensions);
+        const extensionPaths = (this.noExtensions ? cliEnabledExtensions : this.mergePaths(cliEnabledExtensions, enabledExtensions)).filter((path) => !path.startsWith(BUILTIN_PATH_PREFIX) ||
+            !this.disabledBuiltinExtensions.has(path.slice(BUILTIN_PATH_PREFIX.length)));
         const packageWarnings = collectExtensionPackageWarnings(extensionPaths, metadataByPath);
         const extensionsResult = await this.loadFinalExtensionSet(extensionPaths, preTrustExtensions);
         mergeExtensionWarnings(extensionsResult, packageWarnings);

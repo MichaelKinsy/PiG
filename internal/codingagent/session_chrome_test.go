@@ -25,8 +25,8 @@ func sessionChromeMode(t *testing.T) *InteractiveMode {
 	bindReplacementTestHandle(t, m)
 	m.opts.ContextUsage = func() (*int, int) {
 		messages := 0
-		for _, entry := range m.currentSession().Entries() {
-			if entry.Base.Type == "message" {
+		for _, entry := range m.currentSession().GetEntries() {
+			if entry.Base().Type == "message" {
 				messages++
 			}
 		}

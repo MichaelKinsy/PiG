@@ -1,0 +1,31 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#BashOperations"
+  ],
+  "targets": [
+   "coding/extension/bash_operations.go#BashOperations"
+  ],
+  "properties": {
+   "exec": {
+    "targets": [
+     "coding/extension/bash_operations.go#BashOperations.Exec"
+    ],
+    "evidence": [
+     "test:internal/codingagent/tools/bash_output_complete_test.go#TestLocalShellOperationsCaptureEveryLineOfAChild",
+     "test:internal/codingagent/tools/tools_bash_port_unix_test.go#TestToolsBashSignalsPort",
+     "test:internal/codingagent/tools/tools_bash_port_test.go#TestToolsBashPort"
+    ],
+    "rationale": "exec(command, cwd, {onData, signal, timeout, env}) is Exec(ctx, command, cwd, BashOperationsExecOptions{OnData, Timeout *float64 seconds, Env []string}) (BashOperationsResult{ExitCode *int}, error): signal is ctx, a null exitCode is a nil pointer, an abort or timeout is the returned error."
+   }
+  },
+  "production": [
+   "call:coding/session.go#Session.executeBash"
+  ],
+  "evidence": [
+   "test:internal/codingagent/tools/tools_bash_port_test.go#TestToolsBashPort"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "BashOperations is the extension.BashOperations interface; LocalShellOperations is the local implementation."
+ }
+]

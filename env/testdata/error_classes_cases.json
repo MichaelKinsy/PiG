@@ -1,0 +1,209 @@
+{
+	"remote": [
+		{
+			"fields": {},
+			"name": "RemoteError",
+			"message": "Remote operation failed",
+			"text": "RemoteError: Remote operation failed",
+			"isError": true,
+			"hasCause": false,
+			"code": "unknown",
+			"path": null,
+			"outFields": {}
+		},
+		{
+			"fields": {
+				"message": "boom"
+			},
+			"name": "RemoteError",
+			"message": "boom",
+			"text": "RemoteError: boom",
+			"isError": true,
+			"hasCause": false,
+			"code": "unknown",
+			"path": null,
+			"outFields": {
+				"message": "boom"
+			}
+		},
+		{
+			"fields": {
+				"message": ""
+			},
+			"name": "RemoteError",
+			"message": "",
+			"text": "RemoteError",
+			"isError": true,
+			"hasCause": false,
+			"code": "unknown",
+			"path": null,
+			"outFields": {
+				"message": ""
+			}
+		},
+		{
+			"fields": {
+				"message": 5
+			},
+			"name": "RemoteError",
+			"message": "Remote operation failed",
+			"text": "RemoteError: Remote operation failed",
+			"isError": true,
+			"hasCause": false,
+			"code": "unknown",
+			"path": null,
+			"outFields": {
+				"message": 5
+			}
+		},
+		{
+			"fields": {
+				"code": "ENOENT",
+				"message": "no such file",
+				"path": "/a/b"
+			},
+			"name": "RemoteError",
+			"message": "no such file",
+			"text": "RemoteError: no such file",
+			"isError": true,
+			"hasCause": false,
+			"code": "ENOENT",
+			"path": "/a/b",
+			"outFields": {
+				"code": "ENOENT",
+				"message": "no such file",
+				"path": "/a/b"
+			}
+		},
+		{
+			"fields": {
+				"code": 7,
+				"path": 3
+			},
+			"name": "RemoteError",
+			"message": "Remote operation failed",
+			"text": "RemoteError: Remote operation failed",
+			"isError": true,
+			"hasCause": false,
+			"code": "unknown",
+			"path": null,
+			"outFields": {
+				"code": 7,
+				"path": 3
+			}
+		},
+		{
+			"fields": {
+				"code": "",
+				"path": ""
+			},
+			"name": "RemoteError",
+			"message": "Remote operation failed",
+			"text": "RemoteError: Remote operation failed",
+			"isError": true,
+			"hasCause": false,
+			"code": "",
+			"path": "",
+			"outFields": {
+				"code": "",
+				"path": ""
+			}
+		},
+		{
+			"fields": {
+				"code": "EACCES",
+				"message": "denied",
+				"extra": {
+					"n": [
+						1,
+						2
+					]
+				},
+				"path": "/x"
+			},
+			"name": "RemoteError",
+			"message": "denied",
+			"text": "RemoteError: denied",
+			"isError": true,
+			"hasCause": false,
+			"code": "EACCES",
+			"path": "/x",
+			"outFields": {
+				"code": "EACCES",
+				"message": "denied",
+				"extra": {
+					"n": [
+						1,
+						2
+					]
+				},
+				"path": "/x"
+			}
+		},
+		{
+			"fields": {
+				"message": "multi\nline 😀"
+			},
+			"name": "RemoteError",
+			"message": "multi\nline 😀",
+			"text": "RemoteError: multi\nline 😀",
+			"isError": true,
+			"hasCause": false,
+			"code": "unknown",
+			"path": null,
+			"outFields": {
+				"message": "multi\nline 😀"
+			}
+		}
+	],
+	"ssh": [
+		{
+			"inMessage": "ssh failed",
+			"inExitCode": 255,
+			"inStderr": "Permission denied",
+			"name": "Error",
+			"message": "ssh failed",
+			"text": "Error: ssh failed",
+			"isError": true,
+			"hasCause": false,
+			"exitCode": 255,
+			"stderr": "Permission denied"
+		},
+		{
+			"inMessage": "",
+			"inExitCode": null,
+			"inStderr": "",
+			"name": "Error",
+			"message": "",
+			"text": "Error",
+			"isError": true,
+			"hasCause": false,
+			"exitCode": null,
+			"stderr": ""
+		},
+		{
+			"inMessage": "killed",
+			"inExitCode": null,
+			"inStderr": "line1\nline2",
+			"name": "Error",
+			"message": "killed",
+			"text": "Error: killed",
+			"isError": true,
+			"hasCause": false,
+			"exitCode": null,
+			"stderr": "line1\nline2"
+		},
+		{
+			"inMessage": "x",
+			"inExitCode": 0,
+			"inStderr": "😀",
+			"name": "Error",
+			"message": "x",
+			"text": "Error: x",
+			"isError": true,
+			"hasCause": false,
+			"exitCode": 0,
+			"stderr": "😀"
+		}
+	]
+}

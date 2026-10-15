@@ -2,10 +2,7 @@ package ignorerules
 
 import (
 	"fmt"
-	"path"
 	"path/filepath"
-	"regexp"
-	"strings"
 	"testing"
 )
 
@@ -58,42 +55,6 @@ func TestIgnoreRulesOrderAndWalkOwnership(t *testing.T) {
 	}
 }
 
-// Moving compilation must preserve the existing matcher, including its two
-// branches for basename globs and path regexes. This is not a claim that every
-// legacy glob spelling is equivalent to npm's ignore implementation.
-func TestCompiledIgnoreRulePreservesMatching(t *testing.T) {
-	patterns := []string{"", "/", "file", "*.md", "[ab].md", "[", "**/SKILL.md", "nested/?ile", "a+b", "foo\\bar", "é*", "\xff", "cache/"}
-	candidates := []string{"", "file", "file.md", "a.md", "nested/file", "nested/file.md", "nested/SKILL.md", "a+b", "foo\\bar", "écrit", "cache", "cache/file", "file\n", "["}
-	for _, pattern := range patterns {
-		rule := newRule(pattern, false)
-		for _, candidate := range candidates {
-			want := originalIgnoreMatch(strings.TrimSuffix(pattern, "/"), candidate)
-			if got := rule.match(candidate); got != want {
-				t.Errorf("pattern %q candidate %q = %v, original %v", pattern, candidate, got, want)
-			}
-		}
-	}
-}
-
-func originalIgnoreMatch(pattern, candidate string) bool {
-	if pattern == "" {
-		return false
-	}
-	if !strings.Contains(pattern, "/") {
-		for part := range strings.SplitSeq(candidate, "/") {
-			if matched, _ := path.Match(pattern, part); matched {
-				return true
-			}
-		}
-	}
-	re := regexp.QuoteMeta(pattern)
-	re = strings.ReplaceAll(re, `\*\*`, `.*`)
-	re = strings.ReplaceAll(re, `\*`, `[^/]*`)
-	re = strings.ReplaceAll(re, `\?`, `[^/]`)
-	matched, _ := regexp.MatchString(`^`+re+`(?:/.*)?$`, candidate)
-	return matched
-}
-
 func BenchmarkIgnoreRulesResourceWalk(b *testing.B) {
 	root := filepath.Join(b.TempDir(), "skills")
 	patterns := make([]string, 64)
@@ -111,6 +72,32 @@ func BenchmarkIgnoreRulesResourceWalk(b *testing.B) {
 			if Ignored(path, false, root, rules) {
 				b.Fatal("ordinary skill was ignored")
 			}
+		}
+	}
+}
+
+// pi: the `ignore` package that package-manager.ts and skills.ts use. Every row is the value `ignore().add(pattern).ignores(path)` returns for a file, or for the path with a trailing slash for a directory.
+func TestIgnoreRulesFollowTheIgnorePackage(t *testing.T) {
+	root := t.TempDir()
+	for _, tc := range []struct {
+		pattern, path string
+		dir, want     bool
+	}{
+		{"build/", "build", false, false}, // a trailing slash selects directories only
+		{"build/", "build", true, true},
+		{"build/", "src/build", true, true},
+		{"build/", "BUILD", true, true}, // `ignore()` matches case-insensitively
+		{"Build", "build", false, true},
+		{"*.LOG", "x.log", false, true},
+		{"/dist", "a/dist", true, false}, // a leading slash anchors the pattern
+		{"a/b", "x/a/b", false, false},   // a slash inside a pattern anchors it
+		{"!keep", "keep", false, false},
+		{"docs/*/", "docs/a", true, true},
+		{"docs/*/", "docs/a", false, false},
+	} {
+		got := Ignored(filepath.Join(root, tc.path), tc.dir, root, AppendPatterns(nil, []string{tc.pattern}))
+		if got != tc.want {
+			t.Errorf("pattern %q path %q dir=%v: ignored = %v, Pi %v", tc.pattern, tc.path, tc.dir, got, tc.want)
 		}
 	}
 }

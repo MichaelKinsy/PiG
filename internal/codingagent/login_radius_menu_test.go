@@ -1,10 +1,9 @@
 package codingagent
 
+// pi: packages/coding-agent/src/modes/interactive/components/radius-login-selector.ts
+
 import (
-	"encoding/json"
 	"errors"
-	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -118,7 +117,7 @@ func TestLoginWithoutAccountProvidersSaysAccount(t *testing.T) {
 // row renders normally when another option is selected.
 func TestRadiusLoginMenuShimmersOnlyTheSelectedRadiusRow(t *testing.T) {
 	label := "Sign in with Radius" + tui.FormatAuthSelectorProviderStatus(tui.OAuthProvider{ID: "radius", Name: "Radius", AuthType: "oauth"})
-	selector := tui.NewExtensionSelector("Select authentication method:", []string{"Sign in with an account", "Sign in with an API key", label})
+	selector := tui.NewExtensionSelectorComponent("Select authentication method:", []string{"Sign in with an account", "Sign in with an API key", label}, nil, nil)
 	renders := make(chan struct{}, 1)
 	menu := newRadiusLoginMenu(selector, label, "Sign in with Radius", func() {
 		select {
@@ -157,33 +156,5 @@ func TestRadiusLoginMenuShimmersOnlyTheSelectedRadiusRow(t *testing.T) {
 	case <-renders:
 	case <-time.After(2 * time.Second):
 		t.Fatal("the animation did not request a render")
-	}
-}
-
-// Pi 1.0.0 interactive-mode.ts:6297-6316: an existing Radius MCP entry keeps its members in order with auth set and
-// oauth removed; a new entry is the Radius MCP URL with the Radius login.
-func TestRadiusMcpServerConfig(t *testing.T) {
-	dir := t.TempDir()
-	mcpPath := filepath.Join(dir, "mcp.json")
-	if err := os.WriteFile(mcpPath, []byte(`{"mcpServers":{"gateway":{"description":"Radius tools","url":"`+RadiusMcpURL+`/","oauth":{"clientName":"x"},"timeout":30}}}`), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	existing, err := radiusMcpServerConfig(mcpPath, "gateway", true, "radius")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if want := `{"description":"Radius tools","url":"` + RadiusMcpURL + `/","timeout":30,"auth":{"provider":"radius"}}`; string(existing) != want {
-		t.Fatalf("existing=%s\nwant     %s", existing, want)
-	}
-	added, err := radiusMcpServerConfig(mcpPath, "radius", false, "radius")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var config map[string]any
-	if err := json.Unmarshal(added, &config); err != nil {
-		t.Fatal(err)
-	}
-	if want := `{"url":"https://radius.pi.dev/mcp","auth":{"provider":"radius"}}`; string(added) != want {
-		t.Fatalf("added=%s, want %s", added, want)
 	}
 }

@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package sdk
@@ -137,11 +136,11 @@ func (e *Extension) unsubscribe(sub *busSub) func() {
 
 // Emit delivers data to every listener of channel, in registration order, and returns when each has finished. Like EventEmitter, an emit on "error" with no listener fails.
 func (b EventBus) Emit(channel string, data any) error {
-	encoded, err := json.Marshal(data)
+	encoded, err := json.MarshalJS(data)
 	if err != nil {
 		return fmt.Errorf("pi.events.emit %q: %w", channel, err)
 	}
-	args, err := json.Marshal(busCallArgs{Channel: channel, Value: true, JSON: encoded})
+	args, err := json.MarshalJS(busCallArgs{Channel: channel, Value: true, JSON: encoded})
 	if err != nil {
 		return err
 	}

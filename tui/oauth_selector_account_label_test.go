@@ -27,10 +27,10 @@ func TestOAuthSelectorLabelsNonSubscriptionOAuthAsAccount(t *testing.T) {
 		{"unset", nil, "subscription"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			selector := NewOAuthSelector("login", []OAuthProvider{
+			selector := NewOAuthSelectorComponent("login", []OAuthProvider{
 				{ID: "radius", Name: "Radius", AuthType: "oauth", Subscription: tc.subscription},
-				{ID: "radius", Name: "Radius", AuthType: "api_key", Subscription: tc.subscription, Stored: true, StoredType: "oauth"},
-			})
+				{ID: "radius", Name: "Radius", AuthType: "api_key", Subscription: tc.subscription, Status: testAuthCheck{"oauth", ""}},
+			}, nil, nil)
 			text := stripANSI(strings.Join(selector.Render(100), "\n"))
 			if !strings.Contains(text, "Radius ["+tc.want+"]") {
 				t.Fatalf("OAuth row label is not [%s]:\n%s", tc.want, text)

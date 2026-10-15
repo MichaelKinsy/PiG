@@ -6,7 +6,9 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync/atomic"
 
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"golang.org/x/term"
@@ -16,15 +18,67 @@ import (
 // theme.bold, italic, underline, inverse and strikethrough, emits styles in
 // this process: its supports-color level for stdout is above zero.
 func chalkModifiersEnabled() bool {
-	return chalkColorLevel(os.Args[1:], os.Getenv, os.LookupEnv, term.IsTerminal(int(os.Stdout.Fd())), runtime.GOOS, windowsBuild()) > 0
+	return chalkColorLevel(os.Args[1:], os.Getenv, os.LookupEnv, stdoutIsTerminal(), runtime.GOOS, windowsBuild()) > 0
+}
+
+// stdoutTTYProbe is whether file, the os.Stdout of the probe, is a terminal.
+type stdoutTTYProbe struct {
+	file *os.File
+	tty  bool
+}
+
+var stdoutTTY atomic.Pointer[stdoutTTYProbe]
+
+// stdoutIsTerminal probes os.Stdout once per file. The probe is an fcntl (os.File.Fd puts a descriptor Go made non-blocking back in blocking mode on every call) and an ioctl, and the extension state push reads the theme palette, and so this, for every handler dispatch. Upstream's chalk probes once, at import: supports-color's `stdout: createSupportsColor({isTTY: tty.isatty(1)})` (chalk/source/vendor/supports-color/index.js:186). The environment stays live, so only the descriptor is cached, and a caller that swaps os.Stdout is probed again.
+func stdoutIsTerminal() bool {
+	file := os.Stdout
+	if probe := stdoutTTY.Load(); probe != nil && probe.file == file {
+		return probe.tty
+	}
+	tty := term.IsTerminal(int(file.Fd()))
+	stdoutTTY.Store(&stdoutTTYProbe{file: file, tty: tty})
+	return tty
+}
+
+// ChalkApply is chalk 6.0.0 applyStyle for one style with a color level above zero: an empty string stays empty, an existing close code inside the
+// text is followed by the open code again, and each line break is wrapped in close and open codes (a preceding carriage return stays before the break).
+func ChalkApply(open, closeSeq, text string) string {
+	if text == "" {
+		return ""
+	}
+	if strings.Contains(text, "\x1b") {
+		text = strings.ReplaceAll(text, closeSeq, closeSeq+open)
+	}
+	if strings.Contains(text, "\n") {
+		var b strings.Builder
+		for line, rest, found := strings.Cut(text, "\n"); ; line, rest, found = strings.Cut(rest, "\n") {
+			if !found {
+				b.WriteString(line)
+				break
+			}
+			if before, ok := strings.CutSuffix(line, "\r"); ok {
+				b.WriteString(before + closeSeq + "\r\n" + open)
+			} else {
+				b.WriteString(line + closeSeq + "\n" + open)
+			}
+		}
+		text = b.String()
+	}
+	return open + text + closeSeq
 }
 
 var (
 	chalkTeamCityRe = lazyregexp.New(`^(?:9\.0*[1-9]\d*\.|\d{2,}\.)`)
-	chalk256Re      = lazyregexp.New(`(?i)-256(?:color)?$`)
-	chalkBasicRe    = lazyregexp.New(`(?i)^screen|^xterm|^vt100|^vt220|^rxvt|color|ansi|cygwin|linux`)
+	chalk256Re      = lazyregexp.NewJSIgnoreCase(`-256(?:color)?$`)
+	chalkBasicRe    = lazyregexp.NewJSIgnoreCase(`^screen|^xterm|^vt100|^vt220|^rxvt|color|ansi|cygwin|linux`)
 	chalkNumericRe  = lazyregexp.New(`^\d+$`)
 )
+
+// ChalkColorLevel is chalkColorLevel for this platform: chalk's supports-color level for a stream given the arguments and the
+// environment that getenv and lookup read.
+func ChalkColorLevel(args []string, getenv func(string) string, lookup func(string) (string, bool), streamIsTTY bool) int {
+	return chalkColorLevel(args, getenv, lookup, streamIsTTY, runtime.GOOS, windowsBuild())
+}
 
 // chalkColorLevel is chalk's vendored supports-color _supportsColor for a
 // stream (upstream: chalk/source/vendor/supports-color/index.js).
@@ -116,7 +170,7 @@ func chalkColorLevel(args []string, getenv func(string) string, lookup func(stri
 		return 3
 	}
 	if has("TERM_PROGRAM") {
-		version, _ := strconv.Atoi(strings.SplitN(getenv("TERM_PROGRAM_VERSION"), ".", 2)[0])
+		version := jsnumber.ParseInt(strings.SplitN(getenv("TERM_PROGRAM_VERSION"), ".", 2)[0])
 		switch getenv("TERM_PROGRAM") {
 		case "iTerm.app":
 			if version >= 3 {
@@ -137,4 +191,12 @@ func chalkColorLevel(args []string, getenv func(string) string, lookup func(stri
 		return 1
 	}
 	return minimum
+}
+
+// chalkStyled is `chalk.<style>(text)` on upstream's default chalk instance: ChalkApply at a nonzero stdout level, the text unchanged otherwise.
+func chalkStyled(open, closeSeq, text string) string {
+	if !chalkModifiersEnabled() {
+		return text
+	}
+	return ChalkApply(open, closeSeq, text)
 }

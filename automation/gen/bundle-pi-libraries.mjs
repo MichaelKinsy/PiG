@@ -1,7 +1,8 @@
 // Bundle Pi's library entries without copying the shared terminal, keybinding, stream, UUID, or native-loader state into a second module instance.
 import { bundleRuntimePackage } from "./bundle-pi-package.mjs";
 const [shims, output] = process.argv.slice(2);
-await bundleRuntimePackage(shims, "pi-ai", { index: "index.js", compat: "compat.js", providers: "providers/all.js" }, {
+// Pi 1.2.0's model runtime imports personalizeOpenRouterCatalog by the providers/openrouter subpath; its own entry shares the providers chunk instead of loading a second core and catalog.
+await bundleRuntimePackage(shims, "pi-ai", { index: "index.js", compat: "compat.js", providers: "providers/all.js", openrouter: "providers/openrouter.js" }, {
   output: output ? `${output}/pi-ai` : undefined,
   json: true,
   external: ["auth/oauth/load.js", "api/bedrock-converse-stream.lazy.js", "api/lazy.js", "utils/event-stream.js", "utils/uuid.js", "utils/provider-env.js", "providers/radius-config.js"],

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"slices"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
@@ -37,11 +38,11 @@ func (s SystemPromptSections) MarshalJSON() ([]byte, error) {
 		if i > 0 {
 			out = append(out, ',')
 		}
-		name, err := json.Marshal(section.Name)
+		name, err := json.MarshalJS(section.Name)
 		if err != nil {
 			return nil, err
 		}
-		value, err := json.Marshal(section.Value)
+		value, err := json.MarshalJS(section.Value)
 		if err != nil {
 			return nil, err
 		}
@@ -98,6 +99,7 @@ func preparePromptOptions(raw json.RawMessage, data map[string]any) (map[string]
 	options["sections"] = sections
 	for name, empty := range map[string]func() any{
 		"selectedTools":    func() any { return []any{} },
+		"hiddenTools":      func() any { return []any{} },
 		"promptGuidelines": func() any { return []any{} },
 		"contextFiles":     func() any { return []any{} },
 		"skills":           func() any { return []any{} },
@@ -109,4 +111,53 @@ func preparePromptOptions(raw json.RawMessage, data map[string]any) (map[string]
 		}
 	}
 	return options, nil
+}
+
+// SystemPrompt is before_agent_start's data["systemPrompt"]: Pi's event.systemPrompt getter (runner.ts:1430-1449), which
+// renders the emission's shared options when read, so a handler sees its own edit to data["systemPromptOptions"] at once.
+// Context.GetSystemPrompt returns the same value in that handler.
+type SystemPrompt struct {
+	ctx     Context
+	options map[string]any
+	mu      sync.Mutex
+	key     []byte
+	prompt  string
+}
+
+// newSystemPrompt holds the prompt the host rendered for the options the handler received; options that differ from those
+// are rendered again by the host.
+func newSystemPrompt(ctx Context, options map[string]any, rendered any) (*SystemPrompt, error) {
+	key, err := json.Marshal(options)
+	if err != nil {
+		return nil, err
+	}
+	prompt, _ := rendered.(string)
+	return &SystemPrompt{ctx: ctx, options: options, key: key, prompt: prompt}, nil
+}
+
+// Get returns the prompt the shared options render now. An invalid custom section is an error, as Pi's builder throws.
+func (p *SystemPrompt) Get() (string, error) {
+	key, err := json.Marshal(p.options)
+	if err != nil {
+		return "", err
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if !bytes.Equal(key, p.key) {
+		prompt, err := hostRequired[string](p.ctx, "renderSystemPrompt", map[string]json.RawMessage{"options": key}, "prompt")
+		if err != nil {
+			return "", err
+		}
+		p.key, p.prompt = key, prompt
+	}
+	return p.prompt, nil
+}
+
+// MarshalJSON encodes the prompt the options render now, as JSON.stringify reads Pi's getter.
+func (p *SystemPrompt) MarshalJSON() ([]byte, error) {
+	prompt, err := p.Get()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(prompt)
 }

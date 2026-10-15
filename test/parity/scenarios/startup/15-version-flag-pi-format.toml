@@ -1,0 +1,30 @@
+# Behavior family: startup
+# Surface: executable entrypoint --version with the PIG_VERSION_FORMAT=pi opt-in
+#
+# Upstream evidence: `pi --version` prints the bare package version of the
+# pinned build (see 01-version-flag). pig prints its composite version by
+# default (D63); with PIG_VERSION_FORMAT=pi, pig prints the same bare version,
+# so the two outputs are byte-equal and no [diverge] block applies. The
+# default (composite) output stays asserted by 01-version-flag.
+
+name = "15-version-flag-pi-format"
+description = "With PIG_VERSION_FORMAT=pi, pig --version prints exactly what pi --version prints (D63 opt-in)."
+covers = [
+  "packages/coding-agent/src/cli.ts",
+]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[cli]
+args = ["--version"]
+timeout_seconds = 15
+
+[env]
+pig = ["PIG_VERSION_FORMAT=pi"]
+
+[assert]
+exit_code = 0
+output_equal = true
+both_match_regex = ["(?m)^{{UPSTREAM_VERSION}}$"]
+both_not_contain = ["panic:", "goroutine ", "Error:"]
+runs = 3

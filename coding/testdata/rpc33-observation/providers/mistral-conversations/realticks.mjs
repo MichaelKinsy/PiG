@@ -1,4 +1,4 @@
-// D82 W5 real-body tick oracle for mistral-conversations (Pi 1.0.3, packages/ai/src/api/mistral-conversations.ts).
+// D82 W5 real-body tick oracle for mistral-conversations (Pi 1.1.0, packages/ai/src/api/mistral-conversations.ts).
 //
 // ticks.mjs scripts the response body, so every read is an already buffered chunk. This probe runs Pi's real stream() against a
 // loopback server that writes headers and the whole body in one write (`buffered`), which is the case in which every microtask of
@@ -7,6 +7,9 @@
 // The spin is capped at 200 ticks: a fixture that needs a macrotask (end of body after the last chunk) is not part of this oracle.
 //
 // usage: node realticks.mjs <out.json>     (env PI_PACKAGE_ROOT = the installed pi-coding-agent package)
+const PIG_UPSTREAM_VERSION = process.env.PIG_UPSTREAM_VERSION; // the pin's display version, from `eval "$(python3 automation/pin/pin.py env)"`
+if (!PIG_UPSTREAM_VERSION) throw new Error('PIG_UPSTREAM_VERSION is not set: run eval "$(python3 automation/pin/pin.py env)" before the probe');
+import { PI_PACKAGE_VERSION } from "../../../../../test/parity/testdata/pi-version.mjs";
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import assert from 'node:assert/strict';
@@ -14,7 +17,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 
 const root = process.env.PI_PACKAGE_ROOT;
 const scope = root + '/node_modules/@earendil-works/';
-assert.equal(JSON.parse(await readFile(scope + 'pi-ai/package.json', 'utf8')).version, '1.0.3');
+assert.equal(JSON.parse(await readFile(scope + 'pi-ai/package.json', 'utf8')).version, PI_PACKAGE_VERSION);
 const { stream: mistralStream } = await import(scope + 'pi-ai/dist/api/mistral-conversations.js');
 const { AssistantMessageEventStream } = await import(scope + 'pi-ai/dist/utils/event-stream.js');
 
@@ -104,4 +107,4 @@ for (const fixture of ['tool', 'mixed', 'multi', 'errorFinish', 'malformed', 'no
   assert.ok(marks.every(([, tick]) => tick < 200), `${fixture} left the microtask domain`);
   out.push({ fixture, body: body.toString(), marks, stopReason: result.stopReason, errorMessage: result.errorMessage ?? null });
 }
-await writeFile(process.argv[2], JSON.stringify({ piVersion: '1.0.3', node: process.version, cases: out }, null, 2) + '\n');
+await writeFile(process.argv[2], JSON.stringify({ piVersion: PIG_UPSTREAM_VERSION, node: process.version, cases: out }, null, 2) + '\n');

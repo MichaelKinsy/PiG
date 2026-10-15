@@ -5,7 +5,8 @@
 // (automation/gen/vendor-pi-dist.sh writes the one-line stubs), so an extension
 // sees Pi's dispatch, credential order and result shapes, and the request runs
 // on PiG's port of the same provider.
-import { getRuntime } from "../state.mjs";
+import { currentRuntime } from "../state.mjs";
+import { bridgeStream } from "./provider-bridge-client.mjs";
 import { AssistantMessageEventStream } from "./pi-dist/pi-ai/sdk-bundle/index.js";
 
 // Headers that stand in for an API key, per upstream API implementation
@@ -83,14 +84,17 @@ function bridged(api, simple) {
     // A signal that fired before the request ends it without sending, as
     // upstream's request wrapper does (utils/provider-retry.ts).
     if (options?.signal?.aborted) return failedStream(model, "Request aborted", options);
-    const runtime = getRuntime();
-    if (!runtime) return failedStream(model, "pi-ai: the extension runtime is not initialized", options);
     // streamSimple carries the thinking level as options.reasoning; stream()
     // takes provider-specific options instead, so it runs without reasoning
     // unless the caller names a level. Neither inherits the session's level.
     // upstream: packages/ai/src/api/google-generative-ai.ts:stream and google-vertex.ts:stream accept the global fetch identity, but reject a different implementation.
     if ((api === "google-generative-ai" || api === "google-vertex") && options?.fetch === globalThis.fetch) {
       options = { ...options, fetch: undefined };
+    }
+    // No extension runtime: a detached helper, a forked child or a worker that inherited the loader. Its stream runs in a provider bridge process it owns.
+    const runtime = currentRuntime();
+    if (!runtime) {
+      return bridgeStream(model, context, { ...options, reasoning: (simple ? options?.reasoning : undefined) ?? "off" }, simple, failedStream);
     }
     const reasoning = (simple ? options?.reasoning : undefined) ?? "off";
     return runtime.startModelStream(model, context, { ...options, reasoning }, simple, true);

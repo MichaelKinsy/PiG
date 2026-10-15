@@ -13,6 +13,10 @@
   },
   {
     "provider": "opencode",
+    "id": "claude-haiku-5-5"
+  },
+  {
+    "provider": "opencode",
     "id": "claude-opus-4-5"
   },
   {
@@ -97,7 +101,15 @@
   },
   {
     "provider": "opencode",
+    "id": "gemini-4-argon"
+  },
+  {
+    "provider": "opencode",
     "id": "big-pickle"
+  },
+  {
+    "provider": "opencode",
+    "id": "cat-jam-free"
   },
   {
     "provider": "opencode",
@@ -114,10 +126,6 @@
   {
     "provider": "opencode",
     "id": "deepseek-v4.1-flash"
-  },
-  {
-    "provider": "opencode",
-    "id": "fledge-alpha-free"
   },
   {
     "provider": "opencode",
@@ -157,14 +165,6 @@
   },
   {
     "provider": "opencode",
-    "id": "ling-3.0-flash-fin-free"
-  },
-  {
-    "provider": "opencode",
-    "id": "ling-3.1-flash-free"
-  },
-  {
-    "provider": "opencode",
     "id": "longcat-2.5-preview-free"
   },
   {
@@ -185,6 +185,10 @@
   },
   {
     "provider": "opencode",
+    "id": "mistral-large-4"
+  },
+  {
+    "provider": "opencode",
     "id": "nemotron-3-ultra-free"
   },
   {
@@ -198,6 +202,10 @@
   {
     "provider": "opencode",
     "id": "space-bunny-free"
+  },
+  {
+    "provider": "opencode",
+    "id": "step-5-preview-free"
   },
   {
     "provider": "opencode",
@@ -321,6 +329,14 @@
   },
   {
     "provider": "opencode-go",
+    "id": "claude-haiku-5-5"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "minimax-m2.7"
+  },
+  {
+    "provider": "opencode-go",
     "id": "minimax-m3"
   },
   {
@@ -337,11 +353,11 @@
   },
   {
     "provider": "opencode-go",
-    "id": "deepseek-v4-flash"
+    "id": "gemini-4-argon-contributor"
   },
   {
     "provider": "opencode-go",
-    "id": "deepseek-v4-flash-vision-exp"
+    "id": "cat-jam-free"
   },
   {
     "provider": "opencode-go",
@@ -405,11 +421,11 @@
   },
   {
     "provider": "opencode-go",
-    "id": "minimax-m2.7"
+    "id": "space-bunny"
   },
   {
     "provider": "opencode-go",
-    "id": "space-bunny-free"
+    "id": "step-5-preview-free"
   },
   {
     "provider": "opencode-go",

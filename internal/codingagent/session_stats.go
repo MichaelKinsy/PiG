@@ -2,8 +2,8 @@ package codingagent
 
 import (
 	"bytes"
+	"math"
 	"slices"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -45,6 +45,8 @@ type sessionAccountingAccumulator struct {
 	usageOrder []string
 	cachePrev  *previousCacheRequest
 	prices     ModelPriceSource
+	// misses are the detected cache misses in entry order, so that a new price source reprices CacheWaste.MissedCost without reading the records again.
+	misses []cacheMissPrice
 }
 
 type sessionAccountingEntry struct {
@@ -59,13 +61,16 @@ type sessionAccountingEntry struct {
 }
 
 type sessionAccountingMessage struct {
-	Role          string               `json:"role"`
-	Content       sessionToolCallCount `json:"content"`
-	Usage         *ai.Usage            `json:"usage,omitempty"`
-	Provider      string               `json:"provider,omitempty"`
-	ModelID       string               `json:"model,omitempty"`
-	ResponseModel string               `json:"responseModel,omitempty"`
-	Timestamp     int64                `json:"timestamp,omitempty"`
+	Role     string               `json:"role"`
+	Content  sessionToolCallCount `json:"content"`
+	Usage    *ai.Usage            `json:"usage,omitempty"`
+	Provider string               `json:"provider,omitempty"`
+	ModelID  string               `json:"model,omitempty"`
+	// API is read for the session index (entrySlot.api), not for accounting; raw, so any value decodes.
+	API json.RawMessage `json:"api,omitempty"`
+	// ResponseModel is nil when the message has none; an empty string is a value (usage-totals.ts `responseModel ?? model`).
+	ResponseModel *string `json:"responseModel,omitempty"`
+	Timestamp     int64   `json:"timestamp,omitempty"`
 }
 
 type sessionToolCallCount int
@@ -74,6 +79,11 @@ func (count *sessionToolCallCount) UnmarshalJSON(data []byte) error {
 	data = bytes.TrimSpace(data)
 	if len(data) == 0 || data[0] != '[' {
 		*count = 0
+		return nil
+	}
+	// The decoder has validated data; the scan answers the common shapes without validating and decoding it again.
+	if scanned, ok := scanToolCallCount(data); ok {
+		*count = sessionToolCallCount(scanned)
 		return nil
 	}
 	var blocks []struct {
@@ -94,18 +104,21 @@ func (count *sessionToolCallCount) UnmarshalJSON(data []byte) error {
 func (s *Session) SetCacheReadPriceSource(prices ModelPriceSource) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	// Prices affect only a detected miss's cost, not miss detection or the previous-request state.
-	if s.stats.stats.CacheWaste.MissCount == 0 {
-		s.stats.prices = prices
+	s.stats.reprice(prices)
+}
+
+// reprice binds prices. Prices affect only a detected miss's cost, not miss detection or the previous-request state, so MissedCost is the
+// sum, in entry order, of each recorded miss's cost under prices: the value accounting every record again with prices gives.
+func (a *sessionAccountingAccumulator) reprice(prices ModelPriceSource) {
+	a.prices = prices
+	if a.stats.CacheWaste.MissCount == 0 {
 		return
 	}
-	rebuilt := sessionAccountingAccumulator{prices: prices}
-	for _, e := range s.entries {
-		rebuilt.add(e.raw, e.Base.Type)
+	var cost float64
+	for _, miss := range a.misses {
+		cost += miss.cost(prices)
 	}
-	s.stats.prices = prices
-	s.stats.cachePrev = rebuilt.cachePrev
-	s.stats.stats.CacheWaste = rebuilt.stats.CacheWaste
+	a.stats.CacheWaste.MissedCost = cost
 }
 
 func (s *Session) Accounting() SessionAccounting {
@@ -115,10 +128,21 @@ func (s *Session) Accounting() SessionAccounting {
 }
 
 func (a *sessionAccountingAccumulator) add(raw json.RawMessage, wireType string) {
+	_, _ = a.addRecord(raw, wireType)
+}
+
+// addRecord is add that also returns the entry's message, false when the record does not decode.
+func (a *sessionAccountingAccumulator) addRecord(raw json.RawMessage, wireType string) (sessionAccountingMessage, bool) {
 	var entry sessionAccountingEntry
 	if err := json.Unmarshal(raw, &entry); err != nil {
-		return
+		return sessionAccountingMessage{}, false
 	}
+	a.addDecoded(entry, wireType)
+	return entry.Message, true
+}
+
+// addDecoded is add for a record already decoded.
+func (a *sessionAccountingAccumulator) addDecoded(entry sessionAccountingEntry, wireType string) {
 	if entry.Type != "" {
 		wireType = entry.Type
 	}
@@ -133,28 +157,56 @@ func (a *sessionAccountingAccumulator) add(raw json.RawMessage, wireType string)
 		a.addUsage("Tools/summaries", entry.Usage)
 		a.cachePrev = nil
 	case "message":
-		a.stats.TotalMessages++
-		message := entry.Message
-		switch message.Role {
-		case "user":
-			a.stats.UserMessages++
-		case "assistant":
-			a.stats.AssistantMessages++
-			a.stats.ToolCalls += int(message.Content)
-			key := message.Provider + "/" + message.ModelID
-			if message.ResponseModel != "" {
-				key = message.Provider + "/" + message.ResponseModel
-			}
-			a.addUsage(key, message.Usage)
-			a.stats.LatestCacheHitRate = latestCacheHitRate(message.Usage)
-			a.addCacheWaste(message)
-		case "toolResult":
-			a.stats.ToolResults++
-			a.addUsage("Tools/summaries", message.Usage)
-		}
+		a.addMessage(entry.Message)
 	case "bash_execution":
 		a.stats.TotalMessages++
 	}
+}
+
+// addMessage counts one "message" entry.
+func (a *sessionAccountingAccumulator) addMessage(message sessionAccountingMessage) {
+	a.stats.TotalMessages++
+	switch message.Role {
+	case "user":
+		a.stats.UserMessages++
+	case "assistant":
+		a.stats.AssistantMessages++
+		a.stats.ToolCalls += int(message.Content)
+		key := message.Provider + "/" + message.ModelID
+		if message.ResponseModel != nil {
+			key = message.Provider + "/" + *message.ResponseModel
+		}
+		a.addUsage(key, message.Usage)
+		a.stats.LatestCacheHitRate = latestCacheHitRate(message.Usage)
+		a.addCacheWaste(message)
+	case "toolResult":
+		a.stats.ToolResults++
+		a.addUsage("Tools/summaries", message.Usage)
+	}
+}
+
+// addMessageEntry counts the "message" entry whose record was just encoded from a message and decoded back (the entry holds what its record says). It reads the decoded fields that add reads from the record, so a long tool result is not scanned again.
+func (a *sessionAccountingAccumulator) addMessageEntry(message agent.AgentMessage) {
+	accounted := sessionAccountingMessage{Role: message.Role()}
+	switch {
+	case message.Assistant != nil:
+		assistant := message.Assistant
+		for _, block := range assistant.Content {
+			if _, isCall := block.(ai.ToolCall); isCall {
+				accounted.Content++
+			}
+		}
+		accounted.Usage = assistant.Usage
+		accounted.Provider = assistant.Provider
+		accounted.ModelID = assistant.ModelID
+		if assistant.ResponseModel != "" {
+			accounted.ResponseModel = &assistant.ResponseModel
+		}
+		accounted.Timestamp = assistant.Timestamp
+	case message.ToolResult != nil:
+		accounted.Usage = message.ToolResult.Usage
+	}
+	a.addMessage(accounted)
 }
 
 // latestCacheHitRate mirrors footer.ts: cacheRead over the whole prompt
@@ -222,6 +274,7 @@ func (a *sessionAccountingAccumulator) addCacheWaste(message sessionAccountingMe
 		a.stats.CacheWaste.MissedTokens += miss.missedTokens
 		a.stats.CacheWaste.MissedCost += miss.missedCost
 		a.stats.CacheWaste.MissCount++
+		a.misses = append(a.misses, miss.price)
 	}
 	if next := asPreviousCacheRequest(assistant, a.cachePrev != nil && a.cachePrev.reportedCache); next != nil {
 		a.cachePrev = next
@@ -246,11 +299,15 @@ func cacheWarmPreviousRequest(provider, model string, usage *ai.Usage, timestamp
 	if promptTokens <= 0 {
 		return previous
 	}
-	parsed, _ := time.Parse(time.RFC3339Nano, timestamp)
+	// Date.parse(entry.timestamp); a timestamp it cannot read is NaN there and 0 here.
+	var parsed int64
+	if ms := ai.DateParse(timestamp); !math.IsNaN(ms) {
+		parsed = int64(ms)
+	}
 	return &previousCacheRequest{
 		promptTokens:  promptTokens,
 		modelKey:      provider + "/" + model,
-		timestamp:     parsed.UnixMilli(),
+		timestamp:     parsed,
 		reportedCache: true,
 	}
 }

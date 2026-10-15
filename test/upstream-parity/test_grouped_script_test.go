@@ -4,7 +4,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/testenv"
@@ -54,11 +53,7 @@ exit 24
 
 func pigRepoRoot(t *testing.T) string {
 	t.Helper()
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller failed")
-	}
-	return filepath.Join(filepath.Dir(thisFile), "..", "..")
+	return testenv.ModuleRoot(t)
 }
 
 func writeExecutable(t *testing.T, path, content string) {

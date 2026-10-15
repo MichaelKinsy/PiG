@@ -106,6 +106,8 @@ func (loaded *LoadedDocument) deltaCount() int {
 // holds the mutation line.
 type transactionHost struct {
 	storage durable.Storage
+	// now is the wall clock in milliseconds for task lifecycle times.
+	now func() float64
 	// cached returns the cached current incarnation without loading.
 	cached func(addressId string) *LoadedDocument
 	// load returns the cached current incarnation, cold-loading and migrating it when necessary.
@@ -665,13 +667,14 @@ func (tx *Transaction) CreateTaskErased(task durable.AnyTask, input durable.Json
 		}
 		id := durable.TaskId(minted)
 		record := &AnyTaskRecord{
-			Id:             id,
-			ConversationId: conversationId,
-			Kind:           definition.Name,
-			Version:        definition.Version,
-			Input:          ownedInput,
-			Background:     options.Background,
-			State:          durable.TaskState[durable.JsonValue, durable.JsonValue]{Status: durable.TaskPending, Checkpoint: &checkpoint},
+			Id:               id,
+			ConversationId:   conversationId,
+			Kind:             definition.Name,
+			Version:          definition.Version,
+			Input:            ownedInput,
+			Background:       options.Background,
+			AbandonOnRestart: options.AbandonOnRestart != nil && *options.AbandonOnRestart,
+			State:            durable.TaskState[durable.JsonValue, durable.JsonValue]{Status: durable.TaskPending, Checkpoint: &checkpoint},
 		}
 		if owner != nil {
 			ownerId := owner.Id
@@ -721,18 +724,21 @@ func (tx *Transaction) setSubmissionLocked(record durable.SubmissionRecord) {
 
 // SettleSubmission stages a settlement, resolved during assembly against the
 // transaction's latest candidate record, falling back to committed state.
+//
+// Upstream order: the open check, then the table-write mark, then the JSON copy of the settlement, so a settlement that
+// is not strict JSON still ends the transaction's table reads.
 func (tx *Transaction) SettleSubmission(id durable.SubmissionId, settlement durable.SubmissionSettlement) error {
-	detail, err := chord.CopyJSON(settlement.Detail)
-	if err != nil {
-		return err
-	}
-	settlement.Detail = detail
 	tx.mu.Lock()
 	defer tx.mu.Unlock()
 	if err := tx.assertOpenLocked(); err != nil {
 		return err
 	}
 	tx.hasTableWrite = true
+	detail, err := chord.CopyJSON(settlement.Detail)
+	if err != nil {
+		return err
+	}
+	settlement.Detail = detail
 	tx.submissionChanges = append(tx.submissionChanges, struct {
 		id     durable.SubmissionId
 		change submissionChange
@@ -771,7 +777,7 @@ func (tx *Transaction) SetTask(value AnyTaskRecord) error {
 	if candidate != nil && candidate.ConversationId != value.ConversationId {
 		return fmt.Errorf("Task %d cannot change conversations", value.Id)
 	}
-	owned, err := copyTaskRecord(value)
+	owned, err := copyTaskRecord(tx.stampTimes(value, candidate))
 	if err != nil {
 		return err
 	}
@@ -782,14 +788,35 @@ func (tx *Transaction) SetTask(value AnyTaskRecord) error {
 	return nil
 }
 
-// copyTaskRecord takes ownership of a task record's JSON.
-func copyTaskRecord(record AnyTaskRecord) (AnyTaskRecord, error) {
-	encoded, err := json.Marshal(record)
-	if err != nil {
-		return AnyTaskRecord{}, err
+// stampTimes sets the lifecycle times: StartedAt on the first change to running, EndedAt on the change to terminal. Once
+// set, they carry over from the replaced candidate; records written before they existed lack them.
+func (tx *Transaction) stampTimes(value AnyTaskRecord, candidate *AnyTaskRecord) AnyTaskRecord {
+	stamp := func(current, carried *float64, stamps bool) *float64 {
+		switch {
+		case carried != nil:
+			return carried
+		case current != nil:
+			return current
+		case stamps:
+			now := tx.host.now()
+			return &now
+		}
+		return nil
 	}
-	var copied AnyTaskRecord
-	if err := json.Unmarshal(encoded, &copied); err != nil {
+	var candidateStarted, candidateEnded *float64
+	if candidate != nil {
+		candidateStarted, candidateEnded = candidate.StartedAt, candidate.EndedAt
+	}
+	value.StartedAt = stamp(value.StartedAt, candidateStarted, value.State.Status == durable.TaskRunning)
+	value.EndedAt = stamp(value.EndedAt, candidateEnded, value.State.Status == durable.TaskTerminal)
+	return value
+}
+
+// copyTaskRecord takes ownership of a task record's JSON. Its JSON members keep their member order, as copyJson keeps a
+// JavaScript object's.
+func copyTaskRecord(record AnyTaskRecord) (AnyTaskRecord, error) {
+	copied, err := durable.FromJsonValue[AnyTaskRecord](record)
+	if err != nil {
 		return AnyTaskRecord{}, err
 	}
 	if _, err := chord.CopyJSON(copied.Input); err != nil {
@@ -869,9 +896,9 @@ func (tx *Transaction) doc(token durable.AnyDocToken, args []any) (*delta.Object
 	var seed durable.JsonValue
 	if definition.Family {
 		// A missing seed is upstream's undefined argument, which copyJson rejects (transaction.ts doc, json.ts copy);
-		// an explicit nil is JSON null.
+		// an explicit nil is JSON null. A typed Go seed is stored through its JSON encoding, as Snapshot and CreateTask do.
 		if resolved.NextArgument < len(args) {
-			seed, err = chord.CopyJSON(args[resolved.NextArgument])
+			seed, err = durable.ToJsonValue(args[resolved.NextArgument])
 		} else {
 			err = errUndefinedSeed
 		}

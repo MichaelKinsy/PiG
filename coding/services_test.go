@@ -6,6 +6,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
 // withTempHome isolates PIG_HOME for a test so settings + auth lookups
@@ -19,9 +21,9 @@ func withTempHome(t *testing.T) string {
 
 func TestNewServicesDefaults(t *testing.T) {
 	withTempHome(t)
-	srv, err := NewServices(ServicesOptions{})
+	srv, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{})
 	if err != nil {
-		t.Fatalf("NewServices: %v", err)
+		t.Fatalf("CreateAgentSessionServices: %v", err)
 	}
 	if srv == nil {
 		t.Fatal("nil services")
@@ -42,7 +44,7 @@ func TestNewServicesDefaults(t *testing.T) {
 
 func TestNewServicesAuthDirSelectsCorrectFile(t *testing.T) {
 	tmp := withTempHome(t)
-	srv, err := NewServices(ServicesOptions{
+	srv, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{
 		AgentDir: filepath.Join(tmp, "agent"),
 	})
 	if err != nil {
@@ -65,7 +67,7 @@ func TestNewServicesAuthDirSelectsCorrectFile(t *testing.T) {
 func TestNewServicesExplicitCWDIsHonored(t *testing.T) {
 	withTempHome(t)
 	tmp := t.TempDir()
-	srv, err := NewServices(ServicesOptions{CWD: tmp})
+	srv, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: tmp})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +82,7 @@ func TestServicesAreImmutableAfterConstruction(t *testing.T) {
 	// adds e.g. SetCWD, this test should also be updated to either
 	// remove the immutability claim from godoc or keep the contract.
 	withTempHome(t)
-	srv, _ := NewServices(ServicesOptions{})
+	srv, _ := CreateAgentSessionServices(CreateAgentSessionServicesOptions{})
 
 	cwdBefore := srv.CWD()
 	dirBefore := srv.AgentDir()
@@ -107,7 +109,7 @@ func TestNewServicesReturnsErrorOnUnusableAuthDir(t *testing.T) {
 		t.Fatal(err)
 	}
 	bad := filepath.Join(notADir, "agent")
-	_, err := NewServices(ServicesOptions{AgentDir: bad})
+	_, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{AgentDir: bad})
 	if err == nil {
 		t.Fatal("expected error for unwritable AgentDir")
 	}
@@ -133,7 +135,7 @@ func TestServicesSettingsReflectsProjectOverlay(t *testing.T) {
 	if err := os.WriteFile(projFile, []byte(`{"theme": "my-project-theme"}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	srv, err := NewServices(ServicesOptions{
+	srv, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{
 		CWD:      cwd,
 		AgentDir: filepath.Join(tmp, "agent"),
 	})
@@ -152,5 +154,42 @@ func TestDefaultAgentDirHonorsPIG_HOME(t *testing.T) {
 	want := filepath.Join(tmp, "agent")
 	if got != want {
 		t.Errorf("DefaultAgentDir = %q, want %q", got, want)
+	}
+}
+
+// Pi's getAgentDir (config.ts) returns the directory named by the agent directory variable, tilde expanded, before any default; PiG's embedder entry point
+// and the pig binary's resolver must name the same directory.
+func TestDefaultAgentDirHonorsTheAgentDirVariable(t *testing.T) {
+	home := t.TempDir()
+	for _, test := range []struct {
+		name string
+		env  map[string]string
+		want string
+	}{
+		{"PIG_CODING_AGENT_DIR", map[string]string{"PIG_CODING_AGENT_DIR": filepath.Join(home, "custom")}, filepath.Join(home, "custom")},
+		{"tilde is expanded", map[string]string{"PIG_CODING_AGENT_DIR": "~/custom"}, filepath.Join(home, "custom")},
+		{"it wins over PIG_HOME", map[string]string{"PIG_CODING_AGENT_DIR": filepath.Join(home, "custom"), "PIG_HOME": filepath.Join(home, "pighome")}, filepath.Join(home, "custom")},
+		{"shared mode reads PI_CODING_AGENT_DIR", map[string]string{"PIG_USE_PI_DIRS": "1", "PI_CODING_AGENT_DIR": filepath.Join(home, "pi"), "PIG_CODING_AGENT_DIR": filepath.Join(home, "ignored")}, filepath.Join(home, "pi")},
+		{"PI_CODING_AGENT_DIR is ignored outside shared mode", map[string]string{"PI_CODING_AGENT_DIR": filepath.Join(home, "pi"), "PIG_HOME": filepath.Join(home, "pighome")}, filepath.Join(home, "pighome", "agent")},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Setenv("HOME", home)
+			t.Setenv("USERPROFILE", home)
+			for _, name := range []string{"PIG_CODING_AGENT_DIR", "PI_CODING_AGENT_DIR", "PIG_HOME", "PIG_USE_PI_DIRS"} {
+				t.Setenv(name, "")
+			}
+			for name, value := range test.env {
+				t.Setenv(name, value)
+			}
+			if got := DefaultAgentDir(); got != test.want {
+				t.Errorf("coding.DefaultAgentDir() = %q, want %q", got, test.want)
+			}
+			if got := icodingagent.AgentDir(); got != test.want {
+				t.Errorf("AgentDir() = %q, want the same directory %q", got, test.want)
+			}
+			if got := icodingagent.DefaultSkillsDir(); got != filepath.Join(test.want, "skills") {
+				t.Errorf("DefaultSkillsDir() = %q, want it under %q", got, test.want)
+			}
+		})
 	}
 }

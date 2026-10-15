@@ -76,3 +76,24 @@ func prepareChangelogFixture(ctx context.Context, t *testing.T, sc *Scenario, pi
 	pi.Env = append(pi.Env, "PI_PACKAGE_DIR="+packageDir)
 	return pig, pi, nil
 }
+
+// findRepoRoot walks up from CWD looking for go.mod with the pig module path.
+func findRepoRoot() (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	for {
+		modfile := filepath.Join(dir, "go.mod")
+		if data, err := os.ReadFile(modfile); err == nil {
+			if strings.Contains(string(data), "module github.com/MichaelKinsy/PiG") {
+				return dir, nil
+			}
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "", fmt.Errorf("repo root not found")
+		}
+		dir = parent
+	}
+}

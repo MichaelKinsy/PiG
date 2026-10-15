@@ -1,3 +1,5 @@
+//go:build !pig_strip_mistral_conversations
+
 package ai
 
 import (
@@ -31,7 +33,7 @@ func TestMistralImageToolResultWireKeys(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 	provider := NewMistralProvider(MistralConfig{APIKey: "test", Model: "pixtral-12b", ProviderID: "mistral", BaseURL: server.URL})
-	stream, err := provider.Stream(t.Context(), NormalizeContext(Context{Messages: []Message{ToolResultMessage{ToolCallID: "imagecall", ToolName: "get_circle", Content: []ToolResultMessageContent{ImageContent{Data: "YWJj", MimeType: "image/png"}}}}}), StreamOptions{})
+	stream, err := provider.Stream(invalidRequest(t), NormalizeContext(Context{Messages: []Message{ToolResultMessage{ToolCallID: "imagecall", ToolName: "get_circle", Content: []ToolResultMessageContent{ImageContent{Data: "YWJj", MimeType: "image/png"}}}}}), StreamOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -13,24 +13,28 @@ import (
 
 // SendCustomMessage awaits custom-message delivery and any triggered turn. An explicit false TriggerTurn defers an active turn's append until its tool results are complete.
 func (s *Session) SendCustomMessage(ctx context.Context, message extension.CustomMessageRef, options *extension.SendMessageOptions) error {
-	return s.sendCustomMessage(ctx, message, options, true)
+	return s.sendCustomMessage(ctx, message, options, true, nil)
 }
 
 // SendMessage is the bound extension action. The Session owns triggered work and reports failures through its extension error listeners.
 func (s *Session) SendMessage(message extension.CustomMessageRef, options *extension.SendMessageOptions) error {
-	s.reportRuntimeError("send_message", s.sendCustomMessage(s.backgroundContext(), message, options, false))
+	s.reportRuntimeError("send_message", s.sendCustomMessage(s.backgroundContext(), message, options, false, nil))
 	return nil
 }
 
-func (s *Session) sendCustomMessage(ctx context.Context, message extension.CustomMessageRef, options *extension.SendMessageOptions, wait bool) error {
+// SendMessageStaged is SendMessage whose idle triggerTurn run preparation and start stage places; a nil stage starts the run as SendMessage does.
+func (s *Session) SendMessageStaged(message extension.CustomMessageRef, options *extension.SendMessageOptions, stage *ExtensionRunStage) error {
+	s.reportRuntimeError("send_message", s.sendCustomMessage(s.backgroundContext(), message, options, false, stage))
+	return nil
+}
+
+func (s *Session) sendCustomMessage(ctx context.Context, message extension.CustomMessageRef, options *extension.SendMessageOptions, wait bool, stage *ExtensionRunStage) error {
 	content := message.Content
 	if content == nil {
 		content = []any{}
 	}
 	fields := map[string]any{"role": agent.RoleCustom, "customType": message.CustomType, "content": content, "timestamp": time.Now().UnixMilli()}
-	if message.Display != nil {
-		fields["display"] = message.Display
-	}
+	fields["display"] = message.Display
 	if message.Details != nil {
 		fields["details"] = message.Details
 	}
@@ -80,35 +84,96 @@ func (s *Session) sendCustomMessage(ctx context.Context, message extension.Custo
 		s.pendingBashMu.Unlock()
 		return nil
 	}
-	runCtx, cancel := context.WithCancel(ctx)
-	run, err := s.agent.BeginSendMessages(runCtx, []agent.AgentMessage{app})
-	if err != nil {
-		s.pendingBashMu.Unlock()
-		cancel()
-		return err
-	}
-	finish := s.ownAgentRun(cancel)
-	if wait {
-		s.pendingBashMu.Unlock()
-		return s.completeCustomMessage(runCtx, finish, run)
-	}
-	started := make(chan struct{})
-	if err := s.startExtensionTask(func() {
-		<-started
-		s.reportRuntimeError("send_message", s.completeCustomMessage(runCtx, finish, run))
-	}); err != nil {
-		s.pendingBashMu.Unlock()
-		cancel()
-		_ = s.completeCustomMessage(runCtx, finish, run)
-		return err
-	}
+	// upstream: agent-session.ts:2339-2344 (sendCustomMessage awaits _startRun({ messageType: "custom", message })). The Session is busy
+	// from this call on, so messages sent while the compaction check and the before_agent_start handlers run join the starting run. The
+	// extension's sendMessage does not await the run, so SendMessage returns at once.
+	start := s.beginRunStartLocked()
 	s.pendingBashMu.Unlock()
-	_ = run.Start()
-	close(started)
+	if wait {
+		return s.startCustomRun(ctx, start, app, nil)
+	}
+	if stage != nil {
+		stage.Prepare(ctx, func(ctx context.Context) {
+			s.reportRuntimeError("send_message", ignoreCancellation(s.startCustomRun(ctx, start, app, stage.Start)))
+		})
+		return nil
+	}
+	// Pi disposes the runtime with the triggered run still starting and reports nothing for it; a Session closing under the run cancels it the same way.
+	if err := s.startExtensionTask(func() {
+		s.reportRuntimeError("send_message", ignoreCancellation(s.startCustomRun(ctx, start, app, nil)))
+	}); err != nil {
+		start.Abandon()
+		return err
+	}
 	return nil
 }
 
-func (s *Session) completeCustomMessage(ctx context.Context, finish context.CancelFunc, run *agent.PromptRun) error {
+// startCustomRun is _startRun for the custom message app: it prepares the run that sendCustomMessage marked busy as start. With a nil
+// schedule it then runs it; otherwise it passes schedule the step that starts the run on an extension task.
+func (s *Session) startCustomRun(ctx context.Context, start *RunStart, app agent.AgentMessage, schedule func(start func())) error {
+	fail := func(err error) error {
+		start.Abandon()
+		return err
+	}
+	if err := start.checkCompaction(ctx); err != nil {
+		return fail(err)
+	}
+	prepared, err := s.prepareRun(ctx, extension.CustomMessageTrigger(customMessageOf(app)))
+	if err != nil {
+		return fail(err)
+	}
+	if schedule == nil {
+		return s.beginCustomRun(ctx, start, app, prepared)
+	}
+	schedule(func() {
+		if err := s.startExtensionTask(func() { s.reportRuntimeError("send_message", s.beginCustomRun(ctx, start, app, prepared)) }); err != nil {
+			s.reportRuntimeError("send_message", fail(err))
+		}
+	})
+	return nil
+}
+
+// beginCustomRun appends the messages held while the run started (agent-session.ts:1845-1848) and runs the prepared custom-message run
+// that sendCustomMessage marked busy as start.
+func (s *Session) beginCustomRun(ctx context.Context, start *RunStart, app agent.AgentMessage, prepared *PreparedPrompt) error {
+	fail := func(err error) error {
+		start.Abandon()
+		return err
+	}
+	if _, err := start.FlushHeldMessages(); err != nil {
+		return fail(err)
+	}
+	s.pendingBashMu.Lock()
+	select {
+	case <-s.closeDone:
+		s.pendingBashMu.Unlock()
+		return fail(errors.New("coding: session is closed"))
+	default:
+	}
+	starting := append([]agent.AgentMessage{app}, s.agent.TakePendingNextTurn()...)
+	runCtx, cancel := context.WithCancel(ctx)
+	run, err := s.agent.BeginSendMessages(runCtx, starting)
+	if err != nil {
+		s.pendingBashMu.Unlock()
+		cancel()
+		start.settleUnclaimed()
+		return err
+	}
+	finish := s.ownStartedRun(cancel)
+	s.pendingBashMu.Unlock()
+	s.admitRunPrompt(prepared)
+	return s.completeCustomMessage(runCtx, finish, run, prepared)
+}
+
+// customMessageOf is the extension-facing view of a custom AgentMessage.
+func customMessageOf(message agent.AgentMessage) extension.CustomMessage {
+	customType, _ := message.Custom["customType"].(string)
+	display, _ := message.Custom["display"].(bool)
+	timestamp, _ := message.Custom["timestamp"].(int64)
+	return extension.CustomMessage{CustomType: customType, Content: message.Custom["content"], Display: display, Details: message.Custom["details"], Timestamp: timestamp}
+}
+
+func (s *Session) completeCustomMessage(ctx context.Context, finish context.CancelFunc, run *agent.PromptRun, prepared *PreparedPrompt) error {
 	defer s.runDeferredSettledActions()
 	defer finish()
 	messages, err := run.Run()
@@ -120,6 +185,10 @@ func (s *Session) completeCustomMessage(ctx context.Context, finish context.Canc
 	} else {
 		err = errors.Join(err, s.flushPendingCustomMessages())
 	}
+	s.finishRunPrompt(prepared)
+	// agent_settled handlers run without the Session lock (see runPreparedPrompt).
+	s.mu.Unlock()
+	defer s.mu.Lock()
 	s.emitAgentSettled()
 	return err
 }
@@ -128,7 +197,7 @@ func (s *Session) completeCustomMessage(ctx context.Context, finish context.Canc
 func (s *Session) appendCustomMessage(message agent.AgentMessage) error {
 	customType, _ := message.Custom["customType"].(string)
 	display, _ := message.Custom["display"].(bool)
-	if _, err := s.inner.AppendCustomMessage(customType, message.Custom["content"], display, message.Custom["details"]); err != nil {
+	if _, err := s.inner.AppendCustomMessageEntry(customType, message.Custom["content"], display, message.Custom["details"]); err != nil {
 		return err
 	}
 	s.refreshContext()

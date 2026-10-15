@@ -6,11 +6,14 @@ package ai
 // branch of providers/anthropic.ts anthropicApiKeyAuth().resolve.
 
 import (
+	"context"
 	"encoding/json"
 	"maps"
 	"net/http"
 	"slices"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // claudeCodeVersion is the Claude Code release named in the user-agent of
@@ -57,7 +60,7 @@ var claudeCodeTools = []string{
 var ccToolLookup = func() map[string]string {
 	lookup := make(map[string]string, len(claudeCodeTools))
 	for _, name := range claudeCodeTools {
-		lookup[strings.ToLower(name)] = name
+		lookup[jsstring.ToLower(name)] = name
 	}
 	return lookup
 }()
@@ -65,7 +68,7 @@ var ccToolLookup = func() map[string]string {
 // toClaudeCodeName returns the Claude Code casing of a tool name that matches a
 // Claude Code tool case-insensitively, and any other name unchanged.
 func toClaudeCodeName(name string) string {
-	if canonical, ok := ccToolLookup[strings.ToLower(name)]; ok {
+	if canonical, ok := ccToolLookup[jsstring.ToLower(name)]; ok {
 		return canonical
 	}
 	return name
@@ -74,9 +77,9 @@ func toClaudeCodeName(name string) string {
 // fromClaudeCodeName maps a streamed tool name back to the casing of the
 // matching current tool, and returns an unmatched name unchanged.
 func fromClaudeCodeName(name string, tools []ToolSchema) string {
-	lowerName := strings.ToLower(name)
+	lowerName := jsstring.ToLower(name)
 	for _, tool := range tools {
-		if strings.ToLower(tool.Name) == lowerName {
+		if jsstring.ToLower(tool.Name) == lowerName {
 			return tool.Name
 		}
 	}
@@ -172,6 +175,8 @@ func anthropicHeadersFromProviderHeaders(values ProviderHeaders) anthropicHeader
 // the client default headers, and whether the request uses the Claude Code
 // identity.
 type anthropicClient struct {
+	// injected is the caller's client (StreamOptions.AnthropicClient); when set, the fields below are unused and the request never reaches the provider's own HTTP path.
+	injected AnthropicClient
 	// apiKey is sent as X-Api-Key when non-empty.
 	apiKey string
 	// authToken is sent as Authorization: Bearer when non-empty.
@@ -216,7 +221,7 @@ func (p *anthropicProvider) createClient(apiKey string, optionsHeaders, dynamicH
 // applyAnthropicRequestHeaders layers request headers the way the Anthropic SDK
 // buildHeaders does: SDK defaults, auth, client default headers, the JSON body
 // content type, then the anthropic-beta header derived from params.betas.
-func applyAnthropicRequestHeaders(request *http.Request, client anthropicClient, betas *string) {
+func applyAnthropicRequestHeaders(request *http.Request, client anthropicClient, betas *string, params anthropicParamHeaders) {
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("anthropic-dangerous-direct-browser-access", "true")
 	request.Header.Set("anthropic-version", "2023-06-01")
@@ -248,6 +253,12 @@ func applyAnthropicRequestHeaders(request *http.Request, client anthropicClient,
 	if betas != nil {
 		request.Header.Set("anthropic-beta", *betas)
 	}
+	if params.userProfileID != nil {
+		request.Header.Set("anthropic-user-profile-id", *params.userProfileID)
+	}
+	if params.workspaceID != nil {
+		request.Header.Set("anthropic-workspace-id", *params.workspaceID)
+	}
 }
 
 // anthropicBetaInputs are the request facts upstream getBetaFeatures reads.
@@ -257,6 +268,7 @@ type anthropicBetaInputs struct {
 	supportsEagerToolInputStreaming bool
 	reasoning                       bool
 	thinkingEnabled                 bool
+	interleavedThinking             bool // options.interleavedThinking ?? true
 	forceAdaptiveThinking           bool
 	hasFallbacks                    bool
 	supportsMidConvoEffort          bool
@@ -274,7 +286,7 @@ func getBetaFeatures(modelHeaders, optionsHeaders anthropicHeaders, inputs anthr
 	found := false
 	for _, headers := range []anthropicHeaders{modelHeaders, optionsHeaders} {
 		for _, entry := range headers.entries {
-			if entry.defined && strings.EqualFold(entry.name, "anthropic-beta") {
+			if entry.defined && jsstring.ToLower(entry.name) == "anthropic-beta" {
 				configured, found = entry.value, true
 			}
 		}
@@ -299,7 +311,7 @@ func getBetaFeatures(modelHeaders, optionsHeaders anthropicHeaders, inputs anthr
 	if inputs.hasTools && !inputs.supportsEagerToolInputStreaming {
 		features = append(features, fineGrainedToolStreamingBeta)
 	}
-	if inputs.reasoning && inputs.thinkingEnabled && !inputs.forceAdaptiveThinking {
+	if inputs.reasoning && inputs.thinkingEnabled && inputs.interleavedThinking && !inputs.forceAdaptiveThinking {
 		features = append(features, interleavedThinkingBeta)
 	}
 	if inputs.hasFallbacks {
@@ -324,6 +336,31 @@ func uniqueStrings(values []string) []string {
 	return unique
 }
 
+// AnthropicClient is the part of an Anthropic SDK client that the Anthropic Messages provider uses: Pi's `client.beta.messages.create(params, requestOptions).asResponse()` (anthropic-messages.ts:650). Inject one through StreamOptions.AnthropicClient to send the request through an alternative client that shares the Messages API, such as Anthropic on Vertex.
+//
+// upstream: packages/ai/src/api/anthropic-messages.ts:286-290 (AnthropicOptions.client), 607-609
+type AnthropicClient interface {
+	// CreateMessage sends the streaming Messages request and returns its raw response. ctx carries the request's abort. The provider reads the streamed events from the response body and handles a non-success status itself. A retryable failure that implements ProviderRequestError is retried within StreamOptions.MaxRetries, as retryProviderRequest does for Pi's client.
+	CreateMessage(ctx context.Context, params AnthropicCreateParams, options AnthropicRequestOptions) (*http.Response, error)
+}
+
+// AnthropicCreateParams are the Messages request an injected AnthropicClient sends: the params after the payload hook, with streaming enforced.
+type AnthropicCreateParams struct {
+	// Body is the JSON request body. The betas list is not in it.
+	Body []byte
+	// Betas is the comma-joined anthropic-beta header value the SDK derives from params.betas; nil sends no header.
+	Betas *string
+	// UserProfileID and WorkspaceID are the anthropic-user-profile-id and anthropic-workspace-id header values the SDK derives from params.user_profile_id
+	// and params.workspace_id (beta/messages/messages.js:24-58); nil sends no header.
+	UserProfileID, WorkspaceID *string
+}
+
+// AnthropicRequestOptions are the SDK request options of the call (anthropic-messages.ts:644-648; its `signal` is CreateMessage's ctx and its `maxRetries: 0` is the provider's own retry).
+type AnthropicRequestOptions struct {
+	// TimeoutMs is StreamOptions.TimeoutMs; nil sets none.
+	TimeoutMs *int
+}
+
 // anthropicWireBody enforces streaming on replacement payloads and splits request params into the HTTP body and anthropic-beta header. The SDK removes params.betas from the body and sends betas.toString(); absent betas send no header.
 func anthropicWireBody(payload any) ([]byte, *string, error) {
 	if request, ok := payload.(anthRequest); ok {
@@ -334,37 +371,146 @@ func anthropicWireBody(payload any) ([]byte, *string, error) {
 			betas = &joined
 		}
 		request.Betas = nil
-		body, err := json.Marshal(request)
+		body, err := marshalRequestBody(request)
 		return body, betas, err
 	}
-	body, err := json.Marshal(payload)
+	body, err := marshalRequestBody(payload)
 	if err != nil {
 		return nil, nil, err
 	}
-	var fields map[string]json.RawMessage
-	if json.Unmarshal(body, &fields) != nil {
+	// Pi sends `{ ...nextParams, stream: true }` for any value a hook returns (anthropic-messages.ts:640-642), and the SDK serializes that object in its own member order; only stream and betas are edited.
+	members, err := jsonSpreadMembers(body)
+	if err != nil {
 		return body, nil, nil
 	}
-	if fields == nil {
-		fields = make(map[string]json.RawMessage)
-	}
-	fields["stream"] = json.RawMessage("true")
-	raw, ok := fields["betas"]
-	if !ok {
-		body, err = json.Marshal(fields)
-		return body, nil, err
-	}
-	delete(fields, "betas")
 	var betas *string
-	var list []string
-	var single string
-	switch {
-	case json.Unmarshal(raw, &list) == nil && list != nil:
-		joined := strings.Join(list, ",")
-		betas = &joined
-	case json.Unmarshal(raw, &single) == nil:
-		betas = &single
+	kept := members[:0]
+	streamSet := false
+	for _, member := range members {
+		switch member.key {
+		case "betas":
+			var list []string
+			var single string
+			switch {
+			case json.Unmarshal(member.value, &list) == nil && list != nil:
+				joined := strings.Join(list, ",")
+				betas = &joined
+			// A string; null sends no header, as `betas?.toString()` is then undefined.
+			case len(member.value) > 0 && member.value[0] == '"' && json.Unmarshal(member.value, &single) == nil:
+				betas = &single
+			}
+			continue
+		case "stream":
+			member.value = json.RawMessage("true")
+			streamSet = true
+		}
+		kept = append(kept, member)
 	}
-	body, err = json.Marshal(fields)
+	if !streamSet {
+		kept = append(kept, jsonMember{key: "stream", value: json.RawMessage("true")})
+	}
+	body, err = writeJSONObjectMembers(kept)
 	return body, betas, err
+}
+
+// anthropicParamHeaders are the headers the SDK's beta messages.create derives from params members other than betas.
+type anthropicParamHeaders struct{ userProfileID, workspaceID *string }
+
+// anthropicSDKError is an error the Anthropic SDK throws from create() before any request; its message is the stream's error message.
+type anthropicSDKError struct{ message string }
+
+func (e *anthropicSDKError) Error() string { return e.message }
+
+// anthropicSDKParams applies the rest of beta messages.create (beta/messages/messages.js:24-58, :140-156) to a replacement body: output_format becomes
+// output_config.format (an error when output_config.format is also set), and user_profile_id and workspace_id leave the body as headers.
+func anthropicSDKParams(body []byte) ([]byte, anthropicParamHeaders, error) {
+	var headers anthropicParamHeaders
+	members, err := readJSONObjectMembers(body)
+	if err != nil {
+		return body, headers, nil
+	}
+	truthy := func(raw json.RawMessage) bool {
+		switch strings.TrimSpace(string(raw)) {
+		case "null", "false", "0", `""`, "-0", "0.0":
+			return false
+		}
+		return true
+	}
+	formatAt, configAt := -1, -1
+	for i, member := range members {
+		switch member.key {
+		case "output_format":
+			if truthy(member.value) {
+				formatAt = i
+			}
+		case "output_config":
+			configAt = i
+		}
+	}
+	if formatAt >= 0 {
+		var config []jsonMember
+		if configAt >= 0 {
+			if config, err = jsonSpreadMembers(members[configAt].value); err != nil {
+				return body, headers, nil
+			}
+			for _, member := range config {
+				if member.key == "format" && truthy(member.value) {
+					return nil, headers, &anthropicSDKError{"Both output_format and output_config.format were provided. Please use only output_config.format (output_format is deprecated)."}
+				}
+			}
+		}
+		format := members[formatAt].value
+		replaced := false
+		for i := range config {
+			if config[i].key == "format" {
+				config[i].value, replaced = format, true
+			}
+		}
+		if !replaced {
+			config = append(config, jsonMember{key: "format", value: format})
+		}
+		merged, err := writeJSONObjectMembers(config)
+		if err != nil {
+			return nil, headers, err
+		}
+		members = slices.Delete(members, formatAt, formatAt+1)
+		if configAt > formatAt {
+			configAt--
+		}
+		if configAt >= 0 {
+			members[configAt].value = merged
+		} else {
+			members = append(members, jsonMember{key: "output_config", value: merged})
+		}
+	}
+	kept := members[:0]
+	for _, member := range members {
+		switch member.key {
+		case "user_profile_id", "workspace_id":
+			if value, ok := jsStringOf(member.value); ok {
+				if member.key == "user_profile_id" {
+					headers.userProfileID = &value
+				} else {
+					headers.workspaceID = &value
+				}
+			}
+			continue
+		}
+		kept = append(kept, member)
+	}
+	out, err := writeJSONObjectMembers(kept)
+	return out, headers, err
+}
+
+// jsStringOf is String(value) of a header value the SDK passes through: a JSON string, number or boolean. Null, an object and an array send no header here.
+func jsStringOf(raw json.RawMessage) (string, bool) {
+	trimmed := strings.TrimSpace(string(raw))
+	switch {
+	case trimmed == "" || trimmed == "null" || trimmed[0] == '{' || trimmed[0] == '[':
+		return "", false
+	case trimmed[0] == '"':
+		var text string
+		return text, json.Unmarshal(raw, &text) == nil
+	}
+	return trimmed, true
 }

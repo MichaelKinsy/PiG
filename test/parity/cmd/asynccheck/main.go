@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -15,21 +16,12 @@ import (
 	"github.com/BurntSushi/toml"
 
 	"github.com/MichaelKinsy/PiG/coding"
+	"github.com/MichaelKinsy/PiG/test/parity/upstreampackages"
 )
 
 var (
-	trackedPackages = []struct {
-		root string
-		name string
-	}{
-		{root: "packages/agent", name: "@earendil-works/pi-agent-core"},
-		{root: "packages/ai", name: "@earendil-works/pi-ai"},
-		{root: "packages/codemode", name: "@earendil-works/pi-codemode"},
-		{root: "packages/coding-agent", name: "@earendil-works/pi-coding-agent"},
-		{root: "packages/mcp", name: "@earendil-works/pi-mcp"},
-		{root: "packages/tui", name: "@earendil-works/pi-tui"},
-	}
-	asyncPattern = regexp.MustCompile(`\basync\b|\bPromise\s*[<.(]|\.then\s*\(|\.catch\s*\(|\.finally\s*\(`)
+	trackedPackages = upstreampackages.All()
+	asyncPattern    = regexp.MustCompile(`\basync\b|\bPromise\s*[<.(]|\.then\s*\(|\.catch\s*\(|\.finally\s*\(`)
 )
 
 type asyncManifest struct {
@@ -59,6 +51,8 @@ func main() {
 	upstreamRoot := flag.String("upstream", ".upstream/current", "current upstream mirror")
 	repoRoot := flag.String("repo-root", ".", "repository root used to validate evidence")
 	generate := flag.Bool("generate", false, "print a pending manifest for the current mirror")
+	previousManifest := flag.String("previous", "", "with -generate, keep each row of this earlier manifest whose source file is byte-identical in -previous-upstream")
+	previousUpstream := flag.String("previous-upstream", "", "with -previous, the earlier version's upstream mirror")
 	flag.Parse()
 
 	paths, err := discoverAsyncSources(*upstreamRoot)
@@ -66,7 +60,11 @@ func main() {
 		fail("discover: %v", err)
 	}
 	if *generate {
-		writePendingManifest(coding.UpstreamVersion, paths)
+		var carry func(string) (asyncAudit, bool)
+		if *previousManifest != "" {
+			carry = carryUnchanged(*previousManifest, *previousUpstream, *upstreamRoot)
+		}
+		fmt.Print(pendingManifest(coding.UpstreamVersion, paths, carry))
 		return
 	}
 
@@ -87,7 +85,7 @@ func main() {
 func discoverAsyncSources(root string) ([]string, error) {
 	var paths []string
 	for _, pkg := range trackedPackages {
-		manifestPath := filepath.Join(root, filepath.FromSlash(pkg.root), "package.json")
+		manifestPath := filepath.Join(root, filepath.FromSlash(pkg.Root), "package.json")
 		body, err := os.ReadFile(manifestPath)
 		if err != nil {
 			return nil, err
@@ -99,10 +97,10 @@ func discoverAsyncSources(root string) ([]string, error) {
 		if err := json.Unmarshal(body, &manifest); err != nil {
 			return nil, fmt.Errorf("%s: %w", manifestPath, err)
 		}
-		if manifest.Name != pkg.name || manifest.Version != coding.UpstreamVersion {
-			return nil, fmt.Errorf("%s: got %q version %q, want %q version %q", manifestPath, manifest.Name, manifest.Version, pkg.name, coding.UpstreamVersion)
+		if manifest.Name != pkg.Name || manifest.Version != coding.UpstreamPackageVersion {
+			return nil, fmt.Errorf("%s: got %q version %q, want %q version %q", manifestPath, manifest.Name, manifest.Version, pkg.Name, coding.UpstreamPackageVersion)
 		}
-		base := filepath.Join(root, filepath.FromSlash(pkg.root), "src")
+		base := filepath.Join(root, filepath.FromSlash(pkg.Root), "src")
 		if _, err := os.Stat(base); err != nil {
 			return nil, fmt.Errorf("tracked root %s: %w", base, err)
 		}
@@ -225,10 +223,51 @@ func validateAudit(audit asyncAudit, repoRoot string) []string {
 	return problems
 }
 
-func writePendingManifest(version string, paths []string) {
-	fmt.Printf("version = %q\n", version)
+// pendingManifest renders a manifest with one row per path: carry's row when it has one, otherwise a pending row.
+func pendingManifest(version string, paths []string, carry func(string) (asyncAudit, bool)) string {
+	var out strings.Builder
+	fmt.Fprintf(&out, "version = %q\n", version)
+	list := func(values []string) string {
+		quoted := make([]string, len(values))
+		for i, v := range values {
+			quoted[i] = fmt.Sprintf("%q", v)
+		}
+		return "[" + strings.Join(quoted, ", ") + "]"
+	}
 	for _, path := range paths {
-		fmt.Printf("\n[[files]]\npath = %q\ndisposition = %q\ncontracts = []\nevidence = []\nrationale = %q\n", path, "pending", "")
+		row := asyncAudit{Path: path, Disposition: "pending", Contracts: []string{}, Evidence: []string{}}
+		if carry != nil {
+			if kept, ok := carry(path); ok {
+				row = kept
+			}
+		}
+		fmt.Fprintf(&out, "\n[[files]]\npath = %q\ndisposition = %q\ncontracts = %s\nevidence = %s\nrationale = %q\n", row.Path, row.Disposition, list(row.Contracts), list(row.Evidence), row.Rationale)
+	}
+	return out.String()
+}
+
+// carryUnchanged keeps the reviewed rows of an earlier manifest for the source files that are byte-identical in the two mirrors: a
+// changed file's async contract may differ, so it is pending again.
+func carryUnchanged(manifestPath, previousRoot, root string) func(string) (asyncAudit, bool) {
+	var previous asyncManifest
+	if _, err := toml.DecodeFile(manifestPath, &previous); err != nil {
+		fail("load %s: %v", manifestPath, err)
+	}
+	rows := map[string]asyncAudit{}
+	for _, row := range previous.Files {
+		rows[row.Path] = row
+	}
+	return func(path string) (asyncAudit, bool) {
+		row, ok := rows[path]
+		if !ok || row.Disposition == "pending" {
+			return asyncAudit{}, false
+		}
+		before, errBefore := os.ReadFile(filepath.Join(previousRoot, filepath.FromSlash(path)))
+		now, errNow := os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
+		if errBefore != nil || errNow != nil || !bytes.Equal(before, now) {
+			return asyncAudit{}, false
+		}
+		return row, true
 	}
 }
 

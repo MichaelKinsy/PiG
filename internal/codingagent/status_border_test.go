@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/coding/extension"
+
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -15,7 +17,7 @@ import (
 )
 
 func TestWorkingStatusUsesEditorBorder(t *testing.T) {
-	m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir()})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir()})
 	m.editor = tui.NewEditor()
 	m.editor.EmbedWorkingStatus = true
 	m.statusContainer = tui.NewContainer()
@@ -62,17 +64,17 @@ func TestWorkingStatusStaysVisibleThroughPendingAndRunningToolsUntilAgentEnd(t *
 	}
 }
 
-func statusBorderMode(t *testing.T, embedded bool) *InteractiveMode {
+func statusBorderMode(t testing.TB, embedded bool) *InteractiveMode {
 	t.Helper()
-	m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir()})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir()})
 	m.editor = tui.NewEditor()
 	m.editor.EmbedWorkingStatus = embedded
 	m.statusContainer = tui.NewContainer()
 	m.chatContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 80, 24)
-	m.statusLine = NewStatusLine(nil, "", nil)
-	m.agent = agent.NewAgent(agent.AgentOptions{})
+	m.statusLine = NewFooterComponent(nil, "", nil)
+	m.agent = mustNewAgent(agent.AgentOptions{})
 	return m
 }
 
@@ -128,13 +130,14 @@ func TestStatusBorderFallbackAndIdleRows(t *testing.T) {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/extensions/types.ts:138 (WorkingIndicatorOptions.intervalMs).
 func TestWorkingStatusOptionsAndVisibility(t *testing.T) {
 	m := statusBorderMode(t, true)
 	m.isIdle = false
 	m.startWorkingLoader()
 	ui := &ExtUIContext{m: m}
 	ui.SetWorkingMessage("Indexing")
-	ui.SetWorkingIndicator(map[string]any{"frames": []string{"A", "B"}, "intervalMs": 200})
+	ui.SetWorkingIndicator(extension.WorkingIndicatorOptions{Frames: new([]string{"A", "B"}), IntervalMs: new(float64(200))})
 	if got := widthx.StripAnsi(m.editor.Render(80)[0]); !strings.Contains(got, "── A Indexing ") {
 		t.Fatalf("custom status=%q", got)
 	}
@@ -146,7 +149,7 @@ func TestWorkingStatusOptionsAndVisibility(t *testing.T) {
 	if m.activeStatusIndicator.Frame != 1 {
 		t.Fatal("custom interval did not advance")
 	}
-	ui.SetWorkingIndicator(map[string]any{"frames": []string{}})
+	ui.SetWorkingIndicator(extension.WorkingIndicatorOptions{Frames: new([]string{})})
 	if got := widthx.StripAnsi(m.editor.Render(80)[0]); !strings.Contains(got, "── Indexing ") {
 		t.Fatalf("hidden spinner=%q", got)
 	}
@@ -158,8 +161,8 @@ func TestWorkingStatusOptionsAndVisibility(t *testing.T) {
 	if m.activeStatusIndicator == nil {
 		t.Fatal("working visibility did not restore indicator")
 	}
-	ui.SetWorkingIndicator(nil)
-	ui.SetWorkingMessage("")
+	ui.SetWorkingIndicator(extension.WorkingIndicatorOptions{})
+	ui.ClearWorkingMessage()
 	if got := widthx.StripAnsi(m.editor.Render(80)[0]); !strings.Contains(got, "── ⠋ Working ") {
 		t.Fatalf("reset status=%q", got)
 	}
@@ -218,13 +221,14 @@ func TestStatusTickStopsWithOwnerContext(t *testing.T) {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/extensions/types.ts:135 (WorkingIndicatorOptions.frames).
 func TestWorkingOptionsAreOwnedAndSurviveCallerMutation(t *testing.T) {
 	m := statusBorderMode(t, true)
 	m.startWorkingLoader()
 	m.runCtx = t.Context()
 	ui := &ExtUIContext{m: m}
 	frames := []string{"source"}
-	ui.SetWorkingIndicator(map[string]any{"frames": frames})
+	ui.SetWorkingIndicator(extension.WorkingIndicatorOptions{Frames: new(frames)})
 	frames[0] = "mutated"
 	if m.activeStatusIndicator.Frames[0] != "⠋" {
 		t.Fatal("extension mutated UI off owner loop")
@@ -296,5 +300,74 @@ func TestSummarizationRetryScheduledShowsTheError(t *testing.T) {
 	chat := widthx.StripAnsi(strings.Join(m.chatContainer.Render(80), "\n"))
 	if !strings.Contains(chat, "Error: summarizer overloaded") {
 		t.Fatalf("chat = %q, want the summarization error shown", chat)
+	}
+}
+
+// Pi's setWorkingMessage(message?: string) shows `message ?? defaultWorkingMessage` (interactive-mode.ts:2641-2646): undefined restores the default label and
+// an empty string is a message, so the label is empty. Both before and after the loader exists.
+func TestWorkingMessageEmptyStringIsAMessageAndNilRestoresTheDefault(t *testing.T) {
+	m := &InteractiveMode{statusLine: NewFooterComponent(nil, "", nil), workingVisible: true}
+	ui := &ExtUIContext{m: m}
+
+	ui.SetWorkingMessage("")
+	if m.workingMessage == nil || *m.workingMessage != "" {
+		t.Fatalf("workingMessage = %v, want a pointer to the empty string", m.workingMessage)
+	}
+	ui.SetWorkingMessage("Indexing")
+	ui.ClearWorkingMessage()
+	if m.workingMessage != nil {
+		t.Fatalf("workingMessage = %q after clearing, want nil (the default)", *m.workingMessage)
+	}
+}
+
+// Pi draws `message ?? defaultWorkingMessage` on the running working indicator (interactive-mode.ts:2641-2646) and on one started later (:2354): an empty
+// message is drawn as an empty label, and only no message draws the default "Working".
+func TestWorkingMessageEmptyLabelIsDrawnAndClearRestoresWorking(t *testing.T) {
+	m := statusBorderMode(t, true)
+	m.isIdle = false
+	m.startWorkingLoader()
+	ui := &ExtUIContext{m: m}
+	ui.SetWorkingIndicator(extension.WorkingIndicatorOptions{Frames: new([]string{"A"})})
+	status := func() string { return widthx.StripAnsi(m.editor.Render(80)[0]) }
+
+	ui.SetWorkingMessage("")
+	if got := status(); strings.Contains(got, "Working") || !strings.Contains(got, "── A ") {
+		t.Fatalf("running indicator with an empty message = %q, want the frame and an empty label", got)
+	}
+	ui.SetWorkingVisible(false)
+	ui.SetWorkingVisible(true)
+	if got := status(); strings.Contains(got, "Working") || !strings.Contains(got, "── A ") {
+		t.Fatalf("restarted indicator with an empty message = %q, want the frame and an empty label", got)
+	}
+	ui.ClearWorkingMessage()
+	if got := status(); !strings.Contains(got, "── A Working ") {
+		t.Fatalf("indicator after clearing = %q, want the default label", got)
+	}
+	ui.SetWorkingVisible(false)
+	ui.SetWorkingVisible(true)
+	if got := status(); !strings.Contains(got, "── A Working ") {
+		t.Fatalf("restarted indicator after clearing = %q, want the default label", got)
+	}
+}
+
+// A Session replacement resets the working message, visibility and indicator an extension set (interactive-mode.ts:2474-2482 `workingMessage = undefined; workingVisible = true;
+// setWorkingIndicator()`); they used to survive into the next Session.
+func TestSessionReplacementResetsTheWorkingStatus(t *testing.T) {
+	m := statusBorderMode(t, true)
+	ui := &ExtUIContext{m: m}
+	ui.SetWorkingMessage("Indexing")
+	ui.SetWorkingVisible(false)
+	ui.SetWorkingIndicator(extension.WorkingIndicatorOptions{Frames: new([]string{"A"})})
+
+	m.resetExtensionUIForReplacement()
+
+	if m.workingMessage != nil {
+		t.Errorf("workingMessage = %q after the replacement, want the default (nil)", *m.workingMessage)
+	}
+	if !m.workingVisible {
+		t.Error("workingVisible is still false after the replacement, want true")
+	}
+	if m.workingIndicatorOptions != nil {
+		t.Errorf("workingIndicatorOptions = %+v after the replacement, want the default (nil)", m.workingIndicatorOptions)
 	}
 }

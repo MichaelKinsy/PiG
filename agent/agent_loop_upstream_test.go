@@ -3,11 +3,14 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"reflect"
 	"slices"
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -23,7 +26,7 @@ import (
 // upstream: "should emit events with AgentMessage types"
 func TestAgentLoop_EmitsEventsWithAgentMessageTypes(t *testing.T) {
 	rec := newEventRecorder(nil)
-	a := NewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: replyText("Hi there!")}), EventCh: rec.ch})
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: replyText("Hi there!")}), EventCh: rec.ch})
 
 	msgs := mustSend(t, a, "Hello")
 	types := eventTypes(rec.stop())
@@ -43,9 +46,9 @@ func TestAgentLoop_EmitsEventsWithAgentMessageTypes(t *testing.T) {
 func TestAgentLoop_HandlesCustomMessageTypesViaConvertToLlm(t *testing.T) {
 	provider := &scriptedProvider{respond: replyText("Response")}
 	var convertedMessages []ai.Message
-	a := NewAgent(AgentOptions{Model: scriptedModel(provider), ConvertToLlm: func(messages []AgentMessage) ([]ai.Message, error) {
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(provider), ConvertToLlm: func(messages []AgentMessage) ([]ai.Message, error) {
 		filtered := slices.DeleteFunc(slices.Clone(messages), func(message AgentMessage) bool { return message.Role() == "notification" })
-		convertedMessages = ConvertToLLM(filtered, nil)
+		convertedMessages = ConvertToLLM(NormalizeMessages(filtered, nil))
 		return convertedMessages, nil
 	}})
 	a.SetMessages([]AgentMessage{{Custom: map[string]any{"role": "notification", "text": "This is a notification"}}})
@@ -71,9 +74,9 @@ func TestAgentLoop_AppliesTransformContextBeforeConvertToLlm(t *testing.T) {
 	var transformed []AgentMessage
 	var converted []ai.Message
 	var order []string
-	a := NewAgent(AgentOptions{Model: scriptedModel(provider), ConvertToLlm: func(messages []AgentMessage) ([]ai.Message, error) {
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(provider), ConvertToLlm: func(messages []AgentMessage) ([]ai.Message, error) {
 		order = append(order, "convert")
-		converted = ConvertToLLM(messages, nil)
+		converted = ConvertToLLM(NormalizeMessages(messages, nil))
 		return converted, nil
 	}})
 	a.SetMessages([]AgentMessage{userMessage("old message 1"), assistantText("old response 1"), userMessage("old message 2"), assistantText("old response 2")})
@@ -111,11 +114,11 @@ func TestAgentLoop_HandlesToolCallsAndResults(t *testing.T) {
 	}
 	var observedUsage *ai.Usage
 	rec := newEventRecorder(nil)
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model:   scriptedModel(&scriptedProvider{respond: toolCallsThenText(toolCall("tool-1", "echo", ai.JsonObject{"value": "hello"}))}),
 		Tools:   []AgentTool{tool},
 		EventCh: rec.ch,
-		AfterToolCall: []AfterToolCallHook{func(_ context.Context, _, _ string, _ json.RawMessage, result AgentToolResult) AfterToolCallResult {
+		AfterToolCallHooks: []AfterToolCallHook{func(_ context.Context, _, _ string, _ json.RawMessage, result AgentToolResult) AfterToolCallResult {
 			observedUsage = result.Usage
 			return AfterToolCallResult{Usage: patchedUsage}
 		}},
@@ -177,7 +180,7 @@ func TestAgentLoop_ToolCallContentControlsContinuationAcrossStopReasons(t *testi
 				}
 				return doneStream(message)
 			}}
-			a := NewAgent(AgentOptions{
+			a := mustNewAgent(AgentOptions{
 				Model: scriptedModel(provider),
 				Tools: []AgentTool{valueEchoTool(ToolModeParallel, func(string) { executed++ })},
 			})
@@ -213,7 +216,7 @@ func TestAgentLoop_DoesNotExecuteToolCallsFromLengthTruncatedMessage(t *testing.
 		return doneStream(textMessage("done"))
 	}}
 	rec := newEventRecorder(nil)
-	a := NewAgent(AgentOptions{Model: scriptedModel(provider), Tools: []AgentTool{valueEchoTool(ToolModeParallel, func(v string) { executed = append(executed, v) })}, EventCh: rec.ch})
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(provider), Tools: []AgentTool{valueEchoTool(ToolModeParallel, func(v string) { executed = append(executed, v) })}, EventCh: rec.ch})
 
 	msgs := mustSend(t, a, "echo something")
 	events := rec.stop()
@@ -250,10 +253,10 @@ func TestAgentLoop_ExecutesMutatedBeforeToolCallArgsWithoutRevalidation(t *testi
 		executed = append(executed, decoded["value"])
 		return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "echoed"}}}, nil
 	}}
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model: scriptedModel(&scriptedProvider{respond: toolCallsThenText(toolCall("tool-1", "echo", ai.JsonObject{"value": "hello"}))}),
 		Tools: []AgentTool{tool},
-		BeforeToolCall: []BeforeToolCallHook{func(context.Context, string, string, json.RawMessage) ToolCallHookResult {
+		BeforeToolCallHooks: []BeforeToolCallHook{func(context.Context, string, string, json.RawMessage) ToolCallHookResult {
 			return ToolCallHookResult{Args: json.RawMessage(`{"value":123}`)}
 		}},
 	})
@@ -300,7 +303,7 @@ func TestAgentLoop_PreparesToolArgumentsForValidation(t *testing.T) {
 		executed = append(executed, string(args))
 		return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "edited 1"}}}, nil
 	}}}
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model: scriptedModel(&scriptedProvider{respond: toolCallsThenText(toolCall("tool-1", "edit", ai.JsonObject{"oldText": "before", "newText": "after"}))}),
 		Tools: []AgentTool{tool},
 	})
@@ -342,7 +345,7 @@ func TestAgentLoop_EmitsToolExecutionEndInCompletionOrderButPersistsSourceOrder(
 		return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "echoed: " + value}}}, nil
 	}}
 	rec = newEventRecorder(nil)
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model: scriptedModel(&scriptedProvider{respond: toolCallsThenText(
 			toolCall("tool-1", "echo", ai.JsonObject{"value": "first"}),
 			toolCall("tool-2", "echo", ai.JsonObject{"value": "second"}),
@@ -400,7 +403,7 @@ func TestAgentLoop_InjectsQueuedMessagesAfterAllToolCallsComplete(t *testing.T) 
 		toolCall("tool-2", "echo", ai.JsonObject{"value": "second"}),
 	)}
 	rec := newEventRecorder(nil)
-	a = NewAgent(AgentOptions{Model: scriptedModel(provider), Tools: []AgentTool{tool}, ToolExecution: ToolModeSequential, EventCh: rec.ch})
+	a = mustNewAgent(AgentOptions{Model: scriptedModel(provider), Tools: []AgentTool{tool}, ToolExecution: ToolModeSequential, EventCh: rec.ch})
 
 	mustSend(t, a, "start")
 	events := rec.stop()
@@ -483,7 +486,7 @@ func (p *overlapProbe) tool(name string, mode ToolExecutionMode) *scriptTool {
 // upstream: "should force sequential execution when a tool has executionMode=sequential even with default parallel config"
 func TestAgentLoop_ForcesSequentialWhenToolIsSequentialUnderParallelConfig(t *testing.T) {
 	probe := newOverlapProbe()
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model: scriptedModel(&scriptedProvider{respond: toolCallsThenText(
 			toolCall("tool-1", "slow", ai.JsonObject{"value": "first"}),
 			toolCall("tool-2", "slow", ai.JsonObject{"value": "second"}),
@@ -511,7 +514,7 @@ func TestAgentLoop_ForcesSequentialWhenToolIsSequentialUnderParallelConfig(t *te
 // upstream: "should force sequential execution when one of multiple tools has executionMode=sequential"
 func TestAgentLoop_ForcesSequentialWhenOneOfMultipleToolsIsSequential(t *testing.T) {
 	probe := newOverlapProbe()
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model: scriptedModel(&scriptedProvider{respond: toolCallsThenText(
 			toolCall("tool-1", "slow", ai.JsonObject{"value": "a"}),
 			toolCall("tool-2", "fast", ai.JsonObject{"value": "b"}),
@@ -531,7 +534,7 @@ func TestAgentLoop_ForcesSequentialWhenOneOfMultipleToolsIsSequential(t *testing
 // upstream: "should allow parallel execution when all tools have executionMode=parallel"
 func TestAgentLoop_AllowsParallelWhenAllToolsAreParallel(t *testing.T) {
 	probe := newOverlapProbe()
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model: scriptedModel(&scriptedProvider{respond: toolCallsThenText(
 			toolCall("tool-1", "echo", ai.JsonObject{"value": "first"}),
 			toolCall("tool-2", "echo", ai.JsonObject{"value": "second"}),
@@ -558,7 +561,7 @@ func TestAgentLoop_RunsFinishTurnAfterToolResultMessagesAndBeforeTurnEnd(t *test
 			ordering.add("turn_end")
 		}
 	})
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model:   scriptedModel(&scriptedProvider{respond: toolCallsThenText(toolCall("tool-1", "echo", ai.JsonObject{"value": "hello"}))}),
 		Tools:   []AgentTool{tool},
 		EventCh: rec.ch,
@@ -572,7 +575,7 @@ func TestAgentLoop_RunsFinishTurnAfterToolResultMessagesAndBeforeTurnEnd(t *test
 			if len(turn.ToolResults) != 1 {
 				t.Errorf("toolResults = %d, want 1", len(turn.ToolResults))
 			}
-			if last := turn.Context[len(turn.Context)-1]; last.ToolResult == nil {
+			if last := turn.Context.Messages[len(turn.Context.Messages)-1]; last.ToolResult == nil {
 				t.Errorf("context ends with %s, want toolResult", last.Role())
 			}
 			return nil, nil
@@ -600,7 +603,7 @@ func TestAgentLoop_RunsFinishTurnForErrorOrAbortedAssistantBeforeTurnEnd(t *test
 					ordering.add("turn_end")
 				}
 			})
-			a := NewAgent(AgentOptions{
+			a := mustNewAgent(AgentOptions{
 				Model:   scriptedModel(provider),
 				EventCh: rec.ch,
 				FinishTurn: func(_ context.Context, turn AgentTurnContext) (*AgentTurnDecision, error) {
@@ -642,13 +645,13 @@ func TestAgentLoop_ActionEndSkipsQueuePollingAndNextTurnPreparation(t *testing.T
 		return doneStream(toolUseMessage(toolCall("tool-1", "noop", nil)))
 	}}
 	var prepareNextTurnCalls int
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model: scriptedModel(provider),
 		Tools: []AgentTool{noopTool()},
 		FinishTurn: func(context.Context, AgentTurnContext) (*AgentTurnDecision, error) {
 			return &AgentTurnDecision{Action: AgentTurnEnd}, nil
 		},
-		PrepareNextTurn: func(context.Context, PrepareNextTurnContext) (*AgentLoopTurnUpdate, error) {
+		PrepareNextTurnWithContext: func(context.Context, PrepareNextTurnContext) (*AgentLoopTurnUpdate, error) {
 			prepareNextTurnCalls++
 			return nil, nil
 		},
@@ -682,7 +685,7 @@ func continueOnce(calls *int) FinishTurn {
 func TestAgentLoop_MakesExactlyOneContextOnlyRequestForContinuation(t *testing.T) {
 	var finishCalls int
 	provider := &scriptedProvider{respond: replyText("response")}
-	a := NewAgent(AgentOptions{Model: scriptedModel(provider), FinishTurn: continueOnce(&finishCalls)})
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(provider), FinishTurn: continueOnce(&finishCalls)})
 
 	mustSend(t, a, "run")
 
@@ -696,7 +699,7 @@ func TestAgentLoop_MakesExactlyOneContextOnlyRequestForContinuation(t *testing.T
 func TestAgentLoop_NaturalToolResultRequestSatisfiesContinuation(t *testing.T) {
 	var finishCalls int
 	provider := &scriptedProvider{respond: toolCallsThenText(toolCall("tool-1", "noop", nil))}
-	a := NewAgent(AgentOptions{Model: scriptedModel(provider), Tools: []AgentTool{noopTool()}, FinishTurn: continueOnce(&finishCalls)})
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(provider), Tools: []AgentTool{noopTool()}, FinishTurn: continueOnce(&finishCalls)})
 
 	mustSend(t, a, "run")
 
@@ -712,7 +715,7 @@ func TestAgentLoop_NaturalQueuedRequestSatisfiesContinuation(t *testing.T) {
 		t.Run(queueKind, func(t *testing.T) {
 			var finishCalls int
 			provider := &scriptedProvider{respond: replyText("done")}
-			a := NewAgent(AgentOptions{Model: scriptedModel(provider), FinishTurn: continueOnce(&finishCalls)})
+			a := mustNewAgent(AgentOptions{Model: scriptedModel(provider), FinishTurn: continueOnce(&finishCalls)})
 			queued := userMessage(queueKind)
 			followUpDelivered := false
 			queues := &countingQueues{
@@ -756,7 +759,7 @@ func TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState(t 
 	var completed []AgentMessage
 	var prepareCalls int
 	high := ai.ThinkingHigh
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model: scriptedModel(original),
 		OnMessagePersist: func(m AgentMessage) error {
 			completed = append(completed, m)
@@ -767,10 +770,10 @@ func TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState(t 
 			if !slices.ContainsFunc(completed, func(m AgentMessage) bool { return m.User == steering.User }) {
 				t.Error("prepareRequest ran before the steering message_end")
 			}
-			if !slices.ContainsFunc(request.Context, func(m AgentMessage) bool { return m.User == steering.User }) {
+			if !slices.ContainsFunc(request.Context.Messages, func(m AgentMessage) bool { return m.User == steering.User }) {
 				t.Error("prepareRequest context lacks the steering message")
 			}
-			return &AgentRequestUpdate{Context: []AgentMessage{canonical}, Model: replacementModel, ThinkingLevel: &high}, nil
+			return &AgentRequestUpdate{Context: &AgentContext{Messages: []AgentMessage{canonical}, Tools: request.Context.Tools}, Model: replacementModel, ThinkingLevel: &high}, nil
 		},
 	})
 	steeringDelivered := false
@@ -793,7 +796,7 @@ func TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState(t 
 	if got := userTexts(req.transcript); !reflect.DeepEqual(got, []string{"canonical projection"}) || len(req.transcript.Messages()) != 1 {
 		t.Fatalf("request messages = %v, want only the canonical projection", got)
 	}
-	if req.opts.Thinking != ai.ThinkingHigh {
+	if req.opts.Thinking != ai.ThinkingLevelHigh {
 		t.Fatalf("request thinking = %q, want high", req.opts.Thinking)
 	}
 }
@@ -809,7 +812,7 @@ func TestAgentLoop_DoesNotPollSteeringAfterPrepareRequest(t *testing.T) {
 		return doneStream(textMessage("done"))
 	}}
 	var preparations int
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model: scriptedModel(provider),
 		PrepareRequest: func(context.Context, PrepareRequestContext) (*AgentRequestUpdate, error) {
 			preparations++
@@ -842,16 +845,16 @@ func TestAgentLoop_UsesPrepareNextTurnSnapshotBeforeContinuing(t *testing.T) {
 	provider := &scriptedProvider{respond: toolCallsThenText(toolCall("tool-1", "echo", ai.JsonObject{"value": "hello"}))}
 	var prepareCalls int
 	prepared := false
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model: scriptedModel(provider),
 		Tools: []AgentTool{valueEchoTool(ToolModeParallel, nil)},
-		PrepareNextTurn: func(_ context.Context, turn PrepareNextTurnContext) (*AgentLoopTurnUpdate, error) {
+		PrepareNextTurnWithContext: func(_ context.Context, turn PrepareNextTurnContext) (*AgentLoopTurnUpdate, error) {
 			prepareCalls++
 			if prepared {
 				return nil, nil
 			}
 			prepared = true
-			return &AgentLoopTurnUpdate{Context: slices.Clone(turn.Context), Messages: []AgentMessage{{System: &ai.SystemMessage{Content: ai.SystemText("updated guidance"), Timestamp: 1}}}}, nil
+			return &AgentLoopTurnUpdate{Context: &AgentContext{Messages: slices.Clone(turn.Context.Messages), Tools: turn.Context.Tools}, Messages: []AgentMessage{{System: &ai.SystemMessage{Content: ai.SystemText("updated guidance"), Timestamp: 1}}}}, nil
 		},
 	})
 
@@ -873,10 +876,10 @@ func TestAgentLoop_UsesPrepareNextTurnSnapshotBeforeContinuing(t *testing.T) {
 func TestAgentLoop_PicksUpSteeringQueuedDuringPrepareNextTurn(t *testing.T) {
 	provider := &scriptedProvider{respond: toolCallsThenText(toolCall("tool-1", "noop", nil))}
 	var a *Agent
-	a = NewAgent(AgentOptions{
+	a = mustNewAgent(AgentOptions{
 		Model: scriptedModel(provider),
 		Tools: []AgentTool{noopTool()},
-		PrepareNextTurn: func(context.Context, PrepareNextTurnContext) (*AgentLoopTurnUpdate, error) {
+		PrepareNextTurnWithContext: func(context.Context, PrepareNextTurnContext) (*AgentLoopTurnUpdate, error) {
 			a.Steer(userMessage("late steering"))
 			return nil, nil
 		},
@@ -896,7 +899,7 @@ func TestAgentLoop_ActionEndReceivesFinalizedTurnContext(t *testing.T) {
 	provider := &scriptedProvider{respond: toolCallsThenText(toolCall("tool-1", "echo", ai.JsonObject{"value": "hello"}))}
 	var callbackToolResultIDs, callbackRoles []string
 	rec := newEventRecorder(nil)
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model:   scriptedModel(provider),
 		Tools:   []AgentTool{valueEchoTool(ToolModeParallel, func(v string) { executed = append(executed, v) })},
 		EventCh: rec.ch,
@@ -907,7 +910,7 @@ func TestAgentLoop_ActionEndReceivesFinalizedTurnContext(t *testing.T) {
 			for _, result := range turn.ToolResults {
 				callbackToolResultIDs = append(callbackToolResultIDs, result.ToolCallID)
 			}
-			callbackRoles = roles(turn.Context)
+			callbackRoles = roles(turn.Context.Messages)
 			return &AgentTurnDecision{Action: AgentTurnEnd}, nil
 		},
 	})
@@ -965,7 +968,7 @@ func TestAgentLoop_StopsAfterBatchWhenEveryToolResultTerminates(t *testing.T) {
 		return doneStream(toolUseMessage(toolCall("tool-1", "echo", ai.JsonObject{"value": "hello"})))
 	}}
 	rec := newEventRecorder(nil)
-	a := NewAgent(AgentOptions{Model: scriptedModel(provider), Tools: []AgentTool{tool}, EventCh: rec.ch})
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(provider), Tools: []AgentTool{tool}, EventCh: rec.ch})
 
 	msgs := mustSend(t, a, "echo something")
 	turnEnds := 0
@@ -989,10 +992,10 @@ func TestAgentLoop_StopsAfterBlockedToolCallWithTerminate(t *testing.T) {
 		return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "should not execute"}}}, nil
 	}}
 	provider := &scriptedProvider{respond: toolCallsThenText(toolCall("tool-1", "echo", ai.JsonObject{"value": "hello"}))}
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model: scriptedModel(provider),
 		Tools: []AgentTool{tool},
-		BeforeToolCall: []BeforeToolCallHook{func(context.Context, string, string, json.RawMessage) ToolCallHookResult {
+		BeforeToolCallHooks: []BeforeToolCallHook{func(context.Context, string, string, json.RawMessage) ToolCallHookResult {
 			return ToolCallHookResult{Block: true, Reason: "Blocked by policy", Terminate: true}
 		}},
 	})
@@ -1014,7 +1017,7 @@ func TestAgentLoop_ContinuesAfterMixedBatchWithOneTerminatingBlockedCall(t *test
 		toolCall("tool-1", "echo", ai.JsonObject{"value": "first"}),
 		toolCall("tool-2", "echo", ai.JsonObject{"value": "second"}),
 	)}
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model: scriptedModel(provider),
 		Tools: []AgentTool{valueEchoTool(ToolModeParallel, func(v string) {
 			mu.Lock()
@@ -1022,7 +1025,7 @@ func TestAgentLoop_ContinuesAfterMixedBatchWithOneTerminatingBlockedCall(t *test
 			mu.Unlock()
 		})},
 		ToolExecution: ToolModeParallel,
-		BeforeToolCall: []BeforeToolCallHook{func(_ context.Context, _, _ string, args json.RawMessage) ToolCallHookResult {
+		BeforeToolCallHooks: []BeforeToolCallHook{func(_ context.Context, _, _ string, args json.RawMessage) ToolCallHookResult {
 			if argValue(args) == "first" {
 				return ToolCallHookResult{Block: true, Reason: "Blocked first", Terminate: true}
 			}
@@ -1047,7 +1050,7 @@ func TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate(t *testing.T) {
 		toolCall("tool-1", "echo", ai.JsonObject{"value": "first"}),
 		toolCall("tool-2", "echo", ai.JsonObject{"value": "second"}),
 	)}
-	a := NewAgent(AgentOptions{Model: scriptedModel(provider), Tools: []AgentTool{tool}, ToolExecution: ToolModeParallel})
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(provider), Tools: []AgentTool{tool}, ToolExecution: ToolModeParallel})
 
 	msgs := mustSend(t, a, "echo both")
 
@@ -1063,10 +1066,10 @@ func TestAgentLoop_AfterToolCallMarksBatchTerminating(t *testing.T) {
 		return doneStream(toolUseMessage(toolCall("tool-1", "echo", ai.JsonObject{"value": "hello"})))
 	}}
 	terminate := true
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model: scriptedModel(provider),
 		Tools: []AgentTool{valueEchoTool(ToolModeParallel, nil)},
-		AfterToolCall: []AfterToolCallHook{func(context.Context, string, string, json.RawMessage, AgentToolResult) AfterToolCallResult {
+		AfterToolCallHooks: []AfterToolCallHook{func(context.Context, string, string, json.RawMessage, AgentToolResult) AfterToolCallResult {
 			return AfterToolCallResult{Terminate: &terminate}
 		}},
 	})
@@ -1082,7 +1085,7 @@ func TestAgentLoop_AfterToolCallMarksBatchTerminating(t *testing.T) {
 // upstream: agentLoopContinue "should throw when context has no messages".
 func TestAgentLoopContinue_ThrowsWhenContextHasNoMessages(t *testing.T) {
 	provider := &scriptedProvider{respond: replyText("unexpected")}
-	a := NewAgent(AgentOptions{Model: scriptedModel(provider)})
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(provider)})
 
 	if _, err := a.runAgentLoopContinue(context.Background(), a.createLoopConfig(false)); err == nil || err.Error() != "Cannot continue: no messages in context" {
 		t.Fatalf("runAgentLoopContinue error = %v", err)
@@ -1098,10 +1101,10 @@ func TestAgentLoopContinue_ThrowsWhenContextHasNoMessages(t *testing.T) {
 // so the new messages are the ones past the existing context.
 func TestAgentLoopContinue_ContinuesWithoutEmittingUserMessageEvents(t *testing.T) {
 	rec := newEventRecorder(nil)
-	a := NewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: replyText("Response")}), EventCh: rec.ch})
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: replyText("Response")}), EventCh: rec.ch})
 	a.SetMessages([]AgentMessage{userMessage("Hello")})
 
-	msgs, err := a.Continue(context.Background())
+	msgs, err := a.ContinueMessages(context.Background())
 	if err != nil {
 		t.Fatalf("Continue: %v", err)
 	}
@@ -1126,20 +1129,20 @@ func TestAgentLoopContinue_ContinuesWithoutEmittingUserMessageEvents(t *testing.
 // message (caller responsibility)". The caller maps its own text field.
 func TestAgentLoopContinue_AllowsCustomMessageAsLastMessage(t *testing.T) {
 	provider := &scriptedProvider{respond: replyText("Response to custom message")}
-	a := NewAgent(AgentOptions{Model: scriptedModel(provider), ConvertToLlm: func(messages []AgentMessage) ([]ai.Message, error) {
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(provider), ConvertToLlm: func(messages []AgentMessage) ([]ai.Message, error) {
 		var converted []ai.Message
 		for _, message := range messages {
 			if message.Role() == RoleCustom {
 				converted = append(converted, ai.UserMessage{Content: ai.UserText(message.Custom["text"].(string)), Timestamp: message.Custom["timestamp"].(int64)})
 			} else {
-				converted = append(converted, ConvertToLLM([]AgentMessage{message}, nil)...)
+				converted = append(converted, ConvertToLLM(NormalizeMessages([]AgentMessage{message}, nil))...)
 			}
 		}
 		return converted, nil
 	}})
 	a.SetMessages([]AgentMessage{{Custom: map[string]any{"role": RoleCustom, "text": "Hook content", "timestamp": time.Now().UnixMilli()}}})
 
-	msgs, err := a.Continue(context.Background())
+	msgs, err := a.ContinueMessages(context.Background())
 	if err != nil {
 		t.Fatalf("Continue: %v", err)
 	}
@@ -1195,14 +1198,14 @@ func TestRunToolCall_ValidatesRunsTheHooksAndReportsFailuresAsErrorOutcomes(t *t
 	options := RunToolCallOptions{
 		Tools: []AgentTool{newStructuredEchoTool(), failing},
 		ToolCallHooks: ToolCallHooks{
-			BeforeToolCall: []BeforeToolCallHook{func(_ context.Context, id, _ string, args json.RawMessage) ToolCallHookResult {
+			BeforeToolCallHooks: []BeforeToolCallHook{func(_ context.Context, id, _ string, args json.RawMessage) ToolCallHookResult {
 				hookCalls = append(hookCalls, "before "+id)
 				if argValue(args) == "blocked" {
 					return ToolCallHookResult{Block: true, Reason: "nope"}
 				}
 				return ToolCallHookResult{}
 			}},
-			AfterToolCall: []AfterToolCallHook{func(_ context.Context, id, _ string, _ json.RawMessage, _ AgentToolResult) AfterToolCallResult {
+			AfterToolCallHooks: []AfterToolCallHook{func(_ context.Context, id, _ string, _ json.RawMessage, _ AgentToolResult) AfterToolCallResult {
 				hookCalls = append(hookCalls, "after "+id)
 				return AfterToolCallResult{}
 			}},
@@ -1259,7 +1262,7 @@ func TestRunToolCall_LetsAfterToolCallReplaceStructuredContentAndDropsItWhenOnly
 	for _, afterResult := range results {
 		outcome, _ := RunToolCall(context.Background(), AgentToolCall{ID: "x", Name: "echo", Arguments: ai.JsonObject{"value": "original"}}, RunToolCallOptions{
 			Tools: []AgentTool{newStructuredEchoTool()},
-			ToolCallHooks: ToolCallHooks{AfterToolCall: []AfterToolCallHook{
+			ToolCallHooks: ToolCallHooks{AfterToolCallHooks: []AfterToolCallHook{
 				func(context.Context, string, string, json.RawMessage, AgentToolResult) AfterToolCallResult {
 					return afterResult
 				},
@@ -1274,4 +1277,220 @@ func TestRunToolCall_LetsAfterToolCallReplaceStructuredContentAndDropsItWhenOnly
 	if want := []string{"undefined", `{"value":"replaced"}`, `{"value":"both"}`, `{"value":"original"}`}; !reflect.DeepEqual(seen, want) {
 		t.Fatalf("structured content = %v, want %v", seen, want)
 	}
+}
+
+// Pi exposes the hook as the public Agent.prepareRequest property: a hook assigned after construction applies to the
+// next run, and reading it back returns what was assigned.
+func TestAgentSetPrepareRequestReplacesTheHookForLaterRuns(t *testing.T) {
+	provider := &scriptedProvider{respond: replyText("done")}
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(provider)})
+	if a.PrepareRequestHook() != nil {
+		t.Fatal("a new agent has a prepare-request hook")
+	}
+	calls := 0
+	var hook PrepareRequest = func(_ context.Context, request PrepareRequestContext) (*AgentRequestUpdate, error) {
+		calls++
+		return &AgentRequestUpdate{Context: &AgentContext{Messages: append(slices.Clone(request.Context.Messages), userMessage("added by hook")), Tools: request.Context.Tools}}, nil
+	}
+	a.SetPrepareRequest(hook)
+	if a.PrepareRequestHook() == nil {
+		t.Fatal("PrepareRequestHook() is nil after SetPrepareRequest")
+	}
+	runPrompt(t, a, a.createLoopConfig(false), userMessage("prompt"))
+	if calls != 1 {
+		t.Fatalf("hook ran %d times, want once per provider request (1)", calls)
+	}
+	if got := userTexts(provider.request(1).transcript); !reflect.DeepEqual(got, []string{"prompt", "added by hook"}) {
+		t.Fatalf("provider saw %v, want the hook's replacement context", got)
+	}
+	a.SetPrepareRequest(nil)
+	if a.PrepareRequestHook() != nil {
+		t.Fatal("SetPrepareRequest(nil) kept the hook")
+	}
+}
+
+// upstream: agent-loop.ts runLoop: hooks receive the loop context ({ messages, tools }), and a returned `context` replaces both, so tool calls of later turns resolve against context.tools.
+func TestAgentLoop_ContextUpdateReplacesExecutableTools(t *testing.T) {
+	provider := &scriptedProvider{respond: func(call int, _ scriptedRequest) *ai.AssistantMessageEventStream {
+		if call <= 2 {
+			id := fmt.Sprintf("tool-%d", call)
+			return doneStream(toolUseMessage(toolCall(id, "echo", ai.JsonObject{"value": id})))
+		}
+		return doneStream(textMessage("done"))
+	}}
+	var executed []string
+	var requestTools, turnTools []int
+	replaced := false
+	a := mustNewAgent(AgentOptions{
+		Model: scriptedModel(provider),
+		Tools: []AgentTool{valueEchoTool(ToolModeParallel, func(v string) { executed = append(executed, v) })},
+		PrepareRequest: func(_ context.Context, request PrepareRequestContext) (*AgentRequestUpdate, error) {
+			requestTools = append(requestTools, len(request.Context.Tools))
+			return nil, nil
+		},
+		PrepareNextTurnWithContext: func(_ context.Context, turn PrepareNextTurnContext) (*AgentLoopTurnUpdate, error) {
+			turnTools = append(turnTools, len(turn.Context.Tools))
+			if replaced {
+				return nil, nil
+			}
+			replaced = true
+			// The replacement context declares no tools: echo is no longer executable.
+			return &AgentLoopTurnUpdate{Context: &AgentContext{Messages: turn.Context.Messages}}, nil
+		},
+	})
+
+	mustSend(t, a, "echo twice")
+
+	if !slices.Equal(executed, []string{"tool-1"}) {
+		t.Fatalf("executed %v, want only the call made before the tools were replaced", executed)
+	}
+	if !slices.Equal(turnTools, []int{1, 0}) || !slices.Equal(requestTools, []int{1, 0, 0}) {
+		t.Fatalf("hooks saw tools turn=%v request=%v, want turn=[1 0] request=[1 0 0]", turnTools, requestTools)
+	}
+	var missing bool
+	for _, message := range a.Messages() {
+		if message.ToolResult != nil && message.ToolResult.ToolCallID == "tool-2" {
+			for _, block := range message.ToolResult.Content {
+				if text, ok := block.(ai.TextContent); ok && message.ToolResult.IsError {
+					missing = strings.Contains(text.Text, "Tool echo not found")
+				}
+			}
+		}
+	}
+	if !missing {
+		t.Fatal("the second echo call did not fail with Tool echo not found")
+	}
+}
+
+// .upstream/v1.1.0/packages/agent/src/agent-loop.ts executePreparedToolCall (#10549)
+// A tool that throws still ran: its error result carries the time it took, as `durationMs` is read in the catch.
+func TestAgentLoop_RecordsDurationOfThrowingTool(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		tool := &scriptTool{name: "echo", params: valueSchema, execute: func(context.Context, string, json.RawMessage, ToolUpdateCallback) (AgentToolResult, error) {
+			time.Sleep(7 * time.Millisecond)
+			return AgentToolResult{}, errors.New("boom")
+		}}
+		a := mustNewAgent(AgentOptions{
+			Model: scriptedModel(&scriptedProvider{respond: toolCallsThenText(toolCall("t", "echo", ai.JsonObject{"value": "a"}))}),
+			Tools: []AgentTool{tool},
+		})
+		msgs := mustSend(t, a, "go")
+		result := findToolResult(t, msgs, "t")
+		if !result.IsError || result.DurationMs == nil || *result.DurationMs != 7 {
+			t.Fatalf("result = %+v, want an error with durationMs 7", result)
+		}
+	})
+}
+
+// .upstream/v1.1.0/packages/agent/test/agent-loop.test.ts:416 (#10549)
+// upstream: "records how long execute() took on the tool result, excluding hooks"
+// The clock is synthetic (synctest), so the 30 ms the tool waits is the recorded duration exactly; upstream bounds it by
+// `>= 25` and `< 100` because its real clock jitters, and the 100 ms beforeToolCall wait must stay out of it.
+func TestAgentLoop_RecordsToolExecutionDurationExcludingHooks(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		tool := &scriptTool{name: "echo", params: valueSchema, execute: func(_ context.Context, _ string, args json.RawMessage, _ ToolUpdateCallback) (AgentToolResult, error) {
+			time.Sleep(30 * time.Millisecond)
+			return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: argValue(args)}}}, nil
+		}}
+		provider := &scriptedProvider{respond: toolCallsThenText(
+			toolCall("ran", "echo", ai.JsonObject{"value": "a"}),
+			toolCall("blocked", "echo", ai.JsonObject{"value": "b"}),
+		)}
+		var ends []ToolExecutionEndEvent
+		a := mustNewAgent(AgentOptions{
+			Model: scriptedModel(provider),
+			Tools: []AgentTool{tool},
+			BeforeToolCallHooks: []BeforeToolCallHook{func(_ context.Context, id, _ string, _ json.RawMessage) ToolCallHookResult {
+				time.Sleep(100 * time.Millisecond)
+				if id == "blocked" {
+					return ToolCallHookResult{Block: true, Reason: "no"}
+				}
+				return ToolCallHookResult{}
+			}},
+		})
+		a.Subscribe(func(_ context.Context, ev AgentEvent) error {
+			if end, ok := ev.(ToolExecutionEndEvent); ok {
+				ends = append(ends, end)
+			}
+			return nil
+		})
+
+		msgs := mustSend(t, a, "go")
+
+		ran, blocked := findToolResult(t, msgs, "ran"), findToolResult(t, msgs, "blocked")
+		if ran.DurationMs == nil || *ran.DurationMs != 30 {
+			t.Fatalf("ran durationMs = %v, want 30", ran.DurationMs)
+		}
+		if !blocked.IsError || blocked.DurationMs != nil {
+			t.Fatalf("blocked = %+v, want an error result without durationMs", blocked)
+		}
+		// The same value reaches tool_execution_end; a call that did not run has none.
+		durations := map[string]*int64{}
+		for _, end := range ends {
+			durations[end.ToolCallID] = end.DurationMs
+		}
+		if got := durations["ran"]; got == nil || *got != 30 {
+			t.Fatalf("tool_execution_end ran durationMs = %v, want 30", got)
+		}
+		if got, seen := durations["blocked"]; !seen || got != nil {
+			t.Fatalf("tool_execution_end blocked durationMs = %v (seen %v), want absent", got, seen)
+		}
+	})
+}
+
+// .upstream/v1.1.0/packages/ai/src/utils/event-stream.ts (#10549): the response stream times the final assistant message from its creation; the agent loop keeps the value on the transcript message and the message's JSON carries it after the provider's own keys and before thinkingLevel.
+func TestAgentLoop_TranscriptAssistantMessageCarriesResponseDuration(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		provider := &scriptedProvider{respond: func(int, scriptedRequest) *ai.AssistantMessageEventStream {
+			stream := ai.NewAssistantMessageEventStream()
+			message := textMessage("hello")
+			message.Timestamp = time.Now().UnixMilli()
+			go func() {
+				time.Sleep(40 * time.Millisecond)
+				_ = stream.Push(ai.DoneEvent{Reason: ai.StopReasonStop, Message: message})
+			}()
+			return stream
+		}}
+		a := mustNewAgent(AgentOptions{Model: scriptedModel(provider)})
+		msgs := mustSend(t, a, "hi")
+		var assistant *AssistantMessage
+		for _, message := range msgs {
+			if message.Assistant != nil {
+				assistant = message.Assistant
+			}
+		}
+		if assistant == nil || assistant.DurationMs == nil || *assistant.DurationMs != 40 {
+			t.Fatalf("assistant = %+v, want durationMs 40", assistant)
+		}
+		encoded, err := json.Marshal(AgentMessage{Assistant: assistant})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(encoded), `"durationMs":40`) {
+			t.Fatalf("assistant JSON = %s", encoded)
+		}
+		var decoded AgentMessage
+		if err := json.Unmarshal(encoded, &decoded); err != nil || decoded.Assistant.DurationMs == nil || *decoded.Assistant.DurationMs != 40 {
+			t.Fatalf("round trip = %+v, %v", decoded.Assistant, err)
+		}
+	})
+}
+
+// .upstream/v1.1.0/packages/agent/src/agent-loop.ts runToolCall: the outcome carries `durationMs` of the call that ran (`executed.durationMs`), and none for a call that did not (#10549).
+func TestRunToolCallOutcomeCarriesDurationMs(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		tool := &scriptTool{name: "echo", params: valueSchema, execute: func(context.Context, string, json.RawMessage, ToolUpdateCallback) (AgentToolResult, error) {
+			time.Sleep(12 * time.Millisecond)
+			return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "ok"}}}, nil
+		}}
+		options := RunToolCallOptions{Tools: []AgentTool{tool}}
+		ran, err := RunToolCall(t.Context(), AgentToolCall{ID: "a", Name: "echo", Arguments: ai.JsonObject{"value": "a"}}, options)
+		if err != nil || ran.DurationMs == nil || *ran.DurationMs != 12 {
+			t.Fatalf("ran = %+v, %v; want durationMs 12", ran, err)
+		}
+		missing, err := RunToolCall(t.Context(), AgentToolCall{ID: "b", Name: "missing", Arguments: ai.JsonObject{}}, options)
+		if err != nil || !missing.IsError || missing.DurationMs != nil {
+			t.Fatalf("missing = %+v, %v; want an error outcome without durationMs", missing, err)
+		}
+	})
 }

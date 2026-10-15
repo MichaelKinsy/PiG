@@ -10,6 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
+//portlint:allow ctxbackground the server runs until the transport's Close ends it (stdio.go Start sets cmd.Cancel = nil), so no caller context bounds it
 func bgContext() context.Context { return context.Background() }
 
 // setStdioProcAttr keeps the attributes crossspawn set: they hold the cmd.exe
@@ -40,5 +41,6 @@ func killProcessTree(cmd *exec.Cmd, exited <-chan struct{}, _ bool) {
 	kill := exec.Command("taskkill", "/pid", strconv.Itoa(cmd.Process.Pid), "/T", "/F")
 	nodespawn.HideWindow(kill, nodespawn.Ignore, nodespawn.Ignore, nodespawn.Ignore)
 	_ = kill.Start()
+	//portlint:allow golifetime reaps taskkill; it returns when taskkill exits
 	go func() { _ = kill.Wait() }()
 }

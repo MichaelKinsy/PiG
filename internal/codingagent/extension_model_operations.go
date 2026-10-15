@@ -12,8 +12,8 @@ import (
 )
 
 // extensionAvailableOfType lists the models of one type whose provider has working credentials, as extension model objects. It is the wire form of ModelRuntime.GetAvailableOfType: chat models follow the provider's chat availability and every other type is kept. A type no model has lists nothing, as Models.getAvailableOfType filters getAllAvailable by type without validating it (packages/ai/src/models.ts:708-716).
-func extensionAvailableOfType(ctx context.Context, registry *ModelRegistry, modelType, providerID string) ([]map[string]any, error) {
-	models := []map[string]any{}
+func extensionAvailableOfType(ctx context.Context, registry *ModelRegistry, modelType, providerID string) ([]json.RawMessage, error) {
+	models := []json.RawMessage{}
 	if registry == nil {
 		return models, nil
 	}
@@ -24,7 +24,11 @@ func extensionAvailableOfType(ctx context.Context, registry *ModelRegistry, mode
 	}
 	for _, model := range all {
 		if ai.IsModelType(model, ai.ModelType(modelType)) {
-			models = append(models, extension.AnyModelInfo(model))
+			object, err := extension.ModelObject(model)
+			if err != nil {
+				return nil, err
+			}
+			models = append(models, object)
 		}
 	}
 	return models, nil
@@ -115,12 +119,13 @@ type imagesWireModel struct {
 
 // imagesWireOptions is the serializable part of ai.ModelsImagesOptions; the request's context carries the signal.
 type imagesWireOptions struct {
-	APIKey     *string            `json:"apiKey"`
-	Headers    ai.ProviderHeaders `json:"headers"`
-	Env        map[string]string  `json:"env"`
-	TimeoutMs  *int               `json:"timeoutMs"`
-	MaxRetries *int               `json:"maxRetries"`
-	Metadata   map[string]any     `json:"metadata"`
+	APIKey          *string            `json:"apiKey"`
+	Headers         ai.ProviderHeaders `json:"headers"`
+	Env             map[string]string  `json:"env"`
+	TimeoutMs       *int               `json:"timeoutMs"`
+	MaxRetries      *int               `json:"maxRetries"`
+	MaxRetryDelayMs *int               `json:"maxRetryDelayMs"`
+	Metadata        map[string]any     `json:"metadata"`
 }
 
 func (o imagesWireOptions) options() ai.ModelsImagesOptions {
@@ -128,9 +133,7 @@ func (o imagesWireOptions) options() ai.ModelsImagesOptions {
 	if o.TimeoutMs != nil {
 		options.TimeoutMs = *o.TimeoutMs
 	}
-	if o.MaxRetries != nil {
-		options.MaxRetries = *o.MaxRetries
-	}
+	options.MaxRetries, options.MaxRetryDelayMs = o.MaxRetries, o.MaxRetryDelayMs
 	if o.APIKey != nil {
 		options.APIKey, options.APIKeySet = *o.APIKey, true
 	}

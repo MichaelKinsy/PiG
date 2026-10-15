@@ -1,5 +1,5 @@
 import { getSystemMessageText } from "./text.js";
-const CHARS_PER_TOKEN = 4;
+const CHARS_PER_TOKEN = 3.5;
 const ESTIMATED_IMAGE_CHARS = 4800;
 export function calculateContextTokens(usage) {
     return usage.totalTokens || usage.input + usage.output + usage.cacheRead + usage.cacheWrite;

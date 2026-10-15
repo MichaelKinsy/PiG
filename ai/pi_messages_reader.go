@@ -8,6 +8,7 @@ package ai
 // defines; each await is cited at its source line. Nothing else in the loop depends on timing.
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -39,7 +40,13 @@ var errPiMessagesEventsEnded = errors.New("stream ended without a terminal event
 func (loop *piMessagesEventLoop) events() *jsAsyncGenerator[json.RawMessage] {
 	return newJSAsyncGenerator(loop.turn.executor, func(body *jsGeneratorBody[json.RawMessage]) (json.RawMessage, error) {
 		var decoder piMessagesTextDecoder // pi-messages.ts:280 new TextDecoder()
-		buffer := ""                      // pi-messages.ts:282
+		// buffer is Pi's `buffer` (pi-messages.ts:282) after its CRLF replace. No "\n\n" starts before scanned. crlf is whether buffer
+		// holds a "\r\n": the replace leaves one where a line feed follows two carriage returns, and Pi's next replace over the whole
+		// buffer folds it. Without one, the replace changes only the new text and a carriage return that ends the buffer, so a record
+		// that spans many reads is appended to and searched once.
+		var buffer []byte
+		scanned := 0
+		crlf := false
 		// pi-messages.ts:283 stream.getReader(); the finally at :309 only releases the lock, which needs no action.
 		for { // pi-messages.ts:285 while (true)
 			chunk, err := loop.reader.ReadChunk() // pi-messages.ts:286 await reader.read(); ReadChunk models its microtasks.
@@ -47,35 +54,63 @@ func (loop *piMessagesEventLoop) events() *jsAsyncGenerator[json.RawMessage] {
 			if err != nil && !done {
 				return nil, err // The rejection throws out of the generator, which rejects the pending next().
 			}
+			var text string
 			if done {
-				buffer += decoder.flush() // pi-messages.ts:287 decoder.decode()
+				text = decoder.flush() // pi-messages.ts:287 decoder.decode()
 			} else {
-				buffer += decoder.decode(chunk) // pi-messages.ts:287 decoder.decode(value, { stream: true })
+				text = decoder.decode(chunk) // pi-messages.ts:287 decoder.decode(value, { stream: true })
 			}
-			buffer = strings.ReplaceAll(buffer, "\r\n", "\n") // pi-messages.ts:288
+			// pi-messages.ts:288 buffer = buffer.replace(/\r\n/g, "\n")
+			if crlf {
+				buffer = bytes.ReplaceAll(append(buffer, text...), piMessagesCRLF, piMessagesLF)
+				scanned = 0
+				crlf = bytes.Contains(buffer, piMessagesCRLF)
+			} else {
+				if text != "" && text[0] == '\n' && len(buffer) > 0 && buffer[len(buffer)-1] == '\r' {
+					buffer = buffer[:len(buffer)-1]
+				}
+				joined := max(0, len(buffer)-1)
+				scanned = min(scanned, joined)
+				buffer = append(buffer, strings.ReplaceAll(text, "\r\n", "\n")...)
+				crlf = bytes.Contains(buffer[joined:], piMessagesCRLF)
+			}
 
+			start := 0
 			for { // pi-messages.ts:290-298
-				split := strings.Index(buffer, "\n\n")
+				split := bytes.Index(buffer[scanned:], piMessagesLFLF)
 				if split == -1 {
 					break
 				}
-				if err := emitPiMessagesEvent(body, buffer[:split]); err != nil {
+				split += scanned
+				if err := emitPiMessagesEvent(body, string(buffer[start:split])); err != nil {
 					return nil, err
 				}
-				buffer = buffer[split+2:]
+				start = split + 2
+				scanned = start
 			}
+			if start > 0 {
+				buffer = append(buffer[:0], buffer[start:]...)
+				crlf = crlf && bytes.Contains(buffer, piMessagesCRLF)
+			}
+			scanned = max(0, len(buffer)-1)
 			if done { // pi-messages.ts:300
 				break
 			}
 		}
-		if trimJSWhitespace(buffer) != "" { // pi-messages.ts:305
-			if err := emitPiMessagesEvent(body, buffer); err != nil {
+		if rest := string(buffer); trimJSWhitespace(rest) != "" { // pi-messages.ts:305
+			if err := emitPiMessagesEvent(body, rest); err != nil {
 				return nil, err
 			}
 		}
 		return nil, nil
 	})
 }
+
+var (
+	piMessagesCRLF = []byte("\r\n")
+	piMessagesLF   = []byte("\n")
+	piMessagesLFLF = []byte("\n\n")
+)
 
 // emitPiMessagesEvent is `const event = parsePiMessagesEvent(raw); if (event) { yield event; }` (pi-messages.ts:292-296, 305-309). A parse error throws out of
 // the generator. A return() at the yield arrives as the jsGeneratorReturnCompletion the caller propagates.
@@ -136,21 +171,40 @@ func parsePiMessagesEvent(raw string) (json.RawMessage, bool, error) {
 		}
 		return nil, false, fmt.Errorf("invalid pi-messages event JSON: %s", data)
 	}
-	var value any
-	if err := json.Unmarshal([]byte(data), &value); err != nil {
+	if strings.HasPrefix(data, "n") {
+		return nil, false, nil // null
+	}
+	truthy, err := jsonTruthy([]byte(data))
+	if err != nil {
 		return nil, false, err
 	}
-	switch value := value.(type) {
-	case nil:
-		return nil, false, nil
-	case bool:
-		return json.RawMessage(data), value, nil
-	case float64:
-		return json.RawMessage(data), value != 0, nil
-	case string:
-		return json.RawMessage(data), value != "", nil
+	return json.RawMessage(data), truthy, nil
+}
+
+// jsonTruthy is whether JSON.parse(text) is truthy in JavaScript: false for null, false, 0, -0 and "", true for every other value. text is valid JSON with no leading blank. It reads only the top-level value, so an object or array is not built.
+func jsonTruthy(text []byte) (bool, error) {
+	// data is trimmed of JavaScript whitespace, and valid JSON starts with a value.
+	switch text[0] {
+	case 'n':
+		return false, nil
+	case 't':
+		return true, nil
+	case 'f':
+		return false, nil
+	case '"':
+		var value string
+		if err := json.Unmarshal(text, &value); err != nil {
+			return false, err
+		}
+		return value != "", nil
+	case '{', '[':
+		return true, nil
 	}
-	return json.RawMessage(data), true, nil
+	var value float64
+	if err := json.Unmarshal(text, &value); err != nil {
+		return false, err
+	}
+	return value != 0, nil
 }
 
 // piMessagesTextDecoder is `new TextDecoder()` used with decode(chunk, { stream: true }) and a final decode(): a multi-byte

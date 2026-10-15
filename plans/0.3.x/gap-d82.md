@@ -1,6 +1,6 @@
 # Plan: gap-d82, cross-process partial-message observation (RPC33)
 
-Lane: `smc1/gap-d82`. Base: `release/0.3.0-base2` (`606595120`). Starting point: the lead's WIP port `team/lead/wip-d82-checkpoint-port` (`9488814fa`, `ffd13b867`). Both commits cherry-pick onto the base without conflicts and build.
+Lane: `the bench host/gap-d82`. Base: `release/0.3.0-base2` (`606595120`). Starting point: the lead's WIP port `team/lead/wip-d82-checkpoint-port` (`9488814fa`, `ffd13b867`). Both commits cherry-pick onto the base without conflicts and build.
 
 ## 1. Pi's observable contract
 
@@ -165,7 +165,7 @@ The part that cannot be met in one Go process talking to another process is an e
 
 ## 8. Integration contract for the provider lanes (integrator: gap-d82)
 
-Landed on `team/smc1/gap-d82`; rebase or merge it before your READY.
+Landed on `team/the bench host/gap-d82`; rebase or merge it before your READY.
 
 1. **Managed provider.** A provider is under the executor when it (a) obtains its body as `*observedResponseBody` (PiG's HTTP transport; see `openai.go:1697`), (b) sets `builder.managed = true`, and (c) runs everything after the response headers inside `builder.responseTurn(...)` (`ai/native_body_iterator.go`), which sets `stream.producer` and gives the turn. Only then do pushes publish live cells; every other push stores an emission-time snapshot (W3, D82 marker in `assistant_publication.go`).
 2. **One await, one call.** Each JavaScript `await`/generator boundary in the Pi or SDK source becomes `suspendContinuation(turn)` (already-resolved await) or `awaitContinuation(turn, promise)` (pending). Body reads go through `newNativeBodyIterator(...)`; set `reader.started = true` when Pi uses `getReader().read()` rather than `values().next()` (`pi_messages.go:96-99`). Cite the Pi or SDK line of every yield in a comment.
@@ -176,7 +176,7 @@ Landed on `team/smc1/gap-d82`; rebase or merge it before your READY.
 
 ## 9. Integration status (READY)
 
-All units are merged on `team/smc1/gap-d82`: W0, W2, W3 (integrator), W4a/b/c primitives, W5 Anthropic, Azure, Bedrock, Codex (SSE), faux/test-faux, Google, Mistral, pi-messages, W7 and W8.
+All units are merged on `team/the bench host/gap-d82`: W0, W2, W3 (integrator), W4a/b/c primitives, W5 Anthropic, Azure, Bedrock, Codex (SSE), faux/test-faux, Google, Mistral, pi-messages, W7 and W8.
 
 Integration fixes made here: the Anthropic undici read hops moved onto W4c's Web Streams body source; Anthropic and Bedrock share one open-block `index` scratch; the Google abort watcher is restored on the merged executor; provider hooks await on the running producer turn (parity extensions-runtime 50/51 hung); fixture sleeps are replaced with a socket-read barrier (reviewer blocker); RPC/JSON records go through output-guard's ordered tail (reviewer HIGH); three Pig fixture programs read request failures from the stream result as their Pi fixtures do.
 

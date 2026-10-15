@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-func assertThinkingLevelPresence(t *testing.T, model *GeneratedModel, want map[ThinkingLevel]*string) {
+func assertThinkingLevelPresence(t *testing.T, model *GeneratedModel, want map[ModelThinkingLevel]*string) {
 	t.Helper()
 	for level, value := range want {
 		got, present := model.ThinkingLevelMap[level]

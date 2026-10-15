@@ -7,9 +7,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -115,7 +117,29 @@ func readNPMOriginIntegrity(materializedRoot string) string {
 	if json.Unmarshal(data, &lock) != nil {
 		return ""
 	}
-	return lock.Packages[filepath.ToSlash(relative)].Integrity
+	if entry, ok := lock.Packages[filepath.ToSlash(relative)]; ok {
+		return entry.Integrity
+	}
+	// npm names an entry by the path from the install root as given to the
+	// package's real path, so an install root reached through a symlink (macOS
+	// /var -> /private/var) yields keys such as ../../private/var/.../node_modules/@scope/pkg.
+	want := realPathOrClean(materializedRoot)
+	for _, key := range slices.Sorted(maps.Keys(lock.Packages)) {
+		if key == "" || !strings.Contains(key, "node_modules") {
+			continue
+		}
+		if realPathOrClean(filepath.Join(installRoot, filepath.FromSlash(key))) == want {
+			return lock.Packages[key].Integrity
+		}
+	}
+	return ""
+}
+
+func realPathOrClean(path string) string {
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		return resolved
+	}
+	return filepath.Clean(path)
 }
 
 // validateRemotePigletOriginSource keeps authentication material out of origin

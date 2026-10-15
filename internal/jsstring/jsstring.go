@@ -18,6 +18,10 @@ func IsSpace(r rune) bool {
 	return r >= 0x2000 && r <= 0x200A
 }
 
+// SpaceClass is the body of an RE2 character class that matches what JavaScript's \s matches: the characters IsSpace reports. RE2's own \s is
+// ASCII only. Use it inside brackets, for example `[` + SpaceClass + `,]`.
+const SpaceClass = `\t\n\v\f\r \x{a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}`
+
 // Trim is String.prototype.trim.
 func Trim(s string) string { return strings.TrimFunc(s, IsSpace) }
 
@@ -37,6 +41,31 @@ func ToFixed(x float64, digits int) string {
 	if math.Abs(x) >= 1e21 {
 		return jsnumber.String(x)
 	}
+	if text, ok := toFixedUnambiguous(x, digits); ok {
+		return text
+	}
+	return toFixedExact(x, digits)
+}
+
+// toFixedUnambiguous formats x with strconv, which rounds the exact decimal value to nearest and ties to even. That is toFixed's result unless the exact value is a tie, and a tie has exactly
+// digits+1 fractional digits ending in 5, so a correctly rounded digits+1 expansion that does not end in 5 rules one out. ok is false when it does, and the caller takes the exact path.
+func toFixedUnambiguous(x float64, digits int) (string, bool) {
+	var scratch [48]byte
+	longer := strconv.AppendFloat(scratch[:0], math.Abs(x), 'f', digits+1, 64)
+	if longer[len(longer)-1] == '5' {
+		return "", false
+	}
+	var buf [48]byte
+	text := buf[:0]
+	if x < 0 {
+		// Step 4 of the specification takes the sign before rounding, so -0.04 is "-0.0".
+		text = append(text, '-')
+	}
+	return string(strconv.AppendFloat(text, math.Abs(x), 'f', digits, 64)), true
+}
+
+// toFixedExact is ToFixed over big.Rat arithmetic: the exact decimal value of x rounded half up.
+func toFixedExact(x float64, digits int) string {
 	negative := x < 0
 	r := new(big.Rat).SetFloat64(math.Abs(x))
 	scale := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(digits)), nil)
@@ -73,6 +102,13 @@ func ToPrecision(x float64, precision int) string {
 			p.Inv(p)
 		}
 		return p
+	}
+	// math.Log10 rounds to a power of ten for a value just below one (1e-11 is a little under 10^-11), so e is settled against the exact value: 10^e <= x < 10^(e+1). Rounding to the precision may then carry to 10^precision, which moves e up by one below.
+	for exact.Cmp(pow(e)) < 0 {
+		e--
+	}
+	for exact.Cmp(pow(e+1)) >= 0 {
+		e++
 	}
 	// n = round(x / 10^(e-precision+1)), with n in [10^(precision-1), 10^precision).
 	var n *big.Int

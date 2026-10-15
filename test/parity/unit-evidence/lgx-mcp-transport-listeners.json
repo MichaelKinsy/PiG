@@ -1,0 +1,129 @@
+[
+ {
+  "upstream": "packages/mcp/src/transports/transport.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestTransportEventsDeliverInRegistrationOrderUntilDisposed"
+  ],
+  "upstream_reference": "packages/mcp/src/transports/transport.ts",
+  "mutation": "mcp/transport.go: replace `t.messages = removeEntry(t.messages, id, func(e messageEntry) int { return e.id })` with `_ = id`; TestTransportEventsDeliverInRegistrationOrderUntilDisposed fails."
+ },
+ {
+  "upstream": "packages/mcp/src/transports/transport.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestTransportEventsDeliverInRegistrationOrderUntilDisposed"
+  ],
+  "upstream_reference": "packages/mcp/src/transports/transport.ts",
+  "mutation": "mcp/transport.go: replace `t.errors = removeEntry(t.errors, id, func(e errorEntry) int { return e.id })` with `_ = id`; TestTransportEventsDeliverInRegistrationOrderUntilDisposed fails."
+ },
+ {
+  "upstream": "packages/mcp/src/transports/transport.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestTransportEventsEmitCloseOnceAndHonorDisposal"
+  ],
+  "upstream_reference": "packages/mcp/src/transports/transport.ts",
+  "mutation": "mcp/transport.go: replace `t.closes = removeEntry(t.closes, id, func(e closeEntry) int { return e.id })` with `_ = id`; TestTransportEventsEmitCloseOnceAndHonorDisposal fails."
+ },
+ {
+  "upstream": "packages/mcp/src/transports/transport.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestTransportEventsDeliverInRegistrationOrderUntilDisposed",
+   "TestTransportEventsEmitCloseOnceAndHonorDisposal"
+  ],
+  "upstream_reference": "packages/mcp/src/transports/transport.ts",
+  "mutation": "mcp/transport.go: replace `if idOf(e) != id {` with `if idOf(e) == id {`; TestTransportEventsDeliverInRegistrationOrderUntilDisposed, TestTransportEventsEmitCloseOnceAndHonorDisposal fails."
+ },
+ {
+  "upstream": "packages/mcp/src/transports/transport.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestTransportEventsEmitCloseOnceAndHonorDisposal"
+  ],
+  "upstream_reference": "packages/mcp/src/transports/transport.ts",
+  "mutation": "mcp/transport.go: replace `if t.closeCalled {\n\t\tt.mu.Unlock()\n\t\treturn\n\t}` with ``; TestTransportEventsEmitCloseOnceAndHonorDisposal fails."
+ },
+ {
+  "upstream": "packages/mcp/src/transports/transport.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestTransportEventsDeliverInRegistrationOrderUntilDisposed"
+  ],
+  "upstream_reference": "packages/mcp/src/transports/transport.ts",
+  "mutation": "mcp/transport.go: replace `t.messages = append(t.messages, messageEntry{id, listener})` with `t.messages = append([]messageEntry{{id, listener}}, t.messages...)`; TestTransportEventsDeliverInRegistrationOrderUntilDisposed fails."
+ },
+ {
+  "upstream": "packages/mcp/src/transports/streamable-http.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestStreamableHTTPTransportSendsTheProtocolVersionSetOnIt"
+  ],
+  "upstream_reference": "packages/mcp/src/transports/streamable-http.ts",
+  "mutation": "mcp/streamable_http.go: replace `t.protocolVersion = version` with ``; TestStreamableHTTPTransportSendsTheProtocolVersionSetOnIt fails."
+ },
+ {
+  "upstream": "packages/mcp/src/transports/streamable-http.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestStreamableHTTPTransportSendsTheProtocolVersionSetOnIt"
+  ],
+  "upstream_reference": "packages/mcp/src/transports/streamable-http.ts",
+  "mutation": "mcp/streamable_http.go: replace `headers.Set(\"MCP-Protocol-Version\", version)` with `headers.Set(\"MCP-Protocol-Version\", version+\"x\")`; TestStreamableHTTPTransportSendsTheProtocolVersionSetOnIt fails."
+ },
+ {
+  "upstream": "packages/mcp/src/client.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientCancelsAbortedAndTimedOutRequests"
+  ],
+  "upstream_reference": "packages/mcp/src/client.ts",
+  "mutation": "mcp/client.go: replace `c.cancelPending(key, NewMcpAbortError(\"\"), method` with `c.cancelPending(key, NewMcpConnectionClosedError(\"\"), method`; TestClientCancelsAbortedAndTimedOutRequests fails."
+ },
+ {
+  "upstream": "packages/mcp/src/transports/in-memory.ts",
+  "package": "./mcp/mcptest",
+  "tests": [
+   "TestInMemoryTransportPairDeliversInOrderAndCloseNotifiesBothEnds"
+  ],
+  "upstream_reference": "packages/mcp/src/transports/in-memory.ts",
+  "mutation": "mcp/mcptest/inmemory.go: replace `t.EmitClose()\n\tif peer` with `if peer`; TestInMemoryTransportPairDeliversInOrderAndCloseNotifiesBothEnds fails."
+ },
+ {
+  "upstream": "packages/mcp/src/transports/in-memory.ts",
+  "package": "./mcp/mcptest",
+  "tests": [
+   "TestInMemoryTransportListenersCanBeDisposedAndErrorsAreEmitted"
+  ],
+  "upstream_reference": "packages/mcp/src/transports/in-memory.ts",
+  "mutation": "mcp/mcptest/inmemory.go: replace `func (t *InMemoryTransport) EmitError(err error) { t.TransportEvents.EmitError(err) }` with `func (t *InMemoryTransport) EmitError(err error) {}`; TestInMemoryTransportListenersCanBeDisposedAndErrorsAreEmitted fails."
+ },
+ {
+  "upstream": "packages/mcp/src/transports/in-memory.ts",
+  "package": "./mcp/mcptest",
+  "tests": [
+   "TestInMemoryTransportPairDeliversInOrderAndCloseNotifiesBothEnds"
+  ],
+  "upstream_reference": "packages/mcp/src/transports/in-memory.ts",
+  "mutation": "mcp/mcptest/inmemory.go: replace `if !closed {\n\t\t\t\tt.EmitMessage(delivery.message)` with `if !closed {\n\t\t\t\tt.EmitMessage(delivery.message)\n\t\t\t\tt.EmitMessage(delivery.message)`; TestInMemoryTransportPairDeliversInOrderAndCloseNotifiesBothEnds fails."
+ },
+ {
+  "upstream": "packages/mcp/src/transports/in-memory.ts",
+  "package": "./mcp/mcptest",
+  "tests": [
+   "TestInMemoryTransportPairDeliversInOrderAndCloseNotifiesBothEnds"
+  ],
+  "upstream_reference": "packages/mcp/src/transports/in-memory.ts",
+  "mutation": "mcp/mcptest/inmemory.go: replace `if peer != nil {\n\t\treturn peer.Close()` with `if peer != nil && false {\n\t\treturn peer.Close()`; TestInMemoryTransportPairDeliversInOrderAndCloseNotifiesBothEnds fails."
+ },
+ {
+  "upstream": "packages/mcp/src/transports/in-memory.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestInMemoryTransportRejectsSendsBeforeStartAndToAnUnstartedOrMissingPeer"
+  ],
+  "upstream_reference": "packages/mcp/src/transports/in-memory.ts",
+  "mutation": "mcp/mcptest/inmemory.go: replace `if !started || closed {` with `if (!started && false) || closed {`; TestInMemoryTransportRejectsSendsBeforeStartAndToAnUnstartedOrMissingPeer fails."
+ }
+]

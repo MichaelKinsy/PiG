@@ -1,6 +1,11 @@
 package tui
 
-import "testing"
+// pi: packages/tui/src/native-modifiers.ts
+
+import (
+	"runtime"
+	"testing"
+)
 
 // Mirrors terminal.ts normalizeNativeShiftEnterInput and
 // normalizeAppleTerminalInput.
@@ -89,5 +94,18 @@ func TestNormalizeProcessInputSequenceFor(t *testing.T) {
 func TestIsNativeModifierPressedUnknownKey(t *testing.T) {
 	if IsNativeModifierPressed(ModifierKey("hyper")) {
 		t.Fatal("unknown modifier reported pressed")
+	}
+}
+
+// packages/tui/src/native-modifiers.ts:5-13 and native-platform.ts ModifierKey: the four modifier names are the wire values the helper
+// understands, and a platform without a native helper (anything but macOS and Windows) reports every modifier as not pressed.
+func TestNativeModifierKeysWithoutAHelper(t *testing.T) {
+	for key, want := range map[ModifierKey]string{ModifierShift: "shift", ModifierCommand: "command", ModifierControl: "control", ModifierOption: "option"} {
+		if string(key) != want {
+			t.Errorf("modifier %q, want %q", key, want)
+		}
+		if runtime.GOOS != "darwin" && runtime.GOOS != "windows" && IsNativeModifierPressed(key) {
+			t.Errorf("%s reported pressed without a native helper", key)
+		}
 	}
 }

@@ -86,3 +86,39 @@ func TestToolCallReplyEditsTheEventInputInPlace(t *testing.T) {
 		})
 	}
 }
+
+// The reply's input keeps the member order the handler left, as Pi's tool and later handlers see the object itself: the host writes it into the event's WireInput beside the Input map.
+func TestToolCallReplyKeepsTheHandlersMemberOrder(t *testing.T) {
+	hostEnd, peer := net.Pipe()
+	conn := NewConn("observe", hostEnd)
+	conn.Start(t.Context())
+	managed := withConn(&managedExt{config: ExtConfig{Name: "observe"}, host: NewHost(t.TempDir())}, conn)
+	handler := managed.makeEventHandler("tool_call", 1)
+	input := map[string]any{"command": "git status"}
+	wire := json.RawMessage(`{"command":"git status"}`)
+	event := extension.CustomToolCallEvent{ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: "call", WireInput: &wire}, ToolName: "bash", Input: input}
+	done := make(chan error, 1)
+	go func() {
+		_, err := handler(event, t.Context())
+		done <- err
+	}()
+	request := readLivenessEnvelope(t, peer)
+	if want := `{"type":"tool_call","toolName":"bash","toolCallId":"call","input":{"command":"git status"}}`; string(request.Request.Args) != want {
+		t.Errorf("request args = %s, want %s", request.Request.Args, want)
+	}
+	var reply ResponsePayload
+	if err := json.Unmarshal([]byte(`{"result":{"_pigToolCallInput":{"command":"git status --short", "zz":1,"aa":{"y":2,"b":3}},"_pigToolCallResult":null}}`), &reply); err != nil {
+		t.Fatal(err)
+	}
+	writeLivenessEnvelope(t, peer, Envelope{Type: MsgResponse, ID: request.ID, Response: &reply})
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	_ = peer.Close()
+	if want := `{"command":"git status --short","zz":1,"aa":{"y":2,"b":3}}`; string(wire) != want {
+		t.Errorf("wire input = %s, want %s", wire, want)
+	}
+	if want := (map[string]any{"command": "git status --short", "zz": 1.0, "aa": map[string]any{"y": 2.0, "b": 3.0}}); !reflect.DeepEqual(input, want) {
+		t.Errorf("input = %v, want %v", input, want)
+	}
+}

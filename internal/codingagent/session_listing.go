@@ -1,17 +1,22 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
 package codingagent
 
 import (
+	"cmp"
 	"context"
+	"math"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/nodefs"
+	"github.com/MichaelKinsy/PiG/internal/procpolicy"
 )
 
 // SessionListProgress receives completed-file counts. A nil partial means no snapshot was published; a non-nil empty slice is an empty published snapshot.
@@ -39,7 +44,7 @@ func listSessionsInDirWithOptions(dir string, options SessionListOptions) ([]Ses
 	if err := options.Context.Err(); err != nil {
 		return nil, err
 	}
-	entries, err := os.ReadDir(dir)
+	entries, err := nodefs.ReadDir(dir)
 	if err != nil {
 		if options.Context.Err() != nil {
 			return nil, options.Context.Err()
@@ -55,7 +60,7 @@ func listSessionsInDirWithOptions(dir string, options SessionListOptions) ([]Ses
 			files = append(files, filepath.Join(dir, entry.Name()))
 		}
 	}
-	slices.SortFunc(files, func(a, b string) int { return strings.Compare(b, a) })
+	slices.SortStableFunc(files, func(a, b string) int { return localeCompare(filepath.Base(b), filepath.Base(a)) })
 	return summarizeSessionFilesWithOptions(files, options, 10, false)
 }
 
@@ -63,7 +68,8 @@ func listSessionsAcrossRootWithOptions(root string, options SessionListOptions) 
 	if err := options.Context.Err(); err != nil {
 		return nil, err
 	}
-	directories, err := os.ReadDir(root)
+	// Pi lists the projects and their files with readdir and sorts them stably, so sessions that tie keep Node's readdir order.
+	directories, err := nodefs.ReadDir(root)
 	if err != nil {
 		if options.Context.Err() != nil {
 			return nil, options.Context.Err()
@@ -80,7 +86,7 @@ func listSessionsAcrossRootWithOptions(root string, options SessionListOptions) 
 		if err != nil || !info.IsDir() {
 			continue
 		}
-		entries, err := os.ReadDir(path)
+		entries, err := nodefs.ReadDir(path)
 		if err != nil {
 			continue
 		}
@@ -90,23 +96,23 @@ func listSessionsAcrossRootWithOptions(root string, options SessionListOptions) 
 			}
 		}
 	}
-	mtimes := make(map[string]int64, len(files))
+	// Pi: candidates sorted by `mtimeMs` descending (a file that cannot be stat'ed sorts last), then by basename `localeCompare` descending.
+	mtimes := make(map[string]float64, len(files))
 	for _, file := range files {
 		if err := options.Context.Err(); err != nil {
 			return nil, err
 		}
+		mtimes[file] = math.Inf(-1)
 		if info, err := os.Stat(file); err == nil {
-			mtimes[file] = info.ModTime().UnixNano()
+			mod := info.ModTime()
+			mtimes[file] = float64(float64(mod.Unix())*1000) + float64(mod.Nanosecond())/1e6
 		}
 	}
-	slices.SortFunc(files, func(a, b string) int {
-		if mtimes[a] > mtimes[b] {
-			return -1
+	slices.SortStableFunc(files, func(a, b string) int {
+		if c := cmp.Compare(mtimes[b], mtimes[a]); c != 0 {
+			return c
 		}
-		if mtimes[a] < mtimes[b] {
-			return 1
-		}
-		return strings.Compare(filepath.Base(b), filepath.Base(a))
+		return localeCompare(filepath.Base(b), filepath.Base(a))
 	})
 	return summarizeSessionFilesWithOptions(files, options, 100, true)
 }
@@ -126,6 +132,11 @@ func summarizeSessionFilesWithOptions(files []string, options SessionListOptions
 	if len(files) == 0 {
 		cancel()
 		return []SessionInfo{}, nil
+	}
+	if len(files) > 1 {
+		// pig additive (D174): the summary workers stat, read and decode at the runtime default width. The section closes after the
+		// deferred join below, so it outlives every worker.
+		defer procpolicy.Widen()()
 	}
 	results := make(chan sessionListResult, len(files))
 	var next atomic.Int64
@@ -148,7 +159,17 @@ func summarizeSessionFilesWithOptions(files []string, options SessionListOptions
 	joined := make(chan struct{})
 	go func() { workers.Wait(); close(results); close(joined) }()
 	defer func() { cancel(); <-joined }()
-	infos := make([]SessionInfo, 0, len(files))
+	byIndex := make([]*SessionInfo, len(files))
+	ordered := func() []SessionInfo {
+		infos := make([]SessionInfo, 0, len(files))
+		for _, info := range byIndex {
+			if info != nil {
+				infos = append(infos, *info)
+			}
+		}
+		slices.SortStableFunc(infos, compareSessionModifiedDesc)
+		return infos
+	}
 	loaded := 0
 	firstLoaded := false
 	for result := range results {
@@ -160,7 +181,8 @@ func summarizeSessionFilesWithOptions(files []string, options SessionListOptions
 			firstLoaded = true
 		}
 		if result.valid {
-			infos = append(infos, result.info)
+			info := result.info
+			byIndex[result.index] = &info
 		}
 		if options.OnProgress != nil {
 			publish := loaded == 1 || loaded%publishInterval == 0 || loaded == len(files)
@@ -169,8 +191,7 @@ func summarizeSessionFilesWithOptions(files []string, options SessionListOptions
 			}
 			var partial []SessionInfo
 			if publish {
-				partial = append([]SessionInfo{}, infos...)
-				slices.SortFunc(partial, compareSessionRecencyDesc)
+				partial = ordered()
 			}
 			options.OnProgress(loaded, len(files), partial)
 		}
@@ -178,6 +199,13 @@ func summarizeSessionFilesWithOptions(files []string, options SessionListOptions
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	slices.SortFunc(infos, compareSessionRecencyDesc)
-	return infos, nil
+	return ordered(), nil
+}
+
+// localeCompare is String.prototype.localeCompare under the root locale, which orders Pi's session files.
+func localeCompare(a, b string) int { return jsstring.LocaleCompare(a, b) }
+
+// compareSessionModifiedDesc is sortSessionInfos of Pi: modification time in milliseconds, newest first; equal times keep their order under a stable sort.
+func compareSessionModifiedDesc(a, b SessionInfo) int {
+	return cmp.Compare(b.Modified.UnixMilli(), a.Modified.UnixMilli())
 }

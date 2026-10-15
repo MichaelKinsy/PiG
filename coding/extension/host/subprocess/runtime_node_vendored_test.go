@@ -61,6 +61,10 @@ var vendoredImportRewrites = map[string][2]string{
 		`import { Marked, Tokenizer } from "../../../marked/lib/marked.esm.js";`},
 	"pi-ai/utils/json-parse.js": {`import { parse as partialParse } from "partial-json";`,
 		`import { parse as partialParse } from "../../../partial-json/dist/index.js";`},
+	"pi-ai/providers/compat-schema.js": {`import { Type } from "typebox";`,
+		`import { Type } from "../../../typebox.mjs";`},
+	"pi-ai/providers/model-schema.js": {`import { Type } from "typebox";`,
+		`import { Type } from "../../../typebox.mjs";`},
 	"pi-ai/utils/typebox-helpers.js": {`import { Type } from "typebox";`,
 		`import { Type } from "../../../typebox.mjs";`},
 	"pi-ai/index.js": {`export { Type } from "typebox";`,
@@ -105,7 +109,8 @@ var vendoredValidationRewrites = [][2]string{
 }
 
 // pinnedPackageDist is where each vendored package's dist/ lives in the
-// pinned install, relative to pinnedPiPackages.
+// pinned install, relative to pinnedPiPackages. Pi 1.2.0's coding agent no
+// longer depends on chord, so make vendor-pi-dist vendors no chord dist.
 var pinnedPackageDist = map[string][]string{
 	"pi-tui":          {"node_modules", "@earendil-works", "pi-tui", "dist"},
 	"pi-ai":           {"node_modules", "@earendil-works", "pi-ai", "dist"},
@@ -158,8 +163,8 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 		if err := json.Unmarshal(readPinned(t, append(dist[:len(dist)-1:len(dist)-1], "package.json")...), &manifest); err != nil {
 			t.Fatal(err)
 		}
-		if manifest.Version != coding.UpstreamVersion {
-			t.Fatalf("installed %s %s, pinned Pi %s: run npm ci in extensions/sdk-ts", pkg, manifest.Version, coding.UpstreamVersion)
+		if manifest.Version != coding.UpstreamPackageVersion {
+			t.Fatalf("installed %s %s, pinned Pi %s: run npm ci in extensions/sdk-ts", pkg, manifest.Version, coding.UpstreamPackageVersion)
 		}
 	}
 	shims := filepath.Join("runtime-node", "shims")
@@ -654,24 +659,6 @@ async function scene(m) {
   for await (const e of stream) events.push(e.type);
   log(events, await stream.result(), stream instanceof m.AssistantMessageEventStream, stream instanceof m.EventStream);
 
-  const encoder = new m.AssistantMessageFrameEncoder();
-  const frames = [];
-  const at = (content, stopReason = "pending") => ({ ...m.fauxAssistantMessage(content, { timestamp: 4 }), stopReason });
-  const call = (args) => m.fauxToolCall("read", args, { id: "t2" });
-  for (const e of [
-    { type: "start", partial: at([]) },
-    { type: "text_start", contentIndex: 0, partial: at([m.fauxText("")]) },
-    { type: "text_delta", contentIndex: 0, delta: "rea", partial: at([m.fauxText("rea")]) },
-    { type: "text_end", contentIndex: 0, content: "reading", partial: at([m.fauxText("reading")]) },
-    { type: "toolcall_start", contentIndex: 1, partial: at([m.fauxText("reading"), call({})]) },
-    { type: "toolcall_delta", contentIndex: 1, delta: '{"path":"a', partial: at([m.fauxText("reading"), call({ path: "a" })]) },
-    { type: "toolcall_end", contentIndex: 1, toolCall: call({ path: "a.go" }), partial: at([m.fauxText("reading"), call({ path: "a.go" })]) },
-    { type: "done", reason: "toolUse", message: at([m.fauxText("reading"), call({ path: "a.go" })], "toolUse") },
-  ]) {
-    frames.push(safe(() => encoder.encode(e)));
-  }
-  log(frames, safe(() => m.reduceAssistantMessageFrames(frames.flat().filter(Boolean))));
-
   const tool = { name: "read", description: "Read", parameters: { type: "object", properties: { path: { type: "string" }, limit: { type: "integer" } }, required: ["path"] } };
   for (const args of [{ path: "a" }, { path: "a", limit: "5" }, { limit: 1 }, { path: 1 }]) {
     const call = { type: "toolCall", id: "c", name: "read", arguments: args };
@@ -787,8 +774,8 @@ func TestHarnessEntryIsNamedLikePinnedPi(t *testing.T) {
 	if err := json.Unmarshal(data, &harness); err != nil {
 		t.Fatal(err)
 	}
-	if harness.Name != pinned.Name || harness.Version != coding.UpstreamVersion || pinned.Version != coding.UpstreamVersion {
-		t.Fatalf("harness package %s@%s, pinned Pi %s@%s, UpstreamVersion %s", harness.Name, harness.Version, pinned.Name, pinned.Version, coding.UpstreamVersion)
+	if harness.Name != pinned.Name || harness.Version != coding.UpstreamPackageVersion || pinned.Version != coding.UpstreamPackageVersion {
+		t.Fatalf("harness package %s@%s, pinned Pi %s@%s, UpstreamVersion %s", harness.Name, harness.Version, pinned.Name, pinned.Version, coding.UpstreamPackageVersion)
 	}
 	if _, ok := pinned.Bin["pi"]; !ok || harness.Bin["pi"] != "cli.mjs" {
 		t.Fatalf("harness bin %v, pinned bin %v", harness.Bin, pinned.Bin)

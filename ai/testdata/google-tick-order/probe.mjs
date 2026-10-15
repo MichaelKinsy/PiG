@@ -29,6 +29,9 @@
 //        PI_PACKAGE_ROOT=... node probe.mjs --check pi.json
 // The optional argument writes the result; stdout always receives it too. `--check` compares a fresh run with the
 // checked-in golden (ignoring the Node version string) and exits 1 on any difference; it never rewrites the golden.
+const PIG_UPSTREAM_VERSION = process.env.PIG_UPSTREAM_VERSION; // the pin's display version, from `eval "$(python3 automation/pin/pin.py env)"`
+if (!PIG_UPSTREAM_VERSION) throw new Error('PIG_UPSTREAM_VERSION is not set: run eval "$(python3 automation/pin/pin.py env)" before the probe');
+import { PI_PACKAGE_VERSION } from "../../../test/parity/testdata/pi-version.mjs";
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
@@ -37,7 +40,7 @@ const root = process.env.PI_PACKAGE_ROOT;
 assert.ok(root, 'PI_PACKAGE_ROOT must name the installed @earendil-works/pi-coding-agent directory');
 const scope = root + '/node_modules/@earendil-works/';
 const genaiDir = root + '/node_modules/@google/genai';
-for (const [dir, version] of [[root, '1.0.3'], [scope + 'pi-ai', '1.0.3'], [genaiDir, '2.21.0']]) {
+for (const [dir, version] of [[root, PI_PACKAGE_VERSION], [scope + 'pi-ai', PI_PACKAGE_VERSION], [genaiDir, '2.21.0']]) {
   assert.equal(JSON.parse(await readFile(dir + '/package.json', 'utf8')).version, version, dir);
 }
 const load = path => import(pathToFileURL(path).href);
@@ -186,7 +189,7 @@ async function runProvider(c) {
 const scrub = value => JSON.parse(JSON.stringify(value).replace(/"timestamp":\d+/g, '"timestamp":0'));
 
 const out = {
-  pi: '1.0.3', genai: '2.21.0', node: process.version,
+  pi: PIG_UPSTREAM_VERSION, genai: '2.21.0', node: process.version,
   cap: CAP,
   note: 'stamp = (seg, tick); see probe.mjs header. array order within a stamp is execution order.',
   cases: [],

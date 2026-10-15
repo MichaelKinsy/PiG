@@ -74,16 +74,32 @@ func abortableDeviceSleep(ctx context.Context, d time.Duration) error {
 	}
 }
 
+// deviceCodeNow and deviceCodeSleep are the clock pollOAuthDeviceCodeFlow reads (Date.now) and waits on (abortableSleep). Tests replace them with a virtual clock.
+var (
+	deviceCodeNow   = func() float64 { return float64(nowMillis()) }
+	deviceCodeSleep = abortableDeviceSleepMs
+)
+
+// abortableDeviceSleepMs waits ms as setTimeout would, or fails with the cancel message once ctx is done.
+func abortableDeviceSleepMs(ctx context.Context, ms float64) error {
+	if err := Sleep(ctx, ms); err != nil {
+		return errors.New(deviceCodeCancelMessage)
+	}
+	return nil
+}
+
 // PollOAuthDeviceCodeFlow runs the RFC 8628 polling loop: it calls Poll,
 // honoring pending/slow_down/failed/complete, sleeping the (possibly widened)
 // interval between attempts, until Poll completes or the deadline/ctx fires.
-// Mirrors upstream pollOAuthDeviceCodeFlow.
+// Times are floating-point milliseconds as in upstream, so a NaN or infinite
+// interval or expiry behaves as it does there. Mirrors upstream
+// pollOAuthDeviceCodeFlow.
 func PollOAuthDeviceCodeFlow[T any](ctx context.Context, opts DeviceCodePollOptions[T]) (T, error) {
 	var zero T
 
-	deadline := time.Time{} // zero => no deadline
+	deadline := math.Inf(1)
 	if opts.ExpiresInSeconds != nil {
-		deadline = time.Now().Add(time.Duration(*opts.ExpiresInSeconds * float64(time.Second)))
+		deadline = deviceCodeNow() + float64(*opts.ExpiresInSeconds*1000)
 	}
 
 	intervalSeconds := float64(deviceCodeDefaultPollIntervalSeconds)
@@ -94,12 +110,14 @@ func PollOAuthDeviceCodeFlow[T any](ctx context.Context, opts DeviceCodePollOpti
 
 	slowDownResponses := 0
 	if opts.WaitBeforeFirstPoll {
-		if _, err := sleepBeforeNextDevicePoll(ctx, deadline, intervalMS); err != nil {
-			return zero, err
+		if remainingMS := deadline - deviceCodeNow(); remainingMS > 0 {
+			if err := deviceCodeSleep(ctx, math.Min(intervalMS, remainingMS)); err != nil {
+				return zero, err
+			}
 		}
 	}
 
-	for deadline.IsZero() || time.Now().Before(deadline) {
+	for deviceCodeNow() < deadline {
 		if ctx.Err() != nil {
 			return zero, errors.New(deviceCodeCancelMessage)
 		}
@@ -119,12 +137,12 @@ func PollOAuthDeviceCodeFlow[T any](ctx context.Context, opts DeviceCodePollOpti
 		case DevicePollPending:
 		}
 
-		slept, err := sleepBeforeNextDevicePoll(ctx, deadline, intervalMS)
-		if err != nil {
-			return zero, err
-		}
-		if !slept {
+		remainingMS := deadline - deviceCodeNow()
+		if remainingMS <= 0 {
 			break
+		}
+		if err := deviceCodeSleep(ctx, math.Min(intervalMS, remainingMS)); err != nil {
+			return zero, err
 		}
 	}
 
@@ -143,18 +161,4 @@ func slowDownDeviceInterval(intervalMS float64, serverSeconds *float64) float64 
 		return math.Max(deviceCodeMinIntervalMS, math.Floor(*serverSeconds*1000))
 	}
 	return math.Max(deviceCodeMinIntervalMS, intervalMS+deviceCodeSlowDownIncrementMS)
-}
-
-// sleepBeforeNextDevicePoll waits one interval, clamped to the deadline. It
-// reports false without sleeping when the deadline has already passed.
-func sleepBeforeNextDevicePoll(ctx context.Context, deadline time.Time, intervalMS float64) (bool, error) {
-	sleepMS := intervalMS
-	if !deadline.IsZero() {
-		remainingMS := math.Floor(float64(time.Until(deadline)) / float64(time.Millisecond))
-		if remainingMS <= 0 {
-			return false, nil
-		}
-		sleepMS = math.Min(intervalMS, remainingMS)
-	}
-	return true, abortableDeviceSleep(ctx, time.Duration(sleepMS)*time.Millisecond)
 }

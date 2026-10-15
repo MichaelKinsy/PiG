@@ -1,0 +1,31 @@
+{
+ "from": "0.99.2",
+ "note": "Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review.",
+ "noteWhenChanged": "Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface.",
+ "changedModules": [
+  "models#"
+ ],
+ "extraEvidence": {
+  "pkg:ai/models#Models::property:refresh": [
+   "test:ai/credential_expiry_test.go#TestCredentialExpiryMatchesPi",
+   "test:ai/oauth_registry_lock_upstream_test.go#TestRegistryOAuthRefreshCancelledDuringTheRefreshPersistsTheCredentialUpstream"
+  ],
+  "pkg:ai/models#MutableModels::property:refresh": [
+   "test:ai/credential_expiry_test.go#TestCredentialExpiryMatchesPi",
+   "test:ai/oauth_registry_lock_upstream_test.go#TestRegistryOAuthRefreshCancelledDuringTheRefreshPersistsTheCredentialUpstream"
+  ]
+ },
+ "review": {
+  "diffed": "diff -u .upstream/v0.99.2/packages/<pkg>/src/<file> .upstream/v1.0.4/packages/<pkg>/src/<file>",
+  "unchanged": [
+   "ai/src/api/constrained-sampling.ts",
+   "ai/src/compat.ts",
+   "coding-agent/src/modes/rpc/rpc-types.ts",
+   "coding-agent/src/core/settings-manager.ts (getTerminalCapabilityOverrides untouched)",
+   "tui/src/terminal-image.ts (setCapabilityOverrides untouched)"
+  ],
+  "changed": [
+   "ai/src/models.ts: only resolveRefreshCredential (Models.refresh, MutableModels.refresh) now calls refreshStoredOAuthCredential; no declaration changed"
+  ]
+ }
+}

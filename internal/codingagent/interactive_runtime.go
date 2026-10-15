@@ -11,7 +11,6 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
-	"github.com/MichaelKinsy/PiG/internal/codingagent/llama"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -25,7 +24,7 @@ type InteractiveForkResult struct {
 type InteractiveRuntime interface {
 	NewSession(ctx context.Context, options *extension.NewSessionOptions) (extension.CancelledResult, error)
 	// SwitchSession opens path and replaces the Session. projectTrustUI supplies the UI of the destination's project trust prompt, as Pi's projectTrustContextFactory does.
-	SwitchSession(ctx context.Context, path, cwdOverride string, projectTrustUI func(cwd string) extension.UIContext, options *extension.SwitchSessionOptions) (extension.CancelledResult, error)
+	SwitchSession(ctx context.Context, path, cwdOverride string, projectTrustUI func(cwd string) extension.ProjectTrustContext, options *extension.SwitchSessionOptions) (extension.CancelledResult, error)
 	Fork(ctx context.Context, entryID string, options *extension.ForkOptions) (InteractiveForkResult, error)
 	ImportFromJsonl(ctx context.Context, path, cwdOverride string) (extension.CancelledResult, error)
 	// ExtensionCommandActions returns the command actions of session with new, fork and switch routed through the runtime.
@@ -51,10 +50,12 @@ type InteractiveReplacement struct {
 	SystemPromptOptions     extension.BuildSystemPromptOptions
 	AllowedTools            map[string]struct{}
 	ActiveBuiltinTools      map[string]struct{}
+	InitialActiveToolNames  []string
 	ExcludedTools           map[string]struct{}
 	ToolRegistryAllowed     map[string]struct{}
 	NoBuiltinTools          bool
 	PromptPaths             []string
+	CLIPromptTemplatePaths  []string
 	ThemePaths              []string
 	SkillPaths              []string
 	Skills                  []*SkillDef
@@ -69,12 +70,12 @@ type InteractiveReplacement struct {
 	// ExtensionConflicts are the tool and flag conflicts of the build's final extension set, which Pi lists with the extension load errors.
 	ExtensionConflicts      []ExtensionConflict
 	BuiltinExtensions       []extension.Extension
+	ExplicitBuiltinPaths    []string
 	ReloadBuiltinExtensions func() []extension.Extension
-	Llama                   *llama.Host
 	SubprocessUIBridge      SubprocessUIBridge
 	SubprocessHost          SubprocessHost
 	ModelLookup             func(providerID, modelID string) *ai.Model
-	ModelCatalog            func() []*ai.Model
+	ModelCatalog            func(providerID ...string) []*ai.Model
 	ModelClassify           func(context.Context, *ai.ClassifierModel, ai.ClassifierContext, ...ai.ModelsClassifierOptions) ai.ClassifierResult
 	ModelGenerateImages     func(context.Context, *ai.ImageModel, ai.ImagesContext, ...ai.ModelsImagesOptions) ai.AssistantImages
 	RequestAuthRuntime      *RequestAuthRuntime
@@ -82,7 +83,7 @@ type InteractiveReplacement struct {
 
 // installRuntimeHooks binds the runtime host to this mode as the constructor of Pi's InteractiveMode does: the mode resets extension UI before the outgoing Session's contexts go stale, drains active work before the outgoing Session aborts, and rebinds to the replacement Session.
 func (m *InteractiveMode) installRuntimeHooks() {
-	rt := m.opts.Runtime
+	rt := m.runtimeHost
 	if rt == nil {
 		return
 	}
@@ -93,15 +94,34 @@ func (m *InteractiveMode) installRuntimeHooks() {
 	rt.SetRebindSession(m.rebindFromRuntime)
 }
 
+// resetWorkingStatus returns the working message, visibility and indicator to their defaults, as Pi does when a Session replacement resets extension UI (interactive-mode.ts:2474-2482).
+// Pi's reset words an already running working indicator "<default> (<interrupt key> to interrupt)", unlike the label a new indicator starts with.
+func (m *InteractiveMode) resetWorkingStatus() {
+	m.workingMessage = nil
+	m.workingVisible = true
+	m.setWorkingIndicator(nil)
+	if indicator := m.activeStatusIndicator; indicator != nil && indicator.Kind == "working" {
+		key := "escape"
+		if m.keybindings != nil {
+			key = m.keybindings.KeyText("app.interrupt")
+		}
+		indicator.SetMessage("Working (" + key + " to interrupt)")
+		m.reconfigureRemoteEditor()
+	}
+}
+
 // resetExtensionUIForReplacement detaches what the outgoing Session's extensions put on screen before their contexts go stale.
 func (m *InteractiveMode) resetExtensionUIForReplacement() {
 	reset := func() {
 		m.detachSubprocess()
 		if m.widgetContainer != nil {
+			m.clearExtensionWidgets()
 			m.syncWidgets(nil)
 		}
 		m.setRemoteEditor(nil)
 		m.resetAutocompleteWrappers()
+		m.resetWorkingStatus()
+		m.setHiddenThinkingLabel(nil)
 	}
 	// The replacement runs on a worker while the owner services tasks. After the loop ended, nothing else touches the UI.
 	if m.runCtx == nil || m.runEnded.Load() || m.runCtx.Err() != nil {
@@ -143,10 +163,12 @@ func (m *InteractiveMode) applyReplacement(session InteractiveSessionHandle, r I
 	m.opts.SystemPromptOptions = r.SystemPromptOptions
 	m.opts.AllowedTools = r.AllowedTools
 	m.opts.ActiveBuiltinTools = r.ActiveBuiltinTools
+	m.opts.InitialActiveToolNames = r.InitialActiveToolNames
 	m.opts.ExcludedTools = r.ExcludedTools
 	m.opts.ToolRegistryAllowed = r.ToolRegistryAllowed
 	m.opts.NoBuiltinTools = r.NoBuiltinTools
 	m.opts.PromptPaths = r.PromptPaths
+	m.opts.CLIPromptTemplatePaths = r.CLIPromptTemplatePaths
 	m.opts.ThemePaths = r.ThemePaths
 	m.opts.SkillPaths = r.SkillPaths
 	m.opts.Skills = r.Skills
@@ -161,8 +183,8 @@ func (m *InteractiveMode) applyReplacement(session InteractiveSessionHandle, r I
 	event := r.SessionStartEvent
 	m.opts.SessionStartEvent = &event
 	m.opts.BuiltinExtensions = r.BuiltinExtensions
+	m.opts.ExplicitBuiltinPaths = r.ExplicitBuiltinPaths
 	m.opts.ReloadBuiltinExtensions = r.ReloadBuiltinExtensions
-	m.opts.Llama = r.Llama
 	m.opts.SubprocessUIBridge = r.SubprocessUIBridge
 	m.opts.SubprocessHost = r.SubprocessHost
 	m.opts.ModelLookup = r.ModelLookup
@@ -179,8 +201,9 @@ func (m *InteractiveMode) applyReplacement(session InteractiveSessionHandle, r I
 	if r.SettingsManager != nil {
 		tui.SetCapabilityOverrides(r.SettingsManager.GetTerminalCapabilityOverrides())
 	}
-	ensurePngTranscoder()
+	m.ensurePngTranscoder()
 	m.loadPromptTemplates()
+	m.reportMissingPromptTemplatePaths()
 	if provider := m.opts.ResourceSourceInfoProvider; provider != nil {
 		m.resourceSourceInfo = provider()
 	}
@@ -215,6 +238,10 @@ func (m *InteractiveMode) attachSubprocess() {
 		bridge.SetWidgetSyncFunc(func(widgets map[string]*subprocess.PushProxy) {
 			m.syncWidgets(widgets)
 		})
+		// An extension process clearing a key a host-process extension set clears that widget: widget keys are one namespace.
+		bridge.SetWidgetClearFunc(m.clearInprocessWidget)
+		// A reload's new bridge learns that a frontend still draws.
+		bridge.SetFrontend(m.surface != nil)
 		m.detachModelRegistry = m.wireSubprocessHostCallbacks()
 	}
 	if host := m.opts.SubprocessHost; host != nil {
@@ -256,6 +283,7 @@ func (m *InteractiveMode) detachSubprocess() {
 	if bridge := m.opts.SubprocessUIBridge; bridge != nil {
 		bridge.SetUIContext(extension.NoopUIContext)
 		bridge.SetWidgetSyncFunc(func(map[string]*subprocess.PushProxy) {})
+		bridge.SetWidgetClearFunc(func(string) {})
 		bridge.SetInvalidate(func() {})
 		bridge.SetNotifyFunc(func(string, string) {})
 	}
@@ -273,7 +301,7 @@ func (i runtimeImporter) ImportFromJsonl(ctx context.Context, inputPath, cwdOver
 
 // emitQuitShutdown emits session_shutdown for quit through the runtime host when the mode has one, so closing the runtime does not repeat the event.
 func (m *InteractiveMode) emitQuitShutdown() {
-	if rt := m.opts.Runtime; rt != nil {
+	if rt := m.runtimeHost; rt != nil {
 		rt.EmitQuitShutdown()
 		return
 	}

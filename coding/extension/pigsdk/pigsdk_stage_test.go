@@ -1,13 +1,16 @@
+//go:build !pig_strip_extension_sdk_python
+
 package pigsdk
 
 import (
-	"encoding/json"
+	"bytes"
 	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -19,13 +22,14 @@ import (
 func TestSyncSwapsCompleteTreeAndRemovesStagingLeftovers(t *testing.T) {
 	root := t.TempDir()
 	stateDir := filepath.Join(root, "state", "pigsdk")
-	if err := os.MkdirAll(filepath.Join(stateDir, ".stage-python-crashed"), 0o755); err != nil {
+	crashed := filepath.Join(stateDir, stagePrefix(pythonSDKDir(t, root))+"crashed")
+	if err := os.MkdirAll(crashed, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(stateDir, ".stage-python-crashed", "partial.py"), []byte("x"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(crashed, "partial.py"), []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Sync(root); err != nil {
+	if _, _, err := Sync(root, false); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
 	leftovers, err := filepath.Glob(filepath.Join(stateDir, ".stage-*"))
@@ -35,6 +39,16 @@ func TestSyncSwapsCompleteTreeAndRemovesStagingLeftovers(t *testing.T) {
 	if len(leftovers) != 0 {
 		t.Fatalf("staging trees after Sync = %v, want none", leftovers)
 	}
+}
+
+// pythonSDKDir is the directory this build stages its Python SDK in under root.
+func pythonSDKDir(t *testing.T, root string) string {
+	t.Helper()
+	dir, err := SDKDirFor(root, "python")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return dir
 }
 
 // The documented modes are 0755 for a directory and 0644 for a file. Windows
@@ -51,9 +65,12 @@ func TestSyncedTreeHoldsExactlyTheBundleWithDocumentedModes(t *testing.T) {
 			if _, err := bundle.sync(root); err != nil {
 				t.Fatalf("sync: %v", err)
 			}
-			dir := filepath.Join(root, filepath.FromSlash(bundle.relDir))
+			dir, err := bundle.stagedDir(root)
+			if err != nil {
+				t.Fatal(err)
+			}
 			var got []string
-			err := filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
+			err = filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
 				if err != nil {
 					return err
 				}
@@ -106,7 +123,7 @@ func TestSyncFailureKeepsPreviousTreeAndCleansStaging(t *testing.T) {
 	if _, err := bundle.sync(root); err != nil {
 		t.Fatal(err)
 	}
-	dir := filepath.Join(root, filepath.FromSlash(bundle.relDir))
+	dir := pythonSDKDir(t, root)
 	before, err := os.ReadFile(filepath.Join(dir, markerFile))
 	if err != nil {
 		t.Fatal(err)
@@ -117,7 +134,7 @@ func TestSyncFailureKeepsPreviousTreeAndCleansStaging(t *testing.T) {
 		t.Fatal("sync of a missing embedded file succeeded")
 	}
 	after, err := os.ReadFile(filepath.Join(dir, markerFile))
-	if err != nil || string(after) != string(before) {
+	if err != nil || !bytes.Equal(after, before) {
 		t.Fatalf("previous marker = %q, %v; want %q", after, err, before)
 	}
 	siblings, err := os.ReadDir(filepath.Dir(dir))
@@ -137,7 +154,7 @@ func TestPruneWithoutCacheEntriesDoesNotFingerprintStagedSDKs(t *testing.T) {
 	if _, err := Prune(root, false, false); err == nil || !strings.Contains(err.Error(), "no staged SDK found") {
 		t.Fatalf("Prune without a staged SDK = %v, want the no-staged-SDK error", err)
 	}
-	if _, err := Sync(root); err != nil {
+	if _, _, err := Sync(root, false); err != nil {
 		t.Fatal(err)
 	}
 	report, err := Prune(root, false, false)
@@ -161,7 +178,7 @@ func TestPruneWithoutCacheEntriesDoesNotFingerprintStagedSDKs(t *testing.T) {
 // A build published while Prune waits for the cache GC lock must be classified against the staged SDK fingerprints (cache_lifecycle.go: one classification under .gc.lock), not against the empty answer read before the lock.
 func TestPruneClassifiesBuildPublishedWhileWaitingForGCLock(t *testing.T) {
 	root := t.TempDir()
-	if _, err := Sync(root); err != nil {
+	if _, _, err := Sync(root, false); err != nil {
 		t.Fatal(err)
 	}
 	cacheRoot := filepath.Join(root, "cache")
@@ -186,24 +203,7 @@ func TestPruneClassifiesBuildPublishedWhileWaitingForGCLock(t *testing.T) {
 		t.Fatalf("Prune finished while the GC lock was held: %+v", got)
 	case <-time.After(100 * time.Millisecond):
 	}
-	entry := filepath.Join(cacheRoot, "ext", "obsolete")
-	if err := os.MkdirAll(entry, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	artifact := []byte("artifact")
-	if err := os.WriteFile(filepath.Join(entry, "bin"), artifact, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	ready, err := json.Marshal(map[string]any{"inputDigest": "obsolete", "size": len(artifact), "artifact": "bin", "target": "t", "created": time.Now().Unix()})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(entry, "ready.json"), ready, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(entry, ".sdk-fingerprint"), []byte("obsolete-sdk"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	entry := writeCacheEntry(t, cacheRoot, "obsolete", "obsolete-sdk")
 	if err := gc.Unlock(); err != nil {
 		t.Fatal(err)
 	}
@@ -226,7 +226,7 @@ func TestSyncSwapNeverLosesPreviousTree(t *testing.T) {
 	if _, err := bundle.sync(root); err != nil {
 		t.Fatal(err)
 	}
-	dir := filepath.Join(root, filepath.FromSlash(bundle.relDir))
+	dir := pythonSDKDir(t, root)
 	previous, err := os.ReadFile(filepath.Join(dir, markerFile))
 	if err != nil {
 		t.Fatal(err)
@@ -247,7 +247,7 @@ func TestSyncSwapNeverLosesPreviousTree(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, sibling := range siblings {
-				if data, err := os.ReadFile(filepath.Join(filepath.Dir(dir), sibling.Name(), markerFile)); err == nil && string(data) == string(previous) {
+				if data, err := os.ReadFile(filepath.Join(filepath.Dir(dir), sibling.Name(), markerFile)); err == nil && bytes.Equal(data, previous) {
 					recoverable = true
 				}
 			}
@@ -262,7 +262,7 @@ func TestSyncSwapNeverLosesPreviousTree(t *testing.T) {
 		t.Fatal("previous SDK tree was not on disk when the new tree was renamed into place")
 	}
 	after, err := os.ReadFile(filepath.Join(dir, markerFile))
-	if err != nil || string(after) != string(previous) {
+	if err != nil || !bytes.Equal(after, previous) {
 		t.Fatalf("previous marker after failed swap = %q, %v; want %q", after, err, previous)
 	}
 	siblings, err := os.ReadDir(filepath.Dir(dir))
@@ -286,7 +286,7 @@ func TestSyncRestoresPreviousTreeStrandedByFailedRollback(t *testing.T) {
 	if _, err := bundle.sync(root); err != nil {
 		t.Fatal(err)
 	}
-	dir := filepath.Join(root, filepath.FromSlash(bundle.relDir))
+	dir := pythonSDKDir(t, root)
 	if err := os.WriteFile(filepath.Join(dir, markerFile), []byte("older\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -321,24 +321,31 @@ func TestSyncRestoresPreviousTreeStrandedByFailedRollback(t *testing.T) {
 // A process killed after the swap but before it removed the previous tree strands that tree. A start that finds every SDK current must still remove it, and only the languages it was asked about.
 func TestEnsureSyncedRemovesStagingLeftoversWhenSDKIsCurrent(t *testing.T) {
 	operations := map[string]struct {
-		run     func(root string) error
-		removed string
-		kept    string
+		run      func(root string) error
+		keepRust bool
 	}{
-		"all languages": {EnsureSynced, ".stage-python-crashed.old", ""},
-		"one language":  {func(root string) error { return EnsureSyncedLang(root, "python") }, ".stage-python-crashed.old", ".stage-rust-crashed"},
+		"all languages": {EnsureSynced, false},
+		"one language":  {func(root string) error { return EnsureSyncedLang(root, "python") }, true},
 	}
 	for name, operation := range operations {
 		t.Run(name, func(t *testing.T) {
 			root := t.TempDir()
-			if _, err := Sync(root); err != nil {
+			if _, _, err := Sync(root, false); err != nil {
 				t.Fatal(err)
 			}
 			stateDir := filepath.Join(root, "state", "pigsdk")
-			for _, leftover := range []string{operation.removed, operation.kept} {
-				if leftover == "" {
-					continue
+			removed := stagePrefix(pythonSDKDir(t, root)) + "crashed.old"
+			leftovers := []string{removed}
+			var kept string
+			if operation.keepRust {
+				rustDir, err := SDKDirFor(root, "rust")
+				if err != nil {
+					t.Fatal(err)
 				}
+				kept = stagePrefix(rustDir) + "crashed"
+				leftovers = append(leftovers, kept)
+			}
+			for _, leftover := range leftovers {
 				if err := os.MkdirAll(filepath.Join(stateDir, leftover), 0o755); err != nil {
 					t.Fatal(err)
 				}
@@ -346,14 +353,91 @@ func TestEnsureSyncedRemovesStagingLeftoversWhenSDKIsCurrent(t *testing.T) {
 			if err := operation.run(root); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := os.Stat(filepath.Join(stateDir, operation.removed)); !os.IsNotExist(err) {
-				t.Errorf("stranded %s survived a start with current SDKs: %v", operation.removed, err)
+			if _, err := os.Stat(filepath.Join(stateDir, removed)); !os.IsNotExist(err) {
+				t.Errorf("stranded %s survived a start with current SDKs: %v", removed, err)
 			}
-			if operation.kept != "" {
-				if _, err := os.Stat(filepath.Join(stateDir, operation.kept)); err != nil {
+			if kept != "" {
+				if _, err := os.Stat(filepath.Join(stateDir, kept)); err != nil {
 					t.Errorf("start for one language removed another language's tree: %v", err)
 				}
 			}
 		})
+	}
+}
+
+// A staging tree another build left beside its own SDK directory belongs to that build: this build's staging never removes or restores it.
+func TestStagingLeavesAnotherBuildsStagingTrees(t *testing.T) {
+	root := t.TempDir()
+	stateDir := filepath.Join(root, "state", "pigsdk")
+	foreign := []string{".stage-sdk-py-aaaaaaaaaaaaaaaa-crashed", ".stage-sdk-py-aaaaaaaaaaaaaaaa-crashed.old", ".stage-python-crashed.old"}
+	for _, name := range foreign {
+		if err := os.MkdirAll(filepath.Join(stateDir, name), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, _, err := Sync(root, false); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range foreign {
+		if _, err := os.Stat(filepath.Join(stateDir, name)); err != nil {
+			t.Errorf("another build's staging tree %s was removed: %v", name, err)
+		}
+	}
+	if data, err := os.ReadFile(filepath.Join(pythonSDKDir(t, root), markerFile)); err != nil || len(data) == 0 {
+		t.Fatalf("this build's Python SDK marker = %q, %v", data, err)
+	}
+}
+
+// The prune that follows a startup stage reads no byte counts, so it must not stat every file of every cached extension build: a cache of large builds made the first start after an upgrade take seconds. pig reload prints the bytes it dropped, so Sync still sizes the entries.
+func TestPruneAfterAStartupStageDoesNotSizeCachedBuilds(t *testing.T) {
+	root := t.TempDir()
+	if _, _, err := Sync(root, false); err != nil {
+		t.Fatal(err)
+	}
+	build := filepath.Join(root, "cache", "ext", "build")
+	if err := os.MkdirAll(build, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Removing this build's staged SDKs makes every EnsureSynced a stage, which the prune follows.
+	cost := func() float64 {
+		return testing.AllocsPerRun(3, func() {
+			for _, b := range bundles() {
+				dir, err := b.stagedDir(root)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := os.RemoveAll(dir); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := EnsureSynced(root); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+	const added = 1000
+	before := cost()
+	for i := range added {
+		if err := os.WriteFile(filepath.Join(build, "f"+strconv.Itoa(i)), []byte("01234567"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if grown := cost() - before; grown > 20 {
+		t.Errorf("the startup prune allocated %.0f more for %d more files in a cached build", grown, added)
+	}
+	_, report, err := Sync(root, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.TotalBytes < 8*added {
+		t.Errorf("Sync report = %d bytes, want the cached build's %d bytes counted", report.TotalBytes, 8*added)
+	}
+	// pig reload --dry-run prints the megabytes Prune would drop, so Prune sizes the entries too.
+	report, err = Prune(root, false, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.TotalBytes < 8*added {
+		t.Errorf("Prune report = %d bytes, want the cached build's %d bytes counted", report.TotalBytes, 8*added)
 	}
 }

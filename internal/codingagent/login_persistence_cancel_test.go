@@ -33,7 +33,7 @@ func TestLoginCancelWhileCredentialStoreLocked(t *testing.T) {
 		t.Fatal(err)
 	}
 	started := make(chan struct{})
-	m.opts.ModelRegistry.runtimeCredentials = ai.NewRuntimeCredentials(observedLoginCredentialStore{CredentialStore: store, started: started})
+	m.opts.ModelRegistry.runtimeCredentials.Store(ai.NewRuntimeCredentials(observedLoginCredentialStore{CredentialStore: store, started: started}))
 	done := make(chan error, 1)
 	go func() { done <- m.runAPIKeyLogin(tui.OAuthProvider{ID: "openai", Name: "OpenAI", AuthType: "api_key"}) }()
 	waitForRender(t, m.editorContainer, "Enter OpenAI API key")

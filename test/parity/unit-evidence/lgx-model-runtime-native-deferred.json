@@ -1,0 +1,157 @@
+[
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./coding",
+  "tests": [
+   "TestModelRuntimeLoginForwardsLoginOptions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "coding/model_runtime_native.go: replace `LoginNativeProvider(ctx, id, kind, interaction, options...)` with `LoginNativeProvider(ctx, id, kind, interaction)`; TestModelRuntimeLoginForwardsLoginOptions fails."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./coding",
+  "tests": [
+   "TestModelRuntimeLoginForwardsLoginOptions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "coding/model_runtime_native.go: replace `LoginNativeProvider(ctx, id, kind, interaction, options...)` with `LoginNativeProvider(ctx, id, ai.CredentialAPIKey, interaction, options...)`; TestModelRuntimeLoginForwardsLoginOptions fails."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./coding",
+  "tests": [
+   "TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "coding/model_runtime_native.go: replace `if native := runtime.registeredNativeProvider(model); native != nil {\n\t\tvar opts ai.DeferredFetchOptions\n\t\tif len(options) > 0 {\n\t\t\topts = options[0]\n\t\t}\n\t\treturn runtime.streamNativeDeferred` with `if native := runtime.registeredNativeProvider(model); native != nil {\n\t\tvar opts ai.DeferredFetchOptions\n\t\treturn runtime.streamNativeDeferred`; TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider fails."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./coding",
+  "tests": [
+   "TestModelRuntimeNativeCompatibilityUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "coding/model_runtime_native.go: replace `return runtime.services.Registry().NativeModels().StreamDeferred(ctx, model, handle, options...)` with `return runtime.services.Registry().NativeModels().StreamDeferred(ctx, model, handle)`; TestModelRuntimeNativeCompatibilityUpstream fails."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./coding",
+  "tests": [
+   "TestModelRuntimeNativeCompatibilityUpstream",
+   "TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "coding/model_runtime_native.go: replace `return runtime.StreamDeferred(ctx, model, handle, options...).Result()` with `return runtime.StreamDeferred(ctx, model, handle).Result()`; TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider, TestModelRuntimeNativeCompatibilityUpstream fails."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./coding",
+  "tests": [
+   "TestModelRuntimeNativeCompatibilityUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "coding/model_runtime_native.go: replace `if native == nil {\n\t\treturn runtime.services.Registry().NativeModels().CancelDeferred(ctx, model, handle, options...)\n\t}` with `if native == nil {\n\t\treturn runtime.services.Registry().NativeModels().CancelDeferred(ctx, model, handle)\n\t}`; TestModelRuntimeNativeCompatibilityUpstream fails."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./coding",
+  "tests": [
+   "TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "coding/model_runtime_native.go: replace `if native.CancelDeferred == nil {\n\t\treturn ai.NewModelsError(ai.ModelsErrorProvider, \"Provider \"+native.ID+\" does not support deferred responses\", nil)\n\t}\n\tvar opts ai.DeferredCancelOptions` with `var opts ai.DeferredCancelOptions`; TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider fails."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./coding",
+  "tests": [
+   "TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "coding/model_runtime_native.go: replace `var opts ai.DeferredCancelOptions\n\tif len(options) > 0 {\n\t\topts = options[0]\n\t}` with `var opts ai.DeferredCancelOptions`; TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider fails."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./coding",
+  "tests": [
+   "TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "coding/model_runtime_native.go: replace `requestModel, _, prepared, err := runtime.prepareNativeRequest(ctx, model, opts, native)\n\tif err != nil {\n\t\treturn err\n\t}\n\treturn native.CancelDeferred(ctx, requestModel, handle, prepared)` with `requestModel, _, prepared, err := runtime.prepareNativeRequest(ctx, model, opts, native)\n\tif err != nil {\n\t\treturn err\n\t}\n\t_ = requestModel\n\treturn native.CancelDeferred(ctx, model, handle, prepared)`; TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider fails."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./coding",
+  "tests": [
+   "TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "coding/model_runtime_native.go: replace `requestModel, _, prepared, err := runtime.prepareNativeRequest(ctx, model, opts, native)\n\tif err != nil {\n\t\treturn err\n\t}\n\treturn native.CancelDeferred(ctx, requestModel, handle, prepared)` with `requestModel, _, prepared, err := runtime.prepareNativeRequest(ctx, model, opts, native)\n\tif err != nil {\n\t\treturn err\n\t}\n\t_ = prepared\n\treturn native.CancelDeferred(ctx, requestModel, handle, opts)`; TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider fails."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./coding",
+  "tests": [
+   "TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "coding/model_runtime_native.go: replace `opts.StreamOptions = prepared` with `_ = prepared`; TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider fails."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./coding",
+  "tests": [
+   "TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "coding/model_runtime_native.go: replace `native.FetchDeferred(ctx, requestModel, handle, opts)` with `native.FetchDeferred(ctx, func() *ai.Model { _ = requestModel; return model }(), handle, opts)`; TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider fails."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./coding",
+  "tests": [
+   "TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider",
+   "TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "coding/model_runtime_native.go: replace `if err != nil {\n\t\treturn err\n\t}\n\treturn native.CancelDeferred(ctx, requestModel, handle, prepared)` with `if err != nil {\n\t\t_ = err\n\t}\n\treturn native.CancelDeferred(ctx, requestModel, handle, prepared)`; TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider fails."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./coding",
+  "tests": [
+   "TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "coding/model_runtime_native.go: replace `if native.FetchDeferred == nil {\n\t\truntime.fail(ctx, outer, model, ai.NewModelsError(ai.ModelsErrorProvider, \"Provider \"+native.ID+\" does not support deferred responses\", nil))\n\t\treturn outer\n\t}` with `if native.FetchDeferred == nil {\n\t\treturn outer\n\t}`; TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider fails."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./coding",
+  "tests": [
+   "TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "coding/model_runtime_native.go: replace `runtime.fail(ctx, outer, requestModel, err)\n\t}\n\treturn outer\n}\n\n// Find` with `_ = err\n\t}\n\treturn outer\n}\n\n// Find`; TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider fails."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./coding",
+  "tests": [
+   "TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "coding/model_runtime_native.go: replace `requestModel, _, prepared, err := runtime.prepareNativeRequest(ctx, model, opts.StreamOptions, native)\n\tif err != nil {\n\t\truntime.fail(ctx, outer, model, err)\n\t\treturn outer\n\t}` with `requestModel, _, prepared, err := runtime.prepareNativeRequest(ctx, model, opts.StreamOptions, native)\n\tif err != nil {\n\t\treturn outer\n\t}`; TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider fails."
+ },
+ {
+  "upstream": "packages/ai/src/models.ts",
+  "package": "./coding",
+  "tests": [
+   "TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "coding/model_runtime_native.go: replace `if inner == nil {\n\t\t\treturn fmt.Errorf(\"model runtime: provider %q returned a nil stream\", native.ID)\n\t\t}` with `if inner == nil {\n\t\t\treturn fmt.Errorf(\"model runtime: provider %q returned a nil stream\", \"other\")\n\t\t}`; TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider fails."
+ }
+]

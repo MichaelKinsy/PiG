@@ -244,7 +244,7 @@ func TestBuildLogsAreBounded(t *testing.T) {
 func TestRustBuildFailureSummarizesRustcDiagnostic(t *testing.T) {
 	cacheRoot := t.TempDir()
 	output := []byte("error[E0425]: cannot find value `x` in this scope\n --> src/main.rs:3:5\n  |\n3 |     x\n  |     ^ not found\n\nerror: could not compile `cell` (bin \"cell\") due to 1 previous error\n")
-	failure, recordable := RustBuildFailure(cacheRoot, "k", "/scratch", errors.New("exit status 101"), output)
+	failure, recordable := RustBuildFailure(cacheRoot, "k", "/scratch", errors.New("exit status 101"), output, BuildRun{})
 	if !recordable {
 		t.Fatal("a rustc diagnostic is a property of the inputs")
 	}
@@ -258,7 +258,7 @@ func TestRustBuildFailureSummarizesRustcDiagnostic(t *testing.T) {
 		t.Fatalf("log: %v", err)
 	}
 	network := []byte("error: failed to get `serde` as a dependency\n\nCaused by:\n  network failure\n")
-	if failure, recordable := RustBuildFailure(cacheRoot, "n", "/scratch", errors.New("exit status 101"), network); recordable || !strings.Contains(failure.Summary, "failed to get") {
+	if failure, recordable := RustBuildFailure(cacheRoot, "n", "/scratch", errors.New("exit status 101"), network, BuildRun{}); recordable || !strings.Contains(failure.Summary, "failed to get") {
 		t.Fatalf("network failure = %+v recordable=%v", failure, recordable)
 	}
 }
@@ -311,8 +311,38 @@ func TestBuildFailureWithoutWritableLogKeepsTheSummary(t *testing.T) {
 	if path := writeBuildLog(cacheRoot, "k", []byte("output")); path != "" {
 		t.Fatalf("log path %q written under a file", path)
 	}
-	failure, _ := RustBuildFailure(cacheRoot, "k", "/scratch", errors.New("exit status 101"), []byte("error: boom\n"))
+	failure, _ := RustBuildFailure(cacheRoot, "k", "/scratch", errors.New("exit status 101"), []byte("error: boom\n"), BuildRun{})
 	if failure.Log != "" || strings.Contains(failure.Error(), "details") || !strings.Contains(failure.Error(), "boom") {
 		t.Fatalf("failure = %q", failure.Error())
+	}
+}
+
+// A cargo that ran and left no rustc diagnostic (rustc killed from outside, then cargo itself) must still say how it ended. The conformance suite once reported such a
+// build as "cargo build failed" alone, so the cause of nine failures at load 200 was unknowable.
+func TestRustBuildFailureNamesAKilledBuildAndHowLongItRan(t *testing.T) {
+	cacheRoot := t.TempDir()
+	output := []byte("error: could not compile `serde_json` (lib)\n\nCaused by:\n  process didn't exit successfully: `/home/u/.rustup/toolchains/stable/bin/rustc --crate-name serde_json --edition=2021 src/lib.rs` (signal: 9, SIGKILL: kill)\n")
+	failure, recordable := RustBuildFailure(cacheRoot, "k", "/scratch", errors.New("exit status 101"), output, BuildRun{Elapsed: 41250 * time.Millisecond})
+	if recordable {
+		t.Fatal("a killed rustc is not a property of the inputs")
+	}
+	for _, want := range []string{"cargo build failed: rustc for `serde_json` (signal: 9, SIGKILL: kill); exit status 101", "after 41.25s"} {
+		if !strings.Contains(failure.Summary, want) {
+			t.Fatalf("summary %q lacks %q", failure.Summary, want)
+		}
+	}
+	if strings.Contains(failure.Cause, "after") {
+		t.Fatalf("cause %q depends on how long this run took", failure.Cause)
+	}
+	if strings.Contains(failure.Summary, "context ended") {
+		t.Fatalf("summary %q claims a context ended that did not", failure.Summary)
+	}
+
+	killed, _ := RustBuildFailure(cacheRoot, "c", "/scratch", errors.New("signal: killed"), nil, BuildRun{Elapsed: 45 * time.Second, ContextErr: context.DeadlineExceeded})
+	if want := "cargo build failed: signal: killed; the build's context ended: context deadline exceeded after 45s"; killed.Summary != want {
+		t.Fatalf("summary = %q, want %q", killed.Summary, want)
+	}
+	if log, err := os.ReadFile(killed.Log); err != nil || !strings.Contains(string(log), "elapsed: 45s") || !strings.Contains(string(log), "context: context deadline exceeded") {
+		t.Fatalf("log %q: %v", log, err)
 	}
 }

@@ -204,3 +204,20 @@ func TestGoFallsBackToTheManagedToolchain(t *testing.T) {
 		t.Fatalf("Go() with go on PATH = %q, %v; want %q", got, err, pathGo)
 	}
 }
+
+// MinGoVersion is the extension SDK's go directive; the two move together.
+func TestMinGoVersionIsTheSDKGoDirective(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", "extensions", "sdk", "go.mod"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for line := range strings.SplitSeq(string(data), "\n") {
+		if v, ok := strings.CutPrefix(strings.TrimSpace(line), "go "); ok {
+			if v != MinGoVersion {
+				t.Fatalf("extensions/sdk/go.mod says go %s, MinGoVersion is %s", v, MinGoVersion)
+			}
+			return
+		}
+	}
+	t.Fatal("extensions/sdk/go.mod has no go directive")
+}

@@ -14,9 +14,9 @@ import (
 func TestGetAvailableOfTypeCallPassesTypeAndProviderToTheAction(t *testing.T) {
 	bridge := NewUIBridge(func() {})
 	var gotType, gotProvider string
-	bridge.SetActions(&HostCallbacks{GetAvailableOfType: func(_ context.Context, modelType, provider string) ([]map[string]any, error) {
+	bridge.SetActions(&HostCallbacks{GetAvailableOfType: func(_ context.Context, modelType, provider string) ([]json.RawMessage, error) {
 		gotType, gotProvider = modelType, provider
-		return []map[string]any{{"id": "jev-latest", "provider": "typesafe", "type": modelType}}, nil
+		return modelJSONs(map[string]any{"id": "jev-latest", "provider": "typesafe", "type": modelType}), nil
 	}})
 	result, err := bridge.handleCall(t.Context(), "ext", nil, &CallPayload{Method: "getAvailableOfType", Args: json.RawMessage(`{"type":"classifier","provider":"typesafe"}`)})
 	if err != nil {
@@ -37,7 +37,7 @@ func TestGetAvailableOfTypeCallPassesTypeAndProviderToTheAction(t *testing.T) {
 
 func TestGetAvailableOfTypeCallFailsWithTheActionsError(t *testing.T) {
 	bridge := NewUIBridge(func() {})
-	bridge.SetActions(&HostCallbacks{GetAvailableOfType: func(context.Context, string, string) ([]map[string]any, error) {
+	bridge.SetActions(&HostCallbacks{GetAvailableOfType: func(context.Context, string, string) ([]json.RawMessage, error) {
 		return nil, errors.New("Unknown model type: audio")
 	}})
 	if _, err := bridge.handleCall(t.Context(), "ext", nil, &CallPayload{Method: "getAvailableOfType", Args: json.RawMessage(`{"type":"audio"}`)}); err == nil || err.Error() != "Unknown model type: audio" {

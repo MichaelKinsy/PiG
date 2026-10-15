@@ -52,6 +52,13 @@ FAKE_NODE = textwrap.dedent(
         mkdir -p "$(dirname "$out")"
         printf '{"cli":"%s"}\\n' "$(hash_dir "$src")" > "$out"
         ;;
+      */extract-incremental.mjs)
+        src=$(get_opt source-root); sout=$(get_opt source-out); pout=$(get_opt published-out)
+        mkdir -p "$(dirname "$sout")" "$(dirname "$pout")"
+        printf '{"source":"incremental"}\\n' > "$sout"
+        printf '{"published":"incremental"}\\n' > "$pout"
+        echo "args:$*" >> "$EXTRACT_CALL_LOG"
+        ;;
       */extract.mjs)
         src=$(get_opt source-root); pub=$(get_opt published-root)
         sout=$(get_opt source-out); pout=$(get_opt published-out)
@@ -331,6 +338,22 @@ class InterfaceExtractCacheTest(unittest.TestCase):
         for name in children:
             json.loads((entry / name).read_text())  # parses cleanly, not truncated
 
+    def test_incremental_mode_runs_the_per_package_extractor_with_its_own_cache(self):
+        env = dict(self.env, PIG_INTERFACE_EXTRACT_INCREMENTAL="1")
+        source, published, cli = self.run_cache(env=env)
+        self.assertEqual(source, {"source": "incremental"})
+        self.assertEqual(published, {"published": "incremental"})
+        self.assertIn("cli", cli)
+        log = self.call_log.read_text()
+        self.assertIn("call:", log)
+        self.assertNotIn("/extract.mjs", log.replace("extract-incremental.mjs", ""))
+        self.assertIn(f"--cache-dir {self.cache_home}/pig-interface-extract/packages", log)
+        self.assertIn("--upstream-version 9.9.9", log)
+
+    def test_incremental_mode_with_the_cache_opt_out_passes_no_cache_dir(self):
+        env = dict(self.env, PIG_INTERFACE_EXTRACT_INCREMENTAL="1", PIG_INTERFACE_EXTRACT_CACHE="0")
+        self.run_cache(env=env)
+        self.assertNotIn("--cache-dir", self.call_log.read_text())
 
 if __name__ == "__main__":
     unittest.main()

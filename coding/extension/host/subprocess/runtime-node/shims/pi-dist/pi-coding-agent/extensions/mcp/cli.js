@@ -54,7 +54,7 @@ Options for add:
 
 Other options:
   --json                  Print the list as JSON
-  --timeout <seconds>     How long login waits for the browser (default: 300)`;
+  --timeout <seconds>     Time limit for the whole sign-in (default: 300)`;
 const HELP_HINT = chalk.dim(`Use "${APP_NAME} mcp --help" for usage.`);
 const DEFAULT_LOGIN_TIMEOUT_SECONDS = 300;
 function errorMessage(error) {
@@ -374,10 +374,8 @@ async function list(loaded, json, untrustedNote, options, credentials, log) {
         });
         if (overrides.length > 0)
             report.toolExposure = Object.fromEntries(overrides);
-        if (connection.hasResources) {
-            report.resources = connection.resources.length;
-            report.resourceTemplates = connection.resourceTemplates.length;
-        }
+        if (connection.hasResources)
+            report.resources = true;
         if (connection.state !== "connected" && connection.error)
             report.error = connection.error;
         await connection.close();
@@ -410,9 +408,8 @@ async function list(loaded, json, untrustedNote, options, credentials, log) {
             });
             log(`  tools: ${tools.join(", ")}`);
         }
-        if (report.resources !== undefined) {
-            log(`  resources: ${report.resources}, URI templates: ${report.resourceTemplates ?? 0}`);
-        }
+        if (report.resources)
+            log("  offers resources");
         if (report.error)
             log(`  ${report.error.split("\n").join("\n  ")}`);
     }
@@ -449,8 +446,9 @@ async function login(entry, connection, url, timeoutMs, options, credentials, lo
                     log(`Sign in to MCP server "${name}" in your browser:\n${authorizationUrl.href}`);
                     openUrl(authorizationUrl.href);
                 },
-                promptForRedirectUrl: (signal) => waitForRedirectUrl(signal, timeoutMs, interactive),
+                promptForRedirectUrl: (signal) => waitForRedirectUrl(signal, interactive),
             },
+            signal: AbortSignal.timeout(timeoutMs),
         });
     }
     catch (signInError) {
@@ -472,32 +470,25 @@ async function login(entry, connection, url, timeoutMs, options, credentials, lo
 }
 /**
  * The pasted redirect URL in a terminal; otherwise only the browser callback can finish the sign-in.
- * Resolves to undefined (cancelling the sign-in) after `timeoutMs`, or when the callback arrived.
+ * Resolves to undefined when `signal` aborts: the callback arrived, or the sign-in timed out.
  */
-async function waitForRedirectUrl(signal, timeoutMs, interactive) {
-    const controller = new AbortController();
-    const abort = () => controller.abort();
-    signal.addEventListener("abort", abort, { once: true });
-    const timer = setTimeout(abort, timeoutMs);
+async function waitForRedirectUrl(signal, interactive) {
+    if (!interactive) {
+        if (!signal.aborted)
+            await new Promise((resolve) => signal.addEventListener("abort", resolve, { once: true }));
+        return undefined;
+    }
+    const readline = createInterface({ input: process.stdin, output: process.stderr });
     try {
-        if (!interactive) {
-            await new Promise((resolve) => controller.signal.addEventListener("abort", () => resolve(), { once: true }));
-            return undefined;
-        }
-        const readline = createInterface({ input: process.stdin, output: process.stderr });
-        try {
-            return await readline.question("If the browser cannot reach this machine, paste the URL it was redirected to: ", { signal: controller.signal });
-        }
-        catch {
-            return undefined;
-        }
-        finally {
-            readline.close();
-        }
+        return await readline.question("If the browser cannot reach this machine, paste the URL it was redirected to: ", {
+            signal,
+        });
+    }
+    catch {
+        return undefined;
     }
     finally {
-        clearTimeout(timer);
-        signal.removeEventListener("abort", abort);
+        readline.close();
     }
 }
 //# sourceMappingURL=cli.js.map

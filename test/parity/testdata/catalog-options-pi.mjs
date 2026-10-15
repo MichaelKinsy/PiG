@@ -1,4 +1,5 @@
 // Compare the request fields guarded by packages/ai/test/fireworks-models.test.ts.
+import { PI_PACKAGE_VERSION } from "./pi-version.mjs";
 import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
@@ -6,7 +7,7 @@ import { pathToFileURL } from 'node:url';
 
 const root = process.env.PI_PACKAGE_ROOT ?? resolve('extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent');
 const aiRoot = join(root, 'node_modules/@earendil-works/pi-ai');
-if (JSON.parse(readFileSync(join(aiRoot, 'package.json'), 'utf8')).version !== '1.0.3') throw new Error('expected Pi AI 1.0.3');
+if (JSON.parse(readFileSync(join(aiRoot, 'package.json'), 'utf8')).version !== PI_PACKAGE_VERSION) throw new Error(`expected Pi AI ${PI_PACKAGE_VERSION}`);
 const mod = (path) => import(pathToFileURL(join(aiRoot, 'dist', path)).href);
 const { getModel, normalizeContext } = await mod('compat.js');
 const anthropic = await mod('api/anthropic-messages.js');

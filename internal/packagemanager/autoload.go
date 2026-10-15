@@ -10,10 +10,10 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-// ApplyPackageAutoloadStates keeps only touched resources in first-match order, including disabled resources that shadow inherited entries.
-func ApplyPackageAutoloadStates(pkg ConfiguredPackage, items []tui.ResourceItem) []tui.ResourceItem {
+// ApplyPackageAutoloadStates keeps only touched resources in first-match order, including disabled resources that shadow inherited entries (applyPackageDeltaFilter, package-manager.ts:2308-2324). A pattern minimatch cannot compile stops at its kind: the items of the kinds before it come back with a *packagecontent.PackagePatternError.
+func ApplyPackageAutoloadStates(pkg ConfiguredPackage, items []tui.ResourceItem) ([]tui.ResourceItem, error) {
 	if !IsProjectPackageDelta(pkg.Source) {
-		return items
+		return items, nil
 	}
 	out := make([]tui.ResourceItem, 0, len(items))
 	for _, kind := range []packagecontent.Kind{packagecontent.Extensions, packagecontent.Skills, packagecontent.Prompts, packagecontent.Themes} {
@@ -30,13 +30,17 @@ func ApplyPackageAutoloadStates(pkg ConfiguredPackage, items []tui.ResourceItem)
 			paths = append(paths, path)
 			byPath[path] = item
 		}
-		for _, state := range packagecontent.ApplyAutoloadDisabledPatterns(paths, ConfiguredPackageFilters(pkg.Source)[kind], pkg.InstalledPath, kind) {
+		states, err := packagecontent.ApplyAutoloadDisabledPatterns(paths, ConfiguredPackageFilters(pkg.Source)[kind], pkg.InstalledPath, kind)
+		if err != nil {
+			return out, &packagecontent.PackagePatternError{Kind: kind, Err: err}
+		}
+		for _, state := range states {
 			item := byPath[state.Path]
 			item.Enabled = state.Enabled
 			out = append(out, item)
 		}
 	}
-	return out
+	return out, nil
 }
 
 // CollectResolvedPackageResourceItems preserves addResource's first entry, including its enabled state and metadata. Project deltas are resolved before inherited user packages, not merged into user filters.

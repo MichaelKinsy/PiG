@@ -43,18 +43,43 @@ func run(root string, check bool) error {
 	}
 	out := m.render()
 	path := filepath.Join(root, matrixPath)
+	corpora, err := loadCorpora(root)
+	if err != nil {
+		return err
+	}
+	gaps, err := loadGaps(root)
+	if err != nil {
+		return err
+	}
+	rows := m.consistencyRows(corpora)
+	consistency := renderConsistency(rows, gaps)
+	consistencyFile := filepath.Join(root, consistencyPath)
 	if check {
-		current, err := os.ReadFile(path)
-		if err != nil {
+		for _, f := range []struct {
+			path string
+			want []byte
+		}{{path, out}, {consistencyFile, consistency}} {
+			current, err := os.ReadFile(f.path)
+			if err != nil {
+				return err
+			}
+			if !bytes.Equal(current, f.want) {
+				return fmt.Errorf("%s is stale: run `go run ./test/parity/cmd/sdksurface`", f.path)
+			}
+		}
+		if err := m.validate(); err != nil {
 			return err
 		}
-		if !bytes.Equal(current, out) {
-			return fmt.Errorf("%s is stale: run `go run ./test/parity/cmd/sdksurface`", matrixPath)
-		}
-		return m.validate()
+		return validateGaps(rows, gaps)
 	}
 	if err := os.WriteFile(path, out, 0o644); err != nil {
 		return err
 	}
-	return m.validate()
+	if err := os.WriteFile(consistencyFile, consistency, 0o644); err != nil {
+		return err
+	}
+	if err := m.validate(); err != nil {
+		return err
+	}
+	return validateGaps(rows, gaps)
 }

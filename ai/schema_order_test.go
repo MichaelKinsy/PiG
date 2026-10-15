@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"bytes"
 	"encoding/json"
 	"reflect"
 	"testing"
@@ -48,7 +49,7 @@ func TestConstrainedSamplingStrictSchemaDeclarationOrderUpstream(t *testing.T) {
 		t.Fatalf("strict schema=%s", encoded)
 	}
 	after, _ := json.Marshal(tool.Parameters)
-	if string(original) != string(after) {
+	if !bytes.Equal(original, after) {
 		t.Fatal("authored schema mutated")
 	}
 	if _, present := tool.Parameters["additionalProperties"]; present {

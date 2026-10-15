@@ -5,11 +5,12 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/imageprocessing"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
@@ -27,7 +28,7 @@ type ProcessedCLIArgs struct {
 	Images []ai.ImageContent
 }
 
-// ProcessCLIFileArguments expands CLI @file arguments into text and images. Text files use <file name="/abs/path">\ncontent\n</file>\n, including the separator when content ends in a newline. Images carry conversion or dimension hints; processing failures become omission notes. AutoResizeImages defaults to true and can be disabled until the request model is selected.
+// ProcessCLIFileArguments expands CLI @file arguments into text and images. Text files decode as UTF-8 with U+FFFD for each ill-formed subpart, drop a leading BOM, and use <file name="/abs/path">\ncontent\n</file>\n, including the separator when content ends in a newline. Images carry conversion or dimension hints; processing failures become omission notes. AutoResizeImages defaults to true and can be disabled until the request model is selected.
 func ProcessCLIFileArguments(fileArgs []string, cwd string, options ...ProcessFileOptions) (ProcessedCLIArgs, error) {
 	autoResize := true
 	if len(options) > 0 && options[0].AutoResizeImages != nil {
@@ -39,11 +40,11 @@ func ProcessCLIFileArguments(fileArgs []string, cwd string, options ...ProcessFi
 	var out strings.Builder
 	var images []ai.ImageContent
 	for _, arg := range fileArgs {
-		absPath := arg
-		if !filepath.IsAbs(absPath) {
-			absPath = filepath.Join(cwd, arg)
+		// upstream: file-processor.ts `resolve(resolveReadPath(fileArg, process.cwd()))`: `~` expansion, the `@` prefix and the macOS screenshot name variants.
+		absPath, err := tools.ResolveReadPath(arg, cwd)
+		if err != nil {
+			return ProcessedCLIArgs{}, err
 		}
-		absPath = filepath.Clean(absPath)
 		info, err := os.Stat(absPath)
 		if err != nil {
 			return ProcessedCLIArgs{}, fmt.Errorf("File not found: %s", absPath)
@@ -72,12 +73,12 @@ func ProcessCLIFileArguments(fileArgs []string, cwd string, options ...ProcessFi
 			out.WriteString("</file>\n")
 			continue
 		}
-		content = text.StripBomBytes(content)
+		// upstream: file-processor.ts `stripBom(await readFile(absolutePath, "utf-8"))`: each maximal ill-formed UTF-8 subpart decodes to one U+FFFD.
 		out.WriteString(`<file name="`)
 		out.WriteString(absPath)
 		out.WriteString(`">`)
 		out.WriteByte('\n')
-		out.Write(content)
+		out.WriteString(text.StripBom(jsstring.FromUTF8(content)))
 		out.WriteByte('\n')
 		out.WriteString("</file>\n")
 	}

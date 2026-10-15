@@ -2,7 +2,6 @@ package coding
 
 import (
 	"context"
-	"errors"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -32,12 +31,10 @@ func (s *Session) extensionCompaction(
 		return nil, false, nil
 	}
 	branchEntries := make([]extension.SessionEntry, len(entries))
-	for i := range entries {
-		branchEntries[i] = entries[i]
-	}
+	copy(branchEntries, entries)
 	result, err := runner.Emit(ctx, extension.SessionBeforeCompactEvent{
 		Type:               icodingagent.EventSessionBeforeCompact,
-		Preparation:        preparation,
+		Preparation:        *preparation,
 		BranchEntries:      branchEntries,
 		CustomInstructions: customInstructions,
 		Reason:             reason,
@@ -62,7 +59,7 @@ func (s *Session) extensionCompaction(
 		return nil, false, err
 	}
 	if envelope.Cancel {
-		return nil, false, errors.New("Compaction cancelled")
+		return nil, false, errCompactionCancelled
 	}
 	if len(envelope.Compaction) == 0 || string(envelope.Compaction) == "null" {
 		return nil, false, nil
@@ -103,9 +100,13 @@ func (s *Session) emitSessionCompact(ctx context.Context, entry icodingagent.Ses
 	if runner == nil || !runner.HasHandlers(icodingagent.EventSessionCompact) {
 		return
 	}
+	var compactionEntry extension.CompactionEntry
+	if raw, err := json.Marshal(entry); err != nil || json.Unmarshal(raw, &compactionEntry) != nil {
+		return
+	}
 	_, _ = runner.Emit(ctx, extension.SessionCompactEvent{
 		Type:            icodingagent.EventSessionCompact,
-		CompactionEntry: entry,
+		CompactionEntry: compactionEntry,
 		FromExtension:   fromExtension,
 		Reason:          reason,
 		WillRetry:       willRetry,

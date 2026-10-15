@@ -1,11 +1,14 @@
 package session_test
 
+// pi: packages/durable/src/session/transaction.ts
+
 import (
 	"errors"
 	"fmt"
 	"math"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
 	"github.com/MichaelKinsy/PiG/durable/session/sessiontest"
@@ -18,7 +21,7 @@ type workHooks struct{}
 var workTask = durable.DefineTask(durable.TaskDefinition[obj, obj, obj, workHooks]{
 	Name:    "test.work",
 	Version: 1,
-	Initial: func(obj) obj { return obj{"phase": "start"} },
+	Initial: func(obj) obj { return delta.JsonObjectOf("phase", "start") },
 	Phases: map[string]durable.PhaseHandler[obj, obj, obj, workHooks]{
 		"start": func(_ ctxT, _ durable.RunningTask[obj, obj, obj], _ durable.TaskRuntime[obj, obj, obj, workHooks]) error {
 			return nil
@@ -32,18 +35,18 @@ var workTask = durable.DefineTask(durable.TaskDefinition[obj, obj, obj, workHook
 	},
 })
 
-var tablesProgressDoc = defineDoc("test.progress", 1, taskScope, func() obj { return obj{"lines": []any{}} })
+var tablesProgressDoc = defineDoc("test.progress", 1, taskScope, func() obj { return delta.JsonObjectOf("lines", []any{}) })
 
-var tablesStepDoc = defineFamily("test.step", 1, taskScope, func(any) obj { return obj{"lines": []any{}} })
+var tablesStepDoc = defineFamily("test.step", 1, taskScope, func(any) obj { return delta.JsonObjectOf("lines", []any{}) })
 
-var tablesNotesDoc = defineDoc("test.notes", 1, rewindableScope(durable.ForkAsOf), func() obj { return obj{"text": ""} })
+var tablesNotesDoc = defineDoc("test.notes", 1, rewindableScope(durable.ForkAsOf), func() obj { return delta.JsonObjectOf("text", "") })
 
 func conversationOwned(conversationId durable.ConversationId) durable.TaskOptions {
 	return durable.TaskOptions{Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByConversation}, ConversationId: &conversationId}
 }
 
 func terminalTask(task session.AnyTaskRecord) session.AnyTaskRecord {
-	var result any = obj{"ok": true}
+	var result any = delta.JsonObjectOf("ok", true)
 	return session.AnyTaskRecord{
 		Id: task.Id, ConversationId: task.ConversationId, Kind: task.Kind, Version: task.Version, Input: task.Input,
 		Background: task.Background, AbortRequested: task.AbortRequested,
@@ -55,9 +58,9 @@ func terminalTask(task session.AnyTaskRecord) session.AnyTaskRecord {
 }
 
 func pendingTask(id durable.TaskId, conversationId durable.ConversationId, path string, abortRequested bool) session.AnyTaskRecord {
-	var checkpoint any = obj{"phase": "start"}
+	var checkpoint any = delta.JsonObjectOf("phase", "start")
 	return session.AnyTaskRecord{
-		Id: id, ConversationId: conversationId, Kind: "test.work", Version: 1, Input: obj{"path": path},
+		Id: id, ConversationId: conversationId, Kind: "test.work", Version: 1, Input: delta.JsonObjectOf("path", path),
 		AbortRequested: abortRequested,
 		State:          durable.TaskState[durable.JsonValue, durable.JsonValue]{Status: durable.TaskPending, Checkpoint: &checkpoint},
 	}
@@ -67,7 +70,7 @@ func createWorkTask(t *testing.T, harness sessiontest.Harness, conversationId du
 	t.Helper()
 	var taskId durable.TaskId
 	commit(t, harness.Session, func(tx durable.Tx) error {
-		id, err := durable.CreateTask(tx, workTask, obj{"path": "a"}, conversationOwned(conversationId))
+		id, err := durable.CreateTask(tx, workTask, delta.JsonObjectOf("path", "a"), conversationOwned(conversationId))
 		taskId = id
 		if err != nil || !withDocument {
 			return err
@@ -92,6 +95,9 @@ func isReadAfterWrite(err error) bool {
 	return errors.As(err, &target)
 }
 
+// Pi source: packages/durable/src/storage/memory.ts
+// mutation-checked: zeroing the results of MemoryStorage.Entry, MemoryStorage.ScanDocuments fails it
+// packages/durable/src/types.ts:745: Tx.conversation(id) reads the conversation record from the transaction, and a record created in the same transaction is a read-after-write failure.
 func TestSessionTransactionTables(t *testing.T) {
 	t.Run("allows table reads only before the first table write", func(t *testing.T) {
 		harness := open()
@@ -132,7 +138,7 @@ func TestSessionTransactionTables(t *testing.T) {
 			// Document access remains available after table writes.
 			return mustDoc(t, tx, tablesNotesDoc, conversationId).Set("text", "after write")
 		})
-		expectEqual(t, snapshot(t, harness.Session, tablesNotesDoc, conversationId), obj{"text": "after write"})
+		expectEqual(t, snapshot(t, harness.Session, tablesNotesDoc, conversationId), delta.JsonObjectOf("text", "after write"))
 	})
 
 	t.Run("passes caller-selected limits and cursors through table scans", func(t *testing.T) {
@@ -182,7 +188,7 @@ func TestSessionTransactionTables(t *testing.T) {
 			must(t, err)
 			options := conversationOwned(conversation.Id)
 			options.Background = true
-			taskId, err = durable.CreateTask(tx, workTask, obj{"path": "x"}, options)
+			taskId, err = durable.CreateTask(tx, workTask, delta.JsonObjectOf("path", "x"), options)
 			return err
 		})
 		ids := map[int64]bool{int64(conversation.Id): true, int64(first.Id): true, int64(headed.Id): true, int64(taskId): true}
@@ -198,9 +204,9 @@ func TestSessionTransactionTables(t *testing.T) {
 		expectEqual(t, stored.Entry, headed)
 		task, err := harness.Storage.Task(ctx, taskId)
 		must(t, err)
-		var checkpoint any = obj{"phase": "start"}
+		var checkpoint any = delta.JsonObjectOf("phase", "start")
 		expectEqual(t, *task, session.AnyTaskRecord{
-			Id: taskId, ConversationId: conversation.Id, Kind: "test.work", Version: 1, Input: obj{"path": "x"},
+			Id: taskId, ConversationId: conversation.Id, Kind: "test.work", Version: 1, Input: delta.JsonObjectOf("path", "x"),
 			Background: true, State: durable.TaskState[durable.JsonValue, durable.JsonValue]{Status: durable.TaskPending, Checkpoint: &checkpoint},
 		})
 		flush(harness)
@@ -235,7 +241,7 @@ func TestSessionTransactionTables(t *testing.T) {
 			}
 		}
 		err = tryCommit(harness.Session, func(tx durable.Tx) error {
-			_, err := durable.CreateTask(tx, workTask, obj{"path": "x"}, durable.TaskOptions{Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByConversation}})
+			_, err := durable.CreateTask(tx, workTask, delta.JsonObjectOf("path", "x"), durable.TaskOptions{Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByConversation}})
 			return err
 		})
 		expectErrorContains(t, err, "requires options.conversationId")
@@ -255,7 +261,7 @@ func TestSessionTransactionTables(t *testing.T) {
 			options := conversationOwned(parentId)
 			options.Background = true
 			var err error
-			supervisorId, err = durable.CreateTask(tx, workTask, obj{"path": "background"}, options)
+			supervisorId, err = durable.CreateTask(tx, workTask, delta.JsonObjectOf("path", "background"), options)
 			must(t, err)
 			child, err = tx.CreateConversation(durable.CreateConversationOptions{Ownership: durable.ConversationOwnership{Kind: durable.ConversationOwnedByTask, TaskId: supervisorId}})
 			return err
@@ -282,7 +288,7 @@ func TestSessionTransactionTables(t *testing.T) {
 		parentId := createConversation(t, harness)
 		var movedStagedTaskId durable.TaskId
 		err := tryCommitWith(harness.Session, func(tx *session.Transaction) error {
-			id, err := durable.CreateTask(tx, workTask, obj{"path": "move"}, conversationOwned(parentId))
+			id, err := durable.CreateTask(tx, workTask, delta.JsonObjectOf("path", "move"), conversationOwned(parentId))
 			must(t, err)
 			movedStagedTaskId = id
 			return tx.SetTask(pendingTask(id, 998, "move", false))
@@ -300,7 +306,7 @@ func TestSessionTransactionTables(t *testing.T) {
 
 		var rejectedChildId durable.ConversationId
 		err = tryCommitWith(harness.Session, func(tx *session.Transaction) error {
-			supervisorId, err := durable.CreateTask(tx, workTask, obj{"path": "aborting"}, conversationOwned(parentId))
+			supervisorId, err := durable.CreateTask(tx, workTask, delta.JsonObjectOf("path", "aborting"), conversationOwned(parentId))
 			must(t, err)
 			child, err := tx.CreateConversation(durable.CreateConversationOptions{Ownership: durable.ConversationOwnership{Kind: durable.ConversationOwnedByTask, TaskId: supervisorId}})
 			must(t, err)
@@ -316,7 +322,7 @@ func TestSessionTransactionTables(t *testing.T) {
 		}
 
 		err = tryCommitWith(harness.Session, func(tx *session.Transaction) error {
-			supervisorId, err := durable.CreateTask(tx, workTask, obj{"path": "terminal"}, conversationOwned(parentId))
+			supervisorId, err := durable.CreateTask(tx, workTask, delta.JsonObjectOf("path", "terminal"), conversationOwned(parentId))
 			must(t, err)
 			_, err = tx.CreateConversation(durable.CreateConversationOptions{Ownership: durable.ConversationOwnership{Kind: durable.ConversationOwnedByTask, TaskId: supervisorId}})
 			must(t, err)
@@ -338,18 +344,18 @@ func TestSessionTransactionTables(t *testing.T) {
 	t.Run("takes ownership of table JSON and rejects non-strict values", func(t *testing.T) {
 		harness := open()
 		conversationId := createConversation(t, harness)
-		nested := obj{"value": 1}
-		payload := obj{"nested": nested}
+		nested := delta.JsonObjectOf("value", 1)
+		payload := delta.JsonObjectOf("nested", nested)
 		var entry durable.EntryRecord
 		commit(t, harness.Session, func(tx durable.Tx) error {
 			var err error
 			entry, err = tx.AppendEntry(conversationId, durable.EntryDraft{Kind: "data", Data: payload})
-			nested["value"] = 2
+			nested.Set("value", 2)
 			return err
 		})
 		stored, err := harness.Storage.Entry(ctx, entry.Id)
 		must(t, err)
-		expectEqual(t, stored.Entry.Data, obj{"nested": obj{"value": 1}})
+		expectEqual(t, stored.Entry.Data, delta.JsonObjectOf("nested", delta.JsonObjectOf("value", 1)))
 		var omitted durable.EntryRecord
 		commit(t, harness.Session, func(tx durable.Tx) error {
 			var err error
@@ -381,7 +387,7 @@ func TestSessionTransactionTables(t *testing.T) {
 		taskId := createWorkTask(t, harness, conversationId, false)
 		commitWith(t, harness.Session, func(tx *session.Transaction) error {
 			task := readTask(t, tx, taskId)
-			var checkpoint any = obj{"phase": "next", "step": 2}
+			var checkpoint any = delta.JsonObjectOf("phase", "next", "step", 2)
 			return tx.SetTask(session.AnyTaskRecord{
 				Id: task.Id, ConversationId: task.ConversationId, Kind: task.Kind, Version: task.Version, Input: task.Input,
 				Background: task.Background, AbortRequested: task.AbortRequested,
@@ -392,7 +398,7 @@ func TestSessionTransactionTables(t *testing.T) {
 		task, err := harness.Storage.Task(ctx, taskId)
 		must(t, err)
 		expectEqual(t, task.State.Status, durable.TaskRunning)
-		expectEqual(t, *task.State.Checkpoint, obj{"phase": "next", "step": 2})
+		expectEqual(t, *task.State.Checkpoint, delta.JsonObjectOf("phase", "next", "step", 2))
 		expectEqual(t, task.Memos, map[string]any{"choice": "b"})
 	})
 
@@ -402,7 +408,7 @@ func TestSessionTransactionTables(t *testing.T) {
 		var taskId durable.TaskId
 		commit(t, harness.Session, func(tx durable.Tx) error {
 			var err error
-			taskId, err = durable.CreateTask(tx, workTask, obj{"path": "a"}, conversationOwned(conversationId))
+			taskId, err = durable.CreateTask(tx, workTask, delta.JsonObjectOf("path", "a"), conversationOwned(conversationId))
 			must(t, err)
 			// Validation uses the candidate task record, not a caller table read.
 			_, err = mustDoc(t, tx, tablesProgressDoc, taskId).Array("lines").Push("created")
@@ -410,7 +416,7 @@ func TestSessionTransactionTables(t *testing.T) {
 			_, err = mustDoc(t, tx, tablesStepDoc, taskId, "one", nil).Array("lines").Push("step")
 			return err
 		})
-		expectEqual(t, snapshot(t, harness.Session, tablesProgressDoc, taskId), obj{"lines": []any{"created"}})
+		expectEqual(t, snapshot(t, harness.Session, tablesProgressDoc, taskId), delta.JsonObjectOf("lines", []any{"created"}))
 		flush(harness)
 		publication := harness.Publications.Last()
 		hasTask := false

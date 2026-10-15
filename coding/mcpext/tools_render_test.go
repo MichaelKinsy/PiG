@@ -152,14 +152,14 @@ func TestMCPToolResultRendererStylesAndTrimsTheOutput(t *testing.T) {
 		t.Fatalf("trimmed result = %q", rows)
 	}
 	joined := strings.Join(ok.(renderedText).Render(200), "\n")
-	if theme.FgText("toolOutput", "x") == "x" {
+	if theme.Fg("toolOutput", "x") == "x" {
 		t.Fatal("the test theme has no colors")
 	}
-	if !strings.Contains(joined, theme.FgText("toolOutput", "indented   text")) {
+	if !strings.Contains(joined, theme.Fg("toolOutput", "indented   text")) {
 		t.Fatalf("result is not toolOutput: %q", joined)
 	}
 	failed := def.RenderResult(textResult("boom"), extension.ToolRenderResultOptions{}, theme, extension.ToolRenderContext{IsError: true})
-	if joined := strings.Join(failed.(renderedText).Render(200), "\n"); !strings.Contains(joined, theme.FgText("error", "boom")) {
+	if joined := strings.Join(failed.(renderedText).Render(200), "\n"); !strings.Contains(joined, theme.Fg("error", "boom")) {
 		t.Fatalf("error result is not error colored: %q", joined)
 	}
 	empty := def.RenderResult(textResult(" \n "), extension.ToolRenderResultOptions{}, theme, extension.ToolRenderContext{})

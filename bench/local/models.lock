@@ -1,0 +1,44 @@
+{
+  "models": {
+    "gpt-oss-20b-mxfp4": {
+      "file": "gpt-oss-20b-MXFP4.gguf",
+      "license": "Apache-2.0",
+      "note": "llama.cpp's own conversion, widely run locally for agent work. It needs the server's --jinja chat template (the pack passes it); its reasoning output may need a harness setting, which the report records if a harness fails on it.",
+      "repo": "ggml-org/gpt-oss-20b-GGUF",
+      "revision": "ef9b12f2ff56c69cf32153a02784e7a3c88bf524",
+      "role": "third model (20B MoE, tool-calling)",
+      "sha256": "27cd6c432c7672cb812a92f611cf3ba7bbc35928262bb1e1253ff4ee6ae35901",
+      "size": 12109566624
+    },
+    "qwen2.5-0.5b-instruct-q4_k_m": {
+      "file": "qwen2.5-0.5b-instruct-q4_k_m.gguf",
+      "license": "Apache-2.0",
+      "note": "sha256 equals the x-linked-etag Hugging Face reports for the file at that revision.",
+      "repo": "Qwen/Qwen2.5-0.5B-Instruct-GGUF",
+      "revision": "9217f5db79a29953eb74d5343926648285ec7e67",
+      "role": "dry-run (CPU, Linux)",
+      "sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+      "size": 491400032
+    },
+    "qwen2.5-coder-7b-instruct-q4_k_m": {
+      "file": "qwen2.5-coder-7b-instruct-q4_k_m.gguf",
+      "license": "Apache-2.0",
+      "note": "The official Qwen GGUF repository (about 317k downloads when pinned); the usual 7B local coding model. Fits 48 GB with a large context.",
+      "repo": "Qwen/Qwen2.5-Coder-7B-Instruct-GGUF",
+      "revision": "13fb94bfda8c8cf22497dc57b78f391a9acb426a",
+      "role": "small coding model",
+      "sha256": "509287f78cb4d4cf6b3843734733b914b2c158e43e22a7f4bf5e963800894d3c",
+      "size": 4683073536
+    },
+    "qwen3-coder-30b-a3b-instruct-q4_k_m": {
+      "file": "Qwen3-Coder-30B-A3B-Instruct-Q4_K_M.gguf",
+      "license": "Apache-2.0",
+      "note": "The most downloaded GGUF of its family (about 5.1M when pinned); a MoE whose 3B active parameters keep decoding fast on an M-series SoC. 18.6 GB of weights leaves about 25 GB for context and the harness on a 48 GB machine.",
+      "repo": "unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF",
+      "revision": "b17cb02dd882d5b6ab62fc777ad2995f19668350",
+      "role": "mid coding model (30B-class MoE, 3B active)",
+      "sha256": "fadc3e5f8d42bf7e894a785b05082e47daee4df26680389817e2093056f088ad",
+      "size": 18556689568
+    }
+  }
+}

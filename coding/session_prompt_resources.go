@@ -5,6 +5,8 @@ package coding
 import (
 	"slices"
 
+	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
@@ -20,6 +22,11 @@ func (s *Session) ResourceLoader() ResourceLoader {
 		return ref.loader
 	}
 	return NoResources
+}
+
+// PromptTemplates returns the file-based prompt templates the Session's resource loader resolved (agent-session.ts promptTemplates).
+func (s *Session) PromptTemplates() []PromptTemplate {
+	return s.ResourceLoader().GetPrompts().Prompts
 }
 
 // SetPromptResources replaces the skills and prompt templates this Session reads with the resource owner's current resolved collections, keeping the loader's context files and system prompt text. It does not discover resources or change their configuration, and it does not rebuild the system prompt.
@@ -41,8 +48,17 @@ func (s *Session) expandPromptText(text string) string {
 			runner.EmitError(err)
 		}
 	}
-	if expanded, ok := icodingagent.ExpandPromptTemplate(text, loader.GetPrompts().Prompts); ok {
+	if expanded, ok := icodingagent.ExpandPromptTemplate(text, s.PromptTemplates()); ok {
 		text = expanded
 	}
 	return text
+}
+
+// SlashCommandsFor is the getCommands action agent-session.ts _bindExtensionCore (:3361-3384) binds to the runner it is given. The Session's own binding and every mode's extension binding use it, so an extension reads the list SlashCommands reports; a runtime replacement binds its new runner before the Session's current one changes.
+func (s *Session) SlashCommandsFor(runner *inproc.Runner) []extension.SlashCommandInfo {
+	catalog := icodingagent.SlashCommandCatalog{PromptTemplates: s.PromptTemplates(), Skills: s.ResourceLoader().GetSkills().Skills, CWD: s.services.CWD(), AgentDir: s.services.AgentDir()}
+	if runner != nil {
+		catalog.Runner = runner
+	}
+	return catalog.Commands()
 }

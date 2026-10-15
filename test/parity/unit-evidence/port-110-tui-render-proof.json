@@ -1,0 +1,83 @@
+[
+  {
+    "upstream": "packages/tui/src/components/box.ts",
+    "package": "./tui",
+    "tests": [
+      "TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders"
+    ],
+    "upstream_reference": "packages/tui/src/components/box.ts",
+    "mutation": "tui/box.go: replace 'b.BgFn = bgFn\\n}' with '_ = bgFn\\n}'; compiling go test -run exact test -count=1 fails TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders."
+  },
+  {
+    "upstream": "packages/tui/src/tui.ts",
+    "package": "./tui",
+    "tests": [
+      "TestContainerHandleMouseRoutesByRenderedRows"
+    ],
+    "upstream_reference": "packages/tui/src/tui.ts",
+    "mutation": "tui/mouse.go: replace 'children = measureMouseChildren(components, event.Width)' with 'children = measureMouseChildren(components[:0], event.Width)'; compiling go test -run exact test -count=1 fails TestContainerHandleMouseRoutesByRenderedRows."
+  },
+  {
+    "upstream": "packages/tui/src/components/box.ts",
+    "package": "./tui",
+    "tests": [
+      "TestBoxHandleMouseSkipsPadding"
+    ],
+    "upstream_reference": "packages/tui/src/components/box.ts",
+    "mutation": "tui/mouse.go: replace 'contentX := event.X - b.PaddingX\\nif contentY < 0 || contentX < 0 || contentX >= contentWidth {' with 'contentX := event.X - b.PaddingX\\nif contentY < 0 || contentX >= contentWidth {'; compiling go test -run exact test -count=1 fails TestBoxHandleMouseSkipsPadding."
+  },
+  {
+    "upstream": "packages/tui/src/components/text.ts",
+    "package": "./tui",
+    "tests": [
+      "TestTextSetCustomBgFnAndInvalidateRerender"
+    ],
+    "upstream_reference": "packages/tui/src/components/text.ts",
+    "mutation": "tui/text.go: replace 't.CustomBgFn = bgFn\\nt.Invalidate()' with 't.CustomBgFn = bgFn'; compiling go test -run exact test -count=1 fails TestTextSetCustomBgFnAndInvalidateRerender."
+  },
+  {
+    "upstream": "packages/tui/src/components/loader.ts",
+    "package": "./tui",
+    "tests": [
+      "TestLoaderSetIndicatorOptions"
+    ],
+    "upstream_reference": "packages/tui/src/components/loader.ts",
+    "mutation": "tui/loader.go: replace 'l.Frames = append([]string{}, frames...)\\nl.Frame = 0' with 'l.Frames = append([]string{}, frames...)\\nl.Frame = l.Frame'; compiling go test -run exact test -count=1 fails TestLoaderSetIndicatorOptions."
+  },
+  {
+    "upstream": "packages/tui/src/keybindings.ts",
+    "package": "./tui",
+    "tests": [
+      "TestTUIKeybindingsManager_Conflicts"
+    ],
+    "upstream_reference": "packages/tui/src/keybindings.ts",
+    "mutation": "tui/keybindings.go: replace 'out[i] = TUIKeybindingConflict{Key: c.Key, Keybindings: slices.Clone(c.Keybindings)}' with 'out[i] = TUIKeybindingConflict{Key: c.Key}'; compiling go test -run exact test -count=1 fails TestTUIKeybindingsManager_Conflicts."
+  },
+  {
+    "upstream": "packages/tui/src/keybindings.ts",
+    "package": "./tui",
+    "tests": [
+      "TestTUIKeybindingsManager_GetDefinition"
+    ],
+    "upstream_reference": "packages/tui/src/keybindings.ts",
+    "mutation": "tui/keybindings.go: replace 'def, ok := m.definitions[action]\\nreturn def, ok' with 'def, _ := m.definitions[action]\\nreturn def, true'; compiling go test -run exact test -count=1 fails TestTUIKeybindingsManager_GetDefinition."
+  },
+  {
+    "upstream": "packages/tui/src/keybindings.ts",
+    "package": "./tui",
+    "tests": [
+      "TestTUIKeybindingsManagerSetUserBindingsReplacesOverridesAndRebuilds"
+    ],
+    "upstream_reference": "packages/tui/src/keybindings.ts",
+    "mutation": "tui/keybindings.go: replace 'm.userBindings = bindings\\nif m.userBindings == nil {\\nm.userBindings = make(map[string][]string)\\n}\\nm.rebuild()' with 'm.userBindings = bindings\\nif m.userBindings == nil {\\nm.userBindings = make(map[string][]string)\\n}'; compiling go test -run exact test -count=1 fails TestTUIKeybindingsManagerSetUserBindingsReplacesOverridesAndRebuilds."
+  },
+  {
+    "upstream": "packages/tui/src/keybindings.ts",
+    "package": "./tui",
+    "tests": [
+      "TestTUIKeybindingsManager_GetUserAndResolvedBindings"
+    ],
+    "upstream_reference": "packages/tui/src/keybindings.ts",
+    "mutation": "tui/keybindings.go: replace 'out := make(map[string][]string, len(m.userBindings))\\nfor k, v := range m.userBindings {\\nout[k] = slices.Clone(v)\\n}\\nreturn out' with 'return m.userBindings'; compiling go test -run exact test -count=1 fails TestTUIKeybindingsManager_GetUserAndResolvedBindings."
+  }
+]

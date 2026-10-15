@@ -1,0 +1,12 @@
+[
+ {
+  "upstream": "packages/durable/src/harness/types.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestTypesUpstreamHarness",
+   "TestMissingPhaseHandlerFaultsTheTaskAsAThrowingHandlerDoes"
+  ],
+  "upstream_reference": "packages/durable/test/types.test.ts",
+  "mutation": "durable/harness/types.go HookApi: changing Memo's result to drop `ok`, or adding a method no implementation has, fails to compile the package and its test (build failed). Compilation is the contract under test: types.test.ts is a compile-time test (expectTypeOf, @ts-expect-error) and the Go port type-checks each snippet against the compiled packages and runs the typed task and its hook through a real Harness. Each mutation was restored."
+ }
+]

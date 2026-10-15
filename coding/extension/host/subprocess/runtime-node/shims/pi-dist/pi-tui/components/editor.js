@@ -1,7 +1,7 @@
 import { getKeybindings } from "../keybindings.js";
 import { decodePrintableKey, matchesKey } from "../keys.js";
 import { KillRing } from "../kill-ring.js";
-import { CURSOR_MARKER, } from "../tui.js";
+import { CURSOR_MARKER, renderFakeCursor, } from "../tui.js";
 import { UndoStack } from "../undo-stack.js";
 import { autocompleteBoundaryRegex, autocompleteSeparatorRegex, cjkBreakRegex, getGraphemeSegmenter, getWordSegmenter, isWhitespaceChar, sliceByColumn, visibleWidth, } from "../utils.js";
 import { findWordBackward, findWordForward } from "../word-navigation.js";
@@ -447,13 +447,13 @@ export class Editor {
                     const afterGraphemes = [...this.segment(after, "grapheme")];
                     const firstGrapheme = afterGraphemes[0]?.segment || "";
                     const restAfter = after.slice(firstGrapheme.length);
-                    const cursor = `\x1b[7m${firstGrapheme}\x1b[0m`;
+                    const cursor = renderFakeCursor(firstGrapheme);
                     displayText = before + marker + cursor + restAfter;
                     // lineVisibleWidth stays the same - we're replacing, not adding
                 }
                 else {
                     // Cursor is at the end - add highlighted space
-                    const cursor = "\x1b[7m \x1b[0m";
+                    const cursor = renderFakeCursor(" ");
                     displayText = before + marker + cursor;
                     lineVisibleWidth = lineVisibleWidth + 1;
                     // If cursor overflows content width into the padding, flag it

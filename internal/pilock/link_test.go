@@ -73,7 +73,7 @@ func linkOutcome(kind string) string {
 
 var linkKinds = []string{"fresh-directory", "stale-directory", "dangling", "fresh-file", "stale-file"}
 
-// linkAcquirers bound contention quickly: Pi's synchronous retry loop, and one attempt of the asynchronous path, which shares acquireLock.
+// linkAcquirers bound contention quickly: Pi's settings and trust synchronous loop, which retries only ELOCKED, so every other error is one proper-lockfile call's, and one attempt of the asynchronous path, which shares acquireLock.
 var linkAcquirers = []acquirer{
 	{"sync", AcquireSync},
 	{"single-attempt", func(path string) (*Lock, error) {

@@ -71,13 +71,13 @@ func TestResponseIDUpstream(t *testing.T) {
 			case APIAzureOpenAIResponses:
 				provider = NewAzureOpenAIResponsesProvider(AzureOpenAIResponsesConfig{APIKey: "test-key", ProviderID: tc.provider, Model: tc.model, BaseURL: server.URL})
 			case APIMistralConversations:
-				provider = NewMistralProvider(MistralConfig{APIKey: "test-key", ProviderID: tc.provider, Model: tc.model, BaseURL: server.URL})
+				provider = newMistralTestProvider(MistralConfig{APIKey: "test-key", ProviderID: tc.provider, Model: tc.model, BaseURL: server.URL}, nil)
 			case APIGoogleVertex:
 				key := "test-key"
 				if tc.vertexADC {
 					key = ""
 				}
-				provider = NewGoogleVertexProvider(GoogleVertexConfig{APIKey: key, ProviderID: tc.provider, Model: tc.model, BaseURL: server.URL, Project: "test-project", Location: "us-central1"})
+				provider = newGoogleVertexTestProvider(GoogleVertexConfig{APIKey: key, ProviderID: tc.provider, Model: tc.model, BaseURL: server.URL, Project: "test-project", Location: "us-central1"}, nil)
 			case APIGoogleGenerativeAI:
 				provider = NewGoogleProvider(GoogleConfig{APIKey: "test-key", ProviderID: tc.provider, Model: tc.model, BaseURL: server.URL})
 			case APIOpenAICodexResponses:

@@ -36,7 +36,7 @@ func TestFileModelsStoreCoalescesReadsUpstream(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		write(map[string]ModelsStoreEntry{"one": {Models: []json.RawMessage{upstreamStoredModel("one", "old")}}, "two": {Models: []json.RawMessage{upstreamStoredModel("two", "m2")}}})
+		write(map[string]ModelsStoreEntry{"one": {Models: mustStoredModels([]json.RawMessage{upstreamStoredModel("one", "old")})}, "two": {Models: mustStoredModels([]json.RawMessage{upstreamStoredModel("two", "m2")})}})
 		var locks atomic.Int32
 		lock := func(ctx context.Context, path string, fn func(func() error) error) error {
 			locks.Add(1)
@@ -94,7 +94,7 @@ func TestFileModelsStoreCoalescesReadsUpstream(t *testing.T) {
 		}
 		third := NewFileModelsStore(path)
 		third.lock = lock
-		write(map[string]ModelsStoreEntry{"one": {Models: []json.RawMessage{upstreamStoredModel("one", "newest-model")}}})
+		write(map[string]ModelsStoreEntry{"one": {Models: mustStoredModels([]json.RawMessage{upstreamStoredModel("one", "newest-model")})}})
 		synctest.Test(t, func(t *testing.T) {
 			done := make(chan result, 2)
 			for _, store := range []*FileModelsStore{first, third} {
@@ -118,7 +118,7 @@ func TestFileModelsStoreKeepsSharedReadAliveUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/models-store.test.ts:105
 	t.Run("keeps a coalesced reload alive while another reader is still waiting", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "models-store.json")
-		if err := os.WriteFile(path, []byte(mustStoreJSON(t, map[string]ModelsStoreEntry{"one": {Models: []json.RawMessage{upstreamStoredModel("one", "stored")}}})), 0o600); err != nil {
+		if err := os.WriteFile(path, []byte(mustStoreJSON(t, map[string]ModelsStoreEntry{"one": {Models: mustStoredModels([]json.RawMessage{upstreamStoredModel("one", "stored")})}})), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		store := NewFileModelsStore(path)
@@ -162,9 +162,9 @@ func BenchmarkFileModelsStoreCachedCatalog(b *testing.B) {
 	for _, size := range []int{0, 8, 4096} {
 		b.Run(fmt.Sprint(size), func(b *testing.B) {
 			store := NewFileModelsStore(filepath.Join(b.TempDir(), "models-store.json"))
-			entry := ModelsStoreEntry{Models: make([]json.RawMessage, size)}
+			entry := ModelsStoreEntry{Models: make([]AnyModel, size)}
 			for i := range entry.Models {
-				entry.Models[i] = upstreamStoredModel("one", fmt.Sprintf("model-%d", i))
+				entry.Models[i] = mustStoredModels([]json.RawMessage{upstreamStoredModel("one", fmt.Sprintf("model-%d", i))})[0]
 			}
 			if err := store.Write(b.Context(), "one", entry); err != nil {
 				b.Fatal(err)
@@ -187,13 +187,7 @@ func assertStoredID(t *testing.T, entry *ModelsStoreEntry, id string) {
 	if entry == nil || len(entry.Models) != 1 {
 		t.Fatalf("entry=%+v", entry)
 	}
-	var model struct {
-		ID string `json:"id"`
-	}
-	if err := json.Unmarshal(entry.Models[0], &model); err != nil {
-		t.Fatal(err)
-	}
-	if model.ID != id {
+	if model := (struct{ ID string }{entry.Models[0].ModelID()}); model.ID != id {
 		t.Fatalf("id=%s, want %s", model.ID, id)
 	}
 }

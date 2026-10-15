@@ -65,8 +65,13 @@ func TestAnthropicToolCallIDUTF16Normalization(t *testing.T) {
 					if err := json.Unmarshal(messages[2].Content, &results); err != nil {
 						t.Fatal(err)
 					}
-					if len(calls) != 1 || len(results) != 1 || calls[0].ID != tc.want || results[0].ID != tc.want {
-						t.Fatalf("call=%v result=%v want %q", calls, results, tc.want)
+					// transformMessages normalizes only another model's tool call ids; convertMessages writes the ids it is given.
+					want := tc.id
+					if foreign {
+						want = tc.want
+					}
+					if len(calls) != 1 || len(results) != 1 || calls[0].ID != want || results[0].ID != want {
+						t.Fatalf("call=%v result=%v want %q", calls, results, want)
 					}
 					if input.Messages[1].(AssistantMessage).Content[0].(ToolCall).ID != tc.id || input.Messages[2].(ToolResultMessage).ToolCallID != tc.id {
 						t.Fatal("normalization mutated retained history")

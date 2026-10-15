@@ -1,0 +1,52 @@
+# Behavior family: slash-commands
+# Surface: `/mcp` opens the MCP server manager while a server is still connecting (extensions/mcp/index.ts, ui.ts)
+#
+# Upstream evidence (pinned pi 1.1.0, #10562): the agent directory's `mcp.json` holds one stdio server (`sleep 300`)
+# that never answers `initialize`, so it stays connecting for the whole run. Before 1.1.0 the command waited for the
+# startup connections, so the manager did not open until the connection timed out. Now `/mcp` Enter opens the manager
+# at once and the list shows the server as connecting. The crop is the whole frame, from the title to the last key hint.
+# The comparator is output_equal.
+
+# Mutation (compiling): RunCommand waiting for the startup connections before it opens the manager
+# (coding/mcpext/command.go) fails this scenario: the manager never appears within the wait.
+name = "16-mcp-manager-while-connecting"
+description = "Both binaries open the /mcp manager at once while a configured server is still connecting."
+covers = [
+  "packages/coding-agent/src/extensions/mcp/index.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+# The extension commands bind with the startup resource listing, so "[Context]" is readiness (see 15-mcp-server-detail).
+ready_pattern_pig = "[Context]"
+ready_pattern_pi = "[Context]"
+ready_timeout_seconds = 25
+capture_start = "MCP servers"
+capture_end = "close"
+capture_start_last = true
+
+[[tmux.steps]]
+keys = ["/mcp"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["MCP servers", "slow", "connecting"]
+wait_timeout_seconds = 8
+settle_seconds = 1
+
+[env]
+override_base_args = true
+pig = ["PIG_CODING_AGENT_DIR=testdata/mcp-slow-pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/mcp-slow-pi-agent"]
+pig_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_equal = true
+runs = 3

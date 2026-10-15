@@ -21,7 +21,7 @@ type runToolCallHost struct {
 func (h *runToolCallHost) RunToolCall(ctx context.Context, toolCall agent.AgentToolCall, _ string, onUpdate agent.ToolUpdateSink) (agent.AgentToolCallOutcome, error) {
 	return agent.RunToolCall(ctx, toolCall, agent.RunToolCallOptions{
 		Tools: *h.tools,
-		ToolCallHooks: agent.ToolCallHooks{AfterToolCall: []agent.AfterToolCallHook{func(context.Context, string, string, json.RawMessage, agent.AgentToolResult) agent.AfterToolCallResult {
+		ToolCallHooks: agent.ToolCallHooks{AfterToolCallHooks: []agent.AfterToolCallHook{func(context.Context, string, string, json.RawMessage, agent.AgentToolResult) agent.AfterToolCallResult {
 			h.afterHooks.Add(1)
 			return agent.AfterToolCallResult{}
 		}}},

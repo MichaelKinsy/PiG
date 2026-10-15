@@ -108,7 +108,7 @@ func TestRestoredToolsActivateWhenTheyRegister(t *testing.T) {
 	// The resumed session restores its loadout before the late tool's server connects.
 	restoreBeforeRegistration := func(t *testing.T, sess *Session) sessionToolEntry {
 		entry := withdrawCustomTool(t, sess, "late")
-		sess.restoreToolsFromTranscript()
+		_ = sess.restoreToolsFromTranscript()
 		if got := sess.ActiveToolNames(); !slices.Equal(got, []string{"alpha"}) {
 			t.Fatalf("active before registration = %v", got)
 		}

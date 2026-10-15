@@ -1,8 +1,7 @@
 package evals
 
 // Ports packages/evals/src/harness.ts: model selection, process isolation, the documentation variant and the system
-// prompt checks. The agent Session runner (runPiCodingAgent and createPiCodingAgentHarness) is not ported; see the
-// package comment.
+// prompt checks. The agent Session runner (RunPiCodingAgent) is in harness_run.go.
 
 import (
 	"errors"
@@ -12,7 +11,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/MichaelKinsy/PiG/coding/extension"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
@@ -24,16 +22,25 @@ type PiCodingAgentModelSelection struct {
 	ID       string `json:"id"`
 }
 
-// PiCodingAgentHarnessOptions configures an eval harness. A nil Tools keeps the Session default.
+// PiCodingAgentHarnessOptions configures an eval harness. A nil Tools keeps the Session default. PigPath and
+// ExtensionPath name the pig binary and the cmd/pig-eval-extension binary; empty values read PI_EVAL_PIG and
+// PI_EVAL_EXTENSION, and the pig binary falls back to PATH.
 type PiCodingAgentHarnessOptions struct {
 	Name                    string
 	Model                   *PiCodingAgentModelSelection
 	NoTools                 string
 	Tools                   []string
-	CustomTools             []extension.ToolDefinition
+	CustomTools             []CustomTool
 	WorkspaceFiles          map[string]string
 	TransformSystemPrompt   func(defaultPrompt string) (string, error)
 	ExpectedPiDocumentation *bool
+	Output                  PiCodingAgentOutput
+	PigPath                 string
+	ExtensionPath           string
+
+	// agentFiles are written into the isolated agent directory before the model is resolved; in-package tests use them
+	// to configure a provider that reaches a local server.
+	agentFiles map[string]string
 }
 
 func processEnvironment(name string) (string, bool) { return os.LookupEnv(name) }
@@ -73,6 +80,14 @@ func agentDirEnvironment() string {
 	return icodingagent.ENV_AGENT_DIR
 }
 
+// hostAgentDirectory is the agent directory the runner itself reads credentials and model configuration from.
+func hostAgentDirectory() string {
+	if configured := os.Getenv(agentDirEnvironment()); configured != "" {
+		return configured
+	}
+	return icodingagent.DefaultAgentDir()
+}
+
 // ApplyIsolatedEnvironment removes the runner's PI_EVAL_* variables and points HOME, USERPROFILE and the agent
 // directory at the isolated paths. The returned function restores every variable it changed.
 func ApplyIsolatedEnvironment(home, agentDir string) func() {
@@ -90,6 +105,16 @@ func ApplyIsolatedEnvironment(home, agentDir string) func() {
 		}
 		seen[name] = true
 		previous = append(previous, saved{name, value, true})
+		_ = os.Unsetenv(name)
+	}
+	// PiG's state root variables would send the agent's docs, cache and SDK state outside the isolated home (PIG_HOME, and
+	// XDG_CONFIG_HOME through codingagent.ConfigRoot, which CI sets); Pi has no such variables.
+	for _, name := range [...]string{"PIG_HOME", "PI_HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME", "XDG_STATE_HOME"} {
+		if !seen[name] {
+			seen[name] = true
+			value, present := os.LookupEnv(name)
+			previous = append(previous, saved{name, value, present})
+		}
 		_ = os.Unsetenv(name)
 	}
 	for _, override := range [...][2]string{{"HOME", home}, {"USERPROFILE", home}, {agentDirEnvironment(), agentDir}} {

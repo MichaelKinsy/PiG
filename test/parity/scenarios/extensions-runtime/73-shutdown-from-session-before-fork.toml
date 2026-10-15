@@ -1,0 +1,64 @@
+# Behavior family: extensions-runtime
+# Scenario: /fork reaches a session_before_fork handler that calls ctx.shutdown() and never settles.
+#
+# Upstream evidence (Pi 1.0.3): /fork awaits session_before_fork in runtimeHost.fork() after the message selector.
+# The handler's ctx.shutdown() reaches the event-context shutdownHandler, which calls shutdown() because the session is
+# idle (interactive-mode.ts:2020-2024). shutdown() (4251-4290) stops the TUI, awaits runtimeHost.dispose()
+# (session_shutdown, reason "quit"), prints "To resume this session: <cmd>" for the persisted session, and calls
+# process.exit(0) without awaiting the pending handler or the fork.
+# Probed with Pi 1.0.3 in tmux (2026-10-11): "SHUTDOWN_EVENT quit", then "To resume this session: pi --session <id>",
+# exit 0. Pig had restored the terminal and then waited for the fork phase that requested the shutdown.
+# The fixture's handler returns a Promise that never settles and reports session_shutdown on the controlling terminal.
+
+name = "73-shutdown-from-session-before-fork"
+description = "ctx.shutdown() from a never-settling session_before_fork handler during /fork emits session_shutdown, prints the resume command and exits 0"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home", "SHUTDOWN_AT=session_before_fork"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1", "SHUTDOWN_AT=session_before_fork"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/shutdown-in-awaited-phase.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/shutdown-in-awaited-phase.mjs"]
+
+[tmux]
+width = 120
+height = 30
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "SHUTDOWN_EVENT"
+
+[[tmux.steps]]
+keys = ["What is 20+22?", "Enter"]
+wait_contains = ["42"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["/fork", "Enter"]
+wait_contains = ["Fork from Message"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["SHUTDOWN_EVENT quit", "To resume this session:"]
+wait_timeout_seconds = 15
+
+[assert]
+both_reach_ready = true
+exit_code = 0
+both_contain = ["SHUTDOWN_EVENT quit", "To resume this session:"]
+both_not_contain = ["panic:", "uncaughtException", "Failed to fork session"]
+output_normalized_equal = true
+runs = 3
+
+# normalize-rationale: the resume command names each binary and the session's random id.
+[[assert.normalize_replace]]
+pattern = 'pig? --session [0-9a-f-]{36}'
+with = '<bin> --session <session-id>'
+reason = "D2: the resume command names the host executable; the session id is random per run. The rest of the line and the session_shutdown line stay compared."

@@ -1,12 +1,14 @@
+//go:build !pig_strip_mermaid
+
 package codingagent
 
 import (
 	"bytes"
 	"strings"
 
-	"github.com/yuin/goldmark/ast"
-	gmparser "github.com/yuin/goldmark/parser"
-	gmtext "github.com/yuin/goldmark/text"
+	"github.com/MichaelKinsy/PiG/third_party/goldmark/ast"
+	gmparser "github.com/MichaelKinsy/PiG/third_party/goldmark/parser"
+	gmtext "github.com/MichaelKinsy/PiG/third_party/goldmark/text"
 )
 
 // Ports packages/coding-agent/src/modes/interactive/components/mermaid.ts (Marked fenced-code token boundaries).

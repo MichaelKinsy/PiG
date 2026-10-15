@@ -110,7 +110,7 @@ type postLoginModelHandle struct {
 	persisted bool
 }
 
-func (h *postLoginModelHandle) SetModelOnMain(model *ai.Model, options ModelMutationOptions, dispatch func(func() error) error) error {
+func (h *postLoginModelHandle) SetModelOnMain(_ context.Context, model *ai.Model, options ModelMutationOptions, dispatch func(func() error) error) error {
 	return dispatch(func() error { return h.SetModel(model, options) })
 }
 
@@ -303,7 +303,12 @@ func (*postLoginOAuthProvider) Login(ai.OAuthLoginCallbacks) (ai.OAuthCredential
 func TestRegisteredOAuthLoginCompletesDefaultSelection(t *testing.T) {
 	m := newPostLoginTestMode(t)
 	m.layout = tui.NewContainer()
-	if err := m.runLoginRegisteredOAuth(t.Context(), &postLoginOAuthProvider{}, ""); err != nil {
+	// An extension's registerProvider oauth registers the flow the login dialog finds (lookupOAuthProvider), and gives the
+	// provider the OAuth method that makes its stored OAuth credential count (models.ts:656-658).
+	provider := &postLoginOAuthProvider{}
+	ai.RegisterOAuthProvider(provider.ID(), provider)
+	t.Cleanup(func() { ai.UnregisterOAuthProvider(provider.ID()) })
+	if err := m.runLoginRegisteredOAuth(t.Context(), provider, ai.ProviderDisplayName("opencode-go"), ""); err != nil {
 		t.Fatal(err)
 	}
 	waitPostLoginStatus(t, m, "Selected kimi-k3")

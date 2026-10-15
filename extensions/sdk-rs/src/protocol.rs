@@ -15,6 +15,14 @@ use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 #[path = "surrogate_tests.rs"]
 mod surrogate_tests;
 
+#[cfg(test)]
+#[path = "frame_write_tests.rs"]
+mod frame_write_tests;
+
+#[cfg(test)]
+#[path = "float_roundtrip_tests.rs"]
+mod float_roundtrip_tests;
+
 #[cfg(all(test, unix))]
 #[path = "request_lifetime_tests.rs"]
 mod request_lifetime_tests;
@@ -206,6 +214,9 @@ pub struct ToolDef {
     /// The tool defines prepareLoadout; the host asks with `tool_prepare_loadout`.
     #[serde(skip_serializing_if = "std::ops::Not::not", default)]
     pub prepares_loadout: bool,
+    /// The tool defines reachesTools; the host asks with `tool_reaches_tools`.
+    #[serde(skip_serializing_if = "std::ops::Not::not", default)]
+    pub reaches_tools: bool,
     /// The tool defines prepareArguments; the host asks with `tool_prepare_arguments` before it validates the arguments.
     #[serde(skip_serializing_if = "std::ops::Not::not", default)]
     pub prepares_arguments: bool,
@@ -228,7 +239,6 @@ pub struct ConstrainedSampling {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HandlerDef {
     pub event: String,
-    pub can_block: bool,
     #[serde(default, skip_serializing_if = "is_zero")]
     pub handler_id: u32,
 }
@@ -326,6 +336,21 @@ pub struct RequestMsg {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub args: Option<Value>,
     pub terminal_input: Option<TerminalInputArgs>,
+    /// Numbers one connection's payloads of an event name (`EventStream` in the host's protocol.go).
+    pub stream: Option<EventStream>,
+    /// Why `apply_event_stream` could not produce the payload.
+    pub stream_error: Option<String>,
+}
+
+/// The delta of an event payload: a request with args is a keyframe the extension keeps, one without applies `ops` to the payload numbered `base`.
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct EventStream {
+    #[serde(default)]
+    pub seq: u64,
+    #[serde(default)]
+    pub base: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ops: Option<Value>,
 }
 
 /// The ordered chunk and owner snapshot use JS strings, not Unicode-scalar strings.
@@ -352,6 +377,8 @@ struct RawRequestMsg {
     tool_call_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     args: Option<Box<serde_json::value::RawValue>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    stream: Option<EventStream>,
 }
 
 impl TryFrom<RawRequestMsg> for RequestMsg {
@@ -359,12 +386,12 @@ impl TryFrom<RawRequestMsg> for RequestMsg {
     fn try_from(raw: RawRequestMsg) -> Result<Self, Self::Error> {
         let mut terminal_input = None;
         let args = if raw.method == "terminal_input" {
-            terminal_input = raw.args.as_ref().map(|a| serde_json::from_str(a.get())).transpose()?;
+            terminal_input = raw.args.as_ref().map(|a| from_json_str(a.get())).transpose()?;
             None
         } else {
-            raw.args.as_ref().map(|a| serde_json::from_str(a.get())).transpose()?
+            raw.args.as_ref().map(|a| from_json_str(a.get())).transpose()?
         };
-        Ok(Self { method: raw.method, tool: raw.tool, event: raw.event, handler_id: raw.handler_id, tool_call_id: raw.tool_call_id, args, terminal_input })
+        Ok(Self { method: raw.method, tool: raw.tool, event: raw.event, handler_id: raw.handler_id, tool_call_id: raw.tool_call_id, args, terminal_input, stream: raw.stream, stream_error: None })
     }
 }
 
@@ -374,7 +401,7 @@ impl From<RequestMsg> for RawRequestMsg {
             Some(args) => Some(serde_json::value::to_raw_value(&args).expect("terminal input is JSON")),
             None => req.args.map(|args| serde_json::value::to_raw_value(&args).expect("Value is JSON")),
         };
-        Self { method: req.method, tool: req.tool, event: req.event, handler_id: req.handler_id, tool_call_id: req.tool_call_id, args }
+        Self { method: req.method, tool: req.tool, event: req.event, handler_id: req.handler_id, tool_call_id: req.tool_call_id, args, stream: req.stream }
     }
 }
 
@@ -400,7 +427,11 @@ pub struct NotifyMsg {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CustomInputArgs {
     pub key: String,
+    #[serde(alias = "text")]
     pub data: JsString,
+    /// The host's state of the mounted overlay (`ui.custom.input` only).
+    #[serde(default)]
+    pub state: Option<Value>,
 }
 
 // Rust queries editor text through the typed host call; it does not consume that
@@ -425,8 +456,8 @@ struct RawNotifyMsg {
 impl TryFrom<RawNotifyMsg> for NotifyMsg {
     type Error = serde_json::Error;
     fn try_from(raw: RawNotifyMsg) -> Result<Self, Self::Error> {
-        if raw.method == "ui.custom.input" {
-            let custom_input = raw.args.as_ref().map(|args| serde_json::from_str(args.get())).transpose()?;
+        if matches!(raw.method.as_str(), "ui.custom.input" | "ui.editor.input" | "ui.editor.setText" | "ui.editor.insertText" | "ui.editor.addToHistory") {
+            let custom_input = raw.args.as_ref().map(|args| from_json_str(args.get())).transpose()?;
             return Ok(Self { method: raw.method, args: None, custom_input });
         }
         let args = raw.args.map(|args| {
@@ -436,9 +467,9 @@ impl TryFrom<RawNotifyMsg> for NotifyMsg {
                     #[serde(default, deserialize_with = "deserialize_state_replica")]
                     state: Option<Value>,
                 }
-                let update: Update = serde_json::from_str(args.get())?;
+                let update: Update = from_json_str(args.get())?;
                 serde_json::to_value(update)
-            } else { serde_json::from_str(args.get()) }
+            } else { from_json_str(args.get()) }
         }).transpose()?;
         Ok(Self { method: raw.method, args, custom_input: None })
     }
@@ -484,12 +515,16 @@ pub struct CallResultMsg<R = Value> {
     pub error: Option<ErrorInfo>,
 }
 
-/// A string list widget. It has no width: the host lays the list out at its
-/// own width, as Pi does for `setWidget(key, string[])`.
+/// A widget frame: a string list without a width, which the host lays out at
+/// its own width as Pi does for `setWidget(key, string[])`, or a kit view
+/// (D107) with the lines absent, which the host renders.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct WidgetPushMsg {
     pub key: String,
-    pub lines: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lines: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub view: Option<Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -540,6 +575,10 @@ impl RequestParent {
 pub struct Connection {
     pub(crate) registered_tools: Mutex<HashMap<String, Arc<crate::extension::ToolDefinition>>>,
     pub(crate) tool_registration_lock: Mutex<()>,
+    /// Commands, shortcuts and renderers registered after loading.
+    pub(crate) late_declarations: crate::extension::LateDeclarations,
+    /// The host's footer data and the branch-change subscribers.
+    pub(crate) footer: crate::footer_data::FooterState,
     /// Tool renderer resolvers registered after loading.
     pub(crate) late_tool_renderers: crate::tool_render::LateToolRendererResolvers,
     pub(crate) autocomplete: crate::autocomplete::AutocompleteRegistry,
@@ -549,13 +588,21 @@ pub struct Connection {
     pub(crate) api_state: Mutex<crate::extension_api::ApiState>,
     /// The replicated signal of the run in progress, with the host's run number. None while no run is active (`Context::signal`).
     pub(crate) run_signal: Mutex<Option<(u64, crate::provider::ProviderSignal)>>,
+    /// The Host's invalidate message; the first one wins (runner.ts:725-727).
+    pub(crate) stale_message: Mutex<Option<String>>,
     /// Virtual models by provider and id, load-time and post-load registrations alike.
     pub(crate) virtual_models: crate::extension_api::VirtualModels,
     /// Dispatchers of in-flight nested calls, by execute id. Each update travels with the channel its answer returns on.
     pub(crate) execute_updates: Mutex<HashMap<String, mpsc::Sender<ExecuteUpdate>>>,
     pub(crate) execute_seq: std::sync::atomic::AtomicU64,
+    /// The BashOperations objects a user_bash reply named by handle (see `Context::bash_operations`).
+    pub(crate) bash_operations: crate::user_bash::BashOperationsTable,
     /// The withSession callbacks of this connection's replacement calls in flight.
     pub(crate) with_sessions: crate::replaced_session::WithSessionRegistry,
+    /// The frontend flag, the image refs sent, and the live widget, header and footer views (D107).
+    pub(crate) views: crate::kit::ViewLedger,
+    /// The setup callbacks of this connection's newSession calls in flight.
+    pub(crate) setups: crate::setup_session::SetupRegistry,
     reader: Mutex<UnixStream>,
     writer: Mutex<UnixStream>,
     // control ends the socket for every clone without waiting on a reader or writer lock.
@@ -573,6 +620,13 @@ struct PendingCallSender {
 }
 
 impl Connection {
+    /// Records the Host's `invalidate` notification: a captured context raises the message from its locally answered members afterwards.
+    pub(crate) fn apply_invalidate(&self, args: &serde_json::Value) {
+        if let Some(message) = args.get("message").and_then(|v| v.as_str()).filter(|m| !m.is_empty()) {
+            self.stale_message.lock().unwrap().get_or_insert_with(|| message.to_string());
+        }
+    }
+
     /// Installs the host's `run_signal` frame: one signal for the whole run, cancelled when the run aborts.
     pub(crate) fn apply_run_signal(&self, args: &serde_json::Value) {
         let active = args.get("active").and_then(|v| v.as_bool()).unwrap_or(false);
@@ -625,12 +679,18 @@ impl Connection {
             provider_callbacks: std::sync::OnceLock::new(),
             api_state: Mutex::new(Default::default()),
             run_signal: Mutex::new(None),
+            stale_message: Mutex::new(None),
             virtual_models: Mutex::new(HashMap::new()),
             execute_updates: Mutex::new(HashMap::new()),
             execute_seq: std::sync::atomic::AtomicU64::new(0),
+            bash_operations: Default::default(),
             with_sessions: Default::default(),
+            views: Default::default(),
+            setups: Default::default(),
             registered_tools: Mutex::new(HashMap::new()),
             tool_registration_lock: Mutex::new(()),
+            late_declarations: Default::default(),
+            footer: Default::default(),
             late_tool_renderers: Default::default(),
             autocomplete: crate::autocomplete::AutocompleteRegistry::default(),
         }
@@ -664,7 +724,7 @@ impl Connection {
         }
         let mut buf = vec![0u8; size as usize];
         stream.read_exact(&mut buf)?;
-        serde_json::from_slice(&buf).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+        decode_frame(&buf)
     }
 
     /// Write one frame to the socket.
@@ -673,6 +733,16 @@ impl Connection {
     }
 
     fn write_envelope_to(stream: &mut UnixStream, env: &impl Serialize) -> io::Result<()> {
+        Self::write_frame_to(stream, env)
+    }
+
+    fn write_frame_to(stream: &mut impl Write, env: &impl Serialize) -> io::Result<()> {
+        Self::write_encoded_frame(stream, &Self::encode_frame(env)?)
+    }
+
+    /// The frame of an envelope: a 4-byte length and the JSON body in one buffer, so it goes out in one write (a header and a body sent apart cost the
+    /// host two reads and, on a stream socket, two segments).
+    fn encode_frame(env: &impl Serialize) -> io::Result<Vec<u8>> {
         let data =
             serde_json::to_vec(env).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         if data.len() > MAX_FRAME_SIZE as usize {
@@ -685,9 +755,14 @@ impl Connection {
                 ),
             ));
         }
-        let hdr = (data.len() as u32).to_be_bytes();
-        stream.write_all(&hdr)?;
-        stream.write_all(&data)?;
+        let mut frame = Vec::with_capacity(4 + data.len());
+        frame.extend_from_slice(&(data.len() as u32).to_be_bytes());
+        frame.extend_from_slice(&data);
+        Ok(frame)
+    }
+
+    fn write_encoded_frame(stream: &mut impl Write, frame: &[u8]) -> io::Result<()> {
+        stream.write_all(frame)?;
         stream.flush()
     }
 
@@ -702,6 +777,20 @@ impl Connection {
     }
 
     pub(crate) fn respond_serialized<T: Serialize>(&self, id: &str, result: Option<T>, error: Option<ErrorInfo>) -> io::Result<()> {
+        #[derive(Serialize)]
+        struct Response<T> { #[serde(skip_serializing_if = "Option::is_none")] result: Option<T>, #[serde(skip_serializing_if = "Option::is_none")] error: Option<ErrorInfo> }
+        #[derive(Serialize)]
+        struct Reply<'a, T> { #[serde(rename = "type")] kind: &'static str, id: &'a str, response: Response<T> }
+        // The response is encoded before the writer lock is taken: a result of hundreds of MiB takes seconds to encode, and the same lock carries the
+        // heartbeat's pong, which the host answers by closing a connection that stays silent.
+        let had_result = result.is_some();
+        let response = match Self::encode_frame(&Reply { kind: "response", id, response: Response { result, error } }) {
+            // The host waits for this request's response. A result that cannot be framed (past MAX_FRAME_SIZE, or not serializable) is answered with that failure, as the Node and Python SDKs answer it, rather than leaving the call to hang until it is aborted.
+            Err(err) if had_result && err.kind() == io::ErrorKind::InvalidData => {
+                Self::encode_frame(&Reply { kind: "response", id, response: Response::<()> { result: None, error: Some(ErrorInfo { code: None, message: err.to_string() }) } })
+            }
+            outcome => outcome,
+        };
         let mut writer = self.writer.lock().unwrap();
         if let Some(parent) = self.request_parents.lock().unwrap().remove(id) {
             parent.finished.store(true, Ordering::Release);
@@ -718,11 +807,7 @@ impl Connection {
             request_state: Some(RequestStateMsg { request_id: id.to_string(), state: "completed".to_string(), reason: None }),
             ..Default::default()
         })?;
-        #[derive(Serialize)]
-        struct Response<T> { #[serde(skip_serializing_if = "Option::is_none")] result: Option<T>, #[serde(skip_serializing_if = "Option::is_none")] error: Option<ErrorInfo> }
-        #[derive(Serialize)]
-        struct Reply<'a, T> { #[serde(rename = "type")] kind: &'static str, id: &'a str, response: Response<T> }
-        Self::write_envelope_to(&mut writer, &Reply { kind: "response", id, response: Response { result, error } })
+        Self::write_encoded_frame(&mut *writer, &response?)
     }
 
     pub fn request_state(&self, id: &str, state: &str, reason: Option<&str>) -> io::Result<()> {
@@ -766,7 +851,7 @@ impl Connection {
         self.wait_call(pending)
     }
 
-    pub(crate) fn call_typed<A: Serialize, R: serde::de::DeserializeOwned>(&self, scope: Option<&RequestParent>, parent: Option<&str>, method: &str, args: Option<A>) -> io::Result<CallResultMsg<R>> {
+    pub(crate) fn call_typed<A: Serialize, R: serde::de::DeserializeOwned + Send>(&self, scope: Option<&RequestParent>, parent: Option<&str>, method: &str, args: Option<A>) -> io::Result<CallResultMsg<R>> {
         let pending = self.begin_call_with_scope(scope, parent, method, args)?;
         self.wait_call_typed(pending)
     }
@@ -831,14 +916,14 @@ impl Connection {
         self.wait_call_typed(pending)
     }
 
-    pub(crate) fn wait_call_typed<R: serde::de::DeserializeOwned>(&self, pending: PendingCall) -> io::Result<CallResultMsg<R>> {
+    pub(crate) fn wait_call_typed<R: serde::de::DeserializeOwned + Send>(&self, pending: PendingCall) -> io::Result<CallResultMsg<R>> {
         let reply = pending.receiver.recv().map_err(|_| {
             io::Error::new(
                 io::ErrorKind::ConnectionAborted,
                 format!("host call {} cancelled", pending.method),
             )
         })?;
-        let result = reply.result.map(|raw| serde_json::from_str(raw.get())).transpose().map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+        let result = reply.result.map(|raw| from_json_str(raw.get())).transpose().map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         Ok(CallResultMsg { result, error: reply.error })
     }
 
@@ -852,6 +937,23 @@ impl Connection {
             }),
             ..Default::default()
         })
+    }
+
+    /// Send a notify whose arguments serialize themselves, so [`JsString`] fields keep lone UTF-16 units that a `serde_json::Value` cannot hold.
+    pub(crate) fn notify_typed<A: Serialize>(&self, method: &str, args: Option<A>) -> io::Result<()> {
+        #[derive(Serialize)]
+        struct TypedNotify<'a, A> {
+            method: &'a str,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            args: Option<A>,
+        }
+        #[derive(Serialize)]
+        struct TypedEnvelope<'a, A> {
+            #[serde(rename = "type")]
+            msg_type: &'static str,
+            notify: TypedNotify<'a, A>,
+        }
+        Self::write_envelope_to(&mut self.writer.lock().unwrap(), &TypedEnvelope { msg_type: "notify", notify: TypedNotify { method, args } })
     }
 
     /// Complete a pending host call. Returns true when the envelope was routed.
@@ -892,12 +994,18 @@ impl Connection {
 
     /// Push a widget update (fire-and-forget).
     pub fn push_widget(&self, key: &str, lines: Vec<String>) -> io::Result<()> {
+        self.write_widget_push(WidgetPushMsg { key: key.to_string(), lines: Some(lines), view: None })
+    }
+
+    /// Push a widget's authoritative kit view (fire-and-forget, D107).
+    pub(crate) fn push_widget_view(&self, key: &str, view: Value) -> io::Result<()> {
+        self.write_widget_push(WidgetPushMsg { key: key.to_string(), lines: None, view: Some(view) })
+    }
+
+    fn write_widget_push(&self, push: WidgetPushMsg) -> io::Result<()> {
         self.write_envelope(&Envelope {
             msg_type: "widget_push".to_string(),
-            widget_push: Some(WidgetPushMsg {
-                key: key.to_string(),
-                lines,
-            }),
+            widget_push: Some(push),
             ..Default::default()
         })
     }
@@ -905,4 +1013,186 @@ impl Connection {
 
 fn is_zero_usize(value: &usize) -> bool {
     *value == 0
+}
+
+/// The deepest JSON nesting `from_json_str` accepts. serde_json refuses past 128 levels, and Pi's JavaScript parser, Go, and Python take
+/// far more; a refused frame ends the connection. A bound stays so a hostile frame cannot overflow the stack of the recursive decoder.
+const MAX_NESTING_DEPTH: usize = 4096;
+
+/// Stack of the thread that decodes a value nested past serde_json's limit: a debug build uses about 2 KiB of it per level.
+const DEEP_DECODE_STACK: usize = 64 * 1024 * 1024;
+
+/// Runs a recursive decode on a thread with `DEEP_DECODE_STACK` bytes of stack, so the caller's own stack does not bound the depth.
+pub(crate) fn on_deep_stack<R: Send>(decode: impl FnOnce() -> R + Send) -> io::Result<R> {
+    std::thread::scope(|scope| {
+        let worker = std::thread::Builder::new().stack_size(DEEP_DECODE_STACK).spawn_scoped(scope, decode)?;
+        worker.join().map_err(|_| io::Error::other("deep JSON decode panicked"))
+    })
+}
+
+/// Decodes one frame body. serde_json refuses an unpaired surrogate, which every other runtime accepts, and refusing a frame ends the
+/// connection (the host sees EOF and the extension is gone). A JavaScript string may carry one (Pi keeps it as the UTF-16 unit) and the
+/// host sends it as a `\ud800` escape. The typed UTF-16 fields (`JsString`) take it losslessly; a `Value` or `String` position cannot
+/// hold it, so a refused frame is decoded again with each unpaired surrogate written as U+FFFD, the replacement Go's decoder makes in a
+/// `string`. A frame that decodes the first time is untouched, so the lossless fields keep their units.
+fn decode_frame(buf: &[u8]) -> io::Result<Envelope<Box<serde_json::value::RawValue>>> {
+    match serde_json::from_slice(buf) {
+        Err(err) if err.is_data() || err.is_syntax() => match replace_unpaired_surrogate_escapes(buf) {
+            Some(repaired) => serde_json::from_slice(&repaired),
+            None => Err(err),
+        },
+        result => result,
+    }
+    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+}
+
+/// `serde_json::from_str` for a value cut out of a frame (the arguments of a request or notification, the result of a host call). serde_json
+/// refuses nesting past 128 levels, and a refused frame ends the connection, while Pi's JavaScript parser, Go and Python take far more: the
+/// refusal is lifted up to `MAX_NESTING_DEPTH`. A number outside the `f64` range, which the deep decode can meet as well as the first one,
+/// is then rewritten as `null`.
+pub(crate) fn from_json_str<T: serde::de::DeserializeOwned + Send>(text: &str) -> serde_json::Result<T> {
+    let decoded = match serde_json::from_str(text) {
+        Err(err) if err.to_string().starts_with("recursion limit exceeded") && nesting_depth(text.as_bytes()) <= MAX_NESTING_DEPTH => {
+            on_deep_stack(|| {
+                let mut de = serde_json::Deserializer::from_str(text);
+                de.disable_recursion_limit();
+                let value = T::deserialize(&mut de)?;
+                de.end()?;
+                Ok(value)
+            })
+            .unwrap_or_else(|err| Err(<serde_json::Error as serde::de::Error>::custom(err)))
+        }
+        result => result,
+    };
+    match decoded {
+        Err(err) if err.to_string().starts_with("number out of range") => match replace_out_of_range_numbers(text) {
+            Some(repaired) => from_json_str(&repaired),
+            None => Err(err),
+        },
+        result => result,
+    }
+}
+
+/// `text` with each number outside the `f64` range written as `null`, or `None` when there is none. `JSON.parse` reads `1e400` as Infinity,
+/// which `JSON.stringify`, and so every frame Pi writes, spells `null`; serde_json refuses the number, and a refused frame ends the connection.
+/// A `Value` cannot hold an infinity, so the number becomes the `null` it is written as.
+fn replace_out_of_range_numbers(text: &str) -> Option<String> {
+    let bytes = text.as_bytes();
+    let (mut out, mut copied, mut index, mut in_string, mut escaped) = (String::new(), 0, 0, false, false);
+    while index < bytes.len() {
+        let byte = bytes[index];
+        if in_string {
+            match (escaped, byte) {
+                (true, _) => escaped = false,
+                (false, b'\\') => escaped = true,
+                (false, b'"') => in_string = false,
+                _ => {}
+            }
+            index += 1;
+        } else if byte == b'"' {
+            in_string = true;
+            index += 1;
+        } else if byte == b'-' || byte.is_ascii_digit() {
+            let start = index;
+            while index < bytes.len() && matches!(bytes[index], b'-' | b'+' | b'.' | b'e' | b'E' | b'0'..=b'9') {
+                index += 1;
+            }
+            if text[start..index].parse::<f64>().is_ok_and(f64::is_infinite) {
+                out.push_str(&text[copied..start]);
+                out.push_str("null");
+                copied = index;
+            }
+        } else {
+            index += 1;
+        }
+    }
+    if copied == 0 {
+        return None;
+    }
+    out.push_str(&text[copied..]);
+    Some(out)
+}
+
+/// The deepest array/object nesting in a JSON body, read without parsing it: string contents (and their escapes) are skipped.
+fn nesting_depth(buf: &[u8]) -> usize {
+    let (mut depth, mut deepest, mut in_string, mut escaped) = (0usize, 0usize, false, false);
+    for &byte in buf {
+        if in_string {
+            match (escaped, byte) {
+                (true, _) => escaped = false,
+                (false, b'\\') => escaped = true,
+                (false, b'"') => in_string = false,
+                _ => {}
+            }
+            continue;
+        }
+        match byte {
+            b'"' => in_string = true,
+            b'[' | b'{' => {
+                depth += 1;
+                deepest = deepest.max(depth);
+            }
+            b']' | b'}' => depth = depth.saturating_sub(1),
+            _ => {}
+        }
+    }
+    deepest
+}
+
+fn hex_unit(escape: &[u8]) -> Option<u16> {
+    if escape.len() < 6 || escape[0] != b'\\' || escape[1] != b'u' {
+        return None;
+    }
+    let digits = std::str::from_utf8(&escape[2..6]).ok()?;
+    u16::from_str_radix(digits, 16).ok()
+}
+
+/// `serde_json::from_str::<Value>` for text that may spell an unpaired surrogate as an escape (Pi writes a session entry with `JSON.stringify`, which does): a `Value`
+/// string cannot hold one, so each is read as U+FFFD, as `decode_frame` does, instead of refusing the text.
+pub(crate) fn value_from_str_lossy(text: &str) -> serde_json::Result<serde_json::Value> {
+    match serde_json::from_str(text) {
+        Err(err) if err.is_data() || err.is_syntax() => match replace_unpaired_surrogate_escapes(text.as_bytes()) {
+            Some(repaired) => serde_json::from_slice(&repaired),
+            None => Err(err),
+        },
+        result => result,
+    }
+}
+
+/// Rewrites each `\uD800`-`\uDFFF` escape that is not half of a surrogate pair as `\ufffd`. Returns None when the body has none.
+fn replace_unpaired_surrogate_escapes(buf: &[u8]) -> Option<Vec<u8>> {
+    rewrite_unpaired_surrogate_escapes(buf, |_| b"\\ufffd".to_vec())
+}
+
+/// Rewrites each `\uD800`-`\uDFFF` escape that is not half of a surrogate pair as `replacement(unit)`. Returns None when the body has none.
+pub(crate) fn rewrite_unpaired_surrogate_escapes(buf: &[u8], mut replacement: impl FnMut(u16) -> Vec<u8>) -> Option<Vec<u8>> {
+    let mut out = Vec::with_capacity(buf.len());
+    let mut changed = false;
+    let mut i = 0;
+    while i < buf.len() {
+        if buf[i] != b'\\' || i + 1 >= buf.len() {
+            out.push(buf[i]);
+            i += 1;
+            continue;
+        }
+        let Some(unit) = hex_unit(&buf[i..]) else {
+            out.extend_from_slice(&buf[i..i + 2]);
+            i += 2;
+            continue;
+        };
+        let paired = (0xd800..0xdc00).contains(&unit)
+            && hex_unit(&buf[i + 6..]).is_some_and(|low| (0xdc00..0xe000).contains(&low));
+        if paired {
+            out.extend_from_slice(&buf[i..i + 12]);
+            i += 12;
+        } else if (0xd800..0xe000).contains(&unit) {
+            out.extend_from_slice(&replacement(unit));
+            changed = true;
+            i += 6;
+        } else {
+            out.extend_from_slice(&buf[i..i + 6]);
+            i += 6;
+        }
+    }
+    changed.then_some(out)
 }

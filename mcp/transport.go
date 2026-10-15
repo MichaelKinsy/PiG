@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"context"
 	"sync"
 )
 
@@ -25,9 +26,14 @@ type CloseListener func()
 // must not wait (the client) calls it from its own goroutine; a Transport
 // therefore accepts concurrent Send calls. Close ends every goroutine the
 // transport started before it returns.
+//
+// Send's ctx is Pi's McpTransportSendOptions.signal (transport.ts:9-16): it ends once the sender no longer waits for a
+// reply (the request was cancelled, timed out, answered, or the client closed). A transport must not dispatch the
+// message after that, for example when retrying it after an authorization refresh. It does not undo a message already
+// dispatched. A transport that writes at once (stdio, in-memory) ignores it, as Pi's do.
 type Transport interface {
 	Start() error
-	Send(message JSONRPCMessage) error
+	Send(ctx context.Context, message JSONRPCMessage) error
 	Close() error
 	OnMessage(listener MessageListener) (dispose func())
 	OnError(listener ErrorListener) (dispose func())
@@ -39,7 +45,7 @@ type Transport interface {
 // otherwise behaves as Send. The client uses it to write requests in id order; a transport without it (HTTP, where
 // Send waits for the reply) gets concurrent Sends in no fixed order.
 type OrderedSender interface {
-	SendOrdered(message JSONRPCMessage, placed func()) error
+	SendOrdered(ctx context.Context, message JSONRPCMessage, placed func()) error
 }
 
 // ProtocolVersionSetter is implemented by transports that send the negotiated
@@ -127,22 +133,40 @@ func removeEntry[T any](entries []T, id int, idOf func(T) int) []T {
 	return out
 }
 
+// nextEntry returns the first entry registered after the one with id last, so an emit sees the listener set as it is when it reaches each
+// entry, as `for (const listener of set)` does: a listener removed earlier in the same emit is skipped and one added during it runs.
+func nextEntry[T any](t *TransportEvents, entries func() []T, idOf func(T) int, last int) (T, bool) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	for _, e := range entries() {
+		if idOf(e) > last {
+			return e, true
+		}
+	}
+	var none T
+	return none, false
+}
+
 // EmitMessage delivers a message to the listeners.
 func (t *TransportEvents) EmitMessage(message JSONRPCMessage) {
-	t.mu.Lock()
-	listeners := append([]messageEntry(nil), t.messages...)
-	t.mu.Unlock()
-	for _, l := range listeners {
+	for last := 0; ; {
+		l, ok := nextEntry(t, func() []messageEntry { return t.messages }, func(e messageEntry) int { return e.id }, last)
+		if !ok {
+			return
+		}
+		last = l.id
 		l.fn(message)
 	}
 }
 
 // EmitError delivers an error to the listeners.
 func (t *TransportEvents) EmitError(err error) {
-	t.mu.Lock()
-	listeners := append([]errorEntry(nil), t.errors...)
-	t.mu.Unlock()
-	for _, l := range listeners {
+	for last := 0; ; {
+		l, ok := nextEntry(t, func() []errorEntry { return t.errors }, func(e errorEntry) int { return e.id }, last)
+		if !ok {
+			return
+		}
+		last = l.id
 		l.fn(err)
 	}
 }
@@ -155,9 +179,13 @@ func (t *TransportEvents) EmitClose() {
 		return
 	}
 	t.closeCalled = true
-	listeners := append([]closeEntry(nil), t.closes...)
 	t.mu.Unlock()
-	for _, l := range listeners {
+	for last := 0; ; {
+		l, ok := nextEntry(t, func() []closeEntry { return t.closes }, func(e closeEntry) int { return e.id }, last)
+		if !ok {
+			return
+		}
+		last = l.id
 		l.fn()
 	}
 }

@@ -15,14 +15,14 @@ func TestLoginDialogPreviousPromptInputStableUpstream(t *testing.T) {
 		{"keeps previous manual input stable when a later prompt is active", "Paste callback URL:", "callback-value", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			dialog := NewLoginDialog("Prompt Repro", nil)
-			first := dialog.ShowInput(tc.prompt, tc.placeholder)
+			dialog := NewLoginDialogComponent(nil, "Prompt Repro", nil, "")
+			first := dialog.ShowPrompt(tc.prompt, tc.placeholder)
 			dialog.HandleInput(tc.value)
 			dialog.HandleInput("\n")
 			if got := <-first; got != tc.value {
 				t.Fatalf("submitted=%q", got)
 			}
-			second := dialog.ShowInput("Second prompt:", "")
+			second := dialog.ShowPrompt("Second prompt:", "")
 			dialog.HandleInput("second-secret-demo")
 			lines := loginDialogPlainLines(dialog)
 			text := strings.Join(lines, "\n")
@@ -50,36 +50,36 @@ func TestLoginDialogPreviousPromptInputStableUpstream(t *testing.T) {
 
 // .upstream/v0.87.1/packages/coding-agent/test/suite/regressions/5433-extension-oauth-prompt-input.test.ts:61
 func TestLoginDialogPreservesAuthInstructionsWithPromptUpstream(t *testing.T) {
-	dialog := NewLoginDialog("Prompt Repro", nil)
+	dialog := NewLoginDialogComponent(nil, "Prompt Repro", nil, "")
 	dialog.ShowAuth("https://example.invalid/login", "Authorize the extension")
-	dialog.ShowInput("First prompt:", "")
+	dialog.ShowPrompt("First prompt:", "")
 	requireLoginDialogText(t, dialog, "https://example.invalid/login", "Authorize the extension", "First prompt:")
 }
 
 // .upstream/v0.87.1/packages/coding-agent/test/suite/regressions/5433-extension-oauth-prompt-input.test.ts:73
 func TestLoginDialogPreservesNeutralInformationAndLinksUpstream(t *testing.T) {
-	dialog := NewLoginDialog("Prompt Repro", nil)
+	dialog := NewLoginDialogComponent(nil, "Prompt Repro", nil, "")
 	dialog.ShowInfo("Configure credentials outside pi.", []AuthInfoLink{{Label: "Provider documentation", URL: "https://example.invalid/docs"}}, false)
-	dialog.ShowInput("Press Enter to continue:", "")
+	dialog.ShowPrompt("Press Enter to continue:", "")
 	requireLoginDialogText(t, dialog, "Configure credentials outside pi.", "Provider documentation: https://example.invalid/docs", "Press Enter to continue:")
 }
 
 // .upstream/v0.87.1/packages/coding-agent/test/suite/regressions/5433-extension-oauth-prompt-input.test.ts:87
 func TestLoginDialogPreservesSetupDetailsUpstream(t *testing.T) {
-	dialog := NewLoginDialog("Prompt Repro", nil)
+	dialog := NewLoginDialogComponent(nil, "Prompt Repro", nil, "")
 	dialog.ShowDetails([]string{"AWS credential setup:", "providers.md"})
-	dialog.ShowInput("Enter API key:", "")
+	dialog.ShowPrompt("Enter API key:", "")
 	requireLoginDialogText(t, dialog, "AWS credential setup:", "providers.md", "Enter API key:")
 }
 
-func loginDialogPlainLines(dialog *LoginDialog) []string {
+func loginDialogPlainLines(dialog *LoginDialogComponent) []string {
 	lines := dialog.Render(120)
 	for i, line := range lines {
 		lines[i] = strings.TrimRight(widthx.StripAnsi(line), " ")
 	}
 	return lines
 }
-func requireLoginDialogText(t *testing.T, dialog *LoginDialog, values ...string) {
+func requireLoginDialogText(t *testing.T, dialog *LoginDialogComponent, values ...string) {
 	t.Helper()
 	text := strings.Join(loginDialogPlainLines(dialog), "\n")
 	for _, value := range values {

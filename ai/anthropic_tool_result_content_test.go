@@ -20,7 +20,7 @@ func BenchmarkAnthropicToolResultContent(b *testing.B) {
 		b.Run(tc.name, func(b *testing.B) {
 			b.ReportAllocs()
 			for b.Loop() {
-				encoded, err := json.Marshal(anthToolResultContent(tc.content))
+				encoded, err := json.Marshal(anthToolResultContent(tc.content, false))
 				if err != nil || len(encoded) == 0 {
 					b.Fatalf("marshal result: %v", err)
 				}
@@ -50,7 +50,7 @@ func TestAnthropicToolResultContentOrderAndEmptyText(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Run("converter", func(t *testing.T) {
-				encoded, err := json.Marshal(anthToolResultContent(tc.content))
+				encoded, err := json.Marshal(anthToolResultContent(tc.content, false))
 				if err != nil {
 					t.Fatal(err)
 				}

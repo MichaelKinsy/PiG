@@ -27,7 +27,7 @@ func TestTUIStopParksBelowPreviousLines(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var output bytes.Buffer
 			ui := NewWithOutput(&output, 80, 24)
-			ui.RestoreRenderState(TUIRenderState{PrevLines: make([]string, tc.lines), CursorRow: tc.cursor, HardwareCursorRow: tc.hardware})
+			ui.RestoreRenderState(TuiMainScreenRenderState{PreviousLines: make([]string, tc.lines), CursorRow: tc.cursor, HardwareCursorRow: tc.hardware})
 			ui.StopWithOptions(StopOptions{PreserveScreen: tc.preserve})
 			if got := output.String(); got != tc.want {
 				t.Fatalf("stop bytes = %q, want Pi %q", got, tc.want)
@@ -36,14 +36,15 @@ func TestTUIStopParksBelowPreviousLines(t *testing.T) {
 	}
 }
 
+// Pi: packages/coding-agent/src/modes/interactive/components/armin.ts:84 (ArminComponent.invalidate); packages/coding-agent/src/modes/interactive/components/assistant-message.ts:51 (AssistantMessageComponent.invalidate); packages/coding-agent/src/modes/interactive/components/bash-execution.ts:75 (BashExecutionComponent.invalidate); packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts:27 (BranchSummaryMessageComponent.invalidate); packages/coding-agent/src/modes/interactive/components/compaction-summary-message.ts:27 (CompactionSummaryMessageComponent.invalidate); packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts:28 (SkillInvocationMessageComponent.invalidate).
 func TestCustomMessageBackgroundTracksTheme(t *testing.T) {
 	previous := ActiveTheme().Name
 	t.Cleanup(func() { SetTheme(previous) })
 	components := []Component{
-		NewCustomMessageComponent("notice", "finished"),
-		NewCompactionSummaryComponent("summary", 100),
-		NewBranchSummaryComponent("summary"),
-		NewSkillInvocationMessage(ParsedSkillBlock{Name: "probe", Content: "body"}),
+		NewCustomMessageComponent(&CustomMessage{CustomType: "notice", Content: "finished"}, nil, nil, 1),
+		NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: "summary", TokensBefore: 100}, nil, 1),
+		NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "summary"}, nil, 1),
+		NewSkillInvocationMessageComponent(ParsedSkillBlock{Name: "probe", Content: "body"}, nil, 1),
 	}
 	for _, theme := range []string{"dark", "light", "dark"} {
 		SetTheme(theme)
@@ -64,7 +65,7 @@ func TestCustomMessageBackgroundTracksTheme(t *testing.T) {
 func TestCustomMessageRetainsBoxVerticalPadding(t *testing.T) {
 	for _, content := range []string{"", "finished", "first\nsecond"} {
 		t.Run(fmt.Sprintf("%q", content), func(t *testing.T) {
-			component := NewCustomMessageComponent("notice", content)
+			component := NewCustomMessageComponent(&CustomMessage{CustomType: "notice", Content: content}, nil, nil, 1)
 			lines := component.Render(40)
 			wantText := []string{"", strings.Repeat(" ", 40), " [notice]" + strings.Repeat(" ", 31), strings.Repeat(" ", 40)}
 			if content != "" {

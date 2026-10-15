@@ -1,0 +1,339 @@
+{
+  "absent_paths": {
+    "claude": [
+      "/etc/claude-code",
+      "/Library/Application Support/ClaudeCode"
+    ],
+    "codex": [
+      "/etc/codex",
+      "/Library/Application Support/Codex"
+    ],
+    "copilot": [
+      "/etc/copilot"
+    ]
+  },
+  "arms": {
+    "claude": {
+      "bin": "node_modules/.bin/claude",
+      "bin_by_platform": {
+        "darwin-amd64": "node_modules/@anthropic-ai/claude-code-darwin-x64/claude",
+        "darwin-arm64": "node_modules/@anthropic-ai/claude-code-darwin-arm64/claude",
+        "linux-amd64": "node_modules/@anthropic-ai/claude-code-linux-x64/claude",
+        "linux-arm64": "node_modules/@anthropic-ai/claude-code-linux-arm64/claude",
+        "windows-amd64": "node_modules/@anthropic-ai/claude-code-win32-x64/claude.exe"
+      },
+      "bin_sha256": {
+        "darwin-amd64": "a6bf4f30be241053a923f3820ad23c5991d2f5ac2935b3a8dd64da218d9cc603",
+        "darwin-arm64": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+        "linux-amd64": "24972e3bc859fab2b46ed4c1e51f7d6130f06d3bd550811a114640de3370d0de",
+        "linux-arm64": "f1f6e96e0d8342b9dbf41d7e88255397a6a52ce3d8736ad6a4c6b59c9b62fefa",
+        "windows-amd64": "76de74f7694a5bdc03378a5f837c9e132827bf004c98c276bc4e9094ff06769a"
+      },
+      "bin_size": {
+        "darwin-amd64": 249194752,
+        "darwin-arm64": 240664432,
+        "linux-amd64": 257068216,
+        "linux-arm64": 256434168,
+        "windows-amd64": 260489376
+      },
+      "integrity": "sha512-OX/k/rpcthMqnFKOWcpNcbiLsMKtAjLOpQNJHlYiDCFUznWCIwdRTyl/p9SdHVrsrzZuPMCNqZjnpakIni6upw==",
+      "license": "proprietary",
+      "license_note": "(c) Anthropic PBC. Use is subject to Anthropic's legal agreements (https://code.claude.com/docs/en/legal-and-compliance). Run unmodified from the registry tarball, installed into a throwaway directory per run; the binary is not committed or redistributed.",
+      "package": "@anthropic-ai/claude-code",
+      "package_lock": "locks/claude.package-lock.json",
+      "package_lock_sha256": "f50bb12544e28fe2bc40b12dcc0d6d435778a20858143c802eb466f8fca37243",
+      "sha256": "f6c375d51d4c22a7a850e185a0d7ddda85173f89dbbeb3262aa7971e3bd670b5",
+      "size": 29001,
+      "source": "npm",
+      "tarball": "https://registry.npmjs.org/@anthropic-ai/claude-code/-/claude-code-2.1.296.tgz",
+      "vendor_manifest": {
+        "sha256": "e50e872d91f3b7da2fb3d8d38505d709e0a90f48da1951dd51176930c8da8270",
+        "url": "https://downloads.claude.ai/claude-code-releases/{version}/manifest.json"
+      },
+      "version": "2.1.296"
+    },
+    "codex": {
+      "bin": "node_modules/.bin/codex",
+      "bin_sha256": {
+        "linux-amd64": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+      },
+      "integrity": "sha512-NWZdi/kxyjv/8EUGFupziGU38YyleugZRM4JXgY5XFH7FUmaFA33NZS2Bmq0HPazf7S3jJQQWsZ/jAK9jsrV3Q==",
+      "license": "Apache-2.0",
+      "license_note": "Open source (Apache-2.0). Run unmodified from the registry tarball.",
+      "package": "@openai/codex",
+      "package_lock": "locks/codex.package-lock.json",
+      "package_lock_sha256": "a17117b06362c74b63de80e9c4cb525cf8556b5ead9d0d0e250473061365902d",
+      "sha256": "0b4b2e33a65883e4f69c903484d8dd7770b3cb8b324f520068b6fd85d42b65ea",
+      "size": 4904,
+      "source": "npm",
+      "tarball": "https://registry.npmjs.org/@openai/codex/-/codex-0.162.1.tgz",
+      "version": "0.162.1"
+    },
+    "copilot": {
+      "bin": "node_modules/.bin/copilot",
+      "bin_sha256": {
+        "linux-amd64": "0ea824a86be5757533fdb092eff7050871bd7a711a46babde0ffe0e44ac5ad88"
+      },
+      "integrity": "sha512-TAYlgMwjTnHi04ZGRc6Z+41piGeUC6xuA8z7gWVc5qOTqJLi/B3vCVg9ttkwvxnahbTWjX8x0DORwrJMXOQxGg==",
+      "license": "proprietary",
+      "license_note": "GitHub Copilot CLI License: install and run is granted; redistribution only unmodified under its section 2. Run unmodified from the registry tarball, installed into a throwaway directory per run; not committed.",
+      "package": "@github/copilot",
+      "package_lock": "locks/copilot.package-lock.json",
+      "package_lock_sha256": "e60a53bcc24b31b3e6f09feb58adb09537c35f23247244679b5ff4aa71529d82",
+      "sha256": "838be5537db8bd0f7c7c2e555063770ab559249cf2c3ff3c23b2efc81c854779",
+      "size": 5452,
+      "source": "npm",
+      "tarball": "https://registry.npmjs.org/@github/copilot/-/copilot-1.0.95.tgz",
+      "version": "1.0.95"
+    },
+    "omp": {
+      "assets": {
+        "linux-amd64": {
+          "name": "omp-linux-x64",
+          "sha256": "8d804761b7ed1a6910a6283f7c4df658c8e3ebc320886472c90d626abfa2d988",
+          "size": 264390624
+        }
+      },
+      "license": "MIT",
+      "license_note": "oh-my-pi (github.com/can1357/oh-my-pi), release binary run unmodified; sha256 as listed in the release's SHA256SUMS.txt.",
+      "release": {
+        "assets": {
+          "linux-amd64": "omp-linux-x64"
+        },
+        "base": "https://github.com/can1357/oh-my-pi/releases/download/v{version}/",
+        "member": "omp",
+        "sums": "SHA256SUMS.txt"
+      },
+      "source": "release",
+      "version": "18.8.8"
+    },
+    "opencode": {
+      "assets": {
+        "linux-amd64": {
+          "name": "opencode-linux-x64.tar.gz",
+          "sha256": "c8f888b451f5494a18f858fffb0e0b68f4e4baa9c241761c5f206884f0fa640d",
+          "size": 60669097
+        }
+      },
+      "license": "MIT",
+      "license_note": "OpenCode (github.com/anomalyco/opencode), release binary run unmodified; trust on first use (two independent downloads gave the same hash).",
+      "release": {
+        "assets": {
+          "linux-amd64": "opencode-linux-x64.tar.gz"
+        },
+        "base": "https://github.com/anomalyco/opencode/releases/download/v{version}/",
+        "member": "opencode",
+        "sums": "first-use"
+      },
+      "source": "release",
+      "trust": "The project publishes no checksum for these assets: each sha256 is the hash of the bytes first downloaded when the lock was written (trust on first use).",
+      "version": "1.18.35"
+    },
+    "pi-1.1.0": {
+      "bin": "node_modules/.bin/pi",
+      "bin_sha256": {
+        "linux-amd64": "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774"
+      },
+      "install_lock": {
+        "base_url": "https://github.com/earendil-works/pi/releases/download/v{version}/",
+        "package_json": "pi-coding-agent-install-package.json",
+        "package_lock": "pi-coding-agent-install-package-lock.json"
+      },
+      "integrity": "sha512-SeEi/4hdcHNgA9UWlefZl7ZZpm3dzi2OoxNjDHsBJ9o298LNOtbL4DGKgitlEj6uCTccvtw6f2hlCkTPVJ2RXg==",
+      "license": "MIT",
+      "license_note": "Open source (MIT). Run unmodified from the npm registry tarball.",
+      "package": "@earendil-works/pi-coding-agent",
+      "package_json_file": "locks/pi-1.1.0.package.json",
+      "package_json_sha256": "3ec8bbe1bccbf4284d816a7defc2185c1f7e0d81df10b8dc1fb84743f23175f9",
+      "package_lock": "locks/pi-1.1.0.package-lock.json",
+      "package_lock_file": "locks/pi-1.1.0.package-lock.json",
+      "package_lock_sha256": "89a53fa67297177bad42d71e9eb9c7eaeb9c7fc34d3cfb6800c1b38fbc293ebb",
+      "sha256": "09cd8a0a43dbb1d81a67346b09400b439ce71d818caba4e963ea958846a1aed4",
+      "size": 7520009,
+      "source": "npm",
+      "tarball": "https://registry.npmjs.org/@earendil-works/pi-coding-agent/-/pi-coding-agent-1.1.0.tgz",
+      "version": "1.1.0"
+    },
+    "pibolt": {
+      "assets": {
+        "darwin-arm64": {
+          "name": "pi-bolt-darwin-arm64.tar.gz",
+          "sha256": "294ad5f40e8f55d2218638299d07fc06db98681c721fadf06f0ba539ad05e506",
+          "size": 77437615
+        },
+        "linux-amd64": {
+          "name": "pi-bolt-linux-x64.tar.gz",
+          "sha256": "cce5aefc3c3187f1c1688f9dffee0cfb8c543db5d3d4107a2dc0eb42584def33",
+          "size": 93210539
+        }
+      },
+      "license": "MIT",
+      "license_note": "Pi-Bolt (github.com/opensec-git/Pi-Bolt), release binary run unmodified. It publishes no Windows build.",
+      "release": {
+        "assets": {
+          "darwin-arm64": "pi-bolt-darwin-arm64.tar.gz",
+          "linux-amd64": "pi-bolt-linux-x64.tar.gz"
+        },
+        "base": "https://github.com/opensec-git/Pi-Bolt/releases/download/bolt-v{version}/",
+        "member": "pi",
+        "sums": "SHA256SUMS"
+      },
+      "source": "release",
+      "version": "0.7.4"
+    },
+    "pig-0.4.1": {
+      "assets": {
+        "darwin-amd64": {
+          "name": "pig-0.4.1-darwin-amd64.tar.gz",
+          "sha256": "9f29ef012cd34074ac02ad4a4ae6f7b93d42b4febd35aa08adf47702944d3a87",
+          "size": 30902607
+        },
+        "darwin-arm64": {
+          "name": "pig-0.4.1-darwin-arm64.tar.gz",
+          "sha256": "25a1e2bde685f28684e495b250dccad7b2960a840454d80c88c35d5c7a8c5966",
+          "size": 29720019
+        },
+        "linux-amd64": {
+          "name": "pig-0.4.1-linux-amd64.tar.gz",
+          "sha256": "3b4de3587cbfb617def483ec62dddcf35827acc3436b1454cc5694c22dcdaf3f",
+          "size": 30607377
+        },
+        "linux-arm64": {
+          "name": "pig-0.4.1-linux-arm64.tar.gz",
+          "sha256": "e1768bbfce29b784d76001eb47ebd989f05ed042fbe81ad8629816e181fa5ac8",
+          "size": 28950232
+        },
+        "windows-amd64": {
+          "name": "pig-0.4.1-windows-amd64.zip",
+          "sha256": "c38306345e7fbf6a14c85b03c9aabe64e93f4db4c4a481a5584769e874a9a5b7",
+          "size": 30944062
+        }
+      },
+      "license": "MIT",
+      "license_note": "PiG release asset, unmodified.",
+      "release": {
+        "assets": {
+          "darwin-amd64": "pig-{version}-darwin-amd64.tar.gz",
+          "darwin-arm64": "pig-{version}-darwin-arm64.tar.gz",
+          "linux-amd64": "pig-{version}-linux-amd64.tar.gz",
+          "linux-arm64": "pig-{version}-linux-arm64.tar.gz",
+          "windows-amd64": "pig-{version}-windows-amd64.zip"
+        },
+        "base": "https://github.com/MichaelKinsy/PiG/releases/download/v{version}/",
+        "member": "pig",
+        "sums": "SHA256SUMS"
+      },
+      "source": "release",
+      "version": "0.4.1"
+    },
+    "pig-0.5": {
+      "license": "MIT",
+      "license_note": "Built from this repository's checkout (commit recorded in the report).",
+      "source": "checkout",
+      "version": "0.5.0"
+    },
+    "pig-0.5-pgo": {
+      "build": {
+        "pgo": "locks/pig-0.5.pgo",
+        "pgo_note": "Merged CPU profile of 20 `pigeval profile` round trips (make pgo) against a build of the same line; a measurement arm, not a shipped build (docs/performance/go-practices.md: no build uses PGO).",
+        "pgo_sha256": "f5ed56be991291db209dab31d622e2d8070d9ca2ad17b160617a769881817ac5"
+      },
+      "license": "MIT",
+      "license_note": "Built from this repository's checkout with the profile locks/pig-0.5.pgo (profile-guided optimisation); commit recorded in the report.",
+      "source": "checkout",
+      "version": "0.5.0"
+    },
+    "pig-core": {
+      "builder": "pig-0.5",
+      "license": "MIT",
+      "license_note": "Piglet Binary built from this checkout by the pig-0.5 arm.",
+      "source": "checkout",
+      "version": "0.5.0"
+    },
+    "pig-min": {
+      "builder": "pig-0.5",
+      "license": "MIT",
+      "license_note": "Piglet Binary built from this checkout by the pig-0.5 arm.",
+      "source": "checkout",
+      "version": "0.5.0"
+    },
+    "rpi": {
+      "assets": {
+        "darwin-arm64": {
+          "name": "rpi-v0.3.9-aarch64-apple-darwin.tar.gz",
+          "sha256": "57d454531aaaed142a664d5a998a3aba9867539e98736f5498cd81a1a9166651",
+          "size": 8196917
+        },
+        "linux-amd64": {
+          "name": "rpi-v0.3.9-x86_64-unknown-linux-gnu.tar.gz",
+          "sha256": "3195cb78cda90cd9e937a9f3266f850d6c0b074208f3803d0b2c2bf2570c9729",
+          "size": 9092412
+        },
+        "linux-arm64": {
+          "name": "rpi-v0.3.9-aarch64-unknown-linux-gnu.tar.gz",
+          "sha256": "5f581b6b3bf18647feccf359999dd640a83cf88038ef27c5922814f957baf6d7",
+          "size": 8492695
+        },
+        "windows-amd64": {
+          "name": "rpi-v0.3.9-x86_64-pc-windows-msvc.zip",
+          "sha256": "2856cf53b22caa4636daafa19d7c6319ac9ace7a3ed1d66eae8ff5c8537cd248",
+          "size": 8195358
+        }
+      },
+      "license": "MIT",
+      "license_note": "Rust port of Pi (github.com/bigfish1913/pi-rust), release binary run unmodified; built by its author with the release flags in its own workflow.",
+      "release": {
+        "assets": {
+          "darwin-amd64": "rpi-v{version}-x86_64-apple-darwin.tar.gz",
+          "darwin-arm64": "rpi-v{version}-aarch64-apple-darwin.tar.gz",
+          "linux-amd64": "rpi-v{version}-x86_64-unknown-linux-gnu.tar.gz",
+          "linux-arm64": "rpi-v{version}-aarch64-unknown-linux-gnu.tar.gz",
+          "windows-amd64": "rpi-v{version}-x86_64-pc-windows-msvc.zip"
+        },
+        "base": "https://github.com/bigfish1913/pi-rust/releases/download/v{version}/",
+        "member": "rpi",
+        "sums": "sidecar"
+      },
+      "source": "release",
+      "version": "0.3.9"
+    }
+  },
+  "tools": {
+    "hyperfine": {
+      "assets": {
+        "darwin-amd64": {
+          "name": "hyperfine-v2.0.0-x86_64-apple-darwin.tar.gz",
+          "sha256": "8afe204926afefa406ad320cef0672b739e5f676c623fbd6d43d779bacd684e3",
+          "size": 651858
+        },
+        "darwin-arm64": {
+          "name": "hyperfine-v2.0.0-aarch64-apple-darwin.tar.gz",
+          "sha256": "590b839cfea386b384ce0b42d16daf2910277cf30950656194bb3a5f20dea81e",
+          "size": 609501
+        },
+        "linux-amd64": {
+          "name": "hyperfine-v2.0.0-x86_64-unknown-linux-musl.tar.gz",
+          "sha256": "38e59087bd65520930a13cf513d8a493b7043741e8ad62349a8a9929eb61bc5c",
+          "size": 737116
+        },
+        "linux-arm64": {
+          "name": "hyperfine-v2.0.0-aarch64-unknown-linux-musl.tar.gz",
+          "sha256": "f0591c2cb8f66f2d2624d23979cf96dc99a67cb935f9925c82b9a4e3ffe5b2e1",
+          "size": 679032
+        },
+        "windows-amd64": {
+          "name": "hyperfine-v2.0.0-x86_64-pc-windows-msvc.zip",
+          "sha256": "3dec51acee1060908e67948838d6bc0a7aacde0774acebfa4afb220dcf0bc078",
+          "size": 632670
+        }
+      },
+      "license": "MIT OR Apache-2.0",
+      "license_note": "Release binary run unmodified. The release publishes no checksum file: the sha256 values were computed from the downloaded assets when pinned.",
+      "release": {
+        "base": "https://github.com/sharkdp/hyperfine/releases/download/v2.0.0/",
+        "member": "hyperfine"
+      },
+      "version": "2.0.0"
+    }
+  }
+}

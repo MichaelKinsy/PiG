@@ -53,8 +53,12 @@ Put application-specific behavior in ordinary Resources:
 | Model preference | Piglet `model` |
 | Ambient Resource policy | Piglet `discovery` |
 | Runtime requirements | Piglet `agentEnv` and `secrets` |
+| Built-ins the application does not offer | Piglet `strip`, in deny mode or keep mode (D92) |
+| A custom interactive renderer | Piglet `slots.frontend`, a Go frontend member fused into the Binary (D91) |
 
 Do not add these choices to `cmd/pig` or Stock PiG startup.
+
+Pi lets a source fork rename its command and configuration directory through a `piConfig` block in `package.json`. PiG has no such block: the command name `pig` and the `~/.pig` directory are part of the binary (D2). Use a Piglet to give an application its own name and identity.
 
 ## What belongs in Stock PiG
 
@@ -150,7 +154,7 @@ The build fails if any selected extension cannot fuse. It does not silently prod
 
 ## Mixed derivative applications
 
-Omit `extensionRealization` when the application intentionally uses another language, a native subprocess, or an external service.
+Omit `extensionRealization` when the application intentionally uses another language, a native subprocess, or an external service. A Piglet Binary can carry TypeScript and JavaScript extensions; it runs them with the installed Node, version 22.13 or newer.
 
 The component plan then records each realization and materialization. The application remains one Piglet even when its implementation spans processes.
 
@@ -174,7 +178,7 @@ Do not put Piglet activation in Package installation. Installing a capability mu
 
 An application can select an extension that sets its login or header identity. Stock PiG provides the generic host API but does not own the derivative artwork.
 
-PiG Standard follows this rule. Its `piglogin` extension owns the PiG Standard identity and `/sprite` command. Its `pigrunner` extension owns `/runner`, `/pig-runner`, and Runner state.
+PiG Standard follows this rule. Its `piglogin` extension owns the PiG Standard identity and `/sprite` command. Its `pigrunner` and `angrypigs` extensions own the `/runner`, `/pig-runner` and `/angry-pigs` games and their state, and `bunruntime` owns `/bun-runtime`.
 
 ## Failure boundaries
 
@@ -214,11 +218,15 @@ PiG Standard is the repository's derivative-harness example. It uses:
 - an explicit Piglet;
 - ordinary public extension contracts;
 - application-owned identity;
-- application-owned timer-driven Runner UI;
+- application-owned games with timer-driven UI;
 - no automatic Stock PiG activation;
 - an all-fused Binary requirement.
 
-Future PiG Standard capabilities must follow the same boundary. They cannot return as built-in Stock PiG commands.
+New PiG Standard capabilities follow the same boundary. They do not become built-in Stock PiG commands.
+
+## Share the application
+
+Publish the Piglet's source to npm with `pig piglet publish <name> --to npm`, and its signed Binaries to GitHub Releases with `pig piglet publish <name> --to github`. Recipients add the source with `pig piglet add npm:<name>` or pull a Binary with `pig piglet pull`. See [Publish a Package or Piglet](/docs/latest/publishing).
 
 ## Related documentation
 

@@ -12,27 +12,23 @@ if [[ ! -f "$CUR" ]]; then
   exit 1
 fi
 
-# Extract the behavioral verification count from the summary line.
-# Old format: "57 covered by scenarios"
-# New format: "Verification: 176 behavioral"
-extract_behavioral_count() {
-  local src="$1"
-  local n
-  n=$(printf '%s\n' "$src" | grep -oE '[0-9]+ covered by scenarios' | grep -oE '^[0-9]+' | head -1 || true)
-  if [[ -n "$n" ]]; then
-    printf '%s\n' "$n"
-    return
-  fi
-  n=$(printf '%s\n' "$src" | grep -oE 'Verification:\*\* [0-9]+ behavioral|Verification:\s*[0-9]+ behavioral|\*\*Verification:\*\* [0-9]+ behavioral' | grep -oE '[0-9]+' | head -1 || true)
-  if [[ -n "$n" ]]; then
-    printf '%s\n' "$n"
-    return
-  fi
-  printf '0\n'
+# The behavioral count of the report in file $1, from the status line test/parity/cmd/coverage writes:
+# "- **Behavior verification:** N / M ported entries ...". Empty when the report has none. sed reads the file itself:
+# a pipe into a sed that quits early would end the writer with SIGPIPE, which pipefail turns into an exit.
+behavioral_count() {
+  sed -nE '/^- \*\*Behavior verification:\*\* [0-9]+ \/ [0-9]+ ported entries/{s/^- \*\*Behavior verification:\*\* ([0-9]+) .*/\1/p;q;}' "$1"
 }
 
-cur_covered=$(extract_behavioral_count "$(cat "$CUR")")
-prev_covered=$(extract_behavioral_count "$(git show HEAD:test/parity/coverage.md 2>/dev/null || true)")
+cur_covered=$(behavioral_count "$CUR")
+if [[ -z "$cur_covered" ]]; then
+  echo "release-check: $CUR has no behavioral count (\"**Behavior verification:** N / M ported entries\")"
+  exit 1
+fi
+previous=$(mktemp "${TMPDIR:-/tmp}/pig.XXXXXXXX")
+trap 'rm -f "$previous"' EXIT
+git show HEAD:test/parity/coverage.md >"$previous" 2>/dev/null || :
+prev_covered=$(behavioral_count "$previous")
+prev_covered=${prev_covered:-0}
 
 if (( cur_covered < prev_covered )); then
   echo "release-check: coverage regressed ($prev_covered -> $cur_covered)"

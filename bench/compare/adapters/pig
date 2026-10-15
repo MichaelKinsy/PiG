@@ -1,0 +1,8 @@
+#!/bin/sh
+# Arm adapter: the Pi-Bolt harness configures Pi through PI_CODING_AGENT_DIR; PiG reads PIG_CODING_AGENT_DIR.
+# One exec, no other work, so the process the harness measures is PiG itself.
+PIG_CODING_AGENT_DIR="$PI_CODING_AGENT_DIR"
+PIG_OFFLINE=1 PIG_TELEMETRY=0 PIG_SKIP_VERSION_CHECK=1
+export PIG_CODING_AGENT_DIR PIG_OFFLINE PIG_TELEMETRY PIG_SKIP_VERSION_CHECK
+HOME="${BENCH_HOME:-$PI_CODING_AGENT_DIR/home}"; mkdir -p "$HOME"; export HOME
+exec "@EXE@" "$@"

@@ -1,0 +1,20 @@
+[
+  {
+    "upstream": "packages/mcp/src/client.ts",
+    "package": "./mcp",
+    "tests": [
+      "TestClientListToolsMatchesPiOnScriptedPages"
+    ],
+    "upstream_reference": "packages/mcp/src/client.ts:294-296 listTools; packages/mcp/src/client.ts:355-374 listAll",
+    "mutation": "mcp/client.go ListTools: replace 'tools = append(tools, tool)' with 'tools = append(tools, tool); break'; go test ./mcp -run TestClientListToolsMatchesPiOnScriptedPages fails ('PiG 1 tools, Pi 3'). Replacing 'return tools, nil' with 'return tools[:0], nil' fails it with 'PiG 0 tools, Pi 3'."
+  },
+  {
+    "upstream": "packages/chord/src/types.ts",
+    "package": "./chord/context",
+    "tests": [
+      "TestContextKeyTokenMatchesPi"
+    ],
+    "upstream_reference": "packages/chord/src/types.ts ContextKey.token; packages/chord/src/context/index.ts createContextKey",
+    "mutation": "chord/context/chordctx.go: replace 'return token.id.description' with 'return \"x\"' in Token.Description; go test ./chord/context -run TestContextKeyTokenMatchesPi fails ('token description \"x\", Pi \"request-id\"'). Replacing 'Token{key.token}' with a fresh Token of the same description fails the identity check, and appending '!' to the printed description fails the layered toString check."
+  }
+]

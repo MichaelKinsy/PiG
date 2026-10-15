@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/kit"
 )
 
 // ToolRenderShell mirrors upstream ToolDefinition.renderShell.
@@ -31,8 +32,12 @@ type ToolRenderContext struct {
 	Expanded         bool
 	ShowImages       bool
 	IsError          bool
-	State            map[string]any
-	Invalidate       func()
+	// OutputPad is the horizontal padding configured by the outputPad setting. Renderers with renderShell "self" apply it themselves.
+	OutputPad int
+	// DurationMs is the recorded execution time of a final result in milliseconds. Absent while the result is partial and for results stored without one. upstream: ToolRenderContext.durationMs
+	DurationMs *int64
+	State      map[string]any
+	Invalidate func()
 }
 
 // ToolRenderResult is the result upstream renderResult receives: text and
@@ -56,14 +61,33 @@ type ToolRenderCallFunc func(ctx Context, args map[string]any, render ToolRender
 // the component upstream renderResult returns renders.
 type ToolRenderResultFunc func(ctx Context, result ToolRenderResult, options ToolRenderResultOptions, render ToolRenderContext, width int) ([]string, error)
 
+// ToolRenderCallViewFunc renders a tool call as a [kit.View], which the host
+// renders at width, as the component upstream renderCall returns renders.
+type ToolRenderCallViewFunc func(ctx Context, args map[string]any, render ToolRenderContext, width int) (kit.View, error)
+
+// ToolRenderResultViewFunc renders a tool result as a [kit.View], which the
+// host renders at width, as the component upstream renderResult returns
+// renders.
+type ToolRenderResultViewFunc func(ctx Context, result ToolRenderResult, options ToolRenderResultOptions, render ToolRenderContext, width int) (kit.View, error)
+
 // ToolRenderers are a tool's upstream renderShell, renderCall and
 // renderResult. A renderer that returns an error draws upstream's fallback in
-// its place.
+// its place. CallView and ResultView are the kit forms (D107): a view form
+// declares its phase rendered and wins over the line form set for the same
+// phase.
 type ToolRenderers struct {
-	Shell  ToolRenderShell
-	Call   ToolRenderCallFunc
-	Result ToolRenderResultFunc
+	Shell      ToolRenderShell
+	Call       ToolRenderCallFunc
+	Result     ToolRenderResultFunc
+	CallView   ToolRenderCallViewFunc
+	ResultView ToolRenderResultViewFunc
 }
+
+// rendersCall reports whether the renderers draw the call phase.
+func (r ToolRenderers) rendersCall() bool { return r.Call != nil || r.CallView != nil }
+
+// rendersResult reports whether the renderers draw the result phase.
+func (r ToolRenderers) rendersResult() bool { return r.Result != nil || r.ResultView != nil }
 
 // SetToolRenderers sets the renderers of the registered tool name.
 func (e *Extension) SetToolRenderers(name string, renderers ToolRenderers) {
@@ -78,8 +102,8 @@ func (e *Extension) SetToolRenderers(name string, renderers ToolRenderers) {
 		if renderers.Shell == ToolRenderShellSelf {
 			e.tools[i].RenderShell = string(ToolRenderShellSelf)
 		}
-		e.tools[i].RendersCall = renderers.Call != nil
-		e.tools[i].RendersResult = renderers.Result != nil
+		e.tools[i].RendersCall = renderers.rendersCall()
+		e.tools[i].RendersResult = renderers.rendersResult()
 		updated = &e.tools[i]
 	}
 	e.toolRenderMu.Lock()
@@ -116,16 +140,24 @@ type renderToolRequest struct {
 		Expanded         bool   `json:"expanded"`
 		ShowImages       bool   `json:"showImages"`
 		IsError          bool   `json:"isError"`
+		OutputPad        int    `json:"outputPad"`
+		DurationMs       *int64 `json:"durationMs"`
 	} `json:"context"`
 	Width int `json:"width"`
 }
 
-// renderTool answers a render_tool request with the renderer's lines.
-func (e *Extension) renderTool(ctx Context, name string, raw json.RawMessage) ([]string, error) {
+// toolRenderOutput is a renderer's lines, or its view when view is set.
+type toolRenderOutput struct {
+	lines []string
+	view  *kit.View
+}
+
+// renderTool answers a render_tool request with the renderer's lines or view.
+func (e *Extension) renderTool(ctx Context, name string, raw json.RawMessage) (toolRenderOutput, error) {
 	var request renderToolRequest
 	if len(raw) > 0 {
 		if err := json.Unmarshal(raw, &request); err != nil {
-			return nil, err
+			return toolRenderOutput{}, err
 		}
 	}
 	e.toolRenderMu.Lock()
@@ -143,7 +175,7 @@ func (e *Extension) renderTool(ctx Context, name string, raw json.RawMessage) ([
 	}
 	e.toolRenderMu.Unlock()
 	if !ok {
-		return nil, errors.New("unknown tool renderer: " + name)
+		return toolRenderOutput{}, errors.New("unknown tool renderer: " + name)
 	}
 	card.mu.Lock()
 	defer card.mu.Unlock()
@@ -157,25 +189,37 @@ func (e *Extension) renderTool(ctx Context, name string, raw json.RawMessage) ([
 		Expanded:         request.Context.Expanded,
 		ShowImages:       request.Context.ShowImages,
 		IsError:          request.Context.IsError,
+		OutputPad:        request.Context.OutputPad,
+		DurationMs:       request.Context.DurationMs,
 		State:            card.state,
 		Invalidate: func() {
 			_ = e.conn.notify("tool_render_invalidate", map[string]string{"card": request.Card})
 		},
 	}
 	if request.Phase == "result" {
-		if renderers.Result == nil {
-			return nil, errors.New("tool " + name + " has no result renderer")
-		}
 		result := ToolRenderResult{Content: []map[string]any{}}
 		if request.Result != nil {
 			result = *request.Result
 		}
-		return renderers.Result(ctx, result, request.Options, render, request.Width)
+		switch {
+		case renderers.ResultView != nil:
+			view, err := renderers.ResultView(ctx, result, request.Options, render, request.Width)
+			return toolRenderOutput{view: &view}, err
+		case renderers.Result != nil:
+			lines, err := renderers.Result(ctx, result, request.Options, render, request.Width)
+			return toolRenderOutput{lines: lines}, err
+		}
+		return toolRenderOutput{}, errors.New("tool " + name + " has no result renderer")
 	}
-	if renderers.Call == nil {
-		return nil, errors.New("tool " + name + " has no call renderer")
+	switch {
+	case renderers.CallView != nil:
+		view, err := renderers.CallView(ctx, request.Args, render, request.Width)
+		return toolRenderOutput{view: &view}, err
+	case renderers.Call != nil:
+		lines, err := renderers.Call(ctx, request.Args, render, request.Width)
+		return toolRenderOutput{lines: lines}, err
 	}
-	return renderers.Call(ctx, request.Args, render, request.Width)
+	return toolRenderOutput{}, errors.New("tool " + name + " has no call renderer")
 }
 
 // releaseToolRenderCard drops the state of a tool card the host no longer

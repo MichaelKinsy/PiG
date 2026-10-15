@@ -6,6 +6,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
+// packages/coding-agent/src/core/extensions/types.ts:1589 (pi.on cache_warming_decision): the handler's stop replaces the default warm in every SDK.
 func TestCacheWarmingDecisionAcrossSDKs(t *testing.T) {
 	for _, tc := range allHarnessCases() {
 		t.Run(tc.name, func(t *testing.T) {

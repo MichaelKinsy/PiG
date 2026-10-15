@@ -85,8 +85,8 @@ func TestSessionFilesUsePiTimestampAndKeepLegacyIDs(t *testing.T) {
 			if !regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z$`).MatchString(prefix) {
 				t.Errorf("filename timestamp %q does not use Pi's millisecond precision", prefix)
 			}
-			if len(session.Header().Timestamp) != len("2006-01-02T15:04:05.000Z") {
-				t.Errorf("header timestamp %q does not use Pi's ISO millisecond shape", session.Header().Timestamp)
+			if len(session.GetHeader().Timestamp) != len("2006-01-02T15:04:05.000Z") {
+				t.Errorf("header timestamp %q does not use Pi's ISO millisecond shape", session.GetHeader().Timestamp)
 			}
 		})
 	}

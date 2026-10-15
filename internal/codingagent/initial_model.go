@@ -2,8 +2,6 @@ package codingagent
 
 // Ports packages/coding-agent/src/core/model-resolver.ts.
 
-import "errors"
-
 // InitialModelRuntime keeps exact catalog lookup and the available snapshot separate. A configured provider may have models that are absent from the available snapshot.
 type InitialModelRuntime interface {
 	ModelResolverRuntime
@@ -13,8 +11,6 @@ type InitialModelRuntime interface {
 
 // FindInitialModelOptions carries selection inputs without owning a Model Runtime, refreshing its snapshots, or resolving credentials. Empty optional thinking strings represent no selection.
 type FindInitialModelOptions struct {
-	CLIProvider          string
-	CLIModel             string
 	ScopedModels         []ScopedModel
 	IsContinuing         bool
 	DefaultProvider      string
@@ -31,18 +27,9 @@ type InitialModelResult struct {
 	FallbackMessage string
 }
 
-// FindInitialModel selects explicit CLI, new-session scope, authenticated saved default, or an available fallback in that order. CLI resolution errors are returned for the caller to display and terminate; this library does not log or exit.
+// FindInitialModel selects new-session scope, authenticated saved default, or an available fallback in that order.
 func FindInitialModel(options FindInitialModelOptions) (InitialModelResult, error) {
 	runtime := options.ModelRuntime
-	if options.CLIProvider != "" && options.CLIModel != "" {
-		resolved := ResolveCliModel(options.CLIProvider, options.CLIModel, "", runtime)
-		if resolved.Error != "" {
-			return InitialModelResult{}, errors.New(resolved.Error)
-		}
-		if resolved.Model != nil {
-			return InitialModelResult{Model: resolved.Model, ThinkingLevel: DefaultThinkingLevel}, nil
-		}
-	}
 	if len(options.ScopedModels) > 0 && !options.IsContinuing {
 		scoped := &options.ScopedModels[0]
 		level := scoped.ThinkingLevel

@@ -18,16 +18,33 @@ func (m *InteractiveMode) modalStopped() bool {
 // readModalInput services owner-loop tasks while a selector owns focus and releases that focus on shutdown or input failure.
 // Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (shutdown remains independent of selector focus).
 func (m *InteractiveMode) readModalInput(input <-chan []byte) ([]byte, bool) {
-	return waitModalValue(m, input, func(buf []byte) bool { return m.consumeModalHostInput(string(buf)) })
+	return m.readModalInputFor(nil, input)
 }
 
-// consumeModalHostInput runs the input stages that precede a selector's own handler: terminal theme replies, then, in fullscreen, the alternate screen's viewport listener and the focused transcript search. Upstream TUI runs input listeners, including the alternate screen's handleViewportInput, before the focused component (tui-alt-screen.ts handleViewportInput; tui.ts handleInput), so PageUp, PageDown, ctrl+home, ctrl+end, the wheel and ctrl+shift+f move the viewport while an editor-slot selector has focus.
+// readModalInputFor is readModalInput for a selector that owns focus. A focused component that captures the selection page keys keeps
+// them (Pi PR #7680).
+func (m *InteractiveMode) readModalInputFor(focus tui.Component, input <-chan []byte) ([]byte, bool) {
+	return waitModalValue(m, input, func(buf []byte) bool { return m.consumeModalHostInputFor(focus, string(buf)) })
+}
+
+// consumeModalHostInput runs the input stages that precede a selector's own handler: a frontend session's replies and events (pig additive, D91), terminal theme replies, then, in fullscreen, the alternate screen's viewport listener and the focused transcript search. Upstream TUI runs input listeners, including the alternate screen's handleViewportInput, before the focused component (tui-alt-screen.ts handleViewportInput; tui.ts handleInput), so PageUp, PageDown, ctrl+home, ctrl+end, the wheel and ctrl+shift+f move the viewport while an editor-slot selector has focus.
 func (m *InteractiveMode) consumeModalHostInput(data string) bool {
-	if m.consumeTerminalThemeInput(data) {
+	return m.consumeModalHostInputFor(nil, data)
+}
+
+// consumeModalHostInputFor is consumeModalHostInput for a selector that owns focus.
+//
+// pig divergence (D155): a focused component that captures tui.select.pageUp and tui.select.pageDown keeps those keys, so they move its
+// selection and do not scroll the transcript (Pi #7629; tui-alt-screen.ts handleViewportInput in Pi PR #7680).
+func (m *InteractiveMode) consumeModalHostInputFor(focus tui.Component, data string) bool {
+	if m.frontendInput(data) || m.consumeTerminalThemeInput(data) {
 		return true
 	}
 	if m.altScreen == nil {
 		return false
+	}
+	if kb := tui.GetTUIKeybindings(); tui.CapturesSelectPageInput(focus) && (kb.Matches(data, tui.KBSelectPageUp) || kb.Matches(data, tui.KBSelectPageDown)) {
+		return m.altScreen.HandleFocusedSearchInput(data)
 	}
 	return m.altScreen.HandleViewportInput(data) || m.altScreen.HandleFocusedSearchInput(data)
 }
@@ -73,7 +90,7 @@ func waitModalValue[T any](m *InteractiveMode, input <-chan T, consume func(T) b
 func (m *InteractiveMode) modalInputChunks(component tui.Component, chunks []string) []string {
 	filtered := chunks[:0]
 	for _, chunk := range chunks {
-		if !m.consumeModalHostInput(chunk) {
+		if !m.consumeModalHostInputFor(component, chunk) {
 			filtered = append(filtered, chunk)
 		}
 	}
@@ -86,7 +103,7 @@ func (m *InteractiveMode) dispatchModalInput(component tui.Component, chunks []s
 
 func (m *InteractiveMode) drainModalInput(component tui.Component, input <-chan []byte, handle func(string) bool) {
 	drainModalInput(component, input, func(chunk string) bool {
-		if m.consumeModalHostInput(chunk) {
+		if m.consumeModalHostInputFor(component, chunk) {
 			return false
 		}
 		return handle(chunk)

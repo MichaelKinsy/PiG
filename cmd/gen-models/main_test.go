@@ -190,6 +190,7 @@ func TestCollectRowsAPIGroupedJSONProvider(t *testing.T) {
 	if err := os.MkdirAll(dataDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
+	writeFile(t, filepath.Join(dataDir, ".manifest.json"), testManifest)
 	writeFile(t, filepath.Join(providerDir, "anthropic.models.js"),
 		"import values from \"./data/anthropic.json\" with { type: \"json\" };\n")
 	writeFile(t, filepath.Join(dataDir, "anthropic.json"), `{
@@ -238,6 +239,7 @@ func TestCollectRowsJSONBackedProvider(t *testing.T) {
 	if err := os.MkdirAll(dataDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
+	writeFile(t, filepath.Join(dataDir, ".manifest.json"), testManifest)
 
 	writeFile(t, filepath.Join(provDir, "anthropic.models.js"),
 		"import values from \"./data/anthropic.json\" with { type: \"json\" };\n"+
@@ -323,6 +325,28 @@ func TestTiersLiteral(t *testing.T) {
 	}
 }
 
+// generate-models.ts:855 copies a fallback model's cost as it is: a cost with no tiers member has none (a nil Tiers, not an
+// empty one, so ModelCost writes no tiers), and an empty one stays empty.
+func TestAllowedFallbackModelsLiteralKeepsTiersPresence(t *testing.T) {
+	var models []jsonAllowedFallbackModel
+	if err := json.Unmarshal([]byte(`[{"provider":"anthropic","model":"a","cost":{"input":5,"output":25,"cacheRead":0.5,"cacheWrite":6.25}},{"provider":"anthropic","model":"b","cost":{"input":1,"output":2,"cacheRead":0,"cacheWrite":0,"tiers":[]}}]`), &models); err != nil {
+		t.Fatal(err)
+	}
+	want := `[]AnthropicAllowedFallbackModel{{Provider: "anthropic", Model: "a", Cost: ModelCost{Input: 5, Output: 25, CacheRead: 0.5, CacheWrite: 6.25}}, {Provider: "anthropic", Model: "b", Cost: ModelCost{Input: 1, Output: 2, CacheRead: 0, CacheWrite: 0, Tiers: []CostTier{}}}, }`
+	if got := allowedFallbackModelsLiteral(models); got != want {
+		t.Fatalf("allowedFallbackModelsLiteral =\n%s\nwant\n%s", got, want)
+	}
+	for _, model := range models {
+		encoded, err := json.Marshal(model.Cost)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if wantTiers := model.Model == "b"; strings.Contains(string(encoded), `"tiers":[]`) != wantTiers {
+			t.Errorf("fallback %s cost = %s, want tiers: [] %t", model.Model, encoded, wantTiers)
+		}
+	}
+}
+
 // TestCompatLiteralNewFlags pins the 0.81 compat additions so a catalog regen
 // cannot silently drop them. The generator otherwise ignores unknown JSON keys.
 func TestCompatLiteralNewFlags(t *testing.T) {
@@ -354,16 +378,16 @@ func TestCompatLiteralNewFlags(t *testing.T) {
 	for _, want := range []string{
 		`DeferredToolsMode:"kimi"`,
 		`SessionAffinityFormat:"openrouter"`,
-		"SupportsToolSearch:ptrBool(true)",
-		"SupportsToolReferences:ptrBool(true)",
+		"SupportsToolSearch:&generatedTrue",
+		"SupportsToolReferences:&generatedTrue",
 		`ChatTemplateArgs:map[string]interface {}{"enable_thinking":true}`,
-		"SupportsThinkingTokenBudget:ptrBool(true)",
+		"SupportsThinkingTokenBudget:&generatedTrue",
 		`ThinkingTokenBudgetField:"thinking_budget"`,
-		"SupportsAdditionalTools:ptrBool(true)",
-		"SupportsMidConvoEffort:ptrBool(true)",
-		"SupportsMidConvoSystemMessages:ptrBool(true)",
-		"SupportsMidConvoToolAdditions:ptrBool(true)",
-		"SupportsMidConvoToolChanges:ptrBool(true)",
+		"SupportsAdditionalTools:&generatedTrue",
+		"SupportsMidConvoEffort:&generatedTrue",
+		"SupportsMidConvoSystemMessages:&generatedTrue",
+		"SupportsMidConvoToolAdditions:&generatedTrue",
+		"SupportsMidConvoToolChanges:&generatedTrue",
 		`AllowedFallbackModels:[]AnthropicAllowedFallbackModel{{Provider: "anthropic", Model: "fallback", Cost: ModelCost{Input: 1, Output: 2, CacheRead: 0.1, CacheWrite: 1.25`,
 	} {
 		if !strings.Contains(got, want) {
@@ -380,6 +404,7 @@ func writeTypedCatalog(t *testing.T, providers []string, data map[string]string)
 	if err := os.MkdirAll(dataDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
+	writeFile(t, filepath.Join(dataDir, ".manifest.json"), testManifest)
 	var barrel strings.Builder
 	for _, provider := range providers {
 		name := strings.ToUpper(strings.ReplaceAll(provider, "-", "_"))
@@ -469,16 +494,54 @@ func TestCollectCatalogListsEveryBarrelProviderInBarrelOrder(t *testing.T) {
 	}
 }
 
+// testManifest is a providers/data/.manifest.json with the fields the generator reads.
+const testManifest = `{"schemaVersion":6,"generatedAt":"2026-10-05T21:36:40.456Z","files":{}}`
+
+// providers/all.ts getBuiltinModelDataGeneratedAt is Date.parse(manifest.generatedAt), or undefined for NaN.
+func TestCollectCatalogReadsTheGenerationTimeOfTheDataManifest(t *testing.T) {
+	for name, tc := range map[string]struct {
+		manifest string
+		want     *float64
+	}{
+		"milliseconds": {`{"generatedAt":"2026-10-05T21:36:40.456Z"}`, new(float64(1791236200456))},
+		"whole second": {`{"generatedAt":"1970-01-01T00:00:01Z"}`, new(float64(1000))},
+		"unparseable":  {`{"generatedAt":"not a time"}`, nil},
+		"missing":      {`{}`, nil},
+	} {
+		t.Run(name, func(t *testing.T) {
+			path := writeTypedCatalog(t, []string{"alpha"}, map[string]string{"alpha": `{"openai-completions": {` + typedChat("a-1", "alpha") + `}}`})
+			writeFile(t, filepath.Join(filepath.Dir(path), "providers", "data", ".manifest.json"), tc.manifest)
+			catalog, err := collectCatalog(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if (catalog.GeneratedAt == nil) != (tc.want == nil) || (tc.want != nil && *catalog.GeneratedAt != *tc.want) {
+				t.Fatalf("GeneratedAt = %v, want %v", catalog.GeneratedAt, tc.want)
+			}
+		})
+	}
+}
+
+func TestCollectCatalogRequiresTheDataManifest(t *testing.T) {
+	path := writeTypedCatalog(t, []string{"alpha"}, map[string]string{"alpha": `{}`})
+	if err := os.Remove(filepath.Join(filepath.Dir(path), "providers", "data", ".manifest.json")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := collectCatalog(path); err == nil || !strings.Contains(err.Error(), ".manifest.json") {
+		t.Fatalf("collectCatalog() error = %v, want the missing manifest", err)
+	}
+}
+
 func TestEmitProviders(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "providers_generated.go")
-	if err := emitProviders(path, "models.generated.js", []string{"zeta", "alpha"}); err != nil {
+	if err := emitProviders(path, "models.generated.js", []string{"zeta", "alpha"}, new(float64(1791236200456))); err != nil {
 		t.Fatal(err)
 	}
 	got, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "// Code generated by cmd/gen-models. DO NOT EDIT.\n// Source: models.generated.js\n// Providers: 2\n\npackage ai\n\n// GeneratedProviders lists the catalog barrel's providers in barrel order (providers/all.ts getBuiltinProviders).\nvar GeneratedProviders = []string{\n\t\"zeta\",\n\t\"alpha\",\n}\n"
+	want := "// Code generated by cmd/gen-models. DO NOT EDIT.\n// Source: models.generated.js\n// Providers: 2\n\npackage ai\n\n// GeneratedProviders lists the catalog barrel's providers in barrel order (providers/all.ts getBuiltinProviders).\nvar GeneratedProviders = []string{\n\t\"zeta\",\n\t\"alpha\",\n}\n\n// GeneratedModelDataGeneratedAt is the generation time shared by every built-in provider catalog, in Unix milliseconds (providers/all.ts getBuiltinModelDataGeneratedAt); nil when the data manifest carries no valid time.\nvar GeneratedModelDataGeneratedAt = new(float64(1791236200456))\n"
 	if string(got) != want {
 		t.Fatalf("providers file =\n%s\nwant\n%s", got, want)
 	}
@@ -561,5 +624,45 @@ func TestCollectCatalogOrdersNumericIDsLikeObjectFromEntries(t *testing.T) {
 	}
 	if want := "2 10 b a 01"; strings.Join(ids, " ") != want {
 		t.Fatalf("order = %v, want %s", ids, want)
+	}
+}
+
+// A catalog generated from an installed pi-ai package records that package's version, read from the manifest beside dist/;
+// ai.TestGeneratedCatalogsRecordPinnedUpstream compares it with the pin. Any other source records none.
+func TestSourceHeaderRecordsThePublishedPackageVersion(t *testing.T) {
+	root := t.TempDir()
+	dist := filepath.Join(root, "dist")
+	if err := os.MkdirAll(dist, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "package.json"), []byte(`{"name":"@earendil-works/pi-ai","version":"9.8.7"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var published, other strings.Builder
+	writeSourceHeader(&published, filepath.Join(dist, "models.generated.js"))
+	if want := "// Source: models.generated.js\n// Upstream: @earendil-works/pi-ai 9.8.7\n"; published.String() != want {
+		t.Fatalf("published header = %q, want %q", published.String(), want)
+	}
+	if err := os.WriteFile(filepath.Join(root, "package.json"), []byte(`{"name":"unrelated","version":"1.0.0"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	writeSourceHeader(&other, filepath.Join(dist, "models.generated.js"))
+	writeSourceHeader(&other, "models.dev")
+	if want := "// Source: models.generated.js\n// Source: models.dev\n"; other.String() != want {
+		t.Fatalf("unpublished header = %q, want %q", other.String(), want)
+	}
+	// The upstream mirror keeps the same manifest one directory above packages/ai/src, so a mirror generation records the
+	// mirror's release too and TestCodegenByteIdentical compares the Upstream line without normalizing it.
+	mirror := filepath.Join(t.TempDir(), "packages", "ai")
+	if err := os.MkdirAll(filepath.Join(mirror, "src"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(mirror, "package.json"), []byte(`{"name":"@earendil-works/pi-ai","version":"6.5.4"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var fromMirror strings.Builder
+	writeSourceHeader(&fromMirror, filepath.Join(mirror, "src", "models.generated.ts"))
+	if want := "// Source: models.generated.ts\n// Upstream: @earendil-works/pi-ai 6.5.4\n"; fromMirror.String() != want {
+		t.Fatalf("mirror header = %q, want %q", fromMirror.String(), want)
 	}
 }

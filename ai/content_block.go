@@ -5,6 +5,8 @@ package ai
 import (
 	"encoding/json"
 	"fmt"
+
+	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
 
 // ContentBlocks is a slice alias that knows how to decode the
@@ -61,13 +63,14 @@ func UnmarshalContentBlock(data []byte) (ContentBlock, error) {
 	switch probe.Type {
 	case "text":
 		var t TextContent
-		if err := json.Unmarshal(data, &t); err != nil {
+		// sdkjson keeps a lone UTF-16 unit as JSON.parse does; encoding/json would replace it with U+FFFD.
+		if err := sdkjson.Unmarshal(data, &t); err != nil {
 			return nil, err
 		}
 		return t, nil
 	case "image":
 		var t ImageContent
-		if err := json.Unmarshal(data, &t); err != nil {
+		if err := sdkjson.Unmarshal(data, &t); err != nil {
 			return nil, err
 		}
 		return t, nil
@@ -79,7 +82,7 @@ func UnmarshalContentBlock(data []byte) (ContentBlock, error) {
 		return content, nil
 	case "thinking":
 		var t ThinkingContent
-		if err := json.Unmarshal(data, &t); err != nil {
+		if err := sdkjson.Unmarshal(data, &t); err != nil {
 			return nil, err
 		}
 		return t, nil

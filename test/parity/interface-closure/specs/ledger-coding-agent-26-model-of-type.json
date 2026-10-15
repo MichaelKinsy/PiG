@@ -1,0 +1,19 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRuntime::property:getModelOfType"
+  ],
+  "targets": [
+   "coding/model_runtime_typed.go#ModelRuntime.GetModelOfType"
+  ],
+  "production": [
+   "call:coding/model_registry_facade.go#ModelRegistry.FindOfType"
+  ],
+  "evidence": [
+   "test:coding/model_runtime_images_upstream_test.go#TestModelRuntimeImagesUpstream",
+   "test:coding/model_runtime_classifiers_upstream_test.go#TestModelRuntimeClassifiersUpstream",
+   "test:coding/model_runtime_typed_review_test.go#TestModelRuntimeModifyModelsProjectionReachesTypedLists"
+  ],
+  "rationale": "ModelRuntime.getModelOfType is GetModelOfType(type, providerId, modelId) returning the typed model or nil for undefined."
+ }
+]

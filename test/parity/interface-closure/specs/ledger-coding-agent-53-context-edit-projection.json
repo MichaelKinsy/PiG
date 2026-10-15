@@ -1,0 +1,93 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#ContextEditEntry"
+  ],
+  "targets": [
+   "internal/codingagent/session_manager_projection.go#ContextEditEntry"
+  ],
+  "production": [
+   "call:internal/codingagent/session_manager_projection.go#Session.AppendContextEdit"
+  ],
+  "evidence": [
+   "test:internal/codingagent/session_manager_context_edit_struct_test.go#TestContextEditEntryDecodesAndEncodesThePiWireShape",
+   "test:internal/codingagent/session_manager_context_edit_test.go#TestSessionContextEditEntryMatchesPiWireBytes"
+  ],
+  "rationale": "ContextEditEntry is the Go ContextEditEntry: SessionEntryBase carries type, id, parentId (nil for null) and timestamp; TargetID and the nullable Replacement carry targetId and replacement.",
+  "properties": {
+   "id": {
+    "targets": [
+     "internal/codingagent/session.go#SessionEntryBase.ID"
+    ]
+   },
+   "parentId": {
+    "targets": [
+     "internal/codingagent/session.go#SessionEntryBase.ParentID"
+    ]
+   },
+   "timestamp": {
+    "targets": [
+     "internal/codingagent/session.go#SessionEntryBase.Timestamp"
+    ]
+   },
+   "type": {
+    "targets": [
+     "internal/codingagent/session.go#SessionEntryBase.Type"
+    ]
+   },
+   "targetId": {
+    "targets": [
+     "internal/codingagent/session_manager_projection.go#ContextEditEntry.TargetID"
+    ]
+   },
+   "replacement": {
+    "targets": [
+     "internal/codingagent/session_manager_projection.go#ContextEditEntry.Replacement"
+    ]
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ContextEditableContent"
+  ],
+  "targets": [
+   "internal/codingagent/session_manager_projection.go#ContextEditReplacement.Content"
+  ],
+  "production": [
+   "call:internal/codingagent/session_manager_projection.go#Session.AppendContextEdit"
+  ],
+  "evidence": [
+   "test:internal/codingagent/session_manager_context_edit_test.go#TestSessionContextEditRejectsInvalidTargetsAndReplacements",
+   "test:internal/codingagent/session_manager_context_edit_test.go#TestSessionContextEditNormalizesStringReplacementsForArrayOnlyAssistantAndToolResultRoles"
+  ],
+  "rationale": "ContextEditableContent (string or content-block array) is ContextEditReplacement.Content, a json.RawMessage that AppendContextEdit validates as one of the two forms."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ProjectedSessionEntry"
+  ],
+  "targets": [
+   "internal/codingagent/session_manager_projection.go#ProjectedSessionEntry"
+  ],
+  "production": [
+   "call:internal/codingagent/session_manager_projection.go#buildSessionProjection"
+  ],
+  "evidence": [
+   "test:internal/codingagent/session_manager_context_edit_struct_test.go#TestProjectedSessionEntryPairsSourceEntriesWithTheirMessages"
+  ],
+  "rationale": "ProjectedSessionEntry is the Go ProjectedSessionEntry: SourceEntry is the raw branch entry and Messages the model-visible messages after context edits.",
+  "properties": {
+   "messages": {
+    "targets": [
+     "internal/codingagent/session_manager_projection.go#ProjectedSessionEntry.Messages"
+    ]
+   },
+   "sourceEntry": {
+    "targets": [
+     "internal/codingagent/session_manager_projection.go#ProjectedSessionEntry.SourceEntry"
+    ]
+   }
+  }
+ }
+]

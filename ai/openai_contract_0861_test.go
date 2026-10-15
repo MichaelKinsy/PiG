@@ -88,7 +88,7 @@ func TestOpenAICompletionsThinkingAsTextUsesPlainContentParts(t *testing.T) {
 	if !ok || len(parts) != 2 {
 		t.Fatalf("thinking-as-text content = %#v, want two content parts", converted[0].Content)
 	}
-	if parts[0].Text != "private reasoning" || parts[1].Text != "visible answer" {
+	if *parts[0].Text != "private reasoning" || *parts[1].Text != "visible answer" {
 		t.Fatalf("thinking-as-text parts = %#v", parts)
 	}
 }

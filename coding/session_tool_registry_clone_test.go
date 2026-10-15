@@ -8,6 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
+// Pi: packages/coding-agent/src/main.ts:849 (SessionOptions.customTools).
 func TestSessionToolRegistryClonePreservesMetadata(t *testing.T) {
 	session := newRegistryPortSession(t, []string{"read"}, SessionOptions{CustomTools: []extension.ToolDefinition{registryTool("sdk_tool", "SDK Tool", "SDK tool", "")}, ExcludedTools: map[string]struct{}{"ls": {}}}, nil, func(_ *Session, registered map[string]extension.RegisteredTool) {
 		registerPortTool(registered, dynamicRegistryTool())

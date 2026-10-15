@@ -1,0 +1,6 @@
+#!/bin/sh
+# Arm adapter: rpi (bigfish1913/pi-rust, a Rust port of Pi) reads models.json/auth.json from RPI_CODING_AGENT_DIR and has the same flag spelling as Pi.
+RPI_CODING_AGENT_DIR="$PI_CODING_AGENT_DIR"; RPI_OFFLINE=1
+HOME="$PI_CODING_AGENT_DIR/home"; mkdir -p "$HOME"
+export RPI_CODING_AGENT_DIR RPI_OFFLINE HOME
+exec "@EXE@" "$@"

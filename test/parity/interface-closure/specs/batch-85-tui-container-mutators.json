@@ -1,0 +1,49 @@
+[
+ {
+  "ids": [
+   "pkg:tui/.#Container::property:addChild"
+  ],
+  "targets": [
+   "tui/tui.go#Container.Add"
+  ],
+  "production": [
+   "call:coding/cli/config_command.go#newConfigSelectorUI"
+  ],
+  "evidence": [
+   "test:tui/component_members_test.go#TestContainerChildrenIsAnInsertionOrderedSnapshot",
+   "test:tui/container_children_test.go#TestContainerChildrenSnapshot"
+  ],
+  "rationale": "Container.addChild(component) is Container.Add(component) (Go names the mutators Add, Remove and Clear)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Container::property:removeChild"
+  ],
+  "targets": [
+   "tui/tui.go#Container.Remove"
+  ],
+  "production": [
+   "call:internal/codingagent/extensions.go#TUIUIContext.Input"
+  ],
+  "evidence": [
+   "test:tui/component_members_test.go#TestContainerChildrenIsAnInsertionOrderedSnapshot",
+   "test:tui/container_children_test.go#TestContainerChildrenSnapshot"
+  ],
+  "rationale": "Container.removeChild(component) is Container.Remove(component)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Container::property:handleMouse"
+  ],
+  "targets": [
+   "tui/mouse.go#Container.HandleMouse"
+  ],
+  "production": [
+   "call:tui/tui_alt_screen.go#altScreenDocument.HandleMouse"
+  ],
+  "evidence": [
+   "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows"
+  ],
+  "rationale": "Container.handleMouse(event) is HandleMouse(event) returning *TuiMouseDispatchResult (nil is undefined)."
+ }
+]

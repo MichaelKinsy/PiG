@@ -33,7 +33,7 @@ func TestKeyReleaseDoesNotDuplicateInput(t *testing.T) {
 
 	t.Run("extension input prompt keeps one character per keystroke", func(t *testing.T) {
 		for _, release := range []string{releaseA, releaseALong} {
-			component := tui.NewExtensionInputComponent("title", "placeholder")
+			component := tui.NewExtensionInputComponent("title", "placeholder", nil, nil)
 			// Drive the production input pump: press, release, then Enter.
 			source := strings.NewReader(pressA + release + "\r")
 			driveModalInputFromReader(t, component, source)
@@ -44,7 +44,7 @@ func TestKeyReleaseDoesNotDuplicateInput(t *testing.T) {
 	})
 
 	t.Run("modal delivery keeps one character per keystroke", func(t *testing.T) {
-		component := tui.NewExtensionInputComponent("title", "placeholder")
+		component := tui.NewExtensionInputComponent("title", "placeholder", nil, nil)
 		var b StdinBuffer
 		chunks := dropKeyReleases(component, b.ProcessString(pressA+releaseA))
 		if len(chunks) != 1 {
@@ -113,7 +113,7 @@ func driveModalInputFromReader(t *testing.T, component *tui.ExtensionInputCompon
 // Upstream ProcessTerminal emits every ordinary character as its own input
 // event. A modal must therefore apply every Backspace in one terminal read.
 func TestExtensionInputSplitsBatchedOrdinaryKeys(t *testing.T) {
-	component := tui.NewExtensionInputComponent("title", "placeholder")
+	component := tui.NewExtensionInputComponent("title", "placeholder", nil, nil)
 	source := &chunkReader{chunks: [][]byte{[]byte("abcd"), []byte("\x7f\x7f"), []byte("\r")}}
 	driveModalInputFromReader(t, component, source)
 	if got := component.Text(); got != "ab" {

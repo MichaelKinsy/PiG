@@ -12,7 +12,7 @@ import (
 
 // Each sample owns a Session, a native boundary handler, two provider requests, a committed custom entry, acknowledged event delivery and joined shutdown. It measures before-settle delivery, not disk history or subprocess IPC.
 func BenchmarkSessionBeforeSettleBoundary(b *testing.B) {
-	services, err := NewServices(ServicesOptions{CWD: b.TempDir(), AgentDir: b.TempDir()})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: b.TempDir(), AgentDir: b.TempDir()})
 	if err != nil {
 		b.Fatal(err)
 	}

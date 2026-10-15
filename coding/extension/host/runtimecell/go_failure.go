@@ -3,12 +3,15 @@ package runtimecell
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/extensions/sdk/upgrade"
 	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 
@@ -28,11 +31,14 @@ const (
 
 // classifyGoFailure reduces a failed `go build` to a BuildFailure and reports
 // what kind of failure it is, which decides whether it is recorded.
-func classifyGoFailure(tc toolchain.GoToolchain, output []byte) (failure *BuildFailure, kind goFailureKind) {
+func classifyGoFailure(tc toolchain.GoToolchain, output []byte, dir string) (failure *BuildFailure, kind goFailureKind) {
 	if line, ok := tc.ReleaseMismatch(output); ok {
 		return &BuildFailure{Summary: line, Cause: line}, goFailureToolchain
 	}
 	if hasGoCompilerDiagnostic(output) {
+		if drifts, ok := sdkDriftOnly(output, dir); ok {
+			return olderSDKFailure(drifts, dir), goFailureInputs
+		}
 		sawHeader := false
 		for line := range bytes.SplitSeq(output, []byte{'\n'}) {
 			if bytes.HasPrefix(line, []byte("# ")) {
@@ -49,6 +55,7 @@ func classifyGoFailure(tc toolchain.GoToolchain, output []byte) (failure *BuildF
 	}
 	summary := "go build failed"
 	var last string
+	//portlint:allow pathseparators each line is trimmed, which removes the \r of a CRLF line
 	for line := range strings.SplitSeq(string(output), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") {
@@ -71,7 +78,7 @@ func classifyGoFailure(tc toolchain.GoToolchain, output []byte) (failure *BuildF
 // toolchain for this process. recordable reports whether the same inputs fail
 // again, so the caller may record the failure against them.
 func GoBuildFailure(cacheRoot, logKey, dir string, tc toolchain.GoToolchain, buildErr error, output, generatedMod []byte) (failure *BuildFailure, recordable bool) {
-	failure, kind := classifyGoFailure(tc, output)
+	failure, kind := classifyGoFailure(tc, output, dir)
 	failure.Log = writeBuildLog(cacheRoot, logKey, goBuildLogContent(tc, dir, buildErr, output, generatedMod))
 	if kind == goFailureToolchain {
 		markBrokenToolchain(tc, failure)
@@ -128,4 +135,51 @@ func brokenToolchain(tc toolchain.GoToolchain) (*BuildFailure, bool) {
 
 func markBrokenToolchain(tc toolchain.GoToolchain, failure *BuildFailure) {
 	brokenToolchains.Store(brokenToolchainKey{tc, goCompilerRevision(tc)}, failure)
+}
+
+// sdkDriftOnly classifies the compiler diagnostics of a failed build. It reports the SDK changes only when every diagnostic is one, so an unrelated compile error, in the extension or in another extension of the same packed cell, keeps the compiler's own message.
+func sdkDriftOnly(output []byte, dir string) ([]upgrade.Drift, bool) {
+	diagnostics := upgrade.ParseDiagnostics(output)
+	drifts := upgrade.Classify(diagnostics, buildDirSource(dir))
+	classified := 0
+	for _, drift := range drifts {
+		classified += drift.Count
+	}
+	return drifts, len(drifts) > 0 && classified == len(diagnostics)
+}
+
+// buildDirSource reads the files a compiler diagnostic names. The go command prints a path relative to its working directory, the generated build directory.
+func buildDirSource(dir string) upgrade.FileSource {
+	return func(path string) ([]byte, error) {
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(dir, path)
+		}
+		return os.ReadFile(path)
+	}
+}
+
+// olderSDKFailure reports an extension whose compile errors are SDK changes
+// as one line that says so, and keeps the changes for `pig extension upgrade`
+// and the startup prompt.
+//
+// pig additive (D109): PiG compiles extensions against its own SDK, which Pi does not have.
+func olderSDKFailure(drifts []upgrade.Drift, dir string) *BuildFailure {
+	// The go command prints a path relative to the generated build directory; keep the path that names the extension's file.
+	for i := range drifts {
+		if !filepath.IsAbs(drifts[i].File) {
+			drifts[i].File = filepath.Join(dir, drifts[i].File)
+		}
+	}
+	symbols := make([]string, len(drifts))
+	for i, drift := range drifts {
+		symbols[i] = drift.Symbol
+	}
+	slices.Sort(symbols)
+	cause := oneLine("go build: written for an older SDK (" + strings.Join(symbols, ", ") + ")")
+	lead := symbols
+	if len(lead) > 2 {
+		lead = append(lead[:2:2], fmt.Sprintf("and %d more", len(symbols)-2))
+	}
+	summary := oneLine("go build: written for an older SDK (" + strings.Join(lead, ", ") + " changed)")
+	return &BuildFailure{Summary: summary, Cause: cause, Drift: drifts}
 }

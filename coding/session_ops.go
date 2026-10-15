@@ -2,10 +2,7 @@ package coding
 
 import (
 	"fmt"
-	"slices"
-	"strings"
 
-	"github.com/MichaelKinsy/PiG/ai"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -24,7 +21,7 @@ import (
 //
 // Returns an error if entryID is unknown.
 func (s *Session) Fork(entryID string) error {
-	if err := s.inner.Fork(entryID); err != nil {
+	if err := s.inner.Branch(entryID); err != nil {
 		return fmt.Errorf("coding: fork %s: %w", entryID, err)
 	}
 	s.refreshContext()
@@ -79,11 +76,11 @@ func (s *Session) prepareNewSession(parentSession string) (*icodingagent.Session
 		}
 	}
 	if model := s.Model(); model != nil {
-		if err := next.AppendModelSwitch(providerID(model), model.ID, model.DisplayName); err != nil {
+		if _, err := next.AppendModelChange(providerID(model), model.ID); err != nil {
 			return nil, fmt.Errorf("coding: new session model: %w", err)
 		}
 	}
-	if err := next.AppendThinkingLevelChange(string(s.ThinkingLevel())); err != nil {
+	if _, err := next.AppendThinkingLevelChange(string(s.ThinkingLevel())); err != nil {
 		return nil, fmt.Errorf("coding: new session thinking level: %w", err)
 	}
 	return next, nil
@@ -115,7 +112,7 @@ func (s *Session) CloneInPlace() error {
 
 // Clone snapshots the current path-to-leaf as a new session JSONL on disk, dropping orphan branches and recording the source as parentSession. File-backed Sessions must already be saved. The original Session is unchanged; the caller owns closing the returned Session.
 func (s *Session) Clone() (*Session, error) {
-	leaf := s.inner.LeafID()
+	leaf := s.inner.GetLeafID()
 	if leaf == nil {
 		return nil, fmt.Errorf("coding: clone: session is empty")
 	}
@@ -151,6 +148,7 @@ func (s *Session) Clone() (*Session, error) {
 		Transport:          s.callerHooks.transport,
 		existing:           cloned,
 		ResourceLoader:     s.ResourceLoader(),
+		extensionHost:      s.extensionHost,
 	}
 	if ref := s.resourceLoader.Load(); ref != nil {
 		opts.boundResourceLoader = &resourceLoaderRef{loader: ref.loader, promptFromLoader: ref.promptFromLoader}
@@ -164,7 +162,8 @@ func (s *Session) Clone() (*Session, error) {
 	default:
 		opts.SystemPrompt = *s.baseSystemPrompt.Load()
 	}
-	cloneSession, err := NewSession(s.services, opts)
+	opts.Services = s.services
+	cloneSession, err := NewAgentSession(opts)
 	if err != nil {
 		return nil, fmt.Errorf("coding: clone: %w", err)
 	}
@@ -178,20 +177,20 @@ func (s *Session) Clone() (*Session, error) {
 // Entries returns all session entries in append order. The returned slice is a
 // defensive copy; mutating it does not affect the session.
 func (s *Session) Entries() []icodingagent.SessionEntry {
-	return s.inner.Entries()
+	return s.inner.GetEntries()
 }
 
 // Tree returns the session's branch tree as a SessionTreeNode. The
 // returned structure is a defensive copy; mutating it does not affect
 // the session's state. The node uses the internal codingagent tree type.
 func (s *Session) Tree() *icodingagent.SessionTreeNode {
-	return s.inner.Tree()
+	return &icodingagent.SessionTreeNode{Children: s.inner.GetTree()}
 }
 
 // LeafID returns the current leaf entry id, or nil if the session is
 // empty (no entries yet).
 func (s *Session) LeafID() *string {
-	return s.inner.LeafID()
+	return s.inner.GetLeafID()
 }
 
 // SetName persists a session name as a SessionInfoEntry on disk. It rejects ECMAScript-trimmed empty names. The name surfaces in ListSessions / Runtime.ListSessions output and in the resume picker UI.
@@ -310,7 +309,7 @@ func (s *Session) DispatchSlash(line string) ([]string, error) {
 			return path, nil
 		},
 		ListSessions: func() ([]SessionInfo, error) { return s.ListSessions() },
-		RenderTree:   func() string { return icodingagent.RenderTreeASCII(s.inner.Tree()) },
+		RenderTree:   func() string { return icodingagent.RenderTreeASCII(s.Tree()) },
 
 		// Picker callbacks left nil → handlers fall back to text mode.
 		PickSession:     nil,
@@ -321,7 +320,7 @@ func (s *Session) DispatchSlash(line string) ([]string, error) {
 
 	registry := icodingagent.NewSlashRegistry()
 	internalSC := sc.toInternal()
-	if err := registry.Dispatch(internalSC, line, nil); err != nil {
+	if err := registry.DispatchHeadless(internalSC, line, nil); err != nil {
 		return output, err
 	}
 	return output, nil
@@ -392,21 +391,10 @@ func (h *SlashContextHandle) toInternal() *icodingagent.SlashContext {
 	}
 }
 
-// lastAssistantText extracts the most recent assistant message's text
-// content. Used by the /save slash and a few extension callbacks.
+// lastAssistantText is [Session.LastAssistantText] as a string, empty when there is no text.
 func (s *Session) lastAssistantText() string {
-	msgs := s.agent.Messages()
-	for _, msg := range slices.Backward(msgs) {
-		if msg.Assistant == nil {
-			continue
-		}
-		var b strings.Builder
-		for _, c := range msg.Assistant.Content {
-			if tc, ok := c.(ai.TextContent); ok {
-				b.WriteString(tc.Text)
-			}
-		}
-		return b.String()
+	if text := s.LastAssistantText(); text != nil {
+		return *text
 	}
 	return ""
 }

@@ -1,9 +1,6 @@
 package ai
 
-import (
-	"fmt"
-	"time"
-)
+import "time"
 
 // Ports packages/ai/src/utils/model-operations.ts and the model-type parts of packages/ai/src/types.ts.
 
@@ -44,8 +41,9 @@ type ImageModel struct {
 	// InputLimits carries provider input limits and cache-safe preprocessing metadata.
 	InputLimits *ModelInputLimits
 	// Output always includes "image"; "text" means the model can also return text blocks.
-	Output []string
-	Cost   ModelCost
+	Output  []string
+	Cost    ModelCost
+	catalog *catalogShape
 }
 
 // ClassifierModel is a structured classifier model. It is usable with Models.Classify only.
@@ -60,6 +58,7 @@ type ClassifierModel struct {
 	InputLimits   *ModelInputLimits
 	Cost          ModelCost
 	ContextWindow int
+	catalog       *catalogShape
 }
 
 func (*Model) anyModel()           {}
@@ -138,14 +137,6 @@ func knownModelType(modelType ModelType) bool {
 		return true
 	}
 	return false
-}
-
-// assertChatModel rejects models whose type is not chat.
-func assertChatModel(model *Model) error {
-	if !IsModelType(model, ModelTypeChat) {
-		return NewModelsError(ModelsErrorProvider, fmt.Sprintf("Model %s/%s is not a chat model", model.ProviderID(), model.ID), nil)
-	}
-	return nil
 }
 
 // imageErrorResult reports a failed image request as a result instead of an error.

@@ -1,0 +1,56 @@
+[
+  {
+    "upstream": "packages/tui/src/components/editor.ts",
+    "package": "./tui",
+    "tests": [
+      "TestEditorOwnedTUIDerivesTheVisibleWindowFromTerminalRows"
+    ],
+    "upstream_reference": "packages/tui/src/components/editor.ts",
+    "mutation": "tui/editor.go: replace 'if terminal := e.ui.Terminal(); terminal != nil && terminal.Rows() > 0 {\\nreturn max(5, int(math.Floor(float64(terminal.Rows())*0.3)))' with 'if terminal := e.ui.Terminal(); terminal != nil && terminal.Rows() > 0 {\\nreturn max(5, int(math.Floor(float64(terminal.Rows())*0.4)))'; compiling go test -run exact test -count=1 fails TestEditorOwnedTUIDerivesTheVisibleWindowFromTerminalRows."
+  },
+  {
+    "upstream": "packages/tui/src/components/editor.ts",
+    "package": "./tui",
+    "tests": [
+      "TestEditorOwnedTUIPagesByTerminalRows"
+    ],
+    "upstream_reference": "packages/tui/src/components/editor.ts",
+    "mutation": "tui/editor.go: replace 'if terminal := e.ui.Terminal(); terminal != nil && terminal.Rows() > 0 {\\nreturn max(5, int(math.Floor(float64(terminal.Rows())*0.3)))' with 'if terminal := e.ui.Terminal(); terminal != nil && terminal.Rows() > 0 {\\nreturn max(5, int(math.Floor(float64(terminal.Rows())*0.4)))'; compiling go test -run exact test -count=1 fails TestEditorOwnedTUIPagesByTerminalRows."
+  },
+  {
+    "upstream": "packages/tui/src/components/editor.ts",
+    "package": "./tui",
+    "tests": [
+      "TestEditorOwnedTUIRequestsRenderOnlyWhenPaddingOrLimitChanges"
+    ],
+    "upstream_reference": "packages/tui/src/components/editor.ts",
+    "mutation": "tui/editor.go: replace 'e.autocompleteMax = max(3, min(20, *options.AutocompleteMaxVisible))' with 'e.autocompleteMax = max(3, *options.AutocompleteMaxVisible)'; compiling go test -run exact test -count=1 fails TestEditorOwnedTUIRequestsRenderOnlyWhenPaddingOrLimitChanges."
+  },
+  {
+    "upstream": "packages/tui/src/terminal.ts",
+    "package": "./tui",
+    "tests": [
+      "TestNewStdioProcessTerminalUsesTheProcessStreams"
+    ],
+    "upstream_reference": "packages/tui/src/terminal.ts",
+    "mutation": "tui/terminal.go: replace 'return NewProcessTerminal(os.Stdin, os.Stdout)' with 'return NewProcessTerminal(os.Stdout, os.Stdin)'; compiling go test -run exact test -count=1 fails TestNewStdioProcessTerminalUsesTheProcessStreams."
+  },
+  {
+    "upstream": "packages/tui/src/terminal.ts",
+    "package": "./tui",
+    "tests": [
+      "TestNewStdioProcessTerminalBindsTheProcessStreams"
+    ],
+    "upstream_reference": "packages/tui/src/terminal.ts",
+    "mutation": "tui/terminal.go: replace 'return NewProcessTerminal(os.Stdin, os.Stdout)' with 'return NewProcessTerminal(os.Stdin, os.Stderr)'; compiling go test -run exact test -count=1 fails TestNewStdioProcessTerminalBindsTheProcessStreams."
+  },
+  {
+    "upstream": "packages/tui/src/autocomplete.ts",
+    "package": "./tui",
+    "tests": [
+      "TestReaddirFileSuggestions"
+    ],
+    "upstream_reference": "packages/tui/src/autocomplete.ts",
+    "mutation": "tui/file_autocomplete.go: replace 'if lowerPrefix != \"\" && !strings.HasPrefix(strings.ToLower(name), lowerPrefix) {\\ncontinue' with 'if lowerPrefix != \"\" && !strings.HasPrefix(name, lowerPrefix) {\\ncontinue'; compiling go test -run exact test -count=1 fails TestReaddirFileSuggestions."
+  }
+]

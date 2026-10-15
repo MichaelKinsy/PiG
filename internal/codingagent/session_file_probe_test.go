@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package codingagent
@@ -31,7 +30,7 @@ func TestSessionFileInteropProbe(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	overridden := session.CWD() == dir && session.Header().CWD == "/project"
+	overridden := session.CWD() == dir && session.GetHeader().CWD == "/project"
 	if !overridden {
 		t.Fatal("cwd override changed stored identity")
 	}
@@ -40,7 +39,7 @@ func TestSessionFileInteropProbe(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	headerOnly := len(readJSONLLines(t, empty)) == 1 && initialized.Header().Type == "session" && initialized.ID() != ""
+	headerOnly := len(readJSONLLines(t, empty)) == 1 && initialized.GetHeader().Type == "session" && initialized.ID() != ""
 	if !headerOnly {
 		t.Fatal("empty session did not initialize")
 	}

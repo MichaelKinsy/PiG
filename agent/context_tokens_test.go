@@ -24,9 +24,25 @@ func TestCalculateContextTokens(t *testing.T) {
 			want: 0,
 		},
 		{
+			name: "provider_total_preferred",
+			u:    ai.Usage{Input: 10, Output: 5, CacheRead: 20, CacheWrite: 3, TotalTokens: 99},
+			want: 99,
+		},
+		{
 			name: "input_only",
 			u:    ai.Usage{Input: 50},
 			want: 50,
+		},
+		// utils/estimate.ts calculateContextTokens: `usage.totalTokens || input + output + cacheRead + cacheWrite`: any nonzero total wins over the parts.
+		{
+			name: "a nonzero total beats the parts",
+			u:    ai.Usage{TotalTokens: 7, Input: 100, Output: 50, CacheRead: 20, CacheWrite: 3},
+			want: 7,
+		},
+		{
+			name: "a total of one still beats the parts",
+			u:    ai.Usage{TotalTokens: 1, Input: 100},
+			want: 1,
 		},
 	}
 	for _, tc := range cases {

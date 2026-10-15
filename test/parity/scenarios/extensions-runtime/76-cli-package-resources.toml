@@ -1,0 +1,78 @@
+# Behavior family: extensions-runtime
+# Scenario: a local Package named with -e contributes its prompts and skills
+# ahead of project, user and --prompt-template resources, and wins same-name
+# collisions.
+#
+# Upstream evidence (Pi 1.1.0, probed 2026-10-09):
+#   pi --no-extensions -e <pkg> --mode rpc, stdin {"type":"get_commands"}
+#   resource-loader.ts reload() resolves additionalExtensionPaths with
+#   resolveExtensionSources({temporary: true}) and builds
+#   mergePaths([...cliEnabledPrompts, ...enabledPrompts], additionalPromptTemplatePaths)
+#   (likewise skills, themes); loadPromptTemplates and the skill loader keep the
+#   first resource of a name. The directory has prompts/ and skills/ but no
+#   extensions/, so collectPackageResources finds a Package and no extension is
+#   loaded from it.
+#   - /same: the Package's wins over the project's and the user's
+#     (source = the -e path, scope temporary, origin package, baseDir = the Package)
+#   - /skill:same-skill: the Package's wins over the project's
+#     (source cli, scope temporary, origin top-level, no baseDir)
+#   - /flag: the user's wins over --prompt-template, which is merged last
+# PiG never loaded prompts or skills from -e, listed --prompt-template first,
+# and tried to load the Package directory as an extension.
+
+name = "76-cli-package-resources"
+description = "A -e Package's prompts and skills win same-name collisions and --prompt-template loses to resolved prompts"
+
+covers = [
+  "packages/coding-agent/src/core/resource-loader.ts",
+  "packages/coding-agent/src/core/package-manager.ts",
+]
+
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+input_lines = ['{"id":"cmds","type":"get_commands"}']
+cwd = "testdata/cli-package-resources/project"
+timeout_seconds = 20
+settle_seconds = 1
+
+[env]
+# The base arguments pass --no-extensions, which keeps -e Package resources.
+override_base_args = true
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/cli-package-resources/pig-agent"]
+pig_args = ["--no-extensions", "--model", "test-faux/faux-1", "--no-session", "--prompt-template", "flag/flag.md"]
+pig_extensions = ["testdata/cli-package-resources/pkg"]
+pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1", "PI_CODING_AGENT_DIR=testdata/cli-package-resources/pi-agent"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/cli-package-resources/pkg"]
+pi_args = ["--no-extensions", "--model", "test-faux/faux-1", "--no-session", "--prompt-template", "flag/flag.md"]
+
+[assert]
+exit_code = 0
+runs = 3
+output_normalized_equal = true
+both_match_regex = [
+  '"name":"same","description":"cli-package"',
+  '"name":"pkg-only","description":"cli-package-only"',
+  '"name":"flag","description":"user"',
+  '"name":"skill:same-skill","description":"cli-package"',
+]
+both_not_contain = ["Failed to load extension", "panic:", '"description":"project"', '"description":"cli-flag"']
+
+# normalize-rationale: each binary runs in its own snapshot of the agent and
+# project fixtures, and the agent and project config directories are named
+# .pi and .pig.
+[[assert.normalize_replace]]
+pattern = '/[^"]*parity-snap-(PI|PIG)_CODING_AGENT_DIR-[0-9]+'
+with = '<agent>'
+reason = "D2: the isolated agent-root prefix varies; retain resource paths, precedence and content."
+
+[[assert.normalize_replace]]
+pattern = '/[^"]*parity-snap-cwd-[0-9]+/\.pig?'
+with = '<project>'
+reason = "D2: the isolated project configuration root is .pig versus .pi; preserve all resource-relative paths."
+
+[[assert.normalize_replace]]
+pattern = '\{"(?:name":"sprite","description":"Select the PiG login sprite\.","source":"extension","sourceInfo":\{"path":"builtin:pig-login","source":"builtin","scope":"temporary","origin":"top-level"\}|description":"Select the PiG login sprite\.","name":"sprite","source":"extension","sourceInfo":\{"origin":"top-level","path":"builtin:pig-login","scope":"temporary","source":"builtin"\})\},?'
+with = ""
+reason = "D2: PiG's built-in pig-login extension registers /sprite, which Pi has no counterpart for. Only that one command entry is removed; every other command, its order and its sourceInfo stay compared."

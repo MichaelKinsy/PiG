@@ -31,6 +31,8 @@ pig -p "Summarize the changes in this repository"
 
 `--print` (`-p`) takes no value. PiG builds the prompt from piped standard input, `@file` arguments and the first message argument, in that order. It sends each further message argument as a separate prompt after the first one finishes.
 
+PiG reads piped standard input until it ends, as Pi does. A caller that leaves the pipe open makes startup wait. Pass `--no-stdin` to skip that read, for example `pig --no-stdin -p "prompt"`. Pi has no such option (D150, Pi #10415).
+
 When standard output is not a terminal, PiG keeps it for the answer and redirects anything that tools or extensions write there to standard error. Extension errors appear on standard error as `Extension error (<path>): <message>`.
 
 | Result | Exit status |
@@ -39,6 +41,8 @@ When standard output is not a terminal, PiG keeps it for the answer and redirect
 | The final assistant message has stop reason `error` or `aborted` | `1`, with the error on standard error |
 | PiG cannot start the run, for example because no model is configured | `1` |
 | `SIGINT`, `SIGTERM` or `SIGHUP` stops the run | `128` plus the signal number: `130`, `143` or `129` |
+
+On `SIGTERM` or `SIGHUP`, PiG kills the tools' child processes, stops writing to standard output, sends `session_shutdown` to extensions, and exits with 143 or 129 once every `session_shutdown` handler has finished, as Pi does. Standard output ends at the signal. The interrupted run stops where it is while the `session_shutdown` handlers run, as long as they finish without waiting. Once a handler waits on a timer or I/O, the run continues, as it does in Pi: its tool result and next turn can still reach the session file and the provider, and in text mode a run that finishes before the handlers are done prints its result.
 
 ## JSON mode
 
@@ -56,7 +60,7 @@ A failed or aborted assistant message appears in the events but does not change 
 
 A `message_update` event carries one delta, not the whole message so far. Build live output from the deltas, then replace it with the complete message in `message_end`.
 
-`agent_end` can be followed by an automatic retry or by queued work. Wait for `agent_settled` to know that the run has no more work.
+`agent_end` can be followed by an automatic retry or by queued work. Wait for `agent_settled` to know that the run has no more work. Its `aborted` field tells a cancelled run from a finished one.
 
 Standard output carries only JSON Lines. PiG writes diagnostics and logs to standard error. See [JSON event stream mode](/docs/latest/json) for event shapes.
 
@@ -76,7 +80,7 @@ A successful response to `prompt` means that PiG accepted the prompt. It does no
 
 Commands can change the model, read the session state, manage sessions, run shell commands and answer extension dialogs. See [RPC commands](/docs/latest/rpc-commands). Extension dialogs use a request and response exchange. See [RPC extension UI](/docs/latest/rpc-extension-ui). Other extension UI records are notices that a client can show or ignore. Features that need the terminal UI are not available in RPC mode.
 
-Close standard input to stop PiG. See [RPC mode](/docs/latest/rpc) for framing and events.
+Close standard input to stop PiG. A command that replaces the session (`new_session`, `fork`, `clone`, `switch_session`) and is still running when standard input ends gets its response before PiG exits. Pi exits without that response (D146). See [RPC mode](/docs/latest/rpc) for framing and events.
 
 ### Go client
 
@@ -135,3 +139,4 @@ To ship an agent with its own name, extensions and defaults, write a [Piglet](/d
 - [RPC commands](/docs/latest/rpc-commands) lists every RPC command.
 - [Go SDK](/docs/latest/sdk) runs sessions inside a Go program.
 - [Message types](/docs/latest/message-types) defines the messages inside events.
+- [Upstream Pi's CLI integration documentation](https://pi.dev/docs/latest/cli-integration) describes the reference implementation.

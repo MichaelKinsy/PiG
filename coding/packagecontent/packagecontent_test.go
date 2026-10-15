@@ -1,5 +1,9 @@
 package packagecontent
 
+// pi: packages/coding-agent/src/core/pi-manifest.ts
+
+// pi: packages/coding-agent/src/core/package-manager.ts
+
 import (
 	"errors"
 	"io/fs"
@@ -467,7 +471,7 @@ func TestApplyConfiguredDeltaOverlaysOnlyExactMembers(t *testing.T) {
 		"extensions/beta":  true,
 		"extensions/gamma": true,
 	} {
-		if enabled := ResourceEnabled(path, got); enabled != want {
+		if enabled := mustResourceEnabled(t, path, got); enabled != want {
 			t.Errorf("%s enabled = %t, want %t; filters=%v", path, enabled, want, got)
 		}
 	}
@@ -490,16 +494,16 @@ func TestApplyConfiguredDeltaRejectsUnsafePatterns(t *testing.T) {
 }
 
 func TestResourceEnabledPreservesPackageFilterSemantics(t *testing.T) {
-	if ResourceEnabled("prompts/a.md", []string{}) {
+	if mustResourceEnabled(t, "prompts/a.md", []string{}) {
 		t.Fatal("explicit empty filter should disable all resources of that kind")
 	}
-	if !ResourceEnabled("prompts/a.md", nil) {
+	if !mustResourceEnabled(t, "prompts/a.md", nil) {
 		t.Fatal("nil filter should leave resources enabled")
 	}
-	if ResourceEnabled("prompts/private.md", []string{"prompts/*.md", "-prompts/private.md"}) {
+	if mustResourceEnabled(t, "prompts/private.md", []string{"prompts/*.md", "-prompts/private.md"}) {
 		t.Fatal("later exclude should disable an allowed resource")
 	}
-	if !ResourceEnabled("prompts/private.md", []string{"-prompts/*.md", "+prompts/private.md"}) {
+	if !mustResourceEnabled(t, "prompts/private.md", []string{"-prompts/*.md", "+prompts/private.md"}) {
 		t.Fatal("later force include should re-enable an excluded resource")
 	}
 }
@@ -556,7 +560,7 @@ func TestApplyPatternsUsesSkillDirectoryIdentity(t *testing.T) {
 	writeTestFile(t, filepath.Join(skillDir, "SKILL.md"), "# review\n")
 	paths := Collect([]string{filepath.Join(root, "skills")}, Skills)
 
-	got := ApplyPatterns(paths, []string{"skills/review"}, root, Skills)
+	got := mustApplyPatterns(t, paths, []string{"skills/review"}, root, Skills)
 	assertContains(t, got, skillDir)
 }
 

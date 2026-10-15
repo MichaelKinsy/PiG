@@ -22,15 +22,10 @@ type PreparedPrompt struct {
 	run icodingagent.BeforeAgentStartRun
 }
 
-// PreparePrompt awaits before_agent_start without holding the Session run lock. Hosts normalize images and admit the result after that await, so another prompt or queue operation may proceed while a handler is suspended.
+// PreparePrompt awaits before_agent_start for the user prompt whose RunStart keeps the Session busy (agent-session.ts:1885-1936
+// _prepareRun). Hosts normalize images and admit the result after that await; a message or queued prompt sent while a handler is
+// suspended joins the starting run.
 func (s *Session) PreparePrompt(ctx context.Context, content []ai.UserContentBlock) (*PreparedPrompt, error) {
-	p := &PreparedPrompt{session: s, sessionID: s.ID(), content: append([]ai.UserContentBlock(nil), content...)}
-	select {
-	case <-s.closeDone:
-		return nil, errors.New("coding: session is closed")
-	default:
-	}
-	runner := s.currentRunner()
 	var text string
 	var images []extension.ImageContent
 	for _, block := range content {
@@ -44,6 +39,23 @@ func (s *Session) PreparePrompt(ctx context.Context, content []ai.UserContentBlo
 			images = append(images, block)
 		}
 	}
+	p, err := s.prepareRun(ctx, extension.UserPromptTrigger(text, images))
+	if p != nil {
+		p.content = append([]ai.UserContentBlock(nil), content...)
+	}
+	return p, err
+}
+
+// prepareRun awaits before_agent_start for the message that starts a run (agent-session.ts:1885-1936 _prepareRun) without holding the
+// Session lock, so a handler's own Session calls and queue operations proceed while it is suspended.
+func (s *Session) prepareRun(ctx context.Context, trigger extension.BeforeAgentStartTrigger) (*PreparedPrompt, error) {
+	p := &PreparedPrompt{session: s, sessionID: s.ID()}
+	select {
+	case <-s.closeDone:
+		return nil, errors.New("coding: session is closed")
+	default:
+	}
+	runner := s.currentRunner()
 	options := *s.GetSystemPromptOptions()
 	sections := ai.OrderedSections{}
 	if options.Sections != nil {
@@ -53,13 +65,17 @@ func (s *Session) PreparePrompt(ctx context.Context, content []ai.UserContentBlo
 	var result *extension.BeforeAgentStartCombinedResult
 	if runner != nil && runner.HasHandlers("before_agent_start") {
 		var err error
-		result, err = runner.EmitBeforeAgentStart(ctx, text, images, s.systemPrompt(), options)
+		result, err = runner.EmitBeforeAgentStart(ctx, trigger, options)
 		if err != nil {
 			return nil, err
 		}
 	}
 	// Interactive mode applies the same rule to its own prompt and loadout.
 	run, err := icodingagent.ResolveBeforeAgentStartRun(options, result)
+	// _preparePromptAndToolLoadout replays the transcript's system messages before it builds the run's sections (agent-session.ts:1745-1748), so its TypeError comes first.
+	if replayErr := s.agent.CurrentSystemMessageError(); replayErr != nil {
+		err = replayErr
+	}
 	if err != nil {
 		// agent-session.ts:1409-1419 admits the loadout before buildSystemPromptSections rejects an invalid section name.
 		s.applyPromptToolLoadout(s.admittedToolNames(run.SelectedTools))
@@ -71,12 +87,13 @@ func (s *Session) PreparePrompt(ctx context.Context, content []ai.UserContentBlo
 
 // NormalizeImages applies the current model's image profile after before_agent_start has completed.
 func (p *PreparedPrompt) NormalizeImages() {
-	p.content = icodingagent.NormalizePromptContent(p.content, p.session.services.SettingsManager().GetImageAutoResize(), p.session.agent.Model(), p.session.processImage)
+	p.content = icodingagent.NormalizePromptContent(p.content, p.session.SettingsManager().GetImageAutoResize(), p.session.agent.Model(), p.session.processImage)
 }
 
 // PreparedPromptRun owns an admitted Session prompt across its first event and the remainder of execution.
 type PreparedPromptRun struct {
 	session  *Session
+	start    *RunStart
 	prompt   *PreparedPrompt
 	agentRun *agent.PromptRun
 	ctx      context.Context
@@ -95,8 +112,7 @@ func (r *PreparedPromptRun) Start() error {
 // Run completes execution, recovery and settlement and releases the admitted run.
 func (r *PreparedPromptRun) Run() ([]agent.AgentMessage, error) {
 	if r.err != nil {
-		r.session.emitAgentSettledNotification()
-		r.session.runDeferredSettledActions()
+		r.start.settleUnclaimed()
 		return nil, r.err
 	}
 	defer r.finish()
@@ -105,12 +121,15 @@ func (r *PreparedPromptRun) Run() ([]agent.AgentMessage, error) {
 	return messages, err
 }
 
-// BeginPreparedPrompt commits preflight and claims the agent before returning its run. A busy agent rejects execution after acceptance; it is not serialized behind the old run.
-func (s *Session) BeginPreparedPrompt(ctx context.Context, p *PreparedPrompt) (*PreparedPromptRun, error) {
-	if p == nil || p.session != s {
+// BeginPreparedPrompt claims the agent for the prompt that start prepared, after its held messages were flushed (agent-session.ts:1857
+// agent.prompt). An error abandons start. A busy agent rejects the run after acceptance; it is not serialized behind the old run.
+func (s *Session) BeginPreparedPrompt(ctx context.Context, start *RunStart, p *PreparedPrompt) (*PreparedPromptRun, error) {
+	if p == nil || p.session != s || start.session != s {
+		start.Abandon()
 		return nil, errors.New("coding: prompt preparation belongs to another session")
 	}
 	if p.sessionID != s.ID() {
+		start.Abandon()
 		return nil, context.Canceled
 	}
 	// Keep claim and streaming publication atomic with the shell queue decision.
@@ -121,17 +140,38 @@ func (s *Session) BeginPreparedPrompt(ctx context.Context, p *PreparedPrompt) (*
 	if err != nil {
 		s.pendingBashMu.Unlock()
 		cancel()
-		return &PreparedPromptRun{session: s, err: err}, nil
+		return &PreparedPromptRun{session: s, start: start, err: err}, nil
 	}
-	finish := s.ownAgentRun(cancel)
+	finish := s.ownStartedRun(cancel)
 	s.pendingBashMu.Unlock()
+	s.admitRunPrompt(p)
+	return &PreparedPromptRun{session: s, start: start, prompt: p, agentRun: run, ctx: runCtx, finish: finish}, nil
+}
+
+// admitRunPrompt makes the prepared run's tool loadout, system prompt, run options and handler messages current for the run that was just claimed.
+func (s *Session) admitRunPrompt(p *PreparedPrompt) {
 	s.applyPromptToolLoadout(s.admittedToolNames(p.run.SelectedTools))
 	if p.systemPrompt != nil {
 		s.agent.SetSystemPrompt(*p.systemPrompt)
 	}
 	s.runPrompt.Store(&p.run)
 	s.QueueAgentStartMessages(p.messages)
-	return &PreparedPromptRun{session: s, prompt: p, agentRun: run, ctx: runCtx, finish: finish}, nil
+}
+
+// finishRunPrompt ends the prepared run's system prompt and run options.
+func (s *Session) finishRunPrompt(p *PreparedPrompt) {
+	if p.systemPrompt != nil {
+		s.agent.ClearSystemPrompt()
+	}
+	s.runPrompt.Store(nil)
+}
+
+// SetRunPrompt publishes the before_agent_start run of a prompt that interactive mode prepared itself, so the Session's
+// request hooks record the run's prompt sections in the transcript as they do for a prompt the Session prepared
+// (agent-session.ts:1724 builds the run's options for every mode). Nil ends the run. The Session refreshes the options
+// before each later turn.
+func (s *Session) SetRunPrompt(run *icodingagent.BeforeAgentStartRun) {
+	s.runPrompt.Store(run)
 }
 
 // admittedToolNames returns an explicit selectedTools edit, or the live active tools when handlers left the list unchanged (agent-session.ts:1714).
@@ -167,10 +207,11 @@ func (s *Session) runPreparedPrompt(ctx context.Context, p *PreparedPrompt, run 
 	} else {
 		err = errors.Join(err, s.flushPendingCustomMessages())
 	}
-	if p.systemPrompt != nil {
-		s.agent.ClearSystemPrompt()
-	}
-	s.runPrompt.Store(nil)
+	s.finishRunPrompt(p)
+	// agent_settled handlers run without the Session lock: Pi awaits them while the Session stays usable, so a handler that awaits ctx.compact()
+	// or another Session operation must not wait on a lock held for the very dispatch that awaits it.
+	s.mu.Unlock()
+	defer s.mu.Lock()
 	s.emitAgentSettled()
 	return messages, err
 }

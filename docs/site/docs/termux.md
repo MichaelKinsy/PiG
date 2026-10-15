@@ -1,6 +1,6 @@
 # Run PiG on Android with Termux
 
-PiG runs on Android through [Termux](https://termux.dev/), a terminal emulator and Linux environment. Text input, file tools, and shell commands are supported. PiG copies text to the Android clipboard with Termux:API. Clipboard image paste is not supported.
+PiG runs on Android through [Termux](https://termux.dev/), a terminal emulator and Linux environment. Text input, file tools, and shell commands are supported. PiG copies text to and pastes text from the Android clipboard with Termux:API. Clipboard image paste is not supported.
 
 Termux runs PiG's `android-arm64` release binary: a position independent executable linked to Android's C library. Do not use the `linux-arm64` binary in Termux; Termux's loader cannot start it (`has unexpected e_type: 2`). Android on other CPUs (32-bit Arm, x86) has no release binary. No hosted CI runner executes PiG on Android, so treat Termux support as experimental until a device run is recorded in the release evidence.
 
@@ -8,7 +8,7 @@ Termux runs PiG's `android-arm64` release binary: a position independent executa
 
 Install Termux from [GitHub, F-Droid or Google Play](https://github.com/termux/termux-app#installation). Android does not let an app run files from its own data directory. Termux works around that with `termux-exec`, which starts each program through `/system/bin/linker64`; PiG does the same for the programs it starts, because its Go runtime bypasses `termux-exec`.
 
-[Termux:API](https://github.com/termux/termux-api#installation) is optional. Install it only when you want PiG to copy Android clipboard text, or when shell commands need Android device APIs.
+[Termux:API](https://github.com/termux/termux-api#installation) is optional. Install it only when you want PiG to copy or paste Android clipboard text, or when shell commands need Android device APIs.
 
 ## Install PiG
 
@@ -50,7 +50,7 @@ Install Termux from [GitHub, F-Droid or Google Play](https://github.com/termux/t
    pig
    ```
 
-Continue with the main [Quickstart](quickstart.md#3-choose-a-model) to connect a model and run your first task.
+Continue with the main [Quickstart](quickstart.md#authenticate-a-provider) to connect a model and run your first task.
 
 Update a script installation with `pig update`. Update an npm installation with `npm update -g @pi-in-go/pig`.
 
@@ -76,7 +76,7 @@ Only grant this permission when PiG should be able to access those files. Comman
 
 ## Use clipboard commands
 
-PiG uses `termux-clipboard-set` to copy text. Shell commands can use `termux-clipboard-set` and `termux-clipboard-get` directly. Install the Termux:API app and its command-line package:
+PiG uses `termux-clipboard-set` to copy text and `termux-clipboard-get` to paste it. Shell commands can use `termux-clipboard-set` and `termux-clipboard-get` directly. Install the Termux:API app and its command-line package:
 
 ```bash
 pkg install termux-api
@@ -91,7 +91,7 @@ termux-clipboard-get
 
 The second command should print `PiG clipboard test`.
 
-The Termux clipboard API supports text only. PiG's clipboard-paste shortcut reads no clipboard on Android, as in Pi, whose paste command runs only where Node reports `linux`, and it attaches no clipboard images. Paste text with Termux's own paste gesture.
+The Termux clipboard API supports text only. PiG's clipboard-paste shortcut (`Ctrl+V`) reads text through `termux-clipboard-get` and attaches no clipboard images. A failed copy reports that the Termux:API app and `termux-api` package are required.
 
 ## Networking, temporary files, and programs PiG starts
 
@@ -115,6 +115,37 @@ PiG detects that it is running in Termux, but it cannot infer how you want it to
 
 Run `/reload` after changing the file during an active session.
 
+### Check that PiG read the file
+
+This part of the page was run on Linux, because it does not depend on Android: PiG reads `AGENTS.md` the same way everywhere. The model was a scripted test server. Save the block above as `~/.pig/agent/AGENTS.md`, start `pig`, and type `/reload`. PiG lists the file it loaded and confirms:
+
+```text
+[Context]
+  ~/.pig/agent/AGENTS.md
+
+ Reloaded keybindings, extensions, skills, prompts, themes, and context files
+```
+
+Then send any message. The request that the model server received began with the system prompt, and after the `<docs>` block it held:
+
+```text
+<project_context>
+Project-specific instructions and guidelines:
+
+<project_instructions path="/home/you/.pig/agent/AGENTS.md">
+# Termux environment
+
+- PiG runs in Termux on Android.
+- Shared Android storage is under `/storage/emulated/0`.
+...
+```
+
+The same text is the `project_context` entry of the system message that `pig --mode json` prints first (see [JSON event stream mode](/docs/latest/json#worked-example)). A file created or edited while a session runs was picked up by `/reload` with no restart. If `/reload` does not list the file, check that it is in PiG's agent directory (run `echo $HOME` and look in `.pig/agent` below it, unless `PIG_HOME` is set).
+
+### What was not run on Android
+
+Nothing else on this page was run on an Android device. The steps that depend on Termux (the `termux-clipboard-*` commands, `termux-setup-storage`, the `android-arm64` release, `pkg` installs, the linker behaviour described under [Networking, temporary files, and programs PiG starts](#networking-temporary-files-and-programs-pig-starts)) are written from the Termux and PiG source and release notes. Check them on your device. The `android-arm64` binary is linked against Android's C library, so a build on another system does not stand in for it.
+
 ## Build Piglets
 
 `pig piglet build` uses Termux's own toolchains. `pig setup go` cannot download Go for Android, so install Go with `pkg`:
@@ -133,7 +164,7 @@ pkg install rust
 
 - `--format script` writes a launcher script.
 - `--format binary` builds a native Android Piglet Binary. A release PiG fetches its own source on the first build, so that build needs network access and takes a few minutes. Later builds reuse the cache.
-- A Piglet Binary embeds Go and Rust extensions. A Piglet with no extensions, with only Python extensions, or with any Node extension builds only as a script.
+- A Piglet Binary embeds Go and Rust extensions, and carries TypeScript and JavaScript extensions, which run with the Node on `PATH`. A Piglet with only Python extensions builds only as a script. A Piglet with no extensions builds a Binary of PiG's own parts with the Piglet baked in.
 - The container builder does not run in Termux. Termux has no Podman or Docker, and the container builder builds only Linux targets, not the Android host.
 
 Keep about 2 GB free for the first Binary build. Go's module and build caches and PiG's build cache use about 1.3 GB.
@@ -150,7 +181,7 @@ go build -o "$PREFIX/bin/pig" ./cmd/pig
 pig --version
 ```
 
-Go 1.27.2 is recommended for this build. Go 1.27.1, the release Termux packages, also builds PiG: the `toolchain` line in `go.mod` stays at go1.27.1 so that `GOTOOLCHAIN=auto` does not request a `go1.27.2.android-arm64` toolchain that Go does not publish. The modules retain Go 1.26 as their language floor.
+Go 1.27.2 builds PiG; it is the release `go.mod` names on its `toolchain` line and the release every PiG build, test and image uses. The modules retain Go 1.26 as their language floor. If the Termux package is older than Go 1.27.2, `GOTOOLCHAIN=auto` asks for a `go1.27.2.android-arm64` toolchain that Go does not publish. Set `GOTOOLCHAIN=local` to build with the installed Go, which satisfies the 1.26 floor, or update the package.
 
 ## Troubleshooting
 
@@ -180,7 +211,7 @@ Then run the clipboard verification commands above outside PiG. If they fail the
 
 ### A Piglet build reports `link ... permission denied`
 
-PiG 0.4.1 and earlier write Piglet scripts, Piglet Binaries, and added Piglets with hard links, and Android does not allow hard links in Termux's data directory. The build fails at its last step with `commit ...: link ...: permission denied`. Update PiG to a release that includes the fix.
+PiG 0.4.1 and earlier write Piglet scripts, Piglet Binaries, and added Piglets with hard links, and Android does not allow hard links in Termux's data directory. The build fails at its last step with `commit ...: link ...: permission denied`. Update to PiG 0.5.0 or later, which renames the file into place where a hard link is refused.
 
 ### `pig update` reports `preserve current executable for rollback: link ... permission denied`
 
@@ -190,7 +221,7 @@ PiG 0.4.1 and earlier keep a rollback copy of the running `pig` with a hard link
 curl -fsSL https://pi-in-go.dev/install.sh | sh
 ```
 
-Later releases copy the running `pig` where the hard link is refused, and `pig update` works.
+PiG 0.5.0 and later copy the running `pig` where the hard link is refused, and `pig update` works.
 
 ### Shared storage reports permission denied
 

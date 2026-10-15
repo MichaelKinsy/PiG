@@ -1,0 +1,104 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionUIContext::property:confirm"
+  ],
+  "targets": [
+   "coding/extension/ui.go#UIContext.Confirm"
+  ],
+  "production": [
+   "call:coding/extension/host/inproc/ui_prompt.go#uiPromptContext.Confirm"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/ui_prompt_test.go#TestUIPrompt_EachDialogReportsStartAndEnd",
+   "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ExtensionUIContext.confirm is the Go method extension.UIContext.Confirm; signature reviewed against the upstream declaration (a Promise or rejection is the returned error; undefined is the empty value or nil); callers and tests attributed by go/types (methodrefs, -impl for the in-process implementers)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionUIContext::property:editor"
+  ],
+  "targets": [
+   "coding/extension/ui.go#UIContext.Editor"
+  ],
+  "production": [
+   "call:coding/extension/host/inproc/ui_prompt.go#uiPromptContext.Editor"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/ui_prompt_test.go#TestUIPrompt_EachDialogReportsStartAndEnd",
+   "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ExtensionUIContext.editor is the Go method extension.UIContext.Editor; signature reviewed against the upstream declaration (a Promise or rejection is the returned error; undefined is the empty value or nil); callers and tests attributed by go/types (methodrefs, -impl for the in-process implementers)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionUIContext::property:getEditorText"
+  ],
+  "targets": [
+   "coding/extension/ui.go#UIContext.GetEditorText"
+  ],
+  "production": [
+   "call:coding/extension/host/subprocess/ui_bridge.go#UIBridge.Snapshot"
+  ],
+  "evidence": [
+   "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
+   "test:internal/codingagent/ext_ui_editor_snapshot_test.go#TestExtensionEditorSnapshotConcurrentInput"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ExtensionUIContext.getEditorText is the Go method extension.UIContext.GetEditorText; signature reviewed against the upstream declaration (a Promise or rejection is the returned error; undefined is the empty value or nil); callers and tests attributed by go/types (methodrefs, -impl for the in-process implementers)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionUIContext::property:input"
+  ],
+  "targets": [
+   "coding/extension/ui.go#UIContext.Input"
+  ],
+  "production": [
+   "call:coding/extension/host/inproc/ui_prompt.go#uiPromptContext.Input"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/ui_prompt_test.go#TestUIPrompt_EachDialogReportsStartAndEnd",
+   "test:coding/extension/host/inproc/ui_prompt_test.go#TestUIPrompt_NestedPromptReportsOuterOnly"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ExtensionUIContext.input is the Go method extension.UIContext.Input; signature reviewed against the upstream declaration (a Promise or rejection is the returned error; undefined is the empty value or nil); callers and tests attributed by go/types (methodrefs, -impl for the in-process implementers)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionUIContext::property:notify"
+  ],
+  "targets": [
+   "coding/extension/ui.go#UIContext.Notify"
+  ],
+  "production": [
+   "call:coding/extension/host/subprocess/ui_bridge.go#UIBridge.handleNotify"
+  ],
+  "evidence": [
+   "test:internal/codingagent/rebind_ui_upstream_test.go#TestSessionStartNotifyOriginalReplacement",
+   "test:internal/codingagent/reload_ui_upstream_test.go#TestSessionStartNotifyOriginalReloadRender"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ExtensionUIContext.notify is the Go method extension.UIContext.Notify; signature reviewed against the upstream declaration (a Promise or rejection is the returned error; undefined is the empty value or nil); callers and tests attributed by go/types (methodrefs, -impl for the in-process implementers)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionUIContext::property:select"
+  ],
+  "targets": [
+   "coding/extension/ui.go#UIContext.Select"
+  ],
+  "production": [
+   "call:coding/cli/project_trust.go#resolveProjectTrusted"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/ui_prompt_test.go#TestUIPrompt_CancellationEndsAndHandlerErrorsAreReported",
+   "test:coding/extension/host/inproc/ui_prompt_test.go#TestUIPrompt_DialogDoesNotAwaitHandlers"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ExtensionUIContext.select is the Go method extension.UIContext.Select; signature reviewed against the upstream declaration (a Promise or rejection is the returned error; undefined is the empty value or nil); callers and tests attributed by go/types (methodrefs, -impl for the in-process implementers)."
+ }
+]

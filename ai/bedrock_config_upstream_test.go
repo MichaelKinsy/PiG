@@ -1,3 +1,5 @@
+//go:build !pig_strip_bedrock_converse_stream
+
 package ai
 
 import (
@@ -20,7 +22,7 @@ func TestBedrockUpstreamCredentials(t *testing.T) {
 				isolateBedrockConfig(t)
 				t.Setenv("AWS_ACCESS_KEY_ID", "AKIAEXAMPLE")
 				t.Setenv("AWS_SECRET_ACCESS_KEY", "secretexample")
-				cfg, err := loadBedrockConfig(t.Context(), "https://bedrock-runtime.us-east-1.amazonaws.com", "us.anthropic.claude-opus-4-8", tc.opts)
+				cfg, _, err := loadBedrockConfig(t.Context(), "https://bedrock-runtime.us-east-1.amazonaws.com", "us.anthropic.claude-opus-4-8", tc.opts)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -42,7 +44,7 @@ func TestBedrockUpstreamCredentials(t *testing.T) {
 			t.Setenv("AWS_ACCESS_KEY_ID", "AKIAEXAMPLE")
 			t.Setenv("AWS_SECRET_ACCESS_KEY", "secretexample")
 			t.Setenv("AWS_PROFILE", tc.profile)
-			cfg, err := loadBedrockConfig(t.Context(), "https://bedrock-runtime.us-east-1.amazonaws.com", "us.anthropic.claude-opus-4-8", StreamOptions{})
+			cfg, _, err := loadBedrockConfig(t.Context(), "https://bedrock-runtime.us-east-1.amazonaws.com", "us.anthropic.claude-opus-4-8", StreamOptions{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -88,7 +90,7 @@ func TestBedrockUpstreamEndpointResolution(t *testing.T) {
 			isolateBedrockConfig(t)
 			t.Setenv("AWS_REGION", tc.ambientRegion)
 			t.Setenv("AWS_PROFILE", tc.ambientProfile)
-			cfg, err := loadBedrockConfig(t.Context(), tc.base, tc.model, tc.opts)
+			cfg, _, err := loadBedrockConfig(t.Context(), tc.base, tc.model, tc.opts)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -105,7 +107,7 @@ func TestBedrockUpstreamEndpointResolution(t *testing.T) {
 	t.Run("preserves ambient AWS auth for custom model IDs through compat dispatch", func(t *testing.T) {
 		isolateBedrockConfig(t)
 		t.Setenv("AWS_PROFILE", "bedrock-profile")
-		cfg, err := loadBedrockConfig(t.Context(), us, "arn:aws:bedrock:us-east-1:123456789012:application-inference-profile/example", StreamOptions{})
+		cfg, _, err := loadBedrockConfig(t.Context(), us, "arn:aws:bedrock:us-east-1:123456789012:application-inference-profile/example", StreamOptions{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -120,7 +122,7 @@ func TestBedrockUpstreamEndpointResolution(t *testing.T) {
 	// .upstream/v0.87.1/packages/ai/test/bedrock-endpoint-resolution.test.ts:200
 	t.Run("uses the generic API key option as a Bedrock bearer token", func(t *testing.T) {
 		isolateBedrockConfig(t)
-		cfg, err := loadBedrockConfig(t.Context(), us, "us.anthropic.claude-opus-4-8", StreamOptions{APIKey: "bedrock-api-key"})
+		cfg, _, err := loadBedrockConfig(t.Context(), us, "us.anthropic.claude-opus-4-8", StreamOptions{APIKey: "bedrock-api-key"})
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -3,50 +3,130 @@ package hljs
 // Mode is a highlight.js mode or language object. JavaScript reads absent, undefined, null and false properties alike in every place the compiler and highlighter consult them, so each property keeps its value here and present records which own properties the object has: inherit and Object.assign copy exactly those.
 type Mode struct {
 	present modeKeys
-	frozen  bool
 
-	begin, end, match, illegal, lexemes, beforeMatch pattern
+	// language holds the properties only a language object sets; it is nil on every other mode, which reads them as absent.
+	language *languageProps
 
-	className   string
-	contains    []modeRef
-	variants    []*Mode
-	hasVariants bool
-	starts      *Mode
+	begin, end pattern
+
+	// rarer holds the properties most modes leave unset; it is nil on a mode that sets none of them, which reads them as absent.
+	rarer *rareProps
+
+	className string
+	contains  []modeRef
+	variants  []*Mode
+	starts    *Mode
 
 	endsParent, endsWithParent, excludeBegin, excludeEnd, returnBegin, returnEnd, skip, endSameAsBegin bool
 
-	relevance    float64
-	hasRelevance bool
+	// The remaining flags sit together so the struct carries no padding after each of them; a registry holds thousands of modes.
+	frozen, hasVariants, hasRelevance, caseInsensitive, disableAutodetect, isCompiled, hasCachedVariants bool
+
+	relevance float64
+
+	// compiled holds the properties the compiler and highlighter add; it is nil until one is set, and a mode without it reads them as absent.
+	compiled *compiledProps
+}
+
+// rareProps are the mode properties most grammar modes leave unset (of about 4,000 bundled modes, about 1,000 set one). They sit outside Mode so a registry does not carry their space on every mode.
+type rareProps struct {
+	match, illegal, lexemes, beforeMatch pattern
 
 	keywords      keywordsValue
 	beginKeywords string
 	subLanguage   subLanguage
 	onBegin       callback
 	onEnd         callback
+}
 
-	caseInsensitive    bool
+// rareKeys are the keys whose values live in rareProps.
+const rareKeys = keyMatch | keyIllegal | keyLexemes | keyBeforeMatch | keyKeywords | keyBeginKeywords | keySubLanguage | keyOnBegin | keyOnEnd
+
+// noRareProps is what a mode without rare properties reads.
+var noRareProps rareProps
+
+// rare returns the mode's rare properties for reading; a mode without them reads the zero values.
+func (m *Mode) rare() *rareProps {
+	if m.rarer == nil {
+		return &noRareProps
+	}
+	return m.rarer
+}
+
+// setRare returns the mode's rare properties for writing, adding them on first use.
+func (m *Mode) setRare() *rareProps {
+	if m.rarer == nil {
+		m.rarer = new(rareProps)
+	}
+	return m.rarer
+}
+
+// compiledProps are the properties the compiler and highlighter add to a mode. Only the modes of a highlighted language get them, so they sit outside Mode.
+type compiledProps struct {
+	cachedVariants   []*Mode
+	beforeBegin      callback
+	keywordPatternRe *jsRegExp
+	beginRe          *jsRegExp
+	endRe            *jsRegExp
+	illegalRe        *jsRegExp
+	terminatorEnd    string
+	matcher          *resumableMultiRegex
+	data             *responseData
+}
+
+// languageProps are the properties of a language object. A registry holds a few hundred languages among thousands of modes, so they sit outside Mode.
+type languageProps struct {
 	name               string
 	aliases            []string
-	disableAutodetect  bool
 	supersetOf         string
 	classNameAliases   map[string]string
 	compilerExtensions []compilerExtension
 
-	// Properties the compiler and highlighter add.
-	isCompiled        bool
-	cachedVariants    []*Mode
-	hasCachedVariants bool
-	beforeBegin       callback
-	keywordPatternRe  *jsRegExp
-	beginRe           *jsRegExp
-	endRe             *jsRegExp
-	illegalRe         *jsRegExp
-	terminatorEnd     string
-	matcher           *resumableMultiRegex
-	data              *responseData
+	// sources are the patterns compileLanguage compiled for the language, and reach the greatest reach of any of them.
+	sources   []string
+	reach     reach
+	reachDone bool
 
 	// rootFrame is the language object as the bottom of the mode stack; it is not a JavaScript property.
 	rootFrame *frame
+}
+
+// noCompiledProps is what a mode without compiled properties reads.
+var noCompiledProps compiledProps
+
+// comp returns the mode's compiled properties for reading; a mode without them reads the zero values.
+func (m *Mode) comp() *compiledProps {
+	if m.compiled == nil {
+		return &noCompiledProps
+	}
+	return m.compiled
+}
+
+// setComp returns the mode's compiled properties for writing, adding them on first use.
+func (m *Mode) setComp() *compiledProps {
+	if m.compiled == nil {
+		m.compiled = new(compiledProps)
+	}
+	return m.compiled
+}
+
+// noLanguageProps is what a mode without language properties reads.
+var noLanguageProps languageProps
+
+// lang returns the mode's language properties for reading; a mode without them reads the zero values.
+func (m *Mode) lang() *languageProps {
+	if m.language == nil {
+		return &noLanguageProps
+	}
+	return m.language
+}
+
+// setLang returns the mode's language properties for writing, adding them on first use.
+func (m *Mode) setLang() *languageProps {
+	if m.language == nil {
+		m.language = new(languageProps)
+	}
+	return m.language
 }
 
 type modeKeys uint64
@@ -111,11 +191,19 @@ const (
 	patternList
 )
 
-// pattern is a mode property that holds a RegExp, a pattern string or (for illegal) an array of them.
+// pattern is a mode property that holds a RegExp, a pattern string or (for illegal) an array of them. Only an illegal array has a list, so the list sits behind a pointer to keep the six patterns of every mode small.
 type pattern struct {
 	kind patternKind
 	src  string
-	list []pattern
+	list *[]pattern
+}
+
+// items is the array of an illegal array pattern, and nil for any other pattern.
+func (p pattern) items() []pattern {
+	if p.list == nil {
+		return nil
+	}
+	return *p.list
 }
 
 func stringPattern(source string) pattern { return pattern{kind: patternString, src: source} }
@@ -232,19 +320,22 @@ func assign(target, source *Mode) {
 
 func copyKey(target, source *Mode, key modeKeys) {
 	target.present |= key
+	if key&rareKeys != 0 && source.rarer == nil && target.rarer == nil {
+		return // both read the zero value
+	}
 	switch key {
 	case keyBegin:
 		target.begin = source.begin
 	case keyEnd:
 		target.end = source.end
 	case keyMatch:
-		target.match = source.match
+		target.setRare().match = source.rare().match
 	case keyIllegal:
-		target.illegal = source.illegal
+		target.setRare().illegal = source.rare().illegal
 	case keyLexemes:
-		target.lexemes = source.lexemes
+		target.setRare().lexemes = source.rare().lexemes
 	case keyBeforeMatch:
-		target.beforeMatch = source.beforeMatch
+		target.setRare().beforeMatch = source.rare().beforeMatch
 	case keyClassName:
 		target.className = source.className
 	case keyContains:
@@ -272,49 +363,49 @@ func copyKey(target, source *Mode, key modeKeys) {
 	case keyRelevance:
 		target.relevance, target.hasRelevance = source.relevance, source.hasRelevance
 	case keyKeywords:
-		target.keywords = source.keywords
+		target.setRare().keywords = source.rare().keywords
 	case keyBeginKeywords:
-		target.beginKeywords = source.beginKeywords
+		target.setRare().beginKeywords = source.rare().beginKeywords
 	case keySubLanguage:
-		target.subLanguage = source.subLanguage
+		target.setRare().subLanguage = source.rare().subLanguage
 	case keyOnBegin:
-		target.onBegin = source.onBegin
+		target.setRare().onBegin = source.rare().onBegin
 	case keyOnEnd:
-		target.onEnd = source.onEnd
+		target.setRare().onEnd = source.rare().onEnd
 	case keyCaseInsensitive:
 		target.caseInsensitive = source.caseInsensitive
 	case keyName:
-		target.name = source.name
+		target.setLang().name = source.lang().name
 	case keyAliases:
-		target.aliases = source.aliases
+		target.setLang().aliases = source.lang().aliases
 	case keyDisableAutodetect:
 		target.disableAutodetect = source.disableAutodetect
 	case keySupersetOf:
-		target.supersetOf = source.supersetOf
+		target.setLang().supersetOf = source.lang().supersetOf
 	case keyClassNameAliases:
-		target.classNameAliases = source.classNameAliases
+		target.setLang().classNameAliases = source.lang().classNameAliases
 	case keyCompilerExtensions:
-		target.compilerExtensions = source.compilerExtensions
+		target.setLang().compilerExtensions = source.lang().compilerExtensions
 	case keyIsCompiled:
 		target.isCompiled = source.isCompiled
 	case keyCachedVariants:
-		target.cachedVariants, target.hasCachedVariants = source.cachedVariants, source.hasCachedVariants
+		target.setComp().cachedVariants, target.hasCachedVariants = source.comp().cachedVariants, source.hasCachedVariants
 	case keyBeforeBegin:
-		target.beforeBegin = source.beforeBegin
+		target.setComp().beforeBegin = source.comp().beforeBegin
 	case keyKeywordPatternRe:
-		target.keywordPatternRe = source.keywordPatternRe
+		target.setComp().keywordPatternRe = source.comp().keywordPatternRe
 	case keyBeginRe:
-		target.beginRe = source.beginRe
+		target.setComp().beginRe = source.comp().beginRe
 	case keyEndRe:
-		target.endRe = source.endRe
+		target.setComp().endRe = source.comp().endRe
 	case keyIllegalRe:
-		target.illegalRe = source.illegalRe
+		target.setComp().illegalRe = source.comp().illegalRe
 	case keyTerminatorEnd:
-		target.terminatorEnd = source.terminatorEnd
+		target.setComp().terminatorEnd = source.comp().terminatorEnd
 	case keyMatcher:
-		target.matcher = source.matcher
+		target.setComp().matcher = source.comp().matcher
 	case keyData:
-		target.data = source.data
+		target.setComp().data = source.comp().data
 	}
 }
 

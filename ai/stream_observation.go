@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-// StreamObservation owns the synchronous part of a stream-consumer continuation. Await releases execution while an upstream asynchronous operation waits, then resumes through the same reaction queue.
+// StreamObservation owns the synchronous part of a stream-consumer continuation. Await releases execution while an upstream asynchronous operation waits, then resumes through the same reaction queue. Its awaits are called by the callback it scopes, on the callback's goroutine.
 type StreamObservation struct {
 	turn *continuationTurn
 	// owner is the goroutine that runs the callback this observation scopes.
@@ -14,11 +14,11 @@ type StreamObservation struct {
 
 	mu          sync.Mutex
 	suspensions int
-	released    chan struct{}
-	acquired    chan struct{}
-	acquiring   bool
-	ended       bool
-	completion  completionClass
+	// detached is set from the release of the first suspension until the reaction that gives the turn execution back runs.
+	detached   bool
+	acquiring  bool
+	ended      bool
+	completion completionClass
 }
 
 // completionClass is the callback queue that settles the promise an asynchronous wait resolves.
@@ -101,8 +101,11 @@ func (executor *continuationExecutor) activeProducer() *StreamObservation {
 
 // ownedByCaller reports whether the calling goroutine runs the callback this observation scopes.
 func (observation *StreamObservation) ownedByCaller() bool {
-	return observation.owner != 0 && observation.owner == goroutineID()
+	return observation.owner != 0 && observation.owner == currentGoroutineID()
 }
+
+// Owner is the goroutine that runs the callback this observation scopes.
+func (observation *StreamObservation) Owner() StreamOwner { return StreamOwner{observation.owner} }
 
 // Yield awaits an already resolved operation. It reserves the resume reaction before releasing execution, so synchronous completion never depends on goroutine admission.
 func (observation *StreamObservation) Yield() {
@@ -130,9 +133,18 @@ func (observation *StreamObservation) Await(wait func() error) error {
 }
 
 // AwaitContinuation is Await for a wait that ends when continuation's callback returns. The resume reaction is queued when the callback returns, before its turn releases execution, so the awaiting goroutine keeps its place ahead of any I/O completion that became ready while the callback ran, however late that goroutine is scheduled. An unclaimed or canceled continuation resumes when wait returns, as in Await.
+//
+// wait must return once the callback has returned: the returning callback also tells the executor that this goroutine is about to serve it, so a turn granted in between waits for this goroutine instead of waking another.
 func (observation *StreamObservation) AwaitContinuation(continuation *StreamContinuation, wait func() error) error {
-	resume := observation.suspendWith(func(resume func(bool)) {
-		if continuation != nil {
+	resume := observation.suspendWith(func(resume func(bool), suspended bool) {
+		switch {
+		case continuation == nil:
+		case suspended:
+			continuation.onReturn = func() {
+				resume(false)
+				observation.turn.arrive()
+			}
+		default:
 			continuation.onReturn = func() { resume(false) }
 		}
 	})
@@ -162,23 +174,19 @@ func (observation *StreamObservation) AwaitTick(wait func() error) error {
 			return err
 		}
 		if observation.acquiring {
-			acquired := observation.acquired
+			// An earlier suspension's reacquire is queued: take execution back through it first.
 			observation.mu.Unlock()
-			<-acquired
+			observation.turn.suspend()
 			continue
 		}
-		observation.released = make(chan struct{})
-		observation.acquired = make(chan struct{})
-		released, acquired := observation.released, observation.acquired
+		observation.detached = true
 		observation.completion = completionTick
 		drain := observation.acquireLocked()
 		observation.mu.Unlock()
 		if drain != nil {
 			drain()
 		}
-		observation.turn.release()
-		close(released)
-		<-acquired
+		observation.turn.suspend()
 		return err
 	}
 }
@@ -187,113 +195,92 @@ func (observation *StreamObservation) suspend() func(bool) {
 	return observation.suspendWith(nil)
 }
 
-// suspendWith is suspend that hands the resume function to before ahead of releasing execution, so work the release admits can call it.
-func (observation *StreamObservation) suspendWith(before func(resume func(bool))) func(bool) {
+// suspendWith is suspend that hands the resume function to before ahead of releasing execution, so work the release admits can call it; suspended is false when the observation was already suspended or ended and resume does nothing. resume(true) returns once the turn holds execution again; resume(false) only queues the reacquire.
+func (observation *StreamObservation) suspendWith(before func(resume func(bool), suspended bool)) func(bool) {
 	observation.mu.Lock()
 	if observation.ended || observation.suspensions > 0 {
 		observation.mu.Unlock()
 		noop := func(bool) {}
 		if before != nil {
-			before(noop)
+			before(noop, false)
 		}
 		return noop
 	}
 	if observation.acquiring {
-		acquired := observation.acquired
 		observation.mu.Unlock()
-		<-acquired
+		observation.turn.suspend()
 		return observation.suspendWith(before)
 	}
-	first := observation.suspensions == 0
-	if first {
-		observation.released = make(chan struct{})
-		observation.acquired = make(chan struct{})
-	}
 	observation.suspensions++
-	released := observation.released
+	observation.detached = true
 	observation.mu.Unlock()
 	var once sync.Once
-	var acquired chan struct{}
 	resume := func(wait bool) {
 		once.Do(func() {
 			observation.mu.Lock()
 			observation.suspensions--
-			suspending := observation.suspensions
 			var drain func()
-			if suspending == 0 && !observation.acquiring && !observation.ended {
+			if observation.suspensions == 0 && !observation.acquiring && !observation.ended {
 				drain = observation.acquireLocked()
 			}
-			acquired = observation.acquired
 			observation.mu.Unlock()
 			if drain != nil {
 				drain()
 			}
 		})
 		if wait {
-			<-acquired
+			observation.turn.suspend()
 		}
 	}
 	if before != nil {
-		before(resume)
+		before(resume, true)
 	}
-	if first {
-		observation.turn.release()
-		close(released)
-	} else {
-		<-released
-	}
+	observation.turn.detach()
 	return resume
 }
 
+// acquireLocked queues the reaction that gives the observation's turn execution back, in the queue its completion class names.
 func (observation *StreamObservation) acquireLocked() func() {
 	observation.acquiring = true
-	turn := observation.turn
-	executor := turn.executor
-	class := observation.completion
-	observation.completion = completionReady
-	post := executor.postDeferred
-	acquire := func() {
-		turn.executor.mu.Lock()
-		if turn.executor.active != nil {
-			turn.executor.mu.Unlock()
-			panic("stream observation resumed during another turn")
-		}
-		turn.executor.active = turn
-		turn.executor.observation = observation
-		turn.executor.mu.Unlock()
-		observation.mu.Lock()
-		observation.acquiring = false
-		close(observation.acquired)
-		observation.released = nil
-		observation.mu.Unlock()
-	}
-	switch class {
+	executor := observation.turn.executor
+	queue := &executor.ready
+	switch observation.completion {
 	case completionTick:
-		return executor.postTickDeferred(acquire)
+		queue = &executor.ticks
 	case completionExternal:
-		return executor.postExternalDeferred(acquire)
+		queue = &executor.external
 	}
-	return post(acquire)
+	observation.completion = completionReady
+	return executor.queueDeferred(queue, continuationJob{acquire: observation})
+}
+
+// acquire is the reaction acquireLocked queued: the observation becomes the executor's again and its turn is granted execution.
+func (observation *StreamObservation) acquire() {
+	executor := observation.turn.executor
+	executor.mu.Lock()
+	executor.observation = observation
+	executor.mu.Unlock()
+	observation.mu.Lock()
+	observation.acquiring = false
+	observation.detached = false
+	observation.mu.Unlock()
+	observation.turn.grant()
 }
 
 func (observation *StreamObservation) end() {
 	observation.mu.Lock()
 	observation.ended = true
-	if observation.released != nil {
-		released := observation.released
-		observation.mu.Unlock()
-		<-released
-		observation.mu.Lock()
+	if observation.detached {
+		// A suspension is still out: take execution back before the callback's turn returns.
 		var drain func()
-		if !observation.acquiring && observation.released != nil {
+		if !observation.acquiring {
 			drain = observation.acquireLocked()
 		}
-		acquired := observation.acquired
 		observation.mu.Unlock()
 		if drain != nil {
 			drain()
 		}
-		<-acquired
+		observation.turn.suspend()
 	} else {
 		observation.mu.Unlock()
 	}
@@ -322,13 +309,12 @@ func (stream *AssistantMessageEventStream) ForwardStream(ctx context.Context, so
 	var failure error
 	forward := func(turn *continuationTurn) {
 		observation := context.WithValue(context.WithoutCancel(ctx), continuationTurnKey{}, turn)
-		for event := range source.events(observation, false) {
-			if err := stream.Push(event); err != nil {
-				failure = err
-				return
-			}
+		result, err := forwardEvents(turn, observation, source, stream.Push)
+		if err != nil {
+			failure = err
+			return
 		}
-		stream.End(awaitContinuation(turn, source.resultContinuation(executor)))
+		stream.End(result)
 	}
 	if owned := ownedContinuationTurn(ctx, executor); owned != nil {
 		forward(owned)
@@ -343,6 +329,12 @@ func (stream *AssistantMessageEventStream) ObserveEvents(ctx context.Context) it
 	return stream.observeEvents(ctx, true)
 }
 
+// ObservePublishedEvents is ObserveEvents without refreshing each event's partial at delivery. A caller hands an event to a reader only through RefreshEvent, called at the tick the event arrives, before anything awaits; a caller that reads nothing of an event skips the copy.
+func (stream *AssistantMessageEventStream) ObservePublishedEvents(ctx context.Context) iter.Seq2[*StreamObservation, AssistantMessageEvent] {
+	return stream.observeEvents(ctx, false)
+}
+
+//perf:hot
 func (stream *AssistantMessageEventStream) observeEvents(ctx context.Context, materialize bool) iter.Seq2[*StreamObservation, AssistantMessageEvent] {
 	if ctx == nil {
 		panic("assistant message event stream: nil iterator context")
@@ -357,10 +349,11 @@ func (stream *AssistantMessageEventStream) observeEvents(ctx context.Context, ma
 		stream.mu.Unlock()
 		consume := func(turn *continuationTurn) {
 			executor := turn.executor
-			iterator := continuationEventIterator{stream: stream, executor: executor}
-			owner := goroutineID()
+			iterator := newContinuationEventIterator(ctx, stream, executor)
+			defer iterator.close()
+			owner := currentGoroutineID()
 			for {
-				delivery := awaitContinuation(turn, iterator.next(ctx))
+				delivery := awaitContinuation(turn, iterator.next())
 				if delivery.done {
 					return
 				}

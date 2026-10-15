@@ -17,7 +17,7 @@ func TestSessionPromptDistinguishesManualAndAutomaticCompaction(t *testing.T) {
 			t.Fatal("automatic compaction did not start")
 		}
 		defer h.session.finishCompaction()
-		if _, err := h.session.Prompt(t.Context(), "queued", &PromptOptions{StreamingBehavior: extension.DeliverAsSteer}); err != nil {
+		if err := h.session.Prompt(t.Context(), "queued", &PromptOptions{StreamingBehavior: extension.DeliverAsSteer}); err != nil {
 			t.Fatal(err)
 		}
 		if pending := h.session.PendingMessageCount(); pending != 1 {
@@ -30,7 +30,7 @@ func TestSessionPromptDistinguishesManualAndAutomaticCompaction(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer h.session.finishCompaction()
-		_, err := h.session.Prompt(t.Context(), "queued", &PromptOptions{StreamingBehavior: extension.DeliverAsSteer})
+		err := h.session.Prompt(t.Context(), "queued", &PromptOptions{StreamingBehavior: extension.DeliverAsSteer})
 		if !errors.Is(err, errPromptDuringCompaction) {
 			t.Fatalf("error=%v", err)
 		}

@@ -23,12 +23,12 @@ import (
 // stays clean. This is the inverse of TestConcurrent_SIGWINCHVsTyping.
 // TestConcurrent_StatusLineInvalidate_NoRace covers the git-branch watcher
 // pattern: watchGitBranch calls sl.Invalidate() (and updates gitBranch under
-// sl.mu) from its own goroutine while the main loop renders the StatusLine and
-// mutates it via Set*. The StatusLine fields are sl.mu-guarded and the dirty
+// sl.mu) from its own goroutine while the main loop renders the FooterComponent and
+// mutates it via Set*. The FooterComponent fields are sl.mu-guarded and the dirty
 // flag is atomic, so this must be -race clean. Before the atomic change the
 // off-loop Invalidate raced the main-loop Invalidate on the dirty bool.
 func TestConcurrent_StatusLineInvalidate_NoRace(t *testing.T) {
-	sl := NewStatusLine(nil, "agent", nil)
+	sl := NewFooterComponent(nil, "agent", nil)
 
 	const iters = 4000
 	var wg sync.WaitGroup
@@ -55,7 +55,7 @@ func TestConcurrent_StatusLineInvalidate_NoRace(t *testing.T) {
 
 func TestConcurrent_SIGWINCHViaPostUITask_NoRace(t *testing.T) {
 	model := &ai.Model{ID: "m", DisplayName: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 8000}}
-	m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir(), Model: model})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir(), Model: model})
 	m.editor = tui.NewEditor()
 	m.chatContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
@@ -103,7 +103,7 @@ func TestConcurrent_SIGWINCHVsTyping(t *testing.T) {
 		t.Skip("reproduction for the off-main render data race (SIGWINCH / background Render vs main-loop editing); set PIG_PROBE_RENDER_RACE=1 with -race to reproduce")
 	}
 	model := &ai.Model{ID: "m", DisplayName: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 8000}}
-	m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir(), Model: model})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir(), Model: model})
 	m.editor = tui.NewEditor()
 	m.chatContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)

@@ -132,7 +132,7 @@ func TestVisibleStackEntriesFilters(t *testing.T) {
 func TestVStackRenderTruncatesAndPadsWithGap(t *testing.T) {
 	a := &stubComponent{lines: []string{"a"}}
 	b := &stubComponent{lines: []string{"b", "c"}}
-	v := NewVStack([]StackChild{{Component: a}, {Component: b}}, StackOptions{Gap: new(1)})
+	v := NewVStack([]StackEntry{{Component: a}, {Component: b}}, StackOptions{Gap: new(1)})
 	got := v.Render(20)
 	want := []string{"a", "", "b", "c"}
 	if !reflect.DeepEqual(got, want) {
@@ -145,7 +145,7 @@ func TestVStackRenderPadsToAllocatedHeight(t *testing.T) {
 	// but with no available size the allocator returns the intrinsic size, so
 	// no padding. A larger basis, however, pads with blank lines.
 	a := &stubComponent{lines: []string{"x"}}
-	v := NewVStack([]StackChild{{Component: a, StackEntryOptions: StackEntryOptions{Basis: new(3)}}}, StackOptions{})
+	v := NewVStack([]StackEntry{{Component: a, StackEntryOptions: StackEntryOptions{Basis: new(3)}}}, StackOptions{})
 	got := v.Render(20)
 	want := []string{"x", "", ""}
 	if !reflect.DeepEqual(got, want) {
@@ -156,7 +156,7 @@ func TestVStackRenderPadsToAllocatedHeight(t *testing.T) {
 func TestHStackRenderCompositesSideBySide(t *testing.T) {
 	a := &stubComponent{lines: []string{"ab"}}
 	b := &stubComponent{lines: []string{"cd"}}
-	h := NewHStack([]StackChild{{Component: a}, {Component: b}}, StackOptions{})
+	h := NewHStack([]StackEntry{{Component: a}, {Component: b}}, StackOptions{})
 	got := h.Render(4)
 	if len(got) != 1 {
 		t.Fatalf("HStack.Render lines = %d, want 1", len(got))
@@ -175,7 +175,7 @@ func TestHStackRenderAlignEndOffsetsShorterChild(t *testing.T) {
 	tall := &stubComponent{lines: []string{"1", "2", "3"}}
 	short := &stubComponent{lines: []string{"x"}}
 	end := "end"
-	h := NewHStack([]StackChild{{Component: tall}, {Component: short}}, StackOptions{Align: end})
+	h := NewHStack([]StackEntry{{Component: tall}, {Component: short}}, StackOptions{Align: end})
 	got := h.Render(2)
 	if len(got) != 3 {
 		t.Fatalf("HStack height = %d, want 3", len(got))
@@ -193,7 +193,7 @@ func TestHStackRenderAlignEndOffsetsShorterChild(t *testing.T) {
 
 func TestStackLayoutNodeReflectsEntries(t *testing.T) {
 	a := &stubComponent{lines: []string{"a"}}
-	v := NewVStack([]StackChild{{Component: a, StackEntryOptions: StackEntryOptions{Grow: new(2)}}}, StackOptions{Gap: new(3), Align: "center"})
+	v := NewVStack([]StackEntry{{Component: a, StackEntryOptions: StackEntryOptions{Grow: new(2)}}}, StackOptions{Gap: new(3), Align: "center"})
 	node, ok := v.LayoutNode().(StackLayoutNode)
 	if !ok {
 		t.Fatalf("LayoutNode is %T, want StackLayoutNode", v.LayoutNode())

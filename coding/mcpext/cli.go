@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
@@ -21,6 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
+	"github.com/MichaelKinsy/PiG/mcp/oauth"
 )
 
 // Ports packages/coding-agent/src/extensions/mcp/cli.ts.
@@ -129,7 +129,7 @@ Options for add:
 
 Other options:
   --json                  Print the list as JSON
-  --timeout <seconds>     How long login waits for the browser (default: 300)`
+  --timeout <seconds>     Time limit for the whole sign-in (default: 300)`
 	return fmt.Sprintf(text, c.bold("Usage:"), c.app, c.dir)
 }
 
@@ -146,10 +146,10 @@ type serverReport struct {
 	state     string
 	tools     []string
 	// toolExposure lists the tools whose exposure differs from the server's, in tool order.
-	toolExposure      [][2]string
-	resources         *int
-	resourceTemplates *int
-	err               string
+	toolExposure [][2]string
+	// resources is whether the server offers resources; they are not listed.
+	resources bool
+	err       string
 }
 
 func (r serverReport) toolExposureOf(tool string) (string, bool) {
@@ -621,10 +621,7 @@ func (c *mcpCLI) report(ctx context.Context, entry McpServerEntry, credentials *
 			report.toolExposure = append(report.toolExposure, [2]string{tool.Name, exposure})
 		}
 	}
-	if connection.HasResources() {
-		resources, templates := len(connection.Resources()), len(connection.ResourceTemplates())
-		report.resources, report.resourceTemplates = &resources, &templates
-	}
+	report.resources = connection.HasResources()
 	if report.state != string(StateConnected) {
 		report.err = connection.Error()
 	}
@@ -652,9 +649,8 @@ func (r serverReport) jsonObject() *orderedjson.Object {
 		}
 		object.Set("toolExposure", mustMarshal(overrides))
 	}
-	if r.resources != nil {
-		_ = object.SetValue("resources", *r.resources)
-		_ = object.SetValue("resourceTemplates", *r.resourceTemplates)
+	if r.resources {
+		_ = object.SetValue("resources", true)
 	}
 	if r.err != "" {
 		_ = object.SetValue("error", r.err)
@@ -739,10 +735,11 @@ func (c *mcpCLI) list(ctx context.Context, loaded LoadedMcpConfig, asJSON bool, 
 			}
 			c.log("  tools: " + strings.Join(tools, ", "))
 		}
-		if report.resources != nil {
-			c.log(fmt.Sprintf("  resources: %d, URI templates: %d", *report.resources, *report.resourceTemplates))
+		if report.resources {
+			c.log("  offers resources")
 		}
 		if report.err != "" {
+			//portlint:allow pathseparators splits an error message, not a file, as Pi's report.error.split("\n") does (extensions/mcp/cli.ts:509)
 			c.log("  " + strings.Join(strings.Split(report.err, "\n"), "\n  "))
 		}
 	}
@@ -792,17 +789,21 @@ func (c *mcpCLI) login(ctx context.Context, entry McpServerEntry, connection *Co
 	if timeoutMs > maxTimerDelay {
 		delay = time.Millisecond
 	}
-	err = SignInMcpServer(ctx, SignInOptions{
+	// --timeout limits the whole sign-in, including requests to the authorization server (cli.ts, #10565).
+	signInCtx, cancelSignIn := context.WithTimeout(ctx, delay)
+	defer cancelSignIn()
+	err = SignInMcpServer(signInCtx, SignInOptions{
 		ServerURL: serverURL,
 		Store:     store,
 		Settings:  settings,
 		Challenge: connection.Challenge(),
-		Prompt:    &redirectPrompt{cli: c, name: name, timeout: delay},
+		Prompt:    &redirectPrompt{cli: c, name: name},
 		AppName:   "pig",
 	})
+	cancelSignIn()
 	if err != nil {
 		if _, ok := errors.AsType[*McpSignInCancelledError](err); ok {
-			c.error(fmt.Sprintf(`Sign-in to MCP server "%s" was cancelled or not completed within %d seconds.`, name, int64(math.Floor(timeoutMs/1000+0.5))))
+			c.error(fmt.Sprintf(`Sign-in to MCP server "%s" was cancelled or not completed within %d seconds.`, name, int64(jsnumber.Round(timeoutMs/1000))))
 		} else {
 			c.error(fmt.Sprintf(`Sign-in to MCP server "%s" failed: %s`, name, err))
 		}
@@ -819,22 +820,19 @@ func (c *mcpCLI) login(ctx context.Context, entry McpServerEntry, connection *Co
 
 // redirectPrompt shows the authorization URL and, in a terminal, accepts the pasted redirect URL; otherwise only the browser callback can finish the sign-in.
 type redirectPrompt struct {
-	cli     *mcpCLI
-	name    string
-	timeout time.Duration
+	cli  *mcpCLI
+	name string
 }
 
-func (p *redirectPrompt) ShowAuthorizationURL(authorizationURL *url.URL) {
-	p.cli.log(fmt.Sprintf("Sign in to MCP server \"%s\" in your browser:\n%s", p.name, authorizationURL.String()))
+func (p *redirectPrompt) ShowAuthorizationURL(authorizationURL oauth.URL) {
+	p.cli.log(fmt.Sprintf("Sign in to MCP server \"%s\" in your browser:\n%s", p.name, authorizationURL.Href()))
 	if p.cli.options.OpenURL != nil {
-		p.cli.options.OpenURL(authorizationURL.String())
+		p.cli.options.OpenURL(authorizationURL.Href())
 	}
 }
 
-// PromptForRedirectURL returns an empty string (cancelling the sign-in) after the timeout, or when the callback arrived and ctx ended.
+// PromptForRedirectURL returns an empty string when ctx ends: the callback arrived, or the sign-in timed out.
 func (p *redirectPrompt) PromptForRedirectURL(ctx context.Context) (string, error) {
-	ctx, cancel := context.WithTimeout(ctx, p.timeout)
-	defer cancel()
 	if !p.cli.options.Interactive {
 		<-ctx.Done()
 		return "", nil

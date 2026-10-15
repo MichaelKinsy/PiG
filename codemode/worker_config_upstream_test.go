@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/codemode"
+	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
 
 // Equivalence port of packages/coding-agent/test/codemode-worker-config.test.ts (Pi 1.0.0, #10204).
@@ -167,10 +168,10 @@ func TestCodemodeEmbedsItsOnlyModuleSource(t *testing.T) {
 		if fileAccess.Match(data) {
 			t.Errorf("%s reads the file system: %s", file, fileAccess.Find(data))
 		}
-		embedded = embedded || strings.Contains(string(data), "//go:embed assets/quickjs.wasm\nvar quickJSWasm []byte")
+		embedded = embedded || strings.Contains(string(data), "//go:embed assets/quickjs.wasm.gz\nvar quickJSWasmGzip []byte")
 	}
 	if !embedded {
-		t.Error("codemode does not embed assets/quickjs.wasm")
+		t.Error("codemode does not embed assets/quickjs.wasm.gz")
 	}
 	tool, err := os.ReadFile(filepath.Join("..", "coding", "extension", "builtin", "codemode", "execute.go"))
 	if err != nil {
@@ -251,15 +252,8 @@ type upstreamCase struct {
 // upstreamCases reads the compiler-derived case inventory of one pinned upstream test file.
 func upstreamCases(t *testing.T, path string) []upstreamCase {
 	t.Helper()
-	versionSource, err := os.ReadFile(filepath.Join("..", "internal", "coding", "pigversion", "pigversion.go"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	match := regexp.MustCompile(`const UpstreamVersion = "([^"]+)"`).FindSubmatch(versionSource)
-	if match == nil {
-		t.Fatal("pigversion.go has no UpstreamVersion")
-	}
-	raw, err := os.ReadFile(filepath.Join("..", "test", "parity", "interfaces", "upstream-tests-v"+string(match[1])+".json"))
+	// The constant, not the text of pigversion.go, so a PI_UPSTREAM_REF run (a Go overlay of that file) reads its own pin's inventory.
+	raw, err := os.ReadFile(filepath.Join("..", "test", "parity", "interfaces", "upstream-tests-v"+pigversion.UpstreamVersion+".json"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,0 +1,240 @@
+[
+ {
+  "upstream": "packages/mcp/src/client.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientPingSendsAPingRequestAndSurfacesAServerError"
+  ],
+  "upstream_reference": "packages/mcp/src/client.ts",
+  "mutation": "mcp/client.go: replace `_, err := c.Request(ctx, \"ping\", nil, options)` with `_, err := c.Request(ctx, \"pong\", nil, options)`; TestClientPingSendsAPingRequestAndSurfacesAServerError fails."
+ },
+ {
+  "upstream": "packages/mcp/src/client.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientSetRequestHandlerDisposeKeepsAHandlerThatReplacedIt"
+  ],
+  "upstream_reference": "packages/mcp/src/client.ts",
+  "mutation": "mcp/client.go: replace `if current, ok := c.requestHandlers[method]; ok && current.id == id {` with `if current, ok := c.requestHandlers[method]; ok && current.id != id {`; TestClientSetRequestHandlerDisposeKeepsAHandlerThatReplacedIt fails."
+ },
+ {
+  "upstream": "packages/mcp/src/client.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientSetRequestHandlerAnswersServerRequestsUntilDisposed"
+  ],
+  "upstream_reference": "packages/mcp/src/client.ts",
+  "mutation": "mcp/client.go: replace `c.requestHandlers[method] = listenerEntry[RequestHandler]{id, handler}` with `_ = handler`; TestClientSetRequestHandlerAnswersServerRequestsUntilDisposed fails."
+ },
+ {
+  "upstream": "packages/mcp/src/client.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientListsAndReadsResources"
+  ],
+  "upstream_reference": "packages/mcp/src/client.ts",
+  "mutation": "mcp/client.go: replace `c.listAll(ctx, \"resources/list\", \"resources\", isResource, options)` with `c.listAll(ctx, \"resources/lyst\", \"resources\", isResource, options)`; TestClientListsAndReadsResources fails."
+ },
+ {
+  "upstream": "packages/mcp/src/client.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientListsAndReadsResources"
+  ],
+  "upstream_reference": "packages/mcp/src/client.ts",
+  "mutation": "mcp/client.go: replace `c.listPage(ctx, \"resources/list\", \"resources\", isResource, cursor, options)` with `c.listPage(ctx, \"resources/lyst\", \"resources\", isResource, cursor, options)`; TestClientListsAndReadsResources fails."
+ },
+ {
+  "upstream": "packages/mcp/src/client.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientListsAndReadsResources"
+  ],
+  "upstream_reference": "packages/mcp/src/client.ts",
+  "mutation": "mcp/client.go: replace `c.listAll(ctx, \"resources/templates/list\", \"resourceTemplates\", isResourceTemplate, options)` with `c.listAll(ctx, \"resources/templates/lyst\", \"resourceTemplates\", isResourceTemplate, options)`; TestClientListsAndReadsResources fails."
+ },
+ {
+  "upstream": "packages/mcp/src/client.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientListResourceTemplatesPageSendsTheCursorAndReturnsOnePage"
+  ],
+  "upstream_reference": "packages/mcp/src/client.ts",
+  "mutation": "mcp/client.go: replace `c.listPage(ctx, \"resources/templates/list\", \"resourceTemplates\", isResourceTemplate, cursor, options)` with `c.listPage(ctx, \"resources/templates/lyst\", \"resourceTemplates\", isResourceTemplate, cursor, options)`; TestClientListResourceTemplatesPageSendsTheCursorAndReturnsOnePage fails."
+ },
+ {
+  "upstream": "packages/mcp/src/client.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientListsAndReadsResources"
+  ],
+  "upstream_reference": "packages/mcp/src/client.ts",
+  "mutation": "mcp/client.go: replace `c.Request(ctx, \"resources/read\", map[string]any{\"uri\": uri}, options)` with `c.Request(ctx, \"resources/reed\", map[string]any{\"uri\": uri}, options)`; TestClientListsAndReadsResources fails."
+ },
+ {
+  "upstream": "packages/mcp/src/protocol/jsonrpc.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestErrorClassesCarryUpstreamNamesMessagesAndFields"
+  ],
+  "upstream_reference": "packages/mcp/src/protocol/jsonrpc.ts",
+  "mutation": "mcp/jsonrpc.go: replace `e := &McpError{Code: code, Message: message, Data: data}` with `e := &McpError{Code: code, Message: message}`; TestErrorClassesCarryUpstreamNamesMessagesAndFields fails."
+ },
+ {
+  "upstream": "packages/mcp/src/protocol/jsonrpc.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestErrorClassesCarryUpstreamNamesMessagesAndFields"
+  ],
+  "upstream_reference": "packages/mcp/src/protocol/jsonrpc.ts",
+  "mutation": "mcp/jsonrpc.go: replace `e := &McpConnectionClosedError{Message: message}` with `e := &McpConnectionClosedError{}`; TestErrorClassesCarryUpstreamNamesMessagesAndFields fails."
+ },
+ {
+  "upstream": "packages/mcp/src/protocol/jsonrpc.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestNewMcpTimeoutError"
+  ],
+  "upstream_reference": "packages/mcp/src/protocol/jsonrpc.ts",
+  "mutation": "mcp/jsonrpc.go: replace `e := &McpTimeoutError{TimeoutMs: timeoutMs}` with `e := &McpTimeoutError{TimeoutMs: timeoutMs + 1}`; TestNewMcpTimeoutError fails."
+ },
+ {
+  "upstream": "packages/mcp/src/protocol/jsonrpc.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestErrorClassesCarryUpstreamNamesMessagesAndFields"
+  ],
+  "upstream_reference": "packages/mcp/src/protocol/jsonrpc.ts",
+  "mutation": "mcp/jsonrpc.go: replace `e := &McpAbortError{Message: message}` with `e := &McpAbortError{}`; TestErrorClassesCarryUpstreamNamesMessagesAndFields fails."
+ },
+ {
+  "upstream": "packages/mcp/src/client.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientNotifySendsANotificationWithoutAnIDAndFailsWhenNotConnected"
+  ],
+  "upstream_reference": "packages/mcp/src/client.ts",
+  "mutation": "mcp/client.go: replace `return transport.Send(NewNotification(method, raw))` with `_, _ = transport, raw\n\treturn nil`; TestClientNotifySendsANotificationWithoutAnIDAndFailsWhenNotConnected fails."
+ },
+ {
+  "upstream": "packages/mcp/src/protocol/jsonrpc.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestJSONRPCGuardsAnswerLikeUpstreamForUnknownValues"
+  ],
+  "upstream_reference": "packages/mcp/src/protocol/jsonrpc.ts",
+  "mutation": "mcp/jsonrpc_notification.go: replace `return value[\"jsonrpc\"] == \"2.0\" && !hasID && hasMethod` with `return value[\"jsonrpc\"] == \"2.0\" && hasID && hasMethod`; TestJSONRPCGuardsAnswerLikeUpstreamForUnknownValues fails."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/errors.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestOAuthErrorConstructorsMatchErrorsTs",
+   "TestNewOAuthErrorUpstream"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/errors.ts",
+  "mutation": "mcp/oauth/errors.go: replace `e.ErrorURI = errorURI[0]` with `_ = errorURI`; TestNewOAuthErrorUpstream, TestOAuthErrorConstructorsMatchErrorsTs fails."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/errors.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestOAuthErrorConstructorsMatchErrorsTs",
+   "TestOAuthErrorClassesCarryTheirNameAndMessage"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/errors.ts",
+  "mutation": "mcp/oauth/errors.go: replace `e := &OAuthIssuerMismatchError{Expected: expected, Received: received}` with `e := &OAuthIssuerMismatchError{Expected: expected}`; TestOAuthErrorClassesCarryTheirNameAndMessage, TestOAuthErrorConstructorsMatchErrorsTs fails."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/errors.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestOAuthErrorConstructorsMatchErrorsTs",
+   "TestOAuthErrorClassesCarryTheirNameAndMessage"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/errors.ts",
+  "mutation": "mcp/oauth/errors.go: replace `e := &OAuthInsecureEndpointError{Endpoint: endpoint}` with `e := &OAuthInsecureEndpointError{}`; TestOAuthErrorClassesCarryTheirNameAndMessage, TestOAuthErrorConstructorsMatchErrorsTs fails."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/errors.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestOAuthRegistrationErrorCarriesStatusBodyAndName"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/errors.ts",
+  "mutation": "mcp/oauth/errors.go: replace `e := &OAuthRegistrationError{Status: status, Body: body}` with `e := &OAuthRegistrationError{Status: status}`; TestOAuthRegistrationErrorCarriesStatusBodyAndName fails."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/errors.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestOAuthErrorConstructorsMatchErrorsTs",
+   "TestOAuthErrorClassesCarryTheirNameAndMessage"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/errors.ts",
+  "mutation": "mcp/oauth/errors.go: replace `func (e *McpOAuthAuthorizationRequiredError) Name() string {\n\treturn \"McpOAuthAuthorizationRequiredError\"` with `func (e *McpOAuthAuthorizationRequiredError) Name() string {\n\treturn \"McpOAuthAuthorizationRequired\"`; TestOAuthErrorClassesCarryTheirNameAndMessage, TestOAuthErrorConstructorsMatchErrorsTs fails."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/provider.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestMemoryOAuthStateStoreLoadsNothingUntilASaveAndCopiesBothWays"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/provider.ts",
+  "mutation": "mcp/oauth/provider.go: replace `m.value = &clone\n\treturn nil` with `_ = clone\n\treturn nil`; TestMemoryOAuthStateStoreLoadsNothingUntilASaveAndCopiesBothWays fails."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/discovery.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestDiscoverOAuthServerInfoFollowsTheFirstAuthorizationServerOfTheResourceMetadata"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/discovery.ts",
+  "mutation": "mcp/oauth/discovery.go: replace `authorizationServerURL = resourceMetadata.AuthorizationServers[0]` with `authorizationServerURL = resourceMetadata.AuthorizationServers[len(resourceMetadata.AuthorizationServers)-1]`; TestDiscoverOAuthServerInfoFollowsTheFirstAuthorizationServerOfTheResourceMetadata fails."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/discovery.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestDiscoverOAuthServerInfoFallsBackToTheServerOriginWithoutResourceMetadata"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/discovery.ts",
+  "mutation": "mcp/oauth/discovery.go: replace `authorizationServerURL = server.Scheme + \"://\" + server.Host + \"/\"` with `authorizationServerURL = server.Scheme + \"://\" + server.Host + \"/x\"`; TestDiscoverOAuthServerInfoFallsBackToTheServerOriginWithoutResourceMetadata fails."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/discovery.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestDiscoverProtectedResourceMetadataTriesThePathAwareURLThenTheRoot"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/discovery.ts",
+  "mutation": "mcp/oauth/discovery.go: replace `if options.ResourceMetadataURL == \"\" && server.Path != \"/\" && isDiscoveryMiss(response.StatusCode) {` with `if options.ResourceMetadataURL == \"\" && server.Path != \"/\" && !isDiscoveryMiss(response.StatusCode) {`; TestDiscoverProtectedResourceMetadataTriesThePathAwareURLThenTheRoot fails."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/discovery.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestDiscoverProtectedResourceMetadataUsesAnExplicitURLWithoutFallingBack"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/discovery.ts",
+  "mutation": "mcp/oauth/discovery.go: replace `if options.ResourceMetadataURL != \"\" {\n\t\tfirst = options.ResourceMetadataURL\n\t}` with `_ = options.ResourceMetadataURL`; TestDiscoverProtectedResourceMetadataUsesAnExplicitURLWithoutFallingBack fails."
+ },
+ {
+  "upstream": "packages/mcp/src/protocol/content.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestToLLMContentFallsBackToTheStructuredContentAsJSONWhenThereAreNoBlocks"
+  ],
+  "upstream_reference": "packages/mcp/src/protocol/content.ts",
+  "mutation": "mcp/content.go: replace `if len(content) == 0 && len(result.StructuredContent) > 0 {` with `if len(content) == 0 && len(result.StructuredContent) < 0 {`; TestToLLMContentFallsBackToTheStructuredContentAsJSONWhenThereAreNoBlocks fails."
+ },
+ {
+  "upstream": "packages/mcp/src/transports/streamable-http.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestErrorClassesCarryUpstreamNamesMessagesAndFields"
+  ],
+  "upstream_reference": "packages/mcp/src/transports/streamable-http.ts:141-145 McpAuthRequiredError wwwAuthenticate = response.headers.get(\"www-authenticate\")",
+  "mutation": "mcp/streamable_http.go: replace `e.WWWAuthenticate, e.HasWWWAuthenticate = strings.Join(values, \", \"), true` with `e.WWWAuthenticate, e.HasWWWAuthenticate = values[0], true`; TestErrorClassesCarryUpstreamNamesMessagesAndFields fails."
+ }
+]

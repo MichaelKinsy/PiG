@@ -1,0 +1,149 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#CompactionResult"
+  ],
+  "targets": [
+   "coding/session.go#CompactionResult"
+  ],
+  "struct": {
+   "file": "coding/session.go",
+   "type": "CompactionResult"
+  },
+  "production": [
+   "call:coding/session.go#Session.compact"
+  ],
+  "evidence": [
+   "test:coding/session_manual_compact_response_upstream_test.go#TestManualCompactPersistsAbortedResponseBeforeCompaction",
+   "test:coding/cli/rpc_mode_test.go#TestRPCCompactionResultShape"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "CompactionResult: Go CompactionResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#PromptOptions"
+  ],
+  "targets": [
+   "coding/session_prompt.go#PromptOptions"
+  ],
+  "struct": {
+   "file": "coding/session_prompt.go",
+   "type": "PromptOptions"
+  },
+  "production": [
+   "call:coding/session_prompt.go#Session.Prompt"
+  ],
+  "evidence": [
+   "test:coding/session_prompt_characterization_upstream_test.go#TestUpstreamSessionPromptCharacterization",
+   "test:coding/session_prompt_disposition_upstream_test.go#TestPromptRejectedDuringManualCompactionReportsNoDisposition"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "PromptOptions: Go PromptOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SessionStats"
+  ],
+  "targets": [
+   "coding/session.go#SessionStats"
+  ],
+  "struct": {
+   "file": "coding/session.go",
+   "type": "SessionStats"
+  },
+  "production": [
+   "call:coding/session.go#Session.GetSessionStats"
+  ],
+  "evidence": [
+   "test:coding/session_stats_json_test.go#TestSessionStatsJSONKeyOrderMatchesPi",
+   "test:coding/session_test.go#TestGetSessionStatsUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "SessionStats: Go SessionStats has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#LoadedMcpConfig"
+  ],
+  "targets": [
+   "coding/mcpext/config.go#LoadedMcpConfig"
+  ],
+  "struct": {
+   "file": "coding/mcpext/config.go",
+   "type": "LoadedMcpConfig"
+  },
+  "production": [
+   "call:coding/mcpext/config.go#LoadMcpConfig"
+  ],
+  "evidence": [
+   "test:coding/mcpext/extension_test.go#TestAgentSessionMCPDoesNotActivateAnotherExtensionsToolNamedCodemode",
+   "test:coding/mcpext/regression_test.go#TestSessionShutdownReturnsWhileAServerIsStillConnecting"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "LoadedMcpConfig: Go LoadedMcpConfig has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#McpServerEntry"
+  ],
+  "targets": [
+   "coding/mcpext/config.go#McpServerEntry"
+  ],
+  "struct": {
+   "file": "coding/mcpext/config.go",
+   "type": "McpServerEntry"
+  },
+  "production": [
+   "call:coding/mcpext/cli.go#RunMcpCommand"
+  ],
+  "evidence": [
+   "test:coding/mcp_session_registered_upstream_test.go#TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServer",
+   "test:coding/mcpext/connection_test.go#TestMCPConnectionsAsksOAuthServersThatKeepRejectingRequestsForANewSignIn"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "McpServerEntry: Go McpServerEntry has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#FileOperations"
+  ],
+  "targets": [
+   "internal/codingagent/compaction/utils.go#FileOperations"
+  ],
+  "struct": {
+   "file": "internal/codingagent/compaction/utils.go",
+   "type": "FileOperations"
+  },
+  "production": [
+   "call:internal/codingagent/compaction/utils.go#NewFileOps"
+  ],
+  "evidence": [
+   "test:internal/codingagent/compaction/compaction_test.go#TestCompact_UsesStreamFnWhenProvided",
+   "test:internal/codingagent/compaction/preparation_json_test.go#TestCompactionPreparationWireFormatMatchesUpstreamFieldNames"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "FileOperations: Go FileOperations has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ProgressEvent"
+  ],
+  "targets": [
+   "internal/packagemanager/progress.go#ProgressEvent"
+  ],
+  "struct": {
+   "file": "internal/packagemanager/progress.go",
+   "type": "ProgressEvent"
+  },
+  "production": [
+   "call:coding/cli/package_progress.go#packageProgressPrinter"
+  ],
+  "evidence": [
+   "test:coding/cli/package_batch_upstream_test.go#TestPackageBatchedConcurrentUpdatesOriginal",
+   "test:coding/cli/package_manager_gaps_upstream_test.go#TestUpstreamInstallProgressAndGitURLWithoutPrefix"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ProgressEvent: Go ProgressEvent has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ }
+]

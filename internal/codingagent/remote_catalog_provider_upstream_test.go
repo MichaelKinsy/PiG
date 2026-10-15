@@ -123,18 +123,22 @@ func catalogStaticModel(id string) *ai.Model {
 	}
 }
 
-func remoteCatalogTestProvider(baseURL string, localGeneratedAt *float64) *ai.ModelsProvider {
+func catalogBuiltinProvider() *ai.ModelsProvider {
 	unused := func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 		panic("not used")
 	}
-	return WithRemoteCatalog(ai.CreateProvider(ai.CreateProviderOptions{
+	return ai.CreateProvider(ai.CreateProviderOptions{
 		ID: "test-provider",
 		Auth: ai.ProviderAuth{APIKey: &ai.APIKeyAuth{Name: "Test", Resolve: func(context.Context, ai.APIKeyAuthInput) (*ai.AuthResult, error) {
 			return &ai.AuthResult{}, nil
 		}}},
 		Models: []ai.AnyModel{catalogStaticModel("static")},
 		API:    &ai.ProviderStreams{Stream: unused, StreamSimple: unused},
-	}), baseURL, localGeneratedAt)
+	})
+}
+
+func remoteCatalogTestProvider(baseURL string, localGeneratedAt *float64) *ai.ModelsProvider {
+	return WithRemoteCatalog(catalogBuiltinProvider(), baseURL, localGeneratedAt)
 }
 
 type refreshOverrides struct {
@@ -205,7 +209,11 @@ func storedCatalogIDs(t *testing.T, store *ai.InMemoryModelsStore) []string {
 	}
 	for _, raw := range entry.Models {
 		var model struct{ ID string }
-		if err := json.Unmarshal(raw, &model); err != nil {
+		data, err := ai.EncodeStoredModel(raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(data, &model); err != nil {
 			t.Fatal(err)
 		}
 		ids = append(ids, model.ID)

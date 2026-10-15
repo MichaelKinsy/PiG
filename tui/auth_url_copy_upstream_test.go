@@ -44,14 +44,14 @@ func (c *clipboardRecorder) texts() []string {
 	return append([]string(nil), c.copied...)
 }
 
-func renderedPlain(d *LoginDialog) string {
+func renderedPlain(d *LoginDialogComponent) string {
 	return widthx.StripAnsi(strings.Join(d.Render(80), "\n"))
 }
 
 func TestAuthURLCopyLoginDialogCopiesTheAuthURLInsteadOfTypingIntoTheCodeInput(t *testing.T) {
 	authCopyKeybindings(t)
 	clipboard := &clipboardRecorder{}
-	dialog := NewLoginDialog("test", nil)
+	dialog := NewLoginDialogComponent(nil, "test", nil, "")
 	dialog.SetCopyToClipboard(clipboard.copy, nil)
 	dialog.ShowAuth(authCopyURL, "")
 	dialog.ShowManualInput("Paste the code:")
@@ -77,9 +77,9 @@ func TestAuthURLCopyLoginDialogCopiesTheAuthURLInsteadOfTypingIntoTheCodeInput(t
 func TestAuthURLCopyLoginDialogIgnoresTheCopyKeyWithoutAnAuthURL(t *testing.T) {
 	authCopyKeybindings(t)
 	clipboard := &clipboardRecorder{}
-	dialog := NewLoginDialog("test", nil)
+	dialog := NewLoginDialogComponent(nil, "test", nil, "")
 	dialog.SetCopyToClipboard(clipboard.copy, nil)
-	dialog.ShowDeviceCode("https://example.invalid/device", "ABCD")
+	dialog.ShowDeviceCode(OAuthDeviceCodeInfo{VerificationURI: "https://example.invalid/device", UserCode: "ABCD"})
 	dialog.HandleInput("\x18")
 	time.Sleep(10 * time.Millisecond)
 	if got := clipboard.texts(); len(got) != 0 {

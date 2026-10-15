@@ -14,7 +14,7 @@ func TestSessionNameEventUpdatesInteractiveFooter(t *testing.T) {
 	var output bytes.Buffer
 	m := &InteractiveMode{
 		tuiInst:    tui.NewWithOutput(&output, 80, 24),
-		statusLine: NewStatusLine(nil, "", nil),
+		statusLine: NewFooterComponent(nil, "", nil),
 	}
 	renders := make(chan func(), 2)
 	m.tuiInst.SetRenderDispatcher(func(render func()) { renders <- render })

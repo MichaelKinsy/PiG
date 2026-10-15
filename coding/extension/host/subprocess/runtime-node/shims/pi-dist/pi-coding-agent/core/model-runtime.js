@@ -1,14 +1,15 @@
 import { dirname, join } from "node:path";
 import { clampThinkingLevel, createModels, lazyStream, ModelsError, normalizeContext, } from "../../pi-ai/sdk-bundle/index.js";
 import * as builtinProviderCatalog from "../../pi-ai/sdk-bundle/providers.js";
-import { assertChatModel, assertClassifierModel, assertImageModel, classifierErrorResult, imageErrorResult, } from "../../pi-ai/utils/model-operations.js";
+import { personalizeOpenRouterCatalog } from "../../pi-ai/sdk-bundle/openrouter.js";
+import { assertChatModel, assertClassifierInputSupported, assertClassifierModel, assertImageModel, classifierErrorResult, imageErrorResult, } from "../../pi-ai/utils/model-operations.js";
 import { getAgentDir } from "../config.js";
 import { operationSignal, raceWithAbortSignal } from "../utils/abort.js";
 import { AuthStorage as DefaultAuthStorage } from "./auth-storage.js";
 import { ModelConfig } from "./model-config.js";
 import { FileModelsStore, InMemoryCodingAgentModelsStore } from "./models-store.js";
 import { composeModelProvider, configuredRequestAuthStatus, resolveCompatibilityRequestConfig, resolveConfiguredModelHeaders, validateExtensionProvider, } from "./provider-composer.js";
-import { withRemoteCatalog } from "./remote-catalog-provider.js";
+import { withPersonalizedCatalog, withRemoteCatalog } from "./remote-catalog-provider.js";
 import { RuntimeCredentials } from "./runtime-credentials.js";
 import { createVirtualModel, findLatestResponse, isVirtualModel, withVirtualModels, } from "./virtual-models.js";
 /** Credentials changed successfully, but the local model/auth snapshot could not be synchronized. */
@@ -84,11 +85,15 @@ export class ModelRuntime {
                 ? new FileModelsStore(options.modelsStorePath ?? join(dirname(modelsPath), "models-store.json"))
                 : new InMemoryCodingAgentModelsStore());
         const builtinModelDataGeneratedAt = builtinProviderCatalog.getBuiltinModelDataGeneratedAt();
-        const providers = builtinProviderCatalog
-            .builtinProviders()
-            .map((provider) => provider.id === "radius"
-            ? provider
-            : withRemoteCatalog(provider, options.catalogBaseUrl, builtinModelDataGeneratedAt));
+        const providers = builtinProviderCatalog.builtinProviders().map((provider) => {
+            if (provider.id === "radius")
+                return provider;
+            // OpenRouter narrows the catalog to the models, limits and prices of the user's key.
+            if (provider.id === "openrouter") {
+                return withPersonalizedCatalog(provider, personalizeOpenRouterCatalog, options.catalogBaseUrl, builtinModelDataGeneratedAt);
+            }
+            return withRemoteCatalog(provider, options.catalogBaseUrl, builtinModelDataGeneratedAt);
+        });
         const runtime = new ModelRuntime(credentials, config, modelsPath, modelsStore, providers, process.env.PI_OFFLINE === undefined);
         runtime.configureRadiusProviders();
         runtime.rebuildProviders();
@@ -553,6 +558,7 @@ export class ModelRuntime {
     async classify(model, context, options) {
         try {
             assertClassifierModel(model);
+            assertClassifierInputSupported(model, context);
             const prepared = await this.prepareRequest(model, options);
             if (!prepared.provider.classify) {
                 throw new ModelsError("provider", `Provider ${model.provider} does not support classification`);

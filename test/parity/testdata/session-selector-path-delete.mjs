@@ -1,3 +1,4 @@
+import { PI_PACKAGE_VERSION } from "./pi-version.mjs";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
@@ -14,7 +15,7 @@ if (process.argv[2] === "pig") {
 } else {
   assert.equal(process.argv[2], "pi");
   const root = process.env.PI_PACKAGE_ROOT ?? resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-  assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, "1.0.3", "pinned Pi package");
+  assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, PI_PACKAGE_VERSION, "pinned Pi package");
   const { SessionSelectorComponent } = await import(pathToFileURL(join(root, "dist/modes/interactive/components/session-selector.js")));
   const { initTheme, stopThemeWatcher } = await import(pathToFileURL(join(root, "dist/modes/interactive/theme/theme.js")));
   const { KeybindingsManager } = await import(pathToFileURL(join(root, "dist/core/keybindings.js")));

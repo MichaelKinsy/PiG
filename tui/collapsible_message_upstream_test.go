@@ -1,5 +1,11 @@
 package tui
 
+// pi: packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts
+
+// pi: packages/coding-agent/src/modes/interactive/components/compaction-summary-message.ts
+
+// pi: packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts
+
 import (
 	"fmt"
 	"strings"
@@ -11,9 +17,9 @@ func TestCollapsibleMessageClicksThroughTerminal(t *testing.T) {
 		name, details string
 		component     Component
 	}{
-		{"compaction", "compaction details", NewCompactionSummaryComponent("compaction details", 1234)},
-		{"branch", "branch details", NewBranchSummaryComponent("branch details")},
-		{"skill", "skill details", NewSkillInvocationMessage(ParsedSkillBlock{Name: "example-skill", Content: "skill details"})},
+		{"compaction", "compaction details", NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: "compaction details", TokensBefore: 1234}, nil, 1)},
+		{"branch", "branch details", NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "branch details"}, nil, 1)},
+		{"skill", "skill details", NewSkillInvocationMessageComponent(ParsedSkillBlock{Name: "example-skill", Content: "skill details"}, nil, 1)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			h := newAltHarness(t, 80, 24, TuiAltScreenOptions{})
@@ -33,7 +39,7 @@ func TestCollapsibleMessageClicksThroughTerminal(t *testing.T) {
 func BenchmarkCollapsibleMessageClick(b *testing.B) {
 	for _, lines := range []int{1, 10000} {
 		b.Run(fmt.Sprint(lines), func(b *testing.B) {
-			component := NewCompactionSummaryComponent(strings.Repeat("details\n", lines), 1234)
+			component := NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: strings.Repeat("details\n", lines), TokensBefore: 1234}, nil, 1)
 			event := componentMouseEvent(MouseClick, 2, 1)
 			event.Height = 5
 			b.ReportAllocs()
@@ -50,11 +56,11 @@ func TestCollapsibleMessageComponentsUpstream(t *testing.T) {
 		component             Component
 	}{
 		// .upstream/v0.87.1/packages/coding-agent/test/collapsible-message-components.test.ts:39
-		{"toggles a compaction summary when clicked", "[compaction]", "compaction details", NewCompactionSummaryComponent("compaction details", 1234)},
+		{"toggles a compaction summary when clicked", "[compaction]", "compaction details", NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: "compaction details", TokensBefore: 1234}, nil, 1)},
 		// .upstream/v0.87.1/packages/coding-agent/test/collapsible-message-components.test.ts:55
-		{"toggles a branch summary when clicked", "[branch]", "branch details", NewBranchSummaryComponent("branch details")},
+		{"toggles a branch summary when clicked", "[branch]", "branch details", NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "branch details"}, nil, 1)},
 		// .upstream/v0.87.1/packages/coding-agent/test/collapsible-message-components.test.ts:71
-		{"toggles a skill invocation when clicked", "[skill]", "skill details", NewSkillInvocationMessage(ParsedSkillBlock{Name: "example-skill", Content: "skill details"})},
+		{"toggles a skill invocation when clicked", "[skill]", "skill details", NewSkillInvocationMessageComponent(ParsedSkillBlock{Name: "example-skill", Content: "skill details"}, nil, 1)},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -95,6 +101,30 @@ func TestCollapsibleMessageComponentsUpstream(t *testing.T) {
 				if result := DispatchMouseEvent(tc.component, event); result == nil || !result.Handled {
 					t.Fatal("click was not handled")
 				}
+			}
+		})
+	}
+}
+
+// upstream: compaction-summary-message.ts and branch-summary-message.ts `extends Box`: setBgFn replaces the background of
+// the rendered box and clear() empties it, as for any Box.
+func TestSummaryMessageComponentsInheritBoxMembers(t *testing.T) {
+	for name, component := range map[string]interface {
+		Component
+		SetBgFn(func(string) string)
+		Clear()
+	}{
+		"compaction": NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: "details", TokensBefore: 1}, nil, 1),
+		"branch":     NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "details"}, nil, 1),
+	} {
+		t.Run(name, func(t *testing.T) {
+			component.SetBgFn(func(text string) string { return "<bg>" + text + "</bg>" })
+			if got := strings.Join(component.Render(40), "\n"); !strings.Contains(got, "<bg>") {
+				t.Errorf("SetBgFn did not reach the rendered box:\n%s", got)
+			}
+			component.Clear()
+			if got := strings.Join(component.Render(40), "\n"); strings.Contains(got, "to expand") {
+				t.Errorf("Clear left the summary rendered:\n%s", got)
 			}
 		})
 	}

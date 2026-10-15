@@ -91,6 +91,7 @@ func TestContainerHandleMouseRoutesByRenderedRows(t *testing.T) {
 	}
 }
 
+// Pi: packages/tui/src/components/box.ts:75 (Box.handleMouse).
 func TestBoxHandleMouseSkipsPadding(t *testing.T) {
 	probe := &mouseProbe{lines: []string{"inner"}, result: &TuiMouseEventResult{Handled: true}}
 	box := NewBox()
@@ -187,7 +188,7 @@ func TestInputCallbacksDoNotLatch(t *testing.T) {
 func TestOverlayBoundsAndMouseHitTesting(t *testing.T) {
 	tu := NewWithOutput(io.Discard, 20, 6)
 	probe := &mouseProbe{lines: []string{"one", "two"}, result: &TuiMouseEventResult{Handled: true, Focus: true}}
-	handle := tu.OpenOverlay(probe, OverlayOptions{width: overlayCells(6), anchor: overlayTopLeft, row: overlayCells(2), col: overlayCells(3)})
+	handle := tu.ShowOverlay(probe, OverlayOptions{width: overlayCells(6), anchor: overlayTopLeft, row: overlayCells(2), col: overlayCells(3)})
 	if _, ok := handle.GetBounds(); ok {
 		t.Fatal("an overlay has no bounds before it renders")
 	}

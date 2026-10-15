@@ -1,0 +1,43 @@
+[
+  {
+    "upstream": "packages/durable/src/harness/scheduler.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestTaskRuntimeAbortOwned"
+    ],
+    "upstream_reference": "packages/durable/src/harness/scheduler.ts abortOwned (owner check, terminal early return, abort then wait); packages/durable/src/types.ts TaskRuntime.abortOwned",
+    "mutation": "durable/harness/scheduler.go AbortOwned: `*record.Owner != runtime.invocation.taskId` dropped (TestTaskRuntimeAbortOwned FAIL); the abort request `runtime.scheduler.Abort(bound, id, true)` skipped (the wait never ends: package timeout FAIL). The `record.State.Status == durable.TaskTerminal` early return forced off survives: Abort of a terminal task and the wait both return at once, so the return is an equivalent optimisation (Pi has the same early return). Compiled mutants, baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/scheduler.ts",
+    "package": "./durable/core/driver",
+    "tests": [
+      "TestTaskRuntimeAbortOwnedOverTheCore"
+    ],
+    "upstream_reference": "packages/durable/src/harness/scheduler.ts abortOwned; packages/durable/src/types.ts TaskRuntime.abortOwned",
+    "mutation": "durable/core/driver/taskruntime.go AbortOwned: `*record.Owner != r.task` dropped (TestTaskRuntimeAbortOwnedOverTheCore FAIL); `r.s.abortTask(ctx, id, true)` skipped (FAIL after the 15 s wait); the wait `r.WaitForTask(ctx, id)` dropped (FAIL: the child is not terminal when AbortOwned returns). Compiled mutants, baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/tool.ts",
+    "package": "./durable/harness",
+    "tests": [
+      "TestRetainedOutputIsTheOutputKeptSoFar",
+      "TestANestedCallIsItsOwnToolTaskAndItsResultGoesToTheCaller",
+      "TestANestedCallAfterItsCallerSettledIsRejected",
+      "TestExplicitNestedKeysAreChecked",
+      "TestACallerGetsAFallbackResultForANestedCallTheSchedulerFaulted"
+    ],
+    "upstream_reference": "packages/durable/src/harness/tool.ts executeTool and retainedOutput; packages/durable/src/types.ts ToolExecutionApi.executeTool, ToolExecutionApi.retainedOutput; packages/durable/test/harness-nested-tools.test.ts",
+    "mutation": "durable/harness/tool.go RetainedOutput: `retained.DroppedBytes > 0` -> `false` and `retained.Text` -> `\"\"` (TestRetainedOutputIsTheOutputKeptSoFar FAIL each). durable/harness/tool_nested.go ExecuteTool: `api.ended.Load()` -> `false` (TestANestedCallAfterItsCallerSettledIsRejected FAIL); the positive-integer key check dropped (TestExplicitNestedKeysAreChecked FAIL); `stored == nil` fallback forced off (TestACallerGetsAFallbackResultForANestedCallTheSchedulerFaulted FAIL); the default key sequence not incremented and the stored result dropped (TestANestedCallIsItsOwnToolTaskAndItsResultGoesToTheCaller FAIL each). Compiled mutants, baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/harness/tool.ts",
+    "package": "./durable/core/driver",
+    "tests": [
+      "TestRetainedOutputIsTheOutputKeptSoFar",
+      "TestRetainedOutputReportsDroppedOutputAsTruncated"
+    ],
+    "upstream_reference": "packages/durable/src/harness/tool.ts retainedOutput; packages/durable/src/types.ts ToolExecutionApi.retainedOutput",
+    "mutation": "durable/core/driver/tool.go RetainedOutput: `retained.DroppedBytes > 0` -> `false` (TestRetainedOutputReportsDroppedOutputAsTruncated FAIL); `retained.Text` -> `\"\"` (both FAIL). Compiled mutants, baseline PASS"
+  }
+]

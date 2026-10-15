@@ -1,0 +1,411 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getAutocompleteMaxVisible"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetAutocompleteMaxVisible"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive.go#InteractiveMode.Run"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_test.go#TestSettings_NewFieldDefaults",
+   "test:internal/codingagent/settings_test.go#TestSettings_NewFieldClamp"
+  ],
+  "rationale": "SettingsManager.getAutocompleteMaxVisible is the Go method SettingsManager.GetAutocompleteMaxVisible; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getClearOnShrink"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetClearOnShrink"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive.go#InteractiveMode.Run"
+  ],
+  "evidence": [
+   "test:internal/codingagent/clear_on_shrink_test.go#TestInteractiveRendererClearOnShrinkComesFromSettings",
+   "test:internal/codingagent/settings_test.go#TestSettings_NewFieldDefaults"
+  ],
+  "rationale": "SettingsManager.getClearOnShrink is the Go method SettingsManager.GetClearOnShrink; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getDoubleEscapeAction"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetDoubleEscapeAction"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_input.go#InteractiveMode.handleEditorAction"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_test.go#TestSettingsManager_Setters"
+  ],
+  "rationale": "SettingsManager.getDoubleEscapeAction is the Go method SettingsManager.GetDoubleEscapeAction; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getEditorPaddingX"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetEditorPaddingX"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive.go#InteractiveMode.Run"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_test.go#TestSettings_NewFieldDefaults",
+   "test:internal/codingagent/settings_test.go#TestSettings_NewFieldClamp"
+  ],
+  "rationale": "SettingsManager.getEditorPaddingX is the Go method SettingsManager.GetEditorPaddingX; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getEnableInstallTelemetry"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetEnableInstallTelemetry"
+  ],
+  "production": [
+   "call:internal/codingagent/settings.go#SettingsManager.IsInstallTelemetryEnabled"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_test.go#TestSettingsManager_Setters"
+  ],
+  "rationale": "SettingsManager.getEnableInstallTelemetry is the Go method SettingsManager.GetEnableInstallTelemetry; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getExternalEditorCommand"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetExternalEditorCommand"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_editor.go#InteractiveMode.openExternalEditorBuffer"
+  ],
+  "evidence": [
+   "test:internal/codingagent/external_editor_test.go#TestOpenExternalEditorSettingsResolution",
+   "test:internal/codingagent/settings_getter_race_test.go#TestSettingsExternalEditorCommandPrecedence"
+  ],
+  "rationale": "SettingsManager.getExternalEditorCommand is the Go method SettingsManager.GetExternalEditorCommand; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getFullscreenCopyOnSelect"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetFullscreenCopyOnSelect"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_tui.go#InteractiveMode.createInteractiveTui"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager",
+   "test:internal/codingagent/settings_selector_upstream_test.go#TestSettingsSelectorUpstream"
+  ],
+  "rationale": "SettingsManager.getFullscreenCopyOnSelect is the Go method SettingsManager.GetFullscreenCopyOnSelect; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getHideThinkingBlock"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetHideThinkingBlock"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_commands.go#InteractiveMode.buildSlashContext"
+  ],
+  "evidence": [
+   "test:internal/codingagent/interactive_resume_thinking_test.go#TestInteractiveModeThinkingTogglePreservesPartialBashOutputUpstream",
+   "test:internal/codingagent/settings_test.go#TestSettingsManager_Setters"
+  ],
+  "rationale": "SettingsManager.getHideThinkingBlock is the Go method SettingsManager.GetHideThinkingBlock; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getImageAutoResize"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetImageAutoResize"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_turn.go#InteractiveMode.runPromptTurnWithImages"
+  ],
+  "evidence": [
+   "test:internal/codingagent/block_images_upstream_test.go#TestBlockImagesSettingsUpstream",
+   "test:internal/codingagent/settings_memory_upstream_test.go#TestInMemorySettingsReloadUpstream"
+  ],
+  "rationale": "SettingsManager.getImageAutoResize is the Go method SettingsManager.GetImageAutoResize; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getImageWidthCells"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetImageWidthCells"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_commands.go#InteractiveMode.buildSlashContext"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_test.go#TestSettings_UnmarshalAcceptsUpstreamAndLegacyShapes"
+  ],
+  "rationale": "SettingsManager.getImageWidthCells is the Go method SettingsManager.GetImageWidthCells; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getShowHardwareCursor"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetShowHardwareCursor"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive.go#InteractiveMode.Run"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_test.go#TestSettings_NewFieldDefaults",
+   "test:internal/codingagent/settings_test.go#TestSettingsManager_NewGetters"
+  ],
+  "rationale": "SettingsManager.getShowHardwareCursor is the Go method SettingsManager.GetShowHardwareCursor; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getShowImages"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetShowImages"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_commands.go#InteractiveMode.buildSlashContext"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_test.go#TestSettings_UnmarshalAcceptsUpstreamAndLegacyShapes",
+   "test:internal/codingagent/settings_test.go#TestMergeSettings_DeepMergeAndFalseOverride"
+  ],
+  "rationale": "SettingsManager.getShowImages is the Go method SettingsManager.GetShowImages; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getShowTerminalProgress"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetShowTerminalProgress"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_events.go#InteractiveMode.handleAgentEvent"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_test.go#TestSettingsManager_GettersExposeUpstreamHelperSurface",
+   "test:internal/codingagent/settings_test.go#TestSettingsManager_InMemorySeedsInitialSettings"
+  ],
+  "rationale": "SettingsManager.getShowTerminalProgress is the Go method SettingsManager.GetShowTerminalProgress; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getTreeFilterMode"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetTreeFilterMode"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_commands.go#InteractiveMode.newSessionTreeSelect"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_test.go#TestSettingsManager_DefaultAndValidationParity",
+   "test:internal/codingagent/settings_test.go#TestSettingsManager_Setters"
+  ],
+  "rationale": "SettingsManager.getTreeFilterMode is the Go method SettingsManager.GetTreeFilterMode; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:isProjectTrusted"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.IsProjectTrusted"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_helpers.go#InteractiveMode.projectTrusted"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_manager_first_half_test.go#TestSettingsManagerFirstHalfStorage",
+   "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager"
+  ],
+  "rationale": "SettingsManager.isProjectTrusted is the Go method SettingsManager.IsProjectTrusted; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:setAutocompleteMaxVisible"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.SetAutocompleteMaxVisible"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive.go#InteractiveMode.Run"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_test.go#TestSettingsManager_Setters"
+  ],
+  "rationale": "SettingsManager.setAutocompleteMaxVisible is the Go method SettingsManager.SetAutocompleteMaxVisible; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:setClearOnShrink"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.SetClearOnShrink"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive.go#InteractiveMode.Run"
+  ],
+  "evidence": [
+   "test:internal/codingagent/interactive_tui_custom_status_upstream_test.go#TestInteractiveTuiCustomEditorStandaloneStatusUpstream",
+   "test:internal/codingagent/interactive_tui_custom_status_upstream_test.go#TestCustomEditorEmbeddedStatusEventPlacement"
+  ],
+  "rationale": "SettingsManager.setClearOnShrink is the Go method SettingsManager.SetClearOnShrink; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:setDefaultModel"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.SetDefaultModel"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_models.go#InteractiveMode.pickModel"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_explicit_values_test.go#TestSettingsSaveAcceptsBOM",
+   "test:internal/codingagent/settings_test.go#TestSettingsManager_ConcurrentManagersPreserveDistinctWrites"
+  ],
+  "rationale": "SettingsManager.setDefaultModel is the Go method SettingsManager.SetDefaultModel; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:setFollowUpMode"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.SetFollowUpMode"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive.go#InteractiveMode.Run"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_test.go#TestSettingsManager_Setters"
+  ],
+  "rationale": "SettingsManager.setFollowUpMode is the Go method SettingsManager.SetFollowUpMode; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:setHideThinkingBlock"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.SetHideThinkingBlock"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_thinking.go#InteractiveMode.toggleThinkingVisibility"
+  ],
+  "evidence": [
+   "test:internal/codingagent/reload_sdk_stage_test.go#TestReloadRebuildsChatWithReloadedDisplaySettings",
+   "test:internal/codingagent/reload_ui_export_test.go#TestHarness.SetHideThinkingForReload"
+  ],
+  "rationale": "SettingsManager.setHideThinkingBlock is the Go method SettingsManager.SetHideThinkingBlock; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:setImageWidthCells"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.SetImageWidthCells"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_commands.go#InteractiveMode.buildSlashContext"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_test.go#TestSettingsManager_Setters"
+  ],
+  "rationale": "SettingsManager.setImageWidthCells is the Go method SettingsManager.SetImageWidthCells; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:setLastChangelogVersion"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.SetLastChangelogVersion"
+  ],
+  "production": [
+   "call:internal/codingagent/install_telemetry.go#recordChangelogVersionAndMaybeReportInstall"
+  ],
+  "evidence": [
+   "test:internal/codingagent/install_telemetry_test.go#TestRecordChangelogVersionAndMaybeReportInstall_UpdateWithNewEntriesPingsAndShowsBanner",
+   "test:internal/codingagent/install_telemetry_test.go#TestRecordChangelogVersionAndMaybeReportInstall_SameVersionNeverPings"
+  ],
+  "rationale": "SettingsManager.setLastChangelogVersion is the Go method SettingsManager.SetLastChangelogVersion; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:setShowHardwareCursor"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.SetShowHardwareCursor"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive.go#InteractiveMode.Run"
+  ],
+  "evidence": [
+   "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiSelectsAlternateRendererOnlyWhenRequested",
+   "test:internal/codingagent/settings_test.go#TestSettingsManager_Setters"
+  ],
+  "rationale": "SettingsManager.setShowHardwareCursor is the Go method SettingsManager.SetShowHardwareCursor; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:setShowImages"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.SetShowImages"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_commands.go#InteractiveMode.buildSlashContext"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_terminal_capabilities_test.go#TestTerminalCapabilitySettingsSurviveUnrelatedSave",
+   "test:internal/codingagent/settings_test.go#TestSettingsManager_NestedSetterPreservesExternalSiblingChange"
+  ],
+  "rationale": "SettingsManager.setShowImages is the Go method SettingsManager.SetShowImages; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:setSteeringMode"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.SetSteeringMode"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive.go#InteractiveMode.Run"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_test.go#TestSettingsManager_Setters"
+  ],
+  "rationale": "SettingsManager.setSteeringMode is the Go method SettingsManager.SetSteeringMode; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:setTheme"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.SetTheme"
+  ],
+  "production": [
+   "call:internal/codingagent/first_time_setup.go#showFirstTimeSetupWith"
+  ],
+  "evidence": [
+   "test:internal/codingagent/ext_theme_settings_upstream_test.go#TestExtensionSetThemePersistsToSettingsManagerUpstream",
+   "test:internal/codingagent/ext_theme_settings_upstream_test.go#TestExtensionSetThemeDoesNotPersistInvalidNamesUpstream"
+  ],
+  "rationale": "SettingsManager.setTheme is the Go method SettingsManager.SetTheme; signature reviewed against the upstream declaration."
+ }
+]

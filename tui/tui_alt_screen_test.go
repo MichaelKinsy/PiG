@@ -1406,3 +1406,44 @@ func TestAltScreenAutoScrollInitialArmMarshaledThroughTickSeam(t *testing.T) {
 	tui.stopSelectionAutoScrollLocked()
 	tui.mu.Unlock()
 }
+
+// pi 1.1.0 tui-alt-screen.ts resetTextSelection (#9311): the host drops the selection and the multi-click history before it replaces the transcript.
+func TestAltScreenResetTextSelectionDropsSelectionAndClickHistory(t *testing.T) {
+	click := func(renderer *TuiAltScreen) {
+		renderer.HandleViewportInput("\x1b[<0;2;1M")
+		renderer.HandleViewportInput("\x1b[<0;2;1m")
+	}
+	newRenderer := func() *TuiAltScreen {
+		var out bytes.Buffer
+		renderer := newAltScreenForTest(&out, 40, 6, TuiAltScreenOptions{CopyOnSelect: new(false)})
+		renderer.previousScreen = []string{"hello world"}
+		return renderer
+	}
+
+	// Control: a second click on the same word selects it.
+	control := newRenderer()
+	click(control)
+	click(control)
+	if !control.HasActiveSelection() {
+		t.Fatal("double-click did not select the word")
+	}
+
+	t.Run("drops the selection", func(t *testing.T) {
+		renderer := newRenderer()
+		click(renderer)
+		click(renderer)
+		renderer.ResetTextSelection()
+		if renderer.HasActiveSelection() {
+			t.Fatal("selection survived ResetTextSelection")
+		}
+	})
+	t.Run("forgets the previous click", func(t *testing.T) {
+		renderer := newRenderer()
+		click(renderer)
+		renderer.ResetTextSelection()
+		click(renderer)
+		if renderer.HasActiveSelection() {
+			t.Fatal("a click after ResetTextSelection counted as a double-click")
+		}
+	})
+}

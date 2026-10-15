@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -18,23 +17,23 @@ import (
 func upstreamEntryIDs(entries []SessionEntry) []string {
 	out := make([]string, 0, len(entries))
 	for _, e := range entries {
-		out = append(out, e.Base.ID)
+		out = append(out, e.Base().ID)
 	}
 	return out
 }
 func requireEntryParent(t *testing.T, s *Session, id string, parent *string) {
 	t.Helper()
 	e := requireSessionEntry(t, s, id)
-	if !reflect.DeepEqual(e.Base.ParentID, parent) {
-		t.Fatalf("entry %s parent=%v want=%v", id, e.Base.ParentID, parent)
+	if !reflect.DeepEqual(e.Base().ParentID, parent) {
+		t.Fatalf("entry %s parent=%v want=%v", id, e.Base().ParentID, parent)
 	}
 }
 func upstreamThinking(t *testing.T, s *Session) string {
 	t.Helper()
-	if err := s.AppendThinkingLevelChange("high"); err != nil {
+	if _, err := s.AppendThinkingLevelChange("high"); err != nil {
 		t.Fatal(err)
 	}
-	return *s.LeafID()
+	return *s.GetLeafID()
 }
 func upstreamCustom(t *testing.T, s *Session, typ string, data any) string {
 	t.Helper()
@@ -42,7 +41,7 @@ func upstreamCustom(t *testing.T, s *Session, typ string, data any) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.AppendEntry(CustomEntry{SessionEntryBase: SessionEntryBase{Type: "custom", ID: id, ParentID: s.LeafID(), Timestamp: RFC3339NowNano()}, CustomType: typ, Data: data}); err != nil {
+	if err := s.AppendEntry(CustomEntry{SessionEntryBase: SessionEntryBase{Type: "custom", ID: id, ParentID: s.GetLeafID(), Timestamp: RFC3339NowNano()}, CustomType: typ, Data: data}); err != nil {
 		t.Fatal(err)
 	}
 	return id
@@ -51,6 +50,7 @@ func upstreamSummaryUsage() *ai.Usage {
 	return &ai.Usage{Input: 10, Output: 20, CacheRead: 30, CacheWrite: 40, TotalTokens: 100, Cost: ai.UsageCost{Input: .1, Output: .2, CacheRead: .3, CacheWrite: .4, Total: 1}}
 }
 
+// Pi: packages/coding-agent/src/core/agent-session.ts:146 (CompactionEntry.usage); packages/coding-agent/src/core/session-manager.ts:108 (BranchSummaryEntry.fromId); packages/coding-agent/src/core/session-manager.ts:76 (ModelChangeEntry.provider); packages/coding-agent/src/core/session-manager.ts:77 (ModelChangeEntry.modelId).
 func TestSessionTreeTraversalUpstream(t *testing.T) {
 	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:10
 	t.Run("appendMessage creates entry with correct parentId chain", func(t *testing.T) {
@@ -58,13 +58,13 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 		a := upstreamSessionUser(t, s, "first")
 		b := upstreamSessionAssistant(t, s, "second")
 		c := upstreamSessionUser(t, s, "third")
-		if !slices.Equal(upstreamEntryIDs(s.Entries()), []string{a, b, c}) {
+		if !slices.Equal(upstreamEntryIDs(s.GetEntries()), []string{a, b, c}) {
 			t.Fatal("entry order")
 		}
 		requireEntryParent(t, s, a, nil)
 		requireEntryParent(t, s, b, &a)
 		requireEntryParent(t, s, c, &b)
-		if s.Entries()[0].Base.Type != "message" {
+		if s.GetEntries()[0].Base().Type != "message" {
 			t.Fatal("type")
 		}
 	})
@@ -74,7 +74,7 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 		a := upstreamSessionUser(t, s, "hello")
 		b := upstreamThinking(t, s)
 		c := upstreamSessionAssistant(t, s, "response")
-		if len(s.Entries()) != 3 || requireSessionEntry(t, s, b).Base.Type != "thinking_level_change" {
+		if len(s.GetEntries()) != 3 || requireSessionEntry(t, s, b).Base().Type != "thinking_level_change" {
 			t.Fatal("thinking entry")
 		}
 		requireEntryParent(t, s, b, &a)
@@ -84,10 +84,10 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 	t.Run("appendModelChange integrates into tree", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		a := upstreamSessionUser(t, s, "hello")
-		if err := s.AppendModelSwitch("openai", "gpt-4", ""); err != nil {
+		if _, err := s.AppendModelChange("openai", "gpt-4"); err != nil {
 			t.Fatal(err)
 		}
-		b := *s.LeafID()
+		b := *s.GetLeafID()
 		c := upstreamSessionAssistant(t, s, "response")
 		var e ModelChangeEntry
 		if err := json.Unmarshal(requireSessionEntry(t, s, b).Raw(), &e); err != nil {
@@ -140,12 +140,12 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:118
 	t.Run("leaf pointer advances after each append", func(t *testing.T) {
 		s := NewSession("test", "/project")
-		if s.LeafID() != nil {
+		if s.GetLeafID() != nil {
 			t.Fatal("initial leaf")
 		}
 		for _, appendEntry := range []func() string{func() string { return upstreamSessionUser(t, s, "1") }, func() string { return upstreamSessionAssistant(t, s, "2") }, func() string { return upstreamThinking(t, s) }} {
 			id := appendEntry()
-			if s.LeafID() == nil || *s.LeafID() != id {
+			if s.GetLeafID() == nil || *s.GetLeafID() != id {
 				t.Fatal("leaf did not advance")
 			}
 		}
@@ -179,13 +179,13 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 		b := upstreamSessionAssistant(t, s, "2")
 		upstreamSessionUser(t, s, "3")
 		upstreamSessionAssistant(t, s, "4")
-		if !slices.Equal(upstreamEntryIDs(s.Branch(b)), []string{a, b}) {
+		if !slices.Equal(upstreamEntryIDs(s.GetBranch(b)), []string{a, b}) {
 			t.Fatal("path")
 		}
 	})
 	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:177
 	t.Run("getTree returns empty array for empty session", func(t *testing.T) {
-		if len(NewSession("test", "/project").Tree().Children) != 0 {
+		if len(NewSession("test", "/project").GetTree()) != 0 {
 			t.Fatal("tree")
 		}
 	})
@@ -193,9 +193,9 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 	t.Run("getTree returns single root for linear session", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		ids := []string{upstreamSessionUser(t, s, "1"), upstreamSessionAssistant(t, s, "2"), upstreamSessionUser(t, s, "3")}
-		nodes := s.Tree().Children
+		nodes := s.GetTree()
 		for _, id := range ids {
-			if len(nodes) != 1 || nodes[0].Entry.Base.ID != id {
+			if len(nodes) != 1 || nodes[0].Entry.Base().ID != id {
 				t.Fatal("linear tree")
 			}
 			nodes = nodes[0].Children
@@ -210,19 +210,19 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 		a := upstreamSessionUser(t, s, "1")
 		b := upstreamSessionAssistant(t, s, "2")
 		c := upstreamSessionUser(t, s, "3")
-		if err := s.Fork(b); err != nil {
+		if err := s.Branch(b); err != nil {
 			t.Fatal(err)
 		}
 		d := upstreamSessionUser(t, s, "4-branch")
-		roots := s.Tree().Children
-		if len(roots) != 1 || roots[0].Entry.Base.ID != a || len(roots[0].Children) != 1 || roots[0].Children[0].Entry.Base.ID != b {
+		roots := s.GetTree()
+		if len(roots) != 1 || roots[0].Entry.Base().ID != a || len(roots[0].Children) != 1 || roots[0].Children[0].Entry.Base().ID != b {
 			t.Fatal("roots")
 		}
 		children := roots[0].Children[0].Children
 		if len(children) != 2 {
 			t.Fatal("branches")
 		}
-		got := []string{children[0].Entry.Base.ID, children[1].Entry.Base.ID}
+		got := []string{children[0].Entry.Base().ID, children[1].Entry.Base().ID}
 		slices.Sort(got)
 		want := []string{c, d}
 		slices.Sort(want)
@@ -237,19 +237,19 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 		b := upstreamSessionAssistant(t, s, "response")
 		var ids []string
 		for _, text := range []string{"branch-A", "branch-B", "branch-C"} {
-			if err := s.Fork(b); err != nil {
+			if err := s.Branch(b); err != nil {
 				t.Fatal(err)
 			}
 			ids = append(ids, upstreamSessionUser(t, s, text))
 		}
-		node := s.Tree().Children[0].Children[0]
+		node := s.GetTree()[0].Children[0]
 		var got []string
 		for _, child := range node.Children {
-			got = append(got, child.Entry.Base.ID)
+			got = append(got, child.Entry.Base().ID)
 		}
 		slices.Sort(got)
 		slices.Sort(ids)
-		if node.Entry.Base.ID != b || !slices.Equal(got, ids) {
+		if node.Entry.Base().ID != b || !slices.Equal(got, ids) {
 			t.Fatal("branches")
 		}
 	})
@@ -260,12 +260,12 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 		b := upstreamSessionAssistant(t, s, "2")
 		c := upstreamSessionUser(t, s, "3")
 		upstreamSessionAssistant(t, s, "4")
-		if err := s.Fork(b); err != nil {
+		if err := s.Branch(b); err != nil {
 			t.Fatal(err)
 		}
 		e := upstreamSessionUser(t, s, "5")
 		upstreamSessionAssistant(t, s, "6")
-		if err := s.Fork(e); err != nil {
+		if err := s.Branch(e); err != nil {
 			t.Fatal(err)
 		}
 		upstreamSessionUser(t, s, "7")
@@ -279,13 +279,13 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 		a := upstreamSessionUser(t, s, "1")
 		upstreamSessionAssistant(t, s, "2")
 		c := upstreamSessionUser(t, s, "3")
-		if *s.LeafID() != c {
+		if *s.GetLeafID() != c {
 			t.Fatal("leaf")
 		}
-		if err := s.Fork(a); err != nil {
+		if err := s.Branch(a); err != nil {
 			t.Fatal(err)
 		}
-		if *s.LeafID() != a {
+		if *s.GetLeafID() != a {
 			t.Fatal("leaf")
 		}
 	})
@@ -293,7 +293,7 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 	t.Run("branch throws for non-existent entry", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		upstreamSessionUser(t, s, "hello")
-		if err := s.Fork("nonexistent"); err == nil || err.Error() != "Entry nonexistent not found" {
+		if err := s.Branch("nonexistent"); err == nil || err.Error() != "Entry nonexistent not found" {
 			t.Fatalf("error=%v", err)
 		}
 	})
@@ -302,7 +302,7 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 		s := NewSession("test", "/project")
 		a := upstreamSessionUser(t, s, "1")
 		upstreamSessionAssistant(t, s, "2")
-		if err := s.Fork(a); err != nil {
+		if err := s.Branch(a); err != nil {
 			t.Fatal(err)
 		}
 		c := upstreamSessionUser(t, s, "branched")
@@ -314,7 +314,7 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 		a := upstreamSessionUser(t, s, "1")
 		upstreamSessionAssistant(t, s, "2")
 		c := upstreamSessionUser(t, s, "3")
-		id, err := s.AppendBranchSummary(&a, "Summary of abandoned work", nil, false, upstreamSummaryUsage())
+		id, err := s.BranchWithSummary(&a, "Summary of abandoned work", nil, false, upstreamSummaryUsage())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -322,7 +322,7 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 		if err := json.Unmarshal(requireSessionEntry(t, s, id).Raw(), &e); err != nil {
 			t.Fatal(err)
 		}
-		if *s.LeafID() != id || e.Type != "branch_summary" || e.FromID != c || e.Summary != "Summary of abandoned work" || !reflect.DeepEqual(e.Usage, upstreamSummaryUsage()) {
+		if *s.GetLeafID() != id || e.Type != "branch_summary" || e.FromID != c || e.Summary != "Summary of abandoned work" || !reflect.DeepEqual(e.Usage, upstreamSummaryUsage()) {
 			t.Fatal(e)
 		}
 		requireEntryParent(t, s, id, &a)
@@ -331,7 +331,7 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 	t.Run("branchWithSummary throws for non-existent entry", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		upstreamSessionUser(t, s, "hello")
-		_, err := s.AppendBranchSummary(new("nonexistent"), "summary", nil, false, nil)
+		_, err := s.BranchWithSummary(new("nonexistent"), "summary", nil, false, nil)
 		if err == nil || err.Error() != "Entry nonexistent not found" {
 			t.Fatal(err)
 		}
@@ -339,7 +339,7 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:363
 	t.Run("getLeafEntry returns undefined for empty session", func(t *testing.T) {
 		s := NewSession("test", "/project")
-		if s.LeafID() != nil {
+		if s.GetLeafID() != nil {
 			t.Fatal("leaf")
 		}
 	})
@@ -348,13 +348,13 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 		s := NewSession("test", "/project")
 		upstreamSessionUser(t, s, "1")
 		id := upstreamSessionAssistant(t, s, "2")
-		if s.LeafID() == nil || requireSessionEntry(t, s, *s.LeafID()).Base.ID != id {
+		if s.GetLeafID() == nil || requireSessionEntry(t, s, *s.GetLeafID()).Base().ID != id {
 			t.Fatal("leaf entry")
 		}
 	})
 	// .upstream/v0.99.1/packages/coding-agent/test/session-manager/tree-traversal.test.ts:381
 	t.Run("getEntry returns undefined for non-existent id", func(t *testing.T) {
-		if _, ok := NewSession("test", "/project").EntryByID("nonexistent"); ok {
+		if _, ok := NewSession("test", "/project").GetEntry("nonexistent"); ok {
 			t.Fatal("unexpected entry")
 		}
 	})
@@ -363,11 +363,11 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 		s := NewSession("test", "/project")
 		a := upstreamSessionUser(t, s, "first")
 		b := upstreamSessionAssistant(t, s, "second")
-		ea, ok := requireSessionEntry(t, s, a).AsMessage()
+		ea, ok := requireSessionEntry(t, s, a).(MessageEntry)
 		if !ok || extractUserText(ea.Message) != "first" {
 			t.Fatal("user")
 		}
-		eb, ok := requireSessionEntry(t, s, b).AsMessage()
+		eb, ok := requireSessionEntry(t, s, b).(MessageEntry)
 		if !ok || eb.Message.Assistant == nil || eb.Message.Assistant.Content[0].(ai.TextContent).Text != "second" {
 			t.Fatal("assistant")
 		}
@@ -378,7 +378,7 @@ func TestSessionTreeTraversalUpstream(t *testing.T) {
 		upstreamSessionUser(t, s, "msg1")
 		b := upstreamSessionAssistant(t, s, "msg2")
 		upstreamSessionUser(t, s, "msg3")
-		if err := s.Fork(b); err != nil {
+		if err := s.Branch(b); err != nil {
 			t.Fatal(err)
 		}
 		upstreamSessionAssistant(t, s, "msg4-branch")
@@ -406,12 +406,12 @@ func TestCreateBranchedSessionUpstream(t *testing.T) {
 		b := upstreamSessionAssistant(t, s, "2")
 		c := upstreamSessionUser(t, s, "3")
 		upstreamSessionAssistant(t, s, "4")
-		if err := s.Fork(c); err != nil {
+		if err := s.Branch(c); err != nil {
 			t.Fatal(err)
 		}
 		upstreamSessionUser(t, s, "5")
 		s = upstreamClone(t, s, b)
-		if s.Path() != "" || !slices.Equal(upstreamEntryIDs(s.Entries()), []string{a, b}) {
+		if s.Path() != "" || !slices.Equal(upstreamEntryIDs(s.GetEntries()), []string{a, b}) {
 			t.Fatal("memory fork")
 		}
 	})
@@ -421,13 +421,13 @@ func TestCreateBranchedSessionUpstream(t *testing.T) {
 		a := upstreamSessionUser(t, s, "1")
 		b := upstreamSessionAssistant(t, s, "2")
 		upstreamSessionUser(t, s, "3")
-		if err := s.Fork(b); err != nil {
+		if err := s.Branch(b); err != nil {
 			t.Fatal(err)
 		}
 		d := upstreamSessionUser(t, s, "4")
 		e := upstreamSessionAssistant(t, s, "5")
 		s = upstreamClone(t, s, e)
-		if !slices.Equal(upstreamEntryIDs(s.Entries()), []string{a, b, d, e}) {
+		if !slices.Equal(upstreamEntryIDs(s.GetEntries()), []string{a, b, d, e}) {
 			t.Fatal("fork path")
 		}
 	})
@@ -438,10 +438,10 @@ func TestCreateBranchedSessionUpstream(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := s.AppendModelSwitch("anthropic", "claude-sonnet-4-5", ""); err != nil {
+		if _, err := s.AppendModelChange("anthropic", "claude-sonnet-4-5"); err != nil {
 			t.Fatal(err)
 		}
-		modelChangeID := s.LeafID()
+		modelChangeID := s.GetLeafID()
 		upstreamSessionUser(t, s, "first question")
 		upstreamSessionAssistant(t, s, "first answer")
 
@@ -482,14 +482,14 @@ func TestCreateBranchedSessionUpstream(t *testing.T) {
 		}
 		root := upstreamSessionUser(t, s, "question")
 		upstreamSessionAssistant(t, s, "answer")
-		raw := map[string]any{"type": "message", "id": "tool", "parentId": s.LeafID(), "timestamp": RFC3339NowNano(), "message": map[string]any{"role": "toolResult", "toolCallId": "call-1", "toolName": "nested-model", "content": []any{map[string]any{"type": "text", "text": "result"}}, "isError": false, "usage": upstreamSummaryUsage(), "timestamp": 1}}
+		raw := map[string]any{"type": "message", "id": "tool", "parentId": s.GetLeafID(), "timestamp": RFC3339NowNano(), "message": map[string]any{"role": "toolResult", "toolCallId": "call-1", "toolName": "nested-model", "content": []any{map[string]any{"type": "text", "text": "result"}}, "isError": false, "usage": upstreamSummaryUsage(), "timestamp": 1}}
 		if err := s.AppendEntry(raw); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := s.AppendCompaction("summary", root, 100, nil, false, upstreamSummaryUsage()); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := s.AppendBranchSummary(&root, "branch summary", nil, false, upstreamSummaryUsage()); err != nil {
+		if _, err := s.BranchWithSummary(&root, "branch summary", nil, false, upstreamSummaryUsage()); err != nil {
 			t.Fatal(err)
 		}
 		s, err = sm.Load(s.Path())
@@ -497,7 +497,7 @@ func TestCreateBranchedSessionUpstream(t *testing.T) {
 			t.Fatal(err)
 		}
 		seen := map[string]bool{}
-		for _, e := range s.Entries() {
+		for _, e := range s.GetEntries() {
 			var wire struct {
 				Type    string    `json:"type"`
 				Usage   *ai.Usage `json:"usage"`

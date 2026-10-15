@@ -40,6 +40,7 @@ func FetchWithRetry(client *http.Client, req *http.Request, options FetchRetryOp
 	if client == nil {
 		client = http.DefaultClient
 	}
+	client = withoutConnectionReuse(client)
 	maxRetries := 2
 	if options.MaxRetries != nil {
 		maxRetries = max(0, *options.MaxRetries)
@@ -90,8 +91,32 @@ func FetchWithRetry(client *http.Client, req *http.Request, options FetchRetryOp
 	}
 }
 
+// withoutConnectionReuse returns client with a private copy of its *http.Transport that never reuses a connection. net/http resends a replayable
+// request once when a reused connection drops before any response, which Request.Close alone does not prevent when the transport already pools a
+// connection opened by another request; undici never resends a request it has written, so Pi's fetch sends exactly one request per attempt. A client
+// whose Transport is not an *http.Transport is returned unchanged.
+func withoutConnectionReuse(client *http.Client) *http.Client {
+	base, ok := client.Transport.(*http.Transport)
+	if client.Transport == nil {
+		base, ok = http.DefaultTransport.(*http.Transport)
+	}
+	if !ok {
+		return client
+	}
+	//portlint:allow transportperrequest DisableKeepAlives leaves the transport no idle connection to share; one fetch per attempt, as undici (doc above)
+	transport := base.Clone()
+	transport.DisableKeepAlives = true
+	private := *client
+	private.Transport = transport
+	return &private
+}
+
 func cloneRequest(req *http.Request, ctx context.Context) (*http.Request, error) {
 	clone := req.Clone(ctx)
+	// net/http silently resends an idempotent request once when a reused connection drops before any response, so the server would see more than
+	// 1+MaxRetries requests where Pi's fetch sends exactly one per attempt. A connection this function opens is closed after its response and is never
+	// pooled, so no attempt reuses one of its own connections.
+	clone.Close = true
 	if req.GetBody != nil {
 		body, err := req.GetBody()
 		if err != nil {

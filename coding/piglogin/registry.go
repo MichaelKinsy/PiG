@@ -14,6 +14,8 @@ import (
 var registry struct {
 	mu      sync.Mutex
 	entries []registeredSprite
+	// revision counts changes to entries, so a renderer that keeps a drawn sprite can tell a replaced or removed one.
+	revision uint64
 }
 
 type registeredSprite struct {
@@ -42,9 +44,11 @@ func Register(owner string, definition extension.ValidatedSpriteDefinition) erro
 			return fmt.Errorf("sprite %q is registered by another extension", id)
 		}
 		registry.entries[i].variant = variant
+		registry.revision++
 		return nil
 	}
 	registry.entries = append(registry.entries, registeredSprite{owner: owner, variant: variant})
+	registry.revision++
 	return nil
 }
 
@@ -52,7 +56,18 @@ func Register(owner string, definition extension.ValidatedSpriteDefinition) erro
 func Unregister(owner string) {
 	registry.mu.Lock()
 	defer registry.mu.Unlock()
+	before := len(registry.entries)
 	registry.entries = slices.DeleteFunc(registry.entries, func(entry registeredSprite) bool { return entry.owner == owner })
+	if len(registry.entries) != before {
+		registry.revision++
+	}
+}
+
+// Revision changes whenever Register or Unregister changes the registered sprites. Built-in sprites never change, so a sprite's ID together with Revision identifies what the sprite draws.
+func Revision() uint64 {
+	registry.mu.Lock()
+	defer registry.mu.Unlock()
+	return registry.revision
 }
 
 // All lists every sprite /sprite offers: the built-in catalogue, then the registered sprites.

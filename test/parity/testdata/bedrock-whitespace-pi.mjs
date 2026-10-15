@@ -30,7 +30,14 @@ for (const id of ['anthropic.claude-sonnet-4-5-20250929-v1:0', 'amazon.nova-lite
       ]});
       const result = await stream(model, request, {cacheRetention:'none', env:{AWS_BEDROCK_SKIP_AUTH:'1',AWS_REGION:'us-east-1',AWS_BEDROCK_FORCE_HTTP1:'1',HTTP_PROXY:'',HTTPS_PROXY:'',ALL_PROXY:'',NO_PROXY:'*'}}).result();
       if (!messages) throw new Error('request did not reach HTTP serializer: ' + JSON.stringify(result));
-      console.log(JSON.stringify({model:id,case:row.name,messages}));
+      // D116: PiG merges adjacent same-role Converse messages, which Pi sends side by side (bedrock-converse-stream.ts:1014). The probe applies the same projection to Pi's captured messages; every block, its order and its contents are still compared.
+      const merged = [];
+      for (const message of messages) {
+        const last = merged[merged.length - 1];
+        if (last && last.role === message.role) last.content = [...last.content, ...message.content];
+        else merged.push({...message, content: [...message.content]});
+      }
+      console.log(JSON.stringify({model:id,case:row.name,messages:merged}));
     } finally {
       await new Promise((resolve,reject) => server.close(error => error ? reject(error) : resolve()));
     }

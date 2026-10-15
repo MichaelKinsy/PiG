@@ -11,6 +11,7 @@ export function normalizeBuildSystemPromptOptions(input) {
         customPrompt: input.customPrompt,
         forceSystemPrompt: input.forceSystemPrompt,
         selectedTools: [...(input.selectedTools ?? ["read", "bash", "edit", "write"])],
+        hiddenTools: [...(input.hiddenTools ?? [])],
         toolSnippets: { ...(input.toolSnippets ?? {}) },
         toolGuidelines: Object.fromEntries(Object.entries(input.toolGuidelines ?? {}).map(([name, guidelines]) => [name, [...guidelines]])),
         promptGuidelines: [...(input.promptGuidelines ?? [])],
@@ -66,12 +67,13 @@ function buildRules(selectedTools, toolGuidelines, promptGuidelines) {
 /** Build the ordered, independently replaceable sections of the structured system prompt. */
 export function buildSystemPromptSections(input) {
     const options = normalizeBuildSystemPromptOptions(input);
-    const { customPrompt, selectedTools, toolSnippets, toolGuidelines, promptGuidelines, appendSystemPrompt, sections: customSections, cwd, contextFiles, skills, } = options;
+    const { customPrompt, selectedTools, hiddenTools, toolSnippets, toolGuidelines, promptGuidelines, appendSystemPrompt, sections: customSections, cwd, contextFiles, skills, } = options;
     for (const name of Object.keys(customSections)) {
         if (!SYSTEM_PROMPT_SECTION_NAME.test(name) || name === "preamble") {
             throw new Error(`Invalid system prompt section name: ${name}`);
         }
     }
+    const declaredTools = selectedTools.filter((name) => !hiddenTools.includes(name));
     const promptSections = {};
     if (customPrompt) {
         promptSections.preamble = customPrompt;
@@ -79,10 +81,10 @@ export function buildSystemPromptSections(input) {
     else {
         promptSections.preamble =
             "You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.";
-        const visibleTools = selectedTools.filter((name) => !!toolSnippets[name]);
+        const visibleTools = declaredTools.filter((name) => !!toolSnippets[name]);
         const tools = visibleTools.length > 0 ? visibleTools.map((name) => `- ${name}: ${toolSnippets[name]}`).join("\n") : "(none)";
         promptSections.tools = `${tools}\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.`;
-        promptSections.rules = buildRules(selectedTools, toolGuidelines, promptGuidelines);
+        promptSections.rules = buildRules(declaredTools, toolGuidelines, promptGuidelines);
         promptSections.docs = `Pi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):
 - Main documentation: ${getReadmePath()}
 - Additional docs: ${getDocsPath()}
@@ -96,7 +98,10 @@ export function buildSystemPromptSections(input) {
         promptSections.addendum = appendSystemPrompt;
     if (contextFiles.length > 0)
         promptSections.project_context = renderProjectContext(contextFiles);
-    const skillFileReadTool = ["read", "bash"].find((tool) => selectedTools.includes(tool));
+    // A hidden reader is still reachable through another tool, so skills stay but the hint names no tool.
+    const readers = ["read", "bash"];
+    const skillFileReadTool = readers.find((tool) => declaredTools.includes(tool)) ??
+        (readers.some((tool) => selectedTools.includes(tool)) ? "indirect" : undefined);
     if (skillFileReadTool && skills.length > 0) {
         const skillsPrompt = formatSkillsForPrompt(skills, skillFileReadTool).trim();
         if (skillsPrompt)

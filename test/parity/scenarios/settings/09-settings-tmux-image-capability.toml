@@ -2,6 +2,7 @@
 # settings-selector.ts:757-796 hides Show images and Image width, but retains
 # Auto-resize images and Block images. Reproduced with Herdr graphics forwarded
 # to the outer terminal; tmux is still the immediate terminal boundary.
+# Pi 1.2.0+3daa2028 shows (1/33) rows here: its roster adds share-destination (settings-selector.ts:516) and tmux hides the two image-only rows. PiG omits that row by approved divergence D64 and adds D80's Mask secret input row, so both sides show (1/33) with no count normalization.
 name = "09-settings-tmux-image-capability"
 description = "Tmux hides terminal image controls even inside an image-capable Herdr pane"
 covers = [
@@ -40,10 +41,4 @@ output_equal = true
 escaped_output_equal = true
 runs = 3
 pig_contains = ["(1/33)"]
-pi_contains = ["(1/32)"]
-
-# normalize-rationale: D80 contributes exactly one non-image privacy row. Assert both raw counts while preserving the image-control and full-frame comparisons.
-[[assert.normalize_replace]]
-pattern = '\(1/33\)'
-with = '(1/32)'
-reason = "D80 adds one non-image settings row; Pi 0.99.1's 34-row catalog loses two image-only rows under tmux, and PiG adds one privacy row."
+pi_contains = ["(1/33)"]

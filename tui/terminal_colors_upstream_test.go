@@ -40,10 +40,10 @@ func TestUpstreamTerminalColorSchemeParser(t *testing.T) {
 			input string
 			want  TerminalColorScheme
 		}{
-			{"\x1b[?997;1n", "dark"},
-			{"\x1b[?997;2n", "light"},
-			{"\x1b[?997;2n\x1b[?997;1n\x1b[?997;1n", "dark"},
-			{"\x1b[?997;1n\x1b[?997;2n\x1b[?997;2n", "light"},
+			{"\x1b[?997;1n", TerminalColorSchemeDark},
+			{"\x1b[?997;2n", TerminalColorSchemeLight},
+			{"\x1b[?997;2n\x1b[?997;1n\x1b[?997;1n", TerminalColorSchemeDark},
+			{"\x1b[?997;1n\x1b[?997;2n\x1b[?997;2n", TerminalColorSchemeLight},
 			{"\x1b[?997;3n", ""},
 			{"\x1b[?996n", ""},
 			{"x\x1b[?997;1n", ""},
@@ -51,6 +51,11 @@ func TestUpstreamTerminalColorSchemeParser(t *testing.T) {
 			if got := ParseTerminalColorSchemeReport(tc.input); got != tc.want {
 				t.Errorf("input=%q scheme=%q, want %q", tc.input, got, tc.want)
 			}
+		}
+	})
+	t.Run("the scheme constants are the upstream strings", func(t *testing.T) {
+		if TerminalColorSchemeDark != "dark" || TerminalColorSchemeLight != "light" {
+			t.Fatalf("dark=%q light=%q", TerminalColorSchemeDark, TerminalColorSchemeLight)
 		}
 	})
 }

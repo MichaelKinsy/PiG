@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/jsmath"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
@@ -50,10 +51,11 @@ var stopWords = map[string]bool{
 }
 
 var (
-	lowerUpper     = lazyregexp.New(`([a-z0-9])([A-Z])`)
-	upperRunUpper  = lazyregexp.New(`([A-Z]+)([A-Z][a-z])`)
-	nonAlphanumRun = lazyregexp.New(`[^a-z0-9]+`)
-	pluralEnding   = lazyregexp.New(`(ches|shes|sses|xes|zes)$`)
+	lowerUpper    = lazyregexp.New(`([a-z0-9])([A-Z])`)
+	upperRunUpper = lazyregexp.New(`([A-Z]+)([A-Z][a-z])`)
+	// termRun is a run of ASCII letters and digits or of CJK-script characters: the characters of the scripts that write no spaces between words.
+	termRun      = lazyregexp.New(`[a-z0-9]+|[\p{Han}\p{Hiragana}\p{Katakana}\p{Hangul}]`)
+	pluralEnding = lazyregexp.New(`(ches|shes|sses|xes|zes)$`)
 )
 
 // stem is a naive singular form, so `issues` matches `issue` and `searches` matches `search`. Terms are ASCII.
@@ -70,12 +72,13 @@ func stem(term string) string {
 }
 
 // Tokenize lowercases text into terms, splitting at camelCase boundaries and non-alphanumerics, without stop words.
+// pig divergence (D173): Pi's tokenizer splits on /[^a-z0-9]+/ and so drops every Chinese, Japanese and Korean character (Pi #10816); PiG makes each of those characters a term of its own, so a query in those scripts matches a tool whose metadata holds the same characters. Text without such characters tokenizes as in Pi.
 func Tokenize(text string) []string {
 	text = lowerUpper.ReplaceAllString(text, "$1 $2")
 	text = upperRunUpper.ReplaceAllString(text, "$1 $2")
 	terms := []string{}
-	for _, term := range nonAlphanumRun.Split(strings.ToLower(text), -1) {
-		if term != "" && !stopWords[term] {
+	for _, term := range termRun.FindAllString(jsstring.ToLower(text), -1) {
+		if !stopWords[term] {
 			terms = append(terms, stem(term))
 		}
 	}
@@ -182,7 +185,7 @@ func (r *Bm25Ranker) Rank(query string, documents []Document, limit int) []Match
 				frequency++
 			}
 		}
-		idf[term] = math.Log(1 + (float64(len(documents)-frequency)+0.5)/(float64(frequency)+0.5))
+		idf[term] = jsmath.Log(1 + (float64(len(documents)-frequency)+0.5)/(float64(frequency)+0.5))
 	}
 	matches := []Match{}
 	for i, document := range documents {
@@ -192,8 +195,9 @@ func (r *Bm25Ranker) Rank(query string, documents []Document, limit int) []Match
 			if count == 0 {
 				continue
 			}
-			norm := r.K1 * (1 - r.B + (r.B*lengths[i])/averageLength)
-			score += idf[term] * ((float64(count) * (r.K1 + 1)) / (float64(count) + norm))
+			// float64() rounds the product, so the compiler cannot fuse it into the addition below as a multiply-add (arm64 FMADD); JavaScript rounds every operation.
+			norm := float64(r.K1 * (1 - r.B + (r.B*lengths[i])/averageLength))
+			score += float64(idf[term] * ((float64(count) * (r.K1 + 1)) / (float64(count) + norm)))
 		}
 		if score > 0 {
 			matches = append(matches, Match{Name: document.Name, Score: score})

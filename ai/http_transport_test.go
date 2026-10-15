@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"math"
 	"net"
 	"net/http"
 	"testing"
@@ -16,6 +17,8 @@ func baseHTTPTransport(t testing.TB, c *http.Client) *http.Transport {
 	for {
 		switch wrapped := transport.(type) {
 		case *providerRequestTransport:
+			transport = wrapped.base
+		case *sseIdleTransport:
 			transport = wrapped.base
 		case *retryTransport:
 			transport = wrapped.base
@@ -121,6 +124,36 @@ func TestConfigureHTTPDispatcher_RejectsNegativeTimeout(t *testing.T) {
 	}
 	if got := ConfiguredHTTPIdleTimeoutMs(); got != before {
 		t.Fatalf("ConfiguredHTTPIdleTimeoutMs() changed on error: got %d want %d", got, before)
+	}
+}
+
+// Undici's fast timers (core/http-dispatcher.ts bodyTimeout/headersTimeout) never fire for a delay of centuries, so a timeout beyond
+// time.Duration's range is no deadline. Before the guard, ms*time.Millisecond wrapped: 18446744073710 ms became a 0.45 ms deadline.
+func TestConfiguredHTTPIdleTimeoutBeyondDurationRangeIsNone(t *testing.T) {
+	t.Cleanup(func() {
+		if err := ConfigureHTTPDispatcher(DefaultHTTPIdleTimeoutMs); err != nil {
+			t.Fatalf("restore default ConfigureHTTPDispatcher: %v", err)
+		}
+	})
+	limit := math.MaxInt64 / int64(time.Millisecond)
+	for _, tc := range []struct {
+		ms   int64
+		want time.Duration
+	}{
+		{limit, time.Duration(limit) * time.Millisecond},
+		{limit + 1, 0},
+		{18446744073710, 0},
+		{math.MaxInt64, 0},
+	} {
+		if err := ConfigureHTTPDispatcher(int(tc.ms)); err != nil {
+			t.Fatal(err)
+		}
+		if got := configuredHTTPIdleTimeout(); got != tc.want {
+			t.Errorf("%d ms: idle timeout %v, want %v", tc.ms, got, tc.want)
+		}
+		if got := baseHTTPTransport(t, streamingHTTPClient()).ResponseHeaderTimeout; got != tc.want {
+			t.Errorf("%d ms: ResponseHeaderTimeout %v, want %v", tc.ms, got, tc.want)
+		}
 	}
 }
 

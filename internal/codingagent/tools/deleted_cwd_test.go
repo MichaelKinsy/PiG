@@ -46,7 +46,7 @@ func TestToolsFailWhenTheWorkingDirectoryIsGone(t *testing.T) {
 	if _, err := canonicalKey("a.txt"); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("canonicalKey = %v; the mutation queue key must not be a relative path", err)
 	}
-	if preview := ComputeEditsDiff("a.txt", nil, ""); preview.Error == "" {
+	if _, failed := ComputeEditsDiff("a.txt", nil, "").(EditDiffError); !failed {
 		t.Fatal("ComputeEditsDiff must report the failure")
 	}
 }

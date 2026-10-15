@@ -1,5 +1,7 @@
 package evals
 
+// pi: packages/evals/src/report.ts
+
 import "testing"
 
 // TestNodeColorDepthAboveTwoMatchesNode pins getColorDepth(env) > 2 as measured with Node v24.19 on Linux through

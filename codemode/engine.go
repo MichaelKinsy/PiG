@@ -1,21 +1,9 @@
 package codemode
 
 import (
-	"context"
-	"crypto/rand"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"math"
-	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
-
-	"github.com/tetratelabs/wazero"
-	"github.com/tetratelabs/wazero/api"
-	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
-	"github.com/tetratelabs/wazero/sys"
 )
 
 // maxStackSize is the VM stack guard; without it deep recursion overflows the wasm stack and traps instead of
@@ -24,246 +12,123 @@ import (
 // Ports quickjs-wasi (MAX_STACK_SIZE) as used by packages/codemode/src/runtime/worker.ts.
 const maxStackSize = 512 * 1024
 
-const (
-	wasmPageSize = 64 * 1024
-	// linearMemoryHeadroom is what the instance needs beyond the QuickJS heap limit: the wasm data and stack, the
-	// allocator's bookkeeping and the interpreter's own allocations.
-	linearMemoryHeadroom = 64 << 20
-)
-
-// engine is one wazero runtime holding the compiled QuickJS module. It is shared by every execution that uses the
-// same module, like upstream's per-path module cache (packages/codemode/src/wasm.ts).
-type engine struct {
-	runtime wazero.Runtime
-	module  wazero.CompiledModule
-	// haltable reports that the module carries instrumentHalt's halt global; otherwise an instance is halted by
-	// cancelling the context of its calls.
-	haltable bool
-	// vms maps a running instance to its VM, for the host functions the instance calls.
-	vms sync.Map
+// instance is the module instance one vm drives: calls of the module's exports and its linear memory. The wazero
+// instance of the process (engine_wazero.go) and the Worker host's QuickJS instance (engine_hostimport.go) implement it.
+type instance interface {
+	// call runs the export with raw 64-bit arguments (a double travels as its bits) and returns the raw result, zero
+	// for none. An error is a trap.
+	call(name string, args ...uint64) (uint64, error)
+	// read copies n bytes at offset out of linear memory.
+	read(offset, n uint32) ([]byte, bool)
+	// readString is read as a string, for an instance that can hand over the bytes it copied without copying them again.
+	readString(offset, n uint32) (string, bool)
+	write(offset uint32, data []byte) bool
+	// clockChanged tells an instance whose clock the host reads (the Worker host's QuickJS) that the virtual clock of a
+	// deterministic VM changed; an instance that reads the clock itself ignores it.
+	clockChanged(c *virtualClock)
+	// halt makes the instance trap at its next loop iteration.
+	halt()
+	// close releases the instance; it may be called more than once and on a partly built instance.
+	close()
 }
-
-// newEngine compiles wasm. cacheDir, when set, holds wazero's on-disk compilation cache; a cache that cannot be
-// opened is ignored and the module compiles in memory.
-func newEngine(ctx context.Context, wasm []byte, cacheDir string, memoryLimit uint32) (*engine, error) {
-	// A running instance is stopped through its halt global (vm.halt). WithCloseOnContextDone would also stop it, but
-	// wazero compiles that as a call into Go on every loop iteration, so it is used only for a custom module (Wasm)
-	// that instrumentHalt cannot rewrite, which wazero runs all the same.
-	instrumented, err := instrumentHalt(wasm)
-	haltable := err == nil
-	if haltable {
-		wasm = instrumented
-	}
-	config := wazero.NewRuntimeConfigCompiler().WithCloseOnContextDone(!haltable)
-	if memoryLimit != 0 {
-		// The heap limit bounds the instance, so its linear memory is reserved once at that size (plus the engine's own
-		// data): growing it a page at a time would copy the whole memory on every step.
-		pages := (uint64(memoryLimit) + linearMemoryHeadroom + wasmPageSize - 1) / wasmPageSize
-		config = config.WithMemoryLimitPages(uint32(min(pages, 65536))).WithMemoryCapacityFromMax(true)
-	}
-	if cacheDir != "" {
-		if cache, err := wazero.NewCompilationCacheWithDir(cacheDir); err == nil {
-			config = config.WithCompilationCache(cache)
-		}
-	}
-	runtime := wazero.NewRuntimeWithConfig(ctx, config)
-	e := &engine{runtime: runtime, haltable: haltable}
-	fail := func(err error) (*engine, error) {
-		_ = runtime.Close(ctx)
-		return nil, err
-	}
-	if _, err := wasi_snapshot_preview1.Instantiate(ctx, runtime); err != nil {
-		return fail(err)
-	}
-	if err := e.instantiateHost(ctx); err != nil {
-		return fail(err)
-	}
-	module, err := runtime.CompileModule(ctx, wasm)
-	if err != nil {
-		return fail(err)
-	}
-	e.module = module
-	return e, nil
-}
-
-func (e *engine) close(ctx context.Context) error { return e.runtime.Close(ctx) }
-
-// instantiateHost registers the `env` imports of quickjs-wasi. The guest reaches the host only through host_call
-// (the one bridge function), host_interrupt (the interrupt flag) and inert stubs.
-func (e *engine) instantiateHost(ctx context.Context) error {
-	env := e.runtime.NewHostModuleBuilder("env")
-	env.NewFunctionBuilder().WithFunc(func(_ context.Context, m api.Module, namePtr, nameLen, this, argc, argvPtr uint32) uint32 {
-		vm := e.vmFor(m)
-		if vm == nil {
-			return 0
-		}
-		return vm.hostCall(namePtr, nameLen, this, argc, argvPtr)
-	}).Export("host_call")
-	env.NewFunctionBuilder().WithFunc(func(_ context.Context, m api.Module) uint32 {
-		if vm := e.vmFor(m); vm != nil && vm.interrupt.Load() && !ignoreInterrupt.Load() {
-			return 1
-		}
-		return 0
-	}).Export("host_interrupt")
-	env.NewFunctionBuilder().WithFunc(func(_ context.Context, m api.Module, promise, reason, _ uint32) {
-		// No rejection handler is installed (qjs_set_promise_rejection_handler is never called), so the guest does not
-		// reach here; free both values as quickjs-wasi does without a handler.
-		if vm := e.vmFor(m); vm != nil {
-			vm.free(promise)
-			vm.free(reason)
-		}
-	}).Export("host_promise_rejection")
-	env.NewFunctionBuilder().WithFunc(func(uint32, uint32) uint32 { return 0 }).Export("host_module_normalize")
-	env.NewFunctionBuilder().WithFunc(func(uint32, uint32) uint32 { return 0 }).Export("host_module_load")
-	env.NewFunctionBuilder().WithFunc(hostTimezoneOffset).Export("host_get_timezone_offset")
-	_, err := env.Instantiate(ctx)
-	return err
-}
-
-// hostTimezoneOffset is quickjs-wasi's default `timezoneOffset: "host"`, which upstream's worker keeps: the host's UTC
-// offset in seconds east of UTC at the given time, which arrives as the high and low halves of a signed 64-bit count
-// of seconds.
-//
-// upstream: quickjs-wasi 3.6.2 dist/index.js (hostGetTimezoneOffset, the default timezoneOffsetHandler).
-func hostTimezoneOffset(hi, lo uint32) uint32 {
-	_, offset := time.Unix(int64(int32(hi))<<32|int64(lo), 0).Zone()
-	return uint32(int32(offset))
-}
-
-// hostMillis is the host's wall clock in whole milliseconds, which quickjs-wasi's WASI shim reports for both the
-// realtime and the monotonic clock (`BigInt(Date.now()) * 1000000n`), so `Date.now()`, `performance.now()` and the
-// seed of `Math.random()` follow the host clock as in Pi.
-//
-// upstream: quickjs-wasi 3.6.2 dist/wasi-shim.js (clock_time_get).
-func hostMillis() int64 { return time.Now().UnixMilli() }
-
-func hostWalltime() (sec int64, nsec int32) {
-	ms := hostMillis()
-	return ms / 1000, int32(ms%1000) * int32(time.Millisecond)
-}
-
-func hostNanotime() int64 { return hostMillis() * int64(time.Millisecond) }
-
-// moduleConfig gives each instance the system access quickjs-wasi's WASI shim gives it: the host clock and a
-// cryptographic random source (upstream: dist/wasi-shim.js clock_time_get and random_get). Standard output and error
-// stay discarded (worker.ts discardOutput) and there is no file system.
-func moduleConfig() wazero.ModuleConfig {
-	// An empty name lets many instances of one module coexist.
-	return wazero.NewModuleConfig().WithStartFunctions("_initialize").WithName("").
-		WithWalltime(hostWalltime, sys.ClockResolution(time.Millisecond)).
-		WithNanotime(hostNanotime, sys.ClockResolution(time.Millisecond)).
-		WithRandSource(rand.Reader)
-}
-
-func (e *engine) vmFor(m api.Module) *vm {
-	if v, ok := e.vms.Load(m); ok {
-		return v.(*vm)
-	}
-	return nil
-}
-
-// ignoreInterrupt makes host_interrupt report no interrupt, which stands for a script inside a native call that never
-// reaches an interrupt poll. Only the lifetime tests set it.
-var ignoreInterrupt atomic.Bool
-
-// liveVMs counts open wasm instances and hardStops counts instances halted under a running script because the
-// interrupt flag did not stop it in time. They let the lifetime tests observe what a result cannot show.
-var liveVMs, hardStops atomic.Int64
 
 // vmTrap is the panic value that carries a failed call into the wasm instance up to the execution that owns the VM.
 type vmTrap struct{ err error }
 
 func (t vmTrap) Error() string { return t.err.Error() }
 
-// vm is one QuickJS VM: one wasm instance, used by one goroutine at a time.
+// vm is one QuickJS VM: one module instance, used by one goroutine at a time.
 type vm struct {
-	engine    *engine
-	ctx       context.Context
-	mod       api.Module
-	halted    api.MutableGlobal
-	cancel    context.CancelFunc
-	interrupt *atomic.Bool
-	callbacks map[string]func(this uint32, args []uint32) uint32
-	undefined uint32
-	closed    bool
+	inst instance
+	// shouldInterrupt is polled by QuickJS while a script runs and by the job drain between batches of jobs; true raises an
+	// uncatchable error in the script.
+	shouldInterrupt func() bool
+	callbacks       map[string]func(this uint32, args []uint32) uint32
+	undefined       uint32
+	// clock is the virtual clock of a deterministic VM.
+	clock *virtualClock
 }
 
-// newVM instantiates the module, applies the limits and installs the interrupt handler. memoryLimit zero means none.
-// ctx is passed to every call into the instance; vm.halt stops a script the interrupt handler cannot reach.
-func (e *engine) newVM(ctx context.Context, memoryLimit uint32, interrupt *atomic.Bool) (result *vm, err error) {
-	v := &vm{engine: e, interrupt: interrupt, callbacks: map[string]func(uint32, []uint32) uint32{}}
-	if !e.haltable {
-		ctx, v.cancel = context.WithCancel(ctx)
+// vmOptions are the limits and the interrupt of one VM.
+//
+// Ports packages/codemode/src/runtime/vm.ts (StartVmOptions: maxStackSize, shouldInterrupt) and VmStartData.memoryLimitBytes.
+type vmOptions struct {
+	// memoryLimit is the QuickJS heap limit; zero means none.
+	memoryLimit uint32
+	// maxStackSize is QuickJS's guard on its own stack, which turns deep recursion into a catchable RangeError. The wasm
+	// frames also use the host's native stack, so the guard must trip before that stack runs out. Zero means maxStackSize.
+	maxStackSize uint32
+	// shouldInterrupt is polled while a script runs.
+	shouldInterrupt func() bool
+	// clock, when set, makes the VM deterministic: its WASI clocks and randomness are virtual, its timezone is UTC and it has no
+	// WeakRef (deterministic.go).
+	clock *virtualClock
+}
+
+// configure applies the limits and installs the interrupt handler of a fresh instance.
+func (v *vm) configure(options vmOptions) {
+	if options.clock != nil {
+		v.call("qjs_init2", uint64(deterministicIntrinsics))
+	} else {
+		v.call("qjs_init")
 	}
-	v.ctx = ctx
-	defer func() {
-		if r := recover(); r != nil {
-			trap, ok := r.(vmTrap)
-			if !ok {
-				panic(r)
-			}
-			v.close()
-			result, err = nil, trap
-		}
-	}()
-	mod, err := e.runtime.InstantiateModule(ctx, e.module, moduleConfig())
-	if err != nil {
-		v.close()
-		return nil, err
+	if options.memoryLimit != 0 {
+		v.call("qjs_set_memory_limit", uint64(options.memoryLimit))
 	}
-	v.mod = mod
-	liveVMs.Add(1)
-	e.vms.Store(mod, v)
-	if e.haltable {
-		halted, ok := mod.ExportedGlobal(haltExport).(api.MutableGlobal)
-		if !ok {
-			v.close()
-			return nil, errors.New("the module does not export its halt global")
-		}
-		v.halted = halted
+	stack := options.maxStackSize
+	if stack == 0 {
+		stack = maxStackSize
 	}
-	v.call("qjs_init")
-	if memoryLimit != 0 {
-		v.call("qjs_set_memory_limit", uint64(memoryLimit))
-	}
-	v.call("qjs_set_max_stack_size", maxStackSize)
+	v.call("qjs_set_max_stack_size", uint64(stack))
 	v.call("qjs_set_interrupt_handler", 1)
 	v.undefined = uint32(v.call("qjs_get_undefined"))
-	return v, nil
 }
 
-// halt makes the instance trap at its next loop iteration, whatever native code the script is in. An instance of a
-// module without the halt global is closed by wazero at its next loop iteration instead.
-func (v *vm) halt() {
-	if v.halted != nil {
-		v.halted.Set(1)
-		return
+// syncClock tells the instance the virtual clock's current readings; a VM without a clock has nothing to tell.
+func (v *vm) syncClock() {
+	if v.clock != nil {
+		v.inst.clockChanged(v.clock)
 	}
-	v.cancel()
 }
 
+// quickjsVersion is the QuickJS engine version the module reports, a NUL-terminated string in its memory.
+func (v *vm) quickjsVersion() string {
+	ptr := uint32(v.call("qjs_get_quickjs_version"))
+	var out []byte
+	for {
+		chunk, ok := v.inst.read(ptr+uint32(len(out)), 1)
+		if !ok || len(chunk) == 0 || chunk[0] == 0 {
+			return string(out)
+		}
+		out = append(out, chunk[0])
+	}
+}
+
+// halt makes the instance trap at its next loop iteration, whatever native code the script is in.
+func (v *vm) halt() { v.inst.halt() }
+
+// close releases the instance. A vm whose instance was never made has nothing to release.
 func (v *vm) close() {
-	if v.cancel != nil {
-		defer v.cancel()
+	if v.inst != nil {
+		v.inst.close()
 	}
-	if v.closed || v.mod == nil {
-		return
-	}
-	v.closed = true
-	liveVMs.Add(-1)
-	v.engine.vms.Delete(v.mod)
-	_ = v.mod.Close(context.Background())
 }
 
 func (v *vm) call(name string, args ...uint64) uint64 {
-	out, err := v.mod.ExportedFunction(name).Call(v.ctx, args...)
+	out, err := v.inst.call(name, args...)
 	if err != nil {
 		panic(vmTrap{fmt.Errorf("%s: %w", name, err)})
 	}
-	if len(out) == 0 {
-		return 0
+	return out
+}
+
+// readUint32 reads a little-endian uint32 from linear memory.
+func (v *vm) readUint32(offset uint32) (uint32, bool) {
+	b, ok := v.inst.read(offset, 4)
+	if !ok || len(b) < 4 {
+		return 0, false
 	}
-	return out[0]
+	return binary.LittleEndian.Uint32(b), true
 }
 
 func (v *vm) free(handle uint32) { v.call("qjs_free_value", uint64(handle)) }
@@ -277,7 +142,7 @@ func (v *vm) malloc(n int) uint32 {
 }
 
 func (v *vm) write(offset uint32, data []byte) {
-	if !v.mod.Memory().Write(offset, data) {
+	if !v.inst.write(offset, data) {
 		panic(vmTrap{fmt.Errorf("memory write at %d out of range", offset)})
 	}
 }
@@ -308,8 +173,8 @@ func (v *vm) isUndefined(handle uint32) bool { return v.call("qjs_is_undefined",
 
 func (v *vm) toBool(handle uint32) bool { return v.call("qjs_get_bool", uint64(handle)) != 0 }
 
-// toString reads a QuickJS string. The engine stores unpaired surrogates as three-byte WTF-8 sequences, which Go
-// strings cannot hold, so each becomes U+FFFD.
+// toString reads a QuickJS string. The engine stores unpaired surrogates as three-byte WTF-8 sequences, which the
+// returned Go string keeps, as the JavaScript string keeps a lone unit.
 func (v *vm) toString(handle uint32) string {
 	lenPtr := v.malloc(4)
 	defer v.call("wasm_free", uint64(lenPtr))
@@ -317,15 +182,15 @@ func (v *vm) toString(handle uint32) string {
 	if p == 0 {
 		return "<null>"
 	}
-	size, ok := v.mod.Memory().ReadUint32Le(lenPtr)
+	size, ok := v.readUint32(lenPtr)
 	if !ok {
 		panic(vmTrap{fmt.Errorf("string length read out of range")})
 	}
-	data, ok := v.mod.Memory().Read(p, size)
+	text, ok := v.inst.readString(p, size)
 	if !ok {
 		panic(vmTrap{fmt.Errorf("string read out of range")})
 	}
-	return strings.ToValidUTF8(string(data), "\uFFFD")
+	return text
 }
 
 func (v *vm) getProp(handle uint32, name string) uint32 {
@@ -408,12 +273,25 @@ func (v *vm) newFunction(name string, fn func(this uint32, args []uint32) uint32
 	return handle
 }
 
-// executePendingJobs runs the promise job queue; a failing job is reported like quickjs-wasi's executePendingJobs.
-func (v *vm) executePendingJobs() *jsException {
+// jobsPerPoll is how many promise jobs run between two polls of the interrupt while the queue drains.
+//
+// Ports packages/codemode/src/runtime/vm.ts (JOBS_PER_POLL).
+const jobsPerPoll = 50
+
+// executePendingJobs runs the promise job queue one job at a time and polls shouldInterrupt after every jobsPerPoll
+// jobs. A script such as `while (true) await null` is a chain of jobs that each run a few opcodes, so QuickJS's own
+// poll, which counts opcodes, would let the queue drain for a long time between polls. A job fails only for an
+// uncatchable error such as an interrupt.
+//
+// Ports packages/codemode/src/runtime/vm.ts (startVm, drain).
+func (v *vm) executePendingJobs(shouldInterrupt func() bool) *jsException {
+	jobs := 0
 	for v.call("qjs_is_job_pending") != 0 {
 		if int32(v.call("qjs_execute_pending_job")) < 0 {
-			exception := v.takeException()
-			return &jsException{name: "Error", message: "Job execution error: " + exception.String()}
+			return &jsException{name: "Error", message: "Promise job failed"}
+		}
+		if jobs++; jobs%jobsPerPoll == 0 && shouldInterrupt() {
+			return &jsException{name: "Error", message: "Execution interrupted"}
 		}
 	}
 	return nil
@@ -429,12 +307,11 @@ func (e jsException) String() string {
 
 // hostCall dispatches the guest's call of a function made by newFunction.
 func (v *vm) hostCall(namePtr, nameLen, this, argc, argvPtr uint32) uint32 {
-	mem := v.mod.Memory()
-	name, _ := mem.Read(namePtr, nameLen)
+	name, _ := v.inst.read(namePtr, nameLen)
 	callback := v.callbacks[string(name)]
 	args := make([]uint32, argc)
 	for i := range args {
-		args[i], _ = mem.ReadUint32Le(argvPtr + uint32(i)*4)
+		args[i], _ = v.readUint32(argvPtr + uint32(i)*4)
 	}
 	if callback == nil {
 		return 0

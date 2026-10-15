@@ -1,0 +1,20 @@
+Proposal for ledger-autobind (engine file test/parity/interface-closure/autobind/library.go, not edited by lg-imla-3).
+Rule L1 (packageRoots) treats a package that ships a `bin.pi` command as "not a library", which excludes packages/coding-agent
+whose package.json also publishes `main` and `exports` (an SDK index: RpcClient, EventBus, ResourceLoader, ExtensionAPI, ...).
+LEAD-RULINGS-1520 item "coding-agent L1" says coding-agent exported SDK classes are library members. The goDirs/published
+sets are already built from the `export ... from` closure of the published roots, so main.ts and cli/modes files that the
+index does not re-export stay out of L1 without the bin test.
+
+--- a/test/parity/interface-closure/autobind/library.go
++++ b/test/parity/interface-closure/autobind/library.go
+@@ func packageRoots
+-	var bin map[string]string
+-	if json.Unmarshal(pj.Bin, &bin) == nil && bin["pi"] != "" {
+-		return nil, false
+-	}
+(and drop the Bin field of the struct)
+
+Measured on integrate-042 f0bad64813 + lg-imla-3-clean (detector run with stale-skip patch): whole ledger 1573 -> 1410 gaps
+(163 rows close, 0 reopen). The remaining 105 coding-agent not-exercised rows fail L6 (no asserting Go test cites a Pi
+file:line naming the member): 39 are ExtensionAPI members whose only implementations are extensiontest.Fake and
+mcpext.builtinAPI, so a faithful test needs a real API implementation, not a Fake round trip.

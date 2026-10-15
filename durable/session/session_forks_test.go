@@ -1,11 +1,14 @@
 package session_test
 
+// pi: packages/durable/src/session/forks.ts
+
 import (
 	"errors"
 	"fmt"
 	"sync"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session/sessiontest"
 )
@@ -13,7 +16,7 @@ import (
 // Ports packages/durable/test/session-forks.test.ts
 
 func valueDoc(kind string, semantics durable.DocumentSemantics, initial string, options ...docOption) durable.DocToken[obj] {
-	return defineDoc(kind, 1, semantics, func() obj { return obj{"value": initial} }, options...)
+	return defineDoc(kind, 1, semantics, func() obj { return delta.JsonObjectOf("value", initial) }, options...)
 }
 
 func appendPoint(t *testing.T, tx durable.Tx, conversationId durable.ConversationId, kind string) durable.EntryId {
@@ -48,12 +51,15 @@ func findDocument(t *testing.T, harness sessiontest.Harness, kind string, conver
 	return record
 }
 
+// Pi source: packages/durable/src/storage/memory.ts
+// mutation-checked: zeroing the results of MemoryStorage.Conversation fails it
 func TestSessionConversationDocumentForks(t *testing.T) {
+	// Pi 1.2.0 packages/durable/test/session-forks.test.ts:29 "copies as-of and current singleton and family bases while leaving initial documents absent"
 	t.Run("copies as-of and current singleton and family bases while leaving initial documents absent", func(t *testing.T) {
 		asOf := valueDoc("fork.policies.as-of", rewindableScope(durable.ForkAsOf), "as-initial")
 		current := valueDoc("fork.policies.current", latestScope(durable.ForkCurrent), "current-initial")
 		initial := valueDoc("fork.policies.initial", latestScope(durable.ForkInitial), "fresh")
-		seeded := func(seed string) obj { return obj{"value": seed} }
+		seeded := func(seed string) obj { return delta.JsonObjectOf("value", seed) }
 		asOfFamily := defineFamily("fork.policies.as-of-family", 1, rewindableScope(durable.ForkAsOf), seeded)
 		currentFamily := defineFamily("fork.policies.current-family", 1, latestScope(durable.ForkCurrent), seeded)
 		harness := open()
@@ -83,14 +89,14 @@ func TestSessionConversationDocumentForks(t *testing.T) {
 		if harness.Storage.DocumentReadCount() != documentReads {
 			t.Fatal("a fork copies without reading document content")
 		}
-		expectEqual(t, snapshot(t, harness.Session, asOf, child.Id), obj{"value": "as-at-fork"})
-		expectEqual(t, snapshot(t, harness.Session, current, child.Id), obj{"value": "current-when-copied"})
+		expectEqual(t, snapshot(t, harness.Session, asOf, child.Id), delta.JsonObjectOf("value", "as-at-fork"))
+		expectEqual(t, snapshot(t, harness.Session, current, child.Id), delta.JsonObjectOf("value", "current-when-copied"))
 		if snapshot(t, harness.Session, initial, child.Id) != nil {
 			t.Fatal("initial-policy documents stay absent")
 		}
-		expectEqual(t, snapshot(t, harness.Session, asOfFamily, child.Id, "a"), obj{"value": "family-as-a"})
-		expectEqual(t, snapshot(t, harness.Session, asOfFamily, child.Id, "b"), obj{"value": "family-as-b"})
-		expectEqual(t, snapshot(t, harness.Session, currentFamily, child.Id, "a"), obj{"value": "family-current-when-copied"})
+		expectEqual(t, snapshot(t, harness.Session, asOfFamily, child.Id, "a"), delta.JsonObjectOf("value", "family-as-a"))
+		expectEqual(t, snapshot(t, harness.Session, asOfFamily, child.Id, "b"), delta.JsonObjectOf("value", "family-as-b"))
+		expectEqual(t, snapshot(t, harness.Session, currentFamily, child.Id, "a"), delta.JsonObjectOf("value", "family-current-when-copied"))
 
 		copies := writesOfType(lastAdmitted(harness), "document.copy")
 		if len(copies) != 5 {
@@ -124,15 +130,16 @@ func TestSessionConversationDocumentForks(t *testing.T) {
 			setValue(t, tx, asOf, "child-independent", child.Id)
 			return nil
 		})
-		expectEqual(t, snapshot(t, harness.Session, asOf, parentId), obj{"value": "as-after-fork"})
-		expectEqual(t, snapshot(t, harness.Session, asOf, child.Id), obj{"value": "child-independent"})
+		expectEqual(t, snapshot(t, harness.Session, asOf, parentId), delta.JsonObjectOf("value", "as-after-fork"))
+		expectEqual(t, snapshot(t, harness.Session, asOf, child.Id), delta.JsonObjectOf("value", "child-independent"))
 		commit(t, harness.Session, func(tx durable.Tx) error {
 			setValue(t, tx, initial, "child-created", child.Id)
 			return nil
 		})
-		expectEqual(t, snapshot(t, harness.Session, initial, child.Id), obj{"value": "child-created"})
+		expectEqual(t, snapshot(t, harness.Session, initial, child.Id), delta.JsonObjectOf("value", "child-created"))
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-forks.test.ts:151 "uses final document state from the fork entry commit while excluding later same-commit entries"
 	t.Run("uses final document state from the fork entry commit while excluding later same-commit entries", func(t *testing.T) {
 		document := valueDoc("fork.same-commit", rewindableScope(durable.ForkAsOf), "initial")
 		harness := open()
@@ -145,7 +152,7 @@ func TestSessionConversationDocumentForks(t *testing.T) {
 			return nil
 		})
 		child := fork(t, harness, parentId, forkAt)
-		expectEqual(t, snapshot(t, harness.Session, document, child.Id), obj{"value": "final-state-of-commit"})
+		expectEqual(t, snapshot(t, harness.Session, document, child.Id), delta.JsonObjectOf("value", "final-state-of-commit"))
 		visible, err := durable.Commit(ctx, harness.Session, func(tx durable.Tx) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
 			return tx.ScanEntries(durable.EntryQuery{ConversationId: child.Id}, 10, nil)
 		})
@@ -159,6 +166,7 @@ func TestSessionConversationDocumentForks(t *testing.T) {
 		}
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-forks.test.ts:179 "selects the entry-owning ancestor for as-of copies and the immediate parent for current copies"
 	t.Run("selects the entry-owning ancestor for as-of copies and the immediate parent for current copies", func(t *testing.T) {
 		asOf := valueDoc("fork.ancestry.as-of", rewindableScope(durable.ForkAsOf), "initial")
 		current := valueDoc("fork.ancestry.current", latestScope(durable.ForkCurrent), "initial")
@@ -180,18 +188,19 @@ func TestSessionConversationDocumentForks(t *testing.T) {
 			return nil
 		})
 		inheritedFork := fork(t, harness, parent.Id, inherited)
-		expectEqual(t, snapshot(t, harness.Session, asOf, inheritedFork.Id), obj{"value": "root-at-entry"})
-		expectEqual(t, snapshot(t, harness.Session, current, inheritedFork.Id), obj{"value": "parent-current"})
+		expectEqual(t, snapshot(t, harness.Session, asOf, inheritedFork.Id), delta.JsonObjectOf("value", "root-at-entry"))
+		expectEqual(t, snapshot(t, harness.Session, current, inheritedFork.Id), delta.JsonObjectOf("value", "parent-current"))
 		ownEntryFork := fork(t, harness, parent.Id, parentEntry)
-		expectEqual(t, snapshot(t, harness.Session, asOf, ownEntryFork.Id), obj{"value": "parent-at-own-entry"})
-		expectEqual(t, snapshot(t, harness.Session, current, ownEntryFork.Id), obj{"value": "parent-current"})
+		expectEqual(t, snapshot(t, harness.Session, asOf, ownEntryFork.Id), delta.JsonObjectOf("value", "parent-at-own-entry"))
+		expectEqual(t, snapshot(t, harness.Session, current, ownEntryFork.Id), delta.JsonObjectOf("value", "parent-current"))
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-forks.test.ts:230 "copies the stored value and version without consulting migration definitions or migrated caches"
 	t.Run("copies the stored value and version without consulting migration definitions or migrated caches", func(t *testing.T) {
-		v1 := defineDoc("fork.stored-version", 1, rewindableScope(durable.ForkAsOf), func() obj { return obj{"count": 1} })
+		v1 := defineDoc("fork.stored-version", 1, rewindableScope(durable.ForkAsOf), func() obj { return delta.JsonObjectOf("count", 1) })
 		var mu sync.Mutex
 		migrations := 0
-		v3 := defineDoc("fork.stored-version", 3, rewindableScope(durable.ForkAsOf), func() obj { return obj{"count": 0, "migrated": false} },
+		v3 := defineDoc("fork.stored-version", 3, rewindableScope(durable.ForkAsOf), func() obj { return delta.JsonObjectOf("count", 0, "migrated", false) },
 			withMigrate(func(value obj, fromVersion int) obj {
 				if fromVersion != 1 {
 					t.Errorf("fromVersion %d", fromVersion)
@@ -199,7 +208,7 @@ func TestSessionConversationDocumentForks(t *testing.T) {
 				mu.Lock()
 				migrations++
 				mu.Unlock()
-				return obj{"count": value["count"], "migrated": true}
+				return delta.JsonObjectOf("count", value.Value("count"), "migrated", true)
 			}))
 		harness := open()
 		parentId := createConversation(t, harness)
@@ -210,7 +219,7 @@ func TestSessionConversationDocumentForks(t *testing.T) {
 			return err
 		})
 		must(t, harness.Session.UnloadDocuments())
-		expectEqual(t, snapshot(t, harness.Session, v3, parentId), obj{"count": 1, "migrated": true})
+		expectEqual(t, snapshot(t, harness.Session, v3, parentId), delta.JsonObjectOf("count", 1, "migrated", true))
 		if migrations != 1 {
 			t.Fatal("one migration")
 		}
@@ -224,18 +233,19 @@ func TestSessionConversationDocumentForks(t *testing.T) {
 		if stored.Version != 1 {
 			t.Fatalf("stored version %d", stored.Version)
 		}
-		expectEqual(t, stored.Value, obj{"count": 1})
-		expectEqual(t, snapshot(t, harness.Session, v3, child.Id), obj{"count": 1, "migrated": true})
+		expectEqual(t, stored.Value, delta.JsonObjectOf("count", 1))
+		expectEqual(t, snapshot(t, harness.Session, v3, child.Id), delta.JsonObjectOf("count", 1, "migrated", true))
 		if migrations != 2 {
 			t.Fatal("the copy migrates on its own load")
 		}
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-forks.test.ts:280 "coalesces a typed migration and override into the copied creation base"
 	t.Run("coalesces a typed migration and override into the copied creation base", func(t *testing.T) {
-		v1 := defineDoc("fork.override", 1, rewindableScope(durable.ForkAsOf), func() obj { return obj{"count": 2} })
+		v1 := defineDoc("fork.override", 1, rewindableScope(durable.ForkAsOf), func() obj { return delta.JsonObjectOf("count", 2) })
 		checkpoints := 0
-		v2 := defineDoc("fork.override", 2, rewindableScope(durable.ForkAsOf), func() obj { return obj{"count": 0, "migrated": false} },
-			withMigrate(func(value obj, _ int) obj { return obj{"count": value["count"], "migrated": true} }),
+		v2 := defineDoc("fork.override", 2, rewindableScope(durable.ForkAsOf), func() obj { return delta.JsonObjectOf("count", 0, "migrated", false) },
+			withMigrate(func(value obj, _ int) obj { return delta.JsonObjectOf("count", value.Value("count"), "migrated", true) }),
 			withCheckpoint(func(obj, []durable.Op, durable.CheckpointInfo) bool { checkpoints++; return false }))
 		harness := open()
 		parentId := createConversation(t, harness)
@@ -265,7 +275,7 @@ func TestSessionConversationDocumentForks(t *testing.T) {
 		if content.Kind != durable.ContentBase || content.Version != 2 {
 			t.Fatalf("content %+v", content)
 		}
-		expectEqual(t, content.Value, obj{"count": 9, "migrated": true})
+		expectEqual(t, content.Value, delta.JsonObjectOf("count", 9, "migrated", true))
 		if checkpoints != 0 {
 			t.Fatal("a creation base consults no checkpoint predicate")
 		}
@@ -273,7 +283,7 @@ func TestSessionConversationDocumentForks(t *testing.T) {
 		if len(documents) != 1 || *documents[0].Version != 2 {
 			t.Fatal("one version-2 creation publication")
 		}
-		expectEqual(t, snapshot(t, harness.Session, v2, child.Id), obj{"count": 9, "migrated": true})
+		expectEqual(t, snapshot(t, harness.Session, v2, child.Id), delta.JsonObjectOf("count", 9, "migrated", true))
 		parentRecord := findDocument(t, harness, "fork.override", parentId)
 		parentStored, err := harness.Storage.Document(ctx, parentRecord.Id, durable.CurrentPoint)
 		must(t, err)
@@ -282,6 +292,7 @@ func TestSessionConversationDocumentForks(t *testing.T) {
 		}
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-forks.test.ts:338 "copies the incarnation alive at the fork point across retirement and recreation"
 	t.Run("copies the incarnation alive at the fork point across retirement and recreation", func(t *testing.T) {
 		document := valueDoc("fork.incarnations", rewindableScope(durable.ForkAsOf), "initial")
 		harness := open()
@@ -304,13 +315,14 @@ func TestSessionConversationDocumentForks(t *testing.T) {
 		oldChild := fork(t, harness, parentId, oldAt)
 		emptyChild := fork(t, harness, parentId, retiredAt)
 		newChild := fork(t, harness, parentId, newAt)
-		expectEqual(t, snapshot(t, harness.Session, document, oldChild.Id), obj{"value": "old"})
+		expectEqual(t, snapshot(t, harness.Session, document, oldChild.Id), delta.JsonObjectOf("value", "old"))
 		if snapshot(t, harness.Session, document, emptyChild.Id) != nil {
 			t.Fatal("no incarnation was alive at the retirement entry")
 		}
-		expectEqual(t, snapshot(t, harness.Session, document, newChild.Id), obj{"value": "new"})
+		expectEqual(t, snapshot(t, harness.Session, document, newChild.Id), delta.JsonObjectOf("value", "new"))
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-forks.test.ts:382 "rejects invisible fork points before admission and remains usable"
 	t.Run("rejects invisible fork points before admission and remains usable", func(t *testing.T) {
 		harness := open()
 		rootId := createConversation(t, harness)
@@ -339,6 +351,7 @@ func TestSessionConversationDocumentForks(t *testing.T) {
 		expectEqual(t, *stored, independent)
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-forks.test.ts:411 "rejects duplicate as-of and current selections for one child address before admission"
 	t.Run("rejects duplicate as-of and current selections for one child address before admission", func(t *testing.T) {
 		asOf := valueDoc("fork.duplicate-policy", rewindableScope(durable.ForkAsOf), "as-of")
 		current := valueDoc("fork.duplicate-policy", latestScope(durable.ForkCurrent), "current")
@@ -367,6 +380,7 @@ func TestSessionConversationDocumentForks(t *testing.T) {
 		expectEqual(t, *stored, independent)
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-forks.test.ts:449 "rejects current and as-of source writes in the fork transaction"
 	t.Run("rejects current and as-of source writes in the fork transaction", func(t *testing.T) {
 		current := valueDoc("fork.same-transaction-current", latestScope(durable.ForkCurrent), "committed")
 		asOf := valueDoc("fork.same-transaction-as-of", rewindableScope(durable.ForkAsOf), "committed")
@@ -403,15 +417,16 @@ func TestSessionConversationDocumentForks(t *testing.T) {
 		if len(harness.Storage.Commits()) != commits {
 			t.Fatal("nothing is admitted")
 		}
-		expectEqual(t, snapshot(t, harness.Session, current, parentId), obj{"value": "committed"})
+		expectEqual(t, snapshot(t, harness.Session, current, parentId), delta.JsonObjectOf("value", "committed"))
 		child := fork(t, harness, parentId, forkAt)
-		expectEqual(t, snapshot(t, harness.Session, current, child.Id), obj{"value": "committed"})
+		expectEqual(t, snapshot(t, harness.Session, current, child.Id), delta.JsonObjectOf("value", "committed"))
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-forks.test.ts:502 "rolls every copied base back when later pre-admission assembly fails"
 	t.Run("rolls every copied base back when later pre-admission assembly fails", func(t *testing.T) {
 		copied := valueDoc("fork.rollback.copied", rewindableScope(durable.ForkAsOf), "copied")
 		failCheckpoint := true
-		failure := defineDoc("fork.rollback.failure", 1, sessionScope, func() obj { return obj{"count": 0} },
+		failure := defineDoc("fork.rollback.failure", 1, sessionScope, func() obj { return delta.JsonObjectOf("count", 0) },
 			withCheckpoint(func(obj, []durable.Op, durable.CheckpointInfo) bool {
 				if failCheckpoint {
 					panic(errors.New("checkpoint failed"))
@@ -448,11 +463,12 @@ func TestSessionConversationDocumentForks(t *testing.T) {
 		}
 		failCheckpoint = false
 		commit(t, harness.Session, func(tx durable.Tx) error { return mustDoc(t, tx, failure).Set("count", 2) })
-		expectEqual(t, snapshot(t, harness.Session, failure), obj{"count": 2})
-		expectEqual(t, snapshot(t, harness.Session, copied, parentId), obj{"value": "copied"})
+		expectEqual(t, snapshot(t, harness.Session, failure), delta.JsonObjectOf("count", 2))
+		expectEqual(t, snapshot(t, harness.Session, copied, parentId), delta.JsonObjectOf("value", "copied"))
 	})
 
-	t.Run("rolls back a guaranteed Storage rejection without poisoning the Session", func(t *testing.T) {
+	// Pi 1.2.0 packages/durable/test/session-forks.test.ts:552 "fails the Session on a rejected fork commit, which leaves no effect"
+	t.Run("fails the Session on a rejected fork commit, which leaves no effect", func(t *testing.T) {
 		document := valueDoc("fork.storage-rejected", rewindableScope(durable.ForkAsOf), "source")
 		harness := open()
 		parentId := createConversation(t, harness)
@@ -462,26 +478,36 @@ func TestSessionConversationDocumentForks(t *testing.T) {
 			_, err := tx.Doc(document, parentId)
 			return err
 		})
-		harness.Storage.FailNextCommit(durable.NewStorageRejected("copy rejected", nil))
+		rejection := errors.New("copy rejected")
+		harness.Storage.FailNextCommit(rejection)
 		var rejectedChildId durable.ConversationId
 		err := tryCommit(harness.Session, func(tx durable.Tx) error {
 			child, err := tx.ForkConversation(parentId, forkAt, ownerless())
 			rejectedChildId = child.Id
 			return err
 		})
-		expectErrorContains(t, err, "copy rejected")
+		if err != rejection { //nolint:errorlint // identity: rejects.toBe(rejection)
+			t.Fatalf("the commit that failed returns the storage error itself: %v", err)
+		}
+		_, err = durable.Commit(ctx, harness.Session, func(tx durable.Tx) (durable.ConversationRecord, error) {
+			return tx.CreateConversation(ownerless())
+		})
+		// toMatchObject({ name: "SessionFailed", cause: rejection })
+		if failed, ok := errors.AsType[*durable.SessionFailed](err); !ok || failed.Name() != "SessionFailed" || failed.Cause != rejection { //nolint:errorlint // identity: cause is the rejection itself
+			t.Fatalf("got error %v (%T), want a SessionFailed caused by the rejection itself", err, err)
+		}
+		// The failed Session closed its Storage; reopened, it holds nothing of the batch.
+		<-harness.Session.Closed()
+		if end := harness.Session.End(); end.Reason != durable.SessionEndFailed || end.Error != rejection { //nolint:errorlint // identity: toEqual({ reason: "failed", error: rejection })
+			t.Fatalf("end = %+v, want failed with the storage error", end)
+		}
+		harness.Storage.Reopen()
 		if conversation, _ := harness.Storage.Conversation(ctx, rejectedChildId); conversation != nil {
 			t.Fatal("the rejected child is not persisted")
 		}
-		next, err := durable.Commit(ctx, harness.Session, func(tx durable.Tx) (durable.ConversationRecord, error) {
-			return tx.CreateConversation(ownerless())
-		})
-		must(t, err)
-		stored, err := harness.Storage.Conversation(ctx, next.Id)
-		must(t, err)
-		expectEqual(t, *stored, next)
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-forks.test.ts:584 "retires a copied document and can recreate the address in the fork transaction"
 	t.Run("retires a copied document and can recreate the address in the fork transaction", func(t *testing.T) {
 		document := valueDoc("fork.retire-recreate", rewindableScope(durable.ForkAsOf), "fresh")
 		harness := open()
@@ -505,9 +531,10 @@ func TestSessionConversationDocumentForks(t *testing.T) {
 		if len(writesOfType(writes, "document.copy")) != 1 || len(writesOfType(writes, "document.create")) != 1 || len(writesOfType(writes, "document.retire")) != 1 {
 			t.Fatal("one copy, one creation, one retirement")
 		}
-		expectEqual(t, snapshot(t, harness.Session, document, child.Id), obj{"value": "replacement"})
+		expectEqual(t, snapshot(t, harness.Session, document, child.Id), delta.JsonObjectOf("value", "replacement"))
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-forks.test.ts:613 "copies only conversation documents, leaving Session and task documents in their original scopes"
 	t.Run("copies only conversation documents, leaving Session and task documents in their original scopes", func(t *testing.T) {
 		copied := valueDoc("fork.scope.conversation", latestScope(durable.ForkCurrent), "conversation")
 		sessionOnly := valueDoc("fork.scope.session", sessionScope, "session")
@@ -515,7 +542,7 @@ func TestSessionConversationDocumentForks(t *testing.T) {
 		work := durable.DefineTask(durable.TaskDefinition[any, obj, any, workHooks]{
 			Name:    "fork.scope.work",
 			Version: 1,
-			Initial: func(any) obj { return obj{"phase": "start"} },
+			Initial: func(any) obj { return delta.JsonObjectOf("phase", "start") },
 			Phases: map[string]durable.PhaseHandler[any, obj, any, workHooks]{
 				"start": func(ctxT, durable.RunningTask[any, obj, any], durable.TaskRuntime[any, obj, any, workHooks]) error {
 					return nil
@@ -551,13 +578,14 @@ func TestSessionConversationDocumentForks(t *testing.T) {
 		if len(changes) != 1 || changes[0].Record.Kind != "fork.scope.conversation" {
 			t.Fatal("only the conversation copy is published")
 		}
-		expectEqual(t, snapshot(t, harness.Session, copied, child.Id), obj{"value": "conversation"})
-		expectEqual(t, snapshot(t, harness.Session, sessionOnly), obj{"value": "session"})
-		expectEqual(t, snapshot(t, harness.Session, taskOnly, taskId), obj{"value": "task"})
+		expectEqual(t, snapshot(t, harness.Session, copied, child.Id), delta.JsonObjectOf("value", "conversation"))
+		expectEqual(t, snapshot(t, harness.Session, sessionOnly), delta.JsonObjectOf("value", "session"))
+		expectEqual(t, snapshot(t, harness.Session, taskOnly, taskId), delta.JsonObjectOf("value", "task"))
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-forks.test.ts:667 "copies every family member across storage scan pages"
 	t.Run("copies every family member across storage scan pages", func(t *testing.T) {
-		family := defineFamily("fork.pagination", 1, latestScope(durable.ForkCurrent), func(seed float64) obj { return obj{"value": seed} })
+		family := defineFamily("fork.pagination", 1, latestScope(durable.ForkCurrent), func(seed float64) obj { return delta.JsonObjectOf("value", seed) })
 		harness := open()
 		parentId := createConversation(t, harness)
 		forkAt, err := durable.Commit(ctx, harness.Session, func(tx durable.Tx) (durable.EntryId, error) {
@@ -579,7 +607,7 @@ func TestSessionConversationDocumentForks(t *testing.T) {
 		if copies := writesOfType(harness.Storage.LastCommit(), "document.copy"); len(copies) != 260 {
 			t.Fatalf("copies %d", len(copies))
 		}
-		expectEqual(t, snapshot(t, harness.Session, family, child.Id, "member-0"), obj{"value": 0})
-		expectEqual(t, snapshot(t, harness.Session, family, child.Id, "member-259"), obj{"value": 259})
+		expectEqual(t, snapshot(t, harness.Session, family, child.Id, "member-0"), delta.JsonObjectOf("value", 0))
+		expectEqual(t, snapshot(t, harness.Session, family, child.Id, "member-259"), delta.JsonObjectOf("value", 259))
 	})
 }

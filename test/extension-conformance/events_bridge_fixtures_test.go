@@ -24,8 +24,11 @@ import (
 //	burst <channel> <count>        emit {"i":n} count times
 //	report                         log "<name>|counts|{channel: deliveries}" for the count action
 //	emitmark <channel> <json>      emit, then log "<channel>:returned" (a native emitter)
+//	collect                        node only, under PIG_TEST_XREF_COLLECT=1: collect the process's garbage and release the cross-process references it freed
+//	kept                           node only: log "<name>|kept|[payloads kept by the keep action]"
+//	unkeep                         node only: drop the payloads the keep action kept
 //
-// An action list joins operations with "+": later (node only: record from a microtask, the listener's first continuation), record, echo=<channel> (emit {by, got} from the handler), inc (data.n++), fail (return or throw an error), panic (a Go panic, a thrown non-Error), unsub=<index>, exit (end the process), sleep=<ms>, count (count the delivery), hang (block until <log>.release exists).
+// An action list joins operations with "+": later (node only: record from a microtask, the listener's first continuation), record, echo=<channel> (emit {by, got} from the handler), inc (data.n++), fail (return or throw an error), panic (a Go panic, a thrown non-Error), unsub=<index>, exit (end the process), sleep=<ms>, count (count the delivery), hang (block until <log>.release exists), keep (node only: keep the payload past its delivery).
 type busFixture struct {
 	Name      string          `json:"name"`
 	Log       string          `json:"log"`
@@ -59,6 +62,7 @@ export default function (pi) {
   const cfg = %s;
   const subs = [];
   const counts = {};
+  const kept = [];
   const show = data => { try { return JSON.stringify(data) ?? "null"; } catch { return '"<unserializable>"'; } };
   const log = (channel, data) => fs.appendFileSync(cfg.log, cfg.name + "|" + channel + "|" + show(data) + "\n");
   const run = (channel, actions, data) => {
@@ -75,6 +79,7 @@ export default function (pi) {
       else if (name === "sleep") Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, Number(arg));
       else if (name === "count") counts[channel] = (counts[channel] ?? 0) + 1;
       else if (name === "hang") { while (!fs.existsSync(cfg.log + ".release")) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5); }
+      else if (name === "keep") kept.push(data);
     }
   };
   const subscribe = (channel, actions) => { subs.push(pi.events.on(channel, data => run(channel, actions, data))); return subs.length - 1; };
@@ -100,6 +105,9 @@ export default function (pi) {
   pi.registerCommand("emitmark", { description: "emitmark", handler: async args => { const [channel, ...rest] = args.split(" "); pi.events.emit(channel, JSON.parse(rest.join(" "))); log(channel + ":returned", null); } });
   pi.registerCommand("report", { description: "report", handler: async () => { log("counts", counts); } });
   pi.registerCommand("burst", { description: "burst", handler: async args => { const [channel, count] = args.split(" "); for (let i = 0; i < Number(count); i++) pi.events.emit(channel, { i }); } });
+  pi.registerCommand("collect", { description: "collect", handler: async () => { globalThis[Symbol.for("pig.test.xrefCollect")](); } });
+  pi.registerCommand("kept", { description: "kept", handler: async () => { log("kept", kept); } });
+  pi.registerCommand("unkeep", { description: "unkeep", handler: async () => { kept.length = 0; } });
 }
 `
 

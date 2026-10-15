@@ -1,0 +1,58 @@
+# Behavior family: extensions-runtime
+# Scenario: manifest globs of -e local Packages follow Node's globSync, and a
+# glob that Node's matcher throws for drops that kind and the later ones from a
+# local Package.
+#
+# Upstream evidence (Pi 1.1.0, probed 2026-10-10):
+#   pi --no-extensions -e <syntax> -e <throws> --mode rpc, stdin {"type":"get_commands"}
+#   package-manager.ts:294-303 expandPackageGlob calls globSync(pattern, {cwd: root})
+#   for an entry with "*" or "?" (hasGlobPattern, :289-291); globSync builds its
+#   matcher with minimatch, so braces, extglobs and POSIX classes apply.
+#   - syntax: "prompts/{alpha,beta}*.md" lists alpha and beta, "!prompts/beta.md"
+#     drops beta, "prompts/+(x|y)-*.md" lists x-one and y-two but not z-three,
+#     "prompts/[[:digit:]]*.md" lists 1-num; gamma is never listed.
+#   - throws: "skills/[[:alpha:]]-*" becomes /^(?!\.)[\p{L}\p{Nl}]\-[^/]*?$/u,
+#     which V8 rejects (Invalid escape). collectPackageResources collects
+#     extensions, skills, prompts, themes in turn (:2214-2262), and
+#     resolveLocalExtensionSource catches the throw (:1372-1389), so the skill s1
+#     and the later prompt "lost" are both missing.
+# integrate-042 at 516d5176a8 lists "lost": it compiled no V8 RegExp and could
+# not throw.
+
+name = "77-package-manifest-glob-syntax"
+description = "Manifest globs follow globSync syntax, and a throwing glob drops its kind and the later ones from a local Package"
+
+covers = [
+  "packages/coding-agent/src/core/package-manager.ts",
+]
+
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+input_lines = ['{"id":"cmds","type":"get_commands"}']
+cwd = "testdata/package-glob-syntax/project"
+timeout_seconds = 20
+settle_seconds = 1
+
+[env]
+override_base_args = true
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/package-glob-syntax/pig-agent"]
+pig_args = ["--no-extensions", "--model", "test-faux/faux-1", "--no-session"]
+pig_extensions = ["testdata/package-glob-syntax/syntax", "testdata/package-glob-syntax/throws"]
+pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1", "PI_CODING_AGENT_DIR=testdata/package-glob-syntax/pi-agent"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/package-glob-syntax/syntax", "testdata/package-glob-syntax/throws"]
+pi_args = ["--no-extensions", "--model", "test-faux/faux-1", "--no-session"]
+
+[assert]
+exit_code = 0
+runs = 3
+output_equal = true
+both_match_regex = [
+  '"name":"alpha","description":"syntax-alpha"',
+  '"name":"x-one","description":"syntax-x-one"',
+  '"name":"y-two","description":"syntax-y-two"',
+  '"name":"1-num","description":"syntax-1-num"',
+  '"name":"skill:kept","description":"syntax-skill"',
+]
+both_not_contain = ["Failed to load extension", "panic:", "syntax-beta", "syntax-gamma", "syntax-z-three", "throws-prompt", "throws-skill"]

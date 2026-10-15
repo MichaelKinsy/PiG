@@ -65,7 +65,7 @@ func main() {
 	if err := os.WriteFile(filepath.Join(dir, "settings.json"), []byte(`{"cacheWarming":"idle"}`), 0600); err != nil {
 		panic(err)
 	}
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: dir, AgentDir: dir})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: dir, AgentDir: dir})
 	if err != nil {
 		panic(err)
 	}

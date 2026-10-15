@@ -1,6 +1,9 @@
+//go:build !pig_strip_mistral_conversations
+
 package ai
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -58,7 +61,7 @@ func TestMistralReplayUsesSelectedModelAndSharedTransform(t *testing.T) {
 				}
 				return nil
 			}
-			stream, err := StreamSimple(t.Context(), model, NormalizeContext(Context{Messages: tc.messages}), options)
+			stream, err := StreamSimple(invalidRequest(t), model, NormalizeContext(Context{Messages: tc.messages}), options)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -67,7 +70,7 @@ func TestMistralReplayUsesSelectedModelAndSharedTransform(t *testing.T) {
 			}
 			assertCatalogJSON(t, wire["messages"], tc.want)
 			after, err := json.Marshal(tc.messages)
-			if err != nil || string(after) != string(before) {
+			if err != nil || !bytes.Equal(after, before) {
 				t.Fatalf("retained history changed: before=%s after=%s error=%v", before, after, err)
 			}
 		})

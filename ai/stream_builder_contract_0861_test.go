@@ -59,7 +59,8 @@ func TestAssistantStreamBuilderRepairsPartialToolArgumentsAndKeepsTerminalConsis
 		raw  string
 		want JsonObject
 	}{
-		{name: "repairable", raw: `{"path":"partial`, want: JsonObject{"path": "partial"}},
+		// Pi 87f9a364: a finished call's cut-off text is not completed; it is reported.
+		{name: "repairable", raw: `{"path":"partial`, want: JsonObject{}},
 		{name: "irreparable", raw: `{nonsense`, want: JsonObject{}},
 	} {
 		t.Run(test.name, func(t *testing.T) {

@@ -12,11 +12,13 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/text"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // CodemodeRenderers draw the codemode tool's card: the call shows the script; the result lists the nested calls with
-// their status and the cost of its model calls, followed by the script output without the "Script completed" header.
+// their status and the cost of its model calls, followed by the script output without the "Script completed" header, and the
+// time the script has been running (`Elapsed`) or took (`Took`), like bash rows.
 // The codemode tool definition carries them, as upstream's definition spreads codemodeRenderers; they are not built-in
 // renderers keyed by tool name (upstream createAllToolRenderers has no codemode entry).
 //
@@ -45,7 +47,7 @@ type codemodeDetails struct {
 	FullOutputPath string `json:"fullOutputPath"`
 }
 
-func codemodeFg(token, text string) string { return tui.ActiveTheme().FgText(token, text) }
+func codemodeFg(token, text string) string { return tui.ActiveTheme().Fg(token, text) }
 
 // codemodeExpandKeyHint is upstream's keyHint("app.tools.expand", "to expand"): the key the user bound.
 func codemodeExpandKeyHint() string {
@@ -105,6 +107,7 @@ func codemodeCodeArg(args json.RawMessage) (string, bool) {
 }
 
 func codemodeRenderCall(args json.RawMessage, _ extension.Theme, context extension.ToolRenderContext) extension.Component {
+	startToolTimer(context)
 	// The code includes the `// @options:` line, so options show as part of the script.
 	code, valid := codemodeCodeArg(args)
 	title := codemodeFg("toolTitle", "\x1b[1mcodemode\x1b[22m")
@@ -131,6 +134,7 @@ func codemodeRenderCall(args json.RawMessage, _ extension.Theme, context extensi
 }
 
 func codemodeRenderResult(result extension.AgentToolResult, options extension.ToolRenderResultOptions, _ extension.Theme, context extension.ToolRenderContext) extension.Component {
+	timer, hasTimer := toolTimerText(context, options.IsPartial)
 	value := renderResultValue(result)
 	var details codemodeDetails
 	if raw, err := json.Marshal(value.Details); err == nil {
@@ -231,6 +235,10 @@ func codemodeRenderResult(result extension.AgentToolResult, options extension.To
 			}
 		}
 	}
+	if hasTimer {
+		component.Add(tui.NewSpacer(1))
+		component.Add(codemodeTextComponent(codemodeFg("muted", timer)))
+	}
 	return component
 }
 
@@ -243,7 +251,7 @@ func codemodeTextOutput(content []ai.ToolResultMessageContent, showImages bool) 
 	for _, block := range content {
 		switch b := block.(type) {
 		case ai.TextContent:
-			texts = append(texts, strings.ReplaceAll(tools.SanitizeBinaryOutput(string(tools.StripANSI([]byte(b.Text)))), "\r", ""))
+			texts = append(texts, strings.ReplaceAll(tools.SanitizeBinaryOutput(text.StripANSIString(b.Text)), "\r", ""))
 		case ai.ImageContent:
 			images = append(images, b)
 		}

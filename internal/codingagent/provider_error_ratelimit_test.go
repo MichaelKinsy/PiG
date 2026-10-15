@@ -20,7 +20,6 @@ func TestProviderErrorDisplayPreservesDiagnosticsWithoutDuplicateStatus(t *testi
 		t.Run(raw, func(t *testing.T) {
 			m := resumeThinkingMode(t, false)
 			prepareAssistantEventTest(t, m)
-			m.statusLine.SetStatusHook(m.showStatus)
 			msg := assistantMsg("")
 			msg.Assistant.StopReason = ai.StopReasonError
 			msg.Assistant.ErrorMessage = raw

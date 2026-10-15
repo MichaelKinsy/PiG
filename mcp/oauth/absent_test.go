@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"net/url"
 	"reflect"
 	"testing"
 
@@ -95,8 +94,9 @@ func TestParseProtectedResourceMetadataRejectsAnUnparsableAuthorizationServerAsI
 func TestOAuthIssuerMismatchErrorNamesAMissingIssAsNone(t *testing.T) {
 	received := `https://attacker.example/"x"`
 	cases := map[string]*oauth.OAuthIssuerMismatchError{
-		`OAuth issuer mismatch: expected "https://as.example", received none`:                             {Expected: "https://as.example"},
-		`OAuth issuer mismatch: expected "https://as.example", received "https://attacker.example/\"x\""`: {Expected: "https://as.example", Received: &received},
+		`OAuth issuer mismatch: expected none, received "https://attacker.example/\"x\""`:                 {Received: &received},
+		`OAuth issuer mismatch: expected "https://as.example", received none`:                             {Expected: new("https://as.example")},
+		`OAuth issuer mismatch: expected "https://as.example", received "https://attacker.example/\"x\""`: {Expected: new("https://as.example"), Received: &received},
 	}
 	for want, err := range cases {
 		if err.Error() != want {
@@ -110,7 +110,7 @@ func TestOAuthIssuerMismatchErrorNamesAMissingIssAsNone(t *testing.T) {
 // JSON.stringify("a\u2028b\u2029c\u0001\u007f<>&\b\t\n\f\r\"\\") with exactly these escapes.
 func TestOAuthIssuerMismatchErrorQuotesIssuersAsJSONStringify(t *testing.T) {
 	received := "a\u2028b\u2029c\u0001\u007f<>&\b\t\n\f\r\"\\"
-	err := &oauth.OAuthIssuerMismatchError{Expected: "https://as.example/\u2028", Received: &received}
+	err := &oauth.OAuthIssuerMismatchError{Expected: new("https://as.example/\u2028"), Received: &received}
 	want := "OAuth issuer mismatch: expected \"https://as.example/\u2028\", received \"a\u2028b\u2029c\\u0001\u007f<>&\\b\\t\\n\\f\\r\\\"\\\\\""
 	if got := err.Error(); got != want {
 		t.Fatalf("message = %q, want %q", got, want)
@@ -161,7 +161,7 @@ func TestAuthorizeMcpChecksAPresentEmptyIssAndSkipsAnEmptyAdvertisedScope(t *tes
 	if err != nil || result != oauth.OAuthRedirect {
 		t.Fatalf("authorize = %q, %v", result, err)
 	}
-	if got := provider.authorizationURL.Query().Get("scope"); got != "client-scope" {
+	if got := searchParams(*provider.authorizationURL).Get("scope"); got != "client-scope" {
 		t.Fatalf("scope = %q", got)
 	}
 	provider.verifier = "verifier"
@@ -205,19 +205,19 @@ func TestAuthorizeMcpWithAConfiguredMetadataURLBypassesCachedDiscovery(t *testin
 		},
 	}
 	provider.discovery = cached
-	metadataURL, _ := url.Parse(origin + "/idp.json")
-	result, err := oauth.AuthorizeMcp(t.Context(), provider, oauth.OAuthFlowOptions{ServerURL: origin + "/mcp", AuthorizationServerMetadataURL: metadataURL})
+	metadataURL := mustURL(t, origin+"/idp.json")
+	result, err := oauth.AuthorizeMcp(t.Context(), provider, oauth.OAuthFlowOptions{ServerURL: origin + "/mcp", AuthorizationServerMetadataURL: &metadataURL})
 	if err != nil || result != oauth.OAuthRedirect {
 		t.Fatalf("authorize = %q, %v", result, err)
 	}
-	if got := provider.authorizationURL.Scheme + "://" + provider.authorizationURL.Host + provider.authorizationURL.Path; got != origin+"/idp/authorize" {
+	if got := provider.authorizationURL.Origin() + provider.authorizationURL.Pathname; got != origin+"/idp/authorize" {
 		t.Fatalf("authorization endpoint = %s", got)
 	}
 	if provider.discovery != cached {
 		t.Fatalf("discovery state was replaced: %#v", provider.discovery)
 	}
-	missing, _ := url.Parse(origin + "/missing.json")
-	_, err = oauth.AuthorizeMcp(t.Context(), provider, oauth.OAuthFlowOptions{ServerURL: origin + "/mcp", AuthorizationServerMetadataURL: missing})
+	missing := mustURL(t, origin+"/missing.json")
+	_, err = oauth.AuthorizeMcp(t.Context(), provider, oauth.OAuthFlowOptions{ServerURL: origin + "/mcp", AuthorizationServerMetadataURL: &missing})
 	if err == nil || err.Error() != "HTTP 404 loading authorization server metadata from "+origin+"/missing.json" {
 		t.Fatalf("missing document: err = %v", err)
 	}

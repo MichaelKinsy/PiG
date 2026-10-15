@@ -5,7 +5,7 @@
 
 use pig_sdk::{
     AgentToolResult, ExecuteToolOptions, Extension, ModelRoute, ProviderSignal, ToolAnnotations,
-    ToolDefinition, ToolExposure, ToolLoadoutChanges, ToolNamespace, ToolResult, VirtualModel,
+    ToolDefinition, ToolExposure, ToolLoadoutChanges, ToolNamespace, ToolReach, ToolResult, VirtualModel,
     empty_schema,
 };
 use serde_json::{Value, json};
@@ -137,7 +137,7 @@ fn register_frame_carries_the_tool_definition_fields_and_load_time_registrations
     });
     lookup.output_schema = Some(json!({"type":"object","properties":{"hits":{"type":"number"}}}));
     lookup.exposure = Some(ToolExposure::Codemode);
-    lookup.namespace = Some(ToolNamespace { name: "mcp__docs".into(), description: Some("Documentation tools".into()), instructions: Some("Search before reading.".into()) });
+    lookup.namespace = Some(ToolNamespace { name: "mcp__docs".into(), aliases: vec!["docs".into()], description: Some("Documentation tools".into()), instructions: Some("Search before reading.".into()) });
     lookup.annotations = Some(ToolAnnotations { read_only_hint: Some(true), open_world_hint: Some(false), ..Default::default() });
     lookup.default_active = Some(false);
     lookup.prepare_loadout = Some(Box::new(|_| None));
@@ -160,7 +160,7 @@ fn register_frame_carries_the_tool_definition_fields_and_load_time_registrations
     let lookup = tools.iter().find(|t| t["name"] == "lookup").unwrap();
     assert_eq!(lookup["output_schema"], json!({"type":"object","properties":{"hits":{"type":"number"}}}));
     assert_eq!(lookup["exposure"], "codemode");
-    assert_eq!(lookup["namespace"], json!({"name":"mcp__docs","description":"Documentation tools","instructions":"Search before reading."}));
+    assert_eq!(lookup["namespace"], json!({"name":"mcp__docs","aliases":["docs"],"description":"Documentation tools","instructions":"Search before reading."}));
     assert_eq!(lookup["annotations"], json!({"readOnlyHint":true,"openWorldHint":false}));
     assert_eq!(lookup["default_active"], false);
     assert_eq!(lookup["prepares_loadout"], true);
@@ -254,6 +254,23 @@ fn get_settings_without_host_settings_and_tools_outside_a_tool_fail() {
     host.notify("state_update", json!({"state":{"settings": {"theme": "dark"}}}));
     host.tool_call("r2", "probe", "call-2", json!({}));
     assert_eq!(host.response("r2")["result"]["details"], json!({"theme": "dark"}));
+    host.finish();
+}
+
+// loop_turned (protocol.go NotifyLoopTurned) is the host step a Node runtime waits for after a print prompt's last call. A Rust
+// extension has no such wait, so the notify, which has no arguments, changes nothing: the next request runs with the state the
+// extension held before it.
+#[test]
+fn loop_turned_notify_changes_nothing() {
+    let mut ext = Extension::new("api");
+    ext.tool("probe", "Probe", empty_schema(), |ctx, _| match ctx.get_settings() {
+        Ok(settings) => ToolResult::json(json!({"content": "probe", "details": settings})),
+        Err(err) => ToolResult::Error(err.to_string()),
+    });
+    let mut host = Host::start(ext, json!({"settings": {"theme": "dark"}}));
+    send(&mut host.stream, &json!({"type":"notify","notify":{"method":"loop_turned"}}));
+    host.tool_call("r1", "probe", "call-1", json!({}));
+    assert_eq!(host.response("r1")["result"]["details"], json!({"theme": "dark"}));
     host.finish();
 }
 
@@ -413,11 +430,13 @@ fn prepare_loadout_request_runs_the_tools_hook() {
                 [(
                     "orchestrate".to_string(),
                     format!(
-                        "Runs {} ({}, {}, {:?})",
+                        "Runs {} ({}, {}, {:?}, {:?}, {:?})",
                         names.join(","),
                         loadout.get_exposure("mcp_search").as_str(),
                         loadout.get_exposure("unknown").as_str(),
                         loadout.get_namespace("mcp_search").map(|n| n.name.clone()),
+                        loadout.get_prompt_guidelines("read"),
+                        loadout.get_prompt_guidelines("unknown"),
                     ),
                 )]
                 .into(),
@@ -433,11 +452,12 @@ fn prepare_loadout_request_runs_the_tools_hook() {
         "registered":[tool("orchestrate"), tool("read")],
         "exposures":{"orchestrate":"direct","read":"direct","mcp_search":"deferred"},
         "namespaces":{"mcp_search":{"name":"mcp__docs"}},
+        "promptGuidelines":{"read":["Use read to examine files.","Quote paths."]},
     });
     host.request("l1", json!({"method":"tool_prepare_loadout","tool":"orchestrate","args":payload}));
     assert_eq!(
         host.response("l1")["result"],
-        json!({"descriptions":{"orchestrate":"Runs read (deferred, direct, Some(\"mcp__docs\"))"},"hiddenDeclarations":["read"]})
+        json!({"descriptions":{"orchestrate":"Runs read (deferred, direct, Some(\"mcp__docs\"), [\"Use read to examine files.\", \"Quote paths.\"], [])"},"hiddenDeclarations":["read"]})
     );
 
     let empty = json!({"declared":[],"callable":[],"registered":[],"exposures":{}});
@@ -445,6 +465,57 @@ fn prepare_loadout_request_runs_the_tools_hook() {
     let response = host.response("l2");
     assert!(response.get("result").is_none_or(Value::is_null), "no changes is null: {response}");
     assert!(response.get("error").is_none(), "{response}");
+    host.finish();
+}
+
+// Pi 24382bed types.ts:621 (reachesTools): the declaration says the tool has the hook, tool_reaches_tools answers "all" or the words of the
+// input, a tool registered after load answers too, and a tool without the hook or an unknown tool is an error.
+#[test]
+fn reaches_tools_request_runs_the_tools_hook() {
+    let mut ext = Extension::new("api");
+    let mut finder = ToolDefinition::new("finder", "Finder", "Finds tools", empty_schema(), |_, _| ToolResult::text("x"));
+    finder.reaches_tools = Some(Box::new(|input| {
+        if input["all"] == true {
+            return ToolReach::All;
+        }
+        if input["panic"] == true {
+            panic!("reach exploded");
+        }
+        ToolReach::Words(input["words"].as_array().map(|words| words.iter().filter_map(|w| w.as_str().map(String::from)).collect()).unwrap_or_default())
+    }));
+    ext.register_tool(finder);
+    ext.register_tool(ToolDefinition::new("plain", "Plain", "Plain", empty_schema(), |_, _| ToolResult::text("ok")));
+    ext.tool("late", "Late", empty_schema(), |ctx, _| {
+        let mut added = ToolDefinition::new("added", "Added", "Added later", empty_schema(), |_, _| ToolResult::text("x"));
+        added.reaches_tools = Some(Box::new(|_| ToolReach::Words(vec!["late".into()])));
+        ctx.register_tool(added);
+        ToolResult::text("registered")
+    });
+    let mut host = Host::start(ext, json!({}));
+    let tools = host.register["register"]["tools"].as_array().unwrap().clone();
+    assert_eq!(tools.iter().find(|t| t["name"] == "finder").unwrap()["reaches_tools"], true);
+    assert!(tools.iter().find(|t| t["name"] == "plain").unwrap().get("reaches_tools").is_none());
+
+    host.request("r1", json!({"method":"tool_reaches_tools","tool":"finder","args":{"words":["docs","search"]}}));
+    assert_eq!(host.response("r1")["result"], json!(["docs", "search"]));
+    host.request("r2", json!({"method":"tool_reaches_tools","tool":"finder","args":{"all":true}}));
+    assert_eq!(host.response("r2")["result"], json!("all"));
+    host.request("r3", json!({"method":"tool_reaches_tools","tool":"finder","args":{}}));
+    assert_eq!(host.response("r3")["result"], json!([]));
+    host.request("r4", json!({"method":"tool_reaches_tools","tool":"finder","args":{"panic":true}}));
+    assert!(host.response("r4")["error"]["message"].as_str().unwrap().contains("reachesTools of finder panicked"));
+    host.request("r5", json!({"method":"tool_reaches_tools","tool":"plain","args":{}}));
+    assert!(host.response("r5").get("error").is_some_and(|e| !e.is_null()));
+    host.request("r6", json!({"method":"tool_reaches_tools","tool":"missing","args":{}}));
+    assert!(host.response("r6").get("error").is_some_and(|e| !e.is_null()));
+    // A tool registered after load declares the hook and answers it too.
+    host.tool_call("r7", "late", "c", json!({}));
+    let call = host.expect_call("registerTool");
+    assert_eq!(call["call"]["args"]["reaches_tools"], true);
+    host.reply(&call, json!({}));
+    assert_eq!(host.response("r7")["result"]["content"], "registered");
+    host.request("r8", json!({"method":"tool_reaches_tools","tool":"added","args":{}}));
+    assert_eq!(host.response("r8")["result"], json!(["late"]));
     host.finish();
 }
 
@@ -457,7 +528,7 @@ fn post_load_register_tool_carries_the_new_fields_and_its_loadout_hook() {
         let mut late = ToolDefinition::new("added", "Added", "Added later", empty_schema(), |_, _| ToolResult::text("x"));
         late.output_schema = Some(json!({"type":"string"}));
         late.exposure = Some(ToolExposure::Deferred);
-        late.namespace = Some(ToolNamespace { name: "mcp__late".into(), description: None, instructions: None });
+        late.namespace = Some(ToolNamespace { name: "mcp__late".into(), aliases: Vec::new(), description: None, instructions: None });
         late.annotations = Some(ToolAnnotations { destructive_hint: Some(true), ..Default::default() });
         late.default_active = Some(true);
         late.prepare_loadout = Some(Box::new(|loadout| {
@@ -720,20 +791,65 @@ fn get_all_tools_reports_exposure_namespace_and_annotations() {
     host.finish();
 }
 
+// Pi 1.2.0 types.ts:2122-2130 picks reachesTools into ToolInfo and agent-session.ts:1507 copies the definition's hook. The host marks
+// such a tool `"reachesTools": true`; get_all_tools turns the mark into a reaches_tools that runs the hook through the host's
+// tool.reachesTools call, a tool without the mark has none, and the host's error is the call's error.
+#[test]
+fn get_all_tools_reaches_tools_runs_the_hook_through_the_host() {
+    let mut ext = Extension::new("api");
+    ext.tool("list", "List", empty_schema(), |ctx, _| {
+        let tools = ctx.get_all_tools().unwrap();
+        let finder = tools[0].reaches_tools.as_ref().expect("finder has reaches_tools");
+        let words = finder.call(&json!({"q":1})).unwrap();
+        let all = finder.call(&json!({"all":true})).unwrap();
+        let failed = finder.call(&json!({"fail":true})).unwrap_err().to_string();
+        ToolResult::json(json!({"content":"x","details":{
+            "plain": tools[1].reaches_tools.is_some(),
+            "words": matches!(&words, ToolReach::Words(w) if w == &["docs", "search"]),
+            "all": all == ToolReach::All,
+            "failed": failed,
+        }}))
+    });
+    let mut host = Host::start(ext, json!({}));
+    host.tool_call("r1", "list", "c", json!({}));
+    let call = host.expect_call("getAllTools");
+    host.reply(
+        &call,
+        json!({"tools":[
+            {"name":"finder","description":"d","parameters":{},"exposure":"direct","reachesTools":true,"sourceInfo":{"path":"/f","source":"s","scope":"user","origin":"top-level"}},
+            {"name":"plain","description":"d","parameters":{},"exposure":"direct","sourceInfo":{"path":"/p","source":"s","scope":"user","origin":"top-level"}},
+        ]}),
+    );
+    let call = host.expect_call("tool.reachesTools");
+    assert_eq!(call["call"]["args"], json!({"tool":"finder","input":{"q":1}}));
+    host.reply(&call, json!(["docs", "search"]));
+    let call = host.expect_call("tool.reachesTools");
+    assert_eq!(call["call"]["args"], json!({"tool":"finder","input":{"all":true}}));
+    host.reply(&call, json!("all"));
+    let call = host.expect_call("tool.reachesTools");
+    host.reply_error(&call, "reach exploded");
+    let details = host.response("r1")["result"]["details"].clone();
+    assert_eq!(details["plain"], false);
+    assert_eq!(details["words"], true);
+    assert_eq!(details["all"], true);
+    assert!(details["failed"].as_str().unwrap().contains("reach exploded"), "{details}");
+    host.finish();
+}
+
 // types.ts:699 (McpServersChangeEvent) and 884 (ProviderStreamEvent): both events reach a handler with the host's payload.
 #[test]
 fn mcp_servers_change_and_provider_stream_event_reach_handlers() {
     let seen: Arc<Mutex<Vec<Value>>> = Arc::new(Mutex::new(Vec::new()));
     let mut ext = Extension::new("api");
     let recorded = seen.clone();
-    ext.on_event(pig_sdk::EVENT_MCP_SERVERS_CHANGE, false, move |ctx, data| {
+    ext.on_event(pig_sdk::EVENT_MCP_SERVERS_CHANGE, move |ctx, data| {
         // loader.ts:473-476: getMcpServers answers the live registry, which the host replicates before it delivers the event, not the
         // event's snapshot (runner.ts:458 emits without awaiting, so a later change can precede the handler).
         recorded.lock().unwrap().push(json!({"event": data.clone(), "getMcpServers": ctx.get_mcp_servers()}));
         None
     });
     let recorded = seen.clone();
-    ext.on_event(pig_sdk::EVENT_PROVIDER_STREAM_EVENT, false, move |_, data| {
+    ext.on_event(pig_sdk::EVENT_PROVIDER_STREAM_EVENT, move |_, data| {
         recorded.lock().unwrap().push(data.clone());
         None
     });

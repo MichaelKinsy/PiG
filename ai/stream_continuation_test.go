@@ -5,6 +5,7 @@ import (
 	"errors"
 	"reflect"
 	"sync"
+	"sync/atomic"
 	"testing"
 )
 
@@ -77,7 +78,7 @@ func TestStreamContinuationCancelAfterGrantBeforeRunReleasesOwnership(t *testing
 	}
 	executor.mu.Lock()
 	defer executor.mu.Unlock()
-	if executor.active != nil || len(executor.ready) != 0 {
+	if executor.active != nil || executor.ready.len() != 0 {
 		t.Fatal("canceled continuation retained execution ownership")
 	}
 }
@@ -173,5 +174,59 @@ func TestStreamContinuationResumeRestoresItsObservation(t *testing.T) {
 	}
 	if resumedWith != firstObservation {
 		t.Fatalf("resumed turn found observation %p, want its own %p", resumedWith, firstObservation)
+	}
+}
+
+// A goroutine that runs one callback after another identifies itself once: goroutineID formats the goroutine's stack, which
+// costs time proportional to its depth, and Run paid it for every callback. The owner decides which goroutine a Result call
+// inside the callback may yield for, so RunOwned must record it exactly as Run does.
+func TestRunOwnedIdentifiesTheGoroutineOnce(t *testing.T) {
+	var calls atomic.Int64
+	previous := currentGoroutineID
+	currentGoroutineID = func() uint64 { calls.Add(1); return previous() }
+	t.Cleanup(func() { currentGoroutineID = previous })
+	_, executor := withContinuationExecutor(t.Context())
+	const callbacks = 50
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		owner := CurrentStreamOwner()
+		for range callbacks {
+			continuation := &StreamContinuation{turn: executor.newTurn()}
+			err := continuation.RunOwned(owner, func(observation *StreamObservation) error {
+				if !observation.ownedByCaller() {
+					t.Error("the goroutine that runs the callback does not own its observation")
+				}
+				other := make(chan bool)
+				go func() { other <- observation.ownedByCaller() }()
+				if <-other {
+					t.Error("another goroutine owns the observation")
+				}
+				return nil
+			})
+			if err != nil {
+				t.Error(err)
+			}
+		}
+	}()
+	<-done
+	// One call identifies the owner; each ownedByCaller check asks for its own goroutine, two per callback.
+	if got, want := calls.Load(), int64(1+2*callbacks); got != want {
+		t.Fatalf("goroutineID ran %d times for %d callbacks, want %d", got, callbacks, want)
+	}
+}
+
+// Run identifies its goroutine itself, as it always did.
+func TestRunIdentifiesTheCallingGoroutine(t *testing.T) {
+	_, executor := withContinuationExecutor(t.Context())
+	continuation := &StreamContinuation{turn: executor.newTurn()}
+	err := continuation.Run(func(observation *StreamObservation) error {
+		if !observation.ownedByCaller() {
+			t.Error("Run did not record the calling goroutine as the owner")
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }

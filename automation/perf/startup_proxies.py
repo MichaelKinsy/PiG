@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 """Run named deterministic startup guards; missing or skipped guards fail."""
 import json
@@ -15,7 +14,7 @@ def main():
     package = "./coding/extension/host/subprocess"
     inventory = json.loads(subprocess.check_output(["go", "list", "-json", package], cwd=ROOT))
     embedded = inventory.get("EmbedFiles", [])
-    if "runtime-node.zip" not in embedded or any(name.startswith("runtime-node/") for name in embedded):
+    if "runtime-node.pack" not in embedded or any(name.startswith("runtime-node/") for name in embedded):
         raise SystemExit("production must embed only the compressed Node runtime, not its source tree")
     manifest = json.loads((ROOT / "automation/perf/startup-proxies.json").read_text())
     for package, names in manifest.items():

@@ -1,0 +1,372 @@
+[
+ {
+  "upstream": "packages/coding-agent/src/core/tools/read.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateToolFactoriesBindTheirCwdAndOptions",
+   "TestToolsOptionsReachEachTool"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/read.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `return &ReadTool{CWD: cwd, AutoResizeImages: o.AutoResizeImages, ResizeOptions: o.ResizeOptions, Operations: o.Operations}` with `return &ReadTool{AutoResizeImages: o.AutoResizeImages, ResizeOptions: o.ResizeOptions, Operations: o.Operations}`; TestCreateToolFactoriesBindTheirCwdAndOptions, TestToolsOptionsReachEachTool fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/read.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateToolFactoriesBindTheirCwdAndOptions",
+   "TestToolsOptionsReachEachTool"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/read.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `return &ReadTool{CWD: cwd, AutoResizeImages: o.AutoResizeImages, ResizeOptions: o.ResizeOptions, Operations: o.Operations}` with `return &ReadTool{CWD: cwd, ResizeOptions: o.ResizeOptions, Operations: o.Operations}`; TestCreateToolFactoriesBindTheirCwdAndOptions, TestToolsOptionsReachEachTool fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/read.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateToolFactoriesBindTheirCwdAndOptions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/read.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `return &ReadTool{CWD: cwd, AutoResizeImages: o.AutoResizeImages, ResizeOptions: o.ResizeOptions, Operations: o.Operations}` with `return &ReadTool{CWD: cwd, AutoResizeImages: o.AutoResizeImages, Operations: o.Operations}`; TestCreateToolFactoriesBindTheirCwdAndOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/read.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateToolFactoriesBindTheirCwdAndOptions",
+   "TestToolsOptionsReachEachTool"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/read.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `return &ReadTool{CWD: cwd, AutoResizeImages: o.AutoResizeImages, ResizeOptions: o.ResizeOptions, Operations: o.Operations}` with `return &ReadTool{CWD: cwd, AutoResizeImages: o.AutoResizeImages, ResizeOptions: o.ResizeOptions}`; TestCreateToolFactoriesBindTheirCwdAndOptions, TestToolsOptionsReachEachTool fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/bash.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateBashToolAppliesPrefixThenSpawnHookToCustomOperations"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/bash.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `CWD: cwd, Operations: o.Operations, Settings: settings, CommandPrefix: o.CommandPrefix, BinDir: o.BinDir,\n\t\tHideSessionEnvironment: o.ExposeSessionEnvironment != nil && !*o.ExposeSessionEnvironment, SpawnHook: o.SpawnHook,` with `CWD: cwd, Settings: settings, CommandPrefix: o.CommandPrefix, BinDir: o.BinDir,\n\t\tHideSessionEnvironment: o.ExposeSessionEnvironment != nil && !*o.ExposeSessionEnvironment, SpawnHook: o.SpawnHook,`; TestCreateBashToolAppliesPrefixThenSpawnHookToCustomOperations fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/bash.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateBashToolAppliesPrefixThenSpawnHookToCustomOperations",
+   "TestToolsOptionsReachEachTool"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/bash.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `CWD: cwd, Operations: o.Operations, Settings: settings, CommandPrefix: o.CommandPrefix, BinDir: o.BinDir,\n\t\tHideSessionEnvironment: o.ExposeSessionEnvironment != nil && !*o.ExposeSessionEnvironment, SpawnHook: o.SpawnHook,` with `CWD: cwd, Operations: o.Operations, Settings: settings, BinDir: o.BinDir,\n\t\tHideSessionEnvironment: o.ExposeSessionEnvironment != nil && !*o.ExposeSessionEnvironment, SpawnHook: o.SpawnHook,`; TestCreateBashToolAppliesPrefixThenSpawnHookToCustomOperations, TestToolsOptionsReachEachTool fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/bash.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateToolsTakeCwdAndOptions",
+   "TestCreateCodingToolsInjectsBinDir"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/bash.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `CWD: cwd, Operations: o.Operations, Settings: settings, CommandPrefix: o.CommandPrefix, BinDir: o.BinDir,\n\t\tHideSessionEnvironment: o.ExposeSessionEnvironment != nil && !*o.ExposeSessionEnvironment, SpawnHook: o.SpawnHook,` with `CWD: cwd, Operations: o.Operations, Settings: settings, CommandPrefix: o.CommandPrefix, \n\t\tHideSessionEnvironment: o.ExposeSessionEnvironment != nil && !*o.ExposeSessionEnvironment, SpawnHook: o.SpawnHook,`; TestCreateCodingToolsInjectsBinDir, TestCreateToolsTakeCwdAndOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/bash.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateBashToolExposeSessionEnvironmentDefaultsToTrue"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/bash.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `CWD: cwd, Operations: o.Operations, Settings: settings, CommandPrefix: o.CommandPrefix, BinDir: o.BinDir,\n\t\tHideSessionEnvironment: o.ExposeSessionEnvironment != nil && !*o.ExposeSessionEnvironment, SpawnHook: o.SpawnHook,` with `CWD: cwd, Operations: o.Operations, Settings: settings, CommandPrefix: o.CommandPrefix, BinDir: o.BinDir,\n\t\tHideSessionEnvironment: o.ExposeSessionEnvironment == nil, SpawnHook: o.SpawnHook,`; TestCreateBashToolExposeSessionEnvironmentDefaultsToTrue fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/bash.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateBashToolAppliesPrefixThenSpawnHookToCustomOperations"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/bash.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `CWD: cwd, Operations: o.Operations, Settings: settings, CommandPrefix: o.CommandPrefix, BinDir: o.BinDir,\n\t\tHideSessionEnvironment: o.ExposeSessionEnvironment != nil && !*o.ExposeSessionEnvironment, SpawnHook: o.SpawnHook,` with `CWD: cwd, Operations: o.Operations, Settings: settings, CommandPrefix: o.CommandPrefix, BinDir: o.BinDir,\n\t\tHideSessionEnvironment: o.ExposeSessionEnvironment != nil && !*o.ExposeSessionEnvironment,`; TestCreateBashToolAppliesPrefixThenSpawnHookToCustomOperations fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/bash.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateBashToolShellPathFailsForAMissingShell",
+   "TestCreateShellToolsBindTheirCwdAndSettings"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/bash.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `if o.ShellPath != \"\" {\n\t\tsettings = fixedShellPath(o.ShellPath)\n\t}` with ``; TestCreateBashToolShellPathFailsForAMissingShell, TestCreateShellToolsBindTheirCwdAndSettings fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/bash.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateBashToolShellPathFailsForAMissingShell",
+   "TestCreateShellToolsBindTheirCwdAndSettings"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/bash.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `return string(p), nil }` with `return \"\", nil }`; TestCreateBashToolShellPathFailsForAMissingShell, TestCreateShellToolsBindTheirCwdAndSettings fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/powershell.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreatePowerShellToolPassesOperationsFromOptions",
+   "TestPowerShellToolCallsCustomOperations",
+   "TestCreateShellToolsBindTheirCwdAndSettings"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/powershell.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `return &PowerShellTool{CWD: cwd, Operations: o.Operations, BinDir: o.BinDir, HideSessionEnvironment: o.ExposeSessionEnvironment != nil && !*o.ExposeSessionEnvironment, SpawnHook: o.SpawnHook}` with `return &PowerShellTool{Operations: o.Operations, BinDir: o.BinDir, HideSessionEnvironment: o.ExposeSessionEnvironment != nil && !*o.ExposeSessionEnvironment, SpawnHook: o.SpawnHook}`; TestCreatePowerShellToolPassesOperationsFromOptions, TestCreateShellToolsBindTheirCwdAndSettings, TestPowerShellToolCallsCustomOperations fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/powershell.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreatePowerShellToolRunsCustomOperationsAfterTheSpawnHook",
+   "TestCreatePowerShellToolPassesOperationsFromOptions",
+   "TestPowerShellToolCallsCustomOperations"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/powershell.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `return &PowerShellTool{CWD: cwd, Operations: o.Operations, BinDir: o.BinDir, HideSessionEnvironment: o.ExposeSessionEnvironment != nil && !*o.ExposeSessionEnvironment, SpawnHook: o.SpawnHook}` with `return &PowerShellTool{CWD: cwd, BinDir: o.BinDir, HideSessionEnvironment: o.ExposeSessionEnvironment != nil && !*o.ExposeSessionEnvironment, SpawnHook: o.SpawnHook}`; TestCreatePowerShellToolPassesOperationsFromOptions, TestCreatePowerShellToolRunsCustomOperationsAfterTheSpawnHook, TestPowerShellToolCallsCustomOperations fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/powershell.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateToolsTakeCwdAndOptions",
+   "TestToolBinDirComesFromOptions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/powershell.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `return &PowerShellTool{CWD: cwd, Operations: o.Operations, BinDir: o.BinDir, HideSessionEnvironment: o.ExposeSessionEnvironment != nil && !*o.ExposeSessionEnvironment, SpawnHook: o.SpawnHook}` with `return &PowerShellTool{CWD: cwd, Operations: o.Operations, HideSessionEnvironment: o.ExposeSessionEnvironment != nil && !*o.ExposeSessionEnvironment, SpawnHook: o.SpawnHook}`; TestCreateToolsTakeCwdAndOptions, TestToolBinDirComesFromOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/powershell.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreatePowerShellToolRunsCustomOperationsAfterTheSpawnHook",
+   "TestCreateShellToolsBindTheirCwdAndSettings"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/powershell.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `return &PowerShellTool{CWD: cwd, Operations: o.Operations, BinDir: o.BinDir, HideSessionEnvironment: o.ExposeSessionEnvironment != nil && !*o.ExposeSessionEnvironment, SpawnHook: o.SpawnHook}` with `return &PowerShellTool{CWD: cwd, Operations: o.Operations, BinDir: o.BinDir, HideSessionEnvironment: o.ExposeSessionEnvironment != nil && !*o.ExposeSessionEnvironment}`; TestCreatePowerShellToolRunsCustomOperationsAfterTheSpawnHook, TestCreateShellToolsBindTheirCwdAndSettings fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/edit.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateToolFactoriesBindTheirCwdAndOptions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/edit.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `return &EditTool{CWD: cwd, Queue: processFileMutationQueue, Operations: orEmpty(options).Operations}` with `return &EditTool{Queue: processFileMutationQueue, Operations: orEmpty(options).Operations}`; TestCreateToolFactoriesBindTheirCwdAndOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/edit.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateToolFactoriesBindTheirCwdAndOptions",
+   "TestSeparatelyCreatedEditAndWriteToolsShareOneMutationQueue",
+   "TestToolsOptionsReachEachTool"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/edit.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `return &EditTool{CWD: cwd, Queue: processFileMutationQueue, Operations: orEmpty(options).Operations}` with `return &EditTool{CWD: cwd, Operations: orEmpty(options).Operations}`; TestCreateToolFactoriesBindTheirCwdAndOptions, TestSeparatelyCreatedEditAndWriteToolsShareOneMutationQueue, TestToolsOptionsReachEachTool fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/edit.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateToolFactoriesBindTheirCwdAndOptions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/edit.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `return &EditTool{CWD: cwd, Queue: processFileMutationQueue, Operations: orEmpty(options).Operations}` with `return &EditTool{CWD: cwd, Queue: processFileMutationQueue}`; TestCreateToolFactoriesBindTheirCwdAndOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/write.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateToolFactoriesBindTheirCwdAndOptions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/write.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `return &WriteTool{CWD: cwd, Queue: processFileMutationQueue, Operations: orEmpty(options).Operations}` with `return &WriteTool{Queue: processFileMutationQueue, Operations: orEmpty(options).Operations}`; TestCreateToolFactoriesBindTheirCwdAndOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/write.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateToolFactoriesBindTheirCwdAndOptions",
+   "TestSeparatelyCreatedEditAndWriteToolsShareOneMutationQueue",
+   "TestToolsOptionsReachEachTool"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/write.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `return &WriteTool{CWD: cwd, Queue: processFileMutationQueue, Operations: orEmpty(options).Operations}` with `return &WriteTool{CWD: cwd, Operations: orEmpty(options).Operations}`; TestCreateToolFactoriesBindTheirCwdAndOptions, TestSeparatelyCreatedEditAndWriteToolsShareOneMutationQueue, TestToolsOptionsReachEachTool fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/write.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateToolFactoriesBindTheirCwdAndOptions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/write.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `return &WriteTool{CWD: cwd, Queue: processFileMutationQueue, Operations: orEmpty(options).Operations}` with `return &WriteTool{CWD: cwd, Queue: processFileMutationQueue}`; TestCreateToolFactoriesBindTheirCwdAndOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/grep.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateToolFactoriesBindTheirCwdAndOptions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/grep.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `return &GrepTool{CWD: cwd, Tools: searchToolsManager(o.BinDir), Operations: o.Operations}` with `return &GrepTool{Tools: searchToolsManager(o.BinDir), Operations: o.Operations}`; TestCreateToolFactoriesBindTheirCwdAndOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/grep.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateToolFactoriesBindTheirCwdAndOptions",
+   "TestCreateToolsTakeCwdAndOptions",
+   "TestToolBinDirComesFromOptions",
+   "TestSearchToolBinDirSelectsTheManagedToolsDirectory"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/grep.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `return &GrepTool{CWD: cwd, Tools: searchToolsManager(o.BinDir), Operations: o.Operations}` with `return &GrepTool{CWD: cwd, Operations: o.Operations}`; TestCreateToolFactoriesBindTheirCwdAndOptions, TestCreateToolsTakeCwdAndOptions, TestSearchToolBinDirSelectsTheManagedToolsDirectory, TestToolBinDirComesFromOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/grep.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateToolFactoriesBindTheirCwdAndOptions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/grep.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `return &GrepTool{CWD: cwd, Tools: searchToolsManager(o.BinDir), Operations: o.Operations}` with `return &GrepTool{CWD: cwd, Tools: searchToolsManager(o.BinDir)}`; TestCreateToolFactoriesBindTheirCwdAndOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/find.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateToolFactoriesBindTheirCwdAndOptions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/find.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `return &FindTool{CWD: cwd, Tools: searchToolsManager(o.BinDir), Operations: o.Operations}` with `return &FindTool{Tools: searchToolsManager(o.BinDir), Operations: o.Operations}`; TestCreateToolFactoriesBindTheirCwdAndOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/find.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateToolFactoriesBindTheirCwdAndOptions",
+   "TestCreateToolsTakeCwdAndOptions",
+   "TestToolBinDirComesFromOptions",
+   "TestSearchToolBinDirSelectsTheManagedToolsDirectory"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/find.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `return &FindTool{CWD: cwd, Tools: searchToolsManager(o.BinDir), Operations: o.Operations}` with `return &FindTool{CWD: cwd, Operations: o.Operations}`; TestCreateToolFactoriesBindTheirCwdAndOptions, TestCreateToolsTakeCwdAndOptions, TestSearchToolBinDirSelectsTheManagedToolsDirectory, TestToolBinDirComesFromOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/find.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateToolFactoriesBindTheirCwdAndOptions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/find.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `return &FindTool{CWD: cwd, Tools: searchToolsManager(o.BinDir), Operations: o.Operations}` with `return &FindTool{CWD: cwd, Tools: searchToolsManager(o.BinDir)}`; TestCreateToolFactoriesBindTheirCwdAndOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/ls.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateToolFactoriesBindTheirCwdAndOptions",
+   "TestCreateLsToolBindsItsCwdAndOperations",
+   "TestCreateLsToolUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/ls.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `return &LsTool{CWD: cwd, Operations: orEmpty(options).Operations}` with `return &LsTool{Operations: orEmpty(options).Operations}`; TestCreateLsToolBindsItsCwdAndOperations, TestCreateLsToolUpstream, TestCreateToolFactoriesBindTheirCwdAndOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/ls.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateToolFactoriesBindTheirCwdAndOptions",
+   "TestCreateLsToolBindsItsCwdAndOperations",
+   "TestCreateLsToolUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/ls.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `return &LsTool{CWD: cwd, Operations: orEmpty(options).Operations}` with `return &LsTool{CWD: cwd}`; TestCreateLsToolBindsItsCwdAndOperations, TestCreateLsToolUpstream, TestCreateToolFactoriesBindTheirCwdAndOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/index.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateReadOnlyToolsPassesEachToolItsOptionsAndTheBinDir"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/index.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `CreateReadTool(cwd, o.Read),\n\t\tCreateGrepTool` with `CreateReadTool(cwd, nil),\n\t\tCreateGrepTool`; TestCreateReadOnlyToolsPassesEachToolItsOptionsAndTheBinDir fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/index.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateReadOnlyToolsPassesEachToolItsOptionsAndTheBinDir"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/index.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `set(&c)\n\treturn &c` with `return &c`; TestCreateReadOnlyToolsPassesEachToolItsOptionsAndTheBinDir fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/index.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateReadOnlyToolsPassesEachToolItsOptionsAndTheBinDir"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/index.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `if p != nil {\n\t\tc = *p\n\t}\n\tset(&c)` with `set(&c)`; TestCreateReadOnlyToolsPassesEachToolItsOptionsAndTheBinDir fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/bash.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateShellToolsBindTheirCwdAndSettings"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/bash.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `CWD: cwd, Operations: o.Operations, Settings: settings, CommandPrefix: o.CommandPrefix, BinDir: o.BinDir,\n\t\tHideSessionEnvironment: o.ExposeSessionEnvironment != nil && !*o.ExposeSessionEnvironment, SpawnHook: o.SpawnHook,` with `Operations: o.Operations, Settings: settings, CommandPrefix: o.CommandPrefix, BinDir: o.BinDir,\n\t\tHideSessionEnvironment: o.ExposeSessionEnvironment != nil && !*o.ExposeSessionEnvironment, SpawnHook: o.SpawnHook,`; TestCreateShellToolsBindTheirCwdAndSettings fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/powershell.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateShellToolsBindTheirCwdAndSettings"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/powershell.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `return &PowerShellTool{CWD: cwd, Operations: o.Operations, BinDir: o.BinDir, HideSessionEnvironment: o.ExposeSessionEnvironment != nil && !*o.ExposeSessionEnvironment, SpawnHook: o.SpawnHook}` with `return &PowerShellTool{CWD: cwd, Operations: o.Operations, BinDir: o.BinDir, HideSessionEnvironment: o.ExposeSessionEnvironment == nil, SpawnHook: o.SpawnHook}`; TestCreateShellToolsBindTheirCwdAndSettings fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/index.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateReadOnlyToolsPassesEachToolItsOptionsAndTheBinDir"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/index.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `CreateReadTool(cwd, o.Read),\n\t\tCreateGrepTool(cwd, withOption(o.Grep, func(g *GrepToolOptions) { g.BinDir = o.BinDir })),\n\t\tCreateFindTool(cwd, withOption(o.Find, func(f *FindToolOptions) { f.BinDir = o.BinDir })),\n\t\tCreateLsTool(cwd, o.Ls),\n\t}\n}` with `CreateReadTool(cwd, o.Read),\n\t\tCreateGrepTool(cwd, withOption(o.Grep, func(g *GrepToolOptions) {})),\n\t\tCreateFindTool(cwd, withOption(o.Find, func(f *FindToolOptions) { f.BinDir = o.BinDir })),\n\t\tCreateLsTool(cwd, o.Ls),\n\t}\n}`; TestCreateReadOnlyToolsPassesEachToolItsOptionsAndTheBinDir fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/index.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateReadOnlyToolsPassesEachToolItsOptionsAndTheBinDir"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/index.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `CreateReadTool(cwd, o.Read),\n\t\tCreateGrepTool(cwd, withOption(o.Grep, func(g *GrepToolOptions) { g.BinDir = o.BinDir })),\n\t\tCreateFindTool(cwd, withOption(o.Find, func(f *FindToolOptions) { f.BinDir = o.BinDir })),\n\t\tCreateLsTool(cwd, o.Ls),\n\t}\n}` with `CreateReadTool(cwd, o.Read),\n\t\tCreateGrepTool(cwd, withOption(o.Grep, func(g *GrepToolOptions) { g.BinDir = o.BinDir })),\n\t\tCreateFindTool(cwd, withOption(o.Find, func(f *FindToolOptions) {})),\n\t\tCreateLsTool(cwd, o.Ls),\n\t}\n}`; TestCreateReadOnlyToolsPassesEachToolItsOptionsAndTheBinDir fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/index.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateReadOnlyToolsPassesEachToolItsOptionsAndTheBinDir"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/index.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `CreateReadTool(cwd, o.Read),\n\t\tCreateGrepTool(cwd, withOption(o.Grep, func(g *GrepToolOptions) { g.BinDir = o.BinDir })),\n\t\tCreateFindTool(cwd, withOption(o.Find, func(f *FindToolOptions) { f.BinDir = o.BinDir })),\n\t\tCreateLsTool(cwd, o.Ls),\n\t}\n}` with `CreateReadTool(cwd, o.Read),\n\t\tCreateGrepTool(cwd, withOption(o.Grep, func(g *GrepToolOptions) { g.BinDir = o.BinDir })),\n\t\tCreateFindTool(cwd, withOption(o.Find, func(f *FindToolOptions) { f.BinDir = o.BinDir })),\n\t\tCreateLsTool(cwd, nil),\n\t}\n}`; TestCreateReadOnlyToolsPassesEachToolItsOptionsAndTheBinDir fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/bash.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateBashToolShellPathFailsForAMissingShell",
+   "TestCreateShellToolsBindTheirCwdAndSettings"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/bash.ts",
+  "mutation": "internal/codingagent/tools/tools.go: replace `CWD: cwd, Operations: o.Operations, Settings: settings, CommandPrefix: o.CommandPrefix, BinDir: o.BinDir,\n\t\tHideSessionEnvironment: o.ExposeSessionEnvironment != nil && !*o.ExposeSessionEnvironment, SpawnHook: o.SpawnHook,` with `CWD: cwd, Operations: o.Operations, Settings: map[bool]SettingsView{true: nil, false: settings}[true], CommandPrefix: o.CommandPrefix, BinDir: o.BinDir,\n\t\tHideSessionEnvironment: o.ExposeSessionEnvironment != nil && !*o.ExposeSessionEnvironment, SpawnHook: o.SpawnHook,`; TestCreateBashToolShellPathFailsForAMissingShell, TestCreateShellToolsBindTheirCwdAndSettings fails."
+ }
+]

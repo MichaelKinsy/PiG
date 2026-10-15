@@ -99,6 +99,58 @@ func TestInjectedCredentialStoreRefreshCancellationDoesNotWaitForRead(t *testing
 	}
 }
 
+// gatedCredentialStore holds every credential read until reads of two providers have started, or the read's signal is cancelled.
+type gatedCredentialStore struct {
+	ai.CredentialStore
+	mu      sync.Mutex
+	started map[string]bool
+	both    chan struct{}
+}
+
+func (store *gatedCredentialStore) Read(ctx context.Context, providerID string) (*ai.Credential, error) {
+	store.mu.Lock()
+	if !store.started[providerID] {
+		store.started[providerID] = true
+		if len(store.started) == 2 {
+			close(store.both)
+		}
+	}
+	store.mu.Unlock()
+	select {
+	case <-store.both:
+		return store.CredentialStore.Read(ctx, providerID)
+	case <-ctx.Done():
+		return nil, context.Cause(ctx)
+	}
+}
+
+// Pi packages/ai/src/models.ts:653-684 checks every provider's auth with Promise.all, so a caller-supplied CredentialStore sees each provider's
+// read start before any of them settles; only PiG's own stores, whose reads wait on nothing but auth.json, may be read one provider at a time.
+func TestInjectedCredentialStoreAvailabilityReadsProvidersConcurrently(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		store := &gatedCredentialStore{CredentialStore: ai.NewInMemoryAuthStorage(nil), started: map[string]bool{}, both: make(chan struct{})}
+		runtime, err := CreateModelRuntime(t.Context(), CreateModelRuntimeOptions{Credentials: store, ModelsPath: new((*string)(nil)), RefreshOnCreate: new(false)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer runtime.Close()
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		passed := make(chan error, 1)
+		go func() { passed <- runtime.queueAvailabilityRefresh(ctx) }()
+		synctest.Wait()
+		select {
+		case <-store.both:
+		default:
+			store.mu.Lock()
+			t.Errorf("the availability pass read one provider's credential at a time: started %v", store.started)
+			store.mu.Unlock()
+		}
+		cancel()
+		<-passed
+	})
+}
+
 // Pi model-runtime.ts:174 does not construct the default store when credentials are supplied, even when authPath cannot be opened.
 func TestInjectedCredentialStoreDoesNotOpenAuthPath(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "not-a-directory")

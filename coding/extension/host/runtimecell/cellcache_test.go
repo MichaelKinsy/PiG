@@ -41,7 +41,7 @@ func TestCellcacheHelperProcess(t *testing.T) {
 		if ferr != nil {
 			return "", ferr
 		}
-		_, _ = f.Write([]byte("x"))
+		_, _ = f.WriteString("x")
 		_ = f.Close()
 		time.Sleep(150 * time.Millisecond) // widen the race window
 		out := filepath.Join(scratch, "runner")

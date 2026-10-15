@@ -1,0 +1,44 @@
+# Behavior family: print
+# Scenario: an Amazon Bedrock model with no AWS env signal fails the prompt before the turn, as every other built-in provider does.
+#
+# Upstream evidence (Pi 1.1.0, probed 2026-10-10): amazon-bedrock.ts bedrockAuth.resolve returns undefined unless a
+# stored key or one of AWS_BEARER_TOKEN_BEDROCK, AWS_PROFILE, AWS_ACCESS_KEY_ID+AWS_SECRET_ACCESS_KEY,
+# AWS_CONTAINER_CREDENTIALS_RELATIVE_URI/FULL_URI or AWS_WEB_IDENTITY_TOKEN_FILE is set, so AgentSession.prompt
+# (agent-session.ts:2037-2050) rejects the prompt:
+#
+#   pi --offline --no-extensions --no-session --model amazon-bedrock/us.anthropic.claude-sonnet-5-5 -p hello
+#
+# prints "No API key found for amazon-bedrock." with the login guidance and exits 1. PiG exempted amazon-bedrock from
+# the prompt and setModel auth checks, so it sent the request (stderr "fetch failed" or an AWS SDK config error, exit 1
+# after a network attempt).
+#
+# Every AWS signal is set empty for both binaries so a developer's or CI runner's AWS environment cannot flip the result;
+# both read an empty value as unset.
+# normalize-rationale: the docs root differs by distribution (D2/D22). Masking it keeps the error, the guidance text and the file names, so drift in the error or the exit still fails.
+
+name = "07-print-bedrock-without-aws-auth"
+description = "Print mode fails a Bedrock prompt without an AWS env signal before the turn, with Pi's guidance"
+covers = [
+  "packages/coding-agent/src/modes/print-mode.ts",
+  "packages/ai/src/providers/amazon-bedrock.ts",
+]
+tags = ["hermetic", "fast", "cli"]
+driver = "cli-mode"
+
+[cli]
+args = ["--offline", "--no-extensions", "--no-context-files", "--no-skills", "--no-session", "--model", "amazon-bedrock/us.anthropic.claude-sonnet-5-5", "-p", "hello"]
+timeout_seconds = 20
+
+[env]
+pig = ["PIG_HOME=../rpc/testdata/pig-home", "AWS_PROFILE=", "AWS_ACCESS_KEY_ID=", "AWS_SECRET_ACCESS_KEY=", "AWS_BEARER_TOKEN_BEDROCK=", "AWS_CONTAINER_CREDENTIALS_RELATIVE_URI=", "AWS_CONTAINER_CREDENTIALS_FULL_URI=", "AWS_WEB_IDENTITY_TOKEN_FILE="]
+pi = ["PI_CODING_AGENT_DIR=../rpc/testdata/pi-home/agent", "PI_SKIP_VERSION_CHECK=1", "AWS_PROFILE=", "AWS_ACCESS_KEY_ID=", "AWS_SECRET_ACCESS_KEY=", "AWS_BEARER_TOKEN_BEDROCK=", "AWS_CONTAINER_CREDENTIALS_RELATIVE_URI=", "AWS_CONTAINER_CREDENTIALS_FULL_URI=", "AWS_WEB_IDENTITY_TOKEN_FILE="]
+
+[assert]
+exit_code = 1
+both_contain = ["No API key found for amazon-bedrock.", "Use /login to log into a provider via OAuth or API key. See:"]
+both_not_contain = ["fetch failed", "load AWS config"]
+output_normalized_equal = true
+normalize_replace = [
+  { pattern = '/[^ \n]*/docs/(?:bundle-[0-9a-f]+/)?(providers|models)\.md', with = '<DOCS>/$1.md', reason = "D2/D22: the documentation root is distribution-specific; keep the file names and the guidance text." },
+]
+runs = 3

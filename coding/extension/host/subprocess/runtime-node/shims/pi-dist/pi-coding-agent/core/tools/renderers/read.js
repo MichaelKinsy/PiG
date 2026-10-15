@@ -12,20 +12,16 @@ import { keyHint, keyText } from "../../../modes/interactive/components/keybindi
 import { getLanguageFromPath, highlightCode } from "../../../modes/interactive/theme/theme.js";
 import { formatPathRelativeToCwdOrAbsolute } from "../../../utils/paths.js";
 import { resolveToCwd } from "../path-utils.js";
-import { getTextOutput, renderToolPath, replaceTabs, str } from "../render-utils.js";
+import { formatReadLineRange, getTextOutput, renderToolPath, replaceTabs, str } from "../render-utils.js";
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, formatSize } from "../truncate.js";
 const COMPACT_RESOURCE_FILE_NAMES = new Set(["AGENTS.override.md", "AGENTS.md", "AGENTS.MD", "CLAUDE.md", "CLAUDE.MD"]);
-function formatReadLineRange(args, theme) {
-    // Strict tool schemas make models send null for omitted optional fields.
-    if (args?.offset == null && args?.limit == null)
-        return "";
-    const startLine = args.offset ?? 1;
-    const endLine = args.limit != null ? startLine + args.limit - 1 : "";
-    return theme.fg("warning", `:${startLine}${endLine ? `-${endLine}` : ""}`);
+function styledReadLineRange(args, theme) {
+    const range = formatReadLineRange(args?.offset, args?.limit);
+    return range ? theme.fg("warning", range) : "";
 }
 function formatReadCall(args, theme, cwd) {
     const pathDisplay = renderToolPath(str(args?.file_path ?? args?.path), theme, cwd);
-    return `${theme.fg("toolTitle", theme.bold("read"))} ${pathDisplay}${formatReadLineRange(args, theme)}`;
+    return `${theme.fg("toolTitle", theme.bold("read"))} ${pathDisplay}${styledReadLineRange(args, theme)}`;
 }
 function trimTrailingEmptyLines(lines) {
     let end = lines.length;
@@ -74,13 +70,13 @@ function formatCompactReadCall(classification, args, theme) {
     if (classification.kind === "skill") {
         return (theme.fg("customMessageLabel", `\x1b[1m[skill]\x1b[22m `) +
             theme.fg("customMessageText", classification.label) +
-            formatReadLineRange(args, theme) +
+            styledReadLineRange(args, theme) +
             expandHint);
     }
     return (theme.fg("toolTitle", theme.bold(`read ${classification.kind}`)) +
         " " +
         theme.fg("accent", classification.label) +
-        formatReadLineRange(args, theme) +
+        styledReadLineRange(args, theme) +
         expandHint);
 }
 function formatReadResult(args, result, options, theme, showImages, _cwd, isError) {

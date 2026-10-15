@@ -6,7 +6,7 @@ import test from "node:test";
 import { compareInventories, extractInventory, stableSourcePath, verifyPublishedSources } from "../src/inventory.mjs";
 import { scratchDir } from "./scratch.mjs";
 
-const VERSION = fs.readFileSync(new URL("../../../../internal/coding/pigversion/pigversion.go", import.meta.url), "utf8").match(/const UpstreamVersion = "([^"]+)"/)[1];
+const VERSION = fs.readFileSync(new URL("../../../../internal/coding/pigversion/pigversion.go", import.meta.url), "utf8").match(/const UpstreamPackageVersion = "([^"]+)"/)[1];
 
 function write(root, relative, content) {
   const file = path.join(root, relative);
@@ -116,6 +116,18 @@ function buildFixture() {
   return { root, source, published, publishedAI: roots.ai };
 }
 
+for (const origin of ["source", "published"]) {
+  test(`${origin} inventory of a commit pin checks the package version before the plus and records the commit version`, (t) => {
+    const fixture = buildFixture();
+    t.after(() => fs.rmSync(fixture.root, { recursive: true, force: true }));
+    const root = fixture[origin];
+    const commitVersion = `${VERSION}+abcdef12`;
+    const inventory = extractInventory({ origin, root, upstreamVersion: commitVersion });
+    assert.equal(inventory.upstreamVersion, commitVersion);
+    assert.throws(() => extractInventory({ origin, root, upstreamVersion: `9.9.9+abcdef12` }), /version skew/);
+  });
+}
+
 function extractPair(fixture) {
   return {
     source: extractInventory({ origin: "source", root: fixture.source, upstreamVersion: VERSION }),
@@ -183,6 +195,25 @@ test("the optional mcp and codemode packages join the inventory when a release h
     const root = fixture[origin];
     assert.deepEqual(keys(extractInventory({ origin, root, upstreamVersion: VERSION })), [...base, "@earendil-works/pi-codemode", "@earendil-works/pi-mcp"].sort());
   }
+});
+
+test("a package missing from the published install is read from the pinned source, and a private package has no interface", (t) => {
+  const fixture = buildFixture();
+  t.after(() => fs.rmSync(fixture.root, { recursive: true, force: true }));
+  const exportsIndex = { exports: { ".": { types: "./dist/index.d.ts", import: "./dist/index.js" } } };
+  write(fixture.source, "packages/env/package.json", manifest("@earendil-works/pi-env", exportsIndex));
+  write(fixture.source, "packages/env/src/index.ts", `export interface Frame {\n  kind: string;\n}\nexport function encodeFrame(frame: Frame): Uint8Array { return new Uint8Array(); }\n`);
+  write(fixture.source, "packages/evals/package.json", JSON.stringify({ name: "@earendil-works/pi-evals", version: VERSION, private: true }));
+  write(fixture.source, "packages/evals/src/cli.ts", "export const run = 1;\n");
+  const published = extractInventory({ origin: "published", root: fixture.published, sourceRoot: fixture.source, upstreamVersion: VERSION });
+  const byKey = Object.fromEntries(published.packages.map((entry) => [entry.key, entry]));
+  assert.equal(byKey.env.origin, "source");
+  assert.equal(byKey.agent.origin, "published");
+  assert.deepEqual(byKey.evals.entrypoints, []);
+  assert.ok(published.interfaces.some((entry) => entry.id === "pkg:env/.#encodeFrame"));
+  assert.ok(!published.interfaces.some((entry) => entry.package === "@earendil-works/pi-evals"));
+  const withoutSource = extractInventory({ origin: "published", root: fixture.published, upstreamVersion: VERSION });
+  assert.ok(!withoutSource.packages.some((entry) => entry.key === "env"), "no source root: the package stays absent");
 });
 
 test("normalizes compiler dependency source paths", () => {

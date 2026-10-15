@@ -11,11 +11,11 @@ import (
 func TestExtensionRegistrationValidationBeforeReplacement(t *testing.T) {
 	registry := NewModelRegistry(t.TempDir())
 	original := extension.ProviderConfig{API: ai.APIOpenAICompletions, BaseURL: "https://provider.test/v1", APIKey: "provider-test-key", Models: []extension.ProviderModelConfig{{ID: "instant-model", Name: "Instant Model"}}}
-	if err := registry.RegisterProvider("instant-provider", original); err != nil {
+	if err := registry.RegisterExtensionProvider("instant-provider", original); err != nil {
 		t.Fatal(err)
 	}
 	invalid := extension.ProviderConfig{Models: []extension.ProviderModelConfig{{ID: "invalid-model", Name: "Invalid"}}}
-	if err := registry.RegisterProvider("instant-provider", invalid); err == nil || !strings.Contains(err.Error(), `no "api" specified`) {
+	if err := registry.RegisterExtensionProvider("instant-provider", invalid); err == nil || !strings.Contains(err.Error(), `no "api" specified`) {
 		t.Fatalf("validation error=%v", err)
 	}
 	entry, ok := registry.Resolve("instant-provider", "instant-model")

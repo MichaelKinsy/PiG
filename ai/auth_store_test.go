@@ -269,3 +269,18 @@ func writeAuthFixture(t *testing.T, path, content string) {
 		t.Fatal(err)
 	}
 }
+
+// auth/credential-store.ts InMemoryCredentialStore.list(options): an aborted signal rejects before reading the store, as read, write and delete do.
+func TestInMemoryCredentialStoreListRejectsACancelledContext(t *testing.T) {
+	store := NewInMemoryCredentialStore()
+	if _, err := store.Modify(context.Background(), "anthropic", func(*Credential) (*Credential, error) {
+		return &Credential{Type: CredentialAPIKey, Key: "k"}, nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancelCause(context.Background())
+	cancel(errors.New("stop listing"))
+	if infos, err := store.List(ctx); err == nil || err.Error() != "stop listing" || infos != nil {
+		t.Fatalf("List = %v, %v, want the cancellation cause and no entries", infos, err)
+	}
+}

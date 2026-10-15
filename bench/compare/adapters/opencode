@@ -1,0 +1,23 @@
+#!/bin/bash
+# Arm adapter: OpenCode (anomalyco/opencode). Pi flag spelling -> OpenCode's: `-p PROMPT` -> `run`, `--model` kept, `--no-session` dropped (every launch
+# gets its own data directory, so no session is resumed). The provider comes from OPENCODE_CONFIG_CONTENT (openai-compatible -> the mock, port parsed from
+# the harness's models.json; BENCH_OC_DIR pins the directory so a session can be continued with --continue); auto-update and the models.dev fetch are off so nothing leaves the host. HOME and XDG dirs are per launch.
+args=(); mode=tui; model=fake/fake-model
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --no-session) ;;
+    --model) model="$2"; shift ;;
+    --version) exec "@EXE@" --version ;;
+    -p) mode=run ;;
+    *) args+=("$1") ;;
+  esac
+  shift
+done
+D="${BENCH_OC_DIR:-$PI_CODING_AGENT_DIR/oc-$$}"; mkdir -p "$D/home"
+port=$(grep -o '127.0.0.1:[0-9]*' "$PI_CODING_AGENT_DIR/models.json" | head -1 | cut -d: -f2)
+cw=$(grep -o '"contextWindow": [0-9]*' "$PI_CODING_AGENT_DIR/models.json" | head -1 | grep -o '[0-9]*$')
+export HOME="$D/home" XDG_DATA_HOME="$D/data" XDG_CONFIG_HOME="$D/config" XDG_CACHE_HOME="$D/cache" XDG_STATE_HOME="$D/state"
+export OPENCODE_DISABLE_AUTOUPDATE=1 OPENCODE_DISABLE_MODELS_FETCH=1
+export OPENCODE_CONFIG_CONTENT='{"autoupdate":false,"share":"disabled","provider":{"fake":{"npm":"@ai-sdk/openai-compatible","name":"fake","options":{"baseURL":"http://127.0.0.1:'$port'/v1","apiKey":"fake"},"models":{"fake-model":{"name":"fake-model","tool_call":true,"limit":{"context":'${cw:-200000}',"output":8192}}}}},"permission":{"edit":"allow","bash":"allow","webfetch":"allow","doom_loop":"allow","external_directory":"allow"}}'
+if [ "$mode" = run ]; then exec "@EXE@" run --model "$model" "${args[@]}"; fi
+exec "@EXE@" --model "$model" "${args[@]}"

@@ -19,6 +19,15 @@ import (
 )
 
 // Ports packages/mcp/test/streamable-http.test.ts.
+//
+// Each Pi case (packages/mcp/test/streamable-http.test.ts, Pi 1.1.0) and its Go test: consumeSseStream "parses chunked CRLF events" :92
+// and "rejects events whose data lines exceed the limit" :106; StreamableHttpTransport "handles JSON and SSE responses with session and
+// protocol headers" :124, "classifies authentication failures" :143, "fails only the request whose SSE stream breaks" :158, "opens the GET
+// stream after initialization and sends Last-Event-ID only when resuming" :188, "resumes a response stream the server closed before
+// answering" :208, "fails a request whose response stream ends without an answer" :236, "reconnects the GET stream after it drops" :252,
+// "rejects a request the server accepts without a response" :280, "includes the response body in HTTP errors" :294, "hands 401 and
+// insufficient-scope 403 responses to the auth provider with the rejected token" :306, "closes the session with the last request's
+// token, without asking the auth provider" :346, "calls fetch without a receiver" :366, "classifies an expired established session" :410.
 
 type recordedRequest struct {
 	method  string
@@ -154,6 +163,7 @@ func (c *chunkReader) Read(p []byte) (int, error) {
 	return n, nil
 }
 
+// mutation-checked: negating the condition `len(dataLines) == 0` at sse.go:54 fails it.
 func TestConsumeSSEStreamParsesChunkedCRLFEventsCommentsIDsAndMultilineData(t *testing.T) {
 	stream := &chunkReader{chunks: []string{": keepalive\r\nid: 7\r\ndata: {\"one\":\r\n", "data: 1}\r\n\r\n"}}
 	var events []mcp.SSEEvent
@@ -175,6 +185,7 @@ func (r *endlessDataReader) Read(p []byte) (int, error) {
 	return copy(p, "data: xxxxxxxxxxxxxxxx\n"), nil
 }
 
+// mutation-checked: negating the condition `maxEventBytes == 0` at sse.go:42 fails it.
 func TestConsumeSSEStreamRejectsEventsWhoseDataLinesExceedTheLimitWithoutABlankLine(t *testing.T) {
 	stream := &endlessDataReader{}
 	err := mcp.ConsumeSSEStream(stream, mcp.ConsumeSSEOptions{MaxEventBytes: 256, OnEvent: func(mcp.SSEEvent) {}})
@@ -186,6 +197,7 @@ func TestConsumeSSEStreamRejectsEventsWhoseDataLinesExceedTheLimitWithoutABlankL
 	}
 }
 
+// mutation-checked: negating the condition `version != ""` at streamable_http.go:457 fails it.
 func TestStreamableHTTPTransportHandlesJSONAndSSEResponsesWithSessionAndProtocolHeaders(t *testing.T) {
 	url, requests := startServer(t, plainProtocol)
 	transport := newHTTPTransport(t, mcp.StreamableHTTPTransportOptions{URL: url})
@@ -236,6 +248,7 @@ func TestStreamableHTTPTransportHandlesJSONAndSSEResponsesWithSessionAndProtocol
 	}
 }
 
+// mutation-checked: negating the condition `values := response.Header.Values("Www-Authenticate"); len(values) > 0` at streamable_http.go:96 fails it.
 func TestStreamableHTTPTransportClassifiesAuthenticationFailures(t *testing.T) {
 	url, _ := startServer(t, func(w http.ResponseWriter, r *http.Request, _ *requestLog) {
 		_, _ = io.ReadAll(r.Body)
@@ -257,6 +270,7 @@ func TestStreamableHTTPTransportClassifiesAuthenticationFailures(t *testing.T) {
 	}
 }
 
+// mutation-checked: negating the condition `!cursor.hasEventID || attempt >= t.maxRetries()` at streamable_http.go:558 fails it.
 func TestStreamableHTTPTransportFailsOnlyTheRequestWhoseSSEStreamBreaks(t *testing.T) {
 	slowGate := make(chan struct{})
 	url, _ := startServer(t, func(w http.ResponseWriter, r *http.Request, requests *requestLog) {
@@ -314,6 +328,7 @@ func TestStreamableHTTPTransportFailsOnlyTheRequestWhoseSSEStreamBreaks(t *testi
 	_ = client.Close()
 }
 
+// mutation-checked: negating the condition `stream != nil` at streamable_http.go:547 fails it.
 func TestStreamableHTTPTransportOpensTheGETStreamAfterInitializationAndSendsLastEventIDOnlyWhenResuming(t *testing.T) {
 	var mu sync.Mutex
 	var order []string
@@ -367,6 +382,7 @@ func TestStreamableHTTPTransportOpensTheGETStreamAfterInitializationAndSendsLast
 	}
 }
 
+// mutation-checked: negating the condition `failure != nil && !t.isRetryable(failure)` at streamable_http.go:555 fails it.
 func TestStreamableHTTPTransportResumesAResponseStreamTheServerClosedBeforeAnswering(t *testing.T) {
 	var mu sync.Mutex
 	var resumeHeaders []string
@@ -424,6 +440,7 @@ func TestStreamableHTTPTransportResumesAResponseStreamTheServerClosedBeforeAnswe
 	_ = client.Close()
 }
 
+// mutation-checked: negating the condition `isJSONArray(data)` at streamable_http.go:324 fails it.
 func TestStreamableHTTPTransportFailsARequestWhoseResponseStreamEndsWithoutAnAnswer(t *testing.T) {
 	url, _ := startServer(t, func(w http.ResponseWriter, r *http.Request, requests *requestLog) {
 		if r.Method != http.MethodPost {
@@ -450,6 +467,7 @@ func TestStreamableHTTPTransportFailsARequestWhoseResponseStreamEndsWithoutAnAns
 	_ = client.Close()
 }
 
+// mutation-checked: negating the condition `err != nil` at streamable_http.go:641 fails it.
 func TestStreamableHTTPTransportReconnectsTheGETStreamAfterItDrops(t *testing.T) {
 	var gets atomic.Int32
 	var mu sync.Mutex
@@ -498,29 +516,36 @@ func TestStreamableHTTPTransportReconnectsTheGETStreamAfterItDrops(t *testing.T)
 	_ = client.Close()
 }
 
+// streamable-http.ts:239 treats both 202 and 204 as an acknowledgement that carries no reply.
+// mutation-checked: negating the condition `isJSONArray(data)` at streamable_http.go:324 fails it.
 func TestStreamableHTTPTransportRejectsARequestTheServerAcceptsWithoutAResponse(t *testing.T) {
-	url, _ := startServer(t, func(w http.ResponseWriter, r *http.Request, requests *requestLog) {
-		if r.Method != http.MethodPost {
-			plainProtocol(w, r, requests)
-			return
-		}
-		message := readJSONBody(r)
-		if message["method"] != "tools/call" {
-			protocolHandler(w, r, requests, message)
-			return
-		}
-		w.WriteHeader(202)
-	})
-	client := newHTTPClient()
-	if _, err := client.Connect(t.Context(), newHTTPTransport(t, mcp.StreamableHTTPTransportOptions{URL: url, OpenGetStream: new(false)})); err != nil {
-		t.Fatal(err)
+	for _, status := range []int{202, 204} {
+		t.Run(fmt.Sprint(status), func(t *testing.T) {
+			url, _ := startServer(t, func(w http.ResponseWriter, r *http.Request, requests *requestLog) {
+				if r.Method != http.MethodPost {
+					plainProtocol(w, r, requests)
+					return
+				}
+				message := readJSONBody(r)
+				if message["method"] != "tools/call" {
+					protocolHandler(w, r, requests, message)
+					return
+				}
+				w.WriteHeader(status)
+			})
+			client := newHTTPClient()
+			if _, err := client.Connect(t.Context(), newHTTPTransport(t, mcp.StreamableHTTPTransportOptions{URL: url, OpenGetStream: new(false)})); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := client.CallTool(t.Context(), "echo", nil, mcp.RequestOptions{}); err == nil || !strings.Contains(err.Error(), "without a response") {
+				t.Fatalf("err = %v", err)
+			}
+			_ = client.Close()
+		})
 	}
-	if _, err := client.CallTool(t.Context(), "echo", nil, mcp.RequestOptions{}); err == nil || !strings.Contains(err.Error(), "without a response") {
-		t.Fatalf("err = %v", err)
-	}
-	_ = client.Close()
 }
 
+// mutation-checked: negating the condition `snippet != ""` at streamable_http.go:166 fails it.
 func TestStreamableHTTPTransportIncludesTheResponseBodyInHTTPErrors(t *testing.T) {
 	url, _ := startServer(t, func(w http.ResponseWriter, r *http.Request, _ *requestLog) {
 		_, _ = io.ReadAll(r.Body)
@@ -538,6 +563,8 @@ type recordingAuth struct {
 	mu    sync.Mutex
 	token string
 	seen  []string
+	// serverURLs is UnauthorizedContext.ServerURL (auth-provider.ts serverUrl) of each rejected request.
+	serverURLs []string
 }
 
 func (a *recordingAuth) Token(context.Context) (string, error) {
@@ -550,6 +577,9 @@ func (a *recordingAuth) OnUnauthorized(_ context.Context, u mcp.UnauthorizedCont
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.seen = append(a.seen, fmt.Sprintf("%d:%s", u.Response.StatusCode, u.Token))
+	if u.ServerURL != nil {
+		a.serverURLs = append(a.serverURLs, u.ServerURL.String())
+	}
 	if u.Response.StatusCode == 401 {
 		a.token = "new"
 	} else {
@@ -558,6 +588,7 @@ func (a *recordingAuth) OnUnauthorized(_ context.Context, u mcp.UnauthorizedCont
 	return nil
 }
 
+// mutation-checked: negating the condition `response.StatusCode != http.StatusForbidden` at streamable_http.go:142 fails it.
 func TestStreamableHTTPTransportHandsUnauthorizedAndInsufficientScopeResponsesToTheAuthProviderWithTheRejectedToken(t *testing.T) {
 	url, _ := startServer(t, func(w http.ResponseWriter, r *http.Request, requests *requestLog) {
 		if r.Method != http.MethodPost {
@@ -592,6 +623,12 @@ func TestStreamableHTTPTransportHandsUnauthorizedAndInsufficientScopeResponsesTo
 	auth.mu.Unlock()
 	if seen != "401:old,403:new" {
 		t.Fatalf("seen = %v", seen)
+	}
+	auth.mu.Lock()
+	serverURLs := slices.Clone(auth.serverURLs)
+	auth.mu.Unlock()
+	if want := []string{url, url}; !slices.Equal(serverURLs, want) {
+		t.Fatalf("UnauthorizedContext.ServerURL = %v, want %v", serverURLs, want)
 	}
 	_ = client.Close()
 }
@@ -674,6 +711,7 @@ func (a *fetchAuth) OnUnauthorized(ctx context.Context, unauthorized mcp.Unautho
 // interface value whose Do always runs on its own receiver. The observable part is ported: the injected fetch carries every
 // transport request, including the UnauthorizedContext.Fetch the auth provider uses, and an absent fetch falls back to the
 // default client (mcp/streamable_http.go NewStreamableHTTPTransport).
+// mutation-checked: negating the condition `response.StatusCode == http.StatusUnauthorized` at streamable_http.go:139 fails it.
 func TestStreamableHTTPTransportRoutesEveryRequestThroughTheFetchInUse(t *testing.T) {
 	url, _ := startServer(t, func(w http.ResponseWriter, r *http.Request, requests *requestLog) {
 		if r.Method == http.MethodPost && r.Header.Get("Authorization") == "" {
@@ -722,6 +760,7 @@ func TestStreamableHTTPTransportRoutesEveryRequestThroughTheFetchInUse(t *testin
 	}
 }
 
+// mutation-checked: negating the condition `response.StatusCode == http.StatusNotFound && hasSession` at streamable_http.go:491 fails it.
 func TestStreamableHTTPTransportClassifiesAnExpiredEstablishedSession(t *testing.T) {
 	var posts atomic.Int32
 	url, _ := startServer(t, func(w http.ResponseWriter, r *http.Request, requests *requestLog) {
@@ -742,4 +781,164 @@ func TestStreamableHTTPTransportClassifiesAnExpiredEstablishedSession(t *testing
 		t.Fatalf("err = %v", err)
 	}
 	_ = client.Close()
+}
+
+type delayedGETTransport struct {
+	delay      time.Duration
+	dispatched atomic.Bool
+}
+
+func (d *delayedGETTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	if request.Method == http.MethodGet {
+		// Stands in for a goroutine that the scheduler starts late.
+		time.Sleep(d.delay)
+		d.dispatched.Store(true)
+	}
+	return http.DefaultTransport.RoundTrip(request)
+}
+
+// streamable-http.ts send: `notifications/initialized` calls startGetStream, which issues the GET request before send
+// returns, so the GET is on the wire before the next request of the client. A server that treats the first GET as the
+// reconnection of a response stream (the conformance suite's sse-retry scenario) depends on that order.
+// mutation-checked: negating the condition `_, ok := t.fetch.(*http.Client); ok` at streamable_http.go:613 fails it.
+func TestStreamableHTTPTransportWritesTheGETStreamRequestBeforeTheInitializedNotificationReturns(t *testing.T) {
+	url, _ := startServer(t, func(w http.ResponseWriter, r *http.Request, requests *requestLog) {
+		var message map[string]any
+		if r.Method == http.MethodPost {
+			message = readJSONBody(r)
+		}
+		protocolHandler(w, r, requests, message)
+	})
+	fetch := &delayedGETTransport{delay: 200 * time.Millisecond}
+	client := newHTTPClient()
+	if _, err := client.Connect(t.Context(), newHTTPTransport(t, mcp.StreamableHTTPTransportOptions{URL: url, Fetch: &http.Client{Transport: fetch}})); err != nil {
+		t.Fatal(err)
+	}
+	if !fetch.dispatched.Load() {
+		t.Fatal("Connect returned before the GET stream request was written")
+	}
+}
+
+type countingAuth struct{ calls atomic.Int32 }
+
+func (a *countingAuth) Token(context.Context) (string, error) {
+	return fmt.Sprintf("token-%d", a.calls.Add(1)), nil
+}
+
+// #10565: the auth provider may refresh over the network, which closing must not wait for. Close reuses the token of the last request.
+// mutation-checked: negating the condition `sessionID != ""` at streamable_http.go:454 fails it.
+func TestStreamableHTTPTransportClosesTheSessionWithTheLastRequestsTokenWithoutAskingTheAuthProvider(t *testing.T) {
+	url, requests := startServer(t, plainProtocol)
+	auth := &countingAuth{}
+	client := newHTTPClient()
+	if _, err := client.Connect(t.Context(), newHTTPTransport(t, mcp.StreamableHTTPTransportOptions{URL: url, OpenGetStream: new(false), AuthProvider: auth})); err != nil {
+		t.Fatal(err)
+	}
+	before := auth.calls.Load()
+	if err := client.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if got := auth.calls.Load(); got != before {
+		t.Fatalf("Close asked the auth provider %d times", got-before)
+	}
+	var deletes []recordedRequest
+	for _, r := range requests.all() {
+		if r.method == "DELETE" {
+			deletes = append(deletes, r)
+		}
+	}
+	if len(deletes) != 1 || deletes[0].headers.Get("Authorization") != fmt.Sprintf("Bearer token-%d", before) || deletes[0].headers.Get("Mcp-Session-Id") != "session-1" {
+		t.Fatalf("DELETE requests = %#v, want one with Bearer token-%d and session-1", deletes, before)
+	}
+}
+
+// streamable-http.ts:347 skips an SSE event whose data.trim() is empty. trim removes U+FEFF and Unicode space separators, so such an event primes
+// resumption and is not parsed as JSON-RPC.
+// mutation-checked: negating the condition `stream != nil` at streamable_http.go:547 fails it.
+func TestStreamableHTTPTransportSkipsAnSSEEventWhoseDataIsJavaScriptWhitespace(t *testing.T) {
+	url, _ := startServer(t, func(w http.ResponseWriter, r *http.Request, requests *requestLog) {
+		if r.Method != http.MethodPost {
+			plainProtocol(w, r, requests)
+			return
+		}
+		message := readJSONBody(r)
+		if message["method"] != "tools/call" {
+			protocolHandler(w, r, requests, message)
+			return
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(200)
+		reply, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": message["id"], "result": map[string]any{"content": []any{}}})
+		_, _ = fmt.Fprintf(w, "data: \ufeff\u00a0\n\ndata: %s\n\n", reply)
+	})
+	client := newHTTPClient()
+	errs := make(chan error, 4)
+	client.OnError(func(err error) { errs <- err })
+	if _, err := client.Connect(t.Context(), newHTTPTransport(t, mcp.StreamableHTTPTransportOptions{URL: url, OpenGetStream: new(false)})); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.CallTool(t.Context(), "echo", map[string]any{}, mcp.RequestOptions{TimeoutMs: 5_000}); err != nil {
+		t.Fatalf("the whitespace-only event broke the call: %v", err)
+	}
+	select {
+	case err := <-errs:
+		t.Fatalf("the whitespace-only event was reported: %v", err)
+	default:
+	}
+	_ = client.Close()
+}
+
+// packages/mcp/src/transports/streamable-http.ts setProtocolVersion(version): the MCP-Protocol-Version header of later requests is the version set, not the
+// one the client negotiated (the client calls it once the initialize reply names the version).
+func TestStreamableHTTPTransportSetProtocolVersionChangesTheHeaderOfLaterRequests(t *testing.T) {
+	url, requests := startServer(t, plainProtocol)
+	transport := newHTTPTransport(t, mcp.StreamableHTTPTransportOptions{URL: url})
+	var setter mcp.ProtocolVersionSetter = transport
+	client := newHTTPClient()
+	if _, err := client.Connect(t.Context(), transport); err != nil {
+		t.Fatal(err)
+	}
+	setter.SetProtocolVersion("2099-01-01")
+	if _, err := client.ListTools(t.Context(), mcp.RequestOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.Close(); err != nil {
+		t.Fatal(err)
+	}
+	var seen string
+	for _, r := range requests.all() {
+		if r.message["method"] == "tools/list" {
+			seen = r.headers.Get("mcp-protocol-version")
+		}
+	}
+	if seen != "2099-01-01" {
+		t.Fatalf("the tools/list request carried MCP-Protocol-Version %q, want the version set", seen)
+	}
+}
+
+// transports/streamable-http.ts setProtocolVersion: the version a caller sets is the MCP-Protocol-Version header of every later request, and
+// a later call replaces it.
+// mutation-checked: a SetProtocolVersion that drops the version, or a request that does not send it, fails it.
+func TestStreamableHTTPTransportSendsTheProtocolVersionSetOnIt(t *testing.T) {
+	url, requests := startServer(t, plainProtocol)
+	transport := newHTTPTransport(t, mcp.StreamableHTTPTransportOptions{URL: url})
+	if err := transport.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = transport.Close() })
+	for _, version := range []string{"2025-03-26", "2024-11-05"} {
+		transport.SetProtocolVersion(version)
+		if err := transport.Send(context.Background(), mcp.NewNotification("notifications/ping", nil)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var got []string
+	for _, r := range requests.all() {
+		if r.method == "POST" {
+			got = append(got, r.headers.Get("MCP-Protocol-Version"))
+		}
+	}
+	if len(got) != 2 || got[0] != "2025-03-26" || got[1] != "2024-11-05" {
+		t.Fatalf("protocol version headers = %q, want each set version in order", got)
+	}
 }

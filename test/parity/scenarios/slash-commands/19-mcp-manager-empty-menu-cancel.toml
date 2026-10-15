@@ -1,0 +1,62 @@
+# Behavior family: slash-commands
+# Surface: the cancel key closes a `/mcp` manager menu that has no items (extensions/mcp/ui.ts menu)
+#
+# Upstream evidence (pinned pi 1.1.0): the agent directory configures no MCP server, so `/mcp` Enter opens the servers menu
+# with its empty text and only the cancel hint (ui.ts takes the empty-menu branch: no list, a handler that finishes the menu on
+# `tui.select.cancel`). Esc closes the manager and the editor takes the next text again. The crop is that text on the prompt
+# line, which only shows once the manager is gone. The comparator is output_equal.
+
+# Mutation (compiling): the empty menu ignoring the cancel key (coding/mcpext/manager.go Menu) fails this scenario: the
+# typed text never reaches the editor.
+name = "19-mcp-manager-empty-menu-cancel"
+description = "Both binaries close the /mcp manager's empty servers menu with the cancel key."
+covers = [
+  "packages/coding-agent/src/extensions/mcp/ui.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "[Context]"
+ready_pattern_pi = "[Context]"
+ready_timeout_seconds = 25
+capture_start = "after-close"
+capture_end = "after-close"
+capture_start_last = true
+
+[[tmux.steps]]
+keys = ["/mcp"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["MCP servers", "No MCP servers configured"]
+wait_timeout_seconds = 8
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Escape"]
+wait_not_contains = ["No MCP servers configured"]
+wait_timeout_seconds = 8
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["after-close"]
+wait_contains = ["after-close"]
+wait_timeout_seconds = 8
+settle_seconds = 1
+
+[env]
+override_base_args = true
+pig = ["PIG_CODING_AGENT_DIR=testdata/mcp-empty-pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/mcp-empty-pi-agent"]
+pig_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_equal = true
+runs = 3

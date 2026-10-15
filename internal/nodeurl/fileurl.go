@@ -86,13 +86,7 @@ func DomainToUnicode(host string) string {
 
 // PrepareInput applies the URL parser's C0/space trimming and tab/newline removal.
 func PrepareInput(raw string) string {
-	input := strings.TrimFunc(raw, func(r rune) bool { return r <= 0x20 })
-	return strings.Map(func(r rune) rune {
-		if r == '\t' || r == '\n' || r == '\r' {
-			return -1
-		}
-		return r
-	}, input)
+	return removeTabAndNewline(strings.TrimFunc(raw, func(r rune) bool { return r <= 0x20 }))
 }
 
 // parseFileURL runs the WHATWG URL parser on raw far enough to return a file
@@ -186,6 +180,9 @@ func splitSegments(rest string) []string {
 func isSlash(c byte) bool { return c == '/' || c == '\\' }
 
 func isScheme(s string) bool {
+	if s == "" {
+		return false
+	}
 	for i := range len(s) {
 		c := s[i] | 0x20
 		switch {
@@ -221,8 +218,10 @@ func containsEncoded(pathname, hex string) bool {
 	return strings.Contains(strings.ToLower(pathname), "%"+hex)
 }
 
-// decodeURIComponent is JavaScript's decodeURIComponent: every %XX becomes
+// DecodeURIComponent is JavaScript's decodeURIComponent: every %XX becomes
 // its byte, and a malformed escape or invalid UTF-8 is a URIError.
+func DecodeURIComponent(s string) (string, error) { return decodeURIComponent(s) }
+
 func decodeURIComponent(s string) (string, error) {
 	if !strings.Contains(s, "%") {
 		return s, nil

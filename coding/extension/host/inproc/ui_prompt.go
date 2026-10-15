@@ -29,6 +29,15 @@ type uiPromptTracker struct {
 	draining bool
 	ctx      context.Context
 	cancel   context.CancelFunc
+	// enqueued counts the events queued and admitted the events whose handlers were invoked; waiters wait for admitted to reach a count.
+	enqueued int
+	admitted int
+	waiters  []uiPromptWaiter
+}
+
+type uiPromptWaiter struct {
+	target int
+	done   chan struct{}
 }
 
 type uiPrompt struct {
@@ -90,6 +99,7 @@ func (r *Runner) enqueueUIPromptLocked(event any) {
 		t.ctx, t.cancel = context.WithCancel(context.Background())
 	}
 	t.pending = append(t.pending, event)
+	t.enqueued++
 	if t.draining {
 		return
 	}
@@ -131,6 +141,7 @@ func (r *Runner) drainUIPromptEvents() {
 		if len(t.pending) == 0 || r.IsStale() {
 			t.pending = nil
 			t.draining = false
+			t.admitLocked(t.enqueued)
 			t.mu.Unlock()
 			return
 		}
@@ -144,6 +155,43 @@ func (r *Runner) drainUIPromptEvents() {
 		dispatchCtx := invocation.WithAcknowledgment(t.ctx, func() { close(invoked) })
 		go r.emitUIPromptEvent(dispatchCtx, event)
 		<-invoked
+		t.mu.Lock()
+		t.admitLocked(t.admitted + 1)
+		t.mu.Unlock()
+	}
+}
+
+// admitLocked records admitted events up to count and releases the waiters it satisfies. Caller holds t.mu.
+func (t *uiPromptTracker) admitLocked(count int) {
+	t.admitted = count
+	waiting := t.waiters[:0]
+	for _, waiter := range t.waiters {
+		if waiter.target <= t.admitted {
+			//portlint:allow doubleclose the caller holds t.mu, and a released waiter leaves t.waiters in this pass, so its done channel is closed once
+			close(waiter.done)
+			continue
+		}
+		waiting = append(waiting, waiter)
+	}
+	t.waiters = waiting
+}
+
+// AwaitUIPromptEvents returns once the handlers of every ui_prompt event queued before the call have been invoked, or when ctx ends.
+//
+// upstream: runner.ts emitUIPromptEvent queues the emission in a microtask before withUIPrompt's promise settles, so each handler's synchronous part runs before the prompting extension continues. The subprocess bridge waits here before it answers a dialog call.
+func (r *Runner) AwaitUIPromptEvents(ctx context.Context) {
+	t := &r.uiPrompts
+	t.mu.Lock()
+	if t.admitted >= t.enqueued {
+		t.mu.Unlock()
+		return
+	}
+	waiter := uiPromptWaiter{target: t.enqueued, done: make(chan struct{})}
+	t.waiters = append(t.waiters, waiter)
+	t.mu.Unlock()
+	select {
+	case <-waiter.done:
+	case <-ctx.Done():
 	}
 }
 
@@ -177,7 +225,28 @@ func (c *uiPromptContext) Editor(ctx context.Context, title, prefill string) (st
 	return c.UIContext.Editor(ctx, title, prefill)
 }
 
-func (c *uiPromptContext) Custom(ctx context.Context, factory any, opts any) (any, error) {
+func (c *uiPromptContext) Custom(ctx context.Context, factory extension.CustomFactory, opts *extension.CustomOptions) (any, error) {
 	defer c.runner.BeginUIPrompt(extension.UIPromptKindCustom, "")()
 	return c.UIContext.Custom(ctx, factory, opts)
+}
+
+// ClearWorkingMessage restores the default working label (Pi's setWorkingMessage() with no argument) through the bound UI's own
+// [extension.WorkingMessageClearer]; for a bound UI without one it sends the empty message, as the subprocess bridge does. Embedding the bound UI
+// would otherwise hide its clearer from in-process extensions.
+func (c *uiPromptContext) ClearWorkingMessage() {
+	if clearer, ok := c.UIContext.(extension.WorkingMessageClearer); ok {
+		clearer.ClearWorkingMessage()
+		return
+	}
+	c.SetWorkingMessage("")
+}
+
+// ClearHiddenThinkingLabel restores the default hidden-thinking label (Pi's setHiddenThinkingLabel() with no argument) through the bound UI's own
+// [extension.HiddenThinkingLabelClearer], or sends the empty label for a bound UI without one.
+func (c *uiPromptContext) ClearHiddenThinkingLabel() {
+	if clearer, ok := c.UIContext.(extension.HiddenThinkingLabelClearer); ok {
+		clearer.ClearHiddenThinkingLabel()
+		return
+	}
+	c.SetHiddenThinkingLabel("")
 }

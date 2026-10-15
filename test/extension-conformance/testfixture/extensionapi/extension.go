@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -97,7 +98,7 @@ func Extension() *sdk.Extension {
 		Name: "helper", Label: "helper", Description: "Only reachable from other tools.", Parameters: object,
 		Exposure:     sdk.ToolExposureCodemode,
 		OutputSchema: sdk.Schema{"type": "object", "properties": map[string]any{"n": map[string]any{"type": "number"}}},
-		Namespace:    &sdk.ToolNamespace{Name: "helpers", Description: "Helper tools", Instructions: "Call helper first."},
+		Namespace:    &sdk.ToolNamespace{Name: "helpers", Aliases: sdk.NewToolNamespaceAliases("go", "go-helpers"), Description: "Helper tools", Instructions: "Call helper first."},
 		Annotations:  &sdk.ToolAnnotations{ReadOnlyHint: sdk.Bool(true), OpenWorldHint: sdk.Bool(false)},
 		Execute: func(sdk.Context, map[string]any) (any, error) {
 			return sdk.ToolResult{Content: "helped", StructuredContent: map[string]any{"n": 3}, Details: map[string]any{"source": "helper"}}, nil
@@ -111,14 +112,32 @@ func Extension() *sdk.Extension {
 		},
 	})
 	e.RegisterTool(sdk.ToolDefinition{
+		Name: "previewed", Label: "previewed", Description: "Returns a result with a preview.", Parameters: object,
+		Exposure: sdk.ToolExposureCodemode, DefaultActive: sdk.Bool(false),
+		Execute: func(sdk.Context, map[string]any) (any, error) {
+			return sdk.ToolResult{Content: "full output for the model", Preview: "preview-go-7d3a"}, nil
+		},
+	})
+	e.RegisterTool(sdk.ToolDefinition{
 		Name: "run_tools", Label: "run_tools", Description: "Runs tools.", Parameters: object, Exposure: sdk.ToolExposureModelOnly,
+		ReachesTools: func(input map[string]any) sdk.ToolReach {
+			if input["all"] == true {
+				return sdk.ToolReach{All: true}
+			}
+			words := make([]string, 0, len(input))
+			for key := range input {
+				words = append(words, "go:"+key)
+			}
+			slices.Sort(words)
+			return sdk.ToolReach{Words: words}
+		},
 		PrepareLoadout: func(loadout sdk.ToolLoadout) *sdk.ToolLoadoutChanges {
 			names := make([]string, len(loadout.Callable))
 			for i, tool := range loadout.Callable {
 				names[i] = tool.Name
 			}
 			return &sdk.ToolLoadoutChanges{
-				Descriptions:       map[string]string{"run_tools": "Runs tools: " + strings.Join(names, ", "), "echo": "Echo text (also callable from run_tools)."},
+				Descriptions:       map[string]string{"run_tools": "Runs tools: " + strings.Join(names, ", ") + " [" + strings.Join(loadout.GetPromptGuidelines("echo"), " | ") + "]", "echo": "Echo text (also callable from run_tools)."},
 				HiddenDeclarations: []string{"echo"},
 			}
 		},
@@ -151,6 +170,26 @@ func Extension() *sdk.Extension {
 				return nil, err
 			}
 			return strings.Join(append(partials, outcome.Result.Text()), ","), nil
+		},
+	})
+	e.RegisterTool(sdk.ToolDefinition{
+		Name: "nested_duration", Label: "nested_duration", Description: "Reports the durationMs of nested outcomes.", Parameters: object,
+		Execute: func(ctx sdk.Context, _ map[string]any) (any, error) {
+			timed, err := ctx.ExecuteTool("timed", nil, nil)
+			if err != nil {
+				return nil, err
+			}
+			untimed, err := ctx.ExecuteTool("helper", map[string]any{}, nil)
+			if err != nil {
+				return nil, err
+			}
+			report := func(outcome sdk.AgentToolCallOutcome) string {
+				if outcome.DurationMs == nil {
+					return "none"
+				}
+				return fmt.Sprint(*outcome.DurationMs)
+			}
+			return report(timed) + "|" + report(untimed), nil
 		},
 	})
 	e.RegisterTool(sdk.ToolDefinition{

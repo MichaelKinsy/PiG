@@ -1,5 +1,7 @@
 package tools
 
+// pi: packages/coding-agent/src/core/tools/path-utils.ts
+
 import (
 	"bytes"
 	"os"

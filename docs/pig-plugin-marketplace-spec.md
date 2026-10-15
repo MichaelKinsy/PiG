@@ -1,11 +1,8 @@
 # Plugin, package, piglet, and marketplace boundary
 
-Stock PiG owns generic Package and resolver registration contracts. A consuming product owns contributed catalog hosting, authentication, transport, and policy. Piglet publishing through npm and GitHub Releases is planned and is not available in this release.
+Stock PiG owns generic Package and resolver registration contracts. A consuming product owns contributed catalog hosting, authentication, transport, and policy. `pig piglet publish` publishes Piglet source to npm and signed Piglet Binaries to GitHub Releases. `pig package publish` publishes a Package to npm.
 
-Return to the [maintainer docs router](README.md). Read the
-[ecosystem ontology](piglet-resource-ontology.md) first, then
-[packages versus piglets](pig-packages-vs-piglets.md) for the entity model and
-[package structure](pig-package-spec.md) for source layout.
+Return to the [maintainer docs router](README.md). Read the [ecosystem ontology](piglet-resource-ontology.md) first, then [packages versus piglets](pig-packages-vs-piglets.md) for the entity model and [package structure](pig-package-spec.md) for source layout.
 
 ## Vocabulary
 
@@ -16,10 +13,10 @@ Return to the [maintainer docs router](README.md). Read the
 | Package | Pi/Pig package layer | versioned Pig/Pi distribution envelope for resources |
 | Piglet | Pig | independent named agent composition and build source |
 | Piglet Binary | Pig Piglet lifecycle | target-native Pig executable for one immutable Piglet composition; component plan may be fused/subprocess/external |
-| Piglet Image | Pig Piglet lifecycle | OCI materialization of Piglet component/environment closure |
+| Piglet Image | Pig Piglet lifecycle | OCI materialization of Piglet component/environment closure; reserved, no producer exists |
 | Resolver | generic Pig contract | normalize a supported source/index format to a typed, materialized package root plus stable source identity |
 | Piglet source resolver | installed product contribution | resolve one contributed scheme to a local Piglet YAML path; Stock PiG registers none |
-| Publisher | planned stock Piglet command | publish source through npm or Git and signed per-target Binaries through GitHub Releases |
+| Publisher | stock `pig piglet publish` and `pig package publish` commands | publish Piglet source and Packages through npm, and signed per-target Piglet Binaries through GitHub Releases |
 | Marketplace | product/discovery layer | multi-kind catalog, authentication, validation, curation, and distribution policy |
 
 ## Generic Pig boundary
@@ -41,12 +38,7 @@ Raw Pig does not own:
 
 ## Extension source and Package manifests
 
-Pig extensions use a conventional factory or exact standalone source form.
-Runtime registration declares identity and capabilities. Cross-tool Package
-metadata uses Agent Plugins `plugin.json`, vendor files such as
-`.plugin/plugin.json` and `.claude-plugin/plugin.json`, `.pig-plugin/plugin.json`,
-or the upstream-compatible `package.json` `pi` section. Package metadata selects
-exact extension members but does not define their runtime capabilities.
+Pig extensions use a conventional factory or exact standalone source form. Runtime registration declares identity and capabilities. Cross-tool Package metadata uses Agent Plugins `plugin.json`, vendor files such as `.plugin/plugin.json` and `.claude-plugin/plugin.json`, `.pig-plugin/plugin.json`, or the upstream-compatible `package.json` `pi` section. Package metadata selects exact extension members but does not define their runtime capabilities.
 
 A package may group:
 
@@ -61,23 +53,13 @@ A package may group:
 | hooks | `hooks/` through governed Pig membership |
 | agent environments | standard Dev Container definition/closure through governed Pig membership |
 
-Resources sit directly under the package root; do not add a nested `resources/`
-hop. A Package does not carry a Piglet, Binary, or Image manifest; validation
-rejects Piglet membership.
+Resources sit directly under the package root; do not add a nested `resources/` hop. A Package does not carry a Piglet, Binary, or Image manifest; validation rejects Piglet membership.
 
-## Planned (not in this release): npm Piglet catalog and public pages
+## npm catalog and public pages
 
-The planned pi-in-go.dev catalog will index npm packages carrying `pig-piglet` for Piglets and `pig-package` for PiG Packages. It will label community listings as unreviewed and apply a checked-in denylist. It will not define a `marketplace:` transport or accept uploads.
+The pi-in-go.dev catalog indexes npm packages carrying `pig-piglet` for Piglets and `pig-package` for PiG Packages. It searches npm by keyword when the site builds each day. It labels community listings as unreviewed. It defines no `marketplace:` transport and accepts no uploads. The website code lives in a separate hosting repository (see [Provenance](project/PROVENANCE.md#public-documentation-website)); `site/docs/publishing.md` is the user guide.
 
-The planned public site uses flat catalog routes:
-
-```text
-/packages
-/piglets
-/piglets/<name>
-```
-
-`/piglets/<name>` will present source, dependencies, environment, verification, records, component closure, and Piglet Binary builds. Piglet Images remain reserved until an Image producer exists. Cross-harness Plugins remain separate catalog entities.
+Piglet Images remain reserved until an Image producer exists. Cross-harness Plugins remain separate catalog entities.
 
 ## Resolver contract
 
@@ -102,7 +84,7 @@ Signed per-target Piglet Binaries publish through GitHub Releases with SHA256SUM
 pig piglet publish <name> --to github --repo <owner/repo> --sign-key <key> [--yes]
 ```
 
-Publication defaults to a dry run unless `--yes` is present. PiG invokes `gh` so it never handles registry tokens, and it does not contact pi.dev or upload third-party bytes to pi-in-go.dev.
+Publication defaults to a dry run unless `--yes` is present. PiG invokes `gh`, so it never handles registry tokens. It does not contact pi.dev or upload third-party bytes to pi-in-go.dev.
 
 ### Source publication to npm
 
@@ -113,7 +95,7 @@ pig piglet publish <name|path> --to npm
 pig package publish [<dir>] --to npm
 ```
 
-Source publication defaults to a dry run and invokes `npm`, so PiG never handles the npm token. `pig piglet add npm:<name>` registers exactly what `publish --to npm` produces. The generated package replaces each local Package by `npm:<name>@^<version>` and records `pig.piglet` (the Piglet path) and, when a signed Binary release exists, `pig.binaries` (`ref` and `signer`). A Git ref remains a source form that a user shares directly.
+Source publication defaults to a dry run and invokes `npm`, so PiG never handles the npm token. `pig piglet add npm:<name>` registers exactly what `publish --to npm` produces. The generated package replaces each local Package by `npm:<name>@^<version>` and records `pig.piglet` (the Piglet path) and, when a signed Binary release exists, `pig.binaries` (`ref` and `signer`). `pig piglet publish --to npm` also accepts `--tag`, `--access`, `--otp`, `--npm-name`, `--package-map`, and `--binaries github:<owner/repo>`. A Git ref remains a source form that a user shares directly.
 
 A live remote agent is created or updated through the consuming platform. Piglet publication does not create or mutate remote-agent state.
 
@@ -128,7 +110,7 @@ A product extension can contribute catalog authentication and a Piglet source re
 - Piglet acquisition rejects non-portable dependencies and never routes Piglet entries through `pig install`;
 - Package-member origins use the product-neutral source materializer and `coding/packagecontent`;
 - product credentials, authentication, and API transport remain outside Stock PiG;
-- Stock PiG reads no marketplace index and exposes no Piglet publisher in this release;
+- Stock PiG reads no marketplace index. Its only publishers are `pig piglet publish` and `pig package publish`, which call `gh` and `npm`;
 - provenance and license facts remain in Piglet records.
 
 ## Validation commands
@@ -140,6 +122,4 @@ pig install ./extension --validate-only --json
 pig install --validate-only --set ./ext-a,./ext-b --json
 ```
 
-Package manifests and Piglet YAML validate through their focused management
-surfaces. A product can invoke the same generic validation against materialized
-source, then apply product policy outside PiG.
+Package manifests and Piglet YAML validate through their focused management surfaces. A product can invoke the same generic validation against materialized source, then apply product policy outside PiG.

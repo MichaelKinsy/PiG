@@ -9,11 +9,35 @@
 // - CHANGELOG.md, surfaced via the `/changelog` slash command.
 package pig
 
-import _ "embed"
+import (
+	"bytes"
+	"compress/gzip"
+	_ "embed"
+	"io"
+)
 
-// Changelog is the bundled CHANGELOG.md, embedded at build time. Read by
-// internal/codingagent's `/changelog` slash handler. Empty when the file
-// is missing at build time (which would fail the embed and the build).
+// The binary carries the changelog gzip-compressed; CHANGELOG.md is the same text uncompressed, the file
+// authors edit. TestBundledChangelogGzipMatchesSource fails when the two differ.
 //
-//go:embed CHANGELOG.md
-var Changelog string
+//go:generate sh -c "gzip -9nc CHANGELOG.md > CHANGELOG.md.gz"
+//go:embed CHANGELOG.md.gz
+var changelogGzip []byte
+
+// inflateChangelog decodes the embedded changelog. It is not cached: the caller (the startup What's New check
+// and /changelog) parses it and drops the text, so the ~616 KB string never stays on the live heap of an idle
+// session (TestTmuxIdleMemoryGate). Each call costs a few milliseconds and happens at most once per action.
+func inflateChangelog() string {
+	reader, err := gzip.NewReader(bytes.NewReader(changelogGzip))
+	if err != nil {
+		panic("pig: embedded CHANGELOG.md.gz: " + err.Error())
+	}
+	text, err := io.ReadAll(reader)
+	if err != nil {
+		panic("pig: embedded CHANGELOG.md.gz: " + err.Error())
+	}
+	return string(text)
+}
+
+// Changelog returns the bundled CHANGELOG.md, inflated on each call and not cached. Read by internal/codingagent's
+// `/changelog` slash handler and the startup What's New.
+func Changelog() string { return inflateChangelog() }

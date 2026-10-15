@@ -2,7 +2,7 @@
 
 READY. Scope here is server plus the 14 small rows; telemetry and evals moved to sg-telemetry-evals.
 
-Branch `team/smc1/p100-rest` from `agg-100` (`8f20f112f`). Upstream `.upstream/v1.0.0`.
+Branch `team/the bench host/p100-rest` from `agg-100` (`8f20f112f`). Upstream `.upstream/v1.0.0`.
 
 ## Handoff to sg-telemetry-evals
 

@@ -10,35 +10,14 @@ import (
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
-// ExtensionOAuthConfig adapts the legacy provider-registration callbacks to native provider auth.
-type ExtensionOAuthConfig struct {
-	Name           string
-	IsSubscription bool
-	Login          func(context.Context, ai.OAuthLoginCallbacks) (ai.Credential, error)
-	RefreshToken   func(context.Context, ai.Credential) (ai.Credential, error)
-	GetAPIKey      func(ai.Credential) string
-	ModifyModels   func([]*ai.Model, ai.Credential) []*ai.Model
-}
+// ExtensionOAuthConfig is the extension host's OAuth configuration for a registered provider (provider-composer.ts ExtensionOAuthConfig).
+type ExtensionOAuthConfig = extension.ExtensionOAuthConfig
 
-// ProviderConfigInput is the core registration input; Models nil preserves the base catalog and an empty slice replaces it.
-type ProviderConfigInput struct {
-	Name         string
-	BaseURL      string
-	APIKey       string
-	API          ai.API
-	StreamSimple ai.ModelsStreamFunction
-	Headers      map[string]string
-	AuthHeader   *bool
-	OAuth        *ExtensionOAuthConfig
-	// Models are chat, image and classifier model definitions; a model without a type is a chat model.
-	Models []ai.AnyModel
-	// Images and Classifiers are the implementations of the image and classifier models Models declares.
-	Images        ai.ProviderImageAPIMap
-	Classifiers   ai.ProviderClassifierMap
-	RefreshModels func(ai.RefreshModelsContext) ([]ai.AnyModel, error)
-}
+// ProviderConfigInput is the core registration input (provider-composer.ts:91 ProviderConfigInput).
+type ProviderConfigInput = extension.ProviderConfigInput
 
 // chatModelsOf keeps the chat models of a mixed list.
 func chatModelsOf(models []ai.AnyModel) []*ai.Model {
@@ -54,12 +33,13 @@ func chatModelsOf(models []ai.AnyModel) []*ai.Model {
 // NativeModelEntry lowers native model data to the configured backend representation without resolving credentials.
 func NativeModelEntry(model *ai.Model) ModelEntry {
 	cost := model.CostRates()
-	return ModelEntry{ProviderID: model.ProviderMeta.ProviderID, ModelID: model.ID, DisplayName: model.DisplayName, API: string(model.ProviderMeta.API), BaseURL: model.ProviderMeta.BaseURL, Reasoning: model.ProviderMeta.Reasoning || model.Capabilities.MaxThinking != "", Input: slices.Clone(model.Input), ContextWindow: model.Capabilities.ContextWindow, MaxTokens: model.Capabilities.MaxOutputTokens, InputCost: cost.Input, OutputCost: cost.Output, CacheReadCost: cost.CacheRead, CacheWriteCost: cost.CacheWrite, CostTiers: slices.Clone(cost.Tiers), ModelHeaders: maps.Clone(model.ProviderMeta.Headers), Headers: maps.Clone(model.ProviderMeta.Headers), Compat: mergeCompat((*providerCompat)(model.ProviderMeta.Compat), nil), ThinkingLevelMap: cloneThinkingLevelMap(model.ThinkingLevelMap), SamplingParams: maps.Clone(model.SamplingParams), SamplingParamsByThinkingLevel: cloneSamplingParamsByThinkingLevel(model.SamplingParamsByThinkingLevel), PromptCache: maps.Clone(model.PromptCache), InputLimits: model.InputLimits.Clone()}
+	return ModelEntry{Type: model.Type, CatalogRecord: ai.CatalogRecordOf(model), ProviderID: model.ProviderMeta.ProviderID, ModelID: model.ID, DisplayName: model.DisplayName, API: string(model.ProviderMeta.API), BaseURL: model.ProviderMeta.BaseURL, Reasoning: model.ProviderMeta.Reasoning || model.Capabilities.MaxThinking != "", Input: slices.Clone(model.Input), ContextWindow: model.Capabilities.ContextWindow, MaxTokens: model.Capabilities.MaxOutputTokens, InputCost: cost.Input, OutputCost: cost.Output, CacheReadCost: cost.CacheRead, CacheWriteCost: cost.CacheWrite, CostTiers: slices.Clone(cost.Tiers), ModelHeaders: maps.Clone(model.ProviderMeta.Headers), Headers: maps.Clone(model.ProviderMeta.Headers), Compat: mergeCompat((*providerCompat)(model.ProviderMeta.Compat), nil), ThinkingLevelMap: cloneThinkingLevelMap(model.ThinkingLevelMap), SamplingParams: maps.Clone(model.SamplingParams), SamplingParamsByThinkingLevel: cloneSamplingParamsByThinkingLevel(model.SamplingParamsByThinkingLevel), PromptCache: maps.Clone(model.PromptCache), InputLimits: model.InputLimits.Clone()}
 }
 
 func nativeModelFromEntry(entry ModelEntry) *ai.Model {
-	generated := ai.GeneratedModel{ID: entry.ModelID, Provider: entry.ProviderID, DisplayName: entry.DisplayName, API: ai.API(entry.API), BaseURL: entry.BaseURL, Headers: entry.ModelHeaders, Compat: entry.Compat, Reasoning: entry.Reasoning, Capabilities: entry.Input, ContextWindow: entry.ContextWindow, MaxOutputTokens: entry.MaxTokens, InputCostPerMTokens: entry.InputCost, OutputCostPerMTokens: entry.OutputCost, CacheReadCost: entry.CacheReadCost, CacheWriteCost: entry.CacheWriteCost, Tiers: entry.CostTiers, ThinkingLevelMap: entry.ThinkingLevelMap, SamplingParams: entry.SamplingParams, PromptCache: entry.PromptCache, InputLimits: entry.InputLimits}
+	generated := ai.GeneratedModel{Record: entry.CatalogRecord, ID: entry.ModelID, Provider: entry.ProviderID, DisplayName: entry.DisplayName, API: ai.API(entry.API), BaseURL: entry.BaseURL, Headers: entry.ModelHeaders, Compat: entry.Compat, Reasoning: entry.Reasoning, Capabilities: entry.Input, ContextWindow: entry.ContextWindow, MaxOutputTokens: entry.MaxTokens, InputCostPerMTokens: entry.InputCost, OutputCostPerMTokens: entry.OutputCost, CacheReadCost: entry.CacheReadCost, CacheWriteCost: entry.CacheWriteCost, Tiers: entry.CostTiers, ThinkingLevelMap: entry.ThinkingLevelMap, SamplingParams: entry.SamplingParams, PromptCache: entry.PromptCache, InputLimits: entry.InputLimits}
 	model := generated.ToModel()
+	model.Type = entry.Type
 	model.Capabilities = generated.ToCapabilities()
 	model.SamplingParamsByThinkingLevel = cloneSamplingParamsByThinkingLevel(entry.SamplingParamsByThinkingLevel)
 	return model
@@ -276,8 +256,13 @@ func (r *ModelRegistry) composeNativeProvider(base *ai.ModelsProvider, extension
 					entry.API = firstModelValue(entry.API, string(defaults.ProviderMeta.API))
 					entry.BaseURL = firstModelValue(entry.BaseURL, defaults.ProviderMeta.BaseURL)
 				}
-				if entry.API == "" || entry.BaseURL == "" {
-					return nil, fmt.Errorf("Provider %s, model %s: api and baseUrl are required", base.ID, definition.ID)
+				// provider-composer.ts modelFromJson:216-223: the api is checked before the base URL; the base models above are the provider's
+				// current catalog, so an "oauth" provider whose catalog has no model to take them from fails here.
+				if entry.API == "" {
+					return nil, fmt.Errorf(`Provider %s, model %s: no "api" specified. Set at provider or model level.`, base.ID, definition.ID)
+				}
+				if entry.BaseURL == "" {
+					return nil, fmt.Errorf(`Provider %s: "baseUrl" is required when defining custom models.`, base.ID)
 				}
 				model := nativeModelFromEntry(entry)
 				if index >= 0 {
@@ -452,6 +437,11 @@ func (r *ModelRegistry) composeNativeProvider(base *ai.ModelsProvider, extension
 		provider.Name = firstModelValue(extension.Name, provider.Name, oauthName)
 	}
 	provider.Name = firstModelValue(provider.Name, base.ID)
+	// provider-composer.ts composeModelProvider: baseUrl is the registration's, else models.json's, else the base provider's.
+	provider.BaseURL = firstModelValue(config.BaseURL, base.BaseURL)
+	if extension != nil {
+		provider.BaseURL = firstModelValue(extension.BaseURL, provider.BaseURL)
+	}
 	provider.GetModels = currentModels
 	provider.GetAllModels = currentAllModels
 	provider.Auth = ai.ProviderAuth{APIKey: composeAPIKeyAuth(base.ID, auth, authConfig), OAuth: composeOAuthAuth(base.ID, auth.OAuth, authConfig)}

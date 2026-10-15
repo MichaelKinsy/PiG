@@ -1,6 +1,6 @@
 # d-env-tools: pi-durable src/env and src/tools
 
-Branch `team/smc1/d-env-tools`, merged with the staging `d-foundation` lane (`8e3785cec`).
+Branch `team/the bench host/d-env-tools`, merged with the staging `d-foundation` lane (`8e3785cec`).
 
 ## Status
 

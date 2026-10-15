@@ -1,3 +1,5 @@
+//go:build !pig_strip_bedrock_converse_stream
+
 package ai
 
 import (
@@ -11,7 +13,8 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	btypes "github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
+
+	btypes "github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime/types"
 )
 
 func TestReviewProvidersBedrockWhitespace(t *testing.T) {

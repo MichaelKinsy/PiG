@@ -2,6 +2,7 @@ package orderedjson
 
 import (
 	"encoding/json"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -42,5 +43,32 @@ func TestObjectRejectsNonObjectsAndKeepsLastValueAtFirstPosition(t *testing.T) {
 	}
 	if IsObject([]byte(` [1]`)) || !IsObject([]byte(` {}`)) {
 		t.Fatal("IsObject")
+	}
+}
+
+// pi: a parsed JSON object enumerates (Object.entries, JSON.stringify) its array-index keys first in ascending order, then its other keys in insertion order.
+func TestObjectEnumeratesArrayIndexKeysFirst(t *testing.T) {
+	o, err := Parse([]byte(`{"b":1,"10":2,"2":3,"a":4,"01":5,"4294967295":6,"4294967294":7}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"2", "10", "4294967294", "b", "a", "01", "4294967295"}
+	if got := o.Keys(); !slices.Equal(got, want) {
+		t.Fatalf("Keys = %q, want %q", got, want)
+	}
+	o.Set("5", json.RawMessage("8"))
+	o.Set("c", json.RawMessage("9"))
+	o.Delete("10")
+	o.Set("1", json.RawMessage("0"))
+	want = []string{"1", "2", "5", "4294967294", "b", "a", "01", "4294967295", "c"}
+	if got := o.Keys(); !slices.Equal(got, want) {
+		t.Fatalf("Keys after changes = %q, want %q", got, want)
+	}
+	encoded, err := json.Marshal(o)
+	if err != nil || string(encoded) != `{"1":0,"2":3,"5":8,"4294967294":7,"b":1,"a":4,"01":5,"4294967295":6,"c":9}` {
+		t.Fatalf("Marshal = %s, %v", encoded, err)
+	}
+	if got := o.Clone().Keys(); !slices.Equal(got, want) {
+		t.Fatalf("Clone keys = %q, want %q", got, want)
 	}
 }

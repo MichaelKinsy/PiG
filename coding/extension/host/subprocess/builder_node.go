@@ -1,23 +1,16 @@
 package subprocess
 
 import (
-	"archive/zip"
 	"context"
-	_ "embed"
 	"fmt"
-	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
-	"sync"
 
-	"github.com/klauspost/compress/zstd"
-	"golang.org/x/mod/semver"
-
+	"github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime"
 	extsource "github.com/MichaelKinsy/PiG/coding/extension/source"
-	"github.com/MichaelKinsy/PiG/internal/linkerexec"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
 const nodeRuntimeVersion = "v2"
@@ -35,40 +28,11 @@ const nodeLauncherFormat = "direct-node-v3"
 // extension entry the launcher runs.
 const nodeEntryFile = "entry"
 
-//go:generate go run ./internal/noderuntimegen
-//go:embed runtime-node.zip
-var nodeRuntimeArchive string
-
-// The archive is opened only on materialization. Warm cache keys use the generated digest without reading or decompressing the runtime.
-var nodeRuntimeZip = sync.OnceValues(func() (*zip.Reader, error) {
-	reader, err := zip.NewReader(strings.NewReader(nodeRuntimeArchive), int64(len(nodeRuntimeArchive)))
-	if err != nil {
-		return nil, err
-	}
-	reader.RegisterDecompressor(zstd.ZipMethodWinZip, zstd.ZipDecompressor())
-	return reader, nil
-})
-
 var nodeRuntimeDigest = func() []byte { return []byte(nodeRuntimeHash) }
 
-var nodeRuntimeFS nodeArchiveFS
-
-type nodeArchiveFS struct{}
-
-func (nodeArchiveFS) Open(name string) (fs.File, error) {
-	archive, err := nodeRuntimeZip()
-	if err != nil {
-		return nil, err
-	}
-	return archive.Open(name)
-}
-
-func (nodeArchiveFS) ReadFile(name string) ([]byte, error) {
-	archive, err := nodeRuntimeZip()
-	if err != nil {
-		return nil, err
-	}
-	return fs.ReadFile(archive, name)
+// pig additive (D92): the embedded Node runtime (nodeRuntimeFS, ensureNodeRuntime) lives in node_runtime_on.go, which a Piglet Binary compiles out with pig_strip_node_extensions.
+func errNodeExtensionsStripped() error {
+	return pigstrip.Error("The TypeScript and JavaScript extension runtime", pigstrip.ListFeatures, pigstrip.NodeExtensions)
 }
 
 func isNodeSourcePath(path string) bool {
@@ -90,7 +54,8 @@ func hasNodeSource(dir string) bool {
 			return true
 		}
 	}
-	return false
+	_, ok := extsource.NodeDirectoryImport(dir)
+	return ok
 }
 
 func resolveNodeEntrypoint(src string) (string, error) {
@@ -150,6 +115,10 @@ func resolveNodeEntrypoint(src string) (string, error) {
 			return candidate, nil
 		}
 	}
+	// A directory with no manifest entries and no index.ts or index.js is itself the extension path (package-manager.ts:1379-1384), and the loader's jiti import of it resolves the file it loads, such as index.mjs.
+	if file, ok := extsource.NodeDirectoryImport(src); ok {
+		return file, nil
+	}
 	return "", fmt.Errorf("cannot resolve node extension entrypoint in %s", src)
 }
 
@@ -176,56 +145,18 @@ func minimumNodeRuntimeDisplay() string {
 	return strings.TrimSuffix(strings.TrimPrefix(minimumNodeRuntimeVersion, "v"), ".0")
 }
 
-func ensureNodeRuntime(ctx context.Context) (string, error) {
-	requirement := fmt.Sprintf("TypeScript extensions need Node.js %s or newer", minimumNodeRuntimeDisplay())
-	nodePath, err := exec.LookPath("node")
-	if err != nil {
-		return "", fmt.Errorf("%s; node was not found on PATH", requirement)
-	}
-	output, err := linkerexec.CommandContext(ctx, nodePath, "--version").CombinedOutput()
-	if err != nil {
-		if ctxErr := ctx.Err(); ctxErr != nil {
-			return "", ctxErr
-		}
-		detail := strings.TrimSpace(string(output))
-		if detail == "" {
-			detail = err.Error()
-		}
-		return "", fmt.Errorf("%s; node --version failed: %s", requirement, detail)
-	}
-	found := strings.TrimSpace(string(output))
-	normalized := found
-	if !strings.HasPrefix(normalized, "v") {
-		normalized = "v" + normalized
-	}
-	if !semver.IsValid(normalized) {
-		return "", fmt.Errorf("%s; node --version returned %q", requirement, found)
-	}
-	if semver.Compare(normalized, minimumNodeRuntimeVersion) < 0 {
-		return "", fmt.Errorf("%s; found %s", requirement, found)
-	}
-	return nodePath, nil
-}
-
 // nodeLauncherCommand runs the node command of a published launcher directly,
 // with the arguments the launcher script would exec. Spawning the launcher
 // costs a shell and a dirname process before node starts. It reports false for
 // any other artifact. The host preflights Node before calling it. The
 // --import value is a module specifier, so the loader is named by its file
 // URL; a path that has none fails the command's Start.
-func nodeLauncherCommand(ctx context.Context, binPath string) (*exec.Cmd, bool) {
+func nodeLauncherCommand(ctx context.Context, binPath string, sel tsruntime.Selection) (*exec.Cmd, bool) {
 	entry, ok := nodeLauncherEntry(binPath)
 	if !ok {
-		return nodePackedLauncherCommand(ctx, binPath)
+		return nodePackedLauncherCommand(ctx, binPath, sel)
 	}
-	runtimeDir := binPath + ".runtime"
-	loaderPath := filepath.Join(runtimeDir, "register-loader.mjs")
-	loaderURL, urlErr := nodeFileURL(loaderPath)
-	cmd := linkerexec.CommandContext(ctx, "node", "--import", loaderURL, filepath.Join(runtimeDir, "cli.mjs"), entry)
-	if urlErr != nil && cmd.Err == nil {
-		cmd.Err = fmt.Errorf("node extension loader %s: %w", loaderPath, urlErr)
-	}
-	return cmd, true
+	return typeScriptRuntimeCommand(ctx, sel, binPath+".runtime", "cli.mjs", "node extension loader", []string{entry}), true
 }
 
 func buildNode(ctx context.Context, cacheRoot, srcPath, outPath string) error {
@@ -253,55 +184,6 @@ func buildNode(ctx context.Context, cacheRoot, srcPath, outPath string) error {
 		return err
 	}
 	return os.Rename(tmpPath, outPath)
-}
-
-func copyEmbeddedTree(efs fs.FS, root, dst string) error {
-	type file struct{ source, target string }
-	var files []file
-	if err := fs.WalkDir(efs, root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		rel := strings.TrimPrefix(strings.TrimPrefix(path, root), "/")
-		if rel == "" {
-			return nil
-		}
-		target := filepath.Join(dst, rel)
-		if d.IsDir() {
-			return os.MkdirAll(target, 0o755)
-		}
-		files = append(files, file{source: path, target: target})
-		return nil
-	}); err != nil {
-		return err
-	}
-	// Independent files are joined before the launcher is published. Limit
-	// concurrent filesystem operations rather than spawning one task per file.
-	jobs := make(chan int)
-	errors := make([]error, len(files))
-	var workers sync.WaitGroup
-	for range min(8, runtime.GOMAXPROCS(0), len(files)) {
-		workers.Go(func() {
-			for index := range jobs {
-				data, err := fs.ReadFile(efs, files[index].source)
-				if err == nil {
-					err = os.WriteFile(files[index].target, data, 0o644)
-				}
-				errors[index] = err
-			}
-		})
-	}
-	for index := range files {
-		jobs <- index
-	}
-	close(jobs)
-	workers.Wait()
-	for _, err := range errors {
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func fileExists(path string) bool {

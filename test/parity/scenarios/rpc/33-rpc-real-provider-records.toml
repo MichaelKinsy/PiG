@@ -13,11 +13,11 @@ cwd = "testdata/tool-wire"
 timeout_seconds = 30
 [[rpc.steps]]
 line = '{"id":"read","type":"prompt","message":"READ"}'
-wait_event = '{"type":"agent_settled"}'
+wait_event = '{"type":"agent_settled","aborted":false}'
 wait_timeout_seconds = 10
 [[rpc.steps]]
 line = '{"id":"text","type":"prompt","message":"two  spaces\n"}'
-wait_event = '{"type":"agent_settled"}'
+wait_event = '{"type":"agent_settled","aborted":false}'
 wait_timeout_seconds = 10
 [[rpc.steps]]
 line = '{"id":"entries","type":"get_entries"}'
@@ -46,8 +46,17 @@ paths = ["/**/timestamp"]
 kind = "timestamp"
 reason = "Independent message and entry clocks vary; retain field presence, type and valid timestamp syntax."
 [[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi 1.1.0 times each response and tool run with a monotonic clock (event-stream.ts, agent-loop.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+[[assert.json_aliases]]
 paths = ["/**/id", "/**/parentId", "/**/leafId"]
 kind = "id"
 group = "entry"
 pattern = '^[a-f0-9]{8,16}$'
 reason = "Generated entry IDs vary per run. Preserve identity reuse and all parent/leaf references with one bijection; request and tool IDs stay literal."
+
+[[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."

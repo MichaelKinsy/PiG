@@ -1,3 +1,5 @@
+//go:build !pig_strip_docs
+
 package prompts
 
 import (
@@ -5,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/pigdocs"
 )
 
 // Cases 8-14 of packages/coding-agent/test/system-prompt.test.ts (111-209). Keep their original inputs and strengthen substring/count checks to complete emitted-section equality. D22 owns only the PiG product and documentation-location literals.
@@ -15,7 +19,7 @@ func TestUpstreamSystemPromptSecondHalfExactSections(t *testing.T) {
 	}
 	home := t.TempDir()
 	t.Setenv("PIG_HOME", home)
-	docsRoot := filepath.Join(home, "docs")
+	docsRoot := pigdocs.DocsDir(home)
 	docs := "<docs>\nPiG documentation (read only when the user asks about pig itself, its SDK, extensions, themes, skills, or TUI):\n" +
 		"- Main documentation: " + filepath.Join(docsRoot, "README.md") + "\n" +
 		"- Additional docs: " + docsRoot + "\n" +

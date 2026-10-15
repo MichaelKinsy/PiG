@@ -31,7 +31,7 @@ func credentialTestProvider(id string) *ai.ModelsProvider {
 func credentialTestRuntime(t *testing.T, store ai.CredentialStore, providers ...*ai.ModelsProvider) *ModelRegistry {
 	t.Helper()
 	registry := NewModelRegistry(t.TempDir())
-	registry.runtimeCredentials = ai.NewRuntimeCredentials(store)
+	registry.runtimeCredentials.Store(ai.NewRuntimeCredentials(store))
 	for _, provider := range providers {
 		if err := registry.RegisterNativeModelsProvider(provider); err != nil {
 			t.Fatal(err)
@@ -47,7 +47,8 @@ func credentialTestRuntime(t *testing.T, store ai.CredentialStore, providers ...
 	if result.Aborted || len(result.Errors) != 0 {
 		t.Fatalf("initial refresh = %+v", result)
 	}
-	t.Cleanup(func() { registry.NativeModels().Close() })
+	// A test that holds a registration refresh releases it as it returns, which starts a refresh on the task owner that writes models-store.json. Join that work before TempDir removes the directory.
+	t.Cleanup(func() { registry.CloseModelTasks(); registry.NativeModels().Close() })
 	return registry
 }
 

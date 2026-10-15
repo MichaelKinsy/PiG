@@ -1,21 +1,29 @@
 package compaction
 
 import (
+	"encoding/json"
 	"slices"
 	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // estimatedImageChars is Pi's per-image character estimate (ESTIMATED_IMAGE_CHARS).
 const estimatedImageChars = 4800
 
-// jsLength returns JavaScript's String.length for s: its UTF-16 code units.
+// jsLength returns JavaScript's String.length for s: its UTF-16 code units. Runs of ASCII are counted eight bytes at a time.
 func jsLength(s string) int {
 	units := 0
 	for len(s) > 0 {
+		if s[0] < utf8.RuneSelf {
+			n := jsstring.ASCIIPrefix(s)
+			s = s[n:]
+			units += n
+			continue
+		}
 		r, size := utf8.DecodeRuneInString(s)
 		s = s[size:]
 		if r > 0xFFFF {
@@ -177,7 +185,7 @@ func EstimateProjectedContextTokens(projection codingagent.SessionProjection, br
 		for _, entry := range projection.Entries {
 			next := projectedIndex + len(entry.Messages)
 			if estimate.LastUsageIndex < next {
-				usageEntryID = entry.SourceEntry.Base.ID
+				usageEntryID = entry.SourceEntry.Base().ID
 				break
 			}
 			projectedIndex = next
@@ -185,15 +193,24 @@ func EstimateProjectedContextTokens(projection codingagent.SessionProjection, br
 		usageEntryIndex := -1
 		if usageEntryID != "" {
 			usageEntryIndex = slices.IndexFunc(branchEntries, func(entry codingagent.SessionEntry) bool {
-				return entry.Base.ID == usageEntryID
+				return entry.Base().ID == usageEntryID
 			})
 		}
 		latestInvalidating := -1
 		for i, entry := range slices.Backward(branchEntries) {
-			if entry.Base.Type == "context_edit" || entry.Base.Type == "compaction" {
+			if entry.Base().Type == "compaction" {
 				latestInvalidating = i
 				break
 			}
+			if entry.Base().Type != "context_edit" {
+				continue
+			}
+			// pig divergence (D136): an edit of an entry after the usage anchor (such as the omission of a failed retry attempt) leaves the anchor valid; upstream drops it for any later edit and re-estimates the whole history.
+			if usageEntryIndex >= 0 && contextEditTargetsAfter(branchEntries, usageEntryIndex, entry) {
+				continue
+			}
+			latestInvalidating = i
+			break
 		}
 		if usageEntryIndex > latestInvalidating {
 			return estimate
@@ -209,4 +226,14 @@ func EstimateProjectedContextTokens(projection codingagent.SessionProjection, br
 		}
 	}
 	return agent.ContextUsageEstimate{Tokens: tokens, TrailingTokens: tokens, LastUsageIndex: -1}
+}
+
+// contextEditTargetsAfter reports whether a context_edit entry targets a branch entry after index.
+func contextEditTargetsAfter(branchEntries []codingagent.SessionEntry, index int, edit codingagent.SessionEntry) bool {
+	var parsed codingagent.ContextEditEntry
+	if json.Unmarshal(edit.Raw(), &parsed) != nil {
+		return false
+	}
+	target := slices.IndexFunc(branchEntries, func(entry codingagent.SessionEntry) bool { return entry.Base().ID == parsed.TargetID })
+	return target > index
 }

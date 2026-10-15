@@ -1,0 +1,477 @@
+[
+ [
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 10
+  }
+ ],
+ [
+  {
+   "op": "add",
+   "text": "first",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 0
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 10
+  },
+  {
+   "op": "add",
+   "text": "second line wraps at small widths",
+   "padX": 1,
+   "n": 0,
+   "index": 0,
+   "width": 0
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 10
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 4
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 10
+  }
+ ],
+ [
+  {
+   "op": "add",
+   "text": "a",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 0
+  },
+  {
+   "op": "add",
+   "text": "b",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 0
+  },
+  {
+   "op": "add",
+   "text": "c",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 0
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 8
+  },
+  {
+   "op": "setText",
+   "text": "changed middle",
+   "padX": 0,
+   "n": 0,
+   "index": 1,
+   "width": 0
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 8
+  },
+  {
+   "op": "setText",
+   "text": "changed middle",
+   "padX": 0,
+   "n": 0,
+   "index": 1,
+   "width": 0
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 8
+  },
+  {
+   "op": "remove",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 0
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 8
+  },
+  {
+   "op": "remove",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 0
+  },
+  {
+   "op": "remove",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 0
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 8
+  }
+ ],
+ [
+  {
+   "op": "add",
+   "text": "日本語のテキスト",
+   "padX": 1,
+   "n": 0,
+   "index": 0,
+   "width": 0
+  },
+  {
+   "op": "spacer",
+   "padX": 0,
+   "n": 2,
+   "index": 0,
+   "width": 0
+  },
+  {
+   "op": "add",
+   "text": "tail",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 0
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 6
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 7
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 6
+  },
+  {
+   "op": "invalidate",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 0
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 6
+  }
+ ],
+ [
+  {
+   "op": "attachNested",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 0
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 5
+  },
+  {
+   "op": "nestedAdd",
+   "text": "n1",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 0
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 5
+  },
+  {
+   "op": "nestedAdd",
+   "text": "n2 is a longer nested row",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 0
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 5
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 12
+  },
+  {
+   "op": "add",
+   "text": "after",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 0
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 12
+  },
+  {
+   "op": "clear",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 0
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 12
+  }
+ ],
+ [
+  {
+   "op": "add",
+   "text": "x",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 0
+  },
+  {
+   "op": "attachNested",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 0
+  },
+  {
+   "op": "nestedAdd",
+   "text": "deep",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 0
+  },
+  {
+   "op": "attachRegion",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 0
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 9
+  },
+  {
+   "op": "setText",
+   "text": "x2",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 0
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 9
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 3
+  },
+  {
+   "op": "nestedClear",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 0
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 9
+  },
+  {
+   "op": "clear",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 0
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 9
+  },
+  {
+   "op": "add",
+   "text": "again",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 0
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 9
+  }
+ ],
+ [
+  {
+   "op": "attachRegion",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 0
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 14
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 2
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 14
+  },
+  {
+   "op": "invalidate",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 0
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 14
+  }
+ ],
+ [
+  {
+   "op": "add",
+   "text": "\u001b[31mred",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 0
+  },
+  {
+   "op": "add",
+   "text": "still red?\u001b[0m",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 0
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 4
+  },
+  {
+   "op": "render",
+   "padX": 0,
+   "n": 0,
+   "index": 0,
+   "width": 20
+  }
+ ]
+]

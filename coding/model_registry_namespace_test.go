@@ -2,6 +2,7 @@ package coding
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -47,7 +48,7 @@ func TestRegistryNamespaceReplacementAcrossEntryPoints(t *testing.T) {
 					case "runtime":
 						return runtime.RegisterProvider(id, ProviderConfigInput{API: ai.APIOpenAICompletions, APIKey: "configured", BaseURL: "https://example.invalid/v1", Models: []ai.AnyModel{nativeCompatModel(modelID, id, "https://example.invalid/v1")}})
 					default:
-						return services.Registry().RegisterProvider(id, namespaceExtensionConfig(modelID))
+						return services.Registry().RegisterExtensionProvider(id, namespaceExtensionConfig(modelID))
 					}
 				}
 				if err := register(from, "old"); err != nil {
@@ -85,7 +86,7 @@ func TestRegistryNativeReplacementDropsLegacyConfiguredAuth(t *testing.T) {
 			if from == "runtime" {
 				err = runtime.RegisterProvider(id, ProviderConfigInput{API: ai.APIOpenAICompletions, APIKey: "old-key", BaseURL: "https://example.invalid/v1", Models: []ai.AnyModel{nativeCompatModel("old", id, "https://example.invalid/v1")}})
 			} else {
-				err = services.Registry().RegisterProvider(id, namespaceExtensionConfig("old"))
+				err = services.Registry().RegisterExtensionProvider(id, namespaceExtensionConfig("old"))
 			}
 			if err != nil {
 				t.Fatal(err)
@@ -106,6 +107,7 @@ func TestRegistryNativeReplacementDropsLegacyConfiguredAuth(t *testing.T) {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/model-registry.ts:233 (ModelRegistry.getRegisteredProviderConfig).
 func TestRegistryLegacyMetadataUpdateRetainsRuntimeCallbacks(t *testing.T) {
 	_, services := newAvailabilitySession(t)
 	runtime := services.ModelRuntime()
@@ -118,14 +120,14 @@ func TestRegistryLegacyMetadataUpdateRetainsRuntimeCallbacks(t *testing.T) {
 	if err := runtime.RegisterProvider(id, input); err != nil {
 		t.Fatal(err)
 	}
-	if err := services.Registry().RegisterProvider(id, extension.ProviderConfig{Headers: map[string]string{"X-New": "new"}}); err != nil {
+	if err := services.Registry().RegisterExtensionProvider(id, extension.ProviderConfig{Headers: map[string]string{"X-New": "new"}}); err != nil {
 		t.Fatal(err)
 	}
 	retained := services.Registry().GetRegisteredProviderConfig(id)
 	if retained == nil || retained.StreamSimple == nil || retained.RefreshModels == nil || retained.Headers["X-New"] != "new" {
 		t.Fatalf("legacy update did not preserve and merge native callbacks/config: %+v", retained)
 	}
-	if err := services.Registry().RegisterProvider(id, extension.ProviderConfig{Headers: map[string]string{}}); err != nil {
+	if err := services.Registry().RegisterExtensionProvider(id, extension.ProviderConfig{Headers: map[string]string{}}); err != nil {
 		t.Fatal(err)
 	}
 	retained = services.Registry().GetRegisteredProviderConfig(id)
@@ -160,12 +162,12 @@ func TestRegistryCrossEntryCallbackInheritanceAndReplacement(t *testing.T) {
 	const id = "namespace-stream"
 	config := namespaceExtensionConfig("old")
 	config.StreamSimple = func(model extension.Model, _ extension.AIContext, options extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
-		if model.(*ai.Model).ID != "old" || options.(ai.StreamOptions).APIKey != "configured" {
+		if model.ID != "old" || options.APIKey != "configured" {
 			t.Error("inherited callback received stale metadata/auth")
 		}
 		return namespaceResult("inherited")
 	}
-	if err := services.Registry().RegisterProvider(id, config); err != nil {
+	if err := services.Registry().RegisterExtensionProvider(id, config); err != nil {
 		t.Fatal(err)
 	}
 	if err := runtime.RegisterProvider(id, ProviderConfigInput{Headers: map[string]string{"X-New": "new"}}); err != nil {
@@ -181,12 +183,12 @@ func TestRegistryCrossEntryCallbackInheritanceAndReplacement(t *testing.T) {
 	}
 	config = namespaceExtensionConfig("new")
 	config.StreamSimple = func(model extension.Model, _ extension.AIContext, _ extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
-		if model.(*ai.Model).ID != "new" {
+		if model.ID != "new" {
 			t.Error("replacement callback received old model")
 		}
 		return namespaceResult("replacement")
 	}
-	if err := services.Registry().RegisterProvider(id, config); err != nil {
+	if err := services.Registry().RegisterExtensionProvider(id, config); err != nil {
 		t.Fatal(err)
 	}
 	if message := runtime.CompleteSimple(t.Context(), runtime.GetModel(id, "new"), ai.Context{}, options); message.StopReason != ai.StopReasonStop || ai.ContentText(message.Content) != "replacement" {
@@ -203,9 +205,9 @@ func TestRegistryCrossEntryOAuthCallbacksRemainCallable(t *testing.T) {
 	var calls int
 	config.OAuth = &extension.ProviderOAuth{Name: "Fixture OAuth", GetAPIKey: func(value extension.OAuthCredentials) string {
 		calls++
-		return value.(ai.Credential).Access
+		return value.Access
 	}}
-	if err := services.Registry().RegisterProvider(id, config); err != nil {
+	if err := services.Registry().RegisterExtensionProvider(id, config); err != nil {
 		t.Fatal(err)
 	}
 	if err := services.Auth().Set(id, ai.Credential{Type: ai.CredentialOAuth, Access: "oauth-access", Expires: time.Now().Add(time.Hour).UnixMilli()}); err != nil {
@@ -220,6 +222,8 @@ func TestRegistryCrossEntryOAuthCallbacksRemainCallable(t *testing.T) {
 	}
 }
 
+type refreshContextKey struct{}
+
 func TestRegistryCrossEntryOAuthLifecycleAndModelCallbacks(t *testing.T) {
 	_, services := newAvailabilitySession(t)
 	runtime := services.ModelRuntime()
@@ -227,31 +231,35 @@ func TestRegistryCrossEntryOAuthLifecycleAndModelCallbacks(t *testing.T) {
 	config := namespaceExtensionConfig("old")
 	config.APIKey = ""
 	var loginCalls, refreshCalls, projectionCalls atomic.Int64
-	credential := func(access string) map[string]any {
-		return map[string]any{"access": access, "refresh": "refresh", "expires": time.Now().Add(time.Hour).UnixMilli()}
+	credential := func(access string) extension.OAuthCredentials {
+		return extension.OAuthCredentials{Access: access, Refresh: "refresh", Expires: time.Now().Add(time.Hour).UnixMilli()}
 	}
 	config.OAuth = &extension.ProviderOAuth{Name: "Fixture OAuth",
 		Login: func(extension.OAuthLoginCallbacks) (extension.OAuthCredentials, error) {
 			loginCalls.Add(1)
 			return credential("login-access"), nil
 		},
-		RefreshToken: func(extension.OAuthCredentials) (extension.OAuthCredentials, error) {
+		RefreshToken: func(ctx context.Context, _ extension.OAuthCredentials) (extension.OAuthCredentials, error) {
 			refreshCalls.Add(1)
+			// types.ts:1944: refreshToken receives the refresh's AbortSignal.
+			if ctx.Value(refreshContextKey{}) != "caller" {
+				return extension.OAuthCredentials{}, errors.New("refreshToken did not receive the caller's context")
+			}
 			return credential("refreshed-access"), nil
 		},
-		GetAPIKey: func(value extension.OAuthCredentials) string { return value.(ai.Credential).Access },
+		GetAPIKey: func(value extension.OAuthCredentials) string { return value.Access },
 		ModifyModels: func(_ []extension.Model, _ extension.OAuthCredentials) []extension.Model {
 			projectionCalls.Add(1)
 			return []extension.Model{nativeCompatModel("oauth-model", id, "https://example.invalid/v1")}
 		},
 	}
-	if err := services.Registry().RegisterProvider(id, config); err != nil {
+	if err := services.Registry().RegisterExtensionProvider(id, config); err != nil {
 		t.Fatal(err)
 	}
 	if err := runtime.RegisterProvider(id, ProviderConfigInput{Headers: map[string]string{"X-One": "one"}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := services.Registry().RegisterProvider(id, extension.ProviderConfig{Headers: map[string]string{"X-Two": "two"}}); err != nil {
+	if err := services.Registry().RegisterExtensionProvider(id, extension.ProviderConfig{Headers: map[string]string{"X-Two": "two"}}); err != nil {
 		t.Fatal(err)
 	}
 	logged, err := runtime.Login(t.Context(), id, ai.CredentialOAuth, ai.AuthInteraction{})
@@ -265,7 +273,7 @@ func TestRegistryCrossEntryOAuthLifecycleAndModelCallbacks(t *testing.T) {
 	if err := services.Auth().Set(id, logged); err != nil {
 		t.Fatal(err)
 	}
-	auth, err := services.Registry().GetProviderAuth(t.Context(), id)
+	auth, err := services.Registry().GetProviderAuth(context.WithValue(t.Context(), refreshContextKey{}, "caller"), id)
 	if err != nil || auth == nil || auth.Auth.APIKey != "refreshed-access" || refreshCalls.Load() != 1 {
 		t.Fatalf("refresh auth=%+v calls=%d err=%v", auth, refreshCalls.Load(), err)
 	}
@@ -281,7 +289,7 @@ func TestRegistryFailedReplacementLeavesNativeOwnerIntact(t *testing.T) {
 	}
 	invalid := namespaceExtensionConfig("bad")
 	invalid.API, invalid.BaseURL = "", ""
-	if err := services.Registry().RegisterProvider(id, invalid); err == nil {
+	if err := services.Registry().RegisterExtensionProvider(id, invalid); err == nil {
 		t.Fatal("invalid core registration was accepted")
 	}
 	if err := runtime.RegisterProvider(id, ProviderConfigInput{StreamSimple: nativeUnusedStream}); err == nil {
@@ -296,7 +304,7 @@ func TestRegistryNativeReplacementKeepsFileConfiguration(t *testing.T) {
 	const id = "namespace-file-config"
 	services, _ := nativeCompatServices(t, `{"providers":{"namespace-file-config":{"apiKey":"file-key"}}}`, nil)
 	runtime := services.ModelRuntime()
-	if err := services.Registry().RegisterProvider(id, namespaceExtensionConfig("old")); err != nil {
+	if err := services.Registry().RegisterExtensionProvider(id, namespaceExtensionConfig("old")); err != nil {
 		t.Fatal(err)
 	}
 	if err := runtime.RegisterNativeProvider(namespaceProvider(id, "new", false)); err != nil {
@@ -313,7 +321,7 @@ func TestRegistryNativeReplacementKeepsFileConfiguration(t *testing.T) {
 func BenchmarkRegistryNamespaceSwitch(b *testing.B) {
 	for _, count := range []int{1, 128} {
 		b.Run(fmt.Sprint(count), func(b *testing.B) {
-			services, err := NewServices(ServicesOptions{CWD: b.TempDir(), AgentDir: b.TempDir()})
+			services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: b.TempDir(), AgentDir: b.TempDir()})
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -331,7 +339,7 @@ func BenchmarkRegistryNamespaceSwitch(b *testing.B) {
 				if err := runtime.RegisterNativeProvider(provider); err != nil {
 					b.Fatal(err)
 				}
-				if err := services.Registry().RegisterProvider(id, config); err != nil {
+				if err := services.Registry().RegisterExtensionProvider(id, config); err != nil {
 					b.Fatal(err)
 				}
 				if err := runtime.RegisterProvider(id, ProviderConfigInput{Headers: map[string]string{"X-New": "new"}}); err != nil {
@@ -346,7 +354,7 @@ func TestRegistryRuntimeMetadataUpdateRetainsExtensionDefinition(t *testing.T) {
 	_, services := newAvailabilitySession(t)
 	runtime := services.ModelRuntime()
 	const id = "namespace-reverse"
-	if err := services.Registry().RegisterProvider(id, namespaceExtensionConfig("old")); err != nil {
+	if err := services.Registry().RegisterExtensionProvider(id, namespaceExtensionConfig("old")); err != nil {
 		t.Fatal(err)
 	}
 	if err := runtime.RegisterProvider(id, ProviderConfigInput{Headers: map[string]string{"X-New": "new"}}); err != nil {
@@ -357,5 +365,36 @@ func TestRegistryRuntimeMetadataUpdateRetainsExtensionDefinition(t *testing.T) {
 	}
 	if status := runtime.GetProviderAuthStatus(id); !status.Configured {
 		t.Fatalf("runtime legacy update discarded prior configured key: %+v", status)
+	}
+}
+
+// upstream: packages/ai/src/utils/oauth/types.ts OAuthCredentials (`refresh`, `access`, `expires` and `[key: string]: unknown`) is what an extension's ProviderConfig.oauth getApiKey/refreshToken/modifyModels callbacks receive (types.ts:1944-1950).
+func TestExtensionOAuthCallbacksReceiveTheStoredOAuthCredentials(t *testing.T) {
+	_, services := newAvailabilitySession(t)
+	runtime := services.ModelRuntime()
+	const id = "namespace-oauth-credentials"
+	config := namespaceExtensionConfig("old")
+	config.APIKey = ""
+	var seen extension.OAuthCredentials
+	config.OAuth = &extension.ProviderOAuth{Name: "Fixture OAuth", GetAPIKey: func(value extension.OAuthCredentials) string {
+		seen = value
+		return value.Access
+	}}
+	if err := services.Registry().RegisterExtensionProvider(id, config); err != nil {
+		t.Fatal(err)
+	}
+	expires := time.Now().Add(time.Hour).UnixMilli()
+	stored := ai.Credential{Type: ai.CredentialOAuth, Access: "stored-access", Refresh: "stored-refresh", Expires: expires, Extra: map[string]json.RawMessage{"tenant": json.RawMessage(`"t1"`)}}
+	if err := services.Auth().Set(id, stored); err != nil {
+		t.Fatal(err)
+	}
+	if err := runtime.RegisterProvider(id, ProviderConfigInput{Headers: map[string]string{"X-New": "new"}}); err != nil {
+		t.Fatal(err)
+	}
+	if auth, err := services.Registry().GetProviderAuth(t.Context(), id); err != nil || auth == nil || auth.Auth.APIKey != "stored-access" {
+		t.Fatalf("provider auth = %+v, err = %v", auth, err)
+	}
+	if seen.Access != "stored-access" || seen.Refresh != "stored-refresh" || seen.Expires != expires || string(seen.Extra["tenant"]) != `"t1"` {
+		t.Fatalf("callback received %+v, want the stored access, refresh, expires and provider-owned extra field", seen)
 	}
 }

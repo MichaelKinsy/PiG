@@ -95,7 +95,7 @@ func TestExecuteUsesOneDeterministicContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(encoded) == "" {
+	if len(encoded) == 0 {
 		t.Fatal("empty response")
 	}
 }

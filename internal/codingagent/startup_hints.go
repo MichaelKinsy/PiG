@@ -23,6 +23,6 @@ func StartupKeybindHints(km *KeybindingsManager) string {
 		tui.KeyHint(km.KeyText("app.tools.expand"), "more"),
 	}
 	t := tui.ActiveTheme()
-	sep := t.Muted + " · " + "\x1b[0m"
+	sep := t.Fg("muted", " · ")
 	return strings.Join(parts, sep)
 }

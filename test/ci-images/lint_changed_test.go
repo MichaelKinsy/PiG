@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package ciimages
@@ -37,12 +36,13 @@ func TestLintChangedPackageSelection(t *testing.T) {
 			"test/parity/runner/testdata_auth.go",
 			"testdata-helper/main.go",
 			"extensions/sdk/extension.go",
+			"wasmonly/main.go",
 		}, packages: []string{"./.", "./ai", "./extensions/sdk", "./test/extension-conformance", "./test/parity/runner", "./testdata-helper"}},
 		{name: "lint findings fail", files: []string{"ai/provider.go"}, packages: []string{"./ai"}, lintStatus: "1"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
-			for _, path := range []string{"Makefile", "automation/make/parity.mk", "automation/make/ci.mk", "internal/coding/pigversion/pigversion.go", "coding/upstream.go"} {
+			for _, path := range []string{"Makefile", "automation/make/parity.mk", "automation/make/ci.mk", "coding/upstream.go", ".upstream/pin", "automation/pin/pin.py", "automation/pin/pinlib.py"} {
 				copyCIFixture(t, root, path)
 			}
 			for _, path := range tc.files {
@@ -57,6 +57,11 @@ case "$*" in
 esac
 `)
 			writeCIFixture(t, root, "bin/go", `#!/bin/sh
+if [ "$1" = list ]; then
+  # A package with no Go files for the host platform (a wasm-only package) lists no files.
+  case "$*" in *wasmonly*) printf '[][][]\n' ;; *) printf '[main.go][][]\n' ;; esac
+  exit 0
+fi
 printf '%s\n' "$@" > "$LINT_LOG"
 exit "${LINT_STATUS:-0}"
 `)

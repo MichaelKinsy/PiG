@@ -115,12 +115,12 @@ func TestHarnessInspect(t *testing.T) {
 		})
 		var migrations atomic.Int32
 		registered := []durable.AnyTask{
-			gateTask,
-			dependent,
-			inspectTask("test.migrating", 2, inspectTaskOptions{migrate: func() error { migrations.Add(1); return nil }}),
-			inspectTask("test.no-migration", 2),
-			inspectTask("test.failing", 2, inspectTaskOptions{migrate: func() error { return errors.New("cannot migrate") }}),
-			inspectTask("test.too-old", 1),
+			gateTask.Erased(),
+			dependent.Erased(),
+			inspectTask("test.migrating", 2, inspectTaskOptions{migrate: func() error { migrations.Add(1); return nil }}).Erased(),
+			inspectTask("test.no-migration", 2).Erased(),
+			inspectTask("test.failing", 2, inspectTaskOptions{migrate: func() error { return errors.New("cannot migrate") }}).Erased(),
+			inspectTask("test.too-old", 1).Erased(),
 		}
 		harness, _, _ := openTasks(t, storage.NewMemoryStorage(), registered)
 		root, err := harness.Root(testContext, nil)

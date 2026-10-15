@@ -3,7 +3,7 @@
 //
 // What it does:
 //
-//  1. Constructs a coding.Services dependency container pointed at
+//  1. Constructs a coding.AgentSessionServices dependency container pointed at
 //     a temporary working directory.
 //  2. Builds a coding.Runtime over that container (no extensions, no
 //     custom tools).
@@ -63,12 +63,12 @@ func main() {
 	agentDir := coding.DefaultAgentDir()
 
 	// 3. Build the dependency container.
-	svcs, err := coding.NewServices(coding.ServicesOptions{
+	svcs, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{
 		CWD:      cwd,
 		AgentDir: agentDir, // pick up legacy ~/.pi-coding-agent if present
 	})
 	if err != nil {
-		log.Fatalf("NewServices: %v", err) //nolint:gocritic // intentional: defers are cleanup-only, already empty
+		log.Fatalf("CreateAgentSessionServices: %v", err) //nolint:gocritic // intentional: defers are cleanup-only, already empty
 	}
 	defer svcs.Close()
 

@@ -111,7 +111,7 @@ func TestGeneratePendingInputMappingCarriesStableOwnersAndResolvesNewScope(t *te
 	}}
 	overrides := ownerOverrideDocument{UpstreamVersion: "0.86.1", Owners: []ownerOverride{{ID: "input:ambiguous", OwnerFamily: "new"}}}
 
-	got, err := generatePendingInputMapping(inventory, previous, families, overrides)
+	got, err := generatePendingInputMapping(inventory, previous, nil, families, overrides)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,13 +132,13 @@ func TestGeneratePendingInputMappingCarriesStableOwnersAndResolvesNewScope(t *te
 func TestGeneratePendingInputMappingRejectsUnresolvedAndStaleOwners(t *testing.T) {
 	inventory := inputInventory{UpstreamVersion: "0.86.1", Handlers: []inputHandler{{ID: "input:missing", Path: "packages/missing.ts"}}}
 	families := familiesConfig{Families: map[string]familyDefinition{"other": {Includes: []string{"packages/other.ts"}}}}
-	if _, err := generatePendingInputMapping(inventory, inputMapping{}, families, ownerOverrideDocument{UpstreamVersion: "0.86.1"}); err == nil || !strings.Contains(err.Error(), "has no owner family") {
+	if _, err := generatePendingInputMapping(inventory, inputMapping{}, nil, families, ownerOverrideDocument{UpstreamVersion: "0.86.1"}); err == nil || !strings.Contains(err.Error(), "has no owner family") {
 		t.Fatalf("unresolved owner error = %v", err)
 	}
 
 	inventory.Handlers[0].Path = "packages/other.ts"
 	overrides := ownerOverrideDocument{UpstreamVersion: "0.86.1", Owners: []ownerOverride{{ID: "input:stale", OwnerFamily: "other"}}}
-	if _, err := generatePendingInputMapping(inventory, inputMapping{}, families, overrides); err == nil || !strings.Contains(err.Error(), "unknown surface") {
+	if _, err := generatePendingInputMapping(inventory, inputMapping{}, nil, families, overrides); err == nil || !strings.Contains(err.Error(), "unknown surface") {
 		t.Fatalf("stale override error = %v", err)
 	}
 }
@@ -165,5 +165,40 @@ func TestRenderMappingsRejectMissingAndIncompleteClosure(t *testing.T) {
 	mappings := []inputMappingEntry{{ID: "render:fixture#Picker.render", OwnerFamily: "selectors", Disposition: "partial"}}
 	if _, err := checkRenderMappings(mappings, renderers, nil, families, t.TempDir(), false); err == nil || !strings.Contains(err.Error(), "needs Pig targets, evidence, and contracts") {
 		t.Fatalf("partial render mapping error = %v", err)
+	}
+}
+
+// A pin move to a later commit keeps the reviewed entry of a surface whose inventory record and keybindings are identical,
+// and leaves a changed surface, or one bound to a changed keybinding, pending.
+func TestUnchangedSurfacesKeepReviewedEntriesAndResetChangedOnes(t *testing.T) {
+	before := inputInventory{
+		Keybindings: []keybinding{{ID: "app.a", Description: "A"}, {ID: "app.b", Description: "B"}},
+		Handlers: []inputHandler{
+			{ID: "input:same", Path: "packages/x.ts", SourceHash: "h1"},
+			{ID: "input:edited", Path: "packages/x.ts", SourceHash: "h2"},
+			{ID: "input:rebound", Path: "packages/x.ts", SourceHash: "h3", Bindings: []string{"app.b"}},
+		},
+		Renderers: []renderer{{ID: "render:same", Path: "packages/y.ts", SourceHash: "r1"}},
+	}
+	after := before
+	after.UpstreamVersion = "1.1.0+abcd1234"
+	after.Keybindings = []keybinding{{ID: "app.a", Description: "A"}, {ID: "app.b", Description: "B changed"}}
+	after.Handlers = []inputHandler{before.Handlers[0], {ID: "input:edited", Path: "packages/x.ts", SourceHash: "h2b"}, before.Handlers[2]}
+	families := familiesConfig{Families: map[string]familyDefinition{"x": {Includes: []string{"packages/x.ts", "packages/y.ts"}}}}
+	var previous inputMapping
+	for _, id := range []string{"input:same", "input:edited", "input:rebound"} {
+		previous.Mappings = append(previous.Mappings, inputMappingEntry{ID: id, OwnerFamily: "x", Disposition: "ported", Evidence: []string{"e"}})
+	}
+	previous.RenderMappings = []inputMappingEntry{{ID: "render:same", OwnerFamily: "x", Disposition: "ported", Evidence: []string{"e"}}}
+	carried := unchangedSurfaces(before, after)
+	got, err := generatePendingInputMapping(after, previous, carried, families, ownerOverrideDocument{UpstreamVersion: after.UpstreamVersion})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{"input:same": "ported", "input:edited": "pending", "input:rebound": "pending", "render:same": "ported"}
+	for _, entry := range append(got.Mappings, got.RenderMappings...) {
+		if entry.Disposition != want[entry.ID] {
+			t.Errorf("%s = %s, want %s", entry.ID, entry.Disposition, want[entry.ID])
+		}
 	}
 }

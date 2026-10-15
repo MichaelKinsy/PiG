@@ -120,6 +120,10 @@ func authReloadWrite(t *testing.T, path, raw string) {
 func authReloadRead(t *testing.T, s CredentialStore, id string, want *Credential) {
 	t.Helper()
 	got, err := s.Read(t.Context(), id)
+	// Pi's toEqual and toMatchObject ignore property order, which a decoded credential retains for persistence.
+	if got != nil {
+		got.order = credentialKeyOrder{}
+	}
 	if err != nil || !reflect.DeepEqual(got, want) {
 		t.Errorf("read(%s)=%#v,%v want=%#v", id, got, err, want)
 	}

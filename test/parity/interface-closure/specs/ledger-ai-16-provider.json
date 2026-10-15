@@ -1,0 +1,231 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#Provider",
+   "pkg:ai/compat#Provider",
+   "pkg:ai/models#Provider"
+  ],
+  "targets": [
+   "ai/models_runtime.go#ModelsProvider"
+  ],
+  "production": [
+   "call:ai/classifier.go#Models.classify"
+  ],
+  "evidence": [
+   "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+   "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "Provider: every upstream property maps to a Go field (types reviewed against the upstream declaration); production and tests attributed by go/types. Upstream Provider is the Go ModelsProvider struct (ai.Provider in Go is the older single-API streaming interface); the generic TApi parameter is erased and each function-typed member carries its context.Context first argument in place of the AbortSignal.",
+  "properties": {
+   "auth": {
+    "targets": [
+     "ai/models_runtime.go#ModelsProvider.Auth"
+    ],
+    "evidence": [
+     "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "The upstream property auth is the Go field ModelsProvider.Auth."
+   },
+   "baseUrl": {
+    "targets": [
+     "ai/models_runtime.go#ModelsProvider.BaseURL"
+    ],
+    "evidence": [
+     "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "The upstream property baseUrl is the Go field ModelsProvider.BaseURL."
+   },
+   "cancelDeferred": {
+    "targets": [
+     "ai/models_runtime.go#ModelsProvider.CancelDeferred"
+    ],
+    "evidence": [
+     "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "The upstream property cancelDeferred is the Go field ModelsProvider.CancelDeferred."
+   },
+   "classify": {
+    "targets": [
+     "ai/models_runtime.go#ModelsProvider.Classify"
+    ],
+    "evidence": [
+     "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "The upstream property classify is the Go field ModelsProvider.Classify."
+   },
+   "fetchDeferred": {
+    "targets": [
+     "ai/models_runtime.go#ModelsProvider.FetchDeferred"
+    ],
+    "evidence": [
+     "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "The upstream property fetchDeferred is the Go field ModelsProvider.FetchDeferred."
+   },
+   "filterAllModels": {
+    "targets": [
+     "ai/models_runtime.go#ModelsProvider.FilterAllModels"
+    ],
+    "evidence": [
+     "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "The upstream property filterAllModels is the Go field ModelsProvider.FilterAllModels."
+   },
+   "filterModels": {
+    "targets": [
+     "ai/models_runtime.go#ModelsProvider.FilterModels"
+    ],
+    "evidence": [
+     "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "The upstream property filterModels is the Go field ModelsProvider.FilterModels."
+   },
+   "generateImages": {
+    "targets": [
+     "ai/models_runtime.go#ModelsProvider.GenerateImages"
+    ],
+    "evidence": [
+     "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "The upstream property generateImages is the Go field ModelsProvider.GenerateImages."
+   },
+   "getAllModels": {
+    "targets": [
+     "ai/models_runtime.go#ModelsProvider.GetAllModels"
+    ],
+    "evidence": [
+     "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "The upstream property getAllModels is the Go field ModelsProvider.GetAllModels."
+   },
+   "getModels": {
+    "targets": [
+     "ai/models_runtime.go#ModelsProvider.GetModels"
+    ],
+    "evidence": [
+     "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "The upstream property getModels is the Go field ModelsProvider.GetModels."
+   },
+   "headers": {
+    "targets": [
+     "ai/models_runtime.go#ModelsProvider.Headers"
+    ],
+    "evidence": [
+     "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "The upstream property headers is the Go field ModelsProvider.Headers."
+   },
+   "id": {
+    "targets": [
+     "ai/models_runtime.go#ModelsProvider.ID"
+    ],
+    "evidence": [
+     "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "The upstream property id is the Go field ModelsProvider.ID."
+   },
+   "name": {
+    "targets": [
+     "ai/models_runtime.go#ModelsProvider.Name"
+    ],
+    "evidence": [
+     "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "The upstream property name is the Go field ModelsProvider.Name."
+   },
+   "refreshModels": {
+    "targets": [
+     "ai/models_runtime.go#ModelsProvider.RefreshModels"
+    ],
+    "evidence": [
+     "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "The upstream property refreshModels is the Go field ModelsProvider.RefreshModels."
+   },
+   "stream": {
+    "targets": [
+     "ai/models_runtime.go#ModelsProvider.Stream"
+    ],
+    "evidence": [
+     "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "The upstream property stream is the Go field ModelsProvider.Stream."
+   },
+   "streamSimple": {
+    "targets": [
+     "ai/models_runtime.go#ModelsProvider.StreamSimple"
+    ],
+    "evidence": [
+     "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "The upstream property streamSimple is the Go field ModelsProvider.StreamSimple."
+   }
+  }
+ }
+]

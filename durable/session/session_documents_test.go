@@ -21,7 +21,7 @@ var (
 )
 
 func liveInitial() obj {
-	return obj{"items": []any{}, "nested": obj{"count": 0}, "other": obj{"label": "x"}}
+	return delta.JsonObjectOf("items", []any{}, "nested", delta.JsonObjectOf("count", 0), "other", delta.JsonObjectOf("label", "x"))
 }
 
 var liveDoc = defineDoc("test.live", 1, latestScope(durable.ForkInitial), func() obj {
@@ -35,7 +35,7 @@ var rewindableLiveDoc = defineDoc("test.live", 1, rewindableScope(durable.ForkAs
 
 var liveDocV2 = defineDoc("test.live", 2, latestScope(durable.ForkInitial), liveInitial)
 
-var counterDoc = defineDoc("test.counter", 1, sessionScope, func() obj { return obj{"count": 0} })
+var counterDoc = defineDoc("test.counter", 1, sessionScope, func() obj { return delta.JsonObjectOf("count", 0) })
 
 var (
 	seedsMu sync.Mutex
@@ -46,7 +46,7 @@ var memberDoc = defineFamily("test.member", 1, sessionScope, func(seed string) o
 	seedsMu.Lock()
 	seeds = append(seeds, seed)
 	seedsMu.Unlock()
-	return obj{"seed": seed, "hits": 0}
+	return delta.JsonObjectOf("seed", seed, "hits", 0)
 })
 
 type liveHarness struct {
@@ -106,6 +106,7 @@ func waitClosed(t *testing.T, ch <-chan struct{}) {
 }
 
 func TestSessionDocumentTransactions(t *testing.T) {
+	// Pi 1.2.0 packages/durable/test/session-documents.test.ts:78 "creates an initial base on first access and adopts it after Storage success"
 	t.Run("creates an initial base on first access and adopts it after Storage success", func(t *testing.T) {
 		harness := open()
 		conversationId := createConversation(t, harness)
@@ -127,9 +128,12 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		if create.Content.Kind != durable.ContentBase || create.Content.Version != 1 {
 			t.Fatalf("content %+v", create.Content)
 		}
-		expectEqual(t, create.Content.Value["message"], "hello")
+		// toMatchObject: the base value carries message, items and nested.
+		expectEqual(t, create.Content.Value.Value("message"), "hello")
+		expectEqual(t, create.Content.Value.Value("items"), []any{})
+		expectEqual(t, create.Content.Value.Value("nested"), delta.JsonObjectOf("count", 0))
 		value := snapshot(t, harness.Session, liveDoc, conversationId)
-		expectEqual(t, value, obj{"message": "hello", "items": []any{}, "nested": obj{"count": 0}, "other": obj{"label": "x"}})
+		expectEqual(t, value, delta.JsonObjectOf("message", "hello", "items", []any{}, "nested", delta.JsonObjectOf("count", 0), "other", delta.JsonObjectOf("label", "x")))
 		flush(harness)
 		publication := harness.Publications.Last()
 		published := sessiontest.DocumentChanges(publication)[0]
@@ -142,6 +146,7 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		}
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-documents.test.ts:109 "never creates on snapshot and returns undefined when absent"
 	t.Run("never creates on snapshot and returns undefined when absent", func(t *testing.T) {
 		harness := open()
 		conversationId := createConversation(t, harness)
@@ -154,6 +159,7 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		}
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-documents.test.ts:120 "returns shared immutable snapshots and keeps prior revisions stable"
 	t.Run("returns shared immutable snapshots and keeps prior revisions stable", func(t *testing.T) {
 		harness := setupLive(t)
 		first := snapshot(t, harness.Session, liveDoc, harness.conversationId)
@@ -167,19 +173,20 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		if same(second, first) {
 			t.Fatal("a change produces a new revision")
 		}
-		expectEqual(t, first["nested"], obj{"count": 0})
-		expectEqual(t, second["nested"], obj{"count": 1})
+		expectEqual(t, first.Value("nested"), delta.JsonObjectOf("count", 0))
+		expectEqual(t, second.Value("nested"), delta.JsonObjectOf("count", 1))
 		// Unchanged subtrees are structurally shared between immutable revisions.
-		if !same(second["items"], first["items"]) || !same(second["other"], first["other"]) {
+		if !same(second.Value("items"), first.Value("items")) || !same(second.Value("other"), first.Value("other")) {
 			t.Fatal("unchanged subtrees are shared")
 		}
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-documents.test.ts:137 "adopts by pointer swap and shares operation payloads with the published revision"
 	t.Run("adopts by pointer swap and shares operation payloads with the published revision", func(t *testing.T) {
 		harness := setupLive(t)
 		commit(t, harness.Session, func(tx durable.Tx) error {
 			live := mustDoc(t, tx, liveDoc, harness.conversationId)
-			must(t, live.Set("other", obj{"label": "y"}))
+			must(t, live.Set("other", delta.JsonObjectOf("label", "y")))
 			_, err := live.Array("items").Push("c")
 			return err
 		})
@@ -199,31 +206,33 @@ func TestSessionDocumentTransactions(t *testing.T) {
 				set = op
 			}
 		}
-		expectEqual(t, set, durable.Op{"s", []any{"other"}, obj{"label": "y"}})
+		expectEqual(t, set, durable.Op{"s", []any{"other"}, delta.JsonObjectOf("label", "y")})
 		// Trusted immutability: the Session makes no second copy of operation payloads.
-		if !same(set[2], value["other"]) {
+		if !same(set[2], value.Value("other")) {
 			t.Fatal("the set payload is the revision's container")
 		}
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-documents.test.ts:158 "copies assigned values per placement"
 	t.Run("copies assigned values per placement", func(t *testing.T) {
 		harness := setupLive(t)
-		value := obj{"label": "shared"}
+		value := delta.JsonObjectOf("label", "shared")
 		commit(t, harness.Session, func(tx durable.Tx) error {
 			live := mustDoc(t, tx, liveDoc, harness.conversationId)
 			must(t, live.Set("other", value))
 			must(t, live.Set("copy", value))
-			value["label"] = "mutated"
+			value.Set("label", "mutated")
 			return nil
 		})
 		got := snapshot(t, harness.Session, liveDoc, harness.conversationId)
-		expectEqual(t, got["other"], obj{"label": "shared"})
-		expectEqual(t, got["copy"], obj{"label": "shared"})
-		if same(got["copy"], got["other"]) || same(got["other"], value) {
+		expectEqual(t, got.Value("other"), delta.JsonObjectOf("label", "shared"))
+		expectEqual(t, got.Value("copy"), delta.JsonObjectOf("label", "shared"))
+		if same(got.Value("copy"), got.Value("other")) || same(got.Value("other"), value) {
 			t.Fatal("each placement is an independent copy")
 		}
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-documents.test.ts:174 "suppresses writes and publications for empty batches"
 	t.Run("suppresses writes and publications for empty batches", func(t *testing.T) {
 		harness := setupLive(t)
 		flush(harness.Harness)
@@ -243,6 +252,7 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		}
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-documents.test.ts:190 "writes and publishes replayable nonempty structural no-ops"
 	t.Run("writes and publishes replayable nonempty structural no-ops", func(t *testing.T) {
 		harness := setupLive(t)
 		before := snapshot(t, harness.Session, liveDoc, harness.conversationId)
@@ -264,6 +274,7 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		}
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-documents.test.ts:207 "revokes escaped drafts when the callback settles"
 	t.Run("revokes escaped drafts when the callback settles", func(t *testing.T) {
 		harness := setupLive(t)
 		var escaped *delta.Object
@@ -277,12 +288,13 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		expectPanic(t, "settled overlay", func() { _ = escaped.Set("message", "outside") })
 		expectPanic(t, "settled overlay", func() { items.Len() })
 		expectPanic(t, "settled overlay", func() { _, _ = items.Push("outside") })
-		expectEqual(t, snapshot(t, harness.Session, liveDoc, harness.conversationId)["message"], "inside")
+		expectEqual(t, snapshot(t, harness.Session, liveDoc, harness.conversationId).Value("message"), "inside")
 		returned, err := harness.Session.Commit(ctx, func(tx durable.Tx) (any, error) { return tx.Doc(liveDoc, harness.conversationId) })
 		must(t, err)
 		expectPanic(t, "settled overlay", func() { returned.(*delta.Object).Get("message") })
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-documents.test.ts:228 "aborts every change when the callback fails"
 	t.Run("aborts every change when the callback fails", func(t *testing.T) {
 		harness := setupLive(t)
 		before := snapshot(t, harness.Session, liveDoc, harness.conversationId)
@@ -299,9 +311,10 @@ func TestSessionDocumentTransactions(t *testing.T) {
 			t.Fatal("a failed callback changes nothing")
 		}
 		setLive(t, harness, "message", "kept")
-		expectEqual(t, snapshot(t, harness.Session, liveDoc, harness.conversationId)["message"], "kept")
+		expectEqual(t, snapshot(t, harness.Session, liveDoc, harness.conversationId).Value("message"), "kept")
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-documents.test.ts:250 "memoizes concurrent duplicate acquisition and initializes once"
 	t.Run("memoizes concurrent duplicate acquisition and initializes once", func(t *testing.T) {
 		harness := open()
 		conversationId := createConversation(t, harness)
@@ -327,6 +340,7 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		}
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-documents.test.ts:266 "uses the first family seed and ignores seeds for existing members"
 	t.Run("uses the first family seed and ignores seeds for existing members", func(t *testing.T) {
 		harness := open()
 		seedsMu.Lock()
@@ -348,10 +362,11 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		seen := append([]string(nil), seeds...)
 		seedsMu.Unlock()
 		expectEqual(t, seen, []string{"first", "fourth"})
-		expectEqual(t, snapshot(t, harness.Session, memberDoc, "k"), obj{"seed": "first", "hits": 2})
-		expectEqual(t, snapshot(t, harness.Session, memberDoc, "other"), obj{"seed": "fourth", "hits": 1})
+		expectEqual(t, snapshot(t, harness.Session, memberDoc, "k"), delta.JsonObjectOf("seed", "first", "hits", 2))
+		expectEqual(t, snapshot(t, harness.Session, memberDoc, "other"), delta.JsonObjectOf("seed", "fourth", "hits", 1))
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-documents.test.ts:284 "rejects a callback that succeeds with a pending acquisition and drains it"
 	t.Run("rejects a callback that succeeds with a pending acquisition and drains it", func(t *testing.T) {
 		harness := setupLive(t)
 		must(t, harness.Session.UnloadDocuments())
@@ -385,9 +400,10 @@ func TestSessionDocumentTransactions(t *testing.T) {
 			t.Fatal("nothing is written")
 		}
 		setLive(t, harness, "message", "after")
-		expectEqual(t, snapshot(t, harness.Session, liveDoc, harness.conversationId)["message"], "after")
+		expectEqual(t, snapshot(t, harness.Session, liveDoc, harness.conversationId).Value("message"), "after")
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-documents.test.ts:311 "does not initialize or mint for an absent acquisition that finishes after settlement"
 	t.Run("does not initialize or mint for an absent acquisition that finishes after settlement", func(t *testing.T) {
 		harness := open()
 		var mu sync.Mutex
@@ -396,7 +412,7 @@ func TestSessionDocumentTransactions(t *testing.T) {
 			mu.Lock()
 			initialized++
 			mu.Unlock()
-			return obj{"count": 0}
+			return delta.JsonObjectOf("count", 0)
 		})
 		gate := harness.Storage.HoldFindDocument()
 		mints := harness.Storage.MintCount()
@@ -427,6 +443,7 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		}
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-documents.test.ts:337 "rejects with the callback error when it fails with a pending acquisition"
 	t.Run("rejects with the callback error when it fails with a pending acquisition", func(t *testing.T) {
 		harness := setupLive(t)
 		must(t, harness.Session.UnloadDocuments())
@@ -451,6 +468,7 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		expectErrorContains(t, <-pending, "Transaction has settled")
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-documents.test.ts:352 "rejects Tx use after the callback settles"
 	t.Run("rejects Tx use after the callback settles", func(t *testing.T) {
 		harness := setupLive(t)
 		var captured *session.Transaction
@@ -465,6 +483,7 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		expectErrorContains(t, captured.SetTask(session.AnyTaskRecord{}), "Transaction has settled")
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-documents.test.ts:363 "rejects tokens whose semantics or version disagree with the stored incarnation"
 	t.Run("rejects tokens whose semantics or version disagree with the stored incarnation", func(t *testing.T) {
 		harness := setupLive(t)
 		_, err := harness.Session.SnapshotErased(ctx, rewindableLiveDoc, harness.conversationId)
@@ -481,12 +500,13 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		expectErrorContains(t, err, "requires migration from version 1")
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-documents.test.ts:380 "rejects non-JSON initializer values and draft placements before Storage admission"
 	t.Run("rejects non-JSON initializer values and draft placements before Storage admission", func(t *testing.T) {
 		harness := open()
 		conversationId := createConversation(t, harness)
 		// Upstream's non-JSON value is a Date instance. A Go value with a JSON encoding (time.Time) is typed JSON, so
 		// the Go counterpart is a kind with no JSON form.
-		dateDoc := defineDoc("test.date", 1, sessionScope, func() obj { return obj{"at": make(chan int)} })
+		dateDoc := defineDoc("test.date", 1, sessionScope, func() obj { return delta.JsonObjectOf("at", make(chan int)) })
 		err := tryCommit(harness.Session, func(tx durable.Tx) error {
 			_, err := tx.Doc(dateDoc)
 			return err
@@ -503,6 +523,7 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		}
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-documents.test.ts:405 "rolls back prepared documents when batch assembly fails"
 	t.Run("rolls back prepared documents when batch assembly fails", func(t *testing.T) {
 		harness := setupLive(t)
 		commit(t, harness.Session, func(tx durable.Tx) error { return mustDoc(t, tx, counterDoc).Set("count", 1) })
@@ -513,7 +534,7 @@ func TestSessionDocumentTransactions(t *testing.T) {
 			must(t, mustDoc(t, tx, liveDoc, harness.conversationId).Set("message", "lost"))
 			must(t, mustDoc(t, tx, counterDoc).Set("count", 2))
 			// Replacing a missing task fails during assembly, after every change was prepared.
-			var checkpoint any = obj{"phase": "start"}
+			var checkpoint any = delta.JsonObjectOf("phase", "start")
 			return tx.SetTask(session.AnyTaskRecord{
 				Id: 999, ConversationId: harness.conversationId, Kind: "missing", Version: 1,
 				State: durable.TaskState[durable.JsonValue, durable.JsonValue]{Status: durable.TaskPending, Checkpoint: &checkpoint},
@@ -527,10 +548,11 @@ func TestSessionDocumentTransactions(t *testing.T) {
 			must(t, mustDoc(t, tx, liveDoc, harness.conversationId).Set("message", "next"))
 			return mustDoc(t, tx, counterDoc).Set("count", 3)
 		})
-		expectEqual(t, snapshot(t, harness.Session, counterDoc)["count"], 3)
+		expectEqual(t, snapshot(t, harness.Session, counterDoc).Value("count"), 3)
 	})
 
-	t.Run("poisons the Session after an uncertain Storage failure and publishes nothing", func(t *testing.T) {
+	// Pi 1.2.0 packages/durable/test/session-documents.test.ts:440 "fails the Session after a Storage failure and publishes nothing"
+	t.Run("fails the Session after a Storage failure and publishes nothing", func(t *testing.T) {
 		harness := setupLive(t)
 		flush(harness.Harness)
 		before := snapshot(t, harness.Session, liveDoc, harness.conversationId)
@@ -544,15 +566,16 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		if harness.Publications.Len() != published {
 			t.Fatal("nothing is published")
 		}
-		if _, ok := before["message"]; ok {
+		if _, ok := before.Get("message"); ok {
 			t.Fatal("the prior revision is unchanged")
 		}
 		_, err = harness.Session.SnapshotErased(ctx, liveDoc, harness.conversationId)
-		expectErrorContains(t, err, "poisoned")
-		expectErrorContains(t, tryCommit(harness.Session, func(durable.Tx) error { return nil }), "poisoned")
+		expectSessionFailed(t, err, "disk vanished")
+		expectSessionFailed(t, tryCommit(harness.Session, func(durable.Tx) error { return nil }), "disk vanished")
 		must(t, harness.Session.Close(ctx))
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-documents.test.ts:459 "keeps the previous revision unchanged through Storage settlement"
 	t.Run("keeps the previous revision unchanged through Storage settlement", func(t *testing.T) {
 		harness := setupLive(t)
 		before := snapshot(t, harness.Session, liveDoc, harness.conversationId)
@@ -574,10 +597,11 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		expectEqual(t, before, copied)
 		gate.Release()
 		must(t, <-done)
-		expectEqual(t, snapshot(t, harness.Session, liveDoc, harness.conversationId)["items"], []any{"a", "b", "c"})
+		expectEqual(t, snapshot(t, harness.Session, liveDoc, harness.conversationId).Value("items"), []any{"a", "b", "c"})
 		expectEqual(t, before, copied)
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-documents.test.ts:479 "retires documents and creates a new incarnation at the same address"
 	t.Run("retires documents and creates a new incarnation at the same address", func(t *testing.T) {
 		harness := setupLive(t)
 		flush(harness.Harness)
@@ -616,8 +640,8 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		if created.Record.Id == oldId || created.Record.CreatedAt != publication.Seq || len(created.Ops) != 0 {
 			t.Fatal("creation publication")
 		}
-		expectEqual(t, created.Value["message"], "new")
-		expectEqual(t, created.Value["items"], []any{})
+		expectEqual(t, created.Value.Value("message"), "new")
+		expectEqual(t, created.Value.Value("items"), []any{})
 		if !same(snapshot(t, harness.Session, liveDoc, harness.conversationId), created.Value) {
 			t.Fatal("the replacement is current")
 		}
@@ -637,6 +661,7 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		}
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-documents.test.ts:519 "retires without acquisition and recreates both existing and absent addresses"
 	t.Run("retires without acquisition and recreates both existing and absent addresses", func(t *testing.T) {
 		harness := setupLive(t)
 		flush(harness.Harness)
@@ -663,9 +688,10 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		if len(writesOfType(absent, "document.retire")) != 0 || len(writesOfType(absent, "document.create")) != 1 {
 			t.Fatal("an absent address only creates")
 		}
-		expectEqual(t, snapshot(t, harness.Session, memberDoc, "absent"), obj{"seed": "seed", "hits": 1})
+		expectEqual(t, snapshot(t, harness.Session, memberDoc, "absent"), delta.JsonObjectOf("seed", "seed", "hits", 1))
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-documents.test.ts:549 "retires the existing incarnation when retirement races a pending acquisition"
 	t.Run("retires the existing incarnation when retirement races a pending acquisition", func(t *testing.T) {
 		harness := setupLive(t)
 		flush(harness.Harness)
@@ -708,9 +734,10 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		if retire := writesOfType(writes, "document.retire"); len(retire) != 1 || retire[0].(durable.DocumentRetireWrite).Id != secondId {
 			t.Fatal("the second incarnation retires")
 		}
-		expectEqual(t, snapshot(t, harness.Session, liveDoc, harness.conversationId)["message"], "third")
+		expectEqual(t, snapshot(t, harness.Session, liveDoc, harness.conversationId).Value("message"), "third")
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-documents.test.ts:591 "reloads an unloaded document from Storage"
 	t.Run("reloads an unloaded document from Storage", func(t *testing.T) {
 		harness := setupLive(t)
 		loaded := snapshot(t, harness.Session, liveDoc, harness.conversationId)
@@ -724,9 +751,10 @@ func TestSessionDocumentTransactions(t *testing.T) {
 			return err
 		})
 		must(t, harness.Session.UnloadDocuments())
-		expectEqual(t, snapshot(t, harness.Session, liveDoc, harness.conversationId)["items"], []any{"a", "b", "c"})
+		expectEqual(t, snapshot(t, harness.Session, liveDoc, harness.conversationId).Value("items"), []any{"a", "b", "c"})
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-documents.test.ts:605 "delivers complete publications synchronously after adoption"
 	t.Run("delivers complete publications synchronously after adoption", func(t *testing.T) {
 		harness := setupLive(t)
 		published := harness.Publications.Len()
@@ -742,7 +770,9 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		unsubscribe()
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-documents.test.ts:622 "publishes close synchronously and supports unsubscription"
 	t.Run("publishes close synchronously and supports unsubscription", func(t *testing.T) {
+		// Session.subscribeClose, types.ts:907
 		harness := open()
 		var calls []string
 		harness.Session.SubscribeClose(func() { calls = append(calls, "active") })
@@ -752,6 +782,7 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		expectEqual(t, calls, []string{"active"})
 	})
 
+	// Pi 1.2.0 packages/durable/test/session-documents.test.ts:632 "settles admitted commits before close and rejects later admission"
 	t.Run("settles admitted commits before close and rejects later admission", func(t *testing.T) {
 		harness := setupLive(t)
 		gate := harness.Storage.HoldCommits()

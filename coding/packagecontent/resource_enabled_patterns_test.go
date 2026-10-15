@@ -30,7 +30,7 @@ func TestResourceEnabledUsesSharedPatternSemantics(t *testing.T) {
 		{"force exclude skill directory", "skills/skill-a/SKILL.md", []string{"-skills/skill-a"}, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := ResourceEnabled(tc.path, tc.patterns); got != tc.want {
+			if got := mustResourceEnabled(t, tc.path, tc.patterns); got != tc.want {
 				t.Errorf("ResourceEnabled(%q, %q) = %t, want %t", tc.path, tc.patterns, got, tc.want)
 			}
 		})
@@ -42,7 +42,7 @@ func BenchmarkResourceEnabledPackageFilters(b *testing.B) {
 	patterns := []string{"**/*", "!**/b.ts", "!**/review", "+skills/review", "-themes/dark.json"}
 	for b.Loop() {
 		for _, path := range paths {
-			ResourceEnabled(path, patterns)
+			mustResourceEnabled(b, path, patterns)
 		}
 	}
 }

@@ -2,6 +2,8 @@
 
 package harness
 
+// pi: packages/durable/src/harness/output.ts
+
 import (
 	"context"
 	"errors"
@@ -134,6 +136,11 @@ func TestToolOutputBounds(t *testing.T) {
 		expectBound(t, bound("x\néééé", tailLimits(10, 5)), boundResult{"éé", 6, 1})
 	})
 
+	// upstream: packages/durable/test/harness-output.test.ts "keeps a U+FEFF at the start of a kept slice" (1.0.4)
+	t.Run("keeps a U+FEFF at the start of a kept slice", func(t *testing.T) {
+		expectBound(t, bound("x\ufeffa", tailLimits(10, 4)), boundResult{"\ufeffa", 1, 0})
+	})
+
 	t.Run("cuts tails of surrogate edge cases exactly like Buffer", func(t *testing.T) {
 		inputs := []string{
 			jsString('a', 0xd83d),
@@ -203,6 +210,21 @@ func TestOutputBuffer(t *testing.T) {
 		buffer.PushString("b\u001b\n")
 		if got, want := buffer.Snapshot(), (BoundedOutput{Text: "b\n", DroppedBytes: 3, DroppedLines: 1}); got != want {
 			t.Fatalf("got %+v, want %+v", got, want)
+		}
+	})
+
+	// upstream: packages/durable/test/harness-output.test.ts "drops a byte-order mark only at the start of the output" (1.0.4)
+	t.Run("drops a byte-order mark only at the start of the output", func(t *testing.T) {
+		bom := []byte{0xef, 0xbb, 0xbf}
+		buffer := NewOutputBuffer(tailLimits(10))
+		buffer.PushBytes(bom[:1])
+		buffer.PushBytes([]byte{0xbb, 0xbf, 0x61})
+		buffer.PushString("b")
+		// A U+FEFF after a string chunk is text.
+		buffer.PushBytes(append(slices.Clone(bom), 0x63))
+		buffer.End()
+		if got := buffer.Snapshot().Text; got != "ab\ufeffc" {
+			t.Fatalf("text = %q", got)
 		}
 	})
 

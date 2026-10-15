@@ -55,11 +55,8 @@ func TestRuntimeFactoryFailureFollowsOutgoingDisposal(t *testing.T) {
 	failure := errors.New("factory failed")
 	disposedBeforeFactory := false
 	h.runtime.replacement.createRuntime = func(context.Context, CreateAgentSessionRuntimeOptions) (CreateAgentSessionRuntimeResult, error) {
-		select {
-		case <-previous.closeDone:
-			disposedBeforeFactory = previous.currentRunner().IsStale()
-		default:
-		}
+		// Pi's dispose invalidates the runner and leaves the Session able to run, so a failed construction keeps it.
+		disposedBeforeFactory = previous.currentRunner().IsStale()
 		return CreateAgentSessionRuntimeResult{}, failure
 	}
 	_, err := h.runtime.NewSession(t.Context(), nil)

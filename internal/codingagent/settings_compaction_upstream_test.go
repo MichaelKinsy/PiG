@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -10,18 +9,25 @@ import (
 	"math"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/ai"
 )
 
+// compactionTestModel is the Pick<Model, "provider" | "id"> the settings getters take.
+func compactionTestModel(provider, id string) *ai.Model {
+	return &ai.Model{ID: id, ProviderMeta: ai.ProviderMetadata{ProviderID: provider}}
+}
+
 func readCompactionSettings(sm *SettingsManager, provider, id string) (CompactionConfig, error) {
-	return sm.GetModelCompactionSettings(provider, id)
+	return sm.GetCompactionSettings(compactionTestModel(provider, id))
 }
 func compactionConfigForTest(t *testing.T, sm *SettingsManager, model ...string) CompactionConfig {
 	t.Helper()
-	provider, id := "", ""
+	var ref *ai.Model
 	if len(model) == 2 {
-		provider, id = model[0], model[1]
+		ref = compactionTestModel(model[0], model[1])
 	}
-	config, err := sm.GetModelCompactionSettings(provider, id)
+	config, err := sm.GetCompactionSettings(ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,8 +55,8 @@ func assertCompactionSettings(t *testing.T, sm *SettingsManager, provider, id st
 	if err != nil || got != want {
 		t.Fatalf("settings(%q,%q)=%+v,%v; want %+v", provider, id, got, err, want)
 	}
-	reserve, reserveErr := sm.GetCompactionReserveTokens(provider, id)
-	recent, recentErr := sm.GetCompactionKeepRecentTokens(provider, id)
+	reserve, reserveErr := sm.GetCompactionReserveTokens(compactionTestModel(provider, id))
+	recent, recentErr := sm.GetCompactionKeepRecentTokens(compactionTestModel(provider, id))
 	if reserveErr != nil || recentErr != nil || reserve != want.ReserveTokens || recent != want.KeepRecentTokens {
 		t.Fatalf("individual getters=%d,%v / %d,%v", reserve, reserveErr, recent, recentErr)
 	}
@@ -64,6 +70,7 @@ func assertCompactionError(t *testing.T, sm *SettingsManager, provider, id, want
 	fmt.Printf("COMPACTION_SETTING %s\n", err)
 }
 
+// Pi: packages/coding-agent/src/core/settings-manager.ts:20 (CompactionSettingsJSON.keepRecentTokens); packages/coding-agent/src/core/settings-manager.ts:959 (SettingsManager.getCompactionKeepRecentTokens).
 func TestSettingsManagerCompactionUpstream(t *testing.T) {
 	defaults := CompactionConfig{Enabled: true, ReserveTokens: 16384, KeepRecentTokens: 20000}
 	// .upstream/v0.87.1/packages/coding-agent/test/settings-manager-compaction.test.ts:10

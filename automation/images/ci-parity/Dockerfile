@@ -1,4 +1,3 @@
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 
 ARG GO_BUILDER=cgr.dev/chainguard/go:latest-dev@sha256:72f9b391f511f88e7154aaaa5ee1e27fb6594575d9a406940f49786b30172803
@@ -32,10 +31,13 @@ RUN apk update \
   && rm /tmp/packages.lock /tmp/installed.lock
 
 FROM toolchain-base AS pi-oracle
-# PI_VERSION must equal coding.UpstreamVersion; make compliance checks it.
-ARG PI_VERSION=1.0.3
+# PI_VERSION must equal the pin's package version and PI_COMMIT the pin's commit when the pin is a commit
+# (empty for a release tag); `make pin-sync` writes both and make compliance checks them.
+ARG PI_VERSION=1.2.0
+ARG PI_COMMIT=b06c1f2cf1dea6af8748ddeee18c23587d2cb7c6
 COPY automation/images/ci-parity/package.json automation/images/ci-parity/package-lock.json /opt/pig/pi/
-RUN npm ci --prefix /opt/pig/pi --omit=dev --ignore-scripts --no-audit --no-fund \
+RUN test -z "${PI_COMMIT}" || { echo "this image installs the published Pi ${PI_VERSION}; it cannot be the build of Pi commit ${PI_COMMIT} yet (a commit pin needs the oracle built from source, automation/pin/oracle.py)" >&2; exit 1; } \
+  && npm ci --prefix /opt/pig/pi --omit=dev --ignore-scripts --no-audit --no-fund \
   && mkdir -p /opt/pig/pi/bin \
   && ln -s ../node_modules/.bin/pi /opt/pig/pi/bin/pi \
   && test "$(/opt/pig/pi/bin/pi --version)" = "${PI_VERSION}" \
@@ -79,6 +81,8 @@ ENV GOPATH=/tmp/pig-go
 ENV CARGO_HOME=/tmp/pig-cargo
 ENV PATH="/usr/lib/go/bin:/opt/pig/pi/bin:${PATH}"
 ENV PIG_PARITY_PI_BIN=/opt/pig/pi/bin/pi
+# This image installs the PUBLISHED Pi, not a build of the pinned source, so it opts into the published oracle explicitly (a release-tag pin only; the runner refuses it for a commit pin). Building Pi from source in the image is the follow-up that removes this line.
+ENV PIG_PARITY_PI_PUBLISHED=1
 ENV PI_PACKAGE_ROOT=/opt/pig/pi/node_modules/@earendil-works/pi-coding-agent
 
 USER nonroot

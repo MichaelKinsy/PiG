@@ -84,6 +84,7 @@ func blockingTool(name string, edit ...func(*durable.ToolRegistration)) (*durabl
 }
 
 func TestToolRecovery(t *testing.T) {
+	// harness-tools-recovery.test.ts:109 it("answers an unsafe tool interrupted after intent with its durable partial output")
 	t.Run("answers an unsafe tool interrupted after intent with its durable partial output", func(t *testing.T) {
 		path := sqlitePath(t)
 		setup := chatSetup(t)
@@ -101,7 +102,7 @@ func TestToolRecovery(t *testing.T) {
 		harness, root = trOpen(t, path, setup)
 		record := tkTaskRecord(t, harness, taskId)
 		wantCheckpoint := map[string]any{"phase": "execute", "arguments": map[string]any{}, "replay": "unsafe"}
-		if record.State.Checkpoint == nil || !reflect.DeepEqual(*record.State.Checkpoint, wantCheckpoint) {
+		if record.State.Checkpoint == nil || !reflect.DeepEqual(plainObject(*record.State.Checkpoint), wantCheckpoint) {
 			t.Fatalf("checkpoint %v, want %v", record.State.Checkpoint, wantCheckpoint)
 		}
 		submission, err := harness.Submission(testContext, id)
@@ -119,12 +120,13 @@ func TestToolRecovery(t *testing.T) {
 			t.Fatalf("result %+v, want an error with details run 1", result)
 		}
 		tlExpectText(t, trText(result), "run 1\n|<harness>\n[error] Tool work was interrupted and may have partially run\n</harness>")
-		if live, err := harness.SnapshotErased(testContext, LiveDoc, root.Id()); err != nil || !reflect.DeepEqual(live, durable.JsonObject{}) {
+		if live, err := harness.SnapshotErased(testContext, LiveDoc, root.Id()); err != nil || live.Len() != 0 {
 			t.Fatalf("live document %v %v, want {}", live, err)
 		}
 		mustClose(t, harness)
 	})
 
+	// harness-tools-recovery.test.ts:136 it("reruns a tool only when both the stored and the current replay policy are safe")
 	t.Run("reruns a tool only when both the stored and the current replay policy are safe", func(t *testing.T) {
 		cases := []struct {
 			stored, current durable.ToolReplay
@@ -176,6 +178,7 @@ func TestToolRecovery(t *testing.T) {
 		}
 	})
 
+	// harness-tools-recovery.test.ts:165 it("reruns a safe tool with the environment of the conversation's cwd at rerun, and not once it is deselected")
 	t.Run("reruns a safe tool with the environment of the conversation's cwd at rerun, and not once it is deselected", func(t *testing.T) {
 		for _, change := range []string{"cwd", "deselect"} {
 			t.Run(change, func(t *testing.T) {
@@ -208,7 +211,7 @@ func TestToolRecovery(t *testing.T) {
 				if change == "cwd" {
 					mustConfigure(t, root, AgentChange{Cwd: SetTo("/two")})
 				} else {
-					mustConfigure(t, root, AgentChange{Extensions: SetTo(ExtensionChange{Exact: true})})
+					mustConfigure(t, root, AgentChange{Extensions: SetTo(ExtensionChange{List: []*durable.Extension{}})})
 				}
 				mustClose(t, harness)
 
@@ -236,17 +239,18 @@ func TestToolRecovery(t *testing.T) {
 		}
 	})
 
+	// harness-tools-recovery.test.ts:213 it("reruns beforeTool when interrupted before intent, and executes once")
 	t.Run("reruns beforeTool when interrupted before intent, and executes once", func(t *testing.T) {
 		path := sqlitePath(t)
 		setup := chatSetup(t)
 		var runs, asked atomicCounter
 		addTool(t, setup.Registry, trTool("work", func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			runs.add()
-			return durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{}}, nil
+			return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}}, nil
 		}))
 		reached := deferred()
 		decisions := &syncList[string]{}
-		addHooks(t, setup.Registry, ToolTask, &ToolHooks{BeforeTool: func(ctx context.Context, _ ai.ToolCall, api HookApi) (*BeforeToolResult, error) {
+		addHooks(t, setup.Registry, ToolTask.Erased(), &ToolHooks{BeforeTool: func(ctx context.Context, _ ToolHookCall, api HookApi) (*BeforeToolResult, error) {
 			attempt := asked.add()
 			// A durable first-writer-wins decision survives the rerun.
 			decision, err := api.MemoCandidate(ctx, "test:decision", fmt.Sprintf("attempt %d", attempt))
@@ -285,13 +289,14 @@ func TestToolRecovery(t *testing.T) {
 		mustClose(t, harness)
 	})
 
+	// harness-tools-recovery.test.ts:252 it("reruns the generation tools phase interrupted before its commit")
 	t.Run("reruns the generation tools phase interrupted before its commit", func(t *testing.T) {
 		path := sqlitePath(t)
 		setup := chatSetup(t)
 		addTool(t, setup.Registry, trTool("work", tlNoContent))
 		reached := deferred()
 		var observed atomicCounter
-		addHooks(t, setup.Registry, GenerationTask, &GenerationHooks{AfterTools: func(ctx context.Context, _ durable.EntryId, _ []durable.EntryId, _ HookApi) error {
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{AfterTools: func(ctx context.Context, _ durable.EntryId, _ []durable.EntryId, _ HookApi) error {
 			if observed.add() == 1 {
 				reached.resolve()
 				return abortedBy(ctx)
@@ -327,6 +332,7 @@ func TestToolRecovery(t *testing.T) {
 		mustClose(t, harness)
 	})
 
+	// harness-tools-recovery.test.ts:289 it("answers an aborted tool with its partial output and continues the run")
 	t.Run("answers an aborted tool with its partial output and continues the run", func(t *testing.T) {
 		path := sqlitePath(t)
 		setup := chatSetup(t)
@@ -346,7 +352,7 @@ func TestToolRecovery(t *testing.T) {
 		if outcome.Status != durable.OutcomeAborted || outcome.Result == nil {
 			t.Fatalf("outcome %s, want aborted with a result entry", describeOutcome(outcome))
 		}
-		if entry, ok := (*outcome.Result).(map[string]any)["entryId"].(float64); !ok || entry == 0 {
+		if entry, ok := plainObject(*outcome.Result)["entryId"].(float64); !ok || entry == 0 {
 			t.Fatalf("outcome result %v has no entry ID", *outcome.Result)
 		}
 		if settled, err := submission.Wait(testContext); err != nil || settled.Status != durable.SubmissionDone {
@@ -356,17 +362,18 @@ func TestToolRecovery(t *testing.T) {
 		mustClose(t, harness)
 	})
 
+	// harness-tools-recovery.test.ts:310 it("lets context derivation answer a faulted tool and continues the run")
 	t.Run("lets context derivation answer a faulted tool and continues the run", func(t *testing.T) {
 		path := sqlitePath(t)
 		setup := chatSetup(t)
 		// A result that is not strict JSON makes the result commit fail, so the scheduler faults the task.
 		addTool(t, setup.Registry, trTool("bad", func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
-			return durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{}, Details: map[string]any{"fn": func() int { return 1 }}, HasDetails: true}, nil
+			return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}, Details: map[string]any{"fn": func() int { return 1 }}, HasDetails: true}, nil
 		}))
 		requests := &syncList[string]{}
 		setup.Faux.SetResponses([]ai.FauxResponseStep{
 			trCall("bad", "c1"),
-			ai.FauxFactoryStep(func(request ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+			ai.FauxFactoryStep(func(request ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
 				seen := "none"
 				for _, message := range request.Messages() {
 					if result, ok := message.(ai.ToolResultMessage); ok {
@@ -375,7 +382,7 @@ func TestToolRecovery(t *testing.T) {
 					}
 				}
 				requests.add(seen)
-				return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}}, nil
+				return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}}.AssistantMessage(), nil
 			}),
 		})
 		harness, root := trOpen(t, path, setup)
@@ -395,6 +402,9 @@ func TestToolRecovery(t *testing.T) {
 		mustClose(t, harness)
 	})
 
+	// harness-tools-recovery.test.ts:338 it("answers a real bash command interrupted by close and reopen, then finishes the run") is
+	// harness_coding_tools_test.go TestToolRecoveryWithBash.
+	// harness-tools-recovery.test.ts:366 it("clears the interrupted attempt's progress before a safe rerun")
 	t.Run("clears the interrupted attempt's progress before a safe rerun", func(t *testing.T) {
 		path := sqlitePath(t)
 		setup := chatSetup(t)

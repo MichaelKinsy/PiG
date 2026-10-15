@@ -101,3 +101,86 @@ assert.deepEqual(errorInfo("plain"), { message: "plain" });
 		t.Fatalf("handler error = %v with stack %q; want boom with the extension's stack", got, extension.ErrorStack(got))
 	}
 }
+
+// Pi's extension calls are in-process, so no fire-and-forget call fails when the process shuts down (runner.ts, interactive-mode.ts). A host that closes the connection while a call nobody awaits is in flight ends the run, and a host that cancels the request that made the call cancels the call: the runtime does not write either call to stderr, which print and JSON mode share with the user (--list-models and --help answer and exit while the post-handshake provider.configRef call is still pending). A host that answers the call with an error is still written there.
+func TestNodeFireAndForgetReportsHostErrorsButNotShutdown(t *testing.T) {
+	path, err := filepath.Abs("runtime-node/runtime.mjs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	script := fmt.Sprintf(`
+import assert from "node:assert/strict";
+import { EventEmitter } from "node:events";
+import { Connection, Runtime } from %q;
+const written = [];
+process.stderr.write = (chunk) => { written.push(String(chunk)); return true; };
+// Like ProviderSocket, a closed socket throws on write.
+function fakeSocket() {
+  const socket = new EventEmitter();
+  socket.sent = [];
+  socket.closed = false;
+  socket.on("close", () => { socket.closed = true; });
+  socket.write = (data) => {
+    if (socket.closed) throw new Error("connection closed");
+    socket.sent.push(data);
+    return true;
+  };
+  return socket;
+}
+const unhandled = [];
+process.on("unhandledRejection", (reason) => { unhandled.push(String(reason)); });
+const settle = () => new Promise((resolve) => setImmediate(resolve));
+
+// The host closes the connection while the call is pending.
+let runtime = new Runtime("/ext/shutdown.mjs");
+let socket = fakeSocket();
+runtime.conn = new Connection(socket);
+runtime.fireAndForget("provider.configRef", { name: "p" });
+assert.equal(socket.sent.length, 1);
+socket.emit("close");
+await settle();
+// A call made after the close rejects at once.
+runtime.fireAndForget("ui.notify", { message: "late" });
+await settle();
+assert.deepEqual(written, []);
+
+// The host cancels the request that made the call (runtime loop "cancel", shutdown) while the connection stays open.
+runtime = new Runtime("/ext/cancelled.mjs");
+socket = fakeSocket();
+runtime.conn = new Connection(socket);
+const request = { id: "req-1", settled: false, pendingHostCalls: new Set() };
+runtime.requestContext.run(request, () => runtime.fireAndForget("appendEntry", { customType: "x" }));
+assert.equal(runtime.conn.pending.size, 1);
+runtime.conn.cancelParent("req-1");
+await settle();
+assert.equal(runtime.conn.closed, false);
+assert.deepEqual(written, []);
+
+// The host closes the connection while a call made by a request is pending, and the request makes another after the close: the request's state is not sent on the closed connection, the call does not throw into the handler, and the request no longer owns either call.
+runtime = new Runtime("/ext/inrequest.mjs");
+socket = fakeSocket();
+runtime.conn = new Connection(socket);
+const owner = { id: "req-2", settled: false, pendingHostCalls: new Set() };
+runtime.requestContext.run(owner, () => runtime.fireAndForget("ui.notify", { message: "pending" }));
+socket.emit("close");
+runtime.requestContext.run(owner, () => runtime.fireAndForget("ui.notify", { message: "late" }));
+await settle();
+assert.equal(owner.pendingHostCalls.size, 0);
+assert.deepEqual(unhandled, []);
+assert.deepEqual(written, []);
+
+// The host answers a call with an error while the connection stays open.
+runtime = new Runtime("/ext/rejected.mjs");
+socket = fakeSocket();
+runtime.conn = new Connection(socket);
+runtime.fireAndForget("ui.notify", { message: "x" });
+const frame = socket.sent[0];
+const id = JSON.parse(frame.subarray(4).toString()).id;
+runtime.conn.resolveCall({ type: "call_result", id, call_result: { error: { message: "refused" } } });
+await settle();
+assert.deepEqual(written, ["pig: host call ui.notify failed: refused\n"]);
+`, (&url.URL{Scheme: "file", Path: filepath.ToSlash(path)}).String())
+	if output, err := exec.CommandContext(t.Context(), "node", "--input-type=module", "--eval", script).CombinedOutput(); err != nil {
+		t.Fatalf("fire-and-forget host call failure reporting: %v\n%s", err, output)
+	}
+}

@@ -13,7 +13,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
+	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime"
 
 	"github.com/MichaelKinsy/PiG/ai"
 )
@@ -457,7 +457,7 @@ func sampleOptions(onPayload func(any, *ai.Model) (any, error), isReasoning bool
 		stream: ai.StreamOptions{
 			MaxTokens:   123,
 			Temperature: 0.2,
-			Thinking:    ai.ThinkingHigh,
+			Thinking:    ai.ThinkingLevelHigh,
 			IsReasoning: isReasoning,
 			SessionID:   "sess-provider-wire",
 			OnPayload:   onPayload,

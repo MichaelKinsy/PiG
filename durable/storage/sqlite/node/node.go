@@ -140,6 +140,28 @@ func (statement *StatementSync) Run(params ...any) error {
 	return err
 }
 
+// EachText passes the first column of every result row to fn as it is read; the bytes are valid until fn returns.
+func (statement *StatementSync) EachText(params []any, fn func(text []byte) error) (err error) {
+	if err := statement.open(); err != nil {
+		return err
+	}
+	rows, err := statement.statement.QueryContext(context.Background(), params...)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, rows.Close()) }()
+	for rows.Next() {
+		var text sql.RawBytes
+		if err := rows.Scan(&text); err != nil {
+			return err
+		}
+		if err := fn(text); err != nil {
+			return err
+		}
+	}
+	return rows.Err()
+}
+
 // Get returns the first result row, or nil when there is none.
 func (statement *StatementSync) Get(params ...any) (map[string]any, error) {
 	rows, err := statement.query(params, 1)
@@ -188,8 +210,8 @@ func (statement *StatementSync) query(params []any, limit int) (result []map[str
 
 func (statement *StatementSync) close() error { return statement.statement.Close() }
 
-// Connection is the native connection surface NodeSqliteDatabase drives.
-type Connection interface {
+// connection is the native connection surface NodeSqliteDatabase drives; *DatabaseSync is its one production implementation.
+type connection interface {
 	Exec(sql string) error
 	Prepare(sql string) (*StatementSync, error)
 	Close() error
@@ -234,7 +256,7 @@ func (queue *serialOperationQueue) queued() int {
 // nodeSqliteExecutor executes SQL on one connection. Prepared statements are cached per connection by SQL text, so the
 // database and its transaction handles share them across transactions.
 type nodeSqliteExecutor struct {
-	database   Connection
+	database   connection
 	statements *statementCache
 	// runOperation brackets one operation: the database queues it, a transaction handle checks that it is active.
 	runOperation func(operation func() error) error
@@ -271,6 +293,17 @@ func (executor *nodeSqliteExecutor) Run(sqlText string, params ...durablesqlite.
 			return err
 		}
 		return statement.Run(params...)
+	})
+}
+
+// EachText runs a query whose first column is text and passes each value to fn without building result rows.
+func (executor *nodeSqliteExecutor) EachText(sqlText string, params []durablesqlite.SqliteValue, fn func(text []byte) error) error {
+	return executor.runOperation(func() error {
+		statement, err := executor.statement(sqlText)
+		if err != nil {
+			return err
+		}
+		return statement.EachText(params, fn)
 	})
 }
 
@@ -320,8 +353,13 @@ type NodeSqliteDatabase struct {
 	closed bool
 }
 
-// NewNodeSqliteDatabase adapts database; the adapter owns it from now on.
-func NewNodeSqliteDatabase(database Connection) *NodeSqliteDatabase {
+// NewNodeSqliteDatabase adapts database; the adapter owns it from now on. It is Pi's `new NodeSqliteDatabase(database: DatabaseSync)`.
+func NewNodeSqliteDatabase(database *DatabaseSync) *NodeSqliteDatabase {
+	return newNodeSqliteDatabase(database)
+}
+
+// newNodeSqliteDatabase adapts any native connection, so a test can wrap one to observe or fail its calls.
+func newNodeSqliteDatabase(database connection) *NodeSqliteDatabase {
 	adapter := &NodeSqliteDatabase{access: newSerialOperationQueue()}
 	adapter.nodeSqliteExecutor = nodeSqliteExecutor{
 		database:     database,
@@ -419,6 +457,10 @@ type NodeSqliteStorageOptions struct {
 	// BusyTimeoutMs is how long SQLite waits for a competing file lock. SQLite defaults to 0; this adapter defaults to
 	// 5,000 ms.
 	BusyTimeoutMs *int
+	// WorkingSetBytes bounds the decoded entries the storage retains so context reads do not decode the stored history
+	// again. It defaults to sqlite.DefaultWorkingSetBytes; 0 retains nothing.
+	// pig additive (D104): the working set of decoded entries has no Pi counterpart.
+	WorkingSetBytes *int64
 }
 
 const (
@@ -466,5 +508,13 @@ func OpenNodeSqliteStorage(path string, options NodeSqliteStorageOptions) (*dura
 	if err != nil {
 		return nil, err
 	}
-	return durablesqlite.Open(database)
+	var retained durablesqlite.Options
+	if options.WorkingSetBytes != nil {
+		// Options.WorkingSetBytes zero selects the default and a negative value retains nothing.
+		retained.WorkingSetBytes = *options.WorkingSetBytes
+		if retained.WorkingSetBytes == 0 {
+			retained.WorkingSetBytes = -1
+		}
+	}
+	return durablesqlite.Open(database, retained)
 }

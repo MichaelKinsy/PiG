@@ -340,3 +340,31 @@ func TestNormalizeMessages_PartialOrphanSynthesizesMissingResult(t *testing.T) {
 		t.Errorf("user message count = %d, want 1", userCount)
 	}
 }
+
+// pi-mono #6167 (D126): for a reasoning Chat Completions target the provider decides whether another model's thinking becomes
+// assistant text or reasoning_content, so NormalizeMessages must not inline it first.
+func TestNormalizeMessages_ForeignThinkingLeftToChatCompletionsProvider(t *testing.T) {
+	foreign := func() []AgentMessage {
+		return []AgentMessage{{Assistant: &AssistantMessage{Role: "assistant", StopReason: "stop", Provider: "anthropic", ModelID: "claude",
+			Content: []ai.AssistantContentBlock{ai.ThinkingContent{Thinking: "plan", ThinkingSignature: "sig"}, ai.TextContent{Text: "done"}}}}}
+	}
+	for _, tc := range []struct {
+		name      string
+		api       ai.API
+		reasoning bool
+		keep      bool
+	}{
+		{"reasoning chat completions", ai.APIOpenAICompletions, true, true},
+		{"non-reasoning chat completions", ai.APIOpenAICompletions, false, false},
+		{"other API", ai.APIOpenAIResponses, true, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			model := &ai.Model{ID: "target", Provider: &staticProvider{}, ProviderMeta: ai.ProviderMetadata{API: tc.api, Reasoning: tc.reasoning}}
+			got := NormalizeMessages(foreign(), model)
+			_, kept := got[0].Assistant.Content[0].(ai.ThinkingContent)
+			if kept != tc.keep {
+				t.Fatalf("thinking kept = %v, want %v: %+v", kept, tc.keep, got[0].Assistant.Content)
+			}
+		})
+	}
+}

@@ -2,6 +2,7 @@
 // node test/parity/testdata/latex-upstream-cases.mjs | gofmt > internal/latex/upstream_test.go
 // node test/parity/testdata/latex-upstream-cases.mjs --corpus > internal/latex/testdata/upstream-corpus.txt
 // Expected values come from the upstream tests, never from Pig. The generator also checks them against the installed pinned Pi renderer.
+import { PI_PACKAGE_VERSION } from "./pi-version.mjs";
 import assert from "node:assert/strict";
 import { readFileSync, realpathSync } from "node:fs";
 import { stripTypeScriptTypes } from "node:module";
@@ -12,7 +13,7 @@ import ts from "../../../extensions/sdk-ts/node_modules/typescript/lib/typescrip
 
 const pkg = realpathSync("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/package.json");
 const { renderLatex } = await import(pathToFileURL(resolve(dirname(pkg), "node_modules/@earendil-works/pi-tui/dist/latex.js")).href);
-assert.equal(JSON.parse(readFileSync(pkg, "utf8")).version, "1.0.3");
+assert.equal(JSON.parse(readFileSync(pkg, "utf8")).version, PI_PACKAGE_VERSION);
 const path = ".upstream/current/packages/tui/test/latex.test.ts";
 const source = readFileSync(path, "utf8");
 const ast = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true);

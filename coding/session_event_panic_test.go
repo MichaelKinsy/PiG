@@ -115,7 +115,7 @@ func TestManualCompactionCompletesWhenCompactionStartHandlerPanics(t *testing.T)
 
 	done := make(chan error, 1)
 	go func() {
-		result, err := sess.CompactResult(context.Background(), "")
+		result, err := sess.Compact(context.Background(), "")
 		if err == nil && !strings.Contains(result.Summary, "summary after panic") {
 			err = errors.New("unexpected summary " + result.Summary)
 		}
@@ -143,5 +143,35 @@ func TestManualCompactionCompletesWhenCompactionStartHandlerPanics(t *testing.T)
 	defer mu.Unlock()
 	if len(reported) != 1 || reported[0].Error != "panic: compaction handler failed" || reported[0].ExtensionPath != agentEventErrorPath {
 		t.Fatalf("reported = %+v", reported)
+	}
+}
+
+// A listener that panics while an extension error is reported is not dropped:
+// stderr names its panic value and still carries the error being reported.
+func TestReportExtensionErrorNamesAPanickingListener(t *testing.T) {
+	report := &extension.ExtensionError{ExtensionPath: agentEventErrorPath, Event: "agent_start", Error: "panic: original"}
+
+	runner := inproc.NewRunner(nil, t.TempDir())
+	runner.AddErrorListener(func(*extension.ExtensionError) { panic("listener exploded") })
+	var out strings.Builder
+	reportExtensionError(runner, report, &out)
+	want := "Extension error listener panicked: listener exploded\nExtension error (" + agentEventErrorPath + "): panic: original\n"
+	if out.String() != want {
+		t.Errorf("stderr = %q, want %q", out.String(), want)
+	}
+
+	healthy := inproc.NewRunner(nil, t.TempDir())
+	var heard []string
+	healthy.AddErrorListener(func(err *extension.ExtensionError) { heard = append(heard, err.Error) })
+	out.Reset()
+	reportExtensionError(healthy, report, &out)
+	if out.Len() != 0 || len(heard) != 1 || heard[0] != "panic: original" {
+		t.Errorf("healthy runner: stderr = %q, heard = %v; want the listener told and nothing on stderr", out.String(), heard)
+	}
+
+	out.Reset()
+	reportExtensionError(nil, report, &out)
+	if out.String() != "Extension error ("+agentEventErrorPath+"): panic: original\n" {
+		t.Errorf("no runner: stderr = %q", out.String())
 	}
 }

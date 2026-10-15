@@ -1,8 +1,9 @@
+import { PI_PACKAGE_VERSION } from "./pi-version.mjs";
 import {mkdtempSync,writeFileSync,rmSync,readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 const root=fileURLToPath(new URL('../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent',import.meta.url));
-if (JSON.parse(readFileSync(join(root,'package.json'),'utf8')).version!=='1.0.3') throw new Error('Expected Pi 1.0.3');
+if (JSON.parse(readFileSync(join(root,'package.json'),'utf8')).version!==PI_PACKAGE_VERSION) throw new Error(`Expected Pi ${PI_PACKAGE_VERSION}`);
 const {readClipboardImage}=await import(pathToFileURL(join(root,'dist/utils/clipboard-image.js')));
 const {loadPhoton}=await import(pathToFileURL(join(root,'dist/utils/photon.js')));
 const dir=mkdtempSync(join(process.env.PARITY_CLIPBOARD_DIR,'clipboard-pi-'));

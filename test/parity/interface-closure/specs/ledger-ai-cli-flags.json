@@ -1,0 +1,1060 @@
+[
+ {
+  "ids": [
+   "cli:pi-config/--approve"
+  ],
+  "targets": [
+   "coding/cli/config_command.go#runConfigCommand",
+   "coding/cli/config_command.go#printConfigCommandHelp"
+  ],
+  "production": [
+   "call:coding/cli/config_command.go#runConfigCommand"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryConfigCommandFlagsAsPi"
+  ],
+  "rationale": "Pi 1.0.4 package-manager-cli.ts handleConfigCommand reads --approve (line 810); runConfigCommand has the same arguments, help text and unknown-option/unexpected-argument errors, byte for byte with the app and config directory names."
+ },
+ {
+  "ids": [
+   "cli:pi-config/--help"
+  ],
+  "targets": [
+   "coding/cli/config_command.go#runConfigCommand",
+   "coding/cli/config_command.go#printConfigCommandHelp"
+  ],
+  "production": [
+   "call:coding/cli/config_command.go#runConfigCommand"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryConfigCommandFlagsAsPi"
+  ],
+  "rationale": "Pi 1.0.4 package-manager-cli.ts handleConfigCommand reads --help (line 800); runConfigCommand has the same arguments, help text and unknown-option/unexpected-argument errors, byte for byte with the app and config directory names."
+ },
+ {
+  "ids": [
+   "cli:pi-config/--local"
+  ],
+  "targets": [
+   "coding/cli/config_command.go#runConfigCommand",
+   "coding/cli/config_command.go#printConfigCommandHelp"
+  ],
+  "production": [
+   "call:coding/cli/config_command.go#runConfigCommand"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryConfigCommandFlagsAsPi"
+  ],
+  "rationale": "Pi 1.0.4 package-manager-cli.ts handleConfigCommand reads --local (line 808); runConfigCommand has the same arguments, help text and unknown-option/unexpected-argument errors, byte for byte with the app and config directory names."
+ },
+ {
+  "ids": [
+   "cli:pi-config/--no-approve"
+  ],
+  "targets": [
+   "coding/cli/config_command.go#runConfigCommand",
+   "coding/cli/config_command.go#printConfigCommandHelp"
+  ],
+  "production": [
+   "call:coding/cli/config_command.go#runConfigCommand"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryConfigCommandFlagsAsPi"
+  ],
+  "rationale": "Pi 1.0.4 package-manager-cli.ts handleConfigCommand reads --no-approve (line 812); runConfigCommand has the same arguments, help text and unknown-option/unexpected-argument errors, byte for byte with the app and config directory names."
+ },
+ {
+  "ids": [
+   "cli:pi-install/--approve"
+  ],
+  "targets": [
+   "coding/cli/package_commands.go#parsePackageCommand",
+   "coding/cli/package_commands.go#printPackageCommandHelp"
+  ],
+  "production": [
+   "call:coding/cli/package_commands.go#runPackageCommand"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryPackageCommandFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 package-manager-cli.ts parsePackageCommand reads --approve for `install` (line 454); parsePackageCommand sets the same option for every spelling, rejects it as an unknown option on the commands that do not list it, and `install --help` lists it."
+ },
+ {
+  "ids": [
+   "cli:pi-install/--help"
+  ],
+  "targets": [
+   "coding/cli/package_commands.go#parsePackageCommand",
+   "coding/cli/package_commands.go#printPackageCommandHelp"
+  ],
+  "production": [
+   "call:coding/cli/package_commands.go#runPackageCommand"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryPackageCommandFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 package-manager-cli.ts parsePackageCommand reads --help for `install` (line 404); parsePackageCommand sets the same option for every spelling, rejects it as an unknown option on the commands that do not list it, and `install --help` lists it."
+ },
+ {
+  "ids": [
+   "cli:pi-install/--local"
+  ],
+  "targets": [
+   "coding/cli/package_commands.go#parsePackageCommand",
+   "coding/cli/package_commands.go#printPackageCommandHelp"
+  ],
+  "production": [
+   "call:coding/cli/package_commands.go#runPackageCommand"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryPackageCommandFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 package-manager-cli.ts parsePackageCommand reads --local for `install` (line 409); parsePackageCommand sets the same option for every spelling, rejects it as an unknown option on the commands that do not list it, and `install --help` lists it."
+ },
+ {
+  "ids": [
+   "cli:pi-install/--no-approve"
+  ],
+  "targets": [
+   "coding/cli/package_commands.go#parsePackageCommand",
+   "coding/cli/package_commands.go#printPackageCommandHelp"
+  ],
+  "production": [
+   "call:coding/cli/package_commands.go#runPackageCommand"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryPackageCommandFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 package-manager-cli.ts parsePackageCommand reads --no-approve for `install` (line 459); parsePackageCommand sets the same option for every spelling, rejects it as an unknown option on the commands that do not list it, and `install --help` lists it."
+ },
+ {
+  "ids": [
+   "cli:pi-list/--approve"
+  ],
+  "targets": [
+   "coding/cli/package_commands.go#parsePackageCommand",
+   "coding/cli/package_commands.go#printPackageCommandHelp"
+  ],
+  "production": [
+   "call:coding/cli/package_commands.go#runPackageCommand"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryPackageCommandFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 package-manager-cli.ts parsePackageCommand reads --approve for `list` (line 454); parsePackageCommand sets the same option for every spelling, rejects it as an unknown option on the commands that do not list it, and `list --help` lists it."
+ },
+ {
+  "ids": [
+   "cli:pi-list/--help"
+  ],
+  "targets": [
+   "coding/cli/package_commands.go#parsePackageCommand",
+   "coding/cli/package_commands.go#printPackageCommandHelp"
+  ],
+  "production": [
+   "call:coding/cli/package_commands.go#runPackageCommand"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryPackageCommandFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 package-manager-cli.ts parsePackageCommand reads --help for `list` (line 404); parsePackageCommand sets the same option for every spelling, rejects it as an unknown option on the commands that do not list it, and `list --help` lists it."
+ },
+ {
+  "ids": [
+   "cli:pi-list/--no-approve"
+  ],
+  "targets": [
+   "coding/cli/package_commands.go#parsePackageCommand",
+   "coding/cli/package_commands.go#printPackageCommandHelp"
+  ],
+  "production": [
+   "call:coding/cli/package_commands.go#runPackageCommand"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryPackageCommandFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 package-manager-cli.ts parsePackageCommand reads --no-approve for `list` (line 459); parsePackageCommand sets the same option for every spelling, rejects it as an unknown option on the commands that do not list it, and `list --help` lists it."
+ },
+ {
+  "ids": [
+   "cli:pi-remove/--approve"
+  ],
+  "targets": [
+   "coding/cli/package_commands.go#parsePackageCommand",
+   "coding/cli/package_commands.go#printPackageCommandHelp"
+  ],
+  "production": [
+   "call:coding/cli/package_commands.go#runPackageCommand"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryPackageCommandFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 package-manager-cli.ts parsePackageCommand reads --approve for `remove` (line 454); parsePackageCommand sets the same option for every spelling, rejects it as an unknown option on the commands that do not list it, and `remove --help` lists it."
+ },
+ {
+  "ids": [
+   "cli:pi-remove/--help"
+  ],
+  "targets": [
+   "coding/cli/package_commands.go#parsePackageCommand",
+   "coding/cli/package_commands.go#printPackageCommandHelp"
+  ],
+  "production": [
+   "call:coding/cli/package_commands.go#runPackageCommand"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryPackageCommandFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 package-manager-cli.ts parsePackageCommand reads --help for `remove` (line 404); parsePackageCommand sets the same option for every spelling, rejects it as an unknown option on the commands that do not list it, and `remove --help` lists it."
+ },
+ {
+  "ids": [
+   "cli:pi-remove/--local"
+  ],
+  "targets": [
+   "coding/cli/package_commands.go#parsePackageCommand",
+   "coding/cli/package_commands.go#printPackageCommandHelp"
+  ],
+  "production": [
+   "call:coding/cli/package_commands.go#runPackageCommand"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryPackageCommandFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 package-manager-cli.ts parsePackageCommand reads --local for `remove` (line 409); parsePackageCommand sets the same option for every spelling, rejects it as an unknown option on the commands that do not list it, and `remove --help` lists it."
+ },
+ {
+  "ids": [
+   "cli:pi-remove/--no-approve"
+  ],
+  "targets": [
+   "coding/cli/package_commands.go#parsePackageCommand",
+   "coding/cli/package_commands.go#printPackageCommandHelp"
+  ],
+  "production": [
+   "call:coding/cli/package_commands.go#runPackageCommand"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryPackageCommandFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 package-manager-cli.ts parsePackageCommand reads --no-approve for `remove` (line 459); parsePackageCommand sets the same option for every spelling, rejects it as an unknown option on the commands that do not list it, and `remove --help` lists it."
+ },
+ {
+  "ids": [
+   "cli:pi-update/--all"
+  ],
+  "targets": [
+   "coding/cli/package_commands.go#parsePackageCommand",
+   "coding/cli/package_commands.go#printPackageCommandHelp"
+  ],
+  "production": [
+   "call:coding/cli/package_commands.go#runPackageCommand"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryPackageCommandFlagsParseAsPiParses",
+   "test:coding/cli/package_command_errors_parity_test.go#TestUpdateHelpMatchesPi",
+   "test:coding/cli/package_command_errors_parity_test.go#TestUpdateConflictMessagesMatchPi"
+  ],
+  "rationale": "Pi 1.0.4 package-manager-cli.ts parsePackageCommand reads --all for `update` (line 445); parsePackageCommand sets the same option for every spelling, rejects it as an unknown option on the commands that do not list it, and `update --help` lists it."
+ },
+ {
+  "ids": [
+   "cli:pi-update/--approve"
+  ],
+  "targets": [
+   "coding/cli/package_commands.go#parsePackageCommand",
+   "coding/cli/package_commands.go#printPackageCommandHelp"
+  ],
+  "production": [
+   "call:coding/cli/package_commands.go#runPackageCommand"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryPackageCommandFlagsParseAsPiParses",
+   "test:coding/cli/package_command_errors_parity_test.go#TestUpdateHelpMatchesPi",
+   "test:coding/cli/package_command_errors_parity_test.go#TestUpdateConflictMessagesMatchPi"
+  ],
+  "rationale": "Pi 1.0.4 package-manager-cli.ts parsePackageCommand reads --approve for `update` (line 454); parsePackageCommand sets the same option for every spelling, rejects it as an unknown option on the commands that do not list it, and `update --help` lists it."
+ },
+ {
+  "ids": [
+   "cli:pi-update/--extension"
+  ],
+  "targets": [
+   "coding/cli/package_commands.go#parsePackageCommand",
+   "coding/cli/package_commands.go#printPackageCommandHelp"
+  ],
+  "production": [
+   "call:coding/cli/package_commands.go#runPackageCommand"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryPackageCommandFlagsParseAsPiParses",
+   "test:coding/cli/package_command_errors_parity_test.go#TestUpdateHelpMatchesPi",
+   "test:coding/cli/package_command_errors_parity_test.go#TestUpdateConflictMessagesMatchPi"
+  ],
+  "rationale": "Pi 1.0.4 package-manager-cli.ts parsePackageCommand reads --extension for `update` (line 473); parsePackageCommand sets the same option for every spelling, rejects it as an unknown option on the commands that do not list it, and `update --help` lists it."
+ },
+ {
+  "ids": [
+   "cli:pi-update/--extensions"
+  ],
+  "targets": [
+   "coding/cli/package_commands.go#parsePackageCommand",
+   "coding/cli/package_commands.go#printPackageCommandHelp"
+  ],
+  "production": [
+   "call:coding/cli/package_commands.go#runPackageCommand"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryPackageCommandFlagsParseAsPiParses",
+   "test:coding/cli/package_command_errors_parity_test.go#TestUpdateHelpMatchesPi",
+   "test:coding/cli/package_command_errors_parity_test.go#TestUpdateConflictMessagesMatchPi"
+  ],
+  "rationale": "Pi 1.0.4 package-manager-cli.ts parsePackageCommand reads --extensions for `update` (line 427); parsePackageCommand sets the same option for every spelling, rejects it as an unknown option on the commands that do not list it, and `update --help` lists it."
+ },
+ {
+  "ids": [
+   "cli:pi-update/--force"
+  ],
+  "targets": [
+   "coding/cli/package_commands.go#parsePackageCommand",
+   "coding/cli/package_commands.go#printPackageCommandHelp"
+  ],
+  "production": [
+   "call:coding/cli/package_commands.go#runPackageCommand"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryPackageCommandFlagsParseAsPiParses",
+   "test:coding/cli/package_command_errors_parity_test.go#TestUpdateHelpMatchesPi",
+   "test:coding/cli/package_command_errors_parity_test.go#TestUpdateConflictMessagesMatchPi"
+  ],
+  "rationale": "Pi 1.0.4 package-manager-cli.ts parsePackageCommand reads --force for `update` (line 464); parsePackageCommand sets the same option for every spelling, rejects it as an unknown option on the commands that do not list it, and `update --help` lists it."
+ },
+ {
+  "ids": [
+   "cli:pi-update/--help"
+  ],
+  "targets": [
+   "coding/cli/package_commands.go#parsePackageCommand",
+   "coding/cli/package_commands.go#printPackageCommandHelp"
+  ],
+  "production": [
+   "call:coding/cli/package_commands.go#runPackageCommand"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryPackageCommandFlagsParseAsPiParses",
+   "test:coding/cli/package_command_errors_parity_test.go#TestUpdateHelpMatchesPi",
+   "test:coding/cli/package_command_errors_parity_test.go#TestUpdateConflictMessagesMatchPi"
+  ],
+  "rationale": "Pi 1.0.4 package-manager-cli.ts parsePackageCommand reads --help for `update` (line 404); parsePackageCommand sets the same option for every spelling, rejects it as an unknown option on the commands that do not list it, and `update --help` lists it."
+ },
+ {
+  "ids": [
+   "cli:pi-update/--models"
+  ],
+  "targets": [
+   "coding/cli/package_commands.go#parsePackageCommand",
+   "coding/cli/package_commands.go#printPackageCommandHelp"
+  ],
+  "production": [
+   "call:coding/cli/package_commands.go#runPackageCommand"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryPackageCommandFlagsParseAsPiParses",
+   "test:coding/cli/package_command_errors_parity_test.go#TestUpdateHelpMatchesPi",
+   "test:coding/cli/package_command_errors_parity_test.go#TestUpdateConflictMessagesMatchPi"
+  ],
+  "rationale": "Pi 1.0.4 package-manager-cli.ts parsePackageCommand reads --models for `update` (line 436); parsePackageCommand sets the same option for every spelling, rejects it as an unknown option on the commands that do not list it, and `update --help` lists it."
+ },
+ {
+  "ids": [
+   "cli:pi-update/--no-approve"
+  ],
+  "targets": [
+   "coding/cli/package_commands.go#parsePackageCommand",
+   "coding/cli/package_commands.go#printPackageCommandHelp"
+  ],
+  "production": [
+   "call:coding/cli/package_commands.go#runPackageCommand"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryPackageCommandFlagsParseAsPiParses",
+   "test:coding/cli/package_command_errors_parity_test.go#TestUpdateHelpMatchesPi",
+   "test:coding/cli/package_command_errors_parity_test.go#TestUpdateConflictMessagesMatchPi"
+  ],
+  "rationale": "Pi 1.0.4 package-manager-cli.ts parsePackageCommand reads --no-approve for `update` (line 459); parsePackageCommand sets the same option for every spelling, rejects it as an unknown option on the commands that do not list it, and `update --help` lists it."
+ },
+ {
+  "ids": [
+   "cli:pi-update/--self"
+  ],
+  "targets": [
+   "coding/cli/package_commands.go#parsePackageCommand",
+   "coding/cli/package_commands.go#printPackageCommandHelp"
+  ],
+  "production": [
+   "call:coding/cli/package_commands.go#runPackageCommand"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryPackageCommandFlagsParseAsPiParses",
+   "test:coding/cli/package_command_errors_parity_test.go#TestUpdateHelpMatchesPi",
+   "test:coding/cli/package_command_errors_parity_test.go#TestUpdateConflictMessagesMatchPi"
+  ],
+  "rationale": "Pi 1.0.4 package-manager-cli.ts parsePackageCommand reads --self for `update` (line 418); parsePackageCommand sets the same option for every spelling, rejects it as an unknown option on the commands that do not list it, and `update --help` lists it."
+ },
+ {
+  "ids": [
+   "cli:pi/--api-key"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/cli_runtime_build.go#cliRuntimeBuilder.buildSession"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:119 parses --api-key; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in cli_runtime_build.go buildSession."
+ },
+ {
+  "ids": [
+   "cli:pi/--append-system-prompt"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/resource_prompts.go#resolvePromptInputs"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:123 parses --append-system-prompt; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in resource_prompts.go resolvePromptInputs."
+ },
+ {
+  "ids": [
+   "cli:pi/--approve"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/cli_runtime_build.go#cliRuntimeBuilder.buildResources"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:235 parses --approve and -a; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in cli_runtime_build.go buildResources."
+ },
+ {
+  "ids": [
+   "cli:pi/--continue"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/startup_session.go#resolveStartupSessionSelection"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:111 parses --continue and -c; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in startup_session.go resolveStartupSessionSelection."
+ },
+ {
+  "ids": [
+   "cli:pi/--exclude-tools"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/extension_tool_registry.go#toolRegistryFilters"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:156 parses --exclude-tools and -xt; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in extension_tool_registry.go toolRegistryFilters."
+ },
+ {
+  "ids": [
+   "cli:pi/--export"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/main.go#Main"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:178 parses --export; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in main.go Main."
+ },
+ {
+  "ids": [
+   "cli:pi/--extension"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/configured_resources.go#collectExtensionConfigs"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:180 parses --extension and -e; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in configured_resources.go collectExtensionConfigs."
+ },
+ {
+  "ids": [
+   "cli:pi/--fork"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/startup_session.go#resolveStartupSessionSelection"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:138 parses --fork; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in startup_session.go resolveStartupSessionSelection."
+ },
+ {
+  "ids": [
+   "cli:pi/--help"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/main.go#Main"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:92 parses --help and -h; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in main.go Main."
+ },
+ {
+  "ids": [
+   "cli:pi/--list-models"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/cli_runtime_build.go#cliRuntimeBuilder.buildResources"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:212 parses --list-models; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in cli_runtime_build.go buildResources."
+ },
+ {
+  "ids": [
+   "cli:pi/--mode"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/extensions.go#processAppMode"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:96 parses --mode; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in extensions.go processAppMode."
+ },
+ {
+  "ids": [
+   "cli:pi/--model"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/cli_runtime_build.go#cliRuntimeBuilder.buildSession"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:117 parses --model; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in cli_runtime_build.go buildSession."
+ },
+ {
+  "ids": [
+   "cli:pi/--models"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/cli_runtime_build.go#cliRuntimeBuilder.buildResources"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:142 parses --models; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in cli_runtime_build.go buildResources."
+ },
+ {
+  "ids": [
+   "cli:pi/--name"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/args.go#sessionNameFromFlags"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:126 parses --name and -n; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in args.go sessionNameFromFlags."
+ },
+ {
+  "ids": [
+   "cli:pi/--no-approve"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/cli_runtime_build.go#cliRuntimeBuilder.buildResources"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:237 parses --no-approve and -na; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in cli_runtime_build.go buildResources."
+ },
+ {
+  "ids": [
+   "cli:pi/--no-builtin-tools"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/cli_runtime_build.go#cliRuntimeBuilder.buildSession"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:149 parses --no-builtin-tools and -nbt; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in cli_runtime_build.go buildSession."
+ },
+ {
+  "ids": [
+   "cli:pi/--no-context-files"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/reload_resources.go#reloadResourceSnapshotProvider"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:210 parses --no-context-files and -nc; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in reload_resources.go reloadResourceSnapshotProvider."
+ },
+ {
+  "ids": [
+   "cli:pi/--no-extensions"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/configured_resources.go#collectExtensionConfigs"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:183 parses --no-extensions and -ne; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in configured_resources.go collectExtensionConfigs."
+ },
+ {
+  "ids": [
+   "cli:pi/--no-mcp"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/extension_set.go#enabledBuiltinExtensionPaths"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:185 parses --no-mcp; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in extension_set.go enabledBuiltinExtensionPaths."
+ },
+ {
+  "ids": [
+   "cli:pi/--no-prompt-templates"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/configured_resources.go#collectPromptPaths"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:206 parses --no-prompt-templates and -np; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in configured_resources.go collectPromptPaths."
+ },
+ {
+  "ids": [
+   "cli:pi/--no-session"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/startup_session.go#resolveStartupSessionSelection"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:132 parses --no-session; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in startup_session.go resolveStartupSessionSelection."
+ },
+ {
+  "ids": [
+   "cli:pi/--no-skills"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/configured_resources.go#collectSkillInputs"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:204 parses --no-skills and -ns; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in configured_resources.go collectSkillInputs."
+ },
+ {
+  "ids": [
+   "cli:pi/--no-themes"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/configured_resources.go#collectThemePaths"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:208 parses --no-themes; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in configured_resources.go collectThemePaths."
+ },
+ {
+  "ids": [
+   "cli:pi/--no-tools"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/extension_tool_registry.go#toolRegistryFilters"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:147 parses --no-tools and -nt; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in extension_tool_registry.go toolRegistryFilters."
+ },
+ {
+  "ids": [
+   "cli:pi/--offline"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/main.go#Main"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:239 parses --offline; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in main.go Main."
+ },
+ {
+  "ids": [
+   "cli:pi/--print"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/extensions.go#processAppMode"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:171 parses --print and -p; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in extensions.go processAppMode."
+ },
+ {
+  "ids": [
+   "cli:pi/--prompt-template"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/configured_resources.go#collectPromptPaths"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:190 parses --prompt-template; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in configured_resources.go collectPromptPaths."
+ },
+ {
+  "ids": [
+   "cli:pi/--provider"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/cli_runtime_build.go#cliRuntimeBuilder.buildSession"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:115 parses --provider; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in cli_runtime_build.go buildSession."
+ },
+ {
+  "ids": [
+   "cli:pi/--resume"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/startup_session.go#resolveStartupSessionSelection"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:113 parses --resume and -r; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in startup_session.go resolveStartupSessionSelection."
+ },
+ {
+  "ids": [
+   "cli:pi/--session"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/startup_session.go#resolveStartupSessionSelection"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:134 parses --session; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in startup_session.go resolveStartupSessionSelection."
+ },
+ {
+  "ids": [
+   "cli:pi/--session-dir"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/main.go#Main"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:140 parses --session-dir; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in main.go Main."
+ },
+ {
+  "ids": [
+   "cli:pi/--session-id"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/startup_session.go#resolveStartupSessionSelection"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:136 parses --session-id; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in startup_session.go resolveStartupSessionSelection."
+ },
+ {
+  "ids": [
+   "cli:pi/--skill"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/configured_resources.go#collectSkillInputs"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:187 parses --skill; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in configured_resources.go collectSkillInputs."
+ },
+ {
+  "ids": [
+   "cli:pi/--system-prompt"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/resource_prompts.go#resolvePromptInputs"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:121 parses --system-prompt; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in resource_prompts.go resolvePromptInputs."
+ },
+ {
+  "ids": [
+   "cli:pi/--theme"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/configured_resources.go#collectThemePaths"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:193 parses --theme; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in configured_resources.go collectThemePaths."
+ },
+ {
+  "ids": [
+   "cli:pi/--thinking"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/cli_runtime_build.go#cliRuntimeBuilder.buildSession"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:161 parses --thinking; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in cli_runtime_build.go buildSession."
+ },
+ {
+  "ids": [
+   "cli:pi/--tools"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/extension_tool_registry.go#toolRegistryFilters"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:151 parses --tools and -t; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in extension_tool_registry.go toolRegistryFilters."
+ },
+ {
+  "ids": [
+   "cli:pi/--tui-mode"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/main.go#Main"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:219 parses --tui-mode; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in main.go Main."
+ },
+ {
+  "ids": [
+   "cli:pi/--use-theme"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/startup_settings.go#startupUIOptions"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:196 parses --use-theme; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in startup_settings.go startupUIOptions."
+ },
+ {
+  "ids": [
+   "cli:pi/--verbose"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/main.go#Main"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:233 parses --verbose; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in main.go Main."
+ },
+ {
+  "ids": [
+   "cli:pi/--version"
+  ],
+  "targets": [
+   "coding/cli/args.go#parseFlags",
+   "coding/cli/args.go#printHelp"
+  ],
+  "production": [
+   "call:coding/cli/main.go#Main"
+  ],
+  "evidence": [
+   "test:coding/cli/cli_inventory_test.go#TestCLIInventoryTopLevelFlagsParseAsPiParses"
+  ],
+  "rationale": "Pi 1.0.4 cli/args.ts:94 parses --version and -v; parseFlags sets the same Args field for every spelling and printHelp lists the flag on one line with its aliases, both asserted per inventory row. The parsed value is consumed in main.go Main."
+ }
+]

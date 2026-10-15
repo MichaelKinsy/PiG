@@ -102,7 +102,7 @@ func TestResolveUpstreamPiBinStagesOptedInRealAuth(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("PIG_PARITY_REAL_AUTH", authPath)
-	bin := writeFakePi(t, "pi-under-test", coding.UpstreamVersion)
+	bin := writeStampedFakePi(t, "pi-under-test")
 	t.Setenv("PIG_PARITY_PI_BIN", bin)
 	resolved := ResolveUpstreamPiBin(t)
 	var agentDir string
@@ -135,7 +135,7 @@ func TestResolveUpstreamPiBinNeverStagesRealAuthWithoutOptIn(t *testing.T) {
 	if err := os.WriteFile(authPath, realCreds, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	bin := writeFakePi(t, "pi-under-test", coding.UpstreamVersion)
+	bin := writeStampedFakePi(t, "pi-under-test")
 	t.Setenv("PIG_PARITY_PI_BIN", bin)
 	resolved := ResolveUpstreamPiBin(t)
 	var agentDir string
@@ -252,7 +252,7 @@ func TestResolveUpstreamPiBinFailsWhenVersionCheckErrorsByDefault(t *testing.T) 
 }
 
 func TestResolveUpstreamPiBinHonorsExplicitOverride(t *testing.T) {
-	bin := writeFakePi(t, "pi-under-test", coding.UpstreamVersion)
+	bin := writeStampedFakePi(t, "pi-under-test")
 	t.Setenv("PIG_PARITY_PI_BIN", bin)
 
 	got := ResolveUpstreamPiBin(t)
@@ -278,6 +278,13 @@ func TestResolveUpstreamPiBinMiseInstallSkipsVersionCheck(t *testing.T) {
 	t.Setenv("USERPROFILE", home)
 	t.Setenv("PIG_PARITY_PI_BIN", "")
 	t.Setenv("PIG_PARITY_REAL_AUTH", "")
+	t.Setenv("PIG_PARITY_PI_PUBLISHED", "1")
+	if coding.UpstreamVersion != coding.UpstreamPackageVersion {
+		if publishedOracleAllowed() {
+			t.Fatal("a commit pin has no published Pi: the opt-in must not select a mise install")
+		}
+		return
+	}
 	bin := filepath.Join(home, ".local", "share", "mise", "installs", upstreamPiInstallDirs[0], coding.UpstreamVersion, "bin", "pi")
 	if err := os.MkdirAll(filepath.Dir(bin), 0o755); err != nil {
 		t.Fatal(err)
@@ -293,6 +300,18 @@ func TestResolveUpstreamPiBinMiseInstallSkipsVersionCheck(t *testing.T) {
 	if !slices.Contains(got.Env, "PI_SKIP_VERSION_CHECK=1") {
 		t.Fatalf("ResolveUpstreamPiBin env = %v, want PI_SKIP_VERSION_CHECK=1", got.Env)
 	}
+}
+
+// writeStampedFakePi writes a fake oracle that reports the pinned package version beside the build stamp
+// automation/pin/oracle.py writes, so it stands for the source build of the pinned commit for a tag pin and a commit pin alike.
+func writeStampedFakePi(t *testing.T, name string) string {
+	t.Helper()
+	bin := writeFakePi(t, name, coding.UpstreamPackageVersion)
+	stamp := `{"commit":"` + coding.UpstreamCommit + `","source":"build"}`
+	if err := os.WriteFile(filepath.Join(filepath.Dir(bin), ".pig-pi-oracle.json"), []byte(stamp), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return bin
 }
 
 // writeFakePi writes a stand-in pi that prints version for --version. Windows

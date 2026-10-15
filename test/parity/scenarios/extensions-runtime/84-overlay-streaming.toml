@@ -1,0 +1,91 @@
+# Behavior family: extensions-runtime
+# Surface: raw overlays a ui.custom factory shows with tui.showOverlay take focus and keys through handle.focus()/unfocus() while
+# the controller's interval redraws it (Pi 1.2.0 interactive-mode.ts:3008; tui.ts:783-819).
+#
+# testdata/ext/overlay-qa-tests.ts is Pi 1.2.0's examples/extensions/overlay-qa-tests.ts, byte for byte (see 84-overlay-focus).
+# /overlay-streaming shows three non-capturing input panels and streams a line every 500 ms. Tab on the controller focuses Panel A;
+# Tab in a panel unfocuses it and focuses the next. The focused panel draws on top, so it covers the start of the controller's
+# "Current focus" row. The compared crop replaces only each stream line's wall-clock time and counter. Before the showOverlay
+# slice PiG threw "this.tui.showOverlay is not a function".
+#
+# Upstream evidence (Pi 1.2.0, parity harness, 2026-10-13, 120x40 tmux, one run kept with an impossible both_contain entry):
+#   keys: "/overlay-streaming" Enter (wait "Streaming line 9..."), Tab, "q", Tab, "w"
+#   crop: start="Panel A" end="Tab = cycle focus | Esc = close all"; raw cropped upstream block (excerpt):
+#     Panel A                         │
+#       │ ○ unfocused                     │
+#       │ > q                             │
+#       │ Panel B                         │
+#       │ ● FOCUSED                       │
+#       │ (receiving input)               │
+#       │ > w                             │
+#       │                                 │─────────── Streaming + Input Test ─────────────────╮
+#       ╰─────────────────────────────────╯nt focus: Panel B                                   │
+#       │ Panel C                   │ Simulated streaming output:                              │
+#       │ ○ unfocused               │ [4:33:10 AM] Streaming line 2...                         │
+#       │ > (type here)             │ [4:33:11 AM] Streaming line 4...                         │
+#                                   │ Tab = cycle focus | Esc = close all
+#   PiG's crop matched after the stream-line rule (output_normalized_equal).
+
+name = "84-overlay-streaming"
+description = "Pi's /overlay-streaming: panels shown from the factory's tui take focus and keys in turn while streaming redraws the controller"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/tui/src/tui.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/quiet-pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/quiet-pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/overlay-qa-tests.ts"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/overlay-qa-tests.ts"]
+
+[tmux]
+width = 120
+height = 40
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Panel A"
+capture_end = "Tab = cycle focus | Esc = close all"
+
+[[tmux.steps]]
+keys = ["/overlay-streaming", "Enter"]
+wait_contains = ["Streaming + Input Test", "Streaming line 9..."]
+wait_timeout_seconds = 25
+
+[[tmux.steps]]
+keys = ["Tab"]
+wait_contains = ["Current focus: Panel A"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["q"]
+wait_contains = ["> q"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Tab"]
+wait_contains = ["focus: Panel B"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["w"]
+wait_contains = ["> w"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ["focus: Panel B", "> q", "> w"]
+both_not_contain = ["panic:", "is not a function"]
+output_normalized_equal = true
+runs = 3
+
+# normalize-rationale: only the stream lines' wall-clock timestamps and line numbers vary with when the screen is captured; panels, focus and layout stay compared.
+[[assert.normalize_replace]]
+pattern = '\[[0-9]{1,2}:[0-9]{2}:[0-9]{2}( [AP]M)?\] Streaming line [0-9]+\.\.\. *'
+with = '[TIME] Streaming line N... '
+reason = "Each stream line carries the local time and a counter that advances every 500 ms; the number shown depends on capture time."

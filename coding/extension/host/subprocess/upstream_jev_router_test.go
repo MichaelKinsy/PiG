@@ -1,3 +1,5 @@
+//go:build !pig_strip_node_extensions
+
 package subprocess
 
 import (
@@ -24,8 +26,8 @@ func loadJevRouter(t *testing.T) (*Host, extension.PendingVirtualModelRegistrati
 	host := NewHostWithConfigRoot(t.TempDir(), t.TempDir())
 	t.Cleanup(func() { host.Shutdown("test done") })
 	bridge := NewUIBridge(func() {})
-	bridge.SetActions(&HostCallbacks{GetModels: func() []map[string]any {
-		return []map[string]any{codexModel("gpt-5.6-sol"), codexModel("gpt-5.6-terra"), codexModel("gpt-5.6-luna")}
+	bridge.SetActions(&HostCallbacks{GetModels: func() []json.RawMessage {
+		return modelJSONs(codexModel("gpt-5.6-sol"), codexModel("gpt-5.6-terra"), codexModel("gpt-5.6-luna"))
 	}})
 	host.SetUIBridge(bridge)
 	entry := filepath.Join(findModuleRoot(t), ".upstream", "current", "packages", "coding-agent", "examples", "extensions", "jev-router.ts")

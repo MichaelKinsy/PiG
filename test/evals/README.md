@@ -13,6 +13,7 @@ and runs through `make`:
 | `make profile`, `make pgo` | Profiles pig round trips with `PIG_PROFILE`; `pgo` merges CPU profiles for a profile-guided build. |
 | `make bench`, `make bench-compare` | Go benchmarks and a median comparison against a saved base. |
 | `make evals-test` | Unit tests for pigeval. |
+| `make bench-overhead`, `bench-reliability`, `bench-longhistory`, `bench-durable`, `bench-harbor` | The pinned-arm benchmark suite in `bench/evals` (PiG 0.5, PiG 0.4.1, Pi 1.1.0, Claude Code, Codex, Copilot): see `bench/evals/README.md`. |
 
 `make setup SETUP_ARGS=--harnesses=all` installs the pinned third-party
 harnesses under `~/.cache/pig-dev/harnesses`, never globally.

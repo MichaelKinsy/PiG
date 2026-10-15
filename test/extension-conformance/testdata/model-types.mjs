@@ -20,7 +20,7 @@ async function classifyImpl(model, request, options) {
     throw new Error("classifier cancelled");
   }
   const answers = {};
-  for (const key of Object.keys(request.questions).reverse()) answers[key] = { type: "bool", probability: text.length / 100 };
+  for (const key of Object.keys(request.questions).reverse()) answers[key] = { type: "bool", probability: (text.length + 10 * (request.images?.length ?? 0)) / 100 };
   return { api: model.api, provider: model.provider, model: model.id, answers, stopReason: "stop", timestamp: 2 };
 }
 
@@ -66,7 +66,7 @@ export default function (pi) {
     return reply({
       classifiers: ids(registry.getModelsOfType("classifier")), chat: ids(registry.getModelsOfType("chat")),
       images: ids(registry.getModelsOfType("image", "openrouter")), available: ids(await registry.getAvailableOfType("classifier", "typesafe")),
-      foundWindow: found.contextWindow, missing: registry.findOfType("classifier", "typesafe", "missing") ?? null,
+      foundWindow: found.contextWindow, ofTypeWindow: registry.getModelOfType("classifier", "typesafe", "jev-latest").contextWindow, ofTypeMissing: registry.getModelOfType("classifier", "typesafe", "missing") ?? null, missing: registry.findOfType("classifier", "typesafe", "missing") ?? null,
     });
   });
   tool("classify_probe", async (_id, _params, _signal, _update, ctx) => {
@@ -74,8 +74,9 @@ export default function (pi) {
     const model = registry.findOfType("classifier", "typesafe", "jev-latest");
     const result = await registry.classify(model, approval("Looks good"), { apiKey: "sk-conf" });
     const failed = await registry.classify(model, approval("fail"));
+    const withImages = await registry.classify(model, { ...approval("Looks good"), images: [{ type: "image", data: "aW1hZ2U=", mimeType: "image/png" }] });
     return reply({
-      stop: result.stopReason, answers: Object.keys(result.answers), approved: result.answers.approved.probability, model: result.model,
+      stop: result.stopReason, answers: Object.keys(result.answers), approved: result.answers.approved.probability, imagesApproved: withImages.answers.approved.probability, model: result.model,
       failedStop: failed.stopReason, failedMessage: failed.errorMessage ?? null, failedProvider: failed.provider,
     });
   });
@@ -136,7 +137,45 @@ export default function (pi) {
       }
     });
     const colors = Object.fromEntries((params.tokens ?? []).map((token) => [token, theme.colors[token] ?? null]));
-    const fgs = Object.fromEntries((params.fgTokens ?? []).map((token) => [token, theme.fg(token, "x")]));
-    return reply({ appearance: theme.appearance ?? null, colors, styles, fgs });
+    const fgs = Object.fromEntries((params.fgTokens ?? []).map((token) => [token, themeFg(theme, token)]));
+    return reply({ appearance: theme.appearance ?? null, colors, styles, fgs, queries: themeQueries(theme, params) });
   });
+}
+
+// The rest of ctx.ui.theme: modifiers, getFgAnsi/getBgAnsi/bg for the tokens the test passes, getColorMode, the border colors and sourcePath. A throw is "throw:" and its message.
+function themeQueries(theme, params) {
+  if (!params.queries) return null;
+  const attempt = (fn) => {
+    try {
+      return fn();
+    } catch (error) {
+      return `throw:${error.message}`;
+    }
+  };
+  const tokens = params.ansiTokens ?? [];
+  const modifierStyles = {
+    bold: (text) => theme.bold(text), italic: (text) => theme.italic(text), underline: (text) => theme.underline(text),
+    inverse: (text) => theme.inverse(text), strikethrough: (text) => theme.strikethrough(text),
+  };
+  const byToken = (fn) => Object.fromEntries(tokens.map((token) => [token, attempt(() => fn(token))]));
+  return {
+    modifiers: Object.fromEntries(Object.entries(modifierStyles).map(([name, style]) => [name, style("x")])),
+    modifierTexts: Object.fromEntries(Object.entries(modifierStyles).map(([name, style]) => [name, (params.modifierTexts ?? []).map((text) => style(text))])),
+    fgAnsi: byToken((token) => theme.getFgAnsi(token)),
+    bgAnsi: byToken((token) => theme.getBgAnsi(token)),
+    bgs: byToken((token) => theme.bg(token, "x")),
+    mode: theme.getColorMode(),
+    thinking: Object.fromEntries((params.levels ?? []).map((level) => [level, attempt(() => theme.getThinkingBorderColor(level)("x"))])),
+    bash: attempt(() => theme.getBashModeBorderColor()("x")),
+    sourcePath: theme.sourcePath ?? null,
+  };
+}
+
+// theme.fg(token, "x"), or "throw:" and the message when the SDK throws, so one unknown token does not hide the others.
+function themeFg(theme, token) {
+  try {
+    return theme.fg(token, "x");
+  } catch (error) {
+    return `throw:${error.message}`;
+  }
 }

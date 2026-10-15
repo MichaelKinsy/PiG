@@ -63,6 +63,40 @@ func newJSRegExp(source string, ignoreCase bool) (*jsRegExp, error) {
 	return compiled, nil
 }
 
+var (
+	anchoredCacheMu sync.Mutex
+	anchoredCache   = map[regexpKey]*jsRegExp{}
+)
+
+// newAnchoredJSRegExp is a RegExp that matches only at the index its caller starts at, and nowhere else: the joined alternation of a subset of a matcher's branches. It has no unanchored form.
+func newAnchoredJSRegExp(source string, ignoreCase bool) (*jsRegExp, error) {
+	key := regexpKey{source, ignoreCase}
+	anchoredCacheMu.Lock()
+	cached := anchoredCache[key]
+	anchoredCacheMu.Unlock()
+	if cached != nil {
+		return cached, nil
+	}
+	translated, groups, err := translateJSRegExp(source, ignoreCase)
+	if err != nil {
+		return nil, err
+	}
+	anchored, err := regexp2.Compile(`\G(?:`+translated+`)`, regexp2.ECMAScript)
+	if err != nil {
+		return nil, fmt.Errorf("invalid regular expression /%s/: %w", source, err)
+	}
+	compiled := &jsRegExp{source: source, ignoreCase: ignoreCase, groups: groups, anchored: anchored}
+	anchoredCacheMu.Lock()
+	anchoredCache[key] = compiled
+	anchoredCacheMu.Unlock()
+	return compiled, nil
+}
+
+// execAt is the match that starts at index start, or nil. Lookbehind and ^ still see the units before start.
+func (r *jsRegExp) execAt(input []rune, start int) *jsMatch {
+	return r.result(r.anchored.FindRunesMatchStartingAt(input, start))
+}
+
 // exec is RegExp.prototype.exec with lastIndex = start: the leftmost match at or after start. Lookbehind and ^ still see the units before start.
 func (r *jsRegExp) exec(input []rune, start int) *jsMatch {
 	if start > len(input) {

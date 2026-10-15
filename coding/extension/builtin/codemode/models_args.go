@@ -138,7 +138,7 @@ func memberValues(raw json.RawMessage) []json.RawMessage {
 }
 
 // classifierContextShape is upstream CLASSIFIER_CONTEXT_SHAPE.
-const classifierContextShape = `{ state: { ... }, questions: { <id>: { type: "choice", instructions, criteria: { <label>: <meaning> } } | { type: "score", instructions, criteria: [<lowest level>, ..., <highest level>] } | { type: "bool", instructions, criteria: { true: <meaning>, false: <meaning> } } } }`
+const classifierContextShape = `{ state: { ... }, images?: [{ type: "image", data: <base64>, mimeType }], questions: { <id>: { type: "choice", instructions, criteria: { <label>: <meaning> } } | { type: "score", instructions, criteria: [<lowest level>, ..., <highest level>] } | { type: "bool", instructions, criteria: { true: <meaning>, false: <meaning> } } } }`
 
 // checkClassifierContext checks a script's classifier context, so mistakes fail with the expected shape instead of a
 // provider error.
@@ -146,13 +146,25 @@ const classifierContextShape = `{ state: { ... }, questions: { <id>: { type: "ch
 // upstream: execute.ts checkClassifierContext
 func checkClassifierContext(context json.RawMessage) error {
 	fail := func(problem string) error {
-		return fmt.Errorf("models.classify() %s. Expected context: %s. See \"Classify\" in %s.", problem, classifierContextShape, DocsPath())
+		return fmt.Errorf("models.classify() %s. Expected context: %s.%s", problem, classifierContextShape, docsCitation(" See \"Classify\" in %s."))
 	}
 	if !isRecord(context) {
 		return fail("expects a context object as its second argument, got " + describeValue(context))
 	}
 	if state := field(context, "state"); !isRecord(state) {
 		return fail("context.state must be an object, got " + describeValue(state))
+	}
+	// images is optional (execute.ts checkClassifierContext): an array of image blocks.
+	if images := field(context, "images"); images != nil {
+		var blocks []json.RawMessage
+		if jsonKind(images) != '[' || json.Unmarshal(images, &blocks) != nil {
+			return fail("context.images must be an array, got " + describeValue(images))
+		}
+		for index, block := range blocks {
+			if blockType, _ := stringArg(field(block, "type")); !isRecord(block) || blockType != "image" || jsonKind(field(block, "data")) != '"' || jsonKind(field(block, "mimeType")) != '"' {
+				return fail(fmt.Sprintf("context.images[%d] must be an image block, got %s", index, describeValue(block)))
+			}
+		}
 	}
 	questions := field(context, "questions")
 	object := objectOf(questions)
@@ -196,7 +208,7 @@ func checkClassifierContext(context json.RawMessage) error {
 // upstream: execute.ts checkImagesContext
 func checkImagesContext(context json.RawMessage) error {
 	fail := func(problem string) error {
-		return fmt.Errorf("models.generateImages() %s. Expected context: { input: [{ type: \"text\", text: <prompt> }, ...optional { type: \"image\", data: <base64>, mimeType } references] }. See \"Generate images\" in %s.", problem, DocsPath())
+		return fmt.Errorf("models.generateImages() %s. Expected context: { input: [{ type: \"text\", text: <prompt> }, ...optional { type: \"image\", data: <base64>, mimeType } references] }.%s", problem, docsCitation(" See \"Generate images\" in %s."))
 	}
 	if !isRecord(context) {
 		return fail("expects a context object as its second argument, got " + describeValue(context))

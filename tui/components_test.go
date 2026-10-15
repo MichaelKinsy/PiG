@@ -3,6 +3,8 @@ package tui
 import (
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // editorContentRows strips the top and bottom borders. Pi's host owns the above-editor spacer.
@@ -34,7 +36,7 @@ func TestEditorWrapsLongLine(t *testing.T) {
 	}
 	// Cursor sits at end of input → must appear on the LAST wrapped row.
 	last := out[len(out)-1]
-	if !strings.Contains(last, "\033[7m") {
+	if !strings.Contains(last, widthx.FakeCursorStart) {
 		t.Errorf("cursor should land on last wrapped row, got: %q", last)
 	}
 }
@@ -49,10 +51,10 @@ func TestEditorCursorOnFirstWrappedRow(t *testing.T) {
 	if len(out) < 2 {
 		t.Fatalf("expected wrapped rows, got %d", len(out))
 	}
-	if !strings.Contains(out[0], "\033[7m") {
+	if !strings.Contains(out[0], widthx.FakeCursorStart) {
 		t.Errorf("cursor should be on first wrapped row, got rows: %v", out)
 	}
-	if strings.Contains(out[1], "\033[7m") {
+	if strings.Contains(out[1], widthx.FakeCursorStart) {
 		t.Errorf("cursor should NOT be on second wrapped row, got: %q", out[1])
 	}
 }
@@ -64,7 +66,7 @@ func TestEditorEmptyHasCursor(t *testing.T) {
 	if len(content) != 1 {
 		t.Fatalf("empty editor should render exactly 1 content row, got %d (full output incl. borders: %d): %v", len(content), len(out), out)
 	}
-	if !strings.Contains(content[0], "\033[7m") {
+	if !strings.Contains(content[0], widthx.FakeCursorStart) {
 		t.Errorf("cursor missing on empty editor: %q", content[0])
 	}
 	if !strings.Contains(out[0], "\u2500") {
@@ -139,8 +141,7 @@ func TestEditor_WordBoundaryHelpers(t *testing.T) {
 		{"underscore-stays-in-word", "foo_bar", 7, 0, 7},
 		{"empty", "", 0, 0, 0},
 		{"only-spaces-from-end", "   word", 7, 3, 7},
-		// Pi 0.87.1 Intl.Segmenter splits 学生/です; cursor columns are UTF-16 units.
-		{"cjk-dictionary-word-backward", "学生です", 4, 2, 4},
+		// Pi 0.87.1 Intl.Segmenter splits 学生/です in word_dictionary_navigation_test.go; cursor columns are UTF-16 units.
 		{"cjk-ascii-punct-boundary", "学生.です", 5, 3, 5},
 	}
 	for _, tc := range cases {
@@ -265,10 +266,10 @@ func TestEditorCursorAtTerminalWidthUsesReservedCursorColumn(t *testing.T) {
 	if got, want := stripANSI(contentRows[0]), strings.Repeat("a", width-1)+" "; got != want {
 		t.Fatalf("first row = %q, want %q", got, want)
 	}
-	if strings.Contains(contentRows[0], "\033[7m") {
+	if strings.Contains(contentRows[0], widthx.FakeCursorStart) {
 		t.Fatalf("first row contains cursor: %q", contentRows[0])
 	}
-	if !strings.Contains(contentRows[1], "\033[7m") {
+	if !strings.Contains(contentRows[1], widthx.FakeCursorStart) {
 		t.Fatalf("second row does not contain cursor: %q", contentRows[1])
 	}
 	for i, row := range contentRows {
@@ -302,11 +303,11 @@ func TestEditorCursorPastFullWidthDoesNotDuplicate(t *testing.T) {
 		t.Fatalf("expected 2 content rows after wrap, got %d: %v", len(contentRows), contentRows)
 	}
 	// First row must NOT have cursor (cursor is on the second chunk).
-	if strings.Contains(contentRows[0], "\033[7m") {
+	if strings.Contains(contentRows[0], widthx.FakeCursorStart) {
 		t.Errorf("first row should not have cursor after wrap, got: %q", contentRows[0])
 	}
 	// Second row must have cursor.
-	if !strings.Contains(contentRows[1], "\033[7m") {
+	if !strings.Contains(contentRows[1], widthx.FakeCursorStart) {
 		t.Errorf("second row should have cursor after wrap, got: %q", contentRows[1])
 	}
 }

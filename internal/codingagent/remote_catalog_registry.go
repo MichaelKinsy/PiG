@@ -26,7 +26,7 @@ func (r *ModelRegistry) remoteOverlay(providerID string) *remoteCatalogOverlay {
 	}
 	overlay := r.remoteOverlays[providerID]
 	if overlay == nil {
-		overlay = &remoteCatalogOverlay{}
+		overlay = &remoteCatalogOverlay{replaces: providerID == openRouterProviderID}
 		r.remoteOverlays[providerID] = overlay
 	}
 	return overlay
@@ -43,6 +43,14 @@ func (r *ModelRegistry) remoteOverlayModels(providerID string) []ai.AnyModel {
 	return overlay.snapshot()
 }
 
+// remoteOverlayReplaces reports whether the provider's overlay is its whole catalog (a personalized one) rather than additions to the bundled catalog.
+func (r *ModelRegistry) remoteOverlayReplaces(providerID string) bool {
+	r.remoteMu.Lock()
+	overlay := r.remoteOverlays[providerID]
+	r.remoteMu.Unlock()
+	return overlay != nil && overlay.replaces
+}
+
 // builtinBase is the built-in provider with its remote catalog overlay, or nil for a provider with no built-in model of any type.
 func (r *ModelRegistry) builtinBase(id string, fallback ai.ModelsStreamFunction) *ai.ModelsProvider {
 	base := builtinTypedBase(id, fallback)
@@ -52,7 +60,32 @@ func (r *ModelRegistry) builtinBase(id string, fallback ai.ModelsStreamFunction)
 	r.remoteMu.Lock()
 	baseURL := r.catalogBaseURL
 	r.remoteMu.Unlock()
-	return withRemoteCatalogOverlay(base, baseURL, builtinModelDataGeneratedAt(), r.remoteOverlay(id))
+	overlay := r.remoteOverlay(id)
+	// OpenRouter narrows the catalog to the models, limits and prices of the user's key.
+	// upstream: model-runtime.ts:create (provider.id === "openrouter" selects withPersonalizedCatalog and personalizeOpenRouterCatalog)
+	if id == openRouterProviderID {
+		return withPersonalizedCatalogOverlay(base, ai.PersonalizeOpenRouterCatalog, baseURL, builtinModelDataGeneratedAt(), overlay)
+	}
+	return withRemoteCatalogOverlay(base, baseURL, builtinModelDataGeneratedAt(), overlay)
+}
+
+// openRouterProviderID is the built-in provider whose catalog is personalized with the user's key (model-runtime.ts:create).
+const openRouterProviderID = "openrouter"
+
+// providerBaseURLOverride is the base URL an extension registration or models.json sets for a provider, or "" when neither does; an extension's wins, as in
+// resolveGeneratedModelLocked and the dynamic provider resolution.
+func (r *ModelRegistry) providerBaseURLOverride(id string) string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	if dynamic, ok := r.dynamic[id]; ok && dynamic.Models == nil && dynamic.BaseURL != "" {
+		return dynamic.BaseURL
+	}
+	if r.config != nil {
+		if provider, ok := r.config.Providers[id]; ok {
+			return provider.BaseURL
+		}
+	}
+	return ""
 }
 
 // remoteCatalogProviderIDs are the built-in providers whose catalogs the overlay refreshes: not Radius, which has its own catalog, and not
@@ -94,11 +127,28 @@ func (r *ModelRegistry) refreshRemoteCatalogs(ctx context.Context, options ai.Mo
 	collection := r.remoteCollection
 	r.remoteMu.Unlock()
 	for _, id := range ids {
-		if collection.GetProvider(id) != nil {
+		// The provider's base URL is the one models.json (or an extension) configures: the refresh request follows it, as Pi's Models passes the registered
+		// provider's baseUrl, including the override a composer applies, in RefreshModelsContext.baseUrl.
+		override := r.providerBaseURLOverride(id)
+		r.remoteMu.Lock()
+		registered, applied := collection.GetProvider(id) != nil, r.remoteBaseURLs[id]
+		r.remoteMu.Unlock()
+		if registered && applied == override {
 			continue
 		}
 		if base := r.builtinBase(id, nil); base != nil {
+			if override != "" {
+				overridden := *base
+				overridden.BaseURL = override
+				base = &overridden
+			}
 			collection.SetProvider(base)
+			r.remoteMu.Lock()
+			if r.remoteBaseURLs == nil {
+				r.remoteBaseURLs = map[string]string{}
+			}
+			r.remoteBaseURLs[id] = override
+			r.remoteMu.Unlock()
 		}
 	}
 	options.Providers = ids

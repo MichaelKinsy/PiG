@@ -1,0 +1,689 @@
+# Behavior family: rpc
+# Surface: the images field of prompt, steer and follow_up when its value or its elements are not what the typed protocol names.
+#
+# Pi 1.1.0 rpc-mode.ts hands command.images to session.prompt/steer/followUp unchecked. prompt converts each image (Buffer.from(data, "base64") then
+# mimeType.split) and answers the first failure with Node's or V8's message; a truthy non-array answers "images is not iterable"; steer and follow_up
+# spread the array ("Spread syntax requires ...iterable[Symbol.iterator] to be a function" for a truthy non-iterable) and queue malformed images.
+# Pig answered with Go decoder messages and started a run for a malformed image. Known differences kept out of the probes: Pi queues malformed
+# images in steer and follow_up, Pig drops them; and when steer/follow_up fail on the spread, Pi has already put the text in its queue display state (the
+# next clear_queue returns it), Pig fails before queueing. clear_queue after each probe keeps both queues empty. A valid image that starts a run is not probed
+# here (scenario 06 covers prompt through the faux provider). A falsy images value (false, 0, an empty array) is no image, so its prompt
+# does start a run; those steps wait for agent_settled, because the next clear_queue otherwise races the run's streamed events and Pig and Pi
+# interleave them differently by timing.
+
+name = "52-rpc-images-field-types"
+description = "Malformed images in prompt, steer and follow_up answer with Pi's messages"
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+canonical_json = false
+timeout_seconds = 120
+[[rpc.steps]]
+line = '{"id":"i01","type":"prompt","message":"What is 20+22?","images":"x"}'
+wait_contains = ['"id":"i01","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i02","type":"clear_queue"}'
+wait_contains = ['"id":"i02","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i03","type":"steer","message":"What is 20+22?","images":"x"}'
+wait_contains = ['"id":"i03","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i04","type":"clear_queue"}'
+wait_contains = ['"id":"i04","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i05","type":"follow_up","message":"What is 20+22?","images":"x"}'
+wait_contains = ['"id":"i05","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i06","type":"clear_queue"}'
+wait_contains = ['"id":"i06","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i07","type":"prompt","message":"What is 20+22?","images":{}}'
+wait_contains = ['"id":"i07","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i08","type":"clear_queue"}'
+wait_contains = ['"id":"i08","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i13","type":"prompt","message":"What is 20+22?","images":5}'
+wait_contains = ['"id":"i13","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i14","type":"clear_queue"}'
+wait_contains = ['"id":"i14","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i19","type":"prompt","message":"What is 20+22?","images":true}'
+wait_contains = ['"id":"i19","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i20","type":"clear_queue"}'
+wait_contains = ['"id":"i20","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i25","type":"prompt","message":"What is 20+22?","images":false}'
+wait_contains = ['"id":"i25","type":"response"']
+wait_event = '{"type":"agent_settled","aborted":false}'
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i26","type":"clear_queue"}'
+wait_contains = ['"id":"i26","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i27","type":"steer","message":"What is 20+22?","images":false}'
+wait_contains = ['"id":"i27","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i28","type":"clear_queue"}'
+wait_contains = ['"id":"i28","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i29","type":"follow_up","message":"What is 20+22?","images":false}'
+wait_contains = ['"id":"i29","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i30","type":"clear_queue"}'
+wait_contains = ['"id":"i30","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i31","type":"prompt","message":"What is 20+22?","images":0}'
+wait_contains = ['"id":"i31","type":"response"']
+wait_event = '{"type":"agent_settled","aborted":false}'
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i32","type":"clear_queue"}'
+wait_contains = ['"id":"i32","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i33","type":"steer","message":"What is 20+22?","images":0}'
+wait_contains = ['"id":"i33","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i34","type":"clear_queue"}'
+wait_contains = ['"id":"i34","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i35","type":"follow_up","message":"What is 20+22?","images":0}'
+wait_contains = ['"id":"i35","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i36","type":"clear_queue"}'
+wait_contains = ['"id":"i36","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i37","type":"prompt","message":"What is 20+22?","images":[]}'
+wait_contains = ['"id":"i37","type":"response"']
+wait_event = '{"type":"agent_settled","aborted":false}'
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i38","type":"clear_queue"}'
+wait_contains = ['"id":"i38","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i39","type":"steer","message":"What is 20+22?","images":[]}'
+wait_contains = ['"id":"i39","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i40","type":"clear_queue"}'
+wait_contains = ['"id":"i40","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i41","type":"follow_up","message":"What is 20+22?","images":[]}'
+wait_contains = ['"id":"i41","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i42","type":"clear_queue"}'
+wait_contains = ['"id":"i42","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i43","type":"prompt","message":"What is 20+22?","images":[null]}'
+wait_contains = ['"id":"i43","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i44","type":"clear_queue"}'
+wait_contains = ['"id":"i44","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i45","type":"steer","message":"What is 20+22?","images":[null]}'
+wait_contains = ['"id":"i45","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i46","type":"clear_queue"}'
+wait_contains = ['"id":"i46","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i47","type":"follow_up","message":"What is 20+22?","images":[null]}'
+wait_contains = ['"id":"i47","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i48","type":"clear_queue"}'
+wait_contains = ['"id":"i48","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i49","type":"prompt","message":"What is 20+22?","images":[5]}'
+wait_contains = ['"id":"i49","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i50","type":"clear_queue"}'
+wait_contains = ['"id":"i50","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i51","type":"steer","message":"What is 20+22?","images":[5]}'
+wait_contains = ['"id":"i51","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i52","type":"clear_queue"}'
+wait_contains = ['"id":"i52","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i53","type":"follow_up","message":"What is 20+22?","images":[5]}'
+wait_contains = ['"id":"i53","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i54","type":"clear_queue"}'
+wait_contains = ['"id":"i54","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i55","type":"prompt","message":"What is 20+22?","images":["s"]}'
+wait_contains = ['"id":"i55","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i56","type":"clear_queue"}'
+wait_contains = ['"id":"i56","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i57","type":"steer","message":"What is 20+22?","images":["s"]}'
+wait_contains = ['"id":"i57","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i58","type":"clear_queue"}'
+wait_contains = ['"id":"i58","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i59","type":"follow_up","message":"What is 20+22?","images":["s"]}'
+wait_contains = ['"id":"i59","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i60","type":"clear_queue"}'
+wait_contains = ['"id":"i60","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i61","type":"prompt","message":"What is 20+22?","images":[{"type":"image","mimeType":"image/png"}]}'
+wait_contains = ['"id":"i61","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i62","type":"clear_queue"}'
+wait_contains = ['"id":"i62","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i63","type":"steer","message":"What is 20+22?","images":[{"type":"image","mimeType":"image/png"}]}'
+wait_contains = ['"id":"i63","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i64","type":"clear_queue"}'
+wait_contains = ['"id":"i64","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i65","type":"follow_up","message":"What is 20+22?","images":[{"type":"image","mimeType":"image/png"}]}'
+wait_contains = ['"id":"i65","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i66","type":"clear_queue"}'
+wait_contains = ['"id":"i66","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i67","type":"prompt","message":"What is 20+22?","images":[{"type":"image","data":5,"mimeType":"image/png"}]}'
+wait_contains = ['"id":"i67","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i68","type":"clear_queue"}'
+wait_contains = ['"id":"i68","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i69","type":"steer","message":"What is 20+22?","images":[{"type":"image","data":5,"mimeType":"image/png"}]}'
+wait_contains = ['"id":"i69","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i70","type":"clear_queue"}'
+wait_contains = ['"id":"i70","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i71","type":"follow_up","message":"What is 20+22?","images":[{"type":"image","data":5,"mimeType":"image/png"}]}'
+wait_contains = ['"id":"i71","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i72","type":"clear_queue"}'
+wait_contains = ['"id":"i72","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i73","type":"prompt","message":"What is 20+22?","images":[{"type":"image","data":1.5,"mimeType":"image/png"}]}'
+wait_contains = ['"id":"i73","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i74","type":"clear_queue"}'
+wait_contains = ['"id":"i74","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i75","type":"steer","message":"What is 20+22?","images":[{"type":"image","data":1.5,"mimeType":"image/png"}]}'
+wait_contains = ['"id":"i75","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i76","type":"clear_queue"}'
+wait_contains = ['"id":"i76","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i77","type":"follow_up","message":"What is 20+22?","images":[{"type":"image","data":1.5,"mimeType":"image/png"}]}'
+wait_contains = ['"id":"i77","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i78","type":"clear_queue"}'
+wait_contains = ['"id":"i78","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i79","type":"prompt","message":"What is 20+22?","images":[{"type":"image","data":1e+21,"mimeType":"image/png"}]}'
+wait_contains = ['"id":"i79","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i80","type":"clear_queue"}'
+wait_contains = ['"id":"i80","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i81","type":"steer","message":"What is 20+22?","images":[{"type":"image","data":1e+21,"mimeType":"image/png"}]}'
+wait_contains = ['"id":"i81","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i82","type":"clear_queue"}'
+wait_contains = ['"id":"i82","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i83","type":"follow_up","message":"What is 20+22?","images":[{"type":"image","data":1e+21,"mimeType":"image/png"}]}'
+wait_contains = ['"id":"i83","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i84","type":"clear_queue"}'
+wait_contains = ['"id":"i84","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i85","type":"prompt","message":"What is 20+22?","images":[{"type":"image","data":true,"mimeType":"image/png"}]}'
+wait_contains = ['"id":"i85","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i86","type":"clear_queue"}'
+wait_contains = ['"id":"i86","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i87","type":"steer","message":"What is 20+22?","images":[{"type":"image","data":true,"mimeType":"image/png"}]}'
+wait_contains = ['"id":"i87","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i88","type":"clear_queue"}'
+wait_contains = ['"id":"i88","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i89","type":"follow_up","message":"What is 20+22?","images":[{"type":"image","data":true,"mimeType":"image/png"}]}'
+wait_contains = ['"id":"i89","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i90","type":"clear_queue"}'
+wait_contains = ['"id":"i90","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i91","type":"prompt","message":"What is 20+22?","images":[{"type":"image","data":{},"mimeType":"image/png"}]}'
+wait_contains = ['"id":"i91","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i92","type":"clear_queue"}'
+wait_contains = ['"id":"i92","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i93","type":"steer","message":"What is 20+22?","images":[{"type":"image","data":{},"mimeType":"image/png"}]}'
+wait_contains = ['"id":"i93","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i94","type":"clear_queue"}'
+wait_contains = ['"id":"i94","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i95","type":"follow_up","message":"What is 20+22?","images":[{"type":"image","data":{},"mimeType":"image/png"}]}'
+wait_contains = ['"id":"i95","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i96","type":"clear_queue"}'
+wait_contains = ['"id":"i96","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i97","type":"prompt","message":"What is 20+22?","images":[{"type":"image","data":null,"mimeType":"image/png"}]}'
+wait_contains = ['"id":"i97","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i98","type":"clear_queue"}'
+wait_contains = ['"id":"i98","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i99","type":"steer","message":"What is 20+22?","images":[{"type":"image","data":null,"mimeType":"image/png"}]}'
+wait_contains = ['"id":"i99","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i100","type":"clear_queue"}'
+wait_contains = ['"id":"i100","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i101","type":"follow_up","message":"What is 20+22?","images":[{"type":"image","data":null,"mimeType":"image/png"}]}'
+wait_contains = ['"id":"i101","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i102","type":"clear_queue"}'
+wait_contains = ['"id":"i102","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i103","type":"prompt","message":"What is 20+22?","images":[{"type":"image","data":"aGk="}]}'
+wait_contains = ['"id":"i103","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i104","type":"clear_queue"}'
+wait_contains = ['"id":"i104","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i105","type":"steer","message":"What is 20+22?","images":[{"type":"image","data":"aGk="}]}'
+wait_contains = ['"id":"i105","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i106","type":"clear_queue"}'
+wait_contains = ['"id":"i106","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i107","type":"follow_up","message":"What is 20+22?","images":[{"type":"image","data":"aGk="}]}'
+wait_contains = ['"id":"i107","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i108","type":"clear_queue"}'
+wait_contains = ['"id":"i108","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i109","type":"prompt","message":"What is 20+22?","images":[{"type":"image","data":"aGk=","mimeType":null}]}'
+wait_contains = ['"id":"i109","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i110","type":"clear_queue"}'
+wait_contains = ['"id":"i110","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i111","type":"steer","message":"What is 20+22?","images":[{"type":"image","data":"aGk=","mimeType":null}]}'
+wait_contains = ['"id":"i111","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i112","type":"clear_queue"}'
+wait_contains = ['"id":"i112","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i113","type":"follow_up","message":"What is 20+22?","images":[{"type":"image","data":"aGk=","mimeType":null}]}'
+wait_contains = ['"id":"i113","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i114","type":"clear_queue"}'
+wait_contains = ['"id":"i114","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i115","type":"prompt","message":"What is 20+22?","images":[{"type":"image","data":"aGk=","mimeType":5}]}'
+wait_contains = ['"id":"i115","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i116","type":"clear_queue"}'
+wait_contains = ['"id":"i116","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i117","type":"steer","message":"What is 20+22?","images":[{"type":"image","data":"aGk=","mimeType":5}]}'
+wait_contains = ['"id":"i117","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i118","type":"clear_queue"}'
+wait_contains = ['"id":"i118","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i119","type":"follow_up","message":"What is 20+22?","images":[{"type":"image","data":"aGk=","mimeType":5}]}'
+wait_contains = ['"id":"i119","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i120","type":"clear_queue"}'
+wait_contains = ['"id":"i120","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i121","type":"prompt","message":"What is 20+22?","images":[{"type":"image","data":"aGk=","mimeType":{}}]}'
+wait_contains = ['"id":"i121","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i122","type":"clear_queue"}'
+wait_contains = ['"id":"i122","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i123","type":"steer","message":"What is 20+22?","images":[{"type":"image","data":"aGk=","mimeType":{}}]}'
+wait_contains = ['"id":"i123","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i124","type":"clear_queue"}'
+wait_contains = ['"id":"i124","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i125","type":"follow_up","message":"What is 20+22?","images":[{"type":"image","data":"aGk=","mimeType":{}}]}'
+wait_contains = ['"id":"i125","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i126","type":"clear_queue"}'
+wait_contains = ['"id":"i126","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i127","type":"prompt","message":"What is 20+22?","images":[{"type":"image"}]}'
+wait_contains = ['"id":"i127","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i128","type":"clear_queue"}'
+wait_contains = ['"id":"i128","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i129","type":"steer","message":"What is 20+22?","images":[{"type":"image"}]}'
+wait_contains = ['"id":"i129","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i130","type":"clear_queue"}'
+wait_contains = ['"id":"i130","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i131","type":"follow_up","message":"What is 20+22?","images":[{"type":"image"}]}'
+wait_contains = ['"id":"i131","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i132","type":"clear_queue"}'
+wait_contains = ['"id":"i132","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i133","type":"prompt","message":"What is 20+22?","images":[{"type":"image","data":"aGk=","mimeType":"image/png"},{"type":"image"}]}'
+wait_contains = ['"id":"i133","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i134","type":"clear_queue"}'
+wait_contains = ['"id":"i134","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i135","type":"steer","message":"What is 20+22?","images":[{"type":"image","data":"aGk=","mimeType":"image/png"},{"type":"image"}]}'
+wait_contains = ['"id":"i135","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i136","type":"clear_queue"}'
+wait_contains = ['"id":"i136","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i137","type":"follow_up","message":"What is 20+22?","images":[{"type":"image","data":"aGk=","mimeType":"image/png"},{"type":"image"}]}'
+wait_contains = ['"id":"i137","type":"response"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"i138","type":"clear_queue"}'
+wait_contains = ['"id":"i138","type":"response"']
+wait_timeout_seconds = 15
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--model", "test-faux/faux-1", "--system-prompt", "RPC chat probe.", "--no-context-files", "--no-skills", "--no-session"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--system-prompt", "RPC chat probe.", "--no-context-files", "--no-skills", "--no-session"]
+
+[assert]
+exit_code = 0
+output_normalized_equal = true
+runs = 3
+
+# normalize-rationale: Only independent clocks and the isolated cwd identity vary; retain every other byte and property order.
+# Snapshot cwd roots differ only by their isolated random suffix.
+[[assert.normalize_replace]]
+pattern = 'parity-snap-cwd-[0-9]{10}'
+with = 'parity-snap-cwd-0000000000'
+reason = "Alias the isolated working-directory identity while preserving path suffixes and content."
+
+[[assert.normalize_replace]]
+pattern = '"timestamp":[0-9]+'
+with = '"timestamp":0'
+reason = "Independent numeric wall clocks vary; retain field placement, type and every other byte."
+[[assert.normalize_replace]]
+pattern = '"timestamp":"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z"'
+with = '"timestamp":"2000-01-01T00:00:00.000Z"'
+reason = "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
+
+[[assert.normalize_replace]]
+pattern = '"durationMs":[0-9]+'
+with = '"durationMs":0'
+reason = "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain field placement, type and every other byte."

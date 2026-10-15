@@ -1,9 +1,6 @@
 package ai
 
-import (
-	"errors"
-	"fmt"
-)
+import "fmt"
 
 // SessionResourceCleanup releases provider resources scoped to a logical
 // session, such as cached transport connections.
@@ -35,9 +32,17 @@ func RegisterSessionResourceCleanup(cleanup SessionResourceCleanup) func() {
 	}
 }
 
-// CleanupSessionResources invokes all registered cleanup hooks for the given
-// session id and joins cleanup errors. Empty session ids are ignored by hooks
-// that scope by session.
+// sessionResourcesCleanupError is cleanupSessionResources' AggregateError (session-resources.ts:19): the message is fixed and the
+// hooks' failures are its members, in registration order.
+type sessionResourcesCleanupError struct{ errors []error }
+
+func (e *sessionResourcesCleanupError) Error() string   { return "Failed to cleanup session resources" }
+func (e *sessionResourcesCleanupError) Unwrap() []error { return e.errors }
+
+// CleanupSessionResources calls every registered cleanup hook with the session id, in registration order, and keeps going when one
+// panics (a JavaScript throw). It returns nil when every hook returned, and otherwise an error whose message is "Failed to cleanup
+// session resources" and that wraps each hook's failure (session-resources.ts cleanupSessionResources throws an AggregateError). An
+// empty session id is `undefined`.
 func CleanupSessionResources(sessionID string) error {
 	var errs []error
 	for _, entry := range sessionResourceCleanups {
@@ -47,11 +52,18 @@ func CleanupSessionResources(sessionID string) error {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					errs = append(errs, fmt.Errorf("session resource cleanup panicked: %v", r))
+					if err, ok := r.(error); ok {
+						errs = append(errs, fmt.Errorf("session resource cleanup panicked: %w", err))
+					} else {
+						errs = append(errs, fmt.Errorf("session resource cleanup panicked: %v", r))
+					}
 				}
 			}()
 			entry.cleanup(sessionID)
 		}()
 	}
-	return errors.Join(errs...)
+	if len(errs) > 0 {
+		return &sessionResourcesCleanupError{errors: errs}
+	}
+	return nil
 }

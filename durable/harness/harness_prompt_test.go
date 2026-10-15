@@ -22,7 +22,7 @@ func promptSection(key string, render func(ctx context.Context, input durable.Pr
 
 var promptInput = durable.PromptInput{
 	ConversationId: 1,
-	Agent:          durable.Agent{ThinkingLevel: "off", Extensions: []*durable.Extension{}, Tools: []*durable.ToolRegistration{}, Sections: []*durable.PromptSection{}},
+	Agent:          durable.Agent{ThinkingLevel: "off", Extensions: []*durable.Extension{}, Tools: []*durable.ToolRegistration{}, Callable: []*durable.ToolRegistration{}, Deferred: []*durable.ToolRegistration{}, Sections: []*durable.PromptSection{}},
 	Shown:          map[string]string{},
 	Read:           emptyReader{},
 }

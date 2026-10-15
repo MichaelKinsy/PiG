@@ -98,3 +98,21 @@ func TestEditorAutocompletePressedItemThroughAltScreen(t *testing.T) {
 		t.Fatalf("terminal click after press-induced scroll completed %q, want %q", got, want)
 	}
 }
+
+// Pi packages/tui/src/components/editor.ts:632 Editor.handleMouse returns a TuiMouseEventResult | undefined: the handled result with
+// no dispatch target. The container path (dispatchMouseEvent) is what binds the target, so a click on the editor row is handled
+// and focuses the editor itself, and a press (which the editor leaves to the renderer) is not handled.
+func TestEditorHandleMouseReturnsPisPlainMouseEventResult(t *testing.T) {
+	editor := NewEditor()
+	plain := editor.HandleMouse(componentMouseEvent(MouseClick, 1, 1))
+	if plain == nil || !plain.Handled || !plain.Focus {
+		t.Fatalf("HandleMouse click = %+v, want Pi's handled focus result", plain)
+	}
+	if got := editor.HandleMouse(componentMouseEvent(MousePress, 1, 1)); got != nil {
+		t.Fatalf("HandleMouse press = %+v, want undefined", got)
+	}
+	dispatched := DispatchMouseEvent(editor, componentMouseEvent(MouseClick, 1, 1))
+	if dispatched == nil || !dispatched.Handled || dispatched.Target.Component != Component(editor) || dispatched.FocusTarget != Component(editor) {
+		t.Fatalf("DispatchMouseEvent = %+v, want the editor bound as target and focus", dispatched)
+	}
+}

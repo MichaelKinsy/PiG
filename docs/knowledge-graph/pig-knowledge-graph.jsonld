@@ -20,7 +20,7 @@
       "name": "PiG",
       "description": "The Go implementation; executable pig.",
       "pig:kind": "project",
-      "pig:where": "internal/coding/pigversion/pigversion.go pins Pi",
+      "pig:where": ".upstream/pin pins Pi",
       "pig:inspect": "pig verify"
     },
     {

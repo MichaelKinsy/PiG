@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -88,7 +87,7 @@ func TestCompactionUsesAuthResolvedBaseURLThroughRuntimeWrapper(t *testing.T) {
 	s.RefreshContext()
 	runtime := s.services.ModelRuntime()
 	s.streamFn = func(ctx context.Context, requestModel *ai.Model, system string, messages []agent.AgentMessage, options ai.StreamOptions) (string, *ai.Usage, error) {
-		stream := runtime.StreamSimple(ctx, requestModel, ai.Context{SystemPrompt: system, Messages: agent.ConvertToLLM(messages, requestModel)}, options)
+		stream := runtime.StreamSimple(ctx, requestModel, ai.Context{SystemPrompt: system, Messages: agent.ConvertToLLM(agent.NormalizeMessages(messages, requestModel))}, options)
 		response := stream.Result()
 		if response.StopReason == ai.StopReasonError {
 			return "", nil, fmt.Errorf("%s", response.ErrorMessage)
@@ -101,7 +100,7 @@ func TestCompactionUsesAuthResolvedBaseURLThroughRuntimeWrapper(t *testing.T) {
 		}
 		return text, &response.Usage, nil
 	}
-	if err := s.Compact(t.Context(), ""); err != nil {
+	if _, err := s.Compact(t.Context(), ""); err != nil {
 		t.Fatal(err)
 	}
 	if catalogCalls.Load() != 0 || enterpriseCalls.Load() == 0 {

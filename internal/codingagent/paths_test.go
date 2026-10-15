@@ -1,11 +1,16 @@
 package codingagent
 
+// pi: packages/coding-agent/src/config.ts
+
 import (
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts"
+	"github.com/MichaelKinsy/PiG/internal/pigdocs"
 )
 
 func TestManagedPigPaths(t *testing.T) {
@@ -194,5 +199,36 @@ func TestMarkPathIgnoredByCloudSync_InvokesPlatformCommand(t *testing.T) {
 		if len(lines) != 1 || lines[0] != want {
 			t.Fatalf("linux calls = %q, want [%q]", lines, want)
 		}
+	}
+}
+
+// packages/coding-agent/src/config.ts:449 getDocsPath() is resolve(join(<package dir>, "docs")); PiG's bundle lives under the
+// config root (D22), one directory per build under <config root>/docs, so the path is absolute and follows PIG_HOME and XDG_CONFIG_HOME.
+func TestGetDocsPathIsTheAbsoluteDocsDirectoryOfTheConfigRoot(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("PIG_HOME", home)
+	if got, want := GetDocsPath(), pigdocs.DocsDir(home); got != want {
+		t.Fatalf("GetDocsPath() = %q, want %q", got, want)
+	}
+	t.Setenv("PIG_HOME", "")
+	xdg := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdg)
+	if got, want := GetDocsPath(), pigdocs.DocsDir(filepath.Join(xdg, "pig")); got != want {
+		t.Fatalf("GetDocsPath() under XDG_CONFIG_HOME = %q, want %q", got, want)
+	}
+	t.Setenv("PIG_HOME", "relative-home")
+	if got := GetDocsPath(); !filepath.IsAbs(got) || filepath.Base(filepath.Dir(got)) != "docs" {
+		t.Fatalf("GetDocsPath() = %q, want an absolute path to a bundle in docs (config.ts resolve)", got)
+	}
+}
+
+// config.ts getReadmePath and getExamplesPath: the README is the docs bundle's own file (D22) and the examples location is PiG's published examples.
+func TestGetReadmePathAndGetExamplesPath(t *testing.T) {
+	t.Setenv("PIG_HOME", t.TempDir())
+	if got, want := GetReadmePath(), filepath.Join(GetDocsPath(), "README.md"); got != want || filepath.Base(got) != "README.md" {
+		t.Fatalf("GetReadmePath() = %q, want %q", got, want)
+	}
+	if got := GetExamplesPath(); got != prompts.PigExamplesLocation || got == "" {
+		t.Fatalf("GetExamplesPath() = %q, want %q", got, prompts.PigExamplesLocation)
 	}
 }

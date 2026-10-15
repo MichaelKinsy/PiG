@@ -1,4 +1,4 @@
-# Install and use Pig
+# Install and use PiG
 
 Use this page to get from a fresh binary to a working session. Return to the
 [docs router](README.md) for focused tasks.
@@ -66,8 +66,24 @@ After the project publishes a release, you can also download an artifact from
 its release page. Verify the published checksum before you place `pig` on
 `PATH`.
 
-Pig stores user state under `~/.pig`. Set `PIG_HOME` only for an isolated config
+PiG stores user state under `~/.pig`. Set `PIG_HOME` only for an isolated config
 root, tests, or CI.
+
+### Change what the install script does
+
+`install.sh` reads these environment variables. Set them on the `sh` side of the pipe, for example `curl -fsSL https://pi-in-go.dev/install.sh | PIG_VERSION=0.5.0 sh`.
+
+| Variable | Meaning |
+|---|---|
+| `PIG_VERSION` | Install this release (for example `0.5.0`) instead of the latest. |
+| `PIG_INSTALL_DIR` | Directory that receives `pig`. The default is `$HOME/.local/bin`, or `$PREFIX/bin` in Termux. |
+| `PIG_HOME` | PiG's settings directory, where the install receipt goes. The default is `~/.pig`. |
+| `PIG_API_BASE` | The API that names the latest release. The default is `https://pi-in-go.dev/api`. |
+| `PIG_LATEST_RELEASE_URL` | The page that redirects to the latest release, used when the API does not answer. |
+| `PIG_DOWNLOAD_BASE` | The release download root. The default is the GitHub Releases download URL of this repository. |
+| `PIG_UPDATE_URL` | The update manifest that `pig update` uses. The default is the latest release's `update.json`. |
+
+The script verifies the archive against the release's `SHA256SUMS` before it writes anything to the install directory, whichever mirror these variables select.
 
 ### macOS Gatekeeper after a manual download
 
@@ -102,7 +118,7 @@ Use `pig login --help`/`pig --help` for the targets available in your binary.
 
 ## 3. Install packages
 
-Raw Pig accepts local, git, npm, and HTTP package sources:
+Raw PiG accepts local, git, npm, and HTTP package sources:
 
 ```bash
 pig install ./my-package
@@ -112,9 +128,9 @@ pig install npm:@example/package
 
 An installed product extension may add another resolver scheme, such as a
 private marketplace. Its authentication and catalog commands are product
-features, not assumptions in raw Pig.
+features, not assumptions in raw PiG.
 
-## 4. Run Pig
+## 4. Run PiG
 
 ```bash
 pig                              # interactive TUI
@@ -144,8 +160,8 @@ See [Piglets](piglets.md) for schema and resolution.
 
 ## 6. Build an explicit Piglet entry point or Binary
 
-A source script is a thin Host Piglet entry point. It is not managed by Pig and
-creates no Pig state or record:
+A source script is a thin Host Piglet entry point. It is not managed by PiG and
+creates no PiG state or record:
 
 ```bash
 pig piglet build my-agent --format script --out ~/.local/bin/my-agent
@@ -166,7 +182,7 @@ pig piglet build my-agent --format binary --out ./pig-my-agent
 The Piglet artifact lifecycle lives under `pig piglet`.
 
 A Piglet Binary may fuse compatible Go components and host exact subprocess
-components through Pig's ordinary subprocess extension host. Its registered
+components through PiG's ordinary subprocess extension host. Its registered
 Piglet release records where each component comes from: binary, release
 closure, required `agentEnv`, or external mapping. Subprocess use does not create
 a different binary kind.

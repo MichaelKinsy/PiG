@@ -38,7 +38,7 @@ func TestPackedOrderedToolResults(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			rich, ok := result.(agent.AgentToolResult)
+			rich, ok := result, true
 			if !ok {
 				t.Fatalf("rich result type %T", result)
 			}
@@ -80,7 +80,7 @@ func TestToolResultMemberOrderFollowsTheToolAcrossSDKs(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			final, _ := result.(agent.AgentToolResult)
+			final := result
 			if !reflect.DeepEqual(final.MemberOrder, want) {
 				t.Errorf("result member order = %v, want %v", final.MemberOrder, want)
 			}

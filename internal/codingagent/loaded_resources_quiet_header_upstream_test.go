@@ -23,7 +23,7 @@ func TestLoadedResourcesQuietStartupHeaderUpstream(t *testing.T) {
 	t.Run("hides resource listing but keeps the startup header with header-only quiet startup", func(t *testing.T) {
 		m := upstreamListingMode(t, false, nil)
 		setUpstreamQuietStartup(t, m, "header")
-		m.opts.Skills = []*SkillDef{{Path: "/tmp/skill/SKILL.md", Name: "commit"}}
+		m.opts.Skills = []*SkillDef{{FilePath: "/tmp/skill/SKILL.md", Name: "commit"}}
 		m.showLoadedResources(false, false)
 		if got := m.loadedResourcesContainer.ChildCount(); got != 0 {
 			t.Fatalf("loadedResourcesContainer children = %d, want 0", got)

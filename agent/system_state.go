@@ -8,13 +8,22 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
-func (a *Agent) toolDeclarations() []ai.ToolSchema {
-	current := a.toolList()
+func toolDeclarations(current []AgentTool) []ai.ToolSchema {
 	tools := make([]ai.ToolSchema, len(current))
 	for i, t := range current {
 		tools[i] = ai.ToToolDeclaration(t.Schema())
 	}
 	return tools
+}
+
+// toolSchemas are the loadout's schemas as the tools return them. Comparing them needs no declaration copy, because
+// ai.DeclarationsEqual ignores prompt guidelines and ai.GetToolStateChanges copies only the declarations it adds.
+func toolSchemas(current []AgentTool) []ai.ToolSchema {
+	schemas := make([]ai.ToolSchema, len(current))
+	for i, t := range current {
+		schemas[i] = t.Schema()
+	}
+	return schemas
 }
 
 func systemMessages(messages []AgentMessage) []ai.Message {
@@ -28,7 +37,11 @@ func systemMessages(messages []AgentMessage) []ai.Message {
 }
 
 // declareToolChanges replaces pending tool intent with the delta from the committed transcript to the executable loadout.
-func (a *Agent) declareToolChanges(context, pending []AgentMessage) []AgentMessage {
+func (h *loopHost) declareToolChanges(context, pending []AgentMessage) []AgentMessage {
+	return declareToolChanges(h.tools(), context, pending)
+}
+
+func declareToolChanges(tools []AgentTool, context, pending []AgentMessage) []AgentMessage {
 	index := -1
 	for i, pendingMessage := range slices.Backward(pending) {
 		if pendingMessage.System != nil {
@@ -36,11 +49,18 @@ func (a *Agent) declareToolChanges(context, pending []AgentMessage) []AgentMessa
 			break
 		}
 	}
+	if len(pending) == 0 {
+		changes := ai.GetToolStateChangesFrom(systemOnly(context), toolSchemas(tools))
+		if len(changes.ToolsAdded) == 0 && len(changes.ToolsRemoved) == 0 {
+			return pending
+		}
+		return []AgentMessage{withToolChanges(AgentMessage{System: &ai.SystemMessage{Content: ai.SystemText(""), Timestamp: time.Now().UnixMilli()}}, changes)}
+	}
 	baseline := slices.Clone(pending)
 	if index >= 0 {
 		baseline[index] = withToolChanges(pending[index], ai.ToolStateChanges{})
 	}
-	changes := ai.GetToolStateChanges(ai.GetCurrentTools(systemMessages(slices.Concat(context, baseline))), a.toolDeclarations())
+	changes := ai.GetToolStateChangesFrom(slices.Concat(systemOnly(context), systemOnly(baseline)), toolSchemas(tools))
 	unchanged := len(changes.ToolsAdded) == 0 && len(changes.ToolsRemoved) == 0
 	if index >= 0 {
 		old := pending[index].System
@@ -61,6 +81,26 @@ func (a *Agent) declareToolChanges(context, pending []AgentMessage) []AgentMessa
 	return slices.Concat(pending[:index], []AgentMessage{update}, pending[index:])
 }
 
+// systemOnly is messages without the ones that are not system messages. The replay of tool declarations reads only system messages, so a replay of the result equals a replay of messages; it walks a history of any length with a pointer test per message, and the replay itself walks the few system messages.
+func systemOnly(messages []AgentMessage) []AgentMessage {
+	count := 0
+	for i := range messages {
+		if messages[i].System != nil {
+			count++
+		}
+	}
+	if count == len(messages) {
+		return messages
+	}
+	out := make([]AgentMessage, 0, count)
+	for i := range messages {
+		if messages[i].System != nil {
+			out = append(out, messages[i])
+		}
+	}
+	return out
+}
+
 func withToolChanges(message AgentMessage, changes ai.ToolStateChanges) AgentMessage {
 	value := *message.System
 	value.ToolsAdded = changes.ToolsAdded
@@ -68,29 +108,41 @@ func withToolChanges(message AgentMessage, changes ai.ToolStateChanges) AgentMes
 	return AgentMessage{System: &value}
 }
 
+// systemMessageWire is the object a system message decodes from.
+type systemMessageWire struct {
+	Content      json.RawMessage    `json:"content"`
+	Sections     ai.OrderedSections `json:"sections"`
+	ToolsAdded   []ai.ToolSchema    `json:"toolsAdded"`
+	ToolsRemoved []ai.ToolReference `json:"toolsRemoved"`
+	Timestamp    jsInt64            `json:"timestamp"`
+}
+
 func decodeSystemMessage(data []byte) (*ai.SystemMessage, error) {
-	var wire struct {
-		Content      json.RawMessage    `json:"content"`
-		Sections     ai.OrderedSections `json:"sections"`
-		ToolsAdded   []ai.ToolSchema    `json:"toolsAdded"`
-		ToolsRemoved []ai.ToolReference `json:"toolsRemoved"`
-		Timestamp    int64              `json:"timestamp"`
-	}
+	var wire systemMessageWire
 	if err := json.Unmarshal(data, &wire); err != nil {
 		return nil, err
 	}
-	var content ai.SystemContent
-	var text string
-	if err := json.Unmarshal(wire.Content, &text); err == nil {
-		content = ai.SystemText(text)
-	} else {
-		var blocks ai.SystemTextBlocks
-		if err := json.Unmarshal(wire.Content, &blocks); err != nil {
-			return nil, err
-		}
-		content = blocks
+	content, err := decodeSystemContent(wire.Content)
+	if err != nil {
+		return nil, err
 	}
-	return &ai.SystemMessage{Content: content, Sections: wire.Sections, ToolsAdded: wire.ToolsAdded, ToolsRemoved: wire.ToolsRemoved, Timestamp: wire.Timestamp}, nil
+	return &ai.SystemMessage{Content: content, Sections: wire.Sections, ToolsAdded: wire.ToolsAdded, ToolsRemoved: wire.ToolsRemoved, Timestamp: int64(wire.Timestamp)}, nil
+}
+
+// decodeSystemContent decodes a system message's content: a string or text blocks, and nil when it is null or missing (Pi parses a session line without validation; the context projects { ...message, content: "" }, session-manager.ts sessionEntryToContextMessages).
+func decodeSystemContent(raw []byte) (ai.SystemContent, error) {
+	if len(raw) == 0 || string(raw) == "null" {
+		return nil, nil
+	}
+	var text string
+	if json.Unmarshal(raw, &text) == nil {
+		return ai.SystemText(text), nil
+	}
+	var blocks ai.SystemTextBlocks
+	if err := json.Unmarshal(raw, &blocks); err != nil {
+		return nil, err
+	}
+	return blocks, nil
 }
 
 // projectSystemPrompt preserves the active tool declarations while replacing instructions at the provider boundary.

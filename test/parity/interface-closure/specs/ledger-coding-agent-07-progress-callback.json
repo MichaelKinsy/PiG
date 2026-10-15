@@ -1,0 +1,19 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#ProgressCallback"
+  ],
+  "targets": [
+   "internal/packagemanager/progress.go#ProgressCallback"
+  ],
+  "production": [
+   "call:internal/packagemanager/progress.go#EmitProgress"
+  ],
+  "evidence": [
+   "test:coding/cli/package_progress_upstream_test.go#TestPackageInstallCompletionProgressUpstream",
+   "test:coding/cli/package_progress_upstream_test.go#TestPackageInstallFailureProgressUpstream",
+   "test:coding/cli/package_progress_upstream_test.go#TestPackageTemporaryRefreshProgressUpstream"
+  ],
+  "rationale": "ProgressCallback: Go ProgressCallback is func(ProgressEvent) invoked synchronously (upstream returns void); a nil callback is skipped as upstream's optional callback is."
+ }
+]

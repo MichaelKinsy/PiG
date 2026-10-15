@@ -16,8 +16,8 @@ const body = definition.slice(bodyStart + '): ProviderHeaders | undefined {'.len
 const mergeHeaders = new Function('base', 'override', body);
 
 const versionSource = readFileSync('internal/coding/pigversion/pigversion.go', 'utf8');
-const versionMatch = versionSource.match(/UpstreamVersion = "([^"]+)"/);
-if (!versionMatch) throw new Error('cannot read UpstreamVersion');
+const versionMatch = versionSource.match(/UpstreamPackageVersion = "([^"]+)"/);
+if (!versionMatch) throw new Error('cannot read UpstreamPackageVersion');
 const packageRoot = process.env.PI_PACKAGE_ROOT ?? join(homedir(), '.local/share/mise/installs/npm-earendil-works-pi-coding-agent', versionMatch[1], 'lib/node_modules/@earendil-works/pi-coding-agent');
 const headersModule = await import(pathToFileURL(join(packageRoot, 'node_modules/@earendil-works/pi-ai/dist/utils/headers.js')).href);
 

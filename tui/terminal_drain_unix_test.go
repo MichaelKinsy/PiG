@@ -21,7 +21,7 @@ func TestProcessTerminalDrainInput_ConsumesPendingBytes(t *testing.T) {
 	defer func() { _ = w.Close() }()
 
 	term := NewProcessTerminalWithOutput(r, nil, ioDiscard{})
-	if _, err := w.Write([]byte("abc")); err != nil {
+	if _, err := w.WriteString("abc"); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 	if err := term.DrainInput(200*time.Millisecond, 20*time.Millisecond); err != nil {

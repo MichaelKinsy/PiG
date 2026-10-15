@@ -1,5 +1,7 @@
 package tools
 
+// pi: packages/coding-agent/src/core/tools/edit-diff.ts
+
 import (
 	"bytes"
 	"encoding/json"
@@ -164,7 +166,7 @@ func TestToolsEditPort(t *testing.T) {
 		dir := t.TempDir()
 		path := filepath.Join(dir, "missing-preview.txt")
 		result := ComputeEditsDiff(path, []EditReplacement{{"hello", "world"}}, dir)
-		want := EditsDiffPreview{Error: fmt.Sprintf("Could not edit file: %s. Error code: ENOENT.", path)}
+		want := EditDiffError{Error: fmt.Sprintf("Could not edit file: %s. Error code: ENOENT.", path)}
 		if !reflect.DeepEqual(result, want) {
 			t.Fatalf("result %+v, want %+v", result, want)
 		}
@@ -182,7 +184,7 @@ func TestToolsEditPort(t *testing.T) {
 			t.Fatal(err)
 		}
 		result := ComputeEditsDiff(path, []EditReplacement{{"hello", "world"}}, dir)
-		want := EditsDiffPreview{Error: fmt.Sprintf("Could not edit file: %s. Error code: EACCES.", path)}
+		want := EditDiffError{Error: fmt.Sprintf("Could not edit file: %s. Error code: EACCES.", path)}
 		if !reflect.DeepEqual(result, want) {
 			t.Fatalf("result %+v, want %+v", result, want)
 		}
@@ -221,5 +223,21 @@ func TestToolsEditCRLFPort(t *testing.T) {
 				t.Fatalf("result %q, after %q, want %q", text, after, tc.want)
 			}
 		})
+	}
+}
+
+// edit-diff.ts:501-509: computeEditsDiff returns an EditDiffResult or an EditDiffError, never both, and the result carries the first changed line.
+func TestComputeEditsDiffReturnsEitherAResultOrAnError(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "preview.txt")
+	if err := os.WriteFile(path, []byte("one\ntwo\nthree\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	result, ok := ComputeEditsDiff(path, []EditReplacement{{"two", "2"}}, dir).(EditDiffResult)
+	if !ok || result.Diff == "" || result.FirstChangedLine != 2 {
+		t.Fatalf("result = %+v (%v), want a diff whose first changed line is 2", result, ok)
+	}
+	if failure, ok := ComputeEditsDiff(path, []EditReplacement{{"absent", "x"}}, dir).(EditDiffError); !ok || failure.Error == "" {
+		t.Fatalf("a replacement that does not match must be an EditDiffError, got %+v", failure)
 	}
 }

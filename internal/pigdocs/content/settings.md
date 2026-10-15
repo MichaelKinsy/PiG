@@ -51,21 +51,21 @@ the value depends on what it detects.
 | `httpProxy` | string | unset | Global HTTP/HTTPS proxy URL. Sets only absent `HTTP_PROXY` and `HTTPS_PROXY` environment variables. Provider requests use CONNECT tunnels; `NO_PROXY` controls bypasses. |
 | `websocketConnectTimeoutMs` | number | provider default | WebSocket opening-handshake timeout in milliseconds. `0` or `"disabled"` turns it off. Explicit request options override the setting. |
 | `httpIdleTimeoutMs` | number | `300000` | Idle timeout for provider requests, in milliseconds. `0` or `"disabled"` turns it off. |
-| `cacheWarming` | string | `streaming` | `off`, `streaming`, or `idle`. Keeps the provider's prompt cache warm with periodic requests. Global setting only: Pig ignores it in a project file. See [cache warming](#cache-warming). |
+| `cacheWarming` | string | `streaming` | `off`, `streaming`, or `idle`. Keeps the provider's prompt cache warm with periodic requests. Global setting only: PiG ignores it in a project file. See [cache warming](#cache-warming). |
 
 ### Cache warming
 
 Cache warming is on by default, as in Pi. Each refresh is a real provider
-request that you pay for. Pig replays the last request with a one-token output
+request that you pay for. PiG replays the last request with a one-token output
 limit shortly before the prompt cache expires, so the next request reads the
 cache instead of writing it again at full price.
 
-- `off`: Pig never sends refreshes.
+- `off`: PiG never sends refreshes.
 - `streaming`: only while the agent is running. This is the default.
 - `idle`: while the agent runs, and between runs for up to 30 minutes after
   the last request.
 
-A refresh is sent only when the model declares a prompt cache lifetime and Pig
+A refresh is sent only when the model declares a prompt cache lifetime and PiG
 expects it to save at least $0.05 in avoided cache-miss cost. Warming stops when
 the conversation or model changes, after one hour (30 minutes when idle), and
 when the session ends. Refresh usage counts toward the session's token and cost
@@ -90,6 +90,7 @@ set it in `~/.pig/agent/settings.json`:
 | `steeringMode` | string | `one-at-a-time` | How queued steering messages are dispatched. |
 | `followUpMode` | string | `one-at-a-time` | How queued follow-up messages are dispatched. |
 | `sessionDir` | string |  | Directory that holds session files. |
+| `sessionShareDestination` | string | `auto` | Pi's `/share` destination: `auto`, `gist`, or `radius`. PiG accepts and keeps the value so a settings file shared with Pi stays valid, but PiG's `/share` always uploads to `https://pi-in-go.dev`, and `/settings` has no item for it (D64). |
 | `defaultProjectTrust` | string | `ask` | Trust decision applied to a project that has none: `ask`, `always`, or `never`. PiG reads this key from the global file only. |
 
 ## Interface
@@ -102,12 +103,14 @@ set it in `~/.pig/agent/settings.json`:
 | `fullscreenExitOutput` | string | `transcript` | `transcript` prints the final transcript when fullscreen exits. `resume-hint` restores the previous screen and prints only the resume hint. |
 | `fullscreenCopyOnSelect` | boolean | `true` | Copy selected fullscreen text automatically. When disabled, `ctrl+x` copies the active selection. No effect in regular mode. |
 | `fullscreenWheelScrollLines` | `"auto"` \| number | `"auto"` | Lines per mouse-wheel event in fullscreen mode, from 1 to 100. `"auto"` moves one line per event in local macOS terminals, which already accelerate wheel and trackpad input; elsewhere, and over SSH, it speeds up fast wheel spins to at most 6 lines per event. A fractional value is rounded down, and any other value falls back to `"auto"`. No effect in regular mode. |
+| `extensionsAutoUpgrade` | boolean | `false` | PiG-only (D109). Run `pig extension upgrade` rules at startup and after `pig update` for Go extensions written for an older SDK, with a backup and one line per extension. Global settings only; a project file cannot turn it on. Pi's `extensions` setting is an array and unrelated. |
+| `extensionsTypescriptRuntime` | string | `node` | PiG-only (D19). Runtime that runs TypeScript and JavaScript extensions: `node` or the name of a runtime an extension or Piglet installed. When it cannot run, extensions run on Node; `pig extensions runtime status` shows why. `PIG_TS_RUNTIME` overrides it. Global settings only. |
 | `maskSecretInput` | boolean | `true` | PiG-only login-input privacy (divergence D80). Show dots, a character count and the last four characters; fewer than five characters show no suffix. False restores Pi's plain-text typing and submitted history. Change **Mask secret input** in `/settings`. Pi harmlessly ignores this key in shared settings. |
 | `hideThinkingBlock` | boolean | `false` | Hide thinking blocks in the transcript. |
 | `doubleEscapeAction` | string | `tree` | Action bound to pressing escape twice. |
 | `treeFilterMode` | string | `default` | Filter `/tree` opens with. |
 | `editorPaddingX` | number | `0` | Horizontal padding inside the editor. |
-| `outputPad` | number | `1` | Horizontal padding for messages and thinking blocks: `0` or `1`. |
+| `outputPad` | number | `1` | Horizontal transcript padding for messages, tool output, `!` command output, and summary blocks: `0` or `1`. |
 | `autocompleteMaxVisible` | number | `5` | Rows shown in the autocomplete list. |
 | `showHardwareCursor` | boolean | `false` | Show the terminal's own cursor. |
 | `markdown` | object |  | Markdown rendering: `codeBlockIndent`, `mermaid`. |
@@ -121,21 +124,12 @@ set it in `~/.pig/agent/settings.json`:
 |---|---|---|---|
 | `terminal` | object | see meaning | Terminal image, width, shrink-repaint, and progress settings described below. |
 | `images` | object | see meaning | Image resize and transcript-blocking settings described below. |
-| `showImages` | boolean | `true` | Older flat form of `terminal.showImages`. |
-| `imageWidthCells` | number | `60` | Older flat form of `terminal.imageWidthCells`. |
-| `clearOnShrink` | boolean | `false` | Older flat form of `terminal.clearOnShrink`. |
-| `imageAutoResize` | boolean | `true` | Older flat form of `images.autoResize`. |
-| `blockImages` | boolean | `false` | Older flat form of `images.blockImages`. |
 | `terminal.showImages` | boolean | `true` | Render images when the terminal accepts them. |
 | `terminal.imageWidthCells` | number | `60` | Width of a rendered image, in terminal cells. |
 | `terminal.clearOnShrink` | boolean | `false` | Repaint the screen when content shrinks. |
 | `terminal.showTerminalProgress` | boolean | `false` | Show OSC 9;4 progress in the terminal tab. |
 | `images.autoResize` | boolean | `true` | Resize an image to fit the width. |
 | `images.blockImages` | boolean | `false` | Hide images in the transcript. Pi also removes images from model requests. PiG does not yet: it still sends them to the provider. |
-
-PiG also reads the older flat keys `showImages`, `imageWidthCells`,
-`clearOnShrink`, `imageAutoResize`, and `blockImages`. A nested key wins over the
-flat key with the same meaning.
 
 ## Resources
 
@@ -158,7 +152,7 @@ flat key with the same meaning.
 
 A setting wins over the matching `PI_HYPERLINKS`, `PI_IMAGE_PROTOCOL` or
 `PI_TRUE_COLOR` variable, and the variable wins over detection. `"auto"` and any
-other value leave detection in charge. Without true color, Pig draws the theme
+other value leave detection in charge. Without true color, PiG draws the theme
 in the 256-color palette, as Pi does. See [terminal setup](terminal-setup.md).
 
 ## Shell and tools
@@ -167,7 +161,6 @@ in the 256-color palette, as Pi does. See [terminal setup](terminal-setup.md).
 |---|---|---|---|
 | `shellPath` | string |  | Shell used by the bash tool. |
 | `shellCommandPrefix` | string |  | Prefix applied to every shell command. |
-| `commandPrefix` | string |  | Former name of `shellCommandPrefix`. PiG still reads it. |
 | `externalEditor` | string |  | Editor opened by `app.editor.external`. |
 | `npmCommand` | string[] | `["npm"]` | Command and arguments used to run npm for package lookup and installation. |
 

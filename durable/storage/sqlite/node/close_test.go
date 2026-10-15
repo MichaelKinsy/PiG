@@ -40,7 +40,7 @@ func TestNodeSqliteDatabaseCloseReportsTheFinallyFailure(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			connection := &failingConnection{checkpointErr: test.checkpoint, closeErr: test.closing}
-			adapter := NewNodeSqliteDatabase(connection)
+			adapter := newNodeSqliteDatabase(connection)
 			if err := adapter.Close(); !errors.Is(err, test.want) || (test.want == nil && err != nil) {
 				t.Fatalf("Close() = %v, want %v", err, test.want)
 			}

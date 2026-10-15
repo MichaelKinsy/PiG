@@ -28,7 +28,7 @@ func TestCollectEntriesForBranchSummarySiblingTarget(t *testing.T) {
 	}
 	ids := make([]string, 0, len(result.Entries))
 	for _, entry := range result.Entries {
-		ids = append(ids, entry.Base.ID)
+		ids = append(ids, entry.Base().ID)
 	}
 	// Exact order also excludes root, the common ancestor, and the target branch.
 	if want := []string{"abandoned-1", "abandoned-2"}; !slices.Equal(ids, want) {

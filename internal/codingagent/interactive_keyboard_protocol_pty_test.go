@@ -15,8 +15,6 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/sys/unix"
-
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -175,26 +173,7 @@ func TestKeyboardProtocolDriverBalancesPerScreenStacks(t *testing.T) {
 
 func runKeyboardProtocolChild(t *testing.T, exitOutput string) (*vtKeyboardModel, []byte) {
 	t.Helper()
-	master, err := os.OpenFile("/dev/ptmx", os.O_RDWR|syscall.O_NOCTTY|syscall.O_CLOEXEC, 0)
-	if err != nil {
-		t.Fatalf("open /dev/ptmx: %v", err)
-	}
-	defer func() { _ = master.Close() }()
-	if err := unix.IoctlSetPointerInt(int(master.Fd()), unix.TIOCSPTLCK, 0); err != nil {
-		t.Fatalf("unlock pseudo-terminal: %v", err)
-	}
-	number, err := unix.IoctlGetInt(int(master.Fd()), unix.TIOCGPTN)
-	if err != nil {
-		t.Fatalf("pseudo-terminal number: %v", err)
-	}
-	slave, err := os.OpenFile(fmt.Sprintf("/dev/pts/%d", number), os.O_RDWR|syscall.O_NOCTTY, 0)
-	if err != nil {
-		t.Fatalf("open pseudo-terminal slave: %v", err)
-	}
-	defer func() { _ = slave.Close() }()
-	if err := unix.IoctlSetWinsize(int(master.Fd()), unix.TIOCSWINSZ, &unix.Winsize{Row: 30, Col: 100}); err != nil {
-		t.Fatalf("set pseudo-terminal size: %v", err)
-	}
+	master, slave := openTestPTY(t)
 
 	ctx, cancel := context.WithTimeout(t.Context(), testbudget.Wait(t))
 	defer cancel()
@@ -241,10 +220,10 @@ func TestKeyboardProtocolDriverChild(t *testing.T) {
 	}
 	mark := func(name string) { _, _ = os.Stdout.WriteString("\x1b]777;mark;" + name + "\x07") }
 
-	opts := InteractiveOptions{
+	opts := InteractiveModeOptions{
 		CWD: t.TempDir(), AgentDir: t.TempDir(),
 		Model:    &ai.Model{ID: "m", DisplayName: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 8000}},
-		Settings: Settings{TuiMode: "fullscreen", FullscreenExitOutput: exitOutput},
+		Settings: Settings{TuiMode: "fullscreen", FullscreenExitOutput: FullscreenExitOutput(exitOutput)},
 	}
 	opts.TuiMode = "fullscreen"
 	m := newUnmountedSwitchTuiProbe(t, opts, os.Stdout)
@@ -281,7 +260,7 @@ func TestKeyboardProtocolDriverChild(t *testing.T) {
 	// restart runs as an owner-loop task after it exits. The child has no owner
 	// loop, so it runs that task here.
 	edited := make(chan struct{})
-	m.openExternalEditorBuffer(t.Context(), "draft", func(string) { close(edited) })
+	m.openExternalEditorBuffer(t.Context(), m.externalEditorCommand(), "draft", func(string) { close(edited) })
 	mark("editor")
 	select {
 	case task := <-m.uiTaskCh:

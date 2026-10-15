@@ -1,0 +1,43 @@
+# Behavior family: rpc
+# Surface: the order of an agent directory's skills and prompts whose names differ in case, and the winner of two same-name skills, as
+# get_commands lists them.
+#
+# Upstream evidence (Pi 1.1.0, probed 2026-10-09 natively on Windows): skills.ts:192 and prompt-templates.ts:168 list a directory with
+# fs.readdirSync, whose order is libuv's scandir: sorted by name with strcmp on Unix, and the file system's own order on Windows, which on
+# NTFS ignores case. On Windows get_commands lists aprompt, Mprompt, Zprompt, then skill:alpha, skill:beta, skill:dup (from dupa, the first
+# of the two in that order) and skill:zeta. PiG sorted every directory by bytes (os.ReadDir) and on Windows listed Mprompt, Zprompt,
+# aprompt, beta, zeta, alpha and the dup from dupB. On Unix both orders are strcmp.
+
+name = "54-rpc-resource-directory-order"
+description = "get_commands lists an agent directory's skills and prompts in Node's readdir order, which decides a same-name skill"
+covers = [
+  "packages/coding-agent/src/core/skills.ts",
+  "packages/coding-agent/src/core/prompt-templates.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+input_lines = ['{"id":"cmds","type":"get_commands"}']
+timeout_seconds = 20
+settle_seconds = 1
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/directory-order/agent"]
+pig_args = ["--model", "test-faux/faux-1", "--no-session"]
+pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1", "PI_CODING_AGENT_DIR=testdata/directory-order/agent"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--no-session"]
+
+[assert]
+exit_code = 0
+runs = 3
+output_equal = true
+both_contain = ['"name":"skill:dup"', '"name":"aprompt"', '"name":"Zprompt"']
+
+# normalize-rationale: each binary runs in its own snapshot of the agent fixture; only that root differs.
+[[assert.normalize_replace]]
+# A Windows root begins with a drive letter and a JSON-escaped "\"; the separators after the root stay compared. The drive letter stays compared.
+pattern = '(?:/|([A-Za-z]):\\\\)[^"]*parity-snap-(PI|PIG)_CODING_AGENT_DIR-[0-9]+'
+with = '${1}<agent>'
+reason = "D2: the isolated agent-root prefix varies; retain resource paths, precedence and content."

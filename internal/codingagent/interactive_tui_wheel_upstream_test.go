@@ -45,7 +45,7 @@ func TestInteractiveTuiWheelScrollLinesFromSettingsUpstream(t *testing.T) {
 		{"unset", "", []int{1}},
 	} {
 		t.Run("creation with "+tc.name, func(t *testing.T) {
-			mode := NewInteractiveMode(InteractiveOptions{Settings: Settings{TuiMode: "fullscreen", FullscreenWheelScrollLines: json.RawMessage(tc.raw)}, AgentDir: t.TempDir()})
+			mode := NewInteractiveMode(nil, InteractiveModeOptions{Settings: Settings{TuiMode: "fullscreen", FullscreenWheelScrollLines: json.RawMessage(tc.raw)}, AgentDir: t.TempDir()})
 			mode.rendererOut = io.Discard
 			handle := mode.createInteractiveTui(t.Context())
 			defer handle.cleanup()
@@ -56,7 +56,7 @@ func TestInteractiveTuiWheelScrollLinesFromSettingsUpstream(t *testing.T) {
 	}
 
 	t.Run("a renderer switch", func(t *testing.T) {
-		m := newSwitchTuiProbeWithOptions(t, InteractiveOptions{CWD: t.TempDir(), AgentDir: t.TempDir(), Settings: Settings{TuiMode: "regular", FullscreenWheelScrollLines: json.RawMessage("7")}})
+		m := newSwitchTuiProbeWithOptions(t, InteractiveModeOptions{CWD: t.TempDir(), AgentDir: t.TempDir(), Settings: Settings{TuiMode: "regular", FullscreenWheelScrollLines: json.RawMessage("7")}})
 		if !m.switchTuiMode("fullscreen", false, true) {
 			t.Fatal("switch to fullscreen returned false")
 		}
@@ -71,7 +71,7 @@ func TestInteractiveTuiWheelScrollLinesFromSettingsUpstream(t *testing.T) {
 			value string
 			want  int
 		}{{"3", 3}, {"auto", 1}} {
-			m := newSwitchTuiProbeWithOptions(t, InteractiveOptions{CWD: t.TempDir(), AgentDir: t.TempDir(), Settings: Settings{TuiMode: "fullscreen", FullscreenWheelScrollLines: json.RawMessage("7")}})
+			m := newSwitchTuiProbeWithOptions(t, InteractiveModeOptions{CWD: t.TempDir(), AgentDir: t.TempDir(), Settings: Settings{TuiMode: "fullscreen", FullscreenWheelScrollLines: json.RawMessage("7")}})
 			m.buildSlashContext(t.Context()).OnSettingApplied("fullscreen-wheel-scroll-lines", tc.value)
 			if got := wheelDeltas(t, m.altScreen, wheelDown); !slices.Equal(got, []int{tc.want}) {
 				t.Fatalf("wheel deltas after choosing %s = %v, want [%d]", tc.value, got, tc.want)

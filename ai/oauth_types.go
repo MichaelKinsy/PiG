@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"encoding/json"
+	"slices"
 )
 
 // Mirrors upstream .upstream/current/packages/ai/src/utils/oauth/types.ts.
@@ -24,7 +25,18 @@ type OAuthCredentials struct {
 	Scope string `json:"scope,omitempty"`
 
 	expiry credentialExpiry
+	order  credentialKeyOrder
 }
+
+// The member order of the credential literals Pi's providers build (pi-ai auth/oauth/*.ts), which auth.json keeps: anthropic and meta write refresh before access, the others access before refresh, and each adds the members of its own after expires.
+var (
+	refreshFirstCredentialMembers = []string{"type", "refresh", "access", "expires"}
+	copilotCredentialMembers      = append(slices.Clone(refreshFirstCredentialMembers), "enterpriseUrl", "availableModelIds")
+	accessFirstCredentialMembers  = []string{"type", "access", "refresh", "expires"}
+	codexCredentialMembers        = append(slices.Clone(accessFirstCredentialMembers), "accountId")
+	chatgptCredentialMembers      = append(slices.Clone(accessFirstCredentialMembers), "clientId", "scopes")
+	radiusCredentialMembers       = append(slices.Clone(accessFirstCredentialMembers), "scope")
+)
 
 // OAuthPrompt describes an interactive prompt during the OAuth flow.
 type OAuthPrompt struct {
@@ -63,13 +75,11 @@ type OAuthSelectPrompt struct {
 
 // OAuthLoginCallbacks groups the callbacks used during an OAuth login flow.
 type OAuthLoginCallbacks struct {
-	OnAuth          func(info OAuthAuthInfo)
-	OnDeviceCode    func(info OAuthDeviceCodeInfo)
-	OnPrompt        func(prompt OAuthPrompt) (string, error)
-	OnPromptContext func(context.Context, OAuthPrompt) (string, error)
-	OnProgress      func(message string)
-	// OnInfo reports an informational notice that is neither progress nor an authorization URL.
-	OnInfo                   func(message string)
+	OnAuth                   func(info OAuthAuthInfo)
+	OnDeviceCode             func(info OAuthDeviceCodeInfo)
+	OnPrompt                 func(prompt OAuthPrompt) (string, error)
+	OnPromptContext          func(context.Context, OAuthPrompt) (string, error)
+	OnProgress               func(message string)
 	OnManualCodeInput        func() (string, error)
 	OnManualCodeInputContext func(context.Context) (string, error)
 	// OnManualCodePromptContext asks for a pasted code with the flow's own manual_code message and placeholder. Nil falls back to OnManualCodeInputContext, then OnManualCodeInput.
@@ -79,6 +89,8 @@ type OAuthLoginCallbacks struct {
 	// GetDeviceID returns the stable ID of this app installation. It comes from LoginOptions.GetDeviceID; nil means the
 	// app supplies none.
 	GetDeviceID func() string
+	// AgentName comes from LoginOptions.AgentName; nil means the flow's own default name.
+	AgentName *string
 }
 
 // OAuthCredentialStatus describes a stored credential owned by a registered

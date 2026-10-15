@@ -1,0 +1,49 @@
+[
+ {
+  "ids": [
+   "pkg:tui/.#Editor::property:getLines"
+  ],
+  "targets": [
+   "tui/editor_state.go#Editor.GetLines"
+  ],
+  "production": [
+   "public-api:tui/editor_state.go#Editor.GetLines"
+  ],
+  "evidence": [
+   "test:tui/editor_word_segments_upstream_test.go#TestUpstreamEditorStateAccessors"
+  ],
+  "rationale": "Editor.getLines is the Go method Editor.GetLines; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Editor::property:setAutocompleteMaxVisible"
+  ],
+  "targets": [
+   "tui/editor.go#Editor.SetAutocompleteMaxVisible"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive.go#InteractiveMode.Run"
+  ],
+  "evidence": [
+   "test:tui/editor_remote_test.go#TestEditorRemoteStandsInForTheEditor",
+   "test:tui/settings_live_effects_test.go#TestEditorRuntimeSettingsApplyImmediately"
+  ],
+  "rationale": "Editor.setAutocompleteMaxVisible is the Go method Editor.SetAutocompleteMaxVisible; signature reviewed against the upstream declaration."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Editor::property:handleMouse"
+  ],
+  "targets": [
+   "tui/editor.go#Editor.HandleMouse"
+  ],
+  "production": [
+   "public-api:tui/editor.go#Editor.HandleMouse"
+  ],
+  "evidence": [
+   "test:tui/components_grapheme_test.go#TestEditorMouseGraphemeBoundaries",
+   "test:tui/editor_completion_selection_test.go#TestCompletionSelectionKeyboardWrapAndMouseClamp"
+  ],
+  "rationale": "Editor.handleMouse(event) is Editor.HandleMouse(event); Go returns *TuiMouseDispatchResult, the subtype of upstream's TuiMouseEventResult (dispatch result extends the event result); nil is undefined."
+ }
+]

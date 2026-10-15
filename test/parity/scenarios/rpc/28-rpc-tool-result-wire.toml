@@ -18,7 +18,7 @@ wait_contains = ['"type":"agent_settled"']
 wait_timeout_seconds = 10
 [[rpc.steps]]
 line = '{"id":"write","type":"prompt","message":"Run: write parity-write-output.txt"}'
-wait_event = '{"type":"agent_settled"}'
+wait_event = '{"type":"agent_settled","aborted":false}'
 wait_timeout_seconds = 10
 [[rpc.steps]]
 line = '{"id":"abort","type":"abort"}'
@@ -54,8 +54,17 @@ paths = ["/**/timestamp"]
 kind = "timestamp"
 reason = "Independent message and entry wall clocks vary; retain field presence, timestamp type and valid syntax."
 [[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi 1.1.0 times each response and tool run with a monotonic clock (event-stream.ts, agent-loop.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+[[assert.json_aliases]]
 paths = ["/**/id", "/**/parentId", "/**/leafId"]
 kind = "id"
 group = "entry"
 pattern = '^[a-f0-9]{8,16}$'
 reason = "Generated entry keys vary per process. A bijection retains every parent and leaf reference; command and tool-call IDs stay literal."
+
+[[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."

@@ -27,7 +27,7 @@ func TestWin_ShellResolvesGitBash(t *testing.T) {
 	t.Setenv("ProgramFiles", dir)
 	t.Setenv("ProgramFiles(x86)", "")
 
-	cfg, err := GetShellConfig(nil)
+	cfg, err := GetShellConfig("")
 	if err != nil {
 		t.Fatalf("resolve: %v", err)
 	}
@@ -44,7 +44,7 @@ func TestWin_ShellNoBashReturnsHelpfulError(t *testing.T) {
 	t.Setenv("ProgramFiles(x86)", "")
 	t.Setenv("PATH", t.TempDir()) // no bash.exe on PATH
 
-	_, err := GetShellConfig(nil)
+	_, err := GetShellConfig("")
 	if err == nil {
 		t.Fatal("expected an error when no bash is installed")
 	}
@@ -58,7 +58,7 @@ func TestWin_ShellSettingsOverrideWins(t *testing.T) {
 	if err := os.WriteFile(want, []byte("stub"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := GetShellConfig(fakeSettings{path: want})
+	cfg, err := GetShellConfig(want)
 	if err != nil {
 		t.Fatalf("resolve: %v", err)
 	}

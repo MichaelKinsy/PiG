@@ -1,0 +1,10 @@
+# The upstream Pi pin: the one committed setting that names the Pi build PiG targets.
+# Change it only with `make pin-bump PI_UPSTREAM_REF=<tag|commit>`, which also regenerates
+# every file derived from it. PI_UPSTREAM_REF=<tag|commit> overrides it for one run.
+# ref: a release tag, or the full commit of a pinned pi-mono commit.
+# package_version: what Pi's package.json files and `pi --version` report.
+# version: the display and ledger version (a commit pin appends +<commit[:8]>).
+ref=b06c1f2cf1dea6af8748ddeee18c23587d2cb7c6
+commit=b06c1f2cf1dea6af8748ddeee18c23587d2cb7c6
+package_version=1.2.0
+version=1.2.0+b06c1f2c

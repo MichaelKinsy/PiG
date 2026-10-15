@@ -42,7 +42,7 @@ func markAuthLockBeingRemoved(t *testing.T, dir string) func() {
 	return finish
 }
 
-// Pi's FileAuthStorageBackend rethrows the lock's fs error unchanged (auth-storage.ts:134-141), so a user sees Node's message for an auth lock directory that another process is removing: "EPERM: operation not permitted, mkdir '<auth.json.lock>'". PiG's auth storage error carries the same message.
+// Pi's FileAuthStorageBackend rethrows the lock's fs error unchanged (auth-storage.ts:134-147), so a user sees Node's message for an auth lock directory that another process is removing: "EPERM: operation not permitted, mkdir '<auth.json.lock>'", once acquireLockAsync has spent its MAX_EPERM_RETRIES Windows EPERM retries on a removal that does not finish. PiG's auth storage error carries the same message.
 func TestAuthStorageLockErrorCarriesNodeMessageUpstream(t *testing.T) {
 	storage, path := authPortFile(t, `{"anthropic":{"type":"api_key","key":"stored"}}`)
 	if err := os.Mkdir(path+".lock", 0o777); err != nil {

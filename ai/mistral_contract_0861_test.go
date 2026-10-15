@@ -1,3 +1,5 @@
+//go:build !pig_strip_mistral_conversations
+
 package ai
 
 import (
@@ -19,7 +21,7 @@ func TestMistralRawStopReasonsUpstream(t *testing.T) {
 		message string
 	}{
 		{"stop", StopReasonStop, ""},
-		{"error", StopReasonError, "Provider stopped with: error"},
+		{"error", StopReasonError, "Provider stopped with: error (server error)"},
 		{"unmapped_error", StopReasonError, "Provider stopped with: unmapped_error"},
 	} {
 		t.Run(tc.raw, func(t *testing.T) {
@@ -37,6 +39,10 @@ func TestMistralRawStopReasonsUpstream(t *testing.T) {
 			message := stream.Result()
 			if message.StopReason != tc.stop || message.RawStopReason != tc.raw || message.ErrorMessage != tc.message {
 				t.Fatalf("message = %#v", message)
+			}
+			// upstream: mistral-raw-stop-reason.test.ts:55-70 (#10487): a finish_reason "error" is retryable, an unknown reason is not.
+			if got, want := IsRetryableAssistantError(*message), tc.raw == "error"; got != want {
+				t.Fatalf("IsRetryableAssistantError = %v, want %v for %q", got, want, tc.message)
 			}
 		})
 	}

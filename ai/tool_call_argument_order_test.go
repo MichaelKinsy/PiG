@@ -1,6 +1,9 @@
+//go:build !pig_strip_mistral_conversations
+
 package ai
 
 import (
+	"bytes"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -73,7 +76,7 @@ func TestSetStreamingArgumentsKeepsMemberOrder(t *testing.T) {
 		{"unfinished nested object", `{"zeta":1,"alpha":{"yy":2,"bb":3,"aa`, `{"zeta":1,"alpha":{"yy":2,"bb":3}}`},
 		{"unfinished array of objects", `{"zeta":1,"edits":[{"oldText":"a","newText":"b"},{"oldText":"c","newT`, `{"zeta":1,"edits":[{"oldText":"a","newText":"b"},{"oldText":"c"}]}`},
 		{"empty", ``, `{}`},
-		{"not an object", `[1,2]`, `{}`},
+		{"not an object", `[1,2]`, `[1,2]`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var call ToolCall
@@ -215,7 +218,7 @@ func TestSetArgumentsJSONKeepsMemberOrderAndRejectsANonObject(t *testing.T) {
 		if err := call.SetArgumentsJSON([]byte(input)); err == nil {
 			t.Errorf("SetArgumentsJSON(%q) = nil, want an error", input)
 		}
-		if after, _ := call.ArgumentsJSON(); string(after) != string(before) {
+		if after, _ := call.ArgumentsJSON(); !bytes.Equal(after, before) {
 			t.Errorf("SetArgumentsJSON(%q) changed the call to %s", input, after)
 		}
 	}

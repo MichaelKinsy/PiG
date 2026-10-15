@@ -98,3 +98,37 @@ func TestFuzzyFilterPreservesNELAsQueryText(t *testing.T) {
 		t.Fatalf("BOM must remain a token separator: %q", got)
 	}
 }
+
+// fuzzy.ts:54 `score += i * 0.1` rounds the product, then the sum. Go on arm64 fuses `score += float64(i) * 0.1` into one
+// rounding, so macOS scores differed from Pi in the last digit (probes 69 and 332 of the seeded oracle). The expected value here
+// rounds the product explicitly, as the source does; it equals the amd64 result and is the value arm64 must also produce.
+func TestFuzzyScoreRoundsEachProductBeforeTheSum(t *testing.T) {
+	text := "a-b-c-d-e-f-g-h-i-j-k-l-m-n-o-p-q-r-s-t"
+	want := 0.0
+	queryIdx, lastMatch, consecutive := 0, -1, 0
+	query := "acegikmoqs"
+	for i := 0; i < len(text) && queryIdx < len(query); i++ {
+		if text[i] != query[queryIdx] {
+			continue
+		}
+		if lastMatch == i-1 {
+			consecutive++
+			want -= float64(float64(consecutive) * 5)
+		} else {
+			consecutive = 0
+			if lastMatch >= 0 {
+				want += float64(float64(i-lastMatch-1) * 2)
+			}
+		}
+		if i == 0 || text[i-1] == '-' {
+			want -= 10
+		}
+		want += float64(float64(i) * 0.1)
+		lastMatch = i
+		queryIdx++
+	}
+	got := FuzzyMatchScore(query, text)
+	if !got.Matches || got.Score != want {
+		t.Fatalf("score = %v (matches %v), want %v", got.Score, got.Matches, want)
+	}
+}

@@ -1,0 +1,171 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#BashToolDetails"
+  ],
+  "targets": [
+   "coding/extension/events.go#BashToolDetails"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "BashToolDetails"
+  },
+  "production": [
+   "call:coding/extension/host/inproc/runner.go#withToolResultFields"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/tool_dispatch_test.go#TestEmitToolResult_TypedDetailsChain",
+   "test:coding/extension/host/inproc/tool_dispatch_test.go#TestEmitToolResult_TypedVariantKeptWhenLossless",
+   "test:internal/codingagent/tools/ext_details_test.go#TestBashDetails_OnlyAttachedWhenTruncated"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "BashToolDetails: Go BashToolDetails has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ReadToolDetails"
+  ],
+  "targets": [
+   "coding/extension/events.go#ReadToolDetails"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "ReadToolDetails"
+  },
+  "production": [
+   "call:coding/extension/host/inproc/runner.go#withToolResultFields"
+  ],
+  "evidence": [
+   "test:internal/codingagent/tools/tools_read_port_test.go#TestToolsReadPort",
+   "test:internal/codingagent/tools/ext_details_test.go#TestReadDetails_OnlyTruncationField",
+   "test:internal/codingagent/tools/ext_details_test.go#TestReadTool_EmitsTruncationDetails"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ReadToolDetails: Go ReadToolDetails has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#EditToolDetails"
+  ],
+  "targets": [
+   "coding/extension/events.go#EditToolDetails"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "EditToolDetails"
+  },
+  "production": [
+   "call:coding/extension/host/inproc/runner.go#withToolResultFields"
+  ],
+  "evidence": [
+   "test:coding/extension/tool_result_event_json_test.go#TestToolResultEventsAreWrittenInPiMemberOrder"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "EditToolDetails: Go EditToolDetails has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#GrepToolDetails"
+  ],
+  "targets": [
+   "coding/extension/events.go#GrepToolDetails"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "GrepToolDetails"
+  },
+  "production": [
+   "call:coding/extension/host/inproc/runner.go#withToolResultFields"
+  ],
+  "evidence": [
+   "test:internal/codingagent/tools/details_extension_wire_test.go#TestBuiltinFractionalDetailsExtensionProjection",
+   "test:internal/codingagent/tools/ext_details_test.go#TestGrepDetails_Sparse"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "GrepToolDetails: Go GrepToolDetails has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#LsToolDetails"
+  ],
+  "targets": [
+   "coding/extension/events.go#LsToolDetails"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "LsToolDetails"
+  },
+  "production": [
+   "call:coding/extension/host/inproc/runner.go#withToolResultFields"
+  ],
+  "evidence": [
+   "test:internal/codingagent/tools/details_extension_wire_test.go#TestBuiltinFractionalDetailsExtensionProjection",
+   "test:internal/codingagent/tools/ext_details_test.go#TestFindAndLsDetails_Sparse",
+   "test:internal/codingagent/tools/ext_details_test.go#TestLsTool_EmitsEntryLimitDetails"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "LsToolDetails: Go LsToolDetails has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SessionBeforeCompactResult"
+  ],
+  "targets": [
+   "coding/extension/events.go#SessionBeforeCompactResult"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "SessionBeforeCompactResult"
+  },
+  "production": [
+   "call:coding/extension/host/inproc/runner.go#sessionBeforeIsCancel"
+  ],
+  "evidence": [
+   "test:coding/compaction_model_overrides_upstream_test.go#TestCompactionModelOverridesPreparationUpstream",
+   "test:coding/compaction_model_selection_upstream_test.go#TestCompactionNewModelPolicyUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "SessionBeforeCompactResult: Go SessionBeforeCompactResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ToolResultEventResult"
+  ],
+  "targets": [
+   "coding/extension/events.go#ToolResultEventResult"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "ToolResultEventResult"
+  },
+  "production": [
+   "call:coding/extension/host/inproc/runner.go#Runner.EmitToolResult"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerToolResult",
+   "test:coding/session_model_extension_hooks_upstream_test.go#TestSessionModelExtensionHooksUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ToolResultEventResult: Go ToolResultEventResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#FindToolDetails"
+  ],
+  "targets": [
+   "coding/extension/events.go#FindToolDetails"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "FindToolDetails"
+  },
+  "production": [
+   "call:coding/extension/host/inproc/runner.go#withToolResultFields"
+  ],
+  "evidence": [
+   "test:internal/codingagent/tools/ext_details_test.go#TestFindAndLsDetails_Sparse"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "FindToolDetails: Go FindToolDetails has a field for every upstream property; types reviewed against the upstream declaration; the evidence drives FindDetails through extension.ToolResultDetailsFor."
+ }
+]

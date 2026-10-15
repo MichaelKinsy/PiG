@@ -24,6 +24,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
+
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -65,6 +67,9 @@ type FilterableList struct {
 	// clipped to MaxWidth, matching upstream SelectListLayoutOptions.
 	TruncatePrimary func(context SelectListTruncatePrimaryContext) string
 
+	// ScrollInfo styles the "(n/total)" line, as the scrollInfo function of upstream's SelectListTheme does. Nil styles it muted, the default theme's choice.
+	ScrollInfo func(text string) string
+
 	// MaxVisible bounds the visible window. Mirrors upstream
 	// SelectList.maxVisible. Defaults to 20.
 	MaxVisible int
@@ -100,6 +105,12 @@ func NewFilterableList(title string, labels []string) *FilterableList {
 // Done reports whether the user has confirmed or cancelled.
 func (f *FilterableList) Done() bool { return f.done }
 
+// Reset clears the confirmed or cancelled state, so a host that reacts to each confirm or cancel as upstream's per-key onSelect and
+// onCancel callbacks do sees only the key that caused it.
+func (f *FilterableList) Reset() {
+	f.done, f.cancelled, f.selectedIndex = false, false, -1
+}
+
 // FilterText returns the current filter query typed by the user.
 // Used by ShowExtensionEditor to retrieve free-text input.
 func (f *FilterableList) FilterText() string { return f.filter }
@@ -133,9 +144,8 @@ func (f *FilterableList) Render(width int) []string {
 		// Filter input row: mirrors upstream Input component.
 		prompt := "  filter: "
 		cursor := "█"
-		lines = append(lines, padOrTrunc(prompt+f.filter+cursor, width))
-		// Blank line after search input. Mirrors upstream Spacer(1) after Input.
-		lines = append(lines, "")
+		// A blank line follows the search input. Mirrors upstream Spacer(1) after Input.
+		lines = append(lines, padOrTrunc(prompt+f.filter+cursor, width), "")
 	}
 
 	if len(f.filtered) == 0 {
@@ -168,7 +178,12 @@ func (f *FilterableList) Render(width int) []string {
 	// Scroll indicator when list is larger than the visible window.
 	if start > 0 || end < len(f.filtered) {
 		scrollText := fmt.Sprintf("  (%d/%d)", f.cursor+1, len(f.filtered))
-		lines = append(lines, fg(muted, widthx.TruncateToWidth(scrollText, width-2, "", false)))
+		scrollText = widthx.TruncateToWidth(scrollText, width-2, "", false)
+		if f.ScrollInfo != nil {
+			lines = append(lines, f.ScrollInfo(scrollText))
+		} else {
+			lines = append(lines, fg(muted, scrollText))
+		}
 	}
 
 	return lines
@@ -289,7 +304,7 @@ func (f *FilterableList) renderItem(labelIdx int, selected bool, width, primaryC
 	}
 
 	// Single-column fallback (no description / narrow width).
-	maxWidth := max(width-prefixWidth-2, 1)
+	maxWidth := width - prefixWidth - 2
 	truncatedLabel := f.truncatePrimary(labelIdx, selected, maxWidth, maxWidth)
 	row := prefix + truncatedLabel
 	if selected {
@@ -373,28 +388,17 @@ func normalizeToSingleLine(s string) string {
 	return strings.TrimSpace(string(out))
 }
 
+// CapturesSelectPageInput reports that the list handles tui.select.pageUp and tui.select.pageDown.
+func (f *FilterableList) CapturesSelectPageInput() bool { return true }
+
 // HandleInput updates the filter or moves the cursor.
 func (f *FilterableList) HandleInput(data string) {
 	// Route through the TUI keybinding registry so user overrides in
 	// ~/.pig/keybindings.json (tui.select.* / tui.input.*) take effect
 	// here. Mirrors upstream filterable-list.ts handleInput dispatch.
 	kb := GetTUIKeybindings()
+	// up and down are checked before confirm and cancel, as in upstream SelectList, so a key bound to two actions keeps the earlier one.
 	switch {
-	case kb.Matches(data, KBSelectCancel):
-		f.cancelled = true
-		f.done = true
-		f.selectedIndex = -1
-		if f.onCancel != nil {
-			f.onCancel()
-		}
-	case kb.Matches(data, KBSelectConfirm):
-		if len(f.filtered) > 0 && f.cursor < len(f.filtered) {
-			f.selectedIndex = f.filtered[f.cursor]
-			f.done = true
-			if f.onSelect != nil {
-				f.onSelect(f.selectedIndex)
-			}
-		}
 	case f.EnableSearch && (data == "\x7f" || data == "\b"): // Backspace: filter edit
 		if len(f.filter) > 0 {
 			f.filter = f.filter[:len(f.filter)-1]
@@ -420,6 +424,27 @@ func (f *FilterableList) HandleInput(data string) {
 			} else {
 				f.moveCursor(1)
 			}
+		}
+	case kb.Matches(data, KBSelectConfirm):
+		if len(f.filtered) > 0 && f.cursor < len(f.filtered) {
+			f.selectedIndex = f.filtered[f.cursor]
+			f.done = true
+			if f.onSelect != nil {
+				f.onSelect(f.selectedIndex)
+			}
+		}
+	case kb.Matches(data, KBSelectCancel):
+		f.cancelled = true
+		f.done = true
+		f.selectedIndex = -1
+		if f.onCancel != nil {
+			f.onCancel()
+		}
+	case !f.EnableSearch && pageSelectionKey(kb, data):
+		// A list without search stands for upstream's SelectList, which moves by one visible page and does not wrap (Pi PR #7680).
+		if len(f.filtered) > 0 {
+			f.cursor, _ = PageSelectionIndex(kb, data, f.cursor, len(f.filtered), f.MaxVisible)
+			f.fixScroll()
 		}
 	case f.EnableSearch && kb.Matches(data, KBSelectPageUp):
 		f.moveCursor(-10)
@@ -481,9 +506,9 @@ func (f *FilterableList) fixScroll() {
 // label.
 func (f *FilterableList) applyFilter() {
 	f.filtered = f.filtered[:0]
-	tokens := strings.Fields(strings.ToLower(f.filter))
+	tokens := strings.Fields(jsstring.ToLower(f.filter))
 	for i, lbl := range f.Labels {
-		ll := strings.ToLower(lbl)
+		ll := jsstring.ToLower(lbl)
 		ok := true
 		for _, t := range tokens {
 			if !strings.Contains(ll, t) {

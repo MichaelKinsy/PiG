@@ -7,6 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"github.com/MichaelKinsy/PiG/internal/latex"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // LaTeX math rendering inside markdown. Faithful port of the latex tokenizer
@@ -15,12 +16,15 @@ import (
 // same $-disambiguation heuristics, escape handling, and pending (unclosed,
 // streaming) behavior. Rendering delegates to internal/latex (RenderLatex).
 
+// markdownJSSpace is the inside of JavaScript's \s class; Go's \s is ASCII-only and lacks \v and the Unicode spaces.
+const markdownJSSpace = `\t\n\v\f\r \x{a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}`
+
 var (
 	reMdPendingDollarMath = lazyregexp.New(`\\[A-Za-z]+|[_^=+*/<>()[\]|±≤≥≠≈∈→⇒∞∫∑√-]`)
-	reMdInlineDollarSpace = lazyregexp.New(`^\$\s`)
-	reMdTrailingSpace     = lazyregexp.New(`\s$`)
+	reMdInlineDollarSpace = lazyregexp.New(`^\$[` + markdownJSSpace + `]`)
+	reMdTrailingSpace     = lazyregexp.New(`[` + markdownJSSpace + `]$`)
 	reMdLeadingDigit      = lazyregexp.New(`^\d`)
-	reMdEnvVarInner       = lazyregexp.New(`^[A-Z_][A-Z0-9_]*(?:[^A-Za-z0-9_\s])?$`)
+	reMdEnvVarInner       = lazyregexp.New(`^[A-Z_][A-Z0-9_]*(?:[^A-Za-z0-9_` + markdownJSSpace + `])?$`)
 	reMdIdentAfter        = lazyregexp.New(`^[A-Za-z_][A-Za-z0-9_]*`)
 	reMdBlockDollar       = lazyregexp.New(`(?s)^ {0,3}\$\$[ \t]*(?:\n)?(.*?)\$\$[ \t]*(?:\n|$)`)
 	reMdBlockBracket      = lazyregexp.New(`(?s)^ {0,3}\\\[[ \t]*(?:\n)?(.*?)\\\][ \t]*(?:\n|$)`)
@@ -126,11 +130,11 @@ func looksLikePendingDollarMath(source string) bool {
 // tokenizeBlockLatex ports markdown.ts tokenizeBlockLatex over the remaining
 // source (joined lines). Returns the block token and true on a match.
 func tokenizeBlockLatex(source string) (latexToken, bool) {
-	if m := reMdBlockDollar.FindStringSubmatch(source); m != nil && strings.TrimSpace(m[1]) != "" {
-		return latexToken{raw: m[0], text: strings.TrimSpace(m[1])}, true
+	if m := reMdBlockDollar.FindStringSubmatch(source); m != nil && m[1] != "" {
+		return latexToken{raw: m[0], text: widthx.JSTrim(m[1])}, true
 	}
-	if m := reMdBlockBracket.FindStringSubmatch(source); m != nil && strings.TrimSpace(m[1]) != "" {
-		return latexToken{raw: m[0], text: strings.TrimSpace(m[1])}, true
+	if m := reMdBlockBracket.FindStringSubmatch(source); m != nil && m[1] != "" {
+		return latexToken{raw: m[0], text: widthx.JSTrim(m[1])}, true
 	}
 	if m := reMdPendingBracket.FindStringSubmatch(source); m != nil {
 		return latexToken{raw: m[0], text: m[1], pending: true}, true
@@ -157,12 +161,12 @@ func renderInlineLatex(tok latexToken) string {
 // pending, else RenderLatex(text, display) with raw.trim() as fallback.
 func renderBlockLatex(tok latexToken) string {
 	if tok.pending {
-		return strings.TrimSpace(tok.raw)
+		return widthx.JSTrim(tok.raw)
 	}
 	if rendered, ok := latex.RenderLatex(tok.text, latex.RenderLatexOptions{Display: true}); ok {
 		return rendered
 	}
-	return strings.TrimSpace(tok.raw)
+	return widthx.JSTrim(tok.raw)
 }
 
 // blockLatexStart reports whether a line begins a block latex token

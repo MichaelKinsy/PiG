@@ -42,8 +42,9 @@ func TestIdentityValuesAreThePiGBrand(t *testing.T) {
 	}
 }
 
-// identity.json is the one source of these values for Go and for the Node
-// vendoring step (automation/gen/pi-identity-patches.mjs reads the same file).
+// identity.json is the one source of these values: the Node vendoring step
+// (automation/gen/pi-identity-patches.mjs) reads it, and the Go constants must
+// spell exactly its values, every key included.
 func TestIdentityJSONIsTheSingleSource(t *testing.T) {
 	data, err := os.ReadFile("identity.json")
 	if err != nil {
@@ -61,6 +62,7 @@ func TestIdentityJSONIsTheSingleSource(t *testing.T) {
 		"cloudflareUserAgent":  CloudflareUserAgent,
 		"openCodeClient":       OpenCodeClient,
 		"codexOriginator":      CodexOriginator,
+		"chatgptAgentName":     ChatGPTAgentName,
 		"xaiReferrer":          XAIReferrer,
 		"agentMarker":          AgentMarker,
 		"userAgentProduct":     UserAgentProduct,

@@ -6,7 +6,7 @@ import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import ts from '../interface-extractor/node_modules/typescript/lib/typescript.js';
 
-const pin = readFileSync('internal/coding/pigversion/pigversion.go', 'utf8').match(/UpstreamVersion = "([^"]+)"/)[1];
+const pin = readFileSync('internal/coding/pigversion/pigversion.go', 'utf8').match(/UpstreamPackageVersion = "([^"]+)"/)[1];
 const root = process.env.PI_PACKAGE_ROOT ?? resolve('extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent');
 if (JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version !== pin) throw new Error('wrong Pi oracle version');
 const load = (path) => import(pathToFileURL(join(root, path)).href);

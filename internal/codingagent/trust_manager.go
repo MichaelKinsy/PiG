@@ -7,19 +7,29 @@
 package codingagent
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
+	"os/user"
 	"path/filepath"
+	"runtime"
+	"slices"
+	"strconv"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/internal/jsonparse"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
+	"github.com/MichaelKinsy/PiG/internal/nodefs"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
 var trustRequiringProjectConfigResources = [...]string{
 	"settings.json",
+	"mcp.json",
 	"extensions",
 	"skills",
 	"prompts",
@@ -109,27 +119,25 @@ func GetProjectTrustOptions(cwd string, includeSessionOnly bool) []ProjectTrustO
 // cwd; .agents/skills is checked from cwd through every ancestor. The user's
 // ~/.agents/skills is global input and never requires project trust.
 func HasTrustRequiringProjectResources(cwd string) bool {
-	home := os.Getenv("HOME")
-	if home == "" {
-		home, _ = os.UserHomeDir()
+	// trust-manager.ts:187 canonicalizePath(resolvePath(process.env.HOME || homedir())): without HOME, Node's os.homedir() reads
+	// the user database. An empty home would resolve to the working directory and hide its .agents/skills.
+	userAgentsSkills := ""
+	if home := cmp.Or(os.Getenv("HOME"), osHomedir()); home != "" {
+		userAgentsSkills = filepath.Join(normalizeTrustCwd(home), ".agents", "skills")
 	}
-	home = normalizeTrustCwd(home)
-	userAgentsSkills := filepath.Join(home, ".agents", "skills")
 	current := normalizeTrustCwd(cwd)
 
 	configDir := ProjectConfigDir(current)
+	var probe nodefs.PathProbe
 	for _, entry := range trustRequiringProjectConfigResources {
-		if _, err := os.Stat(filepath.Join(configDir, entry)); err == nil {
+		if probe.Set(configDir, entry).Exists() {
 			return true
 		}
 	}
 
 	for {
-		agentsSkills := filepath.Join(current, ".agents", "skills")
-		if agentsSkills != userAgentsSkills {
-			if _, err := os.Stat(agentsSkills); err == nil {
-				return true
-			}
+		if !probe.Set(current, ".agents", "skills").Is(userAgentsSkills) && probe.Exists() {
+			return true
 		}
 		parent := filepath.Dir(current)
 		if parent == current {
@@ -137,6 +145,23 @@ func HasTrustRequiringProjectResources(cwd string) bool {
 		}
 		current = parent
 	}
+}
+
+// osHomedir is Node's os.homedir(): libuv's uv_os_homedir reads HOME (USERPROFILE on Windows), and the user database when the
+// variable is unset or empty.
+func osHomedir() string {
+	key := "HOME"
+	if runtime.GOOS == "windows" {
+		key = "USERPROFILE"
+	}
+	//perf:ok reached only when HOME is empty (cmp.Or fallback), once per trust check
+	if home := os.Getenv(key); home != "" {
+		return home
+	}
+	if current, err := user.Current(); err == nil {
+		return current.HomeDir
+	}
+	return ""
 }
 
 // ProjectTrustStore reads and writes <agentDir>/trust.json.
@@ -167,20 +192,23 @@ func (s *ProjectTrustStore) read() (map[string]*bool, error) {
 	if err := jsonparse.Validate(content); err != nil {
 		return nil, fmt.Errorf("Failed to read trust store %s: %w", s.trustPath, err)
 	}
-	var parsed any
-	if err := json.Unmarshal(content, &parsed); err != nil {
-		return nil, fmt.Errorf("Failed to read trust store %s: %w", s.trustPath, err)
-	}
-	object, ok := parsed.(map[string]any)
-	if !ok {
+	if !orderedjson.IsObject(content) {
 		return nil, fmt.Errorf("Invalid trust store %s: expected an object", s.trustPath)
 	}
-	out := make(map[string]*bool, len(object))
-	for key, value := range object {
-		switch typed := value.(type) {
-		case bool:
-			out[key] = new(typed)
-		case nil:
+	object, err := orderedjson.Parse(content)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to read trust store %s: %w", s.trustPath, err)
+	}
+	out := make(map[string]*bool, object.Len())
+	// Object.entries order decides which invalid value the error names: array-index keys first, then insertion order.
+	for _, key := range object.Keys() {
+		raw, _ := object.Get(key)
+		switch string(raw) {
+		case "true":
+			out[key] = new(true)
+		case "false":
+			out[key] = new(false)
+		case "null":
 			out[key] = nil
 		default:
 			return nil, fmt.Errorf("Invalid trust store %s: value for %q must be true, false, or null", s.trustPath, key)
@@ -190,7 +218,18 @@ func (s *ProjectTrustStore) read() (map[string]*bool, error) {
 }
 
 func (s *ProjectTrustStore) write(data map[string]*bool) error {
-	encoded, err := json.MarshalIndent(data, "", "  ")
+	// writeTrustFile (trust-manager.ts:126-135) sorts the keys with Array.prototype.sort, which compares UTF-16 code units, and writes JSON.stringify(sorted, null, 2): no HTML escaping, array-index keys first.
+	sorted := orderedjson.New()
+	for _, key := range slices.SortedFunc(maps.Keys(data), func(a, b string) int {
+		return slices.Compare(jsstring.ToUTF16(a), jsstring.ToUTF16(b))
+	}) {
+		value := json.RawMessage("null")
+		if data[key] != nil {
+			value = json.RawMessage(strconv.FormatBool(*data[key]))
+		}
+		sorted.Set(key, value)
+	}
+	encoded, err := stringifyIndented(rawObject(sorted))
 	if err != nil {
 		return fmt.Errorf("write trust store %s: %w", s.trustPath, err)
 	}
@@ -221,7 +260,7 @@ func (s *ProjectTrustStore) withLock(fn func() error) (err error) {
 }
 
 // Get returns the nearest decision for cwd, or nil when none applies.
-func (s *ProjectTrustStore) Get(cwd string) (*bool, error) {
+func (s *ProjectTrustStore) Get(cwd string) (ProjectTrustDecision, error) {
 	entry, err := s.GetEntry(cwd)
 	if err != nil || entry == nil {
 		return nil, err
@@ -251,7 +290,7 @@ func (s *ProjectTrustStore) GetEntry(cwd string) (entry *ProjectTrustStoreEntry,
 }
 
 // Set sets or clears the canonical decision for cwd.
-func (s *ProjectTrustStore) Set(cwd string, decision *bool) error {
+func (s *ProjectTrustStore) Set(cwd string, decision ProjectTrustDecision) error {
 	return s.SetMany([]ProjectTrustUpdate{{Path: cwd, Decision: decision}})
 }
 
@@ -274,3 +313,6 @@ func (s *ProjectTrustStore) SetMany(updates []ProjectTrustUpdate) error {
 		return s.write(data)
 	})
 }
+
+// ProjectTrustDecision is a saved project trust decision: true trusts, false distrusts, nil is undecided (trust-manager.ts:9, boolean | null).
+type ProjectTrustDecision = *bool

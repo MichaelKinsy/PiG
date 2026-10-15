@@ -28,6 +28,28 @@ BINARY = ([os.environ.get("PIG_PARITY_PIG_BIN", str(ROOT / "bin/pig"))]
           if SIDE == "pig" else [os.environ.get("PIG_PARITY_PI_BIN", str(ROOT / "extensions/sdk-ts/node_modules/.bin/pi"))])
 
 
+def drain_until_exit(child, master, output):
+    """Read the PTY until the child exits so a small PTY buffer (macOS) never blocks the exit message write."""
+    deadline = time.monotonic() + 20
+    while True:
+        if time.monotonic() >= deadline:
+            raise AssertionError(f"CLI did not exit: {output.decode(errors='replace')}")
+        if select.select([master], [], [], 0.05)[0]:
+            try:
+                chunk = os.read(master, 65536)
+            except OSError as error:
+                if error.errno != errno.EIO:
+                    raise
+                chunk = b""
+            if chunk:
+                output.extend(chunk)
+                continue
+            child.wait(timeout=max(0.1, deadline - time.monotonic()))
+            return
+        if child.poll() is not None:
+            return
+
+
 def run_case(root, provider, model, api, requested, expected, resumed=False, suffix=False):
     agent = root / "agent"
     agent.mkdir(exist_ok=True)
@@ -110,7 +132,7 @@ def run_case(root, provider, model, api, requested, expected, resumed=False, suf
             plain = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", output.decode(errors="replace"))
             footer_level = "thinking off" if expected == "off" else expected
             os.write(master, b"\x04")
-            child.wait(timeout=20)
+            drain_until_exit(child, master, output)
             assert child.returncode == 0, output.decode(errors="replace")
         finally:
             if child.poll() is None:

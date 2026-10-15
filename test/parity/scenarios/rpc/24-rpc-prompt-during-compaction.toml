@@ -43,9 +43,9 @@ wait_timeout_seconds = 15
 [env]
 pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=../compaction/testdata/pig-agent"]
 pi = ["PI_CODING_AGENT_DIR=../compaction/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
-pig_extensions = ["../../../../cmd/pig/testdata/rpc-ui.mjs"]
+pig_extensions = ["../../../../coding/cli/testdata/rpc-ui.mjs"]
 pig_args = ["--model", "test-faux/faux-1", "--session-dir", "sessions", "-c"]
-pi_extensions = ["../../../../cmd/pig/testdata/rpc-ui.mjs", "../../testdata/test-faux-provider.ts"]
+pi_extensions = ["../../../../coding/cli/testdata/rpc-ui.mjs", "../../testdata/test-faux-provider.ts"]
 pi_args = ["--model", "test-faux/faux-1", "--session-dir", "sessions", "-c"]
 
 [assert]

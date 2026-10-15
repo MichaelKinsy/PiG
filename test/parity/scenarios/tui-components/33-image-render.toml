@@ -1,0 +1,27 @@
+# Behavior family: tui-components (Image component)
+# Pi 1.1.0 probe: Image built from PNG, JPEG, GIF and WebP headers (and invalid data and an unsupported type) under kitty, iTerm2 and no image
+# protocol, two cell sizes, omitted and explicit width/height cell limits, with and without a kitty id and a file name, rendered at widths 1 to 200
+# with a repeated width and an invalidate in between; every frame is compared byte for byte, the kitty image id normalised. The Go test
+# TestImageRenderMatchesPi runs the same corpus against the installed Pi; this scenario compares the two printed streams.
+name = "33-image-render"
+description = "The Image component renders the same kitty, iTerm2 and fallback rows as Pi."
+covers = ["packages/tui/src/components/image.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/image-render-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/image-render-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 240
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['[Image: ', 'pic.png']
+runs = 2

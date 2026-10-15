@@ -24,6 +24,7 @@ func printFindOperations(t *testing.T, name string, result agent.AgentToolResult
 	fmt.Printf("FIND_OPS %s %s\n", name, data)
 }
 
+// Pi: packages/coding-agent/src/core/tools/find.ts:53 (FindOperations.exists); packages/coding-agent/src/core/tools/find.ts:55 (FindOperations.glob).
 func TestFindCustomGlobRootPort(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/suite/regressions/6104-find-root-relativization.test.ts:76
 	t.Run("relativizes custom glob results against a root search path", func(t *testing.T) {
@@ -85,6 +86,7 @@ func TestFindZeroLimitDetailsThroughFD(t *testing.T) {
 	printFindOperations(t, "fd-zero", result)
 }
 
+// Pi: packages/coding-agent/src/core/tools/find.ts:53 (FindOperations.exists); packages/coding-agent/src/core/tools/find.ts:55 (FindOperations.glob).
 func TestFindOperationsCancellationAndErrors(t *testing.T) {
 	for _, tc := range []struct {
 		name, abortAt string
@@ -138,5 +140,19 @@ func TestFindOperationsCancellationAndErrors(t *testing.T) {
 				t.Fatalf("result=%+v calls=%q want=%q", result, calls, want)
 			}
 		})
+	}
+}
+
+// find.ts custom-operations branch: a failing operations.glob is reported as the tool error with the error's own message (`catch (e) { return error(e.message) }`), not swallowed or reworded.
+func TestFindGlobFailureIsReportedWithItsOwnMessage(t *testing.T) {
+	tool := &FindTool{CWD: t.TempDir(), Operations: &FindOperations{
+		Exists: func(string) (bool, error) { return true, nil },
+		Glob: func(string, string, FindGlobOptions) ([]string, error) {
+			return nil, errors.New("glob backend offline")
+		},
+	}}
+	result := runFileTool(t, tool, t.Context(), map[string]any{"pattern": "*"})
+	if result.Text() != "glob backend offline" || !result.IsError {
+		t.Fatalf("result = %q (error %v), want the glob error's own message as the tool error", result.Text(), result.IsError)
 	}
 }

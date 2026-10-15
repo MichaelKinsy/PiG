@@ -1,3 +1,5 @@
+//go:build !pig_strip_mermaid
+
 package codingagent
 
 import (
@@ -5,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/markdowntransform"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -18,15 +21,15 @@ func hasDiagram(lines []string) bool {
 // blockUnderTest wires an assistant block the way newAssistantMessageBlock does:
 // a transform that reads live streaming state and mode, plus the state
 // fingerprint that keeps the render cache honest about them.
-func blockUnderTest(streaming, mode *string) *tui.AssistantMessageBlock {
-	block := tui.NewAssistantMessageBlock(false)
+func blockUnderTest(streaming, mode *string) *tui.AssistantMessageComponent {
+	block := tui.NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
 	block.SetMarkdownTransformState(func() string { return *mode + " " + *streaming })
 	block.SetMarkdownTransform(func(markdown string, width int) string {
 		ts := []extension.MarkdownTransformer{
 			createMermaidMarkdownTransformer(func() string { return *mode }, nil),
 		}
 		isStreaming := *streaming == "streaming"
-		return createMarkdownTransform(extension.MarkdownMessageAssistant, isStreaming, ts)(markdown, width)
+		return markdowntransform.CreateMarkdownTransform(extension.MarkdownMessageAssistant, isStreaming, ts)(markdown, width)
 	})
 	block.SetTextDelta(mermaidFixture)
 	return block
@@ -76,7 +79,7 @@ func TestChangingTheModeReRendersAnExistingBlock(t *testing.T) {
 func TestTheRenderCacheStillHoldsWhenNothingChanged(t *testing.T) {
 	const width = 100
 	runs := 0
-	block := tui.NewAssistantMessageBlock(false)
+	block := tui.NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
 	block.SetMarkdownTransformState(func() string { return "settled" })
 	block.SetMarkdownTransform(func(markdown string, _ int) string {
 		runs++

@@ -51,7 +51,7 @@ func TestSessionSelectorSearchInputMatchesPi(t *testing.T) {
 				runes := []rune(tc.after)
 				atCursor, after = string(runes[0]), string(runes[1:])
 			}
-			want := "> " + tc.before + widthx.CursorMarker + "\x1b[7m" + atCursor + "\x1b[27m" + after
+			want := "> " + tc.before + widthx.CursorMarker + widthx.RenderFakeCursor(atCursor) + after
 			want += strings.Repeat(" ", 10-widthx.VisibleWidth(want))
 			if got := selector.renderList(10)[0]; got != want {
 				t.Fatalf("search row = %q, want Pi Input %q", got, want)
@@ -75,7 +75,7 @@ func TestSessionSelectorNoninvasiveDeleteEditsQueryBeforeDeletingSession(t *test
 	if selector.confirmDelete != "" {
 		t.Fatalf("Ctrl+Backspace opened delete confirmation with a nonempty query: %q", selector.confirmDelete)
 	}
-	want := "> alpha " + widthx.CursorMarker + "\x1b[7m \x1b[27m "
+	want := "> alpha " + widthx.CursorMarker + widthx.RenderFakeCursor(" ") + " "
 	if got := selector.renderList(10)[0]; got != want {
 		t.Fatalf("Ctrl+Backspace query row = %q, want %q", got, want)
 	}
@@ -131,7 +131,7 @@ func TestStartupSessionCancelParksFromSearchCursor(t *testing.T) {
 	if searchRow < 0 || state.HardwareCursorRow != searchRow {
 		t.Fatalf("hardware cursor row = %d, want search row %d (not the full-width bottom border)", state.HardwareCursorRow, searchRow)
 	}
-	want := fmt.Sprintf(" \x1b[%dB\r\n\x1b[?25h", len(state.PrevLines)-searchRow)
+	want := fmt.Sprintf(" \x1b[%dB\r\n\x1b[?25h", len(state.PreviousLines)-searchRow)
 	if !strings.HasSuffix(output.String(), want) {
 		t.Fatalf("stop bytes do not park below previousLines from the input: want suffix %q, got %q", want, output.String())
 	}

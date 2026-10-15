@@ -11,12 +11,6 @@ import (
 //go:embed assets/prelude.js
 var PreludeSource string
 
-//go:embed assets/quickjs.wasm
-var quickJSWasm []byte
-
-// QuickJSWasm returns the embedded quickjs-wasi module (assets/PROVENANCE.md). The caller must not modify it.
-func QuickJSWasm() []byte { return quickJSWasm }
-
 // The store limits the prelude enforces.
 //
 // Ports packages/codemode/src/runtime/prelude-source.ts (MAX_STORE_VALUE_CHARS, MAX_STORE_TOTAL_CHARS).

@@ -42,7 +42,7 @@ func (reader *nodeTextLineReader) ReadLine(ctx context.Context) (*durableenv.Tex
 		return nil, err
 	}
 	if reader.closed {
-		return nil, &durableenv.FileError{Code: durableenv.FileErrorInvalid, Message: "Text line reader is closed", Path: reader.path}
+		return nil, durableenv.NewFileError(durableenv.FileErrorInvalid, "Text line reader is closed", reader.path, nil)
 	}
 	for {
 		if line, ok := reader.bufferedLine(); ok {

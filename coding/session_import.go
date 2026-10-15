@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 )
 
@@ -35,7 +37,8 @@ func (s *Session) ImportFromJsonl(ctx context.Context, inputPath, cwdOverride st
 	}
 	manager := newSessionManagerForDir(s.services, s.sessionDir)
 	sessionDir := manager.SessionDir()
-	if err := os.MkdirAll(sessionDir, 0o755); err != nil {
+	// pig divergence (D132): session directories are 0700.
+	if err := icodingagent.MkdirSessionDir(sessionDir); err != nil {
 		return extension.CancelledResult{}, err
 	}
 	destinationPath, sourceAlreadyStored := importDestination(sessionDir, resolvedPath)
@@ -91,26 +94,37 @@ func pathExists(path string) bool {
 	return err == nil
 }
 
-// copyFileExclusive copies src to dst as Node's copyFileSync with
-// COPYFILE_EXCL does: dst must not exist, it gets src's permission bits, and
-// a failed copy removes the file it created.
-func copyFileExclusive(src, dst string) (err error) {
-	in, err := os.Open(src)
+// copyFileExclusive is copyFileSync(src, dst, COPYFILE_EXCL): dst must not exist, it gets src's permission bits, and a failed copy removes the file it
+// created. A failure reads "<CODE>: <description>, copyfile '<src>' -> '<dst>'" as Node's does.
+func copyFileExclusive(src, dst string) error {
+	err := copyFileExclusiveBytes(src, dst)
+	if pathErr, ok := errors.AsType[*fs.PathError](err); ok {
+		return &nodeerrno.FSError{Syscall: "copyfile", Path: src, Dest: dst, Err: pathErr.Err}
+	}
+	return err
+}
+
+func copyFileExclusiveBytes(src, dst string) error {
+	input, err := os.Open(src)
 	if err != nil {
 		return err
 	}
-	defer func() { err = errors.Join(err, in.Close()) }()
-	info, err := in.Stat()
+	defer func() { _ = input.Close() }()
+	info, err := input.Stat()
 	if err != nil {
 		return err
 	}
-	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, info.Mode().Perm())
+	output, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, info.Mode().Perm())
 	if err != nil {
 		return err
 	}
-	_, err = io.Copy(out, in)
-	if err = errors.Join(err, out.Close()); err != nil {
-		return errors.Join(err, os.Remove(dst))
+	_, copyErr := io.Copy(output, input)
+	modeErr := output.Chmod(info.Mode().Perm())
+	err = errors.Join(copyErr, modeErr, output.Close())
+	if err != nil {
+		if cleanupErr := os.Remove(dst); cleanupErr != nil && !errors.Is(cleanupErr, os.ErrNotExist) {
+			return errors.Join(err, cleanupErr)
+		}
 	}
-	return nil
+	return err
 }

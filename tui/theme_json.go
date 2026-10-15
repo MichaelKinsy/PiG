@@ -1,6 +1,6 @@
 package tui
 
-// theme_json.go ports upstream modes/interactive/theme/theme-json.ts: the
+// theme_json.go ports upstream modes/interactive/theme/theme-schema.ts: the
 // schema check for user-authored theme files. Pi validates with a compiled
 // TypeBox schema; this walks the same schema in the same order and reports the
 // same errors, including TypeBox's eight-error cap.
@@ -18,31 +18,85 @@ import (
 // themeJSONMaxErrors is TypeBox's default maxErrors setting.
 const themeJSONMaxErrors = 8
 
-// themeColorTokens lists ThemeJsonSchema.colors in schema order; optional
-// tokens may be omitted.
-var themeColorTokens = []struct {
-	name     string
-	optional bool
-}{
-	{"accent", false}, {"border", false}, {"borderAccent", false}, {"borderMuted", false},
-	{"success", false}, {"error", false}, {"warning", false}, {"muted", false}, {"dim", false},
-	{"text", false}, {"thinkingText", false},
-	{"scrollbarTrack", true}, {"scrollbarThumb", true},
-	{"selectedBg", false}, {"searchMatchBg", true}, {"searchMatchText", true},
-	{"userMessageBg", false}, {"userMessageText", false}, {"customMessageBg", false},
-	{"customMessageText", false}, {"customMessageLabel", false}, {"toolPendingBg", false},
-	{"toolSuccessBg", false}, {"toolErrorBg", false}, {"toolTitle", false}, {"toolOutput", false},
-	{"mdHeading", false}, {"mdLink", false}, {"mdLinkUrl", false}, {"mdCode", false},
-	{"mdCodeBlock", false}, {"mdCodeBlockBorder", false}, {"mdQuote", false},
-	{"mdQuoteBorder", false}, {"mdHr", false}, {"mdListBullet", false},
-	{"toolDiffAdded", false}, {"toolDiffRemoved", false}, {"toolDiffContext", false},
-	{"syntaxComment", false}, {"syntaxKeyword", false}, {"syntaxFunction", false},
-	{"syntaxVariable", false}, {"syntaxString", false}, {"syntaxNumber", false},
-	{"syntaxType", false}, {"syntaxOperator", false}, {"syntaxPunctuation", false},
-	{"thinkingOff", false}, {"thinkingMinimal", false}, {"thinkingLow", false},
-	{"thinkingMedium", false}, {"thinkingHigh", false}, {"thinkingXhigh", false},
-	{"thinkingMax", true},
-	{"bashMode", false},
+type themeColorToken struct {
+	name        string
+	optional    bool
+	description string
+}
+
+// themeColorTokens lists ThemeJsonSchema.colors in schema order (theme-tokens.ts THEME_TOKENS); optional tokens may be omitted.
+var themeColorTokens = []themeColorToken{
+	{"accent", false, "Primary accent color (logo, selected items, cursor)"},
+	{"border", false, "Normal borders"},
+	{"borderAccent", false, "Highlighted borders"},
+	{"borderMuted", false, "Subtle borders"},
+	{"success", false, "Success states"},
+	{"error", false, "Error states"},
+	{"warning", false, "Warning states"},
+	{"muted", false, "Secondary/dimmed text"},
+	{"dim", false, "Very dimmed text (more subtle than muted)"},
+	{"text", false, "Default text color (usually empty string)"},
+	{"thinkingText", false, "Thinking block text color"},
+	{"scrollbarTrack", true, "Fullscreen scrollbar track foreground (falls back to muted when omitted)"},
+	{"scrollbarThumb", true, "Fullscreen scrollbar thumb foreground (falls back to text when omitted)"},
+	{"selectedBg", false, "Selected item background"},
+	{"searchMatchBg", true, "Transcript search match background and current-match text (falls back to selectedBg when omitted)"},
+	{"searchMatchText", true, "Transcript search match text and current-match background (falls back to text when omitted)"},
+	{"userMessageBg", false, "User message background"},
+	{"userMessageText", false, "User message text color"},
+	{"customMessageBg", false, "Custom message background (hook-injected messages)"},
+	{"customMessageText", false, "Custom message text color"},
+	{"customMessageLabel", false, "Custom message type label color"},
+	{"toolPendingBg", false, "Tool execution box (pending state)"},
+	{"toolSuccessBg", false, "Tool execution box (success state)"},
+	{"toolErrorBg", false, "Tool execution box (error state)"},
+	{"toolTitle", false, "Tool execution box title color"},
+	{"toolOutput", false, "Tool execution box output text color"},
+	{"mdHeading", false, "Markdown heading text"},
+	{"mdLink", false, "Markdown link text"},
+	{"mdLinkUrl", false, "Markdown link URL"},
+	{"mdCode", false, "Markdown inline code"},
+	{"mdCodeBlock", false, "Markdown code block content"},
+	{"mdCodeBlockBorder", false, "Markdown code block fences"},
+	{"mdQuote", false, "Markdown blockquote text"},
+	{"mdQuoteBorder", false, "Markdown blockquote border"},
+	{"mdHr", false, "Markdown horizontal rule"},
+	{"mdListBullet", false, "Markdown list bullets/numbers"},
+	{"toolDiffAdded", false, "Added lines in tool diffs"},
+	{"toolDiffRemoved", false, "Removed lines in tool diffs"},
+	{"toolDiffContext", false, "Context lines in tool diffs"},
+	{"syntaxComment", false, "Syntax highlighting: comments"},
+	{"syntaxKeyword", false, "Syntax highlighting: keywords"},
+	{"syntaxFunction", false, "Syntax highlighting: function names"},
+	{"syntaxVariable", false, "Syntax highlighting: variable names"},
+	{"syntaxString", false, "Syntax highlighting: string literals"},
+	{"syntaxNumber", false, "Syntax highlighting: number literals"},
+	{"syntaxType", false, "Syntax highlighting: type names"},
+	{"syntaxOperator", false, "Syntax highlighting: operators"},
+	{"syntaxPunctuation", false, "Syntax highlighting: punctuation"},
+	{"thinkingOff", false, "Thinking level border: off"},
+	{"thinkingMinimal", false, "Thinking level border: minimal"},
+	{"thinkingLow", false, "Thinking level border: low"},
+	{"thinkingMedium", false, "Thinking level border: medium"},
+	{"thinkingHigh", false, "Thinking level border: high"},
+	{"thinkingXhigh", false, "Thinking level border: xhigh"},
+	{"thinkingMax", true, "Thinking level border: max (falls back to thinkingXhigh when omitted)"},
+	{"bashMode", false, "Editor border color in bash mode"},
+}
+
+// ThemeColorToken is one token of the theme "colors" object: its description and whether a theme may omit it.
+type ThemeColorToken struct {
+	Name, Description string
+	Optional          bool
+}
+
+// ThemeColorTokens returns the tokens of ThemeJsonSchema.colors in schema order.
+func ThemeColorTokens() []ThemeColorToken {
+	out := make([]ThemeColorToken, len(themeColorTokens))
+	for i, t := range themeColorTokens {
+		out[i] = ThemeColorToken{Name: t.name, Description: t.description, Optional: t.optional}
+	}
+	return out
 }
 
 // themeExportTokens lists ThemeJsonSchema.export in schema order.
@@ -63,7 +117,8 @@ func (e *themeSchemaErrors) add(err themeSchemaError) {
 
 // ValidateThemeJSON validates one theme document (JSON text without a BOM)
 // and returns an error naming the offending tokens, or nil. Mirrors upstream
-// validateThemeJson.
+// validateThemeJson (theme-schema.ts): a name containing "/" is rejected before
+// the schema runs.
 func ValidateThemeJSON(label string, data []byte) error {
 	var root any
 	decoder := json.NewDecoder(bytes.NewReader(data))
@@ -71,16 +126,32 @@ func ValidateThemeJSON(label string, data []byte) error {
 	if err := decoder.Decode(&root); err != nil {
 		return err
 	}
+	if object, ok := root.(map[string]any); ok {
+		if name, ok := object["name"].(string); ok && strings.Contains(name, "/") {
+			return errors.New("Invalid theme name \"" + name + "\": theme names cannot contain \"/\" because it is reserved for automatic light/dark theme settings.")
+		}
+	}
 	var errs themeSchemaErrors
 	checkThemeDocument(&errs, root, data)
 	if len(errs.list) > 0 {
 		return errors.New(formatThemeSchemaErrors(label, errs.list))
 	}
-	name, _ := root.(map[string]any)["name"].(string)
-	if strings.Contains(name, "/") {
-		return errors.New("Invalid theme name \"" + name + "\": theme names cannot contain \"/\" because it is reserved for automatic light/dark theme settings.")
-	}
 	return nil
+}
+
+// checkAdditionalProperties reports additionalProperties:false the way TypeBox does: one "schema is false" error per unknown
+// property in enumeration order, then the object's own error.
+func checkAdditionalProperties(errs *themeSchemaErrors, path string, keys []string, known func(string) bool) {
+	extra := false
+	for _, key := range jsPropertyOrder(keys) {
+		if !known(key) {
+			extra = true
+			errs.add(themeSchemaError{path: path + "/" + key, message: "schema is false"})
+		}
+	}
+	if extra {
+		errs.add(themeSchemaError{path: path, message: "must not have additional properties"})
+	}
 }
 
 func checkThemeDocument(errs *themeSchemaErrors, root any, data []byte) {
@@ -90,11 +161,14 @@ func checkThemeDocument(errs *themeSchemaErrors, root any, data []byte) {
 		return
 	}
 	checkRequired(errs, "", object, []string{"name", "colors"})
+	checkAdditionalProperties(errs, "", rawObjectKeys(data), func(key string) bool {
+		return slices.Contains([]string{"$schema", "name", "appearance", "vars", "colors", "export"}, key)
+	})
 	if value, present := object["$schema"]; present {
 		checkString(errs, "/$schema", value)
 	}
 	if value, present := object["name"]; present {
-		checkString(errs, "/name", value)
+		checkThemeName(errs, value)
 	}
 	if value, present := object["appearance"]; present {
 		checkThemeAppearance(errs, value)
@@ -109,7 +183,7 @@ func checkThemeDocument(errs *themeSchemaErrors, root any, data []byte) {
 		}
 	}
 	if value, present := object["colors"]; present {
-		checkThemeColors(errs, value)
+		checkThemeColors(errs, value, themeObjectKeys(data, "colors"))
 	}
 	if value, present := object["export"]; present {
 		exports, ok := value.(map[string]any)
@@ -117,6 +191,7 @@ func checkThemeDocument(errs *themeSchemaErrors, root any, data []byte) {
 			errs.add(themeSchemaError{path: "/export", message: "must be object"})
 			return
 		}
+		checkAdditionalProperties(errs, "/export", themeObjectKeys(data, "export"), func(key string) bool { return slices.Contains(themeExportTokens, key) })
 		for _, token := range themeExportTokens {
 			if value, present := exports[token]; present {
 				checkThemeColorValue(errs, "/export/"+token, value)
@@ -140,7 +215,19 @@ func checkThemeAppearance(errs *themeSchemaErrors, value any) {
 	errs.add(themeSchemaError{path: "/appearance", message: "must match a schema in anyOf"})
 }
 
-func checkThemeColors(errs *themeSchemaErrors, value any) {
+// checkThemeName checks String({pattern: "^[^/]+$"}): the string type first, then the pattern (a JavaScript [^/] matches a newline).
+func checkThemeName(errs *themeSchemaErrors, value any) {
+	name, ok := value.(string)
+	if !ok {
+		errs.add(themeSchemaError{path: "/name", message: "must be string"})
+		return
+	}
+	if name == "" || strings.Contains(name, "/") {
+		errs.add(themeSchemaError{path: "/name", message: `must match pattern "^[^/]+$"`})
+	}
+}
+
+func checkThemeColors(errs *themeSchemaErrors, value any, keys []string) {
 	colors, ok := value.(map[string]any)
 	if !ok {
 		errs.add(themeSchemaError{path: "/colors", message: "must be object"})
@@ -153,6 +240,11 @@ func checkThemeColors(errs *themeSchemaErrors, value any) {
 		}
 	}
 	checkRequired(errs, "/colors", colors, required)
+	checkAdditionalProperties(errs, "/colors", keys, func(key string) bool {
+		return slices.ContainsFunc(themeColorTokens, func(token themeColorToken) bool {
+			return token.name == key
+		})
+	})
 	for _, token := range themeColorTokens {
 		if value, present := colors[token.name]; present {
 			checkThemeColorValue(errs, "/colors/"+token.name, value)
@@ -259,7 +351,12 @@ func themeObjectKeys(data []byte, field string) []string {
 	if json.Unmarshal(data, &root) != nil {
 		return nil
 	}
-	decoder := json.NewDecoder(bytes.NewReader(root[field]))
+	return rawObjectKeys(root[field])
+}
+
+// rawObjectKeys is themeObjectKeys for one JSON object value.
+func rawObjectKeys(raw []byte) []string {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
 	if token, err := decoder.Token(); err != nil || token != json.Delim('{') {
 		return nil
 	}

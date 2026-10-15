@@ -8,7 +8,7 @@ Operating rules for AI agents maintaining `pig`, the Go port of upstream `pi`. T
 
 Source of truth:
 - `.upstream/current/` is the upstream mirror.
-- `internal/coding/pigversion/pigversion.go` pins the upstream version (re-exported by `coding/upstream.go` as `coding.UpstreamVersion`).
+- `.upstream/pin` is the one upstream pin: a Pi release tag, or a pinned pi-mono commit (`ref`, `commit`, `package_version`, display `version` such as `1.1.0+42a3497d`). `internal/coding/pigversion/pigversion.go` is generated from it (re-exported by `coding/upstream.go` as `coding.UpstreamVersion`, `coding.UpstreamPackageVersion`, `coding.UpstreamCommit`). `PI_UPSTREAM_REF=<tag|commit>` overrides the pin for one run, and `make pin-bump PI_UPSTREAM_REF=<tag|commit>` moves it and regenerates what derives from it (`docs/parity/upstream-pin.md`).
 - `docs/parity/PORT_MAP.md` maps upstream files to Go files, deferred entries, or designed-out entries.
 - `test/parity/scenarios/<family>/*.toml` define observed behavior.
 - `test/parity/interfaces/upstream-v<version>.json` is the compiler-derived public
@@ -122,7 +122,7 @@ stay subprocess-only without giving up the pi extension API:
 Do not, without an explicit approved spec:
 - add a WASM or embedded-JS extension runtime,
 - add a dynamic Go plugin / `plugin.Open` extension loader,
-- add a linked/in-process production extension runtime,
+- add a linked/in-process production extension runtime, except the compiled-in extension factory form of `docs/specs/extension-factory-trust.md`: an `extension.ExtensionFactory` that the source of the binary's own `main` package passes to the loader by value (Stock PiG's built-in rows, or an embedding program's own factories). A Piglet member, including a D31 fused extension, never uses it. Settings and `-e builtin:<name>` may select or disable a registered built-in by name, as Pi does; no user, project, Package, file, settings entry, Piglet, or wire peer can supply or add factory code,
 - introduce multi-register (`RegisterPayload.Extensions`,
   `RequestPayload.TargetExtension`): packed cells deliberately stay on
   one socket and one registration per extension,
@@ -273,8 +273,28 @@ make async-contracts` or `make verify` from `docs/parity/PORT_MAP.md` and `test/
   port. Everything else is invariant rule, not progress narrative.
 -->
 
-**Porting:** 379 / 493 intended-portable entries ✅ (76.9%); **Verification:** 355 behavioral (93.7%), 3 weak-only (no behavioral verification), 21 untested.
-Raw PORT_MAP rows: 550. Breakdown: 57 n/a (designed out) · 102 🟡 partial · 12 ⬜ not started. See docs/parity/DIVERGENCES.md for the documented exceptions.
+**Porting:** 556 / 602 intended-portable entries ✅ (92.4%); **Verification:** 539 behavioral (96.9%), 17 untested.
+Raw PORT_MAP rows: 670. Breakdown: 68 n/a (designed out) · 46 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
+
+| package | src files | n/a | intended | ✅ | 🟡 | ⬜ | ported | behavioral |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `agent` | 6 | 1 | 5 | 4 | 1 | 0 | 80.0% | 100.0% |
+| `ai` | 204 | 21 | 183 | 177 | 6 | 0 | 96.7% | 98.9% |
+| `chord` | 19 | 3 | 16 | 7 | 9 | 0 | 43.8% | 85.7% |
+| `codemode` | 17 | 4 | 13 | 7 | 6 | 0 | 53.8% | 100.0% |
+| `coding-agent` | 254 | 27 | 227 | 219 | 8 | 0 | 96.5% | 97.7% |
+| `durable` | 73 | 5 | 68 | 67 | 1 | 0 | 98.5% | 95.5% |
+| `env` | 22 | 3 | 19 | 11 | 8 | 0 | 57.9% | 45.5% |
+| `evals` | 5 | 0 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
+| `mcp` | 18 | 3 | 15 | 9 | 6 | 0 | 60.0% | 100.0% |
+| `telemetry` | 6 | 1 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
+| `tui` | 46 | 0 | 46 | 45 | 1 | 0 | 97.8% | 100.0% |
+
+- **Four core packages (agent, ai, coding-agent, tui):** 445 / 461 intended-portable files ✅ (96.5%) from 510 rows; 438 behavioral (98.4%), 0 weak-only, 7 untested.
+- **Shipped surface (agent, ai, codemode, coding-agent, mcp, telemetry, tui; coding-agent without ):** 466 / 494 intended-portable files ✅ (94.3%) from 551 rows; 459 behavioral (98.5%), 0 weak-only, 7 untested.
+- **Whole monorepo (11 packages):** 556 / 602 intended-portable files ✅ (92.4%) from 670 rows; 539 behavioral (96.9%), 0 weak-only, 17 untested.
+- **Interface closure:** 12722 of 12794 semantic interface IDs closed (211 designed-out, 72 pending, 12511 ported). A file-level ✅ does not close an interface ID.
+
 Behavioral evidence includes paired scenarios and reviewed mutation-proven unit tests; the family table below counts paired scenarios only.
 Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registration-only, 1 smoke-only.
 
@@ -283,32 +303,32 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `_top` | 1 | 1 | 0 | 0 | 0 | 1 | not run |
 | `ai-sdk` | 3 | 3 | 0 | 0 | 0 | 90 | not run |
 | `autocomplete` | 13 | 13 | 0 | 0 | 0 | 5 | not run |
-| `cli-utils` | 25 | 25 | 0 | 0 | 0 | 13 | not run |
+| `cli-utils` | 33 | 33 | 0 | 0 | 0 | 15 | not run |
 | `clipboard-images` | 7 | 7 | 0 | 0 | 2 | 11 | not run |
 | `compaction` | 14 | 14 | 0 | 0 | 0 | 10 | not run |
-| `export-html` | 6 | 6 | 0 | 0 | 0 | 1 | not run |
+| `export-html` | 7 | 7 | 0 | 0 | 0 | 2 | not run |
 | `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
-| `extensions-runtime` | 103 | 102 | 0 | 1 | 0 | 58 | not run |
+| `extensions-runtime` | 134 | 133 | 0 | 1 | 0 | 62 | not run |
 | `footer` | 11 | 11 | 0 | 0 | 0 | 9 | not run |
-| `fullscreen` | 12 | 12 | 0 | 0 | 0 | 9 | not run |
-| `interactive-rendering` | 55 | 54 | 1 | 0 | 0 | 35 | not run |
-| `json` | 10 | 10 | 0 | 0 | 0 | 7 | not run |
+| `fullscreen` | 13 | 13 | 0 | 0 | 0 | 10 | not run |
+| `interactive-rendering` | 68 | 67 | 1 | 0 | 0 | 37 | not run |
+| `json` | 12 | 12 | 0 | 0 | 0 | 10 | not run |
 | `model-resolver-selector` | 25 | 25 | 0 | 0 | 0 | 15 | not run |
 | `model-runtime-store-catalog` | 25 | 25 | 0 | 0 | 0 | 24 | not run |
-| `oauth` | 29 | 29 | 0 | 0 | 0 | 18 | not run |
-| `print` | 7 | 7 | 0 | 0 | 0 | 6 | not run |
-| `project-trust` | 23 | 23 | 0 | 0 | 0 | 18 | not run |
-| `providers-faux-streaming` | 65 | 64 | 0 | 1 | 0 | 48 | not run |
-| `providers-registry` | 7 | 4 | 0 | 3 | 0 | 26 | not run |
-| `rpc` | 49 | 49 | 0 | 0 | 0 | 23 | not run |
+| `oauth` | 32 | 32 | 0 | 0 | 0 | 19 | not run |
+| `print` | 11 | 11 | 0 | 0 | 0 | 9 | not run |
+| `project-trust` | 26 | 26 | 0 | 0 | 0 | 19 | not run |
+| `providers-faux-streaming` | 66 | 65 | 0 | 1 | 0 | 49 | not run |
+| `providers-registry` | 9 | 6 | 0 | 3 | 0 | 27 | not run |
+| `rpc` | 70 | 70 | 0 | 0 | 0 | 32 | not run |
 | `selectors` | 14 | 14 | 0 | 0 | 1 | 15 | not run |
-| `session` | 41 | 41 | 0 | 0 | 0 | 19 | not run |
-| `settings` | 14 | 14 | 0 | 0 | 0 | 19 | not run |
-| `slash-commands` | 16 | 15 | 1 | 0 | 0 | 16 | not run |
-| `startup` | 18 | 17 | 1 | 0 | 0 | 10 | not run |
-| `tools` | 29 | 29 | 0 | 0 | 0 | 31 | not run |
-| `tree` | 8 | 7 | 1 | 0 | 0 | 5 | not run |
-| `tui-components` | 26 | 26 | 0 | 0 | 0 | 27 | not run |
+| `session` | 42 | 42 | 0 | 0 | 0 | 19 | not run |
+| `settings` | 16 | 16 | 0 | 0 | 0 | 21 | not run |
+| `slash-commands` | 28 | 27 | 1 | 0 | 0 | 20 | not run |
+| `startup` | 19 | 18 | 1 | 0 | 0 | 10 | not run |
+| `tools` | 32 | 32 | 0 | 0 | 0 | 35 | not run |
+| `tree` | 9 | 8 | 1 | 0 | 0 | 9 | not run |
+| `tui-components` | 39 | 39 | 0 | 0 | 0 | 36 | not run |
 
 Full per-file detail: `test/parity/coverage.md`.
 
@@ -467,7 +487,9 @@ A divergence is allowed only when it is user-visible or interop-relevant and can
 - `// pig divergence (D<N>): ...` at each call site;
 - parity coverage or an explicit parity allowance.
 
-`make divergence-guard` (part of `make check`) catches divergences nobody recorded. It flags, in the agent, ai, coding, internal/codingagent, tui and cmd/pig packages: duration and cap literals with no upstream counterpart (`magic-literal`), event sends that race a context-done case (`cancel-drop-send`), non-blocking sends that drop their value (`default-drop-send`), decode errors skipped inside loops (`stream-parse-continue`), unknown or missing stop reasons mapped to success (`stop-reason-success`), SSE fields parsed outside `ai/sse.go` (`hand-rolled-sse`), `recover()` that discards the panic (`bare-recover`), discarded persistence errors (`discarded-io-error`), hooks that proceed when their handler fails (`hook-fail-open`), errors classified by status-code substrings (`error-status-substring`), and agent `Send`/`Continue` outside `coding/session*.go` (`agent-run-outside-session`). A hit passes only with a `// pig divergence (D<N>): ...` marker on its line or the line above, or, when Pi really does the same, `// upstream: <file>:<symbol>` there; the file must exist in `.upstream/current` or be a SHA-256-verified dependency snapshot whose exact version matches a dependency pin in that mirror (`test/parity/dependency-sources.json`; see `docs/parity/dependency-source-proof.md`), the symbol must appear in it, and for a literal the value must appear too. A literal whose value appears in an upstream file that `docs/parity/PORT_MAP.md` maps to the Go file also passes. Every current hit is listed in `automation/ci/divguard/baseline.toml` with its finding and owning slice. The gate compares the scan with that file in both directions: a new hit fails, and so does an entry whose hit is gone, so a fix deletes its entries in the same change. It does not compare the file with its previous version, so keeping it shrink-only is a review rule: never add an entry for new code. A green guard shows these patterns are absent or accounted for, not that the code matches Pi; allow markers prove only that the cited file and symbol exist (and, for literals, that the value appears there).
+Each record is one file, `docs/parity/divergences/D<N>.md`: an active record is a `## D<N> <title>` section, a retired record is one `- D<N> — ...` line. Edit that file only. `make divergences` generates `docs/parity/DIVERGENCES.md` from the files, and a lane does not commit the generated ledger; the merger regenerates it (`TestDivergenceLedgerEqualsItsRecordFiles` fails when they differ).
+
+`make divergence-guard` (part of `make check`) catches divergences nobody recorded. It flags, in the agent, ai, coding, internal/codingagent, tui and cmd/pig packages: duration and cap literals with no upstream counterpart (`magic-literal`), event sends that race a context-done case (`cancel-drop-send`), non-blocking sends that drop their value (`default-drop-send`), decode errors skipped inside loops (`stream-parse-continue`), unknown or missing stop reasons mapped to success (`stop-reason-success`), SSE fields parsed outside `ai/sse.go` (`hand-rolled-sse`), `recover()` that discards the panic (`bare-recover`), discarded persistence errors (`discarded-io-error`), hooks that proceed when their handler fails (`hook-fail-open`), errors classified by status-code substrings (`error-status-substring`), and agent `Send`/`Continue` outside `coding/session*.go` (`agent-run-outside-session`). `bare-recover` scans every non-test Go file in the repository, not only those packages. A hit passes only with a `// pig divergence (D<N>): ...` marker on its line or the line above, or, when Pi really does the same, `// upstream: <file>:<symbol>` there; the file must exist in `.upstream/current` or be a SHA-256-verified dependency snapshot whose exact version matches a dependency pin in that mirror (`test/parity/dependency-sources.json`; see `docs/parity/dependency-source-proof.md`), the symbol must appear in it, and for a literal the value must appear too. A literal whose value appears in an upstream file that `docs/parity/PORT_MAP.md` maps to the Go file also passes. Every current hit is listed in `automation/ci/divguard/baseline.toml` with its finding and owning slice. The gate compares the scan with that file in both directions: a new hit fails, and so does an entry whose hit is gone, so a fix deletes its entries in the same change. It does not compare the file with its previous version, so keeping it shrink-only is a review rule: never add an entry for new code. A green guard shows these patterns are absent or accounted for, not that the code matches Pi; allow markers prove only that the cited file and symbol exist (and, for literals, that the value appears there).
 
 Do not record ordinary TS-to-Go mechanics, test harness differences, or an
 SDK's implementation of a capability every SDK has (naming convention, `Result`
@@ -522,6 +544,7 @@ Code and interface style:
 
 Go style:
 - Build, CI, release-candidate, security-analysis, and documented setup commands use Go 1.27.2.
+- `.go-version` is the one Go pin. Workflows, scripts, images, the devcontainer, and the `toolchain` lines of `go.mod` and `go.work` name that release and no other. A script reads `.go-version` instead of repeating the number. Moving the pin changes `.go-version` and its recorded copies in one change; `make compliance` and `TestGoVersionPolicy` fail on any other release. Dated measurement records keep the release they ran on.
 - Maintained modules declare Go 1.26 or 1.26.0 as their language floor unless a concrete language requirement is approved. Do not raise a `go` directive merely to match the build toolchain.
 - Use language features available at the module floor. Prefer applicable modern standard-library APIs such as `slices.Sort`, `slices.SortFunc`, `cmp.Compare`, `maps.Copy`, `slices.Sorted(maps.Keys(m))`, `strings.Cut`, `CutPrefix`, `SplitSeq`, `for i := range n`, `wg.Go`, `min`, and `max`.
 - `go fix -diff ./...` should be empty.
@@ -533,6 +556,8 @@ go tool golangci-lint config verify
 make lint-changed
 make lint
 ```
+
+`make port-lint` runs the porting anti-pattern analyzers (`automation/ci/portlint/README.md`) against a ratcheting `baseline.toml`. Fix a finding at the source, or mark one reviewed false positive with `//portlint:allow <check> <reason>`. Never add a baseline entry for new code.
 
 Use `make lint-changed` in the development loop. It runs every configured linter over whole changed Go files in changed packages relative to the merge base with `main`. Use `make lint` for the full-repository gate. `make check` always runs the full-repository gate.
 
@@ -557,6 +582,7 @@ make coverage
 
 Other gates as needed:
 ```bash
+make port-lint
 make schedule-report
 make test-stress
 make parity-stress
@@ -567,6 +593,8 @@ go tool govulncheck ./...
 go tool deadcode ./...
 go fix -diff ./...
 ```
+
+Choose the test tier by the moment, as `docs/project/test-economy.md` defines: `go test ./<pkg> -run '<Tests>'` while iterating, `make test-changed`, `make lint-changed` and `go vet` on touched packages before a handoff commit, `make ci-drift ci-contracts` and the affected `make parity-family` runs before reporting ready, and the full suites (`make test`, `make check`, `make verify`, `make parity`, `go test ./...`) in CI, integration and release preview. Do not pass `-count=1` unless the test reads inputs through a child process. Use `-race` on edited packages, not the whole module. Bound `go test -fuzz` with `-parallel` and `-fuzztime`. On a shared host, build with `-trimpath`.
 
 `make test` requires and exercises the Go, Node, Python, and Rust toolchains; fixture build failures are fatal. `make check` combines deterministic gates with one strict Pig/Pi pair per hermetic scenario. `make verify` is the end-of-loop gate: it runs each scenario's declared durability and regenerates coverage. `make parity` runs declared scenario pairs in parallel with default concurrency groups and suppresses `runtime_ratio_max` because parallel CPU contention makes that metric unreliable. `make parity-perf` runs serially and enforces runtime ratios; use it for release gates or cron, not normal loops.
 
@@ -600,6 +628,8 @@ facts: the pinned Pi version, observed parity, named divergences, supported
 artifacts, and published evidence.
 
 ## Commit hygiene
+
+User-facing changes go in `changelog.d/<lane>-<sha>.md`, one fragment per commit range, as `### Added`, `### Changed`, `### Fixed` (and `Upgrading`, `Deprecated`, `Removed`, `Security`, `Known issues`) sections of bullets in `CHANGELOG.md`'s style. `### Upgrading` is what a user of the previous release must change; the fold appends it to the release's "Upgrading from" section. Do not edit `CHANGELOG.md`. `make changelog-check` validates the fragments and `make changelog-unreleased` prints the assembly; fragments that predate the name rule are listed in `automation/ci/changelogfrag/legacy.txt` and the list only shrinks. The integrator runs `make changelog-fold VERSION=x.y.z` to append the fragments to that release in `CHANGELOG.md` and delete them; it runs again at release for fragments written since.
 
 Every commit requires both a DCO `Signed-off-by` line and a signature GitHub marks **Verified**. Use `git commit --signoff -S`. Sign-off is not a cryptographic signature. See `.github/CONTRIBUTING.md` for SSH signing setup and unsigned-commit repair. If signing is unavailable, a maintainer lands the change in a maintainer-signed commit with a `Co-authored-by:` trailer.
 

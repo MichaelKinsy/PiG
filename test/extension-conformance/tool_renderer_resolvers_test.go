@@ -9,13 +9,14 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
-// Pi 1.0.1 pi.registerToolRenderer (types.ts ToolRendererResolver, runner.ts resolveToolRenderers): every SDK's common
+// Pi pi.registerToolRenderer (packages/coding-agent/src/core/extensions/types.ts:1685; runner.ts resolveToolRenderers): every SDK's common
 // fixture registers one resolver that, by tool, draws calls itself ("conformance_tool_renderer"), draws none
 // ("conformance_no_renderer"), fills in only when next() has none ("conformance_fill"), replaces next()'s call renderer
 // in the SDK's own idiom ("conformance_wrap") and defers every other tool to next(). Each expectation differs from the
 // next() a failed or skipped request falls back to. The host resolves a subprocess extension's resolvers off the UI
 // loop, so a first resolution returns next() until the extension answered (D89).
 func TestToolRendererResolversAcrossSDKs(t *testing.T) {
+	requireAPIMember(t, "RegisterToolRenderer", extension.API.RegisterToolRenderer)
 	t.Parallel()
 	for _, tc := range allHarnessCases() {
 		t.Run(tc.name, func(t *testing.T) {
@@ -48,7 +49,7 @@ func TestToolRendererResolversAcrossSDKs(t *testing.T) {
 				return own != base
 			})
 			if own == nil || own.RenderCall == nil || own.RenderResult != nil {
-				t.Fatalf("resolved renderers = %+v, want the fixture's call renderer only", own)
+				t.Fatalf("registerToolRenderer: resolved renderers = %+v, want the fixture's call renderer only", own)
 			}
 			expectCallLine(t, own, "resolved:conformance_tool_renderer:pi")
 			// An answer that changes the renderers draws the tool's cards again.
@@ -94,6 +95,7 @@ func TestToolRendererResolversAcrossSDKs(t *testing.T) {
 
 // pi.registerToolRenderer after loading (loader.ts registerToolRenderer appends to the loaded extension): a command
 // registers a second resolver, and later resolutions run it.
+// Pi: packages/coding-agent/src/core/extensions/runner.ts:790 (Runner.resolveToolRenderers).
 func TestToolRendererRegisteredAfterLoadingAcrossSDKs(t *testing.T) {
 	t.Parallel()
 	for _, tc := range sdkHarnessCases() {

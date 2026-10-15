@@ -1,0 +1,59 @@
+[
+ {
+  "ids": [
+   "pkg:ai/oauth#OAuthCredentials"
+  ],
+  "targets": [
+   "ai/oauth_types.go#OAuthCredentials"
+  ],
+  "production": [
+   "call:ai/auth_native_login.go#oauthNativeLogin"
+  ],
+  "evidence": [
+   "test:ai/anthropic_oauth_upstream_test.go#TestAnthropicUpstreamOAuth",
+   "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+  ],
+  "rationale": "oauth/types.ts OAuthCredentials {access, refresh, expires} plus provider-specific members: Go OAuthCredentials has the three fields and keeps provider members in Extra, ProjectID, AccountID and Scope. Re-export of ai/.#OAuthCredentials (identical shape and members).",
+  "properties": {
+   "access": {
+    "targets": [
+     "ai/oauth_types.go#OAuthCredentials.Access"
+    ],
+    "evidence": [
+     "test:ai/anthropic_oauth_upstream_test.go#TestAnthropicUpstreamOAuth",
+     "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+    ],
+    "production": [
+     "call:ai/auth_native_login.go#oauthNativeLogin"
+    ],
+    "rationale": "oauth/types.ts OAuthCredentials {access, refresh, expires} plus provider-specific members: Go OAuthCredentials has the three fields and keeps provider members in Extra, ProjectID, AccountID and Scope."
+   },
+   "expires": {
+    "targets": [
+     "ai/oauth_types.go#OAuthCredentials.Expires"
+    ],
+    "evidence": [
+     "test:ai/anthropic_oauth_upstream_test.go#TestAnthropicUpstreamOAuth",
+     "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+    ],
+    "production": [
+     "call:ai/auth_native_login.go#oauthNativeLogin"
+    ],
+    "rationale": "oauth/types.ts OAuthCredentials {access, refresh, expires} plus provider-specific members: Go OAuthCredentials has the three fields and keeps provider members in Extra, ProjectID, AccountID and Scope."
+   },
+   "refresh": {
+    "targets": [
+     "ai/oauth_types.go#OAuthCredentials.Refresh"
+    ],
+    "evidence": [
+     "test:ai/anthropic_oauth_upstream_test.go#TestAnthropicUpstreamOAuth",
+     "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+    ],
+    "production": [
+     "call:ai/auth_native_login.go#oauthNativeLogin"
+    ],
+    "rationale": "oauth/types.ts OAuthCredentials {access, refresh, expires} plus provider-specific members: Go OAuthCredentials has the three fields and keeps provider members in Extra, ProjectID, AccountID and Scope."
+   }
+  }
+ }
+]

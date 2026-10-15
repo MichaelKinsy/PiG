@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -16,11 +17,11 @@ func TestRecorderTurnRoundTrip(t *testing.T) {
 		t.Fatalf("EndTurn returned non-positive %v", d)
 	}
 	snap := r.Snapshot()
-	if len(snap.Turns) != 1 {
-		t.Fatalf("Snapshot.Turns len = %d, want 1", len(snap.Turns))
+	if snap.TurnCount != 1 {
+		t.Fatalf("Snapshot.TurnCount = %d, want 1", snap.TurnCount)
 	}
-	if snap.Turns[0] != d {
-		t.Fatalf("Snapshot.Turns[0]=%v want %v", snap.Turns[0], d)
+	if last := r.LastTurnDuration(); last != d {
+		t.Fatalf("LastTurnDuration = %v, want %v", last, d)
 	}
 	if snap.CurrentTurn != 0 {
 		t.Fatalf("CurrentTurn = %v after EndTurn, want 0", snap.CurrentTurn)
@@ -125,5 +126,31 @@ func TestRecorderLastTurnDuration(t *testing.T) {
 	time.Sleep(5 * time.Millisecond)
 	if r.LastTurnDuration() != snap {
 		t.Error("LastTurnDuration is not a frozen snapshot: it incremented after call")
+	}
+}
+
+// A long session ends a turn for every model request, so the recorder must not keep an entry per turn: its memory stays flat while the
+// turn count grows.
+func TestRecorderRetainsNothingPerTurn(t *testing.T) {
+	const turns = 1_000_000
+	live := func() uint64 {
+		runtime.GC()
+		var stats runtime.MemStats
+		runtime.ReadMemStats(&stats)
+		return stats.HeapAlloc
+	}
+	r := NewRecorder()
+	before := live()
+	for range turns {
+		r.StartTurn()
+		r.EndTurn()
+	}
+	after := live()
+	runtime.KeepAlive(r)
+	if got := r.Snapshot().TurnCount; got != turns {
+		t.Fatalf("TurnCount = %d, want %d", got, turns)
+	}
+	if growth := int64(after) - int64(before); growth > 64<<10 {
+		t.Fatalf("recorder retained %d B over %d turns (%.1f B per turn); want no growth with the turn count", growth, turns, float64(growth)/turns)
 	}
 }

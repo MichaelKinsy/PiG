@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package ai
@@ -23,11 +22,13 @@ func TestUpstreamCompatDetection(t *testing.T) {
 		{"zai-coding-cn", "https://open.bigmodel.cn/api", true, true},
 	}
 	for _, c := range cases {
-		if got := upstreamNonStandard(c.provider, c.baseURL); got != c.nonStandard {
-			t.Errorf("upstreamNonStandard(%q, %q) = %v, want %v", c.provider, c.baseURL, got, c.nonStandard)
+		detected := detectOpenAICompletionsCompat(c.provider, c.baseURL, "")
+		// isNonStandard is what supportsStore negates, and useMaxTokens picks the max_tokens field.
+		if got := !*detected.SupportsStore; got != c.nonStandard {
+			t.Errorf("non-standard(%q, %q) = %v, want %v", c.provider, c.baseURL, got, c.nonStandard)
 		}
-		if got := upstreamUsesMaxTokens(c.provider, c.baseURL); got != c.maxTokens {
-			t.Errorf("upstreamUsesMaxTokens(%q, %q) = %v, want %v", c.provider, c.baseURL, got, c.maxTokens)
+		if got := detected.MaxTokensField == "max_tokens"; got != c.maxTokens {
+			t.Errorf("max_tokens(%q, %q) = %v, want %v", c.provider, c.baseURL, got, c.maxTokens)
 		}
 	}
 }

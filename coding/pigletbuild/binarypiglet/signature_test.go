@@ -3,6 +3,8 @@ package binarypiglet
 import (
 	"crypto/ed25519"
 	"crypto/rand"
+	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -47,22 +49,33 @@ func signedSelf(t *testing.T, edit func(*signature.Manifest)) {
 	t.Cleanup(func() { executable, signersPEM = oldExecutable, oldSigners })
 }
 
-func TestVerify_SignedBinaryBoundToItsBuildPasses(t *testing.T) {
+func TestVerify_SignedBinaryBoundToItsBuildPassesAndIsRemembered(t *testing.T) {
 	signedSelf(t, func(*signature.Manifest) {})
-	if err := Verify(); err != nil {
-		t.Fatalf("Verify() = %v", err)
+	for range 2 {
+		if cacheErr, err := Verify(); err != nil || cacheErr != nil {
+			t.Fatalf("Verify() = %v, %v", cacheErr, err)
+		}
 	}
-	record, err := DefaultClosure()
+	path, _ := executable()
+	resolved, err := filepath.EvalSymlinks(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	status, err := SignatureStatus(record)
-	if err != nil || !status.Signed || !status.Embedded {
-		t.Fatalf("SignatureStatus() = %+v, %v", status, err)
+	data, err := os.ReadFile(verifyCachePath())
+	if err != nil {
+		t.Fatalf("a passing check was not remembered: %v", err)
+	}
+	quoted, err := json.Marshal(resolved)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), string(quoted)) {
+		t.Fatalf("verification cache %s names no entry for %s", data, resolved)
 	}
 }
 
-// A validly signed manifest for a different build must not vouch for this one.
+// A validly signed manifest for a different build must not vouch for this one,
+// and its passing signature check must not be remembered.
 func TestVerify_SignedManifestForAnotherBuildFails(t *testing.T) {
 	for name, edit := range map[string]func(*signature.Manifest){
 		"record":  func(m *signature.Manifest) { m.ResolutionDigest = "sha256:" + strings.Repeat("f", 64) },
@@ -72,10 +85,34 @@ func TestVerify_SignedManifestForAnotherBuildFails(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			signedSelf(t, edit)
-			if err := Verify(); err == nil || !strings.Contains(err.Error(), "signed Piglet manifest names") {
-				t.Fatalf("Verify() = %v, want a manifest binding error", err)
+			for range 2 {
+				if _, err := Verify(); err == nil || !strings.Contains(err.Error(), "signed Piglet manifest names") {
+					t.Fatalf("Verify() = %v, want a manifest binding error", err)
+				}
+			}
+			if _, err := os.Stat(verifyCachePath()); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("a failed verification was remembered: %v", err)
 			}
 		})
+	}
+}
+
+// A cache that cannot be written never stops a verified Binary from starting.
+func TestVerify_CacheWriteFailureIsReportedNotFatal(t *testing.T) {
+	signedSelf(t, func(*signature.Manifest) {})
+	blocker := filepath.Dir(verifyCachePath())
+	if err := os.MkdirAll(filepath.Dir(blocker), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(blocker, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cacheErr, err := Verify()
+	if err != nil {
+		t.Fatalf("Verify() = %v, want a passing check", err)
+	}
+	if cacheErr == nil || !strings.Contains(cacheErr.Error(), "Piglet verification cache") {
+		t.Fatalf("Verify() cache error = %v, want a verification cache write failure", cacheErr)
 	}
 }
 
@@ -85,7 +122,7 @@ func TestVerify_StrippedSignatureWithEmbeddedSignerFails(t *testing.T) {
 	if err := os.WriteFile(path, []byte("executable bytes"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := Verify(); err == nil || !strings.Contains(err.Error(), "signature is missing") {
+	if _, err := Verify(); err == nil || !strings.Contains(err.Error(), "signature is missing") {
 		t.Fatalf("Verify() = %v, want a missing-signature error", err)
 	}
 }
@@ -93,13 +130,28 @@ func TestVerify_StrippedSignatureWithEmbeddedSignerFails(t *testing.T) {
 func TestVerify_UnsignedBinaryFollowsRequireSignaturePolicy(t *testing.T) {
 	yaml := []byte("name: t\n")
 	swapBaked(t, yaml, marshal(t, resolutionFor(t, yaml)))
-	if err := Verify(); err != nil {
+	if _, err := Verify(); err != nil {
 		t.Fatalf("unsigned Verify() = %v, want nil", err)
 	}
 	if err := signature.SetRequireSignature(signature.TrustDir(), true); err != nil {
 		t.Fatal(err)
 	}
-	if err := Verify(); err == nil || !strings.Contains(err.Error(), "requires a signature") {
+	if _, err := Verify(); err == nil || !strings.Contains(err.Error(), "requires a signature") {
+		t.Fatalf("Verify() under require-signature = %v", err)
+	}
+}
+
+// Turning trust require on after a remembered check still refuses a Binary
+// signed by a key outside the trust store.
+func TestVerify_RequireSignatureAppliesToARememberedBinary(t *testing.T) {
+	signedSelf(t, func(*signature.Manifest) {})
+	if _, err := Verify(); err != nil {
+		t.Fatal(err)
+	}
+	if err := signature.SetRequireSignature(signature.TrustDir(), true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Verify(); err == nil || !strings.Contains(err.Error(), "requires a trusted signature") {
 		t.Fatalf("Verify() under require-signature = %v", err)
 	}
 }

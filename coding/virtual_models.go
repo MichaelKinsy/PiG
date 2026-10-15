@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 )
 
 // The routing types and constants live in package extension, which the extension API needs and which coding imports.
@@ -74,10 +76,11 @@ func FindLatestResponse(messages []agent.AgentMessage) *agent.AssistantMessage {
 	return nil
 }
 
-// ModelSelection names a model by provider and id.
+// ModelSelection names a model by provider and id. Provider and ModelID hold what JavaScript's String() gives the entry's members, as a template literal prints them. Unresolvable is set when either member is not a string: the selection names no catalog model and a lookup finds nothing.
 type ModelSelection struct {
-	Provider string
-	ModelID  string
+	Provider     string
+	ModelID      string
+	Unresolvable bool
 }
 
 // GetBranchSelection returns the model selection a session branch records, or nil. A virtual `model_change` holds until the next `model_change`, because responses name the physical models it routed to. Otherwise the latest physical response wins, as in sessions without virtual models. A virtual model that is no longer registered does not hold, so the selection falls back to the physical model that answered last.
@@ -87,20 +90,22 @@ type ModelSelection struct {
 // upstream: virtual-models.ts:126-157 (getBranchSelection, findLastModelChange)
 func GetBranchSelection(branch []icodingagent.SessionEntry, getModel func(provider, modelID string) *ai.Model) *ModelSelection {
 	for i, entry := range slices.Backward(branch) {
-		switch entry.Base.Type {
+		switch entry.Base().Type {
 		case "model_change":
 			if change := modelChangeSelection(entry); change != nil {
 				return change
 			}
 		case "message":
-			message, ok := entry.AsMessage()
+			message, ok := icodingagent.AsMessage(entry)
 			if !ok || message.Message.Assistant == nil || IsVirtualAPI(message.Message.Assistant.API) {
 				continue
 			}
 			response := &ModelSelection{Provider: message.Message.Assistant.Provider, ModelID: message.Message.Assistant.ModelID}
 			if change := findLastModelChange(branch, i); change != nil {
-				if model := getModel(change.Provider, change.ModelID); model != nil && IsVirtualModel(model) {
-					return change
+				if !change.Unresolvable {
+					if model := getModel(change.Provider, change.ModelID); model != nil && IsVirtualModel(model) {
+						return change
+					}
 				}
 			}
 			return response
@@ -110,16 +115,59 @@ func GetBranchSelection(branch []icodingagent.SessionEntry, getModel func(provid
 }
 
 func modelChangeSelection(entry icodingagent.SessionEntry) *ModelSelection {
-	var change icodingagent.ModelChangeEntry
+	var change struct {
+		Provider json.RawMessage `json:"provider"`
+		ModelID  json.RawMessage `json:"modelId"`
+	}
 	if err := json.Unmarshal(entry.Raw(), &change); err != nil {
 		return nil
 	}
-	return &ModelSelection{Provider: change.Provider, ModelID: change.ModelID}
+	provider, providerOK := jsMemberString(change.Provider)
+	modelID, modelIDOK := jsMemberString(change.ModelID)
+	return &ModelSelection{Provider: provider, ModelID: modelID, Unresolvable: !providerOK || !modelIDOK}
+}
+
+// jsMemberString is String(value) of a decoded entry member and whether it is a string: an absent member is undefined.
+func jsMemberString(raw json.RawMessage) (string, bool) {
+	if len(raw) == 0 {
+		return "undefined", false
+	}
+	var value any
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return "", false
+	}
+	text, isString := value.(string)
+	if isString {
+		return text, true
+	}
+	return jsValueString(value), false
+}
+
+func jsValueString(value any) string {
+	switch v := value.(type) {
+	case nil:
+		return "null"
+	case bool:
+		return strconv.FormatBool(v)
+	case float64:
+		return jsnumber.String(v)
+	case string:
+		return v
+	case []any:
+		parts := make([]string, len(v))
+		for i, item := range v {
+			if item != nil {
+				parts[i] = jsValueString(item)
+			}
+		}
+		return strings.Join(parts, ",")
+	}
+	return "[object Object]"
 }
 
 func findLastModelChange(branch []icodingagent.SessionEntry, before int) *ModelSelection {
 	for i := before - 1; i >= 0; i-- {
-		if branch[i].Base.Type != "model_change" {
+		if branch[i].Base().Type != "model_change" {
 			continue
 		}
 		if change := modelChangeSelection(branch[i]); change != nil {
@@ -134,7 +182,7 @@ func findLastModelChange(branch []icodingagent.SessionEntry, before int) *ModelS
 // upstream: virtual-models.ts:148-156 (getVirtualModelState)
 func GetVirtualModelState(branch []icodingagent.SessionEntry, provider, modelID string) json.RawMessage {
 	for _, b := range slices.Backward(branch) {
-		if b.Base.Type != "custom" {
+		if b.Base().Type != "custom" {
 			continue
 		}
 		var custom struct {
@@ -157,11 +205,11 @@ func GetVirtualModelState(branch []icodingagent.SessionEntry, provider, modelID 
 func CreateVirtualModel(definition VirtualModelDefinition) *ai.Model {
 	levels := definition.ThinkingLevels
 	if levels == nil {
-		levels = []ai.ThinkingLevel{ai.ThinkingOff}
+		levels = []ai.ModelThinkingLevel{ai.ThinkingOff}
 	}
 	thinkingMap := ai.ThinkingLevelMap{}
 	reasoning := false
-	for _, level := range []ai.ThinkingLevel{ai.ThinkingOff, ai.ThinkingMinimal, ai.ThinkingLow, ai.ThinkingMedium, ai.ThinkingHigh, ai.ThinkingXHigh, ai.ThinkingMax} {
+	for _, level := range []ai.ModelThinkingLevel{ai.ThinkingOff, ai.ThinkingMinimal, ai.ThinkingLow, ai.ThinkingMedium, ai.ThinkingHigh, ai.ThinkingXHigh, ai.ThinkingMax} {
 		if slices.Contains(levels, level) {
 			thinkingMap[level] = new(string(level))
 		} else {
@@ -240,18 +288,17 @@ func (runtime *ModelRuntime) RuntimeModels() []icodingagent.RuntimeModel {
 	return models
 }
 
-// HasConfiguredAuth reports the provider's configured auth from the registry's published state, without credential I/O. A provider of only virtual models needs no credentials, so it is configured.
+// HasConfiguredAuth is Pi's ModelRuntime.hasConfiguredAuth: providerID is in the published availability snapshot's configured set, without credential I/O. A credential written or removed after a pass is seen once a pass or a credential operation's synchronization publishes it. A provider of only virtual models needs no credentials, so it is configured.
 //
 // upstream: model-runtime.ts:543-545 (hasConfiguredAuth), 953-958 (a provider of only virtual models is configured at registration)
 func (runtime *ModelRuntime) HasConfiguredAuth(providerID string) bool {
-	registry := runtime.services.Registry()
-	return registry.HasConfiguredAuth(providerID) || runtime.virtuals.onlyVirtual(providerID, registry.GetProviderModelData)
+	return runtime.configuredInSnapshot(providerID) || runtime.virtuals.onlyVirtual(providerID, runtime.providerDefined)
 }
 
 // ResolveModelOptions are the options of [ModelRuntime.ResolveModel].
 type ResolveModelOptions struct {
 	Reason        ModelRouteReason
-	ThinkingLevel ai.ThinkingLevel
+	ThinkingLevel ai.ModelThinkingLevel
 	// Failed is the failed response of a retry; the messages no longer contain it.
 	Failed *ai.AssistantMessage
 	// State is the router state the caller stored; the caller also stores the returned state.
@@ -303,7 +350,7 @@ func (runtime *ModelRuntime) ResolveModel(ctx context.Context, model *ai.Model, 
 	if target == nil {
 		return ModelRoute{}, fmt.Errorf("%s, which is not a physical model.", routed)
 	}
-	if !runtime.hasConfiguredAuth(ctx, target.ProviderMeta.ProviderID) {
+	if !runtime.hasConfiguredAuth(target.ProviderMeta.ProviderID) {
 		return ModelRoute{}, fmt.Errorf("%s, which has no credentials.", routed)
 	}
 	return ModelRoute{Model: target, ThinkingLevel: ai.ClampThinkingLevel(target, route.ThinkingLevel), State: route.State}, nil
@@ -337,7 +384,7 @@ func (registry *ModelRegistry) UnregisterVirtualModel(provider, id string) {
 // RoutedModel is the physical model and thinking level a virtual selection currently resolves to.
 type RoutedModel struct {
 	Model         *ai.Model
-	ThinkingLevel ai.ThinkingLevel
+	ThinkingLevel ai.ModelThinkingLevel
 }
 
 // RoutedModel returns, under a virtual selection, the physical model and thinking level of the latest successful response, or nil.
@@ -358,6 +405,10 @@ func (s *Session) RoutedModel() *RoutedModel {
 	}
 	return &RoutedModel{Model: physical, ThinkingLevel: latest.ThinkingLevel}
 }
+
+// Session is the AgentSession Pi's FooterComponent reads sessionManager and routedModel from (footer.ts:103-107, :241); the footer's
+// consumer-owned interface lists those two members.
+var _ icodingagent.FooterSession = (*Session)(nil)
 
 // RoutedModelSelection is RoutedModel in the form the interactive footer renders.
 func (s *Session) RoutedModelSelection() *icodingagent.RoutedModelSelection {
@@ -403,7 +454,7 @@ func (s *Session) recordSelection() {
 	if model == nil {
 		return
 	}
-	recorded := GetBranchSelection(s.inner.GetBranch(), s.modelRuntime.GetModel)
+	recorded := GetBranchSelection(s.inner.GetContextBranch(), s.modelRuntime.GetModel)
 	if recorded == nil || (recorded.Provider == providerID(model) && recorded.ModelID == model.ID) {
 		return
 	}
@@ -411,13 +462,13 @@ func (s *Session) recordSelection() {
 	if !IsVirtualModel(model) && (recordedModel == nil || !IsVirtualModel(recordedModel)) {
 		return
 	}
-	_ = s.inner.AppendModelSwitch(providerID(model), model.ID, "")
+	_, _ = s.inner.AppendModelChange(providerID(model), model.ID)
 }
 
 // routeRequest routes the request of a virtual selection. The selection stays in agent state; only this request uses the routed model. Only messages the user wrote start a turn; extension messages can follow them, for example from before_agent_start.
 //
 // upstream: agent-session.ts:769-806 (_installAgentRequestProjection)
-func (s *Session) routeRequest(ctx context.Context, model *ai.Model, thinking ai.ThinkingLevel, messages []agent.AgentMessage, failed *agent.AssistantMessage) (ModelRoute, error) {
+func (s *Session) routeRequest(ctx context.Context, model *ai.Model, thinking ai.ModelThinkingLevel, messages []agent.AgentMessage, failed *agent.AssistantMessage) (ModelRoute, error) {
 	lastResponse := -1
 	for i, message := range messages {
 		if message.Assistant != nil {
@@ -432,19 +483,19 @@ func (s *Session) routeRequest(ctx context.Context, model *ai.Model, thinking ai
 	case userTurn:
 		reason = ModelRouteReasonUser
 	}
-	options := ResolveModelOptions{Reason: reason, ThinkingLevel: thinking, State: GetVirtualModelState(s.inner.GetBranch(), providerID(model), model.ID)}
+	options := ResolveModelOptions{Reason: reason, ThinkingLevel: thinking, State: GetVirtualModelState(s.inner.GetContextBranch(), providerID(model), model.ID)}
 	if failed != nil {
 		response := failed.LLMMessage()
 		options.Failed = &response
 	}
-	route, err := s.modelRuntime.ResolveModel(ctx, model, agent.ConvertToLLM(messages, model), options)
+	route, err := s.modelRuntime.ResolveModel(ctx, model, agent.ConvertToLLM(agent.NormalizeMessages(messages, model)), options)
 	if err != nil {
 		return ModelRoute{}, err
 	}
 	if route.State != nil && !bytes.Equal(route.State, options.State) {
 		data := VirtualModelStateData{Provider: providerID(model), ModelID: model.ID, State: route.State}
 		if id, err := s.inner.AppendCustomEntry(VirtualModelStateEntry, data); err == nil {
-			if entry, ok := s.inner.EntryByID(id); ok {
+			if entry, ok := s.inner.GetEntry(id); ok {
 				s.emitEvent(agent.EntryAppendedEvent{Entry: entry.Raw()})
 			}
 		}
@@ -466,15 +517,11 @@ func (p unroutedProvider) Stream(context.Context, ai.TranscriptContext, ai.Strea
 	return nil, fmt.Errorf("Virtual model %s/%s must be routed before streaming", p.model.ProviderMeta.ProviderID, p.model.ID)
 }
 
-// hasConfiguredAuth is upstream's ModelRuntime.hasConfiguredAuth: the provider has credentials. Go reads the credential store where upstream reads its refreshed snapshot, because the snapshot is refreshed in the background after a credential change.
+// hasConfiguredAuth is [ModelRuntime.HasConfiguredAuth] for the routing and extension setModel gates; a provider that needs no auth passes.
 //
 // upstream: model-runtime.ts:543-545 (hasConfiguredAuth)
-func (runtime *ModelRuntime) hasConfiguredAuth(ctx context.Context, providerID string) bool {
-	if runtime.configuredInSnapshot(providerID) || !modelRuntimeRequiresAuth(providerID) {
-		return true
-	}
-	check, err := runtime.CheckAuth(ctx, providerID)
-	return err == nil && check != nil
+func (runtime *ModelRuntime) hasConfiguredAuth(providerID string) bool {
+	return runtime.HasConfiguredAuth(providerID) || !modelRuntimeRequiresAuth(providerID)
 }
 
 // syncVirtualCatalog republishes the availability snapshot after a virtual-model change and refreshes it in the background, as upstream's register and unregister do (`updateModelSnapshot(); void refresh({allowNetwork:false})`).
@@ -572,16 +619,22 @@ func (store *virtualModelStore) models(provider string) []*ai.Model {
 	return models
 }
 
-// onlyVirtual reports whether virtual models are all a provider lists.
-func (store *virtualModelStore) onlyVirtual(provider string, physical func(string) []*ai.Model) bool {
+// onlyVirtual reports whether virtual models are all that defines a provider.
+func (store *virtualModelStore) onlyVirtual(provider string, defined func(string) bool) bool {
 	store.mu.RLock()
 	has := len(store.byID[provider]) > 0
 	store.mu.RUnlock()
-	return has && len(physical(provider)) == 0
+	return has && !defined(provider)
 }
 
 // overlay adds every provider's virtual models after the physical models. A virtual model hides a physical chat model with the same id, which a catalog refresh can add after registration.
 func (store *virtualModelStore) overlay(models []*ai.Model) []*ai.Model {
+	return overlayVirtualModels(store, models, func(model *ai.Model) (string, string) { return model.ProviderMeta.ProviderID, model.ID }, func(model *ai.Model) *ai.Model { return model })
+}
+
+// overlayVirtualModels is overlay for a list of any model representation: identity names a listed model's provider and model ID, and of
+// represents a virtual model.
+func overlayVirtualModels[T any](store *virtualModelStore, models []T, identity func(T) (string, string), of func(*ai.Model) T) []T {
 	store.mu.RLock()
 	providers := slices.Clone(store.providers)
 	store.mu.RUnlock()
@@ -596,18 +649,94 @@ func (store *virtualModelStore) overlay(models []*ai.Model) []*ai.Model {
 	}
 	out := models[:0:0]
 	for _, model := range models {
-		if !hidden[model.ProviderMeta.ProviderID+"\x00"+model.ID] {
+		if provider, id := identity(model); !hidden[provider+"\x00"+id] {
 			out = append(out, model)
 		}
 	}
 	for _, provider := range providers {
-		out = append(out, store.models(provider)...)
+		for _, model := range store.models(provider) {
+			out = append(out, of(model))
+		}
 	}
 	return out
 }
 
-// overlayAvailable adds the virtual models of every available provider, and of every provider of only virtual models, which needs no credentials. only limits the result to one provider. physical lists a provider's catalog models.
-func (store *virtualModelStore) overlayAvailable(models []*ai.Model, physical func(string) []*ai.Model, only ...string) []*ai.Model {
+// providerIDs lists the providers with virtual models in registration order.
+func (store *virtualModelStore) providerIDs() []string {
+	store.mu.RLock()
+	defer store.mu.RUnlock()
+	return slices.Clone(store.providers)
+}
+
+// withVirtualModels is virtual-models.ts withVirtualModels: the provider with its virtual models added to the models it lists, or, with no provider, a keyless provider that lists only them. A provider without virtual models is returned unchanged.
+func (store *virtualModelStore) withVirtualModels(id string, provider *ai.ModelsProvider) *ai.ModelsProvider {
+	virtuals := store.models(id)
+	if len(virtuals) == 0 {
+		return provider
+	}
+	if provider == nil {
+		return &ai.ModelsProvider{
+			ID:   id,
+			Name: id,
+			Auth: ai.ProviderAuth{APIKey: &ai.APIKeyAuth{Name: "Virtual model", Resolve: func(context.Context, ai.APIKeyAuthInput) (*ai.AuthResult, error) {
+				return virtualOnlyAuth(), nil
+			}}},
+			GetModels: func() ([]*ai.Model, error) { return virtuals, nil },
+		}
+	}
+	ids := map[string]bool{}
+	for _, model := range virtuals {
+		ids[model.ID] = true
+	}
+	physical := func(models []*ai.Model) []*ai.Model {
+		return slices.DeleteFunc(slices.Clone(models), func(model *ai.Model) bool { return IsVirtualModel(model) || ids[model.ID] })
+	}
+	wrapped := *provider
+	wrapped.GetModels = func() ([]*ai.Model, error) {
+		models, err := provider.GetModels()
+		return append(physical(models), virtuals...), err
+	}
+	if provider.GetAllModels != nil {
+		wrapped.GetAllModels = func() ([]ai.AnyModel, error) {
+			models, err := provider.GetAllModels()
+			kept := slices.DeleteFunc(slices.Clone(models), func(model ai.AnyModel) bool {
+				chat, isChat := model.(*ai.Model)
+				return isChat && (IsVirtualModel(chat) || ids[chat.ID])
+			})
+			for _, model := range virtuals {
+				kept = append(kept, model)
+			}
+			return kept, err
+		}
+	}
+	return &wrapped
+}
+
+// overlayAvailable adds the virtual models of every available provider, and of every provider of only virtual models, which needs no credentials. only limits the result to one provider. configured reports that the provider has credentials, or is a provider of only virtual models.
+func (store *virtualModelStore) overlayAvailable(models []*ai.Model, configured func(string) bool, order []string, only ...string) []*ai.Model {
+	list := make([]ai.AnyModel, len(models))
+	for i, model := range models {
+		list[i] = model
+	}
+	out := store.overlayAvailableAny(list, configured, order, only...)
+	chat := make([]*ai.Model, 0, len(out))
+	for _, model := range out {
+		chat = append(chat, model.(*ai.Model))
+	}
+	return chat
+}
+
+// overlayAvailableAny is overlayAvailable for the models of every type: a virtual model hides a physical chat model of its provider with the same id, and joins after the provider's last available model.
+func (store *virtualModelStore) overlayAvailableAny(models []ai.AnyModel, configured func(string) bool, order []string, only ...string) []ai.AnyModel {
+	return store.overlayAny(models, false, configured, order, only...)
+}
+
+// overlayAllAny adds each provider's virtual models to the models of every type, after the provider's last model, or at the end for a provider with none (virtual-models.ts withVirtualModels getAllModels).
+func (store *virtualModelStore) overlayAllAny(models []ai.AnyModel, order []string, only ...string) []ai.AnyModel {
+	return store.overlayAny(models, true, nil, order, only...)
+}
+
+func (store *virtualModelStore) overlayAny(models []ai.AnyModel, all bool, configured func(string) bool, order []string, only ...string) []ai.AnyModel {
 	store.mu.RLock()
 	providers := slices.Clone(store.providers)
 	store.mu.RUnlock()
@@ -624,24 +753,45 @@ func (store *virtualModelStore) overlayAvailable(models []*ai.Model, physical fu
 		for _, model := range virtuals {
 			ids[model.ID] = true
 		}
-		out = slices.DeleteFunc(out, func(model *ai.Model) bool { return model.ProviderMeta.ProviderID == provider && ids[model.ID] })
+		out = slices.DeleteFunc(out, func(model ai.AnyModel) bool {
+			chat, isChat := model.(*ai.Model)
+			return isChat && chat.ProviderMeta.ProviderID == provider && ids[chat.ID]
+		})
 		last := -1
 		for i, model := range out {
-			if model.ProviderMeta.ProviderID == provider {
+			if model.ProviderID() == provider {
 				last = i
 			}
 		}
-		// Virtual models on a physical provider are available when the provider is; a provider of only virtual models is always available.
-		if last < 0 && len(physical(provider)) > 0 {
+		// Virtual models follow their provider's auth (virtual-models.ts withVirtualModels); a provider of only virtual models is always configured.
+		if !all && last < 0 && !configured(provider) {
 			continue
 		}
-		if last < 0 {
-			out = append(out, virtuals...)
-		} else {
-			out = slices.Insert(out, last+1, virtuals...)
+		additions := make([]ai.AnyModel, len(virtuals))
+		for i, model := range virtuals {
+			additions[i] = model
 		}
+		if last < 0 {
+			last = lastModelBefore(out, provider, order)
+		}
+		out = slices.Insert(out, last+1, additions...)
 	}
 	return out
+}
+
+// lastModelBefore is the index of the last model of a provider that comes before the given one in provider order, or -1: a provider with no models of its own takes its place in provider order (models.ts getModels walks the providers). A provider missing from the order goes last.
+func lastModelBefore(models []ai.AnyModel, provider string, order []string) int {
+	at := slices.Index(order, provider)
+	if at < 0 {
+		return len(models) - 1
+	}
+	earlier := order[:at]
+	for i, model := range slices.Backward(models) {
+		if slices.Contains(earlier, model.ProviderID()) {
+			return i
+		}
+	}
+	return -1
 }
 
 // streamVirtual routes a request made outside the agent loop. Callers sized it before routing, so the output budget is capped to the routed model. Caller credentials were resolved for the virtual model's provider; another provider resolves its own, so they are not sent to the wrong vendor.
@@ -652,9 +802,9 @@ func (runtime *ModelRuntime) streamVirtual(ctx context.Context, model *ai.Model,
 	outer := ai.NewAssistantMessageEventStream()
 	ctx = outer.ObservationContext(ctx)
 	go func() {
-		thinking := options.Thinking
-		if thinking == "" {
-			thinking = ai.ThinkingOff
+		thinking := ai.ThinkingOff
+		if options.Thinking != "" {
+			thinking = ai.ModelThinkingLevel(options.Thinking)
 		}
 		route, err := runtime.ResolveModel(ctx, model, transcript.Messages(), ResolveModelOptions{Reason: ModelRouteReasonDirect, ThinkingLevel: thinking})
 		if err != nil {
@@ -664,10 +814,7 @@ func (runtime *ModelRuntime) streamVirtual(ctx context.Context, model *ai.Model,
 		if limit := route.Model.Capabilities.MaxOutputTokens; options.MaxTokens > 0 && limit > 0 {
 			options.MaxTokens = min(options.MaxTokens, limit)
 		}
-		options.Thinking = route.ThinkingLevel
-		if options.Thinking == ai.ThinkingOff {
-			options.Thinking = ""
-		}
+		options.Thinking = route.ThinkingLevel.ReasoningOption()
 		if route.Model.ProviderMeta.ProviderID != model.ProviderMeta.ProviderID {
 			options.APIKey, options.Headers, options.Env = "", nil, nil
 		}
@@ -677,4 +824,25 @@ func (runtime *ModelRuntime) streamVirtual(ctx context.Context, model *ai.Model,
 		}
 	}()
 	return outer
+}
+
+// virtualAuthSource is the credential source of a provider of only virtual models.
+const virtualAuthSource = "virtual"
+
+// virtualOnlyAuth is the auth of a provider of only virtual models: no credential, source "virtual" (virtual-models.ts withVirtualModels).
+func virtualOnlyAuth() *ai.AuthResult {
+	return &ai.AuthResult{Source: virtualAuthSource, SourcePresent: true}
+}
+
+// virtualOnlyProvider reports that virtual models are the only thing that defines the provider: no built-in, native, models.json or extension provider does. Such a provider needs no credentials, and registerVirtualModel marks it configured at once (model-runtime.ts:960-975).
+func (runtime *ModelRuntime) virtualOnlyProvider(providerID string) bool {
+	if runtime == nil || runtime.services == nil || len(runtime.virtuals.models(providerID)) == 0 {
+		return false
+	}
+	return !runtime.providerDefined(providerID)
+}
+
+// providerDefined reports that a built-in, native, models.json or extension provider exists for the ID.
+func (runtime *ModelRuntime) providerDefined(providerID string) bool {
+	return runtime.services.Registry().GetTypedProvider(providerID, runtime.builtinStream(providerID)) != nil
 }

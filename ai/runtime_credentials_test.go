@@ -1,6 +1,9 @@
 package ai
 
+// pi: packages/coding-agent/src/core/runtime-credentials.ts
+
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -34,7 +37,7 @@ func TestRuntimeCredentialsOverlay(t *testing.T) {
 	if err != nil || read == nil || read.Type != CredentialAPIKey || read.Key != "runtime-key" {
 		t.Fatalf("Read(openai) = %+v, %v; want the runtime key", read, err)
 	}
-	if after, _ := os.ReadFile(path); string(after) != string(before) {
+	if after, _ := os.ReadFile(path); !bytes.Equal(after, before) {
 		t.Fatalf("auth.json changed:\n%s", after)
 	}
 

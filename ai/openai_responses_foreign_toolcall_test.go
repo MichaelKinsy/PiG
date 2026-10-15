@@ -11,7 +11,7 @@ import (
 // an openai-codex (openai-responses) model, the emitted function_call item id
 // must be a bounded, Codex-safe fc_<hash> shape (<=64, ^fc_[A-Za-z0-9]+$) or the
 // Responses API rejects the request with "item id must start with fc". Upstream
-// hashes the foreign item part with shortHash; pig's shortHash32 is byte-identical.
+// hashes the foreign item part with shortHash; pig's ShortHash is byte-identical.
 func TestResponsesConvertMessages_ForeignCopilotToolCallIDHashedToFcShape(t *testing.T) {
 	const copilotRawID = "call_4VnzVawQXPB9MgYib7CiQFEY|I9b95oN1wD/cHXKTw3PpRkL6KkCtzTJhUxMouMWYwHeTo2j3htzfSk7YPx2vifiIM4g3A8XXyOj8q4Bt6SLUG7gqY1E3ELkrkVQNHglRfUmWj84lqxJY+Puieb3VKyX0FB+83TUzn91cDMF/4gzt990IzqVrc+nIb9RRscRD070Du16q1glydVjWR0SBJsE6TbY/esOjFpqplogQqrajm1eI++f3eLi73R6q7hVusY0QbeFySVxABCjhN0lXB04caBe1rzHjYzul6MAXj7uq+0r17VLq+yrtyYhN12wkmFqHeqTyEei6EFPbMy24Nc+IbJlkP0OCg02W+gOnyBFcbi2ctvJFSOhSjt1CqBdqCnnhwUqXjbWiT0wh3DmLScRgTHmGkaI+oAcQQjfic65nxj+TnEkReA=="
 
@@ -24,9 +24,9 @@ func TestResponsesConvertMessages_ForeignCopilotToolCallIDHashedToFcShape(t *tes
 		ToolResultMessage{ToolCallID: copilotRawID, Content: []ToolResultMessageContent{TextContent{Text: "ok"}}},
 	}
 
-	items, _ := p.convertMessages(messages, nil)
+	items, _ := p.convertTransformedForTest(messages, nil)
 
-	var fc, fco *respInputItem
+	var fc, fco *ResponsesInputItem
 	for i := range items {
 		switch items[i].Type {
 		case "function_call":
@@ -76,8 +76,8 @@ func TestResponsesToolCallID_UnattributedItemIsHashed(t *testing.T) {
 		ToolCall{ID: "call_1|toolu_abc123", Name: "bash", Arguments: JsonObject{}},
 	}}}
 
-	items, _ := p.convertMessages(messages, nil)
-	var fc *respInputItem
+	items, _ := p.convertTransformedForTest(messages, nil)
+	var fc *ResponsesInputItem
 	for i := range items {
 		if items[i].Type == "function_call" {
 			fc = &items[i]
@@ -92,4 +92,12 @@ func TestResponsesToolCallID_UnattributedItemIsHashed(t *testing.T) {
 	if fc.ID != wantHashed {
 		t.Errorf("item id = %q, want hashed %q", fc.ID, wantHashed)
 	}
+}
+
+// convertTransformedForTest converts messages as the request path does: transformMessages normalizes another model's tool call ids before
+// convertResponsesMessages writes them.
+func (p *openAIResponsesProvider) convertTransformedForTest(messages []Message, grammarProps map[string]string) ([]ResponsesInputItem, error) {
+	target := &Model{ID: p.cfg.Model, ProviderMeta: ProviderMetadata{API: p.api(), ProviderID: p.cfg.ProviderID}, Input: []string{"text", "image"}}
+	allowed := p.messageConverter(getResponsesCompat(p.cfg.Compat, p.cfg.StrictModeDefault), grammarProps).allowedToolCallProviders
+	return p.convertMessages(TransformMessages(messages, target, responsesToolCallNormalizer(allowed)), grammarProps)
 }

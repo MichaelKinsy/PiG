@@ -40,8 +40,12 @@ func nativeClipboardFor(platform, arch string, getenv func(string) string, load 
 
 // GetNativePlatformHelper returns the same helper used by clipboard access on Windows and macOS; Linux has only its lazy X11 clipboard helper.
 func GetNativePlatformHelper() *NativeClipboard {
-	if runtime.GOOS != "windows" && runtime.GOOS != "darwin" {
+	return nativePlatformHelperFor(runtime.GOOS, runtime.GOARCH, os.Getenv, platformClipboard)
+}
+
+func nativePlatformHelperFor(platform, arch string, getenv func(string) string, load func() *NativeClipboard) *NativeClipboard {
+	if platform != "windows" && platform != "darwin" {
 		return nil
 	}
-	return nativeClipboardFor(runtime.GOOS, runtime.GOARCH, os.Getenv, platformClipboard)
+	return nativeClipboardFor(platform, arch, getenv, load)
 }

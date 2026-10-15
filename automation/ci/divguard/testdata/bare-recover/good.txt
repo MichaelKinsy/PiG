@@ -32,3 +32,32 @@ func run(fn func()) {
 	}()
 	fn()
 }
+
+// capture hands the panic value to its caller through a named result.
+func capture(fn func()) (failure any) {
+	defer func() { failure = recover() }()
+	fn()
+	return nil
+}
+
+// settle assigns the panic value to a variable declared outside the deferred
+// function, where the caller reads it.
+func settle(fn func()) any {
+	var failure any
+	func() {
+		defer func() { failure = recover() }()
+		fn()
+	}()
+	return failure
+}
+
+// relay copies the panic value of an outer variable into another one.
+func relay(fn func()) any {
+	var failure any
+	func() {
+		defer func() { failure = recover() }()
+		fn()
+	}()
+	var copied = failure
+	return copied
+}

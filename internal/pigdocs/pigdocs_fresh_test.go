@@ -100,21 +100,22 @@ func TestSyncCreatesMissingConfigRoot(t *testing.T) {
 	}
 }
 
-// A first sync that died before its rename strands a full docs tree. The next sync removes it, on the fresh path and on the existing-directory path, so repeated first-start crashes do not accumulate trees.
+// A sync that died before its rename strands a full docs tree beside the bundles. The next sync removes it, whether this build's bundle is missing or already there, so repeated first-start crashes do not accumulate trees.
 func TestSyncRemovesStagingTreesStrandedByDeadSyncs(t *testing.T) {
 	for _, name := range []string{"missing docs dir", "existing docs dir"} {
 		t.Run(name, func(t *testing.T) {
 			root := t.TempDir()
+			parent := filepath.Join(root, SubDir)
 			if name == "existing docs dir" {
 				if err := os.MkdirAll(DocsDir(root), 0o755); err != nil {
 					t.Fatal(err)
 				}
 			}
 			for _, stranded := range []string{".docs-stage-1111", ".docs-stage-2222"} {
-				if err := os.MkdirAll(filepath.Join(root, stranded), 0o755); err != nil {
+				if err := os.MkdirAll(filepath.Join(parent, stranded), 0o755); err != nil {
 					t.Fatal(err)
 				}
-				if err := os.WriteFile(filepath.Join(root, stranded, "partial.md"), []byte("x"), 0o644); err != nil {
+				if err := os.WriteFile(filepath.Join(parent, stranded, "partial.md"), []byte("x"), 0o644); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -124,7 +125,7 @@ func TestSyncRemovesStagingTreesStrandedByDeadSyncs(t *testing.T) {
 			if err := EnsureSynced(root); err != nil {
 				t.Fatal(err)
 			}
-			siblings, err := os.ReadDir(root)
+			siblings, err := os.ReadDir(parent)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -137,15 +138,19 @@ func TestSyncRemovesStagingTreesStrandedByDeadSyncs(t *testing.T) {
 	}
 }
 
-// Startup sync is best-effort and bounded. Another process holding the staging lock (a live first sync) must not stall this one: it writes the docs itself, leaves the holder's staging tree alone, and returns while the lock is still held.
+// Startup sync is best-effort and bounded. Another process holding the staging lock (a live sync) must not stall this one: it writes the docs itself, leaves the holder's staging tree alone, and returns while the lock is still held.
 func TestEnsureSyncedDoesNotWaitForStagingLock(t *testing.T) {
 	root := t.TempDir()
-	holder := flock.New(filepath.Join(root, stagingLockFile))
+	parent := filepath.Join(root, SubDir)
+	if err := os.MkdirAll(parent, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	holder := flock.New(filepath.Join(parent, stagingLockFile))
 	if err := holder.Lock(); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = holder.Unlock() })
-	live := filepath.Join(root, stagingPrefix+"live")
+	live := filepath.Join(parent, stagingPrefix+"live")
 	if err := os.MkdirAll(live, 0o755); err != nil {
 		t.Fatal(err)
 	}

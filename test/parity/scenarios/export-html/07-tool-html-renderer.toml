@@ -1,0 +1,28 @@
+# Behavior family: export-html (custom tool rendering in HTML export)
+# Pi 1.1.0 probe: createToolHtmlRenderer over 1500 seeded scenarios of calls and results for tools with call-only, result-only and no renderers, renderers that
+# throw (on lookup, when called, when rendered, in the collapsed or the expanded pass), components that report the context they received (per-call state,
+# the previous component of the call or result, the stored arguments, the flags), blank and ANSI-only lines the result trim must drop, and results that come
+# before, after, twice or without their call; each output is compared byte for byte. The Go test TestToolHTMLRendererMatchesPi runs the same scenarios
+# against the installed Pi; this scenario compares the two printed streams.
+name = "07-tool-html-renderer"
+description = "The export's custom tool renderer produces the HTML Pi produces."
+covers = ["packages/coding-agent/src/core/export-html/tool-renderer.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/tool-renderer-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/tool-renderer-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 240
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['ansi-line', 'ctx:']
+runs = 2

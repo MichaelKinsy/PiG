@@ -2,8 +2,10 @@ package ciimages
 
 import (
 	"encoding/json"
+	"maps"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -81,11 +83,20 @@ print(json.dumps({"valid": True, "diagnostics": []}))
 				t.Fatal(err)
 			}
 			lines := strings.Split(strings.TrimSpace(string(data)), "\n")
-			examples := []string{"go-factory", "rust-factory", "python-factory"}
-			if len(lines) != len(examples) {
-				t.Fatalf("validator calls = %s", data)
+			// make examples-check validates every factory example under examples/extensions once; the order is not checked.
+			factories, err := filepath.Glob(filepath.Join(repoRoot(t), "examples", "extensions", "*-factory"))
+			if err != nil || len(factories) == 0 {
+				t.Fatalf("no factory examples found: %v", err)
 			}
-			for i, line := range lines {
+			examples := map[string]bool{}
+			for _, dir := range factories {
+				examples[filepath.Base(dir)] = true
+			}
+			if len(lines) != len(examples) {
+				t.Fatalf("validator calls = %s\nwant one per factory example %v", data, slices.Sorted(maps.Keys(examples)))
+			}
+			validated := map[string]bool{}
+			for _, line := range lines {
 				var call struct {
 					Args []string          `json:"args"`
 					Env  map[string]string `json:"env"`
@@ -93,13 +104,15 @@ print(json.dumps({"valid": True, "diagnostics": []}))
 				if err := json.Unmarshal([]byte(line), &call); err != nil {
 					t.Fatal(err)
 				}
-				wantArgs := []string{"install", "--validate-only", "--json", "examples/extensions/" + examples[i]}
-				if !slices.Equal(call.Args, wantArgs) {
-					t.Errorf("validator args = %q, want %q", call.Args, wantArgs)
+				example := path.Base(call.Args[len(call.Args)-1])
+				wantArgs := []string{"install", "--validate-only", "--json", "examples/extensions/" + example}
+				if !slices.Equal(call.Args, wantArgs) || !examples[example] || validated[example] {
+					t.Errorf("validator args = %q, want a first validation of one factory example %v", call.Args, slices.Sorted(maps.Keys(examples)))
 				}
+				validated[example] = true
 				home := call.Env["HOME"]
 				if home == parent || home == "" {
-					t.Errorf("%s validator inherited the caller's HOME %q", examples[i], home)
+					t.Errorf("%s validator inherited the caller's HOME %q", example, home)
 					continue
 				}
 				for _, key := range rootKeys {

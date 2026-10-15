@@ -134,9 +134,9 @@ type credentialDiscoveryHandle struct {
 	selected []*ai.Model
 }
 
-func (h *credentialDiscoveryHandle) SetModelOnMain(model *ai.Model, options ModelMutationOptions, dispatch func(func() error) error) error {
+func (h *credentialDiscoveryHandle) SetModelOnMain(ctx context.Context, model *ai.Model, options ModelMutationOptions, dispatch func(func() error) error) error {
 	h.selected = append(h.selected, model)
-	return h.postLoginModelHandle.SetModelOnMain(model, options, dispatch)
+	return h.postLoginModelHandle.SetModelOnMain(ctx, model, options, dispatch)
 }
 
 func TestPostLoginModelDiscoveryUpstream(t *testing.T) {
@@ -189,7 +189,7 @@ func TestPostLoginModelDiscoveryUpstream(t *testing.T) {
 				for _, id := range tc.ids {
 					models = append(models, json.RawMessage(fmt.Sprintf(`{"id":%q,"name":%q,"provider":"radius","api":"pi-messages","baseUrl":"https://local.invalid/v1","input":["text"],"contextWindow":1000,"maxTokens":100}`, id, id)))
 				}
-				if err := store.Write(t.Context(), "radius", ai.ModelsStoreEntry{Models: models}); err != nil {
+				if err := store.Write(t.Context(), "radius", ai.ModelsStoreEntry{Models: mustStoredModels(models)}); err != nil {
 					t.Fatal(err)
 				}
 				close(blocked.release)

@@ -4,7 +4,28 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/pigsdklock"
 )
+
+// testSDKHash is the fixed bundle hash this package registers, since it does not link the real pigsdk bundles.
+func testSDKHash() (string, error) { return "0123456789abcdef", nil }
+
+func init() {
+	pigsdklock.RegisterSDK("go", "sdk", testSDKHash)
+	pigsdklock.RegisterSDK("python", "sdk-py", testSDKHash)
+	pigsdklock.RegisterSDK("rust", "sdk-rs", testSDKHash)
+}
+
+// testStagedSDKDir returns the directory lang's SDK is staged in under configRoot.
+func testStagedSDKDir(t *testing.T, configRoot, lang string) string {
+	t.Helper()
+	dir, err := pigsdklock.StagedSDKDir(configRoot, lang)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
 
 // stageSDKMarker writes the marker file that identifies a staged SDK root so the
 // resolver treats dir as a valid SDK.
@@ -26,8 +47,8 @@ func TestStagedSDKRootsDoNotFallBackOutsideExplicitConfigRoot(t *testing.T) {
 	t.Setenv("PIG_HOME", configRoot)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "xdg"))
 
-	got := stagedSDKRoots("sdk")
-	want := filepath.Join(configRoot, "state", "pigsdk", "sdk")
+	got := stagedSDKRoots("go")
+	want := testStagedSDKDir(t, configRoot, "go")
 	if len(got) != 1 || got[0] != want {
 		t.Fatalf("staged SDK roots = %q, want only %q", got, want)
 	}
@@ -42,7 +63,7 @@ func TestFindSDKRootDeadEnvFallsThroughToStaged(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("PIG_HOME", home)
 	t.Setenv("XDG_CONFIG_HOME", "")
-	staged := filepath.Join(home, "state", "pigsdk", "sdk")
+	staged := testStagedSDKDir(t, home, "go")
 	stageSDKMarker(t, staged, "go.mod")
 	t.Setenv("PIG_SDK_GO_ROOT", filepath.Join(t.TempDir(), "gone"))
 
@@ -75,7 +96,7 @@ func TestFindRustSDKRootDeadEnvFallsThroughToStaged(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("PIG_HOME", home)
 	t.Setenv("XDG_CONFIG_HOME", "")
-	staged := filepath.Join(home, "state", "pigsdk", "sdk-rs")
+	staged := testStagedSDKDir(t, home, "rust")
 	stageSDKMarker(t, staged, "Cargo.toml")
 	t.Setenv("PIG_SDK_RS_ROOT", filepath.Join(t.TempDir(), "gone"))
 
@@ -92,7 +113,7 @@ func TestFindPythonSDKRootDeadEnvFallsThroughToStaged(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("PIG_HOME", home)
 	t.Setenv("XDG_CONFIG_HOME", "")
-	staged := filepath.Join(home, "state", "pigsdk", "sdk-py")
+	staged := testStagedSDKDir(t, home, "python")
 	stageSDKMarker(t, staged, filepath.Join("pig_sdk", "__init__.py"))
 	t.Setenv("PIG_SDK_PY_ROOT", filepath.Join(t.TempDir(), "gone"))
 

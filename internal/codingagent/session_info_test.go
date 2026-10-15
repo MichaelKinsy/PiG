@@ -22,7 +22,7 @@ func TestAppendSessionInfoSanitizesPersistedNames(t *testing.T) {
 			if _, err := s.AppendSessionInfo(tc.input); err != nil {
 				t.Fatal(err)
 			}
-			entries := s.Entries()
+			entries := s.GetEntries()
 			if len(entries) != 1 {
 				t.Fatalf("entries=%d", len(entries))
 			}

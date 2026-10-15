@@ -37,6 +37,10 @@ paths = ["/*/timestamp"]
 kind = "timestamp"
 reason = "Session header wall clocks vary; retain timestamp presence and type."
 [[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi 1.1.0 times each response and tool run with a monotonic clock (event-stream.ts, agent-loop.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+[[assert.json_aliases]]
 paths = ["/*/cwd"]
 kind = "path"
 reason = "D2: only the exact isolated project root differs; retain its suffix."

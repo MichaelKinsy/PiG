@@ -6,8 +6,13 @@ package codingagent
 // one renderer draws the built-in renderer in the other half.
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"iter"
+	"maps"
+	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -42,6 +47,15 @@ func withBuiltInRenderers(name string, definition extension.ToolDefinition) exte
 	return definition
 }
 
+// computeEditsDiff computes the edit call's preview. Upstream's preview is a
+// promise continuation, so it never lands before the synchronous render that
+// follows renderCall; a test replaces it to hold the preview until that render.
+var computeEditsDiff = tools.ComputeEditsDiff
+
+// toolTimerNow is the card clock shellRenderCall and shellRenderResult read, as renderers/bash.ts reads Date.now(). The
+// tool-card oracle tests fix it, as their Pi probe fixes Date.now(), so both sides time the same elapsed span.
+var toolTimerNow = time.Now
+
 // linesComponent renders the rows a function produces for a width.
 type linesComponent struct{ render func(width int) []string }
 
@@ -59,9 +73,20 @@ type builtInRenderState struct {
 	startedAt time.Time
 	endedAt   time.Time
 	stopTick  chan struct{}
+	// shellView* is the shell result view the last result render built, reused while its inputs are unchanged.
+	shellViewKey   shellViewKey
+	shellViewValue shellResultView
+	shellViewBuilt bool
 
-	editArgsKey  string
-	editPreview  *tools.EditsDiffPreview
+	// writeHighlight is the write card's highlighted lines, extended as its content streams in (upstream WriteCallRenderComponent.cache).
+	writeHighlight *writeHighlightCache
+	// writePlain is the write card's lines for a path without a language, extended as its content streams in.
+	writePlain writePlainLines
+
+	// editArgs is the decoded edit arguments the renderers last read; editArgsFor is the arguments the preview belongs to.
+	editArgs     *editRenderArgs
+	editArgsFor  *editRenderArgs
+	editPreview  tools.EditDiffOutcome
 	editPending  bool
 	editSettledE bool
 	// editCall reports that the built-in edit renderCall drew this card, so
@@ -109,19 +134,51 @@ func headerRenderCall(header func(json.RawMessage, string) string) extension.Too
 	}
 }
 
-func renderResultValue(result extension.AgentToolResult) agent.AgentToolResult {
-	switch value := result.(type) {
-	case agent.AgentToolResult:
-		return value
-	case *agent.AgentToolResult:
-		if value != nil {
-			return *value
-		}
-	}
-	return agent.AgentToolResult{}
+func renderResultValue(result any) agent.AgentToolResult {
+	value, _ := toolResultOf(result)
+	return value
 }
 
-func stringArg(args any, keys ...string) (string, bool) {
+// retainedToolResult is a finished tool result as a tool card keeps it, without the structured content its tool derives from its content
+// alone (tools.RebuildStructuredContent): a read card would otherwise hold the file text twice, once as JSON, for as long as the
+// transcript shows it. Pi's toReadOutput returns the text string itself, so its card holds it once. toolResultOf gives the result back
+// whole.
+type retainedToolResult struct {
+	result agent.AgentToolResult
+	tool   string
+}
+
+// retainToolResult is the value a tool card keeps for a finished result of the tool named tool: a retainedToolResult when its
+// structured content is the one the tool derives from its content, else the result.
+func retainToolResult(tool string, result agent.AgentToolResult) any {
+	if len(result.StructuredContent) > 0 {
+		if rebuilt, ok := tools.RebuildStructuredContent(tool, result.Content); ok && bytes.Equal(rebuilt, result.StructuredContent) {
+			result.StructuredContent = nil
+			return retainedToolResult{result: result, tool: tool}
+		}
+	}
+	return result
+}
+
+// toolResultOf reads the tool result a tool card holds (a value or a pointer); ok is false when the card has none.
+func toolResultOf(result any) (agent.AgentToolResult, bool) {
+	switch value := result.(type) {
+	case retainedToolResult:
+		whole := value.result
+		whole.StructuredContent, _ = tools.RebuildStructuredContent(value.tool, whole.Content)
+		return whole, true
+	case agent.AgentToolResult:
+		return value, true
+	case *agent.AgentToolResult:
+		if value != nil {
+			return *value, true
+		}
+	}
+	return agent.AgentToolResult{}, false
+}
+
+// decodeRenderArgs reads the arguments a tool card holds once, so a renderer that needs several of them does not decode the whole object for each.
+func decodeRenderArgs(args any) map[string]any {
 	var fields map[string]any
 	switch value := args.(type) {
 	case json.RawMessage:
@@ -129,6 +186,49 @@ func stringArg(args any, keys ...string) (string, bool) {
 	case map[string]any:
 		fields = value
 	}
+	return fields
+}
+
+// callFields is the decoded arguments a renderCall draws. A card whose arguments are still streaming hands a renderCall
+// that reads them decoded (readsCallFields) the object its streaming parser holds, in context.Args, and no text.
+func callFields(args json.RawMessage, context extension.ToolRenderContext) map[string]any {
+	if args == nil {
+		if fields, ok := context.Args.(map[string]any); ok {
+			return fields
+		}
+	}
+	return decodeRenderArgs(args)
+}
+
+// fieldsRenderCall is the code of the built-in renderCall that reads a streaming call's arguments decoded: the write card,
+// whose content argument grows with every delta.
+var fieldsRenderCall = reflect.ValueOf(extension.ToolRenderCallFunc(writeRenderCall)).Pointer()
+
+// readsCallFields reports whether render reads a streaming call's arguments through callFields, so a card need not
+// encode them as text for each frame.
+func readsCallFields(render extension.ToolRenderCallFunc) bool {
+	return render != nil && reflect.ValueOf(render).Pointer() == fieldsRenderCall
+}
+
+// pathRenderArgs is the part of decoded arguments that holds the file path a header names, as JSON for tui.FormatEditHeader, which reads no other argument.
+func pathRenderArgs(fields map[string]any) json.RawMessage {
+	paths := make(map[string]any, 2)
+	for _, key := range []string{"file_path", "path"} {
+		if value, present := fields[key]; present {
+			paths[key] = value
+		}
+	}
+	//portlint:allow mapkeyorder tui.FormatWriteHeader decodes this object and reads only file_path and path by name, so member order is unobservable
+	raw, _ := json.Marshal(paths)
+	return raw
+}
+
+func stringArg(args any, keys ...string) (string, bool) {
+	return stringField(decodeRenderArgs(args), keys...)
+}
+
+// stringField is stringArg for arguments that are already decoded.
+func stringField(fields map[string]any, keys ...string) (string, bool) {
 	for _, key := range keys {
 		value, present := fields[key]
 		if !present || value == nil {
@@ -144,24 +244,32 @@ func stringArg(args any, keys ...string) (string, bool) {
 // when the command started executing.
 func shellRenderCall(prompt string) extension.ToolRenderCallFunc {
 	return func(args json.RawMessage, _ extension.Theme, context extension.ToolRenderContext) extension.Component {
-		state := builtInState(context)
-		state.mu.Lock()
-		if context.ExecutionStarted && state.startedAt.IsZero() {
-			state.startedAt = time.Now()
-			state.endedAt = time.Time{}
-		}
-		state.mu.Unlock()
+		startToolTimer(context)
 		return tui.NewPaddedText(tui.FormatShellHeader(args, prompt), 0, 0, nil)
 	}
 }
 
-// shellRenderResult is upstream createShellRenderers renderResult: the output
-// preview, warnings, and the Elapsed footer that invalidates the card every
-// second while the command runs, then the Took footer.
-func shellRenderResult(result extension.AgentToolResult, options extension.ToolRenderResultOptions, _ extension.Theme, context extension.ToolRenderContext) extension.Component {
+// startToolTimer starts the card's clock once execution starts. Call it from renderCall.
+//
+// Ports packages/coding-agent/src/core/tools/render-utils.ts (startToolTimer).
+func startToolTimer(context extension.ToolRenderContext) {
 	state := builtInState(context)
 	state.mu.Lock()
-	if !state.closed && !state.startedAt.IsZero() && options.IsPartial && state.stopTick == nil {
+	if context.ExecutionStarted && state.startedAt.IsZero() {
+		state.startedAt = toolTimerNow()
+		state.endedAt = time.Time{}
+	}
+	state.mu.Unlock()
+}
+
+// toolTimerText is the card's timing line, from renderResult: `Elapsed 4.2s` while the result is partial, redrawn every
+// second, and `Took 4.2s` once it is final. It reports false when the card has no start time and no recorded duration.
+//
+// Ports packages/coding-agent/src/core/tools/render-utils.ts (toolTimerText).
+func toolTimerText(context extension.ToolRenderContext, isPartial bool) (string, bool) {
+	state := builtInState(context)
+	state.mu.Lock()
+	if !state.closed && !state.startedAt.IsZero() && isPartial && state.stopTick == nil {
 		stop := make(chan struct{})
 		state.stopTick = stop
 		var cancelled <-chan struct{}
@@ -186,9 +294,9 @@ func shellRenderResult(result extension.AgentToolResult, options extension.ToolR
 			}
 		})
 	}
-	if !options.IsPartial || context.IsError {
+	if !isPartial || context.IsError {
 		if state.endedAt.IsZero() {
-			state.endedAt = time.Now()
+			state.endedAt = toolTimerNow()
 		}
 		if state.stopTick != nil {
 			close(state.stopTick)
@@ -198,27 +306,80 @@ func shellRenderResult(result extension.AgentToolResult, options extension.ToolR
 	startedAt, endedAt := state.startedAt, state.endedAt
 	state.mu.Unlock()
 
-	value := renderResultValue(result)
-	details := shellDetailsFrom(value.Details)
-	footer := ""
-	if !startedAt.IsZero() {
-		label := "Took"
-		if options.IsPartial {
-			label = "Elapsed"
-		}
-		end := endedAt
-		if end.IsZero() {
-			end = time.Now()
-		}
-		footer = themeFg(tui.ActiveTheme().Muted, label+" "+tui.FormatToolDuration(end.Sub(startedAt)))
+	// A final result's recorded duration wins: it is monotonic and survives reloads. The card's own clock is the fallback for
+	// live progress and for results stored without one.
+	if !isPartial && context.DurationMs != nil {
+		return "Took " + tui.FormatToolDuration(time.Duration(*context.DurationMs)*time.Millisecond), true
 	}
+	if startedAt.IsZero() {
+		return "", false
+	}
+	label := "Took"
+	if isPartial {
+		label = "Elapsed"
+	}
+	end := endedAt
+	if end.IsZero() {
+		end = toolTimerNow()
+	}
+	return label + " " + tui.FormatToolDuration(end.Sub(startedAt)), true
+}
+
+// shellRenderResult is upstream createShellRenderers renderResult: the output preview, warnings, and the timing footer.
+func shellRenderResult(result extension.AgentToolResult, options extension.ToolRenderResultOptions, _ extension.Theme, context extension.ToolRenderContext) extension.Component {
+	state := builtInState(context)
+	timer, hasTimer := toolTimerText(context, options.IsPartial)
+	footer := ""
+	if hasTimer {
+		footer = themeFg(tui.ActiveTheme().Muted, timer)
+	}
+	value := renderResultValue(result)
+	view := state.shellView(toolResultTextOutput(value, context.ShowImages), shellDetailsFrom(value.Details), options.IsPartial, options.Expanded)
+	var footerText *tui.Text
+	if footer != "" {
+		footerText = tui.NewPaddedText("\n"+footer, 0, 0, nil)
+	}
+	cachedWidth, cached := -1, []string(nil)
 	return linesComponent{render: func(width int) []string {
-		lines := shellResultLines(value.Text(), details, options.IsPartial, options.Expanded, width)
-		if footer != "" {
-			lines = append(lines, tui.NewPaddedText("\n"+footer, 0, 0, nil).Render(width)...)
+		if width != cachedWidth {
+			cached = view.render(width)
+			if footerText != nil {
+				cached = append(cached, footerText.Render(width)...)
+			}
+			cachedWidth = width
 		}
-		return lines
+		return cached
 	}}
+}
+
+// shellViewKey is what a shell card's result view is built from: the output, the details fields it reads, the card state,
+// and the theme and expand key hint its rows show.
+type shellViewKey struct {
+	content                        string
+	truncated                      bool
+	truncatedBy                    string
+	totalLines, outputLines, bytes int
+	fullOutputPath                 string
+	isPartial, expanded            bool
+	theme                          *tui.Theme
+	hint                           string
+}
+
+// shellView is the view of a shell result. The elapsed ticker reruns the result renderer every second while the command
+// runs; an update whose output, details, state, theme and key hint are unchanged reuses the view instead of reading the
+// output again.
+func (state *builtInRenderState) shellView(content string, details shellResultDetails, isPartial, expanded bool) shellResultView {
+	key := shellViewKey{content: content, fullOutputPath: details.FullOutputPath, isPartial: isPartial, expanded: expanded, theme: tui.ActiveTheme(), hint: expandKeyHint()}
+	if tr := details.Truncation; tr != nil {
+		key.truncated, key.truncatedBy, key.totalLines, key.outputLines, key.bytes = tr.Truncated, tr.TruncatedBy, tr.TotalLines, tr.OutputLines, tr.MaxBytes
+	}
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	if state.shellViewBuilt && state.shellViewKey == key {
+		return state.shellViewValue
+	}
+	state.shellViewKey, state.shellViewValue, state.shellViewBuilt = key, newShellResultView(content, details, isPartial, expanded), true
+	return state.shellViewValue
 }
 
 func trimTrailingEmptyLines(lines []string) []string {
@@ -256,7 +417,7 @@ func readRenderResult(result extension.AgentToolResult, options extension.ToolRe
 	theme := tui.ActiveTheme()
 	value := renderResultValue(result)
 	rawPath, _ := stringArg(context.Args, "file_path", "path")
-	output := shellTextOutput(value.Text())
+	output := toolResultTextOutput(value, context.ShowImages)
 	lang := ""
 	if !context.IsError && rawPath != "" {
 		lang = tui.LanguageFromPath(rawPath)
@@ -334,9 +495,9 @@ func readTruncation(details any) *tools.TruncationResult {
 
 // listRenderResult is upstream grep.ts, find.ts and ls.ts renderResult.
 func listRenderResult(name string) extension.ToolRenderResultFunc {
-	return func(result extension.AgentToolResult, options extension.ToolRenderResultOptions, _ extension.Theme, _ extension.ToolRenderContext) extension.Component {
+	return func(result extension.AgentToolResult, options extension.ToolRenderResultOptions, _ extension.Theme, context extension.ToolRenderContext) extension.Component {
 		value := renderResultValue(result)
-		body := makeListBodyRenderer(name, value.Text(), value.Details)
+		body := makeListBodyRenderer(name, toolResultTextOutput(value, context.ShowImages), value.Details)
 		return linesComponent{render: func(width int) []string {
 			lines := body(width, options.Expanded)
 			if len(lines) == 0 {
@@ -349,46 +510,135 @@ func listRenderResult(name string) extension.ToolRenderResultFunc {
 
 // writeRenderCall is upstream write.ts renderCall: the path, then the content
 // being written, highlighted by the file's language, ten lines while
-// collapsed.
+// collapsed. A frame reads the lines it draws and the line count: while the
+// content streams in, the card state extends both from the previous frame.
 func writeRenderCall(args json.RawMessage, _ extension.Theme, context extension.ToolRenderContext) extension.Component {
 	theme := tui.ActiveTheme()
-	text := tui.FormatWriteHeader(args, context.Cwd)
-	rawPath, _ := stringArg(args, "file_path", "path")
-	content, ok := stringArg(args, "content")
+	fields := callFields(args, context)
+	text := tui.FormatWriteHeaderArgs(writeHeaderFields(fields), context.Cwd)
+	rawPath, _ := stringField(fields, "file_path", "path")
+	content, ok := stringField(fields, "content")
+	state := builtInState(context)
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	switch {
+	case !ok:
+		state.writeHighlight = nil
+	case context.ArgsComplete:
+		state.writeHighlight = rebuildWriteHighlightCacheFull(rawPath, content)
+	default:
+		state.writeHighlight = updateWriteHighlightCacheIncremental(state.writeHighlight, rawPath, content)
+	}
+	cache := state.writeHighlight
+	var plain writePlainLines
+	if cache == nil && ok {
+		plain = state.writePlain
+		plain.update(content)
+	}
+	state.writePlain = plain
+	if context.ArgsComplete {
+		// Complete arguments rebuild on every call (upstream renderCall: context.argsComplete ? rebuildWriteHighlightCacheFull),
+		// so nothing read from the content needs to outlive this call.
+		state.writeHighlight, state.writePlain = nil, writePlainLines{}
+	}
 	switch {
 	case !ok:
 		text += "\n\n" + themeFg(theme.Error, "[invalid content arg - expected string]")
 	case content != "":
-		normalized := strings.ReplaceAll(content, "\r", "")
-		lang := ""
-		if rawPath != "" {
-			lang = tui.LanguageFromPath(rawPath)
-		}
-		var rendered []string
-		if lang != "" {
-			rendered = tui.HighlightCode(replaceTabs(normalized), lang)
+		// A path with a language draws the cache's highlighted lines, any other the content's lines (upstream
+		// formatWriteCall: lang ? cache.highlightedLines : normalizeDisplayText(fileContent).split("\n")).
+		var total int
+		if cache != nil {
+			total = cache.lineCount()
 		} else {
-			rendered = strings.Split(normalized, "\n")
+			total = plain.count()
 		}
-		lines := trimTrailingEmptyLines(rendered)
-		display := lines
-		if !context.Expanded && len(lines) > builtInPreviewLines {
-			display = lines[:builtInPreviewLines]
+		shown := total
+		if !context.Expanded && shown > builtInPreviewLines {
+			shown = builtInPreviewLines
 		}
-		styled := make([]string, len(display))
-		for i, line := range display {
-			if lang != "" {
-				styled[i] = line
-			} else {
-				styled[i] = themeFg(theme.ToolOutput, replaceTabs(line))
+		styled := make([]string, 0, shown)
+		if cache != nil {
+			for i := range shown {
+				styled = append(styled, cache.line(i))
+			}
+		} else {
+			for line := range plain.lines(shown) {
+				styled = append(styled, themeFg(theme.ToolOutput, normalizeWriteText(line)))
 			}
 		}
 		text += "\n\n" + strings.Join(styled, "\n")
-		if remaining := len(lines) - len(display); remaining > 0 {
-			text += moreLinesHint("\n... (" + strconv.Itoa(remaining) + " more lines, " + strconv.Itoa(len(lines)) + " total,")
+		if remaining := total - shown; remaining > 0 {
+			text += moreLinesHint("\n... (" + strconv.Itoa(remaining) + " more lines, " + strconv.Itoa(total) + " total,")
 		}
 	}
 	return tui.NewPaddedText(text, 0, 0, nil)
+}
+
+// writeHeaderFields is the arguments the write header reads its path from. A path holding a lone surrogate reads U+FFFD
+// in it (normalizeWriteText), so streamed arguments name the path as their decoded JSON text does.
+func writeHeaderFields(fields map[string]any) map[string]any {
+	var header map[string]any
+	for _, key := range [...]string{"file_path", "path"} {
+		path, ok := fields[key].(string)
+		if !ok {
+			continue
+		}
+		if replaced := replaceLoneSurrogates(path); replaced != path {
+			if header == nil {
+				header = maps.Clone(fields)
+			}
+			header[key] = replaced
+		}
+	}
+	if header == nil {
+		return fields
+	}
+	return header
+}
+
+// writePlainLines is the line structure formatWriteCall reads from the content of a write call whose path has no
+// language, kept while the content streams in: each update counts the newlines it adds.
+type writePlainLines struct {
+	content  string
+	newlines int
+}
+
+func (plain *writePlainLines) update(content string) {
+	if strings.HasPrefix(content, plain.content) {
+		plain.newlines += strings.Count(content[len(plain.content):], "\n")
+	} else {
+		plain.newlines = strings.Count(content, "\n")
+	}
+	plain.content = content
+}
+
+// count is len(trimTrailingEmptyLines(normalizeDisplayText(content).split("\n"))): a line is empty once its carriage
+// returns are removed, so the empty lines at the end are the newlines after the last other byte.
+func (plain *writePlainLines) count() int {
+	content := plain.content
+	end := len(content)
+	for end > 0 && (content[end-1] == '\n' || content[end-1] == '\r') {
+		end--
+	}
+	if end == 0 {
+		return 0
+	}
+	return plain.newlines + 1 - strings.Count(content[end:], "\n")
+}
+
+// lines yields the first n lines of the content, carriage returns included.
+func (plain *writePlainLines) lines(n int) iter.Seq[string] {
+	return func(yield func(string) bool) {
+		rest := plain.content
+		for range n {
+			line, after, _ := strings.Cut(rest, "\n")
+			if !yield(line) {
+				return
+			}
+			rest = after
+		}
+	}
 }
 
 // writeRenderResult is upstream write.ts renderResult: the error text of a
@@ -450,20 +700,32 @@ func editPreviewInput(args any) (string, []tools.EditReplacement, bool) {
 	return "", nil, false
 }
 
-func editArgsKey(path string, edits []tools.EditReplacement) string {
-	type edit struct {
-		OldText string `json:"oldText"`
-		NewText string `json:"newText"`
+// editRenderArgs is edit arguments as the edit renderers read them: upstream getRenderablePreviewInput, and the path
+// members the header shows. One value stands for every argument text that decodes to the same path and edits.
+type editRenderArgs struct {
+	raw    []byte
+	path   string
+	edits  []tools.EditReplacement
+	ok     bool
+	header json.RawMessage
+}
+
+// editRenderInput is the decoded form of args. It decodes only when the argument bytes differ from the last call's: the
+// renderers run on every update of the card, and decoding the edits each time cost a pass over all of them. The caller
+// holds state.mu.
+func (state *builtInRenderState) editRenderInput(args any) *editRenderArgs {
+	raw, _ := args.(json.RawMessage)
+	if last := state.editArgs; last != nil && last.raw != nil && bytes.Equal(last.raw, raw) {
+		return last
 	}
-	list := make([]edit, len(edits))
-	for i, e := range edits {
-		list[i] = edit(e)
+	path, edits, ok := editPreviewInput(args)
+	header := pathRenderArgs(decodeRenderArgs(args))
+	if last := state.editArgs; last != nil && last.ok == ok && last.path == path && slices.Equal(last.edits, edits) && bytes.Equal(last.header, header) {
+		last.raw = slices.Clone(raw)
+		return last
 	}
-	encoded, _ := json.Marshal(struct {
-		Path  string `json:"path"`
-		Edits []edit `json:"edits"`
-	}{path, list})
-	return string(encoded)
+	state.editArgs = &editRenderArgs{raw: slices.Clone(raw), path: path, edits: edits, ok: ok, header: header}
+	return state.editArgs
 }
 
 // editRenderCall is upstream edit.ts renderCall: a Box holding the path and,
@@ -473,15 +735,12 @@ func editArgsKey(path string, edits []tools.EditReplacement) string {
 // error show in it as they do in upstream's shared call component.
 func editRenderCall(args json.RawMessage, _ extension.Theme, context extension.ToolRenderContext) extension.Component {
 	state := builtInState(context)
-	path, edits, ok := editPreviewInput(args)
-	key := ""
-	if ok {
-		key = editArgsKey(path, edits)
-	}
 	state.mu.Lock()
+	input := state.editRenderInput(args)
+	path, edits, ok := input.path, input.edits, input.ok
 	state.editCall = true
-	if state.editArgsKey != key {
-		state.editArgsKey = key
+	if state.editArgsFor != input {
+		state.editArgsFor = input
 		state.editPreview = nil
 		state.editPending = false
 		state.editSettledE = false
@@ -496,11 +755,11 @@ func editRenderCall(args json.RawMessage, _ extension.Theme, context extension.T
 			if cancelled {
 				return
 			}
-			preview := tools.ComputeEditsDiff(path, edits, cwd)
+			preview := computeEditsDiff(path, edits, cwd)
 			state.mu.Lock()
-			current := !state.closed && (state.lifetime == nil || state.lifetime.Err() == nil) && state.editArgsKey == key
+			current := !state.closed && (state.lifetime == nil || state.lifetime.Err() == nil) && state.editArgsFor == input
 			if current {
-				state.editPreview = &preview
+				state.editPreview = preview
 				state.editPending = false
 			}
 			state.mu.Unlock()
@@ -509,36 +768,67 @@ func editRenderCall(args json.RawMessage, _ extension.Theme, context extension.T
 			}
 		})
 	}
+	headerArgs := input.header
 	state.mu.Unlock()
-	header := tui.FormatEditHeader(args, context.Cwd)
+	header := tui.FormatEditHeader(headerArgs, context.Cwd)
+	// The box is built once per preview, settled state and theme, and its rows are kept per width: the card draws on
+	// every frame it is dirty, and drawing the diff again each time cost a pass over all of it.
+	type boxKey struct {
+		preview      tools.EditDiffOutcome
+		settledError bool
+		theme        *tui.Theme
+	}
+	var built boxKey
+	var box *tui.Box
+	cachedWidth, cached := -1, []string(nil)
 	return linesComponent{render: func(width int) []string {
 		state.mu.Lock()
-		preview, settledError := state.editPreview, state.editSettledE
+		key := boxKey{preview: state.editPreview, settledError: state.editSettledE, theme: tui.ActiveTheme()}
 		state.mu.Unlock()
-		theme := tui.ActiveTheme()
-		token := "toolPendingBg"
-		switch {
-		case preview != nil && preview.Error != "":
-			token = "toolErrorBg"
-		case preview != nil:
-			token = "toolSuccessBg"
-		case settledError:
-			token = "toolErrorBg"
+		if box != nil && key == built && width == cachedWidth {
+			return cached
 		}
-		open := theme.Bg(token)
-		box := tui.NewPaddedBox(1, 1, func(text string) string { return open + text + tui.SGRBgReset })
-		box.AddChild(tui.NewPaddedText(header, 0, 0, nil))
-		if preview != nil {
-			box.AddChild(tui.NewSpacer(1))
-			if preview.Error != "" {
-				box.AddChild(tui.NewPaddedText(themeFg(theme.Error, preview.Error), 0, 0, nil))
-			} else {
-				diff := preview.Diff
-				box.AddChild(linesComponent{render: func(width int) []string { return diffRows(diff, width) }})
-			}
+		if box == nil || key != built {
+			box, built = newEditCallBox(header, key.preview, key.settledError, key.theme, context.OutputPad), key
 		}
-		return box.Render(width)
+		cached, cachedWidth = box.Render(width), width
+		return cached
 	}}
+}
+
+// newEditCallBox is upstream edit.ts's call component: the header and, once it landed, the preview diff or its error, in
+// the pending, success or error background.
+func newEditCallBox(header string, preview tools.EditDiffOutcome, settledError bool, theme *tui.Theme, outputPad int) *tui.Box {
+	token := "toolPendingBg"
+	_, previewFailed := preview.(tools.EditDiffError)
+	switch {
+	case previewFailed:
+		token = "toolErrorBg"
+	case preview != nil:
+		token = "toolSuccessBg"
+	case settledError:
+		token = "toolErrorBg"
+	}
+	open := theme.GetBgAnsi(token)
+	box := tui.NewPaddedBox(outputPad, 1, func(text string) string { return open + text + tui.SGRBgReset })
+	box.AddChild(tui.NewPaddedText(header, 0, 0, nil))
+	if preview != nil {
+		box.AddChild(tui.NewSpacer(1))
+		switch outcome := preview.(type) {
+		case tools.EditDiffError:
+			box.AddChild(tui.NewPaddedText(themeFg(theme.Error, outcome.Error), 0, 0, nil))
+		case tools.EditDiffResult:
+			diff := outcome.Diff
+			cachedWidth, cached := -1, []string(nil)
+			box.AddChild(linesComponent{render: func(width int) []string {
+				if width != cachedWidth {
+					cached, cachedWidth = diffRows(diff, width), width
+				}
+				return cached
+			}})
+		}
+	}
+	return box
 }
 
 // diffRows is upstream renderDiff drawn in a Text of the given width.
@@ -569,18 +859,13 @@ func editResultDiff(details any) (string, bool) {
 func editRenderResult(result extension.AgentToolResult, _ extension.ToolRenderResultOptions, _ extension.Theme, context extension.ToolRenderContext) extension.Component {
 	state := builtInState(context)
 	value := renderResultValue(result)
-	path, edits, ok := editPreviewInput(context.Args)
-	key := ""
-	if ok {
-		key = editArgsKey(path, edits)
-	}
-	var preview *tools.EditsDiffPreview
+	var preview tools.EditDiffOutcome
 	state.mu.Lock()
 	if state.editCall {
 		if !context.IsError {
 			if diff, isString := editResultDiff(value.Details); isString {
-				state.editPreview = &tools.EditsDiffPreview{Diff: diff}
-				state.editArgsKey = key
+				state.editPreview = tools.EditDiffResult{Diff: diff}
+				state.editArgsFor = state.editRenderInput(context.Args)
 				state.editPending = false
 			}
 		}
@@ -590,8 +875,11 @@ func editRenderResult(result extension.AgentToolResult, _ extension.ToolRenderRe
 	state.mu.Unlock()
 
 	previewDiff, previewError := "", ""
-	if preview != nil {
-		previewDiff, previewError = preview.Diff, preview.Error
+	switch outcome := preview.(type) {
+	case tools.EditDiffResult:
+		previewDiff = outcome.Diff
+	case tools.EditDiffError:
+		previewError = outcome.Error
 	}
 	empty := linesComponent{render: func(int) []string { return nil }}
 	if context.IsError {
@@ -600,7 +888,7 @@ func editRenderResult(result extension.AgentToolResult, _ extension.ToolRenderRe
 		}
 		output := themeFg(tui.ActiveTheme().Error, value.Text())
 		return linesComponent{render: func(width int) []string {
-			return append([]string{""}, tui.NewPaddedText(output, 1, 0, nil).Render(width)...)
+			return append([]string{""}, tui.NewPaddedText(output, context.OutputPad, 0, nil).Render(width)...)
 		}}
 	}
 	diff, _ := editResultDiff(value.Details)
@@ -608,7 +896,7 @@ func editRenderResult(result extension.AgentToolResult, _ extension.ToolRenderRe
 		return empty
 	}
 	return linesComponent{render: func(width int) []string {
-		rows := diffRows(diff, max(1, width-2))
-		return append([]string{""}, tui.NewPaddedText(strings.Join(rows, "\n"), 1, 0, nil).Render(width)...)
+		rows := diffRows(diff, max(1, width-2*context.OutputPad))
+		return append([]string{""}, tui.NewPaddedText(strings.Join(rows, "\n"), context.OutputPad, 0, nil).Render(width)...)
 	}}
 }

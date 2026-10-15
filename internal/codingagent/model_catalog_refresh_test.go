@@ -51,10 +51,11 @@ func TestModelPickerRefreshRendersSnapshotAndCancels(t *testing.T) {
 		blocked := &interactiveCatalogStore{InMemoryModelsStore: store, release: make(chan struct{}), started: make(chan context.Context, 4)}
 		registry.SetModelsStore(blocked)
 		var output bytes.Buffer
-		m := NewInteractiveMode(InteractiveOptions{AgentDir: t.TempDir(), ModelRegistry: registry})
+		m := NewInteractiveMode(nil, InteractiveModeOptions{AgentDir: t.TempDir(), ModelRegistry: registry})
 		m.runCtx = t.Context()
 		m.tuiInst = tui.NewWithOutput(&output, 100, 40)
-		m.statusLine = NewStatusLine(nil, "", nil)
+		m.installRenderDispatcher()
+		m.statusLine = NewFooterComponent(nil, "", nil)
 		done := make(chan bool, 1)
 		go func() {
 			_, ok := m.buildSlashContext(t.Context()).PickModel("")
@@ -96,12 +97,12 @@ func TestFooterProviderCountIncludesRadiusAndHonorsScope(t *testing.T) {
 		"radius-dev": {Type: ai.CredentialAPIKey, Key: "fake"},
 	})
 	entry := json.RawMessage(`{"id":"local","name":"Local","provider":"radius-dev","api":"pi-messages","baseUrl":"https://local.invalid/v1","input":["text"],"contextWindow":1000,"maxTokens":50}`)
-	if err := store.Write(t.Context(), "radius-dev", ai.ModelsStoreEntry{Models: []json.RawMessage{entry}}); err != nil {
+	if err := store.Write(t.Context(), "radius-dev", ai.ModelsStoreEntry{Models: mustStoredModels([]json.RawMessage{entry})}); err != nil {
 		t.Fatal(err)
 	}
 	registry.RefreshCatalogs(t.Context(), CatalogRefreshOptions{})
-	m := NewInteractiveMode(InteractiveOptions{AgentDir: t.TempDir(), ModelRegistry: registry})
-	m.statusLine = NewStatusLine(nil, "", nil)
+	m := NewInteractiveMode(nil, InteractiveModeOptions{AgentDir: t.TempDir(), ModelRegistry: registry})
+	m.statusLine = NewFooterComponent(nil, "", nil)
 	providers := map[string]bool{"radius-dev": true}
 	reachable, authed := ReachableProviders(), AuthenticatedProviders(m.opts.AgentDir)
 	for _, model := range ai.ListModels("") {
@@ -260,7 +261,7 @@ func TestModelPickerRefreshUpdatesSnapshotAndPreservesScope(t *testing.T) {
 	for _, query := range []string{"", "new"} {
 		t.Run("query="+query, func(t *testing.T) {
 			registry, _, store := radiusTestRegistry(t, "", map[string]ai.Credential{"radius": {Type: ai.CredentialAPIKey, Key: "fake"}})
-			if err := store.Write(t.Context(), "radius", ai.ModelsStoreEntry{Models: []json.RawMessage{storedPickerModel("old", "Old snapshot")}}); err != nil {
+			if err := store.Write(t.Context(), "radius", ai.ModelsStoreEntry{Models: mustStoredModels([]json.RawMessage{storedPickerModel("old", "Old snapshot")})}); err != nil {
 				t.Fatal(err)
 			}
 			registry.RefreshCatalogs(t.Context(), CatalogRefreshOptions{})
@@ -268,9 +269,9 @@ func TestModelPickerRefreshUpdatesSnapshotAndPreservesScope(t *testing.T) {
 				blocked := &interactiveCatalogStore{InMemoryModelsStore: store, release: make(chan struct{}), started: make(chan context.Context, 4)}
 				registry.SetModelsStore(blocked)
 				m, output := newExtensionDialogProbeSized(t, 100, 40)
-				m.opts = InteractiveOptions{AgentDir: t.TempDir(), ModelRegistry: registry, Model: &ai.Model{ID: "old", ProviderMeta: ai.ProviderMetadata{ProviderID: "radius"}}}
+				m.opts = InteractiveModeOptions{AgentDir: t.TempDir(), ModelRegistry: registry, Model: &ai.Model{ID: "old", ProviderMeta: ai.ProviderMetadata{ProviderID: "radius"}}}
 				m.scopedModelIDs = []string{"radius/old"}
-				m.statusLine = NewStatusLine(m.opts.Model, "", nil)
+				m.statusLine = NewFooterComponent(m.opts.Model, "", nil)
 				done := make(chan string, 1)
 				go func() { fq, _ := m.buildSlashContext(t.Context()).PickModel(""); done <- fq }()
 				<-blocked.started
@@ -280,7 +281,7 @@ func TestModelPickerRefreshUpdatesSnapshotAndPreservesScope(t *testing.T) {
 					input <- []byte("\t") // switch to all before the refresh arrives
 					input <- []byte(query)
 				}
-				if err := store.Write(t.Context(), "radius", ai.ModelsStoreEntry{Models: []json.RawMessage{storedPickerModel("old", "Refreshed current"), storedPickerModel("new", "New arrival")}}); err != nil {
+				if err := store.Write(t.Context(), "radius", ai.ModelsStoreEntry{Models: mustStoredModels([]json.RawMessage{storedPickerModel("old", "Refreshed current"), storedPickerModel("new", "New arrival")})}); err != nil {
 					t.Fatal(err)
 				}
 				close(blocked.release)
@@ -315,9 +316,10 @@ func TestModelPickerRefreshTimeoutAndErrors(t *testing.T) {
 				blocked := &interactiveCatalogStore{InMemoryModelsStore: store, release: make(chan struct{}), started: make(chan context.Context, 4), readError: errors.New("offline store failure")}
 				registry.SetModelsStore(blocked)
 				var output bytes.Buffer
-				m := NewInteractiveMode(InteractiveOptions{AgentDir: t.TempDir(), ModelRegistry: registry})
+				m := NewInteractiveMode(nil, InteractiveModeOptions{AgentDir: t.TempDir(), ModelRegistry: registry})
 				m.tuiInst = tui.NewWithOutput(&output, 100, 40)
-				m.statusLine = NewStatusLine(nil, "", nil)
+				m.installRenderDispatcher()
+				m.statusLine = NewFooterComponent(nil, "", nil)
 				done := make(chan bool, 1)
 				go func() { _, ok := m.buildSlashContext(t.Context()).PickModel(""); done <- ok }()
 				<-blocked.started

@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts"
@@ -39,7 +38,7 @@ func TestPackedProviderResponseAndToolPrompts(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				value, ok := result.(agent.AgentToolResult)
+				value, ok := result, true
 				if !ok || value.Text() != "after_provider_response:207:received" {
 					t.Fatalf("response payload = %#v", result)
 				}
@@ -112,7 +111,7 @@ pub fn new_extension() -> Extension {
  let tool_observed = observed.clone();
  ext.tool_with_guidelines(%q,"not a snippet",json!({"type":"object"}),vec![%q.into()," shared ".into(),"shared".into()],move |_,_| ToolResult::json(json!({"content":*tool_observed.lock().unwrap()})));
  ext.tool_prompt_snippet(%q," Tool\r\n summary ");
- ext.on_event("after_provider_response",false,move |_,event|{*observed.lock().unwrap()=format!("{}:{}:{}",event["type"].as_str().unwrap(),event["status"],event["headers"]["x-probe"].as_str().unwrap());Some(json!({"cancel":true}))});
+ ext.on_event("after_provider_response",move |_,event|{*observed.lock().unwrap()=format!("{}:{}:{}",event["type"].as_str().unwrap(),event["status"],event["headers"]["x-probe"].as_str().unwrap());Some(json!({"cancel":true}))});
  ext
 }
 `, name, name, name+" rule", name))
