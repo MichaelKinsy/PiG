@@ -132219,7 +132219,7 @@
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#messageUpdatePayload.frame",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#messageUpdateShare.frame",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#runSignals.frame",
-        "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpManagerView.frame",
+        "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#McpManagerView.frame",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/frontend#Frame",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#componentEditor.frame",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/llama#frame",
@@ -251529,7 +251529,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -251540,6 +251540,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/coding/extension#ToolRendererResolver",
+        "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#ToolRendererResolver",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#ToolRendererResolver"
       ],
       "missingClosure": [
@@ -260885,7 +260886,7 @@
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpManagerView.keyHint",
+        "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#McpManagerView.keyHint",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/llama#keyHint",
         "go:github.com/MichaelKinsy/PiG/tui#KeyHint"
       ],
@@ -347986,7 +347987,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "7 normalized-name Pig candidates are ambiguous."
+        "9 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -347996,6 +347997,8 @@
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/coding/mcpext#Terminal",
+        "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#Terminal",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#currentRendererTUI.Terminal",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#ownerInvalidatingRenderer.Terminal",
         "go:github.com/MichaelKinsy/PiG/tui#Terminal",

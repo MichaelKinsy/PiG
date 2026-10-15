@@ -28,6 +28,7 @@
     "github.com/MichaelKinsy/PiG/coding/extensionset",
     "github.com/MichaelKinsy/PiG/coding/hookconfig",
     "github.com/MichaelKinsy/PiG/coding/mcpext",
+    "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
     "github.com/MichaelKinsy/PiG/coding/packagecontent",
     "github.com/MichaelKinsy/PiG/coding/piglet",
     "github.com/MichaelKinsy/PiG/coding/piglet/artifact",
@@ -137770,17 +137771,6 @@
       "shapeHash": "sha256:8eb5666d12b703684808660018e0c95657e6853c317c3968765c24d715cfee77"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#CreateMcpToolRenderers",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "CreateMcpToolRenderers",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(label string) *github.com/MichaelKinsy/PiG/coding/extension.ToolRenderers"
-      },
-      "shapeHash": "sha256:4676398f23c547dd8576897df866420e1b5fad50aacc66e5f7e88384c5aa7b72"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#EventContext",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "EventContext",
@@ -138386,6 +138376,17 @@
       "shapeHash": "sha256:108e67c4fe256bdff006bac8872caa82b1478922ef8eacf4986ca9a9d5a15721"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#Extension.renderers",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
+      "name": "Extension.renderers",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() func(label string) *github.com/MichaelKinsy/PiG/coding/extension.ToolRenderers"
+      },
+      "shapeHash": "sha256:be4c6cbb54062cb36c4e860045a7c0cf297362747c7ade257699ee060622bc57"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#Extension.reportProblems",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "Extension.reportProblems",
@@ -138749,17 +138750,6 @@
       "shapeHash": "sha256:fd44cfdea317dfeac4ace1a775cd4b14fbac9cf8f1753a7ea5bf4ea32fb28322"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#ManagerHost",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "ManagerHost",
-      "kind": "type",
-      "exported": true,
-      "shape": {
-        "type": "ManagerHost"
-      },
-      "shapeHash": "sha256:ee30cdbbdd3a5984e0a553f5272c36a66cbd1b7e1016fdf0a98a02df297061b3"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#MaxServersSectionChars",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "MaxServersSectionChars",
@@ -138804,149 +138794,6 @@
       "shapeHash": "sha256:9cd730a80ea48608dc529d3cbccd8dfcd3819913df10f7322bcacdf40d85d683"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpManagerView",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "McpManagerView",
-      "kind": "type",
-      "exported": true,
-      "shape": {
-        "type": "McpManagerView"
-      },
-      "shapeHash": "sha256:48feda3aae08cb19607be92445e200297d1411a913070b5895f88b7aac1374cd"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpManagerView.Dispose",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "McpManagerView.Dispose",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func()"
-      },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpManagerView.HandleInput",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "McpManagerView.HandleInput",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(data string)"
-      },
-      "shapeHash": "sha256:859eb12f14eea4f7eadbd01c84167f7e4cd87e13f2fe3399aa3cdbaf8d80e44d"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpManagerView.Invalidate",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "McpManagerView.Invalidate",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func()"
-      },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpManagerView.Menu",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "McpManagerView.Menu",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(ctx context.Context, build func() McpMenu, subscribe func(listener func()) (unsubscribe func())) (string, bool)"
-      },
-      "shapeHash": "sha256:199e059bf0a404f9b523bb2ce7f8330de59a9eaf265c12c166a14c8212cbdd81"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpManagerView.RedirectURL",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "McpManagerView.RedirectURL",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(ctx context.Context, title string, authorizationURL string) (string, bool)"
-      },
-      "shapeHash": "sha256:72b8c6acd489455ff6cb81780fd4eda05daa644f836c03250d7b1f2c3d0ae44f"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpManagerView.Render",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "McpManagerView.Render",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(width int) []string"
-      },
-      "shapeHash": "sha256:81761e7090d7bb4159cdc88ad1df72001d86a8280dab046ca793a8e9191bed39"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpManagerView.SetCopyToClipboard",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "McpManagerView.SetCopyToClipboard",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(copyToClipboard func(text string) error)"
-      },
-      "shapeHash": "sha256:381f675ade42e01da2bb2a949ab3c10ff7371a95491565b7eae09b01cb12deb1"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpManagerView.SetFocused",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "McpManagerView.SetFocused",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(focused bool)"
-      },
-      "shapeHash": "sha256:2022dca182fa9a536f7f3c6cb3c1b7edfcee418c2df1a33b626c16a5e4a6c607"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpManagerView.Status",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "McpManagerView.Status",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(title string, message string, onCancel func())"
-      },
-      "shapeHash": "sha256:74ffe7f7c45ffb6e6f752f9996fa9d521c5f780638550cae14f5048909565aa3"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpManagerView.frame",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "McpManagerView.frame",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(title string, body []github.com/MichaelKinsy/PiG/tui.Component, footer string) *github.com/MichaelKinsy/PiG/tui.Container"
-      },
-      "shapeHash": "sha256:5c629d688be62ca4e71bc3581e7fc1afe4fb8c437e94be6d0b8330d334fdd54b"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpManagerView.keyHint",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "McpManagerView.keyHint",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(action github.com/MichaelKinsy/PiG/tui.TUIKeybinding, description string) string"
-      },
-      "shapeHash": "sha256:d5675e3013a14085311cb728980193566b1c9b19c2dec015bd034801fa72ea01"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpManagerView.setContent",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "McpManagerView.setContent",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(content *github.com/MichaelKinsy/PiG/tui.Container, inputHandler func(string), target interface{SetFocused(bool)})"
-      },
-      "shapeHash": "sha256:a0c8dc9ae85c99310492774be2cf6ed3155b99d2bf258a56f66b77b308eb7321"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpMenu",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "McpMenu",
@@ -138956,6 +138803,17 @@
         "type": "McpMenu"
       },
       "shapeHash": "sha256:26c033e759529524fefb4e3375ab8719c45f3c7050d0d47696bd729a2ab64a6e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpMenuItem",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
+      "name": "McpMenuItem",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "McpMenuItem"
+      },
+      "shapeHash": "sha256:31db74b83abcd932ee8ec7311b46a3bc5b2d5fa913169ecab0bece0f662ae43e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#McpOAuthCredentialStore",
@@ -139277,6 +139135,17 @@
       "shapeHash": "sha256:b26eea8233ecab4ad52cc923ab660ba2e1021e9841fdf15146ccf84f49988098"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#NewHeadless",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
+      "name": "NewHeadless",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(host Host, options Options) *Extension"
+      },
+      "shapeHash": "sha256:7725b10b55ac7926bf389bb1558b3c5df60993b76f256b4c5a5090e73d06afa9"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#NewMcpAuthProvider",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "NewMcpAuthProvider",
@@ -139286,17 +139155,6 @@
         "type": "func(options McpAuthProviderOptions) McpAuthProvider"
       },
       "shapeHash": "sha256:71a7e10e4b4228dcc82bf7b24400eb64fea3dfc639ddf3d73addb1518ab94f5d"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#NewMcpManagerView",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "NewMcpManagerView",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(host ManagerHost, theme *github.com/MichaelKinsy/PiG/tui.Theme, keybindings *github.com/MichaelKinsy/PiG/tui.TUIKeybindingsManager) *McpManagerView"
-      },
-      "shapeHash": "sha256:06c2eef7d65bc7adf1e240592ec4e57be096e85b03f4097cc8f40e4fb4f32ad0"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#NewMcpOAuthCredentialStore",
@@ -139528,6 +139386,17 @@
         "type": "ServerState"
       },
       "shapeHash": "sha256:8aaab75ff10b7c0b5f12a3cb0073e7df22a15d737b53778c81774d09582e3802"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#Terminal",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
+      "name": "Terminal",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Terminal"
+      },
+      "shapeHash": "sha256:99d15b6c406da3c0ccc1f3409d0c4be7ef5cf9d09d8e17b9a4ccbc5db0920cf9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#ToModelContent",
@@ -139827,17 +139696,6 @@
       "shapeHash": "sha256:c471d1ca353269f5f384c1942af4ae604a1ea81cc3fbae41ea0625d6506cabaa"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#bold",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "bold",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(text string) string"
-      },
-      "shapeHash": "sha256:712aa1f912ed8b2a515afd3e016ad20e83192eda792ea2444cc3e25c00ffe2fd"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#callbackHost",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "callbackHost",
@@ -139943,9 +139801,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, copyToClipboard func(text string) error) CommandContext"
+        "type": "func(ctx context.Context, copyToClipboard func(text string) error, terminal *Terminal) CommandContext"
       },
-      "shapeHash": "sha256:eee2425f3140dfb2a868a7aaf8af315e7cdb07b377f70816a4a395370ed0cf03"
+      "shapeHash": "sha256:f07da178e12ebf35268ada44dd296f1bbe3963645624980b1c19c8f5e4fefacc"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#commandSignIn",
@@ -140311,17 +140169,6 @@
       "shapeHash": "sha256:ef4fa25a66c42a910f3876cd4688f554cb5904bcfa4a745999b90abf84f9b028"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#fullOutputPathOf",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "fullOutputPathOf",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(details any) string"
-      },
-      "shapeHash": "sha256:985dc999321b7ed1c9e704e2a0b71e118b9c25d9c8178f4ce7062ea3786a8dcc"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#hasDirectTools",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "hasDirectTools",
@@ -140474,17 +140321,6 @@
         "type": "func(tool string, server string, payload encoding/json.RawMessage) (github.com/MichaelKinsy/PiG/agent.AgentToolResult, error)"
       },
       "shapeHash": "sha256:ab1fe1e6164d3893f50d25c742d0795b2bcc4b8d39e2c2ad8935d8652e6afc44"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#keybindingsOf",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "keybindingsOf",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(keybindings github.com/MichaelKinsy/PiG/coding/extension.KeybindingsManager) *github.com/MichaelKinsy/PiG/tui.TUIKeybindingsManager"
-      },
-      "shapeHash": "sha256:6e92353f9532f65e766adf509d4dc1b299be09909b7c420936e10a64b83836e7"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#lineBreak",
@@ -140674,17 +140510,6 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#maxVisibleItems",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "maxVisibleItems",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "untyped int"
-      },
-      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#mcpAppProfile",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "mcpAppProfile",
@@ -140859,17 +140684,6 @@
         "type": "func(content []github.com/MichaelKinsy/PiG/mcp.LLMContent) []github.com/MichaelKinsy/PiG/ai.ToolResultMessageContent"
       },
       "shapeHash": "sha256:00fdcd25b941b5f5e547528a6b8eb75403791718a26830ef25e2b1fdc04ba5e7"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#mcpToolNamePattern",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "mcpToolNamePattern",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "*github.com/MichaelKinsy/PiG/internal/lazyregexp.Regexp"
-      },
-      "shapeHash": "sha256:b2bada16c90e0a1f7a12c5d87c11865788ab6be78d85f83e367aec2254fdade4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#mergeScopes",
@@ -141178,17 +140992,6 @@
         "type": "func(fetch github.com/MichaelKinsy/PiG/mcp.McpFetch) github.com/MichaelKinsy/PiG/mcp.McpFetch"
       },
       "shapeHash": "sha256:099d998dac5e8880f3ef172c55b9bd3fbe71e932c3be4d17f2dc9d86a59786ce"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#outputPreviewLines",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "outputPreviewLines",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "untyped int"
-      },
-      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#overrideKeys",
@@ -142148,28 +141951,6 @@
       "shapeHash": "sha256:c071fdcf82166480be0d8e3523f71034aaebc07058d818239e43f8df09dc06f4"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#renderCall",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "renderCall",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(label string) github.com/MichaelKinsy/PiG/coding/extension.ToolRenderCallFunc"
-      },
-      "shapeHash": "sha256:60339e0f47b2d488d112741501c23133f7c2cb3b167c13d77683540d1e4b4c9c"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#renderResult",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "renderResult",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(result github.com/MichaelKinsy/PiG/coding/extension.AgentToolResult, options github.com/MichaelKinsy/PiG/coding/extension.ToolRenderResultOptions, theme github.com/MichaelKinsy/PiG/coding/extension.Theme, context github.com/MichaelKinsy/PiG/coding/extension.ToolRenderContext) github.com/MichaelKinsy/PiG/coding/extension.Component"
-      },
-      "shapeHash": "sha256:2d0308a22c30d0c5d977f3d94b6fe090b8a9dc215a70f96ba29d77fe764af430"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#resolveHeaders",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "resolveHeaders",
@@ -142212,17 +141993,6 @@
         "type": "responseResult"
       },
       "shapeHash": "sha256:0b28a317571401b7c569976286be893f96a29362b2782d717dd73050e34d3407"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#reusableText",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "reusableText",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(last github.com/MichaelKinsy/PiG/coding/extension.Component) *github.com/MichaelKinsy/PiG/tui.Text"
-      },
-      "shapeHash": "sha256:c2d851fdb3fb5d9ced9cde6d6d9608c945be445713d39be5c1ee459b807bc965"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#sanitizeToolName",
@@ -142401,17 +142171,6 @@
       "shapeHash": "sha256:08cb76dd71de4112ab5672fdd894a814b7b6beba53e9b28d97cf21bafcfb4f4c"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#showManager",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "showManager",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(ctx context.Context, ui github.com/MichaelKinsy/PiG/coding/extension.UIContext, events EventContext, copyToClipboard func(text string) error, manage func(McpUi) error) error"
-      },
-      "shapeHash": "sha256:00ae39c25f63309b0255ed52893285debdbcabfa57b298e42ec828487dccc571"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#signInRequiredMessage",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "signInRequiredMessage",
@@ -142487,17 +142246,6 @@
         "type": "func(content []github.com/MichaelKinsy/PiG/ai.ToolResultMessageContent) string"
       },
       "shapeHash": "sha256:06bc79407d6398767536a8022a352007ba35f9a7c9ad5d29da916f93869066c4"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#themeOf",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "themeOf",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(theme github.com/MichaelKinsy/PiG/coding/extension.Theme) *github.com/MichaelKinsy/PiG/tui.Theme"
-      },
-      "shapeHash": "sha256:55c573965db70f970ffd6bfc0db6963a3273efaf7d765d3eb53b455eddd676f2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#timedFetch",
@@ -142674,6 +142422,336 @@
         "type": "func[T any](list func() (T, error), empty T) (T, error)"
       },
       "shapeHash": "sha256:37ef41b5fc3acc45b5fd510426163519cb36085fa7cad4a022252fa12b8099c9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#CreateMcpToolRenderers",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "CreateMcpToolRenderers",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(label string) *github.com/MichaelKinsy/PiG/coding/extension.ToolRenderers"
+      },
+      "shapeHash": "sha256:4676398f23c547dd8576897df866420e1b5fad50aacc66e5f7e88384c5aa7b72"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#ManagerHost",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "ManagerHost",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ManagerHost"
+      },
+      "shapeHash": "sha256:ee30cdbbdd3a5984e0a553f5272c36a66cbd1b7e1016fdf0a98a02df297061b3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#McpManagerView",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "McpManagerView",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "McpManagerView"
+      },
+      "shapeHash": "sha256:48feda3aae08cb19607be92445e200297d1411a913070b5895f88b7aac1374cd"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#McpManagerView.Dispose",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "McpManagerView.Dispose",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#McpManagerView.HandleInput",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "McpManagerView.HandleInput",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(data string)"
+      },
+      "shapeHash": "sha256:859eb12f14eea4f7eadbd01c84167f7e4cd87e13f2fe3399aa3cdbaf8d80e44d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#McpManagerView.Invalidate",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "McpManagerView.Invalidate",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#McpManagerView.Menu",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "McpManagerView.Menu",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context, build func() github.com/MichaelKinsy/PiG/coding/mcpext.McpMenu, subscribe func(listener func()) (unsubscribe func())) (string, bool)"
+      },
+      "shapeHash": "sha256:8f351fe11bb4a8933875cfc83e56d99326a39b6aa964dd68f6ee4c501aad4f9e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#McpManagerView.RedirectURL",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "McpManagerView.RedirectURL",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context, title string, authorizationURL string) (string, bool)"
+      },
+      "shapeHash": "sha256:72b8c6acd489455ff6cb81780fd4eda05daa644f836c03250d7b1f2c3d0ae44f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#McpManagerView.Render",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "McpManagerView.Render",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(width int) []string"
+      },
+      "shapeHash": "sha256:81761e7090d7bb4159cdc88ad1df72001d86a8280dab046ca793a8e9191bed39"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#McpManagerView.SetCopyToClipboard",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "McpManagerView.SetCopyToClipboard",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(copyToClipboard func(text string) error)"
+      },
+      "shapeHash": "sha256:381f675ade42e01da2bb2a949ab3c10ff7371a95491565b7eae09b01cb12deb1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#McpManagerView.SetFocused",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "McpManagerView.SetFocused",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(focused bool)"
+      },
+      "shapeHash": "sha256:2022dca182fa9a536f7f3c6cb3c1b7edfcee418c2df1a33b626c16a5e4a6c607"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#McpManagerView.Status",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "McpManagerView.Status",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(title string, message string, onCancel func())"
+      },
+      "shapeHash": "sha256:74ffe7f7c45ffb6e6f752f9996fa9d521c5f780638550cae14f5048909565aa3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#McpManagerView.frame",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "McpManagerView.frame",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(title string, body []github.com/MichaelKinsy/PiG/tui.Component, footer string) *github.com/MichaelKinsy/PiG/tui.Container"
+      },
+      "shapeHash": "sha256:5c629d688be62ca4e71bc3581e7fc1afe4fb8c437e94be6d0b8330d334fdd54b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#McpManagerView.keyHint",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "McpManagerView.keyHint",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(action github.com/MichaelKinsy/PiG/tui.TUIKeybinding, description string) string"
+      },
+      "shapeHash": "sha256:d5675e3013a14085311cb728980193566b1c9b19c2dec015bd034801fa72ea01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#McpManagerView.setContent",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "McpManagerView.setContent",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(content *github.com/MichaelKinsy/PiG/tui.Container, inputHandler func(string), target interface{SetFocused(bool)})"
+      },
+      "shapeHash": "sha256:a0c8dc9ae85c99310492774be2cf6ed3155b99d2bf258a56f66b77b308eb7321"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#NewMcpManagerView",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "NewMcpManagerView",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(host ManagerHost, theme *github.com/MichaelKinsy/PiG/tui.Theme, keybindings *github.com/MichaelKinsy/PiG/tui.TUIKeybindingsManager) *McpManagerView"
+      },
+      "shapeHash": "sha256:06c2eef7d65bc7adf1e240592ec4e57be096e85b03f4097cc8f40e4fb4f32ad0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#ShowManager",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "ShowManager",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context, ui github.com/MichaelKinsy/PiG/coding/extension.UIContext, events github.com/MichaelKinsy/PiG/coding/mcpext.EventContext, copyToClipboard func(text string) error, manage func(github.com/MichaelKinsy/PiG/coding/mcpext.McpUi) error) error"
+      },
+      "shapeHash": "sha256:5f5c3b950bd72b27ab83e917519e613050ded7494a73ff1a4462b6efdf2f7b23"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#Terminal",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "Terminal",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() *github.com/MichaelKinsy/PiG/coding/mcpext.Terminal"
+      },
+      "shapeHash": "sha256:b2a47bfc682312c7e3706fa9b7121275b59b65f87d31725d4ceb6b72ed3fe4f2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#ToolRendererResolver",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "ToolRendererResolver",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(toolName string, next func() *github.com/MichaelKinsy/PiG/coding/extension.ToolRenderers) *github.com/MichaelKinsy/PiG/coding/extension.ToolRenderers"
+      },
+      "shapeHash": "sha256:e9985670f7e0822b344789b8656d89df4a0b5d69ac039fe0857d467d8dc51541"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#bold",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "bold",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(text string) string"
+      },
+      "shapeHash": "sha256:712aa1f912ed8b2a515afd3e016ad20e83192eda792ea2444cc3e25c00ffe2fd"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#fullOutputPathOf",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "fullOutputPathOf",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(details any) string"
+      },
+      "shapeHash": "sha256:985dc999321b7ed1c9e704e2a0b71e118b9c25d9c8178f4ce7062ea3786a8dcc"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#isJSWhitespace",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "isJSWhitespace",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(r rune) bool"
+      },
+      "shapeHash": "sha256:a8140eee5092d04db5071e81c5c858da9cb860a2155f473a9536405f78f7bb48"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#keybindingsOf",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "keybindingsOf",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(keybindings github.com/MichaelKinsy/PiG/coding/extension.KeybindingsManager) *github.com/MichaelKinsy/PiG/tui.TUIKeybindingsManager"
+      },
+      "shapeHash": "sha256:6e92353f9532f65e766adf509d4dc1b299be09909b7c420936e10a64b83836e7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#maxVisibleItems",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "maxVisibleItems",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#mcpToolNamePattern",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "mcpToolNamePattern",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "*github.com/MichaelKinsy/PiG/internal/lazyregexp.Regexp"
+      },
+      "shapeHash": "sha256:b2bada16c90e0a1f7a12c5d87c11865788ab6be78d85f83e367aec2254fdade4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#outputPreviewLines",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "outputPreviewLines",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#renderCall",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "renderCall",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(label string) github.com/MichaelKinsy/PiG/coding/extension.ToolRenderCallFunc"
+      },
+      "shapeHash": "sha256:60339e0f47b2d488d112741501c23133f7c2cb3b167c13d77683540d1e4b4c9c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#renderResult",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "renderResult",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(result github.com/MichaelKinsy/PiG/coding/extension.AgentToolResult, options github.com/MichaelKinsy/PiG/coding/extension.ToolRenderResultOptions, theme github.com/MichaelKinsy/PiG/coding/extension.Theme, context github.com/MichaelKinsy/PiG/coding/extension.ToolRenderContext) github.com/MichaelKinsy/PiG/coding/extension.Component"
+      },
+      "shapeHash": "sha256:2d0308a22c30d0c5d977f3d94b6fe090b8a9dc215a70f96ba29d77fe764af430"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#reusableText",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "reusableText",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(last github.com/MichaelKinsy/PiG/coding/extension.Component) *github.com/MichaelKinsy/PiG/tui.Text"
+      },
+      "shapeHash": "sha256:c2d851fdb3fb5d9ced9cde6d6d9608c945be445713d39be5c1ee459b807bc965"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#themeOf",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "themeOf",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(theme github.com/MichaelKinsy/PiG/coding/extension.Theme) *github.com/MichaelKinsy/PiG/tui.Theme"
+      },
+      "shapeHash": "sha256:55c573965db70f970ffd6bfc0db6963a3273efaf7d765d3eb53b455eddd676f2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#AgentEnvironments",
