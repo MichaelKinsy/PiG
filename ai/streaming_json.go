@@ -409,8 +409,10 @@ func (parser *partialJSONParser) skipUnit() {
 	}
 	rest := parser.input[parser.index:]
 	_, size := utf8.DecodeRuneInString(rest)
-	if size == 1 && len(rest) >= 3 && rest[0] == 0xed && rest[1] >= 0xa0 && rest[1] <= 0xbf && rest[2]&0xc0 == 0x80 {
-		size = 3 // a lone surrogate, which a Go string holds as WTF-8
+	// A lone surrogate, which a Go string holds as WTF-8: ED A0..BF 80..BF, the three-byte encoding of U+D800..U+DFFF.
+	const surrogateLen = len("\xed\xa0\x80")
+	if size == 1 && len(rest) >= surrogateLen && rest[0] == 0xed && rest[1] >= 0xa0 && rest[1] <= 0xbf && rest[2]&0xc0 == 0x80 {
+		size = surrogateLen
 	}
 	if size == 4 {
 		size = 1
