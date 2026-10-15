@@ -191,7 +191,7 @@ for (const p of input) {
 	for (const args of p.commands) {
 		const output = [];
 		const code = await runMcpCommand(args, { cwd, agentDir, log: (l) => output.push(String(l)), error: (l) => output.push(String(l)) });
-		runs.push({ code, output: output.map((l) => l.split(root).join("<ROOT>").replace(" or .pi/mcp.json.", " or .pig/mcp.json.")) });
+		runs.push({ code, output: output.map((l) => l.split(root).join("<ROOT>").split(JSON.stringify(root).slice(1, -1)).join("<ROOT>").replace(" or .pi/mcp.json.", " or .pig/mcp.json.")) });
 	}
 	const read = (f) => (fs.existsSync(f) ? fs.readFileSync(f, "utf8") : "<absent>");
 	out.push({ runs, global: read(path.join(agentDir, "mcp.json")), project: read(path.join(cwd, ".pig", "mcp.json")) });
@@ -215,7 +215,11 @@ emit(out);
 		var problem string
 		for j, args := range p.Commands {
 			var output []string
-			record := func(line string) { output = append(output, strings.ReplaceAll(line, root, "<ROOT>")) }
+			// --json prints a path with its backslashes escaped.
+			jsonRoot := strings.ReplaceAll(root, `\`, `\\`)
+			record := func(line string) {
+				output = append(output, strings.ReplaceAll(strings.ReplaceAll(line, root, "<ROOT>"), jsonRoot, "<ROOT>"))
+			}
 			code := mcpext.RunMcpCommand(t.Context(), args, mcpext.McpCommandOptions{Cwd: cwd, AgentDir: agentDir, AppName: "pig", ConfigDirName: ".pig", Log: record, Error: record})
 			w := want[i].Runs[j]
 			if code != w.Code || strings.Join(output, "\n") != strings.Join(w.Output, "\n") {

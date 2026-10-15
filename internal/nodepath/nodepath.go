@@ -183,14 +183,27 @@ func buildNormal(path string, allowAboveRoot bool, separator byte, isSep func(in
 
 func isPosixSeparator(c int) bool { return c == slash }
 
+// posixCwd is path.posix's view of process.cwd(). On Windows Node turns the backslashes into slashes and drops the drive:
+// everything before the first "/" (slice(indexOf("/")), so a cwd with no "/" keeps its last character).
+func posixCwd(cwd string) string {
+	if runtime.GOOS != "windows" {
+		return cwd
+	}
+	cwd = strings.ReplaceAll(cwd, `\`, "/")
+	if at := strings.IndexByte(cwd, '/'); at >= 0 {
+		return cwd[at:]
+	}
+	return cwd[max(len(cwd)-1, 0):]
+}
+
 // PosixResolve is path.posix.resolve(...paths). It returns env.CwdErr when Node would call process.cwd() and that throws.
 func PosixResolve(env Env, paths ...string) (string, error) {
 	if len(paths) == 0 || len(paths) == 1 && (paths[0] == "" || paths[0] == ".") {
 		if env.CwdErr != nil {
 			return "", env.CwdErr
 		}
-		if at(env.Cwd, 0) == slash {
-			return env.Cwd, nil
+		if cwd := posixCwd(env.Cwd); at(cwd, 0) == slash {
+			return cwd, nil
 		}
 	}
 	// The rightmost nonempty argument decides the result alone when it is absolute; already normal, it resolves to a
@@ -220,7 +233,7 @@ func PosixResolve(env Env, paths ...string) (string, error) {
 		case env.CwdErr != nil:
 			return "", env.CwdErr
 		default:
-			path = env.Cwd
+			path = posixCwd(env.Cwd)
 		}
 		if len(path) == 0 {
 			continue

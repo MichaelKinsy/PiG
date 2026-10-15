@@ -16,7 +16,12 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 )
+
+// fileURL is url.pathToFileURL(path).href on the host's path flavour: "file://" + a Windows path is not a URL.
+func fileURL(path string) string { return nodeurl.PathToFileURL(path, runtime.GOOS == "windows") }
 
 // nodeLoaderEnv is what the Pi fixture reads from its own package: the Chord source it imports (src/index.ts) and
 // the typebox it resolves from the package's node_modules. The mirror is read-only, so the plugin files under a
@@ -54,14 +59,14 @@ func requireNodeLoaderEnv(t *testing.T) nodeLoaderEnv {
 			if target == "" {
 				t.Fatalf("typebox exports no import entry: %s", manifest)
 			}
-			typebox = "file://" + filepath.Join(directory, "node_modules", "typebox", target)
+			typebox = fileURL(filepath.Join(directory, "node_modules", "typebox", target))
 			break
 		}
 		if filepath.Dir(directory) == directory {
 			t.Skip("typebox is not installed above the Pi mirror's chord package")
 		}
 	}
-	return nodeLoaderEnv{chord: chord, chordJS: "file://" + filepath.Join(chord, "src", "index.ts"), typebox: typebox}
+	return nodeLoaderEnv{chord: chord, chordJS: fileURL(filepath.Join(chord, "src", "index.ts")), typebox: typebox}
 }
 
 func (env nodeLoaderEnv) loader() *NodeLoaderImpl {
@@ -202,7 +207,7 @@ func TestNodeLoaderRejectsAModuleWhoseDefaultExportIsNotAFacet(t *testing.T) {
 	if !errors.As(err, &typeErr) {
 		t.Fatalf("err = %T %v", err, err)
 	}
-	if want := "file://" + dir + "plain.ts: default export must be a facet (defineFacet)"; typeErr.Message != want {
+	if want := fileURL(dir+"plain.ts") + ": default export must be a facet (defineFacet)"; typeErr.Message != want {
 		t.Fatalf("message = %q, want %q", typeErr.Message, want)
 	}
 }
@@ -216,11 +221,11 @@ func TestNodeLoaderNamesFacetsByTheirModuleURLInModuleOrder(t *testing.T) {
 	env.write(t, dir+"two.ts", "import { defineFacet } from "+jsLiteral(env.chordJS)+";\nexport default defineFacet(() => {});\n")
 	loader := env.loader()
 	t.Cleanup(func() { _ = loader.Close() })
-	facets, err := loader.Load([]string{dir + "two.ts", "file://" + dir + "one.ts?stale=1"})
+	facets, err := loader.Load([]string{dir + "two.ts", fileURL(dir+"one.ts") + "?stale=1"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(facets) != 2 || facets[0].Name != "file://"+dir+"two.ts" || facets[1].Name != "file://"+dir+"one.ts" {
+	if len(facets) != 2 || facets[0].Name != fileURL(dir+"two.ts") || facets[1].Name != fileURL(dir+"one.ts") {
 		t.Fatalf("facets = %+v", facets)
 	}
 }

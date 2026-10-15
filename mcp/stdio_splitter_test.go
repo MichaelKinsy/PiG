@@ -40,21 +40,48 @@ func largeStdioLine(size int) []byte {
 	return append(line, suffix...)
 }
 
+// timeStdioFrame is the time the line splitter takes to frame the message in line when it arrives in 4 KiB reads, as
+// readStdout hands them over. It times the splitter alone: parsing the message and allocating its copies cost more than
+// linear on a Windows host (page commits), and say nothing about whether the splitter rescans. Each measurement covers
+// about 64 MiB of input, so a 0.5 ms Windows clock tick and per-run noise do not decide the ratio.
 func timeStdioFrame(t *testing.T, line []byte) time.Duration {
 	t.Helper()
+	reps := max(1, (64<<20)/len(line))
 	best := time.Duration(1<<63 - 1)
 	for range 3 {
-		transport := &StdioTransport{options: StdioTransportOptions{MaxMessageBytes: 64 << 20}}
-		recorded := record(&transport.TransportEvents)
+		framed := 0
 		start := time.Now()
-		transport.readStdout(&chunkReader{data: line, sizes: fixedChunks(4096)})
-		elapsed := time.Since(start)
-		if len(recorded.messages) != 1 || len(recorded.errors) != 0 {
-			t.Fatalf("messages = %d, errors = %q", len(recorded.messages), recorded.errors)
+		for range reps {
+			var lines lineSplitter
+			for rest := line; len(rest) > 0; {
+				n := min(4096, len(rest))
+				lines.write(rest[:n])
+				rest = rest[n:]
+				for {
+					if _, ok := lines.next(); !ok {
+						break
+					}
+					framed++
+				}
+			}
+		}
+		elapsed := time.Since(start) / time.Duration(reps)
+		if framed != reps {
+			t.Fatalf("framed %d messages in %d runs", framed, reps)
 		}
 		best = min(best, elapsed)
 	}
 	return best
+}
+
+// The transport delivers a message spanning many reads whole.
+func TestStdioTransportDeliversALargeMessageSpanningManyReads(t *testing.T) {
+	transport := &StdioTransport{options: StdioTransportOptions{MaxMessageBytes: 64 << 20}}
+	recorded := record(&transport.TransportEvents)
+	transport.readStdout(&chunkReader{data: largeStdioLine(4 << 20), sizes: fixedChunks(4096)})
+	if len(recorded.messages) != 1 || len(recorded.errors) != 0 {
+		t.Fatalf("messages = %d, errors = %q", len(recorded.messages), recorded.errors)
+	}
 }
 
 // A message spanning many reads must cost time linear in its size: the

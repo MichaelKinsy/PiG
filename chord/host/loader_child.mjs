@@ -7,7 +7,7 @@
 // facet table go back as plain IPC messages ({ chord2loader }).
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const send = (message) => {
 	if (process.connected) process.send(message);
@@ -49,12 +49,13 @@ const chordEntry = (first) => {
 		const path = resolve(spec);
 		return statSync(path).isDirectory() ? fromPackage(path) : pathToFileURL(path).href;
 	}
-	for (let directory = dirname(first.pathname); ; directory = dirname(directory)) {
+	const firstPath = fileURLToPath(first);
+	for (let directory = dirname(firstPath); ; directory = dirname(directory)) {
 		const candidate = join(directory, "node_modules", "@earendil-works", "chord");
 		if (existsSync(join(candidate, "package.json"))) return fromPackage(candidate);
 		if (dirname(directory) === directory) break;
 	}
-	throw new TypeError(`@earendil-works/chord is not installed above ${first.pathname}`);
+	throw new TypeError(`@earendil-works/chord is not installed above ${firstPath}`);
 };
 
 const unsupported = (message) => new TypeError(`isolated Node facet loader: ${message}`);

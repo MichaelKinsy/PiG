@@ -99,3 +99,17 @@ func TestResolveReadsThePerDriveWorkingDirectoryOfTheProcess(t *testing.T) {
 		t.Errorf("a rooted path resolves on the process drive: %q, %v", got, err)
 	}
 }
+
+// path.posix on Windows resolves against process.cwd() with the backslashes turned into slashes and the drive dropped (lib/path.js posixCwd).
+func TestPosixResolveReadsTheWindowsWorkingDirectoryWithoutItsDrive(t *testing.T) {
+	env := Env{Cwd: `D:\a\PiG\work`}
+	if got, err := PosixResolve(env, "x"); err != nil || got != "/a/PiG/work/x" {
+		t.Fatalf("PosixResolve(x) = %q, %v", got, err)
+	}
+	if got, err := PosixResolve(env); err != nil || got != "/a/PiG/work" {
+		t.Fatalf("PosixResolve() = %q, %v", got, err)
+	}
+	if got, err := PosixRelative(env, "/a", "y"); err != nil || got != "PiG/work/y" {
+		t.Fatalf("PosixRelative(/a, y) = %q, %v", got, err)
+	}
+}

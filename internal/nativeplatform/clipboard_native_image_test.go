@@ -3,6 +3,8 @@
 package nativeplatform
 
 import (
+	"encoding/binary"
+	"fmt"
 	"image"
 	"image/color"
 	"testing"
@@ -47,13 +49,29 @@ func TestNativeClipboardImageRoundTrip(t *testing.T) {
 	if decoded.Bounds().Dx() != 3 || decoded.Bounds().Dy() != 2 {
 		t.Fatalf("size = %v, want 3x2", decoded.Bounds())
 	}
+	failed := false
 	for y := range 2 {
 		for x := range 3 {
 			r, g, b, a := decoded.At(x, y).RGBA()
 			w := want.NRGBAAt(x, y)
 			if uint8(r>>8) != w.R || uint8(g>>8) != w.G || uint8(b>>8) != w.B || a != 0xffff {
 				t.Errorf("pixel (%d,%d) = %d,%d,%d,%d, want %v", x, y, r>>8, g>>8, b>>8, a>>8, w)
+				failed = true
 			}
 		}
 	}
+	if failed {
+		t.Logf("clipboard image: %s", describeClipboardImage(data))
+	}
+}
+
+// describeClipboardImage names what a failed round trip needs to see of the bytes the helper returned: the container, and for a
+// BMP the DIB header's size, signed height (negative is top-down), depth, compression and pixel offset.
+func describeClipboardImage(data []byte) string {
+	if len(data) < 30 || string(data[:2]) != "BM" {
+		return "not a BMP: " + string(data[:min(len(data), 8)])
+	}
+	return fmt.Sprintf("BMP %d bytes, pixel offset %d, header %d, width %d, height %d, planes %d, bpp %d, compression %d",
+		len(data), binary.LittleEndian.Uint32(data[10:]), binary.LittleEndian.Uint32(data[14:]), int32(binary.LittleEndian.Uint32(data[18:])),
+		int32(binary.LittleEndian.Uint32(data[22:])), binary.LittleEndian.Uint16(data[26:]), binary.LittleEndian.Uint16(data[28:]), binary.LittleEndian.Uint32(data[30:]))
 }

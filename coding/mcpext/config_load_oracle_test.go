@@ -157,7 +157,7 @@ func TestLoadMcpConfigMatchesPiOnRandomFiles(t *testing.T) {
 			_ = os.WriteFile(filepath.Join(cwd, ".pi", "mcp.json"), []byte(*c.Project), 0o644)
 		}
 		loaded := mcpext.LoadMcpConfig(mcpext.LoadOptions{AgentDir: agentDir, Cwd: cwd, ProjectTrusted: c.Trusted, ConfigDirName: ".pi"})
-		prefix := filepath.Join(base, fmt.Sprint(i)) + "/"
+		prefix := filepath.Join(base, fmt.Sprint(i)) + string(filepath.Separator)
 		var got, expected outcome
 		for _, s := range loaded.Servers {
 			encoded, _ := json.Marshal(s.Config)
