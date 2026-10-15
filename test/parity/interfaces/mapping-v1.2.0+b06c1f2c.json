@@ -27603,7 +27603,8 @@
         "public-api:ai/json_repair.go#ParseToolCallArguments"
       ],
       "evidence": [
-        "test:ai/json_parse_upstream_test.go#TestParseToolCallArguments"
+        "test:ai/json_parse_upstream_test.go#TestParseToolCallArguments",
+        "test:ai/tool_call_arguments_utf16_test.go#TestParseToolCallArgumentsErrorKeepsUTF16Units"
       ]
     },
     {
@@ -27623,7 +27624,8 @@
         "public-api:ai/json_repair.go#ParseToolCallArguments"
       ],
       "evidence": [
-        "test:ai/json_parse_upstream_test.go#TestParseToolCallArguments"
+        "test:ai/json_parse_upstream_test.go#TestParseToolCallArguments",
+        "test:ai/tool_call_arguments_utf16_test.go#TestParseToolCallArgumentsErrorKeepsUTF16Units"
       ]
     },
     {
@@ -69511,7 +69513,8 @@
         "public-api:ai/json_repair.go#ParseToolCallArguments"
       ],
       "evidence": [
-        "test:ai/json_parse_upstream_test.go#TestParseToolCallArguments"
+        "test:ai/json_parse_upstream_test.go#TestParseToolCallArguments",
+        "test:ai/tool_call_arguments_utf16_test.go#TestParseToolCallArgumentsErrorKeepsUTF16Units"
       ]
     },
     {
@@ -69531,7 +69534,8 @@
         "public-api:ai/json_repair.go#ParseToolCallArguments"
       ],
       "evidence": [
-        "test:ai/json_parse_upstream_test.go#TestParseToolCallArguments"
+        "test:ai/json_parse_upstream_test.go#TestParseToolCallArguments",
+        "test:ai/tool_call_arguments_utf16_test.go#TestParseToolCallArgumentsErrorKeepsUTF16Units"
       ]
     },
     {
@@ -93266,7 +93270,8 @@
         "public-api:ai/json_repair.go#ParseToolCallArguments"
       ],
       "evidence": [
-        "test:ai/json_parse_upstream_test.go#TestParseToolCallArguments"
+        "test:ai/json_parse_upstream_test.go#TestParseToolCallArguments",
+        "test:ai/tool_call_arguments_utf16_test.go#TestParseToolCallArgumentsErrorKeepsUTF16Units"
       ]
     },
     {
@@ -93286,7 +93291,8 @@
         "public-api:ai/json_repair.go#ParseToolCallArguments"
       ],
       "evidence": [
-        "test:ai/json_parse_upstream_test.go#TestParseToolCallArguments"
+        "test:ai/json_parse_upstream_test.go#TestParseToolCallArguments",
+        "test:ai/tool_call_arguments_utf16_test.go#TestParseToolCallArgumentsErrorKeepsUTF16Units"
       ]
     },
     {
@@ -102675,7 +102681,7 @@
       "id": "pkg:chord/.#ServeOptions",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:84482f84998bfcf636d87c36b076be718eeb170b3aabfed67fef441532058891",
-      "rationale": "Derived by the interface gap detector: ServeOptions is Go chord/host/object.go#ServeOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ServeOptions is Go chord/host/object.go#ServeOptions (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/host/object.go#ServeOptions"
       ],
@@ -128265,7 +128271,7 @@
       "evidence": [
         "test:tui/message_components_oracle_test.go#TestSummaryAndSkillMessageComponentsMatchPi",
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/summary_output_pad_test.go#TestCompactionSummaryUsesOutputPadProduction"
+        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles"
       ]
     },
     {
@@ -128287,7 +128293,7 @@
       "evidence": [
         "test:tui/message_components_oracle_test.go#TestSummaryAndSkillMessageComponentsMatchPi",
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/summary_output_pad_test.go#TestCompactionSummaryUsesOutputPadProduction"
+        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles"
       ]
     },
     {
@@ -130921,7 +130927,7 @@
       "evidence": [
         "test:tui/message_components_oracle_test.go#TestSummaryAndSkillMessageComponentsMatchPi",
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/summary_output_pad_test.go#TestCompactionSummaryUsesOutputPadProduction"
+        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles"
       ]
     },
     {
@@ -130943,7 +130949,7 @@
       "evidence": [
         "test:tui/message_components_oracle_test.go#TestSummaryAndSkillMessageComponentsMatchPi",
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/summary_output_pad_test.go#TestCompactionSummaryUsesOutputPadProduction"
+        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles"
       ]
     },
     {
@@ -136089,7 +136095,7 @@
       "evidence": [
         "test:internal/codingagent/custom_message_components_oracle_test.go#TestCustomMessageAndEntryComponentsMatchPi",
         "test:tui/custom_message_upstream_test.go#TestCustomMessageComponentProvidesOutputPadToCustomRenderersUpstream",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles"
       ]
     },
     {
@@ -174851,7 +174857,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/print_mode_build.go#cliRuntimeBuilder.rebuild"
+        "call:coding/cli/main.go#Main"
       ],
       "evidence": [
         "test:internal/codingagent/compaction/coding_compaction_upstream_test.go#TestCodingCompactionUpstream",
@@ -188236,7 +188242,7 @@
       "evidence": [
         "test:tui/message_components_oracle_test.go#TestSummaryAndSkillMessageComponentsMatchPi",
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/summary_output_pad_test.go#TestCompactionSummaryUsesOutputPadProduction"
+        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles"
       ]
     },
     {
@@ -188258,7 +188264,7 @@
       "evidence": [
         "test:tui/message_components_oracle_test.go#TestSummaryAndSkillMessageComponentsMatchPi",
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/summary_output_pad_test.go#TestCompactionSummaryUsesOutputPadProduction"
+        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles"
       ]
     },
     {
@@ -246084,7 +246090,7 @@
       "evidence": [
         "test:tui/message_components_oracle_test.go#TestSummaryAndSkillMessageComponentsMatchPi",
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/settings_live_effects_test.go#TestOnSettingAppliedClearsIdleStatusAfterDisablingClearOnShrink"
+        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles"
       ]
     },
     {
@@ -261973,7 +261979,7 @@
       "evidence": [
         "test:internal/codingagent/interactive_startup_input_upstream_test.go#TestUpstreamInteractiveStartupInput",
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/project_trust_warning_test.go#TestProjectTrustWarningRendering"
+        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles"
       ]
     },
     {
@@ -261994,8 +262000,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_startup_input_upstream_test.go#TestUpstreamInteractiveStartupInput",
-        "test:internal/codingagent/project_trust_warning_test.go#TestProjectTrustWarningRendering",
-        "test:tui/bordered_loader_test.go#TestBorderedLoaderIsAContainerOfItsParts"
+        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles",
+        "test:internal/codingagent/project_trust_warning_test.go#TestProjectTrustWarningRendering"
       ]
     },
     {
@@ -262060,8 +262066,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_startup_input_upstream_test.go#TestUpstreamInteractiveStartupInput",
-        "test:tui/components_parity_test.go#TestSpacer_SetLines",
-        "test:tui/spacer_select_oklab_semantics_test.go#TestSpacerSetLinesAndSelectListSetSelectedIndexMarkTheComponentDirty"
+        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles",
+        "test:tui/components_parity_test.go#TestSpacer_SetLines"
       ]
     },
     {
@@ -262082,8 +262088,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_startup_input_upstream_test.go#TestUpstreamInteractiveStartupInput",
-        "test:tui/components_parity_test.go#TestSpacer_SetLines",
-        "test:tui/spacer_select_oklab_semantics_test.go#TestSpacerSetLinesAndSelectListSetSelectedIndexMarkTheComponentDirty"
+        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles",
+        "test:tui/components_parity_test.go#TestSpacer_SetLines"
       ]
     },
     {
