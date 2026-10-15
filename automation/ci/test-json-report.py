@@ -24,7 +24,9 @@ def main() -> int:
     parser.add_argument("--out")
     parser.add_argument("--slowest", type=int, default=10)
     args = parser.parse_args()
-    raw = open(args.out, "a", encoding="utf-8") if args.out else None
+    # Text mode on Windows writes "\r\n" for every "\n". The report and the raw copy keep go test's "\n" line endings there too.
+    sys.stdout.reconfigure(newline="\n")
+    raw = open(args.out, "a", encoding="utf-8", newline="\n") if args.out else None
     outputs: dict[tuple[str, str], list[str]] = defaultdict(list)
     build_output: dict[str, list[str]] = defaultdict(list)
     tests: list[tuple[float, str, str]] = []

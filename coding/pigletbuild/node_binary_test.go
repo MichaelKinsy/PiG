@@ -83,7 +83,11 @@ func runNodeBinary(t *testing.T, binary, pathEnv string, args ...string) (int, s
 		"TMPDIR=" + os.TempDir(),
 	}
 	if runtime.GOOS == "windows" {
-		cmd.Env = append(cmd.Env, "SystemRoot="+os.Getenv("SystemRoot"))
+		// SystemRoot: Windows programs locate the system through it. LOCALAPPDATA:
+		// with no TEMP the Binary's temp directory is USERPROFILE, too deep for a
+		// Unix socket path (107 bytes), so the extension Host places its sockets in
+		// %LOCALAPPDATA%\pig\s as it does for any deep temp directory.
+		cmd.Env = append(cmd.Env, "SystemRoot="+os.Getenv("SystemRoot"), "LOCALAPPDATA="+os.Getenv("LOCALAPPDATA"))
 	}
 	var stdout, stderr strings.Builder
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr

@@ -187,7 +187,8 @@ run_group() {
   SCRATCH="$STABLE_BASE/pig-tests.$STABLE_KEY"
   # Run under seeded agent directories. A lane or a developer exports PIG_CODING_AGENT_DIR for the pig that is running the tests, and a test that does not replace it writes that real directory. The guard fails the group when any seeded file changes or appears, whether or not the tests passed.
   AGENT_GUARD="$STABLE_BASE/pig-agent-guard.$STABLE_KEY"
-  if ! { rm -rf "$SCRATCH" "$AGENT_GUARD" "$AGENT_GUARD.manifest" && mkdir -m 700 "$SCRATCH" "$AGENT_GUARD"; }; then
+  # umask 077 makes mkdir create each directory private without the separate chmod that mkdir -m runs afterwards, which Git Bash on Windows refuses on a directory in the temporary directory ("cannot change permissions: Permission denied").
+  if ! { rm -rf "$SCRATCH" "$AGENT_GUARD" "$AGENT_GUARD.manifest" && (umask 077 && mkdir "$SCRATCH" "$AGENT_GUARD"); }; then
     echo "[test-grouped] cannot create the scratch directories $SCRATCH and $AGENT_GUARD for $label" >&2
     SCRATCH=
     AGENT_GUARD=
