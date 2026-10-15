@@ -34,7 +34,7 @@ if [ -L "$wt/.upstream" ]; then
 fi
 get() { sed -n "s/^$1=//p" "$wt/.upstream/pin" | head -1; }
 ref=$(get ref); commit=$(get commit); pkgver=$(get package_version); version=$(get version)
-[ -n "$ref" ] && [ -n "$commit" ] && [ -n "$pkgver" ] && [ -n "$version" ] || die "incomplete pin"
+if [ -z "$ref" ] || [ -z "$commit" ] || [ -z "$pkgver" ] || [ -z "$version" ]; then die "incomplete pin"; fi
 # Same naming as automation/pin/pinlib.py: mirror dir is "v"+version (a commit pin's version is <pkg>+<commit[:8]>).
 mirror=v$version
 oracle_node_modules=
@@ -50,15 +50,18 @@ fi
 
 # 1. Source mirror: a mirror dir whose marker carries the pinned commit.
 src=
-for cand in "$mirrors/$mirror"; do
-  m=$cand/.pig-upstream-source.json
-  if [ -f "$m" ] && grep -q "\"commit\": \"$commit\"" "$m"; then src=$(cd "$cand" && pwd -P); break; fi
-done
+cand=$mirrors/$mirror
+m=$cand/.pig-upstream-source.json
+if [ -f "$m" ] && grep -q "\"commit\": \"$commit\"" "$m"; then src=$(cd "$cand" && pwd -P); fi
 [ -n "$src" ] || die "no mirror $mirror for $ref@$commit under $mirrors (run make upstream-mirror in a checkout, or set PIG_UPSTREAM_MIRRORS)"
 for link in current "$mirror"; do
   t=$wt/.upstream/$link
   if [ -L "$t" ] && [ "$(readlink "$t")" = "$src" ]; then continue; fi
-  [ -e "$t" ] || [ -L "$t" ] && { [ -L "$t" ] && rm "$t" || die "$t exists and is not a symlink"; }
+  if [ -L "$t" ]; then
+    rm "$t"
+  elif [ -e "$t" ]; then
+    die "$t exists and is not a symlink"
+  fi
   ln -s "$src" "$t"
 done
 
@@ -81,8 +84,9 @@ else
   oracle_node_modules=$(readlink "$sdk/node_modules")
 fi
 stamp=$(dirname "$oracle_node_modules")/.pig-pi-oracle.json
-grep -qs "\"commit\": *\"$commit\"" "$stamp" && grep -qs '"source": *"build"' "$stamp" \
-  || die "$oracle_node_modules is not the source-built Pi oracle of $commit (stamp $stamp)"
+if ! grep -qs "\"commit\": *\"$commit\"" "$stamp" || ! grep -qs '"source": *"build"' "$stamp"; then
+  die "$oracle_node_modules is not the source-built Pi oracle of $commit (stamp $stamp)"
+fi
 # Every tracked lockfile an oracle test installs from: sdk-ts, durable/interop, and testdata trees (ai/testdata/sdk, protocol typebox...).
 dirs=("$sdk")
 while IFS= read -r lock; do dirs+=("$wt/$(dirname "$lock")"); done < <(git -C "$wt" ls-files | grep -E '(^durable/interop|/testdata/([^/]+/)*[^/]+)/package-lock\.json$|^durable/interop/package-lock\.json$' | sort -u)

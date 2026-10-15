@@ -201,6 +201,7 @@ func piRenderResult(step piRenderStep) agent.AgentToolResult {
 // wrap a row whose path Pi's probe kept on one line. The directory is created under /tmp, not os.TempDir.
 func shortTempDir(t *testing.T) string {
 	t.Helper()
+	//portlint:allow hardtmp a short fixed root keeps the golden rows at Pi's width; os.TempDir can be long (macOS, CI)
 	dir, err := os.MkdirTemp("/tmp", "g")
 	if err != nil {
 		t.Fatal(err)

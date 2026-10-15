@@ -49,5 +49,6 @@ porter_export_hermetic_agent() {
   fi
   mkdir -p "$source/sessions"
   ln -s "$source/sessions" "$dest/sessions"
-  export PIG_CODING_AGENT_DIR="$dest" PI_CODING_AGENT_DIR="$dest" PIG_HOME="$(dirname "$dest")"
+  PIG_HOME=$(dirname "$dest")
+  export PIG_CODING_AGENT_DIR="$dest" PI_CODING_AGENT_DIR="$dest" PIG_HOME
 }

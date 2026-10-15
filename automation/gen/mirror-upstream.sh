@@ -239,6 +239,10 @@ if [[ -n "$OVERRIDE_TAG" ]]; then
 else
   echo "→ fetching tarball for ${TARGET_TAG}"
   TARBALL=$(python3 "$REPO_ROOT/automation/pin/pin.py" tarball)
+  # On Windows pin.py prints C:\... ; GNU tar reads "C:" as a remote host, so hand it the POSIX form.
+  if command -v cygpath >/dev/null 2>&1; then
+    TARBALL=$(cygpath -u "$TARBALL")
+  fi
 fi
 
 # ── extract full tree ────────────────────────────────────────────────────────

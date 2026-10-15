@@ -332,7 +332,7 @@ case "$MODE" in
   changed)
     echo "[test-grouped] changed: ${#DIRECT_PKGS[@]} edited packages run under -race (TEST_CHANGED_RACE=${TEST_CHANGED_RACE:-direct}); events in $JSON_DIR"
     status=0
-    race_fast=() plain_fast=() race_heavy=() plain_heavy=() cli_race=
+    race_fast=() plain_fast=() race_heavy=() plain_heavy=()
     for pkg in "${FAST_PKGS[@]}"; do
       if in_list "$pkg" "${DIRECT_PKGS[@]}"; then race_fast+=("$pkg"); else plain_fast+=("$pkg"); fi
     done

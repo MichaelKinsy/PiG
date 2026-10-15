@@ -2737,18 +2737,6 @@ snippet = "data, err := json.Marshal(args)"
 [[hit]]
 check = "mapkeyorder"
 file = "coding/extension/host/subprocess/prompt_options.go"
-func = "promptOptionsEventArgs"
-snippet = "encoded, err := json.Marshal(options)"
-
-[[hit]]
-check = "mapkeyorder"
-file = "coding/extension/host/subprocess/prompt_options.go"
-func = "promptOptionsEventArgs"
-snippet = "return json.Marshal(event)"
-
-[[hit]]
-check = "mapkeyorder"
-file = "coding/extension/host/subprocess/prompt_options.go"
 func = "applyPromptOptionEdits"
 snippet = "trimmed, err := json.Marshal(fields)"
 

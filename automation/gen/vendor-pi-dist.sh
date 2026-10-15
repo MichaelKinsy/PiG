@@ -173,7 +173,10 @@ rewrote() {
   local vendored=$1 source=$2 original=$3 rewritten=$4
   [ -f "$source" ] || { echo "vendor-pi-dist: $source is gone from the pinned Pi; update the rewrite list" >&2; exit 1; }
   if grep -qF "\"$original\"" "$source"; then
-    grep -qF "\"$rewritten\"" "$vendored" && ! grep -qF "\"$original\"" "$vendored" || { echo "vendor-pi-dist: import rewrite failed in $vendored" >&2; exit 1; }
+    if ! grep -qF "\"$rewritten\"" "$vendored" || grep -qF "\"$original\"" "$vendored"; then
+      echo "vendor-pi-dist: import rewrite failed in $vendored" >&2
+      exit 1
+    fi
   fi
 }
 rewrote "$dist/pi-tui/index.js" "$tui/dist/index.js" marked ../../marked/lib/marked.esm.js
