@@ -155,7 +155,8 @@ class _EditorSession:
 
     def _run(self) -> None:
         component = self.component
-        assert component is not None
+        if component is None:
+            raise RuntimeError("editor component loop started without a component")
         while True:
             event = self.events.get()
             if event is _STOP:
