@@ -310,7 +310,13 @@ func migrateSessionsFromAgentRoot(agentDir string) {
 		// pig divergence (D132): session directories are 0700.
 		_ = MkdirSessionDir(correctDir) // upstream: coding-agent/src/migrations.ts:migrateSessionsFromAgentRoot
 
-		newPath := filepath.Join(correctDir, e.Name())
+		// Pi names the file `file.split("/").pop() || file.split("\\").pop()` where file is the joined path. The first split is the whole path wherever the
+		// joined path has no "/", which is every Windows path, so there newPath is correctDir\C:\...\name: the rename fails and Pi leaves the file at the agent root.
+		fileName := filePath[strings.LastIndexByte(filePath, '/')+1:]
+		if fileName == "" {
+			fileName = filePath[strings.LastIndexByte(filePath, '\\')+1:]
+		}
+		newPath := filepath.Join(correctDir, fileName)
 		if _, err := os.Stat(newPath); err == nil {
 			continue // Target exists.
 		}

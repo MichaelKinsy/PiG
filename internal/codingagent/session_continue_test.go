@@ -198,12 +198,19 @@ func writeSessionInfoFixture(t *testing.T, dir, id, cwd string) {
 
 func TestSessionCwdMatches_ResolvesSymlinks(t *testing.T) {
 	real := t.TempDir()
-	canonical, err := filepath.EvalSymlinks(real)
+	// Pi's canonicalizePath: Node's realpathSync, which on Windows keeps the 8.3 short names of the components it is given where filepath.EvalSymlinks would
+	// return the long names, so the canonical form must come from the same walk sessionCwdMatches uses.
+	canonical, err := evalCanonicalPath(real)
 	if err != nil {
-		t.Fatalf("evalsymlinks: %v", err)
+		t.Fatalf("evalCanonicalPath: %v", err)
 	}
 	if !sessionCwdMatches(canonical, real) {
 		t.Errorf("sessionCwdMatches(%q, %q) = false, want true (same real dir)", canonical, real)
+	}
+	link := filepath.Join(t.TempDir(), "link")
+	testenv.RequireDirectoryLink(t, real, link)
+	if !sessionCwdMatches(link, real) {
+		t.Errorf("sessionCwdMatches(%q, %q) = false, want true (link to the same dir)", link, real)
 	}
 	if sessionCwdMatches("", real) {
 		t.Errorf("empty header cwd must never match")

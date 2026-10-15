@@ -98,7 +98,7 @@ emit(input.probes.map(({ name, leaf }) => {
 				}
 			}
 			if got.Error == "" {
-				text, err := SerializeSessionBranch(session.GetHeader(), session.GetBranch(), time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), nil)
+				text, err := SerializeSessionBranch(session.ExportHeader(), session.GetBranch(), time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), nil)
 				if err != nil {
 					got.Error = err.Error()
 				}

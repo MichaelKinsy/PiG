@@ -37,16 +37,26 @@ type SessionManager struct {
 // NewSessionManager creates a SessionManager for the given working dir.
 func NewSessionManager(cwd string) *SessionManager {
 	return &SessionManager{
-		cwd:        cwd,
+		cwd:        managerCWD(cwd),
 		sessionDir: defaultSessionDir(cwd),
 	}
+}
+
+// managerCWD is the cwd a SessionManager records in every header it writes: Pi's constructor stores resolvePath(cwd) (tilde and file URL normalization, then
+// path.resolve), so on Windows "/work/project" is written as "D:\work\project".
+// upstream: packages/coding-agent/src/core/session-manager.ts:SessionManager.constructor
+func managerCWD(cwd string) string {
+	if resolved, err := ResolvePath(cwd, ""); err == nil {
+		return resolved
+	}
+	return absCleanDir(cwd)
 }
 
 // NewSessionManagerWithDir overrides the default session directory
 // (tests use this; production callers pass the result of
 // defaultSessionDir).
 func NewSessionManagerWithDir(cwd, dir string) *SessionManager {
-	return &SessionManager{cwd: cwd, sessionDir: dir}
+	return &SessionManager{cwd: managerCWD(cwd), sessionDir: dir}
 }
 
 // defaultSessionDir returns <agent-dir>/sessions/<encoded-cwd>/.

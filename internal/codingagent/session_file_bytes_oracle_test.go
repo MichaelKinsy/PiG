@@ -293,7 +293,7 @@ func TestSessionFileBytesMatchPi(t *testing.T) {
 			t.Fatalf("script %d: %v", i, readErr)
 		}
 		// serializeSessionBranch (session-export.ts): a fresh header, the current branch with its parentId chained, one JSON line per entry.
-		exported, exportErr := SerializeSessionBranch(session.GetHeader(), BugReportBranch(session), time.Now(), nil)
+		exported, exportErr := SerializeSessionBranch(session.ExportHeader(), BugReportBranch(session), time.Now(), nil)
 		if exportErr != nil {
 			t.Fatalf("script %d: export: %v", i, exportErr)
 		}

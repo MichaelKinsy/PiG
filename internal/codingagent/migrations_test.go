@@ -3,9 +3,38 @@ package codingagent
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
+
+// requireMigratedOrLeftAtRoot checks the outcome of migrateSessionsFromAgentRoot on a root session file. Pi moves it into the encoded cwd directory, except on
+// Windows, where its file-name expression `file.split("/").pop()` yields the whole backslash path, the rename target is invalid, and the file stays at the agent
+// root (TestRunMigrationsTreeMatchesPi compares both outcomes with the pinned Pi).
+func requireMigratedOrLeftAtRoot(t *testing.T, agentDir, encodedDir, name, content string) {
+	t.Helper()
+	moved := filepath.Join(agentDir, "sessions", encodedDir, name)
+	root := filepath.Join(agentDir, name)
+	if runtime.GOOS == "windows" {
+		if _, err := os.Stat(moved); !os.IsNotExist(err) {
+			t.Fatalf("Pi on Windows does not move the session; stat %s err = %v", moved, err)
+		}
+		if data, err := os.ReadFile(root); err != nil || string(data) != content {
+			t.Fatalf("session at the agent root = %q, %v; want it left unchanged", data, err)
+		}
+		return
+	}
+	if _, err := os.Stat(root); !os.IsNotExist(err) {
+		t.Fatalf("original session path still exists or unexpected error: %v", err)
+	}
+	data, err := os.ReadFile(moved)
+	if err != nil {
+		t.Fatalf("session not moved into upstream-encoded dir: %v", err)
+	}
+	if string(data) != content {
+		t.Fatalf("migrated content changed:\n got: %q\nwant: %q", string(data), content)
+	}
+}
 
 func TestMigrationDocsURLsUseEarendilWorksRepo(t *testing.T) {
 	if !strings.Contains(migrationGuideURL, "github.com/earendil-works/pi") {
@@ -27,18 +56,7 @@ func TestMigrateSessionsFromAgentRootMovesSessionIntoEncodedDir(t *testing.T) {
 
 	migrateSessionsFromAgentRoot(agentDir)
 
-	if _, err := os.Stat(sessionPath); !os.IsNotExist(err) {
-		t.Fatalf("original session path still exists or unexpected error: %v", err)
-	}
-
-	migratedPath := filepath.Join(agentDir, "sessions", "--tmp-demo-project--", sessionName)
-	data, err := os.ReadFile(migratedPath)
-	if err != nil {
-		t.Fatalf("read migrated session: %v", err)
-	}
-	if string(data) != content {
-		t.Fatalf("migrated content changed:\n got: %q\nwant: %q", string(data), content)
-	}
+	requireMigratedOrLeftAtRoot(t, agentDir, "--tmp-demo-project--", sessionName, content)
 }
 
 // Upstream migrateExtensionSystem targets join(cwd, CONFIG_DIR_NAME). PiG's
@@ -92,7 +110,5 @@ func TestMigrateSessionsFromAgentRootStripsOneLeadingSeparator(t *testing.T) {
 
 	migrateSessionsFromAgentRoot(agentDir)
 
-	if _, err := os.Stat(filepath.Join(agentDir, "sessions", "---srv-share--", "s.jsonl")); err != nil {
-		t.Fatalf("session not moved into upstream-encoded dir: %v", err)
-	}
+	requireMigratedOrLeftAtRoot(t, agentDir, "---srv-share--", "s.jsonl", content)
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -17,6 +18,9 @@ func TestRemoteOverlayProductionRejectsCachedTerminalWidth(t *testing.T) {
 		t.Run(fmt.Sprint(termWidth), func(t *testing.T) {
 			var out synchronizedOutput
 			ui := tui.NewWithOutput(&out, 120, 40)
+			// The frame a push requests is armed on an owner that never runs it, so it cannot paint on a timer goroutine between the push and the resize below:
+			// the resize then comes before the first frame, as the test intends, whatever the scheduler does. RunRemoteOverlay's own Render paints the frame.
+			ui.SetRenderDeadline(func(time.Time) {})
 			m := &InteractiveMode{tuiInst: ui}
 			u := &ExtUIContext{m: m}
 			u.RunRemoteOverlay(extension.RemoteOverlayOptions{Overlay: true}, nil, func(h extension.RemoteOverlayHandle) {

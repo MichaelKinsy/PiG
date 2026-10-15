@@ -151,7 +151,7 @@ func buildBugReportBundle(sc *SlashContext, choices bugReportChoices, summary *s
 	if session != nil {
 		inputs.SessionID = session.ID()
 		inputs.CWD = session.CWD()
-		inputs.Header = session.GetHeader()
+		inputs.Header = session.ExportHeader()
 		// The report reads every entry: a record that changed on disk under the session fails it.
 		if inputs.Entries, err = sessionentry.MaterializeAll(session.GetEntries()); err != nil {
 			return BugReportBundle{}, err

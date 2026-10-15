@@ -1557,11 +1557,18 @@ func (s Settings) GetImageAutoResize() bool {
 	return *s.ImageAutoResize
 }
 
+var (
+	hardwareCursorEnv = newEnvVar("PI_HARDWARE_CURSOR")
+	clearOnShrinkEnv  = newEnvVar("PI_CLEAR_ON_SHRINK")
+	visualEnv         = newEnvVar("VISUAL")
+	editorEnv         = newEnvVar("EDITOR")
+)
+
 // GetShowHardwareCursor returns whether the hardware cursor is shown.
 // Default: false (or PI_HARDWARE_CURSOR=1 env).
 func (s Settings) GetShowHardwareCursor() bool {
 	if s.ShowHardwareCursor == nil {
-		return os.Getenv("PI_HARDWARE_CURSOR") == "1"
+		return hardwareCursorEnv.isOne()
 	}
 	return *s.ShowHardwareCursor
 }
@@ -1602,7 +1609,7 @@ func (s Settings) GetAutocompleteMaxVisible() int {
 // GetClearOnShrink returns whether screen clears on terminal shrink. Default: false.
 func (s Settings) GetClearOnShrink() bool {
 	if s.ClearOnShrink == nil {
-		return os.Getenv("PI_CLEAR_ON_SHRINK") == "1"
+		return clearOnShrinkEnv.isOne()
 	}
 	return *s.ClearOnShrink
 }
@@ -2824,7 +2831,7 @@ func (sm *SettingsManager) GetOutputPad() OutputPad { return readMerged(sm, (*Se
 // GetExternalEditorCommand resolves a nonblank configured command, VISUAL, EDITOR, then the platform default, without trimming the selected command.
 func (sm *SettingsManager) GetExternalEditorCommand() string {
 	configured := readMerged(sm, func(s *Settings) string { return s.ExternalEditor })
-	return resolveExternalEditorCommand(configured, os.Getenv("VISUAL"), os.Getenv("EDITOR"), runtime.GOOS)
+	return resolveExternalEditorCommand(configured, visualEnv.get(), editorEnv.get(), runtime.GOOS)
 }
 
 // upstream: packages/coding-agent/src/core/settings-manager.ts:getExternalEditorCommand

@@ -70,7 +70,7 @@ func TestSerializeSessionBranchChainsTheCurrentBranch(t *testing.T) {
 	now := time.Date(2026, 9, 23, 10, 11, 12, 345_000_000, time.UTC)
 	var trailingParent *string
 	var trailingTimestamp string
-	content, err := SerializeSessionBranch(session.GetHeader(), BugReportBranch(session), now, func(parentID *string, timestamp string) []any {
+	content, err := SerializeSessionBranch(session.ExportHeader(), BugReportBranch(session), now, func(parentID *string, timestamp string) []any {
 		trailingParent, trailingTimestamp = parentID, timestamp
 		return []any{map[string]any{"type": "custom", "note": "<trailing>"}}
 	})
@@ -107,7 +107,7 @@ func TestSerializeSessionBranchChainsTheCurrentBranch(t *testing.T) {
 func TestSerializeSessionBranchEmptyBranchPassesNilParent(t *testing.T) {
 	session := NewSession("empty", t.TempDir())
 	called := false
-	content, err := SerializeSessionBranch(session.GetHeader(), BugReportBranch(session), time.Now(), func(parentID *string, _ string) []any {
+	content, err := SerializeSessionBranch(session.ExportHeader(), BugReportBranch(session), time.Now(), func(parentID *string, _ string) []any {
 		called = true
 		if parentID != nil {
 			t.Fatalf("parentID = %q, want nil", *parentID)

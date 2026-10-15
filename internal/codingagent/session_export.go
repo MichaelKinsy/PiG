@@ -40,6 +40,15 @@ func marshalJSONLine(value any) ([]byte, error) {
 	return jsonstringify.Canonicalize(bytes.TrimSuffix(buffer.Bytes(), []byte("\n")))
 }
 
+// ExportHeader is the header serializeSessionBranch writes: the session's own id with the manager's resolved cwd (sessionManager.getCwd()), which differs from the
+// stored header's cwd when that was spelled relative, with a `..` segment, or without a drive on Windows.
+// upstream: packages/coding-agent/src/core/session-export.ts:serializeSessionBranch
+func (s *Session) ExportHeader() SessionHeader {
+	header := s.GetHeader()
+	header.CWD = s.CWD()
+	return header
+}
+
 // SerializeSessionBranch writes a fresh session header, the current branch
 // with each entry's parentId chained to the previous entry, and any trailing
 // entries, one JSON object per line. Mirrors upstream serializeSessionBranch.
@@ -123,7 +132,7 @@ func ExportSessionToJsonl(session *Session, outputPath string, createTrailingEnt
 		}
 	}
 	// Every line is made before the file is opened, as session-export.ts builds the content before writeFileSync.
-	lines, _, err := sessionBranchLines(session.GetHeader(), BugReportBranch(session), now, createTrailingEntries)
+	lines, _, err := sessionBranchLines(session.ExportHeader(), BugReportBranch(session), now, createTrailingEntries)
 	if err != nil {
 		return "", err
 	}
