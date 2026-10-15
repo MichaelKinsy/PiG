@@ -19,6 +19,7 @@ func TestFileModelsStoreReadStatsOutsideTheReadLock(t *testing.T) {
 	}
 	// The warm-up's reload goroutine publishes completion under the mutex; wait for it to release before watching.
 	store.readState.mu.Lock()
+	//lint:ignore SA2001 the empty critical section waits for the reload goroutine's unlock.
 	store.readState.mu.Unlock() //nolint:staticcheck // SA2001: the empty section waits for the reload goroutine's unlock.
 	stats := watchRevisionStats(t, store.path, func() { assertUnlocked(t, &store.readState.mu, "models-store.json") })
 	for range 3 {

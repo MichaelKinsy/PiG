@@ -1,6 +1,7 @@
 package sessionentry
 
 import (
+	"math"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/agent"
@@ -12,7 +13,7 @@ import (
 // parentId, and decoded from a record it writes back.
 func TestMessageEntryAppendStringifyMatchesMarshalJSON(t *testing.T) {
 	message := agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: agent.RoleAssistant, Timestamp: 1, Content: []ai.AssistantContentBlock{
-		ai.TextContent{Text: "<b> & \u2028 \xed\xa0\x80 \xff"}, ai.ToolCall{ID: "c", Name: "n", Arguments: ai.JsonObject{"x": -0.0}}}}}
+		ai.TextContent{Text: "<b> & \u2028 \xed\xa0\x80 \xff"}, ai.ToolCall{ID: "c", Name: "n", Arguments: ai.JsonObject{"x": math.Copysign(0, -1)}}}}}
 	parent := "p<1>"
 	entries := map[string]MessageEntry{}
 	for name, parentID := range map[string]*string{"string parent": &parent, "root": nil, "number parent": new(jsValueKey(json.RawMessage("-0"))),

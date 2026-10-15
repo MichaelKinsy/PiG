@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"math"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -35,7 +36,7 @@ func TestAgentMessageAppendStringifyMatchesMarshalJSON(t *testing.T) {
 	endTurn, duration := true, int64(-0)
 	content := []ai.AssistantContentBlock{
 		ai.TextContent{Text: text}, ai.ThinkingContent{Thinking: text, ThinkingSignature: "sig"},
-		ai.ToolCall{ID: "c1", Name: "write", Arguments: ai.JsonObject{"content": text, "n": -0.0}},
+		ai.ToolCall{ID: "c1", Name: "write", Arguments: ai.JsonObject{"content": text, "n": math.Copysign(0, -1)}},
 	}
 	assistant := &AssistantMessage{Role: RoleAssistant, Content: content, Provider: "p", ModelID: "m", API: "openai-completions",
 		Usage: &ai.Usage{Input: 1, Output: 2, TotalTokens: 3}, StopReason: ai.StopReasonToolUse, Timestamp: 5, ResponseID: text,
@@ -43,7 +44,7 @@ func TestAgentMessageAppendStringifyMatchesMarshalJSON(t *testing.T) {
 	errorFirst := *assistant
 	errorFirst.ErrorMessage, errorFirst.ErrorBeforeTimestamp = text, true
 	toolResult := &ToolResultMessage{ToolCallID: "c1", ToolName: "write", Content: []ai.ToolResultMessageContent{ai.TextContent{Text: text},
-		ai.ImageContent{Data: "AAAA", MimeType: "image/png"}}, Details: map[string]any{"z": text, "a": -0.0}, Timestamp: 6}
+		ai.ImageContent{Data: "AAAA", MimeType: "image/png"}}, Details: map[string]any{"z": text, "a": math.Copysign(0, -1)}, Timestamp: 6}
 	nullDetails := *toolResult
 	nullDetails.Details, nullDetails.DetailsNull = nil, true
 	messages := map[string]AgentMessage{

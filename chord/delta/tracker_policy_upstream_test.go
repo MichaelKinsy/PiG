@@ -128,6 +128,7 @@ func TestTrackerPolicyViewCases(t *testing.T) {
 		tracker := Track(jsonObject(t, `{"nested":{"value":1},"rows":[{"value":2}]}`))
 		change := tracker.BeginChange()
 		state := change.State()
+		//lint:ignore SA4000 two reads of one container must give the same handle; comparing them is the test.
 		if *state.Object("nested") != *state.Object("nested") || *state.Array("rows") != *state.Array("rows") || *state.Array("rows").Object(0) != *state.Array("rows").Object(0) {
 			t.Fatal("two reads of one container gave different handles")
 		}

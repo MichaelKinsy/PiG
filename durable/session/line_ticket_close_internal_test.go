@@ -26,6 +26,7 @@ func TestAdmissionWaitingForCloseListenersDoesNotHoldTheLine(t *testing.T) {
 	session.SubscribeClose(func() {
 		// The scheduler's seal.
 		schedulerMu.Lock()
+		//lint:ignore SA2001 the empty critical section is the lock acquisition seal performs.
 		schedulerMu.Unlock() //nolint:staticcheck // SA2001: the empty critical section is the lock acquisition seal performs.
 	})
 	closed := make(chan error, 1)

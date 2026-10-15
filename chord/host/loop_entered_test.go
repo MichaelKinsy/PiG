@@ -70,6 +70,7 @@ func TestGoEnteredMutexWaitIsWorkChannelWaitIsAWait(t *testing.T) {
 	entered := host.goEntered(func() {
 		close(locking)
 		mu.Lock()
+		//lint:ignore SA2001 the task parks on the held lock; that wait is the test.
 		mu.Unlock() //nolint:staticcheck // SA2001: the task parks on the held lock; that wait is the test
 	})
 	<-locking

@@ -3,6 +3,7 @@ package jsstring
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"strings"
 	"testing"
@@ -108,7 +109,7 @@ func randomEncoderValue(random *rand.Rand, depth int) any {
 		if random.Intn(2) == 0 {
 			ptr = &text
 		}
-		return quotedFields{Text: text, Number: []float64{-0.0, 1.5, -2}[random.Intn(3)], Int: random.Intn(3), Num: numbers[random.Intn(len(numbers))], Ptr: ptr, Under: randomEncoderValue(random, depth+1)}
+		return quotedFields{Text: text, Number: []float64{math.Copysign(0, -1), 1.5, -2}[random.Intn(3)], Int: random.Intn(3), Num: numbers[random.Intn(len(numbers))], Ptr: ptr, Under: randomEncoderValue(random, depth+1)}
 	case kind == 10:
 		items := make([]any, random.Intn(4))
 		for i := range items {

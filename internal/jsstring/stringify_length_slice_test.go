@@ -50,7 +50,7 @@ func TestStringifyLengthOfSlicesMatchesTheWholeText(t *testing.T) {
 		"pointer-marshaled list": pointerMarshaledList{1, 2},
 		"bytes":                  []byte("abc"),
 		"slices of bytes":        [][]byte{[]byte("ab"), nil},
-		"interfaces":             []any{text, nil, 1.5, []string{"x", "y"}, map[string]any{"z": -0.0}},
+		"interfaces":             []any{text, nil, 1.5, []string{"x", "y"}, map[string]any{"z": math.Copysign(0, -1)}},
 		"empty":                  []string{},
 		"nil":                    []string(nil),
 		"one":                    []string{text},

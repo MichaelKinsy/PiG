@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"math"
 	"testing"
 
 	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
@@ -51,7 +52,7 @@ func TestContentAppendStringifyMatchesMarshalJSON(t *testing.T) {
 		assertAppendStringifyMatches(t, ThinkingContent{Thinking: text, ThinkingSignature: text, Redacted: true})
 		assertAppendStringifyMatches(t, ImageContent{Data: text, MimeType: "image/png"})
 		assertAppendStringifyMatches(t, ToolCall{ID: text, Name: "write", ThoughtSignature: text, Namespace: "ns",
-			Arguments: JsonObject{"path": text, "z": -0.0, "n": []any{1.5, 1e21, 1e-7, text, nil, true}, text: map[string]any{"<": "&"}}})
+			Arguments: JsonObject{"path": text, "z": math.Copysign(0, -1), "n": []any{1.5, 1e21, 1e-7, text, nil, true}, text: map[string]any{"<": "&"}}})
 		var ordered ToolCall
 		if err := ordered.SetArgumentsJSON([]byte(`{"z":1,"a":{"y":-0,"b":"<&>"},"10":[2],"1":"x"}`)); err != nil {
 			t.Fatal(err)
