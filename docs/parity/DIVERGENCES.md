@@ -41,6 +41,8 @@ Every active divergence must have:
 
 - D125 — Anthropic strict "prefer" tools fall back when the provider rejects the strict tool set. Retired by the Pi 1.2.0 pin: Pi #10409 (`packages/ai/src/api/anthropic-messages.ts:644-689` in `stream`, `buildParams` `disablePreferredStrictTools`, `convertTools`) retries once with `prefer` tools non-strict when Anthropic rejects the strict tool set for grammar size, tool count or union limits, keeps `require` tools strict and appends the `anthropic_strict_tools_fallback` diagnostic. `ai/anthropic.go` ports it; `TestAnthropicPreferredStrictToolFallbackUpstream` ports Pi's `anthropic-strict-tool-fallback.test.ts`. The ID remains reserved.
 
+- D126 — Another model's thinking replays as `reasoning_content` on targets that require it (pi-mono #6167). Retired by Pi commit `91130942` (#11000, #10995; in Pi 1.3.0): `transformMessages` (`packages/ai/src/api/transform-messages.ts:129-137`) drops the thinking of another model for every target instead of inlining it as assistant text, so no target receives it. PiG follows Pi (owner decision 2026-10-16): `ai.TransformMessages` and `agent.normalizeAssistantReplayBlocks` drop it, and a target that requires `reasoning_content` gets the empty placeholder, as in Pi. The D126 code (`keepForeignThinking`, the unnamed-signature branch of `convertMessagesWithCompat`, `providerReplaysForeignThinking`), its tests and the oracle accommodations (`foldForeignReasoning`, the D126 probe skip and generator rule) are removed.
+
 - D127 — The Mistral request timeout covers only the wait for response headers. Retired by the Pi pin `1.1.0+42a3497d`: Pi commit `6b07b4e5` (pi-mono #10609) is in the pinned source and `ai/mistral.go` matches it (`TestMistralHTTPTransportUpstream`).
 
 - D133 — A leading `~` in a resource pattern expands to the home directory. Retired by the Pi 1.2.0 pin: Pi #10765 passes every pattern through `normalizePath` (`packages/coding-agent/src/core/package-manager.ts:678` `matchesAnyPattern`, `:695-697` `normalizeExactPattern`), and `coding/packagecontent` (`normalizePatternPath`, `normalizeExactPattern`) does the same, file URLs and Windows shell paths included. `TestPackagePatternsExpandTildeUpstream` ports Pi's "should expand ~ in exclusion and exact patterns"; `TestPatternsAreNormalizedLikePaths` covers the other `normalizePath` forms. The ID remains reserved.
@@ -54,6 +56,8 @@ Every active divergence must have:
 - D154 — The read header adds a string offset and limit as numbers (Pi #9887). Retired by the Pi pin `1.2.0+b06c1f2c`: Pi commit `91014991` (#10938) adds `formatReadLineRange` to `packages/coding-agent/src/core/tools/render-utils.ts`, which reads finite numbers and numeric strings and drops a malformed range, and uses it in the read header, the session tree and the HTML export template. `tui.FormatReadLineRange` ports it; the export embeds Pi's template unpatched; `TestFormatReadLineRangeMatchesPi` and `TestExportedViewerFormatsReadLineRangeLikePi` port Pi's `read-line-range-display.test.ts`. The ID remains reserved.
 
 - D166 — A resumed session takes its active tools from the transcript. Retired by Pi 6f2f164a (#10887, fixes #10785): the `AgentSession` constructor restores the transcript's loadout whenever the session uses the default tools (`packages/coding-agent/src/core/agent-session.ts:526`), with the `--tools` `+name`/`-name` entries applied (`_restoreToolsFromTranscript(modifiers)`), and `coding/session.go` `NewSession` does the same (`restoreToolsFromTranscript(opts.DefaultToolModifiers...)`). `TestResumeRestoresTheRecordedLoadoutPort` ports Pi's `default-tools-setting.test.ts` describe("resume"); `TestRPCResumeKeepsDynamicallyActivatedTools` and `TestResumeRestoresTheTranscriptsActiveTools` keep covering the resume. The ID remains reserved.
+
+- D171 — An errored Anthropic tool result carries no images (Pi #10792, #10794; Pi 34a8bb38). Retired by the Pi pin `1.2.0+5ab7fe74`: Pi commit `34a8bb38` replaced each image of an error tool result with a text note, and Pi commit `5ab7fe74` replaces it with a placeholder and sends the images after all tool results of the turn, in the same user message, under a caption naming the tool call (`splitErrorToolResultImages` in `packages/ai/src/api/transform-messages.ts`, used by `anthropic-messages.ts` and, for Claude, `bedrock-converse-stream.ts`). `ai.SplitErrorToolResultImages` and the Anthropic and Bedrock converters do the same, and the payload oracles no longer project Pi's payload.
 
 - D179 — No Windows host manager (ForkDriver and ProcessChannel Unix-only). Retired before release: the Windows port (`chord/host/manager_fork_windows.go`, `manager_pipe_windows.go`, `manager_ipc_frames.go`) replaces the fallback, so `ForkDriver` and `ProcessChannel` exist on Unix and Windows and `NewNodeLoader` (D178) works on both. Native Windows evidence: all 27 chord/host C2 tests pass x1 and x5 on a Windows x64 runner with Node 24.22.0 (2026-10-14, PiG c0adb3e3cf), including real Node IPC (`TestProcessChannelIsNodesIPCChannel`) and every child-host `HostManager` case. The ID remains reserved.
 
@@ -1734,26 +1738,6 @@ Pin re-check: owner HOLD 2026-10-10. The code stays. At every pin move, re-check
 
 SCRUTINIZED:approved
 
-## D126 Another model's thinking replays as `reasoning_content` on targets that require it (pi-mono #6167)
-
-What: `transformMessages` converts a different model's plain-text thinking into assistant text, so after a model switch a target with `compat.requiresReasoningContentOnAssistantMessages` (DeepSeek, Kimi, MiMo and similar reasoning models) received the reasoning appended to `content` with no delimiter and an empty `reasoning_content`. For a reasoning Chat Completions target that requires `reasoning_content` and does not use `requiresThinkingAsText`, PiG keeps that thinking and sends it as `reasoning_content`, with the assistant text in `content`. Every other target is unchanged (Pi's text replay). A thinking block with no provider field name now also fills the required `reasoning_content` instead of leaving it empty.
-
-Why: the field exists to carry the model's reasoning back; the empty string was only a placeholder for turns that had none.
-
-Scope: `ai/transform_messages.go` (`transformMessages`), `ai/openai.go` (`convertTranscript`, `convertMessagesWithCompat`) and `agent/transform.go` (`providerReplaysForeignThinking`: for a reasoning Chat Completions target the agent leaves foreign thinking to the provider, which decides from the resolved compat, including URL-detected DeepSeek).
-
-Owner decision: 2026-10-10, owner ruling "fix every confirmed bug now, ported from Pi or not".
-
-Call-site markers: `ai/transform_messages.go`, `ai/openai.go`, `agent/transform.go`.
-
-Evidence: `TestForeignThinkingReplaysAsReasoningContentWhenTheTargetRequiresIt` (`ai/openai_foreign_reasoning_replay_test.go`; red before the fix: content `plan Adone`), `TestNormalizeMessages_ForeignThinkingLeftToChatCompletionsProvider` (`agent/transform_test.go`). Mutation-checked in both layers.
-
-Parity allowance: Pi 1.2.0 inlines the thinking; the paired transform scenarios use other targets, which are unchanged.
-
-Remove when: Pi replays another model's plain-text thinking as `reasoning_content` for targets that require it.
-
-SCRUTINIZED:approved
-
 ## D128 OpenRouter image models that need the Images API are retried through `/images` (pi-mono #10652)
 
 What: for some OpenRouter image generation models (the report names `openai/gpt-image-2.5-flare`) `chat/completions` answers `404 <model> is an image generation model and cannot be used with the chat/completions endpoint. Use the /api/v1/images endpoint instead.` Pi 1.2.0 returns `stopReason: "error"` with no images. When PiG receives that refusal it sends the request once to `POST <baseUrl>/images` with `{model, prompt, input_references}` (the text input joined by newlines, the image input as data-URL `image_url` parts) and reads `data[].b64_json` (`media_type` or `image/png`) and `usage` into the result, priced at the model's flat rates as the chat path is. Any other failure, and every model that `chat/completions` accepts, keeps Pi's single chat request and error.
@@ -2294,26 +2278,6 @@ Evidence: `TestGenerateSummaryOfAHistoryLongerThanTheWindowIsChunked`, `TestGene
 Parity allowance: no paired scenario compacts a history longer than the model's window, and the oracle rows summarize histories that fit one request.
 
 Remove when: Pi summarizes over-window histories itself (chunking or trimming the summary input).
-
-SCRUTINIZED:approved
-
-## D171 An errored Anthropic tool result carries no images (Pi #10792, #10794; Pi 34a8bb38)
-
-What: Pi 1.2.0 sends the content of an errored tool result to Anthropic unchanged. Anthropic rejects a `tool_result` with `is_error` true whose content holds anything but text blocks (`400 invalid_request_error: messages.N.content.0.tool_result: all content must be type text if is_error is true`), and the rejected result stays in the history, so every later turn fails until the user edits the session. Codemode hits it when a script emits an image and then fails. Pi main fixed it after 1.2.0 in 34a8bb38 (fix(ai): drop images from Anthropic error tool results): each image of an errored tool result is replaced, in place, with the text block `[image omitted: error tool results cannot contain images]`, so the content is all text and is sent as one newline-joined string. PiG follows 34a8bb38 ahead of the pin. A result that is not an error keeps its images.
-
-Why: A tool result the provider refuses wedges the session; Pi's own fix is merged on main.
-
-Scope: `anthToolResultContent` in `ai/anthropic.go`, the Anthropic Messages request converter, for every provider that uses the `anthropic-messages` API. Bedrock, Gemini, Mistral and the OpenAI formats accept or normalize the shape (Pi #10794) and are unchanged.
-
-Owner decision: 2026-10-12T02:20Z, owner approved the sign-off entry for #10792 (lane fix-pi-bugs-ai); the owner chose to ship it in 0.5.0 as a numbered divergence. 2026-10-13: FollowMain aligned it with Pi 34a8bb38.
-
-Call-site markers: `ai/anthropic.go` (`anthToolResultContent`).
-
-Evidence: `TestAnthropicErroredToolResultCarriesNoImageBlock` (`ai/anthropic_error_tool_result_image_test.go`: text and image, image only, adjacent images, an empty errored result, text only, and a successful result that keeps its image). Both Anthropic payload oracles (`TestAnthropicMessagesPayloadMatchesPi`, `TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi`) bind it.
-
-Parity allowance: the two payload oracles apply Pi 34a8bb38 to Pi 1.2.0's payload (`projectErroredToolResultImages` in `ai/anthropic_messages_payload_oracle_test.go`): in an errored tool result sent as blocks, Pi 1.2.0's `(see attached image)` placeholder of an image-only result is dropped, each image becomes the note, and the blocks are joined into one string. The pipeline differential test applies the same projection to Pi's Anthropic messages (`withD171` in `test/pipeline-diff/diff_test.go`).
-
-Remove when: the pin includes Pi 34a8bb38.
 
 SCRUTINIZED:approved
 

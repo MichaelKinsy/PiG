@@ -141,12 +141,6 @@ func checkOpenAICompletionsPayload(t *testing.T, detected bool) {
 			}
 			t.Fatalf("probe %d: Pi produced no payload where PiG did: %.300s", i, got)
 		}
-		// pig divergence (D126): another model's thinking replays as reasoning_content on a target that requires it, where Pi appends it to the content.
-		// A detected target (a DeepSeek or Moonshot provider or URL) requires it through the detected compat, not the probe's.
-		requiresReasoning := strings.Contains(string(p.Compat), `"requiresReasoningContentOnAssistantMessages":true`) || (detected && p.Reasoning)
-		if requiresReasoning && strings.Contains(string(p.Context), `"type":"thinking"`) {
-			continue
-		}
 		comparePayload(t, fmt.Sprintf("probe %d provider=%s baseUrl=%s reasoning=%v simple=%v compat=%s options=%v", i, p.Provider, p.BaseURL, p.Reasoning, p.Simple, p.Compat, p.Options), got, want[i], &failures, classes)
 	}
 	if failures > 0 {

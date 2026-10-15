@@ -52,7 +52,7 @@ emit(input.map(({ thinking, signature, redacted, same }) => {
 	bad := 0
 	for i, c := range cases {
 		block := ai.ThinkingContent{Thinking: c.Thinking, ThinkingSignature: c.Signature, Redacted: c.Redacted}
-		blocks, _ := normalizeAssistantReplayBlocks([]ai.AssistantContentBlock{block}, c.Same, false)
+		blocks, _ := normalizeAssistantReplayBlocks([]ai.AssistantContentBlock{block}, c.Same)
 		var got []replayBlock
 		for _, b := range blocks {
 			switch b := b.(type) {

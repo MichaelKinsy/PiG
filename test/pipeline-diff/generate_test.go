@@ -188,10 +188,6 @@ func (g *generator) blocks(withCalls []message) []any {
 	out := []any{}
 	if g.chance(0.4) {
 		kind := g.pick(4)
-		// D126: a reasoning Chat Completions target that requires reasoning_content (DeepSeek, Kimi) replays another model's non-blank thinking as reasoning_content where Pi appends it to the assistant text, and fills reasoning_content from the target's own thinking that names no provider field where Pi leaves it empty, so a request with such a block differs from Pi's on purpose (TestForeignThinkingReplaysAsReasoningContentWhenTheTargetRequiresIt covers it). Those targets get only redacted and blank thinking here.
-		if (g.target.Name == "completions-deepseek" || g.target.Name == "completions-kimi") && kind != 1 {
-			kind = 2
-		}
 		switch kind {
 		case 0:
 			out = append(out, message{"type": "thinking", "thinking": g.text(), "thinkingSignature": `{"type":"reasoning","id":"rs_1","summary":[]}`})

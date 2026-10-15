@@ -12,7 +12,7 @@ func TestReplayAndProxyLinesTrimLikeJavaScript(t *testing.T) {
 		thinking string
 		dropped  bool
 	}{{"\ufeff", true}, {" \ufeff\t", true}, {"\u0085", false}, {"x", false}, {"", true}} {
-		out, changed := normalizeAssistantReplayBlocks([]ai.AssistantContentBlock{ai.ThinkingContent{Thinking: tc.thinking}}, true, false)
+		out, changed := normalizeAssistantReplayBlocks([]ai.AssistantContentBlock{ai.ThinkingContent{Thinking: tc.thinking}}, true)
 		if (len(out) == 0) != tc.dropped || changed != tc.dropped {
 			t.Errorf("thinking %q: %d blocks, changed %v; dropped should be %v", tc.thinking, len(out), changed, tc.dropped)
 		}

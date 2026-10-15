@@ -303,7 +303,6 @@ func payloadDiff(got, want string) string {
 // comparePayload records one probe's payload difference; failures counts them and classes tallies the differing members.
 func comparePayload(t *testing.T, label, got, want string, failures *int, classes map[string]int) {
 	t.Helper()
-	got, want = foldForeignReasoning(got, want)
 	diff := payloadDiff(got, want)
 	if diff == "" {
 		return
@@ -316,50 +315,4 @@ func comparePayload(t *testing.T, label, got, want string, failures *int, classe
 	if *failures++; *failures <= 8 {
 		t.Errorf("%s:%s", label, diff)
 	}
-}
-
-// foldForeignReasoning accounts for D126 in a Chat Completions payload: where Pi sent an assistant message's reasoning inlined in
-// content with reasoning_content "" and PiG sent it as reasoning_content, the PiG message is rewritten to Pi's inline form
-// (reasoning prepended to content, reasoning_content ""), and both contents are compared as sorted characters without newlines because Pi keeps thinking and text blocks in their original order while PiG moves the thinking first and joins thinking blocks with a newline where Pi concatenates text blocks. Every other difference stays visible.
-func foldForeignReasoning(got, want string) (string, string) {
-	var g, w struct {
-		Messages []map[string]any `json:"messages"`
-	}
-	if json.Unmarshal([]byte(got), &g) != nil || json.Unmarshal([]byte(want), &w) != nil || len(g.Messages) != len(w.Messages) {
-		return got, want
-	}
-	changed := false
-	for i, message := range g.Messages {
-		reasoning, _ := message["reasoning_content"].(string)
-		if message["role"] != "assistant" || reasoning == "" || message["reasoning_details"] != nil {
-			continue
-		}
-		if wantReasoning, ok := w.Messages[i]["reasoning_content"].(string); !ok || wantReasoning != "" {
-			continue
-		}
-		content, _ := message["content"].(string)
-		message["content"] = sortedRunes(strings.ReplaceAll(reasoning+content, "\n", ""))
-		message["reasoning_content"] = ""
-		if wantContent, ok := w.Messages[i]["content"].(string); ok {
-			w.Messages[i]["content"] = sortedRunes(strings.ReplaceAll(wantContent, "\n", ""))
-		}
-		changed = true
-	}
-	if !changed {
-		return got, want
-	}
-	encode := func(raw string, messages []map[string]any) string {
-		var whole map[string]json.RawMessage
-		_ = json.Unmarshal([]byte(raw), &whole)
-		whole["messages"], _ = json.Marshal(messages)
-		out, _ := json.Marshal(whole)
-		return string(out)
-	}
-	return encode(got, g.Messages), encode(want, w.Messages)
-}
-
-func sortedRunes(text string) string {
-	runes := []rune(text)
-	slices.Sort(runes)
-	return string(runes)
 }

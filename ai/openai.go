@@ -820,11 +820,6 @@ func convertCompletionsMessages(messages []Message, options completionsConvertOp
 						converted.ReasoningContent = new(reasoning)
 					case "reasoning_text":
 						converted.ReasoningText = reasoning
-					case "":
-						// pig divergence (D126): reasoning without a provider field name (another model's, kept by transformMessages) fills the required reasoning_content.
-						if options.reasoningContentOnAssistant {
-							converted.ReasoningContent = new(reasoning)
-						}
 					}
 				}
 			}
@@ -1313,12 +1308,10 @@ func (p *openAIProvider) convertTranscript(transcript TranscriptContext, grammar
 	if p.modelSupportsImages() {
 		target.Input = append(target.Input, "image")
 	}
-	keepForeignThinking := isReasoning && p.compatBool(func(c *OpenAICompat) *bool { return c.RequiresReasoningContentOnAssistantMessages }, false) &&
-		!p.compatBool(func(c *OpenAICompat) *bool { return c.RequiresThinkingAsText }, false)
 	// upstream: packages/ai/src/api/openai-completions.ts:convertMessages passes normalizeToolCallId to transformMessages, which applies it to the calls of other models only.
-	messages = transformMessages(messages, target, func(id string, _ *Model, _ AssistantMessage) string {
+	messages = TransformMessages(messages, target, func(id string, _ *Model, _ AssistantMessage) string {
 		return normalizeCompletionsToolCallID(id, p.cfg.ProviderID)
-	}, keepForeignThinking)
+	})
 	conversation := withoutInitialSystemMessage(messages)
 	// Kimi loads later tool additions in tool-bearing system messages; the
 	// request tools then hold only the initial tools. Pi's buildParams resolves them, and the declared tools, from context.messages as given

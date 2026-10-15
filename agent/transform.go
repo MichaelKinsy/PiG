@@ -167,7 +167,7 @@ func NormalizeMessages(msgs []AgentMessage, model *ai.Model) []AgentMessage {
 			// provider converter sees them (upstream transform-messages.ts
 			// isSameModel branch). Copy the assistant message only when a block
 			// actually changed, so unmodified turns still share their pointer.
-			if norm, changed := normalizeAssistantReplayBlocks(msg.Assistant.Content, sameModel(msg.Assistant, model), providerReplaysForeignThinking(model)); changed {
+			if norm, changed := normalizeAssistantReplayBlocks(msg.Assistant.Content, sameModel(msg.Assistant, model)); changed {
 				cp := *msg.Assistant
 				cp.Content = norm
 				msg.Assistant = &cp
@@ -304,7 +304,7 @@ func sameModel(a *AssistantMessage, model *ai.Model) bool {
 // from a different provider/model is unusable by the target provider, so it is
 // stripped here (transform-messages.ts:131) before the converter can leak it
 // (e.g. an OpenAI reasoning.encrypted blob into a Google request).
-func normalizeAssistantReplayBlocks(blocks []ai.AssistantContentBlock, isSameModel, leaveForeignThinking bool) ([]ai.AssistantContentBlock, bool) {
+func normalizeAssistantReplayBlocks(blocks []ai.AssistantContentBlock, isSameModel bool) ([]ai.AssistantContentBlock, bool) {
 	changed := false
 	out := make([]ai.AssistantContentBlock, 0, len(blocks))
 	for _, block := range blocks {
@@ -333,32 +333,20 @@ func normalizeAssistantReplayBlocks(blocks []ai.AssistantContentBlock, isSameMod
 			out = append(out, block)
 			continue
 		}
+		// Another model's thinking is dropped (transform-messages.ts:129-137, Pi #11000). The same model's redacted or signed thinking stays even
+		// when its text is empty (encrypted reasoning).
 		switch {
-		case thinking.Redacted:
-			if isSameModel {
-				out = append(out, block)
-			} else {
-				changed = true
-			}
-		case isSameModel && thinking.ThinkingSignature != "":
+		case !isSameModel:
+			changed = true
+		case thinking.Redacted || thinking.ThinkingSignature != "":
 			out = append(out, block)
 		case jsstring.Trim(thinking.Thinking) == "": // String.prototype.trim: U+FEFF counts as whitespace, U+0085 does not
 			changed = true
-		case isSameModel, leaveForeignThinking:
-			out = append(out, block)
 		default:
-			// Another model's thinking is dropped (transform-messages.ts:129-137, Pi #11000).
-			changed = true
+			out = append(out, block)
 		}
 	}
 	return out, changed
-}
-
-// providerReplaysForeignThinking reports whether the target is a reasoning Chat Completions model. Its provider decides from the
-// resolved compat whether another model's thinking is dropped (Pi) or replayed as reasoning_content.
-// pig divergence (D126): Pi drops the thinking here before that decision (pi-mono #6167; Pi #11000 changed inlining it as text to dropping it).
-func providerReplaysForeignThinking(model *ai.Model) bool {
-	return model != nil && model.ProviderMeta.API == ai.APIOpenAICompletions && model.ProviderMeta.Reasoning
 }
 
 // hasToolResults returns true if any message in msgs is a tool result.

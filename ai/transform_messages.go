@@ -84,14 +84,8 @@ func sameModelBlocksUnchanged(content []AssistantContentBlock) bool {
 	return true
 }
 
-// TransformMessages prepares history for a target provider without changing retained messages. It preserves valid same-model signatures, normalizes foreign content and paired IDs, drops incomplete assistant turns, and closes unanswered tool calls before the next turn while holding intervening system updates.
+// TransformMessages prepares history for a target provider without changing retained messages. It preserves valid same-model signatures, drops another model's thinking, normalizes foreign content and paired IDs, drops incomplete assistant turns, and closes unanswered tool calls before the next turn while holding intervening system updates.
 func TransformMessages(messages []Message, model *Model, normalizeToolCallId func(string, *Model, AssistantMessage) string) []Message {
-	return transformMessages(messages, model, normalizeToolCallId, false)
-}
-
-// transformMessages is TransformMessages. Another model's thinking is dropped, as Pi does (#11000). With keepForeignThinking its plain-text thinking stays a thinking block
-// without its foreign signature, for a target that replays reasoning in its own field.
-func transformMessages(messages []Message, model *Model, normalizeToolCallId func(string, *Model, AssistantMessage) string, keepForeignThinking bool) []Message {
 	transformed := make([]Message, 0, len(messages))
 	toolCallIdMap := make(map[string]string)
 	supportsImages := slices.Contains(model.Input, "image")
@@ -149,36 +143,19 @@ func transformMessages(messages []Message, model *Model, normalizeToolCallId fun
 				continue
 			}
 			blocks := make([]AssistantContentBlock, 0, len(message.Content))
-			// A thinking-only turn drops its thinking as Pi does (transform-messages.ts:131-137): its reasoning_content alone would not keep the message in the request.
-			keepThinking := keepForeignThinking && slices.ContainsFunc(message.Content, func(block AssistantContentBlock) bool {
-				switch block := block.(type) {
-				case TextContent:
-					return trimJSWhitespace(block.Text) != ""
-				case ToolCall:
-					return true
-				}
-				return false
-			})
 			for _, value := range message.Content {
 				switch block := value.(type) {
 				case ThinkingContent:
+					// Another model's thinking is dropped: signatures and encrypted reasoning only work for the model that produced them, and
+					// readable thinking sent as text makes the new model treat it as part of its reply (transform-messages.ts:129-137, Pi #11000).
+					// Redacted and signed thinking of the same model stays even when its text is empty (encrypted reasoning).
 					switch {
-					case block.Redacted:
-						if sameModel {
-							blocks = append(blocks, block)
-						}
-					case sameModel && block.ThinkingSignature != "":
+					case !sameModel:
+					case block.Redacted || block.ThinkingSignature != "":
 						blocks = append(blocks, block)
 					case trimJSWhitespace(block.Thinking) == "":
-					case sameModel:
-						blocks = append(blocks, block)
-					case keepThinking:
-						// pig divergence (D126): Pi inlines this as assistant text, so a target that requires reasoning_content got "" (pi-mono #6167).
-						block.ThinkingSignature = ""
-						blocks = append(blocks, block)
 					default:
-						// Pi drops another model's thinking: signatures and encrypted reasoning only work for the model that produced them, and
-						// readable thinking sent as text makes the new model treat it as part of its reply (transform-messages.ts:129-137, Pi #11000).
+						blocks = append(blocks, block)
 					}
 				case TextContent:
 					if !sameModel {
