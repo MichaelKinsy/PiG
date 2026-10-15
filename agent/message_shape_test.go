@@ -98,14 +98,15 @@ func shapeMessage(r *rand.Rand) string {
 		// The two member orders AgentMessage.MarshalJSON writes (see assistantShape and assistantErrorShape).
 		errorBefore := r.IntN(3) == 0
 		members := []shapeCandidate{{"role", []string{`"assistant"`}, false}, {"content", content("text", "thinking", "toolCall"), false}, {"api", str(), false}, {"provider", str(), false}, {"model", str(), false}}
-		if !errorBefore {
-			members = append(members, shapeCandidate{"providerThinkingLevel", str(), true})
-		}
 		members = append(members, shapeCandidate{"usage", []string{usage, `null`}[:1+r.IntN(2)], false}, shapeCandidate{"stopReason", str(), false})
 		if errorBefore {
 			members = append(members, shapeCandidate{"errorMessage", str(), false})
 		}
-		members = append(members, shapeCandidate{"timestamp", integer(), false}, shapeCandidate{"responseId", str(), true}, shapeCandidate{"responseModel", str(), true})
+		members = append(members, shapeCandidate{"timestamp", integer(), false})
+		if !errorBefore {
+			members = append(members, shapeCandidate{"providerThinkingLevel", str(), true})
+		}
+		members = append(members, shapeCandidate{"responseId", str(), true}, shapeCandidate{"responseModel", str(), true})
 		if errorBefore {
 			members = append(members, shapeCandidate{"providerThinkingLevel", str(), true}, shapeCandidate{"rawStopReason", str(), true}, shapeCandidate{"endTurn", shapeValues(r, shapeBools), true})
 		} else {

@@ -10,7 +10,7 @@ import (
 )
 
 // The RPC message encoder writes an assistant message's members in the order Pi's providers create them (providerThinkingLevel after
-// model: anthropic-messages.ts:588; responseId at the first chunk, responseModel, rawStopReason, errorMessage: openai-completions.ts:564-586;
+// timestamp: anthropic-messages.ts:651; responseId at the first chunk, responseModel, rawStopReason, errorMessage: openai-completions.ts:564-586;
 // Codex's endTurn before rawStopReason: openai-codex-responses.ts:774-778; usage splits after cost: anthropic-messages.ts:684, :851), which
 // the session-line encoder writes too; that encoder is checked against Pi's own streams by agent.TestAssistantLateMembersFollowPiCreationOrder
 // and agent.TestCodexAssistantEndTurnPrecedesRawStopReason.

@@ -193,16 +193,17 @@ func (m AgentMessage) wire(clone bool) (any, error) {
 			}, nil
 		}
 		return struct {
-			Role     string `json:"role"`
-			Content  []any  `json:"content"`
-			API      ai.API `json:"api"`
-			Provider string `json:"provider"`
-			Model    string `json:"model"`
-			// anthropic-messages.ts:588 creates providerThinkingLevel in the output literal, after model.
-			ProviderThinkingLevel string        `json:"providerThinkingLevel,omitempty"`
-			Usage                 ai.Usage      `json:"usage"`
-			StopReason            ai.StopReason `json:"stopReason"`
-			Timestamp             int64         `json:"timestamp"`
+			Role       string        `json:"role"`
+			Content    []any         `json:"content"`
+			API        ai.API        `json:"api"`
+			Provider   string        `json:"provider"`
+			Model      string        `json:"model"`
+			Usage      ai.Usage      `json:"usage"`
+			StopReason ai.StopReason `json:"stopReason"`
+			Timestamp  int64         `json:"timestamp"`
+			// anthropic-messages.ts:651 assigns providerThinkingLevel after buildParams (Pi dc939913), after the initial output literal and
+			// before the members the stream creates.
+			ProviderThinkingLevel string `json:"providerThinkingLevel,omitempty"`
 			// The members below are created on the output a provider built with the members above, in stream order, and the event encoder
 			// (coding/cli/rpc_events.go rpcAgentMessage) writes them in the same order: the providers create responseId at the first chunk
 			// (openai-completions.ts:564 `||=` creates the slot even when the chunk has no id), then responseModel (:566), rawStopReason at

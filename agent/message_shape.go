@@ -32,12 +32,12 @@ type shapeMember struct {
 var (
 	userShape = []shapeMember{{"role", shapeString, false}, {"content", shapeUserContent, false}, {"timestamp", shapeInteger, false}}
 	// assistantShape and assistantErrorShape follow the two structs AgentMessage.MarshalJSON writes an assistant with: providerThinkingLevel
-	// after model, and the late members in Pi's creation order (responseId before responseModel, rawStopReason before errorMessage).
+	// after timestamp (anthropic-messages.ts:651), and the late members in Pi's creation order (responseId before responseModel, rawStopReason before errorMessage).
 	assistantShape = []shapeMember{
 		{"role", shapeString, false}, {"content", shapeAssistantContent, false}, {"api", shapeString, false},
-		{"provider", shapeString, false}, {"model", shapeString, false}, {"providerThinkingLevel", shapeNonEmptyString, true},
+		{"provider", shapeString, false}, {"model", shapeString, false},
 		{"usage", shapeUsage, false}, {"stopReason", shapeString, false}, {"timestamp", shapeInteger, false},
-		{"responseId", shapeNonEmptyString, true}, {"responseModel", shapeNonEmptyString, true},
+		{"providerThinkingLevel", shapeNonEmptyString, true}, {"responseId", shapeNonEmptyString, true}, {"responseModel", shapeNonEmptyString, true},
 		{"diagnostics", shapeUnmodelled, true}, {"deferred", shapeUnmodelled, true}, {"endTurn", shapeBool, true},
 		{"rawStopReason", shapeNonEmptyString, true}, {"errorMessage", shapeNonEmptyString, true},
 		{"durationMs", shapeInteger, true}, {"thinkingLevel", shapeNonEmptyString, true},

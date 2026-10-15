@@ -313,10 +313,6 @@ func rpcAgentMessage(message agent.AgentMessage) (any, error) {
 			return nil, err
 		}
 		out := rpcObject{{"role", "assistant"}, {"content", content}, {"api", assistant.API}, {"provider", assistant.Provider}, {"model", assistant.ModelID}}
-		// anthropic-messages.ts:588 creates providerThinkingLevel in the output literal, after model.
-		if assistant.ProviderThinkingLevel != "" {
-			out = append(out, rpcField{"providerThinkingLevel", assistant.ProviderThinkingLevel})
-		}
 		out = append(out, rpcField{"usage", rpcUsage(assistant.Usage)})
 		// JSON.stringify omits an undefined stopReason; timestamp is part of the initial provider message, before subsequently appended metadata.
 		if assistant.StopReason != "" {
@@ -328,6 +324,11 @@ func rpcAgentMessage(message agent.AgentMessage) (any, error) {
 			out = append(out, rpcField{"errorMessage", assistant.ErrorMessage})
 		}
 		out = append(out, rpcField{"timestamp", assistant.Timestamp})
+		// anthropic-messages.ts:651 assigns providerThinkingLevel after buildParams (Pi dc939913), so it follows the initial output literal and
+		// precedes the members the stream creates.
+		if assistant.ProviderThinkingLevel != "" {
+			out = append(out, rpcField{"providerThinkingLevel", assistant.ProviderThinkingLevel})
+		}
 		// The providers create responseId at the first chunk, then responseModel, rawStopReason and errorMessage in stream order
 		// (openai-completions.ts:564-586); agent/message_json.go writes the session line in the same order.
 		if assistant.ResponseID != "" {
