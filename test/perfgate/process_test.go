@@ -238,7 +238,7 @@ const heapLiveRuns = 16
 // few-turn run and a second few-turn run of the same program, per turn.
 func heapLiveGrowthSamples(home *pigHome, args []string, few, many int, small, large profiling.ProcessMetrics) (growth, floor []float64) {
 	turns := float64(many - few)
-	for i := 0; i < heapLiveRuns; i++ {
+	for i := range heapLiveRuns {
 		if i > 0 {
 			small = home.run(args, rpcTurns(home.t, few))
 			large = home.run(args, rpcTurns(home.t, many))

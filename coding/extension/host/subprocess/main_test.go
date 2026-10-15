@@ -43,8 +43,7 @@ func TestMain(m *testing.M) {
 		bridge := exec.Command(nodePath, script)
 		bridge.Stdin, bridge.Stdout, bridge.Stderr = os.Stdin, os.Stdout, os.Stderr
 		err := bridge.Run()
-		var exit *exec.ExitError
-		if errors.As(err, &exit) {
+		if exit, ok := errors.AsType[*exec.ExitError](err); ok {
 			os.Exit(exit.ExitCode())
 		}
 		if err != nil {

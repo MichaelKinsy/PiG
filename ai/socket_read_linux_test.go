@@ -46,8 +46,7 @@ func describeRead(conn net.Conn, buffer []byte, n int, err error) string {
 	text = strings.ReplaceAll(text, conn.RemoteAddr().String(), "REMOTE")
 	var netError net.Error
 	timeout := errors.As(err, &netError) && netError.Timeout()
-	var opError *net.OpError
-	if errors.As(err, &opError) {
+	if opError, ok := errors.AsType[*net.OpError](err); ok {
 		text += fmt.Sprintf(" op=%s net=%s source=%v addr=%v", opError.Op, opError.Net, fmt.Sprint(opError.Source) == conn.LocalAddr().String(), fmt.Sprint(opError.Addr) == conn.RemoteAddr().String())
 	}
 	return text + fmt.Sprintf(" eof=%v deadline=%v closed=%v reset=%v timeout=%v", errors.Is(err, io.EOF), errors.Is(err, os.ErrDeadlineExceeded), errors.Is(err, net.ErrClosed), errors.Is(err, syscall.ECONNRESET), timeout)
