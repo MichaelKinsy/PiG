@@ -42,6 +42,9 @@ import (
 type startupAllocBudget struct{ versionBytes, versionObjects, promptBytes, promptObjects uint64 }
 
 func startupAllocBudgetFor(goos string) startupAllocBudget {
+	if goos == "windows" {
+		return startupAllocBudget{versionBytes: windowsVersionBytes, versionObjects: windowsVersionObjects, promptBytes: windowsPromptBytes, promptObjects: windowsPromptObjects}
+	}
 	if goos == "darwin" {
 		return startupAllocBudget{versionBytes: 760_000, versionObjects: 4_240, promptBytes: 2_970_000, promptObjects: 20_200}
 	}
@@ -98,6 +101,9 @@ const startupModelsJSON = `{
 // (704f0daaac), and the same runs measured 3,253,416 / 23,021 and 3,246,840 / 23,145. With the session file's write buffer sized to
 // its records (fa1306137e) they measure 2,883,152 / 18,455 and 2,877,344 / 18,588; the budgets are those plus under 2%.
 func startupModelsAllocBudgetFor(goos string) (bytes, objects uint64) {
+	if goos == "windows" {
+		return windowsModelsPromptBytes, windowsModelsPromptObjects
+	}
 	if goos == "darwin" {
 		return 2_934_000, 18_950
 	}
@@ -138,6 +144,32 @@ const (
 	startupLevelBytesCeiling   = 2_600
 )
 
+// Windows budgets (owner decision 2026-10-16, handoffs/owner-signoff.md). The startup walk probes the same files as Pi
+// (resource-loader.ts:185), but on Windows every os.Stat, os.Lstat and environment read converts its path or key to UTF-16
+// on the heap and builds a FileInfo: about five objects a probe against Linux's one or two. nodefs.Exists and the realpath
+// walk already read attributes through a pooled buffer (72fe1f18a5), which took a level from 58 objects / 11,298 bytes to
+// 32 / 6,561. Measured on the Windows VPS at c64e543dbe (go1.27.2, normal %TEMP%): --version 756,568 bytes / 4,199
+// objects; warm first prompt 2,787,512 / 16,791; with models.json 3,124,224 / 20,185; per level 6,561 / 32. The budgets are
+// those plus under 2%, so a Windows regression still fails; Linux and darwin keep theirs.
+const (
+	windowsVersionBytes        = 771_000
+	windowsVersionObjects      = 4_280
+	windowsPromptBytes         = 2_843_000
+	windowsPromptObjects       = 17_120
+	windowsModelsPromptBytes   = 3_186_000
+	windowsModelsPromptObjects = 20_580
+	windowsLevelObjectsCeiling = 33
+	windowsLevelBytesCeiling   = 6_690
+)
+
+// startupLevelCeilingFor is the per-level budget of goos.
+func startupLevelCeilingFor(goos string) (objects, bytes uint64) {
+	if goos == "windows" {
+		return windowsLevelObjectsCeiling, windowsLevelBytesCeiling
+	}
+	return startupLevelObjectsCeiling, startupLevelBytesCeiling
+}
+
 // startupLevels is how many levels deeper the second working directory is: run to run noise of several KB between two warm first
 // prompts stays a few hundred bytes per level.
 const startupLevels = 32
@@ -166,8 +198,9 @@ func TestStartupAllocationPerDirectoryLevel(t *testing.T) {
 	}
 	objects, bytes := perLevel(shallowRun.AllocObjects, deepRun.AllocObjects), perLevel(shallowRun.AllocBytes, deepRun.AllocBytes)
 	t.Logf("warm first prompt from %s: %d bytes, %d objects; %d levels deeper: %d bytes, %d objects; per level %d bytes, %d objects", fixture.cwd, shallowRun.AllocBytes, shallowRun.AllocObjects, startupLevels, deepRun.AllocBytes, deepRun.AllocObjects, bytes, objects)
-	if objects > startupLevelObjectsCeiling || bytes > startupLevelBytesCeiling {
-		t.Errorf("each directory level above the working directory costs a warm first prompt %d bytes in %d objects, ceiling %d bytes in %d objects", bytes, objects, startupLevelBytesCeiling, startupLevelObjectsCeiling)
+	objectsCeiling, bytesCeiling := startupLevelCeilingFor(runtime.GOOS)
+	if objects > objectsCeiling || bytes > bytesCeiling {
+		t.Errorf("each directory level above the working directory costs a warm first prompt %d bytes in %d objects, ceiling %d bytes in %d objects", bytes, objects, bytesCeiling, objectsCeiling)
 	}
 }
 

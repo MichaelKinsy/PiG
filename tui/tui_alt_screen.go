@@ -88,6 +88,9 @@ type TuiAltScreen struct {
 
 	altScreenActive bool
 	imageProtocol   ImageProtocol
+	// wezTerm is isWezTermSession as Start read it. Upstream reads process.env each frame, a property read; a Windows
+	// environment read allocates its UTF-16 key and value, so the alt screen reads it once per start, with the capabilities.
+	wezTerm bool
 
 	// savedCapabilities holds the pre-enter terminal capabilities when the
 	// alt-screen suppressed iTerm2 inline images (they do not render correctly in
@@ -422,6 +425,7 @@ func (t *TuiAltScreen) enterAltScreen() {
 	t.altScreenActive = true
 	caps := GetCapabilities()
 	t.imageProtocol = caps.Images
+	t.wezTerm = t.imageProtocol == "kitty" && isWezTermSession()
 	clear(t.uploadedKittyImages)
 	t.uploadedKittyImagesOrder = nil
 	t.lastDocument = nil
@@ -889,8 +893,8 @@ func (t *TuiAltScreen) doRender() {
 	}
 	// WezTerm erases the Kitty image cells a row write touches, so a changed row an image covers redraws the images
 	// (upstream tui-alt-screen.ts imageCellsNeedRedraw).
-	// Only a Kitty frame can use the answer, and a Windows environment read allocates, so the streaming frame skips it.
-	isWezTerm := t.imageProtocol == "kitty" && isWezTermSession()
+	// Only a Kitty frame can use the answer; Start read it (t.wezTerm), so a frame reads no environment.
+	isWezTerm := t.wezTerm
 	imageCellsNeedRedraw := false
 	if !imageAnchorsNeedRedraw && isWezTerm && t.imageProtocol == "kitty" && anyChanged {
 	rows:
@@ -1047,8 +1051,8 @@ func writeCursorTo(buf *strings.Builder, row, col int) {
 	buf.WriteByte('H')
 }
 
-// isWezTermSession reports whether the process runs inside WezTerm, read per
-// frame as upstream reads process.env.
+// isWezTermSession reports whether the process runs inside WezTerm, from WEZTERM_PANE and TERM_PROGRAM as upstream reads
+// process.env; the alt screen reads it at Start.
 func isWezTermSession() bool {
 	return os.Getenv("WEZTERM_PANE") != "" || strings.ToLower(os.Getenv("TERM_PROGRAM")) == "wezterm"
 }
