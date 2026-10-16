@@ -1,3 +1,5 @@
+//go:build !pig_strip_mcp
+
 // SPDX-License-Identifier: MIT
 
 package coding
