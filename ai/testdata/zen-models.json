@@ -129,6 +129,10 @@
   },
   {
     "provider": "opencode",
+    "id": "deepseek-v4.1-flash-free"
+  },
+  {
+    "provider": "opencode",
     "id": "glm-5"
   },
   {
@@ -194,6 +198,10 @@
   {
     "provider": "opencode",
     "id": "nemotron-3.5-lightning-free"
+  },
+  {
+    "provider": "opencode",
+    "id": "nemotron-3.5-super-vl-free"
   },
   {
     "provider": "opencode",
@@ -333,10 +341,6 @@
   },
   {
     "provider": "opencode-go",
-    "id": "minimax-m2.7"
-  },
-  {
-    "provider": "opencode-go",
     "id": "minimax-m3"
   },
   {
@@ -434,10 +438,6 @@
   {
     "provider": "opencode-go",
     "id": "gpt-6-luna"
-  },
-  {
-    "provider": "opencode-go",
-    "id": "grok-4.6"
   },
   {
     "provider": "opencode-go",

@@ -14866,13 +14866,14 @@ ${message}`, ["Yes", "No"], opts, {
     }, "restoreEditor");
     return new Promise((resolve7, reject) => {
       let component;
+      let overlayHandle;
       let closed = false;
       const close = /* @__PURE__ */ __name((result) => {
         if (closed)
           return;
         closed = true;
         if (isOverlay)
-          this.ui.hideOverlay();
+          overlayHandle?.hide();
         else
           restoreEditor3();
         resolve7(result);
@@ -14894,8 +14895,8 @@ ${message}`, ["Yes", "No"], opts, {
             const w = component.width;
             return w ? { width: w } : void 0;
           }, "resolveOptions");
-          const handle = this.ui.showOverlay(component, resolveOptions());
-          options?.onHandle?.(handle);
+          overlayHandle = this.ui.showOverlay(component, resolveOptions());
+          options?.onHandle?.(overlayHandle);
         } else {
           this.disposeActiveSelector();
           this.editorContainer.clear();

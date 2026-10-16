@@ -1,5 +1,5 @@
 {
-  "piVersion": "1.2.0+b06c1f2c",
+  "piVersion": "1.3.0",
   "node": "v24.19.0",
   "scenarios": [
     {
@@ -4591,7 +4591,7 @@
         "stopReason": "error",
         "responseId": "r1",
         "errorMessage": "body failed",
-        "durationMs": 0
+        "durationMs": 1
       }
     },
     {

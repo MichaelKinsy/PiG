@@ -1,4 +1,4 @@
-version = "1.2.0+b06c1f2c"
+version = "1.3.0"
 
 [[files]]
 path = "packages/agent/src/agent-loop.ts"
@@ -576,6 +576,13 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/object.ts"
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/output.ts"
 disposition = "pending"
 contracts = []
 evidence = []
@@ -1276,10 +1283,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ported+
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
-disposition = "deferred"
-contracts = ["awaited", "concurrent-joined", "cancellable", "microtask-ordering", "detached-owned", "ui-handoff"]
-evidence = ["test:internal/codingagent/autocomplete_wrappers_test.go", "test:test/extension-conformance/autocomplete_test.go", "scenario:test/parity/scenarios/autocomplete/09-extension-wrapper-state.toml", "scenario:test/parity/scenarios/autocomplete/10-custom-editor-wrapper-state.toml", "probe:docs/findings/fix-rigidity-b.md", "test:internal/codingagent/interactive_user_bash_async_test.go", "test:internal/codingagent/interactive_user_bash_lifetime_test.go", "test:internal/codingagent/interactive_user_bash_subprocess_test.go", "scenario:test/parity/scenarios/extensions-runtime/41-user-bash-input-owner.toml", "test:internal/codingagent/interactive_reload_test.go", "test:internal/codingagent/reload_ui_upstream_test.go", "scenario:test/parity/scenarios/session/28-session-reload-ui.toml", "test:internal/codingagent/rebind_ui_upstream_test.go", "scenario:test/parity/scenarios/session/29-session-rebind-ui.toml", "test:internal/codingagent/shutdown_input_owner_test.go", "test:internal/codingagent/upstream_signal_shutdown_test.go", "scenario:test/parity/scenarios/extensions-runtime/33-shutdown-order.toml", "test:internal/codingagent/interactive_startup_input_upstream_test.go", "test:internal/codingagent/startup_await_input_test.go", "test:internal/codingagent/startup_input_order_test.go", "test:internal/codingagent/startup_queue_lifecycle_test.go", "scenario:test/parity/scenarios/startup/10-startup-input-before-session-start-completes.toml", "test:internal/codingagent/interactive_model_input_live_test.go", "test:internal/codingagent/interactive_model_tools_deadlock_test.go"]
-rationale = "Partial review: autocomplete factories rebuild synchronously at their API boundary; callbacks execute off the owner loop and publish before input resumes. Both editors share the chain. Startup/reload waits preserve UI callback progress, and factory ownership ends with its connection. The async submit callback awaits user_bash without blocking terminal input. PiG owns one task for dispatch, execution, persistence and acknowledged owner-loop completion. It retains the active cancellation context and mode lifetime, joins outgoing tasks before replacement/reload, and invalidates queued UI changes after shutdown. Failed or cancelled hooks never execute locally. Streaming state is read after hook completion, and persistence targets the captured Session. Native and actual isolated/packed Node guards cover input progress, cancellation, replacement, shutdown and retained state; scenario41 compares the complete release trace with real Pi. Reload retains its focus-owning blocker through awaited extension work, forwards the operation context, pumps UI callbacks and joins cancellation before restoring the editor. It preserves user-bash settlement and remote-editor/autocomplete teardown. Rebinding captures the actual Session across awaited handlers; replacement renders and subscribes before session_start, while stale startup completion cannot subscribe or update the title. Original reload/rebind cases and compiling mutations are recorded in docs/parity/session-runtime-helper.md. Terminal input has one owner shared by startup and final interaction; temporary UI loops do not replace it. Final loop exit and Run cleanup cancel and join the pausable file reader, fallback reader and decoder before releasing terminal/output resources. Non-file ReadClosers are closed only while cancellation still owns an active read, and close failures return after cleanup; terminal files stay open. The original shutdown order/hint assertions and deterministic held-reader guard prove completion ordering. Ordinary editor input stays live after managed-tool setup. Idle submissions queue until the main input consumer starts, after positional prompts finish. A one-shot callback clears on resolution or owner-loop exit; exit also releases queued strings, and an already-cancelled owner admits no queued prompt. The resolved prompt runs after the current terminal read's synchronous sequences and before the next read. Default, alternate-submit, and remote-editor paths share that handler. Queued prompt delivery, retained draft text, one-shot ownership, initial-message ordering, and current-read/next-read ordering have deterministic regressions and a real Node startup barrier scenario. The un-awaited cycleModel, selectModel and model command (3083-3084, 3180, 3195-3199, 5163-5180, 5313-5340) apply the model on the owner loop before their await and run model_select on a task the mode owns, which posts the continuation back to the loop; nothing waits on the loop, so keys reach the still focused selector or the editor, a submitted prompt starts at once, a second change applies and notifies at once, overlapping the first, and cancellation reports its cause after the handlers return. The auth check and notifications run under the mode's background context, which Stop cancels before it joins the mode's tasks, so a pending model_select does not hold shutdown (Pi exits without awaiting it, 4251-4291). A dialog, selector or custom component that takes the editor slot disposes the pending selector, and the selector's done restores the editor only while it is still the active selector (2714, 4833-4857). Other interactive async paths remain unreviewed, so whole-file closure stays deferred."
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/model-catalog-refresh.ts"
@@ -1507,10 +1514,10 @@ rationale = "formatResult awaits truncate, which writes the full text to output.
 
 [[files]]
 path = "packages/durable/src/env/index.ts"
-disposition = "deferred"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+rationale = ""
 
 [[files]]
 path = "packages/durable/src/env/node-watch.ts"
@@ -1583,13 +1590,6 @@ evidence = ["test:durable/harness/harness_live_deltas_test.go#TestLiveDeltas", "
 rationale = "The live-state helpers are synchronous functions over a transaction's draft documents (ending a run, finding a slot by binary search, settling a task the scheduler wrote); their asynchronous callers await the commit that contains them, so the changes are published together in commit order."
 
 [[files]]
-path = "packages/durable/src/harness/output.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
-
-[[files]]
 path = "packages/durable/src/harness/prompt.ts"
 disposition = "deferred"
 contracts = []
@@ -1626,10 +1626,10 @@ rationale = "A task-graph watch is replicated from the observed commits in order
 
 [[files]]
 path = "packages/durable/src/harness/tool.ts"
-disposition = "translated"
-contracts = ["awaited", "concurrent-joined", "cancellable", "detached-owned", "microtask-ordering"]
-evidence = ["test:durable/harness/tool_nested_test.go#TestEveryNestedCallLeftRunningIsAbortedBeforeAnyIsWaitedFor", "test:durable/harness/tool_nested_test.go#TestConcurrentCallsWithOneKeyAdmitOneNestedCall", "test:durable/harness/tool_nested_test.go#TestCancellingTheWaitForANestedCallStopsOnlyTheWait", "test:durable/harness/tool_nested_records_test.go#TestANestedCallWhoseAdmissionWasCommittingWhenItsCallerReturnedIsAborted", "test:durable/harness/tool_nested_restart_test.go#TestBackgroundWorkUnderAnAbandonedNestedCallKeepsRunningAndTheRunSettlesWithoutIt"]
-rationale = "The caller's settlement awaits the admissions underway (allSettled), then reads the made-calls memo, aborts every nested call it left running before waiting for any, and only then writes the settling commit, so an admission that was still committing is listed and aborted; concurrent calls with one key admit one task; cancelling the wait for a nested call stops only the wait and the call runs on; unawaited work is owned by the task and abandoned on restart unless the caller is replay-safe."
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
 
 [[files]]
 path = "packages/durable/src/harness/types.ts"
@@ -1731,10 +1731,10 @@ rationale = "Every Storage method is an async function that never awaits: it set
 
 [[files]]
 path = "packages/durable/src/storage/sqlite/cloudflare.ts"
-disposition = "deferred"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "async/Promise source new in Pi 1.1.0; its per-file ordering/cancellation/error contract has not been reviewed. The port of this file is tracked by test/parity/upstream-sync/v1.1.0.toml."
+rationale = ""
 
 [[files]]
 path = "packages/durable/src/storage/sqlite/database.ts"
@@ -1745,24 +1745,24 @@ rationale = "Added to the accounting when every monorepo package was listed: the
 
 [[files]]
 path = "packages/durable/src/storage/sqlite/migrations.ts"
-disposition = "deferred"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+rationale = ""
 
 [[files]]
 path = "packages/durable/src/storage/sqlite/node.ts"
-disposition = "deferred"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+rationale = ""
 
 [[files]]
 path = "packages/durable/src/storage/sqlite/storage.ts"
-disposition = "translated"
-contracts = ["awaited", "cancellable"]
-evidence = ["test:durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageConformance", "test:durable/storage/sqlite/storage_request_error_test.go#TestBuiltinStoragesRejectInvalidReadsWithStorageRequestError"]
-rationale = "Every method awaits SqliteDatabase calls in source order (the ascending entry scan awaits one segment query after another and stops once the page is full); in Go each is a blocking call that issues the same queries in the same order on the caller's context and returns the first error, and the driver serialises them on its connection."
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
 
 [[files]]
 path = "packages/durable/src/testing/assertions.ts"
@@ -1857,10 +1857,10 @@ rationale = "Added to the accounting when every monorepo package was listed: the
 
 [[files]]
 path = "packages/durable/src/tools/read.ts"
-disposition = "deferred"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+rationale = ""
 
 [[files]]
 path = "packages/durable/src/tools/write.ts"

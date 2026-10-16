@@ -2333,13 +2333,15 @@ export class InteractiveMode {
         };
         return new Promise((resolve, reject) => {
             let component;
+            let overlayHandle;
             let closed = false;
             const close = (result) => {
                 if (closed)
                     return;
                 closed = true;
+                // Remove this overlay, not the topmost one: another overlay may have opened above it.
                 if (isOverlay)
-                    this.ui.hideOverlay();
+                    overlayHandle?.hide();
                 else
                     restoreEditor();
                 // Note: both branches above already call requestRender
@@ -2369,9 +2371,9 @@ export class InteractiveMode {
                         const w = component.width;
                         return w ? { width: w } : undefined;
                     };
-                    const handle = this.ui.showOverlay(component, resolveOptions());
+                    overlayHandle = this.ui.showOverlay(component, resolveOptions());
                     // Expose handle to caller for visibility control
-                    options?.onHandle?.(handle);
+                    options?.onHandle?.(overlayHandle);
                 }
                 else {
                     this.disposeActiveSelector();

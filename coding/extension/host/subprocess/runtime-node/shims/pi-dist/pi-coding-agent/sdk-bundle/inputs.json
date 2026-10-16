@@ -743,7 +743,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/interactive-mode.js",
-      "sha256": "e7e51e6492310c25fdbaef9714e668dec6bcf7ff685d7f1aacf961167d83262c"
+      "sha256": "751e359715ecdccf30c30bc47c78b82639e562ebbfda1afcc255c8c48dbd3ea4"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/model-catalog-refresh.js",
