@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"testing"
 )
@@ -57,6 +58,10 @@ func TestGrepContextDoesNotLoadTheMatchedFile(t *testing.T) {
 	}
 
 	tool := &GrepTool{CWD: dir}
+	// HeapAlloc counts garbage not yet collected, and at the default GOGC the pacer lets it grow to about the live heap
+	// before the next cycle, so the peak would depend on GC timing (a macOS runner measured 21 MB of slack). A low GOGC
+	// keeps the peak near what grep retains; loading the ~50 MB file still exceeds the bound.
+	defer debug.SetGCPercent(debug.SetGCPercent(10))
 	runtime.GC()
 	peak := samplePeakHeap(t)
 	result := runFileTool(t, tool, t.Context(), map[string]any{"pattern": "needle", "context": 2})
