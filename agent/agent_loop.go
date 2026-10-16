@@ -529,6 +529,8 @@ func (r *loopRun) streamAssistantResponse() (*AssistantMessage, []pendingToolCal
 func (r *loopRun) requestStream(observation *ai.StreamObservation, streamFn StreamFn, transcript ai.TranscriptContext, streamOpts ai.StreamOptions) (message *AssistantMessage, calls []pendingToolCall, requestFailure, err error) {
 	h := r.h
 	requestStarted := time.Now()
+	// lazy.ts reads the clock for a setup error's timestamp, then the stream it creates reads its own start: two reads.
+	streamStarted := time.Now()
 	stream, err := streamFn(r.ctx, r.model, transcript, streamOpts)
 	observation.Yield()
 	if err != nil && !h.agentLifecycle {
@@ -561,7 +563,7 @@ func (r *loopRun) requestStream(observation *ai.StreamObservation, streamFn Stre
 			// A failed setup is timed like Pi's lazyStream error: the request start is its timestamp and the stream's own clock gives durationMs.
 			// upstream: packages/ai/src/api/lazy.ts createSetupErrorMessage; packages/ai/src/utils/event-stream.ts #time
 			Timestamp:     requestStarted.UnixMilli(),
-			DurationMs:    new(max(int64(0), int64(math.Floor(float64(time.Since(requestStarted))/float64(time.Millisecond)+0.5)))), //portlint:allow numbers a non-negative whole-nanosecond count over 1e6 is never within 1e-6 of a .5 boundary, so floor(x+0.5) is Math.round (event-stream.ts:128)
+			DurationMs:    setupErrorDuration(requestStarted, streamStarted, time.Now()),
 			API:           r.model.ProviderMeta.API,
 			Provider:      providerID,
 			ModelID:       r.model.ID,
@@ -577,6 +579,18 @@ func (r *loopRun) requestStream(observation *ai.StreamObservation, streamFn Stre
 	}
 	message, calls, err = h.consumeStream(r.ctx, stream, r.model, r.thinking)
 	return message, calls, nil, err
+}
+
+// setupErrorDuration is event-stream.ts #time for a request-setup error. lazy.ts:50-51 stamps the error with a first
+// Date.now() and the stream records a second one as its start, and #time leaves a message untimed when its timestamp is
+// before the stream's start: a millisecond that ticks between the two reads drops durationMs. Otherwise it is the
+// milliseconds since the stream's start, rounded like Math.round.
+func setupErrorDuration(requestStarted, streamStarted, now time.Time) *int64 {
+	if requestStarted.UnixMilli() < streamStarted.UnixMilli() {
+		return nil
+	}
+	//portlint:allow numbers a non-negative whole-nanosecond count over 1e6 is never within 1e-6 of a .5 boundary, so floor(x+0.5) is Math.round (event-stream.ts:128)
+	return new(max(int64(0), int64(math.Floor(float64(now.Sub(streamStarted))/float64(time.Millisecond)+0.5))))
 }
 
 func (r *loopRun) requestError(err error) *AssistantMessage {
