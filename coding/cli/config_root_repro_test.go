@@ -65,13 +65,15 @@ func TestFreshCLIInPiSharingModeUsesTheXDGConfigRoot(t *testing.T) {
 		t.Errorf("the fresh CLI wrote into HOME: %v, %v", entries, err)
 	}
 
-	py := exec.CommandContext(ctx, "python3", "-c", "import pig_sdk; print(pig_sdk.Context(extension=None).config_home)")
+	// sys.stdout.write, not print: on Windows Python's text-mode stdout turns print's "\n" into "\r\n", which is the console's line ending and
+	// not part of config_home.
+	py := exec.CommandContext(ctx, "python3", "-c", "import sys, pig_sdk; sys.stdout.write(pig_sdk.Context(extension=None).config_home)")
 	py.Env = append(slices.Clone(env), "PYTHONPATH="+stagedSDKDir(t, pigRoot, "python"), "PYTHONDONTWRITEBYTECODE=1")
 	out, err := py.Output()
 	if err != nil {
 		t.Fatalf("python SDK: %v", err)
 	}
-	if got := string(out); got != pigRoot+"\n" {
+	if got := string(out); got != pigRoot {
 		t.Errorf("the staged Python SDK's config_home = %q, want %q", got, pigRoot)
 	}
 }
