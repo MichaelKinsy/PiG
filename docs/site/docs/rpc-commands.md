@@ -1,6 +1,6 @@
 # RPC commands
 
-This page lists the commands an RPC client writes to PiG on standard input, with example records and their responses. [RPC mode](/docs/latest/rpc) describes how to start the process and frame records. The commands are those of Pi 1.2.0's `RpcCommand` union ([Pi's RPC command reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/rpc-commands.md)), plus `get_extensions` (D101).
+This page lists the commands an RPC client writes to PiG on standard input, with example records and their responses. [RPC mode](/docs/latest/rpc) describes how to start the process and frame records. The commands are those of Pi 1.3.0's `RpcCommand` union ([Pi's RPC command reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/rpc-commands.md)), plus `get_extensions` (D101).
 
 ## Supported commands
 
@@ -65,7 +65,7 @@ PiG acknowledges the prompt after extension input handling and model authenticat
 
 RPC prompt input accepts text and optional images. If the Agent is already running, set `streamingBehavior` to `steer` or `followUp`. PiG rejects a second prompt without this field.
 
-The Agent counts as running from the moment PiG accepts a prompt, including while extension `before_agent_start` handlers run. A prompt with `streamingBehavior` sent in that time joins the starting run, and an `abort` stops the run as soon as it starts. This is new in Pi 1.2.0. In Pi 1.1.0, a second prompt sent in that time started a second run, which failed with `Agent is already processing`.
+The Agent counts as running from the moment PiG accepts a prompt, including while extension `before_agent_start` handlers run. A prompt with `streamingBehavior` sent in that time joins the starting run, and an `abort` stops the run as soon as it starts. This is new in Pi 1.3.0. In Pi 1.1.0, a second prompt sent in that time started a second run, which failed with `Agent is already processing`.
 
 A registered extension command such as `/review strict` runs immediately through the `prompt` command. Prompt templates and `/skill:<name>` expand before model submission.
 
@@ -182,7 +182,7 @@ PiG queues this message after the active turn settles. `queue_update` events rep
 {"id":"clear-1","type":"clear_queue"}
 ```
 
-PiG removes every queued steering and follow-up message. It writes a `queue_update` event with both queues empty, and then the response. The response data contains the text of the removed messages. Queued extension custom messages stay queued, because the response cannot return them. Pi 1.2.0 discards them (D135, [Pi #9886](https://github.com/earendil-works/pi/issues/9886)).
+PiG removes every queued steering and follow-up message. It writes a `queue_update` event with both queues empty, and then the response. The response data contains the text of the removed messages. Queued extension custom messages stay queued, because the response cannot return them. Pi 1.3.0 discards them (D135, [Pi #9886](https://github.com/earendil-works/pi/issues/9886)).
 
 ```json
 {"id":"clear-1","type":"response","command":"clear_queue","success":true,"data":{"steering":["Stop and inspect the parser first."],"followUp":["Then update the documentation."]}}
@@ -258,7 +258,7 @@ Switch to an existing Session:
 
 PiG keeps the startup project Resources when the target Session uses a different working directory. Direct RPC Bash uses the target working directory. Built-in tools, project settings, context files, prompts, skills, themes, and the system prompt still use the startup project (D61).
 
-When standard input ends while a replacement is still running, PiG finishes it and writes its response before it exits. Pi 1.2.0 exits without that response (D146).
+When standard input ends while a replacement is still running, PiG finishes it and writes its response before it exits. Pi 1.3.0 exits without that response (D146).
 
 Fork before a user message:
 

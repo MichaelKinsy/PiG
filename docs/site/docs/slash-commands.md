@@ -1,6 +1,6 @@
 # Slash commands
 
-PiG has the built-in slash commands of Pi 1.2.0 ([Pi's slash command reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/slash-commands.md)). Rows marked `[pig]` are PiG additions. Extensions can register more slash commands.
+PiG has the built-in slash commands of Pi 1.3.0 ([Pi's slash command reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/slash-commands.md)). Rows marked `[pig]` are PiG additions. Extensions can register more slash commands.
 
 ## Core
 
@@ -52,7 +52,7 @@ PiG Standard and other Piglets can add commands through selected extension Resou
 
 ## Worked examples
 
-Each example shows what you type, what PiG prints and where the behaviour comes from. The screens are taken from a real PiG session (a test model answering `What is in notes.txt?` first), so the lines above and below the result are the session's own. Paths and IDs on your computer differ. Where PiG differs from Pi, the divergence number is given. File and line references point to Pi 1.2.0's `packages/coding-agent/src/modes/interactive/interactive-mode.ts` (written `Pi:`) and to PiG's source.
+Each example shows what you type, what PiG prints and where the behaviour comes from. The screens are taken from a real PiG session (a test model answering `What is in notes.txt?` first), so the lines above and below the result are the session's own. Paths and IDs on your computer differ. Where PiG differs from Pi, the divergence number is given. File and line references point to Pi 1.3.0's `packages/coding-agent/src/modes/interactive/interactive-mode.ts` (written `Pi:`) and to PiG's source.
 
 ### Look at the session
 
@@ -86,7 +86,7 @@ Each example shows what you type, what PiG prints and where the behaviour comes 
  Status: Inactive (cache lifetime unavailable)
 ```
 
-`File:` reads `In-memory` under `--no-session`. Pi 1.1.0 showed an identical screen, and Pi 1.2.0 did not change `/session`.
+`File:` reads `In-memory` under `--no-session`. Pi 1.1.0 showed an identical screen, and Pi 1.3.0 did not change `/session`.
 
 **`/name <text>`** sets the session's display name, shown in the footer and in `/resume`:
 
@@ -112,7 +112,7 @@ The footer line changes from `…/sc • demo` to `…/sc • Notes review`. Pi:
 
 When the terminal or system has no clipboard, PiG shows the clipboard error instead. `Ctrl+X` copies the selection or the last message without a command.
 
-Over SSH or Mosh, PiG also sends the copied text to your local terminal with OSC 52. Set `PI_CLIPBOARD_OSC52=1` to do the same when PiG cannot detect the remote session, such as in a multiplexer attached from another machine. This variable is new in Pi 1.2.0. See [Environment variables](/docs/latest/environment-variables).
+Over SSH or Mosh, PiG also sends the copied text to your local terminal with OSC 52. Set `PI_CLIPBOARD_OSC52=1` to do the same when PiG cannot detect the remote session, such as in a multiplexer attached from another machine. This variable is new in Pi 1.3.0. See [Environment variables](/docs/latest/environment-variables).
 
 **`/hotkeys`** prints every key binding as tables (navigation, editing, other), taken from the keybindings in force, including your own. Pi: `interactive-mode.ts:3268`. Change a binding in `keybindings.json`: [Keybindings](/docs/latest/keybindings).
 

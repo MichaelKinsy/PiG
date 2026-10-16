@@ -10,7 +10,7 @@ READY.
 
 - `createCodingAgentHarness` (`internal/experimental/session_worker_factory.go`) opens the pi-durable Harness over SQLite with the Model Runtime as its models, the coding registry, the Harness settings, execution environments and pi's HTTP setup. The root conversation takes the initial model only when it is created and always the agent cwd. A startup failure closes the Harness, then the environments, and reports both failures together. `openCodingHarness` and `openStandInCodingHarness` are gone; the real-worker remote-runtime cases run the production function. `experimental-remote-runtime.test.ts` is `ported` (24 of 24 cases).
 - `internal/experimental/durableagent`: `harness-setup.ts` (settings, registry, environments, HTTP, initial model), `prompt.ts` (PiG identity: the preamble says pig), `sessions.ts`, `subagent.ts`, `runtime.ts`, `main.ts` arguments.
-- `internal/experimental/vacation` ported `vacation.ts`, `harness-setup.ts`, `main.ts` and the vacation profile of `runtime.ts` and `sessions.ts`. Pi 1.2.0 removed the vacation planner, so PiG removed the package and its program.
+- `internal/experimental/vacation` ported `vacation.ts`, `harness-setup.ts`, `main.ts` and the vacation profile of `runtime.ts` and `sessions.ts`. Pi 1.3.0 removed the vacation planner, so PiG removed the package and its program.
 - `internal/experimental/durable_tui.go`, `durable_tui_run.go`: `tui.ts` (the durable and vacation copies are the same file upstream). The program is the Go main package `durableagent/main`; it is not in the pig binary, as the upstream sources are excluded from the published package.
 - Ledgers: PORT_MAP, upstream-sync, async-contracts (`make async-contracts` is clean), unit-evidence, test-mapping, coverage, Go interface inventory.
 

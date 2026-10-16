@@ -294,7 +294,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/index.ts` | `coding/extension/host/subprocess/runtime-node/shims/pi-coding-agent.mjs (pinned Node barrel; independent SDK objects; main-process identity remains D73)` | ✅ |
 | `packages/coding-agent/src/config.ts` | `internal/codingagent/paths.go + internal/codingagent/selfupdate_package_command.go + internal/codingagent/selfupdate_tier.go (D2 directory opt-in; D39 native update ownership); the 1.0.3 quickJSWasmPath cache and in-memory codemode worker URL are designed out: PiG embeds its code in one native executable, as Pi's Bun binary does; detectInstallChange is ported as the additive D95 in internal/installchange/installchange.go`, `internal/codingagent/windows_self_update.go`, `coding/upstream.go` | ✅ |
 | `packages/coding-agent/src/migrations.ts` | `internal/codingagent/migrations.go` | ✅ |
-| `packages/coding-agent/src/package-manager-cli.ts` | `coding/cli/package_commands.go + coding/cli/cli_error.go + coding/cli/package_command_trust.go + coding/cli/package_model_catalogs.go + coding/cli/config_command.go + coding/packagecontent/packagecontent.go; Pi 1.2.0 pruneManagedReleases (#10392, keeps the new and the previous release) has no managed release directory to prune under D39: a standalone replacement keeps only the new executable, locked by internal/codingagent/selfupdate_test.go TestSelfReplaceAtWithCommitKeepsOnlyTheNewExecutable)` | ✅ |
+| `packages/coding-agent/src/package-manager-cli.ts` | `coding/cli/package_commands.go + coding/cli/cli_error.go + coding/cli/package_command_trust.go + coding/cli/package_model_catalogs.go + coding/cli/config_command.go + coding/packagecontent/packagecontent.go; Pi 1.3.0 pruneManagedReleases (#10392, keeps the new and the previous release) has no managed release directory to prune under D39: a standalone replacement keeps only the new executable, locked by internal/codingagent/selfupdate_test.go TestSelfReplaceAtWithCommitKeepsOnlyTheNewExecutable)` | ✅ |
 | `packages/coding-agent/src/cli/args.ts` | `coding/cli/args.go` | ✅ |
 | `packages/coding-agent/src/cli/initial-message.ts` | `coding/cli/main.go` | ✅ |
 | `packages/coding-agent/src/cli/file-processor.ts` | `internal/codingagent/file_processor.go` | ✅ |
@@ -428,7 +428,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/utils/version-check.ts` | `internal/codingagent/selfupdate.go (FetchUpdateManifest is getLatestPiRelease over the configured signed manifest of D39 instead of the pi.dev API, with Retry for the explicit check, the ten-second budget, and the identity and accept headers; CheckForBinaryUpdate is checkForNewPiVersion with PI_SKIP_VERSION_CHECK; ComparePackageVersions and IsNewerPackageVersion follow node-semver valid() with the non-semver string-inequality fallback; formatVersionCheckError is folded into the D39 update-failure message); tests in internal/codingagent/version_check_upstream_test.go` | ✅ |
 | `packages/coding-agent/src/utils/deprecation.ts` | `(designed out: the pinned upstream helper has no imports or callers; Go warning sites retain their caller-specific output policy)` | n/a |
 | `packages/coding-agent/src/utils/image-resize-core.ts` | `internal/imageprocessing/images.go` | ✅ |
-| `packages/coding-agent/src/utils/image-resize-worker.ts` | `(Node worker thread: Go uses goroutines in-process; Pi 1.2.0 tags worker replies and ignores Node's own channel messages under node --watch (#10527), which has no counterpart because Go resizes with no worker message channel)` | n/a |
+| `packages/coding-agent/src/utils/image-resize-worker.ts` | `(Node worker thread: Go uses goroutines in-process; Pi 1.3.0 tags worker replies and ignores Node's own channel messages under node --watch (#10527), which has no counterpart because Go resizes with no worker message channel)` | n/a |
 | `packages/coding-agent/src/utils/json.ts` | `internal/codingagent/model_registry.go (stripJSONComments; strip_json_comments_oracle_test.go)` | 🟡 |
 | `packages/coding-agent/src/utils/open-browser.ts` | `internal/codingagent/interactive_auth.go (openBrowser passes Windows URLs directly to rundll32; native TestOpenBrowserPassesURLToWindowsHandlerWithoutShell); detached launcher ported` | ✅ |
 | `packages/coding-agent/src/utils/windows-self-update.ts` | `internal/codingagent/windows_self_update.go (the running pig.exe is the loaded native image an npm update quarantines; TestQuarantineNativeDependenciesMovesLoadedImagesAndCopiesThemBack, TestWindowsNpmSelfUpdateReplacesTheRunningInstallation)` | ✅ |
@@ -460,7 +460,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/modes/interactive/components/session-selector.ts` | `internal/codingagent/session_selector.go (the component, hosted by startup_ui, the interactive mode and its theme modal; its unexported helpers session_selector_load (owned scope loads, progress and cancellation), session_selector_status (setStatusMessage) and session_selector_delete with its _unix and _windows variants (deleteSessionFile) await storage with UI-task pumping)`, `internal/codingagent/session_selector_load.go` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/session-selector-search.ts` | `internal/codingagent/session_selector.go + tui/fuzzy.go` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/settings-selector.ts` | `tui/settings_list.go + internal/codingagent/slash_session_handlers.go`, `internal/codingagent/settings_selector.go (no share-destination item, D64)` | ✅ |
-| `packages/coding-agent/src/modes/interactive/components/show-images-selector.ts` | `tui/show_images_selector.go (layout and onSelect/onCancel dispatch match upstream (TestShowImagesUpstreamRender, TestShowImagesUpstreamCallbacks); Pi 1.2.0 has no ordinary interactive entry point either)` | ✅ |
+| `packages/coding-agent/src/modes/interactive/components/show-images-selector.ts` | `tui/show_images_selector.go (layout and onSelect/onCancel dispatch match upstream (TestShowImagesUpstreamRender, TestShowImagesUpstreamCallbacks); Pi 1.3.0 has no ordinary interactive entry point either)` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts` | `tui/skill_invocation.go` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/theme-selector.ts` | `tui/theme_selector.go` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/thinking-selector.ts` | `internal/codingagent/thinking_selector.go` | ✅ |
@@ -614,8 +614,8 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/mcp/src/testing/index.ts` | `(Go has no barrel exports: the exports are the mcp/mcptest package)` | n/a |
 | `packages/mcp/src/transports/in-memory.ts` | `mcp/mcptest/inmemory.go` | ✅ |
 | `packages/mcp/src/transports/stdio.ts` | `mcp/stdio.go; mcp/stdio_unix.go; mcp/stdio_windows.go` | ✅ |
-| `packages/mcp/src/transports/streamable-http.ts` | `mcp/streamable_http.go; mcp/sse.go` (missing at Pi 1.2.0: `send(message, options?)`'s McpTransportSendOptions, interface gap `StreamableHttpTransport::property:send::call:0` signature-mismatch) | 🟡 |
-| `packages/mcp/src/transports/transport.ts` | `mcp/transport.go` (missing at Pi 1.2.0: the McpTransportSendOptions argument of `McpTransport.send`, interface gap `McpTransport::property:send::call:0` signature-mismatch) | 🟡 |
+| `packages/mcp/src/transports/streamable-http.ts` | `mcp/streamable_http.go; mcp/sse.go` (missing at Pi 1.3.0: `send(message, options?)`'s McpTransportSendOptions, interface gap `StreamableHttpTransport::property:send::call:0` signature-mismatch) | 🟡 |
+| `packages/mcp/src/transports/transport.ts` | `mcp/transport.go` (missing at Pi 1.3.0: the McpTransportSendOptions argument of `McpTransport.send`, interface gap `McpTransport::property:send::call:0` signature-mismatch) | 🟡 |
 
 ## `packages/codemode/src/`
 
@@ -697,7 +697,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/documents.ts` | `durable/documents.go` | ✅ |
 | `packages/durable/src/entries.ts` | `durable/entries.go` | ✅ |
 | `packages/durable/src/env/decode.ts` | `durable/env/decode.go` | ✅ |
-| `packages/durable/src/env/index.ts` | `durable/env/env.go` (missing at Pi 1.2.0: `FileSystem.listFiles` and `ExecutionEnv.listFiles`; Go has them only as the separate FileLister interface, interface gaps `FileSystem::property:listFiles` and `ExecutionEnv::property:listFiles` member-missing) | 🟡 |
+| `packages/durable/src/env/index.ts` | `durable/env/env.go` (missing at Pi 1.3.0: `FileSystem.listFiles` and `ExecutionEnv.listFiles`; Go has them only as the separate FileLister interface, interface gaps `FileSystem::property:listFiles` and `ExecutionEnv::property:listFiles` member-missing) | 🟡 |
 | `packages/durable/src/env/line-scan.ts` | `durable/env/line_scan.go` | ✅ |
 | `packages/durable/src/env/node-watch.ts` | `durable/env/node/watch.go` | ✅ |
 | `packages/durable/src/env/node.ts` | `durable/env/node/binary_reader.go + durable/env/node/exec.go + durable/env/node/node.go`, `durable/env/node/watch.go` | ✅ |

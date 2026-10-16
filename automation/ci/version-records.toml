@@ -206,3 +206,11 @@ paths = ["docs/extension-api-parity.md"]
 version = "0.99.1"
 reason = "The extension API parity table cites Pi 0.99.1 source lines, which it names as the release they were read from."
 paths = ["docs/extension-api-parity.md"]
+
+[[record]]
+version = "1.2.0"
+reason = "Generated from the history, CHANGELOG.md and the divergence records: each entry names the Pi release its fix or port was made against, and the release notes draft is the 0.5.0 section of CHANGELOG.md, whose entries name the Pi release each change was ported from."
+paths = [
+  "docs/release/0.5.0-release-notes-draft.md",
+  "docs/site/docs/bug-ledger.md",
+]

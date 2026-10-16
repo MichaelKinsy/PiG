@@ -1,6 +1,6 @@
 # Durable core: executable contract
 
-Status: design, 2026-10-06; section 1 pins Pi 1.2.0 (06a46693: nested tool calls, one document per nested call, Photon images and the bounded scheduler indexes, inputs placed as application entries and display-only writes appended at once, deferred tools; moved from main 97195ec3, before that ea448f45, 42a3497d and da866ada). Owner lane: do-core-design. Consumers: every bake-off lane in [BAKEOFF.md](BAKEOFF.md), the production core described in [ADR-0001](ADR-0001-core-architecture.md), and its hosts ([ABI.md](ABI.md)).
+Status: design, 2026-10-06; section 1 pins Pi 1.3.0 (06a46693: nested tool calls, one document per nested call, Photon images and the bounded scheduler indexes, inputs placed as application entries and display-only writes appended at once, deferred tools; moved from main 97195ec3, before that ea448f45, 42a3497d and da866ada). Owner lane: do-core-design. Consumers: every bake-off lane in [BAKEOFF.md](BAKEOFF.md), the production core described in [ADR-0001](ADR-0001-core-architecture.md), and its hosts ([ABI.md](ABI.md)).
 
 The core is correct when pi-durable, run through the same scenario with the same inputs, writes the same rows at the same commit boundaries and sends the same model contexts. This document defines "same", lists the semantics that produce it, names the corpus, and specifies the capture and diff tooling that decides it. Prose here does not replace the spec; each rule cites it.
 
@@ -9,7 +9,7 @@ The core is correct when pi-durable, run through the same scenario with the same
 | item | value |
 |---|---|
 | reference | `packages/durable`, `packages/ai` and `packages/chord` of Pi at the upstream commit below, run from source (`make durable-contract-setup` checks it out; `durable/contract/PIN`) |
-| upstream commit | `06a466935536f8c9bcacb2d5efc0fc021be1bdff` (Pi v1.2.0; `durable/contract/PIN` `main`, `durable/contract/corpus.toml` `[pin]`) |
+| upstream commit | `06a466935536f8c9bcacb2d5efc0fc021be1bdff` (Pi v1.3.0; `durable/contract/PIN` `main`, `durable/contract/corpus.toml` `[pin]`) |
 | normative spec | `packages/durable/docs/spec.md`, sha256 prefix `13f0b4d5a4238c44`, 5,340 lines |
 | storage conformance | `packages/durable/src/testing/storage-conformance.ts`, sha256 prefix `96111bf8d693804f` |
 | scenarios | `packages/durable/test/examples/00-*.ts` through `31-*.ts` (32 programs) |

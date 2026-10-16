@@ -48,7 +48,7 @@ See [`docs/project/RELEASING.md`](https://github.com/MichaelKinsy/PiG/blob/main/
 
 ## Mirror upstream
 
-PiG compares against one Pi build. The upstream pin is one setting, `.upstream/pin`: a release tag or a pinned pi-mono commit. PiG 0.5.0 pins Pi 1.2.0.
+PiG compares against one Pi build. The upstream pin is one setting, `.upstream/pin`: a release tag or a pinned pi-mono commit. PiG 0.5.0 pins Pi 1.3.0.
 
 ```bash
 make upstream-mirror
