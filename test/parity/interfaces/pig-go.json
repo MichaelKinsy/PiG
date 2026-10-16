@@ -269117,9 +269117,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func() (restore func(), drain func(), err error)"
+        "type": "func() (restore func(), drain func() error, err error)"
       },
-      "shapeHash": "sha256:97070cde785f38db6c81a24f9ee9cadd191b6656e8228144fa8bd543f1186eb2"
+      "shapeHash": "sha256:37e694c8ece2c85236c69508a4eaa3a3d368d3568f6d85dfe938b6c0dd481886"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ExpandedEditorText",

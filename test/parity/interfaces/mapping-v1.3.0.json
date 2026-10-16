@@ -43115,8 +43115,7 @@
       ],
       "evidence": [
         "test:ai/openai_responses_custom_tool_stream_test.go#TestProcessResponsesStreamCustomToolCallInputAccumulates",
-        "test:ai/openai_responses_stream_options_test.go#TestProcessResponsesStreamCallsTheInjectedOptions",
-        "test:ai/perf_gate_norace_test.go#TestGrammarToolInputPerDeltaAllocationGate"
+        "test:ai/openai_responses_stream_options_test.go#TestProcessResponsesStreamCallsTheInjectedOptions"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -43157,8 +43156,7 @@
         "call:ai/openai_responses.go#openAIResponsesProvider.parseResponses"
       ],
       "evidence": [
-        "test:ai/openai_responses_custom_tool_stream_test.go#TestProcessResponsesStreamCustomToolCallInputAccumulates",
-        "test:ai/perf_gate_norace_test.go#TestGrammarToolInputPerDeltaAllocationGate"
+        "test:ai/openai_responses_custom_tool_stream_test.go#TestProcessResponsesStreamCustomToolCallInputAccumulates"
       ]
     },
     {
@@ -43240,8 +43238,7 @@
       ],
       "evidence": [
         "test:ai/openai_responses_custom_tool_stream_test.go#TestProcessResponsesStreamCustomToolCallInputAccumulates",
-        "test:ai/openai_responses_stream_options_test.go#TestProcessResponsesStreamCallsTheInjectedOptions",
-        "test:ai/perf_gate_norace_test.go#TestGrammarToolInputPerDeltaAllocationGate"
+        "test:ai/openai_responses_stream_options_test.go#TestProcessResponsesStreamCallsTheInjectedOptions"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -43263,8 +43260,7 @@
       ],
       "evidence": [
         "test:ai/openai_responses_custom_tool_stream_test.go#TestProcessResponsesStreamCustomToolCallInputAccumulates",
-        "test:ai/openai_responses_stream_options_test.go#TestProcessResponsesStreamCallsTheInjectedOptions",
-        "test:ai/perf_gate_norace_test.go#TestGrammarToolInputPerDeltaAllocationGate"
+        "test:ai/openai_responses_stream_options_test.go#TestProcessResponsesStreamCallsTheInjectedOptions"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -109229,7 +109225,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/codemode/call.go#call.deliverReplayed"
+        "call:durable/codemode/call.go#call.commitQueued"
       ],
       "evidence": [
         "test:codemode/deterministic_test.go#TestDeterministicRunsApplyResultsInSeqOrderWhateverOrderTheyAreDeliveredIn",
@@ -111117,8 +111113,8 @@
       ],
       "evidence": [
         "test:codemode/inlinechannel_test.go#TestAnInlineFirstSegmentDeliversItsResultBeforeAnExpiredDeadline",
-        "test:codemode/resources_linux_test.go#TestConcurrentInlineExecutionsReturnMemoryAndDescriptors",
-        "test:codemode/inline_test.go#TestInlineSandboxChecksTheDeadlineBetweenTurnsLikePi"
+        "test:codemode/inline_test.go#TestInlineSandboxChecksTheDeadlineBetweenTurnsLikePi",
+        "test:codemode/inline_test.go#TestInlineSandboxCountsTheBudgetAcrossWaitsOnTools"
       ]
     },
     {
@@ -113578,7 +113574,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/codemode/call.go#call.deliverReplayed"
+        "call:durable/codemode/call.go#call.commitQueued"
       ],
       "evidence": [
         "test:codemode/deterministic_test.go#TestDeterministicRunsApplyResultsInSeqOrderWhateverOrderTheyAreDeliveredIn",
@@ -114979,8 +114975,8 @@
       ],
       "evidence": [
         "test:codemode/inlinechannel_test.go#TestAnInlineFirstSegmentDeliversItsResultBeforeAnExpiredDeadline",
-        "test:codemode/resources_linux_test.go#TestConcurrentInlineExecutionsReturnMemoryAndDescriptors",
-        "test:codemode/inline_test.go#TestInlineSandboxChecksTheDeadlineBetweenTurnsLikePi"
+        "test:codemode/inline_test.go#TestInlineSandboxChecksTheDeadlineBetweenTurnsLikePi",
+        "test:codemode/inline_test.go#TestInlineSandboxCountsTheBudgetAcrossWaitsOnTools"
       ]
     },
     {
@@ -117516,7 +117512,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/codemode/call.go#call.deliverReplayed"
+        "call:durable/codemode/call.go#call.commitQueued"
       ],
       "evidence": [
         "test:codemode/deterministic_test.go#TestDeterministicRunsApplyResultsInSeqOrderWhateverOrderTheyAreDeliveredIn",
@@ -118770,8 +118766,8 @@
       ],
       "evidence": [
         "test:codemode/inlinechannel_test.go#TestAnInlineFirstSegmentDeliversItsResultBeforeAnExpiredDeadline",
-        "test:codemode/resources_linux_test.go#TestConcurrentInlineExecutionsReturnMemoryAndDescriptors",
-        "test:codemode/inline_test.go#TestInlineSandboxChecksTheDeadlineBetweenTurnsLikePi"
+        "test:codemode/inline_test.go#TestInlineSandboxChecksTheDeadlineBetweenTurnsLikePi",
+        "test:codemode/inline_test.go#TestInlineSandboxCountsTheBudgetAcrossWaitsOnTools"
       ]
     },
     {
@@ -131998,8 +131994,8 @@
       ],
       "evidence": [
         "test:coding/session_manual_compact_response_upstream_test.go#TestManualCompactPersistsAbortedResponseBeforeCompaction",
-        "test:internal/codingagent/interactive_init_state_pty_test.go#TestInitBuildsTheInteractiveStateBeforeTheSessionBindChild",
-        "test:internal/codingagent/settings_compaction_snapshot_test.go#TestCompactionSettingsReadOneSnapshot"
+        "test:internal/codingagent/settings_compaction_snapshot_test.go#TestCompactionSettingsReadOneSnapshot",
+        "test:internal/codingagent/settings_test.go#TestGetCompactionSettings_DisabledOverride"
       ]
     },
     {
@@ -132667,9 +132663,9 @@
         "call:internal/codingagent/paths.go#ConfigDirName"
       ],
       "evidence": [
-        "test:coding/cli/first_time_setup_upstream_test.go#TestFirstTimeSetupOriginalCasesAsFork",
         "test:coding/cli/package_agents_skills_upstream_test.go#TestPackageAgentsSkillDiscoveryOriginal",
-        "test:coding/cli/package_resource_upstream_test.go#TestCanonicalResourceWinnerUsesProjectAutoBeforeUserExplicit"
+        "test:coding/cli/package_resource_upstream_test.go#TestCanonicalResourceWinnerUsesProjectAutoBeforeUserExplicit",
+        "test:coding/cli/package_resource_upstream_test.go#TestPackageResolveOriginalCases"
       ]
     },
     {
@@ -157257,9 +157253,7 @@
         "call:internal/codingagent/interactive.go#InteractiveMode.Init"
       ],
       "evidence": [
-        "test:internal/codingagent/interactive_init_full_test.go#TestInitBuildsTheInteractiveModeChild",
-        "test:internal/codingagent/interactive_init_pty_test.go#TestInitFailingAfterTheTuiStartsChild",
-        "test:internal/codingagent/interactive_init_state_pty_test.go#TestInitBuildsTheInteractiveStateBeforeTheSessionBindChild"
+        "test:internal/codingagent/interactive_lifecycle_test.go#TestInteractiveModeInitIsGuardedAndAFailedInitIsStoppable"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -157280,9 +157274,7 @@
         "call:internal/codingagent/interactive.go#InteractiveMode.Init"
       ],
       "evidence": [
-        "test:internal/codingagent/interactive_init_full_test.go#TestInitBuildsTheInteractiveModeChild",
-        "test:internal/codingagent/interactive_init_pty_test.go#TestInitFailingAfterTheTuiStartsChild",
-        "test:internal/codingagent/interactive_init_state_pty_test.go#TestInitBuildsTheInteractiveStateBeforeTheSessionBindChild"
+        "test:internal/codingagent/interactive_lifecycle_test.go#TestInteractiveModeInitIsGuardedAndAFailedInitIsStoppable"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -157563,9 +157555,9 @@
         "call:internal/codingagent/interactive_lifecycle.go#InteractiveMode.Stop"
       ],
       "evidence": [
-        "test:internal/codingagent/interactive_init_full_test.go#TestInitBuildsTheInteractiveModeChild",
-        "test:internal/codingagent/interactive_init_pty_test.go#TestInitFailingAfterTheTuiStartsChild",
-        "test:internal/codingagent/interactive_init_state_pty_test.go#TestInitBuildsTheInteractiveStateBeforeTheSessionBindChild"
+        "test:internal/codingagent/interactive_lifecycle_test.go#TestInteractiveModeInitIsGuardedAndAFailedInitIsStoppable",
+        "test:internal/codingagent/interactive_lifecycle_test.go#TestInteractiveModeStopReleasesTeardownsLastInFirstOutOnce",
+        "test:internal/codingagent/interactive_lifecycle_test.go#TestInteractiveModeStopTakesTheFullscreenExitOutputArgument"
       ]
     },
     {
@@ -157585,9 +157577,9 @@
         "call:internal/codingagent/interactive_lifecycle.go#InteractiveMode.Stop"
       ],
       "evidence": [
-        "test:internal/codingagent/interactive_init_full_test.go#TestInitBuildsTheInteractiveModeChild",
-        "test:internal/codingagent/interactive_init_pty_test.go#TestInitFailingAfterTheTuiStartsChild",
-        "test:internal/codingagent/interactive_init_state_pty_test.go#TestInitBuildsTheInteractiveStateBeforeTheSessionBindChild"
+        "test:internal/codingagent/interactive_lifecycle_test.go#TestInteractiveModeInitIsGuardedAndAFailedInitIsStoppable",
+        "test:internal/codingagent/interactive_lifecycle_test.go#TestInteractiveModeStopReleasesTeardownsLastInFirstOutOnce",
+        "test:internal/codingagent/interactive_lifecycle_test.go#TestInteractiveModeStopTakesTheFullscreenExitOutputArgument"
       ]
     },
     {
@@ -177761,8 +177753,8 @@
       ],
       "evidence": [
         "test:bench/sessionscale/gen_test.go#TestGeneratedSessionResumesToTheReportedContext",
-        "test:internal/codingagent/perf_gate_norace_test.go#TestSessionTurnAllocationGate",
-        "test:internal/codingagent/session_compaction_record_test.go#TestCompactionEntriesServeTheirLines"
+        "test:internal/codingagent/session_compaction_record_test.go#TestCompactionEntriesServeTheirLines",
+        "test:internal/codingagent/session_context_source_order_test.go#TestSessionContextKeepsTheMemberOrderOfMessagesPiDidNotWrite"
       ]
     },
     {
@@ -177783,8 +177775,8 @@
       ],
       "evidence": [
         "test:bench/sessionscale/gen_test.go#TestGeneratedSessionResumesToTheReportedContext",
-        "test:internal/codingagent/perf_gate_norace_test.go#TestSessionTurnAllocationGate",
-        "test:internal/codingagent/session_compaction_record_test.go#TestCompactionEntriesServeTheirLines"
+        "test:internal/codingagent/session_compaction_record_test.go#TestCompactionEntriesServeTheirLines",
+        "test:internal/codingagent/session_context_source_order_test.go#TestSessionContextKeepsTheMemberOrderOfMessagesPiDidNotWrite"
       ]
     },
     {
@@ -228693,8 +228685,8 @@
       ],
       "evidence": [
         "test:env/local_daemon_terminal_test.go#TestOpenTerminalOverTheLocalDaemonOfThePackagedLayout",
-        "test:env/terminal_linux_test.go#TestTerminalForegroundOfANameCutInsideACharacterHasNoName",
-        "test:env/terminal_linux_test.go#TestTerminalThatCannotStartFailsWithTheSystemsWords"
+        "test:env/terminal_test.go#TestNewRemoteTerminalKeepsWhatItIsGivenAndWriteTakesBytesOrText",
+        "test:env/terminal_test.go#TestOpenTerminalCancelledBeforeItStartedAbandonsTheOpenAndKillsTheProgram"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -228716,8 +228708,8 @@
       ],
       "evidence": [
         "test:env/local_daemon_terminal_test.go#TestOpenTerminalOverTheLocalDaemonOfThePackagedLayout",
-        "test:env/terminal_linux_test.go#TestTerminalForegroundOfANameCutInsideACharacterHasNoName",
-        "test:env/terminal_linux_test.go#TestTerminalThatCannotStartFailsWithTheSystemsWords"
+        "test:env/terminal_test.go#TestNewRemoteTerminalKeepsWhatItIsGivenAndWriteTakesBytesOrText",
+        "test:env/terminal_test.go#TestOpenTerminalCancelledBeforeItStartedAbandonsTheOpenAndKillsTheProgram"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -230587,9 +230579,9 @@
         "call:env/terminal.go#NewRemoteTerminal"
       ],
       "evidence": [
-        "test:env/terminal_linux_test.go#TestTerminalForegroundOfANameCutInsideACharacterHasNoName",
         "test:env/terminal_test.go#TestNewRemoteTerminalKeepsWhatItIsGivenAndWriteTakesBytesOrText",
-        "test:env/terminal_test.go#TestOpenTerminalReportsTheJobInTheForegroundNotTheShellAtItsPrompt"
+        "test:env/terminal_test.go#TestOpenTerminalReportsTheJobInTheForegroundNotTheShellAtItsPrompt",
+        "test:env/terminal_test.go#TestPtyRequestsAreValidated"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -230631,9 +230623,9 @@
         "call:env/terminal.go#RemoteTerminal.Close"
       ],
       "evidence": [
-        "test:env/terminal_linux_test.go#TestTerminalForegroundOfANameCutInsideACharacterHasNoName",
         "test:env/terminal_test.go#TestNewRemoteTerminalKeepsWhatItIsGivenAndWriteTakesBytesOrText",
-        "test:env/terminal_test.go#TestOpenTerminalKillsEverythingInTheSessionOnCloseAndOnALostConnection"
+        "test:env/terminal_test.go#TestOpenTerminalKillsEverythingInTheSessionOnCloseAndOnALostConnection",
+        "test:env/terminal_test.go#TestOpenTerminalKillsTheProgramOnClose"
       ]
     },
     {
@@ -230653,9 +230645,9 @@
         "call:env/terminal.go#RemoteTerminal.Close"
       ],
       "evidence": [
-        "test:env/terminal_linux_test.go#TestTerminalForegroundOfANameCutInsideACharacterHasNoName",
         "test:env/terminal_test.go#TestNewRemoteTerminalKeepsWhatItIsGivenAndWriteTakesBytesOrText",
-        "test:env/terminal_test.go#TestOpenTerminalKillsEverythingInTheSessionOnCloseAndOnALostConnection"
+        "test:env/terminal_test.go#TestOpenTerminalKillsEverythingInTheSessionOnCloseAndOnALostConnection",
+        "test:env/terminal_test.go#TestOpenTerminalKillsTheProgramOnClose"
       ]
     },
     {
@@ -230677,7 +230669,7 @@
       "evidence": [
         "test:env/terminal_test.go#TestNewRemoteTerminalKeepsWhatItIsGivenAndWriteTakesBytesOrText",
         "test:env/local_daemon_terminal_test.go#TestOpenTerminalOverTheLocalDaemonOfThePackagedLayout",
-        "test:env/terminal_linux_test.go#TestTerminalEnvironmentIsOrderedByName"
+        "test:env/terminal_test.go#TestOpenTerminalDeliversRawBytesNotDecodedText"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -230698,7 +230690,6 @@
         "call:env/terminal.go#RemoteTerminal.Foreground"
       ],
       "evidence": [
-        "test:env/terminal_linux_test.go#TestTerminalForegroundOfANameCutInsideACharacterHasNoName",
         "test:env/terminal_test.go#TestOpenTerminalReportsTheJobInTheForegroundNotTheShellAtItsPrompt",
         "test:env/terminal_test.go#TestPtyRequestsAreValidated"
       ],
@@ -230721,7 +230712,6 @@
         "call:env/terminal.go#RemoteTerminal.Foreground"
       ],
       "evidence": [
-        "test:env/terminal_linux_test.go#TestTerminalForegroundOfANameCutInsideACharacterHasNoName",
         "test:env/terminal_test.go#TestOpenTerminalReportsTheJobInTheForegroundNotTheShellAtItsPrompt",
         "test:env/terminal_test.go#TestPtyRequestsAreValidated"
       ],
@@ -230806,9 +230796,9 @@
         "call:env/terminal.go#RemoteTerminal.Write"
       ],
       "evidence": [
-        "test:env/terminal_linux_test.go#TestTerminalForegroundOfANameCutInsideACharacterHasNoName",
         "test:env/terminal_test.go#TestNewRemoteTerminalKeepsWhatItIsGivenAndWriteTakesBytesOrText",
-        "test:env/terminal_test.go#TestOpenTerminalKeepsInputInOrder"
+        "test:env/terminal_test.go#TestOpenTerminalKeepsInputInOrder",
+        "test:env/terminal_test.go#TestOpenTerminalReportsTheJobInTheForegroundNotTheShellAtItsPrompt"
       ]
     },
     {
@@ -230828,9 +230818,9 @@
         "call:env/terminal.go#RemoteTerminal.Write"
       ],
       "evidence": [
-        "test:env/terminal_linux_test.go#TestTerminalForegroundOfANameCutInsideACharacterHasNoName",
         "test:env/terminal_test.go#TestNewRemoteTerminalKeepsWhatItIsGivenAndWriteTakesBytesOrText",
-        "test:env/terminal_test.go#TestOpenTerminalKeepsInputInOrder"
+        "test:env/terminal_test.go#TestOpenTerminalKeepsInputInOrder",
+        "test:env/terminal_test.go#TestOpenTerminalReportsTheJobInTheForegroundNotTheShellAtItsPrompt"
       ]
     },
     {
@@ -231986,7 +231976,6 @@
         "call:env/terminal.go#RemoteTerminal.Foreground"
       ],
       "evidence": [
-        "test:env/terminal_linux_test.go#TestTerminalForegroundOfANameCutInsideACharacterHasNoName",
         "test:env/terminal_test.go#TestOpenTerminalReportsTheJobInTheForegroundNotTheShellAtItsPrompt"
       ]
     },
@@ -232007,7 +231996,6 @@
         "call:env/terminal.go#RemoteTerminal.Foreground"
       ],
       "evidence": [
-        "test:env/terminal_linux_test.go#TestTerminalForegroundOfANameCutInsideACharacterHasNoName",
         "test:env/terminal_test.go#TestOpenTerminalReportsTheJobInTheForegroundNotTheShellAtItsPrompt"
       ]
     },
@@ -232049,8 +232037,8 @@
       ],
       "evidence": [
         "test:env/local_daemon_terminal_test.go#TestOpenTerminalOverTheLocalDaemonOfThePackagedLayout",
-        "test:env/terminal_linux_test.go#TestTerminalEnvironmentIsOrderedByName",
-        "test:env/terminal_linux_test.go#TestTerminalEnvironmentIsTheDaemonsOwnWhenTheRequestChangesNothing"
+        "test:env/terminal_test.go#TestNewRemoteTerminalKeepsWhatItIsGivenAndWriteTakesBytesOrText",
+        "test:env/terminal_test.go#TestOpenTerminalCancelledBeforeItStartedAbandonsTheOpenAndKillsTheProgram"
       ]
     },
     {
@@ -232071,8 +232059,8 @@
       ],
       "evidence": [
         "test:env/local_daemon_terminal_test.go#TestOpenTerminalOverTheLocalDaemonOfThePackagedLayout",
-        "test:env/terminal_linux_test.go#TestTerminalEnvironmentIsOrderedByName",
-        "test:env/terminal_linux_test.go#TestTerminalEnvironmentIsTheDaemonsOwnWhenTheRequestChangesNothing"
+        "test:env/terminal_test.go#TestNewRemoteTerminalKeepsWhatItIsGivenAndWriteTakesBytesOrText",
+        "test:env/terminal_test.go#TestOpenTerminalCancelledBeforeItStartedAbandonsTheOpenAndKillsTheProgram"
       ]
     },
     {
@@ -232093,8 +232081,8 @@
       ],
       "evidence": [
         "test:env/local_daemon_terminal_test.go#TestOpenTerminalOverTheLocalDaemonOfThePackagedLayout",
-        "test:env/terminal_linux_test.go#TestTerminalForegroundOfANameCutInsideACharacterHasNoName",
-        "test:env/terminal_linux_test.go#TestTerminalThatCannotStartFailsWithTheSystemsWords"
+        "test:env/terminal_test.go#TestNewRemoteTerminalKeepsWhatItIsGivenAndWriteTakesBytesOrText",
+        "test:env/terminal_test.go#TestOpenTerminalCancelledBeforeItStartedAbandonsTheOpenAndKillsTheProgram"
       ]
     },
     {
@@ -232115,8 +232103,8 @@
       ],
       "evidence": [
         "test:env/local_daemon_terminal_test.go#TestOpenTerminalOverTheLocalDaemonOfThePackagedLayout",
-        "test:env/terminal_linux_test.go#TestTerminalForegroundOfANameCutInsideACharacterHasNoName",
-        "test:env/terminal_linux_test.go#TestTerminalThatCannotStartFailsWithTheSystemsWords"
+        "test:env/terminal_test.go#TestNewRemoteTerminalKeepsWhatItIsGivenAndWriteTakesBytesOrText",
+        "test:env/terminal_test.go#TestOpenTerminalCancelledBeforeItStartedAbandonsTheOpenAndKillsTheProgram"
       ]
     },
     {
@@ -232136,9 +232124,9 @@
         "call:env/terminal.go#OpenTerminal"
       ],
       "evidence": [
-        "test:env/terminal_linux_test.go#TestTerminalEnvironmentIsOrderedByName",
-        "test:env/terminal_linux_test.go#TestTerminalForegroundOfANameCutInsideACharacterHasNoName",
-        "test:env/terminal_linux_test.go#TestTerminalThatCannotStartFailsWithTheSystemsWords"
+        "test:env/terminal_test.go#TestNewRemoteTerminalKeepsWhatItIsGivenAndWriteTakesBytesOrText",
+        "test:env/terminal_test.go#TestOpenTerminalReportsTheJobInTheForegroundNotTheShellAtItsPrompt",
+        "test:env/terminal_test.go#TestOpenTerminalRunsAProgramInATerminalWithInputResizingAndItsExitCode"
       ]
     },
     {
@@ -232158,8 +232146,6 @@
         "call:env/terminal.go#OpenTerminal"
       ],
       "evidence": [
-        "test:env/terminal_linux_test.go#TestTerminalEnvironmentIsOrderedByName",
-        "test:env/terminal_linux_test.go#TestTerminalThatCannotStartFailsWithTheSystemsWords",
         "test:env/terminal_test.go#TestOpenTerminalRunsTheUsersShellAsALoginShellByDefault"
       ]
     },
@@ -232181,8 +232167,8 @@
       ],
       "evidence": [
         "test:env/local_daemon_terminal_test.go#TestOpenTerminalOverTheLocalDaemonOfThePackagedLayout",
-        "test:env/terminal_linux_test.go#TestTerminalForegroundOfANameCutInsideACharacterHasNoName",
-        "test:env/terminal_linux_test.go#TestTerminalThatCannotStartFailsWithTheSystemsWords"
+        "test:env/terminal_test.go#TestNewRemoteTerminalKeepsWhatItIsGivenAndWriteTakesBytesOrText",
+        "test:env/terminal_test.go#TestOpenTerminalCancelledBeforeItStartedAbandonsTheOpenAndKillsTheProgram"
       ]
     },
     {
@@ -232203,8 +232189,8 @@
       ],
       "evidence": [
         "test:env/local_daemon_terminal_test.go#TestOpenTerminalOverTheLocalDaemonOfThePackagedLayout",
-        "test:env/terminal_linux_test.go#TestTerminalForegroundOfANameCutInsideACharacterHasNoName",
-        "test:env/terminal_linux_test.go#TestTerminalThatCannotStartFailsWithTheSystemsWords"
+        "test:env/terminal_test.go#TestNewRemoteTerminalKeepsWhatItIsGivenAndWriteTakesBytesOrText",
+        "test:env/terminal_test.go#TestOpenTerminalCancelledBeforeItStartedAbandonsTheOpenAndKillsTheProgram"
       ]
     },
     {
@@ -232225,8 +232211,8 @@
       ],
       "evidence": [
         "test:env/local_daemon_terminal_test.go#TestOpenTerminalOverTheLocalDaemonOfThePackagedLayout",
-        "test:env/terminal_linux_test.go#TestTerminalForegroundOfANameCutInsideACharacterHasNoName",
-        "test:env/terminal_linux_test.go#TestTerminalThatCannotStartFailsWithTheSystemsWords"
+        "test:env/terminal_test.go#TestNewRemoteTerminalKeepsWhatItIsGivenAndWriteTakesBytesOrText",
+        "test:env/terminal_test.go#TestOpenTerminalCancelledBeforeItStartedAbandonsTheOpenAndKillsTheProgram"
       ]
     },
     {
@@ -257414,9 +257400,9 @@
         "call:tui/native_platform.go#GetNativeClipboard"
       ],
       "evidence": [
-        "test:internal/nativeplatform/native_platform_upstream_linux_test.go#TestUpstreamNativePlatformLinuxLazyConnectionAndDisplayRecheck",
         "test:internal/nativeplatform/native_platform_upstream_test.go#TestUpstreamNativePlatformLinuxLazyDisplay",
-        "test:internal/nativeplatform/native_platform_upstream_test.go#TestUpstreamNativePlatformLinuxRechecksDisplay"
+        "test:internal/nativeplatform/native_platform_upstream_test.go#TestUpstreamNativePlatformLinuxRechecksDisplay",
+        "test:internal/nativeplatform/native_platform_upstream_test.go#TestUpstreamNativePlatformWindowsClipboardText"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -257505,9 +257491,9 @@
         "call:internal/codingagent/clipboard_text.go#hostNativeClipboardText"
       ],
       "evidence": [
-        "test:internal/nativeplatform/native_platform_upstream_linux_test.go#TestUpstreamNativePlatformLinuxLazyConnectionAndDisplayRecheck",
         "test:internal/nativeplatform/native_platform_upstream_test.go#TestUpstreamNativePlatformLinuxLazyDisplay",
-        "test:internal/nativeplatform/native_platform_upstream_test.go#TestUpstreamNativePlatformLinuxRechecksDisplay"
+        "test:internal/nativeplatform/native_platform_upstream_test.go#TestUpstreamNativePlatformLinuxRechecksDisplay",
+        "test:internal/nativeplatform/native_platform_upstream_test.go#TestUpstreamNativePlatformWindowsClipboardText"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -257528,9 +257514,9 @@
         "call:internal/codingagent/clipboard_text.go#hostNativeClipboardText"
       ],
       "evidence": [
-        "test:internal/nativeplatform/native_platform_upstream_linux_test.go#TestUpstreamNativePlatformLinuxLazyConnectionAndDisplayRecheck",
         "test:internal/nativeplatform/native_platform_upstream_test.go#TestUpstreamNativePlatformLinuxLazyDisplay",
-        "test:internal/nativeplatform/native_platform_upstream_test.go#TestUpstreamNativePlatformLinuxRechecksDisplay"
+        "test:internal/nativeplatform/native_platform_upstream_test.go#TestUpstreamNativePlatformLinuxRechecksDisplay",
+        "test:internal/nativeplatform/native_platform_upstream_test.go#TestUpstreamNativePlatformWindowsClipboardText"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -259501,8 +259487,7 @@
       ],
       "evidence": [
         "test:tui/terminal_pty_test.go#TestProcessTerminalOnPseudoTerminal",
-        "test:tui/terminal_test.go#TestProcessTerminal_StartStop_DoubleStartStopIsNoop",
-        "test:tui/terminal_interface_pty_test.go#TestTerminalInterfaceStartForwardsInputAndStopEndsIt"
+        "test:tui/terminal_test.go#TestProcessTerminal_StartStop_DoubleStartStopIsNoop"
       ]
     },
     {
@@ -259523,8 +259508,7 @@
       ],
       "evidence": [
         "test:tui/terminal_pty_test.go#TestProcessTerminalOnPseudoTerminal",
-        "test:tui/terminal_test.go#TestProcessTerminal_StartStop_DoubleStartStopIsNoop",
-        "test:tui/terminal_interface_pty_test.go#TestTerminalInterfaceStartForwardsInputAndStopEndsIt"
+        "test:tui/terminal_test.go#TestProcessTerminal_StartStop_DoubleStartStopIsNoop"
       ]
     },
     {
@@ -266906,7 +266890,7 @@
       "evidence": [
         "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers",
         "test:tui/viewport_tui_upstream_test.go#TestTUIInterfaceMembersBehaveLikePi",
-        "test:internal/codingagent/interactive_init_state_pty_test.go#TestInitBuildsTheInteractiveStateBeforeTheSessionBindChild"
+        "test:tui/tui_interface_members_test.go#TestTUIInterfaceMountsChildrenInOrderAndReportsItsPreferences"
       ]
     },
     {
@@ -266928,7 +266912,7 @@
       "evidence": [
         "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers",
         "test:tui/viewport_tui_upstream_test.go#TestTUIInterfaceMembersBehaveLikePi",
-        "test:internal/codingagent/interactive_init_state_pty_test.go#TestInitBuildsTheInteractiveStateBeforeTheSessionBindChild"
+        "test:tui/tui_interface_members_test.go#TestTUIInterfaceMountsChildrenInOrderAndReportsItsPreferences"
       ]
     },
     {
@@ -272108,7 +272092,7 @@
       "evidence": [
         "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers",
         "test:tui/viewport_tui_upstream_test.go#TestTUIInterfaceMembersBehaveLikePi",
-        "test:internal/codingagent/interactive_init_state_pty_test.go#TestInitBuildsTheInteractiveStateBeforeTheSessionBindChild"
+        "test:tui/tui_interface_members_test.go#TestTUIInterfaceMountsChildrenInOrderAndReportsItsPreferences"
       ]
     },
     {
@@ -272130,7 +272114,7 @@
       "evidence": [
         "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers",
         "test:tui/viewport_tui_upstream_test.go#TestTUIInterfaceMembersBehaveLikePi",
-        "test:internal/codingagent/interactive_init_state_pty_test.go#TestInitBuildsTheInteractiveStateBeforeTheSessionBindChild"
+        "test:tui/tui_interface_members_test.go#TestTUIInterfaceMountsChildrenInOrderAndReportsItsPreferences"
       ]
     },
     {
