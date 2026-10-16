@@ -252,24 +252,33 @@ type gitPaths struct{ repoDir, commonGitDir, headPath string }
 func findGitPaths(cwd string) (gitPaths, bool) {
 	dir := cwd
 	var probe nodefs.PathProbe
+	clean := false
 	for {
 		// existsSync first, as Pi does: a missing .git, the case at every level but one, costs one access(2) and neither a path
 		// string nor a FileInfo. The probe joins clean paths only, as filepath.Join cleans.
-		if probe.Set(filepath.Clean(dir), ".git").Exists() {
+		if probe.Set(cleanDir(dir, clean), ".git").Exists() {
 			if paths, ok, stop := gitPathsAt(dir, filepath.Join(dir, ".git")); stop {
 				return paths, ok
 			}
 		}
-		parent := filepath.Dir(dir)
+		parent := nodefs.ParentDir(dir, clean)
 		if parent == dir {
 			return gitPaths{}, false
 		}
-		dir = parent
+		dir, clean = parent, true
 	}
 }
 
 // gitPathsAt reads the .git entry at gitPath in dir. stop is false when the walk goes on to the parent: the entry cannot be
 // stated, or it is a file that names no gitdir, or neither a file nor a directory.
+// cleanDir is filepath.Clean(dir) without the allocation when dir came from nodefs.ParentDir and so is clean.
+func cleanDir(dir string, clean bool) string {
+	if clean {
+		return dir
+	}
+	return filepath.Clean(dir)
+}
+
 func gitPathsAt(dir, gitPath string) (paths gitPaths, ok, stop bool) {
 	info, err := os.Stat(gitPath)
 	if err != nil {

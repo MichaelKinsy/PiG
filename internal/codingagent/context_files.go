@@ -68,6 +68,7 @@ func LoadProjectContextFiles(cwd, agentDir string) []ContextFile {
 		shadowed := findShadowedContextFile(cwd)
 		dir := cwd
 		var probe nodefs.PathProbe
+		clean := false
 		for {
 			if cf := loadContextFileProbed(&probe, dir); cf != nil {
 				// upstream: packages/coding-agent/src/core/resource-loader.ts:loadProjectContextFiles compares the directory's real path plus the file name, so a symlinked context file never equals the shadowed path.
@@ -77,11 +78,11 @@ func LoadProjectContextFiles(cwd, agentDir string) []ContextFile {
 					ancestors = append([]ContextFile{*cf}, ancestors...)
 				}
 			}
-			parent := filepath.Dir(dir)
+			parent := nodefs.ParentDir(dir, clean)
 			if parent == dir {
 				break // reached root
 			}
-			dir = parent
+			dir, clean = parent, true
 		}
 		result = append(result, ancestors...)
 	}

@@ -2,6 +2,7 @@ package nodefs
 
 import (
 	"os"
+	"path/filepath"
 	"unsafe"
 )
 
@@ -28,4 +29,27 @@ func (p *PathProbe) Is(path string) bool { return string(p.buf) == path }
 func (p *PathProbe) Exists() bool {
 	// Exists keeps no reference to its argument, so it can read the buffer in place.
 	return Exists(unsafe.String(unsafe.SliceData(p.buf), len(p.buf))) //nolint:gosec // G103: Exists keeps no reference to its argument, so the buffer is read in place without a copy; the bytes are never mutated while the string lives
+}
+
+// ParentDir is filepath.Dir of dir, and whether dir was already clean. clean reports that dir is a clean path, so
+// the parent is dir sliced at its last separator, which costs no allocation; filepath.Dir cleans, and on Windows
+// builds a new string for every path with a volume name. A caller passes the returned parent back with
+// clean true. The first call of a walk passes clean false, as the caller's own path may be unclean.
+func ParentDir(dir string, clean bool) string {
+	if !clean {
+		return filepath.Dir(dir)
+	}
+	v := len(filepath.VolumeName(dir))
+	rest := dir[v:]
+	if len(rest) == 0 || (len(rest) == 1 && os.IsPathSeparator(rest[0])) || !os.IsPathSeparator(rest[0]) {
+		return filepath.Dir(dir)
+	}
+	i := len(rest) - 1
+	for i > 0 && !os.IsPathSeparator(rest[i]) {
+		i--
+	}
+	if i == 0 {
+		return dir[:v+1]
+	}
+	return dir[:v+i]
 }
