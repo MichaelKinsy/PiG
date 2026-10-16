@@ -5,6 +5,7 @@ package subprocess
 import (
 	"context"
 	"fmt"
+	"math"
 	"runtime"
 	"runtime/debug"
 	"testing"
@@ -91,24 +92,33 @@ func TestFusedDispatchAllocations(t *testing.T) {
 		rig := newFusedDispatchRig(t, k)
 		rig.turn(t)
 		allocs[k], bytes[k] = turnCost(func() { rig.turn(t) })
-		fusedDispatchCheck(t, fmt.Sprintf("fused.dispatch_k%d.allocs", k), allocs[k])
-		fusedDispatchCheck(t, fmt.Sprintf("fused.dispatch_k%d.bytes", k), bytes[k])
+		perfgate.Check(t, fmt.Sprintf("fused.dispatch_k%d.allocs", k), allocs[k])
+		perfgate.Check(t, fmt.Sprintf("fused.dispatch_k%d.bytes", k), bytes[k])
 	}
-	fusedDispatchCheck(t, "fused.dispatch.per_extension.allocs", (allocs[10]-allocs[1])/9)
-	fusedDispatchCheck(t, "fused.dispatch.per_extension.bytes", (bytes[10]-bytes[1])/9)
+	perfgate.Check(t, "fused.dispatch.per_extension.allocs", (allocs[10]-allocs[1])/9)
+	perfgate.Check(t, "fused.dispatch.per_extension.bytes", (bytes[10]-bytes[1])/9)
 }
 
-// turnCost is the mean allocations and allocated bytes of run, over every goroutine (the fused extensions run on their own), as testing.AllocsPerRun measures allocations.
+// turnCost is the allocations and allocated bytes of one run, over every goroutine (the fused extensions run on their own),
+// as testing.AllocsPerRun measures allocations: the minimum over turnCostSamples samples of turnCostRuns runs each. Another
+// goroutine allocating during a sample (a runtime timer, a leftover of an earlier test) only raises that sample, so the
+// minimum is the dispatch's own floor; a mean charged such a transient to the dispatch (Windows CI measured k3 at 3424
+// against a 3010 ceiling while k1 and k10 sat under theirs).
 func turnCost(run func()) (allocs, bytes float64) {
-	const runs = 5
+	const turnCostSamples, turnCostRuns = 5, 5
 	defer debug.SetGCPercent(debug.SetGCPercent(-1))
-	var before, after runtime.MemStats
-	runtime.ReadMemStats(&before)
-	for range runs {
-		run()
+	allocs, bytes = math.Inf(1), math.Inf(1)
+	for range turnCostSamples {
+		var before, after runtime.MemStats
+		runtime.ReadMemStats(&before)
+		for range turnCostRuns {
+			run()
+		}
+		runtime.ReadMemStats(&after)
+		allocs = min(allocs, float64(after.Mallocs-before.Mallocs)/turnCostRuns)
+		bytes = min(bytes, float64(after.TotalAlloc-before.TotalAlloc)/turnCostRuns)
 	}
-	runtime.ReadMemStats(&after)
-	return float64(after.Mallocs-before.Mallocs) / runs, float64(after.TotalAlloc-before.TotalAlloc) / runs
+	return allocs, bytes
 }
 
 // BenchmarkFusedDispatch is TestFusedDispatchAllocations' turn at K = 10, for profiles.
@@ -118,19 +128,4 @@ func BenchmarkFusedDispatch(b *testing.B) {
 	for b.Loop() {
 		rig.turn(b)
 	}
-}
-
-// fusedDispatchCheck is perfgate.Check, except that it reports on Windows and macOS. TODO(0.5.1): the per-dispatch
-// allocation counts include every goroutine's allocations and swing on the shared Windows and macOS runners (owner
-// decision 2026-10-16, handoffs/owner-signoff.md); make it blocking everywhere again. Linux blocks.
-func fusedDispatchCheck(t *testing.T, id string, got float64) {
-	t.Helper()
-	if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
-		if ceiling := perfgate.Ceiling(t, id); got > ceiling {
-			t.Logf("TODO(0.5.1) report only on %s: perfgate: %s = %v, ceiling %v", runtime.GOOS, id, got, ceiling)
-			fmt.Printf("::warning title=fused dispatch (report only on %s)::%s: %s = %v, ceiling %v\n", runtime.GOOS, t.Name(), id, got, ceiling)
-			return
-		}
-	}
-	perfgate.Check(t, id, got)
 }
