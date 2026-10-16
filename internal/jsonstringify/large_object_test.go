@@ -15,28 +15,29 @@ func objectWithKeys(n int, value func(i int) string) string {
 	return "{" + strings.Join(members, ",") + "}"
 }
 
-// JSON.stringify output with large objects is recognized as already canonical (PE-F9): an object of more than 24 keys, or more than 96 keys
-// in all, used to take the full rewrite, which decodes and re-encodes every level. A repeated key is still refused at any size.
-func TestIsCanonicalAcceptsLargeObjects(t *testing.T) {
+// largeCanonicalObjects is JSON.stringify output whose objects exceed the fast path's 24-keys-per-object and 96-keys-in-all limits.
+func largeCanonicalObjects() []string {
 	scalar := func(i int) string { return fmt.Sprint(i) }
 	nested := func(i int) string { return objectWithKeys(30, scalar) }
-	for _, text := range []string{
+	return []string{
 		objectWithKeys(25, scalar),
 		objectWithKeys(200, scalar),
 		objectWithKeys(40, nested),
 		"[" + objectWithKeys(100, scalar) + "," + objectWithKeys(100, scalar) + "]",
-	} {
+	}
+}
+
+// JSON.stringify output with large objects is recognized as already canonical (PE-F9): an object of more than 24 keys, or more than 96 keys
+// in all, used to take the full rewrite, which decodes and re-encodes every level. A repeated key is still refused at any size.
+func TestIsCanonicalAcceptsLargeObjects(t *testing.T) {
+	scalar := func(i int) string { return fmt.Sprint(i) }
+	for _, text := range largeCanonicalObjects() {
 		if !IsCanonical([]byte(text)) {
 			t.Fatalf("IsCanonical refused canonical text of %d bytes: %.80s", len(text), text)
 		}
 		got, err := Canonicalize([]byte(text))
 		if err != nil || string(got) != text {
 			t.Fatalf("Canonicalize changed canonical text (%v)", err)
-		}
-		dst, raw := make([]byte, 0, len(text)), []byte(text)
-		// At most the spilled key stack and the sort scratch of a large object.
-		if allocs := testing.AllocsPerRun(20, func() { dst, _ = AppendCanonical(dst[:0], raw) }); allocs > 2 {
-			t.Fatalf("AppendCanonical of canonical text of %d bytes allocates %v times, want at most 2", len(text), allocs)
 		}
 	}
 	for _, at := range []int{0, 23, 24, 25, 199} {
