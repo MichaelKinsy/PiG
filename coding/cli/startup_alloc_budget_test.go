@@ -148,16 +148,18 @@ const (
 // (resource-loader.ts:185), but on Windows every os.Stat, os.Lstat and environment read converts its path or key to UTF-16
 // on the heap and builds a FileInfo: about five objects a probe against Linux's one or two. nodefs.Exists and the realpath
 // walk already read attributes through a pooled buffer (72fe1f18a5), which took a level from 58 objects / 11,298 bytes to
-// 32 / 6,561. Measured on the Windows VPS at c64e543dbe (go1.27.2, normal %TEMP%): --version 756,568 bytes / 4,199
-// objects; warm first prompt 2,787,512 / 16,791; with models.json 3,124,224 / 20,185; per level 6,561 / 32. The budgets are
-// those plus under 2%, so a Windows regression still fails; Linux and darwin keep theirs.
+// 32 / 6,561. The budgets are the GitHub windows-latest runner's measurements, the machine CI gates on, plus under 2%, so a
+// Windows regression still fails; Linux and darwin keep theirs. Max of four CI runs (38874938533, 38881990325,
+// 38889740946, 38903696084; the AWS fork, 8.3 and probe changes between them move these by under 1%): --version 808,320
+// bytes / 5,689 objects; warm first prompt 2,869,072 / 18,596; with models.json 3,203,440 / 21,944; per level (38903696084)
+// 6,465 / 32. The Windows VPS measured fewer objects (--version 4,199) than the runner; the runner is the reference.
 const (
-	windowsVersionBytes        = 771_000
-	windowsVersionObjects      = 4_280
-	windowsPromptBytes         = 2_843_000
-	windowsPromptObjects       = 17_120
-	windowsModelsPromptBytes   = 3_186_000
-	windowsModelsPromptObjects = 20_580
+	windowsVersionBytes        = 824_000
+	windowsVersionObjects      = 5_800
+	windowsPromptBytes         = 2_924_000
+	windowsPromptObjects       = 18_950
+	windowsModelsPromptBytes   = 3_265_000
+	windowsModelsPromptObjects = 22_370
 	windowsLevelObjectsCeiling = 33
 	windowsLevelBytesCeiling   = 6_690
 )
@@ -199,8 +201,20 @@ func TestStartupAllocationPerDirectoryLevel(t *testing.T) {
 	objects, bytes := perLevel(shallowRun.AllocObjects, deepRun.AllocObjects), perLevel(shallowRun.AllocBytes, deepRun.AllocBytes)
 	t.Logf("warm first prompt from %s: %d bytes, %d objects; %d levels deeper: %d bytes, %d objects; per level %d bytes, %d objects", fixture.cwd, shallowRun.AllocBytes, shallowRun.AllocObjects, startupLevels, deepRun.AllocBytes, deepRun.AllocObjects, bytes, objects)
 	objectsCeiling, bytesCeiling := startupLevelCeilingFor(runtime.GOOS)
-	if objects > objectsCeiling || bytes > bytesCeiling {
+	if objects > objectsCeiling {
 		t.Errorf("each directory level above the working directory costs a warm first prompt %d bytes in %d objects, ceiling %d bytes in %d objects", bytes, objects, bytesCeiling, objectsCeiling)
+	}
+	// darwin's per-level bytes swing 2,048-2,743 across runs of one build while its objects hold at 12-13 (8 runs at
+	// a70a334ac4 on an M4 Pro): the difference of two whole-process totals divided by 32 carries the totals' noise. There the
+	// byte bar is reported, not failed (owner decision 2026-10-16); the object bar, which measures the per-level work, blocks
+	// everywhere, and the byte bar blocks on every other GOOS.
+	if bytes > bytesCeiling {
+		if runtime.GOOS == "darwin" {
+			t.Logf("startup per-level bytes (report only on darwin): %d bytes per level, ceiling %d", bytes, bytesCeiling)
+			fmt.Printf("::warning title=startup per-level bytes::%s: %d bytes per level, ceiling %d\n", t.Name(), bytes, bytesCeiling)
+		} else {
+			t.Errorf("each directory level above the working directory costs a warm first prompt %d bytes in %d objects, ceiling %d bytes in %d objects", bytes, objects, bytesCeiling, objectsCeiling)
+		}
 	}
 }
 

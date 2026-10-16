@@ -72,7 +72,7 @@ export default function(pi) {
 			if !reflect.DeepEqual(got.SelectedTools, []string{"read", "bash", "edit", "write"}) || got.ToolSnippets["grep"] != "Search file contents for patterns (respects .gitignore)" || !reflect.DeepEqual(got.ToolGuidelines["read"], []string{"Use read to examine files instead of cat or sed."}) {
 				t.Fatalf("registry inputs = %s", data)
 			}
-			if !reflect.DeepEqual(got.ContextFiles, []extension.SystemPromptContextFile{{Path: canonicalTestPath(t, contextPath), Content: "PROJECT RULES\n"}}) {
+			if !reflect.DeepEqual(got.ContextFiles, []extension.SystemPromptContextFile{{Path: filepath.Join(physicalPath(t, cwd), "AGENTS.md"), Content: "PROJECT RULES\n"}}) {
 				t.Fatalf("context files = %+v", got.ContextFiles)
 			}
 			if len(got.Skills) != 2 || got.Skills[0].Name != "explicit" || got.Skills[1].Name != "review" {
