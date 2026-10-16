@@ -126,6 +126,7 @@ func truncationCount(value any) (int, bool) {
 	if number != math.Trunc(number) || number < math.MinInt || number >= -math.MinInt {
 		return 0, false
 	}
+	//portlint:allow numbers the guard above admits only integral values within int range, so the conversion is exact; NaN fails `number != math.Trunc(number)`
 	return int(number), true
 }
 

@@ -31,51 +31,9 @@ snippet = "go sess.forwardAgentEvents()"
 
 [[hit]]
 check = "asyncorder"
-file = "internal/codingagent/interactive_api_key_login.go"
-func = "InteractiveMode.runAPIKeyLogin"
-snippet = "go func() { <-ctx.Done(); done <- nil }()"
-
-[[hit]]
-check = "asyncorder"
-file = "internal/codingagent/interactive_api_key_login.go"
-func = "InteractiveMode.runAPIKeyLogin"
-snippet = "go func() {"
-
-[[hit]]
-check = "asyncorder"
-file = "internal/codingagent/interactive_input.go"
-func = "InteractiveMode.startTerminalInput"
-snippet = "go func() {"
-
-[[hit]]
-check = "asyncorder"
-file = "internal/codingagent/interactive_input.go"
-func = "InteractiveMode.rawInputChannels"
-snippet = "go func() {"
-
-[[hit]]
-check = "asyncorder"
-file = "internal/codingagent/interactive_input.go"
-func = "InteractiveMode.syncExtensionSlashCommands"
-snippet = "go nr.ExecuteCommand(baseCtx, cmdName, args)"
-
-[[hit]]
-check = "asyncorder"
-file = "internal/codingagent/interactive_turn.go"
-func = "InteractiveMode.startTurn"
-snippet = "go func() {"
-
-[[hit]]
-check = "asyncorder"
 file = "internal/codingagent/model_tasks.go"
 func = "ModelRegistry.CloseModelTasks"
 snippet = "go models.Close()"
-
-[[hit]]
-check = "asyncorder"
-file = "internal/codingagent/remote_editor.go"
-func = "remoteEventQueue.post"
-snippet = "go func() {"
 
 [[hit]]
 check = "asyncorder"
@@ -4808,12 +4766,6 @@ check = "regexfold"
 file = "internal/latex/latex.go"
 func = "(decl)"
 snippet = "reCasesKeyword         = lazyregexp.New(`(?i)^(?:if|when|for|otherwise)\\b`)"
-
-[[hit]]
-check = "regexfold"
-file = "internal/resolvepath/resolvepath.go"
-func = "(decl)"
-snippet = "var windowsShellDrivePath = lazyregexp.New(`(?i)^/(?:mnt/|cygdrive/)?([a-z])(?:/(.*))?$`)"
 
 [[hit]]
 check = "regexfold"

@@ -113,6 +113,7 @@ func jsTemplateString(v any) string {
 // byteDecimals without formatting or allocating; -0 prints "0" as in JS.
 func JSNumberString(v float64) string {
 	if v >= 0 && v <= 255 {
+		//portlint:allow numbers v is in [0, 255] here (NaN fails the range test), so int(v) is exact and the comparison tests integrality
 		if n := int(v); float64(n) == v {
 			return byteDecimal(n)
 		}
@@ -169,11 +170,14 @@ func FormatToolDuration(d time.Duration) string {
 	if seconds < 60 {
 		return jsstring.ToFixed(seconds, 1) + "s"
 	}
+	//portlint:allow numbers seconds is a finite value of at least 60 derived from integer milliseconds, so the conversion is exact
 	totalSeconds := int64(math.Floor(seconds))
+	//portlint:allow numbers totalSeconds is a non-negative integer, so truncating division equals the Math.floor(totalSeconds / 60) of renderers/bash.ts formatDuration
 	minutes := totalSeconds / 60
 	remainder := totalSeconds % 60
 	if minutes < 60 {
 		return fmt.Sprintf("%dm %ds", minutes, remainder)
 	}
+	//portlint:allow numbers minutes is a non-negative integer, so truncating division equals Math.floor(minutes / 60)
 	return fmt.Sprintf("%dh %dm %ds", minutes/60, minutes%60, remainder)
 }
