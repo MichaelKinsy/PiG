@@ -230039,6 +230039,17 @@
       "shapeHash": "sha256:0cd60dad808b8abf48c43075929dca6f537de910d92da19946937c2b720c7a03"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#longWindowsPath",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "longWindowsPath",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(path string) string"
+      },
+      "shapeHash": "sha256:864bd81dd802775a1a082d7f99fe261c8f3185dea2a3f45bbeae79e27ef91e07"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#makeCodexJWT",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "makeCodexJWT",
