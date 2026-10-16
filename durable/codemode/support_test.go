@@ -242,10 +242,11 @@ type codemodeFixture struct {
 		reached *gate
 	}
 	slows struct {
-		mu       sync.Mutex
-		gates    map[int]*gate
-		finished []int
+		mu    sync.Mutex
+		gates map[int]*gate
 	}
+	// onFirstOpen, when set, sees restart's first Harness before the script starts.
+	onFirstOpen func(harness.Harness)
 }
 
 func (f *codemodeFixture) echoCounts() map[string]int {
@@ -265,12 +266,6 @@ func (f *codemodeFixture) slowGate(id int) *gate {
 		f.slows.gates[id] = g
 	}
 	return g
-}
-
-func (f *codemodeFixture) slowsFinished() []int {
-	f.slows.mu.Lock()
-	defer f.slows.mu.Unlock()
-	return slices.Clone(f.slows.finished)
 }
 
 func codemodeChat(t *testing.T, globals ...Global) *codemodeFixture {
@@ -330,9 +325,6 @@ func codemodeChatWith(t *testing.T, options ToolOptions) *codemodeFixture {
 		if err := f.slowGate(id).wait(ctx); err != nil {
 			return durable.ToolExecutionResult{}, err
 		}
-		f.slows.mu.Lock()
-		f.slows.finished = append(f.slows.finished, id)
-		f.slows.mu.Unlock()
 		return textResult("slow " + args.id()), nil
 	}, durable.ReplayUnsafe))
 	return f
@@ -424,6 +416,9 @@ func (f *codemodeFixture) restart(t *testing.T, code string, hooks ...func(opene
 	path := filepath.Join(t.TempDir(), "session.sqlite")
 	f.setup.faux.SetResponses([]ai.FauxResponseStep{script(code), done()})
 	opened, root := f.setup.open(t, openSqlite(t, path))
+	if f.onFirstOpen != nil {
+		f.onFirstOpen(opened)
+	}
 	id := submitGo(t, root).Id()
 	opened.Resume()
 	if err := f.holds.reached.wait(testContext); err != nil {

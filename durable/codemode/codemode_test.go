@@ -79,11 +79,30 @@ func TestDurableCodeMode(t *testing.T) {
 			await tools.echo({ text: order.join(",") });
 			await tools.hold({});
 			return order;`
-		// 2 finishes first, then 1.
+		// 2 finishes first, then 1. Pi's "finished" is also "arrived": the result's callback runs in the next microtask, before
+		// the test can release 1. PiG's results arrive through the call's event loop, so 1 is released once 2's result is in
+		// the journal (with one processor, 2's tool can return and 1's result still post first).
+		arrived := newGate()
+		f.onFirstOpen = func(opened harness.Harness) {
+			unsubscribe := opened.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+				for _, change := range publication.Changes {
+					document, ok := change.(durable.DocumentChange)
+					if !ok || document.Record.Kind != "pi.codemode.journal" || document.Value == nil {
+						continue
+					}
+					journal, err := durable.FromJsonValue[journalState](document.Value)
+					if err == nil && slices.ContainsFunc(journal.Entries, func(entry journalEntry) bool { return entry.ID == 2 }) {
+						arrived.resolve()
+					}
+				}
+			})
+			t.Cleanup(unsubscribe)
+		}
 		f.slowGate(2).resolve()
 		go func() {
-			eventually(t, func() bool { return slices.Contains(f.slowsFinished(), 2) })
-			f.slowGate(1).resolve()
+			if arrived.wait(t.Context()) == nil {
+				f.slowGate(1).resolve()
+			}
 		}()
 		opened, root := f.restart(t, code)
 		text, isError := resultText(t, root)
