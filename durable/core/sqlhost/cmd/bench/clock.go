@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -17,11 +18,23 @@ import (
 // (faux.ts), which is the run's first random draw.
 
 // detenvRNG is detenv's generator: Math.random, crypto.getRandomValues and crypto.randomUUID draw from one stream, so the order
-// of draws is part of the run (the faux provider's api id is the first draw; each uuidv7 reads sixteen bytes after it).
-type detenvRNG struct{ seed uint32 }
+// of draws is part of the run (the faux provider's api id is the first draw; each uuidv7 reads sixteen bytes after it). In
+// detenv each draw and each getRandomValues fill is atomic on the event loop; here the faux provider's responses and the
+// session can draw from different goroutines, so mu makes each one atomic.
+type detenvRNG struct {
+	mu   sync.Mutex
+	seed uint32
+}
 
 // next is one Math.random() draw.
 func (r *detenvRNG) next() float64 {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.step()
+}
+
+// step is next under mu.
+func (r *detenvRNG) step() float64 {
 	r.seed += 0x6d2b79f5
 	t := r.seed
 	t = (t ^ t>>15) * (t | 1)
@@ -29,10 +42,12 @@ func (r *detenvRNG) next() float64 {
 	return float64(t^t>>14) / 4294967296
 }
 
-// fill is crypto.getRandomValues on a byte array: one draw per byte.
+// fill is crypto.getRandomValues on a byte array: one draw per byte, all of them in one turn.
 func (r *detenvRNG) fill(b []byte) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	for i := range b {
-		b[i] = byte(math.Floor(r.next() * 256))
+		b[i] = byte(math.Floor(r.step() * 256))
 	}
 }
 

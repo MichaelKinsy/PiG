@@ -3,7 +3,10 @@
 
 package main
 
-import "testing"
+import (
+	"sync"
+	"testing"
+)
 
 // Values computed by node (JavaScript's Math.random().toString(36).slice(2) under detenv's generator, seed 1) and by
 // (x).toString(36) for fixed doubles.
@@ -11,6 +14,31 @@ func TestFauxAPIMatchesTheReferenceRun(t *testing.T) {
 	rng := &detenvRNG{seed: 1}
 	if got, want := fauxAPI(1_800_000_000_000, rng.next()), "faux:1800000000000:mkorf98kqja"; got != want {
 		t.Fatalf("fauxAPI = %q, want %q", got, want)
+	}
+}
+
+// The faux provider's responses and the session draw from one generator on different goroutines. Each draw is one step of the
+// stream, as each Math.random() is in detenv: concurrent draws leave the generator where as many sequential draws would, with
+// no step lost (and no race under -race).
+func TestDetenvRNGConcurrentDrawsLoseNoStep(t *testing.T) {
+	const each = 1000
+	shared := &detenvRNG{seed: 1}
+	var wg sync.WaitGroup
+	for range 2 {
+		wg.Go(func() {
+			for range each {
+				shared.next()
+			}
+		})
+	}
+	wg.Go(func() { shared.fill(make([]byte, each)) })
+	wg.Wait()
+	sequential := &detenvRNG{seed: 1}
+	for range 3 * each {
+		sequential.next()
+	}
+	if shared.seed != sequential.seed {
+		t.Fatalf("after %d concurrent draws the generator is at %d, want %d", 3*each, shared.seed, sequential.seed)
 	}
 }
 
