@@ -120,6 +120,10 @@ func TestKeptProjectionEncodesAsTheWholePreview(t *testing.T) {
 	pass("after a compaction")
 
 	// A pass over an unchanged history encodes only the messages that have no key (here the compaction summary): its cost does not grow with the history.
+	// The race detector adds allocations of its own (CI -race counted 119 against 114), so the bound runs without it; the encodings above run in both modes.
+	if subprocess.RaceEnabledForTest {
+		return
+	}
 	passAllocs := func() float64 {
 		t.Helper()
 		pass("long history")
