@@ -193,3 +193,36 @@ func TestScenarioAssertionsDoNotPinMeasuredDurations(t *testing.T) {
 		}
 	}
 }
+
+// Pi's request-setup error message carries durationMs only when the millisecond did not tick between its two clock
+// reads (lazy.ts startedAt, event-stream.ts #startedAt), so the field's presence is Pi's own nondeterminism there. An
+// optional duration alias accepts it present on one side and absent on the other at its exact paths only.
+func TestJSONOptionalDurationAliasAcceptsOneSidedPresenceOnlyWhereNamed(t *testing.T) {
+	rules := []JSONAliasRule{{Paths: []string{"/*/message/durationMs"}, Kind: "duration", Optional: true, Reason: "Pi times the setup error from its stream's own clock read."}}
+	with := Result{Output: `{"type":"message_end","message":{"role":"assistant","stopReason":"error","durationMs":3}}`}
+	without := Result{Output: `{"type":"message_end","message":{"role":"assistant","stopReason":"error"}}`}
+	if err := compareJSONResults(with, without, rules); err != nil {
+		t.Fatalf("pig has it, pi does not: %v", err)
+	}
+	if err := compareJSONResults(without, with, rules); err != nil {
+		t.Fatalf("pi has it, pig does not: %v", err)
+	}
+	if err := compareJSONResults(with, with, rules); err != nil {
+		t.Fatalf("both have it: %v", err)
+	}
+	bad := Result{Output: `{"type":"message_end","message":{"role":"assistant","stopReason":"error","durationMs":"3"}}`}
+	if compareJSONResults(bad, without, rules) == nil {
+		t.Fatal("a one-sided field that is not a duration was accepted")
+	}
+	elsewhere := Result{Output: `{"type":"message_end","message":{"role":"assistant","stopReason":"error"},"durationMs":3}`}
+	if compareJSONResults(elsewhere, without, rules) == nil {
+		t.Fatal("a one-sided duration outside the named path was accepted")
+	}
+	strict := []JSONAliasRule{{Paths: []string{"/*/message/durationMs"}, Kind: "duration", Reason: "Measured."}}
+	if compareJSONResults(with, without, strict) == nil {
+		t.Fatal("a non-optional duration alias accepted one-sided presence")
+	}
+	if compareJSONResults(with, without, []JSONAliasRule{{Paths: []string{"/*/message/role"}, Kind: "path", Optional: true, Reason: "x"}}) == nil {
+		t.Fatal("optional was accepted on a non-duration alias")
+	}
+}

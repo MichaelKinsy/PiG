@@ -37,7 +37,7 @@
     },
     {
       "source": "test/parity/runner/json_compare.go",
-      "sha256": "727c07b1620c1f0755bae8fc6ea61e81e8195b1b8f6f4713f524f62d5130aa57",
+      "sha256": "5927b605bdbb4825745dc1a3e7e6fd2e6c17ad4eff651a10eeca02a5b65057ba",
       "reason": "Parsed full records ignore object-member order and equivalent JSON number spelling only. Explicit scalar aliases preserve field presence, types, ordered arrays and bijective ID references; no ignored-field list exists."
     },
     {
@@ -7348,6 +7348,14 @@
             "/**/timestamp"
           ],
           "reason": "Independent message clocks vary; retain event order, field presence and timestamp type."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/20/message/durationMs"
+          ],
+          "optional": true,
+          "reason": "The next request's setup-error message: Pi sets its durationMs only when the millisecond did not tick between lazy.ts's startedAt and the stream's own #startedAt (event-stream.ts #time returns early when message.timestamp < #startedAt), so Pi's own presence varies from run to run; PiG times it the same way (dd68b1609c)."
         },
         {
           "kind": "duration",

@@ -26,7 +26,10 @@ type JSONAliasRule struct {
 	Roots   []string `toml:"roots"`   // selected runtime roots; empty retains the standard directory roots
 	Group   string   `toml:"group"`   // shared identity namespace for ids and references
 	Pattern string   `toml:"pattern"` // optional scalar eligibility regex; both sides must match
-	Reason  string   `toml:"reason"`
+	// Optional lets a duration field at these paths be present on one side and absent on the other. Only a duration kind
+	// may set it, for a field whose presence the reference program itself decides from a clock (Pi's stream timing).
+	Optional bool   `toml:"optional"`
+	Reason   string `toml:"reason"`
 }
 
 type identityPair struct{ forward, reverse map[string]string }
@@ -53,6 +56,9 @@ func compareJSONResults(g, p Result, rules []JSONAliasRule) error {
 		}
 		if rule.Kind != "id" && rule.Kind != "timestamp" && rule.Kind != "duration" && rule.Kind != "duration_ms" && rule.Kind != "path" && rule.Kind != "literal" && rule.Kind != "session_file" {
 			return fmt.Errorf("unknown JSON alias kind %q", rule.Kind)
+		}
+		if rule.Optional && rule.Kind != "duration" && rule.Kind != "duration_ms" {
+			return fmt.Errorf("optional is only allowed on a duration alias")
 		}
 		if rule.Kind == "literal" && (rule.Pig == "" || rule.Pi == "") {
 			return fmt.Errorf("literal alias requires nonempty pig and pi spellings")
@@ -137,6 +143,9 @@ func compareJSONResults(g, p Result, rules []JSONAliasRule) error {
 				bv, bok := y[key]
 				next := path + "/" + strings.NewReplacer("~", "~0", "/", "~1").Replace(key)
 				if aok != bok {
+					if optionalDurationPresence(rules, next, av, bv, aok) {
+						continue
+					}
 					return fmt.Errorf("%s: field presence differs (pig=%t pi=%t)", next, aok, bok)
 				}
 				if err := compare(next, av, bv); err != nil {
@@ -526,4 +535,32 @@ func jsonStringIdentity(raw, decoded string) string {
 		}
 	}
 	return string(out)
+}
+
+// optionalDurationPresence reports whether the one-sided field at path is a duration that an optional duration alias
+// covers: the present side must hold a valid duration and the path must match one of the rule's patterns.
+func optionalDurationPresence(rules []JSONAliasRule, path string, a, b any, pigHas bool) bool {
+	value := b
+	if pigHas {
+		value = a
+	}
+	for _, rule := range rules {
+		if !rule.Optional {
+			continue
+		}
+		matched := false
+		for _, pattern := range rule.Paths {
+			if pointerMatches(strings.Split(pattern, "/"), strings.Split(path, "/")) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			continue
+		}
+		if (rule.Kind == "duration" && validDuration(value)) || (rule.Kind == "duration_ms" && validMilliseconds(value)) {
+			return true
+		}
+	}
+	return false
 }

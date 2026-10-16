@@ -147,14 +147,15 @@ type assertBlock struct {
 }
 
 type jsonAliasRule struct {
-	Pig     string   `toml:"pig"`
-	Pi      string   `toml:"pi"`
-	Roots   []string `toml:"roots"`
-	Paths   []string `toml:"paths"`
-	Kind    string   `toml:"kind"`
-	Group   string   `toml:"group"`
-	Pattern string   `toml:"pattern"`
-	Reason  string   `toml:"reason"`
+	Pig      string   `toml:"pig"`
+	Pi       string   `toml:"pi"`
+	Roots    []string `toml:"roots"`
+	Paths    []string `toml:"paths"`
+	Kind     string   `toml:"kind"`
+	Group    string   `toml:"group"`
+	Pattern  string   `toml:"pattern"`
+	Optional bool     `toml:"optional"`
+	Reason   string   `toml:"reason"`
 }
 
 type normalizeReplaceBlock struct {
