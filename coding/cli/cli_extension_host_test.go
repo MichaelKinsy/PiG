@@ -66,4 +66,7 @@ func TestSessionExtensionHostIsItsBuildsHostWithProcessWideControls(t *testing.T
 	if !factory.holding {
 		t.Fatal("HoldRetirements through the replacement Session's extension host did not reach the factory")
 	}
+	// HoldRetirements keeps a retired host's Node process, and the cell usage lease it holds, until TerminateProcesses, so a path
+	// that holds must end in it; Windows cannot remove a held lock file, and TempDir cleanup failed on it.
+	factory.TerminateProcesses()
 }
