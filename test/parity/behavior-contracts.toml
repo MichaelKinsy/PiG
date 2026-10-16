@@ -1582,7 +1582,7 @@ family = "extensions-runtime"
 kind = "boundary-transition"
 claim = "a status screen with an onCancel callback shows the cancel key hint and calls it when tui.select.cancel is pressed; any other key does nothing; a status screen without onCancel has no hint and no input handler"
 status = "ported"
-pig_targets = ["coding/mcpext/manager.go#Status"]
+pig_targets = ["coding/mcpext/mcptui/manager.go#Status"]
 evidence = [
   "coding/mcpext/manager_test.go#TestMcpManagerStatusScreenCancelsTheRunningOperationWithTheCancelKey",
   "coding/mcpext/manager_test.go#TestMcpManagerStatusScreenIgnoresTheCancelKeyForOperationsThatCannotBeCancelled",
@@ -1604,7 +1604,7 @@ family = "extensions-runtime"
 kind = "boundary-transition"
 claim = "the view passes every key to the handler of the content it shows, then asks for a render; a screen without a handler ignores the key"
 status = "ported"
-pig_targets = ["coding/mcpext/manager.go#HandleInput"]
+pig_targets = ["coding/mcpext/mcptui/manager.go#HandleInput"]
 evidence = [
   "coding/mcpext/manager_test.go#TestMcpManagerStatusScreenCancelsTheRunningOperationWithTheCancelKey",
   "test/parity/scenarios/slash-commands/18-mcp-signin-cancel.toml",
@@ -1624,7 +1624,7 @@ family = "extensions-runtime"
 kind = "boundary-transition"
 claim = "a menu without items shows its empty text and only the cancel hint, and tui.select.cancel is the only key that finishes it; every other key is ignored"
 status = "ported"
-pig_targets = ["coding/mcpext/manager.go#Menu"]
+pig_targets = ["coding/mcpext/mcptui/manager.go#Menu"]
 evidence = [
   "coding/mcpext/manager_test.go#TestMcpManagerViewEmptyMenu",
   "test/parity/scenarios/slash-commands/19-mcp-manager-empty-menu-cancel.toml",
@@ -1644,7 +1644,7 @@ family = "extensions-runtime"
 kind = "boundary-transition"
 claim = "on the sign-in screen tui.select.confirm submits the trimmed input unless it is empty, tui.select.cancel finishes without a value, app.message.copy copies the authorization URL, and every other key goes to the input"
 status = "ported"
-pig_targets = ["coding/mcpext/manager.go#RedirectURL"]
+pig_targets = ["coding/mcpext/mcptui/manager.go#RedirectURL"]
 evidence = [
   "coding/mcpext/manager_test.go#TestMcpManagerViewRedirectURL",
   "coding/mcpext/manager_test.go#TestMcpManagerViewRedirectURLTrimsLikeJavaScript",
@@ -1667,7 +1667,7 @@ family = "extensions-runtime"
 kind = "render-layout"
 claim = "a menu frame shows the title, the muted details, the error-colored error, a spacer, the item list capped at 12 visible rows or the empty text, and the confirm and cancel key hints; a change rebuilds it on the selected item"
 status = "ported"
-pig_targets = ["coding/mcpext/manager.go#Menu"]
+pig_targets = ["coding/mcpext/mcptui/manager.go#Menu"]
 evidence = [
   "coding/mcpext/manager_test.go#TestMcpManagerViewMenuLayout",
   "coding/mcpext/manager_test.go#TestMcpManagerViewMenuRebuildsOnChangeKeepingTheSelection",
@@ -1690,7 +1690,7 @@ family = "extensions-runtime"
 kind = "render-layout"
 claim = "the view renders its current content and cuts every row wider than the width to it, without a suffix"
 status = "ported"
-pig_targets = ["coding/mcpext/manager.go#Render"]
+pig_targets = ["coding/mcpext/mcptui/manager.go#Render"]
 evidence = [
   "coding/mcpext/manager_test.go#TestMcpManagerViewCutsRowsToTheWidth",
   "test/parity/scenarios/slash-commands/16-mcp-manager-while-connecting.toml",
@@ -1753,7 +1753,7 @@ family = "extensions-runtime"
 kind = "render-layout"
 claim = "a call renders as the bold `server/tool` label followed by its arguments in the muted color, reusing the previous text component, with the arguments expanded when the card is expanded"
 status = "ported"
-pig_targets = ["coding/mcpext/render.go#renderCall"]
+pig_targets = ["coding/mcpext/mcptui/render.go#renderCall"]
 evidence = [
   "coding/mcpext/tools_render_test.go",
   "test/parity/scenarios/slash-commands/25-mcp-tool-card.toml",
@@ -1773,7 +1773,7 @@ family = "extensions-runtime"
 kind = "render-layout"
 claim = "a result renders its text output after a spacer in the toolOutput color (error color for an error), tabs as three spaces, all of it expanded or else a preview limited to five wrapped lines with the expand hint and the path of the full output; an empty output renders nothing"
 status = "ported"
-pig_targets = ["coding/mcpext/render.go#renderResult"]
+pig_targets = ["coding/mcpext/mcptui/render.go#renderResult"]
 evidence = [
   "coding/mcpext/tools_render_test.go",
   "test/parity/scenarios/slash-commands/25-mcp-tool-card.toml",

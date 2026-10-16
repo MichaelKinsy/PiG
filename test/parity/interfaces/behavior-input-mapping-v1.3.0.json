@@ -53,7 +53,7 @@
       "ownerFamily": "extensions-runtime",
       "disposition": "ported",
       "pigTargets": [
-        "coding/mcpext/manager.go#Menu"
+        "coding/mcpext/mcptui/manager.go#Menu"
       ],
       "evidence": [
         "coding/mcpext/manager_test.go#TestMcpManagerViewEmptyMenu",
@@ -70,7 +70,7 @@
       "ownerFamily": "extensions-runtime",
       "disposition": "ported",
       "pigTargets": [
-        "coding/mcpext/manager.go#Status"
+        "coding/mcpext/mcptui/manager.go#Status"
       ],
       "evidence": [
         "coding/mcpext/manager_test.go#TestMcpManagerStatusScreenCancelsTheRunningOperationWithTheCancelKey",
@@ -89,7 +89,7 @@
       "ownerFamily": "extensions-runtime",
       "disposition": "ported",
       "pigTargets": [
-        "coding/mcpext/manager.go#RedirectURL"
+        "coding/mcpext/mcptui/manager.go#RedirectURL"
       ],
       "evidence": [
         "coding/mcpext/manager_test.go#TestMcpManagerViewRedirectURL",
@@ -109,7 +109,7 @@
       "ownerFamily": "extensions-runtime",
       "disposition": "ported",
       "pigTargets": [
-        "coding/mcpext/manager.go#HandleInput"
+        "coding/mcpext/mcptui/manager.go#HandleInput"
       ],
       "evidence": [
         "coding/mcpext/manager_test.go#TestMcpManagerStatusScreenCancelsTheRunningOperationWithTheCancelKey",
@@ -1731,7 +1731,7 @@
       "ownerFamily": "extensions-runtime",
       "disposition": "ported",
       "pigTargets": [
-        "coding/mcpext/render.go#renderCall"
+        "coding/mcpext/mcptui/render.go#renderCall"
       ],
       "evidence": [
         "coding/mcpext/tools_render_test.go",
@@ -1748,7 +1748,7 @@
       "ownerFamily": "extensions-runtime",
       "disposition": "ported",
       "pigTargets": [
-        "coding/mcpext/render.go#renderResult"
+        "coding/mcpext/mcptui/render.go#renderResult"
       ],
       "evidence": [
         "coding/mcpext/tools_render_test.go",
@@ -1765,7 +1765,7 @@
       "ownerFamily": "extensions-runtime",
       "disposition": "ported",
       "pigTargets": [
-        "coding/mcpext/manager.go#Menu"
+        "coding/mcpext/mcptui/manager.go#Menu"
       ],
       "evidence": [
         "coding/mcpext/manager_test.go#TestMcpManagerViewMenuLayout",
@@ -1785,7 +1785,7 @@
       "ownerFamily": "extensions-runtime",
       "disposition": "ported",
       "pigTargets": [
-        "coding/mcpext/manager.go#Render"
+        "coding/mcpext/mcptui/manager.go#Render"
       ],
       "evidence": [
         "coding/mcpext/manager_test.go#TestMcpManagerViewCutsRowsToTheWidth",
