@@ -99,7 +99,7 @@ func loadedSharedObjectsInPackageDir(packageDir string, sharedObjects []string) 
 	seen := make(map[string]bool)
 	var loadedFiles []string
 	for _, value := range sharedObjects {
-		filePath, err := normalizeWindowsPath(value)
+		filePath, err := normalizeWindowsPath(longWindowsPath(value))
 		if err != nil {
 			continue
 		}
