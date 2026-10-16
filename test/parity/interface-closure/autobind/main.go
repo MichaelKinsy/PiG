@@ -385,6 +385,7 @@ var libraryEntries = map[string][]string{
 	"chord:./context":                     {"./chord/context"},
 	"chord:./delta":                       {"./chord", "./chord/delta"},
 	"chord:./node":                        {"./chord/host"},
+	"chord:./output":                      {"./chord/output"},
 }
 
 // libraryPackages is the sorted, distinct Go packages of libraryEntries.
