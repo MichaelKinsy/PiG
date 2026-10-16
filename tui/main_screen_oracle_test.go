@@ -68,6 +68,8 @@ func TestMainScreenFramesMatchPiOracle(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(ResetCapabilitiesCache)
+	// A step that overflows writes pi-tui-crash.log; keep it out of the shared temporary directory. The comparison checks only the message prefix.
+	logDir := t.TempDir()
 	failures := 0
 	for index, sc := range scenarios {
 		if sc.Images != "" {
@@ -77,6 +79,7 @@ func TestMainScreenFramesMatchPiOracle(t *testing.T) {
 		}
 		var out strings.Builder
 		ui := NewWithOutput(&out, sc.Cols, sc.Rows)
+		ui.SetLogDirectory(logDir)
 		var pending func()
 		ui.afterFunc = func(_ time.Duration, fn func()) stoppableTimer {
 			pending = fn
