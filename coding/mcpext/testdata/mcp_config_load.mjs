@@ -1,5 +1,5 @@
 // Runs the installed Pi's loadMcpConfig over {global, project, trusted} mcp.json contents (string or null) and prints the servers, autoEnableCodemode and errors.
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -27,4 +27,5 @@ const results = JSON.parse(input).map(({ global, project, trusted }, index) => {
 		projectConfig: rel(loaded.projectConfig) ?? null,
 	});
 });
+rmSync(base, { recursive: true, force: true });
 process.stdout.write(JSON.stringify(results));
