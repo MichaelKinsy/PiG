@@ -187,7 +187,7 @@ func params(values []abi.Value) []contracttest.Param {
 	return out
 }
 
-func run(ctx context.Context, o options) error {
+func run(ctx context.Context, o options) (err error) {
 	timed := o.timing != "" || o.finish != nil
 	switch {
 	case o.finish != nil && (o.trace != "" || o.timing != "" || o.recoverRun):
@@ -349,6 +349,9 @@ func run(ctx context.Context, o options) error {
 	if err != nil {
 		return err
 	}
+	// Every path closes the session, so its host goroutine ends with the run. An error return (a refused fixture, a failed turn)
+	// used to leave it running, reading the clock the next run resets. Close is idempotent, so the paths that close it first are unaffected.
+	defer func() { err = errors.Join(err, session.Close(context.WithoutCancel(ctx))) }()
 	model := provider.GetModel()
 	root, err := session.Root(ctx, &harness.RootOptions{Agent: &harness.AgentChange{Model: harness.SetTo(durable.ModelRef{Provider: model.Provider.ID(), ModelId: model.ID})}})
 	if err != nil {
