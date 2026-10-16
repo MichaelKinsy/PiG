@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -291,7 +290,7 @@ func TestAltScreenFixtureIsCurrent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	generated, err := exec.CommandContext(t.Context(), "node", "testdata/alt-screen-oracle.mjs", dist).Output()
+	generated, err := piOracleCommand(t, "testdata/alt-screen-oracle.mjs", dist).Output()
 	if err != nil {
 		t.Fatalf("generate fixture: %v", err)
 	}
