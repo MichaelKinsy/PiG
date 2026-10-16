@@ -19,8 +19,8 @@ SUBPROCESS_PKG=./coding/extension/host/subprocess
 CONFORMANCE_PKG=./test/extension-conformance
 # Heavy packages that run as several go test processes, each under its own package timeout and each warm from the shared Go and Cargo caches, like cmd/pig: <package>:<shards>. test-shard-pattern.sh partitions each package's tests by name hash, and run_sharded_pkg refuses to run a package unless its shard patterns select every listed test exactly once. changed mode runs these packages whole.
 SHARDED_SPEC=(
-  ./ai:2
-  ./coding:2
+  ./ai:7
+  ./coding:4
   ./internal/codingagent:8
   ./test/parity/interface-closure/autobind:4
   ./chord/host:2
@@ -117,27 +117,18 @@ fi
 
 # Resolve the sharded packages that exist in this module and take them out of the whole-package groups.
 declare -A SHARD_COUNT=()
-# SKIPPED are the sharded packages PIG_CI_SKIP_SHARDED leaves out: neither sharded nor run whole.
-declare -A SKIPPED=()
 if [[ "$MODE" != changed && "$MODE" != report ]]; then
   for spec in "${SHARDED_SPEC[@]}"; do
     spec_pkg=$(go list "${spec%:*}")
-    # PIG_CI_SKIP_SHARDED names sharded packages this run leaves out (owner decision 2026-10-16 for the 0.5.0 release
-    # push: ./ai and ./coding need more shards than their -run patterns fit, which 0.5.1 fixes). The skip is printed.
-    if [[ " ${PIG_CI_SKIP_SHARDED:-} " == *" ${spec%:*} "* ]]; then
-      echo "::warning title=sharded package skipped::${spec%:*} is not run (PIG_CI_SKIP_SHARDED)"
-      SKIPPED[$spec_pkg]=1
-      continue
-    fi
     in_all=
     for pkg in "${ALL_PKGS[@]}"; do [[ "$pkg" == "$spec_pkg" ]] && in_all=1; done
     [[ -n "$in_all" ]] && SHARD_COUNT[$spec_pkg]=${spec##*:}
   done
   kept=()
-  for pkg in "${FAST_PKGS[@]}"; do [[ -n ${SHARD_COUNT[$pkg]:-} || -n ${SKIPPED[$pkg]:-} ]] || kept+=("$pkg"); done
+  for pkg in "${FAST_PKGS[@]}"; do [[ -n ${SHARD_COUNT[$pkg]:-} ]] || kept+=("$pkg"); done
   FAST_PKGS=("${kept[@]}")
   kept=()
-  for pkg in "${HEAVY_PKGS[@]}"; do [[ -n ${SHARD_COUNT[$pkg]:-} || -n ${SKIPPED[$pkg]:-} ]] || kept+=("$pkg"); done
+  for pkg in "${HEAVY_PKGS[@]}"; do [[ -n ${SHARD_COUNT[$pkg]:-} ]] || kept+=("$pkg"); done
   HEAVY_PKGS_WHOLE=("${kept[@]}")
 else
   HEAVY_PKGS_WHOLE=("${HEAVY_PKGS[@]}")
