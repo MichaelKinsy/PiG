@@ -29513,6 +29513,34 @@
         "coding/mcp_session_atomic_registration_test.go::TestAgentSessionMCPRegistersAServersToolsAsOneChange",
         "coding/mcp_session_upstream_test.go::TestAgentSessionMCPTellsScriptsWhatDirectlyExposedMCPToolsResolveTo"
       ]
+    },
+    {
+      "id": "BF-a31d771",
+      "title": "Fixed `pig piglet build` failing on a Piglet that carries a single-file extension (a lone `.ts` or `.js`…",
+      "symptom": "Fixed `pig piglet build` failing on a Piglet that carries a single-file extension (a lone `.ts` or `.js` file): locking it read `\u003cfile\u003e/go.mod`, which fails with ENOTDIR rather than ENOENT, so the build stopped with \"local Go replacements: not a directory\".",
+      "rootCause": "localGoReplacementDirs read \u003cextension\u003e/go.mod for every extension; for a single-file extension (a lone .ts or .js file, documented in piglet-binaries.md) that read fails with ENOTDIR, which os.IsNotExist does not cover, and the build stopped at 'Locking build inputs'. A source that is not a directory has no Go replacements.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Fixed `pig piglet build` failing on a Piglet that carries a single-file extension (a lone `.ts` or `.js` file): locking it read `\u003cfile\u003e/go.mod`, which fails with ENOTDIR rather than ENOENT, so the build stopped with \"local Go replacements: not a directory\". A file extension has no Go replacements and now locks like a directory extension without a `go.mod`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a31d77153a",
+          "date": "2026-10-11"
+        }
+      ],
+      "tests": [
+        "bench/k8s/cmd/k8sbench/gpu_test.go::TestRunTrialDoesNotScoreAnArmThatDoesNotStart",
+        "bench/k8s/cmd/k8sbench/gpu_test.go::TestRunTrialRefusesTestsThatAreNotLocked",
+        "bench/k8s/cmd/k8sbench/gpu_test.go::TestRunTrialScoresTheAgentAfterItExits",
+        "bench/k8s/cmd/k8sbench/gpu_test.go::TestRunTrialVerifiesAFailedOrTimedOutAgent",
+        "coding/piglet/testmain_test.go::TestAgentEnvIsIsolatedToThePackageRun",
+        "coding/piglet/testmain_test.go::TestMain",
+        "coding/pigletbuild/records_go_replacement_test.go::TestBuildInputsLocksASingleFileExtension"
+      ]
     }
   ],
   "divergences": [

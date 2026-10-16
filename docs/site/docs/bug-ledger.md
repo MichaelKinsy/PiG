@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-880 bugs. 830 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 135 bugs have no recorded test.
+881 bugs. 831 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 135 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -899,6 +899,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-b8df7eb-2](#bf-b8df7eb-2) | On Windows, an image fallback links a path that starts with a slash but no drive (`/tmp/x.png`) as Pi does… | PiG's own defect | Windows | 0.5.0 |
 | [BF-b8df7eb-3](#bf-b8df7eb-3) | Alt-screen frames outside the Kitty protocol no longer read the environment for WezTerm on every render… | PiG's own defect | Windows | 0.5.0 |
 | [BF-1d3b1d0](#bf-1d3b1d0) | MCP: a server's tools, the tools it stopped offering, and the resource tools now reach the session as one… | PiG's own defect | All platforms | Unreleased |
+| [BF-a31d771](#bf-a31d771) | Fixed `pig piglet build` failing on a Piglet that carries a single-file extension (a lone `.ts` or `.js`… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -13163,6 +13164,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `1d3b1d00b3` (2026-10-15), `2b78e00a1c` (2026-10-15)
 - **Tests:** `chord/host/awaiting_upstream_test.go::TestAwaitingACtxGetStillWaitingWhenItsCallSettlesRejectsAbortedAndReleasesItsReference`, `chord/host/awaiting_upstream_test.go::TestAwaitingAGetTimesOutAfterReadyTimeoutWithReadyTimeoutAndReleasesItsHold`, `chord/host/awaiting_upstream_test.go::TestAwaitingAnAbortedGetRejectsAndReleasesOnlyItsReferenceTheBindingStaysForTheOthers`, `chord/host/awaiting_upstream_test.go::TestAwaitingCtxGetResolvesHydratedTheCallsReferenceIsReleasedWhenTheCallEnds`, `chord/host/bindings_upstream_test.go::TestBindingsAHeldReferenceStaysSubscribedWithoutListenersValuesAreReadableAtOnceAfterReady`, `chord/host/bindings_upstream_test.go::TestBindingsIdentityNormalizedEqualInputsAndEqualPrincipalKeysShareOtherPrincipalsAndFingerprintsDoNot`, `chord/host/bindings_upstream_test.go::TestBindingsLingerAKeepsItsHoldAndStateAReferenceTakenMeanwhileCostsNothingOnTheLink`, `chord/host/bindings_upstream_test.go::TestBindingsLingerAtMostCapBindingsLingerTheLeastRecentlyReleasedGoesFirst` and 29 more in docs/bug-ledger.json
 - **Release note:** MCP: a server's tools, the tools it stopped offering, and the resource tools now reach the session as one change, as Pi registers them in one synchronous turn. A prompt that started while a server was connecting could see only some of its tools.
+
+### BF-a31d771
+
+**Fixed `pig piglet build` failing on a Piglet that carries a single-file extension (a lone `.ts` or `.js`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fixed `pig piglet build` failing on a Piglet that carries a single-file extension (a lone `.ts` or `.js` file): locking it read `<file>/go.mod`, which fails with ENOTDIR rather than ENOENT, so the build stopped with "local Go replacements: not a directory".
+- **Root cause:** localGoReplacementDirs read <extension>/go.mod for every extension; for a single-file extension (a lone .ts or .js file, documented in piglet-binaries.md) that read fails with ENOTDIR, which os.IsNotExist does not cover, and the build stopped at 'Locking build inputs'. A source that is not a directory has no Go replacements.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a31d77153a` (2026-10-11)
+- **Tests:** `bench/k8s/cmd/k8sbench/gpu_test.go::TestRunTrialDoesNotScoreAnArmThatDoesNotStart`, `bench/k8s/cmd/k8sbench/gpu_test.go::TestRunTrialRefusesTestsThatAreNotLocked`, `bench/k8s/cmd/k8sbench/gpu_test.go::TestRunTrialScoresTheAgentAfterItExits`, `bench/k8s/cmd/k8sbench/gpu_test.go::TestRunTrialVerifiesAFailedOrTimedOutAgent`, `coding/piglet/testmain_test.go::TestAgentEnvIsIsolatedToThePackageRun`, `coding/piglet/testmain_test.go::TestMain`, `coding/pigletbuild/records_go_replacement_test.go::TestBuildInputsLocksASingleFileExtension`
+- **Release note:** Fixed `pig piglet build` failing on a Piglet that carries a single-file extension (a lone `.ts` or `.js` file): locking it read `<file>/go.mod`, which fails with ENOTDIR rather than ENOENT, so the build stopped with "local Go replacements: not a directory". A file extension has no Go replacements and now locks like a directory extension without a `go.mod`.
 
 ## Divergences from Pi added in this release
 
