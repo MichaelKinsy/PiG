@@ -431,9 +431,16 @@ func TestMCPConnectionsClosesAConnectionThatIsStillInitializingBeforeCloseReturn
 // is 250ms away; Close ends the wait instead of sleeping through it, and no second transport opens.
 func TestMCPConnectionsStopsWaitingToRetryAConnectionWhenClosed(t *testing.T) {
 	servers := &serverSet{}
+	transient := &mcp.McpHttpError{Status: 503, Message: "MCP HTTP request failed with status 503"}
+	failed := make(chan struct{})
+	var failOnce sync.Once
 	connection, opened := connect(t, httpEntry("Authorization", "x"), []transportSource{
 		func() mcp.Transport {
-			return failingSend(servers, &mcp.McpHttpError{Status: 503, Message: "MCP HTTP request failed with status 503"})
+			inner := createFakeTransport(servers, fakeTransportOptions{})
+			return &sendOverride{Transport: inner, send: func(mcp.JSONRPCMessage) error {
+				failOnce.Do(func() { close(failed) })
+				return transient
+			}}
 		},
 		func() mcp.Transport { return createFakeTransport(servers, fakeTransportOptions{}) },
 	}, nil)
@@ -442,11 +449,14 @@ func TestMCPConnectionsStopsWaitingToRetryAConnectionWhenClosed(t *testing.T) {
 		_, err := connection.GetClient(t.Context())
 		failure <- err
 	}()
-	// The first attempt failed; the retry is 250ms away.
-	for opened.Load() == 0 {
-		time.Sleep(time.Millisecond)
+	// Wait until the first attempt's send has failed: from then on the attempt's error is the transient one, whether
+	// Close lands before the retry wait or during it. Waiting a fixed time instead let a loaded runner close the
+	// connection while the first attempt was still in flight, which aborts it.
+	select {
+	case <-failed:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the first connect attempt never sent")
 	}
-	time.Sleep(10 * time.Millisecond)
 	started := time.Now()
 	connection.Close()
 	select {
