@@ -129,9 +129,18 @@ func shippedPigletInventory(t *testing.T, path, rel string) string {
 		if entry.Tools != nil {
 			tools = "[" + strings.Join(*entry.Tools, ", ") + "]"
 		}
-		// Resolution makes local origins absolute; the inventory names them relative to the module root.
-		origins := strings.ReplaceAll(strings.Join(entry.Origins, ", "), filepath.ToSlash(testenv.ModuleRoot(t))+"/", "")
-		fmt.Fprintf(&b, "extension %s origins=[%s] tools=%s\n", entry.Name, origins, tools)
+		// Resolution makes local origins absolute, in the OS's separators; the inventory names them relative to the module
+		// root with slashes, so it reads the same on every OS.
+		origins := make([]string, len(entry.Origins))
+		for i, origin := range entry.Origins {
+			origins[i] = origin
+			if local, ok := strings.CutPrefix(origin, "local:"); ok && filepath.IsAbs(local) {
+				if rel, err := filepath.Rel(testenv.ModuleRoot(t), local); err == nil {
+					origins[i] = "local:" + filepath.ToSlash(rel)
+				}
+			}
+		}
+		fmt.Fprintf(&b, "extension %s origins=[%s] tools=%s\n", entry.Name, strings.Join(origins, ", "), tools)
 	}
 	for _, skill := range p.Skills {
 		fmt.Fprintf(&b, "skill %s\n", skill.Name)
