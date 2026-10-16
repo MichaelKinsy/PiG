@@ -888,16 +888,16 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-edb73db](#bf-edb73db) | fix(codingagent): one owner-overflow forwarder at a time; the drain test waits for it, not for the flag's… | PiG's own defect | All platforms | Unreleased |
 | [BF-167dae3](#bf-167dae3) | fix(codingagent): the idle collection runs two GC cycles again so pool victims are freed (D172) | PiG's own defect | All platforms | Unreleased |
 | [BF-20718f7](#bf-20718f7) | fix(coding-agent): resolve model references through one provider selection policy (Pi) | PiG's own defect | All platforms | Unreleased |
-| [BF-c58f961](#bf-c58f961) | A call through a remote Chord reference with a `ctx` from another host, or one not made by Chord, fails with… | PiG's own defect | All platforms | Unreleased |
-| [BF-c58f961-2](#bf-c58f961-2) | Turning thinking off on Claude Haiku 5.5 and Opus 5 sends plain `thinking: {type: "disabled"}` without effort… | PiG's own defect | All platforms | Unreleased |
-| [BF-c58f961-3](#bf-c58f961-3) | The retry classifier treats "The service is temporarily unavailable" and Bedrock's "Service unavailable: ..."… | PiG's own defect | All platforms | Unreleased |
+| [BF-36c3d14](#bf-36c3d14) | `done()` of an overlay `ui.custom` component hides that component's own overlay instead of the topmost one | PiG's own defect | All platforms | Unreleased |
 | [BF-471db1a](#bf-471db1a) | A `Progress` pause longer than Node's timer maximum, or not a number, runs after 1 ms as a Node timer does | A fix Pi shipped that PiG ported | All platforms | Unreleased |
-| [BF-83fea11](#bf-83fea11) | On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was… | PiG's own defect | Windows | 0.5.0 |
 | [BF-f2f1caa](#bf-f2f1caa) | Anthropic and Claude on Bedrock no longer lose the images of an error tool result: Pi sends them after the… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-7cf8dc0](#bf-7cf8dc0) | A call through a remote Chord reference with a `ctx` from another host, or one not made by Chord, fails with… | PiG's own defect | All platforms | Unreleased |
+| [BF-7cf8dc0-2](#bf-7cf8dc0-2) | Turning thinking off on Claude Haiku 5.5 and Opus 5 sends plain `thinking: {type: "disabled"}` without effort… | PiG's own defect | All platforms | Unreleased |
+| [BF-7cf8dc0-3](#bf-7cf8dc0-3) | The retry classifier treats "The service is temporarily unavailable" and Bedrock's "Service unavailable: ..."… | PiG's own defect | All platforms | Unreleased |
+| [BF-83fea11](#bf-83fea11) | On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was… | PiG's own defect | Windows | 0.5.0 |
 | [BF-b8df7eb](#bf-b8df7eb) | On Windows, a session's private snapshot file is created in the temporary directory instead of the session… | PiG's own defect | Windows | 0.5.0 |
 | [BF-b8df7eb-2](#bf-b8df7eb-2) | On Windows, an image fallback links a path that starts with a slash but no drive (`/tmp/x.png`) as Pi does… | PiG's own defect | Windows | 0.5.0 |
 | [BF-b8df7eb-3](#bf-b8df7eb-3) | Alt-screen frames outside the Kitty protocol no longer read the environment for WezTerm on every render… | PiG's own defect | Windows | 0.5.0 |
-| [BF-36c3d14](#bf-36c3d14) | `done()` of an overlay `ui.custom` component hides that component's own overlay instead of the topmost one | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -13009,47 +13009,19 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `20718f71ec` (2026-10-14)
 - **Tests:** `coding/cli/credential_print_test.go::TestCredentialPrintModelWithoutProviderUsesCatalogOfConfiguredProviders`, `internal/codingagent/model_reference_upstream_test.go::TestResolveCliModelDuplicateRawIDsMatchesUpstream`, `internal/codingagent/model_reference_upstream_test.go::TestResolveModelReferenceMatchesUpstream`, `internal/codingagent/model_reference_upstream_test.go::TestResolveModelScopeAmbiguousProvidersMatchesUpstream`
 
-### BF-c58f961
+### BF-36c3d14
 
-**A call through a remote Chord reference with a `ctx` from another host, or one not made by Chord, fails with…**
-
-- **Source:** PiG's own defect
-- **Symptom:** A call through a remote Chord reference with a `ctx` from another host, or one not made by Chord, fails with `invalid/foreign_ctx` before anything crosses the link, like a call through a local reference.
-- **Root cause:** Not a READY commit. The pin bump to is in flight in the worktree, the upstream-sync and test-mapping rows are not written, and is not ported.
-- **User impact:** An operation failed or was rejected
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `f433fee8c5` (2026-10-14), `c58f96109f` (2026-10-15)
-- **Tests:** `chord/host/host_test.go::TestHostRecognizesItsOwnPrincipalByKey`, `chord/host/placement_upstream_test.go::TestPlacementAGetGoesWhereTheContractPlacesTheInputHereAChildOrTheParentNeverNamedByTheCaller`, `chord/host/placement_upstream_test.go::TestPlacementAHostRefusesAHoldItsOwnContractPlacesElsewhereAndARelayOneWhoseTargetDisagrees`, `chord/host/placement_upstream_test.go::TestPlacementIsPartOfTheContractAMovedTypeIsABreakingChangeNeverBridgedByAnAdapter`, `chord/host/placement_upstream_test.go::TestPlacementServeRefusesATypeTheHostIsNotThePlaceOfAlsoAtAReload`, `chord/host/placement_upstream_test.go::TestPlacementTheHostComesFromTheNormalizedInputUnknownFieldsAndDefaultsDoNotChangeIt`, `chord/host/placement_upstream_test.go::TestPlacementTypesAndRemoteContractsNeedAHost`, `chord/host/principals_upstream_test.go::TestPrincipalsAChildsParentActsAsThePrincipalTheChildGaveConnectRelayedCallersKeepTheirs` and 11 more in docs/bug-ledger.json
-- **Release note:** A call through a remote Chord reference with a `ctx` from another host, or one not made by Chord, fails with `invalid/foreign_ctx` before anything crosses the link, like a call through a local reference.
-
-### BF-c58f961-2
-
-**Turning thinking off on Claude Haiku 5.5 and Opus 5 sends plain `thinking: {type: "disabled"}` without effort…**
+**`done()` of an overlay `ui.custom` component hides that component's own overlay instead of the topmost one**
 
 - **Source:** PiG's own defect
-- **Symptom:** Turning thinking off on Claude Haiku 5.5 and Opus 5 sends plain `thinking: {type: "disabled"}` without effort markers, which Anthropic rejects while thinking is disabled.
-- **Root cause:** Not a READY commit. The pin bump to is in flight in the worktree, the upstream-sync and test-mapping rows are not written, and is not ported.
-- **User impact:** Behavior differed from Pi
+- **Symptom:** `done()` of an overlay `ui.custom` component hides that component's own overlay instead of the topmost one.
+- **Root cause:** showExtensionCustom's close() hid the overlay with ui.hideOverlay(), which removes the topmost overlay, so closing a lower overlay removed the one above it and left the finished one on screen (interactive-mode.ts:2992-3000, :3028 keeps the handle showOverlay returned and close() calls overlayHandle?.hide()). customCall.teardown (ext_ui_custom.go) and RunRemoteOverlay (ext_ui_context.go) now hide the handle they showed. A factory's own tui.hideOverlay() still pops the topmost overlay (HideTopOverlay).
+- **User impact:** Wrong output or ordering
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `c58f96109f` (2026-10-15)
-- **Tests:** `chord/host/review_upstream_test.go::TestReviewARemoteReferenceRefusesAForeignCtxAndACtxNotMadeByChordWithoutCalling`
-- **Release note:** Turning thinking off on Claude Haiku 5.5 and Opus 5 sends plain `thinking: {type: "disabled"}` without effort markers, which Anthropic rejects while thinking is disabled.
-
-### BF-c58f961-3
-
-**The retry classifier treats "The service is temporarily unavailable" and Bedrock's "Service unavailable: ..."…**
-
-- **Source:** PiG's own defect
-- **Symptom:** The retry classifier treats "The service is temporarily unavailable" and Bedrock's "Service unavailable: ..." as retryable.
-- **Root cause:** Not a READY commit. The pin bump to is in flight in the worktree, the upstream-sync and test-mapping rows are not written, and is not ported.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `c58f96109f` (2026-10-15)
-- **Tests:** `chord/host/review_upstream_test.go::TestReviewARemoteReferenceRefusesAForeignCtxAndACtxNotMadeByChordWithoutCalling`
-- **Release note:** The retry classifier treats "The service is temporarily unavailable" and Bedrock's "Service unavailable: ..." as retryable.
+- **Fix commits:** `36c3d14b23` (2026-10-15, #10999)
+- **Tests:** `internal/codingagent/ext_ui_custom_stack_test.go::TestHostCustomOverlayCloseOutOfOrderRemovesItsOwnOverlay`, `internal/codingagent/ext_ui_custom_stack_test.go::TestRemoteCustomOverlayCloseOutOfOrderRemovesItsOwnOverlay`
+- **Release note:** `done()` of an overlay `ui.custom` component hides that component's own overlay instead of the topmost one. With a shell overlay open under a dialog overlay from another extension, the shell's exit no longer removes the dialog or leaves the finished shell on screen (Pi #10999, #10648).
 
 ### BF-471db1a
 
@@ -13065,20 +13037,6 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `chord/output/output_pi_oracle_test.go::TestOutputBufferMatchesPi`, `chord/output/output_skip_test.go::TestOutputBufferSkippedOutput`, `chord/output/output_skip_test.go::TestOutputBufferSkippedOutputEndsAnIncompleteCharacterBeforeTheOmission`, `chord/output/output_test.go::TestOutputBuffer`, `chord/output/output_test.go::TestProgress`, `chord/output/output_test.go::TestSystemProgressClockUsesNodesTimerDelayRule`, `chord/output/output_test.go::TestToolOutputBounds`, `durable/harness/harness_tools_progress_test.go::TestToolProgressAndLifetime` and 4 more in docs/bug-ledger.json
 - **Release note:** A `Progress` pause longer than Node's timer maximum, or not a number, runs after 1 ms as a Node timer does.
 
-### BF-83fea11
-
-**On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was…**
-
-- **Source:** PiG's own defect
-- **Symptom:** On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was reported as a retryable `fetch failed`.
-- **Root cause:** nodeNetErrorMessage accepted only the connect syscall, but Go names the Windows call connectex, so on Windows a refused connect fell through to 'fetch failed' and a retryable Bedrock error where Node reports 'connect ECONNREFUSED 127.0.0.1:N', not retryable (TestNodeNetErrorMessageIsNodesText, TestBedrockRefusedConnectIsNodesErrorLikePi on the release PR's Windows native-2 job).
-- **User impact:** An operation failed or was rejected
-- **Platform:** Windows
-- **Fixed in:** 0.5.0
-- **Fix commits:** `83fea11dbf` (2026-10-15)
-- **Tests:** `ai/bedrock_error_metadata_upstream_test.go::TestBedrockRefusedConnectIsNodesErrorLikePi`, `ai/node_net_error_test.go::TestNodeNetErrorMessageIsNodesText`, `ai/oauth_page_corpus_test.go::TestOAuthPageCorpusMatchesThePinnedPackage`
-- **Release note:** On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was reported as a retryable `fetch failed`.
-
 ### BF-f2f1caa
 
 **Anthropic and Claude on Bedrock no longer lose the images of an error tool result: Pi sends them after the…**
@@ -13092,6 +13050,62 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `29dadf1e5e` (2026-10-15), `471db1ac1b` (2026-10-15), `f2f1caa6d2` (2026-10-15), `fb72e1fde8` (2026-10-15)
 - **Tests:** `ai/anthropic_error_tool_result_image_test.go::TestAnthropicErrorToolResultImages`, `ai/auth_path_oracle_test.go::TestAuthStorageAuthPathSpellingsMatchPi`, `ai/bedrock_convert_upstream_test.go::TestBedrockUpstreamConvertMessages`, `ai/openai_codex_websocket_proxy_test.go::TestCodexWebSocketFallsBackToTheHTTPProxy`, `ai/openai_codex_websocket_proxy_test.go::TestCodexWebSocketProxyFollowsEnvHttpProxyAgent`, `ai/sse_event_idle_scan_norace_test.go::TestSSEIdleTrackerScanIsNotAPerByteLoop`, `chord/output/output_pi_oracle_test.go::TestOutputBufferMatchesPi`, `chord/output/output_skip_test.go::TestOutputBufferSkippedOutput` and 10 more in docs/bug-ledger.json
 - **Release note:** Anthropic and Claude on Bedrock no longer lose the images of an error tool result: Pi sends them after the tool results of the turn, under a caption naming the tool call, instead of replacing them with a note ([#10794](https://github.com/earendil-works/pi/issues/10794)). Other Bedrock models keep the images in the result.
+
+### BF-7cf8dc0
+
+**A call through a remote Chord reference with a `ctx` from another host, or one not made by Chord, fails with…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A call through a remote Chord reference with a `ctx` from another host, or one not made by Chord, fails with `invalid/foreign_ctx` before anything crosses the link, like a call through a local reference.
+- **Root cause:** -: the remote reference caller refuses a foreign or forged ctx (chord/host/remote.go; Pi remote.ts:631-645) -: the retry pattern matches "The service is temporarily unavailable" (assistant_retry.go; Pi utils/retry.ts:46) -: off thinking on managed-effort models sends plain disabled thinking with no effort markers, and providerThinkingLevel is recorded after buildParams (ai/anthropic.go; Pi anthropic-messages.ts:1201-1203) -: the kimi-coding base URL returns to /coding and its tests return to Chat Completions
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `368f33bae1` (2026-10-14), `7cf8dc042f` (2026-10-15)
+- **Tests:** `chord/host/host_test.go::TestHostRecognizesItsOwnPrincipalByKey`, `chord/host/placement_upstream_test.go::TestPlacementAGetGoesWhereTheContractPlacesTheInputHereAChildOrTheParentNeverNamedByTheCaller`, `chord/host/placement_upstream_test.go::TestPlacementAHostRefusesAHoldItsOwnContractPlacesElsewhereAndARelayOneWhoseTargetDisagrees`, `chord/host/placement_upstream_test.go::TestPlacementIsPartOfTheContractAMovedTypeIsABreakingChangeNeverBridgedByAnAdapter`, `chord/host/placement_upstream_test.go::TestPlacementServeRefusesATypeTheHostIsNotThePlaceOfAlsoAtAReload`, `chord/host/placement_upstream_test.go::TestPlacementTheHostComesFromTheNormalizedInputUnknownFieldsAndDefaultsDoNotChangeIt`, `chord/host/placement_upstream_test.go::TestPlacementTypesAndRemoteContractsNeedAHost`, `chord/host/principals_upstream_test.go::TestPrincipalsAChildsParentActsAsThePrincipalTheChildGaveConnectRelayedCallersKeepTheirs` and 11 more in docs/bug-ledger.json
+- **Release note:** A call through a remote Chord reference with a `ctx` from another host, or one not made by Chord, fails with `invalid/foreign_ctx` before anything crosses the link, like a call through a local reference.
+
+### BF-7cf8dc0-2
+
+**Turning thinking off on Claude Haiku 5.5 and Opus 5 sends plain `thinking: {type: "disabled"}` without effort…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Turning thinking off on Claude Haiku 5.5 and Opus 5 sends plain `thinking: {type: "disabled"}` without effort markers, which Anthropic rejects while thinking is disabled.
+- **Root cause:** -: the remote reference caller refuses a foreign or forged ctx (chord/host/remote.go; Pi remote.ts:631-645) -: the retry pattern matches "The service is temporarily unavailable" (assistant_retry.go; Pi utils/retry.ts:46) -: off thinking on managed-effort models sends plain disabled thinking with no effort markers, and providerThinkingLevel is recorded after buildParams (ai/anthropic.go; Pi anthropic-messages.ts:1201-1203) -: the kimi-coding base URL returns to /coding and its tests return to Chat Completions
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7cf8dc042f` (2026-10-15)
+- **Tests:** `chord/host/review_upstream_test.go::TestReviewARemoteReferenceRefusesAForeignCtxAndACtxNotMadeByChordWithoutCalling`
+- **Release note:** Turning thinking off on Claude Haiku 5.5 and Opus 5 sends plain `thinking: {type: "disabled"}` without effort markers, which Anthropic rejects while thinking is disabled.
+
+### BF-7cf8dc0-3
+
+**The retry classifier treats "The service is temporarily unavailable" and Bedrock's "Service unavailable: ..."…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The retry classifier treats "The service is temporarily unavailable" and Bedrock's "Service unavailable: ..." as retryable.
+- **Root cause:** -: the remote reference caller refuses a foreign or forged ctx (chord/host/remote.go; Pi remote.ts:631-645) -: the retry pattern matches "The service is temporarily unavailable" (assistant_retry.go; Pi utils/retry.ts:46) -: off thinking on managed-effort models sends plain disabled thinking with no effort markers, and providerThinkingLevel is recorded after buildParams (ai/anthropic.go; Pi anthropic-messages.ts:1201-1203) -: the kimi-coding base URL returns to /coding and its tests return to Chat Completions
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7cf8dc042f` (2026-10-15)
+- **Tests:** `chord/host/review_upstream_test.go::TestReviewARemoteReferenceRefusesAForeignCtxAndACtxNotMadeByChordWithoutCalling`
+- **Release note:** The retry classifier treats "The service is temporarily unavailable" and Bedrock's "Service unavailable: ..." as retryable.
+
+### BF-83fea11
+
+**On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was reported as a retryable `fetch failed`.
+- **Root cause:** nodeNetErrorMessage accepted only the connect syscall, but Go names the Windows call connectex, so on Windows a refused connect fell through to 'fetch failed' and a retryable Bedrock error where Node reports 'connect ECONNREFUSED 127.0.0.1:N', not retryable (TestNodeNetErrorMessageIsNodesText, TestBedrockRefusedConnectIsNodesErrorLikePi on the release PR's Windows native-2 job).
+- **User impact:** An operation failed or was rejected
+- **Platform:** Windows
+- **Fixed in:** 0.5.0
+- **Fix commits:** `83fea11dbf` (2026-10-15)
+- **Tests:** `ai/bedrock_error_metadata_upstream_test.go::TestBedrockRefusedConnectIsNodesErrorLikePi`, `ai/node_net_error_test.go::TestNodeNetErrorMessageIsNodesText`, `ai/oauth_page_corpus_test.go::TestOAuthPageCorpusMatchesThePinnedPackage`
+- **Release note:** On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was reported as a retryable `fetch failed`.
 
 ### BF-b8df7eb
 
@@ -13134,20 +13148,6 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `b8df7eb579` (2026-10-15)
 - **Tests:** `coding/agent_session_runtime_oracle_test.go::TestAgentSessionRuntimeMatchesPi`, `tui/alt_screen_frame_allocs_norace_test.go::TestAltScreenStreamingFrameAllocationCeiling`, `tui/terminal_split_reply_test.go::TestTerminalInputConsumesAnOwedReplySplitAcrossSlowReads`
 - **Release note:** Alt-screen frames outside the Kitty protocol no longer read the environment for WezTerm on every render, which allocated on Windows.
-
-### BF-36c3d14
-
-**`done()` of an overlay `ui.custom` component hides that component's own overlay instead of the topmost one**
-
-- **Source:** PiG's own defect
-- **Symptom:** `done()` of an overlay `ui.custom` component hides that component's own overlay instead of the topmost one.
-- **Root cause:** showExtensionCustom's close() hid the overlay with ui.hideOverlay(), which removes the topmost overlay, so closing a lower overlay removed the one above it and left the finished one on screen (interactive-mode.ts:2992-3000, :3028 keeps the handle showOverlay returned and close() calls overlayHandle?.hide()). customCall.teardown (ext_ui_custom.go) and RunRemoteOverlay (ext_ui_context.go) now hide the handle they showed. A factory's own tui.hideOverlay() still pops the topmost overlay (HideTopOverlay).
-- **User impact:** Wrong output or ordering
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `36c3d14b23` (2026-10-15, #10999)
-- **Tests:** `internal/codingagent/ext_ui_custom_stack_test.go::TestHostCustomOverlayCloseOutOfOrderRemovesItsOwnOverlay`, `internal/codingagent/ext_ui_custom_stack_test.go::TestRemoteCustomOverlayCloseOutOfOrderRemovesItsOwnOverlay`
-- **Release note:** `done()` of an overlay `ui.custom` component hides that component's own overlay instead of the topmost one. With a shell overlay open under a dialog overlay from another extension, the shell's exit no longer removes the dialog or leaves the finished shell on screen (Pi #10999, #10648).
 
 ## Divergences from Pi added in this release
 
