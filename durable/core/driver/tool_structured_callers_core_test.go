@@ -3,6 +3,7 @@ package driver_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"reflect"
 	"slices"
@@ -391,8 +392,21 @@ func TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration(t *testing.T
 	if _, err := h.AbortTask(t.Context(), live.Run.TaskId); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := sub.Wait(t.Context()); err != nil {
-		t.Fatal(err)
+	// The abort settles the submission within a second here. A hang (CI 38963134950 attempt 2: the tool's run invocation
+	// never ended after its effect was cancelled, 1 in ~1000 under -race with 2 processors) fails here with the live
+	// task records instead of the package's 10-minute timeout, so a CI hit is data for the root cause.
+	settle, cancelSettle := context.WithTimeout(t.Context(), 60*time.Second)
+	defer cancelSettle()
+	if _, err := sub.Wait(settle); err != nil {
+		var dump strings.Builder
+		if inspection, ierr := h.Inspect(context.Background()); ierr == nil {
+			for _, task := range inspection.Tasks {
+				fmt.Fprintf(&dump, "\n  task %d %s status=%s abortRequested=%v abortReason=%q state=%+v", task.Record.Id, task.Record.Kind, task.Record.State.Status, task.Record.AbortRequested, task.Record.AbortReason, task.Record.State)
+			}
+		} else {
+			fmt.Fprintf(&dump, "\n  inspect: %v", ierr)
+		}
+		t.Fatalf("the aborted generation's submission did not settle: %v; live tasks:%s", err, dump.String())
 	}
 	if err := h.WaitForIdle(t.Context()); err != nil {
 		t.Fatal(err)
