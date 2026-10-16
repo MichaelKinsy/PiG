@@ -38,9 +38,9 @@ func TestRPCSessionReplacementAnswersAfterALaterCommandOfItsBatch(t *testing.T) 
 			command := tc.command
 			switch tc.name {
 			case "switch_session":
-				command = `{"id":"1","type":"switch_session","sessionPath":"` + other + `"}`
+				command = `{"id":"1","type":"switch_session","sessionPath":` + jsonString(other) + `}`
 			case "export_html":
-				command = `{"id":"1","type":"export_html","outputPath":"` + filepath.Join(dir, "export.html") + `"}`
+				command = `{"id":"1","type":"export_html","outputPath":` + jsonString(filepath.Join(dir, "export.html")) + `}`
 			}
 			if _, err := io.WriteString(p.stdin, command+"\n"+`{"id":"2","type":"get_state"}`+"\n"); err != nil {
 				t.Fatal(err)
@@ -103,7 +103,7 @@ func TestRPCSessionReplacementsOfOneBatchSettleInDispatchOrder(t *testing.T) {
 			}
 		}
 		p := startRPCProcess(t, []string{"PIG_TEST_FAUX=1", "PIG_HOME=" + dir}, "--offline", "--no-extensions", "--model", "test-faux/faux-1", "--session", current, "--session-dir", filepath.Join(dir, "sessions"))
-		if _, err := io.WriteString(p.stdin, `{"id":"1","type":"switch_session","sessionPath":"`+other+`"}`+"\n"+`{"id":"2","type":"new_session"}`+"\n"); err != nil {
+		if _, err := io.WriteString(p.stdin, `{"id":"1","type":"switch_session","sessionPath":`+jsonString(other)+`}`+"\n"+`{"id":"2","type":"new_session"}`+"\n"); err != nil {
 			t.Fatal(err)
 		}
 		var order []string
@@ -152,7 +152,7 @@ func TestRPCReplacementsOfOneBatchRunInRequestOrder(t *testing.T) {
 			}
 		}
 		p := startRPCProcess(t, []string{"PIG_TEST_FAUX=1", "PIG_HOME=" + dir}, "--offline", "--no-extensions", "--model", "test-faux/faux-1", "--session", current, "--session-dir", filepath.Join(dir, "sessions"))
-		batch := `{"id":"1","type":"switch_session","sessionPath":"` + other + `"}` + "\n" +
+		batch := `{"id":"1","type":"switch_session","sessionPath":` + jsonString(other) + `}` + "\n" +
 			`{"id":"2","type":"new_session"}` + "\n" +
 			`{"id":"3","type":"new_session"}` + "\n" +
 			`{"id":"4","type":"get_state"}` + "\n"
@@ -297,7 +297,7 @@ func TestRPCReplacementStartsAfterItsBatchWasDispatched(t *testing.T) {
 	}
 	p := startRPCProcess(t, []string{"PIG_TEST_FAUX=1", "PIG_HOME=" + dir}, "--offline", "--no-extensions", "--model", "test-faux/faux-1", "--session", current, "--session-dir", filepath.Join(dir, "sessions"))
 	batch := `{"id":"new","type":"new_session"}` + "\n" +
-		`{"id":"export","type":"export_html","outputPath":"` + filepath.Join(dir, "export.html") + `"}` + "\n" +
+		`{"id":"export","type":"export_html","outputPath":` + jsonString(filepath.Join(dir, "export.html")) + `}` + "\n" +
 		`{"id":"state","type":"get_state"}` + "\n"
 	if _, err := io.WriteString(p.stdin, batch); err != nil {
 		t.Fatal(err)
@@ -453,7 +453,7 @@ func TestRPCRefusedReplacementLeavesTheCompactionOfItsBatchAlone(t *testing.T) {
 				t.Fatal(err)
 			}
 			p := startRPCProcess(t, []string{"PIG_TEST_FAUX=1", "PIG_HOME=" + dir}, "--offline", "--no-extensions", "--model", "test-faux/faux-1", "--session", current, "--session-dir", filepath.Join(dir, "sessions"))
-			commands := `{"id":"1","type":"compact"}` + "\n" + strings.ReplaceAll(batch.replacement, "DIRECTORY", dir) + "\n"
+			commands := `{"id":"1","type":"compact"}` + "\n" + strings.ReplaceAll(batch.replacement, `"DIRECTORY"`, jsonString(dir)) + "\n"
 			if _, err := io.WriteString(p.stdin, commands); err != nil {
 				t.Fatal(err)
 			}
@@ -466,8 +466,13 @@ func TestRPCRefusedReplacementLeavesTheCompactionOfItsBatchAlone(t *testing.T) {
 				if record["type"] != "response" {
 					return false
 				}
-				order = append(order, "response "+record["id"].(string))
-				responses[record["id"].(string)] = record
+				// A response to a line PiG could not parse has no id; fail with the record instead of panicking on it.
+				id, ok := record["id"].(string)
+				if !ok {
+					t.Fatalf("response without an id: %v", record)
+				}
+				order = append(order, "response "+id)
+				responses[id] = record
 				return len(responses) == 2
 			})
 			// Pi writes compaction_start before the fork's error (Pi 1.1.0, 3 of 3 at both summary speeds): the compaction begins without waiting for anything.
@@ -535,7 +540,7 @@ func TestRPCFailedSwitchSessionAnswersBeforeTheReplacementAheadOfIt(t *testing.T
 			t.Fatal(err)
 		}
 		p := startRPCProcess(t, []string{"PIG_TEST_FAUX=1", "PIG_HOME=" + dir}, "--offline", "--no-extensions", "--model", "test-faux/faux-1", "--session", current, "--session-dir", filepath.Join(dir, "sessions"))
-		commands := `{"id":"1","type":"new_session"}` + "\n" + `{"id":"2","type":"switch_session","sessionPath":"` + dir + `"}` + "\n" + `{"id":"3","type":"get_state"}` + "\n"
+		commands := `{"id":"1","type":"new_session"}` + "\n" + `{"id":"2","type":"switch_session","sessionPath":` + jsonString(dir) + `}` + "\n" + `{"id":"3","type":"get_state"}` + "\n"
 		if _, err := io.WriteString(p.stdin, commands); err != nil {
 			t.Fatal(err)
 		}
@@ -572,7 +577,7 @@ func TestRPCEarlyReplacementErrorFollowsTheCompactionStart(t *testing.T) {
 			t.Fatal(err)
 		}
 		p := startRPCProcess(t, []string{"PIG_TEST_FAUX=1", "PIG_HOME=" + dir}, "--offline", "--no-extensions", "--model", "test-faux/faux-1", "--session", current, "--session-dir", filepath.Join(dir, "sessions"))
-		commands := `{"id":"1","type":"compact"}` + "\n" + `{"id":"2","type":"new_session"}` + "\n" + `{"id":"3","type":"switch_session","sessionPath":"` + dir + `"}` + "\n"
+		commands := `{"id":"1","type":"compact"}` + "\n" + `{"id":"2","type":"new_session"}` + "\n" + `{"id":"3","type":"switch_session","sessionPath":` + jsonString(dir) + `}` + "\n"
 		if _, err := io.WriteString(p.stdin, commands); err != nil {
 			t.Fatal(err)
 		}
