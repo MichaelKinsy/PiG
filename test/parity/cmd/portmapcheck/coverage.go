@@ -191,6 +191,7 @@ func runRow(root string, r result, digest string) coverageEntry {
 		cmd.Dir = root
 		scratch, err := os.MkdirTemp("", "portmap-agent-")
 		if err != nil {
+			_ = os.RemoveAll(profileDir)
 			failed = dir
 			continue
 		}
@@ -198,6 +199,7 @@ func runRow(root string, r result, digest string) coverageEntry {
 		_, err = cmd.CombinedOutput()
 		_ = os.RemoveAll(scratch)
 		if err != nil {
+			_ = os.RemoveAll(profileDir)
 			failed = dir
 			continue
 		}
