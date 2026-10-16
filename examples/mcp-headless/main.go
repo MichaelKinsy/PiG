@@ -21,20 +21,31 @@ func main() {
 		fmt.Fprintln(os.Stderr, "usage: mcp-headless <command> [args...]")
 		os.Exit(2)
 	}
+	if err := run(os.Args[1], os.Args[2:]); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+// run lists the tools of the MCP server the command starts. It returns instead of exiting, so the deferred Close runs.
+func run(command string, args []string) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "mcp-headless", Version: "0.0.1"}})
-	defer client.Close()
-	if _, err := client.Connect(ctx, mcp.NewStdioTransport(mcp.StdioTransportOptions{Command: os.Args[1], Args: os.Args[2:]})); err != nil {
-		fmt.Fprintln(os.Stderr, "connect:", err)
-		os.Exit(1)
+	defer func() {
+		if closeErr := client.Close(); err == nil && closeErr != nil {
+			err = fmt.Errorf("close: %w", closeErr)
+		}
+	}()
+	if _, err := client.Connect(ctx, mcp.NewStdioTransport(mcp.StdioTransportOptions{Command: command, Args: args})); err != nil {
+		return fmt.Errorf("connect: %w", err)
 	}
 	tools, err := client.ListTools(ctx, mcp.RequestOptions{})
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "list tools:", err)
-		os.Exit(1)
+		return fmt.Errorf("list tools: %w", err)
 	}
 	for _, tool := range tools {
 		fmt.Printf("%s\t%s\n", tool.Name, tool.Description)
 	}
+	return nil
 }
