@@ -212,20 +212,34 @@ func resolveGo(root string) (Definition, error) {
 	var factories []goFactory
 	standalone := false
 	nonstandard := false
-	selectedModule := ""
+	// selectedModule is the module root above a selection below it; selectedMember is the member module a selection names
+	// exactly. Either narrows the scan to the selection, with the whole workspace kept as the compiler closure (#212); a
+	// selection of the workspace root itself scans every member and reports several factories as ambiguous.
+	selectedModule, selectedMember := "", ""
 	for _, moduleRoot := range moduleRoots {
-		if root != moduleRoot && pathWithin(moduleRoot, root) {
+		if root == moduleRoot {
+			selectedMember = moduleRoot
+			break
+		}
+		if pathWithin(moduleRoot, root) {
 			selectedModule = moduleRoot
 			break
 		}
 	}
-	if selectedModule != "" {
+	switch {
+	case selectedModule != "":
 		found, hasMain, hasNonstandard, err := scanGoPackage(selectedModule, root)
 		if err != nil {
 			return Definition{}, err
 		}
 		factories, standalone, nonstandard = found, hasMain, hasNonstandard
-	} else {
+	case selectedMember != "":
+		found, hasMain, hasNonstandard, err := scanGoModule(selectedMember)
+		if err != nil {
+			return Definition{}, err
+		}
+		factories, standalone, nonstandard = found, hasMain, hasNonstandard
+	default:
 		for _, moduleRoot := range moduleRoots {
 			found, hasMain, hasNonstandard, err := scanGoModule(moduleRoot)
 			if err != nil {
@@ -253,6 +267,9 @@ func resolveGo(root string) (Definition, error) {
 	if standalone {
 		if selectedModule != "" {
 			return Definition{}, fmt.Errorf("Go standalone %s must select its exact module root %s", root, selectedModule)
+		}
+		if selectedMember != "" {
+			return Definition{Language: "go", Form: Standalone, Root: selectedMember}, nil
 		}
 		if len(moduleRoots) != 1 {
 			return Definition{}, fmt.Errorf("Go standalone %s spans %d modules; select one exact module root", root, len(moduleRoots))

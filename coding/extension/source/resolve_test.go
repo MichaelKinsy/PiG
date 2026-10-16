@@ -483,6 +483,37 @@ func TestResolveGoModuleThroughDirectoryLinkKeepsTargetWorkspace(t *testing.T) {
 	}
 }
 
+// #212: selecting a go.work member module that is itself an exact factory package resolves that module's factory, with
+// the workspace kept as the compiler closure; it does not scan every member and report them all as ambiguous. The
+// workspace root stays ambiguous.
+func TestResolveGoWorkspaceMemberSelectsItsOwnFactory(t *testing.T) {
+	workspace, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeSourceTestFile(t, filepath.Join(workspace, "go.work"), "go 1.26\n\nuse (\n\t./a\n\t./b\n)\n")
+	for _, name := range []string{"a", "b"} {
+		writeSourceTestFile(t, filepath.Join(workspace, name, "go.mod"), "module example.com/"+name+"\n\ngo 1.26\n")
+		writeSourceTestFile(t, filepath.Join(workspace, name, "extension.go"), "package "+name+"\nimport sdk \"github.com/MichaelKinsy/PiG/extensions/sdk\"\nfunc Extension() *sdk.Extension { return nil }\n")
+	}
+	a, b := filepath.Join(workspace, "a"), filepath.Join(workspace, "b")
+	for _, tc := range []struct{ root, module string }{{a, "example.com/a"}, {b, "example.com/b"}} {
+		definition, err := Resolve(tc.root)
+		if err != nil {
+			t.Fatalf("Resolve(%s): %v", tc.root, err)
+		}
+		if definition.Form != Factory || definition.Root != tc.root || definition.ModulePath != tc.module || definition.Package != tc.module {
+			t.Fatalf("Resolve(%s) = %+v, want the factory of %s at its own root", tc.root, definition, tc.module)
+		}
+		if want := []string{a, b}; !slices.Equal(definition.GoWorkspaceModules, want) {
+			t.Fatalf("Resolve(%s) workspace = %q, want %q", tc.root, definition.GoWorkspaceModules, want)
+		}
+	}
+	if _, err := Resolve(workspace); err == nil || !strings.Contains(err.Error(), "contains 2 func Extension() *sdk.Extension factories") {
+		t.Fatalf("Resolve(workspace root) error = %v, want the two factories reported as ambiguous", err)
+	}
+}
+
 // TestResolveFileWithoutLoaderMatchesNode keeps a non-executable file Node has
 // no loader for, such as a packed .tgz a user installs, from being run as a
 // program: it fails as upstream's import does.
