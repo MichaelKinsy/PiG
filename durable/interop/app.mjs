@@ -49,7 +49,9 @@ export const Job = defineTask({
 	version: 1,
 	initial: () => ({ phase: "first" }),
 	phases: {
-		first: async (_task, runtime, taskContext) => {
+		first: async (task, runtime, taskContext) => {
+			// The job starts once the tool call that created it has settled, so the two never race for the line.
+			await runtime.waitForTask(task.input.after, taskContext);
 			await runtime.commit(() => ({ status: "running", checkpoint: { phase: "second", n: 1 } }), taskContext);
 		},
 		second: async (task, runtime, taskContext) => {
@@ -71,7 +73,7 @@ const note = defineTool({
 	execute: async (args, api, callContext) => {
 		await api.commit(async (tx) => {
 			(await tx.doc(Notes, api.conversationId)).lines.push(args.text);
-			await tx.createTask(Job, {}, { ownership: { kind: "conversation" } });
+			await tx.createTask(Job, { after: api.taskId }, { ownership: { kind: "conversation" } });
 		}, callContext);
 		return { output: [{ type: "text", text: `noted ${args.text}` }] };
 	},

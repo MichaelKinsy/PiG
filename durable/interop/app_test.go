@@ -82,7 +82,11 @@ var job = durable.DefineTask(durable.TaskDefinition[durable.JsonObject, jobState
 	Version: 1,
 	Initial: func(durable.JsonObject) jobState { return jobState{Phase: "first"} },
 	Phases: map[string]durable.PhaseHandler[durable.JsonObject, jobState, jobResult, any]{
-		"first": func(ctx context.Context, _ jobRunning, runtime jobRuntime) error {
+		"first": func(ctx context.Context, task jobRunning, runtime jobRuntime) error {
+			// The job starts once the tool call that created it has settled, so the two never race for the line.
+			if _, err := runtime.WaitForTask(ctx, durable.TaskId(task.Input.Value("after").(float64))); err != nil {
+				return err
+			}
 			return runtime.Commit(ctx, func(durable.Tx, jobRunning) (*jobNext, error) {
 				return &jobNext{Status: durable.TaskRunning, Checkpoint: &jobState{Phase: "second", N: 1}}, nil
 			})
@@ -120,7 +124,9 @@ var noteTool = &durable.ToolRegistration{
 			if _, err := draft.Array("lines").Push(text); err != nil {
 				return nil, err
 			}
-			_, err = durable.CreateTask(tx, job, delta.NewJsonObject(0), durable.TaskOptions{Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByConversation}})
+			input := delta.NewJsonObject(1)
+			input.Set("after", float64(api.TaskId()))
+			_, err = durable.CreateTask(tx, job, input, durable.TaskOptions{Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByConversation}})
 			return nil, err
 		}); err != nil {
 			return durable.ToolExecutionResult{}, err
