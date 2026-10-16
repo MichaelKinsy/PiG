@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/netip"
 	"os"
 	"os/exec"
 	"strings"
@@ -32,8 +33,25 @@ const clipboardDescendantPayload = 1 << 20
 // clipboardDescendantConn keeps the child's connection reachable until the process exits; only the exit closes it.
 var clipboardDescendantConn net.Conn
 
+// dialLoopback connects to the listener whose address the parent test put in this helper's environment. It refuses an address
+// that is not loopback, so the helper can only reach the test that started it.
+func dialLoopback(addr string) (net.Conn, error) {
+	target, err := netip.ParseAddrPort(addr)
+	if err != nil {
+		return nil, err
+	}
+	if !target.Addr().IsLoopback() {
+		return nil, fmt.Errorf("%s is not a loopback address", addr)
+	}
+	conn, err := net.DialTCP("tcp", nil, net.TCPAddrFromAddrPort(target))
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
+}
+
 func runClipboardDescendantHelper(addr string) int {
-	conn, err := net.Dial("tcp", addr) //nolint:gosec // G704: the helper subprocess dials the loopback listener address its parent test passed it
+	conn, err := dialLoopback(addr)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
@@ -66,7 +84,7 @@ func runClipboardDescendantHelper(addr string) int {
 }
 
 func holdClipboardDescendantPipes(addr string) {
-	conn, err := net.Dial("tcp", addr)
+	conn, err := dialLoopback(addr)
 	if err != nil {
 		os.Exit(1)
 	}
