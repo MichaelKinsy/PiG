@@ -60,9 +60,9 @@ func TestMistralModelRuntimePreservesSelectedReplayMetadata(t *testing.T) {
 			if len(wire.Messages) != len(history) {
 				t.Fatalf("messages=%+v", wire.Messages)
 			}
-			content := wire.Messages[0]["content"].([]any)
-			if content[0].(map[string]any)["type"] != "text" || content[0].(map[string]any)["text"] != "foreign reason" {
-				t.Fatalf("foreign reasoning replay=%v", content)
+			// Another model's thinking is dropped, not replayed as text (Pi #11000).
+			if encoded, err := json.Marshal(wire.Messages[0]); err != nil || strings.Contains(string(encoded), "foreign reason") {
+				t.Fatalf("foreign reasoning replayed: %s (%v)", encoded, err)
 			}
 			if got := wire.Messages[1]["tool_call_id"]; got != "abc123456" {
 				t.Fatalf("paired ID=%v", got)
