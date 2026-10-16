@@ -137,7 +137,7 @@ func TestContinuationSettleDoesNotRunSecondLoopForTurnGrantedFromSettle(t *testi
 
 	var turnA *continuationTurn
 	aParked := make(chan struct{})
-	var armed, pauses, inLoop, overlaps, settleCalls atomic.Int32
+	var armed, pauses, inLoop, overlaps, settleCalls, tRan atomic.Int32
 	var pausedOnce, loopOnce sync.Once
 	pausedA := make(chan struct{})
 	loopA := make(chan struct{})
@@ -194,12 +194,14 @@ func TestContinuationSettleDoesNotRunSecondLoopForTurnGrantedFromSettle(t *testi
 	go func() {
 		defer close(tDone)
 		executor.run(func(turn *continuationTurn) {
-			executor.post(func() {})
+			executor.post(func() { tRan.Store(1) })
 			awaitContinuation(turn, neverT)
 		})
 	}()
+	// T's reaction runs either in the settle loop of A's grant or in a loop of T's own, depending on which goroutine
+	// the scheduler wakes first, so the wait asks that it ran, not where: settleCalls >= 2 held only for the first order.
 	awaitExecutorState(t, executor, wait, "every goroutine to park", func() bool {
-		return settleCalls.Load() >= 2 && len(executor.drivers) == 2 && executor.active == nil && !executor.settling
+		return settleCalls.Load() >= 1 && tRan.Load() == 1 && len(executor.drivers) == 2 && executor.active == nil && !executor.settling
 	})
 
 	if overlaps.Load() != 0 {
