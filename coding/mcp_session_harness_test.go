@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -322,15 +323,22 @@ func setupMCP(t *testing.T, exposure extension.McpExposure, listTools func() []m
 		mcpWaitFor(t, "mcp__docs__search to be registered", func() bool { return s.hasTool("mcp__docs__search") })
 		// Pi registers all of a server's tools in one synchronous turn, so the search tool implies the rest there. Here each
 		// registration is its own call, so a test that reads another tool right away can find it missing; wait for all of them.
+		// Names that collide after sanitizing (read-file, read_file) are registered under disambiguated names, so count them.
 		if opts.allowedTools == nil && opts.excludedTools == nil && (opts.name == "" || opts.name == "docs") {
 			advertised := mcpServerTools
 			if listTools != nil {
 				advertised = listTools()
 			}
-			for _, tool := range advertised {
-				name := "mcp__docs__" + tool["name"].(string)
-				mcpWaitFor(t, name+" to be registered", func() bool { return s.hasTool(name) })
+			registered := func() int {
+				n := 0
+				for _, tool := range s.session.GetAllTools() {
+					if strings.HasPrefix(tool.Name, "mcp__docs__") {
+						n++
+					}
+				}
+				return n
 			}
+			mcpWaitFor(t, "all "+strconv.Itoa(len(advertised))+" of the server's tools to be registered", func() bool { return registered() >= len(advertised) })
 		}
 		if opts.resources && opts.allowedTools == nil && exposure != extension.McpExposureHidden { // a --tools filter decides which resource tools exist at all
 			// Pi registers a server's tools and the resource tools in one synchronous turn, so waiting for the search tool is enough there. Here each registration is its own call, and a prompt that starts between them runs a script that finds only some of the tools.
