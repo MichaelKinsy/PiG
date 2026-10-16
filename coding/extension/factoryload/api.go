@@ -1,6 +1,7 @@
 package factoryload
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -171,13 +172,10 @@ func (a *api) RegisterTools(tools []extension.ToolDefinition) []error {
 	return errs
 }
 
-// toolSchemaError is registerTool's check that a tool's parameters are an object schema.
+// toolSchemaError is registerTool's check that a tool's parameters are an object schema: valid JSON whose value is an object.
 func (a *api) toolSchemaError(tool extension.ToolDefinition) error {
-	var parameters any
-	if err := json.Unmarshal(tool.Parameters, &parameters); err != nil {
-		parameters = nil
-	}
-	if _, ok := parameters.(map[string]any); !ok {
+	value := bytes.TrimLeft(tool.Parameters, " \t\r\n")
+	if len(value) == 0 || value[0] != '{' || !json.Valid(value) {
 		return fmt.Errorf(`Tool "%s" registered by extension "%s" must define an object parameter schema.`, tool.Name, a.ext.Path)
 	}
 	return nil

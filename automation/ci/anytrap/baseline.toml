@@ -208,13 +208,6 @@ dest = "*any"
 count = 1
 
 [[hit]]
-file = "coding/extension/factoryload/api.go"
-func = "api.RegisterTool"
-call = "json.Unmarshal"
-dest = "*any"
-count = 1
-
-[[hit]]
 file = "coding/extension/host/inproc/runner.go"
 func = "coerceResult"
 call = "json.Unmarshal"

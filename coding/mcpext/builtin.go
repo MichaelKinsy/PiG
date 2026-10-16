@@ -112,7 +112,7 @@ func (a *piAdapter) RegisterTools(definitions []extension.ToolDefinition) {
 	}()
 	for i, err := range batch.RegisterTools(definitions) {
 		if err != nil {
-			a.notifyError(fmt.Sprintf("MCP tool %s could not be registered: %v", definitions[i].Name, err))
+			a.notifyError(fmt.Sprintf("MCP tool %s could not be registered: %v", definitions[i].Name, err)) //perf:ok one notice per rejected tool, which only an invalid server schema produces
 		}
 	}
 }
