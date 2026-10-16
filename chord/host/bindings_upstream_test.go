@@ -189,14 +189,55 @@ func TestBindingsAHeldReferenceStaysSubscribedWithoutListenersValuesAreReadableA
 	}
 }
 
+// lingerTimer is one linger timer armed through HostImpl.lingerAfter: its delay, its callback, and whether it was stopped.
+type lingerTimer struct {
+	delay   time.Duration
+	fire    func()
+	stopped bool
+}
+
+// manualLinger replaces host's linger timers with ones the test fires, so the linger window does not depend on how
+// the scheduler runs the test (a Windows runner once ran the 10 ms sleep past the 40 ms linger).
+func manualLinger(host *HostImpl) (live func() []*lingerTimer) {
+	var mu sync.Mutex
+	var timers []*lingerTimer
+	host.lingerAfter = func(delay time.Duration, fn func()) func() {
+		timer := &lingerTimer{delay: delay}
+		timer.fire = func() { host.post(fn) }
+		mu.Lock()
+		timers = append(timers, timer)
+		mu.Unlock()
+		return func() {
+			mu.Lock()
+			timer.stopped = true
+			mu.Unlock()
+		}
+	}
+	return func() []*lingerTimer {
+		mu.Lock()
+		defer mu.Unlock()
+		var out []*lingerTimer
+		for _, timer := range timers {
+			if !timer.stopped {
+				out = append(out, timer)
+			}
+		}
+		return out
+	}
+}
+
 // bindings.test.ts:147-166 "a lingering binding keeps its hold and state; a reference taken meanwhile costs nothing on
-// the link"
+// the link". Pi sleeps 10 ms inside the 40 ms linger; here the linger timer fires only when the test fires it, so the
+// window holds however the test is scheduled.
 func TestBindingsLingerAKeepsItsHoldAndStateAReferenceTakenMeanwhileCostsNothingOnTheLink(t *testing.T) {
 	s := bindingsSetupOf(t, &LingerOptions{Types: map[string]time.Duration{bindingsNotes.Name: 40 * time.Millisecond}})
+	live := manualLinger(s.browser)
 	first := bindingsGet(t, s.browser, bindingsNotes, map[string]any{}, nil)
 	frames := len(traffic(s.link.receivedFrames()))
 	first.Release()
-	time.Sleep(10 * time.Millisecond)
+	if timers := live(); len(timers) != 1 || timers[0].delay != 40*time.Millisecond {
+		t.Fatalf("linger timers after the release: %d, want one of 40ms", len(timers))
+	}
 	if got := s.link.countSent("release"); got != 0 {
 		t.Fatalf("released %d times before the linger", got)
 	}
@@ -214,6 +255,15 @@ func TestBindingsLingerAKeepsItsHoldAndStateAReferenceTakenMeanwhileCostsNothing
 	if got := len(traffic(s.link.receivedFrames())); got != frames {
 		t.Fatalf("%d new frames crossed the link, want none", got-frames)
 	}
+	if got := s.link.countSent("release"); got != 0 {
+		t.Fatalf("released %d times before the linger", got)
+	}
+	// Each re-get stopped the pending linger and each release armed a new one: one runs now. The linger ends.
+	timers := live()
+	if len(timers) != 1 || timers[0].delay != 40*time.Millisecond {
+		t.Fatalf("live linger timers: %d, want one of 40ms", len(timers))
+	}
+	timers[0].fire()
 	waitFor(t, "the release after the linger", func() bool { return s.link.countSent("release") == 1 })
 }
 

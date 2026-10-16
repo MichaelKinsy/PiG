@@ -236,9 +236,11 @@ type HostImpl struct {
 	// bindings are the shared bindings of this host's remote references, by key (re-held after an upstream reconnect).
 	bindings *orderedMap[string, *RemoteBinding]
 	// lingering are the bindings without references that linger, least recently released first.
-	lingering    *orderedMap[string, *RemoteBinding]
-	lingerTypes  map[string]time.Duration
-	lingerCap    int
+	lingering   *orderedMap[string, *RemoteBinding]
+	lingerTypes map[string]time.Duration
+	lingerCap   int
+	// lingerAfter arms a lingering binding's close timer: host.after (setTimeout), replaced only by tests that drive the linger.
+	lingerAfter  func(time.Duration, func()) func()
 	originSeq    int
 	readyTimeout time.Duration
 	routes       map[string]Route
@@ -345,6 +347,7 @@ func CreateHost(options HostOptions) *HostImpl {
 		host.readyTimeout = *options.ReadyTimeout
 	}
 	host.lingerCap = defaultLingerCap
+	host.lingerAfter = host.after
 	if options.Linger != nil {
 		host.lingerTypes = options.Linger.Types
 		if options.Linger.Cap != nil {
@@ -1602,7 +1605,7 @@ func (host *HostImpl) bindingIdle(binding *RemoteBinding) {
 		binding.close()
 		return
 	}
-	binding.lingerStop = host.after(ms, binding.close)
+	binding.lingerStop = host.lingerAfter(ms, binding.close)
 	host.lingering.Set(binding.key, binding)
 	for _, oldest := range host.lingering.Values() {
 		if host.lingering.Len() <= host.lingerCap {
