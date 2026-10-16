@@ -547,24 +547,24 @@ class ClosureTests(unittest.TestCase):
 
     def test_workspace_entries_are_abstracted_and_made_concrete_again(self):
         workspaces = {oracle.AGENT: Path("a"), "@earendil-works/pi-ai": Path("b")}
-        abstract = oracle.abstract_packs(oracle.published_closure(self.published_lock(), "1.1.0"), workspaces)
+        abstract = oracle.abstract_packs(oracle.published_closure(self.published_lock(), "1.1.0"), workspaces, {oracle.AGENT: "sha512-agent", "@earendil-works/pi-ai": "sha512-ai"})
         self.assertEqual(abstract["packages"][self.AGENT]["resolved"], "pig-pack:" + oracle.AGENT)
-        self.assertEqual(abstract["packages"][self.AGENT]["integrity"], "sha512-x")
         self.assertTrue(abstract["packages"][self.AGENT + "/node_modules/openai"]["resolved"].startswith("https://"))
         concrete = oracle.concrete_packs(abstract, {oracle.AGENT: Path("/p/agent.tgz"), "@earendil-works/pi-ai": Path("/p/ai.tgz")})
         self.assertEqual(concrete["packages"][self.AGENT]["resolved"], "file:/p/agent.tgz")
         with self.assertRaisesRegex(pinlib.PinError, "does not pack"):
             oracle.concrete_packs(abstract, {oracle.AGENT: Path("/p/agent.tgz")})
 
-    def test_a_pack_is_pinned_by_integrity_so_a_non_reproducible_build_is_rejected(self):
+    # A release's closure comes from the published install, whose lock records the registry tarballs' integrity. The packs
+    # npm ci installs are source packs, which never have those bytes, so the closure must carry the packs' own integrity:
+    # with the registry's, npm ci refused every build of the v1.3.0 oracle (EINTEGRITY).
+    def test_a_pack_is_pinned_by_its_own_integrity_not_the_registrys(self):
         workspaces = {oracle.AGENT: Path("a"), "@earendil-works/pi-ai": Path("b")}
         closure = oracle.published_closure(self.published_lock(), "1.1.0")
         given = oracle.abstract_packs(closure, workspaces, {oracle.AGENT: "sha512-new", "@earendil-works/pi-ai": "sha512-ai"})
         self.assertEqual(given["packages"][self.AGENT]["integrity"], "sha512-new")
         self.assertEqual(given["packages"][self.AGENT + "/node_modules/@earendil-works/pi-ai"]["integrity"], "sha512-ai")
-        del closure["packages"][self.AGENT]["integrity"]
-        with self.assertRaisesRegex(pinlib.PinError, "records no integrity"):
-            oracle.abstract_packs(closure, workspaces)
+        self.assertNotIn("sha512-x", json.dumps(given))
 
     def test_tarball_integrity_is_the_npm_sha512(self):
         tgz = Path(tempfile.mkdtemp()) / "x.tgz"

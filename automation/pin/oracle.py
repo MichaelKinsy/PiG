@@ -13,6 +13,8 @@ automation/pin/frozen: for a release it is the lock of the published install
 `npm install @earendil-works/pi-coding-agent@<version>` gave; for a commit it is
 derived once from the packs with `npm install --before=<commit date>` and
 frozen, so it is the tree a published install of that commit would have had.
+Either way each workspace pack is pinned by its own integrity: a source pack never
+has the published tarball's bytes (build output and file modes differ).
 `npm ci` of that pair lays the tree out as `install-strategy=shallow` does, and
 `check-oracle` compares the installed tree with the pair. The result is cached per
 commit and frozen inputs in a build directory that is never changed once published
@@ -324,20 +326,17 @@ def tarball_integrity(path: Path) -> str:
     return "sha512-" + base64.b64encode(hashlib.sha512(path.read_bytes()).digest()).decode()
 
 
-def abstract_packs(lock: dict, workspaces, integrity: dict[str, str] | None = None) -> dict:
+def abstract_packs(lock: dict, workspaces, integrity: dict[str, str]) -> dict:
     """The lock with each workspace package a registry entry resolved replaced by a pack token, so the frozen pair does not
-    depend on where the packs live. The entry keeps an integrity, so `npm ci` rejects a pack that is not the bytes the closure
-    was frozen with: the given one per package, else the one the lock already records (a published install's registry tarball).
-    An entry with neither fails: an unchecked pack would let a non-reproducible build pass."""
+    depend on where the packs live. Each entry gets its pack's integrity, so `npm ci` rejects a pack that is not the bytes
+    the closure was frozen with. A release's registry integrity is not kept: a source pack of the tag never reproduces the
+    published tarball (build output and the portable file modes of `pack` differ), so `npm ci` would refuse every build."""
     out = json.loads(json.dumps(lock))
     for key, item in out["packages"].items():
         name = workspace_key_name(key, workspaces)
         if name:
             item["resolved"] = PACK_PREFIX + name
-            if integrity is not None:
-                item["integrity"] = integrity[name]
-            elif "integrity" not in item:
-                raise PinError(f"the lock records no integrity for {name}; the frozen closure cannot check its pack")
+            item["integrity"] = integrity[name]
     return out
 
 
@@ -740,7 +739,8 @@ def freeze_closure(pin: Pin, published_lock: Path | None = None) -> Path:
     if pin.kind == "tag":
         if published_lock is None:
             raise PinError("a release pin freezes the lock of the published install: pass --from-published-lock <package-lock.json>")
-        lock = abstract_packs(published_closure(json.loads(published_lock.read_text()), pin.package_version), workspace_names(source))
+        packed = pack(source, entry(pin) / "packs")
+        lock = abstract_packs(published_closure(json.loads(published_lock.read_text()), pin.package_version), workspace_names(source), {name: tarball_integrity(tgz) for name, tgz in packed.items()})
     else:
         if published_lock is not None:
             raise PinError("a commit has no published install; its closure is derived from its packs")
