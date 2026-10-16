@@ -1604,10 +1604,28 @@ func (s *TaskScheduler) createInvocationLocked(record anyTaskRecord, mode invoca
 	return created
 }
 
+// beforeInvocation, when set by a test, runs on an invocation's goroutine before its handlers: it lets a test commit what
+// would otherwise race with the invocation's start.
+var beforeInvocation func(s *TaskScheduler, invocation *invocation)
+
 // start runs a reserved invocation on its own goroutine; Join waits for it through its done channel.
 func (s *TaskScheduler) start(reserved reservation) {
 	invocation := reserved.invocation
+	// Upstream's #start runs #runAbort up to its first await in the drain, right after the reservation commit: the abort
+	// handler gets the record as reserved. Read it here, not on the goroutine, or a cascade committed in between (a failed
+	// owner's request replacing a restart mark) reaches the handler.
+	var aborting *anyTaskRecord
+	if invocation.mode == modeAbort {
+		s.mu.Lock()
+		if current, ok := s.live[invocation.taskId]; ok && !s.sealing.Load() {
+			aborting = &current
+		}
+		s.mu.Unlock()
+	}
 	go func() {
+		if beforeInvocation != nil {
+			beforeInvocation(s, invocation)
+		}
 		defer func() {
 			s.end(invocation)
 			close(invocation.done)
@@ -1617,7 +1635,7 @@ func (s *TaskScheduler) start(reserved reservation) {
 		if invocation.mode == modeRun {
 			err = s.run(reserved)
 		} else {
-			err = s.runAbort(reserved)
+			err = s.runAbort(reserved, aborting)
 		}
 		if err != nil {
 			s.options.Report(err)
@@ -1740,15 +1758,12 @@ func (err *keepsRunningError) Error() string {
 func (err *keepsRunningError) Cause() string { return err.cause }
 
 // runAbort runs the abort handler once; rules 1, 2, and 4 apply, and returning without an outcome faults.
-func (s *TaskScheduler) runAbort(reserved reservation) error {
+func (s *TaskScheduler) runAbort(reserved reservation, reservedRecord *anyTaskRecord) error {
 	invocation := reserved.invocation
-	s.mu.Lock()
-	current, ok := s.live[invocation.taskId]
-	closing := s.sealing.Load()
-	s.mu.Unlock()
-	if !ok || closing {
+	if reservedRecord == nil {
 		return nil
 	}
+	current := *reservedRecord
 	phase := &phaseState{snapshot: reserved.snapshot, task: reserved.task}
 	runtime := s.runtime(invocation, phase)
 	abort := reserved.task.AnyDefinition().Abort

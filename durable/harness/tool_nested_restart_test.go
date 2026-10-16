@@ -454,6 +454,31 @@ func TestTheChildTasksAReplayUnsafeToolCreatedAndAwaitedInMemoryAreAbandoned(t *
 	}
 }
 
+// The order the test above leaves to the goroutines, forced: the abandoned child's abort invocation is reserved with the
+// restart mark, and the replay-unsafe parent's failed settle cascades a request onto the child before the invocation's
+// goroutine runs. Upstream's #runAbort reads the record in the drain that reserved it, so the handler still reads restart.
+func TestAnAbandonedChildsAbortHandlerReadsTheRestartReasonItWasReservedWith(t *testing.T) {
+	var once sync.Once
+	beforeInvocation = func(s *TaskScheduler, invocation *invocation) {
+		if invocation.mode != modeAbort {
+			return
+		}
+		once.Do(func() {
+			for deadline := time.Now().Add(10 * time.Second); time.Now().Before(deadline); time.Sleep(time.Millisecond) {
+				s.mu.Lock()
+				record, live := s.live[invocation.taskId]
+				s.mu.Unlock()
+				if !live || (record.AbortRequested && record.AbortReason == "") {
+					return
+				}
+			}
+			t.Error("the failed parent never cascaded a request onto the abandoned child")
+		})
+	}
+	t.Cleanup(func() { beforeInvocation = nil })
+	TestTheChildTasksAReplayUnsafeToolCreatedAndAwaitedInMemoryAreAbandoned(t)
+}
+
 // harness-nested-tools-restart.test.ts:669 it("leaves background work under an abandoned nested call running, and settles without
 // it"): background work in a conversation an abandoned nested call owned keeps running, and the
 // run settles without it.
