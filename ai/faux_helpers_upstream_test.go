@@ -71,8 +71,10 @@ func TestFauxRegistrationContractUpstream(t *testing.T) {
 	})
 }
 
-// faux.ts cloneMessage keeps every member of a scripted AssistantMessage but api, provider, model, timestamp and usage, so its durationMs reaches the final message, and
-// event-stream.ts:127 `message.durationMs !== undefined` leaves a message that has one unmeasured.
+// faux.ts cloneMessage keeps every member of a scripted AssistantMessage but api, provider and model (timestamp and usage only when missing), so its durationMs
+// reaches the final message, and event-stream.ts:127 `message.durationMs !== undefined` leaves a message that has one unmeasured. A message without one is
+// measured only when `message.timestamp < this.#startedAt` is false: fauxAssistantMessage stamps Date.now() when the script is built, before the stream
+// starts, so each side of that rule is scripted with an explicit timestamp rather than left to whether the clock ticks in between.
 func TestFauxScriptedDurationMsSurvivesTheEventStreamUpstream(t *testing.T) {
 	provider := NewFauxProvider(FauxConfig{})
 	scripted := FauxAssistantMessage(FauxContentBlocks{FauxText("hi")}, FauxAssistantMessageOptions{})
@@ -81,9 +83,13 @@ func TestFauxScriptedDurationMsSurvivesTheEventStreamUpstream(t *testing.T) {
 	if got := fauxUpstreamComplete(t, provider, fauxUpstreamRequest(), StreamOptions{}); got.DurationMs == nil || *got.DurationMs != 7000 {
 		t.Fatalf("streamed durationMs = %v, want the scripted 7000", got.DurationMs)
 	}
-	provider.SetResponses([]FauxResponseStep{FauxAssistantMessage(FauxContentBlocks{FauxText("hi")}, FauxAssistantMessageOptions{})})
+	provider.SetResponses([]FauxResponseStep{FauxAssistantMessage(FauxContentBlocks{FauxText("hi")}, FauxAssistantMessageOptions{Timestamp: new(time.Now().Add(time.Hour).UnixMilli())})})
 	if got := fauxUpstreamComplete(t, provider, fauxUpstreamRequest(), StreamOptions{}); got.DurationMs == nil || *got.DurationMs >= 7000 {
 		t.Fatalf("unscripted durationMs = %v, want the stream's own measurement", got.DurationMs)
+	}
+	provider.SetResponses([]FauxResponseStep{FauxAssistantMessage(FauxContentBlocks{FauxText("hi")}, FauxAssistantMessageOptions{Timestamp: new(int64(1))})})
+	if got := fauxUpstreamComplete(t, provider, fauxUpstreamRequest(), StreamOptions{}); got.DurationMs != nil {
+		t.Fatalf("durationMs of a message stamped before the stream started = %v, want it untimed", *got.DurationMs)
 	}
 	fromMessage := fauxResponseFromMessage(AssistantMessage{DurationMs: new(int64(9))})
 	if fromMessage.DurationMs == nil || *fromMessage.DurationMs != 9 {
