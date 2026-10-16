@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 	"unsafe"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // pi-ai sends JSON.stringify(params) for the whole conversation (openai-completions.ts streamCompletions via the SDK). The cached splice must produce the bytes marshalRequestBody (JSON.stringify) produces for the same request.
@@ -133,9 +135,8 @@ func TestAQuotedStringMissCostsTheSameInALargeCache(t *testing.T) {
 		return best
 	}
 	small, large := perMiss(64), perMiss(16384)
-	if large > 20*small+time.Microsecond {
-		t.Fatalf("a miss in a cache of 16384 entries took %v, in a cache of 64 entries %v", large, small)
-	}
+	// A wall-clock ratio: report-only in pull-request CI, blocking in make test-timing on quiet cores (a Windows runner timed the small cache at 0 s).
+	testenv.TimingGateFatal(t, large > 20*small+time.Microsecond, "a miss in a cache of 16384 entries took %v, in a cache of 64 entries %v", large, small)
 }
 
 // The provider path: a conversation's large tool results reach the encoder as the same strings on every request, so only the first request encodes them, and the body decodes to the original text.

@@ -230,10 +230,8 @@ func TestRPCSwitchSessionRebuildsServicesForTheDestinationCWD(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	startupCWD, err := filepath.EvalSymlinks(startup)
-	if err != nil {
-		t.Fatal(err)
-	}
+	// The startup cwd is the process's own spelling (Pi realpathSync): symlinks resolved, Windows 8.3 names kept.
+	startupCWD := physicalPath(t, startup)
 	want := []string{
 		"session_start reason=startup cwd=" + startupCWD + " context=STARTUP-RULES",
 		"session_start reason=resume cwd=" + destination + " context=DESTINATION-RULES",
