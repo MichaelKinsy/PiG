@@ -217873,6 +217873,17 @@
       "shapeHash": "sha256:cda28a58c7f379f3ebf78be04413bded86dbf23e689d1dc90e820c1a64079bb9"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#cleanDir",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "cleanDir",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(dir string, clean bool) string"
+      },
+      "shapeHash": "sha256:a44705eca8f9e5a3fb73c40b71d4f02bd53b85cc2265c0d3b7b320b1b134ad6b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#clearOnShrinkEnv",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "clearOnShrinkEnv",
