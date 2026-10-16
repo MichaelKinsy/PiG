@@ -167,7 +167,7 @@ func TestRPCReplacementsOfOneBatchRunInRequestOrder(t *testing.T) {
 			if record["success"] != true {
 				t.Fatalf("run %d: %v failed: %v", run, record["id"], record)
 			}
-			order = append(order, record["id"].(string))
+			order = append(order, responseID(t, record))
 			return len(order) == 4
 		})
 		if want := []string{"4", "1", "2", "3"}; !slices.Equal(order, want) {
@@ -203,7 +203,7 @@ func TestRPCCloneAfterNewSessionOfOneBatchUsesTheRequestingSession(t *testing.T)
 		if record["success"] != true {
 			t.Fatalf("%v failed: %v", record["id"], record)
 		}
-		order = append(order, record["id"].(string))
+		order = append(order, responseID(t, record))
 		return len(order) == 3
 	})
 	if want := []string{"2", "1", "3"}; !slices.Equal(order, want) {
@@ -411,7 +411,7 @@ func TestRPCReplacementAbortsTheCompactionOfItsBatch(t *testing.T) {
 					if record["type"] != "response" {
 						return false
 					}
-					responses[record["id"].(string)] = record
+					responses[responseID(t, record)] = record
 					return len(responses) == len(batch.commands)
 				})
 				for id, want := range batch.errors {
@@ -466,11 +466,7 @@ func TestRPCRefusedReplacementLeavesTheCompactionOfItsBatchAlone(t *testing.T) {
 				if record["type"] != "response" {
 					return false
 				}
-				// A response to a line PiG could not parse has no id; fail with the record instead of panicking on it.
-				id, ok := record["id"].(string)
-				if !ok {
-					t.Fatalf("response without an id: %v", record)
-				}
+				id := responseID(t, record)
 				order = append(order, "response "+id)
 				responses[id] = record
 				return len(responses) == 2
@@ -518,7 +514,7 @@ func TestRPCReplacementKeepsTheNothingToCompactAnswer(t *testing.T) {
 		if record["type"] != "response" {
 			return false
 		}
-		got[record["id"].(string)] = record
+		got[responseID(t, record)] = record
 		return len(got) == 2
 	})
 	if got["1"]["error"] != "Nothing to compact (session too small)" {
@@ -550,7 +546,7 @@ func TestRPCFailedSwitchSessionAnswersBeforeTheReplacementAheadOfIt(t *testing.T
 			if record["type"] != "response" {
 				return false
 			}
-			order = append(order, record["id"].(string))
+			order = append(order, responseID(t, record))
 			if record["id"] == "2" {
 				failure = record["error"]
 			}
@@ -587,7 +583,7 @@ func TestRPCEarlyReplacementErrorFollowsTheCompactionStart(t *testing.T) {
 			case "compaction_start":
 				order = append(order, "compaction_start")
 			case "response":
-				order = append(order, record["id"].(string))
+				order = append(order, responseID(t, record))
 			}
 			return len(order) >= 4
 		})
@@ -639,4 +635,15 @@ func TestRPCSwitchSessionFailsWithTheSystemReplayTypeError(t *testing.T) {
 			})
 		})
 	}
+}
+
+// responseID is a response's id. A response to a line PiG could not parse has none; the test fails with the record instead of
+// panicking, which would stop every later test of the package.
+func responseID(t *testing.T, record rpcRecord) string {
+	t.Helper()
+	id, ok := record["id"].(string)
+	if !ok {
+		t.Fatalf("response without an id: %v", record)
+	}
+	return id
 }

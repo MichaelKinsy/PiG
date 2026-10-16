@@ -42,7 +42,7 @@ func TestRPCSetModelAnswersSuccessWhenANewSessionIsInItsBatch(t *testing.T) {
 				if record["type"] != "response" {
 					return false
 				}
-				id := record["id"].(string)
+				id := responseID(t, record)
 				order = append(order, id)
 				if record["success"] != true {
 					failures[id] = record["error"]
