@@ -4,6 +4,7 @@ package codingagent
 
 import (
 	"errors"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -149,8 +150,10 @@ func TestRadiusLoginMenuShimmersOnlyTheSelectedRadiusRow(t *testing.T) {
 	if changed < 0 || llamaTestANSI.ReplaceAllString(animated[changed], "") != llamaTestANSI.ReplaceAllString(plain[changed], "") {
 		t.Fatalf("animated row %d: %q, plain %q", changed, animated[changed], plain[changed])
 	}
-	if !strings.Contains(animated[changed], "\x1b[38;2;77;154;191mS") && !strings.Contains(animated[changed], "\x1b[38;5;") {
-		t.Fatalf("animated row lacks the Radius blue: %q", animated[changed])
+	// The shimmer's colour depends on the animation clock, so a slow first render can land a step later (78;154;191 for
+	// 77;154;191, CI 38958187385 native-3). Any truecolor or 256-colour foreground on the row's first letter is the shimmer.
+	if !regexp.MustCompile(`\x1b\[38;(2;\d+;\d+;\d+|5;\d+)mS`).MatchString(animated[changed]) {
+		t.Fatalf("animated row lacks the Radius shimmer: %q", animated[changed])
 	}
 	select {
 	case <-renders:

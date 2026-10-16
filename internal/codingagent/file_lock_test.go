@@ -341,8 +341,10 @@ func TestLeftoverSettingsLockWaitsLikePi(t *testing.T) {
 		wantWait     bool
 	}{
 		{"fresh leftover lock", 0, piAttempts, true},
-		// proper-lockfile's 10 s stale threshold, pinned from both sides: a 9 s old lock is held, an 11 s old one is taken over.
-		{"leftover lock 9 s old", 9 * time.Second, piAttempts, true},
+		// proper-lockfile's 10 s stale threshold, pinned from both sides: a 5 s old lock is held, an 11 s old one is taken over.
+		// The held case stays well under the threshold, because Node's start-up on a loaded Windows runner took more than 1 s
+		// and aged a 9 s old lock past it (CI 38958187385 native-3).
+		{"leftover lock 5 s old", 5 * time.Second, piAttempts, true},
 		{"leftover lock 11 s old", 11 * time.Second, 2, false}, // the mkdir that meets the old lock, then the mkdir after removing it
 		{"leftover lock older than the stale threshold", 20 * time.Second, 2, false},
 	} {
