@@ -29,7 +29,7 @@ func upstreamShutdownMode(t *testing.T, order *[]string, persisted bool) *Intera
 		"session_shutdown": {func(...any) (any, error) { *order = append(*order, "dispose"); return nil, nil }},
 	}}}, t.TempDir())
 	m := &InteractiveMode{newRunner: runner, tuiInst: &upstreamShutdownRenderer{TuiMainScreen: tui.NewWithOutput(io.Discard, 80, 24), order: order}}
-	m.rawDrain = func() { *order = append(*order, "drainInput") }
+	m.rawDrain = func() error { *order = append(*order, "drainInput"); return nil }
 	m.rawRestore = func() {}
 	if persisted {
 		session, err := tempSessionMgr(t).Create("test-session", "")

@@ -27,7 +27,7 @@ func TestSuspendPausesInputBeforeRestoringTerminal(t *testing.T) {
 				t.Error("raw terminal restored before stdin owner was paused")
 			}
 		},
-		rawDrain: func() { drains++ },
+		rawDrain: func() error { drains++; return nil },
 	}
 	mode.suspendOperations().stop()
 	if !paused || reader.cancel != nil {

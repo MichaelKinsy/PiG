@@ -564,8 +564,9 @@ type InteractiveMode struct {
 	// runPromptTurnAgent is the agent whose next-turn hook refreshes runPrompt.
 	runPromptTurnAgent *agent.Agent
 
-	// rawDrain consumes late protocol input before renderer teardown; temporary handoffs restore without draining.
-	rawDrain             func()
+	// rawDrain consumes late protocol input before renderer teardown and reports a failed read; temporary handoffs restore
+	// without draining.
+	rawDrain             func() error
 	rawRestore           func()
 	inputReader          *interactiveTerminalReader
 	externalEditorActive bool

@@ -388,12 +388,18 @@ func (m *InteractiveMode) stopInteractiveTui() {
 	if m.inputReader != nil {
 		m.inputReader.pause()
 	}
+	// A drain read that fails on a terminal that went away exits 129, as Pi's stdin error handler turns it into
+	// emergencyTerminalExit during drainInput.
+	var drainErr error
 	if m.rawDrain != nil {
-		m.rawDrain()
+		drainErr = m.rawDrain()
 		m.rawDrain = nil
 	} else if m.rawRestore != nil && m.inputReader != nil {
 		// upstream: packages/tui/src/terminal.ts:drainInput
-		_ = m.inputReader.terminal.DrainInput(time.Second, 50*time.Millisecond)
+		drainErr = m.inputReader.terminal.DrainInput(time.Second, 50*time.Millisecond)
+	}
+	if drainErr != nil {
+		m.exitIfDeadTerminal(drainErr)
 	}
 	// A fullscreen exit that prints the transcript switches to the main-screen renderer without starting it, renders there, and stops it as a regular run stops: parked below the last line, then CRLF. The resume hint keeps the alternate screen's own preserve-screen exit.
 	// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:stopInteractiveTui

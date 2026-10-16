@@ -335,13 +335,13 @@ func EnterRawMode() (restore func(), err error) {
 	return processTerminal.EnterRawMode()
 }
 
-// EnterRawModeWithDrain separates process-shutdown input draining from cooked-mode restoration. A renderer drains first, stops while output is still raw, then restores cooked mode. Temporary terminal handoffs call only restore.
-func EnterRawModeWithDrain() (restore func(), drain func(), err error) {
+// EnterRawModeWithDrain separates process-shutdown input draining from cooked-mode restoration. A renderer drains first, stops while output is still raw, then restores cooked mode. Temporary terminal handoffs call only restore. drain returns DrainInput's error, so a caller can treat a terminal that went away as Pi's stdin error handler does.
+func EnterRawModeWithDrain() (restore func(), drain func() error, err error) {
 	restore, err = EnterRawModeForHandoff()
 	if err != nil {
 		return nil, nil, err
 	}
-	return restore, func() { _ = processTerminal.DrainInput(time.Second, 50*time.Millisecond) }, nil
+	return restore, func() error { return processTerminal.DrainInput(time.Second, 50*time.Millisecond) }, nil
 }
 
 // EnterRawModeForHandoff enters raw mode with a restore closure that leaves unread input for the next terminal owner. The caller must join its reader before restoring and drain late releases separately on final shutdown.
@@ -629,7 +629,9 @@ func (t *ProcessTerminal) Stop() {
 
 // DrainInput drains pending stdin bytes for up to maxWait, exiting early once
 // no new bytes arrive within idleWait. This mirrors upstream's slow-SSH guard
-// against key release sequences leaking into the parent shell on exit.
+// against key release sequences leaking into the parent shell on exit. A read
+// that fails (EOF from a hung-up terminal, EIO) ends the drain with that error,
+// as Pi's stdin reports it to its error handler.
 //
 // Disables the extended-key protocols first, as upstream's drainInput does: a
 // drain that runs while the terminal is still reporting key events has no
@@ -676,7 +678,7 @@ func (t *ProcessTerminal) DrainInput(maxWait, idleWait time.Duration) error {
 			if isEINTR(err) {
 				continue
 			}
-			return nil
+			return err
 		}
 		lastData = time.Now()
 	}
