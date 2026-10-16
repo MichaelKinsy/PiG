@@ -147,15 +147,45 @@ func notInitialized() error {
 
 func (a *api) RegisterTool(tool extension.ToolDefinition) {
 	a.assertActive()
+	if err := a.toolSchemaError(tool); err != nil {
+		panic(err)
+	}
+	a.ext.SetRegisteredTool(extension.RegisteredTool{Definition: tool, SourceInfo: a.ext.SourceInfo})
+	a.refreshTools()
+}
+
+// RegisterTools registers tools as one change: the runner sees all of them or none, and refreshes once, as a synchronous run of Pi's
+// registerTool calls looks to code that runs after it. It is not part of the extension API; the built-in MCP extension uses it for a
+// server's tools. A tool registerTool would reject is left out, and its error is at its index of the result.
+func (a *api) RegisterTools(tools []extension.ToolDefinition) []error {
+	a.assertActive()
+	errs := make([]error, len(tools))
+	registered := make([]extension.RegisteredTool, 0, len(tools))
+	for i, tool := range tools {
+		if errs[i] = a.toolSchemaError(tool); errs[i] == nil {
+			registered = append(registered, extension.RegisteredTool{Definition: tool, SourceInfo: a.ext.SourceInfo})
+		}
+	}
+	a.ext.SetRegisteredTools(registered)
+	a.refreshTools()
+	return errs
+}
+
+// toolSchemaError is registerTool's check that a tool's parameters are an object schema.
+func (a *api) toolSchemaError(tool extension.ToolDefinition) error {
 	var parameters any
 	if err := json.Unmarshal(tool.Parameters, &parameters); err != nil {
 		parameters = nil
 	}
 	if _, ok := parameters.(map[string]any); !ok {
-		panic(fmt.Errorf(`Tool "%s" registered by extension "%s" must define an object parameter schema.`, tool.Name, a.ext.Path))
+		return fmt.Errorf(`Tool "%s" registered by extension "%s" must define an object parameter schema.`, tool.Name, a.ext.Path)
 	}
-	a.ext.SetRegisteredTool(extension.RegisteredTool{Definition: tool, SourceInfo: a.ext.SourceInfo})
-	// registerTool() is valid during extension load; refresh is only needed after the runner binds.
+	return nil
+}
+
+// refreshTools refreshes the runner's tools after a registration. registerTool() is valid during extension load; refresh is only
+// needed after the runner binds.
+func (a *api) refreshTools() {
 	if refresh := a.runtime.RefreshTools; refresh != nil {
 		if err := refresh(); err != nil {
 			panic(err)

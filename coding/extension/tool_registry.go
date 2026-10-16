@@ -24,18 +24,29 @@ func (e *Extension) InitializeToolRegistry() {
 
 // SetRegisteredTool replaces a definition in place or appends a new name in registration order.
 func (e *Extension) SetRegisteredTool(tool RegisteredTool) {
+	e.SetRegisteredTools([]RegisteredTool{tool})
+}
+
+// SetRegisteredTools is SetRegisteredTool for several tools under one lock and one version, so a reader of the registry sees all of
+// them or none, as Pi's registry looks to code that runs after a synchronous run of registerTool calls.
+func (e *Extension) SetRegisteredTools(tools []RegisteredTool) {
+	if len(tools) == 0 {
+		return
+	}
 	e.InitializeToolRegistry()
 	state := e.toolState
 	state.mu.Lock()
 	defer state.mu.Unlock()
 	if state.tools == nil {
-		state.tools = make(map[string]RegisteredTool)
+		state.tools = make(map[string]RegisteredTool, len(tools))
 	}
-	name := tool.Definition.Name
-	if _, exists := state.tools[name]; !exists {
-		state.order = append(state.order, name)
+	for _, tool := range tools {
+		name := tool.Definition.Name
+		if _, exists := state.tools[name]; !exists {
+			state.order = append(state.order, name)
+		}
+		state.tools[name] = tool
 	}
-	state.tools[name] = tool
 	state.version++
 }
 

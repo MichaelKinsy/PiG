@@ -14,6 +14,7 @@ import (
 type host struct{}
 
 func (host) RegisterTool(extension.ToolDefinition)          {}
+func (host) RegisterTools([]extension.ToolDefinition)       {}
 func (host) GetAllTools() []extension.ToolInfo              { return nil }
 func (host) GetActiveTools() []string                       { return nil }
 func (host) SetActiveTools([]string)                        {}

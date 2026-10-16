@@ -199,6 +199,12 @@ func (h *fakeHost) RegisterTool(definition extension.ToolDefinition) {
 	h.registerFrom("mcp", definition, true)
 }
 
+func (h *fakeHost) RegisterTools(definitions []extension.ToolDefinition) {
+	for _, definition := range definitions {
+		h.RegisterTool(definition)
+	}
+}
+
 // registerFrom registers a tool for the extension at path. Later registrations
 // by the same path replace; another path's registration of a taken name is ignored,
 // as the first extension wins.

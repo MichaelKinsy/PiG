@@ -83,14 +83,47 @@ func (a *piAdapter) RegisterTool(definition extension.ToolDefinition) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			// upstream: registerTool throws; the extension has no caller to throw to, so the failure reaches the user.
-			if c := a.context.Load(); c != nil {
-				if ui, err := c.UI(); err == nil {
-					ui.Notify(fmt.Sprintf("MCP tool %s could not be registered: %v", definition.Name, recovered), "error")
-				}
-			}
+			a.notifyError(fmt.Sprintf("MCP tool %s could not be registered: %v", definition.Name, recovered))
 		}
 	}()
 	a.pi.RegisterTool(definition)
+}
+
+// toolBatchRegistrar is a runner that registers several tools as one change (factoryload's RegisterTools).
+type toolBatchRegistrar interface {
+	RegisterTools(tools []extension.ToolDefinition) []error
+}
+
+// RegisterTools registers the tools as one change when the runner can, so no prompt sees part of a server's tools, as none can between
+// the synchronous registerTool calls of Pi's registerTools. A runner without the batch gets one RegisterTool per tool. A tool the runner
+// rejects is shown to the user, as RegisterTool shows it.
+func (a *piAdapter) RegisterTools(definitions []extension.ToolDefinition) {
+	batch, ok := a.pi.(toolBatchRegistrar)
+	if !ok {
+		for _, definition := range definitions {
+			a.RegisterTool(definition)
+		}
+		return
+	}
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			a.notifyError(fmt.Sprintf("MCP tools could not be registered: %v", recovered))
+		}
+	}()
+	for i, err := range batch.RegisterTools(definitions) {
+		if err != nil {
+			a.notifyError(fmt.Sprintf("MCP tool %s could not be registered: %v", definitions[i].Name, err))
+		}
+	}
+}
+
+// notifyError shows message to the user of the context the runner last put in an event.
+func (a *piAdapter) notifyError(message string) {
+	if c := a.context.Load(); c != nil {
+		if ui, err := c.UI(); err == nil {
+			ui.Notify(message, "error")
+		}
+	}
 }
 
 func (a *piAdapter) GetAllTools() []extension.ToolInfo { return a.pi.GetAllTools() }

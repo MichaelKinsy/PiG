@@ -29,10 +29,24 @@ type API interface {
 type apiHost struct{ api API }
 
 func (h apiHost) RegisterTool(definition extension.ToolDefinition) { h.api.RegisterTool(definition) }
-func (h apiHost) GetAllTools() []extension.ToolInfo                { return h.api.GetAllTools() }
-func (h apiHost) GetActiveTools() []string                         { return h.api.GetActiveTools() }
-func (h apiHost) SetActiveTools(names []string)                    { h.api.SetActiveTools(names) }
-func (h apiHost) GetMcpServers() []extension.RegisteredMcpServer   { return h.api.GetMcpServers() }
+
+// RegisterTools registers the tools as one change when the API can (the built-in extension's runner adapter), and one by one otherwise.
+func (h apiHost) RegisterTools(definitions []extension.ToolDefinition) {
+	if batch, ok := h.api.(interface {
+		RegisterTools(definitions []extension.ToolDefinition)
+	}); ok {
+		batch.RegisterTools(definitions)
+		return
+	}
+	for _, definition := range definitions {
+		h.api.RegisterTool(definition)
+	}
+}
+
+func (h apiHost) GetAllTools() []extension.ToolInfo              { return h.api.GetAllTools() }
+func (h apiHost) GetActiveTools() []string                       { return h.api.GetActiveTools() }
+func (h apiHost) SetActiveTools(names []string)                  { h.api.SetActiveTools(names) }
+func (h apiHost) GetMcpServers() []extension.RegisteredMcpServer { return h.api.GetMcpServers() }
 
 // providerKeys is the part of the session's model registry that resolves the token of a provider (`/login <provider>`).
 type providerKeys interface {

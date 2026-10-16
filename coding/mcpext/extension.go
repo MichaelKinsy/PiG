@@ -62,6 +62,9 @@ type Host interface {
 	// RegisterTool registers a tool, replacing an earlier registration of the
 	// name. Tools with `direct` exposure are activated on registration.
 	RegisterTool(definition extension.ToolDefinition)
+	// RegisterTools registers tools as one change: the Session's tools change once, to include all of them, as after the
+	// synchronous run of registerTool calls in Pi's registerTools (extensions/mcp/index.ts:387-463).
+	RegisterTools(definitions []extension.ToolDefinition)
 	// GetAllTools returns every registered tool.
 	GetAllTools() []extension.ToolInfo
 	GetActiveTools() []string
@@ -604,10 +607,21 @@ func (e *Extension) registerTools(connection *Connection) {
 		}
 	}
 	e.toolMu.Unlock()
-	for _, definition := range register {
-		e.host.RegisterTool(definition)
+	e.registerWithResourceTools(register)
+}
+
+// registerWithResourceTools registers definitions and the resource tools' new registration, if they changed, as one change: Pi's
+// registerTools and its disable path run their registerTool calls and syncResourceTools() in one synchronous turn
+// (extensions/mcp/index.ts:441-463), so no prompt sees part of them.
+func (e *Extension) registerWithResourceTools(definitions []extension.ToolDefinition) {
+	resources, wasDirect, changed := e.resourceToolChange()
+	if changed {
+		definitions = append(definitions, resources...)
 	}
-	e.syncResourceTools()
+	e.host.RegisterTools(definitions)
+	if changed && wasDirect {
+		e.deactivateResourceTools(resources)
+	}
 }
 
 // currentClient resolves the connection a prepared call uses when it executes. A call can outlive the definition's
@@ -649,10 +663,7 @@ func (e *Extension) hideTools(name string) {
 	}
 	e.serverTools[name] = newToolSet()
 	e.toolMu.Unlock()
-	for _, definition := range register {
-		e.host.RegisterTool(definition)
-	}
-	e.syncResourceTools()
+	e.registerWithResourceTools(register)
 }
 
 // serversWithResources are the enabled servers with resources whose exposure
@@ -681,6 +692,12 @@ func (e *Extension) resourceServers() []McpResourceServer {
 // the servers they reach: `direct` when one of them is direct, and so on. They
 // are hidden when no server has resources.
 func (e *Extension) syncResourceTools() {
+	e.registerWithResourceTools(nil)
+}
+
+// resourceToolChange records the resource tools' next exposure and returns their definitions for it, whether they were direct
+// before, and whether the registration changes at all.
+func (e *Extension) resourceToolChange() (definitions []extension.ToolDefinition, wasDirect, changed bool) {
 	exposures := map[extension.McpExposure]bool{}
 	for _, s := range e.serversWithResources() {
 		exposures[exposureOf(s.entry)] = true
@@ -695,32 +712,31 @@ func (e *Extension) syncResourceTools() {
 	e.toolMu.Lock()
 	if e.resourceToolsRegistered && next == e.resourceToolsExposure {
 		e.toolMu.Unlock()
-		return
+		return nil, false, false
 	}
 	if !e.resourceToolsRegistered && next == extension.McpExposureHidden {
 		e.toolMu.Unlock()
-		return
+		return nil, false, false
 	}
-	wasDirect := e.resourceToolsRegistered && e.resourceToolsExposure == extension.McpExposureDirect
+	wasDirect = e.resourceToolsRegistered && e.resourceToolsExposure == extension.McpExposureDirect
 	e.resourceToolsExposure, e.resourceToolsRegistered = next, true
 	e.toolMu.Unlock()
-	definitions := CreateMcpResourceToolDefinitions(ResourceToolsOptions{Exposure: next, Servers: e.resourceServers})
+	return CreateMcpResourceToolDefinitions(ResourceToolsOptions{Exposure: next, Servers: e.resourceServers}), wasDirect, true
+}
+
+// deactivateResourceTools removes the resource tools from the active tools when they stop being direct.
+func (e *Extension) deactivateResourceTools(definitions []extension.ToolDefinition) {
+	names := map[string]bool{}
 	for _, definition := range definitions {
-		e.host.RegisterTool(definition)
+		names[definition.Name] = true
 	}
-	if wasDirect {
-		names := map[string]bool{}
-		for _, definition := range definitions {
-			names[definition.Name] = true
+	var active []string
+	for _, name := range e.host.GetActiveTools() {
+		if !names[name] {
+			active = append(active, name)
 		}
-		var active []string
-		for _, name := range e.host.GetActiveTools() {
-			if !names[name] {
-				active = append(active, name)
-			}
-		}
-		e.host.SetActiveTools(active)
 	}
+	e.host.SetActiveTools(active)
 }
 
 // ensureDiscoveryActive: tools that are not declared to the model are reached
