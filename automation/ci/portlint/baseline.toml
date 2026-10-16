@@ -4787,18 +4787,6 @@ snippet = "t.Setenv(\"HOME\", home)"
 
 [[hit]]
 check = "testisolation"
-file = "coding/piglet/cli_test.go"
-func = "TestRunCommandAddRemoteSourcesWritesOriginAndListsIt"
-snippet = "t.Setenv(\"PIG_HOME\", home)"
-
-[[hit]]
-check = "testisolation"
-file = "coding/piglet/monorepo_test.go"
-func = "TestAddMonorepoPinnedClosure"
-snippet = "t.Setenv(\"PIG_HOME\", home)"
-
-[[hit]]
-check = "testisolation"
 file = "coding/piglet/release/store_security_test.go"
 func = "TestConcurrentProcessesRevalidateSignerBeforePublication"
 snippet = "t.Setenv(\"PIG_HOME\", t.TempDir())"
