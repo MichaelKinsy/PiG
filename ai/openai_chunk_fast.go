@@ -3,6 +3,8 @@ package ai
 import (
 	"strings"
 	"unicode/utf8"
+
+	"github.com/MichaelKinsy/PiG/internal/jsonscan"
 )
 
 // parseOpenAIChunkFast decodes the common streamed chat-completion chunk without reflection: an object whose members
@@ -465,18 +467,19 @@ func (p *chunkScanner) int() (int, bool) {
 }
 
 // str reads a JSON string. A string with no escape is a substring of the input. Invalid UTF-8, a control character and a
-// lone surrogate escape answer false (encoding/json replaces the first and rejects the second).
+// lone surrogate escape answer false (encoding/json replaces the first and rejects the second). Plain ASCII runs are skipped
+// eight bytes at a time, and only a string with a byte from 0x80 is checked for valid UTF-8.
 func (p *chunkScanner) str() (string, bool) {
 	if !p.byte('"') {
 		return "", false
 	}
 	start := p.i
-	for i := start; i < len(p.s); i++ {
-		c := p.s[i]
-		switch {
+	ascii := true
+	for i := jsonscan.PlainEnd(p.s, start); i < len(p.s); i = jsonscan.PlainEnd(p.s, i+1) {
+		switch c := p.s[i]; {
 		case c == '"':
 			text := p.s[start:i]
-			if !utf8.ValidString(text) {
+			if !ascii && !utf8.ValidString(text) {
 				return "", false
 			}
 			p.i = i + 1
@@ -486,6 +489,7 @@ func (p *chunkScanner) str() (string, bool) {
 		case c < 0x20:
 			return "", false
 		}
+		ascii = false
 	}
 	return "", false
 }
