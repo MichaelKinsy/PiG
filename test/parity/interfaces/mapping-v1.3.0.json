@@ -73406,7 +73406,7 @@
         "public-api:ai/api_streams.go#StreamAzureOpenAIResponses"
       ],
       "evidence": [
-        "test:ai/provider_error_response_oracle_test.go#TestProviderErrorResponsesMatchPi",
+        "test:ai/provider_error_response_oracle_test.go#TestProviderErrorResponseEventsMatchPi",
         "test:ai/provider_retry_matrix_oracle_test.go#TestProviderRetryMatchesPi",
         "test:ai/api_streams_aliases_pi_test.go#TestLegacyAPIAliasesKeepTheAuthenticationTimingOfTheirMethodUpstream"
       ]
@@ -73428,7 +73428,7 @@
         "public-api:ai/api_streams.go#StreamAzureOpenAIResponses"
       ],
       "evidence": [
-        "test:ai/provider_error_response_oracle_test.go#TestProviderErrorResponsesMatchPi",
+        "test:ai/provider_error_response_oracle_test.go#TestProviderErrorResponseEventsMatchPi",
         "test:ai/provider_retry_matrix_oracle_test.go#TestProviderRetryMatchesPi",
         "test:ai/api_streams_aliases_pi_test.go#TestLegacyAPIAliasesKeepTheAuthenticationTimingOfTheirMethodUpstream"
       ]
@@ -73539,7 +73539,7 @@
       ],
       "evidence": [
         "test:ai/google_response_oracle_test.go#TestGoogleVertexResponseMatchesPi",
-        "test:ai/provider_error_response_oracle_test.go#TestProviderErrorResponsesMatchPi",
+        "test:ai/provider_error_response_oracle_test.go#TestProviderErrorResponseEventsMatchPi",
         "test:ai/provider_request_headers_oracle_test.go#TestProviderRequestHeadersMatchPi"
       ]
     },
@@ -73561,7 +73561,7 @@
       ],
       "evidence": [
         "test:ai/google_response_oracle_test.go#TestGoogleVertexResponseMatchesPi",
-        "test:ai/provider_error_response_oracle_test.go#TestProviderErrorResponsesMatchPi",
+        "test:ai/provider_error_response_oracle_test.go#TestProviderErrorResponseEventsMatchPi",
         "test:ai/provider_request_headers_oracle_test.go#TestProviderRequestHeadersMatchPi"
       ]
     },
@@ -73626,7 +73626,7 @@
         "public-api:ai/api_streams.go#StreamOpenAICodexResponses"
       ],
       "evidence": [
-        "test:ai/provider_error_response_oracle_test.go#TestProviderErrorResponsesMatchPi",
+        "test:ai/provider_error_response_oracle_test.go#TestProviderErrorResponseEventsMatchPi",
         "test:ai/provider_retry_matrix_oracle_test.go#TestProviderRetryMatchesPi",
         "test:ai/api_streams_aliases_pi_test.go#TestLegacyAPIAliasesKeepTheAuthenticationTimingOfTheirMethodUpstream"
       ]
@@ -73648,7 +73648,7 @@
         "public-api:ai/api_streams.go#StreamOpenAICodexResponses"
       ],
       "evidence": [
-        "test:ai/provider_error_response_oracle_test.go#TestProviderErrorResponsesMatchPi",
+        "test:ai/provider_error_response_oracle_test.go#TestProviderErrorResponseEventsMatchPi",
         "test:ai/provider_retry_matrix_oracle_test.go#TestProviderRetryMatchesPi",
         "test:ai/api_streams_aliases_pi_test.go#TestLegacyAPIAliasesKeepTheAuthenticationTimingOfTheirMethodUpstream"
       ]
@@ -73716,7 +73716,7 @@
       "evidence": [
         "test:ai/openai_responses_call_id_oracle_test.go#TestOpenAIResponsesToolCallIDPartsMatchPi",
         "test:ai/provider_abort_oracle_test.go#TestProviderAbortMatchesPi",
-        "test:ai/provider_error_response_oracle_test.go#TestProviderErrorResponsesMatchPi"
+        "test:ai/provider_error_response_oracle_test.go#TestProviderErrorResponseEventsMatchPi"
       ]
     },
     {
@@ -73738,7 +73738,7 @@
       "evidence": [
         "test:ai/openai_responses_call_id_oracle_test.go#TestOpenAIResponsesToolCallIDPartsMatchPi",
         "test:ai/provider_abort_oracle_test.go#TestProviderAbortMatchesPi",
-        "test:ai/provider_error_response_oracle_test.go#TestProviderErrorResponsesMatchPi"
+        "test:ai/provider_error_response_oracle_test.go#TestProviderErrorResponseEventsMatchPi"
       ]
     },
     {
@@ -202219,7 +202219,7 @@
       "evidence": [
         "test:durable/core/driver/harness_inspect_core_test.go#TestCoreInspectDerivesEveryLiveTasksStateWithoutRunningTaskCode",
         "test:durable/core/driver/harness_task_graph_core_test.go#TestCoreTaskGraphBuildsFromCommittedTasksShowsSurvivorsPendingAfterReopenAndMarksAborts",
-        "test:durable/core/driver/watch_test.go#TestInspectReportsSchedulingAndLiveWork"
+        "test:durable/core/driver/tool_structured_callers_core_test.go#TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration"
       ]
     },
     {
@@ -207714,8 +207714,8 @@
       ],
       "evidence": [
         "test:durable/core/driver/harness_task_graph_core_test.go#TestCoreTaskGraphBuildsFromCommittedTasksShowsSurvivorsPendingAfterReopenAndMarksAborts",
-        "test:durable/harness/harness_cancellation_barrier_test.go#TestWorkBelowACancelledOwner",
-        "test:durable/harness/harness_compaction_test.go#TestBlockedCompaction"
+        "test:durable/core/driver/tool_structured_callers_core_test.go#TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration",
+        "test:durable/harness/harness_cancellation_barrier_test.go#TestWorkBelowACancelledOwner"
       ]
     },
     {
