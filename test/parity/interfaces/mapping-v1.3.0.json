@@ -141790,7 +141790,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/factoryload/api.go#api.RegisterTool"
+        "call:coding/extension/factoryload/api.go#api.refreshTools"
       ],
       "evidence": [
         "test:coding/extension/host/inproc/extension_actions_test.go#TestBindCoreRoutesExtensionActionsToContexts"
@@ -141810,7 +141810,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/factoryload/api.go#api.RegisterTool"
+        "call:coding/extension/factoryload/api.go#api.refreshTools"
       ],
       "evidence": [
         "test:coding/extension/host/inproc/extension_actions_test.go#TestBindCoreRoutesExtensionActionsToContexts"
@@ -150962,7 +150962,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/factoryload/api.go#api.RegisterTool"
+        "call:coding/extension/factoryload/api.go#api.refreshTools"
       ],
       "evidence": [
         "test:coding/extension/host/inproc/extension_actions_test.go#TestBindCoreRoutesExtensionActionsToContexts"
@@ -150982,7 +150982,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/factoryload/api.go#api.RegisterTool"
+        "call:coding/extension/factoryload/api.go#api.refreshTools"
       ],
       "evidence": [
         "test:coding/extension/host/inproc/extension_actions_test.go#TestBindCoreRoutesExtensionActionsToContexts"

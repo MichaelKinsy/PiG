@@ -94871,6 +94871,17 @@
       "shapeHash": "sha256:4cd8644f7fc0059a3a82d90d56b315240544499adad1eef03f33ec28e4c32894"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#Extension.SetRegisteredTools",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "Extension.SetRegisteredTools",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(tools []RegisteredTool)"
+      },
+      "shapeHash": "sha256:580928172c5b83cbbd03c1835bfebd666aa95d3733be41f05ef3f9e4500b8c64"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#Extension.ToolRegistryVersion",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "Extension.ToolRegistryVersion",
@@ -105574,6 +105585,17 @@
       "shapeHash": "sha256:b0ff82fc7eef77a03bcb88733077c37753ebeeb60251218975fe792b35cd3aa4"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/factoryload#api.RegisterTools",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/factoryload",
+      "name": "api.RegisterTools",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(tools []github.com/MichaelKinsy/PiG/coding/extension.ToolDefinition) []error"
+      },
+      "shapeHash": "sha256:e6c60b7acfcee9afbd531525927253d7788696bfbbc00a7cdf2bcc8b3c502502"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/factoryload#api.RegisterVirtualModel",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/factoryload",
       "name": "api.RegisterVirtualModel",
@@ -105761,6 +105783,17 @@
       "shapeHash": "sha256:823d18130fc2c244edb7274bdc5379debe05838223068fa72997ae5ee603eb45"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/factoryload#api.refreshTools",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/factoryload",
+      "name": "api.refreshTools",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/factoryload#api.retire",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/factoryload",
       "name": "api.retire",
@@ -105770,6 +105803,17 @@
         "type": "func(message string)"
       },
       "shapeHash": "sha256:e7dae146e9d1693f88eb2c07ce5ba10c048b7ca6c99a50f3ebaa6f8c39fafc83"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/factoryload#api.toolSchemaError",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/factoryload",
+      "name": "api.toolSchemaError",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(tool github.com/MichaelKinsy/PiG/coding/extension.ToolDefinition) error"
+      },
+      "shapeHash": "sha256:6595a3ecff03c41eb37e0ab62dba8f0f474aa933f2bee4c21c21eeaf7d6c95bd"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/factoryload#apiEvents",
@@ -138167,6 +138211,17 @@
       "shapeHash": "sha256:32c4962e3c9fd4b61c6d0c49d6dde1858155dc8b3a18f4d585baa5acd4d637b1"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#Extension.deactivateResourceTools",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
+      "name": "Extension.deactivateResourceTools",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(definitions []github.com/MichaelKinsy/PiG/coding/extension.ToolDefinition)"
+      },
+      "shapeHash": "sha256:c2d0cad360be2595ffa9024036f7e130f033bce26373fc5490ae7e87338b501b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#Extension.emitChange",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "Extension.emitChange",
@@ -138376,6 +138431,17 @@
       "shapeHash": "sha256:d094eb87c8b5c9a174ac59abf572af3c002c76acd7cff2312b6069eb300a2552"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#Extension.registerWithResourceTools",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
+      "name": "Extension.registerWithResourceTools",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(definitions []github.com/MichaelKinsy/PiG/coding/extension.ToolDefinition)"
+      },
+      "shapeHash": "sha256:c2d0cad360be2595ffa9024036f7e130f033bce26373fc5490ae7e87338b501b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#Extension.registeredServers",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "Extension.registeredServers",
@@ -138429,6 +138495,17 @@
         "type": "func() []McpResourceServer"
       },
       "shapeHash": "sha256:48745132d0b49c687eccda2a33fe6fe1f05b18d26b3c92c7ca20de353a28a416"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#Extension.resourceToolChange",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
+      "name": "Extension.resourceToolChange",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() (definitions []github.com/MichaelKinsy/PiG/coding/extension.ToolDefinition, wasDirect bool, changed bool)"
+      },
+      "shapeHash": "sha256:878e24dd18a908c7b124fc7ef543c4dab22c2a8e1c1c6d99d218e79b9afba301"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#Extension.runAction",
@@ -139529,6 +139606,17 @@
         "type": "func(definition github.com/MichaelKinsy/PiG/coding/extension.ToolDefinition)"
       },
       "shapeHash": "sha256:c9fc64371c339f6872b371c5a0f8f47b64303a1808af95ee65d70852c83f9d4d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#apiHost.RegisterTools",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
+      "name": "apiHost.RegisterTools",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(definitions []github.com/MichaelKinsy/PiG/coding/extension.ToolDefinition)"
+      },
+      "shapeHash": "sha256:c2d0cad360be2595ffa9024036f7e130f033bce26373fc5490ae7e87338b501b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#apiHost.SetActiveTools",
@@ -141225,6 +141313,17 @@
       "shapeHash": "sha256:b0ff82fc7eef77a03bcb88733077c37753ebeeb60251218975fe792b35cd3aa4"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#piAdapter.RegisterTools",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
+      "name": "piAdapter.RegisterTools",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(definitions []github.com/MichaelKinsy/PiG/coding/extension.ToolDefinition)"
+      },
+      "shapeHash": "sha256:c2d0cad360be2595ffa9024036f7e130f033bce26373fc5490ae7e87338b501b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#piAdapter.SetActiveTools",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "piAdapter.SetActiveTools",
@@ -141234,6 +141333,17 @@
         "type": "func(names []string)"
       },
       "shapeHash": "sha256:b7c385f6197886af50b3f59ba7532658a87f2975c43bbbf2a598596a6e7683ea"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#piAdapter.notifyError",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
+      "name": "piAdapter.notifyError",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(message string)"
+      },
+      "shapeHash": "sha256:e7dae146e9d1693f88eb2c07ce5ba10c048b7ca6c99a50f3ebaa6f8c39fafc83"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#piAdapter.track",
@@ -142312,6 +142422,17 @@
         "type": "func(tool github.com/MichaelKinsy/PiG/mcp.Tool) *github.com/MichaelKinsy/PiG/coding/extension.ToolAnnotations"
       },
       "shapeHash": "sha256:5708ac4796199071a08bbac29dad449e00647a2c103a984161aed578526e2970"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#toolBatchRegistrar",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
+      "name": "toolBatchRegistrar",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "toolBatchRegistrar"
+      },
+      "shapeHash": "sha256:82080937a5035c8a06d79ee4cd1cf88d2341b81ce4dc1f6cc0f7978955b56351"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#toolNameUnsafe",

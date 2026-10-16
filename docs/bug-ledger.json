@@ -29451,6 +29451,68 @@
         "tui/alt_screen_frame_allocs_norace_test.go::TestAltScreenStreamingFrameAllocationCeiling",
         "tui/terminal_split_reply_test.go::TestTerminalInputConsumesAnOwedReplySplitAcrossSlowReads"
       ]
+    },
+    {
+      "id": "BF-1d3b1d0",
+      "title": "MCP: a server's tools, the tools it stopped offering, and the resource tools now reach the session as one…",
+      "symptom": "MCP: a server's tools, the tools it stopped offering, and the resource tools now reach the session as one change, as Pi registers them in one synchronous turn.",
+      "rootCause": "Pi's registerTools (extensions/mcp/index.ts:387-463) registers a server's tools, the tools it no longer offers as hidden, and the resource tools in one synchronous turn, so no prompt sees part of them. Pig registered each with its own RegisterTool call and refresh on the connection's goroutine, so a prompt or any reader in between saw a partial set (owner-approved fix, owner-signoff.md).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "MCP: a server's tools, the tools it stopped offering, and the resource tools now reach the session as one change, as Pi registers them in one synchronous turn. A prompt that started while a server was connecting could see only some of its tools.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1d3b1d00b3",
+          "date": "2026-10-15"
+        },
+        {
+          "hash": "2b78e00a1c",
+          "date": "2026-10-15"
+        }
+      ],
+      "tests": [
+        "chord/host/awaiting_upstream_test.go::TestAwaitingACtxGetStillWaitingWhenItsCallSettlesRejectsAbortedAndReleasesItsReference",
+        "chord/host/awaiting_upstream_test.go::TestAwaitingAGetTimesOutAfterReadyTimeoutWithReadyTimeoutAndReleasesItsHold",
+        "chord/host/awaiting_upstream_test.go::TestAwaitingAnAbortedGetRejectsAndReleasesOnlyItsReferenceTheBindingStaysForTheOthers",
+        "chord/host/awaiting_upstream_test.go::TestAwaitingCtxGetResolvesHydratedTheCallsReferenceIsReleasedWhenTheCallEnds",
+        "chord/host/bindings_upstream_test.go::TestBindingsAHeldReferenceStaysSubscribedWithoutListenersValuesAreReadableAtOnceAfterReady",
+        "chord/host/bindings_upstream_test.go::TestBindingsIdentityNormalizedEqualInputsAndEqualPrincipalKeysShareOtherPrincipalsAndFingerprintsDoNot",
+        "chord/host/bindings_upstream_test.go::TestBindingsLingerAKeepsItsHoldAndStateAReferenceTakenMeanwhileCostsNothingOnTheLink",
+        "chord/host/bindings_upstream_test.go::TestBindingsLingerAtMostCapBindingsLingerTheLeastRecentlyReleasedGoesFirst",
+        "chord/host/bindings_upstream_test.go::TestBindingsNReferencesToOneObjectOneHoldOneSnapshotPerMemberOneFramePerChangeOneRelease",
+        "chord/host/bindings_upstream_test.go::TestHydrationOverALinkNullEmptyAndUndefinedValuesHydrateAStateFreeVariantIsReadyAFailedSnapshotRejects",
+        "chord/host/bindings_upstream_test.go::TestHydrationOverALinkReadingBeforeTheFirstHydrationThrowsNotReady",
+        "chord/host/bindings_upstream_test.go::TestMethodOnlyReferencesTransferNoStateAloneAFullReferenceJoiningStartsItOnceItsReleaseStopsIt",
+        "chord/host/bindings_upstream_test.go::TestOriginsARelayedHoldCarriesItsClientConnectionsIdTheServersOwnHoldsCarryNone",
+        "chord/host/bindings_upstream_test.go::TestOriginsAnOriginAClientSendsIsIgnoredTheServerStampsItsOwn",
+        "chord/host/bindings_upstream_test.go::TestProtocolVersion4AVersion3PeerIsRefusedShapesCarryNoCodeVersion",
+        "chord/host/flow_units_upstream_test.go::TestFlowUnitsALinkThatReportsNoSizesNeverHoldsStateBack",
+        "chord/host/flow_units_upstream_test.go::TestFlowUnitsASnapshotLargerThanTheWindowArrivesWholeLaterChangesWaitForAcknowledgements",
+        "chord/host/flow_units_upstream_test.go::TestFlowUnitsRelayAStalledTabOverflowsAndGetsAResetWhileAnotherTabKeepsGettingEveryChange",
+        "chord/host/flow_units_upstream_test.go::TestFlowUnitsRelayEachOriginHoldIsOneDownstreamHoldNothingIsLeftAfterReleaseCloseOrRevoke",
+        "chord/host/flow_units_upstream_test.go::TestFlowUnitsWaitingOpsStayUnderThePerLinkCapHoweverManyStreamsStallEachThenGetsOneReset",
+        "chord/host/flow_units_upstream_test.go::TestFlowUnitsWithLargeStreamsWaitingBehindAFullWindowANewGetResolvesAtOnceAndCallsAreAnswered",
+        "chord/host/flow_upstream_test.go::TestLinkFlowControlCoalescesRelayedStateAndAsksDownstreamForAResetWhenItOverflows",
+        "chord/host/flow_upstream_test.go::TestLinkFlowControlDropsWhatWaitsForAReferenceThatIsReleased",
+        "chord/host/host_test.go::TestRemoteKey",
+        "chord/host/hydration_upstream_test.go::TestHydrationAHostObjectOfAChildHoldingTheParentsObjectGoesLiveOnceTheParentAdmitsTheChild",
+        "chord/host/hydration_upstream_test.go::TestHydrationAMemberReadInsideAFactoryThrowsNotReadyItIsAPlainValueOnceLive",
+        "chord/host/hydration_upstream_test.go::TestHydrationAReferenceCycleAcrossHostsFailsAtReadyTimeoutWithACycleHint",
+        "chord/host/hydration_upstream_test.go::TestHydrationAReloadPreparesAfterWhatTheChangedObjectForwardsHasItsValue",
+        "chord/host/hydration_upstream_test.go::TestHydrationAnObjectThatForwardsAndDerivesFromARemoteMemberGoesLiveWithItsValue",
+        "chord/host/links_review_upstream_test.go::TestLinksReview9StateStoppedWhileTheRouteResolvesIsForwardedAsAHoldWithoutState",
+        "chord/host/provider_cost_upstream_test.go::TestProviderCostOneChangeToKClientsOneFramePerLinkTheSameOpsOnEveryLink",
+        "chord/host/requests_upstream_test.go::TestRequests8AHeldRemoteReferenceKeepsItsStateWithoutListeners",
+        "chord/host/variants_upstream_test.go::TestReHoldAfterALinkLossKeepsTheLastValuesReadableSendsOneFreshUnitAndAReferenceJoiningMeanwhileWaitsForIt",
+        "chord/host/variants_upstream_test.go::TestVariantsANewVariantsMembersArriveWithItsShapeAMemberOutsideTheVariantThrowsNotInVariant",
+        "coding/extension/factoryload/register_tools_test.go::TestRegisterToolsRejectsOnlyTheToolRegisterToolWouldReject",
+        "coding/mcp_session_atomic_registration_test.go::TestAgentSessionMCPRegistersAServersToolsAsOneChange",
+        "coding/mcp_session_upstream_test.go::TestAgentSessionMCPTellsScriptsWhatDirectlyExposedMCPToolsResolveTo"
+      ]
     }
   ],
   "divergences": [

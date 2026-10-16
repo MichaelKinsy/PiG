@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-879 bugs. 829 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 135 bugs have no recorded test.
+880 bugs. 830 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 135 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -898,6 +898,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-b8df7eb](#bf-b8df7eb) | On Windows, a session's private snapshot file is created in the temporary directory instead of the session… | PiG's own defect | Windows | 0.5.0 |
 | [BF-b8df7eb-2](#bf-b8df7eb-2) | On Windows, an image fallback links a path that starts with a slash but no drive (`/tmp/x.png`) as Pi does… | PiG's own defect | Windows | 0.5.0 |
 | [BF-b8df7eb-3](#bf-b8df7eb-3) | Alt-screen frames outside the Kitty protocol no longer read the environment for WezTerm on every render… | PiG's own defect | Windows | 0.5.0 |
+| [BF-1d3b1d0](#bf-1d3b1d0) | MCP: a server's tools, the tools it stopped offering, and the resource tools now reach the session as one… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -13148,6 +13149,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `b8df7eb579` (2026-10-15)
 - **Tests:** `coding/agent_session_runtime_oracle_test.go::TestAgentSessionRuntimeMatchesPi`, `tui/alt_screen_frame_allocs_norace_test.go::TestAltScreenStreamingFrameAllocationCeiling`, `tui/terminal_split_reply_test.go::TestTerminalInputConsumesAnOwedReplySplitAcrossSlowReads`
 - **Release note:** Alt-screen frames outside the Kitty protocol no longer read the environment for WezTerm on every render, which allocated on Windows.
+
+### BF-1d3b1d0
+
+**MCP: a server's tools, the tools it stopped offering, and the resource tools now reach the session as one…**
+
+- **Source:** PiG's own defect
+- **Symptom:** MCP: a server's tools, the tools it stopped offering, and the resource tools now reach the session as one change, as Pi registers them in one synchronous turn.
+- **Root cause:** Pi's registerTools (extensions/mcp/index.ts:387-463) registers a server's tools, the tools it no longer offers as hidden, and the resource tools in one synchronous turn, so no prompt sees part of them. Pig registered each with its own RegisterTool call and refresh on the connection's goroutine, so a prompt or any reader in between saw a partial set (owner-approved fix, owner-signoff.md).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1d3b1d00b3` (2026-10-15), `2b78e00a1c` (2026-10-15)
+- **Tests:** `chord/host/awaiting_upstream_test.go::TestAwaitingACtxGetStillWaitingWhenItsCallSettlesRejectsAbortedAndReleasesItsReference`, `chord/host/awaiting_upstream_test.go::TestAwaitingAGetTimesOutAfterReadyTimeoutWithReadyTimeoutAndReleasesItsHold`, `chord/host/awaiting_upstream_test.go::TestAwaitingAnAbortedGetRejectsAndReleasesOnlyItsReferenceTheBindingStaysForTheOthers`, `chord/host/awaiting_upstream_test.go::TestAwaitingCtxGetResolvesHydratedTheCallsReferenceIsReleasedWhenTheCallEnds`, `chord/host/bindings_upstream_test.go::TestBindingsAHeldReferenceStaysSubscribedWithoutListenersValuesAreReadableAtOnceAfterReady`, `chord/host/bindings_upstream_test.go::TestBindingsIdentityNormalizedEqualInputsAndEqualPrincipalKeysShareOtherPrincipalsAndFingerprintsDoNot`, `chord/host/bindings_upstream_test.go::TestBindingsLingerAKeepsItsHoldAndStateAReferenceTakenMeanwhileCostsNothingOnTheLink`, `chord/host/bindings_upstream_test.go::TestBindingsLingerAtMostCapBindingsLingerTheLeastRecentlyReleasedGoesFirst` and 29 more in docs/bug-ledger.json
+- **Release note:** MCP: a server's tools, the tools it stopped offering, and the resource tools now reach the session as one change, as Pi registers them in one synchronous turn. A prompt that started while a server was connecting could see only some of its tools.
 
 ## Divergences from Pi added in this release
 
