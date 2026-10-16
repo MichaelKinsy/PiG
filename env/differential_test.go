@@ -19,7 +19,9 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/durable"
 	durableenv "github.com/MichaelKinsy/PiG/durable/env"
@@ -319,19 +321,31 @@ func TestRemoteExecutionEnvAgainstNodeExecutionEnv(t *testing.T) {
 			}
 			mustDo(env.CreateDir(ctx, "dir", nil))
 			// A writer for each blocking open of the FIFO.
-			write := func(text string) {
+			write := func(text string) *exec.Cmd {
 				command := exec.Command("sh", "-c", `printf '%s' "$1" > "$2"`, "sh", text, fifo)
 				if err := command.Start(); err != nil {
 					t.Fatal(err)
 				}
 				t.Cleanup(func() { _ = command.Process.Kill(); _ = command.Wait() })
+				return command
 			}
-			write("fifo text\n")
-			fifoText := result(env.ReadTextFile(ctx, "fifo"))
-			write("fifo bytes")
-			fifoBytes := result(env.ReadBinaryFile(ctx, "fifo"))
-			write("x")
-			fifoLines := result(env.ReadTextLines(ctx, "fifo", nil))
+			// A read whose open finds no writer blocks forever (CI macOS once hung here for the 30 min package timeout,
+			// in ReadTextLines' open). Bound each read so such a run fails with the step and its writer's state instead.
+			read := func(step string, writer *exec.Cmd, do func() outcome) outcome {
+				done := make(chan outcome, 1)
+				go func() { done <- do() }()
+				select {
+				case value := <-done:
+					return value
+				case <-time.After(20 * time.Second):
+					alive := writer.Process.Signal(syscall.Signal(0)) == nil
+					t.Fatalf("%s of the FIFO did not return within 20 s; its writer process is alive: %v", step, alive)
+					return outcome{}
+				}
+			}
+			fifoText := read("ReadTextFile", write("fifo text\n"), func() outcome { return result(env.ReadTextFile(ctx, "fifo")) })
+			fifoBytes := read("ReadBinaryFile", write("fifo bytes"), func() outcome { return result(env.ReadBinaryFile(ctx, "fifo")) })
+			fifoLines := read("ReadTextLines", write("x"), func() outcome { return result(env.ReadTextLines(ctx, "fifo", nil)) })
 			dirReader, dirReaderErr := env.OpenTextLineReader(ctx, "dir")
 			var dirLine outcome
 			if dirReaderErr == nil {
