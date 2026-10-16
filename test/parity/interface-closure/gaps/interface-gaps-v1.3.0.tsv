@@ -29,7 +29,6 @@ pkg:chord/node#childControl::call:0	chord	undecidable	chord/host/manager.go#Chil
 pkg:chord/output#OutputBuffer	chord	child-gap	chord/output/output.go#OutputBuffer
 pkg:chord/output#OutputBuffer::property:push	chord	member-missing	chord/output/output.go#OutputBuffer
 pkg:chord/output#OutputBuffer::property:push::call:0	chord	member-missing	chord/output/output.go#OutputBuffer
-pkg:chord/output#OutputBuffer::property:storedBytes	chord	not-exercised	chord/output/output.go#OutputBuffer.StoredBytes
 pkg:chord/output#Progress	chord	child-gap	chord/output/output.go#Progress
 pkg:chord/output#Progress::property:markAndWait	chord	child-gap	chord/output/output.go#Progress.MarkAndWait
 pkg:chord/output#Progress::property:markAndWait::call:0	chord	signature-mismatch	chord/output/output.go#Progress.MarkAndWait

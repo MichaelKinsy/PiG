@@ -107903,8 +107903,24 @@
     },
     {
       "id": "pkg:chord/output#OutputBuffer::property:storedBytes",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d278c7a576e1a069450302e1d7bec734f735a0ee9744ee2e070fe3caa42d47c7"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d278c7a576e1a069450302e1d7bec734f735a0ee9744ee2e070fe3caa42d47c7",
+      "rationale": "Derived by the interface gap detector: OutputBuffer::property:storedBytes is Go chord/output/output.go#OutputBuffer.StoredBytes (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/output/output.go#OutputBuffer.StoredBytes"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/output/output.go#OutputBuffer.StoredBytes"
+      ],
+      "evidence": [
+        "test:chord/output/output_pi_oracle_test.go#TestOutputBufferMatchesPi",
+        "test:chord/output/output_test.go#TestOutputBuffer"
+      ]
     },
     {
       "id": "pkg:chord/output#OutputLimits",
@@ -108072,11 +108088,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:chord/output/output.go#NewProgress"
+        "call:chord/output/output.go#NewProgress"
       ],
       "evidence": [
         "test:chord/output/output_test.go#TestProgress"
