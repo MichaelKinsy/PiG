@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-880 bugs. 829 own defects, 30 fixed ahead of Pi, 21 Pi fixes ported. 135 bugs have no recorded test.
+879 bugs. 829 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 135 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -229,7 +229,6 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-bdb7ad8](#bf-bdb7ad8) | A single server-sent-event line larger than 32 MiB (for example a base64 image chunk) no longer fails the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5e36d87](#bf-5e36d87) | The assistant-message frame encoder no longer re-parses and re-serializes a whole tool call's arguments for… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d983b74](#bf-d983b74) | Anthropic requests whose strict `prefer` tools exceed a strict tool limit ("The compiled grammar is too… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-4aa9763](#bf-4aa9763) | After a model switch, another model's plain-text reasoning is replayed as `reasoning_content` on reasoning… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-2c1959c](#bf-2c1959c) | A Mistral stream is no longer aborted mid-generation by the request timeout: the timeout now covers only the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-27f3324](#bf-27f3324) | The npm release packer reads `npm pack --json` output from npm 12, which keys the result by package name, as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-369b1e1](#bf-369b1e1) | `grep` with `context` no longer loads each matched file into memory | PiG's own defect | All platforms | 0.5.0 |
@@ -1025,7 +1024,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Platform:** macOS
 - **Fixed in:** 0.5.0
 - **Fix commits:** `63b4fc80e7` (2026-10-05)
-- **Tests:** `durable/harness/harness_output_test.go::TestOutputBuffer`, `durable/harness/harness_output_test.go::TestToolOutputBounds`, `durable/harness/harness_registry_test.go::TestSettingsKeepTheDefaultOfAProgressIntervalGivenAsUndefined`, `durable/tools/powershell_upstream_test.go::TestPowerShellFallsBackToWindowsPowerShellAndReportsTheLastStartFailure`, `durable/tools/powershell_upstream_test.go::TestPowerShellRunsRealPowerShellWithUTF8Output`, `durable/tools/powershell_upstream_test.go::TestPowerShellRunsTheCommandWithPwshAsOneArgumentForcingUTF8Output`, `durable/tools/powershell_upstream_test.go::TestReadReadsALogThatGrowsWhileItIsRead`
+- **Tests:** `chord/output/output_test.go::TestOutputBuffer`, `chord/output/output_test.go::TestToolOutputBounds`, `durable/harness/harness_registry_test.go::TestSettingsKeepTheDefaultOfAProgressIntervalGivenAsUndefined`, `durable/tools/powershell_upstream_test.go::TestPowerShellFallsBackToWindowsPowerShellAndReportsTheLastStartFailure`, `durable/tools/powershell_upstream_test.go::TestPowerShellRunsRealPowerShellWithUTF8Output`, `durable/tools/powershell_upstream_test.go::TestPowerShellRunsTheCommandWithPwshAsOneArgumentForcingUTF8Output`, `durable/tools/powershell_upstream_test.go::TestReadReadsALogThatGrowsWhileItIsRead`
 - **Release note:** `NodeExecutionEnv.Watch` gives a directory replaced at the same path a new watcher, reports changes to the file a symbolic-link target points to, no longer lets a non-recursive target stop an overlapping recursive target from covering subdirectories, and installs no watcher once closed. On macOS it reports changes to the file that a watched symbolic link points to.
 
 ### BF-c625bb4
@@ -1305,7 +1304,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Platform:** Windows
 - **Fixed in:** 0.5.0
 - **Fix commits:** `63b4fc80e7` (2026-10-05), `ebc1768e5f` (2026-10-06), `ce0f352637` (2026-10-07)
-- **Tests:** `durable/env/node/conformance_cases_test.go::TestCreateEnvConformanceDetectsABrokenEnvironment`, `durable/harness/harness_output_test.go::TestOutputBuffer`, `durable/harness/harness_output_test.go::TestToolOutputBounds`, `durable/harness/harness_registry_test.go::TestSettingsKeepTheDefaultOfAProgressIntervalGivenAsUndefined`, `durable/tools/powershell_upstream_test.go::TestPowerShellFallsBackToWindowsPowerShellAndReportsTheLastStartFailure`, `durable/tools/powershell_upstream_test.go::TestPowerShellRunsRealPowerShellWithUTF8Output`, `durable/tools/powershell_upstream_test.go::TestPowerShellRunsTheCommandWithPwshAsOneArgumentForcingUTF8Output`, `durable/tools/powershell_upstream_test.go::TestReadReadsALogThatGrowsWhileItIsRead` and 5 more in docs/bug-ledger.json
+- **Tests:** `durable/env/node/conformance_cases_test.go::TestCreateEnvConformanceDetectsABrokenEnvironment`, `chord/output/output_test.go::TestOutputBuffer`, `chord/output/output_test.go::TestToolOutputBounds`, `durable/harness/harness_registry_test.go::TestSettingsKeepTheDefaultOfAProgressIntervalGivenAsUndefined`, `durable/tools/powershell_upstream_test.go::TestPowerShellFallsBackToWindowsPowerShellAndReportsTheLastStartFailure`, `durable/tools/powershell_upstream_test.go::TestPowerShellRunsRealPowerShellWithUTF8Output`, `durable/tools/powershell_upstream_test.go::TestPowerShellRunsTheCommandWithPwshAsOneArgumentForcingUTF8Output`, `durable/tools/powershell_upstream_test.go::TestReadReadsALogThatGrowsWhileItIsRead` and 5 more in docs/bug-ledger.json
 - **Release note:** `createPowerShellTool` now uses the `operations` option. The PowerShell tool dropped it and always ran commands through the local PowerShell.
 
 ### BF-ce0f352-2
@@ -3851,22 +3850,6 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `d983b74821` (2026-10-09)
 - **Tests:** None recorded.
 - **Release note:** Anthropic requests whose strict `prefer` tools exceed a strict tool limit ("The compiled grammar is too large", "Too many strict tools", too many union parameters) no longer fail every turn: PiG retries once with the `prefer` tools non-strict, keeps `require` tools strict, and records an `anthropic_strict_tools_fallback` diagnostic, as Pi 1.2.0 does (pi-mono #10409).
-
-### BF-4aa9763
-
-**After a model switch, another model's plain-text reasoning is replayed as `reasoning_content` on reasoning…**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D126)
-- **Symptom:** After a model switch, another model's plain-text reasoning is replayed as `reasoning_content` on reasoning targets that require it, instead of being appended to the assistant text with an empty `reasoning_content` (D126, pi-mono #6167).
-- **Root cause:** transformMessages inlined foreign plain-text thinking as assistant text, so a target with requiresReasoningContentOnAssistantMessages got reasoning_content ''. Keep it as reasoning_content for reasoning Chat Completions targets (thinking-only turns keep Pi's text replay); the agent leaves foreign thinking to the provider.
-- **User impact:** Wrong output or ordering
-- **Platform:** All platforms
-- **Fixed in:** 0.5.0
-- **Pi issue:** https://github.com/earendil-works/pi/issues/6167
-- **Removed when Pi fixes it:** Pi replays another model's plain-text thinking as `reasoning_content` for targets that require it.
-- **Fix commits:** `4aa9763e56` (2026-10-09), `607aa4bd5a` (2026-10-10), `6693198f8c` (2026-10-10), `c8aa337c1b` (2026-10-11), `fd4be8683c` (2026-10-11)
-- **Tests:** `agent/transform_test.go::TestNormalizeMessages_ForeignThinkingLeftToChatCompletionsProvider`, `ai/openai_foreign_reasoning_replay_test.go::TestForeignThinkingOnlyTurnIsDropped`, `ai/openai_foreign_reasoning_replay_test.go::TestForeignThinkingReplaysAsReasoningContentWhenTheTargetRequiresIt`
-- **Release note:** After a model switch, another model's plain-text reasoning is replayed as `reasoning_content` on reasoning targets that require it, instead of being appended to the assistant text with an empty `reasoning_content` (D126, pi-mono #6167).
 
 ### BF-2c1959c
 
@@ -13212,7 +13195,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D155 | Selection lists page with PageUp and PageDown (Pi #7629) | [BF-D155](#bf-d155) |
 | D156 | MCP server `url` expands environment references (Pi #10654) | [BF-D156](#bf-d156) |
 | D157 | PiG's startup additions stay quiet when the config root cannot be written | deliberate difference |
-| D158 | A setting of the wrong JSON type is ignored (Pi 1.2.0 throws) | deliberate difference |
+| D158 | A setting of the wrong JSON type is ignored (Pi 1.3.0 throws) | deliberate difference |
 | D159 | A single grapheme wider than the editor's wrap width stays one chunk instead of exhausting the stack | deliberate difference |
 | D165 | The durable image processor is native Go, not Photon's WebAssembly | deliberate difference |
 | D167 | A history longer than the model's context window is summarized in chunks | [BF-85908ae](#bf-85908ae) |
