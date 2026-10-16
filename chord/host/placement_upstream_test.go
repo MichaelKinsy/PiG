@@ -121,8 +121,7 @@ func TestPlacementServeRefusesATypeTheHostIsNotThePlaceOfAlsoAtAReload(t *testin
 	if err == nil || !strings.Contains(err.Error(), "t.catalog is declared for server, but session:S1 serves it") {
 		t.Fatalf("serve catalog on a session host: %v", err)
 	}
-	var typeErr *TypeError
-	if !errors.As(err, &typeErr) {
+	if _, ok := errors.AsType[*TypeError](err); !ok {
 		t.Fatalf("a placement refusal is a TypeError: %T", err)
 	}
 	server := requestsHost(t, HostOptions{Name: "server", Self: "host"})
