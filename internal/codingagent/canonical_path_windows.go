@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"golang.org/x/sys/windows"
+
+	"github.com/MichaelKinsy/PiG/internal/nodefs"
 )
 
 // evalCanonicalPath is Node's fs.realpathSync (not realpathSync.native): it follows links, keeps volume mount points in the path, resolves a rooted link target such as \dir on the device of the path that reached the link, and leaves every non-link component as the caller spelled it, so a case variant or an 8.3 short name survives. winsymlink=0 makes Go follow both drive junctions and volume mounts, but libuv treats only drive-target mount-point reparse records as symbolic links. filepath.EvalSymlinks differs on all three counts: it follows a rooted target on the process drive and returns the case and long names the filesystem stores.
@@ -24,6 +26,11 @@ func evalCanonicalPath(path string) (string, error) {
 // osRealpathFS reads the filesystem with libuv's link rule. Stat before reading a link rejects dangling and cyclic links just as Node's realpathSync does. A volume-GUID mount point is a directory, so it stays in the path.
 var osRealpathFS = nodeRealpathFS{
 	lstat: func(path string) (nodeEntryKind, string, error) {
+		// Most components are plain directories: their attributes, read without a FileInfo or a heap copy of the path, settle
+		// them. A reparse point or a failure takes os.Lstat, so a link, a mount and every error read as before.
+		if nodefs.PlainEntry(path) {
+			return nodeEntryPlain, "", nil
+		}
 		info, err := os.Lstat(path)
 		if err != nil {
 			return nodeEntryPlain, "", err
