@@ -15,6 +15,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
@@ -492,12 +493,10 @@ func localGoReplacementDirs(root string) ([]string, error) {
 	if root == "" {
 		return nil, nil
 	}
-	// A single-file extension (a lone .ts or .js file) has no go.mod beside it, and reading "<file>/go.mod" fails with ENOTDIR, not ENOENT.
-	if info, err := os.Stat(root); err == nil && !info.IsDir() {
-		return nil, nil
-	}
 	data, err := os.ReadFile(filepath.Join(root, "go.mod"))
-	if os.IsNotExist(err) {
+	// A single-file extension (a lone .ts or .js file) has no go.mod beside it: reading "<file>/go.mod" fails with ENOTDIR on
+	// Unix and with a not-found error on Windows.
+	if os.IsNotExist(err) || errors.Is(err, syscall.ENOTDIR) {
 		return nil, nil
 	}
 	if err != nil {
