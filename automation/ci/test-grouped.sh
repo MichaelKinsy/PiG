@@ -117,24 +117,27 @@ fi
 
 # Resolve the sharded packages that exist in this module and take them out of the whole-package groups.
 declare -A SHARD_COUNT=()
+# SKIPPED are the sharded packages PIG_CI_SKIP_SHARDED leaves out: neither sharded nor run whole.
+declare -A SKIPPED=()
 if [[ "$MODE" != changed && "$MODE" != report ]]; then
   for spec in "${SHARDED_SPEC[@]}"; do
+    spec_pkg=$(go list "${spec%:*}")
     # PIG_CI_SKIP_SHARDED names sharded packages this run leaves out (owner decision 2026-10-16 for the 0.5.0 release
     # push: ./ai and ./coding need more shards than their -run patterns fit, which 0.5.1 fixes). The skip is printed.
     if [[ " ${PIG_CI_SKIP_SHARDED:-} " == *" ${spec%:*} "* ]]; then
       echo "::warning title=sharded package skipped::${spec%:*} is not run (PIG_CI_SKIP_SHARDED)"
+      SKIPPED[$spec_pkg]=1
       continue
     fi
-    spec_pkg=$(go list "${spec%:*}")
     in_all=
     for pkg in "${ALL_PKGS[@]}"; do [[ "$pkg" == "$spec_pkg" ]] && in_all=1; done
     [[ -n "$in_all" ]] && SHARD_COUNT[$spec_pkg]=${spec##*:}
   done
   kept=()
-  for pkg in "${FAST_PKGS[@]}"; do [[ -n ${SHARD_COUNT[$pkg]:-} ]] || kept+=("$pkg"); done
+  for pkg in "${FAST_PKGS[@]}"; do [[ -n ${SHARD_COUNT[$pkg]:-} || -n ${SKIPPED[$pkg]:-} ]] || kept+=("$pkg"); done
   FAST_PKGS=("${kept[@]}")
   kept=()
-  for pkg in "${HEAVY_PKGS[@]}"; do [[ -n ${SHARD_COUNT[$pkg]:-} ]] || kept+=("$pkg"); done
+  for pkg in "${HEAVY_PKGS[@]}"; do [[ -n ${SHARD_COUNT[$pkg]:-} || -n ${SKIPPED[$pkg]:-} ]] || kept+=("$pkg"); done
   HEAVY_PKGS_WHOLE=("${kept[@]}")
 else
   HEAVY_PKGS_WHOLE=("${HEAVY_PKGS[@]}")
