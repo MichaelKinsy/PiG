@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 // startedPipeConn returns a started Conn and the extension side of its pipe.
@@ -362,5 +364,28 @@ func TestHostEventBusStaleUnsubscribeKeepsTheListenerThatReusedItsKey(t *testing
 	h.removeBusListener(context.Background(), stale)
 	if h.eventBus.lookup(busHandlerKey{"realm-a", "h1"}) != current {
 		t.Fatal("the stale listener's unsubscribe removed the listener that reused its key")
+	}
+}
+
+// A routed emit settles when its listener realms report their microtask checkpoints. When the emitting realm exits while
+// its settle call waits (a crashing Node realm), the emission is forgotten and a listener's later quiesce finds nothing, so
+// closing the emitter must end that wait; it used to block its call goroutine forever (goroutineleak in CI test-subprocess).
+func TestHostEventBusSettleReturnsWhenTheEmitterCloses(t *testing.T) {
+	h := NewHostWithConfigRoot(t.TempDir(), t.TempDir())
+	emitter, _ := startedPipeConn(t, "emitter")
+	listener, listenerPeer := startedPipeConn(t, "listener")
+	id, emission := h.eventBus.newEmission(emitter)
+	h.eventBus.addPending(emission, listener, 1)
+	settled := make(chan error, 1)
+	go func() { settled <- h.eventBus.settle(context.Background(), id) }()
+	if env := readFramed(t, listenerPeer); env.Notify == nil || env.Notify.Method != notifyEventsProceed {
+		t.Fatalf("listener got %+v, want the proceed of a settle that now waits", env)
+	}
+	go func() { _, _ = io.Copy(io.Discard, listenerPeer) }()
+	h.eventBus.closed(emitter)
+	select {
+	case <-settled:
+	case <-time.After(5 * time.Second):
+		t.Fatal("settle still waits after its emitter closed")
 	}
 }

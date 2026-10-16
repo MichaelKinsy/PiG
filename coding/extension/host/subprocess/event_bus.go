@@ -440,13 +440,18 @@ func (b *hostEventBus) closed(conn *Conn) {
 	for id, emission := range b.emissions {
 		delete(emission.pending, conn)
 		if emission.emitter == conn {
-			// An emitter that exits never settles; its waiting listener realms continue.
+			// An emitter that exits never settles; its waiting listener realms continue. The emitter's own settle call is
+			// still waiting on done, and the listeners' later quiesce finds no emission, so done is closed here.
 			delete(b.emissions, id)
 			var waiting []*Conn
 			for pending := range emission.pending {
 				waiting = append(waiting, pending)
 			}
 			releases = append(releases, release{id, waiting})
+			if !emission.closed {
+				emission.closed = true
+				close(emission.done)
+			}
 		}
 		emission.settleLocked()
 	}
