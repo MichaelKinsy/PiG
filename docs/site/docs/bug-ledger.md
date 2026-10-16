@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-881 bugs. 831 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 135 bugs have no recorded test.
+882 bugs. 832 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 135 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -900,6 +900,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-b8df7eb-3](#bf-b8df7eb-3) | Alt-screen frames outside the Kitty protocol no longer read the environment for WezTerm on every render… | PiG's own defect | Windows | 0.5.0 |
 | [BF-1d3b1d0](#bf-1d3b1d0) | MCP: a server's tools, the tools it stopped offering, and the resource tools now reach the session as one… | PiG's own defect | All platforms | Unreleased |
 | [BF-a31d771](#bf-a31d771) | Fixed `pig piglet build` failing on a Piglet that carries a single-file extension (a lone `.ts` or `.js`… | PiG's own defect | All platforms | Unreleased |
+| [BF-c46363b](#bf-c46363b) | Selecting a `go.work` member module that is itself an exact factory package resolves that module's factory… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -13178,6 +13179,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `a31d77153a` (2026-10-11)
 - **Tests:** `bench/k8s/cmd/k8sbench/gpu_test.go::TestRunTrialDoesNotScoreAnArmThatDoesNotStart`, `bench/k8s/cmd/k8sbench/gpu_test.go::TestRunTrialRefusesTestsThatAreNotLocked`, `bench/k8s/cmd/k8sbench/gpu_test.go::TestRunTrialScoresTheAgentAfterItExits`, `bench/k8s/cmd/k8sbench/gpu_test.go::TestRunTrialVerifiesAFailedOrTimedOutAgent`, `coding/piglet/testmain_test.go::TestAgentEnvIsIsolatedToThePackageRun`, `coding/piglet/testmain_test.go::TestMain`, `coding/pigletbuild/records_go_replacement_test.go::TestBuildInputsLocksASingleFileExtension`
 - **Release note:** Fixed `pig piglet build` failing on a Piglet that carries a single-file extension (a lone `.ts` or `.js` file): locking it read `<file>/go.mod`, which fails with ENOTDIR rather than ENOENT, so the build stopped with "local Go replacements: not a directory". A file extension has no Go replacements and now locks like a directory extension without a `go.mod`.
+
+### BF-c46363b
+
+**Selecting a `go.work` member module that is itself an exact factory package resolves that module's factory…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The selection scanned every member module and reported all of their factories as ambiguous, so a monorepo with one module per extension and a root `go.work` could not install any member.
+- **Root cause:** Selecting a workspace member module that is itself an exact factory package scanned every member and reported all of their factories as ambiguous (#212): resolveGo narrowed the scan only for a selection below a module root, and pathWithin rejects the root itself, so an exact member fell to the whole-workspace scan. A monorepo with one module per extension and a root go.work could not install any member.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c46363befc` (2026-10-16)
+- **Tests:** `agent/testmain_leak_test.go::TestMain`, `coding/extension/source/resolve_test.go::TestResolveGoWorkspaceMemberSelectsItsOwnFactory`, `coding/piglet/cli_test.go::TestRunCommandAddRemoteSourcesWritesOriginAndListsIt`, `coding/piglet/monorepo_test.go::TestAddMonorepoPinnedClosure`
+- **Release note:** Selecting a `go.work` member module that is itself an exact factory package resolves that module's factory and keeps the workspace as the compiler closure (#212). Before, the selection scanned every member module and reported all of their factories as ambiguous, so a monorepo with one module per extension and a root `go.work` could not install any member. The workspace root itself stays ambiguous when several members hold factories. An exactly selected member that is a `package main` standalone resolves to that member instead of "spans N modules".
 
 ## Divergences from Pi added in this release
 

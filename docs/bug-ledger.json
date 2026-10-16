@@ -29541,6 +29541,31 @@
         "coding/piglet/testmain_test.go::TestMain",
         "coding/pigletbuild/records_go_replacement_test.go::TestBuildInputsLocksASingleFileExtension"
       ]
+    },
+    {
+      "id": "BF-c46363b",
+      "title": "Selecting a `go.work` member module that is itself an exact factory package resolves that module's factory…",
+      "symptom": "The selection scanned every member module and reported all of their factories as ambiguous, so a monorepo with one module per extension and a root `go.work` could not install any member.",
+      "rootCause": "Selecting a workspace member module that is itself an exact factory package scanned every member and reported all of their factories as ambiguous (#212): resolveGo narrowed the scan only for a selection below a module root, and pathWithin rejects the root itself, so an exact member fell to the whole-workspace scan. A monorepo with one module per extension and a root go.work could not install any member.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Selecting a `go.work` member module that is itself an exact factory package resolves that module's factory and keeps the workspace as the compiler closure (#212). Before, the selection scanned every member module and reported all of their factories as ambiguous, so a monorepo with one module per extension and a root `go.work` could not install any member. The workspace root itself stays ambiguous when several members hold factories. An exactly selected member that is a `package main` standalone resolves to that member instead of \"spans N modules\".",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c46363befc",
+          "date": "2026-10-16"
+        }
+      ],
+      "tests": [
+        "agent/testmain_leak_test.go::TestMain",
+        "coding/extension/source/resolve_test.go::TestResolveGoWorkspaceMemberSelectsItsOwnFactory",
+        "coding/piglet/cli_test.go::TestRunCommandAddRemoteSourcesWritesOriginAndListsIt",
+        "coding/piglet/monorepo_test.go::TestAddMonorepoPinnedClosure"
+      ]
     }
   ],
   "divergences": [
