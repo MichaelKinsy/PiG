@@ -8,6 +8,7 @@ import (
 	"errors"
 	"maps"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -845,6 +846,9 @@ func TestDurableCodeMode(t *testing.T) {
 
 	// Pi 1.2.0 packages/durable/test/codemode.test.ts:882 "journals results that finish together in one commit"
 	t.Run("journals results that finish together in one commit", func(t *testing.T) {
+		// One processor is where Go's scheduler hands it between the call's loop and its commit ahead of the finished results,
+		// so without pump's yield every result commits alone (102 journal commits).
+		defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(1))
 		release := newGate()
 		var waiting atomic.Int32
 		f := codemodeChat(t, Global{Name: "wait", Execute: func(ctx context.Context, _ json.RawMessage, _ durable.ToolExecutionApi) (json.RawMessage, error) {
@@ -857,11 +861,30 @@ func TestDurableCodeMode(t *testing.T) {
 		f.setup.faux.SetResponses([]ai.FauxResponseStep{script(`return (await Promise.all(Array.from({ length: 50 }, () => wait()))).length`), done()})
 		opened, root := f.setup.open(t, openSqlite(t, filepath.Join(t.TempDir(), "session.sqlite")))
 		var journalCommits atomic.Int32
+		// The order of the journal and run commits: no commit that changes only the journal lands after the outcome (the run
+		// document's last commit).
+		var orderMu sync.Mutex
+		var lastJournalOnly, lastRun, commits int
 		unsubscribe := opened.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+			orderMu.Lock()
+			defer orderMu.Unlock()
+			commits++
+			journal, run := false, false
 			for _, change := range publication.Changes {
-				if document, ok := change.(durable.DocumentChange); ok && document.Record.Kind == "pi.codemode.journal" {
-					journalCommits.Add(1)
+				if document, ok := change.(durable.DocumentChange); ok {
+					switch document.Record.Kind {
+					case "pi.codemode.journal":
+						journalCommits.Add(1)
+						journal = true
+					case "pi.codemode.run":
+						run = true
+					}
 				}
+			}
+			if run {
+				lastRun = commits
+			} else if journal {
+				lastJournalOnly = commits
 			}
 		})
 		defer unsubscribe()
@@ -872,6 +895,11 @@ func TestDurableCodeMode(t *testing.T) {
 		if got := journalCommits.Load(); got >= 10 {
 			t.Fatalf("%d journal commits, want fewer than 10", got)
 		}
+		orderMu.Lock()
+		if lastJournalOnly >= lastRun {
+			t.Errorf("a journal commit (%d) landed after the outcome commit (%d)", lastJournalOnly, lastRun)
+		}
+		orderMu.Unlock()
 		mustClose(t, opened)
 	})
 

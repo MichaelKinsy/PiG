@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"runtime"
 	"slices"
 	"sort"
 	"strings"
@@ -145,6 +146,10 @@ type call struct {
 	// acks are the acknowledged counts to record, by result number (0: the script's first run), in the order first set.
 	acks       []ack
 	committing bool
+	// commitPosted is whether pump posted a commit that has not started yet.
+	commitPosted bool
+	// journalCommit is closed once the last started journal commit returned; the outcome commit waits for it.
+	journalCommit chan struct{}
 	// ended is set once the call decided an outcome other than the script's own (divergence, mismatch).
 	ended   *storedResult
 	failure error
@@ -401,6 +406,8 @@ func (c *call) execute(source string) (durable.ToolExecutionResult, error) {
 	for !c.finished {
 		c.events.next()()
 	}
+	// A commit pump decided on starts, as it would have when pump ran; its result is dropped with the rest.
+	c.flushPostedCommit()
 	// What is still running is stopped: a nested call's wait ends with the context, a commit's result is dropped.
 	c.events.close()
 	c.abort(nil)
@@ -588,7 +595,13 @@ func (c *call) complete(result cm.Result) {
 	if result.OK {
 		writes = &result.StoreWrites
 	}
+	// The journal's last commit lands before the outcome's: a commit still posted starts now, and the outcome waits for it.
+	c.flushPostedCommit()
+	journalCommit := c.journalCommit
 	c.spawn(func() {
+		if journalCommit != nil {
+			<-journalCommit
+		}
 		value, err := c.formatAndStore(result, details, options, writes)
 		c.post(func() {
 			if err != nil {
@@ -1330,6 +1343,12 @@ func (c *call) details() ToolDetails {
 
 // pump journals finished calls and acknowledged counts in one commit, then delivers the calls and launches the calls the
 // counts cover; one commit in flight at a time, so what arrives meanwhile goes into the next.
+//
+// Pi's results that finish together join one commit because their callbacks all run in one microtask drain before the
+// commit's awaits resume. Here each result is posted by its own goroutine, and the executor and commit goroutines hand the
+// processor to each other ahead of goroutines already runnable, so with one processor each result would commit alone. The
+// commit therefore starts from an event posted after a yield: results that finish together post first and join it. A commit
+// pump decided on always starts: the call's end and its outcome start one still posted (flushPostedCommit).
 func (c *call) pump() {
 	if c.committing || c.stopped() {
 		return
@@ -1338,6 +1357,27 @@ func (c *call) pump() {
 		return
 	}
 	c.committing = true
+	c.commitPosted = true
+	runtime.Gosched()
+	c.post(c.commitQueued)
+}
+
+// flushPostedCommit starts the commit pump posted, when it has not started yet.
+func (c *call) flushPostedCommit() {
+	if c.commitPosted {
+		c.commitQueued()
+	}
+}
+
+// commitQueued is pump's commit of everything queued when it runs. pump checked that the call had not stopped, so it starts
+// as it would have there.
+func (c *call) commitQueued() {
+	if !c.commitPosted {
+		return
+	}
+	c.commitPosted = false
+	done := make(chan struct{})
+	c.journalCommit = done
 	batch := c.queue
 	c.queue = nil
 	acks := c.acks
@@ -1375,6 +1415,7 @@ func (c *call) pump() {
 			}
 			return nil, nil
 		})
+		close(done)
 		c.post(func() {
 			if err != nil {
 				c.fail(err)
