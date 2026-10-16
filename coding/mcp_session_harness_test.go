@@ -320,6 +320,18 @@ func setupMCP(t *testing.T, exposure extension.McpExposure, listTools func() []m
 	s := newMCPSession(t, exposure, listTools, opts)
 	if !opts.skipToolWait {
 		mcpWaitFor(t, "mcp__docs__search to be registered", func() bool { return s.hasTool("mcp__docs__search") })
+		// Pi registers all of a server's tools in one synchronous turn, so the search tool implies the rest there. Here each
+		// registration is its own call, so a test that reads another tool right away can find it missing; wait for all of them.
+		if opts.allowedTools == nil && opts.excludedTools == nil && (opts.name == "" || opts.name == "docs") {
+			advertised := mcpServerTools
+			if listTools != nil {
+				advertised = listTools()
+			}
+			for _, tool := range advertised {
+				name := "mcp__docs__" + tool["name"].(string)
+				mcpWaitFor(t, name+" to be registered", func() bool { return s.hasTool(name) })
+			}
+		}
 		if opts.resources && opts.allowedTools == nil && exposure != extension.McpExposureHidden { // a --tools filter decides which resource tools exist at all
 			// Pi registers a server's tools and the resource tools in one synchronous turn, so waiting for the search tool is enough there. Here each registration is its own call, and a prompt that starts between them runs a script that finds only some of the tools.
 			for _, name := range []string{"list_mcp_resources", "list_mcp_resource_templates", "read_mcp_resource"} {
