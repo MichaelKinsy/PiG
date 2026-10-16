@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -196,9 +197,10 @@ func runRow(root string, r result, digest string) coverageEntry {
 			continue
 		}
 		cmd.Env = evidenceEnv(scratch)
-		_, err = cmd.CombinedOutput()
+		out, err := cmd.CombinedOutput()
 		_ = os.RemoveAll(scratch)
 		if err != nil {
+			fmt.Fprintf(os.Stderr, "portmap: evidence tests of %s failed: %v\n%s\n", dir, err, lastLines(out, 40))
 			_ = os.RemoveAll(profileDir)
 			failed = dir
 			continue
@@ -281,4 +283,13 @@ func evidenceEnv(scratch string) []string {
 		env = append(env, name+"="+filepath.Join(scratch, strings.ToLower(name)))
 	}
 	return env
+}
+
+// lastLines is the tail of a failed evidence run, so the check names why it failed instead of only that it did.
+func lastLines(out []byte, n int) string {
+	lines := strings.Split(strings.TrimRight(string(out), "\n"), "\n")
+	if len(lines) > n {
+		lines = lines[len(lines)-n:]
+	}
+	return strings.Join(lines, "\n")
 }
