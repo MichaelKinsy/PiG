@@ -17,6 +17,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
 // Pi's main.ts routes `mcp` after the package and config commands and before argument parsing, and hands the rest of the arguments and the process exit code to runMcpCommand (.upstream/v0.99.1/packages/coding-agent/src/main.ts:608-612).
@@ -122,13 +124,9 @@ func TestPigMcpReadsProjectConfigOnlyForTrustedProjects(t *testing.T) {
 		!strings.Contains(untrusted.stdout, filepath.Join(resolved, ".pig", "mcp.json")+" is ignored because the project is not trusted. Start pig in the project to trust it.") {
 		t.Fatalf("untrusted list = %+v", untrusted)
 	}
-	// The trust key is the canonical path (Pi: realpathSync.native), which on Windows expands the 8.3 short names that the
-	// process cwd, and so the message above, keeps.
-	canonical, err := filepath.EvalSymlinks(cwd)
-	if err != nil {
-		t.Fatal(err)
-	}
-	trust, err := json.Marshal(map[string]bool{canonical: true})
+	// The trust key is Pi's canonicalizePath (realpathSync, trust-manager.ts:42), which on Windows keeps the 8.3 short names of
+	// the process cwd, as the message above does.
+	trust, err := json.Marshal(map[string]bool{codingagent.GetProjectTrustPath(cwd): true})
 	if err != nil {
 		t.Fatal(err)
 	}

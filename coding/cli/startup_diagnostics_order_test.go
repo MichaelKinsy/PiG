@@ -106,11 +106,8 @@ func TestHeadlessNoModelOutputMatchesPi(t *testing.T) {
 					}
 					return
 				}
-				// PiG reports the long form of the cwd; t.TempDir keeps the runner's 8.3 short form (RUNNER~1) on Windows.
-				wantCWD, err := filepath.EvalSymlinks(root)
-				if err != nil {
-					t.Fatal(err)
-				}
+				// The header cwd is process.cwd(), which keeps the runner's 8.3 short form (RUNNER~1) on Windows, as Pi's does.
+				wantCWD := physicalPath(t, root)
 				var header struct {
 					Type      string `json:"type"`
 					Version   int    `json:"version"`

@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -111,8 +110,9 @@ func TestCLISelectsSessionBeforeNameValidation(t *testing.T) {
 	missingCWD := filepath.Join(cwd, "missing-cwd")
 	missingSource := filepath.Join(cwd, "missing-cwd.jsonl")
 	startupNameSessionFixture(t, missingCWD, missingSource)
-	// Both CLIs report process.cwd(), which getcwd returns without symlinks (macOS /var is /private/var).
-	processCWD := canonicalTestPath(t, cwd)
+	// Both CLIs report process.cwd(), which getcwd returns without symlinks (macOS /var is /private/var) and which keeps an
+	// 8.3 short name on Windows.
+	processCWD := physicalPath(t, cwd)
 	// The rows own their homes and session directories and only read source, so they run together; the group ends when every row has, before the source Session is compared.
 	t.Run("rows", func(t *testing.T) {
 		for _, tc := range []struct {
@@ -152,10 +152,6 @@ func TestCLISelectsSessionBeforeNameValidation(t *testing.T) {
 							err := cmd.Run()
 							var exit *exec.ExitError
 							want := tc.stderr
-							if runtime.GOOS == "windows" && system.name == "pi" {
-								// Node's process.cwd() keeps the 8.3 short form (RUNNER~1) the runner's temp path was given in; PiG resolves it to the long name.
-								want = strings.ReplaceAll(want, processCWD, cwd)
-							}
 							if !errors.As(err, &exit) || exit.ExitCode() != 1 || stdout.String() != "" || stderr.String() != want {
 								t.Errorf("%s: err=%v stdout=%q stderr=%q; want exit=1 stdout=empty stderr=%q", system.name, err, stdout.String(), stderr.String(), want)
 							}

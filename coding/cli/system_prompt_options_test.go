@@ -66,7 +66,7 @@ export default function(pi) {
 			if err := json.Unmarshal(data, &got); err != nil {
 				t.Fatal(err)
 			}
-			if got.CustomPrompt != tc.custom || !got.CustomPromptSet || got.AppendSystemPrompt != "APPENDED" || got.Cwd != canonicalTestPath(t, cwd) {
+			if got.CustomPrompt != tc.custom || !got.CustomPromptSet || got.AppendSystemPrompt != "APPENDED" || got.Cwd != physicalPath(t, cwd) {
 				t.Fatalf("prompt inputs = %s", data)
 			}
 			if !reflect.DeepEqual(got.SelectedTools, []string{"read", "bash", "edit", "write"}) || got.ToolSnippets["grep"] != "Search file contents for patterns (respects .gitignore)" || !reflect.DeepEqual(got.ToolGuidelines["read"], []string{"Use read to examine files instead of cat or sed."}) {

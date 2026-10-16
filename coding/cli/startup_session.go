@@ -18,7 +18,6 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
-	"github.com/MichaelKinsy/PiG/internal/realpath"
 )
 
 type startupSessionSelection struct {
@@ -246,14 +245,15 @@ type resolvedSessionArgument struct {
 	global bool
 }
 
+// canonicalStartupDir is Pi canonicalizePath (realpathSync) of an absolute path, the form the trust store keys and the session
+// cwd filter compare: on Windows it keeps the 8.3 short names and case the path was given in, as process.cwd() does, where
+// filepath.EvalSymlinks would expand them and the launch directory would no longer match its own trust entry or sessions.
 func canonicalStartupDir(path string) string {
-	if resolved, err := realpath.EvalSymlinks(path); err == nil {
-		return resolved
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		absolute = path
 	}
-	if absolute, err := filepath.Abs(path); err == nil {
-		return filepath.Clean(absolute)
-	}
-	return filepath.Clean(path)
+	return codingagent.CanonicalizePath(filepath.Clean(absolute))
 }
 
 func confirmCrossProjectSession(reader io.Reader, writer io.Writer, cwd string) (bool, error) {
