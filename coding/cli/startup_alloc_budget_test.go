@@ -61,14 +61,14 @@ func TestStartupAllocationBudget(t *testing.T) {
 
 	version := fixture.measure(ctx, t, fixture.cwd, "--version")
 	if version.AllocBytes > budget.versionBytes || version.AllocObjects > budget.versionObjects {
-		t.Errorf("pig --version allocated %d bytes in %d objects, budget %d bytes in %d objects", version.AllocBytes, version.AllocObjects, budget.versionBytes, budget.versionObjects)
+		startupBudgetError(t, "pig --version allocated %d bytes in %d objects, budget %d bytes in %d objects", version.AllocBytes, version.AllocObjects, budget.versionBytes, budget.versionObjects)
 	}
 
 	fixture.measure(ctx, t, fixture.cwd, startupPrompt...) // stages the embedded docs and SDKs
 	best := fixture.warmPrompt(ctx, t, fixture.cwd)
 	t.Logf("cwd %s; pig --version: %d bytes, %d objects; first prompt (warm, min of 3): %d bytes, %d objects, %d GC cycles", fixture.cwd, version.AllocBytes, version.AllocObjects, best.AllocBytes, best.AllocObjects, best.GCCycles)
 	if best.AllocBytes > budget.promptBytes || best.AllocObjects > budget.promptObjects {
-		t.Errorf("a warm first prompt allocated %d bytes in %d objects, budget %d bytes in %d objects", best.AllocBytes, best.AllocObjects, budget.promptBytes, budget.promptObjects)
+		startupBudgetError(t, "a warm first prompt allocated %d bytes in %d objects, budget %d bytes in %d objects", best.AllocBytes, best.AllocObjects, budget.promptBytes, budget.promptObjects)
 	}
 }
 
@@ -124,7 +124,7 @@ func TestStartupAllocationBudgetWithModelsJSON(t *testing.T) {
 	best := fixture.warmPrompt(ctx, t, fixture.cwd)
 	t.Logf("cwd %s; first prompt with models.json (warm, min of 3): %d bytes, %d objects, %d GC cycles", fixture.cwd, best.AllocBytes, best.AllocObjects, best.GCCycles)
 	if best.AllocBytes > budgetBytes || best.AllocObjects > budgetObjects {
-		t.Errorf("a warm first prompt with a models.json allocated %d bytes in %d objects, budget %d bytes in %d objects", best.AllocBytes, best.AllocObjects, budgetBytes, budgetObjects)
+		startupBudgetError(t, "a warm first prompt with a models.json allocated %d bytes in %d objects, budget %d bytes in %d objects", best.AllocBytes, best.AllocObjects, budgetBytes, budgetObjects)
 	}
 }
 
@@ -202,7 +202,7 @@ func TestStartupAllocationPerDirectoryLevel(t *testing.T) {
 	t.Logf("warm first prompt from %s: %d bytes, %d objects; %d levels deeper: %d bytes, %d objects; per level %d bytes, %d objects", fixture.cwd, shallowRun.AllocBytes, shallowRun.AllocObjects, startupLevels, deepRun.AllocBytes, deepRun.AllocObjects, bytes, objects)
 	objectsCeiling, bytesCeiling := startupLevelCeilingFor(runtime.GOOS)
 	if objects > objectsCeiling {
-		t.Errorf("each directory level above the working directory costs a warm first prompt %d bytes in %d objects, ceiling %d bytes in %d objects", bytes, objects, bytesCeiling, objectsCeiling)
+		startupBudgetError(t, "each directory level above the working directory costs a warm first prompt %d bytes in %d objects, ceiling %d bytes in %d objects", bytes, objects, bytesCeiling, objectsCeiling)
 	}
 	// darwin's per-level bytes swing 2,048-2,743 across runs of one build while its objects hold at 12-13 (8 runs at
 	// a70a334ac4 on an M4 Pro): the difference of two whole-process totals divided by 32 carries the totals' noise. There the
@@ -213,7 +213,7 @@ func TestStartupAllocationPerDirectoryLevel(t *testing.T) {
 			t.Logf("startup per-level bytes (report only on darwin): %d bytes per level, ceiling %d", bytes, bytesCeiling)
 			fmt.Printf("::warning title=startup per-level bytes::%s: %d bytes per level, ceiling %d\n", t.Name(), bytes, bytesCeiling)
 		} else {
-			t.Errorf("each directory level above the working directory costs a warm first prompt %d bytes in %d objects, ceiling %d bytes in %d objects", bytes, objects, bytesCeiling, objectsCeiling)
+			startupBudgetError(t, "each directory level above the working directory costs a warm first prompt %d bytes in %d objects, ceiling %d bytes in %d objects", bytes, objects, bytesCeiling, objectsCeiling)
 		}
 	}
 }
@@ -294,4 +294,18 @@ func measuredEnvironment(environ []string) []string {
 		}
 	}
 	return kept
+}
+
+// startupBudgetError fails the test on a startup allocation budget, except on Windows, where it reports instead.
+// TODO(0.5.1): the Windows budgets were set twice from a machine other than the CI runner (owner decision 2026-10-16,
+// handoffs/owner-signoff.md); measure them on windows-latest and make them blocking again. Linux and darwin block.
+func startupBudgetError(t *testing.T, format string, args ...any) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		message := fmt.Sprintf(format, args...)
+		t.Logf("TODO(0.5.1) startup budget (report only on Windows): %s", message)
+		fmt.Printf("::warning title=startup budget (Windows, report only)::%s: %s\n", t.Name(), message)
+		return
+	}
+	t.Errorf(format, args...)
 }

@@ -119,6 +119,12 @@ fi
 declare -A SHARD_COUNT=()
 if [[ "$MODE" != changed && "$MODE" != report ]]; then
   for spec in "${SHARDED_SPEC[@]}"; do
+    # PIG_CI_SKIP_SHARDED names sharded packages this run leaves out (owner decision 2026-10-16 for the 0.5.0 release
+    # push: ./ai and ./coding need more shards than their -run patterns fit, which 0.5.1 fixes). The skip is printed.
+    if [[ " ${PIG_CI_SKIP_SHARDED:-} " == *" ${spec%:*} "* ]]; then
+      echo "::warning title=sharded package skipped::${spec%:*} is not run (PIG_CI_SKIP_SHARDED)"
+      continue
+    fi
     spec_pkg=$(go list "${spec%:*}")
     in_all=
     for pkg in "${ALL_PKGS[@]}"; do [[ "$pkg" == "$spec_pkg" ]] && in_all=1; done

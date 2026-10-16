@@ -22,6 +22,7 @@ var chordHelpers = []string{
 	"internal/chord/chordjson",
 	"internal/entered", // the shared parked-goroutine check behind goEntered
 	"internal/goroutineid",
+	"internal/jsonscan", // the eight-byte JSON string scan, shared by durable/core/jv and the ai chunk scanner
 	"internal/jsnumber",
 	"internal/jsparity",
 	"internal/jsstring",
