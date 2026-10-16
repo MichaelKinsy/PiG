@@ -3,6 +3,7 @@ package host
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -21,7 +22,7 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 	if !existed {
 		if err := os.Remove(entry); err != nil && !os.IsNotExist(err) {
-			os.Stderr.WriteString("remove " + entry + ": " + err.Error() + "\n")
+			fmt.Fprintln(os.Stderr, "remove "+entry+":", err)
 			code = max(code, 2)
 		}
 	}
