@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-875 bugs. 825 own defects, 31 fixed ahead of Pi, 19 Pi fixes ported. 135 bugs have no recorded test.
+880 bugs. 829 own defects, 30 fixed ahead of Pi, 21 Pi fixes ported. 135 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -623,7 +623,6 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-ca06a0b](#bf-ca06a0b) | Tool arguments that TypeBox's Convert wraps in an array (an object where the schema asks for an array, such… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2fc2307](#bf-2fc2307) | A scalar that names a collection tag (`!!map 1`, `!!seq true`) inside a complex mapping key stays plain in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b78cdae](#bf-b78cdae) | A YAML parse error on a block scalar used as an implicit key (`name: x` followed by `\|description: ...`)… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-D171](#bf-d171) | An errored Anthropic tool result carries no images (Pi #10792, #10794; Pi 34a8bb38) | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-e48a02f](#bf-e48a02f) | fix(tui): filterable list drops the label when no cell remains (Pi select-list) | PiG's own defect | All platforms | Unreleased |
 | [BF-02114ff](#bf-02114ff) | fix(tui): filterable list drops the label when no cell remains (Pi select-list) | PiG's own defect | All platforms | Unreleased |
 | [BF-d9886fe](#bf-d9886fe) | fix(hljs): no magic-literal hits for the resume and dispatch bounds | PiG's own defect | All platforms | Unreleased |
@@ -890,10 +889,16 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-edb73db](#bf-edb73db) | fix(codingagent): one owner-overflow forwarder at a time; the drain test waits for it, not for the flag's… | PiG's own defect | All platforms | Unreleased |
 | [BF-167dae3](#bf-167dae3) | fix(codingagent): the idle collection runs two GC cycles again so pool victims are freed (D172) | PiG's own defect | All platforms | Unreleased |
 | [BF-20718f7](#bf-20718f7) | fix(coding-agent): resolve model references through one provider selection policy (Pi) | PiG's own defect | All platforms | Unreleased |
+| [BF-c58f961](#bf-c58f961) | A call through a remote Chord reference with a `ctx` from another host, or one not made by Chord, fails with… | PiG's own defect | All platforms | Unreleased |
+| [BF-c58f961-2](#bf-c58f961-2) | Turning thinking off on Claude Haiku 5.5 and Opus 5 sends plain `thinking: {type: "disabled"}` without effort… | PiG's own defect | All platforms | Unreleased |
+| [BF-c58f961-3](#bf-c58f961-3) | The retry classifier treats "The service is temporarily unavailable" and Bedrock's "Service unavailable: ..."… | PiG's own defect | All platforms | Unreleased |
+| [BF-471db1a](#bf-471db1a) | A `Progress` pause longer than Node's timer maximum, or not a number, runs after 1 ms as a Node timer does | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-83fea11](#bf-83fea11) | On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was… | PiG's own defect | Windows | 0.5.0 |
+| [BF-f2f1caa](#bf-f2f1caa) | Anthropic and Claude on Bedrock no longer lose the images of an error tool result: Pi sends them after the… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-b8df7eb](#bf-b8df7eb) | On Windows, a session's private snapshot file is created in the temporary directory instead of the session… | PiG's own defect | Windows | 0.5.0 |
 | [BF-b8df7eb-2](#bf-b8df7eb-2) | On Windows, an image fallback links a path that starts with a slash but no drive (`/tmp/x.png`) as Pi does… | PiG's own defect | Windows | 0.5.0 |
 | [BF-b8df7eb-3](#bf-b8df7eb-3) | Alt-screen frames outside the Kitty protocol no longer read the environment for WezTerm on every render… | PiG's own defect | Windows | 0.5.0 |
+| [BF-36c3d14](#bf-36c3d14) | `done()` of an overlay `ui.custom` component hides that component's own overlay instead of the topmost one | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -9342,21 +9347,6 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `internal/yaml12/parse_mutation_test.go::TestParseMatchesTheLibraryOnErrorRangesPastNonASCII`
 - **Release note:** A YAML parse error on a block scalar used as an implicit key (`name: x` followed by `|description: ...`) draws the carets of the `Implicit keys need to be on a single line` message as the yaml library does when the scalar's content holds a non-ASCII character: the range ends one UTF-16 unit per character after the key's offset, where it used to count bytes and print one caret or too many.
 
-### BF-D171
-
-**An errored Anthropic tool result carries no images (Pi #10792, #10794; Pi 34a8bb38)**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D171)
-- **Symptom:** Anthropic rejects a `tool_result` with `is_error` true whose content holds anything but text blocks (`400 invalid_request_error: messages.N.content.0.tool_result: all content must be type text if is_error is true`), and the rejected result stays in the history, so every later turn fails until the user edits the session. Codemode hits it when a script emits an image and then fails. Pi main fixed it after 1.2.0 in (fix(ai): drop images from Anthropic error tool results): each image of an errored tool result is replaced, in place, with the text block `[image omitted: error tool results cannot contain images]`, so the content is all text and is sent as one newline-joined string. PiG follows…
-- **Root cause:** A tool result the provider refuses wedges the session; Pi's own fix is merged on main.
-- **User impact:** An operation failed or was rejected
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Pi issue:** https://github.com/earendil-works/pi/issues/10792
-- **Removed when Pi fixes it:** the pin includes Pi 34a8bb38.
-- **Fix commits:** `c1c81431e6` (2026-10-11), `e307b19fa5` (2026-10-12), `0f42abdb69` (2026-10-13)
-- **Tests:** `ai/anthropic_error_tool_result_image_test.go::TestAnthropicErroredToolResultCarriesNoImageBlock`, `ai/anthropic_messages_compat_options_oracle_test.go::TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi`, `ai/anthropic_messages_payload_oracle_test.go::TestAnthropicMessagesPayloadMatchesPi`
-
 ### BF-e48a02f
 
 **fix(tui): filterable list drops the label when no cell remains (Pi select-list)**
@@ -13036,6 +13026,62 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `20718f71ec` (2026-10-14)
 - **Tests:** `coding/cli/credential_print_test.go::TestCredentialPrintModelWithoutProviderUsesCatalogOfConfiguredProviders`, `internal/codingagent/model_reference_upstream_test.go::TestResolveCliModelDuplicateRawIDsMatchesUpstream`, `internal/codingagent/model_reference_upstream_test.go::TestResolveModelReferenceMatchesUpstream`, `internal/codingagent/model_reference_upstream_test.go::TestResolveModelScopeAmbiguousProvidersMatchesUpstream`
 
+### BF-c58f961
+
+**A call through a remote Chord reference with a `ctx` from another host, or one not made by Chord, fails with…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A call through a remote Chord reference with a `ctx` from another host, or one not made by Chord, fails with `invalid/foreign_ctx` before anything crosses the link, like a call through a local reference.
+- **Root cause:** Not a READY commit. The pin bump to is in flight in the worktree, the upstream-sync and test-mapping rows are not written, and is not ported.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f433fee8c5` (2026-10-14), `c58f96109f` (2026-10-15)
+- **Tests:** `chord/host/host_test.go::TestHostRecognizesItsOwnPrincipalByKey`, `chord/host/placement_upstream_test.go::TestPlacementAGetGoesWhereTheContractPlacesTheInputHereAChildOrTheParentNeverNamedByTheCaller`, `chord/host/placement_upstream_test.go::TestPlacementAHostRefusesAHoldItsOwnContractPlacesElsewhereAndARelayOneWhoseTargetDisagrees`, `chord/host/placement_upstream_test.go::TestPlacementIsPartOfTheContractAMovedTypeIsABreakingChangeNeverBridgedByAnAdapter`, `chord/host/placement_upstream_test.go::TestPlacementServeRefusesATypeTheHostIsNotThePlaceOfAlsoAtAReload`, `chord/host/placement_upstream_test.go::TestPlacementTheHostComesFromTheNormalizedInputUnknownFieldsAndDefaultsDoNotChangeIt`, `chord/host/placement_upstream_test.go::TestPlacementTypesAndRemoteContractsNeedAHost`, `chord/host/principals_upstream_test.go::TestPrincipalsAChildsParentActsAsThePrincipalTheChildGaveConnectRelayedCallersKeepTheirs` and 11 more in docs/bug-ledger.json
+- **Release note:** A call through a remote Chord reference with a `ctx` from another host, or one not made by Chord, fails with `invalid/foreign_ctx` before anything crosses the link, like a call through a local reference.
+
+### BF-c58f961-2
+
+**Turning thinking off on Claude Haiku 5.5 and Opus 5 sends plain `thinking: {type: "disabled"}` without effort…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Turning thinking off on Claude Haiku 5.5 and Opus 5 sends plain `thinking: {type: "disabled"}` without effort markers, which Anthropic rejects while thinking is disabled.
+- **Root cause:** Not a READY commit. The pin bump to is in flight in the worktree, the upstream-sync and test-mapping rows are not written, and is not ported.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c58f96109f` (2026-10-15)
+- **Tests:** `chord/host/review_upstream_test.go::TestReviewARemoteReferenceRefusesAForeignCtxAndACtxNotMadeByChordWithoutCalling`
+- **Release note:** Turning thinking off on Claude Haiku 5.5 and Opus 5 sends plain `thinking: {type: "disabled"}` without effort markers, which Anthropic rejects while thinking is disabled.
+
+### BF-c58f961-3
+
+**The retry classifier treats "The service is temporarily unavailable" and Bedrock's "Service unavailable: ..."…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The retry classifier treats "The service is temporarily unavailable" and Bedrock's "Service unavailable: ..." as retryable.
+- **Root cause:** Not a READY commit. The pin bump to is in flight in the worktree, the upstream-sync and test-mapping rows are not written, and is not ported.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c58f96109f` (2026-10-15)
+- **Tests:** `chord/host/review_upstream_test.go::TestReviewARemoteReferenceRefusesAForeignCtxAndACtxNotMadeByChordWithoutCalling`
+- **Release note:** The retry classifier treats "The service is temporarily unavailable" and Bedrock's "Service unavailable: ..." as retryable.
+
+### BF-471db1a
+
+**A `Progress` pause longer than Node's timer maximum, or not a number, runs after 1 ms as a Node timer does**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** A `Progress` pause longer than Node's timer maximum, or not a number, runs after 1 ms as a Node timer does.
+- **Root cause:** Pi moves OutputBuffer, Progress, boundOutput, sanitizeOutput, characterEnd and the output types from packages/durable/src/harness/output.ts to the Chord subpath packages/chord/src/output.ts, adds OutputSkip (output.ts:20-31) and utf8ByteLength (output.ts:268-290), and has Durable import them (harness/tool.ts:4-10, tools/read.ts:2, truncate.ts:1,47).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `471db1ac1b` (2026-10-15)
+- **Tests:** `chord/output/output_pi_oracle_test.go::TestOutputBufferMatchesPi`, `chord/output/output_skip_test.go::TestOutputBufferSkippedOutput`, `chord/output/output_skip_test.go::TestOutputBufferSkippedOutputEndsAnIncompleteCharacterBeforeTheOmission`, `chord/output/output_test.go::TestOutputBuffer`, `chord/output/output_test.go::TestProgress`, `chord/output/output_test.go::TestSystemProgressClockUsesNodesTimerDelayRule`, `chord/output/output_test.go::TestToolOutputBounds`, `durable/harness/harness_tools_progress_test.go::TestToolProgressAndLifetime` and 4 more in docs/bug-ledger.json
+- **Release note:** A `Progress` pause longer than Node's timer maximum, or not a number, runs after 1 ms as a Node timer does.
+
 ### BF-83fea11
 
 **On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was…**
@@ -13049,6 +13095,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `83fea11dbf` (2026-10-15)
 - **Tests:** `ai/bedrock_error_metadata_upstream_test.go::TestBedrockRefusedConnectIsNodesErrorLikePi`, `ai/node_net_error_test.go::TestNodeNetErrorMessageIsNodesText`, `ai/oauth_page_corpus_test.go::TestOAuthPageCorpusMatchesThePinnedPackage`
 - **Release note:** On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was reported as a retryable `fetch failed`.
+
+### BF-f2f1caa
+
+**Anthropic and Claude on Bedrock no longer lose the images of an error tool result: Pi sends them after the…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** Anthropic and Claude on Bedrock no longer lose the images of an error tool result: Pi sends them after the tool results of the turn, under a caption naming the tool call, instead of replacing them with a note ([#10794](https://github.com/earendil-works/pi/issues/10794)).
+- **Root cause:** Anthropic and Claude on Bedrock reject an error tool result that holds images. Pi now replaces each run of images in such a result with "(image attached after the tool results)" and sends the images after all tool results of the turn, in the same user message, under a caption naming the call (transform-messages.ts:14-39 splitErrorToolResultImages; anthropic-messages.ts:1339 convertToolResult and :1500-1523 convertMessages; bedrock-converse-stream.ts:1093-1124 convertMessages, Claude only).
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `29dadf1e5e` (2026-10-15), `471db1ac1b` (2026-10-15), `f2f1caa6d2` (2026-10-15), `fb72e1fde8` (2026-10-15)
+- **Tests:** `ai/anthropic_error_tool_result_image_test.go::TestAnthropicErrorToolResultImages`, `ai/auth_path_oracle_test.go::TestAuthStorageAuthPathSpellingsMatchPi`, `ai/bedrock_convert_upstream_test.go::TestBedrockUpstreamConvertMessages`, `ai/openai_codex_websocket_proxy_test.go::TestCodexWebSocketFallsBackToTheHTTPProxy`, `ai/openai_codex_websocket_proxy_test.go::TestCodexWebSocketProxyFollowsEnvHttpProxyAgent`, `ai/sse_event_idle_scan_norace_test.go::TestSSEIdleTrackerScanIsNotAPerByteLoop`, `chord/output/output_pi_oracle_test.go::TestOutputBufferMatchesPi`, `chord/output/output_skip_test.go::TestOutputBufferSkippedOutput` and 10 more in docs/bug-ledger.json
+- **Release note:** Anthropic and Claude on Bedrock no longer lose the images of an error tool result: Pi sends them after the tool results of the turn, under a caption naming the tool call, instead of replacing them with a note ([#10794](https://github.com/earendil-works/pi/issues/10794)). Other Bedrock models keep the images in the result.
 
 ### BF-b8df7eb
 
@@ -13092,6 +13152,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `coding/agent_session_runtime_oracle_test.go::TestAgentSessionRuntimeMatchesPi`, `tui/alt_screen_frame_allocs_norace_test.go::TestAltScreenStreamingFrameAllocationCeiling`, `tui/terminal_split_reply_test.go::TestTerminalInputConsumesAnOwedReplySplitAcrossSlowReads`
 - **Release note:** Alt-screen frames outside the Kitty protocol no longer read the environment for WezTerm on every render, which allocated on Windows.
 
+### BF-36c3d14
+
+**`done()` of an overlay `ui.custom` component hides that component's own overlay instead of the topmost one**
+
+- **Source:** PiG's own defect
+- **Symptom:** `done()` of an overlay `ui.custom` component hides that component's own overlay instead of the topmost one.
+- **Root cause:** showExtensionCustom's close() hid the overlay with ui.hideOverlay(), which removes the topmost overlay, so closing a lower overlay removed the one above it and left the finished one on screen (interactive-mode.ts:2992-3000, :3028 keeps the handle showOverlay returned and close() calls overlayHandle?.hide()). customCall.teardown (ext_ui_custom.go) and RunRemoteOverlay (ext_ui_context.go) now hide the handle they showed. A factory's own tui.hideOverlay() still pops the topmost overlay (HideTopOverlay).
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `36c3d14b23` (2026-10-15, #10999)
+- **Tests:** `internal/codingagent/ext_ui_custom_stack_test.go::TestHostCustomOverlayCloseOutOfOrderRemovesItsOwnOverlay`, `internal/codingagent/ext_ui_custom_stack_test.go::TestRemoteCustomOverlayCloseOutOfOrderRemovesItsOwnOverlay`
+- **Release note:** `done()` of an overlay `ui.custom` component hides that component's own overlay instead of the topmost one. With a shell overlay open under a dialog overlay from another extension, the shell's exit no longer removes the dialog or leaves the finished shell on screen (Pi #10999, #10648).
+
 ## Divergences from Pi added in this release
 
 Each divergence record is accounted for here. A divergence that fixes a Pi defect links to its ledger entry; the others are deliberate differences and no bug fix.
@@ -13115,7 +13189,6 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D121 | The Anthropic SSE reader holds back a carriage return that ends a chunk (pi-mono #10390) | [BF-1fbdabb](#bf-1fbdabb) |
 | D122 | OpenAI Completions keeps a signature-only `reasoning.text` delta (pi-mono #9534) | [BF-cb00273](#bf-cb00273) |
 | D124 | OpenRouter's reported cost is the usage total, ported from pi-mono commit 83ca8020 (pi-mono #9980) | [BF-0d0a3ef](#bf-0d0a3ef) |
-| D126 | Another model's thinking replays as `reasoning_content` on targets that require it (pi-mono #6167) | [BF-4aa9763](#bf-4aa9763) |
 | D128 | OpenRouter image models that need the Images API are retried through `/images` (pi-mono #10652) | [BF-b730205](#bf-b730205) |
 | D129 | A Responses function call streamed with an empty call_id no longer wedges the session (pi-mono #10299) | [BF-0dff068](#bf-0dff068) |
 | D130 | A managed-effort Anthropic request sends each managed field only with its beta (Pi #10759) | [BF-5e3e346](#bf-5e3e346) |
@@ -13143,7 +13216,6 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D159 | A single grapheme wider than the editor's wrap width stays one chunk instead of exhausting the stack | deliberate difference |
 | D165 | The durable image processor is native Go, not Photon's WebAssembly | deliberate difference |
 | D167 | A history longer than the model's context window is summarized in chunks | [BF-85908ae](#bf-85908ae) |
-| D171 | An errored Anthropic tool result carries no images (Pi #10792, #10794; Pi 34a8bb38) | [BF-D171](#bf-d171) |
 | D173 | Tool search matches Chinese, Japanese and Korean queries (Pi #10816) | [BF-b99457f](#bf-b99457f) |
 | D177 | The calls of a parallel durable tool round start in unspecified order | deliberate difference |
 | D178 | Facet modules load in an isolated Node child, not in the host process | deliberate difference |

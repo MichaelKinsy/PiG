@@ -25472,8 +25472,8 @@
       ],
       "evidence": [
         "test:ai/convert_completions_proof_test.go#TestConvertCompletionsMessagesSendsThinkingAsTextJoinedByBlankLines",
-        "test:ai/openai_foreign_reasoning_replay_test.go#TestForeignThinkingReplaysAsReasoningContentWhenTheTargetRequiresIt",
-        "test:ai/openai_test.go#TestConvertMessagesWithCompat_ThinkingAsText"
+        "test:ai/openai_test.go#TestConvertMessagesWithCompat_ThinkingAsText",
+        "test:ai/openai_thinking_as_text_wiring_pi_test.go#TestConvertMessagesWithCompatSendsThinkingAsTextOnlyWhenTheCompatAsksFor"
       ]
     },
     {
@@ -67458,8 +67458,8 @@
       ],
       "evidence": [
         "test:ai/convert_completions_proof_test.go#TestConvertCompletionsMessagesSendsThinkingAsTextJoinedByBlankLines",
-        "test:ai/openai_foreign_reasoning_replay_test.go#TestForeignThinkingReplaysAsReasoningContentWhenTheTargetRequiresIt",
-        "test:ai/openai_test.go#TestConvertMessagesWithCompat_ThinkingAsText"
+        "test:ai/openai_test.go#TestConvertMessagesWithCompat_ThinkingAsText",
+        "test:ai/openai_thinking_as_text_wiring_pi_test.go#TestConvertMessagesWithCompatSendsThinkingAsTextOnlyWhenTheCompatAsksFor"
       ]
     },
     {
@@ -83777,8 +83777,8 @@
       ],
       "evidence": [
         "test:ai/convert_completions_proof_test.go#TestConvertCompletionsMessagesSendsThinkingAsTextJoinedByBlankLines",
-        "test:ai/openai_foreign_reasoning_replay_test.go#TestForeignThinkingReplaysAsReasoningContentWhenTheTargetRequiresIt",
-        "test:ai/openai_test.go#TestConvertMessagesWithCompat_ThinkingAsText"
+        "test:ai/openai_test.go#TestConvertMessagesWithCompat_ThinkingAsText",
+        "test:ai/openai_thinking_as_text_wiring_pi_test.go#TestConvertMessagesWithCompatSendsThinkingAsTextOnlyWhenTheCompatAsksFor"
       ]
     },
     {

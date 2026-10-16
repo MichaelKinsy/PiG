@@ -664,16 +664,16 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/object.ts` | `chord/host/object.go ServeOptions, Factory, Self, SelfImpl, ResourceImpl, CtxImpl, RefImpl, ObjectImpl` | 🟡 |
 | `packages/chord/src/remote.ts` | `chord/host/remote.go RemoteRef, RemoteChannel` | 🟡 |
 | `packages/chord/src/cluster.ts` | `chord/host/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
-| `packages/chord/src/contract.ts` | `chord/host/ (link protocol 2; the protocol 3 and 4 cases are owner exception B, 0.5.1: test/parity/upstream-sync/v1.2.0+b06c1f2c.toml)` | 🟡 |
-| `packages/chord/src/declare.ts` | `chord/host/ (link protocol 2; the protocol 3 and 4 cases are owner exception B, 0.5.1: test/parity/upstream-sync/v1.2.0+b06c1f2c.toml)` | 🟡 |
+| `packages/chord/src/contract.ts` | `chord/host/ (link protocol 4)` | ✅ |
+| `packages/chord/src/declare.ts` | `chord/host/ (link protocol 4)` | ✅ |
 | `packages/chord/src/errors.ts` | `chord/host/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
-| `packages/chord/src/host.ts` | `chord/host/ (link protocol 2; the protocol 3 and 4 cases are owner exception B, 0.5.1: test/parity/upstream-sync/v1.2.0+b06c1f2c.toml)` | 🟡 |
+| `packages/chord/src/host.ts` | `chord/host/ (link protocol 4)` | ✅ |
 | `packages/chord/src/registry.ts` | `chord/host/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
-| `packages/chord/src/reload.ts` | `chord/host/ (link protocol 2; the protocol 3 and 4 cases are owner exception B, 0.5.1: test/parity/upstream-sync/v1.2.0+b06c1f2c.toml)` | 🟡 |
+| `packages/chord/src/reload.ts` | `chord/host/ (link protocol 4)` | ✅ |
 | `packages/chord/src/schema.ts` | `chord/host/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
 | `packages/chord/src/state.ts` | `chord/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
-| `packages/chord/src/websocket.ts` | `chord/host/ (link protocol 2; the protocol 3 and 4 cases are owner exception B, 0.5.1: test/parity/upstream-sync/v1.2.0+b06c1f2c.toml)` | 🟡 |
-| `packages/chord/src/wire.ts` | `chord/host/ (link protocol 2; the protocol 3 and 4 cases are owner exception B, 0.5.1: test/parity/upstream-sync/v1.2.0+b06c1f2c.toml)` | 🟡 |
+| `packages/chord/src/websocket.ts` | `chord/host/ (link protocol 4)` | ✅ |
+| `packages/chord/src/wire.ts` | `chord/host/ (link protocol 4)` | ✅ |
 
 ## `packages/protocol/src/`
 

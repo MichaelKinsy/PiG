@@ -273,17 +273,17 @@ make async-contracts` or `make verify` from `docs/parity/PORT_MAP.md` and `test/
   port. Everything else is invariant rule, not progress narrative.
 -->
 
-**Porting:** 557 / 622 intended-portable entries ✅ (89.5%); **Verification:** 539 behavioral (96.8%), 18 untested.
-Raw PORT_MAP rows: 692. Breakdown: 70 n/a (designed out) · 65 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
+**Porting:** 564 / 623 intended-portable entries ✅ (90.5%); **Verification:** 539 behavioral (95.6%), 25 untested.
+Raw PORT_MAP rows: 693. Breakdown: 70 n/a (designed out) · 59 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
 
 | package | src files | n/a | intended | ✅ | 🟡 | ⬜ | ported | behavioral |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `agent` | 6 | 1 | 5 | 4 | 1 | 0 | 80.0% | 100.0% |
 | `ai` | 205 | 21 | 184 | 177 | 7 | 0 | 96.2% | 98.9% |
-| `chord` | 30 | 3 | 27 | 7 | 20 | 0 | 25.9% | 85.7% |
+| `chord` | 31 | 3 | 28 | 14 | 14 | 0 | 50.0% | 50.0% |
 | `codemode` | 17 | 4 | 13 | 7 | 6 | 0 | 53.8% | 100.0% |
 | `coding-agent` | 254 | 27 | 227 | 219 | 8 | 0 | 96.5% | 97.7% |
-| `durable` | 82 | 7 | 75 | 68 | 7 | 0 | 90.7% | 94.1% |
+| `durable` | 82 | 7 | 75 | 68 | 7 | 0 | 90.7% | 92.6% |
 | `env` | 23 | 3 | 20 | 11 | 9 | 0 | 55.0% | 45.5% |
 | `evals` | 5 | 0 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
 | `mcp` | 18 | 3 | 15 | 9 | 6 | 0 | 60.0% | 100.0% |
@@ -292,8 +292,8 @@ Raw PORT_MAP rows: 692. Breakdown: 70 n/a (designed out) · 65 🟡 partial. See
 
 - **Four core packages (agent, ai, coding-agent, tui):** 445 / 462 intended-portable files ✅ (96.3%) from 511 rows; 438 behavioral (98.4%), 0 weak-only, 7 untested.
 - **Shipped surface (agent, ai, codemode, coding-agent, mcp, telemetry, tui; coding-agent without ):** 466 / 495 intended-portable files ✅ (94.1%) from 552 rows; 459 behavioral (98.5%), 0 weak-only, 7 untested.
-- **Whole monorepo (11 packages):** 557 / 622 intended-portable files ✅ (89.5%) from 692 rows; 539 behavioral (96.8%), 0 weak-only, 18 untested.
-- **Interface closure:** 12722 of 12794 semantic interface IDs closed (211 designed-out, 72 pending, 12511 ported). A file-level ✅ does not close an interface ID.
+- **Whole monorepo (11 packages):** 564 / 623 intended-portable files ✅ (90.5%) from 693 rows; 539 behavioral (95.6%), 0 weak-only, 25 untested.
+- **Interface closure:** 12798 of 12835 semantic interface IDs closed (211 designed-out, 37 pending, 12587 ported). A file-level ✅ does not close an interface ID.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven unit tests; the family table below counts paired scenarios only.
 Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registration-only, 1 smoke-only.

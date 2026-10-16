@@ -585,6 +585,15 @@
       "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
     },
     {
+      "path": "packages/ai/test/anthropic-error-tool-result-images.test.ts",
+      "upstreamTestHash": "sha256:940948673a0c5011a978526696639cb214f78f8d375b851e97289d563f91006d",
+      "area": "providers",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.3.0: Anthropic request conversion of an error tool result that holds images (convertMessages), reached by every Anthropic turn that follows a failed tool call with an image; Anthropic rejects non-text content in an error tool result (Pi #10794)."
+    },
+    {
       "path": "packages/ai/test/anthropic-federation-sdk.test.ts",
       "upstreamTestHash": "sha256:8436ed5ee431f9055219d03f0b2bf08af2b4be26cc9a284f956ef6d97bd2f74e",
       "area": "providers",
@@ -913,9 +922,9 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling. SCRUTINIZED:approved by the lead ruling LEAD-RULINGS 13:05Z 2026-10-09 (compat-schema: only the type-level cases are designed out): the case asserts TypeScript Static<> property types with expectTypeOf, which has no runtime behavior; the Go compat structs are typed and the compiler checks their property types.",
+      "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling. SCRUTINIZED:approved by the lead ruling LEAD-RULINGS 13:05Z 2026-10-09 (compat-schema: only the type-level cases are designed out): the case asserts TypeScript Static\u003c\u003e property types with expectTypeOf, which has no runtime behavior; the Go compat structs are typed and the compiler checks their property types.",
       "designedOutCases": [
-        "compatibility schemas \u203a preserves property types in the provider superset"
+        "compatibility schemas › preserves property types in the provider superset"
       ]
     },
     {
@@ -1165,7 +1174,7 @@
         "hot-path"
       ],
       "designedOutCases": [
-        "Models with image models \u203a rejects chat models at the image entry point at runtime"
+        "Models with image models › rejects chat models at the image entry point at runtime"
       ],
       "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling. SCRUTINIZED:approved by owner Michael Kinsy on 2026-10-01 (lead session, 'Yes go with recommendations'): the case 'rejects chat models at the image entry point at runtime' is designed out because it is unreachable in Go: GenerateImages takes *ImageModel, so a chat model cannot reach the image entry point."
     },
@@ -1969,6 +1978,15 @@
       "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
     },
     {
+      "path": "packages/ai/test/transform-messages-cross-model-thinking.test.ts",
+      "upstreamTestHash": "sha256:cb0b00f0d3c4d8aafc7664b40aae172e3ddc80d8bb3a6b8651acbd50996441b0",
+      "area": "providers",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.3.0: transformMessages, which every provider request runs over the history, drops another model's thinking after a model switch (Pi #11000)."
+    },
+    {
       "path": "packages/ai/test/typesafe-system-one.test.ts",
       "upstreamTestHash": "sha256:267f62341d4944faa85b6dc8773d07a11fda745f5d5ceee7796182259e9f3fa9",
       "area": "providers",
@@ -2245,6 +2263,24 @@
       "rationale": "Production-path review at Pi 1.2.0: Chord's multi-host runtime (the host manager). Neither Pi's coding agent nor Pi Durable reaches it: Durable imports only Context, the JSON and delta helpers, Draft and replicatedState from chord, the coding agent does not depend on chord, and no Stock PiG production package imports chord/host. Not tagged hot-path."
     },
     {
+      "path": "packages/chord/test/output-skip.test.ts",
+      "upstreamTestHash": "sha256:2adc9961db3ee819deff8303b06d30f195a4e1681a99f9bd93a2875ec45f576a",
+      "area": "cli",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.3.0: chord/output OutputBuffer, Progress, BoundOutput and SanitizeOutput, which Pi Durable's tool harness (harness/tool.ts) and the bash and read tools use for every tool call's output window, spill file and progress commits. Pi 4a5d3729 moved them from packages/durable/src/harness/output.ts; area and tags follow the harness-output rows they replace."
+    },
+    {
+      "path": "packages/chord/test/output.test.ts",
+      "upstreamTestHash": "sha256:18696ef2842105c0a2ae0e92ecb564084ca61ae1338190aca3ea7190c9f92755",
+      "area": "cli",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.3.0: chord/output OutputBuffer, Progress, BoundOutput and SanitizeOutput, which Pi Durable's tool harness (harness/tool.ts) and the bash and read tools use for every tool call's output window, spill file and progress commits. Pi 4a5d3729 moved them from packages/durable/src/harness/output.ts; area and tags follow the harness-output rows they replace."
+    },
+    {
       "path": "packages/chord/test/placement.test.ts",
       "upstreamTestHash": "sha256:4a62bb83ace13dc9b0a6257396f1e77701199869e1ad57a6de986427ee9829e8",
       "area": "extensions",
@@ -2297,7 +2333,7 @@
       ],
       "rationale": "Production-path review at Pi 1.2.0: chord replicatedState, which Pi Durable's harness attaches for its task graph and conversation view (harness/task-graph.ts, harness/view.ts) and updates on every durable turn; area follows the reviewed sessions rows of chord/delta and state.test.ts. SCRUTINIZED:approved by the tern lead ruling 2026-10-13 (tests-120-b): :46 is designed out (a Go change callback returns an error and cannot return a PromiseLike).",
       "designedOutCases": [
-        "transactional replicated state \u203a rejects PromiseLike callbacks and aborts their draft"
+        "transactional replicated state › rejects PromiseLike callbacks and aborts their draft"
       ]
     },
     {
@@ -2362,10 +2398,9 @@
       "upstreamTestHash": "sha256:b4de1f1bf894a10be11ef7eaa952d392ba6dbe532fc68d6e93d0c84a2661b03e",
       "area": "sessions",
       "tags": [
-        "hot-path",
-        "deferred-0.3.x"
+        "hot-path"
       ],
-      "rationale": "0.3.x known gap: the 0.5.0 release exception approved by the owner on 2026-10-15 (option B) defers the Chord protocol 3 and 4 cases of this file (state init and hydration) to 0.5.1; the cases of Pi 2688aba7 and d20c6e96 are ported. SCRUTINIZED:approved by the owner. FOLLOWUP-sessions; tracked by the next-main lane (chord protocol 3+4). Missing cases: test/parity/interfaces/test-mapping-v1.2.0+b06c1f2c.json#packages/chord/test/state.test.ts"
+      "rationale": "Production-path review at Pi 1.2.0: chord replicatedState and the state cells of chord/host, which Pi Durable's harness attaches for its task graph and conversation view and updates on every durable turn. The Chord protocol 3 and 4 cases of this file (state init and hydration, Pi aa9cf15b and b45e0ebc) are ported on top of those of Pi 2688aba7 and d20c6e96; the 0.5.0 release exception that deferred them is closed. SCRUTINIZED:approved by the owner."
     },
     {
       "path": "packages/chord/test/tutorial.test.ts",
@@ -2411,7 +2446,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "New in Pi 1.2.0 (0fb1aee7): CodemodeSandboxBase.start(), the deterministic run that durable code mode replays after a restart; tagged hot-path because every durable code mode call runs through it. Status: ported in full. codemode/deterministic_test.go runs the 14 cases of `deterministic runs (<backend>)` on the worker and remote backends, plus the remote-transport case and `execute() is not deterministic`; 'rejects rejection properties that are not an object, and tools sharing a script name' is TestDeterministicRunsRejectRejectionPropertiesThatAreNotAnObjectAndToolsSharingAScriptName (Outcome.Properties is any JSON value, and Run.Deliver refuses one that is not an object as Pi's deliver() does). The Worker host's TypeScript client runs every case of the file too (durable/core/host/cf/test/codemode-deterministic.test.ts)."
+      "rationale": "New in Pi 1.2.0 (0fb1aee7): CodemodeSandboxBase.start(), the deterministic run that durable code mode replays after a restart; tagged hot-path because every durable code mode call runs through it. Status: ported in full. codemode/deterministic_test.go runs the 14 cases of `deterministic runs (\u003cbackend\u003e)` on the worker and remote backends, plus the remote-transport case and `execute() is not deterministic`; 'rejects rejection properties that are not an object, and tools sharing a script name' is TestDeterministicRunsRejectRejectionPropertiesThatAreNotAnObjectAndToolsSharingAScriptName (Outcome.Properties is any JSON value, and Run.Deliver refuses one that is not an object as Pi's deliver() does). The Worker host's TypeScript client runs every case of the file too (durable/core/host/cf/test/codemode-deterministic.test.ts)."
     },
     {
       "path": "packages/codemode/test/portable.test.ts",
@@ -2431,9 +2466,9 @@
       ],
       "rationale": "Codemode sandbox execution reached on coding turns: the built-in codemode tool runs every script through codemode.NewSandbox (coding/extension/builtin/codemode/execute.go); the inline and remote backends serve the durable and Cloudflare hosts. SCRUTINIZED:approved by owner Michael Kinsy on 2026-10-01 (lead session, 'Yes go with recommendations'): the cases 'accepts a worker path string' and 'reports a missing worker file as a sandbox error' are designed out because the Go engine runs QuickJS on wazero in process and has no worker file. Carried to 1.2.0: both cases are unchanged in the 1.2.0 'worker host' describe and the Go engine still has no worker file. The 1.2.0 case 'ignores Node --watch notifications from the worker' is designed out on the same mechanic: the in-process wazero QuickJS engine has no worker message channel, so no Node --watch notification can arrive (nodejs/node#65044 is the Node behavior the case guards against). SCRUTINIZED:approved by the lead ruling of 2026-10-11T18:42Z (Q5, commit 4c6bb3897f), confirmed for 1.2.0 by the lead on 2026-10-12.",
       "designedOutCases": [
-        "worker host \u203a accepts a worker path string",
-        "worker host \u203a ignores Node --watch notifications from the worker",
-        "worker host \u203a reports a missing worker file as a sandbox error"
+        "worker host › accepts a worker path string",
+        "worker host › ignores Node --watch notifications from the worker",
+        "worker host › reports a missing worker file as a sandbox error"
       ]
     },
     {
@@ -3043,10 +3078,10 @@
         "hot-path"
       ],
       "designedOutCases": [
-        "shouldRunFirstTimeSetup \u203a returns true when experimental, default agent dir, and no settings.json",
-        "shouldRunFirstTimeSetup \u203a returns false when experimental features are disabled",
-        "shouldRunFirstTimeSetup \u203a returns false when a custom agent dir is set",
-        "shouldRunFirstTimeSetup \u203a returns false when settings.json already exists"
+        "shouldRunFirstTimeSetup › returns true when experimental, default agent dir, and no settings.json",
+        "shouldRunFirstTimeSetup › returns false when experimental features are disabled",
+        "shouldRunFirstTimeSetup › returns false when a custom agent dir is set",
+        "shouldRunFirstTimeSetup › returns false when settings.json already exists"
       ],
       "rationale": "CLI startup, selected execution mode, settings, or command routing. Four official-distribution cases are designed out, SCRUTINIZED:approved by owner Michael Kinsy on 2026-09-29: Pi shows first-time setup only for its official distribution identity (src/cli/startup-ui.ts:122-140; caller src/main.ts:661), which PiG never has. The mapping row test-mapping-v0.99.1.json#packages/coding-agent/test/first-time-setup.test.ts must list exactly these ids."
     },
@@ -5539,7 +5574,7 @@
       ],
       "rationale": "Production-path review at Pi 1.2.0: Durable session document cache retention, on every durable turn's state; hot-path with the sibling packages/durable/test/ rows. SCRUTINIZED:approved by the tern lead ruling 2026-10-13 (tests-120-b): :451 is designed out (it tests Node's unreferenced-timer mechanism, runtime mechanics).",
       "designedOutCases": [
-        "document cache retention \u203a keeps no timer where timers cannot be unreferenced, and evicts on commits"
+        "document cache retention › keeps no timer where timers cannot be unreferenced, and evicts on commits"
       ]
     },
     {
@@ -5836,7 +5871,7 @@
       ],
       "rationale": "New in 0.99.1 (D-B, docs/plan/upgrade-0.99.1.md): mcp behavior that coding turns reach through the built-in extension; tagged hot-path until the production-path review. SCRUTINIZED:approved by owner Michael Kinsy on 2026-10-01 (lead session, 'Yes go with recommendations'): the receiver assertion of 'calls fetch without a receiver' is designed out because Go has no receiver binding; the observable remainder is ported.",
       "designedOutCases": [
-        "StreamableHttpTransport \u203a calls fetch without a receiver"
+        "StreamableHttpTransport › calls fetch without a receiver"
       ]
     },
     {

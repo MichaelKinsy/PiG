@@ -22693,40 +22693,6 @@
       ]
     },
     {
-      "id": "BF-D171",
-      "title": "An errored Anthropic tool result carries no images (Pi #10792, #10794; Pi 34a8bb38)",
-      "symptom": "Anthropic rejects a `tool_result` with `is_error` true whose content holds anything but text blocks (`400 invalid_request_error: messages.N.content.0.tool_result: all content must be type text if is_error is true`), and the rejected result stays in the history, so every later turn fails until the user edits the session. Codemode hits it when a script emits an image and then fails. Pi main fixed it after 1.2.0 in (fix(ai): drop images from Anthropic error tool results): each image of an errored tool result is replaced, in place, with the text block `[image omitted: error tool results cannot contain images]`, so the content is all text and is sent as one newline-joined string. PiG follows…",
-      "rootCause": "A tool result the provider refuses wedges the session; Pi's own fix is merged on main.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D171",
-      "piIssue": "https://github.com/earendil-works/pi/issues/10792",
-      "removeWhen": "the pin includes Pi 34a8bb38.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "c1c81431e6",
-          "date": "2026-10-11"
-        },
-        {
-          "hash": "e307b19fa5",
-          "date": "2026-10-12"
-        },
-        {
-          "hash": "0f42abdb69",
-          "date": "2026-10-13"
-        }
-      ],
-      "tests": [
-        "ai/anthropic_error_tool_result_image_test.go::TestAnthropicErroredToolResultCarriesNoImageBlock",
-        "ai/anthropic_messages_compat_options_oracle_test.go::TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
-        "ai/anthropic_messages_payload_oracle_test.go::TestAnthropicMessagesPayloadMatchesPi"
-      ]
-    },
-    {
       "id": "BF-e48a02f",
       "title": "fix(tui): filterable list drops the label when no cell remains (Pi select-list)",
       "symptom": "fix(tui): filterable list drops the label when no cell remains (Pi select-list)",
@@ -29238,6 +29204,127 @@
       ]
     },
     {
+      "id": "BF-c58f961",
+      "title": "A call through a remote Chord reference with a `ctx` from another host, or one not made by Chord, fails with…",
+      "symptom": "A call through a remote Chord reference with a `ctx` from another host, or one not made by Chord, fails with `invalid/foreign_ctx` before anything crosses the link, like a call through a local reference.",
+      "rootCause": "Not a READY commit. The pin bump to is in flight in the worktree, the upstream-sync and test-mapping rows are not written, and is not ported.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A call through a remote Chord reference with a `ctx` from another host, or one not made by Chord, fails with `invalid/foreign_ctx` before anything crosses the link, like a call through a local reference.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f433fee8c5",
+          "date": "2026-10-14"
+        },
+        {
+          "hash": "c58f96109f",
+          "date": "2026-10-15"
+        }
+      ],
+      "tests": [
+        "chord/host/host_test.go::TestHostRecognizesItsOwnPrincipalByKey",
+        "chord/host/placement_upstream_test.go::TestPlacementAGetGoesWhereTheContractPlacesTheInputHereAChildOrTheParentNeverNamedByTheCaller",
+        "chord/host/placement_upstream_test.go::TestPlacementAHostRefusesAHoldItsOwnContractPlacesElsewhereAndARelayOneWhoseTargetDisagrees",
+        "chord/host/placement_upstream_test.go::TestPlacementIsPartOfTheContractAMovedTypeIsABreakingChangeNeverBridgedByAnAdapter",
+        "chord/host/placement_upstream_test.go::TestPlacementServeRefusesATypeTheHostIsNotThePlaceOfAlsoAtAReload",
+        "chord/host/placement_upstream_test.go::TestPlacementTheHostComesFromTheNormalizedInputUnknownFieldsAndDefaultsDoNotChangeIt",
+        "chord/host/placement_upstream_test.go::TestPlacementTypesAndRemoteContractsNeedAHost",
+        "chord/host/principals_upstream_test.go::TestPrincipalsAChildsParentActsAsThePrincipalTheChildGaveConnectRelayedCallersKeepTheirs",
+        "chord/host/principals_upstream_test.go::TestPrincipalsFactoriesMethodsAndContextsSeeTheAppsPrincipal",
+        "chord/host/principals_upstream_test.go::TestPrincipalsRefusesAHostAParentLinkOrARouteWithoutItsPrincipal",
+        "chord/host/principals_upstream_test.go::TestPrincipalsTheHostsOwnPrincipalIsRecognizedByKeyAnEqualObjectReachesTheSameObjects",
+        "chord/host/review_upstream_test.go::TestReviewARemoteReferenceRefusesAForeignCtxAndACtxNotMadeByChordWithoutCalling",
+        "chord/host/state_init_upstream_test.go::TestStateInitAThrowingOrInvalidInitFailsTheActivationAndClosesItsResourcesTheNextGetTriesAgain",
+        "chord/host/state_init_upstream_test.go::TestStateInitAnInitCellCannotBeReadInsideTheFactory",
+        "chord/host/state_init_upstream_test.go::TestStateInitReloadAFailingInitOfAnAddedCellRefusesTheReloadTheOldCodeKeepsRunning",
+        "chord/host/state_init_upstream_test.go::TestStateInitReloadInAGatedReloadAnAddedCellRunsInitAtTheGate",
+        "chord/host/state_init_upstream_test.go::TestStateInitReloadKeepsAnExistingCellWithoutRunningInitACellTheReloadAddsRunsInitWhileItPrepares",
+        "chord/host/state_init_upstream_test.go::TestStateInitRunsAfterTheResourcesAreOpenAndBeforeTheObjectGoesLiveNothingSeesAnotherValue",
+        "chord/host/state_init_upstream_test.go::TestStateInitRunsInARootItCanCallOtherObjects"
+      ]
+    },
+    {
+      "id": "BF-c58f961-2",
+      "title": "Turning thinking off on Claude Haiku 5.5 and Opus 5 sends plain `thinking: {type: \"disabled\"}` without effort…",
+      "symptom": "Turning thinking off on Claude Haiku 5.5 and Opus 5 sends plain `thinking: {type: \"disabled\"}` without effort markers, which Anthropic rejects while thinking is disabled.",
+      "rootCause": "Not a READY commit. The pin bump to is in flight in the worktree, the upstream-sync and test-mapping rows are not written, and is not ported.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Turning thinking off on Claude Haiku 5.5 and Opus 5 sends plain `thinking: {type: \"disabled\"}` without effort markers, which Anthropic rejects while thinking is disabled.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c58f96109f",
+          "date": "2026-10-15"
+        }
+      ],
+      "tests": [
+        "chord/host/review_upstream_test.go::TestReviewARemoteReferenceRefusesAForeignCtxAndACtxNotMadeByChordWithoutCalling"
+      ]
+    },
+    {
+      "id": "BF-c58f961-3",
+      "title": "The retry classifier treats \"The service is temporarily unavailable\" and Bedrock's \"Service unavailable: ...\"…",
+      "symptom": "The retry classifier treats \"The service is temporarily unavailable\" and Bedrock's \"Service unavailable: ...\" as retryable.",
+      "rootCause": "Not a READY commit. The pin bump to is in flight in the worktree, the upstream-sync and test-mapping rows are not written, and is not ported.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The retry classifier treats \"The service is temporarily unavailable\" and Bedrock's \"Service unavailable: ...\" as retryable.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c58f96109f",
+          "date": "2026-10-15"
+        }
+      ],
+      "tests": [
+        "chord/host/review_upstream_test.go::TestReviewARemoteReferenceRefusesAForeignCtxAndACtxNotMadeByChordWithoutCalling"
+      ]
+    },
+    {
+      "id": "BF-471db1a",
+      "title": "A `Progress` pause longer than Node's timer maximum, or not a number, runs after 1 ms as a Node timer does",
+      "symptom": "A `Progress` pause longer than Node's timer maximum, or not a number, runs after 1 ms as a Node timer does.",
+      "rootCause": "Pi moves OutputBuffer, Progress, boundOutput, sanitizeOutput, characterEnd and the output types from packages/durable/src/harness/output.ts to the Chord subpath packages/chord/src/output.ts, adds OutputSkip (output.ts:20-31) and utf8ByteLength (output.ts:268-290), and has Durable import them (harness/tool.ts:4-10, tools/read.ts:2, truncate.ts:1,47).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `Progress` pause longer than Node's timer maximum, or not a number, runs after 1 ms as a Node timer does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "471db1ac1b",
+          "date": "2026-10-15"
+        }
+      ],
+      "tests": [
+        "chord/output/output_pi_oracle_test.go::TestOutputBufferMatchesPi",
+        "chord/output/output_skip_test.go::TestOutputBufferSkippedOutput",
+        "chord/output/output_skip_test.go::TestOutputBufferSkippedOutputEndsAnIncompleteCharacterBeforeTheOmission",
+        "chord/output/output_test.go::TestOutputBuffer",
+        "chord/output/output_test.go::TestProgress",
+        "chord/output/output_test.go::TestSystemProgressClockUsesNodesTimerDelayRule",
+        "chord/output/output_test.go::TestToolOutputBounds",
+        "durable/harness/harness_tools_progress_test.go::TestToolProgressAndLifetime",
+        "durable/harness/tool_pi_oracle_test.go::TestToolResultHelpersMatchPi",
+        "durable/truncate_pi_oracle_test.go::TestTruncateMatchesPi",
+        "durable/truncate_upstream_test.go::TestTruncateUtilitiesUpstream",
+        "durable/wire_shapes_test.go::TestTruncationResultEncodesAnAbsentLimitAsNull"
+      ]
+    },
+    {
       "id": "BF-83fea11",
       "title": "On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was…",
       "symptom": "On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was reported as a retryable `fetch failed`.",
@@ -29259,6 +29346,57 @@
         "ai/bedrock_error_metadata_upstream_test.go::TestBedrockRefusedConnectIsNodesErrorLikePi",
         "ai/node_net_error_test.go::TestNodeNetErrorMessageIsNodesText",
         "ai/oauth_page_corpus_test.go::TestOAuthPageCorpusMatchesThePinnedPackage"
+      ]
+    },
+    {
+      "id": "BF-f2f1caa",
+      "title": "Anthropic and Claude on Bedrock no longer lose the images of an error tool result: Pi sends them after the…",
+      "symptom": "Anthropic and Claude on Bedrock no longer lose the images of an error tool result: Pi sends them after the tool results of the turn, under a caption naming the tool call, instead of replacing them with a note ([#10794](https://github.com/earendil-works/pi/issues/10794)).",
+      "rootCause": "Anthropic and Claude on Bedrock reject an error tool result that holds images. Pi now replaces each run of images in such a result with \"(image attached after the tool results)\" and sends the images after all tool results of the turn, in the same user message, under a caption naming the call (transform-messages.ts:14-39 splitErrorToolResultImages; anthropic-messages.ts:1339 convertToolResult and :1500-1523 convertMessages; bedrock-converse-stream.ts:1093-1124 convertMessages, Claude only).",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Anthropic and Claude on Bedrock no longer lose the images of an error tool result: Pi sends them after the tool results of the turn, under a caption naming the tool call, instead of replacing them with a note ([#10794](https://github.com/earendil-works/pi/issues/10794)). Other Bedrock models keep the images in the result.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "29dadf1e5e",
+          "date": "2026-10-15"
+        },
+        {
+          "hash": "471db1ac1b",
+          "date": "2026-10-15"
+        },
+        {
+          "hash": "f2f1caa6d2",
+          "date": "2026-10-15"
+        },
+        {
+          "hash": "fb72e1fde8",
+          "date": "2026-10-15"
+        }
+      ],
+      "tests": [
+        "ai/anthropic_error_tool_result_image_test.go::TestAnthropicErrorToolResultImages",
+        "ai/auth_path_oracle_test.go::TestAuthStorageAuthPathSpellingsMatchPi",
+        "ai/bedrock_convert_upstream_test.go::TestBedrockUpstreamConvertMessages",
+        "ai/openai_codex_websocket_proxy_test.go::TestCodexWebSocketFallsBackToTheHTTPProxy",
+        "ai/openai_codex_websocket_proxy_test.go::TestCodexWebSocketProxyFollowsEnvHttpProxyAgent",
+        "ai/sse_event_idle_scan_norace_test.go::TestSSEIdleTrackerScanIsNotAPerByteLoop",
+        "chord/output/output_pi_oracle_test.go::TestOutputBufferMatchesPi",
+        "chord/output/output_skip_test.go::TestOutputBufferSkippedOutput",
+        "chord/output/output_skip_test.go::TestOutputBufferSkippedOutputEndsAnIncompleteCharacterBeforeTheOmission",
+        "chord/output/output_test.go::TestOutputBuffer",
+        "chord/output/output_test.go::TestProgress",
+        "chord/output/output_test.go::TestSystemProgressClockUsesNodesTimerDelayRule",
+        "chord/output/output_test.go::TestToolOutputBounds",
+        "durable/harness/harness_tools_progress_test.go::TestToolProgressAndLifetime",
+        "durable/harness/tool_pi_oracle_test.go::TestToolResultHelpersMatchPi",
+        "durable/truncate_pi_oracle_test.go::TestTruncateMatchesPi",
+        "durable/truncate_upstream_test.go::TestTruncateUtilitiesUpstream",
+        "durable/wire_shapes_test.go::TestTruncationResultEncodesAnAbsentLimitAsNull"
       ]
     },
     {
@@ -29331,6 +29469,30 @@
         "coding/agent_session_runtime_oracle_test.go::TestAgentSessionRuntimeMatchesPi",
         "tui/alt_screen_frame_allocs_norace_test.go::TestAltScreenStreamingFrameAllocationCeiling",
         "tui/terminal_split_reply_test.go::TestTerminalInputConsumesAnOwedReplySplitAcrossSlowReads"
+      ]
+    },
+    {
+      "id": "BF-36c3d14",
+      "title": "`done()` of an overlay `ui.custom` component hides that component's own overlay instead of the topmost one",
+      "symptom": "`done()` of an overlay `ui.custom` component hides that component's own overlay instead of the topmost one.",
+      "rootCause": "showExtensionCustom's close() hid the overlay with ui.hideOverlay(), which removes the topmost overlay, so closing a lower overlay removed the one above it and left the finished one on screen (interactive-mode.ts:2992-3000, :3028 keeps the handle showOverlay returned and close() calls overlayHandle?.hide()). customCall.teardown (ext_ui_custom.go) and RunRemoteOverlay (ext_ui_context.go) now hide the handle they showed. A factory's own tui.hideOverlay() still pops the topmost overlay (HideTopOverlay).",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`done()` of an overlay `ui.custom` component hides that component's own overlay instead of the topmost one. With a shell overlay open under a dialog overlay from another extension, the shell's exit no longer removes the dialog or leaves the finished shell on screen (Pi #10999, #10648).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "36c3d14b23",
+          "date": "2026-10-15",
+          "pr": "10999"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/ext_ui_custom_stack_test.go::TestHostCustomOverlayCloseOutOfOrderRemovesItsOwnOverlay",
+        "internal/codingagent/ext_ui_custom_stack_test.go::TestRemoteCustomOverlayCloseOutOfOrderRemovesItsOwnOverlay"
       ]
     }
   ],
@@ -29411,11 +29573,6 @@
       "id": "D124",
       "title": "OpenRouter's reported cost is the usage total, ported from pi-mono commit 83ca8020 (pi-mono #9980)",
       "entry": "BF-0d0a3ef"
-    },
-    {
-      "id": "D126",
-      "title": "Another model's thinking replays as `reasoning_content` on targets that require it (pi-mono #6167)",
-      "entry": "BF-4aa9763"
     },
     {
       "id": "D128",
@@ -29543,11 +29700,6 @@
       "id": "D167",
       "title": "A history longer than the model's context window is summarized in chunks",
       "entry": "BF-85908ae"
-    },
-    {
-      "id": "D171",
-      "title": "An errored Anthropic tool result carries no images (Pi #10792, #10794; Pi 34a8bb38)",
-      "entry": "BF-D171"
     },
     {
       "id": "D173",
