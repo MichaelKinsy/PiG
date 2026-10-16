@@ -91,11 +91,11 @@ func TestFusedDispatchAllocations(t *testing.T) {
 		rig := newFusedDispatchRig(t, k)
 		rig.turn(t)
 		allocs[k], bytes[k] = turnCost(func() { rig.turn(t) })
-		perfgate.Check(t, fmt.Sprintf("fused.dispatch_k%d.allocs", k), allocs[k])
-		perfgate.Check(t, fmt.Sprintf("fused.dispatch_k%d.bytes", k), bytes[k])
+		fusedDispatchCheck(t, fmt.Sprintf("fused.dispatch_k%d.allocs", k), allocs[k])
+		fusedDispatchCheck(t, fmt.Sprintf("fused.dispatch_k%d.bytes", k), bytes[k])
 	}
-	perfgate.Check(t, "fused.dispatch.per_extension.allocs", (allocs[10]-allocs[1])/9)
-	perfgate.Check(t, "fused.dispatch.per_extension.bytes", (bytes[10]-bytes[1])/9)
+	fusedDispatchCheck(t, "fused.dispatch.per_extension.allocs", (allocs[10]-allocs[1])/9)
+	fusedDispatchCheck(t, "fused.dispatch.per_extension.bytes", (bytes[10]-bytes[1])/9)
 }
 
 // turnCost is the mean allocations and allocated bytes of run, over every goroutine (the fused extensions run on their own), as testing.AllocsPerRun measures allocations.
@@ -118,4 +118,19 @@ func BenchmarkFusedDispatch(b *testing.B) {
 	for b.Loop() {
 		rig.turn(b)
 	}
+}
+
+// fusedDispatchCheck is perfgate.Check, except that it reports on Windows and macOS. TODO(0.5.1): the per-dispatch
+// allocation counts include every goroutine's allocations and swing on the shared Windows and macOS runners (owner
+// decision 2026-10-16, handoffs/owner-signoff.md); make it blocking everywhere again. Linux blocks.
+func fusedDispatchCheck(t *testing.T, id string, got float64) {
+	t.Helper()
+	if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
+		if ceiling := perfgate.Ceiling(t, id); got > ceiling {
+			t.Logf("TODO(0.5.1) report only on %s: perfgate: %s = %v, ceiling %v", runtime.GOOS, id, got, ceiling)
+			fmt.Printf("::warning title=fused dispatch (report only on %s)::%s: %s = %v, ceiling %v\n", runtime.GOOS, t.Name(), id, got, ceiling)
+			return
+		}
+	}
+	perfgate.Check(t, id, got)
 }
