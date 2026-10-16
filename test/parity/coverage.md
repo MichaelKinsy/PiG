@@ -4,11 +4,11 @@ Generated from `693` PORT_MAP entries and `783` parity scenarios.
 
 ## Status
 
-- **Porting:** 564 / 623 intended-portable entries ✅ (90.5%).
-- **Behavior verification:** 539 / 564 ported entries (95.6%); 0 weak-only, 25 untested.
+- **Porting:** 560 / 623 intended-portable entries ✅ (89.9%).
+- **Behavior verification:** 538 / 560 ported entries (96.1%); 0 weak-only, 22 untested.
 - **Upstream test porting:** 650 ported / 0 partial / 0 pending (2 other dispositions; [file mapping](interfaces/test-mapping-v1.3.0.json)). Of the partial/pending files, 0 deferred to 0.3.x by the [release policy](interfaces/test-porting-policy-v1.3.0.json) (`deferred-0.3.x`).
 
-Raw PORT_MAP rows: 693. Breakdown: 70 n/a (designed out) · 59 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
+Raw PORT_MAP rows: 693. Breakdown: 70 n/a (designed out) · 63 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
 
 ## Packages
 
@@ -16,10 +16,10 @@ Raw PORT_MAP rows: 693. Breakdown: 70 n/a (designed out) · 59 🟡 partial. See
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `agent` | 6 | 1 | 5 | 4 | 1 | 0 | 80.0% | 100.0% |
 | `ai` | 205 | 21 | 184 | 177 | 7 | 0 | 96.2% | 98.9% |
-| `chord` | 31 | 3 | 28 | 14 | 14 | 0 | 50.0% | 50.0% |
+| `chord` | 31 | 3 | 28 | 11 | 17 | 0 | 39.3% | 54.5% |
 | `codemode` | 17 | 4 | 13 | 7 | 6 | 0 | 53.8% | 100.0% |
 | `coding-agent` | 254 | 27 | 227 | 219 | 8 | 0 | 96.5% | 97.7% |
-| `durable` | 82 | 7 | 75 | 68 | 7 | 0 | 90.7% | 92.6% |
+| `durable` | 82 | 7 | 75 | 67 | 8 | 0 | 89.3% | 94.0% |
 | `env` | 23 | 3 | 20 | 11 | 9 | 0 | 55.0% | 45.5% |
 | `evals` | 5 | 0 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
 | `mcp` | 18 | 3 | 15 | 9 | 6 | 0 | 60.0% | 100.0% |
@@ -28,7 +28,7 @@ Raw PORT_MAP rows: 693. Breakdown: 70 n/a (designed out) · 59 🟡 partial. See
 
 - **Four core packages (agent, ai, coding-agent, tui):** 445 / 462 intended-portable files ✅ (96.3%) from 511 rows; 438 behavioral (98.4%), 0 weak-only, 7 untested.
 - **Shipped surface (agent, ai, codemode, coding-agent, mcp, telemetry, tui; coding-agent without ):** 466 / 495 intended-portable files ✅ (94.1%) from 552 rows; 459 behavioral (98.5%), 0 weak-only, 7 untested.
-- **Whole monorepo (11 packages):** 564 / 623 intended-portable files ✅ (90.5%) from 693 rows; 539 behavioral (95.6%), 0 weak-only, 25 untested.
+- **Whole monorepo (11 packages):** 560 / 623 intended-portable files ✅ (89.9%) from 693 rows; 538 behavioral (96.1%), 0 weak-only, 22 untested.
 - **Interface closure:** 12798 of 12835 semantic interface IDs closed (211 designed-out, 37 pending, 12587 ported). A file-level ✅ does not close an interface ID.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven Go unit tests. Unit tests are listed separately; last run refers only to paired scenarios, not unit execution or exhaustive parity.
@@ -591,7 +591,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/chord/src/delta/draft.ts` | n/a | 0 | 0 | not run |  |
 | `packages/chord/src/delta/apply-immutable-trusted.ts` | n/a | 0 | 0 | not run |  |
 | `packages/chord/src/delta/revision-validator.ts` | n/a | 0 | 0 | not run |  |
-| `packages/chord/src/output.ts` | ✅ | 0 | 6 (unit:./chord/output:TestOutputBufferSkippedOutput, unit:./chord/output:TestProgress, unit:./chord/output:TestToolOutputBounds, unit:./durable/core/turn:TestProgressCommitsAtOnceWhenIdleAndAfterThePauseOtherwiseWaitsForItsRemainder, unit:./durable/core/turn:TestProgressFlushWritesOnlyWhatIsDirtyAndReportsAFailedCommit, unit:./durable/core/turn:TestUsageDocumentSumsTheCostOfEveryAssistantMessage) | not run | ./chord/output:TestOutputBufferSkippedOutput, ./chord/output:TestProgress, ./chord/output:TestToolOutputBounds, ./durable/core/turn:TestProgressCommitsAtOnceWhenIdleAndAfterThePauseOtherwiseWaitsForItsRemainder, ./durable/core/turn:TestProgressFlushWritesOnlyWhatIsDirtyAndReportsAFailedCommit, ./durable/core/turn:TestUsageDocumentSumsTheCostOfEveryAssistantMessage |
+| `packages/chord/src/output.ts` | 🟡 | 0 | 6 (unit:./chord/output:TestOutputBufferSkippedOutput, unit:./chord/output:TestProgress, unit:./chord/output:TestToolOutputBounds, unit:./durable/core/turn:TestProgressCommitsAtOnceWhenIdleAndAfterThePauseOtherwiseWaitsForItsRemainder, unit:./durable/core/turn:TestProgressFlushWritesOnlyWhatIsDirtyAndReportsAFailedCommit, unit:./durable/core/turn:TestUsageDocumentSumsTheCostOfEveryAssistantMessage) | not run | ./chord/output:TestOutputBufferSkippedOutput, ./chord/output:TestProgress, ./chord/output:TestToolOutputBounds, ./durable/core/turn:TestProgressCommitsAtOnceWhenIdleAndAfterThePauseOtherwiseWaitsForItsRemainder, ./durable/core/turn:TestProgressFlushWritesOnlyWhatIsDirtyAndReportsAFailedCommit, ./durable/core/turn:TestUsageDocumentSumsTheCostOfEveryAssistantMessage |
 | `packages/chord/src/node.ts` | 🟡 | 0 | 0 | not run |  |
 | `packages/chord/src/cell.ts` | 🟡 | 0 | 0 | not run |  |
 | `packages/chord/src/publish.ts` | 🟡 | 0 | 0 | not run |  |
@@ -602,10 +602,10 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/chord/src/object.ts` | 🟡 | 0 | 0 | not run |  |
 | `packages/chord/src/remote.ts` | 🟡 | 0 | 0 | not run |  |
 | `packages/chord/src/cluster.ts` | 🟡 | 0 | 0 | not run |  |
-| `packages/chord/src/contract.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/contract.ts` | 🟡 | 0 | 0 | not run |  |
 | `packages/chord/src/declare.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/errors.ts` | 🟡 | 0 | 0 | not run |  |
-| `packages/chord/src/host.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/host.ts` | 🟡 | 0 | 0 | not run |  |
 | `packages/chord/src/registry.ts` | 🟡 | 0 | 0 | not run |  |
 | `packages/chord/src/reload.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/schema.ts` | 🟡 | 0 | 0 | not run |  |
@@ -660,7 +660,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/durable/src/storage/sqlite/database.ts` | ✅ | 0 | 7 (unit:./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, unit:./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, unit:./durable/storage/sqlite/node:TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails, unit:./durable/storage/sqlite/node:TestSqliteDatabaseContractRollsBackAFailedTransactionAndClosesIdempotently, unit:./durable/storage/sqlite:TestDurableSQLiteMigrations, unit:./durable/storage/sqlite:TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction, unit:./durable/storage/sqlite:TestSqliteStorageConformance) | not run | ./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, ./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, ./durable/storage/sqlite/node:TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails, ./durable/storage/sqlite/node:TestSqliteDatabaseContractRollsBackAFailedTransactionAndClosesIdempotently, ./durable/storage/sqlite:TestDurableSQLiteMigrations, ./durable/storage/sqlite:TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction, ./durable/storage/sqlite:TestSqliteStorageConformance |
 | `packages/durable/src/storage/sqlite/index.ts` | n/a | 0 | 0 | not run |  |
 | `packages/durable/src/storage/sqlite/migrations.ts` | ✅ | 0 | 2 (unit:./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, unit:./durable/storage/sqlite:TestDurableSQLiteMigrations) | not run | ./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, ./durable/storage/sqlite:TestDurableSQLiteMigrations |
-| `packages/durable/src/storage/sqlite/schema.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/durable/src/storage/sqlite/schema.ts` | 🟡 | 0 | 0 | not run |  |
 | `packages/durable/src/storage/sqlite/node.ts` | ✅ | 0 | 9 (unit:./durable/storage/sqlite/node:TestNewNodeSqliteDatabaseAdaptsADatabaseSync, unit:./durable/storage/sqlite/node:TestNodeSqliteDatabaseCloseReportsTheFinallyFailure, unit:./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, unit:./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, unit:./durable/storage/sqlite/node:TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails, unit:./durable/storage/sqlite/node:TestSqliteDatabaseContractRollsBackAFailedTransactionAndClosesIdempotently, unit:./durable/storage/sqlite/node:TestSqliteDatabaseContractRollsBackAFailedTransactionAndClosesIdempotently, unit:./durable/storage/sqlite/node:TestSqliteExecutorAllThroughDatabaseAndTransaction, unit:./durable/storage/sqlite:TestDurableSQLiteMigrations) | not run | ./durable/storage/sqlite/node:TestNewNodeSqliteDatabaseAdaptsADatabaseSync, ./durable/storage/sqlite/node:TestNodeSqliteDatabaseCloseReportsTheFinallyFailure, ./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, ./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, ./durable/storage/sqlite/node:TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails, ./durable/storage/sqlite/node:TestSqliteDatabaseContractRollsBackAFailedTransactionAndClosesIdempotently, ./durable/storage/sqlite/node:TestSqliteDatabaseContractRollsBackAFailedTransactionAndClosesIdempotently, ./durable/storage/sqlite/node:TestSqliteExecutorAllThroughDatabaseAndTransaction, ./durable/storage/sqlite:TestDurableSQLiteMigrations |
 | `packages/durable/src/storage/sqlite/storage.ts` | ✅ | 0 | 7 (unit:./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, unit:./durable/storage/sqlite:TestSqliteStorageConformance, unit:./durable/storage/sqlite:TestSqliteStorageConformance, unit:./durable/storage/sqlite:TestSqliteStorageLookupsAndScansReadCommittedRecords, unit:./durable/storage/sqlite:TestSqliteStorageReadApiMirrorsPisStorageContract, unit:./durable/storage/sqlite:TestSqliteStorageReadApiMirrorsPisStorageContract, unit:./durable/storage:TestStorageBenchmarkExpectations) | not run | ./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, ./durable/storage/sqlite:TestSqliteStorageConformance, ./durable/storage/sqlite:TestSqliteStorageConformance, ./durable/storage/sqlite:TestSqliteStorageLookupsAndScansReadCommittedRecords, ./durable/storage/sqlite:TestSqliteStorageReadApiMirrorsPisStorageContract, ./durable/storage/sqlite:TestSqliteStorageReadApiMirrorsPisStorageContract, ./durable/storage:TestStorageBenchmarkExpectations |
 | `packages/durable/src/storage/sqlite/cloudflare.ts` | ✅ | 0 | 12 (unit:./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteAdapter, unit:./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteAdapter, unit:./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteDatabaseBindsIntegersExactlyWithinTheSafeRange, unit:./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteDatabaseBindsIntegersExactlyWithinTheSafeRange, unit:./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteDatabaseGetAndAllReadTheCursor, unit:./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteDatabaseGetAndAllReadTheCursor, unit:./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteDatabaseQueuesEveryOperationBehindATransaction, unit:./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteDatabaseQueuesEveryOperationBehindATransaction, unit:./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteTransactionHandleRejectsEveryOperationAfterTheCallbackSettles, unit:./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteTransactionHandleRejectsEveryOperationAfterTheCallbackSettles, unit:./durable/storage/sqlite/cloudflare:TestDurableObjectStorageConformance, unit:./durable/storage/sqlite/cloudflare:TestDurableObjectStorageConformance) | not run | ./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteAdapter, ./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteAdapter, ./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteDatabaseBindsIntegersExactlyWithinTheSafeRange, ./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteDatabaseBindsIntegersExactlyWithinTheSafeRange, ./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteDatabaseGetAndAllReadTheCursor, ./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteDatabaseGetAndAllReadTheCursor, ./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteDatabaseQueuesEveryOperationBehindATransaction, ./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteDatabaseQueuesEveryOperationBehindATransaction, ./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteTransactionHandleRejectsEveryOperationAfterTheCallbackSettles, ./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteTransactionHandleRejectsEveryOperationAfterTheCallbackSettles, ./durable/storage/sqlite/cloudflare:TestDurableObjectStorageConformance, ./durable/storage/sqlite/cloudflare:TestDurableObjectStorageConformance |

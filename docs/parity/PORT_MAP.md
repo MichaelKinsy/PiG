@@ -653,7 +653,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/delta/draft.ts` | `TypeScript mapped type; the Go draft is chord/delta Object/Array` | n/a |
 | `packages/chord/src/delta/apply-immutable-trusted.ts` | `self-produced-op fast path of the tracker; the Go trackers materialize candidates themselves and ApplyImmutable covers the checked path (apply_immutable_upstream_test.go)` | n/a |
 | `packages/chord/src/delta/revision-validator.ts` | `WeakSet memo of validated JS container identities; a decoded Go revision has no shared identity and is validated by chordjson.Validate (state.go:917)` | n/a |
-| `packages/chord/src/output.ts` | `chord/output/output.go OutputBuffer, Progress, BoundOutput, SanitizeOutput, CharacterEnd, Utf8ByteLength, OutputLimits, OutputSlice, BoundedOutput, OutputSkip` | ✅ |
+| `packages/chord/src/output.ts` | `chord/output/output.go OutputBuffer, Progress, BoundOutput, SanitizeOutput, CharacterEnd, Utf8ByteLength, OutputLimits, OutputSlice, BoundedOutput, OutputSkip` | 🟡 |
 | `packages/chord/src/node.ts` | `re-exports manager.ts (chord/host/manager*.go) and nodeLoader (chord/host/loader.go NodeLoader)` | 🟡 |
 | `packages/chord/src/cell.ts` | `chord/host/cell.go NewCell, Cell, Source, Derived, IsSource, NotReady` | 🟡 |
 | `packages/chord/src/publish.ts` | `chord/host/publish.go enqueue, holdPublications` | 🟡 |
@@ -664,16 +664,16 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/object.ts` | `chord/host/object.go ServeOptions, Factory, Self, SelfImpl, ResourceImpl, CtxImpl, RefImpl, ObjectImpl` | 🟡 |
 | `packages/chord/src/remote.ts` | `chord/host/remote.go RemoteRef, RemoteChannel` | 🟡 |
 | `packages/chord/src/cluster.ts` | `chord/host/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
-| `packages/chord/src/contract.ts` | `chord/host/ (link protocol 4)` | ✅ |
-| `packages/chord/src/declare.ts` | `chord/host/ (link protocol 4)` | ✅ |
+| `packages/chord/src/contract.ts` | `chord/host/contract.go (link protocol 4; the ledger holds PlacementFor, PrincipalMatch and PrincipalPattern as pending reviewed decisions)` | 🟡 |
+| `packages/chord/src/declare.ts` | `chord/host/declare.go (link protocol 4)` | ✅ |
 | `packages/chord/src/errors.ts` | `chord/host/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
-| `packages/chord/src/host.ts` | `chord/host/ (link protocol 4)` | ✅ |
+| `packages/chord/src/host.ts` | `chord/host/host.go (link protocol 4; the ledger holds Host, Host.hold, HostOptions.self, hostNamed and method as pending reviewed decisions)` | 🟡 |
 | `packages/chord/src/registry.ts` | `chord/host/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
-| `packages/chord/src/reload.ts` | `chord/host/ (link protocol 4)` | ✅ |
+| `packages/chord/src/reload.ts` | `chord/host/reload.go (link protocol 4)` | ✅ |
 | `packages/chord/src/schema.ts` | `chord/host/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
 | `packages/chord/src/state.ts` | `chord/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
-| `packages/chord/src/websocket.ts` | `chord/host/ (link protocol 4)` | ✅ |
-| `packages/chord/src/wire.ts` | `chord/host/ (link protocol 4)` | ✅ |
+| `packages/chord/src/websocket.ts` | `chord/host/websocket.go (link protocol 4)` | ✅ |
+| `packages/chord/src/wire.ts` | `chord/host/wire.go (link protocol 4)` | ✅ |
 
 ## `packages/protocol/src/`
 
@@ -742,7 +742,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/storage/sqlite/database.ts` | `durable/storage/sqlite/database.go` | ✅ |
 | `packages/durable/src/storage/sqlite/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/durable/src/storage/sqlite/migrations.ts` | `durable/storage/sqlite/migrations.go` | ✅ |
-| `packages/durable/src/storage/sqlite/schema.ts` | `durable/storage/sqlite/schema.go` | ✅ |
+| `packages/durable/src/storage/sqlite/schema.ts` | `durable/storage/sqlite/schema.go` | 🟡 |
 | `packages/durable/src/storage/sqlite/node.ts` | `durable/storage/sqlite/node/node.go` | ✅ |
 | `packages/durable/src/storage/sqlite/storage.ts` | `durable/storage/sqlite/storage.go` | ✅ |
 | `packages/durable/src/storage/sqlite/cloudflare.ts` | `durable/storage/sqlite/cloudflare/cloudflare.go` | ✅ |

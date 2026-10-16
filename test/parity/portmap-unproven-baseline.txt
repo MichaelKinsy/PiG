@@ -297,7 +297,6 @@ packages/coding-agent/src/utils/windows-self-update.ts
 packages/durable/src/harness/context.ts
 packages/durable/src/harness/harness.ts
 packages/durable/src/harness/json.ts
-packages/durable/src/harness/output.ts
 packages/durable/src/harness/prompt.ts
 packages/durable/src/harness/scheduler.ts
 packages/durable/src/harness/submissions.ts
