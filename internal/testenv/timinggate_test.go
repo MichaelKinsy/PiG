@@ -121,6 +121,17 @@ func TestTimingGateReportOnlyWarnsAndPasses(t *testing.T) {
 	}
 }
 
+// In report-only mode the step summary is where CI shows the miss; a summary that cannot be written must fail the test, not drop the miss.
+func TestTimingGateReportOnlyFailsWhenTheSummaryCannotBeWritten(t *testing.T) {
+	t.Setenv(TimingReportOnlyEnv, "1")
+	t.Setenv("GITHUB_STEP_SUMMARY", t.TempDir()) // a directory: opening it for append fails
+	var r *gateRecorder
+	captureStdout(t, func() { r, _ = runGate(false, true) })
+	if len(r.errors) != 1 || !strings.HasPrefix(r.errors[0], "timing gate: write step summary: ") {
+		t.Errorf("unwritable step summary recorded %q, want one write-step-summary error", r.errors)
+	}
+}
+
 // A timing gate that no release perf run executes is a gate nobody enforces: every test that reaches TimingGate, TimingGateFatal or the
 // SDK module's copy of it must be named in automation/perf/timing-gates.json, which make test-timing runs with the gates blocking, and every
 // listed name must be a test. The SDK module cannot import this package, so its copy must keep this one's environment variable and annotation.

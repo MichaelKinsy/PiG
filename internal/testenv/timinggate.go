@@ -43,13 +43,28 @@ func timingGate(t testing.TB, fatal, failed bool, format string, args []any) {
 	}
 	t.Logf("timing gate (report only): %s", message)
 	line := "::warning title=timing gate::" + escapeWorkflowCommand(t.Name()+": "+message)
-	fmt.Fprintln(os.Stdout, line)
+	// In report-only mode the annotation is the gate's only output, so a failed write fails the test instead of losing the miss.
+	if _, err := fmt.Fprintln(os.Stdout, line); err != nil {
+		t.Error("timing gate: write annotation: " + err.Error())
+	}
 	if path := os.Getenv("GITHUB_STEP_SUMMARY"); path != "" {
-		if file, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0o600); err == nil {
-			fmt.Fprintf(file, "%s\n\n", line)
-			_ = file.Close()
+		if err := appendStepSummary(path, line); err != nil {
+			t.Error("timing gate: write step summary: " + err.Error())
 		}
 	}
+}
+
+// appendStepSummary appends line as its own paragraph to the GitHub step summary file at path.
+func appendStepSummary(path, line string) error {
+	file, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0o600)
+	if err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(file, "%s\n\n", line); err != nil {
+		_ = file.Close()
+		return err
+	}
+	return file.Close()
 }
 
 // escapeWorkflowCommand encodes the characters a workflow command's message cannot carry.
