@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -184,7 +185,27 @@ func sameBashOpsOutcome(got, want bashOpsOutcome, probe bashOpsProbe) bool {
 	if want.Thrown == "aborted" || strings.HasPrefix(want.Thrown, "timeout:") {
 		return true
 	}
-	return got.Output == want.Output
+	if got.Output == want.Output {
+		return true
+	}
+	// stdout and stderr reach the collector through two pipes, so when a command writes to both, which lands first is
+	// the scheduler's choice in Pi and in Go alike ("cd /nonexistent; echo after": the error and "after" swap). The
+	// same lines in another order are the same outcome.
+	return sameLinesAnyOrder(got.Output, want.Output)
+}
+
+// sameLinesAnyOrder reports whether two hex-encoded outputs hold the same lines, each the same number of times.
+func sameLinesAnyOrder(gotHex, wantHex string) bool {
+	got, err1 := hex.DecodeString(gotHex)
+	want, err2 := hex.DecodeString(wantHex)
+	if err1 != nil || err2 != nil || len(got) != len(want) {
+		return false
+	}
+	a := strings.SplitAfter(string(got), "\n")
+	b := strings.SplitAfter(string(want), "\n")
+	slices.Sort(a)
+	slices.Sort(b)
+	return slices.Equal(a, b)
 }
 
 func describeBashOpsProbe(probe bashOpsProbe) string {
