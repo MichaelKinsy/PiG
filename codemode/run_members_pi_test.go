@@ -29,8 +29,12 @@ func TestRunOptionsMembersAndRunDeliverFinishedMatchPi(t *testing.T) {
 			var run *codemode.Run
 			calls := make(chan codemode.HostCall, 4)
 			done := make(chan struct{})
+			// The answering goroutine reads run, which Start returns after the first call can already be queued; it waits
+			// until the test goroutine has stored it.
+			haveRun := make(chan struct{})
 			go func() {
 				defer close(done)
+				<-haveRun
 				seq := 0
 				for call := range calls {
 					seq++
@@ -61,6 +65,7 @@ func TestRunOptionsMembersAndRunDeliverFinishedMatchPi(t *testing.T) {
 					calls <- call
 				},
 			})
+			close(haveRun)
 			if err != nil {
 				t.Fatal(err)
 			}

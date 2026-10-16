@@ -31,8 +31,11 @@ type startHarness struct {
 func newStartHarness(t *testing.T, options RunOptions) *startHarness {
 	t.Helper()
 	h := &startHarness{t: t, channel: &fakeChannel{}}
+	launched := make(chan struct{})
 	sandbox := sandboxWith(t, func(_ context.Context, data VmStartData, events vmEvents) (vmChannel, error) {
+		// The launcher runs on the run's goroutine; closing launched publishes data and events to the test goroutine.
 		h.data, h.events = data, events
+		close(launched)
 		return h.channel, nil
 	})
 	options.OnStarted = func(fingerprint string) { h.mu.Lock(); h.started = append(h.started, fingerprint); h.mu.Unlock() }
@@ -43,8 +46,18 @@ func newStartHarness(t *testing.T, options RunOptions) *startHarness {
 		t.Fatal(err)
 	}
 	h.run = run
-	waitFor(t, func() bool { return h.events.message != nil })
+	waitLaunched(t, launched)
 	return h
+}
+
+// waitLaunched waits until the fake launcher ran, which makes what it stored visible to the test goroutine.
+func waitLaunched(t *testing.T, launched <-chan struct{}) {
+	t.Helper()
+	select {
+	case <-launched:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the launcher did not run")
+	}
 }
 
 func waitFor(t *testing.T, check func() bool) {
@@ -157,8 +170,10 @@ func TestDeliverRefusesWhatCannotBeAnsweredAndLeavesTheCallWaiting(t *testing.T)
 // types.ts: the caller's abort ends the run with an error the script cannot catch, and a later answer is not an error.
 func TestStartEndsAsAbortedWhenTheCallerCancels(t *testing.T) {
 	h := &startHarness{t: t, channel: &fakeChannel{}}
+	launched := make(chan struct{})
 	sandbox := sandboxWith(t, func(_ context.Context, data VmStartData, events vmEvents) (vmChannel, error) {
 		h.events = events
+		close(launched)
 		return h.channel, nil
 	})
 	ctx, cancel := context.WithCancelCause(t.Context())
@@ -166,7 +181,7 @@ func TestStartEndsAsAbortedWhenTheCallerCancels(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	waitFor(t, func() bool { return h.events.message != nil })
+	waitLaunched(t, launched)
 	h.events.message(toolCall(1, "wait", ""))
 	cancel(errors.New("diverged"))
 	result := run.Result()
