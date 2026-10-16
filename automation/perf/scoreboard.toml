@@ -542,7 +542,7 @@ gates = [
   { ratchet = "process.print.max_rss_bytes" },
   { ratchet = "process.rpc_turn.max_rss_bytes_at_22_turns" },
   { missing = "steady RSS after a long idle interactive session (scavenger returns memory)", route = "go-native-perf" },
-  { missing = "RSS and PSS at ready against pi_agent_rust, rpi, Pi 1.2.0 and Codex CLI on the same machine (comparison protocol)", route = "xlang-bench (requested)" },
+  { missing = "RSS and PSS at ready against pi_agent_rust, rpi, Pi 1.3.0 and Codex CLI on the same machine (comparison protocol)", route = "xlang-bench (requested)" },
 ]
 
 [[metric]]
@@ -573,7 +573,7 @@ basis = "pi_agent_rust publishes only --version p95 of 5 to 7 ms and --help of 1
 gates = [
   { ratchet = "process.rpc_startup.allocs" },
   { ratchet = "process.interactive_first_frame.allocs" },
-  { missing = "the four startup endpoints, same machine, PiG against pi_agent_rust, rpi, Pi 1.2.0 and Codex CLI, under the comparison protocol", route = "xlang-bench (requested)" },
+  { missing = "the four startup endpoints, same machine, PiG against pi_agent_rust, rpi, Pi 1.3.0 and Codex CLI, under the comparison protocol", route = "xlang-bench (requested)" },
 ]
 
 [[metric]]
@@ -791,7 +791,7 @@ where = "test/perfgate TestRPCReadyMemoryGate, test/integration TestInteractiveF
 # ---------------------------------------------------------------- cross-language comparison method
 
 [protocol]
-competitors = ["pi_agent_rust v0.6.1 (a Rust port of Pi; run first)", "PiG (stock, default and PGO builds)", "rpi (Rust port of Pi; default and tuned release builds)", "Pi 1.2.0 (Node)", "Codex CLI"]
+competitors = ["pi_agent_rust v0.6.1 (a Rust port of Pi; run first)", "PiG (stock, default and PGO builds)", "rpi (Rust port of Pi; default and tuned release builds)", "Pi 1.3.0 (Node)", "Codex CLI"]
 platforms = ["Linux, bare metal", "Windows 11"]
 endpoints = [
   "--version: exec to exit",
