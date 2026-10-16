@@ -148,7 +148,10 @@ func QuarantineWindowsNativeDependencies(ctx context.Context, packageDir string)
 var quarantineRenameWait func(context.Context, time.Duration) error
 
 func quarantineNativeDependencies(ctx context.Context, packageDir string, sharedObjects []string) error {
-	resolvedPackageDir, err := normalizeWindowsPath(packageDir)
+	// The loaded images carry their long names (loadedSharedObjects), so the package directory must too: a pig started
+	// through a short path (C:\Users\RUNNER~1\...) reports that spelling from os.Executable, and the images would never
+	// fall within it.
+	resolvedPackageDir, err := normalizeWindowsPath(longWindowsPath(packageDir))
 	if err != nil {
 		return err
 	}
