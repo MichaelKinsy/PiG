@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	extsource "github.com/MichaelKinsy/PiG/coding/extension/source"
@@ -193,9 +194,24 @@ var normalizeConfigInputSequence = tui.NormalizeProcessInputSequence
 // every key, so raw reads must be split and filtered before they reach the
 // component; handing a release to the selector moves its cursor a second time.
 // Takes a reader so the loop a user drives is the loop under test.
+//
+// The loop owns the frame deadline (SetRenderDeadline) and runs due frames
+// itself, as InteractiveMode does, so a throttled frame never runs on a timer
+// goroutine while this loop mutates the component tree; Pi runs both on its one
+// event loop.
 func driveConfigSelector(ui *tui.TuiMainScreen, selector *tui.ConfigSelectorComponent, source io.Reader) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer ui.Stop()
+	frame := time.NewTimer(time.Hour)
+	frame.Stop()
+	defer frame.Stop()
+	ui.SetRenderDeadline(func(due time.Time) {
+		if due.IsZero() {
+			frame.Stop()
+			return
+		}
+		frame.Reset(max(time.Until(due), 0))
+	})
 	done := false
 	selector.OnCancel = func() { done = true }
 	selector.OnExit = func() { done = true }
@@ -250,6 +266,8 @@ func driveConfigSelector(ui *tui.TuiMainScreen, selector *tui.ConfigSelectorComp
 		case <-input.C:
 			input.Flush()
 			ui.Render()
+		case <-frame.C:
+			ui.RunDueRender()
 		}
 	}
 	return nil
