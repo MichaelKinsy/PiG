@@ -6057,6 +6057,17 @@
       "shapeHash": "sha256:1962974305b30f00856988fbbc0535c09b53a19190eb0139960d0fb30d8e1aa5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/agent#setupErrorDuration",
+      "package": "github.com/MichaelKinsy/PiG/agent",
+      "name": "setupErrorDuration",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(requestStarted time.Time, streamStarted time.Time, now time.Time) *int64"
+      },
+      "shapeHash": "sha256:d455c44da1c6dea4894815f050d2ba375ebd36527b9ce4c7b45957e9f586e712"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/agent#shallowAssistantMessage",
       "package": "github.com/MichaelKinsy/PiG/agent",
       "name": "shallowAssistantMessage",
