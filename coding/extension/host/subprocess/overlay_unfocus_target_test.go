@@ -29,6 +29,7 @@ const runtime = {
   customOverlays: new Map(),
   editorHost: { session: { component: editor } },
   callSync: (method, args) => { calls.push(args.target ?? args.action); return { hidden: false, focused: false, visible: true }; },
+  syncOverlayFocus() {},
 };
 runtime.customOverlays.set("other", { key: "other", active: true, component: other });
 const overlay = { key: "own", active: true, component: own, renderFrame() {} };

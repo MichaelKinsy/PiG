@@ -4,17 +4,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 func TestDivergenceQualityRejectsOutOfOrderRecords(t *testing.T) {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller failed")
-	}
-	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..")
+	repoRoot := testenv.ModuleRoot(t)
 	script := filepath.Join(repoRoot, "automation", "ci", "check-divergence-quality.py")
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "docs", "parity"), 0o755); err != nil {
@@ -26,7 +23,7 @@ func TestDivergenceQualityRejectsOutOfOrderRecords(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, "docs"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "internal", "coding", "pigversion", "pigversion.go"), []byte("package pigversion\nconst UpstreamVersion = \"0.84.0\"\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "internal", "coding", "pigversion", "pigversion.go"), []byte("package pigversion\nconst UpstreamPackageVersion = \"0.84.0\"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	core := "## D2 second\n\nRemove when: fixed.\nEvidence: test.\nSCRUTINIZED:approved\n\n## D1 first\n\nRemove when: fixed.\nEvidence: test.\nSCRUTINIZED:approved\n"
@@ -48,11 +45,7 @@ func TestDivergenceQualityRejectsOutOfOrderRecords(t *testing.T) {
 }
 
 func TestDivergenceQualityRejectsPendingAndStaleEvidence(t *testing.T) {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller failed")
-	}
-	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..")
+	repoRoot := testenv.ModuleRoot(t)
 	script := filepath.Join(repoRoot, "automation", "ci", "check-divergence-quality.py")
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "docs", "parity"), 0o755); err != nil {
@@ -64,7 +57,7 @@ func TestDivergenceQualityRejectsPendingAndStaleEvidence(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, "docs"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "internal", "coding", "pigversion", "pigversion.go"), []byte("package pigversion\nconst UpstreamVersion = \"0.83.0\"\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "internal", "coding", "pigversion", "pigversion.go"), []byte("package pigversion\nconst UpstreamPackageVersion = \"0.83.0\"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	body := "## D1 stale\n\nWhat: differs.\nWhy: reason.\nRemove when: fixed.\nEvidence: pi v0.69.0 probe.\nSCRUTINIZED:pending\n"

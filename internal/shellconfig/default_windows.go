@@ -5,7 +5,6 @@ package shellconfig
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 )
 
@@ -26,7 +25,7 @@ func Default() (Config, error) {
 			return ForBash(p), nil
 		}
 	}
-	if p, err := exec.LookPath("bash.exe"); err == nil {
+	if p := FindExecutableOnPath("bash.exe"); p != "" {
 		return ForBash(p), nil
 	}
 	return Config{}, fmt.Errorf(

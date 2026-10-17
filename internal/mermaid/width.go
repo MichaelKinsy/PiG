@@ -1,16 +1,15 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright 2023-2026 SpaceXAI
 // SPDX-FileCopyrightText: Copyright 2026 Alexey Zaytsev
 // SPDX-License-Identifier: Apache-2.0 AND MIT
 
 package mermaid
 
-import "github.com/rivo/uniseg"
+import "github.com/MichaelKinsy/PiG/tui/widthx"
 
 // Display width, measured in grapheme clusters, ported from grok-mermaid
 // width.ts. A cluster is the unit of both measuring and painting, so a box is
-// sized for exactly what gets drawn. Clustering comes from uniseg (UAX #29,
-// matching Intl.Segmenter); per-code-point widths come from widthRuns
+// sized for exactly what gets drawn. Clustering comes from widthx.FirstGrapheme (UAX #29
+// as Intl.Segmenter implements it); per-code-point widths come from widthRuns
 // (generated from the unicode-width crate), not go-runewidth.
 
 const vs16 = 0xfe0f
@@ -61,12 +60,13 @@ func clusterWidth(cluster string) int {
 }
 
 // stringWidth returns the display columns of a string, summed over grapheme
-// clusters (uniseg segmentation, grok's width table).
+// clusters (Intl.Segmenter graphemes, grok's width table).
 func stringWidth(s string) int {
 	w := 0
-	gr := uniseg.NewGraphemes(s)
-	for gr.Next() {
-		w += clusterWidth(gr.Str())
+	for rest := s; rest != ""; {
+		var cluster string
+		cluster, rest = widthx.FirstGrapheme(rest)
+		w += clusterWidth(cluster)
 	}
 	return w
 }
@@ -79,9 +79,9 @@ type measuredCluster struct {
 
 func measured(s string) []measuredCluster {
 	var out []measuredCluster
-	gr := uniseg.NewGraphemes(s)
-	for gr.Next() {
-		seg := gr.Str()
+	for rest := s; rest != ""; {
+		var seg string
+		seg, rest = widthx.FirstGrapheme(rest)
 		out = append(out, measuredCluster{cluster: seg, width: clusterWidth(seg)})
 	}
 	return out

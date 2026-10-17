@@ -1,0 +1,257 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#StopReason",
+   "pkg:ai/compat#StopReason"
+  ],
+  "targets": [
+   "ai/types.go#StopReason"
+  ],
+  "production": [
+   "call:agent/message_json.go#AgentMessage.MarshalJSON"
+  ],
+  "evidence": [
+   "test:ai/union_constants_upstream_test.go#TestUpstreamStringUnionsMatchTheGoConstants"
+  ],
+  "rationale": "StopReason: the Go named string type StopReason declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants)."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#CacheRetention",
+   "pkg:ai/compat#CacheRetention"
+  ],
+  "targets": [
+   "ai/types.go#CacheRetention"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_extensions.go#subprocessStreamOptions"
+  ],
+  "evidence": [
+   "test:ai/union_constants_upstream_test.go#TestUpstreamStringUnionsMatchTheGoConstants"
+  ],
+  "rationale": "CacheRetention: the Go named string type CacheRetention declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants)."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#Transport",
+   "pkg:ai/compat#Transport"
+  ],
+  "targets": [
+   "ai/types.go#Transport"
+  ],
+  "production": [
+   "call:coding/runtime.go#Runtime.startSessionWithFactory"
+  ],
+  "evidence": [
+   "test:ai/union_constants_upstream_test.go#TestUpstreamStringUnionsMatchTheGoConstants"
+  ],
+  "rationale": "Transport: the Go named string type Transport declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants)."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#SessionAffinityFormat",
+   "pkg:ai/compat#SessionAffinityFormat"
+  ],
+  "targets": [
+   "ai/types.go#SessionAffinityFormat"
+  ],
+  "production": [
+   "call:ai/anthropic.go#anthropicProvider.sessionAffinityHeaders"
+  ],
+  "evidence": [
+   "test:ai/union_constants_upstream_test.go#TestUpstreamStringUnionsMatchTheGoConstants"
+  ],
+  "rationale": "SessionAffinityFormat: the Go named string type SessionAffinityFormat declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants)."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ImagesStopReason",
+   "pkg:ai/compat#ImagesStopReason"
+  ],
+  "targets": [
+   "ai/images.go#ImagesStopReason"
+  ],
+  "production": [
+   "public-api:ai/images.go#ImagesStopReason"
+  ],
+  "evidence": [
+   "test:ai/union_constants_upstream_test.go#TestUpstreamStringUnionsMatchTheGoConstants"
+  ],
+  "rationale": "ImagesStopReason: the Go named string type ImagesStopReason declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants)."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ClassifierStopReason",
+   "pkg:ai/compat#ClassifierStopReason"
+  ],
+  "targets": [
+   "ai/classifier.go#ClassifierStopReason"
+  ],
+  "production": [
+   "public-api:ai/classifier.go#ClassifierStopReason"
+  ],
+  "evidence": [
+   "test:ai/union_constants_upstream_test.go#TestUpstreamStringUnionsMatchTheGoConstants"
+  ],
+  "rationale": "ClassifierStopReason: the Go named string type ClassifierStopReason declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants)."
+ },
+ {
+  "ids": [
+   "pkg:ai/utils/models-error#ModelsErrorCode"
+  ],
+  "targets": [
+   "ai/auth_resolve.go#ModelsErrorCode"
+  ],
+  "production": [
+   "public-api:ai/auth_resolve.go#ModelsErrorCode"
+  ],
+  "evidence": [
+   "test:ai/union_constants_upstream_test.go#TestUpstreamStringUnionsMatchTheGoConstants"
+  ],
+  "rationale": "ModelsErrorCode: the Go named string type ModelsErrorCode declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants)."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#AuthType",
+   "pkg:ai/compat#AuthType"
+  ],
+  "targets": [
+   "ai/auth.go#CredentialType"
+  ],
+  "production": [
+   "call:ai/credential_json.go#credentialObjectType"
+  ],
+  "evidence": [
+   "test:ai/union_constants_upstream_test.go#TestUpstreamStringUnionsMatchTheGoConstants"
+  ],
+  "rationale": "AuthType: the Go named string type CredentialType declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants)."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#KnownApi",
+   "pkg:ai/compat#KnownApi"
+  ],
+  "targets": [
+   "ai/types.go#API"
+  ],
+  "production": [
+   "call:agent/message_json.go#AgentMessage.MarshalJSON"
+  ],
+  "evidence": [
+   "test:ai/union_constants_upstream_test.go#TestUpstreamStringUnionsMatchTheGoConstants"
+  ],
+  "rationale": "KnownApi: the Go named string type API declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants)."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#Api",
+   "pkg:ai/compat#Api"
+  ],
+  "targets": [
+   "ai/types.go#API"
+  ],
+  "production": [
+   "call:agent/message_json.go#AgentMessage.MarshalJSON"
+  ],
+  "evidence": [
+   "test:ai/union_constants_upstream_test.go#TestUpstreamStringUnionsMatchTheGoConstants"
+  ],
+  "rationale": "Api: the Go named string type API declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants). The upstream open union (`| (string & {})`) is the unconstrained Go string type."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#KnownImageApi",
+   "pkg:ai/compat#KnownImageApi"
+  ],
+  "targets": [
+   "ai/model_types.go#ImageAPI"
+  ],
+  "production": [
+   "call:coding/extension/host/subprocess/provider_operations.go#Host.attachProviderOperations"
+  ],
+  "evidence": [
+   "test:ai/union_constants_upstream_test.go#TestUpstreamStringUnionsMatchTheGoConstants"
+  ],
+  "rationale": "KnownImageApi: the Go named string type ImageAPI declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants)."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ImageApi",
+   "pkg:ai/compat#ImageApi"
+  ],
+  "targets": [
+   "ai/model_types.go#ImageAPI"
+  ],
+  "production": [
+   "call:coding/extension/host/subprocess/provider_operations.go#Host.attachProviderOperations"
+  ],
+  "evidence": [
+   "test:ai/union_constants_upstream_test.go#TestUpstreamStringUnionsMatchTheGoConstants"
+  ],
+  "rationale": "ImageApi: the Go named string type ImageAPI declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants). The upstream open union (`| (string & {})`) is the unconstrained Go string type."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#KnownClassifierApi",
+   "pkg:ai/compat#KnownClassifierApi"
+  ],
+  "targets": [
+   "ai/model_types.go#ClassifierAPI"
+  ],
+  "production": [
+   "call:coding/extension/host/subprocess/provider_operations.go#Host.attachProviderOperations"
+  ],
+  "evidence": [
+   "test:ai/union_constants_upstream_test.go#TestUpstreamStringUnionsMatchTheGoConstants"
+  ],
+  "rationale": "KnownClassifierApi: the Go named string type ClassifierAPI declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants)."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ClassifierApi",
+   "pkg:ai/compat#ClassifierApi"
+  ],
+  "targets": [
+   "ai/model_types.go#ClassifierAPI"
+  ],
+  "production": [
+   "call:coding/extension/host/subprocess/provider_operations.go#Host.attachProviderOperations"
+  ],
+  "evidence": [
+   "test:ai/union_constants_upstream_test.go#TestUpstreamStringUnionsMatchTheGoConstants"
+  ],
+  "rationale": "ClassifierApi: the Go named string type ClassifierAPI declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants). The upstream open union (`| (string & {})`) is the unconstrained Go string type."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ModelType",
+   "pkg:ai/compat#ModelType"
+  ],
+  "targets": [
+   "ai/model_types.go#ModelType"
+  ],
+  "production": [
+   "call:ai/models_catalog_codec.go#decodeModelsCatalog"
+  ],
+  "evidence": [
+   "test:ai/union_constants_upstream_test.go#TestUpstreamStringUnionsMatchTheGoConstants"
+  ],
+  "rationale": "ModelType: the Go named string type ModelType declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants)."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ModelThinkingLevel",
+   "pkg:ai/compat#ModelThinkingLevel"
+  ],
+  "targets": [
+   "ai/types.go#ModelThinkingLevel"
+  ],
+  "production": [
+   "call:agent/message_json.go#AgentMessage.MarshalJSON"
+  ],
+  "evidence": [
+   "test:ai/union_constants_upstream_test.go#TestUpstreamStringUnionsMatchTheGoConstants"
+  ],
+  "rationale": "ModelThinkingLevel: the Go named string type ModelThinkingLevel declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants)."
+ }
+]

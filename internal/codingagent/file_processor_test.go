@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/cli/file-processor.ts
+
 import (
 	"bytes"
 	"image"

@@ -1,0 +1,51 @@
+diff -ru a/bench/targets.ts b/bench/targets.ts
+--- a/bench/targets.ts
++++ b/bench/targets.ts
+@@ -60,6 +60,13 @@
+ 
+ const PIG_SOURCE = process.env.PIG_SOURCE ?? "../pig"
+ const pigHost = () => resolve(PIG_SOURCE, "durable/core/host/cf")
++// The field a PiG core reads a tool result's text from (durable/core/turn/tool.go): `output` from Pi 42a's rename on, `content`
++// before it. The lookup tool returns only that field, so a PiG target encodes the same result as pi-head.
++const pigToolField = () => {
++  const m = /arrayField\(result, "(output|content)"\)/.exec(readFileSync(resolve(PIG_SOURCE, "durable/core/turn/tool.go"), "utf8"))
++  if (!m) throw new Error(`${PIG_SOURCE}/durable/core/turn/tool.go: no tool result text field`)
++  return m[1]
++}
+ 
+ // Resolves pi-durable to the PiG core's facade, and pi-ai and chord, for the bench and the facade alike, to the same Pi
+ // sources pi-head is built from (fromSource): one chord context, one faux provider module, and the same scripted model as
+@@ -103,7 +110,7 @@
+   const dist = PROBE ? `dist/probe-${PROBE}` : "dist"
+   const outfile = core ? `${dist}/${name}/bench.mjs` : `${dist}/${name}.mjs`
+   await build({
+-    define: { BENCH_PROBE: JSON.stringify(PROBE !== ""), BENCH_PROBE_TIME: JSON.stringify(PROBE === "time") },
++    define: { BENCH_PROBE: JSON.stringify(PROBE !== ""), BENCH_PROBE_TIME: JSON.stringify(PROBE === "time"), BENCH_TOOL_FIELD: JSON.stringify(core ? pigToolField() : "content") },
+     entryPoints: [TARGETS[name].entry], outfile, bundle: true, format: "esm", platform: "neutral", target: "es2024",
+     conditions: ["workerd", "worker", "browser", "import"], mainFields: ["module", "main"],
+     external: ["cloudflare:*", "node:*", ...builtinModules], logLevel: "error",
+diff -ru a/src/pi-head.ts b/src/pi-head.ts
+--- a/src/pi-head.ts
++++ b/src/pi-head.ts
+@@ -10,6 +10,9 @@
+ import { serve, tables, type Bench } from "./serve.ts"
+ 
+ declare const BENCH_PROBE: boolean
++// BENCH_TOOL_FIELD: the field the lookup tool returns its text in. pi-durable main (da866ada) reads `content`; a PiG core reads
++// `output` from Pi 42a's rename on and `content` before it (bench/targets.ts reads which), so every target gets the same result.
++declare const BENCH_TOOL_FIELD: "content" | "output"
+ 
+ const SYSTEM = "You are a benchmark agent. Call lookup as instructed, then answer briefly."
+ 
+@@ -39,7 +42,10 @@
+   name: "lookup",
+   description: "Look up record number n",
+   parameters: Type.Object({ n: Type.Number() }),
+-  execute: async ({ n }) => ({ content: [{ type: "text", text: payload(n) }] }),
++  execute: async ({ n }) => {
++    const text = [{ type: "text" as const, text: payload(n) }]
++    return BENCH_TOOL_FIELD === "output" ? { output: text } : { content: text }
++  },
+ })
+ 
+ const registry = createRegistry()

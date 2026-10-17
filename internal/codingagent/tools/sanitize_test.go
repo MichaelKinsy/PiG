@@ -1,5 +1,7 @@
 package tools
 
+// pi: packages/coding-agent/src/utils/ansi.ts
+
 import (
 	"bytes"
 	"strings"
@@ -85,7 +87,7 @@ func TestSanitizeBinaryOutput_PreservesUTF8(t *testing.T) {
 
 func TestTruncateTail_NoTruncation(t *testing.T) {
 	in := "line1\nline2\nline3"
-	tr := TruncateTail(in, 1024, 100)
+	tr := TruncateTail(in, truncationLimits(1024, 100))
 	if tr.Truncated {
 		t.Errorf("small input should not truncate; got %+v", tr)
 	}
@@ -102,7 +104,7 @@ func TestTruncateTail_LineCap(t *testing.T) {
 	for i := 1; i <= 3000; i++ {
 		b.WriteString("line\n")
 	}
-	tr := TruncateTail(b.String(), 1024*1024, 2000)
+	tr := TruncateTail(b.String(), truncationLimits(1024*1024, 2000))
 	if !tr.Truncated {
 		t.Fatalf("expected truncation; got %+v", tr)
 	}
@@ -125,7 +127,7 @@ func TestTruncateTail_ByteCap(t *testing.T) {
 		b.WriteString(strings.Repeat("x", 100))
 		b.WriteByte('\n')
 	}
-	tr := TruncateTail(b.String(), 5000, 10000)
+	tr := TruncateTail(b.String(), truncationLimits(5000, 10000))
 	if !tr.Truncated {
 		t.Fatalf("expected truncation")
 	}
@@ -140,7 +142,7 @@ func TestTruncateTail_ByteCap(t *testing.T) {
 func TestTruncateTail_LastLineLargerThanCap(t *testing.T) {
 	// Single line of 10000 bytes, cap at 1000.
 	in := strings.Repeat("x", 10000)
-	tr := TruncateTail(in, 1000, 100)
+	tr := TruncateTail(in, truncationLimits(1000, 100))
 	if !tr.Truncated {
 		t.Fatalf("expected truncation")
 	}

@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -42,7 +43,7 @@ func TestAuthStorageDeleteCancellationPreservesCredential(t *testing.T) {
 		t.Fatal("cancelled deletion cleared runtime key")
 	}
 	after, err := os.ReadFile(path)
-	if err != nil || string(after) != string(before) {
+	if err != nil || !bytes.Equal(after, before) {
 		t.Fatalf("cancelled deletion changed file: %s, %v", after, err)
 	}
 	if _, err := os.Stat(path + ".lock"); !errors.Is(err, os.ErrNotExist) {

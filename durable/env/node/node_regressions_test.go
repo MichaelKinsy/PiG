@@ -91,6 +91,8 @@ func TestFilesystemCreateTempFilePassesItsDirectoryPrefixToCreateTempDir(t *test
 
 // A timeout that converts to less than a nanosecond is still a timeout: Node
 // runs setTimeout delays below 1 ms after 1 ms.
+// mutation-checked: dropping the reads and writes of ExecutionError.Message, ShellExecOptions.Timeout fails it
+// Pi: packages/durable/src/env/index.ts:49 (message)
 func TestShellTimesOutATimeoutBelowOneMillisecond(t *testing.T) {
 	if got := must(resolveTimeout(new(1e-13))); got != time.Millisecond {
 		t.Fatalf("resolveTimeout(1e-13) = %v, want 1ms", got)
@@ -105,6 +107,9 @@ func TestShellTimesOutATimeoutBelowOneMillisecond(t *testing.T) {
 
 // SetCwd may run while other goroutines resolve paths and execute commands;
 // the race detector reports an unguarded cwd.
+// Pi source: packages/durable/src/env/node.ts
+// mutation-checked: zeroing the results of NodeExecutionEnv.Cwd fails it
+// Pi: packages/durable/src/env/node.ts:72 (cwd)
 func TestFilesystemSetCwdIsSafeAlongsideConcurrentOperations(t *testing.T) {
 	env, root := newTestEnv(t)
 	var wg sync.WaitGroup

@@ -1,0 +1,27 @@
+# Behavior family: oauth (callback page HTML)
+# Pi 1.1.0 probe: oauth-page.ts oauthSuccessHtml and oauthErrorHtml over 307 messages and details (the fixed upstream cases plus 300 seeded strings of
+# escapable characters, already-escaped entities, newlines, non-ASCII and astral text, template-literal syntax and long runs); each page is compared byte for
+# byte as one JSON line. The Go test TestOAuthPageCorpusMatchesThePinnedPackage runs the same corpus against the installed Pi; this scenario compares the two
+# printed streams. 06-oauth-callback-page checks only that both binaries render the escaped markers.
+name = "32-oauth-callback-page-bytes"
+description = "OAuth callback success and error pages are the same bytes as Pi's for every message and details."
+covers = ["packages/ai/src/utils/oauth-page.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/oauth-page-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/oauth-page-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 240
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['Authentication successful', 'Authentication failed', '&lt;script&gt;', '&quot;', '&#39;', 'class=\"details\"']
+runs = 2

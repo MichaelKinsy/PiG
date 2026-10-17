@@ -1,0 +1,455 @@
+[
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerReportsProgressToTheInstalledCallback"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `m.progress = callback }` with `m.progress = nil }`; TestPackageManagerReportsProgressToTheInstalledCallback fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerRemoveDeletesGitCheckoutsAndKeepsSharedOnes"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `if m.AgentDir != \"\" {\n\t\treturn m.AgentDir` with `if m.AgentDir == \"\" {\n\t\treturn m.AgentDir`; TestPackageManagerRemoveDeletesGitCheckoutsAndKeepsSharedOnes fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerReportsInstalledPathsPerScope"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `pkg.InstalledPath = m.GetInstalledPath(pkg.Source.Source, pkg.Scope)` with `pkg.InstalledPath = \"\"`; TestPackageManagerReportsInstalledPathsPerScope fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerReportsInstalledPathsPerScope"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `packages = append(packages, ConfiguredPackage{Source: pkg, Scope: \"user\"})\n\t}\n\tfor _, pkg := range project {\n\t\tpackages = append(packages, ConfiguredPackage{Source: pkg, Scope: \"project\"})\n\t}` with `packages = append(packages, ConfiguredPackage{Source: pkg, Scope: \"project\"})\n\t}\n\tfor _, pkg := range project {\n\t\tpackages = append(packages, ConfiguredPackage{Source: pkg, Scope: \"user\"})\n\t}`; TestPackageManagerReportsInstalledPathsPerScope fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerReportsInstalledPathsPerScope"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `for _, pkg := range project {\n\t\tpackages = append(packages, ConfiguredPackage{Source: pkg, Scope: \"project\"})` with `for _, pkg := range project[:0] {\n\t\tpackages = append(packages, ConfiguredPackage{Source: pkg, Scope: \"project\"})`; TestPackageManagerReportsInstalledPathsPerScope fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerReportsInstalledPathsPerScope"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `source, scope == \"project\")` with `source, scope != \"project\")`; TestPackageManagerReportsInstalledPathsPerScope fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerReportsProgressToTheInstalledCallback"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `codingagent.PackageSource{Source: source}, local, m.progress)` with `codingagent.PackageSource{Source: source}, local, nil)`; TestPackageManagerReportsProgressToTheInstalledCallback fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerInstallAndRemoveAndPersistOrderErrorsBeforeSettings"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `if err := m.Install(source, local); err != nil {\n\t\treturn err\n\t}\n\tif err := m.Verify` with `if err := m.Install(source, local); err != nil {\n\t\t_ = err\n\t}\n\tif err := m.Verify`; TestPackageManagerInstallAndRemoveAndPersistOrderErrorsBeforeSettings fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerInstallAndRemoveAndPersistOrderErrorsBeforeSettings"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `_, err := m.AddSourceToSettings(source, local)\n\treturn err` with `_, err := m.AddSourceToSettings(source, !local)\n\treturn err`; TestPackageManagerInstallAndRemoveAndPersistOrderErrorsBeforeSettings fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerPersistsInstallAndRemoval",
+   "TestPackageManagerInstallAndRemoveAndPersistOrderErrorsBeforeSettings"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `_, err := m.AddSourceToSettings(source, local)\n\treturn err` with `return nil`; TestPackageManagerInstallAndRemoveAndPersistOrderErrorsBeforeSettings, TestPackageManagerPersistsInstallAndRemoval fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerRemoveDeletesGitCheckoutsAndKeepsSharedOnes"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `if local && !m.SettingsManager.IsProjectTrusted() {` with `if false {`; TestPackageManagerRemoveDeletesGitCheckoutsAndKeepsSharedOnes fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerRemoveDeletesGitCheckoutsAndKeepsSharedOnes"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `checkout, err := GitCheckoutPath(m.CWD, m.agentDir(), source, local)` with `checkout, err := GitCheckoutPath(m.CWD, m.agentDir(), source, !local)`; TestPackageManagerRemoveDeletesGitCheckoutsAndKeepsSharedOnes fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerRemoveDeletesGitCheckoutsAndKeepsSharedOnes"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `if err := os.RemoveAll(checkout); err != nil {\n\t\t\treturn err\n\t\t}` with ``; TestPackageManagerRemoveDeletesGitCheckoutsAndKeepsSharedOnes fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerRemoveDeletesGitCheckoutsAndKeepsSharedOnes"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `return PruneEmptyGitParents(checkout, codingagent.GitInstallRoot(m.CWD, m.agentDir(), local))` with `return nil`; TestPackageManagerRemoveDeletesGitCheckoutsAndKeepsSharedOnes fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerInstallAndRemoveAndPersistOrderErrorsBeforeSettings"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `if err := m.Remove(source, local); err != nil {\n\t\treturn false, err\n\t}\n\treturn m.RemoveSourceFromSettings(source, local)` with `_ = m.Remove(source, local)\n\treturn m.RemoveSourceFromSettings(source, local)`; TestPackageManagerInstallAndRemoveAndPersistOrderErrorsBeforeSettings fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerInstallAndRemoveAndPersistOrderErrorsBeforeSettings",
+   "TestPackageManagerPersistsInstallAndRemoval"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `if err := m.Remove(source, local); err != nil {\n\t\treturn false, err\n\t}\n\treturn m.RemoveSourceFromSettings(source, local)` with `if err := m.Remove(source, local); err != nil {\n\t\treturn false, err\n\t}\n\treturn m.RemoveSourceFromSettings(source, !local)`; TestPackageManagerInstallAndRemoveAndPersistOrderErrorsBeforeSettings, TestPackageManagerPersistsInstallAndRemoval fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerReportsInstalledPathsPerScope"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `baseDir := SettingsBaseDir(sm.CWD(), sm.AgentDir(), local)\n\tnormalized` with `baseDir := SettingsBaseDir(sm.CWD(), sm.AgentDir(), !local)\n\tnormalized`; TestPackageManagerReportsInstalledPathsPerScope fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerAddAndRemoveSourceInTheScopeSettings"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `current := sm.GetGlobalSettings().Packages\n\tif local {\n\t\tcurrent = sm.GetProjectSettings().Packages\n\t}\n\tcurrent = slices.Clone(current)` with `current := sm.GetGlobalSettings().Packages\n\tcurrent = slices.Clone(current)`; TestPackageManagerAddAndRemoveSourceInTheScopeSettings fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerAddAndRemoveSourceInTheScopeSettings"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `if current[index].Source == normalized {\n\t\t\treturn false, nil\n\t\t}` with ``; TestPackageManagerAddAndRemoveSourceInTheScopeSettings fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerReportsInstalledPathsPerScope"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `current = append(current, codingagent.PackageSource{Source: normalized})` with `current = append(current, codingagent.PackageSource{Source: source})`; TestPackageManagerReportsInstalledPathsPerScope fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerAddAndRemoveSourceInTheScopeSettings"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `if index >= 0 {\n\t\tif current` with `if index > 0 {\n\t\tif current`; TestPackageManagerAddAndRemoveSourceInTheScopeSettings fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerAddAndRemoveSourceInTheScopeSettings"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `return true, sm.SetProjectPackages(current)\n\t}\n\treturn true, sm.SetPackages(current)\n}\n\n// RemoveSource` with `return true, sm.SetPackages(current)\n\t}\n\treturn true, sm.SetPackages(current)\n}\n\n// RemoveSource`; TestPackageManagerAddAndRemoveSourceInTheScopeSettings fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerAddAndRemoveSourceInTheScopeSettings"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `return true, sm.SetPackages(current)\n}\n\n// RemoveSource` with `return false, sm.SetPackages(current)\n}\n\n// RemoveSource`; TestPackageManagerAddAndRemoveSourceInTheScopeSettings fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerAddAndRemoveSourceInTheScopeSettings",
+   "TestPackageManagerPersistsInstallAndRemoval"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `if !matched {\n\t\t\tnext = append(next, pkg)` with `if matched {\n\t\t\tnext = append(next, pkg)`; TestPackageManagerAddAndRemoveSourceInTheScopeSettings, TestPackageManagerPersistsInstallAndRemoval fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerAddAndRemoveSourceInTheScopeSettings"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `if len(next) == len(current) {\n\t\treturn false, nil\n\t}` with ``; TestPackageManagerAddAndRemoveSourceInTheScopeSettings fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerAddAndRemoveSourceInTheScopeSettings"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `current := sm.GetGlobalSettings().Packages\n\tif local {\n\t\tcurrent = sm.GetProjectSettings().Packages\n\t}\n\tbaseDir := SettingsBaseDir(sm.CWD(), sm.AgentDir(), local)\n\tnext` with `current := sm.GetGlobalSettings().Packages\n\tbaseDir := SettingsBaseDir(sm.CWD(), sm.AgentDir(), local)\n\tnext`; TestPackageManagerAddAndRemoveSourceInTheScopeSettings fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerAddAndRemoveSourceInTheScopeSettings"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `return true, sm.SetProjectPackages(next)\n\t}\n\treturn true, sm.SetPackages(next)` with `return true, sm.SetPackages(next)\n\t}\n\treturn true, sm.SetPackages(next)`; TestPackageManagerAddAndRemoveSourceInTheScopeSettings fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerAddAndRemoveSourceInTheScopeSettings"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `return true, sm.SetProjectPackages(next)\n\t}\n\treturn true, sm.SetPackages(next)` with `return true, sm.SetProjectPackages(next)\n\t}\n\treturn false, sm.SetPackages(next)`; TestPackageManagerAddAndRemoveSourceInTheScopeSettings fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerCheckForAvailableUpdatesReportsMovedGitRemotes"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `if len(pkgs) == 0 {\n\t\treturn []PackageUpdate{}\n\t}` with `if len(pkgs) == 0 {\n\t\treturn nil\n\t}`; TestPackageManagerCheckForAvailableUpdatesReportsMovedGitRemotes fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerCheckForAvailableUpdatesReportsMovedGitRemotes"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `if !ok || ref.Pinned {` with `if !ok {`; TestPackageManagerCheckForAvailableUpdatesReportsMovedGitRemotes fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerCheckForAvailableUpdatesReportsMovedGitRemotes"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `if GitHasAvailableUpdate(installed) {` with `if !GitHasAvailableUpdate(installed) {`; TestPackageManagerCheckForAvailableUpdatesReportsMovedGitRemotes fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerCheckForAvailableUpdatesReportsMovedGitRemotes"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `DisplayName: ref.Host + \"/\" + ref.Path,` with `DisplayName: ref.Host,`; TestPackageManagerCheckForAvailableUpdatesReportsMovedGitRemotes fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerCheckForAvailableUpdatesReportsMovedGitRemotes"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `Type:        \"git\",` with `Type:        \"npm\",`; TestPackageManagerCheckForAvailableUpdatesReportsMovedGitRemotes fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerCheckForAvailableUpdatesReportsMovedGitRemotes"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `Scope:       p.Scope,\n\t\t\t\t}}\n\t\t\t}\n\t\t}\n\t}` with `Scope:       \"project\",\n\t\t\t\t}}\n\t\t\t}\n\t\t}\n\t}`; TestPackageManagerCheckForAvailableUpdatesReportsMovedGitRemotes fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerCheckForAvailableUpdatesReportsMovedGitRemotes"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `Source:      source,\n\t\t\t\t\tDisplayName: ref.Host` with `Source:      \"x\",\n\t\t\t\t\tDisplayName: ref.Host`; TestPackageManagerCheckForAvailableUpdatesReportsMovedGitRemotes fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerCheckForAvailableUpdatesReportsMovedGitRemotes"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `pkgs := ConfiguredPackagesForResolution(cwd, sm.AgentDir(), sm)` with `pkgs := ConfiguredPackagesForResolution(cwd, sm.AgentDir(), nil)`; TestPackageManagerCheckForAvailableUpdatesReportsMovedGitRemotes fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerInstallAndRemoveAndPersistOrderErrorsBeforeSettings"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `codingagent.PackageSource{Source: source}, local, m.progress)` with `codingagent.PackageSource{Source: source}, !local, m.progress)`; TestPackageManagerInstallAndRemoveAndPersistOrderErrorsBeforeSettings fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerRemoveDeletesGitCheckoutsAndKeepsSharedOnes"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `if local && !m.SettingsManager.IsProjectTrusted() {` with `if !m.SettingsManager.IsProjectTrusted() {`; TestPackageManagerRemoveDeletesGitCheckoutsAndKeepsSharedOnes fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerNpmUninstallAndUpdateCheckUseTheConfiguredCommand"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `case \"npm\":\n\t\treturn m.uninstallManagedNPM(source, local)\n\tcase \"git\":` with `case \"git\":`; TestPackageManagerNpmUninstallAndUpdateCheckUseTheConfiguredCommand fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerRemoveDeletesGitCheckoutsAndKeepsSharedOnes"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `if err := RemoveGitUpdateMarker(GitUpdateMarkerPath(checkout)); err != nil {\n\t\t\treturn err\n\t\t}` with ``; TestPackageManagerRemoveDeletesGitCheckoutsAndKeepsSharedOnes fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerAddAndRemoveSourceInTheScopeSettings"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `if matched {\n\t\t\tindex = i\n\t\t\tbreak\n\t\t}` with `if matched {\n\t\t\tindex = i\n\t\t}`; TestPackageManagerAddAndRemoveSourceInTheScopeSettings fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerAddAndRemoveSourceInTheScopeSettings"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `current[index].Source = normalized` with `current[index].Source = source`; TestPackageManagerAddAndRemoveSourceInTheScopeSettings fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerCheckForAvailableUpdatesReportsMovedGitRemotes"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `if installed == \"\" {\n\t\t\treturn\n\t\t}` with ``; TestPackageManagerCheckForAvailableUpdatesReportsMovedGitRemotes fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerNpmUninstallAndUpdateCheckUseTheConfiguredCommand"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `if kind == \"npm\" && IsPinnedNpm(source) {\n\t\t\treturn\n\t\t}` with ``; TestPackageManagerNpmUninstallAndUpdateCheckUseTheConfiguredCommand fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerNpmUninstallAndUpdateCheckUseTheConfiguredCommand"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `if npmHasAvailableUpdate(cwd, sm, ref, installed, p.Scope == \"project\") {` with `if !npmHasAvailableUpdate(cwd, sm, ref, installed, p.Scope == \"project\") {`; TestPackageManagerNpmUninstallAndUpdateCheckUseTheConfiguredCommand fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerNpmUninstallAndUpdateCheckUseTheConfiguredCommand"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `DisplayName: ref.NPMName,` with `DisplayName: source,`; TestPackageManagerNpmUninstallAndUpdateCheckUseTheConfiguredCommand fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerNpmUninstallAndUpdateCheckUseTheConfiguredCommand"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `args = append(args, \"uninstall\", ref.NPMName, \"--prefix\", installRoot)` with `args = append(args, \"uninstall\", ref.NPMName, \"--prefix\", m.CWD)`; TestPackageManagerNpmUninstallAndUpdateCheckUseTheConfiguredCommand fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerNpmUninstallAndUpdateCheckUseTheConfiguredCommand"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `args = append(args, \"--legacy-peer-deps\")` with `args = append(args, \"--no-save\")`; TestPackageManagerNpmUninstallAndUpdateCheckUseTheConfiguredCommand fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerNpmUninstallAndUpdateCheckUseTheConfiguredCommand"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `if IsOfflineModeEnabled() {\n\t\treturn []PackageUpdate{}\n\t}\n\tpkgs := Configured` with `pkgs := Configured`; TestPackageManagerNpmUninstallAndUpdateCheckUseTheConfiguredCommand fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestPackageManagerNpmUninstallAndUpdateCheckUseTheConfiguredCommand"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/package_manager.go: replace `installRoot := NpmInstallRoot(m.CWD, m.agentDir(), ref, local)\n\tif _, err := os.Stat(installRoot); os.IsNotExist(err) {\n\t\treturn nil\n\t}` with `installRoot := NpmInstallRoot(m.CWD, m.agentDir(), ref, local)`; TestPackageManagerNpmUninstallAndUpdateCheckUseTheConfiguredCommand fails."
+ }
+]

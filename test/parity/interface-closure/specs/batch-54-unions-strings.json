@@ -1,0 +1,34 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#ToolExposure"
+  ],
+  "targets": [
+   "coding/extension/tool.go#ToolExposure"
+  ],
+  "production": [
+   "call:coding/extension/host/subprocess/host.go#Host.buildExtension"
+  ],
+  "evidence": [
+   "test:coding/session_tool_orchestration_upstream_test.go#TestToolsWithDefaultActiveFalseAreActiveOnlyWhenNamed",
+   "test:coding/extension/host/subprocess/extension_api_wire_test.go#TestPrepareLoadoutRunsInTheExtension"
+  ],
+  "rationale": "ToolExposure: the Go string type declares every literal of the upstream union, with the same values; production and tests use the type (go/types)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#McpExposure"
+  ],
+  "targets": [
+   "coding/extension/mcp_servers.go#McpExposure"
+  ],
+  "production": [
+   "call:coding/extension/mcp_servers.go#OrderedExposures.Get"
+  ],
+  "evidence": [
+   "test:coding/mcp_session_tool_flags_upstream_test.go#TestAgentSessionMCPKeepsMCPToolsWhenToolsNamesNoMCPTool",
+   "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPWithdrawsAndRestoresMCPToolsTheServerChanges"
+  ],
+  "rationale": "McpExposure: the Go string type declares every literal of the upstream union, with the same values; production and tests use the type (go/types)."
+ }
+]

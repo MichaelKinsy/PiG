@@ -66,7 +66,8 @@ func (t *TuiAltScreen) HandleViewportInput(data string) bool {
 		return true
 	}
 	if wheel, ok := parseWheelEvent(data); ok {
-		return t.handleWheel(wheel)
+		t.handleWheel(wheel)
+		return true
 	}
 	if event, ok := parseSgrMouseEvent(data); ok {
 		t.handleMouseEvent(event)
@@ -135,6 +136,10 @@ func (t *TuiAltScreen) matchViewportAction(data string) (TUIKeybinding, bool) {
 	if t.shouldDeferViewportInputToOverlay() {
 		return "", false
 	}
+	// pig divergence (D155): a focused selection that handles the selection page keys keeps them, even when they are also bound to a viewport action (Pi #7629).
+	if (keybindings.Matches(data, KBSelectPageUp) || keybindings.Matches(data, KBSelectPageDown)) && CapturesSelectPageInput(t.GetFocusedComponent()) {
+		return "", false
+	}
 	for _, action := range altScreenScrollActions {
 		if keybindings.Matches(data, action) {
 			return action, true
@@ -186,7 +191,7 @@ func (t *TuiAltScreen) getPrimaryScrollViewLocked() *ScrollView {
 }
 
 // shouldDeferViewportInputToOverlay reports whether a focused overlay other
-// than the search box owns keyboard and wheel input. Mirrors upstream
+// than the search box owns the viewport keys. Mirrors upstream
 // shouldDeferViewportInputToOverlay.
 func (t *TuiAltScreen) shouldDeferViewportInputToOverlay() bool {
 	return t.isOverlayFocused() && !t.IsSearchFocused()
@@ -262,7 +267,7 @@ func (t *TuiAltScreen) toggleSearch() {
 	t.activeSearch = search
 	t.mu.Unlock()
 	margin := 1
-	search.overlay = t.OpenOverlay(search.component, OverlayOptions{
+	search.overlay = t.ShowOverlay(search.component, OverlayOptions{
 		anchor: overlayTopRight, width: overlayPercent(40), minWidth: 32, marginAll: &margin,
 	})
 	search.component.SetFocused(search.overlay != nil && search.overlay.IsFocused())
@@ -456,7 +461,7 @@ func revealSearchMatch(scrollView *ScrollView, match AltScreenSearchMatch) bool 
 	if first.Row < before || last.Row > before+viewportHeight-1 {
 		target = first.Row - viewportHeight/3
 	}
-	scrollView.ScrollToWithOptions(target, ScrollViewScrollToOptions{DisableFollow: true})
+	scrollView.ScrollTo(target, ScrollViewScrollToOptions{DisableFollow: true})
 	return scrollView.ScrollTop() != before
 }
 

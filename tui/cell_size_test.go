@@ -20,7 +20,7 @@ func withImageTerminal(t *testing.T) {
 	SetCapabilities(TerminalCapabilities{Images: ImageProtocolKitty, TrueColor: true, Hyperlinks: true})
 }
 
-func newCellSizeTestTUI(out *bytes.Buffer) *TUI {
+func newCellSizeTestTUI(out *bytes.Buffer) *TuiMainScreen {
 	tui := NewWithOutput(out, 80, 24)
 	tui.SetRenderDispatcher(func(func()) {})
 	return tui
@@ -124,8 +124,8 @@ func TestCellSizeResponseInvalidatesMountedTree(t *testing.T) {
 	nested := &invalidationRecorder{}
 	overlay := &invalidationRecorder{}
 	tui := newCellSizeTestTUI(&bytes.Buffer{})
-	tui.Add(NewContainer(NewVStack([]StackChild{{Component: NewScrollView(NewContainer(nested), ScrollViewOptions{})}}, StackOptions{})))
-	tui.OpenOverlay(overlay, OverlayOptions{})
+	tui.Add(NewContainer(NewVStack([]StackEntry{{Component: NewScrollView(NewContainer(nested), ScrollViewOptions{})}}, StackOptions{})))
+	tui.ShowOverlay(overlay, OverlayOptions{})
 
 	tui.ConsumeCellSizeResponse("\x1b[6;20;10t")
 
@@ -151,7 +151,7 @@ func TestCellSizeResponseInvalidatesAltScreenLayoutRoot(t *testing.T) {
 		t.Fatalf("implicit document child invalidations = %d, want 1", base.invalidations)
 	}
 
-	alt.SetLayoutRoot(NewVStack([]StackChild{{Component: inLayout}}, StackOptions{}))
+	alt.SetLayoutRoot(NewVStack([]StackEntry{{Component: inLayout}}, StackOptions{}))
 	alt.ConsumeCellSizeResponse("\x1b[6;22;11t")
 	if inLayout.invalidations != 1 || base.invalidations != 1 {
 		t.Fatalf("layout-root invalidations: layout=%d base=%d, want 1 and 1", inLayout.invalidations, base.invalidations)
@@ -162,7 +162,7 @@ func TestCellSizeResponseInvalidatesAltScreenLayoutRoot(t *testing.T) {
 func TestCellSizeResponseReRendersImageRows(t *testing.T) {
 	withImageTerminal(t)
 	SetCellDimensions(CellDimensions{WidthPx: 10, HeightPx: 20})
-	img := NewImage("", "image/png", ImageOptions{MaxWidthCells: 10, ImageID: 1}, &ImageDimensions{WidthPx: 100, HeightPx: 100})
+	img := NewImage("", "image/png", DefaultImageTheme(), ImageOptions{MaxWidthCells: 10, ImageID: 1}, &ImageDimensions{WidthPx: 100, HeightPx: 100})
 	tui := newCellSizeTestTUI(&bytes.Buffer{})
 	tui.Add(NewContainer(img))
 	before := len(tui.RenderSnapshot(80))

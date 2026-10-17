@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package sdk
@@ -321,9 +320,6 @@ func TestHasUIAndUIThemeFollowReplicatedState(t *testing.T) {
 	if got := theme.Fg("accent", "x"); got != "\x1b[38;5;1mx\x1b[39m" {
 		t.Fatalf("Fg = %q", got)
 	}
-	if got := theme.Fg("missing", "x"); got != "x" {
-		t.Fatalf("Fg(unknown) = %q", got)
-	}
 	if got := theme.Bg("selectedBg", "x"); got != "\x1b[48;5;3mx\x1b[49m" {
 		t.Fatalf("Bg = %q", got)
 	}
@@ -339,7 +335,7 @@ func TestHasUIAndUIThemeFollowReplicatedState(t *testing.T) {
 	if _, err := theme.GetFgAnsi("nope"); err == nil || err.Error() != "Unknown theme color: nope" {
 		t.Fatalf("GetFgAnsi(unknown) error = %v", err)
 	}
-	if _, err := theme.GetBgAnsi("nope"); err == nil || err.Error() != "Unknown theme background color: nope" {
+	if _, err := theme.GetBgAnsi("nope"); err == nil || err.Error() != "Unknown theme color: nope" {
 		t.Fatalf("GetBgAnsi(unknown) error = %v", err)
 	}
 	if got := theme.GetThinkingBorderColor("high")("x"); got != "\x1b[38;5;2mx\x1b[39m" {
@@ -363,11 +359,35 @@ func TestHasUIAndUIThemeFollowReplicatedState(t *testing.T) {
 	if got := light.GetBashModeBorderColor()("x"); got != "\x1b[38;2;1;2;3mx\x1b[39m" {
 		t.Fatalf("GetBashModeBorderColor = %q", got)
 	}
-	if got := light.Fg("accent", "x"); got != "x" {
-		t.Fatalf("Fg(accent) after change = %q, want the new palette's plain text", got)
-	}
+	func() {
+		defer func() {
+			if err, _ := recover().(error); err == nil || err.Error() != "Unknown theme color: accent" {
+				t.Fatalf("Fg(accent) after change recovered %v, want the new palette's unknown-token error", err)
+			}
+		}()
+		_ = light.Fg("accent", "x")
+	}()
 	if got := theme.Fg("accent", "x"); got != "\x1b[38;5;1mx\x1b[39m" {
 		t.Fatalf("earlier snapshot changed: %q", got)
+	}
+	surfaceShutdown(t, host, done)
+}
+
+// loop_turned is the host step a Node runtime waits for after a print prompt's last call. A Go extension has no such wait, so the notify changes nothing: the next request runs with the state the extension held before it.
+func TestLoopTurnedNotifyChangesNothing(t *testing.T) {
+	ext := New("surface")
+	got := make(chan bool, 1)
+	ext.Command("read", "", func(ctx Context, _ string) error {
+		got <- ctx.HasUI()
+		return nil
+	})
+	host, _, done := surfaceHost(t, ext, &readyMsg{Cwd: "/tmp", Width: 80, State: json.RawMessage(`{"hasUI":true}`)})
+	host.writeEnvelope(t, envelope{Type: msgNotify, Notify: &notifyMsg{Method: "loop_turned"}})
+	if _, response := runSurfaceCommand(t, host, "read", func(*callMsg) *callResultMsg { return &callResultMsg{} }); response.Error != nil {
+		t.Fatalf("read after loop_turned: %+v", response.Error)
+	}
+	if !<-got {
+		t.Fatal("HasUI after loop_turned = false, want the ready state's true")
 	}
 	surfaceShutdown(t, host, done)
 }

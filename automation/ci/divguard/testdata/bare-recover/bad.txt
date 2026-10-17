@@ -38,3 +38,14 @@ func (s *Session) guard(fn func()) (failed bool) {
 	fn()
 	return false
 }
+
+// swallow assigns the panic value to an outer variable, then only tests it
+// against nil: the value is still thrown away.
+func (s *Session) swallow(fn func()) bool {
+	var failure any
+	func() {
+		defer func() { failure = recover() }() // want
+		fn()
+	}()
+	return failure == nil
+}

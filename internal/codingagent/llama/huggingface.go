@@ -12,10 +12,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
-
-	"golang.org/x/text/collate"
-	"golang.org/x/text/language"
 )
 
 // Ports packages/coding-agent/src/extensions/llama/huggingface.ts.
@@ -29,9 +28,7 @@ var (
 )
 
 // localeCompare mirrors String.prototype.localeCompare under the root locale.
-var localeCollator = collate.New(language.Und)
-
-func localeCompare(left, right string) int { return localeCollator.CompareString(left, right) }
+func localeCompare(left, right string) int { return jsstring.LocaleCompare(left, right) }
 
 // HuggingFaceModel mirrors one search result.
 type HuggingFaceModel struct {
@@ -76,12 +73,8 @@ func parseRateLimitDelay(value string) float64 {
 // jsNumber mirrors Number(value) for a header string; NaN reports 0 so the
 // caller's `||` fallback applies.
 func jsNumber(value string) float64 {
-	trimmed := strings.TrimFunc(value, isJSWhitespace)
-	if trimmed == "" {
-		return 0
-	}
-	number, err := strconv.ParseFloat(trimmed, 64)
-	if err != nil || math.IsNaN(number) {
+	number := jsnumber.Parse(value)
+	if math.IsNaN(number) {
 		return 0
 	}
 	return number
@@ -92,13 +85,13 @@ func readToken(path string) string {
 	if err != nil {
 		return ""
 	}
-	return strings.TrimFunc(string(data), isJSWhitespace)
+	return jsstring.Trim(string(data))
 }
 
 // FindHuggingFaceToken mirrors findHuggingFaceToken; env reads one variable,
 // with "" meaning unset.
 func FindHuggingFaceToken(env func(string) string) string {
-	if token := strings.TrimFunc(env("HF_TOKEN"), isJSWhitespace); token != "" {
+	if token := jsstring.Trim(env("HF_TOKEN")); token != "" {
 		return token
 	}
 	var paths []string
@@ -161,7 +154,7 @@ func (c *HuggingFaceClient) request(ctx context.Context, path string) (any, erro
 			delay = parseRateLimitDelay(response.header.Get("Ratelimit"))
 		}
 		if delay != 0 {
-			return nil, errors.New("Hugging Face rate limit reached; retry in " + jsNumberString(delay) + "s")
+			return nil, errors.New("Hugging Face rate limit reached; retry in " + jsnumber.String(delay) + "s")
 		}
 		return nil, errors.New("Hugging Face rate limit reached")
 	}
@@ -213,7 +206,10 @@ func (c *HuggingFaceClient) Details(ctx context.Context, id string) (HuggingFace
 	if err != nil {
 		return HuggingFaceModelDetails{}, err
 	}
-	if _, ok := payload.(map[string]any); !ok {
+	// `typeof payload !== "object" || payload === null`: an array passes, and reads no id, gate or siblings.
+	switch payload.(type) {
+	case map[string]any, []any:
+	default:
 		return HuggingFaceModelDetails{}, errors.New("Hugging Face returned invalid model details")
 	}
 	details := HuggingFaceModelDetails{ID: id, Quantizations: sortQuantizations(collectQuantizations(payload))}

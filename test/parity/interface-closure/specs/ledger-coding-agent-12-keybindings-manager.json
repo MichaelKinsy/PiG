@@ -1,0 +1,18 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#KeybindingsManager::property:reload"
+  ],
+  "targets": [
+   "internal/codingagent/keybindings.go#KeybindingsManager.Reload"
+  ],
+  "production": [
+   "call:internal/codingagent/keybindings.go#NewKeybindingsManager"
+  ],
+  "evidence": [
+   "test:internal/codingagent/keybindings_reload_upstream_test.go#TestKeybindingsManagerReloadMatchesUpstreamLoadFromFile",
+   "test:internal/codingagent/keybindings_test.go#TestKeybindingsManagerSaveRoundTrip"
+  ],
+  "rationale": "KeybindingsManager.reload is the Go method Reload (no return, as upstream's void: a missing, unreadable, unparsable or non-object keybindings.json yields no user bindings and a BOM is stripped, like loadRawConfig). Red: TestKeybindingsManagerReloadMatchesUpstreamLoadFromFile (Go returned the parse error and kept the stale bindings)."
+ }
+]

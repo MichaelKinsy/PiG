@@ -13,12 +13,12 @@ import (
 
 type navigateRecordingHandle struct {
 	*recordingCompactHandle
-	target    string
-	summarize bool
+	target  string
+	options NavigateTreeOptions
 }
 
-func (h *navigateRecordingHandle) NavigateTreeHandle(_ context.Context, target string, summarize bool, _ string) (NavigateTreeResult, error) {
-	h.target, h.summarize = target, summarize
+func (h *navigateRecordingHandle) NavigateTreeHandle(_ context.Context, target string, options NavigateTreeOptions) (NavigateTreeResult, error) {
+	h.target, h.options = target, options
 	return NavigateTreeResult{Cancelled: target == "cancel"}, nil
 }
 
@@ -27,11 +27,13 @@ func (h *navigateRecordingHandle) NavigateTreeHandle(_ context.Context, target s
 // the binding survives an extension reload's runner swap.
 func TestInteractiveExtensionNavigateTreeIsBound(t *testing.T) {
 	handle := &navigateRecordingHandle{recordingCompactHandle: &recordingCompactHandle{}}
-	m := &InteractiveMode{opts: InteractiveOptions{SessionHandle: handle}, newRunner: inproc.NewRunner(nil, t.TempDir())}
+	m := &InteractiveMode{opts: InteractiveModeOptions{SessionHandle: handle}, newRunner: inproc.NewRunner(nil, t.TempDir())}
 	m.wireInprocContextActions()
-	result, err := m.newRunner.CreateCommandContext().NavigateTree("entry-1", &extension.NavigateTreeOptions{Summarize: true})
-	if err != nil || result.Cancelled || handle.target != "entry-1" || !handle.summarize {
-		t.Fatalf("NavigateTree = %+v, %v; session got %q summarize=%v", result, err, handle.target, handle.summarize)
+	// interactive-mode.ts:2001-2007 passes summarize, customInstructions, replaceInstructions and label to session.navigateTree.
+	result, err := m.newRunner.CreateCommandContext().NavigateTree("entry-1", &extension.NavigateTreeOptions{Summarize: true, CustomInstructions: "focus", ReplaceInstructions: true, Label: "checkpoint"})
+	want := NavigateTreeOptions{Summarize: true, CustomInstructions: "focus", ReplaceInstructions: true, Label: "checkpoint"}
+	if err != nil || result.Cancelled || handle.target != "entry-1" || handle.options != want {
+		t.Fatalf("NavigateTree = %+v, %v; session got %q %+v, want %+v", result, err, handle.target, handle.options, want)
 	}
 	result, err = m.newRunner.CreateCommandContext().NavigateTree("cancel", nil)
 	if err != nil || !result.Cancelled {
@@ -45,7 +47,7 @@ type blockingNavigateInitiationHandle struct {
 	release chan struct{}
 }
 
-func (h *blockingNavigateInitiationHandle) NavigateTreeHandle(ctx context.Context, _ string, _ bool, _ string) (NavigateTreeResult, error) {
+func (h *blockingNavigateInitiationHandle) NavigateTreeHandle(ctx context.Context, _ string, _ NavigateTreeOptions) (NavigateTreeResult, error) {
 	h.entered.Store(true)
 	extension.CallInitiated(ctx)
 	<-h.release
@@ -58,7 +60,7 @@ func (h *blockingNavigateInitiationHandle) NavigateTreeHandle(ctx context.Contex
 // independent after admission.
 func TestInteractiveExtensionNavigateInitiationFollowsSessionAdmission(t *testing.T) {
 	handle := &blockingNavigateInitiationHandle{recordingCompactHandle: &recordingCompactHandle{}, release: make(chan struct{})}
-	m := &InteractiveMode{opts: InteractiveOptions{SessionHandle: handle}}
+	m := &InteractiveMode{opts: InteractiveModeOptions{SessionHandle: handle}}
 	initiated := make(chan struct{})
 	ctx := extension.WithCallInitiation(t.Context(), func() {
 		if !handle.entered.Load() {

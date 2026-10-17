@@ -1,5 +1,4 @@
 <!--
-SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 SPDX-FileCopyrightText: Copyright Contributor Covenant contributors
 SPDX-License-Identifier: CC-BY-4.0
 -->

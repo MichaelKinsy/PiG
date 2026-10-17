@@ -1,0 +1,1645 @@
+[
+ {
+  "upstream": "packages/durable/src/storage/memory.ts",
+  "package": "./durable/storage",
+  "tests": [
+   "TestBackendReadsAgreeWithMemory",
+   "TestMemoryStorageReadApiMirrorsPisStorageContract",
+   "TestRegisterStorageConformanceRegistersEveryCaseAndRunsThemAgainstTheProvidedStorage",
+   "TestStorageInterfaceReadContractThroughTheInterface"
+  ],
+  "upstream_reference": "packages/durable/src/storage/memory.ts",
+  "mutation": "durable/storage/memory.go: replace 'func (storage *MemoryStorage) MintId() (int64, error) {' with 'func (storage *MemoryStorage) MintId() (int64, error) {\\nreturn *new(int64), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestBackendReadsAgreeWithMemory, TestMemoryStorageReadApiMirrorsPisStorageContract, TestRegisterStorageConformanceRegistersEveryCaseAndRunsThemAgainstTheProvidedStorage, TestStorageInterfaceReadContractThroughTheInterface."
+ },
+ {
+  "upstream": "packages/durable/src/storage/memory.ts",
+  "package": "./durable/storage",
+  "tests": [
+   "TestBackendReadsAgreeWithMemory",
+   "TestRegisterStorageConformanceRegistersEveryCaseAndRunsThemAgainstTheProvidedStorage"
+  ],
+  "upstream_reference": "packages/durable/src/storage/memory.ts",
+  "mutation": "durable/storage/memory.go: replace 'func (storage *MemoryStorage) FindDocument(\\n\\t_ context.Context, address durable.DocumentAddress, at durable.DocumentPoint,\\n) (*durable.DocumentRecord, error) {' with 'func (storage *MemoryStorage) FindDocument(\\n\\t_ context.Context, address durable.DocumentAddress, at durable.DocumentPoint,\\n) (*durable.DocumentRecord, error) {\\nreturn *new(*durable.DocumentRecord), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestBackendReadsAgreeWithMemory, TestRegisterStorageConformanceRegistersEveryCaseAndRunsThemAgainstTheProvidedStorage."
+ },
+ {
+  "upstream": "packages/durable/src/storage/memory.ts",
+  "package": "./durable/storage",
+  "tests": [
+   "TestRegisterStorageConformanceRegistersEveryCaseAndRunsThemAgainstTheProvidedStorage"
+  ],
+  "upstream_reference": "packages/durable/src/storage/memory.ts",
+  "mutation": "durable/storage/memory.go: replace 'func (storage *MemoryStorage) Document(\\n\\t_ context.Context, id durable.DocumentId, at durable.DocumentPoint,\\n) (*durable.StoredDocument, error) {' with 'func (storage *MemoryStorage) Document(\\n\\t_ context.Context, id durable.DocumentId, at durable.DocumentPoint,\\n) (*durable.StoredDocument, error) {\\nreturn *new(*durable.StoredDocument), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestRegisterStorageConformanceRegistersEveryCaseAndRunsThemAgainstTheProvidedStorage."
+ },
+ {
+  "upstream": "packages/durable/src/storage/memory.ts",
+  "package": "./durable/storage",
+  "tests": [
+   "TestBackendReadsAgreeWithMemory",
+   "TestRegisterStorageConformanceRegistersEveryCaseAndRunsThemAgainstTheProvidedStorage"
+  ],
+  "upstream_reference": "packages/durable/src/storage/memory.ts",
+  "mutation": "durable/storage/memory.go: replace 'func (storage *MemoryStorage) FindLatestHeadMarker(\\n\\t_ context.Context, conversationId durable.ConversationId, atOrBeforeEntryId *durable.EntryId,\\n) (*durable.EntryRecord, error) {' with 'func (storage *MemoryStorage) FindLatestHeadMarker(\\n\\t_ context.Context, conversationId durable.ConversationId, atOrBeforeEntryId *durable.EntryId,\\n) (*durable.EntryRecord, error) {\\nreturn *new(*durable.EntryRecord), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestBackendReadsAgreeWithMemory, TestRegisterStorageConformanceRegistersEveryCaseAndRunsThemAgainstTheProvidedStorage."
+ },
+ {
+  "upstream": "packages/durable/src/storage/memory.ts",
+  "package": "./durable/storage",
+  "tests": [
+   "TestBackendReadsAgreeWithMemory"
+  ],
+  "upstream_reference": "packages/durable/src/storage/memory.ts",
+  "mutation": "durable/storage/memory.go: replace 'func (storage *MemoryStorage) PrepareCommit(writes []durable.StorageWrite) (*PreparedMemoryCommit, error) {' with 'func (storage *MemoryStorage) PrepareCommit(writes []durable.StorageWrite) (*PreparedMemoryCommit, error) {\\nreturn *new(*PreparedMemoryCommit), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestBackendReadsAgreeWithMemory."
+ },
+ {
+  "upstream": "packages/durable/src/storage/memory.ts",
+  "package": "./durable/storage",
+  "tests": [
+   "TestBackendReadsAgreeWithMemory",
+   "TestMemoryStorageReadApiMirrorsPisStorageContract",
+   "TestRegisterStorageConformanceRegistersEveryCaseAndRunsThemAgainstTheProvidedStorage"
+  ],
+  "upstream_reference": "packages/durable/src/storage/memory.ts",
+  "mutation": "durable/storage/memory.go: replace 'func (storage *MemoryStorage) ScanConversations(\\n\\t_ context.Context, query durable.ConversationQuery, limit int, cursor durable.Cursor,\\n) (durable.Page[durable.ConversationRecord, durable.Cursor], error) {' with 'func (storage *MemoryStorage) ScanConversations(\\n\\t_ context.Context, query durable.ConversationQuery, limit int, cursor durable.Cursor,\\n) (durable.Page[durable.ConversationRecord, durable.Cursor], error) {\\nreturn *new(durable.Page[durable.ConversationRecord, durable.Cursor]), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestBackendReadsAgreeWithMemory, TestMemoryStorageReadApiMirrorsPisStorageContract, TestRegisterStorageConformanceRegistersEveryCaseAndRunsThemAgainstTheProvidedStorage."
+ },
+ {
+  "upstream": "packages/durable/src/storage/memory.ts",
+  "package": "./durable/storage",
+  "tests": [
+   "TestBackendReadsAgreeWithMemory",
+   "TestMemoryStorageReadApiMirrorsPisStorageContract",
+   "TestRegisterStorageConformanceRegistersEveryCaseAndRunsThemAgainstTheProvidedStorage"
+  ],
+  "upstream_reference": "packages/durable/src/storage/memory.ts",
+  "mutation": "durable/storage/memory.go: replace 'func (storage *MemoryStorage) ScanSubmissions(\\n\\t_ context.Context, query durable.SubmissionQuery, limit int, cursor durable.Cursor,\\n) (durable.Page[durable.SubmissionRecord, durable.Cursor], error) {' with 'func (storage *MemoryStorage) ScanSubmissions(\\n\\t_ context.Context, query durable.SubmissionQuery, limit int, cursor durable.Cursor,\\n) (durable.Page[durable.SubmissionRecord, durable.Cursor], error) {\\nreturn *new(durable.Page[durable.SubmissionRecord, durable.Cursor]), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestBackendReadsAgreeWithMemory, TestMemoryStorageReadApiMirrorsPisStorageContract, TestRegisterStorageConformanceRegistersEveryCaseAndRunsThemAgainstTheProvidedStorage."
+ },
+ {
+  "upstream": "packages/durable/src/storage/memory.ts",
+  "package": "./durable/storage",
+  "tests": [
+   "TestBackendReadsAgreeWithMemory",
+   "TestMemoryStorageConformance",
+   "TestMemoryStorageReadApiMirrorsPisStorageContract",
+   "TestMemoryStorageReadsCommittedRecordsAndFailsAfterClose",
+   "TestRegisterStorageConformanceRegistersEveryCaseAndRunsThemAgainstTheProvidedStorage",
+   "TestStorageBenchmarkExpectations",
+   "TestStorageBenchmarkScenariosReturnWhatTheyExpectOnEveryBackend",
+   "TestStorageInterfaceReadContractThroughTheInterface",
+   "TestStorageReadContractAgainstSeededData"
+  ],
+  "upstream_reference": "packages/durable/src/storage/memory.ts",
+  "mutation": "durable/storage/memory.go: replace 'func (storage *MemoryStorage) ScanTasks(\\n\\t_ context.Context, query durable.TaskQuery, limit int, cursor durable.Cursor,\\n) (durable.Page[storedTask, durable.Cursor], error) {' with 'func (storage *MemoryStorage) ScanTasks(\\n\\t_ context.Context, query durable.TaskQuery, limit int, cursor durable.Cursor,\\n) (durable.Page[storedTask, durable.Cursor], error) {\\nreturn *new(durable.Page[storedTask, durable.Cursor]), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestBackendReadsAgreeWithMemory, TestMemoryStorageConformance, TestMemoryStorageReadApiMirrorsPisStorageContract, TestMemoryStorageReadsCommittedRecordsAndFailsAfterClose, TestRegisterStorageConformanceRegistersEveryCaseAndRunsThemAgainstTheProvidedStorage, TestStorageBenchmarkExpectations, TestStorageBenchmarkScenariosReturnWhatTheyExpectOnEveryBackend, TestStorageInterfaceReadContractThroughTheInterface, TestStorageReadContractAgainstSeededData."
+ },
+ {
+  "upstream": "packages/durable/src/storage/memory.ts",
+  "package": "./durable/storage",
+  "tests": [
+   "TestBackendReadsAgreeWithMemory",
+   "TestRegisterStorageConformanceRegistersEveryCaseAndRunsThemAgainstTheProvidedStorage"
+  ],
+  "upstream_reference": "packages/durable/src/storage/memory.ts",
+  "mutation": "durable/storage/memory.go: replace 'func (storage *MemoryStorage) Submission(\\n\\t_ context.Context, id durable.SubmissionId,\\n) (*durable.SubmissionRecord, error) {' with 'func (storage *MemoryStorage) Submission(\\n\\t_ context.Context, id durable.SubmissionId,\\n) (*durable.SubmissionRecord, error) {\\nreturn *new(*durable.SubmissionRecord), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestBackendReadsAgreeWithMemory, TestRegisterStorageConformanceRegistersEveryCaseAndRunsThemAgainstTheProvidedStorage."
+ },
+ {
+  "upstream": "packages/chord/src/json.ts",
+  "package": "./chord",
+  "tests": [
+   "TestCopyJSONDetachesSharedAliases"
+  ],
+  "upstream_reference": "packages/chord/src/json.ts",
+  "mutation": "chord/json.go: replace 'func CopyJSON(value any) (any, error) {' with 'func CopyJSON(value any) (any, error) {\\n\\treturn *new(any), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestCopyJSONDetachesSharedAliases."
+ },
+ {
+  "upstream": "packages/chord/src/context/index.ts",
+  "package": "./chord/context",
+  "tests": [
+   "TestContextLayersTypedValuesWithoutModifyingParents"
+  ],
+  "upstream_reference": "packages/chord/src/context/index.ts",
+  "mutation": "chord/context/chordctx.go: replace 'func NewKey[T any](description string) Key[T] {' with 'func NewKey[T any](description string) Key[T] {\\n\\treturn *new(Key[T])'; compiling go test -overlay -run exact test -count=1 fails TestContextLayersTypedValuesWithoutModifyingParents."
+ },
+ {
+  "upstream": "packages/chord/src/context/index.ts",
+  "package": "./chord/context",
+  "tests": [
+   "TestContextLayersTypedValuesWithoutModifyingParents"
+  ],
+  "upstream_reference": "packages/chord/src/context/index.ts",
+  "mutation": "chord/context/chordctx.go: replace 'func WithValue[T any](parent context.Context, key Key[T], value T) context.Context {' with 'func WithValue[T any](parent context.Context, key Key[T], value T) context.Context {\\n\\treturn *new(context.Context)'; compiling go test -overlay -run exact test -count=1 fails TestContextLayersTypedValuesWithoutModifyingParents."
+ },
+ {
+  "upstream": "packages/chord/src/context/index.ts",
+  "package": "./chord/context",
+  "tests": [
+   "TestContextMasksCallerCancellationForMandatoryCleanup"
+  ],
+  "upstream_reference": "packages/chord/src/context/index.ts",
+  "mutation": "chord/context/chordctx.go: replace 'func WithoutAbortSignal(parent context.Context) context.Context {' with 'func WithoutAbortSignal(parent context.Context) context.Context {\\n\\treturn *new(context.Context)'; compiling go test -overlay -run exact test -count=1 fails TestContextMasksCallerCancellationForMandatoryCleanup."
+ },
+ {
+  "upstream": "packages/chord/src/delta/index.ts",
+  "package": "./chord/delta",
+  "tests": [
+   "TestApplyResolvesArraySegmentsInUpstreamOrder"
+  ],
+  "upstream_reference": "packages/chord/src/delta/index.ts",
+  "mutation": "chord/delta/delta.go: replace 'func NewPathError(path any) *PathError {' with 'func NewPathError(path any) *PathError {\\n\\treturn *new(*PathError)'; compiling go test -overlay -run exact test -count=1 fails TestApplyResolvesArraySegmentsInUpstreamOrder."
+ },
+ {
+  "upstream": "packages/chord/src/delta/index.ts",
+  "package": "./chord/delta",
+  "tests": [
+   "TestApplyResolvesArraySegmentsInUpstreamOrder"
+  ],
+  "upstream_reference": "packages/chord/src/delta/index.ts",
+  "mutation": "chord/delta/delta.go: replace 'func NewUnsafePathError(segment any) *UnsafePathError {' with 'func NewUnsafePathError(segment any) *UnsafePathError {\\n\\treturn *new(*UnsafePathError)'; compiling go test -overlay -run exact test -count=1 fails TestApplyResolvesArraySegmentsInUpstreamOrder."
+ },
+ {
+  "upstream": "packages/chord/src/delta/index.ts",
+  "package": "./chord/delta",
+  "tests": [
+   "TestApplyImmutableBatchesRejectsInvalidAndUnsafeOperations",
+   "TestAssertValidWireOpAcceptsTheWireGrammarOnly",
+   "TestCheckedImmutableOperationApplication",
+   "TestDeltaCodec",
+   "TestDeltaMatchesPiOnRandomCases",
+   "TestDeltaOperationApplicationAndValidation",
+   "TestDeltaPathAndPrototypeSafety",
+   "TestPathErrorConstructorsAndTheApplierRaisingThem",
+   "TestPathErrorsCarryTheirPiNames",
+   "TestTheReleasedAPIKeepsWorking",
+   "TestUnsafePathErrorNameIsUnsafePathError"
+  ],
+  "upstream_reference": "packages/chord/src/delta/index.ts",
+  "mutation": "chord/delta/delta.go: replace 'func AssertSafePath(path Path) error {' with 'func AssertSafePath(path Path) error {\\n\\treturn *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestApplyImmutableBatchesRejectsInvalidAndUnsafeOperations, TestAssertValidWireOpAcceptsTheWireGrammarOnly, TestCheckedImmutableOperationApplication, TestDeltaCodec, TestDeltaMatchesPiOnRandomCases, TestDeltaOperationApplicationAndValidation, TestDeltaPathAndPrototypeSafety, TestPathErrorConstructorsAndTheApplierRaisingThem, TestPathErrorsCarryTheirPiNames, TestTheReleasedAPIKeepsWorking, TestUnsafePathErrorNameIsUnsafePathError."
+ },
+ {
+  "upstream": "packages/chord/src/delta/index.ts",
+  "package": "./chord/delta",
+  "tests": [
+   "TestIsBaseAndIsReplace",
+   "TestIsReplaceUpstream"
+  ],
+  "upstream_reference": "packages/chord/src/delta/index.ts",
+  "mutation": "chord/delta/delta.go: replace 'func IsReplace(op Op) bool {' with 'func IsReplace(op Op) bool {\\n\\treturn *new(bool)'; compiling go test -overlay -run exact test -count=1 fails TestIsBaseAndIsReplace, TestIsReplaceUpstream."
+ },
+ {
+  "upstream": "packages/chord/src/delta/index.ts",
+  "package": "./chord/delta",
+  "tests": [
+   "TestDeltaCanonicalStrings",
+   "TestDeltaDiff",
+   "TestDeltaMatchesPiOnRandomCases",
+   "TestOverlapIsExactAtUnitBoundaries",
+   "TestOverlapProbeAndCandidateLimits",
+   "TestStateDiff",
+   "TestTrackerStringOperationFormsAndArgumentSideEffects"
+  ],
+  "upstream_reference": "packages/chord/src/delta/index.ts",
+  "mutation": "chord/delta/overlap.go: replace 'func Overlap(a, b string, scan int, limits ...int) int {' with 'func Overlap(a, b string, scan int, limits ...int) int {\\n\\treturn *new(int)'; compiling go test -overlay -run exact test -count=1 fails TestDeltaCanonicalStrings, TestDeltaDiff, TestDeltaMatchesPiOnRandomCases, TestOverlapIsExactAtUnitBoundaries, TestOverlapProbeAndCandidateLimits, TestStateDiff, TestTrackerStringOperationFormsAndArgumentSideEffects."
+ },
+ {
+  "upstream": "packages/durable/src/storage/memory.ts",
+  "package": "./durable/storage",
+  "tests": [
+   "TestPrepareCommitAtAppliesAtTheGivenSequenceAndRejectsAStaleOne"
+  ],
+  "upstream_reference": "packages/durable/src/storage/memory.ts",
+  "mutation": "durable/storage/memory.go: replace 'func (storage *MemoryStorage) PrepareCommitAt(\\n\\twrites []durable.StorageWrite, seq durable.Seq,\\n) (*PreparedMemoryCommit, error) {' with 'func (storage *MemoryStorage) PrepareCommitAt(\\n\\twrites []durable.StorageWrite, seq durable.Seq,\\n) (*PreparedMemoryCommit, error) {\\n\\treturn *new(*PreparedMemoryCommit), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestPrepareCommitAtAppliesAtTheGivenSequenceAndRejectsAStaleOne."
+ },
+ {
+  "upstream": "packages/durable/src/entries.ts",
+  "package": "./durable",
+  "tests": [
+   "TestTaskEntryNarrowsToTheTokenKind"
+  ],
+  "upstream_reference": "packages/durable/src/entries.ts",
+  "mutation": "durable/entries.go: replace 'func TaskEntry[D, I, S, R, H any](ctx context.Context, runtime TaskRuntime[I, S, R, H], token Entry[D], id EntryId) (*TypedEntry[D], error) {' with 'func TaskEntry[D, I, S, R, H any](ctx context.Context, runtime TaskRuntime[I, S, R, H], token Entry[D], id EntryId) (*TypedEntry[D], error) {\\n\\treturn *new(*TypedEntry[D]), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestTaskEntryNarrowsToTheTokenKind."
+ },
+ {
+  "upstream": "packages/durable/src/session/session.ts",
+  "package": "./durable/session",
+  "tests": [
+   "TestAdmissionWaitingForCloseListenersDoesNotHoldTheLine"
+  ],
+  "upstream_reference": "packages/durable/src/session/session.ts",
+  "mutation": "durable/session/session.go: replace 'func CreateSession(storage durable.Storage, options ...CreateSessionOptions) *SessionImpl {' with 'func CreateSession(storage durable.Storage, options ...CreateSessionOptions) *SessionImpl {\\n\\treturn *new(*SessionImpl)'; compiling go test -overlay -run exact test -count=1 fails TestAdmissionWaitingForCloseListenersDoesNotHoldTheLine."
+ },
+ {
+  "upstream": "packages/durable/src/harness/define.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestDefineExtensionKeepsTheExtensionAndGivesEachCallItsOwnPointer"
+  ],
+  "upstream_reference": "packages/durable/src/harness/define.ts",
+  "mutation": "durable/harness/define.go: replace 'func DefineExtension(extension durable.Extension) *durable.Extension {' with 'func DefineExtension(extension durable.Extension) *durable.Extension {\\n\\treturn *new(*durable.Extension)'; compiling go test -overlay -run exact test -count=1 fails TestDefineExtensionKeepsTheExtensionAndGivesEachCallItsOwnPointer."
+ },
+ {
+  "upstream": "packages/durable/src/env/index.ts",
+  "package": "./durable/env",
+  "tests": [
+   "TestGetOrThrow"
+  ],
+  "upstream_reference": "packages/durable/src/env/index.ts",
+  "mutation": "durable/env/env.go: replace 'func Err[TValue, TError any](err TError) Result[TValue, TError] {' with 'func Err[TValue, TError any](err TError) Result[TValue, TError] {\\n\\treturn *new(Result[TValue, TError])'; compiling go test -overlay -run exact test -count=1 fails TestGetOrThrow."
+ },
+ {
+  "upstream": "packages/durable/src/env/index.ts",
+  "package": "./durable/env",
+  "tests": [
+   "TestGetOrThrow"
+  ],
+  "upstream_reference": "packages/durable/src/env/index.ts",
+  "mutation": "durable/env/env.go: replace 'func GetOrThrow[TValue any, TError error](result Result[TValue, TError]) (TValue, error) {' with 'func GetOrThrow[TValue any, TError error](result Result[TValue, TError]) (TValue, error) {\\n\\treturn *new(TValue), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestGetOrThrow."
+ },
+ {
+  "upstream": "packages/durable/src/env/index.ts",
+  "package": "./durable/env",
+  "tests": [
+   "TestGetOrUndefinedReturnsTheValueOfAnOkResultAndNilOfAFailure",
+   "TestGetOrUndefinedReturnsTheValueOnlyForSuccess",
+   "TestGetOrUndefinedReturnsTheValueOrNil"
+  ],
+  "upstream_reference": "packages/durable/src/env/index.ts",
+  "mutation": "durable/env/env.go: replace 'func GetOrUndefined[TValue, TError any](result Result[*TValue, TError]) *TValue {' with 'func GetOrUndefined[TValue, TError any](result Result[*TValue, TError]) *TValue {\\n\\treturn *new(*TValue)'; compiling go test -overlay -run exact test -count=1 fails TestGetOrUndefinedReturnsTheValueOfAnOkResultAndNilOfAFailure, TestGetOrUndefinedReturnsTheValueOnlyForSuccess, TestGetOrUndefinedReturnsTheValueOrNil."
+ },
+ {
+  "upstream": "packages/durable/src/env/index.ts",
+  "package": "./durable/env",
+  "tests": [
+   "TestGetOrThrow",
+   "TestGetOrUndefinedReturnsTheValueOfAnOkResultAndNilOfAFailure",
+   "TestGetOrUndefinedReturnsTheValueOnlyForSuccess",
+   "TestGetOrUndefinedReturnsTheValueOrNil"
+  ],
+  "upstream_reference": "packages/durable/src/env/index.ts",
+  "mutation": "durable/env/env.go: replace 'func Ok[TValue, TError any](value TValue) Result[TValue, TError] {' with 'func Ok[TValue, TError any](value TValue) Result[TValue, TError] {\\n\\treturn *new(Result[TValue, TError])'; compiling go test -overlay -run exact test -count=1 fails TestGetOrThrow, TestGetOrUndefinedReturnsTheValueOfAnOkResultAndNilOfAFailure, TestGetOrUndefinedReturnsTheValueOnlyForSuccess, TestGetOrUndefinedReturnsTheValueOrNil."
+ },
+ {
+  "upstream": "packages/durable/src/env/decode.ts",
+  "package": "./durable/env",
+  "tests": [
+   "TestRangeDecoderKeepsAByteOrderMark"
+  ],
+  "upstream_reference": "packages/durable/src/env/decode.ts",
+  "mutation": "durable/env/decode.go: replace 'func NewRangeDecoder() *RangeDecoder {' with 'func NewRangeDecoder() *RangeDecoder {\\n\\treturn *new(*RangeDecoder)'; compiling go test -overlay -run exact test -count=1 fails TestRangeDecoderKeepsAByteOrderMark."
+ },
+ {
+  "upstream": "packages/durable/src/env/index.ts",
+  "package": "./durable/env",
+  "tests": [
+   "TestToErrorMatchesJSONStringify"
+  ],
+  "upstream_reference": "packages/durable/src/env/index.ts",
+  "mutation": "durable/env/env.go: replace 'func ToError(value any) error {' with 'func ToError(value any) error {\\n\\treturn *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestToErrorMatchesJSONStringify."
+ },
+ {
+  "upstream": "packages/durable/src/env/node.ts",
+  "package": "./durable/env/node",
+  "tests": [
+   "TestFilesystemAppendsToNewFilesAndCreatesParentDirectories",
+   "TestFilesystemReadsWritesListsAndRemovesFilesAndDirectories",
+   "TestNodeExecutionEnvFileSystemCallsMirrorPi"
+  ],
+  "upstream_reference": "packages/durable/src/env/node.ts",
+  "mutation": "durable/env/node/node.go: replace 'func (env *NodeExecutionEnv) AppendFile(ctx context.Context, path string, content any) error {' with 'func (env *NodeExecutionEnv) AppendFile(ctx context.Context, path string, content any) error {\\n\\treturn *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestFilesystemAppendsToNewFilesAndCreatesParentDirectories, TestFilesystemReadsWritesListsAndRemovesFilesAndDirectories, TestNodeExecutionEnvFileSystemCallsMirrorPi."
+ },
+ {
+  "upstream": "packages/durable/src/env/node.ts",
+  "package": "./durable/env/node",
+  "tests": [
+   "TestFilesystemListsSymlinksAsSymlinks",
+   "TestFilesystemReadsWritesListsAndRemovesFilesAndDirectories",
+   "TestFilesystemReturnsAbortedResultsWithoutSideEffectsForPreAbortedFileOperations",
+   "TestFilesystemReturnsFileErrorForListingNonDirectories",
+   "TestNodeExecutionEnvFileSystemCallsMirrorPi"
+  ],
+  "upstream_reference": "packages/durable/src/env/node.ts",
+  "mutation": "durable/env/node/node.go: replace 'func (env *NodeExecutionEnv) ListDir(ctx context.Context, path string) ([]durableenv.FileInfo, error) {' with 'func (env *NodeExecutionEnv) ListDir(ctx context.Context, path string) ([]durableenv.FileInfo, error) {\\n\\treturn *new([]durableenv.FileInfo), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestFilesystemListsSymlinksAsSymlinks, TestFilesystemReadsWritesListsAndRemovesFilesAndDirectories, TestFilesystemReturnsAbortedResultsWithoutSideEffectsForPreAbortedFileOperations, TestFilesystemReturnsFileErrorForListingNonDirectories, TestNodeExecutionEnvFileSystemCallsMirrorPi."
+ },
+ {
+  "upstream": "packages/durable/src/env/node.ts",
+  "package": "./durable/env/node",
+  "tests": [
+   "TestFilesystemAppendsToNewFilesAndCreatesParentDirectories",
+   "TestFilesystemAtomicallyRenamesAFileAndReplacesTheDestination",
+   "TestFilesystemFlushesExistingFilesWithoutChangingContentAndReportsMissingPaths",
+   "TestFilesystemReadsWritesListsAndRemovesFilesAndDirectories",
+   "TestFilesystemRejectsInvalidTruncationSizesAndNeverCreatesMissingFiles",
+   "TestFilesystemReportsTheSourcePathWhenRenameFailsBecauseTheSourceIsMissing",
+   "TestFilesystemReturnsAbortedResultsWithoutSideEffectsForPreAbortedFileOperations",
+   "TestFilesystemTruncatesAndExtendsFilesToExactByteSizes",
+   "TestNodeExecutionEnvConformance",
+   "TestNodeExecutionEnvFileSystemCallsMirrorPi",
+   "TestShellPreservesCompleteLargeOutputInTheSpill",
+   "TestShellPreservesExactRawBytesInTheSpillWhileStreamingDecodedText",
+   "TestShellReportsTheSpillOfACommandThatTimesOut",
+   "TestSpillBackpressureKeepsInheritedStdioOpenPastTheExitGracePeriodWhileASpillWriteIsPending",
+   "TestTextLineReaderDropsAByteOrderMarkAtTheStartOfTheFileOnly"
+  ],
+  "upstream_reference": "packages/durable/src/env/node.ts",
+  "mutation": "durable/env/node/node.go: replace 'func (env *NodeExecutionEnv) ReadBinaryFile(ctx context.Context, path string) ([]byte, error) {' with 'func (env *NodeExecutionEnv) ReadBinaryFile(ctx context.Context, path string) ([]byte, error) {\\n\\treturn *new([]byte), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestFilesystemAppendsToNewFilesAndCreatesParentDirectories, TestFilesystemAtomicallyRenamesAFileAndReplacesTheDestination, TestFilesystemFlushesExistingFilesWithoutChangingContentAndReportsMissingPaths, TestFilesystemReadsWritesListsAndRemovesFilesAndDirectories, TestFilesystemRejectsInvalidTruncationSizesAndNeverCreatesMissingFiles, TestFilesystemReportsTheSourcePathWhenRenameFailsBecauseTheSourceIsMissing, TestFilesystemReturnsAbortedResultsWithoutSideEffectsForPreAbortedFileOperations, TestFilesystemTruncatesAndExtendsFilesToExactByteSizes, TestNodeExecutionEnvConformance, TestNodeExecutionEnvFileSystemCallsMirrorPi, TestShellPreservesCompleteLargeOutputInTheSpill, TestShellPreservesExactRawBytesInTheSpillWhileStreamingDecodedText, TestShellReportsTheSpillOfACommandThatTimesOut, TestSpillBackpressureKeepsInheritedStdioOpenPastTheExitGracePeriodWhileASpillWriteIsPending, TestTextLineReaderDropsAByteOrderMarkAtTheStartOfTheFileOnly."
+ },
+ {
+  "upstream": "packages/durable/src/env/node.ts",
+  "package": "./durable/env/node",
+  "tests": [
+   "TestFilesystemReadsWritesListsAndRemovesFilesAndDirectories",
+   "TestFilesystemReturnsAbortedResultsWithoutSideEffectsForPreAbortedFileOperations",
+   "TestFilesystemStopsReadingTextLinesAtTheRequestedLimit",
+   "TestNodeExecutionEnvFileSystemCallsMirrorPi",
+   "TestShellStreamsEveryLineAndSpillsThemAllOnceOutputCrossesItsLineThreshold"
+  ],
+  "upstream_reference": "packages/durable/src/env/node.ts",
+  "mutation": "durable/env/node/node.go: replace 'func (env *NodeExecutionEnv) ReadTextLines(ctx context.Context, path string, options *durableenv.ReadTextLinesOptions) ([]string, error) {' with 'func (env *NodeExecutionEnv) ReadTextLines(ctx context.Context, path string, options *durableenv.ReadTextLinesOptions) ([]string, error) {\\n\\treturn *new([]string), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestFilesystemReadsWritesListsAndRemovesFilesAndDirectories, TestFilesystemReturnsAbortedResultsWithoutSideEffectsForPreAbortedFileOperations, TestFilesystemStopsReadingTextLinesAtTheRequestedLimit, TestNodeExecutionEnvFileSystemCallsMirrorPi, TestShellStreamsEveryLineAndSpillsThemAllOnceOutputCrossesItsLineThreshold."
+ },
+ {
+  "upstream": "packages/durable/src/env/node.ts",
+  "package": "./durable/env/node",
+  "tests": [
+   "TestNodeExecutionEnvConformance",
+   "TestNodeExecutionEnvWatchLimits"
+  ],
+  "upstream_reference": "packages/durable/src/env/node.ts",
+  "mutation": "durable/env/node/node.go: replace 'func (env *NodeExecutionEnv) Remove(ctx context.Context, path string, options *durableenv.RemoveOptions) error {' with 'func (env *NodeExecutionEnv) Remove(ctx context.Context, path string, options *durableenv.RemoveOptions) error {\\n\\treturn *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestNodeExecutionEnvConformance, TestNodeExecutionEnvWatchLimits."
+ },
+ {
+  "upstream": "packages/durable/src/env/node.ts",
+  "package": "./durable/env/node",
+  "tests": [
+   "TestFilesystemRejectsInvalidTruncationSizesAndNeverCreatesMissingFiles",
+   "TestFilesystemReturnsAbortedResultsWithoutSideEffectsForPreAbortedFileOperations",
+   "TestFilesystemTruncatesAndExtendsFilesToExactByteSizes",
+   "TestNodeExecutionEnvFileSystemCallsMirrorPi"
+  ],
+  "upstream_reference": "packages/durable/src/env/node.ts",
+  "mutation": "durable/env/node/node.go: replace 'func (env *NodeExecutionEnv) TruncateFile(ctx context.Context, path string, size int64) error {' with 'func (env *NodeExecutionEnv) TruncateFile(ctx context.Context, path string, size int64) error {\\n\\treturn *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestFilesystemRejectsInvalidTruncationSizesAndNeverCreatesMissingFiles, TestFilesystemReturnsAbortedResultsWithoutSideEffectsForPreAbortedFileOperations, TestFilesystemTruncatesAndExtendsFilesToExactByteSizes, TestNodeExecutionEnvFileSystemCallsMirrorPi."
+ },
+ {
+  "upstream": "packages/durable/src/storage/jsonl/storage.ts",
+  "package": "./durable/storage/jsonl",
+  "tests": [
+   "TestNewCorruptionKeepsMessageAndCause"
+  ],
+  "upstream_reference": "packages/durable/src/storage/jsonl/storage.ts",
+  "mutation": "durable/storage/jsonl/storage.go: replace 'func NewJsonlCorruptionError(message string, cause error) *JsonlCorruptionError {' with 'func NewJsonlCorruptionError(message string, cause error) *JsonlCorruptionError {\\n\\treturn *new(*JsonlCorruptionError)'; compiling go test -overlay -run exact test -count=1 fails TestNewCorruptionKeepsMessageAndCause."
+ },
+ {
+  "upstream": "packages/durable/src/storage/jsonl/storage.ts",
+  "package": "./durable/storage/jsonl",
+  "tests": [
+   "TestJsonlStorageConformance",
+   "TestJsonlStorageReadApiMirrorsPisStorageContract",
+   "TestJsonlStorageVisibleEntryFollowsConversationAncestry"
+  ],
+  "upstream_reference": "packages/durable/src/storage/jsonl/storage.ts",
+  "mutation": "durable/storage/jsonl/storage.go: replace 'func (jsonl *JsonlStorage) VisibleEntry(\\n\\tctx context.Context, conversationId durable.ConversationId, id durable.EntryId,\\n) (*durable.EntryAt, error) {' with 'func (jsonl *JsonlStorage) VisibleEntry(\\n\\tctx context.Context, conversationId durable.ConversationId, id durable.EntryId,\\n) (*durable.EntryAt, error) {\\n\\treturn *new(*durable.EntryAt), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestJsonlStorageConformance, TestJsonlStorageReadApiMirrorsPisStorageContract, TestJsonlStorageVisibleEntryFollowsConversationAncestry."
+ },
+ {
+  "upstream": "packages/durable/src/storage/jsonl/storage.ts",
+  "package": "./durable/storage/jsonl",
+  "tests": [
+   "TestJsonlStorageConformance",
+   "TestJsonlStorageDirectReadMembers",
+   "TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose"
+  ],
+  "upstream_reference": "packages/durable/src/storage/jsonl/storage.ts",
+  "mutation": "durable/storage/jsonl/storage.go: replace 'func (jsonl *JsonlStorage) FindLatestHeadMarker(\\n\\tctx context.Context, conversationId durable.ConversationId, atOrBeforeEntryId *durable.EntryId,\\n) (*durable.EntryRecord, error) {' with 'func (jsonl *JsonlStorage) FindLatestHeadMarker(\\n\\tctx context.Context, conversationId durable.ConversationId, atOrBeforeEntryId *durable.EntryId,\\n) (*durable.EntryRecord, error) {\\n\\treturn *new(*durable.EntryRecord), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestJsonlStorageConformance, TestJsonlStorageDirectReadMembers, TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose."
+ },
+ {
+  "upstream": "packages/durable/src/storage/jsonl/storage.ts",
+  "package": "./durable/storage/jsonl",
+  "tests": [
+   "TestJsonlStorageConformance",
+   "TestJsonlStorageDirectReadMembers",
+   "TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose",
+   "TestJsonlStorageVisibleEntryFollowsConversationAncestry",
+   "TestPicoJsonlStoragePublicationAndRecovery"
+  ],
+  "upstream_reference": "packages/durable/src/storage/jsonl/storage.ts",
+  "mutation": "durable/storage/jsonl/storage.go: replace 'func (jsonl *JsonlStorage) MintId() (int64, error) {' with 'func (jsonl *JsonlStorage) MintId() (int64, error) {\\n\\treturn *new(int64), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestJsonlStorageConformance, TestJsonlStorageDirectReadMembers, TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose, TestJsonlStorageVisibleEntryFollowsConversationAncestry, TestPicoJsonlStoragePublicationAndRecovery."
+ },
+ {
+  "upstream": "packages/durable/src/storage/jsonl/storage.ts",
+  "package": "./durable/storage/jsonl",
+  "tests": [
+   "TestJsonlStorageConformance",
+   "TestJsonlStorageDirectReadMembers",
+   "TestJsonlStorageReadApiMirrorsPisStorageContract",
+   "TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose"
+  ],
+  "upstream_reference": "packages/durable/src/storage/jsonl/storage.ts",
+  "mutation": "durable/storage/jsonl/storage.go: replace 'func (jsonl *JsonlStorage) ScanConversations(\\n\\tctx context.Context, query durable.ConversationQuery, limit int, cursor durable.Cursor,\\n) (durable.Page[durable.ConversationRecord, durable.Cursor], error) {' with 'func (jsonl *JsonlStorage) ScanConversations(\\n\\tctx context.Context, query durable.ConversationQuery, limit int, cursor durable.Cursor,\\n) (durable.Page[durable.ConversationRecord, durable.Cursor], error) {\\n\\treturn *new(durable.Page[durable.ConversationRecord, durable.Cursor]), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestJsonlStorageConformance, TestJsonlStorageDirectReadMembers, TestJsonlStorageReadApiMirrorsPisStorageContract, TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose."
+ },
+ {
+  "upstream": "packages/durable/src/storage/jsonl/storage.ts",
+  "package": "./durable/storage/jsonl",
+  "tests": [
+   "TestJsonlStorageConformance",
+   "TestJsonlStorageDirectReadMembers",
+   "TestJsonlStorageReadApiMirrorsPisStorageContract",
+   "TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose"
+  ],
+  "upstream_reference": "packages/durable/src/storage/jsonl/storage.ts",
+  "mutation": "durable/storage/jsonl/storage.go: replace 'func (jsonl *JsonlStorage) ScanDocuments(\\n\\tctx context.Context, query durable.DocumentQuery, limit int, cursor durable.Cursor,\\n) (durable.Page[durable.DocumentRecord, durable.Cursor], error) {' with 'func (jsonl *JsonlStorage) ScanDocuments(\\n\\tctx context.Context, query durable.DocumentQuery, limit int, cursor durable.Cursor,\\n) (durable.Page[durable.DocumentRecord, durable.Cursor], error) {\\n\\treturn *new(durable.Page[durable.DocumentRecord, durable.Cursor]), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestJsonlStorageConformance, TestJsonlStorageDirectReadMembers, TestJsonlStorageReadApiMirrorsPisStorageContract, TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose."
+ },
+ {
+  "upstream": "packages/durable/src/storage/jsonl/storage.ts",
+  "package": "./durable/storage/jsonl",
+  "tests": [
+   "TestJsonlStorageConformance",
+   "TestJsonlStorageDirectReadMembers",
+   "TestJsonlStorageReadApiMirrorsPisStorageContract",
+   "TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose"
+  ],
+  "upstream_reference": "packages/durable/src/storage/jsonl/storage.ts",
+  "mutation": "durable/storage/jsonl/storage.go: replace 'func (jsonl *JsonlStorage) ScanEntries(\\n\\tctx context.Context, query durable.EntryQuery, limit int, cursor durable.Cursor,\\n) (durable.Page[durable.EntryRecord, durable.Cursor], error) {' with 'func (jsonl *JsonlStorage) ScanEntries(\\n\\tctx context.Context, query durable.EntryQuery, limit int, cursor durable.Cursor,\\n) (durable.Page[durable.EntryRecord, durable.Cursor], error) {\\n\\treturn *new(durable.Page[durable.EntryRecord, durable.Cursor]), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestJsonlStorageConformance, TestJsonlStorageDirectReadMembers, TestJsonlStorageReadApiMirrorsPisStorageContract, TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose."
+ },
+ {
+  "upstream": "packages/durable/src/storage/jsonl/storage.ts",
+  "package": "./durable/storage/jsonl",
+  "tests": [
+   "TestJsonlStorageConformance",
+   "TestJsonlStorageDirectReadMembers",
+   "TestJsonlStorageReadApiMirrorsPisStorageContract",
+   "TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose"
+  ],
+  "upstream_reference": "packages/durable/src/storage/jsonl/storage.ts",
+  "mutation": "durable/storage/jsonl/storage.go: replace 'func (jsonl *JsonlStorage) ScanSubmissions(\\n\\tctx context.Context, query durable.SubmissionQuery, limit int, cursor durable.Cursor,\\n) (durable.Page[durable.SubmissionRecord, durable.Cursor], error) {' with 'func (jsonl *JsonlStorage) ScanSubmissions(\\n\\tctx context.Context, query durable.SubmissionQuery, limit int, cursor durable.Cursor,\\n) (durable.Page[durable.SubmissionRecord, durable.Cursor], error) {\\n\\treturn *new(durable.Page[durable.SubmissionRecord, durable.Cursor]), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestJsonlStorageConformance, TestJsonlStorageDirectReadMembers, TestJsonlStorageReadApiMirrorsPisStorageContract, TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose."
+ },
+ {
+  "upstream": "packages/durable/src/storage/jsonl/storage.ts",
+  "package": "./durable/storage/jsonl",
+  "tests": [
+   "TestJsonlStorageConformance",
+   "TestJsonlStorageDirectReadMembers",
+   "TestJsonlStorageReadApiMirrorsPisStorageContract",
+   "TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose"
+  ],
+  "upstream_reference": "packages/durable/src/storage/jsonl/storage.ts",
+  "mutation": "durable/storage/jsonl/storage.go: replace 'func (jsonl *JsonlStorage) ScanTasks(\\n\\tctx context.Context, query durable.TaskQuery, limit int, cursor durable.Cursor,\\n) (durable.Page[storedTask, durable.Cursor], error) {' with 'func (jsonl *JsonlStorage) ScanTasks(\\n\\tctx context.Context, query durable.TaskQuery, limit int, cursor durable.Cursor,\\n) (durable.Page[storedTask, durable.Cursor], error) {\\n\\treturn *new(durable.Page[storedTask, durable.Cursor]), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestJsonlStorageConformance, TestJsonlStorageDirectReadMembers, TestJsonlStorageReadApiMirrorsPisStorageContract, TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose."
+ },
+ {
+  "upstream": "packages/durable/src/storage/jsonl/storage.ts",
+  "package": "./durable/storage/jsonl",
+  "tests": [
+   "TestJsonlStorageConformance",
+   "TestJsonlStorageDirectReadMembers",
+   "TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose"
+  ],
+  "upstream_reference": "packages/durable/src/storage/jsonl/storage.ts",
+  "mutation": "durable/storage/jsonl/storage.go: replace 'func (jsonl *JsonlStorage) Submission(ctx context.Context, id durable.SubmissionId) (*durable.SubmissionRecord, error) {' with 'func (jsonl *JsonlStorage) Submission(ctx context.Context, id durable.SubmissionId) (*durable.SubmissionRecord, error) {\\n\\treturn *new(*durable.SubmissionRecord), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestJsonlStorageConformance, TestJsonlStorageDirectReadMembers, TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose."
+ },
+ {
+  "upstream": "packages/durable/src/storage/jsonl/storage.ts",
+  "package": "./durable/storage/jsonl",
+  "tests": [
+   "TestJsonlStorageConformance",
+   "TestJsonlStorageDirectReadMembers",
+   "TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose"
+  ],
+  "upstream_reference": "packages/durable/src/storage/jsonl/storage.ts",
+  "mutation": "durable/storage/jsonl/storage.go: replace 'func (jsonl *JsonlStorage) SubmissionByRequest(\\n\\tctx context.Context, conversationId durable.ConversationId, requestId string,\\n) (*durable.SubmissionRecord, error) {' with 'func (jsonl *JsonlStorage) SubmissionByRequest(\\n\\tctx context.Context, conversationId durable.ConversationId, requestId string,\\n) (*durable.SubmissionRecord, error) {\\n\\treturn *new(*durable.SubmissionRecord), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestJsonlStorageConformance, TestJsonlStorageDirectReadMembers, TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose."
+ },
+ {
+  "upstream": "packages/durable/src/storage/jsonl/storage.ts",
+  "package": "./durable/storage/jsonl",
+  "tests": [
+   "TestJsonlStoragePoisonedErrorKeepsItsCauseAndName"
+  ],
+  "upstream_reference": "packages/durable/src/storage/jsonl/storage.ts",
+  "mutation": "durable/storage/jsonl/storage.go: replace 'func NewJsonlStoragePoisonedError(cause error) *JsonlStoragePoisonedError {' with 'func NewJsonlStoragePoisonedError(cause error) *JsonlStoragePoisonedError {\\n\\treturn *new(*JsonlStoragePoisonedError)'; compiling go test -overlay -run exact test -count=1 fails TestJsonlStoragePoisonedErrorKeepsItsCauseAndName."
+ },
+ {
+  "upstream": "packages/durable/src/storage/memory.ts",
+  "package": "./durable/storage",
+  "tests": [
+   "TestBackendReadsAgreeWithMemory",
+   "TestMemoryStorageDoesNotExposeRetainedStateThroughAPreparedCommit",
+   "TestPrepareCommitAtAppliesAtTheGivenSequenceAndRejectsAStaleOne",
+   "TestPrepareCommitChangesNothingUntilApplied",
+   "TestPreparedMemoryCommitSeqIsTheApplySequence",
+   "TestStorageBenchmarkExpectations",
+   "TestStorageBenchmarkScenariosReturnWhatTheyExpectOnEveryBackend",
+   "TestStorageReadContractAgainstSeededData"
+  ],
+  "upstream_reference": "packages/durable/src/storage/memory.ts",
+  "mutation": "durable/storage/memory.go: replace 'func (prepared *PreparedMemoryCommit) Apply() durable.Seq {' with 'func (prepared *PreparedMemoryCommit) Apply() durable.Seq {\\n\\treturn *new(durable.Seq)'; compiling go test -overlay -run exact test -count=1 fails TestBackendReadsAgreeWithMemory, TestMemoryStorageDoesNotExposeRetainedStateThroughAPreparedCommit, TestPrepareCommitAtAppliesAtTheGivenSequenceAndRejectsAStaleOne, TestPrepareCommitChangesNothingUntilApplied, TestPreparedMemoryCommitSeqIsTheApplySequence, TestStorageBenchmarkExpectations, TestStorageBenchmarkScenariosReturnWhatTheyExpectOnEveryBackend, TestStorageReadContractAgainstSeededData."
+ },
+ {
+  "upstream": "packages/durable/src/storage/sqlite/storage.ts",
+  "package": "./durable/storage/sqlite",
+  "tests": [
+   "TestSqliteStorageConformance",
+   "TestSqliteStorageLookupsAndScansReadCommittedRecords",
+   "TestSqliteStorageReadApiMirrorsPisStorageContract"
+  ],
+  "upstream_reference": "packages/durable/src/storage/sqlite/storage.ts",
+  "mutation": "durable/storage/sqlite/storage.go: replace 'func (storage *SqliteStorage) FindDocument(\\n\\t_ context.Context, address durable.DocumentAddress, at durable.DocumentPoint,\\n) (*durable.DocumentRecord, error) {' with 'func (storage *SqliteStorage) FindDocument(\\n\\t_ context.Context, address durable.DocumentAddress, at durable.DocumentPoint,\\n) (*durable.DocumentRecord, error) {\\n\\treturn *new(*durable.DocumentRecord), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestSqliteStorageConformance, TestSqliteStorageLookupsAndScansReadCommittedRecords, TestSqliteStorageReadApiMirrorsPisStorageContract."
+ },
+ {
+  "upstream": "packages/durable/src/storage/sqlite/storage.ts",
+  "package": "./durable/storage/sqlite",
+  "tests": [
+   "TestSqliteStorageReadApiMirrorsPisStorageContract"
+  ],
+  "upstream_reference": "packages/durable/src/storage/sqlite/storage.ts",
+  "mutation": "durable/storage/sqlite/storage.go: replace 'func (storage *SqliteStorage) Task(_ context.Context, id durable.TaskId) (*storedTask, error) {' with 'func (storage *SqliteStorage) Task(_ context.Context, id durable.TaskId) (*storedTask, error) {\\n\\treturn *new(*storedTask), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestSqliteStorageReadApiMirrorsPisStorageContract."
+ },
+ {
+  "upstream": "packages/chord/src/sqlite/node.ts",
+  "package": "./chord/sqlite/node",
+  "tests": [
+   "TestSqliteDatabaseContractRollsBackAFailedTransactionAndClosesIdempotently"
+  ],
+  "upstream_reference": "packages/durable/src/storage/sqlite/node.ts",
+  "mutation": "durable/storage/sqlite/node/node.go: replace 'func NewNodeSqliteDatabase(database *DatabaseSync) *NodeSqliteDatabase {' with 'func NewNodeSqliteDatabase(database *DatabaseSync) *NodeSqliteDatabase {\\n\\treturn *new(*NodeSqliteDatabase)'; compiling go test -overlay -run exact test -count=1 fails TestSqliteDatabaseContractRollsBackAFailedTransactionAndClosesIdempotently."
+ },
+ {
+  "upstream": "packages/durable/src/testing/env-conformance.ts",
+  "package": "./durable/durabletest",
+  "tests": [
+   "TestCreateEnvConformanceCasesMatchUpstream",
+   "TestRegisterEnvConformanceOptionsReachTheCases"
+  ],
+  "upstream_reference": "packages/durable/src/testing/env-conformance.ts",
+  "mutation": "durable/durabletest/env_conformance.go: replace 'func CreateEnvConformance(options EnvConformanceOptions) []EnvConformanceCase {' with 'func CreateEnvConformance(options EnvConformanceOptions) []EnvConformanceCase {\\n\\treturn *new([]EnvConformanceCase)'; compiling go test -overlay -run exact test -count=1 fails TestCreateEnvConformanceCasesMatchUpstream, TestRegisterEnvConformanceOptionsReachTheCases."
+ },
+ {
+  "upstream": "packages/env/src/connection.ts",
+  "package": "./env",
+  "tests": [
+   "TestConnectionRequestSendsPayloadsAndReportsTheAnsweringSession",
+   "TestRemoteExecutionEnvAgainstNodeExecutionEnv",
+   "TestRemoteExecutionEnvCreateTempDirAndRemove",
+   "TestRemoteExecutionEnvCreateTempDirUsesThePrefixUnderTheRemoteTmpdir",
+   "TestRemoteExecutionEnvCreateTempFileUsesATmpDirectoryAndTheOptionsNames",
+   "TestRemoteExecutionEnvDirectOperations",
+   "TestRemoteExecutionEnvOverAPipeConformance",
+   "TestRemoteExecutionEnvRemoveHonoursRecursiveAndForce",
+   "TestRemoteExecutionEnvShellEnvReachesInheritingCommands",
+   "TestRemoteExecutionEnvShellPathRunsStringCommands",
+   "TestReplyCarriesTheFramePayloadOfAPread",
+   "TestRequestOptionsSessionRejectsAStaleSession"
+  ],
+  "upstream_reference": "packages/env/src/connection.ts",
+  "mutation": "env/connection.go: replace 'func (c *Connection) Request(ctx context.Context, op string, request Json, options RequestOptions) (Reply, error) {' with 'func (c *Connection) Request(ctx context.Context, op string, request Json, options RequestOptions) (Reply, error) {\\n\\treturn *new(Reply), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestConnectionRequestSendsPayloadsAndReportsTheAnsweringSession, TestRemoteExecutionEnvAgainstNodeExecutionEnv, TestRemoteExecutionEnvCreateTempDirAndRemove, TestRemoteExecutionEnvCreateTempDirUsesThePrefixUnderTheRemoteTmpdir, TestRemoteExecutionEnvCreateTempFileUsesATmpDirectoryAndTheOptionsNames, TestRemoteExecutionEnvDirectOperations, TestRemoteExecutionEnvOverAPipeConformance, TestRemoteExecutionEnvRemoveHonoursRecursiveAndForce, TestRemoteExecutionEnvShellEnvReachesInheritingCommands, TestRemoteExecutionEnvShellPathRunsStringCommands, TestReplyCarriesTheFramePayloadOfAPread, TestRequestOptionsSessionRejectsAStaleSession."
+ },
+ {
+  "upstream": "packages/env/src/connection.ts",
+  "package": "./env",
+  "tests": [
+   "TestConnectionRequestSendsPayloadsAndReportsTheAnsweringSession",
+   "TestRequestOptionsSessionRejectsAStaleSession"
+  ],
+  "upstream_reference": "packages/env/src/connection.ts",
+  "mutation": "env/connection.go: replace 'func (c *Connection) Session(ctx context.Context) (int, error) {' with 'func (c *Connection) Session(ctx context.Context) (int, error) {\\n\\treturn *new(int), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestConnectionRequestSendsPayloadsAndReportsTheAnsweringSession, TestRequestOptionsSessionRejectsAStaleSession."
+ },
+ {
+  "upstream": "packages/env/src/ssh.ts",
+  "package": "./env",
+  "tests": [
+   "TestAcceptHostKeyStoresTheLineTrimmedLikeJavaScript"
+  ],
+  "upstream_reference": "packages/env/src/ssh.ts",
+  "mutation": "env/ssh.go: replace 'func AcceptHostKey(target SshTarget, lines []string) error {' with 'func AcceptHostKey(target SshTarget, lines []string) error {\\n\\treturn *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestAcceptHostKeyStoresTheLineTrimmedLikeJavaScript."
+ },
+ {
+  "upstream": "packages/env/src/ssh.ts",
+  "package": "./env",
+  "tests": [
+   "TestConnectSshReportsPlatformWarningsThroughOnLog",
+   "TestConnectSshUsesASetEmptyBinary"
+  ],
+  "upstream_reference": "packages/env/src/ssh.ts",
+  "mutation": "env/ssh.go: replace 'func ConnectSsh(ctx context.Context, options SshConnectOptions) (*Connection, RemotePlatform, error) {' with 'func ConnectSsh(ctx context.Context, options SshConnectOptions) (*Connection, RemotePlatform, error) {\\n\\treturn *new(*Connection), *new(RemotePlatform), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestConnectSshReportsPlatformWarningsThroughOnLog, TestConnectSshUsesASetEmptyBinary."
+ },
+ {
+  "upstream": "packages/env/src/ssh.ts",
+  "package": "./env",
+  "tests": [
+   "TestAcceptHostKeyKeepsAKnownHostsFileItCannotRead",
+   "TestSSHBootstrap"
+  ],
+  "upstream_reference": "packages/env/src/ssh.ts",
+  "mutation": "env/ssh.go: replace 'func ForgetHostKey(target SshTarget) error {' with 'func ForgetHostKey(target SshTarget) error {\\n\\treturn *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestAcceptHostKeyKeepsAKnownHostsFileItCannotRead, TestSSHBootstrap."
+ },
+ {
+  "upstream": "packages/env/src/ssh.ts",
+  "package": "./env",
+  "tests": [
+   "TestPackagedDaemonLocation"
+  ],
+  "upstream_reference": "packages/env/src/ssh.ts",
+  "mutation": "env/ssh.go: replace 'func PackagedDaemon(remote RemotePlatform) string {' with 'func PackagedDaemon(remote RemotePlatform) string {\\n\\treturn *new(string)'; compiling go test -overlay -run exact test -count=1 fails TestPackagedDaemonLocation."
+ },
+ {
+  "upstream": "packages/env/src/ssh.ts",
+  "package": "./env",
+  "tests": [
+   "TestSSHBootstrap"
+  ],
+  "upstream_reference": "packages/env/src/ssh.ts",
+  "mutation": "env/ssh.go: replace 'func ScanHostKey(ctx context.Context, target SshTarget) (lines, fingerprints []string, err error) {' with 'func ScanHostKey(ctx context.Context, target SshTarget) (lines, fingerprints []string, err error) {\\n\\treturn *new(lines), *new([]string), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestSSHBootstrap."
+ },
+ {
+  "upstream": "packages/mcp/src/protocol/jsonrpc.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestErrorClassesCarryUpstreamNamesMessagesAndFields"
+  ],
+  "upstream_reference": "packages/mcp/src/protocol/jsonrpc.ts",
+  "mutation": "mcp/jsonrpc.go: replace 'func NewMcpAbortError(message string) *McpAbortError {' with 'func NewMcpAbortError(message string) *McpAbortError {\\n\\treturn *new(*McpAbortError)'; compiling go test -overlay -run exact test -count=1 fails TestErrorClassesCarryUpstreamNamesMessagesAndFields."
+ },
+ {
+  "upstream": "packages/mcp/src/transports/streamable-http.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestErrorClassesCarryUpstreamNamesMessagesAndFields"
+  ],
+  "upstream_reference": "packages/mcp/src/transports/streamable-http.ts",
+  "mutation": "mcp/streamable_http.go: replace 'func NewMcpAuthRequiredError(response *http.Response, body string) *McpAuthRequiredError {' with 'func NewMcpAuthRequiredError(response *http.Response, body string) *McpAuthRequiredError {\\n\\treturn *new(*McpAuthRequiredError)'; compiling go test -overlay -run exact test -count=1 fails TestErrorClassesCarryUpstreamNamesMessagesAndFields."
+ },
+ {
+  "upstream": "packages/mcp/src/client.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientKeepsTheEntriesOfResourceListsAndReadsAsTheServerSentThem"
+  ],
+  "upstream_reference": "packages/mcp/src/client.ts",
+  "mutation": "mcp/client.go: replace 'func (c *Client) ListResourceTemplates(ctx context.Context, options RequestOptions) ([]ResourceTemplate, error) {' with 'func (c *Client) ListResourceTemplates(ctx context.Context, options RequestOptions) ([]ResourceTemplate, error) {\\n\\treturn *new([]ResourceTemplate), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestClientKeepsTheEntriesOfResourceListsAndReadsAsTheServerSentThem."
+ },
+ {
+  "upstream": "packages/mcp/src/client.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientKeepsTheEntriesOfResourceListsAndReadsAsTheServerSentThem"
+  ],
+  "upstream_reference": "packages/mcp/src/client.ts",
+  "mutation": "mcp/client.go: replace 'func (c *Client) ListResources(ctx context.Context, options RequestOptions) ([]Resource, error) {' with 'func (c *Client) ListResources(ctx context.Context, options RequestOptions) ([]Resource, error) {\\n\\treturn *new([]Resource), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestClientKeepsTheEntriesOfResourceListsAndReadsAsTheServerSentThem."
+ },
+ {
+  "upstream": "packages/mcp/src/client.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientNotifySendsANotificationWithoutAnIDAndFailsWhenNotConnected"
+  ],
+  "upstream_reference": "packages/mcp/src/client.ts",
+  "mutation": "mcp/client.go: replace 'func (c *Client) Notify(method string, params any) error {' with 'func (c *Client) Notify(method string, params any) error {\\n\\treturn *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestClientNotifySendsANotificationWithoutAnIDAndFailsWhenNotConnected."
+ },
+ {
+  "upstream": "packages/mcp/src/client.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientPingSendsAPingRequestAndSurfacesAServerError"
+  ],
+  "upstream_reference": "packages/mcp/src/client.ts",
+  "mutation": "mcp/client.go: replace 'func (c *Client) Ping(ctx context.Context, options RequestOptions) error {' with 'func (c *Client) Ping(ctx context.Context, options RequestOptions) error {\\n\\treturn *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestClientPingSendsAPingRequestAndSurfacesAServerError."
+ },
+ {
+  "upstream": "packages/mcp/src/client.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientSetRequestHandlerAnswersServerRequestsUntilDisposed",
+   "TestClientSetRequestHandlerDisposeKeepsAHandlerThatReplacedIt"
+  ],
+  "upstream_reference": "packages/mcp/src/client.ts",
+  "mutation": "mcp/client.go: replace 'func (c *Client) SetRequestHandler(method string, handler RequestHandler) (dispose func()) {' with 'func (c *Client) SetRequestHandler(method string, handler RequestHandler) (dispose func()) {\\n\\treturn *new(func())'; compiling go test -overlay -run exact test -count=1 fails TestClientSetRequestHandlerAnswersServerRequestsUntilDisposed, TestClientSetRequestHandlerDisposeKeepsAHandlerThatReplacedIt."
+ },
+ {
+  "upstream": "packages/mcp/src/protocol/jsonrpc.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientNotifiesCloseListenersOnceWhenTheTransportDrops"
+  ],
+  "upstream_reference": "packages/mcp/src/protocol/jsonrpc.ts",
+  "mutation": "mcp/jsonrpc.go: replace 'func NewMcpConnectionClosedError(message string) *McpConnectionClosedError {' with 'func NewMcpConnectionClosedError(message string) *McpConnectionClosedError {\\n\\treturn *new(*McpConnectionClosedError)'; compiling go test -overlay -run exact test -count=1 fails TestClientNotifiesCloseListenersOnceWhenTheTransportDrops."
+ },
+ {
+  "upstream": "packages/mcp/src/protocol/jsonrpc.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestParseJSONRPCMessageRaisesInvalidRequest"
+  ],
+  "upstream_reference": "packages/mcp/src/protocol/jsonrpc.ts",
+  "mutation": "mcp/jsonrpc.go: replace 'func NewMcpError(code int, message string, data json.RawMessage) *McpError {' with 'func NewMcpError(code int, message string, data json.RawMessage) *McpError {\\n\\treturn *new(*McpError)'; compiling go test -overlay -run exact test -count=1 fails TestParseJSONRPCMessageRaisesInvalidRequest."
+ },
+ {
+  "upstream": "packages/mcp/src/transports/streamable-http.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestErrorClassesCarryUpstreamNamesMessagesAndFields"
+  ],
+  "upstream_reference": "packages/mcp/src/transports/streamable-http.ts",
+  "mutation": "mcp/streamable_http.go: replace 'func NewMcpHttpError(status int, message string, body string) *McpHttpError {' with 'func NewMcpHttpError(status int, message string, body string) *McpHttpError {\\n\\treturn *new(*McpHttpError)'; compiling go test -overlay -run exact test -count=1 fails TestErrorClassesCarryUpstreamNamesMessagesAndFields."
+ },
+ {
+  "upstream": "packages/mcp/src/protocol/jsonrpc.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestErrorClassesCarryUpstreamNamesMessagesAndFields"
+  ],
+  "upstream_reference": "packages/mcp/src/protocol/jsonrpc.ts",
+  "mutation": "mcp/jsonrpc.go: replace 'func NewMcpTimeoutError(timeoutMs int) *McpTimeoutError {' with 'func NewMcpTimeoutError(timeoutMs int) *McpTimeoutError {\\n\\treturn *new(*McpTimeoutError)'; compiling go test -overlay -run exact test -count=1 fails TestErrorClassesCarryUpstreamNamesMessagesAndFields."
+ },
+ {
+  "upstream": "packages/mcp/src/protocol/content.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestCallToolResultKeepsBlocksWithMissingOrIllTypedMembers",
+   "TestClientCallToolResolvesResultsWithIllTypedBlockMembers",
+   "TestClientPassesLenientToolResultBlocksThroughLikePi",
+   "TestToLLMContentFallsBackToTheStructuredContentAsJSONWhenThereAreNoBlocks",
+   "TestToLLMContentPassesTextAndImagesThroughAndReplacesOtherBlocksWithText",
+   "TestToLLMContentReadsServerBlocksAsJavaScript"
+  ],
+  "upstream_reference": "packages/mcp/src/protocol/content.ts",
+  "mutation": "mcp/content.go: replace 'func ToLLMContent(result CallToolResult) []LLMContent {' with 'func ToLLMContent(result CallToolResult) []LLMContent {\\n\\treturn *new([]LLMContent)'; compiling go test -overlay -run exact test -count=1 fails TestCallToolResultKeepsBlocksWithMissingOrIllTypedMembers, TestClientCallToolResolvesResultsWithIllTypedBlockMembers, TestClientPassesLenientToolResultBlocksThroughLikePi, TestToLLMContentFallsBackToTheStructuredContentAsJSONWhenThereAreNoBlocks, TestToLLMContentPassesTextAndImagesThroughAndReplacesOtherBlocksWithText, TestToLLMContentReadsServerBlocksAsJavaScript."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/provider.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL",
+   "TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate",
+   "TestMcpOAuthProviderCodeVerifierRoundTripsAndFailsWhenNoneIsStored",
+   "TestMcpOAuthProviderDiscoveryStateRoundTrips",
+   "TestMcpOAuthProviderInvalidateCredentialsDropsOnlyTheNamedState",
+   "TestMcpOAuthProviderInvalidatesOnlyTheNamedCredentialKind",
+   "TestMcpOAuthProviderStateIsStableRandomHexUntilAllCredentialsAreInvalidated",
+   "TestMemoryOAuthStateStoreLoadsNothingUntilASaveAndCopiesBothWays",
+   "TestSaveTokensKeepsExpiresInAsJavaScriptArithmetic"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/provider.ts",
+  "mutation": "mcp/oauth/provider.go: replace 'func (m *MemoryOAuthStateStore) Save(_ context.Context, state McpOAuthState) error {' with 'func (m *MemoryOAuthStateStore) Save(_ context.Context, state McpOAuthState) error {\\n\\treturn *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL, TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate, TestMcpOAuthProviderCodeVerifierRoundTripsAndFailsWhenNoneIsStored, TestMcpOAuthProviderDiscoveryStateRoundTrips, TestMcpOAuthProviderInvalidateCredentialsDropsOnlyTheNamedState, TestMcpOAuthProviderInvalidatesOnlyTheNamedCredentialKind, TestMcpOAuthProviderStateIsStableRandomHexUntilAllCredentialsAreInvalidated, TestMemoryOAuthStateStoreLoadsNothingUntilASaveAndCopiesBothWays, TestSaveTokensKeepsExpiresInAsJavaScriptArithmetic."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/errors.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestNewOAuthErrorUpstream"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/errors.ts",
+  "mutation": "mcp/oauth/errors.go: replace 'func NewOAuthError(code, message string, errorURI ...string) *OAuthError {' with 'func NewOAuthError(code, message string, errorURI ...string) *OAuthError {\\n\\treturn *new(*OAuthError)'; compiling go test -overlay -run exact test -count=1 fails TestNewOAuthErrorUpstream."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/errors.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestOAuthErrorConstructorsMatchErrorsTs"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/errors.ts",
+  "mutation": "mcp/oauth/errors.go: replace 'func NewOAuthInsecureEndpointError(endpoint string) *OAuthInsecureEndpointError {' with 'func NewOAuthInsecureEndpointError(endpoint string) *OAuthInsecureEndpointError {\\n\\treturn *new(*OAuthInsecureEndpointError)'; compiling go test -overlay -run exact test -count=1 fails TestOAuthErrorConstructorsMatchErrorsTs."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/errors.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestAuthorizeMcpChecksAPresentEmptyIssAndSkipsAnEmptyAdvertisedScope"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/errors.ts",
+  "mutation": "mcp/oauth/errors.go: replace 'func NewOAuthIssuerMismatchError(expected string, received *string) *OAuthIssuerMismatchError {' with 'func NewOAuthIssuerMismatchError(expected string, received *string) *OAuthIssuerMismatchError {\\n\\treturn *new(*OAuthIssuerMismatchError)'; compiling go test -overlay -run exact test -count=1 fails TestAuthorizeMcpChecksAPresentEmptyIssAndSkipsAnEmptyAdvertisedScope."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/errors.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestOAuthRegistrationErrorCarriesStatusBodyAndName"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/errors.ts",
+  "mutation": "mcp/oauth/errors.go: replace 'func NewOAuthRegistrationError(status int, body string) *OAuthRegistrationError {' with 'func NewOAuthRegistrationError(status int, body string) *OAuthRegistrationError {\\n\\treturn *new(*OAuthRegistrationError)'; compiling go test -overlay -run exact test -count=1 fails TestOAuthRegistrationErrorCarriesStatusBodyAndName."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/discovery.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestAuthorizeMcpChecksAPresentEmptyIssAndSkipsAnEmptyAdvertisedScope"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/discovery.ts",
+  "mutation": "mcp/oauth/discovery.go: replace 'func DiscoverOAuthServerInfo(ctx context.Context, serverURL string, options DiscoveryOptions) (*OAuthServerInfo, error) {' with 'func DiscoverOAuthServerInfo(ctx context.Context, serverURL string, options DiscoveryOptions) (*OAuthServerInfo, error) {\\n\\treturn *new(*OAuthServerInfo), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestAuthorizeMcpChecksAPresentEmptyIssAndSkipsAnEmptyAdvertisedScope."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/discovery.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect",
+   "TestDiscoverOAuthServerInfoFollowsTheFirstAuthorizationServerOfTheResourceMetadata",
+   "TestDiscoverProtectedResourceMetadataTriesThePathAwareURLThenTheRoot",
+   "TestDiscoverProtectedResourceMetadataUsesAnExplicitURLWithoutFallingBack",
+   "TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401",
+   "TestMCPOAuthUsesAConfiguredAuthorizationServerMetadataDocumentAsIs"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/discovery.ts",
+  "mutation": "mcp/oauth/discovery.go: replace 'func DiscoverProtectedResourceMetadata(ctx context.Context, serverURL string, options DiscoveryOptions) (*OAuthProtectedResourceMetadata, error) {' with 'func DiscoverProtectedResourceMetadata(ctx context.Context, serverURL string, options DiscoveryOptions) (*OAuthProtectedResourceMetadata, error) {\\n\\treturn *new(*OAuthProtectedResourceMetadata), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect, TestDiscoverOAuthServerInfoFollowsTheFirstAuthorizationServerOfTheResourceMetadata, TestDiscoverProtectedResourceMetadataTriesThePathAwareURLThenTheRoot, TestDiscoverProtectedResourceMetadataUsesAnExplicitURLWithoutFallingBack, TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401, TestMCPOAuthUsesAConfiguredAuthorizationServerMetadataDocumentAsIs."
+ },
+ {
+  "upstream": "packages/durable/src/session/session.ts",
+  "package": "./durable/session",
+  "tests": [
+   "TestDocumentDefinitions",
+   "TestSessionHistoricalDocumentSnapshots"
+  ],
+  "upstream_reference": "packages/durable/src/session/session.ts",
+  "mutation": "durable/session/session.go: replace 'func (session *SessionImpl) SnapshotAsOfErased(ctx context.Context, token durable.AnyDocToken, at durable.EntryId, args ...any) (durable.JsonObject, error) {' with 'func (session *SessionImpl) SnapshotAsOfErased(ctx context.Context, token durable.AnyDocToken, at durable.EntryId, args ...any) (durable.JsonObject, error) {\\n\\treturn *new(durable.JsonObject), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestDocumentDefinitions, TestSessionHistoricalDocumentSnapshots."
+ },
+ {
+  "upstream": "packages/durable/src/harness/scheduler.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestHookApiMemoReadsDurableMemoOfTheHookTask",
+   "TestTaskAbort",
+   "TestTaskPhases",
+   "TestTaskRuntime",
+   "TestToolExecutionApi",
+   "TestToolExecutionApiMemoReadsAbsentThenTheFirstCandidateWins",
+   "TestToolExecutionApiMemoReadsTheDurableMemoOfTheToolTask"
+  ],
+  "upstream_reference": "packages/durable/src/harness/scheduler.ts",
+  "mutation": "durable/harness/scheduler.go: replace 'func (runtime *taskRuntime) Memo(ctx context.Context, name string) (durable.JsonValue, bool, error) {' with 'func (runtime *taskRuntime) Memo(ctx context.Context, name string) (durable.JsonValue, bool, error) {\\n\\treturn *new(durable.JsonValue), *new(bool), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestHookApiMemoReadsDurableMemoOfTheHookTask, TestTaskAbort, TestTaskPhases, TestTaskRuntime, TestToolExecutionApi, TestToolExecutionApiMemoReadsAbsentThenTheFirstCandidateWins, TestToolExecutionApiMemoReadsTheDurableMemoOfTheToolTask."
+ },
+ {
+  "upstream": "packages/durable/src/harness/scheduler.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestTaskRuntime"
+  ],
+  "upstream_reference": "packages/durable/src/harness/scheduler.ts",
+  "mutation": "durable/harness/scheduler.go: replace 'func (runtime *taskRuntime) SnapshotAsOfErased(ctx context.Context, token durable.AnyDocToken, at durable.EntryId, args ...any) (durable.JsonObject, error) {' with 'func (runtime *taskRuntime) SnapshotAsOfErased(ctx context.Context, token durable.AnyDocToken, at durable.EntryId, args ...any) (durable.JsonObject, error) {\\n\\treturn *new(durable.JsonObject), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestTaskRuntime."
+ },
+ {
+  "upstream": "packages/durable/src/harness/tool.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestToolExecutionApi",
+   "TestToolExecutionApiMemoReadsAbsentThenTheFirstCandidateWins",
+   "TestToolExecutionApiMemoReadsTheDurableMemoOfTheToolTask"
+  ],
+  "upstream_reference": "packages/durable/src/harness/tool.ts",
+  "mutation": "durable/harness/tool.go: replace 'func (api *toolApi) Memo(ctx context.Context, name string) (durable.JsonValue, bool, error) {' with 'func (api *toolApi) Memo(ctx context.Context, name string) (durable.JsonValue, bool, error) {\\n\\treturn *new(durable.JsonValue), *new(bool), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestToolExecutionApi, TestToolExecutionApiMemoReadsAbsentThenTheFirstCandidateWins, TestToolExecutionApiMemoReadsTheDurableMemoOfTheToolTask."
+ },
+ {
+  "upstream": "packages/durable/src/testing/assertions.ts",
+  "package": "./durable/durabletest",
+  "tests": [
+   "TestStorageConformanceAssertionsPassAndFail"
+  ],
+  "upstream_reference": "packages/durable/src/testing/assertions.ts",
+  "mutation": "durable/durabletest/durabletest.go: replace 'func (assertions testingAssertions) GreaterThan(actual, expected float64) {' with 'func (assertions testingAssertions) GreaterThan(actual, expected float64) {\\n\\treturn'; compiling go test -overlay -run exact test -count=1 fails TestStorageConformanceAssertionsPassAndFail."
+ },
+ {
+  "upstream": "packages/durable/src/session/transaction.ts",
+  "package": "./durable/session",
+  "tests": [
+   "TestSessionTransactionLatestHeadMarkerSubmissionByRequestAndPlaceSubmission"
+  ],
+  "upstream_reference": "packages/durable/src/session/transaction.ts",
+  "mutation": "durable/session/transaction.go: replace 'func (tx *Transaction) LatestHeadMarker(conversationId durable.ConversationId) (*durable.EntryRecord, error) {' with 'func (tx *Transaction) LatestHeadMarker(conversationId durable.ConversationId) (*durable.EntryRecord, error) {\\n\\treturn *new(*durable.EntryRecord), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestSessionTransactionLatestHeadMarkerSubmissionByRequestAndPlaceSubmission."
+ },
+ {
+  "upstream": "packages/durable/src/session/transaction.ts",
+  "package": "./durable/session",
+  "tests": [
+   "TestSessionTransactionLatestHeadMarkerSubmissionByRequestAndPlaceSubmission"
+  ],
+  "upstream_reference": "packages/durable/src/session/transaction.ts",
+  "mutation": "durable/session/transaction.go: replace 'func (tx *Transaction) SubmissionByRequest(conversationId durable.ConversationId, requestId string) (*durable.SubmissionRecord, error) {' with 'func (tx *Transaction) SubmissionByRequest(conversationId durable.ConversationId, requestId string) (*durable.SubmissionRecord, error) {\\n\\treturn *new(*durable.SubmissionRecord), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestSessionTransactionLatestHeadMarkerSubmissionByRequestAndPlaceSubmission."
+ },
+ {
+  "upstream": "packages/durable/src/session/transaction.ts",
+  "package": "./durable/session",
+  "tests": [
+   "TestSessionTransactionLatestHeadMarkerSubmissionByRequestAndPlaceSubmission"
+  ],
+  "upstream_reference": "packages/durable/src/session/transaction.ts",
+  "mutation": "durable/session/transaction.go: replace 'func (tx *Transaction) PlaceSubmission(id durable.SubmissionId, entry durable.EntryId) error {' with 'func (tx *Transaction) PlaceSubmission(id durable.SubmissionId, entry durable.EntryId) error {\\n\\treturn *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestSessionTransactionLatestHeadMarkerSubmissionByRequestAndPlaceSubmission."
+ },
+ {
+  "upstream": "packages/durable/src/harness/tool.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestAgentEvents",
+   "TestLiveDeltas"
+  ],
+  "upstream_reference": "packages/durable/src/harness/tool.ts",
+  "mutation": "durable/harness/tool.go: replace 'func (api *toolApi) Output(chunk any, skipped ...env.ShellOutputSkip) {' with 'func (api *toolApi) Output(chunk any, skipped ...env.ShellOutputSkip) {\\n\\treturn'; compiling go test -overlay -run exact test -count=1 fails TestAgentEvents, TestLiveDeltas."
+ },
+ {
+  "upstream": "packages/durable/src/harness/tool.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestToolExecutionApi",
+   "TestToolExecutionApiGetTask"
+  ],
+  "upstream_reference": "packages/durable/src/harness/tool.ts",
+  "mutation": "durable/harness/tool.go: replace 'func (api *toolApi) GetTask(ctx context.Context, id durable.TaskId) (*durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue], error) {' with 'func (api *toolApi) GetTask(ctx context.Context, id durable.TaskId) (*durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue], error) {\\n\\treturn *new(*durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue]), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestToolExecutionApi, TestToolExecutionApiGetTask."
+ },
+ {
+  "upstream": "packages/durable/src/harness/scheduler.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestToolExecutionApi",
+   "TestToolExecutionApiGetTask"
+  ],
+  "upstream_reference": "packages/durable/src/harness/scheduler.ts",
+  "mutation": "durable/harness/scheduler.go: replace 'func (runtime *taskRuntime) GetTask(ctx context.Context, id durable.TaskId) (*anyTaskRecord, error) {' with 'func (runtime *taskRuntime) GetTask(ctx context.Context, id durable.TaskId) (*anyTaskRecord, error) {\\n\\treturn *new(*anyTaskRecord), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestToolExecutionApi, TestToolExecutionApiGetTask."
+ },
+ {
+  "upstream": "packages/durable/src/harness/harness.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestManualCompactionConcurrency"
+  ],
+  "upstream_reference": "packages/durable/src/harness/harness.ts",
+  "mutation": "durable/harness/harness.go: replace 'func (harness *harnessImpl) GetTask(ctx context.Context, id durable.TaskId) (*durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue], error) {' with 'func (harness *harnessImpl) GetTask(ctx context.Context, id durable.TaskId) (*durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue], error) {\\n\\treturn *new(*durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue]), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestManualCompactionConcurrency."
+ },
+ {
+  "upstream": "packages/mcp/src/client.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientEndsPaginationAtANullOrEmptyCursor"
+  ],
+  "upstream_reference": "packages/mcp/src/client.ts",
+  "mutation": "mcp/client.go: replace 'func (c *Client) ListResourcesPage(ctx context.Context, cursor *string, options RequestOptions) (*ListResourcesResult, error) {' with 'func (c *Client) ListResourcesPage(ctx context.Context, cursor *string, options RequestOptions) (*ListResourcesResult, error) {\\n\\treturn *new(*ListResourcesResult), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestClientEndsPaginationAtANullOrEmptyCursor."
+ },
+ {
+  "upstream": "packages/mcp/src/client.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientListResourceTemplatesPageSendsTheCursorAndReturnsOnePage"
+  ],
+  "upstream_reference": "packages/mcp/src/client.ts",
+  "mutation": "mcp/client.go: replace 'func (c *Client) ListResourceTemplatesPage(ctx context.Context, cursor *string, options RequestOptions) (*ListResourceTemplatesResult, error) {' with 'func (c *Client) ListResourceTemplatesPage(ctx context.Context, cursor *string, options RequestOptions) (*ListResourceTemplatesResult, error) {\\n\\treturn *new(*ListResourceTemplatesResult), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestClientListResourceTemplatesPageSendsTheCursorAndReturnsOnePage."
+ },
+ {
+  "upstream": "packages/mcp/src/protocol/jsonrpc.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestJSONRPCGuardsAnswerLikeUpstreamForUnknownValues"
+  ],
+  "upstream_reference": "packages/mcp/src/protocol/jsonrpc.ts",
+  "mutation": "mcp/jsonrpc_notification.go: replace 'func IsJSONRPCRequest(message any) bool {' with 'func IsJSONRPCRequest(message any) bool {\\n\\treturn *new(bool)'; compiling go test -overlay -run exact test -count=1 fails TestJSONRPCGuardsAnswerLikeUpstreamForUnknownValues."
+ },
+ {
+  "upstream": "packages/mcp/src/protocol/jsonrpc.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientAnswersRootsListAndDispatchesNotifications",
+   "TestClientRenewsTheTimeoutOnProgress",
+   "TestIsJSONRPCNotification",
+   "TestJSONRPCGuardsAnswerLikeUpstreamForUnknownValues",
+   "TestProgressTokenRoutesNotificationsToTheRequestThatCarriesIt"
+  ],
+  "upstream_reference": "packages/mcp/src/protocol/jsonrpc.ts",
+  "mutation": "mcp/jsonrpc_notification.go: replace 'func IsJSONRPCNotification(message any) bool {' with 'func IsJSONRPCNotification(message any) bool {\\n\\treturn *new(bool)'; compiling go test -overlay -run exact test -count=1 fails TestClientAnswersRootsListAndDispatchesNotifications, TestClientRenewsTheTimeoutOnProgress, TestIsJSONRPCNotification, TestJSONRPCGuardsAnswerLikeUpstreamForUnknownValues, TestProgressTokenRoutesNotificationsToTheRequestThatCarriesIt."
+ },
+ {
+  "upstream": "packages/mcp/src/protocol/jsonrpc.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestJSONRPCGuardsAnswerLikeUpstreamForUnknownValues"
+  ],
+  "upstream_reference": "packages/mcp/src/protocol/jsonrpc.ts",
+  "mutation": "mcp/jsonrpc_notification.go: replace 'func IsJSONRPCResponse(message any) bool {' with 'func IsJSONRPCResponse(message any) bool {\\n\\treturn *new(bool)'; compiling go test -overlay -run exact test -count=1 fails TestJSONRPCGuardsAnswerLikeUpstreamForUnknownValues."
+ },
+ {
+  "upstream": "packages/durable/src/env/line-scan.ts",
+  "package": "./durable/env",
+  "tests": [
+   "TestLineScanner"
+  ],
+  "upstream_reference": "packages/durable/src/env/line-scan.ts",
+  "mutation": "durable/env/line_scan.go: replace 'func (scanner *LineScanner) Push(chunk []byte) {' with 'func (scanner *LineScanner) Push(chunk []byte) {\\n\\treturn'; compiling go test -overlay -run exact test -count=1 fails TestLineScanner."
+ },
+ {
+  "upstream": "packages/durable/src/env/line-scan.ts",
+  "package": "./durable/env",
+  "tests": [
+   "TestLineScanner"
+  ],
+  "upstream_reference": "packages/durable/src/env/line-scan.ts",
+  "mutation": "durable/env/line_scan.go: replace 'func (scanner *LineScanner) Finish() LineScan {' with 'func (scanner *LineScanner) Finish() LineScan {\\n\\treturn *new(LineScan)'; compiling go test -overlay -run exact test -count=1 fails TestLineScanner."
+ },
+ {
+  "upstream": "packages/durable/src/env/decode.ts",
+  "package": "./durable/env",
+  "tests": [
+   "TestStreamDecoder",
+   "TestStreamDecoderDropsAByteOrderMarkOnlyAtTheStartOfTheStream",
+   "TestStreamDecoderHoldsAnIncompleteCharacterUntilItsRemainingBytesArrive",
+   "TestStreamDecoderMatchesPi"
+  ],
+  "upstream_reference": "packages/durable/src/env/decode.ts",
+  "mutation": "durable/env/decode.go: replace 'func (decoder *StreamDecoder) Decode(chunk []byte) string {' with 'func (decoder *StreamDecoder) Decode(chunk []byte) string {\\n\\treturn *new(string)'; compiling go test -overlay -run exact test -count=1 fails TestStreamDecoder, TestStreamDecoderDropsAByteOrderMarkOnlyAtTheStartOfTheStream, TestStreamDecoderHoldsAnIncompleteCharacterUntilItsRemainingBytesArrive, TestStreamDecoderMatchesPi."
+ },
+ {
+  "upstream": "packages/durable/src/env/decode.ts",
+  "package": "./durable/env",
+  "tests": [
+   "TestStreamDecoder",
+   "TestStreamDecoderHoldsAnIncompleteCharacterUntilItsRemainingBytesArrive",
+   "TestStreamDecoderMatchesPi"
+  ],
+  "upstream_reference": "packages/durable/src/env/decode.ts",
+  "mutation": "durable/env/decode.go: replace 'func (decoder *StreamDecoder) End() string {' with 'func (decoder *StreamDecoder) End() string {\\n\\treturn *new(string)'; compiling go test -overlay -run exact test -count=1 fails TestStreamDecoder, TestStreamDecoderHoldsAnIncompleteCharacterUntilItsRemainingBytesArrive, TestStreamDecoderMatchesPi."
+ },
+ {
+  "upstream": "packages/durable/src/storage/jsonl/storage.ts",
+  "package": "./durable/storage/jsonl",
+  "tests": [
+   "TestJsonlCorruptionErrorKeepsItsMessageNameAndCause",
+   "TestJsonlCorruptionErrorUpstream",
+   "TestJsonlStorageRejectsSameCommitSidecarRecordsOutOfOrdinalOrder",
+   "TestNewCorruptionKeepsMessageAndCause",
+   "TestPicoJsonlStoragePublicationAndRecovery"
+  ],
+  "upstream_reference": "packages/durable/src/storage/jsonl/storage.ts",
+  "mutation": "durable/storage/jsonl/storage.go: replace 'func (e *JsonlCorruptionError) Error() string {' with 'func (e *JsonlCorruptionError) Error() string {\\n\\treturn *new(string)'; compiling go test -overlay -run exact test -count=1 fails TestJsonlCorruptionErrorKeepsItsMessageNameAndCause, TestJsonlCorruptionErrorUpstream, TestJsonlStorageRejectsSameCommitSidecarRecordsOutOfOrdinalOrder, TestNewCorruptionKeepsMessageAndCause, TestPicoJsonlStoragePublicationAndRecovery."
+ },
+ {
+  "upstream": "packages/durable/src/storage/jsonl/storage.ts",
+  "package": "./durable/storage/jsonl",
+  "tests": [
+   "TestJsonlCorruptionErrorKeepsItsMessageNameAndCause",
+   "TestJsonlCorruptionErrorUpstream",
+   "TestNewCorruptionKeepsMessageAndCause"
+  ],
+  "upstream_reference": "packages/durable/src/storage/jsonl/storage.ts",
+  "mutation": "durable/storage/jsonl/storage.go: replace 'func (e *JsonlCorruptionError) Unwrap() error {' with 'func (e *JsonlCorruptionError) Unwrap() error {\\n\\treturn *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestJsonlCorruptionErrorKeepsItsMessageNameAndCause, TestJsonlCorruptionErrorUpstream, TestNewCorruptionKeepsMessageAndCause."
+ },
+ {
+  "upstream": "packages/durable/src/storage/jsonl/storage.ts",
+  "package": "./durable/storage/jsonl",
+  "tests": [
+   "TestJsonlStorageConformance",
+   "TestJsonlStorageDirectReadMembers",
+   "TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose",
+   "TestJsonlStorageVisibleEntryFollowsConversationAncestry"
+  ],
+  "upstream_reference": "packages/durable/src/storage/jsonl/storage.ts",
+  "mutation": "durable/storage/jsonl/storage.go: replace 'func (jsonl *JsonlStorage) Commit(ctx context.Context, writes []durable.StorageWrite) (durable.Seq, error) {' with 'func (jsonl *JsonlStorage) Commit(ctx context.Context, writes []durable.StorageWrite) (durable.Seq, error) {\\n\\treturn *new(durable.Seq), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestJsonlStorageConformance, TestJsonlStorageDirectReadMembers, TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose, TestJsonlStorageVisibleEntryFollowsConversationAncestry."
+ },
+ {
+  "upstream": "packages/env/src/remote-env.ts",
+  "package": "./env",
+  "tests": [
+   "TestRemoteExecutionEnv",
+   "TestRemoteExecutionEnvAgainstNodeExecutionEnv",
+   "TestRemoteExecutionEnvDirectOperations",
+   "TestRemoteExecutionEnvOverAPipeConformance",
+   "TestRemoteExecutionEnvTruncateFileRejectsUnsafeSizes",
+   "TestSSHBootstrap"
+  ],
+  "upstream_reference": "packages/env/src/remote-env.ts",
+  "mutation": "env/remote_env.go: replace 'func (e *RemoteExecutionEnv) ReadTextFile(ctx context.Context, path string) (string, error) {' with 'func (e *RemoteExecutionEnv) ReadTextFile(ctx context.Context, path string) (string, error) {\\n\\treturn *new(string), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestRemoteExecutionEnv, TestRemoteExecutionEnvAgainstNodeExecutionEnv, TestRemoteExecutionEnvDirectOperations, TestRemoteExecutionEnvOverAPipeConformance, TestRemoteExecutionEnvTruncateFileRejectsUnsafeSizes, TestSSHBootstrap."
+ },
+ {
+  "upstream": "packages/env/src/remote-env.ts",
+  "package": "./env",
+  "tests": [
+   "TestRemoteExecutionEnv",
+   "TestRemoteExecutionEnvAgainstNodeExecutionEnv"
+  ],
+  "upstream_reference": "packages/env/src/remote-env.ts",
+  "mutation": "env/remote_env.go: replace 'func (e *RemoteExecutionEnv) ReadBinaryFile(ctx context.Context, path string) ([]byte, error) {' with 'func (e *RemoteExecutionEnv) ReadBinaryFile(ctx context.Context, path string) ([]byte, error) {\\n\\treturn *new([]byte), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestRemoteExecutionEnv, TestRemoteExecutionEnvAgainstNodeExecutionEnv."
+ },
+ {
+  "upstream": "packages/env/src/watch.ts",
+  "package": "./env",
+  "tests": [
+   "TestRemoteExecutionEnvOverAPipeConformance",
+   "TestRemoteWatcherOpensAgainAfterALostConnectionAndReportsOverflow"
+  ],
+  "upstream_reference": "packages/env/src/watch.ts",
+  "mutation": "env/watch.go: replace 'func (w *RemoteWatcher) Close(context.Context) error {' with 'func (w *RemoteWatcher) Close(context.Context) error {\\n\\treturn *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestRemoteExecutionEnvOverAPipeConformance, TestRemoteWatcherOpensAgainAfterALostConnectionAndReportsOverflow."
+ },
+ {
+  "upstream": "packages/mcp/src/protocol/jsonrpc.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestErrorClassesCarryUpstreamNamesMessagesAndFields"
+  ],
+  "upstream_reference": "packages/mcp/src/protocol/jsonrpc.ts",
+  "mutation": "mcp/jsonrpc.go: replace 'func (e *McpAbortError) Error() string {' with 'func (e *McpAbortError) Error() string {\\n\\treturn *new(string)'; compiling go test -overlay -run exact test -count=1 fails TestErrorClassesCarryUpstreamNamesMessagesAndFields."
+ },
+ {
+  "upstream": "packages/mcp/src/transports/in-memory.ts",
+  "package": "./mcp/mcptest",
+  "tests": [
+   "TestInMemoryTransportPairDeliversInOrderAndCloseNotifiesBothEnds",
+   "TestInMemoryTransportRefusesASecondPeerAndAnUnconnectedSend"
+  ],
+  "upstream_reference": "packages/mcp/src/transports/in-memory.ts",
+  "mutation": "mcp/mcptest/inmemory.go: replace 'func (t *InMemoryTransport) Send(message mcp.JSONRPCMessage) error {' with 'func (t *InMemoryTransport) Send(message mcp.JSONRPCMessage) error {\\n\\treturn *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestInMemoryTransportPairDeliversInOrderAndCloseNotifiesBothEnds, TestInMemoryTransportRefusesASecondPeerAndAnUnconnectedSend."
+ },
+ {
+  "upstream": "packages/mcp/src/transports/in-memory.ts",
+  "package": "./mcp/mcptest",
+  "tests": [
+   "TestInMemoryTransportPairDeliversInOrderAndCloseNotifiesBothEnds"
+  ],
+  "upstream_reference": "packages/mcp/src/transports/in-memory.ts",
+  "mutation": "mcp/mcptest/inmemory.go: replace 'func (t *InMemoryTransport) Close() error {' with 'func (t *InMemoryTransport) Close() error {\\n\\treturn *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestInMemoryTransportPairDeliversInOrderAndCloseNotifiesBothEnds."
+ },
+ {
+  "upstream": "packages/durable/src/env/node.ts",
+  "package": "./durable/env/node",
+  "tests": [
+   "TestFilesystemAppendsToNewFilesAndCreatesParentDirectories",
+   "TestFilesystemAtomicallyRenamesAFileAndReplacesTheDestination",
+   "TestFilesystemFlushesExistingFilesWithoutChangingContentAndReportsMissingPaths",
+   "TestFilesystemReadsWritesListsAndRemovesFilesAndDirectories",
+   "TestFilesystemRejectsInvalidTruncationSizesAndNeverCreatesMissingFiles",
+   "TestFilesystemReportsTheSourcePathWhenRenameFailsBecauseTheSourceIsMissing",
+   "TestFilesystemReturnsAbortedResultsWithoutSideEffectsForPreAbortedFileOperations",
+   "TestNodeExecutionEnvConformance",
+   "TestNodeExecutionEnvFileSystemCallsMirrorPi",
+   "TestShellPreservesCompleteLargeOutputInTheSpill",
+   "TestShellReportsTheSpillOfACommandThatTimesOut",
+   "TestSpillBackpressureKeepsInheritedStdioOpenPastTheExitGracePeriodWhileASpillWriteIsPending",
+   "TestTextLineReaderDropsAByteOrderMarkAtTheStartOfTheFileOnly"
+  ],
+  "upstream_reference": "packages/durable/src/env/node.ts",
+  "mutation": "durable/env/node/node.go: replace 'func (env *NodeExecutionEnv) ReadTextFile(ctx context.Context, path string) (string, error) {' with 'func (env *NodeExecutionEnv) ReadTextFile(ctx context.Context, path string) (string, error) {\\n\\treturn *new(string), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestFilesystemAppendsToNewFilesAndCreatesParentDirectories, TestFilesystemAtomicallyRenamesAFileAndReplacesTheDestination, TestFilesystemFlushesExistingFilesWithoutChangingContentAndReportsMissingPaths, TestFilesystemReadsWritesListsAndRemovesFilesAndDirectories, TestFilesystemRejectsInvalidTruncationSizesAndNeverCreatesMissingFiles, TestFilesystemReportsTheSourcePathWhenRenameFailsBecauseTheSourceIsMissing, TestFilesystemReturnsAbortedResultsWithoutSideEffectsForPreAbortedFileOperations, TestNodeExecutionEnvConformance, TestNodeExecutionEnvFileSystemCallsMirrorPi, TestShellPreservesCompleteLargeOutputInTheSpill, TestShellReportsTheSpillOfACommandThatTimesOut, TestSpillBackpressureKeepsInheritedStdioOpenPastTheExitGracePeriodWhileASpillWriteIsPending, TestTextLineReaderDropsAByteOrderMarkAtTheStartOfTheFileOnly."
+ },
+ {
+  "upstream": "packages/durable/src/env/node.ts",
+  "package": "./durable/env/node",
+  "tests": [
+   "TestBinaryReaderInfoReadAndCloseFollowTheOpenedFile"
+  ],
+  "upstream_reference": "packages/durable/src/env/node.ts",
+  "mutation": "durable/env/node/node.go: replace 'func (env *NodeExecutionEnv) WriteFile(ctx context.Context, path string, content any) error {' with 'func (env *NodeExecutionEnv) WriteFile(ctx context.Context, path string, content any) error {\\n\\treturn *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestBinaryReaderInfoReadAndCloseFollowTheOpenedFile."
+ },
+ {
+  "upstream": "packages/mcp/src/transports/streamable-http.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestStreamableHTTPTransportHandlesJSONAndSSEResponsesWithSessionAndProtocolHeaders"
+  ],
+  "upstream_reference": "packages/mcp/src/transports/streamable-http.ts",
+  "mutation": "mcp/streamable_http.go: replace 'func (t *StreamableHTTPTransport) SetProtocolVersion(version string) {' with 'func (t *StreamableHTTPTransport) SetProtocolVersion(version string) {\\n\\treturn'; compiling go test -overlay -run exact test -count=1 fails TestStreamableHTTPTransportHandlesJSONAndSSEResponsesWithSessionAndProtocolHeaders."
+ },
+ {
+  "upstream": "packages/durable/src/testing/storage-benchmark.ts",
+  "package": "./durable/storage",
+  "tests": [
+   "TestStorageBenchmarkScalesAndPrimaryRecordCount"
+  ],
+  "upstream_reference": "packages/durable/src/testing/storage-benchmark.ts",
+  "mutation": "durable/durabletest/storage_benchmark.go: replace 'return 1 + scale.EntryCount' with 'return scale.EntryCount'; compiling go test -overlay -run exact test -count=1 fails TestStorageBenchmarkScalesAndPrimaryRecordCount."
+ },
+ {
+  "upstream": "packages/durable/src/harness/tool.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestToolExecutionApiSnapshotAsOfReadsTheDocumentAsOfTheEntry"
+  ],
+  "upstream_reference": "packages/durable/src/harness/tool.ts",
+  "mutation": "durable/harness/tool.go: replace 'return api.runtime.SnapshotAsOfErased(ctx, token, at, args...)' with 'return nil, nil'; compiling go test -overlay -run exact test -count=1 fails TestToolExecutionApiSnapshotAsOfReadsTheDocumentAsOfTheEntry."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/errors.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestOAuthErrorConstructorsMatchErrorsTs"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/errors.ts",
+  "mutation": "mcp/oauth/errors.go: replace 'e := &McpOAuthAuthorizationRequiredError{}\\n\\treturn e' with 'return nil'; compiling go test -overlay -run exact test -count=1 fails TestOAuthErrorConstructorsMatchErrorsTs."
+ },
+ {
+  "upstream": "packages/env/src/ssh.ts",
+  "package": "./env",
+  "tests": [
+   "TestSshConnectionReportsItsRemoteWhileAStartIsDetecting",
+   "TestSshConnectionUsesASetEmptyBinary",
+   "TestSshConnectOptionsOnLogReceivesThePlatformWarnings"
+  ],
+  "upstream_reference": "packages/env/src/ssh.ts",
+  "mutation": "env/ssh.go: replace '\\treturn sshConnected(options, &sshState{})' with '\\treturn SshConnected{}'; compiling go test -overlay -run exact test -count=1 fails TestSshConnectionReportsItsRemoteWhileAStartIsDetecting, TestSshConnectionUsesASetEmptyBinary, TestSshConnectOptionsOnLogReceivesThePlatformWarnings (nil Connection)."
+ },
+ {
+  "upstream": "packages/mcp/src/transports/streamable-http.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestStreamableHTTPTransportSetProtocolVersionSetsTheHeaderOfLaterRequests"
+  ],
+  "upstream_reference": "packages/mcp/src/transports/streamable-http.ts:221,313",
+  "mutation": "mcp/streamable_http.go: replace '\\tt.protocolVersion = version\\n' with '\\tif t.protocolVersion == \"\" {\\n\\t\\tt.protocolVersion = version\\n\\t}\\n'; compiling go test -overlay -run exact test -count=1 fails TestStreamableHTTPTransportSetProtocolVersionSetsTheHeaderOfLaterRequests (a later version is ignored)."
+ },
+ {
+  "upstream": "packages/mcp/src/protocol/jsonrpc.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestErrorClassesCarryUpstreamNamesMessagesAndFields"
+  ],
+  "upstream_reference": "packages/mcp/src/protocol/jsonrpc.ts:74-79",
+  "mutation": "mcp/jsonrpc.go: replace 'func (e *McpAbortError) Name() string { return \"AbortError\" }' with 'func (e *McpAbortError) Name() string { return \"McpAbortError\" }'; compiling go test -overlay -run exact test -count=1 fails TestErrorClassesCarryUpstreamNamesMessagesAndFields."
+ },
+ {
+  "upstream": "packages/mcp/src/protocol/jsonrpc.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestErrorClassesCarryUpstreamNamesMessagesAndFields"
+  ],
+  "upstream_reference": "packages/mcp/src/protocol/jsonrpc.ts:74-79",
+  "mutation": "mcp/jsonrpc.go: replace '\\tif e.Message == \"\" {\\n\\t\\treturn \"MCP request aborted\"' with '\\tif e.Message == \"\" {\\n\\t\\treturn \"aborted\"'; compiling go test -overlay -run exact test -count=1 fails TestErrorClassesCarryUpstreamNamesMessagesAndFields."
+ },
+ {
+  "upstream": "packages/mcp/src/client.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientDoesNotSendACancelNotificationWhenInitializeIsAborted"
+  ],
+  "upstream_reference": "packages/mcp/src/client.ts:421-429",
+  "mutation": "mcp/client.go: replace 'c.cancelPending(key, NewMcpAbortError(\"\"), method != \"initialize\", abortReason(ctx))' with 'c.cancelPending(key, NewMcpAbortError(\"\"), true, abortReason(ctx))'; compiling go test -overlay -run exact test -count=1 fails TestClientDoesNotSendACancelNotificationWhenInitializeIsAborted."
+ },
+ {
+  "upstream": "packages/mcp/src/client.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientDoesNotSendACancelNotificationWhenInitializeIsAborted",
+   "TestClientCancelsAbortedAndTimedOutRequests"
+  ],
+  "upstream_reference": "packages/mcp/src/client.ts:421-429",
+  "mutation": "mcp/client.go: replace 'c.cancelPending(key, NewMcpAbortError(\"\"), method != \"initialize\", abortReason(ctx))' with 'c.cancelPending(key, NewMcpTimeoutError(1), method != \"initialize\", abortReason(ctx))'; compiling go test -overlay -run exact test -count=1 fails TestClientDoesNotSendACancelNotificationWhenInitializeIsAborted, TestClientCancelsAbortedAndTimedOutRequests."
+ },
+ {
+  "upstream": "packages/mcp/src/client.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientAnswersRootsListOnlyWhenRootsAreConfigured"
+  ],
+  "upstream_reference": "packages/mcp/src/client.ts:174-179,496",
+  "mutation": "mcp/client.go: replace 'if options.RootsFunc != nil || options.Roots != nil {' with 'if options.RootsFunc == nil || options.Roots != nil {'; compiling go test -overlay -run exact test -count=1 fails TestClientAnswersRootsListOnlyWhenRootsAreConfigured."
+ },
+ {
+  "upstream": "packages/mcp/src/client.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientAnswersRootsListOnlyWhenRootsAreConfigured"
+  ],
+  "upstream_reference": "packages/mcp/src/client.ts:174-179",
+  "mutation": "mcp/client.go: replace 'if options.RootsFunc != nil || options.Roots != nil {' with 'if options.RootsFunc != nil {'; compiling go test -overlay -run exact test -count=1 fails TestClientAnswersRootsListOnlyWhenRootsAreConfigured."
+ },
+ {
+  "upstream": "packages/mcp/src/client.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientCallToolOmitsArgumentsForAnAbsentRawArgument"
+  ],
+  "upstream_reference": "packages/mcp/src/client.ts:382",
+  "mutation": "mcp/client.go: replace '\tif args != nil {\\n\\t\\tif raw, ok := args.(json.RawMessage); ok && raw == nil {' with '\tif args == nil {\\n\\t\\tif raw, ok := args.(json.RawMessage); ok && raw == nil {'; compiling go test -overlay -run exact test -count=1 fails TestClientCallToolOmitsArgumentsForAnAbsentRawArgument."
+ },
+ {
+  "upstream": "packages/mcp/src/client.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientRequestTimeoutPrecedenceIsRequestThenClientThenDefault"
+  ],
+  "upstream_reference": "packages/mcp/src/client.ts:418,38",
+  "mutation": "mcp/client.go: replace '\ttimeoutMs := options.TimeoutMs\\n\\tif timeoutMs == 0 {' with '\ttimeoutMs := options.TimeoutMs\\n\\tif timeoutMs != 0 {'; compiling go test -overlay -run exact test -count=1 fails TestClientRequestTimeoutPrecedenceIsRequestThenClientThenDefault."
+ },
+ {
+  "upstream": "packages/mcp/src/client.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientRequestTimeoutPrecedenceIsRequestThenClientThenDefault"
+  ],
+  "upstream_reference": "packages/mcp/src/client.ts:418,38",
+  "mutation": "mcp/client.go: replace '\\t\\ttimeoutMs = c.options.RequestTimeoutMs' with '\\t\\ttimeoutMs = defaultRequestTimeoutMs'; compiling go test -overlay -run exact test -count=1 fails TestClientRequestTimeoutPrecedenceIsRequestThenClientThenDefault."
+ },
+ {
+  "upstream": "packages/env/src/connection.ts",
+  "package": "./env",
+  "tests": [
+   "TestConnectionForwardsDaemonStderrToOnLogAndToleratesNone"
+  ],
+  "upstream_reference": "packages/env/src/connection.ts:284",
+  "mutation": "env/connection.go: replace 'if read > 0 && c.options.OnLog != nil {' with 'if read > 0 && c.options.OnLog == nil {'; compiling go test -overlay -run exact test -count=1 fails TestConnectionForwardsDaemonStderrToOnLogAndToleratesNone."
+ },
+ {
+  "upstream": "packages/env/src/connection.ts",
+  "package": "./env",
+  "tests": [
+   "TestConnectionForwardsDaemonStderrToOnLogAndToleratesNone"
+  ],
+  "upstream_reference": "packages/env/src/connection.ts:284",
+  "mutation": "env/connection.go: replace 'if read > 0 && c.options.OnLog != nil {' with 'if false {'; compiling go test -overlay -run exact test -count=1 fails TestConnectionForwardsDaemonStderrToOnLogAndToleratesNone."
+ },
+ {
+  "upstream": "packages/durable/src/session/transaction.ts",
+  "package": "./durable/session",
+  "tests": [
+   "TestSessionDocumentTransactions",
+   "TestSessionTransactionTables"
+  ],
+  "upstream_reference": "packages/durable/src/session/transaction.ts",
+  "mutation": "durable/session/transaction.go: replace 'func (tx *Transaction) Conversation(id durable.ConversationId) (*durable.ConversationRecord, error) {' with 'func (tx *Transaction) Conversation(id durable.ConversationId) (*durable.ConversationRecord, error) {\\n\\treturn *new(*durable.ConversationRecord), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestSessionDocumentTransactions, TestSessionTransactionTables."
+ },
+ {
+  "upstream": "packages/durable/src/session/transaction.ts",
+  "package": "./durable/session",
+  "tests": [
+   "TestSessionTransactionTables"
+  ],
+  "upstream_reference": "packages/durable/src/session/transaction.ts",
+  "mutation": "durable/session/transaction.go: replace 'func (tx *Transaction) ScanConversations(query durable.ConversationQuery, limit int, cursor durable.Cursor) (durable.Page[durable.ConversationRecord, durable.Cursor], error) {' with 'func (tx *Transaction) ScanConversations(query durable.ConversationQuery, limit int, cursor durable.Cursor) (durable.Page[durable.ConversationRecord, durable.Cursor], error) {\\n\\treturn *new(durable.Page[durable.ConversationRecord, durable.Cursor]), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestSessionTransactionTables."
+ },
+ {
+  "upstream": "packages/durable/src/session/transaction.ts",
+  "package": "./durable/session",
+  "tests": [
+   "TestSessionConversationDocumentForks",
+   "TestSessionTransactionTables"
+  ],
+  "upstream_reference": "packages/durable/src/session/transaction.ts",
+  "mutation": "durable/session/transaction.go: replace 'func (tx *Transaction) ScanEntries(query durable.EntryQuery, limit int, cursor durable.Cursor) (durable.Page[durable.EntryRecord, durable.Cursor], error) {' with 'func (tx *Transaction) ScanEntries(query durable.EntryQuery, limit int, cursor durable.Cursor) (durable.Page[durable.EntryRecord, durable.Cursor], error) {\\n\\treturn *new(durable.Page[durable.EntryRecord, durable.Cursor]), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestSessionConversationDocumentForks, TestSessionTransactionTables."
+ },
+ {
+  "upstream": "packages/durable/src/session/transaction.ts",
+  "package": "./durable/session",
+  "tests": [
+   "TestDocumentDefinitions",
+   "TestSessionAdmissionIsAtomicWithClose",
+   "TestSessionConversationDocumentForks",
+   "TestSessionDocumentStates",
+   "TestSessionDocumentTransactions",
+   "TestSessionHistoricalDocumentSnapshots",
+   "TestSessionTransactionTables"
+  ],
+  "upstream_reference": "packages/durable/src/session/transaction.ts",
+  "mutation": "durable/session/transaction.go: replace 'func (tx *Transaction) CreateConversation(options durable.CreateConversationOptions) (durable.ConversationRecord, error) {' with 'func (tx *Transaction) CreateConversation(options durable.CreateConversationOptions) (durable.ConversationRecord, error) {\\n\\treturn *new(durable.ConversationRecord), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestDocumentDefinitions, TestSessionAdmissionIsAtomicWithClose, TestSessionConversationDocumentForks, TestSessionDocumentStates, TestSessionDocumentTransactions, TestSessionHistoricalDocumentSnapshots, TestSessionTransactionTables."
+ },
+ {
+  "upstream": "packages/durable/src/session/transaction.ts",
+  "package": "./durable/session",
+  "tests": [
+   "TestSessionConversationDocumentForks",
+   "TestSessionHistoricalDocumentSnapshots"
+  ],
+  "upstream_reference": "packages/durable/src/session/transaction.ts",
+  "mutation": "durable/session/transaction.go: replace 'func (tx *Transaction) ForkConversation(parentConversationId durable.ConversationId, at durable.EntryId, options durable.CreateConversationOptions) (durable.ConversationRecord, error) {' with 'func (tx *Transaction) ForkConversation(parentConversationId durable.ConversationId, at durable.EntryId, options durable.CreateConversationOptions) (durable.ConversationRecord, error) {\\n\\treturn *new(durable.ConversationRecord), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestSessionConversationDocumentForks, TestSessionHistoricalDocumentSnapshots."
+ },
+ {
+  "upstream": "packages/durable/src/session/transaction.ts",
+  "package": "./durable/session",
+  "tests": [
+   "TestDocumentDefinitions",
+   "TestSessionHistoricalDocumentSnapshots"
+  ],
+  "upstream_reference": "packages/durable/src/session/transaction.ts",
+  "mutation": "durable/session/transaction.go: replace 'func (tx *Transaction) AppendEntry(conversationId durable.ConversationId, value durable.EntryDraft) (durable.EntryRecord, error) {' with 'func (tx *Transaction) AppendEntry(conversationId durable.ConversationId, value durable.EntryDraft) (durable.EntryRecord, error) {\\n\\treturn *new(durable.EntryRecord), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestDocumentDefinitions, TestSessionHistoricalDocumentSnapshots."
+ },
+ {
+  "upstream": "packages/durable/src/session/transaction.ts",
+  "package": "./durable/session",
+  "tests": [
+   "TestSessionDocumentCheckpoints"
+  ],
+  "upstream_reference": "packages/durable/src/session/transaction.ts",
+  "mutation": "durable/session/transaction.go: replace 'func (tx *Transaction) Doc(token durable.AnyDocToken, args ...any) (*delta.Object, error) {' with 'func (tx *Transaction) Doc(token durable.AnyDocToken, args ...any) (*delta.Object, error) {\\n\\treturn *new(*delta.Object), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestSessionDocumentCheckpoints."
+ },
+ {
+  "upstream": "packages/durable/src/session/transaction.ts",
+  "package": "./durable/session",
+  "tests": [
+   "TestDocumentDefinitions",
+   "TestDocumentStateOfDecodesRevisionsAndRetirement",
+   "TestSessionConversationDocumentForks",
+   "TestSessionDocumentCheckpoints",
+   "TestSessionDocumentMigrations",
+   "TestSessionDocumentStates",
+   "TestSessionDocumentTransactions",
+   "TestSessionDocumentWatches",
+   "TestSessionHistoricalDocumentSnapshots",
+   "TestWatchDocTypedDecodesRevisionsAndReportsRetirementAsNil"
+  ],
+  "upstream_reference": "packages/durable/src/session/transaction.ts",
+  "mutation": "durable/session/transaction.go: replace 'func (tx *Transaction) RetireDoc(token durable.AnyDocToken, args ...any) error {' with 'func (tx *Transaction) RetireDoc(token durable.AnyDocToken, args ...any) error {\\n\\treturn *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestDocumentDefinitions, TestDocumentStateOfDecodesRevisionsAndRetirement, TestSessionConversationDocumentForks, TestSessionDocumentCheckpoints, TestSessionDocumentMigrations, TestSessionDocumentStates, TestSessionDocumentTransactions, TestSessionDocumentWatches, TestSessionHistoricalDocumentSnapshots, TestWatchDocTypedDecodesRevisionsAndReportsRetirementAsNil."
+ },
+ {
+  "upstream": "packages/durable/src/harness/scheduler.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestBeforeRequestHookChangesDoNotReachTheStoredContext",
+   "TestTaskRuntimeAgentRejectsAnAlreadyCancelledCallerAfterResolution"
+  ],
+  "upstream_reference": "packages/durable/src/harness/scheduler.ts",
+  "mutation": "durable/harness/scheduler.go: replace 'func (runtime *taskRuntime) Agent(ctx context.Context) (durable.Agent, error) {' with 'func (runtime *taskRuntime) Agent(ctx context.Context) (durable.Agent, error) {\\n\\treturn *new(durable.Agent), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestBeforeRequestHookChangesDoNotReachTheStoredContext, TestTaskRuntimeAgentRejectsAnAlreadyCancelledCallerAfterResolution."
+ },
+ {
+  "upstream": "packages/durable/src/harness/scheduler.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestDefinitionHandover",
+   "TestTaskAbort",
+   "TestTaskPhases",
+   "TestTaskRecovery",
+   "TestTaskRuntime",
+   "TestToolExecutionApiMemoReadsAbsentThenTheFirstCandidateWins"
+  ],
+  "upstream_reference": "packages/durable/src/harness/scheduler.ts",
+  "mutation": "durable/harness/scheduler.go: replace 'func (runtime *taskRuntime) MemoCandidate(ctx context.Context, name string, candidate durable.JsonValue) (durable.JsonValue, error) {' with 'func (runtime *taskRuntime) MemoCandidate(ctx context.Context, name string, candidate durable.JsonValue) (durable.JsonValue, error) {\\n\\treturn *new(durable.JsonValue), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestDefinitionHandover, TestTaskAbort, TestTaskPhases, TestTaskRecovery, TestTaskRuntime, TestToolExecutionApiMemoReadsAbsentThenTheFirstCandidateWins."
+ },
+ {
+  "upstream": "packages/durable/src/harness/scheduler.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestCompactionEdgeCasesLater",
+   "TestCompactionEventsAndLiveStatus",
+   "TestCompactionRecovery",
+   "TestGeneration",
+   "TestGenerationRecovery",
+   "TestTaskRuntime"
+  ],
+  "upstream_reference": "packages/durable/src/harness/scheduler.ts",
+  "mutation": "durable/harness/scheduler.go: replace 'func (runtime *taskRuntime) Sleep(ctx context.Context, until float64) error {' with 'func (runtime *taskRuntime) Sleep(ctx context.Context, until float64) error {\\n\\treturn *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestCompactionEdgeCasesLater, TestCompactionEventsAndLiveStatus, TestCompactionRecovery, TestGeneration, TestGenerationRecovery, TestTaskRuntime."
+ },
+ {
+  "upstream": "packages/durable/src/session/transaction.ts",
+  "package": "./durable/session",
+  "tests": [
+   "TestSessionTransactionScanTasksFiltersPagesAndFailsAfterAWrite"
+  ],
+  "upstream_reference": "packages/durable/src/session/transaction.ts:264-265",
+  "mutation": "durable/session/transaction.go: replace '\\t\\treturn tx.host.storage.ScanTasks(tx.ctx, query, limit, cursor)' with '\\t\\treturn tx.host.storage.ScanTasks(tx.ctx, query, limit, nil)'; compiling go test -overlay -run exact test -count=1 fails TestSessionTransactionScanTasksFiltersPagesAndFailsAfterAWrite."
+ },
+ {
+  "upstream": "packages/durable/src/session/transaction.ts",
+  "package": "./durable/session",
+  "tests": [
+   "TestSessionTransactionScanTasksFiltersPagesAndFailsAfterAWrite"
+  ],
+  "upstream_reference": "packages/durable/src/session/transaction.ts:264-265",
+  "mutation": "durable/session/transaction.go: replace '\\t\\treturn tx.host.storage.ScanTasks(tx.ctx, query, limit, cursor)' with '\\t\\treturn tx.host.storage.ScanTasks(tx.ctx, durable.TaskQuery{}, limit, cursor)'; compiling go test -overlay -run exact test -count=1 fails TestSessionTransactionScanTasksFiltersPagesAndFailsAfterAWrite."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/discovery.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestDiscardReleasesTheBodyAndToleratesAbsentResponsesAndBodies"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/discovery.ts:20",
+  "mutation": "mcp/oauth/discovery.go: replace '\\tif response != nil && response.Body != nil {' with '\\tif response != nil && response.Body == nil {'; compiling go test -overlay -run exact test -count=1 fails TestDiscardReleasesTheBodyAndToleratesAbsentResponsesAndBodies."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/discovery.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestDiscardReleasesTheBodyAndToleratesAbsentResponsesAndBodies"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/discovery.ts:20",
+  "mutation": "mcp/oauth/discovery.go: replace '\\tif response != nil && response.Body != nil {' with '\\tif false {'; compiling go test -overlay -run exact test -count=1 fails TestDiscardReleasesTheBodyAndToleratesAbsentResponsesAndBodies."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/flow.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestSelectClientAuthMethodFollowsPisLadder"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/flow.ts:128-141",
+  "mutation": "mcp/oauth/flow.go: replace '\\tif information.ClientSecret != \"\" && slices.Contains(supported, \"client_secret_post\") {' with '\\tif information.ClientSecret == \"\" && slices.Contains(supported, \"client_secret_post\") {'; compiling go test -overlay -run exact test -count=1 fails TestSelectClientAuthMethodFollowsPisLadder."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/flow.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestSelectClientAuthMethodFollowsPisLadder"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/flow.ts:128-141",
+  "mutation": "mcp/oauth/flow.go: replace '\\tif information.ClientSecret != \"\" && slices.Contains(supported, \"client_secret_basic\") {' with '\\tif information.ClientSecret == \"\" && slices.Contains(supported, \"client_secret_basic\") {'; compiling go test -overlay -run exact test -count=1 fails TestSelectClientAuthMethodFollowsPisLadder."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/flow.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestSelectClientAuthMethodFollowsPisLadder"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/flow.ts:128-136",
+  "mutation": "mcp/oauth/flow.go: replace '\\t\\t(len(supported) == 0 || slices.Contains(supported, hinted)) {' with '\\t\\t(len(supported) == 0 || !slices.Contains(supported, hinted)) {'; compiling go test -overlay -run exact test -count=1 fails TestSelectClientAuthMethodFollowsPisLadder."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/flow.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestTokenRequestSendsTheResourceParameterOnlyWhenSet"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/flow.ts:209",
+  "mutation": "mcp/oauth/flow.go: replace '\\tif options.Resource != \"\" {\\n\\t\\tparams.Set(\"resource\", options.Resource)\\n\\t}\\n\\tif options.AddClientAuthentication' with '\\tif options.Resource == \"\" {\\n\\t\\tparams.Set(\"resource\", options.Resource)\\n\\t}\\n\\tif options.AddClientAuthentication'; compiling go test -overlay -run exact test -count=1 fails TestTokenRequestSendsTheResourceParameterOnlyWhenSet."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/flow.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestTokenResponseErrorsFollowPisBodyBeforeStatusRules"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/flow.ts:229-242",
+  "mutation": "mcp/oauth/flow.go: replace 'if json.Unmarshal(data, &fields) == nil && fields != nil {' with 'if json.Unmarshal(data, &fields) == nil && fields == nil {'; compiling go test -overlay -run exact test -count=1 fails TestTokenResponseErrorsFollowPisBodyBeforeStatusRules."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/flow.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestTokenResponseErrorsFollowPisBodyBeforeStatusRules"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/flow.ts:238",
+  "mutation": "mcp/oauth/flow.go: replace 'if raw, ok := fields[\"error_description\"]; ok && len(raw) > 0 && raw[0] == '\"' {' with 'if raw, ok := fields[\"error_description\"]; ok && len(raw) > 0 && raw[0] != '\"' {'; compiling go test -overlay -run exact test -count=1 fails TestTokenResponseErrorsFollowPisBodyBeforeStatusRules."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/flow.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestTokenResponseErrorsFollowPisBodyBeforeStatusRules"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/flow.ts:239",
+  "mutation": "mcp/oauth/flow.go: replace 'if raw, ok := fields[\"error_uri\"]; ok && len(raw) > 0 && raw[0] == '\"' {' with 'if raw, ok := fields[\"error_uri\"]; ok && len(raw) > 0 && raw[0] != '\"' {'; compiling go test -overlay -run exact test -count=1 fails TestTokenResponseErrorsFollowPisBodyBeforeStatusRules."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/flow.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestAuthorizeMcpHandlesAFailedRefreshLikePi"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/flow.ts:399-409",
+  "mutation": "mcp/oauth/flow.go: replace 'errors.As(err, &oauthErr) && oauthErr.Code != \"server_error\" {' with 'errors.As(err, &oauthErr) && oauthErr.Code == \"server_error\" {'; compiling go test -overlay -run exact test -count=1 fails TestAuthorizeMcpHandlesAFailedRefreshLikePi."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/flow.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestAuthorizeMcpHandlesAFailedRefreshLikePi"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/flow.ts:430-440",
+  "mutation": "mcp/oauth/flow.go: replace '\\t\\tif kind != \"\" {' with '\\t\\tif kind == \"\" {'; compiling go test -overlay -run exact test -count=1 fails TestAuthorizeMcpHandlesAFailedRefreshLikePi."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/flow.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestAuthorizeMcpHandlesAFailedRefreshLikePi"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/flow.ts:430-440",
+  "mutation": "mcp/oauth/flow.go: replace '\\t\\tcase \"invalid_grant\":\\n\\t\\t\\tkind = \"tokens\"' with '\\t\\tcase \"invalid_grant\":\\n\\t\\t\\tkind = \"all\"'; compiling go test -overlay -run exact test -count=1 fails TestAuthorizeMcpHandlesAFailedRefreshLikePi."
+ },
+ {
+  "upstream": "packages/durable/src/session/session.ts",
+  "package": "./durable/session",
+  "tests": [
+   "TestSessionSubscribeCommitsDisposeRemovesOnlyItsOwnListener"
+  ],
+  "upstream_reference": "packages/durable/src/session/session.ts:385",
+  "mutation": "durable/session/session.go: replace '\\t\\tfor index, candidate := range session.commitOrder {\\n\\t\\t\\tif candidate == entry {' with '\\t\\tfor index, candidate := range session.commitOrder {\\n\\t\\t\\tif candidate != entry {'; compiling go test -overlay -run exact test -count=1 fails TestSessionSubscribeCommitsDisposeRemovesOnlyItsOwnListener."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/types.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestParseURLGenericSchemesKeepNodesHostAndUserinfo"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/types.ts",
+  "mutation": "mcp/oauth/types.go: replace '\\t\\tif parsed.Port != \"\" {' with '\\t\\tif parsed.Port == \"\" {'; compiling go test -overlay -run exact test -count=1 fails TestParseURLGenericSchemesKeepNodesHostAndUserinfo."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/types.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestParseURLGenericSchemesKeepNodesHostAndUserinfo"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/types.ts",
+  "mutation": "mcp/oauth/types.go: replace '\\t\\tif parsed.Username != \"\" || parsed.Password != \"\" {' with '\\t\\tif parsed.Username == \"\" || parsed.Password != \"\" {'; compiling go test -overlay -run exact test -count=1 fails TestParseURLGenericSchemesKeepNodesHostAndUserinfo."
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/types.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestMarshalWithExtraTreatsEmbeddedStructFieldsAsKnown"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/types.ts",
+  "mutation": "mcp/oauth/jsonextra.go: replace '\\t\\tif field.Anonymous && field.Type.Kind() == reflect.Struct {' with '\\t\\tif false {'; compiling go test -overlay -run exact test -count=1 fails TestMarshalWithExtraTreatsEmbeddedStructFieldsAsKnown."
+ },
+ {
+  "upstream": "packages/durable/src/session/transaction.ts",
+  "package": "./durable/session",
+  "tests": [
+   "TestApplySubmissionChangeFollowsPisStateMachine"
+  ],
+  "upstream_reference": "packages/durable/src/session/transaction.ts:67-82",
+  "mutation": "durable/session/transaction.go: replace '\\tif settlement.Status == durable.SubmissionDone && current.Status != durable.SubmissionPlaced {' with '\\tif settlement.Status == durable.SubmissionDone && current.Status == durable.SubmissionPlaced {'; compiling go test -overlay -run exact test -count=1 fails TestApplySubmissionChangeFollowsPisStateMachine."
+ },
+ {
+  "upstream": "packages/durable/src/session/transaction.ts",
+  "package": "./durable/session",
+  "tests": [
+   "TestApplySubmissionChangeFollowsPisStateMachine"
+  ],
+  "upstream_reference": "packages/durable/src/session/transaction.ts:67-82",
+  "mutation": "durable/session/transaction.go: replace '\\tnext.Status = settlement.Status\\n\\tif settlement.Status == durable.SubmissionDone {' with '\\tnext.Status = settlement.Status\\n\\tif settlement.Status != durable.SubmissionDone {'; compiling go test -overlay -run exact test -count=1 fails TestApplySubmissionChangeFollowsPisStateMachine."
+ },
+ {
+  "upstream": "packages/durable/src/session/transaction.ts",
+  "package": "./durable/session",
+  "tests": [
+   "TestApplySubmissionChangeFollowsPisStateMachine"
+  ],
+  "upstream_reference": "packages/durable/src/session/transaction.ts:67-82",
+  "mutation": "durable/session/transaction.go: replace '\\t\\tif current.Type == durable.SubmissionTypeInput {\\n\\t\\t\\tnext.Status = durable.SubmissionPlaced' with '\\t\\tif current.Type != durable.SubmissionTypeInput {\\n\\t\\t\\tnext.Status = durable.SubmissionPlaced'; compiling go test -overlay -run exact test -count=1 fails TestApplySubmissionChangeFollowsPisStateMachine."
+ }
+]

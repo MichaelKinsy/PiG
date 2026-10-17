@@ -21,14 +21,18 @@ type mockHost struct {
 	sockPath string
 }
 
+// newMockHost listens on a socket of its own. A fixed path let two test processes on one machine (two lanes, or a
+// worktree and its base) replace each other's socket, so an extension reached the other process's host: "unknown
+// command" there, and a test that waited for a reply hung until the 10-minute timeout. The directory is short because
+// t.TempDir can exceed the Unix socket path limit on macOS.
 func newMockHost(t *testing.T) *mockHost {
 	t.Helper()
-	dir := filepath.Join(os.TempDir(), "pig-sdk-test")
-	if err := os.MkdirAll(dir, 0o700); err != nil {
+	dir, err := os.MkdirTemp("", "pig-sdk-")
+	if err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
 	sockPath := filepath.Join(dir, "test.sock")
-	_ = os.Remove(sockPath)
 
 	listener, err := net.Listen("unix", sockPath)
 	if err != nil {

@@ -1,0 +1,112 @@
+{
+	"name": "session-scale-context",
+	"rule": "session-scale-context",
+	"about": "Sizes are the active context in tokens the fixture resumes to: 1000000, 2000000 and 4000000, each in a 299 MiB file of about 45,000 entries with 63 compactions and 17 leaves, and a model context window the context fills to 85% (rounded up to 1,000 tokens). bench/sessionscale's long-lived session bench (sessionscale) on PiG built from the commit and on Pi's coding agent at PiG's pinned Pi version, each against sessionscale's local scripted model. Each target generates the same fixture from seed 1 (the fingerprint replaces the header's cwd). One sample is one fresh interactive process in a pseudo-terminal on a copy of the fixture: resume, then five prompts. open and openCpu are the time and process-tree CPU from the start to the resumed, settled screen (the ready check waits for one quiet second and the settle check for half a second of idle CPU, the same for both targets); turn[] and turnCpu[] are each prompt's until the answer is shown and the tree is idle again (process CPU in clock ticks of 10 ms); peakRss is the tree's peak RSS in MiB. The metrics are the tree's memory (MiB) after the resume and after the prompts, the quit time, and the first prompt's request size and message count. A session needs memory for the largest fixture (8Gi holds a 4M-token context). Needs an agent bundle (k8sbench bundle -agents) or the benchmark image.",
+	"fingerprints": {
+		"1000000": "1050344b212aba3b",
+		"2000000": "5ca9ce3b2542faac",
+		"4000000": "5240d0899f113b03"
+	},
+	"targets": [
+		{
+			"name": "pig",
+			"role": "pig",
+			"seed": [
+				"{root}/bin/sessionscale",
+				"k8s",
+				"seed",
+				"-size",
+				"{turns}",
+				"-dir",
+				"{dir}",
+				"-bytes",
+				"299M",
+				"-context",
+				"{turns}"
+			],
+			"seedMeta": "{dir}/k8s-{turns}.json",
+			"sample": [
+				"{root}/bin/sessionscale",
+				"k8s",
+				"sample",
+				"-target",
+				"pig",
+				"-size",
+				"{turns}",
+				"-dir",
+				"{dir}",
+				"-sample",
+				"{sample}",
+				"-cmd",
+				"{root}/bin/pig -ne"
+			]
+		},
+		{
+			"name": "pi",
+			"role": "reference",
+			"seed": [
+				"{root}/bin/sessionscale",
+				"k8s",
+				"seed",
+				"-size",
+				"{turns}",
+				"-dir",
+				"{dir}",
+				"-bytes",
+				"299M",
+				"-context",
+				"{turns}"
+			],
+			"seedMeta": "{dir}/k8s-{turns}.json",
+			"sample": [
+				"{root}/bin/sessionscale",
+				"k8s",
+				"sample",
+				"-target",
+				"pi",
+				"-size",
+				"{turns}",
+				"-dir",
+				"{dir}",
+				"-sample",
+				"{sample}",
+				"-cmd",
+				"node {root}/pi-agent/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js -ne"
+			]
+		}
+	],
+	"metrics": [
+		{
+			"name": "resumeRss",
+			"label": "resume RSS MiB"
+		},
+		{
+			"name": "resumePss",
+			"label": "resume PSS MiB"
+		},
+		{
+			"name": "resumeAnon",
+			"label": "resume anonymous MiB"
+		},
+		{
+			"name": "promptRss",
+			"label": "RSS after the prompts MiB"
+		},
+		{
+			"name": "promptAnon",
+			"label": "anonymous after the prompts MiB"
+		},
+		{
+			"name": "quitMs",
+			"label": "quit ms"
+		},
+		{
+			"name": "requestBytes",
+			"label": "first request bytes"
+		},
+		{
+			"name": "requestMessages",
+			"label": "first request messages"
+		}
+	]
+}

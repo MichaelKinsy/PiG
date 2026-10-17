@@ -1,10 +1,11 @@
+import { PI_PACKAGE_VERSION } from "./pi-version.mjs";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const root = process.env.PI_PACKAGE_ROOT ?? resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, "1.0.3");
+assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, PI_PACKAGE_VERSION);
 const load = path => import(pathToFileURL(join(root, "dist", path)));
 const { SessionSelectorComponent } = await load("modes/interactive/components/session-selector.js");
 const { KeybindingsManager } = await load("core/keybindings.js");

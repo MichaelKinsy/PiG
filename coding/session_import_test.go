@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -195,5 +196,28 @@ func TestImportFromJsonlMissingCwdNeedsOverride(t *testing.T) {
 	}
 	if want := filepath.Join(sessionDir, "moved-1.jsonl"); sess.Path() != want || sess.Inner().CWD() != override {
 		t.Fatalf("session = %q cwd %q, want %q cwd %q", sess.Path(), sess.Inner().CWD(), want, override)
+	}
+}
+
+// copyFileSync(resolvedPath, destinationPath, COPYFILE_EXCL) (agent-session-runtime.ts:385-387) fails with Node's copyfile message, which /import shows
+// through handleFatalRuntimeError; the rows are what the installed Pi 1.1.0's copyFileSync answered.
+func TestImportFromJsonlCopyFailuresAreNodes(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the recorded row is from Linux")
+	}
+	sessionDir := t.TempDir()
+	sess, err := NewSession(newTestServices(t), SessionOptions{Model: fakeModel(), SessionDir: sessionDir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	drainSessionEvents(t, sess)
+	source := filepath.Join(t.TempDir(), "dir.jsonl")
+	if err := os.Mkdir(source, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	_, err = sess.ImportFromJsonl(t.Context(), source, "")
+	want := "EISDIR: illegal operation on a directory, copyfile '" + source + "' -> '" + filepath.Join(sessionDir, "dir.jsonl") + "'"
+	if err == nil || err.Error() != want {
+		t.Fatalf("err = %v, want %q", err, want)
 	}
 }

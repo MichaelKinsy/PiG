@@ -81,8 +81,11 @@ func VisibleWidth(s string) int {
 // graphemeWidth 1, a tab expands to three spaces, and every other ASCII
 // control byte is \p{Control} with width 0. Replacing tabs before stripping
 // cannot move an escape's terminator (m|G|K|H|J, BEL or ESC \), so the
-// escapes found here are the ones upstream strips. ok is false as soon as a
-// non-ASCII visible byte appears; pi_width_diff_test.go holds the result to
+// escapes found here are the ones upstream strips. A Box Drawing character
+// that no other non-ASCII character follows directly is one cell, the
+// borders of tables and frames; a combining mark, a variation selector or a
+// zero width joiner after it is another non-ASCII byte. ok is false as soon
+// as a non-ASCII visible byte that is not Box Drawing appears; pi_width_diff_test.go holds the result to
 // upstream.
 func asciiVisibleWidth(s string) (width int, ok bool) {
 	for i := 0; i < len(s); {
@@ -97,12 +100,21 @@ func asciiVisibleWidth(s string) (width int, ok bool) {
 				i += n
 				continue
 			}
+		case boxDrawingAt(s, i):
+			width++
+			i += 3
+			continue
 		case c >= utf8.RuneSelf:
 			return 0, false
 		}
 		i++
 	}
 	return width, true
+}
+
+// boxDrawingAt reports a Box Drawing character (U+2500 to U+257F, UTF-8 E2 94 80 to E2 95 BF) at s[i]. Each has East Asian Width ambiguous or neutral, so visibleWidth gives it one cell, and none is a grapheme extender.
+func boxDrawingAt(s string, i int) bool {
+	return i+2 < len(s) && s[i] == 0xE2 && (s[i+1] == 0x94 || s[i+1] == 0x95) && s[i+2]&0xC0 == 0x80
 }
 
 // NormalizeTerminalOutput encodes unpaired UTF-16 units like Node's UTF-8 terminal writes, then rewrites Thai/Lao AM vowels to compatibility

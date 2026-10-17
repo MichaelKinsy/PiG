@@ -1,0 +1,182 @@
+[
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding/extension",
+  "tests": [
+   "TestIsToolCallEventType"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/extension/events.go: replace `return event.ToolName == toolName` with `return event.ToolName != toolName`; TestIsToolCallEventType fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding/extension",
+  "tests": [
+   "TestIsToolCallEventType"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/extension/events.go: replace `if event, ok := event.(CustomToolCallEvent); ok {\n\t\treturn event.ToolName == toolName\n\t}\n\treturn false` with `return false`; TestIsToolCallEventType fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding/extension",
+  "tests": [
+   "TestToolResultGuardsTestToolName"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/extension/events.go: replace `func IsBashToolResult(event ToolResultEvent) bool { return toolResultNamed(event, \"bash\") }` with `func IsBashToolResult(event ToolResultEvent) bool { return toolResultNamed(event, \"bashx\") }`; TestToolResultGuardsTestToolName fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding/extension",
+  "tests": [
+   "TestToolResultGuardsTestToolName"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/extension/events.go: replace `func IsPowerShellToolResult(event ToolResultEvent) bool { return toolResultNamed(event, \"powershell\") }` with `func IsPowerShellToolResult(event ToolResultEvent) bool { return toolResultNamed(event, \"powershellx\") }`; TestToolResultGuardsTestToolName fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding/extension",
+  "tests": [
+   "TestToolResultGuardsTestToolName"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/extension/events.go: replace `func IsReadToolResult(event ToolResultEvent) bool { return toolResultNamed(event, \"read\") }` with `func IsReadToolResult(event ToolResultEvent) bool { return toolResultNamed(event, \"readx\") }`; TestToolResultGuardsTestToolName fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding/extension",
+  "tests": [
+   "TestToolResultGuardsTestToolName"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/extension/events.go: replace `func IsEditToolResult(event ToolResultEvent) bool { return toolResultNamed(event, \"edit\") }` with `func IsEditToolResult(event ToolResultEvent) bool { return toolResultNamed(event, \"editx\") }`; TestToolResultGuardsTestToolName fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding/extension",
+  "tests": [
+   "TestToolResultGuardsTestToolName"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/extension/events.go: replace `func IsWriteToolResult(event ToolResultEvent) bool { return toolResultNamed(event, \"write\") }` with `func IsWriteToolResult(event ToolResultEvent) bool { return toolResultNamed(event, \"writex\") }`; TestToolResultGuardsTestToolName fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding/extension",
+  "tests": [
+   "TestToolResultGuardsTestToolName"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/extension/events.go: replace `func IsGrepToolResult(event ToolResultEvent) bool { return toolResultNamed(event, \"grep\") }` with `func IsGrepToolResult(event ToolResultEvent) bool { return toolResultNamed(event, \"grepx\") }`; TestToolResultGuardsTestToolName fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding/extension",
+  "tests": [
+   "TestToolResultGuardsTestToolName"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/extension/events.go: replace `func IsFindToolResult(event ToolResultEvent) bool { return toolResultNamed(event, \"find\") }` with `func IsFindToolResult(event ToolResultEvent) bool { return toolResultNamed(event, \"findx\") }`; TestToolResultGuardsTestToolName fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding/extension",
+  "tests": [
+   "TestToolResultGuardsTestToolName"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/extension/events.go: replace `func IsLsToolResult(event ToolResultEvent) bool { return toolResultNamed(event, \"ls\") }` with `func IsLsToolResult(event ToolResultEvent) bool { return toolResultNamed(event, \"lsx\") }`; TestToolResultGuardsTestToolName fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding/extension",
+  "tests": [
+   "TestToolResultGuardsTestToolName"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/extension/events.go: replace `return ok && got == name` with `return ok && got != name`; TestToolResultGuardsTestToolName fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding/extension",
+  "tests": [
+   "TestToolResultGuardsTestToolName"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/extension/events.go: replace `case BashToolResultEvent:\n\t\treturn event.ToolName, true` with `case BashToolResultEvent:\n\t\treturn \"\", false`; TestToolResultGuardsTestToolName fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding/extension",
+  "tests": [
+   "TestToolResultGuardsTestToolName"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/extension/events.go: replace `case PowerShellToolResultEvent:\n\t\treturn event.ToolName, true` with `case PowerShellToolResultEvent:\n\t\treturn \"\", false`; TestToolResultGuardsTestToolName fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding/extension",
+  "tests": [
+   "TestToolResultGuardsTestToolName"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/extension/events.go: replace `case ReadToolResultEvent:\n\t\treturn event.ToolName, true` with `case ReadToolResultEvent:\n\t\treturn \"\", false`; TestToolResultGuardsTestToolName fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding/extension",
+  "tests": [
+   "TestToolResultGuardsTestToolName"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/extension/events.go: replace `case EditToolResultEvent:\n\t\treturn event.ToolName, true` with `case EditToolResultEvent:\n\t\treturn \"\", false`; TestToolResultGuardsTestToolName fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding/extension",
+  "tests": [
+   "TestToolResultGuardsTestToolName"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/extension/events.go: replace `case WriteToolResultEvent:\n\t\treturn event.ToolName, true` with `case WriteToolResultEvent:\n\t\treturn \"\", false`; TestToolResultGuardsTestToolName fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding/extension",
+  "tests": [
+   "TestToolResultGuardsTestToolName"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/extension/events.go: replace `case GrepToolResultEvent:\n\t\treturn event.ToolName, true` with `case GrepToolResultEvent:\n\t\treturn \"\", false`; TestToolResultGuardsTestToolName fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding/extension",
+  "tests": [
+   "TestToolResultGuardsTestToolName"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/extension/events.go: replace `case FindToolResultEvent:\n\t\treturn event.ToolName, true` with `case FindToolResultEvent:\n\t\treturn \"\", false`; TestToolResultGuardsTestToolName fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding/extension",
+  "tests": [
+   "TestToolResultGuardsTestToolName"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/extension/events.go: replace `case LsToolResultEvent:\n\t\treturn event.ToolName, true` with `case LsToolResultEvent:\n\t\treturn \"\", false`; TestToolResultGuardsTestToolName fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+  "package": "./coding/extension",
+  "tests": [
+   "TestToolResultGuardsTestToolName"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/extensions/types.ts",
+  "mutation": "coding/extension/events.go: replace `case CustomToolResultEvent:\n\t\treturn event.ToolName, true` with `case CustomToolResultEvent:\n\t\treturn \"\", false`; TestToolResultGuardsTestToolName fails."
+ }
+]

@@ -206,7 +206,8 @@ func (t *TextInput) HandleInput(data string) {
 		t.moveWordForward()
 		return
 	}
-	if printable, ok := DecodePrintableKey(data); ok {
+	// input.ts decodes only Kitty CSI-u text; a modifyOtherKeys sequence carries ESC and is rejected like any control input.
+	if printable, ok := DecodeKittyPrintable(data); ok {
 		t.insertCharacter(printable)
 		return
 	}
@@ -386,7 +387,7 @@ func (t *TextInput) renderInputLine(width int) string {
 			at = first
 		}
 		after := jsstring.Slice(placeholder, jsstring.Length(at), jsstring.Length(placeholder))
-		content := marker + "\x1b[7m" + t.placeholderStyle(at) + "\x1b[27m" + t.placeholderStyle(after)
+		content := marker + widthx.RenderFakeCursor(t.placeholderStyle(at)) + t.placeholderStyle(after)
 		return t.prompt + content + strings.Repeat(" ", max(0, available-widthx.VisibleWidth(content)))
 	}
 	visible := ""
@@ -424,7 +425,7 @@ func (t *TextInput) renderInputLine(width int) string {
 		at = " "
 	}
 	after := jsstring.Slice(visible, cursorDisplay+jsstring.Length(at), jsstring.Length(visible))
-	content := before + marker + "\x1b[7m" + at + "\x1b[27m" + after
+	content := before + marker + widthx.RenderFakeCursor(at) + after
 	return t.prompt + content + strings.Repeat(" ", max(0, available-widthx.VisibleWidth(content)))
 }
 

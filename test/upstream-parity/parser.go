@@ -15,9 +15,10 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"slices"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // ─── Public API surface ──────────────────────────────────────────────────────
@@ -52,16 +53,12 @@ type UpstreamSurface struct {
 // ─── File discovery ──────────────────────────────────────────────────────────
 
 // upstreamTypesPath returns the absolute path to upstream's types.ts.
-// It walks up from this source file's directory to the repo root and joins
-// the well-known path. This works whether tests run from the package dir or
-// the repo root.
+// It joins the well-known path to the module root above the package directory the test binary runs in.
 func upstreamTypesPath() (string, error) {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", fmt.Errorf("parity: cannot determine caller path")
+	repoRoot, err := testenv.ModuleRootPath()
+	if err != nil {
+		return "", fmt.Errorf("parity: %w", err)
 	}
-	// thisFile = .../pig/tests/upstream-parity/parser.go
-	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..")
 	abs, err := filepath.Abs(filepath.Join(repoRoot,
 		".upstream", "current",
 		"packages", "coding-agent", "src", "core", "extensions", "types.ts",
@@ -350,11 +347,15 @@ func isReservedTSKeyword(name string) bool {
 // ─── Event interface extraction ──────────────────────────────────────────────
 
 var eventInterfaceRE = regexp.MustCompile(
-	`(?m)^export interface ([A-Za-z][A-Za-z0-9]*Event(?:Result)?)\b[^{]*\{`,
+	`(?m)^export interface ([A-Za-z][A-Za-z0-9]*Event(?:Result)?)\b(?:\s+extends\s+([A-Za-z][A-Za-z0-9]*))?[^{]*\{`,
 )
 
 // extractEventInterfaces finds every `export interface XxxEvent {…}` and
-// `export interface XxxEventResult {…}`. Returns name + parsed fields.
+// `export interface XxxEventResult {…}`. Returns name + parsed fields. An
+// event that extends a base interface declared without `export` in the
+// same file (BeforeAgentStartEventBase, ToolCallEventBase) carries the
+// base's members first, as TypeScript lays them out: such a base is no
+// event surface of its own, so its members exist only through the events.
 func extractEventInterfaces(src string) []EventTypeDecl {
 	var out []EventTypeDecl
 	for _, loc := range eventInterfaceRE.FindAllStringSubmatchIndex(src, -1) {
@@ -369,7 +370,11 @@ func extractEventInterfaces(src string) []EventTypeDecl {
 			continue
 		}
 		decl := EventTypeDecl{Name: name, Fields: map[string]string{}}
-		for _, f := range parseInterfaceFields(body) {
+		var fields []fieldDecl
+		if loc[4] >= 0 {
+			fields = privateInterfaceFields(src, src[loc[4]:loc[5]])
+		}
+		for _, f := range append(fields, parseInterfaceFields(body)...) {
 			if _, ok := decl.Fields[f.name]; ok {
 				continue
 			}
@@ -379,6 +384,19 @@ func extractEventInterfaces(src string) []EventTypeDecl {
 		out = append(out, decl)
 	}
 	return out
+}
+
+// privateInterfaceFields returns the members of `interface <name> {…}` when src declares it without `export`, and nil otherwise.
+func privateInterfaceFields(src, name string) []fieldDecl {
+	loc := regexp.MustCompile(`(?m)^interface ` + regexp.QuoteMeta(name) + `\b[^{]*\{`).FindStringIndex(src)
+	if loc == nil {
+		return nil
+	}
+	body, err := readBracedBlock(src[loc[1]-1:])
+	if err != nil {
+		return nil
+	}
+	return parseInterfaceFields(body)
 }
 
 type fieldDecl struct {

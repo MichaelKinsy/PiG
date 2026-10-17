@@ -1,7 +1,8 @@
 //! Tool renderers: upstream ToolDefinition.renderShell, renderCall and
-//! renderResult for renderers that return terminal lines.
+//! renderResult for renderers that return terminal lines or a kit view.
 
 use crate::context::Context;
+use crate::kit::{Rendered, View};
 use crate::protocol::Connection;
 use serde_json::{Map, Value};
 use std::collections::HashMap;
@@ -30,6 +31,10 @@ pub struct ToolRenderContext {
     pub expanded: bool,
     pub show_images: bool,
     pub is_error: bool,
+    /// Horizontal padding configured by the outputPad setting. Renderers with `renderShell: "self"` apply it themselves.
+    pub output_pad: u32,
+    /// Recorded execution time of a final result in milliseconds. Absent while the result is partial and for results stored without one. upstream: ToolRenderContext.durationMs
+    pub duration_ms: Option<i64>,
     pub state: Map<String, Value>,
     invalidate: Arc<dyn Fn() + Send + Sync>,
 }
@@ -99,16 +104,43 @@ pub type SharedToolRenderResult = Arc<
         + Sync,
 >;
 
+/// Renders a tool call into a kit view (D107), which the host renders at the
+/// card's width.
+pub type ToolRenderCallViewHandler =
+    Box<dyn Fn(&Context, Value, &mut ToolRenderContext, u32) -> Result<View, String> + Send + Sync>;
+
+/// Renders a tool result into a kit view (D107).
+pub type ToolRenderResultViewHandler = Box<
+    dyn Fn(&Context, ToolRenderResult, ToolRenderResultOptions, &mut ToolRenderContext, u32) -> Result<View, String>
+        + Send
+        + Sync,
+>;
+
+/// [`ToolRenderCallViewHandler`] shared by the renderers a resolver returns.
+pub type SharedToolRenderCallView =
+    Arc<dyn Fn(&Context, Value, &mut ToolRenderContext, u32) -> Result<View, String> + Send + Sync>;
+
+/// [`ToolRenderResultViewHandler`] shared by the renderers a resolver returns.
+pub type SharedToolRenderResultView = Arc<
+    dyn Fn(&Context, ToolRenderResult, ToolRenderResultOptions, &mut ToolRenderContext, u32) -> Result<View, String>
+        + Send
+        + Sync,
+>;
+
 /// The renderers a tool renderer resolver returns (upstream ToolRenderers).
 ///
+/// `call_view` and `result_view` are the view forms (D107): each declares its
+/// phase rendered and wins over the line form set for the same phase.
+///
 /// pig divergence (D89): `next()` returns renderers the host draws as a marker. Returning it keeps them; its
-/// `render_call` and `render_result` are `None`, so a resolver cannot wrap them. A marker given a `render_call` or
-/// `render_result` is the resolver's own renderers.
+/// renderers are `None`, so a resolver cannot wrap them. A marker given a renderer is the resolver's own renderers.
 #[derive(Clone, Default)]
 pub struct ToolRendererSet {
     pub render_shell: ToolRenderShell,
     pub render_call: Option<SharedToolRenderCall>,
     pub render_result: Option<SharedToolRenderResult>,
+    pub call_view: Option<SharedToolRenderCallView>,
+    pub result_view: Option<SharedToolRenderResultView>,
     next_marker: bool,
 }
 
@@ -121,6 +153,21 @@ impl ToolRendererSet {
         + 'static,
     ) -> Self {
         Self { render_call: Some(Arc::new(render_call)), ..Self::default() }
+    }
+
+    /// Renderers that draw calls with the view `call_view`.
+    pub fn with_call_view(
+        call_view: impl Fn(&Context, Value, &mut ToolRenderContext, u32) -> Result<View, String> + Send + Sync + 'static,
+    ) -> Self {
+        Self { call_view: Some(Arc::new(call_view)), ..Self::default() }
+    }
+
+    fn renders_call(&self) -> bool {
+        self.render_call.is_some() || self.call_view.is_some()
+    }
+
+    fn renders_result(&self) -> bool {
+        self.render_result.is_some() || self.result_view.is_some()
     }
 }
 
@@ -148,6 +195,8 @@ type CardStates = HashMap<String, Arc<Mutex<Map<String, Value>>>>;
 pub(crate) struct ToolRenderers {
     pub(crate) call: HashMap<String, ToolRenderCallHandler>,
     pub(crate) result: HashMap<String, ToolRenderResultHandler>,
+    pub(crate) call_view: HashMap<String, ToolRenderCallViewHandler>,
+    pub(crate) result_view: HashMap<String, ToolRenderResultViewHandler>,
     pub(crate) resolvers: Vec<ToolRendererResolver>,
     resolved: Mutex<HashMap<String, ToolRendererSet>>,
     cards: Mutex<CardStates>,
@@ -172,6 +221,10 @@ struct RenderContextWire {
     show_images: bool,
     #[serde(default)]
     is_error: bool,
+    #[serde(default)]
+    output_pad: u32,
+    #[serde(default)]
+    duration_ms: Option<i64>,
 }
 
 #[derive(serde::Deserialize, Default)]
@@ -195,15 +248,16 @@ struct RenderToolWire {
 }
 
 impl ToolRenderers {
-    /// Answers a render_tool request with the renderer's lines. Renders of
-    /// one card run one at a time.
+    /// Answers a render_tool request with the renderer's lines or view. A
+    /// view form wins over the line form of the same phase. Renders of one
+    /// card run one at a time.
     pub(crate) fn render(
         &self,
         ctx: &Context,
         conn: &Arc<Connection>,
         tool: &str,
         args: Option<&Value>,
-    ) -> Result<Vec<String>, String> {
+    ) -> Result<Rendered, String> {
         let request: RenderToolWire = args
             .cloned()
             .map(|value| serde_json::from_value(value).map_err(|err| err.to_string()))
@@ -229,6 +283,8 @@ impl ToolRenderers {
             expanded: request.context.expanded,
             show_images: request.context.show_images,
             is_error: request.context.is_error,
+            output_pad: request.context.output_pad,
+            duration_ms: request.context.duration_ms,
             state: std::mem::take(&mut *state),
             invalidate: Arc::new(move || {
                 let _ = notify_conn.notify(
@@ -239,48 +295,46 @@ impl ToolRenderers {
         };
         if !request.renderers.is_empty() {
             let set = self.resolved.lock().unwrap().get(&request.renderers).cloned();
-            let lines = match (set, request.phase.as_str()) {
-                (Some(set), "result") => match set.render_result {
-                    Some(handler) => handler(ctx, request.result.unwrap_or_default(), request.options, &mut render, request.width),
-                    None => Err(format!("tool {tool} has no result renderer")),
+            let rendered = match (set, request.phase.as_str()) {
+                (Some(set), "result") => match (set.result_view, set.render_result) {
+                    (Some(view), _) => view(ctx, request.result.unwrap_or_default(), request.options, &mut render, request.width).map(Rendered::View),
+                    (None, Some(handler)) => handler(ctx, request.result.unwrap_or_default(), request.options, &mut render, request.width).map(Rendered::Lines),
+                    (None, None) => Err(format!("tool {tool} has no result renderer")),
                 },
-                (Some(set), _) => match set.render_call {
-                    Some(handler) => handler(ctx, request.args, &mut render, request.width),
-                    None => Err(format!("tool {tool} has no call renderer")),
+                (Some(set), _) => match (set.call_view, set.render_call) {
+                    (Some(view), _) => view(ctx, request.args, &mut render, request.width).map(Rendered::View),
+                    (None, Some(handler)) => handler(ctx, request.args, &mut render, request.width).map(Rendered::Lines),
+                    (None, None) => Err(format!("tool {tool} has no call renderer")),
                 },
                 (None, _) => Err(format!("unknown tool renderers {}", request.renderers)),
             };
             *state = render.state;
-            return lines;
+            return rendered;
         }
         let registered = conn.registered_tools.lock().unwrap().get(tool).cloned();
-        let call = match &registered {
-            Some(definition) => definition.render_call.as_ref(),
-            None => self.call.get(tool),
-        };
-        let result = match &registered {
-            Some(definition) => definition.render_result.as_ref(),
-            None => self.result.get(tool),
-        };
-        let lines = if request.phase == "result" {
-            match result {
-                Some(handler) => handler(
-                    ctx,
-                    request.result.unwrap_or_default(),
-                    request.options,
-                    &mut render,
-                    request.width,
-                ),
-                None => Err(format!("tool {tool} has no result renderer")),
+        let rendered = if request.phase == "result" {
+            let (view, lines) = match &registered {
+                Some(definition) => (definition.render_result_view.as_ref(), definition.render_result.as_ref()),
+                None => (self.result_view.get(tool), self.result.get(tool)),
+            };
+            match (view, lines) {
+                (Some(view), _) => view(ctx, request.result.unwrap_or_default(), request.options, &mut render, request.width).map(Rendered::View),
+                (None, Some(handler)) => handler(ctx, request.result.unwrap_or_default(), request.options, &mut render, request.width).map(Rendered::Lines),
+                (None, None) => Err(format!("tool {tool} has no result renderer")),
             }
         } else {
-            match call {
-                Some(handler) => handler(ctx, request.args, &mut render, request.width),
-                None => Err(format!("tool {tool} has no call renderer")),
+            let (view, lines) = match &registered {
+                Some(definition) => (definition.render_call_view.as_ref(), definition.render_call.as_ref()),
+                None => (self.call_view.get(tool), self.call.get(tool)),
+            };
+            match (view, lines) {
+                (Some(view), _) => view(ctx, request.args, &mut render, request.width).map(Rendered::View),
+                (None, Some(handler)) => handler(ctx, request.args, &mut render, request.width).map(Rendered::Lines),
+                (None, None) => Err(format!("tool {tool} has no call renderer")),
             }
         };
         *state = render.state;
-        lines
+        rendered
     }
 
     /// Answers a resolve_tool_renderers request: the resolvers run in registration order with the host's next()
@@ -305,7 +359,7 @@ impl ToolRenderers {
             None => serde_json::json!({ "use": "none" }),
             // A marker given render functions (`let mut set = next()?; set.render_call = ...`) is the resolver's own
             // renderers.
-            Some(set) if set.next_marker && set.render_call.is_none() && set.render_result.is_none() => {
+            Some(set) if set.next_marker && !set.renders_call() && !set.renders_result() => {
                 serde_json::json!({ "use": "next" })
             }
             Some(set) => {
@@ -315,10 +369,10 @@ impl ToolRenderers {
                 if set.render_shell == ToolRenderShell::SelfShell {
                     answer["render_shell"] = Value::from("self");
                 }
-                if set.render_call.is_some() {
+                if set.renders_call() {
                     answer["renders_call"] = Value::from(true);
                 }
-                if set.render_result.is_some() {
+                if set.renders_result() {
                     answer["renders_result"] = Value::from(true);
                 }
                 resolved.insert(id, set);

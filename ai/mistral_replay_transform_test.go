@@ -1,6 +1,9 @@
+//go:build !pig_strip_mistral_conversations
+
 package ai
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -17,7 +20,7 @@ func TestMistralReplayUsesSelectedModelAndSharedTransform(t *testing.T) {
 		messages []Message
 		want     string
 	}{
-		{"foreign thinking becomes text", false, []Message{AssistantMessage{API: APIAnthropicMessages, Provider: "anthropic", Model: "claude", StopReason: StopReasonStop, Content: []AssistantContentBlock{ThinkingContent{Thinking: "reason", ThinkingSignature: "foreign"}, TextContent{Text: "answer"}}}}, `[{"role":"assistant","prefix":false,"content":[{"type":"text","text":"reason"},{"type":"text","text":"answer"}]}]`},
+		{"foreign thinking is dropped", false, []Message{AssistantMessage{API: APIAnthropicMessages, Provider: "anthropic", Model: "claude", StopReason: StopReasonStop, Content: []AssistantContentBlock{ThinkingContent{Thinking: "reason", ThinkingSignature: "foreign"}, TextContent{Text: "answer"}}}}, `[{"role":"assistant","prefix":false,"content":[{"type":"text","text":"answer"}]}]`},
 		{"foreign redacted thinking disappears", false, []Message{AssistantMessage{API: APIAnthropicMessages, Provider: "anthropic", Model: "claude", StopReason: StopReasonStop, Content: []AssistantContentBlock{ThinkingContent{Thinking: "opaque", Redacted: true}, TextContent{Text: "answer"}}}}, `[{"role":"assistant","prefix":false,"content":[{"type":"text","text":"answer"}]}]`},
 		{"same model thinking remains native", false, []Message{AssistantMessage{API: APIMistralConversations, Provider: "custom-mistral", Model: "selected-model", StopReason: StopReasonStop, Content: []AssistantContentBlock{ThinkingContent{Thinking: "reason", ThinkingSignature: "same"}, TextContent{Text: "answer"}}}}, `[{"role":"assistant","prefix":false,"content":[{"type":"thinking","thinking":[{"type":"text","text":"reason"}]},{"type":"text","text":"answer"}]}]`},
 		{"nonvision user images collapse to placeholders", false, []Message{UserMessage{Content: UserContentBlocks{image, image, TextContent{Text: "describe"}, image}}}, `[{"role":"user","content":[{"type":"text","text":"(image omitted: model does not support images)"},{"type":"text","text":"describe"},{"type":"text","text":"(image omitted: model does not support images)"}]}]`},
@@ -58,7 +61,7 @@ func TestMistralReplayUsesSelectedModelAndSharedTransform(t *testing.T) {
 				}
 				return nil
 			}
-			stream, err := StreamSimple(t.Context(), model, NormalizeContext(Context{Messages: tc.messages}), options)
+			stream, err := StreamSimple(invalidRequest(t), model, NormalizeContext(Context{Messages: tc.messages}), options)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -67,7 +70,7 @@ func TestMistralReplayUsesSelectedModelAndSharedTransform(t *testing.T) {
 			}
 			assertCatalogJSON(t, wire["messages"], tc.want)
 			after, err := json.Marshal(tc.messages)
-			if err != nil || string(after) != string(before) {
+			if err != nil || !bytes.Equal(after, before) {
 				t.Fatalf("retained history changed: before=%s after=%s error=%v", before, after, err)
 			}
 		})

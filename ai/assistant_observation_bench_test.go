@@ -43,6 +43,19 @@ func BenchmarkAssistantMessageObservation(b *testing.B) {
 					_ = shallow.Observe()
 				}
 			})
+			scratch := make([]AssistantContentProjection, 0, len(message.Content))
+			b.Run("project-full", func(b *testing.B) {
+				b.ReportAllocs()
+				for b.Loop() {
+					_, _, _ = full.ObserveProjection(scratch[:0])
+				}
+			})
+			b.Run("project-shallow", func(b *testing.B) {
+				b.ReportAllocs()
+				for b.Loop() {
+					_, _, _ = shallow.ObserveProjection(scratch[:0])
+				}
+			})
 			b.Run("marshal-shallow", func(b *testing.B) {
 				b.ReportAllocs()
 				for b.Loop() {

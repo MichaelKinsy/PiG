@@ -1,5 +1,7 @@
 package ai
 
+// pi: packages/ai/src/auth/oauth/xai.ts
+
 import (
 	"context"
 	"fmt"
@@ -120,7 +122,7 @@ func TestXaiOAuthDeviceGrantTimingUpstream(t *testing.T) {
 					}
 				}
 				<-done
-				want := OAuthCredentials{Access: "access-token", Refresh: "refresh-token", Expires: start.UnixMilli() + int64(10+interval)*1000 + 21600000 - 300000}
+				want := OAuthCredentials{Access: "access-token", Refresh: "refresh-token", Expires: start.UnixMilli() + int64(10+interval)*1000 + 21600000 - 300000, order: credentialKeyOrder{keys: accessFirstCredentialMembers}}
 				if loginErr != nil || !reflect.DeepEqual(credential, want) {
 					t.Fatalf("login = %#v, %v; want %#v", credential, loginErr, want)
 				}

@@ -7,9 +7,11 @@ package codingagent
 import (
 	"errors"
 	"fmt"
-	"os"
-	"strings"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/nodepath"
+	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 )
 
 const (
@@ -87,7 +89,7 @@ func bugReportModelName(sc *SlashContext) string {
 // summary consent, then confirms the export. It mirrors upstream
 // promptForOptions without the upload choice.
 func promptBugReportChoices(sc *SlashContext) (bugReportChoices, bool) {
-	hint, ok := sc.ShowExtensionEditor("Report a bug", bugReportDisclaimer+"\n\nWhat went wrong? (optional)", strings.TrimSpace(sc.Args))
+	hint, ok := sc.ShowExtensionEditor("Report a bug", bugReportDisclaimer+"\n\nWhat went wrong? (optional)", jsstring.Trim(sc.Args))
 	if !ok {
 		return bugReportChoices{}, false
 	}
@@ -95,7 +97,7 @@ func promptBugReportChoices(sc *SlashContext) (bugReportChoices, bool) {
 	if !ok {
 		return bugReportChoices{}, false
 	}
-	choices := bugReportChoices{hint: strings.TrimSpace(hint), includeSession: transcript != "No"}
+	choices := bugReportChoices{hint: jsstring.Trim(hint), includeSession: transcript != "No"}
 	modelName := bugReportModelName(sc)
 	if !choices.includeSession {
 		provider := "your provider"
@@ -149,9 +151,14 @@ func buildBugReportBundle(sc *SlashContext, choices bugReportChoices, summary *s
 	if session != nil {
 		inputs.SessionID = session.ID()
 		inputs.CWD = session.CWD()
-		inputs.Header = session.Header()
-		inputs.Entries = session.Entries()
-		inputs.Branch = BugReportBranch(session)
+		inputs.Header = session.ExportHeader()
+		// The report reads every entry: a record that changed on disk under the session fails it.
+		if inputs.Entries, err = sessionentry.MaterializeAll(session.GetEntries()); err != nil {
+			return BugReportBundle{}, err
+		}
+		if inputs.Branch, err = sessionentry.MaterializeAll(BugReportBranch(session)); err != nil {
+			return BugReportBundle{}, err
+		}
 	}
 	now := time.Now()
 	metadata, err := CollectBugReportMetadata(inputs, BugReportOptions{Hint: choices.hint, IncludeSession: choices.includeSession}, summary != nil, now)
@@ -181,7 +188,7 @@ func buildBugReportBundle(sc *SlashContext, choices bugReportChoices, summary *s
 // exportBugReport writes the archive to the working directory, records the
 // report in the session, and prints the PiG issue link.
 func exportBugReport(sc *SlashContext, bundle BugReportBundle) error {
-	dir, err := os.Getwd()
+	dir, err := nodepath.Cwd() // bug-report.ts:202 process.cwd()
 	if err != nil {
 		return fmt.Errorf("Failed to write bug report: %w", err)
 	}

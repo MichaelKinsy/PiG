@@ -1,10 +1,11 @@
 // Pi 0.87.1 TuiBase.handleTerminalInput owns the same focus boundary as Pig's interactive driver.
+import { PI_PACKAGE_VERSION } from "./pi-version.mjs";
 import assert from 'node:assert/strict';
 import { readFileSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 const root = process.env.PI_PACKAGE_ROOT ?? realpathSync('extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent');
-assert.equal(JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version, '1.0.3');
+assert.equal(JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version, PI_PACKAGE_VERSION);
 const dist = join(root, 'node_modules/@earendil-works/pi-tui/dist');
 const { TuiMainScreen } = await import(pathToFileURL(join(dist, 'tui-main-screen.js')).href);
 const { TuiAltScreen } = await import(pathToFileURL(join(dist, 'tui-alt-screen.js')).href);

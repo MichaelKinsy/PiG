@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -54,7 +55,7 @@ func newScript(setup *chatState) *script {
 	result := &script{}
 	steps := make([]ai.FauxResponseStep, 500)
 	for index := range steps {
-		steps[index] = ai.FauxFactoryStep(func(transcript ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, model *ai.Model) (ai.FauxResponse, error) {
+		steps[index] = ai.FauxFactoryStep(func(transcript ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, model *ai.Model) (ai.AssistantMessage, error) {
 			request := scriptRequest{messages: slices.Clone(transcript.Messages()), options: options, model: model.ID}
 			summary := isSummaryRequest(request.messages)
 			result.mu.Lock()
@@ -76,9 +77,10 @@ func newScript(setup *chatState) *script {
 				if summary {
 					kind = "summary"
 				}
-				return ai.FauxResponse{}, errors.New("No scripted " + kind + " response")
+				return ai.FauxResponse{}.AssistantMessage(), errors.New("No scripted " + kind + " response")
 			}
-			return step(request)
+			response, err := step(request)
+			return response.AssistantMessage(), err
 		})
 	}
 	setup.Faux.SetResponses(steps)
@@ -256,6 +258,16 @@ func (chat *compactionChat) live(t *testing.T) *LiveState {
 
 func (chat *compactionChat) close(t *testing.T) { closeHarness(t, chat.harness) }
 
+// firstUserText is the text of the first user message; a leading baseline system message comes before it.
+func firstUserText(messages []ai.Message) string {
+	for _, message := range messages {
+		if _, isUser := message.(ai.UserMessage); isUser {
+			return userText(message)
+		}
+	}
+	return userText(nil)
+}
+
 func userText(message ai.Message) string {
 	if message == nil {
 		return ""
@@ -374,13 +386,30 @@ func TestRangeSelection(t *testing.T) {
 		entries := []durable.EntryRecord{ids.entry("pi.user", []ai.Message{rangeUser("do it")})}
 		for index := range 5 {
 			call := "c" + itoa(index)
-			entries = append(entries, ids.entry("pi.assistant", []ai.Message{rangeAssistant("step "+itoa(index), []string{call}, "")}))
-			entries = append(entries, ids.entry("pi.tool-result", []ai.Message{rangeToolResult(call, sized("r"+itoa(index), 100))}))
+			entries = append(entries, ids.entry("pi.assistant", []ai.Message{rangeAssistant("step "+itoa(index), []string{call}, "")}), ids.entry("pi.tool-result", []ai.Message{rangeToolResult(call, sized("r"+itoa(index), 100))}))
 		}
 		// The budget is reached at the fourth result; the cut is the last call, whose result it keeps.
 		cut, _ := SelectCut(rangeView(entries, nil), 150)
 		if entries[cut].Kind != "pi.assistant" || cut != 9 {
 			t.Fatalf("cut = %d (%s), want 9", cut, entries[cut].Kind)
+		}
+	})
+
+	t.Run("never cuts at a display-only entry where the budget is reached (#10407)", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:264 (Pi e6b9a6af)
+		ids := &rangeEntries{}
+		entries := []durable.EntryRecord{
+			ids.entry("pi.user", []ai.Message{rangeUser(sized("u1", 100))}),
+			ids.entry("pi.assistant", []ai.Message{rangeAssistant(sized("a1", 100), nil, "")}),
+			ids.entry("chat.message", []ai.Message{}),
+			ids.entry("pi.assistant", []ai.Message{rangeAssistant(sized("a2", 100), nil, "")}),
+		}
+		// The budget is reached at a1; the display-only entry after it is skipped for the assistant a2.
+		if cut, _ := SelectCut(rangeView(entries, nil), 150); cut != 1 {
+			t.Fatalf("cut = %d, want 1", cut)
+		}
+		if cut, _ := SelectCut(rangeView(entries, nil), 50); cut != 3 {
+			t.Fatalf("cut = %d, want 3", cut)
 		}
 	})
 
@@ -479,7 +508,7 @@ func TestRangeSelection(t *testing.T) {
 }
 
 func TestSerialization(t *testing.T) {
-	t.Run("writes a transcript, truncates tool results, and omits system messages", func(t *testing.T) {
+	t.Run("writes a transcript, truncates tool results, and omits system messages and thinking", func(t *testing.T) {
 		// upstream: packages/durable/test/harness-compaction.test.ts:331
 		call := ai.ToolCall{ID: "c", Name: "read", Arguments: ai.JsonObject{"path": "a.ts"}}
 		messages := []ai.Message{
@@ -492,7 +521,12 @@ func TestSerialization(t *testing.T) {
 		if strings.Contains(serialized, "hidden") {
 			t.Fatalf("serialized %q contains the system message", serialized)
 		}
-		for _, want := range []string{"[User]: hello", "[Assistant thinking]: hmm", "[Assistant]: sure", `[Assistant tool calls]: read(path="a.ts")`, "[Tool result]: " + strings.Repeat("y", 2000) + "\n\n[... 500 more characters truncated]"} {
+		// Thinking is omitted (compaction.ts serializeConversation): replayed thinking can make the request larger
+		// than the context it summarizes.
+		if strings.Contains(serialized, "hmm") || strings.Contains(serialized, "thinking") {
+			t.Fatalf("serialized %q contains the thinking block", serialized)
+		}
+		for _, want := range []string{"[User]: hello", "[Assistant]: sure", `[Assistant tool calls]: read(path="a.ts")`, "[Tool result]: " + strings.Repeat("y", 2000) + "\n\n[... 500 more characters truncated]"} {
 			if !strings.Contains(serialized, want) {
 				t.Fatalf("serialized %q lacks %q", serialized, want)
 			}
@@ -500,6 +534,8 @@ func TestSerialization(t *testing.T) {
 	})
 }
 
+// TestManualCompaction Conversation.compact returns the manual compaction task's ID, and commit, context and entries read this conversation's history newest first (packages/durable/src/harness/types.ts:507,525-539).
+// mutation-checked: Conversation.Id returning another conversation's id, Conversation.Compact returning task 0, and Conversation.Commit, Conversation.Context and Conversation.Entries returning empty results, fail it.
 func TestManualCompaction(t *testing.T) {
 	t.Run("places the summary at once when idle and keeps raw history", func(t *testing.T) {
 		// upstream: packages/durable/test/harness-compaction.test.ts:354
@@ -534,7 +570,7 @@ func TestManualCompaction(t *testing.T) {
 		}
 
 		// The model context is the summary followed by the kept entries.
-		view := must(chat.root.Context(testContext))
+		view := must(chat.root.Context(testContext, nil))
 		texts := []string{}
 		for _, message := range view.Messages {
 			texts = append(texts, userText(message))
@@ -561,9 +597,9 @@ func TestManualCompaction(t *testing.T) {
 		}
 		chat.turn(t, "next", "done")
 		agent := chat.faux.lastAgentRequest().messages
-		// The next request: the summary, the kept turn, the new input, then one complete system baseline.
-		expectEqualJSON(t, roles(agent), `["user","user","assistant","user","system"]`)
-		expectMatch(t, agent[4], `{"sections":{"preamble":"You are helpful."}}`)
+		// The next request: one complete system baseline leading the summary, the kept turn, and the new input (#10904).
+		expectEqualJSON(t, roles(agent), `["system","user","user","assistant","user"]`)
+		expectMatch(t, agent[0], `{"sections":{"preamble":"You are helpful."}}`)
 		chat.close(t)
 	})
 
@@ -613,15 +649,15 @@ func TestManualCompaction(t *testing.T) {
 	t.Run("places a queued summary at postTools and the run continues in the compacted context", func(t *testing.T) {
 		// upstream: packages/durable/test/harness-compaction.test.ts:445
 		chat := openCompaction(t)
-		addTool(t, chat.setup.Registry, new(durable.ToolRegistration{ToolSchema: ai.ToolSchema{Name: "wait", Description: "wait", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}}, Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
-			return durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "waited"}}}, nil
+		addTool(t, chat.setup.Registry, DefineTool(durable.ToolRegistration{ToolSchema: ai.ToolSchema{Name: "wait", Description: "wait", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}}, Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+			return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{ai.TextContent{Text: "waited"}}}, nil
 		}}))
-		if err := chat.root.Configure(testContext, AgentChange{Tools: SetTo(ToolChange{Exact: true, List: toolsNamed(t, chat.setup, "wait")})}); err != nil {
+		if err := chat.root.Configure(testContext, AgentChange{Tools: SetTo(ToolChange{List: toolsNamed(t, chat.setup, "wait")})}); err != nil {
 			t.Fatal(err)
 		}
 		chat.history(t)
 		gate, reached := deferred(), deferred()
-		chat.faux.pushAgent(scriptGated(gate, fixed(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("wait", map[string]any{}, "")}, StopReason: "toolUse"}), reached), scriptAnswer("after tools"))
+		chat.faux.pushAgent(scriptGated(gate, fixed(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("wait", map[string]any{}, &ai.FauxToolCallOptions{ID: ""})}, StopReason: "toolUse"}), reached), scriptAnswer("after tools"))
 		input := submitInput(t, chat.root, "use a tool")
 		if err := reached.wait(testContext); err != nil {
 			t.Fatal(err)
@@ -630,8 +666,11 @@ func TestManualCompaction(t *testing.T) {
 		chat.outcome(t, chat.compact(t, nil))
 		gate.resolve()
 		expectSettled(t, must(input.Wait(testContext)), durable.SubmissionDone, "")
-		// The continuation request starts with the summary.
-		if first := userText(chat.faux.lastAgentRequest().messages[0]); !strings.Contains(first, "<summary>\nSUMMARY\n</summary>") {
+		// The continuation request starts with the new baseline, then the summary, ahead of the kept tool call (#10904).
+		if _, ok := chat.faux.lastAgentRequest().messages[0].(ai.SystemMessage); !ok {
+			t.Fatalf("continuation does not start with the baseline")
+		}
+		if first := firstUserText(chat.faux.lastAgentRequest().messages); !strings.Contains(first, "<summary>\nSUMMARY\n</summary>") {
 			t.Fatalf("continuation starts with %q", first)
 		}
 		expectEqualJSON(t, lastN(chat.kinds(t), 4), `["pi.tool-result","pi.compaction","pi.system","pi.assistant"]`)
@@ -660,7 +699,7 @@ func TestManualCompaction(t *testing.T) {
 		chat.outcome(t, chat.compact(t, nil))
 		expectSettled(t, must(followUp.Wait(testContext)), durable.SubmissionDone, "")
 		request := chat.faux.lastAgentRequest().messages
-		if !strings.Contains(userText(request[0]), "SUMMARY") || !slices.ContainsFunc(request, func(message ai.Message) bool { return userText(message) == "follow-up" }) {
+		if !strings.Contains(firstUserText(request), "SUMMARY") || !slices.ContainsFunc(request, func(message ai.Message) bool { return userText(message) == "follow-up" }) {
 			t.Fatalf("request = %v", roles(request))
 		}
 		chat.close(t)
@@ -693,7 +732,7 @@ func (chat *compactionChat) usageInput(t *testing.T) int {
 
 func (chat *compactionChat) firstContextText(t *testing.T) string {
 	t.Helper()
-	return userText(must(chat.root.Context(testContext)).Messages[0])
+	return firstUserText(must(chat.root.Context(testContext, nil)).Messages)
 }
 
 func (chat *compactionChat) setKeep(keep int) {
@@ -711,6 +750,8 @@ func awaitGate(t *testing.T, gate *deferredGate) {
 	}
 }
 
+// TestManualCompactionConcurrency Conversation.abort resolves once the ordinary ownership scope is idle (packages/durable/src/harness/types.ts:541-545).
+// mutation-checked: Conversation.Abort returning without aborting fails it.
 func TestManualCompactionConcurrency(t *testing.T) {
 	t.Run("does not make the conversation busy: a submission during summarization starts its run at once", func(t *testing.T) {
 		// upstream: packages/durable/test/harness-compaction.test.ts:525
@@ -728,7 +769,7 @@ func TestManualCompactionConcurrency(t *testing.T) {
 			t.Fatalf("input = %s, want placed", record.Status)
 		}
 		awaitGate(t, answerReached)
-		if first := userText(chat.faux.lastAgentRequest().messages[0]); first != sized("u1", 100) {
+		if first := firstUserText(chat.faux.lastAgentRequest().messages); first != sized("u1", 100) {
 			t.Fatalf("first message = %q", first)
 		}
 		// The summary is ready while the run is busy, so it queues and lands after the answer.
@@ -807,9 +848,9 @@ func TestManualCompactionConcurrency(t *testing.T) {
 		if record := must(chat.summarySubmission(t, chat.outcome(t, a)).Status(testContext)); record.Status != durable.SubmissionDone {
 			t.Fatalf("A = %s, want done", record.Status)
 		}
-		messages := must(chat.root.Context(testContext)).Messages
-		if !strings.Contains(userText(messages[0]), "<summary>\nA\n</summary>") {
-			t.Fatalf("context starts with %q", userText(messages[0]))
+		messages := must(chat.root.Context(testContext, nil)).Messages
+		if !strings.Contains(firstUserText(messages), "<summary>\nA\n</summary>") {
+			t.Fatalf("context starts with %q", firstUserText(messages))
 		}
 		rest := []string{}
 		for _, message := range messages[1:] {
@@ -977,14 +1018,14 @@ func TestCompactionOutcomes(t *testing.T) {
 		// upstream: packages/durable/test/harness-compaction.test.ts:737
 		chat := openCompaction(t)
 		var seen []CompactionRequest
-		addHooks(t, chat.setup.Registry, CompactionTask, beforeCompact(func(CompactionRequest) (*CompactionDecision, error) {
+		addHooks(t, chat.setup.Registry, CompactionTask.Erased(), beforeCompact(func(CompactionRequest) (*CompactionDecision, error) {
 			return nil, errors.New("hook broke")
 		}))
-		addHooks(t, chat.setup.Registry, CompactionTask, beforeCompact(func(compaction CompactionRequest) (*CompactionDecision, error) {
+		addHooks(t, chat.setup.Registry, CompactionTask.Erased(), beforeCompact(func(compaction CompactionRequest) (*CompactionDecision, error) {
 			seen = append(seen, compaction)
 			return &CompactionDecision{Summary: new("FROM HOOK")}, nil
 		}))
-		addHooks(t, chat.setup.Registry, CompactionTask, beforeCompact(func(CompactionRequest) (*CompactionDecision, error) {
+		addHooks(t, chat.setup.Registry, CompactionTask.Erased(), beforeCompact(func(CompactionRequest) (*CompactionDecision, error) {
 			return &CompactionDecision{Decline: true}, nil
 		}))
 		chat.history(t)
@@ -1002,7 +1043,7 @@ func TestCompactionOutcomes(t *testing.T) {
 			t.Fatalf("reports = %v", reports)
 		}
 		compaction := seen[0]
-		if compaction.Reason != "manual" || compaction.Instructions == nil || *compaction.Instructions != "why" {
+		if compaction.Reason != durable.CompactionManual || compaction.Instructions == nil || *compaction.Instructions != "why" {
 			t.Fatalf("compaction = %+v", compaction)
 		}
 		expectEqualJSON(t, entryKinds(compaction.Entries), `["pi.user","pi.system","pi.assistant","pi.user","pi.assistant"]`)
@@ -1019,7 +1060,7 @@ func TestCompactionOutcomes(t *testing.T) {
 	t.Run("completes without a summary when a hook declines", func(t *testing.T) {
 		// upstream: packages/durable/test/harness-compaction.test.ts:776
 		chat := openCompaction(t)
-		addHooks(t, chat.setup.Registry, CompactionTask, beforeCompact(func(CompactionRequest) (*CompactionDecision, error) {
+		addHooks(t, chat.setup.Registry, CompactionTask.Erased(), beforeCompact(func(CompactionRequest) (*CompactionDecision, error) {
 			return &CompactionDecision{Decline: true}, nil
 		}))
 		chat.history(t)
@@ -1099,7 +1140,7 @@ func TestCompactionOutcomes(t *testing.T) {
 		// upstream: packages/durable/test/harness-compaction.test.ts:847
 		for _, decision := range []CompactionDecision{{Decline: true}, {Summary: new("HOOK")}} {
 			chat := openCompaction(t)
-			addHooks(t, chat.setup.Registry, CompactionTask, beforeCompact(func(CompactionRequest) (*CompactionDecision, error) {
+			addHooks(t, chat.setup.Registry, CompactionTask.Erased(), beforeCompact(func(CompactionRequest) (*CompactionDecision, error) {
 				return &decision, nil
 			}))
 			chat.history(t)
@@ -1114,7 +1155,7 @@ func TestCompactionOutcomes(t *testing.T) {
 		// upstream: packages/durable/test/harness-compaction.test.ts:859
 		chat := openCompaction(t)
 		addTool(t, chat.setup.Registry, noopTool("read"))
-		if err := chat.root.Configure(testContext, AgentChange{Tools: SetTo(ToolChange{Exact: true, List: toolsNamed(t, chat.setup, "read")})}); err != nil {
+		if err := chat.root.Configure(testContext, AgentChange{Tools: SetTo(ToolChange{List: toolsNamed(t, chat.setup, "read")})}); err != nil {
 			t.Fatal(err)
 		}
 		chat.history(t)
@@ -1146,7 +1187,7 @@ func TestCompactionOutcomes(t *testing.T) {
 		{"retries run out", ai.FauxResponse{StopReason: "error", ErrorMessage: "overloaded"}, "Summarization failed: overloaded"},
 		{"a non-retryable error", ai.FauxResponse{StopReason: "error", ErrorMessage: "bad request"}, "Summarization failed: bad request"},
 		{"a length stop", ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("partial")}, StopReason: "length"}, "Summarization hit the token limit; the summary is incomplete"},
-		{"a tool call", ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("read", map[string]any{}, "")}, StopReason: "stop"}, "Summarization attempted to call a tool"},
+		{"a tool call", ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("read", map[string]any{}, &ai.FauxToolCallOptions{ID: ""})}, StopReason: "stop"}, "Summarization attempted to call a tool"},
 		{"empty text", ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("  ")}}, "Summarization produced no text"},
 	} {
 		t.Run("fails with model_error on "+variant.name, func(t *testing.T) {
@@ -1325,7 +1366,7 @@ func TestBlockingThresholdCompaction(t *testing.T) {
 		child := chat.compactionTasks(t)[0]
 		generation := chat.live(t).Run.TaskId
 		expectMatch(t, child, jsonText(t, map[string]any{"owner": generation, "background": false, "input": map[string]any{"reason": "threshold"}}))
-		expectMatch(t, must(chat.harness.GetTask(testContext, generation)).State, jsonText(t, map[string]any{"status": "waiting", "on": []any{child.Id}, "checkpoint": map[string]any{"phase": "prepare", "attempt": 1, "compacted": child.Id}}))
+		expectMatch(t, must(chat.harness.GetTask(testContext, generation)).State, jsonText(t, map[string]any{"status": "waiting", "on": []any{child.Id}, "checkpoint": map[string]any{"phase": "prepare", "attempt": 1, "compacted": child.Id, "threshold": true}}))
 		expectEqualJSON(t, chat.live(t).Compactions, jsonText(t, []any{map[string]any{"taskId": child.Id, "reason": "threshold", "blocking": true, "attempt": 1}}))
 		// Nothing was appended before the wait.
 		if kinds := chat.kinds(t); kinds[len(kinds)-1] != "pi.user" {
@@ -1338,8 +1379,8 @@ func TestBlockingThresholdCompaction(t *testing.T) {
 		}
 		expectEqualJSON(t, lastN(chat.kinds(t), 3), `["pi.compaction","pi.system","pi.assistant"]`)
 		request := chat.faux.lastAgentRequest().messages
-		if !strings.Contains(userText(request[0]), "SUMMARY") {
-			t.Fatalf("request starts with %q", userText(request[0]))
+		if !strings.Contains(firstUserText(request), "SUMMARY") {
+			t.Fatalf("request starts with %q", firstUserText(request))
 		}
 		systems := []ai.Message{}
 		for _, message := range request {
@@ -1375,48 +1416,78 @@ func TestBlockingThresholdCompaction(t *testing.T) {
 		chat.close(t)
 	})
 
-	for _, variant := range []struct {
-		name    string
-		prepare func(t *testing.T, chat *compactionChat)
-	}{
-		{"declines", func(t *testing.T, chat *compactionChat) {
-			addHooks(t, chat.setup.Registry, CompactionTask, beforeCompact(func(CompactionRequest) (*CompactionDecision, error) {
-				return &CompactionDecision{Decline: true}, nil
-			}))
-		}},
-		{"fails", func(_ *testing.T, chat *compactionChat) { chat.faux.pushSummary(scriptFailure("bad request")) }},
-	} {
-		t.Run("sends the request anyway when its compaction "+variant.name, func(t *testing.T) {
-			// upstream: packages/durable/test/harness-compaction.test.ts:1067
-			chat := openCompaction(t, compactionOptions{contextWindow: 1000})
-			chat.history(t)
-			chat.setPolicy(blockingPolicy())
-			variant.prepare(t, chat)
-			chat.turn(t, sized("u4", 200), "a4")
-			if slices.Contains(chat.kinds(t), "pi.compaction") {
-				t.Fatal("a summary was placed")
-			}
-			if first := userText(chat.faux.lastAgentRequest().messages[0]); first != sized("u1", 100) {
-				t.Fatalf("request starts with %q", first)
-			}
-			chat.close(t)
-		})
-	}
+	t.Run("sends the request anyway when its compaction declines", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1114
+		chat := openCompaction(t, compactionOptions{contextWindow: 1000})
+		chat.history(t)
+		chat.setPolicy(blockingPolicy())
+		addHooks(t, chat.setup.Registry, CompactionTask.Erased(), beforeCompact(func(CompactionRequest) (*CompactionDecision, error) {
+			return &CompactionDecision{Decline: true}, nil
+		}))
+		chat.turn(t, sized("u4", 200), "a4")
+		if slices.Contains(chat.kinds(t), "pi.compaction") {
+			t.Fatal("a summary was placed")
+		}
+		if first := firstUserText(chat.faux.lastAgentRequest().messages); first != sized("u1", 100) {
+			t.Fatalf("request starts with %q", first)
+		}
+		if failure := chat.live(t).CompactionFailure; failure != nil {
+			t.Fatalf("compactionFailure = %+v", failure)
+		}
+		chat.close(t)
+	})
 
-	t.Run("sends the request anyway when its compaction is aborted directly", func(t *testing.T) {
-		// upstream: packages/durable/test/harness-compaction.test.ts:1079
+	// A failed compaction leaves a context it judged too large; the generation fails with its error and sends no request
+	// (generation.ts prepare: the checkpoint's threshold flag and compactionFailure).
+	t.Run("fails the run with the compaction's error, without a request, when its compaction fails", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1126
+		chat := openCompaction(t, compactionOptions{contextWindow: 1000})
+		chat.history(t)
+		chat.setPolicy(blockingPolicy())
+		chat.faux.pushSummary(scriptFailure("bad request"))
+		requests := len(chat.faux.agentRequestsCopy())
+		settled := must(submitInput(t, chat.root, sized("u4", 200)).Wait(testContext))
+		expectSettled(t, settled, durable.SubmissionUnanswered, "model_error")
+		expectEqualJSON(t, settled.Detail, jsonText(t, "Compaction failed: Summarization failed: bad request"))
+		if got := len(chat.faux.agentRequestsCopy()); got != requests {
+			t.Fatalf("agent requests = %d, want %d", got, requests)
+		}
+		if kinds := chat.kinds(t); kinds[len(kinds)-1] != "pi.user" {
+			t.Fatalf("kinds = %v", kinds)
+		}
+		state := chat.live(t)
+		if state.Compactions != nil {
+			t.Fatalf("compactions = %s", jsonText(t, state.Compactions))
+		}
+		if failure := state.CompactionFailure; failure == nil || failure.Reason != "threshold" || failure.Error != "Summarization failed: bad request" {
+			t.Fatalf("compactionFailure = %+v", failure)
+		}
+		chat.close(t)
+	})
+
+	t.Run("fails the run when its compaction is aborted directly", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1151
 		chat := openCompaction(t, compactionOptions{contextWindow: 1000})
 		chat.history(t)
 		chat.setPolicy(blockingPolicy())
 		reached := deferred()
 		chat.faux.pushSummary(scriptGated(deferred(), scriptSummary(), reached))
-		chat.faux.pushAgent(scriptAnswer("a4"))
+		requests := len(chat.faux.agentRequestsCopy())
 		input := submitInput(t, chat.root, sized("u4", 200))
 		awaitGate(t, reached)
 		must(chat.harness.AbortTask(testContext, chat.compactionTasks(t)[0].Id))
-		expectSettled(t, must(input.Wait(testContext)), durable.SubmissionDone, "")
+		settled := must(input.Wait(testContext))
+		expectSettled(t, settled, durable.SubmissionUnanswered, "model_error")
+		expectEqualJSON(t, settled.Detail, jsonText(t, "Compaction was aborted"))
+		if got := len(chat.faux.agentRequestsCopy()); got != requests {
+			t.Fatalf("agent requests = %d, want %d", got, requests)
+		}
 		if slices.Contains(chat.kinds(t), "pi.compaction") {
 			t.Fatal("a summary was placed")
+		}
+		// Aborting is not a failure.
+		if failure := chat.live(t).CompactionFailure; failure != nil {
+			t.Fatalf("compactionFailure = %+v", failure)
 		}
 		chat.close(t)
 	})
@@ -1500,7 +1571,7 @@ func countKind(kinds []string, kind string) int {
 }
 
 func toolCallScript(name string) scriptStep {
-	return fixed(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall(name, map[string]any{}, "")}, StopReason: "toolUse"})
+	return fixed(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall(name, map[string]any{}, &ai.FauxToolCallOptions{ID: ""})}, StopReason: "toolUse"})
 }
 
 func TestOverflowCompaction(t *testing.T) {
@@ -1528,7 +1599,10 @@ func TestOverflowCompaction(t *testing.T) {
 			}
 		}
 		retry := chat.faux.lastAgentRequest().messages
-		if !strings.Contains(userText(retry[0]), "SUMMARY") || slices.ContainsFunc(retry, func(message ai.Message) bool {
+		if _, ok := retry[0].(ai.SystemMessage); !ok {
+			t.Fatalf("retry does not start with the baseline")
+		}
+		if !strings.Contains(firstUserText(retry), "SUMMARY") || slices.ContainsFunc(retry, func(message ai.Message) bool {
 			assistant, ok := message.(ai.AssistantMessage)
 			return ok && assistant.StopReason == ai.StopReasonError
 		}) {
@@ -1586,7 +1660,7 @@ func TestOverflowCompaction(t *testing.T) {
 		requests int
 	}{
 		{"declines", func(t *testing.T, chat *compactionChat) {
-			addHooks(t, chat.setup.Registry, CompactionTask, beforeCompact(func(CompactionRequest) (*CompactionDecision, error) {
+			addHooks(t, chat.setup.Registry, CompactionTask.Erased(), beforeCompact(func(CompactionRequest) (*CompactionDecision, error) {
 				return &CompactionDecision{Decline: true}, nil
 			}))
 		}, 0},
@@ -1626,14 +1700,14 @@ func TestCompactionEstimates(t *testing.T) {
 			}
 			chat := openCompaction(t, compactionOptions{contextWindow: 2000, setup: setup})
 			toolGate, toolReached := deferred(), deferred()
-			addTool(t, chat.setup.Registry, new(durable.ToolRegistration{ToolSchema: ai.ToolSchema{Name: "slow", Description: "slow", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}}, Execute: func(ctx context.Context, _ any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+			addTool(t, chat.setup.Registry, DefineTool(durable.ToolRegistration{ToolSchema: ai.ToolSchema{Name: "slow", Description: "slow", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}}, Execute: func(ctx context.Context, _ any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 				toolReached.resolve()
 				if err := toolGate.wait(ctx); err != nil {
 					return durable.ToolExecutionResult{}, err
 				}
-				return durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: sized("result", 200)}}}, nil
+				return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{ai.TextContent{Text: sized("result", 200)}}}, nil
 			}}))
-			if err := chat.root.Configure(testContext, AgentChange{Tools: SetTo(ToolChange{Exact: true, List: toolsNamed(t, chat.setup, "slow")})}); err != nil {
+			if err := chat.root.Configure(testContext, AgentChange{Tools: SetTo(ToolChange{List: toolsNamed(t, chat.setup, "slow")})}); err != nil {
 				t.Fatal(err)
 			}
 			chat.turn(t, sized("u1", 220), sized("a1", 220))
@@ -1662,7 +1736,7 @@ func TestCompactionEstimates(t *testing.T) {
 			if summaries, tasks := len(chat.faux.summaryRequestsCopy()), len(chat.compactionTasks(t)); summaries != 1 || tasks != 0 {
 				t.Fatalf("summary requests = %d, compaction tasks = %d", summaries, tasks)
 			}
-			if first := userText(chat.faux.lastAgentRequest().messages[0]); !strings.Contains(first, "SUMMARY") {
+			if first := firstUserText(chat.faux.lastAgentRequest().messages); !strings.Contains(first, "SUMMARY") {
 				t.Fatalf("request starts with %q", first)
 			}
 			chat.close(t)
@@ -1689,7 +1763,7 @@ func TestCompactionEstimates(t *testing.T) {
 		chat.faux.pushSummary(scriptSummary())
 		chat.outcome(t, chat.compact(t, nil))
 		// The kept range holds the delta for the terse mood; the next request has one complete baseline.
-		if !slices.ContainsFunc(must(chat.root.Context(testContext)).Entries, func(record durable.EntryRecord) bool { return record.Kind == "pi.system" }) {
+		if !slices.ContainsFunc(must(chat.root.Context(testContext, nil)).Entries, func(record durable.EntryRecord) bool { return record.Kind == "pi.system" }) {
 			t.Fatal("the kept range has no system entry")
 		}
 		chat.turn(t, "next", "ok")
@@ -1744,14 +1818,14 @@ func TestCompactionInteractions(t *testing.T) {
 		u1 := allEntries(t, chat.root)[0]
 		submit(t, chat.root, writeDraft(durable.EntryDraft{Kind: "app.redact", Edits: []durable.ContextEdit{{Target: u1.Id, Action: durable.EditReplace, Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("REDACTED")}}}}}))
 		var messages []ai.Message
-		addHooks(t, chat.setup.Registry, CompactionTask, beforeCompact(func(compaction CompactionRequest) (*CompactionDecision, error) {
+		addHooks(t, chat.setup.Registry, CompactionTask.Erased(), beforeCompact(func(compaction CompactionRequest) (*CompactionDecision, error) {
 			messages = compaction.Messages
 			return nil, nil
 		}))
 		chat.faux.pushSummary(scriptSummary())
 		chat.outcome(t, chat.compact(t, nil))
-		if userText(messages[0]) != "REDACTED" || !strings.Contains(userText(chat.faux.summaryRequestsCopy()[0].messages[1]), "[User]: REDACTED") {
-			t.Fatalf("hook saw %q", userText(messages[0]))
+		if firstUserText(messages) != "REDACTED" || !strings.Contains(userText(chat.faux.summaryRequestsCopy()[0].messages[1]), "[User]: REDACTED") {
+			t.Fatalf("hook saw %q", firstUserText(messages))
 		}
 		chat.close(t)
 	})
@@ -1771,7 +1845,7 @@ func TestCompactionInteractions(t *testing.T) {
 				u3 = record
 			}
 		}
-		view := must(fork.Context(testContext))
+		view := must(fork.Context(testContext, nil))
 		expectMatch(t, view.Head, jsonText(t, map[string]any{"kind": "pi.compaction", "head": u3.Id, "conversationId": fork.Id()}))
 		rest := []string{}
 		for _, message := range view.Messages[1:] {
@@ -1802,7 +1876,7 @@ func TestCompactionInteractions(t *testing.T) {
 		resetTo(t, fork, nil)
 		gate.resolve()
 		expectSettled(t, must(chat.summarySubmission(t, chat.outcome(t, id)).Status(testContext)), durable.SubmissionUnanswered, "stale")
-		if head := must(fork.Context(testContext)).Head; head == nil || head.Kind != "pi.reset" {
+		if head := must(fork.Context(testContext, nil)).Head; head == nil || head.Kind != "pi.reset" {
 			t.Fatalf("head = %s", jsonText(t, head))
 		}
 		chat.close(t)
@@ -1839,9 +1913,9 @@ func TestCompactionInteractions(t *testing.T) {
 		chat := openCompaction(t)
 		childGate := deferred()
 		child := defineChildTask(childGate)
-		addTask(t, chat.setup.Registry, child)
+		addTask(t, chat.setup.Registry, child.Erased())
 		rootId := chat.root.Id()
-		addHooks(t, chat.setup.Registry, CompactionTask, &CompactionHooks{BeforeCompact: func(ctx context.Context, _ CompactionRequest, api HookApi) (*CompactionDecision, error) {
+		addHooks(t, chat.setup.Registry, CompactionTask.Erased(), &CompactionHooks{BeforeCompact: func(ctx context.Context, _ CompactionRequest, api HookApi) (*CompactionDecision, error) {
 			_, err := durable.Commit(ctx, chat.harness, func(tx durable.Tx) (durable.TaskId, error) {
 				return durable.CreateTask(tx, child, struct{}{}, durable.TaskOptions{Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByTask, TaskId: api.TaskId()}, ConversationId: &rootId})
 			})
@@ -1876,8 +1950,13 @@ func TestCompactionInteractions(t *testing.T) {
 		outcome := chat.outcome(t, chat.compact(t, nil))
 		chat.setup.Models.SetProvider(&original)
 		expectMatch(t, outcome, `{"status":"faulted","error":{"message":"models broke"}}`)
-		if chat.live(t).Compactions != nil {
+		state := chat.live(t)
+		if state.Compactions != nil {
 			t.Fatal("a faulted compaction stayed listed")
+		}
+		// settleSchedulerOutcome records the fault (live.ts:251-254).
+		if failure := state.CompactionFailure; failure == nil || failure.Reason != "manual" || failure.Error != "models broke" {
+			t.Fatalf("compactionFailure = %+v", failure)
 		}
 		chat.close(t)
 	})
@@ -1937,6 +2016,86 @@ func TestCompactionEventsAndLiveStatus(t *testing.T) {
 			map[string]any{"type": "compaction_end", "taskId": id, "reason": "manual"},
 		}))
 		must(stream.Stop())
+		chat.close(t)
+	})
+
+	t.Run("records a failure in pi.live, the snapshot, and compaction_end until a summary is produced", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1007
+		chat := openCompaction(t, compactionOptions{contextWindow: 2000})
+		chat.history(t)
+		chat.setPolicy(backgroundPolicy())
+		var mu sync.Mutex
+		events := []AgentEvent{}
+		stream := must(WatchEvents(testContext, chat.harness, chat.root.Id()))
+		stream.Start(func(_ context.Context, batch []AgentEvent) error {
+			mu.Lock()
+			events = append(events, batch...)
+			mu.Unlock()
+			return nil
+		})
+		ends := func(taskId *durable.TaskId) []map[string]any {
+			mu.Lock()
+			defer mu.Unlock()
+			values := []map[string]any{}
+			for _, event := range events {
+				if end, ok := event.(CompactionEndEvent); ok && (taskId == nil || end.TaskId == *taskId) {
+					values = append(values, eventValue(t, event))
+				}
+			}
+			return values
+		}
+		chat.faux.pushSummary(scriptFailure("bad request"))
+		chat.turn(t, sized("u4", 100), sized("a4", 100))
+		waitFor(t, func() bool { return len(ends(nil)) > 0 })
+		recorded := chat.live(t).CompactionFailure
+		if recorded == nil || recorded.Reason != "threshold" || recorded.Error != "Summarization failed: bad request" {
+			t.Fatalf("compactionFailure = %+v", recorded)
+		}
+		expectEqualJSON(t, ends(nil)[0], jsonText(t, map[string]any{"type": "compaction_end", "taskId": recorded.TaskId, "reason": "threshold", "error": "Summarization failed: bad request"}))
+		reopened := must(WatchEvents(testContext, chat.harness, chat.root.Id()))
+		expectEqualJSON(t, reopened.Snapshot.CompactionFailure, jsonText(t, recorded))
+		expectEqualJSON(t, eventValue(t, reopened.Snapshot)["compactionFailure"], jsonText(t, recorded))
+		must(reopened.Stop())
+		// A compaction that produces a summary removes the failure, and ends without an error.
+		chat.setPolicy(manualPolicy())
+		chat.faux.pushSummary(scriptSummary())
+		manual := chat.compact(t, nil)
+		if status := chat.outcome(t, manual).Status; status != durable.OutcomeCompleted {
+			t.Fatalf("manual compaction status = %s", status)
+		}
+		if failure := chat.live(t).CompactionFailure; failure != nil {
+			t.Fatalf("compactionFailure after a summary = %+v", failure)
+		}
+		waitFor(t, func() bool { return len(ends(&manual)) > 0 })
+		if _, present := ends(&manual)[0]["error"]; present {
+			t.Fatalf("a completed compaction ended with an error: %v", ends(&manual)[0])
+		}
+		must(stream.Stop())
+		chat.close(t)
+	})
+
+	t.Run("leaves an earlier failure in place when a compaction is aborted", func(t *testing.T) {
+		// upstream: packages/durable/src/harness/compaction.ts:228-232 (abort removes the status and records no failure)
+		chat := openCompaction(t)
+		chat.history(t)
+		reached := deferred()
+		chat.faux.pushSummary(scriptFailure("bad request"))
+		chat.outcome(t, chat.compact(t, nil))
+		recorded := chat.live(t).CompactionFailure
+		if recorded == nil || recorded.Reason != "manual" || recorded.Error != "Summarization failed: bad request" {
+			t.Fatalf("compactionFailure = %+v", recorded)
+		}
+		// Aborting is not a failure, and does not clear the earlier one.
+		chat.faux.pushSummary(scriptGated(deferred(), scriptSummary(), reached))
+		id := chat.compact(t, nil)
+		awaitGate(t, reached)
+		must(chat.harness.AbortTask(testContext, id))
+		if status := chat.outcome(t, id).Status; status != durable.OutcomeAborted {
+			t.Fatalf("status = %s", status)
+		}
+		if got := chat.live(t); got.Compactions != nil || got.CompactionFailure == nil || *got.CompactionFailure != *recorded {
+			t.Fatalf("after an abort: compactions = %v, failure = %+v", got.Compactions, got.CompactionFailure)
+		}
 		chat.close(t)
 	})
 
@@ -2044,7 +2203,7 @@ func TestCompactionRecovery(t *testing.T) {
 		var mu sync.Mutex
 		calls := 0
 		reached := deferred()
-		addHooks(t, chat.setup.Registry, CompactionTask, &CompactionHooks{BeforeCompact: func(ctx context.Context, _ CompactionRequest, _ HookApi) (*CompactionDecision, error) {
+		addHooks(t, chat.setup.Registry, CompactionTask.Erased(), &CompactionHooks{BeforeCompact: func(ctx context.Context, _ CompactionRequest, _ HookApi) (*CompactionDecision, error) {
 			mu.Lock()
 			calls++
 			call := calls
@@ -2231,7 +2390,7 @@ func TestCompactionAndTheInbox(t *testing.T) {
 				want = durable.SubmissionUnanswered
 			}
 			kinds := chat.kinds(t)
-			if settled.Status != want || kinds[len(kinds)-1] != "pi.reset" || must(chat.root.Context(testContext)).Head.Kind != "pi.reset" {
+			if settled.Status != want || kinds[len(kinds)-1] != "pi.reset" || must(chat.root.Context(testContext, nil)).Head.Kind != "pi.reset" {
 				t.Fatalf("%s: settled = %s, kinds = %v", order, settled.Status, kinds)
 			}
 			chat.close(t)
@@ -2254,7 +2413,7 @@ func TestCompactionAndTheInbox(t *testing.T) {
 			t.Fatalf("summary = %s, want done", record.Status)
 		}
 		request := chat.faux.lastAgentRequest().messages
-		if !strings.Contains(userText(request[0]), "SUMMARY") || !slices.ContainsFunc(request, func(message ai.Message) bool { return userText(message) == "again" }) {
+		if !strings.Contains(firstUserText(request), "SUMMARY") || !slices.ContainsFunc(request, func(message ai.Message) bool { return userText(message) == "again" }) {
 			t.Fatalf("request = %v", roles(request))
 		}
 		chat.close(t)
@@ -2287,7 +2446,7 @@ func TestCompactionAndTheInbox(t *testing.T) {
 		if !strings.Contains(userText(chat.faux.summaryRequestsCopy()[0].messages[1]), "[User]: u1 ") {
 			t.Fatal("the summary request lacks the unredacted entry")
 		}
-		for _, message := range must(chat.root.Context(testContext)).Messages {
+		for _, message := range must(chat.root.Context(testContext, nil)).Messages {
 			if userText(message) == "REDACTED" {
 				t.Fatal("the redaction survived compaction")
 			}
@@ -2306,7 +2465,7 @@ func TestCompactionAndTheInbox(t *testing.T) {
 			entries := state.Value().Entries
 			return len(entries) > 0 && entries[0].Kind == "pi.compaction"
 		})
-		expectEqualJSON(t, state.Value().Entries, jsonText(t, must(chat.root.Context(testContext)).Entries))
+		expectEqualJSON(t, state.Value().Entries, jsonText(t, must(chat.root.Context(testContext, nil)).Entries))
 		state.Dispose()
 		chat.close(t)
 	})
@@ -2320,7 +2479,7 @@ func TestCompactionEdgeCases(t *testing.T) {
 		chat.setPolicy(blockingPolicy())
 		var mu sync.Mutex
 		asked := 0
-		addHooks(t, chat.setup.Registry, CompactionTask, beforeCompact(func(CompactionRequest) (*CompactionDecision, error) {
+		addHooks(t, chat.setup.Registry, CompactionTask.Erased(), beforeCompact(func(CompactionRequest) (*CompactionDecision, error) {
 			mu.Lock()
 			asked++
 			mu.Unlock()
@@ -2393,8 +2552,8 @@ func TestCompactionEdgeCases(t *testing.T) {
 		chat.close(t)
 	})
 
-	t.Run("sends the request anyway when its blocking compaction faults", func(t *testing.T) {
-		// upstream: packages/durable/test/harness-compaction.test.ts:1875
+	t.Run("fails the run when its blocking compaction faults, and records the fault", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts:1954
 		chat := openCompaction(t, compactionOptions{contextWindow: 1000})
 		chat.history(t)
 		chat.setPolicy(blockingPolicy())
@@ -2411,10 +2570,24 @@ func TestCompactionEdgeCases(t *testing.T) {
 				return original.StreamSimple(ctx, model, request, options)
 			}
 		})
-		chat.turn(t, sized("u4", 200), "a4")
+		requests := len(chat.faux.agentRequestsCopy())
+		settled := must(submitInput(t, chat.root, sized("u4", 200)).Wait(testContext))
 		chat.setup.Models.SetProvider(&original)
-		if slices.Contains(chat.kinds(t), "pi.compaction") || chat.live(t).Compactions != nil {
+		expectSettled(t, settled, durable.SubmissionUnanswered, "model_error")
+		state := chat.live(t)
+		if state.Compactions != nil || slices.Contains(chat.kinds(t), "pi.compaction") {
 			t.Fatal("a faulted compaction left a summary or a status")
+		}
+		// The fault's message is the commit's strict-JSON rejection; Pi's is the thrown "no credentials". Either way the run's detail
+		// and pi.live.compactionFailure carry the same fault message.
+		const fault = "Value contains a non-finite number and is not strict JSON"
+		failure := state.CompactionFailure
+		if failure == nil || failure.Reason != "threshold" || failure.Error != fault {
+			t.Fatalf("compactionFailure = %+v", failure)
+		}
+		expectEqualJSON(t, settled.Detail, jsonText(t, "Compaction failed: "+fault))
+		if got := len(chat.faux.agentRequestsCopy()); got != requests {
+			t.Fatalf("agent requests = %d, want %d", got, requests)
 		}
 		chat.close(t)
 	})
@@ -2546,6 +2719,11 @@ func TestCompactionEdgeCasesLater(t *testing.T) {
 		chat.setup.SetSettings(func(settings *HarnessSettings) {
 			settings.Retry = &RetryPolicyPatch{Enabled: new(true), MaxRetries: new(2), BaseDelayMs: new(300)}
 		})
+		// The retry waits on the Harness clock (taskRuntime.Sleep), which the test holds until it has queued the summary
+		// and lowered the thresholds: on the wall clock, those steps race the 300 ms backoff and lose under load.
+		var clock atomic.Int64
+		clock.Store(time.Now().UnixMilli())
+		chat.setup.SetNow(func() float64 { return float64(clock.Load()) })
 		summaryGate, summaryReached := deferred(), deferred()
 		chat.faux.pushSummary(scriptGated(summaryGate, scriptSummary("BACKGROUND"), summaryReached), scriptSummary("BLOCKING"))
 		failed := deferred()
@@ -2571,8 +2749,9 @@ func TestCompactionEdgeCasesLater(t *testing.T) {
 		policy.ReserveTokens = new(1500)
 		policy.KeepRecentTokens = new(50)
 		chat.setPolicy(policy)
+		clock.Add(300)
 		expectSettled(t, must(input.Wait(testContext)), durable.SubmissionDone, "")
-		if first := userText(chat.faux.lastAgentRequest().messages[0]); !strings.Contains(first, "BLOCKING") {
+		if first := firstUserText(chat.faux.lastAgentRequest().messages); !strings.Contains(first, "BLOCKING") {
 			t.Fatalf("request starts with %q", first)
 		}
 		expectSettled(t, must(submission.Wait(testContext)), durable.SubmissionUnanswered, "stale")
@@ -2599,33 +2778,38 @@ func TestCompactionEdgeCasesLater(t *testing.T) {
 		chat.close(t)
 	})
 
-	t.Run("leaves no usage, submission, summary, or outcome when the classifying commit is rejected", func(t *testing.T) {
+	t.Run("leaves no usage, submission, or summary when the classifying commit fails, which fails the Harness", func(t *testing.T) {
 		// upstream: packages/durable/test/harness-compaction.test.ts:2015
 		store := newControlledStorage()
 		chat := openCompaction(t, compactionOptions{storage: store})
 		chat.history(t)
-		usage := func() string {
-			return jsonText(t, must(durable.Snapshot(testContext, chat.harness, UsageDoc, chat.root.Id())).Models["faux/faux-1"])
+		usage := func(harness Harness, root Conversation) string {
+			return jsonText(t, must(durable.Snapshot(testContext, harness, UsageDoc, root.Id())).Models["faux/faux-1"])
 		}
-		before := usage()
+		before := usage(chat.harness, chat.root)
+		failure := errors.New("disk gone")
 		chat.faux.pushSummary(func(request scriptRequest) (ai.FauxResponse, error) {
-			store.failNextCommit(durable.NewStorageRejected("rejected", nil))
+			store.failNextCommit(failure)
 			return scriptSummary()(request)
 		})
 		id := chat.compact(t, nil)
-		if outcome := chat.outcome(t, id); outcome.Status != durable.OutcomeFaulted {
-			t.Fatalf("outcome = %s, want faulted", outcome.Status)
+		<-chat.harness.Closed()
+		if end := chat.harness.End(); end.Reason != durable.SessionEndFailed || !errors.Is(end.Error, failure) {
+			t.Fatalf("end %+v, want failed with the storage error", end)
 		}
-		if usage() != before || slices.Contains(chat.kinds(t), "pi.compaction") || len(must(chat.harness.Inspect(testContext)).Submissions) != 0 {
-			t.Fatal("a rejected classifying commit left usage, a summary, or a submission")
-		}
+		// Nothing of the failed commit landed: the task is still live, without usage, entry, or submission.
+		store.Reopen()
 		if record := must(store.SubmissionByRequest(testContext, chat.root.Id(), "compaction:"+itoa(int(id)))); record != nil {
 			t.Fatalf("submission = %s", jsonText(t, record))
 		}
-		if chat.live(t).Compactions != nil {
-			t.Fatal("a faulted compaction stayed listed")
+		if task := must(store.Task(testContext, id)); task == nil || task.State.Status == durable.TaskTerminal {
+			t.Fatalf("task = %s, want live", jsonText(t, task))
 		}
-		chat.close(t)
+		reopened := openCompaction(t, compactionOptions{storage: store})
+		if usage(reopened.harness, reopened.root) != before || slices.Contains(reopened.kinds(t), "pi.compaction") {
+			t.Fatal("a failed classifying commit left usage or a summary")
+		}
+		reopened.close(t)
 	})
 }
 
@@ -2661,7 +2845,7 @@ func TestBlockingAndManualCompaction(t *testing.T) {
 		run.gate.resolve()
 		expectSettled(t, must(run.input.Wait(testContext)), durable.SubmissionDone, "")
 		// The request after the blocking compaction used its summary; the manual one landed at the final boundary.
-		if first := userText(chat.faux.lastAgentRequest().messages[0]); !strings.Contains(first, "BLOCKING") {
+		if first := firstUserText(chat.faux.lastAgentRequest().messages); !strings.Contains(first, "BLOCKING") {
 			t.Fatalf("request starts with %q", first)
 		}
 		expectSettled(t, must(submission.Wait(testContext)), durable.SubmissionDone, "")
@@ -2674,9 +2858,9 @@ func TestBlockingAndManualCompaction(t *testing.T) {
 		if len(markers) != 2 || *markers[1].Head != *markers[0].Head {
 			t.Fatalf("markers = %s", jsonText(t, markers))
 		}
-		messages := must(chat.root.Context(testContext)).Messages
-		if !strings.Contains(userText(messages[0]), "MANUAL") || slices.ContainsFunc(messages, func(message ai.Message) bool { return strings.Contains(userText(message), "BLOCKING") }) {
-			t.Fatalf("context starts with %q", userText(messages[0]))
+		messages := must(chat.root.Context(testContext, nil)).Messages
+		if !strings.Contains(firstUserText(messages), "MANUAL") || slices.ContainsFunc(messages, func(message ai.Message) bool { return strings.Contains(userText(message), "BLOCKING") }) {
+			t.Fatalf("context starts with %q", firstUserText(messages))
 		}
 		chat.close(t)
 	})
@@ -2746,7 +2930,7 @@ func TestBlockingAndManualCompaction(t *testing.T) {
 			t.Fatalf("summary = %s, want done", record.Status)
 		}
 		request := chat.faux.lastAgentRequest().messages
-		if !strings.Contains(userText(request[0]), "SUMMARY") || !slices.ContainsFunc(request, func(message ai.Message) bool { return userText(message) == "u5" }) {
+		if !strings.Contains(firstUserText(request), "SUMMARY") || !slices.ContainsFunc(request, func(message ai.Message) bool { return userText(message) == "u5" }) {
 			t.Fatalf("request = %v", roles(request))
 		}
 		expectEqualJSON(t, lastN(chat.kinds(t), 4), `["pi.compaction","pi.user","pi.system","pi.assistant"]`)
@@ -2928,7 +3112,7 @@ func TestContextContributions(t *testing.T) {
 			}
 			return noteIds{a.Id, b.Id, c.Id}, nil
 		})
-		view := must(chat.root.Context(testContext))
+		view := must(chat.root.Context(testContext, nil))
 		entryIds := []durable.EntryId{}
 		for _, record := range view.Entries[1:] {
 			entryIds = append(entryIds, record.Id)
@@ -2954,6 +3138,71 @@ func TestContextContributions(t *testing.T) {
 		chat.outcome(t, chat.compact(t, nil))
 		if prompt := userText(chat.faux.summaryRequestsCopy()[0].messages[1]); !strings.Contains(prompt, "<conversation>\n[User]: H\n\n[User]: a\n</conversation>") {
 			t.Fatalf("prompt = %q", prompt)
+		}
+		chat.close(t)
+	})
+}
+
+// harness-compaction.test.ts:2394 (Pi c4cf7957, #10942): per-model compaction overrides.
+func TestPerModelCompactionOverrides(t *testing.T) {
+	t.Run("applies the current model's override to the blocking threshold", func(t *testing.T) {
+		for _, key := range []string{"faux/faux-1", "faux/other"} {
+			chat := openCompaction(t, compactionOptions{contextWindow: 1000})
+			chat.history(t)
+			// Harness-wide: blocking only above the full window; the override for faux-1 blocks above 700.
+			policy := blockingPolicy()
+			policy.ReserveTokens = new(0)
+			policy.ModelOverrides = map[string]durable.CompactionPolicyOverride{key: {ReserveTokens: new(300)}}
+			chat.setPolicy(policy)
+			chat.faux.pushSummary(scriptSummary())
+			chat.turn(t, sized("u4", 200), "a4")
+			want := 0
+			if key == "faux/faux-1" {
+				want = 1
+			}
+			if got := len(chat.faux.summaryRequestsCopy()); got != want {
+				t.Fatalf("override %s: %d summary requests, want %d", key, got, want)
+			}
+			chat.close(t)
+		}
+	})
+
+	t.Run("applies the request model's override on a context overflow", func(t *testing.T) {
+		chat := openCompaction(t)
+		chat.history(t)
+		policy := manualPolicy()
+		policy.ModelOverrides = map[string]durable.CompactionPolicyOverride{"faux/faux-1": {Enabled: new(true)}}
+		chat.setPolicy(policy)
+		chat.faux.pushSummary(scriptSummary())
+		chat.faux.pushAgent(scriptFailure(overflowText), scriptAnswer("fits"))
+		expectSettled(t, must(submitInput(t, chat.root, sized("u4", 100)).Wait(testContext)), durable.SubmissionDone, "")
+		if got := len(chat.faux.summaryRequestsCopy()); got != 1 {
+			t.Fatalf("%d summary requests, want 1", got)
+		}
+		chat.close(t)
+	})
+
+	t.Run("applies the model's override when a compaction selects and sizes its summary", func(t *testing.T) {
+		chat := openCompaction(t)
+		chat.history(t)
+		policy := manualPolicy()
+		policy.KeepRecentTokens = new(100_000)
+		policy.ModelOverrides = map[string]durable.CompactionPolicyOverride{"faux/faux-1": {KeepRecentTokens: new(150), ReserveTokens: new(500)}}
+		chat.setPolicy(policy)
+		chat.faux.pushSummary(scriptSummary())
+		if outcome := chat.outcome(t, chat.compact(t, nil)); outcome.Status != durable.OutcomeCompleted {
+			t.Fatalf("outcome %s", jsonText(t, outcome))
+		}
+		// 0.8 * 500 from the override, below the model's 900.
+		if got := chat.faux.summaryRequestsCopy()[0].options.MaxTokens; got != 400 {
+			t.Fatalf("summary maxTokens %d, want 400", got)
+		}
+		var texts []string
+		for _, message := range must(chat.root.Context(testContext, nil)).Messages[1:] {
+			texts = append(texts, userText(message))
+		}
+		if want := []string{sized("u3", 100), sized("a3", 100)}; !slices.Equal(texts, want) {
+			t.Fatalf("kept %q, want %q", texts, want)
 		}
 		chat.close(t)
 	})

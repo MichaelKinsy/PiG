@@ -1,14 +1,21 @@
 package tools
 
-// Ported from packages/durable/test/tools.test.ts at v1.0.0 (itself ported from
+// pi: packages/durable/src/tools/file-mutation-queue.ts
+
+// pi: packages/durable/src/tools/bash.ts
+
+// Ports packages/durable/test/tools.test.ts (Pi 1.2.0; itself ported from
 // packages/agent/test/harness/tools.test.ts and adapted to ToolRegistration:
 // tools take the environment from api.Env(), stream through api.Output(), and
 // report notices as diagnostics instead of content text). Each test name is the
-// upstream case title.
+// upstream case title; the powershell cases and "reads a log that grows while it
+// is read" are in powershell_upstream_test.go.
 
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -60,23 +67,31 @@ type fakeAPI struct {
 	skipped     []env.ShellOutputSkip
 	window      *env.ShellOutputWindow
 	diagnostics []durable.ToolDiagnostic
+	// agent and models are what the conversation's model resolves from; the zero value is no model.
+	agent  durable.Agent
+	models durable.Models
 }
+
+func (api *fakeAPI) Agent(context.Context) (durable.Agent, error) { return api.agent, nil }
+
+func (api *fakeAPI) Models() durable.Models { return api.models }
 
 // OutputWindow is the window the test offers the tool; nil as for a tool that keeps the head of its output.
 func (api *fakeAPI) OutputWindow() *env.ShellOutputWindow { return api.window }
 
-func (api *fakeAPI) OutputSkipping(chunk any, skipped env.ShellOutputSkip) {
-	api.Output(chunk)
-	api.mu.Lock()
-	defer api.mu.Unlock()
-	api.skipped = append(api.skipped, skipped)
-}
-
 func (api *fakeAPI) Env() env.ExecutionEnv { return api.env }
 
-func (api *fakeAPI) Output(chunk any) {
+// RetainedOutput is the output streamed so far; the fake never drops any.
+func (api *fakeAPI) RetainedOutput() (string, bool) {
 	api.mu.Lock()
 	defer api.mu.Unlock()
+	return strings.Join(api.output, ""), false
+}
+
+func (api *fakeAPI) Output(chunk any, skipped ...env.ShellOutputSkip) {
+	api.mu.Lock()
+	defer api.mu.Unlock()
+	api.skipped = append(api.skipped, skipped...)
 	switch typed := chunk.(type) {
 	case string:
 		api.output = append(api.output, typed)
@@ -98,7 +113,10 @@ type runResult struct {
 }
 
 func run(tool *durable.ToolRegistration, args any, executionEnv env.ExecutionEnv, ctx context.Context) (runResult, error) {
-	api := &fakeAPI{env: executionEnv}
+	return runWith(tool, args, &fakeAPI{env: executionEnv}, ctx)
+}
+
+func runWith(tool *durable.ToolRegistration, args any, api *fakeAPI, ctx context.Context) (runResult, error) {
 	result, err := tool.Execute(ctx, args, api)
 	return runResult{result, api.output, api.diagnostics}, err
 }
@@ -130,7 +148,7 @@ func expectFailure(t *testing.T, err error, pattern string) {
 
 func textOutput(result durable.ToolExecutionResult) string {
 	var texts []string
-	for _, part := range result.Content {
+	for _, part := range result.Output {
 		if text, ok := part.(ai.TextContent); ok {
 			texts = append(texts, text.Text)
 		}
@@ -287,16 +305,20 @@ func (timeout *timeoutOutputEnv) Exec(ctx context.Context, _ any, options *env.S
 	return env.ShellExecResult{}, failure
 }
 
+// Pi 1.2.0 packages/durable/test/tools.test.ts:198 "fail with an ordinary error when no environment is configured"
 func TestDurableToolsFailWithAnOrdinaryErrorWhenNoEnvironmentIsConfigured(t *testing.T) {
-	_, err := run(CreateReadTool(), map[string]any{"path": "x"}, nil, background)
+	_, err := run(CreateReadTool(nil), map[string]any{"path": "x"}, nil, background)
 	expectFailure(t, err, "No execution environment")
 }
 
 func TestReadDetectsTheCompleteGIFSignature(t *testing.T) {
 	for _, signature := range []string{"GIF87a", "GIF89a"} {
-		if got := detectSupportedImageMimeType([]byte(signature)); got != "image/gif" {
-			t.Errorf("%s: mime = %q, want image/gif", signature, got)
-		}
+		// Pi 1.2.0 packages/durable/test/tools.test.ts:203 "detects the complete %s signature" (it.each)
+		t.Run("detects the complete "+signature+" signature", func(t *testing.T) {
+			if got := detectSupportedImageMimeType([]byte(signature)); got != "image/gif" {
+				t.Errorf("mime = %q, want image/gif", got)
+			}
+		})
 	}
 }
 
@@ -313,17 +335,18 @@ func TestReadLimitEndingAtTheLastLineReportsNoContinuation(t *testing.T) {
 		{10, ""},
 		{9, "1 more lines in file. Use offset=10 to continue."},
 	} {
-		result := mustRun(t, CreateReadTool(), map[string]any{"path": "ten.txt", "limit": tc.limit}, executionEnv)
+		result := mustRun(t, CreateReadTool(nil), map[string]any{"path": "ten.txt", "limit": tc.limit}, executionEnv)
 		if got := diagnosticText(result.ToolExecutionResult); got != tc.want {
 			t.Errorf("limit %v: diagnostics = %q, want %q", tc.limit, got, tc.want)
 		}
 	}
 }
 
+// Pi 1.2.0 packages/durable/test/tools.test.ts:207 "reads text with offsets and limits and reports continuation as a diagnostic"
 func TestReadReadsTextWithOffsetsAndLimitsAndReportsContinuationAsADiagnostic(t *testing.T) {
 	executionEnv := createEnv(t)
 	writeText(t, executionEnv, "test.txt", lines(100, func(i int) string { return "Line " + itoa(i) }, "\n"))
-	result := mustRun(t, CreateReadTool(), map[string]any{"path": "test.txt", "offset": 41.0, "limit": 20.0}, executionEnv)
+	result := mustRun(t, CreateReadTool(nil), map[string]any{"path": "test.txt", "offset": 41.0, "limit": 20.0}, executionEnv)
 	output := textOutput(result.ToolExecutionResult)
 	for _, want := range []string{"Line 41", "Line 60"} {
 		if !strings.Contains(output, want) {
@@ -340,17 +363,18 @@ func TestReadReadsTextWithOffsetsAndLimitsAndReportsContinuationAsADiagnostic(t 
 	}
 }
 
+// Pi 1.2.0 packages/durable/test/tools.test.ts:226 "truncates large text by line count"
 func TestReadTruncatesLargeTextByLineCount(t *testing.T) {
 	executionEnv := createEnv(t)
 	writeText(t, executionEnv, "large.txt", lines(2500, func(i int) string { return "Line " + itoa(i) }, "\n"))
-	result := mustRun(t, CreateReadTool(), map[string]any{"path": "large.txt"}, executionEnv)
+	result := mustRun(t, CreateReadTool(nil), map[string]any{"path": "large.txt"}, executionEnv)
 	if got := diagnosticText(result.ToolExecutionResult); got != "Showing lines 1-2000 of 2500. Use offset=2001 to continue." {
 		t.Fatalf("diagnostics = %q", got)
 	}
 	if result.Diagnostics[0].Code != "truncated" {
 		t.Fatalf("code = %q", result.Diagnostics[0].Code)
 	}
-	truncation := result.Details.(map[string]any)["truncation"].(map[string]any)
+	truncation := plainMap(t, result.Details)["truncation"].(map[string]any)
 	want := map[string]any{"truncated": true, "truncatedBy": "lines", "totalLines": 2500.0, "outputLines": 2000.0}
 	for key, value := range want {
 		if truncation[key] != value {
@@ -359,10 +383,11 @@ func TestReadTruncatesLargeTextByLineCount(t *testing.T) {
 	}
 }
 
+// Pi 1.2.0 packages/durable/test/tools.test.ts:246 "does not count a trailing newline as an extra line at the truncation limit"
 func TestReadDoesNotCountATrailingNewlineAsAnExtraLineAtTheTruncationLimit(t *testing.T) {
 	executionEnv := createEnv(t)
 	writeText(t, executionEnv, "exact.txt", lines(2000, func(int) string { return "x" }, "\n")+"\n")
-	result := mustRun(t, CreateReadTool(), map[string]any{"path": "exact.txt"}, executionEnv)
+	result := mustRun(t, CreateReadTool(nil), map[string]any{"path": "exact.txt"}, executionEnv)
 	if result.HasDetails || result.Details != nil {
 		t.Fatalf("details = %v", result.Details)
 	}
@@ -371,10 +396,11 @@ func TestReadDoesNotCountATrailingNewlineAsAnExtraLineAtTheTruncationLimit(t *te
 	}
 }
 
+// Pi 1.2.0 packages/durable/test/tools.test.ts:260 "shows the start of a line longer than the byte limit"
 func TestReadShowsTheStartOfALineLongerThanTheByteLimit(t *testing.T) {
 	executionEnv := createEnv(t)
 	writeText(t, executionEnv, "long.txt", strings.Repeat("é", 40_000)+"\nnext\n")
-	result := mustRun(t, CreateReadTool(), map[string]any{"path": "long.txt"}, executionEnv)
+	result := mustRun(t, CreateReadTool(nil), map[string]any{"path": "long.txt"}, executionEnv)
 	// Two-byte characters: the cut lands on a character boundary at or below the limit.
 	if got := textOutput(result.ToolExecutionResult); got != strings.Repeat("é", 25_600) {
 		t.Fatalf("text has %d characters", len([]rune(got)))
@@ -382,7 +408,7 @@ func TestReadShowsTheStartOfALineLongerThanTheByteLimit(t *testing.T) {
 	if got, want := diagnosticText(result.ToolExecutionResult), "Line 1 is 78.1KB, exceeds the 50.0KB limit; showing its first 50.0KB. Use bash: sed -n '1p' long.txt | tail -c +51201"; got != want {
 		t.Fatalf("diagnostics = %q, want %q", got, want)
 	}
-	truncation := result.Details.(map[string]any)["truncation"].(map[string]any)
+	truncation := plainMap(t, result.Details)["truncation"].(map[string]any)
 	want := map[string]any{"truncated": true, "firstLineExceedsLimit": true, "outputBytes": 51_200.0, "outputLines": 1.0}
 	for key, value := range want {
 		if truncation[key] != value {
@@ -394,26 +420,32 @@ func TestReadShowsTheStartOfALineLongerThanTheByteLimit(t *testing.T) {
 	}
 }
 
+// Pi 1.2.0 packages/durable/test/tools.test.ts:279 "rejects offsets beyond the file"
 func TestReadRejectsOffsetsBeyondTheFile(t *testing.T) {
 	executionEnv := createEnv(t)
 	writeText(t, executionEnv, "short.txt", "one\ntwo\nthree")
-	_, err := run(CreateReadTool(), map[string]any{"path": "short.txt", "offset": 100.0}, executionEnv, background)
+	_, err := run(CreateReadTool(nil), map[string]any{"path": "short.txt", "offset": 100.0}, executionEnv, background)
 	expectFailure(t, err, regexp.QuoteMeta("Offset 100 is beyond end of file (3 lines total)"))
 }
 
-func TestReadReportsImagesByContentAsUnsupported(t *testing.T) {
+// Pi 1.2.0 packages/durable/test/tools.test.ts:308 "returns images by content as one image block"
+func TestReadReturnsImagesByContentAsOneImageBlock(t *testing.T) {
 	executionEnv := createEnv(t)
-	png := must(base64.StdEncoding.DecodeString("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAX+XDSwAAAABJRU5ErkJggg=="))
-	writeText(t, executionEnv, "image.txt", png)
-	result := mustRun(t, CreateReadTool(), map[string]any{"path": "image.txt"}, executionEnv)
-	if result.Content == nil || len(result.Content) != 0 || result.IsError == nil || !*result.IsError {
-		t.Fatalf("result = %+v", result.ToolExecutionResult)
+	const data = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAX+XDSwAAAABJRU5ErkJggg=="
+	writeText(t, executionEnv, "image.txt", must(base64.StdEncoding.DecodeString(data)))
+	result := mustRun(t, CreateReadTool(nil), map[string]any{"path": "image.txt"}, executionEnv)
+	if want := []ai.ToolResultMessageContent{ai.ImageContent{Data: data, MimeType: "image/png"}}; !reflect.DeepEqual(result.Output, want) {
+		t.Fatalf("output = %+v, want %+v", result.Output, want)
 	}
-	if got := diagnosticText(result.ToolExecutionResult); got != "image.txt is an image (image/png); reading images is not supported" {
+	if result.IsError != nil {
+		t.Fatalf("isError = %v, want undefined", *result.IsError)
+	}
+	if got := diagnosticText(result.ToolExecutionResult); got != "Read image file [image/png]." {
 		t.Fatalf("diagnostics = %q", got)
 	}
 }
 
+// Pi 1.2.0 packages/durable/test/tools.test.ts:321 "writes files and creates parent directories"
 func TestWriteWritesFilesAndCreatesParentDirectories(t *testing.T) {
 	executionEnv := createEnv(t)
 	result := mustRun(t, CreateWriteTool(), map[string]any{"path": "nested/dir/file.txt", "content": "hello"}, executionEnv)
@@ -425,6 +457,7 @@ func TestWriteWritesFilesAndCreatesParentDirectories(t *testing.T) {
 	}
 }
 
+// Pi 1.2.0 packages/durable/test/tools.test.ts:328 "keeps the mutation queue locked until an aborted write settles"
 func TestWriteKeepsTheMutationQueueLockedUntilAnAbortedWriteSettles(t *testing.T) {
 	executionEnv := newBlockingWriteEnv(t.TempDir())
 	tool := CreateWriteTool()
@@ -455,6 +488,7 @@ func TestWriteKeepsTheMutationQueueLockedUntilAnAbortedWriteSettles(t *testing.T
 	}
 }
 
+// Pi 1.2.0 packages/durable/test/tools.test.ts:351 "applies disjoint edits and returns both diff formats"
 func TestEditAppliesDisjointEditsAndReturnsBothDiffFormats(t *testing.T) {
 	executionEnv := createEnv(t)
 	writeText(t, executionEnv, "edit.txt", "alpha\nbeta\ngamma\ndelta\n")
@@ -462,7 +496,7 @@ func TestEditAppliesDisjointEditsAndReturnsBothDiffFormats(t *testing.T) {
 		map[string]any{"oldText": "alpha\n", "newText": "ALPHA\n"},
 		map[string]any{"oldText": "gamma\n", "newText": "GAMMA\n"},
 	}}, executionEnv)
-	details := result.Details.(map[string]any)
+	details := plainMap(t, result.Details)
 	if got := textOutput(result.ToolExecutionResult); got != "Successfully replaced 2 block(s) in edit.txt." {
 		t.Fatalf("output = %q", got)
 	}
@@ -478,6 +512,7 @@ func TestEditAppliesDisjointEditsAndReturnsBothDiffFormats(t *testing.T) {
 	}
 }
 
+// Pi 1.2.0 packages/durable/test/tools.test.ts:374 "repairs edits sent as a JSON string, a single object, or top-level oldText/newText without mutating them"
 func TestEditRepairsEditsSentAsAJSONStringASingleObjectOrTopLevelOldTextNewTextWithoutMutatingThem(t *testing.T) {
 	prepare := CreateEditTool().PrepareArguments
 	edit := map[string]any{"oldText": "a", "newText": "b"}
@@ -502,6 +537,7 @@ func TestEditRepairsEditsSentAsAJSONStringASingleObjectOrTopLevelOldTextNewTextW
 	check(map[string]any{"path": "f", "edits": "not json"}, map[string]any{"path": "f", "edits": "not json"})
 }
 
+// Pi 1.2.0 packages/durable/test/tools.test.ts:389 "matches all edits against the original and rejects overlaps"
 func TestEditMatchesAllEditsAgainstTheOriginalAndRejectsOverlaps(t *testing.T) {
 	executionEnv := createEnv(t)
 	writeText(t, executionEnv, "edit.txt", "one\ntwo\nthree\n")
@@ -515,6 +551,7 @@ func TestEditMatchesAllEditsAgainstTheOriginalAndRejectsOverlaps(t *testing.T) {
 	}
 }
 
+// Pi 1.2.0 packages/durable/test/tools.test.ts:408 "rejects missing and duplicate target text"
 func TestEditRejectsMissingAndDuplicateTargetText(t *testing.T) {
 	executionEnv := createEnv(t)
 	writeText(t, executionEnv, "edit.txt", "foo foo foo")
@@ -525,6 +562,7 @@ func TestEditRejectsMissingAndDuplicateTargetText(t *testing.T) {
 	expectFailure(t, err, "Found 3 occurrences")
 }
 
+// Pi 1.2.0 packages/durable/test/tools.test.ts:420 "keeps the mutation queue locked until an aborted edit write settles"
 func TestEditKeepsTheMutationQueueLockedUntilAnAbortedEditWriteSettles(t *testing.T) {
 	executionEnv := newBlockingEditEnv(t.TempDir())
 	writeText(t, executionEnv, "file.txt", "alpha\nbeta\n")
@@ -563,6 +601,7 @@ func TestEditKeepsTheMutationQueueLockedUntilAnAbortedEditWriteSettles(t *testin
 	}
 }
 
+// Pi 1.2.0 packages/durable/test/tools.test.ts:443 "serializes concurrent edits through canonical and symlink paths"
 func TestEditSerializesConcurrentEditsThroughCanonicalAndSymlinkPaths(t *testing.T) {
 	executionEnv := newSlowReadEnv(t.TempDir())
 	writeText(t, executionEnv, "target.txt", "alpha\nbeta\ngamma\n")
@@ -582,6 +621,7 @@ func TestEditSerializesConcurrentEditsThroughCanonicalAndSymlinkPaths(t *testing
 	}
 }
 
+// Pi 1.2.0 packages/durable/test/tools.test.ts:455 "serializes edits of one file across environment objects of one file system"
 func TestEditSerializesEditsOfOneFileAcrossEnvironmentObjectsOfOneFileSystem(t *testing.T) {
 	dir := t.TempDir()
 	first, second := newSlowReadEnv(dir), newSlowReadEnv(dir)
@@ -604,6 +644,7 @@ func TestEditSerializesEditsOfOneFileAcrossEnvironmentObjectsOfOneFileSystem(t *
 	}
 }
 
+// Pi 1.2.0 packages/durable/test/tools.test.ts:468 "serializes a new file created through a symlinked directory with its canonical path"
 func TestEditSerializesANewFileCreatedThroughASymlinkedDirectoryWithItsCanonicalPath(t *testing.T) {
 	executionEnv := newBlockingWriteEnv(t.TempDir())
 	mustDo(t, os.Mkdir(filepath.Join(executionEnv.Cwd(), "real"), 0o755))
@@ -632,6 +673,7 @@ func TestEditSerializesANewFileCreatedThroughASymlinkedDirectoryWithItsCanonical
 	}
 }
 
+// Pi 1.2.0 packages/durable/test/tools.test.ts:483 "keys a missing file whose name contains a backslash like the created file" (it.skipIf win32)
 func TestEditKeysAMissingFileWhoseNameContainsABackslashLikeTheCreatedFile(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("a backslash separates path segments on Windows")
@@ -676,6 +718,7 @@ func TestEditKeysAMissingFileWhoseNameContainsABackslashLikeTheCreatedFile(t *te
 	}
 }
 
+// Pi 1.2.0 packages/durable/test/tools.test.ts:517 "does not serialize the same path on different file systems"
 func TestEditDoesNotSerializeTheSamePathOnDifferentFileSystems(t *testing.T) {
 	dir := t.TempDir()
 	local := newBlockingWriteEnv(dir)
@@ -699,6 +742,7 @@ func TestEditDoesNotSerializeTheSamePathOnDifferentFileSystems(t *testing.T) {
 	mustDo(t, <-blocked)
 }
 
+// Pi 1.2.0 packages/durable/test/tools.test.ts:533 "edits regular files through symlinks"
 func TestEditEditsRegularFilesThroughSymlinks(t *testing.T) {
 	executionEnv := createEnv(t)
 	writeText(t, executionEnv, "target.txt", "before\n")
@@ -709,6 +753,7 @@ func TestEditEditsRegularFilesThroughSymlinks(t *testing.T) {
 	}
 }
 
+// Pi 1.2.0 packages/durable/test/tools.test.ts:541 "preserves BOM and CRLF line endings"
 func TestEditPreservesBOMAndCRLFLineEndings(t *testing.T) {
 	executionEnv := createEnv(t)
 	writeText(t, executionEnv, "edit.txt", "\uFEFFone\r\ntwo\r\n")
@@ -732,7 +777,7 @@ func (skipping *skippingEnv) Exec(ctx context.Context, _ any, options *env.Shell
 }
 
 func TestBashPassesTheRetainedWindowToTheEnvironmentAndForwardsWhatItSkipped(t *testing.T) {
-	// upstream: packages/durable/test/tools.test.ts:523
+	// Pi 1.2.0 packages/durable/test/tools.test.ts:625 "passes the retained window to the environment and forwards what it skipped"
 	window := env.ShellOutputWindow{MaxBytes: 4, MaxLines: 1, MinIntervalMs: 100, BytesPerSecond: 1024}
 	executionEnv := &skippingEnv{
 		NodeExecutionEnv: envnode.NewNodeExecutionEnv(envnode.NodeExecutionEnvOptions{Cwd: t.TempDir()}),
@@ -750,33 +795,81 @@ func TestBashPassesTheRetainedWindowToTheEnvironmentAndForwardsWhatItSkipped(t *
 	}
 }
 
-func TestBashStreamsCombinedStdoutAndStderrAndReturnsNoContentOfItsOwn(t *testing.T) {
+// Pi 1.2.0 packages/durable/test/tools.test.ts:651 "streams combined stdout and stderr, returns no output of its own, and repeats it with the exit code"
+func TestBashStreamsCombinedStdoutAndStderrReturnsNoOutputOfItsOwnAndRepeatsItWithTheExitCode(t *testing.T) {
 	result := mustRun(t, CreateBashTool(nil), map[string]any{"command": "printf out; printf err >&2"}, createEnv(t))
 	output := strings.Join(result.output, "")
 	if !strings.Contains(output, "out") || !strings.Contains(output, "err") {
 		t.Fatalf("output = %q", output)
 	}
-	if result.Content != nil {
-		t.Fatalf("content = %v", result.Content)
+	if result.Output != nil {
+		t.Fatalf("output of its own = %v", result.Output)
+	}
+	quoted, err := json.Marshal(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"output":` + string(quoted) + `,"truncated":false,"exitCode":0}`
+	if got := structuredJSON(t, result.ToolExecutionResult); got != want {
+		t.Fatalf("structuredOutput = %s, want %s", got, want)
 	}
 }
 
-func TestBashThrowsOnNonzeroExitsAndTimeoutsAfterStreamingTheOutput(t *testing.T) {
-	executionEnv := createEnv(t)
-	tool := CreateBashTool(nil)
-	failed, err := runFailing(t, tool, map[string]any{"command": "printf failed; exit 7"}, executionEnv)
-	if err.Error() != "Command exited with code 7" {
-		t.Fatalf("error = %v", err)
-	}
-	if got := strings.Join(failed.output, ""); got != "failed" {
-		t.Fatalf("output = %q", got)
-	}
-	_, err = runFailing(t, tool, map[string]any{"command": "sleep 2", "timeout": 0.01}, executionEnv)
-	if err.Error() != "Command timed out after 0.01 seconds" {
-		t.Fatalf("error = %v", err)
+// Pi 1.2.0 packages/durable/test/tools.test.ts:659 "answers a nonzero exit with an error result, and throws on a timeout, after streaming the output"
+func TestBashAnswersANonzeroExitWithAnErrorResultAndTimeoutsThrow(t *testing.T) {
+	t.Run("answers a nonzero exit with an error result, and throws on a timeout, after streaming the output", func(t *testing.T) {
+		executionEnv := createEnv(t)
+		tool := CreateBashTool(nil)
+		failed := mustRun(t, tool, map[string]any{"command": "printf failed; exit 7"}, executionEnv)
+		if failed.IsError == nil || !*failed.IsError {
+			t.Fatalf("a nonzero exit must be an error result: %+v", failed.ToolExecutionResult)
+		}
+		if want := []durable.ToolDiagnostic{{Severity: durable.SeverityError, Code: "exit_code", Message: "Command exited with code 7"}}; !reflect.DeepEqual(failed.Diagnostics, want) {
+			t.Fatalf("diagnostics = %+v, want %+v", failed.Diagnostics, want)
+		}
+		if got := structuredJSON(t, failed.ToolExecutionResult); got != `{"output":"failed","truncated":false,"exitCode":7}` {
+			t.Fatalf("structuredOutput = %s", got)
+		}
+		if got := strings.Join(failed.output, ""); got != "failed" {
+			t.Fatalf("output = %q", got)
+		}
+		_, err := runFailing(t, tool, map[string]any{"command": "sleep 2", "timeout": 0.01}, executionEnv)
+		if err.Error() != "Command timed out after 0.01 seconds" {
+			t.Fatalf("error = %v", err)
+		}
+	})
+}
+
+// Not an upstream case: a zero exit is a plain result whose structured output carries exit code 0.
+func TestBashAnswersAZeroExitWithAPlainResult(t *testing.T) {
+	ok := mustRun(t, CreateBashTool(nil), map[string]any{"command": "printf fine"}, createEnv(t))
+	if ok.IsError != nil || len(ok.Diagnostics) != 0 || structuredJSON(t, ok.ToolExecutionResult) != `{"output":"fine","truncated":false,"exitCode":0}` {
+		t.Fatalf("a zero exit result = %+v", ok.ToolExecutionResult)
 	}
 }
 
+func TestBashAndPowerShellDeclareTheShellStructuredOutputSchema(t *testing.T) {
+	for _, tool := range []*durable.ToolRegistration{CreateBashTool(nil), CreatePowerShellTool(nil)} {
+		schema := tool.StructuredOutputSchema
+		if schema == nil || !reflect.DeepEqual(schema["required"], []any{"output", "truncated", "exitCode"}) {
+			t.Errorf("%s structuredOutputSchema = %v", tool.Name, schema)
+		}
+	}
+}
+
+func structuredJSON(t *testing.T, result durable.ToolExecutionResult) string {
+	t.Helper()
+	if !result.HasStructuredOutput {
+		t.Fatalf("no structuredOutput in %+v", result)
+	}
+	encoded, err := json.Marshal(result.StructuredOutput)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(encoded)
+}
+
+// Pi 1.2.0 packages/durable/test/tools.test.ts:673 "reports the spill of a command that times out"
 func TestBashReportsTheSpillOfACommandThatTimesOut(t *testing.T) {
 	executionEnv := &timeoutOutputEnv{envnode.NewNodeExecutionEnv(envnode.NodeExecutionEnvOptions{Cwd: t.TempDir()})}
 	failed, err := runFailing(t, CreateBashTool(nil), map[string]any{"command": "emit-output-then-time-out", "timeout": 0.05}, executionEnv)
@@ -793,6 +886,12 @@ func TestBashReportsTheSpillOfACommandThatTimesOut(t *testing.T) {
 	}
 }
 
+// mutation-checked: dropping the reads and writes of BashExecution.Command, BashExecution.Cwd, BashExecution.Env fails it
+// Pi: packages/durable/src/tools/bash.ts:11 (command)
+// Pi: packages/durable/src/tools/bash.ts:26 (cwd)
+// Pi: packages/durable/src/tools/bash.ts:6 (env)
+// packages/durable/src/tools/bash.ts:23-35: BashExecution is the command, cwd, env and inheritEnv that BashToolOptions.prepare may change.
+// Pi 1.2.0 packages/durable/test/tools.test.ts:688 "prepares command, cwd, and an explicit environment with the call's api"
 func TestBashPreparesCommandCwdAndAnExplicitEnvironmentWithTheCallsApi(t *testing.T) {
 	executionEnv := envnode.NewNodeExecutionEnv(envnode.NodeExecutionEnvOptions{Cwd: t.TempDir(), ShellEnv: map[string]string{"PI_BASH_PREPARE_INHERITED": "inherited"}})
 	mustDo(t, executionEnv.CreateDir(background, "workspace", nil))
@@ -801,22 +900,20 @@ func TestBashPreparesCommandCwdAndAnExplicitEnvironmentWithTheCallsApi(t *testin
 	defer cancel()
 	var receivedEnv env.ExecutionEnv
 	var receivedCtx context.Context
-	tool := CreateBashTool(&BashToolOptions{
-		CommandPrefix: "prefix=ready",
-		Prepare: func(callContext context.Context, execution *BashExecution, api durable.ToolExecutionApi) error {
-			receivedEnv = api.Env()
-			receivedCtx = callContext
-			execution.Cwd = workspace
-			execution.Env = map[string]string{"PI_BASH_PREPARE_EXPLICIT": "explicit"}
-			execution.InheritEnv = false
-			execution.Command += "\n: > prepared-cwd\nprintf '%s:%s:%s' \"$prefix\" \"${PI_BASH_PREPARE_INHERITED-}\" \"$PI_BASH_PREPARE_EXPLICIT\""
-			// Git Bash on Windows reports $PWD as an MSYS path, so only POSIX compares it.
-			if runtime.GOOS != "windows" {
-				execution.Command += "\nprintf ':%s' \"$PWD\""
-			}
-			return nil
-		},
-	})
+	var prepare BashPrepare = func(callContext context.Context, execution *BashExecution, api durable.ToolExecutionApi) error {
+		receivedEnv = api.Env()
+		receivedCtx = callContext
+		execution.Cwd = workspace
+		execution.Env = map[string]string{"PI_BASH_PREPARE_EXPLICIT": "explicit"}
+		execution.InheritEnv = false
+		execution.Command += "\n: > prepared-cwd\nprintf '%s:%s:%s' \"$prefix\" \"${PI_BASH_PREPARE_INHERITED-}\" \"$PI_BASH_PREPARE_EXPLICIT\""
+		// Git Bash on Windows reports $PWD as an MSYS path, so only POSIX compares it.
+		if runtime.GOOS != "windows" {
+			execution.Command += "\nprintf ':%s' \"$PWD\""
+		}
+		return nil
+	}
+	tool := CreateBashTool(&BashToolOptions{CommandPrefix: "prefix=ready", Prepare: prepare})
 	result, err := run(tool, map[string]any{"command": ":"}, executionEnv, ctx)
 	mustDo(t, err)
 	if receivedEnv != env.ExecutionEnv(executionEnv) {
@@ -837,6 +934,8 @@ func TestBashPreparesCommandCwdAndAnExplicitEnvironmentWithTheCallsApi(t *testin
 	}
 }
 
+// packages/durable/src/tools/bash.ts:34: BashToolOptions.commandPrefix is prepended to the command.
+// Pi 1.2.0 packages/durable/test/tools.test.ts:722 "supports command prefixes"
 func TestBashSupportsCommandPrefixes(t *testing.T) {
 	result := mustRun(t, CreateBashTool(&BashToolOptions{CommandPrefix: "value=hello"}), map[string]any{"command": "printf $value"}, createEnv(t))
 	if got := strings.Join(result.output, ""); got != "hello" {
@@ -844,6 +943,7 @@ func TestBashSupportsCommandPrefixes(t *testing.T) {
 	}
 }
 
+// Pi 1.2.0 packages/durable/test/tools.test.ts:731 "streams every byte and spills complete output beyond the default limits"
 func TestBashStreamsEveryByteAndSpillsCompleteOutputBeyondTheDefaultLimits(t *testing.T) {
 	executionEnv := createEnv(t)
 	result := mustRun(t, CreateBashTool(nil), map[string]any{"command": "i=1; while [ $i -le 3000 ]; do echo line-$i; i=$((i + 1)); done"}, executionEnv)
@@ -860,6 +960,7 @@ func TestBashStreamsEveryByteAndSpillsCompleteOutputBeyondTheDefaultLimits(t *te
 	}
 }
 
+// Pi 1.2.0 packages/durable/test/tools.test.ts:745 "does not spill output within the limits"
 func TestBashDoesNotSpillOutputWithinTheLimits(t *testing.T) {
 	result := mustRun(t, CreateBashTool(nil), map[string]any{"command": "printf small"}, createEnv(t))
 	if len(result.reported) != 0 {
@@ -910,4 +1011,35 @@ func applyPatch(t *testing.T, original, patch string) string {
 	}
 	out = append(out, oldLines[next:]...)
 	return strings.Join(out, "")
+}
+
+// upstream: packages/durable/src/tools/bash.ts prepareExecution awaits prepare; a rejection fails the call before the command runs.
+// mutation-checked: dropping the reads and writes of BashToolOptions.Prepare fails it
+// Pi: packages/durable/src/tools/bash.ts:23 (prepare)
+// packages/durable/src/tools/bash.ts:35: BashToolOptions.prepare runs before the command and its error fails the call.
+func TestBashPrepareErrorFailsTheCall(t *testing.T) {
+	executionEnv := envnode.NewNodeExecutionEnv(envnode.NodeExecutionEnvOptions{Cwd: t.TempDir()})
+	failure := errors.New("prepare refused")
+	var prepare BashPrepare = func(context.Context, *BashExecution, durable.ToolExecutionApi) error { return failure }
+	tool := CreateBashTool(&BashToolOptions{Prepare: prepare})
+	if _, err := run(tool, map[string]any{"command": "touch ran"}, executionEnv, background); !errors.Is(err, failure) {
+		t.Fatalf("error = %v, want the prepare failure", err)
+	}
+	if must(executionEnv.Exists(background, executionEnv.Cwd()+"/ran")) {
+		t.Fatal("the command ran although prepare failed")
+	}
+}
+
+// plainMap is value's JSON object as a map, for key lookups that ignore key order, as toEqual does.
+func plainMap(t *testing.T, value any) map[string]any {
+	t.Helper()
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var object map[string]any
+	if err := json.Unmarshal(encoded, &object); err != nil {
+		t.Fatal(err)
+	}
+	return object
 }

@@ -12,14 +12,14 @@ import (
 func TestHarnessTruncate(t *testing.T) {
 	// .upstream/v0.87.1/packages/agent/test/harness/truncate.test.ts:65
 	t.Run("counts UTF-8 bytes without Node Buffer", func(t *testing.T) {
-		r := TruncateHead("aé🙂\nb", 100, 10)
+		r := TruncateHead("aé🙂\nb", truncationLimits(100, 10))
 		if r.Truncated || r.TotalBytes != 9 || r.OutputBytes != 9 {
 			t.Fatalf("%+v", r)
 		}
 	})
 	// .upstream/v0.87.1/packages/agent/test/harness/truncate.test.ts:75
 	t.Run("does not count a trailing newline as an extra line", func(t *testing.T) {
-		for _, r := range []TruncationResult{TruncateHead("line\nline\nline\n", 100, 3), TruncateTail("line\nline\nline\n", 100, 3)} {
+		for _, r := range []TruncationResult{TruncateHead("line\nline\nline\n", truncationLimits(100, 3)), TruncateTail("line\nline\nline\n", truncationLimits(100, 3))} {
 			if r.Truncated || r.TotalLines != 3 || r.OutputLines != 3 {
 				t.Fatalf("%+v", r)
 			}
@@ -27,35 +27,35 @@ func TestHarnessTruncate(t *testing.T) {
 	})
 	// .upstream/v0.87.1/packages/agent/test/harness/truncate.test.ts:84
 	t.Run("truncates head on UTF-8 byte limits without partial lines", func(t *testing.T) {
-		r := TruncateHead("éé\nabc", 4, 10)
+		r := TruncateHead("éé\nabc", truncationLimits(4, 10))
 		if r.Content != "éé" || !r.Truncated || r.TruncatedBy != "bytes" || r.OutputBytes != 4 || r.FirstLineExceedsLimit {
 			t.Fatalf("%+v", r)
 		}
 	})
 	// .upstream/v0.87.1/packages/agent/test/harness/truncate.test.ts:95
 	t.Run("reports head truncation when the first line exceeds the byte limit", func(t *testing.T) {
-		r := TruncateHead("éé\nabc", 3, 10)
+		r := TruncateHead("éé\nabc", truncationLimits(3, 10))
 		if r.Content != "" || !r.Truncated || r.TruncatedBy != "bytes" || !r.FirstLineExceedsLimit {
 			t.Fatalf("%+v", r)
 		}
 	})
 	// .upstream/v0.87.1/packages/agent/test/harness/truncate.test.ts:104
 	t.Run("truncates tail on UTF-8 boundaries when only a partial last line fits", func(t *testing.T) {
-		r := TruncateTail("aé🙂b", 5, 10)
+		r := TruncateTail("aé🙂b", truncationLimits(5, 10))
 		if r.Content != "🙂b" || !r.Truncated || r.TruncatedBy != "bytes" || !r.LastLinePartial || r.OutputBytes != 5 {
 			t.Fatalf("%+v", r)
 		}
 	})
 	// .upstream/v0.87.1/packages/agent/test/harness/truncate.test.ts:114
 	t.Run("truncates an oversized single line with a trailing newline", func(t *testing.T) {
-		r := TruncateTail(strings.Repeat("X", 300_000)+"\n", 1024, 100)
+		r := TruncateTail(strings.Repeat("X", 300_000)+"\n", truncationLimits(1024, 100))
 		if r.Content != strings.Repeat("X", 1024) || r.OutputBytes != 1024 || r.OutputLines != 1 || !r.LastLinePartial || r.TruncatedBy != "bytes" {
 			t.Fatalf("%+v", r)
 		}
 	})
 	// .upstream/v0.87.1/packages/agent/test/harness/truncate.test.ts:125
 	t.Run("drops an oversized trailing character when it cannot fit in tail byte limit", func(t *testing.T) {
-		r := TruncateTail("abc🙂", 3, 10)
+		r := TruncateTail("abc🙂", truncationLimits(3, 10))
 		if r.Content != "" || !r.Truncated || r.TruncatedBy != "bytes" || !r.LastLinePartial || r.OutputBytes != 0 {
 			t.Fatalf("%+v", r)
 		}
@@ -121,7 +121,7 @@ func assertHarnessBufferTail(t *testing.T, input string, limit int) {
 		}
 		start -= size
 	}
-	got := TruncateTail(input, limit, 10)
+	got := TruncateTail(input, truncationLimits(limit, 10))
 	if got.Content != input[start:] || len(got.Content) > limit || !utf8.ValidString(got.Content) {
 		t.Fatal(fmt.Sprintf("input=%q maxBytes=%d expected=%q actual=%+v", input, limit, input[start:], got))
 	}

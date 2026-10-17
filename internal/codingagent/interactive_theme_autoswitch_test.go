@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/modes/interactive/theme/theme-controller.ts
+
 import (
 	"bytes"
 	"context"
@@ -9,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/coding/extension"
 
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -38,9 +42,12 @@ func TestInteractiveAutomaticThemeNotifications(t *testing.T) {
 	}
 	var output bytes.Buffer
 	m.themeState.output = &output
+	m.tuiInst = tui.NewWithOutput(&output, 100, 30)
+	// The replacement renderer schedules its renders on the owner loop, as the production renderer does.
+	m.installRenderDispatcher()
 	m.initTheme()
 	m.applyThemeFromSettings(ctx)
-	if !strings.HasSuffix(output.String(), "\x1b[?2031h") {
+	if !strings.Contains(output.String(), "\x1b[?2031h") {
 		t.Errorf("automatic notifications not enabled: %q", output.String())
 	}
 	m.extensionShortcutListener = func(string) bool { t.Fatal("scheme report reached extension shortcut"); return false }
@@ -69,7 +76,7 @@ func TestInteractiveAutomaticThemeNotifications(t *testing.T) {
 		t.Fatalf("automatic setting overwritten: %s, %v", saved, err)
 	}
 	m.stopInteractiveTui()
-	if !strings.HasSuffix(output.String(), "\x1b[?2031l") {
+	if got := output.String(); strings.LastIndex(got, "\x1b[?2031l") < strings.LastIndex(got, "\x1b[?2031h") {
 		t.Errorf("notifications not disabled: %q", output.String())
 	}
 }
@@ -94,11 +101,14 @@ func TestInteractiveThemeStateTransitions(t *testing.T) {
 	m, ctx := newThemeDispatchMode(t)
 	var output bytes.Buffer
 	m.themeState.output = &output
+	m.tuiInst = tui.NewWithOutput(&output, 100, 30)
+	// The replacement renderer schedules its renders on the owner loop, as the production renderer does.
+	m.installRenderDispatcher()
 	m.opts.Settings.Theme = "light/dark"
 	m.initTheme()
 	m.applyThemeFromSettings(ctx)
 	m.consumeTerminalThemeInput("\x1b[?997;2n")
-	spy := &themeInvalidationSpy{Renderer: m.tuiInst}
+	spy := &themeInvalidationSpy{TUI: m.tuiInst}
 	m.tuiInst = spy
 	// theme-controller.ts applyTerminalColorSchemeChange re-applies only when the appearance changed; preview does not replace the active selection or switch the mode off.
 	m.consumeTerminalThemeInput("\x1b[?997;2n")
@@ -120,7 +130,7 @@ func TestInteractiveThemeStateTransitions(t *testing.T) {
 	}
 
 	ui := &ExtUIContext{m: m}
-	if result := ui.SetTheme("light"); !result.Success {
+	if result := ui.SetTheme(extension.ThemeName("light")); !result.Success {
 		t.Fatal(result)
 	}
 	if m.themeState.autoSyncEnabled.Load() {
@@ -137,17 +147,17 @@ func TestInteractiveThemeStateTransitions(t *testing.T) {
 	if tui.ActiveTheme().Name != "light" {
 		t.Fatal("reload discarded explicit selection")
 	}
-	if result := ui.SetTheme("light/dark"); result.Success {
+	if result := ui.SetTheme(extension.ThemeName("light/dark")); result.Success {
 		t.Fatal("extension name API accepted a setting instead of a theme name")
 	}
 }
 
 type themeInvalidationSpy struct {
-	tui.Renderer
+	tui.TUI
 	invalidates int
 }
 
-func (s *themeInvalidationSpy) Invalidate() { s.invalidates++; s.Renderer.Invalidate() }
+func (s *themeInvalidationSpy) Invalidate() { s.invalidates++; s.TUI.Invalidate() }
 
 // upstream 0.99.1 theme-controller.ts applyFromSettings does not wait for the terminal: the modal owner loop applies the colors when they arrive, without a keystroke.
 func TestInteractiveThemeSettingQueriesWithoutBlockingModal(t *testing.T) {
@@ -155,7 +165,7 @@ func TestInteractiveThemeSettingQueriesWithoutBlockingModal(t *testing.T) {
 	m, ctx := newThemeDispatchMode(t)
 	pending := make(chan tui.TerminalColorsResult, 1)
 	answers := []<-chan tui.TerminalColorsResult{pending}
-	renderer := &colorQueryRenderer{Renderer: m.tuiInst, answer: func() <-chan tui.TerminalColorsResult {
+	renderer := &colorQueryRenderer{TUI: m.tuiInst, answer: func() <-chan tui.TerminalColorsResult {
 		if len(answers) == 0 {
 			return settledColors(tui.TerminalColors{})()
 		}
@@ -198,7 +208,7 @@ func TestInteractiveThemeSettingQueriesWithoutBlockingModal(t *testing.T) {
 // upstream 0.99.1 theme-controller.ts requestTerminalColors passes onLateReply, and dispose disables notifications and ignores later reports.
 func TestInteractiveThemeLateRepliesAndShutdown(t *testing.T) {
 	m, ctx := newThemeDispatchMode(t)
-	renderer := &colorQueryRenderer{Renderer: m.tuiInst}
+	renderer := &colorQueryRenderer{TUI: m.tuiInst}
 	m.tuiInst = renderer
 	m.opts.Settings.Theme = "light/dark"
 	m.initTheme()

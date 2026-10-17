@@ -61,7 +61,7 @@ func TestTestFauxToolFollowUpUsesLatestUserTurn(t *testing.T) {
 func TestFauxProvider_ToolCallResponse(t *testing.T) {
 	provider := NewFauxProvider(FauxConfig{})
 	provider.SetResponses([]FauxResponseStep{FauxStaticStep(FauxResponse{
-		Content: []FauxContentBlock{FauxToolCall("bash", map[string]any{"command": "ls"}, "tc-1")}, StopReason: "toolUse",
+		Content: []FauxContentBlock{FauxToolCall("bash", map[string]any{"command": "ls"}, &FauxToolCallOptions{ID: "tc-1"})}, StopReason: "toolUse",
 	})})
 	stream, err := provider.Stream(context.Background(), emptyTranscript(), StreamOptions{})
 	if err != nil {
@@ -125,8 +125,8 @@ func TestFauxProvider_NoResponsesQueued(t *testing.T) {
 
 func TestFauxProvider_Factory(t *testing.T) {
 	provider := NewFauxProvider(FauxConfig{})
-	provider.SetResponses([]FauxResponseStep{FauxFactoryStep(func(_ TranscriptContext, _ StreamOptions, _ *FauxProviderState, _ *Model) (FauxResponse, error) {
-		return FauxResponse{Content: []FauxContentBlock{FauxText("dynamic response")}, StopReason: "stop"}, nil
+	provider.SetResponses([]FauxResponseStep{FauxFactoryStep(func(_ TranscriptContext, _ StreamOptions, _ *FauxProviderState, _ *Model) (AssistantMessage, error) {
+		return FauxResponse{Content: []FauxContentBlock{FauxText("dynamic response")}, StopReason: "stop"}.AssistantMessage(), nil
 	})})
 	stream, err := provider.Stream(context.Background(), emptyTranscript(), StreamOptions{})
 	if err != nil {

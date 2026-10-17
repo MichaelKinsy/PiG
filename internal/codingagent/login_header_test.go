@@ -5,10 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"image/color"
+	"maps"
+	"regexp"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/piglogin"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -117,7 +122,7 @@ func TestLoginHeaderAppliesHostThemeColorsWithoutChangingExtensionPalette(t *tes
 	}
 
 	m := &InteractiveMode{
-		opts: InteractiveOptions{
+		opts: InteractiveModeOptions{
 			LoginVisible: true,
 			LoginHeaderOptions: LoginHeaderOptions{
 				TrueColor:      true,
@@ -354,13 +359,13 @@ func TestLoginHeaderRendererCachesDefensivelyAndTracksTheme(t *testing.T) {
 func TestExtUIContextSetLoginSharesHeaderSlotAndInvalidPreservesCurrent(t *testing.T) {
 	const builtInHeader = "stock header"
 	m := &InteractiveMode{
-		opts:      InteractiveOptions{BuiltInHeaderLines: []string{builtInHeader}, LoginHeaderOptions: LoginHeaderOptions{TrueColor: true}, LoginVisible: true},
+		opts:      InteractiveModeOptions{BuiltInHeaderLines: []string{builtInHeader}, LoginHeaderOptions: LoginHeaderOptions{TrueColor: true}, LoginVisible: true},
 		extHeader: newSpecialLinesComponent(func() {}),
 	}
 	m.restoreBuiltInHeader()
 	ui := &ExtUIContext{m: m}
 
-	ui.SetHeader([]string{"custom header"})
+	ui.SetHeader(extension.FrameHeader([]string{"custom header"}, 0))
 	if got := ui.SetLogin(extension.LoginDefinition{}); got == nil {
 		t.Fatal("invalid SetLogin returned nil error")
 	}
@@ -390,7 +395,7 @@ func TestExtUIContextSetLoginSharesHeaderSlotAndInvalidPreservesCurrent(t *testi
 
 func TestRestoreBuiltInHeaderUsesConfiguredLines(t *testing.T) {
 	m := &InteractiveMode{
-		opts:      InteractiveOptions{BuiltInHeaderLines: []string{"minimal identity"}, LoginVisible: true},
+		opts:      InteractiveModeOptions{BuiltInHeaderLines: []string{"minimal identity"}, LoginVisible: true},
 		extHeader: newSpecialLinesComponent(func() {}),
 	}
 	m.restoreBuiltInHeader()
@@ -401,7 +406,7 @@ func TestRestoreBuiltInHeaderUsesConfiguredLines(t *testing.T) {
 
 func TestExtUIContextSetLoginHonorsStartupSilenceGate(t *testing.T) {
 	m := &InteractiveMode{
-		opts:      InteractiveOptions{LoginVisible: false},
+		opts:      InteractiveModeOptions{LoginVisible: false},
 		extHeader: newSpecialLinesComponent(func() {}),
 	}
 	ui := &ExtUIContext{m: m}
@@ -422,7 +427,7 @@ func TestExtUIContextSetLoginHonorsStartupSilenceGate(t *testing.T) {
 
 func TestExtUIContextSetLoginKeepsOperationalRowsWithoutBuiltInArt(t *testing.T) {
 	m := &InteractiveMode{
-		opts: InteractiveOptions{
+		opts: InteractiveModeOptions{
 			LoginVisible:       true,
 			LoginHeaderOptions: LoginHeaderOptions{OperationalLines: []string{"PiG v1", "startup hints"}},
 			BuiltInHeaderLines: []string{"minimal identity"},
@@ -452,7 +457,7 @@ func TestExtUIContextSetLoginKeepsOperationalRowsWithoutBuiltInArt(t *testing.T)
 func TestNewSessionResetRestoresBuiltInHeaderBeforeHandlers(t *testing.T) {
 	const builtInHeader = "stock header"
 	m := &InteractiveMode{
-		opts: InteractiveOptions{
+		opts: InteractiveModeOptions{
 			BuiltInHeaderLines: []string{builtInHeader},
 			LoginVisible:       true,
 		},
@@ -470,7 +475,7 @@ func TestSuccessfulReloadRestoresBuiltInHeaderAndFailedReloadPreservesCurrentLog
 	restoreStartupTheme(t) // Reload applies the theme setting, which selects the process-wide active theme.
 	const builtInHeader = "stock header"
 	host := &orderRecordingHost{}
-	m := reloadTestMode(InteractiveOptions{
+	m := reloadTestMode(InteractiveModeOptions{
 		BuiltInHeaderLines: []string{builtInHeader},
 		LoginVisible:       true,
 		SubprocessHost:     host,
@@ -496,9 +501,9 @@ func TestSuccessfulReloadRestoresBuiltInHeaderAndFailedReloadPreservesCurrentLog
 
 // D60: SetLogin and SetHeader share one slot and the last successful call wins. A quiet startup accepts the login but keeps the slot hidden, so it replaces an earlier extension header instead of leaving that header visible. The bridge already treats the login as newer than that header (a delayed older setHeader is dropped), so in-order application must agree.
 func TestQuietLoginReplacesEarlierExtensionHeaderWithHiddenSlot(t *testing.T) {
-	m := &InteractiveMode{opts: InteractiveOptions{LoginVisible: false}, extHeader: newSpecialLinesComponent(func() {})}
+	m := &InteractiveMode{opts: InteractiveModeOptions{LoginVisible: false}, extHeader: newSpecialLinesComponent(func() {})}
 	ui := &ExtUIContext{m: m}
-	ui.SetHeader(extension.WidthLines{Lines: []string{"earlier header"}, Width: 80})
+	ui.SetHeader(extension.FrameHeader([]string{"earlier header"}, 80))
 	if got := m.extHeader.Render(80); len(got) == 0 {
 		t.Fatal("setup: extension header not shown")
 	}
@@ -508,4 +513,155 @@ func TestQuietLoginReplacesEarlierExtensionHeaderWithHiddenSlot(t *testing.T) {
 	if got := m.extHeader.Render(80); len(got) != 0 || m.extHeader.HasContent() {
 		t.Fatalf("quiet login left the earlier header visible: %q", got)
 	}
+}
+
+// loginCellRE matches one painted cell: its color escapes, the glyph, and the reset.
+var loginCellRE = regexp.MustCompile(`((?:\x1b\[[0-9;]*m)*)([▀▄ ])\x1b\[0m`)
+
+var loginRGBRE = regexp.MustCompile(`\x1b\[(38|48);2;(\d+);(\d+);(\d+)m`)
+
+// loginPoint is one pixel of the login scene: its column and its row.
+type loginPoint struct{ x, y int }
+
+// paintedPixels reads the pixels back out of the half-block lines: cell x of line n holds pixels (x, 2n) and (x, 2n+1).
+// A ▀ cell paints its foreground at the top and its background (when set) at the bottom, a ▄ cell paints its foreground at
+// the bottom, and a blank cell paints nothing.
+func paintedPixels(t *testing.T, lines []string) map[loginPoint]color.RGBA {
+	t.Helper()
+	painted := map[loginPoint]color.RGBA{}
+	for n, line := range lines {
+		cells := loginCellRE.FindAllStringSubmatch(line, -1)
+		for x, cell := range cells {
+			var fg, bg *color.RGBA
+			for _, m := range loginRGBRE.FindAllStringSubmatch(cell[1], -1) {
+				r, _ := strconv.Atoi(m[2])
+				g, _ := strconv.Atoi(m[3])
+				b, _ := strconv.Atoi(m[4])
+				c := color.RGBA{uint8(r), uint8(g), uint8(b), 0xFF}
+				if m[1] == "38" {
+					fg = &c
+				} else {
+					bg = &c
+				}
+			}
+			switch {
+			case cell[2] == " " && (fg != nil || bg != nil):
+				t.Fatalf("a blank cell carries a color: %q", cell[0])
+			case cell[2] != " " && fg == nil:
+				t.Fatalf("a glyph cell has no foreground color: %q", cell[0])
+			case cell[2] == "▄" && bg != nil:
+				t.Fatalf("a lower half block carries a background: %q", cell[0])
+			}
+			switch cell[2] {
+			case "▀":
+				painted[loginPoint{x, 2 * n}] = *fg
+				if bg != nil {
+					painted[loginPoint{x, 2*n + 1}] = *bg
+				}
+			case "▄":
+				painted[loginPoint{x, 2*n + 1}] = *fg
+			}
+		}
+	}
+	return painted
+}
+
+// The native login template paints exactly the definition's pixels where the scene puts them: the brand band at the top
+// left (or nothing, and no rows, when it is transparent), the hero one pixel row below the brand and the mascot after the
+// hero and its gap, each pixel in its palette color, whatever width the header takes. The name line is bold and the tagline
+// italic. Widths below the full layout draw stacked text and no pixels. The uniform fixture and every built-in sprite's
+// definition (art with many colors) are checked.
+func TestLoginHeaderPaintsExactlyTheDefinitionPixels(t *testing.T) {
+	definitions := []extension.ValidatedLoginDefinition{loginHeaderFixture(t)}
+	for _, variant := range piglogin.Variants {
+		definition, err := extension.ValidateLoginDefinition(piglogin.LoginDefinitionFor(variant))
+		if err != nil {
+			t.Fatalf("%s: %v", variant.ID, err)
+		}
+		definitions = append(definitions, definition)
+	}
+	for _, definition := range definitions {
+		name := definition.Name()
+		want := map[loginPoint]color.RGBA{}
+		place := func(grid []string, left, top int) {
+			for y, row := range grid {
+				for x := range len(row) {
+					if c, ok := definition.Color(row[x]); ok {
+						want[loginPoint{left + x, top + y}] = c
+					}
+				}
+			}
+		}
+		top := extension.LoginBrandHeight + 1
+		if len(paintedOf(definition.Brand(), definition)) == 0 {
+			top = 0
+		}
+		place(definition.Brand(), 0, 0)
+		place(definition.Hero(), 0, top)
+		place(definition.Mascot(), extension.LoginHeroWidth+3, top)
+		artRows := (top + max(extension.LoginHeroHeight, extension.LoginMascotHeight) + 1) / 2
+		for _, width := range []int{50, 66, 120} {
+			lines := RenderLoginHeader(definition, width, LoginHeaderOptions{TrueColor: true})
+			for i, line := range lines {
+				if w := widthx.VisibleWidth(line); w > width {
+					t.Errorf("%s width %d: line %d is %d cells wide", name, width, i, w)
+				}
+			}
+			if width < 66 {
+				if got := paintedPixels(t, lines); len(got) != 0 {
+					t.Errorf("%s width %d: the compact header paints pixels: %v", name, width, got)
+				}
+				continue
+			}
+			if len(lines) < artRows+3 {
+				t.Fatalf("%s width %d: %d lines, want %d art rows, a blank line, the name and the tagline", name, width, len(lines), artRows)
+			}
+			art := make([]string, artRows)
+			for i, line := range lines[:artRows] {
+				rest, ok := strings.CutPrefix(line, loginMargin)
+				if !ok {
+					t.Fatalf("%s width %d: art row %d lacks the margin: %q", name, width, i, line)
+				}
+				art[i] = rest
+			}
+			if got := paintedPixels(t, art); !maps.Equal(got, want) {
+				for p, c := range want {
+					if got[p] != c {
+						t.Errorf("%s width %d: pixel (%d,%d) = %v, want %v", name, width, p.x, p.y, got[p], c)
+						break
+					}
+				}
+				t.Errorf("%s width %d: painted %d pixels, want the definition's %d in place", name, width, len(got), len(want))
+			}
+			text := lines[artRows:]
+			if text[0] != "" {
+				t.Errorf("%s width %d: line after the art = %q, want blank", name, width, text[0])
+			}
+			if wantName := loginMargin + "\x1b[1m" + definition.Name() + "\x1b[0m"; !strings.HasPrefix(text[1], wantName) {
+				t.Errorf("%s width %d: name line = %q, want it to start with the bold name %q", name, width, text[1], wantName)
+			}
+			joined := stripANSITest(strings.Join(text, "\n"))
+			for _, part := range []string{definition.Description(), definition.Tagline()} {
+				if !strings.Contains(joined, part) {
+					t.Errorf("%s width %d: header lacks %q", name, width, part)
+				}
+			}
+			if !slices.ContainsFunc(text, func(line string) bool { return strings.HasPrefix(line, loginMargin+"\x1b[3m") }) {
+				t.Errorf("%s width %d: no italic tagline line in %q", name, width, text)
+			}
+		}
+	}
+}
+
+// paintedOf returns the opaque pixels of a grid.
+func paintedOf(grid []string, definition extension.ValidatedLoginDefinition) []loginPoint {
+	var points []loginPoint
+	for y, row := range grid {
+		for x := range len(row) {
+			if _, ok := definition.Color(row[x]); ok {
+				points = append(points, loginPoint{x, y})
+			}
+		}
+	}
+	return points
 }

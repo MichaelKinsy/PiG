@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const pin = readFileSync('internal/coding/pigversion/pigversion.go', 'utf8').match(/UpstreamVersion = "([^"]+)"/)[1];
+const pin = readFileSync('internal/coding/pigversion/pigversion.go', 'utf8').match(/UpstreamPackageVersion = "([^"]+)"/)[1];
 const root = process.env.PI_PACKAGE_ROOT ?? resolve('extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent');
 const chord = join(root, 'node_modules/@earendil-works/chord');
 for (const path of [root, chord]) {

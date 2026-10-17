@@ -1,0 +1,65 @@
+# pig-aot (piglets/aot/pig-aot.yaml)
+# regenerate: go test ./coding/cli -run '^TestShippedPigletInventory$' -update-piglet-inventory
+strip: none
+tools allow-list: all
+discovery.extensions: []
+discovery.skills: []
+slot frontend: pig
+extension aotruntime origins=[local:piglets/aot/extensions/aotruntime] tools=all
+tools.bash active
+tools.edit active
+tools.find inactive
+tools.grep inactive
+tools.ls inactive
+tools.powershell inactive
+tools.read active
+tools.write active
+extensions.codemode loaded
+extensions.llama.cpp loaded
+extensions.mcp loaded
+extensions.pig-login loaded
+extensions.tool-search loaded
+commands./bug kept
+commands./changelog kept
+commands./clone kept
+commands./compact kept
+commands./copy kept
+commands./debug kept
+commands./export kept
+commands./fork kept
+commands./hotkeys kept
+commands./import kept
+commands./login kept
+commands./logout kept
+commands./model kept
+commands./name kept
+commands./new kept
+commands./piglet kept
+commands./quit kept
+commands./reload kept
+commands./resume kept
+commands./scoped-models kept
+commands./session kept
+commands./settings kept
+commands./share kept
+commands./thinking kept
+commands./tree kept
+commands./trust kept
+apis.bedrock-converse-stream kept
+apis.google-vertex kept
+apis.mistral-conversations kept
+features.changelog kept
+features.docs kept
+features.export-html kept
+features.extension-sdk-go kept
+features.extension-sdk-python kept
+features.extension-sdk-rust kept
+features.mermaid kept
+features.node-extensions kept
+features.piglet-builder kept
+features.prompt-templates kept
+features.self-update kept
+features.skills kept
+features.syntax-highlight kept
+features.themes kept
+features.word-dictionaries kept

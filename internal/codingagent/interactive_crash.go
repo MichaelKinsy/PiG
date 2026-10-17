@@ -5,7 +5,6 @@ package codingagent
 // resume, and import failures are recorded, and the next start announces them.
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -116,18 +115,7 @@ func (m *InteractiveMode) crashExtensionMetadata() []ExtensionStackMetadata {
 }
 
 func resourceSourceInfoValue(value extension.SourceInfo) ResourceSourceInfo {
-	if info, ok := value.(ResourceSourceInfo); ok {
-		return info
-	}
-	data, err := json.Marshal(value)
-	if err != nil {
-		return ResourceSourceInfo{}
-	}
-	var info ResourceSourceInfo
-	if json.Unmarshal(data, &info) != nil {
-		return ResourceSourceInfo{}
-	}
-	return info
+	return ResourceSourceInfo{Path: value.Path, Source: value.Source, Scope: value.Scope, Origin: value.Origin, BaseDir: value.BaseDir}
 }
 
 func (m *InteractiveMode) crashExtensionHint(stack string) string {
@@ -137,6 +125,10 @@ func (m *InteractiveMode) crashExtensionHint(stack string) string {
 // handleFatalRuntimeError reports a runtime replacement failure and asks the
 // input loop to exit with status 1 after terminal restoration.
 func (m *InteractiveMode) handleFatalRuntimeError(prefix string, value any) error {
+	// A replacement that ended because the session already shut down is not a failure; Pi's process has exited by then.
+	if err, ok := value.(error); ok && errors.Is(err, errInteractiveShutdown) {
+		return err
+	}
 	message := crashMessage(value)
 	stack := string(debug.Stack())
 	m.showError(prefix + ": " + message)
@@ -180,6 +172,8 @@ func (m *InteractiveMode) uncaughtCrash(value any, stack []byte, stderr io.Write
 	if m.recordCrash("uncaught_exception", value, string(stack)) {
 		_, _ = fmt.Fprintf(stderr, "\n%s\n", crashReportInstructions(m.crashSessionFile()))
 	}
+	// A crash is the exit the flight recorder (PIG_PROFILE=flight) exists for; uncaughtOffLoop exits before any deferred profile stop runs.
+	dumpFlightRecord(m.opts.AgentDir)
 }
 
 // uncaughtOffLoop ends the process for a panic in a goroutine the owner loop does not run, as upstream's uncaughtException

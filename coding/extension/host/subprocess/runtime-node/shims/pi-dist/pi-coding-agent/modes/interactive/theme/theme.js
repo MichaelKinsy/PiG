@@ -8,6 +8,7 @@ import { closeWatcher, watchWithErrorHandler } from "../../../utils/fs-watch.js"
 import { highlight, supportsLanguage } from "../../../../../syntax-highlight.mjs";
 import { stripBom } from "../../../utils/text.js";
 import { generateSystemThemeColors, SYSTEM_THEME_NAME, terminalAppearance } from "./system-theme.js";
+import { THEME_TOKENS, } from "./theme-tokens.js";
 export { SYSTEM_THEME_NAME } from "./system-theme.js";
 let themeJsonValidator;
 /**
@@ -41,15 +42,22 @@ function resolveThemeColors(colors, vars = {}) {
     }
     return resolved;
 }
-function withThemeColorFallbacks(colors) {
-    return {
-        ...colors,
-        scrollbarTrack: colors.scrollbarTrack ?? colors.muted,
-        scrollbarThumb: colors.scrollbarThumb ?? colors.text,
-        thinkingMax: colors.thinkingMax ?? colors.thinkingXhigh,
-        searchMatchBg: colors.searchMatchBg ?? colors.selectedBg,
-        searchMatchText: colors.searchMatchText ?? colors.text,
-    };
+function withThemeTokenFallbacks(values) {
+    const resolved = { ...values };
+    for (const [rawName, descriptor] of Object.entries(THEME_TOKENS)) {
+        if (!("fallback" in descriptor))
+            continue;
+        const name = rawName;
+        if (resolved[name] !== undefined)
+            continue;
+        const fallback = descriptor.fallback;
+        const fallbackValue = resolved[fallback];
+        if (fallbackValue === undefined) {
+            throw new Error(`Theme token ${rawName} has unresolved fallback ${descriptor.fallback}`);
+        }
+        resolved[name] = fallbackValue;
+    }
+    return resolved;
 }
 // The terminal's reported colors. Replaced (never mutated) on update, so themes can cache resolved colors
 // by identity.
@@ -123,14 +131,7 @@ export class Theme {
         this.sourceInfo = options.sourceInfo;
         this.mode = mode;
         this.dimTokens = new Set(options.dim);
-        const foregrounds = {
-            ...fgColors,
-            scrollbarTrack: fgColors.scrollbarTrack ?? fgColors.muted,
-            scrollbarThumb: fgColors.scrollbarThumb ?? fgColors.text,
-            thinkingMax: fgColors.thinkingMax ?? fgColors.thinkingXhigh,
-            searchMatchText: fgColors.searchMatchText ?? fgColors.text,
-        };
-        const backgrounds = { ...bgColors, searchMatchBg: bgColors.searchMatchBg ?? bgColors.selectedBg };
+        const { fgColors: foregrounds, bgColors: backgrounds } = splitThemeColors(withThemeTokenFallbacks({ ...fgColors, ...bgColors }));
         const concreteForegrounds = [];
         const concreteBackgrounds = [];
         // Returns the escape sequence for the token's own slot.
@@ -379,20 +380,11 @@ function loadThemeJson(name) {
     const content = fs.readFileSync(themePath, "utf-8");
     return parseThemeJsonContent(name, content);
 }
-const BACKGROUND_TOKENS = new Set([
-    "selectedBg",
-    "searchMatchBg",
-    "userMessageBg",
-    "customMessageBg",
-    "toolPendingBg",
-    "toolSuccessBg",
-    "toolErrorBg",
-]);
 function splitThemeColors(colors) {
     const fgColors = {};
     const bgColors = {};
     for (const [key, value] of Object.entries(colors)) {
-        if (BACKGROUND_TOKENS.has(key)) {
+        if (THEME_TOKENS[key].slot === "background") {
             bgColors[key] = value;
         }
         else {
@@ -403,7 +395,7 @@ function splitThemeColors(colors) {
 }
 function createTheme(themeJson, mode, sourcePath) {
     const colorMode = mode ?? getTerminalColorMode();
-    const resolvedColors = resolveThemeColors(withThemeColorFallbacks(themeJson.colors), themeJson.vars);
+    const resolvedColors = withThemeTokenFallbacks(resolveThemeColors(themeJson.colors, themeJson.vars));
     const { fgColors, bgColors } = splitThemeColors(resolvedColors);
     return new Theme(fgColors, bgColors, colorMode, {
         name: themeJson.name,
@@ -418,7 +410,7 @@ function createSystemTheme(mode) {
         saturation: terminalColorsPending ? 0 : 1,
         appearanceHint: getTerminalTheme(),
     });
-    const { fgColors, bgColors } = splitThemeColors(generated.colors);
+    const { fgColors, bgColors } = splitThemeColors(withThemeTokenFallbacks(generated.colors));
     return new Theme(fgColors, bgColors, mode ?? getTerminalColorMode(), {
         name: SYSTEM_THEME_NAME,
         appearance: generated.appearance,
@@ -725,6 +717,7 @@ function buildCliHighlightTheme(t) {
         number: (s) => t.fg("syntaxNumber", s),
         regexp: (s) => t.fg("syntaxString", s),
         string: (s) => t.fg("syntaxString", s),
+        subst: (s) => t.fg("text", s),
         comment: (s) => t.fg("syntaxComment", s),
         doctag: (s) => t.fg("syntaxComment", s),
         meta: (s) => t.fg("muted", s),

@@ -1,5 +1,7 @@
 package mcpext_test
 
+// pi: packages/coding-agent/src/extensions/mcp/config.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -204,7 +206,7 @@ func TestConnectionIdentifiesItselfWithTheRunningVersion(t *testing.T) {
 				default:
 					response = mcp.NewResult(*message.ID, json.RawMessage(`{}`))
 				}
-				go func() { _ = server.Send(response) }()
+				go func() { _ = server.Send(context.Background(), response) }()
 			})
 			_ = server.Start()
 			return client, nil

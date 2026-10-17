@@ -1,0 +1,255 @@
+[
+ {
+  "ids": [
+   "pkg:tui/.#TuiAltScreen::property:flash"
+  ],
+  "targets": [
+   "tui/tui_alt_screen.go#TuiAltScreen.Flash"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_chat.go#InteractiveMode.confirmMessageCopied"
+  ],
+  "evidence": [
+   "test:tui/tui_alt_screen_test.go#TestAltScreenFlashComposited",
+   "test:tui/tui_alt_screen_v087_test.go#TestAltScreenCopySelectionErrorMessages"
+  ],
+  "rationale": "TuiAltScreen.flash is the Go method TuiAltScreen.Flash; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#TuiAltScreen::property:getCopyOnSelect"
+  ],
+  "targets": [
+   "tui/tui_alt_screen.go#TuiAltScreen.GetCopyOnSelect"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_chat.go#InteractiveMode.handleCopyCommand"
+  ],
+  "evidence": [
+   "test:internal/codingagent/interactive_teardown_test.go#TestOnSettingAppliedFullscreenCopyOnSelectAppliesLive",
+   "test:internal/experimental/client_tui_component_test.go#TestClientTuiSharedPresentationBootstrap"
+  ],
+  "rationale": "TuiAltScreen.getCopyOnSelect is the Go method TuiAltScreen.GetCopyOnSelect; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#TuiAltScreen::property:getScreenLines"
+  ],
+  "targets": [
+   "tui/tui_alt_screen.go#TuiAltScreen.GetScreenLines"
+  ],
+  "production": [
+   "call:internal/codingagent/pig_logo_animation_play.go#InteractiveMode.playEgg3d"
+  ],
+  "evidence": [
+   "test:internal/codingagent/pig_logo_animation_test.go#TestClickingTheTextMarkPlaysTheAnimation",
+   "test:internal/codingagent/pig_logo_animation_test.go#TestPigLogoAnimationColors"
+  ],
+  "rationale": "TuiAltScreen.getScreenLines is the Go method TuiAltScreen.GetScreenLines; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#TuiAltScreen::property:hasActiveSelection"
+  ],
+  "targets": [
+   "tui/tui_alt_screen.go#TuiAltScreen.HasActiveSelection"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_chat.go#InteractiveMode.handleCopyCommand"
+  ],
+  "evidence": [
+   "test:internal/codingagent/fullscreen_selection_copy_test.go#TestCtrlXCopiesLastMessageWhenCopyOnSelectIsOn",
+   "test:internal/codingagent/fullscreen_selection_copy_test.go#TestCtrlXPrefersActiveFullscreenSelectionWhenAutomaticCopyIsDisabled"
+  ],
+  "rationale": "TuiAltScreen.hasActiveSelection is the Go method TuiAltScreen.HasActiveSelection; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#TuiAltScreen::property:scrollToBottom"
+  ],
+  "targets": [
+   "tui/tui_alt_screen.go#TuiAltScreen.ScrollToBottom"
+  ],
+  "production": [
+   "call:tui/tui_alt_screen_input.go#TuiAltScreen.performViewportAction"
+  ],
+  "evidence": [
+   "test:tui/tui_alt_screen_test.go#TestAltScreenScrollAndFollow"
+  ],
+  "rationale": "TuiAltScreen.scrollToBottom is the Go method TuiAltScreen.ScrollToBottom; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#TuiAltScreen::property:scrollToTop"
+  ],
+  "targets": [
+   "tui/tui_alt_screen.go#TuiAltScreen.ScrollToTop"
+  ],
+  "production": [
+   "call:tui/tui_alt_screen_input.go#TuiAltScreen.performViewportAction"
+  ],
+  "evidence": [
+   "test:tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenEvictsLeastRecentlyVisibleKittyImageWhenCacheFull",
+   "test:tui/tui_alt_screen_test.go#TestAltScreenScrollAndFollow"
+  ],
+  "rationale": "TuiAltScreen.scrollToTop is the Go method TuiAltScreen.ScrollToTop; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#TuiAltScreen::property:setCopyOnSelect"
+  ],
+  "targets": [
+   "tui/tui_alt_screen.go#TuiAltScreen.SetCopyOnSelect"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_commands.go#InteractiveMode.buildSlashContext"
+  ],
+  "evidence": [
+   "test:internal/codingagent/fullscreen_selection_copy_test.go#TestCtrlXCopiesLastMessageWhenCopyOnSelectIsOn",
+   "test:internal/codingagent/fullscreen_selection_copy_test.go#TestCtrlXFallsBackToLastAssistantMessageWithoutActiveSelection"
+  ],
+  "rationale": "TuiAltScreen.setCopyOnSelect is the Go method TuiAltScreen.SetCopyOnSelect; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#TuiAltScreen::property:setLayoutRoot"
+  ],
+  "targets": [
+   "tui/tui_alt_screen.go#TuiAltScreen.SetLayoutRoot"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_tui.go#InteractiveMode.mountInteractiveTui"
+  ],
+  "evidence": [
+   "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
+   "test:tui/cell_size_test.go#TestCellSizeResponseInvalidatesAltScreenLayoutRoot"
+  ],
+  "rationale": "TuiAltScreen.setLayoutRoot is the Go method TuiAltScreen.SetLayoutRoot; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#TuiAltScreen::property:setWheelScrollLines"
+  ],
+  "targets": [
+   "tui/tui_alt_screen.go#TuiAltScreen.SetWheelScrollLines"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_commands.go#InteractiveMode.buildSlashContext"
+  ],
+  "evidence": [
+   "test:tui/tui_alt_screen_wheel_upstream_test.go#TestUpstreamAltScreenAppliesRuntimeWheelLineCountUpdates"
+  ],
+  "rationale": "TuiAltScreen.setWheelScrollLines is the Go method TuiAltScreen.SetWheelScrollLines; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#TuiAltScreen::property:start"
+  ],
+  "targets": [
+   "tui/tui_alt_screen.go#TuiAltScreen.Start"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_tui.go#InteractiveMode.mountInteractiveTui"
+  ],
+  "evidence": [
+   "test:internal/codingagent/copy_message_flash_test.go#TestConfirmMessageCopied_FullscreenFlashesInsteadOfStatusLine",
+   "test:internal/codingagent/fullscreen_selection_copy_test.go#TestCtrlXCopiesLastMessageWhenCopyOnSelectIsOn"
+  ],
+  "rationale": "TuiAltScreen.start is the Go method TuiAltScreen.Start; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#TUI::property:setClearOnShrink"
+  ],
+  "targets": [
+   "tui/tui.go#tuiBase.SetClearOnShrink"
+  ],
+  "production": [
+   "call:internal/codingagent/startup_ui.go#runStartupComponentWith"
+  ],
+  "evidence": [
+   "test:tui/render_overflow_test.go#TestOverflowFullRenderPathsEmitRowUnchanged",
+   "test:tui/render_state_test.go#TestTUIRender_ClearOnShrinkForcesFullRedraw"
+  ],
+  "rationale": "TUI.setClearOnShrink is the Go method TUI.SetClearOnShrink; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#TUI::property:setShowHardwareCursor"
+  ],
+  "targets": [
+   "tui/tui.go#TUI.SetShowHardwareCursor"
+  ],
+  "production": [
+   "call:internal/codingagent/startup_ui.go#runStartupComponentWith"
+  ],
+  "evidence": [
+   "test:tui/render_state_test.go#TestTUIRender_ShowHardwareCursorToggleAffectsOutput"
+  ],
+  "rationale": "TUI.setShowHardwareCursor is the Go method TUI.SetShowHardwareCursor; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ProcessTerminal::property:drainInput"
+  ],
+  "targets": [
+   "tui/terminal.go#ProcessTerminal.DrainInput"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_tui.go#InteractiveMode.stopInteractiveTui"
+  ],
+  "evidence": [
+   "test:tui/keyboard_protocol_teardown_test.go#TestDrainInputDisablesProtocolBeforeDraining",
+   "test:tui/terminal_drain_unix_test.go#TestProcessTerminalDrainInput_ConsumesPendingBytes"
+  ],
+  "rationale": "ProcessTerminal.drainInput is the Go method ProcessTerminal.DrainInput; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the error; maxMs and idleMs are the two time.Duration arguments; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ProcessTerminal::property:setProgress"
+  ],
+  "targets": [
+   "tui/terminal.go#ProcessTerminal.SetProgress"
+  ],
+  "production": [
+   "call:tui/terminal.go#SetTerminalProgress"
+  ],
+  "evidence": [
+   "test:tui/terminal_input_regression_test.go#TestTerminalProgressCancellationJoinsKeepalive",
+   "test:tui/terminal_protocol_parity_test.go#TestTerminalProtocolParityObservations"
+  ],
+  "rationale": "ProcessTerminal.setProgress is the Go method ProcessTerminal.SetProgress; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ProcessTerminal::property:setTitle"
+  ],
+  "targets": [
+   "tui/terminal.go#ProcessTerminal.SetTitle"
+  ],
+  "production": [
+   "call:tui/terminal.go#SetTerminalTitle"
+  ],
+  "evidence": [
+   "test:tui/terminal_test.go#TestProcessTerminal_ControlSequences"
+  ],
+  "rationale": "ProcessTerminal.setTitle is the Go method ProcessTerminal.SetTitle; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ProcessTerminal::property:stop"
+  ],
+  "targets": [
+   "tui/terminal.go#ProcessTerminal.Stop"
+  ],
+  "production": [
+   "call:internal/experimental/client_tui.go#RunClientTui"
+  ],
+  "evidence": [
+   "test:tui/terminal_test.go#TestProcessTerminalStopClearsActiveProgress",
+   "test:tui/terminal_test.go#TestProcessTerminal_StartStop_DoubleStartStopIsNoop"
+  ],
+  "rationale": "ProcessTerminal.stop is the Go method ProcessTerminal.Stop; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
+ }
+]

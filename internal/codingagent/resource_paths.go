@@ -2,16 +2,22 @@
 package codingagent
 
 import (
+	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"os"
 	"os/user"
 	"path/filepath"
 	"runtime"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/packagecontent"
+	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
+	"github.com/MichaelKinsy/PiG/internal/nodefs"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
@@ -39,7 +45,11 @@ func TopLevelResourcePaths(autoDir string, entries []string, kind packagecontent
 	auto := packagecontent.DiscoverAutomatic(autoDir, kind)
 	baseDir := filepath.Dir(autoDir)
 	explicit := packagecontent.ResolveConfigured(entries, baseDir, kind)
-	auto = packagecontent.FilterAutomatic(auto, entries, baseDir, kind)
+	// A pattern minimatch cannot compile leaves no auto-discovered resource; ValidateAutoDiscoveredOverrides reports it where Pi's resolve() rejects.
+	auto, err := packagecontent.FilterAutomatic(auto, entries, baseDir, kind)
+	if err != nil {
+		auto = nil
+	}
 	return append(explicit, auto...)
 }
 
@@ -70,8 +80,9 @@ func DiscoverAncestorAgentsSkillDirs(startDir string) []string {
 // findGitRepoRoot walks up from startDir looking for a .git entry and returns its directory, or "" when there is none.
 func findGitRepoRoot(startDir string) string {
 	dir := startDir
+	var probe nodefs.PathProbe
 	for {
-		if _, err := os.Stat(filepath.Join(dir, ".git")); err == nil {
+		if probe.Set(dir, ".git").Exists() {
 			return dir
 		}
 		parent := filepath.Dir(dir)
@@ -82,12 +93,14 @@ func findGitRepoRoot(startDir string) string {
 	}
 }
 
-// PathMetadata is package-manager.ts PathMetadata: where a resolved resource came from.
+// PathMetadata is package-manager.ts PathMetadata: where a resolved resource came from. BaseDir and PackageRoot are the Package directory for an npm, git or local-directory Package resource; a single-file local source has its directory as BaseDir and no PackageRoot. Extension package warnings read the root through ExtensionPackageRoot.
 type PathMetadata struct {
 	Source  string
 	Scope   string
 	Origin  string
 	BaseDir string
+	// PackageRoot is the directory of the npm, git or local-directory Package that supplied the resource; it is empty for a top-level resource and for a local source that is a single file.
+	PackageRoot string
 }
 
 // ResolvedResource is a resolved resource path with its PathMetadata (package-manager.ts ResolvedResource).
@@ -114,6 +127,91 @@ func ResourcePaths(resources []ResolvedResource) []string {
 	return paths
 }
 
+// ValidateAutoDiscoveredOverrides returns the first error Pi's addAutoDiscoveredResources throws: an override pattern of a settings resource array that minimatch cannot compile, met while the auto-discovered resources are checked against it in Pi's order (package-manager.ts:2413-2575). Project extensions, skills, ancestor .agents skills, prompts and themes come first when the project is trusted, then the user ones, ~/.agents skills among them.
+func ValidateAutoDiscoveredOverrides(cwd, agentDir string, sm *SettingsManager, projectTrusted bool) error {
+	type step struct {
+		dir       string
+		paths     func() []string
+		overrides []string
+		baseDir   string
+		kind      packagecontent.Kind
+	}
+	auto := func(baseDir string, kind packagecontent.Kind) (string, func() []string) {
+		dir := filepath.Join(baseDir, string(kind))
+		return dir, func() []string { return packagecontent.DiscoverAutomatic(dir, kind) }
+	}
+	agentSkills := func(dir string) (string, func() []string) {
+		return dir, func() []string { return packagecontent.DiscoverAgentSkillDirs(dir) }
+	}
+	add := func(steps []step, dir string, paths func() []string, overrides []string, baseDir string, kind packagecontent.Kind) []step {
+		return append(steps, step{dir, paths, overrides, baseDir, kind})
+	}
+	userAgentsSkills := filepath.Join(PackageManagerHomeDir(), ".agents", "skills")
+	var steps []step
+	if projectTrusted {
+		root, project := ProjectConfigDir(cwd), sm.GetProjectSettings()
+		dir, paths := auto(root, packagecontent.Extensions)
+		steps = add(steps, dir, paths, project.Extensions, root, packagecontent.Extensions)
+		dir, paths = auto(root, packagecontent.Skills)
+		steps = add(steps, dir, paths, project.Skills, root, packagecontent.Skills)
+		// Only a pattern that cannot compile throws, so without one in the project skill overrides no ancestor directory is checked, and the ancestor walk is skipped.
+		if packagecontent.OverridesThrow(project.Skills) {
+			for _, ancestor := range DiscoverAncestorAgentsSkillDirs(cwd) {
+				if !samePath(ancestor, userAgentsSkills) {
+					dir, paths = agentSkills(ancestor)
+					steps = add(steps, dir, paths, project.Skills, filepath.Dir(ancestor), packagecontent.Skills)
+				}
+			}
+		}
+		dir, paths = auto(root, packagecontent.Prompts)
+		steps = add(steps, dir, paths, project.Prompts, root, packagecontent.Prompts)
+		dir, paths = auto(root, packagecontent.Themes)
+		steps = add(steps, dir, paths, project.Themes, root, packagecontent.Themes)
+	}
+	user := sm.GetGlobalSettings()
+	dir, paths := auto(agentDir, packagecontent.Extensions)
+	steps = add(steps, dir, paths, user.Extensions, agentDir, packagecontent.Extensions)
+	dir, paths = auto(agentDir, packagecontent.Skills)
+	steps = add(steps, dir, paths, user.Skills, agentDir, packagecontent.Skills)
+	dir, paths = agentSkills(userAgentsSkills)
+	steps = add(steps, dir, paths, user.Skills, filepath.Dir(userAgentsSkills), packagecontent.Skills)
+	dir, paths = auto(agentDir, packagecontent.Prompts)
+	steps = add(steps, dir, paths, user.Prompts, agentDir, packagecontent.Prompts)
+	dir, paths = auto(agentDir, packagecontent.Themes)
+	steps = add(steps, dir, paths, user.Themes, agentDir, packagecontent.Themes)
+	for _, s := range steps {
+		// Only a "!" pattern minimatch cannot compile throws, and only once a resource reaches it, so a step without such a pattern walks nothing, and one whose directory is missing or empty compiles nothing.
+		if !packagecontent.OverridesThrow(s.overrides) || !dirMayHaveEntries(s.dir) {
+			continue
+		}
+		if _, err := packagecontent.AutomaticStates(s.paths(), s.overrides, s.baseDir, s.kind); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// dirMayHaveEntries reports whether discovery could find a resource in dir: it is false only for a directory that does not exist or that lists no entry. A directory that cannot be opened or listed may still hold an entry discovery finds by name, as Pi's collectAutoExtensionEntries finds index.ts with existsSync where readdirSync fails.
+func dirMayHaveEntries(dir string) bool {
+	f, err := os.Open(dir)
+	if err != nil {
+		return !errors.Is(err, fs.ErrNotExist)
+	}
+	entries, readErr := f.ReadDir(1)
+	// A read-only directory handle: its close error changes nothing here.
+	_ = f.Close()
+	return len(entries) > 0 || !errors.Is(readErr, io.EOF)
+}
+
+// automaticStates is packagecontent.AutomaticStates for a collector: a pattern minimatch cannot compile leaves no state, and ValidateAutoDiscoveredOverrides reports it where Pi's resolve() rejects.
+func automaticStates(paths, overrides []string, baseDir string, kind packagecontent.Kind) []packagecontent.ResourceState {
+	states, err := packagecontent.AutomaticStates(paths, overrides, baseDir, kind)
+	if err != nil {
+		return nil
+	}
+	return states
+}
+
 func resolvedResources(states []packagecontent.ResourceState, metadata PathMetadata) []ResolvedResource {
 	resources := make([]ResolvedResource, len(states))
 	for i, state := range states {
@@ -122,38 +220,76 @@ func resolvedResources(states []packagecontent.ResourceState, metadata PathMetad
 	return resources
 }
 
+// AgentsSkillDir is one ancestor .agents/skills directory and the skills discovered in it.
+type AgentsSkillDir struct {
+	Dir    string
+	Skills []string
+}
+
+// AgentsSkillScan is one walk of the ancestor .agents/skills directories of cwd (package-manager.ts
+// collectAncestorAgentsSkillDirs, without the user's ~/.agents/skills, :2466-2468) and the skills discovered in each
+// (:2505-2519). Pi's resolve() walks them once; a scan made for one resolve gives every consumer of that resolve, the skills it
+// loads and their source infos, the same walk. It walks on first use.
+type AgentsSkillScan struct {
+	cwd  string
+	once sync.Once
+	dirs []AgentsSkillDir
+}
+
+// NewAgentsSkillScan returns the scan of cwd's ancestor .agents/skills directories.
+func NewAgentsSkillScan(cwd string) *AgentsSkillScan { return &AgentsSkillScan{cwd: cwd} }
+
+// Dirs returns the scanned directories, nearest first.
+func (s *AgentsSkillScan) Dirs() []AgentsSkillDir {
+	s.once.Do(func() {
+		userAgentsSkills := filepath.Join(PackageManagerHomeDir(), ".agents", "skills")
+		for _, dir := range DiscoverAncestorAgentsSkillDirs(s.cwd) {
+			if !samePath(dir, userAgentsSkills) {
+				s.dirs = append(s.dirs, AgentsSkillDir{Dir: dir, Skills: packagecontent.DiscoverAgentSkillDirs(dir)})
+			}
+		}
+	})
+	return s.dirs
+}
+
 // AmbientSkillResources lists the skills that settings and auto-discovery yield, in resourcePrecedenceRank order: project settings entries, project auto-discovery, ancestor .agents/skills, user settings entries, user auto-discovery, then ~/.agents/skills, each with the PathMetadata addAutoDiscoveredResources and resolveLocalEntries record and with the enabled state the settings' patterns give it; a disabled resource is listed, not dropped (package-manager.ts:188-195, 2329-2350, 2352-2495). The project half is skipped when project is false, as project trust does upstream.
 func AmbientSkillResources(cwd, agentDir string, sm *SettingsManager, project, user bool) []ResolvedResource {
+	return AmbientSkillResourcesIn(NewAgentsSkillScan(cwd), cwd, agentDir, sm, project, user)
+}
+
+// AmbientSkillResourcesIn is AmbientSkillResources with the ancestor .agents/skills directories of scan, which must be of cwd.
+func AmbientSkillResourcesIn(scan *AgentsSkillScan, cwd, agentDir string, sm *SettingsManager, project, user bool) []ResolvedResource {
 	inputs := make([]ResolvedResource, 0)
 	if project {
 		projectRoot := ProjectConfigDir(cwd)
 		projectSettings := sm.GetProjectSettings().Skills
 		inputs = append(inputs, resolvedResources(packagecontent.ResolveConfiguredStates(projectSettings, projectRoot, packagecontent.Skills), PathMetadata{Source: "local", Scope: "project", Origin: "top-level"})...)
 		projectAuto := packagecontent.DiscoverAutomatic(filepath.Join(projectRoot, "skills"), packagecontent.Skills)
-		inputs = append(inputs, resolvedResources(packagecontent.AutomaticStates(projectAuto, projectSettings, projectRoot, packagecontent.Skills), PathMetadata{Source: "auto", Scope: "project", Origin: "top-level", BaseDir: projectRoot})...)
+		inputs = append(inputs, resolvedResources(automaticStates(projectAuto, projectSettings, projectRoot, packagecontent.Skills), PathMetadata{Source: "auto", Scope: "project", Origin: "top-level", BaseDir: projectRoot})...)
 
-		userAgentsSkills := filepath.Join(PackageManagerHomeDir(), ".agents", "skills")
-		for _, dir := range DiscoverAncestorAgentsSkillDirs(cwd) {
-			if samePath(dir, userAgentsSkills) {
-				continue
-			}
-			inputs = append(inputs, resolvedResources(packagecontent.AutomaticStates(packagecontent.DiscoverAgentSkillDirs(dir), projectSettings, filepath.Dir(dir), packagecontent.Skills), PathMetadata{Source: "auto", Scope: "project", Origin: "top-level", BaseDir: filepath.Dir(dir)})...)
+		for _, dir := range scan.Dirs() {
+			inputs = append(inputs, resolvedResources(automaticStates(dir.Skills, projectSettings, filepath.Dir(dir.Dir), packagecontent.Skills), PathMetadata{Source: "auto", Scope: "project", Origin: "top-level", BaseDir: filepath.Dir(dir.Dir)})...)
 		}
 	}
 	if user {
 		userSettings := sm.GetGlobalSettings().Skills
 		inputs = append(inputs, resolvedResources(packagecontent.ResolveConfiguredStates(userSettings, agentDir, packagecontent.Skills), PathMetadata{Source: "local", Scope: "user", Origin: "top-level"})...)
 		userAuto := packagecontent.DiscoverAutomatic(filepath.Join(agentDir, "skills"), packagecontent.Skills)
-		inputs = append(inputs, resolvedResources(packagecontent.AutomaticStates(userAuto, userSettings, agentDir, packagecontent.Skills), PathMetadata{Source: "auto", Scope: "user", Origin: "top-level", BaseDir: agentDir})...)
+		inputs = append(inputs, resolvedResources(automaticStates(userAuto, userSettings, agentDir, packagecontent.Skills), PathMetadata{Source: "auto", Scope: "user", Origin: "top-level", BaseDir: agentDir})...)
 		userAgentsSkills := filepath.Join(PackageManagerHomeDir(), ".agents", "skills")
-		inputs = append(inputs, resolvedResources(packagecontent.AutomaticStates(packagecontent.DiscoverAgentSkillDirs(userAgentsSkills), userSettings, filepath.Dir(userAgentsSkills), packagecontent.Skills), PathMetadata{Source: "auto", Scope: "user", Origin: "top-level", BaseDir: filepath.Dir(userAgentsSkills)})...)
+		inputs = append(inputs, resolvedResources(automaticStates(packagecontent.DiscoverAgentSkillDirs(userAgentsSkills), userSettings, filepath.Dir(userAgentsSkills), packagecontent.Skills), PathMetadata{Source: "auto", Scope: "user", Origin: "top-level", BaseDir: filepath.Dir(userAgentsSkills)})...)
 	}
 	return inputs
 }
 
 // AmbientSkillPaths lists the enabled skills that settings and auto-discovery yield once DefaultPackageManager.resolve has keyed each by its SKILL.md and reduced the first-wins accumulator, so an explicit exclusion disables an auto-discovered skill at the same path; a skill that Pi keys by its SKILL.md is listed by its directory (package-manager.ts:365-400, 927-961, 2555-2565).
 func AmbientSkillPaths(cwd, agentDir string, sm *SettingsManager, project, user bool) []string {
-	ambient := AmbientSkillResources(cwd, agentDir, sm, project, user)
+	return AmbientSkillPathsIn(NewAgentsSkillScan(cwd), cwd, agentDir, sm, project, user)
+}
+
+// AmbientSkillPathsIn is AmbientSkillPaths with the ancestor .agents/skills directories of scan, which must be of cwd.
+func AmbientSkillPathsIn(scan *AgentsSkillScan, cwd, agentDir string, sm *SettingsManager, project, user bool) []string {
+	ambient := AmbientSkillResourcesIn(scan, cwd, agentDir, sm, project, user)
 	named := SkillEntryResources(ambient)
 	directories := make(map[string]string, len(ambient))
 	for i, resource := range named {
@@ -179,6 +315,24 @@ func AmbientPromptResources(cwd, agentDir string, sm *SettingsManager, project b
 	return append(resources, topLevelResources("user", agentDir, sm.GetGlobalSettings().Prompts, packagecontent.Prompts)...)
 }
 
+// AmbientThemeResources lists the themes that settings and auto-discovery yield: project entries and auto-discovery, then user entries and auto-discovery, each with the PathMetadata package-manager.ts records. The project half is skipped when project is false.
+func AmbientThemeResources(cwd, agentDir string, sm *SettingsManager, project bool) []ResolvedResource {
+	resources := make([]ResolvedResource, 0)
+	if project {
+		resources = append(resources, topLevelResources("project", ProjectConfigDir(cwd), sm.GetProjectSettings().Themes, packagecontent.Themes)...)
+	}
+	return append(resources, topLevelResources("user", agentDir, sm.GetGlobalSettings().Themes, packagecontent.Themes)...)
+}
+
+// AmbientExtensionResources lists the extensions that settings and auto-discovery yield: project entries and auto-discovery, then user entries and auto-discovery, each with the PathMetadata package-manager.ts records. The project half is skipped when project is false.
+func AmbientExtensionResources(cwd, agentDir string, sm *SettingsManager, project bool) []ResolvedResource {
+	resources := make([]ResolvedResource, 0)
+	if project {
+		resources = append(resources, topLevelResources("project", ProjectConfigDir(cwd), sm.GetProjectSettings().Extensions, packagecontent.Extensions)...)
+	}
+	return append(resources, topLevelResources("user", agentDir, sm.GetGlobalSettings().Extensions, packagecontent.Extensions)...)
+}
+
 // AmbientPromptPaths lists the paths of AmbientPromptResources.
 func AmbientPromptPaths(cwd, agentDir string, sm *SettingsManager, project bool) []string {
 	return ResourcePaths(AmbientPromptResources(cwd, agentDir, sm, project))
@@ -187,7 +341,7 @@ func AmbientPromptPaths(cwd, agentDir string, sm *SettingsManager, project bool)
 func topLevelResources(scope, baseDir string, entries []string, kind packagecontent.Kind) []ResolvedResource {
 	auto := packagecontent.DiscoverAutomatic(filepath.Join(baseDir, string(kind)), kind)
 	resources := resolvedResources(packagecontent.ResolveConfiguredStates(entries, baseDir, kind), PathMetadata{Source: "local", Scope: scope, Origin: "top-level"})
-	return append(resources, resolvedResources(packagecontent.AutomaticStates(auto, entries, baseDir, kind), PathMetadata{Source: "auto", Scope: scope, Origin: "top-level", BaseDir: baseDir})...)
+	return append(resources, resolvedResources(automaticStates(auto, entries, baseDir, kind), PathMetadata{Source: "auto", Scope: scope, Origin: "top-level", BaseDir: baseDir})...)
 }
 
 // DiscoverPromptFile returns the SYSTEM.md or APPEND_SYSTEM.md file a loader reads: the workspace file when project resources are trusted, otherwise the agent directory file, or "" when neither exists (resource-loader.ts discoverSystemPromptFile, discoverAppendSystemPromptFile).
@@ -215,7 +369,7 @@ func ResolvePromptInput(input, description string) string {
 	}
 	data, err := os.ReadFile(input)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "warning: could not read %s file %s: %v\n", description, input, err)
+		reportCouldNotRead(description+" file "+input, err)
 		return input
 	}
 	return text.StripBom(string(data))
@@ -226,7 +380,7 @@ func SystemPromptSkills(skills []*SkillDef) []extension.SystemPromptSkill {
 	out := make([]extension.SystemPromptSkill, 0, len(skills))
 	for _, skill := range skills {
 		out = append(out, extension.SystemPromptSkill{
-			Name: skill.Name, Description: skill.Description, FilePath: skill.Path, BaseDir: skill.Dir,
+			Name: skill.Name, Description: skill.Description, FilePath: skill.FilePath, BaseDir: skill.BaseDir,
 			SourceInfo: skill.SourceInfo, DisableModelInvocation: skill.DisableModelInvocation,
 		})
 	}
@@ -240,7 +394,7 @@ func DefaultSourceInfoForPath(cwd, agentDir, filePath string) PiSourceInfo {
 		if source == "" {
 			source = "temporary"
 		}
-		return PiSourceInfo{Path: filePath, Source: source, Scope: "temporary", Origin: "top-level"}
+		return CreateSyntheticSourceInfo(filePath, SyntheticSourceInfoOptions{Source: source})
 	}
 	normalized, _ := filepath.Abs(filePath)
 	for _, root := range resourceRoots(agentDir) {
@@ -257,7 +411,7 @@ func DefaultSourceInfoForPath(cwd, agentDir, filePath string) PiSourceInfo {
 	if info, err := os.Stat(normalized); err == nil && info.IsDir() {
 		baseDir = normalized
 	}
-	return PiSourceInfo{Path: filePath, Source: "local", Scope: "temporary", Origin: "top-level", BaseDir: baseDir}
+	return CreateSyntheticSourceInfo(filePath, SyntheticSourceInfoOptions{Source: "local", BaseDir: baseDir})
 }
 
 func resourceRoots(dir string) []string {
@@ -305,8 +459,12 @@ func OrderResolvedResources(packages, ambient []ResolvedResource) []ResolvedReso
 	return ordered
 }
 
-// ResourcePrecedenceRank is package-manager.ts resourcePrecedenceRank: project settings entries, project auto-discovered, user settings entries, user auto-discovered, then Package resources.
+// ResourcePrecedenceRank is package-manager.ts resourcePrecedenceRank: project settings entries, project auto-discovered, user settings entries, user auto-discovered, Package resources, then built-in extensions.
 func ResourcePrecedenceRank(metadata PathMetadata) int {
+	// Built-in extensions load after file and package extensions, whichever scope enables them.
+	if metadata.Source == "builtin" {
+		return 5
+	}
 	if metadata.Origin == "package" {
 		return 4
 	}
@@ -349,4 +507,26 @@ func samePath(a, b string) bool {
 	aa, err1 := nodepath.Resolve(a)
 	bb, err2 := nodepath.Resolve(b)
 	return err1 == nil && err2 == nil && aa == bb
+}
+
+// reportCouldNotRead is resource-loader.ts's console.error(chalk.yellow(`Warning: Could not read ${what}: ${error}`)) for a failed readFileSync: chalk colors by
+// stdout's support level, and a Node fs error stringifies as "Error: <CODE>: <description>, <syscall>", with " '<path>'" after open but not after read.
+func reportCouldNotRead(what string, err error) {
+	text := "Warning: Could not read " + what + ": Error: " + nodeReadFileError(err)
+	if chalkModifiersEnabled() {
+		text = "\x1b[33m" + text + "\x1b[39m"
+	}
+	fmt.Fprintln(os.Stderr, text)
+}
+
+// nodeReadFileError is the message of the error readFileSync throws for err; an error without a Node code keeps its Go text.
+func nodeReadFileError(err error) string {
+	if pathErr, ok := errors.AsType[*fs.PathError](err); ok {
+		path := pathErr.Path
+		if pathErr.Op == "read" {
+			path = ""
+		}
+		return tools.NodeFSError(err, pathErr.Op, path)
+	}
+	return err.Error()
 }

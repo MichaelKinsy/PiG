@@ -9,7 +9,7 @@ func resolvedSessionLoader(fn func() ([]SessionInfo, error)) sessionsLoader {
 		return result
 	}
 }
-func newLoadedSessionSelector(currentLoader, allLoader func() ([]SessionInfo, error), renameSession func(string, string) error, deleteSession func(string) error, currentPath string, kb *KeybindingsManager) *sessionSelector {
+func newLoadedSessionSelector(currentLoader, allLoader func() ([]SessionInfo, error), renameSession func(string, string) error, deleteSession func(string) error, currentPath string, kb *KeybindingsManager) *SessionSelectorComponent {
 	var deleter func(string) sessionDeleteResult
 	if deleteSession != nil {
 		deleter = unlinkDeleter(deleteSession)

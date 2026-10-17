@@ -68,10 +68,10 @@ No `docs/parity/PORT_MAP.md`, coverage, known-gap, divergence, interface, or del
 ## Observed failure retained with its existing owner
 
 #7269 is a real base-code failure, not merely missing inventory evidence.
-`cmd/pig/args.go:parseFlags` treats `--` as an empty extension flag, rejects the single-dash prompt, and parses `--provider` and `-c` after the delimiter.
+`coding/cli/args.go:parseFlags` treats `--` as an empty extension flag, rejects the single-dash prompt, and parses `--provider` and `-c` after the delimiter.
 A scratch-only Go probe reproduces both upstream prompt values and the option/file case on this baseline.
 The probe compiles and fails with empty messages and `unknown=map[:true]`.
-Overlaying only the CLI owner's `cmd/pig/args.go` makes it pass.
+Overlaying only the CLI owner's `coding/cli/args.go` makes it pass.
 The owner's fix consumes the remaining arguments as messages or `@files`, exactly like upstream `cli/args.ts:parseArgs`.
 Do not duplicate or cherry-pick that fix into this inventory slice.
 The CLI owner still needs to bind its complete caller-path regression evidence before the integrator promotes #7269.
@@ -107,7 +107,7 @@ Counts include existing partial-case controls so they cannot disappear during cl
 | `signal-exit` | 1 | #5724 second signal during awaited cleanup cannot bypass extension cleanup; review alongside #5080, preserving D51's terminal restoration scope. | `next-virtual-modules` (#5080 reference), interactive signal owner. |
 | `bash-process` | 3 | #5303 descendant output is collected until close or grace expiry; #6596 Windows System32 taskkill spawn failure is consumed. Include Windows execution, not cross-compilation alone. | `div-tools`, Windows lane; process lifetime helpers. |
 | `bash-operations` | 6 | #5208 ignores late output callbacks; #9068 distinguishes throw/empty/undefined for RPC and both interactive bang forms. | `next-ext-user-bash-ops`, `div-ext-host-s15`; all SDKs where wire behavior matters. |
-| `rpc-id` | 1 | #5868 unknown-command request ID survives actual dispatch and serialized error. `TestRPCErrorResponseEchoesID` covers only the builder, not dispatch. | `next-rpc-framing`, `div-modes-headless`; `cmd/pig/rpc_mode.go`. |
+| `rpc-id` | 1 | #5868 unknown-command request ID survives actual dispatch and serialized error. `TestRPCErrorResponseEchoesID` covers only the builder, not dispatch. | `next-rpc-framing`, `div-modes-headless`; `coding/cli/rpc_mode.go`. |
 | `reload-ui` | 9 | #5943 all seven startup/replacement/reload cases; #7829 diagnostics in transcript; stale startup rebind cannot subscribe twice. | `events1-final`, `next-session-runtime`, `div-modes-interactive`. |
 | `preflight-abort` | 2 | #5998 blocked handler terminates the run; #8935 later preflight abort prevents earlier prepared tools from starting. Assert no tool side effects. | `div-agent-extensions`, `next-harness-execution`. |
 | `session-retry` | 3 | #3317 and both #6019 providers retry through the Session; assert calls, error text and terminal retry event, not only classifier output. | `next-ai-transport-errors`, `compaction-robust`. |

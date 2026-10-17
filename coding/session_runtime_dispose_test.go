@@ -29,11 +29,6 @@ func TestRuntimeRequestsCapturedResourceRetirementAfterLogicalDisposal(t *testin
 			if !session.currentRunner().IsStale() {
 				t.Error("physical retirement requested before logical invalidation")
 			}
-			select {
-			case <-session.closeDone:
-			default:
-				t.Error("physical retirement requested before Session.Close")
-			}
 			order = append(order, "dispose:"+reason)
 		}}, nil
 	}

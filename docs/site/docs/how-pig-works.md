@@ -1,6 +1,6 @@
 # How PiG works
 
-PiG sends model requests, runs tools, assembles context and stores sessions. It follows the design of Pi 1.0.3. This page shows how those parts fit together, and it names the places where PiG's Go implementation differs from Pi.
+PiG sends model requests, runs tools, assembles context and stores sessions. It follows the design of Pi 1.3.0. This page shows how those parts fit together, and it names the places where PiG's Go implementation differs from Pi.
 
 A session is PiG's record of one conversation. It holds messages, tool calls and their results, model changes, compactions and other events. The entries form a tree. Each path from the root to an entry is a branch, and the branch that ends at the current entry is the active branch. The active branch supplies the history for the next model request.
 
@@ -74,7 +74,7 @@ PiG can run one extension per process, or pack compatible extensions of one lang
 
 Because extensions run in other processes, PiG checks that each process still responds while it has work in flight. When an extension process stops responding, PiG fails that extension's pending work and keeps the others running. Pi has no equivalent check. This difference is D56.
 
-PiG creates a new extension runner and starts new extension processes for every session, as Pi creates a new runner for each session. When you switch sessions with `/new`, `/fork`, `/clone` or `/resume`, an extension that requested the switch keeps its process until its command returns, and PiG then stops it. Pi calls the extension factory again inside the same Node process, so process-wide state such as environment variables carries over there and does not in PiG. This is D70, which also covers `/reload`. A `ctx` or `pi` captured before the switch still answers local getters with the old session's values, and its host calls are rejected without throwing at the call site (D30). Code that embeds the Go `coding` package and replaces a session through `Session` methods without a `Runtime` still keeps one runner (D30).
+PiG creates a new extension runner and starts new extension processes for every session, as Pi creates a new runner for each session. When you switch sessions with `/new`, `/fork`, `/clone` or `/resume`, an extension that requested the switch keeps its process until its command returns, and PiG then stops it. Pi calls the extension factory again inside the same Node process, so process-wide state such as environment variables carries over there and does not in PiG. This is D70, which also covers `/reload`. A `ctx` captured before the switch raises Pi's stale message from `cwd`, `mode`, `hasUI` and `model`, as Pi does, and host calls through a captured `ctx` or `pi` are rejected without throwing at the call site (D30). Code that embeds the Go `coding` package and replaces a session through `Session` methods without a `Runtime` still keeps one runner (D30).
 
 Other resources work as in Pi. Skills provide instructions and supporting files. Prompt templates provide reusable message text. Themes set terminal colors. Packages distribute these resources through npm, Git or a local path. [Piglets](/docs/latest/piglets) are a PiG addition: a Piglet selects extensions, skills, tools and a model for one named agent.
 
@@ -90,3 +90,4 @@ Tools run with the operating-system permissions of the `pig` process. Extension 
 - [Concepts](/docs/latest/concepts) explains Packages, Piglets and Piglet Binaries.
 - [Extensions](/docs/latest/extensions) describes the extension host.
 - [Message types](/docs/latest/message-types) defines the messages in a session.
+- [Upstream Pi's architecture overview](https://pi.dev/docs/latest/how-pi-works) describes the reference implementation.

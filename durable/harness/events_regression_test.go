@@ -31,7 +31,7 @@ func turnEnds(events []AgentEvent) int { return len(eventsOfType(events, "turn_e
 
 // A generation's turn ends once: at its completing hold or at terminal, whichever comes first; a hold seen at attachment already ended its turn (events.ts:126-130, 277-289).
 func TestTranslateEventsEndsATurnOncePerGeneration(t *testing.T) {
-	view := ConversationView{Docs: map[string]durable.JsonObject{}}
+	view := ConversationView{}
 	translate := func(held map[durable.TaskId]bool, status durable.TaskStatus) int {
 		return turnEnds(translateEvents(durable.ROOT_CONVERSATION_ID, view, view, nil, generationWrite(7, status), held))
 	}

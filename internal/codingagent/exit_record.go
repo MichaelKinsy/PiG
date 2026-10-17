@@ -8,7 +8,6 @@ package codingagent
 // pig additive (D102): exit.log and crash-output/ in the agent directory.
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -20,6 +19,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/profiling"
 )
 
 const (
@@ -44,7 +45,26 @@ func CrashOutputDir(agentDir string) string { return filepath.Join(agentDir, cra
 // is already exiting, and a failed write must not change how it exits.
 func RecordExit(agentDir, reason string) {
 	debugLog("exit: %s", reason)
+	//portlint:allow clock the exit record stamps the real wall clock of this process; the package's clock seams belong to the logo animation and the Radius login selector, and Pi has no counterpart (D102)
 	appendExitLog(agentDir, time.Now(), os.Getpid(), os.Getppid(), reason)
+	dumpFlightRecord(agentDir)
+}
+
+// flightRecordSuffix names the flight recorder's window beside the crash output file of the same process.
+const flightRecordSuffix = ".flight.trace"
+
+// dumpFlightRecord writes the last seconds of the execution trace next to this process's crash output file when
+// PIG_PROFILE=flight started the recorder, so an exit nobody asked for leaves what the process was doing. It is best
+// effort and does nothing when the recorder is off.
+func dumpFlightRecord(agentDir string) {
+	if agentDir == "" || !profiling.FlightActive() {
+		return
+	}
+	dir := CrashOutputDir(agentDir)
+	if os.MkdirAll(dir, 0o755) != nil {
+		return
+	}
+	_ = profiling.DumpFlight(filepath.Join(dir, strconv.Itoa(os.Getpid())+flightRecordSuffix))
 }
 
 // SignalName names a termination signal the way a shell does.
@@ -103,11 +123,8 @@ func ReadExitLogTail(agentDir string, n int) []string {
 		return nil
 	}
 	var lines []string
-	scanner := bufio.NewScanner(bytes.NewReader(data))
-	// pig additive (D102): a line longer than this ends the tail; a reason is a few hundred bytes.
-	scanner.Buffer(nil, 1<<20)
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
+	for line := range strings.Lines(string(data)) {
+		lines = append(lines, strings.TrimRight(line, "\r\n"))
 	}
 	if len(lines) > n {
 		lines = lines[len(lines)-n:]
@@ -146,6 +163,7 @@ func BeginSessionMarker(agentDir, version, cwd string) {
 	if err != nil {
 		return
 	}
+	//portlint:allow clock the exit record stamps the real wall clock of this process; the package's clock seams belong to the logo animation and the Radius login selector, and Pi has no counterpart (D102)
 	header, _ := json.Marshal(sessionMarkerHeader{PID: os.Getpid(), PPID: os.Getppid(), Release: version, CWD: cwd, Started: time.Now().Format(time.RFC3339)})
 	if _, err := file.Write(append(header, '\n')); err != nil {
 		_ = file.Close()

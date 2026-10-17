@@ -7,21 +7,20 @@ import (
 	"fmt"
 	"math"
 	"slices"
-	"strings"
 	"sync"
 	"time"
-	"unicode/utf16"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	sandbox "github.com/MichaelKinsy/PiG/codemode"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-func utf16Units(s string) []uint16 { return utf16.Encode([]rune(s)) }
+func utf16Units(s string) []uint16 { return jsstring.ToUTF16(s) }
 
-func decodeUnits(units []uint16) string { return string(utf16.Decode(units)) }
+func decodeUnits(units []uint16) string { return jsstring.FromUTF16(units) }
 
 // run is the state of one script: the nested call rows the result reports. Nested calls run in their own goroutines, so
 // the rows are guarded.
@@ -114,38 +113,31 @@ func (r *run) nestedCall(tool extension.AgentTool) func(context.Context, json.Ra
 }
 
 func resultOf(outcome extension.AgentToolCallOutcome) agent.AgentToolResult {
-	result, _ := outcome.Result.(agent.AgentToolResult)
-	return result
+	return outcome.Result
 }
 
-// isNamespaceName reports whether query names the namespace: its name, its script identifier (`mcp__dev-radius` is
-// `mcp__dev_radius`), or the part after its last `__` in either form (`dev-radius`, `dev_radius`).
+// isNamespaceName reports whether query names the namespace: its name or one of its aliases, as written or as the same
+// script identifier (`dev-radius` and `dev_radius` are both `dev_radius`).
 //
 // Ports packages/coding-agent/src/extensions/codemode/execute.ts (isNamespaceName).
-func isNamespaceName(namespace, query string) bool {
-	id, queryID := sandbox.ToCodemodeIdentifier(namespace), sandbox.ToCodemodeIdentifier(query)
-	suffix := func(name string) (string, bool) {
-		i := strings.LastIndex(name, "__")
-		if i < 0 {
-			return "", false
-		}
-		return name[i+2:], true
-	}
-	if namespace == query || id == queryID {
-		return true
-	}
-	if tail, ok := suffix(namespace); ok && tail == query {
-		return true
-	}
-	tail, ok := suffix(id)
-	return ok && tail == queryID
+func isNamespaceName(namespace *extension.ToolNamespace, query string) bool {
+	queryID := sandbox.ToCodemodeIdentifier(query)
+	return slices.ContainsFunc(append([]string{namespace.Name}, namespace.Aliases...), func(name string) bool {
+		return name == query || sandbox.ToCodemodeIdentifier(name) == queryID
+	})
 }
 
 // discoveryGlobals are `searchTools()`, `describeTool()`, and `describeNamespace()`: ranked search and lookup over the script's nested tools and their namespaces.
 func discoveryGlobals(tools []extension.AgentTool, samples map[string]string, tc *extension.ToolContext) []sandbox.Tool {
 	ranker := toolsearch.NewBm25Ranker()
-	entry := func(name string) map[string]string {
-		return map[string]string{"name": sandbox.ToCodemodeIdentifier(name), "description": samples[name]}
+	// A struct keeps Pi's key order (execute.ts entry: `{ name, description }`); the script sees it through
+	// JSON.stringify and Object.keys.
+	type searchEntry struct {
+		Name        string `json:"name"`
+		Description string `json:"description"`
+	}
+	entry := func(name string) searchEntry {
+		return searchEntry{Name: sandbox.ToCodemodeIdentifier(name), Description: samples[name]}
 	}
 	namespaceOf := func(name string) *extension.ToolNamespace {
 		if tc == nil {
@@ -187,12 +179,12 @@ func discoveryGlobals(tools []extension.AgentTool, samples map[string]string, tc
 			var documents []toolsearch.Document
 			for _, tool := range tools {
 				toolNamespace := namespaceOf(tool.Name)
-				if namespace != "" && (toolNamespace == nil || !isNamespaceName(toolNamespace.Name, namespace)) {
+				if namespace != "" && (toolNamespace == nil || !isNamespaceName(toolNamespace, namespace)) {
 					continue
 				}
 				documents = append(documents, toolsearch.CreateDocument(infoOf(tool), toolNamespace))
 			}
-			entries := []map[string]string{}
+			entries := []searchEntry{}
 			for _, match := range ranker.Rank(query, documents, toolsearch.LimitOf(limit)) {
 				entries = append(entries, entry(match.Name))
 			}
@@ -222,7 +214,7 @@ func discoveryGlobals(tools []extension.AgentTool, samples map[string]string, tc
 			names := []string{}
 			for _, tool := range tools {
 				toolNamespace := namespaceOf(tool.Name)
-				if toolNamespace == nil || !isNamespaceName(toolNamespace.Name, name) {
+				if toolNamespace == nil || !isNamespaceName(toolNamespace, name) {
 					continue
 				}
 				if namespace == nil {

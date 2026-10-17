@@ -2,7 +2,8 @@
 // seam (runtimecell.PrebuiltResolver). A Piglet Binary embeds its packed cells plus a
 // manifest describing each cell's composition; at startup it extracts the
 // binaries and registers a Resolver so the host serves them without any Go/Rust
-// toolchain.
+// toolchain. A Node cell embeds its members' sources instead of a binary; the
+// host runs them with the user's installed Node, as Stock PiG runs them.
 //
 // Matching is by composition (language + cell key + target + extension set),
 // which is stable across machines, rather than the host's from-source build
@@ -27,12 +28,18 @@ type Manifest struct {
 // CellEntry is one prebuilt cell: its composition and where its binary lives
 // relative to the extraction directory.
 type CellEntry struct {
-	Language   string     `json:"language"` // go | rust | python
-	Key        string     `json:"key"`
-	Strategy   string     `json:"strategy,omitempty"` // isolated | packed-go | packed-rust | packed-python
-	OS         string     `json:"os"`
-	Arch       string     `json:"arch"`
-	Binary     string     `json:"binary"` // path relative to the extraction dir
+	Language string `json:"language"` // go | rust | python | node
+	Key      string `json:"key"`
+	Strategy string `json:"strategy,omitempty"` // isolated | packed-go | packed-rust | packed-python | packed-node
+	OS       string `json:"os"`
+	Arch     string `json:"arch"`
+	// Binary is the embedded file's path relative to the cells directory. For a
+	// Node cell it is a tar archive of the members' sources.
+	Binary string `json:"binary"`
+	// Digest is the sha256 hex digest of a Node cell's archive. Startup refuses
+	// an archive whose bytes do not match it and extracts the archive into a
+	// directory named by it.
+	Digest     string     `json:"digest,omitempty"`
 	Extensions []ExtEntry `json:"extensions"`
 }
 
@@ -40,6 +47,10 @@ type CellEntry struct {
 type ExtEntry struct {
 	Name string `json:"name"`
 	Hash string `json:"hash,omitempty"`
+	// Source is a Node member's source path inside its cell's extracted
+	// sources, in slash form: its directory, or the file of a single-file
+	// extension.
+	Source string `json:"source,omitempty"`
 }
 
 // Resolver serves embedded cells by composition. It implements
@@ -50,10 +61,14 @@ type Resolver struct {
 }
 
 // NewResolver indexes a manifest against the directory its binaries were
-// extracted into.
+// extracted into. A Node cell has no prebuilt runner to serve: the host stages
+// it from its extracted sources.
 func NewResolver(m Manifest, baseDir string) *Resolver {
 	index := make(map[string]CellEntry, len(m.Cells))
 	for _, c := range m.Cells {
+		if c.Language == nodeLanguage {
+			continue
+		}
 		index[compositionKey(c.Language, c.Key, c.OS, c.Arch, entryNames(c.Extensions))] = c
 	}
 	return &Resolver{baseDir: baseDir, index: index}

@@ -11,6 +11,8 @@ import { createSyntheticSourceInfo } from "./source-info.js";
 export function parseCommandArgs(argsString) {
     const args = [];
     let current = "";
+    // Tracks whether a token has started, so quoted empty strings ("" or '') are kept as arguments
+    let hasToken = false;
     let inQuote = null;
     for (let i = 0; i < argsString.length; i++) {
         const char = argsString[i];
@@ -24,18 +26,21 @@ export function parseCommandArgs(argsString) {
         }
         else if (char === '"' || char === "'") {
             inQuote = char;
+            hasToken = true;
         }
         else if (/\s/.test(char)) {
-            if (current) {
+            if (hasToken) {
                 args.push(current);
                 current = "";
+                hasToken = false;
             }
         }
         else {
             current += char;
+            hasToken = true;
         }
     }
-    if (current) {
+    if (hasToken) {
         args.push(current);
     }
     return args;

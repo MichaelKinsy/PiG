@@ -1,0 +1,44 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#ToolReference"
+  ],
+  "targets": [
+   "ai/types.go#ToolReference"
+  ],
+  "struct": {
+   "file": "ai/types.go",
+   "type": "ToolReference"
+  },
+  "production": [
+   "call:agent/system_state.go#decodeSystemMessage"
+  ],
+  "evidence": [
+   "test:agent/agent_transcript_upstream_test.go#TestAgent_DeclaresToolLoadoutChangesBeforeNextRequest",
+   "test:agent/agent_transcript_upstream_test.go#TestAgent_RewritesPendingToolDeclarationsToExecutableSet"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ToolReference: Go ToolReference has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ToolStateChanges"
+  ],
+  "targets": [
+   "ai/transcript.go#ToolStateChanges"
+  ],
+  "struct": {
+   "file": "ai/transcript.go",
+   "type": "ToolStateChanges"
+  },
+  "production": [
+   "call:agent/system_state.go#declareToolChanges"
+  ],
+  "evidence": [
+   "test:ai/system_message_replay_test.go#TestSystemMessageReplayToolStateChangesTreatChangedDefinitionsAsRemovalPlusAddition",
+   "test:ai/transcript_test.go#TestToolStateChangesTreatRedefinitionAsRemovalThenAddition"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ToolStateChanges: Go ToolStateChanges has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ }
+]

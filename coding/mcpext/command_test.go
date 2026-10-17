@@ -2,6 +2,7 @@ package mcpext_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"slices"
 	"strings"
@@ -68,11 +69,14 @@ func newCommandHarnessWithCredentials(t *testing.T, backend mcpext.AuthStorageBa
 		if strings.HasPrefix(name, "stdio-") {
 			config = extension.McpServerConfig{Command: "unused"}
 		}
+		if strings.HasPrefix(name, "envurl-") {
+			config = extension.McpServerConfig{URL: "http://${MCP_TEST_HOST}/mcp"}
+		}
 		entries = append(entries, mcpext.McpServerEntry{Name: name, Config: config, Source: "test"})
 	}
 	calls := &callLog{}
 	h.ext = mcpext.New(host, mcpext.Options{
-		LoadConfig: func(mcpext.EventContext) mcpext.LoadedMcpConfig { return mcpext.LoadedMcpConfig{Servers: entries} },
+		LoadConfig: func(context.Context) mcpext.LoadedMcpConfig { return mcpext.LoadedMcpConfig{Servers: entries} },
 		CreateTransport: func(entry mcpext.McpServerEntry, _ string, _ mcp.AuthProvider) (mcp.Transport, error) {
 			if strings.HasPrefix(entry.Name, "fail-") {
 				return nil, errors.New("connection refused\nsecond line")
@@ -373,5 +377,102 @@ func TestMcpCommandCompletionsSplitOnJavaScriptWhitespace(t *testing.T) {
 		if len(items) != 1 || items[0].Value != want {
 			t.Errorf("CompleteCommand(%q) = %+v, want one item %q", prefix, items, want)
 		}
+	}
+}
+
+// sessionStartAPI is recordingAPI that keeps the session_start handler the factory registers.
+type sessionStartAPI struct {
+	recordingAPI
+	onSessionStart func(context.Context, extension.SessionStartEvent) error
+}
+
+func (*sessionStartAPI) GetMcpServers() []extension.RegisteredMcpServer { return nil }
+func (*sessionStartAPI) GetAllTools() []extension.ToolInfo              { return nil }
+func (*sessionStartAPI) GetActiveTools() []string                       { return nil }
+func (*sessionStartAPI) SetActiveTools([]string)                        {}
+func (*sessionStartAPI) RegisterTool(extension.ToolDefinition)          {}
+
+func (a *sessionStartAPI) OnSessionStart(handler func(context.Context, extension.SessionStartEvent) error) {
+	a.onSessionStart = handler
+}
+
+// index.ts:1111-1112: `pi.on("session_start", (_event, ctx) => ... options.loadConfig(ctx))`. The option receives the handler's own
+// extension context, which Go carries in the handler's context.Context (extension.FromContext).
+func TestMcpLoadConfigReceivesTheHandlersExtensionContext(t *testing.T) {
+	cwd := t.TempDir()
+	extCtx := extension.NewContext(cwd, nil, func() error { return nil }, extension.ContextActions{})
+	var got *extension.Context
+	api := &sessionStartAPI{}
+	ext := mcpext.Factory(mcpext.Options{
+		LogPath: t.TempDir() + "/mcp.log",
+		LoadConfig: func(ctx context.Context) mcpext.LoadedMcpConfig {
+			got = extension.FromContext(ctx)
+			return mcpext.LoadedMcpConfig{}
+		},
+	})(api)
+	t.Cleanup(ext.SessionShutdown)
+	if api.onSessionStart == nil {
+		t.Fatal("the factory registered no session_start handler")
+	}
+	if err := api.onSessionStart(extension.WithContext(context.Background(), extCtx), extension.SessionStartEvent{Type: "session_start", Reason: "startup"}); err != nil {
+		t.Fatal(err)
+	}
+	if got != extCtx {
+		t.Fatalf("loadConfig saw extension context %p, want the handler's %p", got, extCtx)
+	}
+	if gotCwd, err := got.CWD(); err != nil || gotCwd != cwd {
+		t.Fatalf("loadConfig context cwd = %q, %v, want %q", gotCwd, err, cwd)
+	}
+}
+
+// toolCallAPI is sessionStartAPI with one tool that reaches others and the tool_call handler the factory registers.
+type toolCallAPI struct {
+	sessionStartAPI
+	tools      []extension.ToolInfo
+	onToolCall func(context.Context, extension.ToolCallEvent) (extension.ToolCallEventResult, error)
+}
+
+func (a *toolCallAPI) GetAllTools() []extension.ToolInfo { return a.tools }
+func (a *toolCallAPI) OnToolCall(handler func(context.Context, extension.ToolCallEvent) (extension.ToolCallEventResult, error)) {
+	a.onToolCall = handler
+}
+
+// index.ts:1199: `tool.reachesTools?.(event.input)` passes the call's input object, whose members are in the order the model
+// wrote them (the event's wire input), not sorted by name.
+func TestMcpToolCallPassesTheInputInItsMemberOrderToReachesTools(t *testing.T) {
+	var got json.RawMessage
+	api := &toolCallAPI{tools: []extension.ToolInfo{{Name: "probe", ReachesTools: func(input json.RawMessage) extension.ToolReach {
+		got = slices.Clone(input)
+		return extension.ToolReach{}
+	}}}}
+	calls := &callLog{}
+	entry := mcpext.McpServerEntry{Name: "slow", Source: "test", Config: extension.McpServerConfig{URL: "http://unused.invalid"}}
+	ext := mcpext.Factory(mcpext.Options{
+		LogPath: t.TempDir() + "/mcp.log",
+		LoadConfig: func(context.Context) mcpext.LoadedMcpConfig {
+			return mcpext.LoadedMcpConfig{Servers: []mcpext.McpServerEntry{entry}}
+		},
+		CreateTransport: func(mcpext.McpServerEntry, string, mcp.AuthProvider) (mcp.Transport, error) {
+			client, server := createFakeServer(calls, func() []map[string]any { return serverTools }, false, fakeServerOptions{initializeDelay: never})
+			_ = server.Start()
+			return client, nil
+		},
+		Credentials: mcpext.NewMcpOAuthCredentialStoreWithBackend(&mcpext.InMemoryAuthStorageBackend{}, ""),
+	})(api)
+	t.Cleanup(ext.SessionShutdown)
+	ctx := extension.WithContext(t.Context(), extension.NewContext(t.TempDir(), nil, func() error { return nil }, extension.ContextActions{}))
+	if err := api.onSessionStart(ctx, extension.SessionStartEvent{Type: "session_start", Reason: "startup"}); err != nil {
+		t.Fatal(err)
+	}
+	wire := json.RawMessage(`{"zeta":1,"alpha":2}`)
+	event := extension.CustomToolCallEvent{ToolCallEventBase: extension.ToolCallEventBase{WireInput: &wire}, ToolName: "probe", Input: map[string]any{"zeta": 1.0, "alpha": 2.0}}
+	if _, err := api.onToolCall(ctx, event); err != nil {
+		t.Fatal(err)
+	}
+	if got == nil {
+		t.Fatal("reachesTools was not called: no server was connecting")
+	}
+	if string(got) != string(wire) {
+		t.Fatalf("reachesTools input = %s, want %s", got, wire)
 	}
 }

@@ -1,5 +1,7 @@
 package ai
 
+// pi: packages/ai/src/auth/oauth/openrouter.ts
+
 import (
 	"context"
 	"crypto/sha256"
@@ -148,7 +150,7 @@ func TestOpenRouterOAuthPKCEUpstream(t *testing.T) {
 			}
 		},
 	}, LoginOptions{})
-	want := Credential{Type: CredentialOAuth, Access: "sk-or-test", Refresh: "", Expires: 9007199254740991}
+	want := Credential{Type: CredentialOAuth, Access: "sk-or-test", Refresh: "", Expires: 9007199254740991, order: credentialKeyOrder{keys: accessFirstCredentialMembers}}
 	if err != nil || !reflect.DeepEqual(credential, want) {
 		t.Errorf("login = %#v, %v; want %#v", credential, err, want)
 	}
@@ -312,7 +314,7 @@ func TestOpenRouterOAuthManualUpstream(t *testing.T) {
 				}
 				return
 			}
-			want := Credential{Type: CredentialOAuth, Access: "sk-or-manual", Refresh: "", Expires: 9007199254740991}
+			want := Credential{Type: CredentialOAuth, Access: "sk-or-manual", Refresh: "", Expires: 9007199254740991, order: credentialKeyOrder{keys: accessFirstCredentialMembers}}
 			if err != nil || !reflect.DeepEqual(credential, want) || exchanges.Load() != 1 || exchangeBody["code"] != "manual-code" || exchangeBody["code_challenge_method"] != "S256" {
 				t.Fatalf("login = %#v, %v; body=%#v exchanges=%d", credential, err, exchangeBody, exchanges.Load())
 			}
@@ -524,7 +526,12 @@ func TestOpenRouterLoginManualFallback(t *testing.T) {
 	})
 
 	creds, err := LoginOpenRouter(t.Context(), OAuthLoginCallbacks{
-		OnAuth: func(OAuthAuthInfo) {}, // no browser callback arrives
+		OnAuth: func(info OAuthAuthInfo) { // no browser callback arrives
+			// openrouter.ts:140-143.
+			if want := "Complete sign-in in your browser. If the browser is on another machine, paste the final redirect URL here."; info.Instructions != want {
+				t.Errorf("instructions = %q, want %q", info.Instructions, want)
+			}
+		},
 		OnManualCodeInput: func() (string, error) {
 			return "https://x/cb?code=MANUAL", nil
 		},

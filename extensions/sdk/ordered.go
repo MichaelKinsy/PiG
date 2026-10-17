@@ -47,11 +47,11 @@ func (m orderedMap) marshal() ([]byte, error) {
 		if i > 0 {
 			buf.WriteByte(',')
 		}
-		name, err := json.Marshal(key)
+		name, err := json.MarshalJS(key)
 		if err != nil {
 			return nil, err
 		}
-		value, err := json.Marshal(m.values[key])
+		value, err := json.MarshalJS(m.values[key])
 		if err != nil {
 			return nil, err
 		}

@@ -17,7 +17,7 @@ runs = 3
 
 # normalize-rationale: D63 changes release identity, not output framing. Replace only one complete version line with its required LF; extra/missing whitespace or ANSI stays visible.
 [[assert.normalize_replace]]
-pattern = '^\d+\.\d+\.\d+(?:\+\d+\.\d+\.\d+)?\n$'
+pattern = '^\d+\.\d+\.\d+(?:\+\d+\.\d+\.\d+(?:\.[0-9a-f]{8})?)?\n$'
 with = '<version>'
 reason = "D63 changes release identity. Match only the complete version line including its LF; preserve all other bytes."
 

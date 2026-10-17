@@ -1,5 +1,4 @@
 <!--
-SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 SPDX-License-Identifier: MIT
 -->
 
@@ -19,7 +18,7 @@ PiG translates and adapts source from [Pi](https://github.com/earendil-works/pi)
 - Upstream commit: `d86654abb8862e201933517d6f1fce9f88dd117f`
 - Upstream copyright: Copyright (c) 2025 Mario Zechner
 - License: MIT
-- Exact pin: [`internal/coding/pigversion/pigversion.go`](../../internal/coding/pigversion/pigversion.go)
+- Exact pin: [`.upstream/pin`](../../.upstream/pin), with [`internal/coding/pigversion/pigversion.go`](../../internal/coding/pigversion/pigversion.go) generated from it
 - File correspondence: [`docs/parity/PORT_MAP.md`](../parity/PORT_MAP.md)
 
 The main translated families are `agent/`, `ai/`, `cmd/`, `coding/`,

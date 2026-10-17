@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/core/source-info.ts
+
 import "testing"
 
 // Ports .upstream/v0.99.1/packages/coding-agent/src/core/source-info.ts:14-29. Upstream has no test file for these

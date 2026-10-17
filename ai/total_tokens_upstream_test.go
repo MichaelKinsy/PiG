@@ -52,13 +52,13 @@ func TestTotalTokensUpstream(t *testing.T) {
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:467
 		{"minimax", "MiniMax-M2.7", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:490
-		{"xiaomi", "mimo-v2.5-pro", "", false, false, ""},
+		{"xiaomi", "mimo-v2.6-pro", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:513
-		{"xiaomi-token-plan-cn", "mimo-v2.5-pro", "", false, false, ""},
+		{"xiaomi-token-plan-cn", "mimo-v2.6-pro", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:538
-		{"xiaomi-token-plan-ams", "mimo-v2.5-pro", "", false, false, ""},
+		{"xiaomi-token-plan-ams", "mimo-v2.6-pro", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:563
-		{"xiaomi-token-plan-sgp", "mimo-v2.5-pro", "", false, false, ""},
+		{"xiaomi-token-plan-sgp", "mimo-v2.6-pro", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:588
 		{"qwen-token-plan", "qwen3.7-max", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:613
@@ -70,7 +70,7 @@ func TestTotalTokensUpstream(t *testing.T) {
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:686
 		{"vercel-ai-gateway", "google/gemini-2.5-flash", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:709
-		{"openrouter", "anthropic/claude-sonnet-4", "", false, false, ""},
+		{"openrouter", "anthropic/claude-sonnet-4.5", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:726
 		{"openrouter", "deepseek/deepseek-chat", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:743
@@ -105,6 +105,12 @@ func TestTotalTokensUpstream(t *testing.T) {
 				if err != nil {
 					t.Error(err)
 					return
+				}
+				if r.Header.Get("Content-Encoding") == "zstd" {
+					if body, err = decodeZstdFrameForTest(body); err != nil {
+						t.Error(err)
+						return
+					}
 				}
 				question := "What is 2 + 2? Reply with just the number."
 				answer := "4"

@@ -1,5 +1,7 @@
 package llama
 
+// pi: packages/coding-agent/src/extensions/llama/client.ts
+
 import (
 	"context"
 	"encoding/json"

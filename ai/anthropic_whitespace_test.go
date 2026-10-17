@@ -31,7 +31,7 @@ func TestAnthropicECMAScriptWhitespace(t *testing.T) {
 			if assistant, ok := message.(AssistantMessage); ok {
 				assistant.API = APIAnthropicMessages
 				assistant.Provider = "xiaomi-token-plan-ams"
-				assistant.Model = "mimo-v2.5-pro"
+				assistant.Model = "mimo-v2.6-pro"
 				assistant.StopReason = StopReasonStop
 				message = assistant
 			}

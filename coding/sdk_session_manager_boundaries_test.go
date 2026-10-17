@@ -72,8 +72,8 @@ func TestSDKExplicitThinkingLevelPrecedesConfiguredDefaults(t *testing.T) {
 		t.Fatalf("thinking=%s want=high", session.ThinkingLevel())
 	}
 	var levels []string
-	for _, entry := range session.SessionManager().Entries() {
-		if entry.Base.Type != "thinking_level_change" {
+	for _, entry := range session.SessionManager().GetEntries() {
+		if entry.Base().Type != "thinking_level_change" {
 			continue
 		}
 		var value struct {
@@ -93,7 +93,7 @@ func TestSDKExplicitThinkingLevelPrecedesConfiguredDefaults(t *testing.T) {
 func TestSDKInjectedHistoryKeepsExplicitModelAndFillsThinkingMetadata(t *testing.T) {
 	services, model, cwd, _ := sessionManagerFixture(t)
 	marker := filepath.Join(t.TempDir(), "unused-credential-command")
-	if err := services.Registry().RegisterProvider("sdk-unused", extension.ProviderConfig{BaseURL: "http://localhost:0", API: "openai-completions", APIKey: fmt.Sprintf("!printf seen > '%s'; printf unused-key", marker), Models: []extension.ProviderModelConfig{{ID: "old", Name: "Old", Input: []string{"text"}, ContextWindow: 128000, MaxTokens: 4096}}}); err != nil {
+	if err := services.Registry().RegisterExtensionProvider("sdk-unused", extension.ProviderConfig{BaseURL: "http://localhost:0", API: "openai-completions", APIKey: fmt.Sprintf("!printf seen > '%s'; printf unused-key", marker), Models: []extension.ProviderModelConfig{{ID: "old", Name: "Old", Input: []string{"text"}, ContextWindow: 128000, MaxTokens: 4096}}}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(marker); !os.IsNotExist(err) {
@@ -103,7 +103,7 @@ func TestSDKInjectedHistoryKeepsExplicitModelAndFillsThinkingMetadata(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := manager.AppendModelSwitch("sdk-unused", "old", "Old"); err != nil {
+	if _, err := manager.AppendModelChange("sdk-unused", "old"); err != nil {
 		t.Fatal(err)
 	}
 	for _, message := range []agent.AgentMessage{
@@ -130,8 +130,8 @@ func TestSDKInjectedHistoryKeepsExplicitModelAndFillsThinkingMetadata(t *testing
 		t.Errorf("unused saved model resolved its credential command: %v", err)
 	}
 	var levels []string
-	for _, entry := range manager.Entries() {
-		if entry.Base.Type != "thinking_level_change" {
+	for _, entry := range manager.GetEntries() {
+		if entry.Base().Type != "thinking_level_change" {
 			continue
 		}
 		var value struct {
@@ -227,7 +227,7 @@ func TestSessionManagerCWDDefaultAndExplicitOverride(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			options := ServicesOptions{AgentDir: agentDir, SessionManager: manager}
+			options := CreateAgentSessionServicesOptions{AgentDir: agentDir, SessionManager: manager}
 			want := cwd
 			if explicit {
 				want = t.TempDir()

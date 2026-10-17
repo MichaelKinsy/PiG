@@ -1,0 +1,68 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:abort"
+  ],
+  "targets": [
+   "coding/session_run_state.go#Session.Abort"
+  ],
+  "production": [
+   "call:coding/runtime_replacement.go#Runtime.teardownCurrent"
+  ],
+  "evidence": [
+   "test:coding/session_bash_persistence_upstream_test.go#TestUpstreamBashPersistence",
+   "test:coding/session_boundaries_accounting_upstream_test.go#TestUpstreamSessionBoundariesAccounting"
+  ],
+  "rationale": "AgentSession.abort is the Go method Session.Abort; types reviewed against the upstream declaration; tests are upstream-ported files attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the error; AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:sessionName"
+  ],
+  "targets": [
+   "coding/session.go#Session.SessionName"
+  ],
+  "production": [
+   "call:coding/cli/rpc_mode.go#runRPCMode"
+  ],
+  "evidence": [
+   "test:coding/session_name_newlines_upstream_test.go#TestUpstreamSessionNameNewlines",
+   "test:coding/session_name_upstream_test.go#TestSessionNameNotificationReentrantPrefix"
+  ],
+  "rationale": "AgentSession.sessionName is the Go method Session.SessionName; types reviewed against the upstream declaration; tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:systemPrompt"
+  ],
+  "targets": [
+   "coding/session_transcript.go#Session.SystemPrompt"
+  ],
+  "production": [
+   "call:coding/cli/session_extension_actions.go#sessionExtensionActions"
+  ],
+  "evidence": [
+   "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
+   "test:coding/sdk_session_manager_upstream_test.go#TestUpstreamSDKSessionManagerBashCurrentState"
+  ],
+  "rationale": "AgentSession.systemPrompt is the Go method Session.SystemPrompt; types reviewed against the upstream declaration; tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:waitForIdle"
+  ],
+  "targets": [
+   "coding/session_run_state.go#Session.WaitForIdle"
+  ],
+  "production": [
+   "call:coding/cli/rpc_mode.go#runRPCMode"
+  ],
+  "evidence": [
+   "test:coding/session_concurrent_upstream_test.go#TestUpstreamConcurrentPrompt",
+   "test:coding/session_queue_upstream_test.go#TestUpstreamSessionQueue"
+  ],
+  "rationale": "AgentSession.waitForIdle is the Go method Session.WaitForIdle; types reviewed against the upstream declaration; tests are upstream-ported files attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the error; AbortSignal is the context.Context argument; no detached goroutine."
+ }
+]

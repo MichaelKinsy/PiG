@@ -53,7 +53,7 @@ func TestSettledCustomMessagePrecedesSettlementPublication(t *testing.T) {
 					mu.Unlock()
 				}
 			})
-			if _, err := session.Prompt(t.Context(), "hello"); err != nil {
+			if err := session.Prompt(t.Context(), "hello"); err != nil {
 				t.Fatal(err)
 			}
 			if err := session.FlushEvents(t.Context()); err != nil {

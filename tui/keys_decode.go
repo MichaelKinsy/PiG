@@ -6,7 +6,6 @@ package tui
 // packages/tui/src/keys.ts used by pi-tui's Input component.
 
 import (
-	"strconv"
 	"strings"
 	"unicode"
 
@@ -65,17 +64,6 @@ func normalizeKittyFunctionalCodepoint(codepoint int) int {
 	return codepoint
 }
 
-func parseOptionalInt(s string) (int, bool) {
-	if s == "" {
-		return 0, false
-	}
-	n, err := strconv.Atoi(s)
-	if err != nil {
-		return 0, false
-	}
-	return n, true
-}
-
 // DecodeKittyPrintable decodes a printable Kitty CSI-u sequence into the
 // corresponding character. Mirrors upstream decodeKittyPrintable().
 func DecodeKittyPrintable(data string) (string, bool) {
@@ -83,20 +71,16 @@ func DecodeKittyPrintable(data string) (string, bool) {
 	if match == nil {
 		return "", false
 	}
-	codepoint, err := strconv.Atoi(match[1])
-	if err != nil {
-		return "", false
+	codepoint := keyCodepoint(keyNumber(match[1]))
+	shiftedKey, hasShiftedKey := 0, match[2] != ""
+	if hasShiftedKey {
+		shiftedKey = keyCodepoint(keyNumber(match[2]))
 	}
-	shiftedKey, hasShiftedKey := parseOptionalInt(match[2])
-	modValue := 1
+	modValue := 1.0
 	if match[4] != "" {
-		parsed, err := strconv.Atoi(match[4])
-		if err != nil {
-			return "", false
-		}
-		modValue = parsed
+		modValue = keyNumber(match[4])
 	}
-	modifier := modValue - 1
+	modifier := jsInt32(modValue - 1)
 	if modifier&^kittyPrintableAllowedModifiers != 0 {
 		return "", false
 	}
@@ -128,15 +112,7 @@ func parseModifyOtherKeysSequence(data string) (parsedModifyOtherKeysSequence, b
 	if match == nil {
 		return parsedModifyOtherKeysSequence{}, false
 	}
-	modValue, err := strconv.Atoi(match[1])
-	if err != nil {
-		return parsedModifyOtherKeysSequence{}, false
-	}
-	codepoint, err := strconv.Atoi(match[2])
-	if err != nil {
-		return parsedModifyOtherKeysSequence{}, false
-	}
-	return parsedModifyOtherKeysSequence{codepoint: codepoint, modifier: modValue - 1}, true
+	return parsedModifyOtherKeysSequence{codepoint: keyCodepoint(keyNumber(match[2])), modifier: jsInt32(keyNumber(match[1]) - 1)}, true
 }
 
 func decodeModifyOtherKeysPrintable(data string) (string, bool) {
@@ -215,4 +191,34 @@ func IsKeyRelease(data string) bool {
 		strings.Contains(data, ":3D") ||
 		strings.Contains(data, ":3H") ||
 		strings.Contains(data, ":3F")
+}
+
+// KeyID is upstream's KeyId (keys.ts:152): a key name such as "enter", "ctrl+c" or "ctrl+shift+f5". Upstream's template-literal union is
+// open here; use the Key helper to build identifiers.
+type KeyID = string
+
+// KeyEventType is the Kitty key event kind of an input sequence (keys.ts:505). Upstream's parser records it only in write-only module
+// state (keys.ts:521 _lastEventType); IsKeyRepeat and IsKeyRelease answer the observable questions.
+type KeyEventType string
+
+// The KeyEventType values.
+const (
+	KeyEventPress   KeyEventType = "press"
+	KeyEventRepeat  KeyEventType = "repeat"
+	KeyEventRelease KeyEventType = "release"
+)
+
+// IsKeyRepeat reports whether a raw input chunk is a Kitty key-repeat event (flag 2, ":2" variants). Bracketed-paste content is never treated as a repeat even when it contains ":2" byte patterns. Mirrors upstream isKeyRepeat.
+func IsKeyRepeat(data string) bool {
+	if strings.Contains(data, "\x1b[200~") {
+		return false
+	}
+	return strings.Contains(data, ":2u") ||
+		strings.Contains(data, ":2~") ||
+		strings.Contains(data, ":2A") ||
+		strings.Contains(data, ":2B") ||
+		strings.Contains(data, ":2C") ||
+		strings.Contains(data, ":2D") ||
+		strings.Contains(data, ":2H") ||
+		strings.Contains(data, ":2F")
 }

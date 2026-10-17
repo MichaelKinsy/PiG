@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const pin = readFileSync('internal/coding/pigversion/pigversion.go', 'utf8').match(/UpstreamVersion = "([^"]+)"/)[1];
+const pin = readFileSync('internal/coding/pigversion/pigversion.go', 'utf8').match(/UpstreamPackageVersion = "([^"]+)"/)[1];
 const root = process.env.PI_PACKAGE_ROOT ?? resolve('extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent');
 if (JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version !== pin) throw new Error('wrong Pi oracle version');
 const load = (path) => import(pathToFileURL(join(root, path)).href);
@@ -42,9 +42,14 @@ try {
         };
         const m = Object.assign(Object.create(InteractiveMode.prototype), {
           isInitialized: true,
+          // Pi 1.1.0's InteractiveMode.handleEvent reports program status (OSC 7501) through this reporter.
+          programStatus: { handleEvent() {} },
           footer: { invalidate() {} },
+          programStatus: { handleEvent() {} },
           runtimeHost: { session: { settingsManager: { getShowTerminalProgress: () => false } } },
           options: { tuiMode: mode },
+          // Pi 1.1.0 forwards every agent event to the OSC 7501 reporter (interactive-mode.ts handleEvent).
+          programStatus: { handleEvent() {} },
           ui: { requestRender() {}, getClearOnShrink: () => clearOnShrink },
           chatContainer: new Container(),
           statusContainer: new Container(),

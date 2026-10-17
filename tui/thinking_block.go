@@ -1,7 +1,7 @@
 package tui
 
 import (
-	"github.com/rivo/uniseg"
+	"strings"
 
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -21,7 +21,10 @@ func thinkingVisibleSGR() string { return ActiveTheme().ThinkingText + "\033[3m"
 
 const thinkingHiddenResetSGR = SGRBoldDimReset + SGRItalicReset
 const thinkingVisibleResetSGR = SGRFgReset + SGRItalicReset
-const thinkingHiddenLabel = "Thinking..."
+const thinkingHiddenLabel = DefaultHiddenThinkingLabel
+
+// DefaultHiddenThinkingLabel is the label that stands in for a hidden thinking run (interactive-mode.ts defaultHiddenThinkingLabel).
+const DefaultHiddenThinkingLabel = "Thinking..."
 
 // ThinkingBlock is a TUI component that renders a thinking/reasoning block.
 type ThinkingBlock struct {
@@ -71,27 +74,13 @@ func (b *ThinkingBlock) Render(width int) []string {
 	// Wrap content lines column-aware (widthx), apply themed italic SGR per line.
 	var out []string
 	visible := thinkingVisibleSGR()
-	for _, rawLine := range splitLines(b.content) {
+	for rawLine := range strings.SplitSeq(b.content, "\n") {
 		wrapped := wrapLineByWidth(rawLine, width)
 		for _, chunk := range wrapped {
 			out = append(out, visible+chunk+thinkingVisibleResetSGR)
 		}
 	}
 	return out
-}
-
-// splitLines splits s on newlines, preserving empty lines.
-func splitLines(s string) []string {
-	var lines []string
-	start := 0
-	for i := 0; i < len(s); i++ {
-		if s[i] == '\n' {
-			lines = append(lines, s[start:i])
-			start = i + 1
-		}
-	}
-	lines = append(lines, s[start:])
-	return lines
 }
 
 // wrapLineByWidth breaks a single no-newline string into chunks of at most
@@ -105,16 +94,18 @@ func wrapLineByWidth(line string, width int) []string {
 	var out []string
 	chunkStart := 0
 	colCount := 0
-	g := uniseg.NewGraphemes(line)
-	for g.Next() {
-		from, _ := g.Positions()
-		gw := widthx.VisibleWidth(g.Str())
+	from := 0
+	for rest := line; rest != ""; {
+		var cluster string
+		cluster, rest = widthx.FirstGrapheme(rest)
+		gw := widthx.VisibleWidth(cluster)
 		if colCount+gw > width && colCount > 0 {
 			out = append(out, line[chunkStart:from])
 			chunkStart = from
 			colCount = 0
 		}
 		colCount += gw
+		from += len(cluster)
 	}
 	if chunkStart < len(line) {
 		out = append(out, line[chunkStart:])

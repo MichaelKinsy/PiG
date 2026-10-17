@@ -59,7 +59,8 @@ func wrapSingleLine(line string, width int) []string {
 	tr := &AnsiCodeTracker{}
 	tokens := splitIntoTokensWithAnsi(line)
 
-	currentLine := ""
+	// The line under construction grows by one token at a time; a string per token would copy the whole line each time.
+	var current []byte
 	currentVisible := 0
 
 	for _, token := range tokens {
@@ -68,46 +69,47 @@ func wrapSingleLine(line string, width int) []string {
 
 		// Token alone is longer than width: break by graphemes.
 		if tokenWidth > width && !isWhitespace {
-			if currentLine != "" {
+			if len(current) > 0 {
 				if r := tr.LineEndReset(); r != "" {
-					currentLine += r
+					current = append(current, r...)
 				}
-				wrapped = append(wrapped, currentLine)
+				wrapped = append(wrapped, string(current))
 			}
 			broken := breakLongWord(token, width, tr)
 			if len(broken) > 1 {
 				wrapped = append(wrapped, broken[:len(broken)-1]...)
 			}
-			currentLine = broken[len(broken)-1]
-			currentVisible = VisibleWidth(currentLine)
+			current = append(current[:0], broken[len(broken)-1]...)
+			currentVisible = VisibleWidth(broken[len(broken)-1])
 			continue
 		}
 
 		if currentVisible+tokenWidth > width && currentVisible > 0 {
 			// Wrap. Trim trailing whitespace before wrapping.
-			toWrap := JSTrimEnd(currentLine)
+			toWrap := JSTrimEnd(string(current))
 			if r := tr.LineEndReset(); r != "" {
 				toWrap += r
 			}
 			wrapped = append(wrapped, toWrap)
 			if isWhitespace {
 				// Don't start a new line with whitespace.
-				currentLine = tr.ActiveCodes()
+				current = append(current[:0], tr.ActiveCodes()...)
 				currentVisible = 0
 			} else {
-				currentLine = tr.ActiveCodes() + token
+				current = append(current[:0], tr.ActiveCodes()...)
+				current = append(current, token...)
 				currentVisible = tokenWidth
 			}
 		} else {
-			currentLine += token
+			current = append(current, token...)
 			currentVisible += tokenWidth
 		}
 
 		tr.UpdateFromText(token)
 	}
 
-	if currentLine != "" {
-		wrapped = append(wrapped, currentLine)
+	if len(current) > 0 {
+		wrapped = append(wrapped, string(current))
 	}
 	if len(wrapped) == 0 {
 		return []string{""}

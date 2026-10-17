@@ -3,9 +3,10 @@ package integration
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 const requiredLiveModel = "github-copilot/gpt-5-mini"
@@ -70,9 +71,5 @@ func TestLiveModelPolicy_IntegrationFiles(t *testing.T) {
 
 func repoRoot(t *testing.T) string {
 	t.Helper()
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller failed")
-	}
-	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
+	return testenv.ModuleRoot(t)
 }

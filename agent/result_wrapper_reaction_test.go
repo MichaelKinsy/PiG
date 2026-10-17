@@ -73,7 +73,7 @@ func TestAgentMessageEndWaitsForTheResultWrapperReaction(t *testing.T) {
 				}()
 				return stream, nil
 			}
-			a := NewAgent(AgentOptions{StreamFn: streamFn})
+			a := mustNewAgent(AgentOptions{StreamFn: streamFn})
 			a.Subscribe(func(_ context.Context, event AgentEvent) error {
 				switch event := event.(type) {
 				case MessageStartEvent:

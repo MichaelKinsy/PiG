@@ -124,8 +124,12 @@ func refresh(ctx context.Context, output map[string]any) error {
 	if entry == nil || len(entry.Models) != 1 {
 		return errors.New("missing stored catalog")
 	}
+	storedRecord, err := ai.EncodeStoredModel(entry.Models[0])
+	if err != nil {
+		return err
+	}
 	var stored map[string]any
-	if err := json.Unmarshal(entry.Models[0], &stored); err != nil {
+	if err := json.Unmarshal(storedRecord, &stored); err != nil {
 		return err
 	}
 	current, err := provider.GetModels()
@@ -158,8 +162,8 @@ func deferred(ctx context.Context, request ai.Context, output map[string]any) er
 	failedFaux := ai.NewFauxProvider(ai.FauxConfig{Model: "test-model"})
 	models.SetProvider(failedFaux.Provider())
 	model = failedFaux.GetModel()
-	failedFaux.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(ai.TranscriptContext, ai.StreamOptions, *ai.FauxProviderState, *ai.Model) (ai.FauxResponse, error) {
-		return ai.FauxResponse{}, errors.New("deferred failed")
+	failedFaux.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(ai.TranscriptContext, ai.StreamOptions, *ai.FauxProviderState, *ai.Model) (ai.AssistantMessage, error) {
+		return ai.FauxResponse{}.AssistantMessage(), errors.New("deferred failed")
 	}), ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("cancelled")}, StopReason: "stop"})})
 	failedSubmission := models.CompleteSimple(ctx, model, request, ai.StreamOptions{Deferred: &ai.DeferredOption{Enabled: true}})
 	if failedSubmission.Deferred == nil {

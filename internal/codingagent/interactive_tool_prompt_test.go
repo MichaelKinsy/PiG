@@ -21,8 +21,8 @@ func TestInteractiveToolPromptActivationOrder(t *testing.T) {
 		"zeta":  {Definition: extension.ToolDefinition{Name: "zeta", PromptSnippet: " Zeta\n summary ", PromptGuidelines: []string{"zeta rule"}}},
 	}}}, t.TempDir())
 	mode := &InteractiveMode{
-		newRunner: runner, tuiInst: tui.NewWithOutput(io.Discard, 80, 24), layout: tui.NewContainer(), agent: agent.NewAgent(agent.AgentOptions{}),
-		opts: InteractiveOptions{CWD: t.TempDir(), SystemPromptOptions: extension.BuildSystemPromptOptions{Cwd: "/prompt", ToolSnippets: prompts.DefaultToolSnippets()},
+		newRunner: runner, tuiInst: tui.NewWithOutput(io.Discard, 80, 24), layout: tui.NewContainer(), agent: mustNewAgent(agent.AgentOptions{}),
+		opts: InteractiveModeOptions{CWD: t.TempDir(), SystemPromptOptions: extension.BuildSystemPromptOptions{Cwd: "/prompt", ToolSnippets: prompts.DefaultToolSnippets()},
 			ActiveBuiltinTools: map[string]struct{}{"read": {}},
 			BridgeExtensionTools: func(definitions []extension.RegisteredTool) ([]agent.AgentTool, []error) {
 				var tools []agent.AgentTool

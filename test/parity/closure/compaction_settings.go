@@ -91,7 +91,7 @@ func AddCompactionSettingsBehaviors(root string, snapshot *Snapshot, records []R
 
 func compactionSettingsDefinitions() []closureVerticalBehavior {
 	compactionRoot := sourceRange{repository: "pig", path: "coding/session.go", semanticID: "coding.Session.compaction-call", start: "prep := compaction.PrepareCompaction(entries, settings)", end: "if err == nil && compactCtx.Err() != nil {"}
-	settingsRoot := sourceRange{repository: "pig", path: "internal/codingagent/interactive_commands.go", semanticID: "codingagent.interactive.settings-list", start: "ShowSettingsList: func(items []tui.SettingItem, onChange func(id, value string) string)", end: "m.runModalSettingsList(sl, onChange)"}
+	settingsRoot := sourceRange{repository: "pig", path: "internal/codingagent/slash_session_handlers.go", semanticID: "codingagent.settings.selector", start: "func settingsHandler(sc *SlashContext) error {", end: "return settingsHandlerTUI(sc, config)"}
 	compactTarget := providerWireTarget{
 		id: "compaction-compact", symbol: "compaction.Compact", goFact: "go:github.com/MichaelKinsy/PiG/internal/codingagent/compaction#Compact",
 		rangeRef: sourceRange{repository: "pig", path: "internal/codingagent/compaction/compaction.go", semanticID: "compaction.Compact", start: "func Compact(", end: ""}, rootRef: compactionRoot,
@@ -111,11 +111,11 @@ func compactionSettingsDefinitions() []closureVerticalBehavior {
 	settingsPersistenceTarget := providerWireTarget{
 		id: "settings-global-persistence", symbol: "codingagent.SettingsManager.UpdateGlobal", goFact: "go:github.com/MichaelKinsy/PiG/internal/codingagent#SettingsManager.UpdateGlobal",
 		rangeRef: sourceRange{repository: "pig", path: "internal/codingagent/settings.go", semanticID: "codingagent.SettingsManager.UpdateGlobal", start: "func (sm *SettingsManager) UpdateGlobal(", end: "func (sm *SettingsManager) UpdateProject("},
-		rootRef:  sourceRange{repository: "pig", path: "internal/codingagent/slash_session_handlers.go", semanticID: "codingagent.settings.UpdateGlobal", start: "if err := sc.SettingsManager.UpdateGlobal(func(gs *Settings)", end: "sc.SettingsManager.Reload()"},
+		rootRef:  sourceRange{repository: "pig", path: "internal/codingagent/slash_session_handlers.go", semanticID: "codingagent.settings.autocompact-change", start: "OnAutoCompactChange: func(enabled bool) {", end: "OnShowImagesChange:"},
 	}
 	settingsListTarget := providerWireTarget{
 		id: "settings-list-input-render", symbol: "tui.SettingsList", goFact: "go:github.com/MichaelKinsy/PiG/tui#SettingsList",
-		rangeRef: sourceRange{repository: "pig", path: "tui/settings_list.go", semanticID: "tui.SettingsList.input-render", start: "func (s *SettingsList) Render(", end: "func renderSettingsSearchInput("}, rootRef: settingsRoot,
+		rangeRef: sourceRange{repository: "pig", path: "tui/settings_list.go", semanticID: "tui.SettingsList.input-render", start: "func (s *SettingsList) Render(", end: "func (s *SettingsList) hintLines("}, rootRef: settingsRoot,
 	}
 	return []closureVerticalBehavior{
 		{

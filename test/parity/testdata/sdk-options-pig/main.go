@@ -16,11 +16,11 @@ func main() {
 	must(err)
 	defer func() { must(os.RemoveAll(dir)) }()
 	must(os.WriteFile(dir+"/settings.json", []byte(`{"httpIdleTimeoutMs":1234,"websocketConnectTimeoutMs":4321,"retry":{"provider":{"maxRetries":2,"maxRetryDelayMs":3000}}}`), 0o600))
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: dir, AgentDir: dir})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: dir, AgentDir: dir})
 	must(err)
 	var options ai.StreamOptions
-	must(services.Registry().RegisterProvider("capture-provider", extension.ProviderConfig{API: ai.APIOpenAICompletions, BaseURL: "https://capture.invalid/v1", APIKey: "test-api-key", Headers: map[string]string{"x-provider": "provider"}, Models: []extension.ProviderModelConfig{{ID: "capture-model", Name: "Capture Model", Headers: map[string]string{"x-model": "model"}, ContextWindow: 128000, MaxTokens: 4096}}, StreamSimple: func(_ extension.Model, _ extension.AIContext, raw extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
-		options = raw.(ai.StreamOptions)
+	must(services.Registry().RegisterExtensionProvider("capture-provider", extension.ProviderConfig{API: ai.APIOpenAICompletions, BaseURL: "https://capture.invalid/v1", APIKey: "test-api-key", Headers: map[string]string{"x-provider": "provider"}, Models: []extension.ProviderModelConfig{{ID: "capture-model", Name: "Capture Model", Headers: map[string]string{"x-model": "model"}, ContextWindow: 128000, MaxTokens: 4096}}, StreamSimple: func(_ extension.Model, _ extension.AIContext, raw extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
+		options = raw
 		stream := ai.NewAssistantMessageEventStream()
 		stream.End(&ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.TextContent{Text: "ok"}}, StopReason: ai.StopReasonStop})
 		return stream

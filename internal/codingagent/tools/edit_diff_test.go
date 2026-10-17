@@ -1,5 +1,9 @@
 package tools
 
+// pi: packages/coding-agent/src/core/tools/edit-diff.ts
+
+// pi: packages/coding-agent/src/core/tools/edit.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -8,6 +12,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/agent"
 )
 
 // TestEditMultipleReplacementsPositionBased verifies that multiple replacements are matched against
@@ -173,6 +179,8 @@ func TestEditPrepareArgumentsEditsAsJSONString(t *testing.T) {
 // Cases from .upstream/v0.87.1/packages/coding-agent/test/edit-tool-legacy-input.test.ts.
 func TestEditPrepareArgumentsUpstreamCases(t *testing.T) {
 	et := &EditTool{}
+	// Pi calls definition.prepareArguments! on the tool definition; the agent loop reaches the same hook through agent.ArgumentPreparer.
+	var preparer agent.ArgumentPreparer = et
 	t.Run("keeps legacy fields out of the public schema", func(t *testing.T) { // .upstream/v0.87.1/packages/coding-agent/test/edit-tool-legacy-input.test.ts:21
 		props := et.Schema().Parameters["properties"].(map[string]any)
 		for _, name := range []string{"oldText", "newText"} {
@@ -190,7 +198,7 @@ func TestEditPrepareArgumentsUpstreamCases(t *testing.T) {
 		{"stringified single object", `{"path":"file.txt","edits":"{\"oldText\":\"a\",\"newText\":\"b\"}"}`, `{"path":"file.txt","edits":[{"oldText":"a","newText":"b"}]}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := et.PrepareArguments(json.RawMessage(tc.input))
+			got, err := preparer.PrepareArguments(json.RawMessage(tc.input))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -202,7 +210,7 @@ func TestEditPrepareArgumentsUpstreamCases(t *testing.T) {
 	}
 	t.Run("passes through valid input unchanged", func(t *testing.T) { // .upstream/v0.87.1/packages/coding-agent/test/edit-tool-legacy-input.test.ts:57
 		input := json.RawMessage(`{"path":"file.txt","edits":[{"oldText":"a","newText":"b"}]}`)
-		got, err := et.PrepareArguments(input)
+		got, err := preparer.PrepareArguments(input)
 		if err != nil || len(got) != len(input) || &got[0] != &input[0] {
 			t.Fatalf("valid input identity changed: %s, %v", got, err)
 		}
@@ -210,7 +218,7 @@ func TestEditPrepareArgumentsUpstreamCases(t *testing.T) {
 	t.Run("passes through non-object input unchanged", func(t *testing.T) { // .upstream/v0.87.1/packages/coding-agent/test/edit-tool-legacy-input.test.ts:67
 		// nil RawMessage is the Go argument boundary's omitted/undefined value.
 		for _, input := range []json.RawMessage{nil, json.RawMessage(`null`), json.RawMessage(`"garbage"`)} {
-			got, err := et.PrepareArguments(input)
+			got, err := preparer.PrepareArguments(input)
 			if err != nil || !reflect.DeepEqual(got, input) || (len(input) > 0 && &got[0] != &input[0]) {
 				t.Fatalf("non-object %s changed to %s, %v", input, got, err)
 			}
@@ -250,5 +258,33 @@ func TestEditSingleObjectEditsExecutes(t *testing.T) {
 	}
 	if got, _ := os.ReadFile(path); string(got) != "b\n" {
 		t.Fatalf("file = %q", got)
+	}
+}
+
+// prepareEditArguments (edit.ts:103-133) assigns args.edits in place and returns { ...rest, edits }: the members keep the
+// order the model sent them in, and a new edits member goes last. The prepared arguments are what a tool_call handler
+// sees (#165: Pi keeps a tool_call input's members in order).
+func TestEditPrepareArgumentsKeepsMemberOrder(t *testing.T) {
+	et := &EditTool{}
+	for _, tc := range []struct{ name, input, want string }{
+		{"legacy", `{"zeta":1,"oldText":"a","path":"f","newText":"b","alpha":true}`, `{"zeta":1,"path":"f","alpha":true,"edits":[{"oldText":"a","newText":"b"}]}`},
+		{"legacy keeps edits in place", `{"edits":[{"oldText":"x","newText":"y"}],"path":"f","oldText":"a","newText":"b"}`, `{"edits":[{"oldText":"x","newText":"y"},{"oldText":"a","newText":"b"}],"path":"f"}`},
+		{"string edits keep place", `{"z":0,"edits":"[{\"oldText\":\"a\",\"newText\":\"b\"}]","path":"f"}`, `{"z":0,"edits":[{"oldText":"a","newText":"b"}],"path":"f"}`},
+		{"single edit", `{"path":"f","a":1,"edits":{"oldText":"a","newText":"b"},"b":2}`, `{"path":"f","a":1,"edits":[{"oldText":"a","newText":"b"}],"b":2}`},
+		{"html is not escaped", `{"path":"f","oldText":"<a>","newText":"&"}`, `{"path":"f","edits":[{"oldText":"<a>","newText":"&"}]}`},
+		// JSON.parse throws on a vertical tab or U+00A0 before the array, so edits stays a string.
+		{"string edits with non-JSON whitespace", `{"path":"f","edits":"\u000b[{\"oldText\":\"a\",\"newText\":\"b\"}]"}`, `{"path":"f","edits":"\u000b[{\"oldText\":\"a\",\"newText\":\"b\"}]"}`},
+		{"string edits with no-break space", `{"path":"f","edits":"\u00a0[{\"oldText\":\"a\",\"newText\":\"b\"}]"}`, `{"path":"f","edits":"\u00a0[{\"oldText\":\"a\",\"newText\":\"b\"}]"}`},
+		{"string edits with JSON whitespace", `{"path":"f","edits":" \n\t[{\"oldText\":\"a\",\"newText\":\"b\"}]\r "}`, `{"path":"f","edits":[{"oldText":"a","newText":"b"}]}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := et.PrepareArguments(json.RawMessage(tc.input))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(got) != tc.want {
+				t.Fatalf("prepared = %s\nwant      %s", got, tc.want)
+			}
+		})
 	}
 }

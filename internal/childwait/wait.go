@@ -36,7 +36,8 @@ type Pipes struct {
 
 // Start reads each file until it fails or ends, calling onData with the index
 // of the file and the bytes read. Calls to onData never overlap, and none
-// starts after Wait has abandoned the pipes.
+// starts after Wait has abandoned the pipes. The chunk is lent for the call:
+// each pipe reads into one buffer of its own, so onData copies what it keeps.
 func Start(files []*os.File, onData func(index int, chunk []byte), hooks Hooks) *Pipes {
 	p := &Pipes{
 		files:     files,
@@ -57,12 +58,16 @@ func Start(files []*os.File, onData func(index int, chunk []byte), hooks Hooks) 
 	return p
 }
 
+//perf:hot
 func (p *Pipes) read(index int, file *os.File) {
 	if p.hooks.BeforeRead != nil {
 		p.hooks.BeforeRead()
 	}
+	// Node reads up to 64 KiB per chunk. One buffer serves every read: a
+	// line-buffered command delivers a few hundred bytes per read, and a
+	// buffer per read cost a zeroed 64 KiB allocation each time.
+	buf := make([]byte, 64*1024)
 	for {
-		buf := make([]byte, 32*1024)
 		n, err := file.Read(buf)
 		if n > 0 {
 			p.mu.Lock()

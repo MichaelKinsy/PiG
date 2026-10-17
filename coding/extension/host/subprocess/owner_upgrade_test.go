@@ -1,6 +1,7 @@
 package subprocess
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -15,7 +16,7 @@ import (
 // A standalone may import the staged SDK through its legacy module path, including SDK self-imports.
 func TestLegacyStandaloneBuildsStagedSDKSubpackages(t *testing.T) {
 	root := t.TempDir()
-	sdkDir := filepath.Join(root, "state", "pigsdk", "sdk")
+	sdkDir := stagedSDKDir(t, root, "go")
 	for _, name := range sdk.BundledFiles() {
 		data, err := sdk.Source.ReadFile(name)
 		if err != nil {
@@ -56,7 +57,7 @@ func main() { e := sdk.New("standalone"); e.Command("probe", "alive", func(sdk.C
 			if err != nil {
 				t.Fatal(err)
 			}
-			if string(before) != string(after) {
+			if !bytes.Equal(before, after) {
 				t.Fatal("authored go.mod changed")
 			}
 			transient, err := filepath.Glob(filepath.Join(src, ".pig-build-*"))

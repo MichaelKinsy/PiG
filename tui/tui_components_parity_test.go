@@ -87,7 +87,7 @@ func TestBox_Render_EmptyChildren(t *testing.T) {
 //	→ ["",                                        // leading empty line
 //	   " ⠋ Loading...                           "] // 1-space left margin + content + right pad
 func TestLoader_Render_PaddingMatchesUpstream(t *testing.T) {
-	l := NewLoader("Loading...")
+	l := NewLoader(nil, nil, nil, "Loading...", nil)
 	lines := l.Render(40)
 
 	if len(lines) != 2 {
@@ -114,17 +114,17 @@ func TestLoader_Render_PaddingMatchesUpstream(t *testing.T) {
 // TestLoader_Render_StyledColors verifies ANSI color codes are applied
 // to spinner and message matching upstream's updateDisplay behavior.
 func TestLoader_Render_StyledColors(t *testing.T) {
-	l := NewStyledLoader("\x1b[36m", "\x1b[2m", "thinking", nil)
+	l := NewLoader(nil, SGRColor("\x1b[36m"), SGRColor("\x1b[2m"), "thinking", nil)
 	lines := l.Render(50)
 	if len(lines) != 2 {
 		t.Fatalf("expected 2 lines, got %d", len(lines))
 	}
 	// Should contain the colored spinner
-	if !strings.Contains(lines[1], "\x1b[36m⠋\x1b[0m") {
+	if !strings.Contains(lines[1], "\x1b[36m⠋\x1b[39m") {
 		t.Errorf("expected colored spinner in %q", lines[1])
 	}
 	// Should contain the colored message
-	if !strings.Contains(lines[1], "\x1b[2mthinking\x1b[0m") {
+	if !strings.Contains(lines[1], "\x1b[2mthinking\x1b[22;39m") {
 		t.Errorf("expected colored message in %q", lines[1])
 	}
 	// Should have leading space (paddingX=1)
@@ -199,7 +199,7 @@ func TestText_Render_EmptyReturnsEmpty(t *testing.T) {
 // TestTruncatedText_Render_TruncatesLong verifies TruncatedText truncates
 // text that exceeds available width, matching upstream truncated-text.ts.
 func TestTruncatedText_Render_TruncatesLong(t *testing.T) {
-	tt := NewPaddedTruncatedText("This is a very long string that should be truncated at width", 1, 0)
+	tt := NewTruncatedText("This is a very long string that should be truncated at width", 1, 0)
 	lines := tt.Render(20)
 	if len(lines) != 1 {
 		t.Fatalf("expected 1 line, got %d", len(lines))
@@ -218,7 +218,7 @@ func TestTruncatedText_Render_TruncatesLong(t *testing.T) {
 // TestTruncatedText_Render_FitsNoTruncation verifies short text passes
 // through without truncation.
 func TestTruncatedText_Render_FitsNoTruncation(t *testing.T) {
-	tt := NewPaddedTruncatedText("hi", 1, 1)
+	tt := NewTruncatedText("hi", 1, 1)
 	lines := tt.Render(20)
 	// paddingY=1: top + content + bottom = 3 lines
 	if len(lines) != 3 {

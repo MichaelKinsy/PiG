@@ -16,7 +16,7 @@ import (
 func BenchmarkUserBashOwnerRoundTrip(b *testing.B) {
 	for _, size := range []int{0, 1024, 64 * 1024, 1024 * 1024} {
 		b.Run(fmt.Sprint(size), func(b *testing.B) {
-			m := NewInteractiveMode(InteractiveOptions{CWD: b.TempDir(), Model: &ai.Model{ID: "m"}})
+			m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: b.TempDir(), Model: &ai.Model{ID: "m"}})
 			m.chatContainer, m.pendingMessagesContainer = tui.NewContainer(), tui.NewContainer()
 			m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
 			ctx, cancel := context.WithCancel(b.Context())

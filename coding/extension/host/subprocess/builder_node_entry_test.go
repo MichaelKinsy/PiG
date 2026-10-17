@@ -128,3 +128,20 @@ func TestResolveNodeEntrypointImportsADeclaredDirectoryAsJiti(t *testing.T) {
 		t.Errorf("entrypoint = %q, want %q", got, want)
 	}
 }
+
+// A directory with no package manifest and no index.ts or index.js is itself the extension path (package-manager.ts:1379-1384); the loader's jiti import of the directory loads its index.mjs, so Pi loads it and Pig must too.
+func TestResolveNodeEntrypointImportsAnIndexMjsDirectoryAsJiti(t *testing.T) {
+	dir := t.TempDir()
+	want := filepath.Join(dir, "index.mjs")
+	write(t, want, "export default function extension(pi) {}\n")
+	if !hasNodeSource(dir) {
+		t.Fatal("a directory with index.mjs is not detected as a Node extension source")
+	}
+	got, err := resolveNodeEntrypoint(dir)
+	if err != nil {
+		t.Fatalf("resolveNodeEntrypoint: %v", err)
+	}
+	if got != want {
+		t.Errorf("entrypoint = %q, want %q", got, want)
+	}
+}

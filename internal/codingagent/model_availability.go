@@ -19,6 +19,44 @@ func (r *ModelRegistry) SetAvailabilitySnapshot(configured func(providerID strin
 	r.availabilityAuth, r.registrationSync = configured, sync
 }
 
+// AvailabilityReadContext gives a full availability pass one view of auth.json (readSnapshotContext) when no provider in it runs extension
+// code. Pi's runAvailabilityRefresh makes every credential read before any I/O of the pass completes, so the pass stats once. An extension
+// provider's check runs its own code between Pi's reads, so a pass with one reads as before, each read statting.
+func (r *ModelRegistry) AvailabilityReadContext(ctx context.Context) context.Context {
+	r.mu.RLock()
+	extension := len(r.native) > 0
+	r.mu.RUnlock()
+	r.nativeMu.Lock()
+	models := r.nativeModels
+	r.nativeMu.Unlock()
+	if extension || models != nil && len(models.GetProviders()) > 0 {
+		return ctx
+	}
+	return r.readSnapshotContext(ctx, false)
+}
+
+// readSnapshotContext starts an operation's file-read snapshot. When the credential store, and with catalogs also the models store, are PiG's
+// own, their reads wait on nothing but their files, so the operation's providers may run on the caller (ai.WithFileReadSnapshotOnCaller). A
+// caller-supplied store (CreateModelRuntimeOptions.Credentials, ModelsStore) reads with the caller's code: its operation keeps the one view of
+// the files the store may read through, and a goroutine per provider.
+func (r *ModelRegistry) readSnapshotContext(ctx context.Context, catalogs bool) context.Context {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	switch r.credentialStore.(type) {
+	case nil, *ai.AuthStorage, *ai.InMemoryAuthStorage, *ai.InMemoryCredentialStore:
+	default:
+		return ai.WithFileReadSnapshot(ctx)
+	}
+	if catalogs {
+		switch r.modelsStore.(type) {
+		case nil, *ai.FileModelsStore, *ai.InMemoryModelsStore:
+		default:
+			return ai.WithFileReadSnapshot(ctx)
+		}
+	}
+	return ai.WithFileReadSnapshotOnCaller(ctx)
+}
+
 // syncRegistration completes a committed registration or removal as Pi's registerNativeProvider, registerProvider and unregisterProvider do: it projects the snapshot synchronously, then queues the unawaited local refresh (model-runtime.ts:744-750,768-797).
 func (r *ModelRegistry) syncRegistration(providerID string, provisional *ai.AuthCheck) {
 	if r.registrationSync != nil {
@@ -86,7 +124,7 @@ func (r *ModelRegistry) GetProviderAuthChecks(ctx context.Context) (map[string]*
 			return err
 		}
 	}
-	if err := r.AwaitModelTasks(ctx, tasks...); err != nil {
+	if err := r.awaitProviderTasks(ctx, tasks); err != nil {
 		return nil, err
 	}
 	result := make(map[string]*ai.AuthCheck, len(ids))
@@ -111,7 +149,7 @@ func (r *ModelRegistry) GetAvailableModelDataContext(ctx context.Context, provid
 			return err
 		}
 	}
-	if err := r.AwaitModelTasks(ctx, tasks...); err != nil {
+	if err := r.awaitProviderTasks(ctx, tasks); err != nil {
 		return nil, err
 	}
 	result := make([]*ai.Model, 0)

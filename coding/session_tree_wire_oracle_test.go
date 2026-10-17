@@ -2,7 +2,13 @@ package coding
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"slices"
+	"strings"
 	"sync"
 	"testing"
 
@@ -10,58 +16,88 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
-// wireCapturingProvider records the transcript of every request it receives.
-type wireCapturingProvider struct {
-	mu       sync.Mutex
-	requests [][]ai.Message
+// anthropicWireServer answers every request with a short Anthropic text reply and
+// records each request body.
+func anthropicWireServer(t *testing.T) (*httptest.Server, func() [][]byte) {
+	t.Helper()
+	var mu sync.Mutex
+	var bodies [][]byte
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		mu.Lock()
+		bodies = append(bodies, body)
+		mu.Unlock()
+		w.Header().Set("Content-Type", "text/event-stream")
+		for _, event := range []string{
+			`{"type":"message_start","message":{"id":"m","usage":{"input_tokens":1,"output_tokens":0}}}`,
+			`{"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}`,
+			`{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"ok"}}`,
+			`{"type":"content_block_stop","index":0}`,
+			`{"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":1}}`,
+			`{"type":"message_stop"}`,
+		} {
+			kind, _, _ := strings.Cut(strings.TrimPrefix(event, `{"type":"`), `"`)
+			_, _ = io.WriteString(w, "event: "+kind+"\ndata: "+event+"\n\n")
+		}
+	}))
+	t.Cleanup(server.Close)
+	return server, func() [][]byte {
+		mu.Lock()
+		defer mu.Unlock()
+		return append([][]byte(nil), bodies...)
+	}
 }
 
-func (*wireCapturingProvider) ID() string { return "wire-capture" }
-func (p *wireCapturingProvider) Stream(_ context.Context, transcript ai.TranscriptContext, _ ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
-	p.mu.Lock()
-	p.requests = append(p.requests, transcript.Messages())
-	p.mu.Unlock()
-	message := sessionTestMessage(p.ID(), "ok", ai.StopReasonStop, "")
-	return newSessionTestStream(
-		ai.StartEvent{Partial: message},
-		ai.DoneEvent{Reason: ai.StopReasonStop, Message: message},
-	), nil
-}
-func (*wireCapturingProvider) Close() error { return nil }
-
-// transcriptToolFlowError returns "" when the transcript satisfies the rule
-// every provider enforces (Anthropic Messages: "unexpected tool_use_id in
-// tool_result blocks ... must have a corresponding tool_use block in the
-// previous message"): the tool results directly after an assistant message
-// answer each of its tool calls exactly once, and no tool result appears
-// anywhere else.
-func transcriptToolFlowError(wire []ai.Message) string {
-	for i := 0; i < len(wire); i++ {
-		switch message := wire[i].(type) {
-		case ai.AssistantMessage:
-			pending := map[string]bool{}
-			for _, block := range message.Content {
-				if call, ok := block.(ai.ToolCall); ok {
-					pending[call.ID] = true
-				}
+// anthropicToolFlowError returns "" when an Anthropic Messages request
+// satisfies the rule the API enforces ("unexpected tool_use_id in tool_result
+// blocks ... must have a corresponding tool_use block in the previous
+// message"): the tool_result blocks of a message answer exactly the tool_use
+// blocks of the message before it, and every tool_use is answered in the next
+// message.
+func anthropicToolFlowError(body []byte) string {
+	var request struct {
+		Messages []struct {
+			Role    string          `json:"role"`
+			Content json.RawMessage `json:"content"`
+		} `json:"messages"`
+	}
+	if err := json.Unmarshal(body, &request); err != nil {
+		return "decode request: " + err.Error()
+	}
+	type blocks struct{ uses, results []string }
+	parsed := make([]blocks, len(request.Messages))
+	for index, message := range request.Messages {
+		var content []struct {
+			Type      string `json:"type"`
+			ID        string `json:"id"`
+			ToolUseID string `json:"tool_use_id"`
+		}
+		if json.Unmarshal(message.Content, &content) != nil {
+			continue
+		}
+		for _, block := range content {
+			switch block.Type {
+			case "tool_use":
+				parsed[index].uses = append(parsed[index].uses, block.ID)
+			case "tool_result":
+				parsed[index].results = append(parsed[index].results, block.ToolUseID)
 			}
-			j := i + 1
-			for ; j < len(wire); j++ {
-				result, ok := wire[j].(ai.ToolResultMessage)
-				if !ok {
-					break
-				}
-				if !pending[result.ToolCallID] {
-					return fmt.Sprintf("wire[%d]: tool result %q has no tool call in the previous assistant message", j, result.ToolCallID)
-				}
-				delete(pending, result.ToolCallID)
+		}
+	}
+	for index, current := range parsed {
+		var previousUses []string
+		if index > 0 {
+			previousUses = parsed[index-1].uses
+		}
+		for position, id := range current.results {
+			if !slices.Contains(previousUses, id) {
+				return fmt.Sprintf("messages.%d.content.%d: unexpected tool_use_id %q in tool_result blocks", index, position, id)
 			}
-			for id := range pending {
-				return fmt.Sprintf("wire[%d]: tool call %q is not answered directly after its assistant message", i, id)
+		}
+		for _, id := range current.uses {
+			if index+1 >= len(parsed) || !slices.Contains(parsed[index+1].results, id) {
+				return fmt.Sprintf("messages.%d: tool_use %q has no tool_result in the next message", index, id)
 			}
-			i = j - 1
-		case ai.ToolResultMessage:
-			return fmt.Sprintf("wire[%d]: tool result %q does not follow an assistant message", i, message.ToolCallID)
 		}
 	}
 	return ""
@@ -154,15 +190,16 @@ func buildWireOracleTree(t *testing.T, sess *Session) []string {
 // navigation point between a tool call and one of its results never leaves a
 // tool_result without its tool_use. Pig normalizes before converting; this
 // drives /tree navigation to every entry of a forked tree, with and without a
-// branch summary, sends a new prompt and checks the transcript the provider
-// receives.
+// branch summary, sends a new prompt through the Anthropic provider and checks
+// the request it serializes.
 func TestNavigateTreeEveryPointSendsValidToolFlow(t *testing.T) {
 	probe := newTreeTestSession(t)
 	entryCount := len(buildWireOracleTree(t, probe))
 	for index := range entryCount {
 		for _, summarize := range []bool{false, true} {
 			t.Run(fmt.Sprintf("entry%02d/summarize=%v", index, summarize), func(t *testing.T) {
-				provider := &wireCapturingProvider{}
+				server, bodies := anthropicWireServer(t)
+				provider := ai.NewAnthropicProvider(ai.AnthropicConfig{Model: "wire-oracle-model", BaseURL: server.URL, APIKey: "k", ProviderID: "anthropic"})
 				sess, err := NewSession(newTestServices(t), SessionOptions{Model: fakeModelWithProvider(provider), SkipBuiltinTools: true})
 				if err != nil {
 					t.Fatal(err)
@@ -177,11 +214,12 @@ func TestNavigateTreeEveryPointSendsValidToolFlow(t *testing.T) {
 				if _, err := sess.Send(context.Background(), "prepare for compaction"); err != nil {
 					t.Fatalf("Send: %v", err)
 				}
-				if len(provider.requests) != 1 {
-					t.Fatalf("provider requests = %d, want 1", len(provider.requests))
+				sent := bodies()
+				if len(sent) != 1 {
+					t.Fatalf("provider requests = %d, want 1", len(sent))
 				}
-				if problem := transcriptToolFlowError(provider.requests[0]); problem != "" {
-					t.Fatalf("%s\ntranscript: %v", problem, provider.requests[0])
+				if problem := anthropicToolFlowError(sent[0]); problem != "" {
+					t.Fatalf("%s\nrequest: %s", problem, sent[0])
 				}
 			})
 		}

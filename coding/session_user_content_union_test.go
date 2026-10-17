@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"testing"
 
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 )
@@ -80,8 +82,8 @@ func TestResumedSessionPreservesUserStringThroughNextPrompt(t *testing.T) {
 				}
 				fmt.Printf("SESSION_USER_STRING_CONTEXT %s\n", encoded)
 			}
-			for _, entry := range resumed.Inner().Entries() {
-				message, ok := entry.AsMessage()
+			for _, entry := range resumed.Inner().GetEntries() {
+				message, ok := entry.(icodingagent.MessageEntry)
 				if ok && message.Message.User != nil && message.Message.User.Timestamp == 1 {
 					if got := laxRoleContent(t, message.Message); !reflect.DeepEqual(got, want) {
 						t.Fatalf("persisted role/content=%#v", got)

@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: MIT
+# Stripped Piglet "pig-core" for the pigbench footprint comparison: stock PiG's parts minus the optional
+# extensions, three provider APIs and the features a scripted coding session does not use.
+# Deny mode: a later PiG's new built-ins stay in.
+name: pig-core
+strip:
+  extensions: [mcp, codemode, tool-search, llama.cpp, pig-login]
+  apis: [bedrock-converse-stream, google-vertex, mistral-conversations]
+  features: [mermaid, export-html, self-update, docs, changelog, piglet-builder, word-dictionaries, syntax-highlight]

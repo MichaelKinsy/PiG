@@ -10,10 +10,12 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
@@ -204,11 +206,41 @@ func buildBinaryRecords(lock buildLock, p *piglet.Piglet, artifactPath string) (
 			Policy: "basic", Passed: true,
 			Checks: []string{"artifact-sha256", "artifact-version-smoke", "extension-plan", "piglet-and-origins"},
 		},
+		Strip: binaryStripEntries(p), StripKeep: binaryStripIDs(p.Strip.KeepLists()), StripTable: binaryStripIDs(piglet.StripTable()),
 	})
 	if err != nil {
 		return binaryBuildRecords{}, fmt.Errorf("build Piglet Binary record: %w", err)
 	}
 	return binaryBuildRecords{Resolution: lock.ResolutionRecord, Binary: binaryRecord}, nil
+}
+
+// binaryStripEntries lists the Piglet's stripped built-ins for the Binary record.
+// pig additive (D92): the strip list is part of the Binary identity and digest.
+func binaryStripEntries(p *piglet.Piglet) []pigletartifact.StripEntry {
+	ids := p.Strip.StrippedIDs()
+	if len(ids) == 0 {
+		return nil
+	}
+	entries := make([]pigletartifact.StripEntry, len(ids))
+	for i, id := range ids {
+		entries[i] = pigletartifact.StripEntry{Kind: id.Kind, ID: id.ID, Disposition: id.Disposition}
+	}
+	return entries
+}
+
+// binaryStripIDs converts strip ID lists for the Binary record: the keep-mode
+// lists (stripKeep) or the building core's strip table (stripTable).
+// pig additive (D92): keep mode states its intent in the record, and the
+// table lets a later core report the built-ins it adds.
+func binaryStripIDs(lists []piglet.StripIDList) []pigletartifact.StripIDs {
+	if len(lists) == 0 {
+		return nil
+	}
+	out := make([]pigletartifact.StripIDs, len(lists))
+	for i, list := range lists {
+		out[i] = pigletartifact.StripIDs{Kind: list.Kind, IDs: list.IDs}
+	}
+	return out
 }
 
 func buildNativeLock(p *piglet.Piglet, cells []subprocess.CellSpec, opts Options, source pigSource) (buildLock, error) {
@@ -354,6 +386,35 @@ func buildInputs(p *piglet.Piglet, cells []subprocess.CellSpec) ([]buildInput, e
 		}
 		inputs = append(inputs, buildInput{Kind: "skill", Name: skill.Entry.Name, Source: source, Package: packageAlias, Digest: digest})
 	}
+	// pig additive (D91): the frontend member's source is part of the
+	// Binary's identity.
+	frontendDir, err := p.FrontendDir()
+	if err != nil {
+		return nil, err
+	}
+	if frontendDir != "" {
+		digest, err := hashTree(frontendDir)
+		if err != nil {
+			return nil, fmt.Errorf("lock frontend: %w", err)
+		}
+		inputs = append(inputs, buildInput{Kind: "frontend", Name: "frontend", Source: "content-addressed", Digest: digest})
+		// The member's go.mod and go.sum pin its external modules; a local
+		// replacement, which the fused build promotes, is pinned by its source.
+		replacements, err := localGoReplacementDirs(frontendDir)
+		if err != nil {
+			return nil, fmt.Errorf("lock frontend local Go replacements: %w", err)
+		}
+		for i, replacement := range replacements {
+			replacementDigest, err := goModuleDigest(replacement)
+			if err != nil {
+				return nil, fmt.Errorf("lock frontend local Go replacement %s: %w", replacement, err)
+			}
+			inputs = append(inputs, buildInput{
+				Kind: "frontend-dependency", Name: fmt.Sprintf("frontend:go-replace:%d", i),
+				Source: "local:" + filepath.ToSlash(replacement), Digest: replacementDigest,
+			})
+		}
+	}
 	slices.SortFunc(inputs, func(a, b buildInput) int {
 		if value := strings.Compare(a.Kind, b.Kind); value != 0 {
 			return value
@@ -433,7 +494,9 @@ func localGoReplacementDirs(root string) ([]string, error) {
 		return nil, nil
 	}
 	data, err := os.ReadFile(filepath.Join(root, "go.mod"))
-	if os.IsNotExist(err) {
+	// A single-file extension (a lone .ts or .js file) has no go.mod beside it: reading "<file>/go.mod" fails with ENOTDIR on
+	// Unix and with a not-found error on Windows.
+	if os.IsNotExist(err) || errors.Is(err, syscall.ENOTDIR) {
 		return nil, nil
 	}
 	if err != nil {
@@ -486,19 +549,18 @@ func hashTree(root string) (string, error) {
 		return "", err
 	}
 	if !info.IsDir() {
-		data, err := os.ReadFile(root)
-		if err != nil {
-			return "", err
-		}
 		hash := sha256.New()
 		_, _ = hash.Write([]byte(filepath.Base(root)))
 		_, _ = hash.Write([]byte{0})
 		_, _ = hash.Write([]byte(info.Mode().String()))
 		_, _ = hash.Write([]byte{0})
-		_, _ = hash.Write(data)
+		if err := copyFileInto(hash, root, make([]byte, hashBufferSize)); err != nil {
+			return "", err
+		}
 		return "sha256:" + hex.EncodeToString(hash.Sum(nil)), nil
 	}
 	hash := sha256.New()
+	buffer := make([]byte, hashBufferSize)
 	err = filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -520,10 +582,6 @@ func hashTree(root string) (string, error) {
 		if err != nil {
 			return err
 		}
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
 		info, err := entry.Info()
 		if err != nil {
 			return err
@@ -532,7 +590,9 @@ func hashTree(root string) (string, error) {
 		_, _ = hash.Write([]byte{0})
 		_, _ = hash.Write([]byte(info.Mode().String()))
 		_, _ = hash.Write([]byte{0})
-		_, _ = hash.Write(data)
+		if err := copyFileInto(hash, path, buffer); err != nil {
+			return err
+		}
 		_, _ = hash.Write([]byte{0})
 		return nil
 	})
@@ -542,12 +602,35 @@ func hashTree(root string) (string, error) {
 	return "sha256:" + hex.EncodeToString(hash.Sum(nil)), nil
 }
 
+// hashFile returns the sha256 digest and size of the file at path, streaming it
+// so a Piglet Binary is never held in memory.
 func hashFile(path string) (string, int64, error) {
-	data, err := os.ReadFile(path)
+	file, err := os.Open(path)
 	if err != nil {
 		return "", 0, err
 	}
-	return digestBytes(data), int64(len(data)), nil
+	defer func() { _ = file.Close() }()
+	hash := sha256.New()
+	size, err := io.Copy(hash, file)
+	if err != nil {
+		return "", 0, err
+	}
+	return "sha256:" + hex.EncodeToString(hash.Sum(nil)), size, nil
+}
+
+// hashBufferSize is the copy buffer a tree digest reuses for every file.
+const hashBufferSize = 64 << 10
+
+// copyFileInto streams the file at path into w through buffer. The reader is wrapped so io.CopyBuffer uses buffer:
+// *os.File implements WriterTo, which would ignore it and allocate a 32 KiB buffer for every file.
+func copyFileInto(w io.Writer, path string, buffer []byte) error {
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = file.Close() }()
+	_, err = io.CopyBuffer(w, struct{ io.Reader }{file}, buffer)
+	return err
 }
 
 func digestBytes(data []byte) string {
@@ -593,6 +676,7 @@ func pigSourceIdentity(source pigSource) (string, string, error) {
 	}
 	slices.Sort(paths)
 	hash := sha256.New()
+	buffer := make([]byte, hashBufferSize)
 	for _, relative := range paths {
 		if relative == "" {
 			continue
@@ -608,24 +692,19 @@ func pigSourceIdentity(source pigSource) (string, string, error) {
 		if info.IsDir() {
 			continue
 		}
-		var data []byte
+		_, _ = hash.Write([]byte(filepath.ToSlash(relative)))
+		_, _ = hash.Write([]byte{0})
+		_, _ = hash.Write([]byte(info.Mode().String()))
+		_, _ = hash.Write([]byte{0})
 		if info.Mode()&os.ModeSymlink != 0 {
 			target, err := os.Readlink(path)
 			if err != nil {
 				return "", "", fmt.Errorf("read Pig source symlink %s: %w", relative, err)
 			}
-			data = []byte(target)
-		} else {
-			data, err = os.ReadFile(path)
-			if err != nil {
-				return "", "", fmt.Errorf("read Pig source %s: %w", relative, err)
-			}
+			_, _ = hash.Write([]byte(target))
+		} else if err := copyFileInto(hash, path, buffer); err != nil {
+			return "", "", fmt.Errorf("read Pig source %s: %w", relative, err)
 		}
-		_, _ = hash.Write([]byte(filepath.ToSlash(relative)))
-		_, _ = hash.Write([]byte{0})
-		_, _ = hash.Write([]byte(info.Mode().String()))
-		_, _ = hash.Write([]byte{0})
-		_, _ = hash.Write(data)
 		_, _ = hash.Write([]byte{0})
 	}
 	return revision, "sha256:" + hex.EncodeToString(hash.Sum(nil)), nil
@@ -642,7 +721,8 @@ func toolchainVersions(cells []subprocess.CellSpec) (map[string]string, error) {
 		case "rust":
 			commands["rust"] = []string{"cargo", "--version"}
 		case "python":
-			commands["python"] = []string{"python3", "--version"}
+			// The interpreter the cell runs with: python or python3 on Windows (python3.exe there is often the Store alias).
+			commands["python"] = []string{toolchain.PythonExecutable(runtime.GOOS, exec.LookPath), "--version"}
 		case "node":
 			commands["node"] = []string{"node", "--version"}
 		}

@@ -1,10 +1,11 @@
+import { PI_PACKAGE_VERSION } from "./pi-version.mjs";
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const root = resolve('extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent');
-assert.equal(JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version, '1.0.3');
+assert.equal(JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version, PI_PACKAGE_VERSION);
 const parent = pathToFileURL(join(root, 'package.json')).href;
 const { Agent, setDefaultStreamFn } = await import(import.meta.resolve('@earendil-works/pi-agent-core', parent));
 const { EventStream } = await import(import.meta.resolve('@earendil-works/pi-ai', parent));

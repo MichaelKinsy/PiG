@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/coding/extension"
+
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -18,7 +20,7 @@ func TestVerboseHeaderExpansionAndRestoration(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			m := &InteractiveMode{
-				opts:      InteractiveOptions{LoginVisible: true, Verbose: true},
+				opts:      InteractiveModeOptions{LoginVisible: true, Verbose: true},
 				extHeader: newSpecialLinesComponent(nil),
 				tuiInst:   tui.NewWithOutput(io.Discard, 100, 45),
 			}
@@ -26,7 +28,7 @@ func TestVerboseHeaderExpansionAndRestoration(t *testing.T) {
 			m.restoreBuiltInHeader()
 			for _, expanded := range []bool{true, false, true, false} {
 				if restore {
-					ui.SetHeader([]string{"custom header"})
+					ui.SetHeader(extension.FrameHeader([]string{"custom header"}, 0))
 				}
 				m.setAllToolsExpanded(expanded)
 				if restore {
@@ -47,12 +49,12 @@ func TestVerboseHeaderExpansionAndRestoration(t *testing.T) {
 
 func TestVerboseHeaderRestorationUsesCurrentToolState(t *testing.T) {
 	m := &InteractiveMode{
-		opts:      InteractiveOptions{LoginVisible: true, Verbose: true},
+		opts:      InteractiveModeOptions{LoginVisible: true, Verbose: true},
 		extHeader: newSpecialLinesComponent(nil),
 	}
 	// No tool toggle is required: restoring the built-in header uses the current false tool state, not verbose's initial expanded header state.
 	ui := &ExtUIContext{m: m}
-	ui.SetHeader([]string{"custom header"})
+	ui.SetHeader(extension.FrameHeader([]string{"custom header"}, 0))
 	ui.SetHeader(nil)
 	got := stripANSITest(strings.Join(m.extHeader.Render(100), "\n"))
 	if !strings.Contains(got, "show full startup help") || strings.Contains(got, "drop files to attach") {
@@ -72,7 +74,7 @@ func TestBuiltInHeaderInitialExpansion(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			m := &InteractiveMode{
-				opts:          InteractiveOptions{LoginVisible: true, Verbose: tc.verbose},
+				opts:          InteractiveModeOptions{LoginVisible: true, Verbose: tc.verbose},
 				extHeader:     newSpecialLinesComponent(nil),
 				toolsExpanded: tc.expanded,
 			}
@@ -100,7 +102,7 @@ func BenchmarkBuiltInHeaderRender(b *testing.B) {
 			km := &KeybindingsManager{definitions: appKeybindingDefinitions, ordered: appKeybindingOrder, platform: tui.HostKeybindingPlatform()}
 			km.rebuild()
 			m := &InteractiveMode{
-				opts:        InteractiveOptions{LoginVisible: true},
+				opts:        InteractiveModeOptions{LoginVisible: true},
 				keybindings: km,
 				extHeader:   newSpecialLinesComponent(nil),
 			}
@@ -120,7 +122,7 @@ func TestBuiltInHeaderMatchesPiStartupHelp(t *testing.T) {
 	km := &KeybindingsManager{definitions: appKeybindingDefinitions, ordered: appKeybindingOrder, platform: tui.HostKeybindingPlatform()}
 	km.rebuild()
 	m := &InteractiveMode{
-		opts:        InteractiveOptions{LoginVisible: true},
+		opts:        InteractiveModeOptions{LoginVisible: true},
 		keybindings: km,
 		extHeader:   newSpecialLinesComponent(nil),
 		tuiInst:     tui.NewWithOutput(io.Discard, 100, 40),

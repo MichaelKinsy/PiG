@@ -58,3 +58,19 @@ func TestNestedToolResultWireKeepsTheToolsMemberOrder(t *testing.T) {
 		})
 	}
 }
+
+// A tool result's block form and its text shorthand decode a lone surrogate alike: JSON.parse keeps it in both, and a model reads the same text whichever form the extension returned.
+func TestToolResultKeepsALoneSurrogateInEveryContentForm(t *testing.T) {
+	for name, wire := range map[string]string{
+		"blocks":    `{"content":[{"type":"text","text":"a\ud83db"}]}`,
+		"shorthand": `{"content":"a\ud83db"}`,
+	} {
+		var result ToolResult
+		if err := json.Unmarshal([]byte(wire), &result); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if len(result.Content) != 1 || result.Content[0].(ai.TextContent).Text != "a\xed\xa0\xbdb" {
+			t.Errorf("%s decoded to %#v, want the lone surrogate kept", name, result.Content)
+		}
+	}
+}

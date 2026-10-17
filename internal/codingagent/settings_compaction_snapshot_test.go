@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package codingagent
@@ -11,6 +10,7 @@ import (
 )
 
 // Pi's synchronous getter cannot interleave an applyOverrides call between fields.
+// Pi: packages/coding-agent/src/core/settings-manager.ts:29 (CompactionSettingsJSON.enabled).
 func TestCompactionSettingsReadOneSnapshot(t *testing.T) {
 	first := Settings{Compaction: &CompactionSettingsJSON{Enabled: new(true), ReserveTokens: new(1.), KeepRecentTokens: new(1.)}}
 	second := Settings{Compaction: &CompactionSettingsJSON{Enabled: new(false), ReserveTokens: new(2.), KeepRecentTokens: new(2.)}}
@@ -47,7 +47,7 @@ func BenchmarkCompactionSettingsModelOverrides(b *testing.B) {
 	sm := &SettingsManager{merged: Settings{Compaction: &CompactionSettingsJSON{ModelOverrides: overrides}}}
 	b.ReportAllocs()
 	for b.Loop() {
-		if _, err := sm.GetModelCompactionSettings("provider", "model-999"); err != nil {
+		if _, err := sm.GetCompactionSettings(compactionTestModel("provider", "model-999")); err != nil {
 			b.Fatal(err)
 		}
 	}

@@ -17,10 +17,10 @@ import (
 
 // Pi model-runtime.ts:744-797: registerNativeProvider, registerProvider and unregisterProvider finish synchronously (updateModelSnapshot, 277-284; provisional auth, 768-787) and then start an unawaited `void this.refresh({ allowNetwork: false })` (750, 788, 796). That refresh is a continuation on the single JavaScript thread: it cannot pass its first await (ModelConfig.load, 702) before the registering caller yields, and it never runs concurrently with provider callbacks. PiG runs it inside the first awaited model-runtime call (Refresh, GetAvailable, CheckAuth, Login, Logout), or when an extension host registration returns (cmd/pig), and never on a free goroutine started by the registration itself or in a provider request.
 
-func newRegistrationServices(t *testing.T) *Services {
+func newRegistrationServices(t *testing.T) *AgentSessionServices {
 	t.Helper()
 	dir := t.TempDir()
-	services, err := NewServices(ServicesOptions{CWD: dir, AgentDir: dir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: dir, AgentDir: dir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,13 +181,13 @@ func TestRegisterProviderPublishesProvisionalConfiguredAuth(t *testing.T) {
 	cases := []struct {
 		name        string
 		stored      *ai.Credential
-		register    func(*Services, string) error
+		register    func(*AgentSessionServices, string) error
 		provisional *ai.AuthCheck
 		available   []string
 	}{
 		{
 			name: "runtime input configured by key",
-			register: func(services *Services, id string) error {
+			register: func(services *AgentSessionServices, id string) error {
 				return services.ModelRuntime().RegisterProvider(id, registryInput(url, "openai-completions", "one", "two"))
 			},
 			provisional: &ai.AuthCheck{Type: ai.CredentialAPIKey, Source: "configured provider"},
@@ -195,8 +195,8 @@ func TestRegisterProviderPublishesProvisionalConfiguredAuth(t *testing.T) {
 		},
 		{
 			name: "extension config configured by key",
-			register: func(services *Services, id string) error {
-				return services.Registry().RegisterProvider(id, extensionRegistration(url, "test-key", "one", "two"))
+			register: func(services *AgentSessionServices, id string) error {
+				return services.Registry().RegisterExtensionProvider(id, extensionRegistration(url, "test-key", "one", "two"))
 			},
 			provisional: &ai.AuthCheck{Type: ai.CredentialAPIKey, Source: "configured provider"},
 			available:   []string{"one", "two"},
@@ -205,7 +205,7 @@ func TestRegisterProviderPublishesProvisionalConfiguredAuth(t *testing.T) {
 			// storedProviders.has(providerId) admits an OAuth-only registration; its provisional type is oauth because effective.apiKey is absent (model-runtime.ts:769,777).
 			name:   "stored OAuth credential",
 			stored: &ai.Credential{Type: ai.CredentialOAuth, Access: "access", Refresh: "refresh", Expires: 1 << 50},
-			register: func(services *Services, id string) error {
+			register: func(services *AgentSessionServices, id string) error {
 				input := registryInput(url, "openai-completions", "one")
 				input.APIKey = ""
 				input.OAuth = &ExtensionOAuthConfig{Name: "Provisional OAuth", Login: func(context.Context, ai.OAuthLoginCallbacks) (ai.Credential, error) {
@@ -218,7 +218,7 @@ func TestRegisterProviderPublishesProvisionalConfiguredAuth(t *testing.T) {
 		},
 		{
 			name: "unconfigured registration stays unavailable",
-			register: func(services *Services, id string) error {
+			register: func(services *AgentSessionServices, id string) error {
 				input := registryInput(url, "openai-completions", "one")
 				input.APIKey = ""
 				return services.ModelRuntime().RegisterProvider(id, input)
@@ -480,7 +480,7 @@ func TestExtensionNativeRegistrationAuthenticatesInItsRefresh(t *testing.T) {
 				return &ai.AuthResult{Auth: ai.ModelAuth{APIKey: "key"}}, nil, nil
 			},
 			ResolveRefreshCredential: func(context.Context, *ai.Credential) (*ai.Credential, *ai.Credential, error) { return nil, nil, nil },
-			Stream: func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions, bool) (*ai.AssistantMessageEventStream, error) {
+			Stream: func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 				return ai.NewAssistantMessageEventStream(), nil
 			},
 		}
@@ -545,7 +545,7 @@ func TestRegistrationRefreshNotifiesListenersOncePerPass(t *testing.T) {
 		detach := runtime.SetChangeListener(func() { notifications.Add(1) })
 		defer detach()
 		for _, id := range []string{"first", "second"} {
-			if err := services.Registry().RegisterProvider(id, extensionRegistration("https://"+id+".invalid/v1", "test-key", "one")); err != nil {
+			if err := services.Registry().RegisterExtensionProvider(id, extensionRegistration("https://"+id+".invalid/v1", "test-key", "one")); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -624,11 +624,11 @@ func TestProviderScopedCallDoesNotWaitForTheRegistrationRefresh(t *testing.T) {
 
 // An aborted provider-scoped refresh must not swallow the queued registration refresh of the providers it covered. Pi's registration refresh takes no signal and runs to completion regardless of a later caller's abort (model-runtime.ts:744-750), so the registered provider still becomes available without another call.
 func TestAbortedScopedRefreshKeepsTheCoveredRegistrationRefresh(t *testing.T) {
-	calls := map[string]func(context.Context, *Services, string) bool{
-		"Refresh": func(ctx context.Context, services *Services, id string) bool {
+	calls := map[string]func(context.Context, *AgentSessionServices, string) bool{
+		"Refresh": func(ctx context.Context, services *AgentSessionServices, id string) bool {
 			return services.ModelRuntime().Refresh(ctx, ai.ModelsRefreshOptions{AllowNetwork: new(false), Providers: []string{id}}).Aborted
 		},
-		"ExtensionRefresh": func(ctx context.Context, services *Services, id string) bool {
+		"ExtensionRefresh": func(ctx context.Context, services *AgentSessionServices, id string) bool {
 			return services.Registry().ExtensionRefresh(ctx, new(false), []string{id}, nil).Aborted
 		},
 	}
@@ -719,4 +719,60 @@ func TestScopedGetAvailableStartsTheRegistrationRefresh(t *testing.T) {
 			t.Fatal("a scoped GetAvailable did not start the queued registration refresh")
 		}
 	})
+}
+
+// upstream: model-runtime.ts:884-897 registerNativeProvider marks the provider provisionally configured with the type its auth supports (`provider.auth.oauth && !provider.auth.apiKey ? "oauth" : "api_key"`), so a provider with a stored credential
+// is available before its queued refresh runs. The provider object's Auth member (Provider.auth) decides the type; a provider with no stored credential or configured key stays unavailable.
+func TestExtensionNativeRegistrationPublishesProvisionalConfiguredAuth(t *testing.T) {
+	cases := []struct {
+		name        string
+		auth        ai.ProviderAuth
+		stored      *ai.Credential
+		provisional *ai.AuthCheck
+	}{
+		{"api key", ai.ProviderAuth{APIKey: &ai.APIKeyAuth{Name: "key"}}, &ai.Credential{Type: ai.CredentialAPIKey, Key: "stored"}, &ai.AuthCheck{Type: ai.CredentialAPIKey, Source: "configured provider"}},
+		{"oauth only", ai.ProviderAuth{OAuth: &ai.OAuthAuth{Name: "oauth"}}, &ai.Credential{Type: ai.CredentialOAuth, Access: "access", Refresh: "refresh", Expires: 1 << 50}, &ai.AuthCheck{Type: ai.CredentialOAuth, Source: "configured provider"}},
+		{"oauth and api key", ai.ProviderAuth{APIKey: &ai.APIKeyAuth{Name: "key"}, OAuth: &ai.OAuthAuth{Name: "oauth"}}, &ai.Credential{Type: ai.CredentialAPIKey, Key: "stored"}, &ai.AuthCheck{Type: ai.CredentialAPIKey, Source: "configured provider"}},
+		{"no stored credential", ai.ProviderAuth{APIKey: &ai.APIKeyAuth{Name: "key"}}, nil, nil},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				services := newRegistrationServices(t)
+				const id = "provisional-ext-native"
+				if tc.stored != nil {
+					if err := services.Auth().Set(id, *tc.stored); err != nil {
+						t.Fatal(err)
+					}
+				}
+				runtime := services.ModelRuntime()
+				if _, err := runtime.GetAvailable(t.Context()); err != nil {
+					t.Fatal(err)
+				}
+				provider := &extension.NativeProvider{ID: id, Name: "Ext", Auth: tc.auth, Models: []extension.ProviderModelConfig{{ID: "model", API: ai.APIOpenAICompletions, BaseURL: "https://ext.invalid"}},
+					CheckAuth: func(context.Context, *ai.Credential) (*ai.AuthCheck, error) {
+						return &ai.AuthCheck{Type: ai.CredentialAPIKey}, nil
+					},
+					ResolveAuth: func(context.Context, *ai.Credential, ai.AuthResolutionOverrides) (*ai.AuthResult, *ai.Credential, error) {
+						return &ai.AuthResult{Auth: ai.ModelAuth{APIKey: "key"}}, nil, nil
+					},
+					ResolveRefreshCredential: func(context.Context, *ai.Credential) (*ai.Credential, *ai.Credential, error) { return nil, nil, nil },
+					Stream: func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+						return ai.NewAssistantMessageEventStream(), nil
+					},
+				}
+				if err := services.Registry().RegisterNativeProvider(t.Context(), provider); err != nil {
+					t.Fatal(err)
+				}
+				if got := snapshotAuth(runtime, id); !reflect.DeepEqual(got, tc.provisional) {
+					t.Fatalf("auth after registration=%+v, want provisional %+v", got, tc.provisional)
+				}
+				if tc.provisional == nil {
+					requireAvailableIDs(t, runtime, id)
+				} else {
+					requireAvailableIDs(t, runtime, id, "model")
+				}
+			})
+		})
+	}
 }

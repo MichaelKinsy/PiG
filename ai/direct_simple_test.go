@@ -6,8 +6,9 @@ import (
 	"testing"
 )
 
+// Pi streamSimple dispatches every built-in api, including google-vertex (packages/ai/src/api/google-vertex.ts:313 streamSimple).
 func TestDirectSimpleAuthenticationReachesRealConverters(t *testing.T) {
-	for _, api := range []API{APIAnthropicMessages, APIAzureOpenAIResponses, APIGoogleGenerativeAI, APIMistralConversations, APIOpenAICodexResponses, APIOpenAICompletions, APIOpenAIResponses} {
+	for _, api := range []API{APIAnthropicMessages, APIAzureOpenAIResponses, APIGoogleGenerativeAI, APIGoogleVertex, APIMistralConversations, APIOpenAICodexResponses, APIOpenAICompletions, APIOpenAIResponses} {
 		t.Run(string(api), func(t *testing.T) {
 			model := &Model{ID: "test-model", ProviderMeta: ProviderMetadata{API: api, ProviderID: "test-provider", BaseURL: "https://example.invalid"}, Capabilities: ModelCapabilities{ContextWindow: 10000, MaxOutputTokens: 1000}}
 			sentinel := errors.New("captured")
@@ -50,6 +51,10 @@ func TestDirectSimpleAuthHeadersMatchAPIRequirements(t *testing.T) {
 				}
 			}
 		}
+	}
+	// google-vertex.ts:430-434 resolveApiKey: without a key Vertex uses Application Default Credentials, so no key is not a direct-boundary error.
+	if _, err := directSimpleAPIKey(ProviderMetadata{API: APIGoogleVertex, ProviderID: "test-provider"}, StreamOptions{}); err != nil {
+		t.Fatalf("google-vertex without a key: %v", err)
 	}
 	// Model headers and ambient credentials are not options.apiKey/options.headers at the direct boundary.
 	t.Setenv("OPENAI_API_KEY", "ambient")

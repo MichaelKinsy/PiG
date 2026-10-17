@@ -1,0 +1,67 @@
+[
+ {
+  "upstream": "packages/ai/src/utils/overflow.ts",
+  "package": "./ai",
+  "tests": [
+   "TestIsRecoverableLengthUpstreamCases",
+   "TestOverflowLengthStopsUpstream",
+   "TestContextOverflowMatchesPiOnSeededMessages"
+  ],
+  "upstream_reference": "packages/ai/src/utils/overflow.ts (isRecoverableLength)",
+  "mutation": "ai/overflow.go: IsRecoverableLength treats output equal to the desired limit as recoverable (TestIsRecoverableLengthUpstreamCases, TestOverflowLengthStopsUpstream, TestContextOverflowMatchesPiOnSeededMessages FAIL); IsRecoverableLength accepts any stop reason but error (TestContextOverflowMatchesPiOnSeededMessages FAIL); baseline PASS"
+ },
+ {
+  "upstream": "packages/ai/src/images.ts",
+  "package": "./ai",
+  "tests": [
+   "TestImagesAPIProviderRegistryReturnsTheLatestRegistrationForAnAPI",
+   "TestRegisterBuiltInImagesAPIProvidersRegistersOpenRouter",
+   "TestRegisterImagesAPIProviderStoresTheSourceID",
+   "TestRegisteredImagesFunctionReceivesTheCallAndReturnsItsResult",
+   "TestImagesAPIProviderRegistryIsSafeForConcurrentUse"
+  ],
+  "upstream_reference": "packages/ai/src/images.ts and api-registry (registerImagesApiProvider, getImagesApiProvider, registerBuiltInImagesApiProviders)",
+  "mutation": "ai/images.go: RegisterImagesAPIProvider keeps the first registration of an API (TestImagesAPIProviderRegistryReturnsTheLatestRegistrationForAnAPI, TestRegisterImagesAPIProviderStoresTheSourceID FAIL); the source ID is dropped (TestImagesAPIProviderRegistryReturnsTheLatestRegistrationForAnAPI, TestRegisterImagesAPIProviderStoresTheSourceID FAIL); GetImagesAPIProvider reports a missing provider as found (TestRegisteredImagesFunctionReceivesTheCallAndReturnsItsResult FAIL); GetImagesAPIProvider looks up another API (TestImagesAPIProviderRegistryIsSafeForConcurrentUse, TestImagesAPIProviderRegistryReturnsTheLatestRegistrationForAnAPI, TestRegisterBuiltInImagesAPIProvidersRegistersOpenRouter FAIL); ai/openrouter_images.go: RegisterBuiltInImagesAPIProviders registers no generate function (TestRegisterBuiltInImagesAPIProvidersRegistersOpenRouter FAIL); baseline PASS"
+ },
+ {
+  "upstream": "packages/ai/src/models-store.ts",
+  "package": "./ai",
+  "tests": [
+   "TestInMemoryModelsStoreClonesAndDeletes",
+   "TestInMemoryModelsStoreKeepsDetachedCopiesPerProvider",
+   "TestInMemoryModelsStoreAbortedContextFailsBeforeActing"
+  ],
+  "upstream_reference": "packages/ai/src/models-store.ts InMemoryModelsStore (read/write/delete over cloned entries)",
+  "mutation": "ai/models_store.go: Read returns the stored entry uncloned, Delete keeps the entry, Write stores the caller's entry uncloned (TestInMemoryModelsStoreClonesAndDeletes, TestInMemoryModelsStoreKeepsDetachedCopiesPerProvider FAIL); Read ignores a cancelled context (TestInMemoryModelsStoreAbortedContextFailsBeforeActing, TestInMemoryModelsStoreClonesAndDeletes FAIL); baseline PASS"
+ },
+ {
+  "upstream": "packages/ai/src/auth/oauth/openai-codex.ts",
+  "package": "./ai",
+  "tests": [
+   "TestOAuthLoginReportsItsAuthorizeURLAndPisInstructions"
+  ],
+  "upstream_reference": "packages/ai/src/auth/oauth/openai-codex.ts callbacks.onAuth({ url, instructions })",
+  "mutation": "ai/oauth_openai_codex.go: onAuth instructions text changed (TestOAuthLoginReportsItsAuthorizeURLAndPisInstructions/openai_codex FAIL); baseline PASS"
+ },
+ {
+  "upstream": "packages/ai/src/providers/cloudflare-stream.ts",
+  "package": "./ai",
+  "tests": [
+   "TestCloudflareClassifierResolvesTheBaseURLFromTheOptionsEnv"
+  ],
+  "upstream_reference": "packages/ai/src/providers/cloudflare-stream.ts:31-36 (cloudflareClassifier)",
+  "mutation": "ai/system_one.go: CloudflareClassifier resolves placeholders against no env; the classifier receives no model (TestCloudflareClassifierResolvesTheBaseURLFromTheOptionsEnv FAIL); baseline PASS"
+ },
+ {
+  "upstream": "packages/ai/src/utils/event-stream.ts",
+  "package": "./ai",
+  "tests": [
+   "TestEventStreamDrainsBufferedEventsAndIgnoresPushAfterCompletion",
+   "TestEventStreamKeepsTheFirstResultWhenEndedWithAnotherOne",
+   "TestEventStreamPreservesOrderWhenEventsArriveWhileDraining",
+   "TestEventStreamDrainsBufferedEventsAfterEndWithResult"
+  ],
+  "upstream_reference": "packages/ai/src/utils/event-stream.ts EventStream (push, end, result) and packages/ai/test/event-stream.test.ts",
+  "mutation": "ai/event_stream_generic.go: Push keeps accepting events after completion (TestEventStreamDrainsBufferedEventsAndIgnoresPushAfterCompletion FAIL); settle lets a later result replace the first (TestEventStreamKeepsTheFirstResultWhenEndedWithAnotherOne FAIL); Push queues a new event at the head (TestEventStreamDrainsBufferedEventsAfterEndWithResult, TestEventStreamDrainsBufferedEventsAndIgnoresPushAfterCompletion, TestEventStreamKeepsTheFirstResultWhenEndedWithAnotherOne FAIL); baseline PASS"
+ }
+]

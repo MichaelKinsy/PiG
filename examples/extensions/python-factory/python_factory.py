@@ -26,4 +26,23 @@ def new_extension() -> pig_sdk.Extension:
         {"type": "object"},
         lambda ctx, args: {"content": "hello from python"},
     )
+
+    # A tool with a parameter: the schema tells the model what to pass, the handler checks it, and a raised
+    # exception is the tool call's error result.
+    def count_words(ctx, args):
+        text = args.get("text")
+        if not isinstance(text, str) or text == "":
+            raise ValueError("text is required")
+        return {"content": f"{len(text.split())} words"}
+
+    ext.tool(
+        "count_words",
+        "Count the words in a text",
+        {
+            "type": "object",
+            "properties": {"text": {"type": "string", "description": "The text to count"}},
+            "required": ["text"],
+        },
+        count_words,
+    )
     return ext

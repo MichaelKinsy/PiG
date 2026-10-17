@@ -57,6 +57,8 @@ func TestSurfaceCoversPiExtensionAPI(t *testing.T) {
 		"ctx.sessionManager.getBranch", "ctx.modelRegistry.find",
 		"tool.promptSnippet", "tool.renderCall", "tool render context.invalidate",
 		"command.getArgumentCompletions", "provider.oauth.login", "provider model.contextWindow",
+		// A callback parameter's type: the factory ui.setFooter takes receives it.
+		"ReadonlyFooterDataProvider.getGitBranch", "ReadonlyFooterDataProvider.onBranchChange",
 	} {
 		if !keys[want] {
 			t.Errorf("surface lacks %q", want)
@@ -230,6 +232,51 @@ class Thing:
 	}
 }
 
+// The component kit (D107) lives in a module of each SDK; its symbols are
+// qualified by that module, and an SDK without one yet adds none.
+func TestKitSymbolsAreModuleQualified(t *testing.T) {
+	root := t.TempDir()
+	for path, src := range map[string]string{
+		"extensions/sdk/kit/kit.go":          "package kit\n\ntype View struct{ Focus string }\n\nfunc NewContainer() {}\n",
+		"extensions/sdk-rs/src/kit/mod.rs":   "pub struct Container {}\nimpl Container {\n    pub fn new() -> Self { Container {} }\n}\n",
+		"extensions/sdk-py/pig_sdk/kit.py":   "class Container:\n    def view(self, width):\n        pass\n\n\nclass Stub(Protocol):\n    def view(self, width: int) -> View: ...\n\n\nclass Next(Protocol):\n    def handle(self, event: Event) -> Any: ...\n",
+		"extensions/sdk-py/pig_sdk/other.py": "class Other:\n    pass\n",
+	} {
+		full := filepath.Join(root, path)
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(src), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	goSyms, rs, py := symbolSet{}, symbolSet{}, symbolSet{}
+	if err := addKitSymbols(root, goSyms, rs, py); err != nil {
+		t.Fatal(err)
+	}
+	for _, check := range []struct {
+		set  symbolSet
+		want []string
+	}{
+		{goSyms, []string{"kit.NewContainer", "kit.View", "kit.View.Focus"}},
+		{rs, []string{"kit::Container", "kit::Container::new"}},
+		{py, []string{"kit.Container", "kit.Container.view", "kit.Container.view(width)", "kit.Stub.view(width)", "kit.Next", "kit.Next.handle(event)"}},
+	} {
+		for _, sym := range check.want {
+			if !check.set.has(sym) {
+				t.Errorf("kit symbols lack %s in %v", sym, check.set.sorted())
+			}
+		}
+	}
+	if py.has("kit.Other") || py.has("Container") {
+		t.Errorf("python kit symbols are not limited to the qualified kit module: %v", py.sorted())
+	}
+	empty := symbolSet{}
+	if err := addKitSymbols(t.TempDir(), empty, empty, empty); err != nil || len(empty) != 0 {
+		t.Errorf("an SDK without a kit added %v (err %v)", empty.sorted(), err)
+	}
+}
+
 func TestNamingRules(t *testing.T) {
 	for in, want := range map[string]string{"getLeafId": "get_leaf_id", "isUsingOAuth": "is_using_oauth", "getApiKeyAndHeaders": "get_api_key_and_headers", "hasUI": "has_ui"} {
 		if got := snake(in); got != want {
@@ -244,5 +291,48 @@ func TestNamingRules(t *testing.T) {
 	}
 	if !strings.Contains(renderCell(cell{Status: statusMissing}, true), "exception") {
 		t.Error("an excepted missing cell must link its exception")
+	}
+}
+
+// A callback parameter's type gets one set of rows however many members (and overloads) hand it to a callback; a
+// parameter that is the type itself, not a callback receiving it, adds none.
+func TestCallbackParameterTypeExpandsOnce(t *testing.T) {
+	m := newTSModule()
+	for _, d := range parseTSDecls(stripTSComments(`
+export interface FooterDataProvider { getGitBranch(): string | null; getAvailableProviderCount(): number; dispose(): void }
+export type ReadonlyFooterDataProvider = Pick<FooterDataProvider, "getGitBranch" | "getAvailableProviderCount">;
+export interface UI {
+	setFooter(factory: ((tui: unknown, footerData: ReadonlyFooterDataProvider) => unknown) | undefined): void;
+	setFooter(factory: (tui: unknown, footerData: ReadonlyFooterDataProvider, extra: string) => unknown): void;
+	setHeader(factory: (tui: unknown, footerData: ReadonlyFooterDataProvider) => unknown): void;
+	setTitle(title: ReadonlyFooterDataProvider): void;
+}
+`)) {
+		m.decls[d.Name] = d
+	}
+	ui, err := m.decl("UI")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rows []surfaceRow
+	seenMember := map[string]bool{}
+	for _, mem := range ui.Members {
+		if seenMember[mem.Name] {
+			continue
+		}
+		seenMember[mem.Name] = true
+		if err := addCallFields(m, &rows, "ui arguments", "ui."+mem.Name, "UI."+mem.Name, "ui", mem, ui); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var keys []string
+	for _, r := range rows {
+		if r.Group == "callback parameters" {
+			keys = append(keys, r.Key)
+		}
+	}
+	want := []string{"ReadonlyFooterDataProvider.getGitBranch", "ReadonlyFooterDataProvider.getAvailableProviderCount"}
+	if !slices.Equal(keys, want) {
+		t.Fatalf("callback parameter rows = %q, want %q", keys, want)
 	}
 }

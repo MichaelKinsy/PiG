@@ -132,7 +132,12 @@ func scan(root string, changed map[string]map[int]struct{}, full bool) ([]findin
 		}
 		if entry.IsDir() {
 			name := entry.Name()
-			if name == ".git" || name == ".upstream" || name == "tmp" || name == "vendor" || name == "node_modules" || name == "parity" && strings.Contains(filepath.ToSlash(path), "test/parity/artifacts") {
+			// third_party/ and the TinyGo runtime fork are upstream code kept verbatim (see their FORK.md and README.md); testdata holds fixtures.
+			slash := filepath.ToSlash(path)
+			if name == "third_party" || name == "testdata" || strings.HasSuffix(slash, "durable/core/budget/tinygo/src") {
+				return filepath.SkipDir
+			}
+			if name == ".git" || name == ".upstream" || name == "tmp" || name == "vendor" || name == "node_modules" || name == "parity" && strings.Contains(slash, "test/parity/artifacts") {
 				return filepath.SkipDir
 			}
 			return nil

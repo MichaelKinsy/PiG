@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const root = join(process.env.PI_PACKAGE_ROOT, "node_modules/@earendil-works/pi-ai");
-const pin = readFileSync("internal/coding/pigversion/pigversion.go", "utf8").match(/const UpstreamVersion = "([^"]+)"/)[1];
+const pin = readFileSync("internal/coding/pigversion/pigversion.go", "utf8").match(/const UpstreamPackageVersion = "([^"]+)"/)[1];
 assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, pin);
 const { createModels, createProvider } = await import(pathToFileURL(join(root, "dist/models.js")));
 const { InMemoryCredentialStore } = await import(pathToFileURL(join(root, "dist/auth/credential-store.js")));

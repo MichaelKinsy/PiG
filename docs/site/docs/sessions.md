@@ -1,18 +1,20 @@
 # Sessions
 
-A session is one conversation with its full history. By default, PiG saves its log from the first user message. Use `--no-session` to keep the Session log in memory.
+A session is one conversation with its full history. By default, PiG saves its log from the first user message. Use `--no-session` to keep the Session log in memory. Sessions work as in Pi 1.3.0 ([Pi's sessions guide](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/sessions.md)), apart from the differences named on this page.
 
 Every Session has an ID, including print (`-p`), JSON, RPC, and `--no-session` runs. A new Session gets a UUIDv7 unless you supply `--session-id`. Extensions can read the ID before the first model response. `--no-session` disables Session file persistence; it does not remove the ID or prevent an extension from keeping its own session-keyed data.
 
+A saved Session keeps in memory only the entries its current context uses: the latest compaction's kept messages, everything after them, and the small entries such as model and label changes. PiG reads older entries back from the session file when a command needs them, for example `/tree`, `/fork` or an export, so a long session costs memory in proportion to its context, not its history. Pi keeps every entry in memory (D112). Do not rewrite a session file while PiG has it open; appends by another PiG or Pi process are safe.
+
 ## Where sessions are stored
 
-Sessions live under `~/.pig/agent/sessions/`, in a directory per project. The
-directory name is the project path with separators replaced, wrapped in `--`, so
-sessions for different projects never mix.
+Sessions live under `~/.pig/agent/sessions/`, in a directory per project. The directory name is the project path with separators replaced, wrapped in `--`, so sessions for different projects never mix. PiG creates these directories with mode 0700, so only you can list them. Pi 1.3.0 creates them with the process umask (D132, [Pi #10770](https://github.com/earendil-works/pi/issues/10770)).
 
 Each persisted session uses a JSON Lines file. PiG selects its path when the Session is created, but the file does not exist until the session holds a user or assistant message. Setup entries alone, such as a model or thinking-level change, do not create it.
 
-Set `sessionDir` in [settings](/docs/latest/settings) to store sessions elsewhere.
+Set `sessionDir` in [settings](/docs/latest/settings) to store sessions elsewhere. `PIG_CODING_AGENT_SESSION_DIR` and `--session-dir` override it.
+
+When PiG resumes a session that has messages, the tools that the session's latest system message lists as active are active again, in that order, including tools that you or an extension turned on during the session. A listed tool that is not registered yet, such as a tool of an MCP server that is still connecting, turns on when it registers. Pi 1.3.0 restores the default tools instead, so a tool you had turned off comes back (D166, [Pi #10785](https://github.com/earendil-works/pi/issues/10785)).
 
 PiG saves a new session when the first user message is added, so the prompt stays on disk if the first turn never finishes. On exit, the resume hint uses `pig --session <id>`. It adds `--session-dir` only when the session directory differs from the default for the working directory, including after `-c`, `-r`, or `--session`.
 
@@ -63,28 +65,25 @@ Run `/share` to upload the active branch, including an in-memory Session, to `ht
 
 A share is unlisted, not private. Anyone with its URL can read and download it. The service accepts artifacts up to 8 MiB and deletes them after 30 days. Press `Escape` while the upload indicator is open to cancel the request. PiG never uploads a Session automatically. Use `/export` instead when the Session must stay local.
 
+Pi's `sessionShareDestination` setting (`auto`, `gist`, or `radius`) has no effect in PiG. PiG never uploads a share to Radius or a GitHub gist (D64).
+
 ## The session tree
 
-`/tree` shows the session as its entries. Move to an entry and continue from
-there. Earlier work stays; the new turns branch from the point you chose.
+`/tree` shows the session as its entries. Move to an entry and continue from there. Earlier work stays; the new turns branch from the point you chose.
 
-Use this after a wrong turn. Rather than telling the model to forget, move above
-the mistake and continue, so the failed attempt never reaches the model again.
+Use this after a wrong turn. Rather than telling the model to forget, move above the mistake and continue, so the failed attempt never reaches the model again.
 
 The active branch appears first. A `•` marks each entry on the path to the active leaf, not every branch. Type words or digits to search. Filtering reconnects each matching entry to its nearest visible ancestor. Press Escape to clear a search before closing the tree.
 
 Search and filter changes keep the selected entry when it remains visible. Otherwise, selection moves to its nearest visible ancestor, or the last visible entry if no ancestor matches. An empty result retains the selection for the next filter change. Search and filter changes clear folded branches. Press the active non-default filter key again to return to the default view.
 
-Filter the tree when it grows. `ctrl+u` shows your messages only, `ctrl+t` hides
-tool results, and `ctrl+l` shows labeled entries. See [keybindings](/docs/latest/keybindings).
+Filter the tree when it grows. `ctrl+u` shows your messages only, `ctrl+t` hides tool results, and `ctrl+l` shows labeled entries. See [keybindings](/docs/latest/keybindings).
 
 ## Naming and finding
 
 Session names replace each run of carriage returns or line feeds with a space and trim surrounding whitespace before persistence. Name-change subscribers receive the resulting name before the setter returns; suspended extension notifications do not block the setter.
 
-An unnamed session is identified by its time and first message, which is hard to
-recognize later. `/name` gives it a name, and `ctrl+n` in the session list filters
-to named sessions.
+An unnamed session is identified by its time and first message, which is hard to recognize later. `/name` gives it a name, and `ctrl+n` in the session list filters to named sessions.
 
 Run `pig -r` or `/resume` to open the session picker. Search matches the session ID, name, user and assistant message text, and working directory. Separate words must all match. Unquoted words use fuzzy matching; double quotes match a phrase with whitespace normalized. Use `re:<pattern>` for a case-insensitive regular expression.
 
@@ -98,15 +97,99 @@ In the interactive `/resume` picker, press `ctrl+r` to rename the selected Sessi
 
 ## What a session keeps
 
-The file keeps every entry: your messages, the model's replies, every tool call
-and its result, and each compaction. It is the complete record.
+The file keeps every entry: your messages, the model's replies, every tool call and its result, and each compaction. It is the complete record.
 
-The model sees less than the file holds. Compaction replaces older entries with a
-summary for the model, and does not change the file. See
-[compaction](/docs/latest/compaction).
+The model sees less than the file holds. Compaction replaces older entries with a summary for the model, and does not change the file. See [compaction](/docs/latest/compaction).
 
 ## Related
 
 - [Compaction](/docs/latest/compaction) covers what the model sees as a session grows.
 - [Keybindings](/docs/latest/keybindings) lists the tree and session-list keys.
 - [Slash commands](/docs/latest/slash-commands) lists every Session command.
+
+## Worked example: pick up, branch and name a conversation
+
+These commands were run in a folder called `ss` against a test model. They use print mode (`-p`), so that each prints one reply. The same flags work with the interactive screen. Session files here are in `~/.pig/agent/sessions/--<project path>--/`.
+
+**Start and name a conversation.** `--name` sets the display name when the session is created:
+
+```bash
+pig --name "Budget review" -p "Summarise the budget"
+```
+
+```text
+First answer.
+```
+
+PiG wrote one file for it, named `<time>_<id>.jsonl`:
+
+```text
+2026-10-11T16-53-22-789Z_01a12be2-22e5-7383-b1d3-c19c74fbda06.jsonl
+```
+
+**Continue the latest conversation in this folder.** `--continue` (`-c`) reopens it and appends to the same file (it held 9 lines afterwards):
+
+```bash
+pig -c -p "Now the risks"
+```
+
+```text
+Second answer.
+```
+
+**Reopen a specific one.** `--session` takes the file path or the start of its ID. Eight characters were enough here:
+
+```bash
+pig --session 01a12be2 -p "One more"
+```
+
+```text
+Third answer.
+```
+
+The same file grew to 11 lines, so this was the same conversation and the model saw the earlier turns.
+
+**Branch without touching the original.** `--fork` copies the conversation into a new file and continues there:
+
+```bash
+pig --fork 01a12be2 -p "Different angle"
+```
+
+```text
+Fourth.
+```
+
+The folder now holds two session files. The first is unchanged.
+
+**A wrong ID stops at once.** PiG writes to standard error, exits 1 and sends nothing to the model:
+
+```bash
+pig --session nosuch -p hi
+```
+
+```text
+No session found matching 'nosuch'
+```
+
+**Choose from a list.** `pig --resume` (`-r`) opens the picker. The fork shows under its parent. The number on the right is the message count and the age:
+
+```text
+Resume Session (Current Folder)                  ◉ Current Folder | ○ All  Name: All  Sort: Threaded
+tab scope · re:<pattern> regex · "phrase" exact
+ctrl+s sort · ctrl+n named · ctrl+d delete · ctrl+p path (off)
+>
+› Budget review                                                                                7 now
+     └─ Budget review                                                                          9 now
+```
+
+`Tab` switches between this folder and all folders, and typing filters the list. `Enter` opens the highlighted session.
+
+**Where the text of a session is.** Each line of the file is one JSON entry. The first two are the header and the name:
+
+```text
+{"type":"session","version":3,"id":"01a12be2-22e5-7383-b1d3-c19c74fbda06","timestamp":"2026-10-11T16:53:22.789Z","cwd":"/home/you/ss"}
+{"type":"session_info","id":"e9a4391c","parentId":null,"timestamp":"2026-10-11T16:53:22.789Z","name":"Budget review"}
+```
+
+The file holds everything you sent and everything the model and tools returned. To delete a conversation, delete the file, or press `ctrl+d` in the picker (PiG uses the `trash` command when it exists). See [Session format](/docs/latest/session-format) for the entries.
+

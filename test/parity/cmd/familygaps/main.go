@@ -337,25 +337,35 @@ func loadFamilies(path string) (familiesConfig, error) {
 	return cfg, nil
 }
 
-var portMapRowRE = regexp.MustCompile("^\\|\\s+`([^`]+)`\\s+\\|\\s+`([^`]*)`\\s+\\|\\s+(✅|🟡|⬜|⏸|🔴|n/a)\\s+\\|\\s*$")
+// The Pig cell is whatever sits between the upstream code span and the status: empty, code spans, or code spans followed by prose.
+var (
+	portMapRowRE        = regexp.MustCompile("^\\|\\s+`([^`]+)`\\s+\\|.*\\|\\s+(✅|🟡|⬜|⏸|🔴|n/a)\\s+\\|\\s*$")
+	portMapSeparatorRE  = regexp.MustCompile(`^\|[\s:|-]+\|\s*$`)
+	portMapHeaderRE     = regexp.MustCompile(`^\|\s+[Uu]pstream\s+\|`)
+	portMapDownstreamRE = regexp.MustCompile(`^\|\s+_\(downstream: [^)]*\)_\s+\|`)
+)
 
 type portMapEntry struct {
 	Path   string
 	Status string
 }
 
+// parsePortMap returns every upstream row. Header, separator and downstream rows are skipped by shape; any other line that starts with `|` and does not parse is an error, so no row is dropped silently.
 func parsePortMap(path string) ([]portMapEntry, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 	var out []portMapEntry
-	for line := range strings.SplitSeq(string(data), "\n") {
-		m := portMapRowRE.FindStringSubmatch(line)
-		if m == nil {
+	for i, line := range strings.Split(string(data), "\n") {
+		if !strings.HasPrefix(line, "|") || portMapSeparatorRE.MatchString(line) || portMapHeaderRE.MatchString(line) || portMapDownstreamRE.MatchString(line) {
 			continue
 		}
-		out = append(out, portMapEntry{Path: m[1], Status: m[3]})
+		m := portMapRowRE.FindStringSubmatch(line)
+		if m == nil {
+			return nil, fmt.Errorf("%s:%d: malformed PORT_MAP row (want | `upstream path` | pig cell | status |): %s", path, i+1, line)
+		}
+		out = append(out, portMapEntry{Path: m[1], Status: m[2]})
 	}
 	return out, nil
 }

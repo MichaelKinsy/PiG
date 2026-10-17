@@ -1,6 +1,7 @@
 package coding
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -68,9 +69,9 @@ func runtimeTestTextStream(provider, model, text string) (*ai.AssistantMessageEv
 	return stream, final
 }
 
-func newRuntimeTestServices(t *testing.T) *Services {
+func newRuntimeTestServices(t *testing.T) *AgentSessionServices {
 	t.Helper()
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -276,7 +277,7 @@ func TestModelRuntimePreparesRealProviderWireRequests(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(models), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+			services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -336,7 +337,7 @@ func TestModelRuntimePreparesZaiThinkingWirePayload(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(models), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -348,7 +349,7 @@ func TestModelRuntimePreparesZaiThinkingWirePayload(t *testing.T) {
 	messages := func(text string) ai.Context {
 		return ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText(text)}}}
 	}
-	result := services.ModelRuntime().Complete(context.Background(), model, messages("hello"), ai.StreamOptions{IsReasoning: true, Thinking: ai.ThinkingHigh})
+	result := services.ModelRuntime().Complete(context.Background(), model, messages("hello"), ai.StreamOptions{IsReasoning: true, Thinking: ai.ThinkingLevelHigh})
 	if result.StopReason != ai.StopReasonStop {
 		t.Fatalf("result = %#v", result)
 	}
@@ -357,7 +358,7 @@ func TestModelRuntimePreparesZaiThinkingWirePayload(t *testing.T) {
 		t.Fatalf("wire thinking = %#v, want {type:enabled,clear_thinking:false}", gotBody["thinking"])
 	}
 
-	result = services.ModelRuntime().Complete(context.Background(), model, messages("again"), ai.StreamOptions{IsReasoning: true, Thinking: ai.ThinkingOff})
+	result = services.ModelRuntime().Complete(context.Background(), model, messages("again"), ai.StreamOptions{IsReasoning: true, Thinking: ""})
 	if result.StopReason != ai.StopReasonStop {
 		t.Fatalf("off result = %#v", result)
 	}
@@ -379,7 +380,7 @@ func TestModelRuntimeRequestModelRefreshDoesNotMutateOriginal(t *testing.T) {
 		}
 	}
 	writeModels("https://first.example/v1")
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -389,7 +390,7 @@ func TestModelRuntimeRequestModelRefreshDoesNotMutateOriginal(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeModels("https://second.example/v1")
-	services.Registry().Refresh()
+	services.Registry().ModelRegistry.Refresh()
 	prepared, _, _, err := services.ModelRuntime().prepareRequest(context.Background(), model, ai.StreamOptions{})
 	if err != nil {
 		t.Fatal(err)
@@ -463,7 +464,7 @@ func TestSessionModelRuntimeLooksUpCurrentRegisteredAndUnknownModels(t *testing.
 	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(config), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -502,16 +503,16 @@ func TestSessionModelRuntimeLooksUpCurrentRegisteredAndUnknownModels(t *testing.
 
 func TestSessionModelRuntimeAppliesOnlyKnownGeneratedModelOverrides(t *testing.T) {
 	agentDir := t.TempDir()
-	config := `{"providers":{"openrouter":{"modelOverrides":{"anthropic/claude-sonnet-4":{"name":"Configured Sonnet"},"nonexistent/model-id":{"name":"Must stay absent"}}}}}`
+	config := `{"providers":{"openrouter":{"modelOverrides":{"anthropic/claude-sonnet-4.5":{"name":"Configured Sonnet"},"nonexistent/model-id":{"name":"Must stay absent"}}}}}`
 	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(config), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(services.Close)
-	model := services.ModelRuntime().GetModel("openrouter", "anthropic/claude-sonnet-4")
+	model := services.ModelRuntime().GetModel("openrouter", "anthropic/claude-sonnet-4.5")
 	if model == nil || model.DisplayName != "Configured Sonnet" {
 		t.Fatalf("known generated override = %#v", model)
 	}
@@ -524,7 +525,7 @@ func TestSessionModelRuntimeAppliesOnlyKnownGeneratedModelOverrides(t *testing.T
 			continue
 		}
 		switch model.ID {
-		case "anthropic/claude-sonnet-4":
+		case "anthropic/claude-sonnet-4.5":
 			knownCount++
 			if model.DisplayName != "Configured Sonnet" {
 				t.Fatalf("catalog override name = %q", model.DisplayName)
@@ -538,6 +539,7 @@ func TestSessionModelRuntimeAppliesOnlyKnownGeneratedModelOverrides(t *testing.T
 	}
 }
 
+// Pi: packages/coding-agent/src/core/model-registry.ts:129 (ModelRegistry.stream); packages/coding-agent/src/core/model-registry.ts:138 (ModelRegistry.streamSimple); packages/coding-agent/src/core/model-registry.ts:142 (ModelRegistry.complete).
 func TestModelRegistryDelegatesToBoundRuntime(t *testing.T) {
 	services := newRuntimeTestServices(t)
 	provider := &runtimeTestProvider{id: "test", stream: func(context.Context, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
@@ -569,7 +571,7 @@ func TestGeneratedOverridePreservesPresenceAndPartialFields(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(config), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -632,7 +634,7 @@ func TestGeneratedOverrideCanClearCostTiers(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(config), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -652,7 +654,7 @@ func TestGeneratedOverrideMergesPromptCache(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(config), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -675,7 +677,7 @@ func TestExplicitModelOverrideMergesPartialCost(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(config), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -698,7 +700,7 @@ func TestModelRegistryChangeListenerCoversRegistrationAndRemoval(t *testing.T) {
 		notifications.Add(1)
 	})
 	defer detach()
-	if err := registry.RegisterProvider("dynamic", extension.ProviderConfig{
+	if err := registry.RegisterExtensionProvider("dynamic", extension.ProviderConfig{
 		API:     ai.APIOpenAICompletions,
 		BaseURL: "https://models.invalid/v1",
 		Models:  []extension.ProviderModelConfig{{ID: "model", Name: "Model"}},
@@ -722,7 +724,7 @@ func TestModelRegistryChangeListenerDetachCannotClearReplacement(t *testing.T) {
 	detachOld := registry.SetChangeListener(func() { oldNotifications.Add(1) })
 	detachCurrent := registry.SetChangeListener(func() { currentNotifications.Add(1) })
 	detachOld()
-	if err := registry.RegisterProvider("dynamic", extension.ProviderConfig{BaseURL: "https://models.invalid/v1"}); err != nil {
+	if err := registry.RegisterExtensionProvider("dynamic", extension.ProviderConfig{BaseURL: "https://models.invalid/v1"}); err != nil {
 		t.Error(err)
 	}
 	if got := oldNotifications.Load(); got != 0 {
@@ -749,7 +751,7 @@ func TestModelRegistryChangeListenerDetachDrainsActivePublication(t *testing.T) 
 	})
 	changed := make(chan struct{})
 	go func() {
-		if err := registry.RegisterProvider("dynamic", extension.ProviderConfig{BaseURL: "https://models.invalid/v1"}); err != nil {
+		if err := registry.RegisterExtensionProvider("dynamic", extension.ProviderConfig{BaseURL: "https://models.invalid/v1"}); err != nil {
 			t.Error(err)
 		}
 		close(changed)
@@ -784,7 +786,7 @@ func TestGeneratedProviderOverlayAppearsInFullCatalog(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(config), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -823,7 +825,7 @@ func TestProjectionPreservesCompleteUpstreamCompat(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(config), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -832,7 +834,7 @@ func TestProjectionPreservesCompleteUpstreamCompat(t *testing.T) {
 	if model == nil {
 		t.Fatal("configured generated model is absent")
 	}
-	wire, err := json.Marshal(extension.ModelInfo(model)["compat"])
+	wire, err := json.Marshal(modelObjectMember(t, model, "compat"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -854,7 +856,7 @@ func TestProjectionPreservesCompleteUpstreamCompat(t *testing.T) {
 		}
 		gotJSON, _ := json.Marshal(got)
 		wantJSON, _ := json.Marshal(value)
-		if string(gotJSON) != string(wantJSON) {
+		if !bytes.Equal(gotJSON, wantJSON) {
 			t.Errorf("compat.%s = %s, want %s", field, gotJSON, wantJSON)
 		}
 	}
@@ -875,7 +877,7 @@ func TestRegistryFindDoesNotPublishResolvedRequestHeaders(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(config), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -884,7 +886,7 @@ func TestRegistryFindDoesNotPublishResolvedRequestHeaders(t *testing.T) {
 	if model == nil {
 		t.Fatal("configured generated model is absent")
 	}
-	if got := extension.ModelInfo(model)["headers"]; got != nil {
+	if got := modelObjectMember(t, model, "headers"); got != nil {
 		t.Fatalf("ModelRegistry.find projection published request headers: %#v", got)
 	}
 	result := services.ModelRuntime().Complete(context.Background(), model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("hello")}}}, ai.StreamOptions{})
@@ -922,7 +924,7 @@ func TestSameLayerHeaderCollisionsUsePiInsertionOrder(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(config), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1000,12 +1002,12 @@ func TestGetApiKeyAndHeadersUsesPiHeaderOrder(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(config), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(services.Close)
-	if err := services.Registry().RegisterProvider("openai", extension.ProviderConfig{
+	if err := services.Registry().RegisterExtensionProvider("openai", extension.ProviderConfig{
 		BaseURL: "https://extension.invalid/v1",
 		Headers: map[string]string{"x-layer": "extension-provider"},
 		Models: []extension.ProviderModelConfig{{
@@ -1035,21 +1037,21 @@ func TestGetApiKeyAndHeadersUsesPiHeaderOrder(t *testing.T) {
 }
 
 func TestExtensionModelListPresenceControlsCatalogReplacement(t *testing.T) {
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(services.Close)
 	registry := services.Registry()
 
-	if err := registry.RegisterProvider("openai", extension.ProviderConfig{BaseURL: "https://extension.invalid/v1"}); err != nil {
+	if err := registry.RegisterExtensionProvider("openai", extension.ProviderConfig{BaseURL: "https://extension.invalid/v1"}); err != nil {
 		t.Error(err)
 	}
 	if got := services.ModelRuntime().GetModel("openai", "gpt-5.4"); got == nil {
 		t.Fatal("omitted extension models removed generated membership")
 	}
 
-	if err := registry.RegisterProvider("openai", extension.ProviderConfig{
+	if err := registry.RegisterExtensionProvider("openai", extension.ProviderConfig{
 		Models: []extension.ProviderModelConfig{},
 	}); err != nil {
 		t.Error(err)
@@ -1063,7 +1065,7 @@ func TestExtensionModelListPresenceControlsCatalogReplacement(t *testing.T) {
 		}
 	}
 
-	if err := registry.RegisterProvider("openai", extension.ProviderConfig{
+	if err := registry.RegisterExtensionProvider("openai", extension.ProviderConfig{
 		API: ai.APIOpenAIResponses,
 		Models: []extension.ProviderModelConfig{{
 			ID: "extension-only", Name: "Extension only", API: ai.APIOpenAIResponses,
@@ -1085,6 +1087,7 @@ func TestExtensionModelListPresenceControlsCatalogReplacement(t *testing.T) {
 	}
 }
 
+// model-config.ts HeadersSchema is Record<string, string>, so models.json cannot carry the null deletion marker in Pi 1.1.0 and the case is not composed here.
 func TestExtensionRequestHeaderCompositionMatchesPiOrder(t *testing.T) {
 	t.Setenv("OPENAI_API_KEY", "test-key")
 	requestHeaders := make(chan http.Header, 1)
@@ -1096,19 +1099,19 @@ func TestExtensionRequestHeaderCompositionMatchesPiOrder(t *testing.T) {
 	defer server.Close()
 
 	agentDir := t.TempDir()
-	config := `{"providers":{"openai":{"headers":{"X-Provider":"models-json-provider","X-Provider-Only":"provider-only","X-Delete":"provider"},"models":[{"id":"extension-only","headers":{"X-Definition":"models-json-definition","X-Model":"models-json-definition","X-Definition-Only":"definition-only"}}],"modelOverrides":{"extension-only":{"headers":{"x-definition":"models-json-override","x-model":"models-json-override","X-Override-Only":"override-only","X-DELETE":null}}}}}}`
+	config := `{"providers":{"openai":{"headers":{"X-Provider":"models-json-provider","X-Provider-Only":"provider-only"},"models":[{"id":"extension-only","headers":{"X-Definition":"models-json-definition","X-Model":"models-json-definition","X-Definition-Only":"definition-only"}}],"modelOverrides":{"extension-only":{"headers":{"x-definition":"models-json-override","x-model":"models-json-override","X-Override-Only":"override-only"}}}}}}`
 	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(config), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(services.Close)
-	if err := services.Registry().RegisterProvider("openai", extension.ProviderConfig{
+	if err := services.Registry().RegisterExtensionProvider("openai", extension.ProviderConfig{
 		BaseURL: server.URL,
 		API:     ai.APIOpenAIResponses,
-		Headers: map[string]string{"x-provider": "extension-provider", "X-Extension-Only": "extension-only", "x-delete": "extension"},
+		Headers: map[string]string{"x-provider": "extension-provider", "X-Extension-Only": "extension-only"},
 		Models: []extension.ProviderModelConfig{{
 			ID: "extension-only", Name: "Extension", API: ai.APIOpenAIResponses,
 			Input: []string{"text"}, ContextWindow: 1000, MaxTokens: 100,
@@ -1133,11 +1136,6 @@ func TestExtensionRequestHeaderCompositionMatchesPiOrder(t *testing.T) {
 		"X-Extension-Model-Only": "extension-model-only",
 	}
 	assertHeadersEqualFold(t, entry.Headers, want)
-	for name := range entry.Headers {
-		if strings.EqualFold(name, "X-Delete") {
-			t.Errorf("nullable model override did not delete %q", name)
-		}
-	}
 
 	model := services.ModelRuntime().GetModel("openai", "extension-only")
 	if model == nil {
@@ -1187,12 +1185,12 @@ func assertHeadersEqualFold(t *testing.T, got, want map[string]string) {
 }
 
 func TestExtensionModelsReplaceBuiltinProviderCatalog(t *testing.T) {
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(services.Close)
-	if err := services.Registry().RegisterProvider("openai", extension.ProviderConfig{
+	if err := services.Registry().RegisterExtensionProvider("openai", extension.ProviderConfig{
 		BaseURL: "https://extension.invalid/v1",
 		API:     ai.APIOpenAIResponses,
 		Models: []extension.ProviderModelConfig{{
@@ -1222,12 +1220,12 @@ func TestModelsJSONOverrideRemainsAboveExtensionModels(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(config), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(services.Close)
-	if err := services.Registry().RegisterProvider("openai", extension.ProviderConfig{
+	if err := services.Registry().RegisterExtensionProvider("openai", extension.ProviderConfig{
 		BaseURL: "https://extension.invalid/v1",
 		API:     ai.APIOpenAIResponses,
 		Models: []extension.ProviderModelConfig{{
@@ -1259,7 +1257,7 @@ func TestProviderValidationAcceptsRequestAuthOnlyConfiguration(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(config), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+			services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1281,7 +1279,7 @@ func TestOAuthWithoutBaseURLKeepsBuiltinProviderAndReportsError(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(`{"providers":{"openai":{"oauth":"radius"}}}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1300,7 +1298,7 @@ func TestHeadersOnlyProviderOverlayIsValid(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(config), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1309,7 +1307,7 @@ func TestHeadersOnlyProviderOverlayIsValid(t *testing.T) {
 	if model == nil {
 		t.Fatal("generated model is absent")
 	}
-	if got := extension.ModelInfo(model)["headers"]; got != nil {
+	if got := modelObjectMember(t, model, "headers"); got != nil {
 		t.Fatalf("model projection exposed configured request headers: %#v", got)
 	}
 	entry, ok := services.Registry().Resolve("openai", "gpt-5.4")
@@ -1318,7 +1316,7 @@ func TestHeadersOnlyProviderOverlayIsValid(t *testing.T) {
 	}
 	for _, candidate := range services.ModelRuntime().GetModels() {
 		if candidate.ProviderMeta.ProviderID == "openai" && candidate.ID == "gpt-5.4" {
-			if got := extension.ModelInfo(candidate)["headers"]; got != nil {
+			if got := modelObjectMember(t, candidate, "headers"); got != nil {
 				t.Errorf("catalog projection exposed configured request headers: %#v", got)
 			}
 			return

@@ -16,11 +16,11 @@ import (
 // upstream: agent-session.ts _bindExtensionCore binds getAllTools/getActiveTools/setActiveTools in every mode.
 func TestBuiltExtensionScopesToolsByTheOwningPigletEntry(t *testing.T) {
 	empty, all := []string{}, []string{"delegate"}
-	sourceInfo := func(path string) any {
-		return map[string]any{"path": path, "source": "local", "scope": "temporary", "origin": "top-level"}
+	sourceInfo := func(path string) extension.SourceInfo {
+		return extension.SourceInfo{Path: path, Source: "local", Scope: "temporary", Origin: "top-level"}
 	}
 	tools := []extension.ToolInfo{
-		{Name: "read", SourceInfo: struct{ Path, Source string }{"builtin:read", "builtin"}},
+		{Name: "read", SourceInfo: extension.SourceInfo{Path: "builtin:read", Source: "builtin"}},
 		{Name: "pig_doctor", SourceInfo: sourceInfo("/p/pig-doctor")},
 		{Name: "delegate", SourceInfo: sourceInfo("/p/delegator")},
 		{Name: "delegate_other", SourceInfo: sourceInfo("/p/delegator")},
@@ -59,13 +59,13 @@ func TestBuiltExtensionScopesToolsByTheOwningPigletEntry(t *testing.T) {
 	}
 }
 
-// Real extension tools carry codingagent.PiSourceInfo (value or pointer), not a map. Even with no owner resolver, an
+// Real extension tools carry a SourceInfo, not a source name. Even with no owner resolver, an
 // extension tool must never be labelled "builtin" and governed by root `tools`.
 func TestExtensionToolWithPiSourceInfoIsNotScopedAsBuiltin(t *testing.T) {
 	root, todo := []string{"read"}, []string{"todo"}
 	info := codingagent.PiSourceInfo{Path: "/home/u/.pig/npm/node_modules/@juicesharp/rpiv-todo/index.ts", Source: "npm:@juicesharp/rpiv-todo", Scope: "temporary", Origin: "package"}
 	piglet := &Piglet{Name: "p", BuiltinTools: &root, Extensions: []ExtensionEntry{{Name: "rpiv-todo", Tools: &todo}}}
-	for name, sourceInfo := range map[string]any{"value": info, "pointer": &info} {
+	for name, sourceInfo := range map[string]extension.SourceInfo{"value": info} {
 		for ownerName, owner := range map[string]func(extension.ToolInfo) string{
 			"nil owner":   nil,
 			"empty owner": func(extension.ToolInfo) string { return "" },
@@ -78,8 +78,8 @@ func TestExtensionToolWithPiSourceInfoIsNotScopedAsBuiltin(t *testing.T) {
 		} {
 			t.Run(name+"/"+ownerName, func(t *testing.T) {
 				tools := []extension.ToolInfo{
-					{Name: "read", SourceInfo: struct{ Path, Source string }{"builtin:read", "builtin"}},
-					{Name: "write", SourceInfo: struct{ Path, Source string }{"builtin:write", "builtin"}},
+					{Name: "read", SourceInfo: extension.SourceInfo{Path: "builtin:read", Source: "builtin"}},
+					{Name: "write", SourceInfo: extension.SourceInfo{Path: "builtin:write", Source: "builtin"}},
 					{Name: "todo", SourceInfo: sourceInfo},
 				}
 				var active []string

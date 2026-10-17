@@ -94,6 +94,7 @@ func assertRPCPipeFailureNoLeak(t *testing.T, available int) {
 	}
 }
 
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:74 (RpcClient.start); packages/coding-agent/src/modes/rpc/rpc-client.ts:145 (RpcClient.stop); packages/coding-agent/src/modes/rpc/rpc-client.ts:172 (RpcClient.onEvent); packages/coding-agent/src/modes/rpc/rpc-client.ts:185 (RpcClient.getStderr).
 func TestRpcStopClosesInheritedOutputDescriptors(t *testing.T) {
 	script := filepath.Join(t.TempDir(), "agent.sh")
 	// The background sleep inherits the child's stdout and stderr. The child
@@ -141,6 +142,10 @@ func TestRpcStopClosesInheritedOutputDescriptors(t *testing.T) {
 
 // Stop's SIGTERM ends the child while a request is in flight; the exit handler
 // rejects it with Node's (code=null signal=SIGTERM) rendering.
+// mutation-checked: zeroing the results of RpcClient.GetState, RpcClient.Stop fails it
+// Pi: packages/coding-agent/src/modes/rpc/rpc-client.ts:251 (getState)
+// Pi: packages/coding-agent/src/modes/rpc/rpc-client.ts:145 (stop)
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:74 (RpcClient.start); packages/coding-agent/src/modes/rpc/rpc-client.ts:145 (RpcClient.stop); packages/coding-agent/src/modes/rpc/rpc-client.ts:251 (RpcClient.getState).
 func TestRpcClientStopReportsSignalExitToPendingRequests(t *testing.T) {
 	client, _ := childClient(t, "emit")
 	if err := client.Start(); err != nil {
@@ -173,6 +178,7 @@ func TestRpcClientStopReportsSignalExitToPendingRequests(t *testing.T) {
 	}
 }
 
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:74 (RpcClient.start); packages/coding-agent/src/modes/rpc/rpc-client.ts:145 (RpcClient.stop); packages/coding-agent/src/modes/rpc/rpc-client.ts:172 (RpcClient.onEvent); packages/coding-agent/src/modes/rpc/rpc-client.ts:185 (RpcClient.getStderr).
 func TestRpcClientStopDoesNotCloseStdoutBeforeChildExits(t *testing.T) {
 	// rpc-client.ts detaches JSONL callbacks before SIGTERM but leaves stdout open until exit.
 	script := filepath.Join(t.TempDir(), "shutdown-output.mjs")
@@ -226,6 +232,7 @@ setInterval(() => process.stdout.write('{"type":"tick"}\n'), 10);
 	}
 }
 
+// packages/coding-agent/src/modes/rpc/rpc-client.ts:74 (RpcClient.start); packages/coding-agent/src/modes/rpc/rpc-client.ts:145 (RpcClient.stop); packages/coding-agent/src/modes/rpc/rpc-client.ts:172 (RpcClient.onEvent).
 func TestRPCStopReapsForcedKillAndRejectsPending(t *testing.T) {
 	script := filepath.Join(t.TempDir(), "ignore-term.sh")
 	if err := os.WriteFile(script, []byte("#!/bin/sh\ntrap '' TERM\nprintf '{\"type\":\"ready\"}\\n'\nwhile read line; do :; done\n"), 0o700); err != nil {

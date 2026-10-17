@@ -40,7 +40,7 @@ func marshalInSourceOrder(value any, source json.RawMessage) ([]byte, error) {
 			if i > 0 {
 				buf.WriteByte(',')
 			}
-			name, err := json.Marshal(key)
+			name, err := json.MarshalJS(key)
 			if err != nil {
 				return nil, err
 			}
@@ -80,7 +80,7 @@ func marshalInSourceOrder(value any, source json.RawMessage) ([]byte, error) {
 		buf.WriteByte(']')
 		return buf.Bytes(), nil
 	}
-	return json.Marshal(value)
+	return json.MarshalJS(value)
 }
 
 // objectKeyOrder returns the keys of the JSON object text in the order it writes them.

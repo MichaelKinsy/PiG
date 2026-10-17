@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 func TestBundledPigletClosurePathAndSizeLimits(t *testing.T) {
@@ -121,5 +121,28 @@ func TestPigletClosurePreservesExecutableMode(t *testing.T) {
 	}
 	if closure.modes[relative].Perm()&0o111 != info.Mode().Perm()&0o111 {
 		t.Fatal("executable mode lost")
+	}
+}
+
+func TestBundledPigletClosureErrorNamesPathAndOrigin(t *testing.T) {
+	root, err := os.OpenRoot(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = root.Close() }()
+	for _, tc := range []struct{ source, want string }{
+		{"name: alpha\npackages: {herdr: local:../../components/herdr}\n", `Package herdr origin "local:../../components/herdr"`},
+		{"name: alpha\nskills: [{name: review, origins: [local:../review]}]\n", `skill review origin "local:../review"`},
+		{"name: alpha\nsystemPrompt: {file: ../prompt.md}\n", `systemPrompt file "../prompt.md"`},
+	} {
+		var node yaml.Node
+		if err := yaml.Unmarshal([]byte(tc.source), &node); err != nil {
+			t.Fatal(err)
+		}
+		closure := pigletClosure{root: root, prefix: "alpha.source/commit", files: map[string][]byte{}, modes: map[string]os.FileMode{}}
+		err := closure.rewrite(node.Content[0])
+		if err == nil || !strings.Contains(err.Error(), tc.want) || !strings.Contains(err.Error(), "leaves the added subdirectory") {
+			t.Fatalf("err=%v, want %s and reason", err, tc.want)
+		}
 	}
 }

@@ -20,7 +20,7 @@ func (m *Models) requireProvider(model AnyModel) (*ModelsProvider, error) {
 
 // requireChatProvider rejects models whose type is not chat before looking up their provider.
 func (m *Models) requireChatProvider(model *Model) (*ModelsProvider, error) {
-	if err := assertChatModel(model); err != nil {
+	if err := AssertChatModel(model); err != nil {
 		return nil, err
 	}
 	return m.requireProvider(model)
@@ -99,8 +99,9 @@ func (m *Models) lazyStream(ctx context.Context, model *Model, setup func() (*As
 	}, m.operations.Go)
 }
 
+// pushModelsSetupError ends stream with lazy.ts createSetupErrorMessage's message, errorMessage before timestamp.
 func pushModelsSetupError(stream *AssistantMessageEventStream, model *Model, err error) {
-	message := &AssistantMessage{API: model.ProviderMeta.API, Provider: modelProviderID(model), Model: model.ID, Content: []AssistantContentBlock{}, StopReason: StopReasonError, ErrorMessage: err.Error(), Timestamp: time.Now().UnixMilli()}
+	message := &AssistantMessage{API: model.ProviderMeta.API, Provider: modelProviderID(model), Model: model.ID, Content: []AssistantContentBlock{}, StopReason: StopReasonError, ErrorMessage: err.Error(), ErrorBeforeTimestamp: true, Timestamp: time.Now().UnixMilli()}
 	_ = stream.Push(ErrorEvent{Reason: StopReasonError, Error: message})
 }
 

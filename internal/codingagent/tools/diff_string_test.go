@@ -29,7 +29,8 @@ func TestGenerateDiffString_MatchesUpstreamOracle(t *testing.T) {
 		t.Fatalf("oracle corpus too small (%d); regenerate", len(cases))
 	}
 	for _, c := range cases {
-		diff, first := GenerateDiffString(c.Old, c.New)
+		result := GenerateDiffString(c.Old, c.New)
+		diff, first := result.Diff, firstLine(result)
 		if diff != c.Diff {
 			t.Errorf("case %q diff mismatch:\n--- got ---\n%q\n--- want ---\n%q\n--- old ---\n%q\n--- new ---\n%q",
 				c.Name, diff, c.Diff, c.Old, c.New)
@@ -43,8 +44,24 @@ func TestGenerateDiffString_MatchesUpstreamOracle(t *testing.T) {
 // An identical edit yields an empty diff and firstChangedLine 0 (upstream
 // `undefined`).
 func TestGenerateDiffString_Identical(t *testing.T) {
-	diff, first := GenerateDiffString("same\n", "same\n")
-	if diff != "" || first != 0 {
-		t.Errorf("identical = (%q, %d), want (\"\", 0)", diff, first)
+	result := GenerateDiffString("same\n", "same\n")
+	if result.Diff != "" || result.FirstChangedLine != nil {
+		t.Errorf("identical = (%q, %v), want (\"\", nil)", result.Diff, result.FirstChangedLine)
+	}
+}
+
+// firstLine reads FirstChangedLine with upstream `undefined` as 0.
+func firstLine(r DiffStringResult) int {
+	if r.FirstChangedLine == nil {
+		return 0
+	}
+	return *r.FirstChangedLine
+}
+
+// A change reports its first changed line as a present value, not nil.
+func TestGenerateDiffString_FirstChangedLineIsPresentOnChange(t *testing.T) {
+	result := GenerateDiffString("a\nb\n", "a\nB\n")
+	if result.FirstChangedLine == nil || *result.FirstChangedLine != 2 {
+		t.Fatalf("FirstChangedLine = %v, want 2", result.FirstChangedLine)
 	}
 }

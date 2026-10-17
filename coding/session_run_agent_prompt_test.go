@@ -110,8 +110,8 @@ func TestCheckCompactionSilentOverflowCompactsWithoutRetry(t *testing.T) {
 	if continueRun {
 		t.Fatal("a completed overflowing response must not be retried")
 	}
-	for _, entry := range sess.inner.Entries() {
-		if entry.Base.Type == "context_edit" {
+	for _, entry := range sess.inner.GetEntries() {
+		if entry.Base().Type == "context_edit" {
 			t.Fatal("a completed response must stay in context, not be omitted")
 		}
 	}
@@ -161,9 +161,9 @@ func TestCheckCompactionErrorWithoutUsageEstimatesFromLastUsage(t *testing.T) {
 		t.Fatalf("compaction_end = %+v, want a threshold compaction from the usage estimate", end)
 	}
 	compacted := false
-	for _, entry := range sess.inner.Entries() {
+	for _, entry := range sess.inner.GetEntries() {
 		var compaction icodingagent.CompactionEntry
-		if entry.Base.Type == "compaction" && json.Unmarshal(entry.Raw(), &compaction) == nil {
+		if entry.Base().Type == "compaction" && json.Unmarshal(entry.Raw(), &compaction) == nil {
 			compacted = true
 		}
 	}

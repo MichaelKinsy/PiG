@@ -10,11 +10,14 @@ import (
 	"testing"
 	"time"
 
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
+// Pi: packages/coding-agent/src/core/extensions/types.ts:348 (Context.isIdle); packages/coding-agent/src/core/extensions/types.ts:974 (BoundaryContextPreview.contextMessages); packages/coding-agent/src/core/extensions/types.ts:976 (BoundaryContextPreview.pendingMessages).
 func TestUpstreamSessionBoundariesDrafts(t *testing.T) {
 	for _, queueKind := range []string{"steering", "follow-up", "both"} {
 		name := fmt.Sprintf("preserves %s queue scheduling around a turn_end handoff", queueKind)
@@ -293,17 +296,17 @@ func TestUpstreamSessionBoundariesDrafts(t *testing.T) {
 		userID, toolID := "", ""
 		assistantIDs := []string{}
 		for _, entry := range h.entries("message") {
-			message, ok := entry.AsMessage()
+			message, ok := entry.(icodingagent.MessageEntry)
 			if !ok {
 				t.Fatal("message entry has no message")
 			}
 			switch {
 			case message.Message.User != nil:
-				userID = entry.Base.ID
+				userID = entry.Base().ID
 			case message.Message.Assistant != nil:
-				assistantIDs = append(assistantIDs, entry.Base.ID)
+				assistantIDs = append(assistantIDs, entry.Base().ID)
 			case message.Message.ToolResult != nil:
-				toolID = entry.Base.ID
+				toolID = entry.Base().ID
 			}
 		}
 		if userID == "" || toolID == "" || len(assistantIDs) != 2 {

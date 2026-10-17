@@ -1,0 +1,47 @@
+[
+ {
+  "ids": [
+   "pkg:mcp/.#parseJsonRpcMessage"
+  ],
+  "targets": [
+   "mcp/jsonrpc.go#ParseJSONRPCMessage"
+  ],
+  "production": [
+   "call:mcp/streamable_http.go#StreamableHTTPTransport.Send"
+  ],
+  "evidence": [
+   "test:mcp/upstream_oracle_test.go#TestParseJSONRPCMessageMatchesPi"
+  ],
+  "rationale": "protocol/jsonrpc.ts parseJsonRpcMessage(value: unknown) is ParseJSONRPCMessage([]byte) (JSONRPCMessage, error): Go parses bytes and a thrown validation error is the returned error. TestParseJSONRPCMessageMatchesPi compares every recorded Pi result and error against mcp/testdata/upstream-golden.json, produced by mcp/testdata/upstream-oracle.mjs running Pi's function."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#LATEST_PROTOCOL_VERSION"
+  ],
+  "targets": [
+   "mcp/types.go#LatestProtocolVersion"
+  ],
+  "production": [
+   "call:mcp/client.go#Client.initialize"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientInitializesTheConnectionBeforeExposingServerInformation"
+  ],
+  "rationale": "protocol/types.ts LATEST_PROTOCOL_VERSION = \"2025-11-25\" is the Go constant LatestProtocolVersion with the same value; initialize sends it and the test asserts the negotiated version."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#SUPPORTED_PROTOCOL_VERSIONS"
+  ],
+  "targets": [
+   "mcp/types.go#SupportedProtocolVersions"
+  ],
+  "production": [
+   "call:mcp/client.go#Client.initialize"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientAcceptsServersThatAnswerWithAnOlderProtocolVersion"
+  ],
+  "rationale": "protocol/types.ts SUPPORTED_PROTOCOL_VERSIONS (2025-11-25, 2025-06-18, 2025-03-26, 2024-11-05) is the Go slice SupportedProtocolVersions with the same four values in the same order; initialize rejects a server version outside it."
+ }
+]

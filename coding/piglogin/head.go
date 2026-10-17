@@ -3,6 +3,8 @@ package piglogin
 import (
 	"fmt"
 	"image/color"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -42,6 +44,13 @@ func HeadPixels(variant Variant) []HeadPixel {
 		}
 	}
 	return pixels
+}
+
+// SameHead reports whether two variants draw the same pig head: the same grid in the same colors.
+// pig additive (D91): a frontend's mark is the active sprite's head, rebuilt only when the head changes.
+func SameHead(a, b Variant) bool {
+	return slices.Equal(HeadFor(a), HeadFor(b)) && a.Body == b.Body && a.Highlight == b.Highlight && a.Snout == b.Snout &&
+		a.Blush == b.Blush && a.InnerEar == b.InnerEar && maps.Equal(a.PaletteOverrides, b.PaletteOverrides)
 }
 
 // HeadLines draws the variant's pig head in half blocks, HeadCells cells wide on each of HeadRows lines: the upper half

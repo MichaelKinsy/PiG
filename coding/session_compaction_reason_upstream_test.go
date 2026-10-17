@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -10,7 +9,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
-	"github.com/MichaelKinsy/PiG/internal/codingagent/compaction"
 )
 
 type recordedCompactionEvent struct {
@@ -22,11 +20,11 @@ func summaryOverrideHandlers(summary string, recorded *[]recordedCompactionEvent
 	return map[string][]extension.HandlerFn{
 		"session_before_compact": {func(args ...any) (any, error) {
 			event := args[0].(extension.SessionBeforeCompactEvent)
-			prep := event.Preparation.(*compaction.CompactionPreparation)
+			prep := event.Preparation
 			if recorded != nil {
 				*recorded = append(*recorded, recordedCompactionEvent{event.Type, event.Reason, event.WillRetry})
 			}
-			return extension.SessionBeforeCompactResult{Compaction: map[string]any{"summary": summary, "firstKeptEntryId": prep.FirstKeptEntryID, "tokensBefore": prep.TokensBefore, "details": map[string]any{}}}, nil
+			return extension.SessionBeforeCompactResult{Compaction: &extension.CompactionResult{Summary: summary, FirstKeptEntryID: prep.FirstKeptEntryID, TokensBefore: prep.TokensBefore, Details: map[string]any{}}}, nil
 		}},
 		"session_compact": {func(args ...any) (any, error) {
 			event := args[0].(extension.SessionCompactEvent)
@@ -66,7 +64,7 @@ func TestCompactionExtensionReasonsUpstream(t *testing.T) {
 				drainEvents(t, s)
 			}
 			if tc.reason == "manual" {
-				if err := s.Compact(t.Context(), ""); err != nil {
+				if _, err := s.Compact(t.Context(), ""); err != nil {
 					t.Fatal(err)
 				}
 			} else {

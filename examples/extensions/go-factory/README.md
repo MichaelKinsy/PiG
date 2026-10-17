@@ -1,7 +1,7 @@
 # go-factory: minimal Go extension
 
 A conventional manifest-free Pig extension written as an importable Go package.
-It registers one `hello` tool.
+It registers the `hello` tool and `count_words`, a tool with a required `text` parameter that answers an error result when it is missing.
 
 ## Structure
 

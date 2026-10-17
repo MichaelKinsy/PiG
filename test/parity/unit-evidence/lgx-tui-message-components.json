@@ -1,0 +1,749 @@
+[
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBranchSummaryCollapsed",
+   "TestCollapsibleMessageClicksThroughTerminal",
+   "TestCollapsibleMessageComponentsUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "mutation": "tui/branch_summary.go: replace `NewPaddedBox(outputPad, 1,` with `NewPaddedBox(outputPad, 0,`; TestBranchSummaryCollapsed, TestCollapsibleMessageClicksThroughTerminal, TestCollapsibleMessageComponentsUpstream fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBranchSummaryMessageComponentTakesItsPadAndMarkdownTheme"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "mutation": "tui/branch_summary.go: replace `NewPaddedBox(outputPad, 1,` with `NewPaddedBox(1, 1,`; TestBranchSummaryMessageComponentTakesItsPadAndMarkdownTheme fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBranchSummaryCollapsed"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "mutation": "tui/branch_summary.go: replace `ActiveTheme().Bg(\"customMessageBg\", text)` with `text`; TestBranchSummaryCollapsed fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBranchSummaryExpanded",
+   "TestBranchSummaryToggle",
+   "TestBranchSummaryMessageComponentTakesItsPadAndMarkdownTheme",
+   "TestCollapsibleMessageClicksThroughTerminal",
+   "TestCollapsibleMessageComponentsUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "mutation": "tui/branch_summary.go: replace `summary:       message.Summary,` with `summary:       \"\",`; TestBranchSummaryExpanded, TestBranchSummaryMessageComponentTakesItsPadAndMarkdownTheme, TestBranchSummaryToggle, TestCollapsibleMessageClicksThroughTerminal, TestCollapsibleMessageComponentsUpstream fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBranchSummaryMessageComponentTakesItsPadAndMarkdownTheme"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "mutation": "tui/branch_summary.go: replace `markdownTheme: markdownTheme,\n\t}\n\tcomponent.updateDisplay()` with `markdownTheme: nil,\n\t}\n\tcomponent.updateDisplay()`; TestBranchSummaryMessageComponentTakesItsPadAndMarkdownTheme fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBranchSummaryExpanded",
+   "TestBranchSummaryToggle",
+   "TestBranchSummaryMessageComponentTakesItsPadAndMarkdownTheme",
+   "TestCollapsibleMessageClicksThroughTerminal",
+   "TestCollapsibleMessageComponentsUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "mutation": "tui/branch_summary.go: replace `c.expanded = expanded\n\tc.updateDisplay()` with `c.expanded = !expanded\n\tc.updateDisplay()`; TestBranchSummaryExpanded, TestBranchSummaryMessageComponentTakesItsPadAndMarkdownTheme, TestBranchSummaryToggle, TestCollapsibleMessageClicksThroughTerminal, TestCollapsibleMessageComponentsUpstream fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBranchSummaryExpanded",
+   "TestBranchSummaryToggle",
+   "TestBranchSummaryMessageComponentTakesItsPadAndMarkdownTheme",
+   "TestCollapsibleMessageClicksThroughTerminal",
+   "TestCollapsibleMessageComponentsUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "mutation": "tui/branch_summary.go: replace `c.expanded = expanded\n\tc.updateDisplay()` with `c.expanded = expanded`; TestBranchSummaryExpanded, TestBranchSummaryMessageComponentTakesItsPadAndMarkdownTheme, TestBranchSummaryToggle, TestCollapsibleMessageClicksThroughTerminal, TestCollapsibleMessageComponentsUpstream fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBranchSummaryCollapsed"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "mutation": "tui/branch_summary.go: replace `content.Add(NewSpacer(1))\n\tif c.expanded` with `if c.expanded`; TestBranchSummaryCollapsed fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBranchSummaryExpanded",
+   "TestBranchSummaryMessageComponentTakesItsPadAndMarkdownTheme"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "mutation": "tui/branch_summary.go: replace `\"**Branch Summary**\\n\\n\"+c.summary` with `c.summary`; TestBranchSummaryExpanded, TestBranchSummaryMessageComponentTakesItsPadAndMarkdownTheme fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCollapsibleMessageComponentsUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "mutation": "tui/branch_summary.go: replace `if event.Type != MouseClick || event.Button != MouseButtonLeft {\n\t\t\treturn nil\n\t\t}` with `if event.Button != MouseButtonLeft {\n\t\t\treturn nil\n\t\t}`; TestCollapsibleMessageComponentsUpstream fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCollapsibleMessageComponentsUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "mutation": "tui/branch_summary.go: replace `if event.Type != MouseClick || event.Button != MouseButtonLeft {\n\t\t\treturn nil\n\t\t}` with `if event.Type != MouseClick {\n\t\t\treturn nil\n\t\t}`; TestCollapsibleMessageComponentsUpstream fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCollapsibleMessageClicksThroughTerminal",
+   "TestCollapsibleMessageComponentsUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "mutation": "tui/branch_summary.go: replace `c.SetExpanded(!c.expanded)\n\t\treturn &TuiMouseEventResult{Handled: true}` with `c.SetExpanded(c.expanded)\n\t\treturn &TuiMouseEventResult{Handled: true}`; TestCollapsibleMessageClicksThroughTerminal, TestCollapsibleMessageComponentsUpstream fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCollapsibleMessageComponentsUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "mutation": "tui/branch_summary.go: replace `c.SetExpanded(!c.expanded)\n\t\treturn &TuiMouseEventResult{Handled: true}` with `c.SetExpanded(!c.expanded)\n\t\treturn &TuiMouseEventResult{Handled: false}`; TestCollapsibleMessageComponentsUpstream fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestMessageBoxesFollowOutputPad"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "mutation": "tui/branch_summary.go: replace `c.SetPaddingX(outputPad)` with `c.SetPaddingX(outputPad + 1)`; TestMessageBoxesFollowOutputPad fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBranchSummaryExpanded",
+   "TestBranchSummaryToggle",
+   "TestCollapsibleMessageClicksThroughTerminal",
+   "TestCollapsibleMessageComponentsUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "mutation": "tui/branch_summary.go: replace `c.Clear()\n\ttheme` with `theme`; TestBranchSummaryExpanded, TestBranchSummaryToggle, TestCollapsibleMessageClicksThroughTerminal, TestCollapsibleMessageComponentsUpstream fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSkillInvocationSetExpandedSwitchesTheDisplay",
+   "TestSkillInvocationMessageIsABoxAndUsesTheInjectedMarkdownTheme",
+   "TestCollapsibleMessageClicksThroughTerminal",
+   "TestCollapsibleMessageComponentsUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts",
+  "mutation": "tui/skill_invocation.go: replace `skillBlock:    block,` with `skillBlock:    ParsedSkillBlock{},`; TestCollapsibleMessageClicksThroughTerminal, TestCollapsibleMessageComponentsUpstream, TestSkillInvocationMessageIsABoxAndUsesTheInjectedMarkdownTheme, TestSkillInvocationSetExpandedSwitchesTheDisplay fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSkillInvocationSetExpandedSwitchesTheDisplay",
+   "TestSkillInvocationMessageIsABoxAndUsesTheInjectedMarkdownTheme",
+   "TestCollapsibleMessageClicksThroughTerminal",
+   "TestCollapsibleMessageComponentsUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts",
+  "mutation": "tui/skill_invocation.go: replace `s.expanded = expanded\n\ts.updateDisplay()` with `s.expanded = !expanded\n\ts.updateDisplay()`; TestCollapsibleMessageClicksThroughTerminal, TestCollapsibleMessageComponentsUpstream, TestSkillInvocationMessageIsABoxAndUsesTheInjectedMarkdownTheme, TestSkillInvocationSetExpandedSwitchesTheDisplay fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSkillInvocationSetExpandedSwitchesTheDisplay",
+   "TestSkillInvocationMessageIsABoxAndUsesTheInjectedMarkdownTheme",
+   "TestCollapsibleMessageClicksThroughTerminal",
+   "TestCollapsibleMessageComponentsUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts",
+  "mutation": "tui/skill_invocation.go: replace `s.expanded = expanded\n\ts.updateDisplay()` with `s.expanded = expanded`; TestCollapsibleMessageClicksThroughTerminal, TestCollapsibleMessageComponentsUpstream, TestSkillInvocationMessageIsABoxAndUsesTheInjectedMarkdownTheme, TestSkillInvocationSetExpandedSwitchesTheDisplay fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCollapsibleMessageComponentsUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts",
+  "mutation": "tui/skill_invocation.go: replace `label := theme.Fg(\"customMessageLabel\", \"\\x1b[1m[skill]\\x1b[22m\")\n\t\tcontent.Add(NewText(label))` with `content.Add(NewText(\"\"))`; TestCollapsibleMessageComponentsUpstream fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSkillInvocationMessageIsABoxAndUsesTheInjectedMarkdownTheme"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts",
+  "mutation": "tui/skill_invocation.go: replace `header := \"**\" + s.skillBlock.Name + \"**\\n\\n\"` with `header := s.skillBlock.Name + \"\\n\\n\"`; TestSkillInvocationMessageIsABoxAndUsesTheInjectedMarkdownTheme fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSkillInvocationSetExpandedSwitchesTheDisplay",
+   "TestCollapsibleMessageClicksThroughTerminal",
+   "TestCollapsibleMessageComponentsUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts",
+  "mutation": "tui/skill_invocation.go: replace `NewMarkdownWithOptions(header+s.skillBlock.Content,` with `NewMarkdownWithOptions(header,`; TestCollapsibleMessageClicksThroughTerminal, TestCollapsibleMessageComponentsUpstream, TestSkillInvocationSetExpandedSwitchesTheDisplay fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSkillInvocationSetExpandedSwitchesTheDisplay"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts",
+  "mutation": "tui/skill_invocation.go: replace `theme.Fg(\"customMessageText\", s.skillBlock.Name)` with `theme.Fg(\"customMessageText\", \"\")`; TestSkillInvocationSetExpandedSwitchesTheDisplay fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSkillInvocationSetExpandedSwitchesTheDisplay"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts",
+  "mutation": "tui/skill_invocation.go: replace `\"\\x1b[1m[skill]\\x1b[22m \"` with `\"\\x1b[1m[skill]\\x1b[22m\"`; TestSkillInvocationSetExpandedSwitchesTheDisplay fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCollapsibleMessageClicksThroughTerminal",
+   "TestCollapsibleMessageComponentsUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts",
+  "mutation": "tui/skill_invocation.go: replace `s.SetExpanded(!s.expanded)` with `s.SetExpanded(s.expanded)`; TestCollapsibleMessageClicksThroughTerminal, TestCollapsibleMessageComponentsUpstream fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSkillInvocationSetExpandedSwitchesTheDisplay",
+   "TestSkillInvocationMessageIsABoxAndUsesTheInjectedMarkdownTheme",
+   "TestCollapsibleMessageClicksThroughTerminal",
+   "TestCollapsibleMessageComponentsUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts",
+  "mutation": "tui/skill_invocation.go: replace `s.Clear()\n\ttheme` with `theme`; TestCollapsibleMessageClicksThroughTerminal, TestCollapsibleMessageComponentsUpstream, TestSkillInvocationMessageIsABoxAndUsesTheInjectedMarkdownTheme, TestSkillInvocationSetExpandedSwitchesTheDisplay fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSummaryMessageCollapsedLinesUseThemeTokensAndTheConfiguredExpandKey"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "mutation": "tui/branch_summary.go: replace `c.Box.Invalidate()\n\tc.updateDisplay()` with `c.Box.Invalidate()`; TestSummaryMessageCollapsedLinesUseThemeTokensAndTheConfiguredExpandKey fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSummaryMessageCollapsedLinesUseThemeTokensAndTheConfiguredExpandKey"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "mutation": "tui/branch_summary.go: replace `\\x1b[1m[branch]\\x1b[22m` with `\\x1b[1m[branch]\\x1b[0m`; TestSummaryMessageCollapsedLinesUseThemeTokensAndTheConfiguredExpandKey fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSummaryMessageCollapsedLinesUseThemeTokensAndTheConfiguredExpandKey"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "mutation": "tui/branch_summary.go: replace `theme.Fg(\"customMessageText\", \"Branch summary (\")` with `theme.Fg(\"customMessageLabel\", \"Branch summary (\")`; TestSummaryMessageCollapsedLinesUseThemeTokensAndTheConfiguredExpandKey fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSummaryMessageCollapsedLinesUseThemeTokensAndTheConfiguredExpandKey"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "mutation": "tui/branch_summary.go: replace `AppKeyText(\"app.tools.expand\", \"ctrl+o\")` with `\"ctrl+o\"`; TestSummaryMessageCollapsedLinesUseThemeTokensAndTheConfiguredExpandKey fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSummaryMessageCollapsedLinesUseThemeTokensAndTheConfiguredExpandKey"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "mutation": "tui/branch_summary.go: replace `theme.Fg(\"dim\", AppKeyText` with `theme.Fg(\"customMessageText\", AppKeyText`; TestSummaryMessageCollapsedLinesUseThemeTokensAndTheConfiguredExpandKey fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSummaryMessageCollapsedLinesUseThemeTokensAndTheConfiguredExpandKey"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts",
+  "mutation": "tui/skill_invocation.go: replace `s.Box.Invalidate()\n\ts.updateDisplay()` with `s.Box.Invalidate()`; TestSummaryMessageCollapsedLinesUseThemeTokensAndTheConfiguredExpandKey fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSummaryMessageCollapsedLinesUseThemeTokensAndTheConfiguredExpandKey"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts",
+  "mutation": "tui/skill_invocation.go: replace `\" (\"+AppKeyText(\"app.tools.expand\", \"ctrl+o\")+\" to expand)\"` with `\" (to expand)\"`; TestSummaryMessageCollapsedLinesUseThemeTokensAndTheConfiguredExpandKey fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCustomMessageComponentRebuildsWithOptions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "mutation": "tui/custom_message.go: replace `if c.expanded != expanded {\n\t\tc.expanded = expanded\n\t\tc.rebuild()\n\t}` with `if c.expanded != expanded {\n\t\tc.expanded = expanded\n\t}`; TestCustomMessageComponentRebuildsWithOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCustomMessageComponentRebuildsWithOptions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "mutation": "tui/custom_message.go: replace `if c.expanded != expanded {` with `if true {`; TestCustomMessageComponentRebuildsWithOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCustomMessageComponentRebuildsWithOptions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "mutation": "tui/custom_message.go: replace `if c.outputPad != outputPad {\n\t\tc.outputPad = outputPad\n\t\tc.rebuild()\n\t}` with `if c.outputPad != outputPad {\n\t\tc.outputPad = outputPad\n\t}`; TestCustomMessageComponentRebuildsWithOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCustomMessageComponentRebuildsWithOptions",
+   "TestCustomMessageLabelFollowsAThemeChange"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "mutation": "tui/custom_message.go: replace `c.Container.Invalidate()\n\tc.rebuild()` with `c.Container.Invalidate()`; TestCustomMessageComponentRebuildsWithOptions, TestCustomMessageLabelFollowsAThemeChange fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCustomMessageComponentChildren"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "mutation": "tui/custom_message.go: replace `if component := c.renderCustom(); component != nil {\n\t\t\tc.customComponent = component\n\t\t\tc.Add(component)\n\t\t\treturn\n\t\t}` with `if component := c.renderCustom(); component != nil {\n\t\t\tc.customComponent = component\n\t\t\tc.Add(component)\n\t\t}`; TestCustomMessageComponentChildren fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCustomMessageComponentRebuildsWithOptions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "mutation": "tui/custom_message.go: replace `MessageRenderOptions{Expanded: c.expanded, OutputPad: c.outputPad}` with `MessageRenderOptions{Expanded: false, OutputPad: c.outputPad}`; TestCustomMessageComponentRebuildsWithOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCustomMessageComponentRebuildsWithOptions"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "mutation": "tui/custom_message.go: replace `MessageRenderOptions{Expanded: c.expanded, OutputPad: c.outputPad}` with `MessageRenderOptions{Expanded: c.expanded, OutputPad: 0}`; TestCustomMessageComponentRebuildsWithOptions fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCustomMessageComponentChildren",
+   "TestCustomMessageComponentIsAContainerWhoseLabelWrapsInsideTheBox",
+   "TestCustomMessageComponentLayoutRendererLifecycleAndLiveness"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "mutation": "tui/custom_message.go: replace `c.Add(NewSpacer(1))\n\t// Box with` with `// Box with`; TestCustomMessageComponentChildren, TestCustomMessageComponentIsAContainerWhoseLabelWrapsInsideTheBox, TestCustomMessageComponentLayoutRendererLifecycleAndLiveness fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCustomMessageComponentLayoutRendererLifecycleAndLiveness"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "mutation": "tui/custom_message.go: replace `c.box = NewPaddedBox(1, 1,` with `c.box = NewPaddedBox(1, 0,`; TestCustomMessageComponentLayoutRendererLifecycleAndLiveness fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCustomMessageComponentLayoutRendererLifecycleAndLiveness"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "mutation": "tui/custom_message.go: replace `if c.Container.IsDirty() {\n\t\treturn true\n\t}` with `if false {\n\t\treturn true\n\t}`; TestCustomMessageComponentLayoutRendererLifecycleAndLiveness fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCustomMessageComponentLayoutRendererLifecycleAndLiveness"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "mutation": "tui/custom_message.go: replace `return ok && dirty.IsDirty()` with `_ = dirty\n\treturn ok`; TestCustomMessageComponentLayoutRendererLifecycleAndLiveness fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCustomMessageComponentLayoutRendererLifecycleAndLiveness"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "mutation": "tui/custom_message.go: replace `_, ok := c.customComponent.(interface{ IsDirty() bool })\n\treturn ok` with `return false`; TestCustomMessageComponentLayoutRendererLifecycleAndLiveness fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCustomMessageComponentLayoutRendererLifecycleAndLiveness"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "mutation": "tui/custom_message.go: replace `if c.customComponent != nil {\n\t\tc.Remove(c.customComponent)\n\t\tc.customComponent = nil\n\t}` with `c.customComponent = nil`; TestCustomMessageComponentLayoutRendererLifecycleAndLiveness fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCustomMessageLabelFollowsAThemeChange"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "mutation": "tui/custom_message.go: replace `c.Remove(c.box)\n\n\t// The custom` with `// The custom`; TestCustomMessageLabelFollowsAThemeChange fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCustomMessageComponentLayoutRendererLifecycleAndLiveness"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "mutation": "tui/custom_message.go: replace `c.box.SetPaddingX(c.outputPad)` with `c.box.SetPaddingX(1)`; TestCustomMessageComponentLayoutRendererLifecycleAndLiveness fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCustomMessageComponentLayoutRendererLifecycleAndLiveness"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "mutation": "tui/custom_message.go: replace `c.box.AddChild(NewSpacer(1))` with ``; TestCustomMessageComponentLayoutRendererLifecycleAndLiveness fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCustomMessageComponentLayoutRendererLifecycleAndLiveness"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "mutation": "tui/custom_message.go: replace `\"\\x1b[1m[\"+c.message.CustomType+\"]\\x1b[22m\"` with `\"[\"+c.message.CustomType+\"]\"`; TestCustomMessageComponentLayoutRendererLifecycleAndLiveness fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestUserMessageBlock_AppliesBackgroundToEveryLine",
+   "TestUserMessageBlockDiffersFromOrdinaryBlockquote",
+   "TestUpstreamUserMessageOSCMarkers"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "mutation": "tui/user_message_block.go: replace `userMessageZoneStart = \"\\x1b]133;A\\x07\"` with `userMessageZoneStart = \"\\x1b]133;B\\x07\"`; TestUpstreamUserMessageOSCMarkers, TestUserMessageBlockDiffersFromOrdinaryBlockquote, TestUserMessageBlock_AppliesBackgroundToEveryLine fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestUserMessageBlock_AppliesBackgroundToEveryLine",
+   "TestUpstreamUserMessageOSCMarkers"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "mutation": "tui/user_message_block.go: replace `userMessageZoneEnd   = \"\\x1b]133;B\\x07\\x1b]133;C\\x07\"` with `userMessageZoneEnd   = \"\\x1b]133;B\\x07\"`; TestUpstreamUserMessageOSCMarkers, TestUserMessageBlock_AppliesBackgroundToEveryLine fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestUpstreamUserMessageTransformerChain"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "mutation": "tui/user_message_block.go: replace `markdowntransform.CreateMarkdownTransform(markdowntransform.MarkdownMessageUser, false, markdownTransformers)` with `markdowntransform.CreateMarkdownTransform(markdowntransform.MarkdownMessageAssistant, false, markdownTransformers)`; TestUpstreamUserMessageTransformerChain fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestUserMessageComponentTakesTheConstructorInjections"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "mutation": "tui/user_message_block.go: replace `NewMarkdownWithOptions(u.content, u.outputPad, 1, u.markdownTheme` with `NewMarkdownWithOptions(u.content, u.outputPad, 0, u.markdownTheme`; TestUserMessageComponentTakesTheConstructorInjections fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestUserMessageComponentTakesTheConstructorInjections"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "mutation": "tui/user_message_block.go: replace `NewMarkdownWithOptions(u.content, u.outputPad, 1, u.markdownTheme` with `NewMarkdownWithOptions(u.content, 1, 1, u.markdownTheme`; TestUserMessageComponentTakesTheConstructorInjections fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestUserMessageBlock_AppliesBackgroundToEveryLine",
+   "TestUserMessageBlockDiffersFromOrdinaryBlockquote",
+   "TestUserMessageBlockPadsInTheMarkdownWithTheBoxOutput",
+   "TestUpstreamUserMessageOSCMarkers"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "mutation": "tui/user_message_block.go: replace `background := &DefaultTextStyle{BgColor: func(text string) string { return UserMessageBgOpen() + text + BgClose() }}` with `background := &DefaultTextStyle{}`; TestUpstreamUserMessageOSCMarkers, TestUserMessageBlockDiffersFromOrdinaryBlockquote, TestUserMessageBlockPadsInTheMarkdownWithTheBoxOutput, TestUserMessageBlock_AppliesBackgroundToEveryLine fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestUserMessageBlockPadsInTheMarkdownWithTheBoxOutput"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "mutation": "tui/user_message_block.go: replace `PreserveOrderedListMarkers: true, PreserveBackslashEscapes: true, Transform: u.transform}` with `PreserveOrderedListMarkers: false, PreserveBackslashEscapes: true, Transform: u.transform}`; TestUserMessageBlockPadsInTheMarkdownWithTheBoxOutput fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestUserMessageBlockPadsInTheMarkdownWithTheBoxOutput"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "mutation": "tui/user_message_block.go: replace `PreserveOrderedListMarkers: true, PreserveBackslashEscapes: true, Transform: u.transform}` with `PreserveOrderedListMarkers: true, PreserveBackslashEscapes: false, Transform: u.transform}`; TestUserMessageBlockPadsInTheMarkdownWithTheBoxOutput fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestUserMessageComponentTakesTheConstructorInjections",
+   "TestUpstreamUserMessageTransformerChain",
+   "TestUpstreamUserMessageInvalidation"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "mutation": "tui/user_message_block.go: replace `PreserveBackslashEscapes: true, Transform: u.transform}` with `PreserveBackslashEscapes: true}`; TestUpstreamUserMessageInvalidation, TestUpstreamUserMessageTransformerChain, TestUserMessageComponentTakesTheConstructorInjections fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestUserMessageBlockPadsInTheMarkdownWithTheBoxOutput"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "mutation": "tui/user_message_block.go: replace `u.inner.paddingX = u.outputPad` with `u.inner.paddingX = 0`; TestUserMessageBlockPadsInTheMarkdownWithTheBoxOutput fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestUserMessagePaddingReappliesTransform"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "mutation": "tui/user_message_block.go: replace `u.inner.cachedLines = nil\n\t\tu.inner.Invalidate() // the Container caches the child by its dirty flag\n\t}\n\tu.Container.Invalidate()` with `u.inner.cachedLines = nil\n\t}\n\tu.Container.Invalidate()`; TestUserMessagePaddingReappliesTransform fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestUserMessagePaddingRetainsTransformState",
+   "TestUserMessagePaddingReappliesTransform"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "mutation": "tui/user_message_block.go: replace `u.inner.Transform = transform` with `u.inner.Transform = nil`; TestUserMessagePaddingReappliesTransform, TestUserMessagePaddingRetainsTransformState fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestUpstreamUserMessageInvalidation"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "mutation": "tui/user_message_block.go: replace `func (u *UserMessageComponent) Invalidate() { u.Container.Invalidate(); u.inner.Invalidate() }` with `func (u *UserMessageComponent) Invalidate() { u.Container.Invalidate() }`; TestUpstreamUserMessageInvalidation fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestUserMessagePaddingRetainsTransformState"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "mutation": "tui/user_message_block.go: replace `u.inner.TransformState = fn` with `u.inner.TransformState = nil`; TestUserMessagePaddingRetainsTransformState fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestUserMessagePaddingRetainsAsyncTransform"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "mutation": "tui/user_message_block.go: replace `u.inner.AsyncTransform = transform` with `u.inner.AsyncTransform = nil`; TestUserMessagePaddingRetainsAsyncTransform fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestUserMessageBlockPadsInTheMarkdownWithTheBoxOutput",
+   "TestUserMessagePaddingReappliesTransform"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "mutation": "tui/user_message_block.go: replace `u.outputPad = max(0, padding)\n\tu.rebuild()` with `u.outputPad = max(0, padding)`; TestUserMessageBlockPadsInTheMarkdownWithTheBoxOutput, TestUserMessagePaddingReappliesTransform fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestUserMessageBlockPadsInTheMarkdownWithTheBoxOutput"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "mutation": "tui/user_message_block.go: replace `u.inner.SetDefaultColor(ActiveTheme().UserMessageText)` with ``; TestUserMessageBlockPadsInTheMarkdownWithTheBoxOutput fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestUserMessageBlock_AppliesBackgroundToEveryLine",
+   "TestUserMessageBlockDiffersFromOrdinaryBlockquote",
+   "TestUserMessageBlockPadsInTheMarkdownWithTheBoxOutput",
+   "TestUserMessageComponentIsAContainerOfOneMarkdown",
+   "TestUpstreamUserMessageOSCMarkers"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "mutation": "tui/user_message_block.go: replace `out[0] = userMessageZoneStart + out[0]` with `out[0] = out[0]`; TestUpstreamUserMessageOSCMarkers, TestUserMessageBlockDiffersFromOrdinaryBlockquote, TestUserMessageBlockPadsInTheMarkdownWithTheBoxOutput, TestUserMessageBlock_AppliesBackgroundToEveryLine, TestUserMessageComponentIsAContainerOfOneMarkdown fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestUserMessageBlock_AppliesBackgroundToEveryLine",
+   "TestUserMessageBlockPadsInTheMarkdownWithTheBoxOutput",
+   "TestUserMessageComponentIsAContainerOfOneMarkdown",
+   "TestUpstreamUserMessageOSCMarkers"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "mutation": "tui/user_message_block.go: replace `out[len(out)-1] = userMessageZoneEnd + out[len(out)-1]` with `out[0] = out[0] + userMessageZoneEnd`; TestUpstreamUserMessageOSCMarkers, TestUserMessageBlockPadsInTheMarkdownWithTheBoxOutput, TestUserMessageBlock_AppliesBackgroundToEveryLine, TestUserMessageComponentIsAContainerOfOneMarkdown fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestUserMessageComponentSettersRerenderClampPadAndDispose"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "mutation": "tui/user_message_block.go: replace `outputPad: max(0, outputPad), markdownTheme` with `outputPad: outputPad, markdownTheme`; TestUserMessageComponentSettersRerenderClampPadAndDispose fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestUserMessageComponentSettersRerenderClampPadAndDispose"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "mutation": "tui/user_message_block.go: replace `u.images, u.decoded = images, nil\n\tu.invalidatable.Invalidate()` with `u.images, u.decoded = images, nil`; TestUserMessageComponentSettersRerenderClampPadAndDispose fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestUserMessageComponentSettersRerenderClampPadAndDispose"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "mutation": "tui/user_message_block.go: replace `u.images, u.decoded = images, nil` with `u.decoded = nil`; TestUserMessageComponentSettersRerenderClampPadAndDispose fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestUserMessageComponentSettersRerenderClampPadAndDispose"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "mutation": "tui/user_message_block.go: replace `u.inner.Transform = transform\n\tu.Invalidate()` with `u.inner.Transform = transform`; TestUserMessageComponentSettersRerenderClampPadAndDispose fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestUserMessageComponentSettersRerenderClampPadAndDispose"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "mutation": "tui/user_message_block.go: replace `if completed != nil {\n\t\t\t\tcompleted()\n\t\t\t}` with `_ = completed`; TestUserMessageComponentSettersRerenderClampPadAndDispose fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestUserMessageComponentSettersRerenderClampPadAndDispose"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "mutation": "tui/user_message_block.go: replace `u.outputPad = max(0, padding)\n\tu.rebuild()` with `u.outputPad = padding\n\tu.rebuild()`; TestUserMessageComponentSettersRerenderClampPadAndDispose fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestUserMessageComponentSettersRerenderClampPadAndDispose"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "mutation": "tui/user_message_block.go: replace `func (u *UserMessageComponent) Dispose() { u.inner.Dispose() }` with `func (u *UserMessageComponent) Dispose() {}`; TestUserMessageComponentSettersRerenderClampPadAndDispose fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestUserMessageComponentSettersRerenderClampPadAndDispose"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "mutation": "tui/user_message_block.go: replace `u.inner.TransformState = fn\n\tu.Invalidate()` with `u.inner.TransformState = fn`; TestUserMessageComponentSettersRerenderClampPadAndDispose fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "package": "./tui",
+  "tests": [
+   "TestUserMessageComponentSettersRerenderClampPadAndDispose"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "mutation": "tui/user_message_block.go: replace `u.inner.AsyncTransform = transform\n\tu.Invalidate()` with `u.inner.AsyncTransform = transform`; TestUserMessageComponentSettersRerenderClampPadAndDispose fails."
+ }
+]

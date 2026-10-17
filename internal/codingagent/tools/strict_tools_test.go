@@ -11,7 +11,7 @@ import (
 // and strictness does not change the execution schema.
 func TestBuiltinToolsPreferStrictSampling(t *testing.T) {
 	strict := []string{"read", "bash", "powershell", "edit", "write"}
-	for _, tool := range CreateAllTools(t.TempDir(), nil, "") {
+	for _, tool := range CreateAllTools(t.TempDir(), nil) {
 		s := tool.Schema()
 		cs := s.ConstrainedSampling
 		if slices.Contains(strict, tool.Name()) {

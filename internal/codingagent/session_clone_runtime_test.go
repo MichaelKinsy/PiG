@@ -22,8 +22,8 @@ func TestForkBeforeRootUserKeepsMemoryOnlyStorage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if text != "Say hi" || forked.Path() != "" || len(forked.Entries()) != 0 {
-		t.Fatalf("fork text=%q path=%q entries=%v", text, forked.Path(), forked.Entries())
+	if text != "Say hi" || forked.Path() != "" || len(forked.GetEntries()) != 0 {
+		t.Fatalf("fork text=%q path=%q entries=%v", text, forked.Path(), forked.GetEntries())
 	}
 }
 
@@ -49,10 +49,10 @@ func TestClonePreservesPersistenceModeAndDefersConversationFreeBranches(t *testi
 					t.Fatal(err)
 				}
 			}
-			if err := source.AppendThinkingLevelChange("off"); err != nil {
+			if _, err := source.AppendThinkingLevelChange("off"); err != nil {
 				t.Fatal(err)
 			}
-			setup := *source.LeafID()
+			setup := *source.GetLeafID()
 			user, err := source.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "hello"}}}})
 			if err != nil {
 				t.Fatal(err)
@@ -72,8 +72,8 @@ func TestClonePreservesPersistenceModeAndDefersConversationFreeBranches(t *testi
 			if cloned.IsPersisted() != tc.persisted {
 				t.Fatalf("persisted=%v want=%v", cloned.IsPersisted(), tc.persisted)
 			}
-			if cloned.LeafID() == nil || *cloned.LeafID() != leaf {
-				t.Fatalf("leaf=%v want=%s", cloned.LeafID(), leaf)
+			if cloned.GetLeafID() == nil || *cloned.GetLeafID() != leaf {
+				t.Fatalf("leaf=%v want=%s", cloned.GetLeafID(), leaf)
 			}
 			if tc.persisted {
 				_, statErr := os.Stat(cloned.Path())

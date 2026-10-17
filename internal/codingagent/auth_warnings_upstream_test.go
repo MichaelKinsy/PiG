@@ -9,6 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
+// Pi: packages/coding-agent/src/core/settings-manager.ts:1528 (SettingsManager.setWarnings).
 func TestAnthropicSubscriptionWarningUpstream(t *testing.T) {
 	for _, tc := range []struct {
 		name, provider, apiKey                           string

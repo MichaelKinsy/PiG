@@ -52,3 +52,115 @@ func ExtractCursorPosition(lines []string, height int) (CursorPosition, bool) {
 	}
 	return CursorPosition{}, false
 }
+
+// FakeCursorStart and FakeCursorEnd are the zero-width APC markers around the text a component draws as its cursor
+// (tui.ts FAKE_CURSOR_START / FAKE_CURSOR_END). ResolveFakeCursors turns them into reverse video, or drops the cursor the terminal
+// draws itself.
+const (
+	FakeCursorStart = "\x1b_pi:fc\x07"
+	FakeCursorEnd   = "\x1b_pi:/fc\x07"
+)
+
+// RenderFakeCursor wraps text in the fake cursor markers (tui.ts renderFakeCursor).
+func RenderFakeCursor(text string) string {
+	return FakeCursorStart + text + FakeCursorEnd
+}
+
+// focusedFakeCursor is CURSOR_MARKER directly followed by FAKE_CURSOR_START: the cursor of the focused component, at the position
+// the hardware cursor takes.
+const focusedFakeCursor = CursorMarker + FakeCursorStart
+
+// ResolveFakeCursors resolves the fake cursor markers of lines to reverse video (tui.ts TUI.resolveFakeCursors). When the hardware
+// cursor is shown, the fake cursor directly after CursorMarker is dropped, because the terminal draws the cursor there: its text
+// stays, and a line truncated right after the cursor cell, which lost the end marker, loses everything after the cursor marker.
+// The fake cursor of a component without focus has no CursorMarker and stays visible. Lines are returned as given when none holds
+// a marker; otherwise a copy is returned and the argument is not modified.
+func ResolveFakeCursors(lines []string, showHardwareCursor bool) []string {
+	var out []string
+	for i, line := range lines {
+		if !strings.Contains(line, FakeCursorStart) {
+			continue
+		}
+		if out == nil {
+			out = make([]string, len(lines))
+			copy(out, lines)
+		}
+		out[i] = resolveFakeCursorLine(line, showHardwareCursor)
+	}
+	if out == nil {
+		return lines
+	}
+	return out
+}
+
+// ResolveFakeCursorsInPlace is ResolveFakeCursors for a frame the caller owns: each line that holds a marker is replaced by its
+// resolved line in lines itself, so resolving a frame makes no copy of it.
+func ResolveFakeCursorsInPlace(lines []string, showHardwareCursor bool) {
+	for i, line := range lines {
+		if strings.Contains(line, FakeCursorStart) {
+			lines[i] = resolveFakeCursorLine(line, showHardwareCursor)
+		}
+	}
+}
+
+// ResolveFakeCursorLine is ResolveFakeCursors for one line.
+func ResolveFakeCursorLine(line string, showHardwareCursor bool) string {
+	if !strings.Contains(line, FakeCursorStart) {
+		return line
+	}
+	return resolveFakeCursorLine(line, showHardwareCursor)
+}
+
+func resolveFakeCursorLine(line string, showHardwareCursor bool) string {
+	if showHardwareCursor {
+		line = dropFocusedFakeCursor(line)
+	}
+	return replaceFakeCursorMarkers(line)
+}
+
+// fakeCursorMarkerPrefix starts both fake cursor markers (and CursorMarker).
+const fakeCursorMarkerPrefix = "\x1b_pi:"
+
+// replaceFakeCursorMarkers is tui.ts's replaceAll(FAKE_CURSOR_START, "\x1b[7m") then replaceAll(FAKE_CURSOR_END, "\x1b[27m") in
+// one pass: the markers never overlap and neither replacement can complete a marker, so the line is the same. The replacements
+// are shorter than the markers, so the line's length bounds the result and it is one allocation.
+func replaceFakeCursorMarkers(line string) string {
+	var b strings.Builder
+	b.Grow(len(line))
+	for {
+		at := strings.Index(line, fakeCursorMarkerPrefix)
+		if at < 0 {
+			break
+		}
+		rest := line[at:]
+		switch {
+		case strings.HasPrefix(rest, FakeCursorStart):
+			b.WriteString(line[:at])
+			b.WriteString("\x1b[7m")
+			line = rest[len(FakeCursorStart):]
+		case strings.HasPrefix(rest, FakeCursorEnd):
+			b.WriteString(line[:at])
+			b.WriteString("\x1b[27m")
+			line = rest[len(FakeCursorEnd):]
+		default:
+			// No marker begins inside the prefix: ESC is only its first byte.
+			b.WriteString(line[:at+len(fakeCursorMarkerPrefix)])
+			line = rest[len(fakeCursorMarkerPrefix):]
+		}
+	}
+	b.WriteString(line)
+	return b.String()
+}
+
+// dropFocusedFakeCursor replaces the first CursorMarker + FakeCursorStart + text + FakeCursorEnd with CursorMarker + text. A missing
+// end marker (truncation) takes the text to the end of the line (the regexp `(\x1b_pi:c\x07)\x1b_pi:fc\x07(.*?)(?:\x1b_pi:\/fc\x07|$)`
+// with the s flag).
+func dropFocusedFakeCursor(line string) string {
+	before, after0, ok := strings.Cut(line, focusedFakeCursor)
+	if !ok {
+		return line
+	}
+	rest := after0
+	text, after, _ := strings.Cut(rest, FakeCursorEnd)
+	return before + CursorMarker + text + after
+}

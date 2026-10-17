@@ -1,15 +1,9 @@
-// Package evals ports Pi's documentation eval tooling: the task plan, the paired comparison report, the harness's
-// prompt and environment helpers, and the fixtures the evals use.
+// Package evals ports Pi's documentation eval tooling: the task plan, the comparison command and its Docker runner, the
+// paired comparison report, the harness's prompt and environment helpers, and the fixtures the evals use.
 //
-// The container runner (src/cli.ts and src/docker.ts) and the vitest-evals harness that drives an agent Session
-// (createPiCodingAgentHarness) run Vitest eval files inside Docker images; they have no Go host, so they are not
-// ported.
-// stubgen:omit BuiltImages
-// stubgen:omit BuildImages
-// stubgen:omit RequireEvalAuthFile
+// Go has no Vitest. The vitest-evals harness that drives an agent Session (createPiCodingAgentHarness) is not ported
+// here.
 // stubgen:omit CreateDockerContext
-// stubgen:omit DiscoverCases
-// stubgen:omit RunTask
 // stubgen:omit CreatePiCodingAgentHarness
 // stubgen:omit PiCodingAgentHarnessWithOutput
 // stubgen:omit PiCodingAgentInput

@@ -1,6 +1,11 @@
 package widthx
 
-import "testing"
+import (
+	"math/rand/v2"
+	"slices"
+	"strings"
+	"testing"
+)
 
 func TestExtractCursorPosition_NoMarker(t *testing.T) {
 	lines := []string{"hello", "world"}
@@ -91,5 +96,55 @@ func TestExtractCursorPosition_MarkerIsZeroWidthInVisibleCalc(t *testing.T) {
 	// Sanity: VisibleWidth ignores the marker.
 	if VisibleWidth("x"+CursorMarker+"y") != 2 {
 		t.Errorf("CursorMarker should be zero-width")
+	}
+}
+
+// A resolved line is one string: both marker kinds are replaced in one pass (tui.ts resolveFakeCursors replaces
+// FAKE_CURSOR_START, then FAKE_CURSOR_END; the two never overlap, so one pass gives the same line).
+func TestResolveFakeCursorLineAllocatesOneString(t *testing.T) {
+	line := "> abc" + CursorMarker + RenderFakeCursor(" ") + strings.Repeat("x", 120) + RenderFakeCursor("y")
+	want := "> abc" + CursorMarker + "\x1b[7m \x1b[27m" + strings.Repeat("x", 120) + "\x1b[7my\x1b[27m"
+	if got := ResolveFakeCursorLine(line, false); got != want {
+		t.Fatalf("ResolveFakeCursorLine = %q, want %q", got, want)
+	}
+	if allocs := testing.AllocsPerRun(100, func() { ResolveFakeCursorLine(line, false) }); allocs != 1 {
+		t.Fatalf("resolving a line allocates %v times, want 1", allocs)
+	}
+}
+
+// The one-pass replacement matches tui.ts's two replaceAll calls on lines built from marker fragments, partial markers and
+// the replacements themselves.
+func TestReplaceFakeCursorMarkersMatchesTwoReplaceAll(t *testing.T) {
+	pieces := []string{FakeCursorStart, FakeCursorEnd, CursorMarker, fakeCursorMarkerPrefix, "\x1b", "\x1b_pi", "fc\x07", "/fc\x07",
+		"\x1b[7m", "\x1b[27m", "a", "日", "\x07"}
+	rng := rand.New(rand.NewPCG(1, 2))
+	for range 20000 {
+		var b strings.Builder
+		for range rng.IntN(8) {
+			b.WriteString(pieces[rng.IntN(len(pieces))])
+		}
+		line := b.String()
+		want := strings.ReplaceAll(strings.ReplaceAll(line, FakeCursorStart, "\x1b[7m"), FakeCursorEnd, "\x1b[27m")
+		if got := replaceFakeCursorMarkers(line); got != want {
+			t.Fatalf("replaceFakeCursorMarkers(%q) = %q, want %q", line, got, want)
+		}
+	}
+}
+
+// A frame the caller built is resolved in place: only the rows that hold a marker get a new string.
+func TestResolveFakeCursorsInPlace(t *testing.T) {
+	frame := []string{"a", "> " + CursorMarker + RenderFakeCursor("b") + "c", "plain"}
+	ResolveFakeCursorsInPlace(frame, false)
+	if want := []string{"a", "> " + CursorMarker + "\x1b[7mb\x1b[27mc", "plain"}; !slices.Equal(frame, want) {
+		t.Fatalf("frame = %q, want %q", frame, want)
+	}
+	frame[1] = "> " + CursorMarker + RenderFakeCursor("b") + "c"
+	ResolveFakeCursorsInPlace(frame, true)
+	if frame[1] != "> "+CursorMarker+"bc" {
+		t.Fatalf("with the hardware cursor the focused fake cursor is dropped: %q", frame[1])
+	}
+	marked := "> " + RenderFakeCursor("b") + "c"
+	if allocs := testing.AllocsPerRun(100, func() { frame[1] = marked; ResolveFakeCursorsInPlace(frame, false) }); allocs != 1 {
+		t.Fatalf("resolving a frame with one marked row allocates %v times, want 1", allocs)
 	}
 }

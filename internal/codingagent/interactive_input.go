@@ -26,6 +26,15 @@ import (
 func (m *InteractiveMode) exitIfDeadTerminal(err error) {
 	cause := err
 	if errors.Is(err, io.EOF) {
+		// The reader turns a read that fails with EIO on a hung-up terminal into EOF. When the output terminal is hung up
+		// too it is gone, although it can still answer TIOCGWINSZ while the hang-up completes (strace on a CI-like loaded
+		// host: read(0)=EIO, POLLHUP, ioctl(1,TIOCGWINSZ)=0): the size probe below saw a live terminal, the session kept
+		// running without input, and the parity probe timed out (10-terminal-disconnect-exit). Pi exits 129 on that
+		// terminal's EIO. Input that ended while output still goes to a live terminal keeps the session running (#165).
+		if tui.OutputTerminalHungUp() {
+			m.emergencyTerminalExit("terminal gone: " + cause.Error() + " (hung up)")
+			return
+		}
 		// ENOTTY here only says stdout is not a terminal, as under a pipe or a test, not that the terminal went away.
 		if _, _, err = term.GetSize(int(os.Stdout.Fd())); errors.Is(err, syscall.ENOTTY) {
 			return
@@ -86,77 +95,8 @@ func (m *InteractiveMode) inputLoopUntil(ctx context.Context, source io.Reader, 
 		}()
 	}
 
-	// dispatchInput handles one routed sequence and reports whether to await its terminal-read completion before painting.
-	dispatchInput := func(input inputChunk) (bool, error) {
-		defer input.ticket.settle()
-		if chunk := string(input.data); chunk != "" {
-			if os.Getenv("PIG_DEBUG_KEYS") != "" {
-				debugLog("key %q -> %d", chunk, classifyKeyWithBindings(chunk, m.keybindings))
-			}
-			if err := m.dispatchInputChunk(ctx, chunk, input.ticket); err != nil {
-				return false, err
-			}
-		}
-		input.ticket.settle()
-		// A chunk still waiting on a remote listener's verdict holds the
-		// pump, and a modal takes the next sequence itself, so neither
-		// continues the read here.
-		if input.readDone == nil || !input.ticket.settled() || m.inputLoopErr != nil || m.requestExit.Load() {
-			return false, nil
-		}
-		modalCh, _, _ := m.modalRouteWatch()
-		return modalCh == nil, nil
-	}
-
-	// dispatchRead dispatches input and the rest of its terminal read, then
-	// paints once. Upstream's StdinBuffer emits every sequence of one read
-	// synchronously, so no posted UI task (an async autocomplete result),
-	// agent event or paint runs between them, and requestImmediateRender
-	// coalesces the paint to one frame after the read. Handling each sequence
-	// as its own loop turn painted every prefix of a typed "/compact" with the
-	// popup its stale suggestions opened, which grew the transcript and left
-	// the main screen scrolled further than upstream.
-	dispatchRead := func(input inputChunk) (err error) {
-		dispatched := false
-		// Match upstream's immediate keyboard paint before asynchronous
-		// autocomplete results request their throttled follow-up frame.
-		defer func() {
-			if dispatched && err == nil {
-				m.tuiInst.Render()
-			}
-		}()
-		for {
-			dispatched = dispatched || len(input.data) > 0
-			continues, dispatchErr := dispatchInput(input)
-			if dispatchErr != nil || !continues {
-				return dispatchErr
-			}
-			select {
-			case <-input.readDone:
-				return nil
-			default:
-			}
-			_, _, changed := m.modalRouteWatch()
-			select {
-			case <-input.readDone:
-				return nil
-			case <-ctx.Done():
-				return nil
-			case readErr := <-errCh:
-				// Paint what the read delivered before the loop ends.
-				m.tuiInst.Render()
-				return readErr
-			case <-changed:
-				// A modal armed off the loop and takes the rest of the read.
-				return nil
-			case next, ok := <-readCh:
-				if !ok {
-					readCh = nil
-					return nil
-				}
-				input = next
-			}
-		}
+	dispatchRead := func(input inputChunk) error {
+		return m.dispatchTerminalRead(ctx, input, &readCh, errCh)
 	}
 
 	for {
@@ -256,6 +196,81 @@ func (m *InteractiveMode) inputLoopUntil(ctx context.Context, source io.Reader, 
 	}
 }
 
+// dispatchRoutedInput handles one routed sequence. To await the rest of its terminal read before painting, it returns the
+// route-change signal of the route snapshot that found no modal: a modal that arms off the loop after that snapshot takes
+// the rest of the read, and the signal ends the wait. A nil signal ends the read here.
+func (m *InteractiveMode) dispatchRoutedInput(ctx context.Context, input inputChunk) (<-chan struct{}, error) {
+	defer input.ticket.settle()
+	if chunk := string(input.data); chunk != "" {
+		if os.Getenv("PIG_DEBUG_KEYS") != "" {
+			debugLog("key %s -> %d", redactKeyChunk(chunk), classifyKeyWithBindings(chunk, m.keybindings))
+		}
+		if err := m.dispatchInputChunk(ctx, chunk, input.ticket); err != nil {
+			return nil, err
+		}
+	}
+	input.ticket.settle()
+	// A chunk still waiting on a remote listener's verdict holds the
+	// router, and a modal takes the next sequence itself, so neither
+	// continues the read here.
+	if !input.more || !input.ticket.settled() || m.inputLoopErr != nil || m.requestExit.Load() {
+		return nil, nil
+	}
+	if modalCh, _, changed := m.modalRouteWatch(); modalCh == nil {
+		return changed, nil
+	}
+	return nil, nil
+}
+
+// dispatchTerminalRead dispatches input and the rest of its terminal read from
+// *readCh, then paints once; a closed *readCh becomes nil. Upstream's
+// StdinBuffer emits every sequence of one read synchronously, so no posted UI
+// task (an async autocomplete result), agent event or paint runs between them,
+// and requestImmediateRender coalesces the paint to one frame after the read.
+// Handling each sequence as its own loop turn painted every prefix of a typed
+// "/compact" with the popup its stale suggestions opened, which grew the
+// transcript and left the main screen scrolled further than upstream.
+func (m *InteractiveMode) dispatchTerminalRead(ctx context.Context, input inputChunk, readCh *chan inputChunk, errCh <-chan error) (err error) {
+	dispatched := false
+	// Match upstream's immediate keyboard paint before asynchronous
+	// autocomplete results request their throttled follow-up frame.
+	defer func() {
+		if dispatched && err == nil {
+			m.tuiInst.Render()
+		}
+	}()
+	for {
+		m.frontendTookInput = false
+		changed, dispatchErr := m.dispatchRoutedInput(ctx, input)
+		// pig additive (D91): a sequence a frontend session took, such as
+		// a protocol acknowledgement, paints nothing; the actions it asks
+		// for request their own frames. Painting after each one would
+		// render once per acknowledged frame, and an animation then runs
+		// at the frontend's frame rate instead of its own.
+		dispatched = dispatched || (len(input.data) > 0 && !m.frontendTookInput)
+		if dispatchErr != nil || changed == nil {
+			return dispatchErr
+		}
+		select {
+		case <-ctx.Done():
+			return nil
+		case readErr := <-errCh:
+			// Paint what the read delivered before the loop ends.
+			m.tuiInst.Render()
+			return readErr
+		case <-changed:
+			// A modal armed off the loop and takes the rest of the read.
+			return nil
+		case next, ok := <-*readCh:
+			if !ok {
+				*readCh = nil
+				return nil
+			}
+			input = next
+		}
+	}
+}
+
 func (m *InteractiveMode) finishInteractiveShutdown() error {
 	m.shutdownMu.Lock()
 	defer m.shutdownMu.Unlock()
@@ -278,25 +293,31 @@ func (m *InteractiveMode) finishInteractiveShutdown() error {
 
 type terminalInputOwner struct {
 	cancel context.CancelFunc
-	done   chan struct{}
+	// reader reads a terminal source and routes on its own goroutine; done
+	// closes when the input pump of any other source ends.
 	reader *interactiveTerminalReader
+	router *terminalInputRouter
+	done   chan struct{}
 	err    error
 }
 
-// startTerminalInput starts one owned decoder shared by theme detection and the interactive loop. Temporary UI loops keep that owner; final shutdown cancels and joins it before terminal teardown.
+// startTerminalInput starts one owned decoder shared by theme detection and the interactive loop. Temporary UI loops keep that owner; final shutdown cancels and joins it before terminal teardown. A terminal is framed and routed on the goroutine that reads it; another source (a test's reader) on an input pump fed by a read worker.
 func (m *InteractiveMode) startTerminalInput(ctx context.Context, source io.Reader) {
 	if m.inputReadCh != nil {
 		return
 	}
 	ctx, cancel := context.WithCancel(ctx)
-	owner := &terminalInputOwner{cancel: cancel, done: make(chan struct{})}
-	if file, ok := source.(*os.File); ok {
-		owner.reader = newInteractiveTerminalReader(ctx, file)
-		m.inputReader = owner.reader
-	}
+	owner := &terminalInputOwner{cancel: cancel}
 	m.inputOwner = owner
 	m.inputReadCh = make(chan inputChunk)
 	m.inputErrCh = make(chan error, 1)
+	if file, ok := source.(*os.File); ok {
+		owner.router = m.newTerminalInputRouter(ctx, m.inputReadCh, m.inputErrCh, true)
+		owner.reader = newInteractiveTerminalReader(ctx, file, owner.router)
+		m.inputReader = owner.reader
+		return
+	}
+	owner.done = make(chan struct{})
 	go func() {
 		defer close(owner.done)
 		owner.err = m.pumpTerminalInput(ctx, source, m.inputReadCh, m.inputErrCh)
@@ -310,9 +331,11 @@ func (m *InteractiveMode) stopTerminalInput() error {
 	}
 	owner.cancel()
 	if owner.reader != nil {
-		owner.reader.pause()
+		owner.reader.stop()
+		owner.router.end()
+	} else {
+		<-owner.done
 	}
-	<-owner.done
 	m.inputOwner = nil
 	return owner.err
 }
@@ -321,51 +344,175 @@ func (m *InteractiveMode) stopTerminalInput() error {
 // native Shift+Enter normalization to one complete StdinBuffer sequence.
 var normalizeInputSequence = tui.NormalizeProcessInputSequence
 
-// pumpTerminalInput owns the one StdinBuffer for the process input stream and
-// routes only complete sequences. Upstream ProcessTerminal parses input before
-// focus dispatch, so switching between the editor and a modal cannot split one
-// terminal read differently or lose a partial escape sequence.
+// terminalInputRouter owns the one StdinBuffer for the process input stream and
+// routes only complete sequences, on the goroutine that reads the input.
+// Upstream ProcessTerminal parses input before focus dispatch, so switching
+// between the editor and a modal cannot split one terminal read differently or
+// lose a partial escape sequence.
 //
-// Upstream's terminal-input listeners answer synchronously before anything else sees a chunk. A chunk routed to the main loop therefore holds all input after it until its listeners settle, including a subprocess listener whose verdict the main loop awaits without blocking. Ctrl+C follows the same ordering as every other key. While a verdict is pending the pump stops receiving raw input, leaving at most one read ahead in the reader worker.
+// Upstream's terminal-input listeners answer synchronously before anything else sees a chunk. A chunk routed to the main loop therefore holds all input after it until its listeners settle, including a subprocess listener whose verdict the main loop awaits without blocking. Ctrl+C follows the same ordering as every other key. The router waits for that settlement only when it has more to route: the last chunk of a read goes out at once, its listeners settle while the reader waits for the next read, and the router takes their token before it frames that read. A key typed on its own thus reaches the main loop in one hand-off, and while a verdict is pending the reader holds at most one read ahead.
+type terminalInputRouter struct {
+	m      *InteractiveMode
+	ctx    context.Context
+	readCh chan<- inputChunk
+	errCh  chan<- error
+	// terminal: the source is the process terminal, whose end leaves the session running.
+	terminal bool
+	input    *tui.TerminalInput
+	// settled takes the token of every ticket the router routes (inputTicket.done).
+	settled chan struct{}
+	// waiting: the token of the chunk routed last is outstanding.
+	waiting bool
+	// held: sequences the decoder forwarded that are not routed yet.
+	held []string
+	// split: the current read routed a chunk with more set, so its end must reach the main loop.
+	split     bool
+	started   bool
+	closeOnce sync.Once
+}
+
+func (m *InteractiveMode) newTerminalInputRouter(ctx context.Context, readCh chan<- inputChunk, errCh chan<- error, terminal bool) *terminalInputRouter {
+	r := &terminalInputRouter{m: m, ctx: ctx, readCh: readCh, errCh: errCh, terminal: terminal, settled: make(chan struct{}, 1)}
+	r.input = tui.NewTerminalInput(func(sequence string) { r.held = append(r.held, normalizeInputSequence(sequence)) })
+	r.input.SetSequenceBarrier(r.routeHeld)
+	return r
+}
+
+// begin routes the startup type-ahead once; its terminal owner already framed and normalized it.
+func (r *terminalInputRouter) begin() {
+	if r.started {
+		return
+	}
+	r.started = true
+	r.held = append(r.held, takeStartupInput()...)
+	r.finish()
+}
+
+// process frames one terminal read and routes its sequences.
+func (r *terminalInputRouter) process(data []byte) {
+	if r.settle() {
+		r.input.Process(data)
+		r.finish()
+	}
+}
+
+// flush dispatches the decoder's expired framing and negotiation deadlines.
+func (r *terminalInputRouter) flush() {
+	if r.settle() {
+		r.input.Flush()
+		r.finish()
+	}
+}
+
+// deadline reports when flush must run if no input arrives first.
+func (r *terminalInputRouter) deadline() time.Time {
+	return r.input.NextDeadline()
+}
+
+// fail ends the input at a read error: the decoder's held input first, then the error once its listeners settled.
+func (r *terminalInputRouter) fail(err error) {
+	defer r.end()
+	r.m.exitIfDeadTerminal(err)
+	if !r.settle() {
+		return
+	}
+	r.input.FlushPending()
+	r.finish()
+	// Ports packages/tui/src/terminal.ts: process.stdin gets a "data" listener and no "end" listener, so a terminal
+	// whose input ends while it lives leaves the session running without input.
+	if r.terminal && errors.Is(err, io.EOF) {
+		debugLog("terminal input ended (EOF); the session keeps running without input")
+		return
+	}
+	if !r.settle() {
+		return
+	}
+	select {
+	case r.errCh <- err:
+	case <-r.ctx.Done():
+	}
+}
+
+// end closes the main loop's input channel once.
+func (r *terminalInputRouter) end() {
+	r.closeOnce.Do(func() { close(r.readCh) })
+}
+
+// settle waits for the listeners of the chunk routed last and reports whether input continues. Cancellation discards
+// the decoder's rest.
+func (r *terminalInputRouter) settle() bool {
+	if r.waiting {
+		select {
+		case <-r.settled:
+			r.waiting = false
+		case <-r.ctx.Done():
+		}
+	}
+	if r.ctx.Err() != nil {
+		r.input.Close()
+		r.held = r.held[:0]
+		return false
+	}
+	return true
+}
+
+// route sends one sequence after the previous chunk settled and reports whether input continues.
+func (r *terminalInputRouter) route(sequence string, more bool) bool {
+	if !r.settle() {
+		return false
+	}
+	if r.m.routeInputSequence(r.ctx, []byte(sequence), more, r.settled, r.readCh) != nil {
+		r.waiting = true
+		r.split = r.split || more
+	}
+	return true
+}
+
+// routeHeld is the decoder's sequence barrier: what the decoder forwarded reaches its listeners, which settle, before the
+// decoder interprets a later sequence of the read.
+func (r *terminalInputRouter) routeHeld() {
+	for _, sequence := range r.held {
+		if !r.route(sequence, true) {
+			return
+		}
+	}
+	r.held = r.held[:0]
+	r.settle()
+}
+
+// finish routes the rest of a decoder step: its last chunk without waiting for the listeners, or, when the read ended in
+// protocol input after a chunk that announced more, the read's end.
+func (r *terminalInputRouter) finish() {
+	last := len(r.held) - 1
+	for i, sequence := range r.held {
+		if !r.route(sequence, i < last) {
+			return
+		}
+	}
+	r.held = r.held[:0]
+	if last < 0 && r.split && r.settle() {
+		r.m.routeReadEnd(r.ctx, r.readCh)
+	}
+	r.split = false
+}
+
+// pumpTerminalInput routes a source other than the process terminal, such as a test's reader: a read worker feeds raw
+// reads to the router on this goroutine, which receives no read while the last chunk's listeners are pending, leaving at
+// most one read ahead in the worker.
 func (m *InteractiveMode) pumpTerminalInput(ctx context.Context, source io.Reader, readCh chan<- inputChunk, errCh chan<- error) (cleanupErr error) {
-	defer close(readCh)
+	r := m.newTerminalInputRouter(ctx, readCh, errCh, false)
+	defer r.end()
 	rawCh, rawErrCh, closeRaw := m.rawInputChannels(ctx, source)
 	defer func() { cleanupErr = closeRaw() }()
-
-	var input *tui.TerminalInput
-	var readDone chan struct{}
-	deliver := func(sequence string) {
-		ticket := m.routeInputSequence(ctx, []byte(sequence), readDone, readCh)
-		if ticket != nil {
-			select {
-			case <-ctx.Done():
-				input.Close()
-			case <-ticket.done:
-			}
-		}
-	}
-	input = tui.NewTerminalInput(func(sequence string) { deliver(normalizeInputSequence(sequence)) })
-	defer input.Close()
-	batch := func(run func()) {
-		readDone = make(chan struct{})
-		defer close(readDone)
-		run()
-	}
-	process := func(buf []byte) { batch(func() { input.Process(buf) }) }
-	flush := func() { batch(input.Flush) }
-	// Startup type-ahead was already framed and normalized by its terminal owner.
-	batch(func() {
-		for _, sequence := range takeStartupInput() {
-			deliver(sequence)
-		}
-	})
-	for {
-		switch kind, buf := priorityInput(rawCh, input.C); kind {
+	defer r.input.Close()
+	r.begin()
+	for r.settle() {
+		switch kind, buf := priorityInput(rawCh, r.input.C); kind {
 		case priorityInputRead:
-			process(buf)
+			r.process(buf)
 			continue
 		case priorityInputFlush:
-			flush()
+			r.flush()
 			continue
 		case priorityInputClosed, priorityInputNone:
 		}
@@ -373,36 +520,19 @@ func (m *InteractiveMode) pumpTerminalInput(ctx context.Context, source io.Reade
 		case <-ctx.Done():
 			return
 		case err := <-rawErrCh:
-			m.exitIfDeadTerminal(err)
-			batch(input.FlushPending)
-			// Ports packages/tui/src/terminal.ts: process.stdin gets a "data" listener and no "end" listener, so a terminal
-			// whose input ends while it lives leaves the session running without input.
-			if _, terminal := source.(*os.File); terminal && errors.Is(err, io.EOF) {
-				debugLog("terminal input ended (EOF); the session keeps running without input")
-				return
-			}
-			select {
-			case errCh <- err:
-			case <-ctx.Done():
-			}
+			r.fail(err)
 			return
 		case buf := <-rawCh:
-			process(buf)
-		case <-input.C:
-			flush()
+			r.process(buf)
+		case <-r.input.C:
+			r.flush()
 		}
 	}
+	return
 }
 
-// rawInputChannels retains the existing byte-read contract and joins its worker. Files remain open; cancellation closes other ReadClosers. Non-closable readers must finish each Read without waiting for external input.
-func (m *InteractiveMode) rawInputChannels(ctx context.Context, source io.Reader) (<-chan []byte, <-chan error, func() error) {
-	if m.inputReader != nil {
-		return m.inputReader.data, m.inputReader.errors, func() error { return nil }
-	}
-	if file, ok := source.(*os.File); ok {
-		reader := newInteractiveTerminalReader(ctx, file)
-		return reader.data, reader.errors, func() error { reader.pause(); return nil }
-	}
+// rawInputChannels retains the existing byte-read contract and joins its worker. Cancellation closes a ReadCloser. Non-closable readers must finish each Read without waiting for external input.
+func (*InteractiveMode) rawInputChannels(ctx context.Context, source io.Reader) (<-chan []byte, <-chan error, func() error) {
 	ctx, cancel := context.WithCancel(ctx)
 	data, readErrors := make(chan []byte), make(chan error, 1)
 	done := make(chan struct{})
@@ -480,6 +610,8 @@ func priorityInput[T any](readCh <-chan T, flushC <-chan time.Time) (priorityInp
 
 // dispatchKey processes a single keystroke (post-splitting) that no input pump
 // waits on.
+//
+//perf:hot
 func (m *InteractiveMode) dispatchKey(ctx context.Context, data string) error {
 	return m.dispatchInputChunk(ctx, data, nil)
 }
@@ -487,7 +619,13 @@ func (m *InteractiveMode) dispatchKey(ctx context.Context, data string) error {
 // dispatchInputChunk processes one keystroke routed with ticket. When a
 // subprocess terminal-input listener must answer first, it returns before the
 // keystroke is handled, and handling resumes on the main loop with the verdict.
+// pig divergence (D105): the driver owns the terminal reader; extension input listeners run asynchronously around the renderer's listener chain.
 func (m *InteractiveMode) dispatchInputChunk(ctx context.Context, data string, ticket *inputTicket) error {
+	// pig additive (D91): frontend protocol replies and events never reach
+	// key handling.
+	if m.frontendInput(data) {
+		return nil
+	}
 	if m.consumeTerminalThemeInput(data) {
 		return nil
 	}
@@ -523,13 +661,14 @@ func (m *InteractiveMode) dispatchInputChunk(ctx context.Context, data string, t
 	}
 	// In fullscreen mode, viewport input (mouse wheel/click, focus events) is
 	// handled by the alt-screen renderer and must not reach the editor. Mirrors
-	// upstream's addInputListener(handleViewportInput) on the alt-screen; pig is
-	// driver-owned, so the driver routes it explicitly.
-	if m.altScreen != nil {
-		consumed := m.altScreen.HandleViewportInput(data)
-		if consumed {
+	// upstream's addInputListener(handleViewportInput) on the alt-screen, which
+	// the alt-screen renderer registers; the driver runs the renderer's listeners.
+	if m.tuiInst != nil {
+		current, done := m.tuiInst.RunInputListeners(data)
+		if done {
 			return nil
 		}
+		data = current
 	}
 	if m.extensionDialog != nil {
 		// The dialog is the focused component, so releases are dropped unless
@@ -537,6 +676,9 @@ func (m *InteractiveMode) dispatchInputChunk(ctx context.Context, data string, t
 		// never runs while a dialog is open, which is what made every arrow
 		// press move a selector cursor two rows.
 		if m.tuiInst != nil && m.tuiInst.ConsumeCellSizeResponse(data) {
+			return nil
+		}
+		if m.tuiInst != nil && m.tuiInst.ConsumeDebugKey(data) {
 			return nil
 		}
 		if !tui.ShouldDeliverKey(m.extensionDialog.component, data) {
@@ -558,6 +700,8 @@ func (m *InteractiveMode) dispatchInputChunk(ctx context.Context, data string, t
 }
 
 // handleKey handles a keystroke the terminal-input listeners passed on.
+//
+//perf:hot
 func (m *InteractiveMode) handleKey(ctx context.Context, data string) error {
 	// Consume the terminal's reply to the startup cell-size query so it never
 	// reaches the editor. Mirrors upstream tui.ts handleTerminalInput, which
@@ -566,7 +710,10 @@ func (m *InteractiveMode) handleKey(ctx context.Context, data string) error {
 	if m.tuiInst != nil && m.tuiInst.ConsumeCellSizeResponse(data) {
 		return nil
 	}
-
+	// The global debug key (Shift+Ctrl+D) runs the TUI's onDebug whatever has focus, after the cell-size reply (tui.ts:1076).
+	if m.tuiInst != nil && m.tuiInst.ConsumeDebugKey(data) {
+		return nil
+	}
 	// While fullscreen transcript search has focus it is upstream's focused
 	// component, so the remaining keys edit its query instead of the editor.
 	if m.altScreen != nil && m.altScreen.HandleFocusedSearchInput(data) {
@@ -577,15 +724,10 @@ func (m *InteractiveMode) handleKey(ctx context.Context, data string) error {
 	if m.tuiInst != nil {
 		focused := m.tuiInst.ActiveOverlay()
 		if focused == nil {
-			focused = m.tuiInst.FocusedComponent()
+			focused = m.tuiInst.GetFocusedComponent()
 		}
 		if focused != nil && focused != m.editor {
-			if tui.ShouldDeliverKey(focused, data) {
-				if input, ok := focused.(tui.InputHandler); ok {
-					input.HandleInput(data)
-					m.tuiInst.RequestImmediateRender()
-				}
-			}
+			m.tuiInst.DispatchFocusedInput(data)
 			return nil
 		}
 	}
@@ -610,7 +752,69 @@ func (m *InteractiveMode) handleKey(ctx context.Context, data string) error {
 		return nil
 	}
 
-	return m.handleEditorAction(ctx, classifyKeyWithBindings(data, m.keybindings), data)
+	return m.handleCustomEditorKey(ctx, data)
+}
+
+// handleCustomEditorKey gives one key to the default editor, Pi's CustomEditor.handleInput, and reports the error an app action returned.
+func (m *InteractiveMode) handleCustomEditorKey(ctx context.Context, data string) error {
+	editor := m.defaultCustomEditor()
+	previousCtx, previousErr := m.inputCtx, m.inputErr
+	m.inputCtx, m.inputErr = ctx, nil
+	defer func() { m.inputCtx, m.inputErr = previousCtx, previousErr }()
+	editor.HandleInput(data)
+	return m.inputErr
+}
+
+// defaultCustomEditor returns the CustomEditor over the current default editor, registering the app handlers Pi's setupKeyHandlers binds the
+// first time and again whenever the editor changes.
+func (m *InteractiveMode) defaultCustomEditor() *CustomEditor {
+	if m.customEditor != nil && m.customEditor.Editor == m.editor && m.customEditor.keybindings == m.keybindings {
+		return m.customEditor
+	}
+	// interactive-mode.ts:645-651 builds the editor from the settings' editorPaddingX and autocompleteMaxVisible.
+	paddingX, autocompleteMaxVisible := m.opts.Settings.GetEditorPaddingX(), m.opts.Settings.GetAutocompleteMaxVisible()
+	options := CustomEditorOptions{PaddingX: &paddingX, AutocompleteMaxVisible: &autocompleteMaxVisible, EmbedWorkingStatus: true}
+	superInput := func(data string) {
+		m.runEditorAction(classifyKeyWithBindings(data, m.keybindings), data)
+	}
+	if m.editor == nil {
+		// interactive-mode.ts:645 `new CustomEditor(this.ui, getEditorTheme(), this.keybindings, {...})`: the default editor is the CustomEditor's own.
+		m.customEditor = NewCustomEditor(m.tuiInst, tui.EditorTheme{}, m.keybindings, options)
+		m.customEditor.superInput = superInput
+		m.editor = m.customEditor.Editor
+	} else {
+		m.customEditor = wrapCustomEditor(m.editor, m.keybindings, superInput, options)
+	}
+	m.setupKeyHandlers(m.customEditor)
+	return m.customEditor
+}
+
+// runEditorAction runs the editor handling for one classified key under the key's context and keeps the first error for handleCustomEditorKey.
+func (m *InteractiveMode) runEditorAction(action keyAction, data string) {
+	if err := m.handleEditorAction(m.inputCtx, action, data); err != nil && m.inputErr == nil {
+		m.inputErr = err
+	}
+}
+
+// setupKeyHandlers binds the app actions on the default editor in the order interactive-mode.ts setupKeyHandlers registers them.
+func (m *InteractiveMode) setupKeyHandlers(editor *CustomEditor) {
+	editor.OnEscape = func() { m.runEditorAction(actionInterrupt, "") }
+	editor.OnCtrlD = func() { m.runEditorAction(actionExit, "") }
+	editor.OnPasteImage = func() { m.runEditorAction(actionPasteImage, "") }
+	editor.OnExtensionShortcut = func(data string) bool {
+		m.terminalInputMu.Lock()
+		listener := m.extensionShortcutListener
+		m.terminalInputMu.Unlock()
+		return listener != nil && listener(data)
+	}
+	for _, action := range []AppKeybinding{
+		AppClear, AppSuspend, AppThinkingCycle, AppModelCycleForward, AppModelCycleBackward, AppModelSelect,
+		AppToolsExpand, AppThinkingToggle, AppEditorExternal, AppMessageCopy, AppMessageFollowUp, AppMessageDequeue,
+		AppSessionNew, AppSessionTree, AppSessionFork, AppSessionResume,
+	} {
+		key, _ := appActionKey(action)
+		editor.OnAction(action, func() { m.runEditorAction(key, "") })
+	}
 }
 
 // handleEditorAction runs what Pi's editor handlers do for one classified
@@ -622,15 +826,6 @@ func (m *InteractiveMode) handleEditorAction(ctx context.Context, action keyActi
 	// and newlines are editor content: Ctrl+D must fall through to the editor's
 	// delete-char-forward binding rather than exit.
 	editorEmpty := m.editor.Text() == ""
-	// Pi temporarily replaces the default editor's Escape callback while
-	// compaction runs. Compaction itself may be active while the agent is idle,
-	// so routing through the normal idle/working outcome table makes Escape a
-	// no-op. Preserve the same priority explicitly before that table.
-	if action == actionInterrupt && m.isCompacting && m.branchSummaryCancel == nil && m.opts.SessionHandle != nil {
-		m.opts.SessionHandle.AbortCompaction()
-		return nil
-	}
-
 	// When the slash-autocomplete popup is open, intercept
 	// Esc (dismiss) and Enter (accept + maybe submit) before the
 	// idle/working state machine sees them. Tab and arrows are
@@ -662,6 +857,18 @@ func (m *InteractiveMode) handleEditorAction(ctx context.Context, action keyActi
 			m.tuiInst.Render()
 			return nil
 		}
+	}
+
+	// Pi temporarily replaces the default editor's Escape callback while
+	// compaction runs (interactive-mode.ts:3678). Compaction itself may be active
+	// while the agent is idle, so routing through the normal idle/working outcome
+	// table makes Escape a no-op. Preserve the same priority explicitly before
+	// that table. It comes after the autocomplete intercept: CustomEditor calls
+	// onEscape only while no autocomplete is showing (custom-editor.ts:106-113),
+	// so Escape over an open autocomplete closes it and compaction continues.
+	if action == actionInterrupt && m.isCompacting && m.branchSummaryCancel == nil && m.opts.SessionHandle != nil {
+		m.opts.SessionHandle.AbortCompaction()
+		return nil
 	}
 
 	if action == actionInterrupt && m.branchSummaryCancel != nil {
@@ -726,8 +933,7 @@ func (m *InteractiveMode) handleEditorAction(ctx context.Context, action keyActi
 		// Upstream clearEditor() just clears the text and re-renders; it
 		// shows no "cleared" status (interactive-mode.ts:3629). Pig used
 		// to flash "cleared" here, which diverged.
-		m.editor.Clear()
-		m.tuiInst.Render()
+		m.ClearEditor()
 
 	case outcomeToggleTools:
 		m.toggleAllTools()
@@ -810,18 +1016,10 @@ func (m *InteractiveMode) handleEditorAction(ctx context.Context, action keyActi
 		if text == "" {
 			return nil
 		}
-		if m.editor.OnSubmit != nil {
-			m.editor.Clear()
-			m.editor.OnSubmit(text)
+		m.editor.Clear()
+		if m.submit(ctx, text) {
 			return nil
 		}
-		m.editor.AddToHistory(text)
-		m.editor.Clear()
-		// handleSubmit is upstream's onSubmit: commands and `!` bash run
-		// immediately, input during compaction queues for after it, and
-		// anything else goes through prompt() with streamingBehavior "steer"
-		// while a run is active.
-		m.handleSubmit(ctx, text)
 
 	case outcomeNewline:
 		m.editor.HandleInput("\n")
@@ -855,7 +1053,7 @@ func (m *InteractiveMode) handleEditorAction(ctx context.Context, action keyActi
 			m.dispatchSlash(ctx, trimmed)
 		case m.isCompacting:
 			m.compactionQueue = append(m.compactionQueue, compactionQueuedMessage{text: trimmed, mode: compactionQueueFollowUp})
-			m.statusLine.Flash("Queued message for after compaction", 2*time.Second)
+			m.showStatus("Queued message for after compaction")
 			m.updatePendingMessagesDisplay()
 		case m.runStreaming():
 			m.promptUserInput(ctx, trimmed, nil, true, extension.InputSourceUser, true)
@@ -877,11 +1075,11 @@ func (m *InteractiveMode) handleEditorAction(ctx context.Context, action keyActi
 		n := m.restoreQueuedMessagesToEditor(false)
 		switch n {
 		case 0:
-			m.statusLine.Flash("No queued messages to restore", 3*time.Second)
+			m.showStatus("No queued messages to restore")
 		case 1:
-			m.statusLine.Flash("Restored 1 queued message to editor", 3*time.Second)
+			m.showStatus("Restored 1 queued message to editor")
 		default:
-			m.statusLine.Flash(fmt.Sprintf("Restored %d queued messages to editor", n), 3*time.Second)
+			m.showStatus(fmt.Sprintf("Restored %d queued messages to editor", n))
 		}
 		m.tuiInst.Render()
 
@@ -894,12 +1092,12 @@ func (m *InteractiveMode) handleEditorAction(ctx context.Context, action keyActi
 			m.tuiInst.Render()
 			return nil
 		}
-		// Idle Esc with empty editor arms / fires the
-		// double-Esc shortcut (mirrors upstream
-		// interactive-mode.ts:2300-2316). Default action is "tree";
+		// Idle Esc with an editor that is empty after JavaScript trim() arms / fires the
+		// double-Esc shortcut (mirrors upstream onEscape
+		// `!this.editor.getText().trim()`). Default action is "tree";
 		// reads from doubleEscapeAction setting ("fork"/"tree"/"none").
 		// 500ms window matches upstream `now - this.lastEscapeTime < 500`.
-		if action == actionInterrupt && editorEmpty {
+		if action == actionInterrupt && widthx.JSTrim(m.editor.Text()) == "" {
 			dblAction := "tree"
 			if m.opts.SettingsManager != nil {
 				dblAction = m.opts.SettingsManager.GetDoubleEscapeAction()
@@ -927,6 +1125,22 @@ func (m *InteractiveMode) handleEditorAction(ctx context.Context, action keyActi
 	}
 	m.tuiInst.RequestRender()
 	return nil
+}
+
+// submit runs what Enter does with the editor's trimmed text once the editor
+// is cleared: the installed onSubmit handler, or, without one, history and
+// handleSubmit, which is upstream's onSubmit: commands and `!` bash run
+// immediately, input during compaction queues for after it, and anything else
+// goes through prompt() with streamingBehavior "steer" while a run is active.
+// It reports whether the handler took the text.
+func (m *InteractiveMode) submit(ctx context.Context, text string) bool {
+	if m.editor.OnSubmit != nil {
+		m.editor.OnSubmit(text)
+		return true
+	}
+	m.editor.AddToHistory(text)
+	m.handleSubmit(ctx, text)
+	return false
 }
 
 // expandSkillCommand checks if prompt starts with "/skill:name" and if so,
@@ -958,7 +1172,6 @@ func (m *InteractiveMode) syncExtensionSlashCommands() {
 	for _, rc := range commands {
 		nr := m.newRunner
 		cmdName := strings.TrimPrefix(rc.InvocationName, "/")
-		runsLlama := m.opts.Llama != nil && IsLlamaCommand(rc)
 		dynamic = append(dynamic, SlashCommand{
 			Name:        cmdName,
 			Description: rc.Description,
@@ -966,10 +1179,6 @@ func (m *InteractiveMode) syncExtensionSlashCommands() {
 				baseCtx := m.runCtx
 				if baseCtx == nil {
 					baseCtx = context.Background()
-				}
-				// The built-in llama.cpp extension's /llama runs the llama host with this mode's command context.
-				if runsLlama {
-					return m.runLlamaCommand(baseCtx)
 				}
 				// Use the runner's command context and error channel, as Session command dispatch does. IPC stays off the input loop.
 				go nr.ExecuteCommand(baseCtx, cmdName, args)
@@ -991,9 +1200,8 @@ func (m *InteractiveMode) resolvableSlashCommand(prompt string) bool {
 	if !strings.HasPrefix(prompt, "/") {
 		return false
 	}
-	name, _ := parseSlashLine(prompt)
 	m.syncExtensionSlashCommands()
-	_, ok := m.slashRegistry.Resolve(name)
+	_, ok := m.slashRegistry.Match(prompt)
 	return ok
 }
 
@@ -1012,7 +1220,8 @@ func (m *InteractiveMode) restoreQueuedMessagesToEditor(abort bool) int {
 	texts := slices.Concat(steeringTexts, followUpTexts)
 	if len(texts) > 0 {
 		if m.agent != nil {
-			m.agent.ClearAllQueues()
+			// pig divergence (D135): queued extension custom messages are not restored to the editor and stay queued.
+			m.agent.ClearQueuedUserMessages()
 		}
 		m.compactionQueue = nil
 		combined := strings.Join(texts, "\n\n")
@@ -1105,6 +1314,7 @@ func (m *InteractiveMode) isExtensionCommand(text string) bool {
 	if !strings.HasPrefix(text, "/") || m.newRunner == nil {
 		return false
 	}
+	// interactive-mode.ts isExtensionCommand: the name is the text before the first space.
 	name, _ := parseSlashLine(text)
 	for _, command := range m.newRunner.Commands() {
 		if strings.TrimPrefix(command.InvocationName, "/") == name {

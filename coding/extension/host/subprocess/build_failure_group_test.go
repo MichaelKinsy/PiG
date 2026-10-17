@@ -22,8 +22,7 @@ func TestGroupLoadErrorsFoldsOneRootCause(t *testing.T) {
 	for i := range 13 {
 		errs = append(errs, loadError(fmt.Sprintf("ext%02d", i), &runtimecell.BuildFailure{Summary: cause, Cause: cause, Log: "/cache/logs/build-a.log"}))
 		if i == 2 {
-			errs = append(errs, loadError("odd", &runtimecell.BuildFailure{Summary: "go build: odd.go:1:1: syntax error", Cause: "go build: syntax error"}))
-			errs = append(errs, errors.New("embedded cell failed"))
+			errs = append(errs, loadError("odd", &runtimecell.BuildFailure{Summary: "go build: odd.go:1:1: syntax error", Cause: "go build: syntax error"}), errors.New("embedded cell failed"))
 		}
 	}
 	got := GroupLoadErrors(errs)

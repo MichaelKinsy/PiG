@@ -27,13 +27,13 @@ func fetchOptionProvider(api API, baseURL string) Provider {
 	case APIAzureOpenAIResponses:
 		return NewAzureOpenAIResponsesProvider(AzureOpenAIResponsesConfig{APIKey: "test-key", Model: "test-model", ProviderID: "test-provider", BaseURL: baseURL})
 	case APIMistralConversations:
-		return NewMistralProvider(MistralConfig{APIKey: "test-key", Model: "test-model", ProviderID: "test-provider", BaseURL: baseURL})
+		return newMistralTestProvider(MistralConfig{APIKey: "test-key", Model: "test-model", ProviderID: "test-provider", BaseURL: baseURL}, nil)
 	case APIPiMessages:
 		return NewPiMessagesProvider(PiMessagesConfig{APIKey: "test-key", Model: "test-model", ProviderID: "test-provider", BaseURL: baseURL})
 	case APIGoogleGenerativeAI:
 		return NewGoogleProvider(GoogleConfig{APIKey: "test-key", Model: "test-model", ProviderID: "test-provider", BaseURL: baseURL})
 	case APIGoogleVertex:
-		return NewGoogleVertexProvider(GoogleVertexConfig{APIKey: "test-key", Model: "test-model", ProviderID: "test-provider", BaseURL: baseURL})
+		return newGoogleVertexTestProvider(GoogleVertexConfig{APIKey: "test-key", Model: "test-model", ProviderID: "test-provider", BaseURL: baseURL}, nil)
 	case APIOpenAICodexResponses:
 		token := "header." + base64.RawURLEncoding.EncodeToString([]byte(`{"https://api.openai.com/auth":{"chatgpt_account_id":"account"}}`)) + ".signature"
 		return NewOpenAICodexResponsesProvider(OpenAICodexResponsesConfig{APIKey: token, Model: "test-model", BaseURL: baseURL})

@@ -1,0 +1,38 @@
+[
+  {
+    "upstream": "packages/tui/src/tui.ts",
+    "package": "./tui",
+    "tests": [
+      "TestUpstreamOverlayCJKBoundary"
+    ],
+    "upstream_reference": "packages/tui/src/tui.ts",
+    "mutation": "tui/stack.go: replace 'beforePad := max(0, startCol-base.BeforeWidth)' with 'beforePad := 0'; compiling go test -run exact test -count=1 fails TestUpstreamOverlayCJKBoundary."
+  },
+  {
+    "upstream": "packages/tui/src/tui.ts",
+    "package": "./tui",
+    "tests": [
+      "TestOverlayBoundsAndMouseHitTesting"
+    ],
+    "upstream_reference": "packages/tui/src/tui.ts",
+    "mutation": "tui/overlay_compositor.go: replace 'return int(math.Floor(float64(available) * position.value / 100)), true\\n}\\nreturn int(position.value), true' with 'return int(math.Floor(float64(available) * position.value / 100)), true\\n}\\nreturn int(position.value) + 1, true'; compiling go test -run exact test -count=1 fails TestOverlayBoundsAndMouseHitTesting."
+  },
+  {
+    "upstream": "packages/coding-agent/src/modes/interactive/components/assistant-message.ts",
+    "package": "./tui",
+    "tests": [
+      "TestAssistantMessageComponentIsAContainerOfAContentContainer"
+    ],
+    "upstream_reference": "packages/coding-agent/src/modes/interactive/components/assistant-message.ts",
+    "mutation": "tui/assistant_message_block.go: replace 'b.Add(b.contentContainer)\\nif len(markdownTransformers) > 0 {' with 'b.Add(NewContainer())\\nif len(markdownTransformers) > 0 {'; compiling go test -run exact test -count=1 fails TestAssistantMessageComponentIsAContainerOfAContentContainer."
+  },
+  {
+    "upstream": "packages/tui/src/components/input.ts",
+    "package": "./tui",
+    "tests": [
+      "TestUpstreamInputRender"
+    ],
+    "upstream_reference": "packages/tui/src/components/input.ts",
+    "mutation": "tui/text_input.go: replace 'if options.PlaceholderStyle != nil {\\ninput.placeholderStyle = options.PlaceholderStyle\\n}' with 'if options.PlaceholderStyle == nil {\\ninput.placeholderStyle = options.PlaceholderStyle\\n}'; compiling go test -run exact test -count=1 fails TestUpstreamInputRender."
+  }
+]

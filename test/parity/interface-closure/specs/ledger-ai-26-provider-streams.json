@@ -1,0 +1,74 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#ProviderStreams",
+   "pkg:ai/compat#ProviderStreams"
+  ],
+  "targets": [
+   "ai/models_provider.go#ProviderStreams"
+  ],
+  "production": [
+   "public-api:ai/models_provider.go#ProviderStreams"
+  ],
+  "evidence": [
+   "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream",
+   "test:ai/models_collection_upstream_test.go#TestModelsResolvedEnvironmentAndRequestKeyUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ProviderStreams: every upstream property maps to a Go field (types reviewed against the upstream declaration); production and tests attributed by go/types. streamSimple takes the Go StreamOptions (SimpleStreamOptions is folded into it); the options.signal argument is the context.Context first argument.",
+  "properties": {
+   "cancelDeferred": {
+    "targets": [
+     "ai/models_provider.go#ProviderStreams.CancelDeferred"
+    ],
+    "evidence": [
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsResolvedEnvironmentAndRequestKeyUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_provider.go#ProviderStreams"
+    ],
+    "rationale": "The upstream property cancelDeferred is the Go field ProviderStreams.CancelDeferred."
+   },
+   "fetchDeferred": {
+    "targets": [
+     "ai/models_provider.go#ProviderStreams.FetchDeferred"
+    ],
+    "evidence": [
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsResolvedEnvironmentAndRequestKeyUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_provider.go#ProviderStreams"
+    ],
+    "rationale": "The upstream property fetchDeferred is the Go field ProviderStreams.FetchDeferred."
+   },
+   "stream": {
+    "targets": [
+     "ai/models_provider.go#ProviderStreams.Stream"
+    ],
+    "evidence": [
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsResolvedEnvironmentAndRequestKeyUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_provider.go#ProviderStreams"
+    ],
+    "rationale": "The upstream property stream is the Go field ProviderStreams.Stream."
+   },
+   "streamSimple": {
+    "targets": [
+     "ai/models_provider.go#ProviderStreams.StreamSimple"
+    ],
+    "evidence": [
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsResolvedEnvironmentAndRequestKeyUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_provider.go#ProviderStreams"
+    ],
+    "rationale": "The upstream property streamSimple is the Go field ProviderStreams.StreamSimple."
+   }
+  }
+ }
+]

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/configroot"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -69,7 +70,7 @@ func TestSpritePickerDrawsThePigOnTheRightOfTheRows(t *testing.T) {
 	options := spriteOptions(variants)
 	picker := pickerComponent(t, variants, func(any) {})
 	const width = 100
-	mode := tui.ActiveTheme().ColorMode()
+	mode := tui.ActiveTheme().GetColorMode()
 	head := HeadLines(variants[0], mode)
 
 	lines := picker.Render(width)
@@ -104,7 +105,7 @@ func TestSpritePickerFollowsTheCursorAndReportsTheChoice(t *testing.T) {
 	var got any
 	picker := pickerComponent(t, variants, func(value any) { got = value })
 	const width = 100
-	mode := tui.ActiveTheme().ColorMode()
+	mode := tui.ActiveTheme().GetColorMode()
 
 	picker.HandleInput("j")
 	if !strings.Contains(strings.Join(picker.Render(width), "\n"), HeadLines(variants[1], mode)[0]) {
@@ -130,7 +131,7 @@ func TestSpritePickerCreateRowDrawsNoPreview(t *testing.T) {
 	options := spriteOptions(variants)
 	picker := pickerComponent(t, variants, func(any) {})
 	const width = 100
-	mode := tui.ActiveTheme().ColorMode()
+	mode := tui.ActiveTheme().GetColorMode()
 	for range len(variants) {
 		picker.HandleInput("j")
 	}
@@ -139,7 +140,7 @@ func TestSpritePickerCreateRowDrawsNoPreview(t *testing.T) {
 	if !strings.Contains(joined, CreateOption) {
 		t.Fatal("the picker does not offer the create row")
 	}
-	plain := tui.NewExtensionSelector(spritePickerTitle, options)
+	plain := tui.NewExtensionSelectorComponent(spritePickerTitle, options, nil, nil)
 	for range len(options) - 1 {
 		plain.HandleInput("j")
 	}
@@ -167,13 +168,12 @@ type pickerUI struct {
 	result  any
 }
 
-func (u *pickerUI) Custom(_ context.Context, factory any, _ any) (any, error) {
+func (u *pickerUI) Custom(_ context.Context, factory extension.CustomFactory, _ *extension.CustomOptions) (any, error) {
 	u.customs++
-	build, ok := factory.(extension.CustomFactory)
-	if !ok {
+	if factory == nil {
 		return nil, nil
 	}
-	component, err := build(nil, tui.ActiveTheme(), nil, func(value any) { u.result = value })
+	component, err := factory(nil, tui.ActiveTheme(), nil, func(value any) { u.result = value })
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +196,10 @@ func (u *pickerUI) Select(_ context.Context, _ string, _ []string, _ extension.E
 	return "", nil
 }
 
-func (u *pickerUI) SetHeader(factory any) { u.headers = append(u.headers, factory) }
+func (u *pickerUI) SetHeader(build extension.HeaderFactory) {
+	factory := frameOf(build, 2)
+	u.headers = append(u.headers, factory)
+}
 
 // /sprite with no arguments picks through the preview picker: the chosen row activates that sprite, saves it and
 // restores the header so it draws at once. The plain selector, which has no preview, is never asked.
@@ -214,7 +217,7 @@ func TestSpriteWithoutArgumentsPicksThroughThePreviewPicker(t *testing.T) {
 	if got := Active().ID; got != variants[1].ID {
 		t.Fatalf("active sprite = %q, want %q", got, variants[1].ID)
 	}
-	if got := LoadVariant(ConfigHome()).ID; got != variants[1].ID {
+	if got := LoadVariant(configroot.Dir()).ID; got != variants[1].ID {
 		t.Fatalf("saved sprite = %q, want %q", got, variants[1].ID)
 	}
 	if len(ui.headers) != 1 || ui.headers[0] != nil {

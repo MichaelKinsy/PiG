@@ -192,7 +192,7 @@ func TestOpenAIResponsesCompatDefaultsUpstream(t *testing.T) {
 	} {
 		t.Run("applies "+tc.id+" cost multiplier for requested "+tc.tier+" and returned "+tc.returned+" service tier", func(t *testing.T) {
 			model, _ := LookupModelExact("openai/" + tc.id)
-			options := StreamOptions{ModelCost: (&Model{Capabilities: model.ToCapabilities()}).CostRates(), SamplingParams: map[string]any{"service_tier": tc.tier}}
+			options := StreamOptions{ModelCost: (&Model{Capabilities: model.ToCapabilities()}).CostRates(), ServiceTier: tc.tier}
 			reply := fmt.Sprintf("data: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\",\"service_tier\":%q,\"usage\":{\"input_tokens\":100000,\"output_tokens\":100000,\"total_tokens\":200000,\"input_tokens_details\":{\"cached_tokens\":0}}}}\n\n", tc.returned)
 			_, _, result := captureResponsesCompat(t, responsesCompatConfig(t, "openai", tc.id), request, options, reply)
 			// Input and output have equal token scales in the upstream fixture.

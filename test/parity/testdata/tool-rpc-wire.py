@@ -174,8 +174,8 @@ def run(binary, directory):
 def upstream_version(repo):
     """The Pi release PiG pins, read from the one place that pins it."""
     source = (repo / "internal/coding/pigversion/pigversion.go").read_text()
-    match = re.search(r'^const UpstreamVersion = "([^"]+)"$', source, re.MULTILINE)
-    assert match, "cannot read UpstreamVersion"
+    match = re.search(r'^const UpstreamPackageVersion = "([^"]+)"$', source, re.MULTILINE)
+    assert match, "cannot read UpstreamPackageVersion"
     return match.group(1)
 
 

@@ -41,13 +41,13 @@ func tokensUpstreamCases() []tokensUpstreamCase {
 		// .upstream/v0.87.1/packages/ai/test/tokens.test.ts:247
 		{"should include token stats when aborted mid-stream", "vercel-ai-gateway", "google/gemini-2.5-flash", "", false, "", false},
 		// .upstream/v0.87.1/packages/ai/test/tokens.test.ts:260
-		{"should include token stats when aborted mid-stream", "xiaomi", "mimo-v2.5-pro", "", false, "", false},
+		{"should include token stats when aborted mid-stream", "xiaomi", "mimo-v2.6-pro", "", false, "", false},
 		// .upstream/v0.87.1/packages/ai/test/tokens.test.ts:270
-		{"should include token stats when aborted mid-stream", "xiaomi-token-plan-cn", "mimo-v2.5-pro", "", false, "", false},
+		{"should include token stats when aborted mid-stream", "xiaomi-token-plan-cn", "mimo-v2.6-pro", "", false, "", false},
 		// .upstream/v0.87.1/packages/ai/test/tokens.test.ts:280
-		{"should include token stats when aborted mid-stream", "xiaomi-token-plan-ams", "mimo-v2.5-pro", "", false, "", false},
+		{"should include token stats when aborted mid-stream", "xiaomi-token-plan-ams", "mimo-v2.6-pro", "", false, "", false},
 		// .upstream/v0.87.1/packages/ai/test/tokens.test.ts:290
-		{"should include token stats when aborted mid-stream", "xiaomi-token-plan-sgp", "mimo-v2.5-pro", "", false, "", false},
+		{"should include token stats when aborted mid-stream", "xiaomi-token-plan-sgp", "mimo-v2.6-pro", "", false, "", false},
 		// .upstream/v0.87.1/packages/ai/test/tokens.test.ts:298
 		{"should include token stats when aborted mid-stream", "qwen-token-plan", "qwen3.7-max", "", false, "", false},
 		// .upstream/v0.87.1/packages/ai/test/tokens.test.ts:306

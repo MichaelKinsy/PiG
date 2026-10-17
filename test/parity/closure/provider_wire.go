@@ -201,7 +201,7 @@ func providerWireDefinitions() []providerWireBehavior {
 			targets: []providerWireTarget{{
 				id: "openai-finish-reason", symbol: "ai.mapOAIFinishReason", goFact: "go:github.com/MichaelKinsy/PiG/ai#mapOAIFinishReason",
 				rangeRef: sourceRange{repository: "pig", path: "ai/openai.go", semanticID: "ai.mapOAIFinishReason", start: "func mapOAIFinishReason(", end: ""},
-				rootRef:  sourceRange{repository: "pig", path: "ai/openai.go", semanticID: "ai.openAIProvider.parseSSE.finishReason", start: "stopReason, errorMessage := mapOAIFinishReason(finishReason)", end: "\n\tcase !supportsFinishReason:"},
+				rootRef:  sourceRange{repository: "pig", path: "ai/openai.go", semanticID: "ai.openAIProvider.parseSSE.finishReason", start: "stopReason, errorMessage := mapChunkFinishReason(finishReason, finishReasonNotString)", end: "\n\tcase !supportsFinishReason:"},
 			}},
 		},
 	}

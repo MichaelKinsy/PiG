@@ -19,6 +19,12 @@ func openAIRequestError(ctx context.Context, err error, prefix string) error {
 	if ctx.Err() != nil {
 		return &nodeTransportError{message: "Request aborted", cause: wrapped}
 	}
+	// retryProviderRequest throws validateServerRetryDelayMs's error with the SDK error's own message appended.
+	if exceeded, ok := errors.AsType[*providerRetryDelayError](err); ok && exceeded.status != 0 {
+		if sdkErr, ok := errors.AsType[*providerError](openAIHTTPError(exceeded.status, exceeded.body)); ok {
+			return &nodeTransportError{message: exceeded.head + ". " + sdkErr.message, cause: wrapped}
+		}
+	}
 	if _, ok := errors.AsType[*providerRequestTimeoutError](err); ok {
 		return &nodeTransportError{message: "Request timed out.", cause: wrapped}
 	}

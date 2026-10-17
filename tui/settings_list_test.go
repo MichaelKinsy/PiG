@@ -10,7 +10,7 @@ func TestSettingsListRendersTwoColumns(t *testing.T) {
 		{ID: "a", Label: "Auto-compact", Description: "Compact context automatically", CurrentValue: "true", Values: []string{"true", "false"}},
 		{ID: "b", Label: "Theme", Description: "Color theme", CurrentValue: "dark", Values: []string{"auto", "dark", "light"}},
 	}
-	sl := NewSettingsList(items)
+	sl := NewSettingsList(items, 10, GetSettingsListTheme(), nil, nil, SettingsListOptions{EnableSearch: true})
 	lines := sl.Render(80)
 
 	// Should have the upstream-style search input line.
@@ -46,7 +46,7 @@ func TestSettingsListUsesThirtySixCellLabelCap(t *testing.T) {
 			{ID: "a", Label: label, CurrentValue: "long", Values: []string{"long"}},
 			{ID: "b", Label: "Short", CurrentValue: "value", Values: []string{"value"}},
 		}
-		for _, line := range NewSettingsList(items).Render(100) {
+		for _, line := range NewSettingsList(items, 10, GetSettingsListTheme(), nil, nil, SettingsListOptions{EnableSearch: true}).Render(100) {
 			if plain := stripANSI(line); strings.Contains(plain, "Short") {
 				return strings.Index(plain, "value")
 			}
@@ -70,7 +70,7 @@ func TestSettingsListWithoutSearch(t *testing.T) {
 		{ID: "light", Label: "Light theme", CurrentValue: "light", Values: []string{"light", "dark"}},
 		{ID: "apply", Label: "Apply", CurrentValue: "save and go back", Values: []string{"save and go back"}},
 	}
-	sl := NewSettingsListWithOptions(items, 2, false)
+	sl := NewSettingsList(items, 2, GetSettingsListTheme(), nil, nil, SettingsListOptions{EnableSearch: false})
 	var plain []string
 	for _, line := range sl.Render(80) {
 		plain = append(plain, strings.TrimRight(stripANSI(line), " "))
@@ -98,7 +98,7 @@ func TestSettingsListSpaceTypesIntoNonEmptySearch(t *testing.T) {
 		{ID: "a", Label: "Editor padding", CurrentValue: "0", Values: []string{"0", "1"}},
 		{ID: "b", Label: "Output padding", CurrentValue: "1", Values: []string{"0", "1"}},
 	}
-	sl := NewSettingsList(items)
+	sl := NewSettingsList(items, 10, GetSettingsListTheme(), nil, nil, SettingsListOptions{EnableSearch: true})
 	sl.HandleInput("\x1b[B")
 	sl.HandleInput("p")
 	sl.HandleInput(" ")
@@ -115,7 +115,7 @@ func TestSettingsListShowsDescription(t *testing.T) {
 	items := []SettingItem{
 		{ID: "a", Label: "Auto-compact", Description: "Compact context automatically", CurrentValue: "true", Values: []string{"true", "false"}},
 	}
-	sl := NewSettingsList(items)
+	sl := NewSettingsList(items, 10, GetSettingsListTheme(), nil, nil, SettingsListOptions{EnableSearch: true})
 	lines := sl.Render(80)
 	joined := strings.Join(lines, "\n")
 	if !strings.Contains(joined, "Compact context automatically") {
@@ -127,7 +127,7 @@ func TestSettingsListShowsHintLine(t *testing.T) {
 	items := []SettingItem{
 		{ID: "a", Label: "Foo", CurrentValue: "bar", Values: []string{"bar", "baz"}},
 	}
-	sl := NewSettingsList(items)
+	sl := NewSettingsList(items, 10, GetSettingsListTheme(), nil, nil, SettingsListOptions{EnableSearch: true})
 	lines := sl.Render(80)
 	joined := strings.Join(lines, "\n")
 	if !strings.Contains(joined, "Type to search") {
@@ -145,7 +145,7 @@ func TestSettingsListCyclesValue(t *testing.T) {
 	items := []SettingItem{
 		{ID: "a", Label: "Toggle", CurrentValue: "off", Values: []string{"off", "on"}},
 	}
-	sl := NewSettingsList(items)
+	sl := NewSettingsList(items, 10, GetSettingsListTheme(), nil, nil, SettingsListOptions{EnableSearch: true})
 
 	// Press Enter to cycle.
 	sl.HandleInput("\r")
@@ -167,7 +167,7 @@ func TestSettingsListEscCancels(t *testing.T) {
 	items := []SettingItem{
 		{ID: "a", Label: "Foo", CurrentValue: "bar", Values: []string{"bar"}},
 	}
-	sl := NewSettingsList(items)
+	sl := NewSettingsList(items, 10, GetSettingsListTheme(), nil, nil, SettingsListOptions{EnableSearch: true})
 	sl.HandleInput("\x1b")
 	if !sl.Done() {
 		t.Fatal("expected Done after Esc")
@@ -181,7 +181,7 @@ func TestSettingsListSpaceCyclesValue(t *testing.T) {
 	items := []SettingItem{
 		{ID: "x", Label: "Mode", CurrentValue: "a", Values: []string{"a", "b", "c"}},
 	}
-	sl := NewSettingsList(items)
+	sl := NewSettingsList(items, 10, GetSettingsListTheme(), nil, nil, SettingsListOptions{EnableSearch: true})
 	sl.HandleInput(" ") // Space
 	if sl.ChangedValue != "b" {
 		t.Errorf("expected 'b' after Space, got %q", sl.ChangedValue)
@@ -194,7 +194,7 @@ func TestSettingsListFilterReducesItems(t *testing.T) {
 		{ID: "b", Label: "Theme", CurrentValue: "dark", Values: []string{"dark", "light"}},
 		{ID: "c", Label: "Thinking", CurrentValue: "off", Values: []string{"off", "high"}},
 	}
-	sl := NewSettingsList(items)
+	sl := NewSettingsList(items, 10, GetSettingsListTheme(), nil, nil, SettingsListOptions{EnableSearch: true})
 	// Type "the" to filter.
 	sl.HandleInput("t")
 	sl.HandleInput("h")
@@ -220,7 +220,7 @@ func TestSettingsListShowsScrollCounter(t *testing.T) {
 			CurrentValue: "v", Values: []string{"v"},
 		}
 	}
-	sl := NewSettingsList(items)
+	sl := NewSettingsList(items, 10, GetSettingsListTheme(), nil, nil, SettingsListOptions{EnableSearch: true})
 	lines := sl.Render(80)
 	joined := strings.Join(lines, "\n")
 	if !strings.Contains(joined, "(1/15)") {
@@ -233,7 +233,7 @@ func TestSettingsListCursorOnFirstItem(t *testing.T) {
 		{ID: "a", Label: "First", CurrentValue: "v1", Values: []string{"v1"}},
 		{ID: "b", Label: "Second", CurrentValue: "v2", Values: []string{"v2"}},
 	}
-	sl := NewSettingsList(items)
+	sl := NewSettingsList(items, 10, GetSettingsListTheme(), nil, nil, SettingsListOptions{EnableSearch: true})
 	lines := sl.Render(80)
 	// The first item row should contain the upstream-style cursor marker "→".
 	found := false
@@ -253,7 +253,7 @@ func TestSettingsListUnselectedValuesUseMutedColor(t *testing.T) {
 		{ID: "a", Label: "Selected", CurrentValue: "on", Values: []string{"on", "off"}},
 		{ID: "b", Label: "Theme", CurrentValue: "dark", Values: []string{"dark", "light"}},
 	}
-	sl := NewSettingsList(items)
+	sl := NewSettingsList(items, 10, GetSettingsListTheme(), nil, nil, SettingsListOptions{EnableSearch: true})
 	lines := sl.Render(80)
 	joined := strings.Join(lines, "\n")
 	if !strings.Contains(joined, ActiveTheme().Muted+"dark") {
@@ -261,5 +261,46 @@ func TestSettingsListUnselectedValuesUseMutedColor(t *testing.T) {
 	}
 	if strings.Contains(joined, ActiveTheme().Dim+"dark") {
 		t.Fatalf("unselected value should not use dim color %q, got:\n%s", ActiveTheme().Dim, joined)
+	}
+}
+
+// settings-list.ts:26-32,58,160-190: the SettingsListTheme passed to the constructor styles the cursor, label, value, description and hint.
+func TestSettingsListUsesTheInjectedTheme(t *testing.T) {
+	theme := SettingsListTheme{
+		Label: func(text string, selected bool) string {
+			if selected {
+				return "[L*" + text + "]"
+			}
+			return "[L" + text + "]"
+		},
+		Value: func(text string, selected bool) string {
+			if selected {
+				return "[V*" + text + "]"
+			}
+			return "[V" + text + "]"
+		},
+		Description: func(text string) string { return "[D" + text + "]" },
+		Cursor:      ">> ",
+		Hint:        func(text string) string { return "[H" + text + "]" },
+	}
+	list := NewSettingsList([]SettingItem{
+		{ID: "a", Label: "Alpha", Description: "about alpha", CurrentValue: "on", Values: []string{"on", "off"}},
+		{ID: "b", Label: "Beta", CurrentValue: "off", Values: []string{"on", "off"}},
+	}, 5, theme, nil, nil, SettingsListOptions{EnableSearch: false})
+
+	text := stripANSI(strings.Join(list.Render(60), "\n"))
+	for _, want := range []string{">> [L*Alpha", "[V*on]", "[LBeta", "[Voff]", "[D  about alpha]", "[H  Enter/Space to change"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("missing %q in:\n%s", want, text)
+		}
+	}
+	empty := NewSettingsList(nil, 5, theme, nil, nil, SettingsListOptions{EnableSearch: false})
+	if got := stripANSI(strings.Join(empty.Render(40), "\n")); !strings.Contains(got, "[H  No settings available]") {
+		t.Errorf("empty notice must use theme.hint: %q", got)
+	}
+	// Without an injected theme the active theme's SettingsListTheme renders.
+	def := GetSettingsListTheme()
+	if def.Cursor == "" || def.Label == nil || def.Value == nil || def.Description == nil || def.Hint == nil {
+		t.Fatalf("incomplete default theme: %+v", def)
 	}
 }

@@ -1,8 +1,11 @@
 package codingagent
 
+// pi: packages/coding-agent/src/core/cache-warmer.ts
+
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"reflect"
 	"sync"
@@ -73,7 +76,7 @@ func branchWithPrompt(t *testing.T, promptTokens int) []SessionEntry {
 	}}); err != nil {
 		t.Fatal(err)
 	}
-	return session.Entries()
+	return session.GetEntries()
 }
 
 type warmCall struct {
@@ -110,7 +113,7 @@ func (f *fakeWarmRuntime) AppendUsage(kind, provider, model string, usage ai.Usa
 	return entry, err
 }
 
-func (f *fakeWarmRuntime) GetBranch() []SessionEntry {
+func (f *fakeWarmRuntime) GetBranch(fromID ...string) []SessionEntry {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.branch
@@ -253,9 +256,9 @@ func TestCacheWarmingDerivesEligibilityAndTiming(t *testing.T) {
 		got  any
 		want any
 	}{
-		{"default short", ttl(models.adaptive, nil), int64(300_000)},
-		{"env long", ttl(models.adaptive, ai.ProviderEnv{"PI_CACHE_RETENTION": "long"}), int64(3_600_000)},
-		{"openai long", ttl(models.openai, ai.ProviderEnv{"PI_CACHE_RETENTION": "long"}), int64(86_400_000)},
+		{"default short", ttl(models.adaptive, nil), float64(300_000)},
+		{"env long", ttl(models.adaptive, ai.ProviderEnv{"PI_CACHE_RETENTION": "long"}), float64(3_600_000)},
+		{"openai long", ttl(models.openai, ai.ProviderEnv{"PI_CACHE_RETENTION": "long"}), float64(86_400_000)},
 		{"unknown", ttl(models.unknown, nil), nil},
 	} {
 		if tc.got != tc.want {
@@ -263,24 +266,31 @@ func TestCacheWarmingDerivesEligibilityAndTiming(t *testing.T) {
 		}
 	}
 	if got, ok := GetPromptCacheTtlMs(models.adaptive, ai.StreamOptions{CacheRetention: ai.CacheRetentionLong}); !ok || got != 3_600_000 {
-		t.Fatalf("explicit long retention = %d, %t", got, ok)
+		t.Fatalf("explicit long retention = %v, %t", got, ok)
 	}
 	if _, ok := GetPromptCacheTtlMs(models.adaptive, ai.StreamOptions{CacheRetention: ai.CacheRetentionNone}); ok {
 		t.Fatal("cacheRetention none has a cache lifetime")
 	}
-	for ttlMs, want := range map[int64]int64{300_000: 270_000, 60_000: 50_000} {
+	for ttlMs, want := range map[float64]float64{300_000: 270_000, 60_000: 50_000, 20_000.5: 10_000} {
 		if got, ok := GetCacheWarmingDelayMs(ttlMs); !ok || got != want {
-			t.Errorf("delay(%d) = %d, %t, want %d", ttlMs, got, ok, want)
+			t.Errorf("delay(%v) = %v, %t, want %v", ttlMs, got, ok, want)
+		}
+	}
+	// cache-warmer.ts getPromptCacheTtlMs multiplies the tier's seconds by 1000 without rounding, so a fractional lifetime survives.
+	fractional := cacheWarmingTestModel(t, "anthropic/claude-opus-4-6", ai.ModelPromptCache{"short": 1.5, "long": 0.0005})
+	for retention, want := range map[ai.CacheRetention]float64{ai.CacheRetentionShort: 1_500, ai.CacheRetentionLong: 0.5} {
+		if got, ok := GetPromptCacheTtlMs(fractional, ai.StreamOptions{CacheRetention: retention}); !ok || got != want {
+			t.Errorf("fractional %s ttl = %v, %t, want %v", retention, got, ok, want)
 		}
 	}
 	if _, ok := GetCacheWarmingDelayMs(10_000); ok {
 		t.Error("delay(10000) is defined, want undefined")
 	}
 	replayable := []bool{
-		IsReplayable(models.budget, ai.StreamOptions{Thinking: ai.ThinkingMedium}),
+		IsReplayable(models.budget, ai.StreamOptions{Thinking: ai.ThinkingLevelMedium}),
 		IsReplayable(models.budget, ai.StreamOptions{}),
-		IsReplayable(models.adaptive, ai.StreamOptions{Thinking: ai.ThinkingMedium}),
-		IsReplayable(models.openai, ai.StreamOptions{Thinking: ai.ThinkingMedium}),
+		IsReplayable(models.adaptive, ai.StreamOptions{Thinking: ai.ThinkingLevelMedium}),
+		IsReplayable(models.openai, ai.StreamOptions{Thinking: ai.ThinkingLevelMedium}),
 	}
 	if want := []bool{false, true, true, true}; !equalBools(replayable, want) {
 		t.Errorf("replayable = %v, want %v", replayable, want)
@@ -313,7 +323,7 @@ func TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions(t *testing.T) 
 		}
 		requestCtx, cancelRequest := context.WithCancel(context.Background())
 		defer cancelRequest()
-		f.warmer.Start(warmRequest(models.adaptive, ai.StreamOptions{Thinking: ai.ThinkingHigh, SessionID: "s", TransformHeaders: transformHeaders}), alwaysCurrent)
+		f.warmer.Start(warmRequest(models.adaptive, ai.StreamOptions{Thinking: ai.ThinkingLevelHigh, SessionID: "s", TransformHeaders: transformHeaders}), alwaysCurrent)
 		advance(270 * time.Second)
 
 		if f.callCount() != 1 {
@@ -321,7 +331,7 @@ func TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions(t *testing.T) 
 		}
 		record := f.snapshot()
 		call := record.calls[0]
-		if call.model != models.adaptive || call.options.Thinking != ai.ThinkingHigh || call.options.SessionID != "s" || call.options.TransformHeaders == nil || call.options.MaxTokens != 1 {
+		if call.model != models.adaptive || call.options.Thinking != ai.ThinkingLevelHigh || call.options.SessionID != "s" || call.options.TransformHeaders == nil || call.options.MaxTokens != 1 {
 			t.Fatalf("warm request = %+v", call.options)
 		}
 		headers, err := call.options.TransformHeaders(call.ctx, nil)
@@ -396,6 +406,7 @@ func TestCacheWarmingRechecksTheDeadlineAfterAnExtensionDecision(t *testing.T) {
 }
 
 // .upstream/v0.87.1/packages/coding-agent/test/cache-warmer.test.ts:220
+// Pi: packages/coding-agent/src/core/cache-warmer.ts:103 (CacheWarmingDecision.economicsAvailable); packages/coding-agent/src/core/cache-warmer.ts:105 (CacheWarmingDecision.action); packages/coding-agent/src/core/cache-warmer.ts:128 (CacheWarmingStatus.decision); packages/coding-agent/src/core/cache-warmer.ts:131 (CacheWarmingStatus.extensionOverride).
 func TestCacheWarmingAppliesEconomicDecisionsAndExtensionOverrides(t *testing.T) {
 	models := newCacheWarmingModels(t)
 	synctest.Test(t, func(t *testing.T) {
@@ -450,7 +461,7 @@ func TestCacheWarmingStopsForUnsupportedRequestsContextChangesAndModeChanges(t *
 		if got := reason(); got != "cache lifetime unavailable" {
 			t.Fatalf("unknown model: reason = %q", got)
 		}
-		unsupported.warmer.Start(warmRequest(models.budget, ai.StreamOptions{Thinking: ai.ThinkingHigh}), alwaysCurrent)
+		unsupported.warmer.Start(warmRequest(models.budget, ai.StreamOptions{Thinking: ai.ThinkingLevelHigh}), alwaysCurrent)
 		if got := reason(); got != "request cannot be replayed safely" {
 			t.Fatalf("budget thinking: reason = %q", got)
 		}
@@ -525,6 +536,7 @@ func TestCacheWarmingAbortsReplacedRequestsAndSkipsFailedRefreshes(t *testing.T)
 }
 
 // .upstream/v0.87.1/packages/coding-agent/test/cache-warmer.test.ts:310
+// Pi: packages/coding-agent/src/core/cache-warmer.ts:101 (CacheWarmingDecision.expectedSavings); packages/coding-agent/src/core/cache-warmer.ts:103 (CacheWarmingDecision.economicsAvailable); packages/coding-agent/src/core/cache-warmer.ts:105 (CacheWarmingDecision.action); packages/coding-agent/src/core/cache-warmer.ts:127 (CacheWarmingStatus.nextWarmAt); packages/coding-agent/src/core/cache-warmer.ts:128 (CacheWarmingStatus.decision); packages/coding-agent/src/core/cache-warmer.ts:93 (CacheWarmingDecision.phase); packages/coding-agent/src/core/cache-warmer.ts:95 (CacheWarmingDecision.warmCost); packages/coding-agent/src/core/cache-warmer.ts:97 (CacheWarmingDecision.missCost); packages/coding-agent/src/core/cache-warmer.ts:99 (CacheWarmingDecision.continuationProbability).
 func TestCacheWarmingFormatsStatusAndUsageEntries(t *testing.T) {
 	decision := &CacheWarmingDecision{
 		Phase: "idle", WarmCost: 0.013, MissCost: 0.621, ContinuationProbability: 0.6,
@@ -668,4 +680,70 @@ func TestCacheWarmingStopsAtTheIdleSafetyLimit(t *testing.T) {
 			t.Fatalf("status = %+v", status)
 		}
 	})
+}
+
+// cache-warmer.ts schedule: a lifetime far beyond the safety window puts the first refresh past it, so the run stops
+// before any refresh instead of refreshing at once. A promptCache lifetime is any number above zero, so the delay can
+// exceed the int64 range of a millisecond count.
+func TestCacheWarmingStopsAtOnceWhenTheLifetimeOutlastsTheSafetyLimit(t *testing.T) {
+	// A refresh due exactly at the limit is still scheduled.
+	t.Run("at the limit", func(t *testing.T) {
+		model := cacheWarmingTestModel(t, "anthropic/claude-opus-4-6", ai.ModelPromptCache{"short": 4_000})
+		synctest.Test(t, func(t *testing.T) {
+			f := newFakeWarmRuntime(t, withMode("streaming"))
+			f.warmer.Start(warmRequest(model, ai.StreamOptions{}), alwaysCurrent)
+			if status := f.warmer.Status(); status.State == "inactive" {
+				t.Fatalf("status = %+v, want an active run", status)
+			}
+			f.warmer.Close()
+		})
+	})
+	// 4000.00112 s puts the first refresh one millisecond past the limit (floor(0.9 * 4000001.12) = 3600001 ms): cache-warmer.ts schedule() stops on nextWarmAt > deadline.
+	for _, seconds := range []float64{4000.00112, 5_000, 1e12, 1e16, 1e30} {
+		t.Run(fmt.Sprint(seconds), func(t *testing.T) {
+			model := cacheWarmingTestModel(t, "anthropic/claude-opus-4-6", ai.ModelPromptCache{"short": seconds})
+			synctest.Test(t, func(t *testing.T) {
+				f := newFakeWarmRuntime(t, withMode("streaming"))
+				f.warmer.Start(warmRequest(model, ai.StreamOptions{}), alwaysCurrent)
+				advance(time.Minute)
+				if got := f.callCount(); got != 0 {
+					t.Fatalf("refreshes = %d, want 0", got)
+				}
+				if status := f.warmer.Status(); status.Reason != "one-hour safety limit reached" {
+					t.Fatalf("status = %+v", status)
+				}
+			})
+		})
+	}
+}
+
+// Pi's expectedSavings is `continuationProbability * missCost - warmCost` (cache-warmer.ts:390) with the product rounded
+// first. For an idle run with a 5,000- or 7,000-token prompt on claude-opus-4-6, node prints 0.0017875000000000005 for
+// 0.15 * 0.02875 - 0.002525 and 0.002512499999999999 for 0.15 * 0.040249999999999994 - 0.0035249999999999995; a fused
+// multiply-subtract gives 0.0017875 and 0.0025124999999999995.
+func TestCacheWarmingExpectedSavingsRoundsTheProductLikePi(t *testing.T) {
+	models := newCacheWarmingModels(t)
+	for _, tc := range []struct {
+		tokens                   int
+		missCost, warmCost, want float64
+	}{
+		{5_000, 0.02875, 0.002525, 0.0017875000000000005},
+		{7_000, 0.040249999999999994, 0.0035249999999999995, 0.002512499999999999},
+	} {
+		t.Run(fmt.Sprint(tc.tokens), func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				runtime := newFakeWarmRuntime(t, withBranch(branchWithPrompt(t, tc.tokens)))
+				runtime.warmer.Start(warmRequest(models.adaptive, ai.StreamOptions{}), alwaysCurrent)
+				runtime.warmer.OnAgentSettled()
+				advance(270 * time.Second)
+				decision := runtime.warmer.Status().Decision
+				if decision == nil || decision.Phase != "idle" || decision.ContinuationProbability != 0.15 || decision.MissCost != tc.missCost || decision.WarmCost != tc.warmCost {
+					t.Fatalf("decision %+v", decision)
+				}
+				if decision.ExpectedSavings != tc.want {
+					t.Errorf("expected savings = %v, want %v", decision.ExpectedSavings, tc.want)
+				}
+			})
+		})
+	}
 }

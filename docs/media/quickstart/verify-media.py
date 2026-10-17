@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 """Check the quickstart's delivery constraints without third-party Python packages."""
 import json

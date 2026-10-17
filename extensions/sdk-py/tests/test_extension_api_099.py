@@ -62,10 +62,8 @@ def test_new_event_handlers_are_declared_and_receive_the_event() -> None:
     ext.on_event(pig_sdk.EVENT_MCP_SERVERS_CHANGE, lambda ctx, event: seen.append(("mcp", event)))
     host = _host(ext)
     try:
-        assert [(h["event"], h["can_block"]) for h in host.register["handlers"]] == [
-            ("provider_stream_event", False),
-            ("mcp_servers_change", False),
-        ]
+        assert [h["event"] for h in host.register["handlers"]] == ["provider_stream_event", "mcp_servers_change"]
+        assert all(set(h) == {"event", "handler_id"} for h in host.register["handlers"])
         stream = {"type": "provider_stream_event", "provider": "p", "api": "a", "model": "m", "data": {"k": [1]}}
         change = {"type": "mcp_servers_change", "servers": [{"name": "docs", "config": {"url": "u"}, "extensionPath": "/e"}]}
         _drive(host, "r1", {"method": "event", "event": "provider_stream_event", "handler_id": 1, "args": stream})
@@ -180,6 +178,7 @@ def test_prepare_loadout_request_runs_the_hook_with_the_loadout() -> None:
         payload = {
             "declared": [read, grep], "callable": [read], "registered": [read, grep],
             "exposures": {"read": "direct", "grep": "deferred"}, "namespaces": {"grep": {"name": "search"}},
+            "promptGuidelines": {"grep": ["Use grep for patterns.", "Quote regexes."]},
         }
         request = {"method": "tool_prepare_loadout", "tool": "codemode", "args": payload}
         _, response = _drive(host, "r1", request)
@@ -190,6 +189,8 @@ def test_prepare_loadout_request_runs_the_hook_with_the_loadout() -> None:
         assert loadout.get_exposure("missing") == "direct"
         assert loadout.get_namespace("grep") == {"name": "search"}
         assert loadout.get_namespace("read") is None and loadout.get_namespace("missing") is None
+        assert loadout.get_prompt_guidelines("grep") == ["Use grep for patterns.", "Quote regexes."]
+        assert loadout.get_prompt_guidelines("read") == [] and loadout.get_prompt_guidelines("missing") == []
 
         answer[0] = None
         _, response = _drive(host, "r2", request)

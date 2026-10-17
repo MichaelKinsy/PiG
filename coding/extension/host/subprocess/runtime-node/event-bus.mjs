@@ -68,11 +68,22 @@ export class SharedBus {
   }
 
   // Runs one listener's synchronous prefix for a Host dispatch. The returned Promise is the listener's own continuation; Pi does not await it.
-  dispatch({ handlerId, channel, data }) {
+  // A batched dispatch (handlerIds) runs the connection's consecutive listeners in registry order over one decode of the payload: the same object every listener shares when the emitter is local. A listener the registry no longer holds fails the request after the others ran, as one failed request per listener did.
+  dispatch({ handlerId, handlerIds, channel, data }) {
     const value = this.realm.decode(data);
-    const entry = this.handlers.get(handlerId);
-    if (!entry || entry.channel !== channel) throw new Error(`Unknown event bus handler: ${handlerId}`);
-    return entry.safeHandler(value);
+    const ids = handlerIds ?? [handlerId];
+    const continuations = [];
+    let failure;
+    for (const id of ids) {
+      const entry = this.handlers.get(id);
+      if (!entry || entry.channel !== channel) {
+        failure ??= new Error(`Unknown event bus handler: ${id}`);
+        continue;
+      }
+      continuations.push(entry.safeHandler(value));
+    }
+    if (failure) throw failure;
+    return continuations;
   }
 
   release({ handlerId }) {

@@ -40,12 +40,7 @@ func (e *Editor) requestNativeAutocomplete(force, explicit bool) {
 						filePrefix, fileTask = prefix, task
 					}
 				}
-				var result *AutocompleteSuggestions
-				if forced, ok := provider.(ForcefulAutocompleteProvider); ok && force {
-					result = forced.GetSuggestionsForce(lines, row, col)
-				} else {
-					result = provider.GetSuggestions(lines, row, col)
-				}
+				result := provider.GetSuggestions(context.Background(), lines, row, col, AutocompleteSuggestionOptions{Force: force})
 				prepared <- func(ctx context.Context) (*AutocompleteSuggestions, error) {
 					if fileTask == nil {
 						return result, nil

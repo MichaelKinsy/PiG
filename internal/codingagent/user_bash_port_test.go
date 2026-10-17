@@ -11,6 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
+// Pi: packages/coding-agent/src/core/extensions/types.ts:1119 (UserBashEvent.excludeFromContext).
 func TestInteractiveUserBashEmptyResultPort(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/suite/regressions/9068-user-bash-fail-closed.test.ts:223-225 (both input rows).
 	for _, tc := range []struct {
@@ -19,7 +20,7 @@ func TestInteractiveUserBashEmptyResultPort(t *testing.T) {
 	}{{"!pwd", false}, {"!!pwd", true}} {
 		t.Run("fails closed for "+tc.input+" when a handler returns an empty result", func(t *testing.T) {
 			dir := t.TempDir()
-			mode := NewInteractiveMode(InteractiveOptions{CWD: dir, AgentDir: t.TempDir()})
+			mode := NewInteractiveMode(nil, InteractiveModeOptions{CWD: dir, AgentDir: t.TempDir()})
 			mode.chatContainer = tui.NewContainer()
 			mode.pendingMessagesContainer = tui.NewContainer()
 			mode.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)

@@ -14,7 +14,7 @@ import (
 func scopedModelsWireValue(models []extension.ScopedModel) []map[string]any {
 	result := make([]map[string]any, len(models))
 	for i, scoped := range models {
-		result[i] = map[string]any{"model": extension.ModelInfo(scoped.Model)}
+		result[i] = map[string]any{"model": extension.ModelValue{Model: scoped.Model}}
 		if scoped.ThinkingLevel != "" {
 			result[i]["thinkingLevel"] = string(scoped.ThinkingLevel)
 		}

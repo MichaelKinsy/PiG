@@ -1,5 +1,7 @@
 package coding
 
+// pi: packages/coding-agent/src/core/nested-tool-calls.ts
+
 // Ports .upstream/v0.99.1/packages/coding-agent/test/nested-tool-calls.test.ts (6 cases) with the same inputs and expectations.
 
 import (
@@ -44,6 +46,8 @@ type nestedTestHost struct {
 	sequential bool
 	mu         sync.Mutex
 	events     []agent.AgentEvent
+	// durationMs is what a call that finds its tool reports, as the agent loop's outcome does for a call that ran.
+	durationMs *int64
 }
 
 func (h *nestedTestHost) GetTools() []agent.AgentTool { return *h.tools }
@@ -55,7 +59,7 @@ func (h *nestedTestHost) RunToolCall(ctx context.Context, toolCall agent.AgentTo
 		}
 		raw, _ := json.Marshal(toolCall.Arguments)
 		result, _ := tool.Execute(ctx, toolCall.ID, raw, func(partial agent.AgentToolResult) { _ = onUpdate(partial) })
-		return agent.AgentToolCallOutcome{ToolCall: toolCall, Result: result, IsError: result.IsError}, nil
+		return agent.AgentToolCallOutcome{ToolCall: toolCall, Result: result, IsError: result.IsError, DurationMs: h.durationMs}, nil
 	}
 	return agent.AgentToolCallOutcome{ToolCall: toolCall, Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "Tool " + toolCall.Name + " not found"}}, Details: map[string]any{}}, IsError: true}, nil
 }

@@ -6,6 +6,9 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
+// ThinkingLevel is the agent's reasoning level: "off" or an ai.ThinkingLevel (types.ts ThinkingLevel). It is ai.ModelThinkingLevel.
+type ThinkingLevel = ai.ModelThinkingLevel
+
 // AgentTurnContext is passed to completed-turn callbacks (FinishTurn and
 // PrepareNextTurn). Mirrors upstream packages/agent/src/types.ts
 // AgentTurnContext.
@@ -14,9 +17,9 @@ type AgentTurnContext struct {
 	Message *AssistantMessage
 	// ToolResults are the tool result messages emitted for the completed turn.
 	ToolResults []ToolResultMessage
-	// Context is the loop context after the turn's assistant message and tool
-	// results have been appended.
-	Context []AgentMessage
+	// Context is the loop context (transcript and executable tools) after the
+	// turn's assistant message and tool results have been appended.
+	Context AgentContext
 	// NewMessages are the messages this run returns if it exits now. Prompt
 	// runs include the initial prompt messages; continuation runs do not
 	// include pre-existing context messages.
@@ -55,15 +58,17 @@ type FinishTurn func(ctx context.Context, turn AgentTurnContext) (*AgentTurnDeci
 // AgentLoopTurnUpdate carries optional next-turn overrides returned by
 // PrepareNextTurn. Mirrors upstream AgentLoopTurnUpdate.
 type AgentLoopTurnUpdate struct {
-	// Context replaces the loop context for the next provider request.
-	Context []AgentMessage
+	// Context replaces the loop context (transcript and executable tools) for
+	// the next provider request; nil keeps the current one (upstream's
+	// `context ?? currentContext`).
+	Context *AgentContext
 	// Messages are appended before the next provider request, with normal
 	// lifecycle events.
 	Messages []AgentMessage
 	// Model is the model for the next provider request.
 	Model *ai.Model
 	// ThinkingLevel is the thinking level for the next provider request.
-	ThinkingLevel *ai.ThinkingLevel
+	ThinkingLevel *ThinkingLevel
 }
 
 // PrepareNextTurn is called after TurnEndEvent when the loop continues,
@@ -74,18 +79,19 @@ type PrepareNextTurn func(ctx context.Context, turn PrepareNextTurnContext) (*Ag
 // PrepareRequestContext is the runtime state available immediately before a
 // provider request. Mirrors upstream PrepareRequestContext.
 type PrepareRequestContext struct {
-	Context       []AgentMessage
+	Context       AgentContext
 	Model         *ai.Model
-	ThinkingLevel ai.ThinkingLevel
+	ThinkingLevel ThinkingLevel
 }
 
 // AgentRequestUpdate replaces runtime state for the provider request being
 // prepared and later requests in the run. Mirrors upstream AgentRequestUpdate
 // (AgentLoopTurnUpdate without messages).
 type AgentRequestUpdate struct {
-	Context       []AgentMessage
+	// Context replaces the loop context (transcript and executable tools); nil keeps the current one.
+	Context       *AgentContext
 	Model         *ai.Model
-	ThinkingLevel *ai.ThinkingLevel
+	ThinkingLevel *ThinkingLevel
 }
 
 // PrepareRequest is called immediately before every provider request,

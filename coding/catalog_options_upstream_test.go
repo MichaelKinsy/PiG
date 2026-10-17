@@ -18,7 +18,7 @@ import (
 func TestCatalogOptionsThroughModelRuntime(t *testing.T) {
 	for _, tc := range []struct {
 		name, provider, id, api, compat string
-		thinking                        ai.ThinkingLevel
+		thinking                        ai.ModelThinkingLevel
 		retention                       ai.CacheRetention
 	}{
 		{"Kimi K3 native effort", "fireworks", "accounts/fireworks/models/kimi-k3", "openai-completions", `{}`, ai.ThinkingMax, ai.CacheRetentionShort},
@@ -39,7 +39,7 @@ func TestCatalogOptionsThroughModelRuntime(t *testing.T) {
 				if tc.api == "openai-completions" {
 					_, _ = io.WriteString(w, "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n")
 				} else {
-					_, _ = io.WriteString(w, "event: message_start\ndata: {\"message\":{\"id\":\"fixture\",\"usage\":{\"input_tokens\":1}}}\n\nevent: message_delta\ndata: {\"delta\":{\"stop_reason\":\"end_turn\"}}\n\nevent: message_stop\ndata: {}\n\n")
+					_, _ = io.WriteString(w, "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"fixture\",\"usage\":{\"input_tokens\":1}}}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n")
 				}
 			}))
 			defer server.Close()
@@ -52,7 +52,7 @@ func TestCatalogOptionsThroughModelRuntime(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(config), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+			services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -61,7 +61,7 @@ func TestCatalogOptionsThroughModelRuntime(t *testing.T) {
 			if model == nil {
 				t.Fatal("model not found")
 			}
-			result := runtime.Complete(t.Context(), model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Use the tool")}}, Tools: []ai.ToolSchema{{Name: "lookup", Description: "Look up a value", Parameters: map[string]any{"type": "object", "properties": map[string]any{"value": map[string]any{"type": "string"}}}}}}, ai.StreamOptions{Thinking: tc.thinking, SessionID: "catalog-session", CacheRetention: tc.retention})
+			result := runtime.Complete(t.Context(), model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Use the tool")}}, Tools: []ai.ToolSchema{{Name: "lookup", Description: "Look up a value", Parameters: map[string]any{"type": "object", "properties": map[string]any{"value": map[string]any{"type": "string"}}}}}}, ai.StreamOptions{Thinking: tc.thinking.ReasoningOption(), SessionID: "catalog-session", CacheRetention: tc.retention})
 			if result.StopReason != ai.StopReasonStop {
 				t.Fatalf("result = %+v", result)
 			}

@@ -3,7 +3,7 @@
 
 use pig_sdk::{
     AgentToolResult, ExecuteToolOptions, Extension, ModelRoute, ToolAnnotations, ToolDefinition, ToolExposure,
-    ToolLoadoutChanges, ToolNamespace, ToolResult, VirtualModel, empty_schema,
+    ToolLoadoutChanges, ToolNamespace, ToolReach, ToolResult, VirtualModel, empty_schema,
 };
 use serde_json::json;
 use std::sync::{Arc, Mutex};
@@ -16,7 +16,7 @@ pub fn new_extension() -> Extension {
     });
     lookup.output_schema = Some(json!({"type":"object","properties":{"hits":{"type":"number"}}}));
     lookup.exposure = Some(ToolExposure::Codemode);
-    lookup.namespace = Some(ToolNamespace { name: "mcp__conformance".into(), description: Some("Conformance server".into()), instructions: Some("Use the conformance lookup.".into()) });
+    lookup.namespace = Some(ToolNamespace { name: "mcp__conformance".into(), aliases: vec!["rs".into(), "rs-conformance".into()], description: Some("Conformance server".into()), instructions: Some("Use the conformance lookup.".into()) });
     lookup.annotations = Some(ToolAnnotations { read_only_hint: Some(true), open_world_hint: Some(false), ..Default::default() });
     lookup.default_active = Some(false);
     ext.register_tool(lookup);
@@ -26,6 +26,10 @@ pub fn new_extension() -> Extension {
             .with_details(json!({"status": 503}))
             .with_structured_content(json!({"ok": false}))
             .with_is_error(true)
+    });
+
+    ext.tool("previewed", "Previewed", empty_schema(), |_, _| {
+        ToolResult::text("full output for the model").with_preview("preview-rust-4f1c")
     });
 
     ext.tool("probe", "Probe", empty_schema(), |ctx, _| {
@@ -134,6 +138,14 @@ pub fn new_extension() -> Extension {
     let mut orchestrate = ToolDefinition::new("orchestrate", "Orchestrate", "Runs tools", empty_schema(), |_, _| {
         ToolResult::text("orchestrated")
     });
+    orchestrate.reaches_tools = Some(Box::new(|input| {
+        if input["all"] == true {
+            return ToolReach::All;
+        }
+        let mut keys: Vec<_> = input.as_object().map(|object| object.keys().map(|key| format!("rs:{key}")).collect()).unwrap_or_default();
+        keys.sort();
+        ToolReach::Words(keys)
+    }));
     orchestrate.prepare_loadout = Some(Box::new(|loadout| {
         let callable: Vec<_> = loadout.callable.iter().map(|tool| tool.name.as_str()).collect();
         Some(ToolLoadoutChanges {
@@ -141,10 +153,12 @@ pub fn new_extension() -> Extension {
                 [(
                     "orchestrate".to_string(),
                     format!(
-                        "Runs {} | {} | {:?}",
+                        "Runs {} | {} | {:?} | {:?} | {:?}",
                         callable.join(","),
                         loadout.get_exposure("conf-deferred").as_str(),
                         loadout.get_namespace("conf-deferred").map(|namespace| namespace.name.clone()),
+                        loadout.get_prompt_guidelines("grep"),
+                        loadout.get_prompt_guidelines("absent"),
                     ),
                 )]
                 .into(),

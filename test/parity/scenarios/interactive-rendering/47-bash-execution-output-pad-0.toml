@@ -1,0 +1,51 @@
+# Behavior family: interactive-rendering
+# Upstream evidence: real Pi 1.1.0 (extensions/sdk-ts/node_modules) run side by side with PiG in tmux at 100x35; no number was copied from the
+# 1.0.4 sources. Pi 1.0.4 ignored outputPad here (#10557 added it).
+# Surface: outputPad 0 reaches `!` command output (Pi 1.1.0 #10557, bash-execution.ts outputPad). With "outputPad": 0 in settings.json the
+# header `$ <cmd>`, the output lines and the status row start in column 0 instead of column 1. Pi 1.0.4 padded them by one cell whatever
+# the setting. The crop runs from the block's top border (so the header's own padding is inside it) to the status row; the command exits 3 so the status row `(exit 3)` is
+# inside the crop too.
+
+name = "47-bash-execution-output-pad-0"
+description = "`!` command output has no horizontal padding when outputPad is 0, including the status row."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/bash-execution.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent-output-pad-0"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent-output-pad-0", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/bash-wrap-cwd"
+capture_start = "────────────────────────────────────────────────────────────────────────────────"
+capture_end = "(exit 3)"
+
+[[tmux.steps]]
+keys = ["!echo hello world; exit 3", "Enter"]
+settle_seconds = 3
+wait_contains = ["$ echo hello world", "hello world", "(exit 3)"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine ", "(exit 0)"]
+# lint-known-gap: bg-paint SGR encoding differs between pig and upstream
+# (pig uses truecolor for bashMode #b5bd68; upstream goes through the
+# theme/Box delegation path). Visible content and box structure are
+# identical post-fix.
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+# runs=3 because bash-execution timing has natural jitter on completion.
+runs = 3

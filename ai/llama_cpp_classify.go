@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math"
 	"slices"
@@ -27,6 +26,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/jsmath"
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 )
 
@@ -244,7 +244,7 @@ func LlamaCppLabelProbabilities(logprobs []float64, temperature float64) []float
 	weights := make([]float64, len(scaled))
 	total := 0.0
 	for i, value := range scaled {
-		weights[i] = math.Exp(value - peak)
+		weights[i] = jsmath.Exp(value - peak)
 		total += weights[i]
 	}
 	for i := range weights {
@@ -295,16 +295,57 @@ type llamaRequestContext struct {
 	options ClassifierOptions
 }
 
-func (r llamaRequestContext) headers() []classifierHeader {
+func (r llamaRequestContext) headers() map[string]string {
 	base := map[string]string{"content-type": "application/json"}
 	if r.options.APIKey != "" {
 		base["authorization"] = "Bearer " + r.options.APIKey
 	}
-	return classifierRequestHeaders(ProviderHeadersFromStrings(base), ProviderHeadersFromStrings(r.model.Headers), r.options.Headers)
+	return providerHeadersToRecord(ProviderHeadersFromStrings(base), ProviderHeadersFromStrings(r.model.Headers), r.options.Headers)
+}
+
+// The member order of each request literal (llama-cpp-classify.ts:286-288, 340-348, 367-376): JSON.stringify writes the members in the order the literal creates them.
+var (
+	llamaTokenizeOrder      = []string{"model", "content", "add_special", "parse_special"}
+	llamaApplyTemplateOrder = []string{"model", "messages", "chat_template_kwargs"}
+	llamaCompletionOrder    = []string{"model", "prompt", "n_predict", "n_probs", "post_sampling_probs", "cache_prompt", "temperature"}
+	llamaMessageOrder       = []string{"role", "content"}
+)
+
+// marshalLlamaBody is JSON.stringify of a request literal: body's members in order, then any an OnPayload hook added, in key order; each element of a messages array
+// is written role first.
+func marshalLlamaBody(body map[string]any, order []string) ([]byte, error) {
+	keys := make([]string, 0, len(body))
+	for _, key := range order {
+		if _, ok := body[key]; ok {
+			keys = append(keys, key)
+		}
+	}
+	extra := make([]string, 0, len(body))
+	for key := range body {
+		if !slices.Contains(order, key) {
+			extra = append(extra, key)
+		}
+	}
+	slices.Sort(extra)
+	keys = append(keys, extra...)
+	return writeJSONObject(len(keys), func(i int) string { return keys[i] }, func(i int) ([]byte, error) {
+		if messages, ok := body[keys[i]].([]map[string]any); ok && keys[i] == "messages" {
+			elements := make([][]byte, len(messages))
+			for j, message := range messages {
+				encoded, err := marshalLlamaBody(message, llamaMessageOrder)
+				if err != nil {
+					return nil, err
+				}
+				elements[j] = encoded
+			}
+			return append(append([]byte("["), bytes.Join(elements, []byte(","))...), ']'), nil
+		}
+		return marshalJSONValue(body[keys[i]])
+	})
 }
 
 // post sends one JSON request to the server. Only the completion request is observed by the payload and response hooks.
-func (r llamaRequestContext) post(ctx context.Context, path string, body map[string]any, observe bool) (json.RawMessage, error) {
+func (r llamaRequestContext) post(ctx context.Context, path string, body map[string]any, order []string, observe bool) (json.RawMessage, error) {
 	var payload any = body
 	if observe && r.options.OnPayload != nil {
 		transformed, replace, err := r.options.OnPayload(payload, r.model)
@@ -315,15 +356,21 @@ func (r llamaRequestContext) post(ctx context.Context, path string, body map[str
 			payload = transformed
 		}
 	}
-	encoded, err := marshalJSONValue(payload)
+	var encoded []byte
+	var err error
+	if object, isBody := payload.(map[string]any); isBody {
+		encoded, err = marshalLlamaBody(object, order)
+	} else {
+		encoded, err = marshalJSONValue(payload)
+	}
 	if err != nil {
 		return nil, err
 	}
 	headers := r.headers()
 	response, err := retryClassifierRequest(ctx, r.options, func() (classifierResponse, error) {
 		response, err := classifierPost(ctx, r.options, llamaCppLabel, r.root+path, headers, encoded)
-		if err == nil && !json.Valid(response.body) {
-			return classifierResponse{}, errors.New("Unexpected response body: invalid JSON")
+		if err == nil {
+			response.body, err = classifierJSONBody(response.body)
 		}
 		return response, err
 	})
@@ -364,7 +411,7 @@ func llamaTokenIDs(body json.RawMessage) ([]int, error) {
 }
 
 func (r llamaRequestContext) tokenize(ctx context.Context, content string) ([]int, error) {
-	body, err := r.post(ctx, "/tokenize", map[string]any{"model": r.model.ID, "content": content, "add_special": false, "parse_special": false}, false)
+	body, err := r.post(ctx, "/tokenize", map[string]any{"model": r.model.ID, "content": content, "add_special": false, "parse_special": false}, llamaTokenizeOrder, false)
 	if err != nil {
 		return nil, err
 	}
@@ -469,7 +516,7 @@ func (r llamaRequestContext) renderPrompt(ctx context.Context, content string) (
 		"model":                r.model.ID,
 		"messages":             []map[string]any{{"role": "system", "content": llamaSystemPrompt}, {"role": "user", "content": content}},
 		"chat_template_kwargs": map[string]any{"enable_thinking": false},
-	}, false)
+	}, llamaApplyTemplateOrder, false)
 	if err != nil {
 		return "", err
 	}
@@ -496,7 +543,7 @@ func (r llamaRequestContext) nextTokenLogprobs(ctx context.Context, prompt strin
 		"post_sampling_probs": false,
 		"cache_prompt":        true,
 		"temperature":         0,
-	}, true)
+	}, llamaCompletionOrder, true)
 	if err != nil {
 		return nil, err
 	}
@@ -595,6 +642,9 @@ func ClassifyLlamaCpp(ctx context.Context, model ClassifierModel, request Classi
 	}
 	if model.API != ClassifierAPILlamaCppClassify {
 		return fail(fmt.Errorf("Unsupported classifier API: %s", model.API))
+	}
+	if len(request.Images) > 0 {
+		return fail(fmt.Errorf("%s classification does not support image input", llamaCppLabel))
 	}
 	temperature := 1.0
 	if options.Temperature != nil {

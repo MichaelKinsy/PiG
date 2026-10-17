@@ -37,8 +37,24 @@ fn make_provider() -> Arc<Provider> {
                 stream.push(json!({"type":"error","reason":"aborted","error":message}))
             }));
         } else {
-            message["content"] =
-                json!([{"type":"text","text":meta["method"].as_str().unwrap_or("carrier answer")}]);
+            let mut text = json!(meta["method"].as_str().unwrap_or("carrier answer"));
+            // The caller's request callbacks reach the Provider by name (types.ts ProviderRequestOptions.onPayload, StreamOptions.onResponse and onProviderStreamEvent).
+            if let Some(on_response) = &options.on_response {
+                on_response(
+                    json!({"status":207,"headers":{"x-carrier":"response"}}),
+                    model.clone(),
+                )?;
+            }
+            if let Some(on_event) = &options.on_provider_stream_event {
+                on_event(json!({"carrier":"event"}), model.clone())?;
+            }
+            if let Some(on_payload) = &options.on_payload {
+                let replaced = on_payload(json!({"carrier":"payload"}), model.clone())?;
+                if replaced.is_object() {
+                    text = replaced["text"].clone();
+                }
+            }
+            message["content"] = json!([{"type":"text","text":text}]);
             stream.push(json!({"type":"done","reason":"stop","message":message}));
         }
         Ok(stream)
@@ -84,10 +100,13 @@ fn make_provider() -> Arc<Provider> {
                 name: "Carrier OAuth".into(),
                 is_subscription: Some(true),
                 login_label: Some("Carrier login".into()),
-                login: Arc::new(|input| {
-                    Ok(
-                        json!({"type":"oauth","access":(input.prompt)(json!({"type":"text","message":"Carrier OAuth"}))?,"refresh":"refresh","expires":100}),
-                    )
+                login: Arc::new(|input, options| {
+                    let key = (input.prompt)(json!({"type":"text","message":"Carrier OAuth"}))?;
+                    let device = match &options.get_device_id {
+                        Some(get) => get()?,
+                        None => "none".to_string(),
+                    };
+                    Ok(json!({"type":"oauth","access":format!("{key}@{device}"),"refresh":"refresh","expires":100}))
                 }),
                 refresh: Arc::new(|mut credential, _| {
                     credential["access"] = json!("rotated");
@@ -112,17 +131,38 @@ fn make_provider() -> Arc<Provider> {
                 },
             )
         })),
+        get_all_models: Some({
+            let models = models.clone();
+            Arc::new(move || {
+                let mut all = models.lock().unwrap().clone();
+                let mut extra = all[0].as_ref().clone();
+                extra["id"] = json!("carrier-all-only");
+                all.push(Arc::new(extra));
+                Ok(all)
+            })
+        }),
+        filter_all_models: Some(Arc::new(|models, credential| {
+            Ok(
+                if credential.as_ref().is_some_and(|c| c["key"] == "all") {
+                    models.to_vec()
+                } else {
+                    vec![]
+                },
+            )
+        })),
         refresh_models: Some(Arc::new(move |input| {
             if input.force != Some(true) {
                 return Ok(());
             }
             let models = models.clone();
             let model = model.clone();
+            // An SDK that drops RefreshModelsContext.baseUrl publishes "refreshed:None".
+            let refreshed_id = format!("refreshed:{}", input.base_url.clone().unwrap_or_else(|| "None".to_string()));
             (input.publish)(ModelsPublication {
                 persist: Some(Value::Null),
                 update: Some(Arc::new(move || {
                     let mut value = model.as_ref().clone();
-                    value["id"] = json!("refreshed");
+                    value["id"] = json!(refreshed_id.clone());
                     models.lock().unwrap().push(Arc::new(value));
                     Ok(())
                 })),
@@ -193,7 +233,10 @@ fn probe(ctx: &Context, path: &str) -> Result<(), String> {
         notify: Arc::new(|_| Ok(())),
     };
     let api_login = api.login.as_ref().unwrap()(interaction.clone())?;
-    let login = (oauth.login)(interaction)?;
+    let login = (oauth.login)(
+        interaction,
+        LoginOptions { get_device_id: Some(Arc::new(|| Ok("caller-device".to_string()))), agent_name: None },
+    )?;
     let rotated = (oauth.refresh)(login.clone(), ProviderSignal::new())?;
     let oauth_auth = (oauth.to_auth)(rotated.clone())?;
     let order = Arc::new(Mutex::new(vec![]));
@@ -203,6 +246,7 @@ fn probe(ctx: &Context, path: &str) -> Result<(), String> {
         stored: None,
         allow_network: false,
         force: Some(true),
+        base_url: Some("https://regional.invalid/v1".to_string()),
         signal: ProviderSignal::new(),
         publish: Arc::new(move |publication| {
             assert_eq!(publication.persist, Some(Value::Null));

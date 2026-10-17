@@ -5,6 +5,9 @@ import (
 	"sync"
 )
 
+// ErrNoDefaultStreamFunction is Pi's getDefaultStreamFn failure: no stream function was passed and none is configured.
+var ErrNoDefaultStreamFunction = errors.New("No default stream function configured. Pass streamFn explicitly or call setDefaultStreamFn().")
+
 // Ports packages/agent/src/stream-fn.ts.
 var defaultStream struct {
 	sync.RWMutex
@@ -20,13 +23,12 @@ func SetDefaultStreamFn(fn StreamFn) {
 }
 
 // GetDefaultStreamFn returns the configured host stream function, or an error
-// when no host has installed one. Models with native provider runtimes can
-// still stream directly when an agent has no explicit or configured stream.
+// when no host has installed one.
 func GetDefaultStreamFn() (StreamFn, error) {
 	defaultStream.RLock()
 	defer defaultStream.RUnlock()
 	if defaultStream.fn == nil {
-		return nil, errors.New("No default stream function configured. Pass streamFn explicitly or call setDefaultStreamFn().")
+		return nil, ErrNoDefaultStreamFunction
 	}
 	return defaultStream.fn, nil
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-if ! output=$(go test -count=20 -run '^Test(AutomaticCompactionCancellationUpstream|SessionPublicListenersPrecedePersistenceAndTools)$' -v ./coding); then
+if ! output=$(./test/parity/testdata/prebuilt-go-test.sh -count=20 -run '^Test(AutomaticCompactionCancellationUpstream|SessionPublicListenersPrecedePersistenceAndTools)$' -v ./coding); then
     printf '%s\n' "$output"
     exit 1
 fi

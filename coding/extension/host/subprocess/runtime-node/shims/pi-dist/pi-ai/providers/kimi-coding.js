@@ -1,4 +1,4 @@
-import { anthropicMessagesApi } from "../api/anthropic-messages.lazy.js";
+import { openAICompletionsApi } from "../api/openai-completions.lazy.js";
 import { envApiKeyAuth, lazyOAuth } from "../auth/helpers.js";
 import { loadKimiCodingOAuth } from "../auth/oauth/load.js";
 import { createProvider } from "../models.js";
@@ -7,7 +7,7 @@ export function kimiCodingProvider() {
     return createProvider({
         id: "kimi-coding",
         name: "Kimi For Coding",
-        baseUrl: "https://api.kimi.com/coding",
+        baseUrl: "https://api.kimi.com/coding/v1",
         auth: {
             apiKey: envApiKeyAuth("Kimi API key", ["KIMI_API_KEY"]),
             oauth: lazyOAuth({
@@ -18,7 +18,7 @@ export function kimiCodingProvider() {
             }),
         },
         models: Object.values(KIMI_CODING_MODELS),
-        api: anthropicMessagesApi(),
+        api: openAICompletionsApi(),
     });
 }
 //# sourceMappingURL=kimi-coding.js.map

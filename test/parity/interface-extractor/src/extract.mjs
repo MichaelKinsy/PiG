@@ -3,7 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
-import { compareInventories, extractInventory, verifyPublishedSources } from "./inventory.mjs";
+import { compareInventories, extractInventory, footprint, verifyPublishedSources } from "./inventory.mjs";
 
 function parseArgs(argv) {
   const args = {};
@@ -34,7 +34,8 @@ try {
   if (args["source-root"] && args["published-root"] && args["source-out"] && args["published-out"]) {
     const dependencyRoot = path.resolve(args["published-root"]);
     const source = extractInventory({ origin: "source", root: path.resolve(args["source-root"]), upstreamVersion, packageKeys, dependencyRoot });
-    const published = extractInventory({ origin: "published", root: dependencyRoot, upstreamVersion, packageKeys, dependencyRoot });
+    const published = extractInventory({ origin: "published", root: dependencyRoot, sourceRoot: path.resolve(args["source-root"]), upstreamVersion, packageKeys, dependencyRoot });
+    if (process.env.PIG_INTERFACE_FOOTPRINT) writeJSON(process.env.PIG_INTERFACE_FOOTPRINT, footprint());
     writeJSON(args["source-out"], source);
     writeJSON(args["published-out"], published);
     const provenance = verifyPublishedSources({

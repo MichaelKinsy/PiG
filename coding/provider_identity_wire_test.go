@@ -65,7 +65,7 @@ func TestModelRuntimeRequestsCarryPiGAttributionNeverPis(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(config), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+			services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 			if err != nil {
 				t.Fatal(err)
 			}

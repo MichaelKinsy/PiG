@@ -1,0 +1,194 @@
+[
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestDefaultResourceLoaderAgentsFilesFollowReloadOptionsAndOverride"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader.go: replace `return AgentsFilesResult{AgentsFiles: cloneCollection(l.agentsFiles)}` with `return AgentsFilesResult{AgentsFiles: l.agentsFiles}`; TestDefaultResourceLoaderAgentsFilesFollowReloadOptionsAndOverride fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestDefaultResourceLoaderAgentsFilesFollowReloadOptionsAndOverride"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader.go: replace `return AgentsFilesResult{AgentsFiles: cloneCollection(l.agentsFiles)}` with `return AgentsFilesResult{}`; TestDefaultResourceLoaderAgentsFilesFollowReloadOptionsAndOverride fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestDefaultResourceLoaderAgentsFilesFollowReloadOptionsAndOverride"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader.go: replace `if !l.options.NoContextFiles {\n\t\tagentsFiles.AgentsFiles = icodingagent` with `if l.options.NoContextFiles {\n\t\tagentsFiles.AgentsFiles = icodingagent`; TestDefaultResourceLoaderAgentsFilesFollowReloadOptionsAndOverride fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestDefaultResourceLoaderAgentsFilesFollowReloadOptionsAndOverride"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader.go: replace `if l.options.AgentsFilesOverride != nil {\n\t\tagentsFiles = l.options` with `if false {\n\t\tagentsFiles = l.options`; TestDefaultResourceLoaderAgentsFilesFollowReloadOptionsAndOverride fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestDefaultResourceLoaderAgentsFilesFollowReloadOptionsAndOverride"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader.go: replace `l.agentsFiles = agentsFiles.AgentsFiles` with `l.agentsFiles = nil`; TestDefaultResourceLoaderAgentsFilesFollowReloadOptionsAndOverride fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader.go: replace `if l.systemPrompt == nil {\n\t\treturn \"\", false\n\t}\n\treturn *l.systemPrompt, true` with `if l.systemPrompt == nil {\n\t\treturn \"\", true\n\t}\n\treturn *l.systemPrompt, true`; TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader.go: replace `return cloneCollection(l.appendPrompt)` with `return l.appendPrompt`; TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader.go: replace `return cloneCollection(l.appendSources)` with `return l.appendSources`; TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides",
+   "TestDefaultLoaderReportsSystemPromptSourcePaths"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader.go: replace `if l.systemSource == nil {\n\t\treturn ResourceSource{}, false\n\t}\n\treturn *l.systemSource, true` with `if l.systemSource == nil {\n\t\treturn ResourceSource{}, true\n\t}\n\treturn *l.systemSource, true`; TestDefaultLoaderReportsSystemPromptSourcePaths, TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader.go: replace `if l.options.SystemPrompt != nil {\n\t\tsource = *l.options.SystemPrompt\n\t} else {` with `if false {\n\t\tsource = *l.options.SystemPrompt\n\t} else {`; TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader.go: replace `if source != \"\" {\n\t\tsystemPrompt = new(icodingagent.ResolvePromptInput(source, \"system prompt\"))` with `if source != \"\" {\n\t\tsystemPrompt = new(source)`; TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader.go: replace `if l.options.SystemPromptOverride != nil {\n\t\tsystemPrompt = l.options.SystemPromptOverride(systemPrompt)\n\t}` with `if l.options.SystemPromptOverride != nil {\n\t\tl.options.SystemPromptOverride(systemPrompt)\n\t}`; TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader.go: replace `\"SYSTEM.md\", trusted)` with `\"APPEND_SYSTEM.md\", trusted)`; TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader.go: replace `if sources == nil {\n\t\tsources = []string{}` with `if len(sources) == 0 {\n\t\tsources = []string{}`; TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader.go: replace `if source != \"\" {\n\t\t\tappended = append(appended, icodingagent` with `if true {\n\t\t\tappended = append(appended, icodingagent`; TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader.go: replace `appended = append(appended, icodingagent.ResolvePromptInput(source, \"append system prompt\"))` with `appended = append(appended, source)`; TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader.go: replace `if l.options.AppendSystemPromptOverride != nil {\n\t\tappended = l.options` with `if false {\n\t\tappended = l.options`; TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides",
+   "TestDefaultLoaderReportsSystemPromptSourcePaths"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader.go: replace `return appended, appendSources\n}` with `return appended, nil\n}`; TestDefaultLoaderReportsSystemPromptSourcePaths, TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides",
+   "TestDefaultLoaderReportsSystemPromptSourcePaths"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader.go: replace `if found := promptSourcePath(source); found != nil {\n\t\t\tappendSources = append(appendSources, *found)\n\t\t}` with ``; TestDefaultLoaderReportsSystemPromptSourcePaths, TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader.go: replace `l.systemPrompt, l.appendPrompt = systemPrompt, appendPrompt` with `_ = systemPrompt\n\tl.systemPrompt, l.appendPrompt = nil, appendPrompt`; TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader.go: replace `l.systemPrompt, l.appendPrompt = systemPrompt, appendPrompt` with `_ = appendPrompt\n\tl.systemPrompt, l.appendPrompt = systemPrompt, nil`; TestDefaultResourceLoaderSystemPromptsFollowOptionsAndOverrides fails."
+ }
+]

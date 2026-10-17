@@ -5,6 +5,7 @@ package harness
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"sync/atomic"
@@ -93,12 +94,16 @@ func (conversation *conversationImpl) Commit(ctx context.Context, change func(tx
 	}, session.TransactionScope{ConversationId: &id})
 }
 
-func (conversation *conversationImpl) Context(ctx context.Context) (durable.ContextView, error) {
-	return ReadContext(ctx, conversation.host.harness.line, conversation.host.storage, conversation.id, nil)
+func (conversation *conversationImpl) Context(ctx context.Context, options *durable.ContextOptions) (durable.ContextView, error) {
+	var at *durable.EntryId
+	if options != nil {
+		at = options.At
+	}
+	return ReadContext(ctx, conversation.host.harness.line, conversation.host.storage, conversation.id, at)
 }
 
 func (conversation *conversationImpl) Entries(ctx context.Context, query durable.EntryQuery, limit int, cursor durable.Cursor) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
-	bounded := durable.EntryQuery{ConversationId: conversation.id, MinEntryId: query.MinEntryId, MaxEntryId: query.MaxEntryId}
+	bounded := durable.EntryQuery{ConversationId: conversation.id, MinEntryId: query.MinEntryId, MaxEntryId: query.MaxEntryId, Order: query.Order}
 	page, err := conversation.host.harness.ReadOnLine(func() (any, error) {
 		return conversation.host.storage.ScanEntries(ctx, bounded, limit, cursor)
 	})
@@ -144,6 +149,18 @@ type harnessImpl struct {
 	submissions *Submissions
 	taskGraph   *TaskGraphView
 	closed      atomic.Bool
+}
+
+// documentRetentionMs is settings.documentRetentionMs, read at each use, as all settings are, but only this field: the
+// Session reads it on every commit (harness.ts: `super(rawStorage, now, () => options.settings?.documentRetentionMs)`).
+func (harness *harnessImpl) documentRetentionMs() *float64 {
+	if harness.options.Settings == nil {
+		return nil
+	}
+	if settings := harness.options.Settings(); settings != nil {
+		return settings.DocumentRetentionMs
+	}
+	return nil
 }
 
 func (harness *harnessImpl) settings() durable.Settings {
@@ -237,7 +254,7 @@ func (harness *harnessImpl) AbortSubmission(ctx context.Context, id durable.Subm
 }
 
 func (harness *harnessImpl) AbortTask(ctx context.Context, id durable.TaskId) (string, error) {
-	return harness.tasks.Abort(ctx, id)
+	return harness.tasks.Abort(ctx, id, false)
 }
 
 func (harness *harnessImpl) WaitForTask(ctx context.Context, id durable.TaskId) (durable.SettledTask[durable.JsonValue], error) {
@@ -308,7 +325,7 @@ func (harness *harnessImpl) CreateConversation(ctx context.Context, options Conv
 	return harness.create(ctx, createTarget{kind: createIndependent, ownership: options.Ownership}, RootOptions{Agent: options.Agent, Init: options.Init})
 }
 
-// Close seals the Harness; later root, conversation, and creation calls fail with ErrClosed.
+// Close seals the Harness; later root, conversation, and creation calls fail with session.ErrSessionClosed.
 func (harness *harnessImpl) Close(ctx context.Context) error {
 	harness.closed.Store(true)
 	return harness.SessionImpl.Close(ctx)
@@ -375,9 +392,14 @@ func (harness *harnessImpl) conversationCreated(tx *session.Transaction, record 
 	return nil
 }
 
+// checkOpen is SessionImpl.assertUsable (session.ts:657-660), which harness.ts resume, conversation, and create call:
+// SessionFailed once the Session failed, else "Session is closed" once close began.
 func (harness *harnessImpl) checkOpen() error {
+	if failure := harness.Failure(); failure != nil {
+		return durable.NewSessionFailed(failure)
+	}
 	if harness.closed.Load() {
-		return ErrClosed
+		return session.ErrSessionClosed
 	}
 	return nil
 }
@@ -471,7 +493,7 @@ func OpenHarness(ctx context.Context, storage durable.Storage, options HarnessOp
 	snapshot := options.Registry.Snapshot()
 	var missing []string
 	for _, task := range BuiltinTasks() {
-		if snapshot.Task(task.AnyDefinition().Name) == nil {
+		if snapshot.Task(task.Definition.Name).Definition == nil {
 			missing = append(missing, task.AnyDefinition().Name)
 		}
 	}
@@ -480,13 +502,54 @@ func OpenHarness(ctx context.Context, storage durable.Storage, options HarnessOp
 	}
 	harness := newHarness(ctx, storage, options)
 	if err := harness.tasks.Open(ctx); err != nil {
-		// The caller's context may be what failed open: close without it, and rethrow the open error.
-		if closeErr := harness.Close(context.WithoutCancel(ctx)); closeErr != nil && options.OnReport != nil {
-			options.OnReport(closeErr)
-		}
+		// The caller's context may be what failed open: close without it, and rethrow the open error. A failing Storage close
+		// fails the Session, which reports it.
+		_ = harness.Close(context.WithoutCancel(ctx))
 		return nil, err
 	}
 	return harness, nil
+}
+
+// SafeReport is onReport that cannot fail: it is the last place an error goes, so its own panic is dropped. Ports harness.ts
+// safeReport; the Harness over the core wraps its OnReport with it too.
+func SafeReport(onReport func(error)) func(error) {
+	return func(err error) {
+		defer func() {
+			// upstream: packages/durable/src/harness/harness.ts:safeReport
+			_ = recover()
+		}()
+		if onReport != nil {
+			onReport(err)
+		}
+	}
+}
+
+// SafeNow is the host clock, falling back to the wall clock when it panics: a broken clock must not stop commits. The first
+// failure is reported; the clock is read in every task change, so later ones are not. Ports harness.ts safeNow; the Harness
+// over the core wraps its Now with it too.
+func SafeNow(now func() float64, report func(error)) func() float64 {
+	wall := func() float64 { return float64(time.Now().UnixMilli()) }
+	if now == nil {
+		return wall
+	}
+	var reported atomic.Bool
+	return func() (value float64) {
+		defer func() {
+			// upstream: packages/durable/src/harness/harness.ts:safeNow
+			if recovered := recover(); recovered != nil {
+				// Set first: a report handler that reads the clock again must not report again.
+				if reported.CompareAndSwap(false, true) {
+					err, ok := recovered.(error)
+					if !ok {
+						err = fmt.Errorf("%v", recovered)
+					}
+					report(err)
+				}
+				value = wall()
+			}
+		}()
+		return now()
+	}
 }
 
 func joinNames(names []string) string {
@@ -501,25 +564,23 @@ func joinNames(names []string) string {
 }
 
 func newHarness(ctx context.Context, storage durable.Storage, options HarnessOptions) *harnessImpl {
-	harness := &harnessImpl{storage: storage, options: options, report: options.OnReport}
-	if harness.report == nil {
-		harness.report = func(error) {}
-	}
-	now := options.Now
-	if now == nil {
-		now = func() float64 { return float64(time.Now().UnixMilli()) }
-	}
+	harness := &harnessImpl{storage: storage, options: options, report: SafeReport(options.OnReport)}
+	now := SafeNow(options.Now, harness.report)
 	harness.SessionImpl = session.NewSessionImpl(storage, session.Hooks{
 		ConversationCreated: harness.conversationCreated,
 		// Join task invocations after admission is sealed and before Storage closes; writes no task outcome.
 		BeforeClose: func() { harness.tasks.Join() },
-	})
+		Report:      harness.report,
+	}, now, harness.documentRetentionMs)
+	// Every component reads and writes through the Session's failure guard (session.ts: the Harness uses `this.storage`).
+	storage = harness.Storage()
+	harness.storage = storage
 	harness.line = sessionLine{harness.SessionImpl}
 	harness.tasks = NewTaskScheduler(TaskSchedulerOptions{
 		Session:  harness.SessionImpl,
 		Storage:  storage,
 		Registry: options.Registry,
-		Models:   options.Models,
+		Models:   options.CurrentModels,
 		Agent: func(callCtx context.Context, id durable.ConversationId, snapshot durable.RegistrySnapshot) (durable.Agent, error) {
 			return harness.resolveAgent(callCtx, id, snapshot)
 		},

@@ -1,6 +1,6 @@
 # Lane gap-d78 plan: SDK Provider object carriers and foreign registered-configuration identity (D78)
 
-Base: staging `release/0.3.0-base2` (`606595120`). Upstream: Pi 0.87.1 in `.upstream/v0.87.1`. Branch: `team/smc1/gap-d78`.
+Base: staging `release/0.3.0-base2` (`606595120`). Upstream: Pi 0.87.1 in `.upstream/v0.87.1`. Branch: `team/the bench host/gap-d78`.
 
 This plan touches `extensions/sdk`, `extensions/sdk-rs`, `extensions/sdk-py`, the Node runtime and `extensions/sdk-ts` declarations.
 
@@ -81,8 +81,8 @@ The Go and Rust "live configuration readers" (`8a3e1d4d5`, `121ba9df7`) are faca
 
 ### 2.3 Neighbouring lanes
 
-- `team/smc1/x-registerprovider` (`a04cb4a04`, READY) updates the available-model snapshot on registration and `fx-provider` (`ae1fb8832`, BLOCKED) covers Pi's unawaited offline refresh. The "implicit refresh" obligation is consumed from those lanes and re-qualified here through the SDK path. This lane does not write a second scheduler.
-- `team/smc1/gap-xproc` owns the single cross-process reference mechanism (D83 first, then D73). At the time of writing it has not pushed a PLAN. This lane states its consumer requirements in section 3.4 and does not build a second mechanism.
+- `team/the bench host/x-registerprovider` (`a04cb4a04`, READY) updates the available-model snapshot on registration and `fx-provider` (`ae1fb8832`, BLOCKED) covers Pi's unawaited offline refresh. The "implicit refresh" obligation is consumed from those lanes and re-qualified here through the SDK path. This lane does not write a second scheduler.
+- `team/the bench host/gap-xproc` owns the single cross-process reference mechanism (D83 first, then D73). At the time of writing it has not pushed a PLAN. This lane states its consumer requirements in section 3.4 and does not build a second mechanism.
 
 ## 3. Design
 

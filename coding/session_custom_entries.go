@@ -12,7 +12,7 @@ func (s *Session) AppendCustomEntry(customType string, data any) (string, error)
 	if err != nil {
 		return "", err
 	}
-	if entry, ok := s.inner.EntryByID(id); ok {
+	if entry, ok := s.inner.GetEntry(id); ok {
 		s.emitEvent(agent.EntryAppendedEvent{Entry: entry.Raw()})
 	}
 	return id, nil

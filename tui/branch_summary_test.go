@@ -6,7 +6,7 @@ import (
 )
 
 func TestBranchSummaryCollapsed(t *testing.T) {
-	comp := NewBranchSummaryComponent("The user explored a sidebar about error handling.")
+	comp := NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "The user explored a sidebar about error handling."}, nil, 1)
 	out := comp.Render(80)
 
 	// Collapsed: must have top pad + label + spacer + body + bottom pad = 5 lines.
@@ -60,9 +60,10 @@ func TestBranchSummaryCollapsed(t *testing.T) {
 	}
 }
 
+// Pi: packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts:22 (BranchSummaryMessageComponent.setExpanded).
 func TestBranchSummaryExpanded(t *testing.T) {
 	summary := "The user explored a sidebar about error handling."
-	comp := NewBranchSummaryComponent(summary)
+	comp := NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: summary}, nil, 1)
 	comp.SetExpanded(true)
 	out := comp.Render(80)
 
@@ -90,7 +91,7 @@ func TestBranchSummaryExpanded(t *testing.T) {
 }
 
 func TestBranchSummaryToggle(t *testing.T) {
-	comp := NewBranchSummaryComponent("test summary")
+	comp := NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "test summary"}, nil, 1)
 
 	// Default: collapsed.
 	collapsed := comp.Render(80)
@@ -110,5 +111,25 @@ func TestBranchSummaryToggle(t *testing.T) {
 	recollapsed := comp.Render(80)
 	if strings.Contains(stripANSI(strings.Join(recollapsed, "\n")), "test summary") {
 		t.Error("toggle: summary leaked after re-collapse")
+	}
+}
+
+// branch-summary-message.ts:15-21: constructor(message, markdownTheme = getMarkdownTheme(), outputPad = 1) builds `super(outputPad, 1, ...)` and the
+// expanded body is `new Markdown(header + message.summary, 0, 0, this.markdownTheme, ...)`. The constructor's outputPad is the Box's horizontal padding
+// and its markdownTheme is the theme the expanded summary renders with.
+func TestBranchSummaryMessageComponentTakesItsPadAndMarkdownTheme(t *testing.T) {
+	for _, pad := range []int{0, 1, 3} {
+		c := NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "s"}, nil, pad)
+		if got := leadingColumns(t, c, "[branch]"); got != pad {
+			t.Errorf("outputPad %d: the label starts after %d blank columns", pad, got)
+		}
+	}
+	theme := GetMarkdownTheme()
+	theme.Bold = func(text string) string { return "<<" + text + ">>" }
+	c := NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "a **loud** word"}, &theme, 1)
+	c.SetExpanded(true)
+	// The header and **loud** both render bold, so the custom Bold wraps two runs; the colour codes sit between the markers and the words.
+	if out := strings.Join(c.Render(60), "\n"); strings.Count(out, "<<") != 2 {
+		t.Fatalf("the expanded summary ignores the markdown theme given to the constructor:\n%s", out)
 	}
 }

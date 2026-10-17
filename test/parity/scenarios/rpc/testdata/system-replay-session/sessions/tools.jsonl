@@ -1,0 +1,4 @@
+{"type":"session","version":3,"id":"rpc-replay-tools","timestamp":"2026-01-01T00:00:00Z","cwd":"."}
+{"type":"model_change","id":"model-1","parentId":null,"timestamp":"2026-01-01T00:00:01Z","provider":"test-faux","modelId":"faux-1"}
+{"type":"message","id":"m-1","parentId":"model-1","timestamp":"2026-01-01T00:01:00.000Z","message":{"role":"system","content":"","toolsAdded":5,"timestamp":25}}
+{"type":"message","id":"m-2","parentId":"m-1","timestamp":"2026-01-01T00:01:01.000Z","message":{"role":"user","content":"earlier","timestamp":26}}

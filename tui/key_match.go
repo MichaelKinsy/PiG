@@ -15,9 +15,16 @@ package tui
 // Upstream reference: packages/tui/src/keys.ts matchesKey() (1400 LOC).
 
 import (
-	"fmt"
+	"errors"
+	"math"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
+	"unicode/utf8"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // Modifier bit constants: matches Kitty keyboard protocol.
@@ -142,6 +149,11 @@ type parsedKey struct {
 	// position on a standard PC-101 layout (keys.ts ParsedKittySequence).
 	baseLayoutKey    int
 	hasBaseLayoutKey bool
+	// shiftedKey is the Kitty flag-4 alternate that names the key with Shift held (keys.ts ParsedKittySequence.shiftedKey).
+	shiftedKey    int
+	hasShiftedKey bool
+	// inexactModifier marks a modifyOtherKeys modifier too large for its int32 view to equal the number keys.ts compares.
+	inexactModifier bool
 }
 
 // parseCSIu parses a Kitty CSI-u sequence, mirroring the CSI-u branch of
@@ -151,26 +163,59 @@ type parsedKey struct {
 //
 // Flag 4 appends the shifted key and the base-layout key after the codepoint
 // (\x1b[1089::99;5u is Ctrl+С on a Cyrillic layout, base key c). The base-layout
-// key is retained for matchesKittySequence; the shifted key only matters for
-// printable decoding (DecodeKittyPrintable). Returns nil if data is not CSI-u.
+// key and the shifted key are retained for matchesKittySequence and ParseKey; printable decoding reads the shifted key itself
+// (DecodeKittyPrintable). Returns nil if data is not CSI-u.
 func parseCSIu(data string) *parsedKey {
+	// The pattern is anchored: ESC [ ... u. Most input is not that, and the regular expression allocates for each match attempt.
+	if len(data) < 4 || data[0] != '\x1b' || data[1] != '[' || data[len(data)-1] != 'u' {
+		return nil
+	}
 	match := kittyCSIURegex.FindStringSubmatch(data)
 	if match == nil {
 		return nil
 	}
-	cp, err := strconv.Atoi(match[1])
-	if err != nil {
-		return nil
-	}
-	modValue := 1
+	modValue := 1.0
 	if match[4] != "" {
-		if modValue, err = strconv.Atoi(match[4]); err != nil {
-			return nil
-		}
+		modValue = keyNumber(match[4])
 	}
-	pk := &parsedKey{codepoint: cp, modifier: (modValue - 1) &^ lockMask}
-	pk.baseLayoutKey, pk.hasBaseLayoutKey = parseOptionalInt(match[3])
+	pk := &parsedKey{codepoint: keyCodepoint(keyNumber(match[1])), modifier: jsInt32(modValue-1) &^ lockMask}
+	if match[2] != "" {
+		pk.shiftedKey, pk.hasShiftedKey = keyCodepoint(keyNumber(match[2])), true
+	}
+	if match[3] != "" {
+		pk.baseLayoutKey, pk.hasBaseLayoutKey = keyCodepoint(keyNumber(match[3])), true
+	}
 	return pk
+}
+
+// keyNumber is parseInt(digits, 10) for a run of ASCII digits that a keys.ts sequence pattern captured. The value is a float64, as in JavaScript, so a run too long for an int still parses.
+func keyNumber(digits string) float64 {
+	value, err := strconv.ParseFloat(digits, 64)
+	if err != nil && !errors.Is(err, strconv.ErrRange) {
+		return math.NaN()
+	}
+	return value
+}
+
+// jsInt32 is JavaScript's ToInt32, the conversion keys.ts's bitwise operators apply to a parsed modifier.
+func jsInt32(value float64) int {
+	if math.IsNaN(value) || math.IsInf(value, 0) {
+		return 0
+	}
+	wrapped := math.Mod(math.Trunc(value), 1<<32)
+	if wrapped < 0 {
+		wrapped += 1 << 32
+	}
+	return int(int32(uint32(wrapped)))
+}
+
+// keyCodepoint holds a parsed codepoint as an int that compares and truncates (String.fromCharCode) as the JavaScript number does. Every number
+// from 2^62 up is a multiple of 1024, so its low 16 bits name no key, and one sentinel above every key codepoint stands for all of them.
+func keyCodepoint(value float64) int {
+	if value < 1<<62 {
+		return int(value)
+	}
+	return 1 << 62
 }
 
 // normalizeShiftedLetterIdentityCodepoint mirrors keys.ts: with Shift held an
@@ -189,20 +234,50 @@ func isSymbolCodepoint(cp int) bool {
 	return unit < 128 && isSymbolKey(byte(unit))
 }
 
-// matchesKittySequence mirrors keys.ts matchesKittySequence for a parsed
-// CSI-u key: modifiers must match exactly, and the codepoint matches after
-// keypad and shifted-letter normalization. Failing that, the base-layout key
-// matches so Ctrl+С on a Cyrillic layout triggers ctrl+c, but only when the
-// codepoint is not itself a Latin letter or known symbol: on remapped layouts
-// (Dvorak, Colemak) the codepoint is authoritative, so Dvorak Ctrl+K (base v)
-// never matches ctrl+v.
-func matchesKittySequence(pk *parsedKey, expectedCodepoint, expectedModifier int) bool {
-	if pk.modifier != expectedModifier&^lockMask {
-		return false
+// shiftedSymbolKeys is keys.ts SHIFTED_SYMBOL_KEYS: the symbols a terminal reports as their produced character plus Shift.
+const shiftedSymbolKeys = "~!@#$%^&*()_+|{}:<>?"
+
+// isShiftedSymbolCodepoint mirrors SHIFTED_SYMBOL_KEYS.has(String.fromCharCode(cp)), including fromCharCode's truncation of the codepoint to 16 bits.
+func isShiftedSymbolCodepoint(cp int) bool {
+	unit := cp & 0xFFFF
+	return unit < 128 && strings.IndexByte(shiftedSymbolKeys, byte(unit)) >= 0
+}
+
+// logicalShiftedSymbol is keys.ts getLogicalShiftedSymbolCandidate: a symbol reported as Shift plus its physical key names the produced
+// symbol without that implicit Shift. allowed says which codepoints name a symbol the caller accepts; ok is false when the key is not one.
+func logicalShiftedSymbol(codepoint int, present bool, modifier int, allowed func(int) bool) (cp, mod int, ok bool) {
+	if !present || modifier&modShift == 0 {
+		return 0, 0, false
 	}
+	normalized := normalizeKittyFunctionalCodepoint(codepoint)
+	if !allowed(normalized) {
+		return 0, 0, false
+	}
+	return normalized, modifier &^ modShift, true
+}
+
+// matchesKittySequence mirrors keys.ts matchesKittySequence for a parsed
+// CSI-u key. The physical match needs every modifier equal and the codepoint
+// equal after keypad and shifted-letter normalization. The logical match
+// takes a symbol reported as Shift plus its physical key ("+" is Shift and
+// "=", alternate 43) as the produced symbol: the implicit Shift is consumed
+// and Ctrl, Alt and Super are kept. Failing both, with the modifiers equal, the
+// base-layout key matches so Ctrl+С on a Cyrillic layout triggers ctrl+c, but
+// only when the codepoint is not itself a Latin letter or known symbol: on
+// remapped layouts (Dvorak, Colemak) the codepoint is authoritative, so Dvorak
+// Ctrl+K (base v) never matches ctrl+v.
+func matchesKittySequence(pk *parsedKey, expectedCodepoint, expectedModifier int) bool {
+	actualMod, expectedMod := pk.modifier&^lockMask, expectedModifier&^lockMask
 	normalized := normalizeShiftedLetterIdentityCodepoint(normalizeKittyFunctionalCodepoint(pk.codepoint), pk.modifier)
-	if normalized == normalizeShiftedLetterIdentityCodepoint(normalizeKittyFunctionalCodepoint(expectedCodepoint), expectedModifier) {
+	if actualMod == expectedMod && normalized == normalizeShiftedLetterIdentityCodepoint(normalizeKittyFunctionalCodepoint(expectedCodepoint), expectedModifier) {
 		return true
+	}
+	if cp, mod, ok := logicalShiftedSymbol(pk.shiftedKey, pk.hasShiftedKey, actualMod, isSymbolCodepoint); ok &&
+		mod&^lockMask == expectedMod && cp == normalizeKittyFunctionalCodepoint(expectedCodepoint) {
+		return true
+	}
+	if actualMod != expectedMod {
+		return false
 	}
 	if pk.hasBaseLayoutKey && pk.baseLayoutKey == expectedCodepoint {
 		isLatinLetter := normalized >= 'a' && normalized <= 'z'
@@ -211,92 +286,111 @@ func matchesKittySequence(pk *parsedKey, expectedCodepoint, expectedModifier int
 	return false
 }
 
-// parseModifyOtherKeys parses xterm modifyOtherKeys: \x1b[27;<modifier>;<codepoint>~
+// matchesPrintableModifyOtherKeys mirrors keys.ts matchesPrintableModifyOtherKeys: xterm modifyOtherKeys input for a letter, digit
+// or symbol key. The physical match needs the modifier and the codepoint (after shifted-letter normalization) equal; the logical
+// match takes "\x1b[27;2;43~" (Shift and "+") as the symbol "+" without the implicit Shift.
+func matchesPrintableModifyOtherKeys(pk *parsedKey, expectedKeycode, expectedModifier int) bool {
+	if pk == nil {
+		return false
+	}
+	if pk.modifier == expectedModifier && !pk.inexactModifier && normalizeShiftedLetterIdentityCodepoint(pk.codepoint, pk.modifier) == normalizeShiftedLetterIdentityCodepoint(expectedKeycode, expectedModifier) {
+		return true
+	}
+	cp, mod, ok := logicalShiftedSymbol(pk.codepoint, true, pk.modifier, isShiftedSymbolCodepoint)
+	return ok && mod == expectedModifier && cp == expectedKeycode
+}
+
+// parseModifyOtherKeys parses xterm modifyOtherKeys, keys.ts's /^\x1b\[27;(\d+);(\d+)~$/. The modifier keeps its lock bits: keys.ts matchesModifyOtherKeys compares it exactly, as a number, so inexactModifier marks a modifier whose int32 view differs from that number.
 func parseModifyOtherKeys(data string) *parsedKey {
-	if len(data) < 9 || data[0] != '\x1b' || data[1] != '[' || data[len(data)-1] != '~' {
+	rest, ok := strings.CutPrefix(data, "\x1b[27;")
+	if !ok {
 		return nil
 	}
-	body := data[2 : len(data)-1]
-	if !strings.HasPrefix(body, "27;") {
+	modText, rest := cutDigits(rest)
+	if modText == "" || !strings.HasPrefix(rest, ";") {
 		return nil
 	}
-	rest := body[3:] // after "27;"
-	parts := strings.SplitN(rest, ";", 2)
-	if len(parts) != 2 {
+	cpText, rest := cutDigits(rest[1:])
+	if cpText == "" || rest != "~" {
 		return nil
 	}
-	modVal, err1 := strconv.Atoi(parts[0])
-	cp, err2 := strconv.Atoi(parts[1])
-	if err1 != nil || err2 != nil {
-		return nil
-	}
-	return &parsedKey{codepoint: cp, modifier: (modVal - 1) & ^lockMask}
+	modifier := keyNumber(modText) - 1
+	pk := &parsedKey{codepoint: keyCodepoint(keyNumber(cpText)), modifier: jsInt32(modifier)}
+	pk.inexactModifier = float64(pk.modifier) != modifier
+	return pk
 }
 
-// parseModifiedArrow parses modified arrow key: \x1b[1;<modifier><A-D>
-// Also handles \x1b[1;<modifier>:<event><A-D> (Kitty flag 2).
+// cutDigits splits s after its leading run of ASCII digits, the run a \d+ in a keys.ts pattern matches.
+func cutDigits(s string) (digits, rest string) {
+	end := 0
+	for end < len(s) && s[end] >= '0' && s[end] <= '9' {
+		end++
+	}
+	return s[:end], s[end:]
+}
+
+// cutEventType removes the optional ":<digits>" event type that keys.ts's patterns accept after a modifier. It reports false for a ':' with no
+// digits after it.
+func cutEventType(s string) (string, bool) {
+	if !strings.HasPrefix(s, ":") {
+		return s, true
+	}
+	event, rest := cutDigits(s[1:])
+	return rest, event != ""
+}
+
+// parseModifiedArrow parses a modified arrow, Home or End key, keys.ts's /^\x1b\[1;(\d+)(?::(\d+))?([ABCD])$/ and its [HF] twin.
 func parseModifiedArrow(data string) *parsedKey {
-	if len(data) < 6 || data[0] != '\x1b' || data[1] != '[' || data[2] != '1' || data[3] != ';' {
+	rest, ok := strings.CutPrefix(data, "\x1b[1;")
+	if !ok {
 		return nil
 	}
-	final := data[len(data)-1]
-	cp, ok := arrowFinals[final]
+	modText, rest := cutDigits(rest)
+	if modText == "" {
+		return nil
+	}
+	if rest, ok = cutEventType(rest); !ok || len(rest) != 1 {
+		return nil
+	}
+	cp, ok := arrowFinals[rest[0]]
 	if !ok {
-		// Also check H/F for home/end
-		cp2, ok2 := homeEndFinals[final]
-		if !ok2 {
+		if cp, ok = homeEndFinals[rest[0]]; !ok {
 			return nil
 		}
-		cp = cp2
 	}
-	modStr := data[4 : len(data)-1]
-	// Strip event type: mod:event → mod
-	if idx := strings.IndexByte(modStr, ':'); idx >= 0 {
-		modStr = modStr[:idx]
-	}
-	modVal, err := strconv.Atoi(modStr)
-	if err != nil {
-		return nil
-	}
-	return &parsedKey{codepoint: cp, modifier: (modVal - 1) & ^lockMask}
+	return &parsedKey{codepoint: cp, modifier: jsInt32(keyNumber(modText)-1) &^ lockMask}
 }
 
-// parseModifiedFunc parses a Kitty functional key sequence with an optional
-// modifier and event type: \x1b[<n>[;<modifier>][:<event>]~.
+// parseModifiedFunc parses a functional key with an optional modifier and event type, keys.ts's /^\x1b\[(\d+)(?:;(\d+))?(?::(\d+))?~$/.
 func parseModifiedFunc(data string) *parsedKey {
-	if len(data) < 4 || data[0] != '\x1b' || data[1] != '[' || data[len(data)-1] != '~' {
-		return nil
-	}
-	body := data[2 : len(data)-1]
-	params, event, hasEvent := strings.Cut(body, ":")
-	if hasEvent {
-		if event == "" {
-			return nil
-		}
-		if _, err := strconv.Atoi(event); err != nil {
-			return nil
-		}
-	}
-
-	numText := params
-	modValue := 1
-	if before, after, hasModifier := strings.Cut(params, ";"); hasModifier {
-		numText = before
-		parsed, err := strconv.Atoi(after)
-		if err != nil {
-			return nil
-		}
-		modValue = parsed
-	}
-	num, err := strconv.Atoi(numText)
-	if err != nil {
-		return nil
-	}
-	cp, ok := funcKeyCodes[num]
+	rest, ok := strings.CutPrefix(data, "\x1b[")
 	if !ok {
 		return nil
 	}
-	return &parsedKey{codepoint: cp, modifier: (modValue - 1) & ^lockMask}
+	numText, rest := cutDigits(rest)
+	if numText == "" {
+		return nil
+	}
+	modValue := 1.0
+	if strings.HasPrefix(rest, ";") {
+		var modText string
+		if modText, rest = cutDigits(rest[1:]); modText == "" {
+			return nil
+		}
+		modValue = keyNumber(modText)
+	}
+	if rest, ok = cutEventType(rest); !ok || rest != "~" {
+		return nil
+	}
+	num := keyNumber(numText)
+	if num > 8 {
+		return nil
+	}
+	cp, ok := funcKeyCodes[int(num)]
+	if !ok {
+		return nil
+	}
+	return &parsedKey{codepoint: cp, modifier: jsInt32(modValue-1) &^ lockMask}
 }
 
 // parseTerminalInput attempts to parse raw terminal data into a (codepoint, modifier) pair
@@ -319,28 +413,50 @@ func parseTerminalInput(data string) *parsedKey {
 }
 
 // parseKeyID parses a key identifier string like "ctrl+shift+left" into
-// (baseKey, modifier bitmask).
+// (baseKey, modifier bitmask) as keys.ts parseKeyId does: the identifier is lowercased as JavaScript's toLowerCase does, the leading
+// "shift+", "alt+", "ctrl+" and "super+" parts are its modifiers, and the rest is the base key, which may be "+" but holds no other "+".
+// A repeated modifier, an unrecognized part such as "meta+" and an empty base key parse to nothing.
 func parseKeyID(keyID string) (baseKey string, modifier int, ok bool) {
-	parts := strings.Split(strings.ToLower(keyID), "+")
-	if len(parts) == 0 {
-		return "", 0, false
+	var lower string
+	if isASCII(keyID) {
+		lower = strings.ToLower(keyID)
+	} else {
+		lower = cases.Lower(language.Und).String(keyID)
 	}
-	baseKey = parts[len(parts)-1]
-	for _, p := range parts[:len(parts)-1] {
-		switch p {
-		case "ctrl":
-			modifier |= modCtrl
-		case "shift":
-			modifier |= modShift
-		case "alt":
-			modifier |= modAlt
-		case "super":
-			modifier |= modSuper
-		default:
-			return "", 0, false
+	modifierNames := [...]struct {
+		prefix string
+		bit    int
+	}{{"shift+", modShift}, {"alt+", modAlt}, {"ctrl+", modCtrl}, {"super+", modSuper}}
+	baseKey = lower
+	for {
+		found := false
+		for _, name := range modifierNames {
+			if rest, has := strings.CutPrefix(baseKey, name.prefix); has {
+				if modifier&name.bit != 0 {
+					return "", 0, false
+				}
+				modifier |= name.bit
+				baseKey, found = rest, true
+				break
+			}
+		}
+		if !found {
+			break
 		}
 	}
+	if baseKey == "" || strings.Contains(baseKey, "+") && baseKey != "+" {
+		return "", 0, false
+	}
 	return baseKey, modifier, true
+}
+
+func isASCII(s string) bool {
+	for i := range len(s) {
+		if s[i] >= utf8.RuneSelf {
+			return false
+		}
+	}
+	return true
 }
 
 // resolveKeyCodepoint converts a base key name to its codepoint.
@@ -366,6 +482,15 @@ func resolveKeyCodepoint(baseKey string) (cp int, ok bool) {
 	}
 	// Function keys f1-f12: not CSI-u, legacy-only. Not handled dynamically.
 	return 0, false
+}
+
+// isPrintableKey reports a base key that keys.ts matchesKey handles as a single letter, digit or symbol.
+func isPrintableKey(baseKey string) bool {
+	if len(baseKey) != 1 {
+		return false
+	}
+	ch := baseKey[0]
+	return ch >= 'a' && ch <= 'z' || ch >= '0' && ch <= '9' || isSymbolKey(ch)
 }
 
 func isSymbolKey(ch byte) bool {
@@ -399,29 +524,137 @@ func rawCtrlChar(key byte) byte {
 // This is the Go port of upstream Pi's matchesKey(data, keyId).
 // It handles all three protocols: CSI-u, modifyOtherKeys, legacy CSI.
 func matchesKeyDynamic(data, keyID string) bool {
-	baseKey, expectedMod, ok := parseKeyID(keyID)
-	if !ok {
+	info := lookupKeyID(keyID)
+	if !info.parsed || !info.dynamic {
+		return false
+	}
+	return matchesKeyInfo(data, info)
+}
+
+// keyIDInfo is a key identifier parsed once: parseKeyID's result and, for a dynamically representable key, its expected codepoint.
+type keyIDInfo struct {
+	baseKey  string
+	modifier int
+	parsed   bool
+	// dynamic reports that the base key has a codepoint, so the mode-aware matcher answers for it; codepoint is that codepoint.
+	dynamic   bool
+	codepoint int
+	// legacyKey is the key of the legacy sequence table for a key that is not dynamic, and legacyOK reports that the modifiers allow a match at all.
+	legacyKey string
+	legacyOK  bool
+}
+
+// Key identifiers come from the keybinding tables and from extensions, a small and stable set, so each distinct identifier is parsed once. The cache is emptied when it reaches keyIDCacheLimit entries.
+var (
+	keyIDCache      sync.Map // string -> *keyIDInfo
+	keyIDCacheCount atomic.Int32
+)
+
+// keyIDCacheLimit bounds the identifiers the cache holds: the default and user bindings of a session number in the low hundreds, so 4096 leaves room for extension-registered identifiers; reaching it empties the cache and the identifiers in use are parsed again once.
+// pig additive (D112): Pi parses an identifier on every call (keys.ts matchesKey); the bound keeps a stream of distinct identifiers from growing memory.
+const keyIDCacheLimit = 4096
+
+func lookupKeyID(keyID string) *keyIDInfo {
+	if cached, ok := keyIDCache.Load(keyID); ok {
+		return cached.(*keyIDInfo)
+	}
+	info := &keyIDInfo{}
+	info.baseKey, info.modifier, info.parsed = parseKeyID(keyID)
+	if info.parsed {
+		if info.codepoint, info.dynamic = resolveKeyCodepoint(info.baseKey); !info.dynamic {
+			// keys.ts matchesKey: a function key matches only without a modifier, and clear also with exactly shift or ctrl.
+			info.legacyKey, info.legacyOK = info.baseKey, true
+			switch info.modifier {
+			case 0:
+			case modShift:
+				info.legacyKey = "shift+" + info.baseKey
+			case modCtrl:
+				info.legacyKey = "ctrl+" + info.baseKey
+			default:
+				info.legacyOK = false
+			}
+		}
+	}
+	if keyIDCacheCount.Load() >= keyIDCacheLimit {
+		// A flood of distinct identifiers empties the cache rather than keeping it full of them: the identifiers in use are parsed again once.
+		keyIDCache.Clear()
+		keyIDCacheCount.Store(0)
+	}
+	if _, loaded := keyIDCache.LoadOrStore(keyID, info); !loaded {
+		keyIDCacheCount.Add(1)
+	}
+	return info
+}
+
+// keystrokeParse is the parse of one terminal input in each CSI form a key binding is compared with. A keystroke is compared with every binding in turn, so the last input is parsed once and the result shared; it is never modified after it is stored.
+type keystrokeParse struct {
+	data            string
+	csiu            *parsedKey
+	modifyOtherKeys *parsedKey
+	terminal        *parsedKey
+}
+
+var lastKeystroke atomic.Pointer[keystrokeParse]
+
+// singleByteKeystrokes holds the parse of every one-byte input (printable ASCII, Enter, Tab, Backspace and the C0 controls), so typing does not
+// parse each key again when another key came in between.
+var singleByteKeystrokes = sync.OnceValue(func() *[256]keystrokeParse {
+	var table [256]keystrokeParse
+	for b := range table {
+		table[b] = newKeystrokeParse(string([]byte{byte(b)}))
+	}
+	return &table
+})
+
+func parseKeystroke(data string) *keystrokeParse {
+	if len(data) == 1 {
+		return &singleByteKeystrokes()[data[0]]
+	}
+	if last := lastKeystroke.Load(); last != nil && last.data == data {
+		return last
+	}
+	parsed := new(newKeystrokeParse(strings.Clone(data)))
+	lastKeystroke.Store(parsed)
+	return parsed
+}
+
+func newKeystrokeParse(data string) keystrokeParse {
+	return keystrokeParse{data: data, csiu: parseCSIu(data), modifyOtherKeys: parseModifyOtherKeys(data), terminal: parseTerminalInput(data)}
+}
+
+// matchesKeyInfo matches raw terminal input against a parsed key identifier whose base key has a codepoint.
+func matchesKeyInfo(data string, info *keyIDInfo) bool {
+	baseKey, expectedMod, expectedCP := info.baseKey, info.modifier, info.codepoint
+	// keys.ts matchesKey: "escape" with a modifier matches nothing, although parseKey names such input.
+	if expectedCP == cpEscape && expectedMod != 0 {
 		return false
 	}
 
-	expectedCP, cpOK := resolveKeyCodepoint(baseKey)
-	if !cpOK {
-		return false
-	}
-
+	keystroke := parseKeystroke(data)
 	// Kitty CSI-u, including flag-4 alternate keys. Enter also answers to
 	// the keypad Enter codepoint (keys.ts matchesKey "enter").
-	if pk := parseCSIu(data); pk != nil {
+	if pk := keystroke.csiu; pk != nil {
 		if matchesKittySequence(pk, expectedCP, expectedMod) {
 			return true
 		}
 		return expectedCP == cpEnter && matchesKittySequence(pk, cpKPEnter, expectedMod)
 	}
 
+	// keys.ts matchesKey: a letter, digit or symbol key matches xterm modifyOtherKeys input by matchesPrintableModifyOtherKeys, with or
+	// without a modifier.
+	if keystroke.modifyOtherKeys != nil && isPrintableKey(baseKey) {
+		return matchesPrintableModifyOtherKeys(keystroke.modifyOtherKeys, expectedCP, expectedMod)
+	}
+	// keys.ts matchesKey: without a modifier only escape, space and backspace accept modifyOtherKeys; enter and tab match their raw
+	// input or a Kitty sequence.
+	if expectedMod == 0 && expectedCP != cpEscape && expectedCP != cpSpace && expectedCP != cpBackspace && keystroke.modifyOtherKeys != nil {
+		return false
+	}
+
 	// Parse the raw terminal input.
-	pk := parseTerminalInput(data)
+	pk := keystroke.terminal
 	if pk != nil {
-		return pk.codepoint == expectedCP && pk.modifier == expectedMod
+		return pk.codepoint == expectedCP && pk.modifier == expectedMod && !pk.inexactModifier
 	}
 
 	// Fallback: legacy single-byte / short-sequence matching.
@@ -586,30 +819,38 @@ func matchesLegacy(data, baseKey string, expectedCP, expectedMod int) bool {
 	return false
 }
 
+// appendModifiedFinal appends \x1b[1;<mod+1><final>, as fmt.Sprintf("\x1b[1;%d%c", mod+1, final) writes it.
+func appendModifiedFinal(buffer []byte, mod int, final byte) []byte {
+	buffer = append(buffer, "\x1b[1;"...)
+	buffer = strconv.AppendInt(buffer, int64(mod+1), 10)
+	return utf8.AppendRune(buffer, rune(final))
+}
+
 // matchesLegacyModSeq checks legacy modified sequences for navigation keys.
 // Handles both xterm-style (\x1b[1;<mod>D) and rxvt-style (\x1b[d, \x1bOd).
 func matchesLegacyModSeq(data, baseKey string, mod int) bool {
 	// xterm-style modified arrows: \x1b[1;<mod+1><final>
 	if entry, ok := keyNameCodepoints[baseKey]; ok {
-		modStr := strconv.Itoa(mod + 1)
+		// The expected sequence is built in a stack buffer: every key of every binding is compared on every keystroke.
+		var buffer [24]byte
 		if entry.isArrow {
-			if final, ok := arrowCPtoFinal[entry.cp]; ok {
-				expected := fmt.Sprintf("\x1b[1;%s%c", modStr, final)
-				if data == expected {
-					return true
-				}
+			if final, ok := arrowCPtoFinal[entry.cp]; ok && data == string(appendModifiedFinal(buffer[:0], mod, final)) {
+				return true
 			}
 		} else if final, ok := homeCPtoFinal[entry.cp]; ok {
 			// home/end: \x1b[1;<mod>H/F
-			expected := fmt.Sprintf("\x1b[1;%s%c", modStr, final)
-			if data == expected {
+			if data == string(appendModifiedFinal(buffer[:0], mod, final)) {
 				return true
 			}
 		}
 		if num, ok := funcCPtoNum[entry.cp]; ok {
 			// Functional: \x1b[<num>;<mod>~
-			expected := fmt.Sprintf("\x1b[%d;%s~", num, modStr)
-			if data == expected {
+			expected := append(buffer[:0], "\x1b["...)
+			expected = strconv.AppendInt(expected, int64(num), 10)
+			expected = append(expected, ';')
+			expected = strconv.AppendInt(expected, int64(mod+1), 10)
+			expected = append(expected, '~')
+			if data == string(expected) {
 				return true
 			}
 		}

@@ -125,10 +125,10 @@ func TestXiaomiModels(t *testing.T) {
 				}
 			}
 		})
-		// .upstream/v0.87.1/packages/ai/test/xiaomi-models.test.ts:14
+		// xiaomi-models.test.ts:8 (Pi 99fe1489: mimo-v2.6-flash and mimo-v2.6-pro)
 		t.Run("keeps replacement models on "+provider, func(t *testing.T) {
 			ids := generatedModelIDs(provider)
-			for _, id := range []string{"mimo-v2.5", "mimo-v2.5-pro"} {
+			for _, id := range []string{"mimo-v2.6-flash", "mimo-v2.6-pro"} {
 				if !slices.Contains(ids, id) {
 					t.Fatalf("missing replacement %s", id)
 				}
@@ -176,7 +176,7 @@ func TestModelCatalogTypes(t *testing.T) {
 			if m.API != APIOpenAIResponses || m.ContextWindow != 1000000 || m.MaxOutputTokens != 128000 {
 				t.Fatalf("model = %+v", m)
 			}
-			assertThinkingLevelMap(t, m, map[ThinkingLevel]string{ThinkingOff: "none", ThinkingMax: "max"})
+			assertThinkingLevelMap(t, m, map[ModelThinkingLevel]string{ThinkingOff: "none", ThinkingMax: "max"})
 		}
 	})
 }

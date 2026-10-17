@@ -13,9 +13,9 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
-	"github.com/MichaelKinsy/PiG/internal/codingagent/compaction"
 )
 
+// Pi: packages/coding-agent/src/core/settings-manager.ts:19 (CompactionModelOverride.reserveTokens); packages/coding-agent/src/core/settings-manager.ts:19 (CompactionSettingsJSON.reserveTokens); packages/coding-agent/src/core/settings-manager.ts:20 (CompactionModelOverride.keepRecentTokens); packages/coding-agent/src/core/settings-manager.ts:32 (CompactionSettingsJSON.modelOverrides); packages/coding-agent/src/core/settings-manager.ts:955 (SettingsManager.getCompactionReserveTokens).
 func TestCompactionNewModelPolicyUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/suite/agent-session-compaction-model-overrides.test.ts:136
 	t.Run("uses the newly selected model without changing ordinary settings", func(t *testing.T) {
@@ -39,8 +39,8 @@ func TestCompactionNewModelPolicyUpstream(t *testing.T) {
 			}
 		}()
 		session.ReplaceRunner(inproc.NewRunner([]extension.Extension{{Handlers: map[string][]extension.HandlerFn{"session_before_compact": {func(args ...any) (any, error) {
-			prep := args[0].(extension.SessionBeforeCompactEvent).Preparation.(*compaction.CompactionPreparation)
-			return extension.SessionBeforeCompactResult{Compaction: map[string]any{"summary": "big model summary", "firstKeptEntryId": prep.FirstKeptEntryID, "tokensBefore": prep.TokensBefore}}, nil
+			prep := args[0].(extension.SessionBeforeCompactEvent).Preparation
+			return extension.SessionBeforeCompactResult{Compaction: &extension.CompactionResult{Summary: "big model summary", FirstKeptEntryID: prep.FirstKeptEntryID, TokensBefore: prep.TokensBefore}}, nil
 		}}}}}, t.TempDir()))
 		seedCompactionCatalogHistory(t, session, 2500)
 		smallProvider.SetResponses([]ai.FauxResponseStep{ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("small response")}, StopReason: "stop"})})
@@ -84,8 +84,9 @@ func TestCompactionNewModelPolicyUpstream(t *testing.T) {
 	})
 }
 
+// Pi: packages/coding-agent/src/core/settings-manager.ts:19 (CompactionModelOverride.reserveTokens); packages/coding-agent/src/core/settings-manager.ts:20 (CompactionModelOverride.keepRecentTokens); packages/coding-agent/src/core/settings-manager.ts:32 (CompactionSettingsJSON.modelOverrides).
 func TestCompactionCapturesModelBeforeAuthUpstream(t *testing.T) {
-	// .upstream/v0.87.1/packages/coding-agent/test/suite/agent-session-compaction-model-overrides.test.ts:177
+	// agent-session-compaction-model-overrides.test.ts:146 (Pi 6fcb4867 dropped its maxTokens assertion: summaries set none).
 	// Go provider auth resolves inside Stream; the callback changes the live model before the request reaches HTTP.
 	t.Run("captures model identity before awaiting summarization auth", func(t *testing.T) {
 		services := newTestServices(t)
@@ -104,9 +105,14 @@ func TestCompactionCapturesModelBeforeAuthUpstream(t *testing.T) {
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 				t.Error(err)
 			}
-			requests <- body
+			// A second request is a failure to report, not a reason to block the handler: Compact would wait on the response forever.
+			select {
+			case requests <- body:
+			default:
+				t.Errorf("unexpected additional summary request %+v", body)
+			}
 			w.Header().Set("Content-Type", "text/event-stream")
-			_, _ = io.WriteString(w, "event: message_start\ndata: {\"message\":{\"id\":\"summary\",\"usage\":{}}}\n\nevent: content_block_start\ndata: {\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"summary\"}}\n\nevent: content_block_stop\ndata: {\"index\":0}\n\nevent: message_delta\ndata: {\"delta\":{\"stop_reason\":\"end_turn\"}}\n\nevent: message_stop\ndata: {}\n\n")
+			_, _ = io.WriteString(w, "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"summary\",\"usage\":{}}}\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"summary\"}}\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n")
 		}))
 		defer server.Close()
 		var session *Session
@@ -129,13 +135,13 @@ func TestCompactionCapturesModelBeforeAuthUpstream(t *testing.T) {
 			}
 		}()
 		seedCompactionCatalogHistory(t, session, 650)
-		runCompactionCatalogOperation(t, session, func() error { return session.Compact(t.Context(), "") })
+		runCompactionCatalogOperation(t, session, func() error { _, err := session.Compact(t.Context(), ""); return err })
 		if session.Model().ID != "second" {
 			t.Fatal("auth callback did not change the live model")
 		}
 		select {
 		case got := <-requests:
-			if got.ID != "first" || got.MaxTokens != 1600 {
+			if got.ID != "first" {
 				t.Fatalf("request=%+v", got)
 			}
 		default:

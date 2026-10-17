@@ -182,9 +182,11 @@ func snapshotCWD(t *testing.T, src string) (string, error) {
 
 // snapshotExtensionPath copies an extension source into a per-binary writable
 // root. File extensions bring their sibling directory so relative imports keep
-// working; directory extensions copy that directory directly. This prevents a
-// reload/self-edit scenario from mutating checked-in fixtures or changing the
-// source subsequently observed by the other binary.
+// working; a directory extension is copied under its own name, because its
+// name is its identity (a Go SDK extension registers the name of its
+// directory). This prevents a reload/self-edit scenario from mutating
+// checked-in fixtures or changing the source subsequently observed by the
+// other binary.
 func snapshotExtensionPath(t *testing.T, src string) (string, error) {
 	t.Helper()
 	info, err := os.Stat(src)
@@ -197,10 +199,11 @@ func snapshotExtensionPath(t *testing.T, src string) (string, error) {
 			return "", err
 		}
 		t.Cleanup(func() { _ = os.RemoveAll(tmp) })
-		if err := copyDir(src, tmp); err != nil {
+		dst := filepath.Join(tmp, filepath.Base(src))
+		if err := copyDir(src, dst); err != nil {
 			return "", err
 		}
-		return tmp, nil
+		return dst, nil
 	}
 	parent := filepath.Dir(src)
 	tmp, err := os.MkdirTemp("", "parity-snap-extension-*")
@@ -295,8 +298,8 @@ func isSnapshotKey(k string) bool {
 }
 
 // seedPiChangelogVersion re-pins lastChangelogVersion in an ephemeral pi
-// agent dir's settings.json to coding.UpstreamVersion (the pi tag under
-// test). pi renders a "what's new" changelog overlay on first interactive
+// agent dir's settings.json to coding.UpstreamPackageVersion (the version
+// the pi build under test reports). pi renders a "what's new" changelog overlay on first interactive
 // launch whenever its version exceeds the recorded lastChangelogVersion;
 // scenarios suppress it by recording the current version. Hardcoding that
 // version in each fixture is brittle: a pin bump leaves every fixture
@@ -321,7 +324,7 @@ func seedPiChangelogVersion(t *testing.T, agentDir string) {
 	if err := json.Unmarshal(raw, &settings); err != nil {
 		t.Fatalf("seed changelog: %s is not valid JSON: %v", settingsPath, err)
 	}
-	settings["lastChangelogVersion"] = coding.UpstreamVersion
+	settings["lastChangelogVersion"] = coding.UpstreamPackageVersion
 	encoded, err := json.MarshalIndent(settings, "", "  ")
 	if err != nil {
 		t.Fatalf("seed changelog: re-marshal %s: %v", settingsPath, err)

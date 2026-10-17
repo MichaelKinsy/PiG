@@ -460,8 +460,8 @@ export function getSummarizationFailure(response, label) {
     }
     return undefined;
 }
-function createSummarizationOptions(model, maxTokens, apiKey, headers, env, signal, thinkingLevel, sessionId) {
-    const options = { maxTokens, signal, apiKey, headers, env, sessionId };
+function createSummarizationOptions(model, apiKey, headers, env, signal, thinkingLevel, sessionId) {
+    const options = { signal, apiKey, headers, env, sessionId };
     if (model.reasoning && thinkingLevel && thinkingLevel !== "off") {
         options.reasoning = thinkingLevel;
     }
@@ -491,8 +491,10 @@ export async function completeSummarization(model, context, options, streamFn, r
  * Generate a summary of the conversation using the LLM.
  * If previousSummary is provided, uses the update prompt to merge.
  */
-export async function generateSummary(currentMessages, model, reserveTokens, apiKey, headers, signal, customInstructions, previousSummary, thinkingLevel, streamFn, env, retry, callbacks, sessionId) {
-    return (await generateSummaryWithUsage(currentMessages, model, reserveTokens, apiKey, headers, signal, customInstructions, previousSummary, thinkingLevel, streamFn, env, retry, callbacks, sessionId)).text;
+export async function generateSummary(currentMessages, model, 
+// Unused. Kept for existing callers; summaries use the model's output limit (#9512).
+_reserveTokens, apiKey, headers, signal, customInstructions, previousSummary, thinkingLevel, streamFn, env, retry, callbacks, sessionId) {
+    return (await generateSummaryWithUsage(currentMessages, model, _reserveTokens, apiKey, headers, signal, customInstructions, previousSummary, thinkingLevel, streamFn, env, retry, callbacks, sessionId)).text;
 }
 /** Build the provider context for a standalone summary request. */
 function buildSummarizationContext(promptText) {
@@ -508,8 +510,9 @@ function buildSummarizationContext(promptText) {
     });
 }
 /** Generate or update a conversation summary and return its provider usage. */
-export async function generateSummaryWithUsage(currentMessages, model, reserveTokens, apiKey, headers, signal, customInstructions, previousSummary, thinkingLevel, streamFn, env, retry, callbacks, sessionId) {
-    const maxTokens = Math.min(Math.floor(0.8 * reserveTokens), model.maxTokens > 0 ? model.maxTokens : Number.POSITIVE_INFINITY);
+export async function generateSummaryWithUsage(currentMessages, model, 
+// Unused. Kept for existing callers; summaries use the model's output limit (#9512).
+_reserveTokens, apiKey, headers, signal, customInstructions, previousSummary, thinkingLevel, streamFn, env, retry, callbacks, sessionId) {
     // Use update prompt if we have a previous summary, otherwise initial prompt
     let basePrompt = previousSummary ? UPDATE_SUMMARIZATION_PROMPT : SUMMARIZATION_PROMPT;
     if (customInstructions) {
@@ -525,7 +528,7 @@ export async function generateSummaryWithUsage(currentMessages, model, reserveTo
         promptText += `<previous-summary>\n${previousSummary}\n</previous-summary>\n\n`;
     }
     promptText += basePrompt;
-    const completionOptions = createSummarizationOptions(model, maxTokens, apiKey, headers, env, signal, thinkingLevel, sessionId);
+    const completionOptions = createSummarizationOptions(model, apiKey, headers, env, signal, thinkingLevel, sessionId);
     const response = await completeSummarization(model, buildSummarizationContext(promptText), completionOptions, streamFn, retry, callbacks);
     const failure = getSummarizationFailure(response, "Summarization");
     if (failure) {
@@ -683,7 +686,7 @@ Only summarize information explicitly present above. Do not infer or recreate la
  * @param sessionId - Optional routing session ID forwarded without enabling prompt caching
  */
 export async function compact(preparation, model, apiKey, headers, customInstructions, signal, thinkingLevel, streamFn, env, retry, callbacks, sessionId) {
-    const { firstKeptEntryId, messagesToSummarize, turnPrefixMessages, isSplitTurn, tokensBefore, previousSummary, fileOps, settings, } = preparation;
+    const { firstKeptEntryId, messagesToSummarize, turnPrefixMessages, isSplitTurn, tokensBefore, previousSummary, fileOps, } = preparation;
     // Generate summaries and merge into one
     let summary;
     let summaryUsage;
@@ -691,18 +694,18 @@ export async function compact(preparation, model, apiKey, headers, customInstruc
         let historyText = previousSummary ?? "No prior history.";
         let historyUsage;
         if (messagesToSummarize.length > 0) {
-            const historyResult = await generateSummaryWithUsage(messagesToSummarize, model, settings.reserveTokens, apiKey, headers, signal, customInstructions, previousSummary, thinkingLevel, streamFn, env, retry, callbacks, sessionId);
+            const historyResult = await generateSummaryWithUsage(messagesToSummarize, model, undefined, apiKey, headers, signal, customInstructions, previousSummary, thinkingLevel, streamFn, env, retry, callbacks, sessionId);
             historyText = historyResult.text;
             historyUsage = historyResult.usage;
         }
-        const turnPrefixResult = await generateTurnPrefixSummary(turnPrefixMessages, model, settings.reserveTokens, apiKey, headers, env, signal, thinkingLevel, streamFn, retry, callbacks, sessionId);
+        const turnPrefixResult = await generateTurnPrefixSummary(turnPrefixMessages, model, apiKey, headers, env, signal, thinkingLevel, streamFn, retry, callbacks, sessionId);
         // Merge into single summary
         summary = `${historyText}\n\n---\n\n**Turn Context (split turn):**\n\n${turnPrefixResult.text}`;
         summaryUsage = historyUsage ? combineUsage(historyUsage, turnPrefixResult.usage) : turnPrefixResult.usage;
     }
     else {
         // Just generate history summary
-        const result = await generateSummaryWithUsage(messagesToSummarize, model, settings.reserveTokens, apiKey, headers, signal, customInstructions, previousSummary, thinkingLevel, streamFn, env, retry, callbacks, sessionId);
+        const result = await generateSummaryWithUsage(messagesToSummarize, model, undefined, apiKey, headers, signal, customInstructions, previousSummary, thinkingLevel, streamFn, env, retry, callbacks, sessionId);
         summary = result.text;
         summaryUsage = result.usage;
     }
@@ -723,12 +726,11 @@ export async function compact(preparation, model, apiKey, headers, customInstruc
 /**
  * Generate a summary for a turn prefix (when splitting a turn).
  */
-async function generateTurnPrefixSummary(messages, model, reserveTokens, apiKey, headers, env, signal, thinkingLevel, streamFn, retry, callbacks, sessionId) {
-    const maxTokens = Math.min(Math.floor(0.5 * reserveTokens), model.maxTokens > 0 ? model.maxTokens : Number.POSITIVE_INFINITY); // Smaller budget for turn prefix
+async function generateTurnPrefixSummary(messages, model, apiKey, headers, env, signal, thinkingLevel, streamFn, retry, callbacks, sessionId) {
     const llmMessages = convertToLlm(messages);
     const conversationText = serializeConversation(llmMessages);
     const promptText = `# Conversation\n${conversationText}\n\n# Instructions\n${TURN_PREFIX_SUMMARIZATION_PROMPT}`;
-    const response = await completeSummarization(model, buildSummarizationContext(promptText), createSummarizationOptions(model, maxTokens, apiKey, headers, env, signal, thinkingLevel, sessionId), streamFn, retry, callbacks);
+    const response = await completeSummarization(model, buildSummarizationContext(promptText), createSummarizationOptions(model, apiKey, headers, env, signal, thinkingLevel, sessionId), streamFn, retry, callbacks);
     const failure = getSummarizationFailure(response, "Turn prefix summarization");
     if (failure) {
         throw new Error(failure);

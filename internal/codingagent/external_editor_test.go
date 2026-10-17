@@ -1,12 +1,16 @@
 package codingagent
 
+// pi: packages/coding-agent/src/modes/interactive/external-editor.ts
+
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -39,6 +43,8 @@ func TestEditorHelperProcess(t *testing.T) {
 	}
 	mode, file := args[0], args[len(args)-1]
 	switch mode {
+	case "capture":
+		captureEditorPrompt(args[1], file, args[2:len(args)-1])
 	case "exit0":
 	case "exit1":
 		os.Exit(1)
@@ -50,8 +56,121 @@ func TestEditorHelperProcess(t *testing.T) {
 	os.Exit(0)
 }
 
+// captureEditorPrompt is test/fixtures/fake-external-editor.mjs: it records the prompt path, its content, the entries of its
+// directory and the directory mode, then exits 1 for --fail or writes "" for --empty and "edited\n" otherwise.
+func captureEditorPrompt(capturePath, filePath string, flags []string) {
+	directory := filepath.Dir(filePath)
+	content, _ := os.ReadFile(filePath)
+	var entries []string
+	if dirEntries, err := os.ReadDir(directory); err == nil {
+		for _, entry := range dirEntries {
+			entries = append(entries, entry.Name())
+		}
+	}
+	var directoryMode os.FileMode
+	if info, err := os.Stat(directory); err == nil {
+		directoryMode = info.Mode().Perm()
+	}
+	capture, _ := json.Marshal(editorCapture{FilePath: filePath, Content: string(content), Entries: entries, DirectoryMode: uint32(directoryMode)})
+	_ = os.WriteFile(capturePath, capture, 0o600)
+	if slices.Contains(flags, "--fail") {
+		os.Exit(1)
+	}
+	edited := "edited\n"
+	if slices.Contains(flags, "--empty") {
+		edited = ""
+	}
+	_ = os.WriteFile(filePath, []byte(edited), 0o600)
+}
+
+type editorCapture struct {
+	FilePath      string   `json:"filePath"`
+	Content       string   `json:"content"`
+	Entries       []string `json:"entries"`
+	DirectoryMode uint32   `json:"directoryMode"`
+}
+
+// Ports packages/coding-agent/test/external-editor.test.ts with the same inputs and expectations; Pi's {status: "failed"} is the
+// returned error with the original content, and {status: "complete", content} is the content with a nil error.
+func TestExternalEditorUpstream(t *testing.T) {
+	run := func(t *testing.T, flag string) (string, editorCapture, error) {
+		t.Helper()
+		t.Setenv("VISUAL", "")
+		t.Setenv("EDITOR", "")
+		capturePath := filepath.Join(t.TempDir(), "capture.json")
+		command := fakeEditor(t, "capture") + " " + capturePath
+		if flag != "" {
+			command += " " + flag
+		}
+		result, runErr := OpenExternalEditor(t.Context(), "original", command)
+		data, err := os.ReadFile(capturePath)
+		if err != nil {
+			t.Fatalf("the editor wrote no capture: %v", err)
+		}
+		var capture editorCapture
+		if err := json.Unmarshal(data, &capture); err != nil {
+			t.Fatal(err)
+		}
+		return result, capture, runErr
+	}
+
+	t.Run("edits a prompt inside a private temporary directory", func(t *testing.T) {
+		result, capture, err := run(t, "")
+		directory := filepath.Dir(capture.FilePath)
+		if err != nil || result != "edited" {
+			t.Fatalf("result = %q, %v; want the complete content %q", result, err, "edited")
+		}
+		if got, want := filepath.Dir(directory), filepath.Clean(os.TempDir()); got != want {
+			t.Errorf("prompt directory parent = %q, want the system temp directory %q", got, want)
+		}
+		if base := filepath.Base(directory); !strings.HasPrefix(base, "pi-editor-") || len(base) == len("pi-editor-") {
+			t.Errorf("prompt directory = %q, want /^pi-editor-.+$/", base)
+		}
+		if base := filepath.Base(capture.FilePath); base != "prompt.md" {
+			t.Errorf("prompt file = %q, want prompt.md", base)
+		}
+		if !slices.Equal(capture.Entries, []string{"prompt.md"}) {
+			t.Errorf("directory entries = %q, want [prompt.md]", capture.Entries)
+		}
+		if capture.Content != "original" {
+			t.Errorf("prompt content = %q, want %q", capture.Content, "original")
+		}
+		if runtime.GOOS != "windows" && capture.DirectoryMode&0o077 != 0 {
+			t.Errorf("directory mode = %o, want no group or other bits", capture.DirectoryMode)
+		}
+		if _, err := os.Stat(directory); !os.IsNotExist(err) {
+			t.Errorf("prompt directory %q still exists (stat error %v)", directory, err)
+		}
+	})
+
+	t.Run("keeps the original content when the editor exits unsuccessfully", func(t *testing.T) {
+		result, capture, err := run(t, "--fail")
+		if err == nil || result != "original" {
+			t.Fatalf("result = %q, %v; want the failed status (the original content and an error)", result, err)
+		}
+		if _, err := os.Stat(filepath.Dir(capture.FilePath)); !os.IsNotExist(err) {
+			t.Errorf("prompt directory still exists after a failed edit (stat error %v)", err)
+		}
+	})
+
+	t.Run("returns empty content when the editor clears the prompt", func(t *testing.T) {
+		result, _, err := run(t, "--empty")
+		if err != nil || result != "" {
+			t.Fatalf("result = %q, %v; want the complete empty content", result, err)
+		}
+	})
+}
+
 // fakeEditor names the helper through PATH so Pi's literal-space command splitting also works when the test executable's directory or basename contains spaces.
 func fakeEditor(t *testing.T, mode string) string {
+	t.Helper()
+	name := editorHelperName(t)
+	t.Setenv(editorHelperEnv, "1")
+	return name + " -test.run=TestEditorHelperProcess -- " + mode
+}
+
+// editorHelperName puts the test binary on PATH and returns the name an editor command gives it: the file name when it has no space, else a link or copy without one.
+func editorHelperName(t *testing.T) string {
 	t.Helper()
 	binary, err := os.Executable()
 	if err != nil {
@@ -69,8 +188,7 @@ func fakeEditor(t *testing.T, mode string) string {
 		}
 	}
 	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
-	t.Setenv(editorHelperEnv, "1")
-	return name + " -test.run=TestEditorHelperProcess -- " + mode
+	return name
 }
 
 func copyEditorHelper(t *testing.T, source, target string) {
@@ -281,5 +399,20 @@ func TestOpenExternalEditorRunsThroughTheWindowsShell(t *testing.T) {
 	}
 	if got != "edited content from fake editor" {
 		t.Fatalf("got %q, want the editor named through %%PIG_TEST_EDITOR_BINARY%%", got)
+	}
+}
+
+// Pi splits the command on single spaces, so a command with a leading space has an empty first element, and spawn("", args) throws
+// ERR_INVALID_ARG_VALUE before it starts anything, with shell: true on Windows too, where cmd.exe would otherwise trim the space and
+// run the editor that follows.
+func TestOpenExternalEditorRejectsAnEmptyEditorName(t *testing.T) {
+	t.Setenv("VISUAL", "")
+	t.Setenv("EDITOR", "")
+	got, err := OpenExternalEditor(context.Background(), "original", " "+fakeEditor(t, "roundtrip"))
+	if err == nil || !strings.Contains(err.Error(), "The argument 'file' cannot be empty. Received ''") {
+		t.Fatalf("error = %v, want spawn's ERR_INVALID_ARG_VALUE for an empty file", err)
+	}
+	if got != "original" {
+		t.Errorf("result = %q, want the original content", got)
 	}
 }

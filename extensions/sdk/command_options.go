@@ -31,21 +31,26 @@ type CommandOptions struct {
 // pi.registerCommand(name, options) does.
 func (e *Extension) RegisterCommand(name string, options CommandOptions) {
 	e.validateCommand(name, options.Handler != nil)
-	e.commands = append(e.commands, cmdDef{
+	decl := cmdDef{
 		Name:                name,
 		Description:         options.Description,
 		ArgumentCompletions: options.GetArgumentCompletions != nil,
-	})
-	e.commandFuncs[name] = options.Handler
-	if options.GetArgumentCompletions != nil {
-		e.commandCompletions[name] = options.GetArgumentCompletions
 	}
+	e.declare(registerMsg{Commands: []cmdDef{decl}}, func() {
+		e.commands = append(e.commands, decl)
+		e.commandFuncs[name] = options.Handler
+		if options.GetArgumentCompletions != nil {
+			e.commandCompletions[name] = options.GetArgumentCompletions
+		}
+	})
 }
 
 // commandArgumentCompletions answers the host's command_argument_completions
 // request: the items as a JSON array, or null for none.
 func (e *Extension) commandArgumentCompletions(name string, rawPrefix json.RawMessage) (any, error) {
+	e.toolMu.RLock()
 	complete, ok := e.commandCompletions[name]
+	e.toolMu.RUnlock()
 	if !ok {
 		return nil, fmt.Errorf("command %s has no getArgumentCompletions", name)
 	}

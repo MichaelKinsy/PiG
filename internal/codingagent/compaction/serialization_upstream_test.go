@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -41,6 +40,20 @@ func TestSerializeConversationUpstream(t *testing.T) {
 		}
 		if want := "[User]: " + long + "\n\n[Assistant]: " + long; got != want {
 			t.Fatal("user or assistant content was altered")
+		}
+	})
+	// Pi 15e7bdc1: packages/coding-agent/test/compaction-serialization.test.ts "should omit thinking".
+	t.Run("should omit thinking", func(t *testing.T) {
+		call := ai.ToolCall{ID: "tc1", Name: "read"}
+		if err := call.SetArgumentsJSON([]byte(`{"path":"a.ts"}`)); err != nil {
+			t.Fatal(err)
+		}
+		got := SerializeConversation([]ai.Message{ai.AssistantMessage{
+			Content: []ai.AssistantContentBlock{ai.ThinkingContent{Thinking: "private reasoning", ThinkingSignature: "sig"}, ai.TextContent{Text: "visible reply"}, call},
+			API:     "anthropic", Provider: "anthropic", Model: "test", StopReason: ai.StopReasonToolUse,
+		}})
+		if want := "[Assistant]: visible reply\n\n[Assistant tool calls]: read(path=\"a.ts\")"; got != want {
+			t.Fatalf("SerializeConversation = %q, want %q", got, want)
 		}
 	})
 }

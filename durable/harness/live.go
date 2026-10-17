@@ -3,6 +3,7 @@
 package harness
 
 import (
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 )
@@ -36,6 +37,40 @@ type ToolSlot struct {
 	Entry *durable.EntryId `json:"entry,omitempty"`
 }
 
+// NestedToolSlot is the presentation of one nested call: a call a running tool made through ExecuteTool (live.ts
+// NestedToolSlot). CallId is "<parentCallId>/<key>", the call's ID in tool events and unique because keys contain no "/".
+// The Harness relates slots by task ID: TaskId is the call's tool task, ParentTaskId the calling one, model-issued or
+// nested. The members are in the order startNestedCall writes them (tool.ts:685-693), which a stored pi.live
+// keeps.
+type NestedToolSlot struct {
+	CallId       string         `json:"callId"`
+	ParentCallId string         `json:"parentCallId"`
+	ParentTaskId durable.TaskId `json:"parentTaskId"`
+	Name         string         `json:"name"`
+	TaskId       durable.TaskId `json:"taskId"`
+	// Arguments are what the call was made with, replaced by the arguments it runs with, after repair, beforeTool, and
+	// coercion, once it starts executing. Always a JSON object; a JsonValue so that it keeps the member order of the
+	// caller's arguments object, as Pi's slot does (tool.ts:724).
+	Arguments    durable.JsonValue        `json:"arguments"`
+	Status       ToolSlotStatus           `json:"status"`
+	Output       *string                  `json:"output,omitempty"`
+	DroppedBytes *int                     `json:"droppedBytes,omitempty"`
+	DroppedLines *int                     `json:"droppedLines,omitempty"`
+	Details      *durable.JsonValue       `json:"details,omitempty"`
+	Diagnostics  []durable.ToolDiagnostic `json:"diagnostics,omitempty"`
+	// Summary is how the call ended, for a status line, once done; the result itself is in the caller's NestedResultDoc.
+	Summary *NestedToolSummary `json:"summary,omitempty"`
+}
+
+// NestedToolSummary is how a nested call ended: an error flag, its execution time, its spend, and up to 500 characters
+// of error text.
+type NestedToolSummary struct {
+	IsError    bool      `json:"isError"`
+	DurationMs *int64    `json:"durationMs,omitempty"`
+	Usage      *ai.Usage `json:"usage,omitempty"`
+	Error      string    `json:"error,omitempty"`
+}
+
 // RetryStatus is a durable backoff before the next attempt.
 type RetryStatus struct {
 	At    float64 `json:"at"`
@@ -53,6 +88,15 @@ type CompactionStatus struct {
 	Retry *RetryStatus `json:"retry,omitempty"`
 }
 
+// CompactionFailure is the newest compaction that failed since a compaction last produced a summary (spec §8.7,
+// live.ts:74-79).
+type CompactionFailure struct {
+	TaskId durable.TaskId           `json:"taskId"`
+	Reason durable.CompactionReason `json:"reason"`
+	// Error is the failed or faulted outcome's error message, or why the scheduler orphaned the task.
+	Error string `json:"error"`
+}
+
 // LiveRun is run control: the task that settles the run's inputs, and those inputs.
 type LiveRun struct {
 	TaskId durable.TaskId         `json:"taskId"`
@@ -68,7 +112,7 @@ type DeferredStatus struct {
 type LiveGeneration struct {
 	Attempt int `json:"attempt"`
 	// Message is the committed throttled partial of the in-flight response, as JSON.
-	Message durable.JsonObject `json:"message,omitempty"`
+	Message *ai.AssistantMessage `json:"message,omitempty"`
 	// Retry is the durable backoff before the next attempt.
 	Retry *RetryStatus `json:"retry,omitempty"`
 	// Deferred is set while a provider-side deferred response is polled.
@@ -84,8 +128,14 @@ type LiveState struct {
 	// Tools is the current round in call order, from the tool-calling answer until the generation's tools phase ends
 	// it; never empty while present.
 	Tools []ToolSlot `json:"tools,omitempty"`
+	// NestedTools are the nested calls of running tool calls, in creation order, so a parent precedes its children and
+	// task IDs ascend. A call's nested slots are removed when the call settles.
+	NestedTools []NestedToolSlot `json:"nestedTools,omitempty"`
 	// Compactions lists live compaction tasks in task ID order; never empty while present.
 	Compactions []CompactionStatus `json:"compactions,omitempty"`
+	// CompactionFailure is the newest compaction failure, so a client can show it after the task ended. A compaction
+	// that produces a summary removes it; one that is aborted or finds nothing to compact leaves it.
+	CompactionFailure *CompactionFailure `json:"compactionFailure,omitempty"`
 }
 
 // LiveDoc is the built-in pi.live document (live.ts:64-77). A complete base is stored whenever nothing runs (spec
@@ -104,15 +154,17 @@ var LiveDoc = durable.DefineDoc(durable.DocDefinition[LiveState]{
 					return false
 				}
 			}
+			for _, slot := range value.NestedTools {
+				if slot.Status == ToolSlotRunning {
+					return false
+				}
+			}
 			return true
 		},
+
+		Initial: func() LiveState { return LiveState{} },
 	},
-	DocumentSemantics: durable.DocumentSemantics{
-		Scope:   durable.ScopeConversation,
-		History: durable.HistoryLatest,
-		Fork:    durable.ForkInitial,
-	},
-	Initial: func() LiveState { return LiveState{} },
+	DocumentSemantics: durable.NewLatestConversationSemantics(durable.ForkInitial).DocumentSemantics,
 })
 
 // Built-in task kinds that can own pi.live.run (live.ts:80-82).
@@ -155,6 +207,7 @@ func EndRun(tx durable.Tx, live *delta.Object, taskId durable.TaskId, settlement
 	}
 	live.Delete("generation")
 	live.Delete("tools")
+	live.Delete("nestedTools")
 	return nil
 }
 
@@ -203,31 +256,86 @@ func RemoveCompactionStatus(live *delta.Object, taskId durable.TaskId) error {
 	return nil
 }
 
-// FindToolSlot returns the slot draft of tool task taskId in the current round, or nil when the round no longer
-// lists it.
+// FailCompactionStatus removes the status of compaction task taskId and records that it failed with message.
+func FailCompactionStatus(live *delta.Object, taskId durable.TaskId, message string) error {
+	if status := FindCompactionStatus(live, taskId); status != nil {
+		reason, _ := status.Get("reason").(string)
+		if err := setJSON(live, "compactionFailure", CompactionFailure{TaskId: taskId, Reason: durable.CompactionReason(reason), Error: message}); err != nil {
+			return err
+		}
+	}
+	return RemoveCompactionStatus(live, taskId)
+}
+
+// FindToolSlot returns the slot draft of tool task taskId, model-issued in the current round or nested, or nil when
+// pi.live no longer lists it. Nested slots are found by binary search: a tool may make thousands of nested calls, each of
+// which looks up its slot in several commits. Their task IDs ascend: each slot is appended in the commit that creates its
+// task, task IDs ascend in commit order, and removal keeps the order.
 func FindToolSlot(live *delta.Object, taskId durable.TaskId) *delta.Object {
-	slots := live.Array("tools")
-	if slots == nil {
+	if slots := live.Array("tools"); slots != nil {
+		for index := range slots.Len() {
+			slot := slots.Object(index)
+			if slot != nil && slot.Get("taskId") == float64(taskId) {
+				return slot
+			}
+		}
+	}
+	nested := live.Array("nestedTools")
+	if nested == nil {
 		return nil
 	}
-	for index := range slots.Len() {
-		slot := slots.Object(index)
-		if slot != nil && slot.Get("taskId") == float64(taskId) {
-			return slot
+	low, high := 0, nested.Len()-1
+	for low <= high {
+		middle := (low + high) >> 1
+		candidate := nested.Object(middle)
+		id, _ := candidate.Get("taskId").(float64)
+		switch {
+		case id == float64(taskId):
+			return candidate
+		case id < float64(taskId):
+			low = middle + 1
+		default:
+			high = middle - 1
 		}
 	}
 	return nil
 }
 
-// FinishSlot marks a slot done: the result entry, if any, now carries its running output, details, and diagnostics.
-func FinishSlot(slot *delta.Object, entry *durable.EntryId) error {
+// RemoveNestedSlots removes the nested slots below tool task taskId, transitively; the list holds parents before their
+// children.
+func RemoveNestedSlots(live *delta.Object, taskId durable.TaskId) error {
+	nested := live.Array("nestedTools")
+	if nested == nil {
+		return nil
+	}
+	removed := map[float64]bool{float64(taskId): true}
+	for index := range nested.Len() {
+		slot := nested.Object(index)
+		parent, _ := slot.Get("parentTaskId").(float64)
+		if removed[parent] {
+			id, _ := slot.Get("taskId").(float64)
+			removed[id] = true
+		}
+	}
+	for index := nested.Len() - 1; index >= 0; index-- {
+		parent, _ := nested.Object(index).Get("parentTaskId").(float64)
+		if removed[parent] {
+			if _, err := nested.Splice(index, 1); err != nil {
+				return err
+			}
+		}
+	}
+	if nested.Len() == 0 {
+		live.Delete("nestedTools")
+	}
+	return nil
+}
+
+// FinishSlot marks a slot done and clears its running output (live.ts:197-204 finishSlot); the caller sets a model-issued
+// call's result entry, or a nested call's summary. Neither is set when the task faulted or was orphaned.
+func FinishSlot(slot *delta.Object) error {
 	if err := slot.Set("status", string(ToolSlotDone)); err != nil {
 		return err
-	}
-	if entry != nil {
-		if err := slot.Set("entry", float64(*entry)); err != nil {
-			return err
-		}
 	}
 	ClearProgress(slot)
 	return nil
@@ -245,7 +353,7 @@ func ClearProgress(slot *delta.Object) {
 // SettleSchedulerOutcome is the Harness cleanup for a terminal outcome the scheduler writes itself (faulted or
 // orphaned), passed to the scheduler, which does not know task kinds (spec §5.4, live.ts:136-164). A run task ends its
 // run; a tool task's slot is marked done without an entry, and context derivation synthesizes the missing result; a
-// compaction task's status is removed. Other kinds are ignored so it never creates pi.live elsewhere. A committed
+// compaction task's status is removed and its failure recorded. Other kinds are ignored so it never creates pi.live elsewhere. A committed
 // generation partial becomes an aborted assistant entry, exactly as in the generation abort handler, so the
 // transcript keeps what the model produced and pi.usage counts its spend.
 func SettleSchedulerOutcome(tx durable.Tx, record durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue], outcome durable.TaskOutcome[durable.JsonValue]) error {
@@ -256,15 +364,25 @@ func SettleSchedulerOutcome(tx durable.Tx, record durable.TaskRecord[durable.Jso
 			return err
 		}
 		if slot := FindToolSlot(live, record.Id); slot != nil {
-			return FinishSlot(slot, nil)
+			if err := FinishSlot(slot); err != nil {
+				return err
+			}
 		}
-		return nil
+		return RemoveNestedSlots(live, record.Id)
 	case record.Kind == compactionTaskKind:
 		live, err := docDraft(tx, LiveDoc, record.ConversationId)
 		if err != nil {
 			return err
 		}
-		return RemoveCompactionStatus(live, record.Id)
+		message := ""
+		if outcome.Status == durable.OutcomeFaulted {
+			if outcome.Error != nil {
+				message = outcome.Error.Message
+			}
+		} else if outcome.Reason != nil {
+			message = *outcome.Reason
+		}
+		return FailCompactionStatus(live, record.Id, message)
 	case !runTaskKinds[record.Kind]:
 		return nil
 	}

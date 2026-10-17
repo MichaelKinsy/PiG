@@ -7,9 +7,11 @@ import (
 	"net/netip"
 	"strconv"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"golang.org/x/net/idna"
+	"golang.org/x/text/unicode/norm"
 )
 
 // whatwgDomainToASCII is the WHATWG URL Standard's domain-to-ASCII: UTS #46
@@ -56,8 +58,9 @@ func parseSpecialHost(server string, file bool) (string, error) {
 		}
 		return "[" + serializeIPv6(addr) + "]", nil
 	}
-	ascii, err := whatwgDomainToASCII.ToASCII(strings.ToValidUTF8(string(percentDecode(server)), string(utf8.RuneError)))
-	if err != nil || ascii == "" || strings.ContainsFunc(ascii, isForbiddenDomainCodePoint) {
+	decoded := strings.ToValidUTF8(string(percentDecode(server)), string(utf8.RuneError))
+	ascii, err := whatwgDomainToASCII.ToASCII(decoded)
+	if err != nil || hasInvalidPunycodeLabel(decoded) || ascii == "" || strings.ContainsFunc(ascii, isForbiddenDomainCodePoint) {
 		return "", fmt.Errorf("invalid %s host %q", kind, server)
 	}
 	if endsInANumber(ascii) {
@@ -71,6 +74,38 @@ func parseSpecialHost(server string, file bool) (string, error) {
 		return "", nil
 	}
 	return ascii, nil
+}
+
+// labelSeparators maps the UTS #46 label separators that NFKC leaves alone to a full stop.
+var labelSeparators = strings.NewReplacer("\u3002", ".", "\uff61", ".")
+
+// dropIgnoredCodePoint drops the code points UTS #46 maps to nothing: format characters other than the joiners (U+200C and U+200D map through the deviation rules), variation selectors, U+034F, and the Hangul fillers and Khmer inherent vowels that Unicode 16 made ignored. It also drops the format characters UTS #46 disallows; those fail the mapping anyway.
+func dropIgnoredCodePoint(r rune) rune {
+	switch r {
+	case 0x200c, 0x200d:
+		return r
+	case 0x34f, 0x115f, 0x1160, 0x17b4, 0x17b5, 0x3164, 0xffa0:
+		return -1
+	}
+	if unicode.Is(unicode.Cf, r) || unicode.Is(unicode.Variation_Selector, r) {
+		return -1
+	}
+	return r
+}
+
+// hasInvalidPunycodeLabel reports a label that is only the "xn--" prefix, or that starts with it and holds a non-ASCII character. Node rejects both; x/net/idna decodes an empty payload and drops the label, and accepts the mixed label by encoding it again. UTS #46 maps the ideographic, fullwidth and halfwidth ideographic full stops to the label separator and compatibility forms to ASCII before the label split, and ignores the code points dropIgnoredCodePoint drops, so the check reads the NFKC form with those separators replaced and those code points dropped.
+// An ASCII host maps to itself apart from case, which the prefix test folds.
+func hasInvalidPunycodeLabel(host string) bool {
+	mapped := host
+	if strings.ContainsFunc(host, func(r rune) bool { return r >= utf8.RuneSelf }) {
+		mapped = labelSeparators.Replace(strings.Map(dropIgnoredCodePoint, norm.NFKC.String(host)))
+	}
+	for label := range strings.SplitSeq(mapped, ".") {
+		if len(label) >= 4 && strings.EqualFold(label[:4], "xn--") && (len(label) == 4 || strings.ContainsFunc(label, func(r rune) bool { return r >= 0x80 })) {
+			return true
+		}
+	}
+	return false
 }
 
 // isForbiddenDomainCodePoint reports the WHATWG forbidden domain code points.

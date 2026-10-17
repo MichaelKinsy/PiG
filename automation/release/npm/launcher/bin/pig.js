@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 //
 // npm launcher for PiG. `pig` itself is a native Go binary shipped in one

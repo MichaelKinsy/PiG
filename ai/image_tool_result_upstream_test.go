@@ -25,8 +25,8 @@ func TestImageToolResultMatrixUpstream(t *testing.T) {
 	specs := []struct{ provider, model string }{
 		{"google", "gemini-2.5-flash"}, {"openai", "gpt-4o-mini"}, {"openai", "gpt-5-mini"}, {"azure", "gpt-4o-mini"},
 		{"anthropic", "claude-haiku-4-5"}, {"openrouter", "z-ai/glm-4.5v"}, {"mistral", "pixtral-12b"}, {"together", "moonshotai/Kimi-K3"},
-		{"baseten", "moonshotai/Kimi-K2.6"}, {"xiaomi", "mimo-v2.5-pro"}, {"xiaomi-token-plan-cn", "mimo-v2.5-pro"},
-		{"xiaomi-token-plan-ams", "mimo-v2.5-pro"}, {"xiaomi-token-plan-sgp", "mimo-v2.5-pro"}, {"qwen-token-plan", "qwen3.7-max"},
+		{"baseten", "moonshotai/Kimi-K2.6"}, {"xiaomi", "mimo-v2.6-pro"}, {"xiaomi-token-plan-cn", "mimo-v2.6-pro"},
+		{"xiaomi-token-plan-ams", "mimo-v2.6-pro"}, {"xiaomi-token-plan-sgp", "mimo-v2.6-pro"}, {"qwen-token-plan", "qwen3.7-max"},
 		{"qwen-token-plan-individual", "qwen3.8-max"}, {"qwen-token-plan-cn", "qwen3.7-max"}, {"kimi-coding", "kimi-for-coding"},
 		{"vercel-ai-gateway", "google/gemini-2.5-flash"}, {"amazon-bedrock", "global.anthropic.claude-sonnet-4-5-20250929-v1:0"},
 		{"anthropic", "claude-sonnet-4-5"}, {"github-copilot", "claude-haiku-4.5"}, {"github-copilot", "claude-sonnet-4.6"}, {"openai-codex", "gpt-5.5"},
@@ -63,12 +63,12 @@ func TestImageToolResultMatrixUpstream(t *testing.T) {
 			if !strings.Contains(strings.ToLower(firstPayload), `"name":"`+name+`"`) {
 				t.Fatal("tool declaration missing from provider request")
 			}
-			services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+			services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 			if err != nil {
 				t.Fatal(err)
 			}
 			faux := ai.NewFauxProvider(ai.FauxConfig{ProviderID: spec.provider, Model: spec.model})
-			faux.SetResponses([]ai.FauxResponseStep{ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall(name, map[string]any{}, "image_call")}, StopReason: "toolUse"})})
+			faux.SetResponses([]ai.FauxResponseStep{ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall(name, map[string]any{}, &ai.FauxToolCallOptions{ID: "image_call"})}, StopReason: "toolUse"})})
 			first := services.ModelRuntime().Complete(t.Context(), &ai.Model{ID: spec.model, Provider: faux}, request, ai.StreamOptions{})
 			if first.StopReason != ai.StopReasonToolUse {
 				t.Fatal(first.StopReason)
@@ -100,11 +100,11 @@ func TestImageToolResultMatrixUpstream(t *testing.T) {
 			if !imagePresent || !textPresent {
 				t.Logf("image=%v text=%v payload=%s", imagePresent, textPresent, secondPayload)
 			}
-			faux.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(ai.TranscriptContext, ai.StreamOptions, *ai.FauxProviderState, *ai.Model) (ai.FauxResponse, error) {
+			faux.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(ai.TranscriptContext, ai.StreamOptions, *ai.FauxProviderState, *ai.Model) (ai.AssistantMessage, error) {
 				if !imagePresent || !textPresent {
-					return ai.FauxResponse{StopReason: "error", ErrorMessage: "provider request lost image or text"}, nil
+					return ai.FauxResponse{StopReason: "error", ErrorMessage: "provider request lost image or text"}.AssistantMessage(), nil
 				}
-				return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("A red circle with a diameter of 100 pixels.")}, StopReason: "stop"}, nil
+				return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("A red circle with a diameter of 100 pixels.")}, StopReason: "stop"}.AssistantMessage(), nil
 			})})
 			second := services.ModelRuntime().Complete(t.Context(), &ai.Model{ID: spec.model, Provider: faux}, request, ai.StreamOptions{})
 			if second.StopReason != ai.StopReasonStop || second.ErrorMessage != "" {

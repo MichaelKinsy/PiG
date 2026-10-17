@@ -18,7 +18,7 @@ func TestSessionManagerLoadMissingDefersExplicitPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s.Path() != path || s.ID() == "" || sm.Current() != s || len(s.Entries()) != 0 {
+	if s.Path() != path || s.ID() == "" || sm.Current() != s || len(s.GetEntries()) != 0 {
 		t.Fatalf("session=%+v", s)
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
@@ -33,7 +33,7 @@ func TestSessionManagerLoadMissingDefersExplicitPath(t *testing.T) {
 	if _, err := s.AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: agent.RoleAssistant, StopReason: ai.StopReasonStop}}); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := sm.ForkToNewSession(s, *s.LeafID()); err == nil || err.Error() != "Invalid entry ID for forking" {
+	if _, _, err := sm.ForkToNewSession(s, *s.GetLeafID()); err == nil || err.Error() != "Invalid entry ID for forking" {
 		t.Fatalf("fork assistant: %v", err)
 	}
 	if _, err := os.Stat(path); err != nil {

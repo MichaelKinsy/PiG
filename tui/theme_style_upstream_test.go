@@ -59,7 +59,7 @@ func TestThemeStylesUpstream(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		colors := theme.ColorValues()
+		colors := theme.Colors()
 		want := StyleText("Ready", TextStyle{TextAttributes: TextAttributes{Bold: true}, Fg: colors["success"], Bg: colors["toolSuccessBg"]}, TerminalColorModeTrueColor)
 		if got != want {
 			t.Errorf("style = %q, want %q", got, want)
@@ -83,7 +83,7 @@ func TestThemeStylesUpstream(t *testing.T) {
 		theme := themeStyleLoad(t, "dark", func(theme map[string]any) {
 			theme["colors"].(map[string]any)["accent"] = "oklch(62% 0.1 200)"
 		})
-		if got := theme.ColorValues()["accent"]; got != (OklchColorValue{L: 0.62, C: 0.1, H: 200}) {
+		if got := theme.Colors()["accent"]; got != (OklchColorValue{L: 0.62, C: 0.1, H: 200}) {
 			t.Errorf("accent = %+v", got)
 		}
 	})
@@ -104,7 +104,7 @@ func TestThemeStylesUpstream(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		colors := theme.ColorValues()
+		colors := theme.Colors()
 		if got, want := ColorToHex(colors["accent"]), ColorToHex(accent); got != want {
 			t.Errorf("accent = %s, want %s", got, want)
 		}
@@ -161,24 +161,24 @@ func TestThemeStylesUpstream(t *testing.T) {
 			colors["text"] = ""
 			colors["userMessageBg"] = ""
 		})
-		if got := theme.FgText("text", "x"); got != "\x1b[39mx\x1b[39m" {
+		if got := theme.Fg("text", "x"); got != "\x1b[39mx\x1b[39m" {
 			t.Errorf("fg = %q", got)
 		}
-		if got := theme.BgText("userMessageBg", "x"); got != "\x1b[49mx\x1b[49m" {
+		if got := theme.Bg("userMessageBg", "x"); got != "\x1b[49mx\x1b[49m" {
 			t.Errorf("bg = %q", got)
 		}
-		if got := ColorToHex(theme.ColorValues()["text"]); got != "#e5e5e7" {
+		if got := ColorToHex(theme.Colors()["text"]); got != "#e5e5e7" {
 			t.Errorf("text = %s", got)
 		}
-		if got := ColorToHex(theme.ColorValues()["userMessageBg"]); got != "#000000" {
+		if got := ColorToHex(theme.Colors()["userMessageBg"]); got != "#000000" {
 			t.Errorf("userMessageBg = %s", got)
 		}
 
 		SetTerminalColors(TerminalColors{Foreground: &RgbColor{R: 200, G: 210, B: 220}, Background: &RgbColor{R: 10, G: 20, B: 30}})
-		if got := ColorToHex(theme.ColorValues()["text"]); got != "#c8d2dc" {
+		if got := ColorToHex(theme.Colors()["text"]); got != "#c8d2dc" {
 			t.Errorf("text = %s", got)
 		}
-		if got := ColorToHex(theme.ColorValues()["userMessageBg"]); got != "#0a141e" {
+		if got := ColorToHex(theme.Colors()["userMessageBg"]); got != "#0a141e" {
 			t.Errorf("userMessageBg = %s", got)
 		}
 	})
@@ -191,10 +191,10 @@ func TestFgCloseClosesADimForegroundWithTheFaintReset(t *testing.T) {
 		t.Fatal("no system theme")
 	}
 	for _, token := range []string{"dim", "muted", "accent", "text"} {
-		prefix := th.Fg(token)
-		want := th.FgText(token, "x")
+		prefix := th.GetFgAnsi(token)
+		want := th.Fg(token, "x")
 		if got := prefix + "x" + FgClose(prefix); got != want {
-			t.Errorf("token %q: prefix + text + FgClose = %q, want FgText %q", token, got, want)
+			t.Errorf("token %q: prefix + text + FgClose = %q, want Fg %q", token, got, want)
 		}
 		if got := fg(prefix, "x"); got != want {
 			t.Errorf("token %q: select fg helper = %q, want %q", token, got, want)

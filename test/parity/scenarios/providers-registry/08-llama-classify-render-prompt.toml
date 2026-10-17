@@ -1,0 +1,28 @@
+# Behavior family: providers-registry (llama.cpp classifier chat template)
+# Pi 1.2.0 probe: llama-cpp-classify.ts renderPrompt through classify against a fake llama-server over 318 probes: 18 fixed /apply-template bodies (string prompts with and
+# without a trailing <think>, a closed or upper-case think tag, extra fields, and bodies without a string prompt: number, null, array, missing, non-object) and 300 seeded
+# prompts built from template pieces, each with a seeded state message. Each probe's /apply-template request body (model, system and user messages, thinking disabled),
+# the prompt the first /completion request carries and the error message are compared as one JSON line. The Go test TestLlamaCppRenderPromptMatchesPi runs the same
+# probes against the vendored Pi module; this scenario compares the two printed streams.
+name = "08-llama-classify-render-prompt"
+description = "The llama.cpp classifier asks the server's chat template for each prompt and closes an open reasoning block as Pi does."
+covers = ["packages/ai/src/api/llama-cpp-classify.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/llama-prompt-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/llama-prompt-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 240
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"enable_thinking":false', '<think></think>', 'llama.cpp did not return a prompt']
+runs = 2

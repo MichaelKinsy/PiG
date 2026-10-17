@@ -192,3 +192,22 @@ func TestResolvePath_BackwardsCompat(t *testing.T) {
 		t.Errorf("resolvePath(~/file.txt) = %q, want %q", got, want)
 	}
 }
+
+// path-utils.ts resolveToCwd is resolvePath(filePath, cwd, { normalizeUnicodeSpaces, stripAtPrefix }), whose default normalization turns a
+// file:// URL into its path (utils/paths.ts normalizePath); a percent escape is decoded.
+func TestResolveToCwdConvertsFileURLs(t *testing.T) {
+	cwd := t.TempDir()
+	for _, tc := range []struct{ in, want string }{
+		{"file:///tmp/a.txt", "/tmp/a.txt"},
+		{"@file:///tmp/a.txt", "/tmp/a.txt"},
+		{"file:///tmp/a%20b.txt", "/tmp/a b.txt"},
+	} {
+		if runtime.GOOS == "windows" {
+			t.Skip("POSIX file URLs")
+		}
+		got, err := resolveToCwd(tc.in, cwd)
+		if err != nil || got != tc.want {
+			t.Errorf("resolveToCwd(%q) = %q, %v; want %q", tc.in, got, err, tc.want)
+		}
+	}
+}

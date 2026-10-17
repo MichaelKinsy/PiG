@@ -13,10 +13,11 @@ func TestToolSchemaJSONOrderIndicesAndMutation(t *testing.T) {
 	}
 	assert := func(want []string) {
 		t.Helper()
-		strict, err := getJSONSchemaToolParameters(tool, new(true))
+		toolParameters, err := getJSONSchemaToolParameters(tool, new(true))
 		if err != nil {
 			t.Fatal(err)
 		}
+		strict := toolParameters.Schema
 		if got := toStringSlice(strict["required"]); !reflect.DeepEqual(got, want) {
 			t.Fatalf("required=%v want=%v", got, want)
 		}

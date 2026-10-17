@@ -76,7 +76,9 @@ func TestAuthenticatedProviders_CopilotOAuth_IncludesCopilot(t *testing.T) {
 	}
 }
 
-func TestAuthenticatedProviders_CopilotNoRefreshToken_Excluded(t *testing.T) {
+// Pi's checkProviderAuth counts any stored OAuth credential of a provider with an OAuth method (models.ts:656-658); the
+// refresh token matters only when the request refreshes it. Pi 1.1.0 --list-models lists github-copilot for this auth.json.
+func TestAuthenticatedProviders_CopilotNoRefreshToken_IncludedLikePi(t *testing.T) {
 	clearAllAuthEnv(t)
 	dir := t.TempDir()
 	// OAuth credential with no refresh token (e.g. half-completed login).
@@ -88,8 +90,8 @@ func TestAuthenticatedProviders_CopilotNoRefreshToken_Excluded(t *testing.T) {
 		},
 	})
 	got := AuthenticatedProviders(dir)
-	if got["github-copilot"] {
-		t.Errorf("expected copilot OAuth without refresh token excluded, got %v", got)
+	if !got["github-copilot"] {
+		t.Errorf("expected copilot OAuth without refresh token included, got %v", got)
 	}
 }
 
@@ -222,6 +224,9 @@ func TestAuthenticatedProviders_AdditionalEnvProviders_AreDetected(t *testing.T)
 	t.Setenv("DEEPSEEK_API_KEY", "sk-deepseek")
 	t.Setenv("MOONSHOT_API_KEY", "sk-moonshot")
 	t.Setenv("CLOUDFLARE_API_KEY", "sk-cloudflare")
+	// cloudflare-auth.ts resolveCloudflareEnv also needs the account and gateway the key is for.
+	t.Setenv("CLOUDFLARE_ACCOUNT_ID", "account")
+	t.Setenv("CLOUDFLARE_GATEWAY_ID", "gateway")
 	dir := t.TempDir()
 	registry := NewModelRegistry(dir)
 

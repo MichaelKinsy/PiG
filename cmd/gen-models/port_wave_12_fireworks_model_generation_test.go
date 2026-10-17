@@ -62,25 +62,25 @@ func TestPortWave12FireworksModelGeneration(t *testing.T) {
 		if err := json.Unmarshal(generatedModelField(t, raw, "compat"), &compat); err != nil {
 			t.Fatal(err)
 		}
-		thinking := make(map[ai.ThinkingLevel]*string)
+		thinking := make(map[ai.ModelThinkingLevel]*string)
 		for level, value := range data.ThinkingLevelMap {
-			thinking[ai.ThinkingLevel(level)] = value
+			thinking[ai.ModelThinkingLevel(level)] = value
 		}
 		model := (&ai.GeneratedModel{ID: data.ID, Provider: data.Provider, DisplayName: data.Name, API: ai.API(data.API), BaseURL: data.BaseURL, Reasoning: data.Reasoning,
 			Capabilities: data.Input, ContextWindow: data.ContextWindow, MaxOutputTokens: data.MaxTokens, Compat: compat, ThinkingLevelMap: thinking,
 			InputCostPerMTokens: data.Cost.Input, OutputCostPerMTokens: data.Cost.Output, CacheReadCost: data.Cost.CacheRead, CacheWriteCost: data.Cost.CacheWrite}).ToModel()
-		if got := ai.GetSupportedThinkingLevels(model); !reflect.DeepEqual(got, []ai.ThinkingLevel{ai.ThinkingOff, ai.ThinkingLow, ai.ThinkingMax}) {
+		if got := ai.GetSupportedThinkingLevels(model); !reflect.DeepEqual(got, []ai.ModelThinkingLevel{ai.ThinkingOff, ai.ThinkingLow, ai.ThinkingMax}) {
 			t.Errorf("thinking levels = %v, want [off low max]", got)
 		}
 		root := t.TempDir()
-		services, err := coding.NewServices(coding.ServicesOptions{CWD: root, AgentDir: filepath.Join(root, "agent")})
+		services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: root, AgentDir: filepath.Join(root, "agent")})
 		if err != nil {
 			t.Fatal(err)
 		}
 		var payload map[string]json.RawMessage
 		ctx := extension.WithModelStreamRequest(t.Context(), extension.ModelStreamRequest{API: true})
 		result := services.ModelRuntime().CompleteSimple(ctx, model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("test"), Timestamp: 0}}}, ai.StreamOptions{
-			APIKey: "test-fireworks-key", Thinking: ai.ThinkingMax,
+			APIKey: "test-fireworks-key", Thinking: ai.ThinkingLevelMax,
 			OnPayload: func(value any, _ *ai.Model) (any, error) {
 				encoded, err := json.Marshal(value)
 				if err != nil {

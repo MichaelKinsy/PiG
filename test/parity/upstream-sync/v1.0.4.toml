@@ -1,0 +1,254 @@
+from = "1.0.3"
+to = "1.0.4"
+
+[[files]]
+path = "packages/ai/src/utils/retry.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/assistant_retry_test.go#TestIsRetryableAssistantErrorClassification"]
+rationale = "isRetryableError matches \"pending stream has been canceled\" (ai/assistant_retry.go retryable patterns), the HTTP/2 error undici raises when a stream is cancelled before a response; classification cases for the bare and the wrapped wording."
+
+[[files]]
+path = "packages/codemode/src/runtime/host.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:codemode/bridge_test.go#TestReportsABrokenBridgeAsASandboxError", "test:codemode/bridge_test.go#TestAcceptsWellFormedBridgePayloads", "test:codemode/bridge_test.go#TestReportsADuplicateCallIDAsASandboxError"]
+rationale = "The host validates every message from the sandbox (bridgeError, parseBridgeJSON, parseStoreWrites, parseScriptError in codemode/execution.go): a malformed message, a duplicate call id and an unknown message type end the run as a sandbox error instead of being trusted."
+
+[[files]]
+path = "packages/codemode/src/runtime/prelude-source.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:codemode/sandbox_test.go#TestIgnoresPatchesToBuiltinsAndBuiltinGlobals", "test:codemode/sandbox_test.go#TestFreezesIntrinsicsThatAreOnlyReachableFromInstances", "test:codemode/sandbox_test.go#TestStillLetsInstancesOverridePropertiesOfFrozenPrototypes", "test:codemode/sandbox_test.go#TestReportsErrorsWhoseNameOrMessageIsNotAString"]
+rationale = "codemode/assets/prelude.js is regenerated from the pinned prelude (PROVENANCE.md records the digest): the prelude freezes the built-ins and the intrinsics reachable only from instances, so a script that patches a built-in no longer breaks the bridge. Upstream's raw-worker fixture is replaced by the unexported sandbox.prelude seam."
+
+[[files]]
+path = "packages/coding-agent/src/cli/args.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/cli/args_upstream_test.go#TestArgsUpstream"]
+rationale = "--no-mcp parses to CLIFlags.NoMcp (coding/cli/args.go); help_upstream.txt is regenerated with the flag."
+
+[[files]]
+path = "packages/coding-agent/src/core/agent-session.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/mcp_session_tool_flags_upstream_test.go#TestAgentSessionMCPKeepsMCPToolsWhenToolsNamesNoMCPTool", "test:coding/mcp_session_tool_flags_upstream_test.go#TestAgentSessionMCPRemovesMCPToolsWithNoTools", "test:coding/mcp_session_tool_flags_upstream_test.go#TestAgentSessionMCPFiltersMCPToolsByTheMcpEntriesOfTools", "test:coding/mcp_session_tool_flags_upstream_test.go#TestAgentSessionMCPRemovesMCPToolsMatchingExcludeToolsPatterns", "test:coding/session_tool_registry_port_test.go"]
+rationale = "The tool registry and the loadout filter by ToolFilter (coding/extension/tool_filter.go): --tools and --exclude-tools take wildcard patterns, an allowlist that names no MCP tool keeps the MCP tools, and --no-tools removes them. toolMayBeActiveLocked keeps unnamed MCP tools restored from the transcript undeclared."
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/types.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/extension/tool_filter_test.go#TestToolFilterKeepsMCPToolsUnlessTheAllowlistFiltersThem", "test:internal/codingagent/prompts/hidden_tools_upstream_test.go#TestUpstreamSystemPromptHiddenTools"]
+rationale = "BuildSystemPromptOptions.hiddenTools and ToolLoadout.getPromptGuidelines: both are carried through the host wire payload and the Go, Python, Rust and Node SDKs (conformance rows in test/extension-conformance)."
+
+[[files]]
+path = "packages/coding-agent/src/core/mcp-servers.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:mcp/oauth/oauth_test.go#TestMCPOAuthRegistersWithAnApplicationTypeDerivedFromTheRedirectURIsUnlessOneIsSet"]
+rationale = "The OAuth client metadata derives application_type from the redirect URIs (native for loopback and custom schemes, web otherwise) unless the server entry sets one (mcp/oauth, coding/mcpext)."
+
+[[files]]
+path = "packages/coding-agent/src/core/resource-loader.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/cli/builtin_extension_order_test.go#TestNoMcpSkipsTheBuiltinMcpExtensionEvenWhenSettingsOrDashEEnableIt"]
+rationale = "disabledBuiltinExtensions: enabledBuiltinExtensionPaths drops the built-in paths --no-mcp disables, even when the settings or -e enable them."
+
+[[files]]
+path = "packages/coding-agent/src/core/sdk.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/extension/tool_filter_test.go#TestToolNameMatcher"]
+rationale = "The SDK's tool allowlist and the loadout pass hidden tools and patterns to the registry; sdk.ts has no Go counterpart besides coding/session_loadout.go."
+
+[[files]]
+path = "packages/coding-agent/src/core/skills.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/prompts/hidden_tools_upstream_test.go#TestUpstreamSystemPromptHiddenTools"]
+rationale = "formatSkillsForPrompt words the skills hint \"indirectly\" when only a hidden read tool is selected (prompts/coding.go)."
+
+[[files]]
+path = "packages/coding-agent/src/core/system-prompt.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/prompts/hidden_tools_upstream_test.go#TestUpstreamSystemPromptHiddenTools"]
+rationale = "Hidden tools stay out of the tool list and the rules of the system prompt (prompts.Options.HiddenTools)."
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/read.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/read_structured_upstream_test.go#TestReadStructuredContent"]
+rationale = "The read tool declares an output schema and returns structuredContent: the text for text files, {type, data, mimeType, note} for images."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/codemode/execute.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/codemode_session_upstream_test.go"]
+rationale = "Codemode read calls on an image resolve to the image block (structuredContent), so image() shows it."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/codemode/index.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/codemode_session_upstream_test.go"]
+rationale = "Codemode declarations carry the prompt guidelines of tools that do not fit the inline budget (describeTool)."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/codemode/tool.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/codemode_session_upstream_test.go"]
+rationale = "The codemode tool declaration appends guideline bullets (toDeclaration(tool, guidelines))."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/resources.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/mcp_session_tool_flags_upstream_test.go#TestAgentSessionMCPKeepsMCPToolsWhenToolsNamesNoMCPTool"]
+rationale = "The MCP resource tools are recognized by name (coding/extension/tool_filter.go MCP resource-tool constants), so --tools keeps them like other MCP tools."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/runtime.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/mcpext/connection_test.go#TestMCPConnectionsClosesAConnectionThatIsStillInitializingBeforeCloseReturns", "test:coding/mcpext/connection_test.go#TestMCPConnectionsStopsWaitingToRetryAConnectionWhenClosed"]
+rationale = "Connections still connecting are closed on shutdown. PiG's Connection.Close already conformed; the two upstream cases pin it (mutation-checked)."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/tools.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/mcp_session_tool_flags_upstream_test.go#TestAgentSessionMCPKeepsMCPToolsWhenToolsNamesNoMCPTool"]
+rationale = "MCP tool names are recognized by IsMcpToolName for the tool filter."
+
+[[files]]
+path = "packages/coding-agent/src/main.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/cli/builtin_extension_order_test.go#TestNoMcpSkipsTheBuiltinMcpExtensionEvenWhenSettingsOrDashEEnableIt", "test:coding/cli/args_upstream_test.go#TestArgsUpstream"]
+rationale = "--no-mcp reaches the loader as disabledBuiltinExtensions [\"mcp\"]; --tools and --exclude-tools patterns reach the session in the print, interactive and RPC runtimes (coding/cli/cli_runtime_build.go, rpc_mode_runtime.go)."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/theme/theme.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/highlight_test.go#TestCliHighlightThemeColorsSubstitutionsWithTheTextColor"]
+rationale = "The CLI highlight theme colors the subst scope with the text color."
+
+[[files]]
+path = "packages/coding-agent/src/utils/syntax-highlight.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/highlight_test.go#TestHighlightCode_ColorsEachLineOfPythonDocstringsIndependently", "test:tui/syntax_highlight_upstream_test.go#TestSyntaxHighlightInterpolationTakesTheTextColor"]
+rationale = "renderHighlightedHTML formats each non-empty line of a multiline token separately, so Python docstrings keep their color on every line (#10356); the highlight oracle is regenerated from Pi 1.0.4."
+
+[[files]]
+path = "packages/mcp/src/oauth/flow.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:mcp/oauth/oauth_test.go#TestMCPOAuthRegistersWithAnApplicationTypeDerivedFromTheRedirectURIsUnlessOneIsSet"]
+rationale = "Dynamic client registration sends application_type (mcp/oauth flow)."
+
+[[files]]
+path = "packages/mcp/src/oauth/types.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:mcp/oauth/oauth_test.go#TestMCPOAuthRegistersWithAnApplicationTypeDerivedFromTheRedirectURIsUnlessOneIsSet"]
+rationale = "OAuthClientMetadata gains application_type (mcp/oauth ClientMetadata.ApplicationType)."
+
+[[files]]
+path = "packages/durable/src/env/node-watch.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/env/node/conformance_test.go#TestNodeExecutionEnvWatchLimits", "test:durable/env/node/conformance_test.go#TestNodeExecutionEnvWatchPermissionDenied", "test:durable/env/node/watch_link_alias_test.go#TestNodeFileWatcherReportsALinkedTargetForAnEventNamedByTheResolvedFile"]
+rationale = "The watcher rewrite follows Pi 1.0.4: coverage limits, permission_denied for an unreadable target and the linked-target alias report (durable/env/node/watch.go, watch_fs_*.go)."
+
+[[files]]
+path = "packages/durable/src/harness/agent.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_registry_test.go#TestSettingsKeepTheDefaultOfAProgressIntervalGivenAsUndefined"]
+rationale = "A progress interval given as undefined keeps its default (durable/harness/agent.go)."
+
+[[files]]
+path = "packages/durable/src/harness/output.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_output_test.go#TestOutputBuffer"]
+rationale = "The output buffer drops a leading byte order mark that arrives split across pushes (durable/harness/output.go); TestOutputBuffer feeds the mark one byte at a time."
+
+[[files]]
+path = "packages/durable/src/testing/env-conformance.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/env/node/conformance_test.go#TestNodeExecutionEnvWatchLimits", "test:durable/env/node/conformance_test.go#TestNodeExecutionEnvWatchPermissionDenied"]
+rationale = "The three added watch conformance cases run in durable/durabletest/env_conformance.go against the Node environment."
+
+[[files]]
+path = "packages/durable/src/tools/bash.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/tools/powershell_upstream_test.go#TestPowerShellRunsTheCommandWithPwshAsOneArgumentForcingUTF8Output", "test:durable/tools/powershell_upstream_test.go#TestPowerShellFallsBackToWindowsPowerShellAndReportsTheLastStartFailure", "test:durable/tools/powershell_upstream_test.go#TestPowerShellThrowsOnANonzeroExitAfterStreamingTheOutput"]
+rationale = "The new powershell tool runs through argv exec (durable/tools/bash.go) with pwsh first and Windows PowerShell as the fallback."
+
+[[files]]
+path = "packages/durable/src/tools/index.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/tools/powershell_upstream_test.go#TestPowerShellRunsTheCommandWithPwshAsOneArgumentForcingUTF8Output"]
+rationale = "The tool index exports the powershell tool (durable/tools/index.go)."
+
+[[files]]
+path = "packages/durable/src/tools/read.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/tools/powershell_upstream_test.go#TestReadReadsALogThatGrowsWhileItIsRead"]
+rationale = "A read of a file that grows while it is read returns what was read (durable/tools/read.go)."
+
+[[files]]
+path = "packages/env/src/connection.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:env/regressions_test.go#TestConnectionReportsADaemonThatExitsBeforeItIsReady"]
+rationale = "The connection (env/connection.go) with the daemon wire protocol; D96 records that the daemon is a Go program."
+
+[[files]]
+path = "packages/env/src/errors.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:env/conformance_test.go#TestRemoteExecutionEnvOverAPipeConformance"]
+rationale = "The remote errors map to the execution environment error codes (env/errors.go)."
+
+[[files]]
+path = "packages/env/src/remote-env.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:env/conformance_test.go#TestRemoteExecutionEnvOverAPipeConformance", "test:env/differential_test.go#TestRemoteExecutionEnvAgainstNodeExecutionEnv"]
+rationale = "The remote execution environment passes the shared conformance suite and matches the Node environment in a differential test (env/remote_env.go)."
+
+[[files]]
+path = "packages/env/src/ssh.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:env/regressions_test.go#TestAcceptHostKeyKeepsAKnownHostsFileItCannotRead"]
+rationale = "SSH connection, host key handling and daemon deployment (env/ssh.go); D97 records where packaged daemons are found."
+
+[[files]]
+path = "packages/env/src/watch.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:env/watch_test.go#TestRemoteWatcherOpensAgainAfterALostConnectionAndReportsOverflow"]
+rationale = "The remote watcher (env/watch.go) reopens after a lost connection, reports overflow and honours the directory budget."
+
+[[files]]
+path = "packages/env/src/index.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:env/conformance_test.go#TestRemoteExecutionEnvOverAPipeConformance"]
+rationale = "Re-export barrel: the package surface is the Go package env (env/doc.go)."

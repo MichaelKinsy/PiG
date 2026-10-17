@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/core/crash-log.ts
+
 import (
 	"bytes"
 	"encoding/json"
@@ -242,7 +244,7 @@ func TestCrashMessagesMatchUpstream(t *testing.T) {
 func TestUncaughtCrashPrintsRecordsAndInstructs(t *testing.T) {
 	t.Setenv("PIG_HOME", t.TempDir())
 	agentDir := t.TempDir()
-	m := NewInteractiveMode(InteractiveOptions{CWD: "/work", AgentDir: agentDir, AppVersion: "9.9.9"})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: "/work", AgentDir: agentDir, AppVersion: "9.9.9"})
 	var stderr strings.Builder
 	m.uncaughtCrash(errors.New("kaboom"), []byte("goroutine 1 [running]:\n"), &stderr)
 	out := stderr.String()
@@ -258,7 +260,7 @@ func TestUncaughtCrashPrintsRecordsAndInstructs(t *testing.T) {
 	if err := os.WriteFile(blocker, nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	unwritable := NewInteractiveMode(InteractiveOptions{CWD: "/work", AgentDir: filepath.Join(blocker, "agent")})
+	unwritable := NewInteractiveMode(nil, InteractiveModeOptions{CWD: "/work", AgentDir: filepath.Join(blocker, "agent")})
 	stderr.Reset()
 	unwritable.uncaughtCrash("x", nil, &stderr)
 	if strings.Contains(stderr.String(), "To report this crash") {
@@ -270,7 +272,7 @@ func TestUncaughtCrashAttributesLoadedExtension(t *testing.T) {
 	t.Setenv("PIG_HOME", t.TempDir())
 	root := filepath.Join(t.TempDir(), "memory")
 	entry := filepath.Join(root, "index.ts")
-	m := NewInteractiveMode(InteractiveOptions{CWD: "/work", AgentDir: t.TempDir(), AppVersion: "9.9.9"})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: "/work", AgentDir: t.TempDir(), AppVersion: "9.9.9"})
 	m.resourceSourceInfo[entry] = ResourceSourceInfo{
 		Path: entry, ResourceType: "extensions", Enabled: true, Scope: "user", Origin: "package", Source: "npm:memory", BaseDir: root,
 	}
@@ -428,12 +430,13 @@ func TestBugReportAttachesAndClearsTheCrashLog(t *testing.T) {
 
 // Run recovers a crash on its own goroutine, records it, and reports
 // ErrInteractiveCrashed so the caller exits 1 without a second message.
+// Pi: packages/coding-agent/src/modes/interactive/interactive-mode.ts:1034 (InteractiveMode.run).
 func TestRunRecordsACrashAndReportsErrInteractiveCrashed(t *testing.T) {
 	// Run applies the theme setting, which selects the process-wide active theme.
 	restoreStartupTheme(t)
 	t.Setenv("PIG_HOME", t.TempDir())
 	agentDir := t.TempDir()
-	m := NewInteractiveMode(InteractiveOptions{
+	m := NewInteractiveMode(nil, InteractiveModeOptions{
 		CWD:         t.TempDir(),
 		AgentDir:    agentDir,
 		AppVersion:  "run-crash",
@@ -454,7 +457,7 @@ func TestRunRecordsACrashAndReportsErrInteractiveCrashed(t *testing.T) {
 func TestUncaughtCrashPrintsRenderOverflowAsError(t *testing.T) {
 	t.Setenv("PIG_HOME", t.TempDir())
 	agentDir := t.TempDir()
-	m := NewInteractiveMode(InteractiveOptions{CWD: "/work", AgentDir: agentDir, AppVersion: "9.9.9"})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: "/work", AgentDir: agentDir, AppVersion: "9.9.9"})
 	overflow := &tui.RenderOverflowError{Line: 3, LineWidth: 126, TerminalWidth: 100, LogPath: filepath.Join(agentDir, tui.TUICrashLogName)}
 	var stderr strings.Builder
 	m.uncaughtCrash(overflow, []byte("goroutine 1 [running]:\n"), &stderr)
@@ -474,7 +477,7 @@ func TestUncaughtCrashPrintsRenderOverflowAsError(t *testing.T) {
 // An overflow recovered off the owner loop is re-raised on it, where Run's
 // uncaughtException handler reports it. Other panics propagate unchanged.
 func TestForwardRenderCrashReraisesOverflowOnOwnerLoop(t *testing.T) {
-	m := NewInteractiveMode(InteractiveOptions{CWD: "/work", AgentDir: t.TempDir()})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: "/work", AgentDir: t.TempDir()})
 	overflow := &tui.RenderOverflowError{Line: 1, LineWidth: 30, TerminalWidth: 20, LogPath: "/x"}
 	m.forwardRenderCrash(overflow)
 	var task func()
@@ -499,5 +502,51 @@ func TestForwardRenderCrashReraisesOverflowOnOwnerLoop(t *testing.T) {
 	}()
 	if propagated != other { //nolint:errorlint // identity: the recovered panic value itself, not an error chain
 		t.Fatalf("non-overflow panic = %v, want it re-panicked", propagated)
+	}
+}
+
+func TestStackFrameFormsAreJavaScriptAtFramesAndGoPanicLocations(t *testing.T) {
+	for stack, want := range map[string]bool{
+		"goroutine 1 [running]:\nmain.f()\n\t/p/a.go:12 +0x1d":                            true,
+		"panic: boom\n\ngoroutine 7 [running, locked to thread]:\nmain.f()\n\t/p/a.go:12": true,
+		"Error: boom\n\t/p/a.go:12 +0x1d":                                                 false,
+		"Error: goroutine 1 [running]:\n\t/p/a.go:12":                                     false,
+	} {
+		if got := goroutineHeader.MatchString(stack); got != want {
+			t.Errorf("goroutine trace %q = %v, want %v", stack, got, want)
+		}
+	}
+	for line, want := range map[string]bool{
+		"    at f (/p/a.ts:1:2)":               true,
+		"\tat /p/a.ts:1:2":                     true,
+		"\u00a0at\u00a0/p/a.ts":                true,
+		"\ufeffat /p/a.ts":                     true,
+		"\u0085at /p/a.ts":                     false,
+		"at /p/a.ts:1:2":                       false,
+		"    atx /p/a.ts":                      false,
+		"\t/p/a.go:12 +0x1d":                   true,
+		"\t/p/a.go:12":                         true,
+		"    /p/a.go:12 +0x1d":                 false,
+		"\t/p/a.go:12 and more":                false,
+		"\tgithub.com/x/y.(*T).Run(0xc000012)": false,
+	} {
+		if got := isStackFrame(line, true); got != want {
+			t.Errorf("isStackFrame(%q) in a Go trace = %v, want %v", line, got, want)
+		}
+		// Outside a Go trace only Pi's `at` frames count.
+		if got := isStackFrame(line, false); got != (want && !strings.HasPrefix(line, "\t/p/a.go")) {
+			t.Errorf("isStackFrame(%q) in a JavaScript stack = %v", line, got)
+		}
+	}
+}
+
+// new Date(timestamp).toLocaleString() of a time Date.parse cannot read is "Invalid Date".
+func TestCrashNoticeNamesAnUnreadableTimestampAsInvalidDate(t *testing.T) {
+	notice := crashNotice(CrashRecord{Timestamp: "garbage", Message: "boom"})
+	if !strings.Contains(notice, "crashed on Invalid Date (boom)") {
+		t.Fatalf("notice = %q", notice)
+	}
+	if notice := crashNotice(CrashRecord{Timestamp: "2026-10-05", Message: "boom"}); strings.Contains(notice, "2026-10-05") || strings.Contains(notice, "Invalid") {
+		t.Fatalf("a date-only timestamp is a time for Date.parse: %q", notice)
 	}
 }

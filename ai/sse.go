@@ -34,10 +34,16 @@ type sseDecoder struct {
 
 func newSSEDecoder(reader io.Reader) *sseDecoder {
 	scanner := bufio.NewScanner(reader)
-	scanner.Split(splitSSELines)
-	scanner.Buffer(make([]byte, 0, 64*1024), maxSSETokenSize)
+	scanner.Split(newSSELineSplitter().split)
+	scanner.Buffer(make([]byte, 0, min(64*1024, sseLineLimit)), sseLineLimit)
 	return &sseDecoder{scanner: scanner}
 }
+
+// sseLineLimit bounds one SSE line. Pi's readers have no cap of their own, but every one of them holds the line in a JavaScript string, which Node
+// cannot make longer than buffer.constants.MAX_STRING_LENGTH (2^29-24 on 64-bit V8): the OpenAI SDK's LineDecoder then throws "Cannot create a string
+// longer than 0x1fffffe8 characters" and a string buffer throws "RangeError: Invalid string length", ending the stream. Go strings have no such limit.
+// pig divergence (D134): a longer line ends the stream with bufio.ErrTooLong at the same bound, so a server that never ends a line cannot exhaust memory.
+var sseLineLimit = 1<<29 - 24
 
 func (decoder *sseDecoder) Next() bool {
 	if decoder.beforeNext != nil {
@@ -144,13 +150,33 @@ func compactJSON(raw []byte) string {
 	return string(raw)
 }
 
-// splitSSELines accepts LF, CRLF, and lone CR line endings. Waiting for the
-// byte after a trailing CR avoids turning a split CRLF into two line breaks.
-func splitSSELines(data []byte, atEOF bool) (advance int, token []byte, err error) {
-	if index := bytes.IndexAny(data, "\r\n"); index >= 0 {
+// sseLineSplitter is the bufio.SplitFunc of an SSE stream. It accepts LF, CRLF, and lone CR line endings, and waiting for the byte after a trailing CR avoids turning a split CRLF into two line breaks.
+// bufio.Scanner calls the function again with the same unconsumed bytes plus whatever the last read added, so it remembers how much of them it has already searched: a line that arrives in many reads is
+// searched once, not from its start after every read. A line ending is found with one IndexByte for LF and one for CR in the bytes before it, which is much faster than a search for either of two bytes.
+type sseLineSplitter struct {
+	// scanned is how many leading bytes of the pending data hold no line ending.
+	scanned int
+}
+
+func newSSELineSplitter() *sseLineSplitter { return &sseLineSplitter{} }
+
+func (s *sseLineSplitter) split(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	start := min(s.scanned, len(data))
+	end := len(data)
+	index := -1
+	if newline := bytes.IndexByte(data[start:], '\n'); newline >= 0 {
+		end = start + newline
+		index = end
+	}
+	if carriage := bytes.IndexByte(data[start:end], '\r'); carriage >= 0 {
+		index = start + carriage
+	}
+	if index >= 0 {
 		if data[index] == '\r' && index+1 == len(data) && !atEOF {
+			s.scanned = index
 			return 0, nil, nil
 		}
+		s.scanned = 0
 		advance = index + 1
 		if data[index] == '\r' && index+1 < len(data) && data[index+1] == '\n' {
 			advance++
@@ -158,7 +184,9 @@ func splitSSELines(data []byte, atEOF bool) (advance int, token []byte, err erro
 		return advance, data[:index], nil
 	}
 	if atEOF && len(data) > 0 {
+		s.scanned = 0
 		return len(data), data, nil
 	}
+	s.scanned = len(data)
 	return 0, nil, nil
 }

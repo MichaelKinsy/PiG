@@ -1,3 +1,5 @@
+//go:build !pig_strip_node_extensions
+
 package subprocess
 
 import (
@@ -18,7 +20,7 @@ type autocompleteSyncUI struct {
 	installed chan struct{}
 }
 
-func (u *autocompleteSyncUI) SetEditorComponent(value any) {
+func (u *autocompleteSyncUI) SetEditorComponent(value extension.EditorFactory) {
 	u.testUIContext.SetEditorComponent(value)
 	if value != nil {
 		close(u.installed)

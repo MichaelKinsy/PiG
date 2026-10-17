@@ -14,7 +14,7 @@ import (
 // upstream: packages/coding-agent/test/sdk-session-manager.test.ts:28 — uses agentDir for the default persisted session path.
 func TestUpstreamSDKSessionManagerDefaultPersistedPath(t *testing.T) {
 	_, model, cwd, agentDir := sessionManagerFixture(t)
-	session := createSessionWithServicesOptions(t, ServicesOptions{CWD: cwd, AgentDir: agentDir}, SessionOptions{Model: model})
+	session := createSessionWithServicesOptions(t, CreateAgentSessionServicesOptions{CWD: cwd, AgentDir: agentDir}, SessionOptions{Model: model})
 	safePath := "--" + strings.NewReplacer("/", "-", `\`, "-", ":", "-").Replace(strings.TrimPrefix(cwd, string(filepath.Separator))) + "--"
 	expectedDir := filepath.Join(agentDir, "sessions", safePath)
 	if got := session.SessionManager().GetSessionDir(); got != expectedDir {
@@ -34,7 +34,7 @@ func TestUpstreamSDKSessionManagerExplicitOverride(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	session := createSessionWithServicesOptions(t, ServicesOptions{CWD: cwd, AgentDir: agentDir, SessionManager: manager}, SessionOptions{Model: model, SessionManager: manager})
+	session := createSessionWithServicesOptions(t, CreateAgentSessionServicesOptions{CWD: cwd, AgentDir: agentDir, SessionManager: manager}, SessionOptions{Model: model, SessionManager: manager})
 	if session.SessionManager() != manager {
 		t.Fatal("explicit manager identity changed")
 	}
@@ -55,7 +55,7 @@ func TestUpstreamSDKSessionManagerDerivesCWD(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	session := createSessionWithServicesOptions(t, ServicesOptions{AgentDir: agentDir, SessionManager: manager}, SessionOptions{Model: model, SessionManager: manager})
+	session := createSessionWithServicesOptions(t, CreateAgentSessionServicesOptions{AgentDir: agentDir, SessionManager: manager}, SessionOptions{Model: model, SessionManager: manager})
 	if session.SessionManager() != manager {
 		t.Fatal("explicit manager identity changed")
 	}
@@ -87,7 +87,7 @@ func TestUpstreamSDKSessionManagerDerivesCWD(t *testing.T) {
 // upstream: packages/coding-agent/test/sdk-session-manager.test.ts:96 — exposes current session state to the built-in bash tool.
 func TestUpstreamSDKSessionManagerBashCurrentState(t *testing.T) {
 	_, model, cwd, agentDir := sessionManagerFixture(t)
-	session := createSessionWithServicesOptions(t, ServicesOptions{CWD: cwd, AgentDir: agentDir}, SessionOptions{Model: model, ThinkingLevel: ai.ThinkingHigh})
+	session := createSessionWithServicesOptions(t, CreateAgentSessionServicesOptions{CWD: cwd, AgentDir: agentDir}, SessionOptions{Model: model, ThinkingLevel: ai.ThinkingHigh})
 	if session.Path() == "" {
 		t.Fatal("missing sessionFile")
 	}

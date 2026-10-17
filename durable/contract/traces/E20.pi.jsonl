@@ -1,0 +1,32 @@
+{"k":">","name":"harness.root","tick":195}
+{"k":"#","seq":1,"summary":"conversations:i document_revisions:i documents:i","tick":385,"begin":325}
+{"k":">","name":"harness.root().submit","tick":394}
+{"k":"#","seq":2,"summary":"document_revisions:d document_revisions:i entries:i submissions:i tasks:i","tick":505,"begin":477}
+{"k":">","name":"harness.root().submit","tick":514}
+{"k":"#","seq":3,"summary":"tasks:u","tick":551,"begin":540}
+{"k":"#","seq":4,"summary":"document_revisions:i submissions:i","tick":614,"begin":596}
+{"k":">","name":"harness.root().submit","tick":623}
+{"k":"#","seq":5,"summary":"document_revisions:i submissions:i","tick":692,"begin":674}
+{"k":">","name":"harness.root().submit","tick":701}
+{"k":"#","seq":6,"summary":"entries:i submissions:i","tick":801,"begin":785}
+{"k":">","name":"harness.root().submit","tick":810}
+{"k":"#","seq":7,"summary":"tasks:u","tick":862,"begin":851}
+{"k":"#","seq":8,"summary":"document_revisions:i submissions:i","tick":916,"begin":898}
+{"k":">","name":"harness.root().submit","tick":925}
+{"k":"!","name":"harness.root().submit","tick":948}
+{"k":">","name":"harness.root().submit().abort","tick":949}
+{"k":"#","seq":9,"summary":"document_revisions:i","tick":980,"begin":967}
+{"k":"#","seq":10,"summary":"document_revisions:i submissions:u","tick":1034,"begin":1016}
+{"k":">","name":"harness.snapshot","tick":1043}
+{"k":">","name":"harness.root().submit().wait","tick":1044}
+{"k":"#","seq":11,"summary":"document_revisions:d document_revisions:i entries:i submissions:u tasks:i tasks:u","tick":1362,"begin":1295}
+{"k":">","name":"harness.root().submit().wait","tick":1371}
+{"k":"#","seq":12,"summary":"tasks:u","tick":1412,"begin":1401}
+{"k":"#","seq":13,"summary":"tasks:u","tick":1557,"begin":1546}
+{"k":"#","seq":14,"summary":"document_revisions:i","tick":1606,"begin":1593}
+{"k":"#","seq":15,"summary":"document_revisions:d document_revisions:i entries:i submissions:u tasks:u","tick":1826,"begin":1786}
+{"k":">","name":"harness.root().submit().wait","tick":1835}
+{"k":">","name":"harness.root().submit().wait","tick":1873}
+{"k":">","name":"harness.root().submit().wait","tick":1901}
+{"k":">","name":"harness.root().entries","tick":1922}
+{"k":">","name":"harness.close","tick":1944}

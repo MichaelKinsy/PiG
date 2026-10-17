@@ -60,6 +60,8 @@ fn provider_transport_shutdown_does_not_settle_owned_stream() {
                     auth: ProviderAuth::default(),
                     get_models: Arc::new(|| Ok(vec![])),
                     filter_models: None,
+                    get_all_models: None,
+                    filter_all_models: None,
                     refresh_models: None,
                     stream: produce.clone(),
                     stream_simple: produce.clone(),

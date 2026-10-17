@@ -1,6 +1,7 @@
 package coding
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -47,7 +48,7 @@ func TestSessionExtensionHandlerContextCarriesStreamScope(t *testing.T) {
 	var duringWait, afterWait []byte
 	ext := extension.Extension{Path: "scoped-wait", Handlers: map[string][]extension.HandlerFn{
 		"message_start": {func(args ...any) (any, error) {
-			message := args[0].(extension.MessageStartEvent).Message.(agent.AgentMessage)
+			message := args[0].(extension.MessageStartEvent).Message
 			if message.Assistant == nil {
 				return nil, nil
 			}
@@ -106,7 +107,7 @@ func TestSessionExtensionHandlerContextCarriesStreamScope(t *testing.T) {
 	if len(after.Assistant.Content) != 1 || after.Assistant.StopReason != ai.StopReasonPending {
 		t.Errorf("message after the wait = %s; want the provider's content with the copied pending stop reason", afterWait)
 	}
-	if string(afterWait) != string(subscriber) {
+	if !bytes.Equal(afterWait, subscriber) {
 		t.Errorf("extension and subscriber observations differ: %s / %s", afterWait, subscriber)
 	}
 }

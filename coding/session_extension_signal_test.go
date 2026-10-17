@@ -63,3 +63,38 @@ func TestSessionBindsExtensionSignalToTheActiveRun(t *testing.T) {
 		t.Errorf("agent_settled saw signal %v, want nil: Pi clears the run before it", last.signal)
 	}
 }
+
+// upstream: packages/coding-agent/src/core/agent-session.ts:4373 (hasExtensionHandlers returns this._extensionRunner.hasHandlers(eventType)) over runner.ts hasHandlers: true exactly for the event types a loaded extension registered a handler for.
+func TestSessionHasExtensionHandlersReportsRegisteredEvents(t *testing.T) {
+	ext := extension.Extension{Handlers: map[string][]extension.HandlerFn{
+		"agent_start": {func(...any) (any, error) { return nil, nil }},
+		"turn_end":    {},
+	}}
+	h := newBoundaryHarness(t, harnessOptions{extension: ext}, boundaryReply("done", ai.StopReasonStop, 0))
+	for event, want := range map[string]bool{"agent_start": true, "turn_end": false, "agent_end": false, "": false} {
+		if got := h.session.HasExtensionHandlers(event); got != want {
+			t.Errorf("HasExtensionHandlers(%q) = %t, want %t", event, got, want)
+		}
+	}
+	none := newBoundaryHarness(t, harnessOptions{}, boundaryReply("done", ai.StopReasonStop, 0))
+	if none.session.HasExtensionHandlers("agent_start") {
+		t.Error("a Session with no extension reports a handler")
+	}
+}
+
+// upstream: agent-session.ts:1658 (promptTemplates returns this._resourceLoader.getPrompts().prompts): the Session reads the templates of its current resource loader, so a loader replaced through SetPromptResources is what the getter shows.
+func TestSessionPromptTemplatesReadTheResourceLoader(t *testing.T) {
+	h := newBoundaryHarness(t, harnessOptions{}, boundaryReply("done", ai.StopReasonStop, 0))
+	if got := h.session.PromptTemplates(); len(got) != 0 {
+		t.Fatalf("PromptTemplates = %+v, want none", got)
+	}
+	want := []PromptTemplate{{Name: "review", Description: "Review code", Content: "Review $1"}, {Name: "fix", Content: "Fix it"}}
+	h.session.SetPromptResources(want, nil)
+	got := h.session.PromptTemplates()
+	if len(got) != 2 || got[0].Name != "review" || got[0].Content != "Review $1" || got[1].Name != "fix" {
+		t.Fatalf("PromptTemplates = %+v, want %+v", got, want)
+	}
+	if got[0].Name != h.session.ResourceLoader().GetPrompts().Prompts[0].Name {
+		t.Fatal("PromptTemplates disagrees with the loader")
+	}
+}

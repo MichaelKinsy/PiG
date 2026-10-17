@@ -1,3 +1,5 @@
+//go:build !pig_strip_node_extensions
+
 package subprocess
 
 import (
@@ -18,7 +20,8 @@ import (
 func TestNodeProviderSocketFrameCopyIsLinear(t *testing.T) {
 	root := filepath.Join(findModuleRoot(t), "coding", "extension", "host", "subprocess", "runtime-node")
 	dir := t.TempDir()
-	listener, path, err := ListenExtension(filepath.Join(dir, "s"), true)
+	// The socket path stays below the 104-byte macOS limit; dir holds the scripts only.
+	listener, path, err := ListenExtension(filepath.Join(shortSockDir(t), "s"), true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,12 +97,17 @@ syncBuiltinESMExports();
 const {ProviderSocket} = await import(pathToFileURL(process.argv[1]));
 const socket = await ProviderSocket.connect(process.argv[2]);
 const received = [];
-// A transferred string avoids structured-cloning the decoded object graph. The main decoder must not use a later extension's replacement of JSON.parse.
+// A transferred string or shared frame avoids structured-cloning the decoded object graph. The main decoder must not use a later extension's replacement of JSON.parse.
 JSON.parse = () => { throw new Error("extension replaced JSON.parse"); };
 socket.port.on("message", message => {
  if (message.kind !== "envelope") return;
- assert.equal(typeof message.json, "string", "worker structured-cloned an already decoded envelope");
  assert.equal(Object.hasOwn(message,"envelope"), false);
+ if (message.frame !== undefined) {
+  assert.ok(message.frame instanceof SharedArrayBuffer, "a large frame reaches the main thread as shared bytes");
+  assert.equal(message.bytes, message.frame.byteLength + 4);
+  return;
+ }
+ assert.equal(typeof message.json, "string", "worker structured-cloned an already decoded envelope");
  assert.equal(message.bytes, Buffer.byteLength(message.json) + 4);
 });
 socket.on("envelope", env => received.push(env));

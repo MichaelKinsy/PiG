@@ -10,13 +10,15 @@ import (
 	"fmt"
 	"path/filepath"
 	"reflect"
-	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/output"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/storage"
 	"github.com/MichaelKinsy/PiG/durable/storage/jsonl"
@@ -30,14 +32,15 @@ func tlLiveTool(t *testing.T, harness Harness, conversationId durable.Conversati
 	if err != nil {
 		t.Fatal(err)
 	}
-	slots, _ := live["tools"].([]any)
+	slots, _ := live.Value("tools").([]any)
 	if len(slots) == 0 {
 		return nil
 	}
-	return slots[0].(map[string]any)
+	return plainObject(slots[0])
 }
 
 func TestToolProgressAndLifetime(t *testing.T) {
+	// harness-tools.test.ts:944 it("applies the default output limits")
 	t.Run("applies the default output limits", func(t *testing.T) {
 		setup := chatSetup(t)
 		addTool(t, setup.Registry, tlTool("lines", func(_ context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
@@ -59,7 +62,7 @@ func TestToolProgressAndLifetime(t *testing.T) {
 
 	t.Run("commits running output no more often than progress.outputIntervalMs", func(t *testing.T) {
 		// Not an upstream case: upstream tests the interval through Progress alone (harness-output.test.ts:237) and the
-		// configured pace through the offered window (harness-tools.test.ts:328); this drives the setting to the commits.
+		// configured pace through the offered window (harness-tools.test.ts:352); this drives the setting to the commits.
 		// The tool's progress runs on a fake clock, so the second chunk waits exactly the configured interval.
 		clock := &fakeProgressClock{}
 		previous := toolProgressClock
@@ -76,7 +79,7 @@ func TestToolProgressAndLifetime(t *testing.T) {
 				}
 				// The first change after an idle period commits at once; the second waits for the interval.
 				api.Output("one\n")
-				waitIdle(internal.progress)
+				internal.progress.WaitIdle()
 				api.Output("two\n")
 				var outputs []any
 				for _, ms := range advances {
@@ -85,11 +88,11 @@ func TestToolProgressAndLifetime(t *testing.T) {
 					if err != nil {
 						return durable.ToolExecutionResult{}, err
 					}
-					tools, _ := live["tools"].([]any)
+					tools, _ := live.Value("tools").([]any)
 					if len(tools) == 0 {
 						return durable.ToolExecutionResult{}, errors.New("no running tool slot")
 					}
-					outputs = append(outputs, tools[0].(map[string]any)["output"])
+					outputs = append(outputs, tools[0].(*delta.JsonObject).Value("output"))
 				}
 				slots.put(outputs)
 				return durable.ToolExecutionResult{}, nil
@@ -107,6 +110,7 @@ func TestToolProgressAndLifetime(t *testing.T) {
 		}
 	})
 
+	// harness-tools.test.ts:964 it("sanitizes running output but keeps explicit result content as the tool returned it")
 	t.Run("sanitizes running output but keeps explicit result content as the tool returned it", func(t *testing.T) {
 		setup := chatSetup(t)
 		slotOutput := &syncValue[any]{}
@@ -119,8 +123,8 @@ func TestToolProgressAndLifetime(t *testing.T) {
 			if err != nil {
 				return durable.ToolExecutionResult{}, err
 			}
-			if slots, _ := live["tools"].([]any); len(slots) > 0 {
-				slotOutput.put(slots[0].(map[string]any)["output"])
+			if slots, _ := live.Value("tools").([]any); len(slots) > 0 {
+				slotOutput.put(slots[0].(*delta.JsonObject).Value("output"))
 			}
 			return durable.ToolExecutionResult{}, nil
 		}))
@@ -137,17 +141,18 @@ func TestToolProgressAndLifetime(t *testing.T) {
 		mustClose(t, run.harness)
 	})
 
+	// harness-tools.test.ts:988 it("drops control keys set to undefined instead of faulting")
 	t.Run("drops control keys set to undefined instead of faulting", func(t *testing.T) {
 		// Go has no undefined: an unset terminate is the zero value, Pi's `terminate?: true` left out. The task stores the
 		// control as Pi's copyJson with omitUndefinedProperties leaves it, { addTools: ["extra"] }, and does not fault.
 		setup := chatSetup(t)
 		addTool(t, setup.Registry, tlTool("grow", func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
-			return durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{}, Control: &durable.ToolControl{AddTools: []string{"extra"}}}, nil
+			return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}, Control: &durable.ToolControl{AddTools: []string{"extra"}}}, nil
 		}))
 		extra := tlTool("extra", tlNoContent)
 		addTool(t, setup.Registry, extra)
 		run := tlRun(t, setup, []ai.FauxResponseStep{tlCallsStep(tlCall{"grow", map[string]any{}, "c1"}), tlDone()}, func(_ Harness, conversation Conversation) {
-			mustConfigure(t, conversation, AgentChange{Tools: SetTo(ToolChange{Remove: []*durable.ToolRegistration{extra}})})
+			mustConfigure(t, conversation, AgentChange{Tools: SetTo(ToolChange{Edit: &ToolEdit{Remove: []*durable.ToolRegistration{extra}}})})
 		})
 		if run.status != durable.SubmissionDone {
 			t.Fatalf("status %s, want done", run.status)
@@ -161,7 +166,8 @@ func TestToolProgressAndLifetime(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if want := fmt.Sprintf(`{"control":{"addTools":["extra"]},"entryId":%v}`, result.(map[string]any)["entryId"]); string(stored) != want {
+		// upstream: packages/durable/src/harness/tool.ts:405 builds the result { entryId, ...control }, so entryId comes first.
+		if want := fmt.Sprintf(`{"kind":"model","entryId":%v,"control":{"addTools":["extra"]}}`, plainObject(result)["entryId"]); string(stored) != want {
 			t.Fatalf("stored tool result %s, want %s", stored, want)
 		}
 		// addTools deletes the name from a stored { remove } filter.
@@ -172,6 +178,7 @@ func TestToolProgressAndLifetime(t *testing.T) {
 		mustClose(t, run.harness)
 	})
 
+	// harness-tools.test.ts:1005 it("uses explicit null details instead of the last reported value")
 	t.Run("uses explicit null details instead of the last reported value", func(t *testing.T) {
 		// Upstream runs this over MemoryStorage. The persistent storages also keep the null through their JSON form and a
 		// reopen, and a tool that never reports details stores a message without the key, as JSON.stringify omits
@@ -197,7 +204,7 @@ func TestToolProgressAndLifetime(t *testing.T) {
 					if err := api.Details(ctx, map[string]any{"old": float64(1)}); err != nil {
 						return durable.ToolExecutionResult{}, err
 					}
-					return durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{}, Details: nil, HasDetails: true}, nil
+					return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}, Details: nil, HasDetails: true}, nil
 				}))
 				addTool(t, setup.Registry, tlTool("none", tlNoContent))
 				setup.Faux.SetResponses([]ai.FauxResponseStep{tlCallsStep(tlCall{"null", map[string]any{}, "c1"}), tlCallsStep(tlCall{"none", map[string]any{}, "c2"}), tlDone()})
@@ -212,8 +219,8 @@ func TestToolProgressAndLifetime(t *testing.T) {
 					entries = allEntries(t, root)
 				}
 				want := []string{
-					`{"role":"toolResult","toolCallId":"c1","toolName":"null","content":[],"details":null,"isError":false,"timestamp":%d}`,
-					`{"role":"toolResult","toolCallId":"c2","toolName":"none","content":[],"isError":false,"timestamp":%d}`,
+					`{"role":"toolResult","toolCallId":"c1","toolName":"null","content":[],"details":null,"isError":false,"durationMs":%d,"timestamp":%d}`,
+					`{"role":"toolResult","toolCallId":"c2","toolName":"none","content":[],"isError":false,"durationMs":%d,"timestamp":%d}`,
 				}
 				results := tlResults(entries)
 				if len(results) != len(want) {
@@ -228,7 +235,11 @@ func TestToolProgressAndLifetime(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					if expected := fmt.Sprintf(want[index], result.Timestamp); string(encoded) != expected {
+					// Pi 1.1.0 tool.ts:473 stores the execute() duration between isError and timestamp.
+					if result.DurationMs == nil {
+						t.Fatalf("result %d has no durationMs", index)
+					}
+					if expected := fmt.Sprintf(want[index], *result.DurationMs, result.Timestamp); string(encoded) != expected {
 						t.Fatalf("stored message\n got %s\nwant %s", encoded, expected)
 					}
 				}
@@ -237,6 +248,7 @@ func TestToolProgressAndLifetime(t *testing.T) {
 		}
 	})
 
+	// harness-tools.test.ts:1019 it("settles details() promises with coalesced progress commits and the terminal commit")
 	t.Run("settles details() promises with coalesced progress commits and the terminal commit", func(t *testing.T) {
 		setup := chatSetup(t)
 		settled := &syncList[string]{}
@@ -269,12 +281,12 @@ func TestToolProgressAndLifetime(t *testing.T) {
 			if err := awaitDetailsRecorded(ctx, api, 3); err != nil {
 				return durable.ToolExecutionResult{}, err
 			}
-			return durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{}}, nil
+			return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}}, nil
 		}))
 		run := tlRun(t, setup, []ai.FauxResponseStep{tlCallsStep(tlCall{"details", map[string]any{}, "c1"}), tlDone()}, nil)
-		eventually(t, func() bool { return settled.len() == 3 })
-		if got := settled.all(); slices.Index(got, "first") > slices.Index(got, "third") || !slices.Contains(got, "second") {
-			t.Fatalf("settled %v, want first before third and second included", got)
+		// Pi asserts right after run(): every details() settlement and its then() ran before the run settled.
+		if got := settled.all(); !reflect.DeepEqual(got, []string{"first", "second", "third"}) {
+			t.Fatalf("settled %v, want [first second third]", got)
 		}
 		if got := tlResults(run.entries)[0].Details; !reflect.DeepEqual(got, map[string]any{"n": float64(3)}) {
 			t.Fatalf("details %v, want n: 3", got)
@@ -282,6 +294,7 @@ func TestToolProgressAndLifetime(t *testing.T) {
 		mustClose(t, run.harness)
 	})
 
+	// harness-tools.test.ts:1040 it("finishes a call under the implementation it resolved when the tool is replaced mid-call")
 	t.Run("finishes a call under the implementation it resolved when the tool is replaced mid-call", func(t *testing.T) {
 		setup := chatSetup(t)
 		started, finished := deferred(), deferred()
@@ -311,6 +324,7 @@ func TestToolProgressAndLifetime(t *testing.T) {
 		mustClose(t, harness)
 	})
 
+	// harness-tools.test.ts:1071 it("uses a section and hook extension reloaded mid-run from the run's next request")
 	t.Run("uses a section and hook extension reloaded mid-run from the run's next request", func(t *testing.T) {
 		setup := chatSetup(t)
 		requests := &syncList[string]{}
@@ -331,7 +345,7 @@ func TestToolProgressAndLifetime(t *testing.T) {
 			if err := reloaded.wait(testContext); err != nil {
 				return durable.ToolExecutionResult{}, err
 			}
-			return durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{}}, nil
+			return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}}, nil
 		}))
 		setup.Faux.SetResponses([]ai.FauxResponseStep{tlCallsStep(tlCall{"work", map[string]any{}, "c1"}), tlDone()})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
@@ -364,6 +378,7 @@ func TestToolProgressAndLifetime(t *testing.T) {
 		mustClose(t, harness)
 	})
 
+	// harness-tools.test.ts:1107 it("rejects invocation-bound waits and stops watches when the tool's invocation ends")
 	t.Run("rejects invocation-bound waits and stops watches when the tool's invocation ends", func(t *testing.T) {
 		setup := chatSetup(t)
 		type neverInput struct{}
@@ -382,7 +397,7 @@ func TestToolProgressAndLifetime(t *testing.T) {
 		watched := &syncValue[durable.WatchHandle[durable.JsonObject]]{}
 		addTool(t, setup.Registry, tlTool("detach", func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			// The child's definition is not registered, so it stays pending.
-			child, err := api.CreateTaskErased(ctx, never, durable.JsonObject{}, durable.TaskOptions{Ownership: conversationOwned})
+			child, err := api.CreateTaskErased(ctx, never.Erased(), delta.NewJsonObject(0), durable.TaskOptions{Ownership: conversationOwned})
 			if err != nil {
 				return durable.ToolExecutionResult{}, err
 			}
@@ -395,7 +410,7 @@ func TestToolProgressAndLifetime(t *testing.T) {
 				return durable.ToolExecutionResult{}, errors.New("no live document watch")
 			}
 			watched.put(watch)
-			return durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{}}, nil
+			return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}}, nil
 		}))
 		run := tlRun(t, setup, []ai.FauxResponseStep{tlCallsStep(tlCall{"detach", map[string]any{}, "c1"}), tlDone()}, nil)
 		tkContainsError(t, tkWaitErr(t, waited), "invocation has ended")
@@ -408,6 +423,7 @@ func TestToolProgressAndLifetime(t *testing.T) {
 		mustClose(t, run.harness)
 	})
 
+	// harness-tools.test.ts:1136 it("rejects details() still waiting when the call is aborted during afterTool")
 	t.Run("rejects details() still waiting when the call is aborted during afterTool", func(t *testing.T) {
 		// Hold every throttled progress commit, so only the abort can settle the details' waiter.
 		previous := toolProgressClock
@@ -427,7 +443,7 @@ func TestToolProgressAndLifetime(t *testing.T) {
 			}
 			return durable.ToolExecutionResult{}, nil
 		}))
-		addHooks(t, setup.Registry, ToolTask, &ToolHooks{AfterTool: func(ctx context.Context, _ ai.ToolCall, _ durable.ToolExecutionResult, _ HookApi) (*durable.ToolExecutionResult, error) {
+		addHooks(t, setup.Registry, ToolTask.Erased(), &ToolHooks{AfterTool: func(ctx context.Context, _ ToolHookCall, _ durable.ToolExecutionResult, _ HookApi) (*durable.ToolExecutionResult, error) {
 			inAfterTool.resolve()
 			return nil, abortedBy(ctx)
 		}})
@@ -450,6 +466,7 @@ func TestToolProgressAndLifetime(t *testing.T) {
 		mustClose(t, harness)
 	})
 
+	// harness-tools.test.ts:1168 it("answers an aborted tool with only its durable output, discarding buffered output")
 	t.Run("answers an aborted tool with only its durable output, discarding buffered output", func(t *testing.T) {
 		setup := chatSetup(t)
 		buffered := deferred()
@@ -486,9 +503,9 @@ func TestToolProgressAndLifetime(t *testing.T) {
 // later one waits on a timer that does not fire, however slow the first commit was.
 type heldProgressClock struct{}
 
-func (heldProgressClock) now() float64 { return 0 }
+func (heldProgressClock) Now() float64 { return 0 }
 
-func (heldProgressClock) afterFunc(float64, func()) func() { return func() {} }
+func (heldProgressClock) AfterFunc(float64, func()) func() { return func() {} }
 
 // awaitDetailsWaiting returns once a details() call has queued its progress waiter.
 func awaitDetailsWaiting(ctx context.Context, api durable.ToolExecutionApi) error {
@@ -497,10 +514,7 @@ func awaitDetailsWaiting(ctx context.Context, api durable.ToolExecutionApi) erro
 		return fmt.Errorf("tool api is %T, not *toolApi", api)
 	}
 	for {
-		internal.progress.mu.Lock()
-		waiting := len(internal.progress.waiters)
-		internal.progress.mu.Unlock()
-		if waiting > 0 {
+		if internal.progress.Waiting() > 0 {
 			return nil
 		}
 		select {
@@ -528,5 +542,75 @@ func awaitDetailsRecorded(ctx context.Context, api durable.ToolExecutionApi, cou
 			return context.Cause(ctx)
 		case <-time.After(time.Millisecond):
 		}
+	}
+}
+
+// plainObject is value's JSON object as a map, for reads that ignore key order, as toEqual does.
+func plainObject(value any) map[string]any {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		panic(err)
+	}
+	var object map[string]any
+	if err := json.Unmarshal(encoded, &object); err != nil {
+		panic(err)
+	}
+	return object
+}
+
+// fakeProgressClock stands in for vi fake timers: time moves only through advance, which fires due timers in order and lets the commit each one starts settle, as advanceTimersByTimeAsync drains microtasks.
+type fakeProgressClock struct {
+	mu     sync.Mutex
+	at     float64
+	timers []*fakeTimer
+}
+
+type fakeTimer struct {
+	due     float64
+	run     func()
+	stopped bool
+}
+
+func (clock *fakeProgressClock) Now() float64 {
+	clock.mu.Lock()
+	defer clock.mu.Unlock()
+	return clock.at
+}
+
+func (clock *fakeProgressClock) AfterFunc(delay float64, run func()) func() {
+	clock.mu.Lock()
+	defer clock.mu.Unlock()
+	timer := &fakeTimer{due: clock.at + delay, run: run}
+	clock.timers = append(clock.timers, timer)
+	return func() {
+		clock.mu.Lock()
+		defer clock.mu.Unlock()
+		timer.stopped = true
+	}
+}
+
+func (clock *fakeProgressClock) advance(progress *output.Progress, ms float64) {
+	progress.WaitIdle()
+	clock.mu.Lock()
+	target := clock.at + ms
+	clock.mu.Unlock()
+	for {
+		clock.mu.Lock()
+		var next *fakeTimer
+		for _, timer := range clock.timers {
+			if !timer.stopped && timer.due <= target && (next == nil || timer.due < next.due) {
+				next = timer
+			}
+		}
+		if next == nil {
+			clock.at = target
+			clock.mu.Unlock()
+			return
+		}
+		next.stopped = true
+		clock.at = next.due
+		clock.mu.Unlock()
+		next.run()
+		progress.WaitIdle()
 	}
 }

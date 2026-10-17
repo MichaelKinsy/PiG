@@ -28,10 +28,7 @@ func currentBehaviorInputs(t *testing.T) (string, []byte) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	version, err := knowngaps.PinnedVersion(root)
-	if err != nil {
-		t.Fatal(err)
-	}
+	version := knowngaps.PinnedVersion()
 	data, err := os.ReadFile(filepath.Join(root, "test/parity", "interfaces", "behavior-inputs-v"+version+".json"))
 	if err != nil {
 		t.Fatal(err)

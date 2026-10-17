@@ -6,8 +6,8 @@ import (
 	"errors"
 	"os"
 
-	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
-	btypes "github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
+	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime"
+	btypes "github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime/types"
 
 	"github.com/MichaelKinsy/PiG/ai"
 )

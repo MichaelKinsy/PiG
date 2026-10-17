@@ -1,0 +1,175 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#envApiKeyAuth",
+   "pkg:ai/compat#envApiKeyAuth"
+  ],
+  "targets": [
+   "ai/auth_providers.go#EnvAPIKeyAuth"
+  ],
+  "production": [
+   "call:ai/auth_providers.go#builtinAPIKeyAuth"
+  ],
+  "evidence": [
+   "test:ai/provider_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
+   "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream"
+  ],
+  "rationale": "auth/api-key.ts envApiKeyAuth(name, envVars: readonly string[]) is EnvAPIKeyAuth(name, envVars ...string): a readonly array parameter is a variadic tail (language mechanics)."
+ },
+ {
+  "ids": [
+   "pkg:ai/api/google-shared#supportsGoogleStrictToolSampling"
+  ],
+  "targets": [
+   "ai/google.go#supportsGoogleStrictToolSampling"
+  ],
+  "production": [
+   "call:ai/google.go#googleProvider.Stream"
+  ],
+  "evidence": [
+   "test:ai/google_convert_tools_upstream_test.go#TestGoogleSharedConvertToolsUpstream"
+  ],
+  "rationale": "api/google-shared.ts supportsGoogleStrictToolSampling(modelId) is the unexported Go function of the same name over the same model-id test; the Google stream path calls it to choose strict tool mode."
+ },
+ {
+  "ids": [
+   "pkg:ai/api/openai-codex-responses#closeOpenAICodexWebSocketSessions"
+  ],
+  "targets": [
+   "ai/openai_codex_websocket.go#CloseOpenAICodexWebSocketSessions"
+  ],
+  "production": [
+   "call:ai/openai_codex_websocket.go#init"
+  ],
+  "evidence": [
+   "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketTimeoutsUpstream"
+  ],
+  "rationale": "openai-codex-responses.ts closeOpenAICodexWebSocketSessions(sessionId?): the optional id is a variadic tail; no argument closes every session."
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#findEnvKeys"
+  ],
+  "targets": [
+   "ai/auth_env_keys.go#FindEnvKeys"
+  ],
+  "production": [
+   "call:ai/auth.go#firstAuthEnvKey"
+  ],
+  "evidence": [
+   "test:ai/env_api_keys_upstream_test.go#TestEnvAPIKeysUpstream"
+  ],
+  "rationale": "Both TypeScript overloads (KnownProvider and string) are one Go function over a string provider; the optional ProviderEnv is a nil-able map and an undefined result is a nil slice."
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#getEnvApiKey"
+  ],
+  "targets": [
+   "ai/auth_env_keys.go#GetEnvAPIKey"
+  ],
+  "production": [
+   "call:internal/codingagent/radius_composition.go#ModelRegistry.resolveRadiusAPIKey"
+  ],
+  "evidence": [
+   "test:ai/env_api_keys_upstream_test.go#TestEnvAPIKeysUpstream"
+  ],
+  "rationale": "Both TypeScript overloads are one Go function over a string provider; the optional ProviderEnv is a nil-able map and an undefined result is the empty string."
+ },
+ {
+  "ids": [
+   "pkg:ai/providers/all#getAllBuiltinModels"
+  ],
+  "targets": [
+   "ai/builtin_providers.go#GetAllBuiltinModels"
+  ],
+  "production": [
+   "call:ai/builtin_providers.go#builtinProvider"
+  ],
+  "evidence": [
+   "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+   "test:ai/providers_unknown_upstream_test.go#TestBuiltinProvidersUnknownProviderIDsUpstream"
+  ],
+  "rationale": "providers/all.ts getAllBuiltinModels<TProvider extends BuiltinProvider>(provider): the generic provider type narrows the TypeScript result only; Go takes the provider id as a string and returns []AnyModel."
+ },
+ {
+  "ids": [
+   "pkg:ai/providers/all#getBuiltinClassifierModels"
+  ],
+  "targets": [
+   "ai/builtin_providers.go#GetBuiltinClassifierModels"
+  ],
+  "production": [
+   "call:ai/builtin_providers.go#GetAllBuiltinModels",
+   "call:internal/codingagent/model_typed_provider.go#builtinClassifierModels"
+  ],
+  "evidence": [
+   "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+   "test:ai/providers_unknown_upstream_test.go#TestBuiltinProvidersUnknownProviderIDsUpstream"
+  ],
+  "rationale": "providers/all.ts getBuiltinClassifierModels<TProvider>(provider): the generic narrowing is TypeScript only; Go takes the provider id and returns []*ClassifierModel."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#compositeTuiLine"
+  ],
+  "targets": [
+   "tui/stack.go#CompositeTuiLine"
+  ],
+  "production": [
+   "call:tui/overlay_compositor.go#composeOverlaySnapshotWithStats"
+  ],
+  "evidence": [
+   "test:tui/overlay_cjk_upstream_test.go#TestUpstreamOverlayCJKBoundary"
+  ],
+  "rationale": "tui.ts compositeTuiLine(baseLine, overlayLine, startCol, overlayWidth, totalWidth): same five parameters and string result."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#encodeKitty"
+  ],
+  "targets": [
+   "tui/terminal_image.go#EncodeKitty"
+  ],
+  "production": [
+   "call:tui/terminal_image.go#RenderImage"
+  ],
+  "evidence": [
+   "test:tui/terminal_image_upstream_test.go#TestUpstreamTerminalImageEncoding",
+   "test:tui/terminal_image_iterm2_options_test.go#TestEncodeKittyEmitsEveryNonZeroOption"
+  ],
+  "rationale": "terminal-image.ts encodeKitty(base64Data, {columns, rows, imageId, moveCursor}): the four option fields are positional (columns, rows, imageID, optional moveCursor) and cover every upstream field; zero is the absent value and any other number is emitted, matching the truthiness guards at :234-237 (fixed in this change, test first)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#encodeITerm2"
+  ],
+  "targets": [
+   "tui/terminal_image.go#EncodeITerm2"
+  ],
+  "production": [
+   "call:tui/terminal_image.go#RenderImage"
+  ],
+  "evidence": [
+   "test:tui/terminal_image_upstream_test.go#TestUpstreamTerminalImageEncoding",
+   "test:tui/terminal_image_iterm2_options_test.go#TestEncodeITerm2OptionsCarryEveryUpstreamField"
+  ],
+  "rationale": "terminal-image.ts encodeITerm2(base64Data, options): the ITerm2Options struct carries all five upstream fields (width, height, name, preserveAspectRatio, inline). The struct was added in this change, test first, because the positional form had no inline option."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#getCellDimensions"
+  ],
+  "targets": [
+   "tui/terminal_image.go#GetCellDimensions"
+  ],
+  "production": [
+   "call:tui/image.go#Image.Render"
+  ],
+  "evidence": [
+   "test:tui/terminal_image_upstream_test.go#TestUpstreamTerminalImageCapabilities",
+   "test:tui/image_transcoder_upstream_test.go#TestUpstreamImageTranscoding"
+  ],
+  "rationale": "terminal-image.ts getCellDimensions() returns the current CellDimensions; Go returns the same value type."
+ }
+]

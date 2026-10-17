@@ -1,4 +1,8 @@
+//go:build !pig_strip_docs
+
 package prompts
+
+// pi: packages/coding-agent/src/core/system-prompt.ts
 
 import (
 	"encoding/json"

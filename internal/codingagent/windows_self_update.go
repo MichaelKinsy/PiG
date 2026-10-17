@@ -14,6 +14,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/fsretry"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 )
 
 // quarantineDirName is the directory, in the node_modules holding the
@@ -21,10 +22,19 @@ import (
 // is about to replace.
 const quarantineDirName = ".pig-native-quarantine"
 
-// GetPackageDir is the installation directory of a compiled pig: the
-// directory holding the running executable, as upstream getPackageDir returns
-// for a compiled binary. It returns "" when the executable cannot be located.
+// GetPackageDir is upstream getPackageDir (config.ts:393): PIG_PACKAGE_DIR or PI_PACKAGE_DIR when set, normalized as Pi's normalizePath does (a leading ~ expands, a file:// URL becomes its path); otherwise the installation directory of a compiled pig, the
+// directory holding the running executable. It returns "" when the executable cannot be located.
 func GetPackageDir() string {
+	for _, name := range []string{"PIG_PACKAGE_DIR", "PI_PACKAGE_DIR"} {
+		if override := os.Getenv(name); override != "" {
+			// normalizePath: ~ expands and a file:// URL becomes its path. Pi throws for an invalid URL, which a string result cannot do, so the directory is reported as unlocated.
+			normalized, err := resolvepath.Normalize(override)
+			if err != nil {
+				return ""
+			}
+			return normalized
+		}
+	}
 	exe, err := os.Executable()
 	if err != nil {
 		return ""
@@ -89,7 +99,7 @@ func loadedSharedObjectsInPackageDir(packageDir string, sharedObjects []string) 
 	seen := make(map[string]bool)
 	var loadedFiles []string
 	for _, value := range sharedObjects {
-		filePath, err := normalizeWindowsPath(value)
+		filePath, err := normalizeWindowsPath(longWindowsPath(value))
 		if err != nil {
 			continue
 		}
@@ -138,7 +148,10 @@ func QuarantineWindowsNativeDependencies(ctx context.Context, packageDir string)
 var quarantineRenameWait func(context.Context, time.Duration) error
 
 func quarantineNativeDependencies(ctx context.Context, packageDir string, sharedObjects []string) error {
-	resolvedPackageDir, err := normalizeWindowsPath(packageDir)
+	// The loaded images carry their long names (loadedSharedObjects), so the package directory must too: a pig started
+	// through a short path (C:\Users\RUNNER~1\...) reports that spelling from os.Executable, and the images would never
+	// fall within it.
+	resolvedPackageDir, err := normalizeWindowsPath(longWindowsPath(packageDir))
 	if err != nil {
 		return err
 	}

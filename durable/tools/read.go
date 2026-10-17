@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord/output"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/env"
-	"github.com/MichaelKinsy/PiG/durable/harness"
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
@@ -46,13 +46,29 @@ type ReadToolDetails struct {
 	Truncation *ReadTruncation `json:"truncation,omitempty"`
 }
 
-// CreateReadTool creates the read tool. It reads text files. Remarks about
-// truncation and continuation are diagnostics; the content is only file text.
-func CreateReadTool() *durable.ToolRegistration {
-	description := fmt.Sprintf("Read the contents of a text file. Output is truncated to %d lines or %dKB (whichever is hit first). Use offset/limit for large files. When you need the full file, continue with offset until complete.", durable.DEFAULT_MAX_LINES, durable.DEFAULT_MAX_BYTES/1024)
+// ReadToolOptions configures the read tool.
+type ReadToolOptions struct {
+	// Images resizes and converts images; without one, images within DEFAULT_IMAGE_LIMITS.MaxBytes pass through as they are.
+	Images ImageProcessor
+}
+
+// CreateReadTool creates the read tool. It reads text files and images. Remarks about truncation, continuation, and
+// images are diagnostics; the content is only file text, or one image, which programs get as its ImageContent. Without an
+// image processor, supported images within the model's limits pass through as they are.
+func CreateReadTool(options *ReadToolOptions) *durable.ToolRegistration {
+	if options == nil {
+		options = &ReadToolOptions{}
+	}
+	formats := "jpg, png, gif, webp"
+	if options.Images != nil {
+		formats = "jpg, png, gif, webp, bmp"
+	}
+	description := fmt.Sprintf("Read the contents of a file. Supports text files and images (%s). Images are sent as attachments. For text files, output is truncated to %d lines or %dKB (whichever is hit first). Use offset/limit for large files. When you need the full file, continue with offset until complete.", formats, durable.DEFAULT_MAX_LINES, durable.DEFAULT_MAX_BYTES/1024)
 	return &durable.ToolRegistration{
 		ToolSchema: toolSchema("read", description, readParameters),
-		Execute:    executeRead,
+		Execute: func(ctx context.Context, args any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+			return executeRead(ctx, args, api, options.Images)
+		},
 	}
 }
 
@@ -107,7 +123,7 @@ func readHead(ctx context.Context, reader env.BinaryReader, start, end int64, sk
 	return text.String() + decoder.Flush(), nil
 }
 
-func executeRead(ctx context.Context, args any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+func executeRead(ctx context.Context, args any, api durable.ToolExecutionApi, images ImageProcessor) (durable.ToolExecutionResult, error) {
 	input, err := durable.FromJsonValue[ReadToolInput](args)
 	if err != nil {
 		return durable.ToolExecutionResult{}, err
@@ -116,11 +132,12 @@ func executeRead(ctx context.Context, args any, api durable.ToolExecutionApi) (d
 	if err != nil {
 		return durable.ToolExecutionResult{}, err
 	}
-	return readFile(ctx, executionEnv, input)
+	// Pi read.ts awaits imageModel(api, context) only for a file detected as an image, per attempt, after the scan.
+	return readFile(ctx, executionEnv, input, images, func() (imageModel, error) { return imageModelOf(ctx, api) })
 }
 
 // readFile reads the file input names through the environment's binary reader.
-func readFile(ctx context.Context, executionEnv env.ExecutionEnv, input ReadToolInput) (durable.ToolExecutionResult, error) {
+func readFile(ctx context.Context, executionEnv env.ExecutionEnv, input ReadToolInput, images ImageProcessor, modelOf func() (imageModel, error)) (durable.ToolExecutionResult, error) {
 	absolutePath, err := resolveReadToolPath(ctx, executionEnv, input.Path)
 	if err != nil {
 		return durable.ToolExecutionResult{}, err
@@ -130,13 +147,28 @@ func readFile(ctx context.Context, executionEnv env.ExecutionEnv, input ReadTool
 		return durable.ToolExecutionResult{}, err
 	}
 	defer func() { _ = reader.Close(ctx) }()
-	// A concurrent writer can change the file between the scan and the reads; retry once from a fresh scan.
+	// A concurrent writer can change the file between the scan and the reads; a file that shrank or was rewritten in place
+	// is read again once.
 	for attempt := 0; ; attempt++ {
 		before, err := reader.Info(ctx)
 		if err != nil {
 			return durable.ToolExecutionResult{}, err
 		}
-		result, err := readText(ctx, reader, before, input)
+		mimeType, err := detectSupportedImageMimeTypeOf(byteSource{size: before.Size, read: func(offset, length int64) ([]byte, error) {
+			return reader.Read(ctx, offset, length)
+		}})
+		if err != nil {
+			return durable.ToolExecutionResult{}, err
+		}
+		var result durable.ToolExecutionResult
+		if mimeType == "" {
+			result, err = readText(ctx, reader, input)
+		} else {
+			var model imageModel
+			if model, err = modelOf(); err == nil {
+				result, err = readImage(ctx, reader, before, input.Path, mimeType, images, model)
+			}
+		}
 		if err != nil {
 			return durable.ToolExecutionResult{}, err
 		}
@@ -144,7 +176,9 @@ func readFile(ctx context.Context, executionEnv env.ExecutionEnv, input ReadTool
 		if err != nil {
 			return durable.ToolExecutionResult{}, err
 		}
-		if after.Size == before.Size && after.MtimeMs == before.MtimeMs {
+		// A text file that only grew leaves the scanned text as it was; an image must be whole.
+		unchanged := after.Size == before.Size && after.MtimeMs == before.MtimeMs
+		if unchanged || mimeType == "" && after.Size > before.Size {
 			return result, nil
 		}
 		if attempt == 1 {
@@ -156,27 +190,7 @@ func readFile(ctx context.Context, executionEnv env.ExecutionEnv, input ReadTool
 // readText is the read result for the opened file. It equals decoding the whole file with TextDecoder, splitting it on
 // "\n", and bounding the selected lines with TruncateHead, while reading only one scan's worth of the file plus the
 // head.
-func readText(ctx context.Context, reader env.BinaryReader, info env.FileInfo, input ReadToolInput) (durable.ToolExecutionResult, error) {
-	mimeType, err := detectSupportedImageMimeTypeOf(byteSource{size: info.Size, read: func(offset, length int64) ([]byte, error) {
-		return reader.Read(ctx, offset, length)
-	}})
-	if err != nil {
-		return durable.ToolExecutionResult{}, err
-	}
-	if mimeType != "" {
-		// Image content is not supported yet.
-		isError := true
-		return durable.ToolExecutionResult{
-			Content: []ai.ToolResultMessageContent{},
-			IsError: &isError,
-			Diagnostics: []durable.ToolDiagnostic{{
-				Severity: durable.SeverityError,
-				Code:     "unsupported_image",
-				Message:  fmt.Sprintf("%s is an image (%s); reading images is not supported", input.Path, mimeType),
-			}},
-		}, nil
-	}
-
+func readText(ctx context.Context, reader env.BinaryReader, input ReadToolInput) (durable.ToolExecutionResult, error) {
 	startLine := 0.0
 	if input.Offset != nil && *input.Offset != 0 && !math.IsNaN(*input.Offset) {
 		startLine = math.Max(0, *input.Offset-1)
@@ -273,7 +287,7 @@ func readText(ctx context.Context, reader env.BinaryReader, info env.FileInfo, i
 			lineBytes = []byte(firstLine)
 			lineSize = int(scan.FirstLineBytes)
 		}
-		end := harness.CharacterEnd(lineBytes, durable.DEFAULT_MAX_BYTES)
+		end := output.CharacterEnd(lineBytes, durable.DEFAULT_MAX_BYTES)
 		outputText = decodeText(lineBytes[:min(end, len(lineBytes))])
 		diagnostics = append(diagnostics, durable.ToolDiagnostic{
 			Severity: durable.SeverityWarn,
@@ -307,9 +321,9 @@ func readText(ctx context.Context, reader env.BinaryReader, info env.FileInfo, i
 		})
 	}
 
-	result := durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{}, Diagnostics: diagnostics}
+	result := durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}, Diagnostics: diagnostics}
 	if outputText != "" {
-		result.Content = []ai.ToolResultMessageContent{ai.TextContent{Text: outputText}}
+		result.Output = []ai.ToolResultMessageContent{ai.TextContent{Text: outputText}}
 	}
 	if details != nil {
 		encoded, err := durable.ToJsonValue(details)

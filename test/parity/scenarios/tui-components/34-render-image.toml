@@ -1,0 +1,27 @@
+# Behavior family: tui-components (terminal-image renderImage)
+# Pi 1.1.0 probe: renderImage over kitty, iTerm2 and no protocol, three cell sizes, seven aspect ratios up to 2000 by 3 pixels, omitted and explicit
+# width and height limits (default width 80), aspect-ratio preservation, kitty ids and the cursor-movement flag, and payloads of 0 to 12289
+# characters with every padding (iTerm2's size field, kitty's 4096-character chunks); each result's sequence, columns, rows and id are compared
+# byte for byte. The Go test TestRenderImageMatchesPi runs the same corpus against the installed Pi; this scenario compares the two printed streams.
+name = "34-render-image"
+description = "renderImage returns the same kitty and iTerm2 sequences and cell sizes as Pi."
+covers = ["packages/tui/src/terminal-image.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/render-image-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/render-image-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 240
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['a=T,f=100', 'inline=1']
+runs = 2

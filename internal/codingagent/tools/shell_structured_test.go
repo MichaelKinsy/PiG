@@ -164,9 +164,9 @@ func TestSanitizeBinaryOutputRemovesExactlyTheUpstreamClass(t *testing.T) {
 func TestReadFullOutput(t *testing.T) {
 	t.Run("keeps everything in memory when no temp file exists", func(t *testing.T) {
 		acc := NewOutputAccumulator("pi-test")
-		acc.Append([]byte("\xef\xbb\xbfhello "))
-		acc.Append([]byte("w\xf0\x9f"))
-		acc.Append([]byte("\x98\x80rld\xff\n"))
+		_ = acc.Append([]byte("\xef\xbb\xbfhello "))
+		_ = acc.Append([]byte("w\xf0\x9f"))
+		_ = acc.Append([]byte("\x98\x80rld\xff\n"))
 		acc.Finish()
 		got, err := acc.ReadFullOutput(1024)
 		if err != nil || got.Truncated || got.Content != "hello w😀rld�\n" {
@@ -262,7 +262,7 @@ func TestReadFullOutput(t *testing.T) {
 func readFullAccumulator(t *testing.T, text string, maxLines, maxBytes int) *OutputAccumulator {
 	t.Helper()
 	acc := newOutputAccumulator(maxLines, maxBytes, "pi-test")
-	acc.Append([]byte(text))
+	_ = acc.Append([]byte(text))
 	acc.Finish()
 	snapshot := acc.Snapshot(true)
 	if err := acc.CloseTempFile(); err != nil {

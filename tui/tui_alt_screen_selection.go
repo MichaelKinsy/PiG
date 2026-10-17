@@ -6,10 +6,8 @@ import (
 	"slices"
 	"strings"
 	"time"
-	"unicode"
 
-	"github.com/rivo/uniseg"
-
+	"github.com/MichaelKinsy/PiG/internal/wordsegmenter"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -122,30 +120,17 @@ type wordSegment struct {
 	joiner     bool
 }
 
-// isWordLike mirrors Intl.Segmenter's isWordLike: a word segment holding a
-// letter or number.
-func isWordLike(segment string) bool {
-	for _, r := range segment {
-		if unicode.IsLetter(r) || unicode.IsNumber(r) {
-			return true
-		}
-	}
-	return false
-}
-
+// wordSegments is getWordSelection's segment walk (tui-alt-screen.ts:1179-1184): Intl.Segmenter word segments (getWordSegmenter, utils.ts) measured with visibleWidth.
 func wordSegments(line string) []wordSegment {
 	var segments []wordSegment
 	start := 0
-	state := -1
-	for line != "" {
-		var segment string
-		segment, line, state = uniseg.FirstWordInString(line, state)
-		end := start + widthx.VisibleWidth(segment)
+	for segment := range wordsegmenter.Segments(line) {
+		end := start + widthx.VisibleWidth(segment.Segment)
 		// Regular mode delegates double-click selection to the terminal
 		// emulator. Fullscreen owns mouse selection, so mirror common terminal
 		// word selection by keeping paths and kebab-case tokens whole.
-		joiner := segment == "/" || segment == "-"
-		segments = append(segments, wordSegment{start: start, end: end, selectable: isWordLike(segment) || joiner, joiner: joiner})
+		joiner := segment.Segment == "/" || segment.Segment == "-"
+		segments = append(segments, wordSegment{start: start, end: end, selectable: segment.IsWordLike || joiner, joiner: joiner})
 		start = end
 	}
 	return segments

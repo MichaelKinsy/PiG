@@ -1,5 +1,7 @@
 package codingagent_test
 
+// pi: packages/coding-agent/src/core/auth-guidance.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -11,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -30,6 +33,10 @@ func TestInteractivePromptValidationPrecedesBeforeAgentStart(t *testing.T) {
 		{"model without auth", "faux", "Error: No API key found for faux."},
 		{"invalid section", "bad-section", "Invalid system prompt section name: preamble"},
 		{"null tools", "null-tools", "Cannot read properties of null (reading 'length')"},
+		// _preparePromptAndToolLoadout replays the transcript's system messages after before_agent_start (agent-session.ts:1738-1748); pi-ai's contentText cannot filter a numeric content.
+		{"wrong-typed system content", "system-replay", "content.filter is not a function"},
+		// getCurrentSystemMessage(messages) is evaluated before buildSystemPromptSections(options) (agent-session.ts:1746-1747), so the replay's TypeError wins over an invalid section name.
+		{"wrong-typed system content before invalid section", "system-replay-bad-section", "content.filter is not a function"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			home := t.TempDir()
@@ -40,7 +47,7 @@ func TestInteractivePromptValidationPrecedesBeforeAgentStart(t *testing.T) {
 				t.Fatal(err)
 			}
 			cwd := t.TempDir()
-			services, err := coding.NewServices(coding.ServicesOptions{CWD: cwd, AgentDir: agentDir})
+			services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: cwd, AgentDir: agentDir})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -51,7 +58,7 @@ func TestInteractivePromptValidationPrecedesBeforeAgentStart(t *testing.T) {
 					mu.Lock()
 					events = append(events, name)
 					mu.Unlock()
-					if name == "before_agent_start" && tc.model == "bad-section" {
+					if name == "before_agent_start" && (tc.model == "bad-section" || tc.model == "system-replay-bad-section") {
 						options := extension.BeforeAgentStartOptions(args[1].(context.Context))
 						*options.Sections = append(*options.Sections, ai.PromptSection{Name: "preamble", Value: new("invalid")})
 					}
@@ -69,11 +76,11 @@ func TestInteractivePromptValidationPrecedesBeforeAgentStart(t *testing.T) {
 			runner := inproc.NewRunner([]extension.Extension{ext}, cwd)
 			provider := &loadoutProvider{}
 			var model *ai.Model
-			if tc.model == "faux" || tc.model == "bad-section" || tc.model == "null-tools" {
+			if tc.model == "faux" || tc.model == "bad-section" || tc.model == "null-tools" || tc.model == "system-replay" || tc.model == "system-replay-bad-section" {
 				model = &ai.Model{ID: "faux-1", DisplayName: "faux-1", Provider: provider, Capabilities: ai.ModelCapabilities{ContextWindow: 100000}}
 			}
-			if tc.model == "bad-section" || tc.model == "null-tools" {
-				if err := services.Auth().Set("faux", ai.Credential{Type: ai.CredentialAPIKey, Key: "test-key"}); err != nil {
+			if tc.model == "bad-section" || tc.model == "null-tools" || tc.model == "system-replay" || tc.model == "system-replay-bad-section" {
+				if err := configureFauxAuth(services, "test-key"); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -85,20 +92,27 @@ func TestInteractivePromptValidationPrecedesBeforeAgentStart(t *testing.T) {
 			if tc.model == "none" {
 				session.Agent().SetModel(nil)
 			}
-			h := icodingagent.NewTestHarness(t, icodingagent.InteractiveOptions{CWD: cwd, AgentDir: agentDir, Model: model, SessionHandle: session, SettingsManager: services.SettingsManager(), ExtensionRunner: runner}, nil)
+			if tc.model == "system-replay" || tc.model == "system-replay-bad-section" {
+				var system agent.AgentMessage
+				if err := system.UnmarshalJSON([]byte(`{"role":"system","content":5,"timestamp":1}`)); err != nil {
+					t.Fatal(err)
+				}
+				session.Agent().SetMessages([]agent.AgentMessage{system})
+			}
+			h := icodingagent.NewTestHarness(t, icodingagent.InteractiveModeOptions{CWD: cwd, AgentDir: agentDir, Model: model, SessionHandle: session, SettingsManager: services.SettingsManager(), ExtensionRunner: runner}, nil)
 			h.Do(func() { h.Enter("hello") })
 			deadline := time.Now().Add(10 * time.Second)
 			for !strings.Contains(h.Chat(), "Error:") && time.Now().Before(deadline) {
 				time.Sleep(10 * time.Millisecond)
 			}
 			h.WaitIdle(t, 10*time.Second)
-			if chat := h.Chat(); !strings.Contains(chat, tc.want) || strings.Contains(chat, "hello") {
+			if chat := h.Chat(); !strings.Contains(chat, tc.want) || strings.Contains(chat, "hello") || (tc.model == "system-replay-bad-section" && strings.Contains(chat, "Invalid system prompt section name")) {
 				t.Fatalf("chat = %q, want %q and no user message", chat, tc.want)
 			}
 			mu.Lock()
 			defer mu.Unlock()
 			var wantEvents []string
-			if tc.model == "bad-section" || tc.model == "null-tools" {
+			if tc.model == "bad-section" || tc.model == "null-tools" || tc.model == "system-replay" || tc.model == "system-replay-bad-section" {
 				wantEvents = []string{"before_agent_start"}
 			}
 			if tools, _ := provider.requests(); !slices.Equal(events, wantEvents) || len(tools) != 0 {

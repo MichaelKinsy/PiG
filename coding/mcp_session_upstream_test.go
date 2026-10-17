@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -119,8 +121,8 @@ func TestAgentSessionMCPKeepsCodemodeOnlyMCPToolsCallableAcrossTreeNavigation(t 
 
 	var firstAssistant string
 	for _, entry := range h.session.Inner().GetBranch() {
-		if message, ok := entry.AsMessage(); ok && message.Message.Assistant != nil {
-			firstAssistant = entry.Base.ID
+		if message, ok := entry.(icodingagent.MessageEntry); ok && message.Message.Assistant != nil {
+			firstAssistant = entry.Base().ID
 			break
 		}
 	}
@@ -194,6 +196,26 @@ func TestAgentSessionMCPDeclaresDirectlyExposedMCPToolsToTheModel(t *testing.T) 
 	requireEqual(t, "result text", mcpText(h.toolResult(t, "mcp__docs__search")), "direct guide\ndirect faq")
 }
 
+// Pi 1.2.0 agent-session-mcp.test.ts "tells scripts what directly exposed MCP tools resolve to".
+func TestAgentSessionMCPTellsScriptsWhatDirectlyExposedMCPToolsResolveTo(t *testing.T) {
+	h := setupMCP(t, extension.McpExposureDirect, nil, mcpSessionOptions{})
+	h.session.SetActiveToolsByName(append(h.session.ActiveToolNames(), "codemode"))
+	description := func(name string) string {
+		for _, tool := range h.session.Tools() {
+			if tool.Name() == name {
+				return tool.Schema().Description
+			}
+		}
+		return ""
+	}
+	if want := "Codemode: `tools.mcp__docs__search(args)` resolves to `{ content, structuredContent?: { hits }, isError? }`."; !strings.Contains(description("mcp__docs__search"), want) {
+		t.Errorf("search description = %q, want it to contain %q", description("mcp__docs__search"), want)
+	}
+	if want := "Codemode: `tools.mcp__docs__fail(args)` resolves to `{ content, structuredContent?, isError? }`."; !strings.Contains(description("mcp__docs__fail"), want) {
+		t.Errorf("fail description = %q, want it to contain %q", description("mcp__docs__fail"), want)
+	}
+}
+
 func TestAgentSessionMCPWithdrawsAndRestoresMCPToolsTheServerChanges(t *testing.T) {
 	for _, exposure := range []extension.McpExposure{extension.McpExposureDirect, extension.McpExposureCodemode} {
 		t.Run(string(exposure), func(t *testing.T) {
@@ -215,7 +237,7 @@ func TestAgentSessionMCPWithdrawsAndRestoresMCPToolsTheServerChanges(t *testing.
 			}
 			listChanged := func(want func([]string) bool) {
 				t.Helper()
-				if err := h.lastServer().Send(mcp.NewNotification("notifications/tools/list_changed", nil)); err != nil {
+				if err := h.lastServer().Send(context.Background(), mcp.NewNotification("notifications/tools/list_changed", nil)); err != nil {
 					t.Fatal(err)
 				}
 				mcpWaitFor(t, "the tool list to change", func() bool { return want(reachable()) })
@@ -430,17 +452,41 @@ func TestAgentSessionMCPWarnsWhenDeferredMCPToolsHaveNeitherToolSearchNorCodemod
 	requireEqual(t, "notifications", h.notes.all(), []string{"MCP tools are only reachable from the codemode or tool_search tool, but neither is active; they cannot be called."})
 }
 
+// Pi 1.2.0 agent-session-mcp.test.ts "activates another extension's codemode tool when it reaches other tools".
+func TestAgentSessionMCPActivatesAnotherExtensionsCodemodeToolWhenItReachesOtherTools(t *testing.T) {
+	inactive := false
+	otherInfo := extension.SourceInfo(extension.SourceInfo{Path: "/extensions/other.ts", Source: "local", Scope: "temporary", Origin: "top-level"})
+	other := extension.Extension{
+		Name: "other", Path: "/extensions/other.ts", ResolvedPath: "/extensions/other.ts", SourceInfo: otherInfo,
+		Tools: map[string]extension.RegisteredTool{"codemode": {SourceInfo: otherInfo, Definition: extension.ToolDefinition{
+			Name: "codemode", Label: "codemode", Description: "Another extension's codemode tool.", Parameters: json.RawMessage(`{"type":"object","properties":{}}`),
+			DefaultActive: &inactive,
+			ReachesTools:  func(json.RawMessage) extension.ToolReach { return extension.ToolReach{All: true} },
+			Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+				return extension.AgentToolResult{}, nil
+			},
+		}}},
+		ToolOrder: []string{"codemode"},
+	}
+	h := setupMCP(t, extension.McpExposureCodemode, nil, mcpSessionOptions{extensions: []extension.Extension{other}})
+	h.respond(boundaryReply("ready", ai.StopReasonStop, 0))
+	h.prompt(t, "start")
+
+	requireEqual(t, "active tools", h.session.ActiveToolNames(), []string{"codemode"})
+}
+
+// Pi: packages/coding-agent/src/core/extensions/types.ts:2044 (RegisteredTool.sourceInfo).
 func TestAgentSessionMCPDoesNotActivateAnotherExtensionsToolNamedCodemode(t *testing.T) {
 	// Registered first, so it wins over the codemode extension's codemode.
 	inactive := false
-	otherInfo := extension.SourceInfo(map[string]any{"path": "/extensions/other.ts", "source": "local", "scope": "temporary", "origin": "top-level"})
+	otherInfo := extension.SourceInfo(extension.SourceInfo{Path: "/extensions/other.ts", Source: "local", Scope: "temporary", Origin: "top-level"})
 	other := extension.Extension{
 		Name: "other", Path: "/extensions/other.ts", ResolvedPath: "/extensions/other.ts", SourceInfo: otherInfo,
 		Tools: map[string]extension.RegisteredTool{"codemode": {SourceInfo: otherInfo, Definition: extension.ToolDefinition{
 			Name: "codemode", Label: "codemode", Description: "Another extension's codemode tool.", Parameters: json.RawMessage(`{"type":"object","properties":{}}`),
 			DefaultActive: &inactive,
 			Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
-				return extension.AgentToolResult(nil), nil
+				return extension.AgentToolResult{}, nil
 			},
 		}}},
 		ToolOrder: []string{"codemode"},
@@ -585,7 +631,10 @@ func TestAgentSessionMCPWaitsForTheServersACodemodeScriptNames(t *testing.T) {
 
 func TestAgentSessionMCPWaitsForServersWhoseScriptIdentifiersDifferFromTheirNames(t *testing.T) {
 	h := setupSlow(t, mcpSessionOptions{name: "slow-docs"}, extension.McpExposureCodemode, 30*time.Millisecond)
-	h.respond(mcpCodemode(`await tools.mcp__slow_docs__search({ query: "q" }); return (await describeNamespace("slow_docs")).name;`), mcpDone())
+	// Pi 1.2.0: describeNamespace finds the namespace by the server name, its identifier, and both namespace spellings.
+	h.respond(mcpCodemode(`await tools.mcp__slow_docs__search({ query: "q" });
+const names = ["slow-docs", "slow_docs", "mcp__slow-docs", "mcp__slow_docs"];
+return [...new Set(await Promise.all(names.map(async (name) => (await describeNamespace(name))?.name)))];`), mcpDone())
 
 	h.prompt(t, "go")
 
@@ -593,7 +642,7 @@ func TestAgentSessionMCPWaitsForServersWhoseScriptIdentifiersDifferFromTheirName
 	if result.IsError {
 		t.Errorf("codemode failed: %s", mcpText(result))
 	}
-	requireEqual(t, "last line", mcpLastLine(t, result), "mcp__slow_docs")
+	requireEqual(t, "last line", mcpLastLine(t, result), `["mcp__slow_docs"]`)
 	requireEqual(t, "server calls", h.calls.all(), []string{`search:{"query":"q"}`})
 }
 
@@ -631,7 +680,7 @@ func TestAgentSessionMCPHoldsTheFirstPromptForServersWithDirectTools(t *testing.
 }
 
 func TestAgentSessionMCPHoldsTheFirstPromptForServersWithDirectToolsOnlyUpToStartupWait(t *testing.T) {
-	h := setupSlow(t, mcpSessionOptions{startupWait: 20 * time.Millisecond}, extension.McpExposureDirect, never)
+	h := setupSlow(t, mcpSessionOptions{startupWait: new(20)}, extension.McpExposureDirect, never)
 	h.respond(boundaryReply("ready", ai.StopReasonStop, 0))
 
 	h.prompt(t, "start")
@@ -729,12 +778,12 @@ func TestAgentSessionMCPActivatesToolSearchForDeferredMCPToolsAndKeepsLoadedTool
 	branch := h.session.Inner().GetBranch()
 	var firstUser, last string
 	for _, entry := range branch {
-		if message, ok := entry.AsMessage(); ok && message.Message.User != nil && firstUser == "" {
-			firstUser = entry.Base.ID
+		if message, ok := entry.(icodingagent.MessageEntry); ok && message.Message.User != nil && firstUser == "" {
+			firstUser = entry.Base().ID
 		}
 	}
 	if len(branch) > 0 {
-		last = branch[len(branch)-1].Base.ID
+		last = branch[len(branch)-1].Base().ID
 	}
 	if firstUser == "" || last == "" {
 		t.Fatal("Missing entries")

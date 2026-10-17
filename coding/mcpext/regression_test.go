@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
@@ -19,6 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/mcpext"
 	"github.com/MichaelKinsy/PiG/mcp"
 	"github.com/MichaelKinsy/PiG/mcp/mcptest"
+	"github.com/MichaelKinsy/PiG/mcp/oauth"
 )
 
 // Not upstream tests: regression guards for the Go realization.
@@ -29,7 +29,7 @@ func TestSessionShutdownReturnsWhileAServerIsStillConnecting(t *testing.T) {
 	host := newFakeHost()
 	entry := mcpext.McpServerEntry{Name: "slow", Config: extension.McpServerConfig{URL: "http://unused.invalid"}, Source: "test"}
 	ext := mcpext.New(host, mcpext.Options{
-		LoadConfig: func(mcpext.EventContext) mcpext.LoadedMcpConfig {
+		LoadConfig: func(context.Context) mcpext.LoadedMcpConfig {
 			return mcpext.LoadedMcpConfig{Servers: []mcpext.McpServerEntry{entry}}
 		},
 		CreateTransport: func(mcpext.McpServerEntry, string, mcp.AuthProvider) (mcp.Transport, error) {
@@ -124,7 +124,7 @@ func TestFormatMcpLogMessageHandlesNonObjectParams(t *testing.T) {
 // the callback arrives before the sign-in goes on to wait for it.
 type syncBrowser struct{ t *testing.T }
 
-func (b syncBrowser) ShowAuthorizationURL(u *url.URL) {
+func (b syncBrowser) ShowAuthorizationURL(u oauth.URL) {
 	response, err := http.Get(u.String())
 	if err != nil {
 		b.t.Error(err)
@@ -213,7 +213,8 @@ func TestCreateMcpToolDefinitionMatchesUpstreamProbes(t *testing.T) {
 		} else {
 			jsonEqual(t, d.Annotations, tc.annotations)
 		}
-		if want := `{"type":"object","properties":{"content":{"type":"array","items":{"type":"object"}},"isError":{"type":"boolean"},"_meta":{"type":"object"}},"required":["content"]}`; string(d.OutputSchema) != want {
+		// Pi 1.2.0 createMcpResultSchema: compact content blocks, structuredContent of any value, no _meta, open to newer fields.
+		if want := `{"type":"object","properties":{"content":{"type":"array","items":{"type":"object","properties":{"type":{"enum":["text","image","audio","resource_link","resource"]},"text":{"type":"string"},"data":{"type":"string"},"mimeType":{"type":"string"}},"required":["type"],"additionalProperties":true}},"structuredContent":{},"isError":{"type":"boolean"}},"required":["content"],"additionalProperties":true}`; string(d.OutputSchema) != want {
 			t.Errorf("%s: output schema %s", tc.tool, d.OutputSchema)
 		}
 	}
@@ -246,5 +247,39 @@ func TestConvertMcpResultMatchesUpstreamProbes(t *testing.T) {
 	jsonEqual(t, converted.Content, `[{"type":"text","text":"{\n  \"a\": 1\n}"}]`)
 	if !converted.IsError {
 		t.Fatal("not an error result")
+	}
+}
+
+// Upstream's session_start chain (mcp/index.ts) ends in
+// `.then(() => reportProblems(ctx)).catch((error) => { try { ctx.ui.notify("MCP failed to load: ...") } catch {} })`:
+// a throw from reportProblems' notify reaches that catch instead of escaping. Here reportProblems runs on a
+// background goroutine, where an escaping panic would end the process.
+func TestStartupProblemsReportPanicShowsAsLoadFailure(t *testing.T) {
+	entry := mcpext.McpServerEntry{Name: "broken", Config: extension.McpServerConfig{URL: "http://unused.invalid"}, Source: "test"}
+	ext := mcpext.New(newFakeHost(), mcpext.Options{
+		LoadConfig: func(context.Context) mcpext.LoadedMcpConfig {
+			return mcpext.LoadedMcpConfig{Servers: []mcpext.McpServerEntry{entry}, Errors: []string{"bad entry"}}
+		},
+		CreateTransport: func(mcpext.McpServerEntry, string, mcp.AuthProvider) (mcp.Transport, error) {
+			return nil, errors.New("no transport")
+		},
+		Credentials: mcpext.NewMcpOAuthCredentialStoreWithBackend(&mcpext.InMemoryAuthStorageBackend{}, ""),
+		LogPath:     t.TempDir() + "/mcp.log",
+	})
+	t.Cleanup(ext.SessionShutdown)
+	notes := &notifications{}
+	ctx := eventContext(t.TempDir(), notes)
+	ctx.Notify = func(message, level string) {
+		if strings.HasPrefix(message, "MCP servers need attention:") {
+			panic(errors.New("notify exploded"))
+		}
+		notes.notify(message, level)
+	}
+
+	ext.SessionStart(ctx)
+	ext.Pending()
+
+	if got := notes.all(); !slices.Contains(got, "MCP failed to load: notify exploded") {
+		t.Fatalf("notifications = %q, want the reportProblems panic shown as a load failure", got)
 	}
 }

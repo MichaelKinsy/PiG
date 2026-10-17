@@ -2,6 +2,16 @@
 
 The Go SDK bridges Pi's extension API through PiG's subprocess host (D19). Each factory returns `*sdk.Extension`. Use `pig extension init ./my-extension --lang go` to create a module. Run `pig reload --sdk-path` to stage and locate the SDK from the installed binary.
 
+## Pi helper exports
+
+The helpers Pi exports to extensions keep their names in Go case and behave like Pi's, which the conformance suite checks against Pi's own code: `TruncateHead`, `TruncateTail`, `TruncateLine`, `FormatSize` and `DefaultMaxLines`/`DefaultMaxBytes` (Pi's truncate.ts), `WithFileMutationQueue`, `IsToolCallEventType` (Pi's `isToolCallEventType`, matching the tool name exactly), and `AgentDir`, `ConfigDirName`, `Version` (Pi's `getAgentDir()`, `CONFIG_DIR_NAME`, `VERSION`). Byte limits count UTF-8 bytes and `TruncateLine` counts UTF-16 units like a JavaScript string. A nil `TruncationOptions` limit takes Pi's default; 0 is used as given. The host-config functions return `ErrHostInfoUnavailable`, never a made-up path, when the process was not started by a PiG host. `Context.GetEditorComponent` returns the factory this extension installed with `SetEditorComponent`, or nil. Pi's `getEditorComponent` returns the factory installed by any extension, so one extension can wrap another's editor; PiG returns only the calling extension's own factory.
+
+`Context.SetWorkingMessage("")` shows an empty working label, as Pi does; `Context.ClearWorkingMessage()` restores the default label (Pi's `setWorkingMessage()` with no argument).  `Context.ClearHiddenThinkingLabel()` does the same for `SetHiddenThinkingLabel`.
+
+## Upgrading an older extension
+
+`pig extension upgrade` applies the rewrite rules in the `upgrade` package of this module to an extension written for an earlier SDK. Add a rule there, with an old-extension fixture under `upgrade/testdata/fixtures`, for every breaking change; `make sdk-apidiff` fails a break without a rule and a release note. See the upgrade section of the extensions guide.
+
 ## Breaking changes / migration to 0.3.0
 
 Pi 0.99.1 distinguishes unknown context usage from zero and an omitted boolean option from false. Go uses pointers for these values. Rust uses `Option`; Python uses `None`. The Go helpers below select an explicit caller fallback without changing the nullable fields or wire values.

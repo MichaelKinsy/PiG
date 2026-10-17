@@ -11,15 +11,15 @@ import (
 
 // The helpers in .upstream/v0.99.1/packages/ai/test/abort.test.ts:14-99 assert cancellation and follow-up behavior independently of generated wording. The paced faux provider supplies the deterministic generation side; remote transport cancellation is live-only.
 func TestAbortMatrixUpstream(t *testing.T) {
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
 	specs := []struct{ provider, model string }{
 		{"google", "gemini-2.5-flash"}, {"openai", "gpt-4o-mini"}, {"openai", "gpt-5-mini"}, {"azure", "gpt-4o-mini"},
 		{"anthropic", "claude-sonnet-4-6"}, {"mistral", "devstral-medium-latest"}, {"together", "moonshotai/Kimi-K3"}, {"baseten", "zai-org/GLM-5.2"},
-		{"minimax", "MiniMax-M2.7"}, {"xiaomi", "mimo-v2.5-pro"}, {"xiaomi-token-plan-cn", "mimo-v2.5-pro"}, {"xiaomi-token-plan-ams", "mimo-v2.5-pro"},
-		{"xiaomi-token-plan-sgp", "mimo-v2.5-pro"}, {"qwen-token-plan", "qwen3.7-max"}, {"qwen-token-plan-individual", "qwen3.8-max"}, {"qwen-token-plan-cn", "qwen3.7-max"},
+		{"minimax", "MiniMax-M2.7"}, {"xiaomi", "mimo-v2.6-pro"}, {"xiaomi-token-plan-cn", "mimo-v2.6-pro"}, {"xiaomi-token-plan-ams", "mimo-v2.6-pro"},
+		{"xiaomi-token-plan-sgp", "mimo-v2.6-pro"}, {"qwen-token-plan", "qwen3.7-max"}, {"qwen-token-plan-individual", "qwen3.8-max"}, {"qwen-token-plan-cn", "qwen3.7-max"},
 		{"kimi-coding", "kimi-for-coding"}, {"vercel-ai-gateway", "google/gemini-2.5-flash"}, {"openai-codex", "gpt-5.5"}, {"amazon-bedrock", "global.anthropic.claude-sonnet-4-5-20250929-v1:0"},
 	}
 	cases := upstreamCaseSites(t, "packages/ai/test/abort.test.ts")
@@ -33,7 +33,7 @@ func TestAbortMatrixUpstream(t *testing.T) {
 			if _, ok := ai.LookupModelExact(spec.provider + "/" + spec.model); !ok {
 				t.Fatal("missing upstream model", spec)
 			}
-			provider := ai.NewFauxProvider(ai.FauxConfig{ProviderID: spec.provider, Model: spec.model, TokensPerSecond: 100, MinTokenSize: 1, MaxTokenSize: 1})
+			provider := ai.NewFauxProvider(ai.FauxConfig{ProviderID: spec.provider, Model: spec.model, TokensPerSecond: 100, TokenSize: &ai.FauxTokenSize{Min: new(1), Max: new(1)}})
 			provider.SetResponses([]ai.FauxResponseStep{ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText(strings.Repeat("Alice Bob Carol David ", 10))}, StopReason: "stop"})})
 			model := &ai.Model{ID: spec.model, Provider: provider}
 			ctx, cancel := context.WithCancel(t.Context())
@@ -77,7 +77,12 @@ func TestAbortMatrixUpstream(t *testing.T) {
 				t.Fatal("unported helper", tc.ID)
 			}
 			request := ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText(prompt)}}}
-			message := services.ModelRuntime().Complete(ctx, model, request, ai.StreamOptions{})
+			// abort.test.ts calls compat.ts complete, which hands the request straight to the provider's stream; Pi's Model Runtime would instead fail the aborted request in lazyStream's auth setup with stopReason "error" (coding TestRequestCancelledBeforeItsProviderStartsIsAPiSetupError).
+			stream, err := provider.Stream(ctx, ai.NormalizeContext(request), ai.StreamOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			message := stream.Result()
 			if message.StopReason != ai.StopReasonAborted {
 				t.Fatalf("immediate abort=%#v", message)
 			}

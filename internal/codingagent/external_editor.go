@@ -3,8 +3,9 @@
 // Mirrors upstream openExternalEditor() in
 // .upstream/current/packages/coding-agent/src/modes/interactive/interactive-mode.ts:3358.
 // User presses Ctrl+G; pig:
-//   1. Writes the current editor buffer into a tempfile (suffix .md so
-//      the user's editor highlights markdown).
+//   1. Writes the current editor buffer to prompt.md inside a private
+//      pi-editor-* directory under the system temp directory
+//      (external-editor.ts mkdtempSync(join(tmpdir(), "pi-editor-"))).
 //   2. Restores cooked-mode terminal so the editor can take over the
 //      TTY. (Done by caller, not this helper.)
 //   3. Resolves the configured command, VISUAL, EDITOR, or the platform default,
@@ -15,7 +16,7 @@
 //      (most editors append one), returns the content.
 //   5. On non-zero exit OR read error, returns the initial text plus
 //      an error so caller can leave the editor buffer untouched.
-//   6. Tempfile always removed.
+//   6. The private directory is always removed.
 //
 // Re-entering raw mode and triggering a full re-render is the caller's
 // responsibility. Single-responsibility split keeps this helper trivial
@@ -27,17 +28,21 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
-// OpenExternalEditor resolves the command with SettingsManager's precedence, writes initial into a tempfile, runs the editor with inherited stdio, and returns the file contents on
+// OpenExternalEditor resolves the command with SettingsManager's precedence, writes initial to prompt.md in a private pi-editor-*
+// directory under the system temp directory, runs the editor on that file with inherited stdio, and returns the file contents on
 // success. On editor non-zero exit OR read error, returns initial
 // unchanged plus a non-nil error.
 //
-// The tempfile is always removed before this function returns.
+// The directory is always removed before this function returns.
 //
 // Caller is responsible for:
 //   - restoring cooked-mode terminal before calling (so the editor's
@@ -48,19 +53,17 @@ import (
 func OpenExternalEditor(ctx context.Context, initial string, configuredEditor string) (string, error) {
 	editorCmd := resolveExternalEditorCommand(configuredEditor, os.Getenv("VISUAL"), os.Getenv("EDITOR"), runtime.GOOS)
 
-	tmp, err := os.CreateTemp("", "pig-editor-*.md")
+	// upstream: packages/coding-agent/src/modes/interactive/external-editor.ts:editInExternalEditor creates the private directory
+	// (mode 0700) and writes prompt.md in it; cleanup is best effort.
+	directory, err := os.MkdirTemp("", "pi-editor-")
 	if err != nil {
-		return initial, fmt.Errorf("external editor: tempfile: %w", err)
+		return initial, fmt.Errorf("external editor: tempdir: %w", err)
 	}
-	tmpPath := tmp.Name()
-	defer func() { _ = os.Remove(tmpPath) }()
+	defer func() { _ = os.RemoveAll(directory) }()
+	tmpPath := filepath.Join(directory, "prompt.md")
 
-	if _, err := tmp.WriteString(initial); err != nil {
-		_ = tmp.Close()
+	if err := os.WriteFile(tmpPath, []byte(initial), 0o666); err != nil {
 		return initial, fmt.Errorf("external editor: write initial: %w", err)
-	}
-	if err := tmp.Close(); err != nil {
-		return initial, fmt.Errorf("external editor: close tmp: %w", err)
 	}
 
 	// Pi splits on literal spaces, preserving empty arguments. Quoting and tab expansion are left to cmd.exe only on Windows.
@@ -68,12 +71,18 @@ func OpenExternalEditor(ctx context.Context, initial string, configuredEditor st
 	args := append([]string{}, parts[1:]...)
 	args = append(args, tmpPath)
 
+	_, _ = fmt.Fprintf(os.Stdout, "Launching external editor: %s\nPi will resume when the editor exits.\n", editorCmd)
+
+	// spawn(editor, args) throws before it starts anything when the editor is empty (a command with a leading space splits to an empty
+	// first element) or an argument has a NUL, with or without shell: true; cmd.exe would otherwise run a line whose first word it trims.
+	if err := nodespawn.CheckArguments(parts[0], args); err != nil {
+		return initial, fmt.Errorf("external editor: run %s: %w", parts[0], err)
+	}
+
 	cmd := editorCommand(ctx, parts[0], args)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-
-	_, _ = fmt.Fprintf(os.Stdout, "Launching external editor: %s\nPi will resume when the editor exits.\n", editorCmd)
 
 	if err := cmd.Run(); err != nil {
 		// Editor exited non-zero (or failed to spawn). Match upstream:
@@ -87,7 +96,7 @@ func OpenExternalEditor(ctx context.Context, initial string, configuredEditor st
 	if err != nil {
 		return initial, fmt.Errorf("external editor: read result: %w", err)
 	}
-	// Strip exactly one trailing newline (most editors append one).
-	out := strings.TrimSuffix(text.StripBom(string(data)), "\n")
+	// readFileSync(path, "utf-8"): each ill-formed byte sequence becomes U+FFFD. Then one trailing newline goes (most editors append one).
+	out := strings.TrimSuffix(text.StripBom(jsstring.FromUTF8(data)), "\n")
 	return out, nil
 }

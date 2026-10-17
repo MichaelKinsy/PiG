@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
 
 func TestTypeScriptDeclarationsPinUpstreamAndExposePiGLogin(t *testing.T) {
@@ -35,15 +36,9 @@ func TestTypeScriptDeclarationsPinUpstreamAndExposePiGLogin(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	upstreamData, err := os.ReadFile(filepath.Join(root, "internal", "coding", "pigversion", "pigversion.go"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	match := regexp.MustCompile(`const UpstreamVersion = "([^"]+)"`).FindSubmatch(upstreamData)
-	if len(match) != 2 {
-		t.Fatal("coding.UpstreamVersion not found")
-	}
-	wantVersion := string(match[1])
+	// The constant, not the text of pigversion.go, so a PI_UPSTREAM_REF run (a Go overlay of that file) checks its own pin.
+	// npm dependencies name the package version (1.1.0), not a commit pin's display version (1.1.0+42a3497d).
+	wantVersion := pigversion.UpstreamPackageVersion
 	const piPackage = "@earendil-works/pi-coding-agent"
 	if got := manifest.PeerDependencies[piPackage]; got != wantVersion {
 		t.Errorf("peer dependency %s = %q, want %q", piPackage, got, wantVersion)

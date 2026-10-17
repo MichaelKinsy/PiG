@@ -1,0 +1,105 @@
+[
+ {
+  "upstream": "packages/mcp/src/protocol/jsonrpc.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientHandleResponseResolvesResultAndRejectsErrorResponse",
+   "TestClientReturnsStructuredToolContentAndSurfacesJSONRPCErrors",
+   "TestClientRequestSendsTheMethodAndParamsAndReturnsTheRawResult",
+   "TestErrorClassesCarryUpstreamNamesMessagesAndFields",
+   "TestJSONRPCGuardsAnswerLikeUpstreamForUnknownValues"
+  ],
+  "upstream_reference": "packages/mcp/src/protocol/jsonrpc.ts (McpError, McpConnectionClosedError, McpTimeoutError, McpAbortError, isJsonRpcRequest, isJsonRpcNotification, isJsonRpcResponse); packages/mcp/test/*.test.ts",
+  "mutation": "mcp/jsonrpc.go: NewMcpError drops the data (TestErrorClassesCarryUpstreamNamesMessagesAndFields, TestClientReturnsStructuredToolContentAndSurfacesJSONRPCErrors FAIL); NewMcpError drops the code (TestClientHandleResponseResolvesResultAndRejectsErrorResponse FAIL); NewMcpConnectionClosedError drops the message (TestErrorClassesCarryUpstreamNamesMessagesAndFields FAIL); the timeout text spells \"%d ms\" (TestErrorClassesCarryUpstreamNamesMessagesAndFields FAIL); NewMcpTimeoutError drops the timeout (TestErrorClassesCarryUpstreamNamesMessagesAndFields FAIL); the default abort text changes (TestErrorClassesCarryUpstreamNamesMessagesAndFields FAIL); NewMcpAbortError drops the message (TestErrorClassesCarryUpstreamNamesMessagesAndFields FAIL); mcp/jsonrpc_notification.go: a notification may carry an id (TestJSONRPCGuardsAnswerLikeUpstreamForUnknownValues FAIL); a request needs no valid id (TestJSONRPCGuardsAnswerLikeUpstreamForUnknownValues FAIL); a response error needs no string message (TestJSONRPCGuardsAnswerLikeUpstreamForUnknownValues FAIL); a response with a result may also carry an error (TestJSONRPCGuardsAnswerLikeUpstreamForUnknownValues FAIL); baseline PASS"
+ },
+ {
+  "upstream": "packages/mcp/src/protocol/jsonrpc.ts",
+  "package": "./mcp/mcptest",
+  "tests": [
+   "TestInMemoryTransportRefusesASecondPeerAndAnUnconnectedSend"
+  ],
+  "upstream_reference": "packages/mcp/src/protocol/jsonrpc.ts (McpError, McpConnectionClosedError, McpTimeoutError, McpAbortError, isJsonRpcRequest, isJsonRpcNotification, isJsonRpcResponse); packages/mcp/test/*.test.ts",
+  "mutation": "mcp/jsonrpc.go: NewMcpError drops the data (TestErrorClassesCarryUpstreamNamesMessagesAndFields, TestClientReturnsStructuredToolContentAndSurfacesJSONRPCErrors FAIL); NewMcpError drops the code (TestClientHandleResponseResolvesResultAndRejectsErrorResponse FAIL); NewMcpConnectionClosedError drops the message (TestErrorClassesCarryUpstreamNamesMessagesAndFields FAIL); the timeout text spells \"%d ms\" (TestErrorClassesCarryUpstreamNamesMessagesAndFields FAIL); NewMcpTimeoutError drops the timeout (TestErrorClassesCarryUpstreamNamesMessagesAndFields FAIL); the default abort text changes (TestErrorClassesCarryUpstreamNamesMessagesAndFields FAIL); NewMcpAbortError drops the message (TestErrorClassesCarryUpstreamNamesMessagesAndFields FAIL); mcp/jsonrpc_notification.go: a notification may carry an id (TestJSONRPCGuardsAnswerLikeUpstreamForUnknownValues FAIL); a request needs no valid id (TestJSONRPCGuardsAnswerLikeUpstreamForUnknownValues FAIL); a response error needs no string message (TestJSONRPCGuardsAnswerLikeUpstreamForUnknownValues FAIL); a response with a result may also carry an error (TestJSONRPCGuardsAnswerLikeUpstreamForUnknownValues FAIL); baseline PASS"
+ },
+ {
+  "upstream": "packages/mcp/src/protocol/content.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestToLLMContentFallsBackToTheStructuredContentAsJSONWhenThereAreNoBlocks",
+   "TestCallToolResultKeepsBlocksWithMissingOrIllTypedMembers"
+  ],
+  "upstream_reference": "packages/mcp/src/protocol/content.ts (toLlmContent)",
+  "mutation": "mcp/content.go: the structured-content fallback applies when one block exists (TestToLLMContentFallsBackToTheStructuredContentAsJSONWhenThereAreNoBlocks FAIL); every block is skipped (TestCallToolResultKeepsBlocksWithMissingOrIllTypedMembers FAIL); baseline PASS"
+ },
+ {
+  "upstream": "packages/mcp/src/client.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientDecodesEveryListedMemberAndServerCapability",
+   "TestClientKeepsTheEntriesOfResourceListsAndReadsAsTheServerSentThem",
+   "TestClientListsAndReadsResources",
+   "TestClientListResourceTemplatesPageSendsTheCursorAndReturnsOnePage",
+   "TestClientPingSendsAPingRequestAndSurfacesAServerError",
+   "TestClientNotifySendsANotificationWithoutAnIDAndFailsWhenNotConnected",
+   "TestClientSetRequestHandlerAnswersServerRequestsUntilDisposed",
+   "TestClientSetRequestHandlerDisposeKeepsAHandlerThatReplacedIt"
+  ],
+  "upstream_reference": "packages/mcp/src/client.ts:262-310 (setRequestHandler, ping, listResources, listResourceTemplates, readResource, notify)",
+  "mutation": "mcp/client.go: ListResources filters with the template predicate (TestClientListsAndReadsResources, TestClientDecodesEveryListedMemberAndServerCapability FAIL); ListResourcesPage drops nextCursor (TestClientListsAndReadsResources FAIL); ListResourceTemplates calls resources/list (TestClientListsAndReadsResources FAIL); ListResourceTemplatesPage drops nextCursor (TestClientListResourceTemplatesPageSendsTheCursorAndReturnsOnePage FAIL); ReadResource alters the uri (TestClientListsAndReadsResources FAIL); Ping sends \"pong\" (TestClientPingSendsAPingRequestAndSurfacesAServerError FAIL); Notify alters the method (TestClientNotifySendsANotificationWithoutAnIDAndFailsWhenNotConnected FAIL); the dispose function removes a handler that replaced it (TestClientSetRequestHandlerDisposeKeepsAHandlerThatReplacedIt FAIL); SetRequestHandler stores the handler under another method (TestClientSetRequestHandlerAnswersServerRequestsUntilDisposed FAIL); baseline PASS"
+ },
+ {
+  "upstream": "packages/mcp/src/transports/streamable-http.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestErrorClassesCarryUpstreamNamesMessagesAndFields",
+   "TestStreamableHTTPTransportClassifiesAuthenticationFailures",
+   "TestStreamableHTTPTransportDropsALeadingBOMFromAnErrorBody"
+  ],
+  "upstream_reference": "packages/mcp/src/transports/streamable-http.ts (McpHttpError, McpAuthRequiredError)",
+  "mutation": "mcp/streamable_http.go: NewMcpHttpError drops the status (TestErrorClassesCarryUpstreamNamesMessagesAndFields, TestStreamableHTTPTransportClassifiesAuthenticationFailures FAIL); NewMcpHttpError drops the body (TestStreamableHTTPTransportDropsALeadingBOMFromAnErrorBody FAIL); the authentication-required message changes (TestErrorClassesCarryUpstreamNamesMessagesAndFields FAIL); baseline PASS"
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/errors.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestOAuthErrorClassesCarryTheirNameAndMessage",
+   "TestOAuthErrorConstructorsMatchErrorsTs",
+   "TestOAuthErrorMessagesAreTheOnesErrorsTSBuilds"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/errors.ts (McpOAuthAuthorizationRequiredError)",
+  "mutation": "mcp/oauth/errors.go: the authorization-required message loses \"user\" (TestOAuthErrorClassesCarryTheirNameAndMessage, TestOAuthErrorConstructorsMatchErrorsTs, TestOAuthErrorMessagesAreTheOnesErrorsTSBuilds FAIL); baseline PASS"
+ },
+ {
+  "upstream": "packages/mcp/src/oauth/provider.ts",
+  "package": "./mcp/oauth",
+  "tests": [
+   "TestMemoryOAuthStateStoreLoadsNothingUntilASaveAndCopiesBothWays",
+   "TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL",
+   "TestMcpOAuthProviderCodeVerifierRoundTripsAndFailsWhenNoneIsStored",
+   "TestMcpOAuthProviderDiscoveryStateRoundTrips"
+  ],
+  "upstream_reference": "packages/mcp/src/oauth/provider.ts (McpOAuthStateStore.save)",
+  "mutation": "mcp/oauth/provider.go: MemoryOAuthStateStore.Save keeps the caller's state without a copy (TestMemoryOAuthStateStoreLoadsNothingUntilASaveAndCopiesBothWays FAIL); Save stores nothing (TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL, TestMcpOAuthProviderCodeVerifierRoundTripsAndFailsWhenNoneIsStored FAIL); baseline PASS"
+ },
+ {
+  "upstream": "packages/mcp/src/client.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientAnswersAServerPingWithAnEmptyResult",
+   "TestClientCancelledNotificationParamsKeepUpstreamMemberOrder",
+   "TestClientHandleResponseResolvesResultAndRejectsErrorResponse"
+  ],
+  "upstream_reference": "packages/mcp/src/client.ts:150-180 (constructor: nextRequestId, the built-in ping request handler)",
+  "mutation": "mcp/client.go: NewClient starts request IDs at 2 (TestClientCancelledNotificationParamsKeepUpstreamMemberOrder FAIL); the built-in ping handler is registered under another method (TestClientAnswersAServerPingWithAnEmptyResult FAIL); baseline PASS"
+ },
+ {
+  "upstream": "packages/mcp/src/client.ts",
+  "package": "./mcp",
+  "tests": [
+   "TestClientCancelsAbortedAndTimedOutRequests",
+   "TestClientCancelledNotificationParamsKeepUpstreamMemberOrder"
+  ],
+  "upstream_reference": "packages/mcp/src/client.ts (an aborted request rejects with McpAbortError and sends notifications/cancelled unless the method is initialize)",
+  "mutation": "mcp/client.go: an aborted request rejects with McpConnectionClosedError (TestClientCancelsAbortedAndTimedOutRequests FAIL); notifications/cancelled is sent for initialize too (TestClientCancelledNotificationParamsKeepUpstreamMemberOrder, TestClientCancelsAbortedAndTimedOutRequests FAIL); baseline PASS"
+ }
+]

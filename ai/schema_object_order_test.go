@@ -18,10 +18,11 @@ func TestStrictSchemaRetainsImportedPropertyOrderAcrossTranscriptAndJSON(t *test
 	for range 3 {
 		transcript := NormalizeContext(Context{Tools: []ToolSchema{tool}})
 		tool = GetCurrentTools(transcript.Messages())[0]
-		schema, err := getJSONSchemaToolParameters(tool, new(true))
+		toolParameters, err := getJSONSchemaToolParameters(tool, new(true))
 		if err != nil {
 			t.Fatal(err)
 		}
+		schema := toolParameters.Schema
 		if !reflect.DeepEqual(schema["required"], []string{"zeta", "alpha"}) {
 			t.Fatalf("required=%#v", schema["required"])
 		}
@@ -44,10 +45,11 @@ func TestSchemaOrderUsesJavaScriptIntegerKeyEnumeration(t *testing.T) {
 	if err := json.Unmarshal([]byte(`{"name":"numeric","parameters":{"type":"object","properties":{"10":{"type":"string"},"2":{"type":"string"},"foo":{"type":"string"},"01":{"type":"string"}},"required":[]}}`), &tool); err != nil {
 		t.Fatal(err)
 	}
-	schema, err := getJSONSchemaToolParameters(tool, new(true))
+	toolParameters, err := getJSONSchemaToolParameters(tool, new(true))
 	if err != nil {
 		t.Fatal(err)
 	}
+	schema := toolParameters.Schema
 	if !reflect.DeepEqual(schema["required"], []string{"2", "10", "foo", "01"}) {
 		t.Fatalf("required=%#v", schema["required"])
 	}
@@ -58,19 +60,21 @@ func TestSchemaOrderHandlesEscapedPropertyPathsAndDoesNotAliasStrictOutput(t *te
 	if err := json.Unmarshal([]byte(`{"name":"paths","parameters":{"type":"object","properties":{"a/b~c":{"type":"object","properties":{"z":{"type":"string"},"a":{"type":"string"}}}}}}`), &tool); err != nil {
 		t.Fatal(err)
 	}
-	schema, err := getJSONSchemaToolParameters(tool, new(true))
+	toolParameters, err := getJSONSchemaToolParameters(tool, new(true))
 	if err != nil {
 		t.Fatal(err)
 	}
+	schema := toolParameters.Schema
 	nested := schema["properties"].(map[string]any)["a/b~c"].(map[string]any)["anyOf"].([]any)[0].(map[string]any)
 	if !reflect.DeepEqual(nested["required"], []string{"z", "a"}) {
 		t.Fatalf("nested=%#v", nested)
 	}
 	nested["required"].([]string)[0] = "mutated"
-	second, err := getJSONSchemaToolParameters(tool, new(true))
+	toolParameters, err = getJSONSchemaToolParameters(tool, new(true))
 	if err != nil {
 		t.Fatal(err)
 	}
+	second := toolParameters.Schema
 	again := second["properties"].(map[string]any)["a/b~c"].(map[string]any)["anyOf"].([]any)[0].(map[string]any)
 	if !reflect.DeepEqual(again["required"], []string{"z", "a"}) {
 		t.Fatalf("aliased required=%#v", again["required"])
@@ -98,10 +102,11 @@ func TestSchemaOrderKeepsEveryKeyOfAWideObject(t *testing.T) {
 	if err := json.Unmarshal([]byte(input), &tool); err != nil {
 		t.Fatal(err)
 	}
-	schema, err := getJSONSchemaToolParameters(tool, new(true))
+	toolParameters, err := getJSONSchemaToolParameters(tool, new(true))
 	if err != nil {
 		t.Fatal(err)
 	}
+	schema := toolParameters.Schema
 	if got, ok := schema["required"].([]string); !ok || !slices.Equal(got, want) {
 		t.Fatalf("required has %d keys (%v), want the %d keys in source order", len(got), ok, len(want))
 	}

@@ -15,20 +15,29 @@ type EditReplacement struct {
 	NewText string
 }
 
-// EditsDiffPreview is upstream EditDiffResult or EditDiffError: the diff the
-// edits would make, with its first changed line, or why they cannot apply.
-type EditsDiffPreview struct {
+// EditDiffResult is upstream's EditDiffResult: the diff the edits would make and the first changed line, 0 when there is none (upstream undefined, as EditToolDetails).
+type EditDiffResult struct {
 	Diff             string
 	FirstChangedLine int
-	Error            string
 }
+
+// EditDiffError is upstream's EditDiffError: why the edits cannot apply.
+type EditDiffError struct {
+	Error string
+}
+
+// EditDiffOutcome is upstream's EditDiffResult | EditDiffError union; EditDiffResult and EditDiffError are its only members.
+type EditDiffOutcome interface{ editDiffOutcome() }
+
+func (EditDiffResult) editDiffOutcome() {}
+func (EditDiffError) editDiffOutcome()  {}
 
 // ComputeEditsDiff computes the diff the edits would make to path without
 // writing it, as the upstream edit renderer previews an edit call.
-func ComputeEditsDiff(path string, edits []EditReplacement, cwd string) EditsDiffPreview {
+func ComputeEditsDiff(path string, edits []EditReplacement, cwd string) EditDiffOutcome {
 	absolutePath, err := resolveToCwd(path, cwd)
 	if err != nil {
-		return EditsDiffPreview{Error: fmt.Sprintf("Could not edit file: %s. Error: %s.", path, err.Error())}
+		return EditDiffError{Error: fmt.Sprintf("Could not edit file: %s. Error: %s.", path, err.Error())}
 	}
 	file, err := os.Open(absolutePath)
 	if err != nil {
@@ -36,12 +45,12 @@ func ComputeEditsDiff(path string, edits []EditReplacement, cwd string) EditsDif
 		if code := nodeErrorCode(err); code != "" {
 			detail = "Error code: " + code
 		}
-		return EditsDiffPreview{Error: fmt.Sprintf("Could not edit file: %s. %s.", path, detail)}
+		return EditDiffError{Error: fmt.Sprintf("Could not edit file: %s. %s.", path, detail)}
 	}
 	_ = file.Close()
 	data, err := os.ReadFile(absolutePath)
 	if err != nil {
-		return EditsDiffPreview{Error: err.Error()}
+		return EditDiffError{Error: err.Error()}
 	}
 	var decoder utf8StreamDecoder
 	_, content := text.SplitBom(decoder.decode(data, false))
@@ -51,8 +60,8 @@ func ComputeEditsDiff(path string, edits []EditReplacement, cwd string) EditsDif
 	}
 	applied, err := applyEditsToNormalizedContent(normalizeToLF(content), entries, path)
 	if err != nil {
-		return EditsDiffPreview{Error: err.Error()}
+		return EditDiffError{Error: err.Error()}
 	}
-	diff, firstChangedLine := GenerateDiffString(applied.baseContent, applied.newContent)
-	return EditsDiffPreview{Diff: diff, FirstChangedLine: firstChangedLine}
+	diff, firstChangedLine := diffAndFirstLine(applied.baseContent, applied.newContent)
+	return EditDiffResult{Diff: diff, FirstChangedLine: firstChangedLine}
 }

@@ -7,17 +7,15 @@ import (
 
 // Ports openai-responses-message-id.test.ts. Multiple text blocks in one
 // assistant turn must get unique fallback message ids (msg_pi_<n>, then
-// msg_pi_<n>_<k>); duplicate ids are rejected by the Responses API. In
-// production a foreign thinking block is converted to a text block by
-// NormalizeMessages (agent/transform.go), so a foreign assistant turn
-// replayed on openai-codex reaches convertMessages as two text blocks: the
-// exact reachable trigger the upstream test exercises via transformMessages.
+// msg_pi_<n>_<k>); duplicate ids are rejected by the Responses API. Pi 1.3.0
+// (#11000) drops another model's thinking in transformMessages, so the
+// upstream test builds the two text blocks directly.
 func TestResponsesConvertMessages_MultipleTextBlocksGetUniqueMessageIDs(t *testing.T) {
 	p := &openAIResponsesProvider{cfg: OpenAIResponsesConfig{ProviderID: "openai-codex", Model: "gpt-5.5"}}
 	messages := []Message{
 		UserMessage{Content: UserText("hello")},
 		AssistantMessage{Content: []AssistantContentBlock{
-			TextContent{Text: "private reasoning"},
+			TextContent{Text: "first answer"},
 			TextContent{Text: "visible answer"},
 		}},
 	}

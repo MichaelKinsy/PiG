@@ -52,6 +52,7 @@ func assertMemorySettings3616(t *testing.T, sm *SettingsManager, want string) {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/settings-manager.ts:1403 (SettingsManager.getImageAutoResize).
 func TestInMemorySettingsReloadUpstream(t *testing.T) {
 	restoreStartupTheme(t) // Reload applies the theme setting, which selects the process-wide active theme.
 	t.Chdir(t.TempDir())
@@ -70,7 +71,7 @@ func TestInMemorySettingsReloadUpstream(t *testing.T) {
 	t.Run("preserves initial settings when DefaultResourceLoader reloads", func(t *testing.T) {
 		sm := memorySettingsJSON(t, initial)
 		m := newSwitchTuiProbe(t)
-		m.agent = agent.NewAgent(agent.AgentOptions{})
+		m.agent = mustNewAgent(agent.AgentOptions{})
 		m.opts.CWD = t.TempDir()
 		m.opts.AgentDir = t.TempDir()
 		m.opts.SettingsManager = sm

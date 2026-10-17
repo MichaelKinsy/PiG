@@ -1,0 +1,43 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#SessionMessageEntry"
+  ],
+  "targets": [
+   "internal/codingagent/session.go#MessageEntry"
+  ],
+  "struct": {
+   "file": "internal/codingagent/session.go",
+   "type": "MessageEntry"
+  },
+  "production": [
+   "call:coding/runtime_replacement.go#Runtime.Fork"
+  ],
+  "evidence": [
+   "test:internal/codingagent/session_tree_traversal_upstream_test.go#TestSessionTreeTraversalUpstream",
+   "test:internal/codingagent/session_manager_test.go#TestSessionManager_SaveAndReload"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "SessionMessageEntry: Go MessageEntry (embedding SessionEntryBase: type, id, parentId *string for null, timestamp) with message; the tree and context tests append and read message entries."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ThinkingLevelChangeEntry"
+  ],
+  "targets": [
+   "internal/codingagent/session.go#ThinkingLevelEntry"
+  ],
+  "struct": {
+   "file": "internal/codingagent/session.go",
+   "type": "ThinkingLevelEntry"
+  },
+  "production": [
+   "call:internal/codingagent/session.go#Session.AppendThinkingLevelChange"
+  ],
+  "evidence": [
+   "test:internal/codingagent/session_test.go#TestAppendThinkingLevelChange"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ThinkingLevelChangeEntry: Go ThinkingLevelEntry (embedded base plus thinkingLevel); the test appends, reloads from disk and decodes the entry."
+ }
+]

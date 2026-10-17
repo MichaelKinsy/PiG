@@ -1,0 +1,231 @@
+package docsdrift
+
+// legacyLayout is the reason recorded for pages that keep their own section layout against the Pi 1.2.0 restructure.
+// The entries are a baseline to shrink: restore a section on the page and delete its line (a stale line fails the test).
+const legacyLayout = "the PiG page keeps its own section layout; this upstream 1.2.0 section is not adopted yet"
+
+func init() {
+	intentionalOmissions["cli-integration.md"] = omit(legacyLayout,
+		"Print to stdout",
+		"Stream JSON events",
+		"Control Pi with RPC",
+		"Fork and rebrand Pi",
+		"Examples and references",
+	)
+	intentionalOmissions["cli.md"] = omit(legacyLayout,
+		"Invocation and output",
+		"Models",
+		"Sessions",
+		"Resources",
+		"Prompts and process",
+		"Package commands",
+		"Credential commands",
+		"MCP commands",
+	)
+	intentionalOmissions["compaction.md"] = omit(legacyLayout,
+		"Overview",
+		"Compaction",
+		"Branch Summarization",
+		"Custom Summarization via Extensions",
+	)
+	intentionalOmissions["configuration.md"] = omit(legacyLayout,
+		"Project `.pi` directory",
+	)
+	intentionalOmissions["custom-provider.md"] = omit(legacyLayout,
+		"Choose the smallest integration",
+		"Provide authentication",
+		"Supply and refresh models",
+		"Reuse a supported streaming API",
+		"Implement custom streaming",
+		"Report failures and usage",
+		"Test the integration",
+	)
+	intentionalOmissions["environment-variables.md"] = omit(legacyLayout,
+		"Process Marker",
+		"Pi Process Configuration",
+	)
+	intentionalOmissions["extensions.md"] = omit(legacyLayout,
+		"Create and load an extension",
+		"Add it to Pi",
+		"Respect the runtime lifecycle",
+		"Choose an integration point",
+		"Follow the extension contracts",
+		"Examples and reference",
+	)
+	intentionalOmissions["json.md"] = omit(legacyLayout,
+		"Framing and process I/O",
+		"Session header",
+		"Event sequence",
+		"Agent and turn events",
+		"Message events",
+		"Tool execution events",
+		"Queue and state events",
+		"Compaction events",
+		"Retry events",
+		"RPC-only events",
+		"TypeScript types",
+		"Example",
+	)
+	intentionalOmissions["keybindings.md"] = omit(legacyLayout,
+		"Assign keybindings",
+		"Key syntax",
+		"Actions",
+	)
+	intentionalOmissions["mcp.md"] = omit(legacyLayout,
+		"Extensions and SDK",
+	)
+	intentionalOmissions["message-types.md"] = omit(legacyLayout,
+		"Base messages",
+		"Coding-agent messages",
+		"AgentMessage union",
+	)
+	intentionalOmissions["packages.md"] = omit(legacyLayout,
+		"Install and manage packages",
+		"Choose a source",
+		"Create a package",
+		"Declare dependencies",
+		"Select package resources",
+		"Understand scope and identity",
+	)
+	intentionalOmissions["prompt-templates.md"] = omit(legacyLayout,
+		"Create a template",
+		"Use a template",
+		"Add it to Pi",
+	)
+	intentionalOmissions["providers.md"] = omit(legacyLayout,
+		"Authenticate interactively",
+		"Load an API key from a command",
+		"Provider Specific Config",
+	)
+	intentionalOmissions["rpc-commands.md"] = omit(legacyLayout,
+		"Prompting",
+		"Model",
+		"Thinking",
+		"Queue modes",
+		"Compaction",
+		"Retry",
+		"Session",
+		"Discoverable commands",
+		"Model object",
+	)
+	intentionalOmissions["rpc-extension-ui.md"] = omit(legacyLayout,
+		"Example",
+	)
+	intentionalOmissions["rpc.md"] = omit(legacyLayout,
+		"Protocol records",
+		"Run lifecycle",
+		"Errors",
+		"Shutdown",
+		"Moved reference anchors",
+	)
+	intentionalOmissions["session-format.md"] = omit(legacyLayout,
+		"Deleting Sessions",
+		"Session Version",
+		"Source Files",
+		"Messages",
+		"Entry Base",
+		"Tree Structure",
+		"Context Building",
+		"Parsing Example",
+	)
+	intentionalOmissions["sessions.md"] = omit(legacyLayout,
+		"Continue or switch sessions",
+		"Choose how to branch",
+		"Manage conversation context",
+		"Control session storage",
+		"Export or share a session",
+		"Report a bug",
+	)
+	intentionalOmissions["settings.md"] = omit(legacyLayout,
+		"Model and thinking",
+		"Interaction",
+		"Sessions and context",
+		"Terminal and display",
+		"Network and retries",
+		"Shell",
+		"Updates, telemetry, and warnings",
+	)
+	intentionalOmissions["shell-aliases.md"] = omit(legacyLayout,
+		"Understand which shell Pi uses",
+		"Run setup before every Bash command",
+		"Enable Bash aliases",
+	)
+	intentionalOmissions["skills.md"] = omit(legacyLayout,
+		"Create a skill",
+		"Understand how skills load",
+		"Add it to Pi",
+		"Write portable frontmatter",
+		"Validate and share a skill",
+	)
+	intentionalOmissions["slash-commands.md"] = omit(legacyLayout,
+		"Models and settings",
+		"Sessions and context",
+		"Export and share",
+		"Runtime and project",
+		"Commands added by resources",
+	)
+	intentionalOmissions["terminal-setup.md"] = omit(legacyLayout,
+		"Kitty",
+		"iTerm2",
+		"Apple Terminal",
+		"Ghostty",
+		"WezTerm",
+		"Alacritty",
+		"VS Code integrated terminal",
+		"Zed integrated terminal",
+		"Windows Terminal",
+		"xfce4-terminal and Terminator",
+		"IntelliJ IDEA integrated terminal",
+		"Override detected capabilities",
+	)
+	intentionalOmissions["themes.md"] = omit(legacyLayout,
+		"Use your terminal's colors",
+		"Choose a theme",
+		"Create a custom theme",
+		"Understand the theme file",
+		"Find the color to change",
+		"Load a theme from a project or package",
+	)
+	intentionalOmissions["tmux.md"] = omit(legacyLayout,
+		"Check your tmux version",
+		"Enable extended keys in tmux 3.5 or newer",
+		"Restart tmux",
+		"Use tmux 3.2 through 3.4",
+	)
+	intentionalOmissions["tui.md"] = omit(legacyLayout,
+		"Choose an integration point",
+		"Understand the component model",
+		"Compose built-in components",
+		"Handle keyboard input and focus",
+		"Handle mouse input",
+		"Use custom screens and overlays",
+		"Apply themes correctly",
+		"Keep rendering responsive",
+		"Examples and source",
+	)
+	intentionalOmissions["usage.md"] = omit(legacyLayout,
+		"Enter a prompt",
+		"Follow Pi's work",
+		"Change direction",
+		"Change the model or settings",
+		"Continue or start over",
+		"Run a terminal command",
+		"Copy, export, or share results",
+		"Adjust the terminal",
+		"Collect diagnostic information",
+	)
+	intentionalOmissions["windows.md"] = omit(legacyLayout,
+		"Choose native Windows or WSL",
+		"Use Git Bash on native Windows",
+		"Use a custom Bash executable",
+		"Configure Windows Terminal",
+	)
+}
+
+func omit(reason string, headings ...string) map[string]string {
+	m := map[string]string{}
+	for _, h := range headings {
+		m[h] = reason
+	}
+	return m
+}

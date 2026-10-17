@@ -23,6 +23,8 @@ type runtimeTestOptions struct {
 	noBootstrapModel bool
 	extension        func() extension.Extension
 	tools            []agent.AgentTool
+	// recordFactoryOptions observes each replacement's factory options.
+	recordFactoryOptions func(CreateAgentSessionRuntimeOptions)
 }
 
 type runtimeTestHarness struct {
@@ -41,11 +43,14 @@ func newRuntimeTestHarness(t *testing.T, options runtimeTestOptions) *runtimeTes
 	}
 	provider := &scriptedProvider{responses: []scriptedResponse{fauxReply("one", ai.StopReasonStop, 0), fauxReply("two", ai.StopReasonStop, 0), fauxReply("three", ai.StopReasonStop, 0)}}
 	models := []*ai.Model{
-		{ID: "faux-1", DisplayName: "faux-1", Provider: provider, ProviderMeta: ai.ProviderMetadata{ProviderID: "faux"}, Capabilities: ai.ModelCapabilities{ContextWindow: 128_000, MaxThinking: ai.ThinkingHigh}},
+		{ID: "faux-1", DisplayName: "faux-1", Provider: provider, ProviderMeta: ai.ProviderMetadata{ProviderID: "faux"}, Capabilities: ai.ModelCapabilities{ContextWindow: 128_000, MaxThinking: ai.ThinkingLevelHigh}},
 		{ID: "faux-2", DisplayName: "faux-2", Provider: provider, ProviderMeta: ai.ProviderMetadata{ProviderID: "faux"}, Capabilities: ai.ModelCapabilities{ContextWindow: 128_000}},
 	}
 	factory := func(_ context.Context, target CreateAgentSessionRuntimeOptions) (CreateAgentSessionRuntimeResult, error) {
-		services, err := NewServices(ServicesOptions{CWD: target.CWD, AgentDir: target.AgentDir})
+		if options.recordFactoryOptions != nil {
+			options.recordFactoryOptions(target)
+		}
+		services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: target.CWD, AgentDir: target.AgentDir})
 		if err != nil {
 			return CreateAgentSessionRuntimeResult{}, err
 		}
@@ -53,7 +58,7 @@ func newRuntimeTestHarness(t *testing.T, options runtimeTestOptions) *runtimeTes
 		if err := services.Auth().Set("faux", ai.Credential{Type: ai.CredentialAPIKey, Key: "faux-key"}); err != nil {
 			return CreateAgentSessionRuntimeResult{}, err
 		}
-		services.Registry().RegisterProvider("faux", extension.ProviderConfig{API: "openai-completions", APIKey: "faux-key", BaseURL: "https://faux.invalid", Models: []extension.ProviderModelConfig{
+		services.Registry().RegisterExtensionProvider("faux", extension.ProviderConfig{API: "openai-completions", APIKey: "faux-key", BaseURL: "https://faux.invalid", Models: []extension.ProviderModelConfig{
 			{ID: "faux-1", Name: "faux-1", Reasoning: true, ContextWindow: 128_000, MaxTokens: 4096, Input: []string{"text"}},
 			{ID: "faux-2", Name: "faux-2", Reasoning: false, ContextWindow: 128_000, MaxTokens: 4096, Input: []string{"text"}},
 		}})
@@ -71,7 +76,7 @@ func newRuntimeTestHarness(t *testing.T, options runtimeTestOptions) *runtimeTes
 			model = models[0]
 		}
 		session, err := NewSession(services, SessionOptions{SessionManager: target.SessionManager, Model: model, Runner: runner, Tools: options.tools,
-			ActiveBuiltinTools: map[string]struct{}{"read": {}, "bash": {}, "edit": {}, "write": {}}})
+			InitialActiveToolNames: []string{"read", "bash", "edit", "write"}})
 		if err != nil {
 			return CreateAgentSessionRuntimeResult{}, err
 		}
@@ -108,7 +113,7 @@ func newRuntimeTestHarness(t *testing.T, options runtimeTestOptions) *runtimeTes
 
 func runtimePrompt(t *testing.T, runtime *Runtime, text string) {
 	t.Helper()
-	if _, err := runtime.Session().Prompt(t.Context(), text); err != nil {
+	if err := runtime.Session().Prompt(t.Context(), text); err != nil {
 		t.Fatal(err)
 	}
 }

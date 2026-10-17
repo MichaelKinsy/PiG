@@ -1,0 +1,319 @@
+[
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestLoadProjectTrustExtensionsAndExtensionsOverride",
+   "TestReloadResolvesProjectTrustAfterABootstrapExtensionLoad"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `Extensions: cloneCollection(l.extensions.Extensions), Errors` with `Extensions: l.extensions.Extensions[:0], Errors`; TestLoadProjectTrustExtensionsAndExtensionsOverride, TestReloadResolvesProjectTrustAfterABootstrapExtensionLoad fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestLoadProjectTrustExtensionsAndExtensionsOverride"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `Errors: cloneCollection(l.extensions.Errors), Warnings` with `Errors: nil, Warnings`; TestLoadProjectTrustExtensionsAndExtensionsOverride fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestDefaultResourceLoaderThemesPreferProjectOverUser",
+   "TestDefaultResourceLoaderNoThemesKeepsAdditionalThemePaths"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `Themes: cloneCollection(l.themes.Themes), Diagnostics: cloneCollection(l.themes.Diagnostics)}` with `Themes: cloneCollection(l.themes.Themes)}`; TestDefaultResourceLoaderNoThemesKeepsAdditionalThemePaths, TestDefaultResourceLoaderThemesPreferProjectOverUser fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestExtendResourcesKeepsPackageMetadata",
+   "TestReloadResolvesProjectTrustAfterABootstrapExtensionLoad",
+   "TestDefaultResourceLoaderThemesPreferProjectOverUser",
+   "TestDefaultResourceLoaderThemesFollowProjectTrust",
+   "TestDefaultResourceLoaderNoThemesKeepsAdditionalThemePaths",
+   "TestResourceLoaderInterfaceExtendsAndReloads"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `Themes: cloneCollection(l.themes.Themes), Diagnostics` with `Themes: nil, Diagnostics`; TestDefaultResourceLoaderNoThemesKeepsAdditionalThemePaths, TestDefaultResourceLoaderThemesFollowProjectTrust, TestDefaultResourceLoaderThemesPreferProjectOverUser, TestExtendResourcesKeepsPackageMetadata, TestReloadResolvesProjectTrustAfterABootstrapExtensionLoad, TestResourceLoaderInterfaceExtendsAndReloads fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestLoadProjectTrustExtensionsAndExtensionsOverride",
+   "TestReloadResolvesProjectTrustAfterABootstrapExtensionLoad",
+   "TestReloadStopsWhenTheBootstrapLoadOrTheTrustDecisionFails"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `l.settings.SetProjectTrusted(false)\n\tl.settings.Reload()\n\treturn l.loadExtensions(ctx, ExtensionLoadRequest{Bootstrap: true})` with `l.settings.Reload()\n\treturn l.loadExtensions(ctx, ExtensionLoadRequest{Bootstrap: true})`; TestLoadProjectTrustExtensionsAndExtensionsOverride, TestReloadResolvesProjectTrustAfterABootstrapExtensionLoad, TestReloadStopsWhenTheBootstrapLoadOrTheTrustDecisionFails fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestReloadResolvesProjectTrustAfterABootstrapExtensionLoad"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `return l.loadExtensions(ctx, ExtensionLoadRequest{Bootstrap: true})` with `return l.loadExtensions(ctx, ExtensionLoadRequest{})`; TestReloadResolvesProjectTrustAfterABootstrapExtensionLoad fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestLoadProjectTrustExtensionsAndExtensionsOverride"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `if l.options.ExtensionsOverride != nil {\n\t\tresult = l.options.ExtensionsOverride(result)\n\t}` with `_ = l.options.ExtensionsOverride`; TestLoadProjectTrustExtensionsAndExtensionsOverride fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestLoadProjectTrustExtensionsAndExtensionsOverride"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `ext.SetCommandSourceInfo(info)` with ``; TestLoadProjectTrustExtensionsAndExtensionsOverride fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestExtendResourcesLoadsSkillsAndPromptsWithExtensionMetadata",
+   "TestExtendResourcesResolvesFileURLs",
+   "TestExtendResourcesKeepsPackageMetadata"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `if normalized == source || strings.HasPrefix(normalized, source+string(filepath.Separator)) {` with `if normalized == source {`; TestExtendResourcesKeepsPackageMetadata, TestExtendResourcesLoadsSkillsAndPromptsWithExtensionMetadata, TestExtendResourcesResolvesFileURLs fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestExtendResourcesLoadsSkillsAndPromptsWithExtensionMetadata"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `info.Path = resourcePath` with ``; TestExtendResourcesLoadsSkillsAndPromptsWithExtensionMetadata fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestExtendResourcesLoadsSkillsAndPromptsWithExtensionMetadata",
+   "TestExtendResourcesResolvesFileURLs",
+   "TestExtendResourcesKeepsPackageMetadata"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `l.extensionSources.skills.set(entry.Path, entry.Metadata.SourceInfo(entry.Path))` with `l.extensionSources.prompts.set(entry.Path, entry.Metadata.SourceInfo(entry.Path))`; TestExtendResourcesKeepsPackageMetadata, TestExtendResourcesLoadsSkillsAndPromptsWithExtensionMetadata, TestExtendResourcesResolvesFileURLs fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestExtendResourcesKeepsPackageMetadata"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `l.extensionSources.themes.set(entry.Path, entry.Metadata.SourceInfo(entry.Path))` with `l.extensionSources.skills.set(entry.Path, entry.Metadata.SourceInfo(entry.Path))`; TestExtendResourcesKeepsPackageMetadata fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestExtendResourcesKeepsPackageMetadata",
+   "TestExtendResourcesAccumulatesAndKeepsUntouchedCollections"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `merged, err := l.mergePaths(l.lastSkillPaths, extensionPathList(skillPaths))` with `merged, err := l.mergePaths(nil, extensionPathList(skillPaths))`; TestExtendResourcesAccumulatesAndKeepsUntouchedCollections, TestExtendResourcesKeepsPackageMetadata fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestExtendResourcesAccumulatesAndKeepsUntouchedCollections"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `l.lastSkillPaths = merged` with ``; TestExtendResourcesAccumulatesAndKeepsUntouchedCollections fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestExtendResourcesKeepsPackageMetadata"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `merged, err := l.mergePaths(l.lastThemePaths, extensionPathList(themePaths))` with `merged, err := l.mergePaths(nil, extensionPathList(themePaths))`; TestExtendResourcesKeepsPackageMetadata fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestExtendResourcesKeepsPackageMetadata"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `merged, err := l.mergePaths(l.lastPromptPaths, extensionPathList(promptPaths))` with `merged, err := l.mergePaths(nil, extensionPathList(promptPaths))`; TestExtendResourcesKeepsPackageMetadata fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestExtendResourcesKeepsPackageMetadata"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `if len(themePaths) > 0 {` with `if len(themePaths) > 100 {`; TestExtendResourcesKeepsPackageMetadata fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestExtendResourcesLoadsSkillsAndPromptsWithExtensionMetadata",
+   "TestExtendResourcesKeepsPackageMetadata"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `if len(promptPaths) > 0 {` with `if len(promptPaths) > 100 {`; TestExtendResourcesKeepsPackageMetadata, TestExtendResourcesLoadsSkillsAndPromptsWithExtensionMetadata fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestExtendResourcesLoadsSkillsAndPromptsWithExtensionMetadata",
+   "TestExtendResourcesResolvesFileURLs",
+   "TestExtendResourcesKeepsPackageMetadata",
+   "TestExtendResourcesAccumulatesAndKeepsUntouchedCollections",
+   "TestResourceLoaderInterfaceExtendsAndReloads"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `if len(skillPaths) > 0 {` with `if len(skillPaths) > 100 {`; TestExtendResourcesAccumulatesAndKeepsUntouchedCollections, TestExtendResourcesKeepsPackageMetadata, TestExtendResourcesLoadsSkillsAndPromptsWithExtensionMetadata, TestExtendResourcesResolvesFileURLs, TestResourceLoaderInterfaceExtendsAndReloads fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestExtendResourcesKeepsPackageMetadata"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `l.mu.Lock()\n\t\tl.themes = themes\n\t\tl.mu.Unlock()` with `_ = themes`; TestExtendResourcesKeepsPackageMetadata fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestDefaultResourceLoaderThemesOverride"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `if l.options.ThemesOverride != nil {\n\t\tresult = l.options.ThemesOverride(result)\n\t}` with `_ = l.options.ThemesOverride`; TestDefaultResourceLoaderThemesOverride fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestExtendResourcesKeepsPackageMetadata",
+   "TestDefaultResourceLoaderThemesPreferProjectOverUser"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `case found:\n\t\t\t\ttheme.SourceInfo = &info` with `case found && false:\n\t\t\t\ttheme.SourceInfo = &info`; TestDefaultResourceLoaderThemesPreferProjectOverUser, TestExtendResourcesKeepsPackageMetadata fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestDefaultResourceLoaderNoThemesKeepsAdditionalThemePaths"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `if !l.options.NoThemes || len(paths) > 0 {` with `if !l.options.NoThemes {`; TestDefaultResourceLoaderNoThemesKeepsAdditionalThemePaths fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestDefaultResourceLoaderNoThemesKeepsAdditionalThemePaths"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `if !exists(resolved) && !hasDiagnosticPath(result.Diagnostics, resolved) {` with `if !exists(resolved) {`; TestDefaultResourceLoaderNoThemesKeepsAdditionalThemePaths fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestResourceLoaderReportsTheLoadAndAppliesExtensionSourceInfo"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `Errors: cloneCollection(l.extensions.Errors), Warnings: cloneCollection(l.extensions.Warnings), Runtime: l.extensions.Runtime}` with `Errors: cloneCollection(l.extensions.Errors), Warnings: cloneCollection(l.extensions.Warnings)}`; TestResourceLoaderReportsTheLoadAndAppliesExtensionSourceInfo fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestResourceLoaderReportsTheLoadAndAppliesExtensionSourceInfo"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `Errors: cloneCollection(l.extensions.Errors), Warnings: cloneCollection(l.extensions.Warnings), Runtime` with `Errors: cloneCollection(l.extensions.Errors), Warnings: nil, Runtime`; TestResourceLoaderReportsTheLoadAndAppliesExtensionSourceInfo fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestResourceLoaderReportsTheLoadAndAppliesExtensionSourceInfo"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `tool.SourceInfo = info` with ``; TestResourceLoaderReportsTheLoadAndAppliesExtensionSourceInfo fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestExtendResourcesRecordsDirectorySourcesAccumulatesAndKeepsThemeSourceInfo"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `if normalized == source || strings.HasPrefix(normalized, source+string(filepath.Separator)) {` with `if strings.HasPrefix(normalized, source) {`; TestExtendResourcesRecordsDirectorySourcesAccumulatesAndKeepsThemeSourceInfo fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestExtendResourcesRecordsDirectorySourcesAccumulatesAndKeepsThemeSourceInfo"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `if entry.Metadata.BaseDir != \"\" {\n\t\t\tbaseDir, err := l.resolveResourcePath(entry.Metadata.BaseDir)\n\t\t\tif err != nil {\n\t\t\t\treturn nil, err\n\t\t\t}\n\t\t\tentry.Metadata.BaseDir = baseDir\n\t\t}` with `_ = 0`; TestExtendResourcesRecordsDirectorySourcesAccumulatesAndKeepsThemeSourceInfo fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestExtendResourcesRecordsDirectorySourcesAccumulatesAndKeepsThemeSourceInfo"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `l.lastPromptPaths = merged` with ``; TestExtendResourcesRecordsDirectorySourcesAccumulatesAndKeepsThemeSourceInfo fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestExtendResourcesRecordsDirectorySourcesAccumulatesAndKeepsThemeSourceInfo"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `l.lastThemePaths = merged` with ``; TestExtendResourcesRecordsDirectorySourcesAccumulatesAndKeepsThemeSourceInfo fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestThemesOverrideSourceInfoKeepsExistingAndStampsSyntheticPaths"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `case theme.SourceInfo == nil:` with `case true:`; TestThemesOverrideSourceInfoKeepsExistingAndStampsSyntheticPaths fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/resource-loader.ts",
+  "package": "./coding",
+  "tests": [
+   "TestThemesOverrideSourceInfoKeepsExistingAndStampsSyntheticPaths"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/resource-loader.ts",
+  "mutation": "coding/resource_loader_extend.go: replace `if strings.HasPrefix(resourcePath, \"<\") && strings.HasSuffix(resourcePath, \">\") {` with `if strings.HasPrefix(resourcePath, \"<\") || strings.HasSuffix(resourcePath, \">\") {`; TestThemesOverrideSourceInfoKeepsExistingAndStampsSyntheticPaths fails."
+ }
+]

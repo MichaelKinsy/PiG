@@ -1392,7 +1392,7 @@ path = "packages/coding-agent/src/core/agent-session-runtime.ts"
 change = "modified"
 disposition = "deferred"
 evidence = []
-rationale = "PORT_MAP marks this file 🟡 partial: `partial: coding/runtime.go, coding/session.go, and cmd/pig/rpc_mode.go; Session replacement retains the host-scoped extension runner (D30) and startup-project Services and Resources (D61)`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = "PORT_MAP marks this file 🟡 partial: `partial: coding/runtime.go, coding/session.go, and coding/cli/rpc_mode.go; Session replacement retains the host-scoped extension runner (D30) and startup-project Services and Resources (D61)`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
 
 [[files]]
 path = "packages/coding-agent/src/core/agent-session.ts"
@@ -1847,7 +1847,7 @@ path = "packages/coding-agent/src/experimental/cli.ts"
 change = "added"
 disposition = "deferred"
 evidence = []
-rationale = "PORT_MAP marks this file ⬜ not started (`(pending owner decision: source-only: tsconfig.build.json excludes src/experimental from Pi's npm package and binaries; this development entrypoint dispatches server/client when PI_EXPERIMENTAL=1, else falls through to main(). The published pi bin never dispatches them, pinned by cmd/pig/experimental_entry_test.go. A PiG analog needs a separate unshipped binary whose only targets are the pending server/client rows)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending owner decision: source-only: tsconfig.build.json excludes src/experimental from Pi's npm package and binaries; this development entrypoint dispatches server/client when PI_EXPERIMENTAL=1, else falls through to main(). The published pi bin never dispatches them, pinned by coding/cli/experimental_entry_test.go. A PiG analog needs a separate unshipped binary whose only targets are the pending server/client rows)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
 
 [[files]]
 path = "packages/coding-agent/src/experimental/client-runtime.ts"

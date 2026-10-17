@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -150,7 +151,7 @@ func TestSystemTextProductionRequests(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					if string(after) != string(before) {
+					if !bytes.Equal(after, before) {
 						t.Fatal("request mutated original messages")
 					}
 				})

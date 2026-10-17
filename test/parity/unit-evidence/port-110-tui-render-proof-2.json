@@ -1,0 +1,137 @@
+[
+  {
+    "upstream": "packages/tui/src/terminal.ts",
+    "package": "./tui",
+    "tests": [
+      "TestProcessTerminalKittyProtocolActiveFollowsTheSessionState"
+    ],
+    "upstream_reference": "packages/tui/src/terminal.ts",
+    "mutation": "tui/terminal.go: replace 'func (*ProcessTerminal) KittyProtocolActive() bool { return IsKittyProtocolActive() }' with 'func (*ProcessTerminal) KittyProtocolActive() bool { return false }'; compiling go test -run exact test -count=1 fails TestProcessTerminalKittyProtocolActiveFollowsTheSessionState."
+  },
+  {
+    "upstream": "packages/tui/src/terminal.ts",
+    "package": "./tui",
+    "tests": [
+      "TestTerminalInterfaceOutputMatchesUpstreamSequences"
+    ],
+    "upstream_reference": "packages/tui/src/terminal.ts",
+    "mutation": "tui/terminal.go: replace 'func (t *ProcessTerminal) HideCursor() { t.writeUnlogged(\"\\\\x1b[?25l\") }' with 'func (t *ProcessTerminal) HideCursor() { t.writeUnlogged(\"\\\\x1b[?25h\") }'; compiling go test -run exact test -count=1 fails TestTerminalInterfaceOutputMatchesUpstreamSequences."
+  },
+  {
+    "upstream": "packages/tui/src/terminal.ts",
+    "package": "./tui",
+    "tests": [
+      "TestProcessTerminal_ControlSequences"
+    ],
+    "upstream_reference": "packages/tui/src/terminal.ts",
+    "mutation": "tui/terminal.go: replace 'func (t *ProcessTerminal) ClearLine() { t.writeUnlogged(\"\\\\x1b[K\") }' with 'func (t *ProcessTerminal) ClearLine() { t.writeUnlogged(\"\\\\x1b[J\") }'; compiling go test -run exact test -count=1 fails TestProcessTerminal_ControlSequences."
+  },
+  {
+    "upstream": "packages/tui/src/terminal.ts",
+    "package": "./tui",
+    "tests": [
+      "TestProcessTerminalControlMethodsAreNotLogged"
+    ],
+    "upstream_reference": "packages/tui/src/terminal.ts",
+    "mutation": "tui/terminal.go: replace 'func (t *ProcessTerminal) HideCursor() { t.writeUnlogged(\"\\\\x1b[?25l\") }' with 'func (t *ProcessTerminal) HideCursor() { t.Write(\"\\\\x1b[?25l\") }'; compiling go test -run exact test -count=1 fails TestProcessTerminalControlMethodsAreNotLogged."
+  },
+  {
+    "upstream": "packages/tui/src/terminal.ts",
+    "package": "./tui",
+    "tests": [
+      "TestTerminalInterfaceControlSequences"
+    ],
+    "upstream_reference": "packages/tui/src/terminal.ts",
+    "mutation": "tui/terminal.go: replace 'func (t *ProcessTerminal) ClearFromCursor() { t.writeUnlogged(\"\\\\x1b[J\") }' with 'func (t *ProcessTerminal) ClearFromCursor() { t.writeUnlogged(\"\\\\x1b[K\") }'; compiling go test -run exact test -count=1 fails TestTerminalInterfaceControlSequences."
+  },
+  {
+    "upstream": "packages/tui/src/terminal.ts",
+    "package": "./tui",
+    "tests": [
+      "TestTerminalColumnsFallsBackToEnvironmentThenEighty"
+    ],
+    "upstream_reference": "packages/tui/src/terminal.ts",
+    "mutation": "tui/terminal.go: replace 'return width\\n}\\nreturn 80\\n}' with 'return width\\n}\\nreturn 81\\n}'; compiling go test -run exact test -count=1 fails TestTerminalColumnsFallsBackToEnvironmentThenEighty."
+  },
+  {
+    "upstream": "packages/tui/src/terminal.ts",
+    "package": "./tui",
+    "tests": [
+      "TestTerminalInterfaceSizeFallsBackWithoutATerminal"
+    ],
+    "upstream_reference": "packages/tui/src/terminal.ts",
+    "mutation": "tui/terminal.go: replace 'return height\\n}\\nreturn 24\\n}' with 'return height\\n}\\nreturn 25\\n}'; compiling go test -run exact test -count=1 fails TestTerminalInterfaceSizeFallsBackWithoutATerminal."
+  },
+  {
+    "upstream": "packages/tui/src/terminal.ts",
+    "package": "./tui",
+    "tests": [
+      "TestTerminalInterfaceStartForwardsInputAndStopEndsIt"
+    ],
+    "upstream_reference": "packages/tui/src/terminal.ts",
+    "mutation": "tui/terminal.go: replace 'if width, _, err := term.GetSize(int(t.stdout.Fd())); err == nil && width > 0 {\\nreturn width' with 'if width, _, err := term.GetSize(int(t.stdout.Fd())); err == nil && width > 0 {\\nreturn width + 1'; compiling go test -run exact test -count=1 fails TestTerminalInterfaceStartForwardsInputAndStopEndsIt."
+  },
+  {
+    "upstream": "packages/tui/src/terminal.ts",
+    "package": "./tui",
+    "tests": [
+      "TestUpstreamTerminalProgramStatus"
+    ],
+    "upstream_reference": "packages/tui/src/terminal.ts",
+    "mutation": "tui/terminal.go: replace 'if t.programStatusSupported {\\nt.writeUnlogged(FormatProgramStatus(status))\\n}\\n}' with 'if !t.programStatusSupported {\\nt.writeUnlogged(FormatProgramStatus(status))\\n}\\n}'; compiling go test -run exact test -count=1 fails TestUpstreamTerminalProgramStatus."
+  },
+  {
+    "upstream": "packages/tui/src/terminal.ts",
+    "package": "./tui",
+    "tests": [
+      "TestSurfaceTerminalReportsProgramStatusToTheSession"
+    ],
+    "upstream_reference": "packages/tui/src/terminal.ts",
+    "mutation": "tui/tui_surface_program_status.go: replace 'if !t.paused {\\nt.report(status)\\n}' with 'if t.paused {\\nt.report(status)\\n}'; compiling go test -run exact test -count=1 fails TestSurfaceTerminalReportsProgramStatusToTheSession."
+  },
+  {
+    "upstream": "packages/tui/src/terminal.ts",
+    "package": "./tui",
+    "tests": [
+      "TestProcessTerminalQueriesProgramStatusOnceNoSessionShowsIt"
+    ],
+    "upstream_reference": "packages/tui/src/terminal.ts",
+    "mutation": "tui/terminal.go: replace 'query = t.startProgramStatusLocked()\\n}\\nt.programStatusMu.Unlock()' with 'query = \"\"\\n}\\nt.programStatusMu.Unlock()'; compiling go test -run exact test -count=1 fails TestProcessTerminalQueriesProgramStatusOnceNoSessionShowsIt."
+  },
+  {
+    "upstream": "packages/tui/src/tui.ts",
+    "package": "./tui",
+    "tests": [
+      "TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize"
+    ],
+    "upstream_reference": "packages/tui/src/tui.ts",
+    "mutation": "tui/tui.go: replace 'out:                terminalWriter{terminal},\\ndirect:             terminalCursorWriter{terminal},\\nterminal:           terminal,' with 'out:                io.Discard,\\ndirect:             terminalCursorWriter{terminal},\\nterminal:           terminal,'; compiling go test -run exact test -count=1 fails TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize."
+  },
+  {
+    "upstream": "packages/tui/src/tui-alt-screen.ts",
+    "package": "./tui",
+    "tests": [
+      "TestNewTuiAltScreenDrawsOnItsTerminalAndTakesItsSize"
+    ],
+    "upstream_reference": "packages/tui/src/tui-alt-screen.ts",
+    "mutation": "tui/tui_alt_screen.go: replace 't := newTuiAltScreen(terminalWriter{terminal}, hardwareCursor, opts)' with 't := newTuiAltScreen(io.Discard, hardwareCursor, opts)'; compiling go test -run exact test -count=1 fails TestNewTuiAltScreenDrawsOnItsTerminalAndTakesItsSize."
+  },
+  {
+    "upstream": "packages/tui/src/tui.ts",
+    "package": "./tui",
+    "tests": [
+      "TestRendererTerminalDrawsOnTheRendererOutputAndSize"
+    ],
+    "upstream_reference": "packages/tui/src/tui.ts",
+    "mutation": "tui/renderer_terminal.go: replace 'func (r *rendererTerminal) Rows() int    { _, rows := r.base.fixedDimensions(); return rows }' with 'func (r *rendererTerminal) Rows() int    { _, rows := r.base.fixedDimensions(); return rows + 1 }'; compiling go test -run exact test -count=1 fails TestRendererTerminalDrawsOnTheRendererOutputAndSize."
+  },
+  {
+    "upstream": "packages/tui/src/terminal.ts",
+    "package": "./tui",
+    "tests": [
+      "TestTerminalRefreshStartupSignalReachesResizeWatcher"
+    ],
+    "upstream_reference": "packages/tui/src/terminal.ts",
+    "mutation": "tui/terminal_unix.go: replace 'refreshTerminalDimensions(false, os.Getpid(), func(pid int) error {\\nreturn syscall.Kill(pid, syscall.SIGWINCH)\\n})' with 'refreshTerminalDimensions(false, os.Getpid(), func(pid int) error {\\nreturn nil\\n})'; compiling go test -run exact test -count=1 fails TestTerminalRefreshStartupSignalReachesResizeWatcher."
+  }
+]

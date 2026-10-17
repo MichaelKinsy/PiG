@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package ciimages
@@ -66,10 +65,12 @@ func TestCIImageValidationDerivesToolchainInputs(t *testing.T) {
 	for _, image := range []string{"ci-go", "ci-parity"} {
 		copyCIFixture(t, root, "automation/images/"+image+"/metadata.env")
 	}
+	copyCIFixture(t, root, "automation/pin/pin.py")
+	copyCIFixture(t, root, "automation/pin/pinlib.py")
 	for path, content := range map[string]string{
 		".go-version":   "9.8.7\n",
 		".node-version": "98.7.6\n",
-		"internal/coding/pigversion/pigversion.go":   "const UpstreamVersion = \"7.6.5\"\n",
+		".upstream/pin": "ref=v7.6.5\ncommit=" + strings.Repeat("a", 40) + "\npackage_version=7.6.5\nversion=7.6.5\n",
 		"automation/images/npm-runtime/package.json": `{"dependencies":{"npm":"8.7.6"}}`,
 		".github/workflows/ci.yml":                   "env:\n  RUST_VERSION: 6.5.4\n",
 		"bin/docker": `#!/usr/bin/env bash
@@ -145,7 +146,7 @@ func TestCIImageWorkflowWatchesAuthoritativePins(t *testing.T) {
 	}
 	for _, event := range []string{"push", "pull_request"} {
 		paths := "\n" + strings.Join(workflow.On[event].Paths, "\n") + "\n"
-		for _, input := range []string{".go-version", ".node-version", "internal/coding/pigversion/pigversion.go", ".github/workflows/ci.yml"} {
+		for _, input := range []string{".go-version", ".node-version", ".upstream/pin", ".github/workflows/ci.yml"} {
 			if !strings.Contains(paths, "\n"+input+"\n") {
 				t.Errorf("%s ignores authoritative image input %s", event, input)
 			}

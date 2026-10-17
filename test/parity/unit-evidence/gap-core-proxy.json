@@ -1,0 +1,14 @@
+[
+  {
+    "upstream": "packages/agent/src/proxy.ts",
+    "package": "./agent",
+    "tests": [
+      "TestStreamProxyMatchesPi",
+      "TestStreamProxyIgnoresEventsAfterTheTerminalEvent",
+      "TestStreamProxyFailsOnContentIndicesPiLeavesSparse",
+      "TestStreamProxyToolCallEndKeepsStreamedMembersTheWireOmits"
+    ],
+    "upstream_reference": "packages/agent/src/proxy.ts",
+    "mutation": "agent/proxy.go: replace 'if index > len(partial.Content) {' in setProxyContent with 'if index > len(partial.Content)+1000 {'; the package still compiles and go test -run TestStreamProxyFailsOnContentIndicesPiLeavesSparse fails because the sparse-index bodies no longer end in an error stream. A second mutation replaces 'thinking.ThinkingSignature = optionalProxyString(proxyEvent.ContentSignature)' with 'thinking.ThinkingSignature = \"\"' and fails TestStreamProxyMatchesPi, which runs Pi's proxy.js over the same response bodies. Review rev-gap-core-2 mutations, each failing TestStreamProxyMatchesPi: rejecting canonical numeric-string indices ('strconv.ParseUint(key, 10, 32); err == nil && false &&'), accepting non-canonical ones (dropping '&& strconv.FormatUint(index, 10) == key'), failing read events at a non-index key (adding text_delta and toolcall_end to proxyEventStoresContent), dropping 'toolCall.DeletePartialJson()' and dropping 'toolCall.SetPartialJson(...)' on toolcall_delta."
+  }
+]

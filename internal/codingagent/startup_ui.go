@@ -1,6 +1,7 @@
 package codingagent
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -64,30 +65,49 @@ type StartupUIOptions struct {
 	ThemePaths []string
 }
 
-// SelectStartupSession runs the same session selector used by /resume before cwd-bound runtime services exist. Loaders run off the input owner, receive cancellation and progress options, and settle before teardown returns. Confirmed deletion tries trash before unlink; renaming is unavailable. It returns selected=false on cancellation.
+// SelectStartupSession is Pi's selectSession(currentSessionsLoader, allSessionsLoader, settingsManager) (cli/session-picker.ts:15-54), the --resume picker. Ports packages/coding-agent/src/cli/session-picker.ts.
+// It runs the same session selector used by /resume before cwd-bound runtime services exist. Loaders run off the input owner, receive cancellation and progress options, and settle before teardown returns. Confirmed deletion tries trash before unlink; renaming is unavailable. It returns selected=false when the user cancels, where Pi resolves null.
 func SelectStartupSession(
 	currentLoader func(SessionListOptions) ([]SessionInfo, error),
 	allLoader func(SessionListOptions) ([]SessionInfo, error),
 	opts StartupUIOptions,
 ) (path string, selected bool, err error) {
+	ui := tui.New()
+	ui.SetLogDirectory(opts.AgentDir)
+	return selectStartupSession(currentLoader, allLoader, opts, ui, tui.NewStdioProcessTerminal())
+}
+
+// selectStartupSession is SelectStartupSession on the given renderer and terminal. As selectSession does, it themes the prompt, loads the user's keybindings into the selector and the TUI (session-picker.ts:22-23), shows the selector without a rename hint (session-picker.ts:42) and resolves the first select or cancel (session-picker.ts:25-36).
+func selectStartupSession(
+	currentLoader func(SessionListOptions) ([]SessionInfo, error),
+	allLoader func(SessionListOptions) ([]SessionInfo, error),
+	opts StartupUIOptions,
+	ui *tui.TuiMainScreen,
+	terminal startupTerminal,
+) (path string, selected bool, err error) {
 	configureStartupTheme(opts.Settings, opts.ThemePaths)
-	selector := newStartupSessionSelector(currentLoader, allLoader, NewKeybindingsManager(opts.AgentDir))
-	completed, err := runStartupComponent(selector, opts, false)
+	selector, outcome := newStartupSessionSelector(currentLoader, allLoader, NewKeybindingsManager(opts.AgentDir))
+	completed, err := runStartupComponentWith(selector, opts, false, ui, terminal)
 	if err != nil {
 		return "", false, err
 	}
-	if !completed || selector.Cancelled() {
+	if !completed || outcome.cancelled {
 		return "", false, nil
 	}
-	path = selector.SelectedPath()
-	return path, path != "", nil
+	return outcome.path, outcome.path != "", nil
 }
 
 // newStartupSessionSelector mirrors Pi's --resume picker: deletion operates on the path returned by the loaders, without rename or its hint.
-func newStartupSessionSelector(currentLoader, allLoader func(SessionListOptions) ([]SessionInfo, error), keybindings *KeybindingsManager) *sessionSelector {
-	selector := newSessionSelector(currentLoader, allLoader, nil, deleteSessionFile, "", keybindings)
-	selector.showRenameHint = false
-	return selector
+func newStartupSessionSelector(currentLoader, allLoader func(SessionListOptions) ([]SessionInfo, error), keybindings *KeybindingsManager) (*SessionSelectorComponent, *sessionSelectorOutcome) {
+	outcome := &sessionSelectorOutcome{}
+	loader := func(list func(SessionListOptions) ([]SessionInfo, error)) SessionsLoader {
+		return func(ctx context.Context, onProgress SessionListProgress) ([]SessionInfo, error) {
+			return list(SessionListOptions{Context: ctx, OnProgress: onProgress})
+		}
+	}
+	// session-picker.ts:26-48: no rename, no rename hint, deletion by deleteSessionFile; the host stops the startup UI when a callback ran.
+	selector := NewSessionSelectorComponent(loader(currentLoader), loader(allLoader), outcome.onSelect, outcome.onCancel, nil, nil, &SessionSelectorOptions{ShowRenameHint: new(false), Keybindings: keybindings})
+	return selector, outcome
 }
 
 // ShowStartupSelector displays a small pre-runtime choice list. It returns
@@ -125,13 +145,13 @@ func ShowStartupInput(title, placeholder string, opts StartupUIOptions) (value s
 // is constructed (extension-selector.ts:48-84), so they are drawn under the grayscale system theme.
 func newStartupSelector(title string, options []string, opts StartupUIOptions) *tui.ExtensionSelectorComponent {
 	configureStartupTheme(opts.Settings, opts.ThemePaths)
-	return tui.NewExtensionSelector(title, options)
+	return tui.NewExtensionSelectorComponent(title, options, nil, nil)
 }
 
 // newStartupInput builds the input after the startup theme is configured, as showStartupInput does (cli/startup-ui.ts:238-262).
 func newStartupInput(title, placeholder string, opts StartupUIOptions) *tui.ExtensionInputComponent {
 	configureStartupTheme(opts.Settings, opts.ThemePaths)
-	return tui.NewExtensionInputComponent(title, placeholder)
+	return tui.NewExtensionInputComponent(title, placeholder, nil, nil)
 }
 
 // startupTerminal is the terminal surface a startup prompt drives.
@@ -145,15 +165,15 @@ type startupTerminal interface {
 func runStartupComponent(component startupComponent, opts StartupUIOptions, clear bool) (bool, error) {
 	ui := tui.New()
 	ui.SetLogDirectory(opts.AgentDir)
-	return runStartupComponentWith(component, opts, clear, ui, tui.NewProcessTerminal(os.Stdin, os.Stdout))
+	return runStartupComponentWith(component, opts, clear, ui, tui.NewStdioProcessTerminal())
 }
 
 // runStartupComponentWith runs a startup prompt on ui and terminal. Mirrors
 // upstream startStartupTui: the prompt renders at once while the terminal's
 // colors are queried; replies, including those after the timeout, retheme the
 // prompt and are never delivered as input.
-func runStartupComponentWith(component startupComponent, opts StartupUIOptions, clear bool, ui *tui.TUI, terminal startupTerminal) (bool, error) {
-	asyncSelector, _ := component.(*sessionSelector)
+func runStartupComponentWith(component startupComponent, opts StartupUIOptions, clear bool, ui *tui.TuiMainScreen, terminal startupTerminal) (bool, error) {
+	asyncSelector, _ := component.(*SessionSelectorComponent)
 	var updates <-chan func()
 	var ready <-chan struct{}
 	if asyncSelector != nil {

@@ -58,7 +58,7 @@ console.log("pig fixture help");
 				cli = "process.exit(42);\n"
 			}
 			put(pkg+"dist/cli.js", cli)
-			put("cmd/pig/help_upstream.txt", "previous help\n")
+			put("coding/cli/help_upstream.txt", "previous help\n")
 			// On Windows a bare "bash" can resolve to the WSL launcher in System32; testenv.Bash is Git for Windows bash.
 			cmd := exec.CommandContext(t.Context(), testenv.Bash(t), filepath.Join(root, "automation/gen/gen-help.sh"))
 			cmd.Dir = root
@@ -74,7 +74,7 @@ console.log("pig fixture help");
 			if fail {
 				want = "previous help\n"
 			}
-			got, err := os.ReadFile(filepath.Join(root, "cmd/pig/help_upstream.txt"))
+			got, err := os.ReadFile(filepath.Join(root, "coding/cli/help_upstream.txt"))
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -16,8 +16,6 @@ func DefineExtension(extension durable.Extension) *durable.Extension {
 }
 
 // DefineTool types a tool; the Harness validates arguments against Parameters before Execute.
-//
-//go:fix inline
 func DefineTool(tool durable.ToolRegistration) *durable.ToolRegistration {
 	return new(tool)
 }
@@ -44,10 +42,10 @@ func Hook[I, S, R, H any](task durable.Task[I, S, R, H], handlers H) durable.Hoo
 
 // WrapTool wraps the tool named like tool wherever the wrapping extension is selected.
 func WrapTool(tool *durable.ToolRegistration, wrapper func(tool *durable.ToolRegistration) *durable.ToolRegistration) durable.Wrap {
-	return durable.Wrap{Tool: tool.Name, WrapTool: wrapper}
+	return durable.ToolWrap{Tool: tool.Name, Wrap: wrapper}
 }
 
 // WrapSection wraps the section key wherever the wrapping extension is selected.
 func WrapSection(key string, wrapper func(section *durable.PromptSection) *durable.PromptSection) durable.Wrap {
-	return durable.Wrap{Section: key, WrapSection: wrapper}
+	return durable.SectionWrap{Section: key, Wrap: wrapper}
 }

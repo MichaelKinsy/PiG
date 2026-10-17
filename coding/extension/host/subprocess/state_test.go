@@ -15,10 +15,10 @@ func TestUIBridge_Snapshot_ReadsCallbacks(t *testing.T) {
 	b.SetActions(&HostCallbacks{
 		GetActiveTools: func() []string { return []string{"read", "write"} },
 		GetAllTools: func() []ToolInfo {
-			return []ToolInfo{{Name: "read"}, {Name: "bash", Description: "Run bash", Parameters: json.RawMessage(`{"type":"object"}`), PromptGuidelines: []string{"g"}, SourceInfo: map[string]any{"path": "<builtin:bash>"}}}
+			return []ToolInfo{{Name: "read"}, {Name: "bash", Description: "Run bash", Parameters: json.RawMessage(`{"type":"object"}`), PromptGuidelines: []string{"g"}, SourceInfo: extension.SourceInfo{Path: "<builtin:bash>"}}}
 		},
 		GetCommands: func() []CommandInfo {
-			return []CommandInfo{{Name: "help", Description: "Help", Source: "extension", SourceInfo: map[string]any{"path": "/ext.ts"}}}
+			return []CommandInfo{{Name: "help", Description: "Help", Source: "extension", SourceInfo: extension.SourceInfo{Path: "/ext.ts"}}}
 		},
 		GetThinkingLevel:   func() string { return "high" },
 		IsIdle:             func() bool { return false },
@@ -43,10 +43,10 @@ func TestUIBridge_Snapshot_ReadsCallbacks(t *testing.T) {
 	}
 	// The Node runtime answers pi.getAllTools() and pi.getCommands() from
 	// this replica, so it carries the whole ToolInfo and SlashCommandInfo.
-	if raw, _ := json.Marshal(state.AllTools); string(raw) != `[{"name":"read","description":"","parameters":null,"sourceInfo":null},{"name":"bash","description":"Run bash","parameters":{"type":"object"},"promptGuidelines":["g"],"sourceInfo":{"path":"\u003cbuiltin:bash\u003e"}}]` {
+	if raw, _ := json.Marshal(state.AllTools); string(raw) != `[{"name":"read","description":"","parameters":null,"sourceInfo":{"path":"","source":"","scope":"","origin":""}},{"name":"bash","description":"Run bash","parameters":{"type":"object"},"promptGuidelines":["g"],"sourceInfo":{"path":"\u003cbuiltin:bash\u003e","source":"","scope":"","origin":""}}]` {
 		t.Errorf("AllTools = %s", raw)
 	}
-	if raw, _ := json.Marshal(state.Commands); string(raw) != `[{"name":"help","description":"Help","source":"extension","sourceInfo":{"path":"/ext.ts"}}]` {
+	if raw, _ := json.Marshal(state.Commands); string(raw) != `[{"name":"help","description":"Help","source":"extension","sourceInfo":{"path":"/ext.ts","source":"","scope":"","origin":""}}]` {
 		t.Errorf("Commands = %s", raw)
 	}
 	if state.ThinkingLevel != "high" {
@@ -115,17 +115,17 @@ func TestStatePayload_RoundTrip(t *testing.T) {
 func TestGetAllToolsHostCallKeepsTheSDKSourceField(t *testing.T) {
 	b := NewUIBridge(func() {})
 	b.SetActions(&HostCallbacks{GetAllTools: func() []ToolInfo {
-		return []ToolInfo{{Name: "lookup", Description: "Look up", Parameters: json.RawMessage(`{"type":"object"}`), SourceInfo: map[string]any{"path": "/ext.ts"}, Source: "mcp:docs"}}
+		return []ToolInfo{{Name: "lookup", Description: "Look up", Parameters: json.RawMessage(`{"type":"object"}`), SourceInfo: extension.SourceInfo{Path: "/ext.ts"}, Source: "mcp:docs"}}
 	}})
 	result, err := b.HandleCall("ext", &CallPayload{Method: "getAllTools"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := `{"tools":[{"name":"lookup","description":"Look up","parameters":{"type":"object"},"sourceInfo":{"path":"/ext.ts"},"source":"mcp:docs"}]}`; string(result.Result) != want {
+	if want := `{"tools":[{"name":"lookup","description":"Look up","parameters":{"type":"object"},"sourceInfo":{"path":"/ext.ts","source":"","scope":"","origin":""},"source":"mcp:docs"}]}`; string(result.Result) != want {
 		t.Errorf("getAllTools result = %s, want %s", result.Result, want)
 	}
 	state, _ := json.Marshal(b.Snapshot(nil, 0, false).AllTools)
-	if want := `[{"name":"lookup","description":"Look up","parameters":{"type":"object"},"sourceInfo":{"path":"/ext.ts"}}]`; string(state) != want {
+	if want := `[{"name":"lookup","description":"Look up","parameters":{"type":"object"},"sourceInfo":{"path":"/ext.ts","source":"","scope":"","origin":""}}]`; string(state) != want {
 		t.Errorf("replicated allTools = %s, want %s", state, want)
 	}
 }
@@ -137,7 +137,7 @@ func TestGetAllToolsCarriesExposureNamespaceAndAnnotations(t *testing.T) {
 	b := NewUIBridge(func() {})
 	b.SetActions(&HostCallbacks{GetAllTools: func() []ToolInfo {
 		return []ToolInfo{{
-			Name: "lookup", Description: "Look up", Parameters: json.RawMessage(`{"type":"object"}`), SourceInfo: map[string]any{"path": "/ext.ts"},
+			Name: "lookup", Description: "Look up", Parameters: json.RawMessage(`{"type":"object"}`), SourceInfo: extension.SourceInfo{Path: "/ext.ts"},
 			Exposure: extension.ToolExposureDeferred, Namespace: &extension.ToolNamespace{Name: "docs"}, Annotations: &extension.ToolAnnotations{ReadOnlyHint: &hint},
 		}}
 	}})
@@ -145,13 +145,40 @@ func TestGetAllToolsCarriesExposureNamespaceAndAnnotations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := `[{"name":"lookup","description":"Look up","parameters":{"type":"object"},"sourceInfo":{"path":"/ext.ts"},"exposure":"deferred","namespace":{"name":"docs"},"annotations":{"readOnlyHint":true}}]`
+	want := `[{"name":"lookup","description":"Look up","parameters":{"type":"object"},"sourceInfo":{"path":"/ext.ts","source":"","scope":"","origin":""},"exposure":"deferred","namespace":{"name":"docs"},"annotations":{"readOnlyHint":true}}]`
 	var call struct {
 		Tools json.RawMessage `json:"tools"`
 	}
 	if err := json.Unmarshal(result.Result, &call); err != nil {
 		t.Fatal(err)
 	}
+	assertJSONEqual(t, "getAllTools tools", call.Tools, want)
+	state, _ := json.Marshal(b.Snapshot(nil, 0, false).AllTools)
+	assertJSONEqual(t, "replicated allTools", state, want)
+}
+
+// An extension that registers a namespace with `aliases: []` reads it back from pi.getAllTools(): upstream returns the definition's namespace object as authored, so the empty array survives, and a namespace without aliases has no aliases member.
+// upstream: agent-session.ts:1505 (namespace: definition.namespace)
+func TestGetAllToolsKeepsANamespacesEmptyAliases(t *testing.T) {
+	b := NewUIBridge(func() {})
+	b.SetActions(&HostCallbacks{GetAllTools: func() []ToolInfo {
+		return []ToolInfo{
+			{Name: "lookup", Description: "Look up", Parameters: json.RawMessage(`{"type":"object"}`), SourceInfo: extension.SourceInfo{Path: "/ext.ts"}, Namespace: &extension.ToolNamespace{Name: "docs", Aliases: []string{}}},
+			{Name: "plain", Description: "Plain", Parameters: json.RawMessage(`{"type":"object"}`), SourceInfo: extension.SourceInfo{Path: "/ext.ts"}, Namespace: &extension.ToolNamespace{Name: "bare"}},
+		}
+	}})
+	result, err := b.HandleCall("ext", &CallPayload{Method: "getAllTools"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var call struct {
+		Tools json.RawMessage `json:"tools"`
+	}
+	if err := json.Unmarshal(result.Result, &call); err != nil {
+		t.Fatal(err)
+	}
+	want := `[{"name":"lookup","description":"Look up","parameters":{"type":"object"},"sourceInfo":{"path":"/ext.ts","source":"","scope":"","origin":""},"namespace":{"name":"docs","aliases":[]}},` +
+		`{"name":"plain","description":"Plain","parameters":{"type":"object"},"sourceInfo":{"path":"/ext.ts","source":"","scope":"","origin":""},"namespace":{"name":"bare"}}]`
 	assertJSONEqual(t, "getAllTools tools", call.Tools, want)
 	state, _ := json.Marshal(b.Snapshot(nil, 0, false).AllTools)
 	assertJSONEqual(t, "replicated allTools", state, want)
@@ -179,7 +206,7 @@ func TestGetAllToolsKeepsUpstreamMemberOrder(t *testing.T) {
 	b.SetActions(&HostCallbacks{GetAllTools: func() []ToolInfo {
 		return []ToolInfo{{
 			Name: "lookup", Description: "Look up", Parameters: json.RawMessage(`{"type":"object"}`), PromptGuidelines: []string{"Use it."},
-			SourceInfo: map[string]any{"path": "/ext.ts"}, Exposure: extension.ToolExposureDeferred,
+			SourceInfo: extension.SourceInfo{Path: "/ext.ts"}, Exposure: extension.ToolExposureDeferred,
 			Namespace: &extension.ToolNamespace{Name: "docs"}, Annotations: &extension.ToolAnnotations{ReadOnlyHint: &hint}, Source: "ext",
 		}}
 	}})
@@ -197,8 +224,11 @@ func TestGetAllToolsKeepsUpstreamMemberOrder(t *testing.T) {
 	if got, want := objectKeys(t, call.Tools[0]), append(slices.Clone(upstream), "source"); !slices.Equal(got, want) {
 		t.Errorf("getAllTools members = %v, want %v", got, want)
 	}
-	state, _ := json.Marshal(b.Snapshot(nil, 0, false).AllTools[0])
-	if got := objectKeys(t, state); !slices.Equal(got, upstream) {
+	var replicated []json.RawMessage
+	if err := json.Unmarshal(b.Snapshot(nil, 0, false).AllTools, &replicated); err != nil || len(replicated) != 1 {
+		t.Fatalf("replicated allTools = %s (%v)", b.Snapshot(nil, 0, false).AllTools, err)
+	}
+	if got := objectKeys(t, replicated[0]); !slices.Equal(got, upstream) {
 		t.Errorf("replicated allTools members = %v, want %v", got, upstream)
 	}
 }

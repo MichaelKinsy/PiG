@@ -1,0 +1,1 @@
+{"providers":{"fixture":{"baseUrl":"http://127.0.0.1:1/v1","apiKey":"unused","api":"openai-completions","models":[{"id":"plain","name":"Plain"},{"id":"thinker","name":"Thinker","reasoning":true},{"id":"xthinker","name":"XThinker","reasoning":true,"thinkingLevelMap":{"xhigh":"xhigh","minimal":null}}]}}}

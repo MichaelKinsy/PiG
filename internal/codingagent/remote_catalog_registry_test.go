@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/core/remote-catalog-provider.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -22,7 +24,7 @@ func TestRegistryAppliesTheRemoteCatalogOverlayToBuiltInProviders(t *testing.T) 
 		mu.Lock()
 		requested = append(requested, r.URL.Path)
 		mu.Unlock()
-		if r.URL.Path != "/api/models/providers/openrouter" {
+		if r.URL.Path != "/api/models/providers/anthropic" {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -42,7 +44,7 @@ func TestRegistryAppliesTheRemoteCatalogOverlayToBuiltInProviders(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := auth.Set("openrouter", ai.Credential{Type: ai.CredentialAPIKey, Key: "sk-or"}); err != nil {
+	if err := auth.Set("anthropic", ai.Credential{Type: ai.CredentialAPIKey, Key: "sk-or"}); err != nil {
 		t.Fatal(err)
 	}
 	store := ai.NewFileModelsStore(filepath.Join(dir, "models-store.json"))
@@ -54,43 +56,43 @@ func TestRegistryAppliesTheRemoteCatalogOverlayToBuiltInProviders(t *testing.T) 
 		return registry
 	}
 	hasModel := func(registry *ModelRegistry, id string) bool {
-		return slices.ContainsFunc(registry.GetProviderModelData("openrouter"), func(model *ai.Model) bool { return model.ID == id })
+		return slices.ContainsFunc(registry.GetProviderModelData("anthropic"), func(model *ai.Model) bool { return model.ID == id })
 	}
 
 	registry := newRegistry()
-	bundled := len(registry.GetProviderModelData("openrouter"))
+	bundled := len(registry.GetProviderModelData("anthropic"))
 	if bundled == 0 {
-		t.Fatal("openrouter has no bundled models")
+		t.Fatal("anthropic has no bundled models")
 	}
 	if hasModel(registry, "remote/new-chat") {
 		t.Fatal("the overlay model is listed before any refresh")
 	}
-	if result := registry.RefreshCatalogs(context.Background(), CatalogRefreshOptions{AllowNetwork: true, Providers: []string{"openrouter"}}); len(result.Errors) != 0 || result.Aborted {
+	if result := registry.RefreshCatalogs(context.Background(), CatalogRefreshOptions{AllowNetwork: true, Providers: []string{"anthropic"}}); len(result.Errors) != 0 || result.Aborted {
 		t.Fatalf("refresh = %+v", result)
 	}
 	if !hasModel(registry, "remote/new-chat") {
 		t.Fatal("the refreshed overlay model is not listed")
 	}
-	if got := len(registry.GetProviderModelData("openrouter")); got != bundled+1 {
-		t.Fatalf("openrouter models = %d, want the %d bundled models plus the overlay chat model", got, bundled)
+	if got := len(registry.GetProviderModelData("anthropic")); got != bundled+1 {
+		t.Fatalf("anthropic models = %d, want the %d bundled models plus the overlay chat model", got, bundled)
 	}
 	var image bool
-	for _, model := range registry.GetProviderAllModelData("openrouter") {
+	for _, model := range registry.GetProviderAllModelData("anthropic") {
 		image = image || (model.ModelType() == ai.ModelTypeImage && model.ModelID() == "remote/flux")
 	}
 	if !image {
 		t.Fatal("the overlay image model is not listed with the typed models")
 	}
 	mu.Lock()
-	if count := len(slices.DeleteFunc(slices.Clone(requested), func(path string) bool { return path != "/api/models/providers/openrouter" })); count != 1 {
-		t.Fatalf("openrouter catalog requests = %d, want 1 (%v)", count, requested)
+	if count := len(slices.DeleteFunc(slices.Clone(requested), func(path string) bool { return path != "/api/models/providers/anthropic" })); count != 1 {
+		t.Fatalf("anthropic catalog requests = %d, want 1 (%v)", count, requested)
 	}
 	requested = nil
 	mu.Unlock()
 
 	// A new registry over the same store restores the overlay without the network.
 	restored := newRegistry()
-	restored.RefreshCatalogs(context.Background(), CatalogRefreshOptions{AllowNetwork: false, Providers: []string{"openrouter"}})
+	restored.RefreshCatalogs(context.Background(), CatalogRefreshOptions{AllowNetwork: false, Providers: []string{"anthropic"}})
 	if !hasModel(restored, "remote/new-chat") {
 		t.Fatal("the stored overlay model is not restored from the models store")
 	}
@@ -98,5 +100,40 @@ func TestRegistryAppliesTheRemoteCatalogOverlayToBuiltInProviders(t *testing.T) 
 	defer mu.Unlock()
 	if len(requested) != 0 {
 		t.Fatalf("cache-only refresh requested %v", requested)
+	}
+}
+
+// upstream model-runtime.ts:225-231 and remote-catalog-provider.ts:52-57: the registry passes the bundled catalog's generation time to withRemoteCatalog, so a stored remote catalog whose `Last-Modified` is not later than it (or is missing) adds no models, and a later one does.
+func TestRegistryIgnoresAStoredRemoteCatalogThatIsNotNewerThanTheBundledOne(t *testing.T) {
+	generatedAt := ai.GetBuiltinModelDataGeneratedAt()
+	if generatedAt == nil {
+		t.Fatal("the generated catalogs record no generation time")
+	}
+	overlay := []json.RawMessage{json.RawMessage(`{"id":"remote/new-chat","name":"New chat","api":"openai-completions","provider":"anthropic","baseUrl":"https://openrouter.ai/api/v1","reasoning":false,"input":["text"],"cost":{"input":1,"output":2,"cacheRead":0,"cacheWrite":0},"contextWindow":1000,"maxTokens":100}`)}
+	lastModified := func(delta float64) *float64 { return new(*generatedAt + delta) }
+	for name, tc := range map[string]struct {
+		lastModified *float64
+		want         bool
+	}{
+		"older":    {lastModified(-1), false},
+		"same":     {lastModified(0), false},
+		"missing":  {nil, false},
+		"newer":    {lastModified(1), true},
+		"far away": {lastModified(1e12), true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+			store := ai.NewFileModelsStore(filepath.Join(dir, "models-store.json"))
+			if err := store.Write(t.Context(), "anthropic", ai.ModelsStoreEntry{Models: mustStoredModels(overlay), CheckedAt: new(float64(1)), LastModified: tc.lastModified}); err != nil {
+				t.Fatal(err)
+			}
+			registry := NewModelRegistry(dir)
+			registry.SetModelsStore(store)
+			registry.RefreshCatalogs(context.Background(), CatalogRefreshOptions{AllowNetwork: false, Providers: []string{"anthropic"}})
+			got := slices.ContainsFunc(registry.GetProviderModelData("anthropic"), func(model *ai.Model) bool { return model.ID == "remote/new-chat" })
+			if got != tc.want {
+				t.Fatalf("overlay model listed = %v, want %v", got, tc.want)
+			}
+		})
 	}
 }

@@ -64,6 +64,10 @@ for (const [name, agentDir] of Object.entries(files)) {
 			sm := NewSettingsManager(agentDir+"-project", agentDir)
 			var got []string
 			for _, diagnostic := range CollectSettingsDiagnostics(sm) {
+				// pig divergence (D158): PiG reports a setting ignored for its wrong type where Pi 1.1.0 throws or says nothing.
+				if strings.Contains(diagnostic.Message, "ignored settings of the wrong type") {
+					continue
+				}
 				got = append(got, diagnostic.Type+": "+diagnostic.Message)
 			}
 			if joined := strings.Join(got, "\n"); joined != want[name] {
@@ -160,12 +164,17 @@ func runPiJSONFileOracle(t *testing.T, files map[string]string, body string) map
 	}
 	script := `import {pathToFileURL} from 'node:url';
 import {join} from 'node:path';
-const [pkg, files] = [process.argv[1], JSON.parse(process.argv[2])];
+let stdin = '';
+process.stdin.setEncoding('utf8');
+for await (const chunk of process.stdin) stdin += chunk;
+const [pkg, files] = [process.argv[1], JSON.parse(stdin)];
 const load = name => import(pathToFileURL(join(pkg, 'dist', name + '.js')).href);
 const out = {};
 ` + body + `
 process.stdout.write(JSON.stringify(out));`
-	output, err := exec.CommandContext(t.Context(), node, "--input-type=module", "-e", script, "--", pkg, string(input)).Output()
+	cmd := exec.CommandContext(t.Context(), node, "--input-type=module", "-e", script, "--", pkg)
+	cmd.Stdin = strings.NewReader(string(input))
+	output, err := cmd.Output()
 	if err != nil {
 		var stderr []byte
 		if exitErr := new(exec.ExitError); errors.As(err, &exitErr) {

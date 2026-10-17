@@ -28,7 +28,7 @@ func exampleTool(name, description string) *durable.ToolRegistration {
 		},
 		Execute: func(_ context.Context, args any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			path, _ := args.(map[string]any)["path"].(string)
-			return durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: name + " " + path}}}, nil
+			return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{ai.TextContent{Text: name + " " + path}}}, nil
 		},
 	}
 }
@@ -121,6 +121,8 @@ func TestExample06Harness(t *testing.T) {
 }
 
 // 07-configuration.ts: a conversation stores its agent configuration; the registry and settings resolve live.
+// Pi source: packages/durable/src/harness/registry.ts
+// mutation-checked: zeroing the results of Registry.Uninstall fails it
 func TestExample07Configuration(t *testing.T) {
 	read := exampleTool("read", "Read a file")
 	write := exampleTool("write", "Write a file")
@@ -165,7 +167,7 @@ func TestExample07Configuration(t *testing.T) {
 	if err := root.Configure(background, harness.AgentChange{
 		Model:         harness.SetTo(model),
 		ThinkingLevel: harness.SetTo(ai.ModelThinkingLevel("high")),
-		Tools:         harness.SetTo(harness.ToolChange{Exact: true, List: []*durable.ToolRegistration{write, read}}),
+		Tools:         harness.SetTo(harness.ToolChange{List: []*durable.ToolRegistration{write, read}}),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -183,7 +185,7 @@ func TestExample07Configuration(t *testing.T) {
 	expectEqual(t, "configured tools", toolNames(t, root), []string{"write", "read"})
 
 	if err := root.Configure(background, harness.AgentChange{
-		Extensions: harness.SetTo(harness.ExtensionChange{Remove: []*durable.Extension{search}}),
+		Extensions: harness.SetTo(harness.ExtensionChange{Edit: &harness.ExtensionEdit{Remove: []*durable.Extension{search}}}),
 		Tools:      harness.Cleared[harness.ToolChange](),
 	}); err != nil {
 		t.Fatal(err)
@@ -191,7 +193,7 @@ func TestExample07Configuration(t *testing.T) {
 	expectEqual(t, "without search", toolNames(t, root), []string{"read", "write"})
 
 	if err := root.Configure(background, harness.AgentChange{
-		Extensions: harness.SetTo(harness.ExtensionChange{Exact: true, List: []*durable.Extension{files, search}}),
+		Extensions: harness.SetTo(harness.ExtensionChange{List: []*durable.Extension{files, search}}),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -278,7 +280,7 @@ func TestExample10RegistryReload(t *testing.T) {
 
 	audit := new(durable.Extension{
 		Name: "audit",
-		Wraps: []durable.Wrap{{Tool: "read", WrapTool: func(tool *durable.ToolRegistration) *durable.ToolRegistration {
+		Wraps: []durable.Wrap{durable.ToolWrap{Tool: "read", Wrap: func(tool *durable.ToolRegistration) *durable.ToolRegistration {
 			wrapped := *tool
 			wrapped.Description = tool.Description + " (audited)"
 			return &wrapped

@@ -149,6 +149,14 @@ pub struct AuthInteraction {
     pub prompt: Arc<dyn Fn(Value) -> ProviderResult<String> + Send + Sync>,
     pub notify: Arc<dyn Fn(Value) -> ProviderResult<()> + Send + Sync>,
 }
+/// Pi's LoginOptions (packages/ai/src/auth/types.ts:202-214), which the app passes to an OAuth login.
+#[derive(Clone, Default)]
+pub struct LoginOptions {
+    /// Returns the stable ID of this app installation. Call it only when the flow needs it: the app creates the ID on first use. None means the app supplies none.
+    pub get_device_id: Option<Arc<dyn Fn() -> ProviderResult<String> + Send + Sync>>,
+    /// The name the app introduces itself with during login; None means the flow's own default.
+    pub agent_name: Option<String>,
+}
 pub struct APIKeyAuth {
     pub name: String,
     pub check:
@@ -160,7 +168,7 @@ pub struct OAuthAuth {
     pub name: String,
     pub is_subscription: Option<bool>,
     pub login_label: Option<String>,
-    pub login: Arc<dyn Fn(AuthInteraction) -> ProviderResult<Value> + Send + Sync>,
+    pub login: Arc<dyn Fn(AuthInteraction, LoginOptions) -> ProviderResult<Value> + Send + Sync>,
     pub refresh: Arc<dyn Fn(Value, ProviderSignal) -> ProviderResult<Value> + Send + Sync>,
     pub to_auth: Arc<dyn Fn(Value) -> ProviderResult<Value> + Send + Sync>,
 }
@@ -176,7 +184,9 @@ pub struct ProviderStreamOptions {
     pub on_payload:
         Option<Arc<dyn Fn(Value, ProviderModel) -> ProviderResult<Value> + Send + Sync>>,
     pub on_response: Option<Arc<dyn Fn(Value, ProviderModel) -> ProviderResult<()> + Send + Sync>>,
-    pub transform_headers: Option<Arc<dyn Fn(Value) -> ProviderResult<Value> + Send + Sync>>,
+    /// The caller's onProviderStreamEvent (upstream types.ts StreamOptions.onProviderStreamEvent). Pi's Models strips transformHeaders before Provider.stream (model-runtime.ts:671), so the options carry no transformHeaders.
+    pub on_provider_stream_event:
+        Option<Arc<dyn Fn(Value, ProviderModel) -> ProviderResult<()> + Send + Sync>>,
 }
 /// What an image or classifier implementation receives besides the model and the request: the resolved request options, and the request's cancellation.
 #[derive(Clone, Default)]
@@ -285,6 +295,8 @@ pub struct RefreshModelsContext {
     pub force: Option<bool>,
     pub signal: ProviderSignal,
     pub publish: Arc<dyn Fn(ModelsPublication) -> ProviderResult<bool> + Send + Sync>,
+    /// The registered provider's base URL, including configuration overrides that wrappers apply outside the provider; `None` when it has none.
+    pub base_url: Option<String>,
 }
 pub struct Provider {
     pub id: String,
@@ -294,6 +306,11 @@ pub struct Provider {
     pub auth: ProviderAuth,
     pub get_models: Arc<dyn Fn() -> ProviderResult<Vec<ProviderModel>> + Send + Sync>,
     pub filter_models: Option<ProviderFilterFn>,
+    /// Lists the models of every type; without it `get_models` does. Pi `Provider.getAllModels`.
+    pub get_all_models:
+        Option<Arc<dyn Fn() -> ProviderResult<Vec<ProviderModel>> + Send + Sync>>,
+    /// Filters the models of every type by credential; without it `filter_models` filters the chat models. Pi `Provider.filterAllModels`.
+    pub filter_all_models: Option<ProviderFilterFn>,
     pub refresh_models:
         Option<Arc<dyn Fn(RefreshModelsContext) -> ProviderResult<()> + Send + Sync>>,
     pub stream: ProviderStreamFn,
@@ -347,7 +364,9 @@ impl ProviderObjects {
         let key = self.key();
         let mut methods = vec!["getModels", "stream", "streamSimple"];
         for (method, present) in [
+            ("getAllModels", provider.get_all_models.is_some()),
             ("filterModels", provider.filter_models.is_some()),
+            ("filterAllModels", provider.filter_all_models.is_some()),
             ("refreshModels", provider.refresh_models.is_some()),
             ("fetchDeferred", provider.fetch_deferred.is_some()),
             ("cancelDeferred", provider.cancel_deferred.is_some()),
@@ -385,7 +404,11 @@ impl ProviderObjects {
                 "auth.oauth.toAuth",
             ]);
         }
-        let models = (provider.get_models)().unwrap_or_default();
+        let models = match &provider.get_all_models {
+            Some(all) => all(),
+            None => (provider.get_models)(),
+        }
+        .unwrap_or_default();
         let mut native = json!({"id":provider.id,"key":key,"name":provider.name,"auth":auth,"models":models.iter().map(|m|m.as_ref()).collect::<Vec<_>>(),"methods":methods});
         if let Some(value) = &provider.base_url {
             native["baseUrl"] = json!(value)
@@ -504,7 +527,13 @@ impl ProviderObjects {
                     .map(|m| m.as_ref())
                     .collect::<Vec<_>>()
             )),
-            "filterModels" => {
+            "getAllModels" => Ok(json!(
+                provider.get_all_models.as_ref().ok_or("getAllModels absent")?()?
+                    .iter()
+                    .map(|m| m.as_ref())
+                    .collect::<Vec<_>>()
+            )),
+            "filterModels" | "filterAllModels" => {
                 let models = params["models"]
                     .as_array()
                     .ok_or("models must be an array")?
@@ -512,10 +541,12 @@ impl ProviderObjects {
                     .cloned()
                     .map(Arc::new)
                     .collect::<Vec<_>>();
-                let result = provider
-                    .filter_models
-                    .as_ref()
-                    .ok_or("filterModels absent")?(
+                let filter = if method == "filterAllModels" {
+                    &provider.filter_all_models
+                } else {
+                    &provider.filter_models
+                };
+                let result = filter.as_ref().ok_or("filter absent")?(
                     &models, optional(&params["credential"])
                 )?;
                 let indices = result
@@ -559,7 +590,19 @@ impl ProviderObjects {
                 .as_ref()
                 .ok_or("login absent")?(interaction),
             "auth.oauth.login" => {
-                (provider.auth.oauth.as_ref().ok_or("oauth absent")?.login)(interaction)
+                // The host lists the LoginOptions the app supplies; get_device_id stays a call back to it.
+                let wire = &params["options"];
+                let options = LoginOptions {
+                    get_device_id: (wire["getDeviceId"] == json!(true)).then(|| {
+                        let callback = callback.clone();
+                        Arc::new(move || {
+                            serde_json::from_value(callback("getDeviceId", json!({}))?)
+                                .map_err(|e| e.to_string())
+                        }) as Arc<dyn Fn() -> ProviderResult<String> + Send + Sync>
+                    }),
+                    agent_name: wire["agentName"].as_str().map(str::to_owned),
+                };
+                (provider.auth.oauth.as_ref().ok_or("oauth absent")?.login)(interaction, options)
             }
             "auth.oauth.refresh" => (provider.auth.oauth.as_ref().ok_or("oauth absent")?.refresh)(
                 params["credential"].clone(),
@@ -592,6 +635,7 @@ impl ProviderObjects {
                     stored: optional(&params["stored"]),
                     allow_network: params["allowNetwork"].as_bool().unwrap_or(false),
                     force: params["force"].as_bool(),
+                    base_url: params["baseUrl"].as_str().map(str::to_owned),
                     signal,
                     publish,
                 })?;
@@ -620,10 +664,14 @@ impl ProviderObjects {
                         Ok(())
                     }))
                 }
-                if flags.contains(&json!("transformHeaders")) {
+                if flags.contains(&json!("onProviderStreamEvent")) {
                     let callback = callback.clone();
-                    options.transform_headers = Some(Arc::new(move |value| {
-                        callback("transformHeaders", json!({"value":value}))
+                    options.on_provider_stream_event = Some(Arc::new(move |value, model| {
+                        callback(
+                            "onProviderStreamEvent",
+                            json!({"value":value,"model":model.as_ref()}),
+                        )?;
+                        Ok(())
                     }))
                 }
                 let model = Arc::new(params["model"].clone());

@@ -1,0 +1,393 @@
+{
+ "tasks": {
+  "ff": {
+   "name": "t.ff",
+   "version": 1,
+   "phases": {
+    "start": [
+     {
+      "commit": {
+       "ops": [
+        {
+         "op": "childTask",
+         "task": "slow"
+        },
+        {
+         "op": "childTask",
+         "task": "slow2"
+        },
+        {
+         "op": "childTask",
+         "task": "boom"
+        }
+       ],
+       "next": {
+        "status": "waiting",
+        "checkpoint": {
+         "phase": "join"
+        },
+        "on": [
+         "$c0",
+         "$c1",
+         "$c2"
+        ],
+        "policy": "failFast"
+       }
+      }
+     }
+    ],
+    "join": [
+     {
+      "commit": {
+       "next": {
+        "status": "terminal",
+        "outcome": {
+         "status": "completed",
+         "result": "joined"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "abort": [
+    {
+     "commit": {
+      "next": {
+       "status": "terminal",
+       "outcome": {
+        "status": "aborted",
+        "reason": "handler"
+       }
+      }
+     }
+    }
+   ]
+  },
+  "slow": {
+   "name": "t.slow",
+   "version": 1,
+   "phases": {
+    "start": [
+     {
+      "await": "g1"
+     },
+     {
+      "commit": {
+       "next": {
+        "status": "terminal",
+        "outcome": {
+         "status": "completed"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "abort": [
+    {
+     "commit": {
+      "next": {
+       "status": "terminal",
+       "outcome": {
+        "status": "aborted",
+        "reason": "handler"
+       }
+      }
+     }
+    }
+   ]
+  },
+  "slow2": {
+   "name": "t.slow2",
+   "version": 1,
+   "phases": {
+    "start": [
+     {
+      "await": "g2"
+     },
+     {
+      "commit": {
+       "next": {
+        "status": "terminal",
+        "outcome": {
+         "status": "completed"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "abort": [
+    {
+     "commit": {
+      "next": {
+       "status": "terminal",
+       "outcome": {
+        "status": "aborted",
+        "reason": "handler"
+       }
+      }
+     }
+    }
+   ]
+  },
+  "boom": {
+   "name": "t.boom",
+   "version": 1,
+   "phases": {
+    "start": [
+     {
+      "await": "gb"
+     },
+     {
+      "throw": "kaboom"
+     }
+    ]
+   },
+   "abort": [
+    {
+     "commit": {
+      "next": {
+       "status": "terminal",
+       "outcome": {
+        "status": "aborted",
+        "reason": "handler"
+       }
+      }
+     }
+    }
+   ]
+  },
+  "bg": {
+   "name": "t.bg",
+   "version": 1,
+   "phases": {
+    "start": [
+     {
+      "await": "gbg"
+     },
+     {
+      "commit": {
+       "next": {
+        "status": "terminal",
+        "outcome": {
+         "status": "completed"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "abort": [
+    {
+     "commit": {
+      "next": {
+       "status": "terminal",
+       "outcome": {
+        "status": "aborted",
+        "reason": "handler"
+       }
+      }
+     }
+    }
+   ]
+  },
+  "spawner": {
+   "name": "t.spawner",
+   "version": 1,
+   "phases": {
+    "start": [
+     {
+      "commit": {
+       "ops": [
+        {
+         "op": "task",
+         "task": "bg",
+         "background": true,
+         "conversationId": 2
+        },
+        {
+         "op": "ownedConversation"
+        },
+        {
+         "op": "childTask",
+         "task": "slow"
+        }
+       ],
+       "next": {
+        "status": "waiting",
+        "checkpoint": {
+         "phase": "done"
+        },
+        "on": [
+         "$c1"
+        ],
+        "policy": "allSettled"
+       }
+      }
+     }
+    ],
+    "done": [
+     {
+      "commit": {
+       "next": {
+        "status": "terminal",
+        "outcome": {
+         "status": "completed"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "abort": [
+    {
+     "commit": {
+      "next": {
+       "status": "terminal",
+       "outcome": {
+        "status": "aborted",
+        "reason": "handler"
+       }
+      }
+     }
+    }
+   ]
+  },
+  "sub": {
+   "name": "t.sub",
+   "version": 1,
+   "phases": {
+    "start": [
+     {
+      "await": "gs"
+     },
+     {
+      "commit": {
+       "next": {
+        "status": "terminal",
+        "outcome": {
+         "status": "completed"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "abort": [
+    {
+     "commit": {
+      "next": {
+       "status": "terminal",
+       "outcome": {
+        "status": "aborted",
+        "reason": "handler"
+       }
+      }
+     }
+    }
+   ]
+  }
+ },
+ "cmds": [
+  {
+   "cmd": "commit",
+   "ops": [
+    {
+     "op": "rootConversation"
+    },
+    {
+     "op": "createConversation"
+    }
+   ]
+  },
+  {
+   "cmd": "open"
+  },
+  {
+   "cmd": "resume"
+  },
+  {
+   "cmd": "commit",
+   "ops": [
+    {
+     "op": "createTask",
+     "task": "ff",
+     "opts": {
+      "conversationId": 1
+     }
+    }
+   ]
+  },
+  {
+   "cmd": "waitForTask",
+   "id": 3
+  },
+  {
+   "cmd": "release",
+   "gate": "gb"
+  },
+  {
+   "cmd": "commit",
+   "ops": [
+    {
+     "op": "createTask",
+     "task": "spawner",
+     "opts": {
+      "conversationId": 1
+     }
+    }
+   ]
+  },
+  {
+   "cmd": "waitForIdle",
+   "conv": 1
+  },
+  {
+   "cmd": "release",
+   "gates": [
+    "g1",
+    "g2"
+   ]
+  },
+  {
+   "cmd": "abortConversation",
+   "id": 2,
+   "background": true
+  },
+  {
+   "cmd": "waitForIdle"
+  },
+  {
+   "cmd": "commit",
+   "ops": [
+    {
+     "op": "createTask",
+     "task": "sub",
+     "opts": {
+      "conversationId": 1
+     }
+    },
+    {
+     "op": "createTask",
+     "task": "sub",
+     "opts": {
+      "conversationId": 2
+     }
+    }
+   ]
+  },
+  {
+   "cmd": "abortConversation",
+   "id": 1
+  },
+  {
+   "cmd": "release",
+   "gate": "gs"
+  },
+  {
+   "cmd": "waitForIdle"
+  }
+ ]
+}

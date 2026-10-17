@@ -1,12 +1,17 @@
 package managementhttp
 
+// pi: packages/coding-agent/src/utils/management-http.ts
+
 import (
 	"context"
 	"errors"
 	"io"
+	"net"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -182,5 +187,45 @@ func TestFetchWithRetryStopsAfterMaxRetriesAndReturnsTheLastStatus(t *testing.T)
 	}
 	if err == nil || len(rec.calls) != 1 {
 		t.Fatalf("maxRetries=0: err=%v calls=%d, want an error after 1 call", err, len(rec.calls))
+	}
+}
+
+// A connection that another request left in the client's pool must not carry an attempt either: net/http would resend the request once when that
+// connection drops before the response. Pi's fetch (undici) sends one request and fails, so with MaxRetries 0 the server sees exactly one.
+func TestFetchWithRetryDoesNotResendOnAPooledConnection(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/warm" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		requests.Add(1)
+		conn, _, err := w.(http.Hijacker).Hijack()
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		_ = conn.(*net.TCPConn).SetLinger(0)
+		_ = conn.Close()
+	}))
+	defer server.Close()
+	client := &http.Client{Transport: &http.Transport{}}
+	warm, err := client.Get(server.URL + "/warm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = io.Copy(io.Discard, warm.Body)
+	_ = warm.Body.Close()
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, server.URL+"/drop", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	zero := 0
+	if response, err := FetchWithRetry(client, req, FetchRetryOptions{MaxRetries: &zero}); err == nil {
+		_ = response.Body.Close()
+		t.Fatalf("a dropped connection with MaxRetries 0 returned status %d, want the transport error", response.StatusCode)
+	}
+	if got := requests.Load(); got != 1 {
+		t.Errorf("the server saw %d requests, want 1 (one attempt, no transparent resend)", got)
 	}
 }

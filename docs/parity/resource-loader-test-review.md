@@ -13,18 +13,18 @@ Test aliases:
 
 | Alias | Go evidence |
 |---|---|
-| SDKOptions | `cmd/pig/configured_resources_test.go#TestResourceLoaderUpstreamSDKOptions` |
-| Discovery | `cmd/pig/configured_resources_test.go#TestResourceLoaderUpstreamDiscovery` |
-| Precedence | `cmd/pig/configured_resources_test.go#TestResourceLoaderUpstreamProjectPrecedence` and `internal/codingagent/theme_precedence_test.go#TestResourceLoaderUpstreamThemePrecedence` |
-| Symlinks | `cmd/pig/configured_resources_test.go#TestResourceLoaderUpstreamSymlinkedExtensions` |
-| Trust | `cmd/pig/configured_resources_test.go#TestResourceLoaderUpstreamPreTrustExtensions` |
-| Conflicts | `cmd/pig/configured_resources_test.go#TestResourceLoaderUpstreamExtensionConflicts` |
-| ContextOptions | `cmd/pig/upstream_resource_context_options_test.go#TestUpstreamResourceLoaderContextOptions` |
+| SDKOptions | `coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamSDKOptions` |
+| Discovery | `coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamDiscovery` |
+| Precedence | `coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamProjectPrecedence` and `internal/codingagent/theme_precedence_test.go#TestResourceLoaderUpstreamThemePrecedence` |
+| Symlinks | `coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamSymlinkedExtensions` |
+| Trust | `coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamPreTrustExtensions` |
+| Conflicts | `coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamExtensionConflicts` |
+| ContextOptions | `coding/cli/upstream_resource_context_options_test.go#TestUpstreamResourceLoaderContextOptions` |
 | ContextFiles | `internal/codingagent/upstream_resource_context_test.go#TestUpstreamResourceLoaderContextFiles` |
-| Untrusted | `cmd/pig/upstream_resource_context_options_test.go#TestUpstreamResourceLoaderUntrustedProject` |
-| PromptSources | `cmd/pig/resource_prompts_test.go#TestResourceLoaderUpstreamSystemPromptSources` |
+| Untrusted | `coding/cli/upstream_resource_context_options_test.go#TestUpstreamResourceLoaderUntrustedProject` |
+| PromptSources | `coding/cli/resource_prompts_test.go#TestResourceLoaderUpstreamSystemPromptSources` |
 | ExtensionResources | `internal/codingagent/reload_resources_test.go#TestResourceLoaderUpstreamExtensionResources` |
-| PackageMetadata | `cmd/pig/reload_resources_test.go#TestResourceLoaderUpstreamPackageMetadata` |
+| PackageMetadata | `coding/cli/reload_resources_test.go#TestResourceLoaderUpstreamPackageMetadata` |
 
 | Upstream line | Case | Evidence/subtest |
 |---:|---|---|
@@ -89,7 +89,7 @@ The native `DefaultResourceLoader` also ports these `resource-loader.test.ts` ca
 
 Mutation evidence: ignoring the supplied loader fails the :53 and :79 subtests and the live-read test; supplying no resources when the loader is omitted fails :41; dropping the loader in Clone fails `TestCloneKeepsTheBoundResourceLoader`.
 
-`cmd/pig/sdk_skills_upstream_test.go#TestUpstreamSDKSkillsSubprocess` ports the same three cases through the production extension loader. Each case uses a child directory containing the upstream test skill, an in-memory SessionManager and an independent child session. Each child is disposed before the Host shuts down. `coding/extension/host/subprocess/runtime_node_child_session_test.go#TestNodeSDKSessionDefaultsAndSkillsMatchPi` also runs the original assertions against the installed Pi SDK and shipped Node SDK. The file is **ported**.
+`coding/cli/sdk_skills_upstream_test.go#TestUpstreamSDKSkillsSubprocess` ports the same three cases through the production extension loader. Each case uses a child directory containing the upstream test skill, an in-memory SessionManager and an independent child session. Each child is disposed before the Host shuts down. `coding/extension/host/subprocess/runtime_node_child_session_test.go#TestNodeSDKSessionDefaultsAndSkillsMatchPi` also runs the original assertions against the installed Pi SDK and shipped Node SDK. The file is **ported**.
 
 ## Verification
 

@@ -1,0 +1,11 @@
+[
+ {
+  "upstream": "packages/codemode/src/wasm.ts",
+  "package": "./codemode",
+  "tests": [
+   "TestLoadQuickJSWasmReturnsOnlyTheEmbeddedModule"
+  ],
+  "upstream_reference": "packages/codemode/src/wasm.ts:21 loadQuickJSWasm(path?) (default module when no path; PiG's one module source is the embedded asset)",
+  "mutation": "codemode/wasm.go: LoadQuickJSWasm accepts any path; it rejects the empty default path; it returns no module bytes (TestLoadQuickJSWasmReturnsOnlyTheEmbeddedModule FAIL each); baseline PASS"
+ }
+]

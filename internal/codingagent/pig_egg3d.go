@@ -6,6 +6,7 @@ import (
 	"math"
 
 	"github.com/MichaelKinsy/PiG/coding/piglogin"
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 )
 
 // egg3dStartScale is the braille dots per pixel when a model without an origin appears, growing from a speck at the center.
@@ -75,7 +76,7 @@ func pig3dModel(variant piglogin.Variant) egg3dModel {
 		reach:          radius * (cameraDistance / (cameraDistance - radius)),
 		widthShare:     0.45,
 		puzzleMoves: func(random float64) int {
-			return int(jsRoundFloat(float64(count) * (0.03 + random*0.04)))
+			return int(jsnumber.Round(float64(count) * (0.03 + float64(random*0.04))))
 		},
 	}
 }
@@ -96,7 +97,7 @@ func (m *egg3dModel) shuffleSteps(cycle int) [][]logoCell3 {
 	}
 	steps := [][]logoCell3{positions}
 	lastMoved := map[int]bool{}
-	random := float64(cycle)*7_919 + 1
+	random := float64(float64(cycle)*7_919) + 1
 	next := func() float64 {
 		value := logoHash(random)
 		random++
@@ -184,7 +185,7 @@ func (a *pigLogoAnimation) blockOffsets(time float64) [][3]float64 {
 		return offsets
 	}
 	cycle := int(math.Floor((time - logoPuzzleStart) / logoPuzzleCycle))
-	local := time - logoPuzzleStart - float64(cycle)*logoPuzzleCycle
+	local := time - logoPuzzleStart - float64(float64(cycle)*logoPuzzleCycle)
 	if a.shuffle == nil || a.shuffle.cycle != cycle {
 		a.shuffle = &egg3dShuffle{cycle: cycle, steps: a.model.shuffleSteps(cycle)}
 	}
@@ -195,10 +196,10 @@ func (a *pigLogoAnimation) blockOffsets(time float64) [][3]float64 {
 	}
 	if local < logoShuffleEnd {
 		step := int(math.Floor(local / logoPuzzleStep))
-		progress := logoSmooth((local - float64(step)*logoPuzzleStep) / logoPuzzleStep)
+		progress := logoSmooth((local - float64(float64(step)*logoPuzzleStep)) / logoPuzzleStep)
 		for index, from := range steps[step] {
 			a, b := offset(from, index), offset(steps[step+1][index], index)
-			offsets[index] = [3]float64{a[0] + (b[0]-a[0])*progress, a[1] + (b[1]-a[1])*progress, a[2] + (b[2]-a[2])*progress}
+			offsets[index] = [3]float64{a[0] + float64((b[0]-a[0])*progress), a[1] + float64((b[1]-a[1])*progress), a[2] + float64((b[2]-a[2])*progress)}
 		}
 		return offsets
 	}
@@ -206,13 +207,13 @@ func (a *pigLogoAnimation) blockOffsets(time float64) [][3]float64 {
 		// All blocks fly home at once. Alternating arcs in depth keep them from passing through each other.
 		u := (local - logoShuffleEnd) / logoPuzzleReturn
 		remaining := 1 - logoSmooth(u)
-		arc := math.Sin(math.Pi*clamp01(u)) * 0.8
+		arc := float64(math.Sin(math.Pi*clamp01(u)) * 0.8)
 		for index, position := range steps[logoPuzzleSteps] {
 			o := offset(position, index)
 			if index%2 != 0 {
-				offsets[index] = [3]float64{o[0] * remaining, o[1] * remaining, o[2]*remaining - arc}
+				offsets[index] = [3]float64{o[0] * remaining, o[1] * remaining, float64(o[2]*remaining) - arc}
 			} else {
-				offsets[index] = [3]float64{o[0] * remaining, o[1] * remaining, o[2]*remaining + arc}
+				offsets[index] = [3]float64{o[0] * remaining, o[1] * remaining, float64(o[2]*remaining) + arc}
 			}
 		}
 	}

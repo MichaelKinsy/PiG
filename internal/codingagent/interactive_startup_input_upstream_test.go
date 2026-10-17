@@ -16,7 +16,7 @@ func TestUpstreamInteractiveStartupInput(t *testing.T) {
 			t.Fatalf("setText=%q", got)
 		}
 		// Upstream asserts the complete showStatus argument; a substring would accept extra diagnostic text.
-		status := tui.NewPaddedText(tui.ActiveTheme().FgText("dim", "Startup is still in progress"), 1, 0, nil)
+		status := tui.NewPaddedText(tui.ActiveTheme().Fg("dim", "Startup is still in progress"), 1, 0, nil)
 		want := append(tui.NewSpacer(1).Render(100), status.Render(100)...)
 		if got := m.chatContainer.Render(100); !slices.Equal(got, want) {
 			t.Fatalf("showStatus=%q, want %q", got, want)

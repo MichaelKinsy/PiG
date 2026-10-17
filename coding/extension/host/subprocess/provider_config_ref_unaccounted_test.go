@@ -18,7 +18,7 @@ func TestProviderConfigRefIsAccountedWhenTheCallIsNotApplied(t *testing.T) {
 		{"args do not parse", `{"name":5,"config":{},"configRef":` + ref + `}`, func(h *Host, me *managedExt, call *CallPayload) {
 			_, _ = h.handleProviderRegistrationCall(context.Background(), me, me.connection(), "c1", call)
 		}},
-		{"empty provider name", `{"name":" ","config":{},"configRef":` + ref + `}`, func(h *Host, me *managedExt, call *CallPayload) {
+		{"empty provider name", `{"name":"","config":{},"configRef":` + ref + `}`, func(h *Host, me *managedExt, call *CallPayload) {
 			_, _ = h.handleProviderRegistrationCall(context.Background(), me, me.connection(), "c1", call)
 		}},
 		{"call dropped before it ran", `{"name":"p","config":{},"configRef":` + ref + `}`, func(h *Host, me *managedExt, call *CallPayload) {

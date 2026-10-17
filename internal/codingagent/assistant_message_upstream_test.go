@@ -11,6 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/markdowntransform"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -19,11 +20,11 @@ func upstreamAssistant(content ...ai.AssistantContentBlock) *agent.AssistantMess
 	return &agent.AssistantMessage{Role: agent.RoleAssistant, Content: content, API: "openai-responses", Provider: "openai", ModelID: "gpt-4o-mini", Usage: &ai.Usage{}, StopReason: ai.StopReasonStop}
 }
 
-func upstreamAssistantBlock(message *agent.AssistantMessage, hidden bool, streaming *bool, transforms ...extension.MarkdownTransformer) *tui.AssistantMessageBlock {
-	block := tui.NewAssistantMessageBlock(hidden)
+func upstreamAssistantBlock(message *agent.AssistantMessage, hidden bool, streaming *bool, transforms ...extension.MarkdownTransformer) *tui.AssistantMessageComponent {
+	block := tui.NewAssistantMessageComponent(nil, hidden, nil, "", nil, nil)
 	for _, kind := range []extension.MarkdownMessageType{extension.MarkdownMessageAssistant, extension.MarkdownMessageAssistantThinking} {
 		transform := func(text string, width int) string {
-			return createMarkdownTransform(kind, streaming != nil && *streaming, transforms)(text, width)
+			return markdowntransform.CreateMarkdownTransform(kind, streaming != nil && *streaming, transforms)(text, width)
 		}
 		if kind == extension.MarkdownMessageAssistant {
 			block.SetMarkdownTransform(transform)
@@ -38,9 +39,10 @@ func upstreamAssistantBlock(message *agent.AssistantMessage, hidden bool, stream
 	return block
 }
 
+// Pi: packages/coding-agent/src/modes/interactive/components/assistant-message.ts:73 (AssistantMessageComponent.setOutputPad).
 func TestAssistantMessageUpstream(t *testing.T) {
 	const start, end, final = "\x1b]133;A\x07", "\x1b]133;B\x07", "\x1b]133;C\x07"
-	plain := func(block *tui.AssistantMessageBlock, width int) string {
+	plain := func(block *tui.AssistantMessageComponent, width int) string {
 		return widthx.StripAnsi(strings.Join(block.Render(width), "\n"))
 	}
 	// .upstream/v0.87.1/packages/coding-agent/test/assistant-message.test.ts:37
@@ -218,7 +220,7 @@ func TestAssistantMessageUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/assistant-message.test.ts:266
 	t.Run("uses configured output padding for user messages", func(t *testing.T) {
 		for _, pad := range []int{1, 0} {
-			block := tui.NewUserMessageBlock("hello")
+			block := tui.NewUserMessageComponent("hello", nil, 1, nil)
 			block.SetOutputPad(pad)
 			prefix := strings.Repeat(" ", pad) + "hello"
 			if !slices.ContainsFunc(block.Render(40), func(line string) bool { return strings.HasPrefix(widthx.StripAnsi(line), prefix) }) {

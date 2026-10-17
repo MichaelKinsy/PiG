@@ -4,6 +4,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -28,6 +30,13 @@ type PushProxy struct {
 	// setWidget(key, string[]). It is nil for a pre-rendered frame.
 	text    []*tui.Text
 	content []string
+	// textRev counts string list updates: the revision of their view.
+	textRev uint64
+
+	// view draws the widget when the extension sent a view (D107). With
+	// linesWidth set, it annotates lines a Node component rendered at that
+	// width.
+	view *viewSurface
 
 	// width is tracked separately with atomic to avoid write-under-RLock.
 	width atomic.Int32
@@ -46,7 +55,7 @@ type PushProxy struct {
 // of the new terminal width.
 func NewPushProxy(invalidate func(), onWidthChange func(width int)) *PushProxy {
 	return &PushProxy{
-		placement:     "aboveEditor",
+		placement:     string(extension.WidgetPlacementAboveEditor),
 		invalidate:    invalidate,
 		onWidthChange: onWidthChange,
 	}
@@ -74,6 +83,13 @@ func (p *PushProxy) Render(width int) []string {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
+	if p.view != nil {
+		lines := p.view.Render(width)
+		if p.linesWidth > 0 {
+			return widthx.FrameAt(lines, p.linesWidth, width)
+		}
+		return lines
+	}
 	if p.text != nil {
 		var rows []string
 		for _, entry := range p.text {
@@ -91,6 +107,65 @@ func (p *PushProxy) Render(width int) []string {
 	return widthx.FrameAt(out, p.linesWidth, width)
 }
 
+// FrontendView reports the widget's structure to a D91 frontend (D107): the
+// extension's view, or for a string list the Text components Pi lays it
+// out with.
+func (p *PushProxy) FrontendView(width int) *frontend.View {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.view != nil {
+		if p.linesWidth > 0 && p.linesWidth != width {
+			return nil
+		}
+		return p.view.FrontendView(width)
+	}
+	if p.text == nil {
+		return nil
+	}
+	root := frontend.ViewNode{Kind: frontend.ViewKindContainer, Width: width, Children: make([]frontend.ViewNode, len(p.text))}
+	for i, entry := range p.text {
+		rows := len(entry.Render(width))
+		root.Children[i] = frontend.ViewNode{Kind: frontend.ViewKindText, Text: entry.Content, PaddingX: entry.PaddingX, PaddingY: entry.PaddingY, Rows: rows, Width: width}
+		root.Rows += rows
+	}
+	return &frontend.View{Root: root, Seq: p.textRev}
+}
+
+// UpdateView draws the widget from view, an authoritative view (linesWidth
+// 0) or one annotating lines rendered at linesWidth.
+func (p *PushProxy) UpdateView(view *viewSurface, linesWidth int) {
+	p.mu.Lock()
+	if p.view != nil && p.view != view {
+		p.view.close()
+	}
+	p.view = view
+	p.lines, p.linesWidth = nil, linesWidth
+	p.text, p.content = nil, nil
+	p.mu.Unlock()
+	if p.invalidate != nil {
+		p.invalidate()
+	}
+}
+
+// viewSurface returns the widget's view surface, made for conn on first use.
+func (p *PushProxy) viewSurface(conn *Conn) *viewSurface {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.view == nil {
+		p.view = newConnViewSurface(conn, "")
+		p.view.repaint = p.invalidate
+	}
+	return p.view
+}
+
+// dropView ends the widget's view, as a frame of lines replaces it.
+func (p *PushProxy) dropViewLocked() {
+	if p.view != nil {
+		p.view.close()
+		p.view = nil
+	}
+}
+
 // Invalidate marks the component for re-render. Called by the TUI framework.
 // Proxy updates request rendering directly, so this is a no-op.
 func (p *PushProxy) Invalidate() {}
@@ -102,6 +177,7 @@ func (p *PushProxy) UpdateLines(lines []string) { p.UpdateLinesAt(lines, 0) }
 // (0 when the extension did not report it) and triggers a TUI re-render.
 func (p *PushProxy) UpdateLinesAt(lines []string, width int) {
 	p.mu.Lock()
+	p.dropViewLocked()
 	p.lines = lines
 	p.linesWidth = width
 	p.text, p.content = nil, nil
@@ -123,12 +199,14 @@ func (p *PushProxy) UpdateContent(content []string) {
 		entries = append(entries, tui.NewPaddedText(line, 1, 0, nil))
 	}
 	if len(content) > maxWidgetLines {
-		entries = append(entries, tui.NewPaddedText(tui.ActiveTheme().FgText("muted", "... (widget truncated)"), 1, 0, nil))
+		entries = append(entries, tui.NewPaddedText(tui.ActiveTheme().Fg("muted", "... (widget truncated)"), 1, 0, nil))
 	}
 	p.mu.Lock()
+	p.dropViewLocked()
 	p.text = entries
 	p.content = append([]string(nil), content...)
 	p.lines, p.linesWidth = nil, 0
+	p.textRev++
 	p.mu.Unlock()
 
 	if p.invalidate != nil {
@@ -139,6 +217,7 @@ func (p *PushProxy) UpdateContent(content []string) {
 // Clear removes all cached lines.
 func (p *PushProxy) Clear() {
 	p.mu.Lock()
+	p.dropViewLocked()
 	p.lines = nil
 	p.text, p.content = nil, nil
 	p.mu.Unlock()

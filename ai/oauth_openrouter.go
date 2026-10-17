@@ -15,7 +15,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -47,16 +46,12 @@ func parseOpenRouterAuthorizationInput(input string) string {
 	if v == "" {
 		return ""
 	}
-	// A full URL (has a scheme): pull the code query parameter. Go's url.Parse
-	// is lenient, so the scheme check emulates JS `new URL(value)` throwing on a
-	// bare string.
-	if u, err := url.Parse(v); err == nil && u.Scheme != "" {
-		return u.Query().Get("code")
+	// A full URL: pull the code query parameter. authorizationURLQuery reports where JS `new URL(value)` throws.
+	if query, ok := authorizationURLQuery(v); ok {
+		return query.Get("code")
 	}
 	if strings.Contains(v, "code=") {
-		if q, err := url.ParseQuery(v); err == nil {
-			return q.Get("code")
-		}
+		return authorizationQueryParams(v).Get("code")
 	}
 	return v
 }
@@ -114,13 +109,17 @@ func exchangeOpenRouterCode(ctx context.Context, code, verifier string) (OAuthCr
 		return OAuthCredentials{}, err
 	}
 	defer func() { _ = resp.Body.Close() }()
-	respBody, _ := io.ReadAll(resp.Body)
+	// A body that fails to read is no body: response.json() rejects, as it does for one that is not JSON.
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		respBody = nil
+	}
 
 	// Upstream keeps a JSON object body, ignores arrays/scalars, and only treats
 	// a parse failure as fatal when the HTTP status was otherwise successful.
-	var raw any
-	parseErr := json.Unmarshal(respBody, &raw)
-	body, _ := raw.(map[string]any)
+	parsed, _, parsedOK := oauthJSONValue(respBody)
+	parseErr := !parsedOK
+	body, _ := parsed.(map[string]any)
 	if body == nil {
 		body = map[string]any{}
 	}
@@ -132,14 +131,14 @@ func exchangeOpenRouterCode(ctx context.Context, code, verifier string) (OAuthCr
 		}
 		return OAuthCredentials{}, errors.New(msg)
 	}
-	if parseErr != nil {
+	if parseErr {
 		return OAuthCredentials{}, errors.New("OpenRouter OAuth returned invalid JSON")
 	}
 	key, _ := body["key"].(string)
 	if key == "" {
 		return OAuthCredentials{}, errors.New(`OpenRouter OAuth response carries no "key"`)
 	}
-	return OAuthCredentials{Access: key, Refresh: "", Expires: openRouterMaxSafeInteger}, nil
+	return OAuthCredentials{Access: key, Refresh: "", Expires: openRouterMaxSafeInteger, order: credentialKeyOrder{keys: accessFirstCredentialMembers}}, nil
 }
 
 // LoginOpenRouter runs the OpenRouter OAuth PKCE flow: a loopback callback raced against a manual paste. OpenRouter

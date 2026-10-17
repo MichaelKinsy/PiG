@@ -39,8 +39,8 @@ func loadPublishedCatalog(t *testing.T) publishedCatalog {
 	if err := json.Unmarshal(manifest, &pkg); err != nil {
 		t.Fatal(err)
 	}
-	if pkg.Version != UpstreamVersionString() {
-		t.Fatalf("installed pi-ai is %s, want the pinned %s", pkg.Version, UpstreamVersionString())
+	if pkg.Version != upstreamPackageVersion() {
+		t.Fatalf("installed pi-ai is %s, want the pinned %s", pkg.Version, upstreamPackageVersion())
 	}
 	command := exec.Command("node", "--input-type=module", "-e", publishedCatalogScript, source)
 	var stderr bytes.Buffer

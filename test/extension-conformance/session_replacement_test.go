@@ -24,7 +24,7 @@ func TestSessionReplacementLifecycleAcrossSDKs(t *testing.T) {
 			})
 			for _, reason := range []string{"new", "resume", "fork"} {
 				before := len(h.ui.Recorded())
-				for _, event := range []any{
+				for _, event := range []extension.ExtensionEvent{
 					extension.SessionShutdownEvent{Type: "session_shutdown", Reason: reason, TargetSessionFile: "/destination.jsonl"},
 					extension.SessionStartEvent{Type: "session_start", Reason: reason, PreviousSessionFile: "/outgoing.jsonl"},
 				} {

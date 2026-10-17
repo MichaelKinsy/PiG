@@ -1,9 +1,10 @@
+import { PI_PACKAGE_VERSION } from "./pi-version.mjs";
 import assert from 'node:assert/strict';
 import {mkdtempSync,mkdirSync,readFileSync,writeFileSync,chmodSync,rmSync,symlinkSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve,dirname} from 'node:path';
 import {pathToFileURL} from 'node:url';
-const root=resolve('extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent');assert.equal(JSON.parse(readFileSync(join(root,'package.json'),'utf8')).version,'1.0.3');
+const root=resolve('extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent');assert.equal(JSON.parse(readFileSync(join(root,'package.json'),'utf8')).version,PI_PACKAGE_VERSION);
 const mod=await import(pathToFileURL(join(root,'dist/config.js')));
 const temp=mkdtempSync(join(tmpdir(),'pi-config-')),bin=join(temp,'bin');mkdirSync(bin);
 for(const command of ['npm','pnpm','yarn','bun']){const file=join(bin,command);writeFileSync(file,'#!/bin/sh\nif [ "$1" = "--prefix" ]; then shift 2; fi\ncase "$1" in root) printf "%s\\n" "$CONFIG_TEST_ROOT";; global) printf "%s\\n" "$CONFIG_TEST_GLOBAL";; pm) printf "%s\\n" "$CONFIG_TEST_BUN_BIN";; *) exit 1;; esac\n');chmodSync(file,0o755);}

@@ -30,8 +30,8 @@ func TestTaskRuntimeAgentRejectsAnAlreadyCancelledCallerAfterResolution(t *testi
 		}
 		return tkComplete(ctx, runtime)
 	})
-	opened := tkOpenRoot(t, []durable.AnyTask{agent})
-	tkWaitOutcome(t, opened.harness, tkStart(t, opened.root, agent))
+	opened := tkOpenRoot(t, []durable.AnyTask{agent.Erased()})
+	tkWaitOutcome(t, opened.harness, tkStart(t, opened.root, agent.Erased()))
 	if resolvedErr != nil {
 		t.Fatal(resolvedErr)
 	}

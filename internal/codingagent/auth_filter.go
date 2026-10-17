@@ -44,15 +44,12 @@ func ReachableProviders() map[string]bool {
 // which credentials are detectable in the environment / auth.json /
 // model registry, without probing the network.
 //
-//   - github-copilot / openai-codex: OAuth credential present with a
-//     refresh token (a half-completed login is not configured auth)
-//   - every other provider: its env API key, a models.json apiKey, or any
-//     stored auth.json credential (api_key or oauth)
+//   - every other provider: ModelRegistry.HasConfiguredAuth (models.json, then
+//     Pi's checkProviderAuth over the stored auth.json credential and the environment)
 //   - ollama: OLLAMA_HOST env set (cheap heuristic; we do NOT probe
 //     localhost:11434: picking ollama with no daemon running is a
 //     user error caught at switch time)
-//   - amazon-bedrock: any AWS auth signal, including shared config files
-//   - google-vertex: GOOGLE_CLOUD_API_KEY or ADC (via hasEnvAuth)
+//   - amazon-bedrock, google-vertex, cloudflare-*: their resolvers' env signals (Pi reads no shared AWS config file)
 //
 // agentDir is the pig config dir (typically ~/.pig/agent). auth.json
 // and models.json are read from there.
@@ -67,40 +64,18 @@ func AuthenticatedProviders(agentDir string) map[string]bool {
 	out := make(map[string]bool)
 	registry := NewModelRegistry(agentDir)
 
-	// OAuth providers whose stored credential is only usable with a refresh
-	// token. A half-completed login must not count as configured auth.
 	if auth, err := ai.NewAuthStorage(filepath.Join(agentDir, "auth.json")); err == nil {
 		registry.SetAuthStorage(auth)
-		for _, providerID := range []string{"github-copilot", "openai-codex"} {
-			if cred, ok, _ := auth.Get(providerID); ok {
-				if cred.Type == ai.CredentialOAuth && cred.Refresh != "" {
-					out[providerID] = true
-				}
-			}
-		}
 	}
 
 	for providerID := range ReachableProviders() {
-		switch providerID {
-		case "github-copilot", "openai-codex":
-			// Handled above: these need a valid OAuth credential, not an env key.
-			continue
-		}
-		if hasEnvAuth(providerID) || registry.HasAnyKey(providerID) || registry.hasStoredCredential(providerID) {
+		if registry.HasConfiguredAuth(providerID) {
 			out[providerID] = true
 		}
 	}
 
 	if os.Getenv("OLLAMA_HOST") != "" {
 		out["ollama"] = true
-	}
-
-	// amazon-bedrock: detect any AWS auth signal. The AWS SDK resolves the
-	// actual credentials at request time; we only need a cheap boolean here to
-	// decide picker eligibility. hasEnvAuth already covers the env signals;
-	// hasBedrockAuthSignal also covers the shared credentials/config files.
-	if hasBedrockAuthSignal() {
-		out["amazon-bedrock"] = true
 	}
 
 	return out
@@ -110,10 +85,6 @@ func AuthenticatedProviders(agentDir string) map[string]bool {
 func envOnlyAuthenticated() map[string]bool {
 	out := make(map[string]bool)
 	for providerID := range ReachableProviders() {
-		switch providerID {
-		case "github-copilot", "openai-codex":
-			continue
-		}
 		if hasEnvAuth(providerID) {
 			out[providerID] = true
 		}
@@ -121,34 +92,5 @@ func envOnlyAuthenticated() map[string]bool {
 	if os.Getenv("OLLAMA_HOST") != "" {
 		out["ollama"] = true
 	}
-	if hasBedrockAuthSignal() {
-		out["amazon-bedrock"] = true
-	}
 	return out
-}
-
-// hasBedrockAuthSignal returns true when any of the AWS env vars or
-// shared config files the SDK would consult are present. This is the
-// cheapest heuristic we can run without actually constructing an SDK
-// config; it intentionally errs on the side of "available" so the
-// picker shows Bedrock when AWS auth is likely to succeed.
-func hasBedrockAuthSignal() bool {
-	// Matches upstream env-api-keys.ts amazon-bedrock check exactly.
-	if os.Getenv("AWS_PROFILE") != "" ||
-		(os.Getenv("AWS_ACCESS_KEY_ID") != "" && os.Getenv("AWS_SECRET_ACCESS_KEY") != "") ||
-		os.Getenv("AWS_BEARER_TOKEN_BEDROCK") != "" ||
-		os.Getenv("AWS_CONTAINER_CREDENTIALS_RELATIVE_URI") != "" ||
-		os.Getenv("AWS_CONTAINER_CREDENTIALS_FULL_URI") != "" ||
-		os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE") != "" {
-		return true
-	}
-	home, err := os.UserHomeDir()
-	if err == nil {
-		for _, rel := range []string{".aws/credentials", ".aws/config"} {
-			if _, err := os.Stat(filepath.Join(home, rel)); err == nil {
-				return true
-			}
-		}
-	}
-	return false
 }

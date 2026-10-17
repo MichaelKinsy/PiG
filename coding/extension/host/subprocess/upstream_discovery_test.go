@@ -1,3 +1,5 @@
+//go:build !pig_strip_node_extensions
+
 package subprocess
 
 import (
@@ -48,6 +50,15 @@ func TestUpstreamExtensionsDiscovery(t *testing.T) {
 export default function(pi) {
 	pi.registerCommand(physicalDependency ? "physical-dependency" : "host-dependency", { handler: async () => {} });
 }`}, paths: []string{"extensions/compiled-esm-extension.js"}, commands: []string{"host-dependency"}, absentCommands: []string{"physical-dependency"}},
+		// PiG: the module served in place of the installed copy is the runtime's own, with its exports, on every TypeScript runtime.
+		{name: "serves the runtime's module in place of an installed copy", files: map[string]string{
+			"package.json": `{"name":"application","type":"module","dependencies":{"@earendil-works/pi-coding-agent":"1.0.0"}}`,
+			"node_modules/@earendil-works/pi-coding-agent/package.json": `{"name":"@earendil-works/pi-coding-agent","type":"module","exports":"./index.js"}`,
+			"node_modules/@earendil-works/pi-coding-agent/index.js":     `export const renderDiff = "installed copy";`,
+			"extensions/served.js": `import * as agent from "@earendil-works/pi-coding-agent";
+export default function(pi) {
+	pi.registerCommand(typeof agent.renderDiff === "function" ? "runtime-module" : "other-module", { handler: async () => {} });
+}`}, paths: []string{"extensions/served.js"}, commands: []string{"runtime-module"}, absentCommands: []string{"other-module"}},
 		// .upstream/v0.87.1/packages/coding-agent/test/extensions-discovery.test.ts:72
 		{name: "keeps the type-only pi-ai OAuth compatibility barrel resolvable", files: map[string]string{"extensions/oauth-import.ts": `import * as oauth from "@earendil-works/pi-ai/oauth"; void oauth; ` + command}, paths: []string{"extensions/oauth-import.ts"}},
 		// .upstream/v0.87.1/packages/coding-agent/test/extensions-discovery.test.ts:90

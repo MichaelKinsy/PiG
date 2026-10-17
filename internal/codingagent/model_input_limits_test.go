@@ -78,7 +78,7 @@ func TestModelRegistryInputLimitsOptionalObjectsAndIntegerSpellings(t *testing.T
 
 func TestModelRegistryInputLimitsResolutionDoesNotAlias(t *testing.T) {
 	dir := t.TempDir()
-	config := `{"providers":{"test":{"baseUrl":"https://example.test","models":[{"id":"m","inputLimits":{"images":{"resize":{"maxWidth":1200}}}}]}}}`
+	config := `{"providers":{"test":{"baseUrl":"https://example.test","api":"openai-completions","models":[{"id":"m","inputLimits":{"images":{"resize":{"maxWidth":1200}}}}]}}}`
 	if err := os.WriteFile(filepath.Join(dir, "models.json"), []byte(config), 0600); err != nil {
 		t.Fatal(err)
 	}

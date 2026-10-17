@@ -1,0 +1,43 @@
+{
+	"name": "longhistory",
+	"rule": "longhistory",
+	"about": "bench/evals' long-history bench (pigbench longhistory) on PiG built from the commit and on Pi's coding agent at PiG's pinned Pi version, both against pigbench's local mock model. Sizes are history tokens: 1000000 is a ~1M-token session with no compaction, 3000000 is ~3M tokens across three compactions. Each target generates the same session from seed 20261009. One sample is three fresh processes on copies of it: RPC (open, resume, five appended turns), the TUI (first output, settled, keystrokes, streaming frames, width and height redraws) and a TUI /resume. open and turn[] are the RPC open and the appended turns. Needs an agent bundle (k8sbench bundle -agents) or the benchmark image.",
+	"fingerprints": {
+		"1000000": "a3d78d643f9b7ebd",
+		"3000000": "15e5f012c2b08ef5"
+	},
+	"targets": [
+		{
+			"name": "pig",
+			"role": "pig",
+			"seed": ["{root}/python/bin/python3.12", "{root}/pigbench.py", "k8s", "generate", "--tokens", "{turns}", "--seed", "20261009", "--dir", "{dir}"],
+			"seedMeta": "{dir}/k8s-{turns}.json",
+			"sample": ["{root}/python/bin/python3.12", "{root}/pigbench.py", "k8s", "sample", "--target", "pig", "--family", "pig", "--binary", "{root}/bin/pig", "--tokens", "{turns}", "--seed", "20261009", "--dir", "{dir}", "--sample", "{sample}"]
+		},
+		{
+			"name": "pi",
+			"role": "reference",
+			"seed": ["{root}/python/bin/python3.12", "{root}/pigbench.py", "k8s", "generate", "--tokens", "{turns}", "--seed", "20261009", "--dir", "{dir}"],
+			"seedMeta": "{dir}/k8s-{turns}.json",
+			"sample": ["{root}/python/bin/python3.12", "{root}/pigbench.py", "k8s", "sample", "--target", "pi", "--family", "pi", "--binary", "{root}/pi-agent/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js", "--tokens", "{turns}", "--seed", "20261009", "--dir", "{dir}", "--sample", "{sample}"]
+		}
+	],
+	"metrics": [
+		{"name": "steadyRss", "label": "RPC steady RSS MiB"},
+		{"name": "resumeRpcMs", "label": "RPC resume ms"},
+		{"name": "resumeRpcCpuMs", "label": "RPC resume CPU ms"},
+		{"name": "tuiFirstOutputMs", "label": "TUI first output ms"},
+		{"name": "tuiSettledMs", "label": "TUI settled ms"},
+		{"name": "tuiOpenCpuMs", "label": "TUI open CPU ms"},
+		{"name": "tuiPeakRss", "label": "TUI peak RSS MiB"},
+		{"name": "keyIdleMs", "label": "keystroke ms"},
+		{"name": "keyStreamingMs", "label": "keystroke while streaming ms"},
+		{"name": "frameCpuMs", "label": "CPU/frame ms"},
+		{"name": "resizeWidthMs", "label": "width redraw ms"},
+		{"name": "resizeWidthCpuMs", "label": "width redraw CPU ms"},
+		{"name": "resizeHeightMs", "label": "height redraw ms"},
+		{"name": "resizeHeightCpuMs", "label": "height redraw CPU ms"},
+		{"name": "resumeTuiMs", "label": "TUI resume ms"},
+		{"name": "resumeTuiCpuMs", "label": "TUI resume CPU ms"}
+	]
+}

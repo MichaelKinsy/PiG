@@ -12,7 +12,7 @@ func TestMistralReasoningEffortFallsBackToHighForAnUnmappedLevel(t *testing.T) {
 	model := &Model{ID: "mistral-unmapped", DisplayName: "mistral-unmapped", Input: []string{"text"}, ThinkingLevelMap: ThinkingLevelMap{ThinkingOff: new("none")}, ProviderMeta: ProviderMetadata{API: APIMistralConversations, ProviderID: "mistral", BaseURL: "http://127.0.0.1:9", Reasoning: true}, Capabilities: ModelCapabilities{ContextWindow: 128000, MaxOutputTokens: 16384}}
 	var payload map[string]any
 	sentinel := errors.New("payload captured")
-	_, err := StreamSimple(t.Context(), model, NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("Hello")}}}), StreamOptions{APIKey: "fake-key", Thinking: ThinkingMedium, OnPayload: func(p any, _ *Model) (any, error) {
+	_, err := StreamSimple(t.Context(), model, NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("Hello")}}}), StreamOptions{APIKey: "fake-key", Thinking: ThinkingLevelMedium, OnPayload: func(p any, _ *Model) (any, error) {
 		data, err := json.Marshal(p)
 		if err != nil {
 			t.Fatal(err)

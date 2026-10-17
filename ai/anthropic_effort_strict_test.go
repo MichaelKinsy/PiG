@@ -29,11 +29,11 @@ func TestAnthropicManagedEffortAndStrictTools(t *testing.T) {
 		betaHeader = request.Header.Get("anthropic-beta")
 		writer.Header().Set("Content-Type", "text/event-stream")
 		_, _ = io.WriteString(writer, "event: message_start\n"+
-			"data: {\"message\":{\"id\":\"message-1\",\"model\":\"claude-fable-5-1\",\"usage\":{}}}\n\n"+
+			"data: {\"type\":\"message_start\",\"message\":{\"id\":\"message-1\",\"model\":\"claude-fable-5-1\",\"usage\":{}}}\n\n"+
 			"event: message_delta\n"+
-			"data: {\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{}}\n\n"+
+			"data: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{}}\n\n"+
 			"event: message_stop\n"+
-			"data: {}\n\n")
+			"data: {\"type\":\"message_stop\"}\n\n")
 	}))
 	defer server.Close()
 
@@ -75,7 +75,7 @@ func TestAnthropicManagedEffortAndStrictTools(t *testing.T) {
 			UserMessage{Content: UserText("two"), Timestamp: 3},
 		},
 	})
-	stream, err := provider.Stream(context.Background(), transcript, StreamOptions{Thinking: ThinkingMedium})
+	stream, err := provider.Stream(context.Background(), transcript, StreamOptions{Thinking: ThinkingLevelMedium})
 	if err != nil {
 		t.Fatalf("Stream: %v", err)
 	}
@@ -140,7 +140,7 @@ func TestAnthropicManagedEffortAndStrictTools(t *testing.T) {
 func TestAnthropicManagedEffortMapping(t *testing.T) {
 	model := &Model{}
 	for _, test := range []struct {
-		level ThinkingLevel
+		level ModelThinkingLevel
 		want  string
 	}{
 		{level: "", want: "high"},
@@ -149,10 +149,11 @@ func TestAnthropicManagedEffortMapping(t *testing.T) {
 		{level: ThinkingLow, want: "low"},
 		{level: ThinkingMedium, want: "medium"},
 		{level: ThinkingHigh, want: "high"},
-		{level: ThinkingXHigh, want: "xhigh"},
-		{level: ThinkingMax, want: "max"},
+		// mapThinkingLevelToEffort has no xhigh or max case: an unmapped level is "high".
+		{level: ThinkingXHigh, want: "high"},
+		{level: ThinkingMax, want: "high"},
 	} {
-		if got := anthropicActiveEffort(model, test.level); got != test.want {
+		if got := anthropicActiveEffort(model, test.level); got != AnthropicEffort(test.want) {
 			t.Errorf("anthropicActiveEffort(%q) = %q, want %q", test.level, got, test.want)
 		}
 	}

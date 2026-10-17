@@ -12,13 +12,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"maps"
 	"net/http"
 	"os"
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"unicode/utf16"
+
+	"github.com/MichaelKinsy/PiG/internal/jsjson"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
@@ -103,15 +105,15 @@ type OpenAICompat struct {
 	SendSessionAffinityHeaders *bool  `json:"sendSessionAffinityHeaders,omitempty"`
 	SupportsStrictMode         *bool  `json:"supportsStrictMode,omitempty"`
 	// OpenRouterRouting contains OpenRouter-specific routing config.
-	OpenRouterRouting  map[string]any `json:"openRouterRouting,omitempty"`
-	ChatTemplateKwargs map[string]any `json:"chatTemplateKwargs,omitempty"`
-	VLLMPriority       *float64       `json:"vllmPriority,omitempty"`
-	// VercelGatewayRouting contains Vercel gateway routing config.
-	VercelGatewayRouting            map[string]any `json:"vercelGatewayRouting,omitempty"`
-	SupportsLongCacheRetention      *bool          `json:"supportsLongCacheRetention,omitempty"`
-	SendSessionIdHeader             *bool          `json:"sendSessionIdHeader,omitempty"`
-	SupportsEagerToolInputStreaming *bool          `json:"supportsEagerToolInputStreaming,omitempty"`
-	SupportsCacheControlOnTools     *bool          `json:"supportsCacheControlOnTools,omitempty"`
+	OpenRouterRouting  OpenRouterRouting                 `json:"openRouterRouting,omitempty"`
+	ChatTemplateKwargs map[string]ChatTemplateKwargValue `json:"chatTemplateKwargs,omitempty"`
+	VLLMPriority       *float64                          `json:"vllmPriority,omitempty"`
+	// VercelGatewayRouting contains Vercel AI Gateway routing preferences.
+	VercelGatewayRouting            *VercelGatewayRouting `json:"vercelGatewayRouting,omitempty"`
+	SupportsLongCacheRetention      *bool                 `json:"supportsLongCacheRetention,omitempty"`
+	SendSessionIdHeader             *bool                 `json:"sendSessionIdHeader,omitempty"`
+	SupportsEagerToolInputStreaming *bool                 `json:"supportsEagerToolInputStreaming,omitempty"`
+	SupportsCacheControlOnTools     *bool                 `json:"supportsCacheControlOnTools,omitempty"`
 	// ForceAdaptiveThinking forces adaptive thinking (type: "adaptive"
 	// + output_config.effort) regardless of model ID. Built-in models
 	// set this in generated metadata. Custom Anthropic-compatible
@@ -147,13 +149,16 @@ type OpenAICompat struct {
 	ChatTemplateArgs            map[string]any `json:"chatTemplateArgs,omitempty"`
 	SupportsThinkingTokenBudget *bool          `json:"supportsThinkingTokenBudget,omitempty"`
 	// ThinkingTokenBudgetField selects the budget wire field and takes precedence over SupportsThinkingTokenBudget.
-	ThinkingTokenBudgetField       string                          `json:"thinkingTokenBudgetField,omitempty"`
+	ThinkingTokenBudgetField       ThinkingTokenBudgetField        `json:"thinkingTokenBudgetField,omitempty"`
 	SupportsAdditionalTools        *bool                           `json:"supportsAdditionalTools,omitempty"`
 	SupportsMidConvoEffort         *bool                           `json:"supportsMidConvoEffort,omitempty"`
 	SupportsMidConvoSystemMessages *bool                           `json:"supportsMidConvoSystemMessages,omitempty"`
 	SupportsMidConvoToolAdditions  *bool                           `json:"supportsMidConvoToolAdditions,omitempty"`
 	SupportsMidConvoToolChanges    *bool                           `json:"supportsMidConvoToolChanges,omitempty"`
 	AllowedFallbackModels          []AnthropicAllowedFallbackModel `json:"allowedFallbackModels,omitempty"`
+	// Extra holds the members PiG does not model, as written. Pi's compat schemas allow additional properties and a compat object keeps
+	// them (model-config.ts getProvider, provider-composer.ts mergeCompat), so a custom API can read its own compat settings.
+	Extra map[string]json.RawMessage `json:"-"`
 }
 
 func ptrBool(v bool) *bool { return new(v) }
@@ -161,6 +166,18 @@ func ptrBool(v bool) *bool { return new(v) }
 type openAIProvider struct {
 	cfg    OpenAIConfig
 	client *http.Client
+
+	compatOnce     sync.Once
+	resolvedCompat *OpenAICompat
+}
+
+// compat is the model's resolved compat settings (openai-completions.ts getCompat): detected from the provider, base URL and model id, then
+// overlaid with the model's own. It is never nil.
+func (p *openAIProvider) compat() *OpenAICompat {
+	p.compatOnce.Do(func() {
+		p.resolvedCompat = getOpenAICompletionsCompat(p.cfg.ProviderID, p.cfg.BaseURL, p.cfg.Model, p.cfg.Compat)
+	})
+	return p.resolvedCompat
 }
 
 // NewOpenAIProvider creates a Provider backed by the OpenAI Completions API.
@@ -182,7 +199,7 @@ func (p *openAIProvider) thinkingModel() *Model {
 	if p.cfg.ModelMetadata != nil {
 		return p.cfg.ModelMetadata
 	}
-	model := &Model{ID: p.cfg.Model, Capabilities: ModelCapabilities{MaxThinking: ThinkingHigh}}
+	model := &Model{ID: p.cfg.Model, Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh}}
 	if generated, ok := LookupModelExact(p.cfg.ProviderID + "/" + p.cfg.Model); ok {
 		model = generated.ToModel()
 	} else if p.cfg.ProviderID == "openrouter" {
@@ -214,12 +231,12 @@ func (p *openAIProvider) samplingModel(reasoning bool) *Model {
 }
 
 // completionsSamplingLevel is the thinking level whose sampling overrides apply: the request effort, else the simple reasoning level, else off (openai-completions.ts buildParams).
-func completionsSamplingLevel(opts StreamOptions) ThinkingLevel {
+func completionsSamplingLevel(opts StreamOptions) ModelThinkingLevel {
 	switch {
 	case opts.ReasoningEffort != "":
-		return ThinkingLevel(opts.ReasoningEffort)
+		return ModelThinkingLevel(opts.ReasoningEffort)
 	case opts.Thinking != "":
-		return opts.Thinking
+		return ModelThinkingLevel(opts.Thinking)
 	}
 	return ThinkingOff
 }
@@ -229,69 +246,43 @@ func completionsSamplingLevel(opts StreamOptions) ThinkingLevel {
 //
 //	const useDeveloperRole = model.reasoning && compat.supportsDeveloperRole;
 func (p *openAIProvider) systemPromptRole(isReasoning bool) string {
-	if !isReasoning {
-		return "system" // non-reasoning models always use "system"
-	}
-	if c := p.cfg.Compat; c != nil && c.SupportsDeveloperRole != nil {
-		if *c.SupportsDeveloperRole {
-			return "developer"
-		}
-		return "system"
-	}
-	isOpenRouter := p.cfg.ProviderID == "openrouter" || strings.Contains(p.cfg.BaseURL, "openrouter.ai")
-	if isOpenRouter {
-		if strings.HasPrefix(p.cfg.Model, "openai/") || strings.HasPrefix(p.cfg.Model, "anthropic/") {
-			return "developer"
-		}
-		return "system"
-	}
-	if !upstreamNonStandard(p.cfg.ProviderID, p.cfg.BaseURL) {
+	if isReasoning && *p.compat().SupportsDeveloperRole {
 		return "developer"
 	}
 	return "system"
 }
 
-// compatBool returns the compat flag value, or the default if not set.
+// compatBool returns the compat flag value, or the default if the resolved compat does not set it.
 func (p *openAIProvider) compatBool(getter func(*OpenAICompat) *bool, defaultVal bool) bool {
-	if c := p.cfg.Compat; c != nil {
-		if v := getter(c); v != nil {
-			return *v
-		}
+	if v := getter(p.compat()); v != nil {
+		return *v
 	}
 	return defaultVal
 }
 
 // maxTokensField returns "max_completion_tokens" (OpenAI standard) or "max_tokens" (compat).
-// Mirrors upstream detectCompat defaults: max_completion_tokens for standard, max_tokens for chutes.ai etc.
 func (p *openAIProvider) maxTokensField() string {
-	if c := p.cfg.Compat; c != nil && c.MaxTokensField != "" {
-		return c.MaxTokensField
-	}
-	if upstreamUsesMaxTokens(p.cfg.ProviderID, p.cfg.BaseURL) {
-		return "max_tokens"
-	}
-	return "max_completion_tokens"
+	return p.compat().MaxTokensField
 }
 
 // cacheControlFormat returns the cache control format ("anthropic" or "").
 func (p *openAIProvider) cacheControlFormat() string {
-	if c := p.cfg.Compat; c != nil {
-		return c.CacheControlFormat
-	}
-	return ""
+	return p.compat().CacheControlFormat
 }
 
 // convertMessagesWithCompat wraps convertMessages with compat-aware transformations:
-// - requiresAssistantAfterToolResult: inserts empty assistant messages
+// - requiresAssistantAfterToolResult: inserts assistant bridge messages
 // - requiresToolResultName: adds name field to tool result messages
 // - requiresThinkingAsText: converts thinking blocks to <thinking> text
 // Mirrors upstream openai-completions.ts convertMessages (lines 680-870).
-func (p *openAIProvider) convertMessagesWithCompat(msgs []Message, grammarProps map[string]string, instructionRole string, anchorsAdditions bool) ([]oaiMessage, error) {
+func (p *openAIProvider) convertMessagesWithCompat(msgs []Message, grammarProps map[string]string, instructionRole string, anchorsAdditions, isReasoning bool) ([]oaiMessage, error) {
 	requiresAssistant := p.compatBool(func(c *OpenAICompat) *bool { return c.RequiresAssistantAfterToolResult }, false)
 	requiresName := p.compatBool(func(c *OpenAICompat) *bool { return c.RequiresToolResultName }, false)
 	requiresThinkingAsText := p.compatBool(func(c *OpenAICompat) *bool { return c.RequiresThinkingAsText }, false)
 	requiresReasoningContent := p.compatBool(func(c *OpenAICompat) *bool { return c.RequiresReasoningContentOnAssistantMessages }, false)
 	out, err := convertCompletionsMessages(msgs, completionsConvertOptions{
+		requiresToolResultName:           requiresName,
+		reasoningContentOnAssistant:      requiresReasoningContent && isReasoning,
 		supportsImages:                   p.modelSupportsImages(),
 		grammarProps:                     grammarProps,
 		thinkingAsText:                   requiresThinkingAsText,
@@ -307,7 +298,6 @@ func (p *openAIProvider) convertMessagesWithCompat(msgs []Message, grammarProps 
 	if err != nil {
 		return nil, err
 	}
-	normalizeToolCallIDs(out, p.cfg.ProviderID)
 	if p.cfg.ProviderID == "opencode-go" {
 		for index := range out {
 			if out[index].Role == "assistant" && out[index].Reasoning != "" && out[index].ReasoningContent == nil {
@@ -317,48 +307,7 @@ func (p *openAIProvider) convertMessagesWithCompat(msgs []Message, grammarProps 
 		}
 	}
 
-	if !requiresAssistant && !requiresName && !requiresThinkingAsText && !requiresReasoningContent {
-		return out, nil
-	}
-
-	// Post-process message transformations.
-	var result []oaiMessage
-	for i, m := range out {
-		if requiresAssistant && m.Role == "assistant" && m.Content == nil {
-			m.Content = ""
-		}
-		// requiresAssistantAfterToolResult: if this is a user message and the
-		// previous message was a tool result, insert an empty assistant message.
-		if requiresAssistant && m.Role == "user" && i > 0 && out[i-1].Role == "tool" {
-			result = append(result, oaiMessage{Role: "assistant", Content: ""})
-		}
-		// requiresToolResultName: add ToolName to tool messages.
-		if requiresName && m.Role == "tool" && m.ToolName == "" {
-			// Find the tool name from the preceding assistant's tool_calls.
-			for j := i - 1; j >= 0; j-- {
-				if out[j].Role == "assistant" && len(out[j].ToolCalls) > 0 {
-					for _, tc := range out[j].ToolCalls {
-						if tc.ID == m.ToolCallID {
-							switch {
-							case tc.Function != nil:
-								m.ToolName = tc.Function.Name
-							case tc.Custom != nil:
-								m.ToolName = tc.Custom.Name
-							}
-							break
-						}
-					}
-					break
-				}
-			}
-		}
-		if requiresReasoningContent && m.Role == "assistant" && m.ReasoningContent == nil {
-			empty := ""
-			m.ReasoningContent = &empty
-		}
-		result = append(result, m)
-	}
-	return result, nil
+	return out, nil
 }
 
 func (p *openAIProvider) Close() error { return nil }
@@ -382,15 +331,24 @@ type oaiMessage struct {
 
 // MarshalJSON sends a tool-bearing system message as {role, tools} without
 // content. Mirrors upstream KimiToolSystemMessageParam.
+func (oaiMessage) carriesRequestStrings() {}
+
+// encodesRequestStrings: no field of the completions request, nor of a message in it, writes a string in another form than its own.
+func (oaiRequest) encodesRequestStrings() {}
+
 func (message oaiMessage) MarshalJSON() ([]byte, error) {
+	return marshalStringify(message.wire())
+}
+
+func (message oaiMessage) wire() any {
 	type wire oaiMessage
 	if message.Tools == nil {
-		return json.Marshal(wire(message))
+		return wire(message)
 	}
-	return json.Marshal(struct {
+	return struct {
 		Role  string    `json:"role"`
 		Tools []oaiTool `json:"tools"`
-	}{message.Role, message.Tools})
+	}{message.Role, message.Tools}
 }
 
 // oaiCacheControl mirrors Anthropic's cache_control annotation.
@@ -399,13 +357,15 @@ type oaiCacheControl struct {
 	TTL  string `json:"ttl,omitempty"`
 }
 
+// oaiContentPart writes cache_control last: addCacheControlToMessage creates it after the text part's members (openai-completions.ts:1165-1186).
 type oaiContentPart struct {
-	CacheControl *oaiCacheControl `json:"cache_control,omitempty"`
-	Type         string           `json:"type"`
-	Text         string           `json:"text,omitempty"`
-	ImageURL     *struct {
+	Type string `json:"type"`
+	// Text is a pointer so a text part whose sanitized text is empty keeps its "text":"" member, as Pi writes it; an image part has none.
+	Text     *string `json:"text,omitempty"`
+	ImageURL *struct {
 		URL string `json:"url"`
 	} `json:"image_url,omitempty"`
+	CacheControl *oaiCacheControl `json:"cache_control,omitempty"`
 }
 
 // oaiRequestToolCall is a tool call in a request assistant message. Unlike the
@@ -431,13 +391,15 @@ type oaiRequestToolCallCustom struct {
 	Input string `json:"input"`
 }
 
+type oaiToolCallFunction struct {
+	Name      string `json:"name"`
+	Arguments string `json:"arguments"`
+}
+
 type oaiToolCall struct {
-	ID       string `json:"id"`
-	Type     string `json:"type"` // "function" | "custom"
-	Function *struct {
-		Name      string `json:"name"`
-		Arguments string `json:"arguments"`
-	} `json:"function"`
+	ID       string               `json:"id"`
+	Type     string               `json:"type"` // "function" | "custom"
+	Function *oaiToolCallFunction `json:"function"`
 	// Custom carries a streamed grammar tool call. Its Input is a raw grammar
 	// string that is reconstructed into JSON arguments. Mirrors
 	// openai-completions.ts StreamingToolCallDelta.custom.
@@ -448,18 +410,45 @@ type oaiToolCall struct {
 	Index *int `json:"index"`
 }
 
+// oaiTool writes cache_control last: applyAnthropicCacheControl assigns it to the tool convertTools built (openai-completions.ts:1125-1135).
 type oaiTool struct {
-	CacheControl *oaiCacheControl `json:"cache_control,omitempty"`
 	Type         string           `json:"type"` // "function" | "custom"
 	Function     *oaiToolFunction `json:"function,omitempty"`
 	Custom       *oaiCustomTool   `json:"custom,omitempty"`
+	CacheControl *oaiCacheControl `json:"cache_control,omitempty"`
 }
 
 type oaiToolFunction struct {
-	Name        string         `json:"name"`
-	Description string         `json:"description"`
-	Parameters  map[string]any `json:"parameters"`
-	Strict      *bool          `json:"strict,omitempty"`
+	parameterOrder schemaObjectOrder
+	Name           string         `json:"name"`
+	Description    string         `json:"description"`
+	Parameters     map[string]any `json:"parameters"`
+	Strict         *bool          `json:"strict,omitempty"`
+}
+
+// MarshalJSON writes the parameters with the tool schema's own member order (convertTools passes tool.parameters through).
+func (f oaiToolFunction) MarshalJSON() ([]byte, error) {
+	wire, err := f.wire()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(wire)
+}
+
+// oaiToolFunctionWire is the value oaiToolFunction's MarshalJSON writes.
+type oaiToolFunctionWire struct {
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	Parameters  json.RawMessage `json:"parameters"`
+	Strict      *bool           `json:"strict,omitempty"`
+}
+
+func (f oaiToolFunction) wire() (oaiToolFunctionWire, error) {
+	parameters, err := marshalToolParameters(f.Parameters, f.parameterOrder)
+	if err != nil {
+		return oaiToolFunctionWire{}, err
+	}
+	return oaiToolFunctionWire{f.Name, f.Description, parameters, f.Strict}, nil
 }
 
 // oaiCustomTool is a grammar-constrained-sampling tool. Unlike responses, the
@@ -481,54 +470,60 @@ type oaiCustomToolGrammar struct {
 	Definition string `json:"definition"`
 }
 
+// oaiRequest is the openai-completions request body. JSON.stringify writes params in the order buildParams creates its keys, so the fields
+// follow that order (openai-completions.ts:822-1001): the literal (model, messages, stream, prompt_cache_key, prompt_cache_retention), then
+// stream_options, store, the max-tokens field, temperature, tools, tool_stream, tool_choice, priority, the thinking-format members, the
+// thinking budget field, provider and providerOptions. Each thinking format sets a subset of its members in this order.
 type oaiRequest struct {
 	Model    string       `json:"model"`
 	Messages []oaiMessage `json:"messages"`
-	// Tools is a pointer so the request can express the three states upstream
-	// separates (openai-completions.ts:729-737): a populated array, an explicit
-	// empty array required by Anthropic-via-proxy backends once the conversation
-	// carries tool history, and the omitted field. A plain slice with omitempty
-	// cannot represent the empty-but-present case.
-	Tools      *[]oaiTool `json:"tools,omitempty"`
-	ToolChoice any        `json:"tool_choice,omitempty"`
-	ToolStream *bool      `json:"tool_stream,omitempty"`
-	// Provider/ProviderOptions carry OpenRouter / Vercel AI Gateway routing
-	// preferences. Mirrors openai-completions.ts:613-627.
-	Provider        any      `json:"provider,omitempty"`
-	ProviderOptions any      `json:"providerOptions,omitempty"`
-	Stream          bool     `json:"stream"`
-	Priority        *float64 `json:"priority,omitempty"`
-	Temperature     *float64 `json:"temperature,omitempty"`
-	Thinking        any      `json:"thinking,omitempty"`
-	// MaxTokens and MaxCompletionTokens are mutually exclusive: one is set
-	// based on compat.maxTokensField. Default: "max_completion_tokens" for
-	// api.openai.com, "max_tokens" for everything else.
-	MaxTokens           int `json:"max_tokens,omitempty"`
-	MaxCompletionTokens int `json:"max_completion_tokens,omitempty"`
-	// Store enables server-side storage of the conversation. Gated on compat.supportsStore.
-	Store *bool `json:"store,omitempty"`
-	// ReasoningEffort maps to upstream reasoning_effort for models that support
-	// extended reasoning (o1, o3, claude via Copilot, etc.).
-	// Values: "low", "medium", "high" (or absent for no extended reasoning).
-	// Mirrors upstream openai-completions.ts:511 reasoning_effort wiring.
-	ReasoningEffort string `json:"reasoning_effort,omitempty"`
-	Reasoning       any    `json:"reasoning,omitempty"`
-	// EnableThinking / ChatTemplateKwargs carry the qwen and qwen-chat-template
-	// thinking formats. Mirrors openai-completions.ts:559-564.
-	EnableThinking      *bool `json:"enable_thinking,omitempty"`
-	ChatTemplateKwargs  any   `json:"chat_template_kwargs,omitempty"`
-	ChatTemplateArgs    any   `json:"chat_template_args,omitempty"`
-	ThinkingTokenBudget int   `json:"thinking_token_budget,omitempty"`
+	Stream   bool         `json:"stream"`
 	// PromptCacheKey enables server-side prompt caching (OpenAI). Value is
 	// the session ID; repeated calls with the same key skip re-processing
-	// the unchanged prefix. Mirrors upstream openai-completions.ts:449.
+	// the unchanged prefix. Mirrors upstream openai-completions.ts:826-829.
 	PromptCacheKey *string `json:"prompt_cache_key,omitempty"`
 	// PromptCacheRetention controls how long cached prompts are kept.
-	// Value "24h" for long retention. Mirrors upstream :450.
+	// Value "24h" for long retention. Mirrors upstream :830.
 	PromptCacheRetention *string `json:"prompt_cache_retention,omitempty"`
 	StreamOptions        *struct {
 		IncludeUsage bool `json:"include_usage"`
 	} `json:"stream_options,omitempty"`
+	// Store enables server-side storage of the conversation. Gated on compat.supportsStore.
+	Store *bool `json:"store,omitempty"`
+	// MaxTokens and MaxCompletionTokens are mutually exclusive: one is set
+	// based on compat.maxTokensField. Default: "max_completion_tokens" for
+	// api.openai.com, "max_tokens" for everything else.
+	MaxTokens           int      `json:"max_tokens,omitempty"`
+	MaxCompletionTokens int      `json:"max_completion_tokens,omitempty"`
+	Temperature         *float64 `json:"temperature,omitempty"`
+	// Tools is a pointer so the request can express the three states upstream
+	// separates (openai-completions.ts:855-863): a populated array, an explicit
+	// empty array required by Anthropic-via-proxy backends once the conversation
+	// carries tool history, and the omitted field. A plain slice with omitempty
+	// cannot represent the empty-but-present case.
+	Tools      *[]oaiTool `json:"tools,omitempty"`
+	ToolStream *bool      `json:"tool_stream,omitempty"`
+	ToolChoice any        `json:"tool_choice,omitempty"`
+	Priority   *float64   `json:"priority,omitempty"`
+	Thinking   any        `json:"thinking,omitempty"`
+	// EnableThinking / ChatTemplateKwargs carry the qwen and qwen-chat-template
+	// thinking formats. Mirrors openai-completions.ts:893-910.
+	EnableThinking     *bool `json:"enable_thinking,omitempty"`
+	ChatTemplateKwargs any   `json:"chat_template_kwargs,omitempty"`
+	ChatTemplateArgs   any   `json:"chat_template_args,omitempty"`
+	Reasoning          any   `json:"reasoning,omitempty"`
+	// ReasoningEffort maps to upstream reasoning_effort for models that support
+	// extended reasoning (o1, o3, claude via Copilot, etc.).
+	// Values: "low", "medium", "high" (or absent for no extended reasoning). A thinkingLevelMap entry that is the empty string is sent as "".
+	ReasoningEffort *string `json:"reasoning_effort,omitempty"`
+	// The thinking budget goes to the one field compat.thinkingTokenBudgetField names (openai-completions.ts:982-984).
+	ThinkingTokenBudget  int `json:"thinking_token_budget,omitempty"`
+	ThinkingBudget       int `json:"thinking_budget,omitempty"`
+	ThinkingBudgetTokens int `json:"thinking_budget_tokens,omitempty"`
+	// Provider/ProviderOptions carry OpenRouter / Vercel AI Gateway routing
+	// preferences. Mirrors openai-completions.ts:988-1000.
+	Provider        any `json:"provider,omitempty"`
+	ProviderOptions any `json:"providerOptions,omitempty"`
 }
 
 // SSE chunk types
@@ -545,7 +540,9 @@ type oaiDelta struct {
 type oaiChunkChoice struct {
 	Delta        oaiDelta `json:"delta"`
 	FinishReason string   `json:"finish_reason"`
-	Index        int      `json:"index"`
+	// finishReasonNotString marks a FinishReason that is the String() form of a finish_reason that was not a string.
+	finishReasonNotString bool
+	Index                 int `json:"index"`
 	// Usage is the Moonshot-style usage carried on the choice instead of the chunk.
 	Usage *oaiUsage `json:"usage"`
 }
@@ -564,12 +561,14 @@ type oaiUsage struct {
 	CompletionTokensDetails *struct {
 		ReasoningTokens int `json:"reasoning_tokens,omitempty"`
 	} `json:"completion_tokens_details,omitempty"`
+	// pig divergence (D124): OpenRouter adds billing fields to streamed usage at runtime, although the OpenAI SDK does not type them (pi-mono commit 83ca8020).
+	openRouterUsageAccounting
 }
 
 // parseChunkUsage mirrors upstream openai-completions.ts parseChunkUsage.
 // cached_tokens counts cache reads; a separately reported cache_write_tokens
 // is not subtracted from it, and both leave the uncached input.
-func parseChunkUsage(raw *oaiUsage, cost ModelCost) *Usage {
+func parseChunkUsage(raw *oaiUsage, cost ModelCost, openRouter bool) *Usage {
 	cacheReadTokens := 0
 	cacheWriteTokens := 0
 	if raw.PromptTokensDetails != nil {
@@ -597,6 +596,9 @@ func parseChunkUsage(raw *oaiUsage, cost ModelCost) *Usage {
 		TotalTokens: input + raw.CompletionTokens + cacheReadTokens + cacheWriteTokens,
 	}
 	calculateUsageCost(cost, usage)
+	if openRouter { // pig divergence (D124)
+		applyOpenRouterReportedCost(usage, raw.openRouterUsageAccounting)
+	}
 	return usage
 }
 
@@ -613,18 +615,18 @@ type oaiChunk struct {
 // qwenReasoningEffort mirrors the qwen thinkingFormat branch of
 // openai-completions.ts: enable_thinking always, plus reasoning_effort (mapped
 // through thinkingLevelMap) when reasoning is on and the model supports it.
-func qwenReasoningEffort(reasoningOn, supportsReasoningEffort bool, mappedEffort func() string) string {
+func qwenReasoningEffort(reasoningOn, supportsReasoningEffort bool, mappedEffort func() string) *string {
 	if !reasoningOn || !supportsReasoningEffort {
-		return ""
+		return nil
 	}
-	return mappedEffort()
+	return new(mappedEffort())
 }
 
-// thinkingToReasoningEffort maps a ThinkingLevel to an OpenAI-compatible
+// thinkingToReasoningEffort maps a ModelThinkingLevel to an OpenAI-compatible
 // reasoning_effort string using the model's thinkingLevelMap when present.
 // Returns "" when the requested level maps to disabled reasoning so callers
 // can omit the field entirely.
-func thinkingToReasoningEffort(model *Model, level ThinkingLevel) string {
+func thinkingToReasoningEffort(model *Model, level ModelThinkingLevel) string {
 	if model == nil {
 		if level == ThinkingOff || level == "" {
 			return ""
@@ -684,7 +686,11 @@ type completionsConvertOptions struct {
 	grammarProps                     map[string]string
 	thinkingAsText                   bool
 	requiresAssistantAfterToolResult bool
-	instructionRole                  string
+	// requiresToolResultName adds the tool result's tool name to its message.
+	requiresToolResultName bool
+	// reasoningContentOnAssistant sets an empty reasoning_content on assistant messages that carry none (compat.requiresReasoningContentOnAssistantMessages with a reasoning model).
+	reasoningContentOnAssistant bool
+	instructionRole             string
 	// systemTools converts the tools a later system message loads in place,
 	// or returns none when the transcript does not anchor additions.
 	systemTools func(SystemMessage) ([]oaiTool, error)
@@ -697,7 +703,13 @@ type completionsConvertOptions struct {
 func convertCompletionsMessages(messages []Message, options completionsConvertOptions) ([]oaiMessage, error) {
 	supportsImages, grammarProps, thinkingAsText := options.supportsImages, options.grammarProps, options.thinkingAsText
 	out := make([]oaiMessage, 0, len(messages))
+	// lastRole is the role of the previous message that reached the end of the loop body; a message skipped as empty leaves it (openai-completions.ts convertMessages).
+	lastRole, skipped := "", false
 	for index := 0; index < len(messages); index++ {
+		if _, user := messages[index].(UserMessage); user && options.requiresAssistantAfterToolResult && lastRole == "toolResult" {
+			out = append(out, oaiMessage{Role: "assistant", Content: "I have processed the tool results."})
+		}
+		skipped = false
 		switch message := messages[index].(type) {
 		case SystemMessage:
 			if options.systemTools != nil {
@@ -724,7 +736,7 @@ func convertCompletionsMessages(messages []Message, options completionsConvertOp
 						// Pi drops empty text parts so image-only messages stay valid for
 						// compatible providers; the message is dropped only when empty.
 						if block.Text != "" {
-							parts = append(parts, oaiContentPart{Type: "text", Text: sanitizeSurrogates(block.Text)})
+							parts = append(parts, oaiContentPart{Type: "text", Text: new(sanitizeSurrogates(block.Text))})
 						}
 					case ImageContent:
 						parts = append(parts, oaiContentPart{Type: "image_url", ImageURL: &struct {
@@ -734,6 +746,8 @@ func convertCompletionsMessages(messages []Message, options completionsConvertOp
 				}
 				if len(parts) > 0 {
 					out = append(out, oaiMessage{Role: "user", Content: parts})
+				} else {
+					skipped = true
 				}
 			}
 		case AssistantMessage:
@@ -748,7 +762,7 @@ func convertCompletionsMessages(messages []Message, options completionsConvertOp
 				switch block := block.(type) {
 				case TextContent:
 					if trimJSWhitespace(block.Text) != "" {
-						textParts = append(textParts, oaiContentPart{Type: "text", Text: sanitizeSurrogates(block.Text)})
+						textParts = append(textParts, oaiContentPart{Type: "text", Text: new(sanitizeSurrogates(block.Text))})
 					}
 				case ThinkingContent:
 					thinking = append(thinking, block)
@@ -761,7 +775,7 @@ func convertCompletionsMessages(messages []Message, options completionsConvertOp
 						converted.ToolCalls = append(converted.ToolCalls, oaiRequestToolCall{ID: block.ID, Type: "custom", Custom: &oaiRequestToolCallCustom{Name: block.Name, Input: sanitizeSurrogates(input)}})
 					} else {
 						arguments, _ := block.ArgumentsJSON()
-						converted.ToolCalls = append(converted.ToolCalls, oaiRequestToolCall{ID: block.ID, Type: "function", Function: &oaiRequestToolCallFunction{Name: block.Name, Arguments: string(arguments)}})
+						converted.ToolCalls = append(converted.ToolCalls, oaiRequestToolCall{ID: block.ID, Type: "function", Function: &oaiRequestToolCallFunction{Name: block.Name, Arguments: keptArgumentsString(arguments)}})
 					}
 					if detail := parseLegacyOpenAIReasoningDetail(block.ThoughtSignature); detail != nil {
 						legacyReasoningDetails = append(legacyReasoningDetails, detail)
@@ -784,14 +798,14 @@ func convertCompletionsMessages(messages []Message, options completionsConvertOp
 			}
 			var assistantText strings.Builder
 			for _, part := range textParts {
-				assistantText.WriteString(part.Text)
+				assistantText.WriteString(*part.Text)
 			}
 			if thinkingAsText && len(thinkingText) > 0 {
 				sanitized := make([]string, len(thinkingText))
 				for i, text := range thinkingText {
 					sanitized[i] = sanitizeSurrogates(text)
 				}
-				converted.Content = append([]oaiContentPart{{Type: "text", Text: strings.Join(sanitized, "\n\n")}}, textParts...)
+				converted.Content = append([]oaiContentPart{{Type: "text", Text: new(strings.Join(sanitized, "\n\n"))}}, textParts...)
 			} else {
 				if assistantText.Len() > 0 {
 					converted.Content = assistantText.String()
@@ -809,6 +823,9 @@ func convertCompletionsMessages(messages []Message, options completionsConvertOp
 					}
 				}
 			}
+			if options.reasoningContentOnAssistant && converted.ReasoningContent == nil {
+				converted.ReasoningContent = new("")
+			}
 			// An assistant message needs content or tool calls; reasoning fields alone do not keep it.
 			hasContent := false
 			switch content := converted.Content.(type) {
@@ -819,6 +836,8 @@ func convertCompletionsMessages(messages []Message, options completionsConvertOp
 			}
 			if hasContent || len(converted.ToolCalls) > 0 {
 				out = append(out, converted)
+			} else {
+				skipped = true
 			}
 		case ToolResultMessage:
 			var images []oaiContentPart
@@ -843,21 +862,35 @@ func convertCompletionsMessages(messages []Message, options completionsConvertOp
 					}
 				}
 				textResult := strings.Join(textParts, "\n")
-				if textResult == "" {
+				// Whitespace-only text counts as no text (openai-completions.ts hasText: textResult.trim(), Pi 4dd2b149).
+				if trimJSWhitespace(textResult) == "" {
 					if hasImages {
 						textResult = "(see attached image)"
 					} else {
 						textResult = "(no tool output)"
 					}
 				}
-				out = append(out, oaiMessage{Role: "tool", Content: sanitizeSurrogates(textResult), ToolCallID: result.ToolCallID})
+				toolMessage := oaiMessage{Role: "tool", Content: sanitizeSurrogates(textResult), ToolCallID: result.ToolCallID}
+				if options.requiresToolResultName && result.ToolName != "" {
+					toolMessage.ToolName = result.ToolName
+				}
+				out = append(out, toolMessage)
 				index++
 			}
 			index--
 			if len(images) > 0 {
-				parts := append([]oaiContentPart{{Type: "text", Text: "Attached image(s) from tool result:"}}, images...)
+				if options.requiresAssistantAfterToolResult {
+					out = append(out, oaiMessage{Role: "assistant", Content: "I have processed the tool results."})
+				}
+				parts := append([]oaiContentPart{{Type: "text", Text: new("Attached image(s) from tool result:")}}, images...)
 				out = append(out, oaiMessage{Role: "user", Content: parts})
+				lastRole, skipped = "user", true
+			} else {
+				lastRole, skipped = "toolResult", true
 			}
+		}
+		if !skipped {
+			lastRole = completionsRole(messages[index])
 		}
 	}
 	return out, nil
@@ -926,8 +959,10 @@ func decodeOpenAIReasoningDetail(raw json.RawMessage) (*openAIReasoningDetail, b
 		return nil, false
 	}
 	var requiredValue string
-	requiredRaw := values[required]
-	if bytes.Equal(requiredRaw, []byte("null")) || json.Unmarshal(requiredRaw, &requiredValue) != nil {
+	requiredRaw, hasRequired := values[required]
+	// pig divergence (D122): OpenRouter streams the signature of a reasoning.text block in a delta without text (pi-mono #9534); Pi drops it.
+	signatureOnly := typ == "reasoning.text" && !hasRequired && isJSONString(values["signature"])
+	if !signatureOnly && (bytes.Equal(requiredRaw, []byte("null")) || json.Unmarshal(requiredRaw, &requiredValue) != nil) {
 		return nil, false
 	}
 
@@ -958,6 +993,11 @@ func decodeOpenAIReasoningDetail(raw json.RawMessage) (*openAIReasoningDetail, b
 		detail.fields = append(detail.fields, openAIReasoningDetailField{name: name, value: value})
 	}
 	return detail, true
+}
+
+func isJSONString(raw json.RawMessage) bool {
+	var value string
+	return len(raw) > 0 && !bytes.Equal(raw, []byte("null")) && json.Unmarshal(raw, &value) == nil
 }
 
 func (detail *openAIReasoningDetail) field(name string) (json.RawMessage, bool) {
@@ -1094,88 +1134,19 @@ func isOpenAIDirectURL(baseURL string) bool {
 	return strings.Contains(baseURL, "api.openai.com")
 }
 
-// detectCompat auto-detects compat flags from provider name and base URL.
-// Mirrors upstream openai-completions.ts detectCompat (lines 990-1035).
-// Covers: cerebras, xAI, chutes.ai, deepseek, zai, opencode, groq, openrouter, ollama.
-func detectCompat(providerID, baseURL string) *OpenAICompat {
-	isZai := providerID == "zai" || strings.Contains(baseURL, "api.z.ai")
-	isTogether := providerID == "together" || strings.Contains(baseURL, "api.together.ai") || strings.Contains(baseURL, "api.together.xyz")
-	isMoonshot := providerID == "moonshotai" || providerID == "moonshotai-cn" || strings.Contains(baseURL, "api.moonshot.")
-	isCloudflareWorkersAI := providerID == "cloudflare-workers-ai" || strings.Contains(baseURL, "api.cloudflare.com")
-	isCloudflareAIGateway := providerID == "cloudflare-ai-gateway" || strings.Contains(baseURL, "gateway.ai.cloudflare.com")
-	isDeepSeek := providerID == "deepseek" || strings.Contains(baseURL, "deepseek.com")
-	isNonStandard := providerID == "cerebras" || strings.Contains(baseURL, "cerebras.ai") ||
-		providerID == "xai" || strings.Contains(baseURL, "api.x.ai") ||
-		isTogether ||
-		strings.Contains(baseURL, "chutes.ai") ||
-		isDeepSeek ||
-		isZai ||
-		isMoonshot ||
-		providerID == "opencode" || strings.Contains(baseURL, "opencode.ai") ||
-		isCloudflareWorkersAI || isCloudflareAIGateway
-	isGroq := providerID == "groq" || strings.Contains(baseURL, "groq.com")
-	isOllama := providerID == "ollama" || strings.Contains(baseURL, ":11434")
-	isOpenRouter := providerID == "openrouter" || strings.Contains(baseURL, "openrouter.ai")
-
-	if isOllama || isNonStandard || isGroq {
-		f := false
-		t := true
-		maxField := "max_tokens"
-		if upstreamUsesMaxTokens(providerID, baseURL) {
-			maxField = "max_tokens"
-		}
-		thinkingFmt := "openai"
-		switch {
-		case isDeepSeek:
-			thinkingFmt = "deepseek"
-		case isZai:
-			thinkingFmt = "zai"
-		case isTogether:
-			thinkingFmt = "together"
-		}
-		supportsReasoningEffort := !isOllama && !isMoonshot && !isTogether && !isCloudflareAIGateway
-		supportsStrictMode := false // Upstream detectCompat enables strict mode only through model compat.
-		supportsLongCacheRetention := !isTogether && !isCloudflareWorkersAI && !isCloudflareAIGateway
-		compat := &OpenAICompat{
-			SupportsDeveloperRole:    &f,
-			SupportsReasoningEffort:  new(supportsReasoningEffort),
-			SupportsStore:            &f,
-			SupportsUsageInStreaming: &t,
-			MaxTokensField:           maxField,
-			ThinkingFormat:           thinkingFmt,
-			RequiresReasoningContentOnAssistantMessages: new(isDeepSeek),
-			SupportsStrictMode:                          new(supportsStrictMode),
-			SupportsLongCacheRetention:                  new(supportsLongCacheRetention),
-		}
-		return compat
-	}
-	if isOpenRouter {
-		t := true
-		return &OpenAICompat{
-			SupportsDeveloperRole:    &t,
-			SupportsReasoningEffort:  &t,
-			SupportsStore:            &t,
-			SupportsUsageInStreaming: &t,
-			MaxTokensField:           "max_completion_tokens",
-			ThinkingFormat:           "openrouter",
-			SupportsStrictMode:       new(false),
-		}
-	}
-	return nil
-}
-
-// DetectCompat is exported for use by model resolution. Returns nil for OpenAI-direct (defaults suffice).
+// DetectCompat is the compat flags a provider name and base URL imply (openai-completions.ts detectCompat for a model without an id).
 func DetectCompat(providerID, baseURL string) *OpenAICompat {
-	return detectCompat(providerID, baseURL)
+	detected := detectOpenAICompletionsCompat(providerID, baseURL, "")
+	return &detected
 }
 
 var toolCallIDForbidden = lazyregexp.New(`[^a-zA-Z0-9_-]`)
 
-// shortHash32 ports upstream packages/ai/src/utils/hash.ts shortHash: a 32-bit
+// ShortHash ports upstream packages/ai/src/utils/hash.ts shortHash: a 32-bit
 // non-cryptographic hash rendered as two base36 numbers. Iterating UTF-16 code
 // units with uint32 arithmetic (matching JS Math.imul low-32-bit wrap and `>>>`)
 // keeps the output byte-identical to upstream for the tool-call ids it hashes.
-func shortHash32(s string) string {
+func ShortHash(s string) string {
 	var h1 uint32 = 0xdeadbeef
 	var h2 uint32 = 0x41c6ce57
 	for _, unit := range utf16.Encode([]rune(s)) {
@@ -1206,7 +1177,7 @@ func normalizeCompletionsToolCallID(id, providerID string) string {
 		if len(combined) <= 40 {
 			return combined
 		}
-		hash := shortHash32(id)
+		hash := ShortHash(id)
 		if len(hash) > 8 {
 			hash = hash[:8]
 		}
@@ -1219,28 +1190,13 @@ func normalizeCompletionsToolCallID(id, providerID string) string {
 	return id
 }
 
-// normalizeToolCallIDs rewrites tool-call and tool-result ids in place so each
-// call and its matching result stay consistent (the same original id maps to the
-// same normalized id). Mirrors upstream applying normalizeToolCallId across the
-// whole message array via transformMessages.
-func normalizeToolCallIDs(msgs []oaiMessage, providerID string) {
-	for i := range msgs {
-		for j := range msgs[i].ToolCalls {
-			msgs[i].ToolCalls[j].ID = normalizeCompletionsToolCallID(msgs[i].ToolCalls[j].ID, providerID)
-		}
-		if msgs[i].ToolCallID != "" {
-			msgs[i].ToolCallID = normalizeCompletionsToolCallID(msgs[i].ToolCallID, providerID)
-		}
-	}
-}
-
-// hasToolHistory reports whether the conversation already references tools via a
-// tool result or an assistant tool call. Mirrors upstream openai-completions.ts
+// hasToolHistory reports whether the transcript, before the provider's message transformation drops error and aborted turns, already references
+// tools via a tool result or an assistant tool call. Mirrors upstream openai-completions.ts
 // hasToolHistory: some OpenAI-compatible proxies (Anthropic via LiteLLM) require
 // the tools param to be present, even empty, once the history references tools.
-func hasToolHistory(messages []Message) bool {
-	for _, message := range messages {
-		switch message := message.(type) {
+func hasToolHistory(transcript TranscriptContext) bool {
+	for i := range transcript.Len() {
+		switch message := transcript.At(i).(type) {
 		case ToolResultMessage:
 			return true
 		case AssistantMessage:
@@ -1259,7 +1215,7 @@ func hasToolHistory(messages []Message) bool {
 // present, an explicit empty array when the conversation has tool history so
 // Anthropic-via-proxy backends accept the request, otherwise nil so the field is
 // omitted (some compatible backends reject `tools: []` outright).
-func (p *openAIProvider) resolveRequestTools(messages []Message, tools []ToolSchema) (*[]oaiTool, error) {
+func (p *openAIProvider) resolveRequestTools(transcript TranscriptContext, tools []ToolSchema) (*[]oaiTool, error) {
 	if len(tools) > 0 {
 		converted, err := p.convertTools(tools)
 		if err != nil {
@@ -1267,7 +1223,7 @@ func (p *openAIProvider) resolveRequestTools(messages []Message, tools []ToolSch
 		}
 		return &converted, nil
 	}
-	if hasToolHistory(messages) {
+	if hasToolHistory(transcript) {
 		return &[]oaiTool{}, nil
 	}
 	return nil, nil
@@ -1308,20 +1264,21 @@ func (p *openAIProvider) convertTools(tools []ToolSchema) ([]oaiTool, error) {
 			continue
 		}
 		fn := &oaiToolFunction{
-			Name:        t.Name,
-			Description: t.Description,
-			Parameters:  t.Parameters,
+			Name:           t.Name,
+			Description:    t.Description,
+			Parameters:     t.Parameters,
+			parameterOrder: t.parameterOrder,
 		}
 		if supportsStrict {
 			strict, err := resolveJSONSchemaStrictSampling(t, supportsStrict, nil)
 			if err != nil {
 				return nil, err
 			}
-			parameters, err := getJSONSchemaToolParameters(t, strict)
+			toolParameters, err := getJSONSchemaToolParameters(t, strict)
 			if err != nil {
 				return nil, err
 			}
-			fn.Parameters = parameters
+			fn.Parameters, fn.parameterOrder = toolParameters.Schema, toolParameters.order
 			v := strict != nil && *strict
 			fn.Strict = &v
 		}
@@ -1332,70 +1289,130 @@ func (p *openAIProvider) convertTools(tools []ToolSchema) ([]oaiTool, error) {
 
 // ─── Stream ───────────────────────────────────────────────────────────────────
 
+// completionsConversion is a transcript converted for a chat-completions request.
+type completionsConversion struct {
+	// messages is the resolved and transformed transcript, the leading system message included.
+	messages []Message
+	tools    TranscriptTools
+	// grammarProps is the grammar tool input property map the conversion used.
+	grammarProps map[string]string
+	// chat is the request's messages: the instruction message first, then the conversation.
+	chat []oaiMessage
+}
+
+// convertTranscript resolves, transforms and converts a transcript for the provider's model and compat. A nil
+// grammarProps is derived from the transcript's declared tools, as Pi's createGrammarToolInputProperties default does.
+func (p *openAIProvider) convertTranscript(transcript TranscriptContext, grammarProps map[string]string, isReasoning bool) (completionsConversion, error) {
+	supportsMidConversation := p.compatBool(func(c *OpenAICompat) *bool { return c.SupportsMidConvoSystemMessages }, false)
+	messages := resolvedMessages(transcript, supportsMidConversation)
+	target := &Model{ID: p.cfg.Model, ProviderMeta: ProviderMetadata{API: APIOpenAICompletions, ProviderID: p.cfg.ProviderID}, Input: []string{"text"}}
+	if p.modelSupportsImages() {
+		target.Input = append(target.Input, "image")
+	}
+	// upstream: packages/ai/src/api/openai-completions.ts:convertMessages passes normalizeToolCallId to transformMessages, which applies it to the calls of other models only.
+	messages = TransformMessages(messages, target, func(id string, _ *Model, _ AssistantMessage) string {
+		return normalizeCompletionsToolCallID(id, p.cfg.ProviderID)
+	})
+	conversation := withoutInitialSystemMessage(messages)
+	// Kimi loads later tool additions in tool-bearing system messages; the
+	// request tools then hold only the initial tools. Pi's buildParams resolves them, and the declared tools, from context.messages as given
+	// (openai-completions.ts:813, :808): a transcript whose first message is an aborted assistant has no initial system message there, even
+	// though transformMessages drops that assistant.
+	given := transcript.borrowed()
+	transcriptTools := ResolveTranscriptTools(given, supportsMidConversation && p.compatBool(func(c *OpenAICompat) *bool { return c.SupportsMidConvoToolAdditions }, false))
+	if grammarProps == nil {
+		// grammarProps maps a grammar tool's name to the single string property that
+		// carries its constrained input. It is derived once from every declared tool and
+		// threaded into message replay, tool conversion, and stream reconstruction so
+		// custom (grammar) tool calls round-trip. Mirrors api/openai-completions.ts:343-346 (stream) and :806-811 (buildParams).
+		supportsGrammar := p.compatBool(func(c *OpenAICompat) *bool { return c.SupportsOpenAIGrammarTools }, false)
+		var err error
+		grammarProps, err = createGrammarToolInputProperties(GetDeclaredTools(given), supportsGrammar)
+		if err != nil {
+			return completionsConversion{}, err
+		}
+	}
+	msgs, err := p.convertMessagesWithCompat(conversation, grammarProps, p.systemPromptRole(isReasoning), transcriptTools.AnchorsAdditions, isReasoning)
+	if err != nil {
+		return completionsConversion{}, err
+	}
+	if systemPrompt := GetCurrentSystemPrompt(messages[:min(1, len(messages))]); systemPrompt != "" {
+		role := p.systemPromptRole(isReasoning)
+		msgs = append([]oaiMessage{{Role: role, Content: sanitizeSurrogates(systemPrompt)}}, msgs...)
+	}
+	return completionsConversion{messages: messages, tools: transcriptTools, grammarProps: grammarProps, chat: msgs}, nil
+}
+
+// OpenAIChatMessage is one message of a chat-completions request.
+type OpenAIChatMessage = oaiMessage
+
+// ConvertCompletionsMessagesOptions are the options of [ConvertCompletionsMessages].
+//
+// Ports packages/ai/src/api/openai-completions.ts (ConvertCompletionsMessagesOptions).
+type ConvertCompletionsMessagesOptions struct {
+	// GrammarToolInputProperties maps a grammar tool's name to its constrained input property. Nil derives it from the transcript.
+	GrammarToolInputProperties map[string]string
+}
+
+// ConvertCompletionsMessages converts a transcript to the messages of an openai-completions request for model and
+// compat: the transcript is resolved and transformed for the model, and the instruction message leads. A nil compat
+// resolves every flag to its default.
+//
+// Ports packages/ai/src/api/openai-completions.ts (convertMessages).
+func ConvertCompletionsMessages(model *Model, transcript TranscriptContext, compat *OpenAICompat, options ConvertCompletionsMessagesOptions) ([]OpenAIChatMessage, error) {
+	p := &openAIProvider{cfg: OpenAIConfig{
+		BaseURL:       model.ProviderMeta.BaseURL,
+		Model:         model.ID,
+		ModelMetadata: model,
+		ProviderID:    model.ProviderMeta.ProviderID,
+		Compat:        compat,
+	}}
+	conversion, err := p.convertTranscript(transcript, options.GrammarToolInputProperties, model.ProviderMeta.Reasoning)
+	if err != nil {
+		return nil, err
+	}
+	return conversion.chat, nil
+}
+
 // Stream returns before HTTP setup settles. Successful setup admits start before waiting for body data.
 func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContext, opts StreamOptions) (*AssistantMessageEventStream, error) {
 	if p.cfg.azure != nil {
 		resolved, err := p.cfg.azure.resolve(p, opts)
 		if err != nil {
-			return nil, err
+			// azure.ts azureStreams resolves the endpoint in lazyStream's setup, outside the API module.
+			return nil, &lazySetupError{err: err}
 		}
 		p = resolved
 	}
 	ctx = withProviderRequestOptions(ctx, opts)
+	// pig divergence (D48): the agent loop asks for the tool-flow repair.
+	if opts.RepairToolFlow {
+		transcript = transcript.withRepairedToolFlow()
+	}
 	if err := validateProviderRequest(ctx, transcript); err != nil {
 		return nil, fmt.Errorf("openai: invalid transcript: %w", err)
 	}
-	supportsMidConversation := p.compatBool(func(c *OpenAICompat) *bool { return c.SupportsMidConvoSystemMessages }, false)
-	resolved := ResolveTranscript(transcript, supportsMidConversation)
-	messages := resolved.Messages()
-	target := &Model{ID: p.cfg.Model, ProviderMeta: ProviderMetadata{API: APIOpenAICompletions, ProviderID: p.cfg.ProviderID}, Input: []string{"text"}}
-	if p.modelSupportsImages() {
-		target.Input = append(target.Input, "image")
-	}
-	messages = TransformMessages(messages, target, nil)
-	conversation := WithoutInitialSystemMessage(messages)
-	// Kimi loads later tool additions in tool-bearing system messages; the
-	// request tools then hold only the initial tools.
-	transcriptTools := ResolveTranscriptTools(messages, supportsMidConversation && p.compatBool(func(c *OpenAICompat) *bool { return c.SupportsMidConvoToolAdditions }, false))
-	tools := transcriptTools.RequestTools
-	// grammarProps maps a grammar tool's name to the single string property that
-	// carries its constrained input. It is derived once from every declared tool and
-	// threaded into message replay, tool conversion, and stream reconstruction so
-	// custom (grammar) tool calls round-trip. Mirrors openai-completions.ts:229.
-	supportsGrammar := p.compatBool(func(c *OpenAICompat) *bool { return c.SupportsOpenAIGrammarTools }, false)
-	grammarProps, err := createGrammarToolInputProperties(GetDeclaredTools(messages), supportsGrammar)
+	conversion, err := p.convertTranscript(transcript, nil, opts.IsReasoning)
 	if err != nil {
 		return nil, err
 	}
-	msgs, err := p.convertMessagesWithCompat(conversation, grammarProps, p.systemPromptRole(opts.IsReasoning), transcriptTools.AnchorsAdditions)
-	if err != nil {
-		return nil, err
-	}
-	if opts.IsReasoning && p.compatBool(func(c *OpenAICompat) *bool { return c.RequiresReasoningContentOnAssistantMessages }, false) {
-		for i := range msgs {
-			if msgs[i].Role == "assistant" && msgs[i].ReasoningContent == nil {
-				empty := ""
-				msgs[i].ReasoningContent = &empty
-			}
-		}
-	}
-	if systemPrompt := GetCurrentSystemPrompt(messages[:min(1, len(messages))]); systemPrompt != "" {
-		role := p.systemPromptRole(opts.IsReasoning)
-		msgs = append([]oaiMessage{{Role: role, Content: sanitizeSurrogates(systemPrompt)}}, msgs...)
-	}
+	msgs, tools, grammarProps := conversion.chat, conversion.tools.RequestTools, conversion.grammarProps
 
 	req := oaiRequest{
 		Model:    cmp.Or(p.cfg.requestModel, p.cfg.Model),
 		Messages: msgs,
 		Stream:   true,
 	}
-	requestTools, err := p.resolveRequestTools(messages, tools)
+	requestTools, err := p.resolveRequestTools(transcript, tools)
 	if err != nil {
 		return nil, err
 	}
 	req.Tools = requestTools
-	req.ToolChoice = opts.ToolChoice
-	if len(tools) > 0 && p.cfg.Compat != nil && p.cfg.Compat.ZaiToolStream != nil && *p.cfg.Compat.ZaiToolStream {
+	// openai-completions.ts:869 `if (options?.toolChoice)`: an empty choice is falsy and is not sent.
+	if name, ok := toolChoiceName(opts.ToolChoice); !ok || name != "" {
+		req.ToolChoice = opts.ToolChoice
+	}
+	if len(tools) > 0 && p.compat().ZaiToolStream != nil && *p.compat().ZaiToolStream {
 		req.ToolStream = new(true)
 	}
 	// Diagnostic: log tool count for debugging.
@@ -1419,14 +1436,14 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 			req.MaxCompletionTokens = opts.MaxTokens
 		}
 	}
-	if p.cfg.Compat != nil && p.cfg.Compat.VLLMPriority != nil {
-		priority := *p.cfg.Compat.VLLMPriority
+	if p.compat().VLLMPriority != nil {
+		priority := *p.compat().VLLMPriority
 		req.Priority = &priority
 	}
 	// Upstream sends store: false whenever compat.supportsStore holds, which by
 	// default is every provider except the non-standard ones. PiG used to send
 	// store: true, which asks OpenAI to retain the conversation.
-	if p.compatBool(func(c *OpenAICompat) *bool { return c.SupportsStore }, !upstreamNonStandard(p.cfg.ProviderID, p.cfg.BaseURL)) {
+	if *p.compat().SupportsStore {
 		f := false
 		req.Store = &f
 	}
@@ -1438,20 +1455,17 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 		model := p.thinkingModel()
 		if model.Capabilities.MaxThinking == "" {
 			model = new(*model)
-			model.Capabilities.MaxThinking = ThinkingHigh
+			model.Capabilities.MaxThinking = ThinkingLevelHigh
 		}
 		// Native API effort is mapped without clamping. Omitted and disabled reasoning stay off.
-		clamped := opts.Thinking
+		clamped := ModelThinkingLevel(opts.Thinking)
 		if opts.ReasoningEffort != "" {
-			clamped = ThinkingLevel(opts.ReasoningEffort)
+			clamped = ModelThinkingLevel(opts.ReasoningEffort)
 		} else if clamped != ThinkingOff && clamped != "" {
-			clamped = ClampThinkingLevel(model, opts.Thinking)
+			clamped = ClampThinkingLevel(model, ModelThinkingLevel(opts.Thinking))
 		}
-		thinkingFormat := "openai"
-		if p.cfg.Compat != nil && p.cfg.Compat.ThinkingFormat != "" {
-			thinkingFormat = p.cfg.Compat.ThinkingFormat
-		}
-		supportsRE := p.compatBool(func(c *OpenAICompat) *bool { return c.SupportsReasoningEffort }, upstreamSupportsReasoningEffort(p.cfg.ProviderID, p.cfg.BaseURL))
+		thinkingFormat := p.compat().ThinkingFormat
+		supportsRE := *p.compat().SupportsReasoningEffort
 		reasoningOn := clamped != ThinkingOff && clamped != ""
 		if reasoningOn {
 			ceiling := req.MaxTokens
@@ -1484,6 +1498,22 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 			}
 			return "none", true // absent/undefined → "none"
 		}
+		// templateEffort is resolveChatTemplateKwargValue's effort (openai-completions.ts:1073-1074): thinkingLevelMap[level] for the requested level, or
+		// thinkingLevelMap.off when reasoning is off; an absent entry is the requested level itself (nothing when off), and a null entry is nothing.
+		templateEffort := func() (string, bool) {
+			level := ModelThinkingLevel(clamped)
+			if !reasoningOn {
+				level = ThinkingOff
+			}
+			mapped, present := model.ThinkingLevelMap[level]
+			switch {
+			case !present && reasoningOn:
+				return string(clamped), true
+			case mapped == nil:
+				return "", false
+			}
+			return *mapped, true
+		}
 		// Mirrors openai-completions.ts:555-615 thinkingFormat dispatch.
 		switch thinkingFormat {
 		case "zai":
@@ -1495,7 +1525,7 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 			}
 			if reasoningOn && supportsRE {
 				if mapped, exists := model.ThinkingLevelMap[ModelThinkingLevel(clamped)]; !exists || mapped != nil {
-					req.ReasoningEffort = mappedEffort()
+					req.ReasoningEffort = new(mappedEffort())
 				}
 			}
 		case "qwen":
@@ -1504,40 +1534,16 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 		case "qwen-chat-template":
 			req.ChatTemplateKwargs = map[string]any{"enable_thinking": reasoningOn, "preserve_thinking": true}
 		case "chat-template":
-			if p.cfg.Compat != nil {
-				req.ChatTemplateKwargs = resolveChatTemplateValues(p.cfg.Compat.ChatTemplateKwargs, reasoningOn, mappedEffort, offEffort, thinkingBudget)
+			if resolved := resolveChatTemplateValues(p.compat().ChatTemplateKwargs, reasoningOn, templateEffort, thinkingBudget); resolved != nil {
+				req.ChatTemplateKwargs = resolved
 			}
 		case "baseten":
-			resolved := make(map[string]any, len(p.cfg.Compat.ChatTemplateArgs))
-			for key, value := range p.cfg.Compat.ChatTemplateArgs {
-				variable, isVariable := value.(map[string]any)
-				if !isVariable {
-					resolved[key] = value
-					continue
-				}
-				if omit, _ := variable["omitWhenOff"].(bool); omit && !reasoningOn {
-					continue
-				}
-				switch variable["$var"] {
-				case "thinking.enabled":
-					resolved[key] = reasoningOn
-				case "thinking.effort":
-					if reasoningOn {
-						resolved[key] = mappedEffort()
-					} else if value, emit := offEffort(); emit {
-						resolved[key] = value
-					}
-				}
-			}
-			if len(resolved) > 0 {
+			if resolved := resolveChatTemplateValues(p.compat().ChatTemplateArgs, reasoningOn, templateEffort, thinkingBudget); resolved != nil {
 				req.ChatTemplateArgs = resolved
 			}
-			if supportsRE {
-				if reasoningOn {
-					req.ReasoningEffort = mappedEffort()
-				} else if value, emit := offEffort(); emit {
-					req.ReasoningEffort = value
-				}
+			// openai-completions.ts:919-924: the requested level's mapped value, or the off value when reasoning is off; a null entry is unsupported and an absent off entry sends nothing.
+			if value, emit := templateEffort(); supportsRE && emit {
+				req.ReasoningEffort = new(value)
 			}
 		case "deepseek":
 			if reasoningOn {
@@ -1548,7 +1554,7 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 				req.Thinking = map[string]any{"type": "disabled"}
 			}
 			if reasoningOn && supportsRE {
-				req.ReasoningEffort = mappedEffort()
+				req.ReasoningEffort = new(mappedEffort())
 			}
 		case "openrouter":
 			if reasoningOn {
@@ -1562,11 +1568,14 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 				if m, ok := model.ThinkingLevelMap[ModelThinkingLevel(clamped)]; ok && m != nil {
 					req.Reasoning = map[string]any{"effort": *m}
 				}
+			} else if v, ok := model.ThinkingLevelMap[ModelThinkingLevel(ThinkingOff)]; ok && v != nil && supportsRE {
+				// The ant-ling branch (openai-completions.ts:949) needs a requested effort; without one the chain falls through to the off-value reasoning_effort at :970-975.
+				req.ReasoningEffort = new(*v)
 			}
 		case "together":
 			req.Reasoning = map[string]any{"enabled": reasoningOn}
 			if reasoningOn && supportsRE {
-				req.ReasoningEffort = mappedEffort()
+				req.ReasoningEffort = new(mappedEffort())
 			}
 		case "string-thinking":
 			if reasoningOn {
@@ -1576,45 +1585,45 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 			}
 		default: // "openai"
 			if reasoningOn && supportsRE {
-				req.ReasoningEffort = mappedEffort()
+				req.ReasoningEffort = new(mappedEffort())
 			} else if !reasoningOn && supportsRE {
 				if v, ok := model.ThinkingLevelMap[ModelThinkingLevel(ThinkingOff)]; ok && v != nil {
-					req.ReasoningEffort = *v
+					req.ReasoningEffort = new(*v)
 				}
 			}
 		}
 
-		if p.cfg.Compat != nil {
-			thinkingBudgetField = p.cfg.Compat.ThinkingTokenBudgetField
-		}
+		thinkingBudgetField = string(p.compat().ThinkingTokenBudgetField)
 		if thinkingBudgetField == "" && p.compatBool(func(c *OpenAICompat) *bool { return c.SupportsThinkingTokenBudget }, false) {
-			thinkingBudgetField = "thinking_token_budget"
+			thinkingBudgetField = string(ThinkingTokenBudgetFieldThinkingTokenBudget)
 		}
-		if thinkingBudgetField == "thinking_token_budget" && thinkingBudget > 0 {
-			req.ThinkingTokenBudget = thinkingBudget
+		if thinkingBudget > 0 {
+			switch ThinkingTokenBudgetField(thinkingBudgetField) {
+			case ThinkingTokenBudgetFieldThinkingTokenBudget:
+				req.ThinkingTokenBudget = thinkingBudget
+			case ThinkingTokenBudgetFieldThinkingBudget:
+				req.ThinkingBudget = thinkingBudget
+			case ThinkingTokenBudgetFieldThinkingBudgetTokens:
+				req.ThinkingBudgetTokens = thinkingBudget
+			}
 		}
 	}
 	// OpenRouter provider routing preferences. Mirrors openai-completions.ts:613
 	// (no baseURL gate as of 0.79.1: applies whenever compat sets it).
-	if p.cfg.Compat != nil && p.cfg.Compat.OpenRouterRouting != nil {
-		req.Provider = p.cfg.Compat.OpenRouterRouting
+	if p.compat().OpenRouterRouting != nil {
+		req.Provider = p.compat().OpenRouterRouting
 	}
-	// Vercel AI Gateway provider routing preferences (only/order). Gated on the
-	// Vercel gateway host. Mirrors openai-completions.ts:618-627.
-	if p.cfg.Compat != nil && p.cfg.Compat.VercelGatewayRouting != nil && strings.Contains(p.cfg.BaseURL, "ai-gateway.vercel.sh") {
-		routing := p.cfg.Compat.VercelGatewayRouting
-		only, hasOnly := routing["only"]
-		order, hasOrder := routing["order"]
-		if hasOnly || hasOrder {
-			gatewayOptions := map[string]any{}
-			if hasOnly {
-				gatewayOptions["only"] = only
-			}
-			if hasOrder {
-				gatewayOptions["order"] = order
-			}
-			req.ProviderOptions = map[string]any{"gateway": gatewayOptions}
+	// Vercel AI Gateway provider routing preferences. Pi applies them to every request whose compat sets them, with no base URL gate (openai-completions.ts:992-1001).
+	if p.compat().VercelGatewayRouting != nil && (p.compat().VercelGatewayRouting.Only != nil || p.compat().VercelGatewayRouting.Order != nil) {
+		routing := p.compat().VercelGatewayRouting
+		gatewayOptions := map[string]any{}
+		if routing.Only != nil {
+			gatewayOptions["only"] = routing.Only
 		}
+		if routing.Order != nil {
+			gatewayOptions["order"] = routing.Order
+		}
+		req.ProviderOptions = map[string]any{"gateway": gatewayOptions}
 	}
 	// Prompt-cache body fields and session-affinity headers have independent provider gates.
 	cacheRetention := resolveCompletionsCacheRetention(opts.CacheRetention, mergeProviderEnv(p.cfg.Env, opts.Env))
@@ -1638,22 +1647,13 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 	}
 
 	payload := any(req)
-	// Last so model and request sampling parameters override named request fields (openai-completions.ts buildParams).
-	samplingParams := ResolveSamplingParams(p.samplingModel(opts.IsReasoning), completionsSamplingLevel(opts), opts.SamplingParams)
-	if samplingParams != nil || (thinkingBudget > 0 && thinkingBudgetField != "" && thinkingBudgetField != "thinking_token_budget") {
-		encoded, err := json.Marshal(req)
+	// Last so model and request sampling parameters override named request fields (openai-completions.ts:1004-1007).
+	if keys, samplingParams := resolveSamplingParamsInOrder(p.samplingModel(opts.IsReasoning), completionsSamplingLevel(opts), opts.SamplingParams); samplingParams != nil {
+		assigned, err := assignSamplingParams(req, oaiRequestLiteralKeys, keys, samplingParams)
 		if err != nil {
-			return nil, fmt.Errorf("openai: marshal sampling base: %w", err)
+			return nil, fmt.Errorf("openai: %w", err)
 		}
-		var merged map[string]any
-		if err := json.Unmarshal(encoded, &merged); err != nil {
-			return nil, fmt.Errorf("openai: decode sampling base: %w", err)
-		}
-		if thinkingBudget > 0 && thinkingBudgetField != "" && thinkingBudgetField != "thinking_token_budget" {
-			merged[thinkingBudgetField] = thinkingBudget
-		}
-		maps.Copy(merged, samplingParams)
-		payload = merged
+		payload = assigned
 	}
 	if opts.OnPayload != nil {
 		next, err := opts.OnPayload(payload, &Model{ID: p.cfg.Model, ProviderMeta: ProviderMetadata{ProviderID: p.cfg.ProviderID}})
@@ -1661,19 +1661,21 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 			return nil, fmt.Errorf("openai: onPayload: %w", err)
 		}
 		if next != nil {
-			payload = next
+			payload = payloadReplacement(next)
 		}
 	}
 
-	body, err := json.Marshal(payload)
+	body, err := marshalSpliced(payload, requestStrings, marshalRequestBody)
 	if err != nil {
 		return nil, fmt.Errorf("openai: marshal request: %w", err)
 	}
+	checkRequestSegments(ctx, APIOpenAICompletions, body)
 
 	baseURL := p.cfg.BaseURL
 	if p.cfg.GetBaseURL != nil {
 		if u, err := p.cfg.GetBaseURL(ctx); err != nil {
-			return nil, fmt.Errorf("%s: resolve base URL: %w", p.cfg.ProviderID, err)
+			// The resolver's own error is the rejection (azure-openai-config.ts throws it from the provider's stream setup).
+			return nil, err
 		} else if u != "" {
 			baseURL = u
 		}
@@ -1688,17 +1690,18 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 		}
 	}
 
-	baseURL, err = ResolveCloudflareBaseURL(p.cfg.ProviderID, baseURL, mergeProviderEnv(p.cfg.Env, opts.Env))
-	if err != nil {
-		return nil, fmt.Errorf("%s: resolve base URL: %w", p.cfg.ProviderID, err)
-	}
-
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		baseURL+"/chat/completions", bytes.NewReader(body))
+	endpoint, err := sdkBuildURL(baseURL, "/chat/completions")
 	if err != nil {
 		return nil, err
 	}
+	httpReq, err := newSDKFetchRequest(ctx, http.MethodPost, endpoint, body.reader(), opts.Fetch != nil)
+	if err != nil {
+		return nil, err
+	}
+	body.prepare(httpReq)
 	httpReq.Header.Set("Content-Type", "application/json")
+	// The OpenAI SDK's default `accept` header.
+	httpReq.Header.Set("Accept", "application/json")
 	httpReq.Header.Set("User-Agent", PiUserAgent())
 	if apiKey != "" {
 		if p.cfg.ProviderID == "cloudflare-ai-gateway" {
@@ -1723,20 +1726,12 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 			}
 		}
 	}
-	isOpenRouter := p.cfg.ProviderID == "openrouter" || strings.Contains(p.cfg.BaseURL, "openrouter.ai")
-	if opts.SessionID != "" && cacheRetention != CacheRetentionNone && p.compatBool(func(c *OpenAICompat) *bool { return c.SendSessionAffinityHeaders }, isOpenRouter) {
-		format := SessionAffinityOpenAI
-		if isOpenRouter {
-			format = SessionAffinityOpenRouter
-		}
-		if p.cfg.Compat != nil && p.cfg.Compat.SessionAffinityFormat != "" {
-			format = p.cfg.Compat.SessionAffinityFormat
-		}
-		applyOpenAISessionAffinityHeaders(httpReq.Header, opts.SessionID, format, true)
+	if opts.SessionID != "" && cacheRetention != CacheRetentionNone && *p.compat().SendSessionAffinityHeaders {
+		applyOpenAISessionAffinityHeaders(httpReq.Header, opts.SessionID, p.compat().SessionAffinityFormat, true)
 	}
 	applyProviderHeaders(httpReq, opts.Headers)
 
-	builder := newObservedProviderBuilder(ctx, APIOpenAICompletions, p.cfg.ProviderID, p.cfg.Model)
+	builder := newObservedProviderBuilder(ctx, outputAPI(p.cfg.ModelMetadata, APIOpenAICompletions), p.cfg.ProviderID, p.cfg.Model)
 	builder.modelCost = opts.ModelCost
 	builder.setProviderEventObserver(opts, providerEventModel(p.cfg.ModelMetadata, APIOpenAICompletions, p.cfg.ProviderID, p.cfg.Model))
 	requestContext, abort := context.WithCancel(httpReq.Context())
@@ -1755,7 +1750,7 @@ func (p *openAIProvider) streamResponse(ctx context.Context, request *http.Reque
 	_, builder.managed = resp.Body.(*observedResponseBody)
 	return builder.responseTurn(func() error {
 		if resp.StatusCode != http.StatusOK {
-			body, _ := io.ReadAll(resp.Body)
+			body, _ := readWebText(resp.Body)
 			return openAIHTTPError(resp.StatusCode, body)
 		}
 		if err := observeProviderResponse(ctx, opts, resp, &Model{ID: p.cfg.Model, ProviderMeta: ProviderMetadata{ProviderID: p.cfg.ProviderID, API: APIOpenAICompletions}}); err != nil {
@@ -1773,41 +1768,26 @@ func (p *openAIProvider) streamResponse(ctx context.Context, request *http.Reque
 	})
 }
 
-func resolveClampedThinkingBudget(level ThinkingLevel, custom *ThinkingBudgets, ceiling int) int {
-	budgets := DefaultThinkingBudgets()
-	if custom != nil {
-		if custom.Minimal != 0 {
-			budgets.Minimal = custom.Minimal
-		}
-		if custom.Low != 0 {
-			budgets.Low = custom.Low
-		}
-		if custom.Medium != 0 {
-			budgets.Medium = custom.Medium
-		}
-		if custom.High != 0 {
-			budgets.High = custom.High
-		}
+func resolveClampedThinkingBudget(level ModelThinkingLevel, custom *ThinkingBudgets, ceiling int) int {
+	// Levels without a token budget of their own (xhigh, max and anything above) read the high budget.
+	if clamped := ClampReasoning(level); clamped != ThinkingMinimal && clamped != ThinkingLow && clamped != ThinkingMedium {
+		level = ThinkingHigh
 	}
-	budget := budgets.High
-	switch level {
-	case ThinkingMinimal:
-		budget = budgets.Minimal
-	case ThinkingLow:
-		budget = budgets.Low
-	case ThinkingMedium:
-		budget = budgets.Medium
-	}
-	return min(budget, max(0, ceiling-1024))
+	budget := ThinkingBudgetForLevel(string(level), custom)
+	return ClampThinkingBudgetToAnswerRoom(budget, ceiling)
 }
 
-func resolveChatTemplateValues(config map[string]any, reasoningOn bool, effort func() string, offEffort func() (string, bool), budget int) map[string]any {
+func resolveChatTemplateValues(config map[string]any, reasoningOn bool, effort func() (string, bool), budget int) map[string]any {
 	if len(config) == 0 {
 		return nil
 	}
 	resolved := make(map[string]any, len(config))
 	for key, value := range config {
 		variable, ok := value.(map[string]any)
+		if _, isArray := value.([]any); isArray {
+			// resolveChatTemplateKwargValue treats every non-null object, an array included, as a placeholder.
+			variable, ok = nil, true
+		}
 		if !ok {
 			resolved[key] = value
 			continue
@@ -1818,15 +1798,14 @@ func resolveChatTemplateValues(config map[string]any, reasoningOn bool, effort f
 		switch variable["$var"] {
 		case "thinking.enabled":
 			resolved[key] = reasoningOn
-		case "thinking.effort":
-			if reasoningOn {
-				resolved[key] = effort()
-			} else if value, emit := offEffort(); emit {
-				resolved[key] = value
-			}
 		case "thinking.budget":
 			if reasoningOn && budget > 0 {
 				resolved[key] = budget
+			}
+		default:
+			// resolveChatTemplateKwargValue maps any other object, "thinking.effort" included, to the mapped effort.
+			if value, emit := effort(); emit {
+				resolved[key] = value
 			}
 		}
 	}
@@ -1846,19 +1825,10 @@ func resolveCompletionsCacheRetention(retention CacheRetention, env ProviderEnv)
 	return CacheRetentionShort
 }
 
+// supportsLongCacheRetention is the resolved compat flag (openai-completions.ts:1731 `model.compat.supportsLongCacheRetention ?? detected.supportsLongCacheRetention`); the detection lives in
+// detectOpenAICompletionsCompat, which always sets it.
 func (p *openAIProvider) supportsLongCacheRetention() bool {
-	defaultValue := true
-	for _, target := range []struct{ provider, host string }{
-		{"together", "api.together.ai"}, {"together", "api.together.xyz"},
-		{"cloudflare-workers-ai", "api.cloudflare.com"}, {"cloudflare-ai-gateway", "gateway.ai.cloudflare.com"},
-		{"nvidia", "integrate.api.nvidia.com"}, {"ant-ling", "api.ant-ling.com"},
-	} {
-		if p.cfg.ProviderID == target.provider || strings.Contains(p.cfg.BaseURL, target.host) {
-			defaultValue = false
-			break
-		}
-	}
-	return p.compatBool(func(c *OpenAICompat) *bool { return c.SupportsLongCacheRetention }, defaultValue)
+	return p.compatBool(func(c *OpenAICompat) *bool { return c.SupportsLongCacheRetention }, true)
 }
 
 func applyOpenAISessionAffinityHeaders(headers http.Header, sessionID string, format SessionAffinityFormat, completions bool) {
@@ -1887,7 +1857,9 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 		// StreamingToolCallBlock.customInput.
 		customProp string
 		customIn   string
-		grammarBuf *grammarToolInputJSONBuffer
+		// customGrown holds customIn's bytes, so a delta appends to them instead of copying them.
+		customGrown accumulatedString
+		grammarBuf  *grammarToolInputJSONBuffer
 	}
 	partials := map[int]*partialTool{}
 	partialsByWireIndex := map[int]*partialTool{}
@@ -1900,6 +1872,7 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 		if thinkingContentIndex < 0 {
 			thinkingContentIndex = builder.thinkingBlockStart()
 			builder.thinkingBlockSignature(thinkingContentIndex, signature)
+			builder.touch()
 		}
 		return thinkingContentIndex
 	}
@@ -1922,7 +1895,9 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 	}
 	hasFinishReason := false
 	var finishReason string
+	finishReasonNotString := false
 	supportsFinishReason := p.compatBool(func(c *OpenAICompat) *bool { return c.SupportsFinishReason }, true)
+	openRouter := isOpenRouterModel(p.cfg.ProviderID, p.cfg.BaseURL)
 	inferredStopReason := func() StopReason {
 		if len(partials) > 0 {
 			return StopReasonToolUse
@@ -1932,25 +1907,55 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 
 	var suspend func()
 	if builder.turn != nil {
-		suspend = func() { suspendContinuation(builder.turn) }
+		// The decoder's awaits between two records read and write only its own state, so they are made at the provider's next await or observable step, in the same row (deferContinuation): observeValidProviderEvent, a body read or cancel, or the settle below.
+		suspend = func() { deferContinuation(builder.turn) }
 	}
-	decoder := newOpenAIStreamDecoder(r, func() { builder.publish() }, suspend)
+	// The decoder publishes the message before it reads the next record only when the record changed it outside a push: each direct change
+	// below touches the builder.
+	decoder := newOpenAIStreamDecoder(r, builder.publishPending, suspend)
+	decoder.decodeChunks()
 	for decoder.Next() {
 		data := decoder.Event().Data
 
-		var chunk oaiChunk
-		if err := json.Unmarshal([]byte(data), &chunk); err != nil {
-			fail(StopReasonError, fmt.Errorf("openai-completions: invalid SSE JSON: %w", err))
-			return
+		var thrown string
+		// The decoder decoded the common chunk while it checked the record; the chunk is valid until the next record.
+		chunk, decodedFast := decoder.Chunk()
+		if !decodedFast {
+			chunk = oaiChunk{}
+			text := jsjson.NormalizeIntegers([]byte(data))
+			if err := json.Unmarshal(text, &chunk); err != nil {
+				normalized, read, normalizable := []byte(nil), openAIChunkRead{}, false
+				if _, ok := errors.AsType[*json.UnmarshalTypeError](err); ok {
+					normalized, read, normalizable = normalizeOpenAIChunkJS(text)
+				}
+				chunk = oaiChunk{}
+				if !normalizable || json.Unmarshal(normalized, &chunk) != nil {
+					builder.settleDeferred()
+					fail(StopReasonError, fmt.Errorf("openai-completions: invalid SSE JSON: %w", err))
+					return
+				}
+				thrown = read.thrown
+				if read.finishReason != nil && len(chunk.Choices) > 0 {
+					chunk.Choices[0].FinishReason, chunk.Choices[0].finishReasonNotString = *read.finishReason, true
+				}
+			}
 		}
-		if err := builder.observeProviderEvent([]byte(data)); err != nil {
-			fail(StopReasonError, err)
+		// The stream decoder accepted the record as valid JSON before yielding it: with json.Valid, or by the chunk decode, which reads only valid JSON
+		// and answered validJSONParsesAsValue for it.
+		var observeErr error
+		if decodedFast {
+			observeErr = builder.observeDecodedProviderEvent(data, decoder.ChunkParsesAsValue())
+		} else {
+			observeErr = builder.observeValidProviderEvent(data)
+		}
+		if observeErr != nil {
+			fail(StopReasonError, observeErr)
 			return
 		}
 
-		var responseModel string
-		if json.Unmarshal(chunk.Model, &responseModel) != nil || responseModel == p.cfg.Model {
-			responseModel = ""
+		responseModel := openAIChunkResponseModel(chunk.Model, p.cfg.Model)
+		if chunk.ID != "" && builder.partial.ResponseID == "" || responseModel != "" && builder.partial.ResponseModel == "" {
+			builder.touch()
 		}
 		builder.setResponseMetadata(chunk.ID, responseModel, "", "", nil)
 
@@ -1961,31 +1966,29 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 
 		// Usage replaces the current object only when this chunk supplies it; content-bearing usage chunks still process their choices.
 		if chunk.Usage != nil {
-			builder.setUsage(parseChunkUsage(chunk.Usage, builder.modelCost))
+			builder.setUsage(parseChunkUsage(chunk.Usage, builder.modelCost, openRouter))
+			builder.touch()
 		} else if len(chunk.Choices) > 0 && chunk.Choices[0].Usage != nil {
 			// Fallback: some providers (e.g., Moonshot) return usage in
 			// choice.usage instead of the standard chunk.usage.
-			builder.setUsage(parseChunkUsage(chunk.Choices[0].Usage, builder.modelCost))
+			builder.setUsage(parseChunkUsage(chunk.Choices[0].Usage, builder.modelCost, openRouter))
+			builder.touch()
 		}
 
 		for _, choice := range chunk.Choices[:min(1, len(chunk.Choices))] {
-			if choice.FinishReason != "" {
+			if choice.FinishReason != "" || choice.finishReasonNotString {
 				hasFinishReason = true
-				finishReason = choice.FinishReason
+				finishReason, finishReasonNotString = choice.FinishReason, choice.finishReasonNotString
 				builder.setResponseMetadata("", "", finishReason, "", nil)
-				stopReason, errorMessage := mapOAIFinishReason(finishReason)
+				stopReason, errorMessage := mapChunkFinishReason(finishReason, finishReasonNotString)
 				builder.partial.StopReason = stopReason
 				if errorMessage != "" {
 					builder.partial.ErrorMessage = errorMessage
 				}
+				builder.touch()
 			}
 			delta := choice.Delta
-			if delta.Content != "" {
-				if textContentIndex < 0 {
-					textContentIndex = builder.textBlockStart()
-				}
-				builder.textBlockDelta(textContentIndex, delta.Content)
-			}
+			// Pi 63035734: reasoning and reasoning_details come before content and tool calls, so a chunk that carries both orders thinking before text.
 			for _, reasoning := range []struct {
 				field string
 				value string
@@ -2003,6 +2006,22 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 					builder.thinkingBlockDelta(contentIndex, reasoning.value)
 					break
 				}
+			}
+			for _, raw := range delta.ReasoningDetails {
+				var appended bool
+				streamedReasoningDetails, appended = appendOpenAIReasoningDetail(streamedReasoningDetails, raw)
+				if !appended {
+					continue
+				}
+				contentIndex := ensureThinkingBlock("")
+				builder.thinkingBlockSignature(contentIndex, marshalOpenAIReasoningDetails(streamedReasoningDetails))
+				builder.touch()
+			}
+			if delta.Content != "" {
+				if textContentIndex < 0 {
+					textContentIndex = builder.textBlockStart()
+				}
+				builder.textBlockDelta(textContentIndex, delta.Content)
 			}
 			for _, tc := range delta.ToolCalls {
 				functionName, functionArguments := "", ""
@@ -2059,7 +2078,7 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 				argsDelta := functionArguments
 				if pt.grammarBuf != nil {
 					if tc.Custom != nil && tc.Custom.Input != "" && functionArguments == "" {
-						next := pt.customIn + tc.Custom.Input
+						next := pt.customGrown.append(pt.customIn, tc.Custom.Input)
 						var err error
 						argsDelta, _, err = appendGrammarToolInputJSONDelta(pt.grammarBuf, pt.customProp, next, false)
 						if err != nil {
@@ -2072,17 +2091,14 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 				}
 				builder.toolCallDelta(streamToolCallDelta{index: pt.streamIndex, id: pt.id, name: pt.name, argumentsDelta: argsDelta})
 			}
-			for _, raw := range delta.ReasoningDetails {
-				var appended bool
-				streamedReasoningDetails, appended = appendOpenAIReasoningDetail(streamedReasoningDetails, raw)
-				if !appended {
-					continue
-				}
-				contentIndex := ensureThinkingBlock("")
-				builder.thinkingBlockSignature(contentIndex, marshalOpenAIReasoningDetails(streamedReasoningDetails))
-			}
+		}
+		if thrown != "" {
+			fail(StopReasonError, errors.New(thrown))
+			return
 		}
 	}
+	// The decoder's last awaits come before the abort check and the end of the message.
+	builder.settleDeferred()
 	if err := decoder.Err(); err != nil && !errors.Is(err, io.EOF) {
 		reason := StopReasonError
 		if ctx.Err() != nil {
@@ -2100,7 +2116,7 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 	finishStreamedBlocks()
 	switch {
 	case hasFinishReason:
-		stopReason, errorMessage := mapOAIFinishReason(finishReason)
+		stopReason, errorMessage := mapChunkFinishReason(finishReason, finishReasonNotString)
 		if stopReason == StopReasonError {
 			fail(StopReasonError, errors.New(errorMessage))
 			return
@@ -2111,6 +2127,30 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 	default:
 		fail(StopReasonError, errors.New("Stream ended without finish_reason"))
 	}
+}
+
+// openAIChunkResponseModel is the response model a chunk reports, "" when it reports none, one that is not a string, or the configured model. A model without escapes is compared in place, so the configured model costs no allocation.
+func openAIChunkResponseModel(raw json.RawMessage, configured string) string {
+	if model, ok := simpleJSONString(raw); ok {
+		if string(model) == configured {
+			return ""
+		}
+		return string(model)
+	}
+	var model string
+	if json.Unmarshal(raw, &model) != nil || model == configured {
+		return ""
+	}
+	return model
+}
+
+// mapChunkFinishReason is mapOAIFinishReason for a chunk's finish_reason; one that was not a string matches no case of mapStopReason's === switch, whatever
+// its String() form.
+func mapChunkFinishReason(reason string, notString bool) (StopReason, string) {
+	if notString {
+		return StopReasonError, "Provider finish_reason: " + reason
+	}
+	return mapOAIFinishReason(reason)
 }
 
 // mapOAIFinishReason maps OpenAI finish_reason values to canonical stop
@@ -2126,4 +2166,17 @@ func mapOAIFinishReason(reason string) (StopReason, string) {
 	default:
 		return StopReasonError, "Provider finish_reason: " + reason
 	}
+}
+
+// completionsRole is the role name convertMessages tracks in lastRole.
+func completionsRole(message Message) string {
+	switch message.(type) {
+	case SystemMessage:
+		return "system"
+	case UserMessage:
+		return "user"
+	case AssistantMessage:
+		return "assistant"
+	}
+	return "toolResult"
 }

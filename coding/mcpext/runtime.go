@@ -18,7 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 	"github.com/MichaelKinsy/PiG/internal/configvalue"
-	"github.com/MichaelKinsy/PiG/internal/nodepath"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 	"github.com/MichaelKinsy/PiG/mcp"
 	"github.com/MichaelKinsy/PiG/mcp/oauth"
@@ -39,6 +39,11 @@ const (
 // server that failed with a transient error.
 // upstream: packages/coding-agent/src/extensions/mcp/runtime.ts:CONNECT_RETRY_DELAYS_MS
 var connectRetryDelays = []time.Duration{250 * time.Millisecond, 1_000 * time.Millisecond}
+
+// stderrTailOf is `stderr.trim().slice(-STDERR_TAIL_CHARS)`: the last stderrTailChars UTF-16 units of the trimmed text.
+func stderrTailOf(stderr string) string {
+	return jsstring.Slice(strings.TrimFunc(stderr, isJSWhitespace), -stderrTailChars)
+}
 
 // ServerState is the state of one [Connection]. `disconnected` means the
 // connection dropped (for example the stdio server exited); the next call
@@ -131,11 +136,12 @@ func resolveHeaders(headers *extension.OrderedStrings, description string) (map[
 func CreateDefaultTransport(entry McpServerEntry, cwd string, authProvider mcp.AuthProvider) (mcp.Transport, error) {
 	config, name := entry.Config, entry.Name
 	if config.IsHTTP() {
+		// pig divergence (D156): the transport connects to the expanded URL (Pi #10654).
 		headers, err := resolveHeaders(config.Headers, fmt.Sprintf(`MCP server "%s"`, name))
 		if err != nil {
 			return nil, err
 		}
-		return mcp.NewStreamableHTTPTransport(mcp.StreamableHTTPTransportOptions{URL: config.URL, Headers: headers, AuthProvider: authProvider})
+		return mcp.NewStreamableHTTPTransport(mcp.StreamableHTTPTransportOptions{URL: extension.ExpandMcpURL(config.URL), Headers: headers, Fetch: nodeFetch(), AuthProvider: authProvider})
 	}
 	env := map[string]string{}
 	for _, key := range config.Env.Keys() {
@@ -168,7 +174,7 @@ func withoutTemplates[T any](list func() (T, error), empty T) (T, error) {
 	value, err := list()
 	if err != nil {
 		var mcpErr *mcp.McpError
-		if errors.As(err, &mcpErr) && mcpErr.Code == mcp.JSONRPCMethodNotFound {
+		if errors.As(err, &mcpErr) && mcpErr.Code == mcp.JSONRPCErrorCodes.MethodNotFound {
 			return empty, nil
 		}
 	}
@@ -177,39 +183,6 @@ func withoutTemplates[T any](list func() (T, error), empty T) (T, error) {
 
 func listTemplates(ctx context.Context, client *mcp.Client, options mcp.RequestOptions) ([]mcp.ResourceTemplate, error) {
 	return withoutTemplates(func() ([]mcp.ResourceTemplate, error) { return client.ListResourceTemplates(ctx, options) }, []mcp.ResourceTemplate{})
-}
-
-// fetchResources lists resources and templates at connect time, for the counts
-// in `/mcp` and `pi mcp list`. A server whose lists fail still connects: the
-// resource tools list and read its resources on demand.
-func fetchResources(ctx context.Context, client *mcp.Client) ([]mcp.Resource, []mcp.ResourceTemplate) {
-	var resources []mcp.Resource
-	var templates []mcp.ResourceTemplate
-	var wg sync.WaitGroup
-	wg.Go(func() {
-		if list, err := client.ListResources(ctx, mcp.RequestOptions{}); err == nil {
-			resources = list
-		}
-	})
-	wg.Go(func() {
-		if list, err := listTemplates(ctx, client, mcp.RequestOptions{}); err == nil {
-			templates = list
-		}
-	})
-	wg.Wait()
-	visibleResources := make([]mcp.Resource, 0, len(resources))
-	for _, resource := range resources {
-		if !IsMcpAppResource(resource.URI, resource.MimeType) {
-			visibleResources = append(visibleResources, resource)
-		}
-	}
-	visibleTemplates := make([]mcp.ResourceTemplate, 0, len(templates))
-	for _, template := range templates {
-		if !IsMcpAppResource(template.URITemplate, template.MimeType) {
-			visibleTemplates = append(visibleTemplates, template)
-		}
-	}
-	return visibleResources, visibleTemplates
 }
 
 // ConnectionOptions configure a [Connection].
@@ -261,8 +234,6 @@ type Connection struct {
 	errText      string
 	tools        []mcp.Tool
 	hasResources bool
-	resources    []mcp.Resource
-	templates    []mcp.ResourceTemplate
 	instructions string
 	challenge    *oauth.OAuthChallenge
 	client       *mcp.Client
@@ -340,26 +311,12 @@ func (c *Connection) Tools() []mcp.Tool {
 	return append([]mcp.Tool(nil), c.tools...)
 }
 
-// HasResources reports whether the server offers resources.
+// HasResources reports whether the server offers resources, which the resource tools list and read on demand. They
+// are not listed at connect: listing every resource can take long (a large drive, say).
 func (c *Connection) HasResources() bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.hasResources
-}
-
-// Resources returns the resources listed at the last connect or change,
-// without MCP App resources.
-func (c *Connection) Resources() []mcp.Resource {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return append([]mcp.Resource(nil), c.resources...)
-}
-
-// ResourceTemplates returns the templates listed at the last connect or change.
-func (c *Connection) ResourceTemplates() []mcp.ResourceTemplate {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return append([]mcp.ResourceTemplate(nil), c.templates...)
 }
 
 // Instructions are the server instructions from `initialize`, describing its
@@ -412,7 +369,8 @@ func (a providerTokenAuth) Token(ctx context.Context) (string, error) {
 // OAuthURL is the server URL when the server authenticates with OAuth, or "".
 func (c *Connection) OAuthURL() string {
 	if usesOAuth(c.Entry) {
-		return c.Entry.Config.URL
+		// pig divergence (D156): the URL is expanded like headers and env values (Pi #10654).
+		return extension.ExpandMcpURL(c.Entry.Config.URL)
 	}
 	return ""
 }
@@ -428,13 +386,12 @@ func (c *Connection) OAuthSettings() (McpOAuthSettings, error) {
 		ClientID: oauthConfig.ClientID, CallbackPort: oauthConfig.CallbackPort, CallbackURL: oauthConfig.CallbackURL, Scope: oauthConfig.Scope, ClientName: oauthConfig.ClientName, ClientRegistration: oauthConfig.ClientRegistration,
 	}
 	if oauthConfig.AuthServerMetadataURL != "" {
-		// Config validation accepted the URL. `new URL()` strips leading and trailing C0 controls and spaces and
-		// drops tabs and newlines before it parses, which url.Parse rejects.
-		metadataURL, err := url.Parse(nodeurl.PrepareInput(oauthConfig.AuthServerMetadataURL))
+		// Config validation accepted the URL; this is its `new URL()`.
+		metadataURL, err := nodeurl.ParseURL(oauthConfig.AuthServerMetadataURL)
 		if err != nil {
 			return McpOAuthSettings{}, err
 		}
-		settings.AuthServerMetadataURL = metadataURL
+		settings.AuthServerMetadataURL = &metadataURL
 	}
 	if oauthConfig.ClientSecret != "" {
 		secret, err := configvalue.ResolveOrError(oauthConfig.ClientSecret, fmt.Sprintf(`MCP server "%s" oauth.clientSecret`, c.Entry.Name), nil)
@@ -687,66 +644,10 @@ func (c *Connection) open(ctx context.Context) (*mcp.Client, error) {
 
 // pathToFileURL is Node's url.pathToFileURL(path).href (Node 24.19.0).
 func pathToFileURL(path string) string {
-	return pathToFileURLFor(path, runtime.GOOS == "windows")
+	return nodeurl.PathToFileURL(path, runtime.GOOS == "windows")
 }
 
-// pathToFileURLFor resolves path as path.posix or path.win32 does, keeps a
-// trailing separator, and percent-encodes what Node's encodePathChars and
-// the WHATWG path state encode: C0 controls, space, `"#%<>?[\]^` + "`{|}~",
-// DEL and every non-ASCII byte. A Windows UNC path names the URL's host.
-func pathToFileURLFor(path string, windows bool) string {
-	resolved := path
-	unc := windows && strings.HasPrefix(path, `\\`)
-	if !unc {
-		var err error
-		if windows {
-			resolved, err = nodepath.Win32Resolve(nodepath.Process(), path)
-		} else {
-			resolved, err = nodepath.PosixResolve(nodepath.Process(), path)
-		}
-		if err != nil {
-			resolved = path
-		}
-	}
-	host := ""
-	if windows && strings.HasPrefix(resolved, `\\`) {
-		rest := strings.TrimPrefix(resolved, `\\`)
-		if after, ok := strings.CutPrefix(resolved, `\\?\UNC\`); ok {
-			rest = after
-		}
-		if server, share, ok := strings.Cut(rest, `\`); ok && server != "" {
-			host, resolved = server, `\`+share
-			if ascii, err := nodeurl.FileHost(server); err == nil {
-				host = ascii
-			}
-		}
-	}
-	// path.resolve strips a trailing separator, so it is added back.
-	endsInSeparator := strings.HasSuffix(resolved, "/") || windows && strings.HasSuffix(resolved, `\`)
-	if last := path[max(len(path)-1, 0):]; (last == "/" || windows && last == `\`) && !endsInSeparator {
-		resolved += "/"
-	}
-	const hex = "0123456789ABCDEF"
-	var b strings.Builder
-	b.WriteString("file://" + host)
-	if windows && host == "" {
-		b.WriteByte('/')
-	}
-	for i := range len(resolved) {
-		c := resolved[i]
-		switch {
-		case windows && c == '\\':
-			b.WriteByte('/')
-		case c <= 0x20 || c >= 0x7f || strings.IndexByte("\"#%<>?[\\]^`{|}~", c) >= 0:
-			b.WriteByte('%')
-			b.WriteByte(hex[c>>4])
-			b.WriteByte(hex[c&15])
-		default:
-			b.WriteByte(c)
-		}
-	}
-	return b.String()
-}
+func pathToFileURLFor(path string, windows bool) string { return nodeurl.PathToFileURL(path, windows) }
 
 func (c *Connection) connectOnce(ctx context.Context) (*mcp.Client, error) {
 	client := mcp.NewClient(mcp.ClientOptions{
@@ -761,10 +662,7 @@ func (c *Connection) connectOnce(ctx context.Context) (*mcp.Client, error) {
 	fail := func(err error) (*mcp.Client, error) {
 		_ = client.Close()
 		if stdio != nil {
-			tail := strings.TrimSpace(stdio.Stderr())
-			if runes := []rune(tail); len(runes) > stderrTailChars {
-				tail = string(runes[len(runes)-stderrTailChars:])
-			}
+			tail := stderrTailOf(stdio.Stderr())
 			c.mu.Lock()
 			c.stderrTail = tail
 			c.mu.Unlock()
@@ -784,25 +682,16 @@ func (c *Connection) connectOnce(ctx context.Context) (*mcp.Client, error) {
 		return fail(err)
 	}
 	client.OnNotification("notifications/tools/list_changed", func(json.RawMessage) { c.startBackground(func() { c.refreshTools(client) }) })
-	client.OnNotification("notifications/resources/list_changed", func(json.RawMessage) { c.startBackground(func() { c.refreshResources(client) }) })
 	client.OnClose(func() { c.handleClientClose(client, stdio) })
 	// Servers without the tools capability (prompts or resources only) do not answer tools/list.
 	caps := client.ServerCapabilities()
 	hasResources := caps != nil && caps.Resources != nil
 	var tools []mcp.Tool
-	var resources []mcp.Resource
-	var templates []mcp.ResourceTemplate
-	var toolsErr error
-	var wg sync.WaitGroup
 	if caps != nil && caps.Tools != nil {
-		wg.Go(func() { tools, toolsErr = client.ListTools(ctx, mcp.RequestOptions{}) })
-	}
-	if hasResources {
-		wg.Go(func() { resources, templates = fetchResources(ctx, client) })
-	}
-	wg.Wait()
-	if toolsErr != nil {
-		return fail(toolsErr)
+		var err error
+		if tools, err = client.ListTools(ctx, mcp.RequestOptions{}); err != nil {
+			return fail(err)
+		}
 	}
 	c.mu.Lock()
 	closed := c.closed
@@ -817,7 +706,6 @@ func (c *Connection) connectOnce(ctx context.Context) (*mcp.Client, error) {
 	c.client = client
 	c.tools = tools
 	c.hasResources = hasResources
-	c.resources, c.templates = resources, templates
 	c.instructions = ""
 	if instructions := client.Instructions(); instructions != nil {
 		c.instructions = strings.TrimFunc(*instructions, isJSWhitespace)
@@ -883,10 +771,7 @@ func (c *Connection) handleClientClose(client *mcp.Client, stdio *mcp.StdioTrans
 	c.state = StateDisconnected
 	c.errText = "Connection closed"
 	if stdio != nil {
-		tail := strings.TrimSpace(stdio.Stderr())
-		if runes := []rune(tail); len(runes) > stderrTailChars {
-			tail = string(runes[len(runes)-stderrTailChars:])
-		}
+		tail := stderrTailOf(stdio.Stderr())
 		if tail != "" {
 			c.errText = "Connection closed\n" + tail
 		}
@@ -909,21 +794,6 @@ func (c *Connection) refreshTools(client *mcp.Client) {
 		return
 	}
 	c.tools = tools
-	c.mu.Unlock()
-	if c.onTools != nil {
-		c.onTools(c)
-	}
-	c.changed()
-}
-
-func (c *Connection) refreshResources(client *mcp.Client) {
-	resources, templates := fetchResources(context.Background(), client)
-	c.mu.Lock()
-	if c.client != client || c.closed {
-		c.mu.Unlock()
-		return
-	}
-	c.resources, c.templates = resources, templates
 	c.mu.Unlock()
 	if c.onTools != nil {
 		c.onTools(c)

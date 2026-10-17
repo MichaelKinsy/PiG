@@ -1,25 +1,26 @@
 package mcpext
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"strings"
 	"unicode/utf16"
-
-	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
-	"github.com/MichaelKinsy/PiG/internal/outputfiles"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/nodebase64"
+	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
+	"github.com/MichaelKinsy/PiG/internal/outputfiles"
 	"github.com/MichaelKinsy/PiG/mcp"
 )
 
@@ -55,7 +56,7 @@ const (
 	// upstream: packages/coding-agent/src/extensions/mcp/tools.ts:MCP_OUTPUT_MAX_BYTES
 	McpOutputMaxBytes = 20 * 1024
 	// ReadMcpResourceTool is the tool that reads the resources named by resource links.
-	ReadMcpResourceTool = "read_mcp_resource"
+	ReadMcpResourceTool = extension.ReadMcpResourceTool
 )
 
 // McpToolDetails are the details of an MCP tool result.
@@ -124,23 +125,108 @@ func textOf(content []ai.ToolResultMessageContent) string {
 	return strings.Join(texts, "\n")
 }
 
+// contentBlockSchema is MCP content blocks as one compact type with the fields of
+// text and image blocks, which scripts read most (`image(block)` takes an image
+// block as is). Rendered into every MCP tool's declaration.
+// upstream: tools.ts CONTENT_BLOCK_SCHEMA
+const contentBlockSchema = `{"type":"object","properties":{"type":{"enum":["text","image","audio","resource_link","resource"]},"text":{"type":"string"},"data":{"type":"string"},"mimeType":{"type":"string"}},"required":["type"],"additionalProperties":true}`
+
+// isSchemaDataKeyword reports the keywords whose values are data, so a `$ref` key
+// in them is not a reference. isSchemaMapKeyword reports the keywords whose
+// values map names to schemas, so their keys are names, not keywords. A switch,
+// unlike a map, costs package initialization nothing.
+func isSchemaDataKeyword(key string) bool {
+	switch key {
+	case "const", "enum", "default", "examples":
+		return true
+	}
+	return false
+}
+
+func isSchemaMapKeyword(key string) bool {
+	switch key {
+	case "properties", "patternProperties", "dependentSchemas", "dependencies", "$defs", "definitions":
+		return true
+	}
+	return false
+}
+
+// relocateSchema is schema as a subschema at the JSON pointer pointer
+// (`#/properties/structuredContent`) of another schema: its local references
+// (`#`, `#/$defs/Item`) are rewritten to point below pointer, so they resolve to
+// the same subschemas as before. Key order is kept.
+// upstream: tools.ts relocateSchema
+func relocateSchema(schema json.RawMessage, pointer string) json.RawMessage {
+	trimmed := bytes.TrimSpace(schema)
+	if len(trimmed) == 0 {
+		return schema
+	}
+	switch trimmed[0] {
+	case '[':
+		var items []json.RawMessage
+		if json.Unmarshal(trimmed, &items) != nil {
+			return schema
+		}
+		for i, item := range items {
+			items[i] = relocateSchema(item, pointer)
+		}
+		//portlint:allow nilslicenull tools.ts:136 schema.map(...) of an array: items was decoded from text starting with '[', and Unmarshal makes [] an empty non-nil slice, so it encodes as [] like Pi
+		raw, err := json.Marshal(items)
+		if err != nil {
+			return schema
+		}
+		return raw
+	case '{':
+		object, err := orderedjson.Parse(trimmed)
+		if err != nil {
+			return schema
+		}
+		for _, key := range object.Keys() {
+			value, _ := object.Get(key)
+			var ref string
+			switch {
+			case key == "$ref" && json.Unmarshal(value, &ref) == nil && (ref == "#" || strings.HasPrefix(ref, "#/")):
+				_ = object.SetValue(key, pointer+ref[1:])
+			case isSchemaDataKeyword(key):
+			case isSchemaMapKeyword(key) && orderedjson.IsObject(value):
+				names, _ := orderedjson.Parse(value)
+				for _, name := range names.Keys() {
+					subschema, _ := names.Get(name)
+					names.Set(name, relocateSchema(subschema, pointer))
+				}
+				raw, _ := names.MarshalJSON()
+				object.Set(key, raw)
+			default:
+				object.Set(key, relocateSchema(value, pointer))
+			}
+		}
+		raw, _ := object.MarshalJSON()
+		return raw
+	}
+	return schema
+}
+
 // CreateMcpResultSchema is the output schema of every MCP tool: the
-// `CallToolResult` scripts receive, with the tool's own output schema as
-// `structuredContent`. Codemode detects this shape to render
-// `CallToolResult<T>` declarations.
+// `CallToolResult` scripts receive (without `_meta`, which ConvertMcpResult
+// drops), with the tool's own output schema as `structuredContent`.
+// upstream: tools.ts createMcpResultSchema
 func CreateMcpResultSchema(structuredContentSchema json.RawMessage) json.RawMessage {
 	properties := orderedjson.New()
-	_ = properties.SetValue("content", json.RawMessage(`{"type":"array","items":{"type":"object"}}`))
+	properties.Set("content", json.RawMessage(`{"type":"array","items":`+contentBlockSchema+`}`))
+	// Servers may send structured content without declaring a schema for it, and it may be any JSON value.
 	if len(structuredContentSchema) > 0 {
-		properties.Set("structuredContent", structuredContentSchema)
+		properties.Set("structuredContent", relocateSchema(structuredContentSchema, "#/properties/structuredContent"))
+	} else {
+		properties.Set("structuredContent", json.RawMessage(`{}`))
 	}
-	_ = properties.SetValue("isError", json.RawMessage(`{"type":"boolean"}`))
-	_ = properties.SetValue("_meta", json.RawMessage(`{"type":"object"}`))
+	properties.Set("isError", json.RawMessage(`{"type":"boolean"}`))
 	schema := orderedjson.New()
 	_ = schema.SetValue("type", "object")
 	propertiesRaw, _ := properties.MarshalJSON()
 	schema.Set("properties", propertiesRaw)
 	_ = schema.SetValue("required", []string{"content"})
+	// Fields newer protocol versions add.
+	_ = schema.SetValue("additionalProperties", true)
 	raw, _ := schema.MarshalJSON()
 	return raw
 }
@@ -148,7 +234,7 @@ func CreateMcpResultSchema(structuredContentSchema json.RawMessage) json.RawMess
 func mcpToLLM(content []mcp.LLMContent) []ai.ToolResultMessageContent {
 	out := make([]ai.ToolResultMessageContent, 0, len(content))
 	for _, block := range content {
-		if block.Type == "image" {
+		if block.Type == mcp.LLMContentTypeImage {
 			out = append(out, ai.ImageContent{Data: block.Data, MimeType: block.MimeType})
 		} else {
 			out = append(out, ai.TextContent{Text: block.Text})
@@ -202,13 +288,8 @@ var fileExtension = lazyregexp.New(`\.[A-Za-z0-9]{1,8}$`)
 // URI ends in, else `.bin`.
 func extensionOf(uri string) string {
 	path := uri
-	if u, err := url.Parse(uri); err == nil && u.Scheme != "" {
-		// The WHATWG pathname of a URL without a hierarchical part
-		// (`note:readme.pdf`) is its opaque path.
-		path = u.EscapedPath()
-		if u.Opaque != "" {
-			path = u.Opaque
-		}
+	if u, err := nodeurl.ParseURL(uri); err == nil {
+		path = u.Pathname
 	}
 	if match := fileExtension.FindString(path); match != "" {
 		return match
@@ -222,7 +303,7 @@ func isTextMimeType(mimeType string) bool {
 		return false
 	}
 	kind, _, _ := strings.Cut(mimeType, ";")
-	kind = strings.ToLower(strings.TrimSpace(kind))
+	kind = strings.ToLower(strings.TrimFunc(kind, isJSWhitespace))
 	return strings.HasPrefix(kind, "text/") || kind == "application/json" || strings.HasSuffix(kind, "+json") || strings.HasSuffix(kind, "+xml")
 }
 
@@ -244,8 +325,9 @@ func blockToContent(server string, block mcp.ContentBlock, options ConvertMcpRes
 		if block.Description != "" {
 			description = ": " + block.Description
 		}
+		// `block.title ?? block.name`: only a missing title falls back to the name.
 		title := block.Title
-		if title == "" {
+		if title == "" && !block.HasTitle {
 			title = block.Name
 		}
 		suffix := ""
@@ -256,15 +338,12 @@ func blockToContent(server string, block mcp.ContentBlock, options ConvertMcpRes
 	}
 	if block.Type == "resource" && block.Resource != nil && block.Resource.Blob != nil && !strings.HasPrefix(block.Resource.MimeType, "image/") {
 		resource := block.Resource
-		data, err := base64Decode(*resource.Blob)
-		if err != nil {
-			data = nil
-		}
+		data := nodebase64.Decode(*resource.Blob)
 		if isTextMimeType(resource.MimeType) {
-			return []ai.ToolResultMessageContent{ai.TextContent{Text: strings.ToValidUTF8(string(data), "\uFFFD")}}
+			return []ai.ToolResultMessageContent{ai.TextContent{Text: jsstring.FromUTF8(data)}}
 		}
 		mimeType := resource.MimeType
-		if mimeType == "" {
+		if mimeType == "" && !resource.HasMimeType {
 			mimeType = "unknown type"
 		}
 		kind := mimeType + ", " + tools.FormatSize(len(data))
@@ -382,16 +461,19 @@ type McpToolOptions struct {
 	Lane *extension.CallLane
 	// ReadableResources says whether `read_mcp_resource` can read the server's resources.
 	ReadableResources func() bool
+	// Renderers draws the call and the result in the terminal; nil leaves the tool without renderers (headless).
+	Renderers func(label string) *extension.ToolRenderers
 }
 
 // CreateMcpToolDefinition adapts one MCP tool to a tool definition.
 func CreateMcpToolDefinition(options McpToolOptions) extension.ToolDefinition {
 	server, tool := options.Server, options.Tool
+	// `tool.title ?? tool.annotations?.title`: only a missing title falls back to the annotation's.
 	title := tool.Title
-	if title == "" && tool.Annotations != nil {
+	if title == "" && !tool.HasTitle && tool.Annotations != nil {
 		title = tool.Annotations.Title
 	}
-	description := strings.TrimSpace(tool.Description)
+	description := strings.TrimFunc(tool.Description, isJSWhitespace)
 	if description == "" {
 		description = title
 	}
@@ -399,7 +481,16 @@ func CreateMcpToolDefinition(options McpToolOptions) extension.ToolDefinition {
 		description = fmt.Sprintf("MCP tool %s from server %s", tool.Name, server)
 	}
 	namespace := options.Namespace
+	var renderCall extension.ToolRenderCallFunc
+	var renderResult extension.ToolRenderResultFunc
+	if options.Renderers != nil {
+		if renderers := options.Renderers(server + "/" + tool.Name); renderers != nil {
+			renderCall, renderResult = renderers.RenderCall, renderers.RenderResult
+		}
+	}
 	return extension.ToolDefinition{
+		RenderCall:   renderCall,
+		RenderResult: renderResult,
 		Name:         options.Name,
 		Label:        server + "/" + tool.Name,
 		Description:  description,
@@ -408,14 +499,12 @@ func CreateMcpToolDefinition(options McpToolOptions) extension.ToolDefinition {
 		Exposure:     ToToolExposure(options.Exposure),
 		Namespace:    &namespace,
 		Annotations:  toToolAnnotations(tool),
-		RenderCall:   renderCall(server + "/" + tool.Name),
 		ReserveCallOrder: func(json.RawMessage) *extension.CallOrder {
 			if options.Lane == nil {
 				return nil
 			}
 			return options.Lane.Reserve()
 		},
-		RenderResult: renderResult,
 		Execute: func(ctx context.Context, _ string, params json.RawMessage, onUpdate extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
 			requestOptions := mcp.RequestOptions{TimeoutMs: options.Timeout}
 			if order, ok := extension.CallOrderFromContext(ctx); ok {
@@ -425,15 +514,14 @@ func CreateMcpToolDefinition(options McpToolOptions) extension.ToolDefinition {
 			}
 			caller, err := options.GetClient(ctx)
 			if err != nil {
-				return nil, err
+				return extension.AgentToolResult{}, err
 			}
 			args := params
 			if len(args) == 0 || string(args) == "null" {
 				args = json.RawMessage("{}")
 			}
 			requestOptions.OnProgress = func(progress mcp.ProgressNotification) {
-				update, ok := onUpdate.(agent.ToolUpdateCallback)
-				if !ok || update == nil {
+				if onUpdate == nil {
 					return
 				}
 				text := progress.Message
@@ -444,11 +532,11 @@ func CreateMcpToolDefinition(options McpToolOptions) extension.ToolDefinition {
 					}
 					text = "Progress " + formatJSNumber(progress.Progress) + total
 				}
-				update(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: text}}, Details: McpToolDetails{Server: server, Tool: tool.Name}})
+				onUpdate(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: text}}, Details: McpToolDetails{Server: server, Tool: tool.Name}})
 			}
 			result, err := caller.CallTool(ctx, tool.Name, args, requestOptions)
 			if err != nil {
-				return nil, err
+				return extension.AgentToolResult{}, err
 			}
 			readable := false
 			if options.ReadableResources != nil {
@@ -462,31 +550,4 @@ func CreateMcpToolDefinition(options McpToolOptions) extension.ToolDefinition {
 // formatJSNumber is String(number) for the values progress notifications carry.
 func formatJSNumber(n float64) string {
 	return jsnumber.String(n)
-}
-
-// base64Decode is Buffer.from(s, "base64"): it accepts both alphabets, skips
-// characters outside them, and does not need padding.
-func base64Decode(s string) ([]byte, error) {
-	var clean []byte
-	for i := range len(s) {
-		switch c := s[i]; {
-		case c >= 'A' && c <= 'Z', c >= 'a' && c <= 'z', c >= '0' && c <= '9', c == '+', c == '/':
-			clean = append(clean, c)
-		case c == '-':
-			clean = append(clean, '+')
-		case c == '_':
-			clean = append(clean, '/')
-		case c == '=':
-			return base64.RawStdEncoding.DecodeString(string(trimPartial(clean)))
-		}
-	}
-	return base64.RawStdEncoding.DecodeString(string(trimPartial(clean)))
-}
-
-// trimPartial drops a lone trailing sextet, which encodes no byte.
-func trimPartial(b []byte) []byte {
-	if len(b)%4 == 1 {
-		return b[:len(b)-1]
-	}
-	return b
 }

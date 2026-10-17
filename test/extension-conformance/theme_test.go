@@ -126,6 +126,7 @@ func tuiStyleFrom(t *testing.T, options map[string]any) tui.ThemeStyle {
 	return style
 }
 
+// Pi: packages/coding-agent/src/modes/interactive/theme/theme.ts:124 (ThemeStyle.fg); packages/coding-agent/src/modes/interactive/theme/theme.ts:125 (ThemeStyle.bg); packages/coding-agent/src/modes/interactive/theme/theme.ts:66 (TextAttributes.dim); packages/tui/src/colors.ts:48 (TextAttributes.underline); packages/tui/src/colors.ts:49 (TextAttributes.inverse); packages/tui/src/colors.ts:50 (TextAttributes.strikethrough).
 func TestThemeAcrossSDKs(t *testing.T) {
 	eachModelTypesPlacement(t, func(t *testing.T, r *modelTypesRig) {
 		// theme-style.test.ts:108-117: the terminal's reported colors resolve a token set to the default.
@@ -141,7 +142,7 @@ func TestThemeAcrossSDKs(t *testing.T) {
 				t.Errorf("%s: appearance = %v, want %s", mode, report["appearance"], want)
 			}
 			wantColors := map[string]any{}
-			values := theme.ColorValues()
+			values := theme.Colors()
 			for _, token := range themeProbeTokens {
 				if color, ok := values[token]; ok {
 					wantColors[token] = hostColor(color)
@@ -171,7 +172,7 @@ func TestThemeAcrossSDKs(t *testing.T) {
 	})
 }
 
-// ctx.ui.theme.fg closes a faint token with SGR 22;39 (.upstream/v0.99.2/packages/coding-agent/src/modes/interactive/theme/theme.ts:361-365, 399-402): the palette's opening for a faint token ends in SGR 2, which SGR 39 alone would leave open past the text. Only the system theme has faint tokens, so the row uses it with no terminal colors reported, the case Pi's systemIndexedColors makes its neutral tokens faint for. Every foreground token of the theme is compared with the host's own Theme.FgText, and an unknown token leaves the text unstyled.
+// ctx.ui.theme.fg closes a faint token with SGR 22;39 (.upstream/v0.99.2/packages/coding-agent/src/modes/interactive/theme/theme.ts:361-365, 399-402): the palette's opening for a faint token ends in SGR 2, which SGR 39 alone would leave open past the text. Only the system theme has faint tokens, so the row uses it with no terminal colors reported, the case Pi's systemIndexedColors makes its neutral tokens faint for. Every foreground token of the theme is compared with the host's own Theme.FgText, and an unknown token throws `Unknown theme color: <token>` in every SDK, as Pi 1.0.4's theme.ts:361-376 does.
 func TestThemeFaintForegroundAcrossSDKs(t *testing.T) {
 	eachModelTypesPlacement(t, func(t *testing.T, r *modelTypesRig) {
 		tui.SetTerminalColors(tui.TerminalColors{})
@@ -196,8 +197,125 @@ func TestThemeFaintForegroundAcrossSDKs(t *testing.T) {
 		report := r.toolWith("theme_probe", map[string]any{"fgTokens": tokens})
 		got, _ := report["fgs"].(map[string]any)
 		for _, token := range tokens {
-			if want := theme.FgText(token, "x"); got[token] != want {
+			want := "throw:Unknown theme color: " + token
+			if token != "notAToken" {
+				want = theme.Fg(token, "x")
+			}
+			if got[token] != want {
 				t.Errorf("fg(%q) = %q, want the host's %q", token, got[token], want)
+			}
+		}
+	})
+}
+
+// themeModifierTexts are texts the modifiers draw beyond "x": empty, a line break of each kind, and an inner close of bold and of italic.
+var themeModifierTexts = []string{"", "a\nb", "a\r\nb", "a\x1b[22mb", "a\x1b[23mb"}
+
+// chalkModifiers is Pi's chalk 6.0.0 (the version pi-coding-agent 1.1.0 pins) over themeModifierTexts with color support, which theme.ts bold, italic, underline, inverse and strikethrough return (theme.ts:378-396). Recorded from `new Chalk({level: 1})` in Pi's own node_modules: chalk draws nothing for an empty string, closes and re-opens the style around each line break (keeping a CR), and re-opens it after an inner close of the same style.
+var chalkModifiers = map[string][]string{
+	"bold":          {"", "\x1b[1ma\x1b[22m\n\x1b[1mb\x1b[22m", "\x1b[1ma\x1b[22m\r\n\x1b[1mb\x1b[22m", "\x1b[1ma\x1b[22m\x1b[1mb\x1b[22m", "\x1b[1ma\x1b[23mb\x1b[22m"},
+	"italic":        {"", "\x1b[3ma\x1b[23m\n\x1b[3mb\x1b[23m", "\x1b[3ma\x1b[23m\r\n\x1b[3mb\x1b[23m", "\x1b[3ma\x1b[22mb\x1b[23m", "\x1b[3ma\x1b[23m\x1b[3mb\x1b[23m"},
+	"underline":     {"", "\x1b[4ma\x1b[24m\n\x1b[4mb\x1b[24m", "\x1b[4ma\x1b[24m\r\n\x1b[4mb\x1b[24m", "\x1b[4ma\x1b[22mb\x1b[24m", "\x1b[4ma\x1b[23mb\x1b[24m"},
+	"inverse":       {"", "\x1b[7ma\x1b[27m\n\x1b[7mb\x1b[27m", "\x1b[7ma\x1b[27m\r\n\x1b[7mb\x1b[27m", "\x1b[7ma\x1b[22mb\x1b[27m", "\x1b[7ma\x1b[23mb\x1b[27m"},
+	"strikethrough": {"", "\x1b[9ma\x1b[29m\n\x1b[9mb\x1b[29m", "\x1b[9ma\x1b[29m\r\n\x1b[9mb\x1b[29m", "\x1b[9ma\x1b[22mb\x1b[29m", "\x1b[9ma\x1b[23mb\x1b[29m"},
+}
+
+// The rest of ctx.ui.theme through every SDK against the host's own theme (theme.ts:353-437): the modifiers, getFgAnsi, getBgAnsi and bg for every token of the palette and one unknown token, getColorMode, getThinkingBorderColor for every level and one unknown level, getBashModeBorderColor, and sourcePath (set for a theme loaded from a file, absent for a built-in one). An unknown token throws `Unknown theme color: <token>` in every SDK. A token that is a foreground but not a background throws from getBgAnsi and bg.
+func TestThemeQueriesAcrossSDKs(t *testing.T) {
+	levels := []string{"off", "minimal", "low", "medium", "high", "xhigh", "max", "bogus"}
+	eachModelTypesPlacement(t, func(t *testing.T, r *modelTypesRig) {
+		t.Cleanup(func() { tui.SetTerminalColors(tui.TerminalColors{}) })
+		tui.SetTerminalColors(tui.TerminalColors{})
+		custom := conformanceTheme(t, tui.TerminalColorMode256)
+		themes := map[string]*tui.Theme{"custom file theme, 256 colors": custom, "built-in system theme": tui.NewThemeRegistry().Get(tui.SystemThemeName)}
+		// The palette's modifiers flag is the host's chalk level (theme.bold draws nothing at level 0); the row sets it so both outcomes are compared whatever the test's stdout is.
+		modifiers := map[string]bool{"custom file theme, 256 colors": true, "built-in system theme": false}
+		for name, theme := range themes {
+			if theme == nil {
+				t.Fatalf("%s: no theme", name)
+			}
+			foregrounds, backgrounds := theme.ANSIPalette()
+			tokens := []string{"notAToken"}
+			for token := range foregrounds {
+				tokens = append(tokens, token)
+			}
+			for token := range backgrounds {
+				if _, dup := foregrounds[token]; !dup {
+					tokens = append(tokens, token)
+				}
+			}
+			slices.Sort(tokens)
+			if len(foregrounds) == 0 || len(backgrounds) == 0 {
+				t.Fatalf("%s: the palette has %d foregrounds and %d backgrounds, so the row proves nothing", name, len(foregrounds), len(backgrounds))
+			}
+			palette := codingagent.ExtensionThemePalette(theme).(map[string]any)
+			palette["modifiers"] = modifiers[name]
+			r.setTheme(palette)
+			report := r.toolWith("theme_probe", map[string]any{"queries": true, "ansiTokens": tokens, "levels": levels, "modifierTexts": themeModifierTexts})
+			got, _ := report["queries"].(map[string]any)
+			if got == nil {
+				t.Fatalf("%s: no queries in %v", name, report)
+			}
+			unknown := func(token string) string { return "throw:Unknown theme color: " + token }
+			wantModifiers := map[string]any{"bold": "x", "italic": "x", "underline": "x", "inverse": "x", "strikethrough": "x"}
+			if modifiers[name] {
+				wantModifiers = map[string]any{"bold": "\x1b[1mx\x1b[22m", "italic": "\x1b[3mx\x1b[23m", "underline": "\x1b[4mx\x1b[24m", "inverse": "\x1b[7mx\x1b[27m", "strikethrough": "\x1b[9mx\x1b[29m"}
+			}
+			if !reflect.DeepEqual(got["modifiers"], wantModifiers) {
+				t.Errorf("%s: modifiers = %#v, want %#v", name, got["modifiers"], wantModifiers)
+			}
+			wantTexts := map[string]any{}
+			for modifier, drawn := range chalkModifiers {
+				texts := []any{}
+				for i, text := range themeModifierTexts {
+					if modifiers[name] {
+						text = drawn[i]
+					}
+					texts = append(texts, text)
+				}
+				wantTexts[modifier] = texts
+			}
+			if !reflect.DeepEqual(got["modifierTexts"], wantTexts) {
+				t.Errorf("%s: modifier texts = %#v\nwant %#v", name, got["modifierTexts"], wantTexts)
+			}
+			wantFg, wantBg, wantBgs := map[string]any{}, map[string]any{}, map[string]any{}
+			for _, token := range tokens {
+				wantFg[token], wantBg[token], wantBgs[token] = unknown(token), unknown(token), unknown(token)
+				if _, ok := foregrounds[token]; ok {
+					wantFg[token] = theme.GetFgAnsi(token)
+				}
+				if _, ok := backgrounds[token]; ok {
+					wantBg[token] = theme.GetBgAnsi(token)
+					wantBgs[token] = theme.Bg(token, "x")
+				}
+			}
+			for key, want := range map[string]map[string]any{"fgAnsi": wantFg, "bgAnsi": wantBg, "bgs": wantBgs} {
+				if !reflect.DeepEqual(got[key], want) {
+					t.Errorf("%s: %s = %#v\nwant %#v", name, key, got[key], want)
+				}
+			}
+			if want := string(theme.GetColorMode()); got["mode"] != want {
+				t.Errorf("%s: mode = %v, want %s", name, got["mode"], want)
+			}
+			wantThinking := map[string]any{}
+			for _, level := range levels {
+				wantThinking[level] = theme.GetThinkingBorderColor(level)("x")
+			}
+			if !reflect.DeepEqual(got["thinking"], wantThinking) {
+				t.Errorf("%s: thinking = %#v\nwant %#v", name, got["thinking"], wantThinking)
+			}
+			if want := theme.GetBashModeBorderColor()("x"); got["bash"] != want {
+				t.Errorf("%s: bash = %v, want %q", name, got["bash"], want)
+			}
+			var wantSource any
+			if theme.SourcePath != "" {
+				wantSource = theme.SourcePath
+			}
+			if got["sourcePath"] != wantSource {
+				t.Errorf("%s: sourcePath = %v, want %v", name, got["sourcePath"], wantSource)
+			}
+			if name == "custom file theme, 256 colors" && wantSource == nil {
+				t.Errorf("the custom theme has no source path, so the row proves nothing")
 			}
 		}
 	})

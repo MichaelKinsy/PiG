@@ -1,4 +1,5 @@
-import { classifySystemOne, isRecord } from "./system-one-shared.js";
+import { isRecord } from "./classifier-shared.js";
+import { classifySystemOne } from "./system-one-shared.js";
 /**
  * TypeSafe's native System One protocol. OpenRouter serves the same protocol,
  * so both providers use this API with different base URLs.

@@ -1,6 +1,6 @@
 # xd-harness-retire
 
-Branch `team/smc1/xd-harness-retire`. Task: delete the code Pi 1.0.0 removed.
+Branch `team/the bench host/xd-harness-retire`. Task: delete the code Pi 1.0.0 removed.
 
 ## Status: READY
 

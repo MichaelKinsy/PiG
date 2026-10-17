@@ -373,6 +373,10 @@ func initializeExecutorRepository(t *testing.T) string {
 	gitOutput(t, root, "init")
 	gitOutput(t, root, "config", "user.email", "executor@example.invalid")
 	gitOutput(t, root, "config", "user.name", "Executor Test")
+	// git commit may start a detached gc or maintenance run that still writes into .git when the test's TempDir cleanup
+	// removes it ("unlinkat .../.git: directory not empty" on CI); the fixture repository needs neither.
+	gitOutput(t, root, "config", "gc.auto", "0")
+	gitOutput(t, root, "config", "maintenance.auto", "false")
 	gitOutput(t, root, "add", "go.mod", "target.go", "target_test.go", "test/parity/closure/attestation.go", "test/parity/closure/coverage.go", "test/parity/closure/decode.go", "test/parity/closure/executor.go", "test/parity/closure/graph.go", "test/parity/closure/mutation.go", "test/parity/closure/types.go", "test/parity/cmd/closure/main.go")
 	gitOutput(t, root, "commit", "-m", "fixture")
 	return root

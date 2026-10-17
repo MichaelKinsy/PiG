@@ -1,5 +1,7 @@
 package text
 
+// pi: packages/coding-agent/src/utils/text.ts
+
 import (
 	"encoding/json"
 	"testing"

@@ -1,3 +1,5 @@
+//go:build !pig_strip_mistral_conversations
+
 package ai
 
 // Ports packages/ai/src/api/mistral-conversations.ts.
@@ -10,13 +12,18 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/jsjson"
+
+	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
 const (
@@ -24,21 +31,6 @@ const (
 	maxMistralErrorBodyChars = 4000
 	mistralJSWhitespace      = "\t\n\v\f\r \u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
 )
-
-// MistralConfig configures the Mistral API provider.
-type MistralConfig struct {
-	// ModelMetadata retains the selected model's input capabilities, identity and thinking map.
-	ModelMetadata *Model
-	APIKey        string
-	Model         string
-	ProviderID    string
-	BaseURL       string
-	ExtraHeaders  map[string]string
-	// SessionID for x-affinity header (KV-cache reuse).
-	SessionID string
-	// Reasoning indicates whether the model supports extended reasoning.
-	Reasoning bool
-}
 
 type mistralProvider struct {
 	cfg    MistralConfig
@@ -56,6 +48,25 @@ func NewMistralProvider(cfg MistralConfig) Provider {
 	return &mistralProvider{cfg: cfg, client: streamingHTTPClientNoRetry()}
 }
 
+// NewMistralAPIProvider builds the mistral-conversations provider for cfg, the provider every model-to-provider factory uses.
+func NewMistralAPIProvider(cfg MistralConfig) (Provider, error) {
+	// pig additive (D92): a Piglet's strip.apis disables Mistral at runtime the way a pig_strip_mistral_conversations build compiles it out.
+	if pigstrip.Has(pigstrip.ListAPIs, string(APIMistralConversations)) {
+		return nil, strippedMistralError(&cfg)
+	}
+	return NewMistralProvider(cfg), nil
+}
+
+func init() {
+	builtInProviders[APIMistralConversations] = func(apiKey, model, baseURL string) Provider {
+		return NewMistralProvider(MistralConfig{
+			APIKey:  apiKey,
+			Model:   model,
+			BaseURL: baseURL,
+		})
+	}
+}
+
 func (p *mistralProvider) ID() string   { return p.cfg.ProviderID }
 func (p *mistralProvider) Close() error { return nil }
 
@@ -67,8 +78,8 @@ func mistralChatCompletionsURL(baseURL string) (string, error) {
 
 type mistralRequest struct {
 	Model           string           `json:"model"`
-	Messages        []mistralMessage `json:"messages"`
 	Stream          bool             `json:"stream"`
+	Messages        []mistralMessage `json:"messages"`
 	Tools           []mistralTool    `json:"tools,omitempty"`
 	Temperature     *float64         `json:"temperature,omitempty"`
 	MaxTokens       *int             `json:"maxTokens,omitempty"`
@@ -78,20 +89,28 @@ type mistralRequest struct {
 	PromptCacheKey  string           `json:"promptCacheKey,omitempty"`
 }
 
+// mistralMessage members are in the order toChatMessages creates them (mistral-conversations.ts:794-890): an assistant message is role, prefix, content,
+// toolCalls; a tool result is role, toolCallId, name, content.
 type mistralMessage struct {
 	Role       string `json:"role"`
 	Prefix     *bool  `json:"prefix,omitempty"`
-	Content    any    `json:"content,omitempty"`   // string | []mistralContentChunk
-	ToolCalls  any    `json:"toolCalls,omitempty"` // []mistralToolCallMsg for assistant
 	ToolCallID string `json:"toolCallId,omitempty"`
 	Name       string `json:"name,omitempty"`
+	Content    any    `json:"content,omitempty"`   // string | []mistralContentChunk
+	ToolCalls  any    `json:"toolCalls,omitempty"` // []mistralToolCallMsg for assistant
 }
 
 type mistralContentChunk struct {
 	Type     string  `json:"type"`
 	Text     *string `json:"text,omitempty"`
 	ImageURL string  `json:"imageUrl,omitempty"`
-	Thinking any     `json:"thinking,omitempty"` // []map[string]string for thinking content
+	Thinking any     `json:"thinking,omitempty"` // []mistralTextChunk for thinking content
+}
+
+// mistralTextChunk is a thinking chunk's text part, `{ type: "text", text }` (mistral-conversations.ts:840).
+type mistralTextChunk struct {
+	Type string `json:"type"`
+	Text string `json:"text"`
 }
 
 type mistralToolCallMsg struct {
@@ -112,10 +131,25 @@ type mistralTool struct {
 }
 
 type mistralToolFn struct {
-	Name        string         `json:"name"`
-	Description string         `json:"description"`
-	Parameters  map[string]any `json:"parameters"`
-	Strict      bool           `json:"strict"`
+	parameterOrder schemaObjectOrder
+	Name           string         `json:"name"`
+	Description    string         `json:"description"`
+	Parameters     map[string]any `json:"parameters"`
+	Strict         bool           `json:"strict"`
+}
+
+// MarshalJSON writes the parameters with the tool schema's own member order: the SDK copies the parameters record entry by entry.
+func (f mistralToolFn) MarshalJSON() ([]byte, error) {
+	parameters, err := marshalToolParameters(f.Parameters, f.parameterOrder)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(struct {
+		Name        string          `json:"name"`
+		Description string          `json:"description"`
+		Parameters  json.RawMessage `json:"parameters"`
+		Strict      bool            `json:"strict"`
+	}{f.Name, f.Description, parameters, f.Strict})
 }
 
 // ─── Response wire types ─────────────────────────────────────────────────────
@@ -127,13 +161,13 @@ type mistralSSEChunk struct {
 }
 
 type mistralSSEChoice struct {
-	Delta        json.RawMessage `json:"delta"`
-	FinishReason *string         `json:"finish_reason"`
+	Delta        json.RawMessage     `json:"delta"`
+	FinishReason mistralFinishReason `json:"finish_reason"`
 }
 
 type mistralSSEDelta struct {
-	Content   json.RawMessage      `json:"content"` // string | []mistralContentItem | null
-	ToolCalls []mistralSSEToolCall `json:"tool_calls"`
+	Content   json.RawMessage `json:"content"` // string | []mistralContentItem | null
+	ToolCalls json.RawMessage `json:"tool_calls"`
 }
 
 type mistralContentItem struct {
@@ -209,7 +243,7 @@ func deriveMistralToolCallID(id string, attempt int) string {
 	if attempt > 0 {
 		seed = fmt.Sprintf("%s:%d", seedBase, attempt)
 	}
-	h := shortHash32(seed)
+	h := ShortHash(seed)
 	// Filter to alnum
 	var out strings.Builder
 	for _, r := range h {
@@ -255,6 +289,24 @@ func (n *mistralIDNormalizer) normalize(id string) string {
 
 // ─── Stream ──────────────────────────────────────────────────────────────────
 
+// mistralToolChoice ports mistral-conversations.ts mapToolChoice and its `if (options?.toolChoice)` guard: an absent or empty
+// choice is omitted, "auto", "none", "any" and "required" pass through, and an object choice is rebuilt as
+// {type:"function", function:{name}} from its function name, so no other member of the caller's object reaches the request.
+func mistralToolChoice(choice any) any {
+	if name, ok := toolChoiceName(choice); ok {
+		if name == "" {
+			return nil
+		}
+		return name
+	}
+	object, ok := choice.(map[string]any)
+	if !ok {
+		return choice
+	}
+	function, _ := object["function"].(map[string]any)
+	return map[string]any{"type": "function", "function": map[string]any{"name": function["name"]}}
+}
+
 func (p *mistralProvider) resolveModel() *Model {
 	if p.cfg.ModelMetadata != nil {
 		return new(*p.cfg.ModelMetadata)
@@ -265,11 +317,15 @@ func (p *mistralProvider) resolveModel() *Model {
 	return &Model{
 		ID: p.cfg.Model, Input: []string{"text"},
 		ProviderMeta: ProviderMetadata{API: APIMistralConversations, ProviderID: p.cfg.ProviderID, BaseURL: p.cfg.BaseURL, Headers: p.cfg.ExtraHeaders, Reasoning: p.cfg.Reasoning},
-		Capabilities: ModelCapabilities{MaxThinking: ThinkingHigh},
+		Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh},
 	}
 }
 
 func (p *mistralProvider) Stream(ctx context.Context, transcript TranscriptContext, opts StreamOptions) (*AssistantMessageEventStream, error) {
+	// pig divergence (D48): the agent loop asks for the tool-flow repair.
+	if opts.RepairToolFlow {
+		transcript = transcript.withRepairedToolFlow()
+	}
 	if err := validateProviderRequest(ctx, transcript); err != nil {
 		return nil, fmt.Errorf("mistral: invalid transcript: %w", err)
 	}
@@ -280,10 +336,10 @@ func (p *mistralProvider) Stream(ctx context.Context, transcript TranscriptConte
 
 	model := p.resolveModel()
 	supportsMidConversation := model.ProviderMeta.Compat != nil && model.ProviderMeta.Compat.SupportsMidConvoSystemMessages != nil && *model.ProviderMeta.Compat.SupportsMidConvoSystemMessages
-	resolved := ResolveTranscript(transcript, supportsMidConversation)
+	resolved := resolvedMessages(transcript, supportsMidConversation)
 	normalizer := newMistralIDNormalizer()
-	messages := TransformMessages(resolved.Messages(), model, func(id string, _ *Model, _ AssistantMessage) string { return normalizer.normalize(id) })
-	msgs := p.convertMessages(WithoutInitialSystemMessage(messages), slices.Contains(model.Input, "image"))
+	messages := TransformMessages(resolved, model, func(id string, _ *Model, _ AssistantMessage) string { return normalizer.normalize(id) })
+	msgs := p.convertMessages(withoutInitialSystemMessage(messages), slices.Contains(model.Input, ModelInputImage))
 
 	if systemPrompt := GetCurrentSystemPrompt(messages[:min(1, len(messages))]); systemPrompt != "" {
 		system := mistralMessage{Role: "system", Content: sanitizeSurrogates(systemPrompt)}
@@ -305,9 +361,9 @@ func (p *mistralProvider) Stream(ctx context.Context, transcript TranscriptConte
 	}
 	if opts.IsReasoning && model.ProviderMeta.Reasoning {
 		// Models with a thinking level map use reasoning_effort; other reasoning models use prompt_mode (mistral-conversations.ts:streamSimple).
-		var reasoning ThinkingLevel
+		var reasoning ModelThinkingLevel
 		if opts.Thinking != "" {
-			if clamped := ClampThinkingLevel(model, opts.Thinking); clamped != ThinkingOff {
+			if clamped := ClampThinkingLevel(model, ModelThinkingLevel(opts.Thinking)); clamped != ThinkingOff {
 				reasoning = clamped
 			}
 		}
@@ -338,7 +394,7 @@ func (p *mistralProvider) Stream(ctx context.Context, transcript TranscriptConte
 	if opts.ReasoningEffort != "" {
 		req.ReasoningEffort = opts.ReasoningEffort
 	}
-	req.ToolChoice = opts.ToolChoice
+	req.ToolChoice = mistralToolChoice(opts.ToolChoice)
 	// Upstream shouldUsePromptCaching requires an explicit request session ID and retention other than none.
 	if shouldUseMistralPromptCaching(opts.SessionID, opts.CacheRetention) {
 		req.PromptCacheKey = opts.SessionID
@@ -351,25 +407,37 @@ func (p *mistralProvider) Stream(ctx context.Context, transcript TranscriptConte
 			return nil, fmt.Errorf("mistral: onPayload: %w", err)
 		}
 		if next != nil {
-			payload = next
+			payload = payloadReplacement(next)
 		}
 	}
 
-	wire, err := toMistralWirePayload(payload)
-	if err != nil {
-		return nil, fmt.Errorf("mistral: convert wire payload: %w", err)
+	var wireErr error
+	body, err := marshalSpliced(payload, requestStrings, func(payload any) ([]byte, error) {
+		wire, err := toMistralWirePayload(payload)
+		if err != nil {
+			wireErr = err
+		}
+		return wire, err
+	})
+	if wireErr != nil {
+		return nil, fmt.Errorf("mistral: convert wire payload: %w", wireErr)
 	}
-	body, err := json.Marshal(wire)
 	if err != nil {
 		return nil, fmt.Errorf("mistral: marshal request: %w", err)
 	}
+	checkRequestSegments(ctx, APIMistralConversations, body)
 
 	// upstream: packages/ai/src/api/mistral-conversations.ts:requestMistralStream
 	timeoutMs := 60_000
 	if opts.TimeoutMs != nil {
 		timeoutMs = *opts.TimeoutMs
 	}
-	requestCtx, cancel := context.WithTimeoutCause(ctx, time.Duration(timeoutMs)*time.Millisecond, errors.New("The operation was aborted due to timeout"))
+	// 42a3497d: the timeout covers only the wait for response headers; body stalls are left to the transport's idle timeout.
+	requestCtx, cancelRequest := context.WithCancelCause(ctx)
+	cancel := func() { cancelRequest(nil) }
+	headersTimedOut := fmt.Errorf("Mistral response headers timed out after %dms", timeoutMs)
+	headerTimer := time.AfterFunc(time.Duration(timeoutMs)*time.Millisecond, func() { cancelRequest(headersTimedOut) })
+	defer headerTimer.Stop()
 	streamOwnsRequest := false
 	finishRequest := cancel
 	defer func() {
@@ -388,11 +456,12 @@ func (p *mistralProvider) Stream(ctx context.Context, transcript TranscriptConte
 	if opts.Fetch == nil && requestURL.User != nil {
 		return nil, fmt.Errorf("Request cannot be constructed from a URL that includes credentials: %s", endpoint)
 	}
-	httpReq, err := http.NewRequestWithContext(requestCtx, http.MethodPost, "", bytes.NewReader(body))
+	httpReq, err := http.NewRequestWithContext(requestCtx, http.MethodPost, "", body.reader())
 	if err != nil {
 		return nil, fmt.Errorf("mistral: new request: %w", err)
 	}
 	httpReq.URL, httpReq.Host = requestURL, requestURL.Host
+	body.prepare(httpReq)
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Accept", "text/event-stream")
 	httpReq.Header.Set("User-Agent", PiUserAgent())
@@ -412,11 +481,21 @@ func (p *mistralProvider) Stream(ctx context.Context, transcript TranscriptConte
 	applyProviderHeaders(httpReq, opts.Headers)
 
 	resp, err := providerHTTPClient(p.client, opts.Fetch).Do(httpReq)
+	headerTimer.Stop()
 	if err != nil {
 		if cause := context.Cause(requestCtx); cause != nil {
-			err = cause
+			if errors.Is(cause, headersTimedOut) {
+				return nil, cause
+			}
+			// The aborted fetch rejects with the combined signal's reason, the caller's (mistral-conversations.ts:312-325 rethrows it):
+			// "This operation was aborted" for a plain abort().
+			return nil, mistralAbortReason(cause)
 		}
-		return nil, fmt.Errorf("mistral: request failed: %w", err)
+		// The Mistral SDK's fetch rejection is the error itself ("fetch failed" for a transport failure); the Go client's "Post <url>:" decoration is not part of it.
+		if requestError, ok := err.(*url.Error); ok { //nolint:errorlint // Only the direct client.Do decoration is stripped.
+			return nil, requestError.Err
+		}
+		return nil, err
 	}
 
 	if observed, ok := resp.Body.(*observedResponseBody); ok {
@@ -442,7 +521,7 @@ func (p *mistralProvider) Stream(ctx context.Context, transcript TranscriptConte
 		return nil, err
 	}
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		errBody, err := io.ReadAll(responseBody)
+		errBody, err := readWebText(responseBody)
 		if err != nil {
 			return nil, err
 		}
@@ -456,7 +535,7 @@ func (p *mistralProvider) Stream(ctx context.Context, transcript TranscriptConte
 		return nil, fmt.Errorf("Mistral API error (%d): %s", resp.StatusCode, errText)
 	}
 
-	builder := newObservedProviderBuilder(ctx, APIMistralConversations, p.cfg.ProviderID, p.cfg.Model)
+	builder := newObservedProviderBuilder(ctx, outputAPI(p.cfg.ModelMetadata, APIMistralConversations), p.cfg.ProviderID, p.cfg.Model)
 	builder.modelCost = opts.ModelCost
 	builder.setProviderEventObserver(opts, model)
 	_, builder.managed = resp.Body.(*observedResponseBody)
@@ -493,55 +572,181 @@ func shouldUseMistralPromptCaching(sessionID string, retention CacheRetention) b
 	return retention != CacheRetentionNone && sessionID != ""
 }
 
-// toMistralWirePayload converts only documented SDK property positions, leaving authored tool schemas and arguments unchanged.
-func toMistralWirePayload(payload any) (map[string]any, error) {
-	raw, err := json.Marshal(payload)
+// toMistralWirePayload is Pi's toMistralWirePayload (mistral-conversations.ts:372-406), which JSON.stringify then sends: `{ ...payload }` with each documented
+// SDK property renamed by remapMistralMember, messages and content chunks spread and renamed the same way, and authored tool schemas and arguments unchanged.
+// It keeps the members in the order the payload has them.
+func toMistralWirePayload(payload any) (json.RawMessage, error) {
+	switch request := payload.(type) {
+	case mistralRequest:
+		return marshalRequestBody(request.wire())
+	case *mistralRequest:
+		if request != nil {
+			return marshalRequestBody(request.wire())
+		}
+	}
+	raw, err := marshalRequestBody(payload)
 	if err != nil {
 		return nil, err
 	}
-	var wire map[string]any
-	if err := json.Unmarshal(raw, &wire); err != nil {
+	wire, err := jsonSpreadMembers(raw)
+	if err != nil {
 		return nil, err
 	}
-	remap := func(object map[string]any, source, target string) {
-		if value, exists := object[source]; exists {
-			object[target] = value
-			delete(object, source)
-		}
-	}
 	for _, keys := range [][2]string{{"topP", "top_p"}, {"maxTokens", "max_tokens"}, {"randomSeed", "random_seed"}, {"responseFormat", "response_format"}, {"toolChoice", "tool_choice"}, {"presencePenalty", "presence_penalty"}, {"frequencyPenalty", "frequency_penalty"}, {"parallelToolCalls", "parallel_tool_calls"}, {"reasoningEffort", "reasoning_effort"}, {"promptMode", "prompt_mode"}, {"promptCacheKey", "prompt_cache_key"}, {"safePrompt", "safe_prompt"}} {
-		remap(wire, keys[0], keys[1])
+		wire = remapMistralMember(wire, keys[0], keys[1])
 	}
-	messages, ok := wire["messages"].([]any)
-	if !ok {
+	// payload.messages.map throws for anything but an array.
+	var messages []json.RawMessage
+	if at := slices.IndexFunc(wire, func(member jsonMember) bool { return member.key == "messages" }); at < 0 || json.Unmarshal(wire[at].value, &messages) != nil || messages == nil {
 		return nil, fmt.Errorf("messages must be an array")
-	}
-	for _, value := range messages {
-		message, ok := value.(map[string]any)
-		if !ok {
-			return nil, fmt.Errorf("message must be an object")
-		}
-		remap(message, "toolCalls", "tool_calls")
-		remap(message, "toolCallId", "tool_call_id")
-		if content, ok := message["content"].([]any); ok {
-			for _, value := range content {
-				chunk, ok := value.(map[string]any)
-				if !ok {
+	} else {
+		for i, value := range messages {
+			// message.content reads a property of each message, which throws for null.
+			if bytes.Equal(bytes.TrimSpace(value), []byte("null")) {
+				return nil, fmt.Errorf("message must be an object")
+			}
+			message, err := jsonSpreadMembers(value)
+			if err != nil {
+				return nil, err
+			}
+			message = remapMistralMember(message, "toolCalls", "tool_calls")
+			message = remapMistralMember(message, "toolCallId", "tool_call_id")
+			for j := range message {
+				var chunks []json.RawMessage
+				if message[j].key != "content" || !bytes.HasPrefix(message[j].value, []byte("[")) || json.Unmarshal(message[j].value, &chunks) != nil {
 					continue
 				}
-				for _, keys := range [][2]string{{"imageUrl", "image_url"}, {"documentUrl", "document_url"}, {"documentName", "document_name"}, {"fileId", "file_id"}, {"referenceIds", "reference_ids"}, {"inputAudio", "input_audio"}} {
-					remap(chunk, keys[0], keys[1])
+				for k, value := range chunks {
+					chunk, err := jsonSpreadMembers(value)
+					if err != nil {
+						return nil, err
+					}
+					for _, keys := range [][2]string{{"imageUrl", "image_url"}, {"documentUrl", "document_url"}, {"documentName", "document_name"}, {"fileId", "file_id"}, {"referenceIds", "reference_ids"}, {"inputAudio", "input_audio"}} {
+						chunk = remapMistralMember(chunk, keys[0], keys[1])
+					}
+					if chunks[k], err = writeJSONObjectMembers(chunk); err != nil {
+						return nil, err
+					}
+				}
+				if message[j].value, err = marshalRawArray(chunks); err != nil {
+					return nil, err
 				}
 			}
+			if messages[i], err = writeJSONObjectMembers(message); err != nil {
+				return nil, err
+			}
+		}
+		if wire[at].value, err = marshalRawArray(messages); err != nil {
+			return nil, err
 		}
 	}
-	if format, ok := wire["response_format"].(map[string]any); ok {
-		remap(format, "jsonSchema", "json_schema")
-		if schema, ok := format["json_schema"].(map[string]any); ok {
-			remap(schema, "schemaDefinition", "schema")
+	if at := slices.IndexFunc(wire, func(member jsonMember) bool { return member.key == "response_format" }); at >= 0 && isJSONObjectText(wire[at].value) {
+		format, err := jsonSpreadMembers(wire[at].value)
+		if err != nil {
+			return nil, err
+		}
+		format = remapMistralMember(format, "jsonSchema", "json_schema")
+		if schemaAt := slices.IndexFunc(format, func(member jsonMember) bool { return member.key == "json_schema" }); schemaAt >= 0 && isJSONObjectText(format[schemaAt].value) {
+			schema, err := jsonSpreadMembers(format[schemaAt].value)
+			if err != nil {
+				return nil, err
+			}
+			if format[schemaAt].value, err = writeJSONObjectMembers(remapMistralMember(schema, "schemaDefinition", "schema")); err != nil {
+				return nil, err
+			}
+		}
+		if wire[at].value, err = writeJSONObjectMembers(format); err != nil {
+			return nil, err
 		}
 	}
-	return wire, nil
+	return writeJSONObjectMembers(wire)
+}
+
+// mistralWireRequest is a mistralRequest after toMistralWirePayload: the members buildChatPayload creates in place, then each renamed member in the order
+// toMistralWirePayload remaps it (mistral-conversations.ts:374-389).
+type mistralWireRequest struct {
+	Model           string               `json:"model"`
+	Stream          bool                 `json:"stream"`
+	Messages        []mistralWireMessage `json:"messages"`
+	Tools           []mistralTool        `json:"tools,omitempty"` //portlint:allow emptydrop Pi sets tools only when currentTools is non-empty (mistral-conversations.ts:540); req.Tools likewise (mistral.go:355)
+	Temperature     *float64             `json:"temperature,omitempty"`
+	MaxTokens       *int                 `json:"max_tokens,omitempty"`
+	ToolChoice      any                  `json:"tool_choice,omitempty"`
+	ReasoningEffort string               `json:"reasoning_effort,omitempty"`
+	PromptMode      string               `json:"prompt_mode,omitempty"`
+	PromptCacheKey  string               `json:"prompt_cache_key,omitempty"`
+}
+
+// mistralWireMessage is a mistralMessage after toMistralWireMessage, which appends tool_calls and tool_call_id after the members it keeps.
+type mistralWireMessage struct {
+	Role       string `json:"role"`
+	Prefix     *bool  `json:"prefix,omitempty"`
+	Name       string `json:"name,omitempty"`
+	Content    any    `json:"content,omitempty"`
+	ToolCalls  any    `json:"tool_calls,omitempty"`
+	ToolCallID string `json:"tool_call_id,omitempty"`
+}
+
+// mistralWireChunk is a mistralContentChunk after toMistralWireContentChunk; a chunk has one of text, thinking and image_url.
+type mistralWireChunk struct {
+	Type     string  `json:"type"`
+	Text     *string `json:"text,omitempty"`
+	Thinking any     `json:"thinking,omitempty"`
+	ImageURL string  `json:"image_url,omitempty"`
+}
+
+func (r mistralRequest) wire() mistralWireRequest {
+	messages := make([]mistralWireMessage, len(r.Messages))
+	for i, message := range r.Messages {
+		content := message.Content
+		if chunks, ok := content.([]mistralContentChunk); ok {
+			wire := make([]mistralWireChunk, len(chunks))
+			for j, chunk := range chunks {
+				wire[j] = mistralWireChunk{Type: chunk.Type, Text: chunk.Text, Thinking: chunk.Thinking, ImageURL: chunk.ImageURL}
+			}
+			content = wire
+		}
+		messages[i] = mistralWireMessage{Role: message.Role, Prefix: message.Prefix, Name: message.Name, Content: content, ToolCalls: message.ToolCalls, ToolCallID: message.ToolCallID}
+	}
+	return mistralWireRequest{Model: r.Model, Stream: r.Stream, Messages: messages, Tools: r.Tools, Temperature: r.Temperature, MaxTokens: r.MaxTokens,
+		ToolChoice: r.ToolChoice, ReasoningEffort: r.ReasoningEffort, PromptMode: r.PromptMode, PromptCacheKey: r.PromptCacheKey}
+}
+
+// remapMistralMember is remapMistralProperty (mistral-conversations.ts:433-437): `record[target] = record[source]; delete record[source]`, so an existing
+// target keeps its place and takes the value, and a new target goes last.
+func remapMistralMember(members []jsonMember, source, target string) []jsonMember {
+	at := slices.IndexFunc(members, func(member jsonMember) bool { return member.key == source })
+	if at < 0 {
+		return members
+	}
+	value := members[at].value
+	if targetAt := slices.IndexFunc(members, func(member jsonMember) bool { return member.key == target }); targetAt >= 0 {
+		members[targetAt].value = value
+	} else {
+		members = append(members, jsonMember{key: target, value: value})
+	}
+	return slices.Delete(members, at, at+1)
+}
+
+// isJSONObjectText reports whether a JSON value is an object, as isMistralRecord does for the parsed value.
+func isJSONObjectText(value json.RawMessage) bool {
+	trimmed := bytes.TrimLeft(value, " \t\r\n")
+	return len(trimmed) > 0 && trimmed[0] == '{'
+}
+
+// marshalRawArray writes JSON values as one array.
+func marshalRawArray(values []json.RawMessage) (json.RawMessage, error) {
+	out := []byte{'['}
+	for i, value := range values {
+		if i > 0 {
+			out = append(out, ',')
+		}
+		var err error
+		if out, err = jsonstringify.AppendCanonical(out, value); err != nil {
+			return nil, err
+		}
+	}
+	return append(out, ']'), nil
 }
 
 func truncateMistralError(text string) string {
@@ -662,8 +867,16 @@ type mistralChunkConsumer struct {
 func (consumer *mistralChunkConsumer) consume(raw json.RawMessage) error {
 	builder := consumer.builder
 	var chunk mistralSSEChunk
-	if err := json.Unmarshal(raw, &chunk); err != nil {
-		return err
+	data := jsjson.NormalizeIntegers(raw)
+	if err := json.Unmarshal(data, &chunk); err != nil {
+		normalized, ok := []byte(nil), false
+		if _, mismatch := errors.AsType[*json.UnmarshalTypeError](err); mismatch {
+			normalized, ok = normalizeMistralChunkJS(data)
+		}
+		chunk = mistralSSEChunk{}
+		if !ok || json.Unmarshal(normalized, &chunk) != nil {
+			return err
+		}
 	}
 	if err := builder.observeProviderEvent(raw); err != nil { // :597 await onProviderStreamEvent?.(chunk, model)
 		return err
@@ -695,9 +908,12 @@ func (consumer *mistralChunkConsumer) consume(raw json.RawMessage) error {
 		return err
 	}
 
-	if choice.FinishReason != nil && *choice.FinishReason != "" { // :612-619
-		builder.partial.RawStopReason = *choice.FinishReason
-		reason, message := mapMistralStopReason(*choice.FinishReason)
+	if finish := choice.FinishReason; finish.text != "" || finish.notString { // :612-619
+		builder.partial.RawStopReason = finish.text
+		reason, message := mapMistralStopReason(finish.text)
+		if finish.notString {
+			reason, message = StopReasonError, "Provider stopped with: "+finish.text
+		}
 		builder.partial.StopReason = reason
 		if message != "" {
 			builder.partial.ErrorMessage = message
@@ -718,7 +934,20 @@ func (consumer *mistralChunkConsumer) consume(raw json.RawMessage) error {
 	if err := consumer.content(delta.Content); err != nil { // :621-683
 		return err
 	}
-	return consumer.toolCalls(delta.ToolCalls) // :685-731
+	// `delta.tool_calls || []` iterates a truthy value: a string's first character has no function, and any other non-array is not iterable.
+	var calls []mistralSSEToolCall
+	switch trimmed := bytes.TrimSpace(delta.ToolCalls); {
+	case !jsonValueTruthy(trimmed):
+	case trimmed[0] == '"':
+		calls = []mistralSSEToolCall{{}}
+	case trimmed[0] != '[':
+		return errors.New("toolCalls is not iterable")
+	default:
+		if err := json.Unmarshal(trimmed, &calls); err != nil {
+			return err
+		}
+	}
+	return consumer.toolCalls(calls) // :685-731
 }
 
 // content is mistral-conversations.ts:621-683. finishCurrentBlock's text_end and thinking_end are the builder's endText and endThinking, which the text and thinking starts run first.
@@ -748,7 +977,22 @@ func (consumer *mistralChunkConsumer) content(raw json.RawMessage) error {
 		}
 		var item mistralContentItem
 		if err := json.Unmarshal(rawItem, &item); err != nil {
-			return err
+			if _, ok := errors.AsType[*json.UnmarshalTypeError](err); !ok {
+				return err
+			}
+			kind, text, err := mistralContentItemJS(rawItem)
+			if err != nil {
+				return err
+			}
+			if delta := sanitizeSurrogates(text); delta != "" {
+				switch kind {
+				case "text":
+					builder.textDelta(delta)
+				case "thinking":
+					builder.thinkingDelta(delta, false)
+				}
+			}
+			continue
 		}
 		switch item.Type {
 		case "thinking": // :646-666
@@ -856,7 +1100,9 @@ func mapMistralStopReason(reason string) (StopReason, string) {
 	case "tool_calls":
 		return StopReasonToolUse, ""
 	case "error":
-		return StopReasonError, "Provider stopped with: error"
+		// Mistral reports transient server failures this way; "server error" makes the message retryable (#10487).
+		// upstream: mistral-conversations.ts:932-934 mapChatStopReason
+		return StopReasonError, "Provider stopped with: error (server error)"
 	default:
 		return StopReasonError, "Provider stopped with: " + reason
 	}
@@ -920,13 +1166,14 @@ func (p *mistralProvider) convertAssistantMessage(message AssistantMessage) mist
 			}
 		case ThinkingContent:
 			if trimJSWhitespace(block.Thinking) != "" {
-				content = append(content, mistralContentChunk{Type: "thinking", Thinking: []map[string]string{{"type": "text", "text": sanitizeSurrogates(block.Thinking)}}})
+				content = append(content, mistralContentChunk{Type: "thinking", Thinking: []mistralTextChunk{{Type: "text", Text: sanitizeSurrogates(block.Thinking)}}})
 			}
 		case ToolCall:
-			arguments, _ := block.ArgumentsJSON()
+			// Pi: JSON.stringify(block.arguments || {}) (mistral-conversations.ts:849).
+			arguments, _ := block.argumentsJSONDefaulting(true)
 			toolCalls = append(toolCalls, mistralToolCallMsg{
 				ID: block.ID, Type: "function",
-				Function: mistralToolCallFnMsg{Name: block.Name, Arguments: string(arguments)},
+				Function: mistralToolCallFnMsg{Name: block.Name, Arguments: keptArgumentsString(arguments)},
 			})
 		}
 	}
@@ -994,17 +1241,19 @@ func (p *mistralProvider) convertTools(tools []ToolSchema) ([]mistralTool, error
 		if err != nil {
 			return nil, err
 		}
-		parameters, err := getJSONSchemaToolParameters(tool, strict)
+		toolParameters, err := getJSONSchemaToolParameters(tool, strict)
 		if err != nil {
 			return nil, err
 		}
+		parameters, order := toolParameters.Schema, toolParameters.order
 		result[i] = mistralTool{
 			Type: "function",
 			Function: mistralToolFn{
-				Name:        tool.Name,
-				Description: tool.Description,
-				Parameters:  parameters,
-				Strict:      strict != nil && *strict,
+				Name:           tool.Name,
+				Description:    tool.Description,
+				Parameters:     parameters,
+				parameterOrder: order,
+				Strict:         strict != nil && *strict,
 			},
 		}
 	}

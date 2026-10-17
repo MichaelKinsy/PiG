@@ -72,6 +72,10 @@ func canonicalPiMessagesState(t *testing.T, raw []byte) string {
 		switch value := value.(type) {
 		case map[string]any:
 			delete(value, "timestamp")
+			// Pi 1.1.0 times each response (event-stream.ts:127-128); the value is wall time, so only its presence is compared.
+			if _, ok := value["durationMs"]; ok {
+				value["durationMs"] = float64(0)
+			}
 			for key, item := range value {
 				value[key] = strip(item)
 			}

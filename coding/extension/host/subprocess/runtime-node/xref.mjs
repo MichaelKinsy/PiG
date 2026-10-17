@@ -330,7 +330,7 @@ export class Realm {
     const entry = { key, ref, weak: new WeakRef(symbol), delivered: 1 };
     this.imports.set(key, entry);
     this.refs.set(symbol, ref);
-    this.registry.register(symbol, entry);
+    this.registry.register(symbol, entry, entry);
     return symbol;
   }
 
@@ -352,7 +352,7 @@ export class Realm {
     const entry = { key, ref, weak: new WeakRef(created), delivered: 1 };
     this.imports.set(key, entry);
     this.refs.set(created, ref);
-    this.registry.register(created, entry);
+    this.registry.register(created, entry, entry);
     return created;
   }
 
@@ -377,6 +377,17 @@ export class Realm {
     if (!transport) return;
     const items = this.releases.splice(0);
     try { transport.notify("xref.release", { items }); } catch {}
+  }
+
+  // Test switch only (installTestCollect): after the full collection `gc` ran, every import whose stand-in it freed is released now, exactly as its finalizer would release it, and the releases are sent before this returns. An import the program still reaches keeps its lease. Production releases on finalization alone, as Pi's collector frees an unreachable payload whenever it runs.
+  collect(gc) {
+    gc();
+    for (const entry of [...this.imports.values()]) {
+      if (entry.weak.deref() !== undefined) continue;
+      this.registry.unregister(entry);
+      this.finalized(entry);
+    }
+    this.flushReleases();
   }
 
   unpin({ items }) {
@@ -962,27 +973,38 @@ const namedLike = (wrapper, native) => {
 };
 
 // pig divergence (D83): a foreign object is a proxy, which structuredClone, v8.serialize and postMessage reject. When a value reaches a foreign object, these wrappers clone the foreign objects in their owners, rebuild only the local objects that hold them and run the native function on the result, so the caller gets what Pi's caller gets from the object in one heap. Every other value goes to the native function unchanged.
+// installHook replaces a built-in method and reports whether the runtime accepted it. A runtime started with frozen intrinsics rejects the assignment; the method then keeps its native behaviour.
+const installHook = (target, key, hook) => {
+  try {
+    target[key] = hook;
+    return target[key] === hook;
+  } catch {
+    return false;
+  }
+};
+
 export function installCloneHooks(realm) {
   const nativeFunctionToString = Function.prototype.toString;
   // A foreign function has no source of its own here: its owner prints it.
-  Function.prototype.toString = namedLike({
+  installHook(Function.prototype, "toString", namedLike({
     toString() {
       const foreign = realm.refs.get(this);
       if (foreign !== undefined && typeof this === "function") return realm.call(foreign, "functionText", []);
       const stands = DISGUISED.get(this);
       return Reflect.apply(nativeFunctionToString, stands === undefined ? this : stands, []);
     },
-  }.toString, nativeFunctionToString);
+  }.toString, nativeFunctionToString));
   const nativeClone = globalThis.structuredClone;
-  const nativeWriteValue = v8.Serializer.prototype.writeValue;
+  // A runtime without a native v8.Serializer writeValue (Bun) serializes through its own v8.serialize, which does not call writeValue.
+  const nativeWriteValue = v8.Serializer?.prototype?.writeValue;
+  const serializeName = v8.serialize;
   // v8.serialize as Node defines it, over the unpatched writeValue.
-  const nativeSerialize = value => {
+  const nativeSerialize = typeof nativeWriteValue !== "function" ? value => Reflect.apply(serializeName, v8, [value]) : value => {
     const serializer = new v8.DefaultSerializer();
     serializer.writeHeader();
     Reflect.apply(nativeWriteValue, serializer, [value]);
     return serializer.releaseBuffer();
   };
-  const serializeName = v8.serialize;
   const dataCloneError = message => new DOMException(message, "DataCloneError");
   const plainError = message => new Error(message);
   const transferList = transfer => {
@@ -1032,18 +1054,20 @@ export function installCloneHooks(realm) {
 
   // A failed write leaves partial bytes in the serializer, so a graph that reaches a foreign object is prepared before it is written; any other graph is written unchanged.
   // writeValue and postMessage are native methods: the wrappers are methods too, with no prototype and no [[Construct]].
-  v8.Serializer.prototype.writeValue = namedLike({
-    writeValue(...args) {
-      if (realm.imports.size === 0) return Reflect.apply(nativeWriteValue, this, args);
-      const prepared = prepare(args[0], [], plainError);
-      return Reflect.apply(nativeWriteValue, this, prepared ? [prepared.value, ...args.slice(1)] : args);
-    },
-  }.writeValue, nativeWriteValue);
+  if (typeof nativeWriteValue === "function") {
+    installHook(v8.Serializer.prototype, "writeValue", namedLike({
+      writeValue(...args) {
+        if (realm.imports.size === 0) return Reflect.apply(nativeWriteValue, this, args);
+        const prepared = prepare(args[0], [], plainError);
+        return Reflect.apply(nativeWriteValue, this, prepared ? [prepared.value, ...args.slice(1)] : args);
+      },
+    }.writeValue, nativeWriteValue));
+  }
 
   for (const prototype of [MessagePort.prototype, Worker.prototype, BroadcastChannel.prototype]) {
     const native = prototype.postMessage;
     if (typeof native !== "function") continue;
-    prototype.postMessage = namedLike({
+    installHook(prototype, "postMessage", namedLike({
       postMessage(...args) {
         const second = args[1];
         if (realm.imports.size === 0 || args.length === 0) return Reflect.apply(native, this, args);
@@ -1054,7 +1078,19 @@ export function installCloneHooks(realm) {
           return Reflect.apply(native, this, args.length > 1 ? [prepared.value, next] : [prepared.value]);
         });
       },
-    }.postMessage, native);
+    }.postMessage, native));
   }
   syncBuiltinESMExports();
+}
+
+// Test switch, off in production: only when the harness sets PIG_TEST_XREF_COLLECT=1 does the process expose --expose-gc and a hook an extension calls as globalThis[Symbol.for("pig.test.xrefCollect")](), which runs a full collection and releases the references it freed (Realm.collect). A ledger check then does not depend on when V8 chooses to collect. Without the variable neither the flag nor the hook exists.
+export function installTestCollect(realm) {
+  if (process.env.PIG_TEST_XREF_COLLECT !== "1") return;
+  let gc;
+  if (typeof globalThis.Bun !== "undefined") gc = () => globalThis.Bun.gc(true);
+  else {
+    v8.setFlagsFromString("--expose-gc");
+    gc = runInNewContext("gc");
+  }
+  globalThis[Symbol.for("pig.test.xrefCollect")] = () => realm.collect(gc);
 }

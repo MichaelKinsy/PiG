@@ -19,7 +19,7 @@ import (
 // the same message_end site every other message uses.
 func TestPersistMessage_IncludesCustomMessages(t *testing.T) {
 	var persisted []AgentMessage
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		OnMessagePersist: func(m AgentMessage) error {
 			persisted = append(persisted, m)
 			return nil
@@ -56,7 +56,7 @@ func TestPersistMessage_IncludesCustomMessages(t *testing.T) {
 // tool_use and its result.
 func TestFollowUpCustomMessagePersistsAfterToolResult(t *testing.T) {
 	var order []string
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		OnMessagePersist: func(m AgentMessage) error {
 			switch {
 			case m.Assistant != nil:

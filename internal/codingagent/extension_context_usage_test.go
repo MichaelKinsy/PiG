@@ -12,7 +12,7 @@ func TestExtensionContextUsageUsesSessionProjection(t *testing.T) {
 	bridge := &captureUIBridge{}
 	var tokens *int
 	window := 0
-	m := &InteractiveMode{opts: InteractiveOptions{SubprocessUIBridge: bridge, ContextUsage: func() (*int, int) { return tokens, window }}}
+	m := &InteractiveMode{opts: InteractiveModeOptions{SubprocessUIBridge: bridge, ContextUsage: func() (*int, int) { return tokens, window }}}
 	detach := m.wireSubprocessHostCallbacks()
 	defer detach()
 	get := bridge.actions["getContextUsage"].(func() *extension.ContextUsage)

@@ -17,9 +17,7 @@ func newQueueCharacterizationHarness(t *testing.T, ext extension.Extension, tool
 		ext.Handlers = map[string][]extension.HandlerFn{}
 	}
 	h := newRecoveryHarness(t, harnessOptions{emptySessionManager: true, defaultTools: tools == nil, tools: tools, extension: ext})
-	if err := h.session.services.Auth().Set("faux", ai.Credential{Type: ai.CredentialAPIKey, Key: "faux-key"}); err != nil {
-		t.Fatal(err)
-	}
+	configureFauxAuth(t, h.session.services)
 	h.session.currentRunner().BindCore(extension.ExtensionActions{SendUserMessage: func(content any, options *extension.SendUserMessageOptions) error {
 		return h.session.SendExtensionUserMessage(content, options)
 	}}, extension.ContextActions{IsIdle: h.session.IsIdle, HasPendingMessages: h.session.HasPendingMessages, Abort: h.session.RequestAbort}, nil)
@@ -50,7 +48,7 @@ func createQueueWaitingHarness(t *testing.T, ext extension.Extension) queueWaiti
 	ready := make(chan struct{})
 	readyPrompt := sync.OnceFunc(func() { close(ready) })
 	done := make(chan error, 1)
-	go func() { <-ready; _, err := h.session.Prompt(t.Context(), "start", nil); done <- err }()
+	go func() { <-ready; err := h.session.Prompt(t.Context(), "start", nil); done <- err }()
 	join := sync.OnceFunc(func() {
 		readyPrompt()
 		releaseTool()

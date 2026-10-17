@@ -32,16 +32,16 @@ func (c *ncUpstreamComponent) HandleInput(data string) {
 type ncUpstreamTerminal struct {
 	out  bytes.Buffer
 	grid *termsim.Grid
-	ui   *TUI
+	ui   *TuiMainScreen
 }
 
 func newNCUpstreamTerminal(width, height int) *ncUpstreamTerminal {
 	return &ncUpstreamTerminal{grid: termsim.New(height, width)}
 }
 
-func (terminal *ncUpstreamTerminal) newTUI(t *testing.T) *TUI {
+func (terminal *ncUpstreamTerminal) newTUI(t *testing.T) *TuiMainScreen {
 	t.Helper()
-	terminal.ui = NewWithOutput(&terminal.out, terminal.grid.Cols, terminal.grid.Rows)
+	terminal.ui = newManualRenderTUI(&terminal.out, terminal.grid.Cols, terminal.grid.Rows)
 	t.Cleanup(terminal.ui.CancelPendingRender)
 	return terminal.ui
 }
@@ -57,7 +57,7 @@ func (terminal *ncUpstreamTerminal) flush(t *testing.T) {
 // Input restoration belongs to the renderer, while the Go application's input loop delivers to the resulting focus target.
 func (terminal *ncUpstreamTerminal) sendInput(data string) {
 	terminal.ui.ActiveOverlay()
-	if handler, ok := terminal.ui.FocusedComponent().(InputHandler); ok {
+	if handler, ok := terminal.ui.GetFocusedComponent().(InputHandler); ok {
 		handler.HandleInput(data)
 	}
 }
@@ -106,19 +106,19 @@ func testNCUpstreamMicrotaskCleanup(t *testing.T) {
 		ui.HideOverlay()
 		close(resolved)
 	}
-	timerHandle = ui.OpenOverlay(timer, OverlayOptions{nonCapturing: true})
+	timerHandle = ui.ShowOverlay(timer, OverlayOptions{nonCapturing: true})
 	// The synchronous factory completes before this continuation. Calling it at the await boundary preserves the upstream Promise.resolve(controller).then(...) order without a detached goroutine.
-	microtask := func() { ui.OpenOverlay(controller, OverlayOptions{}) }
+	microtask := func() { ui.ShowOverlay(controller, OverlayOptions{}) }
 	microtask()
 	terminal.flush(t)
-	ncEqual(t, ui.FocusedComponent() == controller, true)
-	ncEqual(t, ui.FocusedComponent() == editor, false)
+	ncEqual(t, ui.GetFocusedComponent() == controller, true)
+	ncEqual(t, ui.GetFocusedComponent() == editor, false)
 	done()
 	<-resolved
 	terminal.flush(t)
-	ncEqual(t, ui.FocusedComponent() == editor, true)
-	ncEqual(t, ui.FocusedComponent() == controller, false)
-	ncEqual(t, ui.FocusedComponent() == timer, false)
+	ncEqual(t, ui.GetFocusedComponent() == editor, true)
+	ncEqual(t, ui.GetFocusedComponent() == controller, false)
+	ncEqual(t, ui.GetFocusedComponent() == timer, false)
 	terminal.sendInput("x")
 	terminal.flush(t)
 	ncInputsEqual(t, editor.inputs, []string{"x"})

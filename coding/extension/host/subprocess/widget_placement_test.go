@@ -20,7 +20,7 @@ func TestWidgetReplacementResetsPlacementAndOrder(t *testing.T) {
 			}
 			_, secondOrder := bridge.GetWidget("test-ext", "second").WidgetLayout()
 			if method == "sdk-push" {
-				bridge.HandleWidgetPush("test-ext", &WidgetPushPayload{Key: "first", Lines: []string{"replaced"}})
+				bridge.HandleWidgetPush("test-ext", nil, &WidgetPushPayload{Key: "first", Lines: []string{"replaced"}})
 			} else if _, err := call(bridge, "ui.setWidget", `{"key":"first","content":["replaced"]}`); err != nil {
 				t.Fatal(err)
 			}
@@ -55,7 +55,7 @@ func TestWidgetPlacementSurvivesFrameUpdatesAndClears(t *testing.T) {
 	if got := second.Render(41); len(got) != 0 {
 		t.Fatalf("wrong-width frame painted: %q", got)
 	}
-	bridge.HandleWidgetPush("test-ext", &WidgetPushPayload{Key: "second", Lines: []string{"updated"}, Width: 40})
+	bridge.HandleWidgetPush("test-ext", nil, &WidgetPushPayload{Key: "second", Lines: []string{"updated"}, Width: 40})
 	if placement, order := second.WidgetLayout(); placement != "belowEditor" || order != secondOrder {
 		t.Fatalf("frame update changed placement/order: %q/%d", placement, order)
 	}

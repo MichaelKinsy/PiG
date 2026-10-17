@@ -1,0 +1,37 @@
+# Behavior family: rpc
+# Surface: get_messages returns each message of a loaded Session as the object Pi parsed from the file, written with JSON.stringify.
+# Pi keeps the parsed object, so member order, members Pi does not model (meta, note), an empty errorMessage and number spelling (2.50, 1e3) come back as JSON.stringify writes them; a user message without content gains content [] and a system message without content gains content "" at the end (session-manager.ts sessionEntryToContextMessages). The last assistant message is in Pi's write order and must come back unchanged.
+
+name = "56-rpc-hand-ordered-session-messages"
+description = "RPC get_messages after switch_session to a hand-ordered Session file returns Pi's JSON.stringify of each parsed message."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/core/session-manager.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+cwd = "testdata/hand-ordered-session"
+timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"switch","type":"switch_session","sessionPath":"sessions/hand.jsonl"}'
+wait_contains = ['"id":"switch","type":"response","command":"switch_session"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"messages","type":"get_messages"}'
+wait_contains = ['"id":"messages","type":"response","command":"get_messages"']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

@@ -84,7 +84,7 @@ func TestModelRuntimeCopilotAnthropicAdaptiveThinking(t *testing.T) {
 		_ = json.Unmarshal(data, &params)
 		return &http.Response{StatusCode: http.StatusBadRequest, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(`{"error":{"message":"stop"}}`))}, nil
 	})}
-	services.ModelRuntime().CompleteSimple(t.Context(), model, ai.Context{Messages: []ai.Message{}}, ai.StreamOptions{Fetch: fetch, Thinking: ai.ThinkingHigh})
+	services.ModelRuntime().CompleteSimple(t.Context(), model, ai.Context{Messages: []ai.Message{}}, ai.StreamOptions{Fetch: fetch, Thinking: ai.ThinkingLevelHigh})
 	if params.Thinking.Type != "adaptive" {
 		t.Fatalf("%s thinking.type=%q, want adaptive", model.ID, params.Thinking.Type)
 	}
@@ -119,7 +119,7 @@ func TestModelRuntimeCopilotCompletionsCompat(t *testing.T) {
 		Messages:     []ai.Message{ai.UserMessage{Content: ai.UserText("hi")}},
 		Tools:        []ai.ToolSchema{{Name: "lookup", Description: "Look up", Parameters: map[string]any{"type": "object"}}},
 	}
-	services.ModelRuntime().CompleteSimple(t.Context(), model, request, ai.StreamOptions{Fetch: fetch, Thinking: ai.ThinkingHigh})
+	services.ModelRuntime().CompleteSimple(t.Context(), model, request, ai.StreamOptions{Fetch: fetch, Thinking: ai.ThinkingLevelHigh})
 	if body == nil {
 		t.Fatal("no request body captured")
 	}

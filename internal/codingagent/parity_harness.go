@@ -65,7 +65,7 @@ func withParityFixturePath(agentDir string, fn func()) {
 }
 
 func (m *InteractiveMode) probeImageFallback() (string, error) {
-	img := tui.NewImage(parityHarnessSamplePngBase64, "image/png", tui.ImageOptions{Filename: "probe.png"}, nil)
+	img := tui.NewImage(parityHarnessSamplePngBase64, "image/png", tui.DefaultImageTheme(), tui.ImageOptions{Filename: "probe.png"}, nil)
 	for _, line := range img.Render(80) {
 		if strings.TrimSpace(line) != "" {
 			return line, nil
@@ -75,7 +75,7 @@ func (m *InteractiveMode) probeImageFallback() (string, error) {
 }
 
 func (m *InteractiveMode) probeCancellableLoader() (string, error) {
-	loader := tui.NewCancellableLoader("", "", "Working...", nil)
+	loader := tui.NewCancellableLoader(nil, nil, nil, "Working...", nil)
 	aborted := false
 	loader.OnAbort = func() { aborted = true }
 	rendered := strings.Join(loader.Render(40), "\n")

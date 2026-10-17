@@ -1,6 +1,7 @@
 package codingagent
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"os"
@@ -16,21 +17,23 @@ import (
 // Session does for upstream _getThinkingLevelForModelSwitch.
 type modelSwitchThinkingHandle struct {
 	*recordingCompactHandle
-	level ai.ThinkingLevel
+	level ai.ModelThinkingLevel
 }
 
-func (h *modelSwitchThinkingHandle) SetModel(model *ai.Model, _ ...ModelMutationOptions) error {
-	h.agent.SetModel(model)
-	h.agent.SetThinkingLevel(h.level)
-	return nil
+func (h *modelSwitchThinkingHandle) SetModelOnMain(_ context.Context, model *ai.Model, _ ModelMutationOptions, dispatch func(func() error) error) error {
+	return dispatch(func() error {
+		h.agent.SetModel(model)
+		h.agent.SetThinkingLevel(h.level)
+		return nil
+	})
 }
 
 // Upstream's footer and editor border read session.thinkingLevel after a
 // model switch, so they show the level the switch applied. Interactive mode
 // kept showing the previous level (CH-020 follow-up).
 func TestModelSwitchShowsTheThinkingLevelTheSwitchApplied(t *testing.T) {
-	current := &ai.Model{ID: "current", DisplayName: "current", Capabilities: ai.ModelCapabilities{ContextWindow: 8000, MaxThinking: ai.ThinkingHigh}}
-	target := &ai.Model{ID: "target", DisplayName: "target", Provider: captureStreamOptionsProvider{}, Capabilities: ai.ModelCapabilities{ContextWindow: 8000, MaxThinking: ai.ThinkingHigh}}
+	current := &ai.Model{ID: "current", DisplayName: "current", Capabilities: ai.ModelCapabilities{ContextWindow: 8000, MaxThinking: ai.ThinkingLevelHigh}}
+	target := &ai.Model{ID: "target", DisplayName: "target", Provider: captureStreamOptionsProvider{}, Capabilities: ai.ModelCapabilities{ContextWindow: 8000, MaxThinking: ai.ThinkingLevelHigh}}
 	handle := &modelSwitchThinkingHandle{recordingCompactHandle: &recordingCompactHandle{}, level: ai.ThinkingHigh}
 	dir := t.TempDir()
 	sm := NewSettingsManager(t.TempDir(), dir)
@@ -41,7 +44,7 @@ func TestModelSwitchShowsTheThinkingLevelTheSwitchApplied(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	m := NewInteractiveMode(InteractiveOptions{
+	m := NewInteractiveMode(nil, InteractiveModeOptions{
 		SettingsManager: sm,
 		CWD:             t.TempDir(), Model: current, SessionHandle: handle,
 		ModelBuilder: func(string) (*ai.Model, error) { return target, nil },
@@ -49,13 +52,13 @@ func TestModelSwitchShowsTheThinkingLevelTheSwitchApplied(t *testing.T) {
 	m.chatContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
 	m.editor = tui.NewEditor()
-	m.statusLine = NewStatusLine(current, "", nil)
-	m.agent = agent.NewAgent(agent.AgentOptions{Model: current, ThinkingLevel: ai.ThinkingLow})
+	m.statusLine = NewFooterComponent(current, "", nil)
+	m.agent = mustNewAgent(agent.AgentOptions{Model: current, ThinkingLevel: ai.ThinkingLow})
 	handle.agent = m.agent
 	m.thinkingLevel = "low"
 	m.editor.ThinkingLevel = "low"
 
-	if err := m.buildSlashContext(context.Background()).SwitchModel("capture/target"); err != nil {
+	if err := settleSwitchModel(t, m, m.buildSlashContext(context.Background()), "capture/target"); err != nil {
 		t.Fatal(err)
 	}
 	if m.thinkingLevel != "high" || m.editor.ThinkingLevel != "high" {
@@ -65,7 +68,7 @@ func TestModelSwitchShowsTheThinkingLevelTheSwitchApplied(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(after) != string(before) {
+	if !bytes.Equal(after, before) {
 		t.Fatalf("interactive model switch rewrote global defaults: %s", after)
 	}
 }

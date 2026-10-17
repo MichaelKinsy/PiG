@@ -55,7 +55,7 @@ func (s *controlledStorage) FindDocument(ctx context.Context, address durable.Do
 	s.mu.Unlock()
 	if held != nil {
 		held.entered.resolve()
-		_ = held.held.wait(context.Background())
+		_ = held.held.wait(crashedProcesses)
 		s.mu.Lock()
 		if s.findGate == held {
 			s.findGate = nil
@@ -90,7 +90,7 @@ func (s *controlledStorage) Commit(ctx context.Context, writes []durable.Storage
 	s.mu.Unlock()
 	if held != nil {
 		held.entered.resolve()
-		_ = held.held.wait(context.Background())
+		_ = held.held.wait(crashedProcesses)
 		s.mu.Lock()
 		if s.commitGate == held {
 			s.commitGate = nil

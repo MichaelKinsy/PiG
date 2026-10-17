@@ -11,6 +11,7 @@ import (
 	"math/rand/v2"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -19,7 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 )
 
-// Pi 0.87.1 auth-storage.ts:69-93,119-143 and settings-manager.ts:241-265.
+// Pi 1.2.0 auth-storage.ts:81-95,117-155, settings-manager.ts:195-215 and trust-manager.ts:137-164.
 const (
 	SyncAttempts = 10
 	SyncDelay    = 20 * time.Millisecond
@@ -27,6 +28,27 @@ const (
 	SyncStale  = 10 * time.Second
 	asyncStale = 30 * time.Second
 	maxDelay   = 2 * time.Second
+)
+
+// The platform and the waits of the retry loops. Tests replace them as Pi's tests replace process.platform, Math.random and the clock.
+var (
+	// lockPlatform is process.platform, under Go's name for it.
+	lockPlatform = runtime.GOOS
+	// lockRandom is Math.random in acquireLockAsync's jitter.
+	lockRandom = rand.Float64
+	// syncSleep is acquireLockSyncWithRetry's busy wait.
+	syncSleep = time.Sleep
+	// asyncSleep is acquireLockAsync's sleep(delayMs, undefined, { signal }): it returns the cancellation's cause when ctx ends first.
+	asyncSleep = func(ctx context.Context, d time.Duration) error {
+		timer := time.NewTimer(d)
+		defer timer.Stop()
+		select {
+		case <-ctx.Done():
+			return context.Cause(ctx)
+		case <-timer.C:
+			return nil
+		}
+	}
 )
 
 // ErrLocked reports contention under Pi's directory protocol. Its text is proper-lockfile 4.1.2's ELOCKED message (lib/lockfile.js:53,68), which Pi's stores rethrow unchanged.
@@ -53,21 +75,45 @@ type Lock struct {
 	onCompromised func(error)
 }
 
-// AcquireSync follows Pi's bounded synchronous acquisition loop, reclaiming stale idle legacy sidecars.
+// AcquireSync is the settings and trust loop, settings-manager.ts acquireLockSyncWithRetry and trust-manager.ts acquireTrustLockSync: ten attempts 20 ms apart that retry only ELOCKED. It reclaims stale idle legacy sidecars.
 func AcquireSync(path string) (*Lock, error) {
+	return acquireSyncWithRetry(path, func(err error) bool { return errors.Is(err, ErrLocked) })
+}
+
+// AcquireAuthSync is FileAuthStorageBackend.acquireLockSyncWithRetry (auth-storage.ts:81-95), the synchronous auth loop: ten attempts 20 ms apart that retry ELOCKED and, on Windows, EPERM. It reclaims stale idle legacy sidecars.
+func AcquireAuthSync(path string) (*Lock, error) {
+	return acquireSyncWithRetry(path, func(err error) bool { return retryableLockErrorCode(err) != "" })
+}
+
+// maxEPERMRetries is auth-storage.ts MAX_EPERM_RETRIES: acquireLockAsync's cap on EPERM retries, apart from the 30 s deadline that bounds waiting for another holder.
+const maxEPERMRetries = 5
+
+// retryableLockErrorCode is auth-storage.ts getRetryableLockErrorCode (lines 24-29): "ELOCKED" for contention, "EPERM" for an attempt that failed with Node's EPERM when the platform is Windows, and "" for an error the auth loops throw. On Windows a just-removed lock directory stays delete-pending while another process still has it open, and mkdir fails with ERROR_ACCESS_DENIED, which libuv reports as EPERM. Like Pi, the code is the attempt's, whichever fs call failed.
+func retryableLockErrorCode(err error) string {
+	if errors.Is(err, ErrLocked) {
+		return "ELOCKED"
+	}
+	if lockPlatform == "windows" && nodeerrno.ErrorCode(err) == "EPERM" {
+		return "EPERM"
+	}
+	return ""
+}
+
+func acquireSyncWithRetry(path string, retryable func(error) bool) (*Lock, error) {
 	for attempt := 1; ; attempt++ {
 		lock, err := acquire(path, SyncStale)
-		if !errors.Is(err, ErrLocked) || attempt == SyncAttempts {
+		if err == nil || !retryable(err) || attempt == SyncAttempts {
 			return lock, err
 		}
-		time.Sleep(SyncDelay)
+		syncSleep(SyncDelay)
 	}
 }
 
-// Acquire follows Pi's cancellable auth acquisition loop, reclaiming stale idle legacy sidecars. The caller owns the returned lock until Release.
+// Acquire follows Pi's cancellable auth acquisition loop, FileAuthStorageBackend.acquireLockAsync (auth-storage.ts:117-155), reclaiming stale idle legacy sidecars. It retries ELOCKED until its 30 s deadline and, on Windows, EPERM at most maxEPERMRetries times; both share one backoff. The caller owns the returned lock until Release.
 func Acquire(ctx context.Context, path string) (*Lock, error) {
 	deadline := time.Now().Add(asyncStale)
 	baseDelay := 10 * time.Millisecond
+	epermRetries := 0
 	for {
 		if err := context.Cause(ctx); err != nil {
 			return nil, err
@@ -76,22 +122,26 @@ func Acquire(ctx context.Context, path string) (*Lock, error) {
 		if err == nil {
 			return lockUnlessAborted(ctx, lock)
 		}
-		// An abort that arrived during the attempt wins over its failure (auth-storage.ts:135).
+		// An abort that arrived during the attempt wins over its failure (auth-storage.ts:137).
 		if cause := context.Cause(ctx); cause != nil {
 			return nil, cause
 		}
+		code := retryableLockErrorCode(err)
 		remaining := time.Until(deadline)
-		if !errors.Is(err, ErrLocked) || remaining <= 0 {
+		if code == "" || remaining <= 0 {
 			return nil, err
 		}
-		jitter := time.Duration(math.Floor(float64(baseDelay/time.Millisecond)*(1+rand.Float64())+0.5)) * time.Millisecond
+		if code == "EPERM" {
+			epermRetries++
+			if epermRetries > maxEPERMRetries {
+				return nil, err
+			}
+		}
+		//portlint:allow numbers auth-storage.ts:145 Math.round(baseDelayMs * (1 + Math.random())): the value is in [10, maxDelay), where x + 0.5 is exact and floor(x + 0.5) is Math.round
+		jitter := time.Duration(math.Floor(float64(float64(baseDelay/time.Millisecond)*(1+lockRandom()))+0.5)) * time.Millisecond
 		baseDelay = min(baseDelay*2, maxDelay/2)
-		timer := time.NewTimer(min(jitter, remaining))
-		select {
-		case <-ctx.Done():
-			timer.Stop()
-			return nil, context.Cause(ctx)
-		case <-timer.C:
+		if err := asyncSleep(ctx, min(jitter, remaining)); err != nil {
+			return nil, err
 		}
 	}
 }
@@ -201,7 +251,7 @@ func acquireWithProbe(ctx context.Context, path string, stale, update time.Durat
 // osMkdir creates the lock directory; tests replace it to inject platform errors.
 var osMkdir = os.Mkdir
 
-// mkdir mirrors proper-lockfile 4.1.2 lib/lockfile.js acquireLock (lines 22-48): only EEXIST means the directory is held. isEEXIST matches Node's EEXIST exactly; fs.ErrExist is wider because it also matches ENOTEMPTY and Windows ERROR_DIR_NOT_EMPTY. Every other mkdir error, including the ERROR_ACCESS_DENIED Windows returns while a just-removed lock directory is pending deletion, is returned unretried. libuv's uv_translate_sys_error (src/win/error.c) surfaces ERROR_ACCESS_DENIED as EPERM, ERROR_SHARING_VIOLATION as EBUSY and ERROR_DIR_NOT_EMPTY as ENOTEMPTY, none of which are ELOCKED, so Pi's auth-storage.ts acquireLockSyncWithRetry (`code !== "ELOCKED"`) and acquireLockAsync throw them. Do not widen this classification. AcquireWithOptions retries every attempt error at its own level, as proper-lockfile's lock with a retries option does. Each failure Pi would throw carries Node's fs message for its call (mkdir, stat, rmdir).
+// mkdir mirrors proper-lockfile 4.1.2 lib/lockfile.js acquireLock (lines 22-48): only EEXIST means the directory is held. isEEXIST matches Node's EEXIST exactly; fs.ErrExist is wider because it also matches ENOTEMPTY and Windows ERROR_DIR_NOT_EMPTY. Every other mkdir error, including the ERROR_ACCESS_DENIED Windows returns while a just-removed lock directory is pending deletion, ends the attempt without ELOCKED. libuv's uv_translate_sys_error (src/win/error.c) surfaces ERROR_ACCESS_DENIED as EPERM, ERROR_SHARING_VIOLATION as EBUSY and ERROR_DIR_NOT_EMPTY as ENOTEMPTY. Do not widen this classification: the retry loops above it decide what to retry. Settings and trust (AcquireSync) retry only ELOCKED; the auth loops (AcquireAuthSync, Acquire) also retry EPERM on Windows (retryableLockErrorCode). AcquireWithOptions retries every attempt error at its own level, as proper-lockfile's lock with a retries option does. Each failure Pi would throw carries Node's fs message for its call (mkdir, stat, rmdir).
 func mkdir(path string, stale time.Duration) error {
 	err := osMkdir(path, 0o777)
 	if err == nil || !isEEXIST(err) {

@@ -246,7 +246,7 @@ func parseComparator(comp string) string {
 	return replaceFirst(reStar, jsTrim(comp), nil)
 }
 
-func isX(id string) bool { return id == "" || strings.ToLower(id) == "x" || id == "*" }
+func isX(id string) bool { return id == "" || strings.EqualFold(id, "x") || id == "*" }
 
 // increment is `${+id + 1}`. Results above MAX_SAFE_INTEGER, where JavaScript rounds or switches to exponent notation, fail version parsing either way.
 func increment(id string) string {

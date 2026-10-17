@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -61,9 +60,9 @@ func TestAgentSessionCompactionSuiteActiveRunUpstream(t *testing.T) {
 			var observed []compaction.CompactionSettings
 			ext := extension.Extension{Handlers: map[string][]extension.HandlerFn{"session_before_compact": {func(args ...any) (any, error) {
 				order = append(order, "compaction")
-				prep := args[0].(extension.SessionBeforeCompactEvent).Preparation.(*compaction.CompactionPreparation)
+				prep := args[0].(extension.SessionBeforeCompactEvent).Preparation
 				observed = append(observed, prep.Settings)
-				return extension.SessionBeforeCompactResult{Compaction: map[string]any{"summary": "compacted history", "firstKeptEntryId": prep.FirstKeptEntryID, "tokensBefore": prep.TokensBefore, "details": map[string]any{}}}, nil
+				return extension.SessionBeforeCompactResult{Compaction: &extension.CompactionResult{Summary: "compacted history", FirstKeptEntryID: prep.FirstKeptEntryID, TokensBefore: prep.TokensBefore, Details: map[string]any{}}}, nil
 			}}}}
 			resumed := ""
 			h := newCompactionSuiteHarness(t, harnessOptions{contextWindow: 2600, maxTokens: 100, settings: settings, tools: []agent.AgentTool{tool}, extension: ext}, fauxReply("old-history:"+strings.Repeat("a", 800), ai.StopReasonStop, 0), fauxReply("recent-history:"+strings.Repeat("b", 800), ai.StopReasonStop, 0), fauxToolCall(tool.Name()), func(request []ai.Message) *ai.AssistantMessage {
@@ -103,8 +102,8 @@ func TestAgentSessionCompactionSuiteActiveRunUpstream(t *testing.T) {
 		ext := extension.Extension{Handlers: map[string][]extension.HandlerFn{"session_before_compact": {func(args ...any) (any, error) {
 			close(started)
 			<-released
-			prep := args[0].(extension.SessionBeforeCompactEvent).Preparation.(*compaction.CompactionPreparation)
-			return extension.SessionBeforeCompactResult{Compaction: map[string]any{"summary": "compacted history", "firstKeptEntryId": prep.FirstKeptEntryID, "tokensBefore": prep.TokensBefore, "details": map[string]any{}}}, nil
+			prep := args[0].(extension.SessionBeforeCompactEvent).Preparation
+			return extension.SessionBeforeCompactResult{Compaction: &extension.CompactionResult{Summary: "compacted history", FirstKeptEntryID: prep.FirstKeptEntryID, TokensBefore: prep.TokensBefore, Details: map[string]any{}}}, nil
 		}}}}
 		resumed := ""
 		h := newCompactionSuiteHarness(t, harnessOptions{contextWindow: 2600, maxTokens: 100, settings: `{"compaction":{"enabled":true,"reserveTokens":400,"keepRecentTokens":1750}}`, tools: []agent.AgentTool{tool}, extension: ext}, fauxReply("old-history:"+strings.Repeat("a", 800), ai.StopReasonStop, 0), fauxReply("recent-history:"+strings.Repeat("b", 800), ai.StopReasonStop, 0), fauxToolCall(tool.Name()), func(request []ai.Message) *ai.AssistantMessage {
@@ -184,7 +183,7 @@ func TestAgentSessionCompactionSuiteAbortUpstream(t *testing.T) {
 			})
 			defer unsubscribe()
 			done := make(chan error, 1)
-			go func() { _, err := h.session.CompactResult(t.Context(), ""); done <- err }()
+			go func() { _, err := h.session.Compact(t.Context(), ""); done <- err }()
 			<-started
 			if test.wholeSession {
 				if err := h.session.Abort(t.Context()); err != nil {

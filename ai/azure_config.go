@@ -5,20 +5,17 @@ package ai
 import (
 	"cmp"
 	"fmt"
-	"net/url"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 )
 
 const defaultAzureAPIVersion = "v1"
 
-// AzureEndpointOptions are the per-request Azure endpoint options. Azure models ship without a base URL: each user has their own resource, resolved per request.
-type AzureEndpointOptions struct {
-	APIVersion     string
-	ResourceName   string
-	BaseURL        string
-	DeploymentName string
-	Env            ProviderEnv
-}
+// AzureEndpointOptions are the per-request Azure endpoint options: the Azure fields of StreamOptions plus its Env. Azure models ship without a base URL: each user has their own resource, resolved per request.
+//
+// Ports AzureEndpointOptions (packages/ai/src/api/azure-openai-config.ts:7), which extends StreamOptions.
+type AzureEndpointOptions = StreamOptions
 
 // AzureConfig is the resolved Azure endpoint.
 type AzureConfig struct {
@@ -29,8 +26,8 @@ type AzureConfig struct {
 // ResolveAzureDeploymentName returns the request model's deployment name: the explicit option, else the AZURE_OPENAI_DEPLOYMENT_NAME_MAP entry for the model, else the model ID.
 // The map is parsed as upstream parseDeploymentNameMap does: each entry is trimmed with String.prototype.trim and split with split("=", 2), which drops the text after a second "="; a later entry for the same model replaces an earlier one; and a model mapped to an empty name falls back to the model ID.
 func ResolveAzureDeploymentName(modelID string, options AzureEndpointOptions) string {
-	if options.DeploymentName != "" {
-		return options.DeploymentName
+	if options.AzureDeploymentName != "" {
+		return options.AzureDeploymentName
 	}
 	mapped := ""
 	for entry := range strings.SplitSeq(getProviderEnvValue("AZURE_OPENAI_DEPLOYMENT_NAME_MAP", options.Env), ",") {
@@ -47,8 +44,8 @@ func ResolveAzureDeploymentName(modelID string, options AzureEndpointOptions) st
 
 // ResolveAzureBaseURL resolves the endpoint from the explicit option, AZURE_OPENAI_BASE_URL, the resource name, then the model's base URL, and normalizes it.
 func ResolveAzureBaseURL(modelBaseURL string, options AzureEndpointOptions) (string, error) {
-	baseURL := strings.TrimSpace(firstNonEmptyString(options.BaseURL, getProviderEnvValue("AZURE_OPENAI_BASE_URL", options.Env)))
-	resourceName := strings.TrimSpace(firstNonEmptyString(options.ResourceName, getProviderEnvValue("AZURE_OPENAI_RESOURCE_NAME", options.Env)))
+	baseURL := cmp.Or(trimJSWhitespace(options.AzureBaseURL), trimJSWhitespace(getProviderEnvValue("AZURE_OPENAI_BASE_URL", options.Env)))
+	resourceName := cmp.Or(options.AzureResourceName, getProviderEnvValue("AZURE_OPENAI_RESOURCE_NAME", options.Env))
 	if baseURL == "" && resourceName != "" {
 		baseURL = fmt.Sprintf("https://%s.openai.azure.com/openai/v1", resourceName)
 	}
@@ -67,24 +64,27 @@ func ResolveAzureConfig(modelBaseURL string, options AzureEndpointOptions) (Azur
 	if err != nil {
 		return AzureConfig{}, err
 	}
-	return AzureConfig{BaseURL: baseURL, APIVersion: firstNonEmptyString(options.APIVersion, getProviderEnvValue("AZURE_OPENAI_API_VERSION", options.Env), defaultAzureAPIVersion)}, nil
+	return AzureConfig{BaseURL: baseURL, APIVersion: cmp.Or(options.AzureAPIVersion, getProviderEnvValue("AZURE_OPENAI_API_VERSION", options.Env), defaultAzureAPIVersion)}, nil
 }
 
+// normalizeAzureBaseURL is azure-openai-config.ts normalizeAzureBaseUrl: `new URL` parses the trimmed base URL (any scheme, WHATWG host and path
+// normalization), and an Azure host with an empty, /openai or /openai/v1/responses path gets /openai/v1 and no query.
 func normalizeAzureBaseURL(baseURL string) (string, error) {
-	trimmed := strings.TrimSpace(strings.TrimRight(baseURL, "/"))
-	if trimmed == "" || !strings.Contains(trimmed, "://") {
+	trimmed := strings.TrimRight(trimJSWhitespace(baseURL), "/")
+	u, err := nodeurl.ParseURL(trimmed)
+	if err != nil {
 		return "", fmt.Errorf("Invalid Azure OpenAI base URL: %s", baseURL)
 	}
-	u, err := url.Parse(trimmed)
-	if err != nil || u.Scheme == "" || u.Host == "" {
-		return "", fmt.Errorf("Invalid Azure OpenAI base URL: %s", baseURL)
-	}
-	isAzureHost := strings.HasSuffix(u.Hostname(), ".openai.azure.com") || strings.HasSuffix(u.Hostname(), ".cognitiveservices.azure.com") || strings.HasSuffix(u.Hostname(), ".ai.azure.com")
-	normalizedPath := strings.TrimRight(u.Path, "/")
+	isAzureHost := strings.HasSuffix(u.Hostname, ".openai.azure.com") || strings.HasSuffix(u.Hostname, ".cognitiveservices.azure.com") || strings.HasSuffix(u.Hostname, ".ai.azure.com")
+	normalizedPath := strings.TrimRight(u.Pathname, "/")
 	// Azure hosts need /openai/v1 so the request path and ?api-version=v1 resolve.
-	if isAzureHost && (normalizedPath == "" || normalizedPath == "/" || normalizedPath == "/openai" || normalizedPath == "/openai/v1/responses") {
-		u.Path = "/openai/v1"
-		u.RawQuery = ""
+	href := u.Href()
+	if isAzureHost && (normalizedPath == "" || normalizedPath == "/openai" || normalizedPath == "/openai/v1/responses") {
+		rewritten, err := nodeurl.ParseURL(u.WithPathname("/openai/v1"))
+		if err != nil {
+			return "", fmt.Errorf("Invalid Azure OpenAI base URL: %s", baseURL)
+		}
+		href = rewritten.WithSearch("")
 	}
-	return strings.TrimRight(u.String(), "/"), nil
+	return strings.TrimRight(href, "/"), nil
 }

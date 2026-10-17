@@ -74,13 +74,18 @@ func TestUpstreamToolCallSpellingStillDecodes(t *testing.T) {
 	}
 }
 
-// A block type nobody has taught the reader about must cost that block, not the
-// whole message. ai.UnmarshalContentBlock keeps it as raw text.
-func TestUnknownContentBlockRejectsTheMessage(t *testing.T) {
+// A block type nobody has taught the reader about costs that block, not the whole message: Pi keeps the object, and its provider conversions skip a block type they do not know (openai-completions.ts:108-112 isTextBlock, isThinkingBlock). The message is written as it was read.
+func TestUnknownContentBlockCostsOnlyThatBlock(t *testing.T) {
 	var msg AgentMessage
 	raw := `{"role":"assistant","content":[{"type":"text","text":"before"},{"type":"someFutureBlock","x":1}]}`
-	if err := json.Unmarshal([]byte(raw), &msg); err == nil {
-		t.Fatal("unknown block must reject the closed content union")
+	if err := json.Unmarshal([]byte(raw), &msg); err != nil {
+		t.Fatal(err)
+	}
+	if want := []ai.AssistantContentBlock{ai.TextContent{Text: "before"}}; !reflect.DeepEqual(msg.Assistant.Content, want) {
+		t.Errorf("content = %#v, want %#v", msg.Assistant.Content, want)
+	}
+	if written, err := json.Marshal(msg); err != nil || string(written) != raw {
+		t.Errorf("written as %s (%v)", written, err)
 	}
 }
 

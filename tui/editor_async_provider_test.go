@@ -174,3 +174,37 @@ func TestAsyncAutocompleteProviderErrorIsVisible(t *testing.T) {
 		}
 	})
 }
+
+// Pi editor.ts:2289-2299 asks the provider's optional shouldTriggerFileCompletion before a forced (Tab) request, with the editor lines and cursor, and starts no request when it returns false.
+func TestForcedAutocompleteAsksShouldTriggerFileCompletion(t *testing.T) {
+	for _, allow := range []bool{false, true} {
+		synctest.Test(t, func(t *testing.T) {
+			var queried []bool
+			var asked [][3]any
+			provider := &AsyncAutocompleteProvider{
+				GetSuggestions: func(_ context.Context, _ []string, _, _ int, force bool) (*AutocompleteSuggestions, error) {
+					queried = append(queried, force)
+					return nil, nil
+				},
+				ShouldTriggerFileCompletion: func(_ context.Context, lines []string, line, col int) (bool, error) {
+					asked = append(asked, [3]any{strings.Join(lines, "\n"), line, col})
+					return allow, nil
+				},
+			}
+			p := newAsyncEditorProbe(t, provider)
+			p.editor.HandleInput("src")
+			p.drain()
+			p.editor.HandleInput("\t")
+			p.drain()
+			if len(asked) != 1 || asked[0] != [3]any{"src", 0, 3} {
+				t.Fatalf("allow=%t: shouldTriggerFileCompletion calls=%v, want one with (src, 0, 3)", allow, asked)
+			}
+			if allow && (len(queried) != 1 || !queried[0]) {
+				t.Fatalf("allowed forced request queried=%v, want one forced query", queried)
+			}
+			if !allow && len(queried) != 0 {
+				t.Fatalf("rejected forced request still queried the provider: %v", queried)
+			}
+		})
+	}
+}

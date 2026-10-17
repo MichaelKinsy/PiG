@@ -8,15 +8,14 @@
 package nodepath
 
 import (
+	"bytes"
 	"os"
 	"runtime"
 	"slices"
 	"strings"
 	"unicode/utf16"
-	"unicode/utf8"
 
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Env is the process state Node's path.resolve reads.
@@ -31,8 +30,19 @@ type Env struct {
 
 // Process returns the current process state.
 func Process() Env {
-	cwd, err := os.Getwd()
+	cwd, err := processCwd()
 	return Env{Cwd: cwd, CwdErr: err, DriveCwd: func(device string) string { return os.Getenv("=" + device) }}
+}
+
+// Cwd is process.cwd(): the physical working directory (getcwd(3)), never a $PWD that reaches it through a symbolic link, as os.Getwd may return.
+func Cwd() (string, error) { return processCwd() }
+
+// Join is path.join(...paths) for the host platform. Unlike filepath.Join it keeps a trailing separator, as Node's does.
+func Join(paths ...string) string {
+	if runtime.GOOS == "windows" {
+		return Win32Join(paths...)
+	}
+	return PosixJoin(paths...)
 }
 
 // Resolve is path.resolve(...paths) for the host platform. It returns the error process.cwd() throws when a relative path needs a working directory that cannot be read.
@@ -63,9 +73,50 @@ func isSeparator(c int) bool { return c == slash || c == backslash }
 
 func isDeviceRoot(c int) bool { return c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' }
 
-// normalizeString resolves "." and ".." segments the way Node's normalizeString does.
+// cleanSpan reports the span path[start:end] that normalizeString returns when its result is a substring of path: the
+// separator between two segments is always one separator byte and no segment is "." or "..". A path with no segment
+// gives the empty span. ok is false when normalizeString has to build its result.
+func cleanSpan(path string, separator byte, isSep func(int) bool) (start, end int, ok bool) {
+	start, end = -1, 0
+	segment := -1
+	for i := 0; i <= len(path); i++ {
+		if i < len(path) && !isSep(int(path[i])) {
+			if segment < 0 {
+				segment = i
+			}
+			continue
+		}
+		if segment < 0 {
+			continue
+		}
+		if name := path[segment:i]; name == "." || name == ".." {
+			return 0, 0, false
+		}
+		if start < 0 {
+			start = segment
+		} else if segment != end+1 || path[end] != separator {
+			return 0, 0, false
+		}
+		end, segment = i, -1
+	}
+	if start < 0 {
+		return 0, 0, true
+	}
+	return start, end, true
+}
+
+// normalizeString resolves "." and ".." segments the way Node's normalizeString does. A path that is already normal is
+// returned as a substring of path, without allocating.
 func normalizeString(path string, allowAboveRoot bool, separator byte, isSep func(int) bool) string {
-	res := ""
+	if start, end, ok := cleanSpan(path, separator, isSep); ok {
+		return path[start:end]
+	}
+	return buildNormal(path, allowAboveRoot, separator, isSep)
+}
+
+// buildNormal is Node's normalizeString, building the result in one buffer.
+func buildNormal(path string, allowAboveRoot bool, separator byte, isSep func(int) bool) string {
+	res := make([]byte, 0, len(path)+2)
 	lastSegmentLength := 0
 	lastSlash := -1
 	dots := 0
@@ -75,7 +126,7 @@ func normalizeString(path string, allowAboveRoot bool, separator byte, isSep fun
 		case i < len(path):
 			code = int(path[i])
 		case isSep(code):
-			return res
+			return string(res)
 		default:
 			code = slash
 		}
@@ -88,17 +139,17 @@ func normalizeString(path string, allowAboveRoot bool, separator byte, isSep fun
 					if len(res) > 2 {
 						lastSlashIndex := len(res) - lastSegmentLength - 1
 						if lastSlashIndex == -1 {
-							res = ""
+							res = res[:0]
 							lastSegmentLength = 0
 						} else {
 							res = res[:lastSlashIndex]
-							lastSegmentLength = len(res) - 1 - strings.LastIndexByte(res, separator)
+							lastSegmentLength = len(res) - 1 - bytes.LastIndexByte(res, separator)
 						}
 						lastSlash = i
 						dots = 0
 						continue
 					} else if len(res) != 0 {
-						res = ""
+						res = res[:0]
 						lastSegmentLength = 0
 						lastSlash = i
 						dots = 0
@@ -107,18 +158,16 @@ func normalizeString(path string, allowAboveRoot bool, separator byte, isSep fun
 				}
 				if allowAboveRoot {
 					if len(res) > 0 {
-						res += string(separator) + ".."
-					} else {
-						res = ".."
+						res = append(res, separator)
 					}
+					res = append(res, ".."...)
 					lastSegmentLength = 2
 				}
 			default:
 				if len(res) > 0 {
-					res += string(separator) + path[lastSlash+1:i]
-				} else {
-					res = path[lastSlash+1 : i]
+					res = append(res, separator)
 				}
+				res = append(res, path[lastSlash+1:i]...)
 				lastSegmentLength = i - lastSlash - 1
 			}
 			lastSlash = i
@@ -129,10 +178,23 @@ func normalizeString(path string, allowAboveRoot bool, separator byte, isSep fun
 			dots = -1
 		}
 	}
-	return res
+	return string(res)
 }
 
 func isPosixSeparator(c int) bool { return c == slash }
+
+// posixCwd is path.posix's view of process.cwd(). On Windows Node turns the backslashes into slashes and drops the drive:
+// everything before the first "/" (slice(indexOf("/")), so a cwd with no "/" keeps its last character).
+func posixCwd(cwd string) string {
+	if runtime.GOOS != "windows" {
+		return cwd
+	}
+	cwd = strings.ReplaceAll(cwd, `\`, "/")
+	if at := strings.IndexByte(cwd, '/'); at >= 0 {
+		return cwd[at:]
+	}
+	return cwd[max(len(cwd)-1, 0):]
+}
 
 // PosixResolve is path.posix.resolve(...paths). It returns env.CwdErr when Node would call process.cwd() and that throws.
 func PosixResolve(env Env, paths ...string) (string, error) {
@@ -140,9 +202,26 @@ func PosixResolve(env Env, paths ...string) (string, error) {
 		if env.CwdErr != nil {
 			return "", env.CwdErr
 		}
-		if at(env.Cwd, 0) == slash {
-			return env.Cwd, nil
+		if cwd := posixCwd(env.Cwd); at(cwd, 0) == slash {
+			return cwd, nil
 		}
+	}
+	// The rightmost nonempty argument decides the result alone when it is absolute; already normal, it resolves to a
+	// substring of itself.
+	for _, path := range slices.Backward(paths) {
+
+		if path == "" {
+			continue
+		}
+		if path[0] == slash {
+			if start, end, ok := cleanSpan(path, slash, isPosixSeparator); ok {
+				if start == end {
+					return "/", nil
+				}
+				return path[start-1 : end], nil
+			}
+		}
+		break
 	}
 	resolvedPath := ""
 	resolvedAbsolute := false
@@ -154,7 +233,7 @@ func PosixResolve(env Env, paths ...string) (string, error) {
 		case env.CwdErr != nil:
 			return "", env.CwdErr
 		default:
-			path = env.Cwd
+			path = posixCwd(env.Cwd)
 		}
 		if len(path) == 0 {
 			continue
@@ -180,19 +259,7 @@ func driveCwdElsewhere(path, device string) bool {
 	if len(units) < 3 || units[2] != backslash {
 		return false
 	}
-	return jsToLower(string(utf16.Decode(units[:2]))) != jsToLower(device)
-}
-
-// jsToLower is String.prototype.toLowerCase: full Unicode lowercasing, so
-// U+0130 becomes "i\u0307" and a word-final sigma becomes U+03C2, where
-// strings.ToLower and strings.EqualFold differ.
-func jsToLower(s string) string {
-	for i := range len(s) {
-		if s[i] >= utf8.RuneSelf {
-			return cases.Lower(language.Und).String(s)
-		}
-	}
-	return strings.ToLower(s)
+	return jsstring.ToLower(string(utf16.Decode(units[:2]))) != jsstring.ToLower(device)
 }
 
 // Win32Resolve is path.win32.resolve(...paths). Unlike filepath.Abs it keeps a
@@ -291,7 +358,7 @@ func Win32Resolve(env Env, paths ...string) (string, error) {
 
 		if len(device) > 0 {
 			if len(resolvedDevice) > 0 {
-				if jsToLower(device) != jsToLower(resolvedDevice) {
+				if jsstring.ToLower(device) != jsstring.ToLower(resolvedDevice) {
 					continue
 				}
 			} else {

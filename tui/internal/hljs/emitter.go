@@ -86,6 +86,29 @@ func (e *tokenTreeEmitter) toHTML() string {
 	return jsstring.Canonical(buffer.String())
 }
 
+// rootOffsets is the HTML of the root's first n children's length, for each n in counts, which ascend.
+func (e *tokenTreeEmitter) rootOffsets(counts []int) (html string, offsets []int) {
+	var buffer strings.Builder
+	offsets = make([]int, 0, len(counts))
+	next := 0
+	for i := 0; i <= len(e.root.children); i++ {
+		for next < len(counts) && counts[next] == i {
+			offsets = append(offsets, buffer.Len())
+			next++
+		}
+		if i == len(e.root.children) {
+			break
+		}
+		child := e.root.children[i]
+		if child.node != nil {
+			walkHTML(&buffer, child.node)
+		} else {
+			buffer.WriteString(escapeHTML(child.text))
+		}
+	}
+	return buffer.String(), offsets
+}
+
 func walkHTML(buffer *strings.Builder, node *treeNode) {
 	wraps := node.kind != ""
 	if wraps {

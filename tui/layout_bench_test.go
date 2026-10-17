@@ -11,14 +11,14 @@ import (
 // session. This exercises the layout recursion, the per-frame render cache, the
 // scroll viewport, and the composite paint path.
 func benchConversationRoot(messages int) *ScrollView {
-	children := make([]StackChild, 0, messages)
+	children := make([]StackEntry, 0, messages)
 	for i := range messages {
 		body := make([]string, 0, 6)
 		body = append(body, fmt.Sprintf("user: message %d", i))
 		for line := range 4 {
 			body = append(body, "  "+strings.Repeat("lorem ipsum ", 6)+fmt.Sprintf("(%d.%d)", i, line))
 		}
-		children = append(children, StackChild{Component: &stubComponent{lines: body}})
+		children = append(children, StackEntry{Component: &stubComponent{lines: body}})
 	}
 	content := NewVStack(children, StackOptions{})
 	return NewScrollView(content, ScrollViewOptions{Follow: "end", Scrollbar: "auto"})

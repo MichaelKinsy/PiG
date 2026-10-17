@@ -103,15 +103,25 @@ type MouseHandler interface {
 	HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult
 }
 
+// LeafMouseHandler is implemented by components whose handleMouse returns a plain TuiMouseEventResult, as upstream's Editor does. Go has no
+// covariant results, so a component returns either that or a TuiMouseDispatchResult (MouseHandler); DispatchMouseEvent takes both.
+type LeafMouseHandler interface {
+	HandleMouse(event TuiMouseEvent) *TuiMouseEventResult
+}
+
 // DispatchMouseEvent dispatches an event to a component and retains the exact
 // target and coordinate transform. Containers use it to forward events to
 // nested children. Mirrors upstream dispatchMouseEvent.
 func DispatchMouseEvent(component Component, event TuiMouseEvent) *TuiMouseDispatchResult {
-	handler, ok := component.(MouseHandler)
-	if !ok {
-		return nil
+	var result *TuiMouseDispatchResult
+	switch handler := component.(type) {
+	case MouseHandler:
+		result = handler.HandleMouse(event)
+	case LeafMouseHandler:
+		if plain := handler.HandleMouse(event); plain != nil {
+			result = &TuiMouseDispatchResult{TuiMouseEventResult: *plain}
+		}
 	}
-	result := handler.HandleMouse(event)
 	if result == nil {
 		return nil
 	}
@@ -203,13 +213,18 @@ func (c *Container) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
 		return nil
 	}
 	c.mu.RLock()
-	layout := c.mouseLayout
+	var children []mouseChild
+	if c.layoutValid && c.layoutWidth == event.Width {
+		children = make([]mouseChild, len(c.builtKids))
+		top := 0
+		for i, child := range c.builtKids {
+			children[i] = mouseChild{component: child, height: c.builtEnds[i] - top}
+			top = c.builtEnds[i]
+		}
+	}
 	components := append([]Component(nil), c.children...)
 	c.mu.RUnlock()
-	var children []mouseChild
-	if layout != nil && layout.width == event.Width {
-		children = layout.children
-	} else {
+	if children == nil {
 		children = measureMouseChildren(components, event.Width)
 	}
 	return dispatchToStackedChild(children, event, event.X, event.Y, event.Width)

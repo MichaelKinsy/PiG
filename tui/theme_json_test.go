@@ -32,8 +32,8 @@ func completeThemeJSON(t *testing.T, name, colorsFragment string) string {
 }
 
 // TestValidateThemeJSONMatchesUpstream replays testdata/theme_json_cases.json.
-// Each case's expected message was produced by upstream theme-json.ts
-// validateThemeJson (Pi 0.87.1 source, run against the TypeBox 1.3.x build
+// Each case's expected message was produced by upstream theme-schema.ts
+// validateThemeJson (re-recorded from the pinned Pi build by regenerate_theme_json_cases.mjs, run against the TypeBox build
 // shipped with Pi) on the same JSON text, including TypeBox's error order and
 // eight-error cap, JavaScript property order for vars, and duplicate keys.
 func TestValidateThemeJSONMatchesUpstream(t *testing.T) {

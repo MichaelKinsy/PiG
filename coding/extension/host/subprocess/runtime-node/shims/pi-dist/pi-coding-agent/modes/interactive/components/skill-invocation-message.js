@@ -10,8 +10,8 @@ export class SkillInvocationMessageComponent extends Box {
     expanded = false;
     skillBlock;
     markdownTheme;
-    constructor(skillBlock, markdownTheme = getMarkdownTheme()) {
-        super(1, 1, (t) => theme.bg("customMessageBg", t));
+    constructor(skillBlock, markdownTheme = getMarkdownTheme(), outputPad = 1) {
+        super(outputPad, 1, (t) => theme.bg("customMessageBg", t));
         this.skillBlock = skillBlock;
         this.markdownTheme = markdownTheme;
         this.updateDisplay();
@@ -19,6 +19,9 @@ export class SkillInvocationMessageComponent extends Box {
     setExpanded(expanded) {
         this.expanded = expanded;
         this.updateDisplay();
+    }
+    setOutputPad(outputPad) {
+        this.setPaddingX(outputPad);
     }
     invalidate() {
         super.invalidate();

@@ -26,7 +26,7 @@ func TestExecuteBashWithOperationsUsesExtensionOperations(t *testing.T) {
 	sess := newBashTestSession(t, `{"shellCommandPrefix":"set -e"}`)
 	ops := &recordingOperations{}
 	var chunks []string
-	result, err := sess.ExecuteBashWithOperations(context.Background(), "ls", false, func(c string) { chunks = append(chunks, c) }, ops, nil)
+	result, err := sess.ExecuteBash(context.Background(), "ls", func(c string) { chunks = append(chunks, c) }, &ExecuteBashOptions{Operations: ops})
 	if err != nil {
 		t.Fatal(err)
 	}

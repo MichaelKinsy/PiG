@@ -9,11 +9,11 @@ import (
 
 // FSError is the error Node's fs module reports for a failed call. Its message
 // is Node's: "<CODE>: <description>, <syscall> '<path>'", without the path for
-// a call on a file descriptor. Code, when set, is the code Node reports in
+// a call on a file descriptor, and "<CODE>: <description>, copyfile '<path>' -> '<dest>'" for a call with a Dest. Code, when set, is the code Node reports in
 // place of the one Describe finds for Err. Unwrap returns the Go error.
 type FSError struct {
-	Syscall, Path, Code string
-	Err                 error
+	Syscall, Path, Dest, Code string
+	Err                       error
 }
 
 func (e *FSError) Error() string {
@@ -26,6 +26,9 @@ func (e *FSError) Error() string {
 	message := code + ": " + description + ", " + e.Syscall
 	if e.Path != "" {
 		message += " '" + e.Path + "'"
+	}
+	if e.Dest != "" {
+		message += " -> '" + e.Dest + "'"
 	}
 	return message
 }
@@ -51,7 +54,10 @@ func FromPathError(err error) error {
 // MkdirAll creates dir and any missing parents as Node's
 // fs.mkdirSync(dir, {recursive: true, mode}) does, and reports a failure as
 // Node does: with the requested path, EEXIST when dir exists but is not a
-// directory, and ENOTDIR when a parent is not a directory.
+// directory, ENOTDIR when a parent is not a directory, and for a mkdir error
+// other than EACCES, ENOSPC, ENOTDIR, EPERM or ENOENT the error of a stat of
+// that directory (node_file.cc MKDirpSync), so EROFS for a directory missing
+// from a read-only file system is ENOENT.
 func MkdirAll(dir string, perm os.FileMode) error {
 	err := os.MkdirAll(dir, perm)
 	if err == nil {
@@ -69,6 +75,15 @@ func MkdirAll(dir string, perm os.FileMode) error {
 				code = "EEXIST"
 			}
 			return &FSError{Syscall: "mkdir", Path: dir, Code: code, Err: err}
+		}
+	}
+	switch code, _, _ := Describe(pathErr.Err); code {
+	case "EACCES", "ENOSPC", "ENOTDIR", "EPERM", "ENOENT":
+	default:
+		if _, statErr := os.Stat(pathErr.Path); statErr != nil {
+			if statPathErr, ok := errors.AsType[*fs.PathError](statErr); ok {
+				return &FSError{Syscall: "mkdir", Path: dir, Err: statPathErr.Err}
+			}
 		}
 	}
 	return &FSError{Syscall: "mkdir", Path: dir, Err: pathErr.Err}

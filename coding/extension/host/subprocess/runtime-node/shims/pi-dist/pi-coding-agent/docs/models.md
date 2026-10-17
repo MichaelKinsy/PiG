@@ -48,6 +48,7 @@ Use [`models.json`](configuration.md#agent-directory) when an endpoint speaks an
 
 ```json
 {
+  "$schema": "https://pi.dev/schemas/models.schema.json",
   "providers": {
     "ollama": {
       "baseUrl": "http://localhost:11434/v1",
@@ -61,9 +62,21 @@ Use [`models.json`](configuration.md#agent-directory) when an endpoint speaks an
 }
 ```
 
-The dummy key makes the model available to Pi; Ollama ignores it. For an authenticated endpoint, `apiKey` and header values can use `$NAME` or `${NAME}` environment interpolation, a literal value, or a leading `!command`. Commands in `models.json` run at request time and are not cached by Pi.
+The dummy key makes the model available to Pi; Ollama ignores it. For an authenticated endpoint, `apiKey` and header values can use `$NAME` or `${NAME}` environment interpolation, a literal value, or a leading `!command`. `$$` and `$!` produce a literal `$` and `!`. Commands in `models.json` run at request time and are not cached by Pi.
 
 Opening `/model` reloads the file. A `models` entry adds or replaces a model with the same ID on that provider. Use `modelOverrides` to change metadata for an existing built-in or extension-provided model without replacing the provider's model list. Unknown override IDs are ignored.
+
+To route a built-in provider through a proxy, set only its `baseUrl`. Its models and authentication stay unchanged:
+
+```json
+{
+  "providers": {
+    "anthropic": { "baseUrl": "https://proxy.example.com/v1" }
+  }
+}
+```
+
+[Models Configuration](models-configuration.md) lists every field.
 
 ### Describe model input and caching
 
@@ -128,7 +141,7 @@ Compatibility settings should describe verified differences in the endpoint's re
 
 ## Use classifier models
 
-Classifier models do not chat. They answer typed questions about JSON state: pick one of several choices, answer yes or no, or give a score, each with probabilities. Pi includes TypeSafe's Jev model from these providers, and Cloudflare's Clef and Clef Flash models from Workers AI:
+Classifier models do not chat. They answer typed questions about JSON state: pick one of several choices, answer yes or no, or give a score, each with probabilities. Pi includes TypeSafe's Jev model from these providers, Cloudflare's Clef and Clef Flash models from Workers AI, and OpenAI's GPT-6 Luna through the [Decisions API](https://developers.openai.com/api/docs/guides/decisions):
 
 | Provider | Model IDs | Authentication |
 |---|---|---|
@@ -137,8 +150,11 @@ Classifier models do not chat. They answer typed questions about JSON state: pic
 | `cloudflare-workers-ai` | `typesafe/jev`, `@cf/cloudflare/clef`, `@cf/cloudflare/clef-flash` | `CLOUDFLARE_API_KEY` and `CLOUDFLARE_ACCOUNT_ID` |
 | `vercel-ai-gateway` | `typesafe-ai/jev` | `AI_GATEWAY_API_KEY` |
 | `opencode` | `jev-1.13`, `jev-1.13-free` | `OPENCODE_API_KEY` |
+| `openai` | `gpt-6-luna` | `OPENAI_API_KEY` |
 
 Chat models on a [llama.cpp router](llama-cpp.md#classification) are also listed as classifier models.
+
+OpenAI's Decisions API needs an API key. Sign in with ChatGPT credentials do not work with it, so `gpt-6-luna` is not listed as available while `openai` is logged in through `/login`, even when `OPENAI_API_KEY` is set; log out of `openai` to use the key. GPT-6 Luna also judges images passed in `images` (see [Codemode](codemode.md#classify)); other classifier models return an error for them. The API rejects inputs above 922K tokens, but requests that run longer than about five seconds, currently above roughly 600K input tokens, fail with a gateway timeout.
 
 Classifier models do not appear in `/model`. The model reaches them through the [`codemode`](cli.md#enable-codemode) tool, which is off unless an MCP server turned it on. Enable it with `"defaultTools": ["+codemode"]` in [settings](settings.md#tools). Scripts then list classifier models with `models.getAvailableOfType("classifier")` and call `models.classify(model, { state, questions })`:
 

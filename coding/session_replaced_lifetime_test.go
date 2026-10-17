@@ -80,7 +80,7 @@ func TestWithSessionFollowsSetupAndRebind(t *testing.T) {
 	_, err := h.runtime.NewSession(t.Context(), &extension.NewSessionOptions{
 		Setup: func(manager extension.SessionManager) error {
 			steps = append(steps, "setup")
-			_, err := manager.(*SessionManager).AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "seeded"}}}})
+			_, err := manager.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "seeded"}}}})
 			return err
 		},
 		WithSession: func(*extension.ReplacedSessionContext) error { steps = append(steps, "callback"); return nil },

@@ -33,7 +33,7 @@ func TestTerminalInputListenersRewriteInput(t *testing.T) {
 	ui := &ExtUIContext{m: m}
 	rewrite := func(to string) *string { return &to }
 	var seenBySecond []string
-	ui.OnTerminalInput(func(data string) extension.TerminalInputResult {
+	rewriter := func(data string) extension.TerminalInputResult {
 		switch data {
 		case "j":
 			return extension.TerminalInputResult{Data: rewrite("\x1b")}
@@ -41,11 +41,15 @@ func TestTerminalInputListenersRewriteInput(t *testing.T) {
 			return extension.TerminalInputResult{Data: rewrite("")}
 		}
 		return extension.TerminalInputResult{}
-	})
-	ui.OnTerminalInput(func(data string) extension.TerminalInputResult {
+	}
+	consumer := func(data string) extension.TerminalInputResult {
 		seenBySecond = append(seenBySecond, data)
 		return extension.TerminalInputResult{Consume: data == "q"}
-	})
+	}
+	// Each listener is registered as the extension.TerminalInputHandler extensions pass to onTerminalInput.
+	register := func(handler extension.TerminalInputHandler) { ui.OnTerminalInput(handler) }
+	register(rewriter)
+	register(consumer)
 
 	if got, consumed := m.filterTerminalInput("j"); consumed || got != "\x1b" {
 		t.Fatalf("rewritten input = %q consumed=%v, want \\x1b delivered", got, consumed)

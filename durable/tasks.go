@@ -32,9 +32,26 @@ type AnyTaskDefinition struct {
 	Hooks any
 }
 
-// AnyTask is an erased executable task definition, whatever its input, phases, and hooks.
-type AnyTask interface {
+// AnyTask is an erased executable task definition stored in the registry, whatever its input, phases, and hooks (harness/types.ts AnyTask = { readonly definition: {...} }).
+type AnyTask struct {
+	Definition *AnyTaskDefinition
+}
+
+// TaskSource is anything that holds an erased task definition: a Task, or an AnyTask.
+type TaskSource interface {
 	AnyDefinition() *AnyTaskDefinition
+}
+
+// AnyDefinition returns the erased definition.
+func (task AnyTask) AnyDefinition() *AnyTaskDefinition { return task.Definition }
+
+// Erased returns the task as the erased AnyTask a registry, an Extension and CreateTaskErased take. Pi's Task is assignable to AnyTask because it
+// has a definition property; Go's Task has a typed Definition, so the erased form is explicit. The zero Task has no definition and erases to the zero AnyTask.
+func (task Task[I, S, R, H]) Erased() AnyTask {
+	if task.erased == nil && task.Definition == nil {
+		return AnyTask{}
+	}
+	return AnyTask{Definition: task.AnyDefinition()}
 }
 
 // DefineTask defines an executable task. Register it in the registry so a Harness can run tasks of its kind.
@@ -56,7 +73,7 @@ func CreateTask[I, S, R, H any](tx Tx, task Task[I, S, R, H], input I, options T
 	if err != nil {
 		return 0, err
 	}
-	return tx.CreateTaskErased(task, encoded, options)
+	return tx.CreateTaskErased(task.Erased(), encoded, options)
 }
 
 func eraseTaskDefinition[I, S, R, H any](definition *TaskDefinition[I, S, R, H]) *AnyTaskDefinition {

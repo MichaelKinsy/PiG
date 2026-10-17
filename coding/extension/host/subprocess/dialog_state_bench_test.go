@@ -17,7 +17,7 @@ func BenchmarkDialogStateSnapshot(b *testing.B) {
 	theme := tui.ActiveTheme()
 	bridge.SetThemeFunc(func() any {
 		foregrounds, backgrounds := theme.ANSIPalette()
-		return map[string]any{"name": theme.Name, "foregrounds": foregrounds, "backgrounds": backgrounds, "mode": theme.ColorMode()}
+		return map[string]any{"name": theme.Name, "foregrounds": foregrounds, "backgrounds": backgrounds, "mode": theme.GetColorMode()}
 	})
 	b.ReportAllocs()
 	for b.Loop() {

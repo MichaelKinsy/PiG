@@ -1,3 +1,5 @@
+//go:build !pig_strip_google_vertex
+
 package ai
 
 import (
@@ -81,7 +83,7 @@ func TestGoogleNativePayloadAndReplacementUpstream(t *testing.T) {
 // upstream: packages/ai/src/api/google-generative-ai.ts:407-419 adds no thinkingConfig for omitted native thinking; streamSimple:321-323 explicitly disables it.
 func TestGoogleNativeOmittedThinkingDiffersFromSimpleUpstream(t *testing.T) {
 	for _, api := range []API{APIGoogleGenerativeAI, APIGoogleVertex} {
-		modes := []string{"raw omitted", "raw disabled", "logical off"}
+		modes := []string{"raw omitted", "raw disabled"}
 		if api == APIGoogleGenerativeAI {
 			modes = append(modes, "simple omitted")
 		}
@@ -108,9 +110,6 @@ func TestGoogleNativeOmittedThinkingDiffersFromSimpleUpstream(t *testing.T) {
 				options := StreamOptions{APIKey: "test", IsReasoning: true}
 				if mode == "raw disabled" {
 					options.GoogleThinking = &GoogleThinkingOptions{Enabled: false}
-				}
-				if mode == "logical off" {
-					options.Thinking = ThinkingOff
 				}
 				var stream *AssistantMessageEventStream
 				var err error

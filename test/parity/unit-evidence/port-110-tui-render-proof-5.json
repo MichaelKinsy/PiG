@@ -1,0 +1,56 @@
+[
+  {
+    "upstream": "packages/tui/src/components/cancellable-loader.ts",
+    "package": "./tui",
+    "tests": [
+      "TestCancellableLoaderAbortsOnTheCancelKeyOnly"
+    ],
+    "upstream_reference": "packages/tui/src/components/cancellable-loader.ts",
+    "mutation": "tui/cancellable_loader.go: replace 'cl.cancel()\\nif cl.OnAbort != nil {' with 'if cl.OnAbort != nil {'; compiling go test -run exact test -count=1 fails TestCancellableLoaderAbortsOnTheCancelKeyOnly."
+  },
+  {
+    "upstream": "packages/tui/src/components/cancellable-loader.ts",
+    "package": "./tui",
+    "tests": [
+      "TestCancellableLoaderAbortsOnTheCancelKeyOnly"
+    ],
+    "upstream_reference": "packages/tui/src/components/cancellable-loader.ts",
+    "mutation": "tui/cancellable_loader.go: replace 'cl.cancel()\\nif cl.OnAbort != nil {\\ncl.OnAbort()\\n}' with 'cl.cancel()'; compiling go test -run exact test -count=1 fails TestCancellableLoaderAbortsOnTheCancelKeyOnly."
+  },
+  {
+    "upstream": "packages/tui/src/components/stack.ts",
+    "package": "./tui",
+    "tests": [
+      "TestHStackLaysChildrenOutLeftToRightWithTheGap"
+    ],
+    "upstream_reference": "packages/tui/src/components/stack.ts",
+    "mutation": "tui/stack.go: replace 'x += childWidth + h.gap\\n}\\nreturn result' with 'x += childWidth\\n}\\nreturn result'; compiling go test -run exact test -count=1 fails TestHStackLaysChildrenOutLeftToRightWithTheGap."
+  },
+  {
+    "upstream": "packages/tui/src/components/image.ts",
+    "package": "./tui",
+    "tests": [
+      "TestRegisteredImageTranscoderConvertsForKitty"
+    ],
+    "upstream_reference": "packages/tui/src/components/image.ts",
+    "mutation": "tui/image.go: replace 'if imageTranscoder == nil {\\nreturn \"\", false' with 'if imageTranscoder != nil {\\nreturn \"\", false'; compiling go test -run exact test -count=1 fails TestRegisteredImageTranscoderConvertsForKitty."
+  },
+  {
+    "upstream": "packages/tui/src/components/mouse-region.ts",
+    "package": "./tui",
+    "tests": [
+      "TestMouseRegionHandlerRunsForEventsNoChildHandled"
+    ],
+    "upstream_reference": "packages/tui/src/components/mouse-region.ts",
+    "mutation": "tui/mouse_region.go: replace 'result := r.onMouse(event)\\nif result == nil {' with 'result := (*TuiMouseEventResult)(nil)\\nif result == nil {'; compiling go test -run exact test -count=1 fails TestMouseRegionHandlerRunsForEventsNoChildHandled."
+  },
+  {
+    "upstream": "packages/tui/src/components/mouse-region.ts",
+    "package": "./tui",
+    "tests": [
+      "TestMouseRegionHandlerRunsForEventsNoChildHandled"
+    ],
+    "upstream_reference": "packages/tui/src/components/mouse-region.ts",
+    "mutation": "tui/mouse_region.go: replace 'if result := DispatchMouseEvent(r.child, event); result != nil {\\nreturn result\\n}' with 'if result := DispatchMouseEvent(r.child, event); result == nil && false {\\nreturn result\\n}'; compiling go test -run exact test -count=1 fails TestMouseRegionHandlerRunsForEventsNoChildHandled."
+  }
+]

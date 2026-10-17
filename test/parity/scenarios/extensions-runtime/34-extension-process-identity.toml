@@ -52,11 +52,12 @@ pi_args = ["--model", "test-faux/faux-1", "--no-session"]
 exit_code = 0
 runs = 3
 both_not_contain = ["Failed to load extension", "panic:"]
-# The re-launched harness prints its own version: Pi's release, or PiG's
-# composite version ending in the Pi release it ports (D63). The pin comes from
-# the {{UPSTREAM_VERSION}} token, so a version leap needs no edit here.
+# The re-launched harness prints its own version: Pi's package version
+# ({{UPSTREAM_VERSION}}), or PiG's composite version ({{VERSION}}, D63; for a
+# commit pin its build metadata is 1.1.0.42a3497d). Both come from the pin, so a
+# version leap needs no edit here.
 both_match_regex = [
-  '"name":"process-identity","description":"\{\\"title\\":\\"pi\\",\\"piCodingAgent\\":\\"true\\",\\"aiAgent\\":\\"(pig|pi)\\",\\"warned\\":false,\\"entryIsScript\\":true,\\"harness\\":\{\\"name\\":\\"@earendil-works/pi-coding-agent\\",\\"binIsEntry\\":true\},\\"relaunch\\":\{\\"status\\":0,\\"stdout\\":\\"([0-9.]+\+)?{{UPSTREAM_VERSION}}\\"\}\}"',
+  '"name":"process-identity","description":"\{\\"title\\":\\"pi\\",\\"piCodingAgent\\":\\"true\\",\\"aiAgent\\":\\"(pig|pi)\\",\\"warned\\":false,\\"entryIsScript\\":true,\\"harness\\":\{\\"name\\":\\"@earendil-works/pi-coding-agent\\",\\"binIsEntry\\":true\},\\"relaunch\\":\{\\"status\\":0,\\"stdout\\":\\"({{VERSION}}|{{UPSTREAM_VERSION}})\\"\}\}"',
 ]
 
 [diverge]

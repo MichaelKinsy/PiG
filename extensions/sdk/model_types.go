@@ -82,11 +82,11 @@ func (o *OrderedObject) MarshalJSON() ([]byte, error) {
 			if i > 0 {
 				out.WriteByte(',')
 			}
-			encodedKey, err := json.Marshal(key)
+			encodedKey, err := json.MarshalJS(key)
 			if err != nil {
 				return nil, err
 			}
-			encodedValue, err := json.Marshal(o.values[key])
+			encodedValue, err := json.MarshalJS(o.values[key])
 			if err != nil {
 				return nil, err
 			}
@@ -136,9 +136,11 @@ func (o *OrderedObject) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// ClassifierContext is the input of a classification: the state to judge and the named questions to answer about it, in order.
+// ClassifierContext is the input of a classification: the state to judge, optional images judged together with it, and the named questions to answer about it, in order.
 type ClassifierContext struct {
-	State     map[string]any `json:"state"`
+	State map[string]any `json:"state"`
+	// Images are judged together with State. Only models whose input includes "image" accept them (types.ts ClassifierContext.images).
+	Images    []ImageContent `json:"images,omitempty"`
 	Questions *OrderedObject `json:"questions"`
 }
 

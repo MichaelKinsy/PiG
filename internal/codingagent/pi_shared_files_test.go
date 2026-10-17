@@ -4,16 +4,23 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
+	"github.com/MichaelKinsy/PiG/internal/pilock"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 func piDirectoryNode(t *testing.T, script string, args ...string) *exec.Cmd {
@@ -31,7 +38,7 @@ import {pathToFileURL} from 'node:url';
 import {join} from 'node:path';
 import {readFileSync} from 'node:fs';
 const root = process.argv[1];
-assert.equal(JSON.parse(readFileSync(join(root,'package.json'))).version, '1.0.3');
+assert.equal(JSON.parse(readFileSync(join(root,'package.json'))).version, '` + pigversion.UpstreamPackageVersion + `');
 const load = name => import(pathToFileURL(join(root,'dist',name+'.js')).href);
 const {AuthStorage, ReadOnlyAuthStorage} = await load('core/auth-storage');
 const {SettingsManager} = await load('core/settings-manager');
@@ -154,6 +161,16 @@ assert.equal((await store.read('other')).key,'other');
 
 // Both runtimes modify the same auth/settings/trust files concurrently. Every
 // requested key must survive, not merely the last valid JSON document.
+//
+// Pi's synchronous settings and trust locks give up with ELOCKED after 10
+// attempts 20 ms apart (settings-manager.ts:327-349, trust-manager.ts:138-165), so
+// a scheduling stall of about 200 ms while PiG holds the lock (a saturated host,
+// the race detector) makes Pi's own write fail; two Pi processes fail the same
+// way. Measured under -race at load 200 on 196 cores: PiG's trust critical
+// section (read, write, release) took 20-760 ms, and one run spent Pi's budget 24
+// times. The Pi script repeats an exhausted budget (up to 50 times per write) and
+// reports how often it happened, so the test measures lost keys rather than host
+// latency. PiG's writes repeat an exhausted budget the same way.
 func TestPiSharedFilesConcurrentWriters(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		// Pi's proper-lockfile retries only EEXIST. On Windows, a lock directory PiG is releasing is delete-pending, and
@@ -172,6 +189,38 @@ func TestPiSharedFilesConcurrentWriters(t *testing.T) {
 	models := ai.NewFileModelsStore(filepath.Join(agentDir, "models-store.json"))
 	writeSettingsFixture(t, models.Path(), `{}`)
 	const operations = 32
+	// The retries below absorb host stalls, so they cannot show that PiG releases its settings and trust locks promptly. That is measured
+	// directly: every hold, from acquisition to the end of release, is recorded, and the median must stay far inside Pi's 10 x 20 ms budget.
+	// A host stall lengthens a few holds (20-760 ms measured under -race at load 200); a PiG that holds the lock longer lengthens all of them.
+	var holdMu sync.Mutex
+	var holds []time.Duration
+	acquire := acquireSyncLockWithRetry
+	acquireSyncLockWithRetry = func(path string) (func() error, error) {
+		release, err := acquire(path)
+		if err != nil {
+			return nil, err
+		}
+		start := time.Now()
+		return func() error {
+			err := release()
+			holdMu.Lock()
+			holds = append(holds, time.Since(start))
+			holdMu.Unlock()
+			return err
+		}, nil
+	}
+	t.Cleanup(func() { acquireSyncLockWithRetry = acquire })
+	// PiG's synchronous locks keep Pi's 10 x 20 ms budget (pilock.AcquireSync), so a stalled Pi holder spends it the same way.
+	pigExhausted := 0
+	retryLocked := func(write func() error) error {
+		for attempt := 1; ; attempt++ {
+			err := write()
+			if !errors.Is(err, pilock.ErrLocked) || attempt == 50 {
+				return err
+			}
+			pigExhausted++
+		}
+	}
 	cmd := piDirectoryNode(t, `
 const [agent, cwd, count] = process.argv.slice(2);
 const auth = AuthStorage.create(join(agent,'auth.json'));
@@ -181,13 +230,23 @@ const models = new FileModelsStore(join(agent,'models-store.json'));
 console.log('ready');
 await new Promise(resolve => process.stdin.once('data', resolve));
 process.stdin.pause();
+let exhausted = 0;
 for (let i=0;i<Number(count);i++) {
   await auth.modify('pi-'+i, async () => ({type:'api_key',key:'pi-key-'+i}));
-  settings.setEditorPaddingX(i % 3); await settings.flush();
-  assert.deepEqual(settings.drainErrors(), []);
-  trust.set(join(cwd,'pi-'+i), true);
+  for (let attempt=1;;attempt++) {
+    settings.setEditorPaddingX(i % 3); await settings.flush();
+    const errors = settings.drainErrors();
+    if (errors.length === 0) break;
+    if (attempt === 50 || !errors.every((e) => e.error.code === 'ELOCKED')) assert.deepEqual(errors, []);
+    exhausted++;
+  }
+  for (let attempt=1;;attempt++) {
+    try { trust.set(join(cwd,'pi-'+i), true); break; }
+    catch (error) { if (error.code !== 'ELOCKED' || attempt === 50) throw error; exhausted++; }
+  }
   await models.write('pi-'+i,{models:[{id:'pi-model-'+i}],etag:'pi-etag-'+i});
 }
+console.error('Pi lock budget exhausted ' + exhausted + ' times');
 console.log('done');
 `, agentDir, cwd, fmt.Sprint(operations))
 	stdin, err := cmd.StdinPipe()
@@ -232,13 +291,13 @@ console.log('done');
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := settings.SetTheme(fmt.Sprintf("pig-theme-%d", i)); err != nil {
+		if err := retryLocked(func() error { return settings.SetTheme(fmt.Sprintf("pig-theme-%d", i)) }); err != nil {
 			t.Fatal(err)
 		}
-		if err := trust.Set(filepath.Join(cwd, fmt.Sprintf("pig-%d", i)), new(true)); err != nil {
+		if err := retryLocked(func() error { return trust.Set(filepath.Join(cwd, fmt.Sprintf("pig-%d", i)), new(true)) }); err != nil {
 			t.Fatal(err)
 		}
-		if err := models.Write(t.Context(), fmt.Sprintf("pig-%d", i), ai.ModelsStoreEntry{Models: []json.RawMessage{json.RawMessage(fmt.Sprintf(`{"id":"pig-model-%d"}`, i))}, ETag: fmt.Sprintf("pig-etag-%d", i)}); err != nil {
+		if err := models.Write(t.Context(), fmt.Sprintf("pig-%d", i), ai.ModelsStoreEntry{Models: mustStoredModels([]json.RawMessage{json.RawMessage(fmt.Sprintf(`{"id":"pig-model-%d"}`, i))}), ETag: fmt.Sprintf("pig-etag-%d", i)}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -248,6 +307,17 @@ console.log('done');
 	if err := cmd.Wait(); err != nil {
 		t.Fatalf("Pi writes: %v\n%s", err, stderr.String())
 	}
+	t.Log(strings.TrimSpace(stderr.String()))
+	t.Logf("PiG lock budget exhausted %d times", pigExhausted)
+	holdMu.Lock()
+	sorted := slices.Sorted(slices.Values(holds))
+	holdMu.Unlock()
+	if len(sorted) < 2*operations {
+		t.Fatalf("recorded %d PiG settings/trust lock holds, want at least %d", len(sorted), 2*operations)
+	}
+	median, slowest := sorted[len(sorted)/2], sorted[len(sorted)-1]
+	t.Logf("PiG settings/trust lock holds: %d, median %v, max %v", len(sorted), median, slowest)
+	testenv.TimingGate(t, median > 50*time.Millisecond, "PiG's median settings/trust lock hold is %v; Pi gives up after 10 x 20 ms, so a hold this long makes Pi's own writes fail beside PiG", median)
 	creds, err := auth.Load()
 	if err != nil {
 		t.Fatal(err)

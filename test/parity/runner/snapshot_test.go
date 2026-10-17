@@ -4,6 +4,7 @@ package runner
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"maps"
@@ -43,7 +44,7 @@ func TestSnapshotEnvDirsInjectsAuthWithoutMutatingFixture(t *testing.T) {
 	if !ok {
 		t.Fatalf("snapshot env = %q", out[0])
 	}
-	if got, err := os.ReadFile(filepath.Join(snapshot, "auth.json")); err != nil || string(got) != string(auth) {
+	if got, err := os.ReadFile(filepath.Join(snapshot, "auth.json")); err != nil || !bytes.Equal(got, auth) {
 		t.Fatalf("snapshot auth = %q, err=%v", got, err)
 	}
 	if _, err := os.Stat(filepath.Join(fixture, "auth.json")); !os.IsNotExist(err) {
@@ -123,7 +124,7 @@ func TestSnapshotEnvDirsPreservesExplicitFixtureAuthWithoutAmbientInjection(t *t
 	out := snapshotEnvDirs(t, filepath.Join(fixtureRoot, "scenario.toml"), []string{"PI_CODING_AGENT_DIR=agent"}, true, false)
 	_, snapshot, _ := strings.Cut(out[0], "=")
 	got, err := os.ReadFile(filepath.Join(snapshot, "auth.json"))
-	if err != nil || string(got) != string(want) {
+	if err != nil || !bytes.Equal(got, want) {
 		t.Fatalf("fixture auth = %q, err=%v", got, err)
 	}
 }
@@ -440,5 +441,27 @@ func TestCLIFixtureProjectsRunOutsideCheckout(t *testing.T) {
 	}
 	if projects == 0 {
 		t.Fatal("no cli-mode fixture project found; the guard no longer sees the project-trust scenarios")
+	}
+}
+
+// A directory extension's identity is its directory name (a Go, Rust or Python factory must register under it), so the
+// snapshot keeps that name instead of loading the copy from a randomly named directory.
+func TestSnapshotExtensionPathKeepsADirectoryExtensionsName(t *testing.T) {
+	source := filepath.Join(t.TempDir(), "robust")
+	if err := os.MkdirAll(source, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, "extension.go"), []byte("package robust\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	snapshot, err := snapshotExtensionPath(t, source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filepath.Base(snapshot) != "robust" || snapshot == source {
+		t.Fatalf("snapshot = %s, want a copy named robust", snapshot)
+	}
+	if _, err := os.Stat(filepath.Join(snapshot, "extension.go")); err != nil {
+		t.Fatalf("directory contents were not snapshotted: %v", err)
 	}
 }

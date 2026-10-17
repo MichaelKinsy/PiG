@@ -42,7 +42,7 @@ func TestTurnEndBoundaryAfterAbortGetsLiveContext(t *testing.T) {
 		ctx, _ := args[1].(context.Context)
 		mu.Lock()
 		defer mu.Unlock()
-		if message, ok := event.Message.(agent.AgentMessage); ok && message.Assistant != nil {
+		if message := event.Message; message.Assistant != nil {
 			reasons = append(reasons, message.Assistant.StopReason)
 		}
 		cancelled = append(cancelled, ctx == nil || ctx.Err() != nil)
@@ -51,7 +51,7 @@ func TestTurnEndBoundaryAfterAbortGetsLiveContext(t *testing.T) {
 	tool := abortWaitTool{started: make(chan struct{})}
 	h := newBoundaryHarness(t, harnessOptions{extension: ext, tools: []agent.AgentTool{tool}}, boundaryToolReply("wait", ai.JsonObject{}, ai.StopReasonToolUse), boundaryReply("must not run", ai.StopReasonStop, 0))
 	prompt := make(chan error, 1)
-	go func() { _, err := h.session.Prompt(t.Context(), "start", nil); prompt <- err }()
+	go func() { err := h.session.Prompt(t.Context(), "start", nil); prompt <- err }()
 	<-tool.started
 	h.session.RequestAbort()
 	if err := <-prompt; err != nil {

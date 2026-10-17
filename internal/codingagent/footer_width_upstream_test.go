@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/modes/interactive/components/footer.ts
+
 import (
 	"path/filepath"
 	"strings"
@@ -36,7 +38,7 @@ func TestFooterWidthUpstream(t *testing.T) {
 	t.Run("keeps stats line within width for wide model and provider names", func(t *testing.T) {
 		usage := &ai.Usage{Input: 12345, Output: 6789, Cost: ai.UsageCost{Total: 1.234}}
 		footer := upstreamFooter(t, usage, "공급자", strings.Repeat("模", 30))
-		footer.model.Capabilities.MaxThinking = ai.ThinkingLevel("high")
+		footer.model.Capabilities.MaxThinking = ai.ModelThinkingLevel("high").ReasoningOption()
 		footer.SetThinkingLevel("high")
 		footer.SetProviderCount(2)
 		assertUpstreamFooterWidth(t, footer, 60)
@@ -44,11 +46,11 @@ func TestFooterWidthUpstream(t *testing.T) {
 	// .upstream/v0.99.1/packages/coding-agent/test/footer-width.test.ts:160
 	t.Run("shows the physical model a virtual model routed to", func(t *testing.T) {
 		footer := upstreamFooter(t, nil, "test", "auto")
-		footer.model.Capabilities.MaxThinking = ai.ThinkingLevel("high")
+		footer.model.Capabilities.MaxThinking = ai.ModelThinkingLevel("high").ReasoningOption()
 		footer.SetThinkingLevel("high")
-		footer.SetRoutedModelSource(func() *RoutedModelSelection {
-			return &RoutedModelSelection{Model: footerTestModel("test", "gpt-5.6-luna", 0, 0), ThinkingLevel: ai.ThinkingLevel("medium")}
-		})
+		footer.SetSession(testFooterSession{routed: func() *RoutedModelSelection {
+			return &RoutedModelSelection{Model: footerTestModel("test", "gpt-5.6-luna", 0, 0), ThinkingLevel: ai.ModelThinkingLevel("medium")}
+		}})
 		assertUpstreamFooterStats(t, footer, "auto \u2022 high \u2192 gpt-5.6-luna \u2022 medium")
 	})
 	// .upstream/v0.87.1/packages/coding-agent/test/footer-width.test.ts:155
@@ -57,7 +59,7 @@ func TestFooterWidthUpstream(t *testing.T) {
 		if _, err := session.AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: agent.RoleAssistant, Usage: &ai.Usage{Input: 100, Output: 10, Cost: ai.UsageCost{Total: 0.5}}}}); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := session.AppendBranchSummary(nil, "", nil, false, &ai.Usage{Input: 20, Output: 5, Cost: ai.UsageCost{Total: 0.25}}); err != nil {
+		if _, err := session.BranchWithSummary(nil, "", nil, false, &ai.Usage{Input: 20, Output: 5, Cost: ai.UsageCost{Total: 0.25}}); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := session.AppendCompaction("", "", 0, nil, false, &ai.Usage{Input: 5, Output: 2, Cost: ai.UsageCost{Total: 0.125}}); err != nil {
@@ -67,7 +69,7 @@ func TestFooterWidthUpstream(t *testing.T) {
 			t.Fatal(err)
 		}
 		footer := upstreamFooter(t, nil, "test", "test-model")
-		footer.SetUsageTotalsSource(session.FooterUsageTotals)
+		footer.SetSession(testFooterSession{totals: session.FooterUsageTotals})
 		assertUpstreamFooterStats(t, footer, "$1.250")
 	})
 	// .upstream/v0.99.1/packages/coding-agent/test/footer-width.test.ts:213
@@ -77,7 +79,7 @@ func TestFooterWidthUpstream(t *testing.T) {
 		if _, err := session.AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: agent.RoleAssistant, Usage: usage}}); err != nil {
 			t.Fatal(err)
 		}
-		m := &InteractiveMode{opts: InteractiveOptions{SessionHandle: &recordingCompactHandle{inner: session}, Model: footerTestModel("test", "test-model", 0, 0), AgentDir: t.TempDir()}}
+		m := &InteractiveMode{opts: InteractiveModeOptions{SessionHandle: &recordingCompactHandle{inner: session}, Model: footerTestModel("test", "test-model", 0, 0), AgentDir: t.TempDir()}}
 		footer := m.newFooter()
 		footer.SetModel(m.opts.Model)
 		footer.cwd, footer.gitBranch = "/tmp/project", "main"
@@ -115,7 +117,7 @@ func TestFooterWidthUpstream(t *testing.T) {
 	})
 }
 
-func upstreamFooter(t *testing.T, usage *ai.Usage, provider, model string) *StatusLine {
+func upstreamFooter(t *testing.T, usage *ai.Usage, provider, model string) *FooterComponent {
 	t.Helper()
 	session := NewSession("footer", "/tmp/project")
 	if usage != nil {
@@ -123,7 +125,7 @@ func upstreamFooter(t *testing.T, usage *ai.Usage, provider, model string) *Stat
 			t.Fatal(err)
 		}
 	}
-	m := &InteractiveMode{opts: InteractiveOptions{SessionHandle: &recordingCompactHandle{inner: session}, Model: footerTestModel(provider, model, 0, 0), AgentDir: t.TempDir()}}
+	m := &InteractiveMode{opts: InteractiveModeOptions{SessionHandle: &recordingCompactHandle{inner: session}, Model: footerTestModel(provider, model, 0, 0), AgentDir: t.TempDir()}}
 	footer := m.newFooter()
 	footer.SetModel(m.opts.Model)
 	footer.cwd, footer.gitBranch = "/tmp/project", "main"
@@ -132,7 +134,7 @@ func upstreamFooter(t *testing.T, usage *ai.Usage, provider, model string) *Stat
 	return footer
 }
 
-func assertUpstreamFooterWidth(t *testing.T, footer *StatusLine, width int) {
+func assertUpstreamFooterWidth(t *testing.T, footer *FooterComponent, width int) {
 	t.Helper()
 	for _, line := range footer.Render(width) {
 		if got := widthx.VisibleWidth(line); got > width {
@@ -141,7 +143,7 @@ func assertUpstreamFooterWidth(t *testing.T, footer *StatusLine, width int) {
 	}
 }
 
-func assertUpstreamFooterStats(t *testing.T, footer *StatusLine, want string) {
+func assertUpstreamFooterStats(t *testing.T, footer *FooterComponent, want string) {
 	t.Helper()
 	if got := stripANSI(footer.Render(120)[1]); !strings.Contains(got, want) {
 		t.Fatalf("stats = %q, want %q", got, want)

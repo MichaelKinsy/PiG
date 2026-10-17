@@ -5,6 +5,7 @@ package subprocess
 
 import (
 	"encoding/json"
+	"errors"
 	"sync"
 	"sync/atomic"
 
@@ -16,6 +17,8 @@ type toolRendererResolution struct {
 	done      bool
 	use       string
 	renderers *extension.ToolRenderers
+	// retry asks again after the renderer inactivity boundary abandoned the request (D56).
+	retry renderRetry
 }
 
 // toolRendererResolvers is one extension process's resolver state: how many resolvers it registered and the answer
@@ -92,7 +95,8 @@ func (h *Host) makeToolRendererResolver(me *managedExt) extension.ToolRendererRe
 }
 
 // resolveToolRenderers asks the extension process for toolName's renderers and records the answer. A failed request
-// records next(), as a resolver that throws leaves the card to the remaining renderers.
+// records next(), as a resolver that throws leaves the card to the remaining renderers. A request the renderer
+// inactivity boundary abandoned records nothing: the tool keeps next() until a retry gets the extension's answer.
 func (h *Host) resolveToolRenderers(me *managedExt, toolName string, next *extension.ToolRenderers, resolution *toolRendererResolution) {
 	answer := ResolvedToolRenderers{Use: "next"}
 	if conn := me.connection(); conn != nil {
@@ -102,6 +106,10 @@ func (h *Host) resolveToolRenderers(me *managedExt, toolName string, next *exten
 				Type:    MsgRequest,
 				Request: &RequestPayload{Method: RequestResolveToolRenderers, Tool: toolName, Args: args},
 			}, rendererInactivity, RequestResolveToolRenderers+" "+toolName)
+			if stall, isStall := errors.AsType[*HandlerStalledError](err); isStall {
+				h.retryToolRendererResolution(me, conn, toolName, next, resolution, stall)
+				return
+			}
 			if err == nil && resp != nil && resp.Response != nil && resp.Response.Error == nil {
 				var got ResolvedToolRenderers
 				if json.Unmarshal(resp.Response.Result, &got) == nil && (got.Use == "own" || got.Use == "none" || got.Use == "next") {
@@ -123,6 +131,7 @@ func (h *Host) resolveToolRenderers(me *managedExt, toolName string, next *exten
 	state := &me.toolRendererResolvers
 	state.mu.Lock()
 	resolution.done, resolution.use, resolution.renderers = true, answer.Use, renderers
+	resolution.retry.answered()
 	state.mu.Unlock()
 	// Cards already show next()'s renderers, so only an answer that differs draws them again; drawing them again
 	// would start their renderer state over.
@@ -132,6 +141,24 @@ func (h *Host) resolveToolRenderers(me *managedExt, toolName string, next *exten
 	if fn := h.toolRenderersResolvedFunc(); fn != nil {
 		fn(toolName)
 	}
+}
+
+// retryToolRendererResolution schedules the retry of a resolution the renderer inactivity boundary abandoned
+// (D56, renderRetry). When it comes due the host asks the extension again with the same next(); as for the first
+// request, only an answer that differs from next() draws the tool's cards again.
+func (h *Host) retryToolRendererResolution(me *managedExt, conn *Conn, toolName string, next *extension.ToolRenderers, resolution *toolRendererResolution, stall *HandlerStalledError) {
+	state := &me.toolRendererResolvers
+	state.mu.Lock()
+	epoch, backoff, settled := resolution.retry.abandoned(rendererInactivity, stall.Settled)
+	state.mu.Unlock()
+	conn.afterRetryBackoff(settled, backoff, func() {
+		state.mu.Lock()
+		due := state.tools[toolName] == resolution && resolution.retry.comeDue(epoch) && resolution.retry.takeDue()
+		state.mu.Unlock()
+		if due {
+			h.goToolRendererResolution(func() { h.resolveToolRenderers(me, toolName, next, resolution) })
+		}
+	}, nil)
 }
 
 // goToolRendererResolution runs a resolution request as a task Shutdown joins. Once Shutdown waits, a resolution keeps

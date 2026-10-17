@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 """Record isolated startup trials. Timing budgets are advisory in CI, never a blocking unit assertion."""
 import argparse
@@ -193,7 +192,7 @@ def main():
         version_env = environment(version_home)
         versions = {name: subprocess.check_output([binary, "--version"], cwd=version_home / "cwd", env=version_env, text=True, timeout=15).strip()
                     for name, binary in builds.items()}
-        pin = re.search(r'const UpstreamVersion = "([^"]+)"', (ROOT / "internal/coding/pigversion/pigversion.go").read_text()).group(1)
+        pin = re.search(r'const UpstreamPackageVersion = "([^"]+)"', (ROOT / "internal/coding/pigversion/pigversion.go").read_text()).group(1)
         if versions["pi"] != pin:
             raise SystemExit(f"Pi oracle version {versions['pi']} does not match {pin}")
         provenance["versions"] = versions

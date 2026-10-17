@@ -221,9 +221,13 @@ type Harness struct {
 }
 
 // OpenTestSession opens a Session kernel over a controlled storage.
-func OpenTestSession() Harness {
+func OpenTestSession() Harness { return OpenReportingTestSession(nil) }
+
+// OpenReportingTestSession is OpenTestSession with a Session that hands its failure, and the errors of its listeners, to
+// report.
+func OpenReportingTestSession(report func(error)) Harness {
 	controlled := NewControlledStorage()
-	kernel := session.CreateSession(controlled)
+	kernel := session.NewSessionImpl(controlled, session.Hooks{Report: report}, nil, nil)
 	publications := &Publications{}
 	kernel.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
 		publications.mu.Lock()

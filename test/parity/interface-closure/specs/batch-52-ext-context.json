@@ -1,0 +1,98 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionContext::property:hasUI"
+  ],
+  "targets": [
+   "coding/extension/context.go#Context.HasUI"
+  ],
+  "production": [
+   "call:coding/mcpext/register.go#commandContext"
+  ],
+  "evidence": [
+   "test:coding/cli/upstream_runner_modes_test.go#TestPrintAndJSONBindRunnerModeBeforeInput",
+   "test:coding/extension/context_test.go#TestContext_HasUI"
+  ],
+  "rationale": "ExtensionContext.hasUI is the Go method Context.HasUI; upstream's accessor throws when the context is stale and the Go method returns (value, error) with that error; callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionContext::property:isProjectTrusted"
+  ],
+  "targets": [
+   "coding/extension/context.go#Context.IsProjectTrusted"
+  ],
+  "production": [
+   "call:coding/mcpext/register.go#eventContext"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/abort_binding_test.go#TestBindAbortPreservesOtherContextActions",
+   "test:coding/extension/host/inproc/tool_binding_test.go#TestBindToolsPreservesModeActions"
+  ],
+  "rationale": "ExtensionContext.isProjectTrusted is the Go method Context.IsProjectTrusted; upstream's accessor throws when the context is stale and the Go method returns (value, error) with that error; callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionContext::property:mode"
+  ],
+  "targets": [
+   "coding/extension/context.go#Context.Mode"
+  ],
+  "production": [
+   "call:coding/mcpext/register.go#commandContext"
+  ],
+  "evidence": [
+   "test:coding/cli/upstream_runner_modes_test.go#TestPrintAndJSONBindRunnerModeBeforeInput",
+   "test:coding/extension/context_mode_test.go#TestContext_Mode_DefaultsToPrint"
+  ],
+  "rationale": "ExtensionContext.mode is the Go method Context.Mode; upstream's accessor throws when the context is stale and the Go method returns (value, error) with that error; callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionContext::property:model"
+  ],
+  "targets": [
+   "coding/extension/context.go#Context.Model"
+  ],
+  "production": [
+   "call:coding/piglogin/extension.go#createSprite"
+  ],
+  "evidence": [
+   "test:coding/extension/context_api_test.go#TestContext_DefaultsMatchUpstream",
+   "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward"
+  ],
+  "rationale": "ExtensionContext.model is the Go method Context.Model; upstream's accessor throws when the context is stale and the Go method returns (value, error) with that error; callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionContext::property:modelRegistry"
+  ],
+  "targets": [
+   "coding/extension/context.go#Context.ModelRegistry"
+  ],
+  "production": [
+   "call:coding/extension/builtin/codemode/models.go#modelRuntimeOf"
+  ],
+  "evidence": [
+   "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors",
+   "test:coding/extension/host/inproc/tool_context_test.go#TestRunnerBindCoreKeepsTheSessionModelRegistryAModeOmits"
+  ],
+  "rationale": "ExtensionContext.modelRegistry is the Go method Context.ModelRegistry; upstream's accessor throws when the context is stale and the Go method returns (value, error) with that error; callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionContext::property:sessionManager"
+  ],
+  "targets": [
+   "coding/extension/context.go#Context.SessionManager"
+  ],
+  "production": [
+   "call:coding/extension/builtin/codemode/execute.go#sessionOf"
+  ],
+  "evidence": [
+   "test:coding/cli/print_mode_tool_context_test.go#TestPrintModeToolContextKeepsTheSessionBinding",
+   "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors"
+  ],
+  "rationale": "ExtensionContext.sessionManager is the Go method Context.SessionManager; upstream's accessor throws when the context is stale and the Go method returns (value, error) with that error; callers and tests attributed by go/types (methodrefs)."
+ }
+]

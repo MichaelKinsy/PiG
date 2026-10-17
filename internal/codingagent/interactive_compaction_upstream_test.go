@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -34,7 +33,7 @@ func compactionUIMode(t *testing.T, notices bool) *InteractiveMode {
 	t.Helper()
 	session := NewSession("ui", t.TempDir())
 	m := cacheWarmingTestMode(t, session, notices)
-	m.agent = agent.NewAgent(agent.AgentOptions{})
+	m.agent = mustNewAgent(agent.AgentOptions{})
 	m.statusContainer = tui.NewContainer()
 	m.opts.Settings.ShowTerminalProgress = new(false)
 	m.toolsExpanded = true

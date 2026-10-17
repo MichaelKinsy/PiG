@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 """Unit tests for pack_npm.py (run: python3 -m unittest automation/release/npm/test_pack_npm.py)."""
 
@@ -170,6 +169,8 @@ class PackShellTest(unittest.TestCase):
             # Neither cmd metacharacters nor environment references are code.
             out = root / "packages&echo.INJECTED" / "%TOKEN%!bang!"
             package = root / "package"
+            package.mkdir()
+            (package / "package.json").write_text('{"name":"@pig/pack-test"}')
             for platform in ("win32", "linux"):
                 with self.subTest(platform=platform):
                     def run(argv, **kwargs):
@@ -177,10 +178,35 @@ class PackShellTest(unittest.TestCase):
                         self.assertEqual(kwargs["cwd"], package)
                         self.assertEqual(kwargs["env"]["npm_config_pack_destination"], str(out.resolve()))
                         self.assertEqual(kwargs["shell"], platform == "win32")
-                        return pack_npm.subprocess.CompletedProcess(argv, 0, stdout='[{"filename":"package.tgz"}]')
+                        return pack_npm.subprocess.CompletedProcess(argv, 0, stdout='[{"name":"@pig/pack-test","filename":"package.tgz"}]')
 
                     with patch.object(pack_npm.sys, "platform", platform), patch.object(pack_npm.subprocess, "run", side_effect=run):
                         self.assertEqual(pack_npm.npm_pack(package, out), out / "package.tgz")
+
+
+class PackedFilenameTest(unittest.TestCase):
+    """npm 11 prints an array, npm 12 an object keyed by package name (Pi 6fb2e781)."""
+
+    def test_npm11_array(self):
+        self.assertEqual(pack_npm.packed_filename([{"name": "pig", "filename": "pig-1.tgz"}], "pig"), "pig-1.tgz")
+
+    def test_npm12_object_keyed_by_package_name(self):
+        parsed = {"@pig/linux-x64": {"name": "@pig/linux-x64", "filename": "pig-linux-x64-1.tgz"}}
+        self.assertEqual(pack_npm.packed_filename(parsed, "@pig/linux-x64"), "pig-linux-x64-1.tgz")
+
+    def test_rejects_unexpected_results(self):
+        entry = {"name": "pig", "filename": "pig-1.tgz"}
+        for label, parsed in {
+            "empty array": [],
+            "two entries": [entry, entry],
+            "other package": {"other": {"name": "other", "filename": "x.tgz"}},
+            "key without entry for the name": {"pig": {"name": "other", "filename": "x.tgz"}},
+            "no filename": [{"name": "pig"}],
+            "non-string filename": [{"name": "pig", "filename": 3}],
+            "scalar": "pig-1.tgz",
+        }.items():
+            with self.subTest(label), self.assertRaisesRegex(pack_npm.PackError, "unexpected result for pig"):
+                pack_npm.packed_filename(parsed, "pig")
 
 
 if __name__ == "__main__":

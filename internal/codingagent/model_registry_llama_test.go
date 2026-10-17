@@ -1,3 +1,5 @@
+//go:build !pig_strip_llama_cpp
+
 package codingagent
 
 import (
@@ -15,7 +17,7 @@ import (
 
 func TestModelRegistrySetProviderReplacesInsteadOfMerging(t *testing.T) {
 	registry := NewModelRegistry(t.TempDir())
-	if err := registry.RegisterProvider("dyn", extension.ProviderConfig{APIKey: "key", BaseURL: "http://a/v1", API: "openai-completions", Models: []extension.ProviderModelConfig{{ID: "m"}}}); err != nil {
+	if err := registry.RegisterExtensionProvider("dyn", extension.ProviderConfig{APIKey: "key", BaseURL: "http://a/v1", API: "openai-completions", Models: []extension.ProviderModelConfig{{ID: "m"}}}); err != nil {
 		t.Error(err)
 	}
 	if !registry.HasConfiguredAuth("dyn") {
@@ -33,7 +35,7 @@ func TestModelRegistrySetProviderReplacesInsteadOfMerging(t *testing.T) {
 // The built-in llama.cpp provider publishes its catalog and resolved auth into
 // the registry: models appear once a credential resolves and disappear again
 // when it is removed, as upstream availability follows provider auth.
-func TestLlamaHostPublishesCatalogIntoModelRegistry(t *testing.T) {
+func TestLlamaProviderPublishesCatalogIntoModelRegistry(t *testing.T) {
 	t.Setenv("LLAMA_BASE_URL", "")
 	t.Setenv("LLAMA_API_KEY", "")
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -56,20 +58,24 @@ func TestLlamaHostPublishesCatalogIntoModelRegistry(t *testing.T) {
 	}
 	registry := NewModelRegistry(dir)
 	registry.SetAuthStorage(auth)
-	host := llama.NewHost(registry, auth, ai.NewFileModelsStore(filepath.Join(dir, "models-store.json")))
+	registry.SetModelsStore(ai.NewFileModelsStore(filepath.Join(dir, "models-store.json")))
+	if err := registry.RegisterNativeModelsProvider(llama.CreateLlamaProvider().ModelsProvider()); err != nil {
+		t.Fatal(err)
+	}
 	if registry.HasConfiguredAuth(llama.LlamaProviderID) || len(registry.GetAvailable()) != 0 {
 		t.Fatal("unconfigured llama.cpp provider is available")
 	}
 	if err := auth.Set(llama.LlamaProviderID, ai.Credential{Type: ai.CredentialAPIKey, Env: map[string]string{"LLAMA_BASE_URL": server.URL}}); err != nil {
 		t.Fatal(err)
 	}
-	if result := host.Refresh(context.Background(), true); result.Err != nil {
-		t.Fatal(result.Err)
-	}
+	refreshLlamaProvider(t, registry)
 	entry, ok := registry.Resolve(llama.LlamaProviderID, "qwen")
-	if !ok || entry.APIKey != "local" || entry.BaseURL != server.URL+"/v1" || entry.API != "openai-completions" ||
+	if !ok || entry.BaseURL != server.URL+"/v1" || entry.API != "openai-completions" ||
 		entry.ContextWindow != 8192 || !entry.Reasoning || entry.Compat == nil || entry.Compat.ThinkingFormat != "qwen-chat-template" {
 		t.Fatalf("Resolve(llama.cpp/qwen) = %+v, %v", entry, ok)
+	}
+	if resolved, err := registry.GetProviderAuth(context.Background(), llama.LlamaProviderID); err != nil || resolved == nil || resolved.Auth.APIKey != "local" || resolved.Auth.BaseURL != server.URL+"/v1" {
+		t.Fatalf("GetProviderAuth = %+v, %v; want the request auth the stream sends", resolved, err)
 	}
 	if available := registry.GetAvailable(); len(available) != 1 || available[0].ModelID != "qwen" {
 		t.Fatalf("GetAvailable = %+v", available)
@@ -78,8 +84,17 @@ func TestLlamaHostPublishesCatalogIntoModelRegistry(t *testing.T) {
 	if err := auth.Delete(t.Context(), llama.LlamaProviderID); err != nil {
 		t.Fatal(err)
 	}
-	host.SyncRegistration(context.Background())
+	refreshLlamaProvider(t, registry)
 	if registry.HasConfiguredAuth(llama.LlamaProviderID) || len(registry.GetAvailable()) != 0 {
 		t.Fatal("llama.cpp models stay available after the credential is removed")
+	}
+}
+
+func refreshLlamaProvider(t *testing.T, registry *ModelRegistry) {
+	t.Helper()
+	allowNetwork := true
+	result := registry.RefreshModelRuntime(context.Background(), ai.ModelsRefreshOptions{Providers: []string{llama.LlamaProviderID}, AllowNetwork: &allowNetwork})
+	if err := result.Errors[llama.LlamaProviderID]; err != nil || result.Aborted {
+		t.Fatalf("refresh = %+v", result)
 	}
 }

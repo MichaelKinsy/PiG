@@ -20,6 +20,7 @@ const (
 
 // One hundred subscribers over four realms (two node processes, two native), one thousand emits from all four realms at once, and one slow native listener. Every delivery arrives exactly once, and the Host and the test process hold no more memory or goroutines afterwards (upstream's bus keeps nothing per emit: event-bus.ts:12-33).
 func TestNativeEventBusStressKeepsEveryDeliveryAndBoundedState(t *testing.T) {
+	t.Setenv(xrefCollectEnv, "1")
 	for _, language := range busNativeLanguages {
 		t.Run(language, func(t *testing.T) {
 			perRealm := busStressSubscribers / 4
@@ -83,11 +84,17 @@ func TestNativeEventBusStressKeepsEveryDeliveryAndBoundedState(t *testing.T) {
 				}
 			}
 
+			// A Node realm releases the payload references it imported when V8 collects their proxies, which a loaded or idle process may not do before any deadline, as Pi's collector frees an unreachable payload whenever it runs. Each Node realm collects now (the PIG_TEST_XREF_COLLECT switch), so the ledger check below waits for no collector: a proxy still reachable after a full collection is a leak.
+			for _, realm := range realms {
+				if realm.language == "node" {
+					rig.must(realm.Name, "collect", "")
+				}
+			}
 			runtime.GC()
 			var after runtime.MemStats
 			runtime.ReadMemStats(&after)
 			// Upstream's bus keeps nothing per emit (event-bus.ts:12-33): every emission, dispatch snapshot and cross-process reference the run created is gone, and the registry is what it was before the first emit.
-			// The owners' unpin notifications that release the payload leases are asynchronous, so the ledger drains after the last delivery. A lease that never drains is the leak, and the deadline reports it.
+			// The owners' unpin notifications are asynchronous, so the ledger drains after the last release. A lease that never drains is the leak, and the deadline reports it.
 			drained := time.Now().Add(30 * time.Second)
 			for rig.host.EventBusRetention() != retainedBefore && time.Now().Before(drained) {
 				time.Sleep(10 * time.Millisecond)

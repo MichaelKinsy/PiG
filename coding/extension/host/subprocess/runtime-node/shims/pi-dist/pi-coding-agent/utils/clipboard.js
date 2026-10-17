@@ -6,8 +6,13 @@ import { getNativeClipboard } from "../../../pi-tui.mjs";
 import { runClipboardCommand } from "./clipboard-command.js";
 import { isWSL } from "./wsl.js";
 const MAX_OSC52_ENCODED_LENGTH = 100_000;
+/**
+ * Remote sessions also emit OSC 52 so the client terminal receives the copy. PI_CLIPBOARD_OSC52=1
+ * covers remote clients that leave no SSH markers, such as multiplexer attaches (#10114, #10835)
+ * or IDE daemons (#10826).
+ */
 function isRemoteSession(env) {
-    return Boolean(env.SSH_CONNECTION || env.SSH_CLIENT || env.MOSH_CONNECTION);
+    return Boolean(env.SSH_CONNECTION || env.SSH_CLIENT || env.MOSH_CONNECTION || env.PI_CLIPBOARD_OSC52 === "1");
 }
 function emitOsc52(text) {
     const encoded = Buffer.from(text).toString("base64");
@@ -51,20 +56,21 @@ async function copyViaWindowsClipboard(text) {
 }
 /** Read plain text from the system clipboard. */
 export async function readClipboardText() {
+    const commands = [];
+    // Termux reports platform "android", not "linux" (#10391).
+    if (process.env.TERMUX_VERSION)
+        commands.push(["termux-clipboard-get", []]);
     if (platform() === "linux") {
-        const commands = [];
-        if (process.env.TERMUX_VERSION)
-            commands.push(["termux-clipboard-get", []]);
         if (process.env.WAYLAND_DISPLAY)
             commands.push(["wl-paste", ["--no-newline", "--type", "text"]]);
         if (process.env.DISPLAY) {
             commands.push(["xclip", ["-selection", "clipboard", "-out"]], ["xsel", ["--clipboard", "--output"]]);
         }
-        for (const [command, args] of commands) {
-            const bytes = await runClipboardCommand(command, args, { timeoutMs: 5000 });
-            if (bytes !== undefined)
-                return bytes.toString("utf8") || null;
-        }
+    }
+    for (const [command, args] of commands) {
+        const bytes = await runClipboardCommand(command, args, { timeoutMs: 5000 });
+        if (bytes !== undefined)
+            return bytes.toString("utf8") || null;
     }
     try {
         return (await getNativeClipboard()?.getText()) || null;
@@ -140,10 +146,10 @@ export async function copyToClipboard(text) {
         return;
     if (oversized)
         throw new Error("Clipboard unavailable: text exceeds the OSC 52 size limit");
+    if (env.TERMUX_VERSION) {
+        throw new Error("Clipboard unavailable: install the Termux:API app and `termux-api` package");
+    }
     if (p === "linux") {
-        if (env.TERMUX_VERSION) {
-            throw new Error("Clipboard unavailable: install the Termux:API app and `termux-api` package");
-        }
         if (env.WAYLAND_DISPLAY) {
             throw new Error("Clipboard unavailable: install `wl-clipboard` (`wl-copy`) or check Wayland access");
         }

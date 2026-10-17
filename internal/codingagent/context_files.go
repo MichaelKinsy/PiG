@@ -2,11 +2,11 @@
 package codingagent
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/internal/nodefs"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
@@ -67,19 +67,22 @@ func LoadProjectContextFiles(cwd, agentDir string) []ContextFile {
 		var ancestors []ContextFile
 		shadowed := findShadowedContextFile(cwd)
 		dir := cwd
+		var probe nodefs.PathProbe
+		clean := false
 		for {
-			if cf := loadContextFileFromDir(dir); cf != nil {
-				isShadowed := shadowed != "" && canonicalPath(cf.Path) == shadowed
+			if cf := loadContextFileProbed(&probe, dir); cf != nil {
+				// upstream: packages/coding-agent/src/core/resource-loader.ts:loadProjectContextFiles compares the directory's real path plus the file name, so a symlinked context file never equals the shadowed path.
+				isShadowed := shadowed != "" && filepath.Join(canonicalPath(dir), filepath.Base(cf.Path)) == shadowed
 				if _, dup := seen[cf.Path]; !dup && !isShadowed {
 					seen[cf.Path] = struct{}{}
 					ancestors = append([]ContextFile{*cf}, ancestors...)
 				}
 			}
-			parent := filepath.Dir(dir)
+			parent := nodefs.ParentDir(dir, clean)
 			if parent == dir {
 				break // reached root
 			}
-			dir = parent
+			dir, clean = parent, true
 		}
 		result = append(result, ancestors...)
 	}
@@ -89,9 +92,20 @@ func LoadProjectContextFiles(cwd, agentDir string) []ContextFile {
 
 // loadContextFileFromDir checks context candidates in priority order.
 // Returns the first match, or nil if none found.
-// Mirrors upstream resource-loader.ts:58-72 loadContextFileFromDir.
+// Mirrors upstream resource-loader.ts:184-202 loadContextFileFromDir.
 func loadContextFileFromDir(dir string) *ContextFile {
+	var probe nodefs.PathProbe
+	return loadContextFileProbed(&probe, dir)
+}
+
+// loadContextFileProbed is loadContextFileFromDir with the probe an ancestor walk reuses at every level.
+func loadContextFileProbed(probe *nodefs.PathProbe, dir string) *ContextFile {
 	for _, name := range contextCandidates {
+		// existsSync, then statSync, as Pi does: a missing candidate, the case in nearly every ancestor, costs one access(2)
+		// and neither a path string nor a FileInfo.
+		if !probe.Set(dir, name).Exists() {
+			continue
+		}
 		p := filepath.Join(dir, name)
 		info, err := os.Stat(p)
 		if err != nil || !info.Mode().IsRegular() {
@@ -99,7 +113,7 @@ func loadContextFileFromDir(dir string) *ContextFile {
 		}
 		data, err := os.ReadFile(p)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "warning: could not read %s: %v\n", p, err)
+			reportCouldNotRead(p, err)
 			continue
 		}
 		return &ContextFile{Path: p, Content: text.StripBom(string(data))}
@@ -125,7 +139,7 @@ func findShadowedContextFile(cwd string) string {
 	if worktreeContext == nil {
 		return ""
 	}
-	return canonicalPath(filepath.Join(mainRepoRoot, filepath.Base(worktreeContext.Path)))
+	return filepath.Join(mainRepoRoot, filepath.Base(worktreeContext.Path))
 }
 
 // canonicalPath resolves symlinks for worktree comparisons.

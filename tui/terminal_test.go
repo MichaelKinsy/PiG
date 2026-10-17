@@ -142,7 +142,7 @@ func TestReadInput_SwallowsKittyProtocolResponse(t *testing.T) {
 	defer func() { _ = w.Close() }()
 
 	go func() {
-		_, _ = w.Write([]byte("\x1b[?7ua"))
+		_, _ = w.WriteString("\x1b[?7ua")
 	}()
 
 	got, err := readTestInput(r)
@@ -234,7 +234,7 @@ func TestProcessTerminalForwardInputReportsEOF(t *testing.T) {
 		readErrors <- err
 	})
 
-	if _, err := w.Write([]byte("x")); err != nil {
+	if _, err := w.WriteString("x"); err != nil {
 		t.Fatalf("write input: %v", err)
 	}
 	if err := w.Close(); err != nil {

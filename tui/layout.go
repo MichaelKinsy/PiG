@@ -421,9 +421,9 @@ func paintScrollbar(box *LayoutBox, screen []string, totalWidth int) {
 		if row < box.Clip.Y || row >= box.Clip.Y+box.Clip.Height || row < 0 || row >= len(screen) {
 			continue
 		}
-		replacement := scrollView.ScrollbarTrackStyle()("│")
+		replacement := scrollView.ScrollbarTrackStyle("│")
 		if row >= geometry.ThumbTop && row < geometry.ThumbTop+geometry.ThumbHeight {
-			replacement = scrollView.ScrollbarThumbStyle()(thumbGlyph)
+			replacement = scrollView.ScrollbarThumbStyle(thumbGlyph)
 		}
 		screen[row] = replaceScrollbarCell(screen[row], geometry.Column, totalWidth, replacement, preserveTargetBackground)
 	}
@@ -455,7 +455,7 @@ func paintBox(box *LayoutBox, screen []string, totalWidth int) {
 			if box.Rect.X == 0 && box.Rect.Width >= totalWidth && (IsImageLine(line) || screen[row] == "") {
 				screen[row] = line
 			} else {
-				screen[row] = compositeTuiLine(screen[row], line, box.Rect.X, box.Rect.Width, totalWidth)
+				screen[row] = CompositeTuiLine(screen[row], line, box.Rect.X, box.Rect.Width, totalWidth)
 			}
 		}
 	}

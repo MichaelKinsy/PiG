@@ -1,0 +1,29 @@
+pkg:durable/images/node#NodePhotonImagesOptions	durable	no-go-symbol	
+pkg:durable/images/node#createNodePhotonImages	durable	child-gap	durable/images/node/node.go#CreateNodePhotonImages
+pkg:durable/images/node#createNodePhotonImages::call:0	durable	signature-mismatch	durable/images/node/node.go#CreateNodePhotonImages
+pkg:env/.#RemoteTerminal	env	no-go-symbol	
+pkg:env/.#RemoteTerminal::construct:0	env	child-gap	
+pkg:env/.#RemoteTerminal::property:close	env	child-gap	
+pkg:env/.#RemoteTerminal::property:close::call:0	env	child-gap	
+pkg:env/.#RemoteTerminal::property:exited	env	child-gap	
+pkg:env/.#RemoteTerminal::property:foreground	env	child-gap	
+pkg:env/.#RemoteTerminal::property:foreground::call:0	env	child-gap	
+pkg:env/.#RemoteTerminal::property:pid	env	child-gap	
+pkg:env/.#RemoteTerminal::property:resize	env	child-gap	
+pkg:env/.#RemoteTerminal::property:resize::call:0	env	child-gap	
+pkg:env/.#RemoteTerminal::property:write	env	child-gap	
+pkg:env/.#RemoteTerminal::property:write::call:0	env	child-gap	
+pkg:env/.#TerminalForeground	env	no-go-symbol	
+pkg:env/.#TerminalForeground::property:name	env	child-gap	
+pkg:env/.#TerminalForeground::property:pid	env	child-gap	
+pkg:env/.#TerminalOptions	env	no-go-symbol	
+pkg:env/.#TerminalOptions::property:argv	env	child-gap	
+pkg:env/.#TerminalOptions::property:cols	env	child-gap	
+pkg:env/.#TerminalOptions::property:cwd	env	child-gap	
+pkg:env/.#TerminalOptions::property:env	env	child-gap	
+pkg:env/.#TerminalOptions::property:inheritEnv	env	child-gap	
+pkg:env/.#TerminalOptions::property:onData	env	child-gap	
+pkg:env/.#TerminalOptions::property:onData::call:0	env	child-gap	
+pkg:env/.#TerminalOptions::property:rows	env	child-gap	
+pkg:env/.#openTerminal	env	no-go-symbol	
+pkg:env/.#openTerminal::call:0	env	child-gap	

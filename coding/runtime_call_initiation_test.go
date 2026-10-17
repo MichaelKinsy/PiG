@@ -38,7 +38,7 @@ func TestRuntimeReplacementMarksCallInitiationBeforeTheBeforeHook(t *testing.T) 
 			return actions.SwitchSessionContext(ctx, session.Path(), nil)
 		}},
 		{"fork", func(ctx context.Context) (extension.CancelledResult, error) {
-			return actions.ForkContext(ctx, entry.Base.ID, nil)
+			return actions.ForkContext(ctx, entry.Base().ID, nil)
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

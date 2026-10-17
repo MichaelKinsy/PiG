@@ -1,0 +1,526 @@
+[
+ {
+  "upstream": "packages/tui/src/components/box.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBoxRendersPaddedChildrenWithBackground"
+  ],
+  "upstream_reference": "packages/tui/src/components/box.ts",
+  "mutation": "tui/box.go: replace `return &Box{PaddingX: 1, PaddingY: 1}` with `return &Box{PaddingX: 0, PaddingY: 1}`; TestBoxRendersPaddedChildrenWithBackground fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/box.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBoxRendersPaddedChildrenWithBackground"
+  ],
+  "upstream_reference": "packages/tui/src/components/box.ts",
+  "mutation": "tui/box.go: replace `return &Box{PaddingX: 1, PaddingY: 1}` with `return &Box{PaddingX: 1, PaddingY: 0}`; TestBoxRendersPaddedChildrenWithBackground fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/box.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBoxRendersPaddedChildrenWithBackground"
+  ],
+  "upstream_reference": "packages/tui/src/components/box.ts",
+  "mutation": "tui/box.go: replace `return &Box{PaddingX: paddingX, PaddingY: paddingY, BgFn: bgFn}` with `return &Box{PaddingX: paddingY, PaddingY: paddingX, BgFn: bgFn}`; TestBoxRendersPaddedChildrenWithBackground fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/box.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBoxRendersPaddedChildrenWithBackground"
+  ],
+  "upstream_reference": "packages/tui/src/components/box.ts",
+  "mutation": "tui/box.go: replace `return &Box{PaddingX: paddingX, PaddingY: paddingY, BgFn: bgFn}` with `return &Box{PaddingX: paddingX, PaddingY: paddingY}`; TestBoxRendersPaddedChildrenWithBackground fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/box.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBoxRendersPaddedChildrenWithBackground"
+  ],
+  "upstream_reference": "packages/tui/src/components/box.ts",
+  "mutation": "tui/box.go: replace `b.BgFn = bgFn\n}` with `_ = bgFn\n}`; TestBoxRendersPaddedChildrenWithBackground fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/box.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBoxRendersPaddedChildrenWithBackground"
+  ],
+  "upstream_reference": "packages/tui/src/components/box.ts",
+  "mutation": "tui/box.go: replace `b.PaddingX = paddingX\n\tb.cache = nil` with `b.cache = nil`; TestBoxRendersPaddedChildrenWithBackground fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/box.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBoxAddRemoveClearAndInvalidateReachChildren"
+  ],
+  "upstream_reference": "packages/tui/src/components/box.ts",
+  "mutation": "tui/box.go: replace `for _, child := range b.children {\n\t\tchild.Invalidate()\n\t}` with `for _, child := range b.children[:1] {\n\t\tchild.Invalidate()\n\t}`; TestBoxAddRemoveClearAndInvalidateReachChildren fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/box.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBoxRendersPaddedChildrenWithBackground"
+  ],
+  "upstream_reference": "packages/tui/src/components/box.ts",
+  "mutation": "tui/box.go: replace `contentWidth := max(1, width-b.PaddingX*2)` with `contentWidth := max(1, width-b.PaddingX)`; TestBoxRendersPaddedChildrenWithBackground fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/box.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBoxRendersPaddedChildrenWithBackground"
+  ],
+  "upstream_reference": "packages/tui/src/components/box.ts",
+  "mutation": "tui/box.go: replace `contentWidth := max(1, width-b.PaddingX*2)` with `contentWidth := width - b.PaddingX*2`; TestBoxRendersPaddedChildrenWithBackground fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/box.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBoxRendersPaddedChildrenWithBackground",
+   "TestBoxAddRemoveClearAndInvalidateReachChildren"
+  ],
+  "upstream_reference": "packages/tui/src/components/box.ts",
+  "mutation": "tui/box.go: replace `leftPad := strings.Repeat(\" \", b.PaddingX)` with `leftPad := \" \"`; TestBoxAddRemoveClearAndInvalidateReachChildren, TestBoxRendersPaddedChildrenWithBackground fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/box.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBoxRendersPaddedChildrenWithBackground"
+  ],
+  "upstream_reference": "packages/tui/src/components/box.ts",
+  "mutation": "tui/box.go: replace `bgSample = b.BgFn(\"test\")` with `bgSample = \"\"`; TestBoxRendersPaddedChildrenWithBackground fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/box.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBoxRendersPaddedChildrenWithBackground"
+  ],
+  "upstream_reference": "packages/tui/src/components/box.ts",
+  "mutation": "tui/box.go: replace `cache.width != width ||` with `false ||`; TestBoxRendersPaddedChildrenWithBackground fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/box.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBoxRendersPaddedChildrenWithBackground"
+  ],
+  "upstream_reference": "packages/tui/src/components/box.ts",
+  "mutation": "tui/box.go: replace `cache.paddingY != b.PaddingY ||` with `false ||`; TestBoxRendersPaddedChildrenWithBackground fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/box.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBoxRendersPaddedChildrenWithBackground"
+  ],
+  "upstream_reference": "packages/tui/src/components/box.ts",
+  "mutation": "tui/box.go: replace `cache.bgSample != bgSample ||` with `false ||`; TestBoxRendersPaddedChildrenWithBackground fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/box.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBoxRendersPaddedChildrenWithBackground"
+  ],
+  "upstream_reference": "packages/tui/src/components/box.ts",
+  "mutation": "tui/box.go: replace `|| len(cache.childLines) != len(childLines) {` with `{`; TestBoxRendersPaddedChildrenWithBackground fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/box.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBoxRendersPaddedChildrenWithBackground"
+  ],
+  "upstream_reference": "packages/tui/src/components/box.ts",
+  "mutation": "tui/box.go: replace `for range b.PaddingY {\n\t\tresult = append(result, b.applyBg(\"\", width))\n\t}\n\tfor _, line` with `for _, line`; TestBoxRendersPaddedChildrenWithBackground fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/box.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBoxRendersPaddedChildrenWithBackground"
+  ],
+  "upstream_reference": "packages/tui/src/components/box.ts",
+  "mutation": "tui/box.go: replace `result = append(result, b.applyBg(leftPad+line, width))\n\t}\n\tfor range b.PaddingY {\n\t\tresult = append(result, b.applyBg(\"\", width))\n\t}` with `result = append(result, b.applyBg(leftPad+line, width))\n\t}`; TestBoxRendersPaddedChildrenWithBackground fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/cancellable-loader.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCancellableLoaderSignalAndDispose"
+  ],
+  "upstream_reference": "packages/tui/src/components/cancellable-loader.ts",
+  "mutation": "tui/cancellable_loader.go: replace `func (cl *CancellableLoader) Dispose() { cl.Stop() }` with `func (cl *CancellableLoader) Dispose() { cl.cancel() }`; TestCancellableLoaderSignalAndDispose fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/cancellable-loader.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCancellableLoaderSignalAndDispose"
+  ],
+  "upstream_reference": "packages/tui/src/components/cancellable-loader.ts",
+  "mutation": "tui/cancellable_loader.go: replace `func (cl *CancellableLoader) Dispose() { cl.Stop() }` with `func (cl *CancellableLoader) Dispose() {}`; TestCancellableLoaderSignalAndDispose fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/cancellable-loader.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCancellableLoaderSignalAndDispose"
+  ],
+  "upstream_reference": "packages/tui/src/components/cancellable-loader.ts",
+  "mutation": "tui/cancellable_loader.go: replace `func (cl *CancellableLoader) Signal() context.Context { return cl.ctx }` with `func (cl *CancellableLoader) Signal() context.Context { return context.Background() }`; TestCancellableLoaderSignalAndDispose fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/cancellable-loader.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCancellableLoaderSignalAndDispose"
+  ],
+  "upstream_reference": "packages/tui/src/components/cancellable-loader.ts",
+  "mutation": "tui/cancellable_loader.go: replace `func (cl *CancellableLoader) Aborted() bool { return cl.ctx.Err() != nil }` with `func (cl *CancellableLoader) Aborted() bool { return false }`; TestCancellableLoaderSignalAndDispose fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/cancellable-loader.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCancellableLoaderSignalAndDispose"
+  ],
+  "upstream_reference": "packages/tui/src/components/cancellable-loader.ts",
+  "mutation": "tui/cancellable_loader.go: replace `func (cl *CancellableLoader) Context() context.Context { return cl.ctx }` with `func (cl *CancellableLoader) Context() context.Context { return context.Background() }`; TestCancellableLoaderSignalAndDispose fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/cancellable-loader.ts",
+  "package": "./tui",
+  "tests": [
+   "TestCancellableLoaderSignalAndDispose"
+  ],
+  "upstream_reference": "packages/tui/src/components/cancellable-loader.ts",
+  "mutation": "tui/cancellable_loader.go: replace `cl.cancel()\n\tif cl.OnAbort` with `if cl.OnAbort`; TestCancellableLoaderSignalAndDispose fails."
+ },
+ {
+  "upstream": "packages/tui/src/oklab.ts",
+  "package": "./tui",
+  "tests": [
+   "TestOklabToOkhslLightnessInvertsTheToe"
+  ],
+  "upstream_reference": "packages/tui/src/oklab.ts",
+  "mutation": "tui/oklab.go: replace `float64(okhslK3*x) - okhslK1` with `float64(okhslK3*x) + okhslK1`; TestOklabToOkhslLightnessInvertsTheToe fails."
+ },
+ {
+  "upstream": "packages/tui/src/oklab.ts",
+  "package": "./tui",
+  "tests": [
+   "TestOklabToOkhslLightnessInvertsTheToe"
+  ],
+  "upstream_reference": "packages/tui/src/oklab.ts",
+  "mutation": "tui/oklab.go: replace `0.5 * (t + math.Sqrt(` with `0.4 * (t + math.Sqrt(`; TestOklabToOkhslLightnessInvertsTheToe fails."
+ },
+ {
+  "upstream": "packages/tui/src/oklab.ts",
+  "package": "./tui",
+  "tests": [
+   "TestOklabToOkhslLightnessInvertsTheToe"
+  ],
+  "upstream_reference": "packages/tui/src/oklab.ts",
+  "mutation": "tui/oklab.go: replace `math.Sqrt(float64(t*t)+float64(4*okhslK2*okhslK3*x))` with `math.Sqrt(float64(t*t)-float64(4*okhslK2*okhslK3*x))`; TestOklabToOkhslLightnessInvertsTheToe fails."
+ },
+ {
+  "upstream": "packages/tui/src/oklab.ts",
+  "package": "./tui",
+  "tests": [
+   "TestOklabToOkhslLightnessInvertsTheToe"
+  ],
+  "upstream_reference": "packages/tui/src/oklab.ts",
+  "mutation": "tui/oklab.go: replace `float64(4*okhslK2*okhslK3*x)` with `float64(2*okhslK2*okhslK3*x)`; TestOklabToOkhslLightnessInvertsTheToe fails."
+ },
+ {
+  "upstream": "packages/tui/src/oklab.ts",
+  "package": "./tui",
+  "tests": [
+   "TestOklabToOkhslLightnessInvertsTheToe"
+  ],
+  "upstream_reference": "packages/tui/src/oklab.ts",
+  "mutation": "tui/oklab.go: replace `0.5 * (t + math.Sqrt(` with `0.5 * (t - math.Sqrt(`; TestOklabToOkhslLightnessInvertsTheToe fails."
+ },
+ {
+  "upstream": "packages/tui/src/utils.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSliceByColumnRespectsCellsAnsiAndStrict"
+  ],
+  "upstream_reference": "packages/tui/src/utils.ts",
+  "mutation": "tui/widthx/slice.go: replace `return SliceWithWidth(line, startCol, length, strict).Text` with `return SliceWithWidth(line, startCol, length, !strict).Text`; TestSliceByColumnRespectsCellsAnsiAndStrict fails."
+ },
+ {
+  "upstream": "packages/tui/src/utils.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSliceByColumnRespectsCellsAnsiAndStrict"
+  ],
+  "upstream_reference": "packages/tui/src/utils.ts",
+  "mutation": "tui/widthx/slice.go: replace `endCol := startCol + length` with `endCol := startCol + length + 1`; TestSliceByColumnRespectsCellsAnsiAndStrict fails."
+ },
+ {
+  "upstream": "packages/tui/src/utils.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSliceByColumnRespectsCellsAnsiAndStrict"
+  ],
+  "upstream_reference": "packages/tui/src/utils.ts",
+  "mutation": "tui/widthx/slice.go: replace `} else if currentCol < startCol {\n\t\t\t\tpendingAnsi += code\n\t\t\t}` with `}`; TestSliceByColumnRespectsCellsAnsiAndStrict fails."
+ },
+ {
+  "upstream": "packages/tui/src/utils.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSliceByColumnRespectsCellsAnsiAndStrict"
+  ],
+  "upstream_reference": "packages/tui/src/utils.ts",
+  "mutation": "tui/widthx/slice.go: replace `fits := !strict || currentCol+w <= endCol` with `fits := !strict || currentCol+w < endCol`; TestSliceByColumnRespectsCellsAnsiAndStrict fails."
+ },
+ {
+  "upstream": "packages/tui/src/utils.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSliceByColumnRespectsCellsAnsiAndStrict"
+  ],
+  "upstream_reference": "packages/tui/src/utils.ts",
+  "mutation": "tui/widthx/slice.go: replace `fits := !strict || currentCol+w <= endCol` with `fits := true`; TestSliceByColumnRespectsCellsAnsiAndStrict fails."
+ },
+ {
+  "upstream": "packages/tui/src/utils.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSliceByColumnRespectsCellsAnsiAndStrict"
+  ],
+  "upstream_reference": "packages/tui/src/utils.ts",
+  "mutation": "tui/widthx/slice.go: replace `inRange := currentCol >= startCol && currentCol < endCol` with `inRange := currentCol > startCol && currentCol < endCol`; TestSliceByColumnRespectsCellsAnsiAndStrict fails."
+ },
+ {
+  "upstream": "packages/tui/src/utils.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSliceByColumnRespectsCellsAnsiAndStrict"
+  ],
+  "upstream_reference": "packages/tui/src/utils.ts",
+  "mutation": "tui/widthx/slice.go: replace `resultWidth += w` with `resultWidth++`; TestSliceByColumnRespectsCellsAnsiAndStrict fails."
+ },
+ {
+  "upstream": "packages/tui/src/utils.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSliceByColumnRespectsCellsAnsiAndStrict"
+  ],
+  "upstream_reference": "packages/tui/src/utils.ts",
+  "mutation": "tui/widthx/slice.go: replace `if pendingAnsi != \"\" {\n\t\t\t\t\tresult.WriteString(pendingAnsi)\n\t\t\t\t\tpendingAnsi = \"\"\n\t\t\t\t}` with ``; TestSliceByColumnRespectsCellsAnsiAndStrict fails."
+ },
+ {
+  "upstream": "packages/tui/src/utils.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStyleTextWithAnsiOpensAndClosesInReverse"
+  ],
+  "upstream_reference": "packages/tui/src/utils.ts",
+  "mutation": "tui/colors.go: replace `suffix = \"\\x1b[39m\"` with `suffix = \"\\x1b[0m\"`; TestStyleTextWithAnsiOpensAndClosesInReverse fails."
+ },
+ {
+  "upstream": "packages/tui/src/utils.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStyleTextWithAnsiOpensAndClosesInReverse"
+  ],
+  "upstream_reference": "packages/tui/src/utils.ts",
+  "mutation": "tui/colors.go: replace `suffix = \"\\x1b[49m\" + suffix` with `suffix = suffix + \"\\x1b[49m\"`; TestStyleTextWithAnsiOpensAndClosesInReverse fails."
+ },
+ {
+  "upstream": "packages/tui/src/utils.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStyleTextWithAnsiOpensAndClosesInReverse"
+  ],
+  "upstream_reference": "packages/tui/src/utils.ts",
+  "mutation": "tui/colors.go: replace `prefix.WriteString(\"\\x1b[1m\")` with `prefix.WriteString(\"\\x1b[2m\")`; TestStyleTextWithAnsiOpensAndClosesInReverse fails."
+ },
+ {
+  "upstream": "packages/tui/src/utils.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStyleTextWithAnsiOpensAndClosesInReverse"
+  ],
+  "upstream_reference": "packages/tui/src/utils.ts",
+  "mutation": "tui/colors.go: replace `if attributes.Bold || attributes.Dim {` with `if attributes.Bold {`; TestStyleTextWithAnsiOpensAndClosesInReverse fails."
+ },
+ {
+  "upstream": "packages/tui/src/utils.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStyleTextWithAnsiOpensAndClosesInReverse"
+  ],
+  "upstream_reference": "packages/tui/src/utils.ts",
+  "mutation": "tui/colors.go: replace `suffix = \"\\x1b[23m\" + suffix` with `suffix = suffix + \"\\x1b[23m\"`; TestStyleTextWithAnsiOpensAndClosesInReverse fails."
+ },
+ {
+  "upstream": "packages/tui/src/utils.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStyleTextWithAnsiOpensAndClosesInReverse"
+  ],
+  "upstream_reference": "packages/tui/src/utils.ts",
+  "mutation": "tui/colors.go: replace `prefix.WriteString(\"\\x1b[4m\")\n\t\tsuffix = \"\\x1b[24m\" + suffix` with `prefix.WriteString(\"\\x1b[4m\")\n\t\tsuffix = \"\\x1b[23m\" + suffix`; TestStyleTextWithAnsiOpensAndClosesInReverse fails."
+ },
+ {
+  "upstream": "packages/tui/src/utils.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStyleTextWithAnsiOpensAndClosesInReverse"
+  ],
+  "upstream_reference": "packages/tui/src/utils.ts",
+  "mutation": "tui/colors.go: replace `suffix = \"\\x1b[27m\" + suffix` with `suffix = \"\\x1b[28m\" + suffix`; TestStyleTextWithAnsiOpensAndClosesInReverse fails."
+ },
+ {
+  "upstream": "packages/tui/src/utils.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStyleTextWithAnsiOpensAndClosesInReverse"
+  ],
+  "upstream_reference": "packages/tui/src/utils.ts",
+  "mutation": "tui/colors.go: replace `suffix = \"\\x1b[29m\" + suffix` with `suffix = suffix + \"\\x1b[29m\"`; TestStyleTextWithAnsiOpensAndClosesInReverse fails."
+ },
+ {
+  "upstream": "packages/tui/src/utils.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStyleTextWithAnsiOpensAndClosesInReverse"
+  ],
+  "upstream_reference": "packages/tui/src/utils.ts",
+  "mutation": "tui/colors.go: replace `prefix.WriteString(\"\\x1b[2m\")` with `prefix.WriteString(\"\\x1b[1m\")`; TestStyleTextWithAnsiOpensAndClosesInReverse fails."
+ },
+ {
+  "upstream": "packages/tui/src/utils.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStyleTextWithAnsiOpensAndClosesInReverse"
+  ],
+  "upstream_reference": "packages/tui/src/utils.ts",
+  "mutation": "tui/colors.go: replace `prefix.WriteString(fgAnsi)` with `prefix.WriteString(bgAnsi)`; TestStyleTextWithAnsiOpensAndClosesInReverse fails."
+ },
+ {
+  "upstream": "packages/tui/src/utils.ts",
+  "package": "./tui",
+  "tests": [
+   "TestStyleTextWithAnsiOpensAndClosesInReverse"
+  ],
+  "upstream_reference": "packages/tui/src/utils.ts",
+  "mutation": "tui/colors.go: replace `return prefix.String() + text + suffix` with `return prefix.String() + text`; TestStyleTextWithAnsiOpensAndClosesInReverse fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/box.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBoxAddRemoveClearAndInvalidateReachChildren"
+  ],
+  "upstream_reference": "packages/tui/src/components/box.ts",
+  "mutation": "tui/box.go: replace `b.children = append(b.children, component)\n\tb.cache = nil\n\tb.Invalidate()` with `b.children = append(b.children, component)\n\tb.cache = nil`; TestBoxAddRemoveClearAndInvalidateReachChildren fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/box.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBoxRendersPaddedChildrenWithBackground"
+  ],
+  "upstream_reference": "packages/tui/src/components/box.ts",
+  "mutation": "tui/box.go: replace `if len(b.children) == 0 {\n\t\treturn []string{}\n\t}` with `if len(b.children) == 0 {\n\t\treturn nil\n\t}`; TestBoxRendersPaddedChildrenWithBackground fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/box.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBoxRendersPaddedChildrenWithBackground"
+  ],
+  "upstream_reference": "packages/tui/src/components/box.ts",
+  "mutation": "tui/box.go: replace `if len(childLines) == 0 {\n\t\treturn []string{}\n\t}` with `if len(childLines) == 0 {\n\t\treturn nil\n\t}`; TestBoxRendersPaddedChildrenWithBackground fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/box.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBoxRendersPaddedChildrenWithBackground"
+  ],
+  "upstream_reference": "packages/tui/src/components/box.ts",
+  "mutation": "tui/box.go: replace `cache.paddingX != b.PaddingX ||` with `false ||`; TestBoxRendersPaddedChildrenWithBackground fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/box.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBoxRendersPaddedChildrenWithBackground"
+  ],
+  "upstream_reference": "packages/tui/src/components/box.ts",
+  "mutation": "tui/box.go: replace `if cache.childLines[i] != childLines[i] {` with `if i < 0 {`; TestBoxRendersPaddedChildrenWithBackground fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/box.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBoxRendersPaddedChildrenWithBackground",
+   "TestBoxAddRemoveClearAndInvalidateReachChildren"
+  ],
+  "upstream_reference": "packages/tui/src/components/box.ts",
+  "mutation": "tui/box.go: replace `padded := line + strings.Repeat(\" \", max(0, width-widthx.VisibleWidth(line)))\n\tif b.BgFn != nil {` with `_ = widthx.VisibleWidth\n\tpadded := line\n\tif b.BgFn != nil {`; TestBoxAddRemoveClearAndInvalidateReachChildren, TestBoxRendersPaddedChildrenWithBackground fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/box.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBoxRendersPaddedChildrenWithBackground"
+  ],
+  "upstream_reference": "packages/tui/src/components/box.ts",
+  "mutation": "tui/box.go: replace `return b.cache.lines` with `return b.cache.lines[:0]`; TestBoxRendersPaddedChildrenWithBackground fails."
+ },
+ {
+  "upstream": "packages/tui/src/utils.ts",
+  "package": "./tui",
+  "tests": [
+   "TestSliceByColumnRespectsCellsAnsiAndStrict"
+  ],
+  "upstream_reference": "packages/tui/src/utils.ts",
+  "mutation": "tui/widthx/slice.go: replace `result.WriteString(pendingAnsi)\n\t\t\t\tresult.WriteString(code)\n\t\t\t\tpendingAnsi = \"\"` with `result.WriteString(code)\n\t\t\t\tresult.WriteString(pendingAnsi)\n\t\t\t\tpendingAnsi = \"\"`; TestSliceByColumnRespectsCellsAnsiAndStrict fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/box.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBoxAddRemoveClearAndInvalidateReachChildren"
+  ],
+  "upstream_reference": "packages/tui/src/components/box.ts",
+  "mutation": "tui/box.go: replace `if child == component {\n\t\t\tb.children = append(b.children[:i], b.children[i+1:]...)\n\t\t\tb.cache = nil\n\t\t\tb.Invalidate()\n\t\t\treturn` with `if child == component {\n\t\t\tb.children = append(b.children[:i], b.children[i+1:]...)\n\t\t\tb.cache = nil\n\t\t\treturn`; TestBoxAddRemoveClearAndInvalidateReachChildren fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/box.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBoxAddRemoveClearAndInvalidateReachChildren"
+  ],
+  "upstream_reference": "packages/tui/src/components/box.ts",
+  "mutation": "tui/box.go: replace `b.children = nil\n\tb.cache = nil\n\tb.Invalidate()` with `b.cache = nil\n\tb.Invalidate()`; TestBoxAddRemoveClearAndInvalidateReachChildren fails."
+ },
+ {
+  "upstream": "packages/tui/src/components/box.ts",
+  "package": "./tui",
+  "tests": [
+   "TestBoxAddRemoveClearAndInvalidateReachChildren"
+  ],
+  "upstream_reference": "packages/tui/src/components/box.ts",
+  "mutation": "tui/box.go: replace `b.children = nil\n\tb.cache = nil\n\tb.Invalidate()` with `b.children = nil\n\tb.cache = nil`; TestBoxAddRemoveClearAndInvalidateReachChildren fails."
+ }
+]

@@ -80,7 +80,7 @@ func TestKeybindingsManagerSaveRoundTrip(t *testing.T) {
 	restoreTUIKeybindings(t)
 	dir := t.TempDir()
 	path := filepath.Join(dir, "keybindings.json")
-	km := NewKeybindingsManager("")
+	km := NewKeybindingsManagerFromBindings(nil, "")
 	km.SetUserBindings(map[string][]KeyID{
 		"app.tools.expand":       {"ctrl+g"},
 		"app.model.cycleForward": {"ctrl+l"},
@@ -90,25 +90,24 @@ func TestKeybindingsManagerSaveRoundTrip(t *testing.T) {
 	}
 	loaded := NewKeybindingsManager(dir)
 	loaded.configPath = path
-	if err := loaded.Reload(); err != nil {
-		t.Fatal(err)
-	}
-	if got := loaded.Get("app.tools.expand"); len(got) != 1 || got[0] != "ctrl+g" {
+	loaded.Reload()
+	if got := loaded.GetKeys("app.tools.expand"); len(got) != 1 || got[0] != "ctrl+g" {
 		t.Fatalf("loaded tools.expand = %v", got)
 	}
-	if got := loaded.Get("app.model.cycleForward"); len(got) != 1 || got[0] != "ctrl+l" {
+	if got := loaded.GetKeys("app.model.cycleForward"); len(got) != 1 || got[0] != "ctrl+l" {
 		t.Fatalf("loaded model.cycleForward = %v", got)
 	}
 }
 
+// Pi: packages/tui/src/keybindings.ts:286 (KeybindingsManager.getConflicts).
 func TestKeybindingsManagerConflictDetection(t *testing.T) {
 	restoreTUIKeybindings(t)
-	km := NewKeybindingsManager("")
+	km := NewKeybindingsManagerFromBindings(nil, "")
 	km.SetUserBindings(map[string][]KeyID{
 		"app.tools.expand": {"ctrl+g"},
 		"app.model.select": {"ctrl+g"},
 	})
-	conflicts := km.Conflicts()
+	conflicts := km.GetConflicts()
 	if len(conflicts) != 1 {
 		t.Fatalf("len(conflicts) = %d want 1", len(conflicts))
 	}
@@ -119,7 +118,7 @@ func TestKeybindingsManagerConflictDetection(t *testing.T) {
 
 func TestClassifyKeyWithBindingsUsesOverrides(t *testing.T) {
 	restoreTUIKeybindings(t)
-	km := NewKeybindingsManager("")
+	km := NewKeybindingsManagerFromBindings(nil, "")
 	km.SetUserBindings(map[string][]KeyID{
 		"app.tools.expand": {"ctrl+g"},
 	})
@@ -139,7 +138,7 @@ func TestKeybindingsManagerSaveEncodesJSON(t *testing.T) {
 	restoreTUIKeybindings(t)
 	dir := t.TempDir()
 	path := filepath.Join(dir, "keybindings.json")
-	km := NewKeybindingsManager("")
+	km := NewKeybindingsManagerFromBindings(nil, "")
 	km.SetUserBindings(map[string][]KeyID{"app.tools.expand": {"ctrl+g", "ctrl+o"}})
 	if err := km.Save(path); err != nil {
 		t.Fatal(err)
@@ -163,6 +162,7 @@ func TestKeybindingsManagerSaveEncodesJSON(t *testing.T) {
 // them up. Regression marker for the registry-wiring refactor:
 // without syncToTUI, pig would happily parse tui.* keys but ignore
 // them at dispatch time.
+// Pi: packages/tui/src/keybindings.ts:270 (KeybindingsManager.matches).
 func TestKeybindingsManagerSyncsTuiOverridesToGlobal(t *testing.T) {
 	// Snapshot global TUI manager so the test doesn't leak.
 	prev := tui.GetTUIKeybindings()
@@ -253,19 +253,20 @@ func TestKeybindingsManagerLegacyShortNamesMigrateTui(t *testing.T) {
 
 func TestResolvedBindingsReturnsDetachedSnapshot(t *testing.T) {
 	manager := NewKeybindingsManager(t.TempDir())
-	resolved := manager.ResolvedBindings()
+	resolved := manager.GetResolvedBindings()
 	if len(resolved["app.clear"]) == 0 {
 		t.Fatal("app.clear has no resolved binding")
 	}
 	resolved["app.clear"][0] = "mutated"
-	if manager.Get("app.clear")[0] == "mutated" {
+	if manager.GetKeys("app.clear")[0] == "mutated" {
 		t.Fatal("ResolvedBindings exposed the manager's backing slice")
 	}
 }
 
+// Pi: packages/coding-agent/src/core/keybindings.ts:391 (KeybindingsManager.getResolvedBindings).
 func TestNilKeybindingsManagerHasEmptyResolvedBindings(t *testing.T) {
 	var manager *KeybindingsManager
-	if got := manager.ResolvedBindings(); got != nil {
+	if got := manager.GetResolvedBindings(); got != nil {
 		t.Fatalf("nil manager bindings = %v, want nil", got)
 	}
 }
@@ -328,7 +329,7 @@ func TestKeybindingsManagerResolvesKittyBaseLayoutKey(t *testing.T) {
 		}
 	}
 
-	custom := NewKeybindingsManager("")
+	custom := NewKeybindingsManagerFromBindings(nil, "")
 	custom.SetUserBindings(map[string][]KeyID{"app.tools.expand": {"ctrl+g"}})
 	// Ctrl+П (п = 1087) sits on the Latin g key.
 	if got := custom.Resolve("\x1b[1087::103;5u"); got != "app.tools.expand" {
@@ -336,6 +337,7 @@ func TestKeybindingsManagerResolvesKittyBaseLayoutKey(t *testing.T) {
 	}
 }
 
+// Pi: packages/tui/src/keybindings.ts:270 (KeybindingsManager.matches).
 func TestKeybindingsManagerUsesModeAwareSharedMatcher(t *testing.T) {
 	restoreTUIKeybindings(t)
 	tui.SetKittyProtocolActive(false)
@@ -345,7 +347,7 @@ func TestKeybindingsManagerUsesModeAwareSharedMatcher(t *testing.T) {
 		t.Fatal("legacy ESC CR did not match alt+enter follow-up")
 	}
 
-	custom := NewKeybindingsManager("")
+	custom := NewKeybindingsManagerFromBindings(nil, "")
 	custom.SetUserBindings(map[string][]KeyID{"app.tools.expand": {"alt+a"}})
 	if !custom.Matches("\x1ba", "app.tools.expand") {
 		t.Fatal("legacy ESC a did not match custom alt+a")
@@ -376,4 +378,36 @@ func restoreTUIKeybindings(t *testing.T) {
 		_ = DefaultKeybindingsManager()
 		tui.SetTUIKeybindings(previous)
 	})
+}
+
+// tui keybindings.ts getDefinition, getConflicts and getUserBindings: a definition by id, conflicts that name their keybindings (and are copies), and a copy of the user bindings.
+// Pi: packages/tui/src/keybindings.ts:295 (KeybindingsManager.getUserBindings).
+func TestKeybindingsManagerGetDefinitionConflictsAndUserBindings(t *testing.T) {
+	restoreTUIKeybindings(t)
+	km := NewKeybindingsManagerFromBindings(nil, "")
+	definition, ok := km.GetDefinition("app.tools.expand")
+	if !ok || definition.Description != "Toggle tool output" || len(definition.DefaultKeys) != 1 || definition.DefaultKeys[0] != "ctrl+o" {
+		t.Fatalf("GetDefinition(app.tools.expand) = %+v, %v", definition, ok)
+	}
+	if _, ok := km.GetDefinition("app.nope"); ok {
+		t.Fatal("an unknown keybinding has no definition")
+	}
+	km.SetUserBindings(map[string][]KeyID{"app.tools.expand": {"ctrl+g"}, "app.model.select": {"ctrl+g"}})
+	conflicts := km.GetConflicts()
+	if len(conflicts) != 1 || conflicts[0].Key != "ctrl+g" || len(conflicts[0].Keybindings) != 2 {
+		t.Fatalf("GetConflicts = %+v, want ctrl+g claimed by two keybindings", conflicts)
+	}
+	conflicts[0].Keybindings[0] = "changed"
+	if km.GetConflicts()[0].Keybindings[0] == "changed" {
+		t.Fatal("GetConflicts must return copies")
+	}
+	user := km.GetUserBindings()
+	if len(user) != 2 || user["app.tools.expand"][0] != "ctrl+g" {
+		t.Fatalf("GetUserBindings = %v", user)
+	}
+	user["app.tools.expand"][0] = "changed"
+	delete(user, "app.model.select")
+	if got := km.GetUserBindings(); len(got) != 2 || got["app.tools.expand"][0] != "ctrl+g" {
+		t.Fatalf("GetUserBindings is not a copy: %v", got)
+	}
 }

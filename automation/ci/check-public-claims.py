@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 """Flag public claims that the repository's own evidence contradicts.
 
@@ -64,7 +63,7 @@ BYTE_PHRASES = [
     r"\bbyte[- ]for[- ]byte\b",
     r"\bbyte[- ]identical\b",
 ]
-USER_FACING = ("README.md", "CHANGELOG.md", "docs/site/", "internal/pigdocs/content/")  # and Go strings
+USER_FACING = ("README.md", "CHANGELOG.md", "changelog.d/", "docs/site/", "internal/pigdocs/content/")  # and Go strings; changelog.d fragments become CHANGELOG.md and the bug ledger
 TOOL_DEFINITIONS = re.compile(r"\btool definitions\b", re.IGNORECASE)
 
 # Claims that need a recorded, public decision (AGENTS.md "Public project
@@ -87,8 +86,20 @@ NEGATION = re.compile(
 )
 
 # (path, text on the line, reason). Each entry must still match a line, so the
-# list cannot outlive the text it excuses.
-ALLOWED: list[tuple[str, str, str]] = []
+# list cannot outlive the text it excuses. An entry excuses a phrase or a number
+# finding on that line.
+ALLOWED: list[tuple[str, str, str]] = [
+    (
+        "docs/parity/gap-closure/ledger-breakdown.md",
+        "| 1 hand port |",
+        "the share of closed rows whose closure class is a hand port, in a generated table; it is not a porting or verification figure",
+    ),
+    (
+        "docs/site/docs/bug-ledger.md",
+        "for the forbidden phrase 'same requests'",
+        "the root cause of BF-8a25539 is the commit message of the change that removed that phrase from a changelog fragment; it quotes the phrase and makes no claim",
+    ),
+]
 
 # Point-in-time records keep the Pi release they were written against. The list
 # is data, so a new file is checked until someone reviews it into the list.
@@ -100,6 +111,12 @@ PI_VERSION = re.compile(r"\bPi v?(\d+\.\d+(?:\.\d+)?)\b")
 TAG_VERSION = re.compile(r"(?:earendil-works/pi/releases/tag/v|pi-coding-agent@|Pi%20\w+-)(\d+\.\d+\.\d+)")
 NUMBER_CONTEXT = re.compile(r"\b(?:port(?:ed|ing)?|parity|coverage|verif\w*|intended-portable)\b", re.IGNORECASE)
 PERCENT = re.compile(r"(?<![\w.])(\d+(?:\.\d+)?)\s?%")
+SCOPE_LINE = re.compile(
+    r"^- \*\*[^\n]*?:\*\* (\d+) / (\d+) intended-portable files ✅ \((\d+\.\d)%\) from (\d+) rows; "
+    r"(\d+) behavioral \((\d+\.\d)%\)",
+    re.MULTILINE,
+)
+PACKAGE_ROW = re.compile(r"^\| `[^`]+` \|(?: \d+ \|){6} (\d+\.\d)% \| (\d+\.\d)% \|$", re.MULTILINE)
 RATIO = re.compile(r"\b(\d+)\s*(?:/|of)\s*(\d+)\s+(?:intended-portable|upstream files|PORT_MAP|ported)")
 
 SKIP_DIRS = {"node_modules", "vendor", "public", ".next", "out"}
@@ -124,6 +141,10 @@ class Coverage:
     porting_pct: str
     behavioral: int
     behavioral_pct: str
+    # Every other figure the generated block states: the per-scope bullet lines and the
+    # per-package table. They are as generated as the headline, so prose may quote them.
+    pcts: frozenset[str] = frozenset()
+    pairs: frozenset[tuple[int, int]] = frozenset()
 
 
 @dataclass
@@ -153,13 +174,22 @@ def coverage_block(root: pathlib.Path) -> Coverage:
     if not match:
         sys.exit("public-claims: AGENTS.md has no generated coverage summary; run: make generate (or: make coverage RESULTS=)")
     ported, intended, porting_pct, behavioral, behavioral_pct = match.groups()
-    return Coverage(int(ported), int(intended), porting_pct, int(behavioral), behavioral_pct)
+    block = agents[match.start():agents.find("<!-- END COVERAGE -->", match.start())]
+    pcts = {porting_pct, behavioral_pct}
+    pairs = {(int(ported), int(intended)), (int(behavioral), int(ported))}
+    for scope in SCOPE_LINE.finditer(block):
+        s_ported, s_intended, s_pct, _rows, s_behavioral, s_bpct = scope.groups()
+        pcts.update((s_pct, s_bpct))
+        pairs.update(((int(s_ported), int(s_intended)), (int(s_behavioral), int(s_ported))))
+    for row in PACKAGE_ROW.finditer(block):
+        pcts.update(row.groups())
+    return Coverage(int(ported), int(intended), porting_pct, int(behavioral), behavioral_pct, frozenset(pcts), frozenset(pairs))
 
 
 def public_files(root: pathlib.Path) -> list[pathlib.Path]:
     files = [p for p in sorted(root.glob("*.md")) if p.name not in SKIP_ROOT_FILES]
     files += [root / name for name in (".github/CODE_OF_CONDUCT.md", ".github/CONTRIBUTING.md", ".github/SECURITY.md", ".github/SUPPORT.md") if (root / name).is_file()]
-    for base in ("docs", "internal/pigdocs/content"):
+    for base in ("docs", "internal/pigdocs/content", "changelog.d"):
         for directory, subdirs, names in os.walk(root / base):
             subdirs[:] = sorted(d for d in subdirs if d not in SKIP_DIRS)
             files += [pathlib.Path(directory) / n for n in sorted(names) if n.endswith((".md", ".tsx", ".ts"))]
@@ -196,9 +226,10 @@ def piglet_help_commands(root: pathlib.Path) -> set[str]:
     if not path.exists():
         sys.exit("public-claims: coding/piglet/main.go is missing; cannot derive pig piglet --help")
     source = path.read_text(encoding="utf-8")
-    help_function = re.search(r"func printHelp\(w io\.Writer\) \{(?P<body>.*?)\n\}", source, re.DOTALL)
+    # The usage text is the pigletUsageText constant; printHelp only filters it.
+    help_function = re.search(r"const pigletUsageText = (?P<body>`[^`]*`)", source)
     if not help_function:
-        sys.exit("public-claims: coding/piglet/main.go has no parseable printHelp")
+        sys.exit("public-claims: coding/piglet/main.go has no parseable pigletUsageText")
     commands = set()
     for token in GO_TOKEN.finditer(help_function.group("body")):
         literal = token.group("string")
@@ -208,6 +239,10 @@ def piglet_help_commands(root: pathlib.Path) -> set[str]:
         if literal.startswith('"'):
             body = body.replace(r"\n", "\n")
         commands.update(PIGLET_COMMAND.findall(body))
+    # printHelp prints the usage constant; its entries are the commands the help exposes.
+    usage = re.search(r"const pigletUsageText = `(?P<body>[^`]*)`", source)
+    if usage:
+        commands.update(PIGLET_COMMAND.findall(usage.group("body")))
     if not commands:
         sys.exit("public-claims: pig piglet --help exposes no commands")
     return commands
@@ -268,14 +303,14 @@ def number_findings(line: str, cov: Coverage) -> list[str]:
     if not NUMBER_CONTEXT.search(line):
         return []
     problems = []
-    current = {cov.porting_pct, cov.behavioral_pct}
+    current = {cov.porting_pct, cov.behavioral_pct, *cov.pcts}
     for match in PERCENT.finditer(line):
         value = match.group(1)
         if f"{float(value):.1f}" not in current:
             problems.append(f"{value}% is not a current porting ({cov.porting_pct}%) or verification ({cov.behavioral_pct}%) figure")
     for match in RATIO.finditer(line):
         pair = (int(match.group(1)), int(match.group(2)))
-        if pair not in {(cov.ported, cov.intended), (cov.behavioral, cov.ported)}:
+        if pair not in {(cov.ported, cov.intended), (cov.behavioral, cov.ported), *cov.pairs}:
             problems.append(f"{pair[0]}/{pair[1]} is not the current {cov.ported}/{cov.intended} porting or {cov.behavioral}/{cov.ported} verification ratio")
     return problems
 
@@ -329,7 +364,7 @@ def apply_allowlist(root: pathlib.Path, findings: list[Finding]) -> tuple[list[F
     for finding in findings:
         excused = False
         for index, (path, needle, _) in enumerate(ALLOWED):
-            if finding.kind == "phrase" and finding.path == path and needle in finding.text:
+            if finding.kind in ("phrase", "numbers") and finding.path == path and needle in finding.text:
                 used.add(index)
                 excused = True
         if not excused:
@@ -385,7 +420,7 @@ def main() -> int:
     parser.add_argument("extra", nargs="*", type=pathlib.Path, help="additional Markdown files to audit")
     args = parser.parse_args()
     root = args.root
-    pinned = go_const(root, "UpstreamVersion", "internal/coding/pigversion/pigversion.go")
+    pinned = go_const(root, "UpstreamPackageVersion", "internal/coding/pigversion/pigversion.go")
     reviewed = go_const(root, "UpstreamReviewedVersion")
     cov = coverage_block(root)
 

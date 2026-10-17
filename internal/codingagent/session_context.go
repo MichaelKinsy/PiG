@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -9,124 +8,140 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 )
-
-// SessionContext contains model-visible messages and the settings on their full branch path.
-type SessionContext struct {
-	Messages      []agent.AgentMessage `json:"messages"`
-	ThinkingLevel string               `json:"thinkingLevel"`
-	Model         *SessionContextModel `json:"model"`
-}
-
-// SessionContextModel is the model identity last selected on a branch.
-type SessionContextModel struct {
-	Provider string `json:"provider"`
-	ModelID  string `json:"modelId"`
-}
 
 // Ports packages/coding-agent/src/core/session-manager.ts (buildSessionContext).
 // BuildSessionContext defaults to the last entry, falls back there for an unknown leaf, and treats an explicitly nil leaf as an empty branch.
-func BuildSessionContext(entries []SessionEntry, leafID ...*string) SessionContext {
-	path := buildSessionPath(entries, leafID...)
-	messages := BuildSessionProjection(path).Messages
+// It returns the messages and settings of [BuildSessionProjection], as session-manager.ts buildSessionContext does.
+func BuildSessionContext(entries []SessionEntry, leafID *string, byID map[string]SessionEntry) SessionContext {
+	projection := BuildSessionProjection(entries, leafID, byID)
+	messages := projection.Messages
 	if messages == nil {
 		messages = []agent.AgentMessage{}
 	}
-	thinking, model := GetSessionContextSettings(path)
-	return SessionContext{Messages: messages, ThinkingLevel: thinking, Model: model}
+	return SessionContext{Messages: messages, ThinkingLevel: projection.ThinkingLevel, Model: projection.Model}
 }
 
 // GetSessionContextSettings returns the latest model and thinking settings on a root-to-leaf path without projecting or decoding message bodies. It mirrors session-manager.ts getSessionContextSettings.
 func GetSessionContextSettings(path []SessionEntry) (thinkingLevel string, model *SessionContextModel) {
+	thinkingLevel, _, model, _ = sessionContextSettings(path)
+	return thinkingLevel, model
+}
+
+// sessionContextSettings is GetSessionContextSettings that also reports which settings an entry of path set.
+func sessionContextSettings(path []SessionEntry) (thinkingLevel string, thinkingFound bool, model *SessionContextModel, modelFound bool) {
 	thinkingLevel = "off"
-	thinkingFound, modelFound := false, false
 	for i := len(path) - 1; i >= 0 && (!thinkingFound || !modelFound); i-- {
 		entry := path[i]
-		var thinking struct {
-			ThinkingLevel string `json:"thinkingLevel"`
-		}
-		var modelEntry struct {
-			Provider string `json:"provider"`
-			ModelID  string `json:"modelId"`
-		}
-		var message struct {
-			Message struct {
-				Role     string `json:"role"`
-				Provider string `json:"provider"`
-				Model    string `json:"model"`
-			} `json:"message"`
-		}
-		var target any
-		switch entry.Base.Type {
+		// Each target is declared in its own case: a decode target escapes to the heap, so declaring all three above the switch
+		// allocated three structs for every entry of the path, including the ones that decode nothing.
+		switch entry.Base().Type {
 		case "thinking_level_change":
 			if thinkingFound {
 				continue
 			}
-			target = &thinking
-		case "model_change":
-			if modelFound {
+			var thinking struct {
+				ThinkingLevel string `json:"thinkingLevel"`
+			}
+			// upstream: packages/coding-agent/src/core/session-manager.ts:loadEntriesFromFile
+			if json.Unmarshal(entry.Raw(), &thinking) != nil {
 				continue
 			}
-			target = &modelEntry
-		case "message":
-			if modelFound {
-				continue
-			}
-			target = &message
-		default:
-			continue
-		}
-		// upstream: packages/coding-agent/src/core/session-manager.ts:loadEntriesFromFile
-		if json.Unmarshal(entry.Raw(), target) != nil {
-			continue
-		}
-		switch entry.Base.Type {
-		case "thinking_level_change":
 			thinkingLevel = thinking.ThinkingLevel
 			thinkingFound = true
 		case "model_change":
+			if modelFound {
+				continue
+			}
+			var modelEntry struct {
+				Provider string `json:"provider"`
+				ModelID  string `json:"modelId"`
+			}
+			// upstream: packages/coding-agent/src/core/session-manager.ts:loadEntriesFromFile
+			if json.Unmarshal(entry.Raw(), &modelEntry) != nil {
+				continue
+			}
 			model = &SessionContextModel{Provider: modelEntry.Provider, ModelID: modelEntry.ModelID}
 			modelFound = true
 		case "message":
+			if modelFound {
+				continue
+			}
+			// A decoded entry carries the role and model already: decoding its raw record again scanned the whole message body, a tool result's file text included, for every such entry between the leaf and the latest assistant.
+			if typed, ok := asMessage(entry); ok {
+				if assistant := typed.Message.Assistant; assistant != nil {
+					model = &SessionContextModel{Provider: assistant.Provider, ModelID: assistant.ModelID}
+					modelFound = true
+				}
+				continue
+			}
+			var message struct {
+				Message struct {
+					Role     string `json:"role"`
+					Provider string `json:"provider"`
+					Model    string `json:"model"`
+				} `json:"message"`
+			}
+			// upstream: packages/coding-agent/src/core/session-manager.ts:loadEntriesFromFile
+			if json.Unmarshal(entry.Raw(), &message) != nil {
+				continue
+			}
 			if message.Message.Role == "assistant" {
 				model = &SessionContextModel{Provider: message.Message.Provider, ModelID: message.Message.Model}
 				modelFound = true
 			}
 		}
 	}
-	return thinkingLevel, model
+	return thinkingLevel, thinkingFound, model, modelFound
 }
 
 // BuildContextEntries returns the selected branch's compaction-aware entry list, including state-only entries.
-func BuildContextEntries(entries []SessionEntry, leafID ...*string) []SessionEntry {
-	result := buildContextEntries(buildSessionPath(entries, leafID...), SessionEntry.AsMessage)
+func BuildContextEntries(entries []SessionEntry, leafID *string, byID map[string]SessionEntry) []SessionEntry {
+	result := buildContextEntries(buildSessionPath(entries, leafID, byID), asMessage)
 	if result == nil {
 		return []SessionEntry{}
 	}
 	return result
 }
 
-func buildSessionPath(entries []SessionEntry, leafID ...*string) []SessionEntry {
-	if len(entries) == 0 || len(leafID) > 0 && leafID[0] == nil {
+// LastLeaf is Pi's undefined leafId: the branch ends at the last entry. A nil leafID is Pi's null (the empty branch before the first
+// entry), and a leafID that names no entry also falls back to the last one.
+func LastLeaf() *string { return new("") }
+
+// buildEntryIndex is session-manager.ts buildEntryIndex: the caller's index when it passes one, else one built from entries.
+func buildEntryIndex(entries []SessionEntry, byID map[string]SessionEntry) map[string]SessionEntry {
+	if byID != nil {
+		return byID
+	}
+	index := make(map[string]SessionEntry, len(entries))
+	for _, entry := range entries {
+		index[entry.Base().ID] = entry
+	}
+	return index
+}
+
+func buildSessionPath(entries []SessionEntry, leafID *string, byID map[string]SessionEntry) []SessionEntry {
+	if leafID == nil {
 		return nil
 	}
-	byID := make(map[string]SessionEntry, len(entries))
-	for _, entry := range entries {
-		byID[entry.Base.ID] = entry
+	index := buildEntryIndex(entries, byID)
+	if len(entries) == 0 {
+		return nil
 	}
 	leaf := entries[len(entries)-1]
-	if len(leafID) > 0 && *leafID[0] != "" {
-		if selected, ok := byID[*leafID[0]]; ok {
+	if sessionentry.Truthy(*leafID) {
+		if selected, ok := index[*leafID]; ok {
 			leaf = selected
 		}
 	}
 	var path []SessionEntry
 	for {
 		path = append(path, leaf)
-		if leaf.Base.ParentID == nil || *leaf.Base.ParentID == "" {
+		if leaf.Base().ParentID == nil || !sessionentry.Truthy(*leaf.Base().ParentID) {
 			break
 		}
-		parent, ok := byID[*leaf.Base.ParentID]
+		parent, ok := index[*leaf.Base().ParentID]
 		if !ok {
 			break
 		}

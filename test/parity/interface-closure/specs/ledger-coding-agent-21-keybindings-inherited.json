@@ -1,0 +1,34 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#KeybindingsManager::property:getKeys"
+  ],
+  "targets": [
+   "internal/codingagent/keybindings.go#KeybindingsManager.GetKeys"
+  ],
+  "production": [
+   "call:internal/codingagent/session_selector.go#sessionKeyText"
+  ],
+  "evidence": [
+   "test:internal/codingagent/keybindings_test.go#TestKeybindingsManagerSaveRoundTrip",
+   "test:internal/codingagent/keybindings_test.go#TestResolvedBindingsReturnsDetachedSnapshot"
+  ],
+  "rationale": "KeybindingsManager.getKeys (inherited from the TUI manager) is GetKeys: the resolved key ids of an action as a detached copy, empty for an unknown action."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#KeybindingsManager::property:matches"
+  ],
+  "targets": [
+   "internal/codingagent/keybindings.go#KeybindingsManager.Matches"
+  ],
+  "production": [
+   "call:internal/codingagent/keys.go#classifyKeyWithBindings"
+  ],
+  "evidence": [
+   "test:internal/codingagent/keybindings_test.go#TestKeybindingsManagerUsesModeAwareSharedMatcher",
+   "test:internal/codingagent/keybindings_test.go#TestClassifyKeyWithBindingsUsesOverrides"
+  ],
+  "rationale": "KeybindingsManager.matches (inherited) is Matches(input, action): true when any resolved key matches the data through the shared tui matcher."
+ }
+]

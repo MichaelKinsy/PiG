@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 )
@@ -19,13 +20,13 @@ import (
 // so only the user may read the files.
 const Mode os.FileMode = 0o600
 
-// newPath is a new, unused path: `<tmpdir>/<prefix>-<16 hex><extension>`.
+// newPath is a new, unused path: `<tmpdir>/<prefix>-<16 hex><extension>`, where tmpdir is Node's os.tmpdir().
 // extension includes the dot.
 func newPath(prefix, extension string) string {
 	var id [8]byte
 	// crypto/rand.Read never returns an error.
 	_, _ = rand.Read(id[:])
-	return filepath.Join(os.TempDir(), prefix+"-"+hex.EncodeToString(id[:])+extension)
+	return filepath.Join(nodeTmpdir(runtime.GOOS, os.Getenv), prefix+"-"+hex.EncodeToString(id[:])+extension)
 }
 
 // create creates the file exclusively, so it never follows a link someone else

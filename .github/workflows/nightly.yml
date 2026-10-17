@@ -1,0 +1,120 @@
+# SPDX-License-Identifier: MIT
+name: Nightly race, fuzz and allocation ratchet
+
+# Whole-package -race on the packages that own concurrency, on Linux and on macOS (darwin/arm64), and every Fuzz
+# target for 30 seconds. Pull requests run only the narrow race regressions of make test-race; these runs are too long
+# for every change. The allocation job runs every benchmark of the hot packages once and compares allocs/op with
+# automation/ci/allocbase/baseline.toml (make alloc-baseline).
+on:
+  schedule:
+    - cron: '23 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  race:
+    name: Race / ${{ matrix.os }} / ${{ matrix.group }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+        group: [ai, rest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: true
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: extensions/sdk-ts/package-lock.json
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Install native test tools, Rust and the pinned Pi oracle
+        # The Rust and npm pins are read from ci.yml, their one source (make compliance).
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$RUNNER_OS" = Linux ]; then
+            automation/ci/install-apt-packages.sh tmux fd-find ripgrep build-essential pkg-config
+          else
+            brew install fd ripgrep
+          fi
+          rust="$(awk '/^  RUST_VERSION:/ { print $2; exit }' .github/workflows/ci.yml)"
+          npm_version="$(awk '/^  NPM_VERSION:/ { print $2; exit }' .github/workflows/ci.yml)"
+          rustup toolchain install "$rust" --profile minimal
+          rustup default "$rust"
+          automation/ci/install-npm-toolchain.sh
+          bin="$PWD/automation/ci/npm-toolchain/node_modules/.bin"
+          echo "$bin" >> "$GITHUB_PATH"
+          export PATH="$bin:$PATH"
+          test "$(npm --version)" = "$npm_version"
+          # The oracle comes from the pin as in ci.yml (automation/pin/oracle.py), so a commit pin gets its own build, not a published release.
+          python3 automation/pin/pin.py install-oracle
+          ./automation/gen/mirror-upstream.sh
+          python3 automation/pin/pin.py check-oracle
+      - name: Race and goroutine-leak gate
+        env:
+          CI: '1'
+          PIG_RACE_GROUP: ${{ matrix.group }}
+        run: make test-race-nightly
+
+  fuzz:
+    name: Fuzz / every target 30s
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: true
+      - name: Fuzz every target
+        env:
+          CI: '1'
+          PIG_FUZZ_TIME: 30s
+        run: make fuzz-nightly
+      - name: Keep failing inputs
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: fuzz-failures-${{ github.sha }}
+          path: '**/testdata/fuzz/**'
+          if-no-files-found: ignore
+
+  allocations:
+    name: Allocation ratchet / allocs per op
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: true
+      # The Node-cell, Node-host and clipboard benchmarks start node; Pi requires Node >= 22.19.0 and the runner image's Node is not pinned, so the job uses .node-version like the other Node jobs.
+      # The subprocess host benchmarks start Node extension runtimes; their baseline entries were measured on the pinned Node.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - name: Compare allocs/op with the committed baseline
+        env:
+          CI: '1'
+        run: make alloc-baseline

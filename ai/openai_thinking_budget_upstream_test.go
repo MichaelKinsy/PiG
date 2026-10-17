@@ -6,10 +6,10 @@ import (
 )
 
 func BenchmarkCompletionsThinkingBudgetPayload(b *testing.B) {
-	model := &Model{ID: "zai-org/glm-5.2", Input: []string{"text"}, Capabilities: ModelCapabilities{MaxThinking: ThinkingHigh, MaxOutputTokens: 16384}}
+	model := &Model{ID: "zai-org/glm-5.2", Input: []string{"text"}, Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh, MaxOutputTokens: 16384}}
 	provider := NewOpenAIProvider(OpenAIConfig{Model: model.ID, ModelMetadata: model, ProviderID: "local-vllm", APIKey: "test", Compat: &OpenAICompat{ThinkingFormat: "chat-template", ThinkingTokenBudgetField: "thinking_budget", ChatTemplateKwargs: map[string]any{"thinking_budget": map[string]any{"$var": "thinking.budget"}}}})
 	captured := errors.New("captured")
-	options := StreamOptions{IsReasoning: true, Thinking: ThinkingHigh, MaxTokens: 16384, OnPayload: func(_ any, _ *Model) (any, error) { return nil, captured }}
+	options := StreamOptions{IsReasoning: true, Thinking: ThinkingLevelHigh, MaxTokens: 16384, OnPayload: func(_ any, _ *Model) (any, error) { return nil, captured }}
 	transcript := NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("Hi")}}})
 	b.ReportAllocs()
 	for b.Loop() {
@@ -22,7 +22,7 @@ func BenchmarkCompletionsThinkingBudgetPayload(b *testing.B) {
 func TestResolveClampedThinkingBudgetUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/ai/src/api/openai-completions.ts:1012-1025 and api/simple-options.ts:clampThinkingBudgetToAnswerRoom.
 	for _, tc := range []struct {
-		level         ThinkingLevel
+		level         ModelThinkingLevel
 		custom        *ThinkingBudgets
 		ceiling, want int
 	}{

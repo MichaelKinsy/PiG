@@ -109,7 +109,7 @@ func probe(test testCase) error {
 	if err = os.WriteFile(filepath.Join(dir, "models.json"), config, 0o600); err != nil {
 		return err
 	}
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: dir, AgentDir: dir})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: dir, AgentDir: dir})
 	if err != nil {
 		return err
 	}

@@ -1,3 +1,5 @@
+//go:build !pig_strip_mistral_conversations
+
 package ai
 
 import (
@@ -44,10 +46,13 @@ func TestProvidersHandleInStreamErrorsLikePinnedSDKs(t *testing.T) {
 		}
 	})
 
-	t.Run("openai-completions-event-name-is-not-special", func(t *testing.T) {
-		result := runOpenAICompletionsSSE(t, "event:error\ndata:{\"message\":\"ignored\"}\n\n"+
+	t.Run("openai-completions-error-event-throws", func(t *testing.T) {
+		// openai 7.19.0 fromSSEResponse: an event named error throws APIError(data?.error ?? data), so the record's message is the stream's error and later events are never read.
+		result := runOpenAICompletionsSSE(t, "event:error\ndata:{\"message\":\"reported\"}\n\n"+
 			"data:{\"choices\":[{\"delta\":{\"content\":\"hi\"},\"finish_reason\":\"stop\"}]}\n\ndata:[DONE]\n\n")
-		assertSSETextResult(t, result, "hi")
+		if result.StopReason != StopReasonError || result.ErrorMessage != "reported" || len(result.Content) != 0 {
+			t.Fatalf("result = %#v", result)
+		}
 	})
 
 	t.Run("openai-responses-message-only", func(t *testing.T) {

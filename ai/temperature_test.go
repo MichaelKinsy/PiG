@@ -1,3 +1,5 @@
+//go:build !pig_strip_bedrock_converse_stream && !pig_strip_mistral_conversations
+
 package ai
 
 import (
@@ -8,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
+	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime"
 )
 
 func payloadHasZeroTemperature(payload any) bool {

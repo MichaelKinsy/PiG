@@ -36,12 +36,13 @@ func TestToolResultUnmarshal_Usage(t *testing.T) {
 
 // ctx.compact({ onComplete, onError }): with awaitCompletion the call answers
 // when compaction finishes, with the result or the failure.
+// Pi: packages/coding-agent/src/core/extensions/types.ts:317 (CompactOptions.onError).
 func TestUIBridge_CompactAwaitsCompletion(t *testing.T) {
 	var got *extension.CompactOptions
 	b := newTestBridge(&mockUIContext{})
 	b.SetActions(&HostCallbacks{Compact: func(_ context.Context, opts *extension.CompactOptions) {
 		got = opts
-		go opts.OnComplete(map[string]any{"summary": "short", "firstKeptEntryId": "e9", "tokensBefore": 12})
+		go opts.OnComplete(extension.CompactionResult{Summary: "short", FirstKeptEntryID: "e9", TokensBefore: 12})
 	}})
 	result, err := call(b, "compact", `{"customInstructions":"keep todos","awaitCompletion":true}`)
 	if err != nil || result.Error != nil {

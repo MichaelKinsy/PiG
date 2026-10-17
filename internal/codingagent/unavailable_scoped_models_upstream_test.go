@@ -41,7 +41,7 @@ func TestUnavailableScopedModelsUpstream6949(t *testing.T) {
 				m.opts.ModelRegistry, m.opts.AgentDir = registry, dir
 				m.opts.Settings.EnabledModels = tc.settings
 				m.scopedModelIDs = tc.scope
-				m.runCtx, m.statusLine = t.Context(), NewStatusLine(nil, "", nil)
+				m.runCtx, m.statusLine = t.Context(), NewFooterComponent(nil, "", nil)
 				done := make(chan struct{})
 				go func() { m.showScopedModels(); close(done) }()
 				synctest.Wait()

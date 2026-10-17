@@ -11,11 +11,14 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 
 	jsjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
+	"github.com/MichaelKinsy/PiG/internal/text"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -132,20 +135,24 @@ func migrateAuthToAuthJSON(agentDir string) ([]string, error) {
 		return nil, nil
 	}
 
-	migrated := make(map[string]any)
+	// migrated is a JS object: JSON.stringify writes it in Object.entries order, array-index names first (stringifyIndented applies that order).
+	migrated := orderedjson.New()
 	var providers []string
 
 	// Migrate oauth.json.
 	if data, err := os.ReadFile(oauthPath); err == nil {
-		var oauth map[string]any
-		if json.Unmarshal(data, &oauth) == nil {
-			for provider, cred := range oauth {
-				credMap, ok := cred.(map[string]any)
-				if !ok {
-					credMap = map[string]any{}
+		if oauth, ok := jsObjectEntries(text.StripBomBytes(data)); ok {
+			for _, provider := range oauth.Keys() {
+				raw, _ := oauth.Get(provider)
+				cred := orderedjson.New()
+				cred.Set("type", json.RawMessage(`"oauth"`))
+				if fields, ok := jsObjectEntries(raw); ok {
+					for _, key := range fields.Keys() {
+						value, _ := fields.Get(key)
+						cred.Set(key, value)
+					}
 				}
-				credMap["type"] = "oauth"
-				migrated[provider] = credMap
+				migrated.Set(provider, rawObject(cred))
 				providers = append(providers, provider)
 			}
 			_ = os.Rename(oauthPath, oauthPath+".migrated") // upstream: coding-agent/src/migrations.ts:migrateAuthToAuthJson
@@ -154,29 +161,35 @@ func migrateAuthToAuthJSON(agentDir string) ([]string, error) {
 
 	// Migrate settings.json apiKeys.
 	if data, err := os.ReadFile(settingsPath); err == nil {
-		var settings map[string]any
-		if json.Unmarshal(data, &settings) == nil {
-			if apiKeys, ok := settings["apiKeys"].(map[string]any); ok {
-				for provider, key := range apiKeys {
-					if _, already := migrated[provider]; !already {
-						if keyStr, ok := key.(string); ok {
-							migrated[provider] = map[string]any{"type": "api_key", "key": keyStr}
-							providers = append(providers, provider)
-						}
+		if settings, err := orderedJSONObject(text.StripBomBytes(data)); err == nil {
+			if apiKeysRaw, ok := settings.Get("apiKeys"); ok && orderedjson.IsObject(apiKeysRaw) {
+				apiKeys, _ := orderedJSONObject(apiKeysRaw)
+				for _, provider := range apiKeys.Keys() {
+					raw, _ := apiKeys.Get(provider)
+					if migrated.Has(provider) {
+						continue
+					}
+					if bytes.HasPrefix(bytes.TrimSpace(raw), []byte(`"`)) {
+						entry := orderedjson.New()
+						entry.Set("type", json.RawMessage(`"api_key"`))
+						entry.Set("key", raw)
+						migrated.Set(provider, rawObject(entry))
+						providers = append(providers, provider)
 					}
 				}
-				delete(settings, "apiKeys")
-				updated, _ := json.MarshalIndent(settings, "", "  ")
-				_ = os.WriteFile(settingsPath, updated, 0644) // upstream: coding-agent/src/migrations.ts:migrateAuthToAuthJson
+				settings.Delete("apiKeys")
+				if updated, err := stringifyIndented(rawObject(settings)); err == nil {
+					_ = os.WriteFile(settingsPath, updated, 0644) // upstream: coding-agent/src/migrations.ts:migrateAuthToAuthJson
+				}
 			}
 		}
 	}
 
-	if len(migrated) > 0 {
+	if migrated.Len() > 0 {
 		if err := os.MkdirAll(filepath.Dir(authPath), 0o755); err != nil {
 			return nil, fmt.Errorf("migrate credentials to auth.json: %w", err)
 		}
-		out, err := json.MarshalIndent(migrated, "", "  ")
+		out, err := stringifyIndented(rawObject(migrated))
 		if err != nil {
 			return nil, fmt.Errorf("migrate credentials to auth.json: %w", err)
 		}
@@ -186,6 +199,75 @@ func migrateAuthToAuthJSON(agentDir string) ([]string, error) {
 	}
 
 	return providers, nil
+}
+
+// orderedJSONObject parses data as JSON.parse then Object.entries see it: a repeated key keeps its first position and last value, and array-index names come first in ascending order.
+func orderedJSONObject(data []byte) (*orderedjson.Object, error) {
+	canonical, err := jsonstringify.Canonicalize(data)
+	if err != nil {
+		return nil, err
+	}
+	return orderedjson.Parse(canonical)
+}
+
+// jsObjectEntries is the object Object.entries and the spread operator see for a parsed JSON value: an object's members, an array's elements and a string's UTF-16 code units under their indexes, and no members for a number or boolean. A null or invalid document is not ok, where Object.entries throws.
+func jsObjectEntries(data []byte) (*orderedjson.Object, bool) {
+	canonical, err := jsonstringify.Canonicalize(data)
+	if err != nil {
+		return nil, false
+	}
+	switch trimmed := bytes.TrimSpace(canonical); {
+	case len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")):
+		return nil, false
+	case trimmed[0] == '{':
+		object, err := orderedjson.Parse(canonical)
+		return object, err == nil
+	case trimmed[0] == '[':
+		var elements []json.RawMessage
+		if json.Unmarshal(canonical, &elements) != nil {
+			return nil, false
+		}
+		object := orderedjson.New()
+		for i, element := range elements {
+			object.Set(strconv.Itoa(i), element)
+		}
+		return object, true
+	case trimmed[0] == '"':
+		var value string
+		if jsjson.Unmarshal(canonical, &value) != nil {
+			return nil, false
+		}
+		object := orderedjson.New()
+		for i, unit := range jsstring.ToUTF16(value) {
+			encoded, err := jsstring.MarshalJSON(jsstring.FromUTF16([]uint16{unit}))
+			if err != nil {
+				return nil, false
+			}
+			object.Set(strconv.Itoa(i), encoded)
+		}
+		return object, true
+	default:
+		return orderedjson.New(), true
+	}
+}
+
+// stringifyIndented is JSON.stringify(value, null, 2) of a JSON document: entries order and two-space indentation, and no HTML escaping.
+func stringifyIndented(raw []byte) ([]byte, error) {
+	canonical, err := jsonstringify.Canonicalize(raw)
+	if err != nil {
+		return nil, err
+	}
+	var out bytes.Buffer
+	if err := json.Indent(&out, canonical, "", "  "); err != nil {
+		return nil, err
+	}
+	return out.Bytes(), nil
+}
+
+// rawObject is the object's JSON text. It does not go through encoding/json, which would escape <, > and & where JSON.stringify does not.
+func rawObject(o *orderedjson.Object) json.RawMessage {
+	encoded, _ := o.MarshalJSON()
+	return encoded
 }
 
 // migrateSessionsFromAgentRoot moves .jsonl files from the agent root
@@ -225,9 +307,16 @@ func migrateSessionsFromAgentRoot(agentDir string) {
 		// Compute correct session directory.
 		// Same encoding as session-manager.ts (one leading separator stripped).
 		correctDir := filepath.Join(agentDir, "sessions", encodeCwdForSessionDir(header.CWD))
-		_ = os.MkdirAll(correctDir, 0755) // upstream: coding-agent/src/migrations.ts:migrateSessionsFromAgentRoot
+		// pig divergence (D132): session directories are 0700.
+		_ = MkdirSessionDir(correctDir) // upstream: coding-agent/src/migrations.ts:migrateSessionsFromAgentRoot
 
-		newPath := filepath.Join(correctDir, e.Name())
+		// Pi names the file `file.split("/").pop() || file.split("\\").pop()` where file is the joined path. The first split is the whole path wherever the
+		// joined path has no "/", which is every Windows path, so there newPath is correctDir\C:\...\name: the rename fails and Pi leaves the file at the agent root.
+		fileName := filePath[strings.LastIndexByte(filePath, '/')+1:]
+		if fileName == "" {
+			fileName = filePath[strings.LastIndexByte(filePath, '\\')+1:]
+		}
+		newPath := filepath.Join(correctDir, fileName)
 		if _, err := os.Stat(newPath); err == nil {
 			continue // Target exists.
 		}
@@ -287,10 +376,10 @@ func migrateCommandsToPrompts(baseDir, label string) {
 		return // prompts/ already exists
 	}
 	if err := os.Rename(commandsDir, promptsDir); err != nil {
-		fmt.Printf("Warning: Could not migrate %s commands/ to prompts/: %v\n", label, err)
+		fmt.Println(chalkStyled("\x1b[33m", "\x1b[39m", fmt.Sprintf("Warning: Could not migrate %s commands/ to prompts/: %v", label, err)))
 		return
 	}
-	fmt.Printf("Migrated %s commands/ → prompts/\n", label)
+	fmt.Println(chalkStyled("\x1b[32m", "\x1b[39m", fmt.Sprintf("Migrated %s commands/ → prompts/", label)))
 }
 
 func checkDeprecatedExtensionDirs(baseDir, label string) []string {

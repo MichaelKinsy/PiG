@@ -1,5 +1,7 @@
 package coding
 
+// pi: packages/coding-agent/src/core/virtual-models.ts
+
 // Ports .upstream/v0.99.1/packages/coding-agent/test/virtual-models.test.ts: the seven "ModelRuntime virtual models" cases and the eight "createAgentSession with virtual models" cases, with the same inputs and expectations. The Go form of `createAgentSession` is NewSession with a caller-supplied session manager.
 
 import (
@@ -49,7 +51,7 @@ func createVirtualRuntime(t *testing.T) virtualRuntimeFixture {
 	}
 	requests := &[]ModelRouteRequest{}
 	definition := VirtualModelDefinition{
-		Provider: "router", ID: "auto", Name: "Auto", ThinkingLevels: []ai.ThinkingLevel{ai.ThinkingLow, ai.ThinkingHigh},
+		Provider: "router", ID: "auto", Name: "Auto", ThinkingLevels: []ai.ModelThinkingLevel{ai.ThinkingLow, ai.ThinkingHigh},
 		Route: func(_ context.Context, request ModelRouteRequest) (ModelRoute, error) {
 			*requests = append(*requests, request)
 			id := "small"
@@ -96,7 +98,7 @@ func TestVirtualModelListsAndRoutesToAPhysicalModelWithAClampedThinkingLevel(t *
 	if !reflect.DeepEqual(virtual.Input, []string{"text", "image"}) {
 		t.Fatalf("input = %v", virtual.Input)
 	}
-	if got, want := ai.GetSupportedThinkingLevels(virtual), []ai.ThinkingLevel{ai.ThinkingLow, ai.ThinkingHigh}; !reflect.DeepEqual(got, want) {
+	if got, want := ai.GetSupportedThinkingLevels(virtual), []ai.ModelThinkingLevel{ai.ThinkingLow, ai.ThinkingHigh}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("supported thinking levels = %v, want %v", got, want)
 	}
 	large := f.runtime.GetModel("faux", "large")
@@ -235,13 +237,13 @@ func TestVirtualModelRejectsRoutesToVirtualOrUnknownModels(t *testing.T) {
 func TestVirtualModelRoutesDirectStreamSimpleCallsWithinTheRoutedModelsLimits(t *testing.T) {
 	f := createVirtualRuntime(t)
 	maxTokens := -1
-	f.faux.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+	f.faux.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
 		maxTokens = options.MaxTokens
-		return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("hello")}, StopReason: "stop"}, nil
+		return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("hello")}, StopReason: "stop"}.AssistantMessage(), nil
 	})})
 
 	// The caller sized the request without knowing the routed model.
-	message := f.runtime.CompleteSimple(t.Context(), f.virtual, ai.Context{Messages: []ai.Message{userText("hi", 1)}}, ai.StreamOptions{Thinking: ai.ThinkingHigh, MaxTokens: 20_000})
+	message := f.runtime.CompleteSimple(t.Context(), f.virtual, ai.Context{Messages: []ai.Message{userText("hi", 1)}}, ai.StreamOptions{Thinking: ai.ThinkingLevelHigh, MaxTokens: 20_000})
 
 	var reasons []ModelRouteReason
 	for _, request := range *f.requests {
@@ -266,13 +268,13 @@ func TestVirtualModelDoesNotForwardCallerCredentialsToARoutedModelOfAnotherProvi
 		header string
 	}
 	var got []seen
-	respond := ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+	respond := ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
 		header := ""
 		if value := options.Headers["x-caller"]; value != nil {
 			header = *value
 		}
 		got = append(got, seen{options.APIKey, header})
-		return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("hello")}, StopReason: "stop"}, nil
+		return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("hello")}, StopReason: "stop"}.AssistantMessage(), nil
 	})
 	f.faux.SetResponses([]ai.FauxResponseStep{respond, respond})
 	request := ai.Context{Messages: []ai.Message{userText("hi", 1)}}
@@ -330,7 +332,7 @@ func openVirtualSession(t *testing.T, f virtualRuntimeFixture, manager *icodinga
 func resumeVirtual(t *testing.T, f virtualRuntimeFixture, model *ai.Model) (*Session, *icodingagent.Session) {
 	t.Helper()
 	manager := icodingagent.NewSession("virtual-resume", t.TempDir())
-	if err := manager.AppendModelSwitch("router", "auto", "Auto"); err != nil {
+	if _, err := manager.AppendModelChange("router", "auto"); err != nil {
 		t.Fatal(err)
 	}
 	appendVirtualTranscript(t, manager, userText("hi", 1), assistantFromModel(f.runtime.GetModel("faux", "large"), "hello"))
@@ -380,7 +382,7 @@ func TestVirtualSessionRestoresAVirtualSelectionRegisteredRightBeforeTheSessionO
 		t.Fatal(err)
 	}
 	manager := icodingagent.NewSession("virtual-late", t.TempDir())
-	if err := manager.AppendModelSwitch("late", "auto", "Auto"); err != nil {
+	if _, err := manager.AppendModelChange("late", "auto"); err != nil {
 		t.Fatal(err)
 	}
 	appendVirtualTranscript(t, manager, userText("hi", 1), assistantFromModel(f.runtime.GetModel("faux", "large"), "hello"))
@@ -414,7 +416,7 @@ func TestVirtualSessionFallsBackToThePhysicalModelWhenTheVirtualModelIsNotRegist
 func TestVirtualSessionFallsBackToTheLastPhysicalResponseWhenTheTranscriptEndsWithARoutingFailure(t *testing.T) {
 	f := createVirtualRuntime(t)
 	manager := icodingagent.NewSession("virtual-routing-failure", t.TempDir())
-	if err := manager.AppendModelSwitch("router", "auto", "Auto"); err != nil {
+	if _, err := manager.AppendModelChange("router", "auto"); err != nil {
 		t.Fatal(err)
 	}
 	failed := assistantFromModel(f.virtual, "")
@@ -444,7 +446,7 @@ func lastModelChange(manager *icodingagent.Session) (icodingagent.SessionEntry, 
 	var last icodingagent.SessionEntry
 	found := false
 	for _, entry := range manager.GetBranch() {
-		if entry.Base.Type == "model_change" {
+		if entry.Base().Type == "model_change" {
 			last, found = entry, true
 		}
 	}
@@ -454,7 +456,7 @@ func lastModelChange(manager *icodingagent.Session) (icodingagent.SessionEntry, 
 func countModelChanges(manager *icodingagent.Session) int {
 	n := 0
 	for _, entry := range manager.GetBranch() {
-		if entry.Base.Type == "model_change" {
+		if entry.Base().Type == "model_change" {
 			n++
 		}
 	}
@@ -477,21 +479,21 @@ func TestVirtualSessionResumesTheSelectionMadeBeforeTreeNavigationLeftItsModelCh
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := session.Prompt(t.Context(), "one"); err != nil {
+			if err := session.Prompt(t.Context(), "one"); err != nil {
 				t.Fatal(err)
 			}
-			firstAnswer := manager.LeafID()
+			firstAnswer := manager.GetLeafID()
 			if err := session.SetModel(after); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := session.Prompt(t.Context(), "two"); err != nil {
+			if err := session.Prompt(t.Context(), "two"); err != nil {
 				t.Fatal(err)
 			}
 			// Navigating back to before the switch keeps `after` selected, but its model_change is on the old branch.
 			if _, err := session.NavigateTree(t.Context(), *firstAnswer, NavigateTreeOptions{}); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := session.Prompt(t.Context(), "three"); err != nil {
+			if err := session.Prompt(t.Context(), "three"); err != nil {
 				t.Fatal(err)
 			}
 			_ = session.Close()
@@ -529,7 +531,7 @@ func TestVirtualSessionDoesNotRecordAPhysicalSelectionOnEveryPromptWhileRequests
 	initial := countModelChanges(manager)
 
 	for _, text := range []string{"one", "two"} {
-		if _, err := session.Prompt(t.Context(), text); err != nil {
+		if err := session.Prompt(t.Context(), text); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -558,7 +560,7 @@ func TestVirtualSessionRecordsAnExplicitModelOverrideOnResumeWithTheNextPrompt(t
 	if entry, ok := lastModelChange(manager); !ok || entry.Raw() == nil || !strings.Contains(string(entry.Raw()), `"router"`) {
 		t.Fatalf("model_change after opening = %s", entry.Raw())
 	}
-	if _, err := session.Prompt(t.Context(), "again"); err != nil {
+	if err := session.Prompt(t.Context(), "again"); err != nil {
 		t.Fatal(err)
 	}
 	if entry, ok := lastModelChange(manager); !ok || !strings.Contains(string(entry.Raw()), `"small"`) {
@@ -586,7 +588,7 @@ func TestGetBranchSelectionLooksUpOnlyTheLastModelChange(t *testing.T) {
 		small, large := f.runtime.GetModel("faux", "small"), f.runtime.GetModel("faux", "large")
 
 		physical, lookups := selectBranch(t, f, func(manager *icodingagent.Session) {
-			if err := manager.AppendModelSwitch(small.ProviderMeta.ProviderID, small.ID, small.ID); err != nil {
+			if _, err := manager.AppendModelChange(small.ProviderMeta.ProviderID, small.ID); err != nil {
 				t.Fatal(err)
 			}
 			for range 100 {
@@ -601,11 +603,11 @@ func TestGetBranchSelectionLooksUpOnlyTheLastModelChange(t *testing.T) {
 		}
 
 		routed, lookups := selectBranch(t, f, func(manager *icodingagent.Session) {
-			if err := manager.AppendModelSwitch(small.ProviderMeta.ProviderID, small.ID, small.ID); err != nil {
+			if _, err := manager.AppendModelChange(small.ProviderMeta.ProviderID, small.ID); err != nil {
 				t.Fatal(err)
 			}
 			appendVirtualTranscript(t, manager, assistantFromModel(small, "ok"))
-			if err := manager.AppendModelSwitch(f.virtual.ProviderMeta.ProviderID, f.virtual.ID, f.virtual.ID); err != nil {
+			if _, err := manager.AppendModelChange(f.virtual.ProviderMeta.ProviderID, f.virtual.ID); err != nil {
 				t.Fatal(err)
 			}
 			for range 100 {
@@ -624,11 +626,11 @@ func TestGetBranchSelectionLooksUpOnlyTheLastModelChange(t *testing.T) {
 		f := createVirtualRuntime(t)
 		small := f.runtime.GetModel("faux", "small")
 		selection, lookups := selectBranch(t, f, func(manager *icodingagent.Session) {
-			if err := manager.AppendModelSwitch(f.virtual.ProviderMeta.ProviderID, f.virtual.ID, f.virtual.ID); err != nil {
+			if _, err := manager.AppendModelChange(f.virtual.ProviderMeta.ProviderID, f.virtual.ID); err != nil {
 				t.Fatal(err)
 			}
 			appendVirtualTranscript(t, manager, assistantFromModel(small, "ok"))
-			if err := manager.AppendModelSwitch(small.ProviderMeta.ProviderID, small.ID, small.ID); err != nil {
+			if _, err := manager.AppendModelChange(small.ProviderMeta.ProviderID, small.ID); err != nil {
 				t.Fatal(err)
 			}
 		})
@@ -657,7 +659,7 @@ func TestGetBranchSelectionLooksUpOnlyTheLastModelChange(t *testing.T) {
 func BenchmarkGetBranchSelection(b *testing.B) {
 	manager := icodingagent.NewSession("branch-selection-bench", b.TempDir())
 	model := ai.Model{ID: "large", ProviderMeta: ai.ProviderMetadata{ProviderID: "faux", API: ai.APIOpenAICompletions}}
-	if err := manager.AppendModelSwitch("faux", "small", "small"); err != nil {
+	if _, err := manager.AppendModelChange("faux", "small"); err != nil {
 		b.Fatal(err)
 	}
 	for range 2000 {

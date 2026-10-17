@@ -225,7 +225,7 @@ func TestShortcuts_NormalizesKeysToLowercase(t *testing.T) {
 	}
 	r := inproc.NewRunner(exts, ".")
 
-	got := r.Shortcuts(nil)
+	got := shortcutsByKey(r.Shortcuts(nil))
 	if len(got) != 1 {
 		t.Errorf("Shortcuts() len = %d, want 1 (case-normalized dedup)", len(got))
 	}
@@ -242,6 +242,7 @@ func TestShortcuts_NormalizesKeysToLowercase(t *testing.T) {
 // Tools/Flags first-wins).
 //
 // upstream: runner.ts:444-451 (assignment overwrites after diagnostic)
+// Pi: packages/coding-agent/src/core/extensions/types.ts:2057 (ExtensionShortcut.description).
 func TestShortcuts_LastWinsOnConflict(t *testing.T) {
 	exts := []extension.Extension{
 		extWithShortcut("/ext/first", "ctrl+r", "from first (should be hidden)"),
@@ -249,7 +250,7 @@ func TestShortcuts_LastWinsOnConflict(t *testing.T) {
 	}
 	r := inproc.NewRunner(exts, ".")
 
-	got := r.Shortcuts(nil)
+	got := shortcutsByKey(r.Shortcuts(nil))
 	if len(got) != 1 {
 		t.Fatalf("Shortcuts() len = %d, want 1", len(got))
 	}
@@ -279,13 +280,8 @@ func TestShortcuts_DiagnosticMessageMatchesUpstream(t *testing.T) {
 	if len(d) != 1 {
 		t.Fatalf("ShortcutDiagnostics len = %d, want 1", len(d))
 	}
-	// Upstream message format:
-	// `Extension shortcut conflict: '<key>' registered by both <extA> and <extB>. Using <extB>.`
-	// pig simplifies to "registered by multiple extensions" because we
-	// don't track who registered first across the loop in a way that's
-	// useful: the LATER registrant wins, and upstream's "Using <extB>"
-	// suffix conveys that. Locked here so future drift is visible.
-	want := `Extension shortcut conflict: 'ctrl+r' registered by multiple extensions. Using /ext/b.`
+	// runner.ts:708: `registered by both <extA> and <extB>. Using <extB>.`
+	want := `Extension shortcut conflict: 'ctrl+r' registered by both /ext/a and /ext/b. Using /ext/b.`
 	if d[0].Message != want {
 		t.Errorf("diagnostic message:\n  got:  %q\n  want: %q", d[0].Message, want)
 	}
@@ -318,7 +314,7 @@ func TestShortcutsOverridableBuiltinWarnsAndUsesExtension(t *testing.T) {
 	}, ".")
 	bindings := map[string][]string{"app.tree.editLabel": {"shift+l"}}
 
-	if got := r.Shortcuts(bindings); got["shift+l"].ExtensionPath != "/ext/a" {
+	if got := shortcutsByKey(r.Shortcuts(bindings)); got["shift+l"].ExtensionPath != "/ext/a" {
 		t.Fatalf("overridable shortcut = %#v", got)
 	}
 	diagnostics := r.ShortcutDiagnostics()
@@ -369,11 +365,20 @@ func TestShortcuts_NoConflictNoDiagnostic(t *testing.T) {
 	}
 	r := inproc.NewRunner(exts, ".")
 
-	got := r.Shortcuts(nil)
+	got := shortcutsByKey(r.Shortcuts(nil))
 	if len(got) != 2 {
 		t.Errorf("Shortcuts() len = %d, want 2", len(got))
 	}
 	if d := r.ShortcutDiagnostics(); len(d) != 0 {
 		t.Errorf("ShortcutDiagnostics len = %d, want 0 (no conflicts)", len(d))
 	}
+}
+
+// shortcutsByKey looks entries of Runner.Shortcuts up by key, as Pi's Map.get does.
+func shortcutsByKey(entries []inproc.ShortcutEntry) map[extension.KeyID]extension.ExtensionShortcut {
+	out := make(map[extension.KeyID]extension.ExtensionShortcut, len(entries))
+	for _, entry := range entries {
+		out[entry.Key] = entry.Shortcut
+	}
+	return out
 }

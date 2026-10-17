@@ -1,7 +1,8 @@
+import { PI_PACKAGE_VERSION } from "./pi-version.mjs";
 import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
 const root = new URL("../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/", import.meta.url);
-if (JSON.parse(readFileSync(new URL("package.json", root), "utf8")).version !== "1.0.3") throw new Error("Expected Pi 1.0.3");
+if (JSON.parse(readFileSync(new URL("package.json", root), "utf8")).version !== PI_PACKAGE_VERSION) throw new Error(`Expected Pi ${PI_PACKAGE_VERSION}`);
 const { stream: completions } = await import(new URL("dist/api/openai-completions.js", root));
 const { stream: responses } = await import(new URL("dist/api/openai-responses.js", root));
 const { getModel, normalizeContext } = await import(new URL("dist/compat.js", root));

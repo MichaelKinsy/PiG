@@ -1,3 +1,5 @@
+//go:build !pig_strip_codemode
+
 package coding
 
 import (
@@ -53,8 +55,11 @@ func TestCodemodeRunsMCPStyleToolsWithoutNodeOnPath(t *testing.T) {
 			description = tool.Schema().Description
 		}
 	}
-	if !strings.Contains(description, "### `mcp__docs__search`") || !strings.Contains(description, "Promise<CallToolResult<{ hits: Array<string>; }>>") || !strings.Contains(description, "Shared MCP Types") {
-		t.Errorf("the description does not declare the MCP tool as a CallToolResult:\n%s", description)
+	// Pi 1.2.0 decouples MCP from codemode (24382bed/c661bc57): declarations.ts renders a CallToolResult-shaped output schema as
+	// its own type, and the description has no "Shared MCP Types" section.
+	const declared = "mcp__docs__search(args: { query: string; }): Promise<{ _meta?: { [key: string]: unknown; }; content: Array<{ [key: string]: unknown; }>; isError?: boolean; structuredContent?: { hits: Array<string>; }; }>;"
+	if !strings.Contains(description, "### `mcp__docs__search`") || !strings.Contains(description, declared) || strings.Contains(description, "CallToolResult") || strings.Contains(description, "Shared MCP Types") {
+		t.Errorf("the description does not declare the MCP tool's output schema as its own type:\n%s", description)
 	}
 	result := codemodeRun(t, h, `
 		const result = await tools.mcp__docs__search({ query: "wazero" });
@@ -82,7 +87,7 @@ func TestCodemodeTimeoutCancelsARunningNestedCall(t *testing.T) {
 		Execute: func(ctx context.Context, _ string, _ json.RawMessage, _ extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
 			<-ctx.Done()
 			close(sawCancel)
-			return nil, ctx.Err()
+			return extension.AgentToolResult{}, ctx.Err()
 		},
 	}
 	ext := extension.Extension{Name: "slow", Path: "<inline:slow>", ResolvedPath: "<inline:slow>",

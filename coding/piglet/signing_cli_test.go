@@ -1,6 +1,7 @@
 package piglet
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,7 +31,7 @@ func TestSigningCLIKeygenTrustAndVerify(t *testing.T) {
 	if code, _, stderr = runSigningCommand(t, "keygen", keyPath); code != 1 || !strings.Contains(stderr, "file exists") {
 		t.Fatalf("second keygen: code=%d stderr=%q", code, stderr)
 	}
-	if privateAfter, err := os.ReadFile(keyPath); err != nil || string(privateAfter) != string(privateBefore) {
+	if privateAfter, err := os.ReadFile(keyPath); err != nil || !bytes.Equal(privateAfter, privateBefore) {
 		t.Fatalf("second keygen changed private key: err=%v", err)
 	}
 

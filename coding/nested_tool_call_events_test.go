@@ -48,3 +48,38 @@ func TestNestedToolCallEndEventsKeepTheResultFlagApartFromTheCallFlag(t *testing
 		})
 	}
 }
+
+// Pi 1.1.0 nested-tool-calls.ts emits tool_execution_end with `...(outcome.durationMs === undefined ? {} : { durationMs: outcome.durationMs })` (#10549).
+func TestNestedToolCallEndEventForwardsOutcomeDurationMs(t *testing.T) {
+	tools := []agent.AgentTool{&nestedTestTool{name: "echo", run: func(context.Context, string, agent.ToolUpdateCallback) agent.AgentToolResult {
+		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "ok"}}, Details: map[string]any{}}
+	}}}
+	for _, tc := range []struct {
+		name string
+		tool string
+		want *int64
+	}{
+		{"a call that ran", "echo", new(int64(25))},
+		{"a call that did not run", "missing", nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			runner, host := newNestedTestRunner(&tools, false)
+			host.durationMs = new(int64(25))
+			if _, err := runner.Execute(t.Context(), "call", tc.tool, json.RawMessage(`{}`), NestedToolCallOptions{}); err != nil {
+				t.Fatal(err)
+			}
+			var end *agent.ToolExecutionEndEvent
+			for _, event := range host.events {
+				if e, ok := event.(agent.ToolExecutionEndEvent); ok {
+					end = &e
+				}
+			}
+			if end == nil {
+				t.Fatal("no tool_execution_end")
+			}
+			if (tc.want == nil) != (end.DurationMs == nil) || (tc.want != nil && *tc.want != *end.DurationMs) {
+				t.Fatalf("durationMs = %v, want %v", end.DurationMs, tc.want)
+			}
+		})
+	}
+}

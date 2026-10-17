@@ -27,7 +27,7 @@ func TestUserMessageBlockPadsInTheMarkdownWithTheBoxOutput(t *testing.T) {
 	} {
 		for _, pad := range []int{0, 1} {
 			for _, width := range []int{3, 12, 40} {
-				block := NewUserMessageBlock(text)
+				block := NewUserMessageComponent(text, nil, 1, nil)
 				block.SetOutputPad(pad)
 				got := block.Render(width)
 				want := slices.Clone(boxed(text, pad, width))

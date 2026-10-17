@@ -14,7 +14,7 @@ func TestInteractiveTuiSelectsAlternateRendererOnlyWhenRequested(t *testing.T) {
 	for _, name := range []string{"regular", "fullscreen"} {
 		t.Run(name, func(t *testing.T) {
 			var output bytes.Buffer
-			mode := NewInteractiveMode(InteractiveOptions{Settings: Settings{TuiMode: name}, AgentDir: t.TempDir()})
+			mode := NewInteractiveMode(nil, InteractiveModeOptions{Settings: Settings{TuiMode: name}, AgentDir: t.TempDir()})
 			mode.rendererOut = &output
 			handle := mode.createInteractiveTui(t.Context())
 			defer handle.cleanup()

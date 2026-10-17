@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 """Shared, reviewed package boundaries for both layout variants."""
 

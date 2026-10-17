@@ -1,6 +1,7 @@
 package codingagent
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -45,7 +46,7 @@ func TestBashExecutionMessageTimestampRoundTrip(t *testing.T) {
 	}
 	gotJSON, _ := json.Marshal(got)
 	wantJSON, _ := json.Marshal(want)
-	if string(gotJSON) != string(wantJSON) {
+	if !bytes.Equal(gotJSON, wantJSON) {
 		t.Fatalf("round trip=%s; want %s", gotJSON, wantJSON)
 	}
 }

@@ -14,19 +14,22 @@ import (
 )
 
 type upstreamShutdownRenderer struct {
-	*tui.TUI
+	*tui.TuiMainScreen
 	order *[]string
 }
 
-func (r *upstreamShutdownRenderer) Stop() { *r.order = append(*r.order, "stop"); r.TUI.Stop() }
+func (r *upstreamShutdownRenderer) Stop() {
+	*r.order = append(*r.order, "stop")
+	r.TuiMainScreen.Stop()
+}
 
 func upstreamShutdownMode(t *testing.T, order *[]string, persisted bool) *InteractiveMode {
 	t.Helper()
 	runner := inproc.NewRunner([]extension.Extension{{Path: "cleanup", Handlers: map[string][]extension.HandlerFn{
 		"session_shutdown": {func(...any) (any, error) { *order = append(*order, "dispose"); return nil, nil }},
 	}}}, t.TempDir())
-	m := &InteractiveMode{newRunner: runner, tuiInst: &upstreamShutdownRenderer{TUI: tui.NewWithOutput(io.Discard, 80, 24), order: order}}
-	m.rawDrain = func() { *order = append(*order, "drainInput") }
+	m := &InteractiveMode{newRunner: runner, tuiInst: &upstreamShutdownRenderer{TuiMainScreen: tui.NewWithOutput(io.Discard, 80, 24), order: order}}
+	m.rawDrain = func() error { *order = append(*order, "drainInput"); return nil }
 	m.rawRestore = func() {}
 	if persisted {
 		session, err := tempSessionMgr(t).Create("test-session", "")
@@ -115,6 +118,8 @@ func TestUpstreamSignalShutdownExtensionCleanup(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/suite/regressions/5080-signal-shutdown-extension-cleanup.test.ts:135
 	t.Run("interactive quit prints a resume hint for persisted sessions", func(t *testing.T) {
 		setStdoutTTY(t, true)
+		// The upstream test expects chalk.dim at its own chalk level; FORCE_COLOR pins that level to 1 here.
+		t.Setenv("FORCE_COLOR", "1")
 		var order []string
 		m := upstreamShutdownMode(t, &order, true)
 		output := captureStdout(t, func() {
@@ -170,4 +175,22 @@ func TestUpstreamSignalShutdownExtensionCleanup(t *testing.T) {
 			t.Fatalf("reentrant shutdown performed work: %v", order)
 		}
 	})
+}
+
+// interactive-mode.ts:4326 writes `${chalk.dim("To resume this session:")} ${resumeCommand}`; at chalk level 0 (FORCE_COLOR=0, --no-color, TERM=dumb,
+// an unknown TERM) chalk.dim returns the text unchanged. PiG always wrote the dim codes.
+func TestResumeHintIsPlainAtChalkLevelZero(t *testing.T) {
+	setStdoutTTY(t, true)
+	t.Setenv("FORCE_COLOR", "0")
+	var order []string
+	m := upstreamShutdownMode(t, &order, true)
+	output := captureStdout(t, func() {
+		m.requestShutdown()
+		if err := runShutdownInputLoop(t, m, strings.NewReader("")); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if want := "To resume this session: pig --session test-session\n"; output != want {
+		t.Fatalf("output=%q; want %q", output, want)
+	}
 }

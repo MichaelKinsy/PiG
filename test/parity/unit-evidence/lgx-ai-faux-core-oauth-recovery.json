@@ -1,0 +1,139 @@
+[
+ {
+  "upstream": "packages/coding-agent/src/core/agent-session.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestIsRecoverableLengthIsFalseForNoMessage"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/agent-session.ts",
+  "mutation": "internal/codingagent/auto_recovery.go: replace `return msg != nil && ai.IsRecoverableLength(msg.LLMMessage(), desiredMaxOutput)` with `return msg == nil || ai.IsRecoverableLength(msg.LLMMessage(), desiredMaxOutput)`; TestIsRecoverableLengthIsFalseForNoMessage fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/agent-session.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestIsRecoverableLength"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/agent-session.ts",
+  "mutation": "internal/codingagent/auto_recovery.go: replace `return msg != nil && ai.IsRecoverableLength(msg.LLMMessage(), desiredMaxOutput)` with `return msg != nil && ai.IsRecoverableLength(msg.LLMMessage(), 1)`; TestIsRecoverableLength fails."
+ },
+ {
+  "upstream": "packages/ai/src/compat/extension-oauth-types.ts",
+  "package": "./coding/extension/host/subprocess",
+  "tests": [
+   "TestOAuthProxy_LoginRelaysTheLegacyCallbackSurface"
+  ],
+  "upstream_reference": "packages/ai/src/compat/extension-oauth-types.ts",
+  "mutation": "coding/extension/host/subprocess/oauth_bridge.go: replace `OnAuth:       callbacks.OnAuth,` with ``; TestOAuthProxy_LoginRelaysTheLegacyCallbackSurface fails."
+ },
+ {
+  "upstream": "packages/ai/src/compat/extension-oauth-types.ts",
+  "package": "./coding/extension/host/subprocess",
+  "tests": [
+   "TestOAuthProxy_LoginRelaysTheLegacyCallbackSurface"
+  ],
+  "upstream_reference": "packages/ai/src/compat/extension-oauth-types.ts",
+  "mutation": "coding/extension/host/subprocess/oauth_bridge.go: replace `cb.OnAuth(ai.OAuthAuthInfo{URL: w.URL, Instructions: w.Instructions})` with `cb.OnAuth(ai.OAuthAuthInfo{URL: w.URL})`; TestOAuthProxy_LoginRelaysTheLegacyCallbackSurface fails."
+ },
+ {
+  "upstream": "packages/ai/src/compat/extension-oauth-types.ts",
+  "package": "./coding/extension/host/subprocess",
+  "tests": [
+   "TestOAuthProxy_LoginRelaysTheLegacyCallbackSurface"
+  ],
+  "upstream_reference": "packages/ai/src/compat/extension-oauth-types.ts",
+  "mutation": "coding/extension/host/subprocess/oauth_bridge.go: replace `cb.OnAuth(ai.OAuthAuthInfo{URL: w.URL, Instructions: w.Instructions})` with `cb.OnAuth(ai.OAuthAuthInfo{Instructions: w.Instructions})`; TestOAuthProxy_LoginRelaysTheLegacyCallbackSurface fails."
+ },
+ {
+  "upstream": "packages/ai/src/compat/extension-oauth-types.ts",
+  "package": "./coding/extension/host/subprocess",
+  "tests": [
+   "TestOAuthProxy_LoginRelaysTheLegacyCallbackSurface"
+  ],
+  "upstream_reference": "packages/ai/src/compat/extension-oauth-types.ts",
+  "mutation": "coding/extension/host/subprocess/oauth_bridge.go: replace `if cb.OnAuth != nil {\n\t\t\tcb.OnAuth(ai.OAuthAuthInfo{URL: w.URL, Instructions: w.Instructions})\n\t\t}` with `_ = cb.OnAuth`; TestOAuthProxy_LoginRelaysTheLegacyCallbackSurface fails."
+ },
+ {
+  "upstream": "packages/ai/src/providers/faux.ts",
+  "package": "./ai",
+  "tests": [
+   "TestCreateFauxCoreNamesItsApiProviderAndModels"
+  ],
+  "upstream_reference": "packages/ai/src/providers/faux.ts",
+  "mutation": "ai/faux_core.go: replace `API:                     string(handle.cfg.API),` with `API:                     \"x\",`; TestCreateFauxCoreNamesItsApiProviderAndModels fails."
+ },
+ {
+  "upstream": "packages/ai/src/providers/faux.ts",
+  "package": "./ai",
+  "tests": [
+   "TestCreateFauxCoreNamesItsApiProviderAndModels"
+  ],
+  "upstream_reference": "packages/ai/src/providers/faux.ts",
+  "mutation": "ai/faux_core.go: replace `Provider:                handle.cfg.ProviderID,` with `Provider:                \"x\",`; TestCreateFauxCoreNamesItsApiProviderAndModels fails."
+ },
+ {
+  "upstream": "packages/ai/src/providers/faux.ts",
+  "package": "./ai",
+  "tests": [
+   "TestCreateFauxCoreStreamsTheQueuedResponsesInOrder"
+  ],
+  "upstream_reference": "packages/ai/src/providers/faux.ts",
+  "mutation": "ai/faux_core.go: replace `Stream:                  handle.streamModel,\n\t\tStreamSimple:            handle.streamModel,` with `Stream:                  handle.streamModel,\n\t\tStreamSimple:            nil,`; TestCreateFauxCoreStreamsTheQueuedResponsesInOrder fails."
+ },
+ {
+  "upstream": "packages/ai/src/providers/faux.ts",
+  "package": "./ai",
+  "tests": [
+   "TestCreateFauxCoreStreamsTheQueuedResponsesInOrder"
+  ],
+  "upstream_reference": "packages/ai/src/providers/faux.ts",
+  "mutation": "ai/faux_core.go: replace `State:                   handle.State(),` with `State:                   nil,`; TestCreateFauxCoreStreamsTheQueuedResponsesInOrder fails."
+ },
+ {
+  "upstream": "packages/ai/src/providers/faux.ts",
+  "package": "./ai",
+  "tests": [
+   "TestCreateFauxCoreStreamsTheQueuedResponsesInOrder"
+  ],
+  "upstream_reference": "packages/ai/src/providers/faux.ts",
+  "mutation": "ai/faux_core.go: replace `AppendResponses:         handle.AppendResponses,` with `AppendResponses:         handle.SetResponses,`; TestCreateFauxCoreStreamsTheQueuedResponsesInOrder fails."
+ },
+ {
+  "upstream": "packages/ai/src/providers/faux.ts",
+  "package": "./ai",
+  "tests": [
+   "TestCreateFauxCoreStreamsTheQueuedResponsesInOrder"
+  ],
+  "upstream_reference": "packages/ai/src/providers/faux.ts",
+  "mutation": "ai/faux_core.go: replace `GetPendingResponseCount: handle.PendingResponseCount,` with `GetPendingResponseCount: func() int { return 0 },`; TestCreateFauxCoreStreamsTheQueuedResponsesInOrder fails."
+ },
+ {
+  "upstream": "packages/ai/src/providers/faux.ts",
+  "package": "./ai",
+  "tests": [
+   "TestCreateFauxCoreGetModelOverloads",
+   "TestCreateFauxCoreStreamsTheQueuedResponsesInOrder"
+  ],
+  "upstream_reference": "packages/ai/src/providers/faux.ts",
+  "mutation": "ai/faux_core.go: replace `GetModel:                handle.GetModel,` with `GetModel:                func(...string) *Model { return nil },`; TestCreateFauxCoreGetModelOverloads, TestCreateFauxCoreStreamsTheQueuedResponsesInOrder fails."
+ },
+ {
+  "upstream": "packages/ai/src/providers/faux.ts",
+  "package": "./ai",
+  "tests": [
+   "TestCreateFauxCoreNamesItsApiProviderAndModels",
+   "TestCreateFauxCoreGetModelOverloads"
+  ],
+  "upstream_reference": "packages/ai/src/providers/faux.ts",
+  "mutation": "ai/faux_core.go: replace `Models:                  slices.Clone(handle.models),` with `Models:                  slices.Clone(handle.models)[:0],`; TestCreateFauxCoreGetModelOverloads, TestCreateFauxCoreNamesItsApiProviderAndModels fails."
+ },
+ {
+  "upstream": "packages/ai/src/providers/faux.ts",
+  "package": "./ai",
+  "tests": [
+   "TestCreateFauxCoreSetResponsesReplacesTheQueue"
+  ],
+  "upstream_reference": "packages/ai/src/providers/faux.ts",
+  "mutation": "ai/faux_core.go: replace `SetResponses:            handle.SetResponses,` with `SetResponses:            handle.AppendResponses,`; TestCreateFauxCoreSetResponsesReplacesTheQueue fails."
+ }
+]

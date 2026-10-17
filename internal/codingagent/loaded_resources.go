@@ -9,10 +9,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
-
-	"golang.org/x/text/collate"
-	"golang.org/x/text/language"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	sourceref "github.com/MichaelKinsy/PiG/coding/source"
@@ -83,19 +81,19 @@ func (m *InteractiveMode) showLoadedResources(force, showDiagnosticsWhenQuiet bo
 		return
 	}
 	theme := tui.ActiveTheme()
-	collator := collate.New(language.Und)
-	sectionHeader := func(name string) string { return theme.FgText("mdHeading", "["+name+"]") }
+	collator := jsstring.NewCollator()
+	sectionHeader := func(name string) string { return theme.Fg("mdHeading", "["+name+"]") }
 	formatCompactList := func(items []string, sorted bool) string {
 		labels := make([]string, 0, len(items))
 		for _, item := range items {
-			if label := strings.TrimSpace(item); label != "" {
+			if label := jsstring.Trim(item); label != "" {
 				labels = append(labels, label)
 			}
 		}
 		if sorted {
 			slices.SortStableFunc(labels, collator.CompareString)
 		}
-		return theme.FgText("dim", "  "+strings.Join(labels, ", "))
+		return theme.Fg("dim", "  "+strings.Join(labels, ", "))
 	}
 	expanded := m.startupExpansionState()
 	addLoadedSection := func(name, collapsedBody, expandedBody string) {
@@ -114,7 +112,7 @@ func (m *InteractiveMode) showLoadedResources(force, showDiagnosticsWhenQuiet bo
 		sourceInfos[item.path] = item.info
 	}
 	for _, skill := range m.opts.Skills {
-		item := m.loadedResourceFor(skill.Path, "skills")
+		item := m.loadedResourceFor(skill.FilePath, "skills")
 		sourceInfos[item.path] = item.info
 	}
 	for _, prompt := range m.promptTemplates {
@@ -132,7 +130,7 @@ func (m *InteractiveMode) showLoadedResources(force, showDiagnosticsWhenQuiet bo
 		addDiagnostics := func(name string, diagnostics []extension.ResourceDiagnostic) {
 			if len(diagnostics) > 0 {
 				body := formatResourceDiagnostics(diagnostics, sourceInfos)
-				m.loadedResourcesContainer.Add(tui.NewThemedText(func() string { return tui.ActiveTheme().FgText("warning", "["+name+"]") + "\n" + body }, 0, 0))
+				m.loadedResourcesContainer.Add(tui.NewThemedText(func() string { return tui.ActiveTheme().Fg("warning", "["+name+"]") + "\n" + body }, 0, 0))
 				m.loadedResourcesContainer.Add(tui.NewSpacer(1))
 			}
 		}
@@ -146,14 +144,14 @@ func (m *InteractiveMode) showLoadedResources(force, showDiagnosticsWhenQuiet bo
 // addLoadedListing appends the Context, Skills, Prompts and Extensions
 // sections. Upstream 0.99.1 has no Themes section (interactive-mode.ts
 // showLoadedResources lists themes only through source info and conflicts).
-func (m *InteractiveMode) addLoadedListing(addLoadedSection func(name, collapsedBody, expandedBody string), formatCompactList func([]string, bool) string, theme *tui.Theme, collator *collate.Collator) {
+func (m *InteractiveMode) addLoadedListing(addLoadedSection func(name, collapsedBody, expandedBody string), formatCompactList func([]string, bool) string, theme *tui.Theme, collator *jsstring.Collator) {
 	contextPaths := append(slices.Clone(m.opts.SystemPromptSourcePaths), contextFilePaths(m.opts.ContextFiles)...)
 	if len(contextPaths) > 0 {
 		m.loadedResourcesContainer.Add(tui.NewSpacer(1))
 		expandedLines := make([]string, len(contextPaths))
 		compact := make([]string, len(contextPaths))
 		for i, path := range contextPaths {
-			expandedLines[i] = theme.FgText("dim", "  "+formatDisplayPath(path))
+			expandedLines[i] = theme.Fg("dim", "  "+formatDisplayPath(path))
 			compact[i] = m.formatContextPath(path)
 		}
 		addLoadedSection("Context", formatCompactList(compact, false), strings.Join(expandedLines, "\n"))
@@ -163,7 +161,7 @@ func (m *InteractiveMode) addLoadedListing(addLoadedSection func(name, collapsed
 		items := make([]loadedResource, len(m.opts.Skills))
 		names := make([]string, len(m.opts.Skills))
 		for i, skill := range m.opts.Skills {
-			items[i] = m.loadedResourceFor(skill.Path, "skills")
+			items[i] = m.loadedResourceFor(skill.FilePath, "skills")
 			names[i] = skill.Name
 		}
 		list := formatScopeGroups(theme, collator, buildScopeGroups(items), formatDisplayPathItem, getShortPathItem)
@@ -222,7 +220,7 @@ func (m *InteractiveMode) loadedExtensionResources() []loadedResource {
 		if source.ResolvedPath == "" || source.Hidden {
 			continue
 		}
-		if info, ok := source.SourceInfo.(PiSourceInfo); ok {
+		if info := source.SourceInfo; info != (PiSourceInfo{}) {
 			out = append(out, loadedResource{path: source.ResolvedPath, info: &info})
 			continue
 		}
@@ -534,15 +532,15 @@ func buildScopeGroups(items []loadedResource) []loadedScopeGroup {
 }
 
 // formatScopeGroups is upstream formatScopeGroups.
-func formatScopeGroups(theme *tui.Theme, collator *collate.Collator, groups []loadedScopeGroup, formatPath, formatPackagePath func(loadedResource) string) string {
+func formatScopeGroups(theme *tui.Theme, collator *jsstring.Collator, groups []loadedScopeGroup, formatPath, formatPackagePath func(loadedResource) string) string {
 	byPath := func(a, b loadedResource) int { return collator.CompareString(a.path, b.path) }
 	var lines []string
 	for _, group := range groups {
-		lines = append(lines, "  "+theme.FgText("accent", group.scope))
+		lines = append(lines, "  "+theme.Fg("accent", group.scope))
 		paths := slices.Clone(group.paths)
 		slices.SortStableFunc(paths, byPath)
 		for _, item := range paths {
-			lines = append(lines, theme.FgText("dim", "    "+formatPath(item)))
+			lines = append(lines, theme.Fg("dim", "    "+formatPath(item)))
 		}
 		sources := make([]string, 0, len(group.packages))
 		for source := range group.packages {
@@ -550,11 +548,11 @@ func formatScopeGroups(theme *tui.Theme, collator *collate.Collator, groups []lo
 		}
 		slices.SortStableFunc(sources, collator.CompareString)
 		for _, source := range sources {
-			lines = append(lines, "    "+theme.FgText("mdLink", source))
+			lines = append(lines, "    "+theme.Fg("mdLink", source))
 			items := slices.Clone(group.packages[source])
 			slices.SortStableFunc(items, byPath)
 			for _, item := range items {
-				lines = append(lines, theme.FgText("dim", "      "+formatPackagePath(item)))
+				lines = append(lines, theme.Fg("dim", "      "+formatPackagePath(item)))
 			}
 		}
 	}

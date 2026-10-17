@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -162,7 +163,7 @@ func TestWin32ResolveBugs(t *testing.T) {
 }
 
 func TestResolveUsesHostFlavor(t *testing.T) {
-	cwd, err := os.Getwd()
+	cwd, err := processCwd()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,5 +194,29 @@ func TestResolveDeletedWorkingDirectory(t *testing.T) {
 	}
 	if got, err := Resolve("x", "/abs/./y"); err != nil || got != "/abs/y" {
 		t.Errorf("Resolve with an absolute argument = %q, %v; Node never reads the cwd", got, err)
+	}
+}
+
+// Node's process.cwd() is the physical working directory (libuv uv_cwd, getcwd(3)); a $PWD that names the same directory through a
+// symlink does not change it, so path.resolve of a relative path starts from the physical path.
+func TestProcessCwdIsThePhysicalDirectory(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows has no $PWD")
+	}
+	real := t.TempDir()
+	real, err := filepath.EvalSymlinks(real)
+	if err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(t.TempDir(), "link")
+	testenv.RequireDirectoryLink(t, real, link)
+	t.Chdir(link)
+	t.Setenv("PWD", link)
+	got, err := Resolve("x")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := filepath.Join(real, "x"); got != want {
+		t.Fatalf("Resolve(\"x\") = %q, want the physical %q", got, want)
 	}
 }

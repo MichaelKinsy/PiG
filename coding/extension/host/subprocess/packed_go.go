@@ -9,14 +9,17 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime"
 	"github.com/MichaelKinsy/PiG/internal/installchange"
 )
 
@@ -70,7 +73,9 @@ type processShare struct {
 	// parkedBy is the epoch of the Host that parked the process. node marks a Node runtime process, whose socket addresses differ on Windows.
 	parkedBy atomic.Int64
 	node     bool
-	kill     func()
+	// tier is the executable of the ahead-of-time host the process runs, or "" for any other runtime. Such a process holds compiled copies of its extensions, so it cannot run an edited extension again.
+	tier string
+	kill func()
 	// admitMu serializes control lines on the process's stdin.
 	admitMu sync.Mutex
 	admit   io.WriteCloser
@@ -304,6 +309,33 @@ func (h *Host) LoadGoPackedCell(ctx context.Context, cell *runtimecell.GoPackedC
 }
 
 func (h *Host) startGoPackedCell(ctx context.Context, cell *runtimecell.GoPackedCell) ([]stagedManagedExt, []extension.Extension, error) {
+	staged, registered, err := h.startGoPackedCellOnce(ctx, cell)
+	// pig additive (D19): a Node cell whose first member failed to start on a slot runtime, before any member's result was
+	// published, starts again, whole, on the next runtime, ending on Node (startGoPackedCellOnce decides under per-member
+	// admission). A later member's failure stays this launch's load error, because a retry would run the earlier factories twice.
+	for {
+		if _, next := errors.AsType[*errStartOnNextRuntime](err); !next {
+			break
+		}
+		staged, registered, err = h.startGoPackedCellOnce(ctx, cell)
+	}
+	if cell != nil {
+		h.rememberNodeOnly(cell.Key, err)
+	}
+	return staged, registered, err
+}
+
+// admissionWriteError is a Node cell member's error when the host could not write its admission to the cell's process, which has
+// exited. Its message is the write error's.
+type admissionWriteError struct{ err error }
+
+func (e *admissionWriteError) Error() string { return e.err.Error() }
+func (e *admissionWriteError) Unwrap() error { return e.err }
+
+// errNodeCellExitedBeforeAdmission is a Node cell member's error when the cell's process exited before the host admitted it.
+var errNodeCellExitedBeforeAdmission = errors.New("Node cell exited before member admission")
+
+func (h *Host) startGoPackedCellOnce(ctx context.Context, cell *runtimecell.GoPackedCell) ([]stagedManagedExt, []extension.Extension, error) {
 	if cell == nil {
 		return nil, nil, newLoadError("packed-cell", "resolve", "missing_cell", fmt.Errorf("nil packed cell"))
 	}
@@ -326,8 +358,16 @@ func (h *Host) startGoPackedCell(ctx context.Context, cell *runtimecell.GoPacked
 	}
 
 	nodeRuntime := usesNodeRuntime(cell.BinaryPath, "")
+	tsSelection, tsSet := nodeSelection, tsruntime.Set{}
 	if nodeRuntime {
-		if err := h.ensureNodeRuntime(ctx); err != nil {
+		var err error
+		if set, ok := nodeLauncherSet(cell.BinaryPath, cell.Key); ok {
+			tsSet = set
+			tsSelection, err = h.selectTypeScriptRuntime(ctx, cell.Key, set)
+		} else {
+			err = h.ensureNodeRuntime(ctx)
+		}
+		if err != nil {
 			return nil, nil, newLoadError(cell.Key, "spawn", "runtime_unavailable", err)
 		}
 	}
@@ -337,8 +377,10 @@ func (h *Host) startGoPackedCell(ctx context.Context, cell *runtimecell.GoPacked
 		return nil, nil, newLoadError(cell.Key, "spawn", "socket_dir_failed", fmt.Errorf("write harness arguments: %w", err))
 	}
 	env := append(os.Environ(), harnessEnv...)
+	env = append(env, h.hostInfoEnv()...)
 	if nodeRuntime {
 		env = h.withNodeRuntimeEnv(env)
+		env = append(env, typeScriptRuntimeEnv(tsSelection, tsSet)...)
 	}
 	var recoveryConfigs []ExtConfig
 	originalConfigs, _ := ctx.Value(packedConfigsKey{}).([]ExtConfig)
@@ -381,7 +423,12 @@ func (h *Host) startGoPackedCell(ctx context.Context, cell *runtimecell.GoPacked
 
 	var retained *packedProcessState
 	if share := h.claimRetainedProcess(ctx, cell.BinaryPath, nodeRuntime); share != nil {
-		retained, _ = share.origin.(*packedProcessState)
+		if share.tier != "" && share.tier != tsSelection.Executable {
+			// pig additive (D19): the compiled host the retained process runs no longer matches the cell's runtime: /reload starts the cell on the runtime its set resolves to now.
+			share.release()
+		} else {
+			retained, _ = share.origin.(*packedProcessState)
+		}
 	}
 	extCtx, cancel := context.WithCancel(runtimeParent(ctx))
 	var lease *runtimecell.UsageLease
@@ -448,7 +495,7 @@ func (h *Host) startGoPackedCell(ctx context.Context, cell *runtimecell.GoPacked
 		"PIG_EXT_ACTIVE_MEMBERS="+strings.Join(cellExtensionNames(cell.Extensions), ","),
 	)
 	if retained == nil {
-		if loadErr := h.spawnPackedProcess(ctx, extCtx, cancel, cell, processState, pendingExts, env, nodeRuntime); loadErr != nil {
+		if loadErr := h.spawnPackedProcess(ctx, extCtx, cancel, cell, processState, pendingExts, env, nodeRuntime, tsSelection); loadErr != nil {
 			return nil, nil, loadErr
 		}
 	}
@@ -490,7 +537,7 @@ func (h *Host) startGoPackedCell(ctx context.Context, cell *runtimecell.GoPacked
 		if nodeRuntime {
 			select {
 			case <-processState.startWait():
-				err = errors.New("Node cell exited before member admission")
+				err = errNodeCellExitedBeforeAdmission
 			default:
 			}
 			memberCtx := ctx
@@ -502,7 +549,9 @@ func (h *Host) startGoPackedCell(ctx context.Context, cell *runtimecell.GoPacked
 			}
 			if err == nil {
 				processState.factoryOwner.Store(&me.config.Name)
-				err = processState.share.send(factoryAdmission{Name: me.config.Name, Entry: me.nodeEntry, Socket: pendingExts[i].address, ReloadPass: reloadPass(ctx), Cwd: h.cwd})
+				if sendErr := processState.share.send(factoryAdmission{Name: me.config.Name, Entry: me.nodeEntry, Socket: pendingExts[i].address, ReloadPass: reloadPass(ctx), Cwd: h.cwd}); sendErr != nil {
+					err = &admissionWriteError{err: sendErr}
+				}
 			}
 		}
 		if err == nil {
@@ -512,6 +561,11 @@ func (h *Host) startGoPackedCell(ctx context.Context, cell *runtimecell.GoPacked
 			processState.factoryOwner.Store(nil)
 		} else if _, factoryFailure := errors.AsType[*FactoryLoadError](err); factoryFailure {
 			processState.factoryOwner.Store(nil)
+		}
+		if err != nil && i == 0 && admission != nil && h.retryOnNextRuntime(ctx, cell.Key, err) {
+			h.stopFailedPackedMember(me)
+			processState.stopAndReap()
+			return nil, nil, &errStartOnNextRuntime{err: err}
 		}
 		if admission != nil {
 			if err != nil {
@@ -532,6 +586,8 @@ func (h *Host) startGoPackedCell(ctx context.Context, cell *runtimecell.GoPacked
 				acceptErr = &packedAcceptError{perMember: make(map[string]error, len(pendingExts))}
 			}
 			acceptErr.perMember[me.config.Name] = err
+			// pig additive (D19): the cell cannot start again on the next runtime without running its admitted members' factories twice, so a member that failed to start on a slot runtime keeps the whole set on Node from its next launch.
+			h.rememberMemberStartFailure(cell.Key, me.config.Name, err)
 			h.stopFailedPackedMember(me)
 			continue
 		}
@@ -559,6 +615,7 @@ func (h *Host) startGoPackedCell(ctx context.Context, cell *runtimecell.GoPacked
 	processState.watcherDone = make(chan struct{})
 	h.watchedPacked[processState] = struct{}{}
 	h.mu.Unlock()
+	//portlint:allow golifetime the watcher closes processState.watcherDone when the process ends, and Host.Shutdown waits on it for every process in h.watchedPacked
 	go h.watchPackedProcess(processState)
 	if acceptErr != nil {
 		return staged, registered, acceptErr
@@ -567,8 +624,8 @@ func (h *Host) startGoPackedCell(ctx context.Context, cell *runtimecell.GoPacked
 }
 
 // spawnPackedProcess starts the runner process of a packed cell. Its stdin stays open for the life of the process: it carries the admission of each further factory generation.
-func (h *Host) spawnPackedProcess(ctx, extCtx context.Context, cancel context.CancelFunc, cell *runtimecell.GoPackedCell, processState *packedProcessState, pendingExts []packedPendingExt, env []string, nodeRuntime bool) error {
-	cmd := buildExtCommand(extCtx, cell.BinaryPath, "")
+func (h *Host) spawnPackedProcess(ctx, extCtx context.Context, cancel context.CancelFunc, cell *runtimecell.GoPackedCell, processState *packedProcessState, pendingExts []packedPendingExt, env []string, nodeRuntime bool, tsSelection tsruntime.Selection) error {
+	cmd := buildExtCommandSelected(extCtx, cell.BinaryPath, "", runtime.GOOS, exec.LookPath, tsSelection)
 	admissionWriter, err := cmd.StdinPipe()
 	if err != nil {
 		processState.releaseUsageLease()
@@ -579,18 +636,25 @@ func (h *Host) spawnPackedProcess(ctx, extCtx context.Context, cancel context.Ca
 	// pig additive (D20): packed-process diagnostics live only until teardown unless a reported failure retains them.
 	stderrFile, _ := os.CreateTemp("", fmt.Sprintf("pig-packed-%s-*.log", sanitizeLogName(cell.Key)))
 	if stderrFile != nil {
-		cmd.Stderr = stderrFile
 		processState.stderrLog = &processStderrLog{path: stderrFile.Name(), writer: stderrFile}
+		// A Go, Rust or Python runner writes a failed member's cause to stderr and then closes the member's socket while the process serves its siblings. The process writes the log file itself, so the cause is in the file when the host reads it on that close; a host-side copy would race the read.
+		cmd.Stderr = stderrFile
 	}
 	if nodeRuntime {
-		cmd.Stdout, cmd.Stderr = h.nodeExtensionOutput(stderrFile)
+		var stderrLog io.Writer
+		if processState.stderrLog != nil {
+			stderrLog = processState.stderrLog
+		}
+		cmd.Stdout, cmd.Stderr = h.nodeExtensionOutput(stderrLog)
 	}
+	// pig divergence (D56): after the host stops the process, its output pipe gets this long to drain before it is closed; it never bounds extension work.
+	cmd.WaitDelay = 5 * time.Second
 	for _, pending := range pendingExts {
 		h.markExtension(pending.me.config.Name, "spawn-start")
 	}
 	processTree, err := startProcessTree(cmd)
-	if stderrFile != nil && (!nodeRuntime || err != nil) {
-		// Direct child handles are inherited; Node's host-side copy owns its writer until Cmd.Wait drains it.
+	if !nodeRuntime || err != nil {
+		// A direct child inherited the log file; Node's host-side copy owns the writer until Cmd.Wait drains it, and no Cmd.Wait runs after a failed start.
 		processState.stderrLog.closeWriter()
 	}
 	if err != nil {
@@ -616,6 +680,7 @@ func (h *Host) spawnPackedProcess(ctx, extCtx context.Context, cancel context.Ca
 		}
 	})
 	processState.share.node = nodeRuntime
+	processState.share.tier = tierOf(tsSelection)
 	h.retention().register(processState.share)
 	return nil
 }
@@ -835,12 +900,13 @@ func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Liste
 	}
 	if !me.config.acceptsRegisteredName(reg.Name) {
 		_ = conn.Close("name mismatch")
-		loadErr := newLoadError(me.config.Name, "register", "name_mismatch", fmt.Errorf("packed extension registered as %q", reg.Name))
+		loadErr := registeredIdentityMismatch(me.config, reg.Name)
 		loadErr.StderrLog = me.stderrLogPath
 		return nil, loadErr
 	}
 	me.flagNames = make([]string, 0, len(reg.Flags))
 	me.wantsSessionLog = reg.WantsSessionLog
+	me.wantsModelRegistry = reg.WantsModelRegistry
 	for _, f := range reg.Flags {
 		me.flagNames = append(me.flagNames, f.Name)
 	}
@@ -915,17 +981,19 @@ func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Liste
 		me.releaseLiveness = conn.holdLiveness()
 	}
 	if h.uiBridge != nil {
-		h.uiBridge.RegisterExtConn(me.config.Name, conn)
+		h.uiBridge.RegisterExtConn(me.config.Name, conn, reg.WantsModelRegistry)
 	}
 	ext := h.buildExtension(me, reg)
 	me.resetToolRenderers(reg.ToolRenderers)
+	// Adoption rewrites the held Extension that Extensions copies under h.mu, so adoption and publication hold it too.
+	h.mu.Lock()
 	if previous, _ := ctx.Value(recoveryMembersKey{}).(map[string]*managedExt); previous != nil {
 		if old := previous[me.config.Name]; old != nil && old.ext != nil {
-			old.ext.ReplaceEventHandlers(ext)
-			ext = old.ext
+			ext = adoptRestartedExtension(old.ext, ext)
 		}
 	}
 	me.ext = ext
+	h.mu.Unlock()
 	me.supervisor.RecordSuccess()
 	h.markExtension(me.config.Name, "handshake-done")
 	return ext, nil

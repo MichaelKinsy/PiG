@@ -104,7 +104,7 @@ def new_extension():
 		write(filepath.Join(dir, "src", "lib.rs"), fmt.Sprintf(`use pig_sdk::Extension;
 pub fn new_extension()->Extension{
  let mut e=Extension::new(%q);
- e.on_event("user_bash",false,|_,_|Some(serde_json::json!({"result":{"output":%q,"exitCode":null,"cancelled":false,"truncated":false}})));
+ e.on_event("user_bash",|_,_|Some(serde_json::json!({"result":{"output":%q,"exitCode":null,"cancelled":false,"truncated":false}})));
  e
 }`, name, name))
 	}

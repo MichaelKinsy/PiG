@@ -8,6 +8,14 @@ A post-processing wrapper around `encoding/json.Marshal` or `Unmarshal` cannot r
 
 The production files derive from the Go 1.27.1 `src/encoding/json` v1 implementation: `decode.go`, `encode.go`, `fold.go`, `indent.go`, `scanner.go`, `stream.go`, `tables.go`, and `tags.go`. The Go Authors' BSD license is retained in `LICENSE` and each source header. Source: <https://github.com/golang/go/tree/go1.27.1/src/encoding/json>.
 
-Local changes are the surrogate branches in `appendString` and `unquoteBytes`, string-contract comments, removal of the standard library's internal experiment build tags, aliases for `encoding/json.RawMessage` and `encoding/json.Number`, and narrow lint fixes or explanations. The experiment tags belong to Go's selection of its own implementation; this package always uses these sources. The aliases preserve interoperability with callers of the standard library.
+Local changes are the surrogate branches in `appendString` and `unquoteBytes`, string-contract comments, removal of the standard library's internal experiment build tags, aliases for `encoding/json.RawMessage` and `encoding/json.Number`, a pool for `Unmarshal`'s decode state, scanner stack and error context (`decodeStatePool`, so a small message decodes without allocating them), and narrow lint fixes or explanations. The experiment tags belong to Go's selection of its own implementation; this package always uses these sources. The aliases preserve interoperability with callers of the standard library.
+
+Other local changes (lw-json):
+
+- The JSON.stringify mode: `MarshalStringify`/`AppendStringify`, `encOpts.jsStrings` and `appendCompactJS` for nested Marshaler output, plus the `StringifyAppender` splice.
+- `UnmarshalTrusted`.
+- An eight-byte scan in `appendString`.
+- A plain-slice `encodeState` buffer in place of the embedded `bytes.Buffer`, with pooled buffers capped at 64 KiB.
+- The verify mode (`verify_off.go`/`verify_on.go`, build tag `pigjson_verify`).
 
 When updating the toolchain, compare these files with that exact Go source tree and retain the string regression suite. Do not replace the codec with placeholder characters or a second wire shape. SDK staging includes this subpackage and its license.

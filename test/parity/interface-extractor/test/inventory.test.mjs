@@ -6,7 +6,7 @@ import test from "node:test";
 import { compareInventories, extractInventory, stableSourcePath, verifyPublishedSources } from "../src/inventory.mjs";
 import { scratchDir } from "./scratch.mjs";
 
-const VERSION = fs.readFileSync(new URL("../../../../internal/coding/pigversion/pigversion.go", import.meta.url), "utf8").match(/const UpstreamVersion = "([^"]+)"/)[1];
+const VERSION = fs.readFileSync(new URL("../../../../internal/coding/pigversion/pigversion.go", import.meta.url), "utf8").match(/const UpstreamPackageVersion = "([^"]+)"/)[1];
 
 function write(root, relative, content) {
   const file = path.join(root, relative);
@@ -50,7 +50,7 @@ function buildFixture() {
       "./rpc-entry": { import: "./dist/bundle/rpc-entry.js" },
     },
   }));
-  write(source, "packages/coding-agent/src/index.ts", `export type { Command } from "./types.js";\nexport function main(options?: { cwd?: string }): Promise<void> { return Promise.resolve(); }\n`);
+  write(source, "packages/coding-agent/src/index.ts", `export type { Command } from "./types.js";\nexport { parse as parseFromAi } from "@earendil-works/pi-ai";\nexport function main(options?: { cwd?: string }): Promise<void> { return Promise.resolve(); }\n`);
   write(source, "packages/coding-agent/src/types.ts", `export interface Command { type: "prompt"; message: string; }\n`);
   write(source, "packages/coding-agent/src/rpc-entry.ts", `export function runRpc(...args: string[]): Promise<number> { return Promise.resolve(args.length); }\n`);
 
@@ -102,7 +102,7 @@ function buildFixture() {
       "./rpc-entry": { import: "./dist/bundle/rpc-entry.js" },
     },
   }));
-  write(roots.coding, "dist/index.d.ts", `export type { Command } from "./types.js";\nexport declare function main(options?: { cwd?: string }): Promise<void>;\n`);
+  write(roots.coding, "dist/index.d.ts", `export type { Command } from "./types.js";\nexport { parse as parseFromAi } from "@earendil-works/pi-ai";\nexport declare function main(options?: { cwd?: string }): Promise<void>;\n`);
   write(roots.coding, "dist/types.d.ts", `export interface Command { type: "prompt"; message: string; }\n`);
   write(roots.coding, "dist/rpc-entry.d.ts", `export declare function runRpc(...args: string[]): Promise<number>;\n`);
   write(roots.coding, "dist/bundle/rpc-entry.js", "export {};\n");
@@ -114,6 +114,18 @@ function buildFixture() {
   write(roots.tui, "dist/index.d.ts", `export declare class SelectList {\n  selected: number;\n  handleInput(data: string): boolean;\n}\n`);
 
   return { root, source, published, publishedAI: roots.ai };
+}
+
+for (const origin of ["source", "published"]) {
+  test(`${origin} inventory of a commit pin checks the package version before the plus and records the commit version`, (t) => {
+    const fixture = buildFixture();
+    t.after(() => fs.rmSync(fixture.root, { recursive: true, force: true }));
+    const root = fixture[origin];
+    const commitVersion = `${VERSION}+abcdef12`;
+    const inventory = extractInventory({ origin, root, upstreamVersion: commitVersion });
+    assert.equal(inventory.upstreamVersion, commitVersion);
+    assert.throws(() => extractInventory({ origin, root, upstreamVersion: `9.9.9+abcdef12` }), /version skew/);
+  });
 }
 
 function extractPair(fixture) {
@@ -185,11 +197,40 @@ test("the optional mcp and codemode packages join the inventory when a release h
   }
 });
 
+test("a package missing from the published install is read from the pinned source, and a private package has no interface", (t) => {
+  const fixture = buildFixture();
+  t.after(() => fs.rmSync(fixture.root, { recursive: true, force: true }));
+  const exportsIndex = { exports: { ".": { types: "./dist/index.d.ts", import: "./dist/index.js" } } };
+  write(fixture.source, "packages/env/package.json", manifest("@earendil-works/pi-env", exportsIndex));
+  write(fixture.source, "packages/env/src/index.ts", `export interface Frame {\n  kind: string;\n}\nexport function encodeFrame(frame: Frame): Uint8Array { return new Uint8Array(); }\n`);
+  write(fixture.source, "packages/evals/package.json", JSON.stringify({ name: "@earendil-works/pi-evals", version: VERSION, private: true }));
+  write(fixture.source, "packages/evals/src/cli.ts", "export const run = 1;\n");
+  const published = extractInventory({ origin: "published", root: fixture.published, sourceRoot: fixture.source, upstreamVersion: VERSION });
+  const byKey = Object.fromEntries(published.packages.map((entry) => [entry.key, entry]));
+  assert.equal(byKey.env.origin, "source");
+  assert.equal(byKey.agent.origin, "published");
+  assert.deepEqual(byKey.evals.entrypoints, []);
+  assert.ok(published.interfaces.some((entry) => entry.id === "pkg:env/.#encodeFrame"));
+  assert.ok(!published.interfaces.some((entry) => entry.package === "@earendil-works/pi-evals"));
+  const withoutSource = extractInventory({ origin: "published", root: fixture.published, upstreamVersion: VERSION });
+  assert.ok(!withoutSource.packages.some((entry) => entry.key === "env"), "no source root: the package stays absent");
+});
+
 test("normalizes compiler dependency source paths", () => {
   const root = path.join(os.tmpdir(), "pig-interface-root");
   assert.equal(stableSourcePath(root, path.join(root, "packages", "agent", "src", "index.ts")), "packages/agent/src/index.ts");
   assert.equal(stableSourcePath(root, path.join(root, "..", "deps", "node_modules", "typescript", "lib", "lib.es5.d.ts")), "node_modules/typescript/lib/lib.es5.d.ts");
   assert.throws(() => stableSourcePath(root, path.join(root, "..", "vendor", "typescript", "lib.d.ts")), /stable dependency path/);
+  // A source build's workspace dependency (durable re-exports chord since Pi c268154c) resolves to the sibling package; it is named as the
+  // published install names it.
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "pig-interface-workspace-"));
+  const chord = path.join(workspace, "packages", "chord");
+  fs.mkdirSync(path.join(chord, "dist", "sqlite"), { recursive: true });
+  fs.writeFileSync(path.join(chord, "package.json"), JSON.stringify({ name: "@earendil-works/chord" }));
+  assert.equal(stableSourcePath(path.join(workspace, "packages", "durable"), path.join(chord, "dist", "sqlite", "migrations.d.ts")),
+    "node_modules/@earendil-works/chord/dist/sqlite/migrations.d.ts");
+  assert.throws(() => stableSourcePath(path.join(workspace, "packages", "durable"), path.join(workspace, "packages", "gone", "x.d.ts")), /stable dependency path/);
+  fs.rmSync(workspace, { recursive: true, force: true });
 });
 
 
@@ -211,6 +252,10 @@ test("extracts package exports, re-exports, overloads, generics, members, and wi
   assert.ok(byID.has("pkg:agent/node#nodeOnly"));
   assert.ok(byID.has("pkg:ai/providers/demo#provider"), [...byID.keys()].filter((id) => id.includes("provider")).join("\n"));
   assert.equal(byID.get("pkg:ai/.#parse").shape.calls.length, 2);
+  // A re-export from another tracked Pi package is Pi's API (durable re-exports chord/sqlite): it resolves to the declaration,
+  // not to an external alias.
+  assert.notEqual(byID.get("pkg:coding-agent/.#parseFromAi").kind, "external");
+  assert.equal(byID.get("pkg:coding-agent/.#parseFromAi").shape.calls.length, 2);
   assert.equal(byID.get("pkg:ai/.#parse::call:0").parentId, "pkg:ai/.#parse");
   assert.equal(byID.get("pkg:ai/.#parse::call:1").role, "call-overload");
 
@@ -242,6 +287,9 @@ test("source/published comparison fails when a published overload disappears", (
   assert.deepEqual(problems, [
     "pkg:ai/.#parse: source/published shape mismatch",
     "pkg:ai/.#parse::call:1: missing from published inventory",
+    // coding-agent re-exports parse from pi-ai, so the lost overload reaches its re-export too.
+    "pkg:coding-agent/.#parseFromAi: source/published shape mismatch",
+    "pkg:coding-agent/.#parseFromAi::call:1: missing from published inventory",
   ]);
 });
 

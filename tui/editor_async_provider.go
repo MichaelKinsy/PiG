@@ -218,17 +218,18 @@ func (e *Editor) requestAutocompleteProvider(provider *AsyncAutocompleteProvider
 				if ctx.Err() != nil || request != e.autocompleteRequestID || e.cursor != cursor || !slices.Equal(e.lines, lines) {
 					return
 				}
+				defer e.requestRender()
 				e.asyncCancel = nil
 				e.autocompleteFromAwaited = e.asyncAutocomplete == nil
 				if err != nil {
 					e.autocompleteError(err)
 					return
 				}
-				e.autocompleteItems = nil
+				e.setAutocompleteItems(nil)
 				e.autocompletePrefix = ""
 				e.autocompleteForced = force
 				if result != nil && len(result.Items) > 0 {
-					e.autocompleteItems = result.Items
+					e.setAutocompleteItems(result.Items)
 					e.autocompletePrefix = result.Prefix
 					e.autocompleteQueryCursor = cursor
 					e.autocompleteCursor = bestAutocompleteMatchIndex(result.Items, result.Prefix)

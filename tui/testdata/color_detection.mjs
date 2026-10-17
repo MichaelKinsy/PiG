@@ -7,11 +7,11 @@ if (version !== process.argv[2]) throw new Error(`Pi oracle ${version}, expected
 const { detectCapabilities, resetCapabilitiesCache } = await import(pathToFileURL(root + "node_modules/@earendil-works/pi-tui/dist/terminal-image.js"));
 const { getThemeByName, detectColorFgBgTheme } = await import(pathToFileURL(root + "dist/modes/interactive/theme/theme.js"));
 const cases = JSON.parse(readFileSync(0, "utf8"));
-const results = cases.map(({ env, platform }) => {
+const results = cases.map(({ env, platform, tmuxProbe }) => {
   process.env = { ...env, PI_PACKAGE_DIR: root };
   Object.defineProperty(process, "platform", { value: platform });
   resetCapabilitiesCache();
-  const capabilities = detectCapabilities(() => false);
+  const capabilities = detectCapabilities(() => tmuxProbe === true);
   const themes = {};
   for (const name of ["dark", "light"]) {
     const theme = getThemeByName(name);

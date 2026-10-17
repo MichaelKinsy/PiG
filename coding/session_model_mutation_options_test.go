@@ -18,7 +18,7 @@ func TestModelMutationPersistOptions(t *testing.T) {
 				t.Fatal(err)
 			}
 			model := fakeModel()
-			model.Capabilities.MaxThinking = ai.ThinkingHigh
+			model.Capabilities.MaxThinking = ai.ThinkingLevelHigh
 			sess, err := NewSession(svcs, SessionOptions{Model: model})
 			if err != nil {
 				t.Fatal(err)
@@ -47,11 +47,11 @@ func TestModelMutationPersistOptions(t *testing.T) {
 
 // Pi saves the requested level even if clamping makes the effective level unchanged.
 func TestThinkingPersistSavesRequestedLevelEvenWithoutEffectiveChange(t *testing.T) {
-	for _, maxThinking := range []ai.ThinkingLevel{ai.ThinkingHigh, ""} {
+	for _, maxThinking := range []ai.ModelThinkingLevel{ai.ThinkingHigh, ""} {
 		t.Run(string(maxThinking), func(t *testing.T) {
 			svcs := newTestServices(t)
 			model := fakeModel()
-			model.Capabilities.MaxThinking = maxThinking
+			model.Capabilities.MaxThinking = maxThinking.ReasoningOption()
 			sess, err := NewSession(svcs, SessionOptions{Model: model})
 			if err != nil {
 				t.Fatal(err)
@@ -60,7 +60,7 @@ func TestThinkingPersistSavesRequestedLevelEvenWithoutEffectiveChange(t *testing
 			if err := sess.SetThinkingLevel(ai.ThinkingMax); err != nil {
 				t.Fatal(err)
 			}
-			before := len(sess.Inner().Entries())
+			before := len(sess.Inner().GetEntries())
 			if err := sess.SetThinkingLevel(ai.ThinkingMax, ModelMutationOptions{Persist: true}); err != nil {
 				t.Fatal(err)
 			}
@@ -70,7 +70,7 @@ func TestThinkingPersistSavesRequestedLevelEvenWithoutEffectiveChange(t *testing
 			if got := sess.ThinkingLevel(); got != ai.ClampThinkingLevel(model, ai.ThinkingMax) {
 				t.Errorf("effective level = %s", got)
 			}
-			if got := len(sess.Inner().Entries()); got != before {
+			if got := len(sess.Inner().GetEntries()); got != before {
 				t.Errorf("unchanged effective level added transcript entries: %d -> %d", before, got)
 			}
 		})

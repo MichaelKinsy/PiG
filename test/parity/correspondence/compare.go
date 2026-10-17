@@ -7,15 +7,17 @@ import (
 )
 
 type Rules struct {
-	ID                  string                       `json:"id"`
-	TableTargets        map[string]string            `json:"tableTargets"`
-	AdditiveTableItems  map[string]map[string]string `json:"additiveTableItems,omitempty"`
-	ConstantTargets     map[string]string            `json:"constantTargets"`
-	FunctionTargets     map[string]string            `json:"functionTargets"`
-	CalleeTargets       map[string]string            `json:"calleeTargets"`
-	CancellableCalls    []string                     `json:"cancellableCalls"`
-	CallContracts       []string                     `json:"callContracts"`
-	TransitionContracts []TransitionContract         `json:"transitionContracts"`
+	ID                 string                       `json:"id"`
+	TableTargets       map[string]string            `json:"tableTargets"`
+	AdditiveTableItems map[string]map[string]string `json:"additiveTableItems,omitempty"`
+	// DesignedOutTableItems maps a Pig table to the Pi items it omits, each to the divergence that designs it out.
+	DesignedOutTableItems map[string]map[string]string `json:"designedOutTableItems,omitempty"`
+	ConstantTargets       map[string]string            `json:"constantTargets"`
+	FunctionTargets       map[string]string            `json:"functionTargets"`
+	CalleeTargets         map[string]string            `json:"calleeTargets"`
+	CancellableCalls      []string                     `json:"cancellableCalls"`
+	CallContracts         []string                     `json:"callContracts"`
+	TransitionContracts   []TransitionContract         `json:"transitionContracts"`
 }
 
 type TransitionContract struct {
@@ -65,6 +67,9 @@ func CompactionSettingsRules() Rules {
 		AdditiveTableItems: map[string]map[string]string{
 			"table:settings-selector": {"mask-secret-input": "docs/parity/DIVERGENCES.md#D80"},
 		},
+		DesignedOutTableItems: map[string]map[string]string{
+			"table:settings-selector": {"share-destination": "docs/parity/DIVERGENCES.md#D64"},
+		},
 		ConstantTargets: map[string]string{
 			"SUMMARIZATION_PROMPT":             "SUMMARIZATION_PROMPT",
 			"TURN_PREFIX_SUMMARIZATION_PROMPT": "turnPrefixSummarizationPrompt",
@@ -78,14 +83,14 @@ func CompactionSettingsRules() Rules {
 			"saveGlobal": "saveGlobal", "saveProject": "saveProject", "settingsOrchestration": "settingsOrchestration",
 		},
 		CalleeTargets: map[string]string{
-			"generateSummaryWithUsage": "generateSummary", "generateTurnPrefixSummary": "generateTurnPrefixSummary",
+			"generateSummaryWithUsage": "GenerateSummaryWithUsageUsing", "generateTurnPrefixSummary": "generateTurnPrefixSummary",
 			"combineUsage": "combineUsage", "completeSummarization": "completeSummarization",
 		},
 		CancellableCalls: []string{"completeSummarization", "generateSummaryWithUsage", "generateTurnPrefixSummary"},
 		CallContracts:    []string{"compact", "generateTurnPrefixSummary"},
 		TransitionContracts: []TransitionContract{
 			{ID: "split-summary", Function: "compact", SourceKind: "update", SourceTarget: "summary", SourceContains: "Turn Context (split turn)", TargetKind: "update", TargetTarget: "summary", TargetContains: "Turn Context (split turn)", Condition: "1:then"},
-			{ID: "history-fallback", Function: "compact", SourceKind: "update", SourceTarget: "summary", SourceContains: "result.text", TargetKind: "update", TargetTarget: "summary", TargetContains: "generateSummary", Condition: "1:else"},
+			{ID: "history-fallback", Function: "compact", SourceKind: "update", SourceTarget: "summary", SourceContains: "result.text", TargetKind: "update", TargetTarget: "summary", TargetContains: "GenerateSummaryWithUsage", Condition: "1:else"},
 			{ID: "file-operations", Function: "compact", SourceKind: "update", SourceTarget: "summary", SourceContains: "formatFileOperations", TargetKind: "update", TargetTarget: "summary", TargetContains: "FormatFileOperations", Condition: "0:then"},
 			{ID: "missing-first-kept-id", Function: "compact", SourceKind: "error", SourceContains: "First kept entry has no UUID - session may need migration", TargetKind: "return", TargetContains: "First kept entry has no UUID - session may need migration", Condition: "1:then"},
 			{ID: "result", Function: "compact", SourceKind: "return", SourceContains: "firstKeptEntryId", TargetKind: "return", TargetContains: "FirstKeptEntryID", Condition: "0:then"},
@@ -312,9 +317,14 @@ func compareTables(report *Report, source, target *Inventory, rules Rules) {
 		}
 		sourceItems := indexItems(sourceTable.Items)
 		targetItems := indexItems(targetTable.Items)
+		designedOut := rules.DesignedOutTableItems[targetID]
 		for _, sourceItem := range sourceTable.Items {
 			targetItem, ok := targetItems[sourceItem.ID]
 			if !ok {
+				if lineage := designedOut[sourceItem.ID]; lineage != "" {
+					report.Mappings = append(report.Mappings, MappingFact{ID: "correspondence:designed-out-table-item:" + sourceItem.ID, SourceID: sourceID + "#" + sourceItem.ID, TargetID: lineage, Kind: "designed-out-table-item", SourceHash: sourceItem.SourceHash})
+					continue
+				}
 				report.Findings = append(report.Findings, Finding{
 					ID: "finding:table-item:missing:" + sourceItem.ID, Severity: "error", Kind: "missing-table-item",
 					SourceID: sourceID + "#" + sourceItem.ID, TargetID: targetID + "#" + sourceItem.ID,
@@ -327,6 +337,13 @@ func compareTables(report *Report, source, target *Inventory, rules Rules) {
 				TargetID: targetID + "#" + targetItem.ID, Kind: "direct-table-identity", SourceHash: sourceItem.SourceHash, TargetHash: targetItem.SourceHash,
 			})
 			compareTableItem(report, sourceID, targetID, sourceItem, targetItem)
+		}
+		for id, lineage := range designedOut {
+			_, inSource := sourceItems[id]
+			_, inTarget := targetItems[id]
+			if !inSource || inTarget || lineage == "" {
+				report.Findings = append(report.Findings, Finding{ID: "finding:table-item:designed-out:" + id, Severity: "error", Kind: "designed-out-table-item", SourceID: sourceID + "#" + id, TargetID: targetID + "#" + id, Detail: "declared designed-out item is not a Pi item the Pig table omits, or its lineage is missing"})
+			}
 		}
 		additions := rules.AdditiveTableItems[targetID]
 		for id, lineage := range additions {
@@ -347,7 +364,7 @@ func compareTables(report *Report, source, target *Inventory, rules Rules) {
 				})
 			}
 		}
-		sourceOrder := itemIDs(sourceTable.Items)
+		sourceOrder := slices.DeleteFunc(itemIDs(sourceTable.Items), func(id string) bool { return designedOut[id] != "" && targetItems[id].ID == "" })
 		targetOrder := slices.DeleteFunc(itemIDs(targetTable.Items), func(id string) bool { return additions[id] != "" && sourceItems[id].ID == "" })
 		if !slices.Equal(sourceOrder, targetOrder) {
 			report.Findings = append(report.Findings, Finding{

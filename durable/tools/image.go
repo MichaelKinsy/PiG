@@ -182,3 +182,57 @@ func readUint32LE(data []byte, offset int) int64 {
 func startsWithAscii(data []byte, offset int, text string) bool {
 	return len(data) >= offset+len(text) && string(data[offset:offset+len(text)]) == text
 }
+
+// imageDimensions is the width and height an image of mimeType declares in its header, without decoding it: PNG's IHDR, GIF's
+// screen, WebP's VP8, VP8L, or VP8X chunk, JPEG's first SOF segment. ok is false when the header cannot be read.
+func imageDimensions(data []byte, mimeType string) (width, height int, ok bool) {
+	switch mimeType {
+	case "image/png":
+		if len(data) < 24 {
+			return 0, 0, false
+		}
+		return int(readUint32BE(data, 16)), int(readUint32BE(data, 20)), true
+	case "image/gif":
+		if len(data) < 10 {
+			return 0, 0, false
+		}
+		return readUint16LE(data, 6), readUint16LE(data, 8), true
+	case "image/webp":
+		if len(data) < 30 {
+			return 0, 0, false
+		}
+		switch {
+		case startsWithAscii(data, 12, "VP8 "):
+			return readUint16LE(data, 26) & 0x3fff, readUint16LE(data, 28) & 0x3fff, true
+		case startsWithAscii(data, 12, "VP8L"):
+			bits := readUint32LE(data, 21)
+			return int(bits&0x3fff) + 1, int(bits>>14&0x3fff) + 1, true
+		case startsWithAscii(data, 12, "VP8X"):
+			uint24 := func(offset int) int { return readUint16LE(data, offset) + byteAt(data, offset+2)<<16 }
+			return uint24(24) + 1, uint24(27) + 1, true
+		}
+		return 0, 0, false
+	case "image/jpeg":
+		for offset := 2; offset+9 <= len(data); {
+			if data[offset] != 0xff {
+				return 0, 0, false
+			}
+			marker := data[offset+1]
+			if marker == 0xff {
+				offset++
+				continue
+			}
+			// SOF0 to SOF15, except DHT (C4), JPG (C8), and DAC (CC), which share the range.
+			if marker >= 0xc0 && marker <= 0xcf && marker != 0xc4 && marker != 0xc8 && marker != 0xcc {
+				return readUint16BE(data, offset+7), readUint16BE(data, offset+5), true
+			}
+			offset += 2 + readUint16BE(data, offset+2)
+		}
+		return 0, 0, false
+	}
+	return 0, 0, false
+}
+
+func readUint16BE(data []byte, offset int) int {
+	return byteAt(data, offset)<<8 + byteAt(data, offset+1)
+}

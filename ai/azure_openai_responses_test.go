@@ -7,23 +7,23 @@ import (
 
 func TestResolveAzureDeploymentName(t *testing.T) {
 	t.Setenv("AZURE_OPENAI_DEPLOYMENT_NAME_MAP", "gpt-4o=my-deployment, other = alt")
-	if got := ResolveAzureDeploymentName("gpt-4o", AzureEndpointOptions{DeploymentName: "", Env: nil}); got != "my-deployment" {
+	if got := ResolveAzureDeploymentName("gpt-4o", StreamOptions{AzureDeploymentName: ""}); got != "my-deployment" {
 		t.Fatalf("ResolveAzureDeploymentName = %q, want my-deployment", got)
 	}
-	if got := ResolveAzureDeploymentName("gpt-5", AzureEndpointOptions{DeploymentName: "explicit", Env: nil}); got != "explicit" {
+	if got := ResolveAzureDeploymentName("gpt-5", StreamOptions{AzureDeploymentName: "explicit"}); got != "explicit" {
 		t.Fatalf("explicit deployment = %q, want explicit", got)
 	}
-	if got := ResolveAzureDeploymentName("unmapped", AzureEndpointOptions{DeploymentName: "", Env: nil}); got != "unmapped" {
+	if got := ResolveAzureDeploymentName("unmapped", StreamOptions{AzureDeploymentName: ""}); got != "unmapped" {
 		t.Fatalf("fallback deployment = %q, want unmapped", got)
 	}
 }
 
 func TestResolveAzureBaseURL(t *testing.T) {
-	if _, err := ResolveAzureBaseURL("", AzureEndpointOptions{}); err == nil {
+	if _, err := ResolveAzureBaseURL("", StreamOptions{}); err == nil {
 		t.Fatal("expected error when no base URL or resource name configured")
 	}
 	t.Setenv("AZURE_OPENAI_RESOURCE_NAME", "my-resource")
-	got, err := ResolveAzureBaseURL("", AzureEndpointOptions{})
+	got, err := ResolveAzureBaseURL("", StreamOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,12 +32,12 @@ func TestResolveAzureBaseURL(t *testing.T) {
 		t.Fatalf("base URL = %q, want %q", got, want)
 	}
 	// The model's base URL is the last resort: the resource name outranks it (azure-openai-config.ts:resolveAzureBaseUrl).
-	got, err = ResolveAzureBaseURL("https://example.test/openai/v1/", AzureEndpointOptions{})
+	got, err = ResolveAzureBaseURL("https://example.test/openai/v1/", StreamOptions{})
 	if err != nil || got != want {
 		t.Fatalf("model base URL with a resource name = %q, %v; want the resource name's %q", got, err, want)
 	}
 	t.Setenv("AZURE_OPENAI_RESOURCE_NAME", "")
-	got, err = ResolveAzureBaseURL("https://example.test/openai/v1/", AzureEndpointOptions{})
+	got, err = ResolveAzureBaseURL("https://example.test/openai/v1/", StreamOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestResolveAzureBaseURL(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := ResolveAzureBaseURL(tc.in, AzureEndpointOptions{})
+			got, err := ResolveAzureBaseURL(tc.in, StreamOptions{})
 			if err != nil {
 				t.Fatalf("ResolveAzureBaseURL(%q): %v", tc.in, err)
 			}
@@ -98,7 +98,7 @@ func TestResolveAzureBaseURL(t *testing.T) {
 		})
 	}
 
-	if _, err := ResolveAzureBaseURL("not a url", AzureEndpointOptions{}); err == nil {
+	if _, err := ResolveAzureBaseURL("not a url", StreamOptions{}); err == nil {
 		t.Fatal("expected invalid URL error")
 	}
 }
@@ -123,7 +123,7 @@ func TestNewAzureOpenAIResponsesProvider(t *testing.T) {
 	if key, err := op.cfg.GetAPIKey(context.Background()); err != nil || key != "azure-key" {
 		t.Fatalf("GetAPIKey = %q, %v", key, err)
 	}
-	if baseURL, err := op.cfg.GetBaseURL(context.Background()); err != nil || baseURL != "https://example.test/openai/v1/responses?api-version=v1" {
+	if baseURL, err := op.cfg.azure.resolve(op, StreamOptions{}).cfg.GetBaseURL(context.Background()); err != nil || baseURL != "https://example.test/openai/v1/responses?api-version=v1" {
 		t.Fatalf("GetBaseURL = %q, %v", baseURL, err)
 	}
 }
@@ -133,11 +133,11 @@ func TestNewAzureOpenAIResponsesProvider(t *testing.T) {
 func TestResolveAzureDeploymentName_ScopedEnvPrecedence(t *testing.T) {
 	t.Setenv("AZURE_OPENAI_DEPLOYMENT_NAME_MAP", "gpt-4o=process-dep")
 	env := ProviderEnv{"AZURE_OPENAI_DEPLOYMENT_NAME_MAP": "gpt-4o=scoped-dep"}
-	if got := ResolveAzureDeploymentName("gpt-4o", AzureEndpointOptions{DeploymentName: "", Env: env}); got != "scoped-dep" {
+	if got := ResolveAzureDeploymentName("gpt-4o", StreamOptions{Env: env, AzureDeploymentName: ""}); got != "scoped-dep" {
 		t.Fatalf("scoped deployment = %q, want scoped-dep", got)
 	}
 	// Absent from scoped env: falls back to process env.
-	if got := ResolveAzureDeploymentName("gpt-4o", AzureEndpointOptions{Env: ProviderEnv{}}); got != "process-dep" {
+	if got := ResolveAzureDeploymentName("gpt-4o", StreamOptions{Env: ProviderEnv{}}); got != "process-dep" {
 		t.Fatalf("fallback deployment = %q, want process-dep", got)
 	}
 }
@@ -161,7 +161,7 @@ func TestResolveAzureAPIVersion_ScopedEnvPrecedence(t *testing.T) {
 func TestResolveAzureBaseURL_ScopedEnvPrecedence(t *testing.T) {
 	t.Setenv("AZURE_OPENAI_BASE_URL", "https://process.openai.azure.com/openai/v1")
 	env := ProviderEnv{"AZURE_OPENAI_BASE_URL": "https://scoped.openai.azure.com/openai/v1"}
-	got, err := ResolveAzureBaseURL("", AzureEndpointOptions{Env: env})
+	got, err := ResolveAzureBaseURL("", StreamOptions{Env: env})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,7 +173,7 @@ func TestResolveAzureBaseURL_ScopedEnvPrecedence(t *testing.T) {
 func TestResolveAzureBaseURL_ScopedResourceName(t *testing.T) {
 	t.Setenv("AZURE_OPENAI_RESOURCE_NAME", "process-res")
 	env := ProviderEnv{"AZURE_OPENAI_RESOURCE_NAME": "scoped-res"}
-	got, err := ResolveAzureBaseURL("", AzureEndpointOptions{Env: env})
+	got, err := ResolveAzureBaseURL("", StreamOptions{Env: env})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -191,7 +191,7 @@ func TestNewAzureOpenAIResponsesProvider_ThreadsScopedEnv(t *testing.T) {
 		Env:   ProviderEnv{"AZURE_OPENAI_BASE_URL": "https://scoped.openai.azure.com/openai/v1"},
 	})
 	op := p.(*openAIResponsesProvider)
-	baseURL, err := op.cfg.GetBaseURL(context.Background())
+	baseURL, err := op.cfg.azure.resolve(op, StreamOptions{}).cfg.GetBaseURL(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +202,7 @@ func TestNewAzureOpenAIResponsesProvider_ThreadsScopedEnv(t *testing.T) {
 }
 
 func azureAPIVersionForTest(explicit string, env ProviderEnv) string {
-	config, err := ResolveAzureConfig("https://example.test", AzureEndpointOptions{APIVersion: explicit, Env: env})
+	config, err := ResolveAzureConfig("https://example.test", StreamOptions{Env: env, AzureAPIVersion: explicit})
 	if err != nil {
 		panic(err)
 	}
@@ -228,7 +228,7 @@ func TestResolveAzureDeploymentNameParsesTheMapLikePi(t *testing.T) {
 		{"\ufeffm=d", "d"},
 		{"other=z", "m"},
 	} {
-		if got := ResolveAzureDeploymentName("m", AzureEndpointOptions{Env: ProviderEnv{"AZURE_OPENAI_DEPLOYMENT_NAME_MAP": tc.value}}); got != tc.want {
+		if got := ResolveAzureDeploymentName("m", StreamOptions{Env: ProviderEnv{"AZURE_OPENAI_DEPLOYMENT_NAME_MAP": tc.value}}); got != tc.want {
 			t.Errorf("AZURE_OPENAI_DEPLOYMENT_NAME_MAP=%q: deployment = %q, want %q", tc.value, got, tc.want)
 		}
 	}

@@ -5,13 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"math/big"
 	"net/http"
 	"net/http/httptrace"
 	"strings"
 	"sync"
 	"time"
-	"unicode"
 )
 
 // requestTimeout mirrors the AbortSignal.timeout(15_000) both upstream clients
@@ -217,27 +215,4 @@ func percentEncode(value, safe string, spaceAsPlus bool) string {
 		}
 	}
 	return b.String()
-}
-
-// isJSWhitespace mirrors the characters String.prototype.trim removes.
-func isJSWhitespace(r rune) bool { return unicode.IsSpace(r) || r == '\uFEFF' }
-
-// jsToFixed mirrors Number.prototype.toFixed for a finite, non-negative value:
-// the exact binary value is rounded and an exact tie rounds up.
-func jsToFixed(value float64, digits int) string {
-	scale := new(big.Float).SetPrec(256).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(digits)), nil))
-	scaled := new(big.Float).SetPrec(256).Mul(new(big.Float).SetPrec(0).SetFloat64(value), scale)
-	whole, _ := scaled.Int(nil)
-	fraction := new(big.Float).SetPrec(256).Sub(scaled, new(big.Float).SetInt(whole))
-	if fraction.Cmp(big.NewFloat(0.5)) >= 0 {
-		whole.Add(whole, big.NewInt(1))
-	}
-	text := whole.String()
-	if digits == 0 {
-		return text
-	}
-	for len(text) <= digits {
-		text = "0" + text
-	}
-	return text[:len(text)-digits] + "." + text[len(text)-digits:]
 }

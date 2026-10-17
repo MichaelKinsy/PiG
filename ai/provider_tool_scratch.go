@@ -96,6 +96,7 @@ func (builder *assistantStreamBuilder) setCustomToolCallInput(index int, propert
 	block.scratch.property = property
 	block.scratch.jsonBuffer = buffer
 	block.Arguments = JsonObject{property: input}
+	block.deferredArguments = ""
 	builder.partial.Content[state.contentIndex] = block
 }
 
@@ -117,6 +118,7 @@ func (builder *assistantStreamBuilder) failUnfinished(reason StopReason, err err
 		}
 	}
 	clear(builder.toolCalls)
+	builder.recordTransportFailure(err)
 	builder.partial.StopReason = reason
 	if err != nil {
 		builder.partial.ErrorMessage = builder.failureMessage(err)

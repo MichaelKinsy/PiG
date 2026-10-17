@@ -1,3 +1,5 @@
+//go:build !pig_strip_node_extensions
+
 package subprocess
 
 import (
@@ -6,6 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 )
 
@@ -40,9 +43,7 @@ export default function(pi) {
 			}
 			runner := inproc.NewRunner(loaded, dir)
 			for range 2 {
-				if _, err := runner.Emit(t.Context(), struct {
-					Type string `json:"type"`
-				}{Type: "session_start"}); err != nil {
+				if _, err := runner.Emit(t.Context(), extension.SessionStartEvent{Type: "session_start"}); err != nil {
 					t.Fatal(err)
 				}
 			}

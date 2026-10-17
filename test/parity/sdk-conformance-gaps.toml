@@ -1,0 +1,9 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+#
+# Conformance holes: an extension API member or event that a runtime implements
+# and no conformance fixture of that runtime reaches (docs/extension-sdk-consistency.md).
+# `go run ./test/parity/cmd/sdksurface` fails on a hole this file does not list and
+# on an entry whose hole closed, so the ledger only shrinks. `row` names the
+# scenario group or test that closes the hole; `owner` is who closes it.
+

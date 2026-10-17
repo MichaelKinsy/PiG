@@ -14,11 +14,11 @@ type CancellableLoader struct {
 	OnAbort func()
 }
 
-// NewCancellableLoader creates a cancellable loader.
-func NewCancellableLoader(spinnerColor, messageColor, message string, frames []string) *CancellableLoader {
+// NewCancellableLoader is `new CancellableLoader(ui, spinnerColorFn, messageColorFn, message, indicator)` (components/cancellable-loader.ts, which inherits Loader's constructor).
+func NewCancellableLoader(ui TUI, spinnerColorFn, messageColorFn func(string) string, message string, indicator *LoaderIndicatorOptions) *CancellableLoader {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &CancellableLoader{
-		Loader: *NewStyledLoader(spinnerColor, messageColor, message, frames),
+		Loader: *NewLoader(ui, spinnerColorFn, messageColorFn, message, indicator),
 		cancel: cancel,
 		ctx:    ctx,
 	}
@@ -45,6 +45,5 @@ func (cl *CancellableLoader) HandleInput(data string) {
 // Signal returns the underlying cancellation context.
 func (cl *CancellableLoader) Signal() context.Context { return cl.ctx }
 
-// Dispose stops loader animation ownership. Loader animation is host-driven in
-// Pig, so there is no local timer to stop and cancellation state is unchanged.
-func (*CancellableLoader) Dispose() {}
+// Dispose is upstream dispose() (cancellable-loader.ts:37): it stops the animation timer. The abort state and OnAbort are untouched.
+func (cl *CancellableLoader) Dispose() { cl.Stop() }

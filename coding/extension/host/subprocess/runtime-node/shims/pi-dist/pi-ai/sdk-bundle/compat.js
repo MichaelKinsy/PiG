@@ -1,6 +1,5 @@
 import {
   AssistantMessageEventStream,
-  AssistantMessageFrameEncoder,
   DEFAULT_MAX_AGENT_RETRY_DELAY_MS,
   EventStream,
   StringEnum,
@@ -21,7 +20,7 @@ import {
   lazyStream,
   parseJsonWithRepair,
   parseStreamingJson,
-  reduceAssistantMessageFrames,
+  parseToolCallArguments,
   registerSessionResourceCleanup,
   repairJson,
   retryAssistantCall,
@@ -29,7 +28,7 @@ import {
   uuidv7,
   validateToolArguments,
   validateToolCall
-} from "./chunk-5YY4OANL.js";
+} from "./chunk-CJFE2WDE.js";
 import {
   ANTHROPIC_API_KEY_ENV,
   ANTHROPIC_AUTH_TOKEN_ENV,
@@ -40,7 +39,6 @@ import {
   ANTHROPIC_SERVICE_ACCOUNT_ID_ENV,
   ANTHROPIC_WORKSPACE_ID_ENV,
   IMAGE_MODELS,
-  anthropicMessagesApi,
   azureOpenAIResponsesApi,
   builtinModels,
   findEnvKeys,
@@ -52,10 +50,13 @@ import {
   googleVertexApi,
   mistralConversationsApi,
   openAICodexResponsesApi,
-  openAICompletionsApi,
   openAIResponsesApi,
   piMessagesApi
-} from "./chunk-6VYI4PEE.js";
+} from "./chunk-6I3A2QD6.js";
+import {
+  anthropicMessagesApi,
+  openAICompletionsApi
+} from "./chunk-QLEQ4Q45.js";
 import {
   envApiKeyAuth,
   lazyOAuth
@@ -97,7 +98,7 @@ import {
   resolveTranscriptTools,
   toToolDeclaration,
   withoutInitialSystemMessage
-} from "./chunk-Y5ITVTK2.js";
+} from "./chunk-6C2VLFYL.js";
 import {
   __name
 } from "./chunk-SHUYVCID.js";
@@ -414,7 +415,6 @@ export {
   ANTHROPIC_SERVICE_ACCOUNT_ID_ENV,
   ANTHROPIC_WORKSPACE_ID_ENV,
   AssistantMessageEventStream,
-  AssistantMessageFrameEncoder,
   DEFAULT_MAX_AGENT_RETRY_DELAY_MS,
   EventStream,
   InMemoryCredentialStore,
@@ -492,8 +492,8 @@ export {
   openAIResponsesApi,
   parseJsonWithRepair,
   parseStreamingJson,
+  parseToolCallArguments,
   piMessagesApi,
-  reduceAssistantMessageFrames,
   registerApiProvider,
   registerBuiltInApiProviders,
   registerBuiltInImagesApiProviders,

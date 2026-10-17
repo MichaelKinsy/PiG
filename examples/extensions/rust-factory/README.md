@@ -1,7 +1,7 @@
 # Rust factory example
 
 This extension exposes the conventional `new_extension()` factory in
-`src/lib.rs`. It registers the `hello` tool.
+`src/lib.rs`. It registers the `hello` tool and `count_words`, a tool with a required `text` parameter that answers an error result when it is missing.
 
 Validate it:
 

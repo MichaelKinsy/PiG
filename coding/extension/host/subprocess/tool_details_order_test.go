@@ -1,6 +1,7 @@
 package subprocess
 
 import (
+	"bytes"
 	"encoding/json"
 	"net"
 	"testing"
@@ -58,7 +59,7 @@ func TestToolResultAndPartialResultsKeepMemberOrder(t *testing.T) {
 	wantContent := []ai.ToolResultMessageContent{ai.TextContent{Text: "a"}, ai.ImageContent{Data: "aW1n", MimeType: "image/png"}, ai.TextContent{Text: "b"}}
 	encoded, _ := json.Marshal(partials[0].Content)
 	wantEncoded, _ := json.Marshal(wantContent)
-	if string(encoded) != string(wantEncoded) {
+	if !bytes.Equal(encoded, wantEncoded) {
 		t.Errorf("partial content = %s, want %s", encoded, wantEncoded)
 	}
 }

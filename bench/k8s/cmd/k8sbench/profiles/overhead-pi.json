@@ -1,0 +1,198 @@
+{
+	"name": "overhead-pi",
+	"rule": "overhead-pi",
+	"about": "bench/evals' overhead bench (pigbench overhead): what the harness itself costs, against pigbench's local mock model that answers at once. A size is N tool rounds; -turns 8 is the local bench's print-tools. One sample runs each scenario as a fresh process: version, print, print-tools, rpc, pty. open and turn[] are print-tools': spawn to the first model request, and the N gaps between a reply's end and the next request (the harness's added time per turn, its tool run included); openCpu/turnCpu[] their CPU, peakRss print-tools' peak RSS. PiG built from the commit against Pi's coding agent at PiG's pinned Pi version. Needs an agent bundle (k8sbench bundle -agents) or the benchmark image.",
+	"fingerprints": {
+		"8": "13a870eb85bf000f"
+	},
+	"targets": [
+		{
+			"name": "pig",
+			"role": "pig",
+			"seed": [
+				"{root}/python/bin/python3.12",
+				"{root}/pigbench.py",
+				"k8s",
+				"overhead-seed",
+				"--rounds",
+				"{turns}",
+				"--scenarios",
+				"version,print,print-tools,rpc,pty",
+				"--dir",
+				"{dir}"
+			],
+			"seedMeta": "{dir}/overhead-{turns}.json",
+			"sample": [
+				"{root}/python/bin/python3.12",
+				"{root}/pigbench.py",
+				"k8s",
+				"overhead-sample",
+				"--target",
+				"pig",
+				"--family",
+				"pig",
+				"--binary",
+				"{root}/bin/pig",
+				"--rounds",
+				"{turns}",
+				"--scenarios",
+				"version,print,print-tools,rpc,pty",
+				"--dir",
+				"{dir}",
+				"--sample",
+				"{sample}"
+			]
+		},
+		{
+			"name": "pi",
+			"role": "reference",
+			"seed": [
+				"{root}/python/bin/python3.12",
+				"{root}/pigbench.py",
+				"k8s",
+				"overhead-seed",
+				"--rounds",
+				"{turns}",
+				"--scenarios",
+				"version,print,print-tools,rpc,pty",
+				"--dir",
+				"{dir}"
+			],
+			"seedMeta": "{dir}/overhead-{turns}.json",
+			"sample": [
+				"{root}/python/bin/python3.12",
+				"{root}/pigbench.py",
+				"k8s",
+				"overhead-sample",
+				"--target",
+				"pi",
+				"--family",
+				"pi",
+				"--binary",
+				"{root}/pi-agent/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+				"--rounds",
+				"{turns}",
+				"--scenarios",
+				"version,print,print-tools,rpc,pty",
+				"--dir",
+				"{dir}",
+				"--sample",
+				"{sample}"
+			]
+		}
+	],
+	"metrics": [
+		{
+			"name": "versionMs",
+			"label": "--version ms"
+		},
+		{
+			"name": "versionCpuMs",
+			"label": "--version CPU ms"
+		},
+		{
+			"name": "versionRss",
+			"label": "--version peak RSS MiB"
+		},
+		{
+			"name": "printMs",
+			"label": "print ms"
+		},
+		{
+			"name": "printCpuMs",
+			"label": "print CPU ms"
+		},
+		{
+			"name": "printFirstRequestMs",
+			"label": "print first request ms"
+		},
+		{
+			"name": "printTeardownMs",
+			"label": "print teardown ms"
+		},
+		{
+			"name": "printRss",
+			"label": "print peak RSS MiB"
+		},
+		{
+			"name": "toolsMs",
+			"label": "tool rounds ms"
+		},
+		{
+			"name": "toolsCpuMs",
+			"label": "tool rounds CPU ms"
+		},
+		{
+			"name": "toolsTeardownMs",
+			"label": "tool rounds teardown ms"
+		},
+		{
+			"name": "toolsGapMs",
+			"label": "turn gap ms"
+		},
+		{
+			"name": "toolsTurnCpuMs",
+			"label": "CPU/turn ms"
+		},
+		{
+			"name": "rpcReadyMs",
+			"label": "RPC ready ms"
+		},
+		{
+			"name": "rpcReadyCpuMs",
+			"label": "RPC ready CPU ms"
+		},
+		{
+			"name": "rpcReadyRss",
+			"label": "RPC ready RSS MiB"
+		},
+		{
+			"name": "rpcTurnMs",
+			"label": "RPC turn ms"
+		},
+		{
+			"name": "rpcTurnCpuMs",
+			"label": "RPC CPU/turn ms"
+		},
+		{
+			"name": "rpcTurnAddedMs",
+			"label": "RPC harness-added ms"
+		},
+		{
+			"name": "rpcTeardownMs",
+			"label": "RPC teardown ms"
+		},
+		{
+			"name": "rpcPeakRss",
+			"label": "RPC peak RSS MiB"
+		},
+		{
+			"name": "ptyFirstFrameMs",
+			"label": "TUI first frame ms"
+		},
+		{
+			"name": "ptyReadyMs",
+			"label": "TUI ready ms"
+		},
+		{
+			"name": "ptyReadyCpuMs",
+			"label": "TUI ready CPU ms"
+		},
+		{
+			"name": "ptyReadyRss",
+			"label": "TUI ready RSS MiB"
+		},
+		{
+			"name": "ptyInputMs",
+			"label": "TUI input to request ms"
+		},
+		{
+			"name": "ptyReplyMs",
+			"label": "TUI input to reply ms"
+		},
+		{
+			"name": "ptyPeakRss",
+			"label": "TUI peak RSS MiB"
+		}
+	]
+}

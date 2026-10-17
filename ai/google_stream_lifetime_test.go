@@ -57,7 +57,7 @@ func TestGoogleStreamFailuresFollowThePiLoop(t *testing.T) {
 			body:       googleTestChunk + "data: {bad json\r\n\r\n" + googleTestFinal,
 			wantTypes:  "start text_start text_delta error",
 			wantStop:   StopReasonError,
-			wantError:  "google: invalid SSE JSON",
+			wantError:  "Expected property name or '}' in JSON at position 1 (line 1 column 2)",
 			wantBlocks: 1,
 		},
 		{

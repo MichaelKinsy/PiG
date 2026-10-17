@@ -50,6 +50,7 @@ func newTerminalInputWaiter(ctx context.Context) (*terminalInputWaiter, error) {
 	}
 	w.stopCallback = context.AfterFunc(ctx, func() {
 		_ = windows.SetEvent(cancelEvent)
+		//portlint:allow doubleclose context.AfterFunc runs this function at most once, and only it closes callbackDone
 		close(w.callbackDone)
 	})
 	return w, nil
@@ -111,6 +112,9 @@ func terminalInputBuffered(file *os.File) bool {
 	c, ok := terminalInput(file).(*consoleInput)
 	return ok && c.buffered()
 }
+
+// terminalHungUp reports whether the terminal behind file has been hung up; a console handle has no hang-up state.
+func terminalHungUp(*os.File) bool { return false }
 
 // terminalInputPending reports, after file's handle has signalled, whether a
 // read returns without blocking. See consoleInput.pending.
@@ -281,6 +285,12 @@ func (c *consoleInput) appendUTF8(buf []byte, units []uint16) []byte {
 // isEINTR reports whether a read error is an interrupted syscall. Windows has
 // no EINTR, so this is always false.
 func isEINTR(_ error) bool { return false }
+
+// CacheSizeUntilResize keeps no size on Windows: no SIGWINCH announces a console resize there (Node polls the console size),
+// so Columns and Rows read the console size every time. The returned funcs do nothing.
+func (t *ProcessTerminal) CacheSizeUntilResize() (invalidate, stop func()) {
+	return func() {}, func() {}
+}
 
 // startResizeWatcher polls the console size and invokes onResize on change,
 // kicking once on startup. Returns a stop func; the goroutine also exits when

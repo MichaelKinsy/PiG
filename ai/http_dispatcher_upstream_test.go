@@ -34,6 +34,10 @@ func TestHTTPProxySettingsUpstream(t *testing.T) {
 		{"applies httpProxy to HTTP_PROXY and HTTPS_PROXY", "http://127.0.0.1:7890", "", "", "http://127.0.0.1:7890", "http://127.0.0.1:7890", false},
 		{"does not override existing proxy env vars", "http://settings:7890", "http://env-http:8080", "http://env-https:8080", "http://env-http:8080", "http://env-https:8080", true},
 		{"ignores empty values", "   ", "", "", "", "", false},
+		// httpProxy?.trim() is String.prototype.trim: U+FEFF and U+00A0 are whitespace there, U+0085 is not.
+		{"ignores a setting of JS whitespace only", "\ufeff\u00a0\u2028", "", "", "", "", false},
+		{"trims JS whitespace around the setting", "\ufeff http://127.0.0.1:7890\u00a0", "", "", "http://127.0.0.1:7890", "http://127.0.0.1:7890", false},
+		{"keeps U+0085, which JS trim does not remove", "\u0085", "", "", "\u0085", "\u0085", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			clearDispatcherProxyEnv(t)
@@ -47,7 +51,7 @@ func TestHTTPProxySettingsUpstream(t *testing.T) {
 			if os.Getenv("HTTP_PROXY") != tc.wantHTTP || os.Getenv("HTTPS_PROXY") != tc.wantHTTPS {
 				t.Fatalf("HTTP=%q HTTPS=%q", os.Getenv("HTTP_PROXY"), os.Getenv("HTTPS_PROXY"))
 			}
-			if tc.name == "ignores empty values" {
+			if tc.name == "ignores empty values" || tc.name == "ignores a setting of JS whitespace only" {
 				for _, key := range []string{"HTTP_PROXY", "HTTPS_PROXY"} {
 					if _, present := os.LookupEnv(key); present {
 						t.Fatalf("%s must remain absent", key)

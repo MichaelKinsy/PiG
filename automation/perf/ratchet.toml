@@ -1,0 +1,252 @@
+# SPDX-License-Identifier: MIT
+#
+# Count ceilings for the performance gates (internal/perfgate), measured on linux/amd64 with the toolchain in go.mod; the gate tests build only on linux. Every ceiling is a count that does not depend on machine speed: allocations, bytes, GC cycles, goroutines, descriptors, child processes or file sizes.
+# A ceiling only moves down. Lower it in the change that lowers the count; `python3 automation/perf/scoreboard.py --ratchet-base <ref>` rejects a raise. docs/performance/scoreboard.md lists each metric with its measured value, target and owner.
+
+[ceilings]
+
+# ai: JSON.stringify of one ordered tool declaration, as the per-turn token estimates encode every declared tool (TestToolSchemaMarshalAllocationGate).
+"ai.tool_schema_marshal.allocs" = 41
+"ai.tool_schema_marshal.bytes" = 6700
+
+# ai: per delta through the shared assistantStreamBuilder (TestStreamBuilderPerDeltaAllocationGate). The driver's own delta string is included.
+"ai.stream.text_delta.allocs" = 7
+"ai.stream.text_delta.bytes" = 300
+"ai.stream.thinking_delta.allocs" = 8
+"ai.stream.thinking_delta.bytes" = 345
+"ai.stream.toolcall_delta.allocs" = 37
+"ai.stream.toolcall_delta.bytes" = 3600
+
+# ai: bytes per SSE delta record through the HTTP client, decoder, builder and event stream (TestProviderStreamPerFrameAllocationGate); the allocation count per record is TestStreamFrameAllocationCeilings'.
+"ai.provider_frame.openai-completions-text.bytes" = 3660
+"ai.provider_frame.openai-completions-toolcall.bytes" = 7920
+"ai.provider_frame.openai-responses-text.bytes" = 3250
+"ai.provider_frame.anthropic-text.bytes" = 3800
+"ai.provider_frame.anthropic-toolcall.bytes" = 6580
+
+# ai: bytes of one short streamed openai-completions request and response through the real HTTP client (TestProviderResponseAllocationGate); a body read costs the bytes it carries, not the 64 KiB read size.
+"ai.provider_response.openai-completions.bytes" = 45400
+
+# ai: marginal cost of one read tool turn of history (prompt, tool call, 1.7 KB result, reply) on an openai-completions request (TestProviderRequestHistoryAllocationGate); every request re-encodes the history.
+"ai.request_history_turn.allocs" = 56.5
+"ai.request_history_turn.bytes" = 10300
+
+# ai: one 16-byte arguments delta of a 200 KB write tool call opened with empty arguments, as providers send it (TestToolCallArgumentsPerDeltaAllocationGate).
+"ai.stream.toolcall_arguments_delta.allocs" = 20.5
+"ai.stream.toolcall_arguments_delta.bytes" = 1810
+
+# agent: one 16-byte delta of a long block streamed through StreamProxy, after 1,600 deltas (agent TestStreamProxyPerDeltaAllocationGate).
+"agent.proxy.text_delta.allocs" = 3.2
+"agent.proxy.text_delta.bytes" = 215
+"agent.proxy.thinking_delta.allocs" = 3.2
+"agent.proxy.thinking_delta.bytes" = 230
+"agent.proxy.toolcall_delta.allocs" = 15.4
+"agent.proxy.toolcall_delta.bytes" = 960
+
+# ai: one 16-byte delta of a grammar (custom) tool call's raw input, after 1,600 deltas (ai TestGrammarToolInputPerDeltaAllocationGate).
+"ai.stream.grammar_input_delta.openai-responses.allocs" = 30.1
+"ai.stream.grammar_input_delta.openai-responses.bytes" = 3480
+"ai.stream.grammar_input_delta.openai-completions.allocs" = 54.6
+"ai.stream.grammar_input_delta.openai-completions.bytes" = 5370
+
+# interactive: one 16-byte arguments delta of a long write tool call through the interactive event handler, after 1,600 deltas (internal/codingagent TestInteractiveToolArgumentsPerDeltaAllocationGate).
+"interactive.tool_arguments_delta.allocs" = 4.4
+"interactive.tool_arguments_delta.bytes" = 260
+
+# ai: what one earlier tool result with 50,632 bytes of raw JSON details costs a turn's context (NormalizeContext and TranscriptContext.Messages), per tool result (ai TestContextToolResultDetailsAllocationGate).
+"ai.context_tool_result_details.allocs" = 14.7
+"ai.context_tool_result_details.bytes_per_details_byte" = 2.45
+
+# process: one 16-byte arguments record of a 200 KB write tool call in print mode, from 100 to 200 KB (test/perfgate TestLargeWriteProcessGate).
+"process.large_write.record_allocs" = 185
+"process.large_write.record_bytes" = 18000
+# process: Pi-Bolt's headless scenario in print mode, one prompt with four read tool calls on 47-239 KB files (test/perfgate TestPrintReadToolsProcessGate), under GOMAXPROCS=1. auth_stats counts the auth.json revision stats (internal/profiling FileRevisionStats less ModelsFileStats). Measured at f22240330e on the Linux lab host (linux/amd64), three runs: 85896-85898 allocs, 13008200-13013048 B, 3-4 GC cycles, 535 goroutines created, 433 auth.json stats. Lowered after lw-pfast-registry (one auth.json view per offline model operation), measured at its merge e330f6b791: 84446-84453 allocs, 12905824-12908400 B, 4 GC cycles, 107 goroutines created, 15 auth.json stats. Lowered again after each JSON Schema draft's metaschema compiles on first use (third_party/jsonschema FORK.md), ten runs at 2a05b4ab0c+F4: 68203-68381 allocs, 11444144-11482688 B, 3 GC cycles. Each ceiling is the tighter of the two measurements (maximum plus about 6%; GC cycles maximum plus one). Lowered after F2 (session-f2 33904230a8: a typed tool result is appended without decoding its record), measured at integrate-042 1166362571 on the Linux lab host, three runs: 66442-66458 allocs, 9529136-9531584 B, 2 GC cycles, 107 goroutines created, 15 auth.json stats.
+# gc_cycles lowered to 0 by D175 (print runs collect at GOGC 400 unless GOGC is set): 0 GC cycles and 107 goroutines created in every run at fb18cdb01b + F1b on the Linux lab host, against 2 GC cycles and 107 at GOGC=100. goroutines_created stays: with no GC cycle it rose to 191 until refresh signals shared one forwarder per caller (4f9ee731bd).
+"process.print_tools.allocs" = 70500
+"process.print_tools.bytes" = 10110000
+"process.print_tools.gc_cycles" = 0
+"process.print_tools.goroutines_created" = 114
+"process.print_tools.auth_stats" = 16
+"ai.provider_frame.google-text.bytes" = 4460
+"ai.provider_frame.mistral-text.bytes" = 4460
+# Codex Responses over SSE (its own decoder, continuation iterator and per-event clones): measured 4548-4656 B per frame on linux/amd64.
+"ai.provider_frame.openai-codex-responses-text.bytes" = 4900
+
+# coding: goroutine wake-ups (a parked goroutine made runnable through the scheduler, runtime/trace; an iter.Pull coroutine switch is not one) per 16-byte tool-call arguments delta of a write streamed through a Session in -p text mode, marginal between 1k and 2k deltas, at GOMAXPROCS=1 (TestStreamWakesPerDelta). "text" streams from the faux provider, "extension" adds one in-process message_update handler, "openai_text" streams openai-completions from a local HTTP server, one flushed SSE record per delta. Measured at 4cfaf24153: 5.36, 5.36, 11.9; LW roadmap S1, S2 and S3 take them to at most 1.
+"coding.pipeline.text.wakes_per_delta" = 5.5
+"coding.pipeline.extension.wakes_per_delta" = 5.5
+"coding.pipeline.openai_text.wakes_per_delta" = 12.1
+
+# rows: pig's median over Pi-Bolt 0.8.5's on the same host, both run by Pi-Bolt's bench tools in alternation (bench/lw/row.sh; bench/lw/rows.py check enforces these, no Go test reads them). A ratio, not a count: it does not depend on the machine's speed, only on its noise. Measured at 3a16c00a42 on the shared darwin-arm64 Mac (load 45-114, 2 rounds, A/A): 6.0, 3.0, 0.51, 0.82, 3.5, 1.36; the ceilings add the A/A spread of that run and the 0.1 s resolution of large_write.py.
+"lw.row.large_write.200KB.cpu_s.ratio_vs_bolt" = 7.0
+"lw.row.large_write.50KB.cpu_s.ratio_vs_bolt" = 4.0
+"lw.row.long_answer.60000ch.cpu_s.ratio_vs_bolt" = 0.6
+"lw.row.long_answer.20000ch.cpu_s.ratio_vs_bolt" = 1.0
+"lw.row.interactive.interactive.cpu_ms.ratio_vs_bolt" = 4.0
+"lw.row.long_session.prompt75.cpu_ms_per_prompt.ratio_vs_bolt" = 1.6
+# rows: Pi-Bolt's benchmark.py headless scenario (pig -p, one prompt, four read tool calls, then the answer; LW roadmap S22). A ceiling per platform, kept apart by rows.py's PLATFORMS: on darwin the instructions retired (instr_m, which only macOS reports) at most 1.7x Pi-Bolt's; on linux the CPU time at most Pi-Bolt's (the S22 target, not yet met at the base).
+"lw.row.headless.headless.instr_m.ratio_vs_bolt" = 1.7
+"lw.row.headless.headless.cpu_ms.ratio_vs_bolt" = 1.0
+# rows: peak RSS (benchmark.py's ru_maxrss of the pig or Pi-Bolt process, peak_rss_mb) of the headless and interactive rows, so the
+# memory the GOMAXPROCS policy (lw-procs) costs cannot creep. Linux only (rows.py's PLATFORMS): on macOS Pi-Bolt's ru_maxrss is not
+# comparable with pig's. Measured at integrate-042 e85ec79e85 with the policy on (LW E16, Linux lab bench slot, 2026-10-13, 3 rounds):
+# headless 38 MB / 89 MB = 0.43, interactive 46 MB / 115 MB = 0.40; the ceilings add about 15%.
+"lw.row.headless.headless.peak_rss_mb.ratio_vs_bolt" = 0.5
+"lw.row.interactive.interactive.peak_rss_mb.ratio_vs_bolt" = 0.46
+
+# tui: one editor keystroke plus one differential frame under 10 and 1000 history messages (TestKeystrokeToFrameAllocationGate).
+"tui.keystroke_frame.allocs" = 54
+"tui.keystroke_frame.bytes" = 9300
+"tui.keystroke_frame.bytes_per_history_message" = 70
+# GC cycles over 10,000 keystrokes under 1,000 history messages at GOGC=100 (TestKeystrokeGCCyclesGate): the render path allocates, so the render goroutine pays mark assist.
+"tui.keystroke_10k.gc_cycles" = 125
+
+# tui: one streamed markdown token plus one frame (TestStreamingMarkdownFrameAllocationGate).
+"tui.stream_frame.allocs" = 300
+"tui.stream_frame.bytes" = 20600
+"tui.stream_frame.bytes_per_history_message" = 70
+"tui.stream_frame.allocs_growth_per_100_tokens" = 142
+
+# session: loading a persisted session, per JSONL line (TestSessionLoadPerLineAllocationGate).
+"session.load_line.allocs" = 94
+"session.load_line.bytes" = 6800
+"session.load_line.retained_bytes" = 2000
+
+# session: one turn (two appends and one context build), and what each existing entry adds to it (TestSessionTurnAllocationGate).
+"session.turn.allocs" = 3140
+"session.turn.bytes" = 500000
+"session.turn.allocs_per_existing_entry" = 5.2
+"session.turn.bytes_per_existing_entry" = 900
+
+# coding: a later Session turn at history N, 10N, 100N (TestSessionTurnScalingExponents): allocations independent of the history, bytes linear (copies of the context slice).
+"coding.session_turn.allocs_exponent" = 0.05
+"coding.session_turn.bytes_exponent" = 0.95
+
+# coding: heap a Session keeps per history entry after a turn (TestSessionRetainedBytesPerEntry): 2,443 before the agent transcript shared the projection's messages, 1,854 after.
+"coding.session_retained.bytes_per_entry" = 2050
+
+# mcp: one prompt and one tool call over 3, 30 and 300 configured servers (TestScalingMcpServersAfterStart).
+"mcp.prompt_over_servers.allocs_exponent" = 1.05
+"mcp.prompt_over_servers.bytes_exponent" = 1.05
+"mcp.tool_call_over_servers.allocs_exponent" = 0.05
+"mcp.tool_call_over_servers.bytes_exponent" = 0.05
+
+# extension host: one event request to an extension and its response, host side (TestExtensionEventRoundTripAllocationGate).
+"extension.event_roundtrip.allocs" = 21
+"extension.event_roundtrip.bytes" = 1550
+
+# extension host: goroutine wake-ups per event dispatch (state push + event request + the runtime's started/completed/response), host
+# goroutines only (TestConnDispatchReadsAndWakesPerEvent). The fake runtime's wakes are the harness's and depend on OS scheduling
+# between the host's two writes (one wake on macOS, two on Linux), so they are excluded. Derivation: the former bound 3.5 counted
+# peer read (1) + host read loop (1) + requester response (1) + 0.5; without the peer term it is 2.5 (a tightening). Measured 2.0.
+"extension.dispatch.host_wakes" = 2.5
+
+# process: whole-process counts from PIG_PROFILE=metrics under GOMAXPROCS=1 (test/perfgate). Allocation counts vary a few percent with goroutine interleaving; the ceilings carry that margin.
+"process.print.allocs" = 24500
+"process.print.bytes" = 3900000
+"process.print.gc_cycles" = 2
+"process.print.heap_live_bytes" = 1850000
+"process.print.max_rss_bytes" = 50000000
+"process.print.goroutines_at_exit" = 3
+"process.print.fds_left_open" = 2
+"process.print.children_at_exit" = 0
+"process.print.temp_entries_at_exit" = 0
+"process.rpc_startup.allocs" = 22800
+"process.rpc_startup.bytes" = 2950000
+"process.rpc_startup.children_at_exit" = 0
+"process.rpc_startup.temp_entries_at_exit" = 0
+"process.rpc_turn.allocs" = 3150
+"process.rpc_turn.bytes" = 335000
+"process.rpc_ext10_turn.allocs" = 16000
+"process.rpc_ext10_turn.bytes" = 3620000
+"process.rpc_ext10_turn.allocs_growth" = 1.12
+# process: the same turn at one and three extensions (TestRPCExtensionTurnProcessGateByExtensionCount), so the per-extension and the fixed cost are gated apart. Each ceiling is the measured maximum of four runs plus about 6%.
+"process.rpc_ext1_turn.allocs" = 4200
+"process.rpc_ext1_turn.bytes" = 705000
+"process.rpc_ext3_turn.allocs" = 5800
+"process.rpc_ext3_turn.bytes" = 1170000
+"process.rpc_ext0_turn.allocs" = 3100
+"process.rpc_ext0_turn.bytes" = 305000
+"process.rpc_ext0_turn.allocs_growth" = 1.3
+"fused.dispatch_k1.allocs" = 1330
+"fused.dispatch_k3.allocs" = 3010
+"fused.dispatch_k10.allocs" = 8560
+"fused.dispatch.per_extension.allocs" = 805
+"fused.dispatch_k1.bytes" = 220000
+"fused.dispatch_k3.bytes" = 434000
+"fused.dispatch_k10.bytes" = 1250000
+"fused.dispatch.per_extension.bytes" = 118000
+"process.rpc_turn.heap_live_growth_bytes" = 3800
+"process.rpc_turn.max_rss_bytes_at_22_turns" = 56000000
+"process.rpc_turn.goroutines_at_exit" = 8
+"process.rpc_turn.fds_left_open" = 4
+"process.rpc_turn.children_at_exit" = 0
+"process.rpc_turn.temp_entries_at_exit" = 0
+
+# binary: stripped stock pig per release platform (TestReleaseBinarySizeGate).
+"binary.pig.linux_amd64.bytes" = 70757152
+"binary.pig.linux_arm64.bytes" = 66557152
+"binary.pig.darwin_arm64.bytes" = 68287152
+# windows_amd64: owner-approved 2026-10-16 for the Pi v1.3.0 pin. Stripped size 72,289,792 at 9db1ecc0a3 -> 72,310,272 (+20,480 B); symbol growth: type data +12.8 KB, ai +6.1 KB, go/types +2.8 KB, tui/widthx +1.5 KB, coding/cli +0.6 KB.
+"binary.pig.windows_amd64.bytes" = 72415104
+
+# process: interactive start to the first ready frame, then Ctrl+D (test/integration TestInteractiveFirstFrameProcessGate, integration tag, tmux). The idle time between the frame and Ctrl+D adds timer work, so the margin is wider.
+"process.interactive_first_frame.allocs" = 34500
+"process.interactive_first_frame.bytes" = 13300000
+"process.interactive_first_frame.heap_live_bytes" = 4950000
+"process.interactive_first_frame.children_at_exit" = 0
+
+# compaction: preparing a compaction, per branch entry (TestCompactionPreparePerEntryAllocationGate).
+"compaction.prepare_entry.allocs" = 7.3
+"compaction.prepare_entry.bytes" = 1150
+
+# process: RSS and PSS when RPC mode has answered its first command, and peak RSS of that run (TestRPCReadyMemoryGate; rpi's "RSS at ready").
+"process.rpc_ready.rss_bytes" = 46000000
+"process.rpc_ready.pss_bytes" = 46000000
+"process.rpc_ready.max_rss_bytes" = 49500000
+"process.interactive_first_frame.rss_bytes_at_ready" = 64000000
+"process.interactive_first_frame.pss_bytes_at_ready" = 64000000
+"process.interactive_first_frame.max_rss_bytes" = 65000000
+
+# process: Pi-Bolt's memory rows on a pseudo-terminal against its scripted model (test/perfgate TestLongSessionMemoryGate, TestTmuxIdleMemoryGate; research/memory-vs-bolt). Long row, 25 prompts of four reads: live heap after two collections at exit, and that heap less the last request body (5,198,210 B), same contents (Pi-Bolt's script) and distinct contents (100 texts). Tmux row, six prompts then 3 s idle: runtime/metrics of the idle process, live heap and Go memory not returned to the OS (/memory/classes/total less /memory/classes/heap/released). Measured at 6423f49835 (with M1 session records and M2 splice escapes) on the Linux lab host (linux/amd64, taskset 216-219), 7 runs, medians 13162160, 7963950, 13235928, 8036178, 6262888, 17402136 B; each ceiling is the median plus the A/A floor, the larger of the 7 runs' spread (67728, 67728, 88848, 88845, 10064, 442368 B) and 1% of the live heap, rounded up to 10 KB. Lower a ceiling to the new median plus the same floor in the change that lowers the count. The two distinct-contents ceilings were set with M2 and reset after its revert (287152bcfd, cb78a61b31): re-measured at int-050 dce94d6970 on the Linux lab host (linux/amd64, bench slot, cores 192-223), 7 runs, medians 18799992 and 13600143 B (last request body 5,199,846-5,199,849 B), spreads 19552 and 19549 B, so the floor is 1% of the live heap, 188000 B.
+"process.mem_long25.heap_live_bytes" = 13300000
+"process.mem_long.heap_live_minus_context_bytes" = 8100000
+"process.mem_long25_distinct.heap_live_bytes" = 18990000
+"process.mem_long_distinct.heap_live_minus_context_bytes" = 13790000
+"process.mem_tmux_idle.heap_live_bytes" = 6330000
+"process.mem_tmux_idle.go_nonreleased_bytes" = 17850000
+
+# tui: highlight.js grammar load on interactive start (TestGrammarLoadAllocationGate): eager grammars, every other grammar and the text tables, decoded from the embedded snapshots.
+"tui.hljs_grammar_load.allocs" = 1200
+"tui.hljs_grammar_load.bytes" = 8350000
+
+# scaling: the exponent of allocation cost against size at N, 10N and 100N (internal/perfgate.CheckScaling): cost grows as size^exponent, 0 constant, 1 linear, 2 quadratic. Sessions of 100, 1,000 and 10,000 entries in /tree: opening is linear in bytes (one record per entry), a cursor move or a search keystroke allocates for the visible window only.
+"tui.tree_open.allocs_exponent" = 0.2
+"tui.tree_open.bytes_exponent" = 1.15
+"tui.tree_navigate.allocs_exponent" = 0.05
+"tui.tree_navigate.bytes_exponent" = 0.05
+"tui.tree_search.allocs_exponent" = 0.05
+"tui.tree_search.bytes_exponent" = 0.05
+"tui.tree_open_branching.allocs_exponent" = 1.0
+"tui.tree_open_branching.bytes_exponent" = 1.15
+"tui.tree_navigate_branching.allocs_exponent" = 0.05
+"tui.tree_navigate_branching.bytes_exponent" = 0.05
+
+# scaling: extensions loaded. A Runner over 10, 100 and 1,000 extensions (three tools, one command and one tool_call handler each; coding/extension/host/inproc): construction reads nothing, the registry listings and one event dispatch are linear in the extensions, a tool lookup allocates nothing, a command lookup re-resolves every command as Pi's getCommand does.
+"extension.runner_new.allocs_exponent" = 0.05
+"extension.runner_new.bytes_exponent" = 0.05
+"extension.runner_tools.allocs_exponent" = 1.05
+"extension.runner_tools.bytes_exponent" = 1.15
+"extension.runner_commands.allocs_exponent" = 0.95
+"extension.runner_commands.bytes_exponent" = 1.05
+"extension.runner_tool_lookup.allocs_exponent" = 0.05
+"extension.runner_tool_lookup.bytes_exponent" = 0.05
+"extension.runner_command_lookup.allocs_exponent" = 0.95
+"extension.runner_command_lookup.bytes_exponent" = 1.05
+"extension.runner_dispatch.allocs_exponent" = 1.05
+"extension.runner_dispatch.bytes_exponent" = 1.05
+# scaling: tools declared. 10, 100 and 1,000 tools (the gate schema each) in the per-turn token estimate and in a whole streamed openai-completions request (ai): one pass over the tools, linear.
+"ai.tool_estimate.allocs_exponent" = 1.05
+"ai.tool_estimate.bytes_exponent" = 1.05
+"ai.request_tools.allocs_exponent" = 1.05
+"ai.request_tools.bytes_exponent" = 1.1

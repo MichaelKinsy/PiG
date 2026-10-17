@@ -70,14 +70,14 @@ func fresh(t *testing.T, conversation Conversation) ConversationView {
 // committed is the view as committed state defines it, read without any mount (harness-view.test.ts:44).
 func committed(t *testing.T, harness Harness, conversation Conversation, record durable.ConversationRecord) ConversationView {
 	t.Helper()
-	docs := map[string]durable.JsonObject{}
+	docs := ViewDocs{}
 	for _, token := range []durable.AnyDocToken{AgentDoc, LiveDoc, InboxDoc, ProviderDoc, UsageDoc} {
 		value := must(harness.SnapshotErased(testContext, token, conversation.Id()))
 		if value != nil {
-			docs[token.AnyDefinition().Kind] = value
+			docs = ViewDocsOf(docs, token.AnyDefinition().Kind, value)
 		}
 	}
-	return ConversationView{Conversation: record, Entries: must(conversation.Context(testContext)).Entries, Docs: docs}
+	return ConversationView{Conversation: record, Entries: must(conversation.Context(testContext, nil)).Entries, Docs: docs}
 }
 
 // jsonOf is value's JSON form, the form frame operations apply to.
@@ -94,6 +94,20 @@ func jsonOf(t *testing.T, value any) any {
 	return decoded
 }
 
+// orderedJSONOf is value's JSON form with objects as ordered *delta.JsonObject, as JSON.parse gives a replica.
+func orderedJSONOf(t *testing.T, value any) any {
+	t.Helper()
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := delta.DecodeJson(encoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return decoded
+}
+
 func expectSameJSON(t *testing.T, got, want any) {
 	t.Helper()
 	if left, right := jsonOf(t, got), jsonOf(t, want); !reflect.DeepEqual(left, right) {
@@ -104,9 +118,9 @@ func expectSameJSON(t *testing.T, got, want any) {
 // replay applies every frame's operations from initial, checking each delivered revision on the way (harness-view.test.ts:54).
 func replay(t *testing.T, initial ConversationView, frames []viewFrame) any {
 	t.Helper()
-	value := jsonOf(t, initial)
+	value := orderedJSONOf(t, initial)
 	for _, frame := range frames {
-		ops := jsonOf(t, frame.ops).([]any)
+		ops := orderedJSONOf(t, frame.ops).([]any)
 		converted := make([]durable.Op, len(ops))
 		for i, op := range ops {
 			converted[i] = op.([]any)
@@ -116,7 +130,7 @@ func replay(t *testing.T, initial ConversationView, frames []viewFrame) any {
 			t.Fatal(err)
 		}
 		value = next
-		if want := jsonOf(t, frame.value); !reflect.DeepEqual(value, want) {
+		if want := jsonOf(t, frame.value); !reflect.DeepEqual(jsonOf(t, value), want) {
 			t.Fatalf("replayed %v\ndelivered %v", value, want)
 		}
 	}
@@ -136,10 +150,6 @@ func sameEntries(a, b []durable.EntryRecord) bool {
 		return false
 	}
 	return len(a) == 0 || &a[0] == &b[0]
-}
-
-func sameMap[K comparable, V any](a, b map[K]V) bool {
-	return reflect.ValueOf(a).UnsafePointer() == reflect.ValueOf(b).UnsafePointer()
 }
 
 type touchCounter struct {
@@ -197,14 +207,14 @@ func TestConversationView(t *testing.T) {
 		view := fresh(t, root)
 		expectSameJSON(t, view.Conversation, map[string]any{"id": float64(root.Id())})
 		expectSameJSON(t, view.Entries, allEntries(t, root))
-		keys := make([]string, 0, len(view.Docs))
-		for key := range view.Docs {
-			keys = append(keys, key)
-		}
+		keys := view.Docs.Keys()
+		// Pi's docs record takes the mounted documents in mount order (view.ts:48-54, 161-166); its test sorts the keys (:97) to compare
+		// the set, and the unsorted keys are that order.
+		expectStrings(t, keys, []string{"pi.agent", "pi.live", "pi.inbox", "pi.provider", "pi.usage"})
 		slices.Sort(keys)
 		expectStrings(t, keys, viewMounted)
-		expectSameJSON(t, view.Docs["pi.live"], map[string]any{})
-		expectSameJSON(t, view.Docs["pi.inbox"], map[string]any{"items": []any{}})
+		expectSameJSON(t, viewDoc(view, "pi.live"), map[string]any{})
+		expectSameJSON(t, viewDoc(view, "pi.inbox"), map[string]any{"items": []any{}})
 		closeHarness(t, harness)
 	})
 
@@ -219,7 +229,7 @@ func TestConversationView(t *testing.T) {
 		submission := must(root.Submit(testContext, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("hi")}))
 		waitFor(t, func() bool {
 			return slices.ContainsFunc(recorded.snapshot(), func(frame viewFrame) bool {
-				_, ok := frame.value.Docs["pi.live"]["generation"]
+				_, ok := viewDoc(frame.value, "pi.live").Get("generation")
 				return ok
 			})
 		})
@@ -266,7 +276,7 @@ func TestConversationView(t *testing.T) {
 		other := must(harness.CreateConversation(testContext, ConversationCreateOptions{Ownership: durable.ConversationOwnership{Kind: durable.ConversationOwnerless}}))
 		recorded := record(t, root)
 		noteEntry(t, other, "note")
-		if err := root.Configure(testContext, AgentChange{ThinkingLevel: SetTo(ai.ThinkingHigh)}); err != nil {
+		if err := root.Configure(testContext, AgentChange{ThinkingLevel: SetTo(ai.ModelThinkingLevel(ai.ThinkingHigh))}); err != nil {
 			t.Fatal(err)
 		}
 		noteEntry(t, root, "note")
@@ -276,13 +286,15 @@ func TestConversationView(t *testing.T) {
 			t.Fatalf("%d frames", len(frames))
 		}
 		expectSameJSON(t, frames[0].ops, []any{[]any{"s", []any{"docs", "pi.agent", "thinkingLevel"}, "high"}})
+		// Pi applies the frame's operations to the docs object in place (view.ts:199-216), so an update keeps the mount order.
+		expectStrings(t, frames[0].value.Docs.Keys(), []string{"pi.agent", "pi.live", "pi.inbox", "pi.provider", "pi.usage"})
 		if !sameEntries(frames[0].value.Entries, recorded.initial.Entries) {
 			t.Fatal("entries were not shared")
 		}
-		if !sameMap(frames[0].value.Docs["pi.live"], recorded.initial.Docs["pi.live"]) {
+		if viewDoc(frames[0].value, "pi.live") != viewDoc(recorded.initial, "pi.live") {
 			t.Fatal("pi.live was not shared")
 		}
-		if !sameMap(frames[1].value.Docs, frames[0].value.Docs) {
+		if frames[1].value.Docs != frames[0].value.Docs {
 			t.Fatal("docs were not shared")
 		}
 		recorded.stop(t)
@@ -394,7 +406,7 @@ func TestConversationView(t *testing.T) {
 			[]any{[]any{"d", []any{"docs", "pi.live"}}},
 			[]any{[]any{"s", []any{"docs", "pi.live"}, map[string]any{"tools": []any{}}}},
 		})
-		if _, present := frames[0].value.Docs["pi.live"]; present {
+		if frames[0].value.Docs.Has("pi.live") {
 			t.Fatal("pi.live is still mounted")
 		}
 		recorded.stop(t)
@@ -451,7 +463,7 @@ func TestConversationView(t *testing.T) {
 		// No observer is left, so the mount was dropped: a new observer builds a new revision from committed state.
 		rebuilt := fresh(t, root)
 		expectSameJSON(t, rebuilt, last)
-		if sameEntries(rebuilt.Entries, last.Entries) || sameMap(rebuilt.Docs, last.Docs) {
+		if sameEntries(rebuilt.Entries, last.Entries) || rebuilt.Docs == last.Docs {
 			t.Fatal("rebuilt view shares the dropped mount's revision")
 		}
 		closeHarness(t, harness)
@@ -540,7 +552,7 @@ func TestConversationView(t *testing.T) {
 		failing := must(root.Watch(testContext))
 		recorded := record(t, root)
 		shared := must(root.ViewState(testContext))
-		if !sameEntries(failing.Value().Entries, shared.Value().Entries) || !sameMap(failing.Value().Docs, shared.Value().Docs) {
+		if !sameEntries(failing.Value().Entries, shared.Value().Entries) || failing.Value().Docs != shared.Value().Docs {
 			t.Fatal("observers do not share one mount revision")
 		}
 		shared.Dispose()
@@ -566,9 +578,8 @@ func TestConversationView(t *testing.T) {
 			N int `json:"n"`
 		}
 		Other := durable.DefineDoc(durable.DocDefinition[other]{
-			CommonDocDefinition: durable.CommonDocDefinition[other]{Kind: "app.other", Version: 1},
+			CommonDocDefinition: durable.CommonDocDefinition[other]{Kind: "app.other", Version: 1, Initial: func() other { return other{} }},
 			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkInitial},
-			Initial:             func() other { return other{} },
 		})
 		recorded := record(t, root)
 		commitValue(t, root, func(tx durable.Tx) (any, error) {

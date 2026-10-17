@@ -50,7 +50,7 @@ func TestStreamContinuationReactionsPreserveFIFO(t *testing.T) {
 	}
 	executor.mu.Lock()
 	defer executor.mu.Unlock()
-	if executor.ready != nil || executor.active != nil || executor.draining {
+	if queueRetainsJobs(executor.ready) || executor.active != nil || executor.draining {
 		t.Fatal("drained executor retained queue entries or execution ownership")
 	}
 }
@@ -90,4 +90,48 @@ func TestStreamContinuationPendingAwaitReleasesExecution(t *testing.T) {
 		}
 	})
 	workers.Wait()
+}
+
+// queueRetainsJobs reports a queued job or a reference a drained job left in the queue's storage.
+func queueRetainsJobs(queue continuationQueue) bool {
+	if queue.len() != 0 {
+		return true
+	}
+	for _, job := range queue.items[:cap(queue.items)] {
+		if job.fn != nil || job.grant != nil || job.promise != nil || job.reaction != nil {
+			return true
+		}
+	}
+	return false
+}
+
+// A queue that never empties keeps first-in, first-out order and reuses the storage its drained head frees, so its capacity stays bounded by the most jobs it held at once.
+func TestContinuationQueueStaysFIFOAndBoundedWhileNeverEmpty(t *testing.T) {
+	var queue continuationQueue
+	var ran []int
+	job := func(n int) continuationJob { return continuationJob{fn: func() { ran = append(ran, n) }} }
+	next := 0
+	for range 3 {
+		queue.push(job(next))
+		next++
+	}
+	for range 10000 {
+		queue.push(job(next))
+		next++
+		queue.pop().run()
+	}
+	for queue.len() > 0 {
+		queue.pop().run()
+	}
+	for i, n := range ran {
+		if n != i {
+			t.Fatalf("job %d ran in position %d", n, i)
+		}
+	}
+	if len(ran) != next {
+		t.Fatalf("ran %d of %d jobs", len(ran), next)
+	}
+	if cap(queue.items) > 8 {
+		t.Fatalf("a queue that held at most 4 jobs grew to capacity %d", cap(queue.items))
+	}
 }

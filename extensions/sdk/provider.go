@@ -10,19 +10,25 @@ import (
 
 // Provider is Pi's callable provider object. The ModelRegistry resolves credentials and normalizes transcripts separately from these methods.
 type Provider struct {
-	handle         string
-	ID             string
-	Name           string
-	BaseURL        *string
-	Headers        map[string]string
-	Auth           ProviderAuth
-	GetModels      func() ([]map[string]any, error)
-	FilterModels   func([]map[string]any, map[string]any) ([]map[string]any, error)
-	RefreshModels  func(RefreshModelsContext) error
-	Stream         ProviderStreamFunc
-	StreamSimple   ProviderStreamFunc
-	FetchDeferred  ProviderStreamFunc
-	CancelDeferred func(map[string]any, map[string]any, ProviderStreamOptions) error
+	handle    string
+	ID        string
+	Name      string
+	BaseURL   *string
+	Headers   map[string]string
+	Auth      ProviderAuth
+	GetModels func() ([]map[string]any, error)
+	// GetAllModels lists the models of every type; without it GetModels does.
+	// upstream: packages/ai/src/models.ts Provider.getAllModels
+	GetAllModels func() ([]map[string]any, error)
+	FilterModels func([]map[string]any, *Credential) ([]map[string]any, error)
+	// FilterAllModels filters the models of every type by credential; without it FilterModels filters the chat models.
+	// upstream: packages/ai/src/models.ts Provider.filterAllModels
+	FilterAllModels func([]map[string]any, *Credential) ([]map[string]any, error)
+	RefreshModels   func(RefreshModelsContext) error
+	Stream          ProviderStreamFunc
+	StreamSimple    ProviderStreamFunc
+	FetchDeferred   ProviderStreamFunc
+	CancelDeferred  func(map[string]any, map[string]any, ProviderStreamOptions) error
 	// GenerateImages and Classify are the provider's image and classifier operations. The models they serve come from GetModels.
 	GenerateImages ProviderImagesFunc
 	Classify       ProviderClassifyFunc
@@ -30,12 +36,14 @@ type Provider struct {
 
 type ProviderStreamFunc func(model, transcriptOrHandle map[string]any, options ProviderStreamOptions) (*ModelEventStream, error)
 
+// ProviderStreamOptions are the options of a Provider stream: Values holds the serializable request options, and the callbacks are the caller's request callbacks (upstream types.ts ProviderRequestOptions.onPayload, StreamOptions.onResponse and onProviderStreamEvent). A nil callback is one the caller did not pass.
 type ProviderStreamOptions struct {
-	Signal           context.Context
-	Values           map[string]any
-	OnPayload        func(any, map[string]any) (any, error)
-	OnResponse       func(map[string]any, map[string]any) error
-	TransformHeaders func(map[string]string) (map[string]string, error)
+	Signal     context.Context
+	Values     map[string]any
+	OnPayload  func(any, map[string]any) (any, error)
+	OnResponse func(map[string]any, map[string]any) error
+	// OnProviderStreamEvent is the caller's observer of each parsed provider stream event before normalization; a registered provider may invoke it with adapter-owned, read-only data (Pi coding-agent extensions/types.ts:1916-1920, ai types.ts:204). The host sets it when the caller declared one.
+	OnProviderStreamEvent func(any, map[string]any) error
 }
 
 type ProviderAuth struct {
@@ -46,23 +54,34 @@ type APIKeyAuth struct {
 	Name    string
 	Check   func(APIKeyAuthInput) (*AuthCheck, error)
 	Resolve func(APIKeyAuthInput) (*AuthResult, error)
-	Login   func(AuthInteraction) (map[string]any, error)
+	// Login returns the credential to store; auth.json keeps its key order.
+	Login func(AuthInteraction) (*Credential, error)
 }
 type OAuthAuth struct {
 	Name           string
 	IsSubscription *bool
 	LoginLabel     *string
-	Login          func(AuthInteraction) (map[string]any, error)
-	Refresh        func(map[string]any, context.Context) (map[string]any, error)
-	ToAuth         func(map[string]any) (map[string]any, error)
+	// Login and Refresh return the credential to store; auth.json keeps its key order.
+	Login   func(AuthInteraction, LoginOptions) (*Credential, error)
+	Refresh func(*Credential, context.Context) (*Credential, error)
+	ToAuth  func(*Credential) (map[string]any, error)
 }
+
+// LoginOptions is Pi's LoginOptions (packages/ai/src/auth/types.ts:202-214), which the app passes to an OAuth login.
+type LoginOptions struct {
+	// GetDeviceID returns the stable ID of this app installation. Call it only when the flow needs it: the app creates the ID on first use. Nil means the app supplies none.
+	GetDeviceID func() (string, error)
+	// AgentName is the name the app introduces itself with during login; nil means the flow's own default.
+	AgentName *string
+}
+
 type AuthContext struct {
 	Env        func(string) (*string, error)
 	FileExists func(string) (bool, error)
 }
 type APIKeyAuthInput struct {
 	Ctx        AuthContext
-	Credential map[string]any
+	Credential *Credential
 	Signal     context.Context
 }
 type AuthResult struct {
@@ -85,12 +104,14 @@ type ModelsPublication struct {
 	Update  func() error
 }
 type RefreshModelsContext struct {
-	Credential   map[string]any
+	Credential   *Credential
 	Stored       map[string]any
 	AllowNetwork bool
 	Force        *bool
 	Signal       context.Context
 	Publish      func(ModelsPublication) (bool, error)
+	// BaseURL is the registered provider's base URL, including configuration overrides that wrappers apply outside the provider; empty when it has none (models.ts RefreshModelsContext.baseUrl).
+	BaseURL string
 }
 
 type providerObjectAuthMethod struct {
@@ -129,13 +150,16 @@ func providerDeclaration(provider *Provider, key string) (providerObjectDeclarat
 	}
 	// Models treats a throwing getModels as an empty catalog; calling the object directly still returns its error.
 	decl.Models, _ = provider.GetModels()
+	if provider.GetAllModels != nil {
+		decl.Models, _ = provider.GetAllModels()
+	}
 	if decl.Models == nil {
 		decl.Models = []map[string]any{}
 	}
 	for _, entry := range []struct {
 		method  string
 		present bool
-	}{{"filterModels", provider.FilterModels != nil}, {"refreshModels", provider.RefreshModels != nil}, {"fetchDeferred", provider.FetchDeferred != nil}, {"cancelDeferred", provider.CancelDeferred != nil}, {"generateImages", provider.GenerateImages != nil}, {"classify", provider.Classify != nil}} {
+	}{{"getAllModels", provider.GetAllModels != nil}, {"filterModels", provider.FilterModels != nil}, {"filterAllModels", provider.FilterAllModels != nil}, {"refreshModels", provider.RefreshModels != nil}, {"fetchDeferred", provider.FetchDeferred != nil}, {"cancelDeferred", provider.CancelDeferred != nil}, {"generateImages", provider.GenerateImages != nil}, {"classify", provider.Classify != nil}} {
 		if entry.present {
 			decl.Methods = append(decl.Methods, entry.method)
 		}
@@ -160,9 +184,6 @@ func providerDeclaration(provider *Provider, key string) (providerObjectDeclarat
 		decl.Auth.OAuth = &providerObjectAuthMethod{Name: auth.Name, IsSubscription: auth.IsSubscription, LoginLabel: auth.LoginLabel}
 		decl.OAuth = &providerOAuthConfig{Name: auth.Name, IsSubscription: auth.IsSubscription != nil && *auth.IsSubscription, HasLogin: true, HasRefresh: true, HasGetAPIKey: true}
 		decl.Methods = append(decl.Methods, "auth.oauth.login", "auth.oauth.refresh", "auth.oauth.toAuth")
-	}
-	if decl.Auth.APIKey == nil && decl.Auth.OAuth == nil {
-		return decl, errors.New("Provider requires auth")
 	}
 	return decl, nil
 }

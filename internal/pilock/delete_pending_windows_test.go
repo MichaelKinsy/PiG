@@ -94,9 +94,14 @@ func TestAcquireTreatsLockBeingRemovedAtStatAsHeld(t *testing.T) {
 	}
 }
 
-// When the removal is in flight at mkdir itself, Node's fs.mkdir fails with EPERM (libuv maps ERROR_ACCESS_DENIED to UV_EPERM), proper-lockfile passes it through (lib/lockfile.js:47-48) and Pi's retry loops throw it. PiG surfaces the same failure after one attempt.
-func TestAcquireSurfacesLockBeingRemovedAtMkdir(t *testing.T) {
-	for _, a := range acquirers {
+// epermAttempts is how many attempts each auth loop makes while every one fails with EPERM on Windows: acquireLockSyncWithRetry's ten, and acquireLockAsync's first attempt plus MAX_EPERM_RETRIES (auth-storage.ts:81-95,137-142).
+var epermAttempts = map[string]int{"sync": SyncAttempts, "async": 1 + maxEPERMRetries}
+
+// When the removal is in flight at mkdir itself, Node's fs.mkdir fails with EPERM (libuv maps ERROR_ACCESS_DENIED to UV_EPERM) and proper-lockfile passes it through (lib/lockfile.js:47-48). Since Pi 1.2.0 (#10801) the auth loops retry EPERM on Windows (auth-storage.ts:24-29): the synchronous loop within its ten attempts, the cancellable one at most MAX_EPERM_RETRIES times. A removal that never finishes therefore surfaces the same EPERM after that many attempts. The settings and trust loop (AcquireSync; settings-manager.ts:195-215, trust-manager.ts:137-164) still throws it after one.
+func TestAcquireRetriesLockBeingRemovedAtMkdirThenSurfacesIt(t *testing.T) {
+	rows := append([]acquirer{{"settings", AcquireSync}}, acquirers...)
+	wantCalls := map[string]int{"settings": 1, "sync": epermAttempts["sync"], "async": epermAttempts["async"]}
+	for _, a := range rows {
 		t.Run(a.name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "auth.json")
 			if err := os.Mkdir(path+".lock", 0o777); err != nil {
@@ -115,8 +120,41 @@ func TestAcquireSurfacesLockBeingRemovedAtMkdir(t *testing.T) {
 			if want := "EPERM: operation not permitted, mkdir '" + path + ".lock'"; err.Error() != want {
 				t.Fatalf("message = %q, want proper-lockfile's %q", err.Error(), want)
 			}
-			if got := calls.Load(); got != 1 {
-				t.Fatalf("mkdir calls = %d, want 1", got)
+			if got := calls.Load(); int(got) != wantCalls[a.name] {
+				t.Fatalf("mkdir calls = %d, want %d", got, wantCalls[a.name])
+			}
+		})
+	}
+}
+
+// auth-storage.test.ts "retries transient EPERM on Windows" on a real delete-pending directory: the other process's removal finishes after the first refused mkdir, and the auth loop's retry takes the lock.
+func TestAuthAcquireWaitsOutLockBeingRemovedAtMkdir(t *testing.T) {
+	for _, a := range acquirers {
+		t.Run(a.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "auth.json")
+			if err := os.Mkdir(path+".lock", 0o777); err != nil {
+				t.Fatal(err)
+			}
+			finishRemoval := markBeingRemoved(t, path+".lock")
+			calls := stubMkdir(t, func(call int, real func() error) error {
+				err := real()
+				if call == 1 {
+					if !errors.Is(err, windows.ERROR_ACCESS_DENIED) {
+						t.Errorf("mkdir of a delete-pending directory = %v, want ERROR_ACCESS_DENIED", err)
+					}
+					finishRemoval()
+				}
+				return err
+			})
+			lock, err := a.run(path)
+			if err != nil {
+				t.Fatalf("err = %v, want the lock once the removal finished", err)
+			}
+			if got := calls.Load(); got != 2 {
+				t.Fatalf("mkdir calls = %d, want 2", got)
+			}
+			if err := lock.Release(); err != nil {
+				t.Fatal(err)
 			}
 		})
 	}
@@ -179,14 +217,20 @@ func makeHeldLockPath(t *testing.T, lockPath, kind string) {
 	}
 }
 
+// lockfileAttempts are one proper-lockfile call each, lockSync and lock, as the oracle runs them.
+var lockfileAttempts = []acquirer{
+	{"sync", func(path string) (*Lock, error) { return acquire(path, SyncStale) }},
+	{"async", func(path string) (*Lock, error) { return tryAcquire(context.Background(), path, asyncStale) }},
+}
+
 // Two entries read from the parent directory still fail the attempt, as in Pi (see TestProperLockfileOnLockBeingRemovedUpstream):
 //   - A stale directory: proper-lockfile removes it (lib/lockfile.js:71-79) and its rmdir fails with EPERM because the name is delete-pending. PiG's syscall.Rmdir fails with ERROR_ACCESS_DENIED.
 //   - A directory link: fs.stat follows links, and libuv's fs__stat_directory keeps the original ERROR_ACCESS_DENIED (EPERM) for a reparse point when it does not lstat (src/win/fs.c).
 //
-// Neither is contention, so neither attempt is retried.
+// Neither is contention: one proper-lockfile call rejects with that EPERM after one mkdir.
 func TestAcquireSurfacesLockBeingRemovedAtStatThatIsStaleOrALink(t *testing.T) {
 	for _, kind := range []string{"stale", "link"} {
-		for _, a := range acquirers {
+		for _, a := range lockfileAttempts {
 			t.Run(kind+"/"+a.name, func(t *testing.T) {
 				path := filepath.Join(t.TempDir(), "auth.json")
 				makeHeldLockPath(t, path+".lock", kind)
@@ -216,6 +260,42 @@ func TestAcquireSurfacesLockBeingRemovedAtStatThatIsStaleOrALink(t *testing.T) {
 				}
 				if got := calls.Load(); got != 1 {
 					t.Fatalf("mkdir calls = %d, want 1", got)
+				}
+			})
+		}
+	}
+}
+
+// The EPERM of TestAcquireSurfacesLockBeingRemovedAtStatThatIsStaleOrALink is retried by the auth loops on Windows (auth-storage.ts:24-29 checks the attempt's code, whichever fs call failed). The removal stays in flight, so later attempts are refused at mkdir too, and the loops throw EPERM after epermAttempts attempts.
+func TestAuthAcquireRetriesLockBeingRemovedAtStatThatIsStaleOrALink(t *testing.T) {
+	for _, kind := range []string{"stale", "link"} {
+		for _, a := range acquirers {
+			t.Run(kind+"/"+a.name, func(t *testing.T) {
+				path := filepath.Join(t.TempDir(), "auth.json")
+				makeHeldLockPath(t, path+".lock", kind)
+				calls := stubMkdir(t, func(call int, real func() error) error {
+					err := real()
+					if call == 1 {
+						if !isEEXIST(err) {
+							t.Errorf("mkdir of the held lock path = %v, want EEXIST", err)
+						}
+						markBeingRemoved(t, path+".lock")
+					}
+					return err
+				})
+				lock, err := a.run(path)
+				if err == nil {
+					_ = lock.Release()
+					t.Fatal("acquired a lock path that is being removed")
+				}
+				if errors.Is(err, ErrLocked) || !errors.Is(err, windows.ERROR_ACCESS_DENIED) {
+					t.Fatalf("err = %v, want ERROR_ACCESS_DENIED and not ErrLocked", err)
+				}
+				if !strings.HasPrefix(err.Error(), "EPERM: operation not permitted, ") || !strings.HasSuffix(err.Error(), " '"+path+".lock'") {
+					t.Fatalf("message = %q, want Node's EPERM message for %s", err.Error(), path+".lock")
+				}
+				if got := calls.Load(); int(got) != epermAttempts[a.name] {
+					t.Fatalf("mkdir calls = %d, want %d", got, epermAttempts[a.name])
 				}
 			})
 		}

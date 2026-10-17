@@ -25,3 +25,22 @@ func TestTestFauxClassifiedErrorStartsPending(t *testing.T) {
 		t.Fatalf("error=%#v", events[1])
 	}
 }
+
+// test-faux-provider.ts reports an unscripted request as `test-faux: unhandled request "${lastText}"`: the text sits between plain quotes, with its own quotes, backslashes and newlines unescaped.
+func TestTestFauxUnhandledRequestQuotesTheTextAsTheTemplateLiteral(t *testing.T) {
+	text := "<file name=\"a.txt\">\nline \\ two\n</file>\nhello"
+	p := &TestFauxProvider{}
+	stream, err := p.Stream(t.Context(), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText(text)}}}), StreamOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var message string
+	for event := range stream.Events(t.Context()) {
+		if failure, ok := event.(ErrorEvent); ok {
+			message = failure.Error.ErrorMessage
+		}
+	}
+	if want := "test-faux: unhandled request \"" + text + "\""; message != want {
+		t.Fatalf("error message = %q, want %q", message, want)
+	}
+}

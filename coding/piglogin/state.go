@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+
+	"github.com/MichaelKinsy/PiG/internal/configroot"
 )
 
 // DefaultID is the sprite used until one is selected.
@@ -13,16 +15,6 @@ const DefaultID = "pig-default"
 
 type state struct {
 	Variant string `json:"variant"`
-}
-
-// ConfigHome is $PIG_HOME, else ~/.pig. The Pigpen games read the selection from the same root (the SDK's ConfigHome), so
-// XDG_CONFIG_HOME does not move it.
-func ConfigHome() string {
-	if home := os.Getenv("PIG_HOME"); home != "" {
-		return home
-	}
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".pig")
 }
 
 // StatePath is where the selection lives under configHome. The directory name is PiG Standard's, so a selection made there
@@ -66,7 +58,7 @@ func SaveVariant(configHome, id string) error {
 }
 
 // active is the selection the header draws. The header renders on every frame, so it reads the state file once per
-// ConfigHome and after Refresh, not per frame. It keeps the saved ID rather than the sprite: an extension's sprite drawn as
+// config root and after Refresh, not per frame. It keeps the saved ID rather than the sprite: an extension's sprite drawn as
 // the default until its extension registers it is drawn as itself from then on.
 var active struct {
 	mu     sync.Mutex
@@ -78,7 +70,10 @@ var active struct {
 // Active is the sprite the header shows now: the saved one, or the default when it is unknown or its extension has not
 // registered it.
 func Active() Variant {
-	home := ConfigHome()
+	home, err := configroot.Resolve()
+	if err != nil {
+		return FindVariant(DefaultID)
+	}
 	active.mu.Lock()
 	if !active.loaded || active.home != home {
 		active.id, active.home, active.loaded = loadID(home), home, true
@@ -88,14 +83,17 @@ func Active() Variant {
 	return FindVariant(id)
 }
 
-// Activate saves the selection under ConfigHome and makes it the active sprite. An unknown ID or a failed save leaves the
+// Activate saves the selection under the config root (internal/configroot, the root the Pigpen games read through the SDK's ConfigHome) and makes it the active sprite. An unknown ID or a failed save leaves the
 // active sprite unchanged.
 func Activate(id string) error {
 	variant, ok := ByID(id)
 	if !ok {
 		return fmt.Errorf("unknown sprite %q; available: %s", id, IDs())
 	}
-	home := ConfigHome()
+	home, err := configroot.Resolve()
+	if err != nil {
+		return err
+	}
 	if err := SaveVariant(home, variant.ID); err != nil {
 		return err
 	}

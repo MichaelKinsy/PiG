@@ -103,3 +103,23 @@ func TestFileURLToPathNodeSamples(t *testing.T) {
 		}
 	}
 }
+
+// Node's String(e) of an error fileURLToPath throws: the name, the code in brackets and the message, and no code for decodeURIComponent's URIError.
+func TestErrorThrownIsNodesStringOfTheError(t *testing.T) {
+	for _, tc := range []struct {
+		raw     string
+		windows bool
+		want    string
+	}{
+		{"file:///a.txt", true, "TypeError [ERR_INVALID_FILE_URL_PATH]: File URL path must be absolute"},
+		{"file:///a%2Fb", false, "TypeError [ERR_INVALID_FILE_URL_PATH]: File URL path must not include encoded / characters"},
+		{"file://host/a", false, `TypeError [ERR_INVALID_FILE_URL_HOST]: File URL host must be "localhost" or empty on ` + nodePlatform()},
+		{"file:///%E0%A4%A", false, "URIError: URI malformed"},
+	} {
+		_, err := FileURLToPath(tc.raw, tc.windows)
+		thrown, ok := errors.AsType[*Error](err)
+		if !ok || thrown.Thrown() != tc.want {
+			t.Errorf("FileURLToPath(%q, %v) = %v; Thrown() want %q", tc.raw, tc.windows, err, tc.want)
+		}
+	}
+}

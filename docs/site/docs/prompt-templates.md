@@ -14,7 +14,9 @@ PiG loads prompt templates from:
 - Settings: `prompts` array with files or directories
 - CLI: `--prompt-template <path>` (repeatable)
 
-Disable discovery with `--no-prompt-templates`.
+Disable discovery with `--no-prompt-templates`. Run `/reload` after you add or change a template in an active session.
+
+A leading `~` in a `prompts` setting entry expands to your home directory, also in `!`, `+`, `-` and wildcard entries such as `"!~/prompts/old.md"`, as in Pi 1.3.0.
 
 ## Format
 
@@ -54,7 +56,7 @@ This renders in the autocomplete dropdown as:
 
 ## Usage
 
-Type `/` followed by the template name in the editor. Autocomplete shows available templates with descriptions.
+Type `/` followed by the template name in the editor. Autocomplete shows available templates with descriptions. PiG expands the template before the text reaches the agent. Extensions receive the raw input first through the `input` event, unless an extension command with the same name handles it.
 
 ```
 /review                           # Expands review.md
@@ -72,6 +74,8 @@ Templates support positional arguments, defaults, and simple slicing:
 - `${@:-default}` or `${ARGUMENTS:-default}` uses all arguments when present/non-empty, otherwise `default`
 - `${@:N}` for args from the Nth position (1-indexed)
 - `${@:N:L}` for `L` args starting at N
+
+Arguments follow shell-like quoting, so `/review "API compatibility"` supplies one argument that contains a space.
 
 Example:
 
@@ -94,3 +98,51 @@ Usage: `/component Button "onClick handler" "disabled support"`
 
 - Template discovery in `prompts/` is non-recursive.
 - If you want templates in subdirectories, add them explicitly via `prompts` settings or a package manifest.
+
+
+## Worked example
+
+Save this as `~/.pig/agent/prompts/review.md`:
+
+```markdown
+---
+description: Review staged git changes
+argument-hint: "[focus]"
+---
+Review the staged changes (`git diff --cached`). Focus on: $1
+Bugs, security issues and error handling gaps.
+```
+
+Type a slash and the first letters of the name (here `re`) in the editor. The autocomplete list shows the template with its argument hint, its description and where it came from (`[u]` for your own templates, `[p]` for the project's):
+
+```text
+  reload      Reload keybindings, extensions, skills, prompts, themes, and context files
+  review      [focus] — [u] Review staged git changes
+```
+
+Type `/review security` and press `Enter`. PiG sends the expanded text, not the command. Checked in the provider request:
+
+```text
+Review the staged changes (`git diff --cached`). Focus on: security
+Bugs, security issues and error handling gaps.
+```
+
+The argument forms, checked on PiG. For the template `Create a React component named $1 with features: $@`, typing `/component Button "onClick handler" "disabled support"` sends:
+
+```text
+Create a React component named Button with features: Button onClick handler disabled support
+```
+
+`$@` is **all** arguments, including the first. For the template `Summarize the current state in ${1:-7} bullet points. Rest: ${@:2}`, saved as `sum.md`:
+
+```text
+you type:   /sum
+PiG sends:  Summarize the current state in 7 bullet points. Rest:
+
+you type:   /sum 3 alpha beta
+PiG sends:  Summarize the current state in 3 bullet points. Rest: alpha beta
+```
+
+A template whose name matches a built-in command never runs: the built-in wins ([Slash commands](/docs/latest/slash-commands)).
+
+See [upstream Pi's prompt template documentation](https://pi.dev/docs/latest/prompt-templates) for the reference implementation.

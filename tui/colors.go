@@ -7,12 +7,17 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
-	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 )
 
 // Color is a concrete color: IndexedColor, RgbColorValue, or OklchColorValue. Every Color converts to sRGB, so color math never fails. Upstream's `Color` union is closed; the unexported method seals it.
-type Color interface{ isColor() }
+type Color interface {
+	isColor()
+	// Kind is upstream's `kind` discriminator: "indexed", "rgb" or "oklch" (colors.ts:5,10,17).
+	Kind() string
+}
 
 // IndexedColor is an ANSI palette index, 0-255 (upstream `IndexedColor`, kind "indexed").
 type IndexedColor struct{ Index int }
@@ -26,6 +31,15 @@ type OklchColorValue struct{ L, C, H float64 }
 func (IndexedColor) isColor()    {}
 func (RgbColorValue) isColor()   {}
 func (OklchColorValue) isColor() {}
+
+// Kind returns "indexed".
+func (IndexedColor) Kind() string { return "indexed" }
+
+// Kind returns "rgb".
+func (RgbColorValue) Kind() string { return "rgb" }
+
+// Kind returns "oklch".
+func (OklchColorValue) Kind() string { return "oklch" }
 
 // TerminalColorMode is the color depth a terminal accepts.
 type TerminalColorMode string
@@ -110,19 +124,6 @@ func NewOklchColor(l, c, h float64) (OklchColorValue, error) {
 	return OklchColorValue{L: l, C: c, H: jsMod(jsMod(h, 360)+360, 360)}, nil
 }
 
-const (
-	colorNumberPattern = `[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?`
-	// JavaScript `\s`. Case-insensitive keywords are spelled out because RE2's (?i) also folds U+212A into "k", which a JavaScript /i pattern does not.
-	colorSpace   = `[\t\n\v\f\r \x{a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}]`
-	colorDegrees = `(?:[dD][eE][gG])?`
-)
-
-var (
-	colorHexPattern   = lazyregexp.New(`^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$`)
-	colorOklchPattern = lazyregexp.New(`^[oO][kK][lL][cC][hH]\(` + colorSpace + `*(` + colorNumberPattern + `)(%)?` + colorSpace + `+(` + colorNumberPattern + `)` + colorSpace + `+(` + colorNumberPattern + `)` + colorDegrees + colorSpace + `*\)$`)
-	colorOkhslPattern = lazyregexp.New(`^[oO][kK][hH][sS][lL]\(` + colorSpace + `*(` + colorNumberPattern + `)` + colorDegrees + colorSpace + `+(` + colorNumberPattern + `)(%)?` + colorSpace + `+(` + colorNumberPattern + `)(%)?` + colorSpace + `*\)$`)
-)
-
 // NewOkhslColor mirrors `okhslColor`: an OKHSL color converted to sRGB. Saturation is relative to the sRGB gamut at the hue and lightness, so equal saturation looks equally colorful across hues and lightness. h is in degrees; s and l are 0-1.
 func NewOkhslColor(h, s, l float64) (RgbColorValue, error) {
 	for _, channel := range []struct {
@@ -152,10 +153,33 @@ func parseColorNumber(text string) float64 {
 	return value
 }
 
-// ParseColor mirrors `parseColor` for its string form: `#rgb`, `#rrggbb`, `oklch()`, and `okhsl()`. Go has no string|number overload, so the numeric form is NewIndexedColor.
-func ParseColor(value string) (Color, error) {
-	if hex := colorHexPattern.FindStringSubmatch(value); hex != nil {
-		digits := hex[1]
+// ColorValue is upstream's `string | number` parseColor argument.
+type ColorValue interface {
+	string | int | float64
+}
+
+// ParseColor mirrors `parseColor`. A number is an ANSI palette index and must be an integer from 0 to 255; a string is `#rgb`, `#rrggbb`, `oklch()`, or `okhsl()`.
+func ParseColor[T ColorValue](value T) (Color, error) {
+	switch value := any(value).(type) {
+	case string:
+		return parseColorString(value)
+	case int:
+		return parseColorIndex(float64(value))
+	case float64:
+		return parseColorIndex(value)
+	}
+	panic("unreachable")
+}
+
+func parseColorIndex(index float64) (Color, error) {
+	if math.IsNaN(index) || math.IsInf(index, 0) || index != math.Trunc(index) || index < 0 || index > 255 {
+		return nil, fmt.Errorf("ANSI color index must be an integer from 0 to 255: %s", JSNumberString(index))
+	}
+	return IndexedColor{Index: int(index)}, nil
+}
+
+func parseColorString(value string) (Color, error) {
+	if digits, ok := colorHexDigits(value); ok {
 		if len(digits) == 3 {
 			digits = string([]byte{digits[0], digits[0], digits[1], digits[1], digits[2], digits[2]})
 		}
@@ -166,27 +190,166 @@ func ParseColor(value string) (Color, error) {
 		return NewRgbColor(channel(digits[0:2]), channel(digits[2:4]), channel(digits[4:6]))
 	}
 
-	if oklch := colorOklchPattern.FindStringSubmatch(value); oklch != nil {
-		lightness := parseColorNumber(oklch[1])
-		if oklch[2] != "" {
+	if oklch, ok := scanColorFunction(value, "oklch", 2); ok {
+		lightness := parseColorNumber(oklch[0].number)
+		if oklch[0].percent {
 			lightness /= 100
 		}
-		return NewOklchColor(lightness, parseColorNumber(oklch[3]), parseColorNumber(oklch[4]))
+		return NewOklchColor(lightness, parseColorNumber(oklch[1].number), parseColorNumber(oklch[2].number))
 	}
 
-	if okhsl := colorOkhslPattern.FindStringSubmatch(value); okhsl != nil {
-		saturation := parseColorNumber(okhsl[2])
-		if okhsl[3] != "" {
+	if okhsl, ok := scanColorFunction(value, "okhsl", 0); ok {
+		saturation := parseColorNumber(okhsl[1].number)
+		if okhsl[1].percent {
 			saturation /= 100
 		}
-		lightness := parseColorNumber(okhsl[4])
-		if okhsl[5] != "" {
+		lightness := parseColorNumber(okhsl[2].number)
+		if okhsl[2].percent {
 			lightness /= 100
 		}
-		return NewOkhslColor(parseColorNumber(okhsl[1]), saturation, lightness)
+		return NewOkhslColor(parseColorNumber(okhsl[0].number), saturation, lightness)
 	}
 
 	return nil, fmt.Errorf("Invalid color value: %s", value)
+}
+
+// colorHexDigits matches upstream's /^#([\da-f]{3}|[\da-f]{6})$/i and returns the digits.
+func colorHexDigits(value string) (string, bool) {
+	//portlint:allow utf16units a match is '#' plus ASCII hex digits, so its byte length is its .length; any other text fails the hex loop below as it fails the regex
+	if len(value) != 4 && len(value) != 7 || value[0] != '#' {
+		return "", false
+	}
+	for i := 1; i < len(value); i++ {
+		if !isHexDigit(value[i]) {
+			return "", false
+		}
+	}
+	return value[1:], true
+}
+
+func isHexDigit(c byte) bool {
+	lower := c | 0x20
+	return '0' <= c && c <= '9' || 'a' <= lower && lower <= 'f'
+}
+
+// colorArgument is one number of an oklch() or okhsl() color and whether a percent sign followed it.
+type colorArgument struct {
+	number  string
+	percent bool
+}
+
+// scanColorFunction matches upstream's OKLCH_PATTERN and OKHSL_PATTERN: name( number [%] number [%] number ), case-insensitive, with JavaScript \s whitespace around and between the numbers. The argument at index degrees may end in "deg"; the others may end in "%". The name is lowercase ASCII and matches case-insensitively by ASCII folding only, as a JavaScript /i pattern does for these letters.
+//
+// Upstream's patterns allow a percent sign after the lightness of oklch() and after the saturation and lightness of okhsl(); a percent sign elsewhere does not match. Each number is the longest one the number grammar accepts: a shorter one leaves a number character where only whitespace, a percent sign, "deg" or ")" may follow, so no shorter split can match.
+func scanColorFunction(value, name string, degrees int) ([3]colorArgument, bool) {
+	var args [3]colorArgument
+	if len(value) < len(name)+1 {
+		return args, false
+	}
+	for i := range len(name) {
+		if value[i]|0x20 != name[i] {
+			return args, false
+		}
+	}
+	rest := value[len(name):]
+	if rest[0] != '(' {
+		return args, false
+	}
+	rest = skipJSSpaces(rest[1:])
+	for i := range args {
+		if i > 0 {
+			spaced := skipJSSpaces(rest)
+			if len(spaced) == len(rest) {
+				return args, false
+			}
+			rest = spaced
+		}
+		number := colorNumberLength(rest)
+		if number == 0 {
+			return args, false
+		}
+		args[i].number, rest = rest[:number], rest[number:]
+		switch {
+		case i == degrees:
+			//portlint:allow utf16units only ASCII bytes satisfy b|0x20 == 'd'/'e'/'g', so a match is the three code units of /deg/i
+			if len(rest) >= 3 && rest[0]|0x20 == 'd' && rest[1]|0x20 == 'e' && rest[2]|0x20 == 'g' {
+				//portlint:allow utf16units the three bytes just matched are ASCII 'deg', three code units, so this is rest.slice(3)
+				rest = rest[3:]
+			}
+		case percentAllowed(name, i) && len(rest) > 0 && rest[0] == '%':
+			args[i].percent, rest = true, rest[1:]
+		}
+	}
+	rest = skipJSSpaces(rest)
+	return args, rest == ")"
+}
+
+// percentAllowed reports whether upstream's pattern for name has a (%)? group after argument i.
+func percentAllowed(name string, i int) bool {
+	if name == "oklch" {
+		return i == 0
+	}
+	return i > 0
+}
+
+// colorNumberLength is the length of the longest prefix of text that matches upstream's NUMBER_PATTERN, [+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?, case-insensitive; 0 when none does.
+func colorNumberLength(text string) int {
+	i := 0
+	if i < len(text) && (text[i] == '+' || text[i] == '-') {
+		i++
+	}
+	integer := digitRun(text[i:])
+	i += integer
+	switch {
+	case integer > 0:
+		if i < len(text) && text[i] == '.' {
+			i += 1 + digitRun(text[i+1:])
+		}
+	case i < len(text) && text[i] == '.' && digitRun(text[i+1:]) > 0:
+		i += 1 + digitRun(text[i+1:])
+	default:
+		return 0
+	}
+	if i < len(text) && text[i]|0x20 == 'e' {
+		exponent := i + 1
+		if exponent < len(text) && (text[exponent] == '+' || text[exponent] == '-') {
+			exponent++
+		}
+		if digits := digitRun(text[exponent:]); digits > 0 {
+			i = exponent + digits
+		}
+	}
+	return i
+}
+
+func digitRun(text string) int {
+	n := 0
+	for n < len(text) && '0' <= text[n] && text[n] <= '9' {
+		n++
+	}
+	return n
+}
+
+// skipJSSpaces drops the leading JavaScript \s characters of text.
+func skipJSSpaces(text string) string {
+	for text != "" {
+		r, size := utf8.DecodeRuneInString(text)
+		if !isJSSpace(r) {
+			break
+		}
+		//portlint:allow utf16units advances past one decoded \s character; the result is a suffix of text, not a JS offset
+		text = text[size:]
+	}
+	return text
+}
+
+// isJSSpace reports whether r is in JavaScript's \s: WhiteSpace and LineTerminator.
+func isJSSpace(r rune) bool {
+	switch r {
+	case '\t', '\n', '\v', '\f', '\r', ' ', 0xa0, 0x1680, 0x2028, 0x2029, 0x202f, 0x205f, 0x3000, 0xfeff:
+		return true
+	}
+	return 0x2000 <= r && r <= 0x200a
 }
 
 var basicColors = [16]RgbColor{
@@ -297,7 +460,7 @@ func ColorToOklch(color Color) OklchChannels {
 func ColorToHex(color Color) string {
 	rgb := ColorToRgb(color)
 	channel := func(value float64) string {
-		text := strconv.FormatInt(int64(jsRound(value)), 16)
+		text := strconv.FormatInt(int64(jsnumber.Round(value)), 16)
 		if len(text) < 2 {
 			text = "0" + text
 		}
@@ -318,7 +481,7 @@ func MixColors(first, second Color, amount float64, space ColorMixSpace) (Color,
 	if space == ColorMixSpaceSrgb {
 		a := ColorToRgb(first)
 		b := ColorToRgb(second)
-		return NewRgbColor(a.R+(b.R-a.R)*amount, a.G+(b.G-a.G)*amount, a.B+(b.B-a.B)*amount)
+		return NewRgbColor(a.R+float64((b.R-a.R)*amount), a.G+float64((b.G-a.G)*amount), a.B+float64((b.B-a.B)*amount))
 	}
 
 	a := ColorToOklch(first)
@@ -332,7 +495,7 @@ func MixColors(first, second Color, amount float64, space ColorMixSpace) (Color,
 		secondHue = firstHue
 	}
 	hueDelta := jsMod(secondHue-firstHue+540, 360) - 180
-	return NewOklchColor(a.L+(b.L-a.L)*amount, a.C+(b.C-a.C)*amount, firstHue+hueDelta*amount)
+	return NewOklchColor(a.L+float64((b.L-a.L)*amount), a.C+float64((b.C-a.C)*amount), firstHue+float64(hueDelta*amount))
 }
 
 func findClosest(values []float64, target float64) int {
@@ -351,7 +514,7 @@ func colorDistance(first, second RgbColor) float64 {
 	dr := first.R - second.R
 	dg := first.G - second.G
 	db := first.B - second.B
-	return dr*dr*0.299 + dg*dg*0.587 + db*db*0.114
+	return float64(dr*dr*0.299) + float64(dg*dg*0.587) + float64(db*db*0.114)
 }
 
 func rgbToAnsi256(color RgbColor) int {
@@ -361,7 +524,7 @@ func rgbToAnsi256(color RgbColor) int {
 	cubeColor := RgbColor{R: colorCubeValues[rIndex], G: colorCubeValues[gIndex], B: colorCubeValues[bIndex]}
 	cubeIndex := 16 + 36*rIndex + 6*gIndex + bIndex
 
-	gray := jsRound(0.299*color.R + 0.587*color.G + 0.114*color.B)
+	gray := jsnumber.Round(float64(0.299*color.R) + float64(0.587*color.G) + float64(0.114*color.B))
 	grayOffset := findClosest(colorGrayValues[:], gray)
 	grayValue := colorGrayValues[grayOffset]
 	spread := math.Max(color.R, math.Max(color.G, color.B)) - math.Min(color.R, math.Min(color.G, color.B))
@@ -382,7 +545,7 @@ func colorAnsi(color Color, mode TerminalColorMode, background bool) string {
 
 	rgb := ColorToRgb(color)
 	if mode == TerminalColorModeTrueColor {
-		return "\x1b[" + strconv.Itoa(layer) + ";2;" + JSNumberString(jsRound(rgb.R)) + ";" + JSNumberString(jsRound(rgb.G)) + ";" + JSNumberString(jsRound(rgb.B)) + "m"
+		return "\x1b[" + strconv.Itoa(layer) + ";2;" + JSNumberString(jsnumber.Round(rgb.R)) + ";" + JSNumberString(jsnumber.Round(rgb.G)) + ";" + JSNumberString(jsnumber.Round(rgb.B)) + "m"
 	}
 	return "\x1b[" + strconv.Itoa(layer) + ";5;" + strconv.Itoa(rgbToAnsi256(rgb)) + "m"
 }

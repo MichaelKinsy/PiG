@@ -8,22 +8,31 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-// ResolveBuiltinExtensions resolves each built-in extension name as a `builtin:<name>` extension resource, in name order: enabled unless the user `extensions` setting excludes it, for example with `-builtin:mcp`, and overridden by a matching `+`, `-` or `!` entry of the project setting.
+// ResolveBuiltinExtensions resolves each built-in extension name as a `builtin:<name>` extension resource, in name order: a matching `+`, `-` or `!` entry of the project setting decides it, and otherwise it is enabled unless the user `extensions` setting excludes it, for example with `-builtin:mcp`. The user setting is read only for a name the project setting leaves alone, so only then can its pattern fail; a pattern minimatch cannot compile returns the items before it with the error Pi's resolve() rejects with.
 // Ports .upstream/v0.99.1/packages/coding-agent/src/core/package-manager.ts:970-986 (DefaultPackageManager.resolve).
-func ResolveBuiltinExtensions(sm *codingagent.SettingsManager, names []string) []tui.ResourceItem {
+func ResolveBuiltinExtensions(sm *codingagent.SettingsManager, names []string) ([]tui.ResourceItem, error) {
 	global, project := sm.GetGlobalSettings(), sm.GetProjectSettings()
 	globalBase, projectBase := sm.AgentDir(), codingagent.ProjectConfigDir(sm.CWD())
 	overrides := overridePatterns(project.Extensions)
 	items := make([]tui.ResourceItem, 0, len(names))
 	for _, name := range names {
 		path := codingagent.BuiltinPathPrefix + name
-		enabled, scope := packagecontent.EnabledByOverrides(path, global.Extensions, globalBase, packagecontent.Extensions), "user"
-		for _, state := range packagecontent.ApplyAutoloadDisabledPatterns([]string{path}, overrides, projectBase, packagecontent.Extensions) {
-			enabled, scope = state.Enabled, "project"
+		states, err := packagecontent.ApplyAutoloadDisabledPatterns([]string{path}, overrides, projectBase, packagecontent.Extensions)
+		if err != nil {
+			return items, err
+		}
+		enabled, scope := false, "project"
+		if len(states) > 0 {
+			enabled = states[len(states)-1].Enabled
+		} else {
+			scope = "user"
+			if enabled, err = packagecontent.EnabledByOverrides(path, global.Extensions, globalBase, packagecontent.Extensions); err != nil {
+				return items, err
+			}
 		}
 		items = append(items, tui.ResourceItem{Path: path, Enabled: enabled, ResourceType: tui.ResourceExtensions, Scope: scope, Origin: "top-level", Source: "builtin"})
 	}
-	return items
+	return items, nil
 }
 
 // ResolveBuiltinExtensionSources resolves the `builtin:<name>` entries of sources, the `-e` paths, as enabled built-in extension resources of scope, and returns the other sources unchanged. The resource loader reports an unknown name.

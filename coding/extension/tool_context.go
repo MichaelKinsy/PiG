@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
@@ -21,6 +22,8 @@ type AgentToolCallOutcome struct {
 	ToolCall AgentToolCall   `json:"toolCall"`
 	Result   AgentToolResult `json:"result"`
 	IsError  bool            `json:"isError"`
+	// DurationMs is the milliseconds execute() took, measured with a monotonic clock; absent when the tool did not run. upstream: agent/src/types.ts:454 AgentToolCallOutcome.durationMs
+	DurationMs *int64 `json:"durationMs,omitempty"`
 }
 
 // AgentTool is the read-only view of a tool that a tool call sees through [ToolContext.Tools] and [ToolLoadout].
@@ -44,7 +47,7 @@ type ExecuteToolOptions struct {
 	// Signal cancels the nested call. Defaults to the calling tool's context. Go mechanic (not a divergence): upstream's AbortSignal is a context.Context, as in [ExecOptions].
 	Signal context.Context `json:"-"`
 	// OnUpdate receives partial results of the nested tool, in addition to `tool_execution_update` events.
-	OnUpdate AgentToolUpdateCallback `json:"-"`
+	OnUpdate agent.ToolUpdateSink `json:"-"`
 }
 
 // ToolActions is the host-side injection that backs [ToolContext]. Mirrors the executeTool and getCallableTools members of upstream ExtensionContextActions.

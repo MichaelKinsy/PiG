@@ -1,0 +1,1726 @@
+== default read tool
+compile: ok
+validate {"path":"a.go"}: ok
+validate {"path":"a.go","offset":3,"limit":1.5}: ok
+validate {}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': missing property 'path'
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/required]: missing property 'path'
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/required","instanceLocation":"","error":"missing property 'path'"}]}
+validate {"path":1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/path': got number, want string
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/path' [S#/properties/path/type]: got number, want string
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/path/type","instanceLocation":"/path","error":"got number, want string"}]}
+validate {"path":"a","offset":"x"}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/offset': got string, want number
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/offset' [S#/properties/offset/type]: got string, want number
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/offset/type","instanceLocation":"/offset","error":"got string, want number"}]}
+validate []: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': got array, want object
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/type]: got array, want object
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/type","instanceLocation":"","error":"got array, want object"}]}
+== default bad type name
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '': 'allOf' failed
+  - at '/type': 'anyOf' failed
+    - at '/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/type': got string, want array
+jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/type' [https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf]: 'anyOf' failed
+    - at '/type' [S#/$defs/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/type' [S#/properties/type/anyOf/1/type]: got string, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/3/$ref/properties/type/anyOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf","instanceLocation":"/type","errors":[{"valid":false,"keywordLocation":"/allOf/3/$ref/properties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/$defs/simpleTypes/enum","instanceLocation":"/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/allOf/3/$ref/properties/type/anyOf/1/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf/1/type","instanceLocation":"/type","error":"got string, want array"}]}]}]}
+== default negative minLength
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '': 'allOf' failed
+  - at '/minLength': minimum: got -1, want 0
+jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/minLength' [https://json-schema.org/draft/2020-12/meta/validation#/$defs/nonNegativeInteger/minimum]: minimum: got -1, want 0
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/3/$ref/properties/minLength/$ref/$ref/minimum","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/$defs/nonNegativeInteger/minimum","instanceLocation":"/minLength","error":"minimum: got -1, want 0"}]}]}
+== default required not array
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '': 'allOf' failed
+  - at '/required': got string, want array
+jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/required' [https://json-schema.org/draft/2020-12/meta/validation#/$defs/stringArray/type]: got string, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/3/$ref/properties/required/$ref/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/$defs/stringArray/type","instanceLocation":"/required","error":"got string, want array"}]}]}
+== default nested bad type
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '': 'allOf' failed
+  - at '/properties/a': 'allOf' failed
+    - at '/properties/a/type': 'anyOf' failed
+      - at '/properties/a/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+      - at '/properties/a/type': got number, want array
+jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/properties/a' [S#/allOf]: 'allOf' failed
+    - at '/properties/a/type' [https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf]: 'anyOf' failed
+      - at '/properties/a/type' [S#/$defs/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+      - at '/properties/a/type' [S#/properties/type/anyOf/1/type]: got number, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/1/$ref/properties/properties/additionalProperties/$dynamicRef/allOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/schema#/allOf","instanceLocation":"/properties/a","errors":[{"valid":false,"keywordLocation":"/allOf/1/$ref/properties/properties/additionalProperties/$dynamicRef/allOf/3/$ref/properties/type/anyOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf","instanceLocation":"/properties/a/type","errors":[{"valid":false,"keywordLocation":"/allOf/1/$ref/properties/properties/additionalProperties/$dynamicRef/allOf/3/$ref/properties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/$defs/simpleTypes/enum","instanceLocation":"/properties/a/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/allOf/1/$ref/properties/properties/additionalProperties/$dynamicRef/allOf/3/$ref/properties/type/anyOf/1/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf/1/type","instanceLocation":"/properties/a/type","error":"got number, want array"}]}]}]}]}
+== default bad pattern
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '': 'allOf' failed
+  - at '/pattern': '(' is not valid regex: error parsing regexp: missing closing ): `(`
+jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/pattern' [https://json-schema.org/draft/2020-12/meta/validation#/properties/pattern/format]: '(' is not valid regex: error parsing regexp: missing closing ): `(`
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/3/$ref/properties/pattern/format","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/pattern/format","instanceLocation":"/pattern","error":"'(' is not valid regex: error parsing regexp: missing closing ): `(`"}]}]}
+== default empty enum
+compile: ok
+validate 1: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': value must be one of 
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/enum]: value must be one of 
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/enum","instanceLocation":"","error":"value must be one of "}]}
+== default boolean exclusiveMaximum
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '': 'allOf' failed
+  - at '/exclusiveMaximum': got boolean, want number
+jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/exclusiveMaximum' [https://json-schema.org/draft/2020-12/meta/validation#/properties/exclusiveMaximum/type]: got boolean, want number
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/3/$ref/properties/exclusiveMaximum/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/exclusiveMaximum/type","instanceLocation":"/exclusiveMaximum","error":"got boolean, want number"}]}]}
+== default numeric exclusiveMaximum
+compile: ok
+validate 5: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': exclusiveMaximum: got 5, want 5
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/exclusiveMaximum]: exclusiveMaximum: got 5, want 5
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/exclusiveMaximum","instanceLocation":"","error":"exclusiveMaximum: got 5, want 5"}]}
+validate 4: ok
+== default format email
+compile: ok
+validate "x": ok
+validate "a@b.c": ok
+== default definitions ref
+compile: ok
+validate "x": jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': got string, want integer
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/definitions/a/type]: got string, want integer
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/type","AbsoluteKeywordLocation":"http://example.com/schema.json#/definitions/a/type","instanceLocation":"","error":"got string, want integer"}]}
+validate 1: ok
+== default defs ref
+compile: ok
+validate 1: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': minimum: got 1, want 2
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/$defs/a/minimum]: minimum: got 1, want 2
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/minimum","AbsoluteKeywordLocation":"http://example.com/schema.json#/$defs/a/minimum","instanceLocation":"","error":"minimum: got 1, want 2"}]}
+validate "x": jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': got string, want integer
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/$defs/a/type]: got string, want integer
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/type","AbsoluteKeywordLocation":"http://example.com/schema.json#/$defs/a/type","instanceLocation":"","error":"got string, want integer"}]}
+validate 3: ok
+== default unevaluatedProperties
+compile: ok
+validate {"a":1,"b":2}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/b': false schema
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/b' [S#/unevaluatedProperties]: false schema
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/unevaluatedProperties","instanceLocation":"/b","error":"false schema"}]}
+validate {"a":1}: ok
+== default prefixItems
+compile: ok
+validate [1,2]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/1': false schema
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/1' [S#/items]: false schema
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/items","instanceLocation":"/1","error":"false schema"}]}
+validate ["x"]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0': got string, want integer
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0' [S#/prefixItems/0/type]: got string, want integer
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/prefixItems/0/type","instanceLocation":"/0","error":"got string, want integer"}]}
+validate [1]: ok
+== default items array
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '': 'allOf' failed
+  - at '/items': got array, want boolean or object
+jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/items' [S#/type]: got array, want boolean or object
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/1/$ref/properties/items/$dynamicRef/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/schema#/type","instanceLocation":"/items","error":"got array, want boolean or object"}]}]}
+== default dependencies
+compile: ok
+validate {"a":1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': properties 'b' required, if 'a' exists
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/dependency/a]: properties 'b' required, if 'a' exists
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/dependency/a","instanceLocation":"","error":"properties 'b' required, if 'a' exists"}]}
+validate {"c":1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': properties 'd' required, if 'c' exists
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/dependentRequired/c]: properties 'd' required, if 'c' exists
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/dependentRequired/c","instanceLocation":"","error":"properties 'd' required, if 'c' exists"}]}
+== default if then else
+compile: ok
+validate 1: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': minimum: got 1, want 3
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/then/minimum]: minimum: got 1, want 3
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/then/minimum","instanceLocation":"","error":"minimum: got 1, want 3"}]}
+validate true: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': got boolean, want string
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/else/type]: got boolean, want string
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/else/type","instanceLocation":"","error":"got boolean, want string"}]}
+validate 4: ok
+== default const contains
+compile: ok
+validate [1]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': no items match contains schema
+  - at '/0': value must be 2
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/contains]: no items match contains schema
+  - at '/0' [S#/contains/const]: value must be 2
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/contains","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/contains/const","instanceLocation":"/0","error":"value must be 2"}]}]}
+validate [2]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': 'const' failed
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/const]: 'const' failed
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/const","instanceLocation":"","error":"'const' failed"}]}
+== default nested draft-07 resource
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '': 'allOf' failed
+  - at '/$defs/x/type': 'anyOf' failed
+    - at '/$defs/x/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/$defs/x/type': got string, want array
+- at '/definitions/y': 'allOf' failed
+  - at '/definitions/y/exclusiveMinimum': got boolean, want number
+jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/$defs/x/type' [http://json-schema.org/draft-07/schema#/properties/type/anyOf]: 'anyOf' failed
+    - at '/$defs/x/type' [S#/definitions/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/$defs/x/type' [S#/properties/type/anyOf/1/type]: got string, want array
+- at '/definitions/y' [S#/allOf]: 'allOf' failed
+  - at '/definitions/y/exclusiveMinimum' [https://json-schema.org/draft/2020-12/meta/validation#/properties/exclusiveMinimum/type]: got boolean, want number
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/0/$ref/properties/$defs/additionalProperties/$dynamicRefrties/type/anyOf","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/type/anyOf","instanceLocation":"/$defs/x/type","errors":[{"valid":false,"keywordLocation":"/allOf/0/$ref/properties/$defs/additionalProperties/$dynamicRefrties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/definitions/simpleTypes/enum","instanceLocation":"/$defs/x/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/allOf/0/$ref/properties/$defs/additionalProperties/$dynamicRefrties/type/anyOf/1/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/type/anyOf/1/type","instanceLocation":"/$defs/x/type","error":"got string, want array"}]}]},{"valid":false,"keywordLocation":"/properties/definitions/additionalProperties/$dynamicRef/allOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/schema#/allOf","instanceLocation":"/definitions/y","errors":[{"valid":false,"keywordLocation":"/properties/definitions/additionalProperties/$dynamicRef/allOf/3/$ref/properties/exclusiveMinimum/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/exclusiveMinimum/type","instanceLocation":"/definitions/y/exclusiveMinimum","error":"got boolean, want number"}]}]}
+== default boolean subschemas
+compile: ok
+validate {"a":1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/a': false schema
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/a' [S#/properties/a]: false schema
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/a","instanceLocation":"/a","error":"false schema"}]}
+validate {"b":1}: ok
+== default schema as instance
+compile: ok
+validate {"type":"strin"}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': 'allOf' failed
+  - at '/type': 'anyOf' failed
+    - at '/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/type': got string, want array
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [https://json-schema.org/draft/2020-12/schema#/allOf]: 'allOf' failed
+  - at '/type' [https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf]: 'anyOf' failed
+    - at '/type' [S#/$defs/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/type' [S#/properties/type/anyOf/1/type]: got string, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/allOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/schema#/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/allOf/3/$ref/properties/type/anyOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf","instanceLocation":"/type","errors":[{"valid":false,"keywordLocation":"/$ref/allOf/3/$ref/properties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/$defs/simpleTypes/enum","instanceLocation":"/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/$ref/allOf/3/$ref/properties/type/anyOf/1/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf/1/type","instanceLocation":"/type","error":"got string, want array"}]}]}]}
+validate {"minLength":-1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': 'allOf' failed
+  - at '/minLength': minimum: got -1, want 0
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [https://json-schema.org/draft/2020-12/schema#/allOf]: 'allOf' failed
+  - at '/minLength' [https://json-schema.org/draft/2020-12/meta/validation#/$defs/nonNegativeInteger/minimum]: minimum: got -1, want 0
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/allOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/schema#/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/allOf/3/$ref/properties/minLength/$ref/$ref/minimum","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/$defs/nonNegativeInteger/minimum","instanceLocation":"/minLength","error":"minimum: got -1, want 0"}]}]}
+validate {"type":"string"}: ok
+== default draft-07 schema as instance
+compile: ok
+validate {"type":"strin"}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/type': 'anyOf' failed
+  - at '/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+  - at '/type': got string, want array
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/type' [http://json-schema.org/draft-07/schema#/properties/type/anyOf]: 'anyOf' failed
+  - at '/type' [S#/definitions/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+  - at '/type' [S#/properties/type/anyOf/1/type]: got string, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/properties/type/anyOf","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/type/anyOf","instanceLocation":"/type","errors":[{"valid":false,"keywordLocation":"/$ref/properties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/definitions/simpleTypes/enum","instanceLocation":"/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/$ref/properties/type/anyOf/1/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/type/anyOf/1/type","instanceLocation":"/type","error":"got string, want array"}]}]}
+validate {"properties":{"a":{"minimum":"x"}}}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/properties/a/minimum': got string, want number
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/properties/a/minimum' [http://json-schema.org/draft-07/schema#/properties/minimum/type]: got string, want number
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/properties/properties/additionalProperties/$ref/properties/minimum/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/minimum/type","instanceLocation":"/properties/a/minimum","error":"got string, want number"}]}
+== draft-04 read tool
+compile: ok
+validate {"path":"a.go"}: ok
+validate {"path":"a.go","offset":3,"limit":1.5}: ok
+validate {}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': missing property 'path'
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/required]: missing property 'path'
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/required","instanceLocation":"","error":"missing property 'path'"}]}
+validate {"path":1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/path': got number, want string
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/path' [S#/properties/path/type]: got number, want string
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/path/type","instanceLocation":"/path","error":"got number, want string"}]}
+validate {"path":"a","offset":"x"}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/offset': got string, want number
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/offset' [S#/properties/offset/type]: got string, want number
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/offset/type","instanceLocation":"/offset","error":"got string, want number"}]}
+validate []: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': got array, want object
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/type]: got array, want object
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/type","instanceLocation":"","error":"got array, want object"}]}
+== draft-04 bad type name
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'http://json-schema.org/draft-04/schema#'
+- at '/type': 'anyOf' failed
+  - at '/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+  - at '/type': got string, want array
+jsonschema validation failed with 'http://json-schema.org/draft-04/schema#'
+- at '/type' [S#/properties/type/anyOf]: 'anyOf' failed
+  - at '/type' [S#/definitions/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+  - at '/type' [S#/properties/type/anyOf/1/type]: got string, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/type/anyOf","instanceLocation":"/type","errors":[{"valid":false,"keywordLocation":"/properties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"http://json-schema.org/draft-04/schema#/definitions/simpleTypes/enum","instanceLocation":"/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/properties/type/anyOf/1/type","instanceLocation":"/type","error":"got string, want array"}]}]}
+== draft-04 negative minLength
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'http://json-schema.org/draft-04/schema#'
+- at '/minLength': 'allOf' failed
+  - at '/minLength': minimum: got -1, want 0
+jsonschema validation failed with 'http://json-schema.org/draft-04/schema#'
+- at '/minLength' [S#/definitions/positiveIntegerDefault0/allOf]: 'allOf' failed
+  - at '/minLength' [S#/definitions/positiveInteger/minimum]: minimum: got -1, want 0
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/minLength/$ref/allOf","AbsoluteKeywordLocation":"http://json-schema.org/draft-04/schema#/definitions/positiveIntegerDefault0/allOf","instanceLocation":"/minLength","errors":[{"valid":false,"keywordLocation":"/properties/minLength/$ref/allOf/0/$ref/minimum","AbsoluteKeywordLocation":"http://json-schema.org/draft-04/schema#/definitions/positiveInteger/minimum","instanceLocation":"/minLength","error":"minimum: got -1, want 0"}]}]}
+== draft-04 required not array
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'http://json-schema.org/draft-04/schema#'
+- at '/required': got string, want array
+jsonschema validation failed with 'http://json-schema.org/draft-04/schema#'
+- at '/required' [S#/definitions/stringArray/type]: got string, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/required/$ref/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-04/schema#/definitions/stringArray/type","instanceLocation":"/required","error":"got string, want array"}]}
+== draft-04 nested bad type
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'http://json-schema.org/draft-04/schema#'
+- at '/properties/a/type': 'anyOf' failed
+  - at '/properties/a/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+  - at '/properties/a/type': got number, want array
+jsonschema validation failed with 'http://json-schema.org/draft-04/schema#'
+- at '/properties/a/type' [S#/properties/type/anyOf]: 'anyOf' failed
+  - at '/properties/a/type' [S#/definitions/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+  - at '/properties/a/type' [S#/properties/type/anyOf/1/type]: got number, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/properties/additionalProperties/$ref/properties/type/anyOf","AbsoluteKeywordLocation":"http://json-schema.org/draft-04/schema#/properties/type/anyOf","instanceLocation":"/properties/a/type","errors":[{"valid":false,"keywordLocation":"/properties/properties/additionalProperties/$ref/properties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"http://json-schema.org/draft-04/schema#/definitions/simpleTypes/enum","instanceLocation":"/properties/a/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/properties/properties/additionalProperties/$ref/properties/type/anyOf/1/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-04/schema#/properties/type/anyOf/1/type","instanceLocation":"/properties/a/type","error":"got number, want array"}]}]}
+== draft-04 bad pattern
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'http://json-schema.org/draft-04/schema#'
+- at '/pattern': '(' is not valid regex: error parsing regexp: missing closing ): `(`
+jsonschema validation failed with 'http://json-schema.org/draft-04/schema#'
+- at '/pattern' [S#/properties/pattern/format]: '(' is not valid regex: error parsing regexp: missing closing ): `(`
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/pattern/format","instanceLocation":"/pattern","error":"'(' is not valid regex: error parsing regexp: missing closing ): `(`"}]}
+== draft-04 empty enum
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'http://json-schema.org/draft-04/schema#'
+- at '/enum': minItems: got 0, want 1
+jsonschema validation failed with 'http://json-schema.org/draft-04/schema#'
+- at '/enum' [S#/properties/enum/minItems]: minItems: got 0, want 1
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/enum/minItems","instanceLocation":"/enum","error":"minItems: got 0, want 1"}]}
+== draft-04 boolean exclusiveMaximum
+compile: ok
+validate 5: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': exclusiveMaximum: got 5, want 5
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/exclusiveMaximum]: exclusiveMaximum: got 5, want 5
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/exclusiveMaximum","instanceLocation":"","error":"exclusiveMaximum: got 5, want 5"}]}
+validate 4: ok
+== draft-04 numeric exclusiveMaximum
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'http://json-schema.org/draft-04/schema#'
+- at '': properties 'maximum' required, if 'exclusiveMaximum' exists
+- at '/exclusiveMaximum': got number, want boolean
+jsonschema validation failed with 'http://json-schema.org/draft-04/schema#'
+- at '' [S#/dependency/exclusiveMaximum]: properties 'maximum' required, if 'exclusiveMaximum' exists
+- at '/exclusiveMaximum' [S#/properties/exclusiveMaximum/type]: got number, want boolean
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/dependency/exclusiveMaximum","instanceLocation":"","error":"properties 'maximum' required, if 'exclusiveMaximum' exists"},{"valid":false,"keywordLocation":"/properties/exclusiveMaximum/type","instanceLocation":"/exclusiveMaximum","error":"got number, want boolean"}]}
+== draft-04 format email
+compile: ok
+validate "x": jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': 'x' is not valid email: missing @
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/format]: 'x' is not valid email: missing @
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/format","instanceLocation":"","error":"'x' is not valid email: missing @"}]}
+validate "a@b.c": ok
+== draft-04 definitions ref
+compile: ok
+validate "x": jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': got string, want integer
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/definitions/a/type]: got string, want integer
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/type","AbsoluteKeywordLocation":"http://example.com/schema.json#/definitions/a/type","instanceLocation":"","error":"got string, want integer"}]}
+validate 1: ok
+== draft-04 defs ref
+compile: ok
+validate 1: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': minimum: got 1, want 2
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/$defs/a/minimum]: minimum: got 1, want 2
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/minimum","AbsoluteKeywordLocation":"http://example.com/schema.json#/$defs/a/minimum","instanceLocation":"","error":"minimum: got 1, want 2"}]}
+validate "x": jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': got string, want integer
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/$defs/a/type]: got string, want integer
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/type","AbsoluteKeywordLocation":"http://example.com/schema.json#/$defs/a/type","instanceLocation":"","error":"got string, want integer"}]}
+validate 3: ok
+== draft-04 unevaluatedProperties
+compile: ok
+validate {"a":1,"b":2}: ok
+validate {"a":1}: ok
+== draft-04 prefixItems
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'http://json-schema.org/draft-04/schema#'
+- at '/items': 'anyOf' failed
+  - at '/items': got boolean, want array
+  - at '/items': got boolean, want object
+jsonschema validation failed with 'http://json-schema.org/draft-04/schema#'
+- at '/items' [S#/properties/items/anyOf]: 'anyOf' failed
+  - at '/items' [S#/definitions/schemaArray/type]: got boolean, want array
+  - at '/items' [S#/type]: got boolean, want object
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/items/anyOf","instanceLocation":"/items","errors":[{"valid":false,"keywordLocation":"/properties/items/anyOf/1/$ref/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-04/schema#/definitions/schemaArray/type","instanceLocation":"/items","error":"got boolean, want array"},{"valid":false,"keywordLocation":"/properties/items/anyOf/0/$ref/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-04/schema#/type","instanceLocation":"/items","error":"got boolean, want object"}]}]}
+== draft-04 items array
+compile: ok
+validate [1,2]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': last 1 additionalItem(s) not allowed
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/additionalItems]: last 1 additionalItem(s) not allowed
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/additionalItems","instanceLocation":"","error":"last 1 additionalItem(s) not allowed"}]}
+validate ["x"]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0': got string, want integer
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0' [S#/items/0/type]: got string, want integer
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/items/0/type","instanceLocation":"/0","error":"got string, want integer"}]}
+== draft-04 dependencies
+compile: ok
+validate {"a":1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': properties 'b' required, if 'a' exists
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/dependency/a]: properties 'b' required, if 'a' exists
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/dependency/a","instanceLocation":"","error":"properties 'b' required, if 'a' exists"}]}
+validate {"c":1}: ok
+== draft-04 if then else
+compile: ok
+validate 1: ok
+validate true: ok
+validate 4: ok
+== draft-04 const contains
+compile: ok
+validate [1]: ok
+validate [2]: ok
+== draft-04 nested draft-07 resource
+compile: failing loading "http://example.com/y": invalid file url: http://example.com/y
+== draft-04 boolean subschemas
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'http://json-schema.org/draft-04/schema#'
+- at '/properties/a': got boolean, want object
+- at '/properties/b': got boolean, want object
+jsonschema validation failed with 'http://json-schema.org/draft-04/schema#'
+- at '/properties/a' [S#/type]: got boolean, want object
+- at '/properties/b' [S#/type]: got boolean, want object
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/properties/additionalProperties/$ref/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-04/schema#/type","instanceLocation":"/properties/a","error":"got boolean, want object"},{"valid":false,"keywordLocation":"/properties/properties/additionalProperties/$ref/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-04/schema#/type","instanceLocation":"/properties/b","error":"got boolean, want object"}]}
+== draft-04 schema as instance
+compile: ok
+validate {"type":"strin"}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': 'allOf' failed
+  - at '/type': 'anyOf' failed
+    - at '/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/type': got string, want array
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [https://json-schema.org/draft/2020-12/schema#/allOf]: 'allOf' failed
+  - at '/type' [https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf]: 'anyOf' failed
+    - at '/type' [S#/$defs/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/type' [S#/properties/type/anyOf/1/type]: got string, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/allOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/schema#/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/allOf/3/$ref/properties/type/anyOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf","instanceLocation":"/type","errors":[{"valid":false,"keywordLocation":"/$ref/allOf/3/$ref/properties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/$defs/simpleTypes/enum","instanceLocation":"/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/$ref/allOf/3/$ref/properties/type/anyOf/1/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf/1/type","instanceLocation":"/type","error":"got string, want array"}]}]}]}
+validate {"minLength":-1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': 'allOf' failed
+  - at '/minLength': minimum: got -1, want 0
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [https://json-schema.org/draft/2020-12/schema#/allOf]: 'allOf' failed
+  - at '/minLength' [https://json-schema.org/draft/2020-12/meta/validation#/$defs/nonNegativeInteger/minimum]: minimum: got -1, want 0
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/allOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/schema#/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/allOf/3/$ref/properties/minLength/$ref/$ref/minimum","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/$defs/nonNegativeInteger/minimum","instanceLocation":"/minLength","error":"minimum: got -1, want 0"}]}]}
+validate {"type":"string"}: ok
+== draft-04 draft-07 schema as instance
+compile: ok
+validate {"type":"strin"}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/type': 'anyOf' failed
+  - at '/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+  - at '/type': got string, want array
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/type' [http://json-schema.org/draft-07/schema#/properties/type/anyOf]: 'anyOf' failed
+  - at '/type' [S#/definitions/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+  - at '/type' [S#/properties/type/anyOf/1/type]: got string, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/properties/type/anyOf","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/type/anyOf","instanceLocation":"/type","errors":[{"valid":false,"keywordLocation":"/$ref/properties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/definitions/simpleTypes/enum","instanceLocation":"/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/$ref/properties/type/anyOf/1/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/type/anyOf/1/type","instanceLocation":"/type","error":"got string, want array"}]}]}
+validate {"properties":{"a":{"minimum":"x"}}}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/properties/a/minimum': got string, want number
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/properties/a/minimum' [http://json-schema.org/draft-07/schema#/properties/minimum/type]: got string, want number
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/properties/properties/additionalProperties/$ref/properties/minimum/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/minimum/type","instanceLocation":"/properties/a/minimum","error":"got string, want number"}]}
+== draft-06 read tool
+compile: ok
+validate {"path":"a.go"}: ok
+validate {"path":"a.go","offset":3,"limit":1.5}: ok
+validate {}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': missing property 'path'
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/required]: missing property 'path'
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/required","instanceLocation":"","error":"missing property 'path'"}]}
+validate {"path":1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/path': got number, want string
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/path' [S#/properties/path/type]: got number, want string
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/path/type","instanceLocation":"/path","error":"got number, want string"}]}
+validate {"path":"a","offset":"x"}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/offset': got string, want number
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/offset' [S#/properties/offset/type]: got string, want number
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/offset/type","instanceLocation":"/offset","error":"got string, want number"}]}
+validate []: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': got array, want object
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/type]: got array, want object
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/type","instanceLocation":"","error":"got array, want object"}]}
+== draft-06 bad type name
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'http://json-schema.org/draft-06/schema#'
+- at '/type': 'anyOf' failed
+  - at '/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+  - at '/type': got string, want array
+jsonschema validation failed with 'http://json-schema.org/draft-06/schema#'
+- at '/type' [S#/properties/type/anyOf]: 'anyOf' failed
+  - at '/type' [S#/definitions/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+  - at '/type' [S#/properties/type/anyOf/1/type]: got string, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/type/anyOf","instanceLocation":"/type","errors":[{"valid":false,"keywordLocation":"/properties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"http://json-schema.org/draft-06/schema#/definitions/simpleTypes/enum","instanceLocation":"/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/properties/type/anyOf/1/type","instanceLocation":"/type","error":"got string, want array"}]}]}
+== draft-06 negative minLength
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'http://json-schema.org/draft-06/schema#'
+- at '/minLength': 'allOf' failed
+  - at '/minLength': minimum: got -1, want 0
+jsonschema validation failed with 'http://json-schema.org/draft-06/schema#'
+- at '/minLength' [S#/definitions/nonNegativeIntegerDefault0/allOf]: 'allOf' failed
+  - at '/minLength' [S#/definitions/nonNegativeInteger/minimum]: minimum: got -1, want 0
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/minLength/$ref/allOf","AbsoluteKeywordLocation":"http://json-schema.org/draft-06/schema#/definitions/nonNegativeIntegerDefault0/allOf","instanceLocation":"/minLength","errors":[{"valid":false,"keywordLocation":"/properties/minLength/$ref/allOf/0/$ref/minimum","AbsoluteKeywordLocation":"http://json-schema.org/draft-06/schema#/definitions/nonNegativeInteger/minimum","instanceLocation":"/minLength","error":"minimum: got -1, want 0"}]}]}
+== draft-06 required not array
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'http://json-schema.org/draft-06/schema#'
+- at '/required': got string, want array
+jsonschema validation failed with 'http://json-schema.org/draft-06/schema#'
+- at '/required' [S#/definitions/stringArray/type]: got string, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/required/$ref/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-06/schema#/definitions/stringArray/type","instanceLocation":"/required","error":"got string, want array"}]}
+== draft-06 nested bad type
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'http://json-schema.org/draft-06/schema#'
+- at '/properties/a/type': 'anyOf' failed
+  - at '/properties/a/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+  - at '/properties/a/type': got number, want array
+jsonschema validation failed with 'http://json-schema.org/draft-06/schema#'
+- at '/properties/a/type' [S#/properties/type/anyOf]: 'anyOf' failed
+  - at '/properties/a/type' [S#/definitions/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+  - at '/properties/a/type' [S#/properties/type/anyOf/1/type]: got number, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/properties/additionalProperties/$ref/properties/type/anyOf","AbsoluteKeywordLocation":"http://json-schema.org/draft-06/schema#/properties/type/anyOf","instanceLocation":"/properties/a/type","errors":[{"valid":false,"keywordLocation":"/properties/properties/additionalProperties/$ref/properties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"http://json-schema.org/draft-06/schema#/definitions/simpleTypes/enum","instanceLocation":"/properties/a/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/properties/properties/additionalProperties/$ref/properties/type/anyOf/1/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-06/schema#/properties/type/anyOf/1/type","instanceLocation":"/properties/a/type","error":"got number, want array"}]}]}
+== draft-06 bad pattern
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'http://json-schema.org/draft-06/schema#'
+- at '/pattern': '(' is not valid regex: error parsing regexp: missing closing ): `(`
+jsonschema validation failed with 'http://json-schema.org/draft-06/schema#'
+- at '/pattern' [S#/properties/pattern/format]: '(' is not valid regex: error parsing regexp: missing closing ): `(`
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/pattern/format","instanceLocation":"/pattern","error":"'(' is not valid regex: error parsing regexp: missing closing ): `(`"}]}
+== draft-06 empty enum
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'http://json-schema.org/draft-06/schema#'
+- at '/enum': minItems: got 0, want 1
+jsonschema validation failed with 'http://json-schema.org/draft-06/schema#'
+- at '/enum' [S#/properties/enum/minItems]: minItems: got 0, want 1
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/enum/minItems","instanceLocation":"/enum","error":"minItems: got 0, want 1"}]}
+== draft-06 boolean exclusiveMaximum
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'http://json-schema.org/draft-06/schema#'
+- at '/exclusiveMaximum': got boolean, want number
+jsonschema validation failed with 'http://json-schema.org/draft-06/schema#'
+- at '/exclusiveMaximum' [S#/properties/exclusiveMaximum/type]: got boolean, want number
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/exclusiveMaximum/type","instanceLocation":"/exclusiveMaximum","error":"got boolean, want number"}]}
+== draft-06 numeric exclusiveMaximum
+compile: ok
+validate 5: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': exclusiveMaximum: got 5, want 5
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/exclusiveMaximum]: exclusiveMaximum: got 5, want 5
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/exclusiveMaximum","instanceLocation":"","error":"exclusiveMaximum: got 5, want 5"}]}
+validate 4: ok
+== draft-06 format email
+compile: ok
+validate "x": jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': 'x' is not valid email: missing @
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/format]: 'x' is not valid email: missing @
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/format","instanceLocation":"","error":"'x' is not valid email: missing @"}]}
+validate "a@b.c": ok
+== draft-06 definitions ref
+compile: ok
+validate "x": jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': got string, want integer
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/definitions/a/type]: got string, want integer
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/type","AbsoluteKeywordLocation":"http://example.com/schema.json#/definitions/a/type","instanceLocation":"","error":"got string, want integer"}]}
+validate 1: ok
+== draft-06 defs ref
+compile: ok
+validate 1: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': minimum: got 1, want 2
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/$defs/a/minimum]: minimum: got 1, want 2
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/minimum","AbsoluteKeywordLocation":"http://example.com/schema.json#/$defs/a/minimum","instanceLocation":"","error":"minimum: got 1, want 2"}]}
+validate "x": jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': got string, want integer
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/$defs/a/type]: got string, want integer
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/type","AbsoluteKeywordLocation":"http://example.com/schema.json#/$defs/a/type","instanceLocation":"","error":"got string, want integer"}]}
+validate 3: ok
+== draft-06 unevaluatedProperties
+compile: ok
+validate {"a":1,"b":2}: ok
+validate {"a":1}: ok
+== draft-06 prefixItems
+compile: ok
+validate [1,2]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0': false schema
+- at '/1': false schema
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0' [S#/items]: false schema
+- at '/1' [S#/items]: false schema
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/items","instanceLocation":"/0","error":"false schema"},{"valid":false,"keywordLocation":"/items","instanceLocation":"/1","error":"false schema"}]}
+validate ["x"]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0': false schema
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0' [S#/items]: false schema
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/items","instanceLocation":"/0","error":"false schema"}]}
+validate [1]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0': false schema
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0' [S#/items]: false schema
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/items","instanceLocation":"/0","error":"false schema"}]}
+== draft-06 items array
+compile: ok
+validate [1,2]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': last 1 additionalItem(s) not allowed
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/additionalItems]: last 1 additionalItem(s) not allowed
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/additionalItems","instanceLocation":"","error":"last 1 additionalItem(s) not allowed"}]}
+validate ["x"]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0': got string, want integer
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0' [S#/items/0/type]: got string, want integer
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/items/0/type","instanceLocation":"/0","error":"got string, want integer"}]}
+== draft-06 dependencies
+compile: ok
+validate {"a":1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': properties 'b' required, if 'a' exists
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/dependency/a]: properties 'b' required, if 'a' exists
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/dependency/a","instanceLocation":"","error":"properties 'b' required, if 'a' exists"}]}
+validate {"c":1}: ok
+== draft-06 if then else
+compile: ok
+validate 1: ok
+validate true: ok
+validate 4: ok
+== draft-06 const contains
+compile: ok
+validate [1]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': no items match contains schema
+  - at '/0': value must be 2
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/contains]: no items match contains schema
+  - at '/0' [S#/contains/const]: value must be 2
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/contains","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/contains/const","instanceLocation":"/0","error":"value must be 2"}]}]}
+validate [2]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': 'const' failed
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/const]: 'const' failed
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/const","instanceLocation":"","error":"'const' failed"}]}
+== draft-06 nested draft-07 resource
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'http://json-schema.org/draft-06/schema#'
+- at '/definitions/y/exclusiveMinimum': got boolean, want number
+jsonschema validation failed with 'http://json-schema.org/draft-06/schema#'
+- at '/definitions/y/exclusiveMinimum' [S#/properties/exclusiveMinimum/type]: got boolean, want number
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/definitions/additionalProperties/$ref/properties/exclusiveMinimum/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-06/schema#/properties/exclusiveMinimum/type","instanceLocation":"/definitions/y/exclusiveMinimum","error":"got boolean, want number"}]}
+== draft-06 boolean subschemas
+compile: ok
+validate {"a":1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/a': false schema
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/a' [S#/properties/a]: false schema
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/a","instanceLocation":"/a","error":"false schema"}]}
+validate {"b":1}: ok
+== draft-06 schema as instance
+compile: ok
+validate {"type":"strin"}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': 'allOf' failed
+  - at '/type': 'anyOf' failed
+    - at '/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/type': got string, want array
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [https://json-schema.org/draft/2020-12/schema#/allOf]: 'allOf' failed
+  - at '/type' [https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf]: 'anyOf' failed
+    - at '/type' [S#/$defs/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/type' [S#/properties/type/anyOf/1/type]: got string, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/allOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/schema#/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/allOf/3/$ref/properties/type/anyOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf","instanceLocation":"/type","errors":[{"valid":false,"keywordLocation":"/$ref/allOf/3/$ref/properties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/$defs/simpleTypes/enum","instanceLocation":"/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/$ref/allOf/3/$ref/properties/type/anyOf/1/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf/1/type","instanceLocation":"/type","error":"got string, want array"}]}]}]}
+validate {"minLength":-1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': 'allOf' failed
+  - at '/minLength': minimum: got -1, want 0
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [https://json-schema.org/draft/2020-12/schema#/allOf]: 'allOf' failed
+  - at '/minLength' [https://json-schema.org/draft/2020-12/meta/validation#/$defs/nonNegativeInteger/minimum]: minimum: got -1, want 0
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/allOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/schema#/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/allOf/3/$ref/properties/minLength/$ref/$ref/minimum","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/$defs/nonNegativeInteger/minimum","instanceLocation":"/minLength","error":"minimum: got -1, want 0"}]}]}
+validate {"type":"string"}: ok
+== draft-06 draft-07 schema as instance
+compile: ok
+validate {"type":"strin"}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/type': 'anyOf' failed
+  - at '/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+  - at '/type': got string, want array
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/type' [http://json-schema.org/draft-07/schema#/properties/type/anyOf]: 'anyOf' failed
+  - at '/type' [S#/definitions/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+  - at '/type' [S#/properties/type/anyOf/1/type]: got string, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/properties/type/anyOf","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/type/anyOf","instanceLocation":"/type","errors":[{"valid":false,"keywordLocation":"/$ref/properties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/definitions/simpleTypes/enum","instanceLocation":"/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/$ref/properties/type/anyOf/1/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/type/anyOf/1/type","instanceLocation":"/type","error":"got string, want array"}]}]}
+validate {"properties":{"a":{"minimum":"x"}}}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/properties/a/minimum': got string, want number
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/properties/a/minimum' [http://json-schema.org/draft-07/schema#/properties/minimum/type]: got string, want number
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/properties/properties/additionalProperties/$ref/properties/minimum/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/minimum/type","instanceLocation":"/properties/a/minimum","error":"got string, want number"}]}
+== draft-07 read tool
+compile: ok
+validate {"path":"a.go"}: ok
+validate {"path":"a.go","offset":3,"limit":1.5}: ok
+validate {}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': missing property 'path'
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/required]: missing property 'path'
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/required","instanceLocation":"","error":"missing property 'path'"}]}
+validate {"path":1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/path': got number, want string
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/path' [S#/properties/path/type]: got number, want string
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/path/type","instanceLocation":"/path","error":"got number, want string"}]}
+validate {"path":"a","offset":"x"}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/offset': got string, want number
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/offset' [S#/properties/offset/type]: got string, want number
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/offset/type","instanceLocation":"/offset","error":"got string, want number"}]}
+validate []: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': got array, want object
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/type]: got array, want object
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/type","instanceLocation":"","error":"got array, want object"}]}
+== draft-07 bad type name
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'http://json-schema.org/draft-07/schema#'
+- at '/type': 'anyOf' failed
+  - at '/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+  - at '/type': got string, want array
+jsonschema validation failed with 'http://json-schema.org/draft-07/schema#'
+- at '/type' [S#/properties/type/anyOf]: 'anyOf' failed
+  - at '/type' [S#/definitions/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+  - at '/type' [S#/properties/type/anyOf/1/type]: got string, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/type/anyOf","instanceLocation":"/type","errors":[{"valid":false,"keywordLocation":"/properties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/definitions/simpleTypes/enum","instanceLocation":"/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/properties/type/anyOf/1/type","instanceLocation":"/type","error":"got string, want array"}]}]}
+== draft-07 negative minLength
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'http://json-schema.org/draft-07/schema#'
+- at '/minLength': 'allOf' failed
+  - at '/minLength': minimum: got -1, want 0
+jsonschema validation failed with 'http://json-schema.org/draft-07/schema#'
+- at '/minLength' [S#/definitions/nonNegativeIntegerDefault0/allOf]: 'allOf' failed
+  - at '/minLength' [S#/definitions/nonNegativeInteger/minimum]: minimum: got -1, want 0
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/minLength/$ref/allOf","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/definitions/nonNegativeIntegerDefault0/allOf","instanceLocation":"/minLength","errors":[{"valid":false,"keywordLocation":"/properties/minLength/$ref/allOf/0/$ref/minimum","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/definitions/nonNegativeInteger/minimum","instanceLocation":"/minLength","error":"minimum: got -1, want 0"}]}]}
+== draft-07 required not array
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'http://json-schema.org/draft-07/schema#'
+- at '/required': got string, want array
+jsonschema validation failed with 'http://json-schema.org/draft-07/schema#'
+- at '/required' [S#/definitions/stringArray/type]: got string, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/required/$ref/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/definitions/stringArray/type","instanceLocation":"/required","error":"got string, want array"}]}
+== draft-07 nested bad type
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'http://json-schema.org/draft-07/schema#'
+- at '/properties/a/type': 'anyOf' failed
+  - at '/properties/a/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+  - at '/properties/a/type': got number, want array
+jsonschema validation failed with 'http://json-schema.org/draft-07/schema#'
+- at '/properties/a/type' [S#/properties/type/anyOf]: 'anyOf' failed
+  - at '/properties/a/type' [S#/definitions/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+  - at '/properties/a/type' [S#/properties/type/anyOf/1/type]: got number, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/properties/additionalProperties/$ref/properties/type/anyOf","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/type/anyOf","instanceLocation":"/properties/a/type","errors":[{"valid":false,"keywordLocation":"/properties/properties/additionalProperties/$ref/properties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/definitions/simpleTypes/enum","instanceLocation":"/properties/a/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/properties/properties/additionalProperties/$ref/properties/type/anyOf/1/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/type/anyOf/1/type","instanceLocation":"/properties/a/type","error":"got number, want array"}]}]}
+== draft-07 bad pattern
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'http://json-schema.org/draft-07/schema#'
+- at '/pattern': '(' is not valid regex: error parsing regexp: missing closing ): `(`
+jsonschema validation failed with 'http://json-schema.org/draft-07/schema#'
+- at '/pattern' [S#/properties/pattern/format]: '(' is not valid regex: error parsing regexp: missing closing ): `(`
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/pattern/format","instanceLocation":"/pattern","error":"'(' is not valid regex: error parsing regexp: missing closing ): `(`"}]}
+== draft-07 empty enum
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'http://json-schema.org/draft-07/schema#'
+- at '/enum': minItems: got 0, want 1
+jsonschema validation failed with 'http://json-schema.org/draft-07/schema#'
+- at '/enum' [S#/properties/enum/minItems]: minItems: got 0, want 1
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/enum/minItems","instanceLocation":"/enum","error":"minItems: got 0, want 1"}]}
+== draft-07 boolean exclusiveMaximum
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'http://json-schema.org/draft-07/schema#'
+- at '/exclusiveMaximum': got boolean, want number
+jsonschema validation failed with 'http://json-schema.org/draft-07/schema#'
+- at '/exclusiveMaximum' [S#/properties/exclusiveMaximum/type]: got boolean, want number
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/exclusiveMaximum/type","instanceLocation":"/exclusiveMaximum","error":"got boolean, want number"}]}
+== draft-07 numeric exclusiveMaximum
+compile: ok
+validate 5: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': exclusiveMaximum: got 5, want 5
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/exclusiveMaximum]: exclusiveMaximum: got 5, want 5
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/exclusiveMaximum","instanceLocation":"","error":"exclusiveMaximum: got 5, want 5"}]}
+validate 4: ok
+== draft-07 format email
+compile: ok
+validate "x": jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': 'x' is not valid email: missing @
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/format]: 'x' is not valid email: missing @
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/format","instanceLocation":"","error":"'x' is not valid email: missing @"}]}
+validate "a@b.c": ok
+== draft-07 definitions ref
+compile: ok
+validate "x": jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': got string, want integer
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/definitions/a/type]: got string, want integer
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/type","AbsoluteKeywordLocation":"http://example.com/schema.json#/definitions/a/type","instanceLocation":"","error":"got string, want integer"}]}
+validate 1: ok
+== draft-07 defs ref
+compile: ok
+validate 1: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': minimum: got 1, want 2
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/$defs/a/minimum]: minimum: got 1, want 2
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/minimum","AbsoluteKeywordLocation":"http://example.com/schema.json#/$defs/a/minimum","instanceLocation":"","error":"minimum: got 1, want 2"}]}
+validate "x": jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': got string, want integer
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/$defs/a/type]: got string, want integer
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/type","AbsoluteKeywordLocation":"http://example.com/schema.json#/$defs/a/type","instanceLocation":"","error":"got string, want integer"}]}
+validate 3: ok
+== draft-07 unevaluatedProperties
+compile: ok
+validate {"a":1,"b":2}: ok
+validate {"a":1}: ok
+== draft-07 prefixItems
+compile: ok
+validate [1,2]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0': false schema
+- at '/1': false schema
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0' [S#/items]: false schema
+- at '/1' [S#/items]: false schema
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/items","instanceLocation":"/0","error":"false schema"},{"valid":false,"keywordLocation":"/items","instanceLocation":"/1","error":"false schema"}]}
+validate ["x"]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0': false schema
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0' [S#/items]: false schema
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/items","instanceLocation":"/0","error":"false schema"}]}
+validate [1]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0': false schema
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0' [S#/items]: false schema
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/items","instanceLocation":"/0","error":"false schema"}]}
+== draft-07 items array
+compile: ok
+validate [1,2]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': last 1 additionalItem(s) not allowed
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/additionalItems]: last 1 additionalItem(s) not allowed
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/additionalItems","instanceLocation":"","error":"last 1 additionalItem(s) not allowed"}]}
+validate ["x"]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0': got string, want integer
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0' [S#/items/0/type]: got string, want integer
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/items/0/type","instanceLocation":"/0","error":"got string, want integer"}]}
+== draft-07 dependencies
+compile: ok
+validate {"a":1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': properties 'b' required, if 'a' exists
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/dependency/a]: properties 'b' required, if 'a' exists
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/dependency/a","instanceLocation":"","error":"properties 'b' required, if 'a' exists"}]}
+validate {"c":1}: ok
+== draft-07 if then else
+compile: ok
+validate 1: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': minimum: got 1, want 3
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/then/minimum]: minimum: got 1, want 3
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/then/minimum","instanceLocation":"","error":"minimum: got 1, want 3"}]}
+validate true: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': got boolean, want string
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/else/type]: got boolean, want string
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/else/type","instanceLocation":"","error":"got boolean, want string"}]}
+validate 4: ok
+== draft-07 const contains
+compile: ok
+validate [1]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': no items match contains schema
+  - at '/0': value must be 2
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/contains]: no items match contains schema
+  - at '/0' [S#/contains/const]: value must be 2
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/contains","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/contains/const","instanceLocation":"/0","error":"value must be 2"}]}]}
+validate [2]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': 'const' failed
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/const]: 'const' failed
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/const","instanceLocation":"","error":"'const' failed"}]}
+== draft-07 nested draft-07 resource
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'http://json-schema.org/draft-07/schema#'
+- at '/definitions/y/exclusiveMinimum': got boolean, want number
+jsonschema validation failed with 'http://json-schema.org/draft-07/schema#'
+- at '/definitions/y/exclusiveMinimum' [S#/properties/exclusiveMinimum/type]: got boolean, want number
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/definitions/additionalProperties/$ref/properties/exclusiveMinimum/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/exclusiveMinimum/type","instanceLocation":"/definitions/y/exclusiveMinimum","error":"got boolean, want number"}]}
+== draft-07 boolean subschemas
+compile: ok
+validate {"a":1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/a': false schema
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/a' [S#/properties/a]: false schema
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/a","instanceLocation":"/a","error":"false schema"}]}
+validate {"b":1}: ok
+== draft-07 schema as instance
+compile: ok
+validate {"type":"strin"}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': 'allOf' failed
+  - at '/type': 'anyOf' failed
+    - at '/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/type': got string, want array
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [https://json-schema.org/draft/2020-12/schema#/allOf]: 'allOf' failed
+  - at '/type' [https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf]: 'anyOf' failed
+    - at '/type' [S#/$defs/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/type' [S#/properties/type/anyOf/1/type]: got string, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/allOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/schema#/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/allOf/3/$ref/properties/type/anyOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf","instanceLocation":"/type","errors":[{"valid":false,"keywordLocation":"/$ref/allOf/3/$ref/properties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/$defs/simpleTypes/enum","instanceLocation":"/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/$ref/allOf/3/$ref/properties/type/anyOf/1/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf/1/type","instanceLocation":"/type","error":"got string, want array"}]}]}]}
+validate {"minLength":-1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': 'allOf' failed
+  - at '/minLength': minimum: got -1, want 0
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [https://json-schema.org/draft/2020-12/schema#/allOf]: 'allOf' failed
+  - at '/minLength' [https://json-schema.org/draft/2020-12/meta/validation#/$defs/nonNegativeInteger/minimum]: minimum: got -1, want 0
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/allOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/schema#/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/allOf/3/$ref/properties/minLength/$ref/$ref/minimum","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/$defs/nonNegativeInteger/minimum","instanceLocation":"/minLength","error":"minimum: got -1, want 0"}]}]}
+validate {"type":"string"}: ok
+== draft-07 draft-07 schema as instance
+compile: ok
+validate {"type":"strin"}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/type': 'anyOf' failed
+  - at '/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+  - at '/type': got string, want array
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/type' [http://json-schema.org/draft-07/schema#/properties/type/anyOf]: 'anyOf' failed
+  - at '/type' [S#/definitions/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+  - at '/type' [S#/properties/type/anyOf/1/type]: got string, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/properties/type/anyOf","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/type/anyOf","instanceLocation":"/type","errors":[{"valid":false,"keywordLocation":"/$ref/properties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/definitions/simpleTypes/enum","instanceLocation":"/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/$ref/properties/type/anyOf/1/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/type/anyOf/1/type","instanceLocation":"/type","error":"got string, want array"}]}]}
+validate {"properties":{"a":{"minimum":"x"}}}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/properties/a/minimum': got string, want number
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/properties/a/minimum' [http://json-schema.org/draft-07/schema#/properties/minimum/type]: got string, want number
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/properties/properties/additionalProperties/$ref/properties/minimum/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/minimum/type","instanceLocation":"/properties/a/minimum","error":"got string, want number"}]}
+== 2019-09 read tool
+compile: ok
+validate {"path":"a.go"}: ok
+validate {"path":"a.go","offset":3,"limit":1.5}: ok
+validate {}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': missing property 'path'
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/required]: missing property 'path'
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/required","instanceLocation":"","error":"missing property 'path'"}]}
+validate {"path":1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/path': got number, want string
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/path' [S#/properties/path/type]: got number, want string
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/path/type","instanceLocation":"/path","error":"got number, want string"}]}
+validate {"path":"a","offset":"x"}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/offset': got string, want number
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/offset' [S#/properties/offset/type]: got string, want number
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/offset/type","instanceLocation":"/offset","error":"got string, want number"}]}
+validate []: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': got array, want object
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/type]: got array, want object
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/type","instanceLocation":"","error":"got array, want object"}]}
+== 2019-09 bad type name
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2019-09/schema#'
+- at '': 'allOf' failed
+  - at '/type': 'anyOf' failed
+    - at '/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/type': got string, want array
+jsonschema validation failed with 'https://json-schema.org/draft/2019-09/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/type' [https://json-schema.org/draft/2019-09/meta/validation#/properties/type/anyOf]: 'anyOf' failed
+    - at '/type' [S#/$defs/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/type' [S#/properties/type/anyOf/1/type]: got string, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/2/$ref/properties/type/anyOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2019-09/meta/validation#/properties/type/anyOf","instanceLocation":"/type","errors":[{"valid":false,"keywordLocation":"/allOf/2/$ref/properties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"https://json-schema.org/draft/2019-09/meta/validation#/$defs/simpleTypes/enum","instanceLocation":"/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/allOf/2/$ref/properties/type/anyOf/1/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2019-09/meta/validation#/properties/type/anyOf/1/type","instanceLocation":"/type","error":"got string, want array"}]}]}]}
+== 2019-09 negative minLength
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2019-09/schema#'
+- at '': 'allOf' failed
+  - at '/minLength': minimum: got -1, want 0
+jsonschema validation failed with 'https://json-schema.org/draft/2019-09/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/minLength' [https://json-schema.org/draft/2019-09/meta/validation#/$defs/nonNegativeInteger/minimum]: minimum: got -1, want 0
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/2/$ref/properties/minLength/$ref/$ref/minimum","AbsoluteKeywordLocation":"https://json-schema.org/draft/2019-09/meta/validation#/$defs/nonNegativeInteger/minimum","instanceLocation":"/minLength","error":"minimum: got -1, want 0"}]}]}
+== 2019-09 required not array
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2019-09/schema#'
+- at '': 'allOf' failed
+  - at '/required': got string, want array
+jsonschema validation failed with 'https://json-schema.org/draft/2019-09/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/required' [https://json-schema.org/draft/2019-09/meta/validation#/$defs/stringArray/type]: got string, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/2/$ref/properties/required/$ref/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2019-09/meta/validation#/$defs/stringArray/type","instanceLocation":"/required","error":"got string, want array"}]}]}
+== 2019-09 nested bad type
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2019-09/schema#'
+- at '': 'allOf' failed
+  - at '/properties/a': 'allOf' failed
+    - at '/properties/a/type': 'anyOf' failed
+      - at '/properties/a/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+      - at '/properties/a/type': got number, want array
+jsonschema validation failed with 'https://json-schema.org/draft/2019-09/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/properties/a' [S#/allOf]: 'allOf' failed
+    - at '/properties/a/type' [https://json-schema.org/draft/2019-09/meta/validation#/properties/type/anyOf]: 'anyOf' failed
+      - at '/properties/a/type' [S#/$defs/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+      - at '/properties/a/type' [S#/properties/type/anyOf/1/type]: got number, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/1/$ref/properties/properties/additionalProperties/$recursiveRef/allOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2019-09/schema#/allOf","instanceLocation":"/properties/a","errors":[{"valid":false,"keywordLocation":"/allOf/1/$ref/properties/properties/additionalProperties/$recursiveRef/allOf/2/$ref/properties/type/anyOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2019-09/meta/validation#/properties/type/anyOf","instanceLocation":"/properties/a/type","errors":[{"valid":false,"keywordLocation":"/allOf/1/$ref/properties/properties/additionalProperties/$recursiveRef/allOf/2/$ref/properties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"https://json-schema.org/draft/2019-09/meta/validation#/$defs/simpleTypes/enum","instanceLocation":"/properties/a/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/allOf/1/$ref/properties/properties/additionalProperties/$recursiveRef/allOf/2/$ref/properties/type/anyOf/1/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2019-09/meta/validation#/properties/type/anyOf/1/type","instanceLocation":"/properties/a/type","error":"got number, want array"}]}]}]}]}
+== 2019-09 bad pattern
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2019-09/schema#'
+- at '': 'allOf' failed
+  - at '/pattern': '(' is not valid regex: error parsing regexp: missing closing ): `(`
+jsonschema validation failed with 'https://json-schema.org/draft/2019-09/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/pattern' [https://json-schema.org/draft/2019-09/meta/validation#/properties/pattern/format]: '(' is not valid regex: error parsing regexp: missing closing ): `(`
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/2/$ref/properties/pattern/format","AbsoluteKeywordLocation":"https://json-schema.org/draft/2019-09/meta/validation#/properties/pattern/format","instanceLocation":"/pattern","error":"'(' is not valid regex: error parsing regexp: missing closing ): `(`"}]}]}
+== 2019-09 empty enum
+compile: ok
+validate 1: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': value must be one of 
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/enum]: value must be one of 
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/enum","instanceLocation":"","error":"value must be one of "}]}
+== 2019-09 boolean exclusiveMaximum
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2019-09/schema#'
+- at '': 'allOf' failed
+  - at '/exclusiveMaximum': got boolean, want number
+jsonschema validation failed with 'https://json-schema.org/draft/2019-09/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/exclusiveMaximum' [https://json-schema.org/draft/2019-09/meta/validation#/properties/exclusiveMaximum/type]: got boolean, want number
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/2/$ref/properties/exclusiveMaximum/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2019-09/meta/validation#/properties/exclusiveMaximum/type","instanceLocation":"/exclusiveMaximum","error":"got boolean, want number"}]}]}
+== 2019-09 numeric exclusiveMaximum
+compile: ok
+validate 5: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': exclusiveMaximum: got 5, want 5
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/exclusiveMaximum]: exclusiveMaximum: got 5, want 5
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/exclusiveMaximum","instanceLocation":"","error":"exclusiveMaximum: got 5, want 5"}]}
+validate 4: ok
+== 2019-09 format email
+compile: ok
+validate "x": ok
+validate "a@b.c": ok
+== 2019-09 definitions ref
+compile: ok
+validate "x": jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': got string, want integer
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/definitions/a/type]: got string, want integer
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/type","AbsoluteKeywordLocation":"http://example.com/schema.json#/definitions/a/type","instanceLocation":"","error":"got string, want integer"}]}
+validate 1: ok
+== 2019-09 defs ref
+compile: ok
+validate 1: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': minimum: got 1, want 2
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/$defs/a/minimum]: minimum: got 1, want 2
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/minimum","AbsoluteKeywordLocation":"http://example.com/schema.json#/$defs/a/minimum","instanceLocation":"","error":"minimum: got 1, want 2"}]}
+validate "x": jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': got string, want integer
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/$defs/a/type]: got string, want integer
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/type","AbsoluteKeywordLocation":"http://example.com/schema.json#/$defs/a/type","instanceLocation":"","error":"got string, want integer"}]}
+validate 3: ok
+== 2019-09 unevaluatedProperties
+compile: ok
+validate {"a":1,"b":2}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/b': false schema
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/b' [S#/unevaluatedProperties]: false schema
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/unevaluatedProperties","instanceLocation":"/b","error":"false schema"}]}
+validate {"a":1}: ok
+== 2019-09 prefixItems
+compile: ok
+validate [1,2]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0': false schema
+- at '/1': false schema
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0' [S#/items]: false schema
+- at '/1' [S#/items]: false schema
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/items","instanceLocation":"/0","error":"false schema"},{"valid":false,"keywordLocation":"/items","instanceLocation":"/1","error":"false schema"}]}
+validate ["x"]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0': false schema
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0' [S#/items]: false schema
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/items","instanceLocation":"/0","error":"false schema"}]}
+validate [1]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0': false schema
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0' [S#/items]: false schema
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/items","instanceLocation":"/0","error":"false schema"}]}
+== 2019-09 items array
+compile: ok
+validate [1,2]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': last 1 additionalItem(s) not allowed
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/additionalItems]: last 1 additionalItem(s) not allowed
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/additionalItems","instanceLocation":"","error":"last 1 additionalItem(s) not allowed"}]}
+validate ["x"]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0': got string, want integer
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0' [S#/items/0/type]: got string, want integer
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/items/0/type","instanceLocation":"/0","error":"got string, want integer"}]}
+== 2019-09 dependencies
+compile: ok
+validate {"a":1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': properties 'b' required, if 'a' exists
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/dependency/a]: properties 'b' required, if 'a' exists
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/dependency/a","instanceLocation":"","error":"properties 'b' required, if 'a' exists"}]}
+validate {"c":1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': properties 'd' required, if 'c' exists
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/dependentRequired/c]: properties 'd' required, if 'c' exists
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/dependentRequired/c","instanceLocation":"","error":"properties 'd' required, if 'c' exists"}]}
+== 2019-09 if then else
+compile: ok
+validate 1: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': minimum: got 1, want 3
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/then/minimum]: minimum: got 1, want 3
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/then/minimum","instanceLocation":"","error":"minimum: got 1, want 3"}]}
+validate true: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': got boolean, want string
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/else/type]: got boolean, want string
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/else/type","instanceLocation":"","error":"got boolean, want string"}]}
+validate 4: ok
+== 2019-09 const contains
+compile: ok
+validate [1]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': no items match contains schema
+  - at '/0': value must be 2
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/contains]: no items match contains schema
+  - at '/0' [S#/contains/const]: value must be 2
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/contains","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/contains/const","instanceLocation":"/0","error":"value must be 2"}]}]}
+validate [2]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': 'const' failed
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/const]: 'const' failed
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/const","instanceLocation":"","error":"'const' failed"}]}
+== 2019-09 nested draft-07 resource
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2019-09/schema#'
+- at '': 'allOf' failed
+  - at '/$defs/x/type': 'anyOf' failed
+    - at '/$defs/x/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/$defs/x/type': got string, want array
+- at '/definitions/y': 'allOf' failed
+  - at '/definitions/y/exclusiveMinimum': got boolean, want number
+jsonschema validation failed with 'https://json-schema.org/draft/2019-09/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/$defs/x/type' [http://json-schema.org/draft-07/schema#/properties/type/anyOf]: 'anyOf' failed
+    - at '/$defs/x/type' [S#/definitions/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/$defs/x/type' [S#/properties/type/anyOf/1/type]: got string, want array
+- at '/definitions/y' [S#/allOf]: 'allOf' failed
+  - at '/definitions/y/exclusiveMinimum' [https://json-schema.org/draft/2019-09/meta/validation#/properties/exclusiveMinimum/type]: got boolean, want number
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/0/$ref/properties/$defs/additionalProperties/$recursiveRefrties/type/anyOf","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/type/anyOf","instanceLocation":"/$defs/x/type","errors":[{"valid":false,"keywordLocation":"/allOf/0/$ref/properties/$defs/additionalProperties/$recursiveRefrties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/definitions/simpleTypes/enum","instanceLocation":"/$defs/x/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/allOf/0/$ref/properties/$defs/additionalProperties/$recursiveRefrties/type/anyOf/1/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/type/anyOf/1/type","instanceLocation":"/$defs/x/type","error":"got string, want array"}]}]},{"valid":false,"keywordLocation":"/properties/definitions/additionalProperties/$recursiveRef/allOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2019-09/schema#/allOf","instanceLocation":"/definitions/y","errors":[{"valid":false,"keywordLocation":"/properties/definitions/additionalProperties/$recursiveRef/allOf/2/$ref/properties/exclusiveMinimum/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2019-09/meta/validation#/properties/exclusiveMinimum/type","instanceLocation":"/definitions/y/exclusiveMinimum","error":"got boolean, want number"}]}]}
+== 2019-09 boolean subschemas
+compile: ok
+validate {"a":1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/a': false schema
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/a' [S#/properties/a]: false schema
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/a","instanceLocation":"/a","error":"false schema"}]}
+validate {"b":1}: ok
+== 2019-09 schema as instance
+compile: ok
+validate {"type":"strin"}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': 'allOf' failed
+  - at '/type': 'anyOf' failed
+    - at '/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/type': got string, want array
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [https://json-schema.org/draft/2020-12/schema#/allOf]: 'allOf' failed
+  - at '/type' [https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf]: 'anyOf' failed
+    - at '/type' [S#/$defs/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/type' [S#/properties/type/anyOf/1/type]: got string, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/allOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/schema#/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/allOf/3/$ref/properties/type/anyOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf","instanceLocation":"/type","errors":[{"valid":false,"keywordLocation":"/$ref/allOf/3/$ref/properties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/$defs/simpleTypes/enum","instanceLocation":"/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/$ref/allOf/3/$ref/properties/type/anyOf/1/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf/1/type","instanceLocation":"/type","error":"got string, want array"}]}]}]}
+validate {"minLength":-1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': 'allOf' failed
+  - at '/minLength': minimum: got -1, want 0
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [https://json-schema.org/draft/2020-12/schema#/allOf]: 'allOf' failed
+  - at '/minLength' [https://json-schema.org/draft/2020-12/meta/validation#/$defs/nonNegativeInteger/minimum]: minimum: got -1, want 0
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/allOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/schema#/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/allOf/3/$ref/properties/minLength/$ref/$ref/minimum","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/$defs/nonNegativeInteger/minimum","instanceLocation":"/minLength","error":"minimum: got -1, want 0"}]}]}
+validate {"type":"string"}: ok
+== 2019-09 draft-07 schema as instance
+compile: ok
+validate {"type":"strin"}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/type': 'anyOf' failed
+  - at '/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+  - at '/type': got string, want array
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/type' [http://json-schema.org/draft-07/schema#/properties/type/anyOf]: 'anyOf' failed
+  - at '/type' [S#/definitions/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+  - at '/type' [S#/properties/type/anyOf/1/type]: got string, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/properties/type/anyOf","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/type/anyOf","instanceLocation":"/type","errors":[{"valid":false,"keywordLocation":"/$ref/properties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/definitions/simpleTypes/enum","instanceLocation":"/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/$ref/properties/type/anyOf/1/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/type/anyOf/1/type","instanceLocation":"/type","error":"got string, want array"}]}]}
+validate {"properties":{"a":{"minimum":"x"}}}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/properties/a/minimum': got string, want number
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/properties/a/minimum' [http://json-schema.org/draft-07/schema#/properties/minimum/type]: got string, want number
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/properties/properties/additionalProperties/$ref/properties/minimum/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/minimum/type","instanceLocation":"/properties/a/minimum","error":"got string, want number"}]}
+== 2020-12 read tool
+compile: ok
+validate {"path":"a.go"}: ok
+validate {"path":"a.go","offset":3,"limit":1.5}: ok
+validate {}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': missing property 'path'
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/required]: missing property 'path'
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/required","instanceLocation":"","error":"missing property 'path'"}]}
+validate {"path":1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/path': got number, want string
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/path' [S#/properties/path/type]: got number, want string
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/path/type","instanceLocation":"/path","error":"got number, want string"}]}
+validate {"path":"a","offset":"x"}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/offset': got string, want number
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/offset' [S#/properties/offset/type]: got string, want number
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/offset/type","instanceLocation":"/offset","error":"got string, want number"}]}
+validate []: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': got array, want object
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/type]: got array, want object
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/type","instanceLocation":"","error":"got array, want object"}]}
+== 2020-12 bad type name
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '': 'allOf' failed
+  - at '/type': 'anyOf' failed
+    - at '/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/type': got string, want array
+jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/type' [https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf]: 'anyOf' failed
+    - at '/type' [S#/$defs/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/type' [S#/properties/type/anyOf/1/type]: got string, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/3/$ref/properties/type/anyOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf","instanceLocation":"/type","errors":[{"valid":false,"keywordLocation":"/allOf/3/$ref/properties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/$defs/simpleTypes/enum","instanceLocation":"/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/allOf/3/$ref/properties/type/anyOf/1/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf/1/type","instanceLocation":"/type","error":"got string, want array"}]}]}]}
+== 2020-12 negative minLength
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '': 'allOf' failed
+  - at '/minLength': minimum: got -1, want 0
+jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/minLength' [https://json-schema.org/draft/2020-12/meta/validation#/$defs/nonNegativeInteger/minimum]: minimum: got -1, want 0
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/3/$ref/properties/minLength/$ref/$ref/minimum","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/$defs/nonNegativeInteger/minimum","instanceLocation":"/minLength","error":"minimum: got -1, want 0"}]}]}
+== 2020-12 required not array
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '': 'allOf' failed
+  - at '/required': got string, want array
+jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/required' [https://json-schema.org/draft/2020-12/meta/validation#/$defs/stringArray/type]: got string, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/3/$ref/properties/required/$ref/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/$defs/stringArray/type","instanceLocation":"/required","error":"got string, want array"}]}]}
+== 2020-12 nested bad type
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '': 'allOf' failed
+  - at '/properties/a': 'allOf' failed
+    - at '/properties/a/type': 'anyOf' failed
+      - at '/properties/a/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+      - at '/properties/a/type': got number, want array
+jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/properties/a' [S#/allOf]: 'allOf' failed
+    - at '/properties/a/type' [https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf]: 'anyOf' failed
+      - at '/properties/a/type' [S#/$defs/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+      - at '/properties/a/type' [S#/properties/type/anyOf/1/type]: got number, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/1/$ref/properties/properties/additionalProperties/$dynamicRef/allOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/schema#/allOf","instanceLocation":"/properties/a","errors":[{"valid":false,"keywordLocation":"/allOf/1/$ref/properties/properties/additionalProperties/$dynamicRef/allOf/3/$ref/properties/type/anyOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf","instanceLocation":"/properties/a/type","errors":[{"valid":false,"keywordLocation":"/allOf/1/$ref/properties/properties/additionalProperties/$dynamicRef/allOf/3/$ref/properties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/$defs/simpleTypes/enum","instanceLocation":"/properties/a/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/allOf/1/$ref/properties/properties/additionalProperties/$dynamicRef/allOf/3/$ref/properties/type/anyOf/1/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf/1/type","instanceLocation":"/properties/a/type","error":"got number, want array"}]}]}]}]}
+== 2020-12 bad pattern
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '': 'allOf' failed
+  - at '/pattern': '(' is not valid regex: error parsing regexp: missing closing ): `(`
+jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/pattern' [https://json-schema.org/draft/2020-12/meta/validation#/properties/pattern/format]: '(' is not valid regex: error parsing regexp: missing closing ): `(`
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/3/$ref/properties/pattern/format","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/pattern/format","instanceLocation":"/pattern","error":"'(' is not valid regex: error parsing regexp: missing closing ): `(`"}]}]}
+== 2020-12 empty enum
+compile: ok
+validate 1: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': value must be one of 
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/enum]: value must be one of 
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/enum","instanceLocation":"","error":"value must be one of "}]}
+== 2020-12 boolean exclusiveMaximum
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '': 'allOf' failed
+  - at '/exclusiveMaximum': got boolean, want number
+jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/exclusiveMaximum' [https://json-schema.org/draft/2020-12/meta/validation#/properties/exclusiveMaximum/type]: got boolean, want number
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/3/$ref/properties/exclusiveMaximum/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/exclusiveMaximum/type","instanceLocation":"/exclusiveMaximum","error":"got boolean, want number"}]}]}
+== 2020-12 numeric exclusiveMaximum
+compile: ok
+validate 5: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': exclusiveMaximum: got 5, want 5
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/exclusiveMaximum]: exclusiveMaximum: got 5, want 5
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/exclusiveMaximum","instanceLocation":"","error":"exclusiveMaximum: got 5, want 5"}]}
+validate 4: ok
+== 2020-12 format email
+compile: ok
+validate "x": ok
+validate "a@b.c": ok
+== 2020-12 definitions ref
+compile: ok
+validate "x": jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': got string, want integer
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/definitions/a/type]: got string, want integer
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/type","AbsoluteKeywordLocation":"http://example.com/schema.json#/definitions/a/type","instanceLocation":"","error":"got string, want integer"}]}
+validate 1: ok
+== 2020-12 defs ref
+compile: ok
+validate 1: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': minimum: got 1, want 2
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/$defs/a/minimum]: minimum: got 1, want 2
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/minimum","AbsoluteKeywordLocation":"http://example.com/schema.json#/$defs/a/minimum","instanceLocation":"","error":"minimum: got 1, want 2"}]}
+validate "x": jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': got string, want integer
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/$defs/a/type]: got string, want integer
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/type","AbsoluteKeywordLocation":"http://example.com/schema.json#/$defs/a/type","instanceLocation":"","error":"got string, want integer"}]}
+validate 3: ok
+== 2020-12 unevaluatedProperties
+compile: ok
+validate {"a":1,"b":2}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/b': false schema
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/b' [S#/unevaluatedProperties]: false schema
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/unevaluatedProperties","instanceLocation":"/b","error":"false schema"}]}
+validate {"a":1}: ok
+== 2020-12 prefixItems
+compile: ok
+validate [1,2]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/1': false schema
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/1' [S#/items]: false schema
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/items","instanceLocation":"/1","error":"false schema"}]}
+validate ["x"]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0': got string, want integer
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0' [S#/prefixItems/0/type]: got string, want integer
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/prefixItems/0/type","instanceLocation":"/0","error":"got string, want integer"}]}
+validate [1]: ok
+== 2020-12 items array
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '': 'allOf' failed
+  - at '/items': got array, want boolean or object
+jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/items' [S#/type]: got array, want boolean or object
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/1/$ref/properties/items/$dynamicRef/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/schema#/type","instanceLocation":"/items","error":"got array, want boolean or object"}]}]}
+== 2020-12 dependencies
+compile: ok
+validate {"a":1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': properties 'b' required, if 'a' exists
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/dependency/a]: properties 'b' required, if 'a' exists
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/dependency/a","instanceLocation":"","error":"properties 'b' required, if 'a' exists"}]}
+validate {"c":1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': properties 'd' required, if 'c' exists
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/dependentRequired/c]: properties 'd' required, if 'c' exists
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/dependentRequired/c","instanceLocation":"","error":"properties 'd' required, if 'c' exists"}]}
+== 2020-12 if then else
+compile: ok
+validate 1: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': minimum: got 1, want 3
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/then/minimum]: minimum: got 1, want 3
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/then/minimum","instanceLocation":"","error":"minimum: got 1, want 3"}]}
+validate true: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': got boolean, want string
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/else/type]: got boolean, want string
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/else/type","instanceLocation":"","error":"got boolean, want string"}]}
+validate 4: ok
+== 2020-12 const contains
+compile: ok
+validate [1]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': no items match contains schema
+  - at '/0': value must be 2
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/contains]: no items match contains schema
+  - at '/0' [S#/contains/const]: value must be 2
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/contains","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/contains/const","instanceLocation":"/0","error":"value must be 2"}]}]}
+validate [2]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': 'const' failed
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/const]: 'const' failed
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/const","instanceLocation":"","error":"'const' failed"}]}
+== 2020-12 nested draft-07 resource
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '': 'allOf' failed
+  - at '/$defs/x/type': 'anyOf' failed
+    - at '/$defs/x/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/$defs/x/type': got string, want array
+- at '/definitions/y': 'allOf' failed
+  - at '/definitions/y/exclusiveMinimum': got boolean, want number
+jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/$defs/x/type' [http://json-schema.org/draft-07/schema#/properties/type/anyOf]: 'anyOf' failed
+    - at '/$defs/x/type' [S#/definitions/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/$defs/x/type' [S#/properties/type/anyOf/1/type]: got string, want array
+- at '/definitions/y' [S#/allOf]: 'allOf' failed
+  - at '/definitions/y/exclusiveMinimum' [https://json-schema.org/draft/2020-12/meta/validation#/properties/exclusiveMinimum/type]: got boolean, want number
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/0/$ref/properties/$defs/additionalProperties/$dynamicRefrties/type/anyOf","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/type/anyOf","instanceLocation":"/$defs/x/type","errors":[{"valid":false,"keywordLocation":"/allOf/0/$ref/properties/$defs/additionalProperties/$dynamicRefrties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/definitions/simpleTypes/enum","instanceLocation":"/$defs/x/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/allOf/0/$ref/properties/$defs/additionalProperties/$dynamicRefrties/type/anyOf/1/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/type/anyOf/1/type","instanceLocation":"/$defs/x/type","error":"got string, want array"}]}]},{"valid":false,"keywordLocation":"/properties/definitions/additionalProperties/$dynamicRef/allOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/schema#/allOf","instanceLocation":"/definitions/y","errors":[{"valid":false,"keywordLocation":"/properties/definitions/additionalProperties/$dynamicRef/allOf/3/$ref/properties/exclusiveMinimum/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/exclusiveMinimum/type","instanceLocation":"/definitions/y/exclusiveMinimum","error":"got boolean, want number"}]}]}
+== 2020-12 boolean subschemas
+compile: ok
+validate {"a":1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/a': false schema
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/a' [S#/properties/a]: false schema
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/a","instanceLocation":"/a","error":"false schema"}]}
+validate {"b":1}: ok
+== 2020-12 schema as instance
+compile: ok
+validate {"type":"strin"}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': 'allOf' failed
+  - at '/type': 'anyOf' failed
+    - at '/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/type': got string, want array
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [https://json-schema.org/draft/2020-12/schema#/allOf]: 'allOf' failed
+  - at '/type' [https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf]: 'anyOf' failed
+    - at '/type' [S#/$defs/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/type' [S#/properties/type/anyOf/1/type]: got string, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/allOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/schema#/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/allOf/3/$ref/properties/type/anyOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf","instanceLocation":"/type","errors":[{"valid":false,"keywordLocation":"/$ref/allOf/3/$ref/properties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/$defs/simpleTypes/enum","instanceLocation":"/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/$ref/allOf/3/$ref/properties/type/anyOf/1/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf/1/type","instanceLocation":"/type","error":"got string, want array"}]}]}]}
+validate {"minLength":-1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': 'allOf' failed
+  - at '/minLength': minimum: got -1, want 0
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [https://json-schema.org/draft/2020-12/schema#/allOf]: 'allOf' failed
+  - at '/minLength' [https://json-schema.org/draft/2020-12/meta/validation#/$defs/nonNegativeInteger/minimum]: minimum: got -1, want 0
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/allOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/schema#/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/allOf/3/$ref/properties/minLength/$ref/$ref/minimum","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/$defs/nonNegativeInteger/minimum","instanceLocation":"/minLength","error":"minimum: got -1, want 0"}]}]}
+validate {"type":"string"}: ok
+== 2020-12 draft-07 schema as instance
+compile: ok
+validate {"type":"strin"}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/type': 'anyOf' failed
+  - at '/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+  - at '/type': got string, want array
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/type' [http://json-schema.org/draft-07/schema#/properties/type/anyOf]: 'anyOf' failed
+  - at '/type' [S#/definitions/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+  - at '/type' [S#/properties/type/anyOf/1/type]: got string, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/properties/type/anyOf","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/type/anyOf","instanceLocation":"/type","errors":[{"valid":false,"keywordLocation":"/$ref/properties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/definitions/simpleTypes/enum","instanceLocation":"/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/$ref/properties/type/anyOf/1/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/type/anyOf/1/type","instanceLocation":"/type","error":"got string, want array"}]}]}
+validate {"properties":{"a":{"minimum":"x"}}}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/properties/a/minimum': got string, want number
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/properties/a/minimum' [http://json-schema.org/draft-07/schema#/properties/minimum/type]: got string, want number
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/properties/properties/additionalProperties/$ref/properties/minimum/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/minimum/type","instanceLocation":"/properties/a/minimum","error":"got string, want number"}]}
+== latest read tool
+compile: ok
+validate {"path":"a.go"}: ok
+validate {"path":"a.go","offset":3,"limit":1.5}: ok
+validate {}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': missing property 'path'
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/required]: missing property 'path'
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/required","instanceLocation":"","error":"missing property 'path'"}]}
+validate {"path":1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/path': got number, want string
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/path' [S#/properties/path/type]: got number, want string
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/path/type","instanceLocation":"/path","error":"got number, want string"}]}
+validate {"path":"a","offset":"x"}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/offset': got string, want number
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/offset' [S#/properties/offset/type]: got string, want number
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/offset/type","instanceLocation":"/offset","error":"got string, want number"}]}
+validate []: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': got array, want object
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/type]: got array, want object
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/type","instanceLocation":"","error":"got array, want object"}]}
+== latest bad type name
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '': 'allOf' failed
+  - at '/type': 'anyOf' failed
+    - at '/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/type': got string, want array
+jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/type' [https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf]: 'anyOf' failed
+    - at '/type' [S#/$defs/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/type' [S#/properties/type/anyOf/1/type]: got string, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/3/$ref/properties/type/anyOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf","instanceLocation":"/type","errors":[{"valid":false,"keywordLocation":"/allOf/3/$ref/properties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/$defs/simpleTypes/enum","instanceLocation":"/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/allOf/3/$ref/properties/type/anyOf/1/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf/1/type","instanceLocation":"/type","error":"got string, want array"}]}]}]}
+== latest negative minLength
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '': 'allOf' failed
+  - at '/minLength': minimum: got -1, want 0
+jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/minLength' [https://json-schema.org/draft/2020-12/meta/validation#/$defs/nonNegativeInteger/minimum]: minimum: got -1, want 0
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/3/$ref/properties/minLength/$ref/$ref/minimum","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/$defs/nonNegativeInteger/minimum","instanceLocation":"/minLength","error":"minimum: got -1, want 0"}]}]}
+== latest required not array
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '': 'allOf' failed
+  - at '/required': got string, want array
+jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/required' [https://json-schema.org/draft/2020-12/meta/validation#/$defs/stringArray/type]: got string, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/3/$ref/properties/required/$ref/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/$defs/stringArray/type","instanceLocation":"/required","error":"got string, want array"}]}]}
+== latest nested bad type
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '': 'allOf' failed
+  - at '/properties/a': 'allOf' failed
+    - at '/properties/a/type': 'anyOf' failed
+      - at '/properties/a/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+      - at '/properties/a/type': got number, want array
+jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/properties/a' [S#/allOf]: 'allOf' failed
+    - at '/properties/a/type' [https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf]: 'anyOf' failed
+      - at '/properties/a/type' [S#/$defs/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+      - at '/properties/a/type' [S#/properties/type/anyOf/1/type]: got number, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/1/$ref/properties/properties/additionalProperties/$dynamicRef/allOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/schema#/allOf","instanceLocation":"/properties/a","errors":[{"valid":false,"keywordLocation":"/allOf/1/$ref/properties/properties/additionalProperties/$dynamicRef/allOf/3/$ref/properties/type/anyOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf","instanceLocation":"/properties/a/type","errors":[{"valid":false,"keywordLocation":"/allOf/1/$ref/properties/properties/additionalProperties/$dynamicRef/allOf/3/$ref/properties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/$defs/simpleTypes/enum","instanceLocation":"/properties/a/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/allOf/1/$ref/properties/properties/additionalProperties/$dynamicRef/allOf/3/$ref/properties/type/anyOf/1/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf/1/type","instanceLocation":"/properties/a/type","error":"got number, want array"}]}]}]}]}
+== latest bad pattern
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '': 'allOf' failed
+  - at '/pattern': '(' is not valid regex: error parsing regexp: missing closing ): `(`
+jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/pattern' [https://json-schema.org/draft/2020-12/meta/validation#/properties/pattern/format]: '(' is not valid regex: error parsing regexp: missing closing ): `(`
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/3/$ref/properties/pattern/format","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/pattern/format","instanceLocation":"/pattern","error":"'(' is not valid regex: error parsing regexp: missing closing ): `(`"}]}]}
+== latest empty enum
+compile: ok
+validate 1: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': value must be one of 
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/enum]: value must be one of 
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/enum","instanceLocation":"","error":"value must be one of "}]}
+== latest boolean exclusiveMaximum
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '': 'allOf' failed
+  - at '/exclusiveMaximum': got boolean, want number
+jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/exclusiveMaximum' [https://json-schema.org/draft/2020-12/meta/validation#/properties/exclusiveMaximum/type]: got boolean, want number
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/3/$ref/properties/exclusiveMaximum/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/exclusiveMaximum/type","instanceLocation":"/exclusiveMaximum","error":"got boolean, want number"}]}]}
+== latest numeric exclusiveMaximum
+compile: ok
+validate 5: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': exclusiveMaximum: got 5, want 5
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/exclusiveMaximum]: exclusiveMaximum: got 5, want 5
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/exclusiveMaximum","instanceLocation":"","error":"exclusiveMaximum: got 5, want 5"}]}
+validate 4: ok
+== latest format email
+compile: ok
+validate "x": ok
+validate "a@b.c": ok
+== latest definitions ref
+compile: ok
+validate "x": jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': got string, want integer
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/definitions/a/type]: got string, want integer
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/type","AbsoluteKeywordLocation":"http://example.com/schema.json#/definitions/a/type","instanceLocation":"","error":"got string, want integer"}]}
+validate 1: ok
+== latest defs ref
+compile: ok
+validate 1: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': minimum: got 1, want 2
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/$defs/a/minimum]: minimum: got 1, want 2
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/minimum","AbsoluteKeywordLocation":"http://example.com/schema.json#/$defs/a/minimum","instanceLocation":"","error":"minimum: got 1, want 2"}]}
+validate "x": jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': got string, want integer
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/$defs/a/type]: got string, want integer
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/type","AbsoluteKeywordLocation":"http://example.com/schema.json#/$defs/a/type","instanceLocation":"","error":"got string, want integer"}]}
+validate 3: ok
+== latest unevaluatedProperties
+compile: ok
+validate {"a":1,"b":2}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/b': false schema
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/b' [S#/unevaluatedProperties]: false schema
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/unevaluatedProperties","instanceLocation":"/b","error":"false schema"}]}
+validate {"a":1}: ok
+== latest prefixItems
+compile: ok
+validate [1,2]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/1': false schema
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/1' [S#/items]: false schema
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/items","instanceLocation":"/1","error":"false schema"}]}
+validate ["x"]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0': got string, want integer
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/0' [S#/prefixItems/0/type]: got string, want integer
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/prefixItems/0/type","instanceLocation":"/0","error":"got string, want integer"}]}
+validate [1]: ok
+== latest items array
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '': 'allOf' failed
+  - at '/items': got array, want boolean or object
+jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/items' [S#/type]: got array, want boolean or object
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/1/$ref/properties/items/$dynamicRef/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/schema#/type","instanceLocation":"/items","error":"got array, want boolean or object"}]}]}
+== latest dependencies
+compile: ok
+validate {"a":1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': properties 'b' required, if 'a' exists
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/dependency/a]: properties 'b' required, if 'a' exists
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/dependency/a","instanceLocation":"","error":"properties 'b' required, if 'a' exists"}]}
+validate {"c":1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': properties 'd' required, if 'c' exists
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/dependentRequired/c]: properties 'd' required, if 'c' exists
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/dependentRequired/c","instanceLocation":"","error":"properties 'd' required, if 'c' exists"}]}
+== latest if then else
+compile: ok
+validate 1: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': minimum: got 1, want 3
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/then/minimum]: minimum: got 1, want 3
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/then/minimum","instanceLocation":"","error":"minimum: got 1, want 3"}]}
+validate true: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': got boolean, want string
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/else/type]: got boolean, want string
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/else/type","instanceLocation":"","error":"got boolean, want string"}]}
+validate 4: ok
+== latest const contains
+compile: ok
+validate [1]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': no items match contains schema
+  - at '/0': value must be 2
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/contains]: no items match contains schema
+  - at '/0' [S#/contains/const]: value must be 2
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/contains","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/contains/const","instanceLocation":"/0","error":"value must be 2"}]}]}
+validate [2]: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': 'const' failed
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [S#/const]: 'const' failed
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/const","instanceLocation":"","error":"'const' failed"}]}
+== latest nested draft-07 resource
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '': 'allOf' failed
+  - at '/$defs/x/type': 'anyOf' failed
+    - at '/$defs/x/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/$defs/x/type': got string, want array
+- at '/definitions/y': 'allOf' failed
+  - at '/definitions/y/exclusiveMinimum': got boolean, want number
+jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '' [S#/allOf]: 'allOf' failed
+  - at '/$defs/x/type' [http://json-schema.org/draft-07/schema#/properties/type/anyOf]: 'anyOf' failed
+    - at '/$defs/x/type' [S#/definitions/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/$defs/x/type' [S#/properties/type/anyOf/1/type]: got string, want array
+- at '/definitions/y' [S#/allOf]: 'allOf' failed
+  - at '/definitions/y/exclusiveMinimum' [https://json-schema.org/draft/2020-12/meta/validation#/properties/exclusiveMinimum/type]: got boolean, want number
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf/0/$ref/properties/$defs/additionalProperties/$dynamicRefrties/type/anyOf","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/type/anyOf","instanceLocation":"/$defs/x/type","errors":[{"valid":false,"keywordLocation":"/allOf/0/$ref/properties/$defs/additionalProperties/$dynamicRefrties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/definitions/simpleTypes/enum","instanceLocation":"/$defs/x/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/allOf/0/$ref/properties/$defs/additionalProperties/$dynamicRefrties/type/anyOf/1/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/type/anyOf/1/type","instanceLocation":"/$defs/x/type","error":"got string, want array"}]}]},{"valid":false,"keywordLocation":"/properties/definitions/additionalProperties/$dynamicRef/allOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/schema#/allOf","instanceLocation":"/definitions/y","errors":[{"valid":false,"keywordLocation":"/properties/definitions/additionalProperties/$dynamicRef/allOf/3/$ref/properties/exclusiveMinimum/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/exclusiveMinimum/type","instanceLocation":"/definitions/y/exclusiveMinimum","error":"got boolean, want number"}]}]}
+== latest boolean subschemas
+compile: ok
+validate {"a":1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/a': false schema
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/a' [S#/properties/a]: false schema
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/a","instanceLocation":"/a","error":"false schema"}]}
+validate {"b":1}: ok
+== latest schema as instance
+compile: ok
+validate {"type":"strin"}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': 'allOf' failed
+  - at '/type': 'anyOf' failed
+    - at '/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/type': got string, want array
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [https://json-schema.org/draft/2020-12/schema#/allOf]: 'allOf' failed
+  - at '/type' [https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf]: 'anyOf' failed
+    - at '/type' [S#/$defs/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+    - at '/type' [S#/properties/type/anyOf/1/type]: got string, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/allOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/schema#/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/allOf/3/$ref/properties/type/anyOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf","instanceLocation":"/type","errors":[{"valid":false,"keywordLocation":"/$ref/allOf/3/$ref/properties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/$defs/simpleTypes/enum","instanceLocation":"/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/$ref/allOf/3/$ref/properties/type/anyOf/1/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/properties/type/anyOf/1/type","instanceLocation":"/type","error":"got string, want array"}]}]}]}
+validate {"minLength":-1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '': 'allOf' failed
+  - at '/minLength': minimum: got -1, want 0
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '' [https://json-schema.org/draft/2020-12/schema#/allOf]: 'allOf' failed
+  - at '/minLength' [https://json-schema.org/draft/2020-12/meta/validation#/$defs/nonNegativeInteger/minimum]: minimum: got -1, want 0
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/allOf","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/schema#/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/allOf/3/$ref/properties/minLength/$ref/$ref/minimum","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/validation#/$defs/nonNegativeInteger/minimum","instanceLocation":"/minLength","error":"minimum: got -1, want 0"}]}]}
+validate {"type":"string"}: ok
+== latest draft-07 schema as instance
+compile: ok
+validate {"type":"strin"}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/type': 'anyOf' failed
+  - at '/type': value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+  - at '/type': got string, want array
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/type' [http://json-schema.org/draft-07/schema#/properties/type/anyOf]: 'anyOf' failed
+  - at '/type' [S#/definitions/simpleTypes/enum]: value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'
+  - at '/type' [S#/properties/type/anyOf/1/type]: got string, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/properties/type/anyOf","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/type/anyOf","instanceLocation":"/type","errors":[{"valid":false,"keywordLocation":"/$ref/properties/type/anyOf/0/$ref/enum","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/definitions/simpleTypes/enum","instanceLocation":"/type","error":"value must be one of 'array', 'boolean', 'integer', 'null', 'number', 'object', 'string'"},{"valid":false,"keywordLocation":"/$ref/properties/type/anyOf/1/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/type/anyOf/1/type","instanceLocation":"/type","error":"got string, want array"}]}]}
+validate {"properties":{"a":{"minimum":"x"}}}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/properties/a/minimum': got string, want number
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/properties/a/minimum' [http://json-schema.org/draft-07/schema#/properties/minimum/type]: got string, want number
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/$ref/properties/properties/additionalProperties/$ref/properties/minimum/type","AbsoluteKeywordLocation":"http://json-schema.org/draft-07/schema#/properties/minimum/type","instanceLocation":"/properties/a/minimum","error":"got string, want number"}]}
+== 2019-09 vocab-only metaschema ignores validation keywords
+resource http://example.com/meta: ok
+compile: ok
+validate "": ok
+== 2019-09 vocab-only metaschema checks applicators
+resource http://example.com/meta: ok
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'urn:mem:metaschema'
+- at '': 'allOf' failed
+  - at '/allOf': got object, want array
+jsonschema validation failed with 'urn:mem:metaschema'
+- at '' [urn:mem:metaschema/allOf]: 'allOf' failed
+  - at '/allOf' [https://json-schema.org/draft/2019-09/meta/applicator#/$defs/schemaArray/type]: got object, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"a.org/draft/2019-09/meta/applicator#/properties/allOf/$ref/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2019-09/meta/applicator#/$defs/schemaArray/type","instanceLocation":"/allOf","error":"got object, want array"}]}]}
+== 2019-09 vocab-only metaschema valid
+resource http://example.com/meta: ok
+compile: ok
+validate {"a":1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/a': 'not' failed
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/a' [S#/properties/a]: 'not' failed
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/a","instanceLocation":"/a","error":"'not' failed"}]}
+validate {}: ok
+== 2020-12 vocab-only metaschema ignores validation keywords
+resource http://example.com/meta: ok
+compile: ok
+validate "": ok
+== 2020-12 vocab-only metaschema checks applicators
+resource http://example.com/meta: ok
+compile: "http://example.com/schema.json#" is not valid against metaschema: jsonschema validation failed with 'urn:mem:metaschema'
+- at '': 'allOf' failed
+  - at '/allOf': got object, want array
+jsonschema validation failed with 'urn:mem:metaschema'
+- at '' [urn:mem:metaschema/allOf]: 'allOf' failed
+  - at '/allOf' [https://json-schema.org/draft/2020-12/meta/applicator#/$defs/schemaArray/type]: got object, want array
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/allOf","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"a.org/draft/2020-12/meta/applicator#/properties/allOf/$ref/type","AbsoluteKeywordLocation":"https://json-schema.org/draft/2020-12/meta/applicator#/$defs/schemaArray/type","instanceLocation":"/allOf","error":"got object, want array"}]}]}
+== 2020-12 vocab-only metaschema valid
+resource http://example.com/meta: ok
+compile: ok
+validate {"a":1}: jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/a': 'not' failed
+jsonschema validation failed with 'http://example.com/schema.json#'
+- at '/a' [S#/properties/a]: 'not' failed
+{"valid":false,"keywordLocation":"","instanceLocation":"","errors":[{"valid":false,"keywordLocation":"/properties/a","instanceLocation":"/a","error":"'not' failed"}]}
+validate {}: ok
+== unknown vocabulary
+resource http://example.com/meta: ok
+compile: unsupported vocabulary "http://example.com/vocab/x" in "http://example.com/meta"

@@ -12,7 +12,7 @@ type countingProvider struct {
 	calls atomic.Int64
 }
 
-func (p *countingProvider) GetSuggestions(lines []string, cursorLine, cursorCol int) *AutocompleteSuggestions {
+func (p *countingProvider) GetSuggestions(ctx context.Context, lines []string, cursorLine, cursorCol int, options AutocompleteSuggestionOptions) *AutocompleteSuggestions {
 	p.calls.Add(1)
 	return &AutocompleteSuggestions{Items: []AutocompleteItem{{Value: "@node_modules/", Label: "node_modules/"}}, Prefix: "@node_modules"}
 }

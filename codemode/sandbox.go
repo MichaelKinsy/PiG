@@ -1,12 +1,17 @@
+//go:build !tinygo
+
 package codemode
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"slices"
 	"strings"
 	"sync"
+
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 )
 
 // defaultTimeoutMs is the default deadline per execution.
@@ -32,14 +37,29 @@ type Sandbox struct {
 	closed  bool
 	running map[*execution]struct{}
 
-	// loaded is the engine of a custom Wasm module, kept after the first successful load.
-	loadMu sync.Mutex
-	loaded *engine
+	// launcher starts the VM of each execution: the in-process worker of NewSandbox.
+	launcher vmLauncher
+
+	// prelude is the source evaluated before each script; tests replace it to send the host payloads the real prelude
+	// never produces, as upstream's host tests replace the worker.
+	prelude string
+
+	// engines loads the compiled module for the sandbox's VMs.
+	engines *engineSource
 }
 
 // NewSandbox validates the globals and registers the tools.
 func NewSandbox(options SandboxOptions) (*Sandbox, error) {
-	s := &Sandbox{options: options, running: map[*execution]struct{}{}}
+	return newSandbox(options, func(s *Sandbox) vmLauncher { return s.launchWorker })
+}
+
+// newSandbox is NewSandbox for a sandbox whose VMs start through the launcher that launcher builds: the shared host of
+// Pi's CodemodeSandboxBase, which each sandbox type completes with its own VmLauncher.
+//
+// Ports packages/codemode/src/runtime/execution.ts (CodemodeSandboxBase).
+func newSandbox(options SandboxOptions, launcher func(*Sandbox) vmLauncher) (*Sandbox, error) {
+	s := &Sandbox{options: options, running: map[*execution]struct{}{}, prelude: PreludeSource, engines: &engineSource{wasm: options.Wasm, cacheDir: options.CacheDir}}
+	s.launcher = launcher(s)
 	if s.options.TimeoutMs == 0 {
 		s.options.TimeoutMs = defaultTimeoutMs
 	}
@@ -48,32 +68,48 @@ func NewSandbox(options SandboxOptions) (*Sandbox, error) {
 			return nil, err
 		}
 	}
-	namespaces := map[string]bool{}
+	names := make([]string, len(options.Globals))
+	for i, global := range options.Globals {
+		names[i] = global.Name
+	}
+	if err := checkGlobals(names); err != nil {
+		return nil, err
+	}
+	s.globals = append(s.globals, options.Globals...)
+	return s, nil
+}
+
+// checkGlobals checks global names: identifiers or `namespace.member`, not shadowing a built-in global or each other.
+//
+// Ports packages/codemode/src/runtime/execution.ts (checkGlobals).
+func checkGlobals(globals []string) error {
 	names := map[string]bool{}
-	for _, global := range options.Globals {
-		parts := strings.Split(global.Name, ".")
+	namespaces := map[string]bool{}
+	var namespaceOrder []string
+	for _, name := range globals {
+		parts := strings.Split(name, ".")
 		valid := len(parts) <= 2
 		for _, part := range parts {
 			valid = valid && isIdentifier(part)
 		}
 		if !valid || containsString(reservedGlobals, parts[0]) {
-			return nil, fmt.Errorf("Invalid global name %q", global.Name)
+			return fmt.Errorf("Invalid global name %q", name)
 		}
-		if names[global.Name] {
-			return nil, fmt.Errorf("Global %q is already registered", global.Name)
+		if names[name] {
+			return fmt.Errorf("Global %q is already registered", name)
 		}
-		if len(parts) == 2 {
+		if len(parts) == 2 && !namespaces[parts[0]] {
 			namespaces[parts[0]] = true
+			namespaceOrder = append(namespaceOrder, parts[0])
 		}
-		names[global.Name] = true
-		s.globals = append(s.globals, global)
+		names[name] = true
 	}
-	for _, global := range s.globals {
-		if namespaces[global.Name] {
-			return nil, fmt.Errorf("Global %q conflicts with the namespace %q", global.Name, global.Name)
+	for _, name := range namespaceOrder {
+		if names[name] {
+			return fmt.Errorf("Global %q conflicts with the namespace %q", name, name)
 		}
 	}
-	return s, nil
+	return nil
 }
 
 func containsString(list []string, s string) bool {
@@ -160,13 +196,7 @@ func (s *Sandbox) Close() error {
 	for _, e := range running {
 		e.abort("Sandbox closed")
 	}
-	s.loadMu.Lock()
-	loaded := s.loaded
-	s.loaded = nil
-	s.loadMu.Unlock()
-	if loaded != nil {
-		return loaded.close(context.Background())
-	}
+	s.engines.release()
 	return nil
 }
 
@@ -181,46 +211,103 @@ var (
 	defaultEngines   = map[engineKey]*engine{}
 )
 
-// engine returns the compiled module. A failed load is retried on the next call, like loadQuickJSWasm.
-func (s *Sandbox) engine(ctx context.Context) (*engine, error) {
-	if s.options.Wasm == nil {
+// engineSource loads the compiled QuickJS module, the embedded one or a custom one.
+type engineSource struct {
+	wasm     func() ([]byte, error)
+	cacheDir string
+
+	mu sync.Mutex
+	// loaded is the shared engine of a custom module per heap limit, kept after the first successful load. The process
+	// owns the engines.
+	loaded map[uint32]*engine
+}
+
+// wasmEngineLoader loads the module wasm returns (nil: the embedded module) with its on-disk compilation cache in cacheDir.
+func wasmEngineLoader(wasm func() ([]byte, error), cacheDir string) engineLoader {
+	return (&engineSource{wasm: wasm, cacheDir: cacheDir}).load
+}
+
+// engineFor returns the compiled module for VMs with the given heap limit.
+func (s *Sandbox) engineFor(ctx context.Context, memoryLimit uint32) (*engine, error) {
+	return s.engines.load(ctx, memoryLimit)
+}
+
+// load returns the compiled module for VMs with the given heap limit. A failed load is retried on the next call, like
+// loadQuickJSWasm.
+func (s *engineSource) load(ctx context.Context, memoryLimit uint32) (*engine, error) {
+	if s.wasm == nil {
 		defaultEnginesMu.Lock()
 		defer defaultEnginesMu.Unlock()
-		key := engineKey{s.options.CacheDir, s.options.MemoryLimitBytes}
+		key := engineKey{s.cacheDir, memoryLimit}
 		if e := defaultEngines[key]; e != nil {
 			return e, nil
 		}
-		e, err := newEngine(context.WithoutCancel(ctx), QuickJSWasm(), s.options.CacheDir, s.options.MemoryLimitBytes)
+		e, err := newEngine(context.WithoutCancel(ctx), QuickJSWasm(), s.cacheDir, memoryLimit)
 		if err != nil {
 			return nil, err
 		}
 		defaultEngines[key] = e
 		return e, nil
 	}
-	s.loadMu.Lock()
-	defer s.loadMu.Unlock()
-	if s.loaded != nil {
-		return s.loaded, nil
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if e := s.loaded[memoryLimit]; e != nil {
+		return e, nil
 	}
-	wasm, err := s.options.Wasm()
+	wasm, err := s.wasm()
 	if err != nil {
 		return nil, err
 	}
-	e, err := newEngine(context.WithoutCancel(ctx), wasm, s.options.CacheDir, s.options.MemoryLimitBytes)
+	e, err := customEngine(context.WithoutCancel(ctx), wasm, s.cacheDir, memoryLimit)
 	if err != nil {
 		return nil, err
 	}
-	s.loaded = e
+	if s.loaded == nil {
+		s.loaded = map[uint32]*engine{}
+	}
+	s.loaded[memoryLimit] = e
 	return e, nil
 }
 
-func loadError(err error) *Error {
-	return &Error{Kind: ErrorSandbox, Message: "Failed to load QuickJS: " + err.Error()}
+// release forgets the custom engines the source holds; the process-wide set keeps them for other sandboxes.
+func (s *engineSource) release() {
+	s.mu.Lock()
+	s.loaded = nil
+	s.mu.Unlock()
+}
+
+// customEngineKey identifies a compiled custom module: its content, the compilation cache location and the heap limit.
+type customEngineKey struct {
+	digest      [sha256.Size]byte
+	cacheDir    string
+	memoryLimit uint32
+}
+
+var (
+	customEnginesMu sync.Mutex
+	customEngines   = map[customEngineKey]*engine{}
+)
+
+// customEngine compiles a custom module once per process and shares it between the sandboxes that load the same bytes, as Pi's loadQuickJSWasm compiles a module once per process (wasm.ts:14-35) and every
+// sandbox given that module uses the one compilation. A failed compile is not kept, so the next call retries it.
+func customEngine(ctx context.Context, wasm []byte, cacheDir string, memoryLimit uint32) (*engine, error) {
+	key := customEngineKey{sha256.Sum256(wasm), cacheDir, memoryLimit}
+	customEnginesMu.Lock()
+	defer customEnginesMu.Unlock()
+	if e := customEngines[key]; e != nil {
+		return e, nil
+	}
+	e, err := newEngine(ctx, wasm, cacheDir, memoryLimit)
+	if err != nil {
+		return nil, err
+	}
+	customEngines[key] = e
+	return e, nil
 }
 
 // timeoutMessage is upstream's deadline message.
 func timeoutMessage(timeoutMs float64) string {
-	return "Execution timed out after " + jsNumberString(timeoutMs) + " ms"
+	return "Execution timed out after " + jsnumber.String(timeoutMs) + " ms"
 }
 
 // abortMessage is the message of an abort: the context's cause, as upstream uses the abort reason's message.

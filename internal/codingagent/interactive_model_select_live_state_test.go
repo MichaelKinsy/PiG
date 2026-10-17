@@ -2,6 +2,7 @@ package codingagent
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -17,20 +18,26 @@ type liveModelSessionHandle struct {
 func (h *liveModelSessionHandle) apply(model *ai.Model) {
 	h.agent.SetModel(model)
 	h.agent.SetThinkingLevel(ai.ClampThinkingLevel(model, h.agent.ThinkingLevel()))
-	h.notify()
 }
 
-func (h *liveModelSessionHandle) CycleModel(direction string, options ...ModelMutationOptions) (*ModelCycleResult, error) {
-	result, err := h.recordingCompactHandle.CycleModel(direction, options...)
-	if result != nil {
-		h.apply(result.Model)
+func (h *liveModelSessionHandle) BeginModelCycleOnMain(ctx context.Context, direction string, options ModelMutationOptions) (*ModelCycleResult, func(), error) {
+	result, _, err := h.recordingCompactHandle.BeginModelCycleOnMain(ctx, direction, options)
+	if result == nil {
+		return result, nil, err
 	}
-	return result, err
+	h.apply(result.Model)
+	return result, h.notify, err
 }
 
-func (h *liveModelSessionHandle) SetModel(model *ai.Model, options ...ModelMutationOptions) error {
-	_ = h.recordingCompactHandle.SetModel(model, options...)
-	h.apply(model)
+func (h *liveModelSessionHandle) SetModelOnMain(_ context.Context, model *ai.Model, options ModelMutationOptions, dispatch func(func() error) error) error {
+	if err := dispatch(func() error {
+		_ = h.SetModel(model, options)
+		h.apply(model)
+		return nil
+	}); err != nil {
+		return err
+	}
+	h.notify()
 	return nil
 }
 
@@ -55,17 +62,20 @@ func TestInteractiveModelSelectHandlersObserveTheSelectedModel(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		fields, _ := model.(map[string]any)
-		id, _ := fields["id"].(string)
+		id := ""
+		if model != nil {
+			id = model.ID
+		}
 		inproc = append(inproc, id)
-		info := bridge.actions["getModelInfo"].(func() map[string]any)()
-		id, _ = info["id"].(string)
-		subprocess = append(subprocess, id)
+		info := modelObjectMembers(t, bridge.actions["getModelInfo"].(func() json.RawMessage)())
+		subprocessID, _ := info["id"].(string)
+		subprocess = append(subprocess, subprocessID)
 	}
 	m.opts.SessionHandle = handle
 
 	m.cycleModel(true)
-	if err := m.buildSlashContext(t.Context()).SwitchModel("capture/next"); err != nil {
+	runOwnerTasksUntil(t, m, func() bool { return m.lastStatusMessage == "Switched to next" })
+	if err := settleSwitchModel(t, m, m.buildSlashContext(t.Context()), "capture/next"); err != nil {
 		t.Fatal(err)
 	}
 	if len(handle.cycled) != 1 || len(handle.switched) != 1 {
@@ -84,7 +94,7 @@ func TestInteractiveModelSelectHandlersObserveTheSelectedModel(t *testing.T) {
 func TestInteractiveExtensionStreamWithoutReasoningDoesNotThink(t *testing.T) {
 	m := modelPickerTestMode(t)
 	m.thinkingLevel = string(ai.ThinkingHigh)
-	model := &ai.Model{ID: "model", ProviderMeta: ai.ProviderMetadata{ProviderID: "provider"}, Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingHigh}}
+	model := &ai.Model{ID: "model", ProviderMeta: ai.ProviderMetadata{ProviderID: "provider"}, Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelHigh}}
 	m.opts.ModelBuilder = func(string) (*ai.Model, error) { return model, nil }
 	handle := &modelRequestCaptureHandle{recordingCompactHandle: &recordingCompactHandle{agent: m.agent}}
 	m.opts.SessionHandle = handle
@@ -96,7 +106,7 @@ func TestInteractiveExtensionStreamWithoutReasoningDoesNotThink(t *testing.T) {
 	stream := bridge.actions["streamModel"].(func(context.Context, map[string]any, map[string]any) (*ai.AssistantMessageEventStream, error))
 	for _, request := range []struct {
 		reasoning any
-		want      ai.ThinkingLevel
+		want      ai.ModelThinkingLevel
 	}{{nil, ""}, {"low", ai.ThinkingLow}} {
 		body := map[string]any{"messages": []any{}}
 		if request.reasoning != nil {
@@ -107,7 +117,7 @@ func TestInteractiveExtensionStreamWithoutReasoningDoesNotThink(t *testing.T) {
 			t.Fatal(err)
 		}
 		result.Result()
-		if handle.options.Thinking != request.want {
+		if handle.options.Thinking != request.want.ReasoningOption() {
 			t.Errorf("reasoning %v streamed with thinking %q, want %q", request.reasoning, handle.options.Thinking, request.want)
 		}
 	}

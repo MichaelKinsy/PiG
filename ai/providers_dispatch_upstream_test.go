@@ -24,6 +24,7 @@ func recordingProviderStreams(label string, calls *[]string) *ProviderStreams {
 }
 
 // .upstream/v0.87.1/packages/ai/test/providers.test.ts:517
+// packages/ai/src/types.ts:295-300 (fetchDeferred, cancelDeferred).
 func TestLazyAPIOnlyDeclaredDeferredCapabilitiesUpstream(t *testing.T) {
 	loads := 0
 	streams := recordingProviderStreams("deferred", nil)

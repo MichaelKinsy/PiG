@@ -2,6 +2,7 @@ package inproc
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -18,6 +19,10 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/invocation"
+	"github.com/MichaelKinsy/PiG/internal/boundarywire"
+	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts"
+	"github.com/MichaelKinsy/PiG/internal/eventwire"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // defaultStaleMessage matches the upstream default verbatim. This string
@@ -25,7 +30,7 @@ import (
 // drift would be a fidelity gap.
 //
 // upstream: runner.ts:461 (`invalidate(message = "...")`)
-const defaultStaleMessage = "This extension ctx is stale after session replacement or reload. Do not use a captured pi or command ctx after ctx.newSession(), ctx.fork(), ctx.switchSession(), or ctx.reload(). For newSession, fork, and switchSession, move post-replacement work into withSession and use the ctx passed to withSession. For reload, do not use the old ctx after await ctx.reload()."
+const defaultStaleMessage = extension.DefaultStaleRuntimeMessage
 
 // coerceResult attempts a direct type assertion of handlerResult to T.
 // If that fails and handlerResult is json.RawMessage (the encoding returned
@@ -202,11 +207,9 @@ type Runner struct {
 	contextActions extension.ContextActions
 
 	// sessionManager is the log ctx.sessionManager exposes. It is bound apart from contextActions so a Session that swaps its log in place (coding.Session.ReplaceInner) can rebind it while handlers run; see [Runner.BindSessionManager] and [Runner.actions].
-	sessionManager atomic.Pointer[extension.SessionManager]
+	sessionManager atomic.Pointer[extension.ReadonlySessionManager]
 
-	// extActions retains the bound host actions; runtime shares provider registration state with the loader.
-	extActions extension.ExtensionActions
-	runtime    *extension.ExtensionRuntime
+	runtime *extension.ExtensionRuntime
 
 	// commandActions holds command-specific callbacks (WaitForIdle,
 	// NewSession, Fork, NavigateTree, SwitchSession, Reload) that
@@ -216,7 +219,6 @@ type Runner struct {
 	// upstream: runner.ts:628-660 (createCommandContext consumes these)
 	commandActions extension.CommandActions
 	flagMu         sync.RWMutex
-	flagValues     map[string]any
 
 	// mcp delivers mcp_servers_change events and remembers which servers were reported as unhandled. See mcp_servers.go.
 	mcp mcpServersState
@@ -234,50 +236,52 @@ func (r *Runner) Runtime() *extension.ExtensionRuntime { return r.runtime }
 // or the subprocess transport adapter). cwd is captured for relative path
 // resolution by extension factories.
 //
-// upstream: runner.ts:233-242 (constructor)
+// upstream: runner.ts:395-408 (constructor)
 func NewRunner(extensions []extension.Extension, cwd string, sharedRuntime ...*extension.ExtensionRuntime) *Runner {
 	runtime := extension.CreateExtensionRuntime()
 	if len(sharedRuntime) != 0 && sharedRuntime[0] != nil {
 		runtime = sharedRuntime[0]
 	}
-	flagValues := make(map[string]any)
+	// upstream: loader.ts registerFlag sets a default into runtime.flagValues unless the flag already has a value.
 	for _, ext := range extensions {
-		for name, flag := range ext.Flags {
-			if _, exists := flagValues[name]; !exists && flag.Default != nil {
-				flagValues[name] = flag.Default
+		for _, flag := range ext.RegisteredFlags() {
+			if _, exists := runtime.FlagValues[flag.Name]; !exists && flag.Default != nil {
+				runtime.FlagValues[flag.Name] = flag.Default
 			}
 		}
 	}
 	for i := range extensions {
 		ext := &extensions[i]
 		ext.InitializeEventHandlers()
-		if ext.SourceInfo == nil {
+		ext.InitializeDeclarationRegistry()
+		if ext.SourceInfo == (extension.SourceInfo{}) {
 			ext.SourceInfo = defaultExtensionSourceInfo(*ext, cwd)
 		}
-		if len(ext.CommandOrder) == 0 && len(ext.Commands) == 1 {
-			for name := range ext.Commands {
-				ext.CommandOrder = append(ext.CommandOrder, name)
-			}
-		}
-		for name, command := range ext.Commands {
-			if command.SourceInfo == nil {
-				command.SourceInfo = ext.SourceInfo
-				ext.Commands[name] = command
-			}
-		}
+		ext.SetCommandSourceInfo(ext.SourceInfo)
 	}
 	r := &Runner{
 		extensions: extensions,
 		runtime:    runtime,
 		cwd:        cwd,
 		uiContext:  extension.NoopUIContext,
-		flagValues: flagValues,
 	}
 	r.background, r.cancelBackground = context.WithCancel(context.Background())
 	r.activeCommandsIdle.L = &r.activeCommandsMu
 	r.contextActions.GetFlagValue = r.flagValue
 	r.contextActions.GetUIContext = r.GetUIContext
 	r.contextActions.GetMode = r.getMode
+	return r
+}
+
+// NewExtensionRunner is Pi's ExtensionRunner constructor (extensions, runtime, cwd, sessionManager, modelRegistry): the runner over the loader's extensions and its shared runtime, with the log ctx.sessionManager exposes and the registry ctx.modelRegistry and provider registration read. A nil runtime gives the runner a fresh one; a nil sessionManager or modelRegistry waits for the binding that supplies it ([Runner.BindSessionManager], [Runner.BindCore]).
+//
+// upstream: runner.ts:395-408 (constructor)
+func NewExtensionRunner(extensions []extension.Extension, runtime *extension.ExtensionRuntime, cwd string, sessionManager extension.SessionManager, modelRegistry extension.ModelRegistry) *Runner {
+	r := NewRunner(extensions, cwd, runtime)
+	if sessionManager != nil {
+		r.BindSessionManager(sessionManager)
+	}
+	r.contextActions.ModelRegistry = modelRegistry
 	return r
 }
 
@@ -297,13 +301,7 @@ func defaultExtensionSourceInfo(ext extension.Extension, cwd string) extension.S
 			baseDir = filepath.Dir(filepath.Join(cwd, path))
 		}
 	}
-	info := map[string]any{
-		"path": path, "source": source, "scope": "temporary", "origin": "top-level",
-	}
-	if baseDir != "" {
-		info["baseDir"] = baseDir
-	}
-	return info
+	return extension.SourceInfo{Path: path, Source: source, Scope: "temporary", Origin: "top-level", BaseDir: baseDir}
 }
 
 // ExtensionPaths returns the resolved paths of all loaded extensions, in
@@ -377,11 +375,23 @@ func (r *Runner) ExtensionCount() int { return len(r.extensions) }
 //
 // upstream: runner.ts:461-466 (invalidate)
 func (r *Runner) Invalidate(message string) {
+	r.invalidate(message, true)
+}
+
+// InvalidateKeepingRuntime marks the runner stale like Invalidate but leaves its ExtensionRuntime active, for a runner whose runtime was handed to its replacement (a reload rebuilds the runner over the host's registrations, which the replacement keeps using). Invalidating that runtime would make the replacement's every context report stale.
+func (r *Runner) InvalidateKeepingRuntime(message string) {
+	r.invalidate(message, false)
+}
+
+func (r *Runner) invalidate(message string, invalidateRuntime bool) {
 	r.invalidateOnce.Do(func() {
 		if message == "" {
-			message = defaultStaleMessage
+			message = extension.DefaultStaleRuntimeMessage
 		}
 		r.staleMessage.Store(&message)
+		if invalidateRuntime {
+			r.runtime.Invalidate(message)
+		}
 		r.cancelBackground()
 		r.uiPrompts.mu.Lock()
 		if r.uiPrompts.cancel != nil {
@@ -418,9 +428,55 @@ func (r *Runner) BindCore(
 	contextActions extension.ContextActions,
 	providerActions *extension.ProviderActions,
 ) {
-	r.extActions = actions
+	// upstream: runner.ts:410-438 (bindCore copies the ExtensionActions it receives into the runtime every context reads). Contexts call through the runtime at call time, so a later bind is seen; an action the mode also supplies as a context action keeps the context action.
+	// upstream: agent-session.ts:3361-3427 (_bindExtensionCore binds getCommands, and a mode's bindExtensions reaches bindCore only through it). A mode binding that omits it keeps the Session's.
+	if actions.GetCommands == nil {
+		actions.GetCommands = r.runtime.GetCommands
+	}
+	// upstream: agent-session.ts:3419 (_bindExtensionCore binds setLabel to sessionManager.appendLabelChange); a mode binding that omits it keeps the Session's.
+	if actions.SetLabel == nil {
+		actions.SetLabel = r.runtime.SetLabel
+	}
+	// upstream: agent-session.ts:3339-3355 binds each of these once, for the runtime the extension API reads and for the contexts; a mode that supplies
+	// one through its context actions only still has the extension API reach the same function.
+	if actions.GetAllTools == nil {
+		actions.GetAllTools = contextActions.GetAllTools
+	}
+	if actions.GetActiveTools == nil {
+		actions.GetActiveTools = contextActions.GetActiveTools
+	}
+	if actions.SetActiveTools == nil {
+		actions.SetActiveTools = contextActions.SetActiveTools
+	}
+	if actions.RefreshTools == nil {
+		actions.RefreshTools = contextActions.RefreshTools
+	}
+	if actions.AppendEntry == nil {
+		actions.AppendEntry = contextActions.AppendEntry
+	}
+	r.runtime.ExtensionActions = actions
+	runtime := r.runtime
+	if contextActions.GetAllTools == nil && actions.GetAllTools != nil {
+		contextActions.GetAllTools = func() []extension.ToolInfo { return runtime.GetAllTools() }
+	}
+	if contextActions.GetActiveTools == nil && actions.GetActiveTools != nil {
+		contextActions.GetActiveTools = func() []string { return runtime.GetActiveTools() }
+	}
+	if contextActions.SetActiveTools == nil && actions.SetActiveTools != nil {
+		contextActions.SetActiveTools = func(names []string) { runtime.SetActiveTools(names) }
+	}
+	if contextActions.RefreshTools == nil && actions.RefreshTools != nil {
+		contextActions.RefreshTools = func() error { return runtime.RefreshTools() }
+	}
+	if contextActions.AppendEntry == nil && actions.AppendEntry != nil {
+		contextActions.AppendEntry = func(customType string, data any) error { return runtime.AppendEntry(customType, data) }
+	}
 	if contextActions.GetScopedModels == nil {
 		contextActions.GetScopedModels = r.contextActions.GetScopedModels
+	}
+	// upstream: runner.ts:914 (ctx.thinkingLevel reads the runtime's getThinkingLevel, which bindCore copies from the ExtensionActions)
+	if contextActions.GetThinkingLevel == nil {
+		contextActions.GetThinkingLevel = actions.GetThinkingLevel
 	}
 	// upstream: runner.ts:362, 398-405, 889-891 (ctx.sessionManager is a constructor field no binding replaces); agent-session.ts:3173-3194, 3301 (a mode's bindExtensions reaches bindCore only through _bindExtensionCore, which binds executeTool, getCallableTools and appendEntry). A mode binding that omits them keeps the Session's.
 	if contextActions.ExecuteTool == nil {
@@ -434,7 +490,7 @@ func (r *Runner) BindCore(
 	}
 	// upstream: runner.ts:363, 399-406, 835, 893-895 (the ModelRegistry is a constructor argument of the runner, ctx.modelRegistry reads it, and no bindCore replaces it); runner.ts:468-541 (every bindCore rebinds provider registration to it); agent-session.ts:3185, 3287-3313 (a mode's bindExtensions reaches bindCore only through _bindExtensionCore). A mode binding that omits it keeps the Session's, for ctx.modelRegistry and for the provider registration it backs below.
 	if contextActions.ModelRegistry == nil {
-		contextActions.ModelRegistry = r.contextActions.ModelRegistry
+		contextActions.ModelRegistry = r.GetModelRegistry()
 	}
 	// upstream: agent-session.ts:3353 (_bindExtensionCore binds refreshTools); a mode binding that omits it keeps the Session's.
 	if contextActions.RefreshTools == nil {
@@ -459,11 +515,27 @@ func (r *Runner) BindCore(
 	// Upstream's sendUserMessage lives on ExtensionAPI, which every handler
 	// receives. Pig delivers it through the per-extension Context, so the
 	// handler-facing bundle carries the same action the command path uses.
-	r.contextActions.SendUserMessage = actions.SendUserMessage
-	var providers extension.ProviderActions
+	if actions.SendUserMessage != nil {
+		r.contextActions.SendUserMessage = func(content any, options *extension.SendUserMessageOptions) error {
+			return runtime.SendUserMessage(content, options)
+		}
+	} else {
+		r.contextActions.SendUserMessage = nil
+	}
+	// The shared runtime may already hold actions its host bound (cmd/pig's callbacks start the registration refresh after each registration). The runner composes with them instead of replacing them: the model registry's own methods fill only what no host bound, and an explicit providerActions entry wins, as upstream's providerActions do (runner.ts:481-490).
+	host := r.runtime.BoundProviderActions()
+	providers := host
+	providers.RegisterVirtualModel, providers.UnregisterVirtualModel = nil, nil
 	if registry, ok := contextActions.ModelRegistry.(providerRegistry); ok {
-		providers.RegisterProvider = registry.RegisterProvider
-		providers.UnregisterProvider = registry.UnregisterProvider
+		if providers.RegisterProvider == nil {
+			providers.RegisterProvider = registry.RegisterExtensionProvider
+		}
+		if providers.UnregisterProvider == nil {
+			providers.UnregisterProvider = registry.UnregisterProvider
+		}
+	}
+	if registry, ok := contextActions.ModelRegistry.(nativeProviderRegistry); ok && providers.RegisterNativeProvider == nil && providers.RegisterNativeProviderCarrier == nil {
+		providers.RegisterNativeProviderCarrier = registry.RegisterNativeProvider
 	}
 	// upstream: runner.ts:497-500, 538-541: a provider action wins over the model registry's own virtual-model methods.
 	if registry, ok := contextActions.ModelRegistry.(virtualModelRegistry); ok {
@@ -477,6 +549,11 @@ func (r *Runner) BindCore(
 		if providerActions.UnregisterProvider != nil {
 			providers.UnregisterProvider = providerActions.UnregisterProvider
 		}
+		// An explicit native provider action replaces the host's and the registry's in either form.
+		if providerActions.RegisterNativeProvider != nil || providerActions.RegisterNativeProviderCarrier != nil {
+			providers.RegisterNativeProvider = providerActions.RegisterNativeProvider
+			providers.RegisterNativeProviderCarrier = providerActions.RegisterNativeProviderCarrier
+		}
 		if providerActions.RegisterVirtualModel != nil {
 			providers.RegisterVirtualModel = providerActions.RegisterVirtualModel
 		}
@@ -489,12 +566,19 @@ func (r *Runner) BindCore(
 		return extension.NewContext(r.cwd, nil, r.assertActive, r.actions()), nil
 	})
 	r.runtime.SetMcpServersChangeListener(r.onMcpServersChange)
+	// pig additive (D107): host diagnostics outside a handler reach this
+	// runner's error listeners.
+	r.runtime.SetErrorReporter(r.emitError)
 	r.runtime.BindProviderActions(providers, r.emitError)
 }
 
 type providerRegistry interface {
-	RegisterProvider(string, extension.ProviderConfig) error
+	RegisterExtensionProvider(string, extension.ProviderConfig) error
 	UnregisterProvider(string)
+}
+
+type nativeProviderRegistry interface {
+	RegisterNativeProvider(context.Context, *extension.NativeProvider) error
 }
 
 type virtualModelRegistry interface {
@@ -505,7 +589,7 @@ type virtualModelRegistry interface {
 // BindSessionManager rebinds the log ctx.sessionManager exposes to contexts made afterwards. It is safe to call while handlers run.
 //
 // upstream: runner.ts:889-891 (`get sessionManager()` reads the runner's session manager); a replacement binds a new AgentSession's manager to a new runner (agent-session-runtime.ts), which Go's in-place Session.ReplaceInner has no counterpart for.
-func (r *Runner) BindSessionManager(manager extension.SessionManager) {
+func (r *Runner) BindSessionManager(manager extension.ReadonlySessionManager) {
 	r.sessionManager.Store(&manager)
 }
 
@@ -513,7 +597,7 @@ func (r *Runner) BindSessionManager(manager extension.SessionManager) {
 func (r *Runner) actions() extension.ContextActions {
 	actions := r.contextActions
 	// upstream: loader.ts:475-478 (getMcpServers reads the runtime the loader shares with the runner).
-	actions.GetMcpServers = r.runtime.McpServers
+	actions.GetMcpServers = r.runtime.McpServers().List
 	if manager := r.sessionManager.Load(); manager != nil {
 		actions.SessionManager = *manager
 	}
@@ -690,6 +774,10 @@ func (r *Runner) assertActive() error {
 	if msg := r.staleMessage.Load(); msg != nil {
 		return &StaleError{Message: *msg}
 	}
+	// A runtime the loader or host invalidated directly makes every runner sharing it stale, as upstream's API methods call runtime.assertActive.
+	if err := r.runtime.AssertActive(); err != nil {
+		return &StaleError{Message: err.Error()}
+	}
 	return nil
 }
 
@@ -715,6 +803,18 @@ func (r *Runner) Tools() []extension.RegisteredTool {
 	return out
 }
 
+// ToolsVersion reports a value that changes whenever [Runner.Tools] can
+// return a different list: the extension count plus every extension's tool
+// registry mutation count. State pushers compare it to skip re-serializing
+// an unchanged tool catalog.
+func (r *Runner) ToolsVersion() uint64 {
+	var version uint64
+	for _, ext := range r.extensions {
+		version += ext.ToolRegistryVersion() + 1
+	}
+	return version
+}
+
 // ToolSourceInfo returns the SourceInfo of the extension whose tool
 // [Runner.Tools] reports under toolName. Upstream registerTool stamps the
 // registering extension's sourceInfo onto the tool (loader.ts), and
@@ -728,7 +828,7 @@ func (r *Runner) ToolSourceInfo(toolName string) (extension.SourceInfo, bool) {
 			return ext.SourceInfo, true
 		}
 	}
-	return nil, false
+	return extension.SourceInfo{}, false
 }
 
 // GetToolDefinition returns the definition for the named tool. The
@@ -760,6 +860,19 @@ func (r *Runner) Commands() []extension.ResolvedCommand {
 	defer r.commandMu.Unlock()
 	r.commandDiagnostics = nil
 	return r.resolveCommands()
+}
+
+// CommandsVersion reports a counter that moves whenever Commands can return something different: the sum of the extensions' command versions, which only grow. The boolean is false when an extension's commands have no version.
+func (r *Runner) CommandsVersion() (uint64, bool) {
+	var total uint64
+	for i := range r.extensions {
+		version, ok := r.extensions[i].CommandsVersion()
+		if !ok {
+			return 0, false
+		}
+		total += version
+	}
+	return total, true
 }
 
 // Command returns the resolved command whose invocation name matches.
@@ -869,22 +982,7 @@ func (r *Runner) resolveCommands() []extension.ResolvedCommand {
 	var commands []extension.RegisteredCommand
 	counts := map[string]int{}
 	for _, ext := range r.extensions {
-		seenNames := make(map[string]struct{}, len(ext.Commands))
-		for _, name := range ext.CommandOrder {
-			cmd, ok := ext.Commands[name]
-			if !ok {
-				continue
-			}
-			commands = append(commands, cmd)
-			counts[cmd.Name]++
-			seenNames[name] = struct{}{}
-		}
-		// Legacy direct Extension values may not carry CommandOrder. Preserve
-		// their existing map behavior without inventing a secondary sort.
-		for name, cmd := range ext.Commands {
-			if _, ordered := seenNames[name]; ordered {
-				continue
-			}
+		for _, cmd := range ext.RegisteredCommands() {
 			commands = append(commands, cmd)
 			counts[cmd.Name]++
 		}
@@ -925,11 +1023,11 @@ func (r *Runner) resolveCommands() []extension.ResolvedCommand {
 func (r *Runner) Flags() map[string]extension.ExtensionFlag {
 	out := map[string]extension.ExtensionFlag{}
 	for _, ext := range r.extensions {
-		for name, flag := range ext.Flags {
-			if _, dup := out[name]; dup {
+		for _, flag := range ext.RegisteredFlags() {
+			if _, dup := out[flag.Name]; dup {
 				continue
 			}
-			out[name] = flag
+			out[flag.Name] = flag
 		}
 	}
 	return out
@@ -941,7 +1039,7 @@ func (r *Runner) Flags() map[string]extension.ExtensionFlag {
 func (r *Runner) SetFlagValue(name string, value any) {
 	r.flagMu.Lock()
 	defer r.flagMu.Unlock()
-	r.flagValues[name] = value
+	r.runtime.FlagValues[name] = value
 }
 
 // GetFlagValues returns a copy of the runtime flags, including registered defaults.
@@ -949,13 +1047,13 @@ func (r *Runner) SetFlagValue(name string, value any) {
 func (r *Runner) GetFlagValues() map[string]any {
 	r.flagMu.RLock()
 	defer r.flagMu.RUnlock()
-	return maps.Clone(r.flagValues)
+	return maps.Clone(r.runtime.FlagValues)
 }
 
 func (r *Runner) flagValue(name string) any {
 	r.flagMu.RLock()
 	defer r.flagMu.RUnlock()
-	return r.flagValues[name]
+	return r.runtime.FlagValues[name]
 }
 
 // HasHandlers reports whether any extension declares a non-empty handler
@@ -991,14 +1089,30 @@ var reservedKeybindings = map[string]struct{}{
 	"tui.input.copy": {}, "tui.editor.deleteToLineEnd": {},
 }
 
-func (r *Runner) Shortcuts(resolvedKeybindings map[string][]string) map[extension.KeyID]extension.ExtensionShortcut {
+// ShortcutEntry is one extension shortcut under its normalized key.
+type ShortcutEntry struct {
+	Key      extension.KeyID
+	Shortcut extension.ExtensionShortcut
+}
+
+// Shortcuts is getShortcuts (runner.ts:673): the entries of Pi's Map in iteration order. A key keeps the position of its first registration and takes the value of its last.
+func (r *Runner) Shortcuts(resolvedKeybindings map[string][]string) []ShortcutEntry {
 	r.shortcutDiagnostics = nil
 	builtinKeybindings := map[extension.KeyID]builtInKeyBinding{}
 	if resolvedKeybindings != nil {
-		for _, action := range slices.Sorted(maps.Keys(resolvedKeybindings)) {
+		// buildBuiltinKeybindings iterates the table in insertion order, which lists every tui.* keybinding before the app.* ones; a map has no order, so the actions are visited tui.* first and by name within each group.
+		actions := slices.Sorted(maps.Keys(resolvedKeybindings))
+		rank := func(action string) int {
+			if strings.HasPrefix(action, "tui.") {
+				return 0
+			}
+			return 1
+		}
+		slices.SortStableFunc(actions, func(a, b string) int { return cmp.Compare(rank(a), rank(b)) })
+		for _, action := range actions {
 			_, restricted := reservedKeybindings[action]
 			for _, key := range resolvedKeybindings[action] {
-				normalized := extension.KeyID(strings.ToLower(key))
+				normalized := extension.KeyID(jsstring.ToLower(key))
 				existing, exists := builtinKeybindings[normalized]
 				if exists && existing.restrictOverride && !restricted {
 					continue
@@ -1007,10 +1121,12 @@ func (r *Runner) Shortcuts(resolvedKeybindings map[string][]string) map[extensio
 			}
 		}
 	}
-	out := map[extension.KeyID]extension.ExtensionShortcut{}
+	out := []ShortcutEntry{}
+	position := map[extension.KeyID]int{}
 	for _, ext := range r.extensions {
-		for key, shortcut := range ext.Shortcuts {
-			normalized := extension.KeyID(strings.ToLower(string(key)))
+		for _, shortcut := range ext.RegisteredShortcuts() {
+			key := shortcut.Shortcut
+			normalized := extension.KeyID(jsstring.ToLower(string(key)))
 			if builtin, ok := builtinKeybindings[normalized]; ok {
 				if builtin.restrictOverride {
 					r.shortcutDiagnostics = append(r.shortcutDiagnostics, extension.ResourceDiagnostic{
@@ -1026,14 +1142,20 @@ func (r *Runner) Shortcuts(resolvedKeybindings map[string][]string) map[extensio
 					Path:    shortcut.ExtensionPath,
 				})
 			}
-			if _, duplicate := out[normalized]; duplicate {
+			if index, duplicate := position[normalized]; duplicate {
+				existing := out[index].Shortcut
 				r.shortcutDiagnostics = append(r.shortcutDiagnostics, extension.ResourceDiagnostic{
 					Type:    extension.DiagnosticWarning,
-					Message: fmt.Sprintf("Extension shortcut conflict: '%s' registered by multiple extensions. Using %s.", key, shortcut.ExtensionPath),
+					Message: fmt.Sprintf("Extension shortcut conflict: '%s' registered by both %s and %s. Using %s.", key, existing.ExtensionPath, shortcut.ExtensionPath, shortcut.ExtensionPath),
 					Path:    shortcut.ExtensionPath,
 				})
 			}
-			out[normalized] = shortcut
+			if index, duplicate := position[normalized]; duplicate {
+				out[index].Shortcut = shortcut
+			} else {
+				position[normalized] = len(out)
+				out = append(out, ShortcutEntry{Key: normalized, Shortcut: shortcut})
+			}
 		}
 	}
 	return out
@@ -1054,7 +1176,7 @@ func (r *Runner) ShortcutDiagnostics() []extension.ResourceDiagnostic {
 // upstream: runner.ts:495-503 (getMessageRenderer)
 func (r *Runner) MessageRenderer(customType string) extension.MessageRenderer {
 	for _, ext := range r.extensions {
-		if renderer, ok := ext.MessageRenderers[customType]; ok {
+		if renderer, ok := ext.MessageRendererFor(customType); ok {
 			return renderer
 		}
 	}
@@ -1100,7 +1222,7 @@ func (r *Runner) ResolveToolRenderers(toolName string, base func() *extension.To
 // upstream: runner.ts (getEntryRenderer)
 func (r *Runner) EntryRenderer(customType string) extension.EntryRenderer {
 	for _, ext := range r.extensions {
-		if renderer, ok := ext.EntryRenderers[customType]; ok {
+		if renderer, ok := ext.EntryRendererFor(customType); ok {
 			return renderer
 		}
 	}
@@ -1183,8 +1305,29 @@ type eventHandlerSnapshot struct {
 	handlers []extension.HandlerFn
 }
 
+// jsonEventHandlerSnapshot is eventHandlerSnapshot with, for each handler, whether it reads its event only as JSON.
+type jsonEventHandlerSnapshot struct {
+	ext      *extension.Extension
+	handlers []extension.HandlerFn
+	jsonOnly []bool
+}
+
+// snapshotJSONEventHandlers is snapshotEventHandlers for a dispatch that shares work among the handlers that read the event only as JSON: a boundary dispatch decodes a preview's sources only for a handler that reads Go values (boundarywire), and an event that no handler changed keeps its encoding (eventwire).
+func snapshotJSONEventHandlers(extensions []extension.Extension, event string) []jsonEventHandlerSnapshot {
+	snapshots := make([]jsonEventHandlerSnapshot, 0, len(extensions))
+	for i := range extensions {
+		ext := &extensions[i]
+		if handlers, jsonOnly := ext.JSONEventHandlers(event); len(handlers) != 0 {
+			snapshots = append(snapshots, jsonEventHandlerSnapshot{ext: ext, handlers: handlers, jsonOnly: jsonOnly})
+		}
+	}
+	return snapshots
+}
+
 // snapshotEventHandlers captures every extension before the first callback runs. Registration changes affect only a subsequent or nested dispatch.
 // upstream: packages/coding-agent/src/core/extensions/runner.ts:snapshotEventHandlers
+//
+//pig:hotpath
 func snapshotEventHandlers(extensions []extension.Extension, event string) []eventHandlerSnapshot {
 	snapshots := make([]eventHandlerSnapshot, 0, len(extensions))
 	for i := range extensions {
@@ -1197,10 +1340,11 @@ func snapshotEventHandlers(extensions []extension.Extension, event string) []eve
 }
 
 // EmitProjectTrust dispatches project_trust in extension and registration
-// order. Undecided handlers fall through; the first decisive result wins.
+// order, passing each handler the event, the dispatch context and trust (runner.ts emitProjectTrustEvent ctx). Undecided handlers
+// fall through; the first decisive result wins.
 // Handler failures are collected and do not stop later handlers, matching the
 // pre-runtime upstream helper.
-func EmitProjectTrust(r *Runner, ctx context.Context, event extension.ProjectTrustEvent) (*extension.ProjectTrustEventResult, []extension.ExtensionError, error) {
+func EmitProjectTrust(r *Runner, ctx context.Context, event extension.ProjectTrustEvent, trust extension.ProjectTrustContext) (*extension.ProjectTrustEventResult, []extension.ExtensionError, error) {
 	if err := r.assertActive(); err != nil {
 		return nil, nil, err
 	}
@@ -1209,7 +1353,7 @@ func EmitProjectTrust(r *Runner, ctx context.Context, event extension.ProjectTru
 	for _, snapshot := range snapshotEventHandlers(r.extensions, "project_trust") {
 		ext := snapshot.ext
 		for _, handler := range snapshot.handlers {
-			result, err := callHandler(handler, event, dispatchCtx)
+			result, err := callHandler(handler, event, dispatchCtx, trust)
 			if err != nil {
 				errors = append(errors, extension.ExtensionError{
 					ExtensionPath: extensionPath(*ext),
@@ -1220,10 +1364,13 @@ func EmitProjectTrust(r *Runner, ctx context.Context, event extension.ProjectTru
 				continue
 			}
 			if result == nil {
+				// Pi reads handlerResult.trusted without a guard, so a handler that returns nothing fails with a TypeError that the dispatch reports like any other handler failure.
+				failure := &handlerPanicError{message: "Cannot read properties of undefined (reading 'trusted')", stack: string(debug.Stack())}
 				errors = append(errors, extension.ExtensionError{
 					ExtensionPath: extensionPath(*ext),
 					Event:         "project_trust",
-					Error:         "project_trust handler returned no result",
+					Error:         failure.Error(),
+					Stack:         failure.ErrorStack(),
 				})
 				continue
 			}
@@ -1314,11 +1461,19 @@ func (r *Runner) EmitBoundary(
 	}
 	valid := true
 	dispatchCtx := r.dispatchContext(ctx)
-	for _, snapshot := range snapshotEventHandlers(r.extensions, eventType) {
+	wire := boundarywire.FromContext(ctx)
+	for _, snapshot := range snapshotJSONEventHandlers(r.extensions, eventType) {
 		ext := snapshot.ext
-		for _, handler := range snapshot.handlers {
+		for i, handler := range snapshot.handlers {
 			event, state := withBoundaryState(baseEvent, extension.BoundaryState{Entries: entries, Continue: shouldContinue, Context: preview, Outcome: outcome})
-			handlerResult, handlerErr := callHandler(handler, event, dispatchCtx)
+			var handlerResult any
+			var handlerErr error
+			if wire != nil && !snapshot.jsonOnly[i] {
+				handlerErr = wire.Deliver(preview)
+			}
+			if handlerErr == nil {
+				handlerResult, handlerErr = callHandler(handler, event, dispatchCtx)
+			}
 			entries = state.Entries
 			if handlerErr != nil {
 				r.recordHandlerError(ctx, ext.Path, eventType, handlerErr)
@@ -1397,16 +1552,20 @@ func (r *Runner) EmitToolCall(ctx context.Context, event extension.ToolCallEvent
 		return nil, nil
 	}
 
-	dispatchCtx := r.dispatchContext(ctx)
+	dispatchCtx, wire := eventwire.WithDispatch(r.dispatchContext(ctx))
 	var result *extension.ToolCallEventResult
 
-	for _, snapshot := range snapshotEventHandlers(r.extensions, "tool_call") {
+	for _, snapshot := range snapshotJSONEventHandlers(r.extensions, "tool_call") {
 		ext, handlers := snapshot.ext, snapshot.handlers
 		if len(handlers) == 0 {
 			continue
 		}
-		for _, handler := range handlers {
+		for i, handler := range handlers {
 			handlerResult, err := callHandler(handler, event, dispatchCtx)
+			if !snapshot.jsonOnly[i] {
+				// A handler that holds the event's Go values may have edited its input.
+				wire.Changed()
+			}
 			if err != nil {
 				return nil, err
 			}
@@ -1426,6 +1585,18 @@ func (r *Runner) EmitToolCall(ctx context.Context, event extension.ToolCallEvent
 		}
 	}
 	return result, nil
+}
+
+// AwaitEventLoopTurns gives each extension that handles event and runs on an event loop of its own (Extension.EventLoopTurn) one turn of that loop, concurrently, and returns when every one took it. Pi runs its tools on the extensions' event loop, so the callbacks an event handler queued run before the tool's result; this keeps that order when the tool ran elsewhere.
+// pig additive (D19): a turn that fails is not waited for; the extension's next dispatch reports its connection.
+func (r *Runner) AwaitEventLoopTurns(ctx context.Context, event string) {
+	var turns sync.WaitGroup
+	for _, snapshot := range snapshotEventHandlers(r.extensions, event) {
+		if turn := snapshot.ext.EventLoopTurn; turn != nil {
+			turns.Go(func() { _ = turn(ctx) })
+		}
+	}
+	turns.Wait()
 }
 
 // EmitToolResult dispatches a ToolResultEvent to every "tool_result"
@@ -1517,8 +1688,20 @@ func (r *Runner) EmitToolResult(ctx context.Context, event extension.ToolResultE
 		Details:           curDetails,
 		StructuredContent: curStructured,
 		IsError:           &curIsError,
-		Usage:             curUsage,
+		Usage:             toolResultUsage(curUsage),
 	}, nil
+}
+
+// toolResultUsage is the chained usage as the typed override: the event carries the tool's own usage as a *ai.Usage or an
+// ai.Usage, and a handler returns a *ai.Usage.
+func toolResultUsage(usage any) *ai.Usage {
+	switch value := usage.(type) {
+	case *ai.Usage:
+		return value
+	case ai.Usage:
+		return &value
+	}
+	return nil
 }
 
 // EmitInput dispatches an input event to every "input" handler across
@@ -1623,10 +1806,7 @@ func (r *Runner) EmitInput(ctx context.Context, text string, images []extension.
 func cloneAgentMessages(messages []extension.AgentMessage) []extension.AgentMessage {
 	cloned := make([]extension.AgentMessage, len(messages))
 	for i, message := range messages {
-		value := cloneMessageValue(reflect.ValueOf(message))
-		if value.IsValid() {
-			cloned[i] = value.Interface()
-		}
+		cloned[i] = cloneMessageValue(reflect.ValueOf(message)).Interface().(extension.AgentMessage)
 	}
 	return cloned
 }
@@ -1886,7 +2066,7 @@ func (r *Runner) EmitContextWithSystem(ctx context.Context, messages []extension
 			if err := ctx.Err(); err != nil {
 				return nil, err
 			}
-			hadLeadingSystem := len(current) > 0 && messageRole(current[0]) == "system"
+			hadLeadingSystem := len(current) > 0 && current[0].Role() == "system"
 			event := extension.ContextWithSystemEvent{Type: "context_with_system", Messages: current}
 			handlerResult, err := callHandler(handler, event, dispatchCtx)
 			if contextErr := ctx.Err(); contextErr != nil {
@@ -1907,7 +2087,7 @@ func (r *Runner) EmitContextWithSystem(ctx context.Context, messages []extension
 					current = typed.Messages
 				}
 			}
-			if hadLeadingSystem && (len(current) == 0 || messageRole(current[0]) != "system") {
+			if hadLeadingSystem && (len(current) == 0 || current[0].Role() != "system") {
 				r.recordHandlerError(ctx, ext.Path, "context_with_system", errLeadingSystemRemoved)
 			}
 		}
@@ -1967,23 +2147,24 @@ func (r *Runner) EmitBeforeProviderRequest(ctx context.Context, payload any) (an
 }
 
 // EmitMessageEnd dispatches message_end to every handler in load order. Each
-// handler sees the latest message; a handler may return a replacement with the
-// same role. It returns the final replacement, or nil when no handler replaced
+// handler sees the event with the latest message; a handler may return a replacement with the
+// same role. It returns the final replacement, or nil (upstream undefined) when no handler replaced
 // the message. Handler errors and role changes are reported and skipped.
 //
 // upstream: runner.ts:1043-1080 (emitMessageEnd)
-func (r *Runner) EmitMessageEnd(ctx context.Context, message extension.AgentMessage) (extension.AgentMessage, error) {
+func (r *Runner) EmitMessageEnd(ctx context.Context, event extension.MessageEndEvent) (*extension.AgentMessage, error) {
 	if err := r.assertActive(); err != nil {
 		return nil, err
 	}
 	dispatchCtx := r.dispatchContext(ctx)
-	current := message
+	current := event.Message
 	modified := false
 	for _, snapshot := range snapshotEventHandlers(r.extensions, "message_end") {
 		ext := snapshot.ext
 		for _, handler := range snapshot.handlers {
-			event := extension.MessageEndEvent{Type: "message_end", Message: current}
-			handlerResult, err := callHandler(handler, event, dispatchCtx)
+			currentEvent := event
+			currentEvent.Message = current
+			handlerResult, err := callHandler(handler, currentEvent, dispatchCtx)
 			if err != nil {
 				r.recordHandlerError(ctx, ext.Path, "message_end", err)
 				continue
@@ -1992,10 +2173,10 @@ func (r *Runner) EmitMessageEnd(ctx context.Context, message extension.AgentMess
 				continue
 			}
 			typed, ok := coerceResult[*extension.MessageEndEventResult](handlerResult)
-			if !ok || typed == nil || typed.Message == nil || *typed.Message == nil {
+			if !ok || typed == nil || typed.Message == nil {
 				continue
 			}
-			if messageRole(*typed.Message) != messageRole(current) {
+			if typed.Message.Role() != current.Role() {
 				r.recordHandlerError(ctx, ext.Path, "message_end", errors.New("message_end handlers must return a message with the same role"))
 				continue
 			}
@@ -2006,23 +2187,7 @@ func (r *Runner) EmitMessageEnd(ctx context.Context, message extension.AgentMess
 	if !modified {
 		return nil, nil
 	}
-	return current, nil
-}
-
-// messageRole reads the role of a host or wire message.
-func messageRole(message extension.AgentMessage) string {
-	if roled, ok := message.(interface{ Role() string }); ok {
-		return roled.Role()
-	}
-	raw, err := json.Marshal(message)
-	if err != nil {
-		return ""
-	}
-	var probe struct {
-		Role string `json:"role"`
-	}
-	_ = json.Unmarshal(raw, &probe)
-	return probe.Role
+	return &current, nil
 }
 
 // EmitBeforeProviderHeaders lets every "before_provider_headers" handler
@@ -2254,46 +2419,89 @@ func isUserBashNumber(value any) bool {
 //
 // Handler errors route via emitError; chain continues.
 //
-// upstream: runner.ts:875-939 (emitBeforeAgentStart)
+// upstream: runner.ts:1427-1477 (emitBeforeAgentStart(trigger, systemPromptOptions)): each handler's event spreads the trigger, a user
+// prompt or the custom message that starts the run.
 func (r *Runner) EmitBeforeAgentStart(
 	ctx context.Context,
-	prompt string,
-	images []extension.ImageContent,
-	systemPrompt string,
+	trigger extension.BeforeAgentStartTrigger,
 	systemPromptOptions extension.BuildSystemPromptOptions,
 ) (*extension.BeforeAgentStartCombinedResult, error) {
 	if err := r.assertActive(); err != nil {
 		return nil, err
 	}
 
-	currentSystemPrompt := systemPrompt
 	// runner.ts:1317 normalizeBuildSystemPromptOptions: handlers share one copy of the caller's options, so no edit reaches the caller's base object.
 	currentOptions := clonePromptOptions(systemPromptOptions)
 	hadSections := len(*currentOptions.Sections) > 0
 	original := clonePromptOptions(*currentOptions)
 	selectedBefore := slices.Clone(currentOptions.SelectedTools)
-	promptCtx := extension.WithBeforeAgentStartOptions(ctx, currentOptions)
+	promptCtx, wire := eventwire.WithDispatch(extension.WithBeforeAgentStartOptions(ctx, currentOptions))
 	var messages []extension.CustomMessageRef
 	systemPromptModified := false
+	// runner.ts:1426 renderCurrentSystemPrompt: the prompt every handler and ctx.getSystemPrompt() see is built from the shared options, so an edit to sections, tools or forceSystemPrompt reaches the next reader.
+	// The render is a pure function of the options, so a handler that leaves them as they were reads the prompt the last render built; only an edit renders again.
+	var lastRender struct {
+		options *extension.BuildSystemPromptOptions
+		text    string
+		err     error
+	}
+	renderCurrentSystemPrompt := func() (string, error) {
+		if lastRender.options != nil && reflect.DeepEqual(*lastRender.options, *currentOptions) {
+			return lastRender.text, lastRender.err
+		}
+		text, err := RenderSystemPrompt(*currentOptions)
+		lastRender.options, lastRender.text, lastRender.err = clonePromptOptions(*currentOptions), text, err
+		return text, err
+	}
+	// runner.ts:1430-1433: the event's systemPrompt is a getter of the same render, so a Go handler reads its own edits.
+	systemPrompt := extension.NewSystemPrompt(renderCurrentSystemPrompt)
+	// A handler that reads its event only as JSON receives the prompt rendered before it runs: a render that fails fails that handler, as reading Pi's getter throws.
+	// The render serves the next such handler while no change to the options was recorded (eventwire).
+	var renderedVersion uint64
+	hasRendered := false
+	var forcedByResult string
 
-	for _, snapshot := range snapshotEventHandlers(r.extensions, "before_agent_start") {
+	for _, snapshot := range snapshotJSONEventHandlers(r.extensions, "before_agent_start") {
 		ext, handlers := snapshot.ext, snapshot.handlers
 		if len(handlers) == 0 {
 			continue
 		}
-		for _, handler := range handlers {
+		for i, handler := range handlers {
 			actions := r.actions()
-			actions.GetSystemPrompt = func() string { return currentSystemPrompt }
+			actions.GetSystemPrompt = func() string {
+				if err := r.assertActive(); err != nil {
+					panic(err)
+				}
+				text, err := renderCurrentSystemPrompt()
+				if err != nil {
+					panic(err) // runner.ts:1433: the getter throws and the handler fails
+				}
+				return text
+			}
 			extCtx := extension.NewContext(r.cwd, nil, r.assertActive, actions)
 			dispatchCtx := extension.WithContext(promptCtx, extCtx)
+			version := wire.Version()
+			if snapshot.jsonOnly[i] && (!hasRendered || renderedVersion != version) {
+				if _, renderErr := renderCurrentSystemPrompt(); renderErr != nil {
+					r.recordHandlerError(ctx, ext.Path, "before_agent_start", renderErr)
+					continue
+				}
+				renderedVersion, hasRendered = version, true
+			}
 			event := extension.BeforeAgentStartEvent{
 				Type:                "before_agent_start",
-				Prompt:              prompt,
-				Images:              images,
-				SystemPrompt:        currentSystemPrompt,
+				MessageType:         trigger.MessageType,
+				Prompt:              trigger.Prompt,
+				Images:              trigger.Images,
+				Message:             trigger.Message,
+				SystemPrompt:        systemPrompt,
 				SystemPromptOptions: *currentOptions,
 			}
 			handlerResult, err := callHandler(handler, event, dispatchCtx)
+			if !snapshot.jsonOnly[i] {
+				// A handler that holds the shared options may have edited them.
+				wire.Changed()
+			}
 			if err != nil {
 				r.recordHandlerError(ctx, ext.Path, "before_agent_start", err)
 				continue
@@ -2315,9 +2523,10 @@ func (r *Runner) EmitBeforeAgentStart(
 			}
 			// upstream: `if (result.systemPrompt !== undefined)`.
 			if typed.SystemPrompt != nil {
-				currentSystemPrompt = *typed.SystemPrompt
+				forcedByResult = *typed.SystemPrompt
 				currentOptions.ForceSystemPrompt = new(*typed.SystemPrompt)
 				systemPromptModified = true
+				wire.Changed()
 			}
 		}
 	}
@@ -2346,9 +2555,25 @@ func (r *Runner) EmitBeforeAgentStart(
 		combined.Messages = messages
 	}
 	if systemPromptModified {
-		combined.SystemPrompt = &currentSystemPrompt
+		combined.SystemPrompt = &forcedByResult
 	}
 	return combined, nil
+}
+
+// RenderSystemPrompt is Pi's buildSystemPrompt(options) (system-prompt.ts:208): an exact forced prompt, or the base sections for the options with their custom sections applied, rendered as the transcript's system message replays them. An invalid custom section is an error, as Pi's builder throws.
+func RenderSystemPrompt(options extension.BuildSystemPromptOptions) (string, error) {
+	if options.ForceSystemPrompt != nil {
+		return *options.ForceSystemPrompt, nil
+	}
+	var custom ai.OrderedSections
+	if options.Sections != nil {
+		custom = *options.Sections
+	}
+	sections, err := prompts.ApplyCustomSystemPromptSections(prompts.BuildSystemPromptSections(prompts.FromExtensionOptions(options)), custom)
+	if err != nil {
+		return "", err
+	}
+	return ai.GetCurrentSystemPrompt([]ai.Message{ai.SystemMessage{Content: ai.SystemText(""), Sections: sections}}), nil
 }
 
 // clonePromptOptions copies every collection that a handler can edit, as upstream normalizeBuildSystemPromptOptions does. Sections is always a distinct non-nil collection.
@@ -2577,7 +2802,7 @@ func typedDetails[T any](details any) (*T, bool) {
 // system can't express this, so the result is `any` and callers
 // type-assert. The 4 SessionBefore* event types are documented as the
 // only types whose result is non-nil in the godoc above.
-func (r *Runner) Emit(ctx context.Context, event any) (any, error) {
+func (r *Runner) Emit(ctx context.Context, event extension.ExtensionEvent) (any, error) {
 	if event == nil {
 		return nil, nil
 	}
@@ -2626,6 +2851,8 @@ func (r *Runner) Emit(ctx context.Context, event any) (any, error) {
 // (runner.ts:702-714). Callers already record the returned error via
 // recordHandlerError, so a panicking handler is isolated and surfaced the
 // same way a returned error is.
+//
+//pig:hotpath
 func callHandler(handler extension.HandlerFn, args ...any) (result any, err error) {
 	defer func() {
 		if r := recover(); r != nil {

@@ -75,6 +75,8 @@ func TestParseHTTPURLMatchesNodeURL(t *testing.T) {
 		{"http://0x7f1e142949672961e1g/", ok("http:", "0x7f1e142949672961e1g", "", "", "")},
 	} {
 		got, err := ParseHTTPURL(tc.input)
+		// TestResolveHTTPURLMatchesNodeURL covers the pathname.
+		got.Pathname = ""
 		switch {
 		case tc.want == nil && err == nil:
 			t.Errorf("ParseHTTPURL(%q) = %+v, want an error", tc.input, got)

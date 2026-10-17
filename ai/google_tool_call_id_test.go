@@ -33,14 +33,31 @@ func googleToolCallMessages(id string) []Message {
 	}
 }
 
+// googleIDModel is the target model of the id tests.
+func googleIDModel() *Model {
+	return &Model{ID: "gemini-3-pro", Input: []string{"text", "image"}, ProviderMeta: ProviderMetadata{API: APIGoogleGenerativeAI, ProviderID: "google"}}
+}
+
 func TestGoogleConvertMessages_EmitsToolCallIdWhenRequired(t *testing.T) {
-	output := geminiConvertMessages(googleToolCallMessages("call_abc|item_def"), "google", "gemini-3-pro", true)
-	const wantID = "call_abc_item_def"
-	if call := findFunctionCall(output); call == nil || call.ID != wantID {
-		t.Fatalf("function call = %#v", call)
-	}
-	if response := findFunctionResponse(output); response == nil || response.ID != wantID {
-		t.Fatalf("function response = %#v", response)
+	// google-shared.ts convertMessages: transformMessages normalizes the ids of another model's calls (and their results), and a call of the
+	// same model keeps its id.
+	for _, tc := range []struct{ name, model, want string }{
+		{"foreign model", "gemini-2.5-pro", "call_abc_item_def"},
+		{"same model", "gemini-3-pro", "call_abc|item_def"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			messages := googleToolCallMessages("call_abc|item_def")
+			assistant := messages[0].(AssistantMessage)
+			assistant.Model, assistant.API = tc.model, APIGoogleGenerativeAI
+			messages[0] = assistant
+			output := ConvertGoogleMessages(googleIDModel(), NormalizeContext(Context{Messages: messages}))
+			if call := findFunctionCall(output); call == nil || call.ID != tc.want {
+				t.Fatalf("function call = %#v", call)
+			}
+			if response := findFunctionResponse(output); response == nil || response.ID != tc.want {
+				t.Fatalf("function response = %#v", response)
+			}
+		})
 	}
 }
 
@@ -60,10 +77,10 @@ func TestGoogleConvertMessages_OmitsToolCallIdWhenNotRequired(t *testing.T) {
 
 func TestGoogleConvertMessages_TruncatesToolCallIdTo64(t *testing.T) {
 	id := strings.Repeat("a", 100)
-	messages := []Message{AssistantMessage{Provider: "google", Model: "gemini-3-pro", Content: []AssistantContentBlock{
+	messages := []Message{AssistantMessage{Provider: "google", Model: "gemini-2.5-pro", StopReason: StopReasonToolUse, Content: []AssistantContentBlock{
 		ToolCall{ID: id, Name: "bash", Arguments: JsonObject{}},
 	}}}
-	call := findFunctionCall(geminiConvertMessages(messages, "google", "gemini-3-pro", true))
+	call := findFunctionCall(ConvertGoogleMessages(googleIDModel(), NormalizeContext(Context{Messages: messages})))
 	if call == nil || len(call.ID) != 64 {
 		t.Fatalf("function call = %#v", call)
 	}

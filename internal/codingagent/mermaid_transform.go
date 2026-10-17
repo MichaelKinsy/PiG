@@ -1,19 +1,24 @@
+//go:build !pig_strip_mermaid
+
 package codingagent
 
 import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
-	gmparser "github.com/yuin/goldmark/parser"
-	gmtext "github.com/yuin/goldmark/text"
-	"github.com/yuin/goldmark/util"
+	gmparser "github.com/MichaelKinsy/PiG/third_party/goldmark/parser"
+	gmtext "github.com/MichaelKinsy/PiG/third_party/goldmark/text"
+	"github.com/MichaelKinsy/PiG/third_party/goldmark/util"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/mermaid"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -22,8 +27,8 @@ import (
 
 var markedBlockSpace = lazyregexp.New(`^(?:[ \t]*(?:\n|$))+`)
 
-// Parse block ownership without inline rendering. The fence adapter applies Marked's token boundaries to every fence, so containment and the replacement body cannot disagree.
-var mermaidBlockParser = newMermaidBlockParser()
+// Parse block ownership without inline rendering. The fence adapter applies Marked's token boundaries to every fence, so containment and the replacement body cannot disagree. The parser is built on first use, not on every start.
+var mermaidBlockParser = sync.OnceValue(newMermaidBlockParser)
 
 func newMermaidBlockParser() gmparser.Parser {
 	blocks := append([]util.PrioritizedValue{util.Prioritized(&markedDefinitionParser{}, 0)}, gmparser.DefaultBlockParsers()...)
@@ -47,7 +52,7 @@ var mermaidReferenceDefinition = lazyregexp.New(`^ {0,3}\[((?:\\[\s\S]|[^\[\]\\]
 
 func topLevelMermaidFences(markdown string) []*markedCodeBlock {
 	source := []byte(markdown)
-	root := mermaidBlockParser.Parse(gmtext.NewReader(source))
+	root := mermaidBlockParser().Parse(gmtext.NewReader(source))
 	var fences []*markedCodeBlock
 	for node := root.FirstChild(); node != nil; node = node.NextSibling() {
 		code, ok := node.(*markedCodeBlock)
@@ -61,7 +66,13 @@ func topLevelMermaidFences(markdown string) []*markedCodeBlock {
 
 // createMermaidMarkdownTransformer returns a transformer that replaces top-level
 // Mermaid code blocks with terminal diagrams. theme may be nil (plain art).
+// While a message streams, the transformer keeps the last text it found plain (mermaidPlainText), so the frames of one streamed message read only what each delta added.
 func createMermaidMarkdownTransformer(getMode func() string, theme *tui.Theme) extension.MarkdownTransformer {
+	// pig additive (D92): a Piglet that strips mermaid leaves every block raw, as mermaid_off.go does.
+	if pigstrip.Has(pigstrip.ListFeatures, pigstrip.Mermaid) {
+		return rawMermaidMarkdown
+	}
+	var plain mermaidPlainText
 	return func(markdown string, context extension.MarkdownTransformContext) string {
 		mode := getMode()
 		if mode == "off" ||
@@ -69,14 +80,53 @@ func createMermaidMarkdownTransformer(getMode func() string, theme *tui.Theme) e
 			(context.IsStreaming && mode != "streaming") {
 			return markdown
 		}
+		if !context.IsStreaming {
+			plain.forget()
+		} else if plain.holds(markdown) {
+			return markdown
+		}
 		return transformMermaidBlocks(markdown, context, theme)
 	}
+}
+
+// mermaidPlainText is the last streamed text a transformer found to hold no carriage return and no "mermaid" in any letter case: transformMermaidBlocks returns such a text unchanged. A streamed message grows at its end, so a text that starts with it is plain when what follows it is, together with the len("mermaid")-1 bytes before that, where a word across the boundary would start. Only a streaming render keeps it, so a finished message does not retain a copy.
+type mermaidPlainText struct {
+	mu   sync.Mutex
+	text string
+}
+
+// holds reports whether transformMermaidBlocks returns markdown unchanged because it holds neither a carriage return nor the word, and keeps markdown when it does.
+func (p *mermaidPlainText) holds(markdown string) bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	rest := markdown
+	if p.text != "" && strings.HasPrefix(markdown, p.text) {
+		//portlint:allow utf16units the pre-check scans bytes (containsFoldMermaid is an ASCII scan), so the rest to scan starts at a byte offset
+		rest = markdown[max(0, len(p.text)-len("mermaid")+1):]
+	}
+	if strings.IndexByte(rest, '\r') >= 0 || containsFoldMermaid(rest) {
+		return false
+	}
+	p.text = markdown
+	return true
+}
+
+func (p *mermaidPlainText) forget() {
+	p.mu.Lock()
+	p.text = ""
+	p.mu.Unlock()
 }
 
 // transformMermaidBlocks selects direct document code tokens, as Pi mermaid.ts:72-76 does with Marked. Non-code containers retain their raw text; only the selected fence bodies reach the diagram renderer.
 func transformMermaidBlocks(markdown string, context extension.MarkdownTransformContext, theme *tui.Theme) string {
 	// Marked's lexer normalizes line endings before producing raw tokens.
 	markdown = strings.ReplaceAll(strings.ReplaceAll(markdown, "\r\n", "\n"), "\r", "\n")
+	// A fence is selected only when its info string's first word equals "mermaid" ignoring case (isMermaidInfo), so text with no such
+	// run holds none and the parse, repeated on every streaming frame, is skipped. No non-ASCII rune simple-folds to a letter of
+	// "mermaid", so the ASCII scan is exact.
+	if !containsFoldMermaid(markdown) {
+		return markdown
+	}
 	fences := topLevelMermaidFences(markdown)
 	if len(fences) == 0 {
 		return markdown
@@ -101,6 +151,21 @@ func transformMermaidBlocks(markdown string, context extension.MarkdownTransform
 	}
 	out.WriteString(markdown[offset:])
 	return out.String()
+}
+
+// mermaidFoldScanned counts the bytes containsFoldMermaid has read, the work of the pre-check on each frame.
+var mermaidFoldScanned atomic.Int64
+
+// containsFoldMermaid reports whether s holds "mermaid" in any letter case.
+func containsFoldMermaid(s string) bool {
+	mermaidFoldScanned.Add(int64(len(s)))
+	const word = "mermaid"
+	for i := 0; i+len(word) <= len(s); i++ {
+		if (s[i] == 'm' || s[i] == 'M') && strings.EqualFold(s[i:i+len(word)], word) {
+			return true
+		}
+	}
+	return false
 }
 
 // isMermaidFenceClose applies Marked's closing rule: up to three spaces, the opener's matching run, optional mixed backtick/tilde suffixes, then spaces only.
@@ -157,7 +222,7 @@ func mermaidHint(reason string, context extension.MarkdownTransformContext, them
 	}
 	line := "Mermaid diagram not rendered: " + reason
 	if theme != nil {
-		line = theme.FgText("warning", line)
+		line = theme.Fg("warning", line)
 	}
 	return "\n" + codeSpan(line) + "  \n"
 }
@@ -207,15 +272,15 @@ func backtickRuns(s string) []int {
 func styleSpan(span mermaid.Span, theme *tui.Theme) string {
 	switch span.Cls {
 	case mermaid.ClsBorder:
-		return theme.FgText("borderMuted", span.Text)
+		return theme.Fg("borderMuted", span.Text)
 	case mermaid.ClsText:
-		return theme.FgText("text", span.Text)
+		return theme.Fg("text", span.Text)
 	case mermaid.ClsEdge:
-		return theme.FgText("accent", span.Text)
+		return theme.Fg("accent", span.Text)
 	case mermaid.ClsEdgeLabel:
-		return theme.FgText("muted", span.Text)
+		return theme.Fg("muted", span.Text)
 	case mermaid.ClsTitle:
-		return theme.FgText("accent", "\x1b[1m"+span.Text+tui.SGRBoldDimReset)
+		return theme.Fg("accent", "\x1b[1m"+span.Text+tui.SGRBoldDimReset)
 	}
 	return span.Text
 }

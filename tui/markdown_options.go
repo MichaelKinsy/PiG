@@ -39,4 +39,4 @@ func NewMarkdownWithOptions(content string, paddingX, paddingY int, theme *Markd
 }
 
 // SetText replaces source text and invalidates its rendered output.
-func (m *Markdown) SetText(text string) { m.Content = text; m.Invalidate() }
+func (m *Markdown) SetText(text string) { m.Content = text; m.textChanged() }

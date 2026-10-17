@@ -1,0 +1,18 @@
+{
+	"workerHardLimits": {
+		"uncompressedBytes": 67108864,
+		"startupMs": 1000
+	},
+	"core": {
+		"go": { "rawBytes": 12582912, "gzipBytes": 4194304, "instantiateMs": 150 },
+		"tinygo": { "rawBytes": 4194304, "gzipBytes": 1572864, "instantiateMs": 40 }
+	},
+	"probe": {
+		"go": { "rawBytes": 5242880, "gzipBytes": 1572864, "instantiateMs": 100 },
+		"tinygo": { "rawBytes": 1048576, "gzipBytes": 393216, "instantiateMs": 30 }
+	},
+	"host": {
+		"minifiedBytes": 262144,
+		"gzipBytes": 81920
+	}
+}

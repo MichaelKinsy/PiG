@@ -48,7 +48,7 @@ func TestBuiltInOverrideWithoutRenderersMatchesBuiltInCard(t *testing.T) {
 					tuiInst:       tui.NewWithOutput(io.Discard, 80, 30),
 					toolByID:      make(map[string]*tui.ToolExecutionComponent),
 					toolStarts:    make(map[string]time.Time),
-					opts:          InteractiveOptions{CWD: cwd},
+					opts:          InteractiveModeOptions{CWD: cwd},
 					toolsExpanded: expanded,
 				}
 				m.handleAgentEvent(agent.ToolExecutionStartEvent{ToolCallID: "c", ToolName: c.name, Args: json.RawMessage(c.args)})

@@ -1,0 +1,80 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#SessionManager::property:buildSessionProjection"
+  ],
+  "targets": [
+   "internal/codingagent/session.go#Session.BuildSessionProjection"
+  ],
+  "production": [
+   "call:coding/session.go#Session.ContextUsage"
+  ],
+  "evidence": [
+   "test:coding/session_boundaries_drafts_upstream_test.go#TestUpstreamSessionBoundariesDrafts",
+   "test:internal/codingagent/session_restore_upstream_test.go#TestSessionPreloadedEntriesUpstream"
+  ],
+  "rationale": "SessionManager.buildSessionProjection is the Go method Session.BuildSessionProjection; types reviewed against the upstream declaration; upstream SessionManager is internal/codingagent.Session (coding.SessionManager aliases it); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SessionManager::property:getCwd"
+  ],
+  "targets": [
+   "internal/codingagent/session_manager_accessors.go#Session.GetCwd"
+  ],
+  "production": [
+   "call:coding/runtime_replacement.go#Runtime.SwitchSessionWithProjectTrust"
+  ],
+  "evidence": [
+   "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalCrossCWD"
+  ],
+  "rationale": "SessionManager.getCwd is the Go method Session.GetCwd; types reviewed against the upstream declaration; upstream SessionManager is internal/codingagent.Session (coding.SessionManager aliases it); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SessionManager::property:getSessionDir"
+  ],
+  "targets": [
+   "internal/codingagent/session_manager_accessors.go#Session.GetSessionDir"
+  ],
+  "production": [
+   "call:coding/cli/interactive_build.go#cliRuntimeBuilder.interactiveReplacement"
+  ],
+  "evidence": [
+   "test:coding/sdk_session_manager_upstream_test.go#TestUpstreamSDKSessionManagerDefaultPersistedPath",
+   "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportCollision"
+  ],
+  "rationale": "SessionManager.getSessionDir is the Go method Session.GetSessionDir; types reviewed against the upstream declaration; upstream SessionManager is internal/codingagent.Session (coding.SessionManager aliases it); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SessionManager::property:getSessionName"
+  ],
+  "targets": [
+   "internal/codingagent/session.go#Session.GetSessionName"
+  ],
+  "production": [
+   "call:coding/session.go#Session.SessionName"
+  ],
+  "evidence": [
+   "test:coding/session_name_upstream_test.go#TestUpstreamSessionNameEvents"
+  ],
+  "rationale": "SessionManager.getSessionName is the Go method Session.GetSessionName; types reviewed against the upstream declaration; upstream SessionManager is internal/codingagent.Session (coding.SessionManager aliases it); tests are upstream-ported files attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SessionManager::property:isPersisted"
+  ],
+  "targets": [
+   "internal/codingagent/session_manager_accessors.go#Session.IsPersisted"
+  ],
+  "production": [
+   "call:coding/runtime_replacement.go#Runtime.Fork"
+  ],
+  "evidence": [
+   "test:coding/sdk_session_manager_upstream_test.go#TestUpstreamSDKSessionManagerDefaultPersistedPath",
+   "test:coding/sdk_session_manager_upstream_test.go#TestUpstreamSDKSessionManagerExplicitOverride"
+  ],
+  "rationale": "SessionManager.isPersisted is the Go method Session.IsPersisted; types reviewed against the upstream declaration; upstream SessionManager is internal/codingagent.Session (coding.SessionManager aliases it); tests are upstream-ported files attributed by go/types (methodrefs)."
+ }
+]

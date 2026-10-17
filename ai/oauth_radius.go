@@ -12,9 +12,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -22,6 +22,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
+	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 )
 
 const (
@@ -125,10 +126,10 @@ func (o *RadiusOAuth) RefreshToken(credentials OAuthCredentials) (OAuthCredentia
 
 // RefreshTokenContext exchanges the token with the owning operation's cancellation.
 func (o *RadiusOAuth) RefreshTokenContext(ctx context.Context, credentials OAuthCredentials) (OAuthCredentials, error) {
-	return o.requestOAuthToken(ctx, url.Values{
-		"grant_type":    {"refresh_token"},
-		"client_id":     {radiusOAuthClientID},
-		"refresh_token": {credentials.Refresh},
+	return o.requestOAuthToken(ctx, formFields{
+		{"grant_type", "refresh_token"},
+		{"client_id", radiusOAuthClientID},
+		{"refresh_token", credentials.Refresh},
 	})
 }
 
@@ -136,35 +137,67 @@ func (o *RadiusOAuth) redirectURI() string {
 	return "http://" + o.callbackAddress + radiusCallbackPath
 }
 
+// radiusReply is one gateway response. readErr is the failure to read its body: Node's fetch rejects text() and json() then.
+type radiusReply struct {
+	status  int
+	body    []byte
+	readErr error
+}
+
+func (r radiusReply) ok() bool { return r.status >= 200 && r.status <= 299 }
+
+// json is `await response.json()` of a successful response, which radius.ts does not catch: a body that failed to read rejects with fetch's error and one that is not JSON with V8's SyntaxError. A null body has no members, so reading one throws a TypeError (member names the property the caller reads).
+func (r radiusReply) json(ctx context.Context, member string) (map[string]any, error) {
+	if r.readErr != nil {
+		return nil, fetchBodyReadError(ctx)
+	}
+	value, _, ok := oauthJSONValue(r.body)
+	if !ok {
+		return nil, oauthJSONRejection(r.body)
+	}
+	if value == nil {
+		return nil, fmt.Errorf("Cannot read properties of null (reading '%s')", member)
+	}
+	members, _ := value.(map[string]any)
+	return members, nil
+}
+
 func (o *RadiusOAuth) loadOAuthDiscovery(ctx context.Context) (string, error) {
-	status, body, err := o.send(ctx, http.MethodGet, "/v1/oauth", nil)
+	reply, err := o.send(ctx, http.MethodGet, "/v1/oauth", nil)
 	if err != nil {
 		return "", err
 	}
-	if status < 200 || status > 299 {
-		return "", fmt.Errorf("Could not load Radius OAuth config from %s: %d %s", o.gateway, status, body)
+	if !reply.ok() {
+		// `${await response.text()}` is not caught either.
+		if reply.readErr != nil {
+			return "", fetchBodyReadError(ctx)
+		}
+		return "", fmt.Errorf("Could not load Radius OAuth config from %s: %d %s", o.gateway, reply.status, fetchBodyText(reply.body))
 	}
-	var discovery map[string]json.RawMessage
-	var endpoint string
-	if json.Unmarshal(body, &discovery) != nil || json.Unmarshal(discovery["authorizationEndpoint"], &endpoint) != nil {
+	discovery, err := reply.json(ctx, "authorizationEndpoint")
+	if err != nil {
+		return "", err
+	}
+	endpoint, ok := discovery["authorizationEndpoint"].(string)
+	if !ok {
 		return "", fmt.Errorf("Invalid Radius OAuth config from %s", o.gateway)
 	}
 	return endpoint, nil
 }
 
 // send issues one gateway request and reads the whole body.
-func (o *RadiusOAuth) send(ctx context.Context, method, path string, form url.Values) (int, []byte, error) {
+func (o *RadiusOAuth) send(ctx context.Context, method, path string, form formFields) (radiusReply, error) {
 	endpoint, err := resolveGatewayPath(o.gateway, path)
 	if err != nil {
-		return 0, nil, err
+		return radiusReply{}, err
 	}
 	var body io.Reader
 	if form != nil {
 		body = strings.NewReader(form.Encode())
 	}
-	request, err := http.NewRequestWithContext(ctx, method, endpoint, body)
+	request, err := newRadiusRequest(ctx, method, endpoint, body)
 	if err != nil {
-		return 0, nil, err
+		return radiusReply{}, err
 	}
 	request.Header.Set("accept", "application/json")
 	if form != nil {
@@ -172,20 +205,20 @@ func (o *RadiusOAuth) send(ctx context.Context, method, path string, form url.Va
 	}
 	response, err := radiusHTTPClient.Do(request)
 	if err != nil {
-		return 0, nil, err
+		return radiusReply{}, err
 	}
 	defer func() { _ = response.Body.Close() }()
-	data, err := io.ReadAll(response.Body)
-	return response.StatusCode, data, err
+	data, readErr := io.ReadAll(response.Body)
+	return radiusReply{status: response.StatusCode, body: data, readErr: readErr}, nil
 }
 
 // sendForm posts form data, mapping a cancelled request to "Login cancelled".
-func (o *RadiusOAuth) sendForm(ctx context.Context, path string, form url.Values) (int, []byte, error) {
-	status, body, err := o.send(ctx, http.MethodPost, path, form)
+func (o *RadiusOAuth) sendForm(ctx context.Context, path string, form formFields) (radiusReply, error) {
+	reply, err := o.send(ctx, http.MethodPost, path, form)
 	if err != nil && ctx.Err() != nil {
-		return 0, nil, errors.New(radiusLoginCancelled)
+		return radiusReply{}, errors.New(radiusLoginCancelled)
 	}
-	return status, body, err
+	return reply, err
 }
 
 // RadiusOAuthResponseError is a non-2xx OAuth response. Mirrors upstream
@@ -198,15 +231,17 @@ type RadiusOAuthResponseError struct {
 
 func (e *RadiusOAuthResponseError) Error() string { return e.message }
 
-func readRadiusOAuthResponseError(status int, body []byte, message string) *RadiusOAuthResponseError {
+// readRadiusOAuthResponseError is readOAuthResponseError: the text of the body (empty when it failed to read), whose JSON object members error and error_description name the failure. Text that is not JSON, or is null, is the description itself; any other JSON value names nothing.
+func readRadiusOAuthResponseError(reply radiusReply, message string) *RadiusOAuthResponseError {
 	var oauthError, description string
-	if text := string(body); text != "" {
-		var data map[string]any
-		if json.Unmarshal(body, &data) == nil && data != nil {
-			oauthError, _ = data["error"].(string)
-			description, _ = data["error_description"].(string)
-		} else {
-			description = text
+	if reply.readErr == nil {
+		if text := fetchBodyText(reply.body); text != "" {
+			if value, _, ok := oauthJSONValue(reply.body); !ok || value == nil {
+				description = text
+			} else if data, isObject := value.(map[string]any); isObject {
+				oauthError, _ = data["error"].(string)
+				description, _ = data["error_description"].(string)
+			}
 		}
 	}
 	detail := description
@@ -216,30 +251,42 @@ func readRadiusOAuthResponseError(status int, body []byte, message string) *Radi
 	case oauthError != "":
 		detail = oauthError
 	case description == "":
-		detail = fmt.Sprint(status)
+		detail = fmt.Sprint(reply.status)
 	}
-	return &RadiusOAuthResponseError{Status: status, OAuthError: oauthError, message: message + ": " + detail}
+	return &RadiusOAuthResponseError{Status: reply.status, OAuthError: oauthError, message: message + ": " + detail}
 }
 
-func (o *RadiusOAuth) requestOAuthToken(ctx context.Context, form url.Values) (OAuthCredentials, error) {
-	status, body, err := o.sendForm(ctx, "/v1/oauth/token", form)
+func (o *RadiusOAuth) requestOAuthToken(ctx context.Context, form formFields) (OAuthCredentials, error) {
+	reply, err := o.sendForm(ctx, "/v1/oauth/token", form)
 	if err != nil {
 		return OAuthCredentials{}, err
 	}
-	if status < 200 || status > 299 {
-		return OAuthCredentials{}, readRadiusOAuthResponseError(status, body, "Radius OAuth token request failed")
+	if !reply.ok() {
+		return OAuthCredentials{}, readRadiusOAuthResponseError(reply, "Radius OAuth token request failed")
 	}
-	var data struct {
-		AccessToken  string          `json:"access_token"`
-		RefreshToken string          `json:"refresh_token"`
-		ExpiresIn    json.RawMessage `json:"expires_in"`
-		Scope        string          `json:"scope"`
-	}
-	if err := json.Unmarshal(body, &data); err != nil {
+	data, err := reply.json(ctx, "access_token")
+	if err != nil {
 		return OAuthCredentials{}, err
 	}
-	creds := OAuthCredentials{Access: data.AccessToken, Refresh: data.RefreshToken, Scope: data.Scope}
-	creds.SetExpiresMillis(float64(o.now().UnixMilli()) + jsnumber.FromJSON(data.ExpiresIn)*1000 - float64(radiusTokenExpirySkew.Milliseconds()))
+	// Pi builds the credentials from whatever members the body has. An absent or null token is the empty string here, so a gateway that issues no refresh token still signs in; a token of another JSON type cannot be represented, so such a body is an error.
+	access, accessOK := radiusTokenMember(data, "access_token")
+	refresh, refreshOK := radiusTokenMember(data, "refresh_token")
+	if !accessOK || !refreshOK {
+		return OAuthCredentials{}, errors.New("Radius OAuth token response has a token that is not a string")
+	}
+	scope, _ := data["scope"].(string)
+	// `Date.now() + data.expires_in * 1000`: a missing member is undefined, so NaN, and null multiplies as 0.
+	expiresIn := math.NaN()
+	if raw, present := data["expires_in"]; present {
+		switch number := raw.(type) {
+		case json.Number:
+			expiresIn = jsnumber.FromJSON([]byte(number))
+		case nil:
+			expiresIn = 0
+		}
+	}
+	creds := OAuthCredentials{Access: access, Refresh: refresh, Scope: scope, order: credentialKeyOrder{keys: radiusCredentialMembers}}
+	creds.SetExpiresMillis(float64(o.now().UnixMilli()) + float64(expiresIn*1000) - float64(radiusTokenExpirySkew.Milliseconds()))
 	return creds, nil
 }
 
@@ -249,15 +296,14 @@ func (o *RadiusOAuth) loginWithBrowser(ctx context.Context, authorizationEndpoin
 		return OAuthCredentials{}, err
 	}
 	state := uuid.NewString()
-	authorizeURL, err := url.Parse(authorizationEndpoint)
-	if err != nil {
-		return OAuthCredentials{}, err
-	}
-	authorizeURL.RawQuery = orderedQuery(
+	authorizeURL, err := radiusAuthorizeURL(authorizationEndpoint, orderedQuery(
 		"response_type", "code", "client_id", radiusOAuthClientID, "redirect_uri", o.redirectURI(),
 		"scope", radiusOAuthScope, "code_challenge", pkce.Challenge, "code_challenge_method", "S256",
 		"handoff", "url", "state", state,
-	)
+	))
+	if err != nil {
+		return OAuthCredentials{}, err
+	}
 	host, port, err := net.SplitHostPort(o.callbackAddress)
 	if err != nil {
 		return OAuthCredentials{}, err
@@ -273,12 +319,12 @@ func (o *RadiusOAuth) loginWithBrowser(ctx context.Context, authorizationEndpoin
 		Path:         radiusCallbackPath,
 		State:        &state,
 		Complete: func(ctx context.Context, code string) (OAuthCredentials, error) {
-			return o.requestOAuthToken(ctx, url.Values{
-				"grant_type":    {"authorization_code"},
-				"client_id":     {radiusOAuthClientID},
-				"redirect_uri":  {o.redirectURI()},
-				"code":          {code},
-				"code_verifier": {pkce.Verifier},
+			return o.requestOAuthToken(ctx, formFields{
+				{"grant_type", "authorization_code"},
+				{"client_id", radiusOAuthClientID},
+				{"redirect_uri", o.redirectURI()},
+				{"code", code},
+				{"code_verifier", pkce.Verifier},
 			})
 		},
 	})
@@ -290,7 +336,7 @@ func (o *RadiusOAuth) loginWithBrowser(ctx context.Context, authorizationEndpoin
 		callbacks.OnProgress("Listening for OAuth callback on " + o.redirectURI())
 	}
 	if callbacks.OnAuth != nil {
-		callbacks.OnAuth(OAuthAuthInfo{URL: authorizeURL.String(), Instructions: "Continue in your browser."})
+		callbacks.OnAuth(OAuthAuthInfo{URL: authorizeURL, Instructions: "Continue in your browser."})
 	}
 	credentials, ok, err := callback.Wait()
 	if err != nil {
@@ -302,51 +348,47 @@ func (o *RadiusOAuth) loginWithBrowser(ctx context.Context, authorizationEndpoin
 	return credentials, nil
 }
 
-// orderedQuery encodes key/value pairs in the given order exactly like
-// URLSearchParams.toString: url.Values.Encode sorts keys, and url.QueryEscape
-// differs from the WHATWG form serializer on '*' and '~'.
-func orderedQuery(pairs ...string) string {
-	parts := make([]string, 0, len(pairs)/2)
-	for i := 0; i+1 < len(pairs); i += 2 {
-		parts = append(parts, formURLEncode(pairs[i])+"="+formURLEncode(pairs[i+1]))
+// radiusAuthorizeURL is `const url = new URL(endpoint); url.search = query; url.toString()` (radius.ts loginWithBrowser).
+func radiusAuthorizeURL(endpoint, query string) (string, error) {
+	authorizeURL, err := nodeurl.ParseURL(endpoint)
+	if err != nil {
+		return "", err
 	}
-	return strings.Join(parts, "&")
+	return authorizeURL.WithSearch(query), nil
 }
 
-// formURLEncode is the WHATWG application/x-www-form-urlencoded byte
-// serializer that URLSearchParams uses: it keeps ASCII alphanumerics and
-// "*-._", writes space as '+', and percent-encodes every other UTF-8 byte.
-func formURLEncode(s string) string {
-	const upperhex = "0123456789ABCDEF"
-	var b strings.Builder
-	b.Grow(len(s))
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		switch {
-		case 'a' <= c && c <= 'z', 'A' <= c && c <= 'Z', '0' <= c && c <= '9', c == '*', c == '-', c == '.', c == '_':
-			b.WriteByte(c)
-		case c == ' ':
-			b.WriteByte('+')
-		default:
-			b.WriteByte('%')
-			b.WriteByte(upperhex[c>>4])
-			b.WriteByte(upperhex[c&15])
-		}
+// orderedQuery is URLSearchParams.toString for a flat name, value, name, value list; see formFields.
+func orderedQuery(pairs ...string) string {
+	fields := make(formFields, 0, len(pairs)/2)
+	for i := 0; i+1 < len(pairs); i += 2 {
+		fields = append(fields, [2]string{pairs[i], pairs[i+1]})
 	}
-	return b.String()
+	return fields.Encode()
 }
 
 func (o *RadiusOAuth) requestDeviceAuthorization(ctx context.Context) (radiusDeviceAuthorization, error) {
-	status, body, err := o.sendForm(ctx, "/v1/oauth/device", url.Values{"client_id": {radiusOAuthClientID}, "scope": {radiusOAuthScope}})
+	reply, err := o.sendForm(ctx, "/v1/oauth/device", formFields{{"client_id", radiusOAuthClientID}, {"scope", radiusOAuthScope}})
 	if err != nil {
 		return radiusDeviceAuthorization{}, err
 	}
-	if status < 200 || status > 299 {
-		return radiusDeviceAuthorization{}, readRadiusOAuthResponseError(status, body, "Radius OAuth device authorization failed")
+	if !reply.ok() {
+		return radiusDeviceAuthorization{}, readRadiusOAuthResponseError(reply, "Radius OAuth device authorization failed")
 	}
-	var device radiusDeviceAuthorization
-	if err := json.Unmarshal(body, &device); err != nil {
+	data, err := reply.json(ctx, "device_code")
+	if err != nil {
 		return radiusDeviceAuthorization{}, err
+	}
+	// Pi accepts any truthy member; a string field holds only a string, and expires_in only a number.
+	device := radiusDeviceAuthorization{}
+	device.DeviceCode, _ = data["device_code"].(string)
+	device.UserCode, _ = data["user_code"].(string)
+	device.VerificationURI, _ = data["verification_uri"].(string)
+	if number, ok := data["expires_in"].(json.Number); ok {
+		device.ExpiresIn = jsnumber.FromJSON([]byte(number))
+	}
+	if number, ok := data["interval"].(json.Number); ok {
+		interval := jsnumber.FromJSON([]byte(number))
+		device.Interval = &interval
 	}
 	if device.DeviceCode == "" || device.UserCode == "" || device.VerificationURI == "" || device.ExpiresIn == 0 {
 		return radiusDeviceAuthorization{}, errors.New("Radius OAuth device authorization response is missing required fields")
@@ -374,18 +416,32 @@ func (o *RadiusOAuth) loginWithDeviceCode(ctx context.Context, callbacks OAuthLo
 		}
 		callbacks.OnDeviceCode(info)
 	}
-	form := url.Values{"grant_type": {radiusDeviceCodeGrantType}, "client_id": {radiusOAuthClientID}, "device_code": {device.DeviceCode}}
+	form := formFields{{"grant_type", radiusDeviceCodeGrantType}, {"client_id", radiusOAuthClientID}, {"device_code", device.DeviceCode}}
 	return PollOAuthDeviceCodeFlow(ctx, DeviceCodePollOptions[OAuthCredentials]{
 		IntervalSeconds:  device.Interval,
 		ExpiresInSeconds: &device.ExpiresIn,
-		Poll: func() (DeviceCodePollResult[OAuthCredentials], error) {
-			credentials, err := o.requestOAuthToken(ctx, form)
-			if err == nil {
-				return DeviceCodePollResult[OAuthCredentials]{Status: DevicePollComplete, Value: credentials}, nil
-			}
-			return radiusDevicePollResult(err)
-		},
+		Poll:             func() (DeviceCodePollResult[OAuthCredentials], error) { return o.pollDeviceToken(ctx, form) },
 	})
+}
+
+// radiusTokenMember is a token member of a token response: its string, or "" when it is absent or null. ok is false for any other JSON type.
+func radiusTokenMember(data map[string]any, key string) (token string, ok bool) {
+	switch value := data[key].(type) {
+	case string:
+		return value, true
+	case nil:
+		return "", true
+	}
+	return "", false
+}
+
+// pollDeviceToken is one poll of the token endpoint (the poll callback of loginWithDeviceCode).
+func (o *RadiusOAuth) pollDeviceToken(ctx context.Context, form formFields) (DeviceCodePollResult[OAuthCredentials], error) {
+	credentials, err := o.requestOAuthToken(ctx, form)
+	if err == nil {
+		return DeviceCodePollResult[OAuthCredentials]{Status: DevicePollComplete, Value: credentials}, nil
+	}
+	return radiusDevicePollResult(err)
 }
 
 func radiusDevicePollResult(err error) (DeviceCodePollResult[OAuthCredentials], error) {

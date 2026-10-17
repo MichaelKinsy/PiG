@@ -1,6 +1,9 @@
+//go:build !pig_strip_node_extensions
+
 package subprocess
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -105,7 +108,7 @@ export default function (pi: any) {
 			if err := exts[0].Commands["pid"].Handler(ctx, ""); err != nil {
 				t.Fatalf("pid after a handled rejection: %v", err)
 			}
-			if after, _ := os.ReadFile(pidFile); string(after) != string(before) {
+			if after, _ := os.ReadFile(pidFile); !bytes.Equal(after, before) {
 				t.Fatalf("extension process restarted after a handled rejection: pid %s -> %s", before, after)
 			}
 			noticeMu.Lock()

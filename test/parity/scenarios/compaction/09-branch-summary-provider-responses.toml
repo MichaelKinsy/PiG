@@ -14,6 +14,7 @@ override_base_args = true
 pig_bin = "/usr/bin/env"
 pi_bin = "/usr/bin/env"
 pig_args = ["bash", "./test/parity/testdata/branch-summary-pig.sh"]
+pig_go_tests = ["./coding"]
 pi_args = ["node", "--experimental-import-meta-resolve", "./test/parity/testdata/branch-summary-pi.mjs"]
 
 [cli]
@@ -23,5 +24,5 @@ timeout_seconds = 60
 [assert]
 exit_code = 0
 output_equal = true
-both_contain = ['BRANCH_SUMMARY 0 max=4096 error=""', 'BRANCH_SUMMARY 1 max=1024 error=""', 'error="Branch summarization attempted to call a tool"', 'error="Branch summarization failed: generation hit the token cap and the summary is incomplete"']
+both_contain = ['BRANCH_SUMMARY 0 max=0 error=""', 'BRANCH_SUMMARY 1 max=0 error="Branch summarization attempted to call a tool"', 'BRANCH_SUMMARY 2 max=0 error="Branch summarization failed: generation hit the token cap and the summary is incomplete"']
 runs = 3

@@ -15,8 +15,8 @@ func TestInteractiveCommandPromptOptionsRetainLiveMutations(t *testing.T) {
 	runner := inproc.NewRunner(nil, cwd)
 	mode := &InteractiveMode{
 		newRunner: runner,
-		agent:     agent.NewAgent(agent.AgentOptions{Tools: []agent.AgentTool{namedTool{name: "read"}}}),
-		opts:      InteractiveOptions{CWD: cwd, SystemPromptOptions: extension.BuildSystemPromptOptions{Cwd: cwd, SelectedTools: []string{"read"}}},
+		agent:     mustNewAgent(agent.AgentOptions{Tools: []agent.AgentTool{namedTool{name: "read"}}}),
+		opts:      InteractiveModeOptions{CWD: cwd, SystemPromptOptions: extension.BuildSystemPromptOptions{Cwd: cwd, SelectedTools: []string{"read"}}},
 	}
 	mode.wireInprocContextActions()
 	ctx := runner.CreateCommandContext()

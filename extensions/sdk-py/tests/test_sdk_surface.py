@@ -27,6 +27,8 @@ class _Host:
         self.thread = threading.Thread(target=ext.run_with_socket, args=(sock_path,), daemon=True)
         self.thread.start()
         self.conn, _ = self.listener.accept()
+        # A missing frame fails the test after 10 s instead of hanging it.
+        self.conn.settimeout(10)
         self.register = _read_frame(self.conn)["register"]
         _write_frame(self.conn, {"type": "ready", "ready": {"cwd": tmp, "width": 80, **(ready or {})}})
 
@@ -226,8 +228,8 @@ def test_has_ui_and_theme_follow_host_state() -> None:
             "has_ui": ctx.has_ui(),
             "name": theme.name,
             "source_path": theme.source_path,
-            "fg": theme.fg("accent", "x"),
-            "fg_unknown": theme.fg("missing", "x"),
+            "fg": ansi(lambda token: theme.fg(token, "x"), "accent"),
+            "fg_unknown": ansi(lambda token: theme.fg(token, "x"), "missing"),
             "bg": theme.bg("panel", "x"),
             "bold": theme.bold("x"),
             "italic": theme.italic("x"),
@@ -238,7 +240,8 @@ def test_has_ui_and_theme_follow_host_state() -> None:
             "bg_ansi": ansi(theme.get_bg_ansi, "panel"),
             "mode": theme.get_color_mode(),
             "thinking": theme.get_thinking_border_color("high")("x"),
-            "thinking_unknown": theme.get_thinking_border_color("bogus")("x"),
+            # An unknown level uses the thinkingOff token, which this palette lacks (theme.ts:374).
+            "thinking_unknown": ansi(lambda level: theme.get_thinking_border_color(level)("x"), "bogus"),
             "bash": theme.get_bash_mode_border_color()("x"),
             "errors": [ansi(theme.get_fg_ansi, "missing"), ansi(theme.get_bg_ansi, "missing")],
         })
@@ -260,7 +263,7 @@ def test_has_ui_and_theme_follow_host_state() -> None:
         "name": "night",
         "source_path": "/themes/night.json",
         "fg": "\x1b[31mx\x1b[39m",
-        "fg_unknown": "x",
+        "fg_unknown": "ValueError: Unknown theme color: missing",
         "bg": "\x1b[44mx\x1b[49m",
         "bold": "\x1b[1mx\x1b[22m",
         "italic": "\x1b[3mx\x1b[23m",
@@ -271,13 +274,14 @@ def test_has_ui_and_theme_follow_host_state() -> None:
         "bg_ansi": "\x1b[44m",
         "mode": "256color",
         "thinking": "\x1b[35mx\x1b[39m",
-        "thinking_unknown": "x",
+        "thinking_unknown": "ValueError: Unknown theme color: thinkingOff",
         "bash": "\x1b[36mx\x1b[39m",
-        "errors": ["ValueError: Unknown theme color: missing", "ValueError: Unknown theme background color: missing"],
+        "errors": ["ValueError: Unknown theme color: missing", "ValueError: Unknown theme color: missing"],
     }
     after = observed[1]
     assert after["has_ui"] is True
     assert (after["name"], after["source_path"], after["mode"]) == ("plain", None, "truecolor")
+    # The replacement palette has no tokens at all, so fg leaves the text unstyled as before any palette.
     assert (after["fg"], after["bold"]) == ("x", "x")
     assert after["fg_ansi"] == "ValueError: Unknown theme color: accent"
 

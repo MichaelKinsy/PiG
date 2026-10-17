@@ -22,7 +22,7 @@ func BenchmarkProviderRequestShape(b *testing.B) {
 		env := ProviderEnv{"PI_CACHE_RETENTION": "none"}
 		b.ReportAllocs()
 		for b.Loop() {
-			params, err := provider.buildParams(model, transcript, false, anthropicHeaders{}, anthropicHeaders{}, StreamOptions{}, env)
+			params, err := provider.buildParams(model, transcript, false, anthropicHeaders{}, anthropicHeaders{}, StreamOptions{}, env, false)
 			if err != nil {
 				b.Fatal(err)
 			}

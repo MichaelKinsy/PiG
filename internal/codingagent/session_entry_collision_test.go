@@ -17,32 +17,25 @@ func TestSessionGeneratedEntriesRejectExistingIDs(t *testing.T) {
 	user := func(text string) agent.AgentMessage {
 		return agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: text}}}}
 	}
-	leaf := func(s *Session, err error) (string, error) {
-		if err != nil {
-			return "", err
-		}
-		return *s.LeafID(), nil
-	}
 	for _, tc := range []struct {
 		name string
 		add  func(*Session) (string, error)
 	}{
 		{"message", func(s *Session) (string, error) { return s.AppendMessage(user("next")) }},
-		{"custom", func(s *Session) (string, error) { return s.AppendCustomMessage("probe", "next", true, nil) }},
+		{"custom", func(s *Session) (string, error) { return s.AppendCustomMessageEntry("probe", "next", true, nil) }},
 		{"bash", func(s *Session) (string, error) {
 			return s.AppendBashExecution(BashExecutionMessage{Command: "true", ExitCode: new(0), Timestamp: 1})
 		}},
-		{"model", func(s *Session) (string, error) { return leaf(s, s.AppendModelSwitch("provider", "model", "")) }},
-		{"thinking", func(s *Session) (string, error) { return leaf(s, s.AppendThinkingLevelChange("off")) }},
+		{"model", func(s *Session) (string, error) { return s.AppendModelChange("provider", "model") }},
+		{"thinking", func(s *Session) (string, error) { return s.AppendThinkingLevelChange("off") }},
 		{"usage", func(s *Session) (string, error) {
 			entry, err := s.AppendUsage("generation", "provider", "model", ai.Usage{}, "")
 			return entry.ID, err
 		}},
 		{"compaction", func(s *Session) (string, error) { return s.AppendCompaction("summary", occupied, 1, nil, false, nil) }},
 		{"branch-summary", func(s *Session) (string, error) {
-			return s.AppendBranchSummary(new(occupied), "summary", nil, false, nil)
+			return s.BranchWithSummary(new(occupied), "summary", nil, false, nil)
 		}},
-		{"label", func(s *Session) (string, error) { return leaf(s, s.AppendLabelChange(occupied, new("label"))) }},
 		{"session-info", func(s *Session) (string, error) { return s.AppendSessionInfo("name") }},
 		{"custom-entry", func(s *Session) (string, error) { return s.AppendCustomEntry("probe", "next") }},
 		{"context-edit", func(s *Session) (string, error) { return s.AppendContextEdit(occupied, nil) }},
@@ -56,7 +49,7 @@ func TestSessionGeneratedEntriesRejectExistingIDs(t *testing.T) {
 			if err := s.AppendEntry(MessageEntry{SessionEntryBase: SessionEntryBase{Type: "message", ID: occupied, Timestamp: "2026-01-01T00:00:00.000Z"}, Message: user("seed")}); err != nil {
 				t.Fatal(err)
 			}
-			before, _ := s.EntryByID(occupied)
+			before, _ := s.GetEntry(occupied)
 			// These cases are sequential. Only the entry generator consumes entropy after the Session is constructed.
 			reader := rand.Reader
 			rand.Reader = bytes.NewReader([]byte{1, 2, 3, 4, 5, 6, 7, 8})
@@ -68,7 +61,7 @@ func TestSessionGeneratedEntriesRejectExistingIDs(t *testing.T) {
 			if id != "05060708" {
 				t.Errorf("generated ID=%q; must reject occupied %q and use the next entropy value", id, occupied)
 			}
-			after, _ := s.EntryByID(occupied)
+			after, _ := s.GetEntry(occupied)
 			if !bytes.Equal(before.Raw(), after.Raw()) {
 				t.Error("collision replaced the existing index entry")
 			}
@@ -92,12 +85,12 @@ func TestSessionEntryCollisionPairedProbe(t *testing.T) {
 		return id
 	}
 	first, second := appendUser("seed"), appendUser("next")
-	entries := s.Entries()
-	indexed, ok := s.EntryByID(first)
+	entries := s.GetEntries()
+	indexed, ok := s.GetEntry(first)
 	if !ok {
 		t.Fatal("seed entry disappeared")
 	}
-	message, ok := indexed.AsMessage()
+	message, ok := indexed.(MessageEntry)
 	if !ok || message.Message.User == nil {
 		t.Fatal("seed is not a user message")
 	}
@@ -107,7 +100,7 @@ func TestSessionEntryCollisionPairedProbe(t *testing.T) {
 		Parents []*string `json:"parents"`
 		Seed    string    `json:"seed"`
 		Calls   int       `json:"calls"`
-	}{[]string{first, second}, []*string{entries[0].Base.ParentID, entries[1].Base.ParentID}, seed, (len(entropy) - reader.Len()) / 4}
+	}{[]string{first, second}, []*string{entries[0].Base().ParentID, entries[1].Base().ParentID}, seed, (len(entropy) - reader.Len()) / 4}
 	encoded, err := json.Marshal(observation)
 	if err != nil {
 		t.Fatal(err)

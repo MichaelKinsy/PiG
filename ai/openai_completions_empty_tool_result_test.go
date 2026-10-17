@@ -24,3 +24,17 @@ func TestToolResultEmpty_NoOutputPlaceholder(t *testing.T) {
 		t.Fatalf("empty tool result must use the (no tool output) placeholder, got %#v", out[0].Content)
 	}
 }
+
+// Pi 4dd2b149 (#8720): whitespace-only tool result text counts as no text (openai-completions.ts hasText: textResult.trim()).
+func TestToolResultWhitespaceOnly_NoOutputPlaceholder(t *testing.T) {
+	for _, text := range []string{"\r\n", " \n\t"} {
+		messages := []Message{ToolResultMessage{ToolCallID: "call_1", Content: []ToolResultMessageContent{TextContent{Text: text}}}}
+		out, err := convertMessages(messages, false, nil)
+		if err != nil {
+			t.Fatalf("convertMessages: %v", err)
+		}
+		if s, ok := out[0].Content.(string); !ok || s != "(no tool output)" {
+			t.Fatalf("tool result %q must use the (no tool output) placeholder, got %#v", text, out[0].Content)
+		}
+	}
+}

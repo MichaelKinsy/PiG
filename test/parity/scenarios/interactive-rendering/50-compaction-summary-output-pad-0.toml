@@ -1,0 +1,39 @@
+# Behavior family: interactive-rendering
+# Upstream evidence: real Pi 1.1.0 (extensions/sdk-ts/node_modules) run side by side with PiG in tmux at 100x35, resuming the staged session of the
+# base scenario. Pi 1.0.4 ignored outputPad for this block.
+# Surface: outputPad 0 reaches the compaction summary box (Pi 1.1.0 #10557, compaction-summary-message.ts outputPad). With "outputPad": 0 in settings.json the text rows
+# inside the box start in column 0 instead of column 1. The crop runs from the label to the last row, so the second text row's own padding is inside it.
+
+name = "50-compaction-summary-output-pad-0"
+description = "The compaction summary box has no horizontal padding when outputPad is 0."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/compaction-summary-message.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent-output-pad-0"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent-output-pad-0", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/compaction-cwd"
+capture_start = "[compaction]"
+capture_end = "expand)"
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine ", "unknown command"]
+both_contain = ["[compaction]", "87,432", "expand)"]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 3

@@ -54,6 +54,10 @@ paths = ["/**/timestamp"]
 kind = "timestamp"
 reason = "Independent message clocks vary; retain event order, field presence and timestamp type."
 [[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi 1.1.0 times each response and tool run with a monotonic clock (event-stream.ts, agent-loop.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+[[assert.json_aliases]]
 paths = ["/**/sections/cwd"]
 kind = "path"
 reason = "D2: alias only the exact isolated cwd in the system section."
@@ -63,3 +67,8 @@ kind = "id"
 group = "recovery-entry"
 pattern = '^[a-f0-9]{8,16}$'
 reason = "Recovery entry keys vary per process. A bijection preserves the appended entry's parent and omission target; no event or payload field is removed."
+
+[[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."

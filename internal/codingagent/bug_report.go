@@ -7,6 +7,7 @@ package codingagent
 import (
 	"archive/zip"
 	"bytes"
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -18,7 +19,10 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 
 	"github.com/MichaelKinsy/PiG/ai"
 )
@@ -43,8 +47,6 @@ var (
 	bugReportSensitiveKey = lazyregexp.New(`(?i)(?:^|[-_])(api[-_]?key|secret|token|password|passwd|credential|authorization|cookie)(?:$|[-_])`)
 	bugReportCamelBreak   = lazyregexp.New(`([a-z0-9])([A-Z])`)
 	bugReportNestedURL    = lazyregexp.New(`(?i)^([a-z][a-z0-9+.-]*:)([a-z][a-z0-9+.-]*://.*)$`)
-	// WHATWG special schemes serialize an empty path as "/".
-	bugReportSpecialSchemes = []string{"ftp", "file", "http", "https", "ws", "wss"}
 )
 
 func isBugReportSensitiveKey(key string) bool {
@@ -59,45 +61,33 @@ func RedactBugReportURL(value string) string {
 	if nested := bugReportNestedURL.FindStringSubmatch(value); nested != nil {
 		return nested[1] + RedactBugReportURL(nested[2])
 	}
-	parsed, err := url.Parse(value)
-	if err != nil || parsed.Scheme == "" || parsed.Opaque != "" {
+	parsed, err := nodeurl.ParseURL(value)
+	if err != nil {
 		return value
 	}
 	changed := false
-	if parsed.User != nil {
-		parsed.User = nil
+	if parsed.Username != "" || parsed.Password != "" {
+		parsed = parsed.WithoutCredentials()
 		changed = true
 	}
-	if query, queryChanged := redactBugReportQuery(parsed.RawQuery); queryChanged {
-		parsed.RawQuery = query
+	if query, queryChanged := redactBugReportQuery(parsed.Query); queryChanged {
+		parsed = parsed.WithQuery(query)
 		changed = true
 	}
 	if !changed {
 		return value
 	}
-	if parsed.Path == "" && parsed.Host != "" && slices.Contains(bugReportSpecialSchemes, strings.ToLower(parsed.Scheme)) {
-		parsed.Path = "/"
-	}
-	return parsed.String()
+	return parsed.Href()
 }
 
 // redactBugReportQuery replaces the first value of each sensitive query key
 // and drops its later duplicates, then reserializes every pair as
 // application/x-www-form-urlencoded, as URLSearchParams.set does.
 func redactBugReportQuery(raw string) (string, bool) {
-	if raw == "" {
-		return raw, false
-	}
 	type pair struct{ key, value string }
 	var pairs []pair
-	for part := range strings.SplitSeq(raw, "&") {
-		if part == "" {
-			continue
-		}
-		key, value, _ := strings.Cut(part, "=")
-		key, _ = url.QueryUnescape(key)
-		value, _ = url.QueryUnescape(value)
-		pairs = append(pairs, pair{key, value})
+	for _, decoded := range nodeurl.SearchPairs(raw) {
+		pairs = append(pairs, pair{decoded[0], decoded[1]})
 	}
 	changed := false
 	redacted := make(map[string]bool)
@@ -180,6 +170,12 @@ func redactBugReportNode(value any) any {
 		return typed
 	case string:
 		return RedactBugReportURL(typed)
+	case json.Number:
+		// JSON.parse(JSON.stringify(value)) passes each number through a double: -0 becomes 0, 1e21 becomes 1e+21 and a long integer loses digits.
+		if canonical, err := jsonstringify.Canonicalize([]byte(typed)); err == nil {
+			return json.Number(canonical)
+		}
+		return value
 	default:
 		return value
 	}
@@ -395,21 +391,34 @@ func (r *ModelRegistry) BugReportProviderInfo(providerID string) *BugReportProvi
 		config, configured = r.config.Providers[providerID]
 	}
 	dynamic, registered := r.dynamic[providerID]
+	nativeCarrier := r.native[providerID].provider
 	r.mu.RUnlock()
 	if registered {
 		config = dynamic
 	}
+	// bug-report.ts:119 lists Object.keys(provider.headers ?? {}). The composed Provider's headers are base?.headers (provider-composer.ts:609): the
+	// native Provider object's own headers (models.ts:155). models.json and registerProvider headers are request headers, not Provider.headers, and
+	// built-in providers declare none (createProvider, models.ts:1041), so only a native provider's headers are named.
+	var headerNames map[string]*string
+	if nativeCarrier != nil {
+		headerNames = nativeCarrier.Headers
+	}
 	info := &BugReportProvider{
 		ID:                    providerID,
 		Name:                  r.GetProviderDisplayName(providerID),
-		HeaderNames:           sortedKeys(config.Headers),
+		HeaderNames:           sortedKeys(headerNames),
 		AuthStatus:            BugReportAuthStatus{Configured: status.Configured, Source: string(status.Source), Label: status.Label},
 		UsingOAuth:            r.hasStoredOAuth(providerID),
 		RegisteredByExtension: registered,
 	}
-	if (configured || registered) && config.BaseURL != "" {
-		baseURL := RedactBugReportURL(config.BaseURL)
-		info.BaseURL = &baseURL
+	// upstream: provider-composer.ts composeProvider: `extension?.baseUrl ?? config?.baseUrl ?? base?.baseUrl`; describeProvider (bug-report.ts) reports the provider's baseUrl.
+	configuredBaseURL := ""
+	if configured || registered {
+		configuredBaseURL = config.BaseURL
+	}
+	if baseURL := cmp.Or(configuredBaseURL, ai.ProviderBaseURL(providerID)); baseURL != "" {
+		redacted := RedactBugReportURL(baseURL)
+		info.BaseURL = &redacted
 	}
 	return info
 }
@@ -494,7 +503,7 @@ func CollectBugReportMetadata(inputs BugReportInputs, options BugReportOptions, 
 		return BugReportMetadata{}, err
 	}
 	var hint *string
-	if trimmed := strings.TrimSpace(options.Hint); trimmed != "" {
+	if trimmed := jsstring.Trim(options.Hint); trimmed != "" {
 		hint = &trimmed
 	}
 	model, err := describeBugReportModel(inputs.Model)
@@ -577,11 +586,10 @@ func CollectBugReportDiagnostics(sessionID string, entries []SessionEntry, crash
 		Crashes:       make([]CrashRecord, 0, len(crashes)),
 	}
 	for _, crash := range crashes {
-		crash.Notified = false
-		diagnostics.Crashes = append(diagnostics.Crashes, crash)
+		diagnostics.Crashes = append(diagnostics.Crashes, crash.withoutNotified())
 	}
 	for _, entry := range entries {
-		message, ok := entry.AsMessage()
+		message, ok := asMessage(entry)
 		if !ok || message.Message.Assistant == nil {
 			continue
 		}
@@ -591,8 +599,8 @@ func CollectBugReportDiagnostics(sessionID string, entries []SessionEntry, crash
 			continue
 		}
 		turn := BugReportAssistantDiagnostic{
-			EntryID:       entry.Base.ID,
-			Timestamp:     entry.Base.Timestamp,
+			EntryID:       entry.Base().ID,
+			Timestamp:     entry.Base().Timestamp,
 			Provider:      assistant.Provider,
 			Model:         assistant.ModelID,
 			API:           string(assistant.API),
@@ -623,15 +631,19 @@ type BugReportFile struct {
 	Data []byte
 }
 
+// bugReportJSON is JSON.stringify(value, null, 2) followed by a newline: '<', '>', '&', U+2028 and U+2029 stay literal and numbers take their shortest form.
 func bugReportJSON(value any) ([]byte, error) {
 	var buffer bytes.Buffer
 	encoder := json.NewEncoder(&buffer)
 	encoder.SetEscapeHTML(false)
-	encoder.SetIndent("", "  ")
 	if err := encoder.Encode(value); err != nil {
 		return nil, err
 	}
-	return buffer.Bytes(), nil
+	indented, err := stringifyIndented(buffer.Bytes())
+	if err != nil {
+		return nil, err
+	}
+	return append(indented, '\n'), nil
 }
 
 // BugReportFiles lists the archive members in upstream order.
@@ -745,9 +757,9 @@ func BugReportBranch(session *Session) []SessionEntry {
 	if session == nil {
 		return nil
 	}
-	leaf := session.LeafID()
+	leaf := session.GetLeafID()
 	if leaf == nil {
 		return nil
 	}
-	return session.Branch(*leaf)
+	return session.GetBranch(*leaf)
 }

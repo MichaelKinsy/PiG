@@ -1,0 +1,27 @@
+# Behavior family: tools (interactive codemode card)
+# Pi 1.1.0 probe: ToolExecutionComponent with codemodeRenderers (extensions/codemode/renderer.ts), pending code previews (short, long, tabs and
+# CR, empty, missing, non-string), results (ok, failed, no header, long and single-line output, full-output path), nested call rows in every
+# status, many calls, model-call costs, collapsed and expanded at widths 80 and 28; every row is compared byte for byte. The Go test
+# TestCodemodeCardsMatchPi runs the same corpus against the installed Pi; this scenario compares the two printed streams.
+name = "25-codemode-cards"
+description = "The codemode tool card renders the same rows as Pi."
+covers = ["packages/coding-agent/src/extensions/codemode/renderer.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/codemode-cards-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/codemode-cards-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 240
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['Script', 'codemode']
+runs = 2

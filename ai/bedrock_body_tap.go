@@ -1,3 +1,5 @@
+//go:build !pig_strip_bedrock_converse_stream
+
 package ai
 
 import (
@@ -8,9 +10,8 @@ import (
 	"net/http"
 	"net/http/httptrace"
 	"sync"
-	"sync/atomic"
 
-	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
+	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime"
 )
 
 // bedrockBodyTap is the HTTP client one ConverseStream call uses. When the SDK receives a 200 response on an HTTP/1 connection whose reads the transport can observe, the tap keeps the real body for the provider and hands the SDK an empty one. The SDK's own event-stream reader is a free goroutine, so its progress would decide what a consumer observes; the provider reads the body itself as an executor turn (bedrock_stream_pipeline.go).
@@ -19,9 +20,10 @@ import (
 type bedrockBodyTap struct {
 	inner bedrockHTTPClient
 
-	mu       sync.Mutex
-	owner    *bodyReadOwner
-	observed *observedResponseBody
+	mu            sync.Mutex
+	owner         *bodyReadOwner
+	observed      *observedResponseBody
+	errorResponse *bedrockErrorResponse
 }
 
 type bedrockHTTPClient interface {
@@ -62,6 +64,13 @@ func (tap *bedrockBodyTap) Do(request *http.Request) (*http.Response, error) {
 		// A transport that failed before writing (refused dial, proxy error) never reports WroteRequest, and the request context may never be canceled. No write is pending once Do has failed, so release the deferred close.
 		wroteOnce.Do(func() { close(wrote) })
 	}
+	if err == nil && response.StatusCode >= http.StatusMultipleChoices && response.Body != nil {
+		captured := captureBedrockErrorResponse(response)
+		tap.mu.Lock()
+		tap.errorResponse = captured
+		tap.mu.Unlock()
+		return response, nil
+	}
 	if err != nil || response.StatusCode != http.StatusOK || response.ProtoMajor != 1 || response.Body == nil {
 		return response, err
 	}
@@ -85,6 +94,14 @@ func (tap *bedrockBodyTap) body() *observedResponseBody {
 	return tap.observed
 }
 
+// piError gives err Pi's text for the last non-2xx response the SDK read, if any.
+func (tap *bedrockBodyTap) piError(err error) error {
+	tap.mu.Lock()
+	response := tap.errorResponse
+	tap.mu.Unlock()
+	return response.piError(err)
+}
+
 // close releases a kept body that no pipeline took over.
 func (tap *bedrockBodyTap) close() {
 	if body := tap.body(); body != nil {
@@ -99,7 +116,7 @@ func bedrockObservedDial(dial func(context.Context, string, string) (net.Conn, e
 		if err != nil {
 			return nil, err
 		}
-		return &idleTimeoutConn{Conn: conn, timeout: configuredHTTPIdleTimeout, ready: new(atomic.Bool)}, nil
+		return newIdleTimeoutConn(conn, network), nil
 	}
 }
 

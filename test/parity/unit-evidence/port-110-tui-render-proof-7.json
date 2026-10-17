@@ -1,0 +1,110 @@
+[
+  {
+    "upstream": "packages/tui/src/terminal-image.ts",
+    "package": "./tui",
+    "tests": [
+      "TestEncodeITerm2OptionsCarryEveryUpstreamField"
+    ],
+    "upstream_reference": "packages/tui/src/terminal-image.ts",
+    "mutation": "tui/terminal_image.go: replace 'if name != \"\" {\\nparams = append(params, \"name=\"' with 'if name == \"\" {\\nparams = append(params, \"name=\"'; compiling go test -run exact test -count=1 fails TestEncodeITerm2OptionsCarryEveryUpstreamField."
+  },
+  {
+    "upstream": "packages/tui/src/terminal-image.ts",
+    "package": "./tui",
+    "tests": [
+      "TestDeleteKittySequences_ExactByteParity"
+    ],
+    "upstream_reference": "packages/tui/src/terminal-image.ts",
+    "mutation": "tui/terminal_image.go: replace 'a=d,d=I,i=%d,q=2' with 'a=d,d=i,i=%d,q=2'; compiling go test -run exact test -count=1 fails TestDeleteKittySequences_ExactByteParity."
+  },
+  {
+    "upstream": "packages/tui/src/terminal-image.ts",
+    "package": "./tui",
+    "tests": [
+      "TestCalculateImageRows"
+    ],
+    "upstream_reference": "packages/tui/src/terminal-image.ts",
+    "mutation": "tui/terminal_image.go: replace 'return CalculateImageCellSize(imageDimensions, targetWidthCells, 0, dims).Rows' with 'return CalculateImageCellSize(imageDimensions, targetWidthCells, 0, dims).Columns'; compiling go test -run exact test -count=1 fails TestCalculateImageRows."
+  },
+  {
+    "upstream": "packages/tui/src/terminal-image.ts",
+    "package": "./tui",
+    "tests": [
+      "TestCalculateImageRowsScalesToTheTargetWidth"
+    ],
+    "upstream_reference": "packages/tui/src/terminal-image.ts",
+    "mutation": "tui/terminal_image.go: replace 'return CalculateImageCellSize(imageDimensions, targetWidthCells, 0, dims).Rows' with 'return CalculateImageCellSize(imageDimensions, targetWidthCells, 0, dims).Columns'; compiling go test -run exact test -count=1 fails TestCalculateImageRowsScalesToTheTargetWidth."
+  },
+  {
+    "upstream": "packages/tui/src/terminal-image.ts",
+    "package": "./tui",
+    "tests": [
+      "TestUpstreamTerminalImageEncoding"
+    ],
+    "upstream_reference": "packages/tui/src/terminal-image.ts",
+    "mutation": "tui/terminal_image.go: replace 'params := []string{\"a=T\", \"f=100\", \"q=2\"}' with 'params := []string{\"a=T\", \"f=32\", \"q=2\"}'; compiling go test -run exact test -count=1 fails TestUpstreamTerminalImageEncoding."
+  },
+  {
+    "upstream": "packages/tui/src/terminal-image.ts",
+    "package": "./tui",
+    "tests": [
+      "TestEncodeITerm2_ExactByteParity"
+    ],
+    "upstream_reference": "packages/tui/src/terminal-image.ts",
+    "mutation": "tui/terminal_image.go: replace 'inline := 1' with 'inline := 0'; compiling go test -run exact test -count=1 fails TestEncodeITerm2_ExactByteParity."
+  },
+  {
+    "upstream": "packages/tui/src/terminal-image.ts",
+    "package": "./tui",
+    "tests": [
+      "TestEncodeKittyAndITerm2"
+    ],
+    "upstream_reference": "packages/tui/src/terminal-image.ts",
+    "mutation": "tui/terminal_image.go: replace '\",m=1;\"+chunk' with '\",m=2;\"+chunk'; compiling go test -run exact test -count=1 fails TestEncodeKittyAndITerm2."
+  },
+  {
+    "upstream": "packages/tui/src/terminal-image.ts",
+    "package": "./tui",
+    "tests": [
+      "TestImageDimensionsParsers"
+    ],
+    "upstream_reference": "packages/tui/src/terminal-image.ts",
+    "mutation": "tui/terminal_image.go: replace '| int(buf[23])' with '| int(buf[22])'; compiling go test -run exact test -count=1 fails TestImageDimensionsParsers."
+  },
+  {
+    "upstream": "packages/tui/src/terminal-image.ts",
+    "package": "./tui",
+    "tests": [
+      "TestRenderImageAndImageComponent"
+    ],
+    "upstream_reference": "packages/tui/src/terminal-image.ts",
+    "mutation": "tui/terminal_image.go: replace 'return &renderedImage{Sequence: seq, Columns: size.Columns, Rows: size.Rows, ImageID: options.ImageID}' with 'return &renderedImage{Sequence: seq, Columns: size.Columns, Rows: 0, ImageID: options.ImageID}'; compiling go test -run exact test -count=1 fails TestRenderImageAndImageComponent."
+  },
+  {
+    "upstream": "packages/tui/src/components/image.ts",
+    "package": "./tui",
+    "tests": [
+      "TestImageComponent_RenderPlacementByProtocol"
+    ],
+    "upstream_reference": "packages/tui/src/components/image.ts",
+    "mutation": "tui/image.go: replace 'lines = []string{result.Sequence}\\nfor range max(result.Rows-1, 0) {\\nlines = append(lines, \"\")' with 'lines = []string{result.Sequence}\\nfor range max(result.Rows-1, 0) {\\nlines = append(lines, \" \")'; compiling go test -run exact test -count=1 fails TestImageComponent_RenderPlacementByProtocol."
+  },
+  {
+    "upstream": "packages/tui/src/terminal-image.ts",
+    "package": "./tui",
+    "tests": [
+      "TestRenderImage_UsesMaxHeightAndOmitsITermName"
+    ],
+    "upstream_reference": "packages/tui/src/terminal-image.ts",
+    "mutation": "tui/terminal_image.go: replace 'size := CalculateImageCellSize(imageDimensions, maxWidth, options.MaxHeightCells, GetCellDimensions(), caps.Images == ImageProtocolKitty)' with 'size := CalculateImageCellSize(imageDimensions, maxWidth, 0, GetCellDimensions(), caps.Images == ImageProtocolKitty)'; compiling go test -run exact test -count=1 fails TestRenderImage_UsesMaxHeightAndOmitsITermName."
+  },
+  {
+    "upstream": "packages/tui/src/keys.ts",
+    "package": "./tui",
+    "tests": [
+      "TestDecodeKittyPrintable_ShiftAndText"
+    ],
+    "upstream_reference": "packages/tui/src/keys.ts",
+    "mutation": "tui/keys_decode.go: replace 'effectiveCodepoint = shiftedKey' with 'effectiveCodepoint = shiftedKey + 1'; compiling go test -run exact test -count=1 fails TestDecodeKittyPrintable_ShiftAndText."
+  }
+]

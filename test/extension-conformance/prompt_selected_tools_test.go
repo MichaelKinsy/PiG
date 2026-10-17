@@ -164,7 +164,7 @@ func assertPromptSelectedTools(t *testing.T, exts []extension.Extension, names [
 		{"repair", []string{"read", "bash"}, names[len(names)-1:]},
 	} {
 		base := slices.Clone(tc.base)
-		result, err := runner.EmitBeforeAgentStart(t.Context(), tc.prompt, nil, "base", extension.BuildSystemPromptOptions{SelectedTools: base})
+		result, err := runner.EmitBeforeAgentStart(t.Context(), extension.UserPromptTrigger(tc.prompt, nil), extension.BuildSystemPromptOptions{SelectedTools: base})
 		if tc.prompt == "null" || tc.prompt == "repair" && len(names) == 1 {
 			if err == nil || err.Error() != "Cannot read properties of null (reading 'length')" {
 				t.Fatalf("null selectedTools: result=%+v err=%v reported=%v", result, err, reported)
@@ -262,7 +262,7 @@ def new_extension():
 		source = fmt.Sprintf(`use pig_sdk::{Extension,Schema};
 pub fn new_extension()->Extension {
  let mut e=Extension::new(%[1]q);
- e.on_event_result("before_agent_start",false,|_,data| {
+ e.on_event_result("before_agent_start",|_,data| {
   std::thread::sleep(std::time::Duration::from_millis(20));
   if data["prompt"]=="repair" {data["systemPromptOptions"]["selectedTools"]=if data["systemPromptOptions"]["selectedTools"].is_null() {Schema::Array(vec![Schema::String(%[1]q.into())])} else {Schema::Null};return Ok(None)}
   if data["prompt"]=="null" {data["systemPromptOptions"]["selectedTools"]=Schema::Null;return Ok(None)}

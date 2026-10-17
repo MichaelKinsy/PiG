@@ -2,6 +2,8 @@
 
 package harness
 
+// pi: packages/durable/src/harness/prompt.ts
+
 import (
 	"reflect"
 	"testing"
@@ -47,7 +49,7 @@ func promptRoot(t *testing.T) Conversation {
 
 func contextOf(t *testing.T, conversation Conversation) durable.ContextView {
 	t.Helper()
-	view, err := conversation.Context(testContext)
+	view, err := conversation.Context(testContext, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

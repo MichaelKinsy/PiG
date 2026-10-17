@@ -1,0 +1,42 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#ThinkingBudgets"
+  ],
+  "targets": [
+   "ai/simple_options.go#ThinkingBudgets"
+  ],
+  "struct": {
+   "file": "ai/simple_options.go",
+   "type": "ThinkingBudgets"
+  },
+  "production": [
+   "call:ai/openai.go#openAIProvider.Stream",
+   "call:ai/google.go#buildGeminiThinkingConfig"
+  ],
+  "evidence": [
+   "test:ai/openai_thinking_budget_upstream_test.go#TestResolveClampedThinkingBudgetUpstream",
+   "test:ai/google_thinking_level_map_upstream_test.go#TestGoogleThinkingLevelMapPayloadUpstream"
+  ],
+  "rationale": "types.ts ThinkingBudgets {minimal?, low?, medium?, high?}: Go ThinkingBudgets with int fields, zero meaning absent; the OpenAI and Google providers resolve a level through it."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#OAuthSelectOption"
+  ],
+  "targets": [
+   "ai/oauth_types.go#OAuthSelectOption"
+  ],
+  "struct": {
+   "file": "ai/oauth_types.go",
+   "type": "OAuthSelectOption"
+  },
+  "production": [
+   "call:ai/oauth_openai_codex.go#CodexOAuthProvider.LoginContext"
+  ],
+  "evidence": [
+   "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+  ],
+  "rationale": "oauth/types.ts OAuthSelectOption {id, label}: Go OAuthSelectOption {ID, Label string}."
+ }
+]

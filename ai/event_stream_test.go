@@ -476,19 +476,24 @@ func TestAssistantMessageEventStreamCancellationRemovesWaitingIterator(t *testin
 }
 
 func TestAssistantMessageEventStreamAssignedWaiterWinsCancellationResolution(t *testing.T) {
+	executor := &continuationExecutor{}
 	stream := NewAssistantMessageEventStream()
-	waiter := &eventWaiter{ready: make(chan eventDelivery, 1)}
-	stream.waiters = append(stream.waiters, waiter)
+	iterator := newContinuationEventIterator(t.Context(), stream, executor)
+	defer iterator.close()
+	next := iterator.next()
 	partial := testAssistant(StopReasonPending)
 	if err := stream.Push(StartEvent{Partial: partial}); err != nil {
 		t.Fatal(err)
 	}
-
-	delivery, assigned := stream.cancelWaiter(waiter)
-	if !assigned {
-		t.Fatal("cancelWaiter reported an assigned waiter as canceled")
+	// The cancellation hook runs after the push assigned the event to the wait.
+	iterator.cancel()
+	if !next.resolved {
+		t.Fatal("the assigned event did not settle the wait")
 	}
-	if eventType := delivery.event.EventType(); eventType != EventStart {
+	if next.value.done {
+		t.Fatal("cancellation overrode an assigned event")
+	}
+	if eventType := next.value.event.EventType(); eventType != EventStart {
 		t.Fatalf("assigned event = %s, want %s", eventType, EventStart)
 	}
 }

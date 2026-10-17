@@ -5,6 +5,8 @@ package coding
 // over the native builtin:codemode and builtin:tool-search extensions. TestToolsWithDefaultActiveFalseAreActiveOnlyWhenNamed guards the same rule with synthetic tools.
 
 import (
+	"github.com/MichaelKinsy/PiG/coding/extension/factoryload"
+
 	"context"
 	"encoding/json"
 	"reflect"
@@ -12,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -30,7 +33,7 @@ func orchestrationTool(name, description string, definition extension.ToolDefini
 }
 
 func textOutcome(outcome extension.AgentToolCallOutcome) string {
-	result, _ := outcome.Result.(agent.AgentToolResult)
+	result := outcome.Result
 	if len(result.Content) == 0 {
 		return ""
 	}
@@ -70,15 +73,15 @@ func orchestratorExtension(toolCalls *[]string, mu *sync.Mutex) extension.Extens
 			tc := extension.ToolContextFromContext(ctx)
 			helperOutcome, err := tc.ExecuteTool("helper", map[string]any{}, nil)
 			if err != nil {
-				return nil, err
+				return extension.AgentToolResult{}, err
 			}
 			echoOutcome, err := tc.ExecuteTool("echo", map[string]any{"text": "hi"}, nil)
 			if err != nil {
-				return nil, err
+				return extension.AgentToolResult{}, err
 			}
 			selfOutcome, err := tc.ExecuteTool("run_tools", map[string]any{}, nil)
 			if err != nil {
-				return nil, err
+				return extension.AgentToolResult{}, err
 			}
 			return textResult(strings.Join([]string{textOutcome(helperOutcome), textOutcome(echoOutcome), textOutcome(selfOutcome)}, " | ")), nil
 		},
@@ -103,11 +106,10 @@ func orchestratorExtension(toolCalls *[]string, mu *sync.Mutex) extension.Extens
 func newOrchestrationSession(t *testing.T, ext extension.Extension) (*Session, virtualFaux) {
 	t.Helper()
 	services := newTestServices(t)
+	// The configured provider is registered first: registering it after the scripted one would replace faux-1 with the configured model.
+	configureFauxAuth(t, services)
 	faux := ai.NewFauxProvider(ai.FauxConfig{ProviderID: "faux", Model: "faux-1"})
 	if err := services.ModelRuntime().RegisterNativeProvider(faux.Provider()); err != nil {
-		t.Fatal(err)
-	}
-	if err := services.Auth().Set("faux", ai.Credential{Type: ai.CredentialAPIKey, Key: "faux-key"}); err != nil {
 		t.Fatal(err)
 	}
 	runner := inproc.NewRunner([]extension.Extension{ext}, t.TempDir())
@@ -123,7 +125,7 @@ func newOrchestrationSession(t *testing.T, ext extension.Extension) (*Session, v
 		}
 	}()
 	t.Cleanup(func() { _ = session.Close(); <-done })
-	if err := session.BindExtensions(t.Context()); err != nil {
+	if err := session.BindExtensions(t.Context(), ExtensionBindings{}); err != nil {
 		t.Fatal(err)
 	}
 	return session, faux
@@ -165,17 +167,17 @@ func TestSessionToolOrchestrationSupportsToolsThatCallOtherToolsUnderAnyNameThro
 
 	var requestTools [][]string
 	faux.SetResponses([]ai.FauxResponseStep{
-		ai.FauxFactoryStep(func(request ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+		ai.FauxFactoryStep(func(request ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
 			var names []string
 			for _, tool := range ai.GetCurrentTools(request.Messages()) {
 				names = append(names, tool.Name)
 			}
 			requestTools = append(requestTools, names)
-			return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("run_tools", map[string]any{}, "")}, StopReason: "toolUse"}, nil
+			return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("run_tools", map[string]any{}, &ai.FauxToolCallOptions{ID: ""})}, StopReason: "toolUse"}.AssistantMessage(), nil
 		}),
 		fauxText("done"),
 	})
-	if _, err := session.Prompt(t.Context(), "go"); err != nil {
+	if err := session.Prompt(t.Context(), "go"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -203,7 +205,7 @@ func TestSessionToolOrchestrationSupportsToolsThatCallOtherToolsUnderAnyNameThro
 	// The record is persisted with the session.
 	var persisted *agent.ToolResultMessage
 	for _, entry := range session.Inner().GetBranch() {
-		if message, ok := entry.AsMessage(); ok && message.Message.ToolResult != nil {
+		if message, ok := entry.(icodingagent.MessageEntry); ok && message.Message.ToolResult != nil {
 			persisted = message.Message.ToolResult
 			break
 		}
@@ -219,10 +221,10 @@ func TestSessionToolOrchestrationLeavesResultsWithoutNestedCallsUnchanged(t *tes
 	var mu sync.Mutex
 	session, faux := newOrchestrationSession(t, orchestratorExtension(&toolCalls, &mu))
 	faux.SetResponses([]ai.FauxResponseStep{
-		ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("echo", map[string]any{"text": "x"}, "")}, StopReason: "toolUse"}),
+		ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("echo", map[string]any{"text": "x"}, &ai.FauxToolCallOptions{ID: ""})}, StopReason: "toolUse"}),
 		fauxText("done"),
 	})
-	if _, err := session.Prompt(t.Context(), "go"); err != nil {
+	if err := session.Prompt(t.Context(), "go"); err != nil {
 		t.Fatal(err)
 	}
 	result := toolResultOf(t, session)
@@ -273,16 +275,14 @@ func TestSessionToolOrchestrationRegistersCodemodeAndToolSearchInactiveUntilName
 		if err := services.ModelRuntime().RegisterNativeProvider(faux.Provider()); err != nil {
 			t.Fatal(err)
 		}
-		if err := services.Auth().Set("faux", ai.Credential{Type: ai.CredentialAPIKey, Key: "faux-key"}); err != nil {
-			t.Fatal(err)
-		}
+		configureFauxAuth(t, services)
 		var extensions []extension.Extension
 		for _, path := range []string{"builtin:codemode", "builtin:tool-search"} {
 			entry, err := builtin.Resolve(path, builtin.Options{})
 			if err != nil {
 				t.Fatal(err)
 			}
-			ext, err := entry.Factory()
+			ext, err := factoryload.LoadExtensionFromFactory(entry.Factory, ".", extension.CreateEventBus(), extension.CreateExtensionRuntime(), entry.Path())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -300,7 +300,7 @@ func TestSessionToolOrchestrationRegistersCodemodeAndToolSearchInactiveUntilName
 			}
 		}()
 		t.Cleanup(func() { _ = session.Close(); <-done })
-		if err := session.BindExtensions(t.Context()); err != nil {
+		if err := session.BindExtensions(t.Context(), ExtensionBindings{}); err != nil {
 			t.Fatal(err)
 		}
 		return session
@@ -323,4 +323,52 @@ func TestSessionToolOrchestrationRegistersCodemodeAndToolSearchInactiveUntilName
 	assertEqual(t, "allowed active", allowed.ActiveToolNames(), []string{"read", "codemode"})
 	initial := open(t, icodingagent.Settings{DefaultTools: []string{"tool_search"}}, nil)
 	assertEqual(t, "initial active", initial.ActiveToolNames(), []string{"tool_search"})
+}
+
+// Pi 1.1.0 types.ts:454 and nested-tool-calls.ts:246: the outcome a tool gets from executeTool carries how long the nested tool's execute() took
+// (agent-loop.ts runToolCall), and none when the nested call did not run (an unknown tool).
+func TestSessionExecuteToolOutcomeCarriesDurationMs(t *testing.T) {
+	var timed, missing *int64
+	slow := orchestrationTool("slow", "Sleeps.", extension.ToolDefinition{
+		Exposure: extension.ToolExposureCodemode,
+		Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+			time.Sleep(30 * time.Millisecond)
+			return textResult("slept"), nil
+		},
+	})
+	caller := orchestrationTool("caller", "Calls other tools.", extension.ToolDefinition{
+		Execute: func(ctx context.Context, _ string, _ json.RawMessage, _ extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+			tc := extension.ToolContextFromContext(ctx)
+			outcome, err := tc.ExecuteTool("slow", map[string]any{}, nil)
+			if err != nil {
+				return extension.AgentToolResult{}, err
+			}
+			timed = outcome.DurationMs
+			outcome, err = tc.ExecuteTool("nope", map[string]any{}, nil)
+			if err != nil {
+				return extension.AgentToolResult{}, err
+			}
+			missing = outcome.DurationMs
+			return textResult("called"), nil
+		},
+	})
+	session, faux := newOrchestrationSession(t, extension.Extension{
+		Tools:     map[string]extension.RegisteredTool{"slow": slow, "caller": caller},
+		ToolOrder: []string{"slow", "caller"},
+	})
+	faux.SetResponses([]ai.FauxResponseStep{
+		ai.FauxFactoryStep(func(ai.TranscriptContext, ai.StreamOptions, *ai.FauxProviderState, *ai.Model) (ai.AssistantMessage, error) {
+			return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("caller", map[string]any{}, &ai.FauxToolCallOptions{ID: ""})}, StopReason: "toolUse"}.AssistantMessage(), nil
+		}),
+		fauxText("done"),
+	})
+	if err := session.Prompt(t.Context(), "go"); err != nil {
+		t.Fatal(err)
+	}
+	if timed == nil || *timed < 25 || *timed >= 1000 {
+		t.Errorf("slow outcome durationMs = %v, want at least 25", timed)
+	}
+	if missing != nil {
+		t.Errorf("unknown tool outcome durationMs = %d, want none", *missing)
+	}
 }

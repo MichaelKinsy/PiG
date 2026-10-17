@@ -1,0 +1,328 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#ImageModel",
+   "pkg:ai/compat#ImageModel"
+  ],
+  "targets": [
+   "ai/model_types.go#ImageModel"
+  ],
+  "production": [
+   "call:ai/images_registry.go#GetImageModels"
+  ],
+  "evidence": [
+   "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
+   "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ImageModel: every upstream property maps to a Go field (types reviewed against the upstream declaration); production and tests attributed by go/types.",
+  "properties": {
+   "api": {
+    "targets": [
+     "ai/model_types.go#ImageModel.API"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+    ],
+    "production": [
+     "call:ai/images_registry.go#GetImageModels"
+    ],
+    "rationale": "The upstream property api is the Go field ImageModel.API."
+   },
+   "baseUrl": {
+    "targets": [
+     "ai/model_types.go#ImageModel.BaseURL"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+    ],
+    "production": [
+     "call:ai/images_registry.go#GetImageModels"
+    ],
+    "rationale": "The upstream property baseUrl is the Go field ImageModel.BaseURL."
+   },
+   "cost": {
+    "targets": [
+     "ai/model_types.go#ImageModel.Cost"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+    ],
+    "production": [
+     "call:ai/images_registry.go#GetImageModels"
+    ],
+    "rationale": "The upstream property cost is the Go field ImageModel.Cost."
+   },
+   "headers": {
+    "targets": [
+     "ai/model_types.go#ImageModel.Headers"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+    ],
+    "production": [
+     "call:ai/images_registry.go#GetImageModels"
+    ],
+    "rationale": "The upstream property headers is the Go field ImageModel.Headers."
+   },
+   "id": {
+    "targets": [
+     "ai/model_types.go#ImageModel.ID"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+    ],
+    "production": [
+     "call:ai/images_registry.go#GetImageModels"
+    ],
+    "rationale": "The upstream property id is the Go field ImageModel.ID."
+   },
+   "input": {
+    "targets": [
+     "ai/model_types.go#ImageModel.Input"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+    ],
+    "production": [
+     "call:ai/images_registry.go#GetImageModels"
+    ],
+    "rationale": "The upstream property input is the Go field ImageModel.Input."
+   },
+   "inputLimits": {
+    "targets": [
+     "ai/model_types.go#ImageModel.InputLimits"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+    ],
+    "production": [
+     "call:ai/images_registry.go#GetImageModels"
+    ],
+    "rationale": "The upstream property inputLimits is the Go field ImageModel.InputLimits."
+   },
+   "name": {
+    "targets": [
+     "ai/model_types.go#ImageModel.Name"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+    ],
+    "production": [
+     "call:ai/images_registry.go#GetImageModels"
+    ],
+    "rationale": "The upstream property name is the Go field ImageModel.Name."
+   },
+   "output": {
+    "targets": [
+     "ai/model_types.go#ImageModel.Output"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+    ],
+    "production": [
+     "call:ai/images_registry.go#GetImageModels"
+    ],
+    "rationale": "The upstream property output is the Go field ImageModel.Output."
+   },
+   "provider": {
+    "targets": [
+     "ai/model_types.go#ImageModel.Provider"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+    ],
+    "production": [
+     "call:ai/images_registry.go#GetImageModels"
+    ],
+    "rationale": "The upstream property provider is the Go field ImageModel.Provider."
+   },
+   "type": {
+    "targets": [
+     "ai/model_types.go#ImageModel.ModelType"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+    ],
+    "production": [
+     "call:ai/images_registry.go#GetImageModels"
+    ],
+    "rationale": "The discriminator type is not a Go field: it is the literal returned by the ModelType accessor (TestModelTypeDiscriminatorsMatchUpstreamLiterals compares it with the upstream literal)."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ClassifierModel",
+   "pkg:ai/compat#ClassifierModel"
+  ],
+  "targets": [
+   "ai/model_types.go#ClassifierModel"
+  ],
+  "production": [
+   "call:ai/builtin_providers.go#GetBuiltinClassifierModels"
+  ],
+  "evidence": [
+   "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
+   "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ClassifierModel: every upstream property maps to a Go field (types reviewed against the upstream declaration); production and tests attributed by go/types.",
+  "properties": {
+   "api": {
+    "targets": [
+     "ai/model_types.go#ClassifierModel.API"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+    ],
+    "production": [
+     "call:ai/builtin_providers.go#GetBuiltinClassifierModels"
+    ],
+    "rationale": "The upstream property api is the Go field ClassifierModel.API."
+   },
+   "baseUrl": {
+    "targets": [
+     "ai/model_types.go#ClassifierModel.BaseURL"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+    ],
+    "production": [
+     "call:ai/builtin_providers.go#GetBuiltinClassifierModels"
+    ],
+    "rationale": "The upstream property baseUrl is the Go field ClassifierModel.BaseURL."
+   },
+   "contextWindow": {
+    "targets": [
+     "ai/model_types.go#ClassifierModel.ContextWindow"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+    ],
+    "production": [
+     "call:ai/builtin_providers.go#GetBuiltinClassifierModels"
+    ],
+    "rationale": "The upstream property contextWindow is the Go field ClassifierModel.ContextWindow."
+   },
+   "cost": {
+    "targets": [
+     "ai/model_types.go#ClassifierModel.Cost"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+    ],
+    "production": [
+     "call:ai/builtin_providers.go#GetBuiltinClassifierModels"
+    ],
+    "rationale": "The upstream property cost is the Go field ClassifierModel.Cost."
+   },
+   "headers": {
+    "targets": [
+     "ai/model_types.go#ClassifierModel.Headers"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+    ],
+    "production": [
+     "call:ai/builtin_providers.go#GetBuiltinClassifierModels"
+    ],
+    "rationale": "The upstream property headers is the Go field ClassifierModel.Headers."
+   },
+   "id": {
+    "targets": [
+     "ai/model_types.go#ClassifierModel.ID"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+    ],
+    "production": [
+     "call:ai/builtin_providers.go#GetBuiltinClassifierModels"
+    ],
+    "rationale": "The upstream property id is the Go field ClassifierModel.ID."
+   },
+   "input": {
+    "targets": [
+     "ai/model_types.go#ClassifierModel.Input"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+    ],
+    "production": [
+     "call:ai/builtin_providers.go#GetBuiltinClassifierModels"
+    ],
+    "rationale": "The upstream property input is the Go field ClassifierModel.Input."
+   },
+   "inputLimits": {
+    "targets": [
+     "ai/model_types.go#ClassifierModel.InputLimits"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+    ],
+    "production": [
+     "call:ai/builtin_providers.go#GetBuiltinClassifierModels"
+    ],
+    "rationale": "The upstream property inputLimits is the Go field ClassifierModel.InputLimits."
+   },
+   "name": {
+    "targets": [
+     "ai/model_types.go#ClassifierModel.Name"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+    ],
+    "production": [
+     "call:ai/builtin_providers.go#GetBuiltinClassifierModels"
+    ],
+    "rationale": "The upstream property name is the Go field ClassifierModel.Name."
+   },
+   "provider": {
+    "targets": [
+     "ai/model_types.go#ClassifierModel.Provider"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+    ],
+    "production": [
+     "call:ai/builtin_providers.go#GetBuiltinClassifierModels"
+    ],
+    "rationale": "The upstream property provider is the Go field ClassifierModel.Provider."
+   },
+   "type": {
+    "targets": [
+     "ai/model_types.go#ClassifierModel.ModelType"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+    ],
+    "production": [
+     "call:ai/builtin_providers.go#GetBuiltinClassifierModels"
+    ],
+    "rationale": "The discriminator type is not a Go field: it is the literal returned by the ModelType accessor (TestModelTypeDiscriminatorsMatchUpstreamLiterals compares it with the upstream literal)."
+   }
+  }
+ }
+]

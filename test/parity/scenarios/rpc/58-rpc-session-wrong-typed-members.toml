@@ -1,0 +1,37 @@
+# Behavior family: rpc
+# Surface: get_messages returns each message of a loaded Session whose members have another JSON type than the one Pi writes, as JSON.stringify writes the object Pi parsed.
+# JSON.parse keeps a member of any type, so Pi keeps every message (session-manager.ts parseSessionEntryLine, buildSessionContext): a string, boolean or array timestamp; content that is a number, an object or a boolean; content blocks with a wrong-typed text, type, data or signature, bare strings, numbers and null among the blocks; assistant api, provider, model, stopReason, errorMessage and response members of other types; usage, cost, diagnostics, deferred and nestedCalls records and their members of other types; tool call ids, names and arguments of other types; tool result ids, isError and content of other types; system, bashExecution and custom messages with wrong-typed members; a message whose role is a number or missing; a user, assistant and tool result message without content; and a message that is a number, a string, a boolean or an array. The fixture is agent/testdata/poisoned-messages.jsonl chained on one branch.
+
+name = "58-rpc-session-wrong-typed-members"
+description = "RPC get_messages after switch_session to a Session file whose messages have members of other JSON types than Pi writes returns every message as Pi's JSON.stringify of the parsed object."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/core/session-manager.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+cwd = "testdata/poisoned-session"
+timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"switch","type":"switch_session","sessionPath":"sessions/poisoned.jsonl"}'
+wait_contains = ['"id":"switch","type":"response","command":"switch_session"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"messages","type":"get_messages"}'
+wait_contains = ['"id":"messages","type":"response","command":"get_messages"']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

@@ -1,11 +1,13 @@
 package codingagent
 
+// pi: packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts
+
+// pi: packages/coding-agent/src/modes/interactive/components/easter-egg-3d.lazy.ts
+
 import (
 	"bytes"
 	"encoding/json"
-	"flag"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -14,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/piglogin"
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 	"github.com/MichaelKinsy/PiG/tui"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // pig3dOraclePixels is the model's bitmap as rows of block colors, or nil for an empty pixel.
@@ -54,7 +57,7 @@ func TestPig3dAnimationMatchesPinnedPi(t *testing.T) {
 		{name: "early exit while growing", width: 60, height: 18, variant: piglogin.FindVariant("kratos"), foreground: logoRgb{200, 200, 200}, bg: logoRgb{0, 0, 0}, appearance: "dark", renderMs: []float64{0, 100, 300, 600}, closeMs: 650, closeKind: "ctrl+c"},
 		{name: "narrow screen hides the hint", width: 14, height: 8, variant: piglogin.Default(), foreground: logoRgb{220, 220, 220}, bg: logoRgb{20, 20, 20}, appearance: "dark", renderMs: []float64{0, 400, 1500, 2600, (puzzle + 0.5) * 1000}, closeMs: (puzzle + 0.6) * 1000, closeKind: "key"},
 	}
-	colors := tui.ActiveTheme().ColorValues()
+	colors := tui.ActiveTheme().Colors()
 	theme := map[string]logoRgb{"text": logoToRgb(colors["text"]), "muted": logoToRgb(colors["muted"]), "dim": logoToRgb(colors["dim"])}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -111,7 +114,7 @@ func TestPig3dAnimationMatchesPinnedPi(t *testing.T) {
 			input := map[string]any{
 				"upstream": pigversion.UpstreamVersion, "width": tc.width, "height": tc.height, "screen": screen,
 				"foreground": tc.foreground, "background": tc.bg, "appearance": tc.appearance,
-				"theme": theme, "colorMode": string(tui.ActiveTheme().ColorMode()),
+				"theme": theme, "colorMode": string(tui.ActiveTheme().GetColorMode()),
 				"columns": a.model.columns, "rows": a.model.rows, "pixels": pig3dOraclePixels(a.model),
 				"steps": steps,
 			}
@@ -161,7 +164,7 @@ func TestPig3dPlaysOnlyInFullscreen(t *testing.T) {
 	t.Run("fullscreen plays the 3D pig", func(t *testing.T) {
 		m, alt := newLogoClickMode(t, 100, 30)
 		m.chatContainer = tui.NewContainer()
-		m.handleArminSaysHi(t.Context())
+		m.handleArminSaysHi()
 		if len(m.arminComponents) != 0 || len(m.chatContainer.Children()) != 0 {
 			t.Fatal("fullscreen /pigsayhi drew the inline pig head")
 		}
@@ -171,7 +174,7 @@ func TestPig3dPlaysOnlyInFullscreen(t *testing.T) {
 			t.Fatalf("fullscreen /pigsayhi played %+v, want the 3D pig growing out of the center", a.model)
 		}
 		// A second command while it plays starts nothing else.
-		m.handleArminSaysHi(t.Context())
+		m.handleArminSaysHi()
 		if len(m.arminComponents) != 0 || m.logoAnimation != a {
 			t.Fatal("a second /pigsayhi while the 3D pig plays changed what plays")
 		}
@@ -185,8 +188,8 @@ func TestPig3dPlaysOnlyInFullscreen(t *testing.T) {
 	t.Run("an open overlay plays nothing", func(t *testing.T) {
 		m, alt := newLogoClickMode(t, 100, 30)
 		m.chatContainer = tui.NewContainer()
-		dialog := alt.OpenOverlay(tui.NewText("dialog"), tui.OverlaySpec{Anchor: "center"}.Options())
-		m.handleArminSaysHi(t.Context())
+		dialog := alt.ShowOverlay(tui.NewText("dialog"), tui.OverlaySpec{Anchor: "center"}.Options())
+		m.handleArminSaysHi()
 		if m.logoAnimationPlaying || len(m.arminComponents) != 0 || len(m.chatContainer.Children()) != 0 {
 			t.Fatal("/pigsayhi over an open overlay played or drew something")
 		}
@@ -195,7 +198,7 @@ func TestPig3dPlaysOnlyInFullscreen(t *testing.T) {
 	t.Run("inline keeps the flat pig head", func(t *testing.T) {
 		m := newPendingDisplayHarness(t)
 		m.chatContainer = tui.NewContainer()
-		m.handleArminSaysHi(t.Context())
+		m.handleArminSaysHi()
 		if len(m.arminComponents) != 1 || m.logoAnimationPlaying {
 			t.Fatal("inline /pigsayhi did not draw the inline pig head")
 		}
@@ -203,12 +206,10 @@ func TestPig3dPlaysOnlyInFullscreen(t *testing.T) {
 	})
 }
 
-var updatePig3dGolden = flag.Bool("update-pig3d-golden", false, "rewrite testdata/pig3d-frames.golden.json")
-
-// TestPig3dFramesGolden pins frames of the default sprite's 3D pig: growing, spinning, mid-shuffle, flying home and leaving.
-// The pinned-Pi comparison proves the engine; this golden catches a change to the pig's geometry or colors themselves.
-// Regenerate with go test ./internal/codingagent -run TestPig3dFramesGolden -update-pig3d-golden and review the frames.
-func TestPig3dFramesGolden(t *testing.T) {
+// TestPig3dFramesAreBoundedAndAnimate renders the default sprite's 3D pig at the growing, spinning, mid-shuffle, flying-home and
+// leaving phases. Every frame fits the screen, and no two phases draw the same frame. The engine's pixels are compared with
+// the pinned Pi in TestPig3dAnimationMatchesPinnedPi.
+func TestPig3dFramesAreBoundedAndAnimate(t *testing.T) {
 	pinHeaderTerminal(t, tui.TerminalColorModeTrueColor)
 	const width, height = 60, 20
 	clock := &logoTestClock{}
@@ -223,30 +224,51 @@ func TestPig3dFramesGolden(t *testing.T) {
 	clock.at(exit * 1000)
 	a.close()
 	clock.at((exit + 0.4) * 1000)
-	frames[fmt.Sprintf("exit+0.4 at %.3f", exit)] = a.Render(width)
-	got, err := json.MarshalIndent(frames, "", "  ")
-	if err != nil {
-		t.Fatal(err)
-	}
-	got = append(got, '\n')
-	const path = "testdata/pig3d-frames.golden.json"
-	if *updatePig3dGolden {
-		if err := os.WriteFile(path, got, 0o644); err != nil {
-			t.Fatal(err)
+	frames["exit"] = a.Render(width)
+	seen := map[string]string{}
+	for name, lines := range frames {
+		if len(lines) == 0 || len(lines) > height {
+			t.Errorf("frame %s has %d lines, want 1..%d", name, len(lines), height)
 		}
-	}
-	want, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(got, want) {
-		gotLines, wantLines := strings.Split(string(got), "\n"), strings.Split(string(want), "\n")
-		for i := range min(len(gotLines), len(wantLines)) {
-			if gotLines[i] != wantLines[i] {
-				t.Errorf("first difference at line %d:\n got %q\nwant %q", i+1, gotLines[i], wantLines[i])
-				break
+		for i, line := range lines {
+			if w := widthx.VisibleWidth(line); w > width {
+				t.Errorf("frame %s line %d is %d cells wide, want at most %d", name, i, w, width)
 			}
 		}
-		t.Fatalf("3D pig frames differ from %s; rerun with -update-pig3d-golden after reviewing the change", path)
+		key := strings.Join(lines, "\n")
+		if other, dup := seen[key]; dup {
+			t.Errorf("frames %s and %s are identical: the animation did not advance", name, other)
+		}
+		seen[key] = name
+	}
+}
+
+// blockOffsets flies every block home as Pi's does (easter-egg-3d.ts:1148-1155): `remaining = 1 - smooth(u)` and
+// `z * remaining + (index % 2 === 0 ? arc : -arc)` with `arc = Math.sin(Math.PI * clamp01(u)) * 0.8`, each product and
+// return value rounded before the next sum. The expected numbers are node's for that expression at the same times, where a
+// fused multiply-add changes the last bit.
+func TestPig3dFlightHomeOffsetsRoundLikePi(t *testing.T) {
+	clock := &logoTestClock{}
+	clock.at(0)
+	a := newPig3dAnimation(func() int { return 30 }, logoTestScreen(), piglogin.Default(), logoRgb{220, 220, 220}, logoRgb{12, 14, 18}, func() time.Time { return clock.now }, func() {})
+	for _, tc := range []struct {
+		ms   float64
+		want [2][3]float64
+	}{
+		{8813.754, [2][3]float64{{0.04790037906517408, 0, 0.44183224652396497}, {0, -0.04790037906517408, -0.48973262558913905}}},
+		{8630.198, [2][3]float64{{0.26668954198746375, 0, 0.7340059264976962}, {0, -0.26668954198746375, -1.00069546848516}}},
+	} {
+		offsets := a.blockOffsets(tc.ms / 1000)
+		// The expected values assume block 0 starts the flight one pixel right of home and block 1 one pixel up and nearer.
+		for index, moved := range [2]logoCell3{{1, 0, 0}, {0, -1, -1}} {
+			home := a.model.blocks[index].home
+			position := a.shuffle.steps[logoPuzzleSteps][index]
+			if displacement := (logoCell3{position[0] - home[0], position[1] - home[1], position[2] - home[2]}); displacement != moved {
+				t.Fatalf("block %d starts the flight home displaced by %v, want %v", index, displacement, moved)
+			}
+			if got := offsets[index]; got != tc.want[index] {
+				t.Errorf("at %v ms block %d offset = %v, want %v", tc.ms, index, got, tc.want[index])
+			}
+		}
 	}
 }

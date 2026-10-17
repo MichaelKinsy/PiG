@@ -1,0 +1,68 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:bindCore"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/runner.go#Runner.BindCore"
+  ],
+  "production": [
+   "call:coding/cli/extension_login_preview_command.go#runExtensionLoginPreview"
+  ],
+  "evidence": [
+   "test:coding/cli/extension_login_preview_command_test.go#TestGeneratedLoginExtensionIsIdentifiedThroughPigletResolution",
+   "test:coding/extension/host/inproc/abort_binding_test.go#TestBindAbortPreservesOtherContextActions"
+  ],
+  "rationale": "ExtensionRunner.bindCore is inproc Runner.BindCore(actions, contextActions, providerActions *ProviderActions); providerActions is optional (nil)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:emitBoundary"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/runner.go#Runner.EmitBoundary"
+  ],
+  "production": [
+   "call:coding/session_boundaries.go#Session.dispatchTurnEndBoundary"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/boundary_test.go#TestEmitBoundaryChainsDraftsContinuationAndPreview",
+   "test:coding/extension/host/inproc/boundary_test.go#TestEmitBoundaryReportsInvalidDraftAndLetsLaterHandlerRepair"
+  ],
+  "rationale": "ExtensionRunner.emitBoundary is Runner.EmitBoundary(ctx, baseEvent, buildContext) (BoundaryDispatchResult, error).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:emitResourcesDiscover"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/runner.go#Runner.EmitResourcesDiscover"
+  ],
+  "production": [
+   "call:coding/cli/headless_resources.go#headlessCommandCatalog.extendFromExtensions"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/specialized_dispatch_test.go#TestEmitResourcesDiscover_AggregatesPathsWithExtensionAttribution",
+   "test:coding/extension/host/inproc/specialized_dispatch_test.go#TestEmitResourcesDiscover_EventCwdAndReasonPropagate"
+  ],
+  "rationale": "ExtensionRunner.emitResourcesDiscover is Runner.EmitResourcesDiscover(ctx, cwd, reason) (*ResourcesDiscoverAggregateResult, error); reason is the event's reason string.",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:resolveToolRenderers"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/runner.go#Runner.ResolveToolRenderers"
+  ],
+  "production": [
+   "call:internal/codingagent/session_export.go#ExportToolRenderers"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/upstream_tool_renderers_test.go#TestUpstreamRunnerResolvesToolRenderersInExtensionLoadOrderEachAbleToDeferToTheNext",
+   "test:internal/codingagent/mcp_tool_renderers_10285_test.go#TestRegression10285RendersCallsToMCPToolsThatAreNotRegistered"
+  ],
+  "rationale": "ExtensionRunner.resolveToolRenderers is Runner.ResolveToolRenderers(toolName, base func() *ToolRenderers) *ToolRenderers; resolvers chain in load order, each able to defer to the next."
+ }
+]

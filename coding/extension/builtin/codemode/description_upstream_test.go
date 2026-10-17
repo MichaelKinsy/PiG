@@ -52,20 +52,23 @@ func mustNotContain(t *testing.T, description string, unwanted ...string) {
 
 func TestCodemodeDescriptionListsEverythingWithoutABudget(t *testing.T) {
 	all, namespaces, _ := catalogFixture()
-	description := codemode.CreateDescription(all, codemode.DescriptionOptions{Namespaces: namespaces})
+	description := mustDescription(t, all, codemode.DescriptionOptions{Namespaces: namespaces})
 	mustContain(t, description, "Nested tools:", "## mcp__github\nGitHub server", "## mcp__docs\n\n### `mcp__docs",
 		// The search guidance is always there, so tools that appear later do not change it.
-		"find unlisted tools, such as MCP tools")
+		"find unlisted tools, such as MCP tools",
+		// tool-search.test.ts (v1.1.0, #10555): the lookup helpers are async; without `await` scripts serialize the
+		// promise as {}.
+		"`await searchTools(query, { limit?, namespace? })`", "`await describeTool(name)`", "`await describeNamespace(name)`")
 	mustNotContain(t, description, "COMPLETE list", "PARTIAL", "tools)")
 }
 
 func TestCodemodeDescriptionFillsTheBudgetRoundRobinCheapestFirstAndSaysWhatIsMissing(t *testing.T) {
 	all, namespaces, _ := catalogFixture()
 	budget := 170 // Each small section costs about 42 tokens: one tool per group, then one more.
-	description := codemode.CreateDescription(all, codemode.DescriptionOptions{Namespaces: namespaces, InlineBudget: &budget})
+	description := mustDescription(t, all, codemode.DescriptionOptions{Namespaces: namespaces, InlineBudget: &budget})
 	mustContain(t, description, "### `read_notes`", "## mcp__docs (some tools not listed)", "### `mcp__docs__search`", "## mcp__github (some tools not listed)", "find unlisted tools, such as MCP tools")
 	mustNotContain(t, description, "### `mcp__docs__long`")
-	if again := codemode.CreateDescription(all, codemode.DescriptionOptions{Namespaces: namespaces, InlineBudget: &budget}); again != description {
+	if again := mustDescription(t, all, codemode.DescriptionOptions{Namespaces: namespaces, InlineBudget: &budget}); again != description {
 		t.Error("the same input gave a different description")
 	}
 }
@@ -76,11 +79,11 @@ func TestCodemodeDescriptionLeavesDeferredToolsAndTheirNamespacesOutEntirely(t *
 	for _, tool := range github {
 		deferred[tool.Name] = true
 	}
-	description := codemode.CreateDescription(all, codemode.DescriptionOptions{Namespaces: namespaces, Deferred: deferred})
+	description := mustDescription(t, all, codemode.DescriptionOptions{Namespaces: namespaces, Deferred: deferred})
 	mustNotContain(t, description, "mcp__github")
 	// Deferred tools, such as those of a server that connects later, do not change the description.
 	without := append([]extension.AgentTool{all[0]}, all[len(all)-2:]...)
-	if want := codemode.CreateDescription(without, codemode.DescriptionOptions{Namespaces: namespaces}); description != want {
+	if want := mustDescription(t, without, codemode.DescriptionOptions{Namespaces: namespaces}); description != want {
 		t.Errorf("a description with deferred tools differs from one without them:\n%s\n---\n%s", description, want)
 	}
 }
@@ -91,7 +94,7 @@ func TestCodemodeDescriptionLeavesNamespaceInstructionsOut(t *testing.T) {
 	for _, tool := range github {
 		namespaces[tool.Name] = extension.ToolNamespace{Name: "mcp__github", Instructions: "Long usage guide."}
 	}
-	description := codemode.CreateDescription(github, codemode.DescriptionOptions{Namespaces: namespaces})
+	description := mustDescription(t, github, codemode.DescriptionOptions{Namespaces: namespaces})
 	mustContain(t, description, "## mcp__github\n\n### `mcp__github__a`")
 	mustNotContain(t, description, "Long usage guide.")
 }
@@ -99,7 +102,7 @@ func TestCodemodeDescriptionLeavesNamespaceInstructionsOut(t *testing.T) {
 func TestCodemodeDescriptionListsOnlyNamespacesWithAZeroBudget(t *testing.T) {
 	all, namespaces, _ := catalogFixture()
 	zero := 0
-	description := codemode.CreateDescription(all, codemode.DescriptionOptions{Namespaces: namespaces, InlineBudget: &zero})
+	description := mustDescription(t, all, codemode.DescriptionOptions{Namespaces: namespaces, InlineBudget: &zero})
 	mustContain(t, description, "## mcp__docs (tools not listed)")
 	mustNotContain(t, description, "codemode tool declaration:")
 }

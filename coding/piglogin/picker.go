@@ -28,7 +28,7 @@ func spriteOptions(variants []Variant) []string {
 // contexts) or fails it (a subprocess extension's bridge), and those answer select instead, so the plain extension
 // selector, which has no preview column, is the fallback. A custom call that the user dismissed ends the choice here.
 func chooseSprite(ctx context.Context, ui extension.UIContext, variants []Variant, options []string) (string, error) {
-	result, err := ui.Custom(ctx, spritePickerFactory(variants, options), extension.CustomOptions{})
+	result, err := ui.Custom(ctx, spritePickerFactory(variants, options), &extension.CustomOptions{})
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
 			return "", nil
@@ -36,7 +36,7 @@ func chooseSprite(ctx context.Context, ui extension.UIContext, variants []Varian
 	} else if selected, ok := result.(string); ok {
 		return selected, nil
 	}
-	selected, err := ui.Select(ctx, spritePickerTitle, options, nil)
+	selected, err := ui.Select(ctx, spritePickerTitle, options, extension.ExtensionUIDialogOptions{})
 	if errors.Is(err, context.Canceled) {
 		return "", nil
 	}
@@ -47,12 +47,12 @@ func chooseSprite(ctx context.Context, ui extension.UIContext, variants []Varian
 // the pig of the highlighted sprite drawn beside the list. Selecting a row ends the ui.Custom call with the row's text;
 // cancelling ends it with "".
 func spritePickerFactory(variants []Variant, options []string) extension.CustomFactory {
-	return func(_ extension.CustomHost, theme extension.Theme, _ extension.KeybindingsManager, done func(any)) (extension.Component, error) {
+	return func(_ extension.TUI, theme *tui.Theme, _ extension.KeybindingsManager, done func(any)) (extension.DisposableComponent, error) {
 		mode := tui.TerminalColorModeTrueColor
-		if t, ok := theme.(*tui.Theme); ok && t != nil {
-			mode = t.ColorMode()
+		if t := theme; t != nil {
+			mode = t.GetColorMode()
 		}
-		selector := tui.NewExtensionSelector(spritePickerTitle, options)
+		selector := tui.NewExtensionSelectorComponent(spritePickerTitle, options, nil, nil)
 		selector.SetPreview(func(selected int) []string {
 			// The create row is not a sprite: it draws no preview, so the selector keeps the full-width list it has
 			// without one.
@@ -86,3 +86,6 @@ func (p *spritePicker) HandleInput(data string) {
 		p.done(p.selector.SelectedValue())
 	}
 }
+
+// Dispose releases nothing: the picker's selector holds no resource beyond its rows.
+func (*spritePicker) Dispose() {}

@@ -5,9 +5,10 @@
  * `codemode` is registered inactive. Activate it with `--tools`, the `defaultTools` setting, or
  * `setActiveTools()`; the MCP extension activates it when MCP tools are only reachable from scripts.
  */
+import { SETTINGS_DEFAULTS } from "../../core/settings-defaults.js";
 import { createCodemodeToolDefinition } from "./tool.js";
 function readMode(pi) {
-    return pi.getSettings().codemode?.mode === "only" ? "only" : "on";
+    return pi.getSettings().codemode?.mode === "only" ? "only" : SETTINGS_DEFAULTS.codemode.mode;
 }
 function readInlineBudget(pi) {
     const budget = pi.getSettings().codemode?.inlineBudget;
@@ -20,6 +21,7 @@ export function createCodemodeExtension(options = {}) {
                 appendEntry: (customType, data) => pi.appendEntry(customType, data),
                 models: options.models ?? true,
                 getToolNamespace: (name) => pi.getAllTools().find((tool) => tool.name === name)?.namespace,
+                getToolGuidelines: () => new Map(pi.getAllTools().map((tool) => [tool.name, tool.promptGuidelines ?? []])),
                 getMode: () => options.mode ?? readMode(pi),
                 getInlineBudget: () => options.inlineBudget ?? readInlineBudget(pi),
             }),

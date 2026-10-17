@@ -12,7 +12,7 @@ import (
 // tail, growth, shrink, image lines), the cached output must be byte-identical
 // to widthx.ApplyLineResets computed fresh. The cache may only make it faster.
 func TestApplyLineResetsCached_MatchesPureAcrossFrames(t *testing.T) {
-	tui := &TUI{}
+	tui := &TuiMainScreen{}
 
 	frames := [][]string{
 		{"alpha", "beta", "gamma"},
@@ -49,7 +49,7 @@ func BenchmarkApplyLineResetsCached_TypingFrame(b *testing.B) {
 	for i := range base {
 		base[i] = fmt.Sprintf("line %d with some content and a bit of length to it", i)
 	}
-	tui := &TUI{}
+	tui := &TuiMainScreen{}
 	_ = tui.applyLineResetsCached(base) // warm
 	b.ResetTimer()
 	for k := range b.N {

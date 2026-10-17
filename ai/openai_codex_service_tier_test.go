@@ -13,7 +13,7 @@ func TestCodexBillsTheFastServiceTierAtTheDefaultRate(t *testing.T) {
 			provider := codexUpstreamProvider(t, "gpt-5.5", codexRoundTripper(func(*http.Request) (*http.Response, error) {
 				return codexUpstreamHTTP(`data: {"type":"response.completed","response":{"status":"completed","service_tier":"` + tc.returned + `","usage":{"input_tokens":1000000,"output_tokens":1000000,"total_tokens":2000000,"input_tokens_details":{"cached_tokens":0}}}}` + "\n\n"), nil
 			}))
-			stream, err := provider.Stream(t.Context(), codexUpstreamContext(), StreamOptions{Transport: TransportSSE, SamplingParams: map[string]any{"service_tier": tc.requested}, ModelCost: ModelCost{Input: 1, Output: 2}})
+			stream, err := provider.Stream(t.Context(), codexUpstreamContext(), StreamOptions{Transport: TransportSSE, ServiceTier: tc.requested, ModelCost: ModelCost{Input: 1, Output: 2}})
 			if err != nil {
 				t.Fatal(err)
 			}

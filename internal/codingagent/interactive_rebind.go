@@ -5,13 +5,14 @@ package codingagent
 import (
 	"context"
 	"errors"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 )
 
-// runOnMainAndWait waits for an accepted owner operation, including its awaited work. A cancelled queued operation does not mutate the UI.
+// runOnMainAndWait waits for an accepted owner operation, including its awaited work. A cancelled queued operation does not mutate the UI, and a caller whose ctx ends before the loop starts the operation abandons it.
 func (m *InteractiveMode) runOnMainAndWait(ctx context.Context, work func() error) error {
 	if m.onOwnerLoop() {
 		// Queueing and waiting from the owner loop would wait for work only this goroutine can run.
@@ -21,7 +22,12 @@ func (m *InteractiveMode) runOnMainAndWait(ctx context.Context, work func() erro
 		return work()
 	}
 	result := make(chan error, 1)
+	// claimed decides once whether the loop runs the operation or the cancelled caller abandons it.
+	var claimed atomic.Bool
 	if err := m.postToMain(ctx, func() {
+		if !claimed.CompareAndSwap(false, true) {
+			return
+		}
 		if ctx.Err() != nil {
 			result <- context.Cause(ctx)
 			return
@@ -30,10 +36,19 @@ func (m *InteractiveMode) runOnMainAndWait(ctx context.Context, work func() erro
 	}); err != nil {
 		return err
 	}
+	var stopped <-chan struct{}
+	if m.runCtx != nil {
+		stopped = m.runCtx.Done()
+	}
 	select {
 	case err := <-result:
 		return err
-	case <-m.runCtx.Done():
+	case <-ctx.Done():
+		if claimed.CompareAndSwap(false, true) {
+			return context.Cause(ctx)
+		}
+		return <-result
+	case <-stopped:
 		return context.Cause(m.runCtx)
 	}
 }
@@ -50,7 +65,10 @@ func (m *InteractiveMode) rebindCurrentSession(ctx context.Context, renderBefore
 			return errors.New("interactive: SessionHandle is required")
 		}
 		m.eventCh = nil
+		m.programStatusReporter().Reset()
 		m.applyRuntimeSettings()
+		// interactive-mode.ts applyRuntimeSettings: this.footer.setSession(this.session)
+		m.statusLine.SetSession(m)
 		if renderBeforeBind {
 			m.renderCurrentSessionState()
 			m.subscribeToAgent()
@@ -125,7 +143,7 @@ func (m *InteractiveMode) applyRuntimeSettings() {
 	m.installRunPromptTurnRefresh()
 	m.opts.Model = m.agent.Model()
 	m.hideThinking = m.opts.Settings.GetHideThinkingBlock()
-	m.outputPad = m.opts.Settings.GetOutputPad()
+	m.outputPad = int(m.opts.Settings.GetOutputPad())
 	m.thinkingLevel = string(m.agent.ThinkingLevel())
 	if m.statusLine != nil {
 		m.statusLine.timings = m.agent.Timings()
@@ -139,7 +157,8 @@ func (m *InteractiveMode) applyRuntimeSettings() {
 	}
 }
 
-// renderCurrentSessionState clears transient state and redraws the current Session, including its footer name.
+// renderCurrentSessionState clears transient state and redraws the current Session, including its footer name
+// (interactive-mode.ts renderCurrentSessionState). The transcript repaint also forgets the pending tool cards.
 func (m *InteractiveMode) renderCurrentSessionState() {
 	if m.loadedResourcesContainer != nil {
 		m.loadedResourcesContainer.Clear()
@@ -148,5 +167,6 @@ func (m *InteractiveMode) renderCurrentSessionState() {
 		m.pendingMessagesContainer.Clear()
 	}
 	m.compactionQueue = nil
-	m.rebuildChatFromSession()
+	m.evCurrentBlock = nil
+	m.repaintInitialMessages()
 }

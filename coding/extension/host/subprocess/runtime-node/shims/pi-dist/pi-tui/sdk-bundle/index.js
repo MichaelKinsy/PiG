@@ -1210,6 +1210,10 @@ var Box = class {
   setBgFn(bgFn) {
     this.bgFn = bgFn;
   }
+  setPaddingX(paddingX) {
+    this.paddingX = paddingX;
+    this.invalidateCache();
+  }
   invalidateCache() {
     this.cache = void 0;
   }
@@ -1326,6 +1330,10 @@ var Text = class {
     this.cachedText = void 0;
     this.cachedWidth = void 0;
     this.cachedLines = void 0;
+  }
+  setPaddingX(paddingX) {
+    this.paddingX = paddingX;
+    this.invalidate();
   }
   invalidate() {
     this.cachedText = void 0;
@@ -1524,7 +1532,7 @@ var KillRing = class {
 };
 
 // pi-dist/pi-tui/components/editor.js
-import { CURSOR_MARKER } from "../tui.js";
+import { CURSOR_MARKER, renderFakeCursor } from "../tui.js";
 
 // pi-dist/pi-tui/undo-stack.js
 var UndoStack = class {
@@ -2185,10 +2193,10 @@ var Editor = class {
           const afterGraphemes = [...this.segment(after, "grapheme")];
           const firstGrapheme = afterGraphemes[0]?.segment || "";
           const restAfter = after.slice(firstGrapheme.length);
-          const cursor = `\x1B[7m${firstGrapheme}\x1B[0m`;
+          const cursor = renderFakeCursor(firstGrapheme);
           displayText = before + marker + cursor + restAfter;
         } else {
-          const cursor = "\x1B[7m \x1B[0m";
+          const cursor = renderFakeCursor(" ");
           displayText = before + marker + cursor;
           lineVisibleWidth = lineVisibleWidth + 1;
           if (lineVisibleWidth > contentWidth && paddingX > 0) {
@@ -3837,7 +3845,7 @@ var Image = class {
 // pi-dist/pi-tui/components/input.js
 import { getKeybindings as getKeybindings4 } from "../keybindings.js";
 import { decodeKittyPrintable } from "../keys.js";
-import { CURSOR_MARKER as CURSOR_MARKER2 } from "../tui.js";
+import { CURSOR_MARKER as CURSOR_MARKER2, renderFakeCursor as renderFakeCursor2 } from "../tui.js";
 import { getGraphemeSegmenter as getGraphemeSegmenter2, isWhitespaceChar as isWhitespaceChar3, sliceByColumn as sliceByColumn2, truncateToWidth as truncateToWidth3, visibleWidth as visibleWidth6 } from "../utils.js";
 import { graphemeSegmenter as segmenter } from "../../../pi-tui-segmenters.mjs";
 var Input = class {
@@ -4156,7 +4164,7 @@ var Input = class {
       const atCursor2 = graphemes2[0]?.segment ?? " ";
       const afterCursor2 = placeholder.slice(atCursor2.length);
       const marker2 = this.focused ? CURSOR_MARKER2 : "";
-      const cursorChar2 = `\x1B[7m${this.placeholderStyle(atCursor2)}\x1B[27m`;
+      const cursorChar2 = renderFakeCursor2(this.placeholderStyle(atCursor2));
       const textWithCursor2 = marker2 + cursorChar2 + this.placeholderStyle(afterCursor2);
       const padding2 = " ".repeat(Math.max(0, availableWidth - visibleWidth6(textWithCursor2)));
       return [this.prompt + textWithCursor2 + padding2];
@@ -4195,7 +4203,7 @@ var Input = class {
     const atCursor = cursorGrapheme?.segment ?? " ";
     const afterCursor = visibleText.slice(cursorDisplay + atCursor.length);
     const marker = this.focused ? CURSOR_MARKER2 : "";
-    const cursorChar = `\x1B[7m${atCursor}\x1B[27m`;
+    const cursorChar = renderFakeCursor2(atCursor);
     const textWithCursor = beforeCursor + marker + cursorChar + afterCursor;
     const visualLength = visibleWidth6(textWithCursor);
     const padding = " ".repeat(Math.max(0, availableWidth - visualLength));
@@ -6828,6 +6836,43 @@ import { getKeybindings as getKeybindings8, KeybindingsManager, setKeybindings, 
 import { decodeKittyPrintable as decodeKittyPrintable2, isKeyRelease as isKeyRelease2, isKeyRepeat, isKittyProtocolActive, Key, matchesKey as matchesKey2, parseKey, setKittyProtocolActive as setKittyProtocolActive2 } from "../keys.js";
 import { getNativeClipboard } from "../native-platform.js";
 
+// pi-dist/pi-tui/program-status.js
+var PROGRAM_STATUS_QUERY = "\x1B]7501;?\x1B\\";
+function isProgramStatusReply(sequence) {
+  return /^\x1b\]7501;\?[^\x07\x1b]*(?:\x07|\x1b\\)$/.test(sequence);
+}
+__name(isProgramStatusReply, "isProgramStatusReply");
+var APP_PATTERN = /^[A-Za-z0-9_.+-]{1,32}$/;
+var CONTROL_CHARACTERS = /[\u0000-\u001f\u007f-\u009f]+/g;
+var MAX_MESSAGE_BYTES = 2048;
+function truncateUtf8(text, maxBytes) {
+  if (Buffer.byteLength(text, "utf8") <= maxBytes)
+    return text;
+  let bytes = 0;
+  let end = 0;
+  for (const char of text) {
+    const size = Buffer.byteLength(char, "utf8");
+    if (bytes + size > maxBytes)
+      break;
+    bytes += size;
+    end += char.length;
+  }
+  return text.slice(0, end);
+}
+__name(truncateUtf8, "truncateUtf8");
+function formatProgramStatus(status) {
+  const pairs = [`state=${status.state}`];
+  if (status.app !== void 0 && APP_PATTERN.test(status.app))
+    pairs.push(`app=${status.app}`);
+  if (status.state === "blocked" && status.kind)
+    pairs.push(`kind=${status.kind}`);
+  const message = truncateUtf8((status.message ?? "").replace(CONTROL_CHARACTERS, " ").trim(), MAX_MESSAGE_BYTES);
+  if (message)
+    pairs.push(`msg=${Buffer.from(message, "utf8").toString("base64")}`);
+  return `\x1B]7501;${pairs.join(":")}\x1B\\`;
+}
+__name(formatProgramStatus, "formatProgramStatus");
+
 // pi-dist/pi-tui/stdin-buffer.js
 import { EventEmitter } from "events";
 var ESC = "\x1B";
@@ -6835,6 +6880,11 @@ var DEFAULT_SEQUENCE_TIMEOUT_MS = 50;
 var DEFAULT_ESCAPE_TIMEOUT_MS = 10;
 var BRACKETED_PASTE_START = "\x1B[200~";
 var BRACKETED_PASTE_END = "\x1B[201~";
+var TERMINAL_REPLY_HEADER_PATTERN = /^\x1b(?:\](?:1[01];|4;\d{1,3};|7501;\?)|P>\||_G(?:[a-z]=\d+,)*[a-z]=\d+;)/;
+function isControlString(data) {
+  return data.startsWith(`${ESC}]`) || data.startsWith(`${ESC}P`) || data.startsWith(`${ESC}_`);
+}
+__name(isControlString, "isControlString");
 function isCompleteSequence(data) {
   if (!data.startsWith(ESC)) {
     return "not-escape";
@@ -6940,8 +6990,20 @@ function extractCompleteSequences(buffer) {
   while (pos < buffer.length) {
     const remaining = buffer.slice(pos);
     if (remaining.startsWith(ESC)) {
+      const terminalReply = isControlString(remaining) && TERMINAL_REPLY_HEADER_PATTERN.test(remaining);
       let seqEnd = 1;
       while (seqEnd <= remaining.length) {
+        if (terminalReply && seqEnd > 2) {
+          const char = remaining[seqEnd - 1];
+          if (char === "" || char === "") {
+            pos += seqEnd;
+            break;
+          }
+          if (char === ESC && seqEnd < remaining.length && remaining[seqEnd] !== "\\") {
+            pos += seqEnd - 1;
+            break;
+          }
+        }
         const candidate = remaining.slice(0, seqEnd);
         const status = isCompleteSequence(candidate);
         if (status === "complete") {
@@ -7067,11 +7129,18 @@ var StdinBuffer = class extends EventEmitter {
       this.emitDataSequence(sequence);
     }
     if (this.buffer.length > 0) {
+      if (TERMINAL_REPLY_HEADER_PATTERN.test(this.buffer))
+        return;
       const timeoutMs = this.buffer === ESC ? this.escapeTimeoutMs : this.timeoutMs;
       this.timeout = setTimeout(() => {
         const flushed = this.flush();
         for (const sequence of flushed) {
-          this.emitDataSequence(sequence);
+          if (sequence.length > 2 && isControlString(sequence)) {
+            this.emitDataSequence(sequence.slice(0, 2));
+            this.process(sequence.slice(2));
+          } else {
+            this.emitDataSequence(sequence);
+          }
         }
       }, timeoutMs);
     }
@@ -7143,7 +7212,8 @@ var TERMINAL_PROGRESS_CLEAR_SEQUENCE = "\x1B]9;4;0\x07";
 var NATIVE_SHIFT_ENTER_SEQUENCE = "\x1B[13;2u";
 var DESIRED_KITTY_KEYBOARD_PROTOCOL_FLAGS = 7;
 var KEYBOARD_PROTOCOL_RESPONSE_FRAGMENT_TIMEOUT_MS = 150;
-var KITTY_KEYBOARD_PROTOCOL_QUERY = `\x1B[>${DESIRED_KITTY_KEYBOARD_PROTOCOL_FLAGS}u\x1B[?u\x1B[c`;
+var KITTY_KEYBOARD_PROTOCOL_QUERY = `\x1B[>${DESIRED_KITTY_KEYBOARD_PROTOCOL_FLAGS}u\x1B[?u`;
+var DEVICE_ATTRIBUTES_QUERY = "\x1B[c";
 function parseKeyboardProtocolNegotiationSequence(sequence) {
   const kittyFlags = sequence.match(/^\x1b\[\?(\d+)u$/);
   if (kittyFlags) {
@@ -7208,6 +7278,12 @@ var ProcessTerminal = class {
   stdinBuffer;
   stdinDataHandler;
   progressInterval;
+  /** Latest program status, kept across stop() so start() can report it again. */
+  programStatus;
+  /** Whether the terminal confirmed OSC 7501 support since the last start(), or `PI_PROGRAM_STATUS=1`. */
+  programStatusSupported = false;
+  /** The support query was sent and its DA1 sentinel has not arrived yet. */
+  programStatusQueryPending = false;
   writeLogPath = (() => {
     const env = process.env.PI_TUI_WRITE_LOG || "";
     if (!env)
@@ -7254,6 +7330,14 @@ var ProcessTerminal = class {
   setupStdinBuffer() {
     this.stdinBuffer = new StdinBuffer({ escapeTimeout: resolveEscapeTimeoutMs() });
     this.stdinBuffer.on("data", (sequence) => {
+      if (isProgramStatusReply(sequence)) {
+        if (this.programStatusQueryPending) {
+          this.programStatusQueryPending = false;
+          this.programStatusSupported = true;
+          this.writeProgramStatus();
+        }
+        return;
+      }
       const negotiation = this.readKeyboardProtocolNegotiationSequence(sequence);
       if (negotiation === "pending") {
         this.scheduleKeyboardProtocolNegotiationBufferFlush();
@@ -7285,6 +7369,9 @@ var ProcessTerminal = class {
    * - 1 = disambiguate escape codes
    * - 2 = report event types (press/repeat/release)
    * - 4 = report alternate keys (shifted key, base layout key)
+   *
+   * The OSC 7501 program status query shares the DA sentinel: a terminal that supports it replies
+   * before DA. `PI_PROGRAM_STATUS=1` or `0` skips the query.
    */
   queryAndEnableKittyProtocol() {
     this.setupStdinBuffer();
@@ -7292,7 +7379,12 @@ var ProcessTerminal = class {
     this.keyboardProtocolPushed = true;
     this.pendingKeyboardProtocolDeviceAttributes += 1;
     this.clearKeyboardProtocolNegotiationBuffer();
-    process.stdout.write(KITTY_KEYBOARD_PROTOCOL_QUERY);
+    const programStatusOverride = process.env.PI_PROGRAM_STATUS;
+    this.programStatusSupported = programStatusOverride === "1";
+    this.programStatusQueryPending = programStatusOverride !== "1" && programStatusOverride !== "0";
+    const programStatusQuery = this.programStatusQueryPending ? PROGRAM_STATUS_QUERY : "";
+    process.stdout.write(`${KITTY_KEYBOARD_PROTOCOL_QUERY}${programStatusQuery}${DEVICE_ATTRIBUTES_QUERY}`);
+    this.writeProgramStatus();
   }
   handleKeyboardProtocolNegotiationSequence(negotiationSequence) {
     this.clearKeyboardProtocolNegotiationBuffer();
@@ -7300,6 +7392,8 @@ var ProcessTerminal = class {
       if (this.pendingKeyboardProtocolDeviceAttributes === 0)
         return false;
       this.pendingKeyboardProtocolDeviceAttributes -= 1;
+      if (this.pendingKeyboardProtocolDeviceAttributes === 0)
+        this.programStatusQueryPending = false;
     }
     if (negotiationSequence.type === "kitty-flags") {
       if (negotiationSequence.flags !== 0) {
@@ -7441,6 +7535,11 @@ var ProcessTerminal = class {
     if (this.clearProgressInterval()) {
       process.stdout.write(TERMINAL_PROGRESS_CLEAR_SEQUENCE);
     }
+    if (this.programStatusSupported && this.programStatus) {
+      process.stdout.write(formatProgramStatus({ state: "clear" }));
+    }
+    this.programStatusSupported = false;
+    this.programStatusQueryPending = false;
     process.stdout.write("\x1B[?2004l");
     const shouldDisableKittyProtocol = this.keyboardProtocolPushed || this._kittyProtocolActive;
     this.clearKeyboardProtocolNegotiationBuffer();
@@ -7509,6 +7608,16 @@ var ProcessTerminal = class {
   setTitle(title) {
     process.stdout.write(`\x1B]0;${title}\x07`);
   }
+  setProgramStatus(status) {
+    this.programStatus = status.state === "clear" ? void 0 : status;
+    if (this.programStatusSupported)
+      process.stdout.write(formatProgramStatus(status));
+  }
+  writeProgramStatus() {
+    if (this.programStatusSupported && this.programStatus) {
+      process.stdout.write(formatProgramStatus(this.programStatus));
+    }
+  }
   setProgress(active) {
     if (active) {
       process.stdout.write(TERMINAL_PROGRESS_ACTIVE_SEQUENCE);
@@ -7544,7 +7653,7 @@ __name(parseTerminalColorSchemeReport, "parseTerminalColorSchemeReport");
 
 // pi-dist/pi-tui/index.js
 import { allocateImageId as allocateImageId2, calculateImageRows, deleteAllKittyImages as deleteAllKittyImages2, deleteKittyImage as deleteKittyImage3, detectCapabilities, encodeITerm2, encodeKitty, getCapabilities as getCapabilities4, getCellDimensions as getCellDimensions2, getGifDimensions, getImageDimensions as getImageDimensions2, getJpegDimensions, getPngDimensions as getPngDimensions2, getTerminalColorMode, getWebpDimensions, hyperlink as hyperlink2, imageFallback as imageFallback2, renderImage as renderImage2, resetCapabilitiesCache, setCapabilities as setCapabilities2, setCapabilityOverrides, setCellDimensions } from "../terminal-image.js";
-import { Container as Container4, CURSOR_MARKER as CURSOR_MARKER5, compositeTuiLine as compositeTuiLine4, isFocusable, isViewportTUI } from "../tui.js";
+import { Container as Container4, CURSOR_MARKER as CURSOR_MARKER5, compositeTuiLine as compositeTuiLine4, isFocusable, isViewportTUI, renderFakeCursor as renderFakeCursor3 } from "../tui.js";
 
 // pi-dist/pi-tui/alt-screen-search.js
 import { getKeybindings as getKeybindings6 } from "../keybindings.js";
@@ -8394,6 +8503,11 @@ var TuiAltScreen = class extends TuiBase {
       return false;
     return this.copyTextToClipboard(text);
   }
+  /** Drop the text selection and multi-click history, e.g. before the host replaces the transcript. */
+  resetTextSelection() {
+    this.clearTextSelection();
+    this.lastClick = void 0;
+  }
   /** The lines of the last rendered frame, one per terminal row, as written to the terminal. */
   getScreenLines() {
     return [...this.previousScreen];
@@ -8465,7 +8579,7 @@ var TuiAltScreen = class extends TuiBase {
       this.terminal.write(`${BEGIN_SYNCHRONIZED_OUTPUT}${EXIT_ALT_SCREEN}\x1B[?25h${END_SYNCHRONIZED_OUTPUT}`);
     } else {
       const width = Math.max(1, this.terminal.columns);
-      const documentLines = this.render(width).map((line) => line.replace(OSC133_ZONE_PREFIX2, ""));
+      const documentLines = this.resolveFakeCursors(this.render(width)).map((line) => line.replace(OSC133_ZONE_PREFIX2, ""));
       this.lastDocument = this.applyLineResets(documentLines.map((line) => line.replaceAll(CURSOR_MARKER4, ""))).map((line) => isImageLine3(line) || visibleWidth13(line) <= width ? line : sliceByColumn4(line, 0, width, true));
       let buffer = `${BEGIN_SYNCHRONIZED_OUTPUT}${EXIT_ALT_SCREEN}${DISABLE_AUTOWRAP}`;
       for (let row = 0; row < this.lastDocument.length; row++) {
@@ -8750,8 +8864,6 @@ var TuiAltScreen = class extends TuiBase {
           this.requestRender();
         return { consume: true };
       }
-      if (this.shouldDeferViewportInputToOverlay())
-        return void 0;
       this.routeWheel(wheelEvent, wheelDelta);
       return { consume: true };
     }
@@ -9622,7 +9734,7 @@ var TuiAltScreen = class extends TuiBase {
     if (this.refreshSearch(nextLayout)) {
       nextLayout = renderLayoutFrame(root, width, height, () => this.requestRender());
     }
-    let screen = nextLayout.lines.map((line) => line.replace(OSC133_ZONE_PREFIX2, ""));
+    let screen = this.resolveFakeCursors(nextLayout.lines.map((line) => line.replace(OSC133_ZONE_PREFIX2, "")));
     screen = this.applySearchHighlights(screen, nextLayout);
     screen = this.compositeScrollToEndIndicator(screen, nextLayout, width);
     screen = this.compositeOverlays(screen, width, height);
@@ -9935,7 +10047,7 @@ var TuiMainScreen = class extends TuiBase2 {
       const targetScreenRow = targetRow - viewportTop;
       return targetScreenRow - currentScreenRow;
     }, "computeLineDiff");
-    let newLines = this.render(width);
+    let newLines = this.resolveFakeCursors(this.render(width));
     if (this.hasOverlayEntries) {
       newLines = this.compositeOverlays(newLines, width, height);
     }
@@ -10305,6 +10417,7 @@ export {
   encodeITerm2,
   encodeKitty,
   foregroundAnsi,
+  formatProgramStatus,
   fuzzyFilter,
   fuzzyMatch,
   getCapabilities4 as getCapabilities,
@@ -10335,6 +10448,7 @@ export {
   parseColor,
   parseKey,
   parseTerminalColorSchemeReport,
+  renderFakeCursor3 as renderFakeCursor,
   renderImage2 as renderImage,
   renderLatex,
   resetCapabilitiesCache,

@@ -4,6 +4,7 @@ package tui
 // Components implement Render(width int) []string and optionally HandleInput(data string).
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"maps"
@@ -60,11 +61,29 @@ type Disposable interface {
 // pointer-only components, so it is never copied after construction.
 type invalidatable struct {
 	dirty atomic.Bool
+	// pig additive (D91): sink is the TuiSurface that draws the component,
+	// which Invalidate tells, and queued the sink that holds an
+	// invalidation it has not drawn yet.
+	sink   atomic.Pointer[surfaceSink]
+	queued atomic.Pointer[surfaceSink]
 }
 
-func (i *invalidatable) Invalidate()       { i.dirty.Store(true) }
+func (i *invalidatable) Invalidate() {
+	i.dirty.Store(true)
+	i.notifySurface()
+}
 func (i *invalidatable) IsDirty() bool     { return i.dirty.Load() }
 func (i *invalidatable) NeedsRedraw() bool { return i.dirty.Swap(false) }
+
+// notifySurface reports the invalidation to the TuiSurface that draws the
+// component, if one does.
+func (i *invalidatable) notifySurface() {
+	if s := i.sink.Load(); s != nil {
+		s.mark(i)
+	}
+}
+
+func (i *invalidatable) surfaceInvalidation() *invalidatable { return i }
 
 // BaseComponent is the exported equivalent of invalidatable for components
 // living in other packages.
@@ -91,10 +110,38 @@ type Container struct {
 	renderedValid  bool
 	renderVersion  uint64
 
-	// mouseLayout records each child's height from the last uncapped render
-	// for mouse dispatch (upstream Container.mouseLayout). nil after a capped
-	// render, which does not render every child.
-	mouseLayout *mouseLayout
+	// The window is the last uncapped render: the children then (builtKids),
+	// the number of lines children[:i+1] held (builtEnds[i]) and the revision
+	// of a nested container's lines (builtVers[i]); builtSame[i] reports that
+	// the child can be compared with the next render's. A render at the same width
+	// and theme keeps the lines before the first child that changed and builds
+	// only from there, so a frame that changes the end of a long transcript
+	// costs what changed. layoutValid reports that the last render was
+	// uncapped, so mouse dispatch reads the children's heights from the window
+	// (upstream Container.mouseLayout); a capped render does not render every
+	// child.
+	builtKids   []Component
+	builtEnds   []int
+	builtVers   []uint64
+	builtSame   []bool
+	windowValid bool
+	layoutValid bool
+	layoutWidth int
+	// spareLines is the array the last render replaced; its first spareAgree
+	// lines equal renderedLines'. The next render at the same width writes
+	// into it, so borrowed lines stay intact until the second render after the
+	// one that returned them. kept[v%windowHistory] is how many leading lines
+	// revision v kept from the lines before it, for the last windowHistory
+	// revisions.
+	spareLines []string
+	spareAgree int
+	kept       [windowHistory]int
+
+	// pig additive (D91): since a TuiSurface last took them, the children
+	// changed (childrenChanged) only after the first keepHead and before the
+	// last keepTail, so the surface walks only the children between.
+	childrenChanged    bool
+	keepHead, keepTail int
 }
 
 type cachedChild struct {
@@ -103,6 +150,25 @@ type cachedChild struct {
 	version uint64
 }
 
+// windowHistory is how many renders back a container can say which leading
+// lines it kept; a reader further behind compares every line.
+const windowHistory = 8
+
+// wholeFrames makes every render rebuild every container's lines and every
+// frame resolve its fake cursors before compositing and compare every line, as Pi's TUI does. It is the reference the
+// windowed renders must equal byte for byte; only tests set it.
+var wholeFrames atomic.Bool
+
+// windowCap is the capacity of a container's array for n lines, with a quarter
+// more room to grow before it is reallocated. A container per component keeps
+// two such arrays for as long as the component lives, so a fixed slack would
+// cost every finished row of a long transcript.
+func windowCap(n int) int { return capHint(n, n/4) }
+
+// frameCap is the capacity of the renderer's frame arrays for n lines: the
+// frame grows by a few rows per streamed delta, so it keeps room for that too.
+func frameCap(n int) int { return capHint(n, n/4+64) }
+
 func NewContainer(children ...Component) *Container {
 	return &Container{children: children}
 }
@@ -110,13 +176,59 @@ func NewContainer(children ...Component) *Container {
 func (c *Container) invalidateStructureLocked() {
 	c.renderedValid = false
 	c.dirty.Store(true)
+	c.notifySurface()
 }
+
+// markChildrenLocked records a change of the children that kept the first
+// head and the last tail. c.mu must be held.
+func (c *Container) markChildrenLocked(head, tail int) {
+	if !c.childrenChanged {
+		c.childrenChanged, c.keepHead, c.keepTail = true, head, tail
+		return
+	}
+	c.keepHead, c.keepTail = min(c.keepHead, head), min(c.keepTail, tail)
+}
+
+// takeChildrenLocked returns the children kept at the start and the end
+// since the last take, which a change since bounds, and starts a new
+// record. c.mu must be held for writing.
+func (c *Container) takeChildrenLocked() (head, tail int) {
+	head, tail = len(c.children), 0
+	if c.childrenChanged {
+		head, tail = c.keepHead, c.keepTail
+	}
+	c.childrenChanged = false
+	return head, tail
+}
+
+// AddChild appends a child. upstream: packages/tui/src/tui.ts:351 Container.addChild
+func (c *Container) AddChild(comp Component) { c.Add(comp) }
+
+// RemoveChild removes the first child identical to comp and ignores an absent one.
+// upstream: packages/tui/src/tui.ts:355 Container.removeChild
+func (c *Container) RemoveChild(comp Component) { c.Remove(comp) }
 
 func (c *Container) Add(comp Component) {
 	c.mu.Lock()
+	c.markChildrenLocked(len(c.children), 0)
 	c.children = append(c.children, comp)
 	c.invalidateStructureLocked()
 	c.mu.Unlock()
+}
+
+// InsertBefore adds comp immediately before ref and reports whether ref was a child. Pi splices into Container.children for this (interactive-mode.ts:3836-3839).
+func (c *Container) InsertBefore(ref, comp Component) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for i, ch := range c.children {
+		if ch == ref {
+			c.children = slices.Insert(c.children, i, comp)
+			c.markChildrenLocked(i, len(c.children)-1-i)
+			c.invalidateStructureLocked()
+			return true
+		}
+	}
+	return false
 }
 
 func (c *Container) Remove(comp Component) {
@@ -125,6 +237,7 @@ func (c *Container) Remove(comp Component) {
 	for i, ch := range c.children {
 		if ch == comp {
 			c.children = append(c.children[:i], c.children[i+1:]...)
+			c.markChildrenLocked(i, len(c.children)-i)
 			delete(c.childCache, comp)
 			c.invalidateStructureLocked()
 			return
@@ -140,6 +253,7 @@ func (c *Container) Replace(oldComp, newComp Component) bool {
 	for i, ch := range c.children {
 		if ch == oldComp {
 			c.children[i] = newComp
+			c.markChildrenLocked(i, len(c.children)-1-i)
 			delete(c.childCache, oldComp)
 			c.invalidateStructureLocked()
 			return true
@@ -152,18 +266,43 @@ func (c *Container) Replace(oldComp, newComp Component) bool {
 func (c *Container) Clear() {
 	c.mu.Lock()
 	c.children = nil
+	c.markChildrenLocked(0, 0)
 	c.childCache = nil
 	c.invalidateStructureLocked()
 	c.mu.Unlock()
 }
 
-// SetChildren atomically replaces all children.
+// SetChildren atomically replaces all children. The children it keeps at the start and the end keep their cached lines, which their
+// dirty flags invalidate as for any child, so replacing a few children renders only those again.
 func (c *Container) SetChildren(children ...Component) {
 	c.mu.Lock()
+	old := c.children
+	head := 0
+	for head < len(old) && head < len(children) && sameChild(old[head], children[head]) {
+		head++
+	}
+	tail := 0
+	for tail < len(old)-head && tail < len(children)-head && sameChild(old[len(old)-1-tail], children[len(children)-1-tail]) {
+		tail++
+	}
+	for _, ch := range old[head : len(old)-tail] {
+		if ch != nil && reflect.TypeOf(ch).Comparable() {
+			delete(c.childCache, ch)
+		}
+	}
 	c.children = append([]Component(nil), children...)
-	c.childCache = nil
+	c.markChildrenLocked(head, tail)
 	c.invalidateStructureLocked()
 	c.mu.Unlock()
+}
+
+// sameChild reports whether a and b are the same child; a child of a type that is not comparable is never the same.
+func sameChild(a, b Component) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	t := reflect.TypeOf(a)
+	return t == reflect.TypeOf(b) && t.Comparable() && a == b
 }
 
 func (c *Container) LastTwoChildren() (Component, Component) {
@@ -213,15 +352,36 @@ func (c *Container) SetMaxLines(n int) {
 }
 
 // Render returns a fresh slice, matching upstream Container.render's observable
-// array ownership. Package renderers use renderBorrowed to read the immutable
-// cached concatenation without copying settled transcript history every frame.
+// array ownership. It builds into a new array and copies it under the lock, so
+// a call on another goroutine neither writes into nor reads an array that a
+// parent container or the renderer borrowed. Package renderers use
+// renderBorrowed to read the immutable cached concatenation without copying
+// settled transcript history every frame.
+//
+//perf:hot
 func (c *Container) Render(width int) []string {
-	return slices.Clone(c.renderBorrowed(width))
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return slices.Clone(c.renderBorrowedLocked(width, false))
+}
+
+// renderCopy returns a copy of the lines of a container that only its
+// embedding component borrows: the render may reuse the container's arrays,
+// and the copy is taken under the lock.
+func (c *Container) renderCopy(width int) []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return slices.Clone(c.renderBorrowedLocked(width, true))
 }
 
 // renderBorrowed returns immutable lines owned by the container. Callers must
-// not edit the slice. A changed child rebuilds the concatenation; an unchanged
-// tree at the same width and theme reuses it.
+// not edit the slice, and must not read it after the second render after this
+// one: a borrowed render at the same width writes into the array the render
+// before it returned. Render and renderCopy copy under the lock. A borrower
+// must serialize with every other borrower of the container, as a parent
+// container's lock and the renderer's frame do. A changed child rebuilds the
+// concatenation from its first line; an unchanged tree at the same width and
+// theme reuses it.
 func (c *Container) renderBorrowed(width int) []string {
 	lines, _ := c.renderBorrowedVersion(width)
 	return lines
@@ -232,13 +392,45 @@ func (c *Container) renderBorrowed(width int) []string {
 // revision to borrow nested container output without trusting a dirty flag that
 // an unrelated render may consume.
 func (c *Container) renderBorrowedVersion(width int) ([]string, uint64) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	lines := c.renderBorrowedLocked(width)
-	return lines, c.renderVersion
+	lines, version, _ := c.renderBorrowedSince(width, 0)
+	return lines, version
 }
 
-func (c *Container) renderBorrowedLocked(width int) []string {
+// renderBorrowedSince is renderBorrowedVersion that also reports how many
+// leading lines are those of revision since, or 0 when that is not known.
+func (c *Container) renderBorrowedSince(width int, since uint64) ([]string, uint64, int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	lines := c.renderBorrowedLocked(width, true)
+	return lines, c.renderVersion, c.keptSinceLocked(since, len(lines))
+}
+
+// keptSinceLocked returns how many leading lines the current render shares
+// with revision since. c.mu must be held.
+func (c *Container) keptSinceLocked(since uint64, n int) int {
+	if since == 0 || since > c.renderVersion {
+		return 0
+	}
+	if c.renderVersion-since >= windowHistory {
+		return 0
+	}
+	for v := since + 1; v <= c.renderVersion; v++ {
+		n = min(n, c.kept[v%windowHistory])
+	}
+	return n
+}
+
+// recordLocked publishes a render that kept the first kept lines of the one
+// before. c.mu must be held.
+func (c *Container) recordLocked(kept int) {
+	c.renderVersion++
+	c.kept[c.renderVersion%windowHistory] = kept
+}
+
+// renderBorrowedLocked renders the container. recycle lets a rebuild write
+// into the array the render two back returned; without it the rebuild
+// allocates. c.mu must be held.
+func (c *Container) renderBorrowedLocked(width int, recycle bool) []string {
 	if c.cacheWidth != width || c.cacheTheme != ActiveTheme() {
 		c.childCache = nil
 		c.cacheWidth = width
@@ -250,6 +442,7 @@ func (c *Container) renderBorrowedLocked(width int) []string {
 		}
 		c.cacheTheme = ActiveTheme()
 		c.renderedValid = false
+		c.dropWindowLocked()
 	}
 	if c.childCache == nil {
 		c.childCache = make(map[Component]cachedChild, len(c.children))
@@ -264,7 +457,7 @@ func (c *Container) renderBorrowedLocked(width int) []string {
 	if ml > 0 {
 		var lines []string
 		for _, v := range slices.Backward(c.children) {
-			child := c.renderChildLocked(v, width)
+			child, _ := c.renderChildLocked(v, width)
 			// Prepend into a fresh slice so the cached child slice is never
 			// mutated by a later append.
 			merged := make([]string, 0, capHint(len(child), len(lines)))
@@ -277,78 +470,136 @@ func (c *Container) renderBorrowedLocked(width int) []string {
 		if int64(len(lines)) > ml {
 			lines = lines[int64(len(lines))-ml:]
 		}
-		c.mouseLayout = nil
-		c.renderVersion++
+		c.dropWindowLocked()
+		c.layoutValid = false
+		c.recordLocked(0)
 		return lines
 	}
 
-	if c.renderedValid {
-		clean := true
-		for _, ch := range c.children {
-			if c.childNeedsRenderLocked(ch, width) {
-				clean = false
+	// Find the first child whose lines may have changed: one that moved, a
+	// nested container with new lines, or a child that renders every frame
+	// or reports itself dirty. Every line before it is kept.
+	window := c.windowValid && !wholeFrames.Load()
+	first, kept, nestedKept := 0, 0, 0
+	var nestedLines []string
+	var nestedVersion uint64
+	if window {
+		for first < len(c.children) {
+			ch := c.children[first]
+			if first >= len(c.builtKids) || !c.builtSame[first] || c.builtKids[first] != ch {
 				break
 			}
+			if nested, ok := ch.(*Container); ok {
+				var lines []string
+				var version uint64
+				lines, version, nestedKept = nested.renderBorrowedSince(width, c.builtVers[first])
+				if version != c.builtVers[first] {
+					nestedLines, nestedVersion = lines, version
+					break
+				}
+			} else if dc, ok := ch.(dirtyComponent); !ok || !childCacheable(ch) || dc.IsDirty() {
+				break
+			}
+			first++
 		}
-		if clean {
+		if first == len(c.children) && first == len(c.builtKids) && c.renderedValid {
 			return c.renderedLines
 		}
+		if nestedLines == nil {
+			nestedKept = 0
+		}
+		kept = nestedKept
+		if first > 0 {
+			kept += c.builtEnds[first-1]
+		}
+	} else {
+		c.dropWindowLocked()
 	}
 
-	lines := make([]string, 0, capHint(c.renderLineHint, 64))
-	children := make([]mouseChild, len(c.children))
-	for i, ch := range c.children {
-		childLines := c.renderChildLocked(ch, width)
-		children[i] = mouseChild{component: ch, height: len(childLines)}
+	lines := c.windowBufferLocked(kept, recycle)
+	c.builtKids = slices.Grow(c.builtKids[:first], len(c.children)-first)[:len(c.children)]
+	c.builtEnds = slices.Grow(c.builtEnds[:first], len(c.children)-first)[:len(c.children)]
+	c.builtVers = slices.Grow(c.builtVers[:first], len(c.children)-first)[:len(c.children)]
+	c.builtSame = slices.Grow(c.builtSame[:first], len(c.children)-first)[:len(c.children)]
+	for i := first; i < len(c.children); i++ {
+		ch := c.children[i]
+		var childLines []string
+		var version uint64
+		if i == first && nestedLines != nil {
+			childLines, version = nestedLines, nestedVersion
+			c.childCache[ch] = cachedChild{width: width, lines: childLines, version: version}
+			childLines = childLines[nestedKept:]
+		} else {
+			childLines, version = c.renderChildLocked(ch, width)
+		}
 		lines = append(lines, childLines...)
+		c.builtKids[i], c.builtEnds[i], c.builtVers[i] = ch, len(lines), version
+		// A child of a type that is not comparable cannot be recognized
+		// next render, so the render rebuilds from it.
+		c.builtSame[i] = reflect.TypeOf(ch).Comparable()
 	}
-	c.mouseLayout = &mouseLayout{width: width, children: children}
+	clear(c.builtKids[len(c.children):cap(c.builtKids)])
+	if c.windowValid {
+		c.spareLines, c.spareAgree = c.renderedLines, kept
+	}
+	c.layoutValid, c.layoutWidth = true, width
+	c.windowValid = true
 	c.renderLineHint = len(lines)
 	c.renderedLines = lines
 	c.renderedValid = true
-	c.renderVersion++
+	c.recordLocked(kept)
 	return c.renderedLines
 }
 
-// childNeedsRenderLocked reports whether retrieving ch would call Render.
+// windowBufferLocked returns an array for the next render holding the first
+// kept lines of the current one. With recycle it reuses the spare array,
+// which only a render two back returned; otherwise, or when the spare is too
+// small, it allocates a new one. c.mu must be held.
+func (c *Container) windowBufferLocked(kept int, recycle bool) []string {
+	if recycle && c.windowValid && c.spareLines != nil && cap(c.spareLines) >= kept {
+		lines := c.spareLines[:kept]
+		if c.spareAgree < kept {
+			copy(lines[c.spareAgree:], c.renderedLines[c.spareAgree:kept])
+		}
+		return lines
+	}
+	lines := make([]string, kept, windowCap(c.renderLineHint))
+	copy(lines, c.renderedLines[:kept])
+	return lines
+}
+
+// dropWindowLocked forgets the window, so the next render builds every line
+// into a new array: lines borrowed at another width or theme stay intact.
 // c.mu must be held.
-func (c *Container) childNeedsRenderLocked(ch Component, width int) bool {
-	if nested, ok := ch.(*Container); ok {
-		_, version := nested.renderBorrowedVersion(width)
-		e, hit := c.childCache[ch]
-		return !hit || e.width != width || e.version != version
-	}
-	dc, ok := ch.(dirtyComponent)
-	if !ok || !childCacheable(ch) {
-		return true
-	}
-	e, hit := c.childCache[ch]
-	return !hit || e.width != width || dc.IsDirty()
+func (c *Container) dropWindowLocked() {
+	c.windowValid = false
+	c.spareLines, c.spareAgree = nil, 0
 }
 
 // renderChildLocked returns a child's rendered lines, reusing the cached
-// result when the child is clean at the same width. Exact nested containers
-// publish an immutable revision, so their lines can be borrowed recursively.
-// Boxes are never cached because their dirty flag does not recurse into their
-// own children. c.mu must be held.
-func (c *Container) renderChildLocked(ch Component, width int) []string {
+// result when the child is clean at the same width, and the revision of a
+// nested container's lines. Exact nested containers publish an immutable
+// revision, so their lines can be borrowed recursively. Boxes are never cached
+// because their dirty flag does not recurse into their own children. c.mu must
+// be held.
+func (c *Container) renderChildLocked(ch Component, width int) ([]string, uint64) {
 	if nested, ok := ch.(*Container); ok {
 		lines, version := nested.renderBorrowedVersion(width)
 		c.childCache[ch] = cachedChild{width: width, lines: lines, version: version}
-		return lines
+		return lines, version
 	}
 	dc, ok := ch.(dirtyComponent)
 	if !ok || !childCacheable(ch) {
-		return ch.Render(width)
+		return ch.Render(width), 0
 	}
 	if e, hit := c.childCache[ch]; hit && e.width == width && !dc.IsDirty() {
-		return e.lines
+		return e.lines, 0
 	}
-	lines := ch.Render(width)
-	// Consume the dirty flag so an unchanged child hits the cache next frame.
+	// Consume the dirty flag before rendering so an unchanged child hits the cache next frame. A child that another goroutine invalidates while it renders keeps the flag that Invalidate sets, so its next frame renders again; consuming after Render would erase that flag and cache lines that predate the change.
 	dc.NeedsRedraw()
+	lines := ch.Render(width)
 	c.childCache[ch] = cachedChild{width: width, lines: lines}
-	return lines
+	return lines, 0
 }
 
 // dirtyComponent is a Component that reports whether its rendered output
@@ -393,6 +644,15 @@ func childCacheable(ch Component) bool {
 type tuiBase struct {
 	Container
 
+	// clearOnShrink mirrors upstream clearOnShrink; settings drive it via SetClearOnShrink. Only the inline renderer acts on it.
+	clearOnShrink bool
+	onDebug       func()
+
+	// resetRenderState is the concrete renderer's differential-state reset, called with mu held when a render is
+	// forced. Mirrors upstream's abstract TuiBase.resetRenderState(), which renderNow(true) and requestRender(true) call
+	// first. The main screen leaves it nil: forceRedraw carries its state.
+	resetRenderState func()
+
 	// render is the concrete renderer's per-frame paint, set by the
 	// constructor. Mirrors upstream's abstract TuiBase.doRender().
 	render func()
@@ -400,10 +660,22 @@ type tuiBase struct {
 	// the base children. Mirrors upstream's getMountedRoots override.
 	mountedRoots func() []Component
 
-	out                io.Writer
+	out io.Writer
+	// terminal is the Terminal the renderer was constructed with (NewTuiMainScreen, NewTuiAltScreen). It is immutable after construction, so Terminal reads it without t.mu.
+	terminal Terminal
+	// derivedTerminal is the Terminal that Terminal creates on first use for a renderer constructed without one.
+	derivedTerminal atomic.Pointer[Terminal]
+	// fixedSizeSnapshot publishes the width and height of a fixed-size renderer to its derived Terminal, which components read during a frame while t.mu is held.
+	fixedSizeSnapshot atomic.Uint64
+	// direct is the unlogged writer for what upstream sends straight to stdout; nil when nothing is logged.
+	direct             io.Writer
 	terminalBackground *terminalBackgroundQueries
 	width              int
 	height             int
+	// fixedDims is a fixed-size renderer's width<<32|height, readable by a component that renders while mu is held (Editor.Render reads Terminal().Rows()).
+	fixedDims atomic.Uint64
+
+	fullRedrawCount atomic.Int64
 
 	forceRedraw        bool // set by ForceFullRender/requestRender(force); cleared after next frame
 	fixedSize          bool // true when constructed via NewWithOutput (tests)
@@ -424,16 +696,21 @@ type tuiBase struct {
 	// use applyOverlayCommand directly.
 	overlayCommandOnOwner func(func())
 
+	input rendererInput
+
 	// kitty graphics support
 	kitty bool
 
 	renderRequested          bool
 	immediateRenderRequested bool
 	renderTimer              stoppableTimer
-	renderGeneration         uint64
-	lastRenderAt             time.Time
-	now                      func() time.Time
-	afterFunc                func(time.Duration, func()) stoppableTimer
+	// frameActive is set while a frame holds mu and renders components (lockFrame). mu is not reentrant, so RequestRender during the frame (from a component's Render, as Pi's Loader.invalidate and requestRender-on-image-load do, or from another goroutine) is recorded in frameRenderRequest and issued when the frame releases mu.
+	frameActive        atomic.Bool
+	frameRenderRequest atomic.Uint32
+	renderGeneration   uint64
+	lastRenderAt       time.Time
+	now                func() time.Time
+	afterFunc          func(time.Duration, func()) stoppableTimer
 
 	// renderOnMain, when set, marshals a scheduled render onto the owner's
 	// main loop instead of running doRender on the throttle-timer
@@ -444,6 +721,16 @@ type tuiBase struct {
 	// mutations (e.g. the working-spinner frame). nil = run inline, which
 	// is correct for standalone / single-goroutine use.
 	renderOnMain func(render func())
+	// frameDueWake, when set, keeps the throttled-frame deadline in an owner
+	// loop instead of a timer goroutine (SetRenderDeadline): a frame records
+	// frameDue, frameGeneration and frameImmediate under mu and calls
+	// frameDueWake with frameDue, or with the zero time once no frame is
+	// pending. The owner runs the frame from RunDueRender, as Pi's setTimeout
+	// callback runs on its event loop.
+	frameDueWake    func(due time.Time)
+	frameDue        time.Time
+	frameGeneration uint64
+	frameImmediate  bool
 
 	// tickOnMain, when set, marshals an owned state-machine tick (currently
 	// the alt-screen selection auto-scroll) onto the owner's main loop. Its
@@ -457,6 +744,8 @@ type tuiBase struct {
 	// is deliberately not reused because scheduled renders are cosmetic and
 	// droppable. nil = run inline (standalone / single-goroutine use).
 	tickOnMain func(func())
+	// postToOwner, when set, queues work on the loop that owns component-tree mutation (SetOwnerDispatcher).
+	postToOwner func(ctx context.Context, fn func()) error
 
 	// onWidthChange, when non-nil, is called whenever the terminal width
 	// changes between render frames. Used by the extension host to
@@ -474,11 +763,10 @@ type tuiBase struct {
 	stopped bool // set by Stop(); prevents further Render() calls
 }
 
-// TUI is the main-screen renderer: differential rendering into the terminal's
+// TuiMainScreen is the main-screen renderer: differential rendering into the terminal's
 // main screen + scrollback, overlays, cursor, raw input. It ports pi-tui's
-// TuiMainScreen (the concrete-type name TUI is kept for pig-wide call-site
-// stability; the base machinery lives in the embedded tuiBase).
-type TUI struct {
+// TuiMainScreen.
+type TuiMainScreen struct {
 	tuiBase
 
 	prevLines []string
@@ -494,6 +782,15 @@ type TUI struct {
 	resetOutWork   []string
 	resetCursorRow int
 	resetHasCursor bool
+	// resetAgree is how many leading results resetOutWork shares with
+	// resetOutPrev. windowVersion is the root container's revision the last
+	// frame drew, and resetInComposed reports that resetInPrev was composed
+	// with overlays rather than borrowed from the root container.
+	resetAgree      int
+	windowVersion   uint64
+	resetInComposed bool
+	// resetResolve is how resetInPrev's fake cursors were resolved.
+	resetResolve fakeCursorResolution
 
 	// logDirectory mirrors upstream TuiBase.logDirectory: the directory for
 	// the differential-render overflow crash log. Empty falls back to the OS
@@ -509,7 +806,6 @@ type TUI struct {
 	prevHeight        int  // last height seen
 	maxLinesRendered  int  // high-water mark of buffer length
 	hasRendered       bool // distinguishes first render from "prev=empty after clear"
-	clearOnShrink     bool // mirrors upstream clearOnShrink; settings drive it via SetClearOnShrink
 
 	// previousKittyImageIDs tracks all Kitty image IDs present in the last
 	// rendered buffer so we can delete them before a full clear. Mirrors
@@ -535,6 +831,12 @@ type OverlayOptions struct {
 	// visible is evaluated outside the overlay-state lock for local entries.
 	visible      func(termWidth, termHeight int) bool
 	nonCapturing bool
+
+	// Fullscreen marks an overlay that covers the whole screen, such as an
+	// animation of fullscreen mode. pig additive (D91): a TuiSurface reports
+	// it as a fullscreen frontend.Overlay at the session's screen size; the
+	// terminal renderers lay it out by its other options.
+	Fullscreen bool
 
 	// WidthFraction, HeightFraction, and Title configure the private built-in
 	// modal wrapper.
@@ -596,6 +898,16 @@ func (t *tuiBase) applyOverlayCommand(command overlayCommand) overlayCommandResu
 // through SetFocused instead of assigning `focused`.
 type Focusable interface {
 	SetFocused(focused bool)
+}
+
+// IsFocusable mirrors isFocusable (tui.ts:186): a component is focusable when it can hold the TUI focus flag. Upstream tests `"focused" in component`;
+// a Go component carries the flag behind SetFocused, so it is focusable when it implements Focusable. A nil component is not focusable.
+func IsFocusable(component Component) bool {
+	if component == nil {
+		return false
+	}
+	_, ok := component.(Focusable)
+	return ok
 }
 
 // moveFocusFlag clears the focused flag of the component that lost TUI focus and sets it on the one that gained it,
@@ -691,7 +1003,11 @@ func (h *OverlayHandle) apply(command overlayCommand) {
 	h.tui.refreshOverlayVisibility(h.tui.width, h.tui.height)
 	result := h.tui.applyOverlayCommand(command)
 	if result.changed {
+		if command.kind == overlayRemoveTarget {
+			h.tui.hideTerminalCursorWithoutOverlays()
+		}
 		h.tui.Invalidate()
+		h.tui.RequestRender() // upstream hide, setHidden, focus and unfocus request a frame
 	}
 }
 
@@ -750,9 +1066,9 @@ func (h *OverlayHandle) isFocused() bool {
 	return focused
 }
 
-// OpenOverlay pushes a component onto the overlay append stack and returns a
+// ShowOverlay pushes a component onto the overlay append stack and returns a
 // targeted handle. Callers must Close when the overlay is dismissed.
-func (t *tuiBase) OpenOverlay(c Component, opts OverlayOptions) *OverlayHandle {
+func (t *tuiBase) ShowOverlay(c Component, opts OverlayOptions) *OverlayHandle {
 	if opts.Title != "" || opts.WidthFraction != 0 || opts.HeightFraction != 0 {
 		if opts.WidthFraction <= 0 {
 			opts.WidthFraction = 0.75
@@ -766,15 +1082,34 @@ func (t *tuiBase) OpenOverlay(c Component, opts OverlayOptions) *OverlayHandle {
 	if !result.changed {
 		return nil
 	}
+	t.hideTerminalCursor()
 	t.Invalidate()
+	t.RequestRender() // upstream showOverlay requests a frame
 	return &OverlayHandle{tui: t, id: result.entryID}
+}
+
+// hideTerminalCursor hides the cursor while running; after Stop the shell owns it. Mirrors upstream hideTerminalCursor.
+func (t *tuiBase) hideTerminalCursor() {
+	if !t.stopped {
+		t.HideCursor()
+	}
+}
+
+// hideTerminalCursorWithoutOverlays hides the cursor when the last overlay is gone, as upstream hide() and hideOverlay() do.
+func (t *tuiBase) hideTerminalCursorWithoutOverlays() {
+	t.overlayMu.Lock()
+	empty := len(t.overlayModel.entries) == 0
+	t.overlayMu.Unlock()
+	if empty {
+		t.hideTerminalCursor()
+	}
 }
 
 func (t *tuiBase) openOverlayWithOptionsFactory(component Component, factory func() OverlayOptions) *OverlayHandle {
 	if factory == nil {
-		return t.OpenOverlay(component, OverlayOptions{})
+		return t.ShowOverlay(component, OverlayOptions{})
 	}
-	return t.OpenOverlay(component, factory())
+	return t.ShowOverlay(component, factory())
 }
 
 // openModalOverlay preserves Pig's built-in selector shell while generic
@@ -786,11 +1121,17 @@ func (t *tuiBase) openModalOverlay(component Component, title string, widthFract
 	if heightFraction <= 0 {
 		heightFraction = 0.75
 	}
-	return t.OpenOverlay(component, OverlayOptions{
+	return t.ShowOverlay(component, OverlayOptions{
 		Title:          title,
 		WidthFraction:  widthFraction,
 		HeightFraction: heightFraction,
 	})
+}
+
+// resolveFakeCursors is tui.ts TUI.resolveFakeCursors: the fake cursors of a frame become reverse video, or are dropped where the
+// terminal draws its own cursor.
+func (t *tuiBase) resolveFakeCursors(lines []string) []string {
+	return widthx.ResolveFakeCursors(lines, t.showHardwareCursor)
 }
 
 func (t *tuiBase) composeOverlayLines(background []string, width, height int) []string {
@@ -799,12 +1140,32 @@ func (t *tuiBase) composeOverlayLines(background []string, width, height int) []
 }
 
 func (t *tuiBase) composeOverlayLinesWithStats(background []string, width, height int) ([]string, overlayCompositionStats) {
+	return t.composeOverlaySnapshot(background, t.frameOverlaySnapshot(width, height), width, height)
+}
+
+// composeFrameLines is the frame of tui-main-screen.ts doRender before the cursor is extracted: root with its fake cursors
+// resolved and the overlays composed over it. Without a mounted overlay the frame is root itself and unresolved reports that its
+// fake cursors are still to be resolved; resolution is a function of each line, so the line resets resolve the lines they rebuild.
+func (t *tuiBase) composeFrameLines(root []string, width, height int) (lines []string, unresolved bool) {
+	snapshot := t.frameOverlaySnapshot(width, height)
+	if !snapshot.MountedAny && !wholeFrames.Load() {
+		lines, _ = t.composeOverlaySnapshot(root, snapshot, width, height)
+		return lines, true
+	}
+	lines, _ = t.composeOverlaySnapshot(t.resolveFakeCursors(root), snapshot, width, height)
+	return lines, false
+}
+
+func (t *tuiBase) frameOverlaySnapshot(width, height int) overlayStateSnapshot {
 	t.applyOverlayCommand(overlayCommand{kind: overlayGeometryChanged, width: width, height: height})
 	t.refreshOverlayVisibility(width, height)
 	t.overlayMu.Lock()
-	snapshot := t.overlayModel.snapshot()
-	t.overlayMu.Unlock()
-	lines, stats := composeOverlaySnapshotWithStats(background, snapshot, width, height)
+	defer t.overlayMu.Unlock()
+	return t.overlayModel.snapshot()
+}
+
+func (t *tuiBase) composeOverlaySnapshot(background []string, snapshot overlayStateSnapshot, width, height int) ([]string, overlayCompositionStats) {
+	lines, stats := composeOverlaySnapshotWithStats(background, snapshot, width, height, t.showHardwareCursor)
 	t.overlayMu.Lock()
 	t.renderedOverlayLayouts = stats.Layouts
 	t.overlayMu.Unlock()
@@ -859,13 +1220,15 @@ func (t *tuiBase) HideOverlay() {
 	t.refreshOverlayVisibility(t.width, t.height)
 	result := t.applyOverlayCommand(overlayCommand{kind: overlayRemoveAppendTail})
 	if result.changed {
+		t.hideTerminalCursorWithoutOverlays()
 		t.Invalidate()
+		t.RequestRender()
 	}
 }
 
 // SetFocus records a non-overlay target for focus restoration.
 func (t *tuiBase) SetFocus(component Component) {
-	previous := t.FocusedComponent()
+	previous := t.GetFocusedComponent()
 	t.applyOverlayCommand(overlayCommand{
 		kind: overlaySetFocusTarget, target: component,
 		previousFocusMounted: t.componentMounted(previous),
@@ -927,7 +1290,7 @@ func componentTreeContains(root, target Component) bool {
 }
 
 // FocusedComponent returns the current overlay or non-overlay focus target.
-func (t *tuiBase) FocusedComponent() Component {
+func (t *tuiBase) GetFocusedComponent() Component {
 	t.overlayMu.Lock()
 	component := t.overlayModel.focusedComponent()
 	t.overlayMu.Unlock()
@@ -976,18 +1339,53 @@ type stoppableTimer interface {
 
 const minRenderInterval = 16 * time.Millisecond
 
-// New creates and initialises a TUI instance.
-func New() *TUI {
-	t := &TUI{
+// New creates the main-screen renderer for the process's terminal.
+func New() *TuiMainScreen {
+	return NewTuiMainScreen(processTerminal, nil, "")
+}
+
+// terminalWriter writes through a Terminal: its Write for frames and its HideCursor and ShowCursor for the cursor visibility sequences, which
+// upstream's terminal methods send straight to stdout, outside the write log.
+type terminalWriter struct{ terminal Terminal }
+
+func (w terminalWriter) Write(data []byte) (int, error) {
+	w.terminal.Write(string(data))
+	return len(data), nil
+}
+
+type terminalCursorWriter struct{ terminal Terminal }
+
+func (w terminalCursorWriter) Write(data []byte) (int, error) {
+	switch string(data) {
+	case "\x1b[?25l":
+		w.terminal.HideCursor()
+	case "\x1b[?25h":
+		w.terminal.ShowCursor()
+	default:
+		w.terminal.Write(string(data))
+	}
+	return len(data), nil
+}
+
+// NewTuiMainScreen is `new TuiMainScreen(terminal, showHardwareCursor, logDirectory)` (tui-main-screen.ts, TuiBase's constructor): the inline-flow
+// renderer that draws on terminal and reads its size from it. A nil showHardwareCursor keeps TuiBase's default, false (tui.ts:508,536-538; only the settings getter reads PI_HARDWARE_CURSOR); logDirectory is where
+// the differential-render overflow crash log goes, the OS temp directory when empty.
+func NewTuiMainScreen(terminal Terminal, showHardwareCursor *bool, logDirectory string) *TuiMainScreen {
+	t := &TuiMainScreen{
 		tuiBase: tuiBase{
-			out:                os.Stdout,
+			out:                terminalWriter{terminal},
+			direct:             terminalCursorWriter{terminal},
+			terminal:           terminal,
 			terminalBackground: &terminalBackgroundQueries{},
-			showHardwareCursor: os.Getenv("PI_HARDWARE_CURSOR") == "1",
 			now:                time.Now,
 			afterFunc: func(d time.Duration, fn func()) stoppableTimer {
 				return time.AfterFunc(d, fn)
 			},
 		},
+		logDirectory: logDirectory,
+	}
+	if showHardwareCursor != nil {
+		t.showHardwareCursor = *showHardwareCursor
 	}
 	t.render = t.doRender
 	t.updateSize()
@@ -997,13 +1395,11 @@ func New() *TUI {
 
 // NewWithOutput creates a TUI that writes to a fixed io.Writer with fixed
 // dimensions. Used only by tests; production code uses New().
-func NewWithOutput(out io.Writer, cols, rows int) *TUI {
-	t := &TUI{
+func NewWithOutput(out io.Writer, cols, rows int) *TuiMainScreen {
+	t := &TuiMainScreen{
 		tuiBase: tuiBase{
 			out:                out,
 			terminalBackground: &terminalBackgroundQueries{},
-			width:              cols,
-			height:             rows,
 			fixedSize:          true,
 			showHardwareCursor: os.Getenv("PI_HARDWARE_CURSOR") == "1",
 			now:                time.Now,
@@ -1012,8 +1408,40 @@ func NewWithOutput(out io.Writer, cols, rows int) *TUI {
 			},
 		},
 	}
+	t.setFixedDimensionsLocked(cols, rows)
 	t.render = t.doRender
+	t.storeFixedDims()
 	return t
+}
+
+// storeFixedDims publishes width and height for rendererTerminal.size.
+func (t *tuiBase) storeFixedDims() {
+	t.fixedDims.Store(uint64(uint32(t.width))<<32 | uint64(uint32(t.height)))
+}
+
+// SetOnDebug sets the global debug-key callback (tui.ts TuiBase.onDebug); nil clears it.
+func (t *tuiBase) SetOnDebug(onDebug func()) {
+	t.mu.Lock()
+	t.onDebug = onDebug
+	t.mu.Unlock()
+}
+
+// OnDebug returns the global debug-key callback, nil when none is set (tui.ts TuiBase.onDebug).
+func (t *tuiBase) OnDebug() func() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.onDebug
+}
+
+// ConsumeDebugKey runs the debug callback and consumes data when it is the global debug key (Shift+Ctrl+D) and a
+// callback is set (tui.ts TuiBase.handleInput).
+func (t *tuiBase) ConsumeDebugKey(data string) bool {
+	onDebug := t.OnDebug()
+	if onDebug == nil || !matchesKeyID(data, "shift+ctrl+d") {
+		return false
+	}
+	onDebug()
+	return true
 }
 
 // GetShowHardwareCursor reports whether the real terminal cursor is shown.
@@ -1025,9 +1453,9 @@ func (t *tuiBase) GetShowHardwareCursor() bool {
 }
 
 // SetShowHardwareCursor controls whether the real terminal cursor is shown
-// while still positioning it for IME/caret parity. Mirrors upstream
-// TUI.setShowHardwareCursor().
-func (t *TUI) SetShowHardwareCursor(enabled bool) {
+// while still positioning it for IME/caret parity, and requests a frame, so
+// changes made together share one. Mirrors upstream TUI.setShowHardwareCursor().
+func (t *TuiMainScreen) SetShowHardwareCursor(enabled bool) {
 	t.mu.Lock()
 	if t.showHardwareCursor == enabled {
 		t.mu.Unlock()
@@ -1040,13 +1468,13 @@ func (t *TUI) SetShowHardwareCursor(enabled bool) {
 		t.HideCursor()
 	}
 	if hasRendered {
-		t.Render()
+		t.RequestRender()
 	}
 }
 
 // GetClearOnShrink reports whether shrinking content triggers a full redraw
 // to clear empty rows. Mirrors upstream TUI.getClearOnShrink().
-func (t *TUI) GetClearOnShrink() bool {
+func (t *tuiBase) GetClearOnShrink() bool {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return t.clearOnShrink
@@ -1055,7 +1483,7 @@ func (t *TUI) GetClearOnShrink() bool {
 // SetClearOnShrink configures whether shrinking content triggers a full
 // redraw when no overlays are active. Mirrors upstream
 // TUI.setClearOnShrink().
-func (t *TUI) SetClearOnShrink(enabled bool) {
+func (t *tuiBase) SetClearOnShrink(enabled bool) {
 	t.mu.Lock()
 	t.clearOnShrink = enabled
 	t.mu.Unlock()
@@ -1063,6 +1491,10 @@ func (t *TUI) SetClearOnShrink(enabled bool) {
 
 func (t *tuiBase) updateSize() {
 	if t.fixedSize {
+		return
+	}
+	if t.terminal != nil {
+		t.width, t.height = t.terminal.Columns(), t.terminal.Rows()
 		return
 	}
 	w, h, err := term.GetSize(int(os.Stdout.Fd()))
@@ -1080,7 +1512,7 @@ func (t *tuiBase) SetFixedSize(cols, rows int) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.fixedSize {
-		t.width, t.height = cols, rows
+		t.setFixedDimensionsLocked(cols, rows)
 	}
 }
 
@@ -1090,9 +1522,9 @@ func (t *tuiBase) Width() int { return t.width }
 // RenderSnapshot returns the current frame's fully rendered lines at the
 // given width without writing to the terminal. Used by the /debug command
 // to dump the frame. Mirrors upstream TUI.render(width) (tui.ts).
-func (t *TUI) RenderSnapshot(width int) []string {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+func (t *TuiMainScreen) RenderSnapshot(width int) []string {
+	t.lockFrame()
+	defer t.unlockFrame()
 	return t.Container.Render(width)
 }
 
@@ -1115,11 +1547,122 @@ func (t *tuiBase) SetOnHeightChange(fn func(height int)) {
 // responsible for eventually invoking it on the goroutine that owns
 // component-tree mutation (it may enqueue it on an event loop). When nil
 // (default), scheduled renders run inline on the throttle-timer goroutine,
-// which is correct for standalone / single-goroutine use. Thread-safe.
+// which is correct for standalone / single-goroutine use. It replaces a
+// SetRenderDeadline owner. Thread-safe.
 func (t *tuiBase) SetRenderDispatcher(dispatch func(render func())) {
 	t.mu.Lock()
 	t.renderOnMain = dispatch
+	t.setFrameDueWakeLocked(nil)
 	t.mu.Unlock()
+}
+
+// SetRenderDeadline makes the loop that owns component-tree mutation keep the
+// throttled-frame deadline, as Pi's requestRender arms one setTimeout on its
+// event loop: a frame request records when its frame is due and calls wake
+// with that time, or with the zero time once no frame is pending, instead of
+// arming a timer whose callback runs on a goroutine of its own. The owner
+// calls RunDueRender when the time passes. wake runs under the renderer's
+// lock, so it must not call back into the renderer or block. It replaces a
+// SetRenderDispatcher hook; nil restores the timer goroutine. Thread-safe.
+func (t *tuiBase) SetRenderDeadline(wake func(due time.Time)) {
+	t.mu.Lock()
+	t.renderOnMain = nil
+	t.setFrameDueWakeLocked(wake)
+	t.mu.Unlock()
+}
+
+// setFrameDueWakeLocked switches the frame deadline owner and moves a pending
+// frame to it.
+func (t *tuiBase) setFrameDueWakeLocked(wake func(due time.Time)) {
+	if wake == nil && t.frameDueWake == nil {
+		return
+	}
+	pending := t.renderTimer != nil
+	if pending {
+		t.renderTimer.Stop()
+		t.renderTimer = nil
+	}
+	t.frameDueWake = wake
+	if !pending {
+		return
+	}
+	generation := t.renderGeneration
+	if t.immediateRenderRequested {
+		t.renderTimer = t.armFrameLocked(0, true, generation)
+		return
+	}
+	t.scheduleRenderLocked()
+}
+
+// RunDueRender runs the frame whose SetRenderDeadline deadline has passed, on
+// the calling owner loop. A frame not yet due stays pending.
+func (t *tuiBase) RunDueRender() {
+	t.mu.Lock()
+	if t.frameDue.IsZero() || t.now().Before(t.frameDue) {
+		t.mu.Unlock()
+		return
+	}
+	generation, immediate := t.frameGeneration, t.frameImmediate
+	t.frameDue = time.Time{}
+	t.mu.Unlock()
+	if immediate {
+		t.runImmediateRender(generation)
+		return
+	}
+	t.runScheduledRender(generation)
+}
+
+// armFrameLocked arms the frame of generation, an immediate one or a throttled
+// one, to run after d: on the SetRenderDeadline owner when there is one,
+// otherwise on a timer goroutine.
+func (t *tuiBase) armFrameLocked(d time.Duration, immediate bool, generation uint64) stoppableTimer {
+	if t.frameDueWake == nil {
+		if immediate {
+			return t.afterFunc(d, func() { t.runImmediateRender(generation) })
+		}
+		return t.afterFunc(d, func() { t.runScheduledRender(generation) })
+	}
+	t.frameDue, t.frameGeneration, t.frameImmediate = t.now().Add(d), generation, immediate
+	t.frameDueWake(t.frameDue)
+	return ownerFrame{t}
+}
+
+// ownerFrame is a frame armed on the SetRenderDeadline owner. Stop runs under mu,
+// as every renderTimer Stop does.
+type ownerFrame struct{ t *tuiBase }
+
+func (f ownerFrame) Stop() bool {
+	t := f.t
+	if t.frameDue.IsZero() {
+		return false
+	}
+	t.frameDue = time.Time{}
+	if t.frameDueWake != nil {
+		t.frameDueWake(time.Time{})
+	}
+	return true
+}
+
+// SetOwnerDispatcher installs the seam PostToOwner uses to queue work on the loop that owns component-tree mutation. The dispatcher blocks until the loop accepts fn or ctx ends, and returns an error only in the second case. Thread-safe.
+func (t *tuiBase) SetOwnerDispatcher(dispatch func(ctx context.Context, fn func()) error) {
+	t.mu.Lock()
+	t.postToOwner = dispatch
+	t.mu.Unlock()
+}
+
+// PostToOwner queues fn on the owner loop (see SetOwnerDispatcher). It never drops fn: it returns once the loop has accepted it, or ctx's error when ctx ends first. Without a dispatcher fn runs inline, as the other dispatch seams do. Thread-safe.
+func (t *tuiBase) PostToOwner(ctx context.Context, fn func()) error {
+	if fn == nil {
+		return nil
+	}
+	t.mu.Lock()
+	dispatch := t.postToOwner
+	t.mu.Unlock()
+	if dispatch == nil {
+		fn()
+		return nil
+	}
+	return dispatch(ctx, fn)
 }
 
 // SetTickDispatcher installs the blocking owner-loop seam for owned
@@ -1139,7 +1682,7 @@ func (t *tuiBase) Height() int { return t.height }
 // ForceFullRender marks the next Render() as a destructive full repaint.
 // Use it when the physical buffer is invalid, including semantic transcript
 // replacement, not for ordinary dynamic shrink or streaming updates.
-func (t *TUI) ForceFullRender() {
+func (t *TuiMainScreen) ForceFullRender() {
 	if t.stopped {
 		return
 	}
@@ -1152,11 +1695,85 @@ func (t *TUI) ForceFullRender() {
 // enforcing the upstream 16ms frame throttle. Use this for hot streaming paths
 // (thinking/text deltas); direct Render() is reserved for low-frequency state
 // changes and final flushes.
-func (t *tuiBase) RequestRender() {
+//
+// force is upstream's requestRender(force = false): true resets the render state so the next frame is a full repaint and renders on the next
+// owner-loop turn instead of waiting for the frame throttle.
+func (t *tuiBase) RequestRender(force ...bool) {
 	if t.stopped {
 		return
 	}
-	t.requestRender(false)
+	forced := len(force) > 0 && force[0]
+	if t.deferFrameRenderRequest(forced) {
+		return
+	}
+	t.requestRender(forced)
+}
+
+const (
+	frameRenderRequestNone uint32 = iota
+	frameRenderRequestNormal
+	frameRenderRequestForced
+)
+
+// lockFrame takes mu for a frame that renders components.
+func (t *tuiBase) lockFrame() {
+	t.mu.Lock()
+	t.frameActive.Store(true)
+}
+
+// unlockFrame releases mu after a frame and issues a render requested during it. frameActive clears while mu is still held: clearing it after the unlock could erase the flag of a frame another goroutine has just started, and that frame's own RequestRender would then take mu again.
+func (t *tuiBase) unlockFrame() {
+	t.frameActive.Store(false)
+	t.mu.Unlock()
+	t.issueFrameRenderRequest()
+}
+
+// deferFrameRenderRequest records a render request made while a frame holds mu and reports whether it did. A forced request supersedes a normal one.
+func (t *tuiBase) deferFrameRenderRequest(force bool) bool {
+	if !t.frameActive.Load() {
+		return false
+	}
+	want := frameRenderRequestNormal
+	if force {
+		want = frameRenderRequestForced
+	}
+	for {
+		current := t.frameRenderRequest.Load()
+		if current >= want || t.frameRenderRequest.CompareAndSwap(current, want) {
+			break
+		}
+	}
+	// The frame may have ended between the check and the record; whichever of this call and unlockFrame swaps the request out issues it.
+	if !t.frameActive.Load() {
+		t.issueFrameRenderRequest()
+	}
+	return true
+}
+
+func (t *tuiBase) issueFrameRenderRequest() {
+	switch t.frameRenderRequest.Swap(frameRenderRequestNone) {
+	case frameRenderRequestNormal:
+		t.RequestRender()
+	case frameRenderRequestForced:
+		t.RequestRender(true)
+	}
+}
+
+// RenderNow renders immediately, cancelling any pending render; force=true makes the frame a full repaint.
+// Mirrors upstream renderNow(force) (tui.ts:982).
+func (t *tuiBase) RenderNow(force ...bool) {
+	if t.stopped {
+		return
+	}
+	if len(force) > 0 && force[0] {
+		t.mu.Lock()
+		t.forceRedraw = true
+		if t.resetRenderState != nil {
+			t.resetRenderState()
+		}
+		t.mu.Unlock()
+	}
+	t.Render()
 }
 
 // RequestImmediateRender preempts a throttled frame and coalesces keyboard updates onto the next owner-loop turn. It exposes TuiBase.requestImmediateRender to the Go driver's separately owned input path.
@@ -1176,7 +1793,7 @@ func (t *tuiBase) RequestImmediateRender() {
 	t.renderRequested = true
 	dispatch := t.renderOnMain
 	if dispatch == nil {
-		t.renderTimer = t.afterFunc(0, func() { t.runImmediateRender(generation) })
+		t.renderTimer = t.armFrameLocked(0, true, generation)
 		t.mu.Unlock()
 		return
 	}
@@ -1205,6 +1822,9 @@ func (t *tuiBase) requestRender(force bool) {
 
 	if force {
 		t.forceRedraw = true
+		if t.resetRenderState != nil {
+			t.resetRenderState()
+		}
 		t.immediateRenderRequested = false
 		t.renderGeneration++
 		if t.renderTimer != nil {
@@ -1213,7 +1833,7 @@ func (t *tuiBase) requestRender(force bool) {
 		}
 		t.renderRequested = true
 		generation := t.renderGeneration
-		t.renderTimer = t.afterFunc(0, func() { t.runScheduledRender(generation) })
+		t.renderTimer = t.armFrameLocked(0, false, generation)
 		return
 	}
 	if t.renderRequested {
@@ -1235,7 +1855,7 @@ func (t *tuiBase) scheduleRenderLocked() {
 		}
 	}
 	generation := t.renderGeneration
-	t.renderTimer = t.afterFunc(delay, func() { t.runScheduledRender(generation) })
+	t.renderTimer = t.armFrameLocked(delay, false, generation)
 }
 
 func (t *tuiBase) runScheduledRender(generation uint64) {
@@ -1324,6 +1944,8 @@ func (t *tuiBase) cancelPendingRenderLocked() {
 //  6. If firstChanged is above the current viewport → fullRender(clear).
 //  7. Otherwise: move cursor to firstChanged (scrolling if it's below
 //     the viewport bottom), rewrite affected lines, clear any extras.
+//
+//perf:hot
 func (t *tuiBase) Render() {
 	if t.stopped {
 		return
@@ -1346,33 +1968,75 @@ func findCursorPosition(lines []string, height int) (widthx.CursorPosition, int,
 	return widthx.CursorPosition{}, -1, "", false
 }
 
-func (t *TUI) applyLineResetsCached(lines []string) []string {
-	return t.applyLineResetsCachedWithCursor(lines, -1, "")
+func (t *TuiMainScreen) applyLineResetsCached(lines []string) []string {
+	out, _ := t.applyLineResetsCachedWithCursor(lines, -1, "", 0, true, false)
+	return out
 }
 
-func (t *TUI) applyLineResetsCachedWithCursor(lines []string, cursorRow int, cursorFreeLine string) []string {
+// fakeCursorResolution is how a frame's fake cursors are resolved: before the line resets, or by them with or without the
+// hardware cursor shown.
+type fakeCursorResolution uint8
+
+const (
+	fakeCursorsResolved fakeCursorResolution = iota
+	fakeCursorsByResets
+	fakeCursorsByResetsWithHardwareCursor
+)
+
+// applyLineResetsCachedWithCursor returns lines with the line resets applied
+// and the first index whose result may differ from the last frame's. The first
+// kept lines equal the last frame's input, so their results are kept without
+// reading them; past them, a line equal to the last frame's input at the same
+// index keeps its result when intact reports that input array unchanged. The
+// cursor rows of both frames are always rebuilt. With resolve, the fake cursors of a rebuilt line are resolved first; the
+// cursor-free line is resolved already.
+func (t *TuiMainScreen) applyLineResetsCachedWithCursor(lines []string, cursorRow int, cursorFreeLine string, kept int, intact, resolve bool) ([]string, int) {
 	if len(lines) == 0 {
 		t.resetInPrev = nil
 		t.resetOutPrev = nil
 		t.resetOutWork = nil
+		t.resetAgree = 0
 		t.resetHasCursor = false
 		t.resetKittyIDs = nil
 		t.resetKittyWork = nil
-		return lines
+		return lines, 0
 	}
+	prevOut := t.resetOutPrev
+	start := min(kept, len(prevOut), len(lines))
+	if t.resetHasCursor && t.resetCursorRow < start {
+		start = t.resetCursorRow
+	}
+	if cursorRow >= 0 && cursorRow < start {
+		start = cursorRow
+	}
+	// The work array is the frame before last's; its first resetAgree results
+	// equal the last frame's.
+	var out []string
 	if cap(t.resetOutWork) < len(lines) {
-		t.resetOutWork = make([]string, len(lines))
+		out = make([]string, len(lines), frameCap(len(lines)))
+		copy(out, prevOut[:start])
 	} else {
-		t.resetOutWork = t.resetOutWork[:len(lines)]
+		out = t.resetOutWork[:len(lines)]
+		if agree := min(t.resetAgree, start); agree < start {
+			copy(out[agree:start], prevOut[agree:start])
+		}
 	}
-	out := t.resetOutWork
 	kittyIDs := t.resetKittyWork
 	clear(kittyIDs)
-	for i, line := range lines {
+	for index, ids := range t.resetKittyIDs {
+		if index < start {
+			if kittyIDs == nil {
+				kittyIDs = make(map[int][]int)
+			}
+			kittyIDs[index] = ids
+		}
+	}
+	for i := start; i < len(lines); i++ {
+		line := lines[i]
 		wasCursorRow := t.resetHasCursor && i == t.resetCursorRow
 		isCursorRow := cursorRow >= 0 && i == cursorRow
-		if !wasCursorRow && !isCursorRow && i < len(t.resetInPrev) && t.resetInPrev[i] == line {
-			out[i] = t.resetOutPrev[i]
+		if intact && !wasCursorRow && !isCursorRow && i < len(t.resetInPrev) && t.resetInPrev[i] == line {
+			out[i] = prevOut[i]
 			if ids := t.resetKittyIDs[i]; len(ids) > 0 {
 				if kittyIDs == nil {
 					kittyIDs = make(map[int][]int)
@@ -1383,6 +2047,8 @@ func (t *TUI) applyLineResetsCachedWithCursor(lines []string, cursorRow int, cur
 		}
 		if isCursorRow {
 			line = cursorFreeLine
+		} else if resolve {
+			line = widthx.ResolveFakeCursorLine(line, t.showHardwareCursor)
 		}
 		out[i] = widthx.ApplyLineReset(line)
 		if ids := extractKittyImageIDs(out[i]); len(ids) > 0 {
@@ -1394,18 +2060,19 @@ func (t *TUI) applyLineResetsCachedWithCursor(lines []string, cursorRow int, cur
 	}
 	t.resetKittyWork = t.resetKittyIDs
 	t.resetKittyIDs = kittyIDs
-	previousOut := t.resetOutPrev
 	t.resetInPrev = lines
 	t.resetOutPrev = out
-	t.resetOutWork = previousOut
+	t.resetOutWork = prevOut
+	t.resetAgree = start
 	t.resetCursorRow = cursorRow
 	t.resetHasCursor = cursorRow >= 0
-	return out
+	return out, start
 }
 
-func (t *TUI) doRender() {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+//perf:hot
+func (t *TuiMainScreen) doRender() {
+	t.lockFrame()
+	defer t.unlockFrame()
 	t.lastRenderAt = t.now()
 
 	t.updateSize()
@@ -1413,8 +2080,35 @@ func (t *TUI) doRender() {
 	// Collect lines from the component tree, then compose from an immutable
 	// overlay snapshot. Component rendering and visibility callbacks run with no
 	// overlay-state lock held.
-	newLines := t.composeOverlayLines(t.renderBorrowed(t.width), t.width, t.height)
+	// Resolve fake cursors before compositing so overlays and line slicing see plain SGR codes (tui-main-screen.ts doRender).
+	rootLines, rootVersion, kept := t.renderBorrowedSince(t.width, t.windowVersion)
+	newLines, unresolved := t.composeFrameLines(rootLines, t.width, t.height)
 	hasOverlay := t.HasOverlay()
+	// The reset cache may compare with the last frame's input when that array
+	// is unchanged: a composed array is the renderer's own, and the root
+	// container writes only into the array it returned two renders back.
+	intact := t.resetInComposed || rootVersion-t.windowVersion <= 1
+	composed := len(newLines) != len(rootLines) || len(newLines) > 0 && &newLines[0] != &rootLines[0]
+	if composed || t.resetInComposed {
+		kept = 0
+	}
+	resolution := fakeCursorsResolved
+	if unresolved {
+		resolution = fakeCursorsByResets
+		if t.showHardwareCursor {
+			resolution = fakeCursorsByResetsWithHardwareCursor
+		}
+	}
+	// The last frame's results hold for this frame's equal input only when its fake cursors were resolved the same way.
+	if resolution != t.resetResolve {
+		kept, intact = 0, false
+	}
+	t.windowVersion, t.resetInComposed, t.resetResolve = rootVersion, composed, resolution
+	// The differential scan starts where this frame's lines may first differ
+	// from the last frame's when the last frame's are the reset cache's.
+	diffFrom := 0
+	prevOut := t.resetOutPrev
+	sameFrame := len(t.prevLines) == len(prevOut) && (len(prevOut) == 0 || &t.prevLines[0] == &prevOut[0])
 
 	// Mirrors upstream TUI.extractCursorPosition (tui.ts:868): scan the
 	// bottom `height` rendered lines for the APC CURSOR_MARKER, strip it
@@ -1423,6 +2117,11 @@ func (t *TUI) doRender() {
 	// don't emit the marker fall back to the legacy behaviour where the
 	// cursor lands at the end of the last written line.
 	cursorPos, cursorRow, cursorFreeLine, hasCursorPos := findCursorPosition(newLines, t.height)
+	if hasCursorPos && unresolved {
+		// Resolving keeps every cursor marker in place, so the marker is on the same row; the cursor-free line is the resolved one.
+		before, after, _ := strings.Cut(widthx.ResolveFakeCursorLine(newLines[cursorRow], t.showHardwareCursor), widthx.CursorMarker)
+		cursorPos.Col, cursorFreeLine = widthx.VisibleWidth(before), before+after
+	}
 
 	// Mirrors upstream TUI.applyLineResets (tui.ts:427): every non-image
 	// line gets the SEGMENT_RESET barrier appended so SGR and OSC 8
@@ -1431,7 +2130,10 @@ func (t *TUI) doRender() {
 	// pig-specific: applyLineResetsCached reuses the previous frame's result
 	// for unchanged lines (byte-identical output) so the expensive
 	// normalization does not re-run on every scrolled-off history line.
-	newLines = t.applyLineResetsCachedWithCursor(newLines, cursorRow, cursorFreeLine)
+	newLines, resetFrom := t.applyLineResetsCachedWithCursor(newLines, cursorRow, cursorFreeLine, kept, intact, unresolved)
+	if sameFrame {
+		diffFrom = resetFrom
+	}
 
 	width, height := t.width, t.height
 	if height < 1 {
@@ -1509,7 +2211,7 @@ func (t *TUI) doRender() {
 	// Find first/last changed buffer rows.
 	firstChanged, lastChanged := -1, -1
 	maxLen := max(len(t.prevLines), len(newLines))
-	for i := range maxLen {
+	for i := diffFrom; i < maxLen; i++ {
 		var oldL, newL string
 		if i < len(t.prevLines) {
 			oldL = t.prevLines[i]
@@ -1634,7 +2336,7 @@ func (t *TUI) doRender() {
 	// the differential path runs and terminates as Pi does.
 	d53Allowed := t.differentialOverflowRow(newLines, firstChanged, lastChanged, appendStart, prevViewportTop, height, width) < 0
 	for i := firstChanged; d53Allowed && i <= lastChanged && i < len(t.prevLines) && i < len(newLines); i++ {
-		if widthx.VisibleWidth(t.prevLines[i]) > width && widthx.VisibleWidth(newLines[i]) <= width {
+		if !IsImageLine(t.prevLines[i]) && widthx.VisibleWidth(t.prevLines[i]) > width && widthx.VisibleWidth(newLines[i]) <= width {
 			t.logRedraw(fmt.Sprintf("D53 over-wide row %d replaced by a fitting row", i), len(newLines), height)
 			t.fullRender(newLines, width, height, true)
 			t.positionHardwareCursor(cursorPos, hasCursorPos, len(newLines))
@@ -1755,7 +2457,7 @@ func (t *TUI) doRender() {
 // a multi-row Kitty image that would scroll falls back before later rows are
 // checked, image rows are exempt, and only rows firstChanged..renderEnd are
 // written.
-func (t *TUI) differentialOverflowRow(newLines []string, firstChanged, lastChanged int, appendStart bool, prevViewportTop, height, width int) int {
+func (t *TuiMainScreen) differentialOverflowRow(newLines []string, firstChanged, lastChanged int, appendStart bool, prevViewportTop, height, width int) int {
 	viewportTop := prevViewportTop
 	moveTargetRow := firstChanged
 	if appendStart {
@@ -1788,7 +2490,8 @@ func (t *TUI) differentialOverflowRow(newLines []string, firstChanged, lastChang
 // Faithful to upstream pi-tui: when clear is true, clear the visible screen,
 // home the cursor, clear terminal scrollback, then replay the current logical
 // render buffer once.
-func (t *TUI) fullRender(newLines []string, width, height int, clear bool) {
+func (t *TuiMainScreen) fullRender(newLines []string, width, height int, clear bool) {
+	t.fullRedrawCount.Add(1)
 	bufLen := max(len(newLines), height)
 	viewportTop := max(0, bufLen-height)
 
@@ -1856,9 +2559,9 @@ func isTermuxSession() bool {
 //
 // `cursorPos.Row` and `t.hardwareCursorRow` are both buffer-row indices, so
 // the relative row delta is stable across viewport shifts.
-func (t *TUI) positionHardwareCursor(cursorPos widthx.CursorPosition, ok bool, totalLines int) {
+func (t *TuiMainScreen) positionHardwareCursor(cursorPos widthx.CursorPosition, ok bool, totalLines int) {
 	if !ok || totalLines <= 0 {
-		_, _ = fmt.Fprint(t.out, "\x1b[?25l")
+		_, _ = fmt.Fprint(t.cursorOut(), "\x1b[?25l")
 		return
 	}
 	targetRow := max(0, min(cursorPos.Row, totalLines-1))
@@ -1871,15 +2574,16 @@ func (t *TUI) positionHardwareCursor(cursorPos widthx.CursorPosition, ok bool, t
 		fmt.Fprintf(&buf, "\x1b[%dA", -rowDelta)
 	}
 	fmt.Fprintf(&buf, "\x1b[%dG", targetCol+1)
-	if t.showHardwareCursor {
-		buf.WriteString("\x1b[?25h")
-	} else {
-		buf.WriteString("\x1b[?25l")
-	}
 	if buf.Len() > 0 {
 		_, _ = t.out.Write([]byte(buf.String()))
 	}
 	t.hardwareCursorRow = targetRow
+	// Upstream shows or hides the cursor through terminal.showCursor/hideCursor, which bypass PI_TUI_WRITE_LOG.
+	if t.showHardwareCursor {
+		t.ShowCursor()
+	} else {
+		t.HideCursor()
+	}
 }
 
 // viewportTop returns prevViewportTop unchanged. Kept as a named
@@ -1888,14 +2592,13 @@ func (t *TUI) positionHardwareCursor(cursorPos widthx.CursorPosition, ok bool, t
 func viewportTop(prev int) int { return prev }
 
 // RepaintAll forces an immediate screen-clearing repaint after an external program has changed the terminal. Ordinary editor updates use differential rendering instead.
-func (t *TUI) RepaintAll() {
-	t.ForceFullRender()
-	t.Render()
+func (t *TuiMainScreen) RepaintAll() {
+	t.RenderNow(true)
 }
 
 // HideCursor hides the terminal cursor.
 func (t *tuiBase) HideCursor() {
-	_, _ = fmt.Fprint(t.out, "\033[?25l")
+	_, _ = fmt.Fprint(t.cursorOut(), "\033[?25l")
 }
 
 // WriteRaw writes data to the terminal as is, as upstream's
@@ -1906,40 +2609,49 @@ func (t *tuiBase) WriteRaw(data string) {
 
 // ShowCursor shows the terminal cursor.
 func (t *tuiBase) ShowCursor() {
-	_, _ = fmt.Fprint(t.out, "\033[?25h")
+	_, _ = fmt.Fprint(t.cursorOut(), "\033[?25h")
+}
+
+// cursorOut is where cursor visibility goes: upstream's terminal.hideCursor and showCursor write to stdout directly, not through
+// the logged terminal.write.
+func (t *tuiBase) cursorOut() io.Writer {
+	if t.direct != nil {
+		return t.direct
+	}
+	return t.out
 }
 
 // Stop cleanly shuts down the TUI. Moves the cursor to the end of rendered
 // content, writes a newline, and shows the cursor. This preserves the screen
 // content so the user sees the final state after exit.
 // Mirrors upstream tui.ts stop() (lines 473-494).
-// TUIRenderState is a snapshot of the main-screen renderer's inline-flow render
+// TuiMainScreenRenderState is a snapshot of the main-screen renderer's inline-flow render
 // state. It lets InteractiveMode preserve regular-mode scrollback position across
 // a live tui-mode switch (a fullscreen round-trip discards and rebuilds the
-// renderer). Mirrors upstream TuiMainScreenRenderState (tui-main-screen.ts:46).
-type TUIRenderState struct {
-	PrevLines         []string
-	PrevWidth         int
-	PrevHeight        int
-	CursorRow         int
-	HardwareCursorRow int
-	MaxLinesRendered  int
-	PrevViewportTop   int
+// renderer). Mirrors upstream TuiMainScreenRenderState (tui-main-screen.ts:113).
+type TuiMainScreenRenderState struct {
+	PreviousLines       []string
+	PreviousWidth       int
+	PreviousHeight      int
+	CursorRow           int
+	HardwareCursorRow   int
+	MaxLinesRendered    int
+	PreviousViewportTop int
 }
 
 // CaptureRenderState snapshots the current inline-flow render state so a renderer
 // swap can restore it. Mirrors upstream TuiMainScreen.captureRenderState.
-func (t *TUI) CaptureRenderState() TUIRenderState {
+func (t *TuiMainScreen) CaptureRenderState() TuiMainScreenRenderState {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	return TUIRenderState{
-		PrevLines:         slices.Clone(t.prevLines),
-		PrevWidth:         t.prevWidth,
-		PrevHeight:        t.prevHeight,
-		CursorRow:         t.cursorRow,
-		HardwareCursorRow: t.hardwareCursorRow,
-		MaxLinesRendered:  t.maxLinesRendered,
-		PrevViewportTop:   t.prevViewportTop,
+	return TuiMainScreenRenderState{
+		PreviousLines:       slices.Clone(t.prevLines),
+		PreviousWidth:       t.prevWidth,
+		PreviousHeight:      t.prevHeight,
+		CursorRow:           t.cursorRow,
+		HardwareCursorRow:   t.hardwareCursorRow,
+		MaxLinesRendered:    t.maxLinesRendered,
+		PreviousViewportTop: t.prevViewportTop,
 	}
 }
 
@@ -1948,11 +2660,11 @@ func (t *TUI) CaptureRenderState() TUIRenderState {
 // blanked and the Kitty image-id set is cleared, since those images are no longer
 // on the terminal after the switch. Mirrors upstream
 // TuiMainScreen.restoreRenderState.
-func (t *TUI) RestoreRenderState(state TUIRenderState) {
+func (t *TuiMainScreen) RestoreRenderState(state TuiMainScreenRenderState) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	restored := make([]string, len(state.PrevLines))
-	for i, line := range state.PrevLines {
+	restored := make([]string, len(state.PreviousLines))
+	for i, line := range state.PreviousLines {
 		if IsImageLine(line) {
 			restored[i] = ""
 			continue
@@ -1961,41 +2673,42 @@ func (t *TUI) RestoreRenderState(state TUIRenderState) {
 	}
 	t.prevLines = restored
 	t.previousKittyImageIDs = nil
-	t.prevWidth = state.PrevWidth
-	t.prevHeight = state.PrevHeight
+	t.prevWidth = state.PreviousWidth
+	t.prevHeight = state.PreviousHeight
 	t.cursorRow = state.CursorRow
 	t.hardwareCursorRow = state.HardwareCursorRow
 	t.maxLinesRendered = state.MaxLinesRendered
-	t.prevViewportTop = state.PrevViewportTop
+	t.prevViewportTop = state.PreviousViewportTop
 	// Non-empty restored content means the next render is a differential against
 	// it, not a first-render full redraw.
 	t.hasRendered = len(restored) > 0
 }
 
 // Start resumes the main-screen renderer after a terminal handoff. The driver restores input and requests the full repaint, as Pi's TUI.start does.
-func (t *TUI) Start() {
+func (t *TuiMainScreen) Start() {
 	t.stopped = false
 	t.HideCursor()
+	if t.colorSchemeNotificationsEnabled() {
+		writeColorSchemeNotifications(t.out, true)
+	}
 	t.RequestRender()
 }
 
-func (t *TUI) Stop() { t.StopWithOptions(StopOptions{}) }
+func (t *TuiMainScreen) Stop() { t.StopWithOptions(StopOptions{}) }
 
-// StopWithOptions tears down the main-screen renderer. With PreserveScreen set
-// (a live tui-mode switch), it skips the final cursor-park-and-newline emission
-// so the swap produces no end-of-session output; mirrors upstream
-// TuiMainScreen.stop({ preserveScreen }). Plain Stop() keeps the shutdown
-// behavior that parks the cursor below the content.
-func (t *TUI) StopWithOptions(options StopOptions) {
+func (t *TuiMainScreen) StopWithOptions(options StopOptions) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.stopWithOptionsLocked(options)
 }
 
 // stopWithOptionsLocked also serves the overflow path, which already holds the render lock.
-func (t *TUI) stopWithOptionsLocked(options StopOptions) {
+func (t *TuiMainScreen) stopWithOptionsLocked(options StopOptions) {
 	t.stopped = true
 	t.cancelPendingRenderLocked()
+	if t.colorSchemeNotificationsEnabled() {
+		writeColorSchemeNotifications(t.out, false)
+	}
 	// Move cursor to end of content (skipped on a preserve-screen switch).
 	if !options.PreserveScreen && len(t.prevLines) > 0 {
 		// Overwrite the inverted software cursor with a normal space so it
@@ -2149,7 +2862,7 @@ func extractKittyImageIDs(line string) []int {
 }
 
 // visitKittyImageIDs reuses parsed IDs only for the exact reset-cache buffers. Arbitrary inputs and restored snapshots are scanned normally. Empty cache maps make image-free frames independent of transcript byte size without assuming a terminal capability forbids raw component output.
-func (t *TUI) visitKittyImageIDs(lines []string, visit func(int, []int)) {
+func (t *TuiMainScreen) visitKittyImageIDs(lines []string, visit func(int, []int)) {
 	if len(lines) == 0 {
 		return
 	}
@@ -2177,7 +2890,7 @@ func (t *TUI) visitKittyImageIDs(lines []string, visit func(int, []int)) {
 }
 
 // collectKittyImageIDs preserves the encounter order of Pi's Set, independent of advertised terminal capabilities. Custom components can emit Kitty sequences directly.
-func (t *TUI) collectKittyImageIDs(lines []string) []int {
+func (t *TuiMainScreen) collectKittyImageIDs(lines []string) []int {
 	var ids []int
 	seen := make(map[int]bool)
 	t.visitKittyImageIDs(lines, func(_ int, found []int) {
@@ -2192,7 +2905,7 @@ func (t *TUI) collectKittyImageIDs(lines []string) []int {
 }
 
 // deleteKittyImagesSet emits delete sequences in the original encounter order.
-func (t *TUI) deleteKittyImagesSet(ids []int) string {
+func (t *TuiMainScreen) deleteKittyImagesSet(ids []int) string {
 	var b strings.Builder
 	for _, id := range ids {
 		b.WriteString(DeleteKittyImage(id))
@@ -2201,7 +2914,7 @@ func (t *TUI) deleteKittyImagesSet(ids []int) string {
 }
 
 // kittyImageReservedRows counts blank rows reserved by an image within the render range.
-func (t *TUI) kittyImageReservedRows(lines []string, index, maxIndex int) int {
+func (t *TuiMainScreen) kittyImageReservedRows(lines []string, index, maxIndex int) int {
 	rows := parseKittyImageHeader(lines[index]).rows
 	if rows <= 1 {
 		return 1
@@ -2218,7 +2931,7 @@ func (t *TUI) kittyImageReservedRows(lines []string, index, maxIndex int) int {
 	return reserved
 }
 
-func (t *TUI) expandChangedRangeForKittyImages(firstChanged, lastChanged int, newLines []string) (int, int) {
+func (t *TuiMainScreen) expandChangedRangeForKittyImages(firstChanged, lastChanged int, newLines []string) (int, int) {
 	expandedFirst, expandedLast := firstChanged, lastChanged
 	for _, lines := range [][]string{t.prevLines, newLines} {
 		t.visitKittyImageIDs(lines, func(i int, _ []int) {
@@ -2235,7 +2948,7 @@ func (t *TUI) expandChangedRangeForKittyImages(firstChanged, lastChanged int, ne
 // deleteChangedKittyImages returns delete sequences for all Kitty images
 // that appear in prevLines[firstChanged..lastChanged].
 // Mirrors upstream TUI.deleteChangedKittyImages.
-func (t *TUI) deleteChangedKittyImages(firstChanged, lastChanged int) string {
+func (t *TuiMainScreen) deleteChangedKittyImages(firstChanged, lastChanged int) string {
 	if firstChanged < 0 || lastChanged < firstChanged || firstChanged >= len(t.prevLines) {
 		return ""
 	}

@@ -14,7 +14,7 @@ func TestExtensionNotifyUsesStatusRendering(t *testing.T) {
 	for _, adapter := range []string{"context", "subprocess-notify"} {
 		for _, kind := range []string{"info", "warning", "error", ""} {
 			t.Run(adapter+"/"+kind, func(t *testing.T) {
-				m := NewInteractiveMode(InteractiveOptions{})
+				m := NewInteractiveMode(nil, InteractiveModeOptions{})
 				m.runCtx = t.Context()
 				m.tuiInst = tui.NewWithOutput(io.Discard, 80, 24)
 				m.chatContainer = tui.NewContainer()
@@ -39,7 +39,7 @@ func TestExtensionNotifyUsesStatusRendering(t *testing.T) {
 					token, prefix = "error", "Error: "
 				}
 				for _, width := range []int{10, 80} {
-					want := tui.NewPaddedText(tui.ActiveTheme().FgText(token, prefix+message), 1, 0, nil).Render(width)
+					want := tui.NewPaddedText(tui.ActiveTheme().Fg(token, prefix+message), 1, 0, nil).Render(width)
 					want = append([]string{""}, want...)
 					got := m.chatContainer.Render(width)
 					if !slices.Equal(got, want) {

@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package gomodule
@@ -25,13 +24,11 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
 
-// Equivalence port of packages/coding-agent/test/package-distribution.test.ts (Pi 1.0.0). Pi asserts that its npm
-// package runs a bundle as the executable, exposes modular output to libraries, and keeps its experimental
-// entrypoints (./client, ./experimental/plugin) source-only (#9132). PiG ships the same two channels differently:
-// the executable is the @pi-in-go/pig npm launcher plus one native binary package per release target, and the
-// library is the Go module. The invariants are the same: every supported os/arch reaches an executable, the
-// published packages contain exactly what their manifests list, and no experimental surface is a published,
-// importable runtime entrypoint.
+// Equivalence port of packages/coding-agent/test/package-distribution.test.ts (Pi 1.2.0). Pi asserts that its npm
+// package runs a bundle as the executable and exposes modular output to libraries. PiG ships the same two channels
+// differently: the executable is the @pi-in-go/pig npm launcher plus one native binary package per release target,
+// and the library is the Go module. The invariants are the same: every supported os/arch reaches an executable and
+// the published packages contain exactly what their manifests list.
 
 const packageDistributionTest = "packages/coding-agent/test/package-distribution.test.ts"
 
@@ -202,8 +199,8 @@ func packageFiles(t *testing.T, dir string) []string {
 func TestPackageDistributionUpstream(t *testing.T) {
 	root := repoRoot(t)
 	cases := upstreamTestCases(t, root, packageDistributionTest)
-	if len(cases) != 2 {
-		t.Fatalf("upstream denominator has %d cases, want the 2 this port maps", len(cases))
+	if len(cases) != 1 {
+		t.Fatalf("upstream denominator has %d cases, want the 1 this port maps", len(cases))
 	}
 	targets := releaseTargets(t, root)
 	out, manifests := packNpm(t, root, targets)
@@ -215,7 +212,7 @@ func TestPackageDistributionUpstream(t *testing.T) {
 		// uses the bundle for executables and modular output for libraries: bin is the executable entrypoint and
 		// nothing else is. PiG's launcher maps every release target to a platform package that carries that
 		// target's native binary, and each package publishes exactly its files list.
-		20: func(t *testing.T) {
+		18: func(t *testing.T) {
 			launcher, ok := manifests["pig"]
 			if !ok || launcher.Name != "@pi-in-go/pig" {
 				t.Fatalf("launcher package = %+v", launcher)
@@ -278,36 +275,6 @@ func TestPackageDistributionUpstream(t *testing.T) {
 			}
 			if len(manifests) != len(targets)+1 {
 				t.Errorf("generator emitted %d packages, want %d platform packages and the launcher", len(manifests), len(targets))
-			}
-		},
-		// keeps experimental exports source-only (#9132): no published package exposes an experimental entrypoint.
-		// npm packages export nothing; in the Go module every experimental package is internal (not importable by
-		// other modules) or a main package (not importable at all).
-		28: func(t *testing.T) {
-			for dir, manifest := range manifests {
-				if manifest.Exports != nil {
-					t.Errorf("%s exports %s", dir, manifest.Exports)
-				}
-			}
-			cmd := exec.Command("go", "list", "-f", "{{.ImportPath}} {{.Name}}", "./...")
-			cmd.Dir = root
-			output, err := cmd.Output()
-			if err != nil {
-				t.Fatalf("go list: %v", err)
-			}
-			experimental := 0
-			for line := range strings.SplitSeq(strings.TrimSpace(string(output)), "\n") {
-				importPath, name, _ := strings.Cut(line, " ")
-				if !strings.Contains(strings.ToLower(importPath), "experimental") {
-					continue
-				}
-				experimental++
-				if name != "main" && !strings.HasPrefix(importPath, rootModule+"/internal/") {
-					t.Errorf("experimental package %s is importable by other modules", importPath)
-				}
-			}
-			if experimental == 0 {
-				t.Error("go list found no experimental package; the check would pass vacuously")
 			}
 		},
 	}

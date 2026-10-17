@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# Materialize a read-only Pi source tree for the exact version pinned in
-# internal/coding/pigversion/pigversion.go. The mirror provides local source, tests,
-# and documentation for parity work without adding upstream files to this
-# repository.
+# Materialize a read-only Pi source tree for the upstream pin (.upstream/pin,
+# or PI_UPSTREAM_REF for one run; see automation/pin/pinlib.py). The mirror
+# provides local source, tests, and documentation for parity work without
+# adding upstream files to this repository.
 #
 # The script:
-#   1. reads UpstreamVersion and UpstreamCommit from
-#      internal/coding/pigversion/pigversion.go;
-#   2. resolves the release tag to its exact peeled commit;
-#   3. reuses the public tarball cache under
+#   1. reads the pin (a release tag, or a pinned pi-mono commit) through
+#      automation/pin/pin.py;
+#   2. reuses the public tarball cache under
 #      ${XDG_CACHE_HOME:-~/.cache}/checkouts/github.com/earendil-works/pi/tarballs/;
-#   4. extracts and validates the complete upstream tree;
-#   5. records source provenance; and
-#   6. points .upstream/current at the pinned version.
+#   3. extracts and validates the complete upstream tree into
+#      .upstream/v<version> (a commit pin's version carries +<commit[:8]>);
+#   4. records source provenance; and
+#   5. points .upstream/current at the pinned build.
 #
 # It does not change the PiG source pin, commit, or push.
 #
@@ -24,7 +24,7 @@
 #   ./automation/gen/mirror-upstream.sh --help
 #
 # --version materializes an additional release for comparison. It does not
-# change internal/coding/pigversion/pigversion.go.
+# change the pin.
 #
 # Requires: curl, tar, git
 # Optional: GH_PUBLIC_TOKEN
@@ -62,12 +62,8 @@ resolve_tag_commit() {
   printf '%s' "$commit"
 }
 
-read_pinned_commit() {
-  # Capture then slice rather than piping into head: under pipefail, head
-  # closing early makes the writer fail on SIGPIPE.
-  local matches
-  matches=$(sed -nE 's/^const UpstreamCommit = "([0-9a-f]{40})"$/\1/p' "$REPO_ROOT/internal/coding/pigversion/pigversion.go")
-  printf '%s' "${matches%%$'\n'*}"
+pin_get() {
+  python3 "$REPO_ROOT/automation/pin/pin.py" get "$1"
 }
 
 write_provenance() {
@@ -97,6 +93,8 @@ verify_mirror_tree() {
   (( source_count >= 200 ))
 }
 
+# The published pi-ai data is matched by package version: a commit pin's build
+# of pi-ai (extensions/sdk-ts/node_modules) carries the data of its own source.
 hydrate_provider_data() {
   local directory="$1" version="$2" candidate package_version matches
   local target="$directory/packages/ai/src/providers/data"
@@ -123,6 +121,15 @@ hydrate_provider_data() {
   return 1
 }
 
+# The mirrored source imports third-party packages (chord's schema.ts imports typebox) and its workspace packages. Point
+# the pin's mirror at the dependencies of the pinned source build that `make parity-deps` installs
+# (.upstream/<mirror>/node_modules, a link; nothing is installed into the mirror), so oracle scripts that import the
+# mirrored source resolve them. An extra --version mirror is not the pin and gets no link.
+link_build_modules() {
+  [[ -z "$OVERRIDE_TAG" ]] || return 0
+  python3 "$REPO_ROOT/automation/pin/pin.py" link-mirror
+}
+
 FORCE=0
 PRUNE=0
 OVERRIDE_TAG=""
@@ -146,42 +153,38 @@ for cmd in curl tar git; do
   command -v "$cmd" >/dev/null || { echo "missing dep: $cmd" >&2; exit 1; }
 done
 
-# ── resolve target tag ───────────────────────────────────────────────────────
+# ── resolve the target ───────────────────────────────────────────────────────
+# TARGET_TAG names the tag (or commit) to fetch, TARGET_NAME the .upstream
+# directory, TARGET_VERSION the display version recorded in the provenance
+# marker, and PACKAGE_VERSION the version Pi's package.json files report.
 if [[ -n "$OVERRIDE_TAG" ]]; then
   TARGET_TAG="$OVERRIDE_TAG"
+  TARGET_NAME="$TARGET_TAG"
+  TARGET_VERSION="${TARGET_TAG#v}"
+  PACKAGE_VERSION="$TARGET_VERSION"
+  RESOLVED_COMMIT=$(resolve_tag_commit "$TARGET_TAG") || exit 1
 else
-  CURRENT_VERSION=$(grep -E '^const UpstreamVersion = "' "$REPO_ROOT/internal/coding/pigversion/pigversion.go" \
-    | sed -E 's/.*"([^"]+)".*/\1/')
-  if [[ -z "$CURRENT_VERSION" ]]; then
-    echo "error: could not parse UpstreamVersion from internal/coding/pigversion/pigversion.go" >&2
-    exit 1
-  fi
-  TARGET_TAG="v${CURRENT_VERSION}"
-fi
-TARGET_DIR="${MIRROR_ROOT}/${TARGET_TAG}"
-
-RESOLVED_COMMIT=$(resolve_tag_commit "$TARGET_TAG") || exit 1
-if [[ -z "$OVERRIDE_TAG" ]]; then
-  PINNED_COMMIT=$(read_pinned_commit)
-  if [[ -z "$PINNED_COMMIT" ]]; then
-    echo "error: internal/coding/pigversion/pigversion.go has no exact UpstreamCommit pin" >&2
-    exit 1
-  fi
-  if [[ "$RESOLVED_COMMIT" != "$PINNED_COMMIT" ]]; then
-    echo "error: ${TARGET_TAG} resolves to ${RESOLVED_COMMIT}, pinned ${PINNED_COMMIT}" >&2
+  TARGET_TAG=$(pin_get tag)
+  TARGET_NAME=$(pin_get mirror_dir)
+  TARGET_VERSION=$(pin_get version)
+  PACKAGE_VERSION=$(pin_get package_version)
+  RESOLVED_COMMIT=$(pin_get commit)
+  if ! valid_commit "$RESOLVED_COMMIT"; then
+    echo "error: the upstream pin has no exact commit" >&2
     exit 1
   fi
 fi
+TARGET_DIR="${MIRROR_ROOT}/${TARGET_NAME}"
 
 mkdir -p "$MIRROR_ROOT" "$TARBALL_DIR"
 
 # ── prune old mirrors ────────────────────────────────────────────────────────
 if [[ "$PRUNE" -eq 1 ]]; then
-  echo "→ pruning .upstream/ entries other than ${TARGET_TAG}"
+  echo "→ pruning .upstream/ entries other than ${TARGET_NAME}"
   shopt -s nullglob
   for d in "${MIRROR_ROOT}"/v*; do
     name="$(basename "$d")"
-    if [[ "$name" != "$TARGET_TAG" ]]; then
+    if [[ "$name" != "$TARGET_NAME" ]]; then
       chmod -R u+w "$d" 2>/dev/null || true
       rm -rf "$d"
       echo "  removed $name"
@@ -195,11 +198,11 @@ fi
 
 # ── short-circuit if already extracted ───────────────────────────────────────
 if [[ -d "$TARGET_DIR" && "$FORCE" -eq 0 ]]; then
-  if verify_provenance "$TARGET_DIR" "${TARGET_TAG#v}" "$TARGET_TAG" "$RESOLVED_COMMIT"; then
+  if verify_provenance "$TARGET_DIR" "$TARGET_VERSION" "$TARGET_TAG" "$RESOLVED_COMMIT"; then
     chmod -R u+w "$TARGET_DIR/packages/ai/src" 2>/dev/null || true
-    hydrate_provider_data "$TARGET_DIR" "${TARGET_TAG#v}"
+    hydrate_provider_data "$TARGET_DIR" "$PACKAGE_VERSION"
   fi
-  if ! verify_provenance "$TARGET_DIR" "${TARGET_TAG#v}" "$TARGET_TAG" "$RESOLVED_COMMIT" || ! verify_mirror_tree "$TARGET_DIR"; then
+  if ! verify_provenance "$TARGET_DIR" "$TARGET_VERSION" "$TARGET_TAG" "$RESOLVED_COMMIT" || ! verify_mirror_tree "$TARGET_DIR"; then
     echo "error: upstream mirror provenance is missing or stale: ${TARGET_DIR}" >&2
     echo "       re-run with --force" >&2
     exit 1
@@ -208,25 +211,38 @@ if [[ -d "$TARGET_DIR" && "$FORCE" -eq 0 ]]; then
   if [[ -z "${CI:-}${GITHUB_ACTIONS:-}" ]]; then
     chmod -R u-w "$TARGET_DIR" 2>/dev/null || true
   fi
-  ln -snf "$TARGET_TAG" "${MIRROR_ROOT}/current"
-  echo "  current → ${TARGET_TAG}"
+  # --version adds a comparison mirror; .upstream/current stays on the pin.
+  if [[ -z "$OVERRIDE_TAG" ]]; then
+    ln -snf "$TARGET_NAME" "${MIRROR_ROOT}/current"
+    echo "  current → ${TARGET_NAME}"
+  fi
+  link_build_modules
   exit 0
 fi
 
-# Download the exact public release tarball.
-TARBALL="${TARBALL_DIR}/${TARGET_TAG}.tar.gz"
-if [[ ! -f "$TARBALL" ]]; then
-  echo "→ fetching tarball for ${TARGET_TAG}"
-  url="https://codeload.github.com/${UPSTREAM_REPO}/tar.gz/refs/tags/${TARGET_TAG}"
-  auth_args=()
-  [[ -n "${GH_PUBLIC_TOKEN:-}" ]] && auth_args=(-H "Authorization: Bearer ${GH_PUBLIC_TOKEN}")
-  if ! curl -sSfL "${auth_args[@]+"${auth_args[@]}"}" -o "${TARBALL}.tmp" "$url"; then
-    rm -f "${TARBALL}.tmp"
-    echo "error: failed to download tarball for ${TARGET_TAG}" >&2
-    echo "       check that the tag exists: https://github.com/${UPSTREAM_REPO}/releases/tag/${TARGET_TAG}" >&2
-    exit 1
+# Reuse or download the exact public tarball of the tag or commit.
+if [[ -n "$OVERRIDE_TAG" ]]; then
+  TARBALL="${TARBALL_DIR}/${TARGET_TAG}.tar.gz"
+  if [[ ! -f "$TARBALL" ]]; then
+    echo "→ fetching tarball for ${TARGET_TAG}"
+    url="https://codeload.github.com/${UPSTREAM_REPO}/tar.gz/refs/tags/${TARGET_TAG}"
+    auth_args=()
+    [[ -n "${GH_PUBLIC_TOKEN:-}" ]] && auth_args=(-H "Authorization: Bearer ${GH_PUBLIC_TOKEN}")
+    if ! curl -sSfL "${auth_args[@]+"${auth_args[@]}"}" -o "${TARBALL}.tmp" "$url"; then
+      rm -f "${TARBALL}.tmp"
+      echo "error: failed to download tarball for ${TARGET_TAG}" >&2
+      echo "       check that the tag exists: https://github.com/${UPSTREAM_REPO}/releases/tag/${TARGET_TAG}" >&2
+      exit 1
+    fi
+    mv "${TARBALL}.tmp" "$TARBALL"
   fi
-  mv "${TARBALL}.tmp" "$TARBALL"
+else
+  echo "→ fetching tarball for ${TARGET_TAG}"
+  TARBALL=$(python3 "$REPO_ROOT/automation/pin/pin.py" tarball)
+  # On Windows pin.py prints C:\... ; GNU tar reads "C:" as a remote host, so hand it the POSIX form.
+  if command -v cygpath >/dev/null 2>&1; then
+    TARBALL=$(cygpath -u "$TARBALL")
+  fi
 fi
 
 # ── extract full tree ────────────────────────────────────────────────────────
@@ -268,16 +284,19 @@ for entry in $TOP_LEVEL; do
   sleep 0.3
 done
 
-# Drop upstream npm lockfiles before locking the tree down. pig never installs
-# them (ensure_upstream_pi uses mise), they are off the parity surface
+# Drop the packages' npm lockfiles before locking the tree down. pig never
+# installs them (ensure_upstream_pi uses mise), they are off the parity surface
 # (packages/*/src/**), and they carry transitive CVEs that would otherwise sit
-# in the cached mirror. Excluding them keeps the mirror to what parity reads.
-find "$TARGET_DIR" -name package-lock.json -type f -delete 2>/dev/null || true
+# in the cached mirror. The root package-lock.json stays: divergence-guard's
+# dependency proofs (test/parity/dependency-sources.json) cite the exact pin of
+# a transitive package Pi's build bundles from it (automation/ci/divguard
+# dependencyLockfile), so the gate cannot run on a mirror without it.
+find "$TARGET_DIR" -mindepth 2 -name package-lock.json -type f -delete 2>/dev/null || true
 
 # The upstream source tag omits generated provider JSON files that the checked-in
 # provider sources import. Recover the exact-version files from the published
 # pi-ai package before validating and locking the mirror.
-hydrate_provider_data "$TARGET_DIR" "${TARGET_TAG#v}"
+hydrate_provider_data "$TARGET_DIR" "$PACKAGE_VERSION"
 
 # Verify complete extraction because an interrupted per-entry extraction can
 # otherwise leave a plausible but incomplete mirror.
@@ -289,7 +308,7 @@ if ! verify_mirror_tree "$TARGET_DIR"; then
   exit 1
 fi
 
-write_provenance "$TARGET_DIR/.pig-upstream-source.json" "${TARGET_TAG#v}" "$TARGET_TAG" "$RESOLVED_COMMIT"
+write_provenance "$TARGET_DIR/.pig-upstream-source.json" "$TARGET_VERSION" "$TARGET_TAG" "$RESOLVED_COMMIT"
 
 # Make the tree read-only so we don't accidentally edit upstream sources.
 # `chmod -R u-w` is portable across BSD (macOS) and GNU tar systems. Skip it in
@@ -301,7 +320,11 @@ if [[ -z "${CI:-}${GITHUB_ACTIONS:-}" ]]; then
 fi
 
 # ── refresh stable symlink ───────────────────────────────────────────────────
-ln -snf "$TARGET_TAG" "${MIRROR_ROOT}/current"
+# --version adds a comparison mirror; .upstream/current stays on the pin.
+if [[ -z "$OVERRIDE_TAG" ]]; then
+  ln -snf "$TARGET_NAME" "${MIRROR_ROOT}/current"
+fi
+link_build_modules
 
 # ── README so future-you knows what this directory is ────────────────────────
 READMEPATH="${MIRROR_ROOT}/README.md"
@@ -320,13 +343,14 @@ trees, one per version, for side-by-side reference while porting.
 .upstream/
 ├── README.md          this file
 ├── current → v<X.Y.Z>/  symlink to the version pig currently tracks
-├── v<X.Y.Z>/          full pi tree at that release tag
-└── v<X.Y.Z>/.pig-upstream-source.json  resolved tag/commit provenance
+├── v<X.Y.Z>[+<commit>]/ full pi tree at that release tag or pinned commit
+├── v<X.Y.Z>/.pig-upstream-source.json  resolved tag/commit provenance
+└── v<X.Y.Z>/node_modules → the pinned source build's dependencies (a link `make parity-deps` provides)
 \`\`\`
 
 The mirror also contains \`.pig-upstream-source.json\`, generated only after the
 full extraction succeeds. It records the release version, tag, and exact peeled
-Git commit resolved from the upstream tag. The default invocation checks that
+Git commit resolved from the pin. The default invocation checks that
 commit against \`coding.UpstreamCommit\`; a missing or stale marker fails closed
 and requires \`--force\`.
 
@@ -337,7 +361,7 @@ rg "createBashTool" .upstream/current/packages/coding-agent/
 # diff a Go port against the TS source
 code -d internal/codingagent/tools/tools.go .upstream/current/packages/coding-agent/src/core/tools/bash.ts
 
-# refresh after updating internal/coding/pigversion/pigversion.go
+# refresh after `make pin-bump` (or for one run: PI_UPSTREAM_REF=<tag|commit> make upstream-mirror)
 make upstream-mirror
 
 # clean up older mirrors
@@ -347,8 +371,8 @@ make upstream-mirror
 ## How it gets here
 
 Run `make upstream-mirror` from the PiG repository root. It reads
-`UpstreamVersion` and `UpstreamCommit` from `internal/coding/pigversion/pigversion.go`, downloads the
-matching public release tarball into
+the pin (`.upstream/pin`, or `PI_UPSTREAM_REF`) through `automation/pin/pin.py`, downloads the
+matching public tarball of the release tag or commit into
 `${XDG_CACHE_HOME:-~/.cache}/checkouts/github.com/earendil-works/pi/`, validates its provenance,
 and extracts it here.
 
@@ -368,8 +392,8 @@ chmod -w "$READMEPATH" 2>/dev/null || true
 # ── summary ──────────────────────────────────────────────────────────────────
 echo ""
 echo "✓ mirrored: ${TARGET_DIR}"
-echo "  current → ${TARGET_TAG}"
+if [[ -z "$OVERRIDE_TAG" ]]; then echo "  current → ${TARGET_NAME}"; fi
 echo ""
 echo "  tip: rg/grep upstream sources via \`.upstream/current/...\`"
-echo "  tip: re-run with --force after editing UpstreamVersion to refresh"
+echo "  tip: re-run with --force to refresh a mirror"
 echo "  tip: --prune drops mirrors of older tracked versions"

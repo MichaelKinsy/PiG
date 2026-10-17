@@ -55,11 +55,10 @@ func TestAnthropicSSEReaderLineDecoding(t *testing.T) {
 			{Event: "b", Data: "2", Raw: []string{"event: b", "data: 2"}},
 		}},
 		{"crlf pair is one line break", []string{"event: a\r\ndata: 1\r\n\r\n"}, []serverSentEvent{{Event: "a", Data: "1", Raw: []string{"event: a", "data: 1"}}}},
-		// consumeLine ends a line at a carriage return even when its line feed arrives in the next chunk; that line feed then ends an empty line and flushes the record early.
-		{"carriage return at a chunk end", []string{"event: a\r", "\ndata: 1\r\n\r\n"}, []serverSentEvent{
-			{Event: "a", Data: "", Raw: []string{"event: a"}},
-			{Event: "", Data: "1", Raw: []string{"data: 1"}},
-		}},
+		// D121: Pi's consumeLine ends a line at a carriage return that closes a chunk, so the line feed of a split CRLF flushes the record early; PiG waits for the next chunk.
+		{"carriage return at a chunk end", []string{"event: a\r", "\ndata: 1\r\n\r\n"}, []serverSentEvent{{Event: "a", Data: "1", Raw: []string{"event: a", "data: 1"}}}},
+		{"carriage return at a chunk end is a bare line break when the stream ends", []string{"event: a\rdata: 1\r"}, []serverSentEvent{{Event: "a", Data: "1", Raw: []string{"event: a", "data: 1"}}}},
+		{"carriage return at a chunk end followed by another line", []string{"event: a\r", "data: 1\r\r"}, []serverSentEvent{{Event: "a", Data: "1", Raw: []string{"event: a", "data: 1"}}}},
 		{"comments and unknown fields are raw only", []string{": keep-alive\nid: 7\nevent: a\ndata:x\n\n"}, []serverSentEvent{{Event: "a", Data: "x", Raw: []string{": keep-alive", "id: 7", "event: a", "data:x"}}}},
 		{"data lines join with a line feed", []string{"event: a\ndata: 1\ndata: 2\n\n"}, []serverSentEvent{{Event: "a", Data: "1\n2", Raw: []string{"event: a", "data: 1", "data: 2"}}}},
 		{"a record without a blank line is flushed at the end", []string{"event: a\ndata: 1"}, []serverSentEvent{{Event: "a", Data: "1", Raw: []string{"event: a", "data: 1"}}}},

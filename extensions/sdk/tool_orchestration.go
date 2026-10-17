@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"strings"
@@ -45,16 +46,103 @@ type ToolAnnotations struct {
 	OpenWorldHint   *bool `json:"openWorldHint,omitempty"`
 }
 
-// ToolNamespace is a group of related tools, such as the tools of one MCP server.
+// ToolNamespace is a group of related tools, such as the tools of one MCP server. It is comparable: == compares every field, the aliases
+// as a list of names in order.
 //
 // upstream: types.ts:527 (ToolNamespace)
 type ToolNamespace struct {
 	Name string `json:"name"`
+	// Aliases are other names that refer to the namespace where tools look it up by name (codemode's describeNamespace() and the namespace option of searchTools()), for example `docs` for `mcp__docs`.
+	// No aliases leave the member out, as an empty list did.
+	Aliases ToolNamespaceAliases `json:"aliases,omitzero"`
 	// Description is a short summary shown once with the group in model-facing tool listings.
 	Description string `json:"description,omitempty"`
 	// Instructions is longer usage guidance, such as MCP server instructions. It is not part of tool listings; tools
 	// that describe the namespace on request (codemode's describeNamespace()) return it.
 	Instructions string `json:"instructions,omitempty"`
+}
+
+// ToolNamespaceAliases is the aliases of a [ToolNamespace], made with [NewToolNamespaceAliases] and read with [ToolNamespaceAliases.Names].
+// It encodes as upstream's `aliases` array of strings. The zero value is no aliases.
+//
+// pig Go mechanic (not a divergence): upstream's `readonly string[]` is held in a string (each name after its length as a uvarint), so
+// ToolNamespace stays comparable as it was before aliases existed.
+//
+// upstream: types.ts:537-541 (ToolNamespace.aliases)
+type ToolNamespaceAliases struct {
+	packed string
+}
+
+// NewToolNamespaceAliases returns the aliases names, in order.
+func NewToolNamespaceAliases(names ...string) ToolNamespaceAliases {
+	size := 0
+	for _, name := range names {
+		size += uvarintLen(uint64(len(name))) + len(name)
+	}
+	packed := make([]byte, 0, size)
+	for _, name := range names {
+		packed = binary.AppendUvarint(packed, uint64(len(name)))
+		packed = append(packed, name...)
+	}
+	return ToolNamespaceAliases{packed: string(packed)}
+}
+
+// Names returns the aliases in order, or nil for none.
+func (a ToolNamespaceAliases) Names() []string {
+	if a.packed == "" {
+		return nil
+	}
+	count := 0
+	for rest := a.packed; rest != ""; count++ {
+		size, width := packedUvarint(rest)
+		rest = rest[width+size:]
+	}
+	names := make([]string, 0, count)
+	for rest := a.packed; rest != ""; {
+		size, width := packedUvarint(rest)
+		names = append(names, rest[width:width+size])
+		rest = rest[width+size:]
+	}
+	return names
+}
+
+// MarshalJSON encodes the aliases as a JSON array of strings (null for none, as a nil slice).
+func (a ToolNamespaceAliases) MarshalJSON() ([]byte, error) {
+	return json.Marshal(a.Names())
+}
+
+// UnmarshalJSON decodes a JSON array of strings; null is no aliases.
+func (a *ToolNamespaceAliases) UnmarshalJSON(data []byte) error {
+	var names []string
+	if err := json.Unmarshal(data, &names); err != nil {
+		return err
+	}
+	*a = NewToolNamespaceAliases(names...)
+	return nil
+}
+
+// uvarintLen is the length of x as binary.AppendUvarint writes it.
+func uvarintLen(x uint64) int {
+	n := 1
+	for ; x >= 0x80; x >>= 7 {
+		n++
+	}
+	return n
+}
+
+// packedUvarint reads the uvarint length at the start of a packed alias list: the length and the bytes it takes. The list is only ever
+// built by NewToolNamespaceAliases, so it is well formed.
+func packedUvarint(s string) (size, width int) {
+	var x uint64
+	var shift uint
+	for i := 0; ; i++ {
+		b := s[i]
+		x |= uint64(b&0x7f) << shift
+		if b < 0x80 {
+			return int(x), i + 1
+		}
+		shift += 7
+	}
 }
 
 // AgentTool is the read-only view of a tool that a tool call sees through [Context.Tools] and [ToolLoadout]. It holds the declaration fields; a tool runs only through [Context.ExecuteTool].
@@ -82,6 +170,9 @@ type ToolLoadout struct {
 	Registered   []AgentTool
 	GetExposure  func(name string) ToolExposure
 	GetNamespace func(name string) *ToolNamespace
+	// GetPromptGuidelines is a tool's `promptGuidelines`, normalized as the system prompt has them; nil for a tool without any.
+	// Hidden declarations leave them out of the system prompt.
+	GetPromptGuidelines func(name string) []string
 }
 
 // ToolLoadoutChanges are the changes [ToolDefinition.PrepareLoadout] makes to what the model sees.
@@ -143,6 +234,8 @@ type AgentToolCallOutcome struct {
 	ToolCall ToolCall        `json:"toolCall"`
 	Result   AgentToolResult `json:"result"`
 	IsError  bool            `json:"isError"`
+	// DurationMs is the milliseconds execute() took, measured with a monotonic clock; absent when the tool did not run. upstream: agent/src/types.ts:454 AgentToolCallOutcome.durationMs
+	DurationMs *int64 `json:"durationMs,omitempty"`
 }
 
 // ExecuteToolOptions are the options of [Context.ExecuteTool].
@@ -181,7 +274,7 @@ func (c Context) ExecuteTool(name string, args any, options *ExecuteToolOptions)
 	if c.toolCallID == "" {
 		return AgentToolCallOutcome{}, errors.New("ExecuteTool is only available while a tool runs")
 	}
-	rawArgs, err := json.Marshal(args)
+	rawArgs, err := json.MarshalJS(args)
 	if err != nil {
 		return AgentToolCallOutcome{}, fmt.Errorf("encode arguments of %s: %w", name, err)
 	}
@@ -274,6 +367,61 @@ func (e *Extension) dispatchExecuteToolUpdate(args json.RawMessage) (failure err
 	return nil
 }
 
+// ToolReach is the result of a tool's ReachesTools: every tool, or the words of the input that may name them, where a word refers to a tool or namespace whose name contains it, so words may over-match.
+//
+// pig Go mechanic (not a divergence): a struct stands for upstream's `"all" | readonly string[]`.
+//
+// upstream: types.ts:621 (reachesTools)
+type ToolReach struct {
+	All   bool
+	Words []string
+}
+
+// ToolReachesToolsFunc is a tool's ReachesTools: which tools a call with input may reach.
+//
+// upstream: types.ts:621 (reachesTools)
+type ToolReachesToolsFunc func(input map[string]any) ToolReach
+
+// dispatchReachesTools answers the host's tool_reaches_tools request with the named tool's ReachesTools: the string "all", or the array of words.
+//
+// upstream: types.ts:621 (reachesTools)
+func (e *Extension) dispatchReachesTools(tool string, args json.RawMessage) (result any, failure error) {
+	// upstream: a throwing reachesTools is the extension's error; a panic is the Go hook's throw.
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			result = nil
+			if err, ok := recovered.(error); ok {
+				failure = err
+			} else {
+				failure = fmt.Errorf("%v", recovered)
+			}
+		}
+	}()
+	e.toolMu.RLock()
+	reaches := e.toolReachFuncs[tool]
+	e.toolMu.RUnlock()
+	if reaches == nil {
+		return nil, fmt.Errorf("tool %s has no reachesTools", tool)
+	}
+	var input map[string]any
+	if len(args) > 0 {
+		if err := json.Unmarshal(args, &input); err != nil {
+			return nil, fmt.Errorf("decode tool arguments: %w", err)
+		}
+	}
+	if input == nil {
+		input = map[string]any{}
+	}
+	reach := reaches(input)
+	if reach.All {
+		return "all", nil
+	}
+	if reach.Words == nil {
+		return []string{}, nil
+	}
+	return reach.Words, nil
+}
+
 // dispatchPrepareLoadout answers the host's tool_prepare_loadout request with the changes the named tool's PrepareLoadout makes, or nothing.
 //
 // upstream: types.ts:601-607 (prepareLoadout)
@@ -290,6 +438,7 @@ func (e *Extension) dispatchPrepareLoadout(tool string, args json.RawMessage) (a
 		Registered []AgentTool               `json:"registered"`
 		Exposures  map[string]ToolExposure   `json:"exposures"`
 		Namespaces map[string]*ToolNamespace `json:"namespaces"`
+		Guidelines map[string][]string       `json:"promptGuidelines"`
 	}
 	if err := json.Unmarshal(args, &payload); err != nil {
 		return nil, fmt.Errorf("decode tool loadout: %w", err)
@@ -304,6 +453,8 @@ func (e *Extension) dispatchPrepareLoadout(tool string, args json.RawMessage) (a
 			return ToolExposureDirect
 		},
 		GetNamespace: func(name string) *ToolNamespace { return payload.Namespaces[name] },
+		// upstream: agent-session.ts getPromptGuidelines: (name) => this._toolPromptGuidelines.get(name) ?? []
+		GetPromptGuidelines: func(name string) []string { return payload.Guidelines[name] },
 	})
 	if changes == nil {
 		return nil, nil

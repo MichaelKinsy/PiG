@@ -45,7 +45,7 @@ func rfThinking(t *testing.T, m *AssistantMessage) ThinkingContent {
 func rfReplay(t *testing.T, providerID string, m Message) oaiMessage {
 	t.Helper()
 	p := &openAIProvider{cfg: OpenAIConfig{ProviderID: providerID}}
-	out, err := p.convertMessagesWithCompat([]Message{m}, nil, "system", false)
+	out, err := p.convertMessagesWithCompat([]Message{m}, nil, "system", false, false)
 	if err != nil {
 		t.Fatal(err)
 	}

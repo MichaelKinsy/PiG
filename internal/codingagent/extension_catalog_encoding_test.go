@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"math"
 	"path/filepath"
+	"slices"
+	"strings"
 	"sync"
 	"testing"
 
@@ -12,6 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
+// Pi: packages/coding-agent/src/core/model-registry.ts:64 (ModelRegistry.getAll).
 func TestExtensionCatalogEncodingCurrentContentAndOrder(t *testing.T) {
 	registry := NewModelRegistry(t.TempDir())
 	storage, err := ai.NewAuthStorage(filepath.Join(t.TempDir(), "auth.json"))
@@ -43,7 +46,7 @@ func TestExtensionCatalogEncodingCurrentContentAndOrder(t *testing.T) {
 	check(false)
 	check(true)
 	for _, provider := range []string{"parity-oauth", "parity-key", "parity-custom-url", "parity-no-default"} {
-		if err := registry.RegisterProvider(provider, extension.ProviderConfig{API: ai.APIOpenAICompletions, BaseURL: "http://localhost:1234/v1", Models: []extension.ProviderModelConfig{{ID: provider + "-model", Name: provider}}}); err != nil {
+		if err := registry.RegisterExtensionProvider(provider, extension.ProviderConfig{API: ai.APIOpenAICompletions, BaseURL: "http://localhost:1234/v1", Models: []extension.ProviderModelConfig{{ID: provider + "-model", Name: provider}}}); err != nil {
 			t.Fatal(err)
 		}
 		check(false)
@@ -60,7 +63,7 @@ func TestExtensionCatalogEncodingCurrentContentAndOrder(t *testing.T) {
 	check(true)
 	registry.UnregisterProvider("parity-key")
 	check(false)
-	if err := registry.RegisterProvider("parity-key", extension.ProviderConfig{API: ai.APIOpenAIResponses, BaseURL: "http://localhost:1234/v2", Models: []extension.ProviderModelConfig{{ID: "replacement"}}}); err != nil {
+	if err := registry.RegisterExtensionProvider("parity-key", extension.ProviderConfig{API: ai.APIOpenAIResponses, BaseURL: "http://localhost:1234/v2", Models: []extension.ProviderModelConfig{{ID: "replacement"}}}); err != nil {
 		t.Fatal(err)
 	}
 	check(false)
@@ -100,7 +103,7 @@ func TestExtensionCatalogEncodingNestedMutationAndEmpty(t *testing.T) {
 }
 
 func TestExtensionCatalogEncodingDoesNotEvaluateUserMarshalers(t *testing.T) {
-	for _, field := range []string{"sampling", "routing", "template", "gateway", "args"} {
+	for _, field := range []string{"sampling", "routing", "template", "args"} {
 		t.Run(field, func(t *testing.T) {
 			calls := 0
 			data := map[string]any{"nested": []any{map[string]any{"value": catalogCountingValue{calls: &calls}}}}
@@ -112,8 +115,6 @@ func TestExtensionCatalogEncodingDoesNotEvaluateUserMarshalers(t *testing.T) {
 				model.ProviderMeta.Compat.OpenRouterRouting = data
 			case "template":
 				model.ProviderMeta.Compat.ChatTemplateKwargs = data
-			case "gateway":
-				model.ProviderMeta.Compat.VercelGatewayRouting = data
 			case "args":
 				model.ProviderMeta.Compat.ChatTemplateArgs = data
 			}
@@ -368,5 +369,48 @@ func TestExtensionCatalogEncodingTypedInvalidationRacesPublications(t *testing.T
 	want, err := json.Marshal(ExtensionModelRegistryState(registry, catalog))
 	if err != nil || !bytes.Equal(got, want) {
 		t.Fatalf("state after racing invalidations differs from the uncached state: %v", err)
+	}
+}
+
+// model-registry.ts getAll(): every provider's models in provider order, built-in providers first and the providers an extension registered after them in registration order, each model once.
+// The cache tests above compare the catalog with itself, so none of them notices a catalog that drops, repeats or reorders providers. Pi 1.1.0 (ModelRuntime.create, registerProvider
+// zeta-registered then alpha-registered, getModels()) lists zeta-registered-1, zeta-registered-2, alpha-registered-1, alpha-registered-2 after its 1563 built-in models.
+func TestGetAllModelDataListsBuiltInThenRegisteredProvidersEachModelOnce(t *testing.T) {
+	registry := NewModelRegistry(t.TempDir())
+	storage, err := ai.NewAuthStorage(filepath.Join(t.TempDir(), "auth.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	registry.SetAuthStorage(storage)
+	for _, provider := range []string{"zeta-registered", "alpha-registered"} {
+		if err := registry.RegisterExtensionProvider(provider, extension.ProviderConfig{API: ai.APIOpenAICompletions, BaseURL: "http://localhost:1234/v1", Models: []extension.ProviderModelConfig{{ID: provider + "-1"}, {ID: provider + "-2"}}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var keys []string
+	firstRegistered := -1
+	seen := map[string]int{}
+	for i, model := range registry.GetAllModelData() {
+		key := model.ProviderID() + "/" + model.ID
+		seen[key]++
+		keys = append(keys, key)
+		if firstRegistered < 0 && strings.HasSuffix(model.ProviderID(), "-registered") {
+			firstRegistered = i
+		}
+	}
+	for key, count := range seen {
+		if count != 1 {
+			t.Fatalf("%s appears %d times in the catalog", key, count)
+		}
+	}
+	index := func(key string) int { return slices.Index(keys, key) }
+	if index("alpha-registered/alpha-registered-1") < 0 || index("zeta-registered/zeta-registered-2") < 0 {
+		t.Fatalf("the registered providers' models are missing from the catalog: %v", keys[max(0, len(keys)-6):])
+	}
+	if firstRegistered <= 0 {
+		t.Fatalf("the registered providers do not follow the built-in ones (first registered model at %d of %d)", firstRegistered, len(keys))
+	}
+	if want := []string{"zeta-registered/zeta-registered-1", "zeta-registered/zeta-registered-2", "alpha-registered/alpha-registered-1", "alpha-registered/alpha-registered-2"}; !slices.Equal(keys[firstRegistered:], want) {
+		t.Fatalf("registered providers = %v, want registration order with each provider's models in order %v", keys[firstRegistered:], want)
 	}
 }

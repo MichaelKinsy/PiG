@@ -29,9 +29,10 @@ func TestImageCatalogPin(t *testing.T) {
 	if _, ok := GetImageModel("openrouter", "meta/muse-image"); !ok {
 		t.Fatal("0.86.1 image model meta/muse-image missing")
 	}
-	added, ok := GetImageModel("openrouter", "inclusionai/ming-image-0.1-design")
-	if !ok || added.Name != "inclusionAI: Ming Image 0.1 Design" {
-		t.Fatalf("0.87.1 image model inclusionai/ming-image-0.1-design = %+v, %t", added, ok)
+	// 0.87.1 added inclusionai/ming-image-0.1-design; the pin 1.2.0+b06c1f2c providers/data/openrouter.json (frozen in
+	// automation/pin/frozen) no longer lists it.
+	if _, ok := GetImageModel("openrouter", "inclusionai/ming-image-0.1-design"); ok {
+		t.Fatal("1.2.0+b06c1f2c image catalog still has inclusionai/ming-image-0.1-design")
 	}
 }
 
@@ -42,13 +43,10 @@ func TestRegistryHasModels(t *testing.T) {
 	}
 }
 
-// TestCatalogPin100 binds the generated catalog to the exact published Pi
-// 1.0.3 package. The expected values come from @earendil-works/pi-ai 1.0.3
-// providers/data, not from the Go generator output.
+// TestCatalogPin100 binds the generated catalog to the exact pinned Pi build. The expected values come from
+// @earendil-works/pi-ai providers/data, not from the Go generator output.
 func TestCatalogPin100(t *testing.T) {
-	if v := UpstreamVersionString(); v != "1.0.3" {
-		t.Fatalf("pin = %q want 1.0.3", v)
-	}
+	loadPublishedCatalog(t) // fails unless the installed pi-ai is the pin's package version
 	opus, ok := LookupModelExact("anthropic/claude-opus-5-5")
 	if !ok || opus.API != APIAnthropicMessages || opus.ContextWindow != 1000000 {
 		t.Fatalf("1.0.0 Claude Opus 5.5 model = %+v, %t", opus, ok)
@@ -98,18 +96,32 @@ func TestCatalogPin100(t *testing.T) {
 	}
 	// 1.0.2: NVIDIA adds Nemotron 3 Super; OpenRouter adds the Clef and Decider classifiers
 	// and reprices Llama 3.3 70B (pi-ai 1.0.2 providers/data nvidia.json, openrouter.json).
-	super, ok := LookupModelExact("nvidia/nvidia/nemotron-3-super-120b-a12b")
-	if !ok || super.ContextWindow != 262144 || !super.Reasoning {
-		t.Fatalf("1.0.2 NVIDIA Nemotron 3 Super = %+v, %t", super, ok)
+	// 1.1.0 renames the Perplexity Decider to pplx-decider-v1.1-27b (providers/data/openrouter.json).
+	// The pin 1.2.0+b06c1f2c providers/data/nvidia.json (frozen in automation/pin/frozen) no longer lists Nemotron 3 Super.
+	if _, ok := LookupModelExact("nvidia/nvidia/nemotron-3-super-120b-a12b"); ok {
+		t.Fatal("1.2.0+b06c1f2c catalog still has NVIDIA Nemotron 3 Super")
 	}
-	for _, id := range []string{"cloudflare/clef", "cloudflare/clef-flash", "perplexity/pplx-decider-v1-27b"} {
+	// The pin 1.3.0+c268154c providers/data/openrouter.json (frozen in automation/pin/frozen) replaces the v1.1 Decider with
+	// pplx-decider-v1.2.
+	if GetBuiltinClassifierModel("openrouter", "perplexity/pplx-decider-v1.1-27b") != nil {
+		t.Fatal("1.3.0+c268154c catalog still has OpenRouter classifier perplexity/pplx-decider-v1.1-27b")
+	}
+	for _, id := range []string{"cloudflare/clef", "cloudflare/clef-flash", "perplexity/pplx-decider-v1.2"} {
 		if GetBuiltinClassifierModel("openrouter", id) == nil {
 			t.Fatalf("1.0.2 catalog is missing OpenRouter classifier %s", id)
 		}
 	}
 	llama, ok := LookupModelExact("openrouter/meta-llama/llama-3.3-70b-instruct")
 	if !ok || llama.InputCostPerMTokens != 0.1 || llama.OutputCostPerMTokens != 0.32 || llama.CacheReadCost != 0 {
-		t.Fatalf("1.0.3 OpenRouter Llama 3.3 70B = %+v, %t", llama, ok)
+		// The pin 1.3.0+8efd314f providers/data/openrouter.json (frozen in automation/pin/frozen) prices it 0.1, 0.32, no
+		// cache read (1.2.0+34a8bb38: 0.59, 0.79, 0.295; 1.0.4-1.2.0: 0.22, 0.5, 0.11; 1.0.3: 0.1, 0.32, no cache read).
+		t.Fatalf("1.3.0+8efd314f OpenRouter Llama 3.3 70B = %+v, %t", llama, ok)
+	}
+	// 1.1.0 (providers/data/anthropic.json): Claude Haiku 5.5 is an adaptive-thinking model with 1M context and 100k-token pricing tiers.
+	haiku, ok := LookupModelExact("anthropic/claude-haiku-5-5")
+	if !ok || haiku.API != APIAnthropicMessages || haiku.ContextWindow != 1000000 || haiku.MaxOutputTokens != 128000 || !haiku.Reasoning || haiku.InputCostPerMTokens != 0.1 || haiku.OutputCostPerMTokens != 0.5 ||
+		haiku.Compat == nil || haiku.Compat.ForceAdaptiveThinking == nil || !*haiku.Compat.ForceAdaptiveThinking || len(haiku.Tiers) != 1 || haiku.Tiers[0].InputTokensAbove != 100000 {
+		t.Fatalf("1.1.0 Claude Haiku 5.5 = %+v, %t", haiku, ok)
 	}
 	// 1.0.3 (#9714): the Azure provider is "azure" and serves Foundry Chat Completions beside the Responses API.
 	if slices.Contains(GeneratedProviders, "azure-openai-responses") || !slices.Contains(GeneratedProviders, "azure") {
@@ -282,7 +294,7 @@ func TestGeneratedCatalogThinkingLevelMap(t *testing.T) {
 			t.Fatalf("off mapping = %v, %t; want explicit nil", mapped, ok)
 		}
 		levels := GetSupportedThinkingLevels(m.ToModel())
-		want := []ThinkingLevel{ThinkingMinimal, ThinkingLow, ThinkingMedium, ThinkingHigh}
+		want := []ModelThinkingLevel{ThinkingMinimal, ThinkingLow, ThinkingMedium, ThinkingHigh}
 		if len(levels) != len(want) {
 			t.Fatalf("supported thinking levels = %v, want %v", levels, want)
 		}
@@ -400,7 +412,7 @@ func TestGeneratedCatalogUpgradeSpotChecks(t *testing.T) {
 		wantReasoning       bool
 		wantCapabilities    []string
 		wantBaseURL         string
-		wantThinkingEntries map[ThinkingLevel]*string
+		wantThinkingEntries map[ModelThinkingLevel]*string
 	}{
 		{
 			spec:               "amazon-bedrock/au.anthropic.claude-opus-4-6-v1",
@@ -416,7 +428,7 @@ func TestGeneratedCatalogUpgradeSpotChecks(t *testing.T) {
 			wantReasoning:      true,
 			wantCapabilities:   []string{"text", "image"},
 			wantBaseURL:        "https://bedrock-runtime.us-east-1.amazonaws.com",
-			wantThinkingEntries: map[ThinkingLevel]*string{
+			wantThinkingEntries: map[ModelThinkingLevel]*string{
 				ThinkingMax: new("max"),
 			},
 		},
@@ -434,7 +446,7 @@ func TestGeneratedCatalogUpgradeSpotChecks(t *testing.T) {
 			wantReasoning:      true,
 			wantCapabilities:   []string{"text", "image"},
 			wantBaseURL:        "https://bedrock-runtime.us-east-1.amazonaws.com",
-			wantThinkingEntries: map[ThinkingLevel]*string{
+			wantThinkingEntries: map[ModelThinkingLevel]*string{
 				ThinkingMax: new("max"),
 			},
 		},
@@ -452,11 +464,11 @@ func TestGeneratedCatalogUpgradeSpotChecks(t *testing.T) {
 			wantReasoning:      true,
 			wantCapabilities:   []string{"text", "image"},
 			wantBaseURL:        "",
-			wantThinkingEntries: map[ThinkingLevel]*string{
-				ThinkingLevel("low"):     nil,
-				ThinkingLevel("minimal"): nil,
-				ThinkingLevel("off"):     nil,
-				ThinkingXHigh:            new("xhigh"),
+			wantThinkingEntries: map[ModelThinkingLevel]*string{
+				ModelThinkingLevel("low"):     nil,
+				ModelThinkingLevel("minimal"): nil,
+				ModelThinkingLevel("off"):     nil,
+				ThinkingXHigh:                 new("xhigh"),
 			},
 		},
 		{
@@ -489,7 +501,7 @@ func TestGeneratedCatalogUpgradeSpotChecks(t *testing.T) {
 			wantReasoning:      true,
 			wantCapabilities:   []string{"text", "image"},
 			wantBaseURL:        "https://api.individual.githubcopilot.com",
-			wantThinkingEntries: map[ThinkingLevel]*string{
+			wantThinkingEntries: map[ModelThinkingLevel]*string{
 				ThinkingOff:     nil,
 				ThinkingMinimal: new("low"),
 				ThinkingLow:     new("low"),
@@ -513,7 +525,7 @@ func TestGeneratedCatalogUpgradeSpotChecks(t *testing.T) {
 			wantReasoning:      true,
 			wantCapabilities:   []string{"text"},
 			wantBaseURL:        "https://chatgpt.com/backend-api",
-			wantThinkingEntries: map[ThinkingLevel]*string{
+			wantThinkingEntries: map[ModelThinkingLevel]*string{
 				ThinkingMinimal: new("low"),
 				ThinkingXHigh:   new("xhigh"),
 			},
@@ -532,7 +544,7 @@ func TestGeneratedCatalogUpgradeSpotChecks(t *testing.T) {
 			wantReasoning:      true,
 			wantCapabilities:   []string{"text", "image"},
 			wantBaseURL:        "",
-			wantThinkingEntries: map[ThinkingLevel]*string{
+			wantThinkingEntries: map[ModelThinkingLevel]*string{
 				ThinkingOff:   nil,
 				ThinkingXHigh: new("xhigh"),
 				ThinkingMax:   new("max"),
@@ -680,6 +692,9 @@ func TestCodegenByteIdentical(t *testing.T) {
 // while tolerating the two equivalent upstream sources' differing extensions.
 var sourceCommentRE = regexp.MustCompile(`(?m)^// Source: models\.generated\.(?:ts|js)$`)
 
+// normalizeSourceComment leaves the `// Upstream: @earendil-works/pi-ai <version>` line in place. Both sources emit it from
+// the pi-ai manifest one directory above the source (dist/../package.json or the mirror's src/../package.json), so the
+// comparison also proves the committed header names the release the catalog was generated from.
 func normalizeSourceComment(b []byte) []byte {
 	return sourceCommentRE.ReplaceAll(b, []byte("// Source: models.generated"))
 }
@@ -714,7 +729,7 @@ func resolveModelSource(repoRoot string) string {
 	if err != nil {
 		return resolveGitTagSource(repoRoot)
 	}
-	ver := UpstreamVersionString()
+	ver := upstreamPackageVersion()
 	for _, pkg := range []string{
 		"npm-earendil-works-pi-coding-agent",
 		"npm-mariozechner-pi-coding-agent",
@@ -746,4 +761,31 @@ func resolveGitTagSource(repoRoot string) string {
 // coding, which would create a cycle.
 func UpstreamVersionString() string {
 	return pigversion.UpstreamVersion
+}
+
+// upstreamPackageVersion is the version the pinned Pi build's package.json files report: UpstreamVersionString for a release
+// tag, without the +<commit> of a commit pin.
+func upstreamPackageVersion() string {
+	return pigversion.UpstreamPackageVersion
+}
+
+// providers/all.ts:99 getBuiltinModelDataGeneratedAt: the generation time of the built-in catalogs, absent when the manifest carries none. The caller gets a copy, so changing it does not change the catalog's time.
+func TestGetBuiltinModelDataGeneratedAtReturnsACopyOfTheManifestTime(t *testing.T) {
+	original := GeneratedModelDataGeneratedAt
+	t.Cleanup(func() { GeneratedModelDataGeneratedAt = original })
+
+	GeneratedModelDataGeneratedAt = new(float64(1234567890123))
+	got := GetBuiltinModelDataGeneratedAt()
+	if got == nil || *got != 1234567890123 {
+		t.Fatalf("GetBuiltinModelDataGeneratedAt = %v, want 1234567890123", got)
+	}
+	*got = 1
+	if again := GetBuiltinModelDataGeneratedAt(); again == nil || *again != 1234567890123 {
+		t.Fatalf("a caller's change reached the catalog time: %v", again)
+	}
+
+	GeneratedModelDataGeneratedAt = nil
+	if got := GetBuiltinModelDataGeneratedAt(); got != nil {
+		t.Fatalf("without a manifest time = %v, want nil", got)
+	}
 }

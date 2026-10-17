@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/text"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -17,7 +18,7 @@ func GetTextOutput(content []ai.ToolResultMessageContent, showImages bool) strin
 	for _, block := range content {
 		switch value := block.(type) {
 		case ai.TextContent:
-			texts = append(texts, strings.ReplaceAll(SanitizeBinaryOutput(string(StripANSI([]byte(value.Text)))), "\r", ""))
+			texts = append(texts, strings.ReplaceAll(SanitizeBinaryOutput(text.StripANSIString(value.Text)), "\r", ""))
 		case ai.ImageContent:
 			mimeType := value.MimeType
 			if mimeType == "" {

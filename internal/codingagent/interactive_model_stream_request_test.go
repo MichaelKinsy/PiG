@@ -30,8 +30,8 @@ func (handle *modelRequestCaptureHandle) StreamModel(ctx context.Context, model 
 func TestStreamForSubprocessPreservesFieldRichContextAndOptions(t *testing.T) {
 	base := &recordingCompactHandle{}
 	handle := &modelRequestCaptureHandle{recordingCompactHandle: base}
-	model := &ai.Model{ID: "model", ProviderMeta: ai.ProviderMetadata{ProviderID: "provider"}, Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingHigh}}
-	mode := &InteractiveMode{opts: InteractiveOptions{
+	model := &ai.Model{ID: "model", ProviderMeta: ai.ProviderMetadata{ProviderID: "provider"}, Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelHigh}}
+	mode := &InteractiveMode{opts: InteractiveModeOptions{
 		SessionHandle: handle,
 		ModelBuilder:  func(string) (*ai.Model, error) { return model, nil },
 		Settings:      Settings{Transport: string(ai.TransportWebSocket)},
@@ -98,7 +98,7 @@ func TestStreamForSubprocessPreservesFieldRichContextAndOptions(t *testing.T) {
 	if result.Timestamp != 15 || result.Details == nil || result.Usage == nil || !result.IsError || len(result.Content) != 2 {
 		t.Fatalf("tool result = %#v", result)
 	}
-	wantOptions := ai.StreamOptions{MaxTokens: 2048, Temperature: 0.7, TemperatureSet: true, SamplingParams: map[string]any{"topP": 0.8}, ThinkingBudgets: &ai.ThinkingBudgets{Minimal: 101, Low: 202, Medium: 303, High: 404}, Thinking: ai.ThinkingHigh, ReasoningEffort: "medium", IsReasoning: true, Env: ai.ProviderEnv{"WIRE_ENV": "env-value", "SECOND_ENV": "distinct-value"}, Headers: ai.ProviderHeaders{"X-Wire": new("header-value"), "X-Remove": nil}, SessionID: "session-value", Transport: ai.TransportSSE}
+	wantOptions := ai.StreamOptions{MaxTokens: 2048, Temperature: 0.7, TemperatureSet: true, SamplingParams: map[string]any{"topP": 0.8}, ThinkingBudgets: ai.NewThinkingBudgets(new(101), new(202), new(303), new(404)), Thinking: ai.ThinkingLevelHigh, ReasoningEffort: "medium", IsReasoning: true, Env: ai.ProviderEnv{"WIRE_ENV": "env-value", "SECOND_ENV": "distinct-value"}, Headers: ai.ProviderHeaders{"X-Wire": new("header-value"), "X-Remove": nil}, SessionID: "session-value", Transport: ai.TransportSSE}
 	if !reflect.DeepEqual(handle.options, wantOptions) {
 		t.Fatalf("options = %#v, want %#v", handle.options, wantOptions)
 	}
@@ -128,7 +128,7 @@ func TestStreamForSubprocessFieldRichRequestReachesRealProviderWire(t *testing.T
 	defer server.Close()
 	provider := ai.NewOpenAIProvider(ai.OpenAIConfig{BaseURL: server.URL, Model: "wire-model", ProviderID: "wire", Compat: &ai.OpenAICompat{SendSessionAffinityHeaders: new(true), SupportsLongCacheRetention: new(true)}})
 	model := &ai.Model{ID: "wire-model", Provider: provider}
-	mode := &InteractiveMode{opts: InteractiveOptions{SessionHandle: &providerForwardingHandle{recordingCompactHandle: &recordingCompactHandle{}}, ModelBuilder: func(string) (*ai.Model, error) { return model, nil }}}
+	mode := &InteractiveMode{opts: InteractiveModeOptions{SessionHandle: &providerForwardingHandle{recordingCompactHandle: &recordingCompactHandle{}}, ModelBuilder: func(string) (*ai.Model, error) { return model, nil }}}
 	request := map[string]any{
 		"systemPrompt": "wire system", "messages": []any{map[string]any{"role": "user", "content": "wire user", "timestamp": float64(7)}},
 		"tools":       []any{map[string]any{"name": "wire_tool", "description": "wire tool", "parameters": map[string]any{"type": "object"}}},
@@ -163,21 +163,21 @@ func TestInteractiveModelProjectionPreservesPiModelShape(t *testing.T) {
 		ProviderMeta: ai.ProviderMetadata{ProviderID: "openrouter", API: ai.APIOpenAIResponses, BaseURL: "https://proxy.invalid/v1", Headers: map[string]string{"X-Test": "value"}, Compat: &ai.OpenAICompat{SupportsStrictMode: &strict}},
 	}
 	bridge := &captureUIBridge{}
-	mode := &InteractiveMode{opts: InteractiveOptions{Model: model, ModelLookup: func(string, string) *ai.Model { return model }, ModelCatalog: func() []*ai.Model { return []*ai.Model{model} }, SubprocessUIBridge: bridge}}
+	mode := &InteractiveMode{opts: InteractiveModeOptions{Model: model, ModelLookup: func(string, string) *ai.Model { return model }, ModelCatalog: func(...string) []*ai.Model { return []*ai.Model{model} }, SubprocessUIBridge: bridge}}
 	detach := mode.wireSubprocessHostCallbacks()
 	defer detach()
-	getModel := bridge.actions["getModel"].(func(string, string) map[string]any)
-	got := getModel("openrouter", "org/model/name")
-	if got["id"] != model.ID || got["modelId"] != model.ID {
-		t.Errorf("serialized identity = id:%v modelId:%v, want %q", got["id"], got["modelId"], model.ID)
+	getModel := bridge.actions["getModel"].(func(string, string) json.RawMessage)
+	got := modelObjectMembers(t, getModel("openrouter", "org/model/name"))
+	if got["id"] != model.ID {
+		t.Errorf("serialized id = %v, want %q", got["id"], model.ID)
 	}
 	if got["baseUrl"] != model.ProviderMeta.BaseURL {
 		t.Errorf("serialized baseUrl = %#v", got["baseUrl"])
 	}
-	if !reflect.DeepEqual(got["input"], []string{"text", "image"}) {
+	if !reflect.DeepEqual(got["input"], []any{"text", "image"}) {
 		t.Errorf("serialized input = %#v", got["input"])
 	}
-	wantCost := map[string]any{"input": float64(0), "output": float64(7), "cacheRead": float64(0.5), "cacheWrite": float64(1.5), "tiers": model.Capabilities.CostTiers}
+	wantCost := map[string]any{"input": float64(0), "output": float64(7), "cacheRead": float64(0.5), "cacheWrite": float64(1.5), "tiers": []any{map[string]any{"inputTokensAbove": float64(1000), "input": float64(1), "output": float64(2), "cacheRead": float64(0), "cacheWrite": float64(0)}}}
 	if !reflect.DeepEqual(got["cost"], wantCost) {
 		t.Errorf("serialized cost = %#v, want %#v", got["cost"], wantCost)
 	}
@@ -186,26 +186,33 @@ func TestInteractiveModelProjectionPreservesPiModelShape(t *testing.T) {
 			t.Errorf("serialized model is missing %q: %#v", field, got)
 		}
 	}
+	// Pi's model object has none of PiG's former aliases.
+	for _, field := range []string{"modelId", "displayName", "maxOutputTokens", "inputCostPer1M", "outputCostPer1M", "cacheReadCostPer1M", "cacheWriteCostPer1M"} {
+		if _, ok := got[field]; ok {
+			t.Errorf("serialized model carries %q: %#v", field, got)
+		}
+	}
 }
 
 func TestInteractiveModelProjectionDoesNotRestoreGeneratedValues(t *testing.T) {
 	model := &ai.Model{ID: "gpt-5.6-luna", DisplayName: "Configured Luna", Capabilities: ai.ModelCapabilities{InputCostPer1M: 0, CacheReadCostPer1M: 9, CacheWriteCostPer1M: 10}, ProviderMeta: ai.ProviderMetadata{ProviderID: "cloudflare-ai-gateway", Reasoning: false}}
 	bridge := &captureUIBridge{}
-	mode := &InteractiveMode{opts: InteractiveOptions{Model: model, SubprocessUIBridge: bridge}}
+	mode := &InteractiveMode{opts: InteractiveModeOptions{Model: model, SubprocessUIBridge: bridge}}
 	detach := mode.wireSubprocessHostCallbacks()
 	defer detach()
-	getModelInfo := bridge.actions["getModelInfo"].(func() map[string]any)
-	got := getModelInfo()
+	getModelInfo := bridge.actions["getModelInfo"].(func() json.RawMessage)
+	got := modelObjectMembers(t, getModelInfo())
 	if got["reasoning"] != false {
 		t.Errorf("serialized reasoning = %#v, want configured false", got["reasoning"])
 	}
-	if got["cacheReadCostPer1M"] != float64(9) || got["cacheWriteCostPer1M"] != float64(10) {
-		t.Errorf("serialized cache costs = %#v/%#v, want configured 9/10", got["cacheReadCostPer1M"], got["cacheWriteCostPer1M"])
+	cost, _ := got["cost"].(map[string]any)
+	if cost["cacheRead"] != float64(9) || cost["cacheWrite"] != float64(10) {
+		t.Errorf("serialized cache costs = %#v, want configured 9/10", got["cost"])
 	}
 }
 
 func TestStreamForSubprocessRejectsMissingAndMalformedFields(t *testing.T) {
-	mode := &InteractiveMode{opts: InteractiveOptions{SessionHandle: &modelRequestCaptureHandle{recordingCompactHandle: &recordingCompactHandle{}}, ModelBuilder: func(string) (*ai.Model, error) { return &ai.Model{ID: "model"}, nil }}}
+	mode := &InteractiveMode{opts: InteractiveModeOptions{SessionHandle: &modelRequestCaptureHandle{recordingCompactHandle: &recordingCompactHandle{}}, ModelBuilder: func(string) (*ai.Model, error) { return &ai.Model{ID: "model"}, nil }}}
 	for _, request := range []map[string]any{
 		{
 			"messages": []any{

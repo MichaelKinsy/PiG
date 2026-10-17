@@ -9,6 +9,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // bugSummarySystemPrompt and bugSummaryInstructions mirror upstream
@@ -41,14 +42,19 @@ const (
 
 // GenerateBugReportSummaryOptions configures GenerateBugReportSummary.
 type GenerateBugReportSummaryOptions struct {
-	Messages  []agent.AgentMessage
-	Hint      string
-	Model     *ai.Model
+	Messages []agent.AgentMessage
+	Hint     string
+	Model    *ai.Model
+	// APIKey, Headers and Env are the request auth for the model (bug-report.ts:319-321).
+	APIKey    string
+	Headers   map[string]string
+	Env       map[string]string
 	Completer SimpleCompleter
 	StreamFn  StreamFn
-	Retry     *RetryOptions
+	// Retry retries transient failures. Pi's bug report takes no retry callbacks, so its retries emit no summarization retry events (bug-report.ts:325, 364).
+	Retry *ai.RetryPolicy
 	// ThinkingLevel applies to reasoning-capable models.
-	ThinkingLevel ai.ThinkingLevel
+	ThinkingLevel ai.ModelThinkingLevel
 	// SessionID is the routing session ID forwarded without prompt caching.
 	SessionID string
 }
@@ -86,7 +92,7 @@ func GenerateBugReportSummary(ctx context.Context, opts GenerateBugReportSummary
 		parts = append(parts, fmt.Sprintf("Note: only the last %d of %d messages are shown.", len(selected), len(opts.Messages)))
 	}
 	parts = append(parts, "<conversation>\n"+SerializeConversation(convertToLlm(selected))+"\n</conversation>")
-	if hint := strings.TrimSpace(opts.Hint); hint != "" {
+	if hint := jsstring.Trim(opts.Hint); hint != "" {
 		parts = append(parts, "<user-report>\n"+hint+"\n</user-report>")
 	}
 	parts = append(parts, bugSummaryInstructions)
@@ -101,15 +107,17 @@ func GenerateBugReportSummary(ctx context.Context, opts GenerateBugReportSummary
 	if model.Capabilities.MaxOutputTokens > 0 {
 		maxTokens = min(maxTokens, model.Capabilities.MaxOutputTokens)
 	}
-	options := createSummarizationOptions(model, maxTokens, opts.ThinkingLevel, opts.SessionID)
-	text, _, err := completeSummarization(ctx, model, opts.Completer, opts.StreamFn, opts.Retry, bugSummarySystemPrompt, request, options)
+	// bug-report.ts keeps its own 4096 cap on the summary (Pi 6fcb4867 dropped maxTokens only from compaction summaries).
+	options := createSummarizationOptions(model, opts.APIKey, opts.Headers, opts.Env, opts.ThinkingLevel, opts.SessionID)
+	options.MaxTokens = maxTokens
+	text, _, err := completeSummarization(ctx, model, opts.Completer, opts.StreamFn, opts.Retry, ai.RetryCallbacks{}, bugSummarySystemPrompt, request, options)
 	if ctx.Err() != nil {
 		return "", errors.New("Bug report summary was cancelled")
 	}
 	if err != nil {
 		return "", summarizationFailure("Bug report summary", err)
 	}
-	text = strings.TrimSpace(text)
+	text = jsstring.Trim(text)
 	if text == "" {
 		return "", errors.New("Bug report summary was empty")
 	}

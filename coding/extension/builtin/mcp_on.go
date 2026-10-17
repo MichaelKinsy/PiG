@@ -3,15 +3,25 @@
 package builtin
 
 import (
-	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/mcpext"
+	"github.com/MichaelKinsy/PiG/coding/mcpext/mcptui"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
 // McpOptions configures the MCP extension.
 type McpOptions = mcpext.Options
 
+// mcpEntries is the mcp registry row, absent while MCP is stripped at runtime as in a build without it.
+// pig additive (D92): a runtime stripped mcp registers nothing, like the pig_strip_mcp build.
 func mcpEntries(options Options) []Extension {
-	return []Extension{{Name: "mcp", Replaceable: true, Factory: func() (extension.Extension, error) { return mcpext.NewBuiltin(options.Mcp) }}}
+	if pigstrip.Has(pigstrip.ListExtensions, "mcp") {
+		return nil
+	}
+	mcp := options.Mcp
+	if mcp.Terminal == nil {
+		mcp.Terminal = mcptui.Terminal() // The pig binary shows MCP in the terminal; embedders that want it headless use mcpext directly.
+	}
+	return []Extension{{Name: "mcp", Replaceable: true, Factory: mcpext.CreateMcpExtension(mcp)}}
 }
 
 // ConfigureMcp sets where the MCP extension reads `mcp.json` and keeps its credentials and log (the agent directory and the

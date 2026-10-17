@@ -3,6 +3,9 @@ package codingagent
 import (
 	"bytes"
 	"context"
+	"io"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/synctest"
@@ -36,7 +39,7 @@ func (m *InteractiveMode) drainMainLoopOnce() {
 func TestScheduledRenderSurvivesSaturatedUITaskQueue(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		model := &ai.Model{ID: "m", DisplayName: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 8000}}
-		m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir(), Model: model})
+		m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir(), Model: model})
 		var out bytes.Buffer
 		m.chatContainer = tui.NewContainer()
 		m.tuiInst = tui.NewWithOutput(&out, 80, 24)
@@ -59,26 +62,48 @@ func TestScheduledRenderSurvivesSaturatedUITaskQueue(t *testing.T) {
 	})
 }
 
-// Several scheduled renders dispatched before the loop wakes coalesce into
-// one paint of the latest state.
+// renderRecorder records the text of every frame that renders it.
+type renderRecorder struct {
+	text    string
+	renders []string
+}
+
+func (r *renderRecorder) Render(int) []string {
+	r.renders = append(r.renders, r.text)
+	return []string{r.text}
+}
+
+func (r *renderRecorder) Invalidate() {}
+
+// Several frames requested before the loop wakes coalesce into one paint of
+// the latest state, as upstream's requestRender keeps one pending setTimeout.
 func TestScheduledRendersCoalesceWhileLoopIsBusy(t *testing.T) {
-	m := &InteractiveMode{renderWakeCh: make(chan struct{}, 1)}
-	var ran []int
-	for i := range 3 {
-		m.dispatchScheduledRender(func() { ran = append(ran, i) })
-	}
-	for {
-		select {
-		case <-m.renderWakeCh:
-			m.runScheduledRender()
-			continue
-		default:
+	synctest.Test(t, func(t *testing.T) {
+		m := &InteractiveMode{tuiInst: tui.NewWithOutput(io.Discard, 80, 24)}
+		recorder := &renderRecorder{text: "0"}
+		m.tuiInst.Add(recorder)
+		m.installRenderDispatcher()
+		m.tuiInst.Render()
+		recorder.renders = nil
+		for i := range 3 {
+			recorder.text = strconv.Itoa(i + 1)
+			m.tuiInst.RequestRender()
 		}
-		break
-	}
-	if len(ran) != 1 || ran[0] != 2 {
-		t.Fatalf("ran renders %v, want only the latest", ran)
-	}
+		time.Sleep(time.Second) // past the 16ms frame throttle
+		synctest.Wait()
+		for {
+			select {
+			case <-m.renderWakeCh:
+				m.runScheduledRender()
+				continue
+			default:
+			}
+			break
+		}
+		if !slices.Equal(recorder.renders, []string{"3"}) {
+			t.Fatalf("frames rendered %q, want only the latest", recorder.renders)
+		}
+	})
 }
 
 // A stalled main loop sees at most one queued spinner tick, like a Node

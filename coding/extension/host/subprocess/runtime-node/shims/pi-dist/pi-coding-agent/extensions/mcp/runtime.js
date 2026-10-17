@@ -5,13 +5,13 @@
  */
 import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import { JSON_RPC_ERROR_CODES, McpAuthRequiredError, McpClient, McpError, McpHttpError, McpSessionExpiredError, StdioTransport, StreamableHttpTransport, } from "../../../pi-mcp/index.js";
 import { McpOAuthAuthorizationRequiredError } from "../../../pi-mcp/oauth/index.js";
 import { VERSION } from "../../config.js";
 import { resolveConfigValueOrThrow, resolveHeadersOrThrow } from "../../core/resolve-config-value.js";
 import { createMcpAuthProvider, } from "./oauth.js";
-import { isMcpAppResource } from "./resources.js";
 export { McpServerLog } from "./log.js";
 export { McpOAuthCredentialStore, McpSignInCancelledError, signInMcpServer } from "./oauth.js";
 const DEFAULT_TIMEOUT_SECONDS = 60;
@@ -83,20 +83,6 @@ async function withoutTemplates(list, empty) {
 function listTemplates(client, options = {}) {
     return withoutTemplates(() => client.listResourceTemplates(options), []);
 }
-/**
- * Resources and templates at connect time, for the counts in `/mcp` and `pi mcp list`. A server
- * whose lists fail still connects: the resource tools list and read its resources on demand.
- */
-async function fetchResources(client) {
-    const [resources, resourceTemplates] = await Promise.all([
-        client.listResources().catch(() => []),
-        listTemplates(client).catch(() => []),
-    ]);
-    return {
-        resources: resources.filter((resource) => !isMcpAppResource(resource)),
-        resourceTemplates: resourceTemplates.filter((template) => !isMcpAppResource(template)),
-    };
-}
 /** One configured server. Reconnects lazily when a call finds the connection gone. */
 export class McpServerConnection {
     entry;
@@ -104,19 +90,18 @@ export class McpServerConnection {
     error;
     tools = [];
     /**
-     * Whether the server offers resources. The lists below are what it listed at the last connect or
-     * change, without MCP App resources.
+     * Whether the server offers resources, which the resource tools list and read on demand. They are
+     * not listed at connect: listing every resource can take long (a large drive, say).
      */
     hasResources = false;
-    resources = [];
-    resourceTemplates = [];
     /** Server instructions from `initialize`, describing its tools as a group. */
     instructions;
     /** Last OAuth challenge from the server; sign-in uses its resource metadata URL and scope. */
     challenge;
     client;
     opening;
-    closed = false;
+    /** Aborted by `close()`; cancels a connect in progress, including the wait between retries. */
+    shutdown = new AbortController();
     /** Stderr of the last stdio server that failed to connect. */
     stderrTail;
     cwd;
@@ -150,6 +135,9 @@ export class McpServerConnection {
     }
     get name() {
         return this.entry.name;
+    }
+    get closed() {
+        return this.shutdown.signal.aborted;
     }
     get timeoutMs() {
         return (this.entry.config.timeout ?? DEFAULT_TIMEOUT_SECONDS) * 1000;
@@ -281,7 +269,7 @@ export class McpServerConnection {
                 if (this.closed || delay === undefined || !isTransientError(error)) {
                     throw this.connectFailed(error);
                 }
-                await new Promise((resolve) => setTimeout(resolve, delay));
+                await sleep(delay, undefined, { signal: this.shutdown.signal }).catch(() => undefined);
                 if (this.closed)
                     throw this.connectFailed(error);
             }
@@ -297,6 +285,14 @@ export class McpServerConnection {
         const log = this.log;
         if (log)
             client.onNotification("notifications/message", (params) => log.write(this.entry.name, params));
+        // Closing the client fails its pending initialize or discovery requests and closes the transport.
+        // Memoized: a second `client.close()` returns before the first finished closing the transport.
+        let closing;
+        const closeClient = () => {
+            closing ??= client.close().catch(() => undefined);
+            return closing;
+        };
+        this.shutdown.signal.addEventListener("abort", closeClient, { once: true });
         let transport;
         try {
             transport = this.createTransport(this.entry, this.cwd, this.authProvider);
@@ -304,26 +300,17 @@ export class McpServerConnection {
             client.onNotification("notifications/tools/list_changed", () => {
                 void this.refreshTools(client);
             });
-            client.onNotification("notifications/resources/list_changed", () => {
-                void this.refreshResources(client);
-            });
             const stdio = transport instanceof StdioTransport ? transport : undefined;
             client.onClose(() => this.handleClientClose(client, stdio));
             // Servers without the tools capability (prompts or resources only) do not answer tools/list.
-            const hasResources = client.serverCapabilities?.resources !== undefined;
-            const [tools, resources] = await Promise.all([
-                client.serverCapabilities?.tools ? client.listTools() : [],
-                hasResources ? fetchResources(client) : { resources: [], resourceTemplates: [] },
-            ]);
+            const tools = client.serverCapabilities?.tools ? await client.listTools() : [];
             if (this.closed)
                 throw new Error("shut down while connecting");
             if (client.connectionState !== "connected")
                 throw new Error("connection closed during setup");
             this.client = client;
             this.tools = tools;
-            this.hasResources = hasResources;
-            this.resources = resources.resources;
-            this.resourceTemplates = resources.resourceTemplates;
+            this.hasResources = client.serverCapabilities?.resources !== undefined;
             this.instructions = client.instructions?.trim() || undefined;
             this.state = "connected";
             this.error = undefined;
@@ -332,11 +319,14 @@ export class McpServerConnection {
             return client;
         }
         catch (error) {
-            await client.close().catch(() => undefined);
+            await closeClient();
             if (transport instanceof StdioTransport) {
                 this.stderrTail = transport.stderr.trim().slice(-STDERR_TAIL_CHARS) || undefined;
             }
             throw error;
+        }
+        finally {
+            this.shutdown.signal.removeEventListener("abort", closeClient);
         }
     }
     connectFailed(error) {
@@ -372,22 +362,14 @@ export class McpServerConnection {
         }
         this.changed();
     }
-    async refreshResources(client) {
-        const { resources, resourceTemplates } = await fetchResources(client);
-        if (this.client !== client || this.closed)
-            return;
-        this.resources = resources;
-        this.resourceTemplates = resourceTemplates;
-        this.onTools(this);
-        this.changed();
-    }
+    /** Resolves once no transport of this server is open, including one that was still connecting. */
     async close() {
-        this.closed = true;
+        this.shutdown.abort();
         this.state = "closed";
         this.changed();
         const client = this.client;
         this.client = undefined;
-        await client?.close().catch(() => undefined);
+        await Promise.all([client?.close().catch(() => undefined), this.opening?.catch(() => undefined)]);
         // A refresh the server already answered may have rotated the refresh token; exiting before the
         // new tokens are saved would lose the grant.
         await this.authProvider?.settled();

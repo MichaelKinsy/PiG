@@ -3,27 +3,25 @@ package ai
 import "strings"
 
 const (
-	CloudflareWorkersAIBaseURL          = "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1"
+	CloudflareWorkersAIBaseURL = "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1"
+	// CloudflareWorkersAIRESTBaseURL is the Workers AI REST endpoint root; model runs are posted to `run` (api/cloudflare.ts:5-7).
+	CloudflareWorkersAIRESTBaseURL      = "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai"
 	CloudflareAIGatewayCompatBaseURL    = "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/compat"
 	CloudflareAIGatewayOpenAIBaseURL    = "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/openai"
 	CloudflareAIGatewayAnthropicBaseURL = "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/anthropic"
 )
 
-func isCloudflareProvider(providerID string) bool {
-	return providerID == "cloudflare-workers-ai" || providerID == "cloudflare-ai-gateway"
-}
-
-// ResolveCloudflareBaseURL substitutes account and gateway placeholders using only explicit provider environment values and JavaScript replacement-string semantics. Missing values retain their placeholders; empty values replace them with empty strings.
-func ResolveCloudflareBaseURL(providerID, baseURL string, env ProviderEnv) (string, error) {
-	if !isCloudflareProvider(providerID) || env == nil {
-		return baseURL, nil
+// resolveCloudflarePlaceholders is the substitution of resolveCloudflareModel (cloudflare-stream.ts:10-13): the account placeholder is replaced first, then the gateway placeholder in that result.
+func resolveCloudflarePlaceholders(baseURL string, env ProviderEnv) string {
+	if env == nil {
+		return baseURL
 	}
 	for _, name := range []string{cloudflareAccountID, cloudflareGatewayID} {
 		if value, exists := env[name]; exists {
 			baseURL = replaceCloudflarePlaceholder(baseURL, "{"+name+"}", value)
 		}
 	}
-	return baseURL, nil
+	return baseURL
 }
 
 // The placeholder is nonempty. JavaScript string-search replacements expand $$, $&, $`, and $' against the original input at each match; capture-group tokens stay literal.

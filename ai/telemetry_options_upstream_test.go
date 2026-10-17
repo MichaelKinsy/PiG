@@ -27,7 +27,8 @@ func telemetryCompletedStream(model *Model) (*AssistantMessageEventStream, error
 	return stream, nil
 }
 
-// .upstream/v0.99.2/packages/ai/test/telemetry-options.test.ts:63
+// Ports packages/ai/test/telemetry-options.test.ts:69 (1.0.4: "is inherited by every request option surface and simple-stream conversion").
+// Pi: packages/ai/src/api/simple-options.ts:48 (telemetryContext)
 func TestTelemetryOptionsInheritedByEveryRequestOptionSurfaceUpstream(t *testing.T) {
 	if got := (StreamOptions{TelemetryContext: telemetryOptionsContext}).TelemetryContext; got != telemetryOptionsContext {
 		t.Errorf("StreamOptions.TelemetryContext = %v", got)
@@ -43,7 +44,8 @@ func TestTelemetryOptionsInheritedByEveryRequestOptionSurfaceUpstream(t *testing
 	}
 }
 
-// .upstream/v0.99.2/packages/ai/test/telemetry-options.test.ts:70
+// Ports packages/ai/test/telemetry-options.test.ts:75 (1.0.4: "survives provider and Models stream/deferred dispatch").
+// Pi: packages/ai/src/types.ts:137 (telemetryContext)
 func TestTelemetryOptionsSurviveProviderAndModelsDispatchUpstream(t *testing.T) {
 	var observed []telemetry.TelemetryContext
 	model := telemetryTestModel()
@@ -128,7 +130,8 @@ func drain(t *testing.T, stream *AssistantMessageEventStream) {
 	}
 }
 
-// .upstream/v0.99.2/packages/ai/test/telemetry-options.test.ts:121
+// Ports packages/ai/test/telemetry-options.test.ts:122 (1.0.4: "survives direct and Models image dispatch").
+// Pi: packages/ai/src/types.ts:137 (telemetryContext)
 func TestTelemetryOptionsSurviveImageDispatchUpstream(t *testing.T) {
 	var observed []telemetry.TelemetryContext
 	imageModel := ImageModel{ID: "image-model", Name: "Image Model", API: "telemetry-test-images", Provider: "telemetry-image-provider", BaseURL: "https://example.test", Input: []string{"text"}, Output: []string{"image"}}

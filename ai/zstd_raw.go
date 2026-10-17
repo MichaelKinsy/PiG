@@ -1,3 +1,5 @@
+//go:build pig_strip_node_extensions
+
 package ai
 
 import "encoding/binary"
@@ -8,6 +10,9 @@ const (
 	zstdTwoByteContentRange       = 1 << 16
 	zstdTwoByteContentValueOffset = 1 << 8
 )
+
+// compressCodexRequestBody is the zstd frame of body for Content-Encoding: zstd. A pig_strip_node_extensions build links no compressor, so the body travels in stored blocks (zstd_codex.go compresses at level 3 in every other build).
+func compressCodexRequestBody(body []byte) []byte { return encodeZstdRawFrame(body) }
 
 // encodeZstdRawFrame emits a standards-compliant single-segment Zstandard
 // frame. Raw blocks preserve the exact JSON bytes while avoiding a native or

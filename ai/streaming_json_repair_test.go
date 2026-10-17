@@ -11,7 +11,7 @@ import (
 // Copied from gate-close-02's TestAnthropicUpstreamSSEParsing repair case.
 // Pi packages/ai/test/anthropic-sse-parsing.test.ts:329 retains both repaired arguments.
 func TestAnthropicStreamRepairsMalformedToolJSON(t *testing.T) {
-	event := func(kind, data string) string { return "event: " + kind + "\ndata: " + data + "\n\n" }
+	event := anthropicFixtureEvent
 	events := event("message_start", `{"message":{"id":"msg_test","usage":{"input_tokens":12,"output_tokens":0}}}`) +
 		event("content_block_start", `{"index":0,"content_block":{"type":"tool_use","id":"toolu_test","name":"edit","input":{}}}`) +
 		event("content_block_delta", "{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"path\\\":\\\"A\\H\\\",\\\"text\\\":\\\"col1\tcol2\\\"}\"}}") +

@@ -5,15 +5,25 @@ package codingagent
 import (
 	"fmt"
 	"runtime"
+	"slices"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-func hotkeysMarkdown() string {
+// hotkeysMarkdown is the /hotkeys tables (interactive-mode.ts:6809-6919). shortcuts are the extension-registered shortcuts, listed in
+// an "Extensions" table, in the order given, by their capitalized key text and their description or, without one, the extension path.
+func hotkeysMarkdown(shortcuts []extension.ExtensionShortcut) string {
 	var b strings.Builder
 	section := func(title string) { fmt.Fprintf(&b, "\n**%s**\n| Key | Action |\n|-----|--------|\n", title) }
 	row := func(description string, actions ...string) {
+		// pig additive (D92): an action whose built-in the process strips has no key and no row.
+		if slices.ContainsFunc(actions, appActionStripped) {
+			return
+		}
 		keys := make([]string, len(actions))
 		for i, action := range actions {
 			keys[i] = "`" + tui.ActionKeyDisplayText(action) + "`"
@@ -58,18 +68,46 @@ func hotkeysMarkdown() string {
 	row("Queue follow-up message", "app.message.followUp")
 	row("Restore queued messages", "app.message.dequeue")
 	row("Paste files on macOS, images, or text from clipboard", "app.clipboard.pasteImage")
-	b.WriteString("| `/` | Slash commands |\n| `!` | Run bash command |\n| `!!` | Run bash command (excluded from context) |\n")
-	return strings.TrimSpace(b.String())
+	b.WriteString("| `/` | Slash commands |\n")
+	// pig additive (D92): `!` and `!!` run the user bash the bash tool owns.
+	if !pigstrip.Has(pigstrip.ListTools, "bash") {
+		b.WriteString("| `!` | Run bash command |\n| `!!` | Run bash command (excluded from context) |\n")
+	}
+	if len(shortcuts) > 0 {
+		section("Extensions")
+		for _, shortcut := range shortcuts {
+			description := shortcut.Description
+			if description == "" {
+				description = shortcut.ExtensionPath
+			}
+			fmt.Fprintf(&b, "| `%s` | %s |\n", tui.KeyDisplayText(string(shortcut.Shortcut)), description)
+		}
+	}
+	return jsstring.Trim(b.String())
+}
+
+// extensionShortcutsForHotkeys lists the runner's shortcuts for /hotkeys in the order of Pi's getShortcuts Map.
+func (m *InteractiveMode) extensionShortcutsForHotkeys() []extension.ExtensionShortcut {
+	if m.newRunner == nil || m.keybindings == nil {
+		return nil
+	}
+	registered := m.newRunner.Shortcuts(m.keybindings.GetResolvedBindings())
+	shortcuts := make([]extension.ExtensionShortcut, 0, len(registered))
+	for _, entry := range registered {
+		entry.Shortcut.Shortcut = entry.Key
+		shortcuts = append(shortcuts, entry.Shortcut)
+	}
+	return shortcuts
 }
 
 func (m *InteractiveMode) handleHotkeysCommand() {
 	body := tui.NewPaddedBox(1, 1, nil)
-	body.AddChild(tui.NewMarkdown(hotkeysMarkdown()))
+	body.AddChild(tui.NewMarkdownWithOptions(hotkeysMarkdown(m.extensionShortcutsForHotkeys()), 0, 0, m.markdownThemeWithSettings(), nil, nil))
 	m.appendChatBlock(tui.NewContainer(
-		tui.NewDynamicBorder(""),
-		tui.NewPaddedText("\x1b[1m"+tui.ActiveTheme().FgText("accent", "Keyboard Shortcuts")+"\x1b[22m", 1, 0, nil),
+		tui.NewDynamicBorder(),
+		tui.NewPaddedText("\x1b[1m"+tui.ActiveTheme().Fg("accent", "Keyboard Shortcuts")+"\x1b[22m", 1, 0, nil),
 		tui.NewSpacer(1),
 		body,
-		tui.NewDynamicBorder(""),
+		tui.NewDynamicBorder(),
 	))
 }

@@ -1,6 +1,11 @@
 package subprocess
 
-import "sync"
+import (
+	"encoding/json"
+	"sync"
+
+	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
+)
 
 // commandGate counts the command requests running on one extension generation and runs a callback when the last of them returns.
 type commandGate struct {
@@ -63,6 +68,8 @@ func (h *Host) retireGeneration(old *managedExt, stop func()) (deferred bool) {
 			h.retirements = make(map[*generationRetirement]struct{})
 		}
 		h.retirements[retirement] = struct{}{}
+		// The reload invalidated the old runner (agent-session.ts:3660-3664), so the running command's captured pi and ctx throw Pi's stale message (runner.ts:721-735) once `await ctx.reload()` resolves, members it answers locally included. The notify is queued before the reply to that reload and, under retirementMu, before the deferred stop's shutdown frame. An immediate stop needs none: the runtime ends with its connection.
+		invalidateGeneration(old)
 	}
 	h.retirementMu.Unlock()
 	if !deferred {
@@ -99,4 +106,17 @@ func (h *Host) finishRetirements() {
 		retirement.do()
 	}
 	h.retirementTasks.Wait()
+}
+
+// invalidateGeneration sends Pi's stale message to a replaced generation's connection.
+func invalidateGeneration(old *managedExt) {
+	conn := old.connection()
+	if conn == nil {
+		return
+	}
+	args, err := json.Marshal(InvalidateArgs{Message: (&inproc.StaleError{}).Error()})
+	if err != nil {
+		return
+	}
+	_ = conn.Send(&Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: NotifyInvalidate, Args: args}})
 }

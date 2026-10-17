@@ -1,0 +1,336 @@
+[
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveValidatesEntriesAppliesProjectTrustAndOrdersBuiltinsLast"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `if err := ValidateConfiguredPackageSources(cwd, agentDir, settings); err != nil {\n\t\treturn ResolvedPaths{}, fmt.Errorf(\"resolve Packages: %w\", err)\n\t}` with `_ = ValidateConfiguredPackageSources`; TestResolveValidatesEntriesAppliesProjectTrustAndOrdersBuiltinsLast fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveAsksOnMissingOnlyForRemotePackagesAndStopsOnItsError",
+   "TestResolveAsksOnMissingForAnUninstalledPackage"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `if err := m.installMissing(onMissing); err != nil {\n\t\treturn ResolvedPaths{}, err\n\t}` with `_ = onMissing`; TestResolveAsksOnMissingForAnUninstalledPackage, TestResolveAsksOnMissingOnlyForRemotePackagesAndStopsOnItsError fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveValidatesEntriesAppliesProjectTrustAndOrdersBuiltinsLast"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `if err := ValidateConfiguredResourceEntries(cwd, agentDir, settings); err != nil {\n\t\treturn ResolvedPaths{}, fmt.Errorf(\"resolve settings entries: %w\", err)\n\t}` with `_ = ValidateConfiguredResourceEntries`; TestResolveValidatesEntriesAppliesProjectTrustAndOrdersBuiltinsLast fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveListsPackageResourcesPerTypeWithPackageMetadata"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `case packagecontent.Extensions:\n\t\t\tfromPackages.Extensions = append(fromPackages.Extensions, resource)\n\t\tcase packagecontent.Skills:\n\t\t\tfromPackages.Skills = append(fromPackages.Skills, resource)` with `case packagecontent.Extensions:\n\t\t\tfromPackages.Skills = append(fromPackages.Skills, resource)\n\t\tcase packagecontent.Skills:\n\t\t\tfromPackages.Extensions = append(fromPackages.Extensions, resource)`; TestResolveListsPackageResourcesPerTypeWithPackageMetadata fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveListsPackageResourcesPerTypeWithPackageMetadata"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `case packagecontent.Prompts:\n\t\t\tfromPackages.Prompts = append(fromPackages.Prompts, resource)\n\t\tcase packagecontent.Themes:\n\t\t\tfromPackages.Themes = append(fromPackages.Themes, resource)\n\t\t}\n\t}\n\tproject` with `case packagecontent.Prompts:\n\t\t\tfromPackages.Themes = append(fromPackages.Themes, resource)\n\t\tcase packagecontent.Themes:\n\t\t\tfromPackages.Prompts = append(fromPackages.Prompts, resource)\n\t\t}\n\t}\n\tproject`; TestResolveListsPackageResourcesPerTypeWithPackageMetadata fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveListsPackageResourcesPerTypeWithPackageMetadata"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `BaseDir: item.BaseDir, PackageRoot: item.PackageRoot}}\n\t\tswitch packagecontent.Kind(item.ResourceType) {\n\t\tcase packagecontent.Extensions:\n\t\t\tfromPackages` with `BaseDir: item.BaseDir}}\n\t\tswitch packagecontent.Kind(item.ResourceType) {\n\t\tcase packagecontent.Extensions:\n\t\t\tfromPackages`; TestResolveListsPackageResourcesPerTypeWithPackageMetadata fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveListsPackageResourcesPerTypeWithPackageMetadata"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `Metadata: codingagent.PathMetadata{Source: item.Source, Scope: item.Scope, Origin: item.Origin, BaseDir: item.BaseDir, PackageRoot: item.PackageRoot}}\n\t\tswitch` with `Metadata: codingagent.PathMetadata{Source: item.Source, Scope: item.Scope, Origin: item.Origin, PackageRoot: item.PackageRoot}}\n\t\tswitch`; TestResolveListsPackageResourcesPerTypeWithPackageMetadata fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveListsPackageResourcesPerTypeWithPackageMetadata"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `Resource{Path: item.Path, Enabled: item.Enabled, Metadata: codingagent.PathMetadata{Source: item.Source, Scope: item.Scope, Origin: item.Origin, BaseDir: item.BaseDir, PackageRoot: item.PackageRoot}}\n\t\tswitch` with `Resource{Path: item.Path, Enabled: true, Metadata: codingagent.PathMetadata{Source: item.Source, Scope: item.Scope, Origin: item.Origin, BaseDir: item.BaseDir, PackageRoot: item.PackageRoot}}\n\t\tswitch`; TestResolveListsPackageResourcesPerTypeWithPackageMetadata fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveValidatesEntriesAppliesProjectTrustAndOrdersBuiltinsLast"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `project := settings.IsProjectTrusted()` with `project := true`; TestResolveValidatesEntriesAppliesProjectTrustAndOrdersBuiltinsLast fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveValidatesEntriesAppliesProjectTrustAndOrdersBuiltinsLast"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `slices.Concat(codingagent.AmbientExtensionResources(cwd, agentDir, settings, project), m.builtinExtensionResources())` with `slices.Concat(m.builtinExtensionResources(), codingagent.AmbientExtensionResources(cwd, agentDir, settings, project))`; TestResolveValidatesEntriesAppliesProjectTrustAndOrdersBuiltinsLast fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveValidatesEntriesAppliesProjectTrustAndOrdersBuiltinsLast",
+   "TestResolveReportsSettingsEntriesAutoDiscoveryAndPatterns"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `codingagent.SkillEntryResources(codingagent.AmbientSkillResources(cwd, agentDir, settings, project, true))` with `codingagent.SkillEntryResources(codingagent.AmbientSkillResources(cwd, agentDir, settings, project, false))`; TestResolveReportsSettingsEntriesAutoDiscoveryAndPatterns, TestResolveValidatesEntriesAppliesProjectTrustAndOrdersBuiltinsLast fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveListsPackageResourcesPerTypeWithPackageMetadata"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `Skills:     codingagent.OrderResolvedResources(codingagent.SkillEntryResources(fromPackages.Skills),` with `Skills:     codingagent.OrderResolvedResources(fromPackages.Skills,`; TestResolveListsPackageResourcesPerTypeWithPackageMetadata fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveAsksOnMissingOnlyForRemotePackagesAndStopsOnItsError"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `if IsOfflineModeEnabled() {\n\t\treturn nil\n\t}\n\tfor _, pkg := range ConfiguredPackagesForResolution` with `for _, pkg := range ConfiguredPackagesForResolution`; TestResolveAsksOnMissingOnlyForRemotePackagesAndStopsOnItsError fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveAsksOnMissingOnlyForRemotePackagesAndStopsOnItsError",
+   "TestResolveAsksOnMissingForAnUninstalledPackage"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `case MissingSourceSkip:\n\t\t\t\tcontinue` with `case MissingSourceSkip:`; TestResolveAsksOnMissingForAnUninstalledPackage, TestResolveAsksOnMissingOnlyForRemotePackagesAndStopsOnItsError fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveAsksOnMissingOnlyForRemotePackagesAndStopsOnItsError"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `action, err := onMissing(pkg.Source.Source)\n\t\t\tif err != nil {\n\t\t\t\treturn err\n\t\t\t}` with `action, _ := onMissing(pkg.Source.Source)`; TestResolveAsksOnMissingOnlyForRemotePackagesAndStopsOnItsError fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveExtensionSourcesBuiltinsAndOfflineRemoteSources"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `scope := \"user\"\n\tif temporary {\n\t\tscope = \"temporary\"\n\t} else if local {\n\t\tscope = \"project\"\n\t}` with `scope := \"user\"\n\tif local {\n\t\tscope = \"project\"\n\t} else if temporary {\n\t\tscope = \"temporary\"\n\t}`; TestResolveExtensionSourcesBuiltinsAndOfflineRemoteSources fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveExtensionSourcesSkipsMissingLocalSourcesAndSortsTypes",
+   "TestResolveExtensionSourcesBuiltinsAndOfflineRemoteSources"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `scope := \"user\"\n\tif temporary {\n\t\tscope = \"temporary\"\n\t} else if local {\n\t\tscope = \"project\"\n\t}` with `scope := \"user\"\n\tif temporary {\n\t\tscope = \"temporary\"\n\t}`; TestResolveExtensionSourcesBuiltinsAndOfflineRemoteSources, TestResolveExtensionSourcesSkipsMissingLocalSourcesAndSortsTypes fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveExtensionSourcesBuiltinsAndOfflineRemoteSources"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `Metadata: codingagent.PathMetadata{Source: \"builtin\", Scope: scope, Origin: \"top-level\"}})` with `Metadata: codingagent.PathMetadata{Source: \"builtin\", Scope: \"user\", Origin: \"top-level\"}})`; TestResolveExtensionSourcesBuiltinsAndOfflineRemoteSources fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveExtensionSourcesBuiltinsAndOfflineRemoteSources"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `Path: source, Enabled: true, Metadata` with `Path: source, Enabled: false, Metadata`; TestResolveExtensionSourcesBuiltinsAndOfflineRemoteSources fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveExtensionSourcesSkipsMissingLocalSourcesAndSortsTypes"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `root, err := m.extensionSourceRoot(source, scope, local)\n\t\tif err != nil {\n\t\t\treturn ResolvedPaths{}, err\n\t\t}\n\t\tif root == \"\" {\n\t\t\tcontinue\n\t\t}` with `root, _ := m.extensionSourceRoot(source, scope, local)\n\t\tif root == \"\" {\n\t\t\tcontinue\n\t\t}`; TestResolveExtensionSourcesSkipsMissingLocalSourcesAndSortsTypes fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveExtensionSourcesSkipsMissingLocalSourcesAndSortsTypes",
+   "TestResolveExtensionSourcesLocalSources"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `resolved.Prompts = append(resolved.Prompts, resource)\n\t\t\tcase packagecontent.Themes:\n\t\t\t\tresolved.Themes = append(resolved.Themes, resource)` with `resolved.Themes = append(resolved.Themes, resource)\n\t\t\tcase packagecontent.Themes:\n\t\t\t\tresolved.Prompts = append(resolved.Prompts, resource)`; TestResolveExtensionSourcesLocalSources, TestResolveExtensionSourcesSkipsMissingLocalSourcesAndSortsTypes fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveExtensionSourcesSkipsMissingLocalSourcesAndSortsTypes",
+   "TestResolveExtensionSourcesLocalSources",
+   "TestResolveExtensionSourcesInstallsGitSourcesPerScope"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `resolved.Extensions = append(resolved.Extensions, resource)\n\t\t\tcase packagecontent.Skills:\n\t\t\t\tresolved.Skills = append(resolved.Skills, resource)` with `resolved.Skills = append(resolved.Skills, resource)\n\t\t\tcase packagecontent.Skills:\n\t\t\t\tresolved.Extensions = append(resolved.Extensions, resource)`; TestResolveExtensionSourcesInstallsGitSourcesPerScope, TestResolveExtensionSourcesLocalSources, TestResolveExtensionSourcesSkipsMissingLocalSourcesAndSortsTypes fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveExtensionSourcesSkipsMissingLocalSourcesAndSortsTypes",
+   "TestResolveExtensionSourcesLocalSources"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `resolved.Skills = codingagent.SkillEntryResources(resolved.Skills)` with ``; TestResolveExtensionSourcesLocalSources, TestResolveExtensionSourcesSkipsMissingLocalSourcesAndSortsTypes fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveExtensionSourcesInstallsGitSourcesPerScope"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `if scope == \"temporary\" {\n\t\treturn ResolveTemporarySource(` with `if scope == \"temporary\" && false {\n\t\treturn ResolveTemporarySource(`; TestResolveExtensionSourcesInstallsGitSourcesPerScope fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveExtensionSourcesInstallsGitSourcesPerScope"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `SourceRootForResources(cwd, agentDir, m.SettingsManager, source, local)` with `SourceRootForResources(cwd, agentDir, m.SettingsManager, source, !local)`; TestResolveExtensionSourcesInstallsGitSourcesPerScope fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveExtensionSourcesInstallsGitSourcesPerScope"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `if _, statErr := os.Stat(root); statErr != nil {\n\t\tpkg.InstalledPath = \"\"\n\t}` with `_ = os.Stat`; TestResolveExtensionSourcesInstallsGitSourcesPerScope fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveExtensionSourcesBuiltinsAndOfflineRemoteSources"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `if IsOfflineModeEnabled() {\n\t\t\treturn \"\", nil\n\t\t}\n\t\tif err := InstallPackageArtifacts(cwd` with `if err := InstallPackageArtifacts(cwd`; TestResolveExtensionSourcesBuiltinsAndOfflineRemoteSources fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveExtensionSourcesInstallsGitSourcesPerScope"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `InstallPackageArtifacts(cwd, agentDir, m.SettingsManager, pkg.Source, local, m.progress)` with `InstallPackageArtifacts(cwd, agentDir, m.SettingsManager, pkg.Source, !local, m.progress)`; TestResolveExtensionSourcesInstallsGitSourcesPerScope fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveExtensionSourcesInstallsGitSourcesPerScope"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `if ConfiguredPackageNeedsInstall(pkg) {\n\t\tif IsOfflineModeEnabled()` with `if !ConfiguredPackageNeedsInstall(pkg) {\n\t\tif IsOfflineModeEnabled()`; TestResolveExtensionSourcesInstallsGitSourcesPerScope fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveReportsTheBuiltinExtensionsOption"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `Path: item.Path, Enabled: item.Enabled, Metadata: codingagent.PathMetadata{Source: item.Source, Scope: item.Scope, Origin: item.Origin}})` with `Path: item.Path, Enabled: true, Metadata: codingagent.PathMetadata{Source: item.Source, Scope: item.Scope, Origin: item.Origin}})`; TestResolveReportsTheBuiltinExtensionsOption fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveValidatesEntriesAppliesProjectTrustAndOrdersBuiltinsLast",
+   "TestResolveReportsTheBuiltinExtensionsOption"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `slices.Concat(codingagent.AmbientExtensionResources(cwd, agentDir, settings, project), m.builtinExtensionResources())` with `slices.Concat(codingagent.AmbientExtensionResources(cwd, agentDir, settings, project))`; TestResolveReportsTheBuiltinExtensionsOption, TestResolveValidatesEntriesAppliesProjectTrustAndOrdersBuiltinsLast fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveAsksOnMissingOnlyForRemotePackagesAndStopsOnItsError"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `DetectSourceKind(pkg.Source.Source) == \"local\" || !ConfiguredPackageNeedsInstall(pkg)` with `!ConfiguredPackageNeedsInstall(pkg)`; TestResolveAsksOnMissingOnlyForRemotePackagesAndStopsOnItsError fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveAsksOnMissingOnlyForRemotePackagesAndStopsOnItsError"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `DetectSourceKind(pkg.Source.Source) == \"local\" || !ConfiguredPackageNeedsInstall(pkg)` with `DetectSourceKind(pkg.Source.Source) == \"local\"`; TestResolveAsksOnMissingOnlyForRemotePackagesAndStopsOnItsError fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveAsksOnMissingOnlyForRemotePackagesAndStopsOnItsError",
+   "TestResolveAsksOnMissingForAnUninstalledPackage"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `case MissingSourceError:\n\t\t\t\treturn errors.New(\"Missing source: \" + pkg.Source.Source)` with `case MissingSourceError:\n\t\t\t\t_ = errors.New(\"\")`; TestResolveAsksOnMissingForAnUninstalledPackage, TestResolveAsksOnMissingOnlyForRemotePackagesAndStopsOnItsError fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveValidatesEntriesAppliesProjectTrustAndOrdersBuiltinsLast"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `Metadata: codingagent.PathMetadata{Source: item.Source, Scope: item.Scope, Origin: item.Origin}})\n\t}\n\treturn resources` with `Metadata: codingagent.PathMetadata{Source: item.Source, Scope: item.Scope}})\n\t}\n\treturn resources`; TestResolveValidatesEntriesAppliesProjectTrustAndOrdersBuiltinsLast fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/package-manager.ts",
+  "package": "./internal/packagemanager",
+  "tests": [
+   "TestResolveInstallsAMissingGitPackageIntoItsConfiguredScope"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
+  "mutation": "internal/packagemanager/resolve.go: replace `InstallPackageArtifacts(m.CWD, m.agentDir(), m.SettingsManager, pkg.Source, pkg.Scope == \"project\", nil)` with `InstallPackageArtifacts(m.CWD, m.agentDir(), m.SettingsManager, pkg.Source, true, nil)`; TestResolveInstallsAMissingGitPackageIntoItsConfiguredScope fails."
+ }
+]

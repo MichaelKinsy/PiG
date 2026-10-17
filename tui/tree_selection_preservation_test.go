@@ -18,7 +18,7 @@ func TestTreeSearchPreservesSelectionAcrossQueryChanges(t *testing.T) {
 			}},
 		}},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	ts.SetInitialCursor("active-assistant", "")
 	for _, step := range []struct {
 		key, selected string
@@ -57,7 +57,7 @@ func TestTreeFilterSwitchingWithParentTraversal(t *testing.T) {
 		"returns to nearest visible ancestor when switching back to default filter",
 	} {
 		t.Run(name, func(t *testing.T) {
-			ts := NewTreeSelect("", root)
+			ts := NewTreeSelectorComponent("", root)
 			ts.SetInitialCursor("asst-2", "")
 			assertTreeSelection(t, ts, "asst-2")
 			ts.HandleInput("\x15")
@@ -103,7 +103,7 @@ func TestTreeEmptyFilterPreservation(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			ts := NewTreeSelect("", tc.root)
+			ts := NewTreeSelectorComponent("", tc.root)
 			ts.SetInitialCursor(tc.leaf, "")
 			assertTreeSelection(t, ts, tc.leaf)
 			for i, key := range tc.keys {
@@ -119,7 +119,7 @@ func TestTreeQueryAndFilterChangesClearFolds(t *testing.T) {
 	useTreeKeybindings(t, nil)
 	for _, key := range []string{"\x1b", "\x04", "\x14", "\x15", "\x0c", "\x01", "\x0f", "\x1b[111;6u"} {
 		t.Run(key, func(t *testing.T) {
-			ts := NewTreeSelect("", chain())
+			ts := NewTreeSelectorComponent("", chain())
 			ts.HandleInput(" ")
 			ts.HandleInput("\x1b[1;5D")
 			ts.HandleInput("\x1b[1;5D")
@@ -134,7 +134,7 @@ func TestTreeQueryAndFilterChangesClearFolds(t *testing.T) {
 	}
 }
 
-func assertTreeSelection(t *testing.T, ts *TreeSelect, want string) {
+func assertTreeSelection(t *testing.T, ts *TreeSelectorComponent, want string) {
 	t.Helper()
 	got := ""
 	if ts.cursor >= 0 && ts.cursor < len(ts.rows) {

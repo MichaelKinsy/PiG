@@ -28,7 +28,7 @@ func main() {
 		calls++
 		return reply(ctx, m, c, o)
 	})
-	a := agent.NewAgent(agent.AgentOptions{})
+	a := newAgent(agent.AgentOptions{})
 	if _, err := a.Send(ctx, "Hello"); err != nil {
 		panic(err)
 	}
@@ -44,7 +44,7 @@ func main() {
 				return nil, errors.New("provider exploded")
 			}
 		}
-		a := agent.NewAgent(agent.AgentOptions{Model: &ai.Model{ID: "mock", ProviderMeta: ai.ProviderMetadata{ProviderID: "openai", API: ai.APIOpenAIResponses}}, StreamFn: stream})
+		a := newAgent(agent.AgentOptions{Model: &ai.Model{ID: "mock", ProviderMeta: ai.ProviderMetadata{ProviderID: "openai", API: ai.APIOpenAIResponses}}, StreamFn: stream})
 		messages, err := a.Send(ctx, "Hello")
 		if err != nil {
 			panic(err)
@@ -61,7 +61,7 @@ func main() {
 		fmt.Printf("AGENT_STREAM descriptor %s\n", data)
 	}
 	var convertedText string
-	custom := agent.NewAgent(agent.AgentOptions{Model: &ai.Model{ID: "mock", ProviderMeta: ai.ProviderMetadata{ProviderID: "openai", API: ai.APIOpenAIResponses}},
+	custom := newAgent(agent.AgentOptions{Model: &ai.Model{ID: "mock", ProviderMeta: ai.ProviderMetadata{ProviderID: "openai", API: ai.APIOpenAIResponses}},
 		ConvertToLlm: func(messages []agent.AgentMessage) ([]ai.Message, error) {
 			return []ai.Message{ai.UserMessage{Content: ai.UserText(messages[0].Custom["text"].(string)), Timestamp: 1}}, nil
 		},
@@ -71,7 +71,7 @@ func main() {
 		},
 	})
 	custom.SetMessages([]agent.AgentMessage{{Custom: map[string]any{"role": "custom", "text": "Hook content", "timestamp": int64(1)}}})
-	if _, err := custom.Continue(ctx); err != nil {
+	if err := custom.Continue(ctx); err != nil {
 		panic(err)
 	}
 	data, err := json.Marshal(convertedText)
@@ -79,4 +79,20 @@ func main() {
 		panic(err)
 	}
 	fmt.Printf("AGENT_STREAM converter %s\n", data)
+}
+
+// newAgent builds an agent; one built with neither a stream function nor a configured default gets a stream that is never called, as the Pi counterpart supplies one.
+func newAgent(opts agent.AgentOptions) *agent.Agent {
+	if opts.StreamFn == nil && opts.DefaultStreamFn == nil {
+		if _, err := agent.GetDefaultStreamFn(); err != nil {
+			opts.StreamFn = func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+				return nil, errors.New("stream function not expected")
+			}
+		}
+	}
+	a, err := agent.NewAgent(opts)
+	if err != nil {
+		panic(err)
+	}
+	return a
 }

@@ -65,6 +65,8 @@ func (reader *nativeBodyIterator) ReadChunk() ([]byte, error) {
 		reader.partial = nil
 		return chunk, nil
 	}
+	// The awaits the turn deferred come before the read reaches the stream.
+	reader.turn.settleDeferred()
 	var read *jsPromise[webReadResult]
 	if reader.reader != nil {
 		read = reader.reader.read()
@@ -85,6 +87,7 @@ func (reader *nativeBodyIterator) ReadChunk() ([]byte, error) {
 func (reader *nativeBodyIterator) Close() error {
 	var err error
 	reader.close.Do(func() {
+		reader.turn.settleDeferred()
 		if reader.abort != nil {
 			reader.abort()
 		}
@@ -98,10 +101,14 @@ func (reader *nativeBodyIterator) Close() error {
 	return err
 }
 
+// suspendContinuation is an await of an already resolved promise: the turn resumes from a reaction queued behind every ready one. The awaits the turn deferred are made first.
 func suspendContinuation(turn *continuationTurn) {
-	resolved := newContinuationPromise[struct{}](turn.executor)
-	resolved.resolve(struct{}{})
-	awaitContinuation(turn, resolved)
+	turn.awaitResolved()
+}
+
+// deferContinuation is suspendContinuation for a turn whose code up to its next await reads and writes nothing another turn or a host can observe (deferResolved): the await is made, with the others deferred, at that next await.
+func deferContinuation(turn *continuationTurn) {
+	turn.deferResolved()
 }
 
 func (builder *assistantStreamBuilder) responseTurn(body func() error) error {
@@ -122,8 +129,10 @@ func (stream *AssistantMessageEventStream) responseContinuation(body func(*conti
 	if executor == nil {
 		return body(nil)
 	}
-	turn := &continuationTurn{executor: executor, permit: make(chan bool, 1), canceled: make(chan struct{})}
-	executor.postExternal(turn.grant)
+	turn := executor.newDeferredTurn()
+	if drain := executor.queueDeferred(&executor.external, continuationJob{grant: turn}); drain != nil {
+		drain()
+	}
 	var err error
 	turn.run(func(turn *continuationTurn) {
 		observation := &StreamObservation{turn: turn}

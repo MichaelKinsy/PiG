@@ -1,0 +1,87 @@
+[
+ {
+  "upstream": "packages/ai/src/images-api-registry.ts",
+  "package": "./ai",
+  "tests": [
+   "TestImagesAPIProviderRegistryReturnsTheLatestRegistrationForAnAPI"
+  ],
+  "upstream_reference": "packages/ai/src/images-api-registry.ts",
+  "mutation": "ai/images.go: replace `if len(sourceID) > 0 {\n\t\tentry.sourceID = sourceID[0]\n\t}` with ``; TestImagesAPIProviderRegistryReturnsTheLatestRegistrationForAnAPI fails."
+ },
+ {
+  "upstream": "packages/ai/src/images-api-registry.ts",
+  "package": "./ai",
+  "tests": [
+   "TestImagesAPIProviderRegistryReturnsTheLatestRegistrationForAnAPI"
+  ],
+  "upstream_reference": "packages/ai/src/images-api-registry.ts",
+  "mutation": "ai/images.go: replace `imagesAPIProviderRegistry[provider.API] = entry` with `if _, exists := imagesAPIProviderRegistry[provider.API]; !exists {\n\t\timagesAPIProviderRegistry[provider.API] = entry\n\t}`; TestImagesAPIProviderRegistryReturnsTheLatestRegistrationForAnAPI fails."
+ },
+ {
+  "upstream": "packages/ai/src/images-api-registry.ts",
+  "package": "./ai",
+  "tests": [
+   "TestImagesAPIProviderRegistryReturnsTheLatestRegistrationForAnAPI",
+   "TestRegisteredImagesFunctionReceivesTheCallAndReturnsItsResult",
+   "TestImagesFunctionReceivesTheDispatchedRequest"
+  ],
+  "upstream_reference": "packages/ai/src/images-api-registry.ts",
+  "mutation": "ai/images.go: replace `imagesAPIProviderRegistry[provider.API] = entry` with `imagesAPIProviderRegistry[provider.API+\"x\"] = entry`; TestImagesAPIProviderRegistryReturnsTheLatestRegistrationForAnAPI, TestImagesFunctionReceivesTheDispatchedRequest, TestRegisteredImagesFunctionReceivesTheCallAndReturnsItsResult fails."
+ },
+ {
+  "upstream": "packages/ai/src/images-api-registry.ts",
+  "package": "./ai",
+  "tests": [
+   "TestRegisteredImagesFunctionReceivesTheCallAndReturnsItsResult",
+   "TestImagesFunctionReceivesTheDispatchedRequest"
+  ],
+  "upstream_reference": "packages/ai/src/images-api-registry.ts",
+  "mutation": "ai/images.go: replace `return provider.GenerateImages(ctx, model, imagesCtx, options), nil` with `return provider.GenerateImages(ctx, model, imagesCtx, ProviderImagesOptions{}), nil`; TestImagesFunctionReceivesTheDispatchedRequest, TestRegisteredImagesFunctionReceivesTheCallAndReturnsItsResult fails."
+ },
+ {
+  "upstream": "packages/ai/src/images-api-registry.ts",
+  "package": "./ai",
+  "tests": [
+   "TestImagesFunctionReceivesTheDispatchedRequest"
+  ],
+  "upstream_reference": "packages/ai/src/images-api-registry.ts",
+  "mutation": "ai/images.go: replace `return provider.GenerateImages(ctx, model, imagesCtx, options), nil` with `return provider.GenerateImages(ctx, model, ImagesContext{}, options), nil`; TestImagesFunctionReceivesTheDispatchedRequest fails."
+ },
+ {
+  "upstream": "packages/ai/src/images-api-registry.ts",
+  "package": "./ai",
+  "tests": [
+   "TestRegisteredImagesFunctionReceivesTheCallAndReturnsItsResult",
+   "TestImagesFunctionReceivesTheDispatchedRequest"
+  ],
+  "upstream_reference": "packages/ai/src/images-api-registry.ts",
+  "mutation": "ai/images.go: replace `return provider.GenerateImages(ctx, model, imagesCtx, options), nil` with `return provider.GenerateImages(ctx, ImageModel{}, imagesCtx, options), nil`; TestImagesFunctionReceivesTheDispatchedRequest, TestRegisteredImagesFunctionReceivesTheCallAndReturnsItsResult fails."
+ },
+ {
+  "upstream": "packages/ai/src/images-api-registry.ts",
+  "package": "./ai",
+  "tests": [
+   "TestRegisteredImagesFunctionReceivesTheCallAndReturnsItsResult"
+  ],
+  "upstream_reference": "packages/ai/src/images-api-registry.ts",
+  "mutation": "ai/images.go: replace `provider, ok := GetImagesAPIProvider(model.API)\n\tif !ok {` with `provider, ok := GetImagesAPIProvider(model.API)\n\tif !ok && false {`; TestRegisteredImagesFunctionReceivesTheCallAndReturnsItsResult fails."
+ },
+ {
+  "upstream": "packages/ai/src/images-api-registry.ts",
+  "package": "./ai",
+  "tests": [
+   "TestImagesAPIProviderRegistryReturnsTheLatestRegistrationForAnAPI"
+  ],
+  "upstream_reference": "packages/ai/src/images-api-registry.ts",
+  "mutation": "ai/images.go: replace `entry, ok := imagesAPIProviderRegistry[api]\n\treturn entry.provider, ok` with `entry, ok := imagesAPIProviderRegistry[api]\n\t_ = ok\n\treturn entry.provider, true`; TestImagesAPIProviderRegistryReturnsTheLatestRegistrationForAnAPI fails."
+ },
+ {
+  "upstream": "packages/ai/src/images-api-registry.ts",
+  "package": "./ai",
+  "tests": [
+   "TestImagesAPIProviderRegistryReturnsTheLatestRegistrationForAnAPI"
+  ],
+  "upstream_reference": "packages/ai/src/images-api-registry.ts",
+  "mutation": "ai/images.go: replace `entry, ok := imagesAPIProviderRegistry[api]\n\treturn entry.provider, ok` with `entry, ok := imagesAPIProviderRegistry[api]\n\t_ = entry\n\treturn ImagesAPIProvider{}, ok`; TestImagesAPIProviderRegistryReturnsTheLatestRegistrationForAnAPI fails."
+ }
+]

@@ -1,0 +1,96 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#CreateAgentSessionServicesOptions::property:cwd"
+  ],
+  "targets": [
+   "coding/services.go#ServicesOptions.CWD"
+  ],
+  "production": [
+   "call:coding/services.go#NewServices"
+  ],
+  "evidence": [
+   "test:coding/services_test.go#TestNewServicesExplicitCWDIsHonored",
+   "test:coding/services_test.go#TestNewServicesDefaults"
+  ],
+  "rationale": "CreateAgentSessionServicesOptions.cwd is ServicesOptions.CWD, the NewServices input that builds the Services every Session reads; empty selects the same default (process cwd, DefaultAgentDir, settings loaded from the directories)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CreateAgentSessionServicesOptions::property:agentDir"
+  ],
+  "targets": [
+   "coding/services.go#ServicesOptions.AgentDir"
+  ],
+  "production": [
+   "call:coding/services.go#NewServices"
+  ],
+  "evidence": [
+   "test:coding/services_test.go#TestNewServicesAuthDirSelectsCorrectFile",
+   "test:coding/services_accessors_test.go#TestServicesCarryTheirCwdAgentDirModelRuntimeAndSettingsManager"
+  ],
+  "rationale": "CreateAgentSessionServicesOptions.agentDir is ServicesOptions.AgentDir, the NewServices input that builds the Services every Session reads; empty selects the same default (process cwd, DefaultAgentDir, settings loaded from the directories)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CreateAgentSessionServicesOptions::property:settingsManager"
+  ],
+  "targets": [
+   "coding/services.go#ServicesOptions.SettingsManager"
+  ],
+  "production": [
+   "call:coding/services.go#NewServices"
+  ],
+  "evidence": [
+   "test:coding/services_accessors_test.go#TestServicesReturnTheCallerSuppliedSettingsManager"
+  ],
+  "rationale": "CreateAgentSessionServicesOptions.settingsManager is ServicesOptions.SettingsManager, the NewServices input that builds the Services every Session reads; empty selects the same default (process cwd, DefaultAgentDir, settings loaded from the directories)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CreateAgentSessionOptions::property:cwd"
+  ],
+  "targets": [
+   "coding/services.go#ServicesOptions.CWD"
+  ],
+  "production": [
+   "call:coding/services.go#NewServices"
+  ],
+  "evidence": [
+   "test:coding/services_test.go#TestNewServicesExplicitCWDIsHonored",
+   "test:coding/services_test.go#TestNewServicesDefaults"
+  ],
+  "rationale": "CreateAgentSessionOptions.cwd is ServicesOptions.CWD, the NewServices input that builds the Services every Session reads; empty selects the same default (process cwd, DefaultAgentDir, settings loaded from the directories)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CreateAgentSessionOptions::property:agentDir"
+  ],
+  "targets": [
+   "coding/services.go#ServicesOptions.AgentDir"
+  ],
+  "production": [
+   "call:coding/services.go#NewServices"
+  ],
+  "evidence": [
+   "test:coding/services_test.go#TestNewServicesAuthDirSelectsCorrectFile",
+   "test:coding/services_accessors_test.go#TestServicesCarryTheirCwdAgentDirModelRuntimeAndSettingsManager"
+  ],
+  "rationale": "CreateAgentSessionOptions.agentDir is ServicesOptions.AgentDir, the NewServices input that builds the Services every Session reads; empty selects the same default (process cwd, DefaultAgentDir, settings loaded from the directories)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CreateAgentSessionOptions::property:settingsManager"
+  ],
+  "targets": [
+   "coding/services.go#ServicesOptions.SettingsManager"
+  ],
+  "production": [
+   "call:coding/services.go#NewServices"
+  ],
+  "evidence": [
+   "test:coding/services_accessors_test.go#TestServicesReturnTheCallerSuppliedSettingsManager"
+  ],
+  "rationale": "CreateAgentSessionOptions.settingsManager is ServicesOptions.SettingsManager, the NewServices input that builds the Services every Session reads; empty selects the same default (process cwd, DefaultAgentDir, settings loaded from the directories)."
+ }
+]

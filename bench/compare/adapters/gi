@@ -1,0 +1,32 @@
+#!/bin/bash
+# Arm adapter: Pi flag spelling -> gi flag spelling. gi has no print mode and no --no-session (a throwaway -db instead).
+# gi reads custom providers from models-store.json and keys from auth.json, written once from the harness's models.json.
+args=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --no-session) ;;
+    --model) args+=(-model "$2"); shift ;;
+    --version) exec "@EXE@" --version ;;
+    -p) echo "gi has no print mode" >&2; exit 64 ;;
+    *) args+=("$1") ;;
+  esac
+  shift
+done
+D="$PI_CODING_AGENT_DIR"
+# gi prefers $GI_CODING_AGENT_DIR over Pi's directory for models-store.json and auth.json: Pi and Pi-Bolt rewrite $D/models-store.json with their own
+# catalogue when they run in the same agent directory (the harness reuses one), which would hide the fake provider.
+G="$D/gi-agent"; export GI_CODING_AGENT_DIR="$G"
+if [ ! -f "$G/models-store.json" ]; then
+  mkdir -p "$G"
+  port=$(grep -o '127.0.0.1:[0-9]*' "$D/models.json" | head -1 | cut -d: -f2)
+  cw=$(grep -o '"contextWindow": [0-9]*' "$D/models.json" | head -1 | grep -o '[0-9]*$')
+  cat > "$G/models-store.json" <<J
+{"fake":{"models":[{"id":"fake-model","name":"fake-model","api":"openai-completions","provider":"fake","baseUrl":"http://127.0.0.1:$port/v1","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":${cw:-200000},"maxTokens":8192}]}}
+J
+  echo '{"fake":{"type":"api_key","key":"fake"}}' > "$G/auth.json"
+fi
+HOME="$D/home"; mkdir -p "$HOME"; export HOME
+XDG_STATE_HOME="$D/state"; export XDG_STATE_HOME
+# The database is per launch ($$): gi resumes the previous conversation in its database, and the harness reuses one agent directory for every run.
+# -tui-mode regular: native scrollback like Pi (fullscreen mode repaints rows, so the harness cannot find the answer text in the byte stream).
+exec "@EXE@" -db "$D/gi-$$.db" -tui-mode regular "${args[@]}"

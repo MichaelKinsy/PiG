@@ -93,7 +93,9 @@ func TestAnthropicSetupFailuresRetainResult(t *testing.T) {
 					t.Fatalf("identity/state=%#v", result)
 				}
 				wantEffort := ""
-				if shape.managed {
+				// Pi dc939913 records providerThinkingLevel once buildParams has built the request (anthropic-messages.ts:647), so a
+				// failure before it (the endpoint) leaves none.
+				if shape.managed && phase != "endpoint" {
 					wantEffort = "low"
 				}
 				if result.ProviderThinkingLevel != wantEffort || !strings.Contains(result.ErrorMessage, sentinel.Error()) {

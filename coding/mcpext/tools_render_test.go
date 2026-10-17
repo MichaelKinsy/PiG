@@ -9,6 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/mcpext"
+	"github.com/MichaelKinsy/PiG/coding/mcpext/mcptui"
 	"github.com/MichaelKinsy/PiG/mcp"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -18,7 +19,7 @@ import (
 // each case follows one branch of renderCall or renderResult.
 
 func mcpRenderDefinition() extension.ToolDefinition {
-	return mcpext.CreateMcpToolDefinition(mcpext.McpToolOptions{Server: "docs", Tool: mcp.Tool{Name: "search"}, Name: "mcp__docs__search"})
+	return mcpext.CreateMcpToolDefinition(mcpext.McpToolOptions{Server: "docs", Tool: mcp.Tool{Name: "search"}, Name: "mcp__docs__search", Renderers: mcptui.CreateMcpToolRenderers})
 }
 
 type renderedText interface{ Render(width int) []string }
@@ -152,14 +153,14 @@ func TestMCPToolResultRendererStylesAndTrimsTheOutput(t *testing.T) {
 		t.Fatalf("trimmed result = %q", rows)
 	}
 	joined := strings.Join(ok.(renderedText).Render(200), "\n")
-	if theme.FgText("toolOutput", "x") == "x" {
+	if theme.Fg("toolOutput", "x") == "x" {
 		t.Fatal("the test theme has no colors")
 	}
-	if !strings.Contains(joined, theme.FgText("toolOutput", "indented   text")) {
+	if !strings.Contains(joined, theme.Fg("toolOutput", "indented   text")) {
 		t.Fatalf("result is not toolOutput: %q", joined)
 	}
 	failed := def.RenderResult(textResult("boom"), extension.ToolRenderResultOptions{}, theme, extension.ToolRenderContext{IsError: true})
-	if joined := strings.Join(failed.(renderedText).Render(200), "\n"); !strings.Contains(joined, theme.FgText("error", "boom")) {
+	if joined := strings.Join(failed.(renderedText).Render(200), "\n"); !strings.Contains(joined, theme.Fg("error", "boom")) {
 		t.Fatalf("error result is not error colored: %q", joined)
 	}
 	empty := def.RenderResult(textResult(" \n "), extension.ToolRenderResultOptions{}, theme, extension.ToolRenderContext{})

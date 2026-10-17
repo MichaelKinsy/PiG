@@ -30,12 +30,12 @@ func TestToolArgumentCoercionAcrossSDKs(t *testing.T) {
 			}
 			provider := ai.NewFauxProvider(ai.FauxConfig{})
 			provider.SetResponses([]ai.FauxResponseStep{
-				ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("echo", map[string]any{"text": 42, "offset": nil}, "coercion")}, StopReason: "toolUse"}),
+				ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("echo", map[string]any{"text": 42, "offset": nil}, &ai.FauxToolCallOptions{ID: "coercion"})}, StopReason: "toolUse"}),
 				ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}, StopReason: "stop"}),
 			})
 			sawHook := false
-			a := agent.NewAgent(agent.AgentOptions{Model: &ai.Model{ID: "faux-1", Provider: provider}, Tools: tools,
-				BeforeToolCall: []agent.BeforeToolCallHook{func(_ context.Context, _, _ string, args json.RawMessage) agent.ToolCallHookResult {
+			a := mustNewAgent(agent.AgentOptions{Model: &ai.Model{ID: "faux-1", Provider: provider}, Tools: tools,
+				BeforeToolCallHooks: []agent.BeforeToolCallHook{func(_ context.Context, _, _ string, args json.RawMessage) agent.ToolCallHookResult {
 					var input map[string]any
 					if err := json.Unmarshal(args, &input); err != nil {
 						t.Error(err)

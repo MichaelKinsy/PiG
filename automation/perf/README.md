@@ -1,3 +1,11 @@
+# Performance checks
+
+## Scoreboard and count ratchet
+
+`docs/performance/scoreboard.md` lists every hot path and resource metric with its current count, the gate that guards it, a target with its basis, and the owning lane. `make perf-scoreboard` renders it from `scoreboard.toml` (the registry), `ratchet.toml` (the ceilings) and `scoreboard-measured.json` (the last measurement); `make perf-scoreboard-check` fails when the registry names a test or ceiling that does not exist or the report is stale.
+
+Count gates call `internal/perfgate.Check` with a metric ID; the test fails when the count exceeds the ceiling in `ratchet.toml` and logs a `perfgate: <id>=<value>` line. `make perf-scoreboard-measure` runs every gate listed under `[[measure]]` and records those lines. Whole-process gates in `test/perfgate` run a built pig with `PIG_PROFILE=metrics` under `GOMAXPROCS=1`. Ceilings only move down: `make perf-ratchet-check` (base `PERF_RATCHET_BASE`, default the branch's upstream) fails on a raised or removed ceiling unless a commit in the range carries `Perf-Ratchet-Raise: <id> <reason>` or `Perf-Ratchet-Retire: <id> <reason>`. Lower a ceiling in the change that lowers the count.
+
 # Startup performance checks
 
 ## Blocking proxies

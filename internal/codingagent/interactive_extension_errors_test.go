@@ -16,7 +16,7 @@ import (
 func newExtensionErrorProbe(t *testing.T) *InteractiveMode {
 	t.Helper()
 	model := &ai.Model{ID: "m", DisplayName: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 8000}}
-	m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir(), Model: model})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir(), Model: model})
 	m.chatContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
 	m.tuiInst.Add(m.chatContainer)
@@ -35,6 +35,7 @@ func chatPlainText(m *InteractiveMode) string {
 // no listener in interactive mode, so handler failures and host-reported
 // errors were never shown. The listener is wired with the runner, runs on the
 // failing goroutine without blocking, and the main loop shows the error.
+// Pi: packages/coding-agent/src/core/extensions/runner.ts:472 (Runner.emitError).
 func TestInteractiveShowsExtensionRunnerErrors(t *testing.T) {
 	m := newExtensionErrorProbe(t)
 	m.newRunner = inproc.NewRunner(nil, t.TempDir())

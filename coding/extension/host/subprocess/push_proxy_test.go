@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -50,9 +51,7 @@ func TestPushProxy_RenderNeverBlocks(t *testing.T) {
 	elapsed := time.Since(start)
 
 	// 10000 renders should take well under 100ms.
-	if elapsed > 100*time.Millisecond {
-		t.Errorf("10000 renders took %v (too slow for a cache read)", elapsed)
-	}
+	testenv.TimingGate(t, elapsed > 100*time.Millisecond, "10000 renders took %v (too slow for a cache read)", elapsed)
 }
 
 func TestPushProxy_ReturnsCopy(t *testing.T) {
@@ -308,7 +307,7 @@ func TestUIBridge_HandleWidgetPush(t *testing.T) {
 	bridge := NewUIBridge(func() { invalidated.Add(1) })
 	bridge.SetUIContext(fake)
 
-	bridge.HandleWidgetPush("ext1", &WidgetPushPayload{
+	bridge.HandleWidgetPush("ext1", nil, &WidgetPushPayload{
 		Key:   "status",
 		Lines: []string{"◆ 3 files, 42 symbols indexed"},
 	})
@@ -336,7 +335,7 @@ func TestUIBridge_HandleSetWidget_Clear(t *testing.T) {
 	bridge.SetUIContext(fake)
 
 	// Set a widget.
-	bridge.HandleWidgetPush("ext1", &WidgetPushPayload{
+	bridge.HandleWidgetPush("ext1", nil, &WidgetPushPayload{
 		Key:   "counter",
 		Lines: []string{"count: 5"},
 	})
@@ -359,9 +358,9 @@ func TestUIBridge_ClearExtension(t *testing.T) {
 	bridge := NewUIBridge(func() {})
 	bridge.SetUIContext(fake)
 
-	bridge.HandleWidgetPush("ext1", &WidgetPushPayload{Key: "a", Lines: []string{"1"}})
-	bridge.HandleWidgetPush("ext1", &WidgetPushPayload{Key: "b", Lines: []string{"2"}})
-	bridge.HandleWidgetPush("ext2", &WidgetPushPayload{Key: "c", Lines: []string{"3"}})
+	bridge.HandleWidgetPush("ext1", nil, &WidgetPushPayload{Key: "a", Lines: []string{"1"}})
+	bridge.HandleWidgetPush("ext1", nil, &WidgetPushPayload{Key: "b", Lines: []string{"2"}})
+	bridge.HandleWidgetPush("ext2", nil, &WidgetPushPayload{Key: "c", Lines: []string{"3"}})
 
 	bridge.ClearExtension("ext1")
 

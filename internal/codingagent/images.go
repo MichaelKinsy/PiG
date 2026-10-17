@@ -9,10 +9,6 @@ func NormalizeToolResultImages(result agent.AgentToolResult, autoResize bool) ag
 	return imageprocessing.NormalizeToolResultImages(result, autoResize)
 }
 
-func PrepareCLIImageAttachment(data []byte, mime string) ([]byte, string, string, error) {
-	return imageprocessing.PrepareCLIImageAttachment(data, mime)
-}
-
 func DetectSupportedImageMimeType(data []byte) string {
 	return imageprocessing.DetectSupportedImageMimeType(data)
 }

@@ -70,7 +70,7 @@ func TestResourceSymlinkDedup(t *testing.T) {
 		t.Fatalf("symlinked alias should dedup to 1 entry, got %d (%v)", len(got), got)
 	}
 
-	canonA, _ := filepath.EvalSymlinks(a)
+	canonA := realPathForTest(t, a)
 	if got[0].Canonical != canonA {
 		t.Errorf("canonical: want %q got %q", canonA, got[0].Canonical)
 	}

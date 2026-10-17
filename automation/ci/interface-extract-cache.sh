@@ -23,6 +23,13 @@
 #                                    extracted inventories are stored under
 #                                    $PIG_CACHE_HOME/pig-interface-extract/<key>/.
 #   PIG_TMP                         scratch dir for temp files (default: /tmp).
+#   PIG_INTERFACE_EXTRACT_INCREMENTAL=1
+#                                    extract per package in parallel (src/extract-incremental.mjs)
+#                                    and reuse every package whose own sources, reachable workspace
+#                                    packages, published trees, third-party closure and extractor
+#                                    are unchanged since any earlier run, whichever pin it was for.
+#                                    Output is byte-identical to a whole-tree extraction. The pin
+#                                    follower sets it; the drift gates keep the whole-tree path.
 set -euo pipefail
 
 # Locale affects both tree ordering and Node's localeCompare output.
@@ -67,6 +74,27 @@ hash_file() {
   # otherwise hold byte-identical files.
   shasum -a 256 < "$1" | awk '{print $1}'
 }
+
+if [ "${PIG_INTERFACE_EXTRACT_INCREMENTAL:-0}" = "1" ]; then
+  cache_args=()
+  if [ "${PIG_INTERFACE_EXTRACT_CACHE:-1}" != "0" ]; then
+    cache_args=(--cache-dir "$CACHE_ROOT/packages")
+  fi
+  ( cd "$EXTRACTOR_DIR" && \
+    node src/extract-incremental.mjs \
+      --source-root "$SOURCE_ROOT" \
+      --published-root "$PUBLISHED_ROOT" \
+      --upstream-version "$UPSTREAM_VERSION" \
+      "${cache_args[@]}" \
+      --jobs "${PIG_INTERFACE_EXTRACT_JOBS:-8}" \
+      --source-out "$OUT_SOURCE" \
+      --published-out "$OUT_PUBLISHED" && \
+    node src/extract-cli.mjs \
+      --source-root "$SOURCE_ROOT" \
+      --upstream-version "$UPSTREAM_VERSION" \
+      --out "$OUT_CLI" )
+  exit 0
+fi
 
 NODE_VERSION=$(node --version)
 EXTRACTOR_SRC_HASH=$(hash_tree "$EXTRACTOR_DIR/src")

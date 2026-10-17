@@ -22,7 +22,7 @@ func TestHandleSuspendShowsTheWindowsStatus(t *testing.T) {
 	if got := m.chatContainer.ChildCount(); got != 2 {
 		t.Fatalf("chat holds %d children after two suspends, want one spacer and one status", got)
 	}
-	want := tui.ActiveTheme().FgText("dim", "Suspend to background is not supported on Windows")
+	want := tui.ActiveTheme().Fg("dim", "Suspend to background is not supported on Windows")
 	if m.lastStatusText == nil || lastStatusContent(m) != want {
 		t.Fatalf("status = %v, want %q", m.lastStatusText, want)
 	}

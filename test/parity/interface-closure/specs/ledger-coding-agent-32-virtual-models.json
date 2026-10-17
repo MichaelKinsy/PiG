@@ -1,0 +1,169 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#VIRTUAL_MODEL_STATE_ENTRY"
+  ],
+  "targets": [
+   "coding/extension/virtual_model.go#VirtualModelStateEntry"
+  ],
+  "production": [
+   "call:coding/virtual_models.go#Session.routeRequest"
+  ],
+  "evidence": [
+   "test:coding/virtual_models_suite_upstream_test.go#TestVirtualSuiteStoresRouterStateOnTheBranchAndPassesItToLaterRequests"
+  ],
+  "rationale": "VIRTUAL_MODEL_STATE_ENTRY is extension.VirtualModelStateEntry (`pi.virtual-model-state`), the custom entry type the router state is stored under; the test reads the branch entries of that type."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#VirtualModelStateData"
+  ],
+  "targets": [
+   "coding/extension/virtual_model.go#VirtualModelStateData"
+  ],
+  "struct": {
+   "file": "coding/extension/virtual_model.go",
+   "type": "VirtualModelStateData"
+  },
+  "production": [
+   "call:coding/virtual_models.go#Session.routeRequest"
+  ],
+  "evidence": [
+   "test:coding/virtual_models_suite_upstream_test.go#TestVirtualSuiteStoresRouterStateOnTheBranchAndPassesItToLaterRequests"
+  ],
+  "rationale": "VirtualModelStateData is extension.VirtualModelStateData {provider, modelId, state}; the test asserts the stored JSON bytes."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRouteReason"
+  ],
+  "targets": [
+   "coding/extension/virtual_model.go#ModelRouteReason"
+  ],
+  "production": [
+   "call:coding/virtual_models.go#Session.routeRequest"
+  ],
+  "evidence": [
+   "test:coding/virtual_models_suite_upstream_test.go#TestVirtualSuiteStoresRouterStateOnTheBranchAndPassesItToLaterRequests",
+   "test:coding/virtual_models_suite_upstream_test.go#TestVirtualSuiteRoutesEachRequestIncludingRetriesWhileTheSelectionStaysVirtual",
+   "test:coding/virtual_models_suite_upstream_test.go#TestVirtualSuiteRoutesRequestsAfterExtensionMessagesAsContinuations"
+  ],
+  "rationale": "ModelRouteReason is the string type extension.ModelRouteReason with user, continuation, retry and direct constants; the tests assert the reason sequence of each run."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRouteRequest"
+  ],
+  "targets": [
+   "coding/extension/virtual_model.go#ModelRouteRequest"
+  ],
+  "properties": {
+   "model": {
+    "targets": [
+     "coding/extension/virtual_model.go#ModelRouteRequest.Model"
+    ],
+    "evidence": [
+     "test:coding/extension/host/subprocess/extension_api_wire_test.go#TestVirtualModelDeclarationRoutesThroughTheExtension"
+    ],
+    "rationale": "Model is the selected virtual model."
+   },
+   "thinkingLevel": {
+    "targets": [
+     "coding/extension/virtual_model.go#ModelRouteRequest.ThinkingLevel"
+    ],
+    "evidence": [
+     "test:coding/virtual_models_suite_upstream_test.go#TestVirtualSuiteStoresRouterStateOnTheBranchAndPassesItToLaterRequests",
+     "test:coding/virtual_models_suite_upstream_test.go#TestVirtualSuiteRoutesEachRequestIncludingRetriesWhileTheSelectionStaysVirtual"
+    ],
+    "rationale": "ThinkingLevel is the selected level."
+   },
+   "reason": {
+    "targets": [
+     "coding/extension/virtual_model.go#ModelRouteRequest.Reason"
+    ],
+    "evidence": [
+     "test:coding/virtual_models_suite_upstream_test.go#TestVirtualSuiteStoresRouterStateOnTheBranchAndPassesItToLaterRequests",
+     "test:coding/virtual_models_suite_upstream_test.go#TestVirtualSuiteRoutesEachRequestIncludingRetriesWhileTheSelectionStaysVirtual",
+     "test:coding/virtual_models_suite_upstream_test.go#TestVirtualSuiteRoutesRequestsAfterExtensionMessagesAsContinuations"
+    ],
+    "rationale": "Reason is the ModelRouteReason."
+   },
+   "previous": {
+    "targets": [
+     "coding/extension/virtual_model.go#ModelRouteRequest.Previous"
+    ],
+    "evidence": [
+     "test:coding/virtual_models_suite_upstream_test.go#TestVirtualSuiteStoresRouterStateOnTheBranchAndPassesItToLaterRequests",
+     "test:coding/virtual_models_suite_upstream_test.go#TestVirtualSuiteRoutesEachRequestIncludingRetriesWhileTheSelectionStaysVirtual"
+    ],
+    "rationale": "Previous {Model, ThinkingLevel}; nil for undefined."
+   },
+   "failed": {
+    "targets": [
+     "coding/extension/virtual_model.go#ModelRouteRequest.Failed"
+    ],
+    "evidence": [
+     "test:coding/virtual_models_suite_upstream_test.go#TestVirtualSuiteRoutesTheCompactAndRetryAfterATruncatedResponseAsARetry"
+    ],
+    "rationale": "Failed {Model, ThinkingLevel, Message}; nil for undefined."
+   },
+   "state": {
+    "targets": [
+     "coding/extension/virtual_model.go#ModelRouteRequest.State"
+    ],
+    "evidence": [
+     "test:coding/virtual_models_suite_upstream_test.go#TestVirtualSuiteStoresRouterStateOnTheBranchAndPassesItToLaterRequests"
+    ],
+    "rationale": "State is the JSON router state; nil for undefined."
+   },
+   "messages": {
+    "targets": [
+     "coding/extension/virtual_model.go#ModelRouteRequest.Messages"
+    ],
+    "evidence": [
+     "test:coding/extension/host/subprocess/extension_api_wire_test.go#TestVirtualModelDeclarationRoutesThroughTheExtension",
+     "test:coding/extension/host/subprocess/upstream_jev_router_test.go#TestJevRouterExampleRoutes"
+    ],
+    "rationale": "Messages is the request's conversation."
+   },
+   "signal": {
+    "targets": [
+     "coding/extension/virtual_model.go#ModelRouteFunc"
+    ],
+    "evidence": [
+     "test:coding/extension/host/subprocess/extension_api_wire_test.go#TestVirtualModelRouteCancellationAndErrors"
+    ],
+    "rationale": "signal is the context.Context passed to the ModelRouteFunc; cancelling it aborts the route."
+   }
+  },
+  "production": [
+   "call:coding/virtual_models.go#Session.routeRequest"
+  ],
+  "evidence": [
+   "test:coding/virtual_models_suite_upstream_test.go#TestVirtualSuiteStoresRouterStateOnTheBranchAndPassesItToLaterRequests"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ModelRouteRequest is extension.ModelRouteRequest; signal is the context of the ModelRouteFunc."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionVirtualModel"
+  ],
+  "targets": [
+   "coding/extension/virtual_model.go#VirtualModelDefinition"
+  ],
+  "struct": {
+   "file": "coding/extension/virtual_model.go",
+   "type": "VirtualModelDefinition"
+  },
+  "production": [
+   "call:coding/extension/host/subprocess/host_extension_api.go#Host.virtualModelDefinition"
+  ],
+  "evidence": [
+   "test:coding/extension/host/subprocess/extension_api_wire_test.go#TestVirtualModelDeclarationRoutesThroughTheExtension",
+   "test:coding/extension/host/subprocess/upstream_jev_router_test.go#TestJevRouterExampleRegistersTheVirtualModel"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ExtensionVirtualModel is extension.ExtensionVirtualModel = VirtualModelDefinition; route takes (ctx, request) with the extension context in ctx (FromContext) and returns (ModelRoute, error)."
+ }
+]

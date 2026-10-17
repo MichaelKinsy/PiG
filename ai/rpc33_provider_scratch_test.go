@@ -309,7 +309,7 @@ func TestProviderScratchInterleavedTools(t *testing.T) {
 			if api == APIOpenAIResponses {
 				suffixA, suffixB = "|ia", "|ib"
 			}
-			assertScratchJSON(t, result.Content, `[{"type":"toolCall","id":"a`+suffixA+`","name":"read","arguments":{"x":1}},{"type":"toolCall","id":"b`+suffixB+`","name":"write","arguments":{"y":"beta"}}]`)
+			assertScratchJSON(t, result.Content, `[{"type":"toolCall","id":"a`+suffixA+`","name":"read","arguments":{},"argumentsError":"Unexpected token 'o', \"{\"x\":1,\"bad\":nope}\" is not valid JSON\n\nReceived arguments:\n{\"x\":1,\"bad\":nope}"},{"type":"toolCall","id":"b`+suffixB+`","name":"write","arguments":{"y":"beta"}}]`)
 		})
 	}
 }

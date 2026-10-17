@@ -72,7 +72,7 @@ func runThinkingDisable(t *testing.T, ctx context.Context, tc thinkingDisableCas
 			t.Fatal(err)
 		}
 	}
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: dir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: dir})
 	if err != nil {
 		t.Fatal(err)
 	}

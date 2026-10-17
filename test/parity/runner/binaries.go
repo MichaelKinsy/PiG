@@ -3,6 +3,7 @@
 package runner
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -170,7 +171,7 @@ func failOrSkipMissingBinary(t *testing.T, reason string) {
 func ResolveUpstreamPiBin(t *testing.T) BinaryRef {
 	t.Helper()
 	home, _ := os.UserHomeDir()
-	want := coding.UpstreamVersion
+	want := coding.UpstreamPackageVersion
 
 	// Guard: default PI_HOME and PI_CODING_AGENT_DIR to ephemeral temp
 	// dirs so scenarios that forget to declare them in their [env]
@@ -218,6 +219,8 @@ func ResolveUpstreamPiBin(t *testing.T) BinaryRef {
 			failOrSkipVersionMismatch(t, fmt.Sprintf("PIG_PARITY_PI_BIN version check failed at %s: %v", bin, err))
 		} else if got := strings.TrimSpace(string(out)); got != want {
 			failOrSkipVersionMismatch(t, fmt.Sprintf("PIG_PARITY_PI_BIN version = %s, want %s", got, want))
+		} else if reason := oracleCommitMismatch(bin); reason != "" {
+			failOrSkipVersionMismatch(t, reason)
 		}
 		return BinaryRef{
 			Label: "pi",
@@ -227,30 +230,63 @@ func ResolveUpstreamPiBin(t *testing.T) BinaryRef {
 		}
 	}
 
-	// Try each known install dir, prefer the new earendil-works path.
-	// Require an EXACT match for coding.UpstreamVersion so version skew
-	// is impossible to ignore. If the pin is at 0.73.1, only mise's
-	// 0.73.1 dir is acceptable: not 0.73.0, not 0.74.0, not "latest".
-	var tried []string
-	for _, dirName := range upstreamPiInstallDirs {
-		bin := filepath.Join(home, ".local", "share", "mise", "installs", dirName, want, "bin", "pi")
-		tried = append(tried, bin)
-		if _, err := os.Stat(bin); err == nil {
-			return BinaryRef{
-				Label: "pi",
-				Path:  bin,
-				// Upstream needs --no-extensions by default so scenarios see a
-				// minimal baseline matching pig's startup. Scenarios that need
-				// extensions can override via Args in the scenario file.
-				Args: []string{"--no-extensions"},
-				Env:  piEnv,
-			}
+	// Without PIG_PARITY_PI_BIN the oracle is the Pi that `make parity-deps` built from source at the pin and
+	// linked into extensions/sdk-ts, checked against the pinned commit like an explicit PIG_PARITY_PI_BIN. A
+	// published Pi of the same package version is a different build, so it is used only when the run opts in
+	// (PIG_PARITY_PI_PUBLISHED=1), and then only for a release-tag pin: the exact published version from mise,
+	// not 0.73.0 or 0.74.0 when the pin is 0.73.1.
+	cwd, _ := os.Getwd()
+	tried := upstreamPiCandidates(home, want, !publishedOracleAllowed(), cwd)
+	for _, bin := range tried {
+		if _, err := os.Stat(bin); err != nil {
+			continue
+		}
+		if reason := oracleCommitMismatch(bin); reason != "" {
+			failOrSkipVersionMismatch(t, reason)
+		}
+		return BinaryRef{
+			Label: "pi",
+			Path:  bin,
+			// Upstream needs --no-extensions by default so scenarios see a
+			// minimal baseline matching pig's startup. Scenarios that need
+			// extensions can override via Args in the scenario file.
+			Args: []string{"--no-extensions"},
+			Env:  piEnv,
 		}
 	}
 
-	failOrSkipMissingBinary(t, fmt.Sprintf("upstream pi v%s not installed (required by coding.UpstreamVersion). Tried:\n  %s\nInstall with:\n  mise install npm:@earendil-works/pi-coding-agent@%s",
-		want, joinPaths(tried), want))
+	hint := "make parity-deps (builds Pi from source at pinned commit " + coding.UpstreamCommit + ")"
+	if publishedOracleAllowed() {
+		hint = fmt.Sprintf("mise install npm:@earendil-works/pi-coding-agent@%s", want)
+	}
+	failOrSkipMissingBinary(t, fmt.Sprintf("upstream pi %s not installed (required by coding.UpstreamVersion). Tried:\n  %s\nInstall with:\n  %s",
+		coding.UpstreamVersion, joinPaths(tried), hint))
 	return BinaryRef{} // reached only when PIG_PARITY_ALLOW_ZERO skipped the test
+}
+
+// publishedOracleAllowed reports whether the run opted into a published Pi as the oracle. Only a release-tag pin has one.
+func publishedOracleAllowed() bool {
+	return os.Getenv("PIG_PARITY_PI_PUBLISHED") == "1" && coding.UpstreamVersion == coding.UpstreamPackageVersion
+}
+
+// upstreamPiCandidates lists the oracle binaries to try when PIG_PARITY_PI_BIN is unset: the source-built oracle linked into
+// extensions/sdk-ts, or with fromSource false the exact published versions mise installed.
+func upstreamPiCandidates(home, want string, fromSource bool, cwd string) []string {
+	if fromSource {
+		for dir := cwd; ; dir = filepath.Dir(dir) {
+			if _, err := os.Stat(filepath.Join(dir, "extensions", "sdk-ts", "package.json")); err == nil {
+				return []string{filepath.Join(dir, "extensions", "sdk-ts", "node_modules", ".bin", "pi")}
+			}
+			if dir == filepath.Dir(dir) {
+				return nil
+			}
+		}
+	}
+	var tried []string
+	for _, dirName := range upstreamPiInstallDirs {
+		tried = append(tried, filepath.Join(home, ".local", "share", "mise", "installs", dirName, want, "bin", "pi"))
+	}
+	return tried
 }
 
 func joinPaths(ps []string) string {
@@ -262,6 +298,36 @@ func joinPaths(ps []string) string {
 		out += p
 	}
 	return out
+}
+
+// oracleCommitMismatch rejects an oracle that is not the pinned Pi build. The
+// version string alone cannot tell two commits of one package version apart, so
+// every pin needs the build stamp that automation/pin/oracle.py writes beside
+// the oracle's node_modules, and a stamp that names another commit never passes.
+// Only a release-tag pin with PIG_PARITY_PI_PUBLISHED=1 accepts an unstamped
+// (published) oracle.
+func oracleCommitMismatch(bin string) string {
+	real, err := filepath.EvalSymlinks(bin)
+	if err != nil {
+		return ""
+	}
+	for dir := filepath.Dir(real); dir != filepath.Dir(dir); dir = filepath.Dir(dir) {
+		data, err := os.ReadFile(filepath.Join(dir, ".pig-pi-oracle.json"))
+		if err != nil {
+			continue
+		}
+		var stamp struct {
+			Commit string `json:"commit"`
+		}
+		if json.Unmarshal(data, &stamp) != nil || stamp.Commit != coding.UpstreamCommit {
+			return fmt.Sprintf("the Pi at %s is the build of Pi commit %q, want %s", bin, stamp.Commit, coding.UpstreamCommit)
+		}
+		return ""
+	}
+	if !publishedOracleAllowed() {
+		return fmt.Sprintf("the Pi at %s is a published package, not the source build of pinned commit %s (make parity-deps builds it; PIG_PARITY_PI_PUBLISHED=1 opts into the published release of a tag pin)", bin, coding.UpstreamCommit)
+	}
+	return ""
 }
 
 // UpstreamVersion returns the pi version label this run is comparing

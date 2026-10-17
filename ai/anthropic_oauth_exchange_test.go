@@ -1,5 +1,7 @@
 package ai
 
+// pi: packages/ai/src/auth/oauth/callback-server.ts
+
 import (
 	"context"
 	"errors"
@@ -183,7 +185,13 @@ func BenchmarkAnthropicNativeOAuthLogin(b *testing.B) {
 		models.operations.Wait()
 		store.operations.Wait()
 	})
-	interaction := AuthInteraction{Notify: func(AuthEvent) {}, Prompt: func(context.Context, AuthPrompt) (string, error) { return "the-code", nil }}
+	// Login first selects the method (copy code, which needs no callback server), then asks for the code.
+	interaction := AuthInteraction{Notify: func(AuthEvent) {}, Prompt: func(_ context.Context, prompt AuthPrompt) (string, error) {
+		if _, ok := prompt.(AuthSelectPrompt); ok {
+			return AnthropicCopyCodeLoginMethod, nil
+		}
+		return "the-code", nil
+	}}
 	b.ReportAllocs()
 	for b.Loop() {
 		if _, err := models.Login(b.Context(), "anthropic", CredentialOAuth, interaction); err != nil {

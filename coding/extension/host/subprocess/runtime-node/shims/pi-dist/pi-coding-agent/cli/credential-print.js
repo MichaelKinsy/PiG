@@ -1,4 +1,4 @@
-import { resolveCliModel } from "../core/model-resolver.js";
+import { resolveCliModel, resolveModelReference } from "../core/model-resolver.js";
 import { AuthCommandError, getAuthCredential, validateAuthCommandArgs } from "./auth-command.js";
 const DEFAULT_BEARER_TOKEN_MIN_EXPIRY_MS = 30 * 60_000;
 /**
@@ -28,13 +28,13 @@ export async function resolveCredentialForPrint(args, modelRuntime, kind, minExp
         }
     }
     else {
+        const models = modelRuntime.getModels();
         for (const provider of modelRuntime.getProviders()) {
             if (!credentialTypes.has(provider.id))
                 continue;
-            const resolved = resolveCliModel({ cliProvider: provider.id, cliModel: cliModel, modelRuntime });
-            if (resolved.model && !resolved.error && !resolved.warning?.includes("Using custom model id")) {
+            const resolved = resolveModelReference({ text: cliModel, provider: provider.id, thinkingSuffix: "strict", fuzzy: true }, models, () => true);
+            if (resolved.status === "resolved")
                 providers.push({ id: provider.id, model: resolved.model });
-            }
         }
         if (providers.length === 0) {
             throw new AuthCommandError(`Model "${cliModel}" not found. Use --list-models to see available models.`);

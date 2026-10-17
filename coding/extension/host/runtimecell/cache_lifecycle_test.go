@@ -1,6 +1,7 @@
 package runtimecell
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -428,7 +429,7 @@ func TestCacheLifecycleRemovesObsoleteSDKFingerprintWithoutChangingReadyMetadata
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(readyAfter) != string(readyBefore) {
+	if !bytes.Equal(readyAfter, readyBefore) {
 		t.Fatal("cache inspection modified ready.json")
 	}
 }

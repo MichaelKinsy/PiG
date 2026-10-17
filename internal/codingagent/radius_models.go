@@ -78,32 +78,78 @@ func (r *ModelRegistry) SetModelsStore(store ai.ModelsStore) {
 // the composition error and keeps the base. A custom model's base URL comes from
 // the model, the provider, then the built-in model findModelDefaults picks
 // (provider-composer.ts modelFromJson), so a built-in provider whose models ship
-// without one, such as azure, needs a base URL in models.json too.
+// without one, such as azure, needs a base URL in models.json too. The defaults
+// come from the whole generated catalog: a stripped API's models are not offered
+// (ai.ListModels omits them), but their base URL still composes the entry.
+func (c *modelsConfig) recordComposeFailure(providerID, message string) {
+	if c.composeFailures == nil {
+		c.composeFailures = map[string]string{}
+	}
+	c.composeFailures[providerID] = message
+}
+
+// firstModelDefinitionFailure is the error provider-composer.ts modelFromJson (:216-229) throws for the first custom model of the provider that
+// cannot be built, or "": no api (model, provider, then the built-in model findModelDefaults picks), no base URL (the same order), a
+// contextWindow or maxTokens that is not positive. A model checks in that order and the models in definition order. An "oauth" provider's
+// missing api is judged later, against its catalog.
+func firstModelDefinitionFailure(providerID string, provider providerConfig) string {
+	var builtIn []*ai.Model
+	// pig additive (D92): a stripped API leaves the offered catalog, not the defaults a models.json entry composes from.
+	for i := range ai.GeneratedModels {
+		if generated := &ai.GeneratedModels[i]; generated.Provider == providerID {
+			builtIn = append(builtIn, generated.ToModel())
+		}
+	}
+	for _, model := range provider.Models {
+		api := firstModelValue(model.API, provider.API)
+		defaults := findNativeModelDefaults(builtIn, model.ID, ai.API(api))
+		if api == "" && defaults != nil {
+			api = string(defaults.ProviderMeta.API)
+		}
+		// An "oauth" provider's base models come from its catalog, which is not loaded when the configuration is read, so only a provider
+		// whose base models are the built-in ones can be judged here.
+		if api == "" && provider.OAuth == nil {
+			return fmt.Sprintf(`Provider %s, model %s: no "api" specified. Set at provider or model level.`, providerID, model.ID)
+		}
+		baseURL := firstModelValue(model.BaseURL, provider.BaseURL)
+		if baseURL == "" && defaults != nil {
+			baseURL = defaults.ProviderMeta.BaseURL
+		}
+		if baseURL == "" {
+			return fmt.Sprintf("Provider %s: \"baseUrl\" is required when defining custom models.", providerID)
+		}
+		if model.ContextWindow != nil && *model.ContextWindow <= 0 {
+			return fmt.Sprintf("Provider %s, model %s: invalid contextWindow", providerID, model.ID)
+		}
+		if model.MaxTokens != nil && *model.MaxTokens <= 0 {
+			return fmt.Sprintf("Provider %s, model %s: invalid maxTokens", providerID, model.ID)
+		}
+	}
+	return ""
+}
+
 func dropUncomposableProviders(config *modelsConfig) []string {
 	var failures []string
 	for providerID, provider := range config.Providers {
 		if provider.OAuth != nil && provider.OAuth.Kind != "" && provider.BaseURL == "" {
-			failures = append(failures, fmt.Sprintf("Provider %q: Provider %s: \"baseUrl\" is required when \"oauth\" is set.", providerID, providerID))
+			message := fmt.Sprintf("Provider %s: \"baseUrl\" is required when \"oauth\" is set.", providerID)
+			failures = append(failures, fmt.Sprintf("Provider %q: %s", providerID, message))
+			config.recordComposeFailure(providerID, message)
 			delete(config.Providers, providerID)
 			continue
 		}
-		if provider.BaseURL != "" {
+		// upstream: provider-composer.ts applyModelsJson rejects a provider that configures nothing.
+		if len(provider.Models) == 0 && provider.BaseURL == "" && provider.Headers == nil && provider.Compat == nil && len(provider.ModelOverrides) == 0 && provider.APIKey == "" && provider.OAuth == nil && provider.AuthHeader == nil {
+			message := fmt.Sprintf("Provider %s: must specify \"baseUrl\", \"headers\", \"compat\", \"modelOverrides\", or \"models\".", providerID)
+			failures = append(failures, fmt.Sprintf("Provider %q: %s", providerID, message))
+			config.recordComposeFailure(providerID, message)
+			delete(config.Providers, providerID)
 			continue
 		}
-		var builtIn []*ai.Model
-		for _, generated := range ai.ListModels(providerID) {
-			builtIn = append(builtIn, generated.ToModel())
-		}
-		for _, model := range provider.Models {
-			if model.BaseURL != "" {
-				continue
-			}
-			if defaults := findNativeModelDefaults(builtIn, model.ID, ai.API(firstModelValue(model.API, provider.API))); defaults != nil && defaults.ProviderMeta.BaseURL != "" {
-				continue
-			}
-			failures = append(failures, fmt.Sprintf("Provider %q: Provider %s: \"baseUrl\" is required when defining custom models.", providerID, providerID))
+		if message := firstModelDefinitionFailure(providerID, provider); message != "" {
+			failures = append(failures, fmt.Sprintf("Provider %q: %s", providerID, message))
+			config.recordComposeFailure(providerID, message)
 			delete(config.Providers, providerID)
-			break
 		}
 	}
 	slices.Sort(failures)
@@ -129,7 +175,7 @@ func (r *ModelRegistry) configureRadiusProvidersLocked() {
 	}
 	next := make(map[string]*ai.RadiusProvider, len(wanted))
 	for providerID, options := range wanted {
-		candidate := ai.NewRadiusProvider(options)
+		candidate := ai.NewRadiusGatewayProvider(options)
 		if existing := r.radius[providerID]; existing != nil && existing.Name() == candidate.Name() && existing.Gateway() == candidate.Gateway() {
 			candidate = existing
 		}
@@ -171,18 +217,36 @@ func (r *ModelRegistry) RadiusOAuthFlows() []*ai.RadiusOAuth {
 	return flows
 }
 
-func radiusModelEntry(model ai.PiMessagesModel) ModelEntry {
+// radiusModelEntry is the catalog entry of model, a copy that RadiusProvider.GetModels returned and nothing else references: the entry takes over its slices and maps instead of copying them again. An empty thinking-level map or input list becomes nil, as the copies did; the cost-tier list is kept as it is, since an empty one is an authored tiers: [] (ai.ModelCost). Headers and ModelHeaders remain distinct maps.
+func radiusModelEntry(model *ai.Model) ModelEntry {
+	capabilities := model.Capabilities
 	return ModelEntry{
-		ProviderID: model.Provider, ModelID: model.ID, BaseURL: model.BaseURL, DisplayName: model.Name,
-		API: string(ai.APIPiMessages), Reasoning: model.Reasoning,
-		ThinkingLevelMap: cloneThinkingLevelMap(model.ThinkingLevelMap), Input: append([]string(nil), model.Input...),
-		InputLimits:   model.InputLimits.Clone(),
-		ContextWindow: model.ContextWindow, MaxTokens: model.MaxTokens,
-		InputCost: model.Cost.Input, OutputCost: model.Cost.Output, CacheReadCost: model.Cost.CacheRead, CacheWriteCost: model.Cost.CacheWrite,
-		CostTiers: append([]ai.CostTier(nil), model.Cost.Tiers...), PromptCache: maps.Clone(model.PromptCache),
-		SamplingParams: maps.Clone(model.SamplingParams), Headers: maps.Clone(model.Headers), ModelHeaders: maps.Clone(model.Headers),
-		Compat: mergeCompat((*providerCompat)(model.Compat), nil),
+		Type:          model.Type,
+		CatalogRecord: ai.CatalogRecordOf(model),
+		ProviderID:    model.ProviderMeta.ProviderID, ModelID: model.ID, BaseURL: model.ProviderMeta.BaseURL, DisplayName: model.DisplayName,
+		API: string(ai.APIPiMessages), Reasoning: model.ProviderMeta.Reasoning,
+		ThinkingLevelMap: nilIfEmptyMap(model.ThinkingLevelMap), Input: nilIfEmptySlice(model.Input),
+		InputLimits:   model.InputLimits,
+		ContextWindow: capabilities.ContextWindow, MaxTokens: capabilities.MaxOutputTokens,
+		InputCost: capabilities.InputCostPer1M, OutputCost: capabilities.OutputCostPer1M, CacheReadCost: capabilities.CacheReadCostPer1M, CacheWriteCost: capabilities.CacheWriteCostPer1M,
+		CostTiers: capabilities.CostTiers, PromptCache: model.PromptCache,
+		SamplingParams: model.SamplingParams, SamplingParamsByThinkingLevel: model.SamplingParamsByThinkingLevel, Headers: model.ProviderMeta.Headers, ModelHeaders: maps.Clone(model.ProviderMeta.Headers),
+		Compat: mergeCompat((*providerCompat)(model.ProviderMeta.Compat), nil),
 	}
+}
+
+func nilIfEmptySlice[S ~[]E, E any](s S) S {
+	if len(s) == 0 {
+		return nil
+	}
+	return s
+}
+
+func nilIfEmptyMap[M ~map[K]V, K comparable, V any](m M) M {
+	if len(m) == 0 {
+		return nil
+	}
+	return m
 }
 
 // radiusModel returns the composed catalog entry without resolving credentials.
@@ -367,12 +431,19 @@ func (r *ModelRegistry) RefreshCatalogs(ctx context.Context, options CatalogRefr
 	}
 	var mu sync.Mutex
 	var wg sync.WaitGroup
+	// An offline restore of the Radius and built-in remote catalogs reads every credential and stored catalog as Pi's models.refresh does, in one
+	// macrotask, so it stats auth.json and models-store.json once (readSnapshotContext). A network refresh awaits I/O between reads, and the native
+	// collection runs extension callbacks between them: they read as before.
+	builtinCtx := ctx
+	if !options.AllowNetwork {
+		builtinCtx = r.readSnapshotContext(ctx, true)
+	}
 	for _, provider := range r.selectRadiusProviders(options.Providers) {
 		if r.GetProvider(provider.ID()) != nil {
 			continue
 		}
 		wg.Go(func() {
-			if err := r.refreshRadiusProvider(ctx, provider, options.AllowNetwork); err != nil {
+			if err := r.refreshRadiusProvider(builtinCtx, provider, options.AllowNetwork); err != nil {
 				mu.Lock()
 				result.Errors[provider.ID()] = err
 				result.errorOrder = append(result.errorOrder, provider.ID())
@@ -390,7 +461,7 @@ func (r *ModelRegistry) RefreshCatalogs(ctx context.Context, options CatalogRefr
 		}
 	})
 	wg.Go(func() {
-		remote := r.refreshRemoteCatalogs(ctx, ai.ModelsRefreshOptions{AllowNetwork: new(options.AllowNetwork), Providers: options.Providers, Force: options.Force})
+		remote := r.refreshRemoteCatalogs(builtinCtx, ai.ModelsRefreshOptions{AllowNetwork: new(options.AllowNetwork), Providers: options.Providers, Force: options.Force})
 		mu.Lock()
 		defer mu.Unlock()
 		for _, id := range remote.ErrorOrder {

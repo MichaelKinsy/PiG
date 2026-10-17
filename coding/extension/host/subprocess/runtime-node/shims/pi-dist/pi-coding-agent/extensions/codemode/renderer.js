@@ -3,11 +3,11 @@
  *
  * The call shows the script; the result lists the nested tool calls with their status as they
  * run and the cost of its model calls, followed by the script output without the "Script completed"
- * header. Nested calls are not
- * separate tool rows because they never reach the model as tool calls.
+ * header, and the time the script has been running (`Elapsed`) or took (`Took`), like bash rows.
+ * Nested calls are not separate tool rows because they never reach the model as tool calls.
  */
 import { Container, Spacer, Text } from "../../../../pi-tui.mjs";
-import { getTextOutput, replaceTabs, str } from "../../core/tools/render-utils.js";
+import { getTextOutput, replaceTabs, startToolTimer, str, toolTimerText } from "../../core/tools/render-utils.js";
 import { keyHint } from "../../modes/interactive/components/keybinding-hints.js";
 import { VisualLinePreview } from "../../modes/interactive/components/visual-truncate.js";
 import { highlightCode } from "../../modes/interactive/theme/theme.js";
@@ -58,6 +58,7 @@ function formatCall(call, theme, expanded) {
 }
 export const codemodeRenderers = {
     renderCall(args, theme, context) {
+        startToolTimer(context);
         // The code includes the `// @options:` line, so options show as part of the script.
         const code = str(args?.code);
         const title = theme.fg("toolTitle", theme.bold("codemode"));
@@ -82,6 +83,7 @@ export const codemodeRenderers = {
         return component;
     },
     renderResult(result, options, theme, context) {
+        const timerText = toolTimerText(context, options.isPartial);
         const component = context.lastComponent ?? new Container();
         component.clear();
         const calls = result.details?.calls ?? [];
@@ -130,6 +132,10 @@ export const codemodeRenderers = {
                 if (fullOutputPath)
                     component.addChild(new Text(theme.fg("muted", `Full output: ${fullOutputPath}`), 0, 0));
             }
+        }
+        if (timerText) {
+            component.addChild(new Spacer(1));
+            component.addChild(new Text(theme.fg("muted", timerText), 0, 0));
         }
         return component;
     },

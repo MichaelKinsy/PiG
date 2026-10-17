@@ -31,6 +31,11 @@ type ToolRenderContext struct {
 	Expanded         bool      `json:"expanded"`
 	ShowImages       bool      `json:"showImages"`
 	IsError          bool      `json:"isError"`
+	// OutputPad is the horizontal padding configured by the outputPad setting. Renderers with renderShell "self" apply it themselves.
+	OutputPad int `json:"outputPad"`
+	// DurationMs is the recorded execution time of a final result in milliseconds. Nil while the result is partial and for results
+	// stored without one. upstream: types.ts:496 ToolRenderContext.durationMs
+	DurationMs *int64 `json:"durationMs,omitempty"`
 	// Card identifies the tool card being rendered. Go mechanic (not a
 	// divergence): a renderer that runs in an extension process keeps State
 	// and its last component there, so the host names the card they belong
@@ -137,6 +142,10 @@ type ToolAnnotations struct {
 // upstream: types.ts:527 (ToolNamespace)
 type ToolNamespace struct {
 	Name string `json:"name"`
+	// Aliases are other names that refer to the namespace where tools look it up by name (codemode's describeNamespace()
+	// and the namespace option of searchTools()), for example `docs` for `mcp__docs`. A nil slice is an absent member;
+	// an explicit empty one encodes as [], as upstream returns the authored namespace object (agent-session.ts:1505).
+	Aliases []string `json:"aliases,omitzero"`
 	// Description is a short summary shown once with the group in model-facing tool listings.
 	Description string `json:"description,omitempty"`
 	// Instructions is longer usage guidance, such as MCP server instructions. It is not part of tool listings; tools
@@ -183,6 +192,11 @@ type ToolDefinition struct {
 	// synchronous prefix in call order, which Go goroutines do not give; this restores it for tools whose request order is
 	// observable, such as MCP tool calls to one server.
 	ReserveCallOrder func(params json.RawMessage) *CallOrder `json:"-"`
+	// ReachesTools is for tools that reach other tools (such as codemode, which calls them, and tool_search, which loads
+	// them): which tools a call with the given input may reach. Extensions that register tools late, such as MCP servers
+	// that are still connecting, use it from their tool_call handler to finish registering those tools before the call runs.
+	// upstream: types.ts:621 (reachesTools)
+	ReachesTools ToolReachesToolsFunc `json:"-"`
 	// BuiltInRenderers names the built-in tool whose renderers draw the card
 	// halves this definition does not render itself. A subprocess extension
 	// sets it for a tool built from Pi's create<Tool>ToolDefinition, whose
@@ -200,6 +214,20 @@ type ToolDefinition struct {
 	Annotations *ToolAnnotations `json:"annotations,omitempty"`
 }
 
+// ToolReach mirrors the result of upstream ToolDefinition.reachesTools, `"all" | readonly string[]`: every tool, or the
+// words of the input that may name them, where a word refers to a tool or namespace whose name contains it, so words
+// may over-match.
+//
+// pig Go mechanic (not a divergence): a Go struct stands for the string-or-array union.
+type ToolReach struct {
+	All   bool
+	Words []string
+}
+
+// ToolReachesToolsFunc mirrors upstream ToolDefinition.reachesTools: which tools a call with input (the call's
+// arguments as the tool receives them) may reach.
+type ToolReachesToolsFunc = func(input json.RawMessage) ToolReach
+
 // ToolInfo mirrors upstream ToolInfo: the read-only view returned by
 // [API.GetAllTools].
 type ToolInfo struct {
@@ -208,10 +236,14 @@ type ToolInfo struct {
 	Parameters       json.RawMessage `json:"parameters"`
 	PromptGuidelines []string        `json:"promptGuidelines,omitempty"`
 	SourceInfo       SourceInfo      `json:"sourceInfo"`
+	// Source is PiG's per-tool source attribution (D23): "builtin", the registering extension's name, or the tool's declared source. It is not part of upstream's ToolInfo.
+	Source string `json:"-"`
 	// Exposure, Namespace, and Annotations mirror upstream ToolInfo. upstream: types.ts:2063
 	Exposure    ToolExposure     `json:"exposure,omitempty"`
 	Namespace   *ToolNamespace   `json:"namespace,omitempty"`
 	Annotations *ToolAnnotations `json:"annotations,omitempty"`
+	// ReachesTools is the tool's reachesTools, nil for a tool that reaches no others. upstream: types.ts:2107 (ToolInfo)
+	ReachesTools ToolReachesToolsFunc `json:"-"`
 }
 
 // RegisteredTool mirrors upstream RegisteredTool: the host's bookkeeping
@@ -219,6 +251,8 @@ type ToolInfo struct {
 type RegisteredTool struct {
 	Definition ToolDefinition `json:"definition"`
 	SourceInfo SourceInfo     `json:"sourceInfo"`
+	// Source is PiG's per-tool source attribution (D23): the tool's declared source, or the registering extension's name. It is not part of upstream's RegisteredTool and is empty for tools no extension registered.
+	Source string `json:"-"`
 }
 
 // CallOrder is a reserved place in a tool's call order. Wait returns when every earlier reservation was released;

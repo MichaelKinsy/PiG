@@ -91,7 +91,9 @@ func busSpec(language, isolation, name string, listeners ...busListenerAt) busFi
 }
 
 // A node emitter reaches a native listener, and the native listener's own emit reaches a node observer. The observer's line carries the value the listener computed from the payload, so no fallback can produce it (event-bus.ts:15-17).
+// ExtensionAPI.events is the shared EventBus (packages/coding-agent/src/core/extensions/types.ts:1889).
 func TestNativeEventBusNodeEmitterReachesListenerAndItsEcho(t *testing.T) {
+	requireEventsMember(t)
 	eachBusRealm(t, true, func(t *testing.T, language, isolation string) {
 		rig := newBusRig(t,
 			busSpec("node", isolation, "emitter"),
@@ -471,5 +473,22 @@ func TestNativeEventBusNewListenerAndRemoveListenerEvents(t *testing.T) {
 		rig.must("g", "sub", "x record")
 		rig.must("g", "unsub", "0")
 		rig.expect(`watcher|newListener|"x"`, `watcher|removeListener|"x"`)
+	})
+}
+
+// Pi's emit calls one extension's consecutive listeners in one synchronous loop over one payload object (event-bus.ts:15-17), so a later listener sees what an earlier one wrote. The Host sends such a run to its runtime as one events.dispatch carrying every handler id, decoded once. Every realm kind and topology shows the same writes inside the run and the same order across the extensions around it. (A native emitter's payload reaches each extension as its own decoded copy, which TestNativeEventBusNativeEmitterReachesNodeAndOtherCellListeners pins, so writes are checked inside one extension.)
+func TestEventBusConsecutiveListenersShareOnePayloadObject(t *testing.T) {
+	eachBusRealm(t, true, func(t *testing.T, language, isolation string) {
+		rig := newBusRig(t,
+			busSpec(language, isolation, "emitter"),
+			busSpec("node", isolation, "n1", busListenerAt{"c", "record"}, busListenerAt{"c", "inc"}, busListenerAt{"c", "record"}, busListenerAt{"c", "inc+record"}, busListenerAt{"o", "record"}, busListenerAt{"o", "record"}),
+			busSpec("node", isolation, "n2", busListenerAt{"o", "record"}),
+			busSpec("node", isolation, "n3", busListenerAt{"d", "record"}, busListenerAt{"o", "record"}, busListenerAt{"o", "record"}),
+		)
+		rig.must("emitter", "emit", `c json {"n":0}`)
+		rig.expect(`n1|c|{"n":0}`, `n1|c|{"n":1}`, `n1|c|{"n":2}`)
+		rig.reset()
+		rig.must("emitter", "emit", `o json 7`)
+		rig.expect(`n1|o|7`, `n1|o|7`, `n2|o|7`, `n3|o|7`, `n3|o|7`)
 	})
 }

@@ -12,12 +12,14 @@
 package tools
 
 import (
+	"bufio"
 	"context"
 	"os"
 	"strings"
 	"unicode/utf16"
 
 	"github.com/MichaelKinsy/PiG/internal/outputfiles"
+	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
 // BashResult mirrors upstream BashResult (bash-executor.ts).
@@ -57,6 +59,10 @@ func ExecuteBash(ctx context.Context, command, cwd string, shell ShellConfig, op
 // temp file receives the sanitized text once the output passes the byte
 // limit. A cancelled run returns its output with Cancelled set; any other
 // operations error is returned.
+//
+// A clean chunk costs one string, the decoded text it keeps: the strip and
+// sanitize steps return text they do not change as it is, and the temp file
+// is written through a buffer rather than a write per chunk.
 func ExecuteBashWithOperations(ctx context.Context, command, cwd string, operations BashOperations, opts BashExecOptions) (BashResult, error) {
 	const maxOutputBytes = DefaultMaxBytesUpstream * 2
 	var (
@@ -65,6 +71,7 @@ func ExecuteBashWithOperations(ctx context.Context, command, cwd string, operati
 		totalBytes     int
 		tempFilePath   string
 		tempFile       *os.File
+		tempWriter     *bufio.Writer
 		tempFileOpened bool
 		// TextDecoder, like upstream's: a leading BOM is dropped.
 		decoder = utf8StreamDecoder{stripBOM: true}
@@ -78,42 +85,67 @@ func ExecuteBashWithOperations(ctx context.Context, command, cwd string, operati
 		tempFilePath = path
 		if err == nil {
 			tempFile = f
+			tempWriter = bufio.NewWriter(f)
 			for _, chunk := range outputChunks {
-				_, _ = f.WriteString(chunk)
+				_, _ = tempWriter.WriteString(chunk)
 			}
 		}
 	}
-	onData := func(data []byte) {
-		totalBytes += len(data)
-		text := strings.ReplaceAll(SanitizeBinaryOutput(string(StripANSI([]byte(decoder.decode(data, true))))), "\r", "")
+	closeTempFile := func() {
+		if tempFile != nil {
+			_ = tempWriter.Flush()
+			_ = tempFile.Close()
+		}
+	}
+	// Unfinished escape sequence at the end of the previous chunk, completed by the next chunk (bash-executor.ts pendingAnsi).
+	pendingAnsi := ""
+	appendText := func(rawText string) {
+		chunk := strings.ReplaceAll(text.SanitizeBinaryOutput(text.StripANSIString(rawText)), "\r", "")
+		if chunk == "" {
+			return
+		}
 		if totalBytes > DefaultMaxBytesUpstream {
 			ensureTempFile()
 		}
-		if tempFile != nil {
-			_, _ = tempFile.WriteString(text)
+		if tempWriter != nil {
+			_, _ = tempWriter.WriteString(chunk)
 		}
-		outputChunks = append(outputChunks, text)
-		outputBytes += jsLength(text)
+		outputChunks = append(outputChunks, chunk)
+		outputBytes += jsLength(chunk)
 		for outputBytes > maxOutputBytes && len(outputChunks) > 1 {
 			outputBytes -= jsLength(outputChunks[0])
 			outputChunks = outputChunks[1:]
 		}
 		if opts.OnChunk != nil {
-			opts.OnChunk(text)
+			opts.OnChunk(chunk)
 		}
+	}
+	onData := func(data []byte) {
+		totalBytes += len(data)
+		decoded := decoder.decode(data, true)
+		if pendingAnsi != "" {
+			decoded = pendingAnsi + decoded
+		}
+		var complete string
+		complete, pendingAnsi = SplitIncompleteAnsiSuffix(decoded)
+		appendText(complete)
+	}
+	flushOutput := func() {
+		rest := pendingAnsi + decoder.decode(nil, false)
+		pendingAnsi = ""
+		appendText(rest)
 	}
 	finish := func(exitCode *int, cancelled bool) BashResult {
 		fullOutput := strings.Join(outputChunks, "")
-		tr := TruncateTail(fullOutput, DefaultMaxBytesUpstream, DefaultMaxLinesUpstream)
+		tr := TruncateTail(fullOutput, TruncationOptions{})
 		if tr.Truncated {
 			ensureTempFile()
 		}
-		if tempFile != nil {
-			_ = tempFile.Close()
-		}
+		closeTempFile()
 		output := fullOutput
 		if tr.Truncated {
-			output = tr.Content
+			// The kept tail is a substring of the joined window; copy it so the result does not hold the whole window.
+			output = strings.Clone(tr.Content)
 		}
 		return BashResult{Output: output, ExitCode: exitCode, Cancelled: cancelled, Truncated: tr.Truncated, FullOutputPath: tempFilePath}
 	}
@@ -121,11 +153,10 @@ func ExecuteBashWithOperations(ctx context.Context, command, cwd string, operati
 	result, err := operations.Exec(ctx, command, cwd, BashOperationsExecOptions{OnData: onData})
 	cancelled := ctx.Err() != nil
 	if err != nil && !cancelled {
-		if tempFile != nil {
-			_ = tempFile.Close()
-		}
+		closeTempFile()
 		return BashResult{}, err
 	}
+	flushOutput()
 	exitCode := result.ExitCode
 	if cancelled {
 		exitCode = nil

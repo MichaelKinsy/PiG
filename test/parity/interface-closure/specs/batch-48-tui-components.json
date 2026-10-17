@@ -1,0 +1,49 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#BranchSummaryMessageComponent::property:setExpanded"
+  ],
+  "targets": [
+   "tui/branch_summary.go#BranchSummaryComponent.SetExpanded"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_transcript.go#InteractiveMode.renderSessionEntryList"
+  ],
+  "evidence": [
+   "test:tui/branch_summary_test.go#TestBranchSummaryExpanded",
+   "test:tui/branch_summary_test.go#TestBranchSummaryToggle"
+  ],
+  "rationale": "BranchSummaryMessageComponent.setExpanded is the Go method BranchSummaryComponent.SetExpanded; signature reviewed against the upstream declaration (upstream class BranchSummaryMessageComponent is Go tui.BranchSummaryComponent); callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CompactionSummaryMessageComponent::property:setExpanded"
+  ],
+  "targets": [
+   "tui/compaction_summary.go#CompactionSummaryComponent.SetExpanded"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_compaction.go#InteractiveMode.addCompactionSummary"
+  ],
+  "evidence": [
+   "test:tui/compaction_summary_test.go#TestCompactionSummaryExpanded"
+  ],
+  "rationale": "CompactionSummaryMessageComponent.setExpanded is the Go method CompactionSummaryComponent.SetExpanded; signature reviewed against the upstream declaration (upstream class CompactionSummaryMessageComponent is Go tui.CompactionSummaryComponent); callers and tests attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#UserMessageComponent::property:setOutputPad"
+  ],
+  "targets": [
+   "tui/user_message_block.go#UserMessageBlock.SetOutputPad"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_chat.go#InteractiveMode.newUserMessageBlock"
+  ],
+  "evidence": [
+   "test:internal/codingagent/assistant_message_upstream_test.go#TestAssistantMessageUpstream",
+   "test:tui/settings_live_effects_test.go#TestMessageOutputPaddingAppliesImmediately"
+  ],
+  "rationale": "UserMessageComponent.setOutputPad is the Go method UserMessageBlock.SetOutputPad; signature reviewed against the upstream declaration (upstream class UserMessageComponent is Go tui.UserMessageBlock); callers and tests attributed by go/types (methodrefs)."
+ }
+]

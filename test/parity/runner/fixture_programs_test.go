@@ -12,9 +12,9 @@ import (
 // TestParityFixtureProgramsCompile type-checks every Go program under
 // test/parity/testdata with go vet, which compiles without linking. `go build ./...`
 // skips testdata directories, so the only other thing that compiles these
-// programs is the scenario that `go run`s one. Without this guard an ai API
-// refactor rots them silently, and the scenario then fails on a compile error
-// instead of on behavior.
+// programs is the runner's build for a scenario that `go run`s one
+// (go_prebuild.go). Without this guard an ai API refactor rots them silently,
+// and the scenario then fails on a compile error instead of on behavior.
 func TestParityFixtureProgramsCompile(t *testing.T) {
 	testdata := filepath.Join("..", "testdata")
 	entries, err := os.ReadDir(testdata)

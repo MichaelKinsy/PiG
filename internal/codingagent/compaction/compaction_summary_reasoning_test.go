@@ -34,6 +34,13 @@ func (r *summaryRecorder) CompleteSimple(_ context.Context, model *ai.Model, _ s
 	return "## Goal\nTest summary", &usage, nil
 }
 
+// streamFn is the recorder as the StreamFn the Pi-shaped entry points take.
+func (r *summaryRecorder) streamFn() StreamFn {
+	return func(ctx context.Context, model *ai.Model, systemPrompt string, messages []agent.AgentMessage, options ai.StreamOptions) (string, *ai.Usage, error) {
+		return r.CompleteSimple(ctx, model, systemPrompt, messages, options)
+	}
+}
+
 func mockSummaryUsage() ai.Usage {
 	return ai.Usage{Input: 10, Output: 10, TotalTokens: 20}
 }
@@ -47,7 +54,7 @@ func createSummaryModel(reasoning bool, maxTokens int, compat *ai.ModelCompat) *
 	}
 	if reasoning {
 		model.ID, model.DisplayName = "reasoning-model", "Reasoning Model"
-		model.Capabilities.MaxThinking = ai.ThinkingHigh
+		model.Capabilities.MaxThinking = ai.ThinkingLevelHigh
 	}
 	return model
 }
@@ -71,9 +78,10 @@ func summaryPrompt(messages []agent.AgentMessage) string {
 	return prompt.String()
 }
 
+// compaction-summary-reasoning.test.ts "uses the provided thinking level for reasoning-capable models" (:79), which calls generateSummaryWithUsage.
 func TestGenerateSummaryUsesThinkingLevelForReasoningModels(t *testing.T) {
 	recorder := &summaryRecorder{}
-	text, usage, err := generateSummary(t.Context(), summarizeThisMessages(), "", 2000, createSummaryModel(true, 8192, nil), recorder, nil, "", ai.ThinkingMedium, nil, "")
+	text, usage, err := GenerateSummaryWithUsage(t.Context(), summarizeThisMessages(), createSummaryModel(true, 8192, nil), 2000, "test-key", nil, "", "", ai.ThinkingMedium, recorder.streamFn(), nil, nil, ai.RetryCallbacks{}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,22 +94,27 @@ func TestGenerateSummaryUsesThinkingLevelForReasoningModels(t *testing.T) {
 	if len(recorder.calls) != 1 {
 		t.Fatalf("calls = %d, want 1", len(recorder.calls))
 	}
-	if got := recorder.calls[0].options.Thinking; got != ai.ThinkingMedium {
+	if got := recorder.calls[0].options.Thinking; got != ai.ThinkingLevelMedium {
 		t.Fatalf("reasoning = %q, want medium", got)
+	}
+	if got := recorder.calls[0].options.APIKey; got != "test-key" {
+		t.Fatalf("apiKey = %q, want test-key", got)
 	}
 }
 
+// compaction-summary-reasoning.test.ts "preserves the string result from generateSummary" (:99).
 func TestGenerateSummaryPreservesStringResult(t *testing.T) {
-	text, _, err := generateSummary(t.Context(), summarizeThisMessages(), "", 2000, createSummaryModel(false, 8192, nil), &summaryRecorder{}, nil, "", "", nil, "")
+	text, err := GenerateSummary(t.Context(), summarizeThisMessages(), createSummaryModel(false, 8192, nil), 2000, "", nil, "", "", "", (&summaryRecorder{}).streamFn(), nil, nil, ai.RetryCallbacks{}, "")
 	if err != nil || text != "## Goal\nTest summary" {
 		t.Fatalf("generateSummary = %q, %v", text, err)
 	}
 }
 
+// compaction-summary-reasoning.test.ts "uses fresh routing sessions without prompt caching" (:103), which calls generateSummary twice.
 func TestGenerateSummaryUsesFreshRoutingSessionsWithoutPromptCaching(t *testing.T) {
 	recorder := &summaryRecorder{}
 	for range 2 {
-		if _, _, err := generateSummary(t.Context(), summarizeThisMessages(), "", 2000, createSummaryModel(false, 8192, nil), recorder, nil, "", "", nil, ""); err != nil {
+		if _, err := GenerateSummary(t.Context(), summarizeThisMessages(), createSummaryModel(false, 8192, nil), 2000, "", nil, "", "", "", recorder.streamFn(), nil, nil, ai.RetryCallbacks{}, ""); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -109,8 +122,8 @@ func TestGenerateSummaryUsesFreshRoutingSessionsWithoutPromptCaching(t *testing.
 		t.Fatalf("calls = %d, want 2", len(recorder.calls))
 	}
 	for _, call := range recorder.calls {
-		if call.options.Env["PI_CACHE_RETENTION"] != "none" || call.options.CacheRetention != ai.CacheRetentionNone {
-			t.Fatalf("cache retention = env %q option %q, want none", call.options.Env["PI_CACHE_RETENTION"], call.options.CacheRetention)
+		if call.options.CacheRetention != ai.CacheRetentionNone {
+			t.Fatalf("cache retention = %q, want none", call.options.CacheRetention)
 		}
 	}
 	first, second := recorder.calls[0].options.SessionID, recorder.calls[1].options.SessionID
@@ -128,11 +141,12 @@ func TestCompleteSummarizationHonorsCallerRoutingAndToolChoiceWithoutPromptCachi
 		CacheRetention: ai.CacheRetentionLong,
 		ToolChoice:     "auto",
 	}
-	if _, _, err := completeSummarization(t.Context(), createSummaryModel(false, 8192, nil), recorder, nil, nil, "Summarize", nil, options); err != nil {
+	if _, _, err := completeSummarization(t.Context(), createSummaryModel(false, 8192, nil), recorder, nil, nil, ai.RetryCallbacks{}, "Summarize", nil, options); err != nil {
 		t.Fatal(err)
 	}
 	got := recorder.calls[0].options
-	if got.SessionID != "current-routing-session" || got.Env["PI_CACHE_RETENTION"] != "none" || got.CacheRetention != ai.CacheRetentionNone || got.ToolChoice != "auto" {
+	// The option wins over the caller's PI_CACHE_RETENTION=long in every provider, as in Pi, whose request keeps the caller's env.
+	if got.SessionID != "current-routing-session" || got.Env["PI_CACHE_RETENTION"] != "long" || got.CacheRetention != ai.CacheRetentionNone || got.ToolChoice != "auto" {
 		t.Fatalf("request options = session %q cache env %q retention %q tool choice %#v", got.SessionID, got.Env["PI_CACHE_RETENTION"], got.CacheRetention, got.ToolChoice)
 	}
 	if callerEnv["PI_CACHE_RETENTION"] != "long" {
@@ -151,7 +165,7 @@ func TestCompactSplitTurnPreservesPreviousSummaryWithoutHistoryRequest(t *testin
 		FileOps:            NewFileOps(),
 		Settings:           CompactionSettings{Enabled: true, ReserveTokens: 2000, KeepRecentTokens: 20},
 	}
-	result, err := Compact(t.Context(), prep, createSummaryModel(false, 8192, nil), recorder, nil, "", "", nil, "")
+	result, err := CompactUsing(t.Context(), prep, createSummaryModel(false, 8192, nil), "", nil, "", "", recorder, nil, nil, nil, ai.RetryCallbacks{}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,14 +188,14 @@ func TestGenerateSummaryOmitsReasoning(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
 		reasoning bool
-		level     ai.ThinkingLevel
+		level     ai.ModelThinkingLevel
 	}{
 		{"thinking off", true, ai.ThinkingOff},
 		{"non-reasoning model", false, ai.ThinkingMedium},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			recorder := &summaryRecorder{}
-			if _, _, err := generateSummary(t.Context(), summarizeThisMessages(), "", 2000, createSummaryModel(tc.reasoning, 8192, nil), recorder, nil, "", tc.level, nil, ""); err != nil {
+			if _, _, err := GenerateSummaryWithUsageUsing(t.Context(), summarizeThisMessages(), createSummaryModel(tc.reasoning, 8192, nil), 2000, "", nil, "", "", tc.level, recorder, nil, nil, nil, ai.RetryCallbacks{}, ""); err != nil {
 				t.Fatal(err)
 			}
 			if len(recorder.calls) != 1 {
@@ -209,7 +223,7 @@ func TestGenerateSummaryLeavesRefusalFallbackToModelMetadata(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			recorder := &summaryRecorder{}
 			model := createSummaryModel(true, 8192, tc.compat)
-			if _, _, err := generateSummary(t.Context(), summarizeThisMessages(), "", 2000, model, recorder, nil, "", "", nil, ""); err != nil {
+			if _, _, err := GenerateSummaryWithUsageUsing(t.Context(), summarizeThisMessages(), model, 2000, "", nil, "", "", "", recorder, nil, nil, nil, ai.RetryCallbacks{}, ""); err != nil {
 				t.Fatal(err)
 			}
 			if len(recorder.calls) != 1 {
@@ -222,7 +236,7 @@ func TestGenerateSummaryLeavesRefusalFallbackToModelMetadata(t *testing.T) {
 	}
 }
 
-func TestCompactClampsSummaryMaxTokensToModelOutputCap(t *testing.T) {
+func TestCompactSummariesSetNoMaxTokens(t *testing.T) {
 	recorder := &summaryRecorder{}
 	prep := CompactionPreparation{
 		FirstKeptEntryID:    "entry-keep",
@@ -233,7 +247,7 @@ func TestCompactClampsSummaryMaxTokensToModelOutputCap(t *testing.T) {
 		FileOps:             NewFileOps(),
 		Settings:            CompactionSettings{Enabled: true, ReserveTokens: 500000, KeepRecentTokens: 20000},
 	}
-	result, err := Compact(t.Context(), prep, createSummaryModel(false, 128000, nil), recorder, nil, "", "", nil, "")
+	result, err := CompactUsing(t.Context(), prep, createSummaryModel(false, 128000, nil), "", nil, "", "", recorder, nil, nil, nil, ai.RetryCallbacks{}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,7 +258,8 @@ func TestCompactClampsSummaryMaxTokensToModelOutputCap(t *testing.T) {
 	for _, call := range recorder.calls {
 		maxTokens = append(maxTokens, call.options.MaxTokens)
 	}
-	if !reflect.DeepEqual(maxTokens, []int{128000, 128000}) {
-		t.Fatalf("maxTokens = %v, want [128000 128000]", maxTokens)
+	// Pi 6fcb4867 (#9512): neither summary of a split turn sets maxTokens; both use the model's output limit.
+	if !reflect.DeepEqual(maxTokens, []int{0, 0}) {
+		t.Fatalf("maxTokens = %v, want none set on either summary", maxTokens)
 	}
 }

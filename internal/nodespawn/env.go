@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright Joyent, Inc. and other Node contributors
 // SPDX-FileCopyrightText: Copyright Node.js contributors
 // SPDX-License-Identifier: MIT

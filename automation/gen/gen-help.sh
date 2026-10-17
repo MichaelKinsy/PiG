@@ -10,7 +10,7 @@ node_bin=$(node -p 'process.execPath')
 work=$(mktemp -d "${TMPDIR:-/tmp}/pig.XXXXXXXX")
 output=""
 trap 'rm -rf "$work"; if [ -n "$output" ]; then rm -f "$output"; fi' EXIT
-output=$(mktemp "$root/cmd/pig/.help_upstream.XXXXXXXX")
+output=$(mktemp "$root/coding/cli/.help_upstream.XXXXXXXX")
 mkdir -p "$work/node_modules/@earendil-works"
 cp -R "$pinned" "$work/node_modules/@earendil-works/pi-coding-agent"
 for dependency in "$pinned"/node_modules/*; do
@@ -23,8 +23,9 @@ const pkg = JSON.parse(fs.readFileSync(file, "utf8"));
 pkg.piConfig = { ...pkg.piConfig, name: "pig", configDir: ".pig" };
 fs.writeFileSync(file, JSON.stringify(pkg, null, 2));
 ' "$work/node_modules/@earendil-works/pi-coding-agent/package.json"
-# PI_PACKAGE_DIR relocates the npm package's assets; the pig binary embeds them.
-# D39: pig updates itself as a standalone binary, so its targets are source|self.
+# Pig reads PIG_PACKAGE_DIR (config.ts getPackageDir), so Pi's PI_PACKAGE_DIR line is renamed and keeps its description column.
+# Pi lists its own app name as the third self-update target ('update [source|self|pi]'); pig accepts 'pig' there.
+# Pig's --tools has no +name/-name form yet (K1 in coding/cli/help_oracle_test.go), so those Pi lines are not printed.
 # pig divergence (D64): /share prints the PiG gateway's URL, so PI_SHARE_VIEWER_URL is unused.
 # The patched app name selects PIG_CODING_AGENT_DIR, not PI_CODING_AGENT_DIR.
 # Never load the invoking agent's state or let terminal color enter the artifact.
@@ -35,10 +36,17 @@ fs.writeFileSync(file, JSON.stringify(pkg, null, 2));
     PI_PACKAGE_DIR="$work/node_modules/@earendil-works/pi-coding-agent" FORCE_COLOR=0 \
     "$node_bin" "$work/node_modules/@earendil-works/pi-coding-agent/dist/cli.js" --help
 ) >"$work/help.raw"
-grep -v 'PI_PACKAGE_DIR' "$work/help.raw" \
-  | grep -v 'PI_SHARE_VIEWER_URL' \
-  | sed 's/^  pig update \[source|self|pi\]   Update pi, extensions, or model catalogs$/  pig update [source|self]      Update pig, extensions, or model catalogs/' \
+grep -v 'PI_SHARE_VIEWER_URL' "$work/help.raw" \
+  | sed -e 's/^  PI_PACKAGE_DIR /  PIG_PACKAGE_DIR/' \
+    -e 's/^  pig update \[source|self|pi\]   Update pi, extensions, or model catalogs$/  pig update [source|self|pig]   Update pig, extensions, or model catalogs/' \
+  | awk '
+      /^ +Only \+name\/-name entries add to or remove from the defaults$/ { next }
+      /^  # Add codemode to the default tools$/ { skip = 1; next }
+      skip && /^  pig --tools \+codemode$/ { next }
+      skip && /^$/ { skip = 0; next }
+      { skip = 0; print }
+    ' \
   >"$output"
 chmod 644 "$output"
-mv "$output" "$root/cmd/pig/help_upstream.txt"
-echo "rendered cmd/pig/help_upstream.txt from pi-coding-agent $("$node_bin" -p "require('$pinned/package.json').version")"
+mv "$output" "$root/coding/cli/help_upstream.txt"
+echo "rendered coding/cli/help_upstream.txt from pi-coding-agent $("$node_bin" -p "require('$pinned/package.json').version")"

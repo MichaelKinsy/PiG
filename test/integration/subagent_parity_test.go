@@ -18,29 +18,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/coding"
+	"github.com/MichaelKinsy/PiG/internal/pioracle"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
-// upstreamPiBin finds the upstream pi binary from mise.
-// Requires an exact version match for coding.UpstreamVersion so version
-// skew is impossible to ignore. Prefers the new @earendil-works/pi-coding-agent
-// install dir; falls back to the legacy @mariozechner/pi-coding-agent dir.
+// upstreamPiBin is the Pi built from source at the pinned commit (make parity-deps), checked against its build stamp.
 func upstreamPiBin(t *testing.T) string {
 	t.Helper()
-	want := coding.UpstreamVersion
-	home := os.Getenv("HOME")
-	for _, dirName := range []string{
-		"npm-earendil-works-pi-coding-agent",
-		"npm-mariozechner-pi-coding-agent",
-	} {
-		bin := filepath.Join(home, ".local/share/mise/installs", dirName, want, "bin", "pi")
-		if _, err := os.Stat(bin); err == nil {
-			return bin
-		}
-	}
-	t.Skipf("upstream pi v%s not installed; install with:\n  mise install npm:@earendil-works/pi-coding-agent@%s", want, want)
-	return ""
+	return pioracle.Bin(t)
 }
 
 // piSuperFlags returns the extension flags needed to load the subagent

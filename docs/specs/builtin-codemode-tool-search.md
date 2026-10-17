@@ -48,7 +48,7 @@ Upstream lists the built-ins in `src/extensions/index.ts:6-14`. This specificati
 - An extension path `builtin:<name>` names no file. Its source info is `path: "builtin:<name>"`, `source: "builtin"`, `scope: "temporary"`, `origin: "top-level"` (`core/source-info.ts:14-56`). Errors, diagnostics, and RPC source info use `builtin:<name>`.
 - `builtin:<name>` loads by default, is hidden from the startup Extensions list, and loads after project trust is resolved (`core/extensions/types.ts:1985-2013`, `core/resource-loader.ts:706-738`).
 - `replaceable` follows `core/resource-loader.ts:120-153`: when another extension registers the tool `codemode` or `tool_search`, the built-in is left out and a warning names both paths. An unknown name fails with `Unknown built-in extension: builtin:<name>` (`resource-loader.ts:716-720`).
-- The registry is a Go table in `coding/extension/builtin`. Each row carries the name, `Replaceable`, and a Go factory `func() (extension.Extension, error)` that returns the extension with its tool registered inactive (`defaultActive: false`, exposure `model-only`). `cmd/pig` (`nativeBuiltInExtensions`) turns the rows into the loader's `builtin:<name>` entries, passing the settings manager (`codemode.mode`, `codemode.inlineBudget`, read on every use) and the compilation cache directory. Other families (resource loader, CLI, `pi config`) consume the entries; they do not restate the names. `cmd/pig/llama.go` is the precedent for a native Go built-in.
+- The registry is a Go table in `coding/extension/builtin`. Each row carries the name, `Replaceable`, and a Go factory `func() (extension.Extension, error)` that returns the extension with its tool registered inactive (`defaultActive: false`, exposure `model-only`). `cmd/pig` (`nativeBuiltInExtensions`) turns the rows into the loader's `builtin:<name>` entries, passing the settings manager (`codemode.mode`, `codemode.inlineBudget`, read on every use) and the compilation cache directory. Other families (resource loader, CLI, `pi config`) consume the entries; they do not restate the names. `coding/cli/llama.go` is the precedent for a native Go built-in.
 - The factories run in the in-process extension host. They add no process, socket, or Node cell.
 - A built-in tool reaches the session through consumer-owned interfaces that it type-asserts from `ToolContext.SessionManager()`: the branch (for `load()`) and `AppendCustomEntry` (for `store()`, which also emits `entry_appended`). The extension context is not widened. Nested calls use `ToolContext.ExecuteTool` and `Tools()`; tool search uses the context's `GetAllTools`, `GetActiveTools` and `SetActiveTools`.
 
@@ -67,7 +67,7 @@ Piglet selection (issue #92):
 
 Strip (the code is absent from an artifact):
 
-6. The sandbox, the wasm, and the wazero dependency live in their own packages (`codemode`, `coding/extension/builtin/codemode`). A build with the Go build tag `nocodemode` links neither: the registry row for `codemode` is absent, the `tool_search` row remains (it has no engine), and `builtin:codemode` then fails as an unknown built-in. `TestNocodemodeBuildOmitsCodemodeAndItsEngine` proves the tagged `cmd/pig` links neither `codemode` nor wazero. This is the supported way to remove the code from an artifact: about 640 KiB of wasm plus wazero.
+6. The sandbox, the wasm, and the wazero dependency live in their own packages (`codemode`, `coding/extension/builtin/codemode`). A build with the Go build tag `pig_strip_codemode` (a Piglet Binary that strips the `codemode` extension, D92) links neither: the registry row for `codemode` is absent, the `tool_search` row remains (it has no engine), and `builtin:codemode` is then skipped silently, as Pi skips a disabled built-in. `TestStripCodemodeBuildOmitsCodemodeAndItsEngine` proves the tagged `cmd/pig` links neither `codemode` nor wazero. This is the supported way to remove the code from an artifact: about 640 KiB of wasm plus wazero.
 
 ## Resource bounds
 
@@ -96,15 +96,15 @@ Upstream's contract (`runtime/host.ts:80-90`, `finish` at `242-282`), which the 
 1. `Sandbox.Execute` creates one execution and one VM after the module is ready. A sandbox holds no VM between executions.
 2. The tool call builds a sandbox and calls `Close` in a `defer` (`execute.ts:269-289`).
 3. An execution ends exactly once, through `finish`: the script's `done`, a `crash`, a VM trap, the timeout timer, the abort context, or `Close`.
-4. `finish` cancels every pending nested call, sets the interrupt flag, closes the VM, and only then returns the result. The result is never returned before the instance is closed: after `Execute` returns, its wasm instance is closed and its goroutines have exited.
+4. `finish` cancels every pending nested call, sets the interrupt flag, asks the VM to stop, and returns the result without waiting for the VM to exit (Pi 3daa2028, #10748). A VM that does not reach an interrupt check is halted after the 500 ms grace period, so its goroutine exits within that bound after the stop. `SandboxOptions.OnWorkerStarted` reports each worker VM's actual exit and `SandboxOptions.AcquireWorker` holds an admission slot until then.
 5. Nested calls still pending at `finish` end with status `cancelled`. Unawaited promises are discarded.
 6. A closed sandbox rejects new executions with `Sandbox is closed`.
 
 Go-side rules:
 
-7. A tool call cancelled by the session (abort, `Escape`, shutdown) reaches `Execute` as `context.Context` cancellation. A cancelled call ends the VM and reports `aborted`. The tests prove the order: the tool result arrives after the instance is closed and the goroutine count has returned to its start.
+7. A tool call cancelled by the session (abort, `Escape`, shutdown) reaches `Execute` as `context.Context` cancellation. A cancelled call asks the VM to stop and reports `aborted` at once. The tests prove the VM and its goroutines still exit within the grace period, and that a VM that ignores the interrupt flag does not delay the result.
 8. Nested calls go through the host tool pipeline (`executeTool`) with the execution's context. Cancelling the parent cancels every child through the same context. A child that finishes after the parent ended is discarded and does not change the parent's recorded status.
-9. A goroutine owned by an execution (the timer, the nested-call workers) has a single owner, joins before `Execute` returns, and reports errors on the same call. No fire-and-forget goroutine remains after `Execute` (`AGENTS.md`, TypeScript async/Promise parity).
+9. A goroutine owned by an execution (the timer, the nested-call workers) has a single owner, joins before `Execute` returns, and reports errors on the same call. The VM goroutine is the exception: it outlives `Execute` until the interrupt flag or the halt guard stops it, and reports its exit through `OnWorkerStarted`. The codemode tool admits at most two live VMs per process and counts a VM until it exits.
 10. A host shutdown or reload closes the extension's context; running executions abort as in item 7. Nothing outlives the process, because the VM is memory in the same process.
 
 ## Failure modes
@@ -137,4 +137,4 @@ Deferred, with the owner named in `docs/plan/progress/port-99-f8-spec.md`: the `
 - Green: the engine host, the codemode and tool-search packages, and the registry, with no edit to a ported test.
 - No Node: a test runs MCP tools through codemode with `PATH` containing no `node`.
 - Load: execution lifetime and cancellation under `-race -count=24`, `GOMAXPROCS=4`, four pinned cores with CPU burners, and 1/4/16 concurrent executions. Each terminal kind (ok, script error, timeout, abort, close, spin, out of memory, trap, missing asset) runs at least 200 times per load run; after every run the goroutine count, open descriptors, and resident memory return to within a fixed margin of the start.
-- Mutation: resolving before the instance closes, dropping the cancellation of pending nested calls, making `Close` a no-op, and removing the interrupt flag each turn a named test red.
+- Mutation: waiting for the VM to exit before resolving, releasing admission with the result instead of on exit, dropping the cancellation of pending nested calls, making `Close` a no-op, and removing the interrupt flag each turn a named test red.

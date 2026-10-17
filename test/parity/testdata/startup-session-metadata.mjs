@@ -1,3 +1,4 @@
+import { PI_PACKAGE_VERSION } from "./pi-version.mjs";
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
@@ -10,7 +11,7 @@ const root = mkdtempSync(join(temp, "startup-metadata-"));
 try {
   const binary = side === "pig" ? join(root, "pig") : process.execPath;
   const piRoot = process.env.PI_PACKAGE_ROOT ?? resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-  if (side === "pi") assert.equal(JSON.parse(readFileSync(join(piRoot, "package.json"), "utf8")).version, "1.0.3", "pinned Pi package");
+  if (side === "pi") assert.equal(JSON.parse(readFileSync(join(piRoot, "package.json"), "utf8")).version, PI_PACKAGE_VERSION, "pinned Pi package");
   const prefix = side === "pig" ? [] : [join(piRoot, "dist/cli.js")];
   if (side === "pig") execFileSync("go", ["build", "-o", binary, "./cmd/pig"], { stdio: "pipe" });
   const records = path => readFileSync(path, "utf8").trim().split("\n").map(line => JSON.parse(line));

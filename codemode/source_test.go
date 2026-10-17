@@ -2,6 +2,7 @@ package codemode_test
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -48,12 +49,35 @@ func TestParseCodemodeSourceParsesTheOptionsLineAndKeepsLineNumbers(t *testing.T
 }
 
 func TestParseCodemodeSourceOnlyTreatsTheFirstLineAsAnOptionsLine(t *testing.T) {
-	input := "text(1)\n// @options: {\"timeout_ms\": 1}"
-	if got := parse(t, input); got.Code != input || !sameOptions(got.Options, codemode.SourceOptions{}) {
-		t.Errorf("got %+v", got)
-	}
 	if got := parse(t, "// @optionsx {}\ntext(1)"); !sameOptions(got.Options, codemode.SourceOptions{}) {
 		t.Errorf("options = %+v", got.Options)
+	}
+	if got := parse(t, `text("// @options: {}")`); !sameOptions(got.Options, codemode.SourceOptions{}) {
+		t.Errorf("options = %+v", got.Options)
+	}
+}
+
+// Pi #10631: an options line after the first line used to be ignored, so its timeout never applied.
+func TestParseCodemodeSourceRejectsAnOptionsLineThatIsNotTheFirstLine(t *testing.T) {
+	cases := []struct {
+		input string
+		line  int
+	}{
+		{"// count things\n// @options: {\"timeout_ms\": 1000}\nwhile (true) {}", 2},
+		{"\n  // @options: {\"timeout_ms\": 1000}\nwhile (true) {}", 2},
+		{"text(1)\r\n// @options: {\"timeout_ms\": 1}", 2},
+		{"// @options: {\"timeout_ms\": 1}\ntext(1)\n// @options: {\"timeout_ms\": 2}", 3},
+	}
+	for _, c := range cases {
+		_, err := codemode.ParseCodemodeSource(c.input)
+		if _, ok := errors.AsType[*codemode.SourceError](err); !ok {
+			t.Errorf("%q: err = %v, want a *SourceError", c.input, err)
+			continue
+		}
+		want := fmt.Sprintf("The // @options: line must be the first line of the input; found one on line %d", c.line)
+		if err.Error() != want {
+			t.Errorf("%q: message %q, want %q", c.input, err.Error(), want)
+		}
 	}
 }
 

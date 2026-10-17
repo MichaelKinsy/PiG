@@ -55,7 +55,6 @@ The model-frame scenario supplies the red proof for that root cause.
 
 Moving the spacer also requires the Editor's mouse row offsets to follow `packages/tui/src/components/editor.ts:632-665` and the multiline dialog to own its explicit gap at `packages/coding-agent/src/modes/interactive/components/extension-editor.ts:76`.
 Existing mouse/content/status assertions retain their checks at the corrected component coordinates.
-The standalone autocomplete golden is regenerated with `UPDATE_GOLDEN=1 go test ./internal/tui/parity -run '^TestParityEditorAutocompletePopup_GoldenVisibleState$'` after reviewing `editor.ts:556-627`; only the obsolete first blank row moves to the bottom of the fixed-height screen.
 
 ## Verification
 

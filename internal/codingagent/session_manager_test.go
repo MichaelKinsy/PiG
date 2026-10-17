@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -45,7 +44,7 @@ func TestDefaultSessionDirUsesAgentDirOverride(t *testing.T) {
 	agentDir := t.TempDir()
 	t.Setenv(ENV_AGENT_DIR, agentDir)
 	got := defaultSessionDir("/tmp/foo")
-	want := filepath.Join(agentDir, "sessions", "--tmp-foo--")
+	want := filepath.Join(agentDir, "sessions", posixCwdSessionTail(t, "/tmp/foo"))
 	if got != want {
 		t.Fatalf("defaultSessionDir() = %q, want %q", got, want)
 	}
@@ -65,7 +64,10 @@ func TestSessionHeaderMatchesUpstreamShape(t *testing.T) {
 	headerType := reflect.TypeFor[SessionHeader]()
 	var fields []string
 	for field := range headerType.Fields() {
-		fields = append(fields, field.Name)
+		// The unexported record the header was decoded from is not a member of Pi's SessionHeader.
+		if field.IsExported() {
+			fields = append(fields, field.Name)
+		}
 	}
 	want := []string{"Type", "Version", "ID", "Timestamp", "CWD", "ParentSession"}
 	if !slices.Equal(fields, want) {
@@ -132,7 +134,7 @@ func TestSessionManagerForkFromFile_CopiesFullTreeToNewFile(t *testing.T) {
 	a1, _ := src.AppendMessage(mkAssistantMsg("a1"))
 	// Branch off u1 so a1 becomes an orphan tail; append an assistant on
 	// the new branch to flush the whole tree (incl. a1) to disk.
-	_ = src.Fork(u1)
+	_ = src.Branch(u1)
 	u2, _ := src.AppendMessage(mkUserMsg("branch-b"))
 	a2, _ := src.AppendMessage(mkAssistantMsg("reply-b"))
 
@@ -152,7 +154,7 @@ func TestSessionManagerForkFromFile_CopiesFullTreeToNewFile(t *testing.T) {
 	}
 	// Full tree preserved, including the orphan a1 that Clone would drop.
 	for _, id := range []string{u1, a1, u2, a2} {
-		if _, ok := forked.EntryByID(id); !ok {
+		if _, ok := forked.GetEntry(id); !ok {
 			t.Errorf("forked session missing entry %s (full tree not copied)", id)
 		}
 	}
@@ -188,13 +190,23 @@ func TestSessionManager_CreateAndLoad(t *testing.T) {
 	if loaded.ID() != "roundtrip-1" {
 		t.Errorf("loaded ID = %q, want roundtrip-1", loaded.ID())
 	}
-	if loaded.CWD() != "/tmp/test" {
-		t.Errorf("loaded CWD = %q, want /tmp/test", loaded.CWD())
+	// The manager stores resolvePath(cwd) (session-manager.ts:1008), which on Windows is drive-qualified.
+	wantCWD, err := filepath.Abs("/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.CWD() != wantCWD {
+		t.Errorf("loaded CWD = %q, want %q", loaded.CWD(), wantCWD)
 	}
 }
 
+// Load resolves a relative session path against process.cwd(), the physical working directory (nodepath processCwd), so the
+// expected path is the temporary directory with its symlinks resolved (macOS's /var is /private/var).
 func TestSessionManagerLoadResolvesAbsoluteSessionPath(t *testing.T) {
-	dir := t.TempDir()
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Chdir(dir)
 	source := NewSession("absolute-resume", dir)
 	source.path = "resume.jsonl"
@@ -359,15 +371,15 @@ func TestSessionManager_SaveAndReload(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	entries := loaded.Entries()
+	entries := loaded.GetEntries()
 	if len(entries) != 1 {
 		t.Fatalf("expected 1 entry, got %d", len(entries))
 	}
-	if entries[0].Base.ID != "entry-001" {
-		t.Errorf("entry ID = %q, want entry-001", entries[0].Base.ID)
+	if entries[0].Base().ID != "entry-001" {
+		t.Errorf("entry ID = %q, want entry-001", entries[0].Base().ID)
 	}
-	if entries[0].Base.Type != "message" {
-		t.Errorf("entry type = %q, want message", entries[0].Base.Type)
+	if entries[0].Base().Type != "message" {
+		t.Errorf("entry type = %q, want message", entries[0].Base().Type)
 	}
 }
 
@@ -381,8 +393,13 @@ func TestSessionManager_SessionDir(t *testing.T) {
 
 func TestSessionManager_CWD(t *testing.T) {
 	sm := NewSessionManagerWithDir("/my/cwd", t.TempDir())
-	if sm.CWD() != "/my/cwd" {
-		t.Errorf("CWD = %q, want /my/cwd", sm.CWD())
+	// session-manager.ts:1008 stores resolvePath(cwd); on Windows "/my/cwd" resolves onto the current drive.
+	want, err := filepath.Abs("/my/cwd")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sm.CWD() != want {
+		t.Errorf("CWD = %q, want %q", sm.CWD(), want)
 	}
 }
 
@@ -496,16 +513,6 @@ func TestSummarizeSessionFilePreservesStringContentAndLatestName(t *testing.T) {
 	}
 	if info.MessageCount != 3 || info.FirstMessage != "legacy prompt" || info.AllMessagesText != "legacy prompt visible answer" || info.Name != "" {
 		t.Fatalf("summary = %#v", info)
-	}
-}
-
-func TestSummarizeSessionEntryFallsBackForReorderedFields(t *testing.T) {
-	entry, ok := summarizeSessionEntry([]byte(`{"id":"m1","type":"message","message":{"content":"hello","role":"user"}}`))
-	if !ok || entry.Type != "message" || entry.Message.Role != "user" || entry.Message.Text != "hello" {
-		t.Fatalf("reordered entry = %#v, ok=%v", entry, ok)
-	}
-	if _, ok := summarizeSessionEntry([]byte(`{"type":"message","message":{"role":"toolResult","content":`)); ok {
-		t.Fatal("malformed canonical message was accepted")
 	}
 }
 

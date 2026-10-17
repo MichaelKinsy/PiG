@@ -71,7 +71,7 @@ func TestCountDroppedThinkingBlocksIgnoresOtherDiagnosticShapes(t *testing.T) {
 
 func BenchmarkThinkingDropNoticeUnchanged(b *testing.B) {
 	message := diagnosticAssistant().Assistant
-	m := &InteractiveMode{opts: InteractiveOptions{Settings: Settings{ShowCacheMissNotices: true}}, previousThinkingDroppedCount: 3}
+	m := &InteractiveMode{opts: InteractiveModeOptions{Settings: Settings{ShowCacheMissNotices: true}}, previousThinkingDroppedCount: 3}
 	b.ReportAllocs()
 	for b.Loop() {
 		m.maybeShowThinkingDropNotice(message)
@@ -88,7 +88,7 @@ func TestThinkingDropNoticeTracksTheSelectedBranch(t *testing.T) {
 		t.Fatal("zero-drop latest response failed to reset the comparison")
 	}
 	branch := m.currentSession().GetBranch()
-	if err := m.currentSession().Fork(branch[0].Base.ID); err != nil {
+	if err := m.currentSession().Branch(branch[0].Base().ID); err != nil {
 		t.Fatal(err)
 	}
 	m.renderSessionEntries()

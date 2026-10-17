@@ -27,7 +27,7 @@ func toolChoiceModel(t *testing.T, provider, id string, strip bool) *Model {
 }
 
 func localToolChoiceModel(id, name string) *Model {
-	return &Model{ID: id, DisplayName: name, ProviderMeta: ProviderMetadata{API: APIOpenAICompletions, ProviderID: "local-vllm", BaseURL: "http://localhost:8000/v1", Reasoning: true}, Input: []string{"text"}, Capabilities: ModelCapabilities{MaxThinking: ThinkingHigh, ContextWindow: 128000, MaxOutputTokens: 8192}}
+	return &Model{ID: id, DisplayName: name, ProviderMeta: ProviderMetadata{API: APIOpenAICompletions, ProviderID: "local-vllm", BaseURL: "http://localhost:8000/v1", Reasoning: true}, Input: []string{"text"}, Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh, ContextWindow: 128000, MaxOutputTokens: 8192}}
 }
 
 func captureToolChoiceRequest(t *testing.T, model *Model, request Context, options StreamOptions, chunks []string) (map[string]json.RawMessage, *AssistantMessage, []AssistantMessageEvent) {
@@ -158,7 +158,7 @@ func TestOpenAICompletionsToolChoicePayloadUpstream(t *testing.T) {
 		{"keeps normal reasoning_effort for groq models without compat mapping", "openai/gpt-oss-20b", "medium"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			payload, _, _ := captureToolChoiceRequest(t, toolChoiceModel(t, "groq", tc.id, false), toolChoiceHi(), StreamOptions{Thinking: ThinkingMedium}, nil)
+			payload, _, _ := captureToolChoiceRequest(t, toolChoiceModel(t, "groq", tc.id, false), toolChoiceHi(), StreamOptions{Thinking: ThinkingLevelMedium}, nil)
 			requireToolChoiceField(t, payload, "reasoning_effort", fmt.Sprintf("%q", tc.want))
 		})
 	}
@@ -181,10 +181,10 @@ func TestOpenAICompletionsToolChoicePayloadUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/ai/test/openai-completions-tool-choice.test.ts:428
 	t.Run("maps z.ai GLM-5.2 thinking levels to reasoning_effort", func(t *testing.T) {
 		for _, tc := range []struct {
-			level  ThinkingLevel
+			level  ModelThinkingLevel
 			effort string
 		}{{ThinkingLow, "high"}, {ThinkingMedium, "high"}, {ThinkingHigh, "high"}, {ThinkingMax, "max"}} {
-			payload, _, _ := captureToolChoiceRequest(t, toolChoiceModel(t, "zai", "glm-5.2", false), toolChoiceHi(), StreamOptions{Thinking: tc.level}, nil)
+			payload, _, _ := captureToolChoiceRequest(t, toolChoiceModel(t, "zai", "glm-5.2", false), toolChoiceHi(), StreamOptions{Thinking: tc.level.ReasoningOption()}, nil)
 			requireToolChoiceField(t, payload, "thinking", `{"type":"enabled","clear_thinking":false}`)
 			requireToolChoiceField(t, payload, "reasoning_effort", fmt.Sprintf("%q", tc.effort))
 		}
@@ -239,7 +239,7 @@ func TestOpenAICompletionsToolChoiceCatalogUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/ai/test/openai-completions-tool-choice.test.ts:1233
 	t.Run("stores Xiaomi MiMo reasoning replay compat in built-in metadata", func(t *testing.T) {
 		for _, p := range []string{"xiaomi", "xiaomi-token-plan-cn", "xiaomi-token-plan-ams", "xiaomi-token-plan-sgp"} {
-			c := toolChoiceModel(t, p, "mimo-v2.5-pro", false).ProviderMeta.Compat
+			c := toolChoiceModel(t, p, "mimo-v2.6-pro", false).ProviderMeta.Compat
 			if c == nil || c.RequiresReasoningContentOnAssistantMessages == nil || !*c.RequiresReasoningContentOnAssistantMessages || c.ThinkingFormat != "deepseek" || c.MaxTokensField != "" || c.SupportsDeveloperRole != nil {
 				t.Fatalf("%s compat=%#v", p, c)
 			}

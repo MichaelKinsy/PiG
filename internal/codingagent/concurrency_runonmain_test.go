@@ -3,20 +3,19 @@ package codingagent
 import (
 	"context"
 	"io"
-	"runtime"
-	"runtime/pprof"
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
 func newRunOnMainProbe(t *testing.T) *InteractiveMode {
 	t.Helper()
 	model := &ai.Model{ID: "m", DisplayName: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 8000}}
-	m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir(), Model: model})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir(), Model: model})
 	m.editor = tui.NewEditor()
 	m.chatContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
@@ -126,12 +125,14 @@ func TestRunOnMain_DropsOnShutdown(t *testing.T) {
 
 // TestRunOnMain_NoGoroutineLeakProfile validates the same no-leak property with
 // Go's goroutineleak profile. The profile is available by default in Go 1.27.
+// The profile is process-wide, so the test compares it with a reading taken
+// before the workload: a goroutine an earlier test leaked is not this
+// workload's leak.
 func TestRunOnMain_NoGoroutineLeakProfile(t *testing.T) {
-	prof := pprof.Lookup("goroutineleak")
-	if prof == nil {
-		t.Fatal("runtime has no goroutineleak profile")
+	before, _, err := testenv.LeakedGoroutines()
+	if err != nil {
+		t.Fatal(err)
 	}
-
 	m := newRunOnMainProbe(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	m.runCtx = ctx
@@ -145,10 +146,13 @@ func TestRunOnMain_NoGoroutineLeakProfile(t *testing.T) {
 	<-loopDone
 
 	// The loop and every posting caller have returned; nothing should remain
-	// blocked on uiTaskCh. GC drives the leak detector's reachability pass.
-	runtime.GC()
-	if n := prof.Count(); n != 0 {
-		t.Fatalf("goroutineleak profile reports %d leaked goroutine(s) after the runOnMain workload", n)
+	// blocked on uiTaskCh. Writing the profile runs the leak detector.
+	leaked, profile, err := testenv.LeakedGoroutines()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if leaked > before {
+		t.Fatalf("goroutineleak profile reports %d leaked goroutine(s) after the runOnMain workload, %d before it:\n%s", leaked, before, profile)
 	}
 }
 

@@ -16,6 +16,9 @@ type ToolLoadout struct {
 	Registered   []AgentTool
 	GetExposure  func(name string) ToolExposure
 	GetNamespace func(name string) *ToolNamespace
+	// GetPromptGuidelines is a tool's `promptGuidelines`, normalized as the system prompt has them. Hidden declarations leave
+	// them out of the system prompt.
+	GetPromptGuidelines func(name string) []string
 }
 
 // ToolLoadoutChanges are the changes [ToolDefinition.PrepareLoadout] makes to what the model sees.

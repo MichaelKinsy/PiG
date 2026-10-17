@@ -8,15 +8,17 @@ import "testing"
 func TestLoginDialogCancelAbortsBeforeEndingTheInput(t *testing.T) {
 	var input <-chan string
 	inputOpenAtCancel := false
-	dialog := NewLoginDialog("Cancel Order", func() {
-		select {
-		case _, ok := <-input:
-			inputOpenAtCancel = ok
-		default:
-			inputOpenAtCancel = true
-		}
-	})
-	input = dialog.ShowInput("Code:", "")
+	dialog := NewLoginDialogComponent(nil, "Cancel Order", func(bool, string) {
+		(func() {
+			select {
+			case _, ok := <-input:
+				inputOpenAtCancel = ok
+			default:
+				inputOpenAtCancel = true
+			}
+		})()
+	}, "")
+	input = dialog.ShowPrompt("Code:", "")
 	dialog.HandleInput("\x1b")
 	if !dialog.Cancelled() {
 		t.Fatal("escape did not cancel the dialog")

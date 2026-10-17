@@ -13,7 +13,7 @@ import (
 func TestFileModelsStoreChecksLeaseBeforeCommit(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "models-store.json")
 	store := NewFileModelsStore(path)
-	if err := store.Write(t.Context(), "retained", ModelsStoreEntry{Models: []json.RawMessage{json.RawMessage(`{"id":"kept"}`)}}); err != nil {
+	if err := store.Write(t.Context(), "retained", ModelsStoreEntry{Models: mustStoredModels([]json.RawMessage{json.RawMessage(`{"id":"kept"}`)})}); err != nil {
 		t.Fatal(err)
 	}
 	before, err := os.ReadFile(path)

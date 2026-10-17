@@ -100,6 +100,7 @@ export default function (pi) {
         server.closeAllConnections();
         await new Promise(resolve => server.close(resolve));
       }
+      ctx.ui.notify("child-artifact-written", "info");
     },
   });
 }

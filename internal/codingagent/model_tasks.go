@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"sync"
+
+	"github.com/MichaelKinsy/PiG/ai"
 )
 
 // modelTaskOwner separates public Promise settlement from the lifetime of its remaining work. Services owns the registry and closes this one task group.
@@ -105,6 +107,20 @@ func (owner *modelTaskOwner) start(ctx context.Context, work func(context.Contex
 	return true
 }
 
+// startAll admits every task or none. Each sends its result to results, which holds them all, so no task waits for a caller that settled early.
+func (owner *modelTaskOwner) startAll(ctx context.Context, tasks []func(context.Context) error, results chan<- error) bool {
+	owner.mu.Lock()
+	defer owner.mu.Unlock()
+	owner.initLocked()
+	if owner.closed {
+		return false
+	}
+	for _, task := range tasks {
+		owner.work.Go(func() { results <- task(ctx) })
+	}
+	return true
+}
+
 func (owner *modelTaskOwner) close() {
 	owner.mu.Lock()
 	owner.initLocked()
@@ -132,44 +148,52 @@ func (r *ModelRegistry) StartModelTask(ctx context.Context, work func(context.Co
 	return r.modelTasks.start(ctx, work)
 }
 
-// AwaitModelTasks mirrors Promise.all: first rejection settles the waiter, success requires every task, and an owned coordinator joins all remaining tasks without cancelling them on rejection.
+// AwaitModelTasks mirrors Promise.all: first rejection settles the waiter, success requires every task, and the task owner joins all remaining tasks without cancelling them on rejection.
 func (r *ModelRegistry) AwaitModelTasks(ctx context.Context, tasks ...func(context.Context) error) error {
 	if ctx == nil {
 		return errors.New("model tasks: nil context")
 	}
 	ctx = r.ModelTaskContext(ctx)
-	settled := make(chan error, 1)
-	if !r.modelTasks.start(ctx, func(ctx context.Context) {
-		results := make(chan error, len(tasks))
-		var children sync.WaitGroup
-		for _, task := range tasks {
-			children.Go(func() { results <- task(ctx) })
-		}
-		rejected := false
-		for range tasks {
-			if err := <-results; err != nil && !rejected {
-				rejected = true
-				settled <- err
+	results := make(chan error, len(tasks))
+	if !r.modelTasks.startAll(ctx, tasks, results) {
+		return ctx.Err()
+	}
+	for range tasks {
+		var err error
+		select {
+		case err = <-results:
+		default:
+			select {
+			case err = <-results:
+			case <-ctx.Done():
+				return ctx.Err()
 			}
 		}
-		children.Wait()
-		if !rejected {
-			settled <- ctx.Err()
+		if err != nil {
+			return err
 		}
-	}) {
-		return ctx.Err()
 	}
-	select {
-	case err := <-settled:
-		return err
-	default:
+	return ctx.Err()
+}
+
+// awaitProviderTasks awaits one task per provider of an availability pass. A pass that runs no extension code and reads only PiG's own stores
+// (ai.ProvidersRunOnCaller) runs them one after another on the caller: they do no I/O but reads of the pass's one auth.json view, so they settle
+// in provider order, as Pi's checks settle at one await depth, and the first rejection in that order is the one Promise.all reports. A check
+// writes nothing, so the providers after a rejection are not run.
+func (r *ModelRegistry) awaitProviderTasks(ctx context.Context, tasks []func(context.Context) error) error {
+	if !ai.ProvidersRunOnCaller(ctx) {
+		return r.AwaitModelTasks(ctx, tasks...)
 	}
-	select {
-	case err := <-settled:
-		return err
-	case <-ctx.Done():
-		return ctx.Err()
+	ctx = r.ModelTaskContext(ctx)
+	for _, task := range tasks {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err := task(ctx); err != nil {
+			return err
+		}
 	}
+	return ctx.Err()
 }
 
 // CloseModelTasks stops admission, cancels the owner, and waits for admitted jobs and failed Promise siblings to drain. It then cancels the remote catalog collection's refreshes and waits for its operations, which are only this registry's catalog refreshes, so no store or credential read they started outlives Close. It also cancels the native Models collection's active refreshes, including a queued registration refresh's provider callbacks, without waiting for caller-owned Models operations such as in-flight streams or logins. Call it outside model callbacks.

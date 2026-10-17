@@ -1,6 +1,7 @@
 package mcp_test
 
 import (
+	"context"
 	"encoding/json"
 	"sync"
 	"testing"
@@ -18,7 +19,7 @@ type gatedTransport struct {
 	gate    chan struct{}
 }
 
-func (g *gatedTransport) SendOrdered(message mcp.JSONRPCMessage, placed func()) error {
+func (g *gatedTransport) SendOrdered(ctx context.Context, message mcp.JSONRPCMessage, placed func()) error {
 	if message.Method == "tools/call" {
 		first := false
 		g.once.Do(func() { first = true })
@@ -27,7 +28,7 @@ func (g *gatedTransport) SendOrdered(message mcp.JSONRPCMessage, placed func()) 
 			<-g.gate
 		}
 	}
-	return g.InMemoryTransport.SendOrdered(message, placed)
+	return g.InMemoryTransport.SendOrdered(ctx, message, placed)
 }
 
 // Pi's Protocol.request calls transport.send synchronously when it assigns the request id, so a stdio or in-process

@@ -4,17 +4,14 @@
     "TestCloneCompatAvoidsScalarJSONRoundTrip",
     "TestCloneCompatPreservesSerializedCopy",
     "TestToModelCatalogAllocationBudget",
-    "TestToCapabilitiesMatchesSupportedThinkingLevelSelection"
+    "TestToCapabilitiesMatchesSupportedThinkingLevelSelection",
+    "TestBuiltinCatalogEncodeCost",
+    "TestChangedBuiltinModelEncodesAsItsDecodedRecord"
   ],
-  "./cmd/pig": [
+  "./coding/cli": [
     "TestLinkedPackagesCompileNoRegexpAtInit",
     "TestLazyRegexpPatternsAllCompile",
     "TestPackageInitWorkBudget"
-  ],
-  "./coding/extension": [
-    "TestModelInfoScalarCompatibilityCopyAvoidsJSON",
-    "TestModelInfoCyclesReachJSONError",
-    "TestModelInfoSharedSubgraphsKeepCopySemantics"
   ],
   "./coding/extension/host/subprocess": [
     "TestNodeRuntimeArchiveMatchesSources",
@@ -69,7 +66,7 @@
     "TestCatalogCacheHitIgnoresOnlyRuntimeProvider",
     "TestCatalogSnapshotAvoidsMetadataSerialization",
     "TestCloneCatalogInputDoesNotAllocateInlineStructs",
-    "TestModelCatalogBindingReusesFirstEncoding",
+    "TestModelCatalogBindingPublishesTheFinishedBindingOnce",
     "TestModelCatalogBindingKeepsPublicationBytesAndCalls",
     "TestModelCatalogBindingKeepsRegistrationOrdering"
   ],
@@ -82,5 +79,14 @@
     "TestMethodsMatchRegexp",
     "TestInvalidPatternPanicsLikeMustCompileOnFirstUse",
     "TestConcurrentFirstUseCompilesOnce"
+  ],
+  "./durable/core/jv": [
+    "TestAppendString200KBudget"
+  ],
+  "./extensions/sdk/json": [
+    "TestAppendString200KBudget"
+  ],
+  "./internal/jsstring": [
+    "TestStringifyChain200KBudget"
   ]
 }

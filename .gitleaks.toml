@@ -14,6 +14,14 @@ regexes = [
   '''^(?:interleaved-thinking|oidc-federation|oauth)-\d{4}-\d{2}-\d{2}$''',
   # Prose in the upstream test mapping.
   '''^SSE-and-UTF-8-chunk-splitting$''',
+  # Fake ed25519 key blobs ("...One", "...Two") in env's known_hosts tests.
+  '''^AAAAC3NzaC1lZDI1NTE5AAAAI(?:One|Two)$''',
+  # env's fixed test session token, a counting pattern.
+  '''^0123456789abcdef0123456789abcdef$''',
+  # The documented example Piglet signing key ID in docs/site/docs/cli-examples.md (a public key fingerprint).
+  '''^c74cf1a77b670764e896cfbf2800bb28$''',
+  # A header-name constant in the vendored AWS SDK (third_party/awssdk stays verbatim; see its FORK.md).
+  '''^v4Internal\.AmzSignedHeadersKey$''',
 ]
 paths = [
   # Upstream test-file SHA-256 digests.

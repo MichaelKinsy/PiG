@@ -84,8 +84,9 @@ function getEditHeaderBg(preview, settledError, theme) {
     }
     return (text) => theme.bg("toolPendingBg", text);
 }
-function buildEditCallComponent(component, args, theme, cwd) {
+function buildEditCallComponent(component, args, theme, cwd, outputPad) {
     component.setBgFn(getEditHeaderBg(component.preview, component.settledError, theme));
+    component.setPaddingX(outputPad);
     component.clear();
     component.addChild(new Text(formatEditCall(args, theme, cwd), 0, 0));
     if (!component.preview) {
@@ -131,7 +132,7 @@ export const editRenderers = {
                 }
             });
         }
-        return buildEditCallComponent(component, args, theme, context.cwd);
+        return buildEditCallComponent(component, args, theme, context.cwd, context.outputPad);
     },
     renderResult(result, _options, theme, context) {
         const callComponent = context.state.callComponent;
@@ -150,7 +151,7 @@ export const editRenderers = {
                 changed = true;
             }
             if (changed) {
-                buildEditCallComponent(callComponent, context.args, theme, context.cwd);
+                buildEditCallComponent(callComponent, context.args, theme, context.cwd, context.outputPad);
             }
         }
         const output = formatEditResult(context.args, callComponent?.preview, typedResult, theme, context.isError);
@@ -160,7 +161,7 @@ export const editRenderers = {
             return component;
         }
         component.addChild(new Spacer(1));
-        component.addChild(new Text(output, 1, 0));
+        component.addChild(new Text(output, context.outputPad, 0));
         return component;
     },
 };

@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"maps"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -29,6 +31,8 @@ type surfaceRow struct {
 	// and result rows; the host's Go port of it must carry the field.
 	WireType string
 	Callback bool // the field holds a function (a callback into the extension)
+	// Implemented marks an additive member the extension defines and the host calls.
+	Implemented bool
 }
 
 // upstreamFiles are the Pi sources the surface reads: types.ts and the files
@@ -37,6 +41,7 @@ var upstreamFiles = []string{
 	"packages/coding-agent/src/core/extensions/types.ts",
 	"packages/coding-agent/src/core/event-bus.ts",
 	"packages/coding-agent/src/core/exec.ts",
+	"packages/coding-agent/src/core/footer-data-provider.ts",
 	"packages/coding-agent/src/core/cache-warmer.ts",
 	"packages/coding-agent/src/core/session-manager.ts",
 	"packages/coding-agent/src/core/model-registry.ts",
@@ -63,6 +68,12 @@ var fieldExpandable = map[string]bool{
 	"ExtensionUIDialogOptions": true, "ExtensionWidgetOptions": true, "WorkingIndicatorOptions": true,
 	"ToolInfo": true, "SlashCommandInfo": true,
 }
+
+// callbackExpandable names the types a callback parameter hands an extension
+// whose members become rows: the factory ui.setFooter takes receives a
+// ReadonlyFooterDataProvider as its third argument. The root is the Node
+// runtime and SDK object the members are looked up on.
+var callbackExpandable = map[string]string{"ReadonlyFooterDataProvider": "footerData"}
 
 var promiseRE = regexp.MustCompile(`^Promise<(.*)>$`)
 
@@ -277,6 +288,9 @@ func addCallFields(m *tsModule, rows *[]surfaceRow, group, key, decl, root strin
 	seen := map[string]bool{}
 	for _, sig := range sigs {
 		for _, p := range methodParams(sig) {
+			if err := addCallbackParams(m, rows, decl, p); err != nil {
+				return err
+			}
 			if !expandableParam(p.Type) {
 				continue
 			}
@@ -308,6 +322,30 @@ func addCallFields(m *tsModule, rows *[]surfaceRow, group, key, decl, root strin
 			}
 			seen[k] = true
 			*rows = append(*rows, surfaceRow{Group: group, Key: k, Decl: fmt.Sprintf("%s → %s", decl, f.Name), Kind: kindField, Root: root + "Return", Name: mem.Name + "." + f.Name})
+		}
+	}
+	return nil
+}
+
+// addCallbackParams adds a row for each member of a callbackExpandable type
+// that a function-typed parameter hands its callee's callback. Each type's
+// members get one set of rows, keyed by the type, however many members or
+// overloads take it.
+func addCallbackParams(m *tsModule, rows *[]surfaceRow, decl string, p tsParam) error {
+	if !strings.Contains(p.Type, "=>") {
+		return nil
+	}
+	for _, name := range slices.Sorted(maps.Keys(callbackExpandable)) {
+		root := callbackExpandable[name]
+		if !strings.Contains(p.Type, ": "+name) || slices.ContainsFunc(*rows, func(r surfaceRow) bool { return strings.HasPrefix(r.Key, name+".") }) {
+			continue
+		}
+		fs, err := m.fields(name)
+		if err != nil {
+			return err
+		}
+		for _, f := range fs {
+			*rows = append(*rows, surfaceRow{Group: "callback parameters", Key: name + "." + f.Name, Decl: fmt.Sprintf("%s(%s: … %s).%s", decl, p.Name, name, f.Name), Kind: kindMember, Root: root, Name: f.Name, Callback: isCallback(f)})
 		}
 	}
 	return nil

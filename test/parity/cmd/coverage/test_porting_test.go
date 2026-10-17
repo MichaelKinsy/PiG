@@ -40,7 +40,7 @@ func TestCoverageCommandReportsSeparateStatusMetrics(t *testing.T) {
 		{"path": "d.test.ts", "tags": []string{}},
 	})
 	badgePath := filepath.Join(root, "badge.svg")
-	cmd := exec.CommandContext(t.Context(), "go", "run", ".", "-port-map", portMap, "-scenarios", scenarios, "-badge", badgePath)
+	cmd := exec.CommandContext(t.Context(), "go", "run", ".", "-port-map", portMap, "-scenarios", scenarios, "-upstream", "", "-badge", badgePath)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("coverage command: %v\n%s", err, output)

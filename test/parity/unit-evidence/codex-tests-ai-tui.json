@@ -108,15 +108,6 @@
     "mutation": "ai/transcript.go: replace 'ToolsAdded: tools,\\n\\t\\tTimestamp:  timestamp,' with 'ToolsAdded: nil,\\n\\t\\tTimestamp:  timestamp,'; compiling go test -overlay transcript-overlay.json -run exact test -count=1 fails TestSystemMessageReplayReplaysContentSectionsAndToolsIntoOneLeadingMessage."
   },
   {
-    "upstream": "packages/ai/src/utils/assistant-message-frame.ts",
-    "package": "./ai",
-    "tests": [
-      "TestAssistantMessageFrameUsesAuthoritativeTextEndContentAndSignature"
-    ],
-    "upstream_reference": "packages/ai/test/assistant-message-frame.test.ts",
-    "mutation": "ai/assistant_message_frame.go: replace 'block.Text = frame.Content' with 'block.Text += frame.Content'; compiling go test -overlay frames-overlay.json -run exact test -count=1 fails TestAssistantMessageFrameUsesAuthoritativeTextEndContentAndSignature."
-  },
-  {
     "upstream": "packages/ai/src/auth/oauth/kimi-coding.ts",
     "package": "./ai",
     "tests": [

@@ -1,0 +1,120 @@
+[
+ {
+  "upstream": "packages/env/src/connection.ts",
+  "package": "./env",
+  "tests": [
+   "TestNewRemoteErrorTakesMessageCodeAndPathFromTheDaemonFields"
+  ],
+  "upstream_reference": "packages/env/src/connection.ts",
+  "mutation": "env/connection.go: replace `code := \"unknown\"\n\tif text, ok := fields[\"code\"].(string); ok {\n\t\tcode = text\n\t}` with `code := \"unknown\"`; TestNewRemoteErrorTakesMessageCodeAndPathFromTheDaemonFields fails."
+ },
+ {
+  "upstream": "packages/env/src/connection.ts",
+  "package": "./env",
+  "tests": [
+   "TestNewRemoteErrorTakesMessageCodeAndPathFromTheDaemonFields"
+  ],
+  "upstream_reference": "packages/env/src/connection.ts",
+  "mutation": "env/connection.go: replace `path, _ := fields[\"path\"].(string)\n\te := &RemoteError{Code: code, Path: path,` with `e := &RemoteError{Code: code,`; TestNewRemoteErrorTakesMessageCodeAndPathFromTheDaemonFields fails."
+ },
+ {
+  "upstream": "packages/env/src/connection.ts",
+  "package": "./env",
+  "tests": [
+   "TestConnectionRequestSendsPayloadsAndReportsTheAnsweringSession"
+  ],
+  "upstream_reference": "packages/env/src/connection.ts",
+  "mutation": "env/connection.go: replace `return ready.session.id, nil` with `return ready.session.id + 1, nil`; TestConnectionRequestSendsPayloadsAndReportsTheAnsweringSession fails."
+ },
+ {
+  "upstream": "packages/env/src/connection.ts",
+  "package": "./env",
+  "tests": [
+   "TestConnectionRequestSendsPayloadsAndReportsTheAnsweringSession"
+  ],
+  "upstream_reference": "packages/env/src/connection.ts",
+  "mutation": "env/connection.go: replace `return c.Start(ctx, op, request, options).Wait()` with `return c.Start(ctx, op+\"x\", request, options).Wait()`; TestConnectionRequestSendsPayloadsAndReportsTheAnsweringSession fails."
+ },
+ {
+  "upstream": "packages/env/src/remote-env.ts",
+  "package": "./env",
+  "tests": [
+   "TestRemoteExecutionEnvDirectOperations"
+  ],
+  "upstream_reference": "packages/env/src/remote-env.ts",
+  "mutation": "env/remote_env.go: replace `return paths.join(parts...), nil\n}\n\n// readFile` with `return paths.join(parts[:len(parts)-1]...), nil\n}\n\n// readFile`; TestRemoteExecutionEnvDirectOperations fails."
+ },
+ {
+  "upstream": "packages/env/src/remote-env.ts",
+  "package": "./env",
+  "tests": [
+   "TestRemoteExecutionEnvCreateTempDirAndRemove",
+   "TestRemoteExecutionEnvCreatesTempDirsAndRemovesPathsLikePi"
+  ],
+  "upstream_reference": "packages/env/src/remote-env.ts",
+  "mutation": "env/remote_env.go: replace `created, _ := reply.JSON[\"path\"].(string)\n\treturn created, nil` with `created, _ := reply.JSON[\"path\"].(string)\n\treturn created + \"x\", nil`; TestRemoteExecutionEnvCreateTempDirAndRemove, TestRemoteExecutionEnvCreatesTempDirsAndRemovesPathsLikePi fails."
+ },
+ {
+  "upstream": "packages/env/src/remote-env.ts",
+  "package": "./env",
+  "tests": [
+   "TestRemoteExecutionEnvCreateTempDirUsesThePrefixUnderTheRemoteTmpdir"
+  ],
+  "upstream_reference": "packages/env/src/remote-env.ts",
+  "mutation": "env/remote_env.go: replace `name = *prefix\n\t}\n\treply, err := e.Connection.Request(ctx, \"mkdtemp\"` with `_ = prefix\n\t}\n\treply, err := e.Connection.Request(ctx, \"mkdtemp\"`; TestRemoteExecutionEnvCreateTempDirUsesThePrefixUnderTheRemoteTmpdir fails."
+ },
+ {
+  "upstream": "packages/env/src/remote-env.ts",
+  "package": "./env",
+  "tests": [
+   "TestRemoteExecutionEnvDirectOperations"
+  ],
+  "upstream_reference": "packages/env/src/remote-env.ts",
+  "mutation": "env/remote_env.go: replace `options.Prefix+randomUUID()+options.Suffix` with `options.Prefix+randomUUID()`; TestRemoteExecutionEnvDirectOperations fails."
+ },
+ {
+  "upstream": "packages/env/src/ssh.ts",
+  "package": "./env",
+  "tests": [
+   "TestNewSshErrorKeepsItsArguments"
+  ],
+  "upstream_reference": "packages/env/src/ssh.ts",
+  "mutation": "env/ssh.go: replace `e := &SshError{Message: message, ExitCode: exitCode, Stderr: stderr}` with `e := &SshError{Message: message, ExitCode: exitCode}`; TestNewSshErrorKeepsItsArguments fails."
+ },
+ {
+  "upstream": "packages/env/src/ssh.ts",
+  "package": "./env",
+  "tests": [
+   "TestAcceptHostKeyStoresTheLineTrimmedLikeJavaScript"
+  ],
+  "upstream_reference": "packages/env/src/ssh.ts",
+  "mutation": "env/ssh.go: replace `parsed = append(parsed, accepted{jsstring.Trim(line), keyType, key})` with `parsed = append(parsed, accepted{line, keyType, key})`; TestAcceptHostKeyStoresTheLineTrimmedLikeJavaScript fails."
+ },
+ {
+  "upstream": "packages/env/src/ssh.ts",
+  "package": "./env",
+  "tests": [
+   "TestSSHBootstrap"
+  ],
+  "upstream_reference": "packages/env/src/ssh.ts",
+  "mutation": "env/ssh.go: replace `fields[0] != target.HostKeyAlias {\n\t\t\t\tkept = append(kept, line)` with `fields[0] == target.HostKeyAlias {\n\t\t\t\tkept = append(kept, line)`; TestSSHBootstrap fails."
+ },
+ {
+  "upstream": "packages/env/src/ssh.ts",
+  "package": "./env",
+  "tests": [
+   "TestPackagedDaemonLocation"
+  ],
+  "upstream_reference": "packages/env/src/ssh.ts",
+  "mutation": "env/ssh.go: replace `name = \"pi-env.exe\"` with `name = \"pi-env\"`; TestPackagedDaemonLocation fails."
+ },
+ {
+  "upstream": "packages/env/src/ssh.ts",
+  "package": "./env",
+  "tests": [
+   "TestPackagedDaemonLocation"
+  ],
+  "upstream_reference": "packages/env/src/ssh.ts",
+  "mutation": "env/ssh.go: replace `return filepath.Join(packagedDaemonDirectory(), \"pi-env-\"+remote.Platform+\"-\"+remote.Arch, name)` with `return filepath.Join(packagedDaemonDirectory(), \"pi-env-\"+remote.Platform, name)`; TestPackagedDaemonLocation fails."
+ }
+]

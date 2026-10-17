@@ -1,9 +1,10 @@
+import { PI_PACKAGE_VERSION } from "./pi-version.mjs";
 import { readFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const pkg = resolve('extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent');
-if (JSON.parse(readFileSync(join(pkg, 'package.json'), 'utf8')).version !== '1.0.3') throw Error('unexpected Pi version');
+if (JSON.parse(readFileSync(join(pkg, 'package.json'), 'utf8')).version !== PI_PACKAGE_VERSION) throw Error('unexpected Pi version');
 const core = (name) => import(pathToFileURL(join(pkg, `dist/core/${name}.js`)));
 const { createExtensionRuntime } = await core('extensions/loader');
 const { ExtensionRunner } = await core('extensions/runner');

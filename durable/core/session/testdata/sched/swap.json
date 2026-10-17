@@ -1,0 +1,204 @@
+{
+ "tasks": {
+  "s1": {
+   "name": "t.swap",
+   "version": 1,
+   "phases": {
+    "start": [
+     {
+      "await": "gw"
+     },
+     {
+      "commit": {
+       "next": {
+        "status": "running",
+        "checkpoint": {
+         "phase": "two"
+        }
+       }
+      }
+     }
+    ],
+    "two": [
+     {
+      "log": "v1 two"
+     },
+     {
+      "commit": {
+       "next": {
+        "status": "terminal",
+        "outcome": {
+         "status": "completed",
+         "result": "v1"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "abort": [
+    {
+     "commit": {
+      "next": {
+       "status": "terminal",
+       "outcome": {
+        "status": "aborted",
+        "reason": "handler"
+       }
+      }
+     }
+    }
+   ]
+  },
+  "s2": {
+   "name": "t.swap",
+   "version": 2,
+   "migrate": true,
+   "phases": {
+    "start": [
+     {
+      "log": "v2 start"
+     }
+    ],
+    "two": [
+     {
+      "log": "v2 two"
+     },
+     {
+      "commit": {
+       "next": {
+        "status": "terminal",
+        "outcome": {
+         "status": "completed",
+         "result": "v2"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "abort": [
+    {
+     "commit": {
+      "next": {
+       "status": "terminal",
+       "outcome": {
+        "status": "aborted",
+        "reason": "handler"
+       }
+      }
+     }
+    }
+   ]
+  },
+  "s3": {
+   "name": "t.swap",
+   "version": 1,
+   "phases": {
+    "start": [
+     {
+      "log": "other v1"
+     }
+    ],
+    "two": [
+     {
+      "log": "other two"
+     },
+     {
+      "commit": {
+       "next": {
+        "status": "terminal",
+        "outcome": {
+         "status": "completed",
+         "result": "other"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "abort": [
+    {
+     "commit": {
+      "next": {
+       "status": "terminal",
+       "outcome": {
+        "status": "aborted",
+        "reason": "handler"
+       }
+      }
+     }
+    }
+   ]
+  }
+ },
+ "initialRegistry": [
+  "s1"
+ ],
+ "cmds": [
+  {
+   "cmd": "commit",
+   "ops": [
+    {
+     "op": "rootConversation"
+    }
+   ]
+  },
+  {
+   "cmd": "open"
+  },
+  {
+   "cmd": "resume"
+  },
+  {
+   "cmd": "commit",
+   "ops": [
+    {
+     "op": "createTask",
+     "task": "s1",
+     "opts": {
+      "conversationId": 1
+     }
+    },
+    {
+     "op": "createTask",
+     "task": "s1",
+     "opts": {
+      "conversationId": 1
+     }
+    }
+   ]
+  },
+  {
+   "cmd": "registry",
+   "installed": [
+    "s2"
+   ]
+  },
+  {
+   "cmd": "release",
+   "gate": "gw"
+  },
+  {
+   "cmd": "commit",
+   "ops": [
+    {
+     "op": "createTask",
+     "task": "s1",
+     "opts": {
+      "conversationId": 1
+     }
+    }
+   ]
+  },
+  {
+   "cmd": "registry",
+   "installed": [
+    "s3"
+   ]
+  },
+  {
+   "cmd": "waitForIdle"
+  }
+ ]
+}

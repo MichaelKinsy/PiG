@@ -5,6 +5,8 @@ package ai
 import (
 	"math"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 const (
@@ -77,18 +79,14 @@ var dateKeywords = []struct {
 	{"t", keywordTimeSeparator, 0},
 }
 
-// dateScanner is V8's InputReader plus DateStringTokenizer over the string's UTF-16 code units. A header value reaches Node as a ByteString, so each byte of the Go string is one code unit.
+// dateScanner is V8's InputReader plus DateStringTokenizer over the string's UTF-16 code units.
 type dateScanner struct {
 	in   []uint16
 	pos  int
 	peek dateToken
 }
 
-func newDateScanner(s string) *dateScanner {
-	units := make([]uint16, len(s))
-	for i := 0; i < len(s); i++ {
-		units[i] = uint16(s[i])
-	}
+func newDateScanner(units []uint16) *dateScanner {
 	sc := &dateScanner{in: units}
 	sc.peek = sc.scan()
 	return sc
@@ -102,13 +100,10 @@ func (s *dateScanner) ch() int {
 }
 
 // isJSWhiteSpace is V8's IsWhiteSpaceOrLineTerminator.
-func isJSWhiteSpace(c int) bool {
-	switch c {
-	case '\t', '\n', '\v', '\f', '\r', ' ', 0xa0, 0x1680, 0x2028, 0x2029, 0x202f, 0x205f, 0x3000, 0xfeff:
-		return true
-	}
-	return c >= 0x2000 && c <= 0x200a
-}
+func isJSWhiteSpace(c int) bool { return jsstring.IsSpace(rune(c)) }
+
+// isJSWhiteSpaceChar is V8's IsWhiteSpace, which the keyword scan uses: U+2028 and U+2029 are line terminators, so a letter run does not end at one.
+func isJSWhiteSpaceChar(c int) bool { return isJSWhiteSpace(c) && c != 0x2028 && c != 0x2029 }
 
 func (s *dateScanner) next() dateToken {
 	t := s.peek
@@ -146,10 +141,10 @@ func (s *dateScanner) scan() dateToken {
 	case c == ':' || c == '-' || c == '+' || c == '.' || c == ')':
 		s.pos++
 		return dateToken{kind: dateSymbol, value: c}
-	case c >= 'A' && !isJSWhiteSpace(c):
+	case c >= 'A' && !isJSWhiteSpaceChar(c):
 		var buf [3]uint16
 		length := 0
-		for c := s.ch(); c >= 'A' && !isJSWhiteSpace(c); c = s.ch() {
+		for c := s.ch(); c >= 'A' && !isJSWhiteSpaceChar(c); c = s.ch() {
 			if length < 3 {
 				u := uint16(c)
 				if u >= 'A' && u <= 'Z' {
@@ -178,10 +173,8 @@ func (s *dateScanner) scan() dateToken {
 		}
 		return dateToken{kind: dateKeyword, kw: keywordInvalid, length: length}
 	case isJSWhiteSpace(c):
-		for isJSWhiteSpace(s.ch()) {
-			s.pos++
-		}
-		return dateToken{kind: dateWhiteSpace, length: s.pos - start}
+		s.pos++
+		return dateToken{kind: dateWhiteSpace, length: 1}
 	case c == '(':
 		depth := 0
 		for s.pos < len(s.in) {
@@ -473,9 +466,29 @@ func parseES5DateTime(sc *dateScanner, day *dayComposer, tm *timeComposer, tz *z
 // jsDateParse is Date.parse for the process's local time zone: milliseconds since the epoch, or NaN when V8 does not recognise the string.
 func jsDateParse(s string) float64 { return jsDateParseIn(s, time.Local) }
 
+// DateParse is JavaScript's Date.parse of a JavaScript string: milliseconds since the epoch, or NaN when V8 does not recognise the string. A string that names no zone is local time. The Go string is UTF-8, so U+00A0 and U+FEFF are single white space code units as in V8.
+func DateParse(s string) float64 { return DateParseIn(s, time.Local) }
+
+// DateParseIn is DateParse with the zone V8 applies to a string that names none: the zone of a caller that does not use the process's local one.
+func DateParseIn(s string, local *time.Location) float64 {
+	return jsDateParseUnits(jsstring.ToUTF16(s), local)
+}
+
+// DateParseHeader is Date.parse of an HTTP header value, which Node holds as a ByteString: each byte is one code unit.
+func DateParseHeader(s string) float64 { return jsDateParse(s) }
+
 // jsDateParseIn is jsDateParse with the zone V8 applies to a string that names none.
 func jsDateParseIn(s string, local *time.Location) float64 {
-	sc := newDateScanner(s)
+	units := make([]uint16, len(s))
+	for i := 0; i < len(s); i++ {
+		units[i] = uint16(s[i])
+	}
+	return jsDateParseUnits(units, local)
+}
+
+// jsDateParseUnits is Date.parse of a string given as its UTF-16 code units.
+func jsDateParseUnits(units []uint16, local *time.Location) float64 {
+	sc := newDateScanner(units)
 	day := dayComposer{namedMonth: dateNone}
 	tm := timeComposer{hourOffset: dateNone}
 	tz := zoneComposer{sign: dateNone, hour: dateNone, minute: dateNone}
@@ -597,6 +610,7 @@ func jsDateParseIn(s string, local *time.Location) float64 {
 
 	// MakeDay, MakeTime and MakeDate (ES MakeDay over a proleptic Gregorian calendar; a day past the month's end rolls over).
 	days := daysFromCivil(int64(year), int64(month)) + int64(dayOfMonth-1)
+	//portlint:allow fusedmuladd every product is an integer below 2^53 (TimeClip turns anything past 8.64e15 into NaN), so it is exact and fusion cannot change the sum
 	date := float64(days)*86400000 + float64(hour)*3600000 + float64(minute)*60000 + float64(second)*1000 + float64(ms)
 	if !hasOffset {
 		if date < -timeClipBeforeUTCMs || date > timeClipBeforeUTCMs {
@@ -604,7 +618,7 @@ func jsDateParseIn(s string, local *time.Location) float64 {
 		}
 		date = localToUTC(date, local)
 	} else {
-		date -= float64(offsetSeconds) * 1000
+		date -= float64(offsetSeconds * 1000)
 	}
 	if math.Abs(date) > timeClipMs {
 		return math.NaN()
@@ -639,7 +653,7 @@ func floorDiv(a, b int64) int64 {
 func localToUTC(t float64, loc *time.Location) float64 {
 	offsetAt := func(instantMs float64) float64 {
 		_, offset := time.UnixMilli(int64(instantMs)).In(loc).Zone()
-		return float64(offset) * 1000
+		return float64(offset * 1000)
 	}
 	before, after := offsetAt(t-864e5), offsetAt(t+864e5)
 	if before == after {

@@ -1,11 +1,15 @@
 package codingagent
 
+// pi: packages/coding-agent/src/modes/interactive/components/extension-input.ts
+
 import (
 	"context"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/coding/extension"
 
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
@@ -25,7 +29,7 @@ func TestExtensionDialogRemappingThroughOwnerLoop(t *testing.T) {
 	m.keybindings = NewKeybindingsManager(dir)
 	ui := &ExtUIContext{m: m}
 	got, err := runExtensionDialogProbe(t, m, func() (string, error) {
-		return ui.Select(t.Context(), "Pick", []string{"", "selected"}, nil)
+		return ui.Select(t.Context(), "Pick", []string{"", "selected"}, extension.ExtensionUIDialogOptions{})
 	}, []string{"\x05", "\x13", "\x18", "\x13"})
 	if !m.toolsExpanded {
 		t.Error("remapped expansion did not reach the transcript owner")
@@ -34,7 +38,7 @@ func TestExtensionDialogRemappingThroughOwnerLoop(t *testing.T) {
 		t.Fatalf("Select = %q, %v; want selected", got, err)
 	}
 	got, err = runExtensionDialogProbe(t, m, func() (string, error) {
-		return ui.Input(context.Background(), "Input", "", nil)
+		return ui.Input(context.Background(), "Input", "", extension.ExtensionUIDialogOptions{})
 	}, []string{"first", "\r", "-second", "\x13"})
 	if err != nil || got != "first-second" {
 		t.Fatalf("Input = %q, %v; want first-second", got, err)

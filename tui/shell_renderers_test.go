@@ -1,5 +1,7 @@
 package tui
 
+// pi: packages/coding-agent/src/core/tools/renderers/index.ts
+
 import (
 	"encoding/json"
 	"strings"
@@ -87,6 +89,9 @@ func TestBuiltinToolHeaderUsesShellPrompts(t *testing.T) {
 	if got, want := HeaderForTool("bash", args, ""), FormatShellHeader(args, "$"); got != want {
 		t.Errorf("bash header = %q, want %q", got, want)
 	}
+	if got, want := FormatBashHeader(args), FormatShellHeader(args, "$"); got != want {
+		t.Errorf("FormatBashHeader = %q, want the $ shell header %q", got, want)
+	}
 	for _, name := range []string{"read", "bash", "powershell", "edit", "write", "grep", "find", "ls"} {
 		if !HasBuiltInToolRenderers(name) {
 			t.Errorf("HasBuiltInToolRenderers(%q) = false", name)
@@ -134,7 +139,7 @@ func TestToolExecutionComponent_ShellElapsedFooterRows(t *testing.T) {
 			},
 		} {
 			t.Run(tool.name+"/"+branch.name, func(t *testing.T) {
-				c := NewToolExecutionComponent(tool.name, tool.header)
+				c := newToolCardForTest(tool.name, tool.header)
 				c.MarkExecutionStarted()
 				c.StartedAt = time.Now().Add(-61 * time.Second)
 				branch.set(c)

@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright Joyent, Inc. and other Node contributors
 // SPDX-FileCopyrightText: Copyright Node.js contributors
 // SPDX-License-Identifier: MIT
@@ -12,6 +11,21 @@ import (
 )
 
 const withoutNullBytes = "must be a string without null bytes"
+
+// CheckArguments is the validation Node's spawn(file, args) makes before it
+// starts anything, for a spawn with no cwd or env option: it returns the
+// ERR_INVALID_ARG_VALUE error that spawn throws for a file with a NUL, an
+// empty file, or an argument with a NUL, and nil otherwise. normalizeSpawnArguments
+// makes the check before it joins the command for a shell, so spawn(file, args,
+// { shell: true }) throws it on every platform too. Use it for a program
+// started some other way than Start, such as the editor command line that
+// os/exec runs through cmd.exe.
+func CheckArguments(file string, args []string) error {
+	if err := checkArguments(file, args, "", nil); err != nil {
+		return err
+	}
+	return nil
+}
 
 // checkArguments is the argument validation of Node's normalizeSpawnArguments
 // (lib/child_process.js, Node 24.19.0) for spawn(file, args, { cwd, env }). It

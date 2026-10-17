@@ -1,0 +1,49 @@
+# Behavior family: extensions-runtime
+# Scenario: an input an extension sends during a print-mode run does not hold the extension's callbacks.
+#
+# pi.sendUserMessage with deliverAs runs the input handlers during the run (agent-session.ts:1968-2000,
+# 2365-2394): prompt() queues the follow-up and returns while the agent goes on, here running the bash
+# tool's child process, so Pi's event loop runs the immediate the input handler queued before
+# tool_result. print-midrun-input.mjs sends the follow-up from tool_call and records the order.
+# A Node runtime that waited after answering this input for the host's next step, as it does after a
+# print prompt's last call, held the immediate until the tool_result request arrived.
+#
+# Upstream evidence (2026-10-08, Pi 1.1.0):
+#   PI_CODING_AGENT_DIR=testdata/pi-agent MIDRUN_INPUT_LOG=/tmp/midrun-input.log pi --no-extensions \
+#     -e ../../testdata/test-faux-provider.ts -e testdata/ext/print-midrun-input.mjs \
+#     --model test-faux/faux-1 --no-session --print "Run: expr 20 + 22"
+#   output: "42", exit 0
+#   /tmp/midrun-input.log: "tool_call bash", "input What is 20+22?", "input-immediate", "tool_result bash",
+#     "turn_end", "turn_end", "turn_end"
+# PiG at aca35e7ff (the wait without the run check) logged "tool_result bash" before "input-immediate".
+
+name = "74-print-midrun-input"
+description = "Print mode runs the callback of an input sent during the run before the run's next event"
+covers = [
+  "packages/coding-agent/src/modes/print-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home", "MIDRUN_INPUT_LOG={{TEMP}}/midrun-input.log"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "MIDRUN_INPUT_LOG={{TEMP}}/midrun-input.log"]
+pig_extensions = ["testdata/ext/print-midrun-input.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/print-midrun-input.mjs",
+]
+
+[cli]
+args = ["--model", "test-faux/faux-1", "--no-session", "--print", "Run: expr 20 + 22"]
+artifact_path = "{{TEMP}}/midrun-input.log"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["42"]
+artifact_equal = true
+artifact_both_contain = ["input What is 20+22?\ninput-immediate\ntool_result bash"]
+runs = 3

@@ -7,18 +7,14 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-
-	"golang.org/x/text/collate"
-	"golang.org/x/text/language"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
 func (m *InteractiveMode) providerAuth(id string) ai.ProviderAuth {
-	if m.opts.Llama != nil && m.opts.Llama.Provider().ID == id {
-		return ai.ProviderAuth{APIKey: llamaAPIKeyAuth(m.opts.Llama.Provider())}
-	}
 	if registry := m.opts.ModelRegistry; registry != nil {
 		if provider := registry.GetProvider(id); provider != nil {
 			return provider.Auth
@@ -35,19 +31,25 @@ func (m *InteractiveMode) getLogoutProviderOptions() ([]tui.OAuthProvider, error
 	if err != nil {
 		return nil, err
 	}
-	credentials, err := auth.Load()
+	// listCredentials({ signal: AbortSignal.timeout(15_000) }) (interactive-mode.ts:5836) yields the providers in auth.json's member order, which the stable
+	// name sort below keeps for equal names. With a signal, a failed reload is an error rather than the last snapshot (auth-storage.ts:431-432).
+	//portlint:allow ctxbackground AbortSignal.timeout(15_000) is the listing's only abort; it is not tied to the mode or a caller (interactive-mode.ts:5836)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	listed, err := auth.List(ctx)
 	if err != nil {
 		return nil, err
 	}
 	var providers []tui.OAuthProvider
-	for id, credential := range credentials {
+	for _, info := range listed {
+		id, credential := info.ProviderID, info
 		name := buildAuthProviderName(id)
 		if registry := m.opts.ModelRegistry; registry != nil {
 			if provider := registry.GetProvider(id); provider != nil {
 				name = provider.Name
 			}
 		}
-		providers = append(providers, tui.OAuthProvider{ID: id, Name: name, AuthType: string(credential.Type), Stored: true, StoredType: string(credential.Type), AuthStatusSource: "stored credential"})
+		providers = append(providers, tui.OAuthProvider{ID: id, Name: name, AuthType: string(credential.Type), Status: &ai.AuthCheck{Type: credential.Type, Source: "stored credential"}})
 	}
 	for _, provider := range m.oauthProviders() {
 		if slices.ContainsFunc(providers, func(p tui.OAuthProvider) bool { return p.ID == provider.ID() }) {
@@ -55,7 +57,7 @@ func (m *InteractiveMode) getLogoutProviderOptions() ([]tui.OAuthProvider, error
 		}
 		if store, ok := provider.(ai.OAuthCredentialStore); ok {
 			if status, ok := store.OAuthCredentialStatus(); ok {
-				providers = append(providers, tui.OAuthProvider{ID: provider.ID(), Name: provider.Name(), AuthType: status.AuthType, Stored: true, StoredType: status.AuthType, AuthStatusSource: "stored credential"})
+				providers = append(providers, tui.OAuthProvider{ID: provider.ID(), Name: provider.Name(), AuthType: status.AuthType, Status: &ai.AuthCheck{Type: ai.CredentialType(status.AuthType), Source: "stored credential"}})
 			}
 		}
 	}
@@ -75,7 +77,7 @@ func authSubscriptionArg(subscription *bool) []bool {
 }
 
 func sortAuthProviders(providers []tui.OAuthProvider) {
-	collator := collate.New(language.Und)
+	collator := jsstring.NewCollator()
 	slices.SortStableFunc(providers, func(a, b tui.OAuthProvider) int { return collator.CompareString(a.Name, b.Name) })
 }
 
@@ -104,10 +106,9 @@ func (m *InteractiveMode) getLoginProviderOptions(includeStatus ...bool) []tui.O
 				option.Name = name
 				switch {
 				case kind == "oauth" && auth.OAuth != nil:
-					option.MethodName = auth.OAuth.Name
-					option.LoginLabel = auth.OAuth.LoginLabel
+					option.Method = auth.OAuth
 				case kind == "api_key" && auth.APIKey != nil:
-					option.MethodName = auth.APIKey.Name
+					option.Method = auth.APIKey
 				default:
 					if index >= 0 {
 						providers = slices.Delete(providers, index, index+1)
@@ -116,19 +117,15 @@ func (m *InteractiveMode) getLoginProviderOptions(includeStatus ...bool) []tui.O
 				}
 				if len(includeStatus) == 0 || includeStatus[0] {
 					status := registry.GetProviderAuthStatus(id)
-					if status.Configured {
-						option.AuthStatusSource = string(status.Source)
-						option.AuthStatusLabel = status.Label
-						if status.Source == ai.AuthSourceStored {
-							store, err := ai.NewAuthStorage(filepath.Join(m.opts.AgentDir, "auth.json"))
-							if err == nil {
-								if credential, exists, err := store.GetRaw(id); err == nil && exists {
-									option.Stored = true
-									option.StoredType = string(credential.Type)
-								}
+					usingOAuth := false
+					if status.Configured && status.Source == ai.AuthSourceStored {
+						if store, err := ai.NewAuthStorage(filepath.Join(m.opts.AgentDir, "auth.json")); err == nil {
+							if credential, exists, err := store.GetRaw(id); err == nil && exists {
+								usingOAuth = credential.Type == ai.CredentialOAuth
 							}
 						}
 					}
+					option.Status = authSelectorStatus(status, usingOAuth)
 				}
 				if index >= 0 {
 					providers[index] = option
@@ -210,14 +207,14 @@ func (m *InteractiveMode) showLoginAuthTypeSelector(providers []tui.OAuthProvide
 	if len(providers) > 0 {
 		title = "Select authentication method for " + providers[0].Name + ":"
 		for _, provider := range providers {
-			if provider.AuthType == "oauth" && provider.LoginLabel != "" {
-				oauthLabel = provider.LoginLabel
+			if oauth, ok := provider.Method.(*ai.OAuthAuth); ok && provider.AuthType == "oauth" && oauth.LoginLabel != "" {
+				oauthLabel = oauth.LoginLabel
 			}
 		}
 	}
 	options := []string{oauthLabel, "Sign in with an API key"}
 	if radius == nil {
-		index, ok := m.runEditorSlotExtensionSelector(tui.NewExtensionSelector(title, options))
+		index, ok := m.runEditorSlotExtensionSelector(tui.NewExtensionSelectorComponent(title, options, nil, nil))
 		if index == 1 {
 			return "api_key", ok
 		}
@@ -225,7 +222,7 @@ func (m *InteractiveMode) showLoginAuthTypeSelector(providers []tui.OAuthProvide
 	}
 	radiusText := radiusLoginMenuPrefix + radius.Name
 	radiusLabel := radiusText + tui.FormatAuthSelectorProviderStatus(*radius)
-	selector := tui.NewExtensionSelector(title, append(options, radiusLabel))
+	selector := tui.NewExtensionSelectorComponent(title, append(options, radiusLabel), nil, nil)
 	menu := newRadiusLoginMenu(selector, radiusLabel, radiusText, m.requestRender)
 	defer menu.Dispose()
 	index, ok := m.runEditorSlotExtensionSelectorAs(selector, menu)

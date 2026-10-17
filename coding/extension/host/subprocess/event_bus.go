@@ -31,18 +31,30 @@ const (
 	eventBusRoutedEnv = "PIG_EVENT_BUS=routed"
 )
 
-// loadingBusCall reports whether a call may arrive while its factory is still loading, before the register handshake: the shared event bus, and the registry reads and checks of a Node factory's `pi` object, which Pi answers synchronously when the factory calls them, and its exec, which Pi spawns directly.
+// loadingBusCall reports whether a call may arrive while its factory is still loading, before the register handshake: the shared event bus, and the registry reads and checks of a Node factory's `pi` object, which Pi answers synchronously when the factory calls them, its exec, which Pi spawns directly, and the model stream (and its cancellation) of the pi-ai functions a module calls at load, which Pi runs in its own process with no registration gate.
 func loadingBusCall(method string) bool {
 	switch method {
-	case callXrefHello, callXrefOp, callEventsOn, callEventsOff, callEventsEmit, callEventsSettle, CallGetMcpServers, CallCheckMcpServer, CallLoadingExec:
+	case callXrefHello, callXrefOp, callEventsOn, callEventsOff, callEventsEmit, callEventsSettle, CallGetMcpServers, CallCheckMcpServer, "exec", CallLoadingExec, CallParseFrontmatter, CallParseDate, "modelStream", "cancelModelStream":
 		return true
 	}
 	return false
 }
 
-// observeXref attaches reference accounting and bus cleanup to a connection before it starts reading.
+// observeXref attaches reference accounting, bus cleanup, event-loop turn
+// forwarding, the view diagnostic and the inbound and outbound observers to a connection
+// before it starts reading.
 func (h *Host) observeXref(conn *Conn) {
+	conn.onLoopTurned = func(args json.RawMessage) { h.forwardLoopTurned(conn, args) }
+	conn.onLoopTurnTaken = func(args json.RawMessage) { h.loopTurns.take(conn, args) }
+	conn.reportView = func(surface string, err error) { h.reportViewRejection(conn, surface, err) }
+	if outbound := h.outboundObserver; outbound != nil {
+		conn.outbound = func(frame []byte) { outbound(conn.name, frame) }
+	}
+	observe := h.inboundObserver
 	conn.inbound = func(env *Envelope) {
+		if observe != nil {
+			observe(conn.name, env)
+		}
 		if env.Type == MsgNotify && env.Notify != nil && env.Notify.Method == notifyEventsQuiesce {
 			h.eventBus.quiesce(conn, env.Notify.Args)
 			return
@@ -53,6 +65,7 @@ func (h *Host) observeXref(conn *Conn) {
 		h.eventBus.closed(conn)
 		h.forgetLocalRealm(conn)
 		h.xref.closed(conn)
+		h.loopTurns.closed(conn)
 	}
 }
 
@@ -66,6 +79,9 @@ type busListener struct {
 	snapshots int
 	removed   bool
 	released  bool
+	// untrack removes the listener once; the Host's ExtensionRuntime retains it until the runtime is invalidated.
+	// upstream: loader.ts:201 trackEventBusSubscription
+	untrack func()
 }
 
 // busEmission counts foreign dispatches of one routed emit whose realms have not yet reported their microtask checkpoint.
@@ -337,12 +353,31 @@ func releaseBusHandler(listener *busListener) {
 	_ = listener.conn.Send(&Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: notifyEventsRelease, Args: args}})
 }
 
-// remove unregisters a listener and reports whether no dispatch snapshot can still call it.
-func (b *hostEventBus) remove(key busHandlerKey) (*busListener, bool) {
+// lookup returns the registered listener for key, or nil.
+func (b *hostEventBus) lookup(key busHandlerKey) *busListener {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	listener := b.handlers[key]
-	if listener == nil {
+	return b.handlers[key]
+}
+
+// removeBusListener unregisters the listener, releases its handler once no dispatch snapshot holds it, and emits removeListener as EventEmitter does after removing a listener.
+func (h *Host) removeBusListener(ctx context.Context, listener *busListener) {
+	removed, release := h.eventBus.remove(listener)
+	if removed == nil {
+		return
+	}
+	if release {
+		releaseBusHandler(removed)
+	}
+	h.dispatchEvent(ctx, "removeListener", newChannelPayload(removed.channel), nil, removed.realm, "", nil)
+}
+
+// remove unregisters listener and reports whether no dispatch snapshot can still call it. It returns nil when listener is no longer the one registered under its key: a retained unsubscribe that runs after its connection closed must not remove a later listener that reuses the realm and handler id.
+func (b *hostEventBus) remove(listener *busListener) (*busListener, bool) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	key := busHandlerKey{listener.realm, listener.handlerID}
+	if b.handlers[key] != listener {
 		return nil, false
 	}
 	delete(b.handlers, key)
@@ -381,18 +416,20 @@ func (h *Host) forgetLocalRealm(conn *Conn) {
 	h.eventBus.mu.Unlock()
 }
 
-// closed drops a closed connection's listeners. A process that exits has no Pi counterpart, so no removeListener event is emitted.
+// closed drops a closed connection's listeners and forgets their runtime-retained unsubscribes, so the runtime does not keep a closed generation's listeners until it is invalidated. A process that exits has no Pi counterpart, so no removeListener event is emitted.
 func (b *hostEventBus) closed(conn *Conn) {
 	type release struct {
 		id    string
 		conns []*Conn
 	}
 	var releases []release
+	var dropped []*busListener
 	b.mu.Lock()
 	for key, listener := range b.handlers {
 		if listener.conn != conn {
 			continue
 		}
+		dropped = append(dropped, listener)
 		delete(b.handlers, key)
 		listener.removed = true
 		b.listeners[listener.channel] = slices.DeleteFunc(b.listeners[listener.channel], func(candidate *busListener) bool { return candidate == listener })
@@ -403,19 +440,30 @@ func (b *hostEventBus) closed(conn *Conn) {
 	for id, emission := range b.emissions {
 		delete(emission.pending, conn)
 		if emission.emitter == conn {
-			// An emitter that exits never settles; its waiting listener realms continue.
+			// An emitter that exits never settles; its waiting listener realms continue. The emitter's own settle call is
+			// still waiting on done, and the listeners' later quiesce finds no emission, so done is closed here.
 			delete(b.emissions, id)
 			var waiting []*Conn
 			for pending := range emission.pending {
 				waiting = append(waiting, pending)
 			}
 			releases = append(releases, release{id, waiting})
+			if !emission.closed {
+				emission.closed = true
+				close(emission.done)
+			}
 		}
 		emission.settleLocked()
 	}
 	b.mu.Unlock()
 	for _, r := range releases {
 		proceed(r.id, r.conns)
+	}
+	// The listener is already unregistered, so its unsubscribe only drops the runtime's retained entry.
+	for _, listener := range dropped {
+		if listener.untrack != nil {
+			listener.untrack()
+		}
 	}
 }
 
@@ -460,17 +508,13 @@ func (h *Host) handleEventBusCall(ctx context.Context, me *managedExt, conn *Con
 		}
 		// EventEmitter emits newListener before adding the listener.
 		h.dispatchEvent(dispatchCtx, "newListener", newChannelPayload(*args.Channel), nil, realm, "", nil)
-		h.eventBus.add(&busListener{conn: conn, realm: realm, handlerID: args.HandlerID, channel: *args.Channel, value: args.Value})
+		listener := &busListener{conn: conn, realm: realm, handlerID: args.HandlerID, channel: *args.Channel, value: args.Value}
+		listener.untrack = h.providerRuntime.TrackEventBusSubscription(func() { h.removeBusListener(dispatchCtx, listener) })
+		h.eventBus.add(listener)
 	case callEventsOff:
-		listener, release := h.eventBus.remove(busHandlerKey{realm, args.HandlerID})
-		if listener == nil {
-			break
+		if listener := h.eventBus.lookup(busHandlerKey{realm, args.HandlerID}); listener != nil {
+			listener.untrack()
 		}
-		if release {
-			releaseBusHandler(listener)
-		}
-		// EventEmitter emits removeListener after removing the listener.
-		h.dispatchEvent(dispatchCtx, "removeListener", newChannelPayload(listener.channel), nil, realm, "", nil)
 	case callEventsEmit:
 		if args.Channel == nil {
 			return nil, errors.New("events.emit requires channel")
@@ -515,28 +559,56 @@ func (h *Host) handleEventBusCall(ctx context.Context, me *managedExt, conn *Con
 func (h *Host) dispatchEvent(ctx context.Context, channel string, payload *busPayload, refs []xrefRef, emitter, emissionID string, emission *busEmission) bool {
 	listeners := h.eventBus.snapshot(channel)
 	defer h.eventBus.finish(listeners)
-	for _, listener := range listeners {
-		var (
-			args    json.RawMessage
-			err     error
-			foreign bool
-		)
+	for i := 0; i < len(listeners); {
+		listener := listeners[i]
 		if listener.value {
-			args, err = h.nativeDispatchArgs(ctx, listener, channel, payload)
-		} else {
-			h.xref.deliver(listener.realm, refs)
-			foreign = emission != nil && listener.realm != emitter
-			var marker string
-			if foreign {
-				marker = emissionID
-				h.eventBus.addPending(emission, listener.conn, 1)
-			}
+			// Native listeners keep their per-listener dispatch.
+			h.dispatchNativeListener(ctx, listener, channel, payload)
+			i++
+			continue
+		}
+		// Consecutive listeners of one connection share one events.dispatch
+		// request: their synchronous prefixes run in registry order over one
+		// decode of the payload, as Pi's emit calls them in one synchronous
+		// loop, and the connection pays one round trip instead of one per
+		// listener. The group stops at a change of connection, not only of
+		// realm: a packed realm holds several extensions, each with its own
+		// connection and request scope, and a handler runs in the scope of the
+		// connection that carries its request. A lone listener keeps the
+		// single-handler wire form.
+		j := i + 1
+		for j < len(listeners) && !listeners[j].value && listeners[j].conn == listener.conn && listeners[j].realm == listener.realm {
+			j++
+		}
+		foreign := emission != nil && listener.realm != emitter
+		var marker string
+		if foreign {
+			marker = emissionID
+			// One pending count per request: the runtime quiesces once per
+			// request, after every prefix in the group has run.
+			h.eventBus.addPending(emission, listener.conn, 1)
+		}
+		h.xref.deliver(listener.realm, refs)
+		var args json.RawMessage
+		var err error
+		if j-i == 1 {
 			args, err = json.Marshal(struct {
 				HandlerID string          `json:"handlerId"`
 				Channel   string          `json:"channel"`
 				Data      json.RawMessage `json:"data"`
 				Emission  string          `json:"emission,omitempty"`
 			}{listener.handlerID, channel, payload.encoded, marker})
+		} else {
+			ids := make([]string, 0, j-i)
+			for _, l := range listeners[i:j] {
+				ids = append(ids, l.handlerID)
+			}
+			args, err = json.Marshal(struct {
+				HandlerIDs []string        `json:"handlerIds"`
+				Channel    string          `json:"channel"`
+				Data       json.RawMessage `json:"data"`
+				Emission   string          `json:"emission,omitempty"`
+			}{ids, channel, payload.encoded, marker})
 		}
 		if err == nil {
 			var response *Envelope
@@ -551,8 +623,24 @@ func (h *Host) dispatchEvent(ctx context.Context, channel string, payload *busPa
 			}
 			reportEventBusError(channel, err)
 		}
+		i = j
 	}
 	return len(listeners) != 0
+}
+
+// dispatchNativeListener serves one in-process value listener.
+func (h *Host) dispatchNativeListener(ctx context.Context, listener *busListener, channel string, payload *busPayload) {
+	args, err := h.nativeDispatchArgs(ctx, listener, channel, payload)
+	if err == nil {
+		var response *Envelope
+		response, err = listener.conn.Request(ctx, &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: methodEventsDispatch, Args: args}})
+		if err == nil && response.Response != nil && response.Response.Error != nil {
+			err = response.Response.Error.ToError()
+		}
+	}
+	if err != nil {
+		reportEventBusError(channel, err)
+	}
 }
 
 func mustJSONObject(value any) json.RawMessage {

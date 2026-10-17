@@ -16,13 +16,13 @@ func TestStreamContinuationIteratorMatchesPiYieldOrdering(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			executor := &continuationExecutor{}
 			stream := NewAssistantMessageEventStream()
-			iterator := continuationEventIterator{stream: stream, executor: executor}
+			iterator := newContinuationEventIterator(t.Context(), stream, executor)
 			var order []string
 			executor.run(func(*continuationTurn) {
 				if buffered {
 					pushTestStart(t, stream)
 				}
-				next := iterator.next(t.Context())
+				next := iterator.next()
 				next.onResolved(func(delivery eventDelivery) {
 					if delivery.done || delivery.event.EventType() != EventStart {
 						t.Errorf("next delivery = %#v", delivery)
@@ -53,10 +53,10 @@ func TestStreamContinuationIteratorMatchesPiYieldOrdering(t *testing.T) {
 func TestStreamContinuationIteratorCancellationRemovesWaiter(t *testing.T) {
 	executor := &continuationExecutor{}
 	stream := NewAssistantMessageEventStream()
-	iterator := continuationEventIterator{stream: stream, executor: executor}
+	ctx, cancel := context.WithCancel(t.Context())
+	iterator := newContinuationEventIterator(ctx, stream, executor)
 	executor.run(func(turn *continuationTurn) {
-		ctx, cancel := context.WithCancel(t.Context())
-		next := iterator.next(ctx)
+		next := iterator.next()
 		cancel()
 		if delivery := awaitContinuation(turn, next); !delivery.done {
 			t.Errorf("canceled delivery = %#v", delivery)
@@ -72,10 +72,10 @@ func TestStreamContinuationIteratorCancellationRemovesWaiter(t *testing.T) {
 func TestStreamContinuationIteratorAssignedEventWinsCancellation(t *testing.T) {
 	executor := &continuationExecutor{}
 	stream := NewAssistantMessageEventStream()
-	iterator := continuationEventIterator{stream: stream, executor: executor}
+	ctx, cancel := context.WithCancel(t.Context())
+	iterator := newContinuationEventIterator(ctx, stream, executor)
 	executor.run(func(turn *continuationTurn) {
-		ctx, cancel := context.WithCancel(t.Context())
-		next := iterator.next(ctx)
+		next := iterator.next()
 		pushTestStart(t, stream)
 		cancel()
 		if delivery := awaitContinuation(turn, next); delivery.done || delivery.event.EventType() != EventStart {
@@ -107,7 +107,7 @@ func TestStreamContinuationResultAfterEndWaitsForExplicitResult(t *testing.T) {
 func TestStreamContinuationIteratorRetainsFIFOAndEndResult(t *testing.T) {
 	executor := &continuationExecutor{}
 	stream := NewAssistantMessageEventStream()
-	iterator := continuationEventIterator{stream: stream, executor: executor}
+	iterator := newContinuationEventIterator(t.Context(), stream, executor)
 	executor.run(func(turn *continuationTurn) {
 		pushTestStart(t, stream)
 		final := pushTestDone(t, stream)
@@ -115,12 +115,12 @@ func TestStreamContinuationIteratorRetainsFIFOAndEndResult(t *testing.T) {
 			t.Fatal("result identity changed or depended on iteration")
 		}
 		for _, want := range []AssistantEventType{EventStart, EventDone} {
-			delivery := awaitContinuation(turn, iterator.next(t.Context()))
+			delivery := awaitContinuation(turn, iterator.next())
 			if delivery.done || delivery.event.EventType() != want {
 				t.Fatalf("delivery = %#v, want %s", delivery, want)
 			}
 		}
-		if delivery := awaitContinuation(turn, iterator.next(t.Context())); !delivery.done {
+		if delivery := awaitContinuation(turn, iterator.next()); !delivery.done {
 			t.Errorf("closed iterator returned %#v", delivery)
 		}
 	})

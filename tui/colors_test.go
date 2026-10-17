@@ -73,6 +73,7 @@ func TestColorMixEndpointsAndHueWrap(t *testing.T) {
 	}
 }
 
+// Pi: packages/coding-agent/src/modes/interactive/theme/theme.ts:66 (TextAttributes.dim); packages/tui/src/colors.ts:48 (TextAttributes.underline); packages/tui/src/colors.ts:49 (TextAttributes.inverse); packages/tui/src/colors.ts:50 (TextAttributes.strikethrough).
 func TestStyleTextAttributeOrder(t *testing.T) {
 	got := StyleText("x", TextStyle{TextAttributes: TextAttributes{Bold: true, Dim: true, Underline: true, Inverse: true, Strikethrough: true}}, TerminalColorModeTrueColor)
 	if want := "\x1b[1m\x1b[2m\x1b[4m\x1b[7m\x1b[9mx\x1b[29m\x1b[27m\x1b[24m\x1b[22m"; got != want {
@@ -80,5 +81,24 @@ func TestStyleTextAttributeOrder(t *testing.T) {
 	}
 	if got := StyleText("x", TextStyle{}, TerminalColorMode256); got != "x" {
 		t.Fatalf("unstyled = %q", got)
+	}
+}
+
+// Below cMid the OKHSL saturation is 0.8 * (chroma / (k1 + (1 - k1 / cMid) * chroma)) with k1 = 0.8 * c0 rounded on its own, as
+// JavaScript evaluates it; fusing 0.8 * c0 into the addition (arm64 FMADD) changes the last bit. Values from Pi 1.2.0's rgbToOkhsl in Node.
+func TestColorToOkhslRoundsTheChromaStopProduct(t *testing.T) {
+	for _, tc := range []struct {
+		r, g, b float64
+		want    float64
+	}{
+		{1, 2, 1, 0.3697838814803063},
+		{1, 2, 4, 0.3737700395140434},
+		{1, 2, 8, 0.6162882489484516},
+		{1, 2, 12, 0.7607060908037936},
+		{1, 3, 6, 0.47812499943593434},
+	} {
+		if got := ColorToOkhsl(RgbColorValue{tc.r, tc.g, tc.b}).S; got != tc.want {
+			t.Errorf("ColorToOkhsl(%v, %v, %v).S = %v, want %v", tc.r, tc.g, tc.b, got, tc.want)
+		}
 	}
 }

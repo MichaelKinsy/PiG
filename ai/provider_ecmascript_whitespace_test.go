@@ -1,3 +1,5 @@
+//go:build !pig_strip_mistral_conversations
+
 package ai
 
 import (
@@ -76,9 +78,9 @@ func TestMistralAssistantBlankUsesECMAScriptTrim(t *testing.T) {
 						if chunk.Text != nil {
 							got = append(got, *chunk.Text)
 						}
-						if thinking, ok := chunk.Thinking.([]map[string]string); ok {
+						if thinking, ok := chunk.Thinking.([]mistralTextChunk); ok {
 							for _, part := range thinking {
-								got = append(got, part["text"])
+								got = append(got, part.Text)
 							}
 						}
 					}

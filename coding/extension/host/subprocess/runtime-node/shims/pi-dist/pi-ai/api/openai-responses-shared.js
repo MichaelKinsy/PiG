@@ -1,6 +1,6 @@
 import { calculateCost } from "../models.js";
 import { shortHash } from "../utils/hash.js";
-import { parseStreamingJson } from "../utils/json-parse.js";
+import { parseStreamingJson, parseToolCallArguments } from "../utils/json-parse.js";
 import { sanitizeSurrogates } from "../utils/sanitize-unicode.js";
 import { getSystemMessageText, renderSystemMessageUpdate } from "../utils/text.js";
 import { resolveTranscript, resolveTranscriptTools } from "../utils/transcript.js";
@@ -40,7 +40,7 @@ function convertToolResultOutput(model, content) {
         .map((c) => c.text)
         .join("\n");
     const images = content.filter((c) => c.type === "image");
-    const hasText = textResult.length > 0;
+    const hasText = textResult.trim().length > 0;
     if (images.length === 0 || !model.input.includes("image")) {
         return sanitizeSurrogates(hasText ? textResult : images.length > 0 ? "(see attached image)" : "(no tool output)");
     }
@@ -121,6 +121,12 @@ export function convertResponsesMessages(model, context, allowedToolCallProvider
         });
     };
     const includeInitialSystemMessage = options?.includeSystemPrompt ?? true;
+    const pushConfigurationUpdate = (effort) => {
+        messages.push({
+            type: "configuration_update",
+            reasoning: { effort: effort },
+        });
+    };
     const compat = model.compat;
     const instructionRole = model.reasoning && compat?.supportsDeveloperRole !== false ? "developer" : "system";
     let msgIndex = 0;
@@ -241,6 +247,11 @@ export function convertResponsesMessages(model, context, allowedToolCallProvider
             }
             if (output.length === 0)
                 continue;
+            if (options?.configurationUpdateEffort !== undefined &&
+                isSameModel &&
+                msg.providerThinkingLevel !== undefined) {
+                pushConfigurationUpdate(msg.providerThinkingLevel);
+            }
             messages.push(...output);
         }
         else if (msg.role === "toolResult") {
@@ -264,6 +275,8 @@ export function convertResponsesMessages(model, context, allowedToolCallProvider
         if (!isLeadingSystemMessage)
             msgIndex++;
     }
+    if (options?.configurationUpdateEffort !== undefined)
+        pushConfigurationUpdate(options.configurationUpdateEffort);
     return messages;
 }
 // =============================================================================
@@ -608,7 +621,7 @@ export async function processResponsesStream(openaiStream, output, stream, model
             else if (item.type === "function_call" &&
                 slot?.type === "toolCall" &&
                 slot.block.partialJson !== undefined) {
-                slot.block.arguments = parseStreamingJson(item.arguments || slot.block.partialJson || "{}");
+                Object.assign(slot.block, parseToolCallArguments(item.arguments || slot.block.partialJson));
                 if (item.namespace !== undefined)
                     slot.block.namespace = item.namespace;
                 // Finalize in-place and strip the scratch buffer so replay only

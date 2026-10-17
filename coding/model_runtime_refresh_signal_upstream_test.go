@@ -11,7 +11,7 @@ import (
 func refreshSignalModel(id string) *ai.Model {
 	return &ai.Model{ID: id, DisplayName: id, Input: []string{"text"}, Capabilities: ai.ModelCapabilities{ContextWindow: 10000, MaxOutputTokens: 1000}}
 }
-func registerRefreshSignalProvider(t *testing.T, services *Services, id string, config ProviderConfigInput) {
+func registerRefreshSignalProvider(t *testing.T, services *AgentSessionServices, id string, config ProviderConfigInput) {
 	t.Helper()
 	if err := services.ModelRuntime().RegisterProvider(id, config); err != nil {
 		t.Fatal(err)

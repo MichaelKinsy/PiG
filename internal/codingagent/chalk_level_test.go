@@ -24,6 +24,15 @@ func TestChalkColorLevel(t *testing.T) {
 		{"azure pipelines pipe", nil, map[string]string{"TF_BUILD": "1", "AGENT_NAME": "a"}, false, 1},
 		{"dumb tty", nil, map[string]string{"TERM": "dumb"}, true, 0},
 		{"truecolor", nil, map[string]string{"COLORTERM": "truecolor"}, true, 3},
+		// supports-color: Number.parseInt(TERM_PROGRAM_VERSION.split('.', 1)[0], 10) >= 3 for iTerm.app. parseInt reads a decimal prefix after JS whitespace.
+		{"iTerm 3", nil, map[string]string{"TERM_PROGRAM": "iTerm.app", "TERM_PROGRAM_VERSION": "3.4.19"}, true, 3},
+		{"iTerm 2", nil, map[string]string{"TERM_PROGRAM": "iTerm.app", "TERM_PROGRAM_VERSION": "2.9"}, true, 2},
+		{"iTerm version with a suffix", nil, map[string]string{"TERM_PROGRAM": "iTerm.app", "TERM_PROGRAM_VERSION": "3beta.1"}, true, 3},
+		{"iTerm version after JS whitespace", nil, map[string]string{"TERM_PROGRAM": "iTerm.app", "TERM_PROGRAM_VERSION": "\ufeff\u00a03.1"}, true, 3},
+		{"iTerm version beyond int64", nil, map[string]string{"TERM_PROGRAM": "iTerm.app", "TERM_PROGRAM_VERSION": "99999999999999999999999"}, true, 3},
+		{"iTerm negative version", nil, map[string]string{"TERM_PROGRAM": "iTerm.app", "TERM_PROGRAM_VERSION": "-3"}, true, 2},
+		{"iTerm version after NEL is NaN", nil, map[string]string{"TERM_PROGRAM": "iTerm.app", "TERM_PROGRAM_VERSION": "\u00853"}, true, 2},
+		{"iTerm without a version", nil, map[string]string{"TERM_PROGRAM": "iTerm.app"}, true, 2},
 	}
 	for _, c := range cases {
 		getenv := func(key string) string { return c.env[key] }

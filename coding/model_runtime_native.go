@@ -4,8 +4,10 @@ package coding
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding/extension"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
@@ -14,6 +16,11 @@ type ExtensionOAuthConfig = icodingagent.ExtensionOAuthConfig
 
 // CredentialSynchronizationError reports a committed credential change whose local model/auth snapshot could not be synchronized.
 type CredentialSynchronizationError = icodingagent.CredentialSynchronizationError
+
+// NewCredentialSynchronizationError is `new CredentialSynchronizationError(providerId, operation, credential, { cause })`.
+func NewCredentialSynchronizationError(providerID string, operation CredentialSynchronizationOperation, credential *ai.Credential, cause error) *CredentialSynchronizationError {
+	return icodingagent.NewCredentialSynchronizationError(providerID, operation, credential, cause)
+}
 
 type CredentialSynchronizationOperation = icodingagent.CredentialSynchronizationOperation
 
@@ -56,16 +63,77 @@ func (runtime *ModelRuntime) Logout(ctx context.Context, id string) error {
 	return runtime.services.Registry().LogoutNativeProvider(ctx, id)
 }
 
-// StreamDeferred forwards the selected model, handle and optional request overrides through the same native model collection as FetchDeferred.
+// StreamDeferred forwards the selected model, handle and optional request overrides through the same native model collection as FetchDeferred. A model of a provider an extension registered goes to that provider object's fetchDeferred after the same request authentication its stream gets.
+// upstream: packages/ai/src/models.ts:StreamDeferred
 func (runtime *ModelRuntime) StreamDeferred(ctx context.Context, model *ai.Model, handle ai.DeferredHandle, options ...ai.DeferredFetchOptions) *ai.AssistantMessageEventStream {
+	if native := runtime.registeredNativeProvider(model); native != nil {
+		var opts ai.DeferredFetchOptions
+		if len(options) > 0 {
+			opts = options[0]
+		}
+		return runtime.streamNativeDeferred(ctx, model, native, handle, opts)
+	}
 	return runtime.services.Registry().NativeModels().StreamDeferred(ctx, model, handle, options...)
 }
 
 func (runtime *ModelRuntime) FetchDeferred(ctx context.Context, model *ai.Model, handle ai.DeferredHandle, options ...ai.DeferredFetchOptions) *ai.AssistantMessage {
-	return runtime.services.Registry().NativeModels().FetchDeferred(ctx, model, handle, options...)
+	return runtime.StreamDeferred(ctx, model, handle, options...).Result()
 }
+
 func (runtime *ModelRuntime) CancelDeferred(ctx context.Context, model *ai.Model, handle ai.DeferredHandle, options ...ai.DeferredCancelOptions) error {
-	return runtime.services.Registry().NativeModels().CancelDeferred(ctx, model, handle, options...)
+	native := runtime.registeredNativeProvider(model)
+	if native == nil {
+		return runtime.services.Registry().NativeModels().CancelDeferred(ctx, model, handle, options...)
+	}
+	if native.CancelDeferred == nil {
+		return ai.NewModelsError(ai.ModelsErrorProvider, "Provider "+native.ID+" does not support deferred responses", nil)
+	}
+	var opts ai.DeferredCancelOptions
+	if len(options) > 0 {
+		opts = options[0]
+	}
+	requestModel, _, prepared, err := runtime.prepareNativeRequest(ctx, model, opts, native)
+	if err != nil {
+		return err
+	}
+	return native.CancelDeferred(ctx, requestModel, handle, prepared)
+}
+
+// registeredNativeProvider is the provider object an extension registered for the model's provider, or nil.
+func (runtime *ModelRuntime) registeredNativeProvider(model *ai.Model) *extension.NativeProvider {
+	if model == nil {
+		return nil
+	}
+	return runtime.services.Registry().NativeProvider(model.ProviderMeta.ProviderID)
+}
+
+func (runtime *ModelRuntime) streamNativeDeferred(ctx context.Context, model *ai.Model, native *extension.NativeProvider, handle ai.DeferredHandle, opts ai.DeferredFetchOptions) *ai.AssistantMessageEventStream {
+	outer := ai.NewAssistantMessageEventStream()
+	if native.FetchDeferred == nil {
+		runtime.fail(ctx, outer, model, ai.NewModelsError(ai.ModelsErrorProvider, "Provider "+native.ID+" does not support deferred responses", nil))
+		return outer
+	}
+	requestModel, _, prepared, err := runtime.prepareNativeRequest(ctx, model, opts.StreamOptions, native)
+	if err != nil {
+		runtime.fail(ctx, outer, model, err)
+		return outer
+	}
+	opts.StreamOptions = prepared
+	if err := ai.RunStreamContinuation(ctx, func(observation *ai.StreamObservation) error {
+		ctx := observation.Context(ctx)
+		inner, err := native.FetchDeferred(ctx, requestModel, handle, opts)
+		if err != nil {
+			return err
+		}
+		if inner == nil {
+			return fmt.Errorf("model runtime: provider %q returned a nil stream", native.ID)
+		}
+		observation.Yield()
+		return outer.ForwardStream(ctx, inner)
+	}); err != nil {
+		runtime.fail(ctx, outer, requestModel, err)
+	}
+	return outer
 }
 
 // Find returns an exact runtime model, including native provider registrations.

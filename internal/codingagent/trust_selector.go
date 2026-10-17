@@ -58,13 +58,13 @@ func NewTrustSelectorComponent(options TrustSelectorOptions) *TrustSelectorCompo
 	if options.ProjectTrusted {
 		current = "trusted"
 	}
-	selector.Add(tui.NewDynamicBorder(""))
+	selector.Add(tui.NewDynamicBorder())
 	selector.Add(tui.NewSpacer(1))
-	selector.Add(text(theme.FgText("accent", "\x1b[1mProject trust\x1b[22m")))
-	selector.Add(text(theme.FgText("muted", options.Cwd)))
+	selector.Add(text(theme.Fg("accent", "\x1b[1mProject trust\x1b[22m")))
+	selector.Add(text(theme.Fg("muted", options.Cwd)))
 	selector.Add(tui.NewSpacer(1))
-	selector.Add(text(theme.FgText("muted", "Saved decision: "+saved)))
-	selector.Add(text(theme.FgText("muted", "Current session: "+current)))
+	selector.Add(text(theme.Fg("muted", "Saved decision: "+saved)))
+	selector.Add(text(theme.Fg("muted", "Current session: "+current)))
 	selector.Add(tui.NewSpacer(1))
 	selector.Add(selector.listContainer)
 	selector.Add(tui.NewSpacer(1))
@@ -73,7 +73,7 @@ func NewTrustSelectorComponent(options TrustSelectorOptions) *TrustSelectorCompo
 	}
 	selector.Add(text(tui.RawKeyHint("↑↓", "navigate") + "  " + keyHint(tui.KBSelectConfirm, "save") + "  " + keyHint(tui.KBSelectCancel, "cancel")))
 	selector.Add(tui.NewSpacer(1))
-	selector.Add(tui.NewDynamicBorder(""))
+	selector.Add(tui.NewDynamicBorder())
 	selector.updateList()
 	return selector
 }
@@ -88,19 +88,22 @@ func (s *TrustSelectorComponent) updateList() {
 	for i, option := range s.trustOptions {
 		prefix, marker := "  ", "  "
 		if i == s.selectedIndex {
-			prefix = theme.FgText("accent", "→ ")
+			prefix = theme.Fg("accent", "→ ")
 		}
 		if s.isSavedOption(option) {
-			marker = theme.FgText("accent", "✓ ")
+			marker = theme.Fg("accent", "✓ ")
 		}
 		color := "text"
 		if i == s.selectedIndex {
 			color = "accent"
 		}
-		s.listContainer.Add(tui.NewPaddedText(prefix+marker+theme.FgText(color, option.Label), 1, 0, nil))
+		s.listContainer.Add(tui.NewPaddedText(prefix+marker+theme.Fg(color, option.Label), 1, 0, nil))
 	}
 	s.Invalidate()
 }
+
+// CapturesSelectPageInput reports that the selector handles tui.select.pageUp and tui.select.pageDown.
+func (s *TrustSelectorComponent) CapturesSelectPageInput() bool { return true }
 
 func (s *TrustSelectorComponent) HandleInput(data string) {
 	kb := tui.GetKeybindings()
@@ -110,6 +113,9 @@ func (s *TrustSelectorComponent) HandleInput(data string) {
 		s.updateList()
 	case kb.Matches(data, tui.KBSelectDown) || data == "j":
 		s.selectedIndex = min(len(s.trustOptions)-1, s.selectedIndex+1)
+		s.updateList()
+	case kb.Matches(data, tui.KBSelectPageUp) || kb.Matches(data, tui.KBSelectPageDown):
+		s.selectedIndex, _ = tui.PageSelectionIndex(kb, data, s.selectedIndex, len(s.trustOptions), len(s.trustOptions))
 		s.updateList()
 	case kb.Matches(data, tui.KBSelectConfirm) || data == "\n":
 		option := s.trustOptions[s.selectedIndex]
@@ -142,7 +148,8 @@ func (m *InteractiveMode) runTrustSelector(options TrustSelectorOptions) (TrustS
 		done = true
 	}
 	selector := NewTrustSelectorComponent(options)
-	previousFocus := m.tuiInst.FocusedComponent()
+	m.disposeActiveSelector()
+	previousFocus := m.tuiInst.GetFocusedComponent()
 	m.editorContainer.SetChildren(selector)
 	m.tuiInst.SetFocus(selector)
 	m.tuiInst.Render()
@@ -154,7 +161,7 @@ func (m *InteractiveMode) runTrustSelector(options TrustSelectorOptions) (TrustS
 	input, release := m.acquireModalInputChannel()
 	defer release()
 	for !done {
-		data, ok := m.readModalInput(input)
+		data, ok := m.readModalInputFor(selector, input)
 		if !ok {
 			return TrustSelection{}, false
 		}

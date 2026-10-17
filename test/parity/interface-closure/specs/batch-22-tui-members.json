@@ -1,0 +1,293 @@
+[
+ {
+  "ids": [
+   "pkg:tui/.#Editor::property:addToHistory"
+  ],
+  "targets": [
+   "tui/editor.go#Editor.AddToHistory"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_input.go#InteractiveMode.handleEditorAction"
+  ],
+  "evidence": [
+   "test:tui/editor_literal_input_upstream_test.go#TestEditorHistoryAndSubmissionUseJavaScriptTrim",
+   "test:tui/editor_literal_input_upstream_test.go#TestEditorHistoryDeduplicatesAfterJavaScriptTrim"
+  ],
+  "rationale": "Editor.addToHistory is the Go method Editor.AddToHistory; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Editor::property:getCursor"
+  ],
+  "targets": [
+   "tui/editor_state.go#Editor.GetCursor"
+  ],
+  "production": [
+   "call:internal/codingagent/clipboard_paste.go#InteractiveMode.handleClipboardImagePaste"
+  ],
+  "evidence": [
+   "test:tui/editor_kill_undo_upstream_test.go#TestUpstreamEditorUndo",
+   "test:tui/editor_sticky_paste_upstream_test.go#TestUpstreamEditorPasteMarkerAtomicBehavior"
+  ],
+  "rationale": "Editor.getCursor is the Go method Editor.GetCursor; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Editor::property:getExpandedText"
+  ],
+  "targets": [
+   "tui/editor.go#Editor.GetExpandedText"
+  ],
+  "production": [
+   "call:internal/codingagent/ext_ui_context.go#ExtUIContext.GetEditorText"
+  ],
+  "evidence": [
+   "test:tui/editor_sticky_paste_upstream_test.go#TestUpstreamEditorPasteMarkerAtomicBehavior"
+  ],
+  "rationale": "Editor.getExpandedText is the Go method Editor.GetExpandedText; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Editor::property:insertTextAtCursor"
+  ],
+  "targets": [
+   "tui/editor.go#Editor.InsertTextAtCursor"
+  ],
+  "production": [
+   "call:internal/codingagent/clipboard_paste.go#InteractiveMode.handleClipboardImagePaste"
+  ],
+  "evidence": [
+   "test:tui/editor_kill_undo_upstream_test.go#TestUpstreamEditorUndo"
+  ],
+  "rationale": "Editor.insertTextAtCursor is the Go method Editor.InsertTextAtCursor; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Editor::property:render"
+  ],
+  "targets": [
+   "tui/editor.go#Editor.Render"
+  ],
+  "production": [
+   "call:tui/tui.go#Container.Render"
+  ],
+  "evidence": [
+   "test:internal/codingagent/interactive_tui_custom_status_upstream_test.go#TestCustomEditorStatusEventPlacement",
+   "test:internal/codingagent/interactive_tui_custom_status_upstream_test.go#TestCustomEditorStatusUpdatesAndReplacement"
+  ],
+  "rationale": "Editor.render is the Go method Editor.Render; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Editor::property:setPaddingX"
+  ],
+  "targets": [
+   "tui/editor.go#Editor.SetPaddingX"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive.go#InteractiveMode.Run"
+  ],
+  "evidence": [
+   "test:tui/editor_wrapping_upstream_test.go#TestUpstreamEditorGraphemeWrapping"
+  ],
+  "rationale": "Editor.setPaddingX is the Go method Editor.SetPaddingX; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Editor::property:setText"
+  ],
+  "targets": [
+   "tui/editor.go#Editor.SetText"
+  ],
+  "production": [
+   "call:internal/codingagent/ext_ui_context.go#ExtUIContext.SetEditorText"
+  ],
+  "evidence": [
+   "test:internal/codingagent/clipboard_paste_file_paths_upstream_test.go#TestClipboardPasteFilePaths",
+   "test:tui/autocomplete_upstream_test.go#TestEditorDirectPathCompletionCaller"
+  ],
+  "rationale": "Editor.setText is the Go method Editor.SetText; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Container::property:clear"
+  ],
+  "targets": [
+   "tui/tui.go#Container.Clear"
+  ],
+  "production": [
+   "call:coding/mcpext/render.go#renderResult"
+  ],
+  "evidence": [
+   "test:internal/codingagent/edit_tool_no_redraw_upstream_test.go#TestEditToolNoFullRedrawUpstream",
+   "test:internal/codingagent/interactive_compaction_upstream_test.go#TestInteractiveCompactionUpstream"
+  ],
+  "rationale": "Container.clear is the Go method Container.Clear; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Container::property:render"
+  ],
+  "targets": [
+   "tui/tui.go#Container.Render"
+  ],
+  "production": [
+   "call:coding/mcpext/manager.go#McpManagerView.Render"
+  ],
+  "evidence": [
+   "test:internal/codingagent/auth_warnings_upstream_test.go#TestAnthropicSubscriptionWarningUpstream",
+   "test:internal/codingagent/clipboard_image_native_errors_upstream_test.go#TestNativeImageErrorsAbortPasteWithoutReadingTextOrChangingEditor"
+  ],
+  "rationale": "Container.render is the Go method Container.Render; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Text::property:render"
+  ],
+  "targets": [
+   "tui/text.go#Text.Render"
+  ],
+  "production": [
+   "call:coding/extension/host/subprocess/push_proxy.go#PushProxy.Render"
+  ],
+  "evidence": [
+   "test:internal/codingagent/interactive_startup_input_upstream_test.go#TestUpstreamInteractiveStartupInput"
+  ],
+  "rationale": "Text.render is the Go method Text.Render; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Text::property:setText"
+  ],
+  "targets": [
+   "tui/text.go#Text.SetText"
+  ],
+  "production": [
+   "call:coding/mcpext/render.go#renderCall"
+  ],
+  "evidence": [
+   "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout"
+  ],
+  "rationale": "Text.setText is the Go method Text.SetText; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ScrollView::property:isFollowingEnd"
+  ],
+  "targets": [
+   "tui/scroll_view.go#ScrollView.IsFollowingEnd"
+  ],
+  "production": [
+   "call:tui/tui_alt_screen.go#TuiAltScreen.IsFollowingOutput"
+  ],
+  "evidence": [
+   "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout"
+  ],
+  "rationale": "ScrollView.isFollowingEnd is the Go method ScrollView.IsFollowingEnd; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ScrollView::property:isScrollbarVisible"
+  ],
+  "targets": [
+   "tui/scroll_view.go#ScrollView.IsScrollbarVisible"
+  ],
+  "production": [
+   "call:tui/layout.go#getScrollbarGeometry"
+  ],
+  "evidence": [
+   "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout"
+  ],
+  "rationale": "ScrollView.isScrollbarVisible is the Go method ScrollView.IsScrollbarVisible; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ScrollView::property:scrollBy"
+  ],
+  "targets": [
+   "tui/scroll_view.go#ScrollView.ScrollBy"
+  ],
+  "production": [
+   "call:tui/tui_alt_screen.go#TuiAltScreen.ScrollBy"
+  ],
+  "evidence": [
+   "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout"
+  ],
+  "rationale": "ScrollView.scrollBy is the Go method ScrollView.ScrollBy; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ScrollView::property:scrollTop"
+  ],
+  "targets": [
+   "tui/scroll_view.go#ScrollView.ScrollTop"
+  ],
+  "production": [
+   "call:tui/layout.go#getScrollbarGeometry"
+  ],
+  "evidence": [
+   "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout"
+  ],
+  "rationale": "ScrollView.scrollTop is the Go method ScrollView.ScrollTop; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ScrollView::property:setScrollbar"
+  ],
+  "targets": [
+   "tui/scroll_view.go#ScrollView.SetScrollbar"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_commands.go#InteractiveMode.buildSlashContext"
+  ],
+  "evidence": [
+   "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout"
+  ],
+  "rationale": "ScrollView.setScrollbar is the Go method ScrollView.SetScrollbar; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ScrollView::property:viewportHeight"
+  ],
+  "targets": [
+   "tui/scroll_view.go#ScrollView.ViewportHeight"
+  ],
+  "production": [
+   "call:tui/tui_alt_screen_input.go#TuiAltScreen.performViewportAction"
+  ],
+  "evidence": [
+   "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout"
+  ],
+  "rationale": "ScrollView.viewportHeight is the Go method ScrollView.ViewportHeight; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#SettingsList::property:render"
+  ],
+  "targets": [
+   "tui/settings_list.go#SettingsList.Render"
+  ],
+  "production": [
+   "call:internal/codingagent/settings_selector.go#automaticThemeMenu.Render"
+  ],
+  "evidence": [
+   "test:tui/settings_list_upstream_test.go#TestUpstreamSettingsList"
+  ],
+  "rationale": "SettingsList.render is the Go method SettingsList.Render; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#SettingsList::property:updateValue"
+  ],
+  "targets": [
+   "tui/settings_list.go#SettingsList.UpdateValue"
+  ],
+  "production": [
+   "call:internal/codingagent/slash_session_handlers.go#settingsHandlerTUI"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_selector_upstream_test.go#TestSettingsSelectorUpstream"
+  ],
+  "rationale": "SettingsList.updateValue is the Go method SettingsList.UpdateValue; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ }
+]

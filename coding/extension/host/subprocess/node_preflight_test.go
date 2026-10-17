@@ -1,3 +1,5 @@
+//go:build !pig_strip_node_extensions
+
 package subprocess
 
 import (
@@ -6,9 +8,12 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime"
 )
 
 func TestNodeRuntimePreflightRejectsUnsupportedNodeBeforeLaunchingWarmExtension(t *testing.T) {
+	t.Setenv(tsruntime.EnvRuntime, tsruntime.Node) // The Node preflight runs only for the Node runtime.
 	launcher := buildWarmNodeLauncher(t)
 	binDir := t.TempDir()
 	invocations := filepath.Join(t.TempDir(), "node-invocations")
@@ -37,6 +42,7 @@ func TestNodeRuntimePreflightRejectsUnsupportedNodeBeforeLaunchingWarmExtension(
 }
 
 func TestNodeRuntimePreflightReportsMissingNodeForWarmExtension(t *testing.T) {
+	t.Setenv(tsruntime.EnvRuntime, tsruntime.Node) // The Node preflight runs only for the Node runtime.
 	launcher := buildWarmNodeLauncher(t)
 	t.Setenv("PATH", "")
 
@@ -55,6 +61,7 @@ func TestNodeRuntimePreflightReportsMissingNodeForWarmExtension(t *testing.T) {
 }
 
 func TestHostCachesSuccessfulNodeRuntimePreflight(t *testing.T) {
+	t.Setenv(tsruntime.EnvRuntime, tsruntime.Node) // The Node preflight runs only for the Node runtime.
 	binDir := t.TempDir()
 	invocations := filepath.Join(t.TempDir(), "node-invocations")
 	writeFakeNode(t, binDir, invocations, "v22.13.0")

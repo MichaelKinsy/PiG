@@ -2,54 +2,94 @@ package tools
 
 // Byte-exact port of upstream generateDiffString (edit-diff.ts): a
 // display-oriented, line-numbered diff with elided context, plus the
-// first changed line number in the new file. Shares the jsdiff line-diff
-// core (myersLineDiff) with GenerateUnifiedPatch.
+// first changed line number in the new file. Reads the lines of a
+// jsdiff.LineDiff, which GenerateUnifiedPatch also reads.
 
 import (
 	"strconv"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/jsdiff"
 )
+
+// DiffStringResult is upstream's `{ diff: string; firstChangedLine: number | undefined }`.
+// FirstChangedLine is nil when there was no change (upstream `undefined`).
+type DiffStringResult struct {
+	Diff             string
+	FirstChangedLine *int
+}
 
 // GenerateDiffString returns the line-numbered display diff and the first
 // changed line number in the new file, byte-identical to upstream
-// generateDiffString with the default 4 lines of context. A returned
-// firstChangedLine of 0 means there was no change (upstream `undefined`).
-func GenerateDiffString(oldContent, newContent string) (diff string, firstChangedLine int) {
-	return generateDiffString(oldContent, newContent, 4)
+// generateDiffString. contextLines is upstream's optional third parameter
+// (default 4).
+func GenerateDiffString(oldContent, newContent string, contextLines ...int) DiffStringResult {
+	diff, first := generateDiffString(oldContent, newContent, optionalContextLines(contextLines))
+	result := DiffStringResult{Diff: diff}
+	if first != 0 {
+		result.FirstChangedLine = &first
+	}
+	return result
+}
+
+// optionalContextLines is upstream's `contextLines = 4` default parameter.
+func optionalContextLines(contextLines []int) int {
+	if len(contextLines) > 0 {
+		return contextLines[0]
+	}
+	return 4
 }
 
 func generateDiffString(oldContent, newContent string, contextLines int) (string, int) {
-	parts := myersLineDiff(oldContent, newContent)
+	return diffStringOf(jsdiff.DiffLineRuns(oldContent, newContent), oldContent, newContent, contextLines)
+}
 
-	oldLines := strings.Split(oldContent, "\n")
-	newLines := strings.Split(newContent, "\n")
-	maxLineNum := max(len(newLines), len(oldLines))
+// diffStringOf is generateDiffString over the line diff d of oldContent and newContent. Upstream splits every part's value into lines;
+// this reads only the lines it shows, so unchanged regions cost their line count.
+func diffStringOf(d *jsdiff.LineDiff, oldContent, newContent string, contextLines int) (string, int) {
+	parts := d.Runs
+	// text.split("\n").length of each side.
+	maxLineNum := max(strings.Count(newContent, "\n"), strings.Count(oldContent, "\n")) + 1
 	lineNumWidth := len(strconv.Itoa(maxLineNum))
-	padNum := func(n int) string { return leftPad(strconv.Itoa(n), lineNumWidth) }
 	ellipsis := " " + leftPad("", lineNumWidth) + " ..."
 
-	var output []string
+	var output strings.Builder
+	numBuf := make([]byte, 0, 20)
+	// writeLine appends one output line: marker, padded number, a space and the line without its "\n".
+	writeLine := func(marker byte, n int, line string) {
+		if output.Len() > 0 {
+			output.WriteByte('\n')
+		}
+		output.WriteByte(marker)
+		numBuf = strconv.AppendInt(numBuf[:0], int64(n), 10)
+		for range lineNumWidth - len(numBuf) {
+			output.WriteByte(' ')
+		}
+		output.Write(numBuf)
+		output.WriteByte(' ')
+		output.WriteString(strings.TrimSuffix(line, "\n"))
+	}
+	writeEllipsis := func() {
+		if output.Len() > 0 {
+			output.WriteByte('\n')
+		}
+		output.WriteString(ellipsis)
+	}
 	oldLineNum, newLineNum := 1, 1
 	lastWasChange := false
 	firstChangedLine := 0
 
-	for i := range parts {
-		part := parts[i]
-		raw := strings.Split(part.value, "\n")
-		if len(raw) > 0 && raw[len(raw)-1] == "" {
-			raw = raw[:len(raw)-1]
-		}
-
-		if part.added || part.removed {
+	for i, part := range parts {
+		if part.Added || part.Removed {
 			if firstChangedLine == 0 {
 				firstChangedLine = newLineNum
 			}
-			for _, line := range raw {
-				if part.added {
-					output = append(output, "+"+padNum(newLineNum)+" "+line)
+			for k := range part.Count {
+				if part.Added {
+					writeLine('+', newLineNum, d.Line(part, k))
 					newLineNum++
 				} else {
-					output = append(output, "-"+padNum(oldLineNum)+" "+line)
+					writeLine('-', oldLineNum, d.Line(part, k))
 					oldLineNum++
 				}
 			}
@@ -58,68 +98,53 @@ func generateDiffString(oldContent, newContent string, contextLines int) (string
 		}
 
 		// Context part: show a few lines adjacent to changes, elide the rest.
-		nextPartIsChange := i < len(parts)-1 && (parts[i+1].added || parts[i+1].removed)
+		nextPartIsChange := i < len(parts)-1 && (parts[i+1].Added || parts[i+1].Removed)
 		hasLeadingChange := lastWasChange
 		hasTrailingChange := nextPartIsChange
 
-		emit := func(line string) {
-			output = append(output, " "+padNum(oldLineNum)+" "+line)
-			oldLineNum++
-			newLineNum++
+		emit := func(from, to int) {
+			for k := from; k < to; k++ {
+				writeLine(' ', oldLineNum, d.Line(part, k))
+				oldLineNum++
+				newLineNum++
+			}
+		}
+		skip := func(skipped int) {
+			writeEllipsis()
+			oldLineNum += skipped
+			newLineNum += skipped
 		}
 
+		count := part.Count
 		switch {
 		case hasLeadingChange && hasTrailingChange:
-			if len(raw) <= contextLines*2 {
-				for _, line := range raw {
-					emit(line)
-				}
+			if count <= contextLines*2 {
+				emit(0, count)
 			} else {
-				leading := raw[:contextLines]
-				trailing := raw[len(raw)-contextLines:]
-				skipped := len(raw) - len(leading) - len(trailing)
-				for _, line := range leading {
-					emit(line)
-				}
-				output = append(output, ellipsis)
-				oldLineNum += skipped
-				newLineNum += skipped
-				for _, line := range trailing {
-					emit(line)
-				}
+				emit(0, contextLines)
+				skip(count - 2*contextLines)
+				emit(count-contextLines, count)
 			}
 		case hasLeadingChange:
-			shown := raw
-			if len(raw) > contextLines {
-				shown = raw[:contextLines]
-			}
-			skipped := len(raw) - len(shown)
-			for _, line := range shown {
-				emit(line)
-			}
-			if skipped > 0 {
-				output = append(output, ellipsis)
-				oldLineNum += skipped
-				newLineNum += skipped
+			shown := min(count, contextLines)
+			emit(0, shown)
+			if count > shown {
+				skip(count - shown)
 			}
 		case hasTrailingChange:
-			skipped := max(len(raw)-contextLines, 0)
+			skipped := max(count-contextLines, 0)
 			if skipped > 0 {
-				output = append(output, ellipsis)
-				oldLineNum += skipped
-				newLineNum += skipped
+				skip(skipped)
 			}
-			for _, line := range raw[skipped:] {
-				emit(line)
-			}
+			emit(skipped, count)
 		default:
-			oldLineNum += len(raw)
-			newLineNum += len(raw)
+			oldLineNum += count
+			newLineNum += count
 		}
 		lastWasChange = false
 	}
 
-	return strings.Join(output, "\n"), firstChangedLine
+	return output.String(), firstChangedLine
 }
 
 func leftPad(s string, width int) string {
@@ -127,4 +152,13 @@ func leftPad(s string, width int) string {
 		return s
 	}
 	return strings.Repeat(" ", width-len(s)) + s
+}
+
+// diffAndFirstLine unpacks GenerateDiffString for details structs that carry the first changed line as a number, 0 meaning none.
+func diffAndFirstLine(oldContent, newContent string) (string, int) {
+	result := GenerateDiffString(oldContent, newContent)
+	if result.FirstChangedLine == nil {
+		return result.Diff, 0
+	}
+	return result.Diff, *result.FirstChangedLine
 }

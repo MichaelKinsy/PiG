@@ -6,7 +6,8 @@ import "context"
 // receives (core/tools/bash.ts). Cancellation is the context.
 type BashOperationsExecOptions struct {
 	// OnData receives raw output bytes (stdout and stderr) as they arrive,
-	// from one goroutine at a time. The callee may keep the slice.
+	// from one goroutine at a time. The slice is valid only during the call
+	// (the local operations lend their pipe read buffer); copy what you keep.
 	OnData func(data []byte)
 	// Timeout is the requested timeout in seconds; nil means none.
 	Timeout *float64

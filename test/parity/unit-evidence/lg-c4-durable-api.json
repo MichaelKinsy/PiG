@@ -1,0 +1,30 @@
+[
+  {
+    "upstream": "packages/durable/src/storage/scan.ts",
+    "package": "./durable/storage",
+    "tests": [
+      "TestMemoryStorageConformance"
+    ],
+    "upstream_reference": "packages/durable/src/storage/scan.ts:14-30 (scanStart); packages/durable/src/storage/scan.ts:34 (nextCursor); packages/durable/src/testing/storage-conformance.ts:529 (scans tables in either ID order and continues a cursor in its order)",
+    "mutation": "durable/storage/internal/scan/scan.go:58 `if requested != nil && *requested != order {` -> `if false {` (TestMemoryStorageConformance FAIL); durable/storage/memory.go:237 `if start.Order == durable.ScanAscending {` -> `if true {` (TestMemoryStorageConformance FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/storage/scan.ts",
+    "package": "./durable/storage/sqlite",
+    "tests": [
+      "TestSqliteStorageConformance"
+    ],
+    "upstream_reference": "packages/durable/src/storage/scan.ts:14-30 (scanStart); packages/durable/src/storage/sqlite/storage.ts:80-89 (scanSql)",
+    "mutation": "durable/storage/internal/scan/scan.go:58 `if requested != nil && *requested != order {` -> `if false {` (TestSqliteStorageConformance FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/storage/sqlite/cloudflare.ts",
+    "package": "./durable/storage/sqlite/cloudflare",
+    "tests": [
+      "TestDurableObjectSqliteAdapter",
+      "TestDurableObjectStorageConformance"
+    ],
+    "upstream_reference": "packages/durable/src/storage/sqlite/cloudflare.ts:30-49 (SerialQueue, bindValue); packages/durable/test/sqlite-cloudflare.test.ts:55-130",
+    "mutation": "durable/storage/sqlite/cloudflare/cloudflare.go:73 `<-previous` -> `_ = previous` (TestDurableObjectSqliteAdapter FAIL); durable/storage/sqlite/cloudflare/cloudflare.go:93 `if value < -maxSafeInteger || value > maxSafeInteger {` -> `if false {` (TestDurableObjectSqliteAdapter FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  }
+]

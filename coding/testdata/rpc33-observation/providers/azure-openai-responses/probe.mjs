@@ -1,7 +1,10 @@
-// Azure OpenAI Responses matrix probe. Pi 1.0.3 / OpenAI 7.19.0.
+// Azure OpenAI Responses matrix probe. Pi 1.1.0 / OpenAI 7.19.0.
 // Structurally identical to ../../probe.mjs (the retained RPC33 probe) with the API axis reduced to
 // azure-openai-responses, which drives packages/ai/src/api/azure-openai-responses.ts (AzureOpenAI client,
 // same processResponsesStream). Usage: node probe.mjs <pi.json> <inputs.json>
+const PIG_UPSTREAM_VERSION = process.env.PIG_UPSTREAM_VERSION; // the pin's display version, from `eval "$(python3 automation/pin/pin.py env)"`
+if (!PIG_UPSTREAM_VERSION) throw new Error('PIG_UPSTREAM_VERSION is not set: run eval "$(python3 automation/pin/pin.py env)" before the probe');
+import { PI_PACKAGE_VERSION } from "../../../../../test/parity/testdata/pi-version.mjs";
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import assert from 'node:assert/strict';
@@ -10,7 +13,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const base = process.env.PI_PACKAGE_ROOT + '/node_modules/@earendil-works/';
-for (const [path, version] of [[process.env.PI_PACKAGE_ROOT, '1.0.3'], [base + 'pi-ai', '1.0.3'], [base + 'pi-agent-core', '1.0.3'], [base + '../openai', '7.19.0']]) {
+for (const [path, version] of [[process.env.PI_PACKAGE_ROOT, PI_PACKAGE_VERSION], [base + 'pi-ai', PI_PACKAGE_VERSION], [base + 'pi-agent-core', PI_PACKAGE_VERSION], [base + '../openai', '7.19.0']]) {
   assert.equal(JSON.parse(await readFile(path + '/package.json', 'utf8')).version, version);
 }
 const axes = {
@@ -144,7 +147,7 @@ async function probe(api, shape, mode, layers) {
   return {api,shape,mode,layers,records};
 }
 if (process.argv[3]) {
-  await writeFile(process.argv[3], JSON.stringify({piVersion: '1.0.3', openaiVersion: '7.19.0', axes, bodies: Object.fromEntries(axes.apis.map(api => [api, Object.fromEntries(axes.shapes.map(shape => [shape, frames(api, shape).join('')]))]))}, null, 2) + '\n');
+  await writeFile(process.argv[3], JSON.stringify({piVersion: PIG_UPSTREAM_VERSION, openaiVersion: '7.19.0', axes, bodies: Object.fromEntries(axes.apis.map(api => [api, Object.fromEntries(axes.shapes.map(shape => [shape, frames(api, shape).join('')]))]))}, null, 2) + '\n');
 }
 for (const layers of axes.layers) {
   for (const api of axes.apis) {

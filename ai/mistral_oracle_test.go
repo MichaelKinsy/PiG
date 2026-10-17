@@ -1,3 +1,5 @@
+//go:build !pig_strip_mistral_conversations
+
 package ai
 
 import (
@@ -6,13 +8,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/bodyreadhook/readbarrier"
 )
 
 // D82 W5: the mistral-conversations provider against Pi 0.87.1's own tick order. The oracle is the checked-in output of
@@ -72,6 +75,10 @@ func canonicalMistralState(t *testing.T, raw []byte) string {
 		switch value := value.(type) {
 		case map[string]any:
 			delete(value, "timestamp")
+			// Pi 1.1.0 times each response (event-stream.ts:127-128); the value is wall time, so only its presence is compared.
+			if _, ok := value["durationMs"]; ok {
+				value["durationMs"] = float64(0)
+			}
 			for key, item := range value {
 				value[key] = strip(item)
 			}
@@ -89,11 +96,14 @@ func canonicalMistralState(t *testing.T, raw []byte) string {
 	return string(encoded)
 }
 
-// serveMistralFixture serves body under probe.mjs's three deliveries. buffered writes the whole response in one write; pending
-// flushes headers and delivers the body after the first body read is pending; chunked writes one SSE record per flush.
-func serveMistralFixture(t *testing.T, body, delivery string) string {
+// serveMistralFixture serves body under probe.mjs's deliveries. buffered writes the whole response in one write; pending flushes
+// headers and delivers the body once the first body read is pending; chunked, split and tail write one piece per flush. The probe's
+// timers between writes always outlast Node's microtask drain, so each write waits until the client has read everything sent so far
+// and is reading the socket again (readbarrier), not for a wall-clock gap a loaded host can overrun. A held body is never written:
+// the server calls reading once the client's first body read is pending and then waits for the request to end.
+func serveMistralFixture(t *testing.T, barrier *readbarrier.Barrier, body, delivery string, hold bool, reading func()) string {
 	t.Helper()
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := barrier.Server(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.Copy(io.Discard, r.Body)
 		w.Header().Set("Content-Type", "text/event-stream")
 		if delivery == "buffered" {
@@ -104,34 +114,27 @@ func serveMistralFixture(t *testing.T, body, delivery string) string {
 		w.WriteHeader(http.StatusOK)
 		flusher := w.(http.Flusher)
 		flusher.Flush()
-		wait := func(d time.Duration) bool {
-			select {
-			case <-time.After(d):
-				return true
-			case <-r.Context().Done():
-				return false
+		if hold {
+			if barrier.WaitReading(r.Context(), r.RemoteAddr) && reading != nil {
+				reading()
 			}
-		}
-		if !wait(150 * time.Millisecond) {
+			<-r.Context().Done()
 			return
 		}
 		if delivery == "pending" {
-			_, _ = io.WriteString(w, body)
+			if barrier.WaitReading(r.Context(), r.RemoteAddr) {
+				_, _ = io.WriteString(w, body)
+			}
 			return
 		}
-		gap := 25 * time.Millisecond
-		if delivery == "tail" {
-			gap = 150 * time.Millisecond
-		}
 		for _, piece := range mistralPieces(body, delivery) {
-			_, _ = io.WriteString(w, piece)
-			flusher.Flush()
-			if !wait(gap) {
+			if !barrier.WaitReading(r.Context(), r.RemoteAddr) {
 				return
 			}
+			_, _ = io.WriteString(w, piece)
+			flusher.Flush()
 		}
 	}))
-	t.Cleanup(server.Close)
 	return server.URL
 }
 
@@ -158,20 +161,23 @@ func mistralPieces(body, delivery string) []string {
 	return records
 }
 
-// observedMistralDirect is the Go counterpart of the probe's `direct` path: one for-range over the provider's stream.
-// abort is "" (none), "timer" (60ms after the request) or "start" (in the consumer, on the start event).
-func observedMistralDirect(t *testing.T, baseURL, abort string) (events []string, states []string) {
+// observedMistralDirect is the Go counterpart of the probe's `direct` path: one for-range over the provider's stream of body under
+// delivery. abort is "" (none), "timer" (the probe's 60ms timer, which fires while the first body read is pending and before the
+// body's 150ms delay) or "start" (in the consumer, on the start event); an aborted request's body is held.
+func observedMistralDirect(t *testing.T, barrier *readbarrier.Barrier, body, delivery, abort string) (events []string, states []string) {
 	t.Helper()
-	provider := NewMistralProvider(MistralConfig{BaseURL: baseURL, APIKey: "k", Model: "strict", ProviderID: "p"})
-	defer func() { _ = provider.Close() }()
 	ctx, stop := context.WithTimeout(t.Context(), 20*time.Second)
 	defer stop()
 	// The request's signal is separate from the consumer's iteration, as in Pi where options.signal is not the for-await.
 	requestCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	var reading func()
 	if abort == "timer" {
-		defer time.AfterFunc(60*time.Millisecond, cancel).Stop()
+		reading = cancel
 	}
+	baseURL := serveMistralFixture(t, barrier, body, delivery, abort != "", reading)
+	provider := NewMistralProvider(MistralConfig{BaseURL: baseURL, APIKey: "k", Model: "strict", ProviderID: "p"})
+	defer func() { _ = provider.Close() }()
 	// Pi's probe starts its for-await in the same job that called stream(), so no socket completion can run between them. The consumer holds its continuation across Stream and the first iterator read, as the Agent does (agent-loop.ts:402-411).
 	err := RunStreamContinuation(WithStreamContinuations(ctx), func(observation *StreamObservation) error {
 		stream, err := provider.Stream(observation.Context(requestCtx), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("probe"), Timestamp: 1}}}), StreamOptions{})
@@ -222,6 +228,7 @@ func mistralOracleRuns() int {
 func TestMistralDirectMatchesPiTickOrder(t *testing.T) {
 	oracle := loadMistralOracleFile(t)
 	runs := mistralOracleRuns()
+	barrier := readbarrier.New(t)
 	for _, c := range oracle.Cases {
 		t.Run(c.Fixture+"/"+c.Delivery, func(t *testing.T) {
 			var wantEvents, wantStates []string
@@ -238,7 +245,7 @@ func TestMistralDirectMatchesPiTickOrder(t *testing.T) {
 				t.Fatal("oracle has no direct path")
 			}
 			for run := range runs {
-				gotEvents, gotStates := observedMistralDirect(t, serveMistralFixture(t, oracle.Bodies[c.Fixture], c.Delivery), "")
+				gotEvents, gotStates := observedMistralDirect(t, barrier, oracle.Bodies[c.Fixture], c.Delivery, "")
 				if fmt.Sprint(gotEvents) != fmt.Sprint(wantEvents) {
 					t.Fatalf("run %d events\n got: %v\nwant: %v", run, gotEvents, wantEvents)
 				}
@@ -259,6 +266,7 @@ func TestMistralCancelMatchesPi(t *testing.T) {
 	if len(oracle.Cancels) == 0 {
 		t.Fatal("oracle has no cancel cases")
 	}
+	barrier := readbarrier.New(t)
 	for _, c := range oracle.Cancels {
 		t.Run(c.Name, func(t *testing.T) {
 			var wantEvents, wantStates []string
@@ -267,7 +275,7 @@ func TestMistralCancelMatchesPi(t *testing.T) {
 				wantStates = append(wantStates, canonicalMistralState(t, state.Message))
 			}
 			for run := range mistralOracleRuns() {
-				gotEvents, gotStates := observedMistralDirect(t, serveMistralFixture(t, oracle.Bodies[c.Fixture], c.Delivery), c.Abort)
+				gotEvents, gotStates := observedMistralDirect(t, barrier, oracle.Bodies[c.Fixture], c.Delivery, c.Abort)
 				if fmt.Sprint(gotEvents) != fmt.Sprint(wantEvents) {
 					t.Fatalf("run %d events\n got: %v\nwant: %v", run, gotEvents, wantEvents)
 				}

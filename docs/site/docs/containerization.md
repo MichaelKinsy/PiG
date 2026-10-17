@@ -6,7 +6,7 @@ A container can limit filesystem, process, device, and network access. It does n
 
 ## Build a PiG image
 
-PiG has no published container image yet. Build from the source tree with a multi-stage Dockerfile:
+PiG does not publish a container image. Build one from the source tree with a multi-stage Dockerfile:
 
 ```dockerfile
 FROM golang:1.27.2 AS build
@@ -15,12 +15,17 @@ COPY . .
 RUN CGO_ENABLED=0 go build -buildvcs=false -trimpath -o /out/pig ./cmd/pig
 
 FROM debian:bookworm-slim
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends bash ca-certificates git ripgrep \
+  && rm -rf /var/lib/apt/lists/*
 RUN useradd --create-home --uid 10001 pig
 COPY --from=build /out/pig /usr/local/bin/pig
 USER pig
 WORKDIR /workspace
 ENTRYPOINT ["pig"]
 ```
+
+`ca-certificates` lets PiG verify the TLS certificates of model providers. `ripgrep` serves the `grep` tool. Without it, and without `fd` for the `find` tool, PiG downloads the missing tool on first use, as Pi does, which fails without network access.
 
 Pin base images by digest for a release build. Generate an SBOM and scan the final image before publication.
 
@@ -36,10 +41,13 @@ Mount a named volume when Sessions and settings must survive container replaceme
 
 ```bash
 docker run --rm -it \
+  -e ANTHROPIC_API_KEY \
   -v pig-home:/home/pig/.pig \
   -v "$PWD:/workspace" \
   pig-local
 ```
+
+Replace `ANTHROPIC_API_KEY` with the credential your provider requires. Environment variables passed into a container are available to every process inside it.
 
 Mounting your host `~/.pig` gives the container access to host credentials, Sessions, settings, Packages, and extension state. Use a separate volume when that access is not required.
 
@@ -105,3 +113,4 @@ Run as a non-root user unless the task requires a specific privileged operation.
 - [Piglets](/docs/latest/piglets)
 - [Piglet Binaries](/docs/latest/piglet-binaries)
 - [Extensions](/docs/latest/extensions)
+- [upstream Pi's isolation documentation](https://pi.dev/docs/latest/containerization), which also covers Docker Sandboxes, OpenShell and the Gondolin extension for Pi

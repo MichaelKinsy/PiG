@@ -6,7 +6,7 @@
 // These assert the properties a unit test cannot: that events reach a consumer
 // *while the child is alive*, that cancellation terminates promptly, and that
 // --session-id resumes prior context. The wire shapes themselves are pinned by
-// cmd/pig/json_mode_test.go and by parity scenario json/01-json-mode-streams-events.
+// coding/cli/json_mode_test.go and by parity scenario json/01-json-mode-streams-events.
 
 package integration
 

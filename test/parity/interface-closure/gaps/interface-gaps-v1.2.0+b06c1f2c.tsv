@@ -1,0 +1,72 @@
+pkg:chord/.#AcceptOptions	chord	child-gap	chord/host/connection.go#AcceptOptions
+pkg:chord/.#AcceptOptions::property:pendingCap	chord	member-missing	chord/host/connection.go#AcceptOptions
+pkg:chord/.#Cell	chord	child-gap	chord/host/cell.go#Cell
+pkg:chord/.#Cell::property:initialize	chord	member-missing	chord/host/cell.go#Cell
+pkg:chord/.#Cell::property:initialize::call:0	chord	member-missing	chord/host/cell.go#Cell
+pkg:chord/.#ConnectOptions	chord	no-go-symbol	
+pkg:chord/.#ConnectOptions::property:onProtocolMismatch	chord	child-gap	
+pkg:chord/.#ConnectOptions::property:pendingCap	chord	child-gap	
+pkg:chord/.#ConnectOptions::property:pingInterval	chord	child-gap	
+pkg:chord/.#ConnectOptions::property:pingTimeout	chord	child-gap	
+pkg:chord/.#ConnectOptions::property:principal	chord	child-gap	
+pkg:chord/.#ConnectOptions::property:window	chord	child-gap	
+pkg:chord/.#Ctx	chord	child-gap	chord/host/types.go#Ctx
+pkg:chord/.#Ctx::property:get	chord	child-gap	chord/host/types.go#Ctx.Get
+pkg:chord/.#Ctx::property:get::call:0	chord	undecidable	chord/host/types.go#Ctx.Get
+pkg:chord/.#Description	chord	type-mismatch	chord/host/contract.go#Description
+pkg:chord/.#Factory	chord	child-gap	chord/host/object.go#Factory
+pkg:chord/.#Factory::call:0	chord	undecidable	chord/host/object.go#Factory
+pkg:chord/.#GetOptions	chord	child-gap	chord/host/types.go#GetOptions
+pkg:chord/.#GetOptions::property:state	chord	member-missing	chord/host/types.go#GetOptions
+pkg:chord/.#Host	chord	child-gap	chord/host/host.go#HostImpl
+pkg:chord/.#Host::property:connect	chord	child-gap	chord/host/host.go#HostImpl.Connect
+pkg:chord/.#Host::property:connect::call:0	chord	signature-mismatch	chord/host/host.go#HostImpl.Connect
+pkg:chord/.#Host::property:hold	chord	member-missing	chord/host/host.go#HostImpl
+pkg:chord/.#Host::property:hold::call:0	chord	member-missing	chord/host/host.go#HostImpl
+pkg:chord/.#HostFamily	chord	no-go-symbol	
+pkg:chord/.#HostFamily::property:key	chord	child-gap	
+pkg:chord/.#HostFamily::property:prefix	chord	child-gap	
+pkg:chord/.#HostNamed	chord	no-go-symbol	
+pkg:chord/.#HostNamed::property:name	chord	child-gap	
+pkg:chord/.#HostOptions	chord	child-gap	chord/host/host.go#HostOptions
+pkg:chord/.#HostOptions::property:linger	chord	member-missing	chord/host/host.go#HostOptions
+pkg:chord/.#HostOptions::property:readyTimeout	chord	member-missing	chord/host/host.go#HostOptions
+pkg:chord/.#HostOptions::property:self	chord	member-missing	chord/host/host.go#HostOptions
+pkg:chord/.#HostOptions::property:upstream	chord	undecidable	chord/host/host.go#HostOptions.Upstream
+pkg:chord/.#LinkOptions	chord	child-gap	chord/host/connection.go#LinkOptions
+pkg:chord/.#LinkOptions::property:pendingCap	chord	member-missing	chord/host/connection.go#LinkOptions
+pkg:chord/.#LocalContract	chord	child-gap	chord/host/contract.go#Contract
+pkg:chord/.#LocalContract::property:description	chord	type-mismatch	chord/host/contract.go#Contract.Description
+pkg:chord/.#PROTOCOL_VERSION	chord	type-mismatch	chord/host/wire.go#ProtocolVersion
+pkg:chord/.#Placement	chord	no-go-symbol	
+pkg:chord/.#PlacementFor	chord	no-go-symbol	
+pkg:chord/.#PrincipalMatch	chord	undecidable	chord/host/host.go#PrincipalMatch
+pkg:chord/.#PrincipalPattern	chord	no-go-symbol	
+pkg:chord/.#RemoteContract	chord	child-gap	chord/host/contract.go#Contract
+pkg:chord/.#RemoteContract::property:description	chord	type-mismatch	chord/host/contract.go#Contract.Description
+pkg:chord/.#Self	chord	child-gap	chord/host/object.go#Self
+pkg:chord/.#Self::property:get	chord	child-gap	chord/host/object.go#Self.Get
+pkg:chord/.#Self::property:get::call:0	chord	undecidable	chord/host/object.go#Self.Get
+pkg:chord/.#Self::property:on	chord	child-gap	chord/host/object.go#Self.On
+pkg:chord/.#Self::property:on::call:0	chord	undecidable	chord/host/object.go#Self.On
+pkg:chord/.#Self::property:on::call:1	chord	signature-mismatch	chord/host/object.go#Self.On
+pkg:chord/.#Self::property:state	chord	child-gap	chord/host/object.go#Self.State
+pkg:chord/.#Self::property:state::call:0	chord	undecidable	chord/host/object.go#Self.State
+pkg:chord/.#StateInit	chord	no-go-symbol	
+pkg:chord/.#StateInit::property:init	chord	child-gap	
+pkg:chord/.#StateInit::property:init::call:0	chord	child-gap	
+pkg:chord/.#WebSocketAcceptOptions	chord	child-gap	chord/host/websocket.go#WebSocketAcceptOptions
+pkg:chord/.#WebSocketAcceptOptions::property:pendingCap	chord	member-missing	chord/host/websocket.go#WebSocketAcceptOptions
+pkg:chord/.#coverage	chord	child-gap	chord/host/contract.go#Coverage
+pkg:chord/.#coverage::call:0	chord	signature-mismatch	chord/host/contract.go#Coverage
+pkg:chord/.#hostFamily	chord	no-go-symbol	
+pkg:chord/.#hostFamily::call:0	chord	child-gap	
+pkg:chord/.#hostNamed	chord	no-go-symbol	
+pkg:chord/.#hostNamed::call:0	chord	child-gap	
+pkg:chord/.#method	chord	child-gap	chord/host/contract.go#Method
+pkg:chord/.#method::call:0	chord	signature-mismatch	chord/host/contract.go#Method
+pkg:chord/.#method::call:1	chord	signature-mismatch	chord/host/contract.go#Method
+pkg:chord/.#remote	chord	child-gap	chord/host/contract.go#Remote
+pkg:chord/.#remote::call:0	chord	signature-mismatch	chord/host/contract.go#Remote
+pkg:chord/node#childControl	chord	child-gap	chord/host/manager.go#ChildControl
+pkg:chord/node#childControl::call:0	chord	undecidable	chord/host/manager.go#ChildControl

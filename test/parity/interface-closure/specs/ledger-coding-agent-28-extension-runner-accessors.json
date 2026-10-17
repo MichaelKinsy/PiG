@@ -1,0 +1,114 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:getCommand"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/runner.go#Runner.Command"
+  ],
+  "production": [
+   "call:coding/extension/host/inproc/runner.go#Runner.ExecuteCommand"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/registries_test.go#TestCommand_FoundByInvocationName",
+   "test:coding/extension/host/inproc/upstream_catalog_test.go#TestUpstreamRunnerCatalog"
+  ],
+  "rationale": "ExtensionRunner.getCommand is inproc Runner.Command(invocationName) (ResolvedCommand, bool): finds a command by invocation name, so a colliding bare name is not found."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:getCommandDiagnostics"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/runner.go#Runner.CommandDiagnostics"
+  ],
+  "production": [
+   "call:internal/codingagent/extension_diagnostics.go#InteractiveMode.extensionDiagnostics"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/upstream_catalog_test.go#TestUpstreamRunnerCatalog",
+   "test:coding/extension/host/inproc/registries_test.go#TestCommands_ClearsDiagnosticsBuffer"
+  ],
+  "rationale": "ExtensionRunner.getCommandDiagnostics is inproc Runner.CommandDiagnostics() []ResourceDiagnostic."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:getShortcutDiagnostics"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/runner.go#Runner.ShortcutDiagnostics"
+  ],
+  "production": [
+   "call:internal/codingagent/extension_diagnostics.go#InteractiveMode.extensionDiagnostics"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/registries_test.go#TestShortcuts_DiagnosticMessageMatchesUpstream",
+   "test:coding/extension/host/inproc/registries_test.go#TestShortcutsReservedBuiltinIsRejected"
+  ],
+  "rationale": "ExtensionRunner.getShortcutDiagnostics is inproc Runner.ShortcutDiagnostics() []ResourceDiagnostic."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:getExtensionPaths"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/runner.go#Runner.ExtensionPaths"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_bug.go#InteractiveMode.bugReportInputs"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/runner_test.go#TestNewRunner_PreservesExtensionPaths"
+  ],
+  "rationale": "ExtensionRunner.getExtensionPaths is inproc Runner.ExtensionPaths() []string in load order."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:getEntryRenderer"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/runner.go#Runner.EntryRenderer"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_transcript.go#InteractiveMode.addCustomEntryToChat"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerRendererAndFork"
+  ],
+  "rationale": "ExtensionRunner.getEntryRenderer is inproc Runner.EntryRenderer(customType) returning the renderer or nil for undefined."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:getMessageRenderer"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/runner.go#Runner.MessageRenderer"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_transcript.go#InteractiveMode.appendCustomMessage"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/renderer_test.go#TestMessageRenderer_FirstMatchWins",
+   "test:coding/extension/host/inproc/renderer_test.go#TestMessageRenderer_NoMatchReturnsNil",
+   "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerRendererAndFork"
+  ],
+  "rationale": "ExtensionRunner.getMessageRenderer is inproc Runner.MessageRenderer(customType) returning the renderer or nil for undefined."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionRunner::property:getFlags"
+  ],
+  "targets": [
+   "coding/extension/host/inproc/runner.go#Runner.Flags"
+  ],
+  "production": [
+   "public-api:coding/extension/host/inproc/runner.go#Runner.Flags"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/registries_test.go#TestFlags_AggregatesAcrossExtensions",
+   "test:coding/extension/host/inproc/registries_test.go#TestFlags_FirstWinsOnNameCollision",
+   "test:coding/extension/host/inproc/upstream_flags_test.go#TestUpstreamRunnerFlags"
+  ],
+  "rationale": "ExtensionRunner.getFlags is inproc Runner.Flags(): flags of every extension keyed by name, first registration wins."
+ }
+]

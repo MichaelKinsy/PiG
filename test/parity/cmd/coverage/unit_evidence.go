@@ -96,10 +96,18 @@ func declaredTests(dir string) (map[string]bool, error) {
 		}
 		for _, decl := range file.Decls {
 			fn, ok := decl.(*ast.FuncDecl)
-			if !ok || fn.Recv != nil || !strings.HasPrefix(fn.Name.Name, "Test") || fn.Type.Params.NumFields() != 1 || fn.Type.Results.NumFields() != 0 || fn.Body == nil {
+			if !ok || fn.Recv != nil || fn.Type.Params.NumFields() != 1 || fn.Type.Results.NumFields() != 0 || fn.Body == nil {
 				continue
 			}
-			suffix := strings.TrimPrefix(fn.Name.Name, "Test")
+			// A fuzz target runs its seed corpus under go test, so unit evidence may name one like a test.
+			prefix, paramType := "Test", "T"
+			if strings.HasPrefix(fn.Name.Name, "Fuzz") {
+				prefix, paramType = "Fuzz", "F"
+			}
+			if !strings.HasPrefix(fn.Name.Name, prefix) {
+				continue
+			}
+			suffix := strings.TrimPrefix(fn.Name.Name, prefix)
 			r, _ := utf8.DecodeRuneInString(suffix)
 			if suffix != "" && unicode.IsLower(r) {
 				continue
@@ -109,7 +117,7 @@ func declaredTests(dir string) (map[string]bool, error) {
 				continue
 			}
 			typ, ok := param.X.(*ast.SelectorExpr)
-			if !ok || typ.Sel.Name != "T" {
+			if !ok || typ.Sel.Name != paramType {
 				continue
 			}
 			ident, ok := typ.X.(*ast.Ident)

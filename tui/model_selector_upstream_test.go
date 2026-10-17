@@ -1,14 +1,16 @@
 package tui
 
+// pi: packages/coding-agent/src/modes/interactive/components/model-selector.ts
+
 import (
 	"strings"
 	"testing"
 )
 
 func TestModelSelectorUpstream(t *testing.T) {
-	// .upstream/v0.87.1/packages/coding-agent/test/model-selector.test.ts:29
+	// Pi 1.1.0 packages/coding-agent/test/model-selector.test.ts:29
 	t.Run("keeps the current model marked while browsing", func(t *testing.T) {
-		selector := NewModelSelector("Select model", nil, []ModelSelectorItem{{Provider: "test", ID: "current-model", Name: "Current Model"}, {Provider: "test", ID: "browsed-model", Name: "Browsed Model"}}, "test/current-model")
+		selector := NewStaticModelSelectorComponent("Select model", nil, []ModelSelectorItem{{Provider: "test", ID: "current-model", Name: "Current Model"}, {Provider: "test", ID: "browsed-model", Name: "Browsed Model"}}, "test/current-model")
 		row := func(id string) string {
 			for _, line := range selector.Render(120) {
 				plain := stripANSI(line)
@@ -29,12 +31,12 @@ func TestModelSelectorUpstream(t *testing.T) {
 			t.Fatal(got)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/model-selector.test.ts:60
+	// Pi 1.1.0 packages/coding-agent/test/model-selector.test.ts:59
 	t.Run("uses the configured save binding", func(t *testing.T) {
 		old := GetTUIKeybindings()
 		t.Cleanup(func() { SetTUIKeybindings(old) })
 		SetTUIKeybindings(NewTUIKeybindingsManager(map[string][]string{"app.models.save": {"ctrl+r"}}))
-		selector := NewModelSelector("Select model", nil, []ModelSelectorItem{{Provider: "test", ID: "current-model"}}, "test/current-model")
+		selector := NewStaticModelSelectorComponent("Select model", nil, []ModelSelectorItem{{Provider: "test", ID: "current-model"}}, "test/current-model")
 		if rendered := stripANSI(strings.Join(selector.Render(120), "\n")); !strings.Contains(rendered, "Ctrl+R to set as default") {
 			t.Fatal(rendered)
 		}

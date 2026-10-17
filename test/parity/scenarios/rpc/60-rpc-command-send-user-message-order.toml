@@ -1,0 +1,54 @@
+# Pi 1.1.0: an extension command handler that calls pi.sendUserMessage without awaiting it starts prompt() inside the handler. prompt() awaits _runInputHandlers and checkAuth, then emitBeforeAgentStart calls the before_agent_start handler, so its setStatus request is written two microtasks after the call (agent-session.ts:1968-2112, 2116-2140). The command's `await command.handler()` and `await this._tryExecuteExtensionCommand(text)` write the prompt response two microtasks after the handler returned, behind the setStatus request; agent_start follows many awaits later (rpc-mode.ts:394-413).
+# Direct Pi probe (5/5): setStatus, response, agent_start, turn_start, system, user, assistant, turn_end, agent_end, agent_settled.
+# PiG ran the run's preparation and agent_start on the host call before the command response was written: setStatus, agent_start, turn_start, system x2, response, ...
+# The triggerTurn sendMessage sibling (Pi 1.2.0 sendCustomMessage awaiting _startRun, Pi PR #10739) is asserted only by coding/cli TestRPCCommandTurnStartOrderMatchesPi.
+name = "60-rpc-command-send-user-message-order"
+description = "An extension command's unawaited sendUserMessage prepares its run before the command response and starts it after"
+covers = ["packages/coding-agent/src/core/agent-session.ts", "packages/coding-agent/src/modes/rpc/rpc-mode.ts"]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"cmd","type":"prompt","message":"/sync-user"}'
+wait_event = '{"type":"agent_settled","aborted":false}'
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["testdata/command-send-order.mjs"]
+pig_args = ["--model", "test-faux/faux-1", "--no-session", "--no-extensions", "--system-prompt", "P.", "--no-context-files", "--no-skills"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/command-send-order.mjs"]
+pi_args = ["--model", "test-faux/faux-1", "--no-session", "--no-extensions", "--system-prompt", "P.", "--no-context-files", "--no-skills"]
+
+[assert]
+json_output_equal = true
+stderr_equal = true
+exit_code = 0
+runs = 5
+both_contain = ['"method":"setStatus"', '"statusKey":"order"', '"id":"cmd","type":"response","command":"prompt","success":true', '"type":"agent_settled"']
+both_not_contain = ['"success":false', 'extension_error']
+
+[[assert.json_aliases]]
+paths = ["/*/id", "/**/sessionId"]
+kind = "id"
+group = "runtime"
+pattern = '^[0-9a-f-]{36}$'
+reason = "Session and UI request UUIDs vary. A bijection preserves distinct identities; the literal command ID remains unchanged."
+
+[[assert.json_aliases]]
+paths = ["/**/sections/cwd"]
+kind = "path"
+reason = "Only the exact isolated cwd varies in the system prompt sections; retain every other byte."
+
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Independent message clocks vary; retain presence, numeric/string type and valid syntax."
+
+[[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."

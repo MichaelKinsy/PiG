@@ -1,6 +1,7 @@
 package closure
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -67,7 +68,7 @@ func TestReadReportRebuildIsDeterministic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadReport(second): %v", err)
 	}
-	if string(first) != string(second) {
+	if !bytes.Equal(first, second) {
 		t.Fatalf("report changed after rebuild:\nfirst:\n%s\nsecond:\n%s", first, second)
 	}
 }
@@ -99,7 +100,7 @@ func TestReadJSONReportRebuildIsDeterministic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadReport(second): %v", err)
 	}
-	if string(first) != string(second) {
+	if !bytes.Equal(first, second) {
 		t.Fatalf("JSON report changed after rebuild:\nfirst:\n%s\nsecond:\n%s", first, second)
 	}
 }

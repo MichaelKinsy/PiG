@@ -1,19 +1,9 @@
 package extension
 
-// ResourceDiagnostic is the resolution-time warning/error/collision
-// payload surfaced by the runner when extension resources (commands,
-// shortcuts, flags, future: skills/prompts/themes) collide or fail to
-// resolve cleanly.
+// ResourceCollision describes two resources that claim the same name: the winner is kept and the loser is skipped. ResourceType is
+// "extension", "skill", "prompt" or "theme"; WinnerSource and LoserSource are package sources such as "npm:foo" or "local".
 //
-// upstream: core/diagnostics.ts:10-16 (export interface ResourceDiagnostic)
-//
-// Final-home note. Upstream lives in `core/diagnostics.ts` because the
-// type is shared between the extension runner and the resource loader
-// (skills/prompts/themes). Until pig ports `core/resource-loader.ts`
-// the type lives here in `coding/extension` to keep the dependency
-// graph minimal. When that port lands, the canonical declaration moves
-// to `coding/diagnostics/` and this declaration becomes a type alias
-// for backward compatibility.
+// upstream: core/diagnostics.ts:1-8 (export interface ResourceCollision)
 type ResourceCollision struct {
 	ResourceType string `json:"resourceType"`
 	Name         string `json:"name"`
@@ -23,6 +13,10 @@ type ResourceCollision struct {
 	LoserSource  string `json:"loserSource,omitempty"`
 }
 
+// ResourceDiagnostic is a warning, error or collision reported while the runner and the resource loader resolve extensions,
+// skills, prompts and themes.
+//
+// upstream: core/diagnostics.ts:10-15 (export interface ResourceDiagnostic)
 type ResourceDiagnostic struct {
 	// Type is one of "warning", "error", "collision". Mirrors the
 	// upstream literal union. Not enforced by the Go type system -

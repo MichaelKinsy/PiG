@@ -14,6 +14,18 @@ type OAuthError struct {
 	ErrorURI string
 }
 
+// NewOAuthError builds an OAuthError; the optional errorURI is Pi's third constructor argument (errors.ts OAuthError constructor).
+func NewOAuthError(code, message string, errorURI ...string) *OAuthError {
+	e := &OAuthError{Code: code, Message: message}
+	if len(errorURI) > 0 {
+		e.ErrorURI = errorURI[0]
+	}
+	return e
+}
+
+// Name is the error's class name, Pi's `name` property ("OAuthError").
+func (*OAuthError) Name() string { return "OAuthError" }
+
 func (e *OAuthError) Error() string {
 	if e.Message == "" {
 		return e.Code
@@ -26,18 +38,30 @@ func (e *OAuthError) Error() string {
 // whose `iss` parameter does not name the flow's authorization server
 // (RFC 9207).
 type OAuthIssuerMismatchError struct {
-	Expected string
+	// Expected is nil when no authorization server metadata was discovered.
+	Expected *string
 	// Received is nil when an authorization response lacks the `iss`
 	// parameter its server promised.
 	Received *string
 }
 
+// NewOAuthIssuerMismatchError is `new OAuthIssuerMismatchError(expected, received)`.
+func NewOAuthIssuerMismatchError(expected *string, received *string) *OAuthIssuerMismatchError {
+	e := &OAuthIssuerMismatchError{Expected: expected, Received: received}
+	return e
+}
+
+// Name is the `name` property, "OAuthIssuerMismatchError".
+func (e *OAuthIssuerMismatchError) Name() string { return "OAuthIssuerMismatchError" }
+
 func (e *OAuthIssuerMismatchError) Error() string {
-	received := "none"
-	if e.Received != nil {
-		received = jsonString(*e.Received)
+	format := func(issuer *string) string {
+		if issuer == nil {
+			return "none"
+		}
+		return jsonString(*issuer)
 	}
-	return fmt.Sprintf("OAuth issuer mismatch: expected %s, received %s", jsonString(e.Expected), received)
+	return fmt.Sprintf("OAuth issuer mismatch: expected %s, received %s", format(e.Expected), format(e.Received))
 }
 
 // jsonString is `JSON.stringify` of a string: it escapes `"`, `\` and the C0
@@ -75,7 +99,18 @@ func jsonString(s string) string {
 }
 
 // OAuthInsecureEndpointError reports a credential endpoint that is not HTTPS.
-type OAuthInsecureEndpointError struct{ Endpoint string }
+type OAuthInsecureEndpointError struct {
+	Endpoint string
+}
+
+// NewOAuthInsecureEndpointError is `new OAuthInsecureEndpointError(endpoint)`.
+func NewOAuthInsecureEndpointError(endpoint string) *OAuthInsecureEndpointError {
+	e := &OAuthInsecureEndpointError{Endpoint: endpoint}
+	return e
+}
+
+// Name is the `name` property, "OAuthInsecureEndpointError".
+func (e *OAuthInsecureEndpointError) Name() string { return "OAuthInsecureEndpointError" }
 
 func (e *OAuthInsecureEndpointError) Error() string {
 	return "Refusing to send OAuth credentials to non-HTTPS endpoint " + e.Endpoint
@@ -87,12 +122,39 @@ type OAuthRegistrationError struct {
 	Body   string
 }
 
+// NewOAuthRegistrationError is `new OAuthRegistrationError(status, body)`.
+func NewOAuthRegistrationError(status int, body string) *OAuthRegistrationError {
+	e := &OAuthRegistrationError{Status: status, Body: body}
+	return e
+}
+
+// Name is the `name` property, "OAuthRegistrationError".
+func (e *OAuthRegistrationError) Name() string { return "OAuthRegistrationError" }
+
+// Message is the `message` property, the text of Error.
+func (e *OAuthRegistrationError) Message() string { return e.Error() }
+
+// Cause is the `cause` property. The upstream constructor sets none, so it is always nil.
+func (e *OAuthRegistrationError) Cause() error { return nil }
+
 func (e *OAuthRegistrationError) Error() string {
 	return fmt.Sprintf("OAuth dynamic client registration failed with status %d: %s", e.Status, e.Body)
 }
 
 // McpOAuthAuthorizationRequiredError reports that the user has to authorize.
-type McpOAuthAuthorizationRequiredError struct{}
+type McpOAuthAuthorizationRequiredError struct {
+}
+
+// NewMcpOAuthAuthorizationRequiredError is `new McpOAuthAuthorizationRequiredError()`.
+func NewMcpOAuthAuthorizationRequiredError() *McpOAuthAuthorizationRequiredError {
+	e := &McpOAuthAuthorizationRequiredError{}
+	return e
+}
+
+// Name is the `name` property, "McpOAuthAuthorizationRequiredError".
+func (e *McpOAuthAuthorizationRequiredError) Name() string {
+	return "McpOAuthAuthorizationRequiredError"
+}
 
 func (e *McpOAuthAuthorizationRequiredError) Error() string {
 	return "MCP OAuth authorization requires user interaction"

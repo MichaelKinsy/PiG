@@ -79,15 +79,17 @@ export class Generations {
     process.env.PIG_EXT_NAME = name;
     this.prepareCache({ reload, cwd });
     const runtime = new Runtime(entry, this.nativeProviderObjects, this.providerConfigObjects, { name, socket });
+    let phase = "import";
     try {
       await runWithRuntime(runtime, async () => {
         const install = await this.factoryFor(entry);
+        phase = "factory";
         await install(runtime.api);
       });
     } catch (error) {
       runtime.discardLoad();
-      if (runtime.earlyConn) await runtime.reportLoadFailureOnConnection(loadFailure(error));
-      else await reportLoadFailure(socket, loadFailure(error));
+      if (runtime.earlyConn) await runtime.reportLoadFailureOnConnection(loadFailure(error, phase));
+      else await reportLoadFailure(socket, loadFailure(error, phase));
       return false;
     }
     runtime.commitLoad();

@@ -5,16 +5,16 @@ package codingagent
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+
+	"github.com/MichaelKinsy/PiG/internal/nodefs"
 )
 
 const (
@@ -202,47 +202,28 @@ func (w *gitBranchWatcher) run(ctx context.Context) {
 	}
 }
 
+// gitStatStamp is what a poll compares: the modification time, the change time and the size, all zero for a missing file. It leaves out the access time, which branch resolution itself can update. gitPathStamp (git_watcher_stamp_*.go) reads it with one stat and no reflection.
 type gitStatStamp struct {
 	modified int64
-	changed  string
+	changed  int64
 	size     int64
-}
-
-func gitPathStamp(path string) gitStatStamp {
-	info, err := os.Stat(path)
-	if err != nil {
-		return gitStatStamp{}
-	}
-	stamp := gitStatStamp{modified: info.ModTime().UnixNano(), size: info.Size()}
-	// FileInfo exposes platform-specific change timestamps through Sys. Read only the change field, not access time (which branch resolution itself can update).
-	stat := reflect.Indirect(reflect.ValueOf(info.Sys()))
-	if stat.IsValid() && stat.Kind() == reflect.Struct {
-		for _, name := range []string{"Ctim", "Ctimespec", "Ctime"} {
-			if field := stat.FieldByName(name); field.IsValid() && field.CanInterface() {
-				stamp.changed = fmt.Sprint(field.Interface())
-				break
-			}
-		}
-	}
-	return stamp
 }
 
 func isWindowsMountedRepoPath(path string) bool {
 	return len(path) >= 6 && strings.EqualFold(path[:5], "/mnt/") && ((path[5] >= 'a' && path[5] <= 'z') || (path[5] >= 'A' && path[5] <= 'Z')) && (len(path) == 6 || path[6] == '/')
 }
 
-func newGitBranchWatcher(_ string, sl *StatusLine) *gitBranchWatcher {
-	sl.mu.RLock()
-	bound := sl.gitPaths
-	sl.mu.RUnlock()
+func newGitBranchWatcher(_ string, sl *FooterComponent) *gitBranchWatcher {
+	bound := sl.boundGitPaths()
 	if bound == nil {
 		return nil
 	}
 	paths := *bound
-	return &gitBranchWatcher{paths: paths, cached: sl.GitBranch(), open: openGitWatch, resolve: resolveGitBranchAsync, publish: func(branch string) {
-		sl.mu.Lock()
-		sl.gitBranch = branch
-		sl.mu.Unlock()
+	return &gitBranchWatcher{paths: paths, cached: sl.GetGitBranch(), open: openGitWatch, resolve: resolveGitBranchAsync, publish: func(branch string) {
+		if sl.isDisposed() {
+			return
+		}
+		sl.setGitBranch(branch)
 		sl.Invalidate()
 		sl.notifyBranchChange()
 	}}
@@ -253,7 +234,7 @@ func resolveGitBranchAsync(ctx context.Context, paths gitPaths) string {
 	if err != nil {
 		return ""
 	}
-	branch, ok := strings.CutPrefix(strings.TrimSpace(string(data)), "ref: refs/heads/")
+	branch, ok := strings.CutPrefix(jsTrim(string(data)), "ref: refs/heads/")
 	if !ok {
 		return "detached"
 	}
@@ -270,45 +251,72 @@ type gitPaths struct{ repoDir, commonGitDir, headPath string }
 
 func findGitPaths(cwd string) (gitPaths, bool) {
 	dir := cwd
+	var probe nodefs.PathProbe
+	clean := false
 	for {
-		gitPath := filepath.Join(dir, ".git")
-		if info, err := os.Stat(gitPath); err == nil {
-			if info.Mode().IsRegular() {
-				data, err := os.ReadFile(gitPath)
-				if err != nil {
-					return gitPaths{}, false
-				}
-				if gitDir, ok := strings.CutPrefix(strings.TrimSpace(string(data)), "gitdir: "); ok {
-					gitDir = resolveGitPath(dir, strings.TrimSpace(gitDir))
-					head := filepath.Join(gitDir, "HEAD")
-					if _, err := os.Stat(head); err != nil {
-						return gitPaths{}, false
-					}
-					common := gitDir
-					commonPath := filepath.Join(gitDir, "commondir")
-					if _, err := os.Stat(commonPath); err == nil {
-						data, err := os.ReadFile(commonPath)
-						if err != nil {
-							return gitPaths{}, false
-						}
-						common = resolveGitPath(gitDir, strings.TrimSpace(string(data)))
-					}
-					return gitPaths{repoDir: dir, commonGitDir: common, headPath: head}, true
-				}
-			} else if info.IsDir() {
-				head := filepath.Join(gitPath, "HEAD")
-				if _, err := os.Stat(head); err != nil {
-					return gitPaths{}, false
-				}
-				return gitPaths{repoDir: dir, commonGitDir: gitPath, headPath: head}, true
+		// existsSync first, as Pi does: a missing .git, the case at every level but one, costs one access(2) and neither a path
+		// string nor a FileInfo. The probe joins clean paths only, as filepath.Join cleans.
+		if probe.Set(cleanDir(dir, clean), ".git").Exists() {
+			if paths, ok, stop := gitPathsAt(dir, filepath.Join(dir, ".git")); stop {
+				return paths, ok
 			}
 		}
-		parent := filepath.Dir(dir)
+		parent := nodefs.ParentDir(dir, clean)
 		if parent == dir {
 			return gitPaths{}, false
 		}
-		dir = parent
+		dir, clean = parent, true
 	}
+}
+
+// gitPathsAt reads the .git entry at gitPath in dir. stop is false when the walk goes on to the parent: the entry cannot be
+// stated, or it is a file that names no gitdir, or neither a file nor a directory.
+// cleanDir is filepath.Clean(dir) without the allocation when dir came from nodefs.ParentDir and so is clean.
+func cleanDir(dir string, clean bool) string {
+	if clean {
+		return dir
+	}
+	return filepath.Clean(dir)
+}
+
+func gitPathsAt(dir, gitPath string) (paths gitPaths, ok, stop bool) {
+	info, err := os.Stat(gitPath)
+	if err != nil {
+		return gitPaths{}, false, false
+	}
+	if info.Mode().IsRegular() {
+		data, err := os.ReadFile(gitPath)
+		if err != nil {
+			return gitPaths{}, false, true
+		}
+		gitDir, ok := strings.CutPrefix(jsTrim(string(data)), "gitdir: ")
+		if !ok {
+			return gitPaths{}, false, false
+		}
+		gitDir = resolveGitPath(dir, jsTrim(gitDir))
+		head := filepath.Join(gitDir, "HEAD")
+		if _, err := os.Stat(head); err != nil {
+			return gitPaths{}, false, true
+		}
+		common := gitDir
+		commonPath := filepath.Join(gitDir, "commondir")
+		if _, err := os.Stat(commonPath); err == nil {
+			data, err := os.ReadFile(commonPath)
+			if err != nil {
+				return gitPaths{}, false, true
+			}
+			common = resolveGitPath(gitDir, jsTrim(string(data)))
+		}
+		return gitPaths{repoDir: dir, commonGitDir: common, headPath: head}, true, true
+	}
+	if info.IsDir() {
+		head := filepath.Join(gitPath, "HEAD")
+		if _, err := os.Stat(head); err != nil {
+			return gitPaths{}, false, true
+		}
+		return gitPaths{repoDir: dir, commonGitDir: gitPath, headPath: head}, true, true
+	}
+	return gitPaths{}, false, false
 }
 
 func resolveGitPath(base, target string) string {
@@ -326,6 +334,8 @@ func (m *InteractiveMode) startGitBranchWatcher(ctx context.Context) {
 	if w == nil {
 		return
 	}
+	ctx, stop := context.WithCancel(ctx)
+	m.statusLine.setWatcherStop(stop)
 	publish := w.publish
 	w.publish = func(branch string) { _ = m.postToMain(ctx, func() { publish(branch); m.requestRender() }) }
 	w.started = make(chan struct{})

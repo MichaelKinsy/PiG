@@ -19,9 +19,10 @@ export function dispatchProviderObjectSync(runtime, request) {
   }
   const provider = providerFor(runtime, request);
   if (method === "getModels") return provider.getModels();
-  if (method === "filterModels") {
+  if (method === "getAllModels") return provider.getAllModels();
+  if (method === "filterModels" || method === "filterAllModels") {
     const models = params.models;
-    const filtered = provider.filterModels(models, params.credential ?? undefined);
+    const filtered = provider[method](models, params.credential ?? undefined);
     return { models: filtered, indices: filtered.map(model => models.indexOf(model)) };
   }
   throw new Error(`Invalid synchronous Provider method: ${method}`);
@@ -54,6 +55,15 @@ function transportValue(value, signal) {
   });
 }
 
+// loginOptions is Pi's LoginOptions for oauth.login (auth/types.ts:202-214): getDeviceId, a synchronous call back to the
+// host that the host offers only when the app supplies a device ID, and agentName.
+function loginOptions(wire, getDeviceId) {
+  const options = {};
+  if (wire?.getDeviceId) options.getDeviceId = getDeviceId;
+  if (wire?.agentName !== undefined) options.agentName = wire.agentName;
+  return options;
+}
+
 export async function dispatchProviderObject(runtime, id, request, ctx) {
   const provider = providerFor(runtime, request);
   const { method, params = {} } = request.args;
@@ -79,7 +89,7 @@ export async function dispatchProviderObject(runtime, id, request, ctx) {
     case "auth.apiKey.check": return provider.auth.apiKey.check(authInput);
     case "auth.apiKey.resolve": return provider.auth.apiKey.resolve(authInput);
     case "auth.apiKey.login": return provider.auth.apiKey.login(interaction);
-    case "auth.oauth.login": return provider.auth.oauth.login(interaction);
+    case "auth.oauth.login": return provider.auth.oauth.login(interaction, loginOptions(params.options, () => runtime.callSync("provider.callback", { provider: request.tool, method: "getDeviceId", params: {} }, id)));
     case "auth.oauth.refresh": return provider.auth.oauth.refresh(params.credential, signal);
     case "auth.oauth.toAuth": return provider.auth.oauth.toAuth(params.credential);
     case "refreshModels":
@@ -150,13 +160,13 @@ export function remoteProvider(runtime, declaration, EventStream) {
   if (declaration.auth?.oauth) provider.auth.oauth = { ...declaration.auth.oauth };
   const models = new Map();
   for (const method of declaration.methods ?? []) {
-    if (method === "getModels") provider.getModels = () => sync(method, {}).map(model => {
+    if (method === "getModels" || method === "getAllModels") provider[method] = () => sync(method, {}).map(model => {
       let value = models.get(model.id);
       if (!value) models.set(model.id, value = model);
       else { for (const key of Object.keys(value)) delete value[key]; Object.assign(value, model); }
       return value;
     });
-    else if (method === "filterModels") provider.filterModels = (models, credential) => {
+    else if (method === "filterModels" || method === "filterAllModels") provider[method] = (models, credential) => {
       const result = sync(method, { models, credential });
       return result.models.map((model, index) => {
         const input = models[result.indices[index]];
@@ -168,7 +178,9 @@ export function remoteProvider(runtime, declaration, EventStream) {
     else if (method === "auth.apiKey.check" || method === "auth.apiKey.resolve") {
       provider.auth.apiKey[method.split(".").at(-1)] = input => invoke(method, { credential: input.credential }, authInput(input), input.signal);
     } else if (method.endsWith(".login")) {
-      provider.auth[method.split(".")[1]].login = input => invoke(method, {}, interaction(input), input.signal);
+      provider.auth[method.split(".")[1]].login = method === "auth.oauth.login"
+        ? (input, options) => invoke(method, { options: { ...(options?.getDeviceId ? { getDeviceId: true } : {}), ...(options?.agentName !== undefined ? { agentName: options.agentName } : {}) } }, { ...interaction(input), getDeviceId: () => options.getDeviceId() }, input.signal)
+        : input => invoke(method, {}, interaction(input), input.signal);
     } else if (method === "auth.oauth.refresh") provider.auth.oauth.refresh = (credential, signal) => invoke(method, { credential }, {}, signal);
     else if (method === "auth.oauth.toAuth") provider.auth.oauth.toAuth = credential => invoke(method, { credential });
     else if (method === "refreshModels") provider.refreshModels = input => {
@@ -185,7 +197,8 @@ export function remoteProvider(runtime, declaration, EventStream) {
       runtime.modelStreams.set(streamId, stream);
       const { signal, ...data } = options;
       const callbacks = {};
-      for (const name of ["onPayload", "onResponse", "transformHeaders"]) {
+      // Pi passes the caller's options object to Provider.stream as is; these are its function-valued members that cross to the owner as callbacks.
+      for (const name of ["onPayload", "onResponse", "onProviderStreamEvent", "transformHeaders"]) {
         if (typeof data[name] !== "function") continue;
         const fn = data[name];
         callbacks[name] = ({ value }) => fn(value, model);

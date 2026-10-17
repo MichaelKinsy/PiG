@@ -1,5 +1,7 @@
 package ai
 
+// pi: packages/coding-agent/src/utils/sleep.ts
+
 import (
 	"context"
 	"errors"
@@ -35,17 +37,36 @@ func TestIsRetryableAssistantErrorClassification(t *testing.T) {
 		{"matches Bun fetch socket drop wording", "The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()"},
 		// .upstream/v0.87.1/packages/ai/test/retry.test.ts:45
 		{"matches upstream request buffer exhaustion wording", "Error: exceeded request buffer limit while retrying upstream"},
+		// Pi 7efebff1 (#10920): gateway stream relay failure.
+		{"matches gateway upstream stream forwarding failure", "Unable to forward upstream stream"},
+		// Pi 0fbdbd3f retry.test.ts:82-88 (#10996, both rows): node-fetch errors from the google-vertex OAuth token refresh.
+		{"matches node-fetch request failure wording/empty reason", "request to https://oauth2.googleapis.com/token failed, reason:"},
+		{"matches node-fetch request failure wording/ECONNREFUSED", "request to https://oauth2.googleapis.com/token failed, reason: connect ECONNREFUSED 127.0.0.1:9"},
+		// Pi 698a2d23 retry.test.ts:90-98 (#10920, all four rows): gateway upstream failures sent as response.failed error codes.
+		{"matches gateway upstream failure wording/forward", "unknown: Unable to forward upstream stream"},
+		{"matches gateway upstream failure wording/request failed", "upstream_error: Upstream request failed"},
+		{"matches gateway upstream failure wording/stream interrupted", "upstream_stream_read_error: Upstream response stream was interrupted"},
+		{"matches gateway upstream failure wording/HTTP/2", "Upstream HTTP/2 stream failed"},
 		// .upstream/v0.87.1/packages/ai/test/retry.test.ts:56 (all four table rows)
 		{"matches DNS transport failure wording/wrapped", "The pending stream has been canceled (caused by: getaddrinfo ENOTFOUND bedrock-runtime.us-east-1.amazonaws.com)"},
 		{"matches DNS transport failure wording/ENOTFOUND", "connect ENOTFOUND api.example.com"},
 		{"matches DNS transport failure wording/EAI_AGAIN", "EAI_AGAIN api.example.com"},
 		{"matches DNS transport failure wording/getaddrinfo", "getaddrinfo failed for api.example.com"},
+		// .upstream/v1.0.4/packages/ai/test/retry.test.ts:65 (both rows, #10379)
+		{"matches HTTP/2 pending stream cancellation/bare", "The pending stream has been canceled"},
+		{"matches HTTP/2 pending stream cancellation/caused by", "The pending stream has been canceled (caused by: socket closed)"},
+		// Pi 550f1f3e retry.test.ts:73-81 (#10965, both rows): the wording carries no status code and no provider.
+		{"matches service unavailable wording/The service is temporarily unavailable", "The service is temporarily unavailable. Please retry later."},
+		{"matches service unavailable wording/Bedrock ServiceUnavailableException", "Service unavailable: The service is temporarily unavailable."},
 		// .upstream/v0.87.1/packages/ai/test/retry.test.ts:65
 		{"matches OpenAI Responses streams that end before terminal events", "OpenAI Responses stream ended before a terminal response event"},
 		// .upstream/v0.87.1/packages/ai/test/retry.test.ts:73
 		{"matches Azure peak-load capacity errors", "The system is currently experiencing high demand and cannot process your request. Your request exceeds the maximum usage size allowed during peak load. For improved capacity reliability, consider switching to Provisioned Throughput."},
 		// .upstream/v1.0.1/packages/ai/src/utils/retry.ts:34 (#10278): "Selected model is at capacity" ends the turn without this pattern.
 		{"matches provider model capacity errors", "Selected model is at capacity. Please try a different model."},
+		// .upstream/v1.2.0/packages/ai/src/utils/retry.ts:51-53 (#10842): gateway wording "The upstream provider returned an error".
+		{"matches gateway provider-returned-an-error wording", "The upstream provider returned an error"},
+		{"matches provider-returned-error wording", "Provider returned error"},
 		// .upstream/v0.87.1/packages/ai/test/retry.test.ts:88
 		{"classifies assistant error messages/overloaded", "overloaded_error"},
 		{"classifies assistant error messages/520", "520 status code (no body)"},
@@ -74,18 +95,24 @@ func TestIsRetryableAssistantErrorClassification(t *testing.T) {
 	}
 }
 
-// .upstream/v0.87.1/packages/ai/test/retry.test.ts:108 — caps agent retry delay.
+// packages/ai/test/retry.test.ts:128 (retryDelayMs) — caps agent retry delay.
 func TestRetryDelayMsCapsAgentRetryDelay(t *testing.T) {
-	if got := RetryDelayMs(2000, nil, 6); got != 60000 {
+	// Below the cap the delay doubles per attempt: baseDelayMs * 2 ** (attempt - 1) (utils/retry.ts:128-135 retryDelayMs).
+	for attempt, want := range map[int]int{1: 2000, 2: 4000, 3: 8000, 5: 32000} {
+		if got := RetryDelayMs(RetryPolicy{BaseDelayMs: 2000}, attempt); got != want {
+			t.Fatalf("attempt %d delay = %d, want %d", attempt, got, want)
+		}
+	}
+	if got := RetryDelayMs(RetryPolicy{BaseDelayMs: 2000}, 6); got != 60000 {
 		t.Fatalf("default cap = %d", got)
 	}
-	if got := RetryDelayMs(2000, new(5000), 5); got != 5000 {
+	if got := RetryDelayMs(RetryPolicy{BaseDelayMs: 2000, MaxAgentDelayMs: new(5000)}, 5); got != 5000 {
 		t.Fatalf("explicit cap = %d", got)
 	}
-	if got := RetryDelayMs(2000, new(0), 5); got != 0 {
+	if got := RetryDelayMs(RetryPolicy{BaseDelayMs: 2000, MaxAgentDelayMs: new(0)}, 5); got != 0 {
 		t.Fatalf("zero cap = %d", got)
 	}
-	if got := RetryDelayMs(1<<40, new(maxSafeInteger), 40); got != maxSafeInteger {
+	if got := RetryDelayMs(RetryPolicy{BaseDelayMs: 1 << 40, MaxAgentDelayMs: new(maxSafeInteger)}, 40); got != maxSafeInteger {
 		t.Fatalf("saturated delay = %d", got)
 	}
 }
@@ -367,7 +394,7 @@ func TestRetryDelayMsUsesSafeIntegerMagnitude(t *testing.T) {
 		{-2, 1025, maxSafeInteger},
 		{2, -1 << 63, 2},
 	} {
-		if got := RetryDelayMs(test.base, new(maxSafeInteger), test.attempt); got != test.want {
+		if got := RetryDelayMs(RetryPolicy{BaseDelayMs: test.base, MaxAgentDelayMs: new(maxSafeInteger)}, test.attempt); got != test.want {
 			t.Errorf("base=%d attempt=%d delay=%d want=%d", test.base, test.attempt, got, test.want)
 		}
 	}

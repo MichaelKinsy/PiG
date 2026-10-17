@@ -40,7 +40,8 @@ func readEnvNames(t *testing.T) map[string]bool {
 			}
 			return nil
 		}
-		if !strings.HasSuffix(path, ".go") {
+		// Go reads most variables; the image build scripts and Dockerfiles define the build arguments the benchmark pages name.
+		if base := filepath.Base(path); !strings.HasSuffix(path, ".go") && !strings.HasSuffix(path, ".sh") && !strings.HasPrefix(base, "Dockerfile") && base != "Makefile" && !strings.HasSuffix(path, ".mk") {
 			return nil
 		}
 		data, err := os.ReadFile(path)
@@ -63,10 +64,10 @@ func readEnvNames(t *testing.T) map[string]bool {
 
 func TestEveryDocumentedEnvironmentVariableExists(t *testing.T) {
 	read := readEnvNames(t)
-	for page, body := range docFiles(t) {
-		for _, m := range docEnvRE.FindAllStringSubmatch(body, -1) {
-			if !read[m[1]] {
-				t.Errorf("%s documents %s, which appears nowhere in the source", page, m[1])
+	for _, src := range corpus(t) {
+		for _, m := range docEnvRE.FindAllStringSubmatch(src.Body, -1) {
+			if !read[m[1]] && m[1] != "PIG_ACP_PIG_COMMAND" { // read by the pig-acp companion of the Pigpen acp Package (packages.md), not by PiG
+				t.Errorf("%s documents %s, which appears nowhere in the source", src.Rel, m[1])
 			}
 		}
 	}

@@ -100,7 +100,17 @@ func recordSDKLiveness(t *testing.T, fixture livenessFixture) livenessRecording 
 	if err := peer.SetDeadline(time.Now().Add(20 * time.Second)); err != nil {
 		t.Fatal(err)
 	}
-	if register := readSDKEnvelope(t, peer); register.Type != subprocess.MsgRegister {
+	register := readSDKEnvelope(t, peer)
+	// A factory may call the host-parser helpers before the connection is ready (the lazy dial); the host answers them before it reads the register frame.
+	for register.Type == subprocess.MsgCall && register.Call != nil && (register.Call.Method == subprocess.CallParseFrontmatter || register.Call.Method == subprocess.CallParseDate) {
+		result := json.RawMessage(`{"frontmatter":{},"body":""}`)
+		if register.Call.Method == subprocess.CallParseDate {
+			result = json.RawMessage(`{"ms":null}`)
+		}
+		writeSDKEnvelope(t, peer, subprocess.Envelope{Type: subprocess.MsgCallResult, ID: register.ID, CallResult: &subprocess.CallResultPayload{Result: result}})
+		register = readSDKEnvelope(t, peer)
+	}
+	if register.Type != subprocess.MsgRegister {
 		t.Fatalf("first frame = %+v", register)
 	}
 	writeSDKEnvelope(t, peer, subprocess.Envelope{Type: subprocess.MsgReady, Ready: &subprocess.ReadyPayload{Cwd: "/fixture", Width: 80, Height: 24, State: &subprocess.StatePayload{HasUI: true}}})

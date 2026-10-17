@@ -1,0 +1,78 @@
+# Behavior family: rpc
+# Surface: the codemode tool appends a script's returned value like text(): execute.ts:509 keeps every value except undefined, and valueText (execute.ts:251-254) prints JSON.stringify(value). Pi 1.1.0 prints "null" for `return null`, also ahead of a console block, and nothing for `return undefined`. PiG printed nothing for null before coding/extension/builtin/codemode/execute.go valueText checked for a JSON string.
+# Each prompt waits for its own agent_settled, so the four tool results arrive in order.
+
+name = "56-rpc-codemode-returned-values"
+description = "RPC codemode: returned null, undefined and array values print as Pi prints them."
+covers = [
+  "packages/coding-agent/src/extensions/codemode/execute.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+# Raw JSON lines are compared, key order included: the codemode tool schema in the system message follows TypeBox's order (type, required, properties) as Pi prints it.
+canonical_json = false
+timeout_seconds = 120
+settle_seconds = 1
+
+[[rpc.steps]]
+line = '{"id":"p0","type":"prompt","message":"Run: ext tool codemode {\"code\":\"return null\"}"}'
+wait_contains = ['"type":"agent_settled"']
+wait_timeout_seconds = 60
+
+[[rpc.steps]]
+line = '{"id":"p1","type":"prompt","message":"Run: ext tool codemode {\"code\":\"console.log(\\\"a\\\"); return null\"}"}'
+wait_contains = ['"type":"agent_settled"']
+wait_timeout_seconds = 60
+
+[[rpc.steps]]
+line = '{"id":"p2","type":"prompt","message":"Run: ext tool codemode {\"code\":\"return undefined\"}"}'
+wait_contains = ['"type":"agent_settled"']
+wait_timeout_seconds = 60
+
+[[rpc.steps]]
+line = '{"id":"p3","type":"prompt","message":"Run: ext tool codemode {\"code\":\"return [null, \\\"x\\\", 1.5]\"}"}'
+wait_contains = ['"type":"agent_settled"']
+wait_timeout_seconds = 60
+
+[env]
+# The codemode tool is a built-in extension; the default --no-extensions base arg would remove it from both binaries.
+override_base_args = true
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--model", "test-faux/faux-1", "--system-prompt", "RPC codemode probe.", "--no-context-files", "--no-skills", "--tools", "codemode", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--system-prompt", "RPC codemode probe.", "--no-context-files", "--no-skills", "--tools", "codemode", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+output_equal = true
+stderr_equal = true
+runs = 3
+both_contain = [
+  '"text":"null"',
+  '"text":"null\n<console_output>\na\n</console_output>"',
+  '"text":"[null,\"x\",1.5]"',
+]
+
+# normalize-rationale: Only independent clocks and the isolated cwd identity vary; retain every other byte and property order.
+[[assert.normalize_replace]]
+pattern = 'parity-snap-cwd-[0-9]{10}'
+with = 'parity-snap-cwd-0000000000'
+reason = "Alias the isolated working-directory identity while preserving path suffixes and content."
+[[assert.normalize_replace]]
+pattern = '"timestamp":[0-9]+'
+with = '"timestamp":0'
+reason = "Independent numeric wall clocks vary; retain field placement, type and every other byte."
+[[assert.normalize_replace]]
+pattern = '"durationMs":[0-9]+(\.[0-9]+)?(e-?[0-9]+)?'
+with = '"durationMs":0'
+reason = "Pi 1.1.0 times responses, tool runs and codemode nested calls with a monotonic clock (codemode host.ts performance.now() differences are fractional); retain the field's presence and placement."
+[[assert.normalize_replace]]
+pattern = 'Wall time [0-9]+\.[0-9] seconds'
+with = 'Wall time 0.0 seconds'
+reason = "The codemode header's wall time (execute.ts) is measured per run; retain the header text and its one-decimal format."
+[[assert.normalize_replace]]
+pattern = 'Read /[^ "]*/parity-(?:snap-PIG_HOME-[0-9]+|pi-pkg-[0-9]+/pi-coding-pkg(?:-with-bundle-pad)?)/docs/(?:bundle-[0-9a-f]+/)?codemode\.md'
+with = 'Read <docs>/codemode.md'
+reason = "D2: each binary points the codemode description at its own installed docs root; retain the docs file name and every other description byte."

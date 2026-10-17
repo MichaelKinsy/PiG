@@ -57,26 +57,24 @@ func codexCreateState() (string, error) {
 }
 
 // parseCodexAuthorizationInput extracts code (and optional state) from user-pasted
-// input. Mirrors upstream parseAuthorizationInput in openai-codex.ts:50-77.
+// input. Mirrors upstream parseAuthorizationInput in openai-codex.ts:69-97.
 func parseCodexAuthorizationInput(input string) (code, state string) {
 	v := trimJSWhitespace(input)
 	if v == "" {
 		return "", ""
 	}
 	// Try as URL
-	if u, err := url.Parse(v); err == nil && u.Scheme != "" {
-		return u.Query().Get("code"), u.Query().Get("state")
+	if query, ok := authorizationURLQuery(v); ok {
+		return query.Get("code"), query.Get("state")
 	}
 	// code#state
-	if before, after, ok := strings.Cut(v, "#"); ok {
-		return before, after
+	if code, state, ok := authorizationFragmentPair(v); ok {
+		return code, state
 	}
 	// code=X&state=Y
 	if strings.Contains(v, "code=") {
-		q, qerr := url.ParseQuery(v)
-		if qerr == nil {
-			return q.Get("code"), q.Get("state")
-		}
+		query := authorizationQueryParams(v)
+		return query.Get("code"), query.Get("state")
 	}
 	return v, ""
 }
@@ -104,32 +102,29 @@ type TokenFailure struct {
 }
 
 func exchangeCodexAuthorizationCode(ctx context.Context, code, verifier, redirectURI string) (OAuthCredentials, error) {
-	form := url.Values{
-		"grant_type":    {"authorization_code"},
-		"client_id":     {codexClientID},
-		"code":          {code},
-		"code_verifier": {verifier},
-		"redirect_uri":  {redirectURI},
+	form := formFields{
+		{"grant_type", "authorization_code"},
+		{"client_id", codexClientID},
+		{"code", code},
+		{"code_verifier", verifier},
+		{"redirect_uri", redirectURI},
 	}
-	return postCodexTokenForm(ctx, form)
+	return postCodexTokenForm(ctx, form, "exchange")
 }
 
 // RefreshCodexToken refreshes an OpenAI Codex OAuth token. Mirrors upstream
 // refreshAccessToken in openai-codex.ts:133-180.
 func RefreshCodexToken(ctx context.Context, refreshToken string) (OAuthCredentials, error) {
-	form := url.Values{
-		"grant_type":    {"refresh_token"},
-		"refresh_token": {refreshToken},
-		"client_id":     {codexClientID},
+	form := formFields{
+		{"grant_type", "refresh_token"},
+		{"refresh_token", refreshToken},
+		{"client_id", codexClientID},
 	}
-	return postCodexTokenForm(ctx, form)
+	return postCodexTokenForm(ctx, form, "refresh")
 }
 
-func postCodexTokenForm(ctx context.Context, form url.Values) (OAuthCredentials, error) {
-	operation := "exchange"
-	if form.Get("grant_type") == "refresh_token" {
-		operation = "refresh"
-	}
+// postCodexTokenForm sends a token request; operation is readTokenResponse's "exchange" or "refresh" (openai-codex.ts:164,184).
+func postCodexTokenForm(ctx context.Context, form formFields, operation string) (OAuthCredentials, error) {
 	ctx2, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
@@ -151,17 +146,25 @@ func postCodexTokenForm(ctx context.Context, form url.Values) (OAuthCredentials,
 		return OAuthCredentials{}, fmt.Errorf("token exchange: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
-	respBody, _ := io.ReadAll(resp.Body)
+	// A body that fails to read is no body for text(), which is caught to "" (openai-codex.ts:124); json() rejects with the read failure.
+	respBody, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		respBody = nil
+	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		message := string(respBody)
+		message := fetchBodyText(respBody)
 		if message == "" {
-			message = http.StatusText(resp.StatusCode)
+			message = fetchStatusText(resp.Status, resp.StatusCode)
 		}
 		return OAuthCredentials{}, fmt.Errorf("OpenAI Codex token %s failed (%d): %s", operation, resp.StatusCode, message)
 	}
+	if readErr != nil {
+		return OAuthCredentials{}, fetchBodyReadError(ctx)
+	}
 	var parsed json.RawMessage
-	if err := json.Unmarshal(respBody, &parsed); err != nil {
-		return OAuthCredentials{}, fmt.Errorf("token exchange invalid JSON: %w", err)
+	if err := json.Unmarshal([]byte(fetchBodyText(respBody)), &parsed); err != nil {
+		// readTokenResponse lets response.json()'s SyntaxError through unwrapped (openai-codex.ts:128).
+		return OAuthCredentials{}, oauthJSONRejection(respBody)
 	}
 	// `json?.access_token` reads a member of an object only; every other JSON value has none.
 	var tok codexTokenResponse
@@ -179,31 +182,49 @@ func postCodexTokenForm(ctx context.Context, form url.Values) (OAuthCredentials,
 		}
 		return OAuthCredentials{}, fmt.Errorf("OpenAI Codex token %s response missing fields: %s", operation, stringified)
 	}
-	creds := OAuthCredentials{Refresh: refresh, Access: access}
+	creds := OAuthCredentials{Refresh: refresh, Access: access, order: credentialKeyOrder{keys: codexCredentialMembers}}
 	// Mirror upstream's "Date.now() + expires_in * 1000": no safety margin, a fractional value stays exact and an overflowing literal is Infinity.
-	creds.SetExpiresMillis(float64(nowMillis()) + jsnumber.FromJSON(tok.ExpiresIn)*1000)
+	creds.SetExpiresMillis(float64(nowMillis()) + float64(jsnumber.FromJSON(tok.ExpiresIn)*1000))
 	return creds, nil
 }
 
-// CodexAccountID extracts the chatgpt_account_id claim from a Codex access
-// token, if present. Mirrors upstream getAccountId (openai-codex.ts:281-285).
-// Returns "" if the token doesn't carry the expected JWT shape.
+// jsAtob is `atob(value)`: the forgiving-base64 decode of the WHATWG infra standard. It strips ASCII whitespace, drops one or two trailing "=" when
+// the length is a multiple of 4, and reads each decoded byte as one character U+0000 to U+00FF. The unpadded standard decoder rejects the rest: a
+// length of 1 mod 4, any character outside the standard alphabet ("-" and "_" included) and any other "=".
+func jsAtob(value string) (string, bool) {
+	value = strings.Map(func(r rune) rune {
+		if r == '\t' || r == '\n' || r == '\f' || r == '\r' || r == ' ' {
+			return -1
+		}
+		return r
+	}, value)
+	if len(value)%4 == 0 {
+		value = strings.TrimSuffix(strings.TrimSuffix(value, "="), "=")
+	}
+	data, err := base64.RawStdEncoding.DecodeString(value)
+	if err != nil {
+		return "", false
+	}
+	runes := make([]rune, len(data))
+	for i, b := range data {
+		runes[i] = rune(b)
+	}
+	return string(runes), true
+}
+
+// CodexAccountID is Pi's getAccountId (openai-codex.ts:310): the chatgpt_account_id claim of the access token, "" when the token lacks the JWT shape
+// or the claim. Pi's decodeJwt reads the payload with atob and JSON.parse, so the claim is read as Latin-1 characters of the decoded bytes.
 func CodexAccountID(accessToken string) string {
 	parts := strings.Split(accessToken, ".")
 	if len(parts) != 3 {
 		return ""
 	}
-	// Base64url decode the payload.
-	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
-	if err != nil {
-		// Some tokens pad the payload; try the standard variant.
-		payload, err = base64.URLEncoding.DecodeString(parts[1])
-		if err != nil {
-			return ""
-		}
+	payload, ok := jsAtob(parts[1])
+	if !ok {
+		return ""
 	}
 	var claims map[string]any
-	if err := json.Unmarshal(payload, &claims); err != nil {
+	if err := json.Unmarshal([]byte(payload), &claims); err != nil {
 		return ""
 	}
 	auth, ok := claims[codexJWTClaimPath].(map[string]any)
@@ -247,42 +268,33 @@ func postCodexDeviceJSON(ctx context.Context, urlStr string, payload any) (int, 
 		return 0, nil, err
 	}
 	defer func() { _ = resp.Body.Close() }()
-	respBody, _ := io.ReadAll(resp.Body)
+	// A failed read: an error status's text() is caught to "" (openai-codex.ts:201, 266); a success's json() rejects with the read failure.
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			return resp.StatusCode, nil, fetchBodyReadError(ctx)
+		}
+		respBody = nil
+	}
 	return resp.StatusCode, respBody, nil
 }
 
-// codexBodySuffix mirrors upstream's `${body ? ": " + body : ""}`.
-func codexBodySuffix(body []byte) string {
-	if len(body) == 0 {
-		return ""
-	}
-	return ": " + string(body)
-}
-
-// codexParseInterval mirrors upstream's `typeof interval === "string" ?
-// Number(interval.trim()) : interval` followed by the finite/>=0 validation.
-// A JSON number unmarshals to float64; a string is parsed (an empty/whitespace
-// string is 0, matching JS Number("") === 0).
+// codexParseInterval is `typeof interval === "string" ? Number(interval.trim()) : interval` followed by the typeof number and finite checks. A JSON number past the double range is infinite, so it fails them.
 func codexParseInterval(v any) (float64, bool) {
+	var number float64
 	switch t := v.(type) {
-	case float64:
-		if math.IsInf(t, 0) || math.IsNaN(t) {
-			return 0, false
-		}
-		return t, true
+	case json.Number:
+		//portlint:allow numbers t is a JSON number literal, whose grammar ParseFloat reads as JSON.parse does (an out-of-range literal is ±Inf with ErrRange)
+		number, _ = strconv.ParseFloat(string(t), 64)
 	case string:
-		trimmed := trimJSWhitespace(t)
-		if trimmed == "" {
-			return 0, true
-		}
-		n, err := strconv.ParseFloat(trimmed, 64)
-		if err != nil || math.IsInf(n, 0) || math.IsNaN(n) {
-			return 0, false
-		}
-		return n, true
+		number = jsnumber.Parse(t)
 	default:
 		return 0, false
 	}
+	if math.IsInf(number, 0) || math.IsNaN(number) {
+		return 0, false
+	}
+	return number, true
 }
 
 // codexExtractErrorCode parses {error: string | {code: string}} from a Codex
@@ -291,7 +303,7 @@ func codexExtractErrorCode(body []byte) string {
 	var wrap struct {
 		Error json.RawMessage `json:"error"`
 	}
-	if json.Unmarshal(body, &wrap) != nil || len(wrap.Error) == 0 {
+	if json.Unmarshal([]byte(fetchBodyText(body)), &wrap) != nil || len(wrap.Error) == 0 {
 		return ""
 	}
 	var s string
@@ -314,25 +326,25 @@ func startCodexDeviceAuth(ctx context.Context) (codexDeviceAuthInfo, error) {
 	if err != nil {
 		return codexDeviceAuthInfo{}, err
 	}
-	if status != http.StatusOK {
+	if status < 200 || status >= 300 {
 		if status == http.StatusNotFound {
 			return codexDeviceAuthInfo{}, fmt.Errorf("OpenAI Codex device code login is not enabled for this server. Use browser login or verify the server URL.")
 		}
-		return codexDeviceAuthInfo{}, fmt.Errorf("OpenAI Codex device code request failed with status %d%s", status, codexBodySuffix(body))
+		return codexDeviceAuthInfo{}, fmt.Errorf("OpenAI Codex device code request failed with status %d%s", status, oauthTextSuffix(body))
 	}
-	var j struct {
-		DeviceAuthID string `json:"device_auth_id"`
-		UserCode     string `json:"user_code"`
-		Interval     any    `json:"interval"`
+	value, canonical, ok := oauthJSONValue(body)
+	if !ok {
+		return codexDeviceAuthInfo{}, oauthJSONRejection(body)
 	}
-	if err := json.Unmarshal(body, &j); err != nil {
-		return codexDeviceAuthInfo{}, fmt.Errorf("Invalid OpenAI Codex device code response: %s", string(body))
+	// `json?.device_auth_id` reads a member of an object only. Pi also accepts any other truthy value as the id or code; Go's string fields cannot hold one, so it counts as missing.
+	members, _ := value.(map[string]any)
+	deviceAuthID, _ := members["device_auth_id"].(string)
+	userCode, _ := members["user_code"].(string)
+	interval, intervalOK := codexParseInterval(members["interval"])
+	if deviceAuthID == "" || userCode == "" || !intervalOK || interval < 0 {
+		return codexDeviceAuthInfo{}, fmt.Errorf("Invalid OpenAI Codex device code response: %s", canonical)
 	}
-	interval, ok := codexParseInterval(j.Interval)
-	if j.DeviceAuthID == "" || j.UserCode == "" || !ok || interval < 0 {
-		return codexDeviceAuthInfo{}, fmt.Errorf("Invalid OpenAI Codex device code response: %s", string(body))
-	}
-	return codexDeviceAuthInfo{deviceAuthID: j.DeviceAuthID, userCode: j.UserCode, intervalSeconds: interval}, nil
+	return codexDeviceAuthInfo{deviceAuthID: deviceAuthID, userCode: userCode, intervalSeconds: interval}, nil
 }
 
 // pollCodexDeviceAuth polls the Codex device token endpoint until the user
@@ -343,7 +355,14 @@ func pollCodexDeviceAuth(ctx context.Context, device codexDeviceAuthInfo) (codex
 	return PollOAuthDeviceCodeFlow(ctx, DeviceCodePollOptions[codexDeviceToken]{
 		IntervalSeconds:  &interval,
 		ExpiresInSeconds: &expires,
-		Poll: func() (DeviceCodePollResult[codexDeviceToken], error) {
+		Poll:             func() (DeviceCodePollResult[codexDeviceToken], error) { return codexPollStep(ctx, device) },
+	})
+}
+
+// codexPollStep is one poll of the device token endpoint (the poll callback of pollOpenAICodexDeviceAuth).
+func codexPollStep(ctx context.Context, device codexDeviceAuthInfo) (DeviceCodePollResult[codexDeviceToken], error) {
+	{
+		{
 			status, body, err := postCodexDeviceJSON(ctx, codexDeviceTokenURL, map[string]string{
 				"device_auth_id": device.deviceAuthID,
 				"user_code":      device.userCode,
@@ -351,20 +370,23 @@ func pollCodexDeviceAuth(ctx context.Context, device codexDeviceAuthInfo) (codex
 			if err != nil {
 				return DeviceCodePollResult[codexDeviceToken]{}, err
 			}
-			if status == http.StatusOK {
-				var j struct {
-					AuthorizationCode string `json:"authorization_code"`
-					CodeVerifier      string `json:"code_verifier"`
+			if status >= 200 && status < 300 {
+				value, canonical, ok := oauthJSONValue(body)
+				if !ok {
+					return DeviceCodePollResult[codexDeviceToken]{}, oauthJSONRejection(body)
 				}
-				if json.Unmarshal(body, &j) != nil || j.AuthorizationCode == "" || j.CodeVerifier == "" {
+				members, _ := value.(map[string]any)
+				authorizationCode, _ := members["authorization_code"].(string)
+				codeVerifier, _ := members["code_verifier"].(string)
+				if authorizationCode == "" || codeVerifier == "" {
 					return DeviceCodePollResult[codexDeviceToken]{
 						Status:  DevicePollFailed,
-						Message: fmt.Sprintf("Invalid OpenAI Codex device auth token response: %s", string(body)),
+						Message: fmt.Sprintf("Invalid OpenAI Codex device auth token response: %s", canonical),
 					}, nil
 				}
 				return DeviceCodePollResult[codexDeviceToken]{
 					Status: DevicePollComplete,
-					Value:  codexDeviceToken{authorizationCode: j.AuthorizationCode, codeVerifier: j.CodeVerifier},
+					Value:  codexDeviceToken{authorizationCode: authorizationCode, codeVerifier: codeVerifier},
 				}, nil
 			}
 			if status == http.StatusForbidden || status == http.StatusNotFound {
@@ -378,10 +400,10 @@ func pollCodexDeviceAuth(ctx context.Context, device codexDeviceAuthInfo) (codex
 			}
 			return DeviceCodePollResult[codexDeviceToken]{
 				Status:  DevicePollFailed,
-				Message: fmt.Sprintf("OpenAI Codex device auth failed with status %d%s", status, codexBodySuffix(body)),
+				Message: fmt.Sprintf("OpenAI Codex device auth failed with status %d%s", status, oauthTextSuffix(body)),
 			}, nil
-		},
-	})
+		}
+	}
 }
 
 // LoginOpenAICodexDeviceCode runs the Codex device-code login: request a user
@@ -434,8 +456,11 @@ func LoginOpenAICodex(ctx context.Context, callbacks OAuthLoginCallbacks) (OAuth
 		defer callback.Close()
 	}
 
-	// pig divergence (D26): PiG names itself as the OpenAI login's originator.
+	// pig divergence (D26): PiG names itself as the OpenAI login's originator. An app-supplied agentName replaces the default, as createAuthorizationFlow(options?.agentName) does (openai-codex.ts:363); an empty name is kept.
 	originator := pigidentity.CodexOriginator
+	if callbacks.AgentName != nil {
+		originator = *callbacks.AgentName
+	}
 	// Build the authorize URL with the exact parameter order upstream uses: URLSearchParams preserves insertion order and
 	// url.Values would alphabetize (openai-codex.ts:295-309).
 	authURL := codexAuthorizeURL +

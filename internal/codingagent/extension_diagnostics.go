@@ -14,6 +14,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
+	"github.com/MichaelKinsy/PiG/internal/nodefs"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -53,10 +54,7 @@ func extensionLoadIssueDiagnostic(issue string) extension.ResourceDiagnostic {
 }
 
 func (m *InteractiveMode) builtInCommandConflictDiagnostics() []extension.ResourceDiagnostic {
-	builtin := make(map[string]struct{})
-	for _, command := range BuiltinSlashCommands() {
-		builtin[command.Name] = struct{}{}
-	}
+	builtin := upstreamBuiltinCommandNames()
 	var out []extension.ResourceDiagnostic
 	for _, command := range m.newRunner.Commands() {
 		if _, ok := builtin[command.Name]; !ok {
@@ -71,17 +69,7 @@ func (m *InteractiveMode) builtInCommandConflictDiagnostics() []extension.Resour
 	return out
 }
 
-func sourceInfoPath(info extension.SourceInfo) string {
-	switch typed := info.(type) {
-	case PiSourceInfo:
-		return typed.Path
-	case *PiSourceInfo:
-		if typed != nil {
-			return typed.Path
-		}
-	}
-	return ""
-}
+func sourceInfoPath(info extension.SourceInfo) string { return info.Path }
 
 // loadThemes replaces the registered theme set with the resolved resources, including explicit paths under --no-themes.
 // Valid named themes in the custom themes directory stay selectable, as Pi getAvailableThemesWithPaths and loadThemeJson find them without registration.
@@ -102,7 +90,7 @@ func (m *InteractiveMode) loadThemes() {
 
 // addCustomDirectoryThemes mirrors Pi getCustomThemeInfos: unreadable and invalid files are ignored, and built-in or registered names keep precedence.
 func addCustomDirectoryThemes(registry *tui.ThemeRegistry, dir string, mode tui.TerminalColorMode) {
-	entries, err := os.ReadDir(dir)
+	entries, err := nodefs.ReadDir(dir)
 	if err != nil {
 		return
 	}
@@ -135,6 +123,23 @@ type loadedTheme struct {
 	path  string
 }
 
+// ThemeFile is a theme loaded from the file at Path.
+type ThemeFile struct {
+	Theme *tui.Theme
+	Path  string
+}
+
+// LoadThemeFiles loads the themes at paths as resource-loader.ts loadThemes does for DefaultResourceLoader: the first theme of a name wins, and the diagnostics hold the load warnings and the name collisions in order. Theme construction uses the color mode of the settings' terminal capability overrides without the tmux hyperlink probe (resource-loader.ts:884-888). It registers nothing.
+func LoadThemeFiles(sm *SettingsManager, paths []string) ([]ThemeFile, []extension.ResourceDiagnostic) {
+	mode := tui.GetTerminalColorMode(tui.ApplyCapabilityOverrides(tui.DetectCapabilities(func() bool { return false }), sm.GetTerminalCapabilityOverrides()))
+	loaded, diagnostics := loadThemeResources(tui.NewThemeRegistry(), paths, mode)
+	files := make([]ThemeFile, len(loaded))
+	for i, item := range loaded {
+		files[i] = ThemeFile{Theme: item.theme, Path: item.path}
+	}
+	return files, diagnostics
+}
+
 // loadThemeResources registers and returns the first theme of each name with ordered load warnings and name collisions.
 // Loaded empty-name themes remain resources even though the registry has no key for them.
 func loadThemeResources(registry *tui.ThemeRegistry, paths []string, mode tui.TerminalColorMode) ([]loadedTheme, []extension.ResourceDiagnostic) {
@@ -158,7 +163,7 @@ func loadThemeResources(registry *tui.ThemeRegistry, paths []string, mode tui.Te
 			// Pi existsSync is false for every stat failure (resource-loader.ts:886-890).
 			warn("theme path does not exist", path)
 		case info.IsDir():
-			entries, err := os.ReadDir(path)
+			entries, err := nodefs.ReadDir(path)
 			if err != nil {
 				warn(nodeThemeFSError(err, "scandir", path), path)
 				continue

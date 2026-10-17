@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 // Set-version synchronizes repository release pins without publishing anything.
@@ -6,6 +5,7 @@ package main
 
 import (
 	"bytes"
+	"compress/gzip"
 	"errors"
 	"flag"
 	"fmt"
@@ -83,6 +83,12 @@ func run(root string, opt options, output io.Writer, check func(string, io.Write
 		if bytes.Equal(p.before[path], p.after[path]) {
 			continue
 		}
+		if strings.HasSuffix(path, ".gz") {
+			if _, err := fmt.Fprintf(output, "%s changed (regenerated from CHANGELOG.md)\n", path); err != nil {
+				return err
+			}
+			continue
+		}
 		before, after := string(p.before[path]), string(p.after[path])
 		edits := myers.ComputeEdits(span.URIFromPath(path), before, after)
 		if _, err := fmt.Fprint(output, gotextdiff.ToUnified("a/"+path, "b/"+path, before, edits)); err != nil {
@@ -143,6 +149,9 @@ func prepare(root string, opt options) (*plan, error) {
 			return nil, err
 		}
 	}
+	if err := p.updateSDKVersions(opt.version); err != nil {
+		return nil, err
+	}
 	const standard = "piglets/standard/pig-standard.yaml"
 	data, err = p.read(standard)
 	if err != nil {
@@ -161,6 +170,14 @@ func prepare(root string, opt options) (*plan, error) {
 	if err != nil {
 		return nil, err
 	}
+	if old, err := os.ReadFile(filepath.Join(p.root, "CHANGELOG.md.gz")); err == nil {
+		p.before["CHANGELOG.md.gz"] = old
+	}
+	var gz bytes.Buffer
+	w, _ := gzip.NewWriterLevel(&gz, gzip.BestCompression)
+	_, _ = w.Write(p.after["CHANGELOG.md"])
+	_ = w.Close()
+	p.after["CHANGELOG.md.gz"] = gz.Bytes() // embed.go embeds the compressed changelog
 	return p, nil
 }
 

@@ -1,4 +1,3 @@
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 #
 # Divergence-guard ratchet (automation/ci/divguard, `make divergence-guard`).
@@ -25,24 +24,19 @@ owner = "reviewed-wire-encoding"
 summary = "Reviewed, permanent: coding/extension/host/subprocess/conn.go encodedRawSize adds the bytes Go's encoding/json emits when it escapes <, >, & (six bytes for one, so +5) and U+2028/U+2029 (six bytes for three, so +3). The subprocess wire is a Pig-owned format that Pi does not have, so no pinned Pi file spells these sizes and no `// upstream:` marker can verify them. They are byte counts of the encoder's output, not caps or limits; TestEncodedRawSize_MatchesEncoder proves them against the encoder. Not a Pi divergence."
 
 [[finding]]
+id = "GUARD-15"
+owner = "reviewed-v8-limit"
+summary = "Reviewed, permanent (lead ruling 2026-10-10 20:16Z, rev-win-glob): coding/packagecontent/glob_braces.go jsMaxArrayLength = 1 << 27 is V8's Array.prototype.push limit, which Node's bundled brace-expansion reaches when fs.globSync expands a manifest glob (Pi package-manager.ts:294-303): a numeric sequence of more items throws RangeError \"Invalid array length\". No pinned Pi or dependency-snapshot file spells a V8 limit, so no `// upstream:` marker can verify it. TestJSMaxArrayLengthMatchesNode measures the limit in the installed Node and checks braceExpand at it and one past it. Not a Pi divergence; it is not a candidate for removal."
+
+[[finding]]
 id = "GUARD-12"
 owner = "div-modes-interactive"
 summary = "Windows resize is polled every 120 ms; upstream reacts to the stdout resize event."
 
 [[finding]]
-id = "AGENT-01"
-owner = "div-agent-core"
-summary = "agent.emit drops events once the run context is cancelled: the event send races a Done case, so aborted message_end, turn_end and agent_end are lost."
-
-[[finding]]
 id = "AGENT-15"
 owner = "div-agent-core"
 summary = "Session.Close does not abort the active run; the 64-event raw buffer then fills and Send hangs."
-
-[[finding]]
-id = "AGENT-16"
-owner = "div-agent-core"
-summary = "recover() calls in session event dispatch discard the panic value: the ordered-event paths swallow listener panics, and emitExtensionError drops a panic from the error listener itself."
 
 [[finding]]
 id = "AI-08"
@@ -115,24 +109,10 @@ owner = "div-ext-host"
 summary = "Extension login preview deadline; add `pig additive (D60)` at the literal."
 
 [[hit]]
-check = "bare-recover"
-file = "coding/session.go"
-func = "emitExtensionError"
-snippet = "if recover() != nil {"
-finding = "AGENT-16"
-
-[[hit]]
-check = "cancel-drop-send"
-file = "coding/session_event_barrier.go"
-func = "Session.FlushEvents"
-snippet = "case s.rawEvents <- marker:"
-finding = "AGENT-01"
-
-[[hit]]
 check = "default-drop-send"
 file = "coding/extension/host/subprocess/conn.go"
 func = "Conn.Close"
-snippet = "case c.outCh <- outboundFrame{data: shutdown, result: writeResult, work: true}:"
+snippet = "case c.outCh <- outboundFrame{data: shutdown, result: writeResult, work: true, queued: true}:"
 finding = "EXT-17"
 
 [[hit]]
@@ -146,7 +126,7 @@ finding = "EXT-17"
 check = "default-drop-send"
 file = "coding/extension/host/subprocess/conn.go"
 func = "Conn.deliverRequestState"
-snippet = "case ch <- state:"
+snippet = "case sink.ch <- state:"
 finding = "D56"
 
 [[hit]]
@@ -173,7 +153,7 @@ finding = "EXT-17"
 [[hit]]
 check = "default-drop-send"
 file = "internal/codingagent/interactive.go"
-func = "InteractiveMode.postUITask"
+func = "InteractiveMode.postUITaskQuiet"
 snippet = "case m.uiTaskCh <- fn:"
 finding = "TUI-03"
 
@@ -194,21 +174,21 @@ finding = "AI-28"
 [[hit]]
 check = "magic-literal"
 file = "ai/http_transport.go"
-func = "baseStreamingHTTPClient"
+func = "newStreamingTransport"
 snippet = "KeepAlive: 15 * time.Second,"
 finding = "AI-29"
 
 [[hit]]
 check = "magic-literal"
 file = "ai/http_transport.go"
-func = "baseStreamingHTTPClient"
+func = "newStreamingTransport"
 snippet = "MaxIdleConns: 100,"
 finding = "AI-29"
 
 [[hit]]
 check = "magic-literal"
 file = "ai/http_transport.go"
-func = "baseStreamingHTTPClient"
+func = "newStreamingTransport"
 snippet = "MaxIdleConnsPerHost: 4,"
 finding = "AI-29"
 
@@ -235,35 +215,35 @@ finding = "GUARD-02"
 
 [[hit]]
 check = "magic-literal"
-file = "cmd/pig/extension_login_preview_command.go"
+file = "coding/cli/extension_login_preview_command.go"
 func = "extensionLoginPreviewTimeout"
 snippet = "var extensionLoginPreviewTimeout = 30 * time.Second"
 finding = "D60"
 
 [[hit]]
 check = "magic-literal"
-file = "cmd/pig/extension_validate_command.go"
+file = "coding/cli/extension_validate_command.go"
 func = "validationLoadTimeout"
 snippet = "const validationLoadTimeout = 2 * time.Minute"
 finding = "D28"
 
 [[hit]]
 check = "magic-literal"
-file = "cmd/pig/extensions_cache_command.go"
+file = "coding/cli/extensions_cache_command.go"
 func = "runExtensionsCommand"
 snippet = "retention := 30 * 24 * time.Hour"
 finding = "D20"
 
 [[hit]]
 check = "magic-literal"
-file = "cmd/pig/self_update.go"
+file = "coding/cli/self_update.go"
 func = "selfUpdateTimeout"
 snippet = "const selfUpdateTimeout = 5 * time.Minute"
 finding = "D39"
 
 [[hit]]
 check = "magic-literal"
-file = "cmd/pig/setup_command.go"
+file = "coding/cli/setup_command.go"
 func = "setupGo"
 snippet = "client := &http.Client{Timeout: 15 * time.Minute}"
 finding = "D18"
@@ -424,6 +404,13 @@ finding = "GUARD-13"
 
 [[hit]]
 check = "magic-literal"
+file = "coding/packagecontent/glob_braces.go"
+func = "jsMaxArrayLength"
+snippet = "const jsMaxArrayLength = 1 << 27"
+finding = "GUARD-15"
+
+[[hit]]
+check = "magic-literal"
 file = "tui/select_filterable.go"
 func = "FilterableList.Render"
 snippet = "maxRows = 20"
@@ -446,14 +433,6 @@ finding = "GUARD-12"
 [[hit]]
 check = "stream-parse-continue"
 file = "ai/openai_responses.go"
-func = "openAIResponsesProvider.parseResponses"
-snippet = "if err := json.Unmarshal(event.Item, &item); err != nil {"
-finding = "AI-08"
-count = 2
-
-[[hit]]
-check = "stream-parse-continue"
-file = "ai/openai_responses.go"
-func = "openAIResponsesProvider.parseResponses"
+func = "processResponsesStream"
 snippet = "if json.Unmarshal([]byte(block.ThinkingSignature), &stored) != nil {"
 finding = "AI-08"

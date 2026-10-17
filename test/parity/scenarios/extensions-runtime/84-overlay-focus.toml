@@ -1,0 +1,92 @@
+# Behavior family: extensions-runtime
+# Surface: a ui.custom factory's tui.showOverlay (Pi 1.2.0 interactive-mode.ts:3008 hands the factory the TUI; tui.ts:729-826).
+#
+# testdata/ext/overlay-qa-tests.ts is Pi 1.2.0's packages/coding-agent/examples/extensions/overlay-qa-tests.ts, byte for byte
+# (sha256 4b1778e9e247c9eb24fe48e13fff0272f6f78b8102b4ed085d03598c3b98773f). /overlay-focus's factory shows three non-capturing
+# panels with tui.showOverlay and focuses Alpha through its handle before returning; the controller overlay then takes focus. Tab
+# focuses a panel (handle.focus()), a panel's Tab focuses the next one, Escape dismisses the focused panel (handle.hide()) and focus
+# moves to the next open one. Quiet startup keeps the startup header, which differs between the binaries, from showing behind the
+# panels. Before the showOverlay slice PiG threw "this.tui.showOverlay is not a function" from the factory.
+#
+# Upstream evidence (Pi 1.2.0, parity harness, 2026-10-13, 120x40 tmux, one run kept with an impossible both_contain entry):
+#   keys: "/overlay-focus" Enter, Tab, "a", Tab, "b", Escape, "g"
+#   crop: start="Alpha" end="Ctrl+C = close all"; raw cropped upstream block (excerpt):
+#     Alpha visible                  │
+#         │ Input: > a                     │
+#         │ Keys: "a"                      │
+#         ╰────────────────────────────────╯              │ Gamma FOCUSED                  │
+#                                                         │ Input: > g                     │
+#                                                         │ Keys: "g"                      │
+#                                     ╭──────────────── Focus + Input Demo ─────────────────╮
+#                                     │ Current focus: Gamma                                │
+#     ────────────────────────────────│ Esc/Ctrl+D = dismiss panel                          │─────────────────────────────────
+#                                     │ Ctrl+C = close all
+#   Beta, dismissed, was not on screen. PiG's crop was byte-identical (output_equal).
+
+name = "84-overlay-focus"
+description = "Pi's /overlay-focus: panels shown from the factory's tui take focus, keys and dismissal through their OverlayHandle"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/tui/src/tui.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/quiet-pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/quiet-pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/overlay-qa-tests.ts"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/overlay-qa-tests.ts"]
+
+[tmux]
+width = 120
+height = 40
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Alpha"
+capture_end = "Ctrl+C = close all"
+
+[[tmux.steps]]
+keys = ["/overlay-focus", "Enter"]
+wait_contains = ["Current focus: Controller"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["Tab"]
+wait_contains = ["Current focus: Alpha"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["a"]
+wait_contains = ['Keys: "a"']
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Tab"]
+wait_contains = ["Current focus: Beta"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["b"]
+wait_contains = ['Keys: "b"']
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Escape"]
+wait_contains = ["Current focus: Gamma"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["g"]
+wait_contains = ['Keys: "g"']
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ["Current focus: Gamma", 'Keys: "g"']
+both_not_contain = ["panic:", "Beta FOCUSED", "Beta visible", "is not a function"]
+output_equal = true
+runs = 3

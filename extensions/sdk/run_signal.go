@@ -8,6 +8,9 @@ import (
 
 const notifyRunSignal = "run_signal"
 
+// notifyInvalidate (host to extension) carries the stale message after the Host invalidated the session.
+const notifyInvalidate = "invalidate"
+
 // runSignal is the replicated signal of the run in progress: one context for the whole run, cancelled when the run aborts.
 type runSignal struct {
 	mu     sync.Mutex

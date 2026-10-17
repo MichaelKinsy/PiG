@@ -1,5 +1,7 @@
 package ai
 
+// pi: packages/ai/src/auth/oauth/meta.ts
+
 // Ports .upstream/current/packages/ai/test/meta-oauth.test.ts.
 
 import (
@@ -131,7 +133,7 @@ func TestMetaOAuthLogsInWithDeviceFlowAndMintsModelAPIKey(t *testing.T) {
 		}
 		// The first poll waits one interval (5s) and is pending; the second
 		// poll completes after another interval.
-		wantCredentials := OAuthCredentials{Refresh: "identity-token", Access: "LLM|minted-key", Expires: start.Add(10*time.Second + metaDay).UnixMilli()}
+		wantCredentials := OAuthCredentials{Refresh: "identity-token", Access: "LLM|minted-key", Expires: start.Add(10*time.Second + metaDay).UnixMilli(), order: credentialKeyOrder{keys: refreshFirstCredentialMembers}}
 		if !reflect.DeepEqual(credentials, wantCredentials) {
 			t.Fatalf("credentials = %#v, want %#v", credentials, wantCredentials)
 		}
@@ -155,7 +157,7 @@ func TestMetaOAuthRefreshReMintsKeyFromStoredIdentityToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := OAuthCredentials{Refresh: "identity-token", Access: "LLM|fresh-key", Expires: now.Add(metaDay).UnixMilli()}
+	want := OAuthCredentials{Refresh: "identity-token", Access: "LLM|fresh-key", Expires: now.Add(metaDay).UnixMilli(), order: credentialKeyOrder{keys: refreshFirstCredentialMembers}}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("refreshed = %#v, want %#v", got, want)
 	}

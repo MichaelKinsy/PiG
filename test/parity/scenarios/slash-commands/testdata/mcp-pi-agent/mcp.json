@@ -1,0 +1,6 @@
+{
+  "mcpServers": {
+    "docs": { "command": "mcp-parity-not-installed", "enabled": false, "description": "Documentation search" },
+    "files": { "url": "https://mcp.invalid/files", "enabled": false, "exposure": "direct" }
+  }
+}

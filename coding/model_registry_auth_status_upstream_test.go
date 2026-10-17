@@ -27,10 +27,12 @@ func TestModelRegistryCopilotAvailabilityUpstream(t *testing.T) {
 		if err := services.Auth().Set("github-copilot", ai.Credential{Type: ai.CredentialOAuth, Refresh: "github-access-token", Access: "tid=test;exp=9999999999;proxy-ep=proxy.individual.githubcopilot.com;", Expires: time.Now().Add(time.Minute).UnixMilli(), AvailableModelIDs: ids}); err != nil {
 			t.Fatal(err)
 		}
+		// Pi's test creates the registry after the credential is stored (createModelRegistry awaits the refresh); the facade's synchronous read follows an awaited refresh.
+		services.ModelRuntime().Refresh(t.Context())
 		var actual []string
 		for _, model := range services.Registry().GetAvailable() {
-			if model.ProviderID == "github-copilot" {
-				actual = append(actual, model.ModelID)
+			if model.ProviderID() == "github-copilot" {
+				actual = append(actual, model.ID)
 			}
 		}
 		if !reflect.DeepEqual(actual, []string{models[0].ID}) {
@@ -69,7 +71,7 @@ func TestModelRegistryAuthStatusUpstream(t *testing.T) {
 			}
 			if !tc.want.Configured {
 				for _, model := range registry.GetAvailable() {
-					if model.ProviderID == "custom-provider" {
+					if model.ProviderID() == "custom-provider" {
 						t.Fatal("unconfigured provider was available")
 					}
 				}
@@ -115,7 +117,7 @@ func TestModelRegistryAuthStatusUpstream(t *testing.T) {
 		registry := registryTestServices(t, dir, map[string]any{"custom-provider": registryProviderWithKey(key)}).Registry()
 		found := false
 		for _, model := range registry.GetAvailable() {
-			if model.ProviderID == "custom-provider" {
+			if model.ProviderID() == "custom-provider" {
 				found = true
 			}
 		}

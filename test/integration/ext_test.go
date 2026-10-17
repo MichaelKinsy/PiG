@@ -378,9 +378,7 @@ func TestExt_CachedBinaryUsedOnSecondStartup(t *testing.T) {
 
 	t.Logf("cold startup: %s, warm startup: %s", cold, warm)
 	// Warm should be noticeably faster (no go build).
-	if warm > cold {
-		t.Errorf("warm startup (%s) slower than cold (%s): cache is not working", warm, cold)
-	}
+	testenv.TimingGate(t, warm > cold, "warm startup (%s) slower than cold (%s): cache is not working", warm, cold)
 }
 
 // ── Live extension tool tests ────────────────────────────────────────────────

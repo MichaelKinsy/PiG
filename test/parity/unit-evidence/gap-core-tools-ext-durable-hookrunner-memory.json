@@ -1,0 +1,29 @@
+[
+ {
+  "upstream": "packages/durable/src/harness/scheduler.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestHookRunnerEachReportsAnOrdinaryErrorAndRunsTheNextHandler",
+   "TestHookRunnerEachTreatsAPanickingHandlerAsAnOrdinaryError",
+   "TestHookRunnerEachRejectsAfterTheInvocationEnds",
+   "TestHookRunnerEachPropagatesTheErrorOnceTheInvocationIsSignalled",
+   "TestHookRunnerEachRejectsWithAFailedAgentResolution",
+   "TestGenerationHooks"
+  ],
+  "upstream_reference": "packages/durable/src/types.ts:157-164 (HookRunner.each); scheduler.ts:1131-1147 (each: await agent(), handlers of the task name in extension order, report an ordinary throw, propagate once signalled)",
+  "mutation": "durable/harness/scheduler.go runtimeHooks.Each: ended check dropped (TestHookRunnerEachRejectsAfterTheInvocationEnds FAIL); agent resolution error ignored (TestHookRunnerEachRejectsWithAFailedAgentResolution FAIL); signalled error swallowed (TestHookRunnerEachPropagatesTheErrorOnceTheInvocationIsSignalled FAIL); errors never reported (TestGenerationHooks FAIL); errors always propagated (TestGenerationHooks FAIL); wrong task name (TestGenerationHooks FAIL); handler panic not recovered (TestHookRunnerEachTreatsAPanickingHandlerAsAnOrdinaryError FAIL); reversed order (TestGenerationHooks FAIL). Each mutation compiled and ran."
+ },
+ {
+  "upstream": "packages/durable/src/storage/memory.ts",
+  "package": "./durable/storage",
+  "tests": [
+   "TestMemoryStorageDocumentCursorAfterMustBeASafeInteger",
+   "TestMemoryStorageSubmissionRequestReplacementKeepsOtherRequests",
+   "TestMemoryStorageDocumentReadAtARevisionSeqIncludesIt",
+   "TestMemoryStorageMatchesPiOnSeededPrograms",
+   "TestMemoryStorageReadApiMirrorsPisStorageContract"
+  ],
+  "upstream_reference": "packages/durable/src/storage/memory.ts:122-127 (cursorId), :395-398 (submission request index), :666 (materializeDocument seq filter); packages/durable/test/memory-storage.test.ts",
+  "mutation": "An operator-flip sweep of durable/storage/memory.go (134 comparison/boolean mutants in if/for/return/case lines) left 4 surviving before this change; 3 are now killed: integral float cursor rejected or fractional accepted, abs-limit flipped (TestMemoryStorageDocumentCursorAfterMustBeASafeInteger FAIL); request index dropped when other requests remain (TestMemoryStorageSubmissionRequestReplacementKeepsOtherRequests FAIL); revision at exactly the read seq excluded (TestMemoryStorageDocumentReadAtARevisionSeqIncludesIt FAIL). The fourth (page: count > 0 with limit 0) is not pinned: Pi's page throws a TypeError for limit 0 over a non-empty scan (memory.ts:208 items.at(-1)!.id) where Go returns an empty page with an after-0 cursor."
+ }
+]

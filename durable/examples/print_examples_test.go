@@ -33,7 +33,7 @@ func codingAssistant(t *testing.T, store durable.Storage, cwd string) (harness.H
 	untagged := false
 	installed(t, registry, new(durable.Extension{
 		Name:  "coding",
-		Tools: []*durable.ToolRegistration{tools.CreateReadTool(), tools.CreateBashTool(nil)},
+		Tools: []*durable.ToolRegistration{tools.CreateReadTool(nil), tools.CreateBashTool(nil)},
 		Sections: []*durable.PromptSection{{Key: "preamble", Tag: &untagged, Render: func(context.Context, durable.PromptInput) (*string, error) {
 			text := "You are a concise coding assistant."
 			return &text, nil

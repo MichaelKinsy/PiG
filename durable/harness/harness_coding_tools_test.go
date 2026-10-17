@@ -7,6 +7,7 @@ package harness_test
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -16,6 +17,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/env"
 	envnode "github.com/MichaelKinsy/PiG/durable/env/node"
@@ -58,7 +60,7 @@ func (setup *codingSetup) open(t *testing.T, store durable.Storage, environment 
 }
 
 func toolCalls(name string, args map[string]any, id string) ai.FauxResponseStep {
-	return ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall(name, args, id)}, StopReason: "toolUse"})
+	return ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall(name, args, &ai.FauxToolCallOptions{ID: id})}, StopReason: "toolUse"})
 }
 
 func answer(text string) ai.FauxResponseStep {
@@ -118,6 +120,7 @@ func closeHarness(t *testing.T, opened harness.Harness) {
 }
 
 func TestCodingTools(t *testing.T) {
+	// harness-tools.test.ts:880 it("answers a failing command with its retained tail and diagnostics in order")
 	t.Run("answers a failing command with its retained tail and diagnostics in order", func(t *testing.T) {
 		directory := t.TempDir()
 		setup := newCodingSetup()
@@ -151,12 +154,12 @@ func TestCodingTools(t *testing.T) {
 			t.Fatalf("text starts %q, want the retained tail from line-1001", text[:min(len(text), 20)])
 		}
 		codes := []string{}
-		for _, diagnostic := range entry.Data.(map[string]any)["diagnostics"].([]any) {
+		for _, diagnostic := range plainEntryObject(entry.Data)["diagnostics"].([]any) {
 			code, _ := diagnostic.(map[string]any)["code"].(string)
 			codes = append(codes, code)
 		}
-		if !reflect.DeepEqual(codes, []string{"full_output", "tool_error", "truncated"}) {
-			t.Fatalf("diagnostic codes %v, want [full_output tool_error truncated]", codes)
+		if !reflect.DeepEqual(codes, []string{"full_output", "exit_code", "truncated"}) {
+			t.Fatalf("diagnostic codes %v, want [full_output exit_code truncated]", codes)
 		}
 		if !strings.Contains(text, "line-3000\n|<harness>\n[info] Full output: ") {
 			t.Fatalf("text lacks the full-output diagnostic: %q", text[max(0, len(text)-200):])
@@ -167,13 +170,14 @@ func TestCodingTools(t *testing.T) {
 		closeHarness(t, opened)
 	})
 
+	// harness-tools.test.ts:910 it("reads, edits, and runs a command in one run, then answers")
 	t.Run("reads, edits, and runs a command in one run, then answers", func(t *testing.T) {
 		directory := t.TempDir()
 		if err := os.WriteFile(filepath.Join(directory, "notes.txt"), []byte("hello world\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		setup := newCodingSetup()
-		if err := setup.registry.Install(new(durable.Extension{Name: "coding", Tools: []*durable.ToolRegistration{tools.CreateReadTool(), tools.CreateEditTool(), tools.CreateBashTool(nil)}})); err != nil {
+		if err := setup.registry.Install(new(durable.Extension{Name: "coding", Tools: []*durable.ToolRegistration{tools.CreateReadTool(nil), tools.CreateEditTool(), tools.CreateBashTool(nil)}})); err != nil {
 			t.Fatal(err)
 		}
 		setup.faux.SetResponses([]ai.FauxResponseStep{
@@ -212,6 +216,7 @@ func TestCodingTools(t *testing.T) {
 }
 
 func TestToolRecoveryWithBash(t *testing.T) {
+	// harness-tools-recovery.test.ts:338 it("answers a real bash command interrupted by close and reopen, then finishes the run")
 	t.Run("answers a real bash command interrupted by close and reopen, then finishes the run", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "session.sqlite")
 		environment := envnode.NewNodeExecutionEnv(envnode.NodeExecutionEnvOptions{Cwd: filepath.Dir(path)})
@@ -237,7 +242,7 @@ func TestToolRecoveryWithBash(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if slots, _ := live["tools"].([]any); len(slots) > 0 && slots[0].(map[string]any)["output"] == "started\n" {
+			if slots, _ := live.Value("tools").([]any); len(slots) > 0 && slots[0].(*delta.JsonObject).Value("output") == "started\n" {
 				break
 			}
 			if time.Now().After(deadline) {
@@ -261,4 +266,17 @@ func TestToolRecoveryWithBash(t *testing.T) {
 		}
 		closeHarness(t, opened)
 	})
+}
+
+// plainEntryObject is value's JSON object as a map, for reads that ignore key order, as toEqual does.
+func plainEntryObject(value any) map[string]any {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		panic(err)
+	}
+	var object map[string]any
+	if err := json.Unmarshal(encoded, &object); err != nil {
+		panic(err)
+	}
+	return object
 }

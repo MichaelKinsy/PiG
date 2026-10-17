@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -20,11 +21,11 @@ func TestAtCompletionWithoutFdOffersNothing(t *testing.T) {
 	}
 	p := NewCombinedProvider(nil, dir, "")
 	for _, line := range []string{"@no", "@d", "look at @no"} {
-		if got := p.GetSuggestions([]string{line}, 0, len(line)); got != nil {
+		if got := p.GetSuggestions(context.Background(), []string{line}, 0, len(line), AutocompleteSuggestionOptions{}); got != nil {
 			t.Errorf("%q without fd suggested %+v, want none", line, got.Items)
 		}
 	}
-	forced := p.GetSuggestionsForce([]string{"./no"}, 0, len("./no"))
+	forced := p.GetSuggestions(context.Background(), []string{"./no"}, 0, len("./no"), AutocompleteSuggestionOptions{Force: true})
 	if forced == nil || len(forced.Items) != 1 || forced.Items[0].Value != "./notes.txt" {
 		t.Fatalf("Tab path completion without fd = %+v, want ./notes.txt", forced)
 	}

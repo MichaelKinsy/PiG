@@ -1,6 +1,7 @@
 package rssdk
 
 import (
+	"bytes"
 	"io/fs"
 	"os"
 	"slices"
@@ -37,7 +38,7 @@ func TestBundledFilesMatchRustSourceTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if string(source) != string(embedded) {
+		if !bytes.Equal(source, embedded) {
 			t.Fatalf("staged Rust source %s differs from its current source", path)
 		}
 	}

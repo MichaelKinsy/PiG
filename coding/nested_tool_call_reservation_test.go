@@ -1,3 +1,5 @@
+//go:build !pig_strip_codemode
+
 package coding
 
 import (

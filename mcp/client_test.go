@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -39,6 +40,7 @@ func (s *testServer) recorded() []mcp.JSONRPCMessage {
 func createServer(t *testing.T) (*mcptest.InMemoryTransport, *testServer) {
 	t.Helper()
 	client, serverTransport := mcptest.NewInMemoryTransportPair()
+	t.Cleanup(func() { _ = client.Close(); _ = serverTransport.Close() })
 	server := &testServer{transport: serverTransport, handlers: map[string]func(mcp.JSONRPCMessage) (any, error){}}
 	serverTransport.OnMessage(func(message mcp.JSONRPCMessage) {
 		server.mu.Lock()
@@ -61,11 +63,11 @@ func createServer(t *testing.T) (*mcptest.InMemoryTransport, *testServer) {
 				if !errors.As(err, &mcpErr) {
 					mcpErr = &mcp.McpError{Code: -32603, Message: err.Error()}
 				}
-				_ = serverTransport.Send(mcp.NewErrorResponse(*message.ID, mcpErr.Code, mcpErr.Message, mcpErr.Data))
+				_ = serverTransport.Send(context.Background(), mcp.NewErrorResponse(*message.ID, mcpErr.Code, mcpErr.Message, mcpErr.Data))
 				return
 			}
 			raw, _ := json.Marshal(result)
-			_ = serverTransport.Send(mcp.NewResult(*message.ID, raw))
+			_ = serverTransport.Send(context.Background(), mcp.NewResult(*message.ID, raw))
 		}()
 	})
 	if err := serverTransport.Start(); err != nil {
@@ -252,7 +254,7 @@ func TestClientRenewsTheTimeoutOnProgress(t *testing.T) {
 		token := meta["progressToken"]
 		clock.AfterFunc(40*time.Millisecond, func() {
 			raw, _ := json.Marshal(map[string]any{"progressToken": token, "progress": 1, "total": 2})
-			_ = server.transport.Send(mcp.NewNotification("notifications/progress", raw))
+			_ = server.transport.Send(context.Background(), mcp.NewNotification("notifications/progress", raw))
 		})
 		clock.Sleep(80 * time.Millisecond)
 		return map[string]any{"content": []any{map[string]any{"type": "text", "text": "done"}}}, nil
@@ -310,7 +312,7 @@ func waitForTimers(t *testing.T, clock *fakeClock, n int) {
 func TestClientCancelsAbortedAndTimedOutRequests(t *testing.T) {
 	client, server := connect(t)
 	server.setHandler("tools/call", func(mcp.JSONRPCMessage) (any, error) {
-		select {}
+		return blockUntilTestEnds(t)
 	})
 	ctx, cancel := context.WithCancelCause(t.Context())
 	errs := make(chan error, 1)
@@ -347,6 +349,10 @@ func TestClientCancelsAbortedAndTimedOutRequests(t *testing.T) {
 		}
 	}
 	jsonEqual(t, cancelled, `{"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":2,"reason":"stop"}}`)
+	// Pi builds `{ requestId: id, ...(reason ? { reason } : {}) }` (client.ts), so requestId leads on the wire.
+	if string(cancelled.Params) != `{"requestId":2,"reason":"stop"}` {
+		t.Fatalf("cancelled params bytes = %s, want requestId before reason", cancelled.Params)
+	}
 
 	_, err := client.CallTool(t.Context(), "wait", map[string]any{}, mcp.RequestOptions{TimeoutMs: 5})
 	if _, ok := errors.AsType[*mcp.McpTimeoutError](err); !ok {
@@ -366,6 +372,10 @@ func waitFor(t *testing.T, condition func() bool) {
 	}
 }
 
+// Pi source: packages/mcp/src/transports/in-memory.ts
+// mutation-checked: zeroing the results of InMemoryTransport.EmitError fails it
+// Pi: packages/mcp/src/transports/in-memory.ts:35 (emitError)
+// packages/mcp/src/transports/in-memory.ts:35-36: emitError(error) reports a transport error to the listeners.
 func TestClientReportsTransportErrorsWithoutFailingPendingRequests(t *testing.T) {
 	clientTransport, server := createServer(t)
 	client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "test-client", Version: "1.0.0"}})
@@ -443,6 +453,21 @@ func TestClientAcceptsServersThatAnswerWithAnOlderProtocolVersion(t *testing.T) 
 	}
 }
 
+// client.test.ts (67996ab75, #10416): MCP 2026-07-28 allows any JSON value as structured content.
+func TestClientAcceptsStructuredContentThatIsNotAnObject(t *testing.T) {
+	client, server := connect(t)
+	for _, structured := range []string{`[{"id":1},{"id":2}]`, `null`, `"text"`, `3`, `false`} {
+		server.setHandler("tools/call", func(mcp.JSONRPCMessage) (any, error) {
+			return json.RawMessage(`{"content":[],"structuredContent":` + structured + `}`), nil
+		})
+		result, err := client.CallTool(t.Context(), "structured", nil, mcp.RequestOptions{})
+		if err != nil {
+			t.Fatalf("structuredContent %s: %v", structured, err)
+		}
+		jsonEqual(t, result, `{"content":[],"structuredContent":`+structured+`}`)
+	}
+}
+
 func TestClientDefaultsMissingToolResultContentToAnEmptyList(t *testing.T) {
 	client, server := connect(t)
 	server.setHandler("tools/call", func(mcp.JSONRPCMessage) (any, error) {
@@ -464,7 +489,7 @@ func TestClientDefaultsMissingToolResultContentToAnEmptyList(t *testing.T) {
 
 func TestClientDoesNotSendCancelledForATimedOutInitialize(t *testing.T) {
 	clientTransport, server := createServer(t)
-	server.setHandler("initialize", func(mcp.JSONRPCMessage) (any, error) { select {} })
+	server.setHandler("initialize", func(mcp.JSONRPCMessage) (any, error) { return blockUntilTestEnds(t) })
 	client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "test-client", Version: "1.0.0"}, RequestTimeoutMs: 5})
 	_, err := client.Connect(t.Context(), clientTransport)
 	if _, ok := errors.AsType[*mcp.McpTimeoutError](err); !ok {
@@ -489,7 +514,7 @@ func TestClientNotifiesCloseListenersOnceWhenTheTransportDrops(t *testing.T) {
 		calls++
 		mu.Unlock()
 	})
-	server.setHandler("tools/call", func(mcp.JSONRPCMessage) (any, error) { select {} })
+	server.setHandler("tools/call", func(mcp.JSONRPCMessage) (any, error) { return blockUntilTestEnds(t) })
 	errs := make(chan error, 1)
 	go func() {
 		_, err := client.CallTool(t.Context(), "wait", nil, mcp.RequestOptions{})
@@ -527,10 +552,10 @@ func TestClientAnswersRootsListAndDispatchesNotifications(t *testing.T) {
 	}
 	changed := make(chan json.RawMessage, 1)
 	client.OnNotification("notifications/tools/list_changed", func(params json.RawMessage) { changed <- params })
-	if err := server.transport.Send(mcp.NewRequest(mcp.StringID("roots"), "roots/list", nil)); err != nil {
+	if err := server.transport.Send(context.Background(), mcp.NewRequest(mcp.StringID("roots"), "roots/list", nil)); err != nil {
 		t.Fatal(err)
 	}
-	if err := server.transport.Send(mcp.NewNotification("notifications/tools/list_changed", nil)); err != nil {
+	if err := server.transport.Send(context.Background(), mcp.NewNotification("notifications/tools/list_changed", nil)); err != nil {
 		t.Fatal(err)
 	}
 	select {
@@ -553,4 +578,38 @@ func TestClientAnswersRootsListAndDispatchesNotifications(t *testing.T) {
 	})
 	jsonEqual(t, answer, `{"jsonrpc":"2.0","id":"roots","result":{"roots":[{"uri":"file:///workspace","name":"workspace"}]}}`)
 	_ = client.Close()
+}
+
+// upstream: packages/mcp/src/client.ts:143-150: a tools/call result whose blocks hold members of another JSON type reaches the
+// caller (callTool resolves); toLlmContent then renders the values (content.ts blockToLlmContent).
+func TestClientCallToolResolvesResultsWithIllTypedBlockMembers(t *testing.T) {
+	client, server := connect(t)
+	server.setHandler("tools/call", func(mcp.JSONRPCMessage) (any, error) {
+		return map[string]any{
+			"content": []any{map[string]any{"type": "resource_link", "name": 5, "uri": true}, "stray", map[string]any{"type": "audio"}},
+			"isError": "yes",
+		}, nil
+	})
+	result, err := client.CallTool(t.Context(), "odd", nil, mcp.RequestOptions{})
+	if err != nil {
+		t.Fatalf("callTool rejected a result upstream passes through: %v", err)
+	}
+	var texts []string
+	for _, block := range mcp.ToLLMContent(*result) {
+		texts = append(texts, block.Text)
+	}
+	want := []string{"5: true", "[unsupported MCP content undefined]", "[audio undefined omitted]"}
+	if !slices.Equal(texts, want) {
+		t.Fatalf("content = %q, want %q", texts, want)
+	}
+	if result.IsError == nil || !*result.IsError {
+		t.Fatalf("isError = %v, want the truthiness of \"yes\"", result.IsError)
+	}
+	_ = client.Close()
+}
+
+// blockUntilTestEnds is the handler of a server that never answers: it returns when the test ends, so no goroutine outlives the test.
+func blockUntilTestEnds(t *testing.T) (any, error) {
+	<-t.Context().Done()
+	return nil, t.Context().Err()
 }

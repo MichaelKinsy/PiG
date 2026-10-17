@@ -13,14 +13,14 @@ import (
 // Node process and the same ModelRuntime used by production Session callers.
 func BenchmarkNativeProviderStream(b *testing.B) {
 	dir := b.TempDir()
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: dir, AgentDir: filepath.Join(dir, "agent")})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: dir, AgentDir: filepath.Join(dir, "agent")})
 	if err != nil {
 		b.Fatal(err)
 	}
 	b.Cleanup(services.Close)
 	host := subprocess.NewHostWithConfigRoot(dir, dir)
 	defer host.Shutdown("benchmark done")
-	host.SetProviderCallbacks(services.Registry().RegisterProvider, services.Registry().UnregisterProvider)
+	host.SetProviderCallbacks(services.Registry().RegisterExtensionProvider, services.Registry().UnregisterProvider)
 	host.SetNativeProviderCallback(services.Registry().RegisterNativeProvider)
 	host.SetUIBridge(subprocess.NewUIBridge(nil))
 	path, err := filepath.Abs("../../../../test/parity/scenarios/testdata/extension-native-provider.mjs")

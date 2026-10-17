@@ -2,6 +2,8 @@
 
 package harness
 
+// pi: packages/durable/src/harness/provider.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -14,6 +16,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
 	"github.com/MichaelKinsy/PiG/durable/storage"
@@ -44,8 +47,8 @@ func providerSessionId(t *testing.T, harness Harness, id durable.ConversationId)
 func expectProviderSessionId(t *testing.T, harness Harness, id durable.ConversationId) string {
 	t.Helper()
 	value := snapshotJSON(t, harness, ProviderDoc, id)
-	sessionId, _ := value["sessionId"].(string)
-	if len(value) != 1 || !uuidV7Pattern.MatchString(sessionId) {
+	sessionId, _ := value.Value("sessionId").(string)
+	if value.Len() != 1 || !uuidV7Pattern.MatchString(sessionId) {
 		t.Fatalf("pi.provider of %d = %v, want {sessionId: UUIDv7}", id, value)
 	}
 	return sessionId
@@ -62,9 +65,8 @@ func retireProviderDoc(t *testing.T, conversation Conversation) {
 }
 
 var noteDoc = durable.DefineDoc(durable.DocDefinition[noteState]{
-	CommonDocDefinition: durable.CommonDocDefinition[noteState]{Kind: "test.note", Version: 1},
+	CommonDocDefinition: durable.CommonDocDefinition[noteState]{Kind: "test.note", Version: 1, Initial: func() noteState { return noteState{Text: ""} }},
 	DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryRewindable, Fork: durable.ForkAsOf},
-	Initial:             func() noteState { return noteState{Text: ""} },
 })
 
 var messageEntry = durable.DefineEntry[durable.Never]("message")
@@ -83,12 +85,16 @@ func appendText(t *testing.T, conversation Conversation, text string) durable.En
 }
 
 // allTexts pages through the history two entries at a time, newest first.
-func allTexts(t *testing.T, conversation Conversation) []string {
+func allTexts(t *testing.T, conversation Conversation, order ...durable.ScanOrder) []string {
 	t.Helper()
 	texts := []string{}
 	var cursor durable.Cursor
+	query := durable.EntryQuery{}
+	if len(order) > 0 {
+		query.Order = &order[0]
+	}
 	for {
-		page, err := conversation.Entries(testContext, durable.EntryQuery{}, 2, cursor)
+		page, err := conversation.Entries(testContext, query, 2, cursor)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -144,11 +150,15 @@ func expectJSON(t *testing.T, got durable.JsonObject, want string) {
 		}
 		return
 	}
-	var expected durable.JsonObject
+	// toEqual ignores key order, so both sides compare as maps.
+	var expected, actual map[string]any
 	if err := json.Unmarshal([]byte(want), &expected); err != nil {
 		t.Fatal(err)
 	}
-	if got == nil || !reflect.DeepEqual(got, expected) {
+	if encoded, err := json.Marshal(got); err != nil || json.Unmarshal(encoded, &actual) != nil {
+		t.Fatalf("got %v is not a JSON object", got)
+	}
+	if got == nil || !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("got %v, want %s", got, want)
 	}
 }
@@ -206,6 +216,13 @@ func mustFork(t *testing.T, conversation Conversation, at durable.EntryId, optio
 	return fork
 }
 
+func expectSessionClosed(t *testing.T, err error) {
+	t.Helper()
+	if !errors.Is(err, session.ErrSessionClosed) {
+		t.Fatalf("error %v, want %v", err, session.ErrSessionClosed)
+	}
+}
+
 func expectErrorContains(t *testing.T, err error, message string) {
 	t.Helper()
 	if err == nil || !strings.Contains(err.Error(), message) {
@@ -213,27 +230,30 @@ func expectErrorContains(t *testing.T, err error, message string) {
 	}
 }
 
+// TestHarnessRootAndConversations Conversation.id, fork and agent over the root and its children (packages/durable/src/harness/types.ts:540).
+// mutation-checked: Conversation.Fork returning the receiver fails it.
 func TestHarnessRootAndConversations(t *testing.T) {
 	t.Run("creates the root lazily with its agent change and init in one commit", func(t *testing.T) {
-		// upstream: packages/durable/test/harness-conversations.test.ts:72
+		// harness-conversations.test.ts:73 it("creates the root lazily with its agent change and init in one commit")
 		store := newControlledStorage()
 		harness, _ := openHarness(t, store, []string{"read", "bash"})
 		if store.commitCount() != 0 {
 			t.Fatal("open committed")
 		}
+		var initRoot ConversationInit = func(tx durable.Tx, id durable.ConversationId) error {
+			// The agent change applied before init.
+			agent, err := agentDraft(tx, id)
+			if err != nil {
+				return err
+			}
+			if agent.ThinkingLevel != "high" {
+				return fmt.Errorf("thinking level %q before init", agent.ThinkingLevel)
+			}
+			return setNote(tx, id, "root note")
+		}
 		root := mustRoot(t, harness, &RootOptions{
 			Agent: &AgentChange{ThinkingLevel: SetTo[ai.ModelThinkingLevel]("high")},
-			Init: func(tx durable.Tx, id durable.ConversationId) error {
-				// The agent change applied before init.
-				agent, err := agentDraft(tx, id)
-				if err != nil {
-					return err
-				}
-				if agent.ThinkingLevel != "high" {
-					return fmt.Errorf("thinking level %q before init", agent.ThinkingLevel)
-				}
-				return setNote(tx, id, "root note")
-			},
+			Init:  initRoot,
 		})
 		if root.Id() != durable.ROOT_CONVERSATION_ID {
 			t.Fatalf("root id %d", root.Id())
@@ -264,7 +284,7 @@ func TestHarnessRootAndConversations(t *testing.T) {
 	})
 
 	t.Run("keeps root and conversation identity and state across reopen", func(t *testing.T) {
-		// upstream: packages/durable/test/harness-conversations.test.ts:112
+		// harness-conversations.test.ts:113 it("keeps root and conversation identity and state across reopen")
 		path := sqlitePath(t)
 		openSqlite := func() durable.Storage {
 			store, err := sqlitenode.OpenNodeSqliteStorage(path, sqlitenode.NodeSqliteStorageOptions{})
@@ -334,7 +354,7 @@ func TestHarnessRootAndConversations(t *testing.T) {
 	})
 
 	t.Run("creates independent conversations atomically with init and rolls back failures", func(t *testing.T) {
-		// upstream: packages/durable/test/harness-conversations.test.ts:156
+		// harness-conversations.test.ts:157 it("creates independent conversations atomically with init and rolls back failures")
 		store := newControlledStorage()
 		harness, registry := openHarness(t, store, []string{"read"})
 		created, err := harness.CreateConversation(testContext, ConversationCreateOptions{
@@ -370,14 +390,14 @@ func TestHarnessRootAndConversations(t *testing.T) {
 	})
 
 	t.Run("forks at a concrete entry with the as-of agent and applies agent and init overrides", func(t *testing.T) {
-		// upstream: packages/durable/test/harness-conversations.test.ts:194
+		// harness-conversations.test.ts:195 it("forks at a concrete entry with the as-of agent and applies agent and init overrides")
 		harness, registry := openHarness(t, storage.NewMemoryStorage(), []string{"read"})
 		legacy := supportTool("legacy")
 		addTool(t, registry, legacy)
 		root := mustRoot(t, harness, nil)
 		mustConfigure(t, root, AgentChange{ThinkingLevel: SetTo[ai.ModelThinkingLevel]("low")})
 		at := appendText(t, root, "one")
-		mustConfigure(t, root, AgentChange{ThinkingLevel: SetTo[ai.ModelThinkingLevel]("high"), Tools: SetTo(ToolChange{Exact: true, List: []*durable.ToolRegistration{supportTool("read")}})})
+		mustConfigure(t, root, AgentChange{ThinkingLevel: SetTo[ai.ModelThinkingLevel]("high"), Tools: SetTo(ToolChange{List: []*durable.ToolRegistration{supportTool("read")}})})
 		appendText(t, root, "two")
 
 		child := mustFork(t, root, at.Id, ConversationCreateOptions{Ownership: ownerless})
@@ -386,7 +406,7 @@ func TestHarnessRootAndConversations(t *testing.T) {
 
 		overridden := mustFork(t, root, at.Id, ConversationCreateOptions{
 			Ownership: ownerless,
-			Agent:     &AgentChange{ThinkingLevel: SetTo[ai.ModelThinkingLevel]("minimal"), Tools: SetTo(ToolChange{Exact: true, List: []*durable.ToolRegistration{legacy}})},
+			Agent:     &AgentChange{ThinkingLevel: SetTo[ai.ModelThinkingLevel]("minimal"), Tools: SetTo(ToolChange{List: []*durable.ToolRegistration{legacy}})},
 			Init: func(tx durable.Tx, id durable.ConversationId) error {
 				agent, err := agentDraft(tx, id)
 				if err != nil {
@@ -414,7 +434,7 @@ func TestHarnessRootAndConversations(t *testing.T) {
 	})
 
 	t.Run("paginates fork-aware history through deep ancestor caps and same-commit prefixes", func(t *testing.T) {
-		// upstream: packages/durable/test/harness-conversations.test.ts:233
+		// harness-conversations.test.ts:234 it("paginates fork-aware history through deep ancestor caps and same-commit prefixes")
 		harness, _ := openHarness(t, storage.NewMemoryStorage(), nil)
 		root := mustRoot(t, harness, nil)
 		appendText(t, root, "r1")
@@ -438,6 +458,8 @@ func TestHarnessRootAndConversations(t *testing.T) {
 		expectStrings(t, allTexts(t, root), []string{"r3", "r2", "r1"})
 		expectStrings(t, allTexts(t, child), []string{"c2", "c1", "r2", "r1"})
 		expectStrings(t, allTexts(t, grandchild), []string{"g1", "c1", "r2", "r1"})
+		// Pi 1.1.0 (#10546): the query's order reaches the scan; a cursor continues in its order.
+		expectStrings(t, allTexts(t, grandchild, durable.ScanAscending), []string{"r1", "r2", "c1", "g1"})
 		// The query's conversation is ignored: the handle's conversation bounds the scan.
 		bounded, err := grandchild.Entries(testContext, durable.EntryQuery{MinEntryId: new(r2.Id), MaxEntryId: new(c1.Id), ConversationId: root.Id()}, 10, nil)
 		if err != nil {
@@ -451,7 +473,7 @@ func TestHarnessRootAndConversations(t *testing.T) {
 	})
 
 	t.Run("binds commits and task creation to the conversation", func(t *testing.T) {
-		// upstream: packages/durable/test/harness-conversations.test.ts:265
+		// harness-conversations.test.ts:268 it("binds commits and task creation to the conversation")
 		harness, _ := openHarness(t, storage.NewMemoryStorage(), nil)
 		conversation, err := harness.CreateConversation(testContext, ConversationCreateOptions{Ownership: ownerless})
 		if err != nil {
@@ -494,7 +516,7 @@ func TestHarnessRootAndConversations(t *testing.T) {
 	})
 
 	t.Run("runs conversationCreated in every creating commit, after the built-ins and before agent and init", func(t *testing.T) {
-		// upstream: packages/durable/test/harness-conversations.test.ts:287
+		// harness-conversations.test.ts:290 it("runs conversationCreated in every creating commit, after the built-ins and before agent and init")
 		var seen []string
 		harness, err := OpenHarness(testContext, storage.NewMemoryStorage(), HarnessOptions{
 			Models:   ai.CreateModels(),
@@ -568,9 +590,11 @@ func TestHarnessRootAndConversations(t *testing.T) {
 	})
 }
 
+// TestHarnessAgent Conversation.agent and Conversation.configure resolve the current registry snapshot and settings, and configure commits on its own (packages/durable/src/harness/types.ts:509-512).
+// mutation-checked: Conversation.Agent returning a zero Agent, and Conversation.Configure returning without committing, fail it.
 func TestHarnessAgent(t *testing.T) {
 	t.Run("replaces whole fields, clears them with null, and leaves undefined fields alone", func(t *testing.T) {
-		// upstream: packages/durable/test/harness-conversations.test.ts:331
+		// harness-conversations.test.ts:334 it("replaces whole fields, clears them with null, and leaves undefined fields alone")
 		harness, registry := openHarness(t, storage.NewMemoryStorage(), nil)
 		read, bash, edit := supportTool("read"), supportTool("bash"), supportTool("edit")
 		mustInstall(t, registry, new(durable.Extension{Name: "coding", Tools: []*durable.ToolRegistration{read, bash, edit}}))
@@ -588,18 +612,18 @@ func TestHarnessAgent(t *testing.T) {
 		mustConfigure(t, root, AgentChange{Model: Cleared[durable.ModelRef](), Instructions: Cleared[string]()})
 		expectJSON(t, stored(), `{"thinkingLevel":"medium"}`)
 
-		mustConfigure(t, root, AgentChange{Tools: SetTo(ToolChange{Remove: []*durable.ToolRegistration{edit}})})
+		mustConfigure(t, root, AgentChange{Tools: SetTo(ToolChange{Edit: &ToolEdit{Remove: []*durable.ToolRegistration{edit}}})})
 		expectStrings(t, offered(), []string{"read", "bash"})
 		// A new filter replaces the old one: edit is offered again.
-		mustConfigure(t, root, AgentChange{Tools: SetTo(ToolChange{Remove: []*durable.ToolRegistration{bash}})})
+		mustConfigure(t, root, AgentChange{Tools: SetTo(ToolChange{Edit: &ToolEdit{Remove: []*durable.ToolRegistration{bash}}})})
 		expectStrings(t, offered(), []string{"read", "edit"})
-		mustConfigure(t, root, AgentChange{Tools: SetTo(ToolChange{Exact: true, List: []*durable.ToolRegistration{edit, read}})})
+		mustConfigure(t, root, AgentChange{Tools: SetTo(ToolChange{List: []*durable.ToolRegistration{edit, read}})})
 		expectStrings(t, offered(), []string{"edit", "read"})
 		mustConfigure(t, root, AgentChange{Tools: Cleared[ToolChange]()})
 		expectStrings(t, offered(), []string{"read", "bash", "edit"})
 		// Names are stored without checking the registry.
-		mustConfigure(t, root, AgentChange{Tools: SetTo(ToolChange{Exact: true, List: []*durable.ToolRegistration{supportTool("missing"), read}})})
-		if tools := stored()["tools"]; !reflect.DeepEqual(tools, []any{"missing", "read"}) {
+		mustConfigure(t, root, AgentChange{Tools: SetTo(ToolChange{List: []*durable.ToolRegistration{supportTool("missing"), read}})})
+		if tools := stored().Value("tools"); !reflect.DeepEqual(tools, []any{"missing", "read"}) {
 			t.Fatalf("stored tools %v", tools)
 		}
 		expectStrings(t, offered(), []string{"read"})
@@ -607,7 +631,7 @@ func TestHarnessAgent(t *testing.T) {
 	})
 
 	t.Run("gives conversations created through Tx their documents: empty, an owner copy, or the fork's as-of copy", func(t *testing.T) {
-		// upstream: packages/durable/test/harness-conversations.test.ts:369
+		// harness-conversations.test.ts:372 it("gives conversations created through Tx their documents: empty, an owner copy, or the fork's as-of copy")
 		harness, _ := openHarness(t, storage.NewMemoryStorage(), []string{"read"})
 		root := mustRoot(t, harness, &RootOptions{Agent: &AgentChange{Model: SetTo(durable.ModelRef{Provider: "faux", ModelId: "m"}), Instructions: SetTo("Main role."), Cwd: SetTo("/repo")}})
 		owner := durable.DefineTask(durable.TaskDefinition[durable.JsonObject, stepState, durable.JsonValue, any]{
@@ -629,7 +653,7 @@ func TestHarnessAgent(t *testing.T) {
 			owned  durable.ConversationId
 		}
 		ids, err := durable.Commit(testContext, root, func(tx durable.Tx) (created, error) {
-			taskId, err := durable.CreateTask(tx, owner, durable.JsonObject{}, durable.TaskOptions{Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByConversation}})
+			taskId, err := durable.CreateTask(tx, owner, delta.NewJsonObject(0), durable.TaskOptions{Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByConversation}})
 			if err != nil {
 				return created{}, err
 			}
@@ -667,7 +691,7 @@ func TestHarnessAgent(t *testing.T) {
 
 		// A later owner change does not reach the child.
 		mustConfigure(t, root, AgentChange{ThinkingLevel: SetTo[ai.ModelThinkingLevel]("high")})
-		if _, set := snapshotJSON(t, harness, AgentDoc, ids.owned)["thinkingLevel"]; set {
+		if _, set := snapshotJSON(t, harness, AgentDoc, ids.owned).Get("thinkingLevel"); set {
 			t.Fatal("owner change reached the child")
 		}
 
@@ -695,7 +719,7 @@ func TestHarnessAgent(t *testing.T) {
 	})
 
 	t.Run("reads an absent agent for conversations a plain Session created without writing", func(t *testing.T) {
-		// upstream: packages/durable/test/harness-conversations.test.ts:423
+		// harness-conversations.test.ts:426 it("reads an absent agent for conversations a plain Session created without writing")
 		store := newControlledStorage()
 		id, err := durable.Commit(testContext, session.CreateSession(store), func(tx durable.Tx) (durable.ConversationId, error) {
 			record, err := tx.CreateConversation(durable.CreateConversationOptions{Ownership: ownerless})
@@ -726,7 +750,7 @@ func TestHarnessAgent(t *testing.T) {
 
 func TestHarnessLifecycleHandles(t *testing.T) {
 	t.Run("returns stateless handles and rejects operations after close", func(t *testing.T) {
-		// upstream: packages/durable/test/harness-conversations.test.ts:442
+		// harness-conversations.test.ts:445 it("returns stateless handles and rejects operations after close")
 		harness, _ := openHarness(t, storage.NewMemoryStorage(), nil)
 		root := mustRoot(t, harness, nil)
 		again := mustRoot(t, harness, nil)
@@ -734,16 +758,21 @@ func TestHarnessLifecycleHandles(t *testing.T) {
 			t.Fatal("handles are not stateless")
 		}
 		mustClose(t, harness)
+		// Pi 1.2.0 harness.ts root/createConversation/conversation call SessionImpl.assertUsable, which throws
+		// "Session is closed" once close began (session.ts:866); the test asserts "is closed".
 		_, err := harness.Root(testContext, nil)
-		expectErrorContains(t, err, "Harness is closed")
+		expectSessionClosed(t, err)
+		expectErrorContains(t, err, "is closed")
 		_, err = harness.CreateConversation(testContext, ConversationCreateOptions{Ownership: ownerless})
-		expectErrorContains(t, err, "Harness is closed")
+		expectSessionClosed(t, err)
+		expectErrorContains(t, err, "is closed")
 		_, err = harness.Conversation(testContext, root.Id())
-		expectErrorContains(t, err, "Harness is closed")
+		expectSessionClosed(t, err)
+		expectErrorContains(t, err, "is closed")
 	})
 
 	t.Run("forwards generic Session document APIs", func(t *testing.T) {
-		// upstream: packages/durable/test/harness-conversations.test.ts:456
+		// harness-conversations.test.ts:459 it("forwards generic Session document APIs")
 		harness, _ := openHarness(t, storage.NewMemoryStorage(), nil)
 		root := mustRoot(t, harness, nil)
 		entry, err := durable.Commit(testContext, root, func(tx durable.Tx) (durable.EntryRecord, error) {
@@ -768,7 +797,7 @@ func TestHarnessLifecycleHandles(t *testing.T) {
 		if err != nil || state == nil {
 			t.Fatalf("state %v", err)
 		}
-		if !reflect.DeepEqual(state.Value(), durable.JsonObject{"text": "second"}) {
+		if !reflect.DeepEqual(state.Value(), delta.JsonObjectOf("text", "second")) {
 			t.Fatalf("state value %v", state.Value())
 		}
 		state.Dispose()

@@ -100,7 +100,8 @@ func TestAttributionMixedCaseHostProductionRequests(t *testing.T) {
 					select {
 					case request := <-requests:
 						want := http.Header{}
-						for name, value := range map[string]string{"Authorization": "Bearer fixture", "Content-Type": "application/json", "User-Agent": ai.PiUserAgent(), "Content-Length": strconv.Itoa(len(request.body)), "Accept-Encoding": "gzip", "X-Configured": "kept", "X-Request": "kept"} {
+						// Accept is the OpenAI SDK's default that Pi's openai-completions and openai-responses modules send on every request (TestProviderRequestHeadersMatchPi).
+						for name, value := range map[string]string{"Authorization": "Bearer fixture", "Content-Type": "application/json", "Accept": "application/json", "User-Agent": ai.PiUserAgent(), "Content-Length": strconv.Itoa(len(request.body)), "Accept-Encoding": "gzip", "X-Configured": "kept", "X-Request": "kept"} {
 							want.Set(name, value)
 						}
 						if enabled || tc.host == "OPENCODE.AI" {

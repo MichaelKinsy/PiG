@@ -1,11 +1,11 @@
 # Behavior family: settings
 # Surface: main /settings selector overlay
 #
-# Upstream evidence (Pi 0.99.1, settings-selector.ts:470-857): `/settings`, Enter at 100×35 renders 32 visible rows: the 34-entry upstream roster (23 base, 2 image, 9 always shown, including fullscreen-wheel-scroll-lines at :733) minus two image-only rows.
-# Divergence D80 adds exactly one PiG setting. Assert both raw counts, then map only that approved count difference before comparing the complete crop and ANSI. The independent setting/menu tests verify the added row.
+# Upstream evidence (Pi 1.2.0+3daa2028, settings-selector.ts): `/settings`, Enter at 100×35 renders 33 visible rows: the 35-entry upstream roster minus two image-only rows. The pin added the `share-destination` row (settings-selector.ts:516).
+# PiG omits that row by approved divergence D64 (/share always uploads to pi-in-go.dev, so there is no destination to choose) and adds exactly one row by D80 (Mask secret input). The counts therefore coincide: both sides show (1/33) and no count normalization is needed. The raw count assertions plus complete-crop and ANSI equality reject any other row difference; the independent setting/menu tests verify the D80 row.
 
 name = "02-settings-selector"
-description = "The main /settings block matches Pi except for the explicit D80 additional row count."
+description = "The main /settings block matches Pi; D64's omitted share-destination row and D80's added row cancel in the row count."
 covers = [
   "packages/coding-agent/src/core/settings-manager.ts",
   "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
@@ -20,7 +20,9 @@ driver = "interactive-tmux"
 [tmux]
 width = 100
 height = 35
-ready_pattern_pig = "(auto)"
+# Both sides start typing after their startup rebind, which sets the autocomplete provider and then prints this
+# warning; "(auto)" paints before PiG's rebind, and a key sent then is cancelled by it (interactive-mode.ts:1085-1099).
+ready_pattern_pig = "Warning: No models available."
 ready_pattern_pi = "Warning: No models available."
 ready_timeout_seconds = 25
 capture_start = "Auto-compact"
@@ -46,10 +48,4 @@ escaped_output_equal = true
 runtime_ratio_max = 1.25
 runs = 3
 pig_contains = ["(1/33)"]
-pi_contains = ["(1/32)"]
-
-# normalize-rationale: divergence D80 introduces one visible PiG-only setting; the raw assertions above reject any other count change.
-[[assert.normalize_replace]]
-pattern = '\(1/33\)'
-with = '(1/32)'
-reason = "D80 adds exactly one visible PiG-only settings row; raw assertions require 33 PiG rows and 32 Pi rows before this replacement."
+pi_contains = ["(1/33)"]

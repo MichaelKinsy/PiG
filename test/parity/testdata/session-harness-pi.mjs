@@ -1,4 +1,5 @@
 // Import only upstream test setup helpers; all production imports resolve to the pinned published Pi package.
+import { PI_PACKAGE_VERSION } from "./pi-version.mjs";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join, resolve, relative } from "node:path";
@@ -6,7 +7,7 @@ import { pathToFileURL } from "node:url";
 import ts from "../interface-extractor/node_modules/typescript/lib/typescript.js";
 
 export const root = process.env.PI_PACKAGE_ROOT ?? resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, "1.0.3");
+assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, PI_PACKAGE_VERSION);
 export const resolvePackage = specifier => import.meta.resolve(specifier, pathToFileURL(join(root, "package.json")).href);
 export const production = path => import(pathToFileURL(join(root, "dist", path)));
 const upstream = resolve(".upstream/current/packages/coding-agent");

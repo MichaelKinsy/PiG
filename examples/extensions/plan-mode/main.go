@@ -171,7 +171,12 @@ func keepContextMessage(message map[string]any) bool {
 	return true
 }
 
-func (p *planMode) onBeforeAgentStart(_ sdk.Context, _ map[string]any) (any, error) {
+// onBeforeAgentStart injects the plan or execution context before a user prompt. Runs that a custom message starts, such as background
+// task notifications, skip it: the context from the last prompt is still in the conversation, and adding it on every notification would only repeat it.
+func (p *planMode) onBeforeAgentStart(_ sdk.Context, event map[string]any) (any, error) {
+	if event["messageType"] != "user" {
+		return nil, nil
+	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
 

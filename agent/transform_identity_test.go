@@ -45,11 +45,12 @@ func TestNormalizeMessagesReplayIdentityIncludesProviderAPIAndModel(t *testing.T
 				}
 				return
 			}
-			if thought, ok := got[1].(ai.TextContent); !ok || thought.Text != "thought" {
-				t.Fatalf("cross-identity thinking = %#v", got[1])
+			// Another model's thinking is dropped, not sent as text (Pi #11000).
+			if len(got) != 2 {
+				t.Fatalf("cross-identity content = %#v, want the text and the tool call", got)
 			}
-			if got[2].(ai.ToolCall).ThoughtSignature != "" {
-				t.Fatalf("cross-identity tool signature = %#v", got[2])
+			if got[1].(ai.ToolCall).ThoughtSignature != "" {
+				t.Fatalf("cross-identity tool signature = %#v", got[1])
 			}
 		})
 	}

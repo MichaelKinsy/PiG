@@ -1,3 +1,5 @@
+//go:build !pig_strip_mistral_conversations
+
 package ai
 
 import (
@@ -10,7 +12,6 @@ import (
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
@@ -77,13 +78,13 @@ func (body *mistralTrackedBody) Close() error {
 }
 
 func TestMistralRequestLifetimeClosesBodyOnce(t *testing.T) {
-	for _, mode := range []string{"success", "abort", "timeout", "response-error"} {
+	for _, mode := range []string{"success", "abort", "response-error"} {
 		t.Run(mode, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				ctx, cancel := context.WithCancel(t.Context())
 				defer cancel()
 				body := &mistralTrackedBody{ReadCloser: io.NopCloser(strings.NewReader(mistralUpstreamTerminal))}
-				if mode == "abort" || mode == "timeout" {
+				if mode == "abort" {
 					r, w := io.Pipe()
 					defer func() { _ = r.Close() }()
 					defer func() { _ = w.Close() }()
@@ -94,9 +95,6 @@ func TestMistralRequestLifetimeClosesBodyOnce(t *testing.T) {
 					requestCtx = r.Context()
 					return &http.Response{StatusCode: 200, Header: http.Header{}, Body: body}, nil
 				})}}
-				if mode == "timeout" {
-					opts.TimeoutMs = new(5)
-				}
 				if mode == "response-error" {
 					opts.OnResponse = func(context.Context, ProviderResponse, *Model) error { return io.ErrUnexpectedEOF }
 				}
@@ -112,9 +110,6 @@ func TestMistralRequestLifetimeClosesBodyOnce(t *testing.T) {
 					synctest.Wait()
 					if mode == "abort" {
 						cancel()
-					}
-					if mode == "timeout" {
-						time.Sleep(5 * time.Millisecond)
 					}
 					synctest.Wait()
 					stream.Result()

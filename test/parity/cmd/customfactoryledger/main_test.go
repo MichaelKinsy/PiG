@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -21,7 +22,7 @@ func TestGenerateIsDeterministicAndClassifiesEverySelectedMember(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(first) != string(second) {
+	if !bytes.Equal(first, second) {
 		t.Fatal("generation is not deterministic")
 	}
 	var got ledger

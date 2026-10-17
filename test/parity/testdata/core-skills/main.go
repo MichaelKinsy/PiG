@@ -34,7 +34,7 @@ func run() error {
 	}
 	records := []any{}
 	for _, skill := range result.Skills {
-		path, err := filepath.Rel(root, skill.Path)
+		path, err := filepath.Rel(root, skill.FilePath)
 		if err != nil {
 			return err
 		}

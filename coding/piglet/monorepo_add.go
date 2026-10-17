@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 
 	sourceref "github.com/MichaelKinsy/PiG/coding/source"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
@@ -141,7 +141,7 @@ func rejectBundledYAMLAliases(node *yaml.Node) error {
 }
 
 func (c *pigletClosure) rewrite(root *yaml.Node) error {
-	rewriteLocal := func(node *yaml.Node) error {
+	rewriteLocal := func(node *yaml.Node, label string) error {
 		if node.Kind != yaml.ScalarNode {
 			return fmt.Errorf("bundled Piglet sources must be scalar strings")
 		}
@@ -151,7 +151,7 @@ func (c *pigletClosure) rewrite(root *yaml.Node) error {
 		}
 		relative, err := c.copy(local)
 		if err != nil {
-			return err
+			return fmt.Errorf("%s %q: %w", label, node.Value, err)
 		}
 		node.Value = "local:./" + relative
 		return nil
@@ -161,18 +161,25 @@ func (c *pigletClosure) rewrite(root *yaml.Node) error {
 		switch field {
 		case "packages":
 			for j := 1; j < len(value.Content); j += 2 {
-				if err := rewriteLocal(value.Content[j]); err != nil {
+				if err := rewriteLocal(value.Content[j], "Package "+value.Content[j-1].Value+" origin"); err != nil {
 					return err
 				}
 			}
 		case "extensions", "skills":
+			kind := strings.TrimSuffix(field, "s")
 			for _, entry := range value.Content {
+				name := ""
+				for j := 0; j < len(entry.Content); j += 2 {
+					if entry.Content[j].Value == "name" {
+						name = entry.Content[j+1].Value
+					}
+				}
 				for j := 0; j < len(entry.Content); j += 2 {
 					if entry.Content[j].Value != "origins" {
 						continue
 					}
 					for _, origin := range entry.Content[j+1].Content {
-						if err := rewriteLocal(origin); err != nil {
+						if err := rewriteLocal(origin, kind+" "+name+" origin"); err != nil {
 							return err
 						}
 					}
@@ -186,7 +193,7 @@ func (c *pigletClosure) rewrite(root *yaml.Node) error {
 				node := value.Content[j+1]
 				relative, err := c.copy(node.Value)
 				if err != nil {
-					return err
+					return fmt.Errorf("systemPrompt file %q: %w", node.Value, err)
 				}
 				node.Value = "./" + relative
 			}
@@ -198,7 +205,10 @@ func (c *pigletClosure) rewrite(root *yaml.Node) error {
 func portableClosurePath(raw string) (string, error) {
 	relative := strings.TrimPrefix(raw, "./")
 	if relative == "." || !fs.ValidPath(relative) || strings.ContainsAny(relative, "\\:\x00") || strings.HasPrefix(relative, "~") {
-		return "", fmt.Errorf("Piglet closure path must be a portable relative path")
+		if relative == ".." || strings.HasPrefix(relative, "../") || strings.Contains(relative, "/../") || strings.HasSuffix(relative, "/..") {
+			return "", fmt.Errorf("Piglet closure path %s leaves the added subdirectory; bundled local paths must stay inside it", raw)
+		}
+		return "", fmt.Errorf("Piglet closure path %s must be a portable relative path inside the added subdirectory", raw)
 	}
 	for part := range strings.SplitSeq(relative, "/") {
 		if part == ".git" {

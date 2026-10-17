@@ -19,7 +19,7 @@ type lifecycleNavigationHandle struct {
 	aborts   int
 }
 
-func (h *lifecycleNavigationHandle) NavigateTreeHandle(ctx context.Context, _ string, _ bool, _ string) (NavigateTreeResult, error) {
+func (h *lifecycleNavigationHandle) NavigateTreeHandle(ctx context.Context, _ string, _ NavigateTreeOptions) (NavigateTreeResult, error) {
 	return h.navigate(ctx)
 }
 func (h *lifecycleNavigationHandle) AbortBranchSummary() { h.aborts++ }

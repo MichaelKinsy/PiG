@@ -81,7 +81,7 @@ func TestConvertToLLM_CustomAndSummaryRolesMatchUpstreamBlockShape(t *testing.T)
 // the openai-completions payload lost the message entirely.
 func TestAgentLoop_CustomBlockContentReachesProviderRequest(t *testing.T) {
 	provider := &scriptedProvider{respond: replyText("ok")}
-	a := NewAgent(AgentOptions{Model: scriptedModel(provider)})
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(provider)})
 	a.SetMessages([]AgentMessage{{Custom: map[string]any{
 		"role": RoleCustom, "customType": "note", "display": true, "timestamp": int64(1),
 		"content": []any{map[string]any{"type": "text", "text": "from extension"}},

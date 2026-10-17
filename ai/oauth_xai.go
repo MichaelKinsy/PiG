@@ -3,13 +3,15 @@ package ai
 // Mirrors upstream .upstream/current/packages/ai/src/auth/oauth/xai.ts.
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
-	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -83,11 +85,11 @@ func (p xaiOAuthProvider) Login(callbacks OAuthLoginCallbacks) (OAuthCredentials
 
 // LoginContext requests a device code and polls for tokens with the owning operation's cancellation.
 func (p xaiOAuthProvider) LoginContext(ctx context.Context, callbacks OAuthLoginCallbacks) (OAuthCredentials, error) {
-	status, body, err := p.postForm(ctx, p.deviceURL, url.Values{
-		"client_id": {xaiClientID},
-		"scope":     {xaiScope},
+	status, body, err := p.postForm(ctx, p.deviceURL, formFields{
+		{"client_id", xaiClientID},
+		{"scope", xaiScope},
 		// pig divergence (D26): PiG names itself as the device-code referrer.
-		"referrer": {pigidentity.XAIReferrer},
+		{"referrer", pigidentity.XAIReferrer},
 	})
 	if err != nil {
 		return OAuthCredentials{}, err
@@ -134,13 +136,10 @@ func (p xaiOAuthProvider) RefreshToken(creds OAuthCredentials) (OAuthCredentials
 
 // RefreshTokenContext refreshes tokens with the owning operation's cancellation.
 func (p xaiOAuthProvider) RefreshTokenContext(ctx context.Context, creds OAuthCredentials) (OAuthCredentials, error) {
-	if creds.Refresh == "" {
-		return OAuthCredentials{}, errors.New("xAI OAuth token refresh requires a refresh token")
-	}
-	status, body, err := p.postForm(ctx, p.tokenURL, url.Values{
-		"grant_type":    {"refresh_token"},
-		"client_id":     {xaiClientID},
-		"refresh_token": {creds.Refresh},
+	status, body, err := p.postForm(ctx, p.tokenURL, formFields{
+		{"grant_type", "refresh_token"},
+		{"client_id", xaiClientID},
+		{"refresh_token", creds.Refresh},
 	})
 	if err != nil {
 		return OAuthCredentials{}, err
@@ -152,10 +151,10 @@ func (p xaiOAuthProvider) RefreshTokenContext(ctx context.Context, creds OAuthCr
 }
 
 func (p xaiOAuthProvider) pollToken(ctx context.Context, deviceCode string) (DeviceCodePollResult[OAuthCredentials], error) {
-	status, body, err := p.postForm(ctx, p.tokenURL, url.Values{
-		"grant_type":  {xaiDeviceGrantType},
-		"client_id":   {xaiClientID},
-		"device_code": {deviceCode},
+	status, body, err := p.postForm(ctx, p.tokenURL, formFields{
+		{"grant_type", xaiDeviceGrantType},
+		{"client_id", xaiClientID},
+		{"device_code", deviceCode},
 	})
 	if err != nil {
 		return DeviceCodePollResult[OAuthCredentials]{}, err
@@ -186,7 +185,7 @@ func (p xaiOAuthProvider) pollToken(ctx context.Context, deviceCode string) (Dev
 	}
 }
 
-func (p xaiOAuthProvider) postForm(ctx context.Context, endpoint string, fields url.Values) (int, xaiBody, error) {
+func (p xaiOAuthProvider) postForm(ctx context.Context, endpoint string, fields formFields) (int, xaiBody, error) {
 	if ctx.Err() != nil {
 		return 0, xaiBody{}, errors.New(deviceCodeCancelMessage)
 	}
@@ -206,12 +205,63 @@ func (p xaiOAuthProvider) postForm(ctx context.Context, endpoint string, fields 
 		return 0, xaiBody{}, err
 	}
 	defer func() { _ = resp.Body.Close() }()
-	raw, _ := io.ReadAll(resp.Body)
-	var body xaiBody
-	if err := json.Unmarshal(raw, &body); err != nil {
+	// response.json() rejects when the body fails to read (a truncated body included), as when it is not JSON.
+	raw, readErr := io.ReadAll(resp.Body)
+	body, ok := decodeXaiBody(raw)
+	if readErr != nil || !ok {
+		if ctx.Err() != nil {
+			return resp.StatusCode, xaiBody{}, errors.New("Login cancelled")
+		}
 		return resp.StatusCode, xaiBody{}, fmt.Errorf("xAI OAuth returned invalid JSON (HTTP %d)", resp.StatusCode)
 	}
 	return resp.StatusCode, body, nil
+}
+
+// decodeXaiBody reads a response body as postForm does upstream (xai.ts:61-95): Response.json() (fetchBodyText: a leading byte order mark is dropped and ill-formed UTF-8 replaced as the fetch decoder does), a body that is not a JSON object counts as {}, and each field is typed by what its value is, not by the field's declared type. A wrong-typed string field reads as empty, a wrong-typed number as absent (interval) or invalid (expires_in), and a present refresh_token that is not a string as an empty one: the response validators then report those the way requiredString and positiveNumber do.
+func decodeXaiBody(raw []byte) (xaiBody, bool) {
+	raw = []byte(fetchBodyText(raw))
+	if !json.Valid(raw) {
+		return xaiBody{}, false
+	}
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	var parsed any
+	if err := decoder.Decode(&parsed); err != nil {
+		return xaiBody{}, false
+	}
+	object, _ := parsed.(map[string]any)
+	text := func(key string) string {
+		value, _ := object[key].(string)
+		return value
+	}
+	// number is a JSON number's JavaScript value: past the double range it is infinite, as JSON.parse reads it.
+	number := func(key string) (float64, bool) {
+		value, isNumber := object[key].(json.Number)
+		if !isNumber {
+			return 0, false
+		}
+		parsedNumber, _ := strconv.ParseFloat(string(value), 64)
+		return parsedNumber, true
+	}
+	body := xaiBody{
+		DeviceCode: text("device_code"), UserCode: text("user_code"), VerificationURI: text("verification_uri"), VerificationURIComplete: text("verification_uri_complete"),
+		AccessToken: text("access_token"), Error: text("error"), ErrorDescription: text("error_description"),
+	}
+	if interval, isNumber := number("interval"); isNumber {
+		body.Interval = &interval
+	}
+	if _, present := object["expires_in"]; present {
+		expires, isNumber := number("expires_in")
+		if !isNumber {
+			expires = 0
+		}
+		body.ExpiresIn = &expires
+	}
+	if value, present := object["refresh_token"]; present {
+		refresh, _ := value.(string)
+		body.RefreshToken = &refresh
+	}
+	return body, true
 }
 
 func (p xaiOAuthProvider) credentialsFromToken(body xaiBody, previousRefresh string) (OAuthCredentials, error) {
@@ -231,17 +281,25 @@ func (p xaiOAuthProvider) credentialsFromToken(body xaiBody, previousRefresh str
 	}
 	expiresIn := float64(xaiDefaultTokenLifetime)
 	if body.ExpiresIn != nil {
-		if *body.ExpiresIn <= 0 {
+		if !(*body.ExpiresIn > 0) || math.IsInf(*body.ExpiresIn, 0) {
 			return OAuthCredentials{}, errors.New("Invalid xAI OAuth response field: expires_in")
 		}
 		expiresIn = *body.ExpiresIn
 	}
-	creds := OAuthCredentials{Access: body.AccessToken, Refresh: refresh}
-	creds.SetExpiresMillis(float64(p.now().UnixMilli()) + expiresIn*1000 - float64(xaiRefreshSkewMs))
+	creds := OAuthCredentials{Access: body.AccessToken, Refresh: refresh, order: credentialKeyOrder{keys: accessFirstCredentialMembers}}
+	creds.SetExpiresMillis(float64(p.now().UnixMilli()) + float64(expiresIn*1000) - float64(xaiRefreshSkewMs))
 	return creds, nil
 }
 
 func parseXaiDeviceCode(body xaiBody) (xaiDeviceCode, error) {
+	// Upstream builds the result object in member order (xai.ts:108-126): verification_uri_complete is checked before the object literal runs, then device_code, user_code, verification_uri and expires_in, and the first failure is the one reported.
+	var verComplete string
+	if body.VerificationURIComplete != "" {
+		var err error
+		if verComplete, err = xaiValidateHTTPSURL(body.VerificationURIComplete); err != nil {
+			return xaiDeviceCode{}, err
+		}
+	}
 	if body.DeviceCode == "" {
 		return xaiDeviceCode{}, errors.New("Invalid xAI OAuth response field: device_code")
 	}
@@ -255,18 +313,11 @@ func parseXaiDeviceCode(body xaiBody) (xaiDeviceCode, error) {
 	if err != nil {
 		return xaiDeviceCode{}, err
 	}
-	var verComplete string
-	if body.VerificationURIComplete != "" {
-		verComplete, err = xaiValidateHTTPSURL(body.VerificationURIComplete)
-		if err != nil {
-			return xaiDeviceCode{}, err
-		}
-	}
-	if body.ExpiresIn == nil || *body.ExpiresIn <= 0 {
+	if body.ExpiresIn == nil || !(*body.ExpiresIn > 0) || math.IsInf(*body.ExpiresIn, 0) {
 		return xaiDeviceCode{}, errors.New("Invalid xAI OAuth response field: expires_in")
 	}
 	var interval *float64
-	if body.Interval != nil && *body.Interval > 0 {
+	if body.Interval != nil && *body.Interval > 0 && !math.IsInf(*body.Interval, 0) {
 		interval = body.Interval
 	}
 	return xaiDeviceCode{
@@ -282,11 +333,11 @@ func parseXaiDeviceCode(body xaiBody) (xaiDeviceCode, error) {
 // xaiValidateHTTPSURL forces the browser verification URI to be https so a
 // malicious response cannot make the launcher open an untrusted scheme.
 func xaiValidateHTTPSURL(raw string) (string, error) {
-	u, err := url.Parse(raw)
-	if err != nil || u.Scheme != "https" || u.Host == "" {
+	href, ok := trustedURLHref(raw, true)
+	if !ok {
 		return "", errors.New("Untrusted verification URI in xAI OAuth response")
 	}
-	return u.String(), nil
+	return href, nil
 }
 
 func xaiRequestFailure(action string, status int, body xaiBody) error {

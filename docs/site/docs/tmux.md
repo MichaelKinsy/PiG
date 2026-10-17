@@ -1,6 +1,6 @@
 # tmux Setup
 
-PiG works inside tmux, but tmux strips modifier information from certain keys by default. Without configuration, `Shift+Enter` and `Ctrl+Enter` are usually indistinguishable from plain `Enter`.
+PiG works inside tmux, but tmux strips modifier information from certain keys by default. Without configuration, `Shift+Enter` and `Ctrl+Enter` are usually indistinguishable from plain `Enter`. The setup is the same as for Pi 1.3.0 ([Pi's tmux guide](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/tmux.md)).
 
 ## Recommended Configuration
 
@@ -11,7 +11,7 @@ set -g extended-keys on
 set -g extended-keys-format csi-u
 ```
 
-Then restart tmux fully:
+The configuration applies to the tmux server, so start a new server. Save your work first: `tmux kill-server` ends every session of that server.
 
 ```bash
 tmux kill-server
@@ -19,6 +19,16 @@ tmux
 ```
 
 PiG requests extended key reporting automatically when Kitty keyboard protocol is not available. With `extended-keys-format csi-u`, tmux forwards modified keys in CSI-u format, which is the most reliable configuration. The `extended-keys-format` option requires tmux 3.5 or later.
+
+## Verify modified keys
+
+Start PiG inside the new tmux session and check these keys:
+
+1. `Shift+Enter` inserts a new line in the editor.
+2. `Enter` submits the prompt.
+3. `Alt+Enter` queues a follow-up on macOS and Linux. Windows and WSL use `Ctrl+Q`.
+
+If these keys still act like plain `Enter`, check that the terminal outside tmux reports modified keys. See [Terminal setup](/docs/latest/terminal-setup).
 
 ## Why `csi-u` Is Recommended
 

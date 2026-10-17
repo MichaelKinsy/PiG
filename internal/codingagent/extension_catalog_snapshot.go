@@ -13,7 +13,20 @@ var catalogProviderField = func() int {
 	return field.Index[0]
 }()
 
-// ModelInfo uses ProviderMeta.ProviderID for eligible models. Comparing only data fields avoids copying every Model just to erase its runtime Provider on a cache hit.
+// equalCatalogRecords reports whether each model was made from the catalog record records holds for it (ai.CatalogRecordOf).
+func equalCatalogRecords(records []string, models []*ai.Model) bool {
+	if len(records) != len(models) {
+		return false
+	}
+	for i, model := range models {
+		if records[i] != ai.CatalogRecordOf(model) {
+			return false
+		}
+	}
+	return true
+}
+
+// ModelObject uses ProviderMeta.ProviderID for eligible models. Comparing only data fields avoids copying every Model just to erase its runtime Provider on a cache hit.
 func equalCatalogModels(a, b []*ai.Model) bool {
 	if len(a) != len(b) {
 		return false
@@ -27,7 +40,8 @@ func equalCatalogModels(a, b []*ai.Model) bool {
 		}
 		left, right := reflect.ValueOf(model).Elem(), reflect.ValueOf(b[i]).Elem()
 		for field := range left.NumField() {
-			if field == catalogProviderField {
+			// The snapshot leaves unexported members out (cloneCatalogInput), as the JSON encoding does.
+			if field == catalogProviderField || !left.Type().Field(field).IsExported() {
 				continue
 			}
 			if !equalCatalogInput(left.FieldByIndex([]int{field}), right.FieldByIndex([]int{field})) {
@@ -153,6 +167,10 @@ func copyCatalogInput(out, value reflect.Value) bool {
 		}
 	case reflect.Struct:
 		for i := range value.NumField() {
+			// The snapshot feeds a JSON encoding, which ignores unexported members (a model's persisted-record shape among them).
+			if !value.Type().Field(i).IsExported() {
+				continue
+			}
 			if !copyCatalogInput(out.FieldByIndex([]int{i}), value.FieldByIndex([]int{i})) {
 				return false
 			}

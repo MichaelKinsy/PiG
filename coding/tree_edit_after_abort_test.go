@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
@@ -14,7 +16,7 @@ type abortAfterStartProvider struct{}
 
 func (abortAfterStartProvider) ID() string   { return "abort-after-start" }
 func (abortAfterStartProvider) Close() error { return nil }
-func (abortAfterStartProvider) Stream(context.Context, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+func (abortAfterStartProvider) Stream(ctx context.Context, _ ai.TranscriptContext, _ ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 	partial := sessionTestMessage("abort-after-start", "thinking about it", ai.StopReasonPending, "")
 	stream := ai.NewAssistantMessageEventStream()
 	if err := stream.Push(ai.StartEvent{Partial: partial}); err != nil {
@@ -22,6 +24,13 @@ func (abortAfterStartProvider) Stream(context.Context, ai.TranscriptContext, ai.
 	}
 	if err := stream.Push(ai.TextDeltaEvent{ContentIndex: 0, Delta: "thinking about it", Partial: partial}); err != nil {
 		return nil, err
+	}
+	// A provider reports an aborted signal as an aborted message (faux.ts); one that ignored it would never end the stream.
+	if ctx.Err() != nil {
+		aborted := sessionTestMessage("abort-after-start", "thinking about it", ai.StopReasonAborted, "")
+		if err := stream.Push(ai.ErrorEvent{Reason: ai.StopReasonAborted, Error: aborted}); err != nil {
+			return nil, err
+		}
 	}
 	return stream, nil
 }
@@ -38,6 +47,7 @@ func TestNavigateToUserMessageAfterAbortLoadsEditor(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSession: %v", err)
 	}
+	t.Cleanup(func() { _ = sess.Close() })
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -46,9 +56,9 @@ func TestNavigateToUserMessageAfterAbortLoadsEditor(t *testing.T) {
 	// Locate the user "Proceed" entry and confirm the leaf is the aborted
 	// assistant (its child), i.e. the user message is NOT the leaf.
 	var userID string
-	for _, e := range sess.inner.Entries() {
-		if me, ok := e.AsMessage(); ok && me.Message.User != nil {
-			userID = e.Base.ID
+	for _, e := range sess.inner.GetEntries() {
+		if me, ok := e.(icodingagent.MessageEntry); ok && me.Message.User != nil {
+			userID = e.Base().ID
 		}
 	}
 	if userID == "" {

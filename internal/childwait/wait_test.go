@@ -3,6 +3,7 @@ package childwait
 import (
 	"io"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -117,14 +118,14 @@ func TestPipesWaitReleasesAHeldPipeAndDiscardsLateData(t *testing.T) {
 		default:
 		}
 	}, Hooks{})
-	if _, err := io.WriteString(w, "kept"); err != nil {
+	if _, err := w.WriteString("kept"); err != nil {
 		t.Fatal(err)
 	}
 	<-delivered
 	if pipes.Wait(yes) {
 		t.Fatal("Wait reported ended pipes while the write end is open")
 	}
-	_, _ = io.WriteString(w, "late")
+	_, _ = w.WriteString("late")
 	mu.Lock()
 	defer mu.Unlock()
 	if got.String() != "kept" {
@@ -152,8 +153,8 @@ func TestPipesWaitReturnsOnEOFOfEveryPipe(t *testing.T) {
 		got[index] += string(chunk)
 		mu.Unlock()
 	}, Hooks{})
-	_, _ = io.WriteString(writers[0], "out")
-	_, _ = io.WriteString(writers[1], "err")
+	_, _ = writers[0].WriteString("out")
+	_, _ = writers[1].WriteString("err")
 	for _, w := range writers {
 		_ = w.Close()
 	}
@@ -164,5 +165,66 @@ func TestPipesWaitReturnsOnEOFOfEveryPipe(t *testing.T) {
 	defer mu.Unlock()
 	if got != [2]string{"out", "err"} {
 		t.Fatalf("output = %q", got)
+	}
+}
+
+// packages/coding-agent/src/utils/child-process.ts:15 EXIT_STDIO_GRACE_MS. The tests above measure in units of Grace, so only
+// this assertion pins its value.
+func TestGraceIsTheUpstreamExitStdioGrace(t *testing.T) {
+	if Grace != 100*time.Millisecond {
+		t.Fatalf("Grace = %v, want 100ms", Grace)
+	}
+}
+
+// Node reads a pipe in chunks of up to 64 KiB (the size libuv offers a stream read), so a writer that has filled the pipe delivers one 64 KiB chunk, as pi's
+// bash_execution_update deltas show for a fast writer. A regular file holding 64 KiB + 1 bytes makes every read return as much as the buffer takes, so the
+// chunk sizes show the read size itself, on every OS and without depending on the host's pipe capacity (fs.pipe-user-pages-soft shrinks new pipes to one page).
+func TestStartReadsUpTo64KiBPerChunk(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "chunks")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := file.WriteString(strings.Repeat("x", 64*1024+1)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		t.Fatal(err)
+	}
+	var sizes []int
+	pipes := Start([]*os.File{file}, func(_ int, chunk []byte) { sizes = append(sizes, len(chunk)) }, Hooks{})
+	pipes.Wait(func() bool { return false })
+	if len(sizes) != 2 || sizes[0] != 64*1024 || sizes[1] != 1 {
+		t.Fatalf("chunk sizes = %v, want [65536 1]", sizes)
+	}
+}
+
+// A pipe's reader reuses one read buffer: a read hands onData a borrowed slice of it and allocates nothing, so a command that writes a line at a time
+// does not cost a 64 KiB allocation per line.
+func TestPipesReuseOneReadBuffer(t *testing.T) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	const reads = 200
+	delivered := make(chan struct{})
+	pipes := Start([]*os.File{r}, func(_ int, chunk []byte) { delivered <- struct{}{} }, Hooks{})
+	line := []byte(strings.Repeat("z", 99) + "\n")
+	// The process's first collection starts a mark worker goroutine per P: on a 196-P host it allocates about 470 KB in 900 objects (13 KB at
+	// 8 Ps), the runtime's once-per-process cost rather than the reader's. It fell inside the window whenever the heap reached its first
+	// trigger there (1,912-1,992 bytes per read, NumGC 0 -> 1). A collection before the window runs it first.
+	runtime.GC()
+	var before, after runtime.MemStats
+	runtime.ReadMemStats(&before)
+	for range reads {
+		if _, err := w.Write(line); err != nil {
+			t.Fatal(err)
+		}
+		<-delivered
+	}
+	runtime.ReadMemStats(&after)
+	_ = w.Close()
+	pipes.Wait(func() bool { return false })
+	if perRead := (after.TotalAlloc - before.TotalAlloc) / reads; perRead > 1024 {
+		t.Fatalf("%d bytes allocated per 100-byte read, want at most 1024", perRead)
 	}
 }

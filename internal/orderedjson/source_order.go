@@ -94,3 +94,9 @@ func arrayIndex(key string) uint64 {
 	}
 	return notArrayIndex
 }
+
+// arrayIndexKey reports whether key is an array index and returns it.
+func arrayIndexKey(key string) (uint64, bool) {
+	index := arrayIndex(key)
+	return index, index != notArrayIndex
+}

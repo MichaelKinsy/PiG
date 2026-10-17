@@ -2,6 +2,7 @@ package ai
 
 import (
 	"context"
+	"encoding/json"
 	"reflect"
 	"strings"
 	"testing"
@@ -32,15 +33,19 @@ func TestDefinedProviderCatalogSnapshotRoundTrip(t *testing.T) {
 	model.ProviderMeta.Headers = map[string]string{"X-Model": "value"}
 	model.ThinkingLevelMap = ThinkingLevelMap{ThinkingOff: nil, ThinkingHigh: new("verified")}
 	model.InputLimits = &ModelInputLimits{MaxRequestBytes: 1024}
-	raw, err := encodeModelsCatalog([]AnyModel{model})
+	raw, err := json.Marshal(ModelsStoreEntry{Models: []AnyModel{model}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	decoded, err := decodeModelsCatalog(raw, "mixed")
+	var entry ModelsStoreEntry
+	if err := json.Unmarshal(raw, &entry); err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := decodeModelsCatalog(entry.Models, "mixed")
 	if err != nil {
 		t.Fatal(err)
 	}
-	encoded, err := encodeModelsCatalog(decoded)
+	encoded, err := json.Marshal(entry)
 	if err != nil {
 		t.Fatal(err)
 	}

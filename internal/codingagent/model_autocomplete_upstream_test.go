@@ -1,12 +1,14 @@
 package codingagent
 
 import (
+	"context"
 	"path/filepath"
 	"reflect"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // .upstream/v0.87.1/packages/coding-agent/test/interactive-mode-status.test.ts:404
@@ -24,11 +26,11 @@ func TestInteractiveModelArgumentCompletionUpstream(t *testing.T) {
 	}
 	registry.SetAuthStorage(auth)
 	for _, model := range []RuntimeModel{{Provider: "github-copilot", ID: "gpt-5.2-codex", Name: "GPT-5.2 Codex"}, {Provider: "openai-codex", ID: "gpt-5.5", Name: "GPT-5.5"}} {
-		registry.RegisterProvider(model.Provider, extension.ProviderConfig{APIKey: "fixture-key", Models: []extension.ProviderModelConfig{{ID: model.ID, Name: model.Name}}})
+		registry.RegisterExtensionProvider(model.Provider, extension.ProviderConfig{APIKey: "fixture-key", Models: []extension.ProviderModelConfig{{ID: model.ID, Name: model.Name}}})
 	}
-	mode := &InteractiveMode{opts: InteractiveOptions{AgentDir: dir, ModelRegistry: registry}}
+	mode := &InteractiveMode{opts: InteractiveModeOptions{AgentDir: dir, ModelRegistry: registry}}
 	line := "/model codexgpt"
-	suggestions := mode.buildAutocompleteProvider().GetSuggestions([]string{line}, 0, len(line))
+	suggestions := mode.buildAutocompleteProvider().GetSuggestions(context.Background(), []string{line}, 0, len(line), tui.AutocompleteSuggestionOptions{})
 	var values []string
 	if suggestions != nil {
 		for _, item := range suggestions.Items {

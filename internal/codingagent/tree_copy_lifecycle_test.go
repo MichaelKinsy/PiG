@@ -33,7 +33,7 @@ func TestTreeNodeCopyTextUpstream(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			session := upstreamTreeSession(t, "entry", treeCaseEntry{id: "entry", kind: tc.kind, extra: tc.extra})
-			adapter := &treeNodeAdapter{n: session.Tree().Children[0], f: newTreeRowFormatter(session)}
+			adapter := &treeNodeAdapter{n: session.GetTree()[0], f: newTreeRowFormatter(session)}
 			if got := adapter.NodeCopyText(); !reflect.DeepEqual(got, tc.want) {
 				t.Fatalf("copy text = %v, want %v", got, tc.want)
 			}

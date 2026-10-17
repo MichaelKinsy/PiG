@@ -117,20 +117,25 @@ func TestScrollViewRenderPadsWhenScrollbarReserved(t *testing.T) {
 	}
 }
 
+// Pi source: packages/tui/src/components/scroll-view.ts
+// mutation-checked: zeroing the results of ScrollView.Clear fails it
+// Pi: packages/tui/src/components/scroll-view.ts:211 (clear)
+// packages/tui/src/components/scroll-view.ts:207-213 (ScrollView.removeChild/clear throw): add, remove and clear are refused.
 func TestScrollViewMutatorsPanic(t *testing.T) {
 	for _, tc := range []struct {
-		name string
-		call func(*ScrollView)
+		name    string
+		call    func(*ScrollView)
+		message string
 	}{
-		{"Add", func(s *ScrollView) { s.Add(&stubComponent{}) }},
-		{"Remove", func(s *ScrollView) { s.Remove(&stubComponent{}) }},
-		{"Clear", func(s *ScrollView) { s.Clear() }},
+		{"Add", func(s *ScrollView) { s.Add(&stubComponent{}) }, "ScrollView has exactly one child"},
+		{"Remove", func(s *ScrollView) { s.Remove(&stubComponent{}) }, "ScrollView child cannot be removed"},
+		{"Clear", func(s *ScrollView) { s.Clear() }, "ScrollView child cannot be cleared"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			sv := newTestScrollView(t, ScrollViewOptions{})
 			defer func() {
-				if r := recover(); r == nil {
-					t.Fatalf("%s should panic", tc.name)
+				if r := recover(); r != tc.message {
+					t.Fatalf("%s panicked with %v, want %q", tc.name, r, tc.message)
 				}
 			}()
 			tc.call(sv)
@@ -185,6 +190,78 @@ func TestScrollViewDisposeStopsTimer(t *testing.T) {
 		synctest.Wait()
 		if got := renders.Load(); got != before {
 			t.Errorf("render fired after Dispose: %d != %d", got, before)
+		}
+	})
+}
+
+// upstream: components/scroll-view.ts ScrollViewScrollbar = "hidden" | "auto" | "always"; setScrollbar switches between the three modes.
+func TestScrollViewScrollbarModes(t *testing.T) {
+	sv := newTestScrollView(t, ScrollViewOptions{Scrollbar: ScrollbarAuto})
+	if sv.Scrollbar() != ScrollbarAuto {
+		t.Fatalf("Scrollbar = %q, want auto", sv.Scrollbar())
+	}
+	for _, mode := range []ScrollViewScrollbar{ScrollbarAlways, ScrollbarHidden, ScrollbarAuto} {
+		sv.SetScrollbar(mode)
+		if sv.Scrollbar() != mode {
+			t.Fatalf("after SetScrollbar(%q), Scrollbar = %q", mode, sv.Scrollbar())
+		}
+	}
+	if ScrollbarHidden != "hidden" || ScrollbarAuto != "auto" || ScrollbarAlways != "always" {
+		t.Fatal("scrollbar mode values must be upstream's literals")
+	}
+}
+
+// scroll-view.ts updateLayout: heights are clamped at zero, a shrunken layout pulls the offset back inside the new range, a grown layout re-arms
+// following the end, and content that fits ends the transient scrollbar.
+// mutation-checked: removing any of those steps from UpdateLayout fails this test.
+func TestScrollViewUpdateLayoutClampsHeightsAndOffsetsAndResumesFollowing(t *testing.T) {
+	t.Run("negative heights are zero", func(t *testing.T) {
+		sv := newTestScrollView(t, ScrollViewOptions{})
+		sv.UpdateLayout(3, -2, func() {})
+		sv.ScrollTo(100)
+		if sv.ScrollTop() != 3 {
+			t.Errorf("content 3, viewport -2: ScrollTo(100) = %d, want 3", sv.ScrollTop())
+		}
+		sv.UpdateLayout(-4, -6, func() {})
+		sv.ScrollTo(100)
+		if sv.ScrollTop() != 0 {
+			t.Errorf("content -4, viewport -6: ScrollTo(100) = %d, want 0", sv.ScrollTop())
+		}
+	})
+	t.Run("a shrunken layout clamps the offset", func(t *testing.T) {
+		sv := newTestScrollView(t, ScrollViewOptions{})
+		sv.UpdateLayout(100, 10, func() {})
+		sv.ScrollTo(50)
+		sv.UpdateLayout(30, 10, func() {})
+		if sv.ScrollTop() != 20 {
+			t.Errorf("ScrollTop = %d, want 20 after the content shrank", sv.ScrollTop())
+		}
+	})
+	t.Run("a grown layout lifts follow suppression", func(t *testing.T) {
+		sv := newTestScrollView(t, ScrollViewOptions{Follow: "end"})
+		sv.UpdateLayout(100, 10, func() {})
+		sv.ScrollTo(90, ScrollViewScrollToOptions{DisableFollow: true})
+		sv.UpdateLayout(100, 10, func() {})
+		if sv.IsFollowingEnd() {
+			t.Fatal("a layout pass at the end resumed following that ScrollTo suppressed")
+		}
+		sv.UpdateLayout(120, 10, func() {}) // the end moved below the offset: suppression ends
+		sv.UpdateLayout(100, 10, func() {}) // the offset is at the end again
+		if !sv.IsFollowingEnd() {
+			t.Error("following did not resume at the end after suppression was lifted")
+		}
+	})
+	t.Run("content that fits ends the transient scrollbar", func(t *testing.T) {
+		sv := newTestScrollView(t, ScrollViewOptions{Scrollbar: "auto"})
+		sv.UpdateLayout(100, 10, func() {})
+		sv.ScrollBy(5)
+		if !sv.IsScrollbarVisible() {
+			t.Fatal("scroll activity did not show the scrollbar")
+		}
+		sv.UpdateLayout(10, 10, func() {})
+		sv.UpdateLayout(100, 10, func() {})
+		if sv.IsScrollbarVisible() {
+			t.Error("the scrollbar reappeared without new activity after the content had fit")
 		}
 	})
 }

@@ -1,98 +1,73 @@
 package tui
 
-// BranchSummaryComponent renders a collapsible branch-summary marker.
-// It preserves Pi's horizontal and vertical Box padding.
-
-// customMsgLabelBranchFg is the fg color for the [branch] label.
-// It is the customMessageLabel token, the same as [compaction].
-func customMsgLabelBranchFg() string { return customMsgLabelFg() }
-
-// BranchSummaryComponent renders a branch-summary boundary marker in the chat
-// transcript. Replaces the single-row BranchSummaryChip.
+// BranchSummaryMessageComponent renders a branch-summary boundary marker in the chat transcript. Like upstream's
+// `extends Box`, it embeds the Box (padding 1, 1 and the customMessageBg background), so the Box members are inherited;
+// each display update clears the Box and adds one mouse region.
 //
-// Upstream: components/branch-summary-message.ts (BranchSummaryMessageComponent).
-type BranchSummaryComponent struct {
-	invalidatable
-	summary  string
-	expanded bool
+// upstream: packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts
+type BranchSummaryMessageComponent struct {
+	*Box
+	summary       string
+	expanded      bool
+	markdownTheme *MarkdownTheme
 }
 
-// NewBranchSummaryComponent creates a branch summary component.
-// summary is the LLM-generated markdown text summarising the abandoned branch.
-func NewBranchSummaryComponent(summary string) *BranchSummaryComponent {
-	return &BranchSummaryComponent{summary: summary}
+// BranchSummaryMessage is the part of Pi's BranchSummaryMessage (coding-agent core/messages.ts:55) that
+// [BranchSummaryMessageComponent] renders: the LLM-generated markdown summarising the abandoned branch.
+type BranchSummaryMessage struct {
+	Summary string
 }
 
-// SetExpanded opens or collapses the component body. InteractiveMode calls it
-// from the global Ctrl+O toggle.
-func (c *BranchSummaryComponent) SetExpanded(expanded bool) {
+// NewBranchSummaryMessageComponent is Pi's constructor(message, markdownTheme = getMarkdownTheme(), outputPad = 1)
+// (branch-summary-message.ts:15). The expanded body renders the summary with markdownTheme (nil selects the active theme's
+// markdown theme) and the Box pads its rows by outputPad columns.
+func NewBranchSummaryMessageComponent(message BranchSummaryMessage, markdownTheme *MarkdownTheme, outputPad int) *BranchSummaryMessageComponent {
+	component := &BranchSummaryMessageComponent{
+		Box:           NewPaddedBox(outputPad, 1, func(text string) string { return ActiveTheme().Bg("customMessageBg", text) }),
+		summary:       message.Summary,
+		markdownTheme: markdownTheme,
+	}
+	component.updateDisplay()
+	return component
+}
+
+// SetExpanded opens or collapses the component body. InteractiveMode calls it from the global Ctrl+O toggle.
+func (c *BranchSummaryMessageComponent) SetExpanded(expanded bool) {
 	c.expanded = expanded
-	c.Invalidate()
+	c.updateDisplay()
 }
 
-// HandleMouse toggles the summary on a left click inside the box content, excluding its one-cell padding.
-// Ports packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts:59.
-func (c *BranchSummaryComponent) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
-	if event.Type != MouseClick || event.Button != MouseButtonLeft || event.X < 1 || event.X-1 >= max(1, event.Width-2) || event.Y < 1 || event.Y >= event.Height-1 {
-		return nil
-	}
-	c.SetExpanded(!c.expanded)
-	return &TuiMouseDispatchResult{TuiMouseEventResult: TuiMouseEventResult{Handled: true}}
+// Invalidate invalidates the Box and rebuilds the display, which bakes theme colors into its text.
+func (c *BranchSummaryMessageComponent) Invalidate() {
+	c.Box.Invalidate()
+	c.updateDisplay()
 }
 
-// Render returns the lines for this component at the given terminal width.
-// All column measurements are delegated to paintBgWith (which uses
-// lineDisplayWidth / runewidth.StringWidth internally).
-func (c *BranchSummaryComponent) Render(width int) []string {
-	if width < 4 {
-		width = 4
-	}
-
-	const (
-		bold    = "\x1b[1m"
-		boldEnd = "\x1b[22m"
-		dim     = "\x1b[2m"
-		reset   = "\x1b[0m"
-	)
-
-	customMsgBgOpen := ActiveTheme().CustomMessageBg
-	var out []string
-
-	// Top padding row: mirrors upstream Box(paddingX=1, paddingY=1).
-	out = append(out, paintBgWith(customMsgBgOpen, "", width))
-
-	// Label row: " [branch]" with bold + label fg color.
-	// Mirrors upstream: theme.fg("customMessageLabel", `\x1b[1m[branch]\x1b[22m`)
-	labelStyled := customMsgLabelBranchFg() + bold + "[branch]" + boldEnd + reset
-	out = append(out, paintBgWith(customMsgBgOpen, " "+labelStyled, width))
-
-	// Structural blank row: mirrors upstream Spacer(1) child between label and body.
-	out = append(out, paintBgWith(customMsgBgOpen, "", width))
-
+func (c *BranchSummaryMessageComponent) updateDisplay() {
+	c.Clear()
+	theme := ActiveTheme()
+	content := NewContainer()
+	content.Add(NewText(theme.Fg("customMessageLabel", "\x1b[1m[branch]\x1b[22m")))
+	content.Add(NewSpacer(1))
 	if c.expanded {
-		// Expanded: render "**Branch Summary**\n\n<summary>" as markdown.
-		// Mirrors upstream: new Markdown(header + message.summary, 0, 0, markdownTheme, ...)
-		header := "**Branch Summary**\n\n"
-		md := NewMarkdown(header + c.summary)
-		contentWidth := max(width-2, 1)
-		for _, line := range md.Render(contentWidth) {
-			out = append(out, paintBgWith(customMsgBgOpen, " "+line, width))
-		}
+		content.Add(NewMarkdownWithOptions("**Branch Summary**\n\n"+c.summary, 0, 0, c.markdownTheme, &DefaultTextStyle{
+			Color: func(text string) string { return ActiveTheme().Fg("customMessageText", text) },
+		}, nil))
 	} else {
-		// Collapsed: single summary line with Ctrl+O hint.
-		// Mirrors upstream:
-		//   theme.fg("customMessageText", "Branch summary (") +
-		//   theme.fg("dim", keyText("app.tools.expand")) +
-		//   theme.fg("customMessageText", " to expand)")
-		// customMessageText is "" in dark.json: no extra fg color.
-		// keyText("app.tools.expand") → lowercase "ctrl+o" (core/keybindings.ts:85;
-		// keyText does not capitalize: only keyDisplayText does).
-		body := "Branch summary (" + dim + "ctrl+o" + reset + " to expand)"
-		out = append(out, paintBgWith(customMsgBgOpen, " "+body, width))
+		content.Add(NewText(theme.Fg("customMessageText", "Branch summary (") +
+			theme.Fg("dim", AppKeyText("app.tools.expand", "ctrl+o")) +
+			theme.Fg("customMessageText", " to expand)")))
 	}
+	c.AddChild(NewMouseRegion(content, func(event TuiMouseEvent) *TuiMouseEventResult {
+		if event.Type != MouseClick || event.Button != MouseButtonLeft {
+			return nil
+		}
+		c.SetExpanded(!c.expanded)
+		return &TuiMouseEventResult{Handled: true}
+	}))
+}
 
-	// Bottom padding row: mirrors upstream Box paddingY=1.
-	out = append(out, paintBgWith(customMsgBgOpen, "", width))
-
-	return out
+// SetOutputPad is Pi's setOutputPad(outputPad): the horizontal padding of the Box is the outputPad setting.
+func (c *BranchSummaryMessageComponent) SetOutputPad(outputPad int) {
+	c.SetPaddingX(outputPad)
 }

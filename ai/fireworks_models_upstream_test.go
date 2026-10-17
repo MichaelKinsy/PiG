@@ -14,7 +14,7 @@ func fireworksCatalogPayload(t *testing.T, id string, opts StreamOptions) map[st
 	opts.IsReasoning = m.Reasoning
 	// streamSimple maps absent reasoning to thinkingEnabled=false.
 	if opts.Thinking == "" {
-		opts.Thinking = ThinkingOff
+		opts.Thinking = ""
 	}
 	opts.MaxTokens = m.MaxOutputTokens
 	var provider Provider
@@ -65,7 +65,7 @@ func TestFireworksModels(t *testing.T) {
 			assertCatalogJSON(t, m.Compat, `{"supportsStore":false,"supportsDeveloperRole":false,"supportsStrictMode":true,"requiresReasoningContentOnAssistantMessages":true,"thinkingFormat":"openai","supportsMidConvoSystemMessages":true,"supportsMidConvoToolAdditions":true,"sendSessionAffinityHeaders":true,"supportsLongCacheRetention":false}`)
 			assertCatalogJSON(t, m.ThinkingLevelMap, `{"off":null,"minimal":null,"low":"low","medium":null,"high":"high","xhigh":null,"max":"max"}`)
 		}
-		p := fireworksCatalogPayload(t, "accounts/fireworks/models/kimi-k3", StreamOptions{Thinking: ThinkingMax})
+		p := fireworksCatalogPayload(t, "accounts/fireworks/models/kimi-k3", StreamOptions{Thinking: ThinkingLevelMax})
 		if p["reasoning_effort"] != "max" {
 			t.Fatalf("payload = %v", p)
 		}
@@ -73,11 +73,11 @@ func TestFireworksModels(t *testing.T) {
 	// .upstream/v0.99.1/packages/ai/test/fireworks-models.test.ts:120
 	for _, tc := range []struct {
 		id     string
-		levels []ThinkingLevel
+		levels []ModelThinkingLevel
 	}{
-		{"accounts/fireworks/models/deepseek-v4p1-flash", []ThinkingLevel{ThinkingOff, ThinkingLow, ThinkingHigh, ThinkingMax}},
-		{"accounts/fireworks/models/qwen3p8-max", []ThinkingLevel{ThinkingOff, ThinkingLow, ThinkingMedium, ThinkingXHigh}},
-		{"accounts/fireworks/models/qwen3p8-2p4t-a95b", []ThinkingLevel{ThinkingOff, ThinkingLow, ThinkingMedium, ThinkingXHigh}},
+		{"accounts/fireworks/models/deepseek-v4p1-flash", []ModelThinkingLevel{ThinkingOff, ThinkingLow, ThinkingHigh, ThinkingMax}},
+		{"accounts/fireworks/models/qwen3p8-max", []ModelThinkingLevel{ThinkingOff, ThinkingLow, ThinkingMedium, ThinkingXHigh}},
+		{"accounts/fireworks/models/qwen3p8-2p4t-a95b", []ModelThinkingLevel{ThinkingOff, ThinkingLow, ThinkingMedium, ThinkingXHigh}},
 	} {
 		t.Run("sends native Messages effort levels for "+tc.id, func(t *testing.T) {
 			m := mustGeneratedModel(t, "fireworks", tc.id)
@@ -93,7 +93,12 @@ func TestFireworksModels(t *testing.T) {
 					if level == ThinkingOff {
 						thinking = ""
 					}
-					p := fireworksCatalogPayload(t, tc.id, StreamOptions{Thinking: thinking})
+					options := StreamOptions{Thinking: thinking.ReasoningOption()}
+					if level == ThinkingOff {
+						// streamSimple lowers omitted reasoning to thinkingEnabled:false (anthropic-messages.ts).
+						options.ThinkingEnabled = new(false)
+					}
+					p := fireworksCatalogPayload(t, tc.id, options)
 					if level == ThinkingOff {
 						assertCatalogJSON(t, p["thinking"], `{"type":"disabled"}`)
 						if _, ok := p["output_config"]; ok {
@@ -124,7 +129,7 @@ func TestFireworksModels(t *testing.T) {
 		if m.Compat.ForceAdaptiveThinking != nil {
 			t.Fatal("unexpected forceAdaptiveThinking")
 		}
-		p := fireworksCatalogPayload(t, m.ID, StreamOptions{Thinking: ThinkingHigh})
+		p := fireworksCatalogPayload(t, m.ID, StreamOptions{Thinking: ThinkingLevelHigh})
 		assertCatalogJSON(t, p["thinking"], `{"type":"enabled","budget_tokens":16384,"display":"summarized"}`)
 		if _, ok := p["output_config"]; ok {
 			t.Fatalf("payload = %v", p)

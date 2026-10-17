@@ -3,6 +3,8 @@
 package runner
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -14,7 +16,7 @@ import (
 	"testing"
 )
 
-// prepareChangelogFixture changes data only: Go embeds the pinned document through a build overlay,
+// prepareChangelogFixture changes data only: Go embeds the pinned document, gzipped, through a build overlay,
 // while Pi reads a private package view through its own PI_PACKAGE_DIR override (config.ts:389-394,455-456).
 // Builds finish before terminal timing starts. Neither checkout nor installed Pi files are modified.
 func prepareChangelogFixture(ctx context.Context, t *testing.T, sc *Scenario, pig, pi BinaryRef) (BinaryRef, BinaryRef, error) {
@@ -31,11 +33,20 @@ func prepareChangelogFixture(ctx context.Context, t *testing.T, sc *Scenario, pi
 		return pig, pi, err
 	}
 	tmp := t.TempDir()
-	fixture := filepath.Join(tmp, "CHANGELOG.md")
-	if err := os.WriteFile(fixture, data, 0o600); err != nil {
+	// The binary embeds CHANGELOG.md.gz (embed.go), so the overlay replaces that file with the gzipped fixture.
+	var compressed bytes.Buffer
+	zw := gzip.NewWriter(&compressed)
+	if _, err := zw.Write(data); err != nil {
 		return pig, pi, err
 	}
-	overlay, err := json.Marshal(map[string]any{"Replace": map[string]string{filepath.Join(root, "CHANGELOG.md"): fixture}})
+	if err := zw.Close(); err != nil {
+		return pig, pi, err
+	}
+	fixture := filepath.Join(tmp, "CHANGELOG.md.gz")
+	if err := os.WriteFile(fixture, compressed.Bytes(), 0o600); err != nil {
+		return pig, pi, err
+	}
+	overlay, err := json.Marshal(map[string]any{"Replace": map[string]string{filepath.Join(root, "CHANGELOG.md.gz"): fixture}})
 	if err != nil {
 		return pig, pi, err
 	}
@@ -75,4 +86,25 @@ func prepareChangelogFixture(ctx context.Context, t *testing.T, sc *Scenario, pi
 	pi.Env = slices.DeleteFunc(slices.Clone(pi.Env), func(value string) bool { return strings.HasPrefix(value, "PI_PACKAGE_DIR=") })
 	pi.Env = append(pi.Env, "PI_PACKAGE_DIR="+packageDir)
 	return pig, pi, nil
+}
+
+// findRepoRoot walks up from CWD looking for go.mod with the pig module path.
+func findRepoRoot() (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	for {
+		modfile := filepath.Join(dir, "go.mod")
+		if data, err := os.ReadFile(modfile); err == nil {
+			if strings.Contains(string(data), "module github.com/MichaelKinsy/PiG") {
+				return dir, nil
+			}
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "", fmt.Errorf("repo root not found")
+		}
+		dir = parent
+	}
 }

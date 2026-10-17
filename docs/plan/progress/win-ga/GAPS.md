@@ -72,4 +72,4 @@ All six have call-site markers in production code. None needs closing for GA. Ea
 
 ## Done here
 
-Three commits, signed, on `team/smc1/win-ga`: W-02, W-03, W-01 (compile gate). Evidence for each is in its commit message.
+Three commits, signed, on `team/the bench host/win-ga`: W-02, W-03, W-01 (compile gate). Evidence for each is in its commit message.

@@ -6,6 +6,7 @@ import (
 )
 
 // Both Pi compaction utils sort file names by UTF-16 code units, not UTF-8 bytes.
+// Pi: packages/coding-agent/src/core/compaction/utils.ts:13 (FileOperations.read).
 func TestCompactionFileListsUseJavaScriptSort(t *testing.T) {
 	ops := NewFileOps()
 	ops.Read["\ue000"] = struct{}{}
@@ -17,6 +18,7 @@ func TestCompactionFileListsUseJavaScriptSort(t *testing.T) {
 }
 
 // compaction/utils.ts computeFileLists drops read paths that were also edited or written, sorts both lists, and formatFileOperations renders them. The expected values are Pi 1.0.0's output for the same Sets under Node 24.
+// Pi: packages/coding-agent/src/core/compaction/utils.ts:14 (FileOperations.written); packages/coding-agent/src/core/compaction/utils.ts:15 (FileOperations.edited).
 func TestComputeAndFormatFileListsMatchPi(t *testing.T) {
 	ops := NewFileOps()
 	for _, path := range []string{"b.ts", "x.ts", "a.ts", "y.ts", "Z.ts", "é.ts", "😀.ts", "\uffff.ts"} {

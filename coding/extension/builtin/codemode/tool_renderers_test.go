@@ -13,11 +13,11 @@ import (
 // upstream: tool.ts createCodemodeToolDefinition ends with `...codemodeRenderers`, so the registered definition draws
 // its own card; the interactive mode has no codemode renderer keyed by tool name to fall back to.
 func TestTheRegisteredDefinitionCarriesTheCodemodeRenderers(t *testing.T) {
-	ext, err := Extension(Options{})
+	ext, err := loadExtension(Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	definition := ext.Tools[ToolName].Definition
+	definition := registeredDefinition(ext)
 	if definition.RenderCall == nil || definition.RenderResult == nil {
 		t.Fatal("the codemode definition has no renderers")
 	}

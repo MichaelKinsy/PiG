@@ -17,12 +17,13 @@ func TestInteractiveTerminalReaderHandsInputToExternalEditor(t *testing.T) {
 	defer func() { _ = in.Close(); _ = out.Close() }()
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	reader := newInteractiveTerminalReader(ctx, in)
+	reads := newTerminalReads()
+	reader := newInteractiveTerminalReader(ctx, in, reads)
 	defer reader.pause()
 	if _, err := out.WriteString("before"); err != nil {
 		t.Fatal(err)
 	}
-	if got := string(<-reader.data); got != "before" {
+	if got := string(<-reads.data); got != "before" {
 		t.Fatalf("before=%q", got)
 	}
 	reader.pause()
@@ -40,7 +41,7 @@ func TestInteractiveTerminalReaderHandsInputToExternalEditor(t *testing.T) {
 	if _, err := out.WriteString("after"); err != nil {
 		t.Fatal(err)
 	}
-	if got := string(<-reader.data); got != "after" {
+	if got := string(<-reads.data); got != "after" {
 		t.Fatalf("after=%q", got)
 	}
 }

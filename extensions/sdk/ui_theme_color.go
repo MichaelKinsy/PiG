@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package sdk
@@ -30,8 +29,16 @@ var (
 	colorCubeValues = [6]float64{0, 95, 135, 175, 215, 255}
 )
 
-// jsRound is JavaScript's Math.round: halves round toward positive infinity.
-func jsRound(value float64) float64 { return math.Floor(value + 0.5) }
+// jsRound is JavaScript's Math.round: halves round toward positive infinity. It compares the fraction with the floor rather than
+// flooring value+0.5, which rounds 0.49999999999999994 up and moves odd integers above 2^52. The sign of a zero result does not reach
+// any caller here. The SDK module cannot import the host's internal/jsnumber.Round.
+func jsRound(value float64) float64 {
+	rounded := math.Floor(value)
+	if value-rounded >= 0.5 {
+		rounded++
+	}
+	return rounded
+}
 
 func linearToSrgb(value float64) float64 {
 	if value > 0.0031308 {

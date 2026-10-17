@@ -1,0 +1,375 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#Models::property:cancelDeferred"
+  ],
+  "targets": [
+   "ai/models_runtime_stream.go#Models.CancelDeferred"
+  ],
+  "production": [
+   "call:coding/model_runtime_native.go#ModelRuntime.CancelDeferred"
+  ],
+  "evidence": [
+   "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
+   "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+  ],
+  "rationale": "Models.cancelDeferred is the Go method Models.CancelDeferred; signature reviewed against the upstream declaration (upstream Models is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#Models::property:fetchDeferred"
+  ],
+  "targets": [
+   "ai/models_runtime_stream.go#Models.FetchDeferred"
+  ],
+  "production": [
+   "call:coding/model_runtime_native.go#ModelRuntime.FetchDeferred"
+  ],
+  "evidence": [
+   "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
+   "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsSubmitPollRedeemDeferredUpstream"
+  ],
+  "rationale": "Models.fetchDeferred is the Go method Models.FetchDeferred; signature reviewed against the upstream declaration (upstream Models is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#Models::property:getAllModels"
+  ],
+  "targets": [
+   "ai/models_runtime_typed.go#Models.GetAllModels"
+  ],
+  "production": [
+   "call:ai/models_runtime_typed.go#Models.GetModelsOfType"
+  ],
+  "evidence": [
+   "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+   "test:ai/models_typed_regression_test.go#TestCreateProviderOverlayReplacesOnlyTheSameTypeAndID"
+  ],
+  "rationale": "Models.getAllModels is the Go method Models.GetAllModels; signature reviewed against the upstream declaration (upstream Models is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#Models::property:getAuth"
+  ],
+  "targets": [
+   "ai/models_runtime_auth.go#Models.GetAuth"
+  ],
+  "production": [
+   "call:ai/models_runtime_auth.go#Models.GetModelAuth"
+  ],
+  "evidence": [
+   "test:ai/auth_refresh_gc_test.go#TestOAuthRefreshDoneSurvivesGC",
+   "test:ai/auth_refresh_signal_test.go#TestOAuthRefreshTimeoutMarksStoredResolutionAndModelsRefresh"
+  ],
+  "rationale": "Models.getAuth is the Go method Models.GetAuth; signature reviewed against the upstream declaration (upstream Models is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#Models::property:getModel"
+  ],
+  "targets": [
+   "ai/models_runtime_auth.go#Models.GetModel"
+  ],
+  "production": [
+   "call:internal/codingagent/model_registry.go#ModelRegistry.HasModelDefinition"
+  ],
+  "evidence": [
+   "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+   "test:ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream"
+  ],
+  "rationale": "Models.getModel is the Go method Models.GetModel; signature reviewed against the upstream declaration (upstream Models is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#Models::property:getModels"
+  ],
+  "targets": [
+   "ai/models_runtime_auth.go#Models.GetModels"
+  ],
+  "production": [
+   "call:ai/models_runtime_auth.go#Models.GetModel"
+  ],
+  "evidence": [
+   "test:ai/lazy_module_load_upstream_test.go#TestLazyModuleLoadProbe",
+   "test:ai/models_entry_upstream_test.go#TestLightweightModelsEntryUpstream"
+  ],
+  "rationale": "Models.getModels is the Go method Models.GetModels; signature reviewed against the upstream declaration (upstream Models is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#Models::property:getModelsOfType"
+  ],
+  "targets": [
+   "ai/models_runtime_typed.go#Models.GetModelsOfType"
+  ],
+  "production": [
+   "call:ai/models_runtime_typed.go#Models.GetModelOfType"
+  ],
+  "evidence": [
+   "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+   "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream"
+  ],
+  "rationale": "Models.getModelsOfType is the Go method Models.GetModelsOfType; signature reviewed against the upstream declaration (upstream Models is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#Models::property:getProvider"
+  ],
+  "targets": [
+   "ai/models_runtime_auth.go#Models.GetProvider"
+  ],
+  "production": [
+   "call:ai/models_runtime_auth.go#Models.CheckAuth"
+  ],
+  "evidence": [
+   "test:ai/models_refresh_replacement_test.go#TestModelsRefreshCannotStartAReplacedProviderSnapshot",
+   "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+  ],
+  "rationale": "Models.getProvider is the Go method Models.GetProvider; signature reviewed against the upstream declaration (upstream Models is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#Models::property:getProviders"
+  ],
+  "targets": [
+   "ai/models_runtime_auth.go#Models.GetProviders"
+  ],
+  "production": [
+   "call:ai/models_runtime_auth.go#Models.GetModels"
+  ],
+  "evidence": [
+   "test:ai/models_entry_upstream_test.go#TestLightweightModelsEntryUpstream",
+   "test:ai/models_refresh_replacement_test.go#TestModelsRefreshCannotStartAReplacedProviderSnapshot"
+  ],
+  "rationale": "Models.getProviders is the Go method Models.GetProviders; signature reviewed against the upstream declaration (upstream Models is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#Models::property:refresh"
+  ],
+  "targets": [
+   "ai/models_runtime_refresh.go#Models.Refresh"
+  ],
+  "production": [
+   "call:internal/codingagent/native_model_runtime.go#ModelRegistry.refreshNativeModels"
+  ],
+  "evidence": [
+   "test:ai/auth_refresh_signal_test.go#TestOAuthRefreshTimeoutMarksStoredResolutionAndModelsRefresh",
+   "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream"
+  ],
+  "rationale": "Models.refresh is the Go method Models.Refresh; signature reviewed against the upstream declaration (upstream Models is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#MutableModels::property:cancelDeferred"
+  ],
+  "targets": [
+   "ai/models_runtime_stream.go#Models.CancelDeferred"
+  ],
+  "production": [
+   "call:coding/model_runtime_native.go#ModelRuntime.CancelDeferred"
+  ],
+  "evidence": [
+   "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
+   "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+  ],
+  "rationale": "MutableModels.cancelDeferred is the Go method Models.CancelDeferred; signature reviewed against the upstream declaration (upstream MutableModels is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#MutableModels::property:deleteProvider"
+  ],
+  "targets": [
+   "ai/models_runtime_auth.go#Models.DeleteProvider"
+  ],
+  "production": [
+   "call:internal/codingagent/native_model_runtime.go#ModelRegistry.unregisterNativeProvider"
+  ],
+  "evidence": [
+   "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+  ],
+  "rationale": "MutableModels.deleteProvider is the Go method Models.DeleteProvider; signature reviewed against the upstream declaration (upstream MutableModels is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#MutableModels::property:fetchDeferred"
+  ],
+  "targets": [
+   "ai/models_runtime_stream.go#Models.FetchDeferred"
+  ],
+  "production": [
+   "call:coding/model_runtime_native.go#ModelRuntime.FetchDeferred"
+  ],
+  "evidence": [
+   "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
+   "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsSubmitPollRedeemDeferredUpstream"
+  ],
+  "rationale": "MutableModels.fetchDeferred is the Go method Models.FetchDeferred; signature reviewed against the upstream declaration (upstream MutableModels is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#MutableModels::property:getAllModels"
+  ],
+  "targets": [
+   "ai/models_runtime_typed.go#Models.GetAllModels"
+  ],
+  "production": [
+   "call:ai/models_runtime_typed.go#Models.GetModelsOfType"
+  ],
+  "evidence": [
+   "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+   "test:ai/models_typed_regression_test.go#TestCreateProviderOverlayReplacesOnlyTheSameTypeAndID"
+  ],
+  "rationale": "MutableModels.getAllModels is the Go method Models.GetAllModels; signature reviewed against the upstream declaration (upstream MutableModels is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#MutableModels::property:getAuth"
+  ],
+  "targets": [
+   "ai/models_runtime_auth.go#Models.GetAuth"
+  ],
+  "production": [
+   "call:ai/models_runtime_auth.go#Models.GetModelAuth"
+  ],
+  "evidence": [
+   "test:ai/auth_refresh_gc_test.go#TestOAuthRefreshDoneSurvivesGC",
+   "test:ai/auth_refresh_signal_test.go#TestOAuthRefreshTimeoutMarksStoredResolutionAndModelsRefresh"
+  ],
+  "rationale": "MutableModels.getAuth is the Go method Models.GetAuth; signature reviewed against the upstream declaration (upstream MutableModels is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#MutableModels::property:getModel"
+  ],
+  "targets": [
+   "ai/models_runtime_auth.go#Models.GetModel"
+  ],
+  "production": [
+   "call:internal/codingagent/model_registry.go#ModelRegistry.HasModelDefinition"
+  ],
+  "evidence": [
+   "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+   "test:ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream"
+  ],
+  "rationale": "MutableModels.getModel is the Go method Models.GetModel; signature reviewed against the upstream declaration (upstream MutableModels is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#MutableModels::property:getModels"
+  ],
+  "targets": [
+   "ai/models_runtime_auth.go#Models.GetModels"
+  ],
+  "production": [
+   "call:ai/models_runtime_auth.go#Models.GetModel"
+  ],
+  "evidence": [
+   "test:ai/lazy_module_load_upstream_test.go#TestLazyModuleLoadProbe",
+   "test:ai/models_entry_upstream_test.go#TestLightweightModelsEntryUpstream"
+  ],
+  "rationale": "MutableModels.getModels is the Go method Models.GetModels; signature reviewed against the upstream declaration (upstream MutableModels is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#MutableModels::property:getModelsOfType"
+  ],
+  "targets": [
+   "ai/models_runtime_typed.go#Models.GetModelsOfType"
+  ],
+  "production": [
+   "call:ai/models_runtime_typed.go#Models.GetModelOfType"
+  ],
+  "evidence": [
+   "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+   "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream"
+  ],
+  "rationale": "MutableModels.getModelsOfType is the Go method Models.GetModelsOfType; signature reviewed against the upstream declaration (upstream MutableModels is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#MutableModels::property:getProvider"
+  ],
+  "targets": [
+   "ai/models_runtime_auth.go#Models.GetProvider"
+  ],
+  "production": [
+   "call:ai/models_runtime_auth.go#Models.CheckAuth"
+  ],
+  "evidence": [
+   "test:ai/models_refresh_replacement_test.go#TestModelsRefreshCannotStartAReplacedProviderSnapshot",
+   "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+  ],
+  "rationale": "MutableModels.getProvider is the Go method Models.GetProvider; signature reviewed against the upstream declaration (upstream MutableModels is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#MutableModels::property:getProviders"
+  ],
+  "targets": [
+   "ai/models_runtime_auth.go#Models.GetProviders"
+  ],
+  "production": [
+   "call:ai/models_runtime_auth.go#Models.GetModels"
+  ],
+  "evidence": [
+   "test:ai/models_entry_upstream_test.go#TestLightweightModelsEntryUpstream",
+   "test:ai/models_refresh_replacement_test.go#TestModelsRefreshCannotStartAReplacedProviderSnapshot"
+  ],
+  "rationale": "MutableModels.getProviders is the Go method Models.GetProviders; signature reviewed against the upstream declaration (upstream MutableModels is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#MutableModels::property:refresh"
+  ],
+  "targets": [
+   "ai/models_runtime_refresh.go#Models.Refresh"
+  ],
+  "production": [
+   "call:internal/codingagent/native_model_runtime.go#ModelRegistry.refreshNativeModels"
+  ],
+  "evidence": [
+   "test:ai/auth_refresh_signal_test.go#TestOAuthRefreshTimeoutMarksStoredResolutionAndModelsRefresh",
+   "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream"
+  ],
+  "rationale": "MutableModels.refresh is the Go method Models.Refresh; signature reviewed against the upstream declaration (upstream MutableModels is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#MutableModels::property:setProvider"
+  ],
+  "targets": [
+   "ai/models_runtime_auth.go#Models.SetProvider"
+  ],
+  "production": [
+   "call:ai/builtin_providers.go#BuiltinModels"
+  ],
+  "evidence": [
+   "test:ai/anthropic_copy_code_test.go#TestAnthropicCopyCodeLoginPromptsThroughTheModelRuntime",
+   "test:ai/anthropic_federation_upstream_test.go#TestAnthropicWorkloadIdentityFederation"
+  ],
+  "rationale": "MutableModels.setProvider is the Go method Models.SetProvider; signature reviewed against the upstream declaration (upstream MutableModels is Go ai.Models; an optional options argument is a variadic tail); callers and tests attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ }
+]

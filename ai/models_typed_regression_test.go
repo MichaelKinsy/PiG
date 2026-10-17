@@ -2,6 +2,7 @@ package ai
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -81,13 +82,28 @@ func TestModelsCatalogCodecRoundTripsEveryModelType(t *testing.T) {
 	image.InputLimits = &ModelInputLimits{MaxRequestBytes: 1024}
 	image.Cost = ModelCost{Input: 1, Output: 2, Tiers: []CostTier{{InputTokensAbove: 1000, InputCostPer1M: 3, OutputCostPer1M: 4}}}
 	classifier := &ClassifierModel{ID: "k", Name: "k", API: "test-classifier", Provider: "p", BaseURL: "https://example.test", Input: []string{"text"}, InputLimits: &ModelInputLimits{MaxRequestBytes: 2048}, Cost: ModelCost{Input: 0.5}}
-	raw, err := encodeModelsCatalog([]AnyModel{chat, image, classifier})
+	var raw []json.RawMessage
+	for _, model := range []AnyModel{chat, image, classifier} {
+		record, err := EncodeStoredModel(model)
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw = append(raw, record)
+	}
+	decoded, err := DecodeStoredModels(raw)
 	if err != nil {
 		t.Fatal(err)
 	}
-	decoded, err := decodeModelsCatalog(raw, "p")
-	if err != nil {
-		t.Fatal(err)
+	for _, model := range decoded {
+		// The decoded record keeps the persisted fields (a catalogShape); the typed members are what must match the originals.
+		switch typed := model.(type) {
+		case *Model:
+			typed.catalog = nil
+		case *ImageModel:
+			typed.catalog = nil
+		case *ClassifierModel:
+			typed.catalog = nil
+		}
 	}
 	if len(decoded) != 3 || GetModelType(decoded[0]) != ModelTypeChat || decoded[0].(*Model).Type != ModelTypeChat || !reflect.DeepEqual(decoded[1], AnyModel(image)) || !reflect.DeepEqual(decoded[2], AnyModel(classifier)) {
 		t.Fatalf("decoded=%#v", decoded)
@@ -96,8 +112,8 @@ func TestModelsCatalogCodecRoundTripsEveryModelType(t *testing.T) {
 	if string(raw[2]) != want {
 		t.Fatalf("classifier record=%s", raw[2])
 	}
-	bare, err := encodeModelsCatalog([]AnyModel{typedImageModel("p", "bare")})
-	if err != nil || !strings.Contains(string(bare[0]), `"output":["image"]`) {
+	bare, err := EncodeStoredModel(typedImageModel("p", "bare"))
+	if err != nil || !strings.Contains(string(bare), `"output":["image"]`) {
 		t.Fatalf("image record=%s err=%v", bare, err)
 	}
 }

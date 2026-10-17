@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"net/url"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
 )
+
+var anthropicLoopbackPort = regexp.MustCompile(`localhost%3A[0-9]+%2Fcallback`)
 
 // queryKeys lists the keys of a raw query in the order they appear.
 func queryKeys(t *testing.T, rawURL string) []string {
@@ -72,6 +75,8 @@ func TestAnthropicAuthorizeURLKeepsUpstreamParameterOrder(t *testing.T) {
 			if got := queryKeys(t, authorizeURL); !slices.Equal(got, want) {
 				t.Fatalf("authorize URL parameter order = %v, want %v\nURL: %s", got, want, authorizeURL)
 			}
+			// anthropic.ts:154-157 uses the callback server's actual address when 53692 is taken (`callback?.redirectUri ?? REDIRECT_URI`), so only the port varies on a shared host.
+			authorizeURL = anthropicLoopbackPort.ReplaceAllString(authorizeURL, "localhost%3A53692%2Fcallback")
 			if got := placeholderQuery(t, authorizeURL, map[string]string{"code_challenge": "CHALLENGE", "state": "VERIFIER"}); got != tc.url {
 				t.Fatalf("authorize URL =\n%s\nwant\n%s", got, tc.url)
 			}

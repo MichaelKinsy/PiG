@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"golang.org/x/mod/modfile"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // TestGoSDKPathOverrideIgnoresMissingReplace guards the field bug where a packed
@@ -50,6 +52,88 @@ func TestGoSDKPathOverrideNoReplace(t *testing.T) {
 
 	if got := GoSDKPathOverride(root); got != "" {
 		t.Fatalf("override with no SDK replace should be empty, got %q", got)
+	}
+}
+
+// retiredStagedSDKFixture builds a config root whose staging area holds both the
+// SDK this binary stages for lang and an unhashed directory an earlier pig staged
+// there (still on disk, since staging never deletes it), and an extension module
+// whose ../.sdk link points at that retired directory, as a link made with
+// `pig reload --sdk-path` before updating pig does.
+func retiredStagedSDKFixture(t *testing.T, lang, base, marker string) (configRoot, staged, extension string) {
+	t.Helper()
+	configRoot = t.TempDir()
+	t.Setenv("PIG_HOME", configRoot)
+	t.Setenv("XDG_CONFIG_HOME", "")
+	t.Setenv("PIG_SDK_GO_ROOT", "")
+	t.Setenv("PIG_SDK_RS_ROOT", "")
+	staged = testStagedSDKDir(t, configRoot, lang)
+	stageSDKMarker(t, staged, marker)
+	retired := filepath.Join(configRoot, "state", "pigsdk", base)
+	stageSDKMarker(t, retired, marker)
+	parent := t.TempDir()
+	testenv.RequireDirectoryLink(t, retired, filepath.Join(parent, ".sdk"))
+	extension = filepath.Join(parent, "ext")
+	if err := os.MkdirAll(extension, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return configRoot, staged, extension
+}
+
+// TestGoSDKPathOverrideIgnoresRetiredStagedSDK proves a replace that resolves to
+// an SDK an earlier pig staged is treated like a missing one: the build falls
+// back to the SDK staged now instead of compiling against the old copy.
+func TestGoSDKPathOverrideIgnoresRetiredStagedSDK(t *testing.T) {
+	configRoot, staged, extension := retiredStagedSDKFixture(t, "go", "sdk", "go.mod")
+	writeGoMod(t, extension, "module example.com/ext\n\ngo 1.26\n\nreplace github.com/MichaelKinsy/PiG/extensions/sdk => ../.sdk\n")
+
+	if got := GoSDKPathOverride(extension); got != "" {
+		t.Fatalf("override through a link to a retired staged SDK should be ignored, got %q", got)
+	}
+	got, err := findSDKRootWithPreferred([]GoExtension{{Root: extension}}, staged)
+	if err != nil || got != staged {
+		t.Fatalf("findSDKRootWithPreferred = %q, %v; want the current staged SDK %q", got, err, staged)
+	}
+	// The preferred staged directory names the config root even when the
+	// ambient one differs.
+	t.Setenv("PIG_HOME", t.TempDir())
+	got, err = findSDKRootWithPreferred([]GoExtension{{Root: extension}}, staged)
+	if err != nil || got != staged {
+		t.Fatalf("findSDKRootWithPreferred under another ambient root = %q, %v; want %q", got, err, staged)
+	}
+	t.Setenv("PIG_HOME", configRoot)
+
+	direct := filepath.Join(configRoot, "state", "pigsdk", "sdk")
+	writeGoMod(t, extension, "module example.com/ext\n\ngo 1.26\n\nreplace github.com/MichaelKinsy/PiG/extensions/sdk => "+modfile.AutoQuote(direct)+"\n")
+	if got := GoSDKPathOverride(extension); got != "" {
+		t.Fatalf("override naming a retired staged SDK directly should be ignored, got %q", got)
+	}
+}
+
+// TestGoSDKPathOverrideKeepsCurrentStagedSDK proves a replace naming the SDK
+// staged now still resolves as the author's override.
+func TestGoSDKPathOverrideKeepsCurrentStagedSDK(t *testing.T) {
+	_, staged, extension := retiredStagedSDKFixture(t, "go", "sdk", "go.mod")
+	writeGoMod(t, extension, "module example.com/ext\n\ngo 1.26\n\nreplace github.com/MichaelKinsy/PiG/extensions/sdk => "+modfile.AutoQuote(staged)+"\n")
+	if got := GoSDKPathOverride(extension); got != staged {
+		t.Fatalf("override naming the current staged SDK = %q, want %q", got, staged)
+	}
+}
+
+// TestRustSDKPathOverrideIgnoresRetiredStagedSDK is the Rust mirror of
+// TestGoSDKPathOverrideIgnoresRetiredStagedSDK.
+func TestRustSDKPathOverrideIgnoresRetiredStagedSDK(t *testing.T) {
+	_, staged, extension := retiredStagedSDKFixture(t, "rust", "sdk-rs", "Cargo.toml")
+	manifest := "[package]\nname = \"ext\"\nversion = \"0.1.0\"\n\n[dependencies]\npig-sdk = { path = \"../.sdk\" }\n"
+	if err := os.WriteFile(filepath.Join(extension, "Cargo.toml"), []byte(manifest), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := RustSDKPathOverride(extension); got != "" {
+		t.Fatalf("Rust override through a link to a retired staged SDK should be ignored, got %q", got)
+	}
+	got, err := findRustSDKRoot([]RustExtension{{Root: extension}})
+	if err != nil || got != staged {
+		t.Fatalf("findRustSDKRoot = %q, %v; want the current staged SDK %q", got, err, staged)
 	}
 }
 

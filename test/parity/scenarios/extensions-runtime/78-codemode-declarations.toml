@@ -1,0 +1,27 @@
+# Behavior family: extensions-runtime (codemode declarations)
+# Pi 1.2.0 probe: packages/codemode declarations.ts schemaToType (401 schemas, with maxChars, $ref and $defs, URIError), renderToolSignature and renderToolSample (150 tools each, with inputMaxChars),
+# renderDeclarations (100 tool and global sets: tools, plain and namespaced globals, signatures, doc comments) and renderToolOutputType (95 output schemas incl. MCP CallToolResult shapes,
+# which Pi 1.2.0 renders as plain types). testdata/upstream-oracle.mjs regenerates the deterministic and seeded-random corpus with Pi; each result is compared as one JSON line. The Go tests in
+# codemode/upstream_oracle_test.go compare PiG with the committed golden of the same corpus; this scenario compares the two printed streams, so a stale golden shows up too.
+name = "78-codemode-declarations"
+description = "The codemode TypeScript declarations (types, signatures, samples, namespaces, output types) are the same text as Pi's for the whole oracle corpus."
+covers = ["packages/codemode/src/declarations.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/codemode-declarations-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/codemode-declarations-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 240
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['declare const tools', 'Promise<', 'codemode tool declaration:', '"URIError:']
+runs = 2

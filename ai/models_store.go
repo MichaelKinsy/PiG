@@ -7,36 +7,112 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"math"
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"sync"
+
+	"github.com/MichaelKinsy/PiG/internal/jsonparse"
+	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 
 	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"github.com/MichaelKinsy/PiG/internal/pilock"
 )
 
-// ModelsStoreEntry mirrors pi-ai ModelsStoreEntry. Models stay raw JSON
-// because each provider owns the shape of the catalog it persists.
+// ModelsStoreEntry mirrors pi-ai ModelsStoreEntry (models-store.ts:3-15). Models are typed and lossless: a model decoded from a catalog keeps the
+// fields it has no member for and re-encodes them in their original order. A record of a model type this version does not know is kept aside and
+// written back at its position, so reading and rewriting a catalog never drops it; it is not part of Models.
 type ModelsStoreEntry struct {
-	Models []json.RawMessage `json:"models"`
+	Models []AnyModel
 	// LastModified is the Unix timestamp from the remote catalog's
 	// Last-Modified header.
-	LastModified *float64 `json:"lastModified,omitempty"`
+	LastModified *float64
 	// CheckedAt is the Unix timestamp of the last completed remote check.
-	CheckedAt *float64 `json:"checkedAt,omitempty"`
+	CheckedAt *float64
 	// ETag is the remote catalog's opaque validator, stored verbatim.
-	ETag string `json:"etag,omitempty"`
+	ETag string
+
+	unknown []unknownCatalogModel
+	// members is the order of the members in the object the entry was decoded from; a rewrite keeps it, and an entry built in memory has Pi's order.
+	members []string
+}
+
+// unknownCatalogModel is a stored record of a model type this version does not know, with its position among the stored records.
+type unknownCatalogModel struct {
+	index int
+	raw   json.RawMessage
+}
+
+type modelsStoreEntryWire struct {
+	Models       []json.RawMessage `json:"models"`
+	CheckedAt    *float64          `json:"checkedAt,omitempty"`
+	LastModified *float64          `json:"lastModified,omitempty"`
+	ETag         string            `json:"etag,omitempty"`
+}
+
+// MarshalJSON writes the entry as the persisted object: every model through its catalog record, unknown-type records at their positions.
+func (entry ModelsStoreEntry) MarshalJSON() ([]byte, error) {
+	wire := modelsStoreEntryWire{Models: make([]json.RawMessage, 0, len(entry.Models)+len(entry.unknown)), LastModified: entry.LastModified, CheckedAt: entry.CheckedAt, ETag: entry.ETag}
+	next := 0
+	insertUnknown := func(limit int) {
+		for next < len(entry.unknown) && entry.unknown[next].index <= limit {
+			wire.Models = append(wire.Models, entry.unknown[next].raw)
+			next++
+		}
+	}
+	for _, model := range entry.Models {
+		insertUnknown(len(wire.Models))
+		data, err := marshalCatalogModel(model)
+		if err != nil {
+			return nil, err
+		}
+		wire.Models = append(wire.Models, data)
+	}
+	insertUnknown(int(^uint(0) >> 1))
+	data, err := marshalStoreJSON(wire)
+	if err != nil || len(entry.members) == 0 {
+		return data, err
+	}
+	return credentialKeyOrder{keys: entry.members}.apply(data)
+}
+
+// UnmarshalJSON reads the persisted object; each model keeps its unknown fields, and records of unknown model types are set aside.
+func (entry *ModelsStoreEntry) UnmarshalJSON(data []byte) error {
+	var wire modelsStoreEntryWire
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	*entry = ModelsStoreEntry{Models: make([]AnyModel, 0, len(wire.Models)), LastModified: wire.LastModified, CheckedAt: wire.CheckedAt, ETag: wire.ETag}
+	entry.members, _ = authStorageObjectKeys(data)
+	for index, raw := range wire.Models {
+		model, known, err := decodeCatalogModel(raw)
+		if err != nil {
+			return err
+		}
+		if !known {
+			entry.unknown = append(entry.unknown, unknownCatalogModel{index: index, raw: bytes.Clone(raw)})
+			continue
+		}
+		entry.Models = append(entry.Models, model)
+	}
+	return nil
 }
 
 // Clone returns a deep copy, mirroring upstream's structuredClone at the
 // store boundary.
 func (entry ModelsStoreEntry) Clone() ModelsStoreEntry {
-	models := make([]json.RawMessage, len(entry.Models))
-	for index, model := range entry.Models {
-		models[index] = bytes.Clone(model)
+	data, err := entry.MarshalJSON()
+	if err == nil {
+		var copied ModelsStoreEntry
+		if err = json.Unmarshal(data, &copied); err == nil {
+			return copied
+		}
 	}
-	entry.Models = models
+	// A model that cannot be encoded cannot be stored either; share it rather than drop it.
+	entry.Models = slices.Clone(entry.Models)
+	entry.unknown = slices.Clone(entry.unknown)
 	if entry.LastModified != nil {
 		entry.LastModified = new(*entry.LastModified)
 	}
@@ -68,8 +144,8 @@ func NewInMemoryModelsStore() *InMemoryModelsStore {
 
 // Read returns a copy of the provider's catalog, or nil when none is stored.
 func (s *InMemoryModelsStore) Read(ctx context.Context, providerID string) (*ModelsStoreEntry, error) {
-	if err := ctx.Err(); err != nil {
-		return nil, err
+	if ctx.Err() != nil {
+		return nil, context.Cause(ctx)
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -83,8 +159,8 @@ func (s *InMemoryModelsStore) Read(ctx context.Context, providerID string) (*Mod
 
 // Write stores a copy of the provider's catalog.
 func (s *InMemoryModelsStore) Write(ctx context.Context, providerID string, entry ModelsStoreEntry) error {
-	if err := ctx.Err(); err != nil {
-		return err
+	if ctx.Err() != nil {
+		return context.Cause(ctx)
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -94,8 +170,8 @@ func (s *InMemoryModelsStore) Write(ctx context.Context, providerID string, entr
 
 // Delete removes the provider's catalog.
 func (s *InMemoryModelsStore) Delete(ctx context.Context, providerID string) error {
-	if err := ctx.Err(); err != nil {
-		return err
+	if ctx.Err() != nil {
+		return context.Cause(ctx)
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -126,6 +202,9 @@ func (s *FileModelsStore) Path() string { return s.path }
 // Read returns a fresh copy of the provider's stored catalog. Concurrent readers share reloads and cancel their waits independently; unchanged files use the cached revision.
 func (s *FileModelsStore) Read(ctx context.Context, providerID string) (*ModelsStoreEntry, error) {
 	entries, err := s.readLatest(ctx)
+	if errors.Is(err, errModelsNullRoot) {
+		return nil, fmt.Errorf("Cannot read properties of null (reading '%s')", providerID)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -134,6 +213,10 @@ func (s *FileModelsStore) Read(ctx context.Context, providerID string) (*ModelsS
 	}
 	for _, stored := range entries {
 		if stored.providerID == providerID {
+			// An entry that is JSON null reads as absent (models-store.ts read: `entry ? structuredClone(entry) : undefined`).
+			if bytes.Equal(bytes.TrimSpace(stored.raw), []byte("null")) {
+				return nil, nil
+			}
 			var entry ModelsStoreEntry
 			if err := json.Unmarshal(stored.raw, &entry); err != nil {
 				return nil, fmt.Errorf("models store: parse %s: %w", providerID, err)
@@ -150,7 +233,10 @@ func (s *FileModelsStore) Write(ctx context.Context, providerID string, entry Mo
 	if err != nil {
 		return err
 	}
-	return s.withLock(ctx, func(entries []storedModels) ([]storedModels, error) {
+	err = s.withLockRoot(ctx, func(entries []storedModels, root modelsRoot) ([]storedModels, error) {
+		if root.kind == modelsRootScalar {
+			return nil, fmt.Errorf("Cannot create property '%s' on %s '%s'", providerID, root.scalarType, root.scalar)
+		}
 		for index := range entries {
 			if entries[index].providerID == providerID {
 				entries[index].raw = raw
@@ -159,16 +245,24 @@ func (s *FileModelsStore) Write(ctx context.Context, providerID string, entry Mo
 		}
 		return append(entries, storedModels{providerID: providerID, raw: raw}), nil
 	})
+	if errors.Is(err, errModelsNullRoot) {
+		return fmt.Errorf("Cannot set properties of null (setting '%s')", providerID)
+	}
+	return err
 }
 
 // Delete removes the provider's stored catalog. Like upstream it rewrites
 // the file even when the provider has no entry.
 func (s *FileModelsStore) Delete(ctx context.Context, providerID string) error {
-	return s.withLock(ctx, func(entries []storedModels) ([]storedModels, error) {
+	err := s.withLock(ctx, func(entries []storedModels) ([]storedModels, error) {
 		return slices.DeleteFunc(append([]storedModels{}, entries...), func(stored storedModels) bool {
 			return stored.providerID == providerID
 		}), nil
 	})
+	if errors.Is(err, errModelsNullRoot) {
+		return errors.New("Cannot convert undefined or null to object")
+	}
+	return err
 }
 
 // storedModels is one provider entry; a slice keeps the file's key order the
@@ -183,7 +277,12 @@ type storedModels struct {
 // waits for the lock (auth-storage.ts:55-68,158-163), holds the lock across
 // read-modify-write, writes only when fn returns entries, and returns Node's
 // fs errors.
-func (s *FileModelsStore) withLock(ctx context.Context, fn func([]storedModels) ([]storedModels, error)) (err error) {
+func (s *FileModelsStore) withLock(ctx context.Context, fn func([]storedModels) ([]storedModels, error)) error {
+	return s.withLockRoot(ctx, func(entries []storedModels, _ modelsRoot) ([]storedModels, error) { return fn(entries) })
+}
+
+// withLockRoot is withLock for a callback that needs the shape of the file's top-level JSON value.
+func (s *FileModelsStore) withLockRoot(ctx context.Context, fn func([]storedModels, modelsRoot) ([]storedModels, error)) (err error) {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -209,11 +308,11 @@ func (s *FileModelsStore) withLock(ctx context.Context, fn func([]storedModels) 
 		if err != nil && !errors.Is(err, fs.ErrNotExist) {
 			return nodeerrno.FromPathError(err)
 		}
-		entries, err := parseStoredModels(bytes.TrimPrefix(data, []byte("\xef\xbb\xbf")))
+		entries, root, err := parseStoredModels(bytes.TrimPrefix(data, []byte("\xef\xbb\xbf")))
 		if err != nil {
 			return err
 		}
-		next, err := fn(entries)
+		next, err := fn(entries, root)
 		if err != nil {
 			return err
 		}
@@ -227,7 +326,7 @@ func (s *FileModelsStore) withLock(ctx context.Context, fn func([]storedModels) 
 		if next == nil {
 			return nil
 		}
-		if err := writeStoredModels(s.path, next); err != nil {
+		if err := writeStoredModels(s.path, next, root); err != nil {
 			return err
 		}
 		if err := check(); err != nil {
@@ -235,33 +334,79 @@ func (s *FileModelsStore) withLock(ctx context.Context, fn func([]storedModels) 
 		}
 		s.readState.mu.Lock()
 		s.readState.data = next
-		s.readState.revision = ""
+		s.readState.revision = fileRevision{}
 		s.readState.mu.Unlock()
 		return nil
 	})
 }
 
-func parseStoredModels(data []byte) ([]storedModels, error) {
+// errModelsNullRoot reports a store file whose JSON is null: JSON.parse accepts it and every operation then throws its own TypeError.
+var errModelsNullRoot = errors.New("models store: the file holds null")
+
+// modelsRoot is the top-level JSON kind of a store file. Like auth.json, models-store.json is whatever JSON.parse returns: an array reads as an object keyed by
+// index and is written back as an array (a deleted or unset element is null), a number or boolean reads as an empty object, a delete rewrites it as itself, and a write throws.
+type modelsRootKind int
+
+const (
+	modelsRootObject modelsRootKind = iota
+	modelsRootArray
+	modelsRootScalar
+)
+
+type modelsRoot struct {
+	kind       modelsRootKind
+	arrayLen   int
+	scalar     string
+	scalarType string
+}
+
+func parseStoredModels(data []byte) ([]storedModels, modelsRoot, error) {
 	if len(data) == 0 {
-		return nil, nil
+		return nil, modelsRoot{}, nil
 	}
-	if !json.Valid(data) {
-		return nil, fmt.Errorf("models store: parse: invalid JSON")
+	// JSON.parse's SyntaxError is what the caller reports, with V8's message.
+	if err := jsonparse.Validate(data); err != nil {
+		return nil, modelsRoot{}, err
+	}
+	switch first := bytes.TrimSpace(data)[0]; first {
+	case 'n':
+		return nil, modelsRoot{}, errModelsNullRoot
+	case '[':
+		var items []json.RawMessage
+		if err := json.Unmarshal(data, &items); err != nil {
+			return nil, modelsRoot{}, fmt.Errorf("models store: parse: %w", err)
+		}
+		entries := make([]storedModels, 0, len(items))
+		for i, item := range items {
+			entries = append(entries, storedModels{providerID: strconv.Itoa(i), raw: item})
+		}
+		return entries, modelsRoot{kind: modelsRootArray, arrayLen: len(items)}, nil
+	case 't', 'f':
+		return []storedModels{}, modelsRoot{kind: modelsRootScalar, scalar: string(bytes.TrimSpace(data)), scalarType: "boolean"}, nil
+	case '{':
+	default:
+		if first != '"' {
+			canonical, err := jsonstringify.Canonicalize(data)
+			if err != nil {
+				return nil, modelsRoot{}, err
+			}
+			return []storedModels{}, modelsRoot{kind: modelsRootScalar, scalar: string(canonical), scalarType: "number"}, nil
+		}
 	}
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	if token, err := decoder.Token(); err != nil || token != json.Delim('{') {
-		return nil, fmt.Errorf("models store: parse: expected a JSON object")
+		return nil, modelsRoot{}, fmt.Errorf("models store: parse: expected a JSON object")
 	}
 	var entries []storedModels
 	positions := make(map[string]int)
 	for decoder.More() {
 		key, err := decoder.Token()
 		if err != nil {
-			return nil, fmt.Errorf("models store: parse: %w", err)
+			return nil, modelsRoot{}, fmt.Errorf("models store: parse: %w", err)
 		}
 		var raw json.RawMessage
 		if err := decoder.Decode(&raw); err != nil {
-			return nil, fmt.Errorf("models store: parse: %w", err)
+			return nil, modelsRoot{}, fmt.Errorf("models store: parse: %w", err)
 		}
 		providerID := key.(string)
 		if index, exists := positions[providerID]; exists {
@@ -271,12 +416,66 @@ func parseStoredModels(data []byte) ([]storedModels, error) {
 			entries = append(entries, storedModels{providerID: providerID, raw: raw})
 		}
 	}
-	return entries, nil
+	return entries, modelsRoot{}, nil
 }
 
 // writeStoredModels mirrors JSON.stringify(current, null, 2).
-func writeStoredModels(path string, entries []storedModels) error {
+func writeStoredModels(path string, entries []storedModels, root modelsRoot) error {
 	var object bytes.Buffer
+	switch root.kind {
+	case modelsRootScalar:
+		object.WriteString(root.scalar)
+	case modelsRootArray:
+		length := root.arrayLen
+		elements := map[int]json.RawMessage{}
+		for _, entry := range entries {
+			if index, ok := arrayIndex(entry.providerID); ok {
+				elements[index] = entry.raw
+				length = max(length, index+1)
+			}
+		}
+		object.WriteByte('[')
+		for i := range length {
+			if i > 0 {
+				object.WriteByte(',')
+			}
+			if raw, ok := elements[i]; ok {
+				object.Write(raw)
+			} else {
+				object.WriteString("null")
+			}
+		}
+		object.WriteByte(']')
+	default:
+		if err := writeStoredModelsObject(&object, entries); err != nil {
+			return err
+		}
+	}
+	// JSON.stringify writes the parsed values: escapes decode, numbers take their shortest form, '<', '>', '&' and the line separators stay literal.
+	canonical, err := jsonstringify.Canonicalize(object.Bytes())
+	if err != nil {
+		return fmt.Errorf("models store: encode: %w", err)
+	}
+	var indented bytes.Buffer
+	if err := json.Indent(&indented, canonical, "", "  "); err != nil {
+		return fmt.Errorf("models store: encode: %w", err)
+	}
+	if err := os.WriteFile(path, indented.Bytes(), 0o600); err != nil {
+		return nodeerrno.FromPathError(err)
+	}
+	return nil
+}
+
+// arrayIndex reports whether key is a JavaScript array index (a canonical decimal below 2^32-1) and its value.
+func arrayIndex(key string) (int, bool) {
+	n, err := strconv.ParseUint(key, 10, 32)
+	if err != nil || n == math.MaxUint32 || n > math.MaxInt || strconv.FormatUint(n, 10) != key {
+		return 0, false
+	}
+	return int(n), true
+}
+
+func writeStoredModelsObject(object *bytes.Buffer, entries []storedModels) error {
 	object.WriteByte('{')
 	for index, entry := range entries {
 		if index > 0 {
@@ -291,13 +490,6 @@ func writeStoredModels(path string, entries []storedModels) error {
 		object.Write(entry.raw)
 	}
 	object.WriteByte('}')
-	var indented bytes.Buffer
-	if err := json.Indent(&indented, object.Bytes(), "", "  "); err != nil {
-		return fmt.Errorf("models store: encode: %w", err)
-	}
-	if err := os.WriteFile(path, indented.Bytes(), 0o600); err != nil {
-		return nodeerrno.FromPathError(err)
-	}
 	return nil
 }
 

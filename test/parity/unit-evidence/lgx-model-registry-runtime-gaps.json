@@ -1,0 +1,245 @@
+[
+ {
+  "upstream": "packages/coding-agent/src/core/model-registry.ts",
+  "package": "./coding",
+  "tests": [
+   "TestModelRegistryTypedFacadeMatchesTheRuntime"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-registry.ts",
+  "mutation": "coding/model_registry_facade.go: replace `func (registry *ModelRegistry) FindOfType(modelType ai.ModelType, provider, modelID string) ai.AnyModel {\n\treturn registry.runtime.GetModelOfType(modelType, provider, modelID)` with `func (registry *ModelRegistry) FindOfType(modelType ai.ModelType, provider, modelID string) ai.AnyModel {\n\treturn registry.runtime.GetModelOfType(ai.ModelTypeImage, provider, modelID)`; TestModelRegistryTypedFacadeMatchesTheRuntime fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-registry.ts",
+  "package": "./coding",
+  "tests": [
+   "TestModelRegistryTypedFacadeMatchesTheRuntime"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-registry.ts",
+  "mutation": "coding/model_registry_facade.go: replace `func (registry *ModelRegistry) FindOfType(modelType ai.ModelType, provider, modelID string) ai.AnyModel {\n\treturn registry.runtime.GetModelOfType(modelType, provider, modelID)` with `func (registry *ModelRegistry) FindOfType(modelType ai.ModelType, provider, modelID string) ai.AnyModel {\n\treturn registry.runtime.GetModelOfType(modelType, modelID, provider)`; TestModelRegistryTypedFacadeMatchesTheRuntime fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-registry.ts",
+  "package": "./coding",
+  "tests": [
+   "TestModelRegistryTypedFacadeMatchesTheRuntime"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-registry.ts",
+  "mutation": "coding/model_registry_facade.go: replace `func (registry *ModelRegistry) FindOfType(modelType ai.ModelType, provider, modelID string) ai.AnyModel {\n\treturn registry.runtime.GetModelOfType(modelType, provider, modelID)` with `func (registry *ModelRegistry) FindOfType(modelType ai.ModelType, provider, modelID string) ai.AnyModel {\n\treturn nil`; TestModelRegistryTypedFacadeMatchesTheRuntime fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-registry.ts",
+  "package": "./coding",
+  "tests": [
+   "TestModelRegistryRegisterProviderObjectUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-registry.ts",
+  "mutation": "coding/model_registry_facade.go: replace `return registry.runtime.RegisterNativeProvider(provider)` with `return nil`; TestModelRegistryRegisterProviderObjectUpstream fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-registry.ts",
+  "package": "./coding",
+  "tests": [
+   "TestModelRegistryRegisterProviderObjectUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-registry.ts",
+  "mutation": "coding/model_registry_facade.go: replace `return registry.runtime.RegisterNativeProvider(provider)` with `return registry.runtime.RegisterNativeProvider(nil)`; TestModelRegistryRegisterProviderObjectUpstream fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-runtime.ts",
+  "package": "./coding",
+  "tests": [
+   "TestPhysicalModelLookupAndRegistryUnregisterVirtualModel",
+   "TestVirtualModelRejectsRoutesToVirtualOrUnknownModels",
+   "TestVirtualModelReportsTheFailedRequestOfARetrySeparatelyFromTheLatestSuccessfulResponse"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "coding/virtual_models.go: replace `if model == nil || IsVirtualModel(model) {\n\t\treturn nil\n\t}` with `if model == nil {\n\t\treturn nil\n\t}`; TestPhysicalModelLookupAndRegistryUnregisterVirtualModel, TestVirtualModelRejectsRoutesToVirtualOrUnknownModels, TestVirtualModelReportsTheFailedRequestOfARetrySeparatelyFromTheLatestSuccessfulResponse fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-runtime.ts",
+  "package": "./coding",
+  "tests": [
+   "TestVirtualModelReportsTheFailedRequestOfARetrySeparatelyFromTheLatestSuccessfulResponse"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "coding/virtual_models.go: replace `if failedModel := runtime.GetPhysicalModel(failed.Provider, failed.Model); failedModel != nil {` with `if failedModel := runtime.GetModel(failed.Provider, failed.Model); failedModel != nil {`; TestVirtualModelReportsTheFailedRequestOfARetrySeparatelyFromTheLatestSuccessfulResponse fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-runtime.ts",
+  "package": "./coding",
+  "tests": [
+   "TestVirtualModelRejectsRoutesToVirtualOrUnknownModels"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "coding/virtual_models.go: replace `target = runtime.GetPhysicalModel(route.Model.ProviderMeta.ProviderID, route.Model.ID)` with `target = runtime.GetModel(route.Model.ProviderMeta.ProviderID, route.Model.ID)`; TestVirtualModelRejectsRoutesToVirtualOrUnknownModels fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-registry.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestRuntimeModelsProjectsOnlySelectionMetadata",
+   "TestRuntimeModelsPreservesOverlaysAndLiveNativeCatalogs",
+   "TestModelRegistryOmitsStrippedAPIModels"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-registry.ts",
+  "mutation": "internal/codingagent/model_catalog_data.go: replace `for _, id := range r.modelProviderIDs() {\n\t\tmodels = append(models, r.GetProviderModelData(id)...)\n\t}\n\treturn models` with `for _, id := range r.modelProviderIDs() {\n\t\tmodels = append(models, r.GetProviderModelData(id)...)\n\t}\n\treturn models[:len(models)-1]`; TestModelRegistryOmitsStrippedAPIModels, TestRuntimeModelsPreservesOverlaysAndLiveNativeCatalogs, TestRuntimeModelsProjectsOnlySelectionMetadata fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-registry.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestRuntimeModelsProjectsOnlySelectionMetadata",
+   "TestRuntimeModelsPreservesOverlaysAndLiveNativeCatalogs"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-registry.ts",
+  "mutation": "internal/codingagent/model_catalog_data.go: replace `for _, id := range r.modelProviderIDs() {\n\t\tmodels = append(models, r.GetProviderModelData(id)...)\n\t}\n\treturn models` with `ids := r.modelProviderIDs()\n\tslices.Reverse(ids)\n\tfor _, id := range ids {\n\t\tmodels = append(models, r.GetProviderModelData(id)...)\n\t}\n\treturn models`; TestRuntimeModelsPreservesOverlaysAndLiveNativeCatalogs, TestRuntimeModelsProjectsOnlySelectionMetadata fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-registry.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestRuntimeModelsProjectsOnlySelectionMetadata",
+   "TestRuntimeModelsPreservesOverlaysAndLiveNativeCatalogs",
+   "TestModelRegistryOmitsStrippedAPIModels"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-registry.ts",
+  "mutation": "internal/codingagent/model_catalog_data.go: replace `for _, id := range r.modelProviderIDs() {\n\t\tmodels = append(models, r.GetProviderModelData(id)...)\n\t}\n\treturn models` with `for _, id := range r.modelProviderIDs()[1:] {\n\t\tmodels = append(models, r.GetProviderModelData(id)...)\n\t}\n\treturn models`; TestModelRegistryOmitsStrippedAPIModels, TestRuntimeModelsPreservesOverlaysAndLiveNativeCatalogs, TestRuntimeModelsProjectsOnlySelectionMetadata fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-registry.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestModelRegistryOmitsStrippedAPIModels"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-registry.ts",
+  "mutation": "internal/codingagent/model_registry.go: replace `available, checked := configured[id]\n\t\tif !checked {\n\t\t\tavailable = r.HasConfiguredAuth(id)` with `available, checked := configured[id]\n\t\tif !checked {\n\t\t\tavailable = !r.HasConfiguredAuth(id)`; TestModelRegistryOmitsStrippedAPIModels fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-runtime.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestLoginSupersedesOlderStalledCatalogRefreshUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "internal/codingagent/native_model_runtime.go: replace `allow := options.AllowNetwork == nil || *options.AllowNetwork` with `allow := true`; TestLoginSupersedesOlderStalledCatalogRefreshUpstream fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-runtime.ts",
+  "package": "./coding",
+  "tests": [
+   "TestPhysicalModelLookupAndRegistryUnregisterVirtualModel",
+   "TestVirtualModelReportsTheFailedRequestOfARetrySeparatelyFromTheLatestSuccessfulResponse",
+   "TestResolveModelBuildsTheRouteRequestForTheRouter"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "coding/virtual_models.go: replace `if model == nil || IsVirtualModel(model) {\n\t\treturn nil\n\t}\n\treturn model\n}` with `if model == nil || IsVirtualModel(model) {\n\t\treturn nil\n\t}\n\treturn nil\n}`; TestPhysicalModelLookupAndRegistryUnregisterVirtualModel, TestResolveModelBuildsTheRouteRequestForTheRouter, TestVirtualModelReportsTheFailedRequestOfARetrySeparatelyFromTheLatestSuccessfulResponse fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-runtime.ts",
+  "package": "./coding",
+  "tests": [
+   "TestResolveModelBuildsTheRouteRequestForTheRouter"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "coding/virtual_models.go: replace `route, err := definition.Route(ctx, request)` with `route, err := definition.Route(context.Background(), request)`; TestResolveModelBuildsTheRouteRequestForTheRouter fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-runtime.ts",
+  "package": "./coding",
+  "tests": [
+   "TestResolveModelBuildsTheRouteRequestForTheRouter"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "coding/virtual_models.go: replace `request.Messages = messages` with `_ = messages`; TestResolveModelBuildsTheRouteRequestForTheRouter fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-runtime.ts",
+  "package": "./coding",
+  "tests": [
+   "TestResolveModelBuildsTheRouteRequestForTheRouter"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "coding/virtual_models.go: replace `route, err := definition.Route(ctx, request)\n\tif err != nil {\n\t\treturn ModelRoute{}, err\n\t}` with `route, err := definition.Route(ctx, request)\n\t_ = err`; TestResolveModelBuildsTheRouteRequestForTheRouter fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-runtime.ts",
+  "package": "./coding",
+  "tests": [
+   "TestResolveModelBuildsTheRouteRequestForTheRouter"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "coding/virtual_models.go: replace `if previous := runtime.GetPhysicalModel(latest.Provider, latest.Model); previous != nil {` with `if previous := runtime.GetModel(latest.Provider, latest.Model); previous != nil {`; TestResolveModelBuildsTheRouteRequestForTheRouter fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-registry.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestGetAvailableModelDataFiltersByConfiguredAuthAndCopilotAllowlist"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-registry.ts",
+  "mutation": "internal/codingagent/model_registry.go: replace `if available && filters[id](model.ID) {` with `if available {`; TestGetAvailableModelDataFiltersByConfiguredAuthAndCopilotAllowlist fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-registry.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestGetAvailableModelDataFiltersByConfiguredAuthAndCopilotAllowlist"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-registry.ts",
+  "mutation": "internal/codingagent/model_registry.go: replace `if available && filters[id](model.ID) {` with `if filters[id](model.ID) {`; TestGetAvailableModelDataFiltersByConfiguredAuthAndCopilotAllowlist fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-runtime.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestRefreshModelRuntimeHonoursNetworkForceErrorsAndRegistrationCover"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "internal/codingagent/native_model_runtime.go: replace `if result.Aborted {\n\t\tr.uncoverRegistrationRefresh(covered)\n\t}` with `_ = covered`; TestRefreshModelRuntimeHonoursNetworkForceErrorsAndRegistrationCover fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-runtime.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestRefreshModelRuntimeHonoursNetworkForceErrorsAndRegistrationCover"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "internal/codingagent/native_model_runtime.go: replace `covered := r.yieldForRefresh(ctx, options.Providers)` with `covered := r.yieldForRefresh(ctx, nil)`; TestRefreshModelRuntimeHonoursNetworkForceErrorsAndRegistrationCover fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-runtime.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestRefreshModelRuntimeHonoursNetworkForceErrorsAndRegistrationCover"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "internal/codingagent/native_model_runtime.go: replace `allow := options.AllowNetwork == nil || *options.AllowNetwork` with `allow := options.AllowNetwork != nil && *options.AllowNetwork`; TestRefreshModelRuntimeHonoursNetworkForceErrorsAndRegistrationCover fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-runtime.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestRefreshModelRuntimeHonoursNetworkForceErrorsAndRegistrationCover"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "internal/codingagent/native_model_runtime.go: replace `Providers: options.Providers, Force: options.Force})` with `Providers: options.Providers, Force: new(false)})`; TestRefreshModelRuntimeHonoursNetworkForceErrorsAndRegistrationCover fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-runtime.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestRefreshModelRuntimeHonoursNetworkForceErrorsAndRegistrationCover"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "internal/codingagent/native_model_runtime.go: replace `return ai.ModelsRefreshResult{Aborted: result.Aborted, Errors: result.Errors, ErrorOrder: slices.Clone(result.errorOrder)}` with `return ai.ModelsRefreshResult{Aborted: result.Aborted, Errors: result.Errors}`; TestRefreshModelRuntimeHonoursNetworkForceErrorsAndRegistrationCover fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/model-runtime.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestRefreshModelRuntimeHonoursNetworkForceErrorsAndRegistrationCover"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/model-runtime.ts",
+  "mutation": "internal/codingagent/native_model_runtime.go: replace `return ai.ModelsRefreshResult{Aborted: true, Errors: map[string]error{}}` with `return ai.ModelsRefreshResult{Aborted: true}`; TestRefreshModelRuntimeHonoursNetworkForceErrorsAndRegistrationCover fails."
+ }
+]

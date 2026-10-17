@@ -1,3 +1,5 @@
+//go:build !pig_strip_node_extensions
+
 package subprocess_test
 
 import (
@@ -58,7 +60,7 @@ func TestPortWave12CloudflareAIBinding(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			dir := t.TempDir()
-			services, err := coding.NewServices(coding.ServicesOptions{CWD: dir, AgentDir: filepath.Join(dir, "agent")})
+			services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: dir, AgentDir: filepath.Join(dir, "agent")})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -75,7 +77,7 @@ func TestPortWave12CloudflareAIBinding(t *testing.T) {
 			t.Cleanup(func() { host.Shutdown("test done") })
 			bridge := subprocess.NewUIBridge(nil)
 			detach := icodingagent.WireModelOperations(bridge, icodingagent.ModelOperationBindings{
-				CurrentModel: session.Model, ModelLookup: services.ModelRuntime().GetModel, ModelCatalog: services.ModelRuntime().GetModels,
+				CurrentModel: session.Model, ModelLookup: services.ModelRuntime().GetModel, ModelCatalog: func(...string) []*ai.Model { return services.ModelRuntime().GetModels() },
 				Registry: services.Registry().ModelRegistry, ModelBuilder: func(spec string) (*ai.Model, error) { return coding.BuildModel(spec, services) }, SessionHandle: session,
 			})
 			t.Cleanup(detach)

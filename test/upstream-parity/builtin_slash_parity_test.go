@@ -4,9 +4,10 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"slices"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
@@ -25,11 +26,7 @@ var builtinNamePattern = regexp.MustCompile(`(?m)^\s*\{\s*name:\s*"([a-z][a-z0-9
 // A missing command is a real user-visible gap: the user types a command that
 // works in pi and pig answers "Unknown command".
 func TestBuiltinSlashCommands_CoverUpstream(t *testing.T) {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("cannot determine caller path")
-	}
-	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..")
+	repoRoot := testenv.ModuleRoot(t)
 	src := filepath.Join(repoRoot, ".upstream", "current",
 		"packages", "coding-agent", "src", "core", "slash-commands.ts")
 	raw, err := os.ReadFile(src)

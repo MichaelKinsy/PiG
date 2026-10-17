@@ -229,13 +229,15 @@ func (h *Host) handleMcpServerCall(_ context.Context, me *managedExt, call *Call
 		h.providerRuntime.UnregisterMcpServer(path, ref.Name)
 		h.untrackMcpServer(me, ref.Name)
 	}
-	result, err := json.Marshal(McpServersResult{Servers: h.providerRuntime.McpServers()})
+	result, err := json.Marshal(McpServersResult{Servers: h.providerRuntime.McpServers().List()})
+	// The SDKs replace their replicated server list with this reply outside a state_update, so the next push to this extension is a full snapshot.
+	me.runtimeStateGen.Add(1)
 	return &CallResultPayload{Result: result}, err
 }
 
 // handleMcpServersRead serves CallGetMcpServers: the live registry, which a Node factory reads before its register frame (loader.ts:475-478).
 func (h *Host) handleMcpServersRead() (*CallResultPayload, error) {
-	result, err := json.Marshal(McpServersResult{Servers: h.providerRuntime.McpServers()})
+	result, err := json.Marshal(McpServersResult{Servers: h.providerRuntime.McpServers().List()})
 	return &CallResultPayload{Result: result}, err
 }
 
@@ -381,7 +383,7 @@ func (h *Host) handleExecuteToolCall(ctx context.Context, conn *Conn, call *Call
 			return nil, executeErr
 		}
 	}
-	result, err := json.Marshal(ExecuteToolOutcome{ToolCall: outcome.ToolCall, Result: agentToolResultWire(outcome.Result), IsError: outcome.IsError})
+	result, err := json.Marshal(ExecuteToolOutcome{ToolCall: outcome.ToolCall, Result: agentToolResultWire(outcome.Result), IsError: outcome.IsError, DurationMs: outcome.DurationMs})
 	return &CallResultPayload{Result: result}, err
 }
 
@@ -496,19 +498,31 @@ func (h *Host) makeVirtualModelRoute(me *managedExt, ref VirtualModelRef) extens
 }
 
 func virtualModelRouteRequest(request extension.ModelRouteRequest) (VirtualModelRouteRequest, error) {
+	model, err := extension.ModelObject(request.Model)
+	if err != nil {
+		return VirtualModelRouteRequest{}, err
+	}
 	wire := VirtualModelRouteRequest{
-		Model: extension.ModelInfo(request.Model), ThinkingLevel: string(request.ThinkingLevel), Reason: string(request.Reason),
+		Model: model, ThinkingLevel: string(request.ThinkingLevel), Reason: string(request.Reason),
 		State: request.State, Messages: make([]json.RawMessage, len(request.Messages)),
 	}
 	if request.Previous != nil {
-		wire.Previous = &VirtualModelRoutePrevious{Model: extension.ModelInfo(request.Previous.Model), ThinkingLevel: string(request.Previous.ThinkingLevel)}
+		previous, err := extension.ModelObject(request.Previous.Model)
+		if err != nil {
+			return wire, err
+		}
+		wire.Previous = &VirtualModelRoutePrevious{Model: previous, ThinkingLevel: string(request.Previous.ThinkingLevel)}
 	}
 	if request.Failed != nil {
 		message, err := json.Marshal(request.Failed.Message)
 		if err != nil {
 			return wire, err
 		}
-		wire.Failed = &VirtualModelRouteFailed{Model: extension.ModelInfo(request.Failed.Model), ThinkingLevel: string(request.Failed.ThinkingLevel), Message: message}
+		failed, err := extension.ModelObject(request.Failed.Model)
+		if err != nil {
+			return wire, err
+		}
+		wire.Failed = &VirtualModelRouteFailed{Model: failed, ThinkingLevel: string(request.Failed.ThinkingLevel), Message: message}
 	}
 	for i, message := range request.Messages {
 		encoded, err := json.Marshal(message)
@@ -540,6 +554,14 @@ func (h *Host) makeToolPrepareLoadout(me *managedExt, toolName string) extension
 				exposure = loadout.GetExposure(tool.Name)
 			}
 			payload.Exposures[tool.Name] = exposure
+			if loadout.GetPromptGuidelines != nil {
+				if guidelines := loadout.GetPromptGuidelines(tool.Name); len(guidelines) > 0 {
+					if payload.PromptGuidelines == nil {
+						payload.PromptGuidelines = make(map[string][]string)
+					}
+					payload.PromptGuidelines[tool.Name] = guidelines
+				}
+			}
 			if loadout.GetNamespace != nil {
 				if namespace := loadout.GetNamespace(tool.Name); namespace != nil {
 					if payload.Namespaces == nil {

@@ -24,7 +24,7 @@ func (r cancelAtUsageEOF) Read(p []byte) (int, error) {
 
 func TestAnthropicFailureRetainsBilledUsage(t *testing.T) {
 	const initial = `event: message_start
-data: {"message":{"id":"m","model":"model","usage":{"input_tokens":100,"output_tokens":0}}}
+data: {"type":"message_start","message":{"id":"m","model":"model","usage":{"input_tokens":100,"output_tokens":0}}}
 
 `
 	for _, tc := range []struct {
@@ -33,7 +33,7 @@ data: {"message":{"id":"m","model":"model","usage":{"input_tokens":100,"output_t
 		reason     StopReason
 	}{
 		{"provider_error", `event: error
-data: {"type":"error","error":{"type":"overloaded_error","message":"overloaded"}}
+data: {"type":"error","type":"error","error":{"type":"overloaded_error","message":"overloaded"}}
 
 `, false, StopReasonError},
 		{"truncated", "", false, StopReasonError},

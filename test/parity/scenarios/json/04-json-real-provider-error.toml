@@ -28,6 +28,10 @@ paths = ["/**/timestamp"]
 kind = "timestamp"
 reason = "Independent session/message clocks vary; retain timestamp presence, type and valid syntax."
 [[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi 1.1.0 times each response and tool run with a monotonic clock (event-stream.ts, agent-loop.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+[[assert.json_aliases]]
 paths = ["/*/id"]
 kind = "id"
 group = "session"
@@ -36,3 +40,8 @@ reason = "Only the session header has a top-level ID in this event-only mode; pr
 paths = ["/*/cwd", "/**/sections/cwd"]
 kind = "path"
 reason = "D2: compare the exact isolated cwd root through its explicit alias, retaining its entire suffix."
+
+[[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."

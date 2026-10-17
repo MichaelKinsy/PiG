@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/santhosh-tekuri/jsonschema/v6"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
+
+	"github.com/MichaelKinsy/PiG/third_party/jsonschema"
 )
 
 // pigletSchemaJSON is the published closed Piglet JSON Schema v1. It mirrors

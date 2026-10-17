@@ -4,7 +4,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
@@ -13,8 +12,8 @@ func TestSessionModelSelectIgnoresEquivalentMetadataOnlyModel(t *testing.T) {
 	var events []string
 	ext := extension.Extension{Handlers: map[string][]extension.HandlerFn{"model_select": {func(args ...any) (any, error) {
 		event := args[0].(extension.ModelSelectEvent)
-		previous := event.PreviousModel.(*ai.Model)
-		model := event.Model.(*ai.Model)
+		previous := event.PreviousModel
+		model := event.Model
 		events = append(events, previous.ID+"->"+model.ID+":"+event.Source)
 		return nil, nil
 	}}}}

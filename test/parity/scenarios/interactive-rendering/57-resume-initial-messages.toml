@@ -1,0 +1,61 @@
+# Behavior family: interactive-rendering
+# Surface: InteractiveMode.renderInitialMessages on resume.
+#
+# Upstream (Pi 1.2.0 interactive-mode.ts:4220-4235): renderInitialMessages
+# renders the context entries with updateFooter and populateHistory, then the
+# project-trust warning, then "Session compacted N times" when the session file
+# holds compaction entries. populateHistory is covered by
+# TestInitialRenderPopulatesTheEditorHistory: the filler rows above the editor
+# depend on the banner height, so the crop stops at the status line.
+#
+# The fixture is 14-compaction-summary-message's session: a user message, an
+# assistant reply and one compaction entry. The crop runs from the compaction
+# block through the status line.
+#
+# Upstream evidence (Pi 1.2.0, parity harness, 2026-10-13, 100x35 tmux):
+#   cd testdata/compaction-cwd && PI_CODING_AGENT_DIR=testdata/pi-agent \
+#     pi -e ../../testdata/test-faux-provider.ts --model test-faux/faux-1 \
+#     --session-dir sessions -c
+#   wait: ready
+#   crop: start="[compaction]" end="Session compacted 1 time"
+#   raw cropped upstream block:
+#     [compaction]
+#
+#      Compacted from 87,432 tokens (ctrl+o to expand)
+#
+#
+#      Session compacted 1 time
+#   PiG's crop was byte-identical; 3 of 3 declared pairs passed.
+
+name = "57-resume-initial-messages"
+description = "Resume renders the transcript and then the compaction count status"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/compaction-cwd"
+capture_start = "[compaction]"
+capture_end = "Session compacted 1 time"
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine "]
+both_contain = ["[compaction]", "Session compacted 1 time"]
+output_equal = true
+runs = 3

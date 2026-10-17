@@ -11,18 +11,22 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-// theme binds the shared theme-controller state machine to this mode's settings, renderer and output.
+// theme binds the shared theme-controller state machine to this mode's settings, renderer and output. The binding is built
+// once; its callbacks read the mode's current renderer, settings and context when they run.
 func (m *InteractiveMode) theme() presentationTheme {
-	return presentationTheme{
-		state:      &m.themeState,
-		getSetting: m.settingsThemeSelection,
-		output:     m.themeOutput,
-		renderer:   func() tui.Renderer { return m.tuiInst },
-		showError:  m.showError,
-		post:       m.postToMain,
-		spawn:      func(task func()) { m.backgroundTasks.Go(task) },
-		ctx:        func() context.Context { return m.backgroundCtx },
-	}
+	m.themeBindingOnce.Do(func() {
+		m.themeBinding = presentationTheme{
+			state:      &m.themeState,
+			getSetting: m.settingsThemeSelection,
+			output:     m.themeOutput,
+			renderer:   func() tui.TUI { return m.tuiInst },
+			showError:  m.showError,
+			post:       m.postToMain,
+			spawn:      func(task func()) { m.backgroundTasks.Go(task) },
+			ctx:        func() context.Context { return m.backgroundCtx },
+		}
+	})
+	return m.themeBinding
 }
 
 // settingsThemeSelection reads the current manager, including overrides and manager replacement.
@@ -40,6 +44,11 @@ func (m *InteractiveMode) getThemeSelection() *string { return m.theme().getThem
 func (m *InteractiveMode) themeOutput() io.Writer {
 	if m.themeState.output != nil {
 		return m.themeState.output
+	}
+	// pig additive (D91): while a frontend session draws, PiG writes to the
+	// terminal in turn with it.
+	if m.surface != nil {
+		return m.surface.TerminalOut()
 	}
 	if m.rendererOut != nil {
 		return m.rendererOut
@@ -72,16 +81,25 @@ func (m *InteractiveMode) initStartupTheme() {
 	m.initTheme()
 }
 
-// waitForTerminalColors serves the owner loop until the latest terminal color query completed and its colors applied. Content that bakes theme colors into strings, such as the startup header, is built after this. Terminals answer the DA1 request right after the color replies, so this only takes the full timeout when a terminal answers nothing.
+// waitForTerminalColors serves the owner loop until the latest terminal color query completed and its colors applied. Content that bakes theme colors into strings, such as the startup header, is built after this. Terminals answer the DA1 request right after the color replies, so this only takes the full timeout when a terminal answers nothing. Pi awaits the query on its event loop, so requested renders, including the first frame TUI.start requested, paint during the wait.
+//
+// The colors of a completed query apply, and the wait ends, before the next input is handled: in Pi both the query's `.then(apply)` and the continuation after `await waitForTerminalColors()` are microtasks, which run before Node reads more input. A reply that completes the query applies its colors while it is consumed (presentationTheme.consumeInput). A frame already handed to the owner loop, such as the first frame TUI.start requested when the terminal answers at once, paints before the wait returns: Init does not serve the owner loop again until it returns.
 func (m *InteractiveMode) waitForTerminalColors(ctx context.Context) error {
 	done := m.themeState.colorQuery
 	if done == nil {
 		return nil
 	}
 	for {
+		m.theme().applyCompletedColorQueries()
 		select {
 		case <-done:
+			m.runScheduledRender()
 			return nil
+		default:
+		}
+		select {
+		case <-done:
+			continue
 		case <-ctx.Done():
 			return ctx.Err()
 		case err := <-m.inputErrCh:
@@ -90,10 +108,12 @@ func (m *InteractiveMode) waitForTerminalColors(ctx context.Context) error {
 			if !ok {
 				return io.EOF
 			}
-			// Pi installs application and submit handlers only after startup setup (interactive-mode.ts:954-1028). Early input can edit text but cannot dispatch a command before session_start.
-			m.handleStartupInput(input, false)
+			// Pi installs application and submit handlers only after startup setup (interactive-mode.ts:954-1028). Early input can edit text but cannot dispatch a command before session_start. The TUI is already started (ui.start() precedes the wait), so the edit is painted at once.
+			m.handleStartupInput(input, true)
 		case fn := <-m.uiTaskCh:
 			fn()
+		case <-m.renderWakeCh:
+			m.runScheduledRender()
 		}
 	}
 }

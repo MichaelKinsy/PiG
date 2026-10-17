@@ -1,0 +1,1 @@
+D78, D82 and D83 record owner-approved known gaps for 0.3.x (decision 2026-09-28). Approval records a difference; it does not prove parity, waive an unrelated defect, or turn a failing comparison into a pass. Same-process object behavior must remain Pi-exact. See `docs/findings/0.3.0-known-gaps.md` for the integration boundary and retained failures.

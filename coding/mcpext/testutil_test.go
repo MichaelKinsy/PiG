@@ -1,16 +1,20 @@
 package mcpext_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"reflect"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	codemodetool "github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode"
+	"github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch"
 	"github.com/MichaelKinsy/PiG/coding/mcpext"
 	"github.com/MichaelKinsy/PiG/mcp"
 	"github.com/MichaelKinsy/PiG/mcp/mcptest"
@@ -56,10 +60,12 @@ type hookTransport struct {
 	send func(mcp.JSONRPCMessage) error
 }
 
-func (h *hookTransport) Send(message mcp.JSONRPCMessage) error { return h.send(message) }
+func (h *hookTransport) Send(_ context.Context, message mcp.JSONRPCMessage) error {
+	return h.send(message)
+}
 
 // SendOrdered keeps the embedded transport's promoted SendOrdered from bypassing send.
-func (h *hookTransport) SendOrdered(message mcp.JSONRPCMessage, placed func()) error {
+func (h *hookTransport) SendOrdered(_ context.Context, message mcp.JSONRPCMessage, placed func()) error {
 	defer placed()
 	return h.send(message)
 }
@@ -67,6 +73,7 @@ func (h *hookTransport) SendOrdered(message mcp.JSONRPCMessage, placed func()) e
 type fakeTransportOptions struct {
 	methods         *methodLog
 	noTools         bool
+	resources       bool
 	expireFirstCall bool
 }
 
@@ -99,6 +106,17 @@ func (s *serverSet) add(t *mcptest.InMemoryTransport) {
 	s.mu.Unlock()
 }
 
+// closeAll closes every server end, and with it the client end: a client the connection detached
+// on an expired session is not closed by the connection (runtime.ts:307-312), so the test ends it.
+func (s *serverSet) closeAll() {
+	s.mu.Lock()
+	servers := slices.Clone(s.servers)
+	s.mu.Unlock()
+	for _, server := range servers {
+		_ = server.Close()
+	}
+}
+
 func (s *serverSet) last() *mcptest.InMemoryTransport {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -125,6 +143,9 @@ func createFakeTransport(servers *serverSet, options fakeTransportOptions) mcp.T
 			if options.noTools {
 				caps = `{"prompts":{}}`
 			}
+			if options.resources {
+				caps = strings.Replace(caps, "}}", "},\"resources\":{}}", 1)
+			}
 			response = mcp.NewResult(id, json.RawMessage(fmt.Sprintf(`{"protocolVersion":%q,"capabilities":%s,"serverInfo":{"name":"fake","version":"1.0.0"}}`, mcp.LatestProtocolVersion, caps)))
 		case "tools/list":
 			if options.noTools {
@@ -137,7 +158,7 @@ func createFakeTransport(servers *serverSet, options fakeTransportOptions) mcp.T
 		default:
 			response = mcp.NewResult(id, json.RawMessage(`{"content":[{"type":"text","text":"ok"}]}`))
 		}
-		go func() { _ = server.Send(response) }()
+		go func() { _ = server.Send(context.Background(), response) }()
 	})
 	_ = server.Start()
 	if !options.expireFirstCall {
@@ -146,9 +167,9 @@ func createFakeTransport(servers *serverSet, options fakeTransportOptions) mcp.T
 	return &hookTransport{InMemoryTransport: client, send: func(message mcp.JSONRPCMessage) error {
 		// Simulates the HTTP transport's 404 for a session the server no longer knows.
 		if message.Method == "tools/call" {
-			return mcp.NewSessionExpiredError("gone")
+			return mcp.NewMcpSessionExpiredError("gone")
 		}
-		return client.Send(message)
+		return client.Send(context.Background(), message)
 	}}
 }
 
@@ -157,12 +178,14 @@ func createFakeTransport(servers *serverSet, options fakeTransportOptions) mcp.T
 // name, tools with direct exposure are activated on registration, and hidden
 // tools are unreachable.
 type fakeHost struct {
-	mu      sync.Mutex
-	order   []string
-	tools   map[string]extension.ToolDefinition
-	paths   map[string]string
-	active  []string
-	servers []extension.RegisteredMcpServer
+	mu    sync.Mutex
+	order []string
+	// registrations lists every RegisterTool call by tool name and exposure, in call order.
+	registrations []string
+	tools         map[string]extension.ToolDefinition
+	paths         map[string]string
+	active        []string
+	servers       []extension.RegisteredMcpServer
 }
 
 func newFakeHost(active ...string) *fakeHost {
@@ -170,7 +193,16 @@ func newFakeHost(active ...string) *fakeHost {
 }
 
 func (h *fakeHost) RegisterTool(definition extension.ToolDefinition) {
+	h.mu.Lock()
+	h.registrations = append(h.registrations, definition.Name+":"+string(definition.Exposure))
+	h.mu.Unlock()
 	h.registerFrom("mcp", definition, true)
+}
+
+func (h *fakeHost) RegisterTools(definitions []extension.ToolDefinition) {
+	for _, definition := range definitions {
+		h.RegisterTool(definition)
+	}
 }
 
 // registerFrom registers a tool for the extension at path. Later registrations
@@ -209,7 +241,8 @@ func (h *fakeHost) GetAllTools() []extension.ToolInfo {
 		}
 		infos = append(infos, extension.ToolInfo{
 			Name: name, Description: d.Description, Parameters: d.Parameters,
-			SourceInfo: map[string]any{"path": h.paths[name]}, Exposure: exposure, Namespace: d.Namespace, Annotations: d.Annotations,
+			SourceInfo: extension.SourceInfo{Path: h.paths[name]}, Exposure: exposure, Namespace: d.Namespace, Annotations: d.Annotations,
+			ReachesTools: d.ReachesTools,
 		})
 	}
 	return infos
@@ -269,9 +302,17 @@ func (h *fakeHost) callable() []string {
 	return names
 }
 
-// registerBuiltin registers a stand-in for a built-in tool, inactive until activated.
+// registerBuiltin registers a stand-in for a built-in tool, inactive until activated. The codemode and tool_search
+// stand-ins reach other tools the way the built-in tools do (their ToolDefinition.ReachesTools).
 func (h *fakeHost) registerBuiltin(name, path string) {
-	h.registerFrom(path, extension.ToolDefinition{Name: name}, false)
+	definition := extension.ToolDefinition{Name: name}
+	switch path {
+	case "builtin:codemode":
+		definition.ReachesTools = codemodetool.Definition(codemodetool.Options{}).ReachesTools
+	case "builtin:tool-search":
+		definition.ReachesTools = toolsearch.Definition().ReachesTools
+	}
+	h.registerFrom(path, definition, false)
 }
 
 type notifications struct {

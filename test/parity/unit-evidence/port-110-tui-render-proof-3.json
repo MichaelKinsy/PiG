@@ -1,0 +1,74 @@
+[
+  {
+    "upstream": "packages/tui/src/components/scroll-view.ts",
+    "package": "./tui",
+    "tests": [
+      "TestScrollViewMutatorsPanic"
+    ],
+    "upstream_reference": "packages/tui/src/components/scroll-view.ts",
+    "mutation": "tui/scroll_view.go: replace 'func (s *ScrollView) Clear() { panic(\"ScrollView child cannot be cleared\") }' with 'func (s *ScrollView) Clear() { panic(\"ScrollView child cannot be removed\") }'; compiling go test -run exact test -count=1 fails TestScrollViewMutatorsPanic."
+  },
+  {
+    "upstream": "packages/tui/src/tui-alt-screen.ts",
+    "package": "./tui",
+    "tests": [
+      "TestAltScreenResetTextSelectionDropsSelectionAndClickHistory"
+    ],
+    "upstream_reference": "packages/tui/src/tui-alt-screen.ts",
+    "mutation": "tui/tui_alt_screen.go: replace 't.clearTextSelectionLocked()\\nt.lastClick = nil\\nt.mu.Unlock()' with 't.clearTextSelectionLocked()\\nt.mu.Unlock()'; compiling go test -run exact test -count=1 fails TestAltScreenResetTextSelectionDropsSelectionAndClickHistory."
+  },
+  {
+    "upstream": "packages/tui/src/tui-alt-screen.ts",
+    "package": "./tui",
+    "tests": [
+      "TestAltScreenResetTextSelectionCases"
+    ],
+    "upstream_reference": "packages/tui/src/tui-alt-screen.ts",
+    "mutation": "tui/tui_alt_screen.go: replace 't.clearTextSelectionLocked()\\nt.lastClick = nil\\nt.mu.Unlock()' with 't.clearTextSelectionLocked()\\nt.mu.Unlock()'; compiling go test -run exact test -count=1 fails TestAltScreenResetTextSelectionCases."
+  },
+  {
+    "upstream": "packages/tui/src/autocomplete.ts",
+    "package": "./tui",
+    "tests": [
+      "TestUpstreamAutocompleteFD"
+    ],
+    "upstream_reference": "packages/tui/src/autocomplete.ts",
+    "mutation": "tui/file_autocomplete.go: replace 'case lowerFile == lowerQuery:\\nscore = 100' with 'case lowerFile == lowerQuery:\\nscore = 10'; compiling go test -run exact test -count=1 fails TestUpstreamAutocompleteFD."
+  },
+  {
+    "upstream": "packages/tui/src/autocomplete.ts",
+    "package": "./tui",
+    "tests": [
+      "TestSlashOnlyProvider_ArgumentCompletion"
+    ],
+    "upstream_reference": "packages/tui/src/autocomplete.ts",
+    "mutation": "tui/autocomplete.go: replace 'return before[1:space], before[space+1:], true' with 'return before[1:space], before[space:], true'; compiling go test -run exact test -count=1 fails TestSlashOnlyProvider_ArgumentCompletion."
+  },
+  {
+    "upstream": "packages/tui/src/autocomplete.ts",
+    "package": "./tui",
+    "tests": [
+      "TestUpstreamAutocompleteAtAfterOpeningWrappers"
+    ],
+    "upstream_reference": "packages/tui/src/autocomplete.ts",
+    "mutation": "tui/file_autocomplete.go: replace 'if token = stripLeadingWrappers(token); strings.HasPrefix(token, \"@\") {' with 'if token = strings.TrimSpace(token); strings.HasPrefix(token, \"@\") {'; compiling go test -run exact test -count=1 fails TestUpstreamAutocompleteAtAfterOpeningWrappers."
+  },
+  {
+    "upstream": "packages/tui/src/autocomplete.ts",
+    "package": "./tui",
+    "tests": [
+      "TestUpstreamAutocompletePathsAfterOpeningWrappers"
+    ],
+    "upstream_reference": "packages/tui/src/autocomplete.ts",
+    "mutation": "tui/file_autocomplete.go: replace 'prefix = stripLeadingWrappers(prefix)\\nif force {' with 'if force {'; compiling go test -run exact test -count=1 fails TestUpstreamAutocompletePathsAfterOpeningWrappers."
+  },
+  {
+    "upstream": "packages/tui/src/autocomplete.ts",
+    "package": "./tui",
+    "tests": [
+      "TestUpstreamAutocompleteSkillSlash"
+    ],
+    "upstream_reference": "packages/tui/src/autocomplete.ts",
+    "mutation": "tui/autocomplete.go: replace 'return strings.TrimPrefix(it.text, \"skill:\")' with 'return it.text'; compiling go test -run exact test -count=1 fails TestUpstreamAutocompleteSkillSlash."
+  }
+]

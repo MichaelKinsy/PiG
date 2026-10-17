@@ -8,9 +8,9 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"reflect"
-	"strconv"
+	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -20,35 +20,73 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
-func TestReporterGolden(t *testing.T) {
-	for _, tty := range []bool{false, true} {
-		t.Run(fmt.Sprintf("tty-%t", tty), func(t *testing.T) {
-			var output bytes.Buffer
-			now := time.Unix(0, 0)
-			r := newReporter(&output, true, tty, func() int { return 80 }, func() time.Time { return now })
-			r.Handle(Event{Phase: "Resolving manifest", Step: "small.yaml"})
-			now = now.Add(2 * time.Second)
-			r.Handle(Event{Phase: "Compiling Go members", Step: "hello"})
-			r.frame++
-			r.render()
-			r.Handle(Event{Member: "hello", Output: "  compiler line\n"})
-			now = now.Add(time.Second)
-			r.Success("/out/pig-small", 1024)
-			before := output.String()
-			r.Handle(Event{Phase: "late event"})
-			r.Close()
-			if output.String() != before {
-				t.Fatal("write after close")
+// frameThenClear is one drawn spinner frame and the escape sequence that erases it.
+var frameThenClear = regexp.MustCompile(`[⠀-⣿] [^\n]*\n\x1b\[2m[^\n]*\x1b\[0m\r\x1b\[2K\x1b\[1A\r\x1b\[2K`)
+
+// A build's report holds the same permanent lines on a terminal and off it. The terminal adds spinner frames, and each frame
+// is erased before the next output, so the permanent lines survive alone. The elapsed seconds are the injected clock's.
+func TestReporterTerminalAndPlainOutputAgree(t *testing.T) {
+	run := func(tty bool) string {
+		var output bytes.Buffer
+		now := time.Unix(0, 0)
+		r := newReporter(&output, true, tty, func() int { return 80 }, func() time.Time { return now })
+		r.Handle(Event{Phase: "Resolving manifest", Step: "small.yaml"})
+		now = now.Add(2 * time.Second)
+		r.Handle(Event{Phase: "Compiling Go members", Step: "hello"})
+		r.frame++
+		r.render()
+		r.Handle(Event{Member: "hello", Output: "  compiler line\n"})
+		now = now.Add(time.Second)
+		r.Success("/out/pig-small", 1024)
+		before := output.String()
+		r.Handle(Event{Phase: "late event"})
+		r.Close()
+		if output.String() != before {
+			t.Fatal("write after close")
+		}
+		return output.String()
+	}
+	plain, terminal := run(false), run(true)
+	if strings.ContainsAny(plain, "\x1b\r") {
+		t.Fatalf("plain output holds terminal control sequences: %q", plain)
+	}
+	phases := []string{"Resolving manifest (0s) — small.yaml", "Compiling Go members (2s) — hello"}
+	var permanent []string
+	last := -1
+	for line := range strings.SplitSeq(strings.TrimSuffix(plain, "\n"), "\n") {
+		if i := slices.Index(phases, line); i >= 0 {
+			if i != last+1 {
+				t.Fatalf("phase %q out of order in %q", line, plain)
 			}
-			golden := filepath.Join("testdata", fmt.Sprintf("tty-%t.golden", tty))
-			expected, err := os.ReadFile(golden)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if got := strconv.Quote(output.String()) + "\n"; got != string(expected) {
-				t.Fatalf("got:\n%s\nwant:\n%s", got, expected)
-			}
-		})
+			last = i
+			continue
+		}
+		permanent = append(permanent, line)
+	}
+	if last != len(phases)-1 {
+		t.Fatalf("plain output lacks a phase line: %q", plain)
+	}
+	if want := []string{"[hello]   compiler line", "Built /out/pig-small (1024 bytes) in 3s"}; !slices.Equal(permanent, want) {
+		t.Fatalf("permanent lines = %q, want %q", permanent, want)
+	}
+	frames := frameThenClear.FindAllString(terminal, -1)
+	if len(frames) < len(phases) {
+		t.Fatalf("terminal output drew %d frames, want one per phase at least: %q", len(frames), terminal)
+	}
+	// Each frame shows the spinner glyph of the frame counter, the phase and its elapsed time, and the step dimmed below. The
+	// counter advanced once after the second phase began, so the last two frames show the spinner's second glyph.
+	const clear = "\r\x1b[2K\x1b[1A\r\x1b[2K"
+	wantFrames := []string{
+		"⠋ Resolving manifest (0s)\n\x1b[2m  small.yaml\x1b[0m" + clear,
+		"⠋ Compiling Go members (2s)\n\x1b[2m  hello\x1b[0m" + clear,
+		"⠙ Compiling Go members (2s)\n\x1b[2m  hello\x1b[0m" + clear,
+		"⠙ Compiling Go members (2s)\n\x1b[2m  hello\x1b[0m" + clear,
+	}
+	if !slices.Equal(frames, wantFrames) {
+		t.Fatalf("terminal frames = %q, want %q", frames, wantFrames)
+	}
+	if got, want := frameThenClear.ReplaceAllString(terminal, ""), strings.Join(permanent, "\n")+"\n"; got != want {
+		t.Fatalf("terminal output without erased frames = %q, want the permanent lines %q", got, want)
 	}
 }
 

@@ -20,7 +20,7 @@ func TestCancelledStreamFinalizesAbortedTurn(t *testing.T) {
 	}}
 	var finished []AgentTurnContext
 	var persisted []AgentMessage
-	a := NewAgent(AgentOptions{Model: scriptedModel(provider),
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(provider),
 		FinishTurn: func(_ context.Context, turn AgentTurnContext) (*AgentTurnDecision, error) {
 			finished = append(finished, turn)
 			return &AgentTurnDecision{Action: AgentTurnContinue}, nil
@@ -40,7 +40,7 @@ func TestCancelledStreamFinalizesAbortedTurn(t *testing.T) {
 	if len(messages) != 2 || messages[1].Assistant == nil || messages[1].Assistant.StopReason != ai.StopReasonAborted {
 		t.Fatalf("aborted transcript %+v", messages)
 	}
-	if len(finished[0].Context) != 2 || len(finished[0].NewMessages) != 2 || finished[0].Message.StopReason != ai.StopReasonAborted {
+	if len(finished[0].Context.Messages) != 2 || len(finished[0].NewMessages) != 2 || finished[0].Message.StopReason != ai.StopReasonAborted {
 		t.Fatalf("aborted turn context %+v", finished[0])
 	}
 	if len(persisted) != 2 || persisted[1].Assistant.StopReason != ai.StopReasonAborted {

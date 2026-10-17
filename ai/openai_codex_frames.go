@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	"github.com/MichaelKinsy/PiG/internal/jsonparse"
 )
 
 type codexMappedEvent struct {
@@ -13,20 +15,30 @@ type codexMappedEvent struct {
 	skip     bool
 }
 
+// mapCodexWebSocketEventFrame is parseWebSocket's onMessage (openai-codex-responses.ts:1325-1348) and mapCodexEvents for one text frame: an empty frame is skipped, any other text goes to JSON.parse as it is (so "[DONE]" is invalid), a null value fails reading its `type`, and a value that is not an object has no type and is skipped. The mapped data is compact, so a frame written over several lines stays one SSE data line.
 func mapCodexWebSocketEventFrame(data []byte) (codexMappedEvent, error) {
-	return mapCodexEventFrameForTransport(data, "WebSocket")
-}
-
-func mapCodexEventFrameForTransport(data []byte, transport string) (codexMappedEvent, error) {
-	data = bytes.TrimSpace(data)
-	if len(data) == 0 || bytes.Equal(data, []byte("[DONE]")) {
+	if len(data) == 0 {
 		return codexMappedEvent{skip: true}, nil
 	}
-	var event map[string]any
-	if err := json.Unmarshal(data, &event); err != nil {
-		return codexMappedEvent{}, fmt.Errorf("Invalid Codex %s JSON: %w", transport, err)
+	if err := jsonparse.Validate(data); err != nil {
+		return codexMappedEvent{}, fmt.Errorf("Invalid Codex WebSocket JSON: %w", err)
 	}
-	return mapCodexEvent(event, data)
+	var value any
+	if err := json.Unmarshal(data, &value); err != nil {
+		return codexMappedEvent{}, fmt.Errorf("Invalid Codex WebSocket JSON: %w", err)
+	}
+	if value == nil {
+		return codexMappedEvent{}, errors.New("Invalid Codex WebSocket JSON: Cannot read properties of null (reading 'type')")
+	}
+	event, ok := value.(map[string]any)
+	if !ok {
+		return codexMappedEvent{skip: true}, nil
+	}
+	var compact bytes.Buffer
+	if err := json.Compact(&compact, data); err != nil {
+		return codexMappedEvent{}, fmt.Errorf("Invalid Codex WebSocket JSON: %w", err)
+	}
+	return mapCodexEvent(event, compact.Bytes())
 }
 
 // mapCodexEvent is mapCodexEvents' per-event step (openai-codex-responses.ts:729-760) for a parsed JSON object.

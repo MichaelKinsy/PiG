@@ -12,6 +12,7 @@ override_base_args = true
 pig_bin = "/usr/bin/env"
 pi_bin = "/usr/bin/env"
 pig_args = ["bash", "./test/parity/testdata/session-replacements-pig.sh"]
+pig_go_tests = ["./coding"]
 pi_args = ["bash", "-c", "node --experimental-import-meta-resolve ./test/parity/testdata/session-runtime-pi.mjs runtime && node --experimental-import-meta-resolve ./test/parity/testdata/session-branching-oracle-pi.mjs"]
 
 [cli]

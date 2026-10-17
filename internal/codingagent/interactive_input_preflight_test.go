@@ -75,7 +75,7 @@ func newQuestionAskingMode(t *testing.T) (*InteractiveMode, context.Context, cha
 	m.chatContainer = tui.NewContainer()
 	m.statusContainer = tui.NewContainer()
 	m.slashRegistry = NewSlashRegistry()
-	m.agent = agent.NewAgent(agent.AgentOptions{Model: model})
+	m.agent = mustNewAgent(agent.AgentOptions{Model: model})
 	ctx, cancel := context.WithCancel(context.Background())
 	m.runCtx = ctx
 	m.abortCtx, m.abortFn = context.WithCancel(ctx)

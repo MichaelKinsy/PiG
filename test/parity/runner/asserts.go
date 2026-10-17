@@ -477,17 +477,18 @@ func trunc(s string, n int) string {
 
 // versionTokens lets asymmetric expectations name the pinned versions without
 // copying literals that go stale: {{VERSION}} is PiG's composite version and
-// {{UPSTREAM_VERSION}} is the Pi pin.
+// {{UPSTREAM_VERSION}} is the version the pinned Pi build reports
+// (`pi --version`, the package version).
 var versionTokens = strings.NewReplacer(
 	"{{VERSION}}", coding.Version,
-	"{{UPSTREAM_VERSION}}", coding.UpstreamVersion,
+	"{{UPSTREAM_VERSION}}", coding.UpstreamPackageVersion,
 )
 
 // regexVersionTokens expands the same tokens inside a regular expression. Each
 // pin is quoted so its dots stay literal.
 var regexVersionTokens = strings.NewReplacer(
 	"{{VERSION}}", regexp.QuoteMeta(coding.Version),
-	"{{UPSTREAM_VERSION}}", regexp.QuoteMeta(coding.UpstreamVersion),
+	"{{UPSTREAM_VERSION}}", regexp.QuoteMeta(coding.UpstreamPackageVersion),
 )
 
 // expandVersionTokens joins expectation lists and expands their version tokens.

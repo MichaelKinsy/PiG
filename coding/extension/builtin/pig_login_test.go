@@ -1,8 +1,13 @@
+//go:build !pig_strip_pig_login
+
 package builtin_test
 
 import (
 	"slices"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/factoryload"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/builtin"
 )
@@ -38,7 +43,7 @@ func TestPigLoginResolvesAndRegistersTheSpriteCommand(t *testing.T) {
 	if entry.Path() != "builtin:pig-login" || entry.Factory == nil {
 		t.Fatalf("entry = %+v", entry)
 	}
-	ext, err := entry.Factory()
+	ext, err := factoryload.LoadExtensionFromFactory(entry.Factory, ".", extension.CreateEventBus(), extension.CreateExtensionRuntime(), "builtin:pig-login")
 	if err != nil {
 		t.Fatal(err)
 	}

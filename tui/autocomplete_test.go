@@ -3,6 +3,7 @@ package tui
 // tests for slash-command autocomplete.
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,7 +33,7 @@ func sampleCommands() []SlashCommand {
 
 func TestSlashOnlyProvider_BareSlashListsAll(t *testing.T) {
 	p := NewSlashOnlyProvider(sampleCommands())
-	res := p.GetSuggestions([]string{"/"}, 0, 1)
+	res := p.GetSuggestions(context.Background(), []string{"/"}, 0, 1, AutocompleteSuggestionOptions{})
 	if res == nil {
 		t.Fatal("expected suggestions for `/`, got nil")
 		return
@@ -47,7 +48,7 @@ func TestSlashOnlyProvider_BareSlashListsAll(t *testing.T) {
 
 func TestSlashOnlyProvider_FilterNarrowsCaseInsensitive(t *testing.T) {
 	p := NewSlashOnlyProvider(sampleCommands())
-	res := p.GetSuggestions([]string{"/MO"}, 0, 3)
+	res := p.GetSuggestions(context.Background(), []string{"/MO"}, 0, 3, AutocompleteSuggestionOptions{})
 	if res == nil {
 		t.Fatal("expected suggestions for `/MO`, got nil")
 		return
@@ -69,14 +70,14 @@ func TestSlashOnlyProvider_FilterNarrowsCaseInsensitive(t *testing.T) {
 
 func TestSlashOnlyProvider_NoMatchReturnsNil(t *testing.T) {
 	p := NewSlashOnlyProvider(sampleCommands())
-	if res := p.GetSuggestions([]string{"/zzzzz"}, 0, 6); res != nil {
+	if res := p.GetSuggestions(context.Background(), []string{"/zzzzz"}, 0, 6, AutocompleteSuggestionOptions{}); res != nil {
 		t.Errorf("expected nil for no-match, got %d items", len(res.Items))
 	}
 }
 
 func TestSlashOnlyProvider_NonSlashReturnsNil(t *testing.T) {
 	p := NewSlashOnlyProvider(sampleCommands())
-	if res := p.GetSuggestions([]string{"hello"}, 0, 5); res != nil {
+	if res := p.GetSuggestions(context.Background(), []string{"hello"}, 0, 5, AutocompleteSuggestionOptions{}); res != nil {
 		t.Error("expected nil when buffer doesn't start with `/`")
 	}
 }
@@ -107,14 +108,14 @@ func TestSlashOnlyProvider_ArgumentCompletion(t *testing.T) {
 		}
 	}
 	p := NewSlashOnlyProvider(cmds)
-	res := p.GetSuggestions([]string{"/model "}, 0, 7)
+	res := p.GetSuggestions(context.Background(), []string{"/model "}, 0, 7, AutocompleteSuggestionOptions{})
 	if res == nil || len(res.Items) != 2 {
 		t.Fatalf("expected 2 items for `/model ` (no filter), got %v", res)
 	}
 	if res.Prefix != "" {
 		t.Errorf("prefix=%q want \"\"", res.Prefix)
 	}
-	res = p.GetSuggestions([]string{"/model openai"}, 0, 13)
+	res = p.GetSuggestions(context.Background(), []string{"/model openai"}, 0, 13, AutocompleteSuggestionOptions{})
 	if res == nil || len(res.Items) != 1 {
 		t.Fatalf("expected 1 item for `/model openai`, got %v", res)
 	}
@@ -528,7 +529,7 @@ func TestSlashOnlyProvider_ArgumentHintSeparator(t *testing.T) {
 		{Name: "model", Description: "Select model (opens selector UI)", ArgumentHint: "<provider/model>"},
 		{Name: "bug", ArgumentHint: "<description>"},
 	})
-	res := p.GetSuggestions([]string{"/"}, 0, 1)
+	res := p.GetSuggestions(context.Background(), []string{"/"}, 0, 1, AutocompleteSuggestionOptions{})
 	if res == nil || len(res.Items) != 2 {
 		t.Fatalf("suggestions = %+v", res)
 	}

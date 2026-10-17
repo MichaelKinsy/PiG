@@ -20,6 +20,41 @@ You can also set the name directly in `~/.pig/agent/settings.json`:
 }
 ```
 
+## Worked example: choose a theme
+
+Open the settings list, type `theme` to find the row and press `Enter`. Checked on PiG, a fresh start shows `system` (the theme made from your terminal's own colours):
+
+```text
+> theme
+→ Theme                             system
+  Default thinking level per model  none
+  Color theme for the interface
+  Type to search · Enter/Space to change · Esc to cancel
+```
+
+```text
+Theme
+Select a theme, or choose automatic to follow terminal appearance.
+→ ✓ system     Theme created from your terminal's colors
+    automatic  Use separate themes for light and dark terminal appearance
+    dark
+    light
+  Enter to select · Esc to go back
+```
+
+The check mark shows the theme in use. Move to `dark` and press `Enter`. The colours change at once, the row now reads `Theme  dark`, and PiG has written the choice to `~/.pig/agent/settings.json`:
+
+```json
+{
+  "lastChangelogVersion": "1.2.0",
+  "theme": "dark"
+}
+```
+
+To try a theme for one run without saving it, use `--use-theme`: `pig --use-theme light`. A theme file of your own goes in `~/.pig/agent/themes/` and appears in this list. The format is Pi's, and the complete list of colours it needs is in Pi's theme documentation (linked below).
+
+PiG checks every theme file against Pi's theme schema when it loads it, at startup and on reload. Pi 1.3.0 made the schema strict, so a theme file that loaded in Pi 1.1.0 can now be rejected. A theme file may hold only the documented top-level fields: `$schema`, `name`, `appearance`, `vars`, `colors` and `export`. Every key under `colors` and `export` must be a documented colour token. Put reusable colours of your own under `vars`. Point `$schema` at `https://pi.dev/schemas/theme.schema.json` for editor validation and completion.
+
 ## Automatic switching
 
 Choose **Automatic** in the theme submenu to select separate themes for light and dark terminal appearance. You can also set the pair directly:
@@ -68,7 +103,7 @@ A failed Resource reload leaves the previous working extension set active. Theme
 
 ## Extension access
 
-Extensions can list themes, inspect a named theme, and request a theme change through the public UI context.
+Extensions can list themes, inspect a named theme, and request a theme change through the public UI context. `ctx.ui.theme.sourcePath` reports the source file of the active theme, also for a theme loaded from a file that the active registry does not hold.
 
 A subprocess extension receives serializable theme data. It cannot transfer a live host theme object across the process boundary.
 
@@ -78,9 +113,9 @@ A theme is data, but the Package that distributes it can also contain executable
 
 ## Upstream compatibility
 
-PiG follows Pi theme behavior where the Go TUI exposes the same observable contract. The TypeScript package `@earendil-works/pi-tui` remains an upstream Pi package, not a PiG Go API.
+PiG follows the theme behavior of Pi 1.3.0 where the Go TUI exposes the same observable contract. The TypeScript package `@earendil-works/pi-tui` is a Pi package, not a PiG Go API.
 
-See [upstream Pi's theme documentation](https://pi.dev/docs/latest/themes) for the reference implementation's complete theme format.
+See [Pi's theme documentation](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/themes.md) for the complete theme format and its color tokens.
 
 ## Related documentation
 

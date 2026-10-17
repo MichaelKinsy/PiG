@@ -1,3 +1,5 @@
+//go:build !pig_strip_syntax_highlight
+
 package codingagent
 
 import (
@@ -10,12 +12,12 @@ import (
 
 // repaintRecorder records the repaint calls a deferred grammar load makes; any other Renderer call panics.
 type repaintRecorder struct {
-	tui.Renderer
+	tui.TUI
 	calls []string
 }
 
-func (r *repaintRecorder) Invalidate()    { r.calls = append(r.calls, "invalidate") }
-func (r *repaintRecorder) RequestRender() { r.calls = append(r.calls, "requestRender") }
+func (r *repaintRecorder) Invalidate()           { r.calls = append(r.calls, "invalidate") }
+func (r *repaintRecorder) RequestRender(...bool) { r.calls = append(r.calls, "requestRender") }
 
 // Pi's init loads the remaining grammars off the event loop after the startup frame; its continuation, back on the loop, invalidates and requests a render unless the mode has stopped (interactive-mode.ts:init).
 func TestLoadRemainingHighlightLanguagesRepaintsOnTheOwnerLoop(t *testing.T) {

@@ -66,7 +66,7 @@ func TestSessionQueueRemovalPrecedesExtensionMessageStart(t *testing.T) {
 	var observed []string
 	h = newRecoveryHarness(t, harnessOptions{emptySessionManager: true, extension: extension.Extension{Handlers: map[string][]extension.HandlerFn{
 		"message_start": {func(args ...any) (any, error) {
-			message := args[0].(extension.MessageStartEvent).Message.(agent.AgentMessage)
+			message := args[0].(extension.MessageStartEvent).Message
 			if message.User != nil && extractUserMessageText(message.User.Content) == "queued" {
 				mu.Lock()
 				defer mu.Unlock()

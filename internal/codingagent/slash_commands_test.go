@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/core/slash-commands.ts
+
 import (
 	"encoding/json"
 	"errors"
@@ -7,6 +9,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -26,6 +30,7 @@ func newTestSlashContext() (*SlashContext, *strings.Builder, *bool, *bool) {
 	return sc, &out, &cleared, &quit
 }
 
+// agent-session.ts _tryExecuteExtensionCommand: the name is the text before the first space and the arguments are everything after it.
 func TestParseSlashLine(t *testing.T) {
 	cases := []struct {
 		in       string
@@ -35,8 +40,9 @@ func TestParseSlashLine(t *testing.T) {
 		{"/help", "help", ""},
 		{"/help  ", "help", ""},
 		{"/agent worker", "agent", "worker"},
-		{"  /model  github-copilot/gpt-4o  ", "model", "github-copilot/gpt-4o"},
-		{"/save  out.md  more", "save", "out.md  more"},
+		{"  /model  github-copilot/gpt-4o  ", "model", " github-copilot/gpt-4o"},
+		{"/save  out.md  more", "save", " out.md  more"},
+		{"/save\tout.md", "save\tout.md", ""},
 		{"not-slash", "", ""},
 		{"/", "", ""},
 	}
@@ -73,7 +79,7 @@ func TestSlashRegistryBuiltinsSeeded(t *testing.T) {
 	if got := findDesc("login"); got != "Configure provider authentication" {
 		t.Fatalf("/login description = %q", got)
 	}
-	if got := findDesc("logout"); got != "Remove stored provider authentication" {
+	if got := findDesc("logout"); got != "Remove provider authentication" {
 		t.Fatalf("/logout description = %q", got)
 	}
 }
@@ -222,7 +228,7 @@ func TestModelHandlerEmptyArgsOpensPicker(t *testing.T) {
 	pickedSpec := "openai/gpt-4o"
 	sc.PickModel = func(string) (string, bool) { return pickedSpec, true }
 	switched := ""
-	sc.SwitchModel = func(spec string) error { switched = spec; return nil }
+	sc.SwitchModel = func(spec string, settled func(error)) { switched = spec; settled(nil) }
 	var statusMsg string
 	sc.ShowStatus = func(s string) { statusMsg = s }
 
@@ -241,7 +247,7 @@ func TestModelHandlerEmptyArgsPickerCancelled(t *testing.T) {
 	sc, out, _, _ := newTestSlashContext()
 	sc.PickModel = func(string) (string, bool) { return "", false }
 	called := false
-	sc.SwitchModel = func(string) error { called = true; return nil }
+	sc.SwitchModel = func(string, func(error)) { called = true }
 
 	if err := modelHandler(sc); err != nil {
 		t.Fatalf("modelHandler: %v", err)
@@ -260,7 +266,7 @@ func TestModelHandlerDirectSwitchByArgs(t *testing.T) {
 	sc.Args = "github-copilot/gpt-4o-mini"
 	sc.ResolveModel = func(input string) (string, bool) { return input, true }
 	switched := ""
-	sc.SwitchModel = func(spec string) error { switched = spec; return nil }
+	sc.SwitchModel = func(spec string, settled func(error)) { switched = spec; settled(nil) }
 	var statusMsg string
 	sc.ShowStatus = func(s string) { statusMsg = s }
 
@@ -280,7 +286,7 @@ func TestModelHandlerDirectSwitchNoMatchingModels(t *testing.T) {
 	sc.Args = "nonexistent/fake-model-xyz"
 	sc.ResolveModel = func(string) (string, bool) { return "", false }
 	called := false
-	sc.SwitchModel = func(string) error { called = true; return nil }
+	sc.SwitchModel = func(string, func(error)) { called = true }
 
 	if err := modelHandler(sc); err != nil {
 		t.Fatalf("modelHandler: %v", err)
@@ -302,7 +308,7 @@ func TestModelHandlerNoMatchOpensPickerWithQuery(t *testing.T) {
 		initialQuery = query
 		return "", false
 	}
-	sc.SwitchModel = func(string) error { t.Fatal("SwitchModel should not run when picker is cancelled"); return nil }
+	sc.SwitchModel = func(string, func(error)) { t.Fatal("SwitchModel should not run when picker is cancelled") }
 
 	if err := modelHandler(sc); err != nil {
 		t.Fatalf("modelHandler: %v", err)
@@ -315,17 +321,19 @@ func TestModelHandlerNoMatchOpensPickerWithQuery(t *testing.T) {
 	}
 }
 
-func TestModelHandlerSwitchPropagatesError(t *testing.T) {
+func TestModelHandlerSwitchReportsSettledError(t *testing.T) {
 	sc, _, _, _ := newTestSlashContext()
 	sc.Args = "bogus/model"
-	sc.SwitchModel = func(string) error { return errors.New("auth missing") }
+	sc.SwitchModel = func(_ string, settled func(error)) { settled(errors.New("auth missing")) }
+	var shown string
+	sc.ShowError = func(msg string) { shown = msg }
 
-	err := modelHandler(sc)
-	if err == nil {
-		t.Fatal("expected error, got nil")
+	if err := modelHandler(sc); err != nil {
+		t.Fatalf("modelHandler: %v", err)
 	}
-	if !strings.Contains(err.Error(), "auth missing") {
-		t.Errorf("expected wrapped error, got: %v", err)
+	// Pi's handleModelCommand shows error.message (interactive-mode.ts:5178).
+	if shown != "auth missing" {
+		t.Errorf("shown error = %q once the switch settled, want the error's message", shown)
 	}
 }
 
@@ -576,7 +584,7 @@ func TestSessionHandlerMessageCounting(t *testing.T) {
 		if err != nil {
 			t.Fatalf("marshal entry: %v", err)
 		}
-		return NewSessionEntry(raw, e.SessionEntryBase)
+		return sessionentry.DecodeSessionEntry(raw)
 	}
 
 	// 2 plain user messages.
@@ -642,7 +650,7 @@ func TestSessionHandlerUsesAllEntryUsage(t *testing.T) {
 	sess := NewSession("stats-session", "/tmp")
 	appendMessage := func(id string, message agent.AgentMessage) {
 		t.Helper()
-		entry := MessageEntry{SessionEntryBase: SessionEntryBase{Type: "message", ID: id, ParentID: sess.LeafID(), Timestamp: "2025-01-01T00:00:00Z"}, Message: message}
+		entry := MessageEntry{SessionEntryBase: SessionEntryBase{Type: "message", ID: id, ParentID: sess.GetLeafID(), Timestamp: "2025-01-01T00:00:00Z"}, Message: message}
 		if err := sess.AppendEntry(entry); err != nil {
 			t.Fatal(err)
 		}
@@ -660,7 +668,7 @@ func TestSessionHandlerUsesAllEntryUsage(t *testing.T) {
 	if _, err := sess.AppendCompaction("summary", "user", 1, nil, false, &ai.Usage{Input: 4, Output: 2, Cost: ai.UsageCost{Total: 0.2}}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := sess.AppendBranchSummary(sess.LeafID(), "branch", nil, false, &ai.Usage{Input: 1, Output: 1, Cost: ai.UsageCost{Total: 0.05}}); err != nil {
+	if _, err := sess.BranchWithSummary(sess.GetLeafID(), "branch", nil, false, &ai.Usage{Input: 1, Output: 1, Cost: ai.UsageCost{Total: 0.05}}); err != nil {
 		t.Fatal(err)
 	}
 	if err := sess.SetLeafID(new("user")); err != nil {

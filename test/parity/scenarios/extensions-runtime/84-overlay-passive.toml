@@ -1,0 +1,70 @@
+# Behavior family: extensions-runtime
+# Surface: a non-capturing raw overlay a ui.custom factory shows with tui.showOverlay redraws on the factory tui's requestRender
+# (Pi 1.2.0 interactive-mode.ts:3008; tui.ts:729-742 leaves focus with the capturing controller).
+#
+# testdata/ext/overlay-qa-tests.ts is Pi 1.2.0's examples/extensions/overlay-qa-tests.ts, byte for byte (see 84-overlay-focus).
+# /overlay-passive's factory shows a timer panel (nonCapturing, top-right) and ticks it every second with tui.requestRender();
+# typed keys reach the controller. The wait for "00:03" proves the timer panel redrew three times on both binaries; the compared
+# crop replaces only the timer's value. Before the showOverlay slice PiG threw "this.tui.showOverlay is not a function".
+#
+# Upstream evidence (Pi 1.2.0, parity harness, 2026-10-13, 120x40 tmux, one run kept with an impossible both_contain entry):
+#   keys: "/overlay-passive" Enter, "h", "i"; wait: "> hi", "inputs=2", "00:03"
+#   crop: start="Timer" end="Press Esc to close both."; raw cropped upstream block (excerpt):
+#     Timer ───────╮
+#                                                                                                     │ 00:03              │
+#                                                                                                     │ nonCapturing: true │
+#                                         ╭───────────── Non-Capturing Demo ─────────────╮
+#                                         │ focused=true inputs=2                        │
+#                                         │ last: len=1 c0=105                           │
+#                                         │ > hi                                         │
+#                                         │ Press Esc to close both.
+#   PiG's crop matched after the timer rule (output_normalized_equal).
+
+name = "84-overlay-passive"
+description = "Pi's /overlay-passive: a non-capturing timer panel shown from the factory's tui redraws while the controller keeps the keys"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/tui/src/tui.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/quiet-pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/quiet-pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/overlay-qa-tests.ts"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/overlay-qa-tests.ts"]
+
+[tmux]
+width = 120
+height = 40
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Timer"
+capture_end = "Press Esc to close both."
+
+[[tmux.steps]]
+keys = ["/overlay-passive", "Enter"]
+wait_contains = ["Non-Capturing Demo", "nonCapturing: true"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["h", "i"]
+wait_contains = ["> hi", "inputs=2", "00:03"]
+wait_timeout_seconds = 15
+
+[assert]
+both_reach_ready = true
+both_contain = ["> hi", "focused=true inputs=2"]
+both_not_contain = ["panic:", "is not a function"]
+output_normalized_equal = true
+runs = 3
+
+# normalize-rationale: only the timer panel's elapsed time varies with when the screen is captured; every other byte stays compared.
+[[assert.normalize_replace]]
+pattern = '[0-9]{2}:[0-9]{2}'
+with = 'MM:SS'
+reason = "The timer counts wall-clock seconds since the panel was shown; its value at capture time is not deterministic."

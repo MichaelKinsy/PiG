@@ -22,6 +22,12 @@ const DEFAULT_SEQUENCE_TIMEOUT_MS = 50;
 const DEFAULT_ESCAPE_TIMEOUT_MS = 10;
 const BRACKETED_PASTE_START = "\x1b[200~";
 const BRACKETED_PASTE_END = "\x1b[201~";
+// Color and program-status OSC replies, XTVersion, and Kitty graphics replies.
+// Until their header is complete, the input may be batched legacy Alt keystrokes.
+const TERMINAL_REPLY_HEADER_PATTERN = /^\x1b(?:\](?:1[01];|4;\d{1,3};|7501;\?)|P>\||_G(?:[a-z]=\d+,)*[a-z]=\d+;)/;
+function isControlString(data) {
+    return data.startsWith(`${ESC}]`) || data.startsWith(`${ESC}P`) || data.startsWith(`${ESC}_`);
+}
 /**
  * Check if a string is a complete escape sequence or needs more data
  */
@@ -167,9 +173,24 @@ function extractCompleteSequences(buffer) {
         const remaining = buffer.slice(pos);
         // Try to extract a sequence starting at this position
         if (remaining.startsWith(ESC)) {
+            const terminalReply = isControlString(remaining) && TERMINAL_REPLY_HEADER_PATTERN.test(remaining);
             // Find the end of this escape sequence
             let seqEnd = 1;
             while (seqEnd <= remaining.length) {
+                if (terminalReply && seqEnd > 2) {
+                    const char = remaining[seqEnd - 1];
+                    if (char === "\x18" || char === "\x1a") {
+                        // CAN and SUB cancel the string, not subsequent keyboard input.
+                        pos += seqEnd;
+                        break;
+                    }
+                    if (char === ESC && seqEnd < remaining.length && remaining[seqEnd] !== "\\") {
+                        // A new escape sequence aborts an unterminated reply. Keep a
+                        // trailing ESC buffered until we can distinguish it from ST.
+                        pos += seqEnd - 1;
+                        break;
+                    }
+                }
                 const candidate = remaining.slice(0, seqEnd);
                 const status = isCompleteSequence(candidate);
                 if (status === "complete") {
@@ -315,11 +336,25 @@ export class StdinBuffer extends EventEmitter {
             this.emitDataSequence(sequence);
         }
         if (this.buffer.length > 0) {
+            // Only a recognizable reply header establishes a delimited string.
+            // Flushing it would turn a delayed tail into text and an OSC's BEL
+            // terminator into Ctrl+G (the external editor shortcut). Other input,
+            // including Alt+] followed by text, must retain bounded recovery.
+            if (TERMINAL_REPLY_HEADER_PATTERN.test(this.buffer))
+                return;
             const timeoutMs = this.buffer === ESC ? this.escapeTimeoutMs : this.timeoutMs;
             this.timeout = setTimeout(() => {
                 const flushed = this.flush();
                 for (const sequence of flushed) {
-                    this.emitDataSequence(sequence);
+                    if (sequence.length > 2 && isControlString(sequence)) {
+                        // Recover the Alt key and reparse its tail so batched text,
+                        // Enter, and control keys are not swallowed as one event.
+                        this.emitDataSequence(sequence.slice(0, 2));
+                        this.process(sequence.slice(2));
+                    }
+                    else {
+                        this.emitDataSequence(sequence);
+                    }
                 }
             }, timeoutMs);
         }

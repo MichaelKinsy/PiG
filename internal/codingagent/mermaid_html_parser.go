@@ -1,15 +1,18 @@
+//go:build !pig_strip_mermaid
+
 package codingagent
 
 // Ports packages/coding-agent/src/modes/interactive/components/mermaid.ts (Marked HTML block ownership).
 
 import (
 	"strings"
+	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
-	"github.com/yuin/goldmark/ast"
-	gmparser "github.com/yuin/goldmark/parser"
-	gmtext "github.com/yuin/goldmark/text"
+	"github.com/MichaelKinsy/PiG/third_party/goldmark/ast"
+	gmparser "github.com/MichaelKinsy/PiG/third_party/goldmark/parser"
+	gmtext "github.com/MichaelKinsy/PiG/third_party/goldmark/text"
 
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -54,7 +57,7 @@ func (*markedHTMLParser) Open(_ ast.Node, reader gmtext.Reader, pc gmparser.Cont
 	closing, recognized, ended := "", false, false
 	for _, tag := range []string{"script", "pre", "style", "textarea"} {
 		if rest, ok := strings.CutPrefix(lower, "<"+tag); ok && len(rest) > 0 {
-			first := []rune(rest)[0]
+			first, _ := utf8.DecodeRuneInString(rest)
 			if first == '>' || widthx.IsJSSpace(first) {
 				closing, recognized = "</"+tag+">", true
 				break

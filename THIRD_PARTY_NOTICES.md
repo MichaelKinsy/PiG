@@ -1,5 +1,4 @@
 <!--
-SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 SPDX-License-Identifier: MIT
 -->
 
@@ -88,6 +87,18 @@ Distributed file: `internal/mermaid/width_data.go`
 - License: Apache-2.0 OR MIT; PiG uses the MIT option for this derived data
 
 The width table is generated through `grok-mermaid` from the exact `unicode-width` 0.2.0 crate pinned by `grok-mermaid`'s width oracle. The required MIT copyright and permission notice is preserved here, and the canonical MIT text is in `LICENSES/MIT.txt`.
+
+## png 0.17.14 and fdeflate 0.3.6
+
+Sources: <https://github.com/image-rs/image-png/tree/v0.17.14> and <https://github.com/image-rs/fdeflate/tree/v0.3.6>
+
+Distributed file: `durable/images/png.go`
+
+- png: Copyright (c) 2015 nwin; The image-rs Developers
+- fdeflate: The image-rs Developers
+- License: MIT OR Apache-2.0; PiG uses the MIT option for this derived code
+
+`durable/images/png.go` ports the PNG encoder that Photon 0.3.3 runs: png's `write_image_data` with `Compression::Fast` and adaptive filtering, and fdeflate's `Compressor` and `StoredOnlyCompressor` with its Huffman and length tables. The required MIT copyright and permission notice is preserved here, and the canonical MIT text is in `LICENSES/MIT.txt`.
 
 ## Pi TUI 0.87.1
 
@@ -544,3 +555,30 @@ THE SOFTWARE.
 Source: <https://github.com/modelcontextprotocol/typescript-sdk/blob/v1.29.0/src/client/auth.ts>
 
 `mcp/oauth` translates, through upstream's `packages/mcp/src/oauth`, the SDK's OAuth client subset (discovery, PKCE authorization code flow, dynamic client registration, token refresh) into Go. It retains the notice Copyright (c) 2024 Anthropic, PBC, under the MIT license reproduced in `LICENSES/MIT.txt`.
+
+## santhosh-tekuri/jsonschema v6.0.2 (JSON Schema validator, PiG fork)
+
+Source: <https://github.com/santhosh-tekuri/jsonschema/tree/v6.0.2>
+
+Distributed files: `third_party/jsonschema/`, a package of the root module. The directory is v6.0.2 as published, with the changes listed in `third_party/jsonschema/FORK.md` (the metaschemas compile on first use instead of at package initialisation).
+
+- Copyright the santhosh-tekuri/jsonschema authors.
+- License: Apache-2.0, in `third_party/jsonschema/LICENSE` and `LICENSES/Apache-2.0.txt`.
+
+## yuin/goldmark v1.8.5 (Markdown parser, PiG fork)
+
+Source: <https://github.com/yuin/goldmark/tree/v1.8.5>
+
+Distributed files: `third_party/goldmark/{ast,parser,text,util}`, packages of the root module. The directories are the non-test sources of v1.8.5 with the changes listed in `third_party/goldmark/FORK.md` (the regular expressions compile on first use).
+
+- Copyright (c) 2019 Yusuke Inuzuka.
+- License: MIT, in `third_party/goldmark/LICENSE` and `LICENSES/MIT.txt`.
+
+## Masterminds/semver v3.5.0 (semantic versioning, PiG fork)
+
+Source: <https://github.com/Masterminds/semver/tree/v3.5.0>
+
+Distributed files: `third_party/semver/`, a package of the root module. The directory is v3.5.0 as published, with the changes listed in `third_party/semver/FORK.md` (the regular expressions compile on first use instead of at package initialisation).
+
+- Copyright (C) 2014-2019 Matt Butcher and Matt Farina.
+- License: MIT, in `third_party/semver/LICENSE.txt` and `LICENSES/MIT.txt`.

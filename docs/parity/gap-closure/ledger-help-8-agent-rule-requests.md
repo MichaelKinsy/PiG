@@ -1,0 +1,16 @@
+# agent ledger rows (lg-help-8): ported family and rule requests
+
+## Ported (one family, one table-driven test)
+`Agent`'s public mutable properties (agent.ts:194-228): `SessionID()`, `Transport()`, `ThinkingBudgets()`/`SetThinkingBudgets`, `MaxRetryDelayMs()`/`SetMaxRetryDelayMs`, `OnResponse()`/`SetOnResponse`, `OnProviderStreamEvent()`/`SetOnProviderStreamEvent`, `ConvertToLlm()`/`SetConvertToLlm`, `SetToolExecution` (the getter `ToolExecutionMode()` existed). `createLoopConfig` reads them under the state lock, so an assignment between runs is what the next run carries; the existing `SetSessionID`/`SetTransport`/`ToolExecutionMode` now take the same lock. `TestAgentPublicPropertiesRoundTripIntoTheNextRun` cites agent.ts and is mutation-checked (a setter that assigns nothing, and a loop config that ignores the live value, both fail it).
+
+## Rule requests
+- Renamed accessors for the same property: `finishTurn` = `FinishTurnHook()`, `prepareRequest` = `PrepareRequestHook()`, `prepareNextTurn` = `PrepareNextTurnHook()`, `prepareNextTurnWithContext` = `PrepareNextTurnWithContextHook()`, `getApiKey` = `GetAPIKeyFunc()`, `streamFunction` = `StreamFunction()`/`SetStreamFunction` (S4: upstream streamFunction takes the 3 stream arguments, Go returns the function), `onPayload` = `SetBeforeProviderHook` (setter only; an `OnPayload()` getter would duplicate it).
+- `beforeToolCall`/`afterToolCall` (single optional hook, a property of Agent, AgentOptions, AgentLoopConfig, RunToolCallOptions): Go keeps ordered slices of hooks (`AddBeforeToolCallHook`), M3 function-vs-slice; Pi's single hook is the one-element slice.
+- `Agent.state` (an `AgentState` snapshot): Go reads each member through its own accessor (`Model()`, `ThinkingLevel()`, `Tools()`, `Messages()`, `IsStreaming()`, `SystemPrompt()`).
+- `Agent.prompt` overloads: `Send`, `SendContent`, `SendMessages` (one Go method per overload).
+- S5 `clearAllQueues`/`clearFollowUpQueue`/`clearSteeringQueue`/`continue` return nothing upstream; Go returns the cleared or produced messages (an extra return value is compatible).
+- `AgentTool` members (`description`, `parameters`, `outputSchema`, `constrainedSampling`, `prepareArguments`, `replay`): Go's `AgentTool` is an interface whose `Schema()` returns `ai.ToolSchema` carrying name, description, parameters; the optional behaviours are optional interfaces.
+- `AfterToolCallContext`, `BeforeToolCallContext`, `ToolCallHooks`: `ToolCallHookContext` plus the hook parameters (agent/tool_call_hook_context.go); `AgentToolUpdateCallback`: function type; `CustomAgentMessages`/`AgentMessage` union: tagged struct `AgentMessage`; `ThinkingLevel` = `ai.ModelThinkingLevel` alias (A1 through the alias target); `ProxyAssistantMessageEvent` discriminator `type`; `streamProxy` result `ProxyMessageEventStream` = `ai.AssistantMessageEventStream`; `toolChoice` any.
+- `agentLoop`/`agentLoopContinue` result: the stream's producer methods `push`/`end` are unexported on `AgentEventStream` (consumers only read events and the result).
+## Held
+- `runToolCall` (RunToolCallOptions has no assistantMessage/context): `ToolCallHookContext` is attached through the context.Context; held row, not changed here.

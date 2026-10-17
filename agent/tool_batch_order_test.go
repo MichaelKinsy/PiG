@@ -47,11 +47,11 @@ func TestParallelToolBatchEventOrder(t *testing.T) {
 	for i, id := range ids {
 		calls[i] = toolCall(id, "p", nil)
 	}
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model:   scriptedModel(&scriptedProvider{respond: toolCallsThenText(calls...)}),
 		Tools:   []AgentTool{tool},
 		EventCh: rec.ch,
-		BeforeToolCall: []BeforeToolCallHook{func(_ context.Context, id, _ string, _ json.RawMessage) ToolCallHookResult {
+		BeforeToolCallHooks: []BeforeToolCallHook{func(_ context.Context, id, _ string, _ json.RawMessage) ToolCallHookResult {
 			// The call's tool_execution_start precedes its preparation.
 			rec.waitFor(t, func(ev AgentEvent) bool {
 				start, ok := ev.(ToolExecutionStartEvent)

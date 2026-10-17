@@ -1095,10 +1095,10 @@
   {
     "source": ".upstream/current/packages/ai/test/stream.test.ts:815",
     "line": 815,
-    "name": "Generate E2E Tests/NVIDIA NIM Provider (Nemotron 3 Ultra via OpenAI Completions)/should complete basic text generation",
+    "name": "Generate E2E Tests/NVIDIA NIM Provider (Nemotron 3.5 Super VL)/should complete basic text generation",
     "kind": "basicTextGeneration",
     "provider": "nvidia",
-    "model": "nvidia/nemotron-3-ultra-550b-a55b",
+    "model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {}
@@ -1106,10 +1106,10 @@
   {
     "source": ".upstream/current/packages/ai/test/stream.test.ts:819",
     "line": 819,
-    "name": "Generate E2E Tests/NVIDIA NIM Provider (Nemotron 3 Ultra via OpenAI Completions)/should handle tool calling",
+    "name": "Generate E2E Tests/NVIDIA NIM Provider (Nemotron 3.5 Super VL)/should handle tool calling",
     "kind": "handleToolCall",
     "provider": "nvidia",
-    "model": "nvidia/nemotron-3-ultra-550b-a55b",
+    "model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {}
@@ -1117,10 +1117,10 @@
   {
     "source": ".upstream/current/packages/ai/test/stream.test.ts:823",
     "line": 823,
-    "name": "Generate E2E Tests/NVIDIA NIM Provider (Nemotron 3 Ultra via OpenAI Completions)/should handle streaming",
+    "name": "Generate E2E Tests/NVIDIA NIM Provider (Nemotron 3.5 Super VL)/should handle streaming",
     "kind": "handleStreaming",
     "provider": "nvidia",
-    "model": "nvidia/nemotron-3-ultra-550b-a55b",
+    "model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {}
@@ -1128,10 +1128,10 @@
   {
     "source": ".upstream/current/packages/ai/test/stream.test.ts:827",
     "line": 827,
-    "name": "Generate E2E Tests/NVIDIA NIM Provider (Nemotron 3 Ultra via OpenAI Completions)/should handle thinking mode",
+    "name": "Generate E2E Tests/NVIDIA NIM Provider (Nemotron 3.5 Super VL)/should handle thinking mode",
     "kind": "handleThinking",
     "provider": "nvidia",
-    "model": "nvidia/nemotron-3-ultra-550b-a55b",
+    "model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {
@@ -1141,10 +1141,10 @@
   {
     "source": ".upstream/current/packages/ai/test/stream.test.ts:831",
     "line": 831,
-    "name": "Generate E2E Tests/NVIDIA NIM Provider (Nemotron 3 Ultra via OpenAI Completions)/should handle multi-turn with thinking and tools",
+    "name": "Generate E2E Tests/NVIDIA NIM Provider (Nemotron 3.5 Super VL)/should handle multi-turn with thinking and tools",
     "kind": "multiTurn",
     "provider": "nvidia",
-    "model": "nvidia/nemotron-3-ultra-550b-a55b",
+    "model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {
@@ -1623,44 +1623,44 @@
   {
     "source": ".upstream/current/packages/ai/test/stream.test.ts:1048",
     "line": 1048,
-    "name": "Generate E2E Tests/Kimi For Coding Provider (kimi-for-coding via Anthropic Messages)/should complete basic text generation",
+    "name": "Generate E2E Tests/Kimi For Coding Provider (kimi-for-coding via OpenAI Completions)/should complete basic text generation",
     "kind": "basicTextGeneration",
     "provider": "kimi-coding",
     "model": "kimi-for-coding",
-    "api": "anthropic-messages",
+    "api": "openai-completions",
     "hasCompat": true,
     "options": {}
   },
   {
     "source": ".upstream/current/packages/ai/test/stream.test.ts:1052",
     "line": 1052,
-    "name": "Generate E2E Tests/Kimi For Coding Provider (kimi-for-coding via Anthropic Messages)/should handle tool calling",
+    "name": "Generate E2E Tests/Kimi For Coding Provider (kimi-for-coding via OpenAI Completions)/should handle tool calling",
     "kind": "handleToolCall",
     "provider": "kimi-coding",
     "model": "kimi-for-coding",
-    "api": "anthropic-messages",
+    "api": "openai-completions",
     "hasCompat": true,
     "options": {}
   },
   {
     "source": ".upstream/current/packages/ai/test/stream.test.ts:1056",
     "line": 1056,
-    "name": "Generate E2E Tests/Kimi For Coding Provider (kimi-for-coding via Anthropic Messages)/should handle streaming",
+    "name": "Generate E2E Tests/Kimi For Coding Provider (kimi-for-coding via OpenAI Completions)/should handle streaming",
     "kind": "handleStreaming",
     "provider": "kimi-coding",
     "model": "kimi-for-coding",
-    "api": "anthropic-messages",
+    "api": "openai-completions",
     "hasCompat": true,
     "options": {}
   },
   {
     "source": ".upstream/current/packages/ai/test/stream.test.ts:1060",
     "line": 1060,
-    "name": "Generate E2E Tests/Kimi For Coding Provider (kimi-for-coding via Anthropic Messages)/should handle thinking mode",
+    "name": "Generate E2E Tests/Kimi For Coding Provider (kimi-for-coding via OpenAI Completions)/should handle thinking mode",
     "kind": "handleThinking",
     "provider": "kimi-coding",
     "model": "kimi-for-coding",
-    "api": "anthropic-messages",
+    "api": "openai-completions",
     "hasCompat": true,
     "options": {
       "thinkingEnabled": true,
@@ -1670,11 +1670,11 @@
   {
     "source": ".upstream/current/packages/ai/test/stream.test.ts:1064",
     "line": 1064,
-    "name": "Generate E2E Tests/Kimi For Coding Provider (kimi-for-coding via Anthropic Messages)/should handle multi-turn with thinking and tools",
+    "name": "Generate E2E Tests/Kimi For Coding Provider (kimi-for-coding via OpenAI Completions)/should handle multi-turn with thinking and tools",
     "kind": "multiTurn",
     "provider": "kimi-coding",
     "model": "kimi-for-coding",
-    "api": "anthropic-messages",
+    "api": "openai-completions",
     "hasCompat": true,
     "options": {
       "thinkingEnabled": true,
@@ -1748,7 +1748,7 @@
     "name": "Generate E2E Tests/Xiaomi MiMo (API billing) Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages)/should complete basic text generation",
     "kind": "basicTextGeneration",
     "provider": "xiaomi",
-    "model": "mimo-v2.5-pro",
+    "model": "mimo-v2.6-pro",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {}
@@ -1759,7 +1759,7 @@
     "name": "Generate E2E Tests/Xiaomi MiMo (API billing) Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages)/should handle tool calling",
     "kind": "handleToolCall",
     "provider": "xiaomi",
-    "model": "mimo-v2.5-pro",
+    "model": "mimo-v2.6-pro",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {}
@@ -1770,7 +1770,7 @@
     "name": "Generate E2E Tests/Xiaomi MiMo (API billing) Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages)/should handle streaming",
     "kind": "handleStreaming",
     "provider": "xiaomi",
-    "model": "mimo-v2.5-pro",
+    "model": "mimo-v2.6-pro",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {}
@@ -1781,7 +1781,7 @@
     "name": "Generate E2E Tests/Xiaomi MiMo (API billing) Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages)/should handle thinking mode",
     "kind": "handleThinking",
     "provider": "xiaomi",
-    "model": "mimo-v2.5-pro",
+    "model": "mimo-v2.6-pro",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {
@@ -1795,7 +1795,7 @@
     "name": "Generate E2E Tests/Xiaomi MiMo (API billing) Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages)/should handle multi-turn with thinking and tools",
     "kind": "multiTurn",
     "provider": "xiaomi",
-    "model": "mimo-v2.5-pro",
+    "model": "mimo-v2.6-pro",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {
@@ -1809,7 +1809,7 @@
     "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, CN region)/should complete basic text generation",
     "kind": "basicTextGeneration",
     "provider": "xiaomi-token-plan-cn",
-    "model": "mimo-v2.5-pro",
+    "model": "mimo-v2.6-pro",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {}
@@ -1820,7 +1820,7 @@
     "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, CN region)/should handle tool calling",
     "kind": "handleToolCall",
     "provider": "xiaomi-token-plan-cn",
-    "model": "mimo-v2.5-pro",
+    "model": "mimo-v2.6-pro",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {}
@@ -1831,7 +1831,7 @@
     "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, CN region)/should handle streaming",
     "kind": "handleStreaming",
     "provider": "xiaomi-token-plan-cn",
-    "model": "mimo-v2.5-pro",
+    "model": "mimo-v2.6-pro",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {}
@@ -1842,7 +1842,7 @@
     "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, CN region)/should handle thinking mode",
     "kind": "handleThinking",
     "provider": "xiaomi-token-plan-cn",
-    "model": "mimo-v2.5-pro",
+    "model": "mimo-v2.6-pro",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {
@@ -1856,7 +1856,7 @@
     "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, CN region)/should handle multi-turn with thinking and tools",
     "kind": "multiTurn",
     "provider": "xiaomi-token-plan-cn",
-    "model": "mimo-v2.5-pro",
+    "model": "mimo-v2.6-pro",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {
@@ -1870,7 +1870,7 @@
     "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, AMS region)/should complete basic text generation",
     "kind": "basicTextGeneration",
     "provider": "xiaomi-token-plan-ams",
-    "model": "mimo-v2.5-pro",
+    "model": "mimo-v2.6-pro",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {}
@@ -1881,7 +1881,7 @@
     "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, AMS region)/should handle tool calling",
     "kind": "handleToolCall",
     "provider": "xiaomi-token-plan-ams",
-    "model": "mimo-v2.5-pro",
+    "model": "mimo-v2.6-pro",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {}
@@ -1892,7 +1892,7 @@
     "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, AMS region)/should handle streaming",
     "kind": "handleStreaming",
     "provider": "xiaomi-token-plan-ams",
-    "model": "mimo-v2.5-pro",
+    "model": "mimo-v2.6-pro",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {}
@@ -1903,7 +1903,7 @@
     "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, AMS region)/should handle thinking mode",
     "kind": "handleThinking",
     "provider": "xiaomi-token-plan-ams",
-    "model": "mimo-v2.5-pro",
+    "model": "mimo-v2.6-pro",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {
@@ -1917,7 +1917,7 @@
     "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, AMS region)/should handle multi-turn with thinking and tools",
     "kind": "multiTurn",
     "provider": "xiaomi-token-plan-ams",
-    "model": "mimo-v2.5-pro",
+    "model": "mimo-v2.6-pro",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {
@@ -1931,7 +1931,7 @@
     "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, SGP region)/should complete basic text generation",
     "kind": "basicTextGeneration",
     "provider": "xiaomi-token-plan-sgp",
-    "model": "mimo-v2.5-pro",
+    "model": "mimo-v2.6-pro",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {}
@@ -1942,7 +1942,7 @@
     "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, SGP region)/should handle tool calling",
     "kind": "handleToolCall",
     "provider": "xiaomi-token-plan-sgp",
-    "model": "mimo-v2.5-pro",
+    "model": "mimo-v2.6-pro",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {}
@@ -1953,7 +1953,7 @@
     "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, SGP region)/should handle streaming",
     "kind": "handleStreaming",
     "provider": "xiaomi-token-plan-sgp",
-    "model": "mimo-v2.5-pro",
+    "model": "mimo-v2.6-pro",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {}
@@ -1964,7 +1964,7 @@
     "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, SGP region)/should handle thinking mode",
     "kind": "handleThinking",
     "provider": "xiaomi-token-plan-sgp",
-    "model": "mimo-v2.5-pro",
+    "model": "mimo-v2.6-pro",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {
@@ -1978,7 +1978,7 @@
     "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, SGP region)/should handle multi-turn with thinking and tools",
     "kind": "multiTurn",
     "provider": "xiaomi-token-plan-sgp",
-    "model": "mimo-v2.5-pro",
+    "model": "mimo-v2.6-pro",
     "api": "openai-completions",
     "hasCompat": true,
     "options": {

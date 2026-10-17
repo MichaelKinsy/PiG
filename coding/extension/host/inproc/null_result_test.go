@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 )
@@ -36,7 +38,7 @@ func TestObserveOnlyHandlersReturnNoResult(t *testing.T) {
 	if err != nil || result != nil {
 		t.Fatalf("EmitToolResult = %+v, %v; want nil, nil", result, err)
 	}
-	messages := []extension.AgentMessage{map[string]any{"role": "user", "content": "hi"}}
+	messages := []extension.AgentMessage{{User: &agent.UserMessage{Role: "user", Content: ai.UserText("hi")}}}
 	gotMessages, err := runner.EmitContext(ctx, messages)
 	if err != nil || len(gotMessages) != 1 {
 		t.Fatalf("EmitContext = %+v, %v; want the input unchanged", gotMessages, err)
@@ -110,6 +112,7 @@ func TestTypedNilToolCallResultIsNoResult(t *testing.T) {
 
 // A subprocess before_provider_headers handler sends the mutated headers back;
 // they replace the current headers for the next handler and the request.
+// Pi: packages/coding-agent/src/core/extensions/runner.ts:1392 (Runner.emitBeforeProviderHeaders).
 func TestBeforeProviderHeadersSubprocessResultReplacesHeaders(t *testing.T) {
 	ext := newFakeExtension("/remote")
 	ext.Handlers["before_provider_headers"] = []extension.HandlerFn{func(...any) (any, error) {
@@ -136,7 +139,7 @@ func TestContextWithSystemReportsDroppedSystemMessage(t *testing.T) {
 	runner := inproc.NewRunner([]extension.Extension{ext}, t.TempDir())
 	var reported []string
 	runner.AddErrorListener(func(e *extension.ExtensionError) { reported = append(reported, e.Error) })
-	got, err := runner.EmitContextWithSystem(context.Background(), []extension.AgentMessage{map[string]any{"role": "system", "content": "p"}, map[string]any{"role": "user", "content": "u"}})
+	got, err := runner.EmitContextWithSystem(context.Background(), []extension.AgentMessage{{System: &ai.SystemMessage{Content: ai.SystemText("p")}}, {User: &agent.UserMessage{Role: "user", Content: ai.UserText("u")}}})
 	if err != nil || len(got) != 1 {
 		t.Fatalf("EmitContextWithSystem = %v, %v; want the handler's single message", got, err)
 	}

@@ -107,7 +107,7 @@ func main() { fmt.Println("hello from fixture") }
 
 func TestBuilderWaitsForSDKStageLock(t *testing.T) {
 	configRoot := t.TempDir()
-	sdkDir := filepath.Join(configRoot, "state", "pigsdk", "sdk")
+	sdkDir := stagedSDKDir(t, configRoot, "go")
 	if err := os.MkdirAll(sdkDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +142,7 @@ func TestBuilderWaitsForSDKStageLock(t *testing.T) {
 // exactly what the leased lookup would return.
 func TestBuilderWarmStagedSDKBuildDoesNotWaitForSDKStageLock(t *testing.T) {
 	configRoot := t.TempDir()
-	sdkDir := filepath.Join(configRoot, "state", "pigsdk", "sdk")
+	sdkDir := stagedSDKDir(t, configRoot, "go")
 	if err := os.MkdirAll(sdkDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -240,7 +240,7 @@ func TestAC56BuilderUsesStagedGoSDKWithoutCommittedReplace(t *testing.T) {
 		t.Skip("skipping build test in short mode")
 	}
 	configRoot := t.TempDir()
-	sdkDir := filepath.Join(configRoot, "state", "pigsdk", "sdk")
+	sdkDir := stagedSDKDir(t, configRoot, "go")
 	if err := os.MkdirAll(sdkDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -346,7 +346,7 @@ func TestBuilderUsesStagedRustSDKWithoutCommittedPath(t *testing.T) {
 	}
 	t.Setenv("PATH", filepath.Dir(cargoPath)+string(os.PathListSeparator)+os.Getenv("PATH"))
 	configRoot := t.TempDir()
-	sdkDir := filepath.Join(configRoot, "state", "pigsdk", "sdk-rs")
+	sdkDir := stagedSDKDir(t, configRoot, "rust")
 	if err := os.MkdirAll(filepath.Join(sdkDir, "src"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -426,10 +426,52 @@ func TestBuilderExplicitSDKOverridesWin(t *testing.T) {
 		builder := NewBuilder(t.TempDir())
 		configRoot := t.TempDir()
 		builder.configRoot = configRoot
-		stagedDir := filepath.Join(configRoot, "state", "pigsdk", "sdk")
+		stagedDir := stagedSDKDir(t, configRoot, "go")
 		mustWrite(t, filepath.Join(stagedDir, "go.mod"), "module github.com/MichaelKinsy/PiG/extensions/sdk\n")
 		if staged, err := builder.resolveStagedSDK(srcDir, "go"); err != nil || staged != stagedDir {
 			t.Fatalf("dead Go replace resolved staged SDK %q (want %q), %v", staged, stagedDir, err)
+		}
+	})
+
+	// An earlier pig staged its SDK unhashed at <config root>/state/pigsdk/sdk and
+	// never deletes it. A link the author made to it (../.sdk) still resolves
+	// after an update, but it names the retired SDK, so the build must use the
+	// SDK staged now exactly as for a dead replace.
+	retiredFixture := func(t *testing.T, lang, base, marker, markerContent string) (*Builder, string, string) {
+		t.Helper()
+		configRoot := t.TempDir()
+		builder := NewBuilder(t.TempDir())
+		builder.configRoot = configRoot
+		stagedDir := stagedSDKDir(t, configRoot, lang)
+		mustWrite(t, filepath.Join(stagedDir, marker), markerContent)
+		retired := filepath.Join(configRoot, "state", "pigsdk", base)
+		mustWrite(t, filepath.Join(retired, marker), markerContent)
+		parent := t.TempDir()
+		testenv.RequireDirectoryLink(t, retired, filepath.Join(parent, ".sdk"))
+		return builder, stagedDir, filepath.Join(parent, "ext")
+	}
+
+	t.Run("go replace linking a retired staged SDK stages the current SDK", func(t *testing.T) {
+		builder, stagedDir, srcDir := retiredFixture(t, "go", "sdk", "go.mod", "module github.com/MichaelKinsy/PiG/extensions/sdk\n")
+		mustWrite(t, filepath.Join(srcDir, "go.mod"), "module retired-go\ngo 1.26\nrequire github.com/MichaelKinsy/PiG/extensions/sdk v0.0.0\nreplace github.com/MichaelKinsy/PiG/extensions/sdk => ../.sdk\n")
+		if staged, err := builder.resolveStagedSDK(srcDir, "go"); err != nil || staged != stagedDir {
+			t.Fatalf("retired Go replace resolved staged SDK %q (want %q), %v", staged, stagedDir, err)
+		}
+	})
+
+	t.Run("go replace naming the current staged SDK wins", func(t *testing.T) {
+		builder, stagedDir, srcDir := retiredFixture(t, "go", "sdk", "go.mod", "module github.com/MichaelKinsy/PiG/extensions/sdk\n")
+		mustWrite(t, filepath.Join(srcDir, "go.mod"), "module current-go\ngo 1.26\nrequire github.com/MichaelKinsy/PiG/extensions/sdk v0.0.0\nreplace github.com/MichaelKinsy/PiG/extensions/sdk => "+modfile.AutoQuote(stagedDir)+"\n")
+		if staged, err := builder.resolveStagedSDK(srcDir, "go"); err != nil || staged != "" {
+			t.Fatalf("current staged Go replace resolved staged SDK %q, %v", staged, err)
+		}
+	})
+
+	t.Run("rust path linking a retired staged SDK stages the current SDK", func(t *testing.T) {
+		builder, stagedDir, srcDir := retiredFixture(t, "rust", "sdk-rs", "Cargo.toml", "[package]\nname=\"pig-sdk\"\n")
+		mustWrite(t, filepath.Join(srcDir, "Cargo.toml"), "[package]\nname=\"retired-rust\"\nversion=\"0.1.0\"\n[dependencies]\npig-sdk={path=\"../.sdk\"}\n")
+		if staged, err := builder.resolveStagedSDK(srcDir, "rust"); err != nil || staged != stagedDir {
+			t.Fatalf("retired Rust path resolved staged SDK %q (want %q), %v", staged, stagedDir, err)
 		}
 	})
 }
@@ -1013,7 +1055,7 @@ func TestRustNeedsStagedSDK(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
 			mustWrite(t, filepath.Join(dir, "Cargo.toml"), "[package]\nname = \"x\"\n\n"+tc.manifest+"\n")
-			if got := rustNeedsStagedSDK(dir); got != tc.want {
+			if got := rustNeedsStagedSDK(dir, ""); got != tc.want {
 				t.Fatalf("rustNeedsStagedSDK = %v, want %v", got, tc.want)
 			}
 		})
@@ -1039,7 +1081,7 @@ func TestGoNeedsStagedSDK(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
 			mustWrite(t, filepath.Join(dir, "go.mod"), mkGoMod(tc.replace))
-			if got := goNeedsStagedSDK(dir); got != tc.want {
+			if got := goNeedsStagedSDK(dir, ""); got != tc.want {
 				t.Fatalf("goNeedsStagedSDK = %v, want %v", got, tc.want)
 			}
 		})
@@ -1047,7 +1089,7 @@ func TestGoNeedsStagedSDK(t *testing.T) {
 	// A crate without the SDK requirement never needs staging.
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "go.mod"), "module x\n\ngo 1.26\n")
-	if goNeedsStagedSDK(dir) {
+	if goNeedsStagedSDK(dir, "") {
 		t.Fatal("goNeedsStagedSDK = true for a module without the SDK require")
 	}
 }

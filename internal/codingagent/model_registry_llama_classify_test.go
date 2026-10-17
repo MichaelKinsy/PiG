@@ -1,3 +1,5 @@
+//go:build !pig_strip_llama_cpp
+
 package codingagent
 
 import (
@@ -15,7 +17,7 @@ import (
 // The built-in llama.cpp provider's classifier models reach the model registry through the same native-provider registration as its chat
 // models, and classifying with one runs llama-server's /tokenize, /apply-template and /completion
 // (upstream: packages/coding-agent/src/extensions/llama/provider.ts:204-262 getAllModels and classify; llama-extension.test.ts:331).
-func TestLlamaHostPublishesClassifierModelsAndClassifiesThroughTheRegistry(t *testing.T) {
+func TestLlamaProviderPublishesClassifierModelsAndClassifiesThroughTheRegistry(t *testing.T) {
 	t.Setenv("LLAMA_BASE_URL", "")
 	t.Setenv("LLAMA_API_KEY", "")
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -54,13 +56,14 @@ func TestLlamaHostPublishesClassifierModelsAndClassifiesThroughTheRegistry(t *te
 	}
 	registry := NewModelRegistry(dir)
 	registry.SetAuthStorage(auth)
-	host := llama.NewHost(registry, auth, ai.NewFileModelsStore(filepath.Join(dir, "models-store.json")))
+	registry.SetModelsStore(ai.NewFileModelsStore(filepath.Join(dir, "models-store.json")))
+	if err := registry.RegisterNativeModelsProvider(llama.CreateLlamaProvider().ModelsProvider()); err != nil {
+		t.Fatal(err)
+	}
 	if err := auth.Set(llama.LlamaProviderID, ai.Credential{Type: ai.CredentialAPIKey, Env: map[string]string{"LLAMA_BASE_URL": server.URL}}); err != nil {
 		t.Fatal(err)
 	}
-	if result := host.Refresh(context.Background(), true); result.Err != nil {
-		t.Fatal(result.Err)
-	}
+	refreshLlamaProvider(t, registry)
 
 	provider := registry.GetTypedProvider(llama.LlamaProviderID, nil)
 	if provider == nil {

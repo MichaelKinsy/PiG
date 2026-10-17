@@ -6,6 +6,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session/sessiontest"
@@ -14,7 +15,7 @@ import (
 // Ports packages/durable/test/session-watches.test.ts
 
 var watchStateDoc = defineDoc("watch.state", 1, sessionScope, func() obj {
-	return obj{"value": 0, "items": []any{"a", "b"}, "retained": obj{"label": "stable"}}
+	return delta.JsonObjectOf("value", 0, "items", []any{"a", "b"}, "retained", delta.JsonObjectOf("label", "stable"))
 })
 
 func createWatchHarness(t *testing.T) sessiontest.Harness {
@@ -70,7 +71,7 @@ func (recorder *watchRecorder) values() []any {
 			values = append(values, -1)
 			continue
 		}
-		values = append(values, delivery.value["value"])
+		values = append(values, delivery.value.Value("value"))
 	}
 	return values
 }
@@ -132,7 +133,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 			!same(deliveries[1].value, secondPublished.Value) || !same(deliveries[1].ops, secondPublished.Ops) {
 			t.Fatal("deliveries are the exact published frames")
 		}
-		expectEqual(t, initial["value"], 0)
+		expectEqual(t, initial.Value("value"), 0)
 		_, _ = watch.Stop()
 	})
 
@@ -148,7 +149,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 			mu.Lock()
 			active++
 			maxActive = max(maxActive, active)
-			values = append(values, value["value"])
+			values = append(values, value.Value("value"))
 			first := len(values) == 1
 			mu.Unlock()
 			if first {
@@ -190,7 +191,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 		recorder := &watchRecorder{}
 		watch.Start(func(_ context.Context, value obj, ops []durable.Op) error {
 			recorder.record(value, ops)
-			if num(value["value"]) == 1 {
+			if num(value.Value("value")) == 1 {
 				setWatchValue(t, harness, 2)
 			} else {
 				close(completed)
@@ -216,7 +217,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 		})
 		flush(harness)
 		deliveries := recorder.all()
-		if len(deliveries) != 1 || num(deliveries[0].value["value"]) != 101 {
+		if len(deliveries) != 1 || num(deliveries[0].value.Value("value")) != 101 {
 			t.Fatalf("deliveries %v", recorder.values())
 		}
 		expectEqual(t, deliveries[0].ops, []any{[]any{"r", watch.Value()}})
@@ -245,7 +246,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 		close(release)
 		flush(harness)
 		deliveries := recorder.all()
-		if len(deliveries) != 2 || num(deliveries[0].value["value"]) != 1 || num(deliveries[1].value["value"]) != 102 {
+		if len(deliveries) != 2 || num(deliveries[0].value.Value("value")) != 1 || num(deliveries[1].value.Value("value")) != 102 {
 			t.Fatalf("deliveries %v", recorder.values())
 		}
 		expectEqual(t, deliveries[1].ops, []any{[]any{"r", watch.Value()}})
@@ -346,10 +347,10 @@ func TestSessionDocumentWatches(t *testing.T) {
 		setWatchValue(t, harness, 1)
 		flush(harness)
 		delivered := recorder.all()[0].value
-		if !same(delivered, watch.Value()) || same(delivered, initial) || !same(delivered["retained"], initial["retained"]) {
+		if !same(delivered, watch.Value()) || same(delivered, initial) || !same(delivered.Value("retained"), initial.Value("retained")) {
 			t.Fatal("revisions are immutable and structurally shared")
 		}
-		expectEqual(t, initial["value"], 0)
+		expectEqual(t, initial.Value("value"), 0)
 		_, _ = watch.Stop()
 	})
 
@@ -370,7 +371,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 			t.Fatal("one null delivery")
 		}
 		replacement := watchDoc(t, harness, ctx, watchStateDoc)
-		expectEqual(t, replacement.Value()["value"], 10)
+		expectEqual(t, replacement.Value().Value("value"), 10)
 		setWatchValue(t, harness, 11)
 		flush(harness)
 		if oldWatch.Value() != nil {
@@ -520,16 +521,71 @@ func TestSessionDocumentWatches(t *testing.T) {
 		_, _ = healthy.Stop()
 	})
 
+	t.Run("reports a listener's failure through the Session while it ends only that watch", func(t *testing.T) {
+		// Pi observation.ts CommittedWatch #drain: `this.#report(error)` runs before `#terminate({ reason: "listener_error" })`.
+		var mu sync.Mutex
+		var reported []error
+		harness := sessiontest.OpenReportingTestSession(func(err error) {
+			mu.Lock()
+			reported = append(reported, err)
+			mu.Unlock()
+		})
+		commit(t, harness.Session, func(tx durable.Tx) error {
+			_, err := tx.Doc(watchStateDoc)
+			return err
+		})
+		failed := watchDoc(t, harness, ctx, watchStateDoc)
+		failure := errors.New("listener failed")
+		failed.Start(func(context.Context, obj, []durable.Op) error { return failure })
+		setWatchValue(t, harness, 1)
+		if end := closedEnd(t, failed); end.Reason != durable.WatchListenerError {
+			t.Fatalf("end %+v", end)
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		if len(reported) != 1 || !errors.Is(reported[0], failure) {
+			t.Fatalf("reported %v, want the listener's error once", reported)
+		}
+		if harness.Session.Failure() != nil {
+			t.Fatalf("a watch listener's failure failed the Session: %v", harness.Session.Failure())
+		}
+	})
+
+	t.Run("reports a document state's listener failure through the Session", func(t *testing.T) {
+		// Pi session.ts documentState: `replicatedState(source, { onError: (error) => this.report(error) })`.
+		var mu sync.Mutex
+		var reported []error
+		harness := sessiontest.OpenReportingTestSession(func(err error) {
+			mu.Lock()
+			reported = append(reported, err)
+			mu.Unlock()
+		})
+		commit(t, harness.Session, func(tx durable.Tx) error {
+			_, err := tx.Doc(watchStateDoc)
+			return err
+		})
+		state, err := harness.Session.DocumentStateErased(ctx, watchStateDoc)
+		must(t, err)
+		state.Subscribe(func(obj, context.Context, chord.ReplicatedStateDelivery) { panic(errors.New("state listener failed")) })
+		flush(harness)
+		mu.Lock()
+		defer mu.Unlock()
+		if len(reported) == 0 || reported[0].Error() != "state listener failed" {
+			t.Fatalf("reported %v, want the state listener's error", reported)
+		}
+		state.Dispose()
+	})
+
 	t.Run("hydrates migration without writing and observes the later exact edit", func(t *testing.T) {
-		old := defineDoc("watch.migration", 1, sessionScope, func() obj { return obj{"value": 3} })
-		current := defineDoc("watch.migration", 2, sessionScope, func() obj { return obj{"value": 0, "migrated": false} },
-			withMigrate(func(value obj, _ int) obj { return obj{"value": value["value"], "migrated": true} }))
+		old := defineDoc("watch.migration", 1, sessionScope, func() obj { return delta.JsonObjectOf("value", 3) })
+		current := defineDoc("watch.migration", 2, sessionScope, func() obj { return delta.JsonObjectOf("value", 0, "migrated", false) },
+			withMigrate(func(value obj, _ int) obj { return delta.JsonObjectOf("value", value.Value("value"), "migrated", true) }))
 		harness := open()
 		commit(t, harness.Session, func(tx durable.Tx) error { _, err := tx.Doc(old); return err })
 		must(t, harness.Session.UnloadDocuments())
 		commits := len(harness.Storage.Commits())
 		watch := watchDoc(t, harness, ctx, current)
-		expectEqual(t, watch.Value(), obj{"value": 3, "migrated": true})
+		expectEqual(t, watch.Value(), delta.JsonObjectOf("value", 3, "migrated", true))
 		if len(harness.Storage.Commits()) != commits {
 			t.Fatal("hydration writes nothing")
 		}
@@ -593,7 +649,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 		watch.Start(func(context.Context, obj, []durable.Op) error { return nil })
 		setWatchValue(t, harness, 7)
 		flush(harness)
-		expectEqual(t, watch.Value()["value"], 7)
+		expectEqual(t, watch.Value().Value("value"), 7)
 		_, _ = watch.Stop()
 	})
 }

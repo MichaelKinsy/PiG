@@ -33,10 +33,10 @@ func TestEditorRuntimeSettingsApplyImmediately(t *testing.T) {
 }
 
 func TestMessageOutputPaddingAppliesImmediately(t *testing.T) {
-	user := NewUserMessageBlock("hello")
-	assistant := NewAssistantMessageBlock(false)
+	user := NewUserMessageComponent("hello", nil, 1, nil)
+	assistant := NewAssistantMessageComponent(nil, false, nil, "", nil, nil)
 	assistant.SetTextDelta("hello")
-	custom := NewCustomMessageComponent("note", "hello")
+	custom := NewCustomMessageComponent(&CustomMessage{CustomType: "note", Content: "hello"}, nil, nil, 1)
 
 	user.SetOutputPad(0)
 	assistant.SetOutputPad(0)
@@ -48,9 +48,13 @@ func TestMessageOutputPaddingAppliesImmediately(t *testing.T) {
 	if got := stripANSI(assistant.Render(20)[1]); !strings.HasPrefix(got, "hello") {
 		t.Fatalf("assistant line retained padding: %q", got)
 	}
-	// The component spacer and Box top padding precede the label. The custom
-	// box keeps its fixed inset independently of transcript output padding.
+	// custom-message.ts:90: the default box takes its horizontal padding from outputPad, so pad 0 leaves no inset and pad 1 keeps Pi's one cell.
+	// The component spacer and Box top padding precede the label.
+	if got := stripANSI(custom.Render(20)[2]); !strings.HasPrefix(got, "[note]") {
+		t.Fatalf("custom box kept an inset at output pad 0: %q", got)
+	}
+	custom.SetOutputPad(1)
 	if got := stripANSI(custom.Render(20)[2]); !strings.HasPrefix(got, " [note]") {
-		t.Fatalf("default custom box lost its fixed inset: %q", got)
+		t.Fatalf("custom box lost its inset at output pad 1: %q", got)
 	}
 }

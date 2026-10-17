@@ -183,7 +183,7 @@ func (h *Host) stageIsolated(ctx context.Context, cfg ExtConfig, oldByName map[s
 	old := oldByName[resolved.Name]
 	var retained *processShare
 	if entry, ok := nodeLauncherEntry(resolved.Path); ok {
-		retained = h.retention().claim("node-extension:" + resolved.Name + "\x00" + entry)
+		retained = h.dropStaleTier(ctx, h.retention().claim("node-extension:"+resolved.Name+"\x00"+entry), resolved.Path, resolved.Name)
 	}
 	me, _, err := h.startManagedIn(ctx, resolved, retained)
 	if err != nil {
@@ -201,7 +201,7 @@ func (h *Host) stageIsolatedGoFactory(ctx context.Context, cfg ExtConfig, oldByN
 	cacheRoot := filepath.Dir(h.builder.cacheDir)
 	cellKey := isolatedCell(cfg, "factory").Key
 	h.markExtension(cfg.Name, "build-check-start")
-	packed, err := runtimecell.BuildGoPackedCellWithSDKRoot(ctx, cacheRoot, cellKey, []runtimecell.GoExtension{goExt}, filepath.Join(h.builder.configRoot, "state", "pigsdk", "sdk"))
+	packed, err := runtimecell.BuildGoPackedCellWithSDKRoot(ctx, cacheRoot, cellKey, []runtimecell.GoExtension{goExt}, h.stagedGoSDKRoot())
 	if err != nil {
 		return nil, fmt.Errorf("build isolated factory %s: %w", cfg.Name, err)
 	}
@@ -278,7 +278,7 @@ func (h *Host) stagePackedGo(ctx context.Context, cell CellSpec, oldByName map[s
 	}
 	cacheRoot := filepath.Dir(h.builder.cacheDir)
 	h.markCellExtensions(cell, "build-check-start")
-	packed, err := runtimecell.BuildGoPackedCellWithSDKRoot(ctx, cacheRoot, cell.Key, goExts, filepath.Join(h.builder.configRoot, "state", "pigsdk", "sdk"))
+	packed, err := runtimecell.BuildGoPackedCellWithSDKRoot(ctx, cacheRoot, cell.Key, goExts, h.stagedGoSDKRoot())
 	if err != nil {
 		return nil, fmt.Errorf("build packed cell %s: %w", cell.Key, err)
 	}
@@ -303,6 +303,15 @@ func (h *Host) stagePackedGo(ctx context.Context, cell CellSpec, oldByName map[s
 	}
 	rep.Replaced = anyExisting(cell.Extensions, oldByName)
 	return staged, nil
+}
+
+// stagedGoSDKRoot is the Go SDK this binary stages under the host's config root, or "" when it embeds none and the build resolves the SDK elsewhere.
+func (h *Host) stagedGoSDKRoot() string {
+	dir, err := pigsdklock.StagedSDKDir(h.builder.configRoot, "go")
+	if err != nil {
+		return ""
+	}
+	return dir
 }
 
 func (h *Host) stagePackedRust(ctx context.Context, cell CellSpec, oldByName map[string]*managedExt, rep *ReloadCellReport) ([]stagedManagedExt, error) {

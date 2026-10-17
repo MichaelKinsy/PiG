@@ -10,12 +10,12 @@ import (
 )
 
 func TestSessionCacheWasteUsesRegisteredModelPrice(t *testing.T) {
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(services.Close)
-	if err := services.Registry().RegisterProvider("test", extension.ProviderConfig{API: ai.APIOpenAICompletions, BaseURL: "https://example.invalid", APIKey: "test", Models: []extension.ProviderModelConfig{{ID: "test-model", Name: "Test", Cost: extension.ProviderModelCost{CacheRead: .3}}}}); err != nil {
+	if err := services.Registry().RegisterExtensionProvider("test", extension.ProviderConfig{API: ai.APIOpenAICompletions, BaseURL: "https://example.invalid", APIKey: "test", Models: []extension.ProviderModelConfig{{ID: "test-model", Name: "Test", Cost: extension.ProviderModelCost{CacheRead: .3}}}}); err != nil {
 		t.Error(err)
 	}
 	session, err := NewSession(services, SessionOptions{Model: &ai.Model{ID: "faux-1", Provider: &scriptedProvider{}}, SkipBuiltinTools: true})

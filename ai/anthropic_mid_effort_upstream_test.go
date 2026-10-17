@@ -39,8 +39,13 @@ func TestAnthropicMidConversationEffortPayloadFailureRetainsMetadata(t *testing.
 }
 
 func TestAnthropicUpstreamMidConversationEffort(t *testing.T) {
-	config := AnthropicConfig{Model: "claude-fable-5-1", ProviderID: "anthropic", Compat: &AnthropicMessagesCompat{ForceAdaptiveThinking: new(true), SupportsMidConvoEffort: new(true)}, ModelMetadata: &Model{ID: "claude-fable-5-1", DisplayName: "Claude Fable 5.1", Input: []string{"text"}, Capabilities: ModelCapabilities{MaxThinking: ThinkingMax, ContextWindow: 200000, MaxOutputTokens: 32000}, ProviderMeta: ProviderMetadata{ProviderID: "anthropic", API: APIAnthropicMessages, BaseURL: "http://127.0.0.1:9", Reasoning: true}, ThinkingLevelMap: ThinkingLevelMap{ThinkingOff: nil, ThinkingMinimal: new("low"), ThinkingLow: new("low"), ThinkingMedium: new("medium"), ThinkingHigh: new("high"), ThinkingMax: new("max")}}}
-	capture := func(t *testing.T, cfg AnthropicConfig, ctx Context, effort ThinkingLevel) (*AssistantMessage, map[string]json.RawMessage) {
+	config := AnthropicConfig{Model: "claude-fable-5-1", ProviderID: "anthropic", Compat: &AnthropicMessagesCompat{ForceAdaptiveThinking: new(true), SupportsMidConvoEffort: new(true)}, ModelMetadata: &Model{ID: "claude-fable-5-1", DisplayName: "Claude Fable 5.1", Input: []string{"text"}, Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelMax, ContextWindow: 200000, MaxOutputTokens: 32000}, ProviderMeta: ProviderMetadata{ProviderID: "anthropic", API: APIAnthropicMessages, BaseURL: "http://127.0.0.1:9", Reasoning: true}, ThinkingLevelMap: ThinkingLevelMap{ThinkingOff: nil, ThinkingMinimal: new("low"), ThinkingLow: new("low"), ThinkingMedium: new("medium"), ThinkingHigh: new("high"), ThinkingMax: new("max")}}}
+	var captureOptions func(t *testing.T, cfg AnthropicConfig, ctx Context, options StreamOptions) (*AssistantMessage, map[string]json.RawMessage)
+	capture := func(t *testing.T, cfg AnthropicConfig, ctx Context, effort ModelThinkingLevel) (*AssistantMessage, map[string]json.RawMessage) {
+		t.Helper()
+		return captureOptions(t, cfg, ctx, StreamOptions{ThinkingEnabled: new(true), Effort: AnthropicEffort(effort)})
+	}
+	captureOptions = func(t *testing.T, cfg AnthropicConfig, ctx Context, options StreamOptions) (*AssistantMessage, map[string]json.RawMessage) {
 		t.Helper()
 		cfg.APIKey = "test-key"
 		cfg.BaseURL = "http://127.0.0.1:9"
@@ -51,7 +56,8 @@ func TestAnthropicUpstreamMidConversationEffort(t *testing.T) {
 			}
 		}()
 		var payload map[string]json.RawMessage
-		stream, err := provider.Stream(t.Context(), NormalizeContext(ctx), StreamOptions{ThinkingEnabled: new(true), Effort: string(effort), CacheRetention: CacheRetentionNone, OnPayload: func(value any, _ *Model) (any, error) {
+		options.CacheRetention = CacheRetentionNone
+		options.OnPayload = func(value any, _ *Model) (any, error) {
 			encoded, err := json.Marshal(value)
 			if err != nil {
 				return nil, err
@@ -60,7 +66,8 @@ func TestAnthropicUpstreamMidConversationEffort(t *testing.T) {
 				return nil, err
 			}
 			return nil, errors.New("payload captured")
-		}})
+		}
+		stream, err := provider.Stream(t.Context(), NormalizeContext(ctx), options)
 		if err != nil {
 			t.Fatalf("setup failure discarded assistant metadata: %v", err)
 		}
@@ -128,7 +135,7 @@ func TestAnthropicUpstreamMidConversationEffort(t *testing.T) {
 		}
 	})
 	// .upstream/v0.87.1/packages/ai/test/anthropic-mid-conversation-effort.test.ts:121 (all five rows)
-	for _, effort := range []ThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh, ThinkingMax} {
+	for _, effort := range []ModelThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh, ThinkingMax} {
 		t.Run("preserves native effort "+string(effort), func(t *testing.T) {
 			result, payload := capture(t, config, Context{Messages: []Message{UserMessage{Content: UserText("one"), Timestamp: 1}}}, effort)
 			encoded, err := json.Marshal(markers(t, payload))
@@ -172,6 +179,51 @@ func TestAnthropicUpstreamMidConversationEffort(t *testing.T) {
 			t.Fatal(err)
 		}
 		assertShapeJSON(t, encoded, `[{"role":"system","content":[],"output_config":{"effort":"medium"}}]`)
+	})
+	// Pi dc939913 anthropic-mid-conversation-effort.test.ts:150-178 (#10753)
+	t.Run("sends plain disabled thinking without effort when off is supported", func(t *testing.T) {
+		cfg := config
+		offModel := *cfg.ModelMetadata
+		offModel.ThinkingLevelMap = ThinkingLevelMap{ThinkingMinimal: nil, ThinkingLow: new("low"), ThinkingMedium: new("medium"), ThinkingHigh: new("high"), ThinkingMax: new("max")}
+		cfg.ModelMetadata = &offModel
+		assistantAt := func(level string, timestamp int64) Message {
+			message := managedAnthropicContext(level, false).Messages[1].(AssistantMessage)
+			message.Timestamp = timestamp
+			return message
+		}
+		// Anthropic rejects block_binding with disabled thinking, and rejects effort markers that change level (here low, then
+		// medium) while thinking is disabled.
+		result, payload := captureOptions(t, cfg, Context{Messages: []Message{
+			UserMessage{Content: UserText("one"), Timestamp: 1}, assistantAt("low", 1), UserMessage{Content: UserText("two"), Timestamp: 2},
+			assistantAt("medium", 2), UserMessage{Content: UserText("three"), Timestamp: 3},
+		}}, StreamOptions{ThinkingEnabled: new(false)})
+		assertShapeJSON(t, payload["thinking"], `{"type":"disabled"}`)
+		if _, present := payload["output_config"]; present {
+			t.Fatalf("output_config = %s, want none", payload["output_config"])
+		}
+		if found := markers(t, payload); len(found) != 0 {
+			t.Fatalf("effort markers = %v, want none", found)
+		}
+		if result.ProviderThinkingLevel != "" {
+			t.Fatalf("level=%q, want none", result.ProviderThinkingLevel)
+		}
+	})
+	t.Run("keeps adaptive thinking when off is unsupported", func(t *testing.T) {
+		result, payload := captureOptions(t, config, Context{Messages: []Message{UserMessage{Content: UserText("one"), Timestamp: 1}}}, StreamOptions{ThinkingEnabled: new(false)})
+		var thinking struct {
+			Type string `json:"type"`
+		}
+		if err := json.Unmarshal(payload["thinking"], &thinking); err != nil || thinking.Type != "adaptive" {
+			t.Fatalf("thinking = %s, %v, want adaptive", payload["thinking"], err)
+		}
+		encoded, err := json.Marshal(markers(t, payload))
+		if err != nil {
+			t.Fatal(err)
+		}
+		assertShapeJSON(t, encoded, `[{"role":"system","content":[],"output_config":{"effort":"high"}}]`)
+		if result.ProviderThinkingLevel != "high" {
+			t.Fatalf("level=%q, want high", result.ProviderThinkingLevel)
+		}
 	})
 	// .upstream/v0.87.1/packages/ai/test/anthropic-mid-conversation-effort.test.ts:151
 	t.Run("leaves unsupported models on top-level effort", func(t *testing.T) {

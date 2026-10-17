@@ -1,0 +1,1 @@
+# PiG starts Bun with --config naming this file, so Bun reads neither a project bunfig.toml nor the user's: either could preload modules into the extension runtime. It sets nothing.

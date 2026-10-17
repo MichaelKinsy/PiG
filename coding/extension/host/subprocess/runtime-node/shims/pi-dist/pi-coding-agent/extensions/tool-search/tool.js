@@ -132,10 +132,6 @@ export const toolSearchSchema = Type.Object({
     query: Type.String({ description: "Search query for deferred tools." }),
     limit: Type.Optional(Type.Number({ description: `Maximum number of tools to return. Defaults to ${DEFAULT_TOOL_SEARCH_LIMIT}.` })),
 });
-/** Whether the tool is this `tool_search`, not another extension's tool of the same name. */
-export function isToolSearchTool(tool) {
-    return tool.name === TOOL_SEARCH_TOOL_NAME && tool.parameters === toolSearchSchema;
-}
 /** Whether `tool_search` can load a tool with this exposure. */
 function isSearchable(exposure) {
     return exposure === "codemode" || exposure === "deferred";
@@ -170,6 +166,8 @@ export function createToolSearchToolDefinition(options = {}) {
         parameters: toolSearchSchema,
         // Searching is not something scripts need; it changes what the model sees.
         exposure: "model-only",
+        // A query can match any tool that is not declared yet.
+        reachesTools: () => "all",
         async execute(_toolCallId, { query, limit }) {
             if (query.trim() === "")
                 throw new Error("query must not be empty");

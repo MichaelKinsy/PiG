@@ -1,0 +1,31 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExtensionAPI::property:on::call:user_bash"
+  ],
+  "targets": [
+   "coding/extension/api.go#API.OnUserBash"
+  ],
+  "production": [
+   "call:internal/codingagent/event_bridge.go#emitUserBash",
+   "call:coding/cli/rpc_mode.go#rpcUserBashOverride",
+   "call:coding/extension/host/subprocess/user_bash_operations.go#userBashOperationsResult"
+  ],
+  "evidence": [
+   "test:test/extension-conformance/user_bash_operations_test.go#TestConformance_UserBashOperationsRunInTheExtension",
+   "test:test/extension-conformance/user_bash_test.go#TestUserBashValidationAcrossSDKs",
+   "test:test/extension-conformance/user_bash_packed_test.go#TestPackedUserBashUndefinedAcrossSDKs",
+   "test:coding/extension/host/subprocess/user_bash_operations_test.go#TestUserBashOperationsReleaseTheExtensionHandleWhenTheHostDropsThem",
+   "test:coding/extension/host/subprocess/user_bash_operations_test.go#TestUserBashOperationsExecAbortsWithTheContext",
+   "test:coding/extension/host/subprocess/runtime_node_user_bash_operations_test.go#TestNodeRuntimeUserBashOperations",
+   "test:extensions/sdk/user_bash_operations_test.go#TestUserBashOperationsStayInTheExtensionUntilTheHostReleasesThem",
+   "test:coding/cli/rpc_user_bash_port_test.go#TestRPCUserBashFailurePort",
+   "test:internal/codingagent/user_bash_port_test.go#TestInteractiveUserBashEmptyResultPort",
+   "test:test/extension-conformance/event_unsubscribe_every_test.go#TestConformance_EventUnsubscribeEveryEvent",
+   "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
+   "test:test/extension-conformance/api_reference_events_test.go#TestConformance_ExtensionAPIEventSubscriptions"
+  ],
+  "rationale": "pi.on(\"user_bash\", handler): () => void is the Go API member OnUserBash, which returns the unsubscribe function. A handler in every SDK (Go, Rust, Python and Node isolated, Node packed, Go fused; the undefined result also packed Go, Python and Rust) receives Pi's payload, unsubscribes, and returns either a { result } (validated as runner.ts isUserBashEventResult) or { operations }: the BashOperations object stays in the extension, the reply names it by handle, and the host runs the user's command through its exec with onData, signal, timeout and env (RequestUserBashExec); Session.ExecuteBash consumes it in interactive and RPC mode (TestConformance_UserBashOperationsRunInTheExtension).",
+  "async": "user_bash handlers are awaited in load order and the first valid { operations } or { result } wins; a handler error, or a result that is neither, fails the command closed instead of running it locally (runner.ts emitUserBash, #9068). The operations object's exec is awaited by the host through user_bash_exec: output chunks arrive in order before the exit code, the command's cancellation is the exec's AbortSignal and the host keeps awaiting the exec, with its output, until it settles (bash-executor.ts:120-128), a rejection fails the command, and the extension's object is released when the host drops it."
+ }
+]

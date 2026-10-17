@@ -116,17 +116,34 @@ func TestUnreadableSavedSelectionFallsBackToDefault(t *testing.T) {
 	}
 }
 
-func TestConfigHomeIsPigHomeElseDotPig(t *testing.T) {
-	t.Setenv("PIG_HOME", "/somewhere/pig")
-	if got := piglogin.ConfigHome(); got != "/somewhere/pig" {
-		t.Fatalf("ConfigHome = %q", got)
-	}
+// The sprite selection lives under the one config root (internal/configroot: PIG_HOME, else XDG_CONFIG_HOME/pig, else ~/.pig), the root the
+// Pigpen games read through the SDK's ConfigHome. Activate saves there, Active reads from there, and an unresolvable root is an error, never a
+// relative path.
+func TestSpriteStateFollowsTheConfigRoot(t *testing.T) {
+	home := t.TempDir()
+	xdg := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	t.Setenv("PIG_HOME", "")
-	t.Setenv("HOME", "/home/someone")
-	t.Setenv("USERPROFILE", "/home/someone")
-	t.Setenv("XDG_CONFIG_HOME", "/xdg")
-	if got, want := piglogin.ConfigHome(), filepath.Join("/home/someone", ".pig"); got != want {
-		t.Fatalf("ConfigHome = %q, want %q (the games read the same root; XDG_CONFIG_HOME does not move it)", got, want)
+	t.Setenv("XDG_CONFIG_HOME", xdg)
+	if err := piglogin.Activate("cloud"); err != nil {
+		t.Fatal(err)
+	}
+	want := piglogin.StatePath(filepath.Join(xdg, "pig"))
+	if _, err := os.Stat(want); err != nil {
+		t.Fatalf("selection not saved under the XDG config root: %v", err)
+	}
+	if got := piglogin.Active().ID; got != "cloud" {
+		t.Fatalf("Active = %q, want cloud", got)
+	}
+	t.Setenv("XDG_CONFIG_HOME", "")
+	t.Setenv("HOME", "")
+	t.Setenv("USERPROFILE", "")
+	if err := piglogin.Activate("pig-default"); err == nil {
+		t.Fatal("Activate succeeded without a home directory")
+	}
+	if got := piglogin.Active().ID; got != piglogin.DefaultID {
+		t.Fatalf("Active without a config root = %q, want the default", got)
 	}
 }
 

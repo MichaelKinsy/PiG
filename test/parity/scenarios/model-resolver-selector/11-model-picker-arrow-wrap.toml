@@ -14,7 +14,7 @@
 # the background (`void this.refreshModels()`). When that await completes it
 # calls loadModelsFromSnapshot(), which sets selectedIndex back to the current
 # model, undoing an Up sent between the first render and "Model catalogs
-# refreshed." (selection returns to model-two). Pig's ModelSelector.UpdateModels
+# refreshed." (selection returns to model-two). Pig's ModelSelectorComponent.UpdateModels
 # re-anchors the cursor the same way, so both sides are equally asynchronous.
 # The first step therefore waits for the refresh status, the settled state,
 # before Up is sent on both sides. Comparators are unchanged.

@@ -12,8 +12,7 @@ github.com/MichaelKinsy/PiG
 
 PiG is under active development. Pin an exact release or commit when you embed it. Do not assume API stability before the first public release.
 
-After the repository and version tags are public, use the generated API reference
-on pkg.go.dev:
+After the repository and version tags are public, use the generated API reference on pkg.go.dev:
 
 - [`github.com/MichaelKinsy/PiG`](https://pkg.go.dev/github.com/MichaelKinsy/PiG)
 - [`github.com/MichaelKinsy/PiG/agent`](https://pkg.go.dev/github.com/MichaelKinsy/PiG/agent)
@@ -22,15 +21,13 @@ on pkg.go.dev:
 - [`github.com/MichaelKinsy/PiG/tui`](https://pkg.go.dev/github.com/MichaelKinsy/PiG/tui)
 - [`github.com/MichaelKinsy/PiG/extensions/sdk`](https://pkg.go.dev/github.com/MichaelKinsy/PiG/extensions/sdk)
 
-The extension SDK is a nested Go module. Its module version uses the tag prefix
-`extensions/sdk/`, while the command and other public packages use the root
-module tag.
+The extension SDK is a nested Go module. Its module version uses the tag prefix `extensions/sdk/`, while the command and other public packages use the root module tag.
 
 ## Minimal flow
 
 A program normally:
 
-1. creates a `coding.Services` container;
+1. creates a `coding.AgentSessionServices` container;
 2. creates a `coding.Runtime`;
 3. resolves a model;
 4. creates or opens a `coding.Session`;
@@ -49,7 +46,7 @@ import (
 )
 
 func main() {
-    services, err := coding.NewServices(coding.ServicesOptions{
+    services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{
         CWD:      ".",
         AgentDir: coding.DefaultAgentDir(),
     })
@@ -88,9 +85,102 @@ func main() {
 
 The repository contains a complete example at `examples/sdk/main.go`.
 
+### Worked example
+
+This program is the minimal flow with two additions: it prints every Session event type, and it reads the reply with `Session.LastAssistantText`. It runs against a scripted test server registered as the `mock` provider in `models.json`, so the reply wording is illustrative. The event types, their order and the message count are what the program printed.
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+    "os"
+
+    "github.com/MichaelKinsy/PiG/agent"
+    "github.com/MichaelKinsy/PiG/coding"
+)
+
+func main() {
+    cwd, _ := os.MkdirTemp("", "sdk-demo-")
+    defer os.RemoveAll(cwd)
+
+    services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{
+        CWD:      cwd,
+        AgentDir: coding.DefaultAgentDir(),
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer services.Close()
+
+    runtime, err := coding.NewRuntime(coding.RuntimeOptions{Services: services})
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer runtime.Close()
+
+    model, err := coding.BuildModel("mock/mock-1", services)
+    if err != nil {
+        log.Fatal(err)
+    }
+    session, err := runtime.New(coding.SessionStartOptions{
+        Model:        model,
+        SystemPrompt: "You are a concise assistant.",
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer session.Close()
+
+    unsubscribe := session.Subscribe(func(event agent.AgentEvent) {
+        fmt.Printf("event: %T\n", event)
+    })
+    defer unsubscribe()
+
+    messages, err := session.Send(context.Background(), "Say hello")
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Println("messages returned:", len(messages))
+    if text := session.LastAssistantText(); text != nil {
+        fmt.Println("reply:", *text)
+    }
+}
+```
+
+Output:
+
+```text
+event: agent.AgentStartEvent
+event: agent.TurnStartEvent
+event: agent.MessageStartEvent
+event: agent.MessageEndEvent
+event: agent.MessageStartEvent
+event: agent.MessageEndEvent
+event: agent.MessageStartEvent
+event: agent.MessageUpdateEvent
+event: agent.MessageUpdateEvent
+event: agent.MessageUpdateEvent
+event: agent.MessageEndEvent
+event: agent.TurnEndEvent
+event: agent.AgentEndEvent
+event: agent.AgentSettledEvent
+messages returned: 3
+reply: Hello from the test model.
+```
+
+The three message start/end pairs are the system message, your prompt and the reply. The three `MessageUpdateEvent` lines are the reply streaming in. `Send` blocks until `AgentSettledEvent`. The listener is synchronous: it runs while the Session publishes the event (`coding/session.go:2172-2175`), so keep it short. `Send` returned 3 messages (system, user, assistant). `get_session_stats` in [RPC mode](/docs/latest/rpc#worked-example) counts the same three as `totalMessages`.
+
+Two things in this example catch people out:
+
+1. **`Send` does not return an error when the provider fails.** A missing credential ends the run with `err == nil`. The failure is in the returned assistant message. Check `StopReason` and `ErrorMessage` on it. When this program ran without a credential for the provider, a variant that printed those two fields of the assistant message showed `stop="error" err="provider is not configured: mock"` and `LastAssistantText` returned `nil`, so no `reply:` line was printed. Pi behaves the same way: its prompt call resolves and the error is on the assistant message.
+2. **`coding.DefaultAgentDir()` is the directory the `pig` command uses, so `PIG_CODING_AGENT_DIR` wins.** It returns the value of `PIG_CODING_AGENT_DIR` (with a leading `~` expanded), else `<root>/agent`, where `<root>` is the [configuration root](/docs/latest/configuration): `$PIG_HOME`, else `$XDG_CONFIG_HOME/pig`, else `~/.pig` (`internal/codingagent/settings.go:1770-1785`, `internal/configroot/configroot.go:50-66`). With `PIG_USE_PI_DIRS=1` it returns `PI_CODING_AGENT_DIR`, else `~/.pi/agent`. This is Pi's `getAgentDir()` (`.upstream/current/packages/coding-agent/src/config.ts:605-611`) with PiG's directory names: Pi reads only `PI_CODING_AGENT_DIR`, else `~/.pi/agent`. This is divergence D2. Checked on a build that has this behaviour (commit `086395a8bd`): with `PIG_CODING_AGENT_DIR` naming the folder that holds `models.json` and `PIG_HOME` set to a different, empty folder, a variant of the program that printed `DefaultAgentDir:` first printed the `PIG_CODING_AGENT_DIR` folder and then `reply: Hello from the test model.`. Without `PIG_CODING_AGENT_DIR` it printed `<PIG_HOME>/agent`, found no `models.json` there, and printed no reply. Check which directory you got: `fmt.Println(coding.DefaultAgentDir())`. Builds before that commit returned `<PIG_HOME>/agent` and ignored `PIG_CODING_AGENT_DIR` (`pig` itself read it), so a program started with only that variable set read a different `models.json` and `auth.json` than `pig` and failed as in point 1. Against such a build, leave `AgentDir` out of `CreateAgentSessionServicesOptions`: `CreateAgentSessionServices` then resolves the directory as the `pig` command does (`coding/services.go:161-166`), as Pi's `createAgentSessionServices` falls back to `getAgentDir()` (`.upstream/current/packages/coding-agent/src/core/agent-session-services.ts:139`). Setting `PIG_HOME`, or passing the directory in `AgentDir` yourself, also works.
+
 ## Services
 
-`coding.Services` owns shared collaborators such as settings, authentication, model registry state, and paths. Pass it to the Runtime instead of constructing hidden global dependencies.
+`coding.AgentSessionServices` owns shared collaborators such as settings, authentication, model registry state, and paths. Pass it to the Runtime instead of constructing hidden global dependencies.
 
 Set the working directory and agent directory explicitly when your application does not use command-line defaults.
 
@@ -102,7 +192,7 @@ The normal agent directory is:
 
 Use `PIG_HOME` or explicit options for isolated tests and applications.
 
-Use `coding.NewInMemorySettingsManager(initialSettings)` to keep settings without file I/O. Pass that manager through `ServicesOptions.SettingsManager`. The Services container retains it, and Session setting changes survive `Reload` in memory. An explicit `ServicesOptions.ProjectTrusted` value applies to the supplied manager; otherwise its trust state remains unchanged. File-backed settings remain the default. Reload discards transient overrides, and explicit empty tool and Resource lists remain empty.
+Use `coding.NewInMemorySettingsManager(initialSettings)` to keep settings without file I/O. Pass that manager through `CreateAgentSessionServicesOptions.SettingsManager`. The Services container retains it, and Session setting changes survive `Reload` in memory. An explicit `CreateAgentSessionServicesOptions.ProjectTrusted` value applies to the supplied manager; otherwise its trust state remains unchanged. File-backed settings remain the default. Reload discards transient overrides, and explicit empty tool and Resource lists remain empty.
 
 `SettingsManager.GetThemeSetting()` returns a `*string`: nil means omitted, while a pointer to an empty string preserves an explicitly empty name. JSON loading, cloning, project merging, and `SetTheme("")` retain that distinction. `GetTheme()` returns a fixed theme name, or an empty string for an omitted or slash-separated automatic setting.
 
@@ -134,7 +224,9 @@ Create a fresh Session with `Runtime.New`. Open an existing Session with the Run
 
 `Session.Send` blocks until the agent tool loop finishes or the context is cancelled. Do not wrap it in an unowned goroutine only to make it appear asynchronous.
 
-`Session.Prompt(ctx, text, options)` returns the turn messages and an error. `PromptOptions` controls invocation images, input source, streaming delivery and command/template expansion. It does not replace system-prompt construction options. `Session.SendUserMessage(ctx, content, options)` awaits an extension-originated user turn and defaults expansion to false. `Session.SendCustomMessage(ctx, message, options)` awaits custom delivery and any triggered turn. The bound extension actions use `SendExtensionUserMessage` and `SendMessage`; the Session owns their background continuations. Preserve a nil `TriggerTurn` separately from explicit false.
+`Session.Prompt(ctx, text, options)` returns only an error, as Pi's `prompt()` returns `void`; read the messages from Session events or `Session.Send`. `PromptOptions` controls invocation images, input source, streaming delivery and command/template expansion. It does not replace system-prompt construction options. `Session.SendUserMessage(ctx, content, options)` awaits an extension-originated user turn and defaults expansion to false. `Session.SendCustomMessage(ctx, message, options)` awaits custom delivery and any triggered turn. The bound extension actions use `SendExtensionUserMessage` and `SendMessage`; the Session owns their background continuations. Preserve a nil `TriggerTurn` separately from explicit false.
+
+`Session.Compact(ctx, customInstructions)` returns `(*CompactionResult, error)` and rejects a session with nothing to compact, as Pi's `compact()` does. `Session.ExecuteBash(ctx, command, onChunk, *ExecuteBashOptions)` runs a user shell command. `Session.Dispose()` releases the Session as Pi's `dispose()` does: its event stream closes and the model registry no longer keeps it reachable.
 
 When an `agent_settled` extension handler appends custom messages, their message events precede the final settlement event on both Session listeners and mode output.
 
@@ -142,14 +234,14 @@ Subscribe to Session events before sending when your application needs streaming
 
 ### Supply a SessionManager
 
-`coding.SessionManager` is the actual append-only log, not a snapshot of its messages. Create an in-memory manager with `coding.NewInMemorySessionManager(cwd)`. Pass it to `ServicesOptions.SessionManager` when it supplies the project CWD default. Pass the same pointer to `SessionStartOptions.SessionManager` or `SessionOptions.SessionManager` to select the backing log.
+`coding.SessionManager` is the actual append-only log, not a snapshot of its messages. Create an in-memory manager with `coding.NewInMemorySessionManager(cwd)`. Pass it to `CreateAgentSessionServicesOptions.SessionManager` when it supplies the project CWD default. Pass the same pointer to `SessionStartOptions.SessionManager` or `SessionOptions.SessionManager` to select the backing log.
 
 ```go
 manager, err := coding.NewInMemorySessionManager(".")
 if err != nil {
     return err
 }
-services, err := coding.NewServices(coding.ServicesOptions{
+services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{
     AgentDir:       agentDir,
     SessionManager: manager,
 })
@@ -176,6 +268,12 @@ defer session.Close()
 An explicit Services CWD wins over the manager's CWD. Without a manager override, new persisted Sessions use the selected Services agent directory. `GetSessionFile` returns nil in memory. A persisted manager selects a file path before the first user or assistant message creates it, so `IsPersisted` does not imply that the file already exists. Forks and clones keep the source persistence mode. A retained branch without a user or assistant message defers its file write. A factory-owned Runtime fork replaces the Session but retains the in-memory SessionManager object.
 
 Direct calls to a Session's tools receive its current identity, model and thinking state. A tool call with an explicit ToolEnvironment keeps that context instead. Clones keep separate context bindings.
+
+### Supply an Agent or a cache warmer
+
+`SessionOptions.Agent` is an `*agent.Agent` you built. The Session drives it instead of building its own, as Pi's `AgentSessionConfig.agent` does (`agent-session.ts:253,486`). The Session installs its hooks into it: it chains a `FinishTurn`, `PrepareRequest`, `PrepareNextTurn` and `TransformLLMMessages` hook the Agent already had, replaces `BeforeToolCall`, `AfterToolCall`, `PreparePrompt`, `PrepareToolResult` and `SessionFile`, and sets the tools and session ID. You own the rest of the Agent's configuration: the stream function, `TransformContext`, `OnPayload` and header hooks (so no `before_provider_request` or `before_provider_headers` event fires unless your hooks emit it), steering and follow-up modes, thinking budgets, transport and image conversion. A nil `Model` and `ThinkingLevel` take the Agent's, so the Session does not restore them from history. An Agent serves one Session: `Clone` and replacements build their own. Without it the Session builds its Agent with the cache-warming stream function. Pi's `extensionRunnerRef` cell does not exist in PiG (D113): read `Session.ExtensionRunner()` after construction.
+
+`SessionOptions.CacheWarmer` is a `coding.CacheWarmer` you built, as Pi's `AgentSessionConfig.cacheWarmer` is (`agent-session.ts:266,494-497`). The Session wires its `OnWarmed` to the `entry_appended` event, reports its `Status`, forwards `OnAgentSettled` and `OnModeChanged`, and cancels it when the Session closes. Your stream function starts it. A Session replacement builds its own warmer for the new Session.
 
 ## Stream observations
 
@@ -214,7 +312,14 @@ Use `coding.CreateModelRuntime(ctx, options)` for model lookup and catalog refre
 File-backed credential `Modify` and `Delete` calls can cancel while waiting behind another operation on the same store. Cancelling a queued call does not release an active callback's file lock.
 
 For deterministic provider tests, `ai.NewFauxProvider` streams each queued response through the normal event lifecycle. An empty response still emits `start` before its terminal event. Queued `error` and `aborted` responses emit an error event and retain their supplied reason, error message, and timestamp.
+
 Use JSON-serializable model metadata. Circular map or slice references in `SamplingParams` fail JSON serialization instead of causing an unbounded model-projection copy. Keep the returned model metadata read-only.
+
+### Send Anthropic requests through your own client
+
+`ai.StreamOptions.AnthropicClient` replaces the Anthropic Messages provider's client construction, as Pi's `AnthropicOptions.client` does (`anthropic-messages.ts:286-290`, `607-609`). The provider sends its request through it and skips federation, OAuth and API-key header assembly. Other providers ignore it. Use it for an alternative client that shares the Messages API, such as Anthropic on Vertex.
+
+An `ai.AnthropicClient` has one method, `CreateMessage(ctx, ai.AnthropicCreateParams, ai.AnthropicRequestOptions) (*http.Response, error)`. `ctx` carries the request's abort. The provider reads the streamed events from the response body and handles a non-success status itself. A retryable failure that implements `ProviderRequestError` is retried within `StreamOptions.MaxRetries`. `AnthropicCreateParams.Body` is the JSON request body without the betas list, and `Betas` is the comma-joined `anthropic-beta` header value (nil sends no header). `AnthropicRequestOptions.TimeoutMs` is `StreamOptions.TimeoutMs`.
 
 ## Model scopes
 
@@ -246,7 +351,21 @@ Use `[]ai.ToolResultMessageContent{}` for no content and `[]ai.ToolResultMessage
 
 Pass extension definitions through `coding.RuntimeOptions` when your application owns their configuration. The same public extension behavior applies to command-line and embedded use.
 
+`coding.DiscoverAndLoadExtensions(ctx, configuredPaths, cwd, agentDir)` discovers extensions in the project, global and configured locations with Pi's `discoverAndLoadExtensions` order and entry-point rules, and loads them in the extension host. Call `Close()` on the returned `LoadExtensionsResult` to shut the host down. Pi's function takes an event bus; PiG's does not (D117).
+
 Use a Piglet when the composition should also be usable from the `pig` executable or built as a Piglet Binary.
+
+## Go API changes in 0.5.0
+
+These changes break Go code written for 0.4.x:
+
+- `agent.NewAgent(opts)` returns `(*Agent, error)`, as Pi's `Agent` constructor throws. The error is `agent.ErrNoDefaultStreamFunction` when no `StreamFn`, `DefaultStreamFn` or configured default exists. A model's `Provider` no longer stands in for the stream function. `Agent.Continue(ctx)` returns only an `error`.
+- `Session.Prompt` returns only an error, `Session.Compact` returns `(*CompactionResult, error)`, and `Session.ExecuteBash` replaces `ExecuteBash`, `ExecuteBashWithUpdates` and `ExecuteBashWithOperations`.
+- `coding.SessionEntry` and `extension.SessionEntry` are Pi's `SessionEntry` union: an interface whose members are the entry types of Pi's `session-manager.ts`. Read an entry's `type`, `id`, `parentId` and `timestamp` with `entry.Base()`, and its JSON with `entry.Raw()`. A record that no member describes is a `RawEntry`.
+- Types take Pi's names: `InteractiveOptions` is `InteractiveModeOptions`, `StatusLine` is `FooterComponent`, `Services` is `coding.AgentSessionServices`, `NewServices` is `coding.CreateAgentSessionServices`, `ServicesOptions` is `coding.CreateAgentSessionServicesOptions`, and `CLIFlags` is `Args` (its `Args` field is `Messages`).
+- `SettingsManager.GetProviderRetrySettings` returns `*int` for `TimeoutMs` and `MaxRetries` (nil when unset), and `RetryConfig.MaxDelayMs` is `MaxAgentDelayMs`.
+
+`agent` also exports Pi's standalone loop: `RunAgentLoop`, `RunAgentLoopContinue`, `AgentLoop`, `AgentLoopContinue`, `AgentContext`, `AgentLoopConfig`, `AgentEventSink` and `AgentEventStream`. `AgentLoopConfig`, `AgentOptions` and `Agent` take a `GetAPIKey` resolver that runs before every request, as Pi's `getApiKey` does.
 
 ## Cancellation and shutdown
 
@@ -262,6 +381,10 @@ Close resources in this order:
 4. release application-owned Services dependencies.
 
 Do not replay a failed extension operation automatically unless the application knows that the operation is idempotent.
+
+### Contexts that print and cancel like Pi's
+
+`github.com/MichaelKinsy/PiG/chord/context` (package `chordctx`) ports Pi's `@earendil-works/chord/context` onto `context.Context`. It was `internal/chord/chordctx` before 0.5.0. An abort signal is cancellation, and the abort reason is the cancellation cause. `Background()` and `TODO()` are Pi's `BACKGROUND_CONTEXT` and `TODO_CONTEXT`, and contexts derived from them print as Pi's do. `NewKey` makes a typed key from a description that names it in diagnostics only. `WithValue` and `Value` store and read a value, and the parent is unchanged. `WithAbortSignal(parent, signal)` is cancelled by the parent or the signal, whichever is first, with that one's cause. `WithoutAbortSignal` keeps every value and ignores caller cancellation, for mandatory cleanup only. `WithCancel` returns a child and a `cancel(cause)` function. `Await[T](ctx, work)` returns the work's outcome, or the cancellation cause from this waiter only: it does not cancel the work.
 
 ## Harness events
 
@@ -283,21 +406,15 @@ See [RPC mode](/docs/latest/rpc).
 
 ## TypeScript extension declarations
 
-Node extensions use the TypeScript API from
-`@earendil-works/pi-coding-agent`. PiG maps those imports to compatible runtime
-modules when it starts the extension.
+Node extensions use the TypeScript API from `@earendil-works/pi-coding-agent`. PiG maps those imports to compatible runtime modules when it starts the extension.
 
-The source tree includes `extensions/sdk-ts`, a declaration-only package that
-pins the exact Pi version and adds types for PiG-only APIs such as
-`ui.setLogin`. It does not contain a second TypeScript runtime. Install it from
-the source tree during development until PiG publishes a versioned package.
+The source tree includes `extensions/sdk-ts`, a declaration-only package that pins the exact Pi version and adds types for PiG-only APIs such as `ui.setLogin`. It does not contain a second TypeScript runtime. It is not published to npm; install it from the source tree.
 
-## Upstream distinction
+## Pi reference
 
-The npm package `@earendil-works/pi-coding-agent` remains the canonical
-TypeScript SDK. PiG's Go SDK and non-TypeScript bridges do not replace it.
+The npm package `@earendil-works/pi-coding-agent` is Pi's TypeScript SDK. PiG's Go SDK and non-TypeScript bridges do not replace it.
 
-See the [upstream Pi SDK documentation](https://pi.dev/docs/latest/sdk) when you are integrating Pi itself.
+See [upstream Pi's SDK documentation](https://pi.dev/docs/latest/sdk) for the reference implementation.
 
 ## Related documentation
 

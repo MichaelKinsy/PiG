@@ -9,6 +9,13 @@ import (
 
 // sanitizeSurrogates removes unpaired UTF-16 code units carried as WTF-8 in a Go string. Valid UTF-8 stays unchanged; paired WTF-8 code units become their Unicode scalar.
 func sanitizeSurrogates(s string) string {
+	//portlint:allow utf16units requestSpliceMinBytes is the Go-only request-string cache's threshold in bytes (request_body_splice.go:21), not a JS length
+	if len(s) >= requestSpliceMinBytes && requestStrings != nil {
+		// The request cache holds only valid UTF-8 strings, which have no surrogate to remove: a conversation's large strings come back with every request and are not scanned again.
+		if _, held := requestStrings.known(s); held {
+			return s
+		}
+	}
 	first := strings.IndexByte(s, 0xed)
 	for first >= 0 {
 		if _, ok := wtf8SurrogateAt(s, first); ok {

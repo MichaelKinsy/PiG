@@ -11,19 +11,26 @@ import (
 // placeholder on the openai-responses function_call_output, never an empty
 // string and never an image placeholder. Mirrors upstream
 // openai-responses-shared.ts convertToolResultOutput.
+// Pi 4dd2b149 (#8720): the table of text "", "\r\n", " \n\t"; whitespace-only text counts as no text.
 func TestResponsesConvertMessages_EmptyToolResultUsesPlaceholder(t *testing.T) {
+	for _, text := range []string{"", "\r\n", " \n\t"} {
+		t.Run(text, func(t *testing.T) { responsesEmptyToolResult(t, text) })
+	}
+}
+
+func responsesEmptyToolResult(t *testing.T, text string) {
 	p := &openAIResponsesProvider{cfg: OpenAIResponsesConfig{ProviderID: "openai", Model: "gpt-4o-mini"}}
 	messages := []Message{
 		UserMessage{Content: UserText("Run the command")},
 		AssistantMessage{Content: []AssistantContentBlock{
 			ToolCall{ID: "tool-1", Name: "bash", Arguments: JsonObject{"command": "true"}},
 		}},
-		ToolResultMessage{ToolCallID: "tool-1", ToolName: "bash", Content: []ToolResultMessageContent{TextContent{}}},
+		ToolResultMessage{ToolCallID: "tool-1", ToolName: "bash", Content: []ToolResultMessageContent{TextContent{Text: text}}},
 	}
 
 	items, _ := p.convertMessages(messages, nil)
 
-	var fco *respInputItem
+	var fco *ResponsesInputItem
 	for i := range items {
 		if items[i].Type == "function_call_output" {
 			fco = &items[i]

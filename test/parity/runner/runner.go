@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -64,6 +65,11 @@ func RunScenario(ctx context.Context, t *testing.T, sc *Scenario, pig, pi Binary
 	if err != nil {
 		return &ScenarioOutcome{Scenario: sc, Failures: []string{err.Error()}}
 	}
+	// Go probes are built here, before the first timed run (go_prebuild.go).
+	runSc, err := goPrebuilds.prepare(sc, t.Logf)
+	if err != nil {
+		return &ScenarioOutcome{Scenario: sc, Failures: []string{err.Error()}}
+	}
 
 	// Authentication for requires-auth scenarios is injected only into the
 	// ephemeral directory snapshots created by drivers. Fixture roots stay
@@ -83,21 +89,21 @@ func RunScenario(ctx context.Context, t *testing.T, sc *Scenario, pig, pi Binary
 			wg.Add(2)
 			go func() {
 				defer wg.Done()
-				pigResult = d.Run(ctx, t, pig, sc)
+				pigResult = d.Run(ctx, t, pig, runSc)
 			}()
 			go func() {
 				defer wg.Done()
-				piResult = d.Run(ctx, t, pi, sc)
+				piResult = d.Run(ctx, t, pi, runSc)
 			}()
 			wg.Wait()
 		case sc.Assert.RuntimeRatioMax <= 0 || run%2 == 0:
-			pigResult = d.Run(ctx, t, pig, sc)
-			piResult = d.Run(ctx, t, pi, sc)
+			pigResult = d.Run(ctx, t, pig, runSc)
+			piResult = d.Run(ctx, t, pi, runSc)
 		default:
 			// Serial performance pairs alternate launch order so filesystem and
 			// runtime warming do not always benefit Pi, the second process.
-			piResult = d.Run(ctx, t, pi, sc)
-			pigResult = d.Run(ctx, t, pig, sc)
+			piResult = d.Run(ctx, t, pi, runSc)
+			pigResult = d.Run(ctx, t, pig, runSc)
 		}
 		if sc.Driver == "interactive-tmux" || sc.Driver == "headless-terminal" {
 			pigResult = maskResultCWDSnapshotIDs(pigResult)
@@ -169,6 +175,24 @@ func FilterByTags(scenarios []*Scenario, want []string) []*Scenario {
 		}
 	}
 	return out
+}
+
+// FilterOutTags splits scenarios into those carrying none of the given tags and those carrying at least one. A run that
+// leaves scenarios to another machine (the owner-credentials scenarios run on the owner's machine) names the excluded ones
+// instead of skipping them.
+func FilterOutTags(scenarios []*Scenario, exclude []string) (kept, excluded []*Scenario) {
+	if len(exclude) == 0 {
+		return scenarios, nil
+	}
+	kept = make([]*Scenario, 0, len(scenarios))
+	for _, sc := range scenarios {
+		if slices.ContainsFunc(exclude, sc.HasTag) {
+			excluded = append(excluded, sc)
+			continue
+		}
+		kept = append(kept, sc)
+	}
+	return kept, excluded
 }
 
 // FilterByDrivers returns scenarios handled by any requested driver. Driver

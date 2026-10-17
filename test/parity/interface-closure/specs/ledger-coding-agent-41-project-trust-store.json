@@ -1,0 +1,85 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#ProjectTrustStore"
+  ],
+  "targets": [
+   "internal/codingagent/trust_manager.go#ProjectTrustStore"
+  ],
+  "properties": {
+   "get": {
+    "targets": [
+     "internal/codingagent/trust_manager.go#ProjectTrustStore.Get"
+    ],
+    "evidence": [
+     "test:internal/codingagent/trust_manager_test.go#TestProjectTrustStore_RoundTripAndInheritance",
+     "test:coding/cli/project_trust_test.go#TestResolveProjectTrustedInteractiveSelectionPersists"
+    ],
+    "production": [
+     "call:coding/cli/project_trust.go#resolveProjectTrusted"
+    ],
+    "rationale": "get(cwd) is Get(cwd) (*bool, error): nil is the upstream null decision, the error is an unreadable store."
+   },
+   "getEntry": {
+    "targets": [
+     "internal/codingagent/trust_manager.go#ProjectTrustStore.GetEntry"
+    ],
+    "evidence": [
+     "test:internal/codingagent/trust_manager_test.go#TestProjectTrustStore_RoundTripAndInheritance",
+     "test:internal/codingagent/trust_selector_caller_test.go#TestTrustSelectorProductionSavesParentWithoutActivatingIt"
+    ],
+    "production": [
+     "call:internal/codingagent/slash_session_handlers.go#trustHandler"
+    ],
+    "rationale": "getEntry(cwd) is GetEntry(cwd) (*ProjectTrustStoreEntry, error): the nearest stored ancestor decision, nil for null."
+   },
+   "set": {
+    "targets": [
+     "internal/codingagent/trust_manager.go#ProjectTrustStore.Set"
+    ],
+    "evidence": [
+     "test:internal/codingagent/trust_manager_test.go#TestProjectTrustStore_RoundTripAndInheritance",
+     "test:coding/cli/project_trust_test.go#TestResolveProjectTrustedInteractiveSelectionPersists"
+    ],
+    "production": [
+     "call:coding/cli/project_trust.go#resolveProjectTrusted"
+    ],
+    "rationale": "set(cwd, decision) is Set(cwd, *bool) error; a nil decision clears the entry."
+   },
+   "setMany": {
+    "targets": [
+     "internal/codingagent/trust_manager.go#ProjectTrustStore.SetMany"
+    ],
+    "evidence": [
+     "test:internal/codingagent/trust_selector_caller_test.go#TestTrustSelectorProductionSavesParentWithoutActivatingIt"
+    ],
+    "production": [
+     "call:internal/codingagent/slash_session_handlers.go#trustHandler"
+    ],
+    "rationale": "setMany(decisions) is SetMany([]ProjectTrustUpdate) error."
+   }
+  },
+  "production": [
+   "call:coding/cli/project_trust.go#resolveProjectTrusted"
+  ],
+  "evidence": [
+   "test:internal/codingagent/trust_manager_test.go#TestProjectTrustStore_RoundTripAndInheritance"
+  ],
+  "rationale": "ProjectTrustStore is internal ProjectTrustStore (trust.json under the agent directory); ProjectTrustDecision is *bool (nil for null)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ProjectTrustStore::construct:0"
+  ],
+  "targets": [
+   "internal/codingagent/trust_manager.go#NewProjectTrustStore"
+  ],
+  "production": [
+   "call:coding/cli/package_command_trust.go#createPackageCommandSettings"
+  ],
+  "evidence": [
+   "test:internal/codingagent/trust_manager_test.go#TestProjectTrustStore_RoundTripAndInheritance"
+  ],
+  "rationale": "new ProjectTrustStore(agentDir) is NewProjectTrustStore(agentDir) *ProjectTrustStore."
+ }
+]

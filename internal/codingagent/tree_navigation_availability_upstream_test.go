@@ -13,8 +13,8 @@ type availabilityNavigationHandle struct {
 	navigate func(context.Context, string, bool, string) (NavigateTreeResult, error)
 }
 
-func (h *availabilityNavigationHandle) NavigateTreeHandle(ctx context.Context, id string, summarize bool, instructions string) (NavigateTreeResult, error) {
-	return h.navigate(ctx, id, summarize, instructions)
+func (h *availabilityNavigationHandle) NavigateTreeHandle(ctx context.Context, id string, options NavigateTreeOptions) (NavigateTreeResult, error) {
+	return h.navigate(ctx, id, options.Summarize, options.CustomInstructions)
 }
 
 func TestTreeNavigationAvailabilityUpstream(t *testing.T) {
@@ -45,7 +45,7 @@ func TestTreeNavigationAvailabilityUpstream(t *testing.T) {
 			if _, err := session.AppendMessage(assistantMsg("", ai.TextContent{Text: "reply"})); err != nil {
 				t.Fatal(err)
 			}
-			originalLeaf := *session.LeafID()
+			originalLeaf := *session.GetLeafID()
 			calls, aborts := 0, 0
 			h := &availabilityNavigationHandle{recordingCompactHandle: recordingCompactHandle{inner: session, agent: m.agent}}
 			h.navigate = func(_ context.Context, id string, summarize bool, instructions string) (NavigateTreeResult, error) {
@@ -102,7 +102,7 @@ func TestTreeNavigationAvailabilityUpstream(t *testing.T) {
 				if m.activeStatusIndicator != originalIndicator || m.branchSummaryCancel != nil {
 					t.Fatal("rejection replaced or cleared the active operation UI")
 				}
-				if got := session.LeafID(); got == nil || *got != originalLeaf {
+				if got := session.GetLeafID(); got == nil || *got != originalLeaf {
 					t.Fatalf("rejection changed leaf to %v", got)
 				}
 			} else if err != nil {

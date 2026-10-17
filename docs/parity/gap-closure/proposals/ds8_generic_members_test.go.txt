@@ -1,0 +1,83 @@
+package rules
+
+import (
+	"go/types"
+	"testing"
+)
+
+const dsGenericSource = `package x
+
+import "context"
+
+type Reader interface{ Read() int }
+type Observer interface{ Watch() int }
+type Session interface {
+	Reader
+	Observer
+	Commit() error
+}
+type Tx struct{}
+type Other struct{}
+
+func Snapshot[T any](r Reader, token T) *T { return nil }
+func SnapshotAsOf[T any](r Reader, token T, at int) *T { return nil }
+func WatchDoc[T any](o Observer, token T) *T { return nil }
+func DocumentStateOf[T any](s Session, token T) *T { return nil }
+func DocumentStateOfWithOptions[T any](s Session, token T, opts int) *T { return nil }
+func CreateTask[I any](tx Tx, input I) int { return 0 }
+func UseService[T any](tx *Tx, def T) T { return def }
+func ProvideService[T any](tx *Tx, def T) {}
+func ProvideMany[T any](tx *Tx, def T) {}
+func ProvideManyAlt[T any](tx *Tx, def T) {}
+func Plain(r Reader) int { return 0 }
+func Lowercase[T any](r Reader, t T) {}
+func Methodless[T any](o Other, t T) {}
+func Doc[T any](r Reader, t T) {}
+func Peek[T any](ctx context.Context, r Reader, t T) {}
+func Documentation[T any](r Reader, t T) {}
+`
+
+// mutation-checked: the mutants "DS8 accepts a non-generic function", "DS8 ignores the receiver parameter", "DS8 accepts ambiguous candidates" and "DS8 accepts a lowercase continuation" fail it.
+func TestDS8GenericMethodsArePackageFunctions(t *testing.T) {
+	s := check(t, dsGenericSource)
+	r := genericMethodFunc{}
+	owner := func(name string) *types.TypeName { return s.Lookup(name).(*types.TypeName) }
+	for _, c := range []struct{ owner, prop, want string }{
+		{"Session", "snapshot", "Snapshot"}, // an interface embedding Reader satisfies the Reader parameter
+		{"Reader", "snapshot", "Snapshot"},  // exact name wins over SnapshotAsOf
+		{"Session", "snapshotAsOf", "SnapshotAsOf"},
+		{"Observer", "watchDoc", "WatchDoc"},
+		{"Session", "documentState", "DocumentStateOf"}, // the shorter name is a prefix of DocumentStateOfWithOptions
+		{"Tx", "createTask", "CreateTask"},
+		{"Tx", "use", "UseService"},
+		{"Tx", "provideMany", "ProvideMany"},
+		{"Reader", "peek", "Peek"}, // a leading context.Context is not the receiver
+		{"Reader", "doc", "Doc"},   // exact; Documentation continues in lowercase and is not a candidate
+		{"Other", "methodless", "Methodless"},
+	} {
+		m, ok := r.Member(dsEnv{}, Property{Name: c.prop}, owner(c.owner))
+		if !ok || m.Name() != c.want {
+			t.Errorf("%s.%s = %v %v, want %s", c.owner, c.prop, m, ok, c.want)
+		}
+	}
+	// Refusals: not generic (Plain), a lowercase continuation (Documentation for docum), no receiver of the owner's type
+	// (Other has no Reader methods), two unrelated candidates (provide), an unrelated owner, an empty and a non-letter property.
+	for _, c := range []struct{ owner, prop string }{
+		{"Reader", "plain"}, {"Reader", "docum"}, {"Other", "snapshot"}, {"Tx", "snapshot"}, {"Reader", "lowercase2"}, {"Reader", ""}, {"Reader", "_x"},
+		// provide fits ProvideService and ProvideMany, neither a prefix of the other: ambiguous, so silent.
+		{"Tx", "provide"},
+	} {
+		if m, ok := r.Member(dsEnv{}, Property{Name: c.prop}, owner(c.owner)); ok {
+			t.Errorf("%s.%s must stay silent, got %v", c.owner, c.prop, m)
+		}
+	}
+}
+
+func TestDS8IsRegistered(t *testing.T) {
+	for _, r := range Registered() {
+		if r == "data-shapes/DS8" {
+			return
+		}
+	}
+	t.Fatal("DS8 is not registered")
+}

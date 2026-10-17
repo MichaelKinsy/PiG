@@ -26,6 +26,9 @@ func TestBuildNativeArtifactRejectsFusedProcessHazards(t *testing.T) {
 		{name: "chdir", source: "package hazard\nimport \"os\"\nfunc Extension() { _ = os.Chdir(\"/\") }\n", symbol: "os.Chdir"},
 		{name: "fatal", source: "package hazard\nimport \"log\"\nfunc Extension() { log.Fatal(\"stop\") }\n", symbol: "log.Fatal"},
 		{name: "print", source: "package hazard\nimport \"fmt\"\nfunc Extension() { fmt.Println(\"noise\") }\n", symbol: "fmt.Println"},
+		{name: "factory type", source: "package hazard\nimport \"github.com/MichaelKinsy/PiG/coding/extension\"\nvar _ extension.ExtensionFactory\nfunc Extension() {}\n", symbol: "coding/extension.ExtensionFactory"},
+		{name: "factory loader", source: "package hazard\nimport \"github.com/MichaelKinsy/PiG/coding/extension/factoryload\"\nfunc Extension() { _, _ = factoryload.LoadExtensionFromFactory(nil, \"\", nil, nil, \"\") }\n", symbol: "factoryload.LoadExtensionFromFactory"},
+		{name: "built-in table", source: "package hazard\nimport \"github.com/MichaelKinsy/PiG/coding/extension/builtin\"\nfunc Extension() { _ = builtin.All(builtin.Options{}) }\n", symbol: "builtin.All"},
 		{name: "stdout", source: "package hazard\nimport (\"fmt\"; \"os\")\nfunc Extension() { _, _ = fmt.Fprintln(os.Stdout, \"noise\") }\n", symbol: "os.Stdout"},
 	}
 	for _, test := range tests {

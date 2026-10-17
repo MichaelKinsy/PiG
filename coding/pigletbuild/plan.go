@@ -15,6 +15,7 @@ const (
 	Go     Language = "go"
 	Rust   Language = "rust"
 	Python Language = "python"
+	Node   Language = "node"
 )
 
 // Decision is how one extension executes in the Piglet Binary.
@@ -175,16 +176,23 @@ type Verdict struct {
 	Blockers []string `json:"blockers,omitempty"`
 }
 
-// Validate rejects unresolved or empty Piglet extension sets and enforces an
-// authored realization requirement. Advisory target compatibility warnings are
-// represented in the plan and do not masquerade as a successful self-contained
-// target.
-func Validate(plan Plan, resolutionWarnings []string, extensionCount int, requireFused bool) Verdict {
+// Validate rejects unresolved Piglet extensions and a Piglet whose listed
+// extensions resolve to none, and enforces an authored realization
+// requirement. listedExtensions counts the effective Piglet's extension
+// entries (after extends and extends.remove); extensionCount counts the
+// extensions resolution produced. A Piglet that lists no extensions still
+// builds: a base that only strips built-ins or sets defaults, or one with a
+// frontend member, is a Binary of Stock PiG's own parts. Advisory target
+// compatibility warnings are represented in the plan and do not masquerade
+// as a successful self-contained target.
+//
+// pig additive (D18): a Piglet Binary needs no extension.
+func Validate(plan Plan, resolutionWarnings []string, listedExtensions, extensionCount int, hasFrontend, requireFused bool) Verdict {
 	blockers := make([]string, 0, len(resolutionWarnings))
 	for _, warning := range resolutionWarnings {
 		blockers = append(blockers, "unresolved extension: "+warning)
 	}
-	if extensionCount == 0 {
+	if listedExtensions > 0 && extensionCount == 0 && !hasFrontend {
 		blockers = append(blockers, "piglet resolves to no extensions")
 	}
 	for _, extension := range plan.Ext {

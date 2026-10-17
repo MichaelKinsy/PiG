@@ -1,5 +1,7 @@
 package ai
 
+// pi: packages/ai/src/auth/oauth/device-code.ts
+
 import (
 	"context"
 	"errors"

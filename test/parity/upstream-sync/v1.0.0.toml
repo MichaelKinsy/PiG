@@ -909,7 +909,7 @@ path = "packages/coding-agent/src/experimental/commands.ts"
 change = "modified"
 disposition = "ported"
 evidence = ["test:internal/experimental/remote_runtime_b_upstream_test.go#TestExperimentalDurableServerCompositionRemoteB"]
-rationale = "commands.ts:69-79: the client command prints the prompted text once; no streamed text deltas. cmd/pig/main_experimental.go drops OnEvent and the newline branch."
+rationale = "commands.ts:69-79: the client command prints the prompted text once; no streamed text deltas. coding/cli/experimental_entry.go drops OnEvent and the newline branch."
 
 [[files]]
 path = "packages/coding-agent/src/experimental/durable/harness-setup.ts"

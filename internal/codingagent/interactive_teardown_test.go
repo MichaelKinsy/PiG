@@ -72,13 +72,13 @@ func TestStopInteractiveTuiFullscreenExitOutput(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var output bytes.Buffer
 			model := &ai.Model{ID: "m", DisplayName: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 8000}}
-			mode := newUnmountedSwitchTuiProbe(t, InteractiveOptions{
+			mode := newUnmountedSwitchTuiProbe(t, InteractiveModeOptions{
 				CWD: t.TempDir(), Model: model, AgentDir: t.TempDir(),
-				Settings: Settings{TuiMode: "fullscreen", FullscreenExitOutput: test.exitOutput},
+				Settings: Settings{TuiMode: "fullscreen", FullscreenExitOutput: FullscreenExitOutput(test.exitOutput)},
 			}, &output)
 			mode.mountInteractiveTui(true)
 			mode.chatContainer.Add(tui.NewText("transcript row"))
-			mode.tuiInst.OpenOverlay(tui.NewText("overlay row"), tui.OverlayOptions{})
+			mode.tuiInst.ShowOverlay(tui.NewText("overlay row"), tui.OverlayOptions{})
 			mode.tuiInst.Render()
 			output.Reset()
 
@@ -121,7 +121,7 @@ func TestOnSettingAppliedFullscreenScrollbarAppliesLive(t *testing.T) {
 	sm := NewSettingsManager(dir, dir)
 	sv := tui.NewScrollView(tui.NewText("x"), tui.ScrollViewOptions{Scrollbar: "auto"})
 	mode := &InteractiveMode{
-		opts:                 InteractiveOptions{AgentDir: dir, CWD: dir, SettingsManager: sm},
+		opts:                 InteractiveModeOptions{AgentDir: dir, CWD: dir, SettingsManager: sm},
 		transcriptScrollView: sv,
 	}
 
@@ -131,7 +131,7 @@ func TestOnSettingAppliedFullscreenScrollbarAppliesLive(t *testing.T) {
 	}
 
 	// Regular mode: nil transcript view must not panic.
-	regular := &InteractiveMode{opts: InteractiveOptions{AgentDir: dir, CWD: dir, SettingsManager: sm}}
+	regular := &InteractiveMode{opts: InteractiveModeOptions{AgentDir: dir, CWD: dir, SettingsManager: sm}}
 	regular.buildSlashContext(t.Context()).OnSettingApplied("fullscreen-scrollbar", "hidden")
 }
 
@@ -140,7 +140,7 @@ func TestOnSettingAppliedFullscreenCopyOnSelectAppliesLive(t *testing.T) {
 	manager := NewSettingsManager(dir, dir)
 	renderer := tui.NewTuiAltScreenWithOutput(io.Discard, 80, 24, tui.TuiAltScreenOptions{})
 	mode := &InteractiveMode{
-		opts:      InteractiveOptions{AgentDir: dir, CWD: dir, SettingsManager: manager},
+		opts:      InteractiveModeOptions{AgentDir: dir, CWD: dir, SettingsManager: manager},
 		altScreen: renderer,
 		tuiInst:   renderer,
 	}
@@ -201,5 +201,26 @@ func TestRequestShutdownDoesNotTearDownOffLoop(t *testing.T) {
 	case <-m.uiTaskCh:
 	default:
 		t.Error("requestShutdown did not post a wake task for the loop")
+	}
+}
+
+// stop() disposes the footer (interactive-mode.ts:7098) and its data provider (:7099). Disposing stops the git watcher and drops the branch
+// subscribers (footer-data-provider.ts:187) and leaves the footer's rendered rows as they were (footer.ts:93).
+func TestStopInteractiveTuiDisposesTheFooterWithoutChangingIt(t *testing.T) {
+	spy := &stopSpyRenderer{TuiAltScreen: tui.NewTuiAltScreenWithOutput(io.Discard, 80, 24, tui.TuiAltScreenOptions{})}
+	model := &ai.Model{ID: "model-id", DisplayName: "Model", Capabilities: ai.ModelCapabilities{ContextWindow: 200000}}
+	footer := NewFooterComponent(model, "agent", nil)
+	before := strings.Join(footer.Render(80), "\n")
+	m := &InteractiveMode{tuiInst: spy, statusLine: footer}
+
+	m.stopInteractiveTui()
+
+	if after := strings.Join(footer.Render(80), "\n"); after != before {
+		t.Fatalf("teardown changed the footer:\nbefore %q\nafter  %q", before, after)
+	}
+	footer.Dispose()
+	footer.Dispose()
+	if again := strings.Join(footer.Render(80), "\n"); again != before {
+		t.Fatalf("a second Dispose changed the footer: %q", again)
 	}
 }

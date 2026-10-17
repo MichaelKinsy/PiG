@@ -1,0 +1,238 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRuntime::property:checkAuth"
+  ],
+  "targets": [
+   "coding/services.go#ModelRuntime.CheckAuth"
+  ],
+  "production": [
+   "call:coding/model_availability.go#ModelRuntime.refreshProviderAvailability"
+  ],
+  "evidence": [
+   "test:coding/model_runtime_auth_options_upstream_test.go#TestCreateModelRuntimeAcceptsCredentialStoreUpstream",
+   "test:coding/model_runtime_auth_options_upstream_test.go#TestCreateModelRuntimeInjectedOAuthIsActiveAuthUpstream"
+  ],
+  "rationale": "ModelRuntime.checkAuth is the Go method ModelRuntime.CheckAuth; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRuntime::property:getAllModels"
+  ],
+  "targets": [
+   "coding/model_runtime_typed.go#ModelRuntime.GetAllModels"
+  ],
+  "production": [
+   "call:coding/model_runtime_typed.go#ModelRuntime.GetModelsOfType"
+  ],
+  "evidence": [
+   "test:coding/model_runtime_images_upstream_test.go#TestModelRuntimeImagesUpstream"
+  ],
+  "rationale": "ModelRuntime.getAllModels is the Go method ModelRuntime.GetAllModels; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRuntime::property:getAvailableSnapshot"
+  ],
+  "targets": [
+   "coding/model_availability.go#ModelRuntime.GetAvailableSnapshot"
+  ],
+  "production": [
+   "call:coding/cli/rpc_mode.go#rpcAvailableModels"
+  ],
+  "evidence": [
+   "test:coding/credential_refresh_7027_upstream_test.go#TestCredentialRefreshHang7027StalledLogin"
+  ],
+  "rationale": "ModelRuntime.getAvailableSnapshot is the Go method ModelRuntime.GetAvailableSnapshot; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRuntime::property:getError"
+  ],
+  "targets": [
+   "coding/model_availability.go#ModelRuntime.GetError"
+  ],
+  "production": [
+   "call:internal/evals/configured_runtime.go#InspectAddedModel"
+  ],
+  "evidence": [
+   "test:coding/model_availability_upstream_test.go#TestStalledAvailabilityRefreshUpstream",
+   "test:coding/model_runtime_auth_options_upstream_test.go#TestCreateModelRuntimeScopesAvailabilityReadsUpstream"
+  ],
+  "rationale": "ModelRuntime.getError is the Go method ModelRuntime.GetError; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRuntime::property:getModel"
+  ],
+  "targets": [
+   "coding/services.go#ModelRuntime.GetModel"
+  ],
+  "production": [
+   "call:coding/cli/extension_scoped_models.go#extensionScopedModels"
+  ],
+  "evidence": [
+   "test:coding/catalog_options_upstream_test.go#TestCatalogOptionsThroughModelRuntime",
+   "test:coding/cloudflare_compat_upstream_test.go#TestModelRuntimeCloudflareCompatUpstream"
+  ],
+  "rationale": "ModelRuntime.getModel is the Go method ModelRuntime.GetModel; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRuntime::property:hasConfiguredAuth"
+  ],
+  "targets": [
+   "coding/virtual_models.go#ModelRuntime.HasConfiguredAuth"
+  ],
+  "production": [
+   "call:coding/cli/extension_scoped_models.go#extensionScopedModels"
+  ],
+  "evidence": [
+   "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream"
+  ],
+  "rationale": "ModelRuntime.hasConfiguredAuth is the Go method ModelRuntime.HasConfiguredAuth; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRuntime::property:isUsingOAuth"
+  ],
+  "targets": [
+   "coding/model_availability.go#ModelRuntime.IsUsingOAuth"
+  ],
+  "production": [
+   "call:coding/model_availability.go#ModelRuntime.IsUsingSubscription"
+  ],
+  "evidence": [
+   "test:coding/model_runtime_auth_options_upstream_test.go#TestCreateModelRuntimeInjectedSubscriptionOAuthUpstream",
+   "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream"
+  ],
+  "rationale": "ModelRuntime.isUsingOAuth is the Go method ModelRuntime.IsUsingOAuth; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRuntime::property:refresh"
+  ],
+  "targets": [
+   "coding/model_runtime_native.go#ModelRuntime.Refresh"
+  ],
+  "production": [
+   "call:coding/cli/cli_runtime_build.go#cliRuntimeBuilder.buildResources"
+  ],
+  "evidence": [
+   "test:coding/credential_refresh_7027_upstream_test.go#TestCredentialRefreshHang7027StalledLogin",
+   "test:coding/extension/host/inproc/upstream_provider_queue_test.go#TestUpstreamRunnerProviderRegistration"
+  ],
+  "rationale": "ModelRuntime.refresh is the Go method ModelRuntime.Refresh; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRuntime::property:registerProvider"
+  ],
+  "targets": [
+   "coding/model_runtime_native.go#ModelRuntime.RegisterProvider"
+  ],
+  "production": [
+   "call:coding/model_registry_facade.go#ModelRegistry.RegisterProviderConfig"
+  ],
+  "evidence": [
+   "test:coding/model_runtime_auth_options_upstream_test.go#TestExplicitAuthorizationHeaderOverridesAuthHeaderUpstream",
+   "test:coding/model_runtime_auth_options_upstream_test.go#TestExtensionHeadersAreTransformedOnceUpstream"
+  ],
+  "rationale": "ModelRuntime.registerProvider is the Go method ModelRuntime.RegisterProvider; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRuntime::property:registerVirtualModel"
+  ],
+  "targets": [
+   "coding/virtual_models.go#ModelRuntime.RegisterVirtualModel"
+  ],
+  "production": [
+   "call:coding/virtual_models.go#ModelRegistry.RegisterVirtualModel"
+  ],
+  "evidence": [
+   "test:coding/virtual_models_upstream_test.go#TestVirtualModelDoesNotForwardCallerCredentialsToARoutedModelOfAnotherProvider",
+   "test:coding/virtual_models_upstream_test.go#TestVirtualModelRejectsRoutesToVirtualOrUnknownModels"
+  ],
+  "rationale": "ModelRuntime.registerVirtualModel is the Go method ModelRuntime.RegisterVirtualModel; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRuntime::property:unregisterVirtualModel"
+  ],
+  "targets": [
+   "coding/virtual_models.go#ModelRuntime.UnregisterVirtualModel"
+  ],
+  "production": [
+   "call:coding/virtual_models.go#ModelRegistry.UnregisterVirtualModel"
+  ],
+  "evidence": [
+   "test:coding/virtual_models_upstream_test.go#TestVirtualModelsListSeveralUnderAProviderWithPhysicalModels",
+   "test:coding/virtual_models_upstream_test.go#TestVirtualSessionFallsBackToTheLastPhysicalResponseWhenTheTranscriptEndsWithARoutingFailure"
+  ],
+  "rationale": "ModelRuntime.unregisterVirtualModel is the Go method ModelRuntime.UnregisterVirtualModel; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRegistry::property:getProviderAuthStatus"
+  ],
+  "targets": [
+   "internal/codingagent/model_registry.go#ModelRegistry.GetProviderAuthStatus"
+  ],
+  "production": [
+   "call:internal/codingagent/bug_report.go#ModelRegistry.BugReportProviderInfo"
+  ],
+  "evidence": [
+   "test:coding/model_registry_auth_status_upstream_test.go#TestModelRegistryAuthStatusUpstream"
+  ],
+  "rationale": "ModelRegistry.getProviderAuthStatus is the Go method ModelRegistry.GetProviderAuthStatus; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRegistry::property:getProviderDisplayName"
+  ],
+  "targets": [
+   "internal/codingagent/model_registry.go#ModelRegistry.GetProviderDisplayName"
+  ],
+  "production": [
+   "call:internal/codingagent/bug_report.go#ModelRegistry.BugReportProviderInfo"
+  ],
+  "evidence": [
+   "test:coding/model_registry_dynamic_upstream_test.go#TestModelRegistryDynamicProvidersUpstream"
+  ],
+  "rationale": "ModelRegistry.getProviderDisplayName is the Go method ModelRegistry.GetProviderDisplayName; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRegistry::property:getRegisteredProviderConfig"
+  ],
+  "targets": [
+   "internal/codingagent/native_model_runtime.go#ModelRegistry.GetRegisteredProviderConfig"
+  ],
+  "production": [
+   "call:internal/codingagent/model_configured_auth_status.go#ModelRegistry.ConfiguredRequestAuthStatus"
+  ],
+  "evidence": [
+   "test:coding/model_registry_dynamic_upstream_test.go#TestModelRegistryDynamicProvidersUpstream"
+  ],
+  "rationale": "ModelRegistry.getRegisteredProviderConfig is the Go method ModelRegistry.GetRegisteredProviderConfig; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRegistry::property:unregisterProvider"
+  ],
+  "targets": [
+   "internal/codingagent/model_registry.go#ModelRegistry.UnregisterProvider"
+  ],
+  "production": [
+   "call:coding/cli/extensions.go#bindProviderRegistry"
+  ],
+  "evidence": [
+   "test:coding/dynamic_provider_upstream_test.go#TestDynamicProviderRefreshPreservesHostListenerAndTranscript",
+   "test:coding/model_registry_dynamic_upstream_test.go#TestModelRegistryDynamicProvidersUpstream"
+  ],
+  "rationale": "ModelRegistry.unregisterProvider is the Go method ModelRegistry.UnregisterProvider; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ }
+]

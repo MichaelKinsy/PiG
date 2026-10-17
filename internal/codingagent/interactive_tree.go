@@ -87,7 +87,7 @@ func (m *InteractiveMode) navigateTree(ctx context.Context, targetID string, sum
 	}
 	done := make(chan navigationResult, 1)
 	go func() {
-		result, err := handle.NavigateTreeHandle(navCtx, targetID, summarize, customInstructions)
+		result, err := handle.NavigateTreeHandle(navCtx, targetID, NavigateTreeOptions{Summarize: summarize, CustomInstructions: customInstructions})
 		// Session events pass through an ordered dispatcher. Await its FIFO
 		// barrier before clearing the status, including after an Esc abort.
 		if flusher, ok := handle.(interface{ FlushEvents(context.Context) error }); ok {
@@ -113,7 +113,7 @@ func (m *InteractiveMode) navigateTree(ctx context.Context, targetID string, sum
 				return outcome.result, inputErr
 			}
 			if outcome.err == nil && !outcome.result.Cancelled && !outcome.result.Aborted {
-				m.rebuildChatFromSession()
+				m.repaintInitialMessages()
 			}
 			return outcome.result, outcome.err
 		case <-cancelled:

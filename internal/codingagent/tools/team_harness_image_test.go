@@ -60,7 +60,7 @@ func TestHarnessImageMagicBoundaries(t *testing.T) {
 			if got := imageprocessing.DetectSupportedImageMimeType(tc.data); got != tc.want {
 				t.Errorf("DetectSupportedImageMimeType = %q, want %q", got, tc.want)
 			}
-			if got := SupportedImageMime(tc.data); got != tc.want {
+			if got := supportedImageMime(t, tc.data); got != tc.want {
 				t.Errorf("read-tool SupportedImageMime = %q, want %q", got, tc.want)
 			}
 		})
@@ -81,8 +81,8 @@ func TestHarnessImageBMPPlanesAndBitDepth(t *testing.T) {
 							want = "image/bmp"
 						}
 					}
-					if got := SupportedImageMime(bmpHeader(0, 14+dib, dib, planes, bits)); got != want {
-						t.Fatalf("SupportedImageMime = %q, want %q", got, want)
+					if got := supportedImageMime(t, bmpHeader(0, 14+dib, dib, planes, bits)); got != want {
+						t.Fatalf("supportedImageMime = %q, want %q", got, want)
 					}
 				})
 			}

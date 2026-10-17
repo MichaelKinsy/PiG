@@ -165,7 +165,7 @@ func TestEmitInput_TransformWithNilImagesKeepsCurrentImages(t *testing.T) {
 	}
 	r := inproc.NewRunner(exts, ".")
 
-	originalImgs := []extension.ImageContent{"img1", "img2"}
+	originalImgs := []extension.ImageContent{{Data: "img1"}, {Data: "img2"}}
 	got, err := r.EmitInput(context.Background(), "x", originalImgs, "interactive", "")
 	if err != nil {
 		t.Fatalf("err = %v", err)
@@ -182,7 +182,7 @@ func TestEmitInput_TransformWithNilImagesKeepsCurrentImages(t *testing.T) {
 	// imagesChanged flag is set ONLY when a handler explicitly assigns
 	// non-nil Images. Here Images was nil, so flag stays false ⇒ Transform
 	// is returned because Text changed, but Images carries the original.
-	if len(xform.Images) != 2 || xform.Images[0] != "img1" {
+	if len(xform.Images) != 2 || xform.Images[0].Data != "img1" {
 		t.Errorf("Images = %v, want original [img1, img2]", xform.Images)
 	}
 }
@@ -192,7 +192,7 @@ func TestEmitInput_TransformWithNilImagesKeepsCurrentImages(t *testing.T) {
 func TestEmitInput_TransformImagesUpdates(t *testing.T) {
 	exts := []extension.Extension{
 		extWithInputHandler("/ext/a", func(extension.InputEvent, context.Context) extension.InputEventResult {
-			return extension.InputEventResultTransform{Text: "x", Images: []extension.ImageContent{"new-img"}}
+			return extension.InputEventResultTransform{Text: "x", Images: []extension.ImageContent{{Data: "new-img"}}}
 		}),
 	}
 	r := inproc.NewRunner(exts, ".")
@@ -204,7 +204,7 @@ func TestEmitInput_TransformImagesUpdates(t *testing.T) {
 	if !ok {
 		t.Fatalf("got = %T, want Transform", got)
 	}
-	if len(xform.Images) != 1 || xform.Images[0] != "new-img" {
+	if len(xform.Images) != 1 || xform.Images[0].Data != "new-img" {
 		t.Errorf("Images = %v, want [new-img]", xform.Images)
 	}
 }

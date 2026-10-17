@@ -1,0 +1,77 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getSteeringMode"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetSteeringMode"
+  ],
+  "production": [
+   "call:coding/session.go#NewSession"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_simple_getters_upstream_test.go#TestSettingsManagerSimpleGettersMatchUpstreamDefaultsAndStoredValues"
+  ],
+  "rationale": "SettingsManager.getSteeringMode is GetSteeringMode; the string unions are Go strings, undefined thinkingBudgets is nil; defaults and stored values are asserted against the settings file."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getFollowUpMode"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetFollowUpMode"
+  ],
+  "production": [
+   "call:coding/session.go#NewSession"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_simple_getters_upstream_test.go#TestSettingsManagerSimpleGettersMatchUpstreamDefaultsAndStoredValues"
+  ],
+  "rationale": "SettingsManager.getFollowUpMode is GetFollowUpMode; the string unions are Go strings, undefined thinkingBudgets is nil; defaults and stored values are asserted against the settings file."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getEnableSkillCommands"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetEnableSkillCommands"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_commands.go#InteractiveMode.buildAutocompleteProvider"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_simple_getters_upstream_test.go#TestSettingsManagerSimpleGettersMatchUpstreamDefaultsAndStoredValues"
+  ],
+  "rationale": "SettingsManager.getEnableSkillCommands is GetEnableSkillCommands; the string unions are Go strings, undefined thinkingBudgets is nil; defaults and stored values are asserted against the settings file."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getShowCacheMissNotices"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetShowCacheMissNotices"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive.go#InteractiveMode.showCacheMissNotices"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_simple_getters_upstream_test.go#TestSettingsManagerSimpleGettersMatchUpstreamDefaultsAndStoredValues"
+  ],
+  "rationale": "SettingsManager.getShowCacheMissNotices is GetShowCacheMissNotices; the string unions are Go strings, undefined thinkingBudgets is nil; defaults and stored values are asserted against the settings file."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getThinkingBudgets"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetThinkingBudgets"
+  ],
+  "production": [
+   "call:coding/session.go#NewSession"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_simple_getters_upstream_test.go#TestSettingsManagerSimpleGettersMatchUpstreamDefaultsAndStoredValues"
+  ],
+  "rationale": "SettingsManager.getThinkingBudgets is GetThinkingBudgets; the string unions are Go strings, undefined thinkingBudgets is nil; defaults and stored values are asserted against the settings file."
+ }
+]

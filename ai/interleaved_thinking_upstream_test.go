@@ -34,7 +34,7 @@ func assertInterleavedThinking(t *testing.T, p Provider) {
 	}
 	complete := func() *AssistantMessage {
 		t.Helper()
-		stream, err := p.Stream(t.Context(), NormalizeContext(request), StreamOptions{Thinking: ThinkingHigh, IsReasoning: true})
+		stream, err := p.Stream(t.Context(), NormalizeContext(request), StreamOptions{Thinking: ThinkingLevelHigh, IsReasoning: true})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -102,10 +102,10 @@ func TestInterleavedThinkingFauxUpstream(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			p := NewFauxProvider(FauxConfig{ProviderID: tc.provider, Model: tc.id})
 			p.SetResponses([]FauxResponseStep{
-				FauxStaticStep(FauxResponse{StopReason: "toolUse", Content: []FauxContentBlock{FauxThinking("I will multiply with calculator."), FauxToolCall("calculator", map[string]any{"a": 328.0, "b": 29.0, "operation": "multiply"}, "calculator-1")}}),
-				FauxFactoryStep(func(transcript TranscriptContext, opts StreamOptions, state *FauxProviderState, _ *Model) (FauxResponse, error) {
-					count := state.CallCount.Load()
-					if opts.Thinking != ThinkingHigh || count != 2 {
+				FauxStaticStep(FauxResponse{StopReason: "toolUse", Content: []FauxContentBlock{FauxThinking("I will multiply with calculator."), FauxToolCall("calculator", map[string]any{"a": 328.0, "b": 29.0, "operation": "multiply"}, &FauxToolCallOptions{ID: "calculator-1"})}}),
+				FauxFactoryStep(func(transcript TranscriptContext, opts StreamOptions, state *FauxProviderState, _ *Model) (AssistantMessage, error) {
+					count := state.CallCount()
+					if opts.Thinking != ThinkingLevelHigh || count != 2 {
 						t.Errorf("call=%d thinking=%s", count, opts.Thinking)
 					}
 					messages := transcript.Messages()
@@ -113,7 +113,7 @@ func TestInterleavedThinkingFauxUpstream(t *testing.T) {
 					if !ok || tool.ToolCallID != "calculator-1" || tool.ToolName != "calculator" || tool.IsError || len(tool.Content) != 1 || tool.Content[0] != (TextContent{Text: "The answer is 9512 or 19024."}) {
 						t.Errorf("tool result=%+v", messages[len(messages)-1])
 					}
-					return FauxResponse{StopReason: "stop", Content: []FauxContentBlock{FauxThinking("The first answer is the product."), FauxText("9512")}}, nil
+					return FauxResponse{StopReason: "stop", Content: []FauxContentBlock{FauxThinking("The first answer is the product."), FauxText("9512")}}.AssistantMessage(), nil
 				}),
 			})
 			assertInterleavedThinking(t, p)

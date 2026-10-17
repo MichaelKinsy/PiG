@@ -22,7 +22,7 @@ type ScrollViewOptions struct {
 	Follow               string // "none" | "end"
 	Primary              bool
 	Overscroll           string // "chain" | "contain"
-	Scrollbar            string // "hidden" | "auto" | "always"
+	Scrollbar            ScrollViewScrollbar
 	ScrollbarTrackStyle  func(text string) string
 	ScrollbarThumbStyle  func(text string) string
 	ScrollbarHideDelayMs *int
@@ -34,6 +34,15 @@ type ScrollViewScrollToOptions struct {
 	// current content end.
 	DisableFollow bool
 }
+
+// ScrollViewScrollbar is the scrollbar mode: "hidden", "auto" or "always" (components/scroll-view.ts ScrollViewScrollbar).
+type ScrollViewScrollbar string
+
+const (
+	ScrollbarHidden ScrollViewScrollbar = "hidden"
+	ScrollbarAuto   ScrollViewScrollbar = "auto"
+	ScrollbarAlways ScrollViewScrollbar = "always"
+)
 
 // ScrollView ports pi-tui's ScrollView. It embeds pig's Container (holding the
 // single child) and owns the transient-scrollbar timer.
@@ -48,7 +57,7 @@ type ScrollView struct {
 	scrollbarHideDelayMs int
 
 	mu                        sync.Mutex
-	currentScrollbar          string
+	currentScrollbar          ScrollViewScrollbar
 	currentScrollTop          int
 	contentHeight             int
 	currentViewportHeight     int
@@ -134,7 +143,7 @@ func (s *ScrollView) IsFollowingEnd() bool {
 }
 
 // Scrollbar reports the current scrollbar mode.
-func (s *ScrollView) Scrollbar() string {
+func (s *ScrollView) Scrollbar() ScrollViewScrollbar {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.currentScrollbar
@@ -143,11 +152,12 @@ func (s *ScrollView) Scrollbar() string {
 // FollowEnd reports whether the view was configured to follow its end.
 func (s *ScrollView) FollowEnd() bool { return s.followEnd }
 
-// ScrollbarTrackStyle returns the style function applied to scrollbar track cells.
-func (s *ScrollView) ScrollbarTrackStyle() func(text string) string { return s.scrollbarTrackStyle }
+// ScrollbarTrackStyle styles scrollbar track cells: upstream's readonly `scrollbarTrackStyle` is a function property, so it is called with the text.
+// upstream: packages/tui/src/components/scroll-view.ts:27
+func (s *ScrollView) ScrollbarTrackStyle(text string) string { return s.scrollbarTrackStyle(text) }
 
-// ScrollbarThumbStyle returns the style function applied to scrollbar thumb cells.
-func (s *ScrollView) ScrollbarThumbStyle() func(text string) string { return s.scrollbarThumbStyle }
+// ScrollbarThumbStyle styles scrollbar thumb cells (upstream scroll-view.ts:28).
+func (s *ScrollView) ScrollbarThumbStyle(text string) string { return s.scrollbarThumbStyle(text) }
 
 // IsScrollbarActive reports whether the pointer is hovering or dragging the scrollbar.
 func (s *ScrollView) IsScrollbarActive() bool {
@@ -160,14 +170,14 @@ func (s *ScrollView) IsScrollbarActive() bool {
 func (s *ScrollView) IsScrollbarVisible() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.currentScrollbar == "always" {
+	if s.currentScrollbar == ScrollbarAlways {
 		return s.currentViewportHeight > 0
 	}
-	return s.currentScrollbar == "auto" && s.contentHeight > s.currentViewportHeight && s.transientScrollbarVisible
+	return s.currentScrollbar == ScrollbarAuto && s.contentHeight > s.currentViewportHeight && s.transientScrollbarVisible
 }
 
 // SetScrollbar changes the scrollbar mode.
-func (s *ScrollView) SetScrollbar(scrollbar string) {
+func (s *ScrollView) SetScrollbar(scrollbar ScrollViewScrollbar) {
 	s.mu.Lock()
 	if scrollbar == s.currentScrollbar {
 		s.mu.Unlock()
@@ -191,7 +201,7 @@ func (s *ScrollView) SetScrollbar(scrollbar string) {
 func (s *ScrollView) GetContentWidth(width int) int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.currentScrollbar == "always" && width > 1 {
+	if s.currentScrollbar == ScrollbarAlways && width > 1 {
 		return width - 1
 	}
 	return width
@@ -200,7 +210,7 @@ func (s *ScrollView) GetContentWidth(width int) int {
 // markScrollbarActivity shows the transient scrollbar and arms the hide timer.
 // The caller must hold s.mu.
 func (s *ScrollView) markScrollbarActivity() {
-	if s.currentScrollbar != "auto" || s.contentHeight <= s.currentViewportHeight {
+	if s.currentScrollbar != ScrollbarAuto || s.contentHeight <= s.currentViewportHeight {
 		return
 	}
 	s.transientScrollbarVisible = true
@@ -264,14 +274,12 @@ func (s *ScrollView) SetScrollbarActive(active bool) {
 	}
 }
 
-// ScrollTo scrolls to an absolute offset, clamped to the scrollable range.
-func (s *ScrollView) ScrollTo(scrollTop int) {
-	s.ScrollToWithOptions(scrollTop, ScrollViewScrollToOptions{})
-}
-
-// ScrollToWithOptions scrolls to an absolute offset, clamped to the scrollable
-// range. Mirrors upstream scrollTo(scrollTop, options).
-func (s *ScrollView) ScrollToWithOptions(scrollTop int, options ScrollViewScrollToOptions) {
+// ScrollTo scrolls to an absolute offset, clamped to the scrollable range. Mirrors upstream scrollTo(scrollTop, options = {}); the optional options are the second parameter.
+func (s *ScrollView) ScrollTo(scrollTop int, opts ...ScrollViewScrollToOptions) {
+	var options ScrollViewScrollToOptions
+	if len(opts) > 0 {
+		options = opts[0]
+	}
 	s.mu.Lock()
 	maxScrollTop := max(0, s.contentHeight-s.currentViewportHeight)
 	next := max(0, min(maxScrollTop, scrollTop))

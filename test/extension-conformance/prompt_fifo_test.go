@@ -12,6 +12,7 @@ import (
 // runner.ts queues event microtasks in FIFO order. Record a sequence number
 // inside the handler before any host call; notification completion may reorder,
 // but the sequence-to-event association may not.
+// packages/coding-agent/src/core/extensions/types.ts:1006-1014 (pi.on ui_prompt_start, ui_prompt_end).
 func TestPromptHandlerBodyFIFOAcrossSDKs(t *testing.T) {
 	t.Parallel()
 	const prompts = 512

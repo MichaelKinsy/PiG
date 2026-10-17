@@ -1,5 +1,7 @@
 package compaction
 
+// pi: packages/coding-agent/src/core/compaction/utils.ts
+
 import (
 	"strings"
 	"testing"
@@ -49,17 +51,23 @@ func TestSerializeConversation_ToolResultTruncation(t *testing.T) {
 	}
 }
 
-func TestSerializeConversation_AssistantThinking(t *testing.T) {
-	msgs := []ai.Message{ai.AssistantMessage{Content: []ai.AssistantContentBlock{
-		ai.ThinkingContent{Thinking: "internal plan"},
-		ai.TextContent{Text: "response"},
-	}}}
-	got := SerializeConversation(msgs)
-	if !strings.Contains(got, "[Assistant thinking]: internal plan") {
-		t.Errorf("missing thinking block, got: %q", got)
-	}
-	if !strings.Contains(got, "[Assistant]: response") {
-		t.Errorf("missing text block, got: %q", got)
+// Pi 15e7bdc1: thinking is omitted whatever else the message holds, so a message of only thinking adds nothing and the thinking never reaches the summary request.
+func TestSerializeConversation_AssistantThinkingIsOmitted(t *testing.T) {
+	long := strings.Repeat("t", 5000)
+	for name, row := range map[string]struct {
+		blocks []ai.AssistantContentBlock
+		want   string
+	}{
+		"with text":      {[]ai.AssistantContentBlock{ai.ThinkingContent{Thinking: "internal plan"}, ai.TextContent{Text: "response"}}, "[Assistant]: response"},
+		"thinking only":  {[]ai.AssistantContentBlock{ai.ThinkingContent{Thinking: long}}, ""},
+		"empty thinking": {[]ai.AssistantContentBlock{ai.ThinkingContent{Thinking: ""}}, ""},
+		"redacted":       {[]ai.AssistantContentBlock{ai.ThinkingContent{Thinking: "[Reasoning redacted]", Redacted: true}, ai.TextContent{Text: "r"}}, "[Assistant]: r"},
+		"two blocks":     {[]ai.AssistantContentBlock{ai.ThinkingContent{Thinking: "a"}, ai.TextContent{Text: "t"}, ai.ThinkingContent{Thinking: "b"}}, "[Assistant]: t"},
+		"text then tool": {[]ai.AssistantContentBlock{ai.ThinkingContent{Thinking: long}, ai.TextContent{Text: "t"}, ai.ToolCall{ID: "c", Name: "read", Arguments: ai.JsonObject{"path": "f"}}}, "[Assistant]: t\n\n[Assistant tool calls]: read(path=\"f\")"},
+	} {
+		if got := SerializeConversation([]ai.Message{ai.AssistantMessage{Content: row.blocks}}); got != row.want {
+			t.Errorf("%s: SerializeConversation = %q, want %q", name, got, row.want)
+		}
 	}
 }
 
@@ -109,6 +117,7 @@ func TestComputeFileLists_ModifiedNotInRead(t *testing.T) {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/compaction/utils.ts:14 (FileOperations.written).
 func TestComputeFileLists_BothSorted(t *testing.T) {
 	ops := NewFileOps()
 	ops.Read["c.go"] = struct{}{}

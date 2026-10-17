@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // TestTreeSelectLargeNavigationFast guards against the O(n^2)/O(n^3)
@@ -22,7 +24,7 @@ func TestTreeSelectLargeNavigationFast(t *testing.T) {
 	root := branchingTree(branches, depth)
 
 	start := time.Now()
-	ts := NewTreeSelect("big", root)
+	ts := NewTreeSelectorComponent("big", root)
 	if len(ts.rows) < branches*depth {
 		t.Fatalf("expected >= %d rows, got %d", branches*depth, len(ts.rows))
 	}
@@ -38,9 +40,7 @@ func TestTreeSelectLargeNavigationFast(t *testing.T) {
 
 	// The old code took tens of seconds at this size. 5s is generous
 	// enough to never flake yet fails hard on a quadratic regression.
-	if elapsed > 5*time.Second {
-		t.Fatalf("large tree navigation too slow: %v (quadratic regression?)", elapsed)
-	}
+	testenv.TimingGateFatal(t, elapsed > 5*time.Second, "large tree navigation too slow: %v (quadratic regression?)", elapsed)
 }
 
 func branchingTree(branches, depth int) TreeNode {
@@ -61,7 +61,7 @@ func branchingTree(branches, depth int) TreeNode {
 }
 
 func BenchmarkTreeSelectSearchAndClear(b *testing.B) {
-	ts := NewTreeSelect("", branchingTree(60, 40))
+	ts := NewTreeSelectorComponent("", branchingTree(60, 40))
 	ts.SetInitialCursor("b0d39", "")
 	b.ReportAllocs()
 	for b.Loop() {

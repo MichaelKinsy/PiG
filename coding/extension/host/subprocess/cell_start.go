@@ -7,6 +7,8 @@ import (
 	"runtime"
 	"slices"
 	"sync"
+
+	"github.com/MichaelKinsy/PiG/internal/procpolicy"
 )
 
 type startTurnKey struct{}
@@ -121,6 +123,10 @@ func (h *Host) stageCellsInOrder(ctx context.Context, cells []CellSpec, commit f
 		return
 	}
 	ctx = context.WithValue(ctx, memberAdmissionKey{}, admissions)
+	if len(units) > 1 {
+		// pig additive (D174): extension startup waits on these preparations; they are admitted and run at the runtime default width.
+		defer procpolicy.Widen()()
+	}
 	slots := make(chan struct{}, maxConcurrentCellPreparations())
 	var stages sync.WaitGroup
 	// Node preparations do not hold a native preparation slot while awaiting an interleaved member.
@@ -179,7 +185,9 @@ func (me *managedExt) activateNode() error {
 	if me.host != nil && me.host.uiBridge != nil {
 		bridge := me.host.uiBridge
 		// Notifications may have arrived during later factories. Activation must not overwrite that state with the earlier registration snapshot.
-		ready.Ready.Models = bridge.ModelCatalog()
+		if me.wantsModelRegistry {
+			ready.Ready.Models = bridge.ModelCatalog()
+		}
 		me.entryCursorMu.Lock()
 		ready.Ready.State = bridge.Snapshot(me.flagNames, 0, me.host.subscribedToSessionLog(me.config.Name))
 		if ready.Ready.State.Session != nil {

@@ -15,8 +15,8 @@ func TestAnthropicThinkingBudgetCapBoundaryUpstream(t *testing.T) {
 		{2048, 2048, 1024}, {20000, 16896, 16384},
 	} {
 		t.Run(fmt.Sprint(tc.cap), func(t *testing.T) {
-			model := &Model{ProviderMeta: ProviderMetadata{Reasoning: true}, Capabilities: ModelCapabilities{MaxThinking: ThinkingHigh, MaxOutputTokens: tc.cap}}
-			result := thinkingToAnthropicConfig(model, 512, ThinkingHigh)
+			model := &Model{ProviderMeta: ProviderMetadata{Reasoning: true}, Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh, MaxOutputTokens: tc.cap}}
+			result := thinkingToAnthropicConfig(model, 512, ThinkingHigh, nil)
 			if result == nil || result.MaxTokens != tc.wantMax || result.Thinking == nil || result.Thinking.BudgetTokens != tc.wantBudget {
 				t.Fatalf("thinking = %#v; want max=%d budget=%d", result, tc.wantMax, tc.wantBudget)
 			}

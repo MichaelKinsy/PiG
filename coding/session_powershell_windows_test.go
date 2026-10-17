@@ -72,14 +72,12 @@ func TestPowerShellToolEventsReachExtensionsOnWindows(t *testing.T) {
 		t.Fatalf("tool_call events = %d, want 2", len(calls))
 	}
 	for i, command := range []string{"Write-Output ('pig' + '-' + 'powershell')", "Remove-Item blocked.txt"} {
-		event, err := extension.UnmarshalToolCallEvent(calls[i])
-		if err != nil {
+		var ps extension.CustomToolCallEvent
+		if err := json.Unmarshal(calls[i], &ps); err != nil {
 			t.Fatal(err)
 		}
-		ps, ok := event.(extension.PowerShellToolCallEvent)
-		input, _ := ps.Input.(map[string]any)
-		if !ok || ps.Type != "tool_call" || input["command"] != command {
-			t.Fatalf("tool_call %d wire = %s, want a PowerShellToolCallEvent for %q", i, calls[i], command)
+		if ps.Type != "tool_call" || ps.ToolName != "powershell" || ps.Input["command"] != command {
+			t.Fatalf("tool_call %d wire = %s, want a powershell call for %q", i, calls[i], command)
 		}
 	}
 	// Upstream agent-loop finalizes a blocked call immediately, without

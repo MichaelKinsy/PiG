@@ -1,0 +1,101 @@
+[
+  {
+    "upstream": "packages/tui/src/components/stack.ts",
+    "package": "./tui",
+    "tests": [
+      "TestStackLayoutNodeReflectsEntries"
+    ],
+    "upstream_reference": "packages/tui/src/components/stack.ts",
+    "mutation": "tui/stack.go: replace 'return StackLayoutNode{Type: s.layoutType, Entries: s.entries, Gap: s.gap, Align: s.align}' with 'return StackLayoutNode{Type: s.layoutType, Entries: s.entries, Gap: 0, Align: s.align}'; compiling go test -run exact test -count=1 fails TestStackLayoutNodeReflectsEntries."
+  },
+  {
+    "upstream": "packages/tui/src/components/stack.ts",
+    "package": "./tui",
+    "tests": [
+      "TestVStackExposesAVStackLayoutNode"
+    ],
+    "upstream_reference": "packages/tui/src/components/stack.ts",
+    "mutation": "tui/stack.go: replace 'return StackLayoutNode{Type: s.layoutType, Entries: s.entries, Gap: s.gap, Align: s.align}' with 'return StackLayoutNode{Type: \"hstack\", Entries: s.entries, Gap: s.gap, Align: s.align}'; compiling go test -run exact test -count=1 fails TestVStackExposesAVStackLayoutNode."
+  },
+  {
+    "upstream": "packages/tui/src/terminal-image.ts",
+    "package": "./tui",
+    "tests": [
+      "TestUpstreamImageFallback"
+    ],
+    "upstream_reference": "packages/tui/src/terminal-image.ts",
+    "mutation": "tui/terminal_image.go: replace 'display = \"~\" + filename[len(home):]' with 'display = filename'; compiling go test -run exact test -count=1 fails TestUpstreamImageFallback."
+  },
+  {
+    "upstream": "packages/tui/src/layout.ts",
+    "package": "./tui",
+    "tests": [
+      "TestLayoutRendersProportionalGlyphScrollbar"
+    ],
+    "upstream_reference": "packages/tui/src/layout.ts",
+    "mutation": "tui/layout.go: replace 'replacement := scrollView.ScrollbarTrackStyle(\"│\")' with 'replacement := scrollView.ScrollbarTrackStyle(\"|\")'; compiling go test -run exact test -count=1 fails TestLayoutRendersProportionalGlyphScrollbar."
+  },
+  {
+    "upstream": "packages/tui/src/layout.ts",
+    "package": "./tui",
+    "tests": [
+      "TestUpstreamViewportLayout"
+    ],
+    "upstream_reference": "packages/tui/src/layout.ts",
+    "mutation": "tui/layout.go: replace 'replacement := scrollView.ScrollbarTrackStyle(\"│\")' with 'replacement := scrollView.ScrollbarTrackStyle(\"|\")'; compiling go test -run exact test -count=1 fails TestUpstreamViewportLayout."
+  },
+  {
+    "upstream": "packages/tui/src/layout.ts",
+    "package": "./tui",
+    "tests": [
+      "TestLayoutScrollbarPreservesOnlyUnderlyingBackground"
+    ],
+    "upstream_reference": "packages/tui/src/layout.ts",
+    "mutation": "tui/layout.go: replace 'preserveTargetBackground := scrollView.Scrollbar() != \"always\"' with 'preserveTargetBackground := scrollView.Scrollbar() == \"always\"'; compiling go test -run exact test -count=1 fails TestLayoutScrollbarPreservesOnlyUnderlyingBackground."
+  },
+  {
+    "upstream": "packages/tui/src/tui.ts",
+    "package": "./tui",
+    "tests": [
+      "TestTUICaptureRestoreRenderStateRoundTrip"
+    ],
+    "upstream_reference": "packages/tui/src/tui.ts",
+    "mutation": "tui/tui.go: replace 't.prevWidth = state.PreviousWidth\\nt.prevHeight = state.PreviousHeight\\nt.cursorRow = state.CursorRow' with 't.prevHeight = state.PreviousHeight\\nt.cursorRow = state.CursorRow'; compiling go test -run exact test -count=1 fails TestTUICaptureRestoreRenderStateRoundTrip."
+  },
+  {
+    "upstream": "packages/tui/src/tui.ts",
+    "package": "./tui",
+    "tests": [
+      "TestTUIRestoreRenderStateBlanksImageLines"
+    ],
+    "upstream_reference": "packages/tui/src/tui.ts",
+    "mutation": "tui/tui.go: replace 'if IsImageLine(line) {\\nrestored[i] = \"\"\\ncontinue\\n}\\nrestored[i] = line\\n}\\nt.prevLines = restored\\nt.previousKittyImageIDs = nil' with 'restored[i] = line\\n}\\nt.prevLines = restored\\nt.previousKittyImageIDs = nil'; compiling go test -run exact test -count=1 fails TestTUIRestoreRenderStateBlanksImageLines."
+  },
+  {
+    "upstream": "packages/tui/src/tui.ts",
+    "package": "./tui",
+    "tests": [
+      "TestOverlayHandleExportedMethodsToggleFocusAndVisibility"
+    ],
+    "upstream_reference": "packages/tui/src/tui.ts",
+    "mutation": "tui/tui.go: replace 'h.apply(overlayCommand{kind: overlaySetHidden, entryID: h.id, hidden: hidden})' with 'h.apply(overlayCommand{kind: overlaySetHidden, entryID: h.id, hidden: false})'; compiling go test -run exact test -count=1 fails TestOverlayHandleExportedMethodsToggleFocusAndVisibility."
+  },
+  {
+    "upstream": "packages/tui/src/components/scroll-view.ts",
+    "package": "./tui",
+    "tests": [
+      "TestScrollViewScrollbarStylesAreCallable"
+    ],
+    "upstream_reference": "packages/tui/src/components/scroll-view.ts",
+    "mutation": "tui/scroll_view.go: replace 'trackStyle = func(text string) string { return \"\\\\x1b[90m\" + text + \"\\\\x1b[39m\" }' with 'trackStyle = func(text string) string { return \"\\\\x1b[91m\" + text + \"\\\\x1b[39m\" }'; compiling go test -run exact test -count=1 fails TestScrollViewScrollbarStylesAreCallable."
+  },
+  {
+    "upstream": "packages/tui/src/tui.ts",
+    "package": "./tui",
+    "tests": [
+      "TestIsFocusableAndIsViewportTUI"
+    ],
+    "upstream_reference": "packages/tui/src/tui.ts",
+    "mutation": "tui/tui.go: replace '_, ok := component.(Focusable)\\nreturn ok\\n}\\n\\n// moveFocusFlag' with '_, ok := component.(Focusable)\\nreturn !ok\\n}\\n\\n// moveFocusFlag'; compiling go test -run exact test -count=1 fails TestIsFocusableAndIsViewportTUI."
+  }
+]

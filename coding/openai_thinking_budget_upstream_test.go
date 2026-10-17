@@ -17,7 +17,7 @@ func TestOpenAICompletionsThinkingTokenBudgetUpstream(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
 		compat  map[string]any
-		level   ai.ThinkingLevel
+		level   ai.ModelThinkingLevel
 		budgets *ai.ThinkingBudgets
 		max     int
 		field   string
@@ -70,7 +70,7 @@ func TestOpenAICompletionsThinkingTokenBudgetUpstream(t *testing.T) {
 	}
 }
 
-func captureThinkingBudgetRuntime(t *testing.T, compat map[string]any, level ai.ThinkingLevel, budgets *ai.ThinkingBudgets, maxTokens int) map[string]any {
+func captureThinkingBudgetRuntime(t *testing.T, compat map[string]any, level ai.ModelThinkingLevel, budgets *ai.ThinkingBudgets, maxTokens int) map[string]any {
 	t.Helper()
 	requests := make(chan map[string]any, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -95,7 +95,7 @@ func captureThinkingBudgetRuntime(t *testing.T, compat map[string]any, level ai.
 	if err = os.WriteFile(filepath.Join(dir, "models.json"), data, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: dir})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: dir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +103,7 @@ func captureThinkingBudgetRuntime(t *testing.T, compat map[string]any, level ai.
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := services.ModelRuntime().StreamSimple(t.Context(), model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Hi")}}}, ai.StreamOptions{APIKey: "test", Thinking: level, ThinkingBudgets: budgets, MaxTokens: maxTokens}).Result()
+	result := services.ModelRuntime().StreamSimple(t.Context(), model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Hi")}}}, ai.StreamOptions{APIKey: "test", Thinking: level.ReasoningOption(), ThinkingBudgets: budgets, MaxTokens: maxTokens}).Result()
 	if result.StopReason != ai.StopReasonStop {
 		t.Fatalf("result=%#v", result)
 	}

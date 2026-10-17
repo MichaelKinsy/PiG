@@ -56,12 +56,23 @@ func main() {
 				{"name": "hello", "description": "Greet from extension"},
 			},
 			"handlers": []map[string]any{
-				{"event": "session_start", "can_block": false, "handler_id": 1},
-			},
-			"widgets": []map[string]any{
-				{"key": "status"},
+				{"event": "session_start", "handler_id": 1},
 			},
 		},
+	}
+	// FIXTURE_GENERATION_FILE counts the processes that loaded the fixture: each declares a command, flag and shortcut labelled with its generation, and the command "crash" ends the process without answering.
+	if path := os.Getenv("FIXTURE_GENERATION_FILE"); path != "" {
+		generation := 1
+		if data, err := os.ReadFile(path); err == nil {
+			_, _ = fmt.Sscan(string(data), &generation)
+			generation++
+		}
+		_ = os.WriteFile(path, []byte(fmt.Sprint(generation)), 0o600)
+		label := fmt.Sprintf("gen %d", generation)
+		register := reg["register"].(map[string]any)
+		register["commands"] = []map[string]any{{"name": "probe", "description": label}, {"name": "crash", "description": "crash"}}
+		register["shortcuts"] = []map[string]any{{"key": "ctrl+alt+g", "description": label}}
+		register["flags"] = []map[string]any{{"name": "probe-flag", "description": label, "type": "string", "default": label}}
 	}
 	writeFrame(conn, reg)
 
@@ -151,6 +162,9 @@ func main() {
 				})
 
 			case "command":
+				if name, _ := req["tool"].(string); name == "crash" {
+					os.Exit(23)
+				}
 				// Acknowledge commands.
 				writeFrame(conn, map[string]any{
 					"type":     "response",

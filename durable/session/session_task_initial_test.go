@@ -4,13 +4,9 @@ import (
 	"math"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 )
-
-// erasedTask is a custom erased task definition, as a registry may hold.
-type erasedTask struct{ definition *durable.AnyTaskDefinition }
-
-func (task erasedTask) AnyDefinition() *durable.AnyTaskDefinition { return task.definition }
 
 // Upstream transaction.ts createTask calls definition.initial(input) inside the Tx operation, so a throwing initial
 // rejects that operation and the commit rolls back; then it mints the ID and copies the record, so a non-JSON
@@ -26,7 +22,7 @@ func TestSessionCreateTaskInitial(t *testing.T) {
 		})
 		commits := len(harness.Storage.Commits())
 		err := tryCommit(harness.Session, func(tx durable.Tx) error {
-			_, err := durable.CreateTask(tx, failing, obj{"path": "a"}, conversationOwned(conversationId))
+			_, err := durable.CreateTask(tx, failing, delta.JsonObjectOf("path", "a"), conversationOwned(conversationId))
 			return err
 		})
 		expectErrorContains(t, err, "initial failed")
@@ -39,14 +35,14 @@ func TestSessionCreateTaskInitial(t *testing.T) {
 	t.Run("mints before rejecting a non-JSON checkpoint", func(t *testing.T) {
 		harness := open()
 		conversationId := createConversation(t, harness)
-		task := erasedTask{&durable.AnyTaskDefinition{
+		task := durable.AnyTask{Definition: &durable.AnyTaskDefinition{
 			Name:    "test.nan",
 			Version: 1,
 			Initial: func(durable.JsonValue) (durable.JsonValue, error) { return math.NaN(), nil },
 		}}
 		mints := harness.Storage.MintCount()
 		err := tryCommit(harness.Session, func(tx durable.Tx) error {
-			_, err := tx.CreateTaskErased(task, obj{"path": "a"}, conversationOwned(conversationId))
+			_, err := tx.CreateTaskErased(task, delta.JsonObjectOf("path", "a"), conversationOwned(conversationId))
 			return err
 		})
 		expectStrictJSON(t, err)

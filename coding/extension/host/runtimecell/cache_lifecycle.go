@@ -75,9 +75,11 @@ type CacheLifecycleOptions struct {
 	// RemoveFailures removes every recorded build failure, so the next start
 	// compiles those cells again. A failure whose build is in progress stays.
 	RemoveFailures bool
-	DryRun         bool
-	Rename         func(string, string) error
-	RemoveAll      func(string) error
+	// Unsized skips reading the size of every file in every entry: Bytes, TotalBytes, ProtectedBytes and RemovedBytes stay zero. A caller that reads none of them sets it, because the sizes cost one stat per cached file. MaxSize needs the sizes and overrides it.
+	Unsized   bool
+	DryRun    bool
+	Rename    func(string, string) error
+	RemoveAll func(string) error
 }
 
 type UsageLease struct {
@@ -498,7 +500,10 @@ func cacheEntryPaths(cacheRoot string) ([]string, error) {
 }
 
 func classifyCacheEntry(path string, options CacheLifecycleOptions) CacheEntry {
-	entry := CacheEntry{Path: path, Bytes: cacheDirSize(options.Context, path)}
+	entry := CacheEntry{Path: path}
+	if !options.Unsized || options.MaxSize != nil {
+		entry.Bytes = cacheDirSize(options.Context, path)
+	}
 	if _, built := readReadyMetadata(path); !built {
 		_, entry.Failure = readCellFailureMetadata(path)
 	}

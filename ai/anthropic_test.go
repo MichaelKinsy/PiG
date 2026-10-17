@@ -633,9 +633,9 @@ func TestNormalizeAnthropicToolCallID(t *testing.T) {
 	}
 }
 
-func TestAnthropicConvertMessages_NormalizesToolCallIDs(t *testing.T) {
-	// Cross-provider scenario: OpenAI Responses API tool call IDs contain pipes.
-	// The Anthropic API requires ^[a-zA-Z0-9_-]+$.
+func TestAnthropicConvertMessages_KeepsToolCallIDs(t *testing.T) {
+	// anthropic-messages.ts convertMessages writes `id: block.id` and `tool_use_id: msg.toolCallId`; ids of another model's calls are normalized
+	// earlier by transformMessages (TestAnthropicToolCallIDUTF16Normalization "foreign model").
 	messages := []Message{
 		AssistantMessage{Content: []AssistantContentBlock{ToolCall{ID: "call_abc|item_def", Name: "read", Arguments: JsonObject{}}}},
 		ToolResultMessage{ToolCallID: "call_abc|item_def", Content: []ToolResultMessageContent{TextContent{Text: "ok"}}},
@@ -644,15 +644,13 @@ func TestAnthropicConvertMessages_NormalizesToolCallIDs(t *testing.T) {
 	if len(out) != 2 {
 		t.Fatalf("got %d messages, want 2", len(out))
 	}
-	// Assistant message tool_use block should have normalized ID.
 	blocks := out[0].Content.([]anthContentBlock)
-	if blocks[0].ID != "call_abc_item_def" {
-		t.Errorf("tool_use ID = %q, want %q", blocks[0].ID, "call_abc_item_def")
+	if blocks[0].ID != "call_abc|item_def" {
+		t.Errorf("tool_use ID = %q, want it unchanged", blocks[0].ID)
 	}
-	// User message tool_result block should have matching normalized ID.
 	results := out[1].Content.([]anthContentBlock)
-	if results[0].ToolUseID != "call_abc_item_def" {
-		t.Errorf("tool_result tool_use_id = %q, want %q", results[0].ToolUseID, "call_abc_item_def")
+	if results[0].ToolUseID != "call_abc|item_def" {
+		t.Errorf("tool_result tool_use_id = %q, want it unchanged", results[0].ToolUseID)
 	}
 }
 
@@ -666,7 +664,7 @@ func TestAnthropicConvertToolsCompat(t *testing.T) {
 		},
 	}}
 	cache := &anthCacheControl{Type: "ephemeral"}
-	out, err := anthConvertTools(tools, false, true, false, cache)
+	out, err := anthConvertTools(tools, false, true, false, cache, false)
 	if err != nil {
 		t.Fatalf("anthConvertTools: %v", err)
 	}
@@ -680,7 +678,7 @@ func TestAnthropicConvertToolsCompat(t *testing.T) {
 		t.Fatalf("cache_control = %#v, want ephemeral", out[0].CacheControl)
 	}
 
-	out, err = anthConvertTools(tools, false, false, false, nil)
+	out, err = anthConvertTools(tools, false, false, false, nil, false)
 	if err != nil {
 		t.Fatalf("anthConvertTools: %v", err)
 	}
@@ -703,7 +701,7 @@ func TestAnthropicConvertToolsStrict(t *testing.T) {
 			"required":   []any{"value"},
 		},
 	}
-	legacyTools, err := anthConvertTools([]ToolSchema{legacy}, false, true, true, nil)
+	legacyTools, err := anthConvertTools([]ToolSchema{legacy}, false, true, true, nil, false)
 	if err != nil {
 		t.Fatalf("legacy tool: %v", err)
 	}
@@ -727,7 +725,7 @@ func TestAnthropicConvertToolsStrict(t *testing.T) {
 		"required": []any{"value"},
 	}
 	strict.ConstrainedSampling = &ConstrainedSamplingConfig{Type: "json_schema", Strict: "prefer"}
-	strictTools, err := anthConvertTools([]ToolSchema{strict}, false, true, true, nil)
+	strictTools, err := anthConvertTools([]ToolSchema{strict}, false, true, true, nil, false)
 	if err != nil {
 		t.Fatalf("strict tool: %v", err)
 	}
@@ -817,7 +815,7 @@ func TestAnthropicNativeToolChangesApplyStrictSchemasToInitialAndDeferredTools(t
 		t.Fatalf("initial tool = %#v, want strict converted schema", tool)
 	}
 	params.toolDefinitions = func(tools []ToolSchema) ([]anthTool, error) {
-		return anthConvertTools(tools, false, true, true, nil)
+		return anthConvertTools(tools, false, true, true, nil, false)
 	}
 	converted, err := params.convertMessages(messages[1:], false)
 	if err != nil {
@@ -984,33 +982,30 @@ func TestAnthropicStreamCloudflareAffinityAutoDetect(t *testing.T) {
 	}
 }
 
-func TestAnthropicThinkingConfigClampsThroughThinkingLevelMap(t *testing.T) {
+func TestAnthropicThinkingConfigDoesNotClampLevels(t *testing.T) {
 	model := &Model{
-		Capabilities: ModelCapabilities{MaxThinking: ThinkingXHigh, MaxOutputTokens: 32768},
+		Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelXHigh, MaxOutputTokens: 32768},
 		ThinkingLevelMap: ThinkingLevelMap{
 			ThinkingOff:    nil,
 			ThinkingMedium: nil,
 			ThinkingXHigh:  new("xhigh"),
 		},
 	}
-	// off===null (ThinkingOff: nil, Fable-5 style) → upstream omits the thinking
-	// field entirely; must NOT clamp off up to an enabled level (#5567).
-	got := thinkingToAnthropicConfig(model, 8192, ThinkingOff)
+	// off===null (ThinkingOff: nil, Fable-5 style) → upstream omits the thinking field entirely (#5567).
+	got := thinkingToAnthropicConfig(model, 8192, ThinkingOff, nil)
 	if got != nil {
 		t.Fatalf("off with thinkingLevelMap.off===null should omit thinking, got %+v", got)
 	}
-	// Medium is absent from the level map → clamps upward to High.
-	// Upstream default budget for High = 16384.
-	// adjustedMax = min(8192 + 16384, 32768) = 24576
-	// budget (16384) < adjustedMax (24576) → budget stays 16384
-	got = thinkingToAnthropicConfig(model, 8192, ThinkingMedium)
-	if got == nil || got.Thinking.Type != "enabled" || got.Thinking.BudgetTokens != 16384 {
-		t.Fatalf("medium should clamp to high budget=16384, got %+v", got)
+	// anthropic-messages.ts streamSimple reads options.reasoning as given (TestAnthropicMessagesPayloadMatchesPi compares it with the
+	// installed pi-ai): medium keeps its own default budget 8192, and adjustedMax = min(8192 + 8192, 32768).
+	got = thinkingToAnthropicConfig(model, 8192, ThinkingMedium, nil)
+	if got == nil || got.Thinking.Type != "enabled" || got.Thinking.BudgetTokens != 8192 {
+		t.Fatalf("medium keeps budget 8192, got %+v", got)
 	}
-	if got.MaxTokens != 24576 {
-		t.Fatalf("medium→high: maxTokens should be 24576 (8192+16384), got %d", got.MaxTokens)
+	if got.MaxTokens != 16384 {
+		t.Fatalf("medium: maxTokens should be 16384 (8192+8192), got %d", got.MaxTokens)
 	}
-	got = thinkingToAnthropicConfig(model, 8192, ThinkingXHigh)
+	got = thinkingToAnthropicConfig(model, 8192, ThinkingXHigh, nil)
 	if got == nil || got.Thinking.BudgetTokens != 16384 {
 		t.Fatalf("xhigh should use high budget=16384, got %+v", got)
 	}
@@ -1023,7 +1018,7 @@ func TestAnthropicThinkingConfigClampsThroughThinkingLevelMap(t *testing.T) {
 // enabled level.
 func TestAnthropicThinkingOffVariants(t *testing.T) {
 	reasoning := func(m ThinkingLevelMap) *Model {
-		return &Model{Capabilities: ModelCapabilities{MaxThinking: ThinkingXHigh, MaxOutputTokens: 32768}, ThinkingLevelMap: m}
+		return &Model{Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelXHigh, MaxOutputTokens: 32768}, ThinkingLevelMap: m}
 	}
 	cases := []struct {
 		name     string
@@ -1038,7 +1033,7 @@ func TestAnthropicThinkingOffVariants(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := thinkingToAnthropicConfig(tc.model, 8192, ThinkingOff)
+			got := thinkingToAnthropicConfig(tc.model, 8192, ThinkingOff, nil)
 			if tc.wantType == "" {
 				if got != nil {
 					t.Fatalf("want omit (nil), got %+v", got)
@@ -1121,8 +1116,8 @@ func TestAnthropicTemperatureCompatibility(t *testing.T) {
 			provider := &anthropicProvider{cfg: AnthropicConfig{Model: test.model, ProviderID: "anthropic", Compat: test.compat}}
 			model := provider.resolveModel()
 			params, err := provider.buildParams(model, NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("Hello")}}}), false, anthropicHeaders{}, anthropicHeaders{}, StreamOptions{
-				Thinking: ThinkingOff, Temperature: test.temperature, TemperatureSet: test.set,
-			}, ProviderEnv{"PI_CACHE_RETENTION": "none"})
+				Thinking: "", Temperature: test.temperature, TemperatureSet: test.set,
+			}, ProviderEnv{"PI_CACHE_RETENTION": "none"}, false)
 			if err != nil {
 				t.Fatalf("buildParams: %v", err)
 			}
@@ -1142,17 +1137,17 @@ func TestAnthropicTemperatureCompatibility(t *testing.T) {
 func TestAnthropicAdaptiveThinkingForOpus47(t *testing.T) {
 	model := &Model{
 		ID:           "claude-opus-4.7",
-		Capabilities: ModelCapabilities{MaxThinking: ThinkingXHigh},
+		Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelXHigh},
 		ProviderMeta: ProviderMetadata{
 			Compat: &OpenAICompat{ForceAdaptiveThinking: new(true)},
 		},
 		ThinkingLevelMap: ThinkingLevelMap{
-			ThinkingLevel("xhigh"): new("xhigh"),
+			ModelThinkingLevel("xhigh"): new("xhigh"),
 		},
 	}
 
 	// Adaptive thinking should be used, not budget-based.
-	got := thinkingToAnthropicConfig(model, 8192, ThinkingHigh)
+	got := thinkingToAnthropicConfig(model, 8192, ThinkingHigh, nil)
 	if got == nil {
 		t.Fatal("expected non-nil thinking config")
 	}
@@ -1170,14 +1165,14 @@ func TestAnthropicAdaptiveThinkingForOpus47(t *testing.T) {
 	}
 
 	// xhigh should map via thinkingLevelMap.
-	got = thinkingToAnthropicConfig(model, 8192, ThinkingXHigh)
+	got = thinkingToAnthropicConfig(model, 8192, ThinkingXHigh, nil)
 	if got == nil || got.OutputConfig == nil || got.OutputConfig.Effort != "xhigh" {
 		t.Errorf("xhigh effort = %v, want 'xhigh'", got)
 	}
 
 	// off undefined (no off key) on a reasoning model → upstream sends
 	// thinking:{type:"disabled"} (off !== null), even for adaptive models (#5567).
-	got = thinkingToAnthropicConfig(model, 8192, ThinkingOff)
+	got = thinkingToAnthropicConfig(model, 8192, ThinkingOff, nil)
 	if got == nil || got.Thinking == nil || got.Thinking.Type != "disabled" {
 		t.Errorf("off (off undefined) should be thinking:{type:disabled}, got %+v", got)
 	}
@@ -1186,11 +1181,11 @@ func TestAnthropicAdaptiveThinkingForOpus47(t *testing.T) {
 func TestAnthropicBudgetThinkingForOlderModels(t *testing.T) {
 	model := &Model{
 		ID:           "claude-sonnet-4.5",
-		Capabilities: ModelCapabilities{MaxThinking: ThinkingHigh},
+		Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh},
 	}
 
 	// Older model should use budget-based thinking.
-	got := thinkingToAnthropicConfig(model, 8192, ThinkingMedium)
+	got := thinkingToAnthropicConfig(model, 8192, ThinkingMedium, nil)
 	if got == nil {
 		t.Fatal("expected non-nil thinking config")
 	}
@@ -1225,7 +1220,7 @@ func TestAnthropicStreamUsesClampedThinkingLevel(t *testing.T) {
 		BaseURL: srv.URL,
 	})
 	stream, err := p.Stream(context.Background(), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("Hello")}}}), StreamOptions{
-		MaxTokens: 4096, IsReasoning: true, Thinking: ThinkingOff,
+		MaxTokens: 4096, IsReasoning: true, ThinkingEnabled: new(false),
 	})
 	if err != nil {
 		t.Fatal(err)

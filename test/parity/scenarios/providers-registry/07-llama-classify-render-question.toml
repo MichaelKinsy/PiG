@@ -1,0 +1,29 @@
+# Behavior family: providers-registry (llama.cpp classifier prompt)
+# Pi 1.1.0 probe: llama-cpp-classify.ts renderQuestion (renderState, renderTask, renderOverview, questionLabels, answerInstruction) over 1500 seeded requests: states of nested
+# objects, arrays, numbers, escapes and integer-like keys; one to five questions of every type named with integer-like keys; choice options of every count (two or more are labeled,
+# zero and one throw), empty and non-empty descriptions, score levels of every count (two to ten are labeled), bool criteria with either, both or neither meaning; unknown ids throw.
+# Each request's message, labels, keys and error are compared as one JSON line. The Go test TestLlamaCppRenderQuestionMatchesPi runs the same corpus against the vendored Pi
+# module; this scenario compares the two printed streams. PiG's states are Go maps, which keep no insertion order, so keys that are not array indexes are written in byte
+# order; the corpus inserts them in byte order on the Pi side (the JSON the Go test dumps), where both agree.
+name = "07-llama-classify-render-question"
+description = "The llama.cpp classifier writes each question's prompt, labels and keys as Pi does."
+covers = ["packages/ai/src/api/llama-cpp-classify.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/llama-render-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/llama-render-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 240
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['Question: ', 'Answer with one letter.', 'Answer Yes or No.', 'Answer with one level number.', 'A choice question needs 2 to 62 options', 'Unknown question: missing']
+runs = 2

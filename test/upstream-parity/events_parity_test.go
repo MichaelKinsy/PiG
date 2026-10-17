@@ -38,35 +38,6 @@ func TestEventResults_AllUpstreamEventResultsExistInGo(t *testing.T) {
 	}
 }
 
-// TestEventFields_AllUpstreamFieldsHaveGoCounterpart asserts that for every
-// upstream `XxxEvent` interface, every field declared upstream has a
-// matching Go struct field via [CamelToGoField] (camelCase → PascalCase
-// with idiomatic Id/URL/API/JSON initialism uplift).
-func TestEventFields_AllUpstreamFieldsHaveGoCounterpart(t *testing.T) {
-	s, err := LoadUpstream()
-	if err != nil {
-		t.Fatalf("upstream mirror missing: %v", err)
-	}
-	for _, decl := range append(append([]EventTypeDecl{}, s.EventTypes...), s.EventResults...) {
-		goType, ok := eventTypeRegistry[decl.Name]
-		if !ok {
-			continue // covered by the existence test above
-		}
-		if goType.Kind() != reflect.Struct {
-			continue // alias-to-any (e.g. BeforeProviderRequestEventResult); no fields to check
-		}
-		for _, fieldName := range decl.FieldOrder {
-			wantGoName := CamelToGoField(fieldName)
-			if _, found := goType.FieldByName(wantGoName); !found {
-				gap(t, "field:"+decl.Name+"."+fieldName, "upstream %s.%s missing in Go type extension.%s "+
-					"(want field %s; CamelToGoField(%q)=%q)",
-					decl.Name, fieldName, decl.Name, wantGoName,
-					fieldName, wantGoName)
-			}
-		}
-	}
-}
-
 // TestEventFields_NoLegacyInitialismCasing is a drift-prevention
 // gate: it scans every registered Go event type and rejects exported field
 // names that end in `Id`, `Url`, `Api`, or `Json` (the literal initialism

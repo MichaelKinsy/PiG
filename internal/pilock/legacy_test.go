@@ -412,9 +412,10 @@ func TestLegacyWriterThenConcurrentDirectoryWriters(t *testing.T) {
 		go func() {
 			lease, err := Acquire(t.Context(), path)
 			if err != nil {
-				// Pi throws, rather than retries, the EPERM Windows returns for mkdir on a
-				// lock directory pending deletion (lock.go mkdir). That writer wrote nothing,
-				// so it must not be counted among the updates that have to survive.
+				// Pi retries the EPERM Windows returns for mkdir on a lock directory pending
+				// deletion at most MAX_EPERM_RETRIES times and then throws it (lock.go Acquire).
+				// That writer wrote nothing, so it must not be counted among the updates that
+				// have to survive.
 				if runtime.GOOS == "windows" && strings.Contains(err.Error(), "EPERM: operation not permitted, mkdir") {
 					failed <- struct{}{}
 					done <- nil

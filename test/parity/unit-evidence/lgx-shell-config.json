@@ -1,0 +1,56 @@
+[
+ {
+  "upstream": "packages/coding-agent/src/utils/shell.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestGetShellConfigResolvesCustomMissingAndDefaultPaths"
+  ],
+  "upstream_reference": "packages/coding-agent/src/utils/shell.ts",
+  "mutation": "internal/codingagent/tools/shell_config.go: replace `if customShellPath != \"\" {\n\t\tif _, err := os.Stat(customShellPath); err == nil {` with `if customShellPath != \"\" {\n\t\tif _, err := os.Stat(customShellPath); err != nil {`; TestGetShellConfigResolvesCustomMissingAndDefaultPaths fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/utils/shell.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestGetShellConfigResolvesCustomMissingAndDefaultPaths"
+  ],
+  "upstream_reference": "packages/coding-agent/src/utils/shell.ts",
+  "mutation": "internal/codingagent/tools/shell_config.go: replace `return shellconfig.ForBash(customShellPath), nil` with `return shellconfig.ForBash(customShellPath + \"x\"), nil`; TestGetShellConfigResolvesCustomMissingAndDefaultPaths fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/utils/shell.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestGetShellConfigResolvesCustomMissingAndDefaultPaths"
+  ],
+  "upstream_reference": "packages/coding-agent/src/utils/shell.ts",
+  "mutation": "internal/codingagent/tools/shell_config.go: replace `fmt.Errorf(\"Custom shell path not found: %s\", customShellPath)` with `fmt.Errorf(\"Shell not found: %s\", customShellPath)`; TestGetShellConfigResolvesCustomMissingAndDefaultPaths fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/utils/shell.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestGetShellConfigResolvesCustomMissingAndDefaultPaths"
+  ],
+  "upstream_reference": "packages/coding-agent/src/utils/shell.ts",
+  "mutation": "internal/codingagent/tools/shell_config.go: replace `if customShellPath != \"\" {\n\t\tif _, err` with `if customShellPath == \"\" {\n\t\tif _, err`; TestGetShellConfigResolvesCustomMissingAndDefaultPaths fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/utils/shell.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestGetShellConfigResolvesCustomMissingAndDefaultPaths"
+  ],
+  "upstream_reference": "packages/coding-agent/src/utils/shell.ts",
+  "mutation": "internal/codingagent/tools/shell_config.go: replace `return defaultShellConfig()\n}\n\n// resolveShellConfig` with `return ShellConfig{Path: \"/bin/sh\"}, nil\n}\n\n// resolveShellConfig`; TestGetShellConfigResolvesCustomMissingAndDefaultPaths fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/utils/shell.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestGetShellConfigResolvesCustomMissingAndDefaultPaths"
+  ],
+  "upstream_reference": "packages/coding-agent/src/utils/shell.ts",
+  "mutation": "internal/codingagent/tools/shell_config.go: replace `return ShellConfig{}, fmt.Errorf(\"Custom shell path not found` with `return ShellConfig{Path: customShellPath}, fmt.Errorf(\"Custom shell path not found`; TestGetShellConfigResolvesCustomMissingAndDefaultPaths fails."
+ }
+]

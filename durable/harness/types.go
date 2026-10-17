@@ -15,6 +15,8 @@ type HookApi interface {
 	durable.DocumentReader
 	TaskId() durable.TaskId
 	ConversationId() durable.ConversationId
+	// Models is HarnessOptions.models.
+	Models() durable.Models
 	// Memo reads a memo; ok is false when absent.
 	Memo(ctx context.Context, name string) (value durable.JsonValue, ok bool, err error)
 	// MemoCandidate stores candidate unless a memo already exists and returns the durable winner.
@@ -43,18 +45,38 @@ type GenerationHooks struct {
 	AfterTools func(ctx context.Context, assistant durable.EntryId, results []durable.EntryId, api HookApi) error
 }
 
+// ToolParent is the calling task and call ID of a nested call.
+type ToolParent struct {
+	TaskId durable.TaskId
+	CallId string
+}
+
+// ToolHookCall is a call as tool hooks see it; Parent is set for a nested call, one a running tool made through
+// ExecuteTool (types.ts ToolHookCall).
+type ToolHookCall struct {
+	// Type is "toolCall": the discriminator of pi-ai's ToolCall, which Go carries as the type of the call.
+	Type string
+	ai.ToolCall
+	Parent *ToolParent
+}
+
+// NewToolHookCall is the ToolHookCall for call, with parent set for a nested call.
+func NewToolHookCall(call ai.ToolCall, parent *ToolParent) ToolHookCall {
+	return ToolHookCall{Type: "toolCall", ToolCall: call, Parent: parent}
+}
+
 // BeforeToolResult is a beforeTool decision: a non-nil Block blocks the call, otherwise non-nil Arguments replace its arguments.
 type BeforeToolResult struct {
-	Arguments durable.JsonObject
+	Arguments map[string]any
 	Block     *string
 }
 
 // ToolHooks are the hooks of the built-in tool task. A nil member does not run. Register them as *ToolHooks.
 type ToolHooks struct {
 	// BeforeTool runs before intent; the first block wins, otherwise arguments replace the call's arguments. An error blocks.
-	BeforeTool func(ctx context.Context, call ai.ToolCall, api HookApi) (*BeforeToolResult, error)
+	BeforeTool func(ctx context.Context, call ToolHookCall, api HookApi) (*BeforeToolResult, error)
 	// AfterTool runs after execution, before the result entry; a non-nil result replaces the result.
-	AfterTool func(ctx context.Context, call ai.ToolCall, result durable.ToolExecutionResult, api HookApi) (*durable.ToolExecutionResult, error)
+	AfterTool func(ctx context.Context, call ToolHookCall, result durable.ToolExecutionResult, api HookApi) (*durable.ToolExecutionResult, error)
 }
 
 // CompactionRequest is what a beforeCompact hook sees: Entries are the active entries the summary replaces, the head marker first, and Messages their model context, the summarizer's source; FirstKept is the first entry kept verbatim.
@@ -111,9 +133,12 @@ type EnvTarget struct {
 
 // HarnessOptions are the options of OpenHarness.
 type HarnessOptions struct {
-	// Models is the pi-ai model access used by generation and compaction: a Model Runtime or a pi-ai collection.
-	Models   durable.Models
-	Registry RegistryReader
+	// Models is the pi-ai model access used by generation, compaction, hooks and tools: a Model Runtime or a pi-ai
+	// collection. ModelsFunc, when set, replaces it: it returns the current one and is called at each use, so a host can
+	// replace its model configuration without reopening the Harness (HarnessOptions.models as a function, Pi 7ec1f648).
+	Models     durable.Models
+	ModelsFunc func() durable.Models
+	Registry   RegistryReader
 	// Settings returns the current settings at every resolution; nil uses the defaults. Upstream reads a settings object whose fields may be getters.
 	Settings func() *HarnessSettings
 	// Env builds a conversation's environment at each use. It never runs on the Session line. Nil means no environment.
@@ -177,8 +202,11 @@ type Conversation interface {
 	Compact(ctx context.Context, instructions *string) (durable.TaskId, error)
 	// Commit runs a Session commit whose tx.CreateTask defaults to this conversation.
 	Commit(ctx context.Context, change func(tx durable.Tx) (any, error)) (any, error)
-	Context(ctx context.Context) (durable.ContextView, error)
-	// Entries returns the newest-first fork-aware history of this conversation; query.ConversationId is ignored.
+	// Context returns the committed raw active transcript and model context. With options.At, it returns the context as
+	// of that visible entry: the same view Fork(at) would start with, without creating a conversation.
+	Context(ctx context.Context, options *durable.ContextOptions) (durable.ContextView, error)
+	// Entries returns the fork-aware history of this conversation, newest first unless query.Order is ScanAscending;
+	// query.ConversationId is ignored.
 	Entries(ctx context.Context, query durable.EntryQuery, limit int, cursor durable.Cursor) (durable.Page[durable.EntryRecord, durable.Cursor], error)
 	Fork(ctx context.Context, at durable.EntryId, options ConversationCreateOptions) (Conversation, error)
 	// Abort withdraws queued inputs (queued writes stay), marks every live non-background task of the ordinary ownership scope, signals them, and returns once the scope is idle. Background subtrees survive unless options.Background is set.
@@ -221,4 +249,12 @@ type Harness interface {
 	TaskGraph(ctx context.Context) (durable.AttachedReplicatedState[TaskGraph], error)
 	// WatchTaskGraph returns the task graph as a serialized exact-frame watch with bounded pending frames.
 	WatchTaskGraph(ctx context.Context) (TaskGraphWatch, error)
+}
+
+// CurrentModels is HarnessOptions.models at this use: ModelsFunc's answer when set, else Models.
+func (options HarnessOptions) CurrentModels() durable.Models {
+	if options.ModelsFunc != nil {
+		return options.ModelsFunc()
+	}
+	return options.Models
 }

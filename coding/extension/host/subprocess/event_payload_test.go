@@ -1,6 +1,7 @@
 package subprocess
 
 import (
+	"bytes"
 	"encoding/json"
 	"testing"
 
@@ -24,6 +25,10 @@ func TestModelSelectEventCarriesPiModelShape(t *testing.T) {
 			data, err := json.Marshal(wireEventPayload(extension.ModelSelectEvent{Type: "model_select", Model: next, PreviousModel: tc.previous, Source: extension.ModelSelectSourceUser}))
 			if err != nil {
 				t.Fatal(err)
+			}
+			// upstream: agent-session.ts:2463-2468 builds { type, model, previousModel, source } in that order, and a JavaScript handler sees that key order.
+			if !bytes.HasPrefix(data, []byte(`{"type":"model_select","model":{`)) || !bytes.HasSuffix(data, []byte(`,"source":"set"}`)) {
+				t.Fatalf("model_select key order in %s", data)
 			}
 			var got struct {
 				Model         map[string]any  `json:"model"`

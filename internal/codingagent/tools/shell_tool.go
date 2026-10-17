@@ -9,10 +9,13 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 )
 
 // shellParams is the shell tool input (upstream bashSchema): a command and an
@@ -38,7 +41,25 @@ type shellToolConfig struct {
 	exposeSessionEnvironment bool
 	// binDir is prepended to PATH (upstream getShellEnv's getBinDir).
 	binDir string
+	// spawnHook adjusts the command, working directory and environment before the shell runs (upstream options.spawnHook).
+	spawnHook BashSpawnHook
 }
+
+// BashSpawnContext is upstream's BashSpawnContext: what a shell tool runs. Env holds KEY=VALUE entries, as os/exec takes them, where upstream has a process environment object.
+type BashSpawnContext struct {
+	Command string
+	CWD     string
+	Env     []string
+}
+
+// BashSpawnHook is upstream's BashSpawnHook: it receives the context a shell tool is about to run and returns the context to run.
+type BashSpawnHook func(context BashSpawnContext) BashSpawnContext
+
+// PowerShellSpawnContext is upstream's PowerShellSpawnContext, an alias of BashSpawnContext (powershell.ts:24).
+type PowerShellSpawnContext = BashSpawnContext
+
+// PowerShellSpawnHook is upstream's PowerShellSpawnHook, an alias of BashSpawnHook (powershell.ts:25).
+type PowerShellSpawnHook = BashSpawnHook
 
 // shellToolSchema mirrors createShellToolDefinition's name, description,
 // parameters, guidelines, and constrained sampling request.
@@ -80,7 +101,7 @@ const structuredOutputMaxBytes = 1024 * 1024 // upstream: packages/coding-agent/
 // roundedWallTimeSeconds mirrors upstream Math.round((performance.now() - startedAt) / 100) / 10:
 // seconds to one decimal, halves rounding up.
 func roundedWallTimeSeconds(elapsed time.Duration) float64 {
-	return math.Floor(float64(elapsed)/float64(time.Millisecond)/100+0.5) / 10
+	return jsnumber.Round(float64(elapsed)/float64(time.Millisecond)/100) / 10
 }
 
 // shellStructuredContent mirrors upstream BashToolOutput; the field order is
@@ -97,7 +118,7 @@ type shellStructuredContent struct {
 // powershell, edit and write definitions request: { type: "json_schema",
 // strict: "prefer" }.
 func strictToolSampling() *ai.ConstrainedSamplingConfig {
-	return &ai.ConstrainedSamplingConfig{Type: "json_schema", Strict: "prefer"}
+	return &ai.ConstrainedSamplingConfig{Type: ai.ConstrainedSamplingJSONSchema, Strict: ai.ConstrainedSamplingStrictPrefer}
 }
 
 // FormatJSNumber mirrors JavaScript String(number) for a finite number.
@@ -144,18 +165,23 @@ func executeShellTool(ctx context.Context, cwd string, cfg shellToolConfig, rawP
 	if cfg.commandPrefix != "" {
 		command = cfg.commandPrefix + "\n" + command
 	}
-	env := sessionEnvironment(ctx, cfg.exposeSessionEnvironment, cfg.binDir)
-	output := NewOutputAccumulator(cfg.tempFilePrefix)
-	var updates *shellUpdateScheduler
-	if onUpdate != nil {
-		updates = newShellUpdateScheduler(output, onUpdate)
-		// The initial empty update creates the streaming card before any
-		// output arrives. upstream: bash.ts:321-323
-		onUpdate(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{}})
+	// upstream: bash.ts resolveSpawnContext runs the hook after the session variables are in the environment.
+	spawn := BashSpawnContext{Command: command, CWD: cwd, Env: sessionEnvironment(ctx, cfg.exposeSessionEnvironment, cfg.binDir)}
+	if cfg.spawnHook != nil {
+		spawn = cfg.spawnHook(spawn)
 	}
+	command, cwd, env := spawn.Command, spawn.CWD, spawn.Env
+	output := NewOutputAccumulator(cfg.tempFilePrefix)
+	// Updates nobody can see are not produced: no scheduler goroutine, no snapshots. The question is asked again as output
+	// arrives, so an observer that appears during the command gets the updates from then on.
+	updates := startShellUpdates(ctx, output, onUpdate)
+	// bash.ts:277,323: data that arrives after the output finished is dropped before it reaches the accumulator.
+	var acceptingOutput atomic.Bool
+	acceptingOutput.Store(true)
 	finishOutput := func() OutputSnapshot {
+		acceptingOutput.Store(false)
 		output.Finish()
-		if updates != nil {
+		if updates.started() {
 			updates.finish()
 		}
 		snapshot := output.Snapshot(true)
@@ -166,8 +192,13 @@ func executeShellTool(ctx context.Context, cwd string, cfg shellToolConfig, rawP
 	startedAt := time.Now()
 	result, err := cfg.operations.Exec(ctx, command, cwd, BashOperationsExecOptions{
 		OnData: func(data []byte) {
-			output.Append(data)
-			if updates != nil {
+			if !acceptingOutput.Load() {
+				return
+			}
+			if err := output.Append(data); err != nil {
+				return
+			}
+			if updates.ready(ctx) {
 				updates.schedule()
 			}
 		},
@@ -252,5 +283,59 @@ func formatShellOutput(snapshot OutputSnapshot, lastLineBytes int, emptyText str
 		text += fmt.Sprintf("\n\n[Showing lines %d-%d of %d (%s limit). Full output: %s]",
 			startLine, endLine, tr.TotalLines, FormatSize(DefaultMaxBytesUpstream), snapshot.FullOutputPath)
 	}
+	shareTruncatedContent(details.Truncation, text)
 	return text, details
+}
+
+// shellUpdates starts the update scheduler once something can see the updates (agent.ToolUpdatesObserved): at the
+// start of the command, with upstream's initial empty update, or when output arrives after an observer appeared.
+type shellUpdates struct {
+	output   *OutputAccumulator
+	onUpdate agent.ToolUpdateCallback
+
+	mu        sync.Mutex
+	scheduler *shellUpdateScheduler
+}
+
+func startShellUpdates(ctx context.Context, output *OutputAccumulator, onUpdate agent.ToolUpdateCallback) *shellUpdates {
+	u := &shellUpdates{output: output, onUpdate: onUpdate}
+	if agent.ToolUpdatesObserved(ctx, onUpdate) {
+		u.scheduler = newShellUpdateScheduler(output, onUpdate)
+		// The initial empty update creates the streaming card before any
+		// output arrives. upstream: bash.ts:321-323
+		onUpdate(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{}})
+	}
+	return u
+}
+
+// ready reports whether output should schedule an update, starting the scheduler when an observer appeared since the
+// command started. An observer that was not there for the initial update does not get it, as a Pi listener added
+// later does not.
+func (u *shellUpdates) ready(ctx context.Context) bool {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	if u.scheduler == nil && u.onUpdate != nil && agent.ToolUpdatesObserved(ctx, u.onUpdate) {
+		u.scheduler = newShellUpdateScheduler(u.output, u.onUpdate)
+	}
+	return u.scheduler != nil
+}
+
+func (u *shellUpdates) schedule() {
+	u.mu.Lock()
+	scheduler := u.scheduler
+	u.mu.Unlock()
+	scheduler.schedule()
+}
+
+func (u *shellUpdates) started() bool {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	return u.scheduler != nil
+}
+
+func (u *shellUpdates) finish() {
+	u.mu.Lock()
+	scheduler := u.scheduler
+	u.mu.Unlock()
+	scheduler.finish()
 }

@@ -152,13 +152,11 @@ func (p blockingProvider) Stream(ctx context.Context, _ ai.TranscriptContext, _ 
 // and isIdle stayed true while it ran.
 func TestAbortStopsExtensionStartedRun(t *testing.T) {
 	provider := blockingProvider{started: make(chan struct{})}
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := services.Auth().Set("faux", ai.Credential{Type: ai.CredentialAPIKey, Key: "faux-key"}); err != nil {
-		t.Fatal(err)
-	}
+	configureFauxAuth(t, services)
 	session, err := NewSession(services, SessionOptions{
 		Model:            &ai.Model{ID: "faux-1", Provider: provider, Capabilities: ai.ModelCapabilities{ContextWindow: 128_000}},
 		SkipBuiltinTools: true,

@@ -11,6 +11,7 @@ package compaction
 
 import (
 	"context"
+	"math"
 	"slices"
 	"strings"
 	"time"
@@ -19,6 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 )
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -75,6 +77,10 @@ type CollectEntriesResult struct {
 type GenerateBranchSummaryOptions struct {
 	// Model to use for summarization.
 	Model *ai.Model
+	// APIKey, Headers and Env are the request auth for the model (branch-summarization.ts:71-75).
+	APIKey  string
+	Headers map[string]string
+	Env     map[string]string
 	// Completer handles the actual LLM call.
 	Completer SimpleCompleter
 	// StreamFn overrides Completer when supplied, as in compaction.
@@ -87,8 +93,10 @@ type GenerateBranchSummaryOptions struct {
 	// prompt + response budget. Default 16384.
 	ReserveTokens int
 	// Retry, when non-nil, retries transient summarization errors with bounded
-	// exponential backoff. Mirrors upstream branch-summarization retry wiring.
-	Retry *RetryOptions
+	// exponential backoff (upstream retry?: RetryPolicy).
+	Retry *ai.RetryPolicy
+	// Callbacks report retries, e.g. to TUI retry indicators (upstream callbacks?: RetryCallbacks).
+	Callbacks ai.RetryCallbacks
 }
 
 // ─── ReadonlySession ──────────────────────────────────────────────────────────
@@ -96,14 +104,14 @@ type GenerateBranchSummaryOptions struct {
 // ReadonlySession provides read-only access needed for branch entry collection.
 // Mirrors upstream ReadonlySessionManager used in branch-summarization.ts.
 //
-// *codingagent.Session satisfies this interface via its Branch and EntryByID methods.
+// *codingagent.Session satisfies this interface via its GetBranch and GetEntry methods.
 type ReadonlySession interface {
-	// Branch returns the root-first path ending at leafID.
+	// GetBranch returns the root-first path ending at the first argument.
 	// Returns nil if leafID is not found.
-	Branch(leafID string) []codingagent.SessionEntry
+	GetBranch(fromID ...string) []codingagent.SessionEntry
 	// EntryByID looks up a single entry by ID.
 	// Returns (zero, false) if not found.
-	EntryByID(id string) (codingagent.SessionEntry, bool)
+	GetEntry(id string) (codingagent.SessionEntry, bool)
 }
 
 // ─── Prompts ──────────────────────────────────────────────────────────────────
@@ -161,18 +169,18 @@ func CollectEntriesForBranchSummary(session ReadonlySession, oldLeafID, targetID
 	}
 
 	// Build a set of IDs on the old path for O(1) ancestor lookup.
-	oldPath := session.Branch(oldLeafID)
+	oldPath := session.GetBranch(oldLeafID)
 	oldPathIDs := make(map[string]struct{}, len(oldPath))
 	for _, e := range oldPath {
-		oldPathIDs[e.Base.ID] = struct{}{}
+		oldPathIDs[e.Base().ID] = struct{}{}
 	}
 
 	// Find deepest common ancestor: iterate targetPath root→leaf in reverse.
-	targetPath := session.Branch(targetID)
+	targetPath := session.GetBranch(targetID)
 	var commonAncestorID string
 	for _, t := range slices.Backward(targetPath) {
-		if _, ok := oldPathIDs[t.Base.ID]; ok {
-			commonAncestorID = t.Base.ID
+		if _, ok := oldPathIDs[t.Base().ID]; ok {
+			commonAncestorID = t.Base().ID
 			break
 		}
 	}
@@ -180,16 +188,16 @@ func CollectEntriesForBranchSummary(session ReadonlySession, oldLeafID, targetID
 	// Walk from oldLeafID back to commonAncestor (exclusive), collecting entries.
 	var entries []codingagent.SessionEntry
 	current := oldLeafID
-	for current != "" && current != commonAncestorID {
-		e, ok := session.EntryByID(current)
+	for sessionentry.Truthy(current) && current != commonAncestorID {
+		e, ok := session.GetEntry(current)
 		if !ok {
 			break
 		}
 		entries = append(entries, e)
-		if e.Base.ParentID == nil {
+		if e.Base().ParentID == nil {
 			break
 		}
-		current = *e.Base.ParentID
+		current = *e.Base().ParentID
 	}
 
 	// Reverse to chronological order (root first, leaf last).
@@ -210,7 +218,7 @@ func CollectEntriesForBranchSummary(session ReadonlySession, oldLeafID, targetID
 // Tool results are skipped because the assistant tool call already carries
 // their position; compaction entries contribute their summary.
 func getMessageFromEntryForBranch(e codingagent.SessionEntry) (agent.AgentMessage, bool) {
-	switch e.Base.Type {
+	switch e.Base().Type {
 	case "message", "bash_execution", "custom_message":
 		messages := codingagent.SessionEntryToContextMessages(e)
 		if len(messages) != 1 || messages[0].ToolResult != nil {
@@ -243,9 +251,12 @@ func getMessageFromEntryForBranch(e codingagent.SessionEntry) (agent.AgentMessag
 	return agent.AgentMessage{}, false
 }
 
+// entryTimestampMs is new Date(timestamp).getTime() (messages.ts:105-136). A timestamp Date cannot read is NaN there, which JSON.stringify writes as
+// null; the integer here is 0.
 func entryTimestampMs(timestamp string) int64 {
-	if parsed, err := time.Parse(time.RFC3339Nano, timestamp); err == nil {
-		return parsed.UnixMilli()
+	if ms := ai.DateParse(timestamp); !math.IsNaN(ms) {
+		//portlint:allow numbers ai.DateParse is NaN (handled here) or an integer millisecond count within Date's ±8.64e15 range, which int64 holds exactly
+		return int64(ms)
 	}
 	return 0
 }
@@ -265,13 +276,16 @@ func entryTimestampMs(timestamp string) int64 {
 // tokenBudget == 0 means no limit.
 //
 // Mirrors upstream prepareBranchEntries (branch-summarization.ts:196).
-func PrepareBranchEntries(entries []codingagent.SessionEntry, tokenBudget int) BranchPreparation {
+//
+// Entries may be lazy (sessionentry.LazyEntry): the walk from newest to oldest reads and decodes them in growing runs as it reaches them, so
+// a long abandoned branch costs the entries within the budget, and a record that changed on disk is the error.
+func PrepareBranchEntries(entries []codingagent.SessionEntry, tokenBudget int) (BranchPreparation, error) {
 	fileOps := NewFileOps()
 
 	// First pass: seed file ops from prior branch_summary details and all
 	// assistant tool calls. Only process pi-generated summaries (fromHook == false).
 	for _, entry := range entries {
-		if entry.Base.Type == "branch_summary" {
+		if entry.Base().Type == "branch_summary" {
 			var raw struct {
 				FromHook bool                  `json:"fromHook"`
 				Details  *BranchSummaryDetails `json:"details"`
@@ -292,7 +306,20 @@ func PrepareBranchEntries(entries []codingagent.SessionEntry, tokenBudget int) B
 	var messages []agent.AgentMessage
 	totalTokens := 0
 
-	for _, entry := range slices.Backward(entries) {
+	// window holds entries[lo:] decoded from lo up to the previous window, in runs that double up to 1024 entries.
+	var window []codingagent.SessionEntry
+	lo, run := len(entries), 32
+	for i := range slices.Backward(entries) {
+		if i < lo {
+			hi := lo
+			lo = max(0, lo-run)
+			run = min(run*2, 1024)
+			var err error
+			if window, err = sessionentry.MaterializeAll(entries[lo:hi]); err != nil {
+				return BranchPreparation{}, err
+			}
+		}
+		entry := window[i-lo]
 
 		msg, ok := getMessageFromEntryForBranch(entry)
 		if !ok {
@@ -307,7 +334,7 @@ func PrepareBranchEntries(entries []codingagent.SessionEntry, tokenBudget int) B
 		if tokenBudget > 0 && totalTokens+tokens > tokenBudget {
 			// Summary entries get priority: include even if slightly over budget,
 			// as long as we're under 90% utilisation.
-			if entry.Base.Type == "compaction" || entry.Base.Type == "branch_summary" {
+			if entry.Base().Type == "compaction" || entry.Base().Type == "branch_summary" {
 				if float64(totalTokens) < float64(tokenBudget)*0.9 {
 					messages = append([]agent.AgentMessage{msg}, messages...)
 					totalTokens += tokens
@@ -325,7 +352,7 @@ func PrepareBranchEntries(entries []codingagent.SessionEntry, tokenBudget int) B
 		Messages:    messages,
 		FileOps:     fileOps,
 		TotalTokens: totalTokens,
-	}
+	}, nil
 }
 
 // ─── Summary Generation ───────────────────────────────────────────────────────
@@ -349,15 +376,62 @@ func GenerateBranchSummary(ctx context.Context, entries []codingagent.SessionEnt
 	}
 	tokenBudget := contextWindow - reserveTokens
 
-	prep := PrepareBranchEntries(entries, tokenBudget)
+	// pig divergence (D167): pi sends one request for the newest entries that fit tokenBudget by the character estimate and reports the provider's context overflow when the real token count is higher. PiG retries with the newest half of what it sent until the provider accepts it or one message is left, whose overflow error is then reported.
+	var refused error
+	refusedCount := 0
+	for {
+		prep, err := PrepareBranchEntries(entries, tokenBudget)
+		if err != nil {
+			return BranchSummaryResult{Error: err.Error()}
+		}
 
-	if len(prep.Messages) == 0 {
-		return BranchSummaryResult{Summary: "No content to summarize"}
+		// A smaller budget that selects nothing new cannot be accepted: the refusal stays the result.
+		if refused != nil && (len(prep.Messages) == 0 || len(prep.Messages) >= refusedCount) {
+			return BranchSummaryResult{Error: summarizationFailure("Branch summarization", refused).Error()}
+		}
+
+		if len(prep.Messages) == 0 {
+			return BranchSummaryResult{Summary: "No content to summarize"}
+		}
+
+		raw, usage, err := summarizeBranchMessages(ctx, prep.Messages, opts)
+		if err != nil {
+			// Distinguish context cancellation (aborted) from other errors.
+			if ctx.Err() != nil {
+				return BranchSummaryResult{Aborted: true}
+			}
+			if len(prep.Messages) > 1 && ai.IsContextOverflow(ai.AssistantMessage{StopReason: ai.StopReasonError, ErrorMessage: err.Error()}, 0) {
+				// The newest message always fits the next budget, so the halving ends at one message as the error path below expects; a zero budget would mean no limit.
+				refused, refusedCount = err, len(prep.Messages)
+				//portlint:allow numbers Go-only overflow retry (pig divergence (D167), no Pi counterpart); halving a non-negative token count by floor is the intended budget
+				tokenBudget = max(prep.TotalTokens/2, EstimateTokens(prep.Messages[len(prep.Messages)-1]), 1)
+				continue
+			}
+			return BranchSummaryResult{Error: summarizationFailure("Branch summarization", err).Error()}
+		}
+
+		// Build final summary with preamble and file ops.
+		var sb strings.Builder
+		sb.WriteString(BRANCH_SUMMARY_PREAMBLE)
+		sb.WriteString(raw)
+
+		readFiles, modifiedFiles := ComputeFileLists(prep.FileOps)
+		sb.WriteString(FormatFileOperations(readFiles, modifiedFiles))
+
+		return BranchSummaryResult{
+			Summary:       sb.String(),
+			ReadFiles:     readFiles,
+			ModifiedFiles: modifiedFiles,
+			Usage:         usage,
+		}
 	}
+}
 
+// summarizeBranchMessages sends one branch-summary request for messages (branch-summarization.ts generateBranchSummary).
+func summarizeBranchMessages(ctx context.Context, messages []agent.AgentMessage, opts GenerateBranchSummaryOptions) (string, *ai.Usage, error) {
 	// Serialize messages to text to prevent the model treating this as a
 	// live conversation.
-	wireMessages := convertToLlm(prep.Messages)
+	wireMessages := convertToLlm(messages)
 	conversationText := SerializeConversation(wireMessages)
 
 	// Build the instruction prompt.
@@ -386,34 +460,7 @@ func GenerateBranchSummary(ctx context.Context, entries []codingagent.SessionEnt
 		},
 	}
 
-	// The response budget is the model's output limit capped at 4096, not the
-	// input token budget (branch-summarization.ts generateBranchSummary).
-	maxTokens := 4096
-	if opts.Model != nil && opts.Model.Capabilities.MaxOutputTokens > 0 {
-		maxTokens = min(maxTokens, opts.Model.Capabilities.MaxOutputTokens)
-	}
-
-	raw, usage, err := completeSummarization(ctx, opts.Model, opts.Completer, opts.StreamFn, opts.Retry, SummarizationSystemPrompt, req, ai.StreamOptions{MaxTokens: maxTokens})
-	if err != nil {
-		// Distinguish context cancellation (aborted) from other errors.
-		if ctx.Err() != nil {
-			return BranchSummaryResult{Aborted: true}
-		}
-		return BranchSummaryResult{Error: summarizationFailure("Branch summarization", err).Error()}
-	}
-
-	// Build final summary with preamble and file ops.
-	var sb strings.Builder
-	sb.WriteString(BRANCH_SUMMARY_PREAMBLE)
-	sb.WriteString(raw)
-
-	readFiles, modifiedFiles := ComputeFileLists(prep.FileOps)
-	sb.WriteString(FormatFileOperations(readFiles, modifiedFiles))
-
-	return BranchSummaryResult{
-		Summary:       sb.String(),
-		ReadFiles:     readFiles,
-		ModifiedFiles: modifiedFiles,
-		Usage:         usage,
-	}
+	// No maxTokens: the summary uses the model's output limit (#9512, Pi 6fcb4867; branch-summarization.ts
+	// generateBranchSummary).
+	return completeSummarization(ctx, opts.Model, opts.Completer, opts.StreamFn, opts.Retry, opts.Callbacks, SummarizationSystemPrompt, req, ai.StreamOptions{APIKey: opts.APIKey, Headers: ai.ProviderHeadersFromStrings(opts.Headers), Env: opts.Env})
 }

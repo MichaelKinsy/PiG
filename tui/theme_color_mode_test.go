@@ -23,24 +23,24 @@ func TestSetThemeFollowsTrueColorCapability(t *testing.T) {
 	for _, name := range []string{"dark", "light"} {
 		SetTheme(name)
 		th := ActiveTheme()
-		if th.ColorMode() != TerminalColorMode256 {
-			t.Fatalf("%s mode = %q, want 256color", name, th.ColorMode())
+		if th.GetColorMode() != TerminalColorMode256 {
+			t.Fatalf("%s mode = %q, want 256color", name, th.GetColorMode())
 		}
-		for token, got := range map[string]string{"accent": th.Accent, "userMessageBg": th.UserMessageBg, "muted": th.Fg("muted"), "selectedBg": th.Bg("selectedBg")} {
+		for token, got := range map[string]string{"accent": th.Accent, "userMessageBg": th.UserMessageBg, "muted": th.GetFgAnsi("muted"), "selectedBg": th.GetBgAnsi("selectedBg")} {
 			if strings.Contains(got, "38;2;") || strings.Contains(got, "48;2;") || got == "" {
 				t.Errorf("%s %s = %q, want a 256-color escape", name, token, got)
 			}
 		}
 	}
 	SetThemeByName("dark")
-	if ActiveTheme().ColorMode() != TerminalColorMode256 || ActiveTheme().Accent != "\x1b[38;5;140m" {
-		t.Fatalf("SetThemeByName dark = %q (%s)", ActiveTheme().Accent, ActiveTheme().ColorMode())
+	if ActiveTheme().GetColorMode() != TerminalColorMode256 || ActiveTheme().Accent != "\x1b[38;5;140m" {
+		t.Fatalf("SetThemeByName dark = %q (%s)", ActiveTheme().Accent, ActiveTheme().GetColorMode())
 	}
 
 	SetCapabilities(TerminalCapabilities{TrueColor: true})
 	SetTheme("dark")
-	if ActiveTheme().ColorMode() != TerminalColorModeTrueColor || ActiveTheme().Accent != "\x1b[38;2;167;152;215m" {
-		t.Fatalf("truecolor dark accent = %q (%s)", ActiveTheme().Accent, ActiveTheme().ColorMode())
+	if ActiveTheme().GetColorMode() != TerminalColorModeTrueColor || ActiveTheme().Accent != "\x1b[38;2;167;152;215m" {
+		t.Fatalf("truecolor dark accent = %q (%s)", ActiveTheme().Accent, ActiveTheme().GetColorMode())
 	}
 }
 
@@ -53,7 +53,7 @@ func TestFixedComponentColorsFollowColorMode(t *testing.T) {
 		ThemeHexFg("#b5bd68"),
 		ThemeHexBg("#2d2838"),
 		thinkingBorderSGR("low"),
-		strings.Join(NewCompactionSummaryComponent("summary", 10).Render(40), "\n"),
+		strings.Join(NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: "summary", TokensBefore: 10}, nil, 1).Render(40), "\n"),
 	}, "\n")
 	if strings.Contains(rendered, "38;2;") || strings.Contains(rendered, "48;2;") {
 		t.Fatalf("256-color render still contains 24-bit escapes: %q", rendered)

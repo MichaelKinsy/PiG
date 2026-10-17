@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/modes/interactive/tui-renderer.ts
+
 import (
 	"slices"
 	"sync"

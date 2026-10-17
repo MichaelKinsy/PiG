@@ -87,6 +87,93 @@ var knownCapabilityGaps = map[string]map[string]string{
 	"complete": {
 		"node": "host-backed completion is unavailable to Node extensions",
 	},
+	"ui.editor.base": {
+		"node": "a Node editor component runs Pi's own pi-tui Editor in the extension process, so its super needs no host call",
+	},
+}
+
+// hostNotifyCapabilities are capabilities the host delivers as a notify
+// rather than answers as a call, so the dispatcher-derived denominator above
+// cannot see them. hostConst is the protocol constant the host sends them
+// with; symbols is the per-SDK code that receives each one.
+var hostNotifyCapabilities = map[string]struct {
+	hostConst string
+	symbols   map[string]string
+}{
+	// The component kit (D107, docs/plan/extension-component-kit.md §4, §7):
+	// a focused list's events, and image refs the host dropped.
+	"ui.view.event": {hostConst: "NotifyUIViewEvent", symbols: map[string]string{
+		"go":   "case notifyUIViewEvent:",
+		"rust": `"ui.view.event" => {`,
+		"py":   `if method == "ui.view.event":`,
+	}},
+	"ui.view.evicted": {hostConst: "NotifyUIViewEvicted", symbols: map[string]string{
+		"go":   "case notifyUIViewEvicted:",
+		"rust": `"ui.view.evicted" => {`,
+		"py":   `if method == "ui.view.evicted":`,
+		"node": `case "ui.view.evicted": {`,
+	}},
+	// Fullscreen mouse events for a ui.custom component that takes the
+	// mouse, as Pi's renderer calls handleMouse.
+	"ui.custom.mouse": {hostConst: "NotifyUICustomMouse", symbols: map[string]string{
+		"go":   "case notifyUICustomMouse:",
+		"rust": `"ui.custom.mouse" => {`,
+		"py":   `if method == "ui.custom.mouse":`,
+		"node": `case "ui.custom.mouse": {`,
+	}},
+}
+
+// undeliveredNotifies are host notifies the host never sends to an SDK, by
+// mechanism.
+var undeliveredNotifies = map[string]map[string]string{
+	"ui.view.event": {
+		"node": "a Node frame carries the lines Pi's components rendered, so the host routes every key to ui.custom.input (viewSurface.HandleViewInput is false for a lines frame) and Pi's SelectList handles it in the runtime",
+	},
+}
+
+// knownNotifyGaps records SDKs that do not receive a host notify yet, each
+// naming the lane that lands it. An entry fails once its SDK has the symbol.
+var knownNotifyGaps = map[string]map[string]string{}
+
+// TestEverySDKReceivesEveryHostNotifyCapability is the notify counterpart of
+// TestEverySDKCanReachEveryWireCapability: the host sends each notify, and
+// every SDK receives it, records why the host never sends it there, or
+// records the lane that lands it.
+func TestEverySDKReceivesEveryHostNotifyCapability(t *testing.T) {
+	root := repoRoot(t)
+	sources := sdkSources(t, root)
+	host := readSDKSourceDir(t, filepath.Join(root, "coding", "extension", "host", "subprocess"), ".go")
+	for notify, capability := range hostNotifyCapabilities {
+		if !strings.Contains(host, capability.hostConst+` = "`+notify+`"`) || !strings.Contains(host, "Method: "+capability.hostConst) {
+			t.Errorf("the host never sends %q as %s", notify, capability.hostConst)
+		}
+		for _, sdk := range sdkNames() {
+			symbol, declared := capability.symbols[sdk]
+			_, undelivered := undeliveredNotifies[notify][sdk]
+			gap, known := knownNotifyGaps[notify][sdk]
+			switch {
+			case undelivered && declared:
+				t.Errorf("%s: the %s SDK both receives it and is recorded as never sent it", notify, sdk)
+			case undelivered:
+			case !declared:
+				t.Errorf("%s: no symbol declared for the %s SDK; declare it or record why the host never sends it there", notify, sdk)
+			case strings.Contains(sources[sdk], symbol) && known:
+				t.Errorf("knownNotifyGaps records %q missing from the %s SDK, but it now has %q. Delete the entry.", notify, sdk, symbol)
+			case strings.Contains(sources[sdk], symbol):
+			case known && strings.TrimSpace(gap) != "":
+				t.Logf("%s: %s gap recorded (%s)", notify, sdk, gap)
+			default:
+				t.Errorf("the %s SDK does not receive %q (no %q)", sdk, notify, symbol)
+			}
+		}
+	}
+	for notify, gaps := range knownNotifyGaps {
+		for sdk := range gaps {
+			if _, ok := hostNotifyCapabilities[notify].symbols[sdk]; !ok {
+				t.Errorf("knownNotifyGaps[%q][%q] names no capability symbol", notify, sdk)
+			}
+		}
+	}
 }
 
 func repoRoot(t *testing.T) string {

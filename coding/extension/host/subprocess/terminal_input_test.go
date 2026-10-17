@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"io"
 	"net"
+	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -132,7 +134,7 @@ func TestTerminalInputRequestEndsWithItsContext(t *testing.T) {
 	}()
 	bridge := NewUIBridge(func() {})
 	bridge.SetUIContext(ui)
-	bridge.RegisterExtConn("test-ext", conn)
+	bridge.RegisterExtConn("test-ext", conn, false)
 	if _, err := bridge.handleOnTerminalInput("test-ext", nil); err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +163,7 @@ func TestTerminalInputResubscribeRetiresTheEarlierListener(t *testing.T) {
 
 	restarted, _ := net.Pipe()
 	defer func() { _ = restarted.Close() }()
-	bridge.RegisterExtConn("test-ext", NewConn("test-ext", restarted))
+	bridge.RegisterExtConn("test-ext", NewConn("test-ext", restarted), false)
 	if _, err := bridge.handleOnTerminalInput("test-ext", nil); err != nil {
 		t.Fatal(err)
 	}
@@ -230,7 +232,7 @@ func newTerminalInputBridgeWithVerdict(t *testing.T, ui extension.UIContext, res
 
 	bridge := NewUIBridge(func() {})
 	bridge.SetUIContext(ui)
-	bridge.RegisterExtConn("test-ext", conn)
+	bridge.RegisterExtConn("test-ext", conn, false)
 	if _, err := bridge.handleOnTerminalInput("test-ext", nil); err != nil {
 		t.Fatalf("handleOnTerminalInput: %v", err)
 	}
@@ -274,6 +276,7 @@ func writeEnvelope(c net.Conn, env *Envelope) error {
 // ordinary key, then unsubscribe. The node shim previously threw on
 // onTerminalInput, so every pi extension reading raw input was dead under pig.
 func TestTerminalInputNodeShimEndToEnd(t *testing.T) {
+	skipWithoutNodeExtensions(t)
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
@@ -323,6 +326,21 @@ func TestTerminalInputNodeShimEndToEnd(t *testing.T) {
 		t.Error("ordinary keystroke was consumed; the editor would never see it")
 	}
 
+	// Pi's tui.ts does not catch a throwing input listener. The out-of-process
+	// handler cannot throw into the host, so the runtime reports the throw in
+	// the extension log, as the Go, Rust and Python SDKs do, and yields no
+	// verdict.
+	if err := ext.Commands["term_throw"].Handler(context.Background(), ""); err != nil {
+		t.Fatal(err)
+	}
+	pollUntil(t, 5*time.Second, "the throwing handler never received input", func() bool {
+		consumed, ok := fakeUI.sendTerminalInput("\x1b[99~")
+		if consumed {
+			t.Fatal("a throwing handler consumed the keystroke")
+		}
+		return ok && strings.Contains(readExtensionStderr(t, h, "terminal-input"), "terminal input handler exploded")
+	})
+
 	if err := ext.Commands["term_unsubscribe"].Handler(context.Background(), ""); err != nil {
 		t.Fatal(err)
 	}
@@ -330,4 +348,24 @@ func TestTerminalInputNodeShimEndToEnd(t *testing.T) {
 		_, ok := fakeUI.sendTerminalInput("\x1b[99~")
 		return !ok
 	})
+}
+
+// readExtensionStderr returns the extension log the host captured for name.
+func readExtensionStderr(t *testing.T, h *Host, name string) string {
+	t.Helper()
+	h.mu.Lock()
+	me := h.exts[name]
+	path := ""
+	if me != nil {
+		path = me.stderrLogPath
+	}
+	h.mu.Unlock()
+	if path == "" {
+		t.Fatalf("%s has no stderr log", name)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(data)
 }

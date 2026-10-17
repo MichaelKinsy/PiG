@@ -30,6 +30,7 @@ func (u *dialogExpansionUI) Select(_ context.Context, title string, _ []string, 
 
 // Pi interactive-mode.ts:2585,2623 exposes expansion changes before the selector Promise resolves, including dismissal.
 func TestNodeDialogPublishesExpansionBeforeCompletion(t *testing.T) {
+	skipWithoutNodeExtensions(t)
 	shortSockDir(t)
 	for _, isolation := range []string{"", "isolated"} {
 		t.Run("isolation="+isolation, func(t *testing.T) {

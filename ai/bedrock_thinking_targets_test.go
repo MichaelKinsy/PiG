@@ -1,3 +1,5 @@
+//go:build !pig_strip_bedrock_converse_stream
+
 package ai
 
 import (
@@ -44,7 +46,7 @@ func TestBedrockGovCloudThinkingDisplay(t *testing.T) {
 	} {
 		t.Run(row.name, func(t *testing.T) {
 			t.Parallel()
-			fields := buildBedrockAdditionalFields(&Model{ID: row.id, DisplayName: "Claude Opus 5"}, "Claude Opus 5", StreamOptions{Thinking: ThinkingHigh, IsReasoning: true, Region: row.region, Env: row.env})
+			fields := buildBedrockAdditionalFields(&Model{ID: row.id, DisplayName: "Claude Opus 5"}, "Claude Opus 5", StreamOptions{Thinking: ThinkingLevelHigh, IsReasoning: true, Region: row.region, Env: row.env})
 			data, err := json.Marshal(fields)
 			if err != nil {
 				t.Fatal(err)
@@ -60,9 +62,32 @@ func TestBedrockGovCloudThinkingDisplay(t *testing.T) {
 
 func BenchmarkBedrockThinkingFields(b *testing.B) {
 	model := &Model{ID: "global.anthropic.claude-opus-5", DisplayName: "Claude Opus 5"}
-	options := StreamOptions{Thinking: ThinkingXHigh, IsReasoning: true, Region: "us-gov-west-1"}
+	options := StreamOptions{Thinking: ThinkingLevelXHigh, IsReasoning: true, Region: "us-gov-west-1"}
 	b.ReportAllocs()
 	for b.Loop() {
 		buildBedrockAdditionalFields(model, model.DisplayName, options)
+	}
+}
+
+// upstream: bedrock-converse-stream.ts:1266 `options.thinkingDisplay ?? "summarized"`, for adaptive and budget thinking; GovCloud still omits it.
+func TestBedrockThinkingDisplayOptionTargets(t *testing.T) {
+	t.Parallel()
+	for _, row := range []struct {
+		name    string
+		id      string
+		option  BedrockThinkingDisplay
+		region  string
+		display any
+	}{
+		{"adaptive omitted", "global.anthropic.claude-opus-5", AnthropicThinkingDisplayOmitted, "us-east-1", "omitted"},
+		{"adaptive default", "global.anthropic.claude-opus-5", "", "us-east-1", "summarized"},
+		{"budget omitted", "anthropic.claude-3-7-sonnet-20250219-v1:0", AnthropicThinkingDisplayOmitted, "us-east-1", "omitted"},
+		{"gov cloud keeps none", "global.anthropic.claude-opus-5", AnthropicThinkingDisplayOmitted, "us-gov-west-1", nil},
+	} {
+		fields := buildBedrockAdditionalFields(&Model{ID: row.id, DisplayName: "Claude Opus 5"}, "Claude Opus 5", StreamOptions{Thinking: ThinkingLevelHigh, IsReasoning: true, Region: row.region, ThinkingDisplay: row.option})
+		thinking, _ := fields["thinking"].(map[string]any)
+		if got := thinking["display"]; got != row.display {
+			t.Errorf("%s: display = %v, want %v", row.name, got, row.display)
+		}
 	}
 }

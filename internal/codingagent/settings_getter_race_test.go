@@ -22,7 +22,7 @@ func TestSettingsFixedThemeAndRawControllerSelection(t *testing.T) {
 			if got := sm.GetTheme(); got != want {
 				t.Fatalf("fixed theme=%q, want %q", got, want)
 			}
-			mode := &InteractiveMode{opts: InteractiveOptions{SettingsManager: sm, Settings: Settings{Theme: "stale"}}}
+			mode := &InteractiveMode{opts: InteractiveModeOptions{SettingsManager: sm, Settings: Settings{Theme: "stale"}}}
 			got := mode.getThemeSelection()
 			if got == nil {
 				t.Fatalf("raw controller selection unset, want %q", value)

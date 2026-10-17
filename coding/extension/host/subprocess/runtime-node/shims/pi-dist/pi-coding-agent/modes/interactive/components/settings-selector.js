@@ -1,6 +1,7 @@
 import { getSupportedThinkingLevels } from "../../../../pi-ai/sdk-bundle/index.js";
 import { Container, getCapabilities, SettingsList, Spacer, Text, } from "../../../../../pi-tui.mjs";
 import { formatHttpIdleTimeoutMs, HTTP_IDLE_TIMEOUT_CHOICES } from "../../../core/http-dispatcher.js";
+import { SETTINGS_DEFAULTS } from "../../../core/settings-defaults.js";
 import { CACHE_WARMING_MODES, } from "../../../core/settings-manager.js";
 import { getSettingsListTheme, parseAutoThemeSetting, SYSTEM_THEME_NAME, theme, } from "../theme/theme.js";
 import { DynamicBorder } from "./dynamic-border.js";
@@ -36,7 +37,7 @@ class WarningSettingsSubmenu extends Container {
                 id: "anthropic-extra-usage",
                 label: "Anthropic extra usage",
                 description: "Warn when Anthropic subscription auth may use paid extra usage",
-                currentValue: (this.state.anthropicExtraUsage ?? true) ? "true" : "false",
+                currentValue: (this.state.anthropicExtraUsage ?? SETTINGS_DEFAULTS.warnings.anthropicExtraUsage) ? "true" : "false",
                 values: ["true", "false"],
             },
         ];
@@ -292,6 +293,13 @@ export class SettingsSelectorComponent extends Container {
                 description: "Preferred transport for providers that support multiple transports",
                 currentValue: config.transport,
                 values: ["sse", "websocket", "websocket-cached", "auto"],
+            },
+            {
+                id: "share-destination",
+                label: "Session share destination",
+                description: "Where to upload sessions with /share (auto prefers Radius when authenticated, otherwise GitHub Gist)",
+                currentValue: config.sessionShareDestination,
+                values: ["auto", "gist", "radius"],
             },
             {
                 id: "http-idle-timeout",
@@ -573,7 +581,7 @@ export class SettingsSelectorComponent extends Container {
         items.splice(skillCommandsIndex + 1, 0, {
             id: "show-hardware-cursor",
             label: "Show hardware cursor",
-            description: "Show the terminal cursor while still positioning it for IME support",
+            description: "Use the terminal cursor instead of Pi's drawn cursor",
             currentValue: config.showHardwareCursor ? "true" : "false",
             values: ["true", "false"],
         });
@@ -591,7 +599,7 @@ export class SettingsSelectorComponent extends Container {
         items.splice(editorPaddingIndex + 1, 0, {
             id: "output-padding",
             label: "Output padding",
-            description: "Horizontal padding for user messages, assistant messages, and thinking",
+            description: "Horizontal padding for messages, tool output, and command output",
             currentValue: String(config.outputPad),
             values: ["0", "1"],
         });
@@ -652,6 +660,9 @@ export class SettingsSelectorComponent extends Container {
                     break;
                 case "transport":
                     callbacks.onTransportChange(newValue);
+                    break;
+                case "share-destination":
+                    callbacks.onSessionShareDestinationChange(newValue);
                     break;
                 case "http-idle-timeout": {
                     const choice = HTTP_IDLE_TIMEOUT_CHOICES.find((item) => item.label === newValue);

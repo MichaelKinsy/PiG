@@ -13,6 +13,9 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
+
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 )
 
 // SystemThemeName is the reserved name of the theme generated from the terminal's own colors.
@@ -126,13 +129,13 @@ var systemTokenFamilies = []struct{ token, family string }{
 	{"thinkingMax", "thinkingRed"},
 }
 
-var systemTokenFamily = func() map[string]string {
+var systemTokenFamily = sync.OnceValue(func() map[string]string {
 	families := make(map[string]string, len(systemTokenFamilies))
 	for _, entry := range systemTokenFamilies {
 		families[entry.token] = entry.family
 	}
 	return families
-}()
+})
 
 // systemTokenSlots are palette slots for tokens that would otherwise share a hue with a similar token.
 var systemTokenSlots = map[string]int{"syntaxString": 2, "syntaxNumber": 5, "searchMatchBg": 3}
@@ -248,7 +251,7 @@ func systemConcat(parts ...[]string) []string {
 	return joined
 }
 
-var systemRules = func() []systemRule {
+var systemRules = sync.OnceValue(func() []systemRule {
 	background := []string{"background"}
 	var rules []systemRule
 	add := func(more ...systemRule) { rules = append(rules, more...) }
@@ -279,7 +282,7 @@ var systemRules = func() []systemRule {
 		add(systemRule{token, background, systemThinkingLevel[index]})
 	}
 	return rules
-}()
+})
 
 // systemReadableFloor is the level relaxation compresses stronger levels toward before weakening all levels.
 func systemReadableFloor(appearance TerminalTheme) string {
@@ -299,14 +302,14 @@ var systemForegroundTokens = []string{"text", "userMessageText", "toolTitle"}
 const systemTextMinimumWcagContrast = 4.5
 
 // systemSolveOrder is the tokens in dependency order: every surface before the tokens drawn on it.
-var systemSolveOrder = func() []string {
+var systemSolveOrder = sync.OnceValue(func() []string {
 	var order []string
 	var visit func(token string)
 	visit = func(token string) {
 		if slices.Contains(order, token) {
 			return
 		}
-		for _, rule := range systemRules {
+		for _, rule := range systemRules() {
 			if rule.token != token {
 				continue
 			}
@@ -318,11 +321,11 @@ var systemSolveOrder = func() []string {
 		}
 		order = append(order, token)
 	}
-	for _, rule := range systemRules {
+	for _, rule := range systemRules() {
 		visit(rule.token)
 	}
 	return order
-}()
+})
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 
@@ -340,7 +343,7 @@ func relativeLuminance(color RgbColor) float64 {
 		}
 		return math.Pow((value+0.055)/1.055, 2.4)
 	}
-	return 0.2126*linear(color.R) + 0.7152*linear(color.G) + 0.0722*linear(color.B)
+	return float64(0.2126*linear(color.R)) + float64(0.7152*linear(color.G)) + float64(0.0722*linear(color.B))
 }
 
 // WcagContrast is the WCAG 2 contrast ratio, 1-21.
@@ -383,7 +386,7 @@ func hexOfRgb(color RgbColor) string {
 	var hex strings.Builder
 	hex.WriteByte('#')
 	for _, channel := range [3]float64{color.R, color.G, color.B} {
-		digits := strconv.FormatInt(int64(jsRound(channel)), 16)
+		digits := strconv.FormatInt(int64(jsnumber.Round(channel)), 16)
 		if len(digits) < 2 {
 			digits = "0" + digits
 		}
@@ -404,7 +407,7 @@ func saturationCurve(family systemFamily, lightness float64) float64 {
 	if family.max > 0 {
 		floor = family.min / family.max
 	}
-	return floor + (1-floor)*bellWeight(lightness)
+	return floor + float64((1-floor)*bellWeight(lightness))
 }
 
 // levelTarget is the target lightness for a level on a surface, or false where the level cannot be reached.
@@ -415,7 +418,7 @@ func levelTarget(level string, appearance TerminalTheme, surfaceL float64) (floa
 	}
 	sum := 0.0
 	for power, coefficient := range curve.coefficients {
-		sum += coefficient * math.Pow(surfaceL, float64(power))
+		sum += float64(coefficient * math.Pow(surfaceL, float64(power)))
 	}
 	return sum, true
 }
@@ -519,9 +522,9 @@ func GenerateSystemThemeColors(input SystemThemeInput) SystemThemeColors {
 	// paint is a token's color at an OKLab lightness. With a palette, the palette color's saturation applies at its own lightness and falls off toward black and white along the family's curve, never rising above it.
 	paint := func(token string, oklabL float64) RgbColor {
 		lightness := OklabToOkhslLightness(oklabL)
-		family := systemFamilies[systemTokenFamily[token]]
+		family := systemFamilies[systemTokenFamily()[token]]
 		if palette == nil {
-			return okhslRgb(family.hue, (family.min+(family.max-family.min)*bellWeight(lightness))*saturation, lightness)
+			return okhslRgb(family.hue, (family.min+float64((family.max-family.min)*bellWeight(lightness)))*saturation, lightness)
 		}
 		slot, ok := systemTokenSlots[token]
 		if !ok {
@@ -547,9 +550,9 @@ func GenerateSystemThemeColors(input SystemThemeInput) SystemThemeColors {
 		floor := floorTarget - surfaceL
 		compressed := distance
 		if math.Abs(distance) > math.Abs(floor) {
-			compressed = distance - (distance-floor)*math.Min(t, 1)
+			compressed = distance - float64((distance-floor)*math.Min(t, 1))
 		}
-		return surfaceL + compressed*(1-math.Max(0, t-1)), true
+		return surfaceL + float64(compressed*(1-math.Max(0, t-1))), true
 	}
 
 	// limitPanel keeps a panel light enough (or dark enough) that white (or black) text still reaches the body text minimum on it. This only matters for backgrounds near mid-gray, where it barely does on the background.
@@ -583,9 +586,9 @@ func GenerateSystemThemeColors(input SystemThemeInput) SystemThemeColors {
 			}
 			return background
 		}
-		for _, token := range systemSolveOrder {
+		for _, token := range systemSolveOrder() {
 			var targets []float64
-			for _, rule := range systemRules {
+			for _, rule := range systemRules() {
 				if rule.token != token {
 					continue
 				}
@@ -632,7 +635,7 @@ func GenerateSystemThemeColors(input SystemThemeInput) SystemThemeColors {
 	}
 	surfacesOf := func(token string) []RgbColor {
 		var surfaces []RgbColor
-		for _, rule := range systemRules {
+		for _, rule := range systemRules() {
 			if rule.token != token {
 				continue
 			}

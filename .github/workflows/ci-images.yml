@@ -1,4 +1,3 @@
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 
 name: CI images
@@ -9,6 +8,7 @@ on:
       - .go-version
       - .node-version
       - internal/coding/pigversion/pigversion.go
+      - .upstream/pin
       - .github/workflows/ci.yml
       - .dockerignore
       - automation/images/**
@@ -22,6 +22,7 @@ on:
       - .go-version
       - .node-version
       - internal/coding/pigversion/pigversion.go
+      - .upstream/pin
       - .github/workflows/ci.yml
       - .dockerignore
       - automation/images/**
@@ -72,7 +73,30 @@ jobs:
         with:
           path: ci-image-${{ matrix.image }}
           persist-credentials: false
+      - name: Skip the parity image for a commit pin
+        id: pin
+        shell: bash
+        working-directory: ${{ github.workspace }}/ci-image-${{ matrix.image }}
+        env:
+          IMAGE: ${{ matrix.image }}
+        run: |
+          set -euo pipefail
+          # The parity image installs the published Pi release; a commit pin has no published package, so its oracle is
+          # built from source in the Linux parity job instead (automation/pin/oracle.py, pin.py check-oracle).
+          ref=$(sed -n 's/^ref=//p' .upstream/pin)
+          commit=$(sed -n 's/^commit=//p' .upstream/pin)
+          if [ "$IMAGE" = parity ] && [ "$ref" = "$commit" ]; then
+            if [ "${{ github.event_name }}" = workflow_dispatch ] && [ "${{ inputs.publish }}" = true ]; then
+              echo "a commit pin ($commit) has no published Pi to build a parity image from; publish images from a release-tag pin" >&2
+              exit 1
+            fi
+            echo "::notice::Parity image skipped: the pin is commit $commit, not a release tag; the Linux parity job runs against the source-built oracle."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Verify locked dependencies
+        if: steps.pin.outputs.skip != 'true'
         shell: bash
         working-directory: ${{ github.workspace }}/ci-image-${{ matrix.image }}
         run: |
@@ -80,6 +104,7 @@ jobs:
             automation/images/ci-parity/package-lock.json \
             automation/images/npm-runtime/package-lock.json
       - name: Seed pinned base images
+        if: steps.pin.outputs.skip != 'true'
         shell: bash
         working-directory: ${{ github.workspace }}/ci-image-${{ matrix.image }}
         env:
@@ -87,6 +112,7 @@ jobs:
           CI_BASE_DIR: ${{ runner.temp }}/pig-ci-bases-${{ matrix.image }}
         run: ./automation/ci/seed-ci-image-bases.sh "$IMAGE"
       - name: Build and validate
+        if: steps.pin.outputs.skip != 'true'
         id: build
         shell: bash
         working-directory: ${{ github.workspace }}/ci-image-${{ matrix.image }}
@@ -106,6 +132,7 @@ jobs:
           ./automation/ci/build-ci-image.sh "$IMAGE"
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
       - name: Generate SBOM
+        if: steps.pin.outputs.skip != 'true'
         shell: bash
         working-directory: ${{ github.workspace }}/ci-image-${{ matrix.image }}
         env:
@@ -128,6 +155,7 @@ jobs:
               raise SystemExit("SBOM contains no packages")
           PY
       - name: Scan vulnerabilities
+        if: steps.pin.outputs.skip != 'true'
         shell: bash
         working-directory: ${{ github.workspace }}/ci-image-${{ matrix.image }}
         env:
@@ -169,14 +197,14 @@ jobs:
           compression-level: 0
           retention-days: 14
       - name: Upload image evidence
-        if: always()
+        if: always() && steps.pin.outputs.skip != 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: pig-ci-${{ matrix.image }}-evidence
           path: ${{ github.workspace }}/ci-image-${{ matrix.image }}/out/ci-images/${{ matrix.image }}/
           retention-days: 14
       - name: Remove job images
-        if: always()
+        if: always() && steps.pin.outputs.skip != 'true'
         shell: bash
         env:
           IMAGE_REF: ${{ steps.build.outputs.ref }}

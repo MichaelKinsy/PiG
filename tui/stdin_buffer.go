@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-FileCopyrightText: Copyright (c) 2025 opentui
 // SPDX-License-Identifier: MIT
@@ -10,10 +9,11 @@ package tui
 import (
 	"bytes"
 	"cmp"
-	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
@@ -28,16 +28,32 @@ const (
 	defaultEscapeTimeout   = 10 * time.Millisecond
 )
 
+// terminalReplyHeaderRegex is upstream TERMINAL_REPLY_HEADER_PATTERN: color and program-status OSC replies, XTVersion, and Kitty
+// graphics replies. Until their header is complete, the input may be batched legacy Alt keystrokes.
+var terminalReplyHeaderRegex = lazyregexp.New(`^\x1b(?:\](?:1[01];|4;\d{1,3};|7501;\?)|P>\||_G(?:[a-z]=\d+,)*[a-z]=\d+;)`)
+
+// isControlString is upstream isControlString: an OSC, DCS, or APC introducer.
+func isControlString(data string) bool {
+	//portlint:allow utf16units the two bytes compared are ESC and an ASCII introducer, each one UTF-16 code unit
+	return len(data) >= 2 && data[0] == 0x1b && (data[1] == ']' || data[1] == 'P' || data[1] == '_')
+}
+
 // StdinBuffer accumulates partial escape sequences across reads and emits JavaScript UTF-16 units for ordinary text. Lone surrogate events use WTF-8. Bracketed pastes remain one framed payload. The zero value uses upstream's default timeouts.
+//
+// pig divergence (D114): its listener surface (stdin_buffer_events.go) has no per-event listener limit, so it has no GetMaxListeners, SetMaxListeners or MaxListenersExceededWarning.
 type StdinBuffer struct {
-	buffer         string
-	pasteMode      bool
-	pasteBuffer    string
+	buffer    string
+	pasteMode bool
+	// pasteChunks is upstream's pasteBuffer, canonical, kept as the reads that delivered it so a paste split over many reads
+	// is joined once rather than copied and searched again per read.
+	pasteChunks    []string
 	pendingKittyCP int
 	timeout        time.Duration
 	escapeTimeout  time.Duration
 	// utf8Pending holds the leading bytes of a character split across reads.
 	utf8Pending []byte
+	// events are the "data" and "paste" listeners (stdin-buffer.ts extends EventEmitter).
+	events stdinListeners
 }
 
 // StdinBufferOptions mirrors upstream StdinBufferOptions. A zero field keeps
@@ -123,6 +139,11 @@ func (b *StdinBuffer) ProcessBytes(data []byte) []string {
 	return b.ProcessString(s)
 }
 
+// Process is upstream process(data): it feeds the string to the buffer and publishes each complete sequence to the listeners, returning nothing. ProcessString does the same and also returns the sequences it published.
+//
+// upstream: packages/tui/src/stdin-buffer.ts:296 process
+func (b *StdinBuffer) Process(data string) { b.ProcessString(data) }
+
 // ProcessString mirrors upstream process(string).
 func (b *StdinBuffer) ProcessString(s string) []string {
 	if s == "" {
@@ -134,15 +155,13 @@ func (b *StdinBuffer) ProcessString(s string) []string {
 	b.buffer = jsstring.Canonical(b.buffer + s)
 
 	if b.pasteMode {
-		b.pasteBuffer = jsstring.Canonical(b.pasteBuffer + b.buffer)
+		payload, remaining, ended := b.appendPaste(b.buffer)
 		b.buffer = ""
-		if end := strings.Index(b.pasteBuffer, bracketedPasteEnd); end >= 0 {
-			payload := b.pasteBuffer[:end]
-			remaining := b.pasteBuffer[end+len(bracketedPasteEnd):]
+		if ended {
 			b.pasteMode = false
-			b.pasteBuffer = ""
 			b.pendingKittyCP = 0
 			out := []string{bracketedPasteStart + payload + bracketedPasteEnd}
+			b.Emit(StdinBufferEventPaste, payload)
 			if remaining != "" {
 				out = append(out, b.ProcessString(remaining)...)
 			}
@@ -154,24 +173,20 @@ func (b *StdinBuffer) ProcessString(s string) []string {
 	if start := strings.Index(b.buffer, bracketedPasteStart); start >= 0 {
 		var out []string
 		if start > 0 {
-			result, remainder := extractCompleteSequences(b.buffer[:start])
+			// An incomplete sequence directly before the paste marker is dropped, as upstream process() ignores that remainder.
+			result, _ := extractCompleteSequences(b.buffer[:start])
 			out = b.emitDataSequence(out, result...)
-			if remainder != "" {
-				out = b.emitDataSequence(out, remainder)
-			}
 		}
 		b.pendingKittyCP = 0
 		b.buffer = b.buffer[start+len(bracketedPasteStart):]
 		b.pasteMode = true
-		b.pasteBuffer = b.buffer
+		payload, remaining, ended := b.appendPaste(b.buffer)
 		b.buffer = ""
-		if end := strings.Index(b.pasteBuffer, bracketedPasteEnd); end >= 0 {
-			payload := b.pasteBuffer[:end]
-			remaining := b.pasteBuffer[end+len(bracketedPasteEnd):]
+		if ended {
 			b.pasteMode = false
-			b.pasteBuffer = ""
 			b.pendingKittyCP = 0
 			out = append(out, bracketedPasteStart+payload+bracketedPasteEnd)
+			b.Emit(StdinBufferEventPaste, payload)
 			if remaining != "" {
 				out = append(out, b.ProcessString(remaining)...)
 			}
@@ -195,65 +210,86 @@ func (b *StdinBuffer) Flush() []string {
 	return out
 }
 
+// FlushExpired is the flush timeout firing (stdin-buffer.ts process timeout callback). A flushed control string longer than its
+// introducer is the Alt key followed by batched input: the introducer is emitted and the tail is parsed again, so text, Enter,
+// and control keys are not swallowed as one event. The tail can leave a new remainder; HasPendingFlush arms its timeout.
+func (b *StdinBuffer) FlushExpired() []string {
+	sequence := b.buffer
+	if !isControlString(sequence) || jsstring.Length(sequence) <= 2 {
+		return b.Flush()
+	}
+	b.buffer = ""
+	//portlint:allow utf16units isControlString held: the first two bytes are ESC and an ASCII introducer, sequence.slice(0, 2)
+	out := b.emitDataSequence(nil, sequence[:2])
+	b.pendingKittyCP = 0
+	//portlint:allow utf16units the two ASCII introducer bytes are two code units, so this is sequence.slice(2)
+	return append(out, b.ProcessString(sequence[2:])...)
+}
+
 // GetBuffer returns the pending incomplete input, excluding paste content.
 func (b *StdinBuffer) GetBuffer() string { return b.buffer }
 
+// HasPendingFlush reports whether the remainder waits on the flush timeout. A remainder with a recognized reply header waits
+// for its terminator instead: flushing it would turn a delayed tail into text and an OSC's BEL terminator into Ctrl+G. Other
+// input, including Alt+] followed by text, keeps bounded recovery (stdin-buffer.ts process).
 func (b *StdinBuffer) HasPendingFlush() bool {
-	return b.buffer != ""
+	return b.buffer != "" && !terminalReplyHeaderRegex.MatchString(b.buffer)
 }
+
+// Destroy releases the buffer the way terminal.ts stop() does: it clears pending input (stdin-buffer.ts:441-443 destroy calls clear).
+func (b *StdinBuffer) Destroy() { b.Clear() }
 
 func (b *StdinBuffer) Clear() {
 	b.buffer = ""
 	b.pasteMode = false
-	b.pasteBuffer = ""
+	b.pasteChunks = nil
 	b.pendingKittyCP = 0
 	b.utf8Pending = nil
 }
 
+// appendPaste is upstream's `pasteBuffer += buffer` followed by the search for the end marker. text is canonical; the joined
+// paste is canonical as the concatenation is except where a high surrogate ending the paste pairs with a low surrogate
+// starting text. Only the new text and the bytes before it that can start the marker are searched. Once the marker arrived it
+// returns the paste before it and the text after it and starts a new paste.
+func (b *StdinBuffer) appendPaste(text string) (payload, remaining string, ended bool) {
+	if n := len(b.pasteChunks); n > 0 && text != "" {
+		//portlint:allow utf16units byte test for the 3-byte encoding of a lone high surrogate (ED A0-AF ..) that canonical text keeps at a chunk end
+		if last := b.pasteChunks[n-1]; len(last) >= 3 && last[len(last)-3] == 0xed && last[len(last)-2]&0xf0 == 0xa0 {
+			b.pasteChunks[n-1] = last[:len(last)-3]
+			text = jsstring.Canonical(last[len(last)-3:] + text)
+		}
+	}
+	before := b.pasteTail(len(bracketedPasteEnd) - 1)
+	b.pasteChunks = append(b.pasteChunks, text)
+	at := strings.Index(before+text, bracketedPasteEnd)
+	if at < 0 {
+		return "", "", false
+	}
+	paste := strings.Join(b.pasteChunks, "")
+	b.pasteChunks = nil
+	end := len(paste) - len(text) - len(before) + at
+	return paste[:end], paste[end+len(bracketedPasteEnd):], true
+}
+
+// pasteTail is the last n bytes of the paste, or all of it when it is shorter.
+func (b *StdinBuffer) pasteTail(n int) string {
+	tail := ""
+	for i := len(b.pasteChunks) - 1; i >= 0 && len(tail) < n; i-- {
+		tail = b.pasteChunks[i] + tail
+	}
+	//portlint:allow utf16units the last n bytes, where n < len of the ASCII end marker, searched only for that marker
+	return tail[max(0, len(tail)-n):]
+}
+
+var unmodifiedKittyPrintableRegex = lazyregexp.New(`^\x1b\[(\d+)(?::\d*)?(?::\d+)?u$`)
+
 func parseUnmodifiedKittyPrintableCodepoint(sequence string) (int, bool) {
-	if !strings.HasPrefix(sequence, escByte+"[") || !strings.HasSuffix(sequence, "u") {
+	match := unmodifiedKittyPrintableRegex.FindStringSubmatch(sequence)
+	if match == nil {
 		return 0, false
 	}
-	payload := sequence[2 : len(sequence)-1]
-	if payload == "" {
-		return 0, false
-	}
-	parts := strings.Split(payload, ":")
-	head := parts[0]
-	if head == "" {
-		return 0, false
-	}
-	semi := strings.Split(head, ";")
-	if len(semi) != 1 {
-		return 0, false
-	}
-	cp, err := strconv.Atoi(semi[0])
-	if err != nil || cp < 32 {
-		return 0, false
-	}
-	if len(parts) > 1 && parts[1] != "" {
-		if _, err := strconv.Atoi(parts[1]); err != nil {
-			return 0, false
-		}
-	}
-	if len(parts) > 2 {
-		mods := strings.Split(parts[2], ";")
-		if len(mods) > 2 {
-			return 0, false
-		}
-		for _, p := range mods {
-			if p == "" {
-				continue
-			}
-			if _, err := strconv.Atoi(p); err != nil {
-				return 0, false
-			}
-		}
-	}
-	if len(parts) > 3 {
-		return 0, false
-	}
-	return cp, true
+	codepoint := keyNumber(match[1])
+	return keyCodepoint(codepoint), codepoint >= 32
 }
 
 func (b *StdinBuffer) emitDataSequence(out []string, sequences ...string) []string {
@@ -268,6 +304,7 @@ func (b *StdinBuffer) emitDataSequence(out []string, sequences ...string) []stri
 			b.pendingKittyCP = 0
 		}
 		out = append(out, sequence)
+		b.Emit(StdinBufferEventData, sequence)
 	}
 	return out
 }
@@ -357,8 +394,24 @@ func extractCompleteSequences(buffer string) ([]string, string) {
 			pos++
 			continue
 		}
+		terminalReply := len(remaining) > 2 && (remaining[1] == ']' || remaining[1] == 'P' || remaining[1] == '_') && terminalReplyHeaderRegex.MatchString(jsstring.FromUTF16(remaining))
 		complete := false
 		for end := 1; end <= len(remaining); end++ {
+			if terminalReply && end > 2 {
+				switch c := remaining[end-1]; {
+				case c == 0x18 || c == 0x1a:
+					// CAN and SUB cancel the string, not subsequent keyboard input.
+					pos += end
+					complete = true
+				case c == 0x1b && end < len(remaining) && remaining[end] != '\\':
+					// A new escape sequence aborts an unterminated reply. A trailing ESC stays buffered until it can be told from ST.
+					pos += end - 1
+					complete = true
+				}
+				if complete {
+					break
+				}
+			}
 			candidate := remaining[:end]
 			if isCompleteSequence(candidate) == "incomplete" {
 				continue

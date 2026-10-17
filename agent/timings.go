@@ -7,11 +7,10 @@ import (
 )
 
 // Recorder captures per-turn and per-tool timing data for one agent
-// session. Mirrors the data side of upstream pi's
-// `core/timings.ts` startup profiler, but extended to cover the agent
-// loop's lifecycle (turn start/end + tool execution latencies) so the
-// status line, /cost, and --diagnose can all read from a single
-// source.
+// session: turn start/end and tool execution latencies, so the status line,
+// /cost, and --diagnose can all read from a single source. It is PiG's own
+// recorder; Pi's startup profiler (core/timings.ts) is
+// internal/codingagent/timings.
 //
 // All methods are safe for concurrent use. Tool execution may run in
 // parallel goroutines, so RecordTool can be
@@ -19,8 +18,9 @@ import (
 type Recorder struct {
 	mu           sync.RWMutex
 	sessionStart time.Time
-	turnStart    time.Time // zero when not in a turn
-	turns        []time.Duration
+	turnStart    time.Time     // zero when not in a turn
+	turns        int           // completed turns; the recorder keeps their count and the last duration, not one entry per turn
+	lastTurn     time.Duration // duration of the most recent completed turn
 	toolTotals   map[string]time.Duration
 	toolCounts   map[string]int
 }
@@ -50,7 +50,8 @@ func (r *Recorder) EndTurn() time.Duration {
 		return 0
 	}
 	d := time.Since(r.turnStart)
-	r.turns = append(r.turns, d)
+	r.turns++
+	r.lastTurn = d
 	r.turnStart = time.Time{}
 	return d
 }
@@ -76,10 +77,7 @@ func (r *Recorder) Elapsed() time.Duration {
 func (r *Recorder) LastTurnDuration() time.Duration {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	if len(r.turns) == 0 {
-		return 0
-	}
-	return r.turns[len(r.turns)-1]
+	return r.lastTurn
 }
 
 // CurrentTurnElapsed returns the elapsed time of the in-flight turn,
@@ -96,7 +94,7 @@ func (r *Recorder) CurrentTurnElapsed() time.Duration {
 // TimingSnapshot is an immutable copy of recorder state.
 type TimingSnapshot struct {
 	Total       time.Duration
-	Turns       []time.Duration
+	TurnCount   int
 	ToolTotals  map[string]time.Duration
 	ToolCounts  map[string]int
 	CurrentTurn time.Duration // 0 if idle
@@ -115,8 +113,6 @@ type TimingSnapshot struct {
 func (r *Recorder) Snapshot() TimingSnapshot {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	turns := make([]time.Duration, len(r.turns))
-	copy(turns, r.turns)
 	totals := make(map[string]time.Duration, len(r.toolTotals))
 	maps.Copy(totals, r.toolTotals)
 	counts := make(map[string]int, len(r.toolCounts))
@@ -127,7 +123,7 @@ func (r *Recorder) Snapshot() TimingSnapshot {
 	}
 	return TimingSnapshot{
 		Total:       time.Since(r.sessionStart),
-		Turns:       turns,
+		TurnCount:   r.turns,
 		ToolTotals:  totals,
 		ToolCounts:  counts,
 		CurrentTurn: cur,

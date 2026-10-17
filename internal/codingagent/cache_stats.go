@@ -6,6 +6,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Ports packages/coding-agent/src/core/cache-stats.ts
@@ -55,6 +56,31 @@ type cacheMiss struct {
 	missedCost   float64
 	idleMillis   int64
 	modelChanged bool
+	price        cacheMissPrice
+}
+
+// cacheMissPrice holds the inputs of a detected miss's cost other than the price source, so a new source reprices the miss without its record.
+type cacheMissPrice struct {
+	missedTokens int
+	paidPerToken float64
+	// readPerToken is the response's own cache-read rate, which prices the miss when the response read from cache.
+	readPerToken  float64
+	readFromCache bool
+	provider      string
+	modelID       string
+}
+
+// cost is the miss's missedCost under prices (nil: the built-in model table), computed as cache-stats.ts computes it.
+func (p cacheMissPrice) cost(prices ModelPriceSource) float64 {
+	readPerToken := modelCacheReadCostPerToken(p.provider, p.modelID)
+	if prices != nil {
+		readPerToken = prices(p.provider, p.modelID) / 1_000_000
+	}
+	if p.readFromCache {
+		readPerToken = p.readPerToken
+	}
+	// Rounded as JavaScript rounds it: callers sum costs, and an inlined product would fuse (FMA) into that sum.
+	return float64(float64(p.missedTokens) * math.Max(0, p.paidPerToken-readPerToken))
 }
 
 type previousCacheRequest struct {
@@ -96,18 +122,20 @@ func detectMiss(prev *previousCacheRequest, message *agent.AssistantMessage, pri
 	if paidTokens > 0 {
 		paidPerToken = (usage.Cost.Input + usage.Cost.CacheWrite) / float64(paidTokens)
 	}
-	readPerToken := modelCacheReadCostPerToken(message)
-	if len(prices) > 0 && prices[0] != nil {
-		readPerToken = prices[0](message.Provider, message.ModelID) / 1_000_000
-	}
+	price := cacheMissPrice{missedTokens: missedTokens, paidPerToken: paidPerToken, provider: message.Provider, modelID: message.ModelID}
 	if usage.CacheRead > 0 {
-		readPerToken = usage.Cost.CacheRead / float64(usage.CacheRead)
+		price.readPerToken, price.readFromCache = usage.Cost.CacheRead/float64(usage.CacheRead), true
+	}
+	var source ModelPriceSource
+	if len(prices) > 0 {
+		source = prices[0]
 	}
 	return &cacheMiss{
 		missedTokens: missedTokens,
-		missedCost:   float64(missedTokens) * math.Max(0, paidPerToken-readPerToken),
+		missedCost:   price.cost(source),
 		idleMillis:   max(int64(0), message.Timestamp-prev.timestamp),
 		modelChanged: message.Provider+"/"+message.ModelID != prev.modelKey,
+		price:        price,
 	}
 }
 
@@ -128,8 +156,8 @@ func asPreviousCacheRequest(message *agent.AssistantMessage, reportedCache bool)
 	}
 }
 
-func modelCacheReadCostPerToken(message *agent.AssistantMessage) float64 {
-	if gm, ok := ai.LookupModelExact(message.Provider + "/" + message.ModelID); ok {
+func modelCacheReadCostPerToken(provider, modelID string) float64 {
+	if gm, ok := ai.LookupModelExact(provider + "/" + modelID); ok {
 		return gm.CacheReadCost / 1_000_000
 	}
 	return 0
@@ -141,7 +169,7 @@ func formatCacheMissNotice(miss *cacheMiss) string {
 	}
 	cost := ""
 	if miss.missedCost >= 0.01 {
-		cost = fmt.Sprintf(" (~$%.2f)", miss.missedCost)
+		cost = " (~$" + jsstring.ToFixed(miss.missedCost, 2) + ")"
 	}
 	label := "Cache miss"
 	if miss.modelChanged {

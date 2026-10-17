@@ -78,3 +78,26 @@ func TestGenerateBugReportSummaryFailures(t *testing.T) {
 		t.Fatalf("cancelled error = %v", err)
 	}
 }
+
+// bug-report.ts generateBugReportSummary trims the hint and the response with String.prototype.trim: U+FEFF and U+00A0 are stripped,
+// U+0085 is kept.
+func TestGenerateBugReportSummaryTrimsLikeJavaScript(t *testing.T) {
+	var gotPrompt string
+	completer := simpleCompleterFunc(func(_ context.Context, _ *ai.Model, _ string, messages []agent.AgentMessage, _ ai.StreamOptions) (string, *ai.Usage, error) {
+		gotPrompt = messages[0].User.Content.(ai.UserContentBlocks)[0].(ai.TextContent).Text
+		return "\ufeff\u00a0summary\u0085\u2028", nil, nil
+	})
+	model := &ai.Model{ID: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 100_000, MaxOutputTokens: 2048}}
+	summary, err := GenerateBugReportSummary(context.Background(), GenerateBugReportSummaryOptions{
+		Messages: bugSummaryMessages("x"), Hint: "\ufeff\u00a0hung\u0085\u2029", Model: model, Completer: completer,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if summary != "summary\u0085" {
+		t.Errorf("summary = %q", summary)
+	}
+	if want := "<user-report>\nhung\u0085\n</user-report>"; !strings.Contains(gotPrompt, want) {
+		t.Errorf("prompt lacks %q: %q", want, gotPrompt)
+	}
+}

@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package ciimages
@@ -22,8 +21,8 @@ import (
 const modulePath = "github.com/MichaelKinsy/PiG"
 
 // windowsOnlyTestPackages walks the root module for test files that only a
-// Windows build selects: a _windows_test.go name or a "//go:build windows"
-// line. A file whose constraint also needs a custom tag (integration, parity)
+// Windows build selects: a _windows_test.go name or a "//go:build windows" or
+// "//go:build !unix" line. A file whose constraint also needs a custom tag (integration, parity)
 // is not selected by a default go test and is left out.
 func windowsOnlyTestPackages(t *testing.T, root string) []string {
 	t.Helper()
@@ -49,7 +48,8 @@ func windowsOnlyTestPackages(t *testing.T, root string) []string {
 			return nil
 		}
 		constraint := buildConstraint(t, file)
-		windowsOnly := constraint == "windows" || strings.HasSuffix(name, "_windows_test.go") && (constraint == "" || constraint == "windows")
+		// "!unix" selects the file on Windows and on no Linux or macOS build.
+		windowsOnly := constraint == "windows" || constraint == "!unix" || strings.HasSuffix(name, "_windows_test.go") && (constraint == "" || constraint == "windows")
 		if windowsOnly {
 			rel, err := filepath.Rel(root, filepath.Dir(file))
 			if err != nil {
@@ -128,8 +128,8 @@ func TestWindowsTestPackagesFailWhenGoListFails(t *testing.T) {
 // The native shard drops the extension host packages and cmd/pig from the
 // script's list. The extension-host shard must test each dropped extension host
 // package, the extension-conformance shard must test the conformance package,
-// and the cli-N shards must together test every cmd/pig shard that make
-// test-cli runs on Linux, each shard on its own job.
+// and the cli jobs must together test every cmd/pig shard that make
+// test-cli runs on Linux, each shard once, in its own test process.
 func TestWindowsShardsTestEverySelectedPackage(t *testing.T) {
 	job, ok := verificationJobs(t)["windows"]
 	if !ok {
@@ -137,27 +137,46 @@ func TestWindowsShardsTestEverySelectedPackage(t *testing.T) {
 	}
 	shards, cliPkg := cliShards(t)
 	cliPkg = strings.TrimPrefix(cliPkg, "./")
-	// One matrix entry per cmd/pig shard, so the shards run in parallel on separate runners.
-	wantMatrix := []string{"native-1", "native-2", "native-3"}
+	// Every unit runs in exactly one job: the native and extension units each on their own job, the cmd/pig shards paired so a job builds the test binary once.
+	wantUnits := []string{"native-1", "native-2", "native-3", "native-4"}
 	for shard := 1; shard <= shards; shard++ {
-		wantMatrix = append(wantMatrix, "cli-"+strconv.Itoa(shard))
+		wantUnits = append(wantUnits, "cli-"+strconv.Itoa(shard))
 	}
-	wantMatrix = append(wantMatrix, "extension-host-1", "extension-host-2", "extension-conformance-1", "extension-conformance-2")
-	if !slices.Equal(job.Strategy.Matrix.Shard, wantMatrix) {
-		t.Fatalf("windows shards = %v, want %v", job.Strategy.Matrix.Shard, wantMatrix)
+	wantUnits = append(wantUnits, "extension-host-1", "extension-host-2", "extension-host-3", "extension-conformance-1", "extension-conformance-2")
+	var gotUnits []string
+	for _, entry := range job.Strategy.Matrix.Shard {
+		units := strings.Fields(entry)
+		for _, unit := range units {
+			if len(units) > 1 && !strings.HasPrefix(unit, "cli-") {
+				t.Errorf("windows job %q groups %s; only cmd/pig shards share a job", entry, unit)
+			}
+		}
+		gotUnits = append(gotUnits, units...)
 	}
-	shardStep := regexp.MustCompile(`(?m)^\s*run=\$\(automation/ci/test-shard-pattern\.sh "\$\{CLI_SHARD#cli-\}" ([0-9]+) \./` + regexp.QuoteMeta(cliPkg) + `\)\n\s*go test -timeout 30m -run "\$run" \./` + regexp.QuoteMeta(cliPkg) + `\n`)
+	slices.Sort(gotUnits)
+	slices.Sort(wantUnits)
+	if !slices.Equal(gotUnits, wantUnits) {
+		t.Fatalf("windows units = %v, want each of %v exactly once", gotUnits, wantUnits)
+	}
+	// The runner lists and runs the prebuilt test binary from the package directory (go test hangs on GitHub's Windows runners before the binary starts, golang/go#81368), streams every test with -test.v, and puts the 25-minute alarm and its stack dump inside the 60-minute job. The compile and each listing (it runs TestMain) are bounded on their own.
+	runner, err := os.ReadFile(filepath.Join(repoRoot(t), "automation", "ci", "windows-cli-units.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cliRunner := regexp.MustCompile(`package=` + regexp.QuoteMeta(cliPkg) + `\n(?:.*\n)*?.*timeout 10m go test -c -o "\$bin" \./\$package; then\n(?:.*\n)*?.*run=\$\(TEST_SHARD_BINARY="\$bin" timeout 5m automation/ci/test-shard-pattern\.sh "\$shard" ([0-9]+) \./\$package\); then\n(?:.*\n)*?\s*\(cd "\$package" && "\$bin" -test\.paniconexit0 -test\.v -test\.timeout 25m -test\.run "\$run"\) \|\| failed=1\n`)
+	if match := cliRunner.FindStringSubmatch(string(runner)); match == nil {
+		t.Errorf("windows-cli-units.sh does not build the %s test binary once and run each shard of it from the package directory", cliPkg)
+	} else if match[1] != strconv.Itoa(shards) {
+		t.Errorf("windows-cli-units.sh runs of %s shards, want %d as make test-cli runs", match[1], shards)
+	}
 	cliShardSteps := 0
 	selectLine := ""
 	extensionRuns := ""
 	conformanceRuns := ""
 	for _, step := range job.Steps {
-		if match := shardStep.FindStringSubmatch(step.Run); match != nil {
-			if step.If != "startsWith(matrix.shard, 'cli-')" {
-				t.Errorf("cmd/pig shard step runs when %q, want only the cli-N shards", step.If)
-			}
-			if match[1] != strconv.Itoa(shards) {
-				t.Errorf("cmd/pig shard step runs of %s shards, want %d as make test-cli runs", match[1], shards)
+		if strings.TrimSpace(step.Run) == "automation/ci/windows-cli-units.sh" {
+			if step.If != "startsWith(matrix.shard, 'cli-')" || step.Env["UNITS"] != "${{ matrix.shard }}" {
+				t.Errorf("cmd/pig shard step runs when %q with UNITS %q, want the cli jobs' own matrix value", step.If, step.Env["UNITS"])
 			}
 			cliShardSteps++
 		}
@@ -199,7 +218,7 @@ func TestWindowsShardsTestEverySelectedPackage(t *testing.T) {
 	if len(excluded) == 0 {
 		t.Fatalf("expected the native shards to drop the extension host packages: %s", shardScript)
 	}
-	// Exactly one step serves every cli-N job, and it derives N from the matrix value, so each shard 1..shards runs once, on its own job.
+	// Exactly one step serves every cli job, and it runs the shards its matrix value names, so each shard 1..shards runs once.
 	if cliShardSteps != 1 {
 		t.Errorf("windows job has %d cmd/pig shard steps, want one step run by each cli-N job", cliShardSteps)
 	}
@@ -217,7 +236,7 @@ func TestWindowsShardsTestEverySelectedPackage(t *testing.T) {
 		t.Errorf("native shards test %s whole as well as in its shards", cliPkg)
 	}
 	// The two jobs of each extension pair split the package's tests with test-shard-pattern.sh, so each test runs once.
-	for _, want := range []string{`extension-host-*) package=./coding/extension/host/subprocess`, `extension-conformance-*) package=./test/extension-conformance`, `test-shard-pattern.sh "${EXTENSION_SHARD##*-}" 2 "$package"`} {
+	for _, want := range []string{`extension-host-*) package=./coding/extension/host/subprocess shards=3`, `extension-conformance-*) package=./test/extension-conformance shards=2`, `test-shard-pattern.sh "${EXTENSION_SHARD##*-}" "$shards" "$package"`} {
 		found := false
 		for _, step := range job.Steps {
 			if strings.Contains(step.Run, want) && step.If == "startsWith(matrix.shard, 'extension-')" {
@@ -248,13 +267,13 @@ func TestWindowsNativeShardsPartitionTheSelectedPackages(t *testing.T) {
 	want := map[string]bool{}
 	for pkg := range strings.FieldsSeq(output) {
 		switch strings.TrimPrefix(pkg, modulePath+"/") {
-		case "coding/extension/host/runtimecell", "coding/extension/host/subprocess", "cmd/pig":
+		case "coding/extension/host/runtimecell", "coding/extension/host/subprocess", "coding/cli":
 		default:
 			want[pkg] = true
 		}
 	}
 	seen := map[string]int{}
-	for shard := 1; shard <= 3; shard++ {
+	for shard := 1; shard <= 4; shard++ {
 		cmd := testenv.ScriptCommand(t, filepath.Join(root, "automation", "ci", "windows-native-shard.sh"), strconv.Itoa(shard))
 		var stderr strings.Builder
 		cmd.Stderr = &stderr
@@ -297,7 +316,7 @@ func TestWindowsNativeShardChecksALongPackageListWithoutSIGPIPE(t *testing.T) {
 		t.Fatal(err)
 	}
 	var list strings.Builder
-	for _, pkg := range []string{"ai", "coding", "internal/experimental", "tui"} {
+	for _, pkg := range []string{"ai", "coding", "internal/codingagent", "tui"} {
 		list.WriteString(modulePath + "/" + pkg + "\n")
 	}
 	var padding []string
@@ -315,14 +334,14 @@ func TestWindowsNativeShardChecksALongPackageListWithoutSIGPIPE(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cmd := testenv.ScriptCommand(t, filepath.Join(ci, "windows-native-shard.sh"), "3")
+	cmd := testenv.ScriptCommand(t, filepath.Join(ci, "windows-native-shard.sh"), "4")
 	var stderr strings.Builder
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()
 	if err != nil {
-		t.Fatalf("windows-native-shard.sh 3: %v\nstderr:\n%s", err, stderr.String())
+		t.Fatalf("windows-native-shard.sh 4: %v\nstderr:\n%s", err, stderr.String())
 	}
 	if got := strings.Fields(string(out)); !slices.Equal(got, padding) {
-		t.Fatalf("shard 3 printed %d packages, want the %d unnamed ones", len(got), len(padding))
+		t.Fatalf("shard 4 printed %d packages, want the %d unnamed ones", len(got), len(padding))
 	}
 }

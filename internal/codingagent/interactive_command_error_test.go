@@ -56,8 +56,9 @@ func TestInteractiveShortcutDiagnosticOwnership(t *testing.T) {
 				if lifecycle && strings.TrimSpace(got) != "" {
 					t.Fatalf("duplicate lifecycle diagnostic: %s", got)
 				}
-				if !lifecycle && strings.Count(got, "Shortcut handler error: connection closed") != 1 {
-					t.Fatalf("ordinary shortcut error lost or duplicated: %s", got)
+				// Pi interactive-mode.ts:2289-2291 reports the failure through showError.
+				if !lifecycle && strings.Count(got, "Error: Shortcut handler error: connection closed") != 1 {
+					t.Fatalf("ordinary shortcut error lost, duplicated or not shown as an error: %s", got)
 				}
 			})
 		})

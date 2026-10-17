@@ -21,14 +21,15 @@ const (
 	InboxWrite    InboxMode = "write"
 )
 
-// InboxItem is a queued submission: user input for a run, with Content, or a passive entry write, with Entry, an
-// EntryDraft stored as plain JSON (inbox.ts:8-11).
+// InboxItem is a queued submission: user input for a run, with Content and, when it is not placed as pi.user, Entry, an
+// InputEntry stored as plain JSON; or a passive entry write, with Entry, an EntryDraft stored as plain JSON (inbox.ts:8-16).
 type InboxItem struct {
 	Id   durable.SubmissionId `json:"id"`
 	Mode InboxMode            `json:"mode"`
 	// Content is the JSON representation of the user input; nil for writes.
 	Content durable.JsonValue `json:"content,omitempty"`
-	// Entry is the JSON representation of the entry draft; nil for user input.
+	// Entry is the JSON representation of the entry draft of a write, or of the InputEntry of an input placed as an
+	// application entry; nil for an input placed as pi.user.
 	Entry durable.JsonObject `json:"entry,omitempty"`
 }
 
@@ -45,14 +46,30 @@ var InboxDoc = durable.DefineDoc(durable.DocDefinition[InboxState]{
 		CheckpointWhen: func(value InboxState, _ []durable.Op, _ durable.CheckpointInfo) bool {
 			return len(value.Items) == 0
 		},
+
+		Initial: func() InboxState { return InboxState{Items: []InboxItem{}} },
 	},
-	DocumentSemantics: durable.DocumentSemantics{
-		Scope:   durable.ScopeConversation,
-		History: durable.HistoryLatest,
-		Fork:    durable.ForkInitial,
-	},
-	Initial: func() InboxState { return InboxState{Items: []InboxItem{}} },
+	DocumentSemantics: durable.NewLatestConversationSemantics(durable.ForkInitial).DocumentSemantics,
 })
+
+// appendInput appends the entry an input is placed as: the entry's kind and data, or pi.user, with the user message of
+// content (inbox.ts appendInput).
+func appendInput(tx durable.Tx, conversationId durable.ConversationId, content durable.UserInput, entry *durable.InputEntry, now float64) (durable.EntryRecord, error) {
+	message := ai.UserMessage{Content: content, Timestamp: int64(now)}
+	if entry == nil {
+		typed, err := durable.TxAppendEntry(tx, durable.UserEntry, conversationId, durable.TypedEntryDraft[durable.Never]{Model: []ai.Message{message}})
+		if err != nil {
+			return durable.EntryRecord{}, err
+		}
+		return typed.EntryRecord, nil
+	}
+	return tx.AppendEntry(conversationId, durable.EntryDraft{Kind: entry.Kind, Data: entry.Data, Model: []ai.Message{message}})
+}
+
+// pickInputEntry is the kind and data of an input's entry as strict JSON (inbox.ts pickInputEntry).
+func pickInputEntry(entry durable.InputEntry) (durable.JsonObject, error) {
+	return durable.ToJsonObject(durable.InputEntry{Kind: entry.Kind, Data: entry.Data})
+}
 
 // QueueModes are the settings a boundary reads, on the Session line.
 type QueueModes struct {
@@ -122,13 +139,7 @@ func ApplyBoundary(tx durable.Tx, boundary *Boundary, at BoundaryAt, now float64
 		return BoundaryResult{}, err
 	}
 	items := state.Items
-	reset := false
-	for _, item := range items {
-		if item.Mode == InboxWrite && item.Entry["head"] == "self" {
-			reset = true
-			break
-		}
-	}
+	reset := HasQueuedReset(items)
 	final := at == BoundaryFinal || reset
 	pick := func(mode InboxMode, queueMode durable.QueueMode) []int {
 		var indexes []int
@@ -189,8 +200,14 @@ func ApplyBoundary(tx durable.Tx, boundary *Boundary, at BoundaryAt, now float64
 		if err != nil {
 			return BoundaryResult{}, err
 		}
-		message := ai.UserMessage{Content: content, Timestamp: int64(now)}
-		entry, err := durable.TxAppendEntry(tx, durable.UserEntry, conversationId, durable.TypedEntryDraft[durable.Never]{Model: []ai.Message{message}})
+		var inputEntry *durable.InputEntry
+		if item.Entry != nil {
+			inputEntry = new(durable.InputEntry)
+			if err := decodeJSON(item.Entry, inputEntry); err != nil {
+				return BoundaryResult{}, err
+			}
+		}
+		entry, err := appendInput(tx, conversationId, content, inputEntry, now)
 		if err != nil {
 			return BoundaryResult{}, err
 		}
@@ -208,6 +225,20 @@ func ApplyBoundary(tx durable.Tx, boundary *Boundary, at BoundaryAt, now float64
 		}
 	}
 	return BoundaryResult{Users: placed, Reset: reset}, nil
+}
+
+// IsDisplayOnly reports whether a write is display-only: it has no model, head or edits (a present one counts, even if
+// empty), so it changes nothing the model sees and needs no boundary (inbox.ts isDisplayOnly).
+func IsDisplayOnly(entry durable.EntryDraft) bool {
+	return entry.Model == nil && entry.Head == nil && !entry.HeadSelf && entry.Edits == nil
+}
+
+// HasQueuedReset reports whether a reset (a head "self" write) is queued; entries appended before it leave the active range
+// when it lands (inbox.ts hasQueuedReset).
+func HasQueuedReset(items []InboxItem) bool {
+	return slices.ContainsFunc(items, func(item InboxItem) bool {
+		return item.Mode == InboxWrite && item.Entry.Value("head") == "self"
+	})
 }
 
 // IsStale reports whether a head write targets an entry before the active range, so placing it would bring back cut

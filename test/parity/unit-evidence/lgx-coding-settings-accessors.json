@@ -1,0 +1,655 @@
+[
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetAllModelThinkingLevels() map[string]ai.ThinkingLevel {\n\tlevels := map[string]ai.ThinkingLevel{}\n\tfor key, level := range sm.Get().ModelThinkingLevels {\n\t\tlevels[key] = ai.ThinkingLevel(level)\n\t}\n\treturn levels\n}` with `func (sm *SettingsManager) GetAllModelThinkingLevels() map[string]ai.ThinkingLevel {\n\tlevels := map[string]ai.ThinkingLevel{}\n\tfor key, level := range sm.Get().ModelThinkingLevels {\n\t\t_, _ = key, level\n\t}\n\treturn levels\n}`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent",
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetAutocompleteMaxVisible() int {\n\treturn sm.Get().GetAutocompleteMaxVisible()\n}` with `func (sm *SettingsManager) GetAutocompleteMaxVisible() int { _ = sm.Get().GetAutocompleteMaxVisible(); var zero int; return zero }`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent, TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetBlockImages() bool { return sm.Get().BlockImages }` with `func (sm *SettingsManager) GetBlockImages() bool { _ = sm.Get().BlockImages; var zero bool; return zero }`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `result.ReserveTokens = s.BranchSummary.ReserveTokens` with `_ = s.BranchSummary.ReserveTokens`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetBranchSummarySkipPrompt() bool {\n\treturn sm.GetBranchSummarySettings().SkipPrompt\n}` with `func (sm *SettingsManager) GetBranchSummarySkipPrompt() bool { _ = sm.GetBranchSummarySettings().SkipPrompt; var zero bool; return zero }`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetClearOnShrink() bool { return sm.Get().GetClearOnShrink() }` with `func (sm *SettingsManager) GetClearOnShrink() bool { _ = sm.Get().GetClearOnShrink(); var zero bool; return zero }`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetCodeBlockIndent() string { return sm.Get().GetCodeBlockIndent() }` with `func (sm *SettingsManager) GetCodeBlockIndent() string { _ = sm.Get().GetCodeBlockIndent(); var zero string; return zero }`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetCollapseChangelog() bool {\n\treturn sm.Get().CollapseChangelog\n}` with `func (sm *SettingsManager) GetCollapseChangelog() bool { _ = sm.Get().CollapseChangelog; var zero bool; return zero }`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `return getCompactionTokenSetting(sm.merged.Compaction, \"keepRecentTokens\", provider, id)` with `return getCompactionTokenSetting(sm.merged.Compaction, \"reserveTokens\", provider, id)`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `return getCompactionTokenSetting(sm.merged.Compaction, \"reserveTokens\", provider, id)` with `return getCompactionTokenSetting(sm.merged.Compaction, \"keepRecentTokens\", provider, id)`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `return CompactionConfig{Enabled: compactionEnabled(settings), ReserveTokens: reserve, KeepRecentTokens: recent}, nil` with `return CompactionConfig{Enabled: compactionEnabled(settings), ReserveTokens: recent, KeepRecentTokens: reserve}, nil`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent",
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetDefaultProvider() string { return sm.Get().DefaultProvider }` with `func (sm *SettingsManager) GetDefaultProvider() string { _ = sm.Get().DefaultProvider; var zero string; return zero }`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent, TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetDefaultThinkingLevel() ai.ThinkingLevel {\n\treturn ai.ThinkingLevel(sm.Get().DefaultThinkingLevel)\n}` with `func (sm *SettingsManager) GetDefaultThinkingLevel() ai.ThinkingLevel { _ = ai.ThinkingLevel(sm.Get().DefaultThinkingLevel); var zero ai.ThinkingLevel; return zero }`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetDoubleEscapeAction() string {\n\ta := sm.Get().DoubleEscapeAction\n\tif a == \"\" {\n\t\treturn \"tree\"\n\t}\n\treturn a\n}` with `func (sm *SettingsManager) GetDoubleEscapeAction() string {\n\ta := sm.Get().DoubleEscapeAction\n\tif a == \"\" {\n\t\treturn \"fork\"\n\t}\n\treturn a\n}`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetEditorPaddingX() int { return sm.Get().GetEditorPaddingX() }` with `func (sm *SettingsManager) GetEditorPaddingX() int { _ = sm.Get().GetEditorPaddingX(); var zero int; return zero }`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetEnableInstallTelemetry() bool {\n\tif sm.Get().EnableInstallTelemetry == nil {\n\t\treturn true\n\t}\n\treturn *sm.Get().EnableInstallTelemetry\n}` with `func (sm *SettingsManager) GetEnableInstallTelemetry() bool {\n\tif sm.Get().EnableInstallTelemetry == nil {\n\t\treturn false\n\t}\n\treturn *sm.Get().EnableInstallTelemetry\n}`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetEnableSkillCommands() bool {\n\tv := sm.Get().EnableSkillCommands\n\tif v == nil {\n\t\treturn true // default: enabled\n\t}\n\treturn *v\n}` with `func (sm *SettingsManager) GetEnableSkillCommands() bool {\n\tv := sm.Get().EnableSkillCommands\n\tif v == nil {\n\t\treturn false // default: enabled\n\t}\n\treturn *v\n}`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetFollowUpMode() string {\n\tm := sm.Get().FollowUpMode\n\tif m == \"\" {\n\t\treturn \"one-at-a-time\"\n\t}\n\treturn m\n}` with `func (sm *SettingsManager) GetFollowUpMode() string {\n\tm := sm.Get().FollowUpMode\n\tif m == \"\" {\n\t\treturn \"all\"\n\t}\n\treturn m\n}`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetHideThinkingBlock() bool { return sm.Get().HideThinkingBlock }` with `func (sm *SettingsManager) GetHideThinkingBlock() bool { _ = sm.Get().HideThinkingBlock; var zero bool; return zero }`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetImageAutoResize() bool { return sm.Get().GetImageAutoResize() }` with `func (sm *SettingsManager) GetImageAutoResize() bool { _ = sm.Get().GetImageAutoResize(); var zero bool; return zero }`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetImageWidthCells() int { return sm.Get().GetImageWidthCells() }` with `func (sm *SettingsManager) GetImageWidthCells() int { _ = sm.Get().GetImageWidthCells(); var zero int; return zero }`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetLastChangelogVersion() string {\n\treturn sm.Get().LastChangelogVersion\n}` with `func (sm *SettingsManager) GetLastChangelogVersion() string { _ = sm.Get().LastChangelogVersion; var zero string; return zero }`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent",
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetModelThinkingLevel(provider, modelID string) ai.ThinkingLevel {\n\treturn ai.ThinkingLevel(sm.Get().ModelThinkingLevels[provider+\"/\"+modelID])\n}` with `func (sm *SettingsManager) GetModelThinkingLevel(provider, modelID string) ai.ThinkingLevel { _ = ai.ThinkingLevel(sm.Get().ModelThinkingLevels[provider+\"/\"+modelID]); var zero ai.ThinkingLevel; return zero }`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent, TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetNpmCommand() []string { return sm.Get().NpmCommand }` with `func (sm *SettingsManager) GetNpmCommand() []string { _ = sm.Get().NpmCommand; var zero []string; return zero }`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetPromptTemplatePaths() []string {\n\tpaths := sm.Get().Prompts\n\tif paths == nil {\n\t\treturn []string{}\n\t}\n\treturn paths\n}` with `func (sm *SettingsManager) GetPromptTemplatePaths() []string {\n\tpaths := sm.Get().Prompts\n\tif paths == nil {\n\t\treturn nil\n\t}\n\treturn paths\n}`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `result.MaxRetryDelayMs = *s.Retry.Provider.MaxRetryDelayMs` with `_ = *s.Retry.Provider.MaxRetryDelayMs`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent",
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetQuietStartup() QuietStartup { return sm.Get().QuietStartup }` with `func (sm *SettingsManager) GetQuietStartup() QuietStartup { _ = sm.Get().QuietStartup; var zero QuietStartup; return zero }`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent, TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetSettings() Settings { return sm.Get() }` with `func (sm *SettingsManager) GetSettings() Settings { _ = sm.Get(); var zero Settings; return zero }`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetShowCacheMissNotices() bool { return sm.Get().ShowCacheMissNotices }` with `func (sm *SettingsManager) GetShowCacheMissNotices() bool { _ = sm.Get().ShowCacheMissNotices; var zero bool; return zero }`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetShowHardwareCursor() bool { return sm.Get().GetShowHardwareCursor() }` with `func (sm *SettingsManager) GetShowHardwareCursor() bool { _ = sm.Get().GetShowHardwareCursor(); var zero bool; return zero }`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetShowImages() bool { return sm.Get().GetShowImages() }` with `func (sm *SettingsManager) GetShowImages() bool { _ = sm.Get().GetShowImages(); var zero bool; return zero }`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetShowTerminalProgress() bool { return sm.Get().GetShowTerminalProgress() }` with `func (sm *SettingsManager) GetShowTerminalProgress() bool { _ = sm.Get().GetShowTerminalProgress(); var zero bool; return zero }`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetSkillPaths() []string {\n\tpaths := sm.Get().Skills\n\tif paths == nil {\n\t\treturn []string{}\n\t}\n\treturn paths\n}` with `func (sm *SettingsManager) GetSkillPaths() []string {\n\tpaths := sm.Get().Skills\n\tif paths == nil {\n\t\treturn nil\n\t}\n\treturn paths\n}`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetSteeringMode() string {\n\tm := sm.Get().SteeringMode\n\tif m == \"\" {\n\t\treturn \"one-at-a-time\"\n\t}\n\treturn m\n}` with `func (sm *SettingsManager) GetSteeringMode() string {\n\tm := sm.Get().SteeringMode\n\tif m == \"\" {\n\t\treturn \"all\"\n\t}\n\treturn m\n}`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetThemePaths() []string {\n\tpaths := sm.Get().Themes\n\tif paths == nil {\n\t\treturn []string{}\n\t}\n\treturn paths\n}` with `func (sm *SettingsManager) GetThemePaths() []string {\n\tpaths := sm.Get().Themes\n\tif paths == nil {\n\t\treturn nil\n\t}\n\treturn paths\n}`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetThinkingBudgets() *ThinkingBudgetsSettings {\n\treturn sm.Get().ThinkingBudgets\n}` with `func (sm *SettingsManager) GetThinkingBudgets() *ThinkingBudgetsSettings { _ = sm.Get().ThinkingBudgets; var zero *ThinkingBudgetsSettings; return zero }`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent",
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetTrackingID() string { return sm.Get().TrackingID }` with `func (sm *SettingsManager) GetTrackingID() string { _ = sm.Get().TrackingID; var zero string; return zero }`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent, TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetTransport() string {\n\tt := sm.Get().Transport\n\tif t == \"\" {\n\t\treturn \"auto\"\n\t}\n\treturn t\n}` with `func (sm *SettingsManager) GetTransport() string {\n\tt := sm.Get().Transport\n\tif t == \"\" {\n\t\treturn \"sse\"\n\t}\n\treturn t\n}`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) GetTreeFilterMode() string {\n\tm := sm.Get().TreeFilterMode\n\tswitch m {\n\tcase \"default\", \"no-tools\", \"user-only\", \"labeled-only\", \"all\":\n\t\treturn m\n\tdefault:\n\t\treturn \"default\"\n\t}\n}` with `func (sm *SettingsManager) GetTreeFilterMode() string {\n\tm := sm.Get().TreeFilterMode\n\tswitch m {\n\tcase \"default\", \"no-tools\", \"user-only\", \"labeled-only\", \"all\":\n\t\treturn m\n\tdefault:\n\t\treturn \"all\"\n\t}\n}`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `return *cloneWarningSettings(warnings)\n}` with `_ = cloneWarningSettings(warnings)\n\treturn WarningSettings{AnthropicExtraUsage: true, anthropicExtraUsageSet: true}\n}`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `return cloneIntPtr(s.WebSocketConnectTimeoutMs), nil` with `return nil, nil`; TestSettingsManagerGettersReadTheirKeysAndDefaultWhenAbsent fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `delete(s.ModelThinkingLevels, provider+\"/\"+modelID)` with `_ = modelID`; TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetAutocompleteMaxVisible(n int) error {\n\tv := max(3, min(20, n))\n\treturn sm.UpdateGlobal(func(s *Settings) { s.AutocompleteMaxVisible = &v })\n}` with `func (sm *SettingsManager) SetAutocompleteMaxVisible(n int) error {\n\tv := n\n\treturn sm.UpdateGlobal(func(s *Settings) { s.AutocompleteMaxVisible = &v })\n}`; TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetBlockImages(blocked bool) error {\n\treturn sm.UpdateGlobal(func(s *Settings) {\n\t\ts.BlockImages = blocked\n\t\ts.blockImagesSet = true\n\t})\n}` with `func (sm *SettingsManager) SetBlockImages(blocked bool) error {\n\treturn sm.UpdateGlobal(func(s *Settings) {\n\t\t_ = blocked\n\t\ts.blockImagesSet = true\n\t})\n}`; TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetClearOnShrink(enabled bool) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { s.ClearOnShrink = &enabled })\n}` with `func (sm *SettingsManager) SetClearOnShrink(enabled bool) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { _ = &enabled })\n}`; TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetCollapseChangelog(collapse bool) error {\n\treturn sm.UpdateGlobal(func(s *Settings) {\n\t\ts.CollapseChangelog = collapse\n\t\ts.collapseChangelogSet = true\n\t})\n}` with `func (sm *SettingsManager) SetCollapseChangelog(collapse bool) error {\n\treturn sm.UpdateGlobal(func(s *Settings) {\n\t\t_ = collapse\n\t\ts.collapseChangelogSet = true\n\t})\n}`; TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetDefaultModel(m string) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { s.DefaultModel = m })\n}` with `func (sm *SettingsManager) SetDefaultModel(m string) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { _ = m })\n}`; TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetDefaultProjectTrust(trust DefaultProjectTrust) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { s.DefaultProjectTrust = string(trust) })\n}` with `func (sm *SettingsManager) SetDefaultProjectTrust(trust DefaultProjectTrust) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { _ = string(trust) })\n}`; TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetDefaultProvider(p string) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { s.DefaultProvider = p })\n}` with `func (sm *SettingsManager) SetDefaultProvider(p string) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { _ = p })\n}`; TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetDoubleEscapeAction(action string) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { s.DoubleEscapeAction = action })\n}` with `func (sm *SettingsManager) SetDoubleEscapeAction(action string) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { _ = action })\n}`; TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetEnableAnalytics(enabled bool) error {\n\treturn sm.UpdateGlobal(func(s *Settings) {\n\t\ts.EnableAnalytics = &enabled\n\t\tif enabled && s.TrackingID == \"\" {\n\t\t\ts.TrackingID = uuid.NewString()\n\t\t}\n\t})\n}` with `func (sm *SettingsManager) SetEnableAnalytics(enabled bool) error {\n\treturn sm.UpdateGlobal(func(s *Settings) {\n\t\t_ = enabled\n\t\tif enabled && s.TrackingID == \"\" {\n\t\t\ts.TrackingID = uuid.NewString()\n\t\t}\n\t})\n}`; TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetEnableInstallTelemetry(enabled bool) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { s.EnableInstallTelemetry = &enabled })\n}` with `func (sm *SettingsManager) SetEnableInstallTelemetry(enabled bool) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { _ = &enabled })\n}`; TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetEnableSkillCommands(enabled bool) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { s.EnableSkillCommands = &enabled })\n}` with `func (sm *SettingsManager) SetEnableSkillCommands(enabled bool) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { _ = &enabled })\n}`; TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetHideThinkingBlock(hide bool) error {\n\treturn sm.UpdateGlobal(func(s *Settings) {\n\t\ts.HideThinkingBlock = hide\n\t\ts.hideThinkingBlockSet = true\n\t})\n}` with `func (sm *SettingsManager) SetHideThinkingBlock(hide bool) error {\n\treturn sm.UpdateGlobal(func(s *Settings) {\n\t\t_ = hide\n\t\ts.hideThinkingBlockSet = true\n\t})\n}`; TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `s.HTTPIdleTimeoutMs = &normalized` with `_ = normalized`; TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetImageAutoResize(enabled bool) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { s.ImageAutoResize = &enabled })\n}` with `func (sm *SettingsManager) SetImageAutoResize(enabled bool) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { _ = &enabled })\n}`; TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `s.ModelThinkingLevels[provider+\"/\"+modelID] = string(level)` with `_ = level`; TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetPackages(pkgs []PackageSource) error {\n\treturn sm.UpdateGlobal(func(s *Settings) {\n\t\ts.Packages = pkgs\n\t})\n}` with `func (sm *SettingsManager) SetPackages(pkgs []PackageSource) error {\n\treturn sm.UpdateGlobal(func(s *Settings) {\n\t\t_ = pkgs\n\t})\n}`; TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerProjectPathSettersWriteTheProjectFile"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetProjectExtensionPaths(paths []string) error {\n\treturn sm.UpdateProject(func(s *Settings) { s.Extensions = paths })\n}` with `func (sm *SettingsManager) SetProjectExtensionPaths(paths []string) error {\n\treturn sm.UpdateProject(func(s *Settings) { _ = paths })\n}`; TestSettingsManagerProjectPathSettersWriteTheProjectFile fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerProjectPathSettersWriteTheProjectFile"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetProjectPromptTemplatePaths(paths []string) error {\n\treturn sm.UpdateProject(func(s *Settings) { s.Prompts = paths })\n}` with `func (sm *SettingsManager) SetProjectPromptTemplatePaths(paths []string) error {\n\treturn sm.UpdateProject(func(s *Settings) { _ = paths })\n}`; TestSettingsManagerProjectPathSettersWriteTheProjectFile fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerProjectPathSettersWriteTheProjectFile"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetProjectSkillPaths(paths []string) error {\n\treturn sm.UpdateProject(func(s *Settings) { s.Skills = paths })\n}` with `func (sm *SettingsManager) SetProjectSkillPaths(paths []string) error {\n\treturn sm.UpdateProject(func(s *Settings) { _ = paths })\n}`; TestSettingsManagerProjectPathSettersWriteTheProjectFile fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerProjectPathSettersWriteTheProjectFile"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetProjectThemePaths(paths []string) error {\n\treturn sm.UpdateProject(func(s *Settings) { s.Themes = paths })\n}` with `func (sm *SettingsManager) SetProjectThemePaths(paths []string) error {\n\treturn sm.UpdateProject(func(s *Settings) { _ = paths })\n}`; TestSettingsManagerProjectPathSettersWriteTheProjectFile fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetPromptTemplatePaths(paths []string) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { s.Prompts = paths })\n}` with `func (sm *SettingsManager) SetPromptTemplatePaths(paths []string) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { _ = paths })\n}`; TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetQuietStartup(quiet QuietStartup) error {\n\treturn sm.UpdateGlobal(func(s *Settings) {\n\t\ts.QuietStartup = quiet\n\t\ts.quietStartupSet = true\n\t})\n}` with `func (sm *SettingsManager) SetQuietStartup(quiet QuietStartup) error {\n\treturn sm.UpdateGlobal(func(s *Settings) {\n\t\t_ = quiet\n\t\ts.quietStartupSet = true\n\t})\n}`; TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetRetryEnabled(enabled bool) error {\n\treturn sm.UpdateGlobal(func(s *Settings) {\n\t\tif s.Retry == nil {\n\t\t\ts.Retry = &RetrySettingsJSON{}\n\t\t}\n\t\ts.Retry.Enabled = &enabled\n\t})\n}` with `func (sm *SettingsManager) SetRetryEnabled(enabled bool) error {\n\treturn sm.UpdateGlobal(func(s *Settings) {\n\t\tif s.Retry == nil {\n\t\t\ts.Retry = &RetrySettingsJSON{}\n\t\t}\n\t\t_ = enabled\n\t})\n}`; TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetShowCacheMissNotices(show bool) error {\n\treturn sm.UpdateGlobal(func(s *Settings) {\n\t\ts.ShowCacheMissNotices = show\n\t\ts.showCacheMissNoticesSet = true\n\t})\n}` with `func (sm *SettingsManager) SetShowCacheMissNotices(show bool) error {\n\treturn sm.UpdateGlobal(func(s *Settings) {\n\t\t_ = show\n\t\ts.showCacheMissNoticesSet = true\n\t})\n}`; TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetShowHardwareCursor(enabled bool) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { s.ShowHardwareCursor = &enabled })\n}` with `func (sm *SettingsManager) SetShowHardwareCursor(enabled bool) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { _ = &enabled })\n}`; TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetShowTerminalProgress(enabled bool) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { s.ShowTerminalProgress = &enabled })\n}` with `func (sm *SettingsManager) SetShowTerminalProgress(enabled bool) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { _ = &enabled })\n}`; TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetSkillPaths(paths []string) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { s.Skills = paths })\n}` with `func (sm *SettingsManager) SetSkillPaths(paths []string) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { _ = paths })\n}`; TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetThemePaths(paths []string) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { s.Themes = paths })\n}` with `func (sm *SettingsManager) SetThemePaths(paths []string) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { _ = paths })\n}`; TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetTreeFilterMode(mode string) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { s.TreeFilterMode = mode })\n}` with `func (sm *SettingsManager) SetTreeFilterMode(mode string) error {\n\treturn sm.UpdateGlobal(func(s *Settings) { _ = mode })\n}`; TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/settings-manager.ts",
+  "mutation": "internal/codingagent/settings.go: replace `func (sm *SettingsManager) SetWarnings(warnings WarningSettings) error {\n\twarnings.anthropicExtraUsageSet = true\n\treturn sm.UpdateGlobal(func(s *Settings) { s.Warnings = &warnings })\n}` with `func (sm *SettingsManager) SetWarnings(warnings WarningSettings) error {\n\twarnings.anthropicExtraUsageSet = true\n\treturn sm.UpdateGlobal(func(s *Settings) { _ = warnings })\n}`; TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack fails."
+ }
+]

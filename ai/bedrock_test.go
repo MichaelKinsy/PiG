@@ -1,3 +1,5 @@
+//go:build !pig_strip_bedrock_converse_stream
+
 package ai
 
 import (
@@ -7,9 +9,10 @@ import (
 	"strings"
 	"testing"
 
-	bdoc "github.com/aws/aws-sdk-go-v2/service/bedrockruntime/document"
-	btypes "github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
 	"github.com/aws/smithy-go"
+
+	bdoc "github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime/document"
+	btypes "github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime/types"
 )
 
 func TestBedrockResolveRegion(t *testing.T) {
@@ -299,11 +302,12 @@ func TestBedrockConvertMessages_SkipsEmptyAssistant(t *testing.T) {
 	if err != nil {
 		t.Fatalf("convert: %v", err)
 	}
-	if len(out) != 2 {
-		t.Fatalf("len = %d, want 2 (empty assistant must be dropped)", len(out))
+	// pig divergence (D116): the dropped assistant leaves two user messages, which Converse rejects; PiG sends one user message with both blocks (Pi sends two).
+	if len(out) != 1 || len(out[0].Content) != 2 {
+		t.Fatalf("messages = %#v, want one user message holding both prompts (the empty assistant is dropped)", out)
 	}
-	if out[0].Role != btypes.ConversationRoleUser || out[1].Role != btypes.ConversationRoleUser {
-		t.Errorf("roles = %v %v, want user user", out[0].Role, out[1].Role)
+	if out[0].Role != btypes.ConversationRoleUser {
+		t.Errorf("role = %v, want user", out[0].Role)
 	}
 }
 
@@ -389,12 +393,12 @@ func TestBedrockConvertTools_Empty(t *testing.T) {
 
 func TestBedrockBuildAdditionalFields(t *testing.T) {
 	// Non-Claude → no thinking config.
-	if got := buildBedrockAdditionalFields(&Model{ID: "amazon.nova-lite-v1:0"}, "", StreamOptions{Thinking: ThinkingMedium, IsReasoning: true}); got != nil {
+	if got := buildBedrockAdditionalFields(&Model{ID: "amazon.nova-lite-v1:0"}, "", StreamOptions{Thinking: ThinkingLevelMedium, IsReasoning: true}); got != nil {
 		t.Errorf("Nova must not get thinking config, got %+v", got)
 	}
 
 	// Claude 3.7 Sonnet, medium thinking → enabled with budget_tokens.
-	got := buildBedrockAdditionalFields(&Model{ID: "anthropic.claude-3-7-sonnet-20250219-v1:0"}, "", StreamOptions{Thinking: ThinkingMedium, IsReasoning: true})
+	got := buildBedrockAdditionalFields(&Model{ID: "anthropic.claude-3-7-sonnet-20250219-v1:0"}, "", StreamOptions{Thinking: ThinkingLevelMedium, IsReasoning: true})
 	if got == nil {
 		t.Fatalf("Claude 3.7 + medium must return thinking config")
 	}
@@ -407,7 +411,7 @@ func TestBedrockBuildAdditionalFields(t *testing.T) {
 	}
 
 	// Adaptive thinking model (Claude Opus 4.7) → adaptive type + output_config.
-	got = buildBedrockAdditionalFields(&Model{ID: "anthropic.claude-opus-4-7-v1:0", ThinkingLevelMap: ThinkingLevelMap{ThinkingXHigh: new("xhigh")}}, "", StreamOptions{Thinking: ThinkingHigh, IsReasoning: true})
+	got = buildBedrockAdditionalFields(&Model{ID: "anthropic.claude-opus-4-7-v1:0", ThinkingLevelMap: ThinkingLevelMap{ThinkingXHigh: new("xhigh")}}, "", StreamOptions{Thinking: ThinkingLevelHigh, IsReasoning: true})
 	if got == nil {
 		t.Fatalf("adaptive model must return thinking config")
 	}
@@ -420,7 +424,7 @@ func TestBedrockBuildAdditionalFields(t *testing.T) {
 	}
 
 	// Inference profile should use model name for adaptive detection.
-	got = buildBedrockAdditionalFields(&Model{ID: "arn:aws:bedrock:::application-profile/foo", ThinkingLevelMap: ThinkingLevelMap{ThinkingXHigh: new("xhigh")}}, "Claude Opus 4.7", StreamOptions{Thinking: ThinkingXHigh, IsReasoning: true})
+	got = buildBedrockAdditionalFields(&Model{ID: "arn:aws:bedrock:::application-profile/foo", ThinkingLevelMap: ThinkingLevelMap{ThinkingXHigh: new("xhigh")}}, "Claude Opus 4.7", StreamOptions{Thinking: ThinkingLevelXHigh, IsReasoning: true})
 	if got == nil {
 		t.Fatalf("adaptive inference profile must return thinking config")
 	}
@@ -434,14 +438,14 @@ func TestBedrockBuildAdditionalFields(t *testing.T) {
 	}
 
 	// Custom map should override built-in effort mapping.
-	got = buildBedrockAdditionalFields(&Model{ID: "anthropic.claude-opus-4-6-v1", ThinkingLevelMap: ThinkingLevelMap{ThinkingXHigh: new("max")}}, "", StreamOptions{Thinking: ThinkingXHigh, IsReasoning: true})
+	got = buildBedrockAdditionalFields(&Model{ID: "anthropic.claude-opus-4-6-v1", ThinkingLevelMap: ThinkingLevelMap{ThinkingXHigh: new("max")}}, "", StreamOptions{Thinking: ThinkingLevelXHigh, IsReasoning: true})
 	oc, _ = got["output_config"].(map[string]any)
 	if oc["effort"] != "max" {
 		t.Errorf("adaptive mapped effort = %v, want max", oc["effort"])
 	}
 
 	// IsReasoning=false → no thinking config even on Claude.
-	if got := buildBedrockAdditionalFields(&Model{ID: "anthropic.claude-3-7-sonnet-20250219-v1:0"}, "", StreamOptions{Thinking: ThinkingMedium}); got != nil {
+	if got := buildBedrockAdditionalFields(&Model{ID: "anthropic.claude-3-7-sonnet-20250219-v1:0"}, "", StreamOptions{Thinking: ThinkingLevelMedium}); got != nil {
 		t.Errorf("IsReasoning=false must skip thinking config, got %+v", got)
 	}
 }
@@ -450,7 +454,7 @@ func TestBedrockBuildAdditionalFields_UsesModelCapWhenMaxTokensUnset(t *testing.
 	got := buildBedrockAdditionalFields(&Model{
 		ID:           "anthropic.claude-3-7-sonnet-20250219-v1:0",
 		Capabilities: ModelCapabilities{MaxOutputTokens: 128000},
-	}, "", StreamOptions{Thinking: ThinkingHigh, IsReasoning: true})
+	}, "", StreamOptions{Thinking: ThinkingLevelHigh, IsReasoning: true})
 	if got == nil {
 		t.Fatal("expected thinking config")
 	}

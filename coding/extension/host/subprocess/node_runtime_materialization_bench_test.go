@@ -12,7 +12,7 @@ func BenchmarkNodeRuntimeMaterialization(b *testing.B) {
 		if err := os.Mkdir(destination, 0o755); err != nil {
 			b.Fatal(err)
 		}
-		if err := copyEmbeddedTree(nodeRuntimeFS, "runtime-node", destination); err != nil {
+		if err := extractNodeRuntime(destination); err != nil {
 			b.Fatal(err)
 		}
 		b.StopTimer()

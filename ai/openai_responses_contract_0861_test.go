@@ -212,7 +212,8 @@ data: {"type":"response.completed","response":{"id":"response-1","model":"comple
 			events: `data: {"type":"response.failed","response":{"id":"response-4","status":"failed","error":{"code":"server_error","message":"provider failed"},"usage":{"input_tokens":7,"output_tokens":2,"total_tokens":9}}}
 
 `,
-			wantReason: StopReasonError, wantRaw: "failed", wantError: "openai-responses: server_error: provider failed", wantResponse: "response-4", wantTerminal: EventError, wantUsage: true,
+			// openai-responses-shared.ts:748-757 response.failed records only the status and throws the error message as is, with no provider prefix: neither the response id nor the usage is taken from the failed response (the Pi oracle edge-event test pins this).
+			wantReason: StopReasonError, wantRaw: "failed", wantError: "server_error: provider failed", wantResponse: "", wantTerminal: EventError,
 		},
 	}
 

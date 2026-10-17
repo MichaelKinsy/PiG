@@ -77,4 +77,9 @@ return {
   xah: await attempt(() => models.classify(model, { state: {}, questions: { z: { type: "score", instructions: "i", criteria: ["a", 1] } } })),
   xai: await attempt(() => models.classify([1, 2], {})),
   xaj: await attempt(() => models.classify(model, { state: {}, questions: { z: [] } })),
+  xak: await attempt(() => models.classify(model, { state: {}, images: "x", questions: q })),
+  xal: await attempt(() => models.classify(model, { state: {}, images: null, questions: q })),
+  xam: await attempt(() => models.classify(model, { state: {}, images: [{ type: "image", data: "AAAA" }], questions: q })),
+  xan: await attempt(() => models.classify(model, { state: {}, images: [{ type: "image", data: "AAAA", mimeType: "image/png" }, 3], questions: q })),
+  xao: await attempt(() => models.classify(model, { state: {}, images: [{ type: "text", data: "AAAA", mimeType: "image/png" }], questions: q })),
 };

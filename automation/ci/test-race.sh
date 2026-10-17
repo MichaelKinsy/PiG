@@ -12,6 +12,8 @@
 #      and the StatusLine + SIGWINCH no-race regressions. TestConcurrent_SIGWINCHVsTyping
 #      is intentionally excluded: it is the red oracle that documents the raw
 #      off-loop pattern still races, gated behind PIG_PROBE_RENDER_RACE=1.
+#      The pig config selector drives its own loop, so its tests run here too:
+#      a frame on a timer goroutine races its input handling.
 #   2. goroutineleak: Go 1.27's profile asserts runOnMain leaves zero
 #      goroutines blocked on uiTaskCh after its workload.
 set -euo pipefail
@@ -19,12 +21,13 @@ set -euo pipefail
 pkg=./internal/codingagent
 
 echo "== race regressions (runOnMain + off-loop UI routing) =="
-go test -race -count=1 -run \
+go test -race ${CI:+-count=1} -run \
   'TestRunOnMain_DeterministicNoLeak|TestRunOnMain_DropsOnShutdown|TestConcurrent_StatusLineInvalidate_NoRace|TestConcurrent_SIGWINCHViaPostUITask_NoRace' \
   "$pkg"
+go test -race ${CI:+-count=1} -run '^TestConfigSelector' ./coding/cli
 
 echo "== goroutineleak profile =="
-leak_output="$(go test -count=1 -v -run '^TestRunOnMain_NoGoroutineLeakProfile$' "$pkg")"
+leak_output="$(go test ${CI:+-count=1} -v -run '^TestRunOnMain_NoGoroutineLeakProfile$' "$pkg")"
 printf '%s\n' "$leak_output"
 grep -F -- '--- PASS: TestRunOnMain_NoGoroutineLeakProfile' <<<"$leak_output" >/dev/null
 

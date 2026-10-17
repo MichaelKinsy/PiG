@@ -1,11 +1,23 @@
 # Quickstart
 
-PiG is under active development. Install it on macOS or Linux with `curl -fsSL https://pi-in-go.dev/install.sh | sh`, on any supported platform with `npm install -g @pi-in-go/pig` or `go install github.com/MichaelKinsy/PiG/cmd/pig@latest`, or download an archive from [GitHub Releases](https://github.com/MichaelKinsy/PiG/releases). Windows support is a preview. To build from source instead, follow the steps below.
+PiG is under active development. Install it on macOS or Linux with `curl -fsSL https://pi-in-go.dev/install.sh | sh`, on any supported platform with `npm install -g @pi-in-go/pig` or `go install github.com/MichaelKinsy/PiG/cmd/pig@latest`, or download an archive from [GitHub Releases](https://github.com/MichaelKinsy/PiG/releases). Windows support is a preview. To build from source instead, follow the steps below. Pi 1.3.0 documents its own install routes in [Pi's quickstart](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/quickstart.md).
+
+If you have not used a terminal before, start with [Your first ten minutes](/docs/latest/first-run). It explains each step.
+
+## Install with the install script
+
+On macOS and Linux, the install script downloads the newest published release, checks it against the release's `SHA256SUMS`, and installs `pig` in `~/.local/bin`:
+
+```bash
+curl -fsSL https://pi-in-go.dev/install.sh | sh
+pig --version
+```
+
+When `~/.local/bin` is not on `PATH`, the script prints the `export PATH=...` line to run. [Install troubleshooting](/docs/latest/install-troubleshooting) lists the script's options, for example `PIG_VERSION` to install a given release.
 
 ## Requirements
 
-Build the `pig` executable with Go 1.27.2. Go 1.27 release binaries for
-macOS require macOS 13 or later.
+You need these tools only to build PiG from source. Build the `pig` executable with Go 1.27.2. Go 1.27 release binaries for macOS require macOS 13 or later.
 
 The complete verification suite also uses:
 
@@ -55,7 +67,7 @@ with `npm uninstall -g @pi-in-go/pig`.
 
 ## Install with Go
 
-Go 1.26 or newer installs the command without cloning the repository:
+Go 1.26 or newer installs the command without cloning the repository. Go downloads PiG's source and its dependencies and compiles them on your computer, which can take several minutes the first time:
 
 ```bash
 go install github.com/MichaelKinsy/PiG/cmd/pig@latest
@@ -64,7 +76,7 @@ go install github.com/MichaelKinsy/PiG/cmd/pig@latest
 Use an exact version for a reproducible installation:
 
 ```bash
-go install github.com/MichaelKinsy/PiG/cmd/pig@v0.2.0
+go install github.com/MichaelKinsy/PiG/cmd/pig@v0.5.0
 ```
 
 Go writes the `pig` executable to `GOBIN`. When `GOBIN` is empty, Go uses the
@@ -86,21 +98,22 @@ matching installation receipt.
 
 Explicit `pig update` version checks retry transient transport failures and transient HTTP statuses at most twice within one ten-second budget. Startup checks do not retry. Signature and manifest errors stop the update. Native standalone updates reject concurrent replacement of the same executable and hold the installation lock until receipt commit or rollback completes (D39). The `<executable>.update.lock` sidecar exists only while an update runs; the update removes it when it ends.
 
-Each release tags the root module (`v0.2.0`) and the nested Go extension SDK
-module (`extensions/sdk/v0.2.0`) on the same commit; `go install` needs both.
+Each release tags the root module (`v0.5.0`) and the nested Go extension SDK module (`extensions/sdk/v0.5.0`) on the same commit; `go install` needs both.
 
 ## Start PiG
 
-Run PiG in the project you want it to inspect:
+Run PiG in the folder of the project you want it to work on:
 
 ```bash
 cd /path/to/project
-/path/to/PiG/bin/pig
+pig
 ```
+
+A source build is at `bin/pig` in the PiG checkout. Run it by its full path, for example `/path/to/PiG/bin/pig`, or add that folder to `PATH`.
 
 PiG stores user state below `~/.pig`. Use `PIG_HOME` only when you need an isolated configuration root.
 
-PiG starts without a first-time setup screen, even on a fresh `PIG_HOME`. Pi 1.0 shows one (theme and usage-analytics choices) only when all of these hold (`startup-ui.ts` `shouldRunFirstTimeSetup`): the binary is Pi's own distribution (package `@earendil-works/pi-coding-agent`, app `pi`, config directory `.pi`), `PI_EXPERIMENTAL=1` is set, `PI_CODING_AGENT_DIR` is not set, and `~/.pi/agent/settings.json` does not exist yet. Like any other distribution of Pi's code, PiG never meets the first condition, so neither `PIG_EXPERIMENTAL=1` nor an empty home shows the screen. Choose a theme with `/settings` and a pig with `/sprite`.
+On an interactive start in the default agent directory that holds no `settings.json` yet, which includes every fresh `PIG_HOME`, PiG shows a first-time setup screen: theme, sprite and usage-analytics choices. `Esc` skips it and saves nothing. A custom agent directory (`PIG_CODING_AGENT_DIR`) and print, JSON and RPC modes skip it (`coding/cli/extensions.go:93-95`). Pi 1.3 shows its screen (theme and usage-analytics choices) only when all of these hold (`startup-ui.ts` `shouldRunFirstTimeSetup`): the binary is Pi's own distribution (package `@earendil-works/pi-coding-agent`, app `pi`, config directory `.pi`), `PI_EXPERIMENTAL=1` is set, `PI_CODING_AGENT_DIR` is not set, and `~/.pi/agent/settings.json` does not exist yet. This is divergence D88. Change the theme later with `/settings` and the pig with `/sprite`. [Your first ten minutes](/docs/latest/first-run) shows the screen.
 
 ## Authenticate a provider
 
@@ -186,11 +199,11 @@ pig piglet build ./agents/reviewer.yaml \
 ./pig-reviewer
 ```
 
-A Piglet Binary is a target-native executable for one fixed Piglet composition. It can still have explicit external requirements. See [Piglet Binaries](/docs/latest/piglet-binaries).
+A Piglet Binary is a target-native executable for one fixed Piglet composition. It can still have explicit external requirements. The build needs Go, or Docker or Podman for the container builder. A `pig` that you built yourself also needs a PiG source checkout named by `PIG_SOURCE_ROOT`; a published release fetches its own source. See [Piglet Binaries](/docs/latest/piglet-binaries).
 
 ## Add an extension
 
-Create and validate a Go factory:
+A Go extension needs the Go toolchain. `pig setup` shows whether `go` is found, and `pig setup go` installs it. Create and validate a Go factory:
 
 ```bash
 pig extension init ./review --lang go
@@ -203,7 +216,7 @@ Run it for one session:
 pig -e ./review
 ```
 
-Use a Piglet when the extension belongs to a named agent application.
+Use a Piglet when the extension belongs to a named agent application. [Your first extension](/docs/latest/first-extension) walks through each step.
 
 ## Verify a source checkout
 

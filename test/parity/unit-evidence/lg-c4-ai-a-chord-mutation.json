@@ -1,0 +1,55 @@
+[
+ {
+  "upstream": "packages/chord/src/context/index.ts",
+  "package": "./chord/context",
+  "tests": [
+   "TestContextLayersTypedValuesWithoutModifyingParents",
+   "TestContextMasksCallerCancellationForMandatoryCleanup"
+  ],
+  "upstream_reference": "packages/chord/src/context/index.ts (createContextKey, withContextValue, withoutAbortSignal); packages/chord/test/context.test.ts \"layers typed values without modifying parents\", \"masks caller cancellation for mandatory cleanup\"",
+  "mutation": "chord/context/chordctx.go: WithValue returns the parent (TestContextLayersTypedValuesWithoutModifyingParents, TestContextMasksCallerCancellationForMandatoryCleanup FAIL); WithoutAbortSignal returns the parent (TestContextMasksCallerCancellationForMandatoryCleanup FAIL); NewKey shares one token between keys (TestContextLayersTypedValuesWithoutModifyingParents FAIL); baseline PASS"
+ },
+ {
+  "upstream": "packages/chord/src/delta/index.ts",
+  "package": "./chord/delta",
+  "tests": [
+   "TestIsBaseAndIsReplace",
+   "TestIsReplaceUpstream",
+   "TestDeltaPathAndPrototypeSafety",
+   "TestPathErrorConstructorsAndTheApplierRaisingThem",
+   "TestPathErrorsPrintLikePi",
+   "TestDeltaMatchesPiOnRandomCases",
+   "TestApplyResolvesArraySegmentsInUpstreamOrder",
+   "TestApplyImmutableReportsTheUnresolvablePathAsJSON",
+   "TestNonEmptyPathAndPathRefMatchPi",
+   "TestDeltaCanonicalStrings",
+   "TestOverlapProbeAndCandidateLimits",
+   "TestAssertValidWireOpAcceptsTheWireGrammarOnly"
+  ],
+  "upstream_reference": "packages/chord/src/delta/index.ts (isReplace, assertSafePath, PathError, UnsafePathError, overlap); packages/chord/test/delta.test.ts",
+  "mutation": "chord/delta/delta.go: IsReplace compares the verb with \"s\" (TestIsBaseAndIsReplace, TestIsReplaceUpstream FAIL); AssertSafePath lets \"constructor\" through (TestDeltaPathAndPrototypeSafety FAIL); AssertSafePath accepts every non-string segment (TestDeltaMatchesPiOnRandomCases FAIL); PathError message drops the path JSON (TestPathErrorsPrintLikePi FAIL); UnsafePathError message drops the segment (TestPathErrorsPrintLikePi FAIL); NewPathError drops the path (TestPathErrorConstructorsAndTheApplierRaisingThem FAIL); NewUnsafePathError drops the segment (TestPathErrorConstructorsAndTheApplierRaisingThem FAIL); chord/delta/overlap.go: shared length off by one (TestDeltaCanonicalStrings FAIL); overlap scans an empty first string (TestDeltaCanonicalStrings FAIL); candidate limit raised by 1000 (TestOverlapProbeAndCandidateLimits FAIL); baseline PASS"
+ },
+ {
+  "upstream": "packages/chord/src/json.ts",
+  "package": "./chord",
+  "tests": [
+   "TestCopyJSONDetachesSharedAliases",
+   "TestCopyJSONNormalizesNumbersAndKeepsObjectRoot",
+   "TestCopyJSONRejectsNonStrictValues"
+  ],
+  "upstream_reference": "packages/chord/src/json.ts:16 (copyJson); packages/chord/test/json.test.ts",
+  "mutation": "chord/json.go: CopyJSON returns its argument uncopied (TestCopyJSONDetachesSharedAliases, TestCopyJSONNormalizesNumbersAndKeepsObjectRoot, TestCopyJSONRejectsNonStrictValues FAIL); baseline PASS"
+ },
+ {
+  "upstream": "packages/chord/src/context/index.ts",
+  "package": "./chord/context",
+  "tests": [
+   "TestContextToStringIsTheStringMethodOfEveryLayer",
+   "TestContextProvidesDistinctEmptyRootContexts",
+   "TestContextLayersTypedValuesWithoutModifyingParents",
+   "TestContextDerivedAbortContextsPrintAsPiPrintsThem"
+  ],
+  "upstream_reference": "packages/chord/src/context/index.ts:9,28,50 (Context.toString) and packages/chord/test/context.test.ts:14-40",
+  "mutation": "chord/context/chordctx.go: emptyContext.String returns a fixed word (TestContextToStringIsTheStringMethodOfEveryLayer, TestContextProvidesDistinctEmptyRootContexts FAIL); valueContext.String omits the key description (TestContextToStringIsTheStringMethodOfEveryLayer, TestContextLayersTypedValuesWithoutModifyingParents FAIL); abortContext.String omits the abort-signal layer (TestContextToStringIsTheStringMethodOfEveryLayer, TestContextDerivedAbortContextsPrintAsPiPrintsThem FAIL); baseline PASS"
+ }
+]

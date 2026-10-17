@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/cli/startup-ui.ts
+
 import (
 	"context"
 	"io"
@@ -17,7 +19,7 @@ import (
 // prompt bytes share a terminal read, only Enter belongs to the selector; the
 // remaining parsed sequences must reach the editor that receives focus next.
 func TestStartupSelectorRetainsTypeaheadAfterConfirmation(t *testing.T) {
-	selector := tui.NewExtensionSelector("Trust project folder?", []string{"Trust (this session only)"})
+	selector := tui.NewExtensionSelectorComponent("Trust project folder?", []string{"Trust (this session only)"}, nil, nil)
 	chunks := []string{"\r", "/", "h", "e", "l", "l", "o"}
 	got := dispatchStartupInput(selector, chunks)
 	want := chunks[1:]
@@ -93,7 +95,7 @@ func TestRunStartupComponentRetainsSeparateReadDuringTeardown(t *testing.T) {
 	takeStartupInput()
 	t.Cleanup(func() { takeStartupInput() })
 	terminal := &teardownInputTerminal{}
-	selector := tui.NewExtensionSelector("Trust project folder?", []string{"Trust (this session only)"})
+	selector := tui.NewExtensionSelectorComponent("Trust project folder?", []string{"Trust (this session only)"}, nil, nil)
 	done := make(chan error, 1)
 	go func() {
 		_, err := runStartupComponentWith(

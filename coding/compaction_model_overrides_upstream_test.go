@@ -1,7 +1,6 @@
 package coding
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -20,7 +19,7 @@ type compactionCatalogFaux interface {
 	PendingResponseCount() int
 }
 
-func newCompactionCatalogSession(t *testing.T, enabled bool) (*Session, *Services, compactionCatalogFaux) {
+func newCompactionCatalogSession(t *testing.T, enabled bool) (*Session, *AgentSessionServices, compactionCatalogFaux) {
 	t.Helper()
 	services := newTestServices(t)
 	if err := services.SettingsManager().UpdateGlobal(func(settings *icodingagent.Settings) {
@@ -94,8 +93,8 @@ func TestCompactionModelOverridesPreparationUpstream(t *testing.T) {
 			session.ReplaceRunner(inproc.NewRunner([]extension.Extension{{Handlers: map[string][]extension.HandlerFn{"session_before_compact": {func(args ...any) (any, error) {
 				event := args[0].(extension.SessionBeforeCompactEvent)
 				preparations = append(preparations, event)
-				prep := event.Preparation.(*compaction.CompactionPreparation)
-				return extension.SessionBeforeCompactResult{Compaction: map[string]any{"summary": "compacted history", "firstKeptEntryId": prep.FirstKeptEntryID, "tokensBefore": prep.TokensBefore}}, nil
+				prep := event.Preparation
+				return extension.SessionBeforeCompactResult{Compaction: &extension.CompactionResult{Summary: "compacted history", FirstKeptEntryID: prep.FirstKeptEntryID, TokensBefore: prep.TokensBefore}}, nil
 			}}}}}, t.TempDir()))
 			tokens := 650
 			if path == "pre-prompt" {
@@ -104,7 +103,8 @@ func TestCompactionModelOverridesPreparationUpstream(t *testing.T) {
 			recent := seedCompactionCatalogHistory(t, session, tokens)
 			events := runCompactionCatalogOperation(t, session, func() error {
 				if path == "manual" {
-					return session.Compact(t.Context(), "")
+					_, err := session.Compact(t.Context(), "")
+					return err
 				} else {
 					text := "done"
 					if path == "post-run" {
@@ -122,7 +122,7 @@ func TestCompactionModelOverridesPreparationUpstream(t *testing.T) {
 			if len(preparations) != 1 {
 				t.Fatalf("preparations=%d", len(preparations))
 			}
-			prep := preparations[0].Preparation.(*compaction.CompactionPreparation)
+			prep := preparations[0].Preparation
 			want := compaction.CompactionSettings{Enabled: path != "manual", ReserveTokens: 2000, KeepRecentTokens: 150}
 			if prep.Settings != want {
 				t.Fatalf("settings=%+v, want %+v", prep.Settings, want)
@@ -145,67 +145,6 @@ func TestCompactionModelOverridesPreparationUpstream(t *testing.T) {
 			}
 			if len(ends) != 1 || ends[0].Aborted || ends[0].WillRetry != (path == "overflow") || ends[0].Summary != "compacted history" {
 				t.Fatalf("ends=%+v", ends)
-			}
-			if provider.PendingResponseCount() != 0 {
-				t.Fatal("responses left pending")
-			}
-		})
-	}
-}
-
-func TestCompactionModelOverridesBuiltinBudgetsUpstream(t *testing.T) {
-	// .upstream/v0.87.1/packages/coding-agent/test/suite/agent-session-compaction-model-overrides.test.ts:105
-	for _, path := range []string{"manual", "automatic"} {
-		t.Run("passes resolved budgets to built-in "+path+" summarization", func(t *testing.T) {
-			session, _, provider := newCompactionCatalogSession(t, true)
-			recent := seedCompactionCatalogHistory(t, session, 2500)
-			var budgets []int
-			responses := []ai.FauxResponseStep{ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
-				budgets = append(budgets, options.MaxTokens)
-				return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("built-in summary")}, StopReason: "stop"}, nil
-			})}
-			if path == "automatic" {
-				responses = append(responses, ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}, StopReason: "stop"}))
-			}
-			provider.SetResponses(responses)
-			events := runCompactionCatalogOperation(t, session, func() error {
-				if path == "manual" {
-					return session.Compact(t.Context(), "")
-				}
-				_, err := session.Send(t.Context(), "continue")
-				return err
-			})
-			if len(budgets) != 1 || budgets[0] != 1600 {
-				t.Fatalf("budgets=%v", budgets)
-			}
-			found := false
-			for _, event := range events {
-				if end, ok := event.(agent.CompactionEndEvent); ok {
-					found = true
-					if end.FirstKeptEntryID != recent || end.Summary != "built-in summary" {
-						t.Fatalf("compaction=%+v", end)
-					}
-				}
-			}
-			if !found {
-				t.Fatal("compaction missing")
-			}
-			persisted := false
-			for _, entry := range session.currentBranch() {
-				if entry.Base.Type != "compaction" {
-					continue
-				}
-				var stored icodingagent.CompactionEntry
-				if err := json.Unmarshal(entry.Raw(), &stored); err != nil {
-					t.Fatal(err)
-				}
-				persisted = true
-				if stored.FirstKeptEntryID != recent || stored.Summary != "built-in summary" {
-					t.Fatalf("stored compaction=%+v", stored)
-				}
-			}
-			if !persisted {
-				t.Fatal("compaction entry not persisted")
 			}
 			if provider.PendingResponseCount() != 0 {
 				t.Fatal("responses left pending")

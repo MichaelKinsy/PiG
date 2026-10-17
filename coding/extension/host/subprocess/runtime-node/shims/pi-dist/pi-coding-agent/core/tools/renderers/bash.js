@@ -9,21 +9,10 @@ import { Container, Spacer, Text } from "../../../../../pi-tui.mjs";
 import { keyHint } from "../../../modes/interactive/components/keybinding-hints.js";
 import { VisualLinePreview } from "../../../modes/interactive/components/visual-truncate.js";
 import { theme } from "../../../modes/interactive/theme/theme.js";
-import { getTextOutput, invalidArgText, str } from "../render-utils.js";
+import { getTextOutput, invalidArgText, startToolTimer, str, toolTimerText } from "../render-utils.js";
 import { DEFAULT_MAX_BYTES, formatSize } from "../truncate.js";
 const BASH_PREVIEW_LINES = 5;
 export const BASH_UPDATE_THROTTLE_MS = 100;
-function formatDuration(ms) {
-    const seconds = ms / 1000;
-    if (seconds < 60)
-        return `${seconds.toFixed(1)}s`;
-    const totalSeconds = Math.floor(seconds);
-    const minutes = Math.floor(totalSeconds / 60);
-    const remainder = totalSeconds % 60;
-    if (minutes < 60)
-        return `${minutes}m ${remainder}s`;
-    return `${Math.floor(minutes / 60)}h ${minutes % 60}m ${remainder}s`;
-}
 function formatShellCall(args, prompt) {
     const command = str(args?.command);
     const timeout = args?.timeout;
@@ -31,7 +20,7 @@ function formatShellCall(args, prompt) {
     const commandDisplay = command === null ? invalidArgText(theme) : command ? command : theme.fg("toolOutput", "...");
     return theme.fg("toolTitle", theme.bold(`${prompt} ${commandDisplay}`)) + timeoutSuffix;
 }
-function rebuildBashResultRenderComponent(component, result, options, showImages, startedAt, endedAt) {
+function rebuildBashResultRenderComponent(component, result, options, showImages, timerText) {
     component.clear();
     let output = getTextOutput(result, showImages).trim();
     const truncation = result.details?.truncation;
@@ -76,39 +65,22 @@ function rebuildBashResultRenderComponent(component, result, options, showImages
         }
         component.addChild(new Text(`\n${theme.fg("warning", `[${warnings.join(". ")}]`)}`, 0, 0));
     }
-    if (startedAt !== undefined) {
-        const label = options.isPartial ? "Elapsed" : "Took";
-        const endTime = endedAt ?? Date.now();
-        component.addChild(new Text(`\n${theme.fg("muted", `${label} ${formatDuration(endTime - startedAt)}`)}`, 0, 0));
-    }
+    if (timerText)
+        component.addChild(new Text(`\n${theme.fg("muted", timerText)}`, 0, 0));
 }
 /** Shell renderers are shared by bash and powershell, which differ only in the prompt they display. */
 export function createShellRenderers(prompt) {
     return {
         renderCall(args, _theme, context) {
-            const state = context.state;
-            if (context.executionStarted && state.startedAt === undefined) {
-                state.startedAt = Date.now();
-                state.endedAt = undefined;
-            }
+            startToolTimer(context);
             const text = context.lastComponent ?? new Text("", 0, 0);
             text.setText(formatShellCall(args, prompt));
             return text;
         },
         renderResult(result, options, _theme, context) {
-            const state = context.state;
-            if (state.startedAt !== undefined && options.isPartial && !state.interval) {
-                state.interval = setInterval(() => context.invalidate(), 1000);
-            }
-            if (!options.isPartial || context.isError) {
-                state.endedAt ??= Date.now();
-                if (state.interval) {
-                    clearInterval(state.interval);
-                    state.interval = undefined;
-                }
-            }
+            const timerText = toolTimerText(context, options.isPartial);
             const component = context.lastComponent ?? new Container();
-            rebuildBashResultRenderComponent(component, result, options, context.showImages, state.startedAt, state.endedAt);
+            rebuildBashResultRenderComponent(component, result, options, context.showImages, timerText);
             component.invalidate();
             return component;
         },

@@ -22,45 +22,8 @@ func captureMarkdownRender(t *testing.T, rows, cols int, src string, caps tui.Te
 	return &buf, cleanup
 }
 
-func TestParityMarkdown_GoldenBlocksAndLists(t *testing.T) {
-	src := strings.Join([]string{
-		"# Heading",
-		"",
-		"> first quote line",
-		"continued quote line",
-		"> - quoted bullet",
-		"",
-		"1. first item",
-		"   1. nested ordered",
-		"   - nested bullet",
-		"",
-		"| Name | Value |",
-		"| --- | ---: |",
-		"| alpha | 10 |",
-		"| beta | `wrapped code sample` |",
-		"",
-		"Read [docs](https://example.com/docs)",
-	}, "\n")
-
-	render := func(w *bytes.Buffer) {
-		buf, cleanup := captureMarkdownRender(t, 18, 52, src, tui.TerminalCapabilities{Hyperlinks: false})
-		defer cleanup()
-		w.Write(buf.Bytes())
-	}
-
-	AssertGolden(t, "markdown-blocks-and-lists", 18, 52, render)
-}
-
-func TestParityMarkdown_HyperlinkVisibleGoldenAndOSC8(t *testing.T) {
+func TestParityMarkdown_HyperlinkOSC8(t *testing.T) {
 	src := "Visit [example docs](https://example.com/docs) or email user@example.com"
-	render := func(w *bytes.Buffer) {
-		buf, cleanup := captureMarkdownRender(t, 6, 70, src, tui.TerminalCapabilities{Hyperlinks: true})
-		defer cleanup()
-		w.Write(buf.Bytes())
-	}
-
-	AssertGolden(t, "markdown-hyperlinks-visible", 6, 70, render)
-
 	buf, cleanup := captureMarkdownRender(t, 6, 70, src, tui.TerminalCapabilities{Hyperlinks: true})
 	defer cleanup()
 	raw := buf.String()

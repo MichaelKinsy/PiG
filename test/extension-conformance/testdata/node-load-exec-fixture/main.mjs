@@ -19,6 +19,7 @@ export default async function (pi) {
   const background = pi.exec(process.execPath, ["-e", "process.stdout.write('background')"]).then(result => `resolved:${result.stdout}`, error => `rejected:${error.message}`);
   pi.registerCommand("load-exec-probe", {
     description: "Report the exec calls the factory made while loading",
-    handler: async (_args, ctx) => ctx.ui.notify(JSON.stringify([...outcomes, `background=${await background}`]), "info"),
+    // The last entry names the runtime that ran the factory, which the harness runs the reference children with.
+    handler: async (_args, ctx) => ctx.ui.notify(JSON.stringify([...outcomes, `background=${await background}`, `execPath=${process.execPath}`]), "info"),
   });
 }

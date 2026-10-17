@@ -1,0 +1,137 @@
+[
+ {
+  "ids": [
+   "pkg:tui/.#Box::property:clear"
+  ],
+  "targets": [
+   "tui/box.go#Box.Clear"
+  ],
+  "production": [
+   "call:internal/experimental/durable_tui.go#durableCompaction.SetExpanded"
+  ],
+  "evidence": [
+   "test:tui/component_members_test.go#TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders"
+  ],
+  "rationale": "Box.clear() is Clear()."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Box::property:invalidate"
+  ],
+  "targets": [
+   "tui/box.go#Box.Invalidate"
+  ],
+  "production": [
+   "call:tui/box.go#Box.AddChild"
+  ],
+  "evidence": [
+   "test:tui/component_members_test.go#TestBoxInvalidateReachesEveryChildAndDropsTheRenderCache"
+  ],
+  "rationale": "Box.invalidate() is Invalidate(): it drops the render cache and invalidates every child."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Box::property:removeChild"
+  ],
+  "targets": [
+   "tui/box.go#Box.RemoveChild"
+  ],
+  "production": [
+   "public-api:tui/box.go#Box.RemoveChild"
+  ],
+  "evidence": [
+   "test:tui/component_members_test.go#TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders"
+  ],
+  "rationale": "Box.removeChild(component) is RemoveChild(component); a component that is not a child is ignored."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Box::property:setBgFn"
+  ],
+  "targets": [
+   "tui/box.go#Box.SetBgFn"
+  ],
+  "production": [
+   "public-api:tui/box.go#Box.SetBgFn"
+  ],
+  "evidence": [
+   "test:tui/component_members_test.go#TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders"
+  ],
+  "rationale": "Box.setBgFn(bgFn?) is SetBgFn(bgFn); nil is undefined."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Container::property:children"
+  ],
+  "targets": [
+   "tui/tui.go#Container.Children"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive_editor.go#InteractiveMode.setAllToolsExpanded"
+  ],
+  "evidence": [
+   "test:tui/component_members_test.go#TestContainerChildrenIsAnInsertionOrderedSnapshot"
+  ],
+  "rationale": "The children array property is the method Children(), a snapshot in insertion order."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Text::property:invalidate"
+  ],
+  "targets": [
+   "tui/text.go#Text.Invalidate"
+  ],
+  "evidence": [
+   "test:tui/component_members_test.go#TestTextSetCustomBgFnAndInvalidateRerender"
+  ],
+  "production": [
+   "call:tui/text.go#Text.SetText"
+  ],
+  "rationale": "Text.invalidate() is Invalidate(): it drops the cached lines."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Text::property:setCustomBgFn"
+  ],
+  "targets": [
+   "tui/text.go#Text.SetCustomBgFn"
+  ],
+  "evidence": [
+   "test:tui/component_members_test.go#TestTextSetCustomBgFnAndInvalidateRerender"
+  ],
+  "production": [
+   "public-api:tui/text.go#Text.SetCustomBgFn"
+  ],
+  "rationale": "Text.setCustomBgFn(fn?) is SetCustomBgFn(fn); nil is undefined."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Text::property:render"
+  ],
+  "targets": [
+   "tui/text.go#Text.Render"
+  ],
+  "evidence": [
+   "test:internal/codingagent/interactive_startup_input_upstream_test.go#TestUpstreamInteractiveStartupInput"
+  ],
+  "production": [
+   "call:coding/extension/host/subprocess/push_proxy.go#PushProxy.Render"
+  ],
+  "rationale": "Text.render is the Go method Text.Render; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Text::property:setText"
+  ],
+  "targets": [
+   "tui/text.go#Text.SetText"
+  ],
+  "evidence": [
+   "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout"
+  ],
+  "production": [
+   "call:coding/mcpext/render.go#renderCall"
+  ],
+  "rationale": "Text.setText is the Go method Text.SetText; types reviewed against the upstream declaration; tests are upstream-ported files and attributed by go/types (methodrefs)."
+ }
+]

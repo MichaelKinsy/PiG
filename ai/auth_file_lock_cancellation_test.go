@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -98,7 +99,7 @@ func TestAuthStorageFileLockWaitCancellation(t *testing.T) {
 			if !credentials.HasRuntimeAPIKey("provider") {
 				t.Error("cancelled operation cleared the runtime key")
 			}
-			if after, err := os.ReadFile(store.Path()); err != nil || string(after) != string(before) {
+			if after, err := os.ReadFile(store.Path()); err != nil || !bytes.Equal(after, before) {
 				t.Errorf("cancelled operation changed file: %s, %v", after, err)
 			}
 			if info, err := os.Stat(store.Path() + ".lock"); err != nil || !info.IsDir() {

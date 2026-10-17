@@ -9,8 +9,8 @@ import (
 
 // Pi pins marked 18.0.11 (packages/tui/package.json:56). Its GFM url/email
 // rules are in marked/lib/marked.esm.js:14, token emission in :44, and the
-// inlineText/URL dispatch in :58. Compare text, href, and rune boundaries.
-func TestAutoLinkScannerMatchesMarked(t *testing.T) {
+// inlineText/URL dispatch in :58. Compare token types, raw text, and href.
+func TestAutoLinkTokensMatchMarked(t *testing.T) {
 	inputs := []string{"", "ordinary", "(user@example.com)", "日本user@example.com!", "a@b@c.com", "(https://example.com/a(b)).", "http://example.com! next@example.com?", strings.Repeat("x", 64<<10)}
 	input, err := json.Marshal(inputs)
 	if err != nil {
@@ -32,37 +32,22 @@ console.log(JSON.stringify(JSON.parse(fs.readFileSync(0, "utf8")).map(text => Le
 	if len(cases) != len(inputs) {
 		t.Fatal("oracle did not return every input")
 	}
-	for c, tokens := range cases {
-		var scanner autoLinkScanner
-		runes := []rune(inputs[c])
-		start := 0
-		for _, token := range tokens {
-			end := start + len([]rune(token.Raw))
-			for start < end {
-				text, href, next, ok := scanner.parseAutoLink(runes, start)
-				switch token.Type {
-				case "text":
-					if ok {
-						t.Fatalf("input %d at %d: unexpected link %q", c, start, text)
-					}
-					start++
-				case "link":
-					if !ok || text != token.Text || href != token.Href || next != end {
-						t.Fatalf("input %d at %d: link (%q, %q, %d, %t), want (%q, %q, %d)", c, start, text, href, next, ok, token.Text, token.Href, end)
-					}
-					start = next
-				default:
-					t.Fatalf("unexpected oracle token %q", token.Type)
-				}
-			}
+	kinds := map[markedTokenKind]string{markedText: "text", markedLink: "link"}
+	for c, want := range cases {
+		got := lexMarkedInline(inputs[c], &markedInlineState{})
+		if len(got) != len(want) {
+			t.Fatalf("input %d: %d tokens, want %d", c, len(got), len(want))
 		}
-		if start != len(runes) {
-			t.Fatalf("input %d: oracle omitted source", c)
+		for i, token := range want {
+			if kinds[got[i].kind] != token.Type || got[i].raw != token.Raw || got[i].text != token.Text || got[i].href != token.Href {
+				t.Fatalf("input %d token %d: (%s, %q, %q, %q), want (%s, %q, %q, %q)", c, i, kinds[got[i].kind], got[i].raw, got[i].text, got[i].href, token.Type, token.Raw, token.Text, token.Href)
+			}
 		}
 	}
 }
 
-func TestAutoLinkScannerKeepsSuffixesAndTokenJumps(t *testing.T) {
+// marked's url rule runs only where a token starts; inline text stops before an email local part and a scheme. These starts are boundaries inline text can produce.
+func TestAutoLinkURLRuleAtTokenStarts(t *testing.T) {
 	for _, tc := range []struct {
 		input  string
 		starts []int
@@ -78,21 +63,20 @@ func TestAutoLinkScannerKeepsSuffixesAndTokenJumps(t *testing.T) {
 		{"http://example.com! next@example.com?", []int{0, 19, 20}, []string{"http://example.com", "", "next@example.com"}},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
-			var scanner autoLinkScanner
 			runes := []rune(tc.input)
 			for j, start := range tc.starts {
-				text, url, next, ok := scanner.parseAutoLink(runes, start)
+				token, ok := markedURL(runes[start:])
 				want := tc.texts[j]
-				if text != want || ok != (want != "") {
-					t.Fatalf("start %d: text=%q ok=%t, want %q", start, text, ok, want)
+				if token.text != want || ok != (want != "") {
+					t.Fatalf("start %d: text=%q ok=%t, want %q", start, token.text, ok, want)
 				}
 				if ok {
 					wantURL := want
 					if strings.ContainsRune(want, '@') {
 						wantURL = "mailto:" + want
 					}
-					if url != wantURL || next != start+len([]rune(want)) {
-						t.Fatalf("start %d: url=%q next=%d", start, url, next)
+					if token.href != wantURL || token.raw != want {
+						t.Fatalf("start %d: href=%q raw=%q", start, token.href, token.raw)
 					}
 				}
 			}
@@ -120,7 +104,7 @@ func TestAutoLinkScannerRenderingPrecedence(t *testing.T) {
 	}
 }
 
-func BenchmarkAutoLinkScanUnbroken(b *testing.B) {
+func BenchmarkAutoLinkLexUnbroken(b *testing.B) {
 	for _, input := range []struct{ name, text string }{
 		{"plain", strings.Repeat("x", 64<<10)},
 		{"invalid-email", strings.Repeat("x", 64<<10) + "@invalid"},
@@ -129,19 +113,10 @@ func BenchmarkAutoLinkScanUnbroken(b *testing.B) {
 		{"closing-parens", "https://example.com" + strings.Repeat(")", 64<<10)},
 	} {
 		b.Run(input.name, func(b *testing.B) {
-			runes := []rune(input.text)
 			b.SetBytes(int64(len(input.text)))
 			b.ReportAllocs()
 			for b.Loop() {
-				var scanner autoLinkScanner
-				for i := 0; i < len(runes); {
-					_, _, next, ok := scanner.parseAutoLink(runes, i)
-					if ok {
-						i = next
-					} else {
-						i++
-					}
-				}
+				lexMarkedInline(input.text, &markedInlineState{})
 			}
 		})
 	}

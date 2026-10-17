@@ -1,5 +1,5 @@
 # Behavior family: selectors
-# Scenario: /login → Sign in with an account → GitHub Copilot → LoginDialog.
+# Scenario: /login → Sign in with an account → GitHub Copilot → LoginDialogComponent.
 #
 # Upstream evidence (pi v0.81.1, re-probed 2026-07-22 with empty
 # PI_CODING_AGENT_DIR):
@@ -18,7 +18,7 @@
 #   - PIG/PI_PARITY_LOGIN_DIALOG installs process-local device-code stubs; no
 #     GitHub request or ambient proxy participates in the hermetic gate.
 #   - The OAuth device code contains random bytes, so normalize_replace strips
-#     it before comparing the LoginDialog layout.
+#     it before comparing the LoginDialogComponent layout.
 #
 # This scenario used to be deferred because pig silently imported
 # ~/.pi/agent/auth.json into fresh PIG_HOME via ImportLegacyPiAuthIfNeeded.
@@ -27,7 +27,7 @@
 # without contamination from the user's real upstream pi credentials.
 
 name = "07-login-dialog"
-description = "/login subscription flow renders LoginDialog with GitHub Copilot device-code prompt"
+description = "/login subscription flow renders LoginDialogComponent with GitHub Copilot device-code prompt"
 covers = [
   "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
   "packages/ai/src/auth/oauth/github-copilot.ts",

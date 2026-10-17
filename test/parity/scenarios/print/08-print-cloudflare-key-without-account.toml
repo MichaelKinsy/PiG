@@ -1,0 +1,42 @@
+# Behavior family: print
+# Scenario: a Cloudflare API key without the account id configures no Cloudflare provider, so the prompt fails before the turn.
+#
+# Upstream evidence (Pi 1.1.0, probed 2026-10-10): Pi's configured-provider snapshot is each provider's auth check
+# (model-runtime.ts:340-355), and cloudflare-auth.ts resolveCloudflareEnv returns undefined unless CLOUDFLARE_API_KEY and
+# CLOUDFLARE_ACCOUNT_ID (plus CLOUDFLARE_GATEWAY_ID for AI Gateway) are all set. With only CLOUDFLARE_API_KEY:
+#
+#   pi --offline --no-extensions --no-session --model cloudflare-workers-ai/@cf/deepseek-ai/deepseek-v4-flash-0731 -p hello
+#
+# prints "No API key found for cloudflare-workers-ai." with the login guidance and exits 1. PiG counted the key alone as
+# configured auth, skipped the auth check and sent the request ("Connection error." after a network attempt).
+#
+# The account and gateway ids are set empty for both binaries so the runner's environment cannot configure them; both
+# read an empty value as unset.
+# normalize-rationale: the docs root differs by distribution (D2/D22). Masking it keeps the error, the guidance text and the file names, so drift in the error or the exit still fails.
+
+name = "08-print-cloudflare-key-without-account"
+description = "Print mode fails a Cloudflare prompt whose API key has no account id before the turn, with Pi's guidance"
+covers = [
+  "packages/coding-agent/src/modes/print-mode.ts",
+  "packages/ai/src/providers/cloudflare-auth.ts",
+]
+tags = ["hermetic", "fast", "cli"]
+driver = "cli-mode"
+
+[cli]
+args = ["--offline", "--no-extensions", "--no-context-files", "--no-skills", "--no-session", "--model", "cloudflare-workers-ai/@cf/deepseek-ai/deepseek-v4-flash-0731", "-p", "hello"]
+timeout_seconds = 20
+
+[env]
+pig = ["PIG_HOME=../rpc/testdata/pig-home", "CLOUDFLARE_API_KEY=parity-key", "CLOUDFLARE_ACCOUNT_ID=", "CLOUDFLARE_GATEWAY_ID="]
+pi = ["PI_CODING_AGENT_DIR=../rpc/testdata/pi-home/agent", "PI_SKIP_VERSION_CHECK=1", "CLOUDFLARE_API_KEY=parity-key", "CLOUDFLARE_ACCOUNT_ID=", "CLOUDFLARE_GATEWAY_ID="]
+
+[assert]
+exit_code = 1
+both_contain = ["No API key found for cloudflare-workers-ai.", "Use /login to log into a provider via OAuth or API key. See:"]
+both_not_contain = ["Connection error.", "not found for provider"]
+output_normalized_equal = true
+normalize_replace = [
+  { pattern = '/[^ \n]*/docs/(?:bundle-[0-9a-f]+/)?(providers|models)\.md', with = '<DOCS>/$1.md', reason = "D2/D22: the documentation root is distribution-specific; keep the file names and the guidance text." },
+]
+runs = 3

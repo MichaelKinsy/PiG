@@ -52,7 +52,7 @@ func TestTreeSelectLabelKeysFollowRebinding(t *testing.T) {
 		"app.tree.toggleLabelTimestamp": {"alt+t"},
 	})
 	root := &fakeNode{id: "r", kids: []TreeNode{&fakeNode{id: "x", label: "entry"}}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	ts.OnLabelEdit = func(string, string) {}
 
 	ts.HandleInput("T")
@@ -90,7 +90,7 @@ func TestTreeSelectFoldAndFilterKeysFollowRebinding(t *testing.T) {
 			&fakeNode{id: "a2", label: "A2"},
 		}},
 	}}
-	ts := NewTreeSelect("", root)
+	ts := NewTreeSelectorComponent("", root)
 	ts.cursor = 0
 	ts.HandleInput("\x1b[1;5D") // the default ctrl+left no longer folds
 	if ts.foldedNodes["a"] {

@@ -9,11 +9,13 @@ export class OAuthError extends Error {
     }
 }
 export class OAuthIssuerMismatchError extends Error {
+    /** `undefined` when no authorization server metadata was discovered. */
     expected;
     /** `undefined` when an authorization response lacks the `iss` parameter its server promised (RFC 9207). */
     received;
     constructor(expected, received) {
-        super(`OAuth issuer mismatch: expected ${JSON.stringify(expected)}, received ${received === undefined ? "none" : JSON.stringify(received)}`);
+        const format = (issuer) => (issuer === undefined ? "none" : JSON.stringify(issuer));
+        super(`OAuth issuer mismatch: expected ${format(expected)}, received ${format(received)}`);
         this.name = "OAuthIssuerMismatchError";
         this.expected = expected;
         this.received = received;

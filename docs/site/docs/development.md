@@ -10,8 +10,7 @@ If PiG is already available, use the repository Skill for guided setup:
 pig --skill ./.agents/skills/setup-pig
 ```
 
-The Skill checks only the tools required for the selected task. It asks before
-installing software.
+The Skill checks only the tools required for the selected task. It asks before installing software.
 
 The qualified verification toolchain is:
 
@@ -35,30 +34,27 @@ go build -o bin/pig ./cmd/pig
 
 Do not use `go install ./cmd/pig` in a development checkout. Keep test and candidate binaries under the repository `bin/` directory or another explicit temporary path.
 
-After editing `coding/extension/host/subprocess/runtime-node/`, run `go generate ./coding/extension/host/subprocess` before a direct `go build`. Commit both `runtime-node.zip` and `runtime_node_digest_generated.go` with the source changes. The archive contains the same runtime files; its generated content digest keys the immutable runtime cache. `make pig`, `make build`, `make install`, and `make parity-bin` regenerate it automatically. `TestNodeRuntimeArchiveMatchesSources` rejects added, removed, or changed source files that are missing from the archive.
+After editing `coding/extension/host/subprocess/runtime-node/`, run `go generate ./coding/extension/host/subprocess` before a direct `go build`. Commit both `runtime-node.pack` and `runtime_node_digest_generated.go` with the source changes. The archive holds the same runtime files in a few solid zstd blocks (`noderuntimepack`); its generated content digest keys the immutable runtime cache. `make pig`, `make build`, `make install`, and `make parity-bin` regenerate it automatically. `TestNodeRuntimeArchiveMatchesSources` rejects added, removed, or changed source files that are missing from the archive.
 
 ## Release version
 
-Change the PiG release version with `make set-version VERSION=x.y.z`.
-Use `SET_VERSION_ARGS=--dry-run` to inspect the diff without writing files.
-The command updates the release pin, Standard development version, and changelog heading, then runs the version consistency tests.
-It preserves Go module requirements and checksums so `main` continues to resolve published dependencies between releases.
-Use `SET_VERSION_ARGS=--release-modules` only on an unpublished release branch to prepare matching nested-module pins and checksums.
-Publish the nested SDK tag before merging those requirements to `main`.
-Run `make module-publication` to check the required public tags and downloaded checksums without workspace or SDK-cache assistance.
-Go factory builds retain required versions and checksums for locally replaced workspace modules (D20).
-It leaves Unreleased entries in place unless you pass `SET_VERSION_ARGS=--move-unreleased`.
+Change the PiG release version with `make set-version VERSION=x.y.z`. Use `SET_VERSION_ARGS=--dry-run` to inspect the diff without writing files. The command updates the release pin, Standard development version, and changelog heading, then runs the version consistency tests. It preserves Go module requirements and checksums so `main` continues to resolve published dependencies between releases. It leaves Unreleased entries in place unless you pass `SET_VERSION_ARGS=--move-unreleased`.
+
+Use `SET_VERSION_ARGS=--release-modules` only on an unpublished release branch to prepare matching nested-module pins and checksums. Publish the nested SDK tag before merging those requirements to `main`. Run `make module-publication` to check the required public tags and downloaded checksums without workspace or SDK-cache assistance. Go factory builds retain required versions and checksums for locally replaced workspace modules (D20).
+
+`make release-notes-draft` writes draft release notes for the current release from the changelog, the bug fix ledger and the divergence records. It never overwrites an existing draft.
+
 See [`docs/project/RELEASING.md`](https://github.com/MichaelKinsy/PiG/blob/main/docs/project/RELEASING.md) for candidate renaming and publication rules.
 
 ## Mirror upstream
 
-PiG compares against an exact Pi release:
+PiG compares against one Pi build. The upstream pin is one setting, `.upstream/pin`: a release tag or a pinned pi-mono commit. PiG 0.5.0 pins Pi 1.3.0.
 
 ```bash
 make upstream-mirror
 ```
 
-This target installs the lockfile-pinned Pi comparator. It retrieves the pinned source and verifies its commit identity.
+This target installs the lockfile-pinned Pi comparator. It retrieves the pinned source and verifies its commit identity. `PI_UPSTREAM_REF=<tag|commit>` overrides the pin for one run. `make pin-bump PI_UPSTREAM_REF=<tag|commit>` moves the pin and regenerates every file derived from it. A commit pin builds its Pi oracle from source.
 
 ## Model catalog generation
 
@@ -67,6 +63,15 @@ This target installs the lockfile-pinned Pi comparator. It retrieves the pinned 
 The command also exposes the ported models.dev Fireworks and Qwen Token Plan generation stages. Use `--json-only --json-output <directory>` to inspect their JSON catalogs without changing the committed Go catalog. Add `--strict` to reject an Individual model list that loses a required tool-capable model before publishing output. Other upstream network-provider stages and TypeScript publication are not implemented by this mode. Without `--json-only`, this mode writes the selected stages to `-out`; use a separate output file, not the complete committed catalog.
 
 ## Primary checks
+
+Choose the test tier by the moment, as `docs/project/test-economy.md` defines. While you iterate, run `go test ./<pkg> -run '<Tests>'`. Before a handoff commit, run the checks for the packages your change touches:
+
+```bash
+make test-changed
+make lint-changed
+```
+
+`make test-changed` tests only the packages a change can affect and runs edited packages under `-race`. It keeps the `go test -json` events in `tmp/test-changed/`.
 
 Run the deterministic main gate:
 
@@ -87,11 +92,17 @@ make build
 make vet
 make lint
 make test
+make port-lint
 make lint-scenarios
 make parity-fast
 make parity
 make coverage
+make docs-drift
+make changelog-check
+make bug-ledger-check
 ```
+
+`make test` requires and exercises the Go, Node, Python, and Rust toolchains, and it fails a test group that leaves a process running. `make port-lint` runs the analyzers for porting anti-patterns, such as map key order, nil versus empty JSON and UTF-16 units, against a ratcheting baseline. `make docs-drift` checks the documentation against its sources, including every fenced code sample, `pig` command line, flag, setting key and relative link. Record each user-facing change as a `changelog.d/<lane>-<sha>.md` fragment; `make changelog-check` validates the fragments. `make bug-ledger` regenerates the public [bug fix ledger](/docs/latest/bug-ledger), and `make bug-ledger-check` fails when a fix has no entry.
 
 A green gate is necessary but does not prove that a change is faithful. Compare observable behavior with upstream Pi and fix or document every difference.
 

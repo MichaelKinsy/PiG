@@ -222,7 +222,7 @@ func (env *NodeExecutionEnv) writeWithParents(ctx context.Context, resolved stri
 	}
 	data, err := fileContent(content)
 	if err != nil {
-		return &durableenv.FileError{Code: durableenv.FileErrorInvalid, Message: err.Error(), Path: resolved}
+		return durableenv.NewFileError(durableenv.FileErrorInvalid, err.Error(), resolved, nil)
 	}
 	parent := filepath.Dir(resolved)
 	if err := nodeerrno.MkdirAll(parent, 0o777); err != nil {
@@ -252,7 +252,7 @@ func (env *NodeExecutionEnv) TruncateFile(ctx context.Context, path string, size
 		return err
 	}
 	if size < 0 || size > maxSafeInteger {
-		return &durableenv.FileError{Code: durableenv.FileErrorInvalid, Message: "File size must be a non-negative safe integer", Path: resolved}
+		return durableenv.NewFileError(durableenv.FileErrorInvalid, "File size must be a non-negative safe integer", resolved, nil)
 	}
 	file, err := os.OpenFile(resolved, os.O_RDWR, 0)
 	if err != nil {
@@ -281,7 +281,7 @@ func (env *NodeExecutionEnv) FlushFile(ctx context.Context, path string) error {
 		// POSIX refuses to open a directory for writing with EISDIR; Windows refuses it as access denied, where Node
 		// opens it, so a directory is reported as one.
 		if stats, statErr := os.Stat(resolved); statErr == nil && stats.IsDir() && errnoCode(err) != "EISDIR" {
-			return &durableenv.FileError{Code: durableenv.FileErrorIsDirectory, Message: "Is a directory", Path: resolved}
+			return durableenv.NewFileError(durableenv.FileErrorIsDirectory, "Is a directory", resolved, nil)
 		}
 		return toFileError(err, fsCall{syscall: "open", path: resolved})
 	}
@@ -343,7 +343,7 @@ func fileInfoFromStats(path string, stats fs.FileInfo) (durableenv.FileInfo, err
 	case mode&fs.ModeSymlink != 0:
 		kind = durableenv.FileKindSymlink
 	default:
-		return durableenv.FileInfo{}, &durableenv.FileError{Code: durableenv.FileErrorInvalid, Message: "Unsupported file type", Path: path}
+		return durableenv.FileInfo{}, durableenv.NewFileError(durableenv.FileErrorInvalid, "Unsupported file type", path, nil)
 	}
 	return durableenv.FileInfo{
 		Name:    filepath.Base(path),
@@ -462,7 +462,7 @@ func (env *NodeExecutionEnv) Remove(ctx context.Context, path string, options *d
 	case err != nil:
 		return toFileError(err, fsCall{syscall: "lstat", path: resolved})
 	case stats.IsDir() && !options.Recursive:
-		return &durableenv.FileError{Code: durableenv.FileErrorUnknown, Message: "Path is a directory: rm returned EISDIR (is a directory) " + resolved, Path: resolved}
+		return durableenv.NewFileError(durableenv.FileErrorUnknown, "Path is a directory: rm returned EISDIR (is a directory) "+resolved, resolved, nil)
 	}
 	if err := os.RemoveAll(resolved); err != nil {
 		return toFileError(err, fsCall{syscall: "rm", path: resolved})

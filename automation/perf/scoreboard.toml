@@ -1,0 +1,1042 @@
+# SPDX-License-Identifier: MIT
+#
+# The performance scoreboard registry. `make perf-scoreboard` renders docs/performance/scoreboard.md from this file, automation/perf/ratchet.toml (gate ceilings) and automation/perf/scoreboard-measured.json (the counts `make perf-scoreboard-measure` collects from the gates).
+#
+# A gate is one of:
+#   { ratchet = "<id>" }                      a count ceiling in ratchet.toml; the measured value comes from the gate's perfgate line
+#   { test = "<pkg dir>:<TestName>" }         an existing gate with an inline ceiling or invariant; the generator verifies the function exists
+#   { branch = "<lane>", path = "<file>" }    a gate that exists on another lane's branch and not in this tree
+#   { missing = "<what>", route = "<lane>" }  a gate that does not exist yet
+# Targets state what a hand-written Rust or C program doing the same observable work would plausibly reach, and the basis of that estimate. Time values are never measured on a shared host: they come only from the cluster with the exact-CV gate, and stay out of this file.
+
+# Gate tests that print perfgate lines, run by `make perf-scoreboard-measure`.
+[[measure]]
+pkg = "./ai"
+run = "^(TestStreamBuilderPerDeltaAllocationGate|TestProviderStreamPerFrameAllocationGate|TestToolSchemaMarshalAllocationGate|TestProviderResponseAllocationGate|TestProviderRequestHistoryAllocationGate|TestToolCallArgumentsPerDeltaAllocationGate|TestContextToolResultDetailsAllocationGate|TestGrammarToolInputPerDeltaAllocationGate)$"
+[[measure]]
+pkg = "./agent"
+run = "^TestStreamProxyPerDeltaAllocationGate$"
+[[measure]]
+pkg = "./coding"
+run = "^TestStreamWakesPerDelta$"
+[[measure]]
+pkg = "./tui"
+run = "^(TestKeystrokeToFrameAllocationGate|TestStreamingMarkdownFrameAllocationGate|TestKeystrokeGCCyclesGate|TestTree.*ScalingGate)$"
+[[measure]]
+pkg = "./ai"
+run = "^(TestToolEstimateScalingGate|TestProviderRequestToolsScalingGate)$"
+[[measure]]
+pkg = "./coding/extension/host/inproc"
+run = "ScalingGate$"
+[[measure]]
+pkg = "./tui/internal/hljs"
+run = "^TestGrammarLoadAllocationGate$"
+[[measure]]
+pkg = "./internal/codingagent"
+run = "^(TestSessionLoadPerLineAllocationGate|TestSessionTurnAllocationGate|TestInteractiveToolArgumentsPerDeltaAllocationGate)$"
+[[measure]]
+pkg = "./internal/codingagent/compaction"
+run = "^TestCompactionPreparePerEntryAllocationGate$"
+[[measure]]
+pkg = "./coding/extension/host/subprocess"
+run = "^TestExtensionEventRoundTripAllocationGate$"
+[[measure]]
+pkg = "./test/perfgate"
+run = "."
+[[measure]]
+pkg = "./test/integration"
+run = "^TestInteractiveFirstFrameProcessGate$"
+tags = "integration"
+
+# ---------------------------------------------------------------- startup
+
+[[metric]]
+id = "startup.first_frame"
+area = "startup"
+title = "Interactive start to first ready frame, then exit"
+impact = 5
+owner = "go-native-perf"
+target = "under 30,000 allocations and 4 MB allocated; under 15 ms cold to first frame"
+basis = "A Rust TUI start reads settings, auth and the model catalog, then draws one frame: tens of thousands of small allocations at most, with the catalog in a static table. The -p path already does a whole turn in about 35,000 allocations, so most of the interactive path's extra 62,000 are avoidable. The cold time target is the 10 ms start of xlang.startup_endpoints plus one frame."
+gates = [
+  { ratchet = "process.interactive_first_frame.allocs" },
+  { ratchet = "process.interactive_first_frame.bytes" },
+  { ratchet = "process.interactive_first_frame.heap_live_bytes" },
+  { ratchet = "process.interactive_first_frame.children_at_exit" },
+  { ratchet = "tui.hljs_grammar_load.allocs" },
+  { ratchet = "tui.hljs_grammar_load.bytes" },
+  { missing = "start-to-first-frame time on the cluster with the exact-CV gate (no k8sbench profile for regular PiG)", route = "k8s-bench" },
+]
+
+[[metric]]
+id = "startup.init"
+area = "startup"
+title = "Package initializers before main (GODEBUG=inittrace=1)"
+impact = 4
+owner = "go-native-perf"
+target = "under 100 KB and 1,000 allocations"
+basis = "A Rust or C binary has no package initializers: tables are static data. The remaining Go floor is the runtime's own init and a few unavoidable package maps."
+gates = [
+  { test = "coding/cli:TestPackageInitWorkBudget" },
+  { test = "coding/cli:TestLinkedPackagesCompileNoRegexpAtInit" },
+  { measured = "startup.init.bytes" },
+  { measured = "startup.init.allocs" },
+]
+
+[[metric]]
+id = "startup.print"
+area = "startup"
+title = "Print mode (-p) round trip, faux provider, no extensions, whole process"
+impact = 4
+owner = "go-native-perf"
+target = "under 10,000 allocations and 2 MB allocated; peak RSS under 15 MB"
+basis = "A Rust CLI that loads settings, resolves one model, streams one reply and exits allocates a few thousand objects; its RSS is the binary's touched pages plus a small heap."
+gates = [
+  { ratchet = "process.print.allocs" },
+  { test = "coding/cli:TestStartupAllocationBudget" },
+  { ratchet = "process.print.bytes" },
+  { ratchet = "process.print.gc_cycles" },
+  { ratchet = "process.print.heap_live_bytes" },
+  { ratchet = "process.print.max_rss_bytes" },
+  { test = "coding/cli:TestWarmStandardStartupWorkBudgetWithHeldSDKLock" },
+  { missing = "-p wall time on the cluster with the exact-CV gate", route = "k8s-bench" },
+]
+
+[[metric]]
+id = "startup.rpc"
+area = "startup"
+title = "RPC mode start and stop with no prompt"
+impact = 3
+owner = "go-native-perf"
+target = "under 8,000 allocations and 1.5 MB allocated"
+basis = "The same start work as print mode, minus the turn."
+gates = [
+  { ratchet = "process.rpc_startup.allocs" },
+  { ratchet = "process.rpc_startup.bytes" },
+]
+
+[[metric]]
+id = "startup.extension_spawn"
+area = "startup"
+title = "Extension spawn: one runtime cell to registration, and ten extensions"
+impact = 4
+owner = "go-native-perf"
+target = "host side under 2,000 allocations and 2 crossings per extension; warm Node cell start bounded by Node itself"
+basis = "Spawning a child and exchanging one registration frame costs a fork/exec, a socket and two frames. The host's own work should be small next to the child's start."
+gates = [
+  { test = "coding/extension/host/subprocess:TestNodeRuntimeMaterializesOncePerContentHash" },
+  { test = "coding/extension/host/subprocess:TestNodeJitiCachePersistsWithoutStaleSource" },
+  { test = "coding/extension/pigsdk:TestBundleHashStreamsTheWholeFileDigest" },
+  { missing = "host allocations, bytes and frames per extension spawn (Go and Node cells), and the ten-extension start", route = "go-native-perf" },
+  { missing = "ten-extension start time on the cluster with the exact-CV gate", route = "k8s-bench" },
+]
+
+[[metric]]
+id = "binary.pig"
+area = "startup"
+title = "Stock pig binary size, stripped, per release platform"
+impact = 2
+owner = "go-native-perf"
+target = "under 40 MB"
+basis = "The embedded Node runtime archive is about 9.3 MB (automation/perf/README.md); a Rust build of the remaining code with static tables and no reflection metadata would be a fraction of the Go text and rodata."
+gates = [
+  { ratchet = "binary.pig.linux_amd64.bytes" },
+  { ratchet = "binary.pig.linux_arm64.bytes" },
+  { ratchet = "binary.pig.darwin_arm64.bytes" },
+  { ratchet = "binary.pig.windows_amd64.bytes" },
+  { test = "coding/extension/host/subprocess:TestNodeRuntimeArchiveSizeBudget" },
+]
+
+[[metric]]
+id = "piglet.binary"
+area = "startup"
+title = "Piglet Binary size and start (stripped and Standard Piglets)"
+impact = 3
+owner = "piglets-pigpen"
+target = "a stripped Piglet Binary under the stock binary's size; start allocations under the stock start's"
+basis = "A strip list removes code, so its binary and start should be strictly smaller than stock."
+gates = [
+  { test = "coding/cli:TestStripLeakGate" },
+  { missing = "size and start-allocation ceilings per Piglet Binary (stock, stripped, full)", route = "piglets-pigpen" },
+  { missing = "Piglet Binary build time and cache reuse counts", route = "piglets-pigpen" },
+]
+
+# ---------------------------------------------------------------- streaming and input
+
+[[metric]]
+id = "stream.delta"
+area = "streaming"
+title = "One streamed delta through the shared assistant stream builder"
+impact = 5
+owner = "go-native-perf"
+target = "at most 1 allocation and under 64 bytes per text delta, amortized; tool-call argument deltas the same"
+basis = "A Rust builder appends the delta to a growing String and publishes an event that borrows it; the only allocation is the occasional buffer doubling. The tool-call path also parses arguments incrementally."
+gates = [
+  { ratchet = "ai.stream.text_delta.allocs" },
+  { ratchet = "ai.stream.text_delta.bytes" },
+  { ratchet = "ai.stream.thinking_delta.allocs" },
+  { ratchet = "ai.stream.thinking_delta.bytes" },
+  { ratchet = "ai.stream.toolcall_delta.allocs" },
+  { ratchet = "ai.stream.toolcall_delta.bytes" },
+  { ratchet = "ai.stream.toolcall_arguments_delta.allocs" },
+  { ratchet = "ai.stream.toolcall_arguments_delta.bytes" },
+  { ratchet = "agent.proxy.text_delta.allocs" },
+  { ratchet = "agent.proxy.text_delta.bytes" },
+  { ratchet = "agent.proxy.thinking_delta.allocs" },
+  { ratchet = "agent.proxy.thinking_delta.bytes" },
+  { ratchet = "agent.proxy.toolcall_delta.allocs" },
+  { ratchet = "agent.proxy.toolcall_delta.bytes" },
+  { ratchet = "ai.stream.grammar_input_delta.openai-responses.allocs" },
+  { ratchet = "ai.stream.grammar_input_delta.openai-responses.bytes" },
+  { ratchet = "ai.stream.grammar_input_delta.openai-completions.allocs" },
+  { ratchet = "ai.stream.grammar_input_delta.openai-completions.bytes" },
+  { ratchet = "interactive.tool_arguments_delta.allocs" },
+  { ratchet = "interactive.tool_arguments_delta.bytes" },
+  { ratchet = "process.large_write.record_allocs" },
+  { ratchet = "process.large_write.record_bytes" },
+  { test = "ai:TestLongStreamOutputUnchanged" },
+]
+
+[[metric]]
+id = "stream.provider_frame"
+area = "streaming"
+title = "One provider SSE record through HTTP, decoder, builder and event stream"
+impact = 5
+owner = "go-native-perf"
+target = "under 5 allocations and 512 bytes per frame"
+basis = "A Rust client reads into a reused buffer, decodes the record's JSON into a borrowed typed struct and appends the delta: a constant handful of allocations, none proportional to the record."
+gates = [
+  { test = "ai:TestStreamFrameAllocationCeilings" },
+  { ratchet = "ai.provider_frame.openai-completions-text.bytes" },
+  { ratchet = "ai.provider_frame.openai-completions-toolcall.bytes" },
+  { ratchet = "ai.provider_frame.openai-responses-text.bytes" },
+  { ratchet = "ai.provider_frame.anthropic-text.bytes" },
+  { ratchet = "ai.provider_frame.anthropic-toolcall.bytes" },
+  { ratchet = "ai.provider_frame.google-text.bytes" },
+  { ratchet = "ai.provider_frame.mistral-text.bytes" },
+  { ratchet = "ai.provider_frame.openai-codex-responses-text.bytes" },
+  { missing = "the same per-frame gate for bedrock (binary event stream)", route = "go-native-perf" },
+]
+
+[[metric]]
+id = "stream.pipeline_wakes"
+area = "streaming"
+title = "Goroutine wake-ups per streamed delta through the Session pipeline (-p)"
+impact = 5
+owner = "lw-guards"
+target = "at most 1 wake-up per delta (0 when the producer and the consumer share an owner)"
+basis = "Pi runs a delta from the provider to every listener on one event loop with no thread hand-off. A Rust or C program reading the socket on one thread does the same; each goroutine hand-off per delta costs a wake-up, and on a multi-core host a spinning M (LW1 section 6, E1)."
+gates = [
+  { ratchet = "coding.pipeline.text.wakes_per_delta" },
+  { ratchet = "coding.pipeline.extension.wakes_per_delta" },
+  { ratchet = "coding.pipeline.openai_text.wakes_per_delta" },
+]
+
+[[metric]]
+id = "row.lw_vs_bolt"
+area = "streaming"
+title = "The LW rows against Pi-Bolt 0.8.5: large write, long answer, interactive, long session (CPU, pig over Pi-Bolt), and the peak RSS of the headless and interactive rows"
+impact = 5
+owner = "lw-guards"
+target = "large write at most 2x Pi-Bolt's CPU after wave 3 (0.2 s against 0.1 s at 200 KB); interactive at most 1.5x; long session at most 0.8x"
+basis = "LW roadmap section 0: Pi-Bolt 0.8.5 is Pi on a JavaScript runtime tuned for these rows; a native program doing the same observable work should meet or beat it once the hand-offs per delta are gone."
+gates = [
+  { ratchet = "lw.row.large_write.200KB.cpu_s.ratio_vs_bolt" },
+  { ratchet = "lw.row.large_write.50KB.cpu_s.ratio_vs_bolt" },
+  { ratchet = "lw.row.long_answer.60000ch.cpu_s.ratio_vs_bolt" },
+  { ratchet = "lw.row.long_answer.20000ch.cpu_s.ratio_vs_bolt" },
+  { ratchet = "lw.row.interactive.interactive.cpu_ms.ratio_vs_bolt" },
+  { ratchet = "lw.row.long_session.prompt75.cpu_ms_per_prompt.ratio_vs_bolt" },
+  { ratchet = "lw.row.headless.headless.instr_m.ratio_vs_bolt" },
+  { ratchet = "lw.row.headless.headless.cpu_ms.ratio_vs_bolt" },
+  { ratchet = "lw.row.headless.headless.peak_rss_mb.ratio_vs_bolt" },
+  { ratchet = "lw.row.interactive.interactive.peak_rss_mb.ratio_vs_bolt" },
+]
+
+[[metric]]
+id = "process.print_tools"
+area = "streaming"
+title = "pig -p with four read tool calls on 47-239 KB files (Pi-Bolt's headless scenario): allocations, GC cycles, goroutines started and auth.json stats per run"
+impact = 5
+owner = "lw-pfgates"
+target = "at most Pi-Bolt's CPU on the headless row; no auth.json stat per tool turn beyond Pi's"
+basis = "LW roadmap section 3c: the tool turns of -p re-read credentials, hand every stream record across goroutines and re-allocate the read results; each of those counts is machine-independent and falls when the work goes."
+gates = [
+  { ratchet = "process.print_tools.allocs" },
+  { ratchet = "process.print_tools.bytes" },
+  { ratchet = "process.print_tools.gc_cycles" },
+  { ratchet = "process.print_tools.goroutines_created" },
+  { ratchet = "process.print_tools.auth_stats" },
+  { test = "test/perfgate:TestPrintReadToolsProcessGate" },
+]
+
+[[metric]]
+id = "stream.tui_frame"
+area = "streaming"
+title = "One streamed token rendered as Markdown into a frame"
+impact = 5
+owner = "go-native-perf"
+target = "under 60 allocations per token, constant in the message length and the history"
+basis = "An incremental renderer re-lexes only the open last block of the message; the completed blocks' lines are cached. Output stays identical because a completed block's rendering does not depend on later text."
+gates = [
+  { ratchet = "tui.stream_frame.allocs" },
+  { ratchet = "tui.stream_frame.bytes" },
+  { ratchet = "tui.stream_frame.allocs_growth_per_100_tokens" },
+  { ratchet = "tui.stream_frame.bytes_per_history_message" },
+  { test = "tui:TestUserMessageBlockCachedRenderKeepsOneCopy" },
+]
+
+[[metric]]
+id = "input.keystroke"
+area = "input"
+title = "One editor keystroke through input dispatch and one differential frame"
+impact = 5
+owner = "go-native-perf"
+target = "under 10 allocations per keystroke and no per-keystroke cost proportional to the history"
+basis = "A Rust editor updates one line and diffs the visible rows against the previous frame buffer, both reused."
+gates = [
+  { ratchet = "tui.keystroke_frame.allocs" },
+  { ratchet = "tui.keystroke_frame.bytes" },
+  { ratchet = "tui.keystroke_frame.bytes_per_history_message" },
+  { test = "tui:TestKeystrokeBindingMatchAllocationCeiling" },
+  { test = "internal/codingagent:TestTerminalInputBurstAllocationsGrowLinearly" },
+  { ratchet = "tui.keystroke_10k.gc_cycles" },
+  { missing = "the full interactive keystroke (InteractiveMode with a session, footer and autocomplete) per keystroke", route = "go-native-perf" },
+  { missing = "GC pause and mark-assist histograms (/sched/pauses/total/gc, /gc/cpu/assist) over 10,000 keystrokes, on the cluster", route = "k8s-bench" },
+]
+
+# ---------------------------------------------------------------- RPC and extensions
+
+[[metric]]
+id = "rpc.turn"
+area = "rpc"
+title = "One RPC prompt turn (faux provider, no extensions), whole process"
+impact = 4
+owner = "go-native-perf"
+target = "under 1,500 allocations and 150 KB per turn; live heap growth only the turn's messages"
+basis = "A faux turn moves three short messages through the agent loop and writes about fifteen JSON lines; a Rust server would allocate the messages and reuse its encode buffer."
+gates = [
+  { ratchet = "process.rpc_turn.allocs" },
+  { ratchet = "process.rpc_turn.bytes" },
+  { ratchet = "process.rpc_turn.heap_live_growth_bytes" },
+  { ratchet = "ai.tool_schema_marshal.allocs" },
+  { ratchet = "ai.tool_schema_marshal.bytes" },
+  { ratchet = "ai.provider_response.openai-completions.bytes" },
+  { ratchet = "ai.request_history_turn.allocs" },
+  { ratchet = "ai.request_history_turn.bytes" },
+  { ratchet = "ai.context_tool_result_details.allocs" },
+  { ratchet = "ai.context_tool_result_details.bytes_per_details_byte" },
+  { test = "coding/cli:TestRPCNodeAppendEntryCostIsLinearInTheAppends" },
+  { test = "coding/cli:TestJSONUpdatesEmitDeltaOnlyAndScaleLinearlyUpstream" },
+]
+
+[[metric]]
+id = "rpc.turn_ext10"
+area = "extensions"
+title = "One RPC prompt turn with ten TypeScript extensions loaded (pi-arena rpc-ext10), host side"
+impact = 5
+owner = "perf-max"
+target = "under 10,000 allocations and 1 MB per turn, host side"
+basis = "Each turn dispatches before_agent_start and turn_end to ten extensions; Pi hands each handler the same objects. A host that encodes each unchanged payload once and pushes only changed state pays one encoding per turn plus a small frame per handler."
+gates = [
+  { ratchet = "process.rpc_ext10_turn.allocs" },
+  { ratchet = "process.rpc_ext10_turn.bytes" },
+  { ratchet = "process.rpc_ext1_turn.allocs" },
+  { ratchet = "process.rpc_ext1_turn.bytes" },
+  { ratchet = "process.rpc_ext3_turn.allocs" },
+  { ratchet = "process.rpc_ext3_turn.bytes" },
+  { test = "coding:TestBoundaryProjectionWithoutDraftsDoesNotCopyTheBranch" },
+  { test = "coding/extension/host/subprocess:TestBoundaryEventWireEncodesAsTheEvent" },
+  { missing = "state pushed per handler call (bytes and pushes skipped), from ext-statepush-205", route = "ext-statepush-205" },
+  { test = "coding/extension/host/subprocess:TestBoundaryWireEncodesEachSourceAsItsRecord" },
+  { test = "coding/extension/host/inproc:TestEmitBoundaryDecodesSourcesOnlyForHandlersThatReadGoValues" },
+  { test = "coding:TestRecordedBoundaryContextReusesTheProjectionOfUnchangedInputs" },
+  { ratchet = "process.rpc_ext10_turn.allocs_growth" },
+  { test = "coding/extension/host/subprocess:TestBeforeAgentStartSubprocessHandlersShareTheEventEncodingUntilAnEdit" },
+  { test = "coding/extension/host/subprocess:TestToolCallSubprocessHandlersShareTheEventEncodingUntilAnInputEdit" },
+  { test = "coding/extension/host/subprocess:TestKeptProjectionEncodesAsTheWholePreview" },
+  { test = "coding:TestBoundaryPreviewHandsGoHandlersCopiesOfTheSessionsMessages" },
+]
+
+[[metric]]
+id = "rpc.turn_ext0"
+area = "extensions"
+title = "The rpc.turn_ext10 turn with no extension loaded: its baseline, so the difference is what ten extensions cost per turn"
+impact = 3
+owner = "perf-max"
+target = "at most the process.rpc_turn cost per turn"
+basis = "The same RPC driver, model and prompt as rpc.turn_ext10 with no extension: what is left is the agent turn itself, which process.rpc_turn gates over a longer session."
+gates = [
+  { ratchet = "process.rpc_ext0_turn.allocs" },
+  { ratchet = "process.rpc_ext0_turn.bytes" },
+  { ratchet = "process.rpc_ext0_turn.allocs_growth" },
+]
+
+[[metric]]
+id = "extension.fused_dispatch"
+area = "extensions"
+title = "One RPC turn's extension dispatches (before_agent_start and turn_end over 40 history entries) to 1, 3 and 10 fused Go extensions, and what each extension adds"
+impact = 4
+owner = "perf-max"
+target = "at most 1,330 / 3,010 / 8,560 allocations at K = 1/3/10 and 805 allocations per extension (the ratchet ceilings)"
+basis = "A fused Piglet's extensions run in the pig process (D31). Pi hands its in-process handlers the event objects themselves, so what a fused member pays to receive its events is the host's projection and the SDK's decode of each event."
+gates = [
+  { test = "coding/extension/host/subprocess:TestFusedDispatchAllocations" },
+  { ratchet = "fused.dispatch_k1.allocs" },
+  { ratchet = "fused.dispatch_k3.allocs" },
+  { ratchet = "fused.dispatch_k10.allocs" },
+  { ratchet = "fused.dispatch.per_extension.allocs" },
+  { ratchet = "fused.dispatch_k1.bytes" },
+  { ratchet = "fused.dispatch_k3.bytes" },
+  { ratchet = "fused.dispatch_k10.bytes" },
+  { ratchet = "fused.dispatch.per_extension.bytes" },
+]
+
+[[metric]]
+id = "extension.event"
+area = "extensions"
+title = "One event dispatched to an extension and its response, host side"
+impact = 4
+owner = "go-native-perf"
+target = "under 4 allocations and 512 bytes per event, host side"
+basis = "Encoding into a reused frame buffer and decoding the response into a reused envelope needs no per-event heap allocation beyond the payload the handler keeps."
+gates = [
+  { ratchet = "extension.event_roundtrip.allocs" },
+  { ratchet = "extension.event_roundtrip.bytes" },
+  { ratchet = "extension.dispatch.host_wakes" },
+  { test = "coding/extension/host/subprocess:TestNodeProviderSocketFrameCopyIsLinear" },
+  { test = "coding/extension/host/subprocess:TestFrameBufferReuseKeepsLengthAndSkipsOversizedFrames" },
+  { missing = "crossings per agent turn per loaded extension (frames each way) in isolated and packed cells", route = "go-native-perf" },
+]
+
+# ---------------------------------------------------------------- sessions
+
+[[metric]]
+id = "session.load"
+area = "session"
+title = "Session open and resume, per JSONL line"
+impact = 5
+owner = "perf-session"
+target = "under 10 allocations per line while loading; under 64 retained bytes per line after load"
+basis = "Pi keeps every entry, but a Rust reader would keep an offset index plus a bounded cache of decoded entries, so the resident cost per line is the index entry."
+gates = [
+  { ratchet = "session.load_line.allocs" },
+  { ratchet = "session.load_line.bytes" },
+  { ratchet = "session.load_line.retained_bytes" },
+  { test = "internal/codingagent:TestCachePriceBindingWithoutMissesDoesNotReparseHistory" },
+  { branch = "perf-session", path = "internal/codingagent/session_index_test.go" },
+]
+
+[[metric]]
+id = "session.turn"
+area = "session"
+title = "One turn's session work (two appends and one context build), and its growth with session length"
+impact = 5
+owner = "perf-session"
+target = "constant per turn: zero bytes per existing entry"
+basis = "A cached active branch extended on append makes the per-turn work independent of the session's length."
+gates = [
+  { ratchet = "session.turn.allocs" },
+  { ratchet = "session.turn.bytes" },
+  { ratchet = "session.turn.allocs_per_existing_entry" },
+  { ratchet = "session.turn.bytes_per_existing_entry" },
+  { branch = "perf-session", path = "internal/codingagent/session_branch_cache_test.go" },
+]
+
+[[metric]]
+id = "session.long"
+area = "session"
+title = "Long session: resume and turn at 1M and 3M tokens"
+impact = 5
+owner = "perf-session"
+target = "resume RSS under 100 MB at 3M tokens; per-turn work independent of length"
+basis = "With an offset index, resume memory is the index plus the active context; the per-turn bound follows from session.turn."
+gates = [
+  { branch = "perf-session", path = "internal/codingagent/sessiongen" },
+  { missing = "resume and turn at generated 1M and 3M-token sessions: live heap, allocations and peak RSS", route = "perf-session" },
+]
+
+[[metric]]
+id = "session.compaction"
+area = "session"
+title = "Compaction preparation per session entry"
+impact = 3
+owner = "go-native-perf"
+target = "a constant, small allocation per entry examined"
+basis = "Finding the cut point and estimating tokens reads each entry once."
+gates = [
+  { ratchet = "compaction.prepare_entry.allocs" },
+  { ratchet = "compaction.prepare_entry.bytes" },
+]
+
+[[metric]]
+id = "session.append_io"
+area = "session"
+title = "Session append: write and sync system calls per entry"
+impact = 2
+owner = "go-native-perf"
+target = "one write per entry; no reread of the file"
+basis = "Pi appends one line with appendFileSync."
+gates = [
+  { missing = "write/open/stat system calls per appended entry (strace-free count through an os.File wrapper or a syscall counter)", route = "go-native-perf" },
+]
+
+# ---------------------------------------------------------------- Durable
+
+[[metric]]
+id = "durable.counts"
+area = "durable"
+title = "Durable warm and cold turn: statements, crossings, allocations, instructions; memory high-water"
+impact = 4
+owner = "dcore-perf"
+target = "no count above pi-durable's at 50, 1,000 and 3,500 turns; Wasm linear memory under 128 MB"
+basis = "pi-durable is Pi's implementation of the same Durable workload, so its counts are the reference. Crossings stay at Pi's observable hop count, so the lever is the cost of each crossing."
+gates = [
+  { branch = "dcore-integrate", path = "durable/contract/counts.json" },
+  { test = "bench/k8s/cmd/k8sbench:TestTrackerReportsRetainedMemoryAndGrowth" },
+]
+
+[[metric]]
+id = "durable.gc"
+area = "durable"
+title = "Durable GC cycles per turn (NumGC) and TinyGo allocation sites (-print-allocs)"
+impact = 3
+owner = "dcore-perf"
+target = "zero GC cycles per warm turn at 50 turns; no new heap allocation site in the step path"
+basis = "TinyGo 0.42 reports MemStats.NumGC; -print-allocs lists every heap allocation site, so a baseline diff catches a new one at build time."
+gates = [
+  { missing = "warm.numGCPerTurn in counts.json for wasm-tinygo, wasm-go and native", route = "dp-hops" },
+  { missing = "TinyGo -print-allocs baseline of the core step path, diffed in CI", route = "dcore-perf" },
+]
+
+[[metric]]
+id = "durable.time"
+area = "durable"
+title = "Durable warm and cold time and retained memory on the cluster"
+impact = 4
+owner = "dcore-perf"
+target = "no slower than pi-durable at every size"
+basis = "pi-durable runs the same workload on the same nodes; the exact-CV gate refuses a comparison whose noise exceeds the difference."
+gates = [
+  { test = "bench/k8s/cmd/k8sbench:TestTrackerReportsCPUPerTurn" },
+  { test = "bench/k8s/cmd/k8sbench:TestTrackerComparesMemory" },
+]
+
+# ---------------------------------------------------------------- process resources
+
+[[metric]]
+id = "resource.rss"
+area = "resources"
+title = "Memory at ready (RSS and PSS, rpi's metric) beside peak RSS: interactive first frame, RPC first answered command, print, 22 RPC turns"
+impact = 4
+owner = "go-native-perf"
+target = "RSS at ready under 15 MB interactive and under 12 MB RPC; peak at most a fifth above ready"
+basis = "rpi, a Rust port of Pi, self-reports 12.0 MiB RSS at ready (Windows 11, its author's benchmark): a different machine and OS, so the target stands until the same-machine run of the comparison protocol replaces it."
+gates = [
+  { ratchet = "process.interactive_first_frame.rss_bytes_at_ready" },
+  { ratchet = "process.interactive_first_frame.pss_bytes_at_ready" },
+  { ratchet = "process.interactive_first_frame.max_rss_bytes" },
+  { ratchet = "process.rpc_ready.rss_bytes" },
+  { ratchet = "process.rpc_ready.pss_bytes" },
+  { ratchet = "process.rpc_ready.max_rss_bytes" },
+  { ratchet = "process.print.max_rss_bytes" },
+  { ratchet = "process.rpc_turn.max_rss_bytes_at_22_turns" },
+  { missing = "steady RSS after a long idle interactive session (scavenger returns memory)", route = "go-native-perf" },
+  { missing = "RSS and PSS at ready against pi_agent_rust, rpi, Pi 1.3.0 and Codex CLI on the same machine (comparison protocol)", route = "xlang-bench (requested)" },
+]
+
+[[metric]]
+id = "resource.retained_rows"
+area = "resources"
+title = "Retained memory on Pi-Bolt's memory rows: live heap after the long row's 25 prompts (same and distinct contents, and less the context sent), live heap and unreturned Go memory of the tmux row at idle"
+impact = 4
+owner = "go-native-perf"
+target = "live heap bounded by the context: the long row's heap less its last request body near Pi-Bolt's, which keeps only the messages; the tmux row at idle under Pi-Bolt's 22-26 MB"
+basis = "research/memory-vs-bolt/REPORT.md section 0: on Linux PiG's live heap is 59-63 MB against Pi-Bolt's 25-30 MB on the 75-prompt row, the difference being the session records kept with --no-session (29.6 MB), the request splice cache's quoted copies (16-17 MB with distinct contents) and TUI caches (8.5 MB); the context itself (tool text) is what both runtimes must hold."
+gates = [
+  { ratchet = "process.mem_long25.heap_live_bytes" },
+  { ratchet = "process.mem_long.heap_live_minus_context_bytes" },
+  { ratchet = "process.mem_long25_distinct.heap_live_bytes" },
+  { ratchet = "process.mem_long_distinct.heap_live_minus_context_bytes" },
+  { ratchet = "process.mem_tmux_idle.heap_live_bytes" },
+  { ratchet = "process.mem_tmux_idle.go_nonreleased_bytes" },
+]
+
+[[metric]]
+id = "xlang.startup_endpoints"
+area = "comparison"
+title = "Startup endpoints, split: --version exec to exit, spawn to first answered RPC command, first frame and first accepted input in a PTY"
+impact = 5
+owner = "xlang-bench (requested)"
+target = "under 10 ms on every startup endpoint, measured on the same machine as every compared harness"
+basis = "pi_agent_rust publishes only --version p95 of 5 to 7 ms and --help of 12 to 15 ms; rpi self-reports 17.7 ms cold start. A Go runtime starts in a few milliseconds, so 10 ms leaves the rest for PiG's own work. The published figures come from other machines, so only a same-machine run compares them."
+gates = [
+  { ratchet = "process.rpc_startup.allocs" },
+  { ratchet = "process.interactive_first_frame.allocs" },
+  { missing = "the four startup endpoints, same machine, PiG against pi_agent_rust, rpi, Pi 1.3.0 and Codex CLI, under the comparison protocol", route = "xlang-bench (requested)" },
+]
+
+[[metric]]
+id = "xlang.token_latency"
+area = "comparison"
+title = "Token forwarding latency, open loop: mock provider chunk to RPC event, p50 to p99.9"
+impact = 4
+owner = "xlang-bench (requested)"
+target = "p99 forwarding latency within the same-machine noise floor of the lowest p99 measured"
+basis = "Forwarding a chunk is a decode, an append and an encode; none of it depends on the language once allocation is constant per frame (stream.provider_frame). The method: a fixed chunk schedule sent from outside the harness's cgroup, timed on a schedule fixed in advance so a slow event does not delay the next send (no coordinated omission)."
+gates = [
+  { missing = "open-loop token latency distribution with a fixed chunk schedule outside the cgroup", route = "xlang-bench (requested)" },
+]
+
+[[metric]]
+id = "xlang.sessions_per_host"
+area = "comparison"
+title = "Sessions per host: idle and active RPC sessions at N = 1 to 1,000, cgroup memory.peak, memory.current and pids.current"
+impact = 4
+owner = "xlang-bench (requested)"
+target = "per-session memory (PSS at ready plus growth per turn) under 16 MB, at least 60 idle RPC sessions per GB"
+basis = "Sessions per GB follow from per-session PSS; rpi's self-reported 12 MiB RSS at ready plus a turn's growth gives the 16 MB figure, and the same-machine sweep replaces it."
+gates = [
+  { ratchet = "process.rpc_ready.pss_bytes" },
+  { missing = "sessions-per-host sweep with cgroup accounting", route = "xlang-bench (requested)" },
+]
+
+[[metric]]
+id = "xlang.reliability"
+area = "comparison"
+title = "Reliability under a seeded fault schedule: kill-and-resume pass rate (Wilson interval), orphans, leak slope, cancel latency"
+impact = 4
+owner = "xlang-bench (requested)"
+target = "zero orphans, a flat leak slope, and every killed or cancelled run resumes from its session file"
+basis = "The exit-state invariants of resource.exit_state must also hold under faults: every child is waited for, every descriptor closed, and the session file is the only state a resume needs, as it is in Pi."
+gates = [
+  { ratchet = "process.rpc_turn.children_at_exit" },
+  { missing = "adversarial child fixtures (ignores SIGTERM, double-forks, holds stdout, re-execs via PATH, floods): descendants and zombies 0, descriptors at baseline", route = "spawn-containment (requested)" },
+  { missing = "kill-and-resume and cancel-latency runs under the comparison protocol", route = "xlang-bench (requested)" },
+  { missing = "24-hour scripted soak: goroutines, descriptors and children sampled every minute and gated flat, published beside CPU", route = "xlang-bench (requested)" },
+]
+
+[[metric]]
+id = "resource.exit_state"
+area = "resources"
+title = "Goroutines, descriptors and child processes a finished pig still holds at exit, and temporary entries it leaves"
+impact = 3
+owner = "perf-max"
+target = "children 0; goroutines and descriptors only the process's fixed set"
+basis = "Every spawned child is waited for and every connection closed before exit."
+gates = [
+  { ratchet = "process.print.goroutines_at_exit" },
+  { ratchet = "process.print.fds_left_open" },
+  { ratchet = "process.print.children_at_exit" },
+  { ratchet = "process.rpc_startup.children_at_exit" },
+  { ratchet = "process.rpc_turn.goroutines_at_exit" },
+  { ratchet = "process.rpc_turn.fds_left_open" },
+  { ratchet = "process.rpc_turn.children_at_exit" },
+  { ratchet = "process.print.temp_entries_at_exit" },
+  { ratchet = "process.rpc_startup.temp_entries_at_exit" },
+  { ratchet = "process.rpc_turn.temp_entries_at_exit" },
+]
+
+[[metric]]
+id = "resource.gc_pauses"
+area = "resources"
+title = "GC work: cycles per print round trip; pause time"
+impact = 2
+owner = "go-native-perf"
+target = "zero to one cycle per print round trip"
+basis = "Cycles follow allocated bytes under a fixed GOGC; cutting allocation cuts cycles. Pause time is a time and is measured only on the cluster."
+gates = [
+  { ratchet = "process.print.gc_cycles" },
+  { missing = "GC pause total per turn on the cluster with the exact-CV gate", route = "k8s-bench" },
+]
+
+# ---------------------------------------------------------------- reliability: what can leak or grow
+
+[[resource]]
+name = "Child processes (bash tool, git, clipboard, editor, browser opener, extension cells)"
+growth = "a Start without Wait leaves a zombie per call"
+tests = ["internal/profiling:TestCollectMetricsCountsUnwaitedChildren", "internal/codingagent:TestOpenBrowserLaunchesADetachedLauncherWithIgnoredStdio", "coding/mcpext:TestKillTrackedDetachedChildrenEndsRunningMCPStdioServers"]
+gates = ["process.print.children_at_exit", "process.rpc_turn.children_at_exit", "process.interactive_first_frame.children_at_exit"]
+missing = "children at exit after a session that runs the bash tool, opens a link and starts and stops a Go and a Node extension"
+route = "go-native-perf"
+
+[[resource]]
+name = "Goroutines"
+growth = "a goroutine per request, stream or timer that is never released"
+tests = ["internal/codingagent:TestRunOnMain_NoGoroutineLeakProfile", "ai:TestTslibAsyncStackStreamsManyChunksWithoutLeaks"]
+gates = ["process.print.goroutines_at_exit", "process.rpc_turn.goroutines_at_exit"]
+missing = "Go 1.27 goroutineleak profile in TestMain of ./ai, ./tui, ./coding, ./coding/extension/host/subprocess and ./internal/codingagent"
+route = "go-native-perf"
+
+[[resource]]
+name = "File descriptors (sockets, session files, pipes)"
+growth = "a connection, pipe or file left open per call"
+tests = ["codemode:TestConcurrentExecutionsReturnMemoryAndDescriptors", "internal/profiling:TestCollectMetricsCountsDescriptors"]
+gates = ["process.print.fds_left_open", "process.rpc_turn.fds_left_open"]
+missing = "descriptors at exit after extension restarts (/reload) and provider retries"
+route = "go-native-perf"
+
+[[resource]]
+name = "Temporary files and directories (extension builds, staging, bash output spill, image processing)"
+growth = "a temp path per build or tool call that survives the process"
+tests = ["coding/extension/pigsdk:TestSyncSwapsCompleteTreeAndRemovesStagingLeftovers"]
+gates = ["process.print.temp_entries_at_exit", "process.rpc_startup.temp_entries_at_exit", "process.rpc_turn.temp_entries_at_exit"]
+missing = "the same TMPDIR count after a Go and a Node extension start and stop, and after the bash tool spills output"
+route = "go-native-perf"
+
+[[resource]]
+name = "Bounded caches (tool-argument schema cache, key-ID cache, pooled frames, session line and message LRUs, extension runtime cell cache)"
+growth = "an unbounded map keyed by input"
+tests = ["ai:TestToolArgumentSchemaCacheIsBounded", "coding/extension/host/runtimecell:TestCacheLifecycleRetentionBoundaryKeepsExactlyThirtyDays", "coding/extension/host/subprocess:TestNodeRuntimeCacheParticipatesInGC"]
+gates = []
+missing = "a live-heap bound after 10,000 distinct tool schemas and key IDs"
+route = "go-native-perf"
+
+[[resource]]
+name = "Session memory (resident entries, active branch copies, decoded message cache)"
+growth = "resident memory proportional to the session file; per-turn copies proportional to the branch"
+tests = []
+gates = ["session.load_line.retained_bytes", "session.turn.bytes_per_existing_entry", "process.rpc_turn.heap_live_growth_bytes"]
+missing = "resume of a generated 300 MiB session under a live-heap ceiling (perf-session's session_index_test heap bound, not in this tree)"
+route = "perf-session"
+
+[[resource]]
+name = "TUI transcript and render caches"
+growth = "per-frame copies proportional to the transcript"
+tests = ["tui:TestUserMessageBlockCachedRenderKeepsOneCopy"]
+gates = ["tui.keystroke_frame.bytes_per_history_message", "tui.stream_frame.bytes_per_history_message"]
+missing = ""
+route = ""
+
+[[resource]]
+name = "Durable store and Wasm linear memory"
+growth = "linear memory high-water and live growth per turn"
+tests = ["bench/k8s/cmd/k8sbench:TestTrackerReportsRetainedMemoryAndGrowth"]
+gates = []
+missing = "warm.liveGrowthPerTurn and linear high-water are gated in counts.json on dcore-integrate, not in this tree"
+route = "dcore-perf"
+
+# ---------------------------------------------------------------- practices
+
+[[practice]]
+name = "AllocsPerRun per streamed delta"
+status = "present"
+where = "ai:TestStreamBuilderPerDeltaAllocationGate"
+[[practice]]
+name = "AllocsPerRun per keystroke"
+status = "present"
+where = "tui:TestKeystrokeToFrameAllocationGate, tui:TestKeystrokeBindingMatchAllocationCeiling"
+[[practice]]
+name = "AllocsPerRun per frame"
+status = "present"
+where = "ai:TestStreamFrameAllocationCeilings, ai:TestProviderStreamPerFrameAllocationGate, tui:TestStreamingMarkdownFrameAllocationGate"
+[[practice]]
+name = "AllocsPerRun per session line"
+status = "present"
+where = "internal/codingagent:TestSessionLoadPerLineAllocationGate"
+[[practice]]
+name = "AllocsPerRun per event"
+status = "present"
+where = "coding/extension/host/subprocess:TestExtensionEventRoundTripAllocationGate"
+[[practice]]
+name = "Whole-turn and startup /gc/heap/allocs under GOMAXPROCS=1"
+status = "present"
+where = "test/perfgate (PIG_PROFILE=metrics)"
+[[practice]]
+name = "Startup inittrace totals"
+status = "present"
+where = "coding/cli:TestPackageInitWorkBudget"
+[[practice]]
+name = "TinyGo -print-allocs baseline"
+status = "missing"
+where = "route dcore-perf"
+[[practice]]
+name = "NumGC per Durable turn"
+status = "missing"
+where = "route dp-hops (counts.json field)"
+[[practice]]
+name = "gcassert inline/noescape on the hottest functions"
+status = "missing"
+where = "route go-native-perf"
+[[practice]]
+name = "goleak / goroutineleak in packages that start goroutines"
+status = "partial"
+where = "internal/codingagent:TestRunOnMain_NoGoroutineLeakProfile only; route go-native-perf"
+[[practice]]
+name = "-race on ./ai ./tui ./internal/codingagent and the Durable harness in CI"
+status = "partial"
+where = "automation/ci/test-race.sh runs four tests; route go-native-perf"
+[[practice]]
+name = "PGO profile committed at cmd/pig/default.pgo"
+status = "missing"
+where = "no cmd/pig/default.pgo; route go-native-perf"
+[[practice]]
+name = "Nightly fuzz and differential fuzz vs Node for the encoder and width functions"
+status = "missing"
+where = "route go-native-perf"
+
+[[practice]]
+name = "Render-path GC pause and mark-assist histograms over 10,000 keystrokes"
+status = "partial"
+where = "tui:TestKeystrokeGCCyclesGate counts the GC cycles the keystrokes start; the pause and assist histograms run on the cluster (route k8s-bench)"
+[[practice]]
+name = "24-hour scripted soak with goroutines, descriptors and children sampled each minute and gated flat"
+status = "missing"
+where = "route xlang-bench (requested)"
+[[practice]]
+name = "RSS and PSS at ready beside peak"
+status = "present"
+where = "test/perfgate TestRPCReadyMemoryGate, test/integration TestInteractiveFirstFrameProcessGate"
+
+# ---------------------------------------------------------------- cross-language comparison method
+
+[protocol]
+competitors = ["pi_agent_rust v0.6.1 (a Rust port of Pi; run first)", "PiG (stock, default and PGO builds)", "rpi (Rust port of Pi; default and tuned release builds)", "Pi 1.3.0 (Node)", "Codex CLI"]
+platforms = ["Linux, bare metal", "Windows 11"]
+endpoints = [
+  "--version: exec to exit",
+  "spawn to the first answered RPC command",
+  "first frame in a PTY",
+  "first accepted input in a PTY",
+  "RSS and PSS at ready (rpi's metric), beside peak RSS",
+]
+scenarios = [
+  "startup (every endpoint above)",
+  "harness-only overhead over 100 and 1,000 turns against a scripted mock",
+  "long sessions at 1M, 2M and 3M tokens: resume and per-turn cost",
+  "token forwarding latency, open loop, p50 to p99.9, no coordinated omission",
+  "extension round trip per SDK (Go, Rust, Python, TypeScript)",
+  "sessions per host, N = 1 to 1,000",
+  "worker cold start (deployed startup_time_ms)",
+  "reliability: seeded faults, kill-and-resume pass rate with a Wilson interval, orphans, leak slope, cancel latency",
+  "24-hour scripted soak: goroutines (goroutineleak profile), descriptors and children sampled every minute, gated flat, published beside CPU",
+  "render path: GC pause and mark-assist histograms over 10,000 keystrokes",
+]
+rules = [
+  "One machine for every harness; never compare numbers from different machines or published self-reports as a ranking.",
+  "Bare metal, CPU governor performance, turbo off, isolated cores, ASLR on, a fresh process per run.",
+  "Twenty runs per harness, interleaved in an order fixed in advance; report the ratio of medians with a bootstrap interval at 95 percent confidence, an A/A noise floor, and an equivalence margin declared before the run.",
+  "A scripted mock provider with a fixed chunk schedule runs outside the harness's cgroup; every harness gets an isolated HOME.",
+  "Builds 2x2: Rust default and tuned, Go default and PGO; each competitor is built with its own release flags (Rust LTO and PGO, Go -s -w and PGO).",
+  "Process timing with hyperfine 2.0 --shell=none (memory_peak_resident and instruction counters recorded, not ranked).",
+  "Noise control from the LLVM benchmarking list: performance governor, shielded CPUs, SMT siblings off, turbo off, no swap (a swapped GC metadata page faults into a pause).",
+  "On Kubernetes: CPU Manager static policy, Guaranteed QoS, full-pcpus-only, one benchmark pod per node.",
+  "Reporting (Heiser's benchmarking crimes): every sub-benchmark including losses, geometric means over sub-benchmarks, absolute numbers beside every ratio.",
+  "cgroup accounting for each run: memory.peak, memory.current split, pids.current, cpu.stat.",
+  "Publish the raw samples; submit PiG to harness-perf-benchmark.",
+  "Counts never rank across languages: instruction and allocation counts gate each implementation against itself only; cross-language claims use wall time, CPU time and memory with intervals. Count runs may disable ASLR; timing runs use fresh processes with ASLR on.",
+  "On the shared lane hosts only counts are measured; time comes from this protocol or the cluster's exact-CV gate.",
+]
+route = "xlang-bench (requested): bare-metal host, competitor builds, harness scripts"
+
+# ---------------------------------------------------------------- twelve techniques, placed in the ranked plan
+
+[[technique]]
+id = "T1"
+name = "TinyGo boundary redesign: one crossing in and one out per turn over shared memory, binary protocol, no JSON across the boundary"
+placement = "plan 10, limited by the standing ruling: crossings stay at Pi's observable hop count, so only cost per crossing and bytes per crossing move"
+[[technique]]
+id = "T2"
+name = "Startup and RSS at ready: lazy package init, measure RSS and PSS at ready"
+placement = "plan 3"
+[[technique]]
+id = "T3"
+name = "JSON on Go 1.27: typed or jsontext codecs, rerun every golden with and without GOEXPERIMENT=nojsonv2, byte risks tested against a JS runtime"
+placement = "plan 6"
+[[technique]]
+id = "T4"
+name = "One spawn path with tree containment and adversarial child fixtures"
+placement = "plan 7"
+[[technique]]
+id = "T5"
+name = "Linear pointer-light transcript: allocations per delta at turn 3,500 equal those at turn 50"
+placement = "plan 2"
+[[technique]]
+id = "T6"
+name = "TinyGo collector, scheduler and init options; no fmt, reflect or encoding/json in the module"
+placement = "plan 10"
+[[technique]]
+id = "T7"
+name = "Leak gates on Go 1.27: goroutineleak empty after tests and soak, synctest stalled streams, idle timeouts on semantic progress"
+placement = "plan 7"
+[[technique]]
+id = "T8"
+name = "PGO from a scripted session at cmd/pig/default.pgo, paired A/B"
+placement = "plan 3 (start and turn CPU); measured only on the cluster"
+[[technique]]
+id = "T9"
+name = "GOGC policy per workload, no default GOMEMLIMIT"
+placement = "plan 3 (RSS at ready and peak); measured only on the cluster"
+[[technique]]
+id = "T10"
+name = "Extension JSON-RPC: allocation-free framing, bounded queues, deadlines, stderr drained"
+placement = "plan 9"
+[[technique]]
+id = "T11"
+name = "Width cache, with no library swap without a Pi width corpus"
+placement = "plan 8"
+[[technique]]
+id = "T12"
+name = "SQLite: WAL with a stated synchronous mode, journal_size_limit, startup integrity check"
+placement = "plan 10 (Durable sqlhost)"
+
+# ---------------------------------------------------------------- largest gaps to target, ranked by user impact
+# Each entry names the measured cost center (allocation profiles under GOMAXPROCS=1 and GODEBUG=memprofilerate=1), the plan, the expected gain in the gate's own counts, the techniques it carries, and the lane it is routed to. Output must stay identical to Pi.
+
+[[metric]]
+id = "scale.turn"
+area = "scale"
+title = "A later Session turn at a history of N, 10N and 100N exchanges"
+impact = 5
+owner = "go-scale"
+target = "allocations independent of the history (exponent 0); bytes linear with the copies of the context slice removed one by one"
+basis = "The provider messages of the history are remembered between requests and the session projection extends on append, so a turn converts only what is new; the request still copies the history as a slice of headers."
+gates = [
+  { ratchet = "coding.session_turn.allocs_exponent" },
+  { ratchet = "coding.session_turn.bytes_exponent" },
+  { ratchet = "coding.session_retained.bytes_per_entry" },
+]
+
+[[metric]]
+id = "scale.mcp"
+area = "scale"
+title = "The MCP extension over 3, 30 and 300 configured servers: a prompt and a tool call"
+impact = 3
+owner = "go-scale"
+target = "a prompt linear in the servers it lists; a tool call independent of the number of servers (exponent 0)"
+basis = "The prompt names every server, so linear is the floor; a call is routed by tool name to one connection."
+gates = [
+  { ratchet = "mcp.prompt_over_servers.allocs_exponent" },
+  { ratchet = "mcp.prompt_over_servers.bytes_exponent" },
+  { ratchet = "mcp.tool_call_over_servers.allocs_exponent" },
+  { ratchet = "mcp.tool_call_over_servers.bytes_exponent" },
+]
+
+[[metric]]
+id = "scale.tree"
+area = "scale"
+title = "/tree over sessions of N, 10N and 100N entries: open, cursor move, search keystroke"
+impact = 4
+owner = "go-scale"
+target = "open linear in bytes and under linear in allocations; a cursor move or a search keystroke independent of the session size (exponent 0)"
+basis = "Opening builds one row per entry, so linear is the floor; a cursor move redraws one screen, so it cannot depend on the entries off screen."
+gates = [
+  { ratchet = "tui.tree_open.allocs_exponent" },
+  { ratchet = "tui.tree_open.bytes_exponent" },
+  { ratchet = "tui.tree_navigate.allocs_exponent" },
+  { ratchet = "tui.tree_navigate.bytes_exponent" },
+  { ratchet = "tui.tree_search.allocs_exponent" },
+  { ratchet = "tui.tree_search.bytes_exponent" },
+  { ratchet = "tui.tree_open_branching.allocs_exponent" },
+  { ratchet = "tui.tree_open_branching.bytes_exponent" },
+  { ratchet = "tui.tree_navigate_branching.allocs_exponent" },
+  { ratchet = "tui.tree_navigate_branching.bytes_exponent" },
+]
+
+[[metric]]
+id = "scale.extensions"
+area = "scale"
+title = "Extensions loaded: N, 10N and 100N in one Runner (construction, tool and command listing, lookups, one event dispatch)"
+impact = 4
+owner = "go-scale"
+target = "every operation linear in the extensions at most; no operation quadratic in the extensions; a tool lookup allocation-free"
+basis = "Each extension adds its own registrations and one handler call per event, so linear is the floor for a listing and a dispatch; a quadratic term would be a scan of all extensions per extension."
+gates = [
+  { ratchet = "extension.runner_new.allocs_exponent" },
+  { ratchet = "extension.runner_new.bytes_exponent" },
+  { ratchet = "extension.runner_tools.allocs_exponent" },
+  { ratchet = "extension.runner_tools.bytes_exponent" },
+  { ratchet = "extension.runner_commands.allocs_exponent" },
+  { ratchet = "extension.runner_commands.bytes_exponent" },
+  { ratchet = "extension.runner_tool_lookup.allocs_exponent" },
+  { ratchet = "extension.runner_tool_lookup.bytes_exponent" },
+  { ratchet = "extension.runner_command_lookup.allocs_exponent" },
+  { ratchet = "extension.runner_command_lookup.bytes_exponent" },
+  { ratchet = "extension.runner_dispatch.allocs_exponent" },
+  { ratchet = "extension.runner_dispatch.bytes_exponent" },
+]
+
+[[metric]]
+id = "scale.tools"
+area = "scale"
+title = "Tools declared: N, 10N and 100N tools in the token estimate and in a streamed request"
+impact = 3
+owner = "go-scale"
+target = "linear in the tools, no term quadratic in them"
+basis = "A request declares each tool once, so one pass over the declarations is the floor."
+gates = [
+  { ratchet = "ai.tool_estimate.allocs_exponent" },
+  { ratchet = "ai.tool_estimate.bytes_exponent" },
+  { ratchet = "ai.request_tools.allocs_exponent" },
+  { ratchet = "ai.request_tools.bytes_exponent" },
+]
+
+[[plan]]
+gap = "Tool declarations cost every turn: each message clone deep-copies the system message's tool declarations (ai.cloneTool from SystemMessage.cloneMessage, about 660 allocations per RPC faux turn) and the two token estimates encode every declared tool (about 600). The ordered declaration walk and the built-in parameter decode no longer do (12,200 to 4,330 allocations per turn, process.rpc_turn and ai.tool_schema_marshal)."
+plan = "Share tool declarations between message copies (copy on write: a declaration is immutable once in the transcript), and keep each declaration's JSON.stringify length with it so an estimate sums cached lengths. Pi shares the same objects by reference, so neither changes what Pi observes."
+gain = "about 1,200 fewer allocations per turn with the built-in tools, proportional to the tool count"
+techniques = []
+route = "go-native-perf"
+
+[[plan]]
+gap = "Per-turn work grows with the session: 5 allocations and 850 bytes per existing entry per turn (session.turn); checkCompaction rebuilds the session projection and the context deep-copies its messages every turn."
+plan = "Land the perf-session lane's cached active branch, then cache the projection and the context messages per leaf and extend them on append; gate allocations per delta at turn 3,500 equal to turn 50."
+gain = "a 43,000-entry session drops from about 37 MB and 215,000 allocations per turn to the constant session.turn cost"
+techniques = ["T5"]
+route = "perf-session (land), go-native-perf (projection cache, turn-3,500 gate)"
+
+[[plan]]
+gap = "Interactive start allocates about 96,000 objects and 22 MB and holds 58 MB RSS at the first frame, against print mode's 34,800 and rpi's self-reported 12 MiB at ready (process.interactive_first_frame): the model catalog materialized and deep-cloned for provider info (28,000 profiled start allocations) and the highlight.js grammar objects (42,500 allocations and 11 MB for every grammar, tui.hljs_grammar_load). The lazy JSON-schema compile and the typed grammar snapshot decoder have landed (21,500 and 176,000 fewer)."
+plan = "Decode each highlight language on first use and shrink the grammar mode object; answer provider questions from the static catalog without cloning every model; then PGO and a dynamic GOGC from a memory target (never a default GOMEMLIMIT), measured on the cluster; the start target is under 10 ms."
+gain = "start allocations cut by more than half and a lower RSS at ready; time on the cluster"
+techniques = ["T2", "T8", "T9"]
+route = "go-native-perf"
+
+[[plan]]
+gap = "A loaded session retains about 1,840 bytes per JSONL line, about four times the line (session.load_line.retained_bytes)."
+plan = "Land perf-session's indexed loader (offset index plus bounded LRUs), then lower the ceilings to its counts."
+gain = "retained bytes per line to under 64: a session of 100,000 lines holds about 6 MB instead of about 184 MB"
+techniques = []
+route = "perf-session (land)"
+
+[[plan]]
+gap = "Streaming Markdown re-lexes the whole message on every token: 289 allocations per token averaged over a 200-token message, and the average grows by 135 for each further 100 tokens (tui.stream_frame), so one frame costs about 2.7 allocations per token already in the message: about 5,400 at token 2,000."
+plan = "Cache the rendered lines of completed top-level blocks keyed by their source prefix and re-lex only from the last block boundary, falling back to a full render where a later line can change an earlier block (lazy continuation, setext headings, reference definitions). Prove identity against the full render on the Markdown corpus."
+gain = "constant allocations per token (about 60) at any message length"
+techniques = []
+route = "go-native-perf"
+
+[[plan]]
+gap = "Each provider SSE record costs 60 to 120 allocations (ai.provider_frame.*), nearly half of them in the JavaScript continuation emulation (continuationPromise.onResolved, awaitContinuation, continuationEventIterator), then raw-JSON value decode and a clone per delivered event; a tool-call argument delta costs 36 allocations and 3.4 KB, and the frame reducer's catch-up path re-parses the whole argument text per delta (ai/assistant_message_frame.go:405)."
+plan = "Reuse one continuation cell per stream consumer, keeping the exact microtask order; decode records with typed or jsontext codecs and rerun every golden with and without GOEXPERIMENT=nojsonv2 (-0, ints above 2^53, invalid UTF-8, lone surrogates, U+2028/2029 checked against Node); resumable argument parse on the catch-up path; copy-on-write snapshots."
+gain = "about half the allocations per frame on every provider; tool-call deltas near the text-delta cost"
+techniques = ["T3"]
+route = "go-native-perf"
+
+[[plan]]
+gap = "Child processes have no tree containment and no adversarial gate: the exit-state gates see zero children on the faux paths, but nothing exercises a child that ignores SIGTERM, double-forks, holds stdout or re-execs; goroutine leak profiles run in one package only."
+plan = "One spawn path: Setpgid and group kill on Unix, Job Object KILL_ON_JOB_CLOSE on Windows, a non-zero WaitDelay on every Cmd, a re-exec depth guard, Pdeathsig only with LockOSThread, stdin close then SIGTERM then SIGKILL to the group, always Wait; cgroup pids.max where available; adversarial fixtures with descendants and zombies 0 and descriptors at baseline; Go 1.27 goroutineleak in TestMain of the packages that start goroutines."
+gain = "zero orphans and zombies under faults, measured by the adversarial fixtures"
+techniques = ["T4", "T7"]
+route = "spawn-containment (requested); go-native-perf for the goroutineleak TestMains"
+
+[[plan]]
+gap = "A keystroke allocates 51 times and copies a line slice of the whole transcript per frame: 65 bytes per history message per keystroke (tui.keystroke_frame), 73 KB at 1,000 messages."
+plan = "Zero allocation on the render path, so the render goroutine never pays GC mark assist: keep the previous frame's line slice and rebuild only from the first component whose render changed; render cached components by reference; cache string widths, checked against a Pi width corpus."
+gain = "per-keystroke bytes independent of the history (8 KB at any length)"
+techniques = ["T11"]
+route = "go-native-perf"
+
+[[plan]]
+gap = "An extension event round trip costs 20 allocations and 1.5 KB on the host (extension.event_roundtrip), paid per message_update token per loaded extension."
+plan = "Encode into a reused frame buffer, decode responses into a reused envelope, replace the per-request maps, channels and fmt.Sprintf id with a fixed request slot; bounded queues and deadlines; stderr drained."
+gain = "about 6 allocations per event; with five extensions on a 2,000-token answer about 160,000 fewer allocations per turn"
+techniques = ["T10"]
+route = "go-native-perf"
+
+[[plan]]
+gap = "Durable: the TinyGo first turn and cold start are the cluster's open time items (cluster numbers are not published here); no gate counts GC cycles per turn, new TinyGo heap allocation sites, or bytes per crossing."
+plan = "Add warm.numGCPerTurn and bytes per crossing to counts.json and a TinyGo -print-allocs baseline of the step path; try collector and scheduler options (-gc, -scheduler=none, -panic=trap) on warm and cold; keep fmt, reflect and encoding/json out of the module; WAL with a stated synchronous mode in sqlhost and fewer statements and rows per turn (without cgo). Crossing count stays at Pi's (ruling)."
+gain = "counts that catch GC and allocation-site regressions; cold first turn toward Pi's"
+techniques = ["T1", "T6", "T12"]
+route = "dp-hops (counts fields), dcore-perf (print-allocs, TinyGo options, cold plan)"

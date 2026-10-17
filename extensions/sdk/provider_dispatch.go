@@ -12,7 +12,7 @@ import (
 
 type providerObjectParams struct {
 	Models       []map[string]any `json:"models"`
-	Credential   map[string]any   `json:"credential"`
+	Credential   *Credential      `json:"credential"`
 	Model        map[string]any   `json:"model"`
 	Context      map[string]any   `json:"context"`
 	Handle       map[string]any   `json:"handle"`
@@ -22,6 +22,7 @@ type providerObjectParams struct {
 	Stored       map[string]any   `json:"stored"`
 	AllowNetwork bool             `json:"allowNetwork"`
 	Force        *bool            `json:"force"`
+	BaseURL      string           `json:"baseUrl"`
 	Token        string           `json:"token"`
 }
 
@@ -86,14 +87,22 @@ func (e *Extension) dispatchProviderObject(ctx Context, req *requestMsg) (any, e
 		},
 	}
 	switch request.Method {
-	case "getModels":
-		models, err := provider.GetModels()
+	case "getModels", "getAllModels":
+		get := provider.GetModels
+		if request.Method == "getAllModels" {
+			get = provider.GetAllModels
+		}
+		models, err := get()
 		if models == nil && err == nil {
 			models = []map[string]any{}
 		}
 		return models, err
-	case "filterModels":
-		models, err := provider.FilterModels(args.Models, args.Credential)
+	case "filterModels", "filterAllModels":
+		filter := provider.FilterModels
+		if request.Method == "filterAllModels" {
+			filter = provider.FilterAllModels
+		}
+		models, err := filter(args.Models, args.Credential)
 		if err != nil {
 			return nil, err
 		}
@@ -118,13 +127,23 @@ func (e *Extension) dispatchProviderObject(ctx Context, req *requestMsg) (any, e
 	case "auth.apiKey.login":
 		return provider.Auth.APIKey.Login(interaction)
 	case "auth.oauth.login":
-		return provider.Auth.OAuth.Login(interaction)
+		// The host lists the LoginOptions the app supplies; getDeviceId stays a call back to it.
+		options := LoginOptions{}
+		if name, ok := args.Options["agentName"].(string); ok {
+			options.AgentName = &name
+		}
+		if offered, _ := args.Options["getDeviceId"].(bool); offered {
+			options.GetDeviceID = func() (string, error) {
+				return providerCallbackValue[string](ctx, req.Tool, "getDeviceId", map[string]any{})
+			}
+		}
+		return provider.Auth.OAuth.Login(interaction, options)
 	case "auth.oauth.refresh":
 		return provider.Auth.OAuth.Refresh(args.Credential, ctx.ctx)
 	case "auth.oauth.toAuth":
 		return provider.Auth.OAuth.ToAuth(args.Credential)
 	case "refreshModels":
-		return nil, provider.RefreshModels(RefreshModelsContext{Credential: args.Credential, Stored: args.Stored, AllowNetwork: args.AllowNetwork, Force: args.Force, Signal: ctx.ctx,
+		return nil, provider.RefreshModels(RefreshModelsContext{Credential: args.Credential, Stored: args.Stored, AllowNetwork: args.AllowNetwork, Force: args.Force, BaseURL: args.BaseURL, Signal: ctx.ctx,
 			Publish: func(publication ModelsPublication) (bool, error) {
 				params := map[string]any{"publication": map[string]json.RawMessage{}}
 				if publication.Persist != nil {
@@ -190,9 +209,10 @@ func (e *Extension) dispatchProviderObject(ctx Context, req *requestMsg) (any, e
 				return err
 			}
 		}
-		if slices.Contains(args.Callbacks, "transformHeaders") {
-			options.TransformHeaders = func(value map[string]string) (map[string]string, error) {
-				return providerCallbackValue[map[string]string](ctx, req.Tool, "transformHeaders", map[string]any{"value": value})
+		if slices.Contains(args.Callbacks, "onProviderStreamEvent") {
+			options.OnProviderStreamEvent = func(value any, model map[string]any) error {
+				_, err := providerCallbackValue[any](ctx, req.Tool, "onProviderStreamEvent", map[string]any{"value": value, "model": model})
+				return err
 			}
 		}
 		if request.Method == "cancelDeferred" {

@@ -1,0 +1,27 @@
+# Behavior family: tui-components (editor input under rebound keybindings)
+# Pi 1.1.0 probe: the pi-tui Editor (editor.ts handleInput, shouldSubmitOnBackslashEnter) over 812 probes: seeded random sequences of keys, text, pastes, setText, history and renders under thirteen
+# rebinding sets (editor, input and select actions, keys shared by two actions, shift+enter and shift+return in the submit list), with disableSubmit on in some, plus Enter after a backslash under every
+# submit and newline binding that matters, with submit enabled and disabled. After every op the editor's text, expanded text, cursor, lines, callbacks and rendering are compared; each probe is one JSON
+# line. The Go test TestEditorRebindingsMatchPi runs the same probes against the installed Pi; this scenario compares the two printed streams.
+name = "38-editor-rebinding-submit"
+description = "The editor handles every key under rebound keybindings, including Enter after a backslash, as Pi's editor does."
+covers = ["packages/tui/src/components/editor.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/editor-rebinding-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/editor-rebinding-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 240
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"cursor":{"line":0,"col":0}', '"callbacks":[]', '"rendered":["']
+runs = 2

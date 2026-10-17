@@ -22,14 +22,14 @@ func loadRegistering(t *testing.T, host *Host, name string) *wireExt {
 func TestStoppingAnExtensionUnregistersItsMcpServersAndVirtualModels(t *testing.T) {
 	host := newWireHost(t)
 	loadRegistering(t, host, "plugin")
-	if len(host.Runtime().McpServers()) != 1 || len(host.Runtime().PendingVirtualModelRegistrations()) != 1 {
+	if len(host.Runtime().McpServers().List()) != 1 || len(host.Runtime().PendingVirtualModelRegistrations()) != 1 {
 		t.Fatal("registrations missing before stop")
 	}
 	host.mu.Lock()
 	me := host.exts["plugin"]
 	host.mu.Unlock()
 	host.stopManaged(me, "test stop")
-	if got := host.Runtime().McpServers(); len(got) != 0 {
+	if got := host.Runtime().McpServers().List(); len(got) != 0 {
 		t.Fatalf("servers after stop = %+v", got)
 	}
 	if got := host.Runtime().PendingVirtualModelRegistrations(); len(got) != 0 {
@@ -55,7 +55,7 @@ func TestReplacingAnExtensionKeepsTheSuccessorsRegistrations(t *testing.T) {
 	if replacement == old {
 		t.Fatal("the load did not replace the extension")
 	}
-	servers := host.Runtime().McpServers()
+	servers := host.Runtime().McpServers().List()
 	if len(servers) != 1 || servers[0].Config.URL != "http://docs2.invalid" {
 		t.Fatalf("servers after replacement = %+v", servers)
 	}
@@ -72,7 +72,7 @@ func TestDisabledMemberUnregistersItsMcpServersAndVirtualModels(t *testing.T) {
 	me := host.exts["plugin"]
 	host.mu.Unlock()
 	host.disablePackedMember(me, "test disable")
-	if got := host.Runtime().McpServers(); len(got) != 0 {
+	if got := host.Runtime().McpServers().List(); len(got) != 0 {
 		t.Fatalf("servers after disable = %+v", got)
 	}
 	if got := host.Runtime().PendingVirtualModelRegistrations(); len(got) != 0 {

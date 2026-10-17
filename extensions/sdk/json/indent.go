@@ -4,7 +4,11 @@
 
 package json
 
-import "bytes"
+import (
+	"bytes"
+	"math/bits"
+	"strconv"
+)
 
 // HTMLEscape appends to dst the JSON-encoded src with <, >, &, U+2028 and U+2029
 // characters inside string literals changed to \u003c, \u003e, \u0026, \u2028, \u2029
@@ -85,6 +89,147 @@ func appendCompact(dst, src []byte, escape bool) ([]byte, error) {
 		dst = append(dst, src[start:]...)
 	}
 	return dst, nil
+}
+
+// appendCompactJS is appendCompact without HTML escaping for the JSON.stringify mode. It also rewrites what JSON.stringify would not write
+// and an encoder may have: inside a string the escapes \u003c, \u003C, \u003e, \u003E, \u0026, \u2028 and \u2029 become the characters, and
+// outside one a negative number equal to zero becomes 0. Other escapes stay as written. String content is skipped eight bytes at a time.
+// pig additive (lw-json): one pass where jsstring used to compact and then rewrite the whole output again.
+func appendCompactJS(dst, src []byte) ([]byte, error) {
+	origLen := len(dst)
+	scan := newScanner()
+	defer freeScanner(scan)
+	start := 0
+	inString := false
+	// step feeds src[from:to] to the scanner; every byte there is part of one token, so none is skipped space.
+	step := func(from, to int) bool {
+		for j := from; j < to; j++ {
+			if scan.step(scan, src[j]) == scanError {
+				return false
+			}
+		}
+		return true
+	}
+scan:
+	for i := 0; i < len(src); i++ {
+		c := src[i]
+		if inString {
+			if c >= 0x20 && c != '"' && c != '\\' {
+				// The scanner stays inside the string for every such byte, so they need no step.
+				if i = stringContentEnd(src, i+1); i == len(src) {
+					break
+				}
+				c = src[i]
+			}
+			switch c {
+			case '"':
+				inString = false
+			case '\\':
+				if i+6 <= len(src) {
+					if replacement := jsUnescape(src[i : i+6]); replacement != "" {
+						if !step(i, i+6) {
+							break scan
+						}
+						dst = append(dst, src[start:i]...)
+						dst = append(dst, replacement...)
+						i += 5
+						start = i + 1
+						continue
+					}
+				}
+				end := i + 2
+				if i+1 < len(src) && src[i+1] == 'u' {
+					end = i + 6
+				}
+				if !step(i, min(end, len(src))) {
+					break scan
+				}
+				i = min(end, len(src)) - 1
+				continue
+			}
+		} else {
+			switch c {
+			case '"':
+				inString = true
+			case '-':
+				end := i + 1
+				for end < len(src) && isNumberByte(src[end]) {
+					end++
+				}
+				if value, err := strconv.ParseFloat(string(src[i:end]), 64); value == 0 && err == nil {
+					// JSON.stringify writes negative zero as 0.
+					if !step(i, end) {
+						break scan
+					}
+					dst = append(dst, src[start:i]...)
+					dst = append(dst, '0')
+					i = end - 1
+					start = end
+					continue
+				}
+			}
+		}
+		v := scan.step(scan, c)
+		if v >= scanSkipSpace {
+			if v == scanError {
+				break
+			}
+			if start < i {
+				dst = append(dst, src[start:i]...)
+			}
+			start = i + 1
+		}
+	}
+	if scan.eof() == scanError {
+		return dst[:origLen], scan.err
+	}
+	if start < len(src) {
+		dst = append(dst, src[start:]...)
+	}
+	return dst, nil
+}
+
+// jsUnescape is the character JSON.stringify writes for the six-byte escape, or "" when it writes the escape itself.
+func jsUnescape(escape []byte) string {
+	switch string(escape) {
+	case `\u003c`, `\u003C`:
+		return "<"
+	case `\u003e`, `\u003E`:
+		return ">"
+	case `\u0026`:
+		return "&"
+	case `\u2028`:
+		return "\u2028"
+	case `\u2029`:
+		return "\u2029"
+	}
+	// pig (LW-JSON-1): U+FFFD, in any hex case, is written raw as JSON.stringify writes it; a nested encoder writes it for ill-formed UTF-8.
+	if bytes.EqualFold(escape[2:], []byte("fffd")) {
+		return "\ufffd"
+	}
+	return ""
+}
+
+func isNumberByte(c byte) bool {
+	return c >= '0' && c <= '9' || c == '.' || c == 'e' || c == 'E' || c == '+' || c == '-'
+}
+
+// stringContentEnd is the index of the first byte at or after i that ends a run of string content: a byte below 0x20, '"' or '\\' (or
+// len(src)).
+func stringContentEnd(src []byte, i int) int {
+	for ; i+8 <= len(src); i += 8 {
+		w := load8(src[i : i+8])
+		// (w - 0x20 per lane) &^ w marks a lane below 0x20 and no lane from 0x80.
+		if stops := (w-swarLSB*0x20)&^w | swarZero(w^(swarLSB*'"')) | swarZero(w^(swarLSB*'\\')); stops&swarMSB != 0 {
+			return i + bits.TrailingZeros64(stops&swarMSB)>>3
+		}
+	}
+	for ; i < len(src); i++ {
+		if c := src[i]; c < 0x20 || c == '"' || c == '\\' {
+			return i
+		}
+	}
+	return i
 }
 
 func appendNewline(dst []byte, prefix, indent string, depth int) []byte {

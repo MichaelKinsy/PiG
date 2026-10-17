@@ -26,6 +26,27 @@ export function str(value) {
         return "";
     return null;
 }
+function parseLineNumber(value) {
+    if (typeof value === "string" && value.trim() !== "")
+        value = Number(value);
+    return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+/** Format finite numbers or numeric strings as a read line range, omitting malformed ranges. */
+export function formatReadLineRange(offset, limit) {
+    // Strict schemas represent omitted optional arguments as null.
+    if (offset == null && limit == null)
+        return "";
+    const start = offset == null ? 1 : parseLineNumber(offset);
+    if (start === undefined)
+        return "";
+    if (limit == null)
+        return `:${start}`;
+    const count = parseLineNumber(limit);
+    if (count === undefined)
+        return "";
+    const end = start + count - 1;
+    return `:${start}${end ? `-${end}` : ""}`;
+}
 export function replaceTabs(text) {
     return text.replace(/\t/g, "   ");
 }
@@ -76,6 +97,52 @@ export function formatToolCallWithArgs(title, args, theme, expanded) {
     const pairs = entries.map(([key, value]) => `${key}=${JSON.stringify(value) ?? String(value)}`).join(" ");
     const preview = pairs.length > COLLAPSED_ARGS_CHARS ? `${pairs.slice(0, COLLAPSED_ARGS_CHARS - 3)}...` : pairs;
     return `${header} ${theme.fg("muted", preview)}`;
+}
+/** Duration as `4.2s` below a minute, then `1m 30s` and `2h 3m 4s`. */
+export function formatToolDuration(ms) {
+    const seconds = ms / 1000;
+    if (seconds < 60)
+        return `${seconds.toFixed(1)}s`;
+    const totalSeconds = Math.floor(seconds);
+    const minutes = Math.floor(totalSeconds / 60);
+    const remainder = totalSeconds % 60;
+    if (minutes < 60)
+        return `${minutes}m ${remainder}s`;
+    return `${Math.floor(minutes / 60)}h ${minutes % 60}m ${remainder}s`;
+}
+/** Start the row's clock once execution starts. Call from `renderCall`. */
+export function startToolTimer(context) {
+    const state = context.state;
+    if (context.executionStarted && state.startedAt === undefined) {
+        state.startedAt = Date.now();
+        state.endedAt = undefined;
+    }
+}
+/**
+ * The row's timing line, from `renderResult`: `Elapsed 4.2s` while the result is partial, redrawn
+ * every second, and `Took 4.2s` once it is final. Undefined when the row has no start time and no
+ * recorded duration.
+ */
+export function toolTimerText(context, isPartial) {
+    const state = context.state;
+    if (state.startedAt !== undefined && isPartial && !state.interval) {
+        state.interval = setInterval(() => context.invalidate(), 1000);
+    }
+    if (!isPartial || context.isError) {
+        state.endedAt ??= Date.now();
+        if (state.interval) {
+            clearInterval(state.interval);
+            state.interval = undefined;
+        }
+    }
+    // A final result's recorded duration wins: it is monotonic and survives reloads. The renderer's own clock is the
+    // fallback for live progress and for results stored without one.
+    if (!isPartial && context.durationMs !== undefined)
+        return `Took ${formatToolDuration(context.durationMs)}`;
+    if (state.startedAt === undefined)
+        return undefined;
+    const endTime = state.endedAt ?? Date.now();
+    return `${isPartial ? "Elapsed" : "Took"} ${formatToolDuration(endTime - state.startedAt)}`;
 }
 export function invalidArgText(theme) {
     return theme.fg("error", "[invalid arg]");

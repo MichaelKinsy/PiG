@@ -1,5 +1,7 @@
 # Pi 0.87.1 transform-messages.ts drops failed turns, transforms foreign thinking and holds system updates
 # until pending tool results complete. The adapters print every message field for both OpenAI paths.
+# Pi 1.3.0 (91130942, #11000) drops another model's thinking instead of sending it as text, so the fixture's
+# foreign "Double 21" thinking no longer reaches either request as a text part (both_not_contain); PiG follows it (e3996b61c6).
 # Go uses the production session JSON decoder but does not pre-normalize with Agent, so provider mutations remain observable.
 # JSON object keys are emitted in deterministic order by each producer; array order and all values remain exact.
 name = "26-openai-poisoned-history-replay"
@@ -19,5 +21,6 @@ timeout_seconds = 60
 [assert]
 exit_code = 0
 output_equal = true
-both_contain = ['"case":"aborted"', '"text":"Double 21"', '"content":null,"role":"assistant"', '"output":"done"']
+both_contain = ['"case":"aborted"', '"content":null,"role":"assistant"', '"output":"done"']
+both_not_contain = ['"text":"Double 21"']
 runs = 3

@@ -5,7 +5,9 @@ package ai
 // The Go code runs on the provider's executor turn. Each JavaScript await, yield and Promise adoption that separates the body reader from the provider's loop is a suspend(): one promise reaction queued behind everything already ready. The tick order is checked against Node 24.19 and 26.7 by TestAnthropicMicrotaskTrace over coding/testdata/rpc33-observation/providers/anthropic-messages/pi.json.
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"strings"
@@ -55,7 +57,8 @@ func (state *anthropicSSEState) flush() (serverSentEvent, bool) {
 	if state.event == "" && len(state.data) == 0 {
 		return serverSentEvent{}, false
 	}
-	event := serverSentEvent{Event: state.event, Data: strings.Join(state.data, "\n"), Raw: append([]string(nil), state.raw...)}
+	// state.raw is cleared below, so the event owns it; copying it would only allocate.
+	event := serverSentEvent{Event: state.event, Data: strings.Join(state.data, "\n"), Raw: state.raw}
 	state.event, state.data, state.raw = "", nil, nil
 	return event, true
 }
@@ -83,19 +86,6 @@ func (state *anthropicSSEState) decode(line string) (serverSentEvent, bool) {
 	return serverSentEvent{}, false
 }
 
-// anthropicConsumeLine is consumeLine. A carriage return at the end of the buffer ends its line; a line feed that arrives in the next chunk then ends an empty line.
-func anthropicConsumeLine(text string) (line, rest string, ok bool) {
-	index := strings.IndexAny(text, "\r\n")
-	if index < 0 {
-		return "", "", false
-	}
-	next := index + 1
-	if text[index] == '\r' && next < len(text) && text[next] == '\n' {
-		next++
-	}
-	return text[:index], text[next:], true
-}
-
 // webTextDecoder is a TextDecoder with the default UTF-8 label and ignoreBOM false, called with {stream: true} per chunk and once without options at the end.
 type webTextDecoder struct {
 	pending []byte
@@ -103,9 +93,59 @@ type webTextDecoder struct {
 }
 
 func (decoder *webTextDecoder) decode(data []byte, stream bool) string {
+	if text, ok := decoder.decodeValid(data, stream); ok {
+		return string(text)
+	}
+	return string(decoder.decodeAppend(nil, data, stream))
+}
+
+// decodeTo appends the decoded text of data to dst.
+func (decoder *webTextDecoder) decodeTo(dst, data []byte, stream bool) []byte {
+	if text, ok := decoder.decodeValid(data, stream); ok {
+		return append(dst, text...)
+	}
+	return decoder.decodeAppend(dst, data, stream)
+}
+
+// decodeValid decodes data when no sequence is pending and data is well-formed UTF-8, up to an incomplete sequence at its end that a streaming call keeps: the text is then data itself, without a leading byte order mark. ok is false for any other data, which decodeAppend decodes rune by rune.
+func (decoder *webTextDecoder) decodeValid(data []byte, stream bool) (text []byte, ok bool) {
+	if len(decoder.pending) > 0 {
+		return nil, false
+	}
+	cut := len(data)
+	if stream {
+		cut -= incompleteUTF8Tail(data)
+	}
+	if !utf8.Valid(data[:cut]) {
+		return nil, false
+	}
+	text = data[:cut]
+	if cut < len(data) {
+		decoder.pending = append([]byte(nil), data[cut:]...)
+	}
+	if cut > 0 && !decoder.started {
+		decoder.started = true
+		text = bytes.TrimPrefix(text, utf8BOM)
+	}
+	return text, true
+}
+
+// incompleteUTF8Tail is the length of the sequence at the end of data that is well-formed so far but incomplete.
+func incompleteUTF8Tail(data []byte) int {
+	for i := len(data) - 1; i >= 0 && i >= len(data)-utf8.UTFMax+1; i-- {
+		if data[i]&0xc0 != 0x80 {
+			if utf8.FullRune(data[i:]) {
+				return 0
+			}
+			return len(data) - i
+		}
+	}
+	return 0
+}
+
+func (decoder *webTextDecoder) decodeAppend(text, data []byte, stream bool) []byte {
 	data = append(decoder.pending, data...)
 	decoder.pending = nil
-	var text strings.Builder
 	for len(data) > 0 {
 		r, size := utf8.DecodeRune(data)
 		if r == utf8.RuneError && size == 1 {
@@ -114,7 +154,7 @@ func (decoder *webTextDecoder) decode(data []byte, stream bool) string {
 				break
 			}
 			// A maximal subpart of an ill-formed sequence becomes one replacement character.
-			text.WriteRune(utf8.RuneError)
+			text = utf8.AppendRune(text, utf8.RuneError)
 			data = data[openAIInvalidUTF8Prefix(data):]
 			decoder.started = true
 			continue
@@ -125,9 +165,9 @@ func (decoder *webTextDecoder) decode(data []byte, stream bool) string {
 		if !wasStarted && r == '\uFEFF' {
 			continue
 		}
-		text.WriteRune(r)
+		text = utf8.AppendRune(text, r)
 	}
-	return text.String()
+	return text
 }
 
 // anthropicSSEReader is iterateSseMessages. Its events are computed when a chunk arrives and yielded one per next(); the generator's internal state has no observable effect between yields.
@@ -138,29 +178,67 @@ type anthropicSSEReader struct {
 
 	decoder webTextDecoder
 	state   anthropicSSEState
-	buffer  string
+	// buffer is the decoded text after the last line consumed; its first scanned bytes hold no line end that can be consumed yet.
+	buffer  []byte
+	scanned int
 	queue   []serverSentEvent
 	readErr error
 	ended   bool
 	closed  bool
 }
 
+// anthropicLineBufferReuse is the largest line buffer the reader keeps once its lines are consumed.
+const anthropicLineBufferReuse = 64 << 10
+
+// anthropicConsumeLine is consumeLine. pig divergence (D121): a carriage return at the end of the buffer waits for the next chunk unless the stream has ended, because Pi ends the line there and the line feed that follows flushes the record without its data (pi-mono #10390).
+func anthropicConsumeLine(text string, final bool) (line, rest string, ok bool) {
+	index := strings.IndexAny(text, "\r\n")
+	if index < 0 {
+		return "", "", false
+	}
+	next := index + 1
+	if !final && text[index] == '\r' && next == len(text) {
+		return "", "", false
+	}
+	if text[index] == '\r' && next < len(text) && text[next] == '\n' {
+		next++
+	}
+	return text[:index], text[next:], true
+}
+
+// drainLines applies consumeLine until it finds no line. The text up to the last line end that consumeLine would take becomes one string whose lines are substrings, so a line that spans many chunks is copied once and only the bytes of each new chunk are searched.
 func (reader *anthropicSSEReader) drainLines(final bool) {
-	for {
-		line, rest, ok := anthropicConsumeLine(reader.buffer)
-		if !ok {
-			break
+	buffer := reader.buffer
+	search := buffer
+	if !final && len(buffer) > 0 && buffer[len(buffer)-1] == '\r' {
+		// anthropicConsumeLine does not take a carriage return that ends the buffer before the stream ends (D121).
+		search = buffer[:len(buffer)-1]
+	}
+	if last := bytes.LastIndexAny(search[reader.scanned:], "\r\n"); last >= 0 {
+		consumed := reader.scanned + last + 1
+		segment := string(buffer[:consumed])
+		if remainder := buffer[consumed:]; len(remainder) > 0 || cap(buffer) <= anthropicLineBufferReuse {
+			reader.buffer = append(reader.buffer[:0], remainder...)
+		} else {
+			reader.buffer = nil
 		}
-		reader.buffer = rest
-		if event, ok := reader.state.decode(line); ok {
-			reader.queue = append(reader.queue, event)
+		// Every line end in segment is decided: the byte after a carriage return inside it is known.
+		for line, rest, ok := anthropicConsumeLine(segment, true); ok; line, rest, ok = anthropicConsumeLine(rest, true) {
+			if event, ok := reader.state.decode(line); ok {
+				reader.queue = append(reader.queue, event)
+			}
 		}
+	}
+	// What is left holds no line end, except a carriage return at its end that the next chunk decides.
+	reader.scanned = len(reader.buffer)
+	if reader.scanned > 0 && reader.buffer[reader.scanned-1] == '\r' {
+		reader.scanned--
 	}
 	if !final {
 		return
 	}
 	if len(reader.buffer) > 0 {
-		if event, ok := reader.state.decode(reader.buffer); ok {
+		if event, ok := reader.state.decode(string(reader.buffer)); ok {
 			reader.queue = append(reader.queue, event)
 		}
 	}
@@ -170,6 +248,8 @@ func (reader *anthropicSSEReader) drainLines(final bool) {
 }
 
 // next is one call of iterateSseMessages().next(): an event (its yield awaits the value), completion, or a thrown error.
+//
+//perf:hot
 func (reader *anthropicSSEReader) next() (serverSentEvent, bool, error) {
 	for {
 		if len(reader.queue) > 0 {
@@ -200,10 +280,10 @@ func (reader *anthropicSSEReader) next() (serverSentEvent, bool, error) {
 		}
 		switch {
 		case err == nil:
-			reader.buffer += reader.decoder.decode(data, true)
+			reader.buffer = reader.decoder.decodeTo(reader.buffer, data, true)
 			reader.drainLines(false)
 		case errors.Is(err, io.EOF):
-			reader.buffer += reader.decoder.decode(nil, false)
+			reader.buffer = reader.decoder.decodeTo(reader.buffer, nil, false)
 			reader.drainLines(true)
 			reader.ended = true
 		default:
@@ -245,8 +325,19 @@ func newAnthropicEventReader(ctx context.Context, source openAIStreamChunkReader
 	}
 }
 
+// anthropicStreamEvent is a parsed record of iterateAnthropicEvents: its SSE record, the JSON text that parsed (repaired when the original did not), and the parsed value's type, which every consumer dispatches on. Type is empty when the value has no string type member.
+type anthropicStreamEvent struct {
+	serverSentEvent
+	JSON string
+	Type string
+	// valid reports that encoding/json accepts JSON (json.Valid); see anthropicParseJSON.
+	valid bool
+}
+
 // next is one iteration of stream()'s `for await (const event of iterateAnthropicEvents(...))`: it includes the reactions from the generator chain and the loop's own await of the result (anthropic-messages.ts:601).
-func (reader *anthropicEventReader) next() (serverSentEvent, bool, error) {
+//
+//perf:hot
+func (reader *anthropicEventReader) next() (anthropicStreamEvent, bool, error) {
 	event, ok, err := reader.generate()
 	reader.suspend() // The provider's for-await awaits iterateAnthropicEvents().next().
 	if err != nil || !ok {
@@ -255,43 +346,49 @@ func (reader *anthropicEventReader) next() (serverSentEvent, bool, error) {
 	return event, ok, err
 }
 
-func (reader *anthropicEventReader) generate() (serverSentEvent, bool, error) {
+func (reader *anthropicEventReader) generate() (anthropicStreamEvent, bool, error) {
 	if reader.finished {
-		return serverSentEvent{}, false, nil
+		return anthropicStreamEvent{}, false, nil
 	}
 	for {
 		sse, ok, err := reader.sse.next()
 		reader.suspend() // `for await (const sse of iterateSseMessages(...))` awaits next() (anthropic-messages.ts:481).
 		if err != nil {
-			return serverSentEvent{}, false, err // A throwing iterator is not closed.
+			return anthropicStreamEvent{}, false, err // A throwing iterator is not closed.
 		}
 		if !ok {
 			break
 		}
 		if sse.Event == "error" {
 			reader.closeSSE()
-			return serverSentEvent{}, false, errors.New(sse.Data)
+			return anthropicStreamEvent{}, false, errors.New(sse.Data)
 		}
 		if !anthropicMessageEvents[sse.Event] {
 			continue
 		}
-		if _, err := anthropicParseJSON(sse.Data); err != nil {
-			reader.closeSSE()
-			return serverSentEvent{}, false, &anthropicSSEParseError{sse: sse, cause: err}
+		text, valid, err := anthropicParseJSON(sse.Data)
+		var eventType string
+		if err == nil {
+			eventType, err = anthropicRecordType(text)
 		}
-		switch sse.Event {
+		if err != nil {
+			reader.closeSSE()
+			return anthropicStreamEvent{}, false, &anthropicSSEParseError{sse: sse, cause: err}
+		}
+		// The SSE event name only admits the record; the parsed value's type decides what it is (anthropic-messages.ts:552-556).
+		switch eventType {
 		case "message_start":
 			reader.sawMessageStart = true
 		case "message_stop":
 			reader.sawMessageEnd = true
 		}
 		reader.suspend() // `yield event` awaits its operand (anthropic-messages.ts:497).
-		return sse, true, nil
+		return anthropicStreamEvent{serverSentEvent: sse, JSON: text, Type: eventType, valid: valid}, true, nil
 	}
 	if reader.sawMessageStart && !reader.sawMessageEnd {
-		return serverSentEvent{}, false, errors.New("Anthropic stream ended before message_stop")
+		return anthropicStreamEvent{}, false, errors.New("Anthropic stream ended before message_stop")
 	}
-	return serverSentEvent{}, false, nil
+	return anthropicStreamEvent{}, false, nil
 }
 
 // closeSSE is AsyncIteratorClose on the SSE generator: it awaits the generator's return() promise.
@@ -311,6 +408,14 @@ func (reader *anthropicEventReader) close() {
 	reader.suspend()
 }
 
+// anthropicRecordType is `event.type` for the provider's switch (anthropic-messages.ts:551-556): reading a member of null throws, and any other value gives anthropicEventType's answer.
+func anthropicRecordType(text string) (string, error) {
+	if strings.TrimSpace(text) == "null" {
+		return "", errors.New("Cannot read properties of null (reading 'type')")
+	}
+	return anthropicEventType(text), nil
+}
+
 type anthropicSSEParseError struct {
 	sse   serverSentEvent
 	cause error
@@ -322,18 +427,134 @@ func (err *anthropicSSEParseError) Error() string {
 
 func (err *anthropicSSEParseError) Unwrap() error { return err.cause }
 
-// anthropicParseJSON is parseJsonWithRepair (packages/ai/src/utils/json-parse.ts:85-95): it returns the text that parses, repaired when the original does not, or V8's JSON.parse message for the text that was last tried.
-func anthropicParseJSON(data string) (string, error) {
-	err := jsonparse.Validate([]byte(data))
+// anthropicParseJSON is parseJsonWithRepair (packages/ai/src/utils/json-parse.ts:85-95): it returns the text that parses, repaired when the original does not, or V8's JSON.parse message for the text that was last tried. valid reports that encoding/json also accepts the returned text (json.Valid); JSON.parse accepts text it rejects, such as nesting deeper than its limit.
+func anthropicParseJSON(data string) (text string, valid bool, err error) {
+	if json.Valid([]byte(data)) {
+		return data, true, nil
+	}
+	err = jsonparse.Validate([]byte(data))
 	if err == nil {
-		return data, nil
+		return data, false, nil
 	}
 	repaired := repairJSON(data)
 	if repaired == data {
-		return "", err
+		return "", false, err
+	}
+	if json.Valid([]byte(repaired)) {
+		return repaired, true, nil
 	}
 	if err := jsonparse.Validate([]byte(repaired)); err != nil {
-		return "", err
+		return "", false, err
 	}
-	return repaired, nil
+	return repaired, false, nil
+}
+
+// anthropicEventType is `event.type` of a parsed, non-null event when it is a string, and "" otherwise (anthropic-messages.ts:551-556). It walks the top-level members of the already validated JSON without allocating for an ordinary event: the member name is matched exactly and the last duplicate wins, as in JSON.parse (encoding/json would also match a case variant such as "TYPE").
+func anthropicEventType(parsed string) string {
+	i := anthropicSkipSpace(parsed, 0)
+	if i >= len(parsed) || parsed[i] != '{' {
+		return ""
+	}
+	value := ""
+	for i = anthropicSkipSpace(parsed, i+1); i < len(parsed) && parsed[i] == '"'; {
+		end, escaped := anthropicStringEnd(parsed, i)
+		key := parsed[i+1 : end-1]
+		if escaped {
+			var decoded string
+			if json.Unmarshal([]byte(parsed[i:end]), &decoded) != nil {
+				return ""
+			}
+			key = decoded
+		}
+		i = anthropicSkipSpace(parsed, end)
+		if i >= len(parsed) || parsed[i] != ':' {
+			return ""
+		}
+		start := anthropicSkipSpace(parsed, i+1)
+		i = anthropicValueEnd(parsed, start)
+		if key == "type" {
+			value = parsed[start:i]
+		}
+		i = anthropicSkipSpace(parsed, i)
+		if i >= len(parsed) || parsed[i] != ',' {
+			break
+		}
+		i = anthropicSkipSpace(parsed, i+1)
+	}
+	//portlint:allow utf16units the byte length only checks that the raw JSON token holds two quote bytes
+	if len(value) < 2 || value[0] != '"' {
+		return ""
+	}
+	if !strings.ContainsRune(value, '\\') {
+		return value[1 : len(value)-1]
+	}
+	var eventType string
+	_ = json.Unmarshal([]byte(value), &eventType)
+	return eventType
+}
+
+func anthropicSkipSpace(data string, i int) int {
+	for i < len(data) && (data[i] == ' ' || data[i] == '\t' || data[i] == '\n' || data[i] == '\r') {
+		i++
+	}
+	return i
+}
+
+// anthropicStringEnd returns the index after the string that starts at data[start], and whether it holds an escape.
+func anthropicStringEnd(data string, start int) (int, bool) {
+	escaped := false
+	for i := start + 1; i < len(data); i++ {
+		switch data[i] {
+		case '\\':
+			escaped = true
+			i++
+		case '"':
+			return i + 1, escaped
+		}
+	}
+	return len(data), escaped
+}
+
+// anthropicValueEnd returns the index after the JSON value that starts at data[start].
+func anthropicValueEnd(data string, start int) int {
+	depth := 0
+	for i := start; i < len(data); i++ {
+		switch c := data[i]; c {
+		case '"':
+			i, _ = anthropicStringEnd(data, i)
+			if depth == 0 {
+				return i
+			}
+			i--
+		case '{', '[':
+			depth++
+		case '}', ']':
+			if depth == 0 {
+				return i
+			}
+			depth--
+			if depth == 0 {
+				return i + 1
+			}
+		case ',', ' ', '\t', '\n', '\r':
+			if depth == 0 {
+				return i
+			}
+		}
+	}
+	return len(data)
+}
+
+// webTextBytes is `await response.text()` over the body bytes (fetchBodyText). Well-formed text without a leading byte order mark is returned as is.
+func webTextBytes(body []byte) []byte {
+	if utf8.Valid(body) && !bytes.HasPrefix(body, utf8BOM) {
+		return body
+	}
+	return []byte(fetchBodyText(body))
+}
+
+// readWebText reads a response body to its end as `response.text()` decodes it.
+func readWebText(body io.Reader) ([]byte, error) {
+	data, err := io.ReadAll(body)
+	return webTextBytes(data), err
 }

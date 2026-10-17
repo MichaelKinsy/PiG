@@ -1,0 +1,750 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSettledEvent"
+  ],
+  "targets": [
+   "coding/extension/events.go#AgentSettledEvent"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "AgentSettledEvent"
+  },
+  "production": [
+   "call:internal/codingagent/event_bridge.go#emitAgentSettled"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/stale_delivery_test.go#TestEmitAfterInvalidateDeliversWithStaleContext"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "AgentSettledEvent: Go AgentSettledEvent has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#BeforeAgentStartEventResult"
+  ],
+  "targets": [
+   "coding/extension/events.go#BeforeAgentStartEventResult"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "BeforeAgentStartEventResult"
+  },
+  "production": [
+   "call:coding/extension/host/inproc/runner.go#Runner.EmitBeforeAgentStart"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBeforeAgentStart",
+   "test:coding/session_model_extension_hooks_upstream_test.go#TestSessionModelExtensionHooksUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "BeforeAgentStartEventResult: Go BeforeAgentStartEventResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#BoundaryContextPreview"
+  ],
+  "targets": [
+   "coding/extension/events.go#BoundaryContextPreview"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "BoundaryContextPreview"
+  },
+  "production": [
+   "call:coding/session_boundaries.go#Session.buildBoundaryContext"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBoundary",
+   "test:coding/extension/host/inproc/boundary_test.go#TestEmitBoundaryChainsDraftsContinuationAndPreview"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "BoundaryContextPreview: Go BoundaryContextPreview has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#BoundaryResult"
+  ],
+  "targets": [
+   "coding/extension/events.go#BoundaryResult"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "BoundaryResult"
+  },
+  "production": [
+   "call:coding/extension/host/inproc/runner.go#Runner.EmitBoundary"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBoundary",
+   "test:coding/session_boundaries_accounting_upstream_test.go#TestUpstreamSessionBoundariesAccounting"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "BoundaryResult: Go BoundaryResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#BoundaryState"
+  ],
+  "targets": [
+   "coding/extension/events.go#BoundaryState"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "BoundaryState"
+  },
+  "production": [
+   "call:coding/extension/host/inproc/runner.go#Runner.EmitBoundary"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBoundary",
+   "test:coding/extension/host/inproc/boundary_test.go#TestEmitBoundaryChainsDraftsContinuationAndPreview"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "BoundaryState: Go BoundaryState has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CacheWarmingDecisionEvent"
+  ],
+  "targets": [
+   "coding/extension/cache_warming.go#CacheWarmingDecisionEvent"
+  ],
+  "struct": {
+   "file": "coding/extension/cache_warming.go",
+   "type": "CacheWarmingDecisionEvent"
+  },
+  "production": [
+   "call:coding/session_cache_warming.go#Session.decideCacheWarming"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/cache_warming_test.go#TestCacheWarmingDecisionAwaitsAndReportsHandlers"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "CacheWarmingDecisionEvent: Go CacheWarmingDecisionEvent has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#CacheWarmingDecisionEventResult"
+  ],
+  "targets": [
+   "coding/extension/cache_warming.go#CacheWarmingDecisionEventResult"
+  ],
+  "struct": {
+   "file": "coding/extension/cache_warming.go",
+   "type": "CacheWarmingDecisionEventResult"
+  },
+  "production": [
+   "call:coding/extension/host/inproc/cache_warming.go#Runner.EmitCacheWarmingDecision"
+  ],
+  "evidence": [
+   "test:coding/cache_warming_decision_upstream_test.go#TestCacheWarmingDecisionUsesLastExtensionOverride",
+   "test:coding/extension/host/inproc/cache_warming_test.go#TestCacheWarmingDecisionAwaitsAndReportsHandlers"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "CacheWarmingDecisionEventResult: Go CacheWarmingDecisionEventResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ContextEventResult"
+  ],
+  "targets": [
+   "coding/extension/events.go#ContextEventResult"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "ContextEventResult"
+  },
+  "production": [
+   "call:coding/extension/host/inproc/runner.go#Runner.EmitContextTracked"
+  ],
+  "evidence": [
+   "test:coding/session_context_9789_upstream_test.go#TestUpstream9789AddedSystemAfterReplayedHead",
+   "test:coding/session_context_9789_upstream_test.go#TestUpstream9789ContextWithSystemFollowsContext"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ContextEventResult: Go ContextEventResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ContextWithSystemEvent"
+  ],
+  "targets": [
+   "coding/extension/events.go#ContextWithSystemEvent"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "ContextWithSystemEvent"
+  },
+  "production": [
+   "call:coding/extension/host/inproc/runner.go#Runner.EmitContextWithSystem"
+  ],
+  "evidence": [
+   "test:coding/session_context_9789_upstream_test.go#TestUpstream9789ContextWithSystemFollowsContext",
+   "test:coding/session_context_9789_upstream_test.go#TestUpstream9789RemovedHeadReportsErrorButHonorsOutput"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ContextWithSystemEvent: Go ContextWithSystemEvent has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#EntryRenderOptions"
+  ],
+  "targets": [
+   "coding/extension/renderer.go#EntryRenderOptions"
+  ],
+  "struct": {
+   "file": "coding/extension/renderer.go",
+   "type": "EntryRenderOptions"
+  },
+  "production": [
+   "call:coding/extension/host/subprocess/host.go#Host.makeEntryRenderer"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerRendererAndFork",
+   "test:coding/extension/message_padding_test.go#TestMessageRenderOptionsOutputPadWire"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "EntryRenderOptions: Go EntryRenderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExecResult"
+  ],
+  "targets": [
+   "coding/extension/opaque_types.go#ExecResult"
+  ],
+  "struct": {
+   "file": "coding/extension/opaque_types.go",
+   "type": "ExecResult"
+  },
+  "production": [
+   "call:coding/cli/session_extension_actions.go#bindSessionExtensionActions"
+  ],
+  "evidence": [
+   "test:coding/extension/host/subprocess/upstream_examples_test.go#TestGitMergeAndResolveExample",
+   "test:coding/extension/host/subprocess/upstream_examples_test.go#TestInputTransformStreamingExample"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ExecResult: Go ExecResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ExecuteToolOptions"
+  ],
+  "targets": [
+   "coding/extension/tool_context.go#ExecuteToolOptions"
+  ],
+  "struct": {
+   "file": "coding/extension/tool_context.go",
+   "type": "ExecuteToolOptions"
+  },
+  "production": [
+   "call:coding/cli/session_extension_actions.go#bindSessionExtensionActions"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/tool_context_test.go#TestRunnerBindCoreKeepsTheSessionBindingAModeOmits",
+   "test:coding/extension/host/inproc/tool_context_test.go#TestRunnerToolContextRejectsCallsOnAStaleRunner"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ExecuteToolOptions: Go ExecuteToolOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#MarkdownTransformContext"
+  ],
+  "targets": [
+   "coding/extension/renderer.go#MarkdownTransformContext"
+  ],
+  "struct": {
+   "file": "coding/extension/renderer.go",
+   "type": "MarkdownTransformContext"
+  },
+  "production": [
+   "call:internal/codingagent/interactive_chat.go#InteractiveMode.asyncMarkdownTransform"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder",
+   "test:coding/extension/host/subprocess/upstream_runner_markdown_test.go#TestUpstreamRunnerMarkdownSourceFactories"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "MarkdownTransformContext: Go MarkdownTransformContext has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#McpServersChangeEvent"
+  ],
+  "targets": [
+   "coding/extension/events.go#McpServersChangeEvent"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "McpServersChangeEvent"
+  },
+  "production": [
+   "call:coding/extension/host/inproc/mcp_servers.go#Runner.onMcpServersChange"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/mcp_servers_registration_test.go#TestRunnerEmitsMcpServersChangeForRegistrationsAfterBind"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "McpServersChangeEvent: Go McpServersChangeEvent has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#MessageEndEventResult"
+  ],
+  "targets": [
+   "coding/extension/events.go#MessageEndEventResult"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "MessageEndEventResult"
+  },
+  "production": [
+   "call:coding/extension/host/inproc/runner.go#Runner.EmitMessageEnd"
+  ],
+  "evidence": [
+   "test:coding/message_end_cost_upstream_test.go#TestMessageEndAllowsExtensionsToReplaceFinalizedAssistantUsageCost",
+   "test:coding/session_boundaries_accounting_upstream_test.go#TestUpstreamSessionBoundariesAccounting"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "MessageEndEventResult: Go MessageEndEventResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#MessageRenderOptions"
+  ],
+  "targets": [
+   "coding/extension/renderer.go#MessageRenderOptions"
+  ],
+  "struct": {
+   "file": "coding/extension/renderer.go",
+   "type": "MessageRenderOptions"
+  },
+  "production": [
+   "call:coding/extension/host/subprocess/host.go#Host.makeMessageRenderer"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerRendererAndFork",
+   "test:coding/extension/host/subprocess/liveness_test.go#TestStalledRendererCancelsGenerationAndRetainsLastFrame"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "MessageRenderOptions: Go MessageRenderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ModelRoute"
+  ],
+  "targets": [
+   "coding/extension/virtual_model.go#ModelRoute"
+  ],
+  "struct": {
+   "file": "coding/extension/virtual_model.go",
+   "type": "ModelRoute"
+  },
+  "production": [
+   "call:coding/extension/host/subprocess/host_extension_api.go#Host.makeVirtualModelRoute"
+  ],
+  "evidence": [
+   "test:coding/extension/host/subprocess/upstream_jev_router_test.go#TestJevRouterExampleRoutes",
+   "test:coding/cli/extension_host_wiring_guard_test.go#TestBuildFlushesTheExtensionHostVirtualModels"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ModelRoute: Go ModelRoute has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ProjectTrustEventResult"
+  ],
+  "targets": [
+   "coding/extension/events.go#ProjectTrustEventResult"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "ProjectTrustEventResult"
+  },
+  "production": [
+   "call:coding/extension/host/inproc/runner.go#EmitProjectTrust"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/upstream_context_headers_test.go#TestUpstreamRunnerContextAndHeaders",
+   "test:coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10PackageCommandPaths"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ProjectTrustEventResult: Go ProjectTrustEventResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ProviderStreamEvent"
+  ],
+  "targets": [
+   "coding/extension/events.go#ProviderStreamEvent"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "ProviderStreamEvent"
+  },
+  "production": [
+   "call:coding/session_extension_hooks.go#Session.extensionProviderStreamEventHook"
+  ],
+  "evidence": [
+   "test:coding/sdk_stream_options_upstream_test.go#TestSDKForwardsProviderStreamEventsToExtensions"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ProviderStreamEvent: Go ProviderStreamEvent has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#RegisteredMcpServer"
+  ],
+  "targets": [
+   "coding/extension/mcp_servers.go#RegisteredMcpServer"
+  ],
+  "struct": {
+   "file": "coding/extension/mcp_servers.go",
+   "type": "RegisteredMcpServer"
+  },
+  "production": [
+   "call:coding/extension/host/subprocess/ui_bridge.go#UIBridge.Snapshot"
+  ],
+  "evidence": [
+   "test:coding/extension/mcp_servers_test.go#TestMcpServerRegistryKeepsOwnershipOrderAndCopies"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "RegisteredMcpServer: Go RegisteredMcpServer has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ResourceCollision"
+  ],
+  "targets": [
+   "coding/extension/diagnostics.go#ResourceCollision"
+  ],
+  "struct": {
+   "file": "coding/extension/diagnostics.go",
+   "type": "ResourceCollision"
+  },
+  "production": [
+   "call:internal/codingagent/extension_diagnostics.go#loadThemeResources"
+  ],
+  "evidence": [
+   "test:internal/codingagent/loaded_resources_diagnostics_test.go#TestLoadThemeResourcesDiagnostics"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ResourceCollision: Go ResourceCollision has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ResourceDiagnostic"
+  ],
+  "targets": [
+   "coding/extension/diagnostics.go#ResourceDiagnostic"
+  ],
+  "struct": {
+   "file": "coding/extension/diagnostics.go",
+   "type": "ResourceDiagnostic"
+  },
+  "production": [
+   "call:coding/extension/host/inproc/runner.go#Runner.CommandDiagnostics"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/upstream_catalog_test.go#TestUpstreamRunnerShortcuts",
+   "test:coding/sdk_skills_upstream_test.go#TestUpstreamSDKSkillsNativeSession"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ResourceDiagnostic: Go ResourceDiagnostic has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ResourcesDiscoverResult"
+  ],
+  "targets": [
+   "coding/extension/events.go#ResourcesDiscoverResult"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "ResourcesDiscoverResult"
+  },
+  "production": [
+   "call:coding/extension/host/inproc/runner.go#Runner.EmitResourcesDiscover"
+  ],
+  "evidence": [
+   "test:coding/cli/resource_loader_gaps_upstream_test.go#TestPrintModeInvalidDiscoveredFileURLFailsBind",
+   "test:coding/cli/resource_loader_gaps_upstream_test.go#TestUpstreamHeadlessExtendResourcesLoadsFileURLs"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ResourcesDiscoverResult: Go ResourcesDiscoverResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ScopedModel"
+  ],
+  "targets": [
+   "coding/extension/scoped_models.go#ScopedModel"
+  ],
+  "struct": {
+   "file": "coding/extension/scoped_models.go",
+   "type": "ScopedModel"
+  },
+  "production": [
+   "call:coding/cli/extension_scoped_models.go#extensionScopedModels"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/upstream_scoped_models_test.go#TestScopedModelsCaptureCallbackButReadLiveList",
+   "test:coding/extension/host/inproc/upstream_scoped_models_test.go#TestUpstreamRunnerScopedModels"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ScopedModel: Go ScopedModel has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SessionBeforeForkResult"
+  ],
+  "targets": [
+   "coding/extension/events.go#SessionBeforeForkResult"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "SessionBeforeForkResult"
+  },
+  "production": [
+   "call:coding/cli/rpc_mode.go#rpcResultCancelled"
+  ],
+  "evidence": [
+   "test:coding/cli/rpc_mode_test.go#TestRPCSessionReplacementCancellationEvents",
+   "test:coding/extension/host/inproc/exhaustiveness_test.go#TestSessionBeforeIsCancel_AllVariantsCovered"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "SessionBeforeForkResult: Go SessionBeforeForkResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SessionBeforeSwitchResult"
+  ],
+  "targets": [
+   "coding/extension/events.go#SessionBeforeSwitchResult"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "SessionBeforeSwitchResult"
+  },
+  "production": [
+   "call:coding/cli/rpc_mode.go#rpcResultCancelled"
+  ],
+  "evidence": [
+   "test:coding/cli/rpc_mode_test.go#TestRPCSessionReplacementCancellationEvents",
+   "test:coding/extension/host/inproc/exhaustiveness_test.go#TestSessionBeforeIsCancel_AllVariantsCovered"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "SessionBeforeSwitchResult: Go SessionBeforeSwitchResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SessionBeforeTreeEvent"
+  ],
+  "targets": [
+   "coding/extension/events.go#SessionBeforeTreeEvent"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "SessionBeforeTreeEvent"
+  },
+  "production": [
+   "call:coding/extension/host/inproc/runner.go#isSessionBeforeEvent"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/exhaustiveness_test.go#TestIsSessionBeforeEvent_AllVariantsCovered",
+   "test:coding/extension/host/inproc/generic_emit_test.go#TestEmit_AllSessionBeforeVariantsRecognized"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "SessionBeforeTreeEvent: Go SessionBeforeTreeEvent has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SessionBeforeTreeResult"
+  ],
+  "targets": [
+   "coding/extension/events.go#SessionBeforeTreeResult"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "SessionBeforeTreeResult"
+  },
+  "production": [
+   "call:coding/extension/host/inproc/runner.go#sessionBeforeIsCancel"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/exhaustiveness_test.go#TestSessionBeforeIsCancel_AllVariantsCovered",
+   "test:coding/extension/host/inproc/generic_emit_test.go#TestEmit_AllSessionBeforeVariantsRecognized"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "SessionBeforeTreeResult: Go SessionBeforeTreeResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SessionCompactFailedEvent"
+  ],
+  "targets": [
+   "coding/extension/events.go#SessionCompactFailedEvent"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "SessionCompactFailedEvent"
+  },
+  "production": [
+   "call:coding/session.go#Session.checkCompactionDecision"
+  ],
+  "evidence": [
+   "test:coding/session_compaction_suite_upstream_test.go#TestAgentSessionCompactionSuiteUpstream",
+   "test:coding/extension/host/subprocess/packed_go_test.go#TestPackedSDKFocusedComponentAndSessionActionsMatch"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "SessionCompactFailedEvent: Go SessionCompactFailedEvent has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SessionInfoChangedEvent"
+  ],
+  "targets": [
+   "coding/extension/events.go#SessionInfoChangedEvent"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "SessionInfoChangedEvent"
+  },
+  "production": [
+   "call:coding/session.go#Session.dispatchSessionNameEvent"
+  ],
+  "evidence": [
+   "test:coding/session_name_upstream_test.go#TestSessionNameNotificationReentrantPrefix",
+   "test:coding/session_name_upstream_test.go#TestSessionNameNotificationsDoNotAwaitSuspendedHandlers"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "SessionInfoChangedEvent: Go SessionInfoChangedEvent has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ToolCallEventResult"
+  ],
+  "targets": [
+   "coding/extension/events.go#ToolCallEventResult"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "ToolCallEventResult"
+  },
+  "production": [
+   "call:coding/extension/host/inproc/runner.go#Runner.EmitToolCall"
+  ],
+  "evidence": [
+   "test:coding/session_model_extension_hooks_upstream_test.go#TestSessionModelExtensionHooksUpstream",
+   "test:coding/session_tool_admission_upstream_test.go#TestSessionBlockedToolTerminatesWithoutAnotherResponse"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ToolCallEventResult: Go ToolCallEventResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ToolLoadoutChanges"
+  ],
+  "targets": [
+   "coding/extension/tool_loadout.go#ToolLoadoutChanges"
+  ],
+  "struct": {
+   "file": "coding/extension/tool_loadout.go",
+   "type": "ToolLoadoutChanges"
+  },
+  "production": [
+   "call:coding/extension/builtin/codemode/tool.go#Definition"
+  ],
+  "evidence": [
+   "test:coding/extension/host/subprocess/extension_api_wire_test.go#TestPrepareLoadoutRunsInTheExtension",
+   "test:coding/session_hidden_tools_order_test.go#TestSystemPromptOptionsListHiddenToolsInTheOrderTheHooksHidThem"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ToolLoadoutChanges: Go ToolLoadoutChanges has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#ToolRenderResultOptions"
+  ],
+  "targets": [
+   "coding/extension/tool.go#ToolRenderResultOptions"
+  ],
+  "struct": {
+   "file": "coding/extension/tool.go",
+   "type": "ToolRenderResultOptions"
+  },
+  "production": [
+   "call:coding/extension/host/subprocess/tool_render_proxy.go#Host.makeToolRenderResult"
+  ],
+  "evidence": [
+   "test:internal/codingagent/export/upstream_test.go#TestCustomToolResultHTMLTrimsSpacing",
+   "test:internal/codingagent/tool_execution_component_upstream_test.go#TestToolExecutionComponentUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ToolRenderResultOptions: Go ToolRenderResultOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#UIPromptEndEvent"
+  ],
+  "targets": [
+   "coding/extension/events.go#UIPromptEndEvent"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "UIPromptEndEvent"
+  },
+  "production": [
+   "call:coding/extension/host/inproc/ui_prompt.go#Runner.BeginUIPrompt"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/ui_prompt_test.go#TestUIPromptEvents_JSONShape"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "UIPromptEndEvent: Go UIPromptEndEvent has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#UIPromptStartEvent"
+  ],
+  "targets": [
+   "coding/extension/events.go#UIPromptStartEvent"
+  ],
+  "struct": {
+   "file": "coding/extension/events.go",
+   "type": "UIPromptStartEvent"
+  },
+  "production": [
+   "call:coding/extension/host/inproc/ui_prompt.go#Runner.BeginUIPrompt"
+  ],
+  "evidence": [
+   "test:coding/extension/host/inproc/ui_prompt_test.go#TestUIPromptEvents_JSONShape"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "UIPromptStartEvent: Go UIPromptStartEvent has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#VirtualModelDefinition"
+  ],
+  "targets": [
+   "coding/extension/virtual_model.go#VirtualModelDefinition"
+  ],
+  "struct": {
+   "file": "coding/extension/virtual_model.go",
+   "type": "VirtualModelDefinition"
+  },
+  "production": [
+   "call:coding/extension/host/subprocess/host_extension_api.go#Host.virtualModelDefinition"
+  ],
+  "evidence": [
+   "test:coding/cli/extension_host_wiring_guard_test.go#TestBuildFlushesTheExtensionHostVirtualModels",
+   "test:coding/cli/startup_virtual_model_test.go#TestSelectStartupModelLeavesTheVirtualCatalogEntryUnchanged"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "VirtualModelDefinition: Go VirtualModelDefinition has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+ }
+]

@@ -1,16 +1,20 @@
 package ai
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
-	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 )
 
 const (
@@ -28,22 +32,77 @@ type kimiOAuthProvider struct {
 	sleep     func(context.Context, time.Duration) error
 }
 
+// kimiDeviceAuthorization is a validated device-authorization response, its interval and lifetime defaulted.
 type kimiDeviceAuthorization struct {
-	DeviceCode              string  `json:"device_code"`
-	UserCode                string  `json:"user_code"`
-	VerificationURI         string  `json:"verification_uri"`
-	VerificationURIComplete string  `json:"verification_uri_complete"`
-	Interval                float64 `json:"interval"`
-	ExpiresIn               float64 `json:"expires_in"`
+	DeviceCode              string
+	UserCode                string
+	VerificationURI         string
+	VerificationURIComplete string
+	Interval                float64
+	ExpiresIn               float64
 }
 
+// kimiTokenResponse is a token response whose fields parseKimiToken has validated.
 type kimiTokenResponse struct {
-	AccessToken  string  `json:"access_token"`
-	RefreshToken string  `json:"refresh_token"`
-	ExpiresIn    float64 `json:"expires_in"`
-	Error        string  `json:"error"`
-	Description  string  `json:"error_description"`
-	Interval     float64 `json:"interval"`
+	AccessToken  string
+	RefreshToken string
+	ExpiresIn    float64
+}
+
+// kimiBody is what upstream's readJson returns (kimi-coding.ts:49-55) with the text JSON.stringify gives it: an object or array the body parsed to, or absent (null) when the body is not JSON or not an object. Array bodies have no members. A leading byte order mark is ignored, as Response.json() does.
+type kimiBody struct {
+	members map[string]any
+	// text is JSON.stringify(json): the canonical form of the body, or "null".
+	text string
+}
+
+func readKimiJSON(raw []byte) kimiBody {
+	raw = []byte(fetchBodyText(raw))
+	if !json.Valid(raw) {
+		return kimiBody{text: "null"}
+	}
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	var parsed any
+	if err := decoder.Decode(&parsed); err != nil {
+		return kimiBody{text: "null"}
+	}
+	var members map[string]any
+	switch typed := parsed.(type) {
+	case map[string]any:
+		members = typed
+	case []any:
+	default:
+		return kimiBody{text: "null"}
+	}
+	canonical, err := jsonstringify.Canonicalize(raw)
+	if err != nil {
+		return kimiBody{members: members, text: "null"}
+	}
+	return kimiBody{members: members, text: string(canonical)}
+}
+
+func (body kimiBody) str(key string) (string, bool) {
+	value, ok := body.members[key].(string)
+	return value, ok
+}
+
+// num is a JSON number's JavaScript value: past the double range it is infinite, as JSON.parse reads it.
+func (body kimiBody) num(key string) (float64, bool) {
+	value, ok := body.members[key].(json.Number)
+	if !ok {
+		return 0, false
+	}
+	parsed, _ := strconv.ParseFloat(string(value), 64)
+	return parsed, true
+}
+
+// description is upstream's `: ${error_description}` when the member is a string, empty ones included.
+func (body kimiBody) description() string {
+	if value, ok := body.str("error_description"); ok {
+		return ": " + value
+	}
+	return ""
 }
 
 func newKimiOAuthProvider() kimiOAuthProvider {
@@ -57,7 +116,6 @@ func newKimiOAuthProvider() kimiOAuthProvider {
 	return kimiOAuthProvider{
 		client:    &http.Client{},
 		oauthHost: strings.TrimRight(host, "/"),
-		sleep:     abortableDeviceSleep,
 	}
 }
 
@@ -96,7 +154,11 @@ func (p kimiOAuthProvider) LoginContext(ctx context.Context, callbacks OAuthLogi
 	if expires <= 0 {
 		expires = kimiDeviceTimeoutSeconds
 	}
-	if err := p.sleep(ctx, time.Duration(interval*float64(time.Second))); err != nil {
+	loginSleep := p.sleep
+	if loginSleep == nil {
+		loginSleep = abortableDeviceSleep
+	}
+	if err := loginSleep(ctx, time.Duration(interval*float64(time.Second))); err != nil {
 		return OAuthCredentials{}, err
 	}
 	token, err := PollOAuthDeviceCodeFlow(ctx, DeviceCodePollOptions[kimiTokenResponse]{
@@ -117,41 +179,51 @@ func (p kimiOAuthProvider) RefreshToken(creds OAuthCredentials) (OAuthCredential
 	return p.RefreshTokenContext(context.Background(), creds)
 }
 
-// RefreshTokenContext refreshes tokens and backs off with the owning operation's cancellation.
-func (p kimiOAuthProvider) RefreshTokenContext(ctx context.Context, creds OAuthCredentials) (OAuthCredentials, error) {
-	if creds.Refresh == "" {
-		return OAuthCredentials{}, errors.New("Kimi Code token refresh requires a refresh token")
+// backoff waits between refresh attempts. A cancelled refresh fails with the cancellation cause, as upstream's sleep(delay, signal) rejects with signal.reason (kimi-coding.ts:218).
+func (p kimiOAuthProvider) backoff(ctx context.Context, delay time.Duration) error {
+	if p.sleep != nil {
+		return p.sleep(ctx, delay)
 	}
+	return Sleep(ctx, float64(delay)/float64(time.Millisecond))
+}
+
+// RefreshTokenContext refreshes tokens and backs off with the owning operation's cancellation (refreshToken, kimi-coding.ts:212-262).
+func (p kimiOAuthProvider) RefreshTokenContext(ctx context.Context, creds OAuthCredentials) (OAuthCredentials, error) {
 	var lastErr error
 	for attempt := 0; attempt <= kimiRefreshMaxRetries; attempt++ {
+		if attempt > 0 {
+			if err := p.backoff(ctx, time.Second*time.Duration(1<<(attempt-1))); err != nil {
+				return OAuthCredentials{}, err
+			}
+		}
 		if ctx.Err() != nil {
 			return OAuthCredentials{}, errors.New("Kimi Code token refresh aborted")
 		}
-		if attempt > 0 {
-			if err := p.sleep(ctx, time.Second*time.Duration(1<<(attempt-1))); err != nil {
-				return OAuthCredentials{}, errors.New("Kimi Code token refresh aborted")
-			}
-		}
-		response, status, err := p.tokenRequest(ctx, url.Values{
-			"client_id":     {kimiOAuthClientID},
-			"grant_type":    {"refresh_token"},
-			"refresh_token": {creds.Refresh},
+		raw, status, err := p.tokenRequest(ctx, formFields{
+			{"client_id", kimiOAuthClientID},
+			{"grant_type", "refresh_token"},
+			{"refresh_token", creds.Refresh},
 		})
 		if err != nil {
 			lastErr = err
 			continue
 		}
+		body := readKimiJSON(raw)
 		if status >= 200 && status < 300 {
-			return kimiCredentials(response)
+			token, err := parseKimiToken(body, "refresh")
+			if err != nil {
+				return OAuthCredentials{}, err
+			}
+			return kimiCredentials(token)
 		}
-		if status == http.StatusUnauthorized || status == http.StatusForbidden || response.Error == "invalid_grant" {
-			return OAuthCredentials{}, fmt.Errorf("Kimi Code token refresh unauthorized (status %d)%s", status, kimiDescription(response.Description))
+		if failure, _ := body.str("error"); status == http.StatusUnauthorized || status == http.StatusForbidden || failure == "invalid_grant" {
+			return OAuthCredentials{}, fmt.Errorf("Kimi Code token refresh unauthorized (status %d)%s", status, body.description())
 		}
 		if (status == http.StatusTooManyRequests || status >= 500) && attempt < kimiRefreshMaxRetries {
 			lastErr = fmt.Errorf("Kimi Code token refresh failed with status %d", status)
 			continue
 		}
-		return OAuthCredentials{}, fmt.Errorf("Kimi Code token refresh failed with status %d%s", status, kimiDescription(response.Description))
+		return OAuthCredentials{}, fmt.Errorf("Kimi Code token refresh failed with status %d: %s", status, body.text)
 	}
 	if lastErr != nil {
 		return OAuthCredentials{}, lastErr
@@ -165,7 +237,7 @@ func (p kimiOAuthProvider) startDeviceAuthorization(ctx context.Context) (kimiDe
 	}
 	requestCtx, cancel := context.WithTimeout(ctx, kimiRequestTimeout)
 	defer cancel()
-	req, err := http.NewRequestWithContext(requestCtx, http.MethodPost, p.oauthHost+"/api/oauth/device_authorization", strings.NewReader(url.Values{"client_id": {kimiOAuthClientID}}.Encode()))
+	req, err := http.NewRequestWithContext(requestCtx, http.MethodPost, p.oauthHost+"/api/oauth/device_authorization", strings.NewReader(formFields{{"client_id", kimiOAuthClientID}}.Encode()))
 	if err != nil {
 		return kimiDeviceAuthorization{}, err
 	}
@@ -176,109 +248,128 @@ func (p kimiOAuthProvider) startDeviceAuthorization(ctx context.Context) (kimiDe
 		return kimiDeviceAuthorization{}, err
 	}
 	defer func() { _ = resp.Body.Close() }()
+	// A body that fails to read is no body: upstream's response.text() falls back to "" and readJson to null.
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return kimiDeviceAuthorization{}, err
+		body = nil
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return kimiDeviceAuthorization{}, fmt.Errorf("Kimi Code device authorization failed with status %d%s", resp.StatusCode, kimiBodySuffix(body))
+		return kimiDeviceAuthorization{}, fmt.Errorf("Kimi Code device authorization failed with status %d%s", resp.StatusCode, oauthTextSuffix(body))
 	}
-	var device kimiDeviceAuthorization
-	if err := json.Unmarshal(body, &device); err != nil {
-		return kimiDeviceAuthorization{}, fmt.Errorf("invalid Kimi Code device authorization response: %w", err)
+	payload := readKimiJSON(body)
+	deviceCode, okDevice := payload.str("device_code")
+	userCode, okUser := payload.str("user_code")
+	verificationURI, okURI := payload.str("verification_uri")
+	verificationURIComplete, okComplete := payload.str("verification_uri_complete")
+	if !okDevice || !okUser || !okURI || !okComplete || !trustedHTTPURL(verificationURIComplete) || !trustedHTTPURL(verificationURI) {
+		return kimiDeviceAuthorization{}, fmt.Errorf("Invalid Kimi Code device authorization response: %s", payload.text)
 	}
-	if device.DeviceCode == "" || device.UserCode == "" || !trustedHTTPURL(device.VerificationURI) || !trustedHTTPURL(device.VerificationURIComplete) {
-		return kimiDeviceAuthorization{}, fmt.Errorf("invalid Kimi Code device authorization response: %s", body)
+	device := kimiDeviceAuthorization{DeviceCode: deviceCode, UserCode: userCode, VerificationURI: verificationURI, VerificationURIComplete: verificationURIComplete, Interval: kimiDefaultPollSeconds, ExpiresIn: kimiDeviceTimeoutSeconds}
+	if interval, ok := payload.num("interval"); ok && !math.IsInf(interval, 0) && interval > 0 {
+		device.Interval = interval
 	}
-	if device.Interval <= 0 {
-		device.Interval = kimiDefaultPollSeconds
-	}
-	if device.ExpiresIn <= 0 {
-		device.ExpiresIn = kimiDeviceTimeoutSeconds
+	if expiresIn, ok := payload.num("expires_in"); ok && !math.IsInf(expiresIn, 0) && expiresIn > 0 {
+		device.ExpiresIn = expiresIn
 	}
 	return device, nil
 }
 
 func (p kimiOAuthProvider) pollToken(ctx context.Context, deviceCode string) (DeviceCodePollResult[kimiTokenResponse], error) {
-	response, status, err := p.tokenRequest(ctx, url.Values{
-		"client_id":   {kimiOAuthClientID},
-		"device_code": {deviceCode},
-		"grant_type":  {"urn:ietf:params:oauth:grant-type:device_code"},
+	raw, status, err := p.tokenRequest(ctx, formFields{
+		{"client_id", kimiOAuthClientID},
+		{"device_code", deviceCode},
+		{"grant_type", "urn:ietf:params:oauth:grant-type:device_code"},
 	})
 	if err != nil {
 		return DeviceCodePollResult[kimiTokenResponse]{}, err
 	}
+	failed := func(message string) (DeviceCodePollResult[kimiTokenResponse], error) {
+		return DeviceCodePollResult[kimiTokenResponse]{Status: DevicePollFailed, Message: message}, nil
+	}
 	if status >= 500 {
-		return DeviceCodePollResult[kimiTokenResponse]{Status: DevicePollFailed, Message: fmt.Sprintf("Kimi Code device token request failed with status %d", status)}, nil
+		return failed(fmt.Sprintf("Kimi Code device token request failed with status %d%s", status, oauthTextSuffix(raw)))
 	}
-	if status >= 200 && status < 300 && response.AccessToken != "" {
-		if _, err := kimiCredentials(response); err != nil {
-			return DeviceCodePollResult[kimiTokenResponse]{Status: DevicePollFailed, Message: err.Error()}, nil
+	body := readKimiJSON(raw)
+	if _, isString := body.str("access_token"); status >= 200 && status < 300 && isString {
+		token, err := parseKimiToken(body, "poll")
+		if err != nil {
+			return failed(err.Error())
 		}
-		return DeviceCodePollResult[kimiTokenResponse]{Status: DevicePollComplete, Value: response}, nil
+		return DeviceCodePollResult[kimiTokenResponse]{Status: DevicePollComplete, Value: token}, nil
 	}
-	switch response.Error {
+	failure, failureIsString := body.str("error")
+	switch failure {
 	case "authorization_pending":
 		return DeviceCodePollResult[kimiTokenResponse]{Status: DevicePollPending}, nil
 	case "slow_down":
-		return DeviceCodePollResult[kimiTokenResponse]{Status: DevicePollSlowDown}, nil
+		result := DeviceCodePollResult[kimiTokenResponse]{Status: DevicePollSlowDown}
+		if interval, ok := body.num("interval"); ok && interval > 0 {
+			result.IntervalSeconds = &interval
+		}
+		return result, nil
 	case "expired_token":
-		return DeviceCodePollResult[kimiTokenResponse]{Status: DevicePollFailed, Message: "Kimi Code device authorization expired. Please restart login."}, nil
+		return failed("Kimi Code device authorization expired. Please restart login.")
 	case "access_denied":
-		return DeviceCodePollResult[kimiTokenResponse]{Status: DevicePollFailed, Message: "Kimi Code login was denied."}, nil
-	default:
-		return DeviceCodePollResult[kimiTokenResponse]{Status: DevicePollFailed, Message: fmt.Sprintf("Kimi Code device token request failed (status %d): %s%s", status, response.Error, kimiDescription(response.Description))}, nil
+		return failed("Kimi Code login was denied.")
 	}
+	detail := ""
+	if failureIsString {
+		detail = ": " + failure + body.description()
+	}
+	return failed(fmt.Sprintf("Kimi Code device token request failed (status %d)%s", status, detail))
 }
 
-func (p kimiOAuthProvider) tokenRequest(ctx context.Context, values url.Values) (kimiTokenResponse, int, error) {
+// parseKimiToken is parseTokenResponse (kimi-coding.ts:120-137): every field must be present and valid, or the response is reported with its JSON.
+func parseKimiToken(body kimiBody, operation string) (kimiTokenResponse, error) {
+	access, okAccess := body.str("access_token")
+	refresh, okRefresh := body.str("refresh_token")
+	expiresIn, okExpires := body.num("expires_in")
+	if !okAccess || access == "" || !okRefresh || refresh == "" || !okExpires || math.IsInf(expiresIn, 0) || !(expiresIn > 0) {
+		return kimiTokenResponse{}, fmt.Errorf("Kimi Code token %s response missing fields: %s", operation, body.text)
+	}
+	return kimiTokenResponse{AccessToken: access, RefreshToken: refresh, ExpiresIn: expiresIn}, nil
+}
+
+// tokenRequest posts one token request and returns the status and the raw response body.
+func (p kimiOAuthProvider) tokenRequest(ctx context.Context, values formFields) ([]byte, int, error) {
 	if ctx.Err() != nil {
-		return kimiTokenResponse{}, 0, ctx.Err()
+		return nil, 0, ctx.Err()
 	}
 	requestCtx, cancel := context.WithTimeout(ctx, kimiRequestTimeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(requestCtx, http.MethodPost, p.oauthHost+"/api/oauth/token", strings.NewReader(values.Encode()))
 	if err != nil {
-		return kimiTokenResponse{}, 0, err
+		return nil, 0, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 	resp, err := p.client.Do(req)
 	if err != nil {
-		return kimiTokenResponse{}, 0, err
+		return nil, 0, err
 	}
 	defer func() { _ = resp.Body.Close() }()
-	var token kimiTokenResponse
-	if err := json.NewDecoder(resp.Body).Decode(&token); err != nil {
-		return kimiTokenResponse{}, resp.StatusCode, err
+	// A body that fails to read is no body, as for startDeviceAuthorization: a truncated one is never parsed.
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		raw = nil
 	}
-	return token, resp.StatusCode, nil
+	return raw, resp.StatusCode, nil
 }
 
 func kimiCredentials(token kimiTokenResponse) (OAuthCredentials, error) {
-	if token.AccessToken == "" || token.RefreshToken == "" || token.ExpiresIn <= 0 {
+	if token.AccessToken == "" || token.RefreshToken == "" || !(token.ExpiresIn > 0) {
 		return OAuthCredentials{}, errors.New("Kimi Code token response missing fields")
 	}
-	creds := OAuthCredentials{Access: token.AccessToken, Refresh: token.RefreshToken}
-	creds.SetExpiresMillis(float64(nowMillis()) + token.ExpiresIn*1000)
+	creds := OAuthCredentials{Access: token.AccessToken, Refresh: token.RefreshToken, order: credentialKeyOrder{keys: accessFirstCredentialMembers}}
+	creds.SetExpiresMillis(float64(nowMillis()) + float64(token.ExpiresIn*1000))
 	return creds, nil
 }
 
+// trustedHTTPURL is `trustedHttpUrl(value) !== null` (kimi-coding.ts:59): the verification URI is opened in the user's browser, so only http(s) URLs.
 func trustedHTTPURL(value string) bool {
-	parsed, err := url.Parse(value)
-	return err == nil && parsed.Host != "" && (parsed.Scheme == "https" || parsed.Scheme == "http")
-}
-
-func kimiDescription(value string) string {
 	if value == "" {
-		return ""
+		return false
 	}
-	return ": " + value
-}
-
-func kimiBodySuffix(body []byte) string {
-	if len(body) == 0 {
-		return ""
-	}
-	return ": " + string(body)
+	_, ok := trustedURLHref(value, false)
+	return ok
 }

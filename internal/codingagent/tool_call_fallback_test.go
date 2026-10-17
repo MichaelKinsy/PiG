@@ -24,6 +24,7 @@ func newFallbackTestMode(definitions ...extension.ToolDefinition) *InteractiveMo
 		chatContainer: tui.NewContainer(),
 		tuiInst:       tui.NewWithOutput(io.Discard, 120, 30),
 		toolByID:      make(map[string]*tui.ToolExecutionComponent),
+		outputPad:     int(OutputPadOne), // the Settings default a production InteractiveMode takes from GetOutputPad
 		toolStarts:    make(map[string]time.Time),
 	}
 }

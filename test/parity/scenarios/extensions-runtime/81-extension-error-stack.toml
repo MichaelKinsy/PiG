@@ -1,0 +1,66 @@
+# Behavior family: extensions-runtime
+# Surface: InteractiveMode.showExtensionError's renderStack.
+#
+# Upstream (Pi 1.2.0 runner.ts:1551-1557, interactive-mode.ts:3048-3061): an
+# input handler that throws is reported with its stack, and the next handler
+# runs. showExtensionError shows the message in the error color and, below it,
+# the stack without its first line: each line trimmed, prefixed with two
+# spaces and dimmed, joined into one ThemedText. testdata/ext/error-stack.mjs
+# throws an Error whose stack is fixed, with a tab-indented frame, trailing
+# spaces and an empty line, then a second handler marks the input handled. The
+# crop starts at the message, after the extension path, which differs between
+# the hosts' snapshots; its length follows TMPDIR, so at 100 columns "error:"
+# may wrap away from the message. The crop ends at the last frame.
+#
+# Upstream evidence (Pi 1.2.0, parity harness, 2026-10-13, 100x32 tmux):
+#   pi --no-extensions -e ../../testdata/test-faux-provider.ts \
+#     -e testdata/ext/error-stack.mjs --model test-faux/faux-1
+#   keys: "stack-probe" Enter
+#   wait: "stack-probe-last-frame"
+#   crop: start="stack probe failed" end="stack-probe-last-frame"
+#   raw cropped upstream block (frames dimmed, the empty line a dimmed "  "):
+#     stack probe failed
+#        at firstFrame (probe.mjs:1:1)
+#        at secondFrame (probe.mjs:2:2)
+#
+#        stack-probe-last-frame
+#   PiG's crop was byte-identical; 3 of 3 declared pairs passed (rerun with
+#   this crop on the Linux lab host, TMPDIR /tmp/extra120-home.XXXX/tmp, where the
+#   extension path wraps "error:" onto its own line on both hosts).
+
+name = "81-extension-error-stack"
+description = "A failed input handler's stack renders dimmed, trimmed and indented below its error"
+covers = [
+  "packages/coding-agent/src/core/extensions/runner.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/error-stack.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/error-stack.mjs"]
+
+[tmux]
+width = 100
+height = 32
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "stack probe failed"
+capture_end = "stack-probe-last-frame"
+
+[[tmux.steps]]
+keys = ["stack-probe", "Enter"]
+wait_contains = ["stack-probe-last-frame"]
+wait_timeout_seconds = 20
+
+[assert]
+both_reach_ready = true
+both_contain = ["stack probe failed", "  at firstFrame (probe.mjs:1:1)", "  at secondFrame (probe.mjs:2:2)", "stack-probe-last-frame"]
+both_not_contain = ["panic:", "goroutine "]
+output_equal = true
+runs = 3

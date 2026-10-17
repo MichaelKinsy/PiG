@@ -26,7 +26,7 @@ func TestSessionCloseKeepsRuntimeOwnedRunnerActive(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = second.Close() }()
-	if err := second.BindExtensions(context.Background()); err != nil {
+	if err := second.BindExtensions(context.Background(), ExtensionBindings{}); err != nil {
 		t.Fatalf("second Session could not bind extensions: %v", err)
 	}
 	if _, err := second.Send(context.Background(), "after first close"); err != nil {

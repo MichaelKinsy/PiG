@@ -4,14 +4,99 @@ from __future__ import annotations
 import dataclasses
 import json
 import pathlib
+import struct
 import sys
 import threading
 import time
+import zlib
+
+# kit-kinds' image, a 1×1 PNG every SDK fixture embeds byte for byte.
+KIT_KINDS_PNG = "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c48900000010494441547801010500faff002a005fff026a01892888e8cd0000000049454e44ae426082"
 
 ROOT = pathlib.Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT / "extensions" / "sdk-py"))
 
 import pig_sdk  # noqa: E402
+from pig_sdk import kit  # noqa: E402
+
+
+def kit_probe_view() -> kit.View:
+    """The component kit's conformance view (D107,
+    docs/plan/extension-component-kit.md §10)."""
+    items = [kit.SelectItem(f"k{i}", f"Track {i}", f"Artist {i}") for i in range(5)]
+    return kit.View(
+        kit.Container([
+            kit.DynamicBorder("accent"),
+            kit.Text("Kit probe", 2, 0, bg="customMessageBg"),
+            kit.Markdown("- one\n- **two**", 1, 0),
+            kit.HStack(
+                [kit.StackEntry(kit.TruncatedText("left side", 0, 0), grow=1), kit.StackEntry(kit.TruncatedText("right", 0, 0), grow=1)],
+                gap=1,
+            ),
+            kit.Spacer(1),
+            kit.SelectList("kit-tracks", items, 3, selected_index=2),
+        ]),
+        focus="kit-tracks",
+        theme={"accent": "#d75f00"},
+    )
+
+
+class KitProbe:
+    """kit-probe's component: logs every input and view event and closes on
+    select with the log joined by ","."""
+
+    def __init__(self) -> None:
+        self.log: list[str] = []
+
+    def view(self, _width: int) -> kit.View:
+        return kit_probe_view()
+
+    def handle_input(self, data: str) -> pig_sdk.RemoteComponentResult:
+        self.log.append("input:" + data)
+        return pig_sdk.RemoteComponentResult()
+
+    def handle_view_event(self, event: kit.Event) -> pig_sdk.RemoteComponentResult:
+        self.log.append(f"{event.type}:{event.index}:{event.item.value if event.item else ''}")
+        if event.type == kit.SELECT:
+            return pig_sdk.RemoteComponentResult(done=True, value=",".join(self.log))
+        return pig_sdk.RemoteComponentResult()
+
+
+class MouseProbe:
+    """The extension mouse row's component: logs every mouse event it
+    receives, all of its fields, and closes on a click with the log joined by
+    ","."""
+
+    def __init__(self) -> None:
+        self.log: list[str] = []
+
+    def render(self, _width: int) -> list[str]:
+        return ["mouse probe", "row 1", "row 2", "row 3"]
+
+    def handle_input(self, _data: str) -> pig_sdk.RemoteComponentResult:
+        return pig_sdk.RemoteComponentResult()
+
+    def handle_mouse(self, event: pig_sdk.MouseEvent) -> pig_sdk.RemoteComponentResult:
+        mods = "".join(name for on, name in ((event.shift, "S"), (event.alt, "A"), (event.ctrl, "C")) if on)
+        self.log.append(
+            f"{event.type}/{event.button}/{event.x},{event.y}/{event.screen_x},{event.screen_y}/"
+            f"{event.width}x{event.height}/w{event.wheel_delta}/c{event.click_count}/{mods}"
+        )
+        if event.type == "click":
+            return pig_sdk.RemoteComponentResult(done=True, value=",".join(self.log))
+        return pig_sdk.RemoteComponentResult()
+
+
+def kit_image_png(n: int) -> bytes:
+    """Image n of kit-images: a 1×1 RGBA PNG whose pixel encodes n, so each n
+    has its own bytes and ref."""
+
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+
+    pixel = bytes([0, n & 0xFF, (n >> 8) & 0xFF, 0x5F, 0xFF])
+    header = struct.pack(">IIBBBBB", 1, 1, 8, 6, 0, 0, 0)
+    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header) + chunk(b"IDAT", zlib.compress(pixel)) + chunk(b"IEND", b"")
 
 
 class FocusedList:
@@ -82,6 +167,35 @@ class TimerFocused:
         self.disposed = True
 
 
+class ConformanceBashOperations:
+    """The BashOperations every SDK fixture returns for the user_bash command "operations" (TestConformance_UserBashOperationsRunInTheExtension)."""
+
+    def exec(self, command: str, cwd: str, options: pig_sdk.BashExecOptions) -> int | None:
+        if command == "echo":
+            options.on_data(f"cmd:{command}\n".encode())
+            options.on_data(f"cwd:{cwd}\n".encode())
+            if options.env is not None and not options.env:
+                options.on_data(b"env-empty\n")
+            for name in sorted(options.env or {}):
+                options.on_data(f"env:{name}={options.env[name]}\n".encode())
+            if options.timeout is not None:
+                options.on_data(f"timeout:{options.timeout:g}\n".encode())
+            return 3
+        if command == "chunks":
+            for chunk in (b"a", b"b", b"c"):
+                options.on_data(chunk)
+            return None
+        if command == "binary":
+            options.on_data(bytes([0xFF, 0x00, 0x80]))
+            return 0
+        if command == "wait":
+            options.on_data(b"waiting")
+            options.signal.wait()
+            options.on_data(b"stopped")
+            raise RuntimeError("aborted")
+        raise RuntimeError(f"exec failed: {command}")
+
+
 def conformance_login_definition() -> pig_sdk.LoginDefinition:
     return pig_sdk.LoginDefinition(
         brand=["A" * 41 for _ in range(5)],
@@ -105,6 +219,11 @@ def conformance_sprite_definition() -> pig_sdk.SpriteDefinition:
 
 
 def new_extension() -> pig_sdk.Extension:
+    # factory_agent_dir is get_agent_dir() while the factory runs, where Pi's extensions call it (TestConformance_HostConfigurationAgreesAcrossSDKs).
+    try:
+        factory_agent_dir = pig_sdk.get_agent_dir()
+    except pig_sdk.HostInfoUnavailable as error:
+        factory_agent_dir = "error: %s" % error
     prompt_lock = threading.Lock()
     prompt_sequence = 0
 
@@ -125,6 +244,168 @@ def new_extension() -> pig_sdk.Extension:
         ext.tool("schema-invalid", "Must not register", None, lambda ctx, args: {"content": "bad"})
     except ValueError as error:
         schema_rejected = str(error) == 'Tool "schema-invalid" registered by extension "python-sdk-fixture" must define an object parameter schema.'
+    class ConformanceEditor(pig_sdk.EditorComponent):
+        """Swallows "q", rewrites "a" to "A", upper-cases the host's setText, and frames super.render."""
+
+        def handle_input(self, data):
+            if data == "q":
+                return
+            if data == "L":
+                super().set_text("raw:lines=" + "|".join(self.base.get_lines()))
+                return
+            super().handle_input("A" if data == "a" else data)
+
+        def set_text(self, text):
+            super().set_text(text if text.startswith("raw:") else text.upper())
+
+        def render(self, width):
+            return ["[custom editor]"] + super().render(width)
+
+    class EmbeddingEditor(ConformanceEditor):
+        embed_working_status = True
+
+    def eager_editor(ctx, _args):
+        def factory(base):
+            try:
+                base.set_text("eager")
+                ctx.notify("eager:" + base.get_text(), "info")
+            except Exception as exc:  # noqa: BLE001
+                ctx.notify("eager-error:" + str(exc), "info")
+            return ConformanceEditor(base)
+
+        ctx.set_editor_component(factory)
+
+    ext.command("editor-install-eager", "Install a custom editor that calls super in its factory", eager_editor)
+    ext.command("editor-install-embed", "Install a custom editor that embeds the working status", lambda ctx, _args: ctx.set_editor_component(EmbeddingEditor))
+    ext.command("editor-install", "Install a custom editor component", lambda ctx, _args: ctx.set_editor_component(ConformanceEditor))
+
+    def editor_get_probe(ctx, _args):
+        got = ctx.get_editor_component()
+        state = "absent" if got is None else ("installed" if got is ConformanceEditor else "other")
+        ctx.notify("editor_get:%s:end" % state, "info")
+
+    ext.command("editor-get-probe", "Report the factory get_editor_component returns", editor_get_probe)
+    # truncate_probe runs one SDK truncation helper on the JSON case in its argument and reports the result in Pi's shape (TestConformance_TruncationHelpersAgreeAcrossSDKs).
+    def truncate_probe(ctx, args):
+        case = json.loads(args)
+        fn = case["fn"]
+        if fn in ("head", "tail"):
+            run = pig_sdk.truncate_head if fn == "head" else pig_sdk.truncate_tail
+            r = run(case["content"], max_lines=case.get("maxLines"), max_bytes=case.get("maxBytes"))
+            result = {"content": r.content, "truncated": r.truncated, "truncatedBy": r.truncated_by, "totalLines": r.total_lines, "totalBytes": r.total_bytes,
+                      "outputLines": r.output_lines, "outputBytes": r.output_bytes, "lastLinePartial": r.last_line_partial,
+                      "firstLineExceedsLimit": r.first_line_exceeds_limit, "maxLines": r.max_lines, "maxBytes": r.max_bytes}
+        elif fn == "line":
+            text, was = pig_sdk.truncate_line(case["content"], case.get("maxChars", pig_sdk.GREP_MAX_LINE_LENGTH))
+            result = {"text": text, "wasTruncated": was}
+        else:
+            result = {"text": pig_sdk.format_size(case["bytes"])}
+        ctx.notify("truncate:" + json.dumps(result) + ":end", "info")
+
+    ext.command("truncate_probe", "Run a truncation helper on a JSON case and report the result", truncate_probe)
+    # message_probe reads the event payload in its JSON argument with the SDK's message_role and message_text helpers (TestConformance_MessageHelpersAgreeAcrossSDKs).
+    def message_probe(ctx, args):
+        data = json.loads(args)
+        ctx.notify("message:" + json.dumps({"role": pig_sdk.message_role(data), "text": pig_sdk.message_text(data)}) + ":end", "info")
+
+    ext.command("message_probe", "Report message_role and message_text of a JSON event payload", message_probe)
+    # file_queue_probe runs the tasks in its JSON argument concurrently through the SDK's file mutation queue and reports the start/end log and the tasks that failed (TestConformance_FileMutationQueueAgreesAcrossSDKs).
+    # Tasks are ordered by waiting on each other's progress, never by sleeping through a race: waitStarted/waitCalled delay the call into the queue, holdEnded/holdCalled keep a task inside it.
+    # After a "called" signal a fixed settle time lets a task that wrongly skipped the queue show itself.
+    def file_queue_probe(ctx, args):
+        import threading
+        import time
+
+        case = json.loads(args)
+        lock = threading.Lock()
+        log, failed, progress = [], [], set()
+
+        def mark(kind, task_id):
+            with lock:
+                progress.add((kind, task_id))
+
+        def await_stage(kind, ids, who):
+            for other in ids:
+                deadline = time.monotonic() + 20
+                while True:
+                    with lock:
+                        if (kind, other) in progress:
+                            break
+                    if time.monotonic() > deadline:
+                        with lock:
+                            log.append("timeout:%d:%s:%d" % (who, kind, other))
+                        return
+                    time.sleep(0.001)
+
+        def settle(ids):
+            if ids:
+                time.sleep(case["settleMs"] / 1000)
+
+        def run(task):
+            tid = task["id"]
+            await_stage("started", task.get("waitStarted", []), tid)
+            await_stage("called", task.get("waitCalled", []), tid)
+            settle(task.get("waitCalled", []))
+            mark("called", tid)
+
+            def body():
+                with lock:
+                    log.append("start:%d" % tid)
+                mark("started", tid)
+                await_stage("ended", task.get("holdEnded", []), tid)
+                await_stage("called", task.get("holdCalled", []), tid)
+                settle(task.get("holdCalled", []))
+                with lock:
+                    log.append("end:%d" % tid)
+                mark("ended", tid)
+                if task.get("fail"):
+                    raise RuntimeError("task failed")
+
+            try:
+                pig_sdk.with_file_mutation_queue(task["path"], body)
+            except Exception:
+                mark("ended", tid)
+                with lock:
+                    failed.append(tid)
+
+        threads = [threading.Thread(target=run, args=(task,)) for task in case["tasks"]]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        ctx.notify("file_queue:" + json.dumps({"log": log, "errors": sorted(failed)}) + ":end", "info")
+
+    ext.command("file_queue_probe", "Run tasks through the file mutation queue and report the log", file_queue_probe)
+    # host_info_probe reports Pi's getAgentDir(), CONFIG_DIR_NAME and VERSION as this SDK answers them (TestConformance_HostConfigurationAgreesAcrossSDKs).
+    ext.command(
+        "host_info_probe",
+        "Report getAgentDir, CONFIG_DIR_NAME and VERSION",
+        lambda ctx, _args: ctx.notify(
+            "host_info:" + json.dumps({"agentDir": pig_sdk.get_agent_dir(), "configDirName": pig_sdk.get_config_dir_name(), "version": pig_sdk.get_version(), "factoryAgentDir": factory_agent_dir}) + ":end", "info"
+        ),
+    )
+    # ui_forward_probe calls the UI members whose host effect a conformance row records (TestConformance_UIForwardingAgreesAcrossSDKs).
+    def ui_forward_probe(ctx, _args):
+        ctx.set_working_message("Thinking hard")
+        ctx.set_working_message("")
+        ctx.set_working_message(None)
+        ctx.set_hidden_thinking_label("Pondering")
+        ctx.set_hidden_thinking_label("")
+        ctx.set_hidden_thinking_label(None)
+        ctx.set_working_visible(False)
+        ctx.set_working_indicator({"frames": ["-", "+"], "intervalMs": 120})
+        ctx.paste_to_editor("pasted \U0001F600")
+        ctx.set_editor_text("draft")
+        ctx.set_tools_expanded(True)
+
+    ext.command("ui_forward_probe", "Call the working, paste, editor-text and tools-expanded UI members", ui_forward_probe)
+    # tool_call_guard_probe reports which tool names isToolCallEventType accepts for each tool_call event it receives (TestConformance_ToolCallGuardAgreesAcrossSDKs).
+    def tool_call_guard_probe(ctx, args):
+        names = ["bash", "read", "probe", "other"]
+        ext.on_event("tool_call", lambda hctx, data: hctx.notify("tool_call_guard:%s:end" % ",".join(n for n in names if pig_sdk.is_tool_call_event_type(n, data)), "info"))
+
+    ext.command("tool_call_guard_probe", "Report the tool names the tool_call guard accepts", tool_call_guard_probe)
+    ext.command("editor-clear", "Restore the host's editor", lambda ctx, _args: ctx.set_editor_component(None))
     ext.command("schema-probe", "Report schema rejection", lambda ctx, _args: ctx.notify("schema-rejected:" + str(schema_rejected).lower(), "info"))
     for name, kind, value in [("flag-true", "boolean", True), ("flag-false", "boolean", False), ("flag-string", "string", "default"), ("flag-empty", "string", ""), ("flag-unset", "string", None)]:
         ext.flag(name, flag_type=kind, default=value)
@@ -168,7 +449,166 @@ def new_extension() -> pig_sdk.Extension:
             except RuntimeError as error:
                 ctx.notify(f"rejected:{error}", "info")
 
+    def language_probe(ctx, args):
+        ctx.notify("language:%s:end" % json.dumps({"lang": pig_sdk.get_language_from_path(json.loads(args)["path"])}, separators=(",", ":")), "info")
+
+    ext.command("language_probe", "Report the highlight language of a path", language_probe)
+    def key_lists(value, out=None):
+        out = [] if out is None else out
+        if isinstance(value, list):
+            for element in value:
+                key_lists(element, out)
+        elif isinstance(value, dict):
+            out.append(",".join(value.keys()))
+            for element in value.values():
+                key_lists(element, out)
+        return out
+
+    def helper_report(fn, text, call=None):
+        try:
+            if fn == "date":
+                ms = (call or pig_sdk.parse_date)(text)
+                return {"ms": ms}
+            if fn == "strip":
+                return {"body": (call or pig_sdk.parse_frontmatter)(text).body}
+            parsed = (call or pig_sdk.parse_frontmatter)(text)
+            return {"frontmatter": parsed.frontmatter, "body": parsed.body, "keys": key_lists(parsed.frontmatter)}
+        except Exception:
+            return {"error": True}
+
+    # The helpers run here, while the factory runs, before the connection to the host is ready.
+    factory_helpers = {"frontmatter": helper_report("frontmatter", "---\nz: 1\n10: a\n2: b\nnested:\n  y: 1\n  3: x\n  \"q r\": [1, 2]\n---\nbody text\n"), "error": helper_report("frontmatter", "---\na: [\n---\nx"), "date": helper_report("date", "2020-01-02T03:04:05.678Z")}
+
+    def helper_probe(ctx, args):
+        c = json.loads(args)
+        call = ctx.parse_date if c["fn"] == "date" else ctx.parse_frontmatter
+        ctx.notify("helper:%s:end" % json.dumps(helper_report(c["fn"], c["input"], call), separators=(",", ":")), "info")
+
+    ext.command("helper_probe", "Run parseFrontmatter, stripFrontmatter or Date.parse on its argument", helper_probe)
+
+    def helper_factory_probe(ctx, args):
+        ctx.notify("helper-factory:%s:end" % json.dumps(factory_helpers, separators=(",", ":")), "info")
+
+    ext.command("helper_factory_probe", "Report the helpers' results from the factory", helper_factory_probe)
+    def convert_probe(ctx, args):
+        c = json.loads(args)
+        if c["fn"] == "convert":
+            result = pig_sdk.convert_to_llm(c["messages"])
+        else:
+            i = c["image"]
+            result = pig_sdk.format_dimension_note(pig_sdk.ResizedImage(i["originalWidth"], i["originalHeight"], i["width"], i["height"], i["wasResized"]))
+        ctx.notify("convert:%s:end" % json.dumps({"result": result}, separators=(",", ":")), "info")
+
+    ext.command("convert_probe", "Run convertToLlm or formatDimensionNote on a JSON case and report the result", convert_probe)
+    def serialize_probe(ctx, args):
+        c = json.loads(args)
+        try:
+            out = {"result": pig_sdk.serialize_conversation(c["messages"])}
+        except TypeError:
+            out = {"error": True}
+        ctx.notify("serialize:%s:end" % json.dumps(out, separators=(",", ":")), "info")
+
+    ext.command("serialize_probe", "Run serializeConversation on JSON messages and report the text", serialize_probe)
+    class _EntrySession:
+        def __init__(self, entries):
+            self.by_id = {e["id"]: e for e in entries}
+
+        def get_entry(self, entry_id):
+            return self.by_id.get(entry_id)
+
+        def get_branch(self, from_id=None):
+            path, cur = [], self.by_id.get(from_id)
+            while cur:
+                path.insert(0, cur)
+                cur = self.by_id.get(cur["parentId"]) if cur.get("parentId") else None
+            return path
+
+    def _json_nan(value):
+        if isinstance(value, float) and value != value:
+            return None
+        if isinstance(value, list):
+            return [_json_nan(v) for v in value]
+        if isinstance(value, dict):
+            return {k: _json_nan(v) for k, v in value.items()}
+        return value
+
+    def branch_probe(ctx, args):
+        c = json.loads(args)
+        try:
+            if c["fn"] == "prepare":
+                r = pig_sdk.prepare_branch_entries(c["entries"], c["budget"])
+                out = {"messages": r.messages, "fileOps": {"read": r.file_ops.read, "written": r.file_ops.written, "edited": r.file_ops.edited}, "totalTokens": r.total_tokens}
+            else:
+                r = pig_sdk.collect_entries_for_branch_summary(_EntrySession(c["entries"]), c["old"], c["target"])
+                out = {"entries": r.entries, "commonAncestorId": r.common_ancestor_id}
+        except TypeError:
+            out = {"error": True}
+        ctx.notify("branch:%s:end" % json.dumps(_json_nan(out), separators=(",", ":")), "info")
+
+    ext.command("branch_probe", "Run a branch summarization helper on a JSON case and report the result", branch_probe)
+    def compact_usage_probe(ctx, args):
+        c = json.loads(args)
+        fn = c["fn"]
+        if fn == "calc":
+            result = {"tokens": pig_sdk.calculate_context_tokens(c["usage"])}
+        elif fn == "should":
+            s = c["settings"]
+            result = {"result": pig_sdk.should_compact(c["tokens"], c["window"], pig_sdk.CompactionSettings(s["enabled"], s["reserveTokens"], s["keepRecentTokens"]))}
+        elif fn == "last":
+            usage = pig_sdk.get_last_assistant_usage(c["entries"])
+            result = {"usage": None if usage is None else {key: 0 if usage.get(key) is None else usage[key] for key in ("input", "output", "cacheRead", "cacheWrite", "totalTokens")}}
+        elif fn == "cut":
+            cut = pig_sdk.find_cut_point(c["entries"], c["start"], c["end"], c["keep"])
+            result = {"firstKeptEntryIndex": cut.first_kept_entry_index, "turnStartIndex": cut.turn_start_index, "isSplitTurn": cut.is_split_turn}
+        elif fn == "turn":
+            result = {"index": pig_sdk.find_turn_start_index(c["entries"], c["index"], c["start"])}
+        elif fn == "estimate":
+            result = {"tokens": pig_sdk.estimate_tokens(c["message"])}
+        else:
+            d = pig_sdk.DEFAULT_COMPACTION_SETTINGS
+            result = {"enabled": d.enabled, "reserveTokens": d.reserve_tokens, "keepRecentTokens": d.keep_recent_tokens}
+        ctx.notify("compact:%s:end" % json.dumps(result, separators=(",", ":")), "info")
+
+    ext.command("compact_usage_probe", "Run a compaction usage helper on a JSON case and report the result", compact_usage_probe)
+    def skills_probe(ctx, args):
+        c = json.loads(args)
+        fn = c["fn"]
+        if fn == "latest":
+            result = {"entry": pig_sdk.get_latest_compaction_entry(c["entries"])}
+        elif fn == "parse":
+            block = pig_sdk.parse_skill_block(c["text"])
+            result = {"block": None if block is None else {"name": block.name, "location": block.location, "content": block.content, "userMessage": block.user_message}}
+        elif fn == "format":
+            tool = c.get("tool")
+            result = {"text": pig_sdk.format_skills_for_prompt(c["skills"]) if tool is None else pig_sdk.format_skills_for_prompt(c["skills"], tool)}
+        else:
+            result = {"version": pig_sdk.CURRENT_SESSION_VERSION, "virtual": pig_sdk.VIRTUAL_MODEL_STATE_ENTRY}
+        ctx.notify("skills:%s:end" % json.dumps(result, separators=(",", ":"), ensure_ascii=False), "info")
+
+    ext.command("skills_probe", "Run a session or skill helper on a JSON case and report the result", skills_probe)
     ext.command("exec-reject-probe", "Report exec outcomes", exec_reject_probe)
+    ext.command("thinking-model", "Read the thinking level and switch the model", lambda ctx, _args: (ctx.set_thinking_level("high"), ctx.notify(json.dumps([ctx.get_thinking_level(), ctx.set_model("probe/model")[0]], separators=(",", ":")), "info"))[-1])
+    ext.command("active_tools_set", "Set the active tools to the comma-separated names", lambda ctx, args: ctx.set_active_tools(args.strip().split(",")))
+    def session_actions_unbound(ctx, _args):
+        parts = []
+        for name, call in (("new", lambda: ctx.new_session()), ("fork", lambda: ctx.fork("entry")), ("navigate", lambda: ctx.navigate_tree("entry")), ("switch", lambda: ctx.switch_session("/s.jsonl"))):
+            try:
+                parts.append("%s=%s" % (name, str(call()["cancelled"]).lower()))
+            except Exception as error:
+                parts.append("%s=error:%s" % (name, error))
+        try:
+            ctx.reload()
+            parts.append("reload=ok")
+        except Exception as error:
+            parts.append("reload=error:%s" % error)
+        ctx.notify("unbound:" + ",".join(parts), "info")
+
+    ext.command("session_actions_unbound", "Report what unbound session actions answer", session_actions_unbound)
+    ext.command("active_tools_get", "Report the active tools", lambda ctx, _args: ctx.notify("active_tools:%s" % ",".join(ctx.get_active_tools()), "info"))
+    # provider_probe_register and provider_probe_unregister register and unregister a plain provider after the extension connected.
+    ext.command("provider_probe_register", "Register a provider with one model", lambda ctx, _args: ext.register_provider("conformance-probe", json.loads(r'''{"baseUrl":"https://probe.invalid/v1","api":"openai-completions","apiKey":"probe-key","models":[{"id":"probe-model","name":"Probe Model","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000,"maxTokens":100}]}''')))
+    ext.command("provider_probe_unregister", "Unregister the provider", lambda ctx, _args: ext.unregister_provider("conformance-probe"))
+    ext.command("commands-probe", "Read the host's slash commands", lambda ctx, _args: ctx.notify(json.dumps([[c["name"], c["source"], c.get("description", "")] for c in ctx.get_commands() if c["name"] == "conformance-listed"], separators=(",", ":")), "info"))
     ext.command("session-identity", "Read context identity accessors", lambda ctx, _args: ctx.notify(json.dumps([ctx.get_session_id(), ctx.get_session_file(), ctx.get_leaf_id(), ctx.get_session_name()]), "info"))
     ext.command("registry-session", "Read registry and session facades", registry_session)
     ext.message_renderer(
@@ -178,16 +618,35 @@ def new_extension() -> pig_sdk.Extension:
             % (message.get("content", ""), str(bool(options.get("expanded"))).lower(), width)
         ],
     )
-    ext.markdown_transformer(
-        lambda markdown, context: "md:%s:%s:streaming=%s:width=%d"
-        % (markdown, context.get("messageType", ""), str(bool(context.get("isStreaming"))).lower(), int(context.get("availableWidth") or 0))
-    )
+    ext.message_view_renderer("kit-message", lambda _ctx, _message, _options, _width: kit_probe_view())
+    ext.entry_view_renderer("kit-entry", lambda _ctx, _entry, _options, _width: kit_probe_view())
+    def transform_markdown(markdown, context):
+        # "trace:<dir>:<name>" records the body's entry in <dir>/trace; the body named "first" returns only once <dir>/release exists. newline="" keeps "\n" from becoming CRLF on Windows.
+        if markdown.startswith("trace:"):
+            # The name is the last field: a Windows <dir> contains a drive colon.
+            directory, name = markdown[len("trace:"):].rsplit(":", 1)
+            with open(directory + "/trace", "a", newline="") as trace:
+                trace.write("entered %s\n" % name)
+            while name == "first" and not pathlib.Path(directory + "/release").exists():
+                time.sleep(0.01)
+            if name == "first":
+                with open(directory + "/trace", "a", newline="") as trace:
+                    trace.write("returned first\n")
+        return "md:%s:%s:streaming=%s:width=%d" % (markdown, context.get("messageType", ""), str(bool(context.get("isStreaming"))).lower(), int(context.get("availableWidth") or 0))
+
+    ext.markdown_transformer(transform_markdown)
     def resolved_line(prefix: str, tool: str):
         return lambda _ctx, args, _render, _width: ["%s:%s:%s" % (prefix, tool, args.get("q"))]
 
     def tool_renderer(tool: str, next_renderers):
         if tool == "conformance_tool_renderer":
             return pig_sdk.ToolRenderers(render_call=resolved_line("resolved", tool))
+        if tool == "kit_resolved_tool":
+            # The resolver draws a call and its result as the kit probe (D107).
+            renderers = pig_sdk.ToolRenderers()
+            renderers.call_view = lambda _ctx, _args, _render, _width: kit_probe_view()
+            renderers.result_view = lambda _ctx, _result, _options, _render, _width: kit_probe_view()
+            return renderers
         if tool == "conformance_no_renderer":
             return None
         if tool == "conformance_fill":
@@ -217,6 +676,18 @@ def new_extension() -> pig_sdk.Extension:
     def echo(ctx: pig_sdk.Context, params: dict) -> dict:
         return {"content": "echo: " + str(params.get("text", ""))}
 
+    def throw_probe(ctx: pig_sdk.Context, params: dict) -> dict:
+        kind = params.get("kind")
+        if kind == "unicode":
+            raise RuntimeError("é😀 \n x")
+        if kind == "empty":
+            raise RuntimeError("")
+        if kind == "long":
+            raise RuntimeError("x" * 100000)
+        return {"content": "ok"}
+
+    ext.tool("throw_probe", "Throw a value of the requested kind", {"type": "object", "properties": {"kind": {"type": "string"}}}, throw_probe)
+
     def tool_error(ctx: pig_sdk.Context, params: dict) -> dict:
         raise RuntimeError("tool exploded")
 
@@ -232,8 +703,8 @@ def new_extension() -> pig_sdk.Extension:
 
     def render_probe_result(_ctx, result, options, render, width):
         return [
-            "toolrender:result:%s:%s:expanded=%s:calls=%s:width=%d"
-            % (result["content"][0]["text"], result["details"]["k"], str(bool(options.get("expanded"))).lower(), render.state.get("calls"), width)
+            "toolrender:result:%s:%s:expanded=%s:calls=%s:width=%d:duration=%s"
+            % (result["content"][0]["text"], result["details"]["k"], str(bool(options.get("expanded"))).lower(), render.state.get("calls"), width, "none" if render.duration_ms is None else render.duration_ms)
         ]
 
     ext.tool_renderers("render_probe", render_call=render_probe_call, render_result=render_probe_result, render_shell="self")
@@ -259,10 +730,20 @@ def new_extension() -> pig_sdk.Extension:
         abort_observed[0] = True
         return {"content": "aborted"}
 
+    # hang_tool ignores its abort signal for longer than the host's abort grace period (D111).
+    def hang_tool(ctx, _params):
+        ctx.on_update({"content": [{"type": "text", "text": "waiting"}]})
+        time.sleep(8)
+        return {"content": "late"}
+
+    ext.tool("big_out", "Return text of the size in the argument", {"type": "object", "properties": {}}, lambda ctx, params: {"content": [{"type": "text", "text": "a" * int(params["n"])}]})
+    ext.tool("echo_params", "Return the arguments as the result details", {"type": "object", "properties": {}}, lambda ctx, params: {"content": [{"type": "text", "text": "echoed"}], "details": params})
+    ext.tool("nan_out", "Return details holding NaN and Infinity", {"type": "object", "properties": {}}, lambda ctx, params: {"content": [{"type": "text", "text": "nan"}], "details": {"n": float("nan"), "i": float("-inf"), "l": [float("nan"), 2, {"d": float("inf")}], "ok": 1}})
     ext.tool("update_tool", "Stream two partial results", {"type": "object", "properties": {}}, update_tool)
     ext.tool("ordered_details", "Return details whose members are not in alphabetical order", {"type": "object", "properties": {}}, ordered_details)
     ext.tool("ordered_result", "Return a result whose members are not in the declared order", {"type": "object", "properties": {}}, ordered_result)
     ext.tool("abort_tool", "Wait for the abort signal", {"type": "object", "properties": {}}, abort_tool)
+    ext.tool("hang_tool", "Ignore the abort signal", {"type": "object", "properties": {}}, hang_tool)
     ext.command(
         "abort_probe",
         "Report whether abort_tool saw its abort signal",
@@ -406,6 +887,117 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("model-stream-probe", "Exercise model streaming", model_stream_probe)
 
+    def model_stream_callback_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        model = {"provider": "conformance", "id": "declared", "modelId": "declared", "api": "openai-responses"}
+        request = {"systemPrompt": "callbacks", "messages": [{"role": "user", "content": "hello", "timestamp": 1}]}
+        seen: dict[str, Any] = {}
+
+        def on_payload(payload: Any, callback_model: dict[str, Any]) -> Any:
+            seen["payload"] = payload
+            seen["model"] = callback_model.get("id")
+            return {**payload, "mark": "on-payload"}
+
+        def on_response(response: dict[str, Any], _callback_model: dict[str, Any]) -> None:
+            seen["response"] = response
+
+        def transform_headers(headers: dict[str, Any], _callback_model: dict[str, Any]) -> dict[str, Any]:
+            return {**headers, "x-transformed": "yes"}
+
+        stream = ctx.model_registry.stream(model, request, {"onPayload": on_payload, "onResponse": on_response, "transformHeaders": transform_headers})
+        if stream.result()["stopReason"] != "stop":
+            raise RuntimeError("callback stream did not stop")
+        if (seen.get("payload") or {}).get("original") is not True or seen.get("model") != "declared":
+            raise RuntimeError(f"onPayload saw {seen}")
+        response = seen.get("response") or {}
+        if response.get("status") != 201 or (response.get("headers") or {}).get("x-upstream") != "seen":
+            raise RuntimeError(f"onResponse saw {response}")
+        if ctx.model_registry.stream(model, request, {}).result()["stopReason"] != "stop":
+            raise RuntimeError("plain stream did not stop")
+        ctx.notify("model-callbacks=ok", "info")
+
+    class HandleProbeComponent:
+        def render(self, width: int) -> list[str]:
+            return ["overlay"]
+
+        def handle_input(self, data: str) -> pig_sdk.RemoteComponentResult:
+            return pig_sdk.RemoteComponentResult(done=data == "q", value="closed" if data == "q" else None)
+
+    def overlay_handle_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        failures: list[str] = []
+
+        def expect(label: str, actual: Any, expected: Any) -> None:
+            if actual != expected:
+                failures.append(f"{label}: {actual!r} != {expected!r}")
+
+        def on_handle(handle: pig_sdk.OverlayHandle) -> None:
+            expect("initial focused", handle.is_focused(), True)
+            expect("initial hidden", handle.is_hidden(), False)
+            expect("initial bounds", handle.get_bounds(), {"row": 3, "col": 4, "width": 20, "height": 5})
+            handle.focus()
+            expect("focus", handle.is_focused(), True)
+            handle.set_hidden(True)
+            expect("hidden", [handle.is_hidden(), handle.is_focused(), handle.get_bounds()], [True, False, None])
+            handle.set_hidden(False)
+            expect("shown", [handle.is_hidden(), handle.is_focused()], [False, False])
+            handle.focus()
+            expect("refocus", handle.is_focused(), True)
+            handle.unfocus()
+            expect("unfocus", handle.is_focused(), False)
+            handle.unfocus(None)
+
+        ctx.custom(HandleProbeComponent(), {"overlay": True, "onHandle": on_handle})
+        if failures:
+            raise RuntimeError("; ".join(failures))
+        ctx.notify("overlay-handle=ok", "info")
+
+    ext.command("overlay-handle-probe", "Exercise the overlay handle ui.custom hands to on_handle", overlay_handle_probe)
+
+    class FocusProbeComponent:
+        def __init__(self) -> None:
+            self.handle: pig_sdk.OverlayHandle | None = None
+
+        def render(self, width: int) -> list[str]:
+            return [f"focused={'pending' if self.handle is None else str(self.handle.is_focused()).lower()}"]
+
+        def handle_input(self, data: str) -> pig_sdk.RemoteComponentResult:
+            return pig_sdk.RemoteComponentResult(done=data == "q", value="closed" if data == "q" else None)
+
+    def overlay_focus_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        component = FocusProbeComponent()
+
+        def on_handle(handle: pig_sdk.OverlayHandle) -> None:
+            component.handle = handle
+
+        ctx.custom(component, {"overlay": True, "onHandle": on_handle})
+        ctx.notify("overlay-focus=ok", "info")
+
+    ext.command("overlay-focus-probe", "Render the focus the host publishes to a mounted overlay", overlay_focus_probe)
+
+    def model_stream_fetch_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        model = {"provider": "conformance", "id": "declared", "modelId": "declared", "api": "openai-responses"}
+        request = {"systemPrompt": "fetch", "messages": [{"role": "user", "content": "hello", "timestamp": 1}]}
+        seen: dict[str, Any] = {}
+
+        def fetch(call: dict[str, Any]) -> dict[str, Any]:
+            seen["url"] = call["url"]
+            seen["method"] = call["method"]
+            seen["host"] = (call["headers"].get("X-Host") or [None])[0]
+            seen["body"] = call["body"].decode()
+            return {"status": 207, "statusText": "Answered", "headers": {"x-sdk-fetch": "answered"}, "body": bytes(index % 251 for index in range(70000))}
+
+        stream = ctx.model_registry.stream(model, request, {"fetch": fetch})
+        if stream.result()["stopReason"] != "stop":
+            raise RuntimeError("fetch stream did not stop")
+        if seen != {"url": "https://fetch.invalid/v1/chat?x=1", "method": "POST", "host": "1", "body": "ping-body"}:
+            raise RuntimeError(f"fetch saw {seen}")
+        if ctx.model_registry.stream(model, request, {}).result()["stopReason"] != "stop":
+            raise RuntimeError("plain stream did not stop")
+        ctx.notify("model-fetch=ok", "info")
+
+    ext.command("model-stream-fetch-probe", "Exercise the fetch option of model_registry.stream", model_stream_fetch_probe)
+
+    ext.command("model-stream-callback-probe", "Exercise the provider request callbacks of model_registry.stream", model_stream_callback_probe)
+
     def command_error(ctx: pig_sdk.Context, args: str) -> None:
         raise RuntimeError("command exploded")
 
@@ -427,6 +1019,19 @@ def new_extension() -> pig_sdk.Extension:
             ctx.set_status("burst", str(i))
 
     ext.command("status_burst", "Set one status repeatedly without awaiting", status_burst)
+    event_probe_off: list = []
+
+    def event_probe_subscribe(ctx, args):
+        event_probe_off.append(
+            ext.on_event("turn_end", lambda hctx, data: hctx.notify("event_probe:%s" % data.get("messageEntryId", ""), "info"))
+        )
+
+    def event_probe_unsubscribe(ctx, args):
+        while event_probe_off:
+            event_probe_off.pop()()
+
+    ext.command("event_probe_subscribe", "Subscribe to turn_end after connecting", event_probe_subscribe)
+    ext.command("event_probe_unsubscribe", "Remove the turn_end handler registered after connecting", event_probe_unsubscribe)
     ext.command(
         "report_geometry",
         "Report observed terminal geometry",
@@ -449,6 +1054,7 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("surface_footer", "Install a footer renderer", lambda ctx, args: ctx.set_footer_renderer(lambda width: [f"footer@{width}"]))
     ext.command("surface_header", "Install a header renderer", lambda ctx, args: ctx.set_header_renderer(lambda width: [f"header@{width}"]))
     ext.command("surface_static_footer", "Push static footer rows", lambda ctx, args: ctx.set_footer([f"static@{ctx.width}"]))
+    ext.command("surface_static_header", "Push static header rows", lambda ctx, args: ctx.set_header([f"static@{ctx.width}"]))
     ext.command("surface_widget", "Set a string list widget wider than the pane", lambda ctx, args: ctx.set_widget("wide", ["A" * 60 + " tail", "short"]))
 
     term_unsub: list = []
@@ -478,8 +1084,115 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("send_message_default", "Send a custom message with default options", lambda ctx, args: ctx.send_message("notice", "default"))
     ext.command("send_message_no_turn", "Send a custom message that never starts a turn", lambda ctx, args: ctx.send_message("notice", "no-turn", trigger_turn=False))
     ext.command("send_user_message", "Send a user message", lambda ctx, args: ctx.send_user_message(json.loads(args) if args else "hello-user", "followUp"))
+    ext.command("settings_probe", "Report the effective settings", lambda ctx, args: ctx.notify("settings_probe:" + json.dumps(ctx.get_settings(), separators=(",", ":")), "info"))
+
+    def model_set(ctx, args):
+        ok, _error = ctx.set_model(args.strip())
+        ctx.notify("model_set:%s" % str(ok).lower(), "info")
+
+    ext.command("model_set", "Switch the model", model_set)
+    ext.command("thinking_set", "Set the thinking level", lambda ctx, args: ctx.set_thinking_level(args.strip()))
+    ext.command("thinking_get", "Report the thinking level", lambda ctx, args: ctx.notify("thinking_get:%s" % ctx.get_thinking_level(), "info"))
     ext.command("set_session_name", "Set the session name", lambda ctx, args: ctx.set_session_name("conformance-session"))
+
+    def host_state_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        commands = ["|".join([c["name"], c.get("description", ""), c["source"], c["sourceInfo"]["path"], c["sourceInfo"]["scope"]]) for c in ctx.get_commands()]
+        ctx.notify(f"getThinkingLevel={ctx.get_thinking_level()};getCommands={','.join(commands)}", "info")
+
+    ext.command("host_state_probe", "Report the thinking level and the session commands", host_state_probe)
+
+    def set_model(ctx: pig_sdk.Context, args: str) -> None:
+        ok, error = ctx.set_model(args)
+        if error:
+            raise RuntimeError(error)
+        ctx.notify(f"setModel={'true' if ok else 'false'}", "info")
+
+    ext.command("set_model", "Switch to the model in the arguments", set_model)
     ext.command("append_entry", "Append a custom entry", lambda ctx, args: ctx.append_entry("conformance-entry", "hello-entry"))
+
+    def event_field_probe(ctx, args):
+        name, field = args.split()
+        ext.on_event(name, lambda hctx, data: hctx.notify("event_field:%s.%s=%s" % (name, field, json.dumps(data[field], separators=(",", ":")) if field in data else "absent"), "info"))
+
+    ext.command("event_field_probe", "Report a field of the events named by the argument `<event> <field>`", event_field_probe)
+    event_probe_on_offs: dict = {}
+
+    event_probe_results: dict = {}
+
+    def event_probe_result(ctx, args):
+        name, _, raw = args.strip().partition(" ")
+        event_probe_results.setdefault(name, []).append(json.loads(raw))
+
+    def event_probe_on(ctx, args):
+        name = args.strip()
+
+        def probe(hctx, data):
+            hctx.notify("event_probe_on:%s" % name, "info")
+            hctx.notify("event_payload:%s:%s" % (name, json.dumps(data)), "info")
+            # The event as the host sent it, for the tests that compare a payload field with the Go reference's.
+            hctx.notify("event_probe_data:%s:%s" % (name, json.dumps(data, separators=(",", ":"))), "info")
+            # mcp_servers_change carries every registered server (types.ts:699-709): report their names, which only the host's registry knows.
+            if isinstance(data, dict) and isinstance(data.get("servers"), list):
+                hctx.notify("event_probe_servers:%s" % ",".join(str(s.get("name")) for s in data["servers"]), "info")
+            queued = event_probe_results.get(name)
+            return queued.pop(0) if queued else None
+
+        off = ext.on_event(name, probe)
+        event_probe_on_offs.setdefault(name, []).append(off)
+
+    def event_probe_on_off(ctx, args):
+        for off in event_probe_on_offs.pop(args.strip(), []):
+            off()
+
+    ext.command("event_probe_result", "Queue the JSON result the next event_probe_on handler call of an event returns", event_probe_result)
+    ext.command("event_probe_on", "Subscribe to the event named by the argument", event_probe_on)
+
+    def event_result_probe(ctx, args):
+        # Subscribe to the event named first with a handler that returns the JSON that follows: the result an SDK extension gives the host.
+        name, _, raw = args.strip().partition(" ")
+        result = json.loads(raw)
+        ext.on_event(name, lambda hctx, data: result)
+
+    ext.command("event_result_probe", "Subscribe to an event with a handler that returns the given JSON", event_result_probe)
+    ext.command("event_probe_off", "Unsubscribe the event_probe_on handlers of the event named by the argument", event_probe_on_off)
+    def event_payload_probe(ctx, args):
+        name = args.strip()
+        ext.on_event(name, lambda hctx, data: hctx.notify("event_payload:%s:%s" % (name, json.dumps(data)), "info"))
+
+    ext.command("event_payload_probe", "Subscribe and report the payload of the event named by the argument", event_payload_probe)
+    def event_isolation_probe(ctx, args):
+        # Two handlers: the first reports the nested marker it received, writes a sentinel into it and changes it again from a timer thread after returning; the
+        # second reports what it received (TestConformance_EventHandlersDoNotShareTheirPayload).
+        name = args.strip()
+
+        def source(data):
+            entries = (data.get("context") or {}).get("contextEntries") or []
+            return entries[0]["sourceEntry"] if entries else None
+
+        def first(hctx, data):
+            container = source(data)
+            hctx.notify("event_isolation:A:%s:end" % container["id"], "info")
+            container["id"] = "SENTINEL-HANDLER-A"
+            threading.Timer(0.1, lambda: container.__setitem__("id", "SENTINEL-LATE-WRITER")).start()
+
+        ext.on_event(name, first)
+        ext.on_event(name, lambda hctx, data: hctx.notify("event_isolation:B:%s:end" % source(data)["id"], "info"))
+
+    ext.command("event_isolation_probe", "Subscribe two handlers that report the nested marker they received and then write sentinels into it", event_isolation_probe)
+
+    def tool_result_guards_probe(ctx, args):
+        guards = {"bash": pig_sdk.is_bash_tool_result, "powershell": pig_sdk.is_powershell_tool_result, "read": pig_sdk.is_read_tool_result, "edit": pig_sdk.is_edit_tool_result, "write": pig_sdk.is_write_tool_result, "grep": pig_sdk.is_grep_tool_result, "find": pig_sdk.is_find_tool_result, "ls": pig_sdk.is_ls_tool_result}
+        ext.on_event("tool_result", lambda hctx, data: hctx.notify("tool_result_guards:%s:end" % ",".join(sorted(name for name, guard in guards.items() if guard(data))), "info"))
+
+    ext.command("tool_result_guards_probe", "Report the tool_result guards that accept each tool_result event", tool_result_guards_probe)
+    ext.command("set_label", "Set an entry label", lambda ctx, args: ctx.set_label("label-entry", "conformance-label"))
+    # label_probe labels the entry named first with the rest of the arguments: an entry the host's Session holds.
+    def label_probe(ctx, args):
+        parts = args.strip().split(" ", 1)
+        ctx.set_label(parts[0], parts[1] if len(parts) > 1 else "")
+
+    ext.command("label_probe", "Label the entry named first", label_probe)
+    ext.shortcut("ctrl+alt+y", "Conformance shortcut", lambda ctx: None)
 
     def ui_availability(ctx: pig_sdk.Context, args: str) -> None:
         selected, _ = ctx.select("Pick", ["first", "second"])
@@ -570,6 +1283,16 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("signal-poll", "Poll ctx.signal until it is live or none", signal_poll)
     ext.command("signal-probe", "Report ctx.signal", signal_probe)
+    # Upstream ctx.cwd, ctx.mode, ctx.hasUI and ctx.model throw the stale message after invalidation (runner.ts:571-600).
+    # The members are read before the report, and a failed report is ignored, so only the local members can fail the command: the Host also rejects the stale ui.notify call with the same message.
+    def stale_probe(ctx: pig_sdk.Context, args: str) -> None:
+        report = "stale:%s|%s|%s|%s" % (ctx.cwd, ctx.mode, str(ctx.has_ui()).lower(), ctx.model)
+        try:
+            ctx.notify(report, "info")
+        except Exception:
+            pass
+
+    ext.command("stale-probe", "Report cwd, mode, hasUI and model", stale_probe)
     ext.command("signal-wait", "Wait for ctx.signal to abort", signal_wait)
     ext.command("usage-probe", "Report context usage", lambda ctx, args: ctx.notify(json.dumps(ctx.get_context_usage()), "info"))
 
@@ -665,6 +1388,146 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("focused-probe", "Exercise focused subprocess UI", focused_probe)
 
+    def kit_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        result = ctx.custom(KitProbe(), {"title": "Kit"})
+        ctx.notify(f"kit={'' if result is None else result}", "info")
+
+    ext.command("kit-probe", "Exercise the component kit (D107)", kit_probe)
+
+    # mouse-probe opens the mouse row's component: the host hands it
+    # fullscreen mouse events, and it closes on a click with what it got.
+    def mouse_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        result = ctx.custom(MouseProbe(), {"overlay": True})
+        ctx.notify(f"mouse={'' if result is None else result}", "info")
+
+    ext.command("mouse-probe", "Exercise extension mouse input", mouse_probe)
+
+    # kit-surfaces shows the kit probe's tree on every other view surface
+    # (D107, spec §10): a pushed widget, the header, the footer and a tool
+    # result. The message renderer "kit-message" draws it too.
+    def kit_surfaces(ctx: pig_sdk.Context, _args: str) -> None:
+        ctx.set_widget("kit-probe", kit_probe_view())
+        ctx.set_header_view(kit_probe_view())
+        ctx.set_footer_view(kit_probe_view())
+        ctx.register_tool(pig_sdk.ToolDefinition(
+            name="kit_view_tool",
+            label="kit_view_tool",
+            description="Render its result as the kit probe",
+            parameters={"type": "object"},
+            execute=lambda _ctx, _params: "kit",
+            result_view=lambda _ctx, _result, _options, _render, _width: kit_probe_view(),
+        ))
+
+    ext.command("kit-surfaces", "Show the kit probe on every view surface (D107)", kit_surfaces)
+
+    # kit-images drives the image transport (D107, spec §7): step "a<k>"
+    # shows image 0 and step "b<n>" image n (1 ≤ n ≤ 64), each with its step
+    # as the text, as one ui.setWidget call on the "kit-img" widget.
+    def kit_images(ctx: pig_sdk.Context, args: str) -> None:
+        n = int(args[1:]) if args[1:].isdecimal() else 0
+        if args[:1] == "a" and n >= 1:
+            image = 0
+        elif args[:1] == "b" and 1 <= n <= 64:
+            image = n
+        else:
+            raise ValueError(f"kit-images: unknown step {args!r}")
+        view = kit.View(kit.Container([kit.Image(kit_image_png(image), "image/png"), kit.Text(args, 0, 0)]))
+        ctx.set_widget("kit-img", view, {})
+
+    ext.command("kit-images", "Exercise the component kit's image transport (D107)", kit_images)
+
+    # kit-kinds sets the "kit-kinds" widget to the kinds kit-probe does not
+    # draw (D107, spec §10): a box, a settings list, a loader, an image and a
+    # lines node whose list annotation goes out only while a frontend draws.
+    def kit_kinds(ctx: pig_sdk.Context, _args: str) -> None:
+        settings = kit.SettingsList("kit-settings", [
+            kit.SettingItem("theme", "Theme", "dark", description="Color theme", values=["dark", "light"]),
+            kit.SettingItem("wrap", "Wrap", "on", description="Wrap lines", values=["on", "off"]),
+        ], 3)
+        loader = kit.Loader("Working", spinner_color="accent", message_color="muted", indicator=kit.LoaderIndicator(frames=["*"]))
+        lines = kit.Lines(
+            ["track one", "track two"],
+            list=kit.List([kit.ListItem("track one", "A"), kit.ListItem("track two", "B")], selected=1),
+        )
+        stack = kit.VStack([
+            kit.Box(1, 0, bg="customMessageBg", children=[kit.Text("boxed", 0, 0)]),
+            settings,
+            loader,
+            kit.Image(bytes.fromhex(KIT_KINDS_PNG), "image/png"),
+            lines,
+        ], gap=1)
+        ctx.set_widget("kit-kinds", kit.View(stack, theme={"accent": "#d75f00"}), {})
+
+    ext.command("kit-kinds", "Show every other component kit kind (D107)", kit_kinds)
+
+    # kit-conversation sets the "kit-conversation" widget to every
+    # conversation kind (D107, spec §2.1, §10); "next" updates the nodes
+    # with an id as a Pi author updates kept components.
+    def kit_conversation(ctx: pig_sdk.Context, args: str) -> None:
+        nxt = args == "next"
+        user = kit.UserMessage("Fix **the** kit build\n\n- one\n- two")
+        streaming = kit.AssistantMessage(id="kit-a1")
+        reply = "Done. **Bold** reply\n\n1. a\n2. b"
+        if nxt:
+            reply += "\n\nThen more kit."
+        streaming.update_content(kit.Message([kit.thinking_block("Reading the *kit* file"), kit.text_block(reply)]), not nxt)
+        failed = kit.AssistantMessage(kit.Message([kit.thinking_block("secret"), kit.text_block("Visible kit")], stop_reason="error", error_message="kit-boom-7"))
+        failed.set_hide_thinking_block(True)
+        failed.set_hidden_thinking_label("Pondering kit...")
+        failed.set_output_pad(0)
+
+        def card(id: str, name: str, call_id: str, card_args: dict[str, Any], **options: Any) -> kit.ToolExecution:  # noqa: A002
+            tool = kit.ToolExecution(name, call_id, card_args, "/work/kit", id=id, **options)
+            tool.set_args_complete()
+            tool.mark_execution_started()
+            return tool
+
+        ls = card("kit-t1", "ls", "call-1", {"path": "src"})
+        ls.update_result(kit.ToolResult([kit.text_content("a.go\nb.go")]), False)
+        grep = card("kit-t2", "grep", "call-2", {"pattern": "TODO"})
+        if nxt:
+            grep.update_result(kit.ToolResult([kit.text_content("x.go:1: TODO kit\ny.go:2: TODO kit")]), False)
+        else:
+            grep.update_result(kit.ToolResult([kit.text_content("x.go:1: TODO kit")]), True)
+        read = card("", "read", "call-3", {"path": "missing.txt"})
+        read.update_result(kit.ToolResult([kit.text_content("ENOENT: kit")], is_error=True), False)
+        read.set_expanded(True)
+        custom = card("", "kit_tool", "call-4", {"q": "x"}, tool_definition=kit.TOOL_DEFINITION_EMPTY)
+        custom.update_result(kit.ToolResult([kit.text_content("answer 42")]), False)
+        exited = kit.BashExecution("ls -la", id="kit-b1")
+        exited.append_output("a.txt\n")
+        exited.append_output("b.txt")
+        exited.set_complete(2)
+        exited.set_expanded(nxt)
+        seq = kit.BashExecution("seq 25", True)
+        seq.append_output("\n".join(str(i + 1) for i in range(25)))
+        seq.set_complete(0)
+        diff = kit.Diff(" 1 keep\n-2 old kit line\n+2 new kit line\n 3 tail", file_path="kit.go")
+        root = kit.Container([user, streaming, failed, ls, grep, read, custom, exited, seq, diff])
+        ctx.set_widget("kit-conversation", kit.View(root), {})
+
+    ext.command("kit-conversation", "Show Pi's conversation components (D107)", kit_conversation)
+
+    # kit-output-pad sets the "kit-output-pad" widget to a bash tool card and
+    # a bash command with Pi 1.1.0's outputPad 3 and a final result's
+    # durationMs 1234 (F7); "next" calls setOutputPad(2) on both and gives
+    # the result durationMs 61500.
+    def kit_output_pad(ctx: pig_sdk.Context, args: str) -> None:
+        nxt = args == "next"
+        tool = kit.ToolExecution("bash", "call-p1", {"command": "echo kit"}, "/work/kit", output_pad=3, id="kit-p1")
+        tool.set_args_complete()
+        tool.mark_execution_started()
+        tool.update_result(kit.ToolResult([kit.text_content("kit out")], duration_ms=61500 if nxt else 1234), False)
+        command = kit.BashExecution("echo pad", output_pad=3, id="kit-p2")
+        command.append_output("padded")
+        command.set_complete(0)
+        if nxt:
+            tool.set_output_pad(2)
+            command.set_output_pad(2)
+        ctx.set_widget("kit-output-pad", kit.View(kit.Container([tool, command])), {})
+
+    ext.command("kit-output-pad", "Show Pi's outputPad and durationMs (D107)", kit_output_pad)
+
     def timer_focused_probe(ctx: pig_sdk.Context, args: str) -> None:
         component = TimerFocused()
         frame = ctx.custom(component, {"title": "Timer"})
@@ -675,6 +1538,26 @@ def new_extension() -> pig_sdk.Extension:
         )
 
     ext.command("timer-focused-probe", "Exercise timer-driven focused UI", timer_focused_probe)
+
+    class OverlayWidthProbe:
+        def __init__(self) -> None:
+            self.width = 0
+
+        def render(self, width: int) -> list[str]:
+            self.width = width
+            return [f"overlay width={width}"]
+
+        def handle_input(self, data: str) -> pig_sdk.RemoteComponentResult:
+            if data == "\r":
+                return pig_sdk.RemoteComponentResult(done=True, value=self.width)
+            return pig_sdk.RemoteComponentResult()
+
+    def overlay_width_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        default_width = ctx.custom(OverlayWidthProbe(), {"overlay": True})
+        percent_width = ctx.custom(OverlayWidthProbe(), {"overlay": True, "overlayOptions": {"width": "50%"}})
+        ctx.notify(f"overlay-width default={default_width} percent={percent_width}", "info")
+
+    ext.command("overlay-width-probe", "Report the width overlay components render at", overlay_width_probe)
 
     def project_trust_error(_ctx: pig_sdk.Context, _data: dict[str, object]) -> dict[str, object]:
         raise RuntimeError("trust-boom")
@@ -747,6 +1630,8 @@ def new_extension() -> pig_sdk.Extension:
             result["exitCode"] = "invalid"
         elif command == "null-operations":
             value["operations"] = None
+        elif command == "operations":
+            return {"operations": ConformanceBashOperations()}
         elif command != "valid":
             return None
         return value
@@ -788,6 +1673,17 @@ def new_extension() -> pig_sdk.Extension:
         return None
 
     def tool_result(ctx: pig_sdk.Context, data: dict[str, Any]) -> dict[str, Any] | None:
+        guards = (
+            ("bash", pig_sdk.is_bash_tool_result),
+            ("powershell", pig_sdk.is_powershell_tool_result),
+            ("read", pig_sdk.is_read_tool_result),
+            ("edit", pig_sdk.is_edit_tool_result),
+            ("write", pig_sdk.is_write_tool_result),
+            ("grep", pig_sdk.is_grep_tool_result),
+            ("find", pig_sdk.is_find_tool_result),
+            ("ls", pig_sdk.is_ls_tool_result),
+        )
+        ctx.notify("tool-result-guards=" + ",".join(name for name, is_result in guards if is_result(data)), "info")
         name = data.get("toolName")
         if name not in ("powershell", "bash"):
             return None
@@ -806,7 +1702,7 @@ def new_extension() -> pig_sdk.Extension:
     ext.on_event("tool_execution_end", tool_execution_end)
     ext.on_project_trust(project_trust_error)
     ext.on_project_trust(lambda _ctx, _data: {"trusted": "undecided"})
-    ext.on_project_trust(lambda _ctx, _data: {"trusted": "yes", "remember": True})
+    ext.on_project_trust(lambda _ctx, data: {"trusted": "undecided"} if data.get("cwd") == "/probe" else {"trusted": "yes", "remember": True})
     def cache_warming_decision(_ctx: pig_sdk.Context, data: dict[str, Any]) -> dict[str, Any]:
         if data.get("warmCost") != 0.05 or data.get("missCost") != 0.5 or data.get("continuationProbability") != 0.15 or data.get("action") != "warm":
             raise ValueError("unexpected cache decision")

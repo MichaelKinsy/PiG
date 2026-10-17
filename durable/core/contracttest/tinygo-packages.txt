@@ -1,0 +1,6 @@
+# Core packages whose unit tests also run under TinyGo (gate stage 5), one path relative to durable/core per line.
+# A lane adds its package once its tests compile under TinyGo; tests that need encoding/json or reflection stay Go-only
+# behind a //go:build !tinygo constraint.
+abi
+history
+contracttest

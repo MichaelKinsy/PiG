@@ -1,0 +1,132 @@
+[
+ {
+  "ids": [
+   "pkg:mcp/oauth#startAuthorization"
+  ],
+  "targets": [
+   "mcp/oauth/flow.go#StartAuthorization"
+  ],
+  "production": [
+   "call:mcp/oauth/flow.go#runFlow"
+  ],
+  "evidence": [
+   "test:mcp/oauth/oauth_test.go#TestStartAuthorizationKeepsUpstreamParameterOrder"
+  ],
+  "rationale": "oauth/flow.ts startAuthorization(authorizationServerUrl, options {metadata?, clientInformation, redirectUrl, scope?, state?, resource?}): Go StartAuthorization(string, StartAuthorizationOptions) with the same six fields, returning the URL, the PKCE verifier and an error (the Promise tuple and rejection).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:mcp/oauth#registerClient"
+  ],
+  "targets": [
+   "mcp/oauth/flow.go#RegisterClient"
+  ],
+  "production": [
+   "call:mcp/oauth/flow.go#runFlow"
+  ],
+  "evidence": [
+   "test:mcp/oauth/oauth_test.go#TestMCPOAuthRegistersWithAnApplicationTypeDerivedFromTheRedirectURIsUnlessOneIsSet"
+  ],
+  "rationale": "oauth/flow.ts registerClient(authorizationServerUrl, {metadata?, clientMetadata, scope?, fetch?}): Go RegisterClient(ctx, string, RegisterClientOptions) with the same four fields.",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:mcp/oauth#exchangeAuthorizationCode"
+  ],
+  "targets": [
+   "mcp/oauth/flow.go#ExchangeAuthorizationCode"
+  ],
+  "production": [
+   "call:mcp/oauth/flow.go#runFlow"
+  ],
+  "evidence": [
+   "test:mcp/oauth/oauth_test.go#TestMCPOAuthExchangesACodeOnlyWhenItsIssParameterNamesTheAuthorizationServer"
+  ],
+  "rationale": "oauth/flow.ts exchangeAuthorizationCode(url, TokenRequestOptions & {code, codeVerifier, redirectUrl}): Go ExchangeAuthorizationCodeOptions embeds TokenRequestOptions and adds Code, CodeVerifier, RedirectURL.",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:mcp/oauth#refreshAuthorization"
+  ],
+  "targets": [
+   "mcp/oauth/flow.go#RefreshAuthorization"
+  ],
+  "production": [
+   "call:mcp/oauth/flow.go#runFlow"
+  ],
+  "evidence": [
+   "test:mcp/oauth/oauth_test.go#TestRefreshAuthorizationKeepsTheOldRefreshTokenWhenTheServerDoesNotRotateIt"
+  ],
+  "rationale": "oauth/flow.ts refreshAuthorization(url, TokenRequestOptions & {refreshToken}): Go RefreshAuthorizationOptions embeds TokenRequestOptions and adds RefreshToken.",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:mcp/oauth#stepUpScope"
+  ],
+  "targets": [
+   "mcp/oauth/flow.go#StepUpScope"
+  ],
+  "production": [
+   "call:mcp/oauth/flow.go#oauthAdapter.OnUnauthorized"
+  ],
+  "evidence": [
+   "test:mcp/oauth/upstream_oracle_test.go#TestStepUpScopeMatchesPi"
+  ],
+  "rationale": "oauth/flow.ts stepUpScope(granted?, challenged?) returns string | undefined; Go StepUpScope(string, string) string with the empty string for undefined. The oracle compares every recorded Pi result."
+ },
+ {
+  "ids": [
+   "pkg:mcp/oauth#authorizeMcp"
+  ],
+  "targets": [
+   "mcp/oauth/flow.go#AuthorizeMcp"
+  ],
+  "production": [
+   "call:mcp/oauth/flow.go#oauthAdapter.OnUnauthorized"
+  ],
+  "evidence": [
+   "test:mcp/oauth/absent_test.go#TestAuthorizeMcpChecksAPresentEmptyIssAndSkipsAnEmptyAdvertisedScope",
+   "test:mcp/oauth/oauth_test.go#TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401"
+  ],
+  "rationale": "oauth/flow.ts authorizeMcp(provider, options): Go AuthorizeMcp(ctx, OAuthClientProvider, OAuthFlowOptions) returning the OAuthFlowResult string and an error; the 401 test drives discovery, registration, PKCE authorization and refresh.",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
+ },
+ {
+  "ids": [
+   "pkg:mcp/oauth#parseWwwAuthenticate"
+  ],
+  "targets": [
+   "mcp/oauth/discovery.go#ParseWWWAuthenticate"
+  ],
+  "production": [
+   "call:mcp/oauth/flow.go#oauthAdapter.OnUnauthorized"
+  ],
+  "evidence": [
+   "test:mcp/oauth/upstream_oracle_test.go#TestParseWWWAuthenticateMatchesPi"
+  ],
+  "rationale": "oauth/discovery.ts parseWwwAuthenticate(header: string | null) returns OAuthChallenge; Go ParseWWWAuthenticate(string) OAuthChallenge with the empty string for null. The oracle compares every recorded Pi result."
+ },
+ {
+  "ids": [
+   "pkg:mcp/oauth#TokenRequestOptions"
+  ],
+  "targets": [
+   "mcp/oauth/flow.go#TokenRequestOptions"
+  ],
+  "struct": {
+   "file": "mcp/oauth/flow.go",
+   "type": "TokenRequestOptions"
+  },
+  "production": [
+   "call:mcp/oauth/flow.go#RefreshAuthorization"
+  ],
+  "evidence": [
+   "test:mcp/oauth/oauth_test.go#TestRefreshAuthorizationKeepsTheOldRefreshTokenWhenTheServerDoesNotRotateIt"
+  ],
+  "rationale": "oauth/flow.ts TokenRequestOptions {metadata?, clientInformation, resource?, addClientAuthentication?, fetch?}: Go TokenRequestOptions with the same five fields."
+ }
+]

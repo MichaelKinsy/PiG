@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -20,11 +22,7 @@ func TestRadiusModelsJSONComposition(t *testing.T) {
 	}}}`, nil)
 	config, _ := ai.GetRadiusCredentialConfig(&ai.Credential{GatewayConfig: json.RawMessage(radiusTestConfigJSON("https://catalog.example/v1"))})
 	models := ai.GetRadiusModelsFromConfig("radius-dev", config)
-	raw, err := json.Marshal(models[0])
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := store.Write(t.Context(), "radius-dev", ai.ModelsStoreEntry{Models: []json.RawMessage{raw}}); err != nil {
+	if err := store.Write(t.Context(), "radius-dev", ai.ModelsStoreEntry{Models: []ai.AnyModel{models[0]}}); err != nil {
 		t.Fatal(err)
 	}
 	registry.RefreshCatalogs(t.Context(), CatalogRefreshOptions{})
@@ -84,7 +82,7 @@ func TestRadiusCompositionPreservesCatalogURLUnlessPlainOverride(t *testing.T) {
 		}
 		config += `}}}`
 		registry, _, store := radiusTestRegistry(t, config, nil)
-		if err := store.Write(t.Context(), "radius", ai.ModelsStoreEntry{Models: []json.RawMessage{json.RawMessage(`{"id":"balanced","name":"Cached","provider":"radius","api":"pi-messages","baseUrl":"https://catalog.example/v1","input":["text"],"cost":{"input":1},"contextWindow":1000,"maxTokens":50}`)}}); err != nil {
+		if err := store.Write(t.Context(), "radius", ai.ModelsStoreEntry{Models: mustStoredModels([]json.RawMessage{json.RawMessage(`{"id":"balanced","name":"Cached","provider":"radius","api":"pi-messages","baseUrl":"https://catalog.example/v1","input":["text"],"cost":{"input":1},"contextWindow":1000,"maxTokens":50}`)})}); err != nil {
 			t.Fatal(err)
 		}
 		registry.RefreshCatalogs(t.Context(), CatalogRefreshOptions{})
@@ -127,5 +125,51 @@ func TestRadiusConfiguredCredentialPrecedence(t *testing.T) {
 				t.Fatal("missing configured variable fell through to unrelated environment key")
 			}
 		})
+	}
+}
+
+// radius-config.ts:61-68 getRadiusModelsFromConfig spreads each gateway model, so a model's samplingParamsByThinkingLevel (types.ts:1133)
+// travels from the stored Radius catalog to the composed catalog entry that simple-options.ts:30 reads per effective thinking level.
+func TestRadiusCatalogEntryCarriesSamplingParamsByThinkingLevel(t *testing.T) {
+	t.Setenv("RADIUS_API_KEY", "")
+	registry, _, store := radiusTestRegistry(t, `{"providers":{"radius-dev":{"oauth":"radius","baseUrl":"https://configured.example/v1","apiKey":"configured-key"}}}`, nil)
+	document := `{"baseUrl":"https://catalog.example/v1","models":[{"id":"auto","name":"Radius Auto","reasoning":true,"input":["text"],"cost":{"input":1,"output":2,"cacheRead":0,"cacheWrite":0},"contextWindow":1000,"maxTokens":100,"samplingParamsByThinkingLevel":{"high":{"temperature":0.2}}}]}`
+	config, _ := ai.GetRadiusCredentialConfig(&ai.Credential{GatewayConfig: json.RawMessage(document)})
+	if err := store.Write(t.Context(), "radius-dev", ai.ModelsStoreEntry{Models: []ai.AnyModel{ai.GetRadiusModelsFromConfig("radius-dev", config)[0]}}); err != nil {
+		t.Fatal(err)
+	}
+	registry.RefreshCatalogs(t.Context(), CatalogRefreshOptions{})
+	entry, ok := registry.Resolve("radius-dev", "auto")
+	want := ai.SamplingParamsByThinkingLevel{"high": {"temperature": 0.2}}
+	if !ok || !reflect.DeepEqual(entry.SamplingParamsByThinkingLevel, want) {
+		t.Fatalf("entry = %+v, %t; want samplingParamsByThinkingLevel %#v", entry.SamplingParamsByThinkingLevel, ok, want)
+	}
+}
+
+// provider-composer.ts modelFromJson:216-221 with an "oauth" provider: the catalog's models are the defaults, so a models.json model with no api is
+// rejected only while the catalog has no model to take the api from. getError() reports `Provider "<id>": <error>` and the provider keeps its catalog
+// models without the configuration.
+func TestRadiusModelsJSONModelWithoutAnAPIIsRejectedUntilTheCatalogProvidesOne(t *testing.T) {
+	t.Setenv("RADIUS_API_KEY", "")
+	registry, _, store := radiusTestRegistry(t, `{"providers":{"radius-dev":{"oauth":"radius","baseUrl":"https://configured.example/v1","apiKey":"configured-key","models":[{"id":"custom","name":"Custom"}]}}}`, nil)
+	want := `Provider "radius-dev": Provider radius-dev, model custom: no "api" specified. Set at provider or model level.`
+	if got := registry.LoadError(); !strings.Contains(got, want) {
+		t.Fatalf("empty catalog: error = %q, want %q", got, want)
+	}
+	if _, ok := registry.Resolve("radius-dev", "custom"); ok {
+		t.Fatal("a model without an api was composed from an empty catalog")
+	}
+
+	config, _ := ai.GetRadiusCredentialConfig(&ai.Credential{GatewayConfig: json.RawMessage(radiusTestConfigJSON("https://catalog.example/v1"))})
+	if err := store.Write(t.Context(), "radius-dev", ai.ModelsStoreEntry{Models: []ai.AnyModel{ai.GetRadiusModelsFromConfig("radius-dev", config)[0]}}); err != nil {
+		t.Fatal(err)
+	}
+	registry.RefreshCatalogs(t.Context(), CatalogRefreshOptions{})
+	if got := registry.LoadError(); strings.Contains(got, "no \"api\" specified") {
+		t.Fatalf("catalog loaded: error = %q", got)
+	}
+	entry, ok := registry.Resolve("radius-dev", "custom")
+	if !ok || entry.API == "" {
+		t.Fatalf("catalog loaded: custom resolved=%v api=%q, want the api taken from the catalog", ok, entry.API)
 	}
 }

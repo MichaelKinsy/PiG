@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/modes/interactive/components/earendil-announcement.ts
+
 import (
 	"crypto/sha256"
 	"encoding/json"
@@ -19,7 +21,7 @@ func TestEarendilAnnouncementMatchesPinnedPi(t *testing.T) {
 	tui.SetCapabilities(tui.TerminalCapabilities{})
 	colors := map[string]string{}
 	for _, token := range []string{"accent", "muted", "mdLink"} {
-		colors[token] = tui.ActiveTheme().Fg(token)
+		colors[token] = tui.ActiveTheme().GetFgAnsi(token)
 	}
 	input, err := json.Marshal(colors)
 	if err != nil {
@@ -42,6 +44,7 @@ func TestEarendilAnnouncementMatchesPinnedPi(t *testing.T) {
 	}
 }
 
+// Pi: packages/tui/src/components/image.ts:84 (getImageId).
 func TestEarendilEmbeddedAssetAndImageProtocols(t *testing.T) {
 	upstream, err := os.ReadFile("../../.upstream/current/packages/coding-agent/src/modes/interactive/assets/clankolas.png")
 	if err != nil {
@@ -56,8 +59,8 @@ func TestEarendilEmbeddedAssetAndImageProtocols(t *testing.T) {
 		t.Run(string(protocol), func(t *testing.T) {
 			tui.SetCapabilities(tui.TerminalCapabilities{Images: protocol})
 			announcement := newEarendilAnnouncementComponent()
-			children := announcement.body.Children()
-			image, ok := children[len(children)-2].(*tui.Image)
+			children := announcement.Children()
+			image, ok := children[len(children)-3].(*tui.Image)
 			if !ok {
 				t.Fatal("announcement did not use the shared terminal Image component")
 			}
@@ -121,5 +124,18 @@ func TestEarendilAssetRecordedHash(t *testing.T) {
 	const recorded = "169acd0dfe6fbb8d8742ed24a3fc654fd0b2e2d4223c733249c5493723f1b72d"
 	if got := fmt.Sprintf("%x", sha256.Sum256(clankolasPNG)); got != recorded {
 		t.Fatalf("asset changed: %s; review assets/README.md attribution and upstream pin", got)
+	}
+}
+
+// earendil-announcement.ts:30-52: a Container of border, title, spacer, two texts, spacer, image, spacer, border.
+func TestEarendilAnnouncementIsAContainerOfPisChildren(t *testing.T) {
+	children := newEarendilAnnouncementComponent().Children()
+	if len(children) != 9 {
+		t.Fatalf("children = %d, want 9", len(children))
+	}
+	for _, i := range []int{0, 8} {
+		if _, ok := children[i].(*tui.DynamicBorder); !ok {
+			t.Fatalf("child %d is %T, want the border", i, children[i])
+		}
 	}
 }

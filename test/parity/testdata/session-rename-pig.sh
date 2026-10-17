@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
-if ! output=$(go test -count=1 -run '^TestUpstreamSessionSelectorRename$' -v ./internal/codingagent); then
+if ! output=$(./test/parity/testdata/prebuilt-go-test.sh -count=1 -run '^TestUpstreamSessionSelectorRename$' -v ./internal/codingagent); then
     printf '%s\n' "$output"
     exit 1
 fi
 printf '%s\n' "$output" | grep '^SESSION_RENAME '
-if ! output=$(go test -count=1 -run '^Test(UpstreamInput.*|UpstreamWordNavigation.*|InputSetTextRetainsUTF16Cursor|InputRendererEncodesSplitUTF16Cursor)$' -v ./tui); then
+if ! output=$(./test/parity/testdata/prebuilt-go-test.sh -count=1 -run '^Test(UpstreamInput.*|UpstreamWordNavigation.*|InputSetTextRetainsUTF16Cursor|InputRendererEncodesSplitUTF16Cursor)$' -v ./tui); then
     printf '%s\n' "$output"
     exit 1
 fi

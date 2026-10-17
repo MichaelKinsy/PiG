@@ -4,14 +4,17 @@
 package tools
 
 import (
+	"bufio"
+	"bytes"
+	"errors"
 	"io"
 	"os"
-	"slices"
 	"strconv"
-	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/outputfiles"
+	"github.com/MichaelKinsy/PiG/internal/truncate"
 )
 
 // OutputSnapshot mirrors upstream OutputSnapshot.
@@ -35,20 +38,30 @@ type OutputAccumulator struct {
 	tempFilePrefix  string
 	decoder         utf8StreamDecoder
 
-	rawChunks                [][]byte
-	tailText                 string
-	tailBytes                int
+	// raw holds the raw bytes until the full-output file exists. Append copies a chunk into it, since the caller's slice is only lent for the call.
+	raw []byte
+	// tail is the decoded rolling tail as UTF-8 bytes: a chunk is decoded straight onto its end, so appending costs the chunk, not a copy of the tail (a string concatenation copied up to 4 maxBytes per chunk), and a snapshot makes the one string it keeps.
+	tail                     []byte
 	tailStartsAtLineBoundary bool
 	totalRawBytes            int
 	totalDecodedBytes        int
 	completedLines           int
 	totalLines               int
 	currentLineBytes         int
+	lastCompletedLineBytes   int
 	hasOpenLine              bool
 	finished                 bool
 
 	tempFilePath string
 	tempFile     *os.File
+	// tempWriter coalesces the raw chunks written to tempFile: a syscall per chunk was most of the cost of a small chunk. It is flushed whenever the file is read or its path is handed out (Snapshot, ReadFullOutput) and before the file closes, so the file holds every appended byte whenever anything can see it.
+	tempWriter *bufio.Writer
+
+	// snapshot is the last snapshot taken and snapshotBytes the decoded byte count it saw: a snapshot depends only on the decoded output and the file path,
+	// so the final update and the tool result share one.
+	snapshot      OutputSnapshot
+	snapshotBytes int
+	hasSnapshot   bool
 }
 
 // NewOutputAccumulator mirrors `new OutputAccumulator({ tempFilePrefix })`
@@ -71,26 +84,33 @@ func newOutputAccumulator(maxLines, maxBytes int, tempFilePrefix string) *Output
 	}
 }
 
-// Append adds a raw output chunk.
-func (a *OutputAccumulator) Append(data []byte) {
+// errAppendAfterFinish is the error output-accumulator.ts:66 throws.
+var errAppendAfterFinish = errors.New("Cannot append to a finished output accumulator")
+
+// Append adds a raw output chunk; once Finish has run it fails like upstream's append(), which throws. Append keeps no reference to data: the reader
+// lends its read buffer for the call.
+//
+//perf:hot
+func (a *OutputAccumulator) Append(data []byte) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if a.finished {
-		return
+		return errAppendAfterFinish
 	}
 	a.totalRawBytes += len(data)
-	a.appendDecodedText(a.decoder.decode(data, true))
+	a.decodeOntoTail(data, true)
 	if a.tempFile != nil || a.shouldUseTempFile() {
 		a.ensureTempFile()
-		if a.tempFile != nil {
-			_, _ = a.tempFile.Write(data)
+		if a.tempWriter != nil {
+			_, _ = a.tempWriter.Write(data)
 		}
-	} else if len(data) > 0 {
-		a.rawChunks = append(a.rawChunks, append([]byte(nil), data...))
+	} else {
+		a.raw = append(a.raw, data...)
 	}
+	return nil
 }
 
-// Finish flushes the decoder; later appends are ignored.
+// Finish flushes the decoder; later appends fail.
 func (a *OutputAccumulator) Finish() {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -98,18 +118,26 @@ func (a *OutputAccumulator) Finish() {
 		return
 	}
 	a.finished = true
-	a.appendDecodedText(a.decoder.decode(nil, false))
+	a.decodeOntoTail(nil, false)
 	if a.shouldUseTempFile() {
 		a.ensureTempFile()
 	}
 }
 
-// Snapshot mirrors upstream snapshot({ persistIfTruncated }).
+// Snapshot mirrors upstream snapshot({ persistIfTruncated }). It copies only the kept text, and a snapshot of output that has not changed since the last
+// one returns that one.
 func (a *OutputAccumulator) Snapshot(persistIfTruncated bool) OutputSnapshot {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	tr := TruncateTail(a.getSnapshotText(), a.maxBytes, a.maxLines)
 	truncated := a.totalLines > a.maxLines || a.totalDecodedBytes > a.maxBytes
+	if persistIfTruncated && truncated {
+		a.ensureTempFile()
+	}
+	a.flushTempFile()
+	if a.hasSnapshot && a.snapshotBytes == a.totalDecodedBytes && a.snapshot.FullOutputPath == a.tempFilePath {
+		return a.snapshot
+	}
+	tr := truncationResult(truncate.TruncateTailBytes(a.snapshotText(), a.maxBytes, a.maxLines), a.maxBytes, a.maxLines)
 	truncatedBy := ""
 	if truncated {
 		truncatedBy = tr.TruncatedBy
@@ -124,12 +152,9 @@ func (a *OutputAccumulator) Snapshot(persistIfTruncated bool) OutputSnapshot {
 	tr.TruncatedBy = truncatedBy
 	tr.TotalLines = a.totalLines
 	tr.TotalBytes = a.totalDecodedBytes
-	tr.MaxLines = a.maxLines
-	tr.MaxBytes = a.maxBytes
-	if persistIfTruncated && truncated {
-		a.ensureTempFile()
-	}
-	return OutputSnapshot{Content: tr.Content, Truncation: tr, FullOutputPath: a.tempFilePath}
+	a.snapshot = OutputSnapshot{Content: tr.Content, Truncation: tr, FullOutputPath: a.tempFilePath}
+	a.snapshotBytes, a.hasSnapshot = a.totalDecodedBytes, true
+	return a.snapshot
 }
 
 // CloseTempFile closes the full-output file, if one was opened.
@@ -140,48 +165,67 @@ func (a *OutputAccumulator) CloseTempFile() error {
 		return nil
 	}
 	f := a.tempFile
-	a.tempFile = nil
-	return f.Close()
+	flushErr := a.tempWriter.Flush()
+	a.tempFile, a.tempWriter = nil, nil
+	if err := f.Close(); err != nil {
+		return err
+	}
+	return flushErr
 }
 
 // LastLineBytes mirrors upstream getLastLineBytes.
+//
+// pig divergence (D153): the size is that of the last line the output counts: the open line, or, when the output
+// ends with a newline, the line that newline ended. Upstream returns the bytes after the final newline, so the
+// notice for a long last line that ends in a newline reads "line is 0B" (Pi #10015).
 func (a *OutputAccumulator) LastLineBytes() int {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	return a.currentLineBytes
+	if a.hasOpenLine {
+		return a.currentLineBytes
+	}
+	return a.lastCompletedLineBytes
 }
 
-func (a *OutputAccumulator) appendDecodedText(text string) {
-	if text == "" {
+// decodeOntoTail decodes data onto the end of the tail and counts what it added.
+func (a *OutputAccumulator) decodeOntoTail(data []byte, stream bool) {
+	start := len(a.tail)
+	a.tail = a.decoder.appendDecode(a.tail, data, stream)
+	text := a.tail[start:]
+	size := len(text)
+	if size == 0 {
 		return
 	}
-	bytes := len(text)
-	a.totalDecodedBytes += bytes
-	a.tailText += text
-	a.tailBytes += bytes
-	if a.tailBytes > a.maxRollingBytes*2 {
-		a.trimTail()
-	}
-	newlines := strings.Count(text, "\n")
+	a.totalDecodedBytes += size
+	newlines := bytes.Count(text, newline)
 	if newlines == 0 {
-		a.currentLineBytes += bytes
+		a.currentLineBytes += size
 		a.hasOpenLine = true
 	} else {
 		a.completedLines += newlines
-		tail := text[strings.LastIndexByte(text, '\n')+1:]
-		a.currentLineBytes = len(tail)
-		a.hasOpenLine = tail != ""
+		last := bytes.LastIndexByte(text, '\n')
+		if newlines == 1 {
+			a.lastCompletedLineBytes = a.currentLineBytes + last
+		} else {
+			a.lastCompletedLineBytes = last - 1 - bytes.LastIndexByte(text[:last], '\n')
+		}
+		a.currentLineBytes = size - last - 1
+		a.hasOpenLine = a.currentLineBytes != 0
 	}
 	a.totalLines = a.completedLines
 	if a.hasOpenLine {
 		a.totalLines++
 	}
+	if len(a.tail) > a.maxRollingBytes*2 {
+		a.trimTail()
+	}
 }
 
+var newline = []byte{'\n'}
+
 func (a *OutputAccumulator) trimTail() {
-	buffer := a.tailText
+	buffer := a.tail
 	if len(buffer) <= a.maxRollingBytes {
-		a.tailBytes = len(buffer)
 		return
 	}
 	start := len(buffer) - a.maxRollingBytes
@@ -191,22 +235,29 @@ func (a *OutputAccumulator) trimTail() {
 	if start != 0 {
 		a.tailStartsAtLineBoundary = buffer[start-1] == '\n'
 	}
-	a.tailText = buffer[start:]
-	a.tailBytes = len(a.tailText)
+	a.tail = buffer[:copy(buffer, buffer[start:])]
 }
 
-func (a *OutputAccumulator) getSnapshotText() string {
-	if a.tailStartsAtLineBoundary {
-		return a.tailText
+// snapshotText is the tail a snapshot truncates: it starts at a line boundary once the tail has been trimmed. The slice aliases the tail.
+func (a *OutputAccumulator) snapshotText() []byte {
+	tail := a.tail
+	if !a.tailStartsAtLineBoundary {
+		if i := bytes.IndexByte(tail, '\n'); i >= 0 {
+			tail = tail[i+1:]
+		}
 	}
-	if i := strings.IndexByte(a.tailText, '\n'); i >= 0 {
-		return a.tailText[i+1:]
-	}
-	return a.tailText
+	return tail
 }
 
 func (a *OutputAccumulator) shouldUseTempFile() bool {
 	return a.totalRawBytes > a.maxBytes || a.totalDecodedBytes > a.maxBytes || a.totalLines > a.maxLines
+}
+
+// flushTempFile writes the buffered raw chunks to the full-output file.
+func (a *OutputAccumulator) flushTempFile() {
+	if a.tempWriter != nil {
+		_ = a.tempWriter.Flush()
+	}
 }
 
 func (a *OutputAccumulator) ensureTempFile() {
@@ -219,11 +270,10 @@ func (a *OutputAccumulator) ensureTempFile() {
 	a.tempFilePath = path
 	if err == nil {
 		a.tempFile = f
-		for _, chunk := range a.rawChunks {
-			_, _ = f.Write(chunk)
-		}
+		a.tempWriter = bufio.NewWriter(f)
+		_, _ = a.tempWriter.Write(a.raw)
 	}
-	a.rawChunks = nil
+	a.raw = nil
 }
 
 // utf8StreamDecoder mirrors the WHATWG UTF-8 decoder behind TextDecoder with
@@ -244,27 +294,52 @@ type utf8StreamDecoder struct {
 	upper       byte
 }
 
+// decode returns the decoding of data. Well-formed UTF-8 decodes to itself, so it is copied once; anything else runs the decoder.
 func (d *utf8StreamDecoder) decode(data []byte, stream bool) string {
-	var b strings.Builder
-	b.Grow(len(data))
+	if d.bytesNeeded == 0 && utf8.Valid(data) {
+		if !d.started && len(data) > 0 {
+			d.started = true
+			if d.stripBOM && bytes.HasPrefix(data, utf8BOM) {
+				data = data[len(utf8BOM):]
+			}
+		}
+		return string(data)
+	}
+	return string(d.appendDecode(make([]byte, 0, len(data)+utf8.UTFMax), data, stream))
+}
+
+var utf8BOM = []byte("\uFEFF")
+
+// appendDecode appends the decoding of data to dst. Between characters, the well-formed prefix of a chunk that ends at a character boundary is appended
+// as it is; the decoder walks only what is left (an incomplete last character, or a chunk with an invalid sequence).
+//
+//perf:hot
+func (d *utf8StreamDecoder) appendDecode(dst, data []byte, stream bool) []byte {
 	if d.lower == 0 {
 		d.lower, d.upper = 0x80, 0xBF
 	}
-	emit := func(r rune) {
-		if !d.started {
-			d.started = true
-			if d.stripBOM && r == '\uFEFF' {
-				return
-			}
+	if d.started && d.bytesNeeded == 0 {
+		if whole := len(data) - incompleteSuffix(data); utf8.Valid(data[:whole]) {
+			dst = append(dst, data[:whole]...)
+			data = data[whole:]
 		}
-		b.WriteRune(r)
 	}
 	for i := 0; i < len(data); i++ {
 		c := data[i]
 		if d.bytesNeeded == 0 {
+			if d.started && c <= 0x7F {
+				// A run of ASCII after the first code point is copied whole: no BOM check applies and each byte is its own code point.
+				run := i + 1
+				for run < len(data) && data[run] <= 0x7F {
+					run++
+				}
+				dst = append(dst, data[i:run]...)
+				i = run - 1
+				continue
+			}
 			switch {
 			case c <= 0x7F:
-				emit(rune(c))
+				dst = d.emit(dst, rune(c))
 			case c >= 0xC2 && c <= 0xDF:
 				d.bytesNeeded, d.codePoint = 1, rune(c&0x1F)
 			case c >= 0xE0 && c <= 0xEF:
@@ -284,13 +359,13 @@ func (d *utf8StreamDecoder) decode(data []byte, stream bool) string {
 				}
 				d.bytesNeeded, d.codePoint = 3, rune(c&0x07)
 			default:
-				emit('�')
+				dst = d.emit(dst, '�')
 			}
 			continue
 		}
 		if c < d.lower || c > d.upper {
 			d.reset()
-			emit('�')
+			dst = d.emit(dst, '�')
 			i-- // reprocess this byte as the start of a new sequence
 			continue
 		}
@@ -298,15 +373,56 @@ func (d *utf8StreamDecoder) decode(data []byte, stream bool) string {
 		d.codePoint = d.codePoint<<6 | rune(c&0x3F)
 		d.bytesSeen++
 		if d.bytesSeen == d.bytesNeeded {
-			emit(d.codePoint)
+			dst = d.emit(dst, d.codePoint)
 			d.reset()
 		}
 	}
 	if !stream && d.bytesNeeded != 0 {
 		d.reset()
-		emit('�')
+		dst = d.emit(dst, '�')
 	}
-	return b.String()
+	return dst
+}
+
+// emit appends a decoded code point, dropping a BOM that starts the stream when stripBOM is set.
+func (d *utf8StreamDecoder) emit(dst []byte, r rune) []byte {
+	if !d.started {
+		d.started = true
+		if d.stripBOM && r == '\uFEFF' {
+			return dst
+		}
+	}
+	return utf8.AppendRune(dst, r)
+}
+
+// incompleteSuffix is the length of the multi-byte character data ends inside of, 0 when data ends at a character boundary. A malformed ending counts
+// as complete: the caller then finds the data malformed and decodes it in full.
+func incompleteSuffix(data []byte) int {
+	for back := 1; back <= utf8.UTFMax-1 && back <= len(data); back++ {
+		c := data[len(data)-back]
+		switch {
+		case c < 0x80:
+			return 0
+		case c >= 0xC0:
+			if back < sequenceLength(c) {
+				return back
+			}
+			return 0
+		}
+	}
+	return 0
+}
+
+// sequenceLength is the byte length a UTF-8 lead byte announces.
+func sequenceLength(lead byte) int {
+	switch {
+	case lead >= 0xF0:
+		return 4
+	case lead >= 0xE0:
+		return 3
+	default:
+		return 2
+	}
 }
 
 func (d *utf8StreamDecoder) reset() {
@@ -332,9 +448,10 @@ type FullOutput struct {
 func (a *OutputAccumulator) ReadFullOutput(maxBytes int) (FullOutput, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	a.flushTempFile()
 	if a.tempFilePath == "" {
 		decoder := utf8StreamDecoder{stripBOM: true}
-		return FullOutput{Content: decoder.decode(slices.Concat(a.rawChunks...), false)}, nil
+		return FullOutput{Content: decoder.decode(a.raw, false)}, nil
 	}
 	file, err := os.Open(a.tempFilePath)
 	if err != nil {

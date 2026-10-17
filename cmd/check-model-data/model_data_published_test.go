@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -53,6 +54,11 @@ func TestPublishedModelDataValidates(t *testing.T) {
 	}
 	if err := ValidateGeneratedModelData(root); err != nil {
 		t.Fatal(err)
+	}
+	// check-model-data.ts prints one success line and exits 0 on valid data.
+	var stdout, stderr bytes.Buffer
+	if code := run([]string{"-root", root}, &stdout, &stderr); code != 0 || stdout.String() != "Generated model data is valid.\n" || stderr.Len() != 0 {
+		t.Fatalf("run = %d, stdout %q, stderr %q", code, stdout.String(), stderr.String())
 	}
 	// The same data must fail once one model's type/id identity is broken, so the check above is not vacuous.
 	data, err := os.ReadFile(filepath.Join(providers, "data", "together.json"))

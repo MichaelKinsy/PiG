@@ -3,6 +3,7 @@ package tui
 import (
 	"bytes"
 	"encoding/json"
+	"math/rand"
 	"os/exec"
 	"reflect"
 	"testing"
@@ -22,6 +23,13 @@ type dialogProbe struct {
 	Bindings  map[string][]string `json:"bindings"`
 	Options   []string            `json:"options"`
 	Keys      []string            `json:"keys"`
+	//portlint:allow emptydrop the oracle input treats an absent provider list and an empty one alike
+	Providers     []map[string]any `json:"providers,omitempty"`
+	InitialSearch string           `json:"initialSearch,omitempty"`
+	// Description and InitialValue are ExtensionInputOptions (extension-input.ts:12-17); Unfocused leaves the component without focus.
+	Description  string `json:"description,omitempty"`
+	InitialValue string `json:"initialValue,omitempty"`
+	Unfocused    bool   `json:"unfocused,omitempty"`
 }
 
 type dialogProbeState struct {
@@ -34,6 +42,39 @@ type dialogProbeState struct {
 type dialogProbeResult struct {
 	States []dialogProbeState `json:"states"`
 	Frames [][]string         `json:"frames"`
+}
+
+// randomDialogProbes draws select options (empty, blank, wide, combining, long) and input descriptions and initial values, widths from 10 to 100,
+// bindings over the select, input and expand actions, and key scripts of list keys, text, cursor and word editing, and paste. PageUp and PageDown
+// stay out: Pi 1.1.0 has no select page keys and Pig pages the selection (D155, Pi PR #7680).
+func randomDialogProbes() []dialogProbe {
+	rng := rand.New(rand.NewSource(20261029))
+	words := []string{"first", "second", "Yes", "No", "日本語", "e\u0301", "😀", "a very long option label that wraps or truncates at narrow widths 0123456789", "", " ", "tab\there", "x"}
+	keys := []string{"j", "k", "\x1b[A", "\x1b[B", "\r", "\n", "\x1b", "\x03", "\x0f", "\x05", "\x13", "\x7f", "\x1b[3~", "\x1b[D", "\x1b[C", "\x01", "\x17", "\x15", "\x0b", "a", "é", "日", " ", "hello", "\x1b[200~pasted text\x1b[201~", "\x1b[1;5D", "\x1b[H", "\x1b[F", "\t"}
+	bindingSets := []map[string][]string{nil, {"app.tools.expand": {"ctrl+e"}}, {KBSelectConfirm: {"ctrl+s", "alt+s"}, KBSelectCancel: {"ctrl+q"}}, {KBInputSubmit: {"ctrl+s"}}, {KBSelectDown: {"ctrl+x"}, KBSelectCancel: {"ctrl+x"}}, {KBSelectConfirm: {}}, {"app.tools.expand": {}}}
+	var probes []dialogProbe
+	for range 400 {
+		probe := dialogProbe{Kind: []string{"select", "input"}[rng.Intn(2)], Theme: []string{"dark", "light"}[rng.Intn(2)], TrueColor: rng.Intn(2) == 0, Width: 10 + rng.Intn(91), Bindings: bindingSets[rng.Intn(len(bindingSets))]}
+		probe.Options = []string{}
+		for range rng.Intn(8) {
+			probe.Options = append(probe.Options, words[rng.Intn(len(words))])
+		}
+		if probe.Kind == "input" {
+			if rng.Intn(2) == 0 {
+				probe.Description = words[rng.Intn(len(words))] + "\n" + words[rng.Intn(len(words))]
+			}
+			if rng.Intn(2) == 0 {
+				probe.InitialValue = words[rng.Intn(len(words))]
+			}
+			probe.Unfocused = rng.Intn(5) == 0
+		}
+		probe.Keys = make([]string, 1+rng.Intn(14))
+		for i := range probe.Keys {
+			probe.Keys[i] = keys[rng.Intn(len(keys))]
+		}
+		probes = append(probes, probe)
+	}
+	return probes
 }
 
 // Pi 0.87.1 extension-selector.ts:74-124 and extension-input.ts:84-104:
@@ -56,6 +97,13 @@ func TestExtensionDialogsMatchPiBindingsAndPalette(t *testing.T) {
 		{Kind: "input", Bindings: map[string][]string{KBSelectConfirm: {}, KBSelectCancel: {"ctrl+q"}}, Keys: []string{"hello", "\r", "\x1b[113;5u"}},
 		{Kind: "input", Bindings: map[string][]string{KBSelectConfirm: {"ctrl+s"}, KBSelectCancel: {"ctrl+s"}}, Keys: []string{"hello", "\x13"}},
 		{Kind: "input", Bindings: map[string][]string{KBSelectConfirm: {}}, Keys: []string{"hello", "\n"}},
+		// extension-input.ts:46-47 (description under the title), :69 (initialValue pre-fills; an empty one does not), :25-28 (focus reaches the input).
+		{Kind: "input", Description: "Pick a name for the thing", Keys: []string{"x", "\r"}},
+		{Kind: "input", Description: "Pick a name\nacross two lines", InitialValue: "seed", Keys: []string{"\x7f", "\r"}},
+		{Kind: "input", InitialValue: "pre-filled", Keys: []string{"\r"}},
+		{Kind: "input", InitialValue: "pre-filled", Keys: []string{"!", "\x1b[D", "?", "\r"}},
+		{Kind: "input", InitialValue: "pre-filled", Unfocused: true, Keys: []string{"a", "\r"}},
+		{Kind: "input", Description: "unfocused with a description", Unfocused: true, Keys: []string{"\x1b"}},
 	}
 	var probes []dialogProbe
 	for _, theme := range []string{"dark", "light"} {
@@ -69,6 +117,7 @@ func TestExtensionDialogsMatchPiBindingsAndPalette(t *testing.T) {
 			}
 		}
 	}
+	probes = append(probes, randomDialogProbes()...)
 	expected := piDialogOracle(t, probes)
 	previousBindings, previousTheme, previousCaps := GetKeybindings(), ActiveTheme(), GetCapabilities()
 	t.Cleanup(func() {
@@ -81,15 +130,23 @@ func TestExtensionDialogsMatchPiBindingsAndPalette(t *testing.T) {
 		SetTheme(probe.Theme)
 		definitions := TUIKeybindingDefinitionsFor(HostKeybindingPlatform())
 		definitions["app.tools.expand"] = TUIKeybindingDef{DefaultKeys: []string{"ctrl+o"}}
+		restoreKeybindingsAfterTest(t)
 		SetKeybindings(NewKeybindingsManager(definitions, probe.Bindings))
 		toggles := 0
-		selector := NewExtensionSelector("Rigidity probe", probe.Options, func() { toggles++ })
-		field := NewExtensionInputComponent("Rigidity probe", "")
+		selector := NewExtensionSelectorComponent("Rigidity probe", probe.Options, nil, nil, ExtensionSelectorOptions{OnToggleToolsExpanded: func() { toggles++ }})
+		// The submit callback receives the input's value, as in Pi (extension-input.ts:86); the host-polled state flags are Go's.
+		submitted := ""
+		field := NewExtensionInputComponent("Rigidity probe", "", func(value string) { submitted = value }, nil, ExtensionInputOptions{Description: probe.Description, InitialValue: probe.InitialValue})
+		if probe.Unfocused {
+			field.SetFocused(false)
+		} else {
+			field.SetFocused(true)
+		}
 		render, handle := selector.Render, selector.HandleInput
 		done, cancelled, value := selector.Done, selector.Cancelled, selector.SelectedValue
 		if probe.Kind == "input" {
 			render, handle = field.Render, field.HandleInput
-			done, cancelled, value = field.Done, field.Cancelled, field.Text
+			done, cancelled, value = field.Done, field.Cancelled, func() string { return submitted }
 		}
 		// Compare every owned content row, including ANSI; DynamicBorder owns the outer rows.
 		renderContent := func() []string {
@@ -144,6 +201,7 @@ func TestExtensionDialogCountdownMatchesPi(t *testing.T) {
 	}
 	expected := piDialogOracle(t, probes)
 	previousBindings, previousTheme, previousCaps := GetKeybindings(), ActiveTheme(), GetCapabilities()
+	restoreKeybindingsAfterTest(t)
 	t.Cleanup(func() {
 		SetKeybindings(previousBindings)
 		SetCapabilities(previousCaps)
@@ -152,15 +210,14 @@ func TestExtensionDialogCountdownMatchesPi(t *testing.T) {
 	for i, probe := range probes {
 		SetCapabilities(TerminalCapabilities{TrueColor: probe.TrueColor})
 		SetTheme(probe.Theme)
-		SetKeybindings(NewKeybindingsManager(TUIKeybindingDefinitionsFor(HostKeybindingPlatform()), nil))
 		var got dialogProbeResult
 		synctest.Test(t, func(t *testing.T) {
 			title := probe.Title
 			if title == "" {
 				title = "Rigidity probe"
 			}
-			selector := NewExtensionSelector(title, probe.Options)
-			field := NewExtensionInputComponent(title, "")
+			selector := NewExtensionSelectorComponent(title, probe.Options, nil, nil)
+			field := NewExtensionInputComponent(title, "", nil, nil)
 			render, handle := selector.Render, selector.HandleInput
 			done, cancelled, value := selector.Done, selector.Cancelled, selector.SelectedValue
 			tick, expire := selector.SetCountdown, selector.Cancel
@@ -209,7 +266,7 @@ func piDialogOracle(t *testing.T, probes []dialogProbe) []dialogProbeResult {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.CommandContext(t.Context(), "node", "testdata/extension_dialogs.mjs", pigversion.UpstreamVersion)
+	cmd := exec.CommandContext(t.Context(), "node", "testdata/extension_dialogs.mjs", pigversion.UpstreamPackageVersion)
 	cmd.Stdin = bytes.NewReader(input)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -234,11 +291,11 @@ func BenchmarkExtensionDialogRemapping(b *testing.B) {
 	options := []string{"first", "second", "third"}
 	b.ReportAllocs()
 	for b.Loop() {
-		selector := NewExtensionSelector("Pick a task", options)
+		selector := NewExtensionSelectorComponent("Pick a task", options, nil, nil)
 		selector.HandleInput("j")
 		selector.Render(100)
 		selector.HandleInput("\x13")
-		input := NewExtensionInputComponent("Task name", "")
+		input := NewExtensionInputComponent("Task name", "", nil, nil)
 		input.HandleInput("first")
 		input.HandleInput("\r")
 		input.HandleInput("-second")

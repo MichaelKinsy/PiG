@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package main
@@ -8,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,6 +18,8 @@ import (
 	"golang.org/x/mod/module"
 
 	"github.com/MichaelKinsy/PiG/automation/release/modulehash"
+	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 const fixtureModule = "example.com/product"
@@ -284,4 +286,80 @@ func TestSetVersionMalformedChangelogDoesNotPartiallyWrite(t *testing.T) {
 		t.Fatal("accepted malformed changelog")
 	}
 	assertSnapshot(t, root, before)
+}
+
+// The Python and TypeScript SDK packages publish at the release version. The Rust crate, its locks and any pig-sdk requirement stay put: the builder
+// resolves an un-pathed requirement through a crates-io patch, which Cargo applies only within semver, so advancing the crate would break every
+// scaffolded extension's `pig-sdk = "0.1.0"`.
+func TestSetVersionWritesTheSDKManifestVersions(t *testing.T) {
+	root := fixture(t)
+	untouched := map[string]string{
+		"extensions/sdk-rs/Cargo.toml":      "[package]\nname = \"pig-sdk\"\nversion = \"0.1.0\"\nedition = \"2024\"\n",
+		"extensions/sdk-rs/Cargo.lock":      "[[package]]\nname = \"pig-sdk\"\nversion = \"0.1.0\"\n",
+		"fixtures/consumer/Cargo.toml":      "[package]\nname = \"consumer\"\nversion = \"0.1.0\"\n\n[dependencies]\npig-sdk = \"0.1.0\"\n",
+		"fixtures/consumer/Cargo.lock":      "[[package]]\nname = \"pig-sdk\"\nversion = \"0.1.0\"\n",
+		"fixtures/other-version/Cargo.toml": "[package]\nname = \"other\"\nversion = \"0.1.0\"\n",
+	}
+	files := map[string]string{
+		"extensions/sdk-py/pyproject.toml":    "[project]\nname = \"pig-sdk\"\nversion = \"0.1.0\"\nrequires-python = \">=3.11\"\n",
+		"extensions/sdk-ts/package.json":      "{\n  \"name\": \"types\",\n  \"version\": \"0.0.0\",\n  \"private\": true\n}\n",
+		"extensions/sdk-ts/package-lock.json": "{\n  \"name\": \"types\",\n  \"version\": \"0.0.0\",\n  \"packages\": {\n    \"\": {\n      \"name\": \"types\",\n      \"version\": \"0.0.0\"\n    },\n    \"node_modules/dep\": {\n      \"version\": \"0.0.0\"\n    }\n  }\n}\n",
+	}
+	maps.Copy(files, untouched)
+	for path, text := range files {
+		put(t, root, path, text)
+	}
+	cmd := exec.Command("git", "add", "--", "extensions", "fixtures")
+	cmd.Dir = root
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git add: %v\n%s", err, out)
+	}
+	if err := run(root, options{version: "0.3.0", date: "2026-10-11"}, io.Discard, func(string, io.Writer) error { return nil }); err != nil {
+		t.Fatal(err)
+	}
+	for path, want := range map[string]string{
+		"extensions/sdk-py/pyproject.toml": "name = \"pig-sdk\"\nversion = \"0.3.0\"",
+		"extensions/sdk-ts/package.json":   "\"version\": \"0.3.0\"",
+	} {
+		if !strings.Contains(get(t, root, path), want) {
+			t.Errorf("%s does not contain %q:\n%s", path, want, get(t, root, path))
+		}
+	}
+	lock := get(t, root, "extensions/sdk-ts/package-lock.json")
+	if strings.Count(lock, "\"version\": \"0.3.0\"") != 2 || !strings.Contains(lock, "\"node_modules/dep\": {\n      \"version\": \"0.0.0\"") {
+		t.Errorf("package-lock.json versions: want the root and its package entry updated and the dependency untouched:\n%s", lock)
+	}
+	for path, want := range untouched {
+		if got := get(t, root, path); got != want {
+			t.Errorf("%s was rewritten:\n%s", path, got)
+		}
+	}
+}
+
+// A present SDK manifest without the version line set-version writes fails the whole run before any file changes, instead of leaving a manifest the
+// drift check rejects.
+func TestSetVersionRejectsAnSDKManifestWithoutAVersion(t *testing.T) {
+	root := fixture(t)
+	put(t, root, "extensions/sdk-py/pyproject.toml", "[project]\nname = \"pig-sdk\"\nrequires-python = \">=3.11\"\n")
+	cmd := exec.Command("git", "add", "--", "extensions")
+	cmd.Dir = root
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git add: %v\n%s", err, out)
+	}
+	before := snapshot(t, root)
+	err := run(root, options{version: "0.3.0", date: "2026-10-11"}, io.Discard, func(string, io.Writer) error { return nil })
+	if err == nil || !strings.Contains(err.Error(), "extensions/sdk-py/pyproject.toml: no SDK version to replace") {
+		t.Fatalf("err = %v, want the missing SDK version reported", err)
+	}
+	assertSnapshot(t, root, before)
+}
+
+// The release candidate workflow runs `make set-version VERSION=<version> SET_VERSION_ARGS='--release-modules --dry-run'` on
+// the repository and stops on any error. set-version indexes every tracked go.mod by its module path, testdata fixtures
+// included, so two tracked modules with one path stop the release preparation ("duplicate local module").
+func TestReleaseModulesDryRunOnTheRepository(t *testing.T) {
+	root := testenv.ModuleRoot(t)
+	if err := run(root, options{version: pigversion.PigVersion, dryRun: true, releaseModules: true}, io.Discard, func(string, io.Writer) error { return nil }); err != nil {
+		t.Fatalf("set-version --release-modules --dry-run on the repository: %v", err)
+	}
 }

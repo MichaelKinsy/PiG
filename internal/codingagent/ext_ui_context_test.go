@@ -1,7 +1,10 @@
 package codingagent
 
 import (
+	"bytes"
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -9,7 +12,7 @@ import (
 )
 
 func TestExtUIContextSetToolsExpandedUpdatesVisibleToolCards(t *testing.T) {
-	component := tui.NewToolExecutionComponent("ask_user", `question:"Which option?"`)
+	component := newToolCardForTest("ask_user", `question:"Which option?"`)
 	mode := &InteractiveMode{
 		toolOrder:     []*tui.ToolExecutionComponent{component},
 		chatContainer: tui.NewContainer(component),
@@ -34,7 +37,7 @@ func TestExtUIContextSetToolsExpandedUpdatesVisibleToolCards(t *testing.T) {
 }
 
 func TestExtUIContextSetToolsExpandedMarshalsToOwnerLoop(t *testing.T) {
-	component := tui.NewToolExecutionComponent("ask_user", `question:"Which option?"`)
+	component := newToolCardForTest("ask_user", `question:"Which option?"`)
 	mode := &InteractiveMode{
 		runCtx:        context.Background(),
 		uiTaskCh:      make(chan func(), 1),
@@ -65,11 +68,11 @@ func TestExtUIContextSetToolsExpandedMarshalsToOwnerLoop(t *testing.T) {
 // clearing the footer brings the built-in one back.
 // SetLinesAt can synchronously paint through its invalidation callback. Pi swaps footer ownership before painting the replacement, not after that callback returns.
 func TestFooterOwnershipChangesBeforeFrameInvalidation(t *testing.T) {
-	mode := &InteractiveMode{statusLine: NewStatusLine(nil, "", nil)}
+	mode := &InteractiveMode{statusLine: NewFooterComponent(nil, "", nil)}
 	var visible []bool
 	mode.extFooter = newSpecialLinesComponent(func() { visible = append(visible, len(mode.statusLine.Render(80)) != 0) })
 	ui := &ExtUIContext{m: mode}
-	ui.SetFooter([]string{"custom"})
+	ui.SetFooter(extension.FrameFooter([]string{"custom"}, 0))
 	ui.SetFooter(nil)
 	if len(visible) != 2 || visible[0] || !visible[1] {
 		t.Fatalf("built-in footer visibility at paint = %v, want suppressed then restored", visible)
@@ -79,11 +82,11 @@ func TestFooterOwnershipChangesBeforeFrameInvalidation(t *testing.T) {
 func TestExtUIContextEmptyCustomFooterReplacesTheBuiltInFooter(t *testing.T) {
 	mode := &InteractiveMode{
 		extFooter:  newSpecialLinesComponent(func() {}),
-		statusLine: NewStatusLine(nil, "", nil),
+		statusLine: NewFooterComponent(nil, "", nil),
 	}
 	ui := &ExtUIContext{m: mode}
 
-	ui.SetFooter(extension.WidthLines{Width: 80})
+	ui.SetFooter(extension.FrameFooter(nil, 80))
 	if lines := mode.statusLine.Render(80); len(lines) != 0 {
 		t.Fatalf("built-in footer still renders %q under an empty custom footer", lines)
 	}
@@ -91,5 +94,31 @@ func TestExtUIContextEmptyCustomFooterReplacesTheBuiltInFooter(t *testing.T) {
 	ui.SetFooter(nil)
 	if lines := mode.statusLine.Render(80); len(lines) == 0 {
 		t.Fatal("clearing the custom footer did not restore the built-in footer")
+	}
+}
+
+// theme.ts createTheme(themeJson, mode, sourcePath): a custom theme carries the file it was loaded from, so the palette an extension reads reports it even when no registry holds that theme (ctx.ui.setTheme takes a Theme object). A built-in theme has none.
+func TestExtensionThemePaletteReportsTheThemesOwnSourcePath(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "own.json")
+	data, err := os.ReadFile(filepath.Join("..", "..", "tui", "theme_dark.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, bytes.Replace(data, []byte(`"name": "dark"`), []byte(`"name": "own-source-path"`), 1), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	theme, err := tui.LoadThemeFromPath(path, tui.TerminalColorModeTrueColor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if theme.Name != "own-source-path" {
+		t.Fatalf("theme name = %q: the fixture did not rename the theme, so no registry could hold it", theme.Name)
+	}
+	if got := ExtensionThemePalette(theme).(map[string]any)["sourcePath"]; got != path {
+		t.Errorf("sourcePath = %v, want %q", got, path)
+	}
+	if got, present := ExtensionThemePalette(tui.NewThemeRegistry().Get("dark")).(map[string]any)["sourcePath"]; present {
+		t.Errorf("the built-in dark theme reports sourcePath %v", got)
 	}
 }

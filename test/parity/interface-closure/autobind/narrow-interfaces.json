@@ -1,0 +1,26 @@
+{
+ "coding-agent:AgentSession": [
+  {
+   "interface": "internal/codingagent#FooterSession",
+   "members": {
+    "routedModel": "RoutedModelSelection",
+    "sessionManager": "SessionManager"
+   },
+   "test": "coding#TestFooterComponentTakesTheRealAgentSession",
+   "reason": "footer.ts:62-75 takes an AgentSession and reads session.sessionManager (the entries whose usage getSessionStats sums, :103-154) and session.routedModel (:241) on each render; package internal/codingagent cannot import coding, which owns AgentSession as coding.Session and imports it"
+  }
+ ],
+ "coding-agent:ModelRuntime": [
+  {
+   "interface": "tui#ModelSelectorRuntime",
+   "members": {
+    "getAvailableSnapshot": "GetAvailableSnapshot",
+    "getError": "GetError",
+    "getModel": "GetModel",
+    "refresh": "Refresh"
+   },
+   "test": "coding#TestModelSelectorConstructorTakesTheRealModelRuntime",
+   "reason": "model-selector.ts takes a ModelRuntime (model-selector.ts:162, 169, 202 and refreshModelCatalogs' modelRuntime.refresh); package tui cannot import coding, which owns ModelRuntime and imports tui through internal/codingagent"
+  }
+ ]
+}

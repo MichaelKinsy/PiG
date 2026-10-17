@@ -17,7 +17,7 @@ func TestAnthropicModelRuntimePreservesSetupResult(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "models.json"), []byte(config), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: dir})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: dir})
 	if err != nil {
 		t.Fatal(err)
 	}

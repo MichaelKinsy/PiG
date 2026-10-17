@@ -2,6 +2,9 @@ package pigdocs
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -187,7 +190,7 @@ func TestRunCommand_DefaultSyncs(t *testing.T) {
 	if code := RunCommand([]string{"docs"}, &stdout, &stderr); code != 0 {
 		t.Fatalf("docs: code=%d stderr=%s", code, stderr.String())
 	}
-	if _, err := os.Stat(filepath.Join(root, "docs", "README.md")); err != nil {
+	if _, err := os.Stat(filepath.Join(DocsDir(root), "README.md")); err != nil {
 		t.Fatalf("README not synced: %v", err)
 	}
 }
@@ -196,5 +199,24 @@ func TestRunCommand_RejectsForeignArgs(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	if code := RunCommand([]string{"login"}, &stdout, &stderr); code != -1 {
 		t.Fatalf("non-docs args should return -1, got %d", code)
+	}
+}
+
+// The digest streams the embedded files through a fixed buffer. It must stay the digest of "name\x00size\x00contents"
+// over every doc in List order, because staged marker files written by earlier builds carry it.
+func TestContentDigestMatchesTheWholeFileAlgorithm(t *testing.T) {
+	hash := sha256.New()
+	for _, name := range List() {
+		data, err := content.ReadFile("content/" + name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _ = fmt.Fprintf(hash, "%s\x00%d\x00", name, len(data))
+		_, _ = hash.Write(data)
+	}
+	want := hex.EncodeToString(hash.Sum(nil))
+	got, err := contentDigest()
+	if err != nil || got != want {
+		t.Fatalf("contentDigest() = %q, %v; want %q", got, err, want)
 	}
 }

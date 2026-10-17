@@ -1,4 +1,3 @@
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 """Run fixed coding tasks with a real model and check each result with the task's own command."""
 import hashlib

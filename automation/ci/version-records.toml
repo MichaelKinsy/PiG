@@ -1,4 +1,3 @@
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 #
 # Documents that keep the number of an earlier Pi release because they record
@@ -21,7 +20,6 @@ paths = [
   "docs/findings/fix-drift-rpc.md",
   "docs/findings/fix-drift-tools.md",
   "docs/findings/fix-export-html.md",
-  "docs/findings/fix-overlay-shim.md",
   "docs/findings/fix-packed-provider-event.md",
   "docs/findings/fix-print-session-id.md",
   "docs/findings/fix-rigidity-b.md",
@@ -78,9 +76,141 @@ paths = ["docs/plan/"]
 
 [[record]]
 version = "1.0.0"
-reason = "Records of work done against Pi 1.0.0 before the 1.0.1 leap: the rpc33 probe pinned to 1.0.0, D87's oracle of Pi 1.0.0's pi-logo-animation.ts (removed at 1.0.1), and the plan and progress ledgers."
+reason = "Records of work done against Pi 1.0.0 before the 1.0.1 leap: the rpc33 probe pinned to 1.0.0, D87's oracle of Pi 1.0.0's pi-logo-animation.ts (removed at 1.0.1) and D93's record of Pi 1.0.0's jiti loader, in the generated ledger and in their record files, and the plan and progress ledgers."
 paths = [
   "docs/findings/rpc33-observation-matrix.md",
   "docs/parity/DIVERGENCES.md",
+  "docs/parity/divergences/",
   "docs/plan/",
+]
+
+[[record]]
+version = "1.0.0"
+reason = "The closure record states that the 13 experimental files did not change between Pi 1.0.0 and 1.0.4, the range the lane compared."
+paths = ["docs/parity/gap-closure/gap-exp-services.md"]
+
+[[record]]
+version = "0.99"
+reason = "The closure record says the review corrected citations that pointed at Pi 0.99 lines."
+paths = ["docs/parity/gap-closure/gap-exp-services.md"]
+
+[[record]]
+version = "1.0.1"
+reason = "The closure record dates the project override of `mcp list` to Pi 1.0.1, the release that added it."
+paths = ["docs/parity/gap-closure/gap-mcp.md"]
+
+[[record]]
+version = "0.99.2"
+reason = "The closure record states the last release that contained the session-backends package."
+paths = ["docs/parity/gap-closure/gap-remote-stack.md"]
+
+[[record]]
+version = "1.0.4"
+reason = "Gap-closure records and the plan and progress ledgers written against Pi 1.0.4 before the 1.1.0 leap. Their bases, probes, oracles and line citations describe the release they were written against."
+paths = [
+  "docs/parity/gap-closure/",
+  "docs/plan/",
+]
+
+[[record]]
+version = "1.0"
+reason = "The remote-stack closure record states which Pi 1.0.x releases contained the session-backends package, and the sprites progress ledger names the Pi 1.0 aggregate branch it merged."
+paths = [
+  "docs/parity/gap-closure/gap-remote-stack.md",
+  "docs/plan/",
+]
+
+[[record]]
+version = "1.0.4"
+reason = "The draft release notes for 0.5.0 quote the changelog entry that says the model catalog follows Pi 1.0.4, which is the release the catalog was generated from."
+paths = [
+  "docs/release/0.5.0-release-notes-draft.md",
+]
+
+[[record]]
+version = "1.1.0"
+reason = "Gap-closure records, plan ledgers, review probes and specs written against Pi 1.1.0 before the 1.2.0 leap. Their bases, probes, oracles and line citations describe the release they were written against."
+paths = [
+  "docs/design/jsparity.md",
+  "docs/parity/gap-closure/",
+  "docs/plan/",
+  "docs/specs/extension-factory-trust.md",
+]
+
+[[record]]
+version = "1.1.0"
+reason = "The draft release notes for 0.5.0 describe that release, which followed Pi 1.1.0."
+paths = [
+  "docs/release/0.5.0-release-notes-draft.md",
+]
+
+[[record]]
+version = "1.1.0"
+reason = "Observations recorded against Pi 1.1.0: the Node event-loop probe of the print and JSON prompt-end contract and the pi-subagents compatibility run in the extension API parity ledger, the example outputs that Pi 1.1.0 printed the same way, the /session screen compared with Pi 1.1.0, and the sdk-surface exception row that dates the tool render context's durationMs member to Pi 1.1.0."
+paths = [
+  "docs/extension-api-parity.md",
+  "docs/extension-sdk-surface.md",
+  "docs/site/docs/json.md",
+  "docs/site/docs/slash-commands.md",
+]
+
+[[record]]
+version = "1.1.0"
+reason = "Pages that state a behaviour Pi 1.2.0 changed next to what Pi 1.1.0 did, so a reader coming from 1.1.0 sees the change: truncated print output (cli), thinking in summaries (compaction), symlinked worktree AGENTS.md (configuration), triggerTurn before_agent_start and run start (extensions, rpc-commands), shifted-symbol keys (keybindings), the iss check (mcp), the strict-tool and Mistral timeout fixes (providers), the drawn cursor (settings, settings-examples), ~ in patterns (packages, settings, skills), herdr images and split replies (terminal-setup), strict theme files (themes), wheel routing (tui)."
+paths = [
+  "docs/site/docs/cli.md",
+  "docs/site/docs/compaction.md",
+  "docs/site/docs/configuration.md",
+  "internal/pigdocs/content/compaction.md",
+  "internal/pigdocs/content/json.md",
+  "internal/pigdocs/content/rpc-commands.md",
+  "docs/site/docs/extensions.md",
+  "docs/site/docs/keybindings.md",
+  "docs/site/docs/mcp.md",
+  "docs/site/docs/packages.md",
+  "docs/site/docs/providers.md",
+  "docs/site/docs/rpc-commands.md",
+  "docs/site/docs/settings-examples.md",
+  "docs/site/docs/settings.md",
+  "docs/site/docs/skills.md",
+  "docs/site/docs/terminal-setup.md",
+  "docs/site/docs/themes.md",
+  "docs/site/docs/tui.md",
+]
+
+[[record]]
+version = "1.1.0"
+reason = "The session-scale release note gives the memory that Pi 1.1.0 used on the measured 314 MB session. The measurement was made against that release, and the bug fix ledger quotes the note."
+paths = [
+  "docs/site/docs/bug-ledger.md",
+]
+
+[[record]]
+version = "1.1.0"
+reason = "Equivalence records of the 1.1.0 line-wide work (lw-*) and their release notes: the test runs they list ran against the Pi 1.1.0 mirror, the request record describes the Codex continuation code that run compared, and the pfast-registry and tui3 records name the Pi 1.1.0 behaviour and oracle they were compared with."
+paths = [
+  "docs/parity/equivalence/lw-exec-38300451ab.md",
+  "docs/parity/equivalence/lw-ipc-693a10bf7b.md",
+  "docs/parity/equivalence/lw-proc-output-e171027364.md",
+  "docs/parity/equivalence/lw-request-a5df22bd3a.md",
+  "docs/parity/equivalence/lw-pfast-registry-1a98e19408.md",
+  "docs/parity/equivalence/lw-tui3-d2d4384c0e.md",
+]
+
+[[record]]
+version = "0.99.2"
+reason = "The extension API parity table records the API Pi 0.99.2 added, which Pi 1.1.0 keeps; its line citations name the release they were read from."
+paths = ["docs/extension-api-parity.md"]
+
+[[record]]
+version = "0.99.1"
+reason = "The extension API parity table cites Pi 0.99.1 source lines, which it names as the release they were read from."
+paths = ["docs/extension-api-parity.md"]
+
+[[record]]
+version = "1.2.0"
+reason = "Generated from the history, CHANGELOG.md and the divergence records: each entry names the Pi release its fix or port was made against, and the release notes draft is the 0.5.0 section of CHANGELOG.md, whose entries name the Pi release each change was ported from."
+paths = [
+  "docs/release/0.5.0-release-notes-draft.md",
+  "docs/site/docs/bug-ledger.md",
 ]

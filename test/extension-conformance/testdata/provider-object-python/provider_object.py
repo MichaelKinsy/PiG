@@ -1,3 +1,4 @@
+import dataclasses
 import json
 import os
 import threading
@@ -29,7 +30,17 @@ def make_provider():
                 events.push({"type": "error", "reason": "aborted", "error": message})
             options.signal.subscribe(abort)
         else:
-            message["content"] = [{"type": "text", "text": meta.get("method", "carrier answer")}]
+            text = meta.get("method", "carrier answer")
+            # The caller's request callbacks reach the Provider by name (types.ts ProviderRequestOptions.onPayload, StreamOptions.onResponse and onProviderStreamEvent).
+            if options.on_response:
+                options.on_response({"status": 207, "headers": {"x-carrier": "response"}}, model)
+            if options.on_provider_stream_event:
+                options.on_provider_stream_event({"carrier": "event"}, model)
+            if options.on_payload:
+                replaced = options.on_payload({"carrier": "payload"}, model)
+                if isinstance(replaced, dict):
+                    text = replaced.get("text")
+            message["content"] = [{"type": "text", "text": text}]
             events.push({"type": "done", "reason": "stop", "message": message})
         return events
     def resolve(input):
@@ -38,12 +49,16 @@ def make_provider():
     def get_models():
         with lock:
             return list(models)
+    def get_all_models():
+        with lock:
+            return [*models, {**model, "id": "carrier-all-only"}]
     def refresh(input):
         if not input.force:
             return
         def update():
             with lock:
-                models.append({**model, "id": "refreshed"})
+                # An SDK that drops RefreshModelsContext.baseUrl publishes "refreshed:None".
+                models.append({**model, "id": "refreshed:" + str(input.base_url)})
         input.publish(sdk.ModelsPublication(None, update))
     def cancel_deferred(model, handle, options):
         assert handle["id"] == "deferred"
@@ -52,13 +67,15 @@ def make_provider():
             check=lambda input: sdk.AuthCheck("api_key", input.ctx.env("CARRIER_SOURCE")),
             login=lambda input: {"type": "api_key", "key": input.prompt({"type": "secret", "message": "Carrier key"})}),
         oauth=sdk.OAuthAuth("Carrier OAuth",
-            login=lambda input: {"type": "oauth", "access": input.prompt({"type": "text", "message": "Carrier OAuth"}), "refresh": "refresh", "expires": 100},
+            login=lambda input, options: {"type": "oauth", "access": input.prompt({"type": "text", "message": "Carrier OAuth"}) + "@" + (options.get_device_id() if options.get_device_id else "none"), "refresh": "refresh", "expires": 100},
             refresh=lambda credential, signal: {**credential, "access": "rotated", "expires": 200},
             to_auth=lambda credential: {"apiKey": credential["access"], "baseUrl": "https://carrier.invalid"},
             is_subscription=True, login_label="Carrier login")),
-        get_models, stream, lambda model, context, options: stream(model, context, sdk.ProviderStreamOptions({"metadata": {"method": "simple"}}, options.signal)),
+        get_models, stream, lambda model, context, options: stream(model, context, dataclasses.replace(options, values={"metadata": {"method": "simple"}})),
         base_url=model["baseUrl"], headers={"X-Carrier": "present"},
         filter_models=lambda models, credential: models[:1] if (credential or {}).get("key") == "selected" else [],
+        get_all_models=get_all_models,
+        filter_all_models=lambda models, credential: models if (credential or {}).get("key") == "all" else [],
         refresh_models=refresh,
         fetch_deferred=lambda model, handle, options: stream(model, {}, sdk.ProviderStreamOptions({"metadata": {"method": handle["id"]}}, options.signal)),
         cancel_deferred=cancel_deferred)
@@ -78,7 +95,7 @@ def probe(ctx, path):
     auth = provider.auth.api_key.resolve(input)
     interaction = sdk.AuthInteraction(lambda prompt: prompt["message"], lambda event: None, signal)
     api_login = provider.auth.api_key.login(interaction)
-    login = provider.auth.oauth.login(interaction)
+    login = provider.auth.oauth.login(interaction, sdk.LoginOptions(get_device_id=lambda: "caller-device"))
     rotated = provider.auth.oauth.refresh(login, signal)
     oauth = provider.auth.oauth.to_auth(rotated)
     order = []
@@ -88,7 +105,7 @@ def probe(ctx, path):
         publication.update()
         order.append("update")
         return True
-    provider.refresh_models(sdk.RefreshModelsContext(publish, force=True, signal=signal))
+    provider.refresh_models(sdk.RefreshModelsContext(publish, force=True, signal=signal, base_url="https://regional.invalid/v1"))
     result = provider.stream(model, {"messages": []}, sdk.ProviderStreamOptions()).result()
     simple = provider.stream_simple(model, {"messages": []}, sdk.ProviderStreamOptions()).result()
     deferred = provider.fetch_deferred(model, {"id": "deferred"}, sdk.ProviderStreamOptions()).result()

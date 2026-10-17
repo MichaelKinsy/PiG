@@ -1,9 +1,10 @@
+import { PI_PACKAGE_VERSION } from "./pi-version.mjs";
 import { readFileSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const packageRoot = resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-if (JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")).version !== "1.0.3") throw new Error("unexpected Pi version");
+if (JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")).version !== PI_PACKAGE_VERSION) throw new Error("unexpected Pi version");
 const { createMarkdownTransform } = await import(pathToFileURL(join(packageRoot, "dist/modes/interactive/components/markdown-transform.js")));
 const replacement = [];
 const transform = createMarkdownTransform("assistant", false, [

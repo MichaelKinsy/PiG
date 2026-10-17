@@ -1,4 +1,4 @@
-//go:build unix
+//go:build unix && !pig_strip_node_extensions
 
 package subprocess
 
@@ -13,9 +13,12 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime"
 )
 
 func TestBuilderBuildContextCancelsAndDrainsNodeRuntimePreflight(t *testing.T) {
+	t.Setenv(tsruntime.EnvRuntime, tsruntime.Node) // The Node preflight runs only for the Node runtime.
 	source := filepath.Join(t.TempDir(), "extension.ts")
 	if err := os.WriteFile(source, []byte("export default function () {}\n"), 0o644); err != nil {
 		t.Fatal(err)

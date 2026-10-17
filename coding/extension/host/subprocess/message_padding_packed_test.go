@@ -36,7 +36,7 @@ func TestPackedMessageOutputPadAcrossSDKs(t *testing.T) {
 				if renderer == nil {
 					t.Fatal("missing renderer")
 				}
-				component := renderer(extension.CustomMessageRef{CustomType: "padding", Content: "custom"}, extension.MessageRenderOptions{OutputPad: 1}, nil).(*renderProxyComponent)
+				component := renderer(extension.CustomMessage{CustomType: "padding", Content: "custom"}, extension.MessageRenderOptions{OutputPad: 1}, nil).(*renderProxyComponent)
 				for _, padding := range []int{1, 0, 1} {
 					component.SetOutputPad(padding)
 					component.SetExpanded(padding == 0)

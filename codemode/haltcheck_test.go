@@ -135,7 +135,7 @@ func TestHaltStopsAGuestThatNeverReachesTheInterruptCheck(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = eng.close(context.Background()) })
 	var interrupt atomic.Bool
-	machine, err := eng.newVM(t.Context(), 0, &interrupt)
+	machine, err := eng.newVM(t.Context(), vmOptions{shouldInterrupt: interrupt.Load})
 	if err != nil {
 		t.Fatal(err)
 	}

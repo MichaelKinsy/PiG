@@ -122,7 +122,7 @@ func TestShowLoadedResourcesQuietWithoutDiagnosticsRequestShowsNothing(t *testin
 // A shown listing is followed by the same diagnostics block (Pi :1854).
 func TestShowLoadedResourcesListingThenDiagnostics(t *testing.T) {
 	m := diagnosticsFixtureMode(t)
-	m.opts.Skills = []*SkillDef{{Path: "/s/a/SKILL.md", Name: "commit"}}
+	m.opts.Skills = []*SkillDef{{FilePath: "/s/a/SKILL.md", Name: "commit"}}
 	m.showLoadedResources(false, false)
 	got := renderListing(m)
 	listing, _, ok := strings.Cut(got, "[Skill conflicts]")

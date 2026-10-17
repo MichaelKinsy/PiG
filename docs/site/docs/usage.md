@@ -1,6 +1,6 @@
 # Using PiG
 
-Run `pig` in the directory you want to work in to start the interactive TUI. PiG commands include top-level CLI verbs, slash commands inside the TUI, and keyboard shortcuts.
+Run `pig` in the directory you want to work in to start the interactive TUI. PiG uses that directory to discover files, instructions and configuration, and to group saved sessions. PiG commands include top-level CLI verbs, slash commands inside the TUI, and keyboard shortcuts. The interactive use follows Pi 1.3.0 ([Pi's terminal usage guide](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/usage.md)).
 
 - [Command line](/docs/latest/cli) lists the CLI verbs, the generic subcommands, and the `pig docs` commands for the embedded reference bundle.
 - [Slash commands](/docs/latest/slash-commands) lists the commands you type in the TUI editor.
@@ -12,7 +12,7 @@ Run `pig` in the directory you want to work in to start the interactive TUI. PiG
 |---|---|
 | `Enter` | Submit message. |
 | `Shift+Enter` / `Ctrl+J` | Newline in editor. |
-| `Esc` | Cancel the active dialog, compaction, Bash command, or model turn. |
+| `Esc` | Cancel the active dialog, compaction, Bash command, or model turn. An extension tool that ignores its abort signal is abandoned after 3 seconds; Pi waits for it without a limit (D111). |
 | `Ctrl+C` | Clear the editor; press it again within 500 ms to exit. |
 | `Ctrl+D` | Exit on empty editor. |
 | `Ctrl+P` / `Shift+Ctrl+P` | Cycle to next/previous scoped model (provider-qualified). |
@@ -22,8 +22,20 @@ Run `pig` in the directory you want to work in to start the interactive TUI. PiG
 | `Ctrl+O` | Expand or collapse tool output. |
 | `Ctrl+T` | Show or hide thinking blocks. |
 | `Ctrl+G` | Open the current editor buffer in `externalEditor`, `$VISUAL`, `$EDITOR`, Notepad on Windows, or `nano` elsewhere. |
+| `Ctrl+X` | Copy the last assistant message, as `/copy` does. |
 
-Extensions may install additional shortcuts via `register.shortcuts[]`. The dispatcher rejects duplicates across the host and all loaded extensions.
+Extensions can register more shortcuts. An extension shortcut on a key of a reserved built-in action, such as `app.interrupt` or `tui.input.submit`, is skipped with a warning. An extension shortcut on the key of another built-in action replaces that action with a warning. When two extensions register one key, the later one wins with a warning.
+
+## Change direction while PiG works
+
+| What you want | Action |
+|---|---|
+| Adjust the current task | Type a message and press `Enter` |
+| Add work after the current task | Type a message and press `Alt+Enter` (`Ctrl+Q` on Windows and WSL) |
+| Return queued messages to the editor | Press `Alt+Up` (`Alt+Q` on Windows and WSL) |
+| Stop the current task | Press `Escape` |
+
+A message sent with `Enter` waits until the current response and its tool calls finish, then steers the next response. A follow-up sent with `Alt+Enter` waits until PiG finishes the current task. Returning queued messages to the editor keeps queued extension custom messages queued. Pi 1.3.0 drops those custom messages (D135, [Pi #9886](https://github.com/earendil-works/pi/issues/9886)).
 
 ## Autocomplete
 
@@ -53,4 +65,4 @@ The native editor counts logical cursor columns in UTF-16 code units, as Pi does
 
 ## Core-vs-extension precedence
 
-Core commands always win. If an extension registers a slash command whose name collides with a built-in, the built-in handler runs and the extension command is suppressed with a diagnostic. The same rule applies to CLI command paths: core paths are dispatched before contributed top-level or nested paths.
+Built-in commands always win, as in Pi. When an extension registers a slash command with a built-in name, the built-in command runs, autocomplete skips the extension command, and PiG shows a warning. When two extensions register the same name, each command gets an invocation name with a numeric suffix, such as `/deploy:1` and `/deploy:2`. The same rule applies to CLI command paths: core paths are dispatched before contributed top-level or nested paths.

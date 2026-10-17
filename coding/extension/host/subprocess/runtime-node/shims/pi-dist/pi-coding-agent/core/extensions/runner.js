@@ -1118,7 +1118,7 @@ export class ExtensionRunner {
         }
         return headers;
     }
-    async emitBeforeAgentStart(prompt, images, systemPromptOptions) {
+    async emitBeforeAgentStart(trigger, systemPromptOptions) {
         const currentOptions = normalizeBuildSystemPromptOptions(systemPromptOptions);
         const renderCurrentSystemPrompt = () => buildSystemPrompt(currentOptions);
         const ctx = Object.defineProperties({}, Object.getOwnPropertyDescriptors(this.createContext()));
@@ -1131,9 +1131,8 @@ export class ExtensionRunner {
             for (const handler of handlers) {
                 try {
                     const event = {
+                        ...trigger,
                         type: "before_agent_start",
-                        prompt,
-                        images,
                         get systemPrompt() {
                             return renderCurrentSystemPrompt();
                         },

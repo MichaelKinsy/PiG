@@ -1,0 +1,92 @@
+[
+  {
+    "upstream": "packages/tui/src/components/scroll-view.ts",
+    "package": "./tui",
+    "tests": [
+      "TestScrollViewGetContentWidthReservesColumnForAlwaysScrollbar"
+    ],
+    "upstream_reference": "packages/tui/src/components/scroll-view.ts",
+    "mutation": "tui/scroll_view.go: replace 'if s.currentScrollbar == ScrollbarAlways && width > 1 {\\nreturn width - 1\\n}' with 'if s.currentScrollbar == ScrollbarAlways && width > 1 {\\nreturn width\\n}'; compiling go test -run exact test -count=1 fails TestScrollViewGetContentWidthReservesColumnForAlwaysScrollbar."
+  },
+  {
+    "upstream": "packages/tui/src/components/scroll-view.ts",
+    "package": "./tui",
+    "tests": [
+      "TestScrollViewIsScrollbarVisibleAlways"
+    ],
+    "upstream_reference": "packages/tui/src/components/scroll-view.ts",
+    "mutation": "tui/scroll_view.go: replace 'return s.currentViewportHeight > 0\\n}\\nreturn s.currentScrollbar == ScrollbarAuto' with 'return false\\n}\\nreturn s.currentScrollbar == ScrollbarAuto'; compiling go test -run exact test -count=1 fails TestScrollViewIsScrollbarVisibleAlways."
+  },
+  {
+    "upstream": "packages/tui/src/components/scroll-view.ts",
+    "package": "./tui",
+    "tests": [
+      "TestScrollViewScrollByReturnsLeftover"
+    ],
+    "upstream_reference": "packages/tui/src/components/scroll-view.ts",
+    "mutation": "tui/scroll_view.go: replace 'return lines - moved\\n}' with 'return 0\\n}'; compiling go test -run exact test -count=1 fails TestScrollViewScrollByReturnsLeftover."
+  },
+  {
+    "upstream": "packages/tui/src/components/scroll-view.ts",
+    "package": "./tui",
+    "tests": [
+      "TestScrollViewScrollToClamps"
+    ],
+    "upstream_reference": "packages/tui/src/components/scroll-view.ts",
+    "mutation": "tui/scroll_view.go: replace 'next := max(0, min(maxScrollTop, scrollTop))\\nnextFollowSuppressedAtEnd' with 'next := max(0, scrollTop)\\nnextFollowSuppressedAtEnd'; compiling go test -run exact test -count=1 fails TestScrollViewScrollToClamps."
+  },
+  {
+    "upstream": "packages/tui/src/components/scroll-view.ts",
+    "package": "./tui",
+    "tests": [
+      "TestScrollViewScrollToDisableFollowAtEnd"
+    ],
+    "upstream_reference": "packages/tui/src/components/scroll-view.ts",
+    "mutation": "tui/scroll_view.go: replace 'nextFollowSuppressedAtEnd := options.DisableFollow && next == maxScrollTop' with 'nextFollowSuppressedAtEnd := options.DisableFollow && next == maxScrollTop+1000'; compiling go test -run exact test -count=1 fails TestScrollViewScrollToDisableFollowAtEnd."
+  },
+  {
+    "upstream": "packages/tui/src/components/scroll-view.ts",
+    "package": "./tui",
+    "tests": [
+      "TestScrollViewFollowEndPinsToBottom"
+    ],
+    "upstream_reference": "packages/tui/src/components/scroll-view.ts",
+    "mutation": "tui/scroll_view.go: replace 'if s.followingEnd {\\ns.currentScrollTop = maxScrollTop\\n} else {' with 'if false {\\ns.currentScrollTop = maxScrollTop\\n} else {'; compiling go test -run exact test -count=1 fails TestScrollViewFollowEndPinsToBottom."
+  },
+  {
+    "upstream": "packages/tui/src/components/scroll-view.ts",
+    "package": "./tui",
+    "tests": [
+      "TestScrollViewDisposeStopsTimer"
+    ],
+    "upstream_reference": "packages/tui/src/components/scroll-view.ts",
+    "mutation": "tui/scroll_view.go: replace 'func (s *ScrollView) Dispose() {\\ns.mu.Lock()\\ns.stopHideTimer()\\ns.mu.Unlock()\\n}' with 'func (s *ScrollView) Dispose() {\\n}'; compiling go test -run exact test -count=1 fails TestScrollViewDisposeStopsTimer."
+  },
+  {
+    "upstream": "packages/tui/src/tui-alt-screen.ts",
+    "package": "./tui",
+    "tests": [
+      "TestAltScreenCopySelectionErrorMessages"
+    ],
+    "upstream_reference": "packages/tui/src/tui-alt-screen.ts",
+    "mutation": "tui/tui_alt_screen_selection.go: replace 'message = \"Copy failed\"' with 'message = \"Copy fail\"'; compiling go test -run exact test -count=1 fails TestAltScreenCopySelectionErrorMessages."
+  },
+  {
+    "upstream": "packages/tui/src/tui-alt-screen.ts",
+    "package": "./tui",
+    "tests": [
+      "TestAltScreenCopyOnSelectAndManualCopy"
+    ],
+    "upstream_reference": "packages/tui/src/tui-alt-screen.ts",
+    "mutation": "tui/tui_alt_screen_selection.go: replace '\"\\\\x1b]52;c;%s\\\\x07\"' with '\"\\\\x1b]52;p;%s\\\\x07\"'; compiling go test -run exact test -count=1 fails TestAltScreenCopyOnSelectAndManualCopy."
+  },
+  {
+    "upstream": "packages/tui/src/tui-alt-screen.ts",
+    "package": "./tui",
+    "tests": [
+      "TestAltScreenClipboardFailureDoesNotFlashSuccessOrHoldRendererLock"
+    ],
+    "upstream_reference": "packages/tui/src/tui-alt-screen.ts",
+    "mutation": "tui/tui_alt_screen_selection.go: replace 't.flash(message, altCopyErrorFlashDurationMS)\\nreturn false' with 't.flash(message, altCopyErrorFlashDurationMS)\\nreturn true'; compiling go test -run exact test -count=1 fails TestAltScreenClipboardFailureDoesNotFlashSuccessOrHoldRendererLock."
+  }
+]

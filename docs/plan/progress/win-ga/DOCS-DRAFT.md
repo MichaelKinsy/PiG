@@ -1,6 +1,6 @@
 # Windows status wording, both outcomes
 
-Neither patch is applied. The owner chooses. Both apply cleanly to `team/smc1/win-ga` with `git apply` and touch the same four files:
+Neither patch is applied. The owner chooses. Both apply cleanly to `team/the bench host/win-ga` with `git apply` and touch the same four files:
 
 - `windows-supported.patch`: Windows is supported on amd64.
 - `windows-preview.patch`: Windows stays a preview, with the remaining gaps stated.

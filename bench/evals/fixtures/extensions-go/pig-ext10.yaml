@@ -1,0 +1,45 @@
+# SPDX-License-Identifier: MIT
+name: pig-ext10
+description: "The ten bench-ext extensions of the overhead bench, fused into the Piglet Binary: no subprocess, no IPC."
+
+release:
+  version: 0.5.0-dev
+
+build:
+  extensionRealization: fused
+
+extensions:
+  - name: bench-ext-01
+    origins:
+      - local:factory/bench-ext-01
+  - name: bench-ext-02
+    origins:
+      - local:factory/bench-ext-02
+  - name: bench-ext-03
+    origins:
+      - local:factory/bench-ext-03
+  - name: bench-ext-04
+    origins:
+      - local:factory/bench-ext-04
+  - name: bench-ext-05
+    origins:
+      - local:factory/bench-ext-05
+  - name: bench-ext-06
+    origins:
+      - local:factory/bench-ext-06
+  - name: bench-ext-07
+    origins:
+      - local:factory/bench-ext-07
+  - name: bench-ext-08
+    origins:
+      - local:factory/bench-ext-08
+  - name: bench-ext-09
+    origins:
+      - local:factory/bench-ext-09
+  - name: bench-ext-10
+    origins:
+      - local:factory/bench-ext-10
+
+discovery:
+  extensions: []
+  skills: []

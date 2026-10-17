@@ -159,6 +159,7 @@ func readWindowsClipboardText(ctx context.Context) (*string, bool, error) {
 		return nil, true, errors.New("Clipboard does not contain text")
 	}
 	data := unsafe.Slice(*(**byte)(unsafe.Pointer(&address)), int(size)) //nolint:gosec // G103: GlobalLock supplies OS memory; GlobalSize bounds the read until deferred unlock.
+	//portlint:allow numbers capacity in whole UTF-16 code units: a trailing odd byte is not a unit, and the loop below stops before it
 	units := make([]uint16, 0, len(data)/2)
 	for offset := 0; offset+1 < len(data); offset += 2 {
 		unit := binary.LittleEndian.Uint16(data[offset:])

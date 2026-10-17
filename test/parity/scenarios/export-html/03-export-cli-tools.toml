@@ -41,3 +41,25 @@ artifact_both_contain = ["eyJoZWFkZXIiOnsidHlwZSI6InNlc3Npb24iLCJpZCI6InRlc3QtdG
 pattern = '(?m)^(Exported to: )/[^\r\n]*/parity-cli-03-export-cli-tools-(pig|pi)-[0-9]+'
 with = '${1}<TEMP>'
 reason = "D2: replace only this scenario's allocated temporary root, preserving the destination suffix and the full HTML artifact."
+
+# D124 parity allowance: PiG's export template.js adds Pi branch open-router-cost 83ca8020's hunks (recorded cost.total shown in the header, falling back to the
+# component sum). Each rule rewrites that hunk to Pi 1.1.0's text on both sides; all other bytes still compare equal. Remove with D124 when Pi 1.1.0's template has them.
+[[assert.normalize_replace]]
+pattern = 'cacheWrite: 0, total: 0 \}'
+with = 'cacheWrite: 0 }'
+reason = "D124: the cost totals object has no total field in Pi 1.1.0's template.js."
+
+[[assert.normalize_replace]]
+pattern = '(?s)\n *const componentTotal =.*?\(msg\.usage\.cost\.cacheWrite \|\| 0\);'
+with = ''
+reason = "D124: the component-sum fallback is absent in Pi 1.1.0's template.js."
+
+[[assert.normalize_replace]]
+pattern = '(?s)\n *// Provider-reported totals.*?: componentTotal;'
+with = ''
+reason = "D124: the recorded cost.total accumulation is absent in Pi 1.1.0's template.js."
+
+[[assert.normalize_replace]]
+pattern = 'const totalCost = globalStats\.cost\.total;'
+with = 'const totalCost = globalStats.cost.input + globalStats.cost.output + globalStats.cost.cacheRead + globalStats.cost.cacheWrite;'
+reason = "D124: the header cost is the component sum in Pi 1.1.0's template.js."

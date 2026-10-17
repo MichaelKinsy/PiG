@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -50,9 +51,9 @@ func autocompleteValues(result *AutocompleteSuggestions) []string {
 // cursor is translated to the same text boundary; expected cursors use bytes too.
 func upstreamSuggestions(p *CombinedProvider, line string, col int, force bool) *AutocompleteSuggestions {
 	if force {
-		return p.GetSuggestionsForce([]string{line}, 0, col)
+		return p.GetSuggestions(context.Background(), []string{line}, 0, col, AutocompleteSuggestionOptions{Force: true})
 	}
-	return p.GetSuggestions([]string{line}, 0, col)
+	return p.GetSuggestions(context.Background(), []string{line}, 0, col, AutocompleteSuggestionOptions{})
 }
 func requireAutocomplete(t *testing.T, p *CombinedProvider, line string, col int, force bool) *AutocompleteSuggestions {
 	t.Helper()

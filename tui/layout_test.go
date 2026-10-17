@@ -1,5 +1,7 @@
 package tui
 
+// pi: packages/tui/src/layout.ts
+
 import (
 	"strings"
 	"testing"
@@ -74,7 +76,7 @@ func TestLayoutLeafClampsHeightAndScrollsToCursor(t *testing.T) {
 func TestRenderLayoutFrameVStackGeometryAndPaint(t *testing.T) {
 	a := &stubComponent{lines: []string{"AAA"}}
 	b := &stubComponent{lines: []string{"BBB"}}
-	root := NewVStack([]StackChild{{Component: a}, {Component: b}}, StackOptions{})
+	root := NewVStack([]StackEntry{{Component: a}, {Component: b}}, StackOptions{})
 	frame := RenderLayoutFrame(root, 10, 5, noRender)
 
 	if len(frame.Lines) != 5 || frame.Height != 5 || frame.Width != 10 {

@@ -1,0 +1,14 @@
+{
+  "name": "glob-syntax",
+  "pi": {
+    "prompts": [
+      "prompts/{alpha,beta}*.md",
+      "prompts/+(x|y)-*.md",
+      "prompts/[[:digit:]]*.md",
+      "!prompts/beta.md"
+    ],
+    "skills": [
+      "skills/*"
+    ]
+  }
+}

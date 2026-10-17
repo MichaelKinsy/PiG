@@ -9,12 +9,15 @@ package codingagent
 
 import (
 	"encoding/json"
+	"math"
 	"strconv"
 	"strings"
 	"time"
 	"unicode"
 
+	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
+	"github.com/MichaelKinsy/PiG/internal/text"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -41,26 +44,90 @@ func shellDetailsFrom(details any) shellResultDetails {
 		out := shellResultDetails{}
 		out.FullOutputPath, _ = d["fullOutputPath"].(string)
 		if raw, ok := d["truncation"].(map[string]any); ok {
-			var wire struct {
-				Truncated   bool   `json:"truncated"`
-				TruncatedBy string `json:"truncatedBy"`
-				TotalLines  int    `json:"totalLines"`
-				OutputLines int    `json:"outputLines"`
-				MaxBytes    int    `json:"maxBytes"`
-			}
-			if data, err := json.Marshal(raw); err == nil && json.Unmarshal(data, &wire) == nil {
-				out.Truncation = &tools.TruncationResult{
-					Truncated:   wire.Truncated,
-					TruncatedBy: wire.TruncatedBy,
-					TotalLines:  wire.TotalLines,
-					OutputLines: wire.OutputLines,
-					MaxBytes:    wire.MaxBytes,
-				}
-			}
+			out.Truncation = truncationFromMap(raw)
 		}
 		return out
 	}
 	return shellResultDetails{}
+}
+
+// truncationFromMap reads the truncation fields the renderer shows from a decoded truncation object by their exact keys, as
+// bash.ts reads truncation.truncated, truncation.truncatedBy, truncation.outputLines, truncation.totalLines and
+// truncation.maxBytes: a key that matches a field only case-insensitively is another property. A field of the wrong type,
+// or a count that is not an integer that fits an int, reads as no truncation object.
+func truncationFromMap(raw map[string]any) *tools.TruncationResult {
+	out := &tools.TruncationResult{}
+	if value, present := raw["truncated"]; present && value != nil {
+		truncated, ok := value.(bool)
+		if !ok {
+			return nil
+		}
+		out.Truncated = truncated
+	}
+	if value, present := raw["truncatedBy"]; present && value != nil {
+		by, ok := value.(string)
+		if !ok {
+			return nil
+		}
+		out.TruncatedBy = by
+	}
+	for _, field := range [...]struct {
+		key    string
+		target *int
+	}{{"totalLines", &out.TotalLines}, {"outputLines", &out.OutputLines}, {"maxBytes", &out.MaxBytes}} {
+		value, present := raw[field.key]
+		if !present || value == nil {
+			continue
+		}
+		count, ok := truncationCount(value)
+		if !ok {
+			return nil
+		}
+		*field.target = count
+	}
+	return out
+}
+
+// truncationCount reads a count member: a decoded JSON number (float64, or json.Number from a UseNumber decode) or a Go
+// number an in-process extension put in its details, when it is an integer that fits an int.
+func truncationCount(value any) (int, bool) {
+	var number float64
+	switch v := value.(type) {
+	case float64:
+		number = v
+	case float32:
+		number = float64(v)
+	case json.Number:
+		n, err := v.Int64()
+		return int(n), err == nil
+	case int:
+		return v, true
+	case int8:
+		return int(v), true
+	case int16:
+		return int(v), true
+	case int32:
+		return int(v), true
+	case int64:
+		return int(v), true
+	case uint:
+		return int(v), v <= math.MaxInt
+	case uint8:
+		return int(v), true
+	case uint16:
+		return int(v), true
+	case uint32:
+		return int(v), true
+	case uint64:
+		return int(v), v <= math.MaxInt
+	default:
+		return 0, false
+	}
+	if number != math.Trunc(number) || number < math.MinInt || number >= -math.MinInt {
+		return 0, false
+	}
+	//portlint:allow numbers the guard above admits only integral values within int range, so the conversion is exact; NaN fails `number != math.Trunc(number)`
+	return int(number), true
 }
 
 // makeShellBodyRenderer produces the body of a bash or powershell tool card.
@@ -91,6 +158,19 @@ func makeShellBodyRenderer(content string, details any, isPartial bool, took *ti
 }
 
 func shellResultLines(content string, d shellResultDetails, isPartial, expanded bool, width int) []string {
+	return newShellResultView(content, d, isPartial, expanded).render(width)
+}
+
+// shellResultView is the children upstream rebuildBashResultRenderComponent builds for one update of a shell card: the
+// output (a Text when expanded, a VisualLinePreview when collapsed) and the warning Text. Built once per update, they keep
+// their rows per width, so drawing the card again costs no pass over the output.
+type shellResultView struct {
+	output  tui.Component
+	preview bool
+	warning *tui.Text
+}
+
+func newShellResultView(content string, d shellResultDetails, isPartial, expanded bool) shellResultView {
 	theme := tui.ActiveTheme()
 	output := jsTrim(shellTextOutput(content))
 	truncated := d.Truncation != nil && d.Truncation.Truncated
@@ -100,7 +180,7 @@ func shellResultLines(content string, d shellResultDetails, isPartial, expanded 
 		}
 	}
 
-	var lines []string
+	var view shellResultView
 	if output != "" {
 		styled := strings.Split(output, "\n")
 		for i, line := range styled {
@@ -108,17 +188,17 @@ func shellResultLines(content string, d shellResultDetails, isPartial, expanded 
 		}
 		styledOutput := strings.Join(styled, "\n")
 		if expanded {
-			lines = append(lines, tui.NewPaddedText("\n"+styledOutput, 0, 0, nil).Render(width)...)
+			view.output = tui.NewPaddedText("\n"+styledOutput, 0, 0, nil)
 		} else {
-			lines = append(lines, "")
-			lines = append(lines, tui.NewVisualLinePreview(tui.VisualLinePreviewOptions{
+			view.preview = true
+			view.output = tui.NewVisualLinePreview(tui.VisualLinePreviewOptions{
 				Text:           styledOutput,
 				MaxVisualLines: bashPreviewLines,
 				Keep:           tui.VisualKeepEnd,
 				FormatHint: func(hidden int) string {
 					return themeFg(theme.Muted, "... ("+strconv.Itoa(hidden)+" earlier lines,") + " " + expandKeyHint() + themeFg(theme.Muted, ")")
 				},
-			}).Render(width)...)
+			})
 		}
 	}
 
@@ -139,17 +219,37 @@ func shellResultLines(content string, d shellResultDetails, isPartial, expanded 
 				warnings = append(warnings, "Truncated: "+strconv.Itoa(tr.OutputLines)+" lines shown ("+tools.FormatSize(maxBytes)+" limit)")
 			}
 		}
-		warning := themeFg(theme.Warning, "["+strings.Join(warnings, ". ")+"]")
-		lines = append(lines, tui.NewPaddedText("\n"+warning, 0, 0, nil).Render(width)...)
+		view.warning = tui.NewPaddedText("\n"+themeFg(theme.Warning, "["+strings.Join(warnings, ". ")+"]"), 0, 0, nil)
+	}
+	return view
+}
+
+// render is the view's rows for width.
+func (view shellResultView) render(width int) []string {
+	var lines []string
+	if view.output != nil {
+		if view.preview {
+			lines = append(lines, "")
+		}
+		lines = append(lines, view.output.Render(width)...)
+	}
+	if view.warning != nil {
+		lines = append(lines, view.warning.Render(width)...)
 	}
 	return lines
 }
 
+// Ports packages/coding-agent/src/core/tools/render-utils.ts (getTextOutput: shellTextOutput, toolResultTextOutput).
+
 // shellTextOutput mirrors upstream render-utils getTextOutput for a text
 // result: strip ANSI, sanitize binary output, and drop carriage returns.
 func shellTextOutput(content string) string {
-	text := tools.SanitizeBinaryOutput(string(tools.StripANSI([]byte(content))))
-	return strings.ReplaceAll(text, "\r", "")
+	return strings.ReplaceAll(tools.SanitizeBinaryOutput(text.StripANSIString(content)), "\r", "")
+}
+
+// toolResultTextOutput is upstream render-utils getTextOutput for a tool result.
+func toolResultTextOutput(result agent.AgentToolResult, showImages bool) string {
+	return tools.GetTextOutput(result.Content, showImages)
 }
 
 // expandKeyHint mirrors upstream keyHint("app.tools.expand", "to expand").

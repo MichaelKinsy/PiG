@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"maps"
 	"math"
 	"reflect"
 	"regexp"
@@ -28,6 +29,137 @@ import (
 // ported: 0.99.2 "accepts a worker path string" (#10204): the string form of `workerUrl` names the worker entry of a
 // Bun compiled executable, and this engine has no worker.
 
+// sandbox.test.ts runs every behavior test against each place a VM can run (describe.each(BACKENDS)), the in-thread
+// backend with a small interrupt budget so runaway scripts end quickly. The worker backend is the tests themselves; a
+// backend's wrapper runs the same test functions with the backend selected. The wasm-loading tests belong to the worker
+// host ("worker host" describe) and stay out.
+type sandboxBackend struct {
+	name string
+	open func(codemode.SandboxOptions) (*codemode.Sandbox, error)
+}
+
+// inlineInterruptBudget is sandbox.test.ts's INTERRUPT_BUDGET (20_000) scaled to this engine: measured here, a
+// script that spins the job queue (one poll per 50 jobs) takes 20 s to use 20_000 polls and 4.7 s to use 5_000. The output-limit
+// test needs at least 5_000 polls to reach its limit first.
+const inlineInterruptBudget = 5_000
+
+var (
+	workerBackend = sandboxBackend{"worker", codemode.NewSandbox}
+	inlineBackend = sandboxBackend{"inline", func(options codemode.SandboxOptions) (*codemode.Sandbox, error) {
+		sandbox, err := codemode.NewInlineSandbox(codemode.InlineSandboxOptions{SandboxOptions: options, InterruptBudget: inlineInterruptBudget})
+		if err != nil {
+			return nil, err
+		}
+		return sandbox.Sandbox, nil
+	}}
+	// The remote backend serves executions in process and clones every message through JSON, as Workers RPC would
+	// (structuredClone upstream), with maxInterruptBudget = the in-thread budget.
+	remoteBackend = sandboxBackend{"remote", func(options codemode.SandboxOptions) (*codemode.Sandbox, error) {
+		sandbox, err := codemode.NewRemoteSandbox(codemode.RemoteSandboxOptions{
+			Tools: options.Tools, Globals: options.Globals, TimeoutMs: options.TimeoutMs, MemoryLimitBytes: options.MemoryLimitBytes,
+			Remote: func() (codemode.Remote, error) {
+				return clonedRemote{serve: codemode.ServeOptions{MaxInterruptBudget: inlineInterruptBudget}}, nil
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+		openRemotes.mu.Lock()
+		openRemotes.sandboxes = append(openRemotes.sandboxes, sandbox)
+		openRemotes.mu.Unlock()
+		return sandbox.Sandbox, nil
+	}}
+	backend = workerBackend
+)
+
+// openRemotes holds the remote sandboxes a test opened: a test closes the embedded *Sandbox it is given, so onBackend closes
+// the RemoteSandbox, which also joins the Remote.Execute calls it started.
+var openRemotes struct {
+	mu        sync.Mutex
+	sandboxes []*codemode.RemoteSandbox
+}
+
+func closeRemotes() {
+	openRemotes.mu.Lock()
+	sandboxes := openRemotes.sandboxes
+	openRemotes.sandboxes = nil
+	openRemotes.mu.Unlock()
+	for _, sandbox := range sandboxes {
+		_ = sandbox.Close()
+	}
+}
+
+func openSandbox(options codemode.SandboxOptions) (*codemode.Sandbox, error) {
+	return backend.open(options)
+}
+
+// onBackend runs the behavior tests with b selected.
+func onBackend(t *testing.T, b sandboxBackend, tests map[string]func(*testing.T)) {
+	t.Helper()
+	backend = b
+	t.Cleanup(func() {
+		closeRemotes()
+		backend = workerBackend
+	})
+	for _, name := range slices.Sorted(maps.Keys(tests)) {
+		t.Run(name, tests[name])
+	}
+}
+
+var behaviorTests = map[string]func(*testing.T){
+	"ReturnsTheScriptsReturnValueAfterAJSONRoundTrip":                      TestReturnsTheScriptsReturnValueAfterAJSONRoundTrip,
+	"SupportsTopLevelAwait":                                                TestSupportsTopLevelAwait,
+	"CollectsTextImageAndConsoleOutputInOrder":                             TestCollectsTextImageAndConsoleOutputInOrder,
+	"RejectsInvalidTextAndImageArguments":                                  TestRejectsInvalidTextAndImageArguments,
+	"AcceptsWrappedAndLargeBase64ImageData":                                TestAcceptsWrappedAndLargeBase64ImageData,
+	"EndsTheScriptSuccessfullyOnExitKeepingOutputAndStoreWrites":           TestEndsTheScriptSuccessfullyOnExitKeepingOutputAndStoreWrites,
+	"KeepsOutputProducedBeforeAFailure":                                    TestKeepsOutputProducedBeforeAFailure,
+	"ReportsSyntaxErrorsWithTheScriptsLineNumber":                          TestReportsSyntaxErrorsWithTheScriptsLineNumber,
+	"ReportsThrownErrorsWithTheScriptsLineNumber":                          TestReportsThrownErrorsWithTheScriptsLineNumber,
+	"FormatsStacksLikeV8WithoutPreludeFrames":                              TestFormatsStacksLikeV8WithoutPreludeFrames,
+	"ReportsNonErrorThrows":                                                TestReportsNonErrorThrows,
+	"ReportsANonSerializableReturnValueAsAScriptError":                     TestReportsANonSerializableReturnValueAsAScriptError,
+	"ExposesToolsAsAsyncFunctionsAndRecordsCalls":                          TestExposesToolsAsAsyncFunctionsAndRecordsCalls,
+	"RunsConcurrentCallsAndListsToolNames":                                 TestRunsConcurrentCallsAndListsToolNames,
+	"ExposesToolsUnderNormalizedIdentifiersAndListsThemInALL_TOOLS":        TestExposesToolsUnderNormalizedIdentifiersAndListsThemInALL_TOOLS,
+	"PassesUndefinedArgumentsAndResultsThrough":                            TestPassesUndefinedArgumentsAndResultsThrough,
+	"TurnsToolErrorsIntoCatchableErrorsInTheScript":                        TestTurnsToolErrorsIntoCatchableErrorsInTheScript,
+	"RejectsCallsToUnknownTools":                                           TestRejectsCallsToUnknownTools,
+	"AbortsUnawaitedCallsWhenTheScriptReturns":                             TestAbortsUnawaitedCallsWhenTheScriptReturns,
+	"SupportsRegisterAndUnregisterBetweenExecutions":                       TestSupportsRegisterAndUnregisterBetweenExecutions,
+	"NamesCloseMatchesWhenAScriptReadsAToolThatDoesNotExist":               TestNamesCloseMatchesWhenAScriptReadsAToolThatDoesNotExist,
+	"StoreReadsTheSnapshotAndReportsWrites":                                TestStoreReadsTheSnapshotAndReportsWrites,
+	"StoreReturnsCopies":                                                   TestStoreReturnsCopies,
+	"RejectsInvalidKeysValuesAndOversizedWritesInsideTheScript":            TestRejectsInvalidKeysValuesAndOversizedWritesInsideTheScript,
+	"ExplainsOversizedWrites":                                              TestExplainsOversizedWrites,
+	"ReservesTheStoreAndLoadNames":                                         TestReservesTheStoreAndLoadNames,
+	"ExposesGlobalsAsTopLevelFunctionsWithoutRecordingThemAsCalls":         TestExposesGlobalsAsTopLevelFunctionsWithoutRecordingThemAsCalls,
+	"GroupsNamespacedGlobalsAndSpreadsArgumentsOnRequest":                  TestGroupsNamespacedGlobalsAndSpreadsArgumentsOnRequest,
+	"NamesTheMembersOfANamespaceWhenAScriptReadsOneThatDoesNotExist":       TestNamesTheMembersOfANamespaceWhenAScriptReadsOneThatDoesNotExist,
+	"RejectsInvalidAndReservedGlobalNames":                                 TestRejectsInvalidAndReservedGlobalNames,
+	"TerminatesASynchronousInfiniteLoopOnTimeout":                          TestTerminatesASynchronousInfiniteLoopOnTimeout,
+	"RunsWithoutADeadlineWhenTimeoutIsInfinity":                            TestRunsWithoutADeadlineWhenTimeoutIsInfinity,
+	"FailsAScriptThatWaitsOnAPromiseNothingCanSettle":                      TestFailsAScriptThatWaitsOnAPromiseNothingCanSettle,
+	"TerminatesAMicrotaskSpinningLoopOnTimeout":                            TestTerminatesAMicrotaskSpinningLoopOnTimeout,
+	"AbortsViaContextAndCancelsInFlightCalls":                              TestAbortsViaContextAndCancelsInFlightCalls,
+	"RejectsExecuteAfterClose":                                             TestRejectsExecuteAfterClose,
+	"RunsExecutionsInParallelWithoutSharingState":                          TestRunsExecutionsInParallelWithoutSharingState,
+	"TurnsDeepRecursionIntoACatchableRangeError":                           TestTurnsDeepRecursionIntoACatchableRangeError,
+	"HasNoHostGlobals":                                                     TestHasNoHostGlobals,
+	"KeepsEvalAndFunctionInsideTheVM":                                      TestKeepsEvalAndFunctionInsideTheVM,
+	"RejectsDynamicImport":                                                 TestRejectsDynamicImport,
+	"IgnoresPatchesToBuiltinsAndBuiltinGlobals":                            TestIgnoresPatchesToBuiltinsAndBuiltinGlobals,
+	"FreezesIntrinsicsThatAreOnlyReachableFromInstances":                   TestFreezesIntrinsicsThatAreOnlyReachableFromInstances,
+	"StillLetsInstancesOverridePropertiesOfFrozenPrototypes":               TestStillLetsInstancesOverridePropertiesOfFrozenPrototypes,
+	"ReportsErrorsWhoseNameOrMessageIsNotAString":                          TestReportsErrorsWhoseNameOrMessageIsNotAString,
+	"KeepsToolsAndConsoleFrozen":                                           TestKeepsToolsAndConsoleFrozen,
+	"SandboxFailsAScriptWhoseOutputPassesTheLimitsEvenIfItCatchesTheError": TestSandboxFailsAScriptWhoseOutputPassesTheLimitsEvenIfItCatchesTheError,
+}
+
+func TestSandboxBehaviorOnTheInlineBackend(t *testing.T) { onBackend(t, inlineBackend, behaviorTests) }
+
+func TestSandboxBehaviorOnTheRemoteBackend(t *testing.T) { onBackend(t, remoteBackend, behaviorTests) }
+
 func js(s string) json.RawMessage { return json.RawMessage(s) }
 
 // Base64 of the leading bytes of each format. image() only inspects the signature.
@@ -42,7 +174,7 @@ var echo = codemode.Tool{Name: "echo", Execute: func(_ context.Context, args jso
 
 func newSandbox(t *testing.T, timeoutMs float64, tools ...codemode.Tool) *codemode.Sandbox {
 	t.Helper()
-	sandbox, err := codemode.NewSandbox(codemode.SandboxOptions{Tools: tools, TimeoutMs: timeoutMs})
+	sandbox, err := openSandbox(codemode.SandboxOptions{Tools: tools, TimeoutMs: timeoutMs})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +250,7 @@ func TestEmbeddedSourcesMatchTheirRecordedHashes(t *testing.T) {
 	// upstream "embedded sources parse as JavaScript": the prelude parses (and runs) in every execution below; the
 	// hashes pin the exact upstream bytes that the engine and the prelude were verified against.
 	sum := func(b []byte) string { h := sha256.Sum256(b); return hex.EncodeToString(h[:]) }
-	if got := sum([]byte(codemode.PreludeSource)); got != "c8c292ac0bc913654384ae12ecd759d6de89862acab0ce912f2e733878749880" {
+	if got := sum([]byte(codemode.PreludeSource)); got != "501d03d333a31ddaf98048ce82d865008d4636da94242ff4f5aa1fe27f085832" {
 		t.Errorf("prelude sha256 = %s", got)
 	}
 	if got := sum(codemode.QuickJSWasm()); got != "d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9" {
@@ -160,7 +292,7 @@ func TestCollectsTextImageAndConsoleOutputInOrder(t *testing.T) {
 		t.Fatalf("failed: %+v", result.Error)
 	}
 	want := []codemode.OutputItem{
-		{Type: "text", Text: `hello 1 {"a":1}`},
+		{Type: "text", Text: `hello 1 {"a":1}`, Console: true},
 		{Type: "text", Text: `{"json":true}`},
 		{Type: "text", Text: "undefined"},
 		{Type: "text", Text: "7"},
@@ -175,7 +307,7 @@ func TestCollectsTextImageAndConsoleOutputInOrder(t *testing.T) {
 		t.Fatalf("output = %+v", result.Output)
 	}
 	last := result.Output[len(want)]
-	if last.Type != "text" || !regexp.MustCompile(`^Error: bad`).MatchString(last.Text) {
+	if last.Type != "text" || !last.Console || !regexp.MustCompile(`^Error: bad`).MatchString(last.Text) {
 		t.Fatalf("last output = %+v", last)
 	}
 }
@@ -218,12 +350,12 @@ func TestRejectsInvalidTextAndImageArguments(t *testing.T) {
 		t.Errorf("errors[0] = %q", errs[0])
 	}
 	want := []string{
-		"TypeError: image expects a non-empty image URL string, an object with image_url, or a raw MCP image block",
+		`TypeError: image expects a non-empty image URL string, an object with image_url, or an image block { type: "image", data, mimeType }`,
 		"TypeError: remote image URLs are not supported in tool outputs. Pass a base64 data URI instead",
 		"TypeError: invalid image output. Pass a base64 data URI instead",
-		`TypeError: image only accepts MCP image blocks, got "text"`,
-		"TypeError: image expected MCP image data",
-		"TypeError: image expects a non-empty image URL string, an object with image_url, or a raw MCP image block",
+		`TypeError: image only accepts image blocks, got "text"`,
+		"TypeError: image expected image block data",
+		`TypeError: image expects a non-empty image URL string, an object with image_url, or an image block { type: "image", data, mimeType }`,
 	}
 	for range 6 {
 		want = append(want, "TypeError: invalid image output. The image data is not valid base64 (truncated or corrupted?)")
@@ -286,6 +418,11 @@ func TestReportsSyntaxErrorsWithTheScriptsLineNumber(t *testing.T) {
 	e := wantFailure(t, run(t, newSandbox(t, 10_000), "const a = 1;\nconst b = ;\nreturn a"), codemode.ErrorScript)
 	if e.Name != "SyntaxError" || !regexp.MustCompile(`codemode\.js:2`).MatchString(e.Stack) {
 		t.Fatalf("error = %+v", e)
+	}
+	// vm.ts describeException: the stack is "<name>: <message>\n<engine stack>" with the engine stack's trailing whitespace trimmed.
+	// Probed against the pinned Pi (CodemodeSandbox, the same script): stack "SyntaxError: unexpected token in expression: ';'\n    at codemode.js:2:11".
+	if want := "SyntaxError: unexpected token in expression: ';'\n    at codemode.js:2:11"; e.Stack != want || e.Message != "unexpected token in expression: ';'" {
+		t.Fatalf("stack = %q, message = %q, want stack %q", e.Stack, e.Message, want)
 	}
 }
 
@@ -435,6 +572,9 @@ func TestAbortsUnawaitedCallsWhenTheScriptReturns(t *testing.T) {
 	}
 }
 
+// Pi source: packages/codemode/src/runtime/host.ts
+// mutation-checked: zeroing the results of Sandbox.UnregisterTool fails it
+// Pi: packages/codemode/src/runtime/host.ts:377 (unregisterTool)
 func TestSupportsRegisterAndUnregisterBetweenExecutions(t *testing.T) {
 	sandbox := newSandbox(t, 10_000)
 	if err := sandbox.RegisterTool(echo); err != nil {
@@ -447,8 +587,12 @@ func TestSupportsRegisterAndUnregisterBetweenExecutions(t *testing.T) {
 		t.Fatalf("Tools() = %+v", tools)
 	}
 	wantOK(t, run(t, sandbox, "return await tools.echo('a')"), `"a"`)
-	if !sandbox.UnregisterTool("echo") {
+	unregister := func(s *codemode.Sandbox, name string) bool { return s.UnregisterTool(name) }
+	if !unregister(sandbox, "echo") {
 		t.Fatal("UnregisterTool(echo) = false")
+	}
+	if unregister(sandbox, "echo") {
+		t.Fatal("UnregisterTool of an already removed tool = true, want false (Map.delete)")
 	}
 	wantOK(t, run(t, sandbox, "return 'echo' in tools"), "false")
 }
@@ -548,7 +692,7 @@ func TestExplainsOversizedWrites(t *testing.T) {
 func TestReservesTheStoreAndLoadNames(t *testing.T) {
 	execute := func(context.Context, json.RawMessage) (json.RawMessage, error) { return nil, nil }
 	for _, name := range []string{"store", "load"} {
-		if _, err := codemode.NewSandbox(codemode.SandboxOptions{Globals: []codemode.Tool{{Name: name, Execute: execute}}}); err == nil || !strings.Contains(err.Error(), "Invalid global") {
+		if _, err := openSandbox(codemode.SandboxOptions{Globals: []codemode.Tool{{Name: name, Execute: execute}}}); err == nil || !strings.Contains(err.Error(), "Invalid global") {
 			t.Errorf("global %q: error = %v", name, err)
 		}
 	}
@@ -563,7 +707,7 @@ func TestExposesGlobalsAsTopLevelFunctionsWithoutRecordingThemAsCalls(t *testing
 		mu.Unlock()
 		return nil, nil
 	}}
-	sandbox, err := codemode.NewSandbox(codemode.SandboxOptions{Tools: []codemode.Tool{echo}, Globals: []codemode.Tool{attach}})
+	sandbox, err := openSandbox(codemode.SandboxOptions{Tools: []codemode.Tool{echo}, Globals: []codemode.Tool{attach}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -593,7 +737,7 @@ func TestGroupsNamespacedGlobalsAndSpreadsArgumentsOnRequest(t *testing.T) {
 		return nil, nil
 	}}
 	first := codemode.Tool{Name: "models.first", Execute: echo.Execute}
-	sandbox, err := codemode.NewSandbox(codemode.SandboxOptions{Globals: []codemode.Tool{list, first}})
+	sandbox, err := openSandbox(codemode.SandboxOptions{Globals: []codemode.Tool{list, first}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -612,7 +756,7 @@ func TestGroupsNamespacedGlobalsAndSpreadsArgumentsOnRequest(t *testing.T) {
 
 func TestNamesTheMembersOfANamespaceWhenAScriptReadsOneThatDoesNotExist(t *testing.T) {
 	execute := func(context.Context, json.RawMessage) (json.RawMessage, error) { return nil, nil }
-	sandbox, err := codemode.NewSandbox(codemode.SandboxOptions{Globals: []codemode.Tool{
+	sandbox, err := openSandbox(codemode.SandboxOptions{Globals: []codemode.Tool{
 		{Name: "models.classify", Execute: execute},
 		{Name: "models.generateImages", Execute: execute},
 	}})
@@ -636,10 +780,16 @@ func TestRejectsInvalidAndReservedGlobalNames(t *testing.T) {
 		for _, name := range names {
 			globals = append(globals, codemode.Tool{Name: name, Execute: execute})
 		}
-		_, err := codemode.NewSandbox(codemode.SandboxOptions{Globals: globals})
+		_, err := openSandbox(codemode.SandboxOptions{Globals: globals})
 		return err
 	}
-	for _, name := range []string{"a.b.c", "a.", ".a", "tools.x", "store.x", "a.not-valid", "not-valid", "tools", "console"} {
+	// Every one of execution.ts RESERVED_GLOBALS (tools, ALL_TOOLS, console, text, image, exit, globalThis, store, load) is rejected,
+	// bare and as the namespace of a member.
+	names := []string{"a.b.c", "a.", ".a", "tools.x", "store.x", "a.not-valid", "not-valid"}
+	for _, reserved := range []string{"tools", "ALL_TOOLS", "console", "text", "image", "exit", "globalThis", "store", "load"} {
+		names = append(names, reserved, reserved+".member")
+	}
+	for _, name := range names {
 		if err := build(name); err == nil || !strings.Contains(err.Error(), "Invalid global") {
 			t.Errorf("global %q: error = %v", name, err)
 		}
@@ -832,6 +982,71 @@ func TestRejectsDynamicImport(t *testing.T) {
 		`)
 	if !result.OK || string(result.Value) == `"imported"` {
 		t.Fatalf("result = %+v (%s)", result, result.Value)
+	}
+}
+
+// .upstream/v1.0.4/packages/codemode/test/sandbox.test.ts:723 (#10444): the prelude shares the built-ins with the script,
+// so patching them could corrupt what the prelude sends to the host.
+func TestIgnoresPatchesToBuiltinsAndBuiltinGlobals(t *testing.T) {
+	result := run(t, newSandbox(t, 10_000, echo), `
+			Array.prototype.toJSON = () => null;
+			Object.prototype.toJSON = () => 5;
+			Promise.prototype.then = () => {};
+			Map.prototype.get = () => undefined;
+			globalThis.JSON = { stringify: () => "x", parse: () => "x" };
+			store("k", [1]);
+			return [await tools.echo([2]), JSON.stringify({ a: 1 })];
+		`)
+	wantOK(t, result, `[[2],"{\"a\":1}"]`)
+	if len(result.StoreWrites.Set) != 1 {
+		t.Fatalf("store writes = %+v", result.StoreWrites)
+	}
+	sameJSON(t, "store k", result.StoreWrites.Set["k"], `[1]`)
+}
+
+// .upstream/v1.0.4/packages/codemode/test/sandbox.test.ts:740 (#10444).
+func TestFreezesIntrinsicsThatAreOnlyReachableFromInstances(t *testing.T) {
+	wantOK(t, run(t, newSandbox(t, 10_000), `
+			return [
+				Object.getPrototypeOf(function* () {}).prototype,
+				Object.getPrototypeOf(async function () {}),
+				Object.getPrototypeOf(Int8Array).prototype,
+				Object.getPrototypeOf([][Symbol.iterator]()),
+				Object.getPrototypeOf(Object.getPrototypeOf([][Symbol.iterator]())),
+				Object.getPrototypeOf(new Map()[Symbol.iterator]()),
+				Object.getPrototypeOf(/a/[Symbol.matchAll]("")),
+			].every((object) => Object.isFrozen(object));
+		`), `true`)
+}
+
+// .upstream/v1.0.4/packages/codemode/test/sandbox.test.ts:756 (#10444).
+func TestStillLetsInstancesOverridePropertiesOfFrozenPrototypes(t *testing.T) {
+	wantOK(t, run(t, newSandbox(t, 10_000), `
+			const object = {};
+			object.toString = () => "custom";
+			function Legacy() {}
+			Legacy.prototype = Object.create(Error.prototype);
+			Legacy.prototype.constructor = Legacy;
+			const bare = new Error();
+			bare.message = "set later";
+			class MyError extends Error {
+				constructor(message) {
+					super(message);
+					this.name = "MyError";
+				}
+			}
+			let patched = "silent";
+			try { Error.prototype.name = "Patched"; } catch (error) { patched = error.constructor.name; }
+			return [String(object), new Legacy().constructor === Legacy, bare.message, new MyError("x").name, Error.prototype.name, patched];
+		`), `["custom",true,"set later","MyError","Error","TypeError"]`)
+}
+
+// .upstream/v1.0.4/packages/codemode/test/sandbox.test.ts:781 (#10444).
+func TestReportsErrorsWhoseNameOrMessageIsNotAString(t *testing.T) {
+	result := run(t, newSandbox(t, 10_000), "const error = new Error('x'); error.message = 42; throw error;")
+	failure := wantFailure(t, result, codemode.ErrorScript)
+	if failure.Name != "Error" || failure.Message != "42" {
+		t.Fatalf("error = %+v", failure)
 	}
 }
 

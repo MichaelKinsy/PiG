@@ -19,14 +19,14 @@ import (
 func TestDeliverUserMessageIsNotDroppedWhenTheUIQueueIsFull(t *testing.T) {
 	seen := make(chan capturedStreamRequest, 4)
 	model := &ai.Model{ID: "capture-1", DisplayName: "capture-1", Provider: captureStreamOptionsProvider{seen: seen}, Capabilities: ai.ModelCapabilities{ContextWindow: 8000}}
-	m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir(), Model: model})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir(), Model: model})
 	m.chatContainer = tui.NewContainer()
 	m.statusContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
-	m.statusLine = NewStatusLine(model, "", nil)
+	m.statusLine = NewFooterComponent(model, "", nil)
 	m.editor = tui.NewEditor()
-	m.agent = agent.NewAgent(agent.AgentOptions{Model: model})
+	m.agent = mustNewAgent(agent.AgentOptions{Model: model})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	m.runCtx = ctx

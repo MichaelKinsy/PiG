@@ -1,0 +1,65 @@
+[
+  {
+    "upstream": "packages/tui/src/components/text.ts",
+    "package": "./tui",
+    "tests": [
+      "TestSetPaddingXDropsRenderCache"
+    ],
+    "upstream_reference": "packages/tui/src/components/text.ts",
+    "mutation": "tui/text.go: replace 't.PaddingX = paddingX\\nt.Invalidate()\\n}' with 't.PaddingX = paddingX\\n}'; compiling go test -run exact test -count=1 fails TestSetPaddingXDropsRenderCache."
+  },
+  {
+    "upstream": "packages/tui/src/autocomplete.ts",
+    "package": "./tui",
+    "tests": [
+      "TestCombinedProviderShouldTriggerFileCompletion"
+    ],
+    "upstream_reference": "packages/tui/src/autocomplete.ts",
+    "mutation": "tui/file_autocomplete.go: replace 'return !strings.HasPrefix(trimmed, \"/\") || strings.Contains(trimmed, \" \")' with 'return !strings.HasPrefix(trimmed, \"/\")'; compiling go test -run exact test -count=1 fails TestCombinedProviderShouldTriggerFileCompletion."
+  },
+  {
+    "upstream": "packages/tui/src/components/editor.ts",
+    "package": "./tui",
+    "tests": [
+      "TestEditor_InsertTextAtCursor_MultiLine"
+    ],
+    "upstream_reference": "packages/tui/src/components/editor.ts",
+    "mutation": "tui/editor.go: replace 'e.insert(normalizeEditorText(text))\\ne.refreshAutocomplete()\\nif e.OnChange != nil {' with 'e.insert(normalizeEditorText(text + \"x\"))\\ne.refreshAutocomplete()\\nif e.OnChange != nil {'; compiling go test -run exact test -count=1 fails TestEditor_InsertTextAtCursor_MultiLine."
+  },
+  {
+    "upstream": "packages/tui/src/tui-alt-screen.ts",
+    "package": "./tui",
+    "tests": [
+      "TestAltScreenGetScreenLinesReturnsTheLastFrame"
+    ],
+    "upstream_reference": "packages/tui/src/tui-alt-screen.ts",
+    "mutation": "tui/tui_alt_screen.go: replace 'return slices.Clone(t.previousScreen)\\n}\\n\\n// SetLayoutRoot' with 'return t.previousScreen[:0:0]\\n}\\n\\n// SetLayoutRoot'; compiling go test -run exact test -count=1 fails TestAltScreenGetScreenLinesReturnsTheLastFrame."
+  },
+  {
+    "upstream": "packages/tui/src/tui-alt-screen.ts",
+    "package": "./tui",
+    "tests": [
+      "TestViewportTUISetLayoutRootReplacesTheBaseDocumentAndNilRestoresIt"
+    ],
+    "upstream_reference": "packages/tui/src/tui-alt-screen.ts",
+    "mutation": "tui/tui_alt_screen.go: replace 't.layoutRoot = component\\nt.currentLayout = nil' with 't.currentLayout = nil'; compiling go test -run exact test -count=1 fails TestViewportTUISetLayoutRootReplacesTheBaseDocumentAndNilRestoresIt."
+  },
+  {
+    "upstream": "packages/tui/src/components/select-list.ts",
+    "package": "./tui",
+    "tests": [
+      "TestSelectListBehavior"
+    ],
+    "upstream_reference": "packages/tui/src/components/select-list.ts",
+    "mutation": "tui/select_list.go: replace 'l.selectedIndex = max(0, min(index, len(l.filteredItems)-1))' with 'l.selectedIndex = max(0, index)'; compiling go test -run exact test -count=1 fails TestSelectListBehavior."
+  },
+  {
+    "upstream": "packages/coding-agent/src/modes/interactive/components/show-images-selector.ts",
+    "package": "./tui",
+    "tests": [
+      "TestShowImagesSelector_GetSelectListIsTheSelectionOwner"
+    ],
+    "upstream_reference": "packages/coding-agent/src/modes/interactive/components/show-images-selector.ts",
+    "mutation": "tui/show_images_selector.go: replace 'func (s *ShowImagesSelectorComponent) GetSelectList() *SelectList { return s.selectList }' with 'func (s *ShowImagesSelectorComponent) GetSelectList() *SelectList { return &SelectList{} }'; compiling go test -run exact test -count=1 fails TestShowImagesSelector_GetSelectListIsTheSelectionOwner."
+  }
+]

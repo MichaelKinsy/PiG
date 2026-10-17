@@ -2,7 +2,6 @@ package ai
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"path/filepath"
 	"testing"
@@ -11,7 +10,7 @@ import (
 // FileModelsStore writes through FileAuthStorageBackend.withLockAsync, whose checkpoints are: after fn, throwIfCompromised and then the abort; after the write, throwIfCompromised alone (auth-storage.ts:183-189, unchanged in 0.99.1). So a lock compromised while fn ran wins over an abort that also arrived, and a compromise noticed after the write fails the write even though the file changed. TestAuthStorageLockCompromisedDuringModifyUpstream runs Pi's own withLockAsync for the auth store through the same checkpoints.
 func TestFileModelsStoreLockCheckpointsFollowPi(t *testing.T) {
 	compromised := errors.New("lock compromised")
-	entry := ModelsStoreEntry{Models: []json.RawMessage{}}
+	entry := ModelsStoreEntry{Models: []AnyModel{}}
 
 	t.Run("compromise wins over an abort after fn", func(t *testing.T) {
 		store := NewFileModelsStore(filepath.Join(t.TempDir(), "models-store.json"))

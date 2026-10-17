@@ -1,0 +1,149 @@
+# Provenance of every golden or snapshot data file.
+#
+# A golden is expected output stored as a file. Its value is evidence only when
+# it comes from Pi. A golden whose bytes are PiG's own output pins PiG against
+# itself: regenerating it silences a behavior change instead of catching one.
+#
+#   owner = "pi"   Produced by running Pi (or Node on Pi's code). `generator` is
+#                  the tracked script that regenerates the file from Pi, and the
+#                  test that reads the file compares PiG with it.
+#   owner = "pig"  PiG's own output. Allowed only when a value snapshot is the
+#                  one way to state the rule. `invariant` names the test that
+#                  asserts the rule itself, and `why` says what the snapshot adds.
+#
+# `testprune lint` (make test-provenance) fails on a golden file that no entry
+# matches. A PiG-owned golden needs the same review as new behavior.
+#
+# A Go file that rewrites its own expected files (UPDATE_GOLDEN or an -update flag)
+# puts every non-code file of its testdata directory under the same rule. An
+# [[input]] entry names the files there that are inputs, not expectations.
+
+# Commits authored before this time are not checked by `make test-expectation-lint`
+# (an expected value changed together with its code needs a Pi citation).
+expectations_from = "2026-10-10T00:00:00Z"
+
+[[golden]]
+paths = ["ai/testdata/bedrock-eventstream/golden.json"]
+owner = "pi"
+generator = "ai/testdata/bedrock-eventstream/probe.mjs"
+
+[[golden]]
+paths = ["ai/testdata/d82-w7/lazy-golden.json"]
+owner = "pi"
+generator = "ai/testdata/d82-w7/lazy-probe.mjs"
+
+[[golden]]
+paths = ["ai/testdata/d82-w7/scoped-wait-golden.json"]
+owner = "pi"
+generator = "ai/testdata/d82-w7/scoped-wait-probe.mjs"
+
+[[golden]]
+paths = ["ai/testdata/node-microtasks/readable.golden.json"]
+owner = "pi"
+generator = "ai/testdata/node-microtasks/readable.mjs"
+
+[[golden]]
+paths = ["ai/testdata/node-microtasks/webstreams.golden.json"]
+owner = "pi"
+generator = "ai/testdata/node-microtasks/webstreams.mjs"
+
+[[golden]]
+paths = ["codemode/testdata/upstream-golden.json"]
+owner = "pi"
+generator = "codemode/testdata/upstream-oracle.mjs"
+
+[[golden]]
+paths = ["mcp/testdata/upstream-golden.json"]
+owner = "pi"
+generator = "mcp/testdata/upstream-oracle.mjs"
+
+[[golden]]
+paths = ["internal/codingagent/testdata/mermaid-scope-golden.jsonl"]
+owner = "pi"
+generator = "internal/codingagent/testdata/gen-mermaid-scope.mjs"
+
+[[golden]]
+paths = ["internal/codingagent/testdata/mermaid-transform-golden.jsonl"]
+owner = "pi"
+generator = "test/parity/testdata/mermaid-transform-pi.mjs"
+
+[[golden]]
+paths = ["internal/codingagent/testdata/pi104-render-probe/builtin-renderers.golden.json"]
+owner = "pi"
+generator = "internal/codingagent/testdata/pi104-render-probe/regen.sh"
+
+[[golden]]
+paths = ["internal/latex/testdata/golden.jsonl"]
+owner = "pi"
+generator = "test/parity/testdata/latex-pi.mjs"
+
+[[golden]]
+paths = ["internal/mermaid/testdata/labels-golden.jsonl"]
+owner = "pi"
+generator = "test/parity/testdata/mermaid-labels-pi.mjs"
+
+[[golden]]
+paths = ["internal/mermaid/testdata/parse-golden.jsonl"]
+owner = "pi"
+generator = "test/parity/testdata/mermaid-parse-pi.mjs"
+
+[[golden]]
+paths = ["internal/mermaid/testdata/render-golden.jsonl"]
+owner = "pi"
+generator = "test/parity/testdata/mermaid-pi.mjs"
+
+[[golden]]
+paths = ["tui/testdata/markdown-latex-golden.jsonl"]
+owner = "pi"
+generator = "test/parity/testdata/markdown-latex-pi.mjs"
+
+[[golden]]
+paths = ["tui/testdata/markdown-marked-golden.jsonl"]
+owner = "pi"
+generator = "test/parity/testdata/markdown-marked-pi.mjs"
+
+[[golden]]
+paths = ["durable/core/probe/testdata/*.steps"]
+owner = "pig"
+invariant = "TestScripts"
+why = "The durable ABI step bytes are PiG's own wire format (ABI section 12). The shim's Wasm conformance test replays the same scripts and compares the same bytes, so the golden is the byte contract between the native and Wasm hosts."
+
+[[golden]]
+paths = ["durable/core/contracttest/binding/testdata/*.steps"]
+owner = "pig"
+invariant = "TestBindingConformance"
+why = "The durable ABI step bytes are PiG's own wire format (ABI section 12). Every Wasm build must replay the script to these bytes, so the golden is the byte contract between the native and Wasm hosts."
+
+[[golden]]
+paths = ["coding/piglet/testdata/lineage/lineage_source.golden"]
+owner = "pig"
+invariant = "TestLineageOfASourceChainsRootFirstWithEachLinksChanges"
+why = "Pi has no Piglets, so the text of `pig piglet lineage` (D170) is PiG's own format. The invariant test asserts the chain order, versions, digests and per-link changes as values; the snapshot adds the exact rendered layout (indentation, labels, change lines) a user reads."
+
+[[golden]]
+paths = ["coding/piglet/testdata/lineage/tree.golden", "coding/piglet/testdata/lineage/tree_depth1.golden"]
+owner = "pig"
+invariant = "TestTreeDepthLimitAndJSON"
+why = "Pi has no Piglets, so the text of `pig piglet tree` (D170) is PiG's own format. The invariant test asserts the depth limit and the JSON nodes as values; the snapshots add the exact box-drawing layout and markers (`*`, `[installed]`) a user reads."
+
+[[input]]
+paths = ["durable/core/probe/testdata/*.events", "durable/core/contracttest/binding/testdata/*.events"]
+
+[[input]]
+paths = ["coding/cli/testdata/*/go.mod", "coding/cli/testdata/*/LICENSE", "coding/cli/testdata/*/Cargo.toml", "coding/cli/testdata/*/Cargo.lock"]
+
+[[golden]]
+paths = ["coding/cli/testdata/d82-w7/rpc-usage-pi.json", "coding/cli/testdata/d82-w7/rpc-usage-extension-pi.json"]
+owner = "pi"
+generator = "coding/cli/testdata/d82-w7/rpc-usage-probe.mjs"
+
+[[golden]]
+paths = ["durable/codemode/testdata/output-golden.json"]
+owner = "pi"
+generator = "durable/codemode/testdata/output-oracle.mjs"
+
+[[golden]]
+paths = ["coding/cli/testdata/piglet-inventory/*.txt"]
+owner = "pig"
+invariant = "TestStripLeakGate"
+why = "Pi has no Piglets, so which tools, commands and extensions each shipped Piglet exposes is PiG's own. TestStripLeakGate asserts that a stripped ID leaves every surface; the inventory adds the reviewed per-Piglet list of which IDs each one strips, regenerated only after review."

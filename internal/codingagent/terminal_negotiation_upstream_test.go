@@ -86,16 +86,16 @@ func TestInteractiveInputPumpSettlesListenersBeforeLaterNegotiation(t *testing.T
 		if string(second.data) != "b" || !tui.IsKittyProtocolActive() {
 			t.Fatal("negotiation did not precede the second listener")
 		}
-		if first.readDone == nil || first.readDone != second.readDone {
+		if !first.more || second.more {
 			t.Fatal("one read lost its shared paint boundary")
 		}
+		synctest.Wait()
 		select {
-		case <-second.readDone:
-			t.Fatal("read completed before its last listener settled")
+		case err := <-errCh:
+			t.Fatalf("read completed (%v) before its last listener settled", err)
 		default:
 		}
 		second.ticket.settle()
-		<-second.readDone
 		if err := <-errCh; err != io.EOF {
 			t.Fatalf("terminal error=%v, want EOF after the last event", err)
 		}

@@ -2,11 +2,11 @@ package coding
 
 import (
 	"slices"
-	"strings"
 	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Ports packages/coding-agent/src/core/agent-session.ts.
@@ -35,28 +35,30 @@ func (s *Session) SetScopedModels(models []ScopedModel) {
 
 // addPersistedDefaultToNonEmptyScope appends a missing default without mutating any previously returned list.
 // upstream: packages/coding-agent/src/core/agent-session.ts:_addPersistedDefaultToNonEmptyScope
-func (s *Session) addPersistedDefaultToNonEmptyScope(model *ai.Model) error {
+func (s *Session) addPersistedDefaultToNonEmptyScope(model *ai.Model) {
 	for {
 		previous := s.scopedModels.value.Load()
 		if previous == nil || len(*previous) == 0 {
-			return nil
+			return
 		}
 		if slices.ContainsFunc(*previous, func(entry ScopedModel) bool {
 			return entry.Model != nil && entry.Model.ID == model.ID && providerID(entry.Model) == providerID(model)
 		}) {
-			return nil
+			return
 		}
 		next := append(slices.Clone(*previous), ScopedModel{Model: model})
 		if s.scopedModels.value.CompareAndSwap(previous, &next) {
 			break
 		}
 	}
-	settings := s.services.SettingsManager()
+	settings := s.SettingsManager()
 	enabled := settings.GetEnabledModels()
 	reference := providerID(model) + "/" + model.ID
-	if len(enabled) == 0 || slices.ContainsFunc(enabled, func(pattern string) bool { return strings.EqualFold(pattern, reference) }) {
-		return nil
+	if len(enabled) == 0 || slices.ContainsFunc(enabled, func(pattern string) bool { return jsstring.ToLower(pattern) == jsstring.ToLower(reference) }) {
+		return
 	}
 	enabled = append(slices.Clone(enabled), reference)
-	return settings.UpdateGlobal(func(value *Settings) { value.EnabledModels = enabled })
+	// A failed write is recorded by the settings manager, as Pi's setEnabledModels queues it.
+	// upstream: packages/coding-agent/src/core/settings-manager.ts:enqueueWrite
+	_ = settings.UpdateGlobal(func(value *Settings) { value.EnabledModels = enabled })
 }

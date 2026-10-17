@@ -6,6 +6,7 @@ import (
 )
 
 // .upstream/v0.87.1/packages/ai/test/providers.test.ts:747 — submission portion; the complete submit/poll/redeem path uses the Models collection below.
+// mutation-checked: the mutant "the faux provider ignores StreamOptions.Deferred" (ai/faux.go, the deferred branch of the stream) fails it.
 func TestFauxDeferredSubmissionUpstream(t *testing.T) {
 	faux := NewFauxProvider(FauxConfig{})
 	faux.SetResponses([]FauxResponseStep{FauxStaticStep(FauxResponse{Content: []FauxContentBlock{FauxText("ready")}, StopReason: "stop"})})

@@ -45,8 +45,17 @@ reason = "Tool errors may include the private fixture path; retain complete surr
 paths = ["/**/timestamp"]
 kind = "timestamp"
 reason = "Clocks are independent; retain numeric/string type and syntax. The probe separately validates range and repeated message/entry timestamps across all surfaces."
+[[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi 1.1.0 times each response and tool run with a monotonic clock (event-stream.ts, agent-loop.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
 
 [[assert.json_aliases]]
-paths = ["/**/wall_time_seconds"]
+paths = ["/**/wall_time_seconds", "/**/durationMs"]
 kind = "duration"
 reason = "bash.ts:392 measures the command's wall clock and rounds it to 0.1 s, so a loaded host reports 0 or 0.1 for the same command; retain the field's presence, its position and Pi's one-decimal number spelling."
+
+[[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration_ms"
+reason = "Pi 1.1.0 (#10549) stamps durationMs from a monotonic clock, so two runs differ by whole milliseconds; retain the field's presence, placement and non-negative integer spelling."

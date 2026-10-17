@@ -29,18 +29,22 @@ func resumedBashCases() []resumedBashCase {
 		{"non-zero exit", BashExecutionMessage{Command: "echo out; exit 3", Output: "out\n", ExitCode: new(3)}, []string{"$ echo out; exit 3", "out", "(exit 3)"}},
 		{"cancelled", BashExecutionMessage{Command: "sleep 30", Cancelled: true}, []string{"$ sleep 30", "(cancelled)"}},
 		{"truncated", BashExecutionMessage{Command: "seq 3", Output: "1\n2\n3\n", ExitCode: new(0), Truncated: true, FullOutputPath: "/tmp/pi-bash-0123456789abcdef.log"}, []string{"$ seq 3", "Output truncated. Full output: /tmp/pi-bash-0123456789abcdef.log"}},
-		{"excluded", BashExecutionMessage{Command: "echo hidden", Output: "hidden\n", ExitCode: new(0), ExcludeFromContext: true}, []string{"$ echo hidden", "hidden"}},
-		{"excluded non-zero", BashExecutionMessage{Command: "cat missing", Output: "cat: missing: No such file or directory\n", ExitCode: new(1), ExcludeFromContext: true}, []string{"$ cat missing", "(exit 1)"}},
+		{"excluded", BashExecutionMessage{Command: "echo hidden", Output: "hidden\n", ExitCode: new(0), ExcludeFromContext: new(true)}, []string{"$ echo hidden", "hidden"}},
+		{"excluded non-zero", BashExecutionMessage{Command: "cat missing", Output: "cat: missing: No such file or directory\n", ExitCode: new(1), ExcludeFromContext: new(true)}, []string{"$ cat missing", "(exit 1)"}},
 	}
 }
 
 // piResumedBashBlock is the block Pi's addMessageToChat builds for a persisted message.
-func piResumedBashBlock(message BashExecutionMessage) *tui.BashExecutionBlock {
-	block := tui.NewBashExecutionBlock(message.Command, message.ExcludeFromContext)
+func piResumedBashBlock(message BashExecutionMessage) *tui.BashExecutionComponent {
+	block := tui.NewBashExecutionComponent(message.Command, nil, message.ExcludeFromContext != nil && *message.ExcludeFromContext, 1)
 	if message.Output != "" {
 		block.AppendOutput(message.Output)
 	}
-	block.SetCompleteFullOutput(message.ExitCode, message.Cancelled, message.Truncated, message.FullOutputPath)
+	var truncation *tui.TruncationResult
+	if message.Truncated {
+		truncation = &tui.TruncationResult{Truncated: true}
+	}
+	block.SetComplete(message.ExitCode, message.Cancelled, truncation, message.FullOutputPath)
 	return block
 }
 
@@ -73,7 +77,7 @@ func resumeBashModeFromFile(t *testing.T, dir, path string) *InteractiveMode {
 	}
 	var terminal bytes.Buffer
 	m := &InteractiveMode{
-		opts:          InteractiveOptions{SessionHandle: &recordingCompactHandle{inner: loaded}},
+		opts:          InteractiveModeOptions{SessionHandle: &recordingCompactHandle{inner: loaded}},
 		chatContainer: tui.NewContainer(),
 		tuiInst:       tui.NewWithOutput(&terminal, 80, 30),
 		toolByID:      make(map[string]*tui.ToolExecutionComponent),
@@ -84,10 +88,10 @@ func resumeBashModeFromFile(t *testing.T, dir, path string) *InteractiveMode {
 	return m
 }
 
-func chatBashBlocks(m *InteractiveMode) []*tui.BashExecutionBlock {
-	var blocks []*tui.BashExecutionBlock
+func chatBashBlocks(m *InteractiveMode) []*tui.BashExecutionComponent {
+	var blocks []*tui.BashExecutionComponent
 	for _, child := range m.chatContainer.Children() {
-		if block, ok := child.(*tui.BashExecutionBlock); ok {
+		if block, ok := child.(*tui.BashExecutionComponent); ok {
 			blocks = append(blocks, block)
 		}
 	}
@@ -175,7 +179,8 @@ func TestAgentMessageFallbackRendersBashExecutionBlock(t *testing.T) {
 		tuiInst:       tui.NewWithOutput(&bytes.Buffer{}, 80, 30),
 		toolByID:      make(map[string]*tui.ToolExecutionComponent),
 		toolStarts:    make(map[string]time.Time),
-		agent:         agent.NewAgent(agent.AgentOptions{}),
+		agent:         mustNewAgent(agent.AgentOptions{}),
+		outputPad:     int(OutputPadOne), // the Settings default a production InteractiveMode takes from GetOutputPad
 	}
 	m.tuiInst.Add(m.chatContainer)
 	m.agent.SetMessages([]agent.AgentMessage{{Custom: map[string]any{
@@ -183,7 +188,7 @@ func TestAgentMessageFallbackRendersBashExecutionBlock(t *testing.T) {
 	}}})
 	m.renderSessionEntries()
 	blocks := chatBashBlocks(m)
-	want := piResumedBashBlock(BashExecutionMessage{Command: "echo ok", Output: "ok\n", ExitCode: new(2), ExcludeFromContext: true})
+	want := piResumedBashBlock(BashExecutionMessage{Command: "echo ok", Output: "ok\n", ExitCode: new(2), ExcludeFromContext: new(true)})
 	if len(blocks) != 1 || !slices.Equal(blocks[0].Render(80), want.Render(80)) {
 		t.Fatalf("fallback chat = %q", renderedChat(m))
 	}

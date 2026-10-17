@@ -13,12 +13,21 @@ import (
 
 func prepareAssistantEventTest(t *testing.T, m *InteractiveMode) {
 	t.Helper()
-	m.statusLine = NewStatusLine(nil, "", nil)
+	m.statusLine = NewFooterComponent(nil, "", nil)
 	m.pendingArgs = make(map[int]*pendingToolArg)
 	// Mirror the production owner-loop dispatcher; assertions also render on
 	// this goroutine, never on the throttle timer's goroutine.
+	// Nothing reads renders until cleanup, so a later throttled render
+	// blocks its timer goroutine; closing done releases it, and the test
+	// leaks no goroutine into the package's goroutineleak checks.
 	renders := make(chan func(), 1)
-	m.tuiInst.SetRenderDispatcher(func(render func()) { renders <- render })
+	done := make(chan struct{})
+	m.tuiInst.SetRenderDispatcher(func(render func()) {
+		select {
+		case renders <- render:
+		case <-done:
+		}
+	})
 	t.Cleanup(func() {
 		m.tuiInst.CancelPendingRender()
 		select {
@@ -26,10 +35,11 @@ func prepareAssistantEventTest(t *testing.T, m *InteractiveMode) {
 			render()
 		default:
 		}
+		close(done)
 	})
 }
 
-func assistantLines(block *tui.AssistantMessageBlock) []string {
+func assistantLines(block *tui.AssistantMessageComponent) []string {
 	lines := block.Render(80)
 	for i := range lines {
 		lines[i] = strings.TrimRight(stripANSITest(lines[i]), " ")
@@ -74,9 +84,6 @@ func TestInteractiveMode_StreamingAssistantContentOrder(t *testing.T) {
 			m.handleAgentEvent(agent.MessageEndEvent{Message: msg})
 			if got := assistantLines(m.assistantBlocks[0]); !slices.Equal(got, []string{"\x1b]133;A\x07", "\x1b]133;B\x07\x1b]133;C\x07 corrected final"}) {
 				t.Errorf("message_end: %q", got)
-			}
-			if m.lastAssistantText != "corrected final" {
-				t.Errorf("copy text = %q", m.lastAssistantText)
 			}
 		})
 	}

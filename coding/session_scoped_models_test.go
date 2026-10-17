@@ -34,7 +34,9 @@ func TestSessionScopedModelsReachRuntimeAndRunner(t *testing.T) {
 	}
 	// Mode actions can be installed after Session construction without erasing Session-owned scope.
 	rt.NewExtensionRunner().BindCore(extension.ExtensionActions{}, extension.ContextActions{}, nil)
-	session.EmitSessionStart("startup")
+	if err := session.EmitSessionStart("startup"); err != nil {
+		t.Fatal(err)
+	}
 	if len(observed) != 1 || &observed[0] != &models[0] {
 		t.Fatal("event did not receive the Session scope")
 	}
@@ -43,23 +45,30 @@ func TestSessionScopedModelsReachRuntimeAndRunner(t *testing.T) {
 	}
 	models = []extension.ScopedModel{{Model: &ai.Model{ID: "replacement"}}}
 	session.SetScopedModels(models)
-	session.EmitSessionStart("reload")
+	if err := session.EmitSessionStart("reload"); err != nil {
+		t.Fatal(err)
+	}
 	if len(observed) != 1 || &observed[0] != &models[0] {
 		t.Fatal("replacement scope not visible")
 	}
 	fresh := inproc.NewRunner([]extension.Extension{ext}, session.CWD())
 	session.ReplaceRunner(fresh)
-	session.EmitSessionStart("reload")
+	if err := session.EmitSessionStart("reload"); err != nil {
+		t.Fatal(err)
+	}
 	if len(observed) != 1 || &observed[0] != &models[0] {
 		t.Fatal("replacement runner lost scope")
 	}
 	session.SetScopedModels(nil)
-	session.EmitSessionStart("reload")
+	if err := session.EmitSessionStart("reload"); err != nil {
+		t.Fatal(err)
+	}
 	if observed == nil || len(observed) != 0 {
 		t.Fatalf("clear=%v", observed)
 	}
 }
 
+// Pi: packages/coding-agent/src/core/agent-session.ts:478 (Session.scopedModels); packages/coding-agent/src/core/extensions/types.ts:344 (SessionOptions.scopedModels).
 func TestCloneRetainsScopeWithoutStealingBinding(t *testing.T) {
 	runner := inproc.NewRunner(nil, t.TempDir())
 	models := []extension.ScopedModel{{Model: &ai.Model{ID: "source"}}}

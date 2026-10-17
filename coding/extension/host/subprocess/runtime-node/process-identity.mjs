@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // Ports packages/coding-agent/src/cli/setup.ts: setupCli.
@@ -20,7 +21,10 @@ export function adoptPiProcessIdentity() {
   const argvFile = process.env.PIG_HARNESS_ARGV_FILE;
   delete process.env.PIG_HARNESS_ARGV_FILE;
   const args = argvFile ? JSON.parse(readFileSync(argvFile, "utf8")) : [];
-  process.argv = [process.argv[0], fileURLToPath(new URL("./harness/cli.mjs", import.meta.url)), ...args];
+  // A host compiled into one executable has no harness/cli.mjs of its own: PIG_TS_RUNTIME_TREE names the runtime tree on disk that holds it.
+  const tree = process.env.PIG_TS_RUNTIME_TREE;
+  const harness = tree ? join(tree, "harness", "cli.mjs") : fileURLToPath(new URL("./harness/cli.mjs", import.meta.url));
+  process.argv = [process.argv[0], harness, ...args];
 }
 
 // process.title reads as Pi's title without renaming the process: the

@@ -3,6 +3,7 @@
 package runner
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -99,7 +100,7 @@ func TestSnapshotCWDCanonicalCleanRootAndCleanup(t *testing.T) {
 			t.Fatal(err)
 		}
 		got, err := os.ReadFile(filepath.Join(snapshot, "AGENTS.md"))
-		if err != nil || string(got) != string(want) {
+		if err != nil || !bytes.Equal(got, want) {
 			t.Fatalf("fixture context changed: %q, %v", got, err)
 		}
 	})

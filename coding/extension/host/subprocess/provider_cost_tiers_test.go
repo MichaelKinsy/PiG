@@ -1,3 +1,5 @@
+//go:build !pig_strip_node_extensions
+
 package subprocess_test
 
 import (
@@ -14,7 +16,7 @@ import (
 func TestNodePostBindProviderRegistrationRetainsCostTiers(t *testing.T) {
 	// Original model/config and tier expectation: extensions-runner.test.ts:50-79,1173-1195.
 	dir := t.TempDir()
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: dir, AgentDir: filepath.Join(dir, "agent")})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: dir, AgentDir: filepath.Join(dir, "agent")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +32,7 @@ func TestNodePostBindProviderRegistrationRetainsCostTiers(t *testing.T) {
 	}
 	host := subprocess.NewHost(dir)
 	t.Cleanup(func() { host.Shutdown("done") })
-	host.SetProviderCallbacks(services.Registry().RegisterProvider, services.Registry().UnregisterProvider)
+	host.SetProviderCallbacks(services.Registry().RegisterExtensionProvider, services.Registry().UnregisterProvider)
 	owner, err := host.Load(t.Context(), subprocess.ExtConfig{Name: "tier-owner", Source: source, Enabled: true})
 	if err != nil {
 		t.Fatal(err)

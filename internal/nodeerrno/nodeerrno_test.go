@@ -127,8 +127,8 @@ func TestWindowsCodeMatchesLibuv(t *testing.T) {
 		{"WSAESOCKTNOSUPPORT", 10044, "ESOCKTNOSUPPORT"},
 		{"ERROR_BAD_EXE_FORMAT", 193, "EFTYPE"},
 	}
-	if len(cases) != len(windowsCodes) {
-		t.Fatalf("windowsCodes has %d entries, the libuv table here has %d", len(windowsCodes), len(cases))
+	if len(cases) != len(windowsCodes()) {
+		t.Fatalf("windowsCodes has %d entries, the libuv table here has %d", len(windowsCodes()), len(cases))
 	}
 	for _, tc := range cases {
 		got, ok := windowsCode(tc.errno)
@@ -211,7 +211,7 @@ func TestCodeNamesPlatformErrnos(t *testing.T) {
 			t.Errorf("Code(%v) = %q, %v; want %q", errno, got, ok, want)
 		}
 	}
-	for errno, code := range posixCodes {
+	for errno, code := range posixCodes() {
 		if _, ok := codes[code]; !ok {
 			t.Errorf("posix errno %d is named %s, which libuv does not name", int(errno), code)
 		}

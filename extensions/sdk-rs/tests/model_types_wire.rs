@@ -414,6 +414,8 @@ fn provider_object_declares_and_runs_generate_images_and_classify() {
         },
         get_models: std::sync::Arc::new(|| Ok(vec![std::sync::Arc::new(json!({"id":"flux","name":"Flux","type":"image","api":"test-images"}))])),
         filter_models: None,
+        get_all_models: None,
+        filter_all_models: None,
         refresh_models: None,
         stream: stream.clone(),
         stream_simple: stream.clone(),

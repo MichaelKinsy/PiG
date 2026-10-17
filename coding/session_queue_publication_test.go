@@ -25,7 +25,7 @@ func TestSessionMessageSubscriberQueueBurstPreservesPublicationOrder(t *testing.
 			}
 		})
 		done := make(chan error, 1)
-		go func() { _, err := h.session.Prompt(t.Context(), "hello"); done <- err }()
+		go func() { err := h.session.Prompt(t.Context(), "hello"); done <- err }()
 		synctest.Wait()
 		select {
 		case err := <-done:
@@ -73,7 +73,7 @@ func TestSessionMessageSubscriberQueueBurstPreservesPublicationOrder(t *testing.
 		}
 		h.session.queueEvents.mu.Lock()
 		defer h.session.queueEvents.mu.Unlock()
-		if h.session.queueEvents.overflow != nil || h.session.queueEvents.prefix != 0 {
+		if h.session.queueEvents.overflow != nil || h.session.queueEvents.pending.Load() {
 			t.Fatal("settled run retains queue publication overflow")
 		}
 	})
@@ -96,7 +96,7 @@ func TestSessionQueuePublicationOverflowIsReleasedOnClose(t *testing.T) {
 	<-h.done
 	h.session.queueEvents.mu.Lock()
 	defer h.session.queueEvents.mu.Unlock()
-	if h.session.queueEvents.overflow != nil || h.session.queueEvents.notifying {
+	if h.session.queueEvents.overflow != nil || h.session.queueEvents.pending.Load() || h.session.queueEvents.notifying {
 		t.Fatal("closed Session retains queue publication state")
 	}
 }

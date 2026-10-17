@@ -67,7 +67,7 @@ func TestRemoteOverlayKeyOnOwnerLoopDoesNotWaitOnOwnerQueue(t *testing.T) {
 	conn, peer := attachOverlayPeer(t, "atlas")
 	bridge := subprocess.NewUIBridge(func() {})
 	bridge.SetUIContext(&ExtUIContext{m: q.InteractiveMode})
-	bridge.RegisterExtConn("atlas", conn)
+	bridge.RegisterExtConn("atlas", conn, false)
 
 	args, err := json.Marshal(subprocess.RemoteOverlayOpenPayload{Key: "atlas-1", Overlay: true})
 	if err != nil {
@@ -227,8 +227,67 @@ func TestRunOnMainFromOwnerLoopNeverBlocksOnItsOwnQueue(t *testing.T) {
 	if !slices.Equal(order, want) {
 		t.Fatalf("order on the loop = %v, want %v", order, want)
 	}
+	// The forwarder clears the flag after it has handed over the last task, which the loop may already have run.
+	q.ownerForwarder.Wait()
 	if q.ownerOverflowActive.Load() {
 		t.Fatal("owner overflow still marked active after it drained")
+	}
+}
+
+// The loop's own posts, each made by the task before it, while other posters keep its queue full: every post runs exactly
+// once and in order. One forwarder serves the overflow; a second one started while the first is between handing over its
+// last task and leaving would hand the same task to the loop twice.
+func TestOwnerOverflowRunsEachPostOnceInOrderWhileTheQueueStaysFull(t *testing.T) {
+	q := newInputQueueMode(t)
+	q.start(t)
+	const posts = 300
+	var order []int // appended only on the owner loop
+	done := make(chan struct{})
+	var post func(i int)
+	post = func(i int) {
+		q.runOnMain(q.runCtx, func() {
+			order = append(order, i)
+			if i+1 < posts {
+				post(i + 1)
+			} else {
+				close(done)
+			}
+		})
+	}
+	if !q.postUITask(func() { post(0) }) {
+		t.Fatal("owner loop task queue is full")
+	}
+	stop := make(chan struct{})
+	var spam sync.WaitGroup
+	spam.Go(func() {
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+				q.postUITask(func() {})
+			}
+		}
+	})
+	stopSpam := sync.OnceFunc(func() {
+		close(stop)
+		spam.Wait()
+	})
+	t.Cleanup(stopSpam)
+	select {
+	case <-done:
+	case <-time.After(testbudget.Wait(t)):
+		t.Fatal("the owner loop never ran the chain of tasks it posted to its own full queue")
+	}
+	stopSpam()
+	// The last task closed done after its append, and nothing appends after it.
+	for i, v := range order {
+		if i >= posts || v != i {
+			t.Fatalf("post %d ran as the %d-th task: order %v", v, i, order)
+		}
+	}
+	if len(order) != posts {
+		t.Fatalf("%d of %d posts ran", len(order), posts)
 	}
 }
 

@@ -51,7 +51,7 @@ func TestUnicodeSurrogateUpstream(t *testing.T) {
 				}
 			}()
 			options := StreamOptions{IsReasoning: model.Reasoning, ReasoningEffort: tc.effort, ModelCost: model.ToModel().CostRates(), Transport: TransportSSE, Env: ProviderEnv{"AWS_BEDROCK_SKIP_AUTH": "1", "AWS_REGION": "us-east-1"}}
-			stream, err := provider.Stream(t.Context(), NormalizeContext(request), options)
+			stream, err := provider.Stream(invalidRequest(t), NormalizeContext(request), options)
 			if err != nil {
 				t.Fatal(err)
 			}

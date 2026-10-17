@@ -20,12 +20,15 @@ export class BashExecutionComponent extends Container {
     fullOutputPath;
     expanded = false;
     contentContainer;
-    constructor(command, ui, excludeFromContext = false) {
+    /** `dim` marks `!!` commands, whose output is excluded from the model context. */
+    colorKey;
+    outputPad;
+    constructor(command, ui, excludeFromContext = false, outputPad = 1) {
         super();
         this.command = command;
-        // Use dim border for excluded-from-context commands (!! prefix)
-        const colorKey = excludeFromContext ? "dim" : "bashMode";
-        const borderColor = (str) => theme.fg(colorKey, str);
+        this.colorKey = excludeFromContext ? "dim" : "bashMode";
+        this.outputPad = outputPad;
+        const borderColor = (str) => theme.fg(this.colorKey, str);
         // Add spacer
         this.addChild(new Spacer(1));
         // Top border
@@ -33,20 +36,20 @@ export class BashExecutionComponent extends Container {
         // Content container (holds dynamic content between borders)
         this.contentContainer = new Container();
         this.addChild(this.contentContainer);
-        // Command header
-        const header = new Text(theme.fg(colorKey, theme.bold(`$ ${command}`)), 1, 0);
-        this.contentContainer.addChild(header);
-        // Loader
-        this.loader = new Loader(ui, (spinner) => theme.fg(colorKey, spinner), (text) => theme.fg("muted", text), `Running... (${keyText("tui.select.cancel")} to cancel)`);
-        this.contentContainer.addChild(this.loader);
+        this.loader = new Loader(ui, (spinner) => theme.fg(this.colorKey, spinner), (text) => theme.fg("muted", text), `Running... (${keyText("tui.select.cancel")} to cancel)`);
         // Bottom border
         this.addChild(new DynamicBorder(borderColor));
+        this.updateDisplay();
     }
     /**
      * Set whether the output is expanded (shows full output) or collapsed (preview only).
      */
     setExpanded(expanded) {
         this.expanded = expanded;
+        this.updateDisplay();
+    }
+    setOutputPad(outputPad) {
+        this.outputPad = outputPad;
         this.updateDisplay();
     }
     invalidate() {
@@ -97,14 +100,14 @@ export class BashExecutionComponent extends Container {
         // Rebuild content container
         this.contentContainer.clear();
         // Command header
-        const header = new Text(theme.fg("bashMode", theme.bold(`$ ${this.command}`)), 1, 0);
+        const header = new Text(theme.fg(this.colorKey, theme.bold(`$ ${this.command}`)), this.outputPad, 0);
         this.contentContainer.addChild(header);
         // Output
         if (availableLines.length > 0) {
             if (this.expanded) {
                 // Show all lines
                 const displayText = availableLines.map((line) => theme.fg("muted", line)).join("\n");
-                this.contentContainer.addChild(new Text(`\n${displayText}`, 1, 0));
+                this.contentContainer.addChild(new Text(`\n${displayText}`, this.outputPad, 0));
             }
             else {
                 // Use shared visual truncation utility with width-aware caching
@@ -115,7 +118,7 @@ export class BashExecutionComponent extends Container {
                 this.contentContainer.addChild({
                     render: (width) => {
                         if (cachedLines === undefined || cachedWidth !== width) {
-                            const result = truncateToVisualLines(styledInput, PREVIEW_LINES, width, 1);
+                            const result = truncateToVisualLines(styledInput, PREVIEW_LINES, width, this.outputPad);
                             cachedLines = result.visualLines;
                             cachedWidth = width;
                         }
@@ -155,7 +158,7 @@ export class BashExecutionComponent extends Container {
                 statusParts.push(theme.fg("warning", `Output truncated. Full output: ${this.fullOutputPath}`));
             }
             if (statusParts.length > 0) {
-                this.contentContainer.addChild(new Text(`\n${statusParts.join("\n")}`, 1, 0));
+                this.contentContainer.addChild(new Text(`\n${statusParts.join("\n")}`, this.outputPad, 0));
             }
         }
     }

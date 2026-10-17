@@ -9,6 +9,8 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
@@ -38,16 +40,20 @@ func readOnlySession(t *testing.T) *Session {
 // a write failure, and selectThinkingLevel shows it with showError instead of
 // the status. Interactive mode discarded the error (GUARD-17).
 func TestSelectThinkingLevelShowsAFailedSessionAppend(t *testing.T) {
-	model := &ai.Model{ID: "m", DisplayName: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 8000}}
-	m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir(), Model: model, SessionHandle: &recordingCompactHandle{inner: readOnlySession(t)}})
+	model := &ai.Model{ID: "m", DisplayName: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 8000, MaxThinking: ai.ThinkingLevelHigh}}
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir(), Model: model, SessionHandle: &recordingCompactHandle{inner: readOnlySession(t)}})
 	m.chatContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
 	m.editor = tui.NewEditor()
-	m.statusLine = NewStatusLine(model, "", nil)
-	m.agent = agent.NewAgent(agent.AgentOptions{Model: model})
+	m.statusLine = NewFooterComponent(model, "", nil)
+	m.agent = mustNewAgent(agent.AgentOptions{Model: model})
+	m.opts.SessionHandle.(*recordingCompactHandle).agent = m.agent
 	m.thinkingLevel = "off"
+	m.uiTaskCh = make(chan func(), 64)
+	settle := startOwnerLoop(t, m)
 
 	m.selectThinkingLevel("high", false)
+	settle()
 
 	chat := widthx.StripAnsi(strings.Join(m.chatContainer.Render(100), "\n"))
 	if !strings.Contains(chat, "Error: ") {
@@ -63,7 +69,12 @@ func TestSetLabelHostActionReportsAFailedAppend(t *testing.T) {
 		t.Fatal(err)
 	}
 	bridge := subprocess.NewUIBridge(func() {})
-	m := &InteractiveMode{opts: InteractiveOptions{SessionHandle: &recordingCompactHandle{inner: session}, SubprocessUIBridge: bridge}}
+	runner := inproc.NewRunner(nil, t.TempDir())
+	runner.BindCore(extension.ExtensionActions{SetLabel: func(entryID string, label *string) error {
+		_, err := session.AppendLabelChange(entryID, label)
+		return err
+	}}, extension.ContextActions{}, nil)
+	m := &InteractiveMode{opts: InteractiveModeOptions{SessionHandle: &recordingCompactHandle{inner: session}, SubprocessUIBridge: bridge}, newRunner: runner}
 	detach := m.wireSubprocessHostCallbacks()
 	defer detach()
 

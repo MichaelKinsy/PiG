@@ -32,7 +32,10 @@ func TestPackageManifestGlobstar(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.pattern, func(t *testing.T) {
-			got := expandPackageGlob(root, tt.pattern)
+			got, err := expandPackageGlob(root, tt.pattern)
+			if err != nil {
+				t.Fatal(err)
+			}
 			var want []string
 			for _, file := range tt.want {
 				want = append(want, filepath.Join(root, file))
@@ -70,7 +73,10 @@ func TestPackageGlobstarSymlinks(t *testing.T) {
 		{"*/**/*.md", []string{"real/deep/prompt.md"}},
 	} {
 		t.Run(tt.pattern, func(t *testing.T) {
-			got := expandPackageGlob(root, tt.pattern)
+			got, err := expandPackageGlob(root, tt.pattern)
+			if err != nil {
+				t.Fatal(err)
+			}
 			var want []string
 			for _, file := range tt.want {
 				want = append(want, filepath.Join(root, file))
@@ -121,7 +127,7 @@ func TestSkillManifestOverridesUseSkillFiles(t *testing.T) {
 		{[]string{"-suite/excluded/SKILL.md"}, []string{listed}},
 		{[]string{"!**", "+suite/excluded/SKILL.md"}, []string{excluded}},
 	} {
-		got := ApplyPatterns([]string{listed, excluded}, tt.patterns, root, Skills)
+		got := mustApplyPatterns(t, []string{listed, excluded}, tt.patterns, root, Skills)
 		if !slices.Equal(got, tt.want) {
 			t.Fatalf("exact overrides %v = %v; want %v", tt.patterns, got, tt.want)
 		}

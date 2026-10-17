@@ -50,7 +50,7 @@ func identityAllowances() []*identityAllowance {
 		allow(`^pi-coding-agent/(migrations\.js|sdk-bundle/index\.js)$`, `^earendil-works/pi`, "migration guide links printed to the user; the Go host prints the same ones (internal/codingagent/migrations.go)."),
 		allow(`^pi-coding-agent/(config\.js|sdk-bundle/chunk-[A-Z0-9]+\.js)$`, `^earendil-works/pi`, "install-method message text (Download from ...); never requested."),
 		allow(`^pi-coding-agent/package\.json$`, `^earendil-works/pi`, "the pinned package's repository field."),
-		allow(`^pi-coding-agent/modes/interactive/theme/(dark|light)\.json$`, `^earendil-works/pi`, "the theme's $schema reference, read by editors."),
+		allow(`^pi-coding-agent/modes/interactive/theme/(dark|light)\.json$`, `^pi\.dev/schemas/theme\.schema\.json$`, "the theme's $schema reference (Pi 1.2.0 moved it to pi.dev/schemas), read by editors; the theme loader validates with its built-in schema and never requests it."),
 		allow(`^pi-coding-agent/core/remote-catalog-provider\.js$`, `^pi\.dev$`, "a doc comment naming the catalog the overlay replaces; the request goes to PiG's hosted origin (D64)."),
 		allow(`^pi-coding-agent/(config\.js|cli/args\.js|sdk-bundle/chunk-[A-Z0-9]+\.js)$`, `pi\.dev/session/`, "the /share gist viewer address shown as text; PiG's /share uses its own gateway (D64) and never opens this viewer."),
 		allow(`^pi-coding-agent/config\.js$`, `^pi\.dev$`, "a code comment on the npm self-update command (Pi 1.0.1); the Go host owns self-update and requests nothing here."),

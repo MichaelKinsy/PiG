@@ -69,7 +69,7 @@ Only the exact value `1` enables sharing. This selects `~/.pi/agent` and `<cwd>/
 
 In shared mode, `PI_CODING_AGENT_DIR` overrides the agent directory and `PI_CODING_AGENT_SESSION_DIR` overrides session storage. `--session-dir` still wins over the environment, followed by the `sessionDir` setting. PiG ignores `PIG_CODING_AGENT_DIR` and `PIG_CODING_AGENT_SESSION_DIR` in this mode. `PIG_HOME` and `XDG_CONFIG_HOME` still control PiG-owned SDK caches, documentation, Piglets and other product state, not the shared agent directory.
 
-Sharing includes settings, credentials, custom models, keybindings, trust decisions, sessions and discovered resources. PiG and Pi 1.0.3 read the same current JSON and JSONL shapes. Settings writes retain unknown keys. PiG does not write `models.json`. Use Pi-compatible Package declarations and resources in shared settings; PiG-only extensions and Piglets do not become Pi-compatible by changing their directory.
+Sharing includes settings, credentials, custom models, keybindings, trust decisions, sessions and discovered resources. PiG and Pi 1.3.0 read the same current JSON and JSONL shapes. Settings writes retain unknown keys. PiG does not write `models.json`. Use Pi-compatible Package declarations and resources in shared settings; PiG-only extensions and Piglets do not become Pi-compatible by changing their directory.
 
 PiG coordinates auth, settings, trust and dynamic model-catalog cache writes with Pi's directory-lock protocol. Independent sessions can use the same agent directory. Do not edit one session concurrently from two processes. Stop older PiG processes before sharing their files. PiG automatically reclaims empty regular lock files from v0.2.0 after checking that no older writer holds them. If an older PiG holds a lock, acquisition uses the normal timeout and asks you to stop that process. PiG does not reclaim nonempty files, symlinks or active lock directories. Keep a backup before selecting an existing configuration tree.
 
@@ -101,7 +101,7 @@ A project keeps its configuration in `.pig` inside the working directory. PiG re
 
 ### Project trust
 
-A project directory can contain code that runs on your machine. PiG therefore asks whether you trust a project before it reads `.pig/settings.json`, `SYSTEM.md`, `APPEND_SYSTEM.md`, extensions, skills, prompt templates or themes from it. If you do not trust the project, PiG ignores all of them.
+A project directory can contain code that runs on your machine. PiG therefore asks whether you trust a project before it reads `.pig/settings.json`, `.pig/mcp.json`, `SYSTEM.md`, `APPEND_SYSTEM.md`, extensions, skills, prompt templates or themes from it. If you do not trust the project, PiG ignores all of them. A Piglet that `--piglet <name>` finds in `.pig/piglets/` is used only when the project has a saved trust decision, `defaultProjectTrust` is `"always"`, or the run passes `--approve`. PiG selects a Piglet before it can ask, so it uses your own Piglet of that name for the run, and the trust prompt, when one appears, names the project's Piglet.
 
 One setting is an exception. PiG reads `sessionDir` from the project settings before it asks, because it must locate the project's sessions first.
 
@@ -155,7 +155,7 @@ PiG applies these migrations only to the selected directories. It does not impor
 
 ## Diagnostics
 
-`pig diagnose` prints the PiG and pinned Pi versions, the build, the Go runtime, the platform, the binary path, the staged extension SDKs, the resolved configuration paths, the providers with stored credentials, and the built-in tools. `pig --help` does not list it.
+`pig diagnose` prints the PiG and pinned Pi versions, the build, the Go runtime, the platform, the binary path, the staged extension SDKs, the resolved configuration paths, the providers with stored credentials, and the built-in tools.
 
 Set `PIG_STARTUP_TRACE=1` to print the time of each startup step. See [environment variables](environment-variables.md) for the other diagnostic variables.
 

@@ -6,16 +6,20 @@ package orderedjson
 
 import (
 	"bytes"
+	"cmp"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 )
 
-// Object is a JSON object with insertion-ordered keys. Values stay raw, so
-// numbers and nested objects keep their exact text.
+// Object is a JSON object with its keys in JavaScript enumeration order: the array-index keys ("0", "7", "42") in ascending order, then the other keys in insertion order.
+// Values stay raw, so numbers and nested objects keep their exact text.
 type Object struct {
-	keys   []string
-	values map[string]json.RawMessage
+	keys []string
+	// indexKeys is the number of array-index keys at the front of keys.
+	indexKeys int
+	values    map[string]json.RawMessage
 }
 
 // New returns an empty object.
@@ -48,7 +52,7 @@ func (o *Object) UnmarshalJSON(data []byte) error {
 	if delim, ok := token.(json.Delim); !ok || delim != '{' {
 		return errors.New("orderedjson: value is not an object")
 	}
-	o.keys, o.values = nil, map[string]json.RawMessage{}
+	o.keys, o.indexKeys, o.values = nil, 0, map[string]json.RawMessage{}
 	for dec.More() {
 		keyToken, err := dec.Token()
 		if err != nil {
@@ -108,10 +112,19 @@ func (o *Object) Get(key string) (json.RawMessage, bool) {
 	return value, ok
 }
 
-// Set replaces the value of an existing key in place or appends a new key.
+// Set replaces the value of an existing key in place or adds a new key: after the other keys, or among the array-index keys at its ascending place.
 func (o *Object) Set(key string, value json.RawMessage) {
 	if _, ok := o.values[key]; !ok {
-		o.keys = append(o.keys, key)
+		if index, ok := arrayIndexKey(key); ok {
+			at, _ := slices.BinarySearchFunc(o.keys[:o.indexKeys], index, func(existing string, index uint64) int {
+				n, _ := arrayIndexKey(existing)
+				return cmp.Compare(n, index)
+			})
+			o.keys = slices.Insert(o.keys, at, key)
+			o.indexKeys++
+		} else {
+			o.keys = append(o.keys, key)
+		}
 	}
 	o.values[key] = value
 }
@@ -135,6 +148,9 @@ func (o *Object) Delete(key string) {
 	for i, existing := range o.keys {
 		if existing == key {
 			o.keys = append(o.keys[:i], o.keys[i+1:]...)
+			if i < o.indexKeys {
+				o.indexKeys--
+			}
 			return
 		}
 	}

@@ -82,7 +82,7 @@ func toFileError(err error, call fsCall) *durableenv.FileError {
 	if !ok {
 		mapped = durableenv.FileErrorUnknown
 	}
-	return &durableenv.FileError{Code: mapped, Message: nodeErrorMessage(err, code, call), Path: call.path, Cause: err}
+	return durableenv.NewFileError(mapped, nodeErrorMessage(err, code, call), call.path, err)
 }
 
 func nodeErrorMessage(err error, code string, call fsCall) string {
@@ -107,7 +107,7 @@ func abortedFileError(ctx context.Context, path string) error {
 	if ctx.Err() == nil {
 		return nil
 	}
-	return &durableenv.FileError{Code: durableenv.FileErrorAborted, Message: "aborted", Path: path}
+	return durableenv.NewFileError(durableenv.FileErrorAborted, "aborted", path, nil)
 }
 
 func pathExists(path string) bool {

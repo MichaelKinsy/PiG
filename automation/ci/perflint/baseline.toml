@@ -1,0 +1,5429 @@
+# SPDX-License-Identifier: MIT
+#
+# Perf-lint ratchet (automation/ci/perflint, `make perf-lint`). Counts may only shrink: a fix lowers or deletes its entry in the same change; never add an entry for new code (fix it, or annotate a proven cold site `//perf:ok <reason>`).
+# Regenerate with `go run ./automation/ci/perflint -print` only when lowering counts.
+
+[[hit]]
+file = "agent/agent.go"
+func = "Agent.MessagesSnapshot"
+pattern = "history-clone"
+detail = "slices.Clone"
+count = 1
+class = "hot-owned:claude-history-hot (0cf5bab981)"
+
+[[hit]]
+file = "agent/agent.go"
+func = "Agent.SetMessages"
+pattern = "history-clone"
+detail = "slices.Clone"
+count = 1
+class = "hot-owned:claude-history-hot (0cf5bab981)"
+
+[[hit]]
+file = "agent/agent.go"
+func = "Agent.emit"
+pattern = "chan-hop"
+detail = "<-"
+count = 1
+class = "hot-owned:lw-events (LW roadmap S3: in-process listeners run on the owner, no per-event done wait)"
+
+[[hit]]
+file = "agent/agent.go"
+func = "Agent.emit"
+pattern = "chan-hop"
+detail = "send"
+count = 1
+class = "hot-owned:lw-events (LW roadmap S3: in-process listeners run on the owner, no per-event done wait)"
+
+[[hit]]
+file = "agent/agent.go"
+func = "NewAgent"
+pattern = "history-clone"
+detail = "slices.Clone"
+count = 1
+class = "hot-owned:claude-history-hot (0cf5bab981)"
+
+[[hit]]
+file = "agent/agent.go"
+func = "assistantMessageWith"
+pattern = "loop-format"
+detail = "string+="
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "agent/agent_loop.go"
+func = "Agent.runLoop"
+pattern = "history-clone"
+detail = "slices.Clone"
+count = 1
+class = "hot-owned:claude-history-hot (0cf5bab981)"
+
+[[hit]]
+file = "agent/agent_loop.go"
+func = "loopRun.applyUpdate"
+pattern = "history-clone"
+detail = "slices.Clone"
+count = 1
+class = "hot-owned:claude-history-hot (0cf5bab981)"
+
+[[hit]]
+file = "agent/agent_loop.go"
+func = "loopRun.endRun"
+pattern = "history-clone"
+detail = "slices.Clone"
+count = 1
+class = "hot-owned:claude-history-hot (0cf5bab981)"
+
+[[hit]]
+file = "agent/agent_loop.go"
+func = "loopRun.prepareRequest"
+pattern = "history-clone"
+detail = "slices.Clone"
+count = 1
+class = "hot-owned:claude-history-hot (0cf5bab981)"
+
+[[hit]]
+file = "agent/agent_loop.go"
+func = "loopRun.turnContext"
+pattern = "history-clone"
+detail = "slices.Clone"
+count = 2
+class = "hot-owned:claude-history-hot (0cf5bab981)"
+
+[[hit]]
+file = "agent/message_json.go"
+func = "AgentMessage.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "agent/message_json.go"
+func = "AssistantMessage.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "agent/message_json.go"
+func = "ToolResultMessage.MarshalJSON"
+pattern = "nested-marshal"
+detail = "agent.MarshalJSON"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "agent/message_lax.go"
+func = "AgentMessage.decodeLax"
+pattern = "decode-own-encode"
+detail = "orderedjson.MarshalJSON->agent.decode"
+count = 1
+class = "hot-kept: once per message that needs the lax decode (session load of a non-canonical line), not per delta"
+
+[[hit]]
+file = "agent/messages.go"
+func = "customMessageContent"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "agent/proxy.go"
+func = "ProxyAssistantMessageEvent.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 9
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "agent/queue.go"
+func = "PendingMessageQueue.Messages"
+pattern = "history-clone"
+detail = "slices.Clone"
+count = 1
+class = "cold: copies the few queued steering messages, not the history"
+
+[[hit]]
+file = "agent/queue.go"
+func = "PendingMessageQueue.peekLocked"
+pattern = "history-clone"
+detail = "slices.Clone"
+count = 1
+class = "cold: copies the few queued steering messages, not the history"
+
+[[hit]]
+file = "agent/standalone_loop.go"
+func = "RunAgentLoopContinue"
+pattern = "history-clone"
+detail = "slices.Clone"
+count = 1
+class = "cold: once per standalone run, not per turn"
+
+[[hit]]
+file = "agent/standalone_loop.go"
+func = "RunAgentLoop"
+pattern = "history-clone"
+detail = "slices.Clone"
+count = 1
+class = "cold: once per standalone run, not per turn"
+
+[[hit]]
+file = "agent/system_state.go"
+func = "declareToolChanges"
+pattern = "history-clone"
+detail = "slices.Clone"
+count = 1
+class = "hot-owned:claude-history-hot (0cf5bab981)"
+
+[[hit]]
+file = "agent/tool_call_hook_context.go"
+func = "loopRun.toolCallHookContext"
+pattern = "history-clone"
+detail = "slices.Clone"
+count = 1
+class = "hot-owned:claude-history-hot (0cf5bab981)"
+
+[[hit]]
+file = "ai/anthropic.go"
+func = "anthContentBlock.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "ai/anthropic.go"
+func = "anthTool.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "ai/auth.go"
+func = "pathExists"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/auth_env_keys.go"
+func = "discoverVertexADCCredentials"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/auth_env_keys.go"
+func = "hasVertexADCCredentials"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/auth_resolve.go"
+func = "DefaultProviderAuthContext"
+pattern = "env-stat"
+detail = "os.LookupEnv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/auth_resolve.go"
+func = "DefaultProviderAuthContext"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/auth_store.go"
+func = "authStorageData.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 3
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "ai/azure_openai_responses.go"
+func = "NewAzureOpenAIResponsesProvider"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/bedrock_eventstream.go"
+func = "parseBedrockEventHeaders"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/classifier.go"
+func = "ClassifierAnswers.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "ai/classifier.go"
+func = "ClassifierQuestions.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "ai/classifier_wire.go"
+func = "AssistantImages.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "ai/classifier_wire.go"
+func = "ClassifierContext.MarshalJSON"
+pattern = "nested-marshal"
+detail = "ai.MarshalJSON"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "ai/classifier_wire.go"
+func = "ClassifierContext.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 2
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "ai/classifier_wire.go"
+func = "ImagesContext.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "ai/constrained_sampling.go"
+func = "makeJSONSchemaNodeStrict"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/constrained_sampling.go"
+func = "makeStrictJSONSchemaWithOrder"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/credential_json.go"
+func = "Credential.marshalFields"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: credential file read and write on login and refresh"
+
+[[hit]]
+file = "ai/credential_json.go"
+func = "OAuthCredentials.marshalFields"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: credential file read and write on login and refresh"
+
+[[hit]]
+file = "ai/credential_json.go"
+func = "OAuthCredentials.storeFields"
+pattern = "decode-own-encode"
+detail = "ai.marshalFields->json.Unmarshal"
+count = 1
+class = "cold: credential file write on login and refresh"
+
+[[hit]]
+file = "ai/credential_json.go"
+func = "unmarshalCredentialFields"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: credential file read and write on login and refresh"
+
+[[hit]]
+file = "ai/deferred_option.go"
+func = "DeferredOption.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 2
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "ai/githubcopilot.go"
+func = "copilotFetchWithRetry"
+pattern = "timer-per-call"
+detail = "context.WithTimeout"
+count = 1
+class = "cold: one deadline per request retry attempt"
+
+[[hit]]
+file = "ai/google.go"
+func = "marshalGeminiParameters"
+pattern = "decode-own-encode"
+detail = "ai.marshalRequestBody->json.Unmarshal"
+count = 1
+class = "hot-owned:lw-request (LW roadmap S11: request bodies carry encoded tool schemas)"
+
+[[hit]]
+file = "ai/google.go"
+func = "marshalGeminiParameters"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "hot-kept: once per Google request; one encode that is the wire body plus one scan to split it, not a clone"
+
+[[hit]]
+file = "ai/google_wire.go"
+func = "geminiWireObject.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "ai/http_proxy.go"
+func = "ApplyHTTPProxySettings"
+pattern = "env-stat"
+detail = "os.LookupEnv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/http_proxy.go"
+func = "proxyEnv"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/http_proxy.go"
+func = "proxyEnv"
+pattern = "env-stat"
+detail = "os.LookupEnv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/llama_cpp_classify.go"
+func = "renderLlamaTask"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/llama_cpp_classify.go"
+func = "renderLlamaTask"
+pattern = "loop-format"
+detail = "string+="
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/messages.go"
+func = "NestedToolCallRecord.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "ai/messages.go"
+func = "cloneAssistantContentWith"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/messages.go"
+func = "cloneToolResultMessageContent"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/mistral.go"
+func = "mistralChunkConsumer.toolCalls"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/mistral.go"
+func = "mistralProvider.convertUserMessage"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/mistral.go"
+func = "mistralToolFn.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "ai/model_compat_json.go"
+func = "OpenAICompat.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "ai/models_store.go"
+func = "ModelsStoreEntry.Clone"
+pattern = "decode-own-encode"
+detail = "ai.MarshalJSON->json.Unmarshal"
+count = 1
+class = "cold: once per model store read or registration"
+
+[[hit]]
+file = "ai/node_http_proxy.go"
+func = "getProxyEnv"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/oauth_callback_server.go"
+func = "oauthCallbackHost"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/oauth_kimi.go"
+func = "newKimiOAuthProvider"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/openai.go"
+func = "oaiToolFunction.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "ai/openai.go"
+func = "openAIProvider.Stream"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/openai_codex_responses.go"
+func = "NewOpenAICodexResponsesProvider"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/openai_decisions.go"
+func = "openAIDecisionsProbabilities"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/openai_responses.go"
+func = "ResponsesTool.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "ai/openai_responses.go"
+func = "processResponsesStream"
+pattern = "loop-format"
+detail = "string+="
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/openai_responses.go"
+func = "responsesMessageConverter.convertAnchored"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 3
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/provider_env.go"
+func = "getProviderEnvValue"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/provider_retry.go"
+func = "retryTransport.RoundTrip"
+pattern = "loop-format"
+detail = "string+="
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/request_validity.go"
+func = "checkTranscriptFlow"
+pattern = "history-clone"
+detail = "slices.Clone"
+count = 1
+class = "cold: returns at once unless requestvalidity is enabled (tests and tagged builds), never in a release build"
+
+[[hit]]
+file = "ai/schema_object_order.go"
+func = "ToolSchema.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 3
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "ai/system_one.go"
+func = "SystemOneWireQuestions.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "ai/system_one.go"
+func = "parseProbabilities"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/test_faux.go"
+func = "TestFauxProvider.Stream"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 3
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/test_faux.go"
+func = "TestFauxProvider.Stream"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/tool_flow_repair.go"
+func = "dropUnansweredToolResults"
+pattern = "history-clone"
+detail = "slices.Clone"
+count = 1
+class = "cold: clones only when a tool result is actually dropped (a repair of a broken transcript)"
+
+[[hit]]
+file = "ai/transcript.go"
+func = "RenderSystemMessageUpdate"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/transcript.go"
+func = "declarationsEqualMarshaled"
+pattern = "marshal-compare"
+detail = "bytes.Equal"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/transcript.go"
+func = "normalizeJSONValue"
+pattern = "decode-own-encode"
+detail = "json.Marshal->json.NewDecoder"
+count = 1
+class = "hot-kept: normalizes a value without a typed form once per conversion; needs its own byte oracle"
+
+[[hit]]
+file = "ai/transcript.go"
+func = "normalizeMissingMessageContent"
+pattern = "history-clone"
+detail = "append(nil,x...)"
+count = 1
+class = "cold: copies only when some message has missing content, which valid transcripts do not"
+
+[[hit]]
+file = "ai/types.go"
+func = "ToolCall.UnmarshalJSON"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: round trip only for tool calls whose arguments are not an object"
+
+[[hit]]
+file = "ai/types.go"
+func = "cloneCompat"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: round trip only for tool calls whose arguments are not an object"
+
+[[hit]]
+file = "ai/usage_json.go"
+func = "Usage.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 2
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "ai/validate.go"
+func = "argumentSchema.list"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/validate.go"
+func = "typeboxPropertyNameMatcher"
+pattern = "compile-in-func"
+detail = "regexp.Compile"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/validate_convert.go"
+func = "argumentSchema.convert"
+pattern = "compile-in-func"
+detail = "regexp.Compile"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/validate_errors.go"
+func = "argumentPatternMatches"
+pattern = "compile-in-func"
+detail = "regexp.Compile"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "ai/validate_errors.go"
+func = "argumentSchema.argumentErrorsAt"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "bench/k8s/cmd/k8sbench/render.go"
+func = "renderJob"
+pattern = "compile-in-func"
+detail = "template.Parse"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "codemode/remote_protocol.go"
+func = "RemoteMessage.MarshalJSON"
+pattern = "nested-marshal"
+detail = "codemode.MarshalJSON"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "codemode/remote_protocol.go"
+func = "RemoteMessage.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "codemode/remote_protocol.go"
+func = "RemoteReply.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "codemode/remote_protocol.go"
+func = "WorkerToHostMessage.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "coding/cli/agent_environment.go"
+func = "pigletWasRequested"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/args.go"
+func = "extensionFlagsHelp"
+pattern = "loop-format"
+detail = "string+="
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/args.go"
+func = "parseArgs"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 3
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/auth_commands.go"
+func = "parityHarnessEnabled"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/auth_contributions.go"
+func = "authExtensionConfigs"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/auth_contributions.go"
+func = "authExtensionConfigs"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/build_command.go"
+func = "pigBuildTarget"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/build_command.go"
+func = "pigSourceRootCandidates"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/build_command.go"
+func = "runBuildCommand"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/builtin_extensions.go"
+func = "wazeroCacheDir"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/config_command.go"
+func = "runConfigCommand"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 3
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/configured_resources.go"
+func = "cliExtensionConfigs"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/configured_resources.go"
+func = "extensionConflictDiagnostics"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/configured_resources.go"
+func = "hasConventionalPackageDir"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/configured_resources.go"
+func = "pathToExtConfigs"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/configured_resources.go"
+func = "validateConfiguredPackagesForStartup"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/diagnose.go"
+func = "runDiagnose"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/diagnose.go"
+func = "runDiagnose"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/extension_init_command.go"
+func = "runExtensionInit"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/extension_init_command.go"
+func = "runExtensionInit"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/extension_login_preview_command.go"
+func = "loginPreviewGlyphFreeEnabled"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/extension_login_preview_command.go"
+func = "runExtensionLoginPreview"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/extension_set.go"
+func = "extensionErrorDiagnostics"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/extension_set.go"
+func = "extensionWarningDiagnostics"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/extension_stale_copy.go"
+func = "staleCopyDiagnostics"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/extension_stale_copy.go"
+func = "staleCopyDiagnostics"
+pattern = "timer-per-call"
+detail = "time.After"
+count = 1
+class = "cold: startup diagnostics"
+
+[[hit]]
+file = "coding/cli/extension_upgrade.go"
+func = "extensionUpgrader.upgrade"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/extension_upgrade.go"
+func = "newBackupDir"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/extension_upgrade.go"
+func = "sdkDriftNotice"
+pattern = "loop-format"
+detail = "string+="
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/extension_upgrade.go"
+func = "writeFileKeepingMode"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/extension_upgrade_command.go"
+func = "extensionUpgradeTargets"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/extension_validate_command.go"
+func = "extensionContentHash"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/extension_validate_command.go"
+func = "isolatedPlacementPlan"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 3
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/extension_validate_command.go"
+func = "linkDiagnostics"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/extensions_cache_command.go"
+func = "runAutomaticExtensionCacheGC"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/extensions_runtime_command.go"
+func = "writeExtensionsRuntimeStatus"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/main.go"
+func = "Main"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/main.go"
+func = "exportOfflineMode"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/main.go"
+func = "loadSkills"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/main.go"
+func = "requestedPigletName"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/main.go"
+func = "resolvePiglet"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/main.go"
+func = "resolveSessionDir"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/package_command_trust.go"
+func = "createPackageCommandSettings"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/package_commands.go"
+func = "listPackages"
+pattern = "loop-format"
+detail = "string+="
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/package_commands.go"
+func = "reportSettingsErrors"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/package_publish.go"
+func = "publishPackage"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/project_trust.go"
+func = "resolveProjectTrusted"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/resource_prompts.go"
+func = "resolvePromptInputs"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/resource_source_info.go"
+func = "addInferredSourceInfo"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/resource_source_info.go"
+func = "resourceMetadataPath"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/rpc_events.go"
+func = "RPCUsage.MarshalJSON"
+pattern = "nested-marshal"
+detail = "cli.MarshalJSON"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "coding/cli/rpc_events.go"
+func = "RPCUsage.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "coding/cli/rpc_events.go"
+func = "rpcMessageUpdate"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/rpc_events.go"
+func = "rpcStreamingBlockScratch"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/rpc_mode.go"
+func = "rpcAvailableModels"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/rpc_mode.go"
+func = "rpcUserBashOverride"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: once per user bash command"
+
+[[hit]]
+file = "coding/cli/rpc_mode.go"
+func = "serveRPCMode"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/rpc_object.go"
+func = "rpcObject.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 2
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "coding/cli/startup_model.go"
+func = "testFauxCLIModel"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/startup_session.go"
+func = "readSessionCWD"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/startup_session.go"
+func = "resolveSessionArgument"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/startup_session.go"
+func = "resolveStartupSessionSelectionIn"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/startup_session.go"
+func = "startupSessionSelection.applyName"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/status_command.go"
+func = "collectStatus"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 6
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/verify_command.go"
+func = "verifyInstalledPackages"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/verify_command.go"
+func = "verifyPath"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/discover_extensions.go"
+func = "discoverExtensionPaths"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/discover_extensions.go"
+func = "extensionPathConfigs"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/discover_extensions.go"
+func = "resolveExtensionEntries"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/before_agent_start_options.go"
+func = "BeforeAgentStartSelectedTools"
+pattern = "marshal-compare"
+detail = "DeepEqual then Marshal"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/builtin/codemode/description.go"
+func = "CreateDescription"
+pattern = "loop-format"
+detail = "string+="
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/builtin/codemode/execute.go"
+func = "StoreEntryData.MarshalJSON"
+pattern = "nested-marshal"
+detail = "ecmascript.MarshalJSON"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "coding/extension/builtin/codemode/execute.go"
+func = "StoreEntryData.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "coding/extension/builtin/codemode/execute.go"
+func = "formatOutput"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/builtin/codemode/execute.go"
+func = "storeOf"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "hot-kept: once per codemode execute; only codemode-store entries are encoded now, other entries are skipped"
+
+[[hit]]
+file = "coding/extension/builtin/codemode/models_args.go"
+func = "checkClassifierContext"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/builtin/codemode/models_args.go"
+func = "checkImagesContext"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/custom_message.go"
+func = "CustomMessage.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "coding/extension/events.go"
+func = "BeforeAgentStartEvent.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 2
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "coding/extension/events.go"
+func = "SessionBoundaryDraft.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 4
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "coding/extension/host/cellpack/manifest.go"
+func = "Resolver.ResolvePrebuilt"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/inproc/runner.go"
+func = "EmitProjectTrust"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/inproc/runner.go"
+func = "Runner.EmitContextTracked"
+pattern = "history-clone"
+detail = "slices.Clone"
+count = 1
+class = "hot-owned:claude-history-hot"
+
+[[hit]]
+file = "coding/extension/host/inproc/runner.go"
+func = "Runner.Shortcuts"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 3
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/inproc/runner.go"
+func = "Runner.resolveCommands"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/inproc/runner.go"
+func = "isUserBashEventResult"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: once per user bash event"
+
+[[hit]]
+file = "coding/extension/host/inproc/runner.go"
+func = "sameMessageValues"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 2
+class = "cold: once per user bash event"
+
+[[hit]]
+file = "coding/extension/host/inproc/runner.go"
+func = "typedDetails"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 3
+class = "cold: once per user bash event"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/cache_lifecycle.go"
+func = "classifyCacheEntry"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/cache_lifecycle.go"
+func = "inspectOrPruneCache"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 6
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/cache_lifecycle.go"
+func = "lockHeld"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/cache_lifecycle.go"
+func = "readReadyMetadata"
+pattern = "env-stat"
+detail = "os.Lstat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/cache_lifecycle.go"
+func = "removeTreeContext"
+pattern = "env-stat"
+detail = "os.Lstat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/cellcache.go"
+func = "BuildTimeout"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/cellcache.go"
+func = "gcStaleScratch"
+pattern = "timer-per-call"
+detail = "time.After"
+count = 1
+class = "cold: one scratch-directory sweep"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/cellcache.go"
+func = "publishArtifact"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/cellcache.go"
+func = "publishCellFailure"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/go_module.go"
+func = "WithGoBuildModule"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/go_packed.go"
+func = "CurrentGoPackedCellEntry"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/go_packed.go"
+func = "goSDKPathOverride"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/go_packed.go"
+func = "buildGoPackedCell"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/go_packed.go"
+func = "collectExtensionDeps"
+pattern = "loop-format"
+detail = "string+="
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/go_packed.go"
+func = "findSDKRootWithPreferred"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/go_packed.go"
+func = "findSDKRootWithPreferred"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 4
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/go_packed.go"
+func = "goSDKPathOverride"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/go_packed.go"
+func = "installedPigSourceRoots"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/go_packed.go"
+func = "statHasFile"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/hash_go_module.go"
+func = "hashGoModule"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/hash_inputs.go"
+func = "hashTree"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/python_packed.go"
+func = "BuildPythonPackedCell"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/python_packed.go"
+func = "CurrentPythonPackedCellEntry"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/python_packed.go"
+func = "findPythonSDKRoot"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/python_packed.go"
+func = "findPythonSDKRoot"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/rust_packed.go"
+func = "BuildRustPackedCell"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/rust_packed.go"
+func = "CurrentRustPackedCellEntry"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/rust_packed.go"
+func = "RustSDKPathOverride"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/rust_packed.go"
+func = "cargoTargetDirectory"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/rust_packed.go"
+func = "findRustSDKRoot"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/rust_packed.go"
+func = "findRustSDKRoot"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/toolchain_version_cache.go"
+func = "goSelectorRevisions"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 4
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/toolchain_version_cache.go"
+func = "rustupSelectorRevisions"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/toolchain_version_cache.go"
+func = "toolchainSelectorState"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/subprocess/build_failure_group.go"
+func = "buildFailureIssues"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/subprocess/builder.go"
+func = "Builder.resolveStagedSDK"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/subprocess/builder.go"
+func = "buildRust"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/subprocess/builder.go"
+func = "cargoBuildTargetDirectory"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/subprocess/builder.go"
+func = "detectBuildType"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 3
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/subprocess/builder.go"
+func = "goLocalReplaceDirs"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/subprocess/builder.go"
+func = "goNeedsStagedSDK"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/subprocess/builder.go"
+func = "hashSourceDir"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/subprocess/builder.go"
+func = "rustNeedsStagedSDK"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/subprocess/builder_node.go"
+func = "fileExists"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/subprocess/builder_node.go"
+func = "resolveNodeEntrypoint"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/subprocess/conn.go"
+func = "Conn.heartbeatLoop"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/subprocess/conn.go"
+func = "Conn.readLoop"
+pattern = "chan-hop"
+detail = "<-"
+count = 2
+class = "hot-owned:lw-ipc (LW roadmap S10: frame dispatch without a channel hop per frame)"
+
+[[hit]]
+file = "coding/extension/host/subprocess/conn.go"
+func = "Conn.readLoop"
+pattern = "chan-hop"
+detail = "send"
+count = 4
+class = "hot-owned:lw-ipc (LW roadmap S10: frame dispatch without a channel hop per frame)"
+
+[[hit]]
+file = "coding/extension/host/subprocess/frame_buffers.go"
+func = "frameBuffer.release"
+pattern = "pool-uncapped"
+detail = "sync.Pool.Put"
+count = 1
+class = "cold: a size-classed pool; each class holds buffers of one capacity, so a Put cannot retain a larger one"
+
+[[hit]]
+file = "coding/extension/host/subprocess/host.go"
+func = "DisambiguateIdentities"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/subprocess/host.go"
+func = "Host.buildExtension"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/subprocess/host.go"
+func = "Host.connectExt"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/subprocess/host.go"
+func = "Host.ensureSockRuntimeDir"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/subprocess/host.go"
+func = "readableSessionFile"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/subprocess/host.go"
+func = "resolveSocketDir"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/subprocess/load_error_cause.go"
+func = "readStderrTail"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/subprocess/native_provider_oauth.go"
+func = "nativeOAuthProxy.RefreshTokenContext"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: startup, config, registration, login, export or command code that runs once per user action"
+
+[[hit]]
+file = "coding/extension/host/subprocess/node_recovery.go"
+func = "Host.recoverNodeProcess"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/subprocess/packed_go.go"
+func = "Host.startGoPackedCellOnce"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/subprocess/prompt_options.go"
+func = "applyPromptOptionEdits"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "hot-kept: once per before_agent_start when a subprocess handler returns edits; small options object"
+
+[[hit]]
+file = "coding/extension/host/subprocess/protocol.go"
+func = "RenderToolContent.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 2
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "coding/extension/host/subprocess/protocol.go"
+func = "ViewNode.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "coding/extension/host/subprocess/socket_runtime_base_unix.go"
+func = "secureSocketRuntimeBase"
+pattern = "env-stat"
+detail = "os.Lstat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/subprocess/supervisor.go"
+func = "Supervisor.RecordCrash"
+pattern = "timer-per-call"
+detail = "time.After"
+count = 1
+class = "cold: once per extension crash"
+
+[[hit]]
+file = "coding/extension/host/subprocess/ts_runtime.go"
+func = "TypeScriptRuntimeRequest"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/tsruntime/nodeonly.go"
+func = "RecordNodeOnly"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/tsruntime/nodeonly.go"
+func = "packageJSONFor"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/tsruntime/tsruntime.go"
+func = "Platform"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/tsruntime/tsruntime.go"
+func = "Root"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/tsruntime/tsruntime.go"
+func = "recordRequest"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/tsruntime/tsruntime.go"
+func = "staleInput"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/tsruntime/tsruntime.go"
+func = "touchUsed"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/tsruntime/verify.go"
+func = "Verifier.Verify"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/login.go"
+func = "scanLoginJSONValue"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/login.go"
+func = "validateLoginGrid"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 3
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/login.go"
+func = "validateLoginPalette"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/mcp_servers.go"
+func = "McpServerRegistry.List"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: status and tool listing, not per event"
+
+[[hit]]
+file = "coding/extension/mcp_servers.go"
+func = "OrderedExposures.MarshalJSON"
+pattern = "nested-marshal"
+detail = "orderedjson.MarshalJSON"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "coding/extension/mcp_servers.go"
+func = "OrderedStrings.MarshalJSON"
+pattern = "nested-marshal"
+detail = "orderedjson.MarshalJSON"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "coding/extension/mcp_servers.go"
+func = "RegisteredMcpServer.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "coding/extension/mcp_servers.go"
+func = "ValidateMcpServerConfig"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/mcp_servers.go"
+func = "resolveExposureAliases"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: status and tool listing, not per event"
+
+[[hit]]
+file = "coding/extension/mcp_servers.go"
+func = "toolPatternRegExp"
+pattern = "compile-in-func"
+detail = "regexp.MustCompile"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/pigsdk/pigsdk.go"
+func = "sdkBundle.computeHash"
+pattern = "pool-uncapped"
+detail = "sync.Pool.Put"
+count = 1
+class = "cold: once per SDK bundle hash"
+
+[[hit]]
+file = "coding/extension/pigsdk/pigsdk.go"
+func = "settleStaging"
+pattern = "env-stat"
+detail = "os.Lstat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/pigsdk/pigsdk.go"
+func = "stagedSDKs"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/remote_overlay.go"
+func = "OverlayMarginValue.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 2
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "coding/extension/remote_overlay.go"
+func = "OverlaySizeValue.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 2
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "coding/extension/source/node_entries.go"
+func = "NodeDirectoryImport"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/source/node_entries.go"
+func = "NodeManifestEntries"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/source/resolve.go"
+func = "Resolve"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/source/resolve.go"
+func = "executableScript"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/source/resolve.go"
+func = "exists"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/source/resolve.go"
+func = "nodeEntrypoints"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/source/resolve.go"
+func = "scanGoModule"
+pattern = "loop-format"
+detail = "string+="
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/source/resolve.go"
+func = "scanGoPackage"
+pattern = "loop-format"
+detail = "string+="
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/system_prompt_options.go"
+func = "BuildSystemPromptOptions.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 2
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "coding/extension_bridge.go"
+func = "newBridgeTool"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: startup, config, registration, login, export or command code that runs once per user action"
+
+[[hit]]
+file = "coding/extension_flag_values.go"
+func = "AgentSessionServices.ApplyExtensionFlagValues"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extensionset/extensionset.go"
+func = "OmitReplaced"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/hookconfig/hookconfig.go"
+func = "Parse"
+pattern = "compile-in-func"
+detail = "regexp.Compile"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/mcpext/cli.go"
+func = "fileExists"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/mcpext/cli.go"
+func = "mcpCLI.add"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/mcpext/cli.go"
+func = "mcpCLI.list"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 4
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/mcpext/cli.go"
+func = "mcpCLI.parseOptions"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/mcpext/cli.go"
+func = "mcpCLI.parsePairs"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/mcpext/cli.go"
+func = "mcpCLI.remove"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/mcpext/config.go"
+func = "RemoveMcpServerConfig"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/mcpext/config.go"
+func = "configState.readFile"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 3
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/mcpext/extension.go"
+func = "Extension.FormatStatus"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 3
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/mcpext/extension.go"
+func = "Extension.registeredServers"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/mcpext/extension.go"
+func = "RenderServersSection"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/mcpext/extension.go"
+func = "RenderServersSection"
+pattern = "loop-format"
+detail = "string+="
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/mcpext/log.go"
+func = "fileSize"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/mcpext/manager.go"
+func = "Extension.serversMenu"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/mcpext/runtime.go"
+func = "Connection.open"
+pattern = "timer-per-call"
+detail = "time.After"
+count = 1
+class = "cold: once per MCP connection attempt"
+
+[[hit]]
+file = "coding/mcpext/runtime.go"
+func = "CreateDefaultTransport"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/mcpext/runtime.go"
+func = "resolveHeaders"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/mcpext/storage.go"
+func = "FileAuthStorageBackend.WithLock"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/model.go"
+func = "buildLeafProviderForEntry"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/model.go"
+func = "cloneCompat"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: scalar compat takes the direct copy; the round trip only serves compat holding maps or slices, copied once per model registration or lookup"
+
+[[hit]]
+file = "coding/packagecontent/glob.go"
+func = "packageGlobWalk.stat"
+pattern = "env-stat"
+detail = "os.Lstat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/packagecontent/packagecontent.go"
+func = "Collect"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/packagecontent/packagecontent.go"
+func = "DescribesResources"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/packagecontent/packagecontent.go"
+func = "SkillFile"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/packagecontent/packagecontent.go"
+func = "ValidateConfiguredEntries"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/packagecontent/packagecontent.go"
+func = "ValidatePackageManifest"
+pattern = "env-stat"
+detail = "os.Lstat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/packagecontent/packagecontent.go"
+func = "collectMCPResources"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/packagecontent/packagecontent.go"
+func = "collectManifestResources"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/packagecontent/packagecontent.go"
+func = "configuredMissingMembers"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/packagecontent/packagecontent.go"
+func = "discoverAgentEnvironmentPaths"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/packagecontent/packagecontent.go"
+func = "existingFiles"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/packagecontent/packagecontent.go"
+func = "fileExists"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/packagecontent/packagecontent.go"
+func = "hasBuildFile"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/packagecontent/packagecontent.go"
+func = "hasChildExtensionEntry"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/packagecontent/packagecontent.go"
+func = "skillEntryPattern"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/packagecontent/packagecontent.go"
+func = "validateDeclaredEntry"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/packagecontent/packagecontent.go"
+func = "validatePortableReference"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/packagecontent/packagecontent.go"
+func = "validateRoot"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/extends.go"
+func = "canonicalDirectory"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/extends.go"
+func = "canonicalPigletPath"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/extends.go"
+func = "ensureNoSymlinkEscape"
+pattern = "env-stat"
+detail = "os.Lstat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/lineage.go"
+func = "canonicalJSON"
+pattern = "decode-own-encode"
+detail = "v3.Marshal->v3.Unmarshal"
+count = 1
+class = "cold: piglet build and lineage, once per command"
+
+[[hit]]
+file = "coding/piglet/lineage.go"
+func = "fieldsJSON"
+pattern = "decode-own-encode"
+detail = "v3.Marshal->v3.Unmarshal"
+count = 1
+class = "cold: piglet build and lineage, once per command"
+
+[[hit]]
+file = "coding/piglet/lineage_cli.go"
+func = "Lineage"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/main.go"
+func = "buildExtensionWithOwner"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/main.go"
+func = "cmdAddHuman"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/main.go"
+func = "cmdRemoveHuman"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/main.go"
+func = "findMaterializedPiglet"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/main.go"
+func = "pigletJSONValue"
+pattern = "decode-own-encode"
+detail = "v3.Marshal->v3.Unmarshal"
+count = 1
+class = "cold: piglet build and lineage, once per command"
+
+[[hit]]
+file = "coding/piglet/main.go"
+func = "remotePigletAddOffline"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/main.go"
+func = "removePigletFacets"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/main.go"
+func = "resolvePigletAddSource"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/main.go"
+func = "tracef"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/main.go"
+func = "validatePigletAddOrigins"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/monorepo_add.go"
+func = "pigletClosure.collect"
+pattern = "env-stat"
+detail = "os.Lstat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/monorepo_add.go"
+func = "pigletClosure.collect"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/monorepo_add.go"
+func = "pigletClosure.copy"
+pattern = "env-stat"
+detail = "os.Lstat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/monorepo_add.go"
+func = "rejectPigletDestinationSymlinks"
+pattern = "env-stat"
+detail = "os.Lstat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/monorepo_add.go"
+func = "verifyPigletOriginFiles"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/origins.go"
+func = "Piglet.FrontendDir"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/origins.go"
+func = "resolveOrigins"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/prune.go"
+func = "pruneItems"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/release/asset.go"
+func = "fileSHA256"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/release/github.go"
+func = "githubURL"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/release/list.go"
+func = "verifyArtifact"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/release/pull.go"
+func = "loopbackHTTPAllowed"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/release/store.go"
+func = "lockStore"
+pattern = "env-stat"
+detail = "os.Lstat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/release/store.go"
+func = "openDirectory"
+pattern = "env-stat"
+detail = "os.Lstat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/release/store.go"
+func = "openManagedFile"
+pattern = "env-stat"
+detail = "os.Lstat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/release/update.go"
+func = "discoverGitHubVersion"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/resolve.go"
+func = "ResolveWithTrust"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/resolve.go"
+func = "ResolveWithTrust"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 4
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/resolve.go"
+func = "ShadowedWorkspacePiglet"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/resolve.go"
+func = "ambientPigletPathFor"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/resolve.go"
+func = "findOrphanManagedArtifacts"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/resolve.go"
+func = "listManagedRecords"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/resolve.go"
+func = "validateManagedArtifact"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/runtime.go"
+func = "ActiveAgentEnvironmentIdentity"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/runtime.go"
+func = "RunAgentEnvironment"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/runtime.go"
+func = "resolveMountSource"
+pattern = "env-stat"
+detail = "os.Lstat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/runtime.go"
+func = "runtimeContainerArgs"
+pattern = "loop-format"
+detail = "string+="
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/runtime.go"
+func = "runtimeWorkspace"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/runtime.go"
+func = "verifyActiveAgentEnvironment"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/schema.go"
+func = "schemaInstance"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: startup, config, registration, login, export or command code that runs once per user action"
+
+[[hit]]
+file = "coding/piglet/secrets.go"
+func = "ResolveRequiredSecrets"
+pattern = "env-stat"
+detail = "os.LookupEnv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/secrets.go"
+func = "resolveSecretDeclaration"
+pattern = "env-stat"
+detail = "os.LookupEnv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/secrets.go"
+func = "resolveSecretDeclaration"
+pattern = "env-stat"
+detail = "os.Lstat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/signature/signature.go"
+func = "CheckFile"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/signature/signature.go"
+func = "Sign"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/signature/trust.go"
+func = "LoadTrust"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/signature/verifycache.go"
+func = "CheckCached"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/signature/verifycache.go"
+func = "readVerifyCache"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/tree_cli.go"
+func = "cmdTree"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/types.go"
+func = "Piglet.Validate"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 3
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglet/types.go"
+func = "validateAgentMounts"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/pigletbuild/container_builder.go"
+func = "containerArtifactPath"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/pigletbuild/container_builder.go"
+func = "createContainerMountpoints"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/pigletbuild/container_builder.go"
+func = "loadContainerBuilderConfigs"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/pigletbuild/container_default.go"
+func = "resolveDefaultEngine"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/pigletbuild/fuse_modules.go"
+func = "mergeFusedModules"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/pigletbuild/fuse_modules.go"
+func = "mergeFusedModules"
+pattern = "loop-format"
+detail = "string+="
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/pigletbuild/main.go"
+func = "runBinaryBuild"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/pigletbuild/main.go"
+func = "writeSourceScript"
+pattern = "env-stat"
+detail = "os.Lstat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/pigletbuild/native_build.go"
+func = "overlayFuse"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/pigletbuild/native_build.go"
+func = "pigSourceRoot"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/pigletbuild/native_build.go"
+func = "sourceBuildEnv"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/pigletbuild/node_cell.go"
+func = "writeNodeMember"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/pigletbuild/plan.go"
+func = "BuildPlan"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/pigletbuild/plan.go"
+func = "Validate"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/pigletbuild/publish_npm.go"
+func = "missingNPMPackages"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/pigletbuild/records.go"
+func = "buildInputs"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 3
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/pigletbuild/records.go"
+func = "buildNativeWithRecords"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/pigletbuild/records.go"
+func = "hashTree"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/pigletbuild/records.go"
+func = "pigSourceIdentity"
+pattern = "env-stat"
+detail = "os.Lstat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/pigletbuild/records.go"
+func = "writeManagedArtifact"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/pigletbuild/resolve.go"
+func = "resolvePigletCells"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/pigletbuild/source_fetch.go"
+func = "materializeModuleSource"
+pattern = "env-stat"
+detail = "os.Lstat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglogin/extension.go"
+func = "CreatePrompt"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/piglogin/extension.go"
+func = "runAgentDir"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 3
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/resource_loader.go"
+func = "exists"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/resource_loader.go"
+func = "isDirectory"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/resource_loader_extension_files.go"
+func = "DefaultResourceLoader.loadExtensionFiles"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/rpcclient/types.go"
+func = "ImageContent.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "coding/runtime_replacement.go"
+func = "Runtime.Fork"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/runtime_replacement.go"
+func = "Runtime.ImportFromJsonl"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/runtime_replacement.go"
+func = "Runtime.ImportFromJsonl"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/runtime_replacement.go"
+func = "Session.ValidateFork"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/runtime_replacement.go"
+func = "beforeResultCancelled"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: once per session switch or fork"
+
+[[hit]]
+file = "coding/services.go"
+func = "ModelRuntime.knowsProvider"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/services.go"
+func = "newConfiguredServices"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/session.go"
+func = "Session.emitSynchronousSessionEvent"
+pattern = "chan-hop"
+detail = "<-"
+count = 3
+class = "hot-owned:lw-events (LW roadmap S3: in-process listeners run on the owner, no per-event done wait)"
+
+[[hit]]
+file = "coding/session.go"
+func = "Session.emitSynchronousSessionEvent"
+pattern = "chan-hop"
+detail = "make(chan)"
+count = 1
+class = "hot-owned:lw-events (LW roadmap S3: in-process listeners run on the owner, no per-event done wait)"
+
+[[hit]]
+file = "coding/session_boundaries.go"
+func = "Session.completeBoundaryContext"
+pattern = "history-clone"
+detail = "slices.Clone"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/session_compaction_extensions.go"
+func = "Session.emitSessionCompact"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: once per compaction"
+
+[[hit]]
+file = "coding/session_compaction_extensions.go"
+func = "Session.extensionCompaction"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: once per compaction"
+
+[[hit]]
+file = "coding/session_extension_hooks.go"
+func = "Session.toolCallHook"
+pattern = "marshal-compare"
+detail = "bytes.Equal"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/session_extension_hooks.go"
+func = "sameContextMessages"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 2
+class = "hot-owned:claude-history-hot"
+
+[[hit]]
+file = "coding/session_extension_hooks.go"
+func = "sameContextMessages"
+pattern = "marshal-compare"
+detail = "DeepEqual then Marshal"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/session_extension_hooks.go"
+func = "sameContextMessages"
+pattern = "marshal-compare"
+detail = "bytes.Equal"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/session_extension_replacement.go"
+func = "Session.beforeExtensionReplacement"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: once per session switch or fork"
+
+[[hit]]
+file = "coding/session_import.go"
+func = "Session.ImportFromJsonl"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/session_import.go"
+func = "copyFileExclusiveBytes"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/session_import.go"
+func = "pathExists"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/session_run_state.go"
+func = "extensionUserMessageContent"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/session_tree.go"
+func = "Session.emitSessionBeforeTree"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: once per /tree navigation"
+
+[[hit]]
+file = "durable/codecs.go"
+func = "ContextEdit.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "durable/codecs.go"
+func = "DocumentContent.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "durable/codecs.go"
+func = "DocumentRecord.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "durable/codecs.go"
+func = "EntryDraft.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 2
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "durable/codecs.go"
+func = "EntryRecord.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "durable/codecs.go"
+func = "TaskOutcome.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 2
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "durable/codecs.go"
+func = "TaskState.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "durable/core/driver/session.go"
+func = "parametersJSON"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
+
+[[hit]]
+file = "durable/core/driver/session_registry.go"
+func = "toolParameters"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
+
+[[hit]]
+file = "durable/core/driver/watch.go"
+func = "typed"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
+
+[[hit]]
+file = "durable/durabletest/durabletest.go"
+func = "Normalize"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
+
+[[hit]]
+file = "durable/harness/agent.go"
+func = "ExtensionSelection.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "durable/harness/agent.go"
+func = "ToolSelection.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "durable/harness/compaction.go"
+func = "sameAssistant"
+pattern = "marshal-compare"
+detail = "bytes.Equal"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "durable/harness/context.go"
+func = "extendRange"
+pattern = "history-clone"
+detail = "slices.Clone"
+count = 1
+class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
+
+[[hit]]
+file = "durable/harness/context.go"
+func = "readContextFrom"
+pattern = "history-clone"
+detail = "slices.Clone"
+count = 1
+class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
+
+[[hit]]
+file = "durable/harness/context.go"
+func = "settle"
+pattern = "history-clone"
+detail = "slices.Clone"
+count = 1
+class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
+
+[[hit]]
+file = "durable/harness/drafts.go"
+func = "decodeJSON"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
+
+[[hit]]
+file = "durable/harness/events.go"
+func = "MessageChange.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 4
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "durable/harness/events.go"
+func = "decodeAssistant"
+pattern = "decode-own-encode"
+detail = "json.Marshal->durable.DecodeMessage"
+count = 1
+class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
+
+[[hit]]
+file = "durable/harness/task_graph.go"
+func = "TaskGraphState.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 3
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "durable/harness/task_graph.go"
+func = "sameNode"
+pattern = "marshal-compare"
+detail = "bytes.Equal"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "durable/harness/tool.go"
+func = "ToolTaskCheckpoint.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 2
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "durable/harness/tool.go"
+func = "prepareArguments"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
+
+[[hit]]
+file = "durable/harness/view.go"
+func = "ViewDocs.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "durable/harness_types.go"
+func = "ToolControl.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "durable/json.go"
+func = "FromJsonValue"
+pattern = "decode-own-encode"
+detail = "durable.marshalStrict->delta.DecodeJson"
+count = 2
+class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
+
+[[hit]]
+file = "durable/json.go"
+func = "FromJsonValue"
+pattern = "decode-own-encode"
+detail = "durable.marshalStrict->json.NewDecoder"
+count = 1
+class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
+
+[[hit]]
+file = "durable/json.go"
+func = "ToJsonValue"
+pattern = "decode-own-encode"
+detail = "durable.marshalStrict->delta.DecodeJson"
+count = 1
+class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
+
+[[hit]]
+file = "durable/message_json.go"
+func = "DecodeUserContent"
+pattern = "decode-own-encode"
+detail = "json.Marshal->durable.decodeUserContent"
+count = 1
+class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
+
+[[hit]]
+file = "durable/session/transaction.go"
+func = "copyEntryRecord"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
+
+[[hit]]
+file = "durable/storage/jsonl/storage.go"
+func = "decodeAs"
+pattern = "decode-own-encode"
+detail = "json.Marshal->chordjson.DecodeUnquoting"
+count = 1
+class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
+
+[[hit]]
+file = "durable/storage/jsonl/storage.go"
+func = "decodeAs"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
+
+[[hit]]
+file = "durable/tools/schema.go"
+func = "toolSchema"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
+
+[[hit]]
+file = "internal/childwait/wait.go"
+func = "Pipes.read"
+pattern = "chan-hop"
+detail = "send"
+count = 1
+class = "hot-owned:lw-proc-output (LW roadmap S7: one activity signal per read)"
+
+[[hit]]
+file = "internal/chord/chordjson/chordjson.go"
+func = "Stored"
+pattern = "decode-own-encode"
+detail = "json.Marshal->chordjson.Decode"
+count = 1
+class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
+
+[[hit]]
+file = "internal/codingagent/auth_filter.go"
+func = "AuthenticatedProviders"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/auth_filter.go"
+func = "envOnlyAuthenticated"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/bug_report.go"
+func = "RedactBugReportJSON"
+pattern = "decode-own-encode"
+detail = "json.Marshal->json.NewDecoder"
+count = 1
+class = "cold: once per bug report"
+
+[[hit]]
+file = "internal/codingagent/cache_warmer.go"
+func = "cacheWarmingEnvValue"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/canonical_path_win32.go"
+func = "nodeRealpathWin32"
+pattern = "loop-format"
+detail = "string+="
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/canonical_path_win32.go"
+func = "win32NormalizeString"
+pattern = "loop-format"
+detail = "string+="
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/clipboard_text.go"
+func = "readClipboardText"
+pattern = "timer-per-call"
+detail = "context.WithTimeout"
+count = 1
+class = "cold: once per paste"
+
+[[hit]]
+file = "internal/codingagent/compaction/compaction.go"
+func = "customMessageToLlm"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: startup, config, registration, login, export or command code that runs once per user action"
+
+[[hit]]
+file = "internal/codingagent/context_files.go"
+func = "loadContextFileProbed"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/crash_log.go"
+func = "CrashRecord.MarshalJSON"
+pattern = "nested-marshal"
+detail = "orderedjson.MarshalJSON"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "internal/codingagent/event_bridge.go"
+func = "toolResultWire.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 2
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "internal/codingagent/exit_record.go"
+func = "appendExitLog"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/exit_record.go"
+func = "reconcileSessionMarker"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/experimental.go"
+func = "experimentalFeaturesEnabled"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/export/ansi_html.go"
+func = "applySGRCodes"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/export/export.go"
+func = "generateThemeVars"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/export/tool_renderer.go"
+func = "parseToolResultImages"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: startup, config, registration, login, export or command code that runs once per user action"
+
+[[hit]]
+file = "internal/codingagent/extension_conflicts.go"
+func = "detectExtensionConflicts"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/extension_diagnostics.go"
+func = "InteractiveMode.builtInCommandConflictDiagnostics"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/extension_diagnostics.go"
+func = "loadThemeResources"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/extension_model_operations.go"
+func = "extensionClassify"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 2
+class = "cold: once per extension model call or subprocess request, not per delta or turn"
+
+[[hit]]
+file = "internal/codingagent/extension_model_operations.go"
+func = "extensionGenerateImages"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 2
+class = "cold: once per extension model call or subprocess request, not per delta or turn"
+
+[[hit]]
+file = "internal/codingagent/extension_model_registry.go"
+func = "testFauxProvider"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/extension_package_warnings.go"
+func = "ExtensionPackageWarnings"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/env_lookup_other.go"
+func = "envVar.get"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: the settings getters' per-call PI_CLEAR_ON_SHRINK, PI_HARDWARE_CURSOR, VISUAL and EDITOR reads (Pi reads process.env each call), moved here from the three getters; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/extension_ui_phase.go"
+func = "InteractiveMode.awaitSessionBefore"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: startup, config, registration, login, export or command code that runs once per user action"
+
+[[hit]]
+file = "internal/codingagent/external_editor.go"
+func = "OpenExternalEditor"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/file_lock.go"
+func = "pathExists"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/file_processor.go"
+func = "ProcessCLIFileArguments"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/first_time_setup.go"
+func = "SettingsFileExists"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/git_watcher.go"
+func = "gitPathsAt"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 4
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/git_watcher.go"
+func = "gitBranchWatcher.run"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/git_watcher.go"
+func = "gitBranchWatcher.run"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/git_watcher.go"
+func = "gitBranchWatcher.run"
+pattern = "timer-per-call"
+detail = "time.NewTimer"
+count = 1
+class = "hot-kept: one timer per git-branch poll while idle (RT-F12, routed to the git_watcher owner by lw-policy)"
+
+[[hit]]
+file = "internal/codingagent/git_watcher.go"
+func = "openGitWatch"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/install_telemetry.go"
+func = "installTelemetryAllowed"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/install_telemetry.go"
+func = "installTelemetryURL"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/interactive.go"
+func = "resumeCommand"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/interactive_commands.go"
+func = "InteractiveMode.buildSlashContext"
+pattern = "loop-format"
+detail = "string+="
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/interactive_extensions.go"
+func = "WireModelOperations"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/interactive_extensions.go"
+func = "WireModelOperations"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: once per extension model call or subprocess request, not per delta or turn"
+
+[[hit]]
+file = "internal/codingagent/interactive_extensions.go"
+func = "subprocessAssistantContent"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/interactive_extensions.go"
+func = "subprocessDecodeJSON"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: once per extension model call or subprocess request, not per delta or turn"
+
+[[hit]]
+file = "internal/codingagent/interactive_extensions.go"
+func = "subprocessRequestMessages"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 4
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/interactive_extensions.go"
+func = "subprocessStreamOptions"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: once per extension model call or subprocess request, not per delta or turn"
+
+[[hit]]
+file = "internal/codingagent/interactive_extensions.go"
+func = "subprocessUserContent"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 6
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/interactive_helpers.go"
+func = "InteractiveMode.setupExtensionShortcutListener"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/interactive_helpers.go"
+func = "debugLog"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/interactive_helpers.go"
+func = "redactKeyChunk"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/interactive_input.go"
+func = "InteractiveMode.dispatchRoutedInput"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/interactive_turn.go"
+func = "userBashResultOverride"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: once per user bash command"
+
+[[hit]]
+file = "internal/codingagent/keybindings.go"
+func = "KeybindingValue.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 2
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "internal/codingagent/llama/client.go"
+func = "LlamaClient.watch"
+pattern = "loop-format"
+detail = "string+="
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/llama/native_provider.go"
+func = "Model.aiChatModel"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: startup, config, registration, login, export or command code that runs once per user action"
+
+[[hit]]
+file = "internal/codingagent/llama/provider.go"
+func = "LlamaProviderController.refreshModels"
+pattern = "decode-own-encode"
+detail = "json.Marshal->ai.DecodeStoredModel"
+count = 1
+class = "cold: once per llama.cpp model refresh"
+
+[[hit]]
+file = "internal/codingagent/llama/provider.go"
+func = "Model.MarshalJSON"
+pattern = "nested-marshal"
+detail = "orderedjson.MarshalJSON"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "internal/codingagent/llama/provider.go"
+func = "login"
+pattern = "env-stat"
+detail = "os.LookupEnv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/migrations.go"
+func = "checkDeprecatedExtensionDirs"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/migrations.go"
+func = "migrateAuthToAuthJSON"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/migrations.go"
+func = "migrateCommandsToPrompts"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/migrations.go"
+func = "migrateSessionsFromAgentRoot"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/migrations.go"
+func = "migrateToolsToBin"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 3
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/model_registry.go"
+func = "ModelRegistry.LoadError"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/model_registry.go"
+func = "providerConfigFromRegistration"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: startup, config, registration, login, export or command code that runs once per user action"
+
+[[hit]]
+file = "internal/codingagent/model_registry.go"
+func = "resolveAPIKeyFromEnv"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/model_scope_line.go"
+func = "InteractiveMode.modelScopeLine"
+pattern = "loop-format"
+detail = "string+="
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/parity_harness.go"
+func = "loginGitHubCopilotForParity"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/parity_harness.go"
+func = "parityHarnessEnabled"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/parity_harness.go"
+func = "withParityFixturePath"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/parity_harness.go"
+func = "withParityFixturePath"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/paths.go"
+func = "AgentDirConfigured"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/paths.go"
+func = "UsePiDirs"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/prompt_diagnostics.go"
+func = "nodeExists"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/prompt_images.go"
+func = "NormalizePromptContent"
+pattern = "loop-format"
+detail = "string+="
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/prompt_templates.go"
+func = "loadTemplatesFromPath"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/prompt_templates.go"
+func = "promptSourceResolver.sourceInfo"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/radius.go"
+func = "GetRadiusGatewayURL"
+pattern = "env-stat"
+detail = "os.LookupEnv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/radius_composition.go"
+func = "ModelRegistry.radiusComposeLocked"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/radius_models.go"
+func = "ModelNetworkEnabled"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/radius_models.go"
+func = "ModelNetworkEnabled"
+pattern = "env-stat"
+detail = "os.LookupEnv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/radius_models.go"
+func = "dropUncomposableProviders"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 5
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/radius_models.go"
+func = "firstModelDefinitionFailure"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 4
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/request_auth_runtime.go"
+func = "RequestAuthRuntime.GetError"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/request_auth_runtime.go"
+func = "resolveHeadersOrError"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/resource_diagnostics.go"
+func = "formatResourceDiagnostics"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/resource_diagnostics.go"
+func = "formatResourceDiagnostics"
+pattern = "loop-format"
+detail = "string+="
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/resource_paths.go"
+func = "DefaultSourceInfoForPath"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/resource_paths.go"
+func = "DiscoverPromptFile"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/resource_paths.go"
+func = "PackageManagerHomeDir"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/resource_paths.go"
+func = "PackageManagerHomeDir"
+pattern = "env-stat"
+detail = "os.LookupEnv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/resource_paths.go"
+func = "ResolvePromptInput"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/resource_paths.go"
+func = "isDirectoryPath"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/resource_paths.go"
+func = "isRegularFilePath"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/resources.go"
+func = "ListSkills"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/selfupdate.go"
+func = "CheckForBinaryUpdate"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/selfupdate.go"
+func = "UpdateSourceURL"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/selfupdate.go"
+func = "readUpdateTransportCA"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/selfupdate.go"
+func = "updateChecksOffline"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/selfupdate.go"
+func = "updateDevelopmentHTTPAllowed"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/selfupdate.go"
+func = "updateTrustRoots"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/selfupdate_lock.go"
+func = "acquireStandaloneUpdateLock"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/selfupdate_receipt.go"
+func = "readStandaloneReceipt"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/selfupdate_tier.go"
+func = "ContainerRemediation"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/selfupdate_tier.go"
+func = "imagePullCommand"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/selfupdate_tier.go"
+func = "isWritableReplacement"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/selfupdate_tier.go"
+func = "resolveSelfUpdateTierOn"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/session.go"
+func = "Session.appendAgentMessage"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/session.go"
+func = "appendSessionLine"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/session_branch_runtime.go"
+func = "Session.SetSessionFile"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/session_cwd.go"
+func = "GetMissingSessionCwdIssue"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/session_export_html.go"
+func = "ExportFileToHTML"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/session_export_html.go"
+func = "ExportSessionToHTML"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/session_file.go"
+func = "EnsureSessionDir"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/session_file.go"
+func = "SessionManager.Open"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/session_file.go"
+func = "readSessionFileEntries"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/session_file.go"
+func = "streamSessionFileBatched"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/session_listing.go"
+func = "listSessionsAcrossRootWithOptions"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/session_manager.go"
+func = "loadSessionFile"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/session_manager_projection.go"
+func = "replaceContextContent"
+pattern = "decode-own-encode"
+detail = "orderedjson.MarshalJSON->json.Unmarshal"
+count = 1
+class = "hot-owned:session-scale (context projection replaces content once per replaced entry)"
+
+[[hit]]
+file = "internal/codingagent/session_resume.go"
+func = "SessionManager.findMostRecent"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/session_resume.go"
+func = "contentText"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/session_resume.go"
+func = "summarizeSessionFileContext"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/session_selector_delete.go"
+func = "sessionPathExists"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/session_selector_delete_unix.go"
+func = "runTrash"
+pattern = "env-stat"
+detail = "os.LookupEnv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/session_selectors.go"
+func = "Session.CheckSavedForFork"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/session_share.go"
+func = "shareGatewayURL"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/session_share.go"
+func = "uploadShareArtifact"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/settings.go"
+func = "MarkdownSettings.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 2
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "internal/codingagent/settings.go"
+func = "PackageSource.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "internal/codingagent/settings.go"
+func = "ResolveDefaultAgentDir"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/settings.go"
+func = "Settings.MarshalJSON"
+pattern = "nested-marshal"
+detail = "codingagent.MarshalJSON"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "internal/codingagent/settings.go"
+func = "Settings.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "internal/codingagent/settings.go"
+func = "SettingsManager.IsInstallTelemetryEnabled"
+pattern = "env-stat"
+detail = "os.LookupEnv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/settings.go"
+func = "WarningSettings.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "internal/codingagent/settings.go"
+func = "decodeSettingsWire"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: once per extension context creation"
+
+[[hit]]
+file = "internal/codingagent/settings.go"
+func = "decodeSettingsWire"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/settings.go"
+func = "dropUndecodableSettings"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: once per extension context creation"
+
+[[hit]]
+file = "internal/codingagent/settings.go"
+func = "dropUndecodableSettings"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/settings.go"
+func = "loadSettingsFile"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/settings.go"
+func = "settingsJSONMap"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: once per extension context creation"
+
+[[hit]]
+file = "internal/codingagent/settings_compaction.go"
+func = "CompactionModelOverride.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "internal/codingagent/settings_compaction.go"
+func = "CompactionSettingsJSON.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 3
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "internal/codingagent/settings_diagnostics.go"
+func = "CollectSettingsDiagnostics"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/skills.go"
+func = "DeduplicateSkillsWithDiagnostics"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/skills.go"
+func = "LoadSkillPath"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/skills.go"
+func = "LoadSkillsFromPath"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/skills_loader.go"
+func = "LoadSkills"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/slash_commands.go"
+func = "defaultBuiltins"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/startup_ui.go"
+func = "configureStartupTheme"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/status_line.go"
+func = "footerCwd"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/thinking_selector.go"
+func = "NewThinkingSelectorComponent"
+pattern = "loop-format"
+detail = "string+="
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/tmux_check.go"
+func = "checkTmuxKeyboardSetup"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/tool_builtin_renderers.go"
+func = "readTruncation"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/tool_codemode_renderer.go"
+func = "codemodeRenderResult"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/tool_codemode_renderer.go"
+func = "codemodeRenderResult"
+pattern = "loop-format"
+detail = "string+="
+count = 4
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/tool_render.go"
+func = "toolBodyRendererForCall"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/tool_render_list.go"
+func = "listDetailsFrom"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/tool_result_content.go"
+func = "toolResultBlockFields"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/tools/bash_operations.go"
+func = "LocalShellOperations.Exec"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/tools/grep.go"
+func = "GrepTool.operations"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/tools/grep.go"
+func = "grepFormatter.emitMatch"
+pattern = "loop-format"
+detail = "fmt.Sprintf"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/tools/ls.go"
+func = "LsTool.Execute"
+pattern = "loop-format"
+detail = "string+="
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/tools/ls.go"
+func = "LsTool.operations"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/tools/output_accumulator.go"
+func = "OutputAccumulator.ReadFullOutput"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/tools/path_utils.go"
+func = "fileExists"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/tools/shell_config.go"
+func = "GetShellConfig"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/tools/taskkill.go"
+func = "newTaskkillCommand"
+pattern = "env-stat"
+detail = "os.LookupEnv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/tools/tools.go"
+func = "LookupToolPath"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/tools/tools_manager.go"
+func = "IsOfflineModeEnabled"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/tools/tools_manager.go"
+func = "ToolsManager.GetToolPath"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/tools/tools_manager.go"
+func = "ToolsManager.downloadTool"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/tree_row_format.go"
+func = "extractCustomMessageText"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/tree_row_format.go"
+func = "newTreeRowFormatter"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/trust_manager.go"
+func = "HasTrustRequiringProjectResources"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/windows_self_update.go"
+func = "GetPackageDir"
+pattern = "env-stat"
+detail = "os.Getenv"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/windows_self_update.go"
+func = "copyQuarantinedImage"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/windows_self_update.go"
+func = "quarantineNativeDependencies"
+pattern = "env-stat"
+detail = "os.Stat"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/compactiontypes/types.go"
+func = "FileOperations.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "internal/ecmascript/string.go"
+func = "String.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "internal/ignorerules/ignorerules.go"
+func = "compileGlob"
+pattern = "compile-in-func"
+detail = "regexp.Compile"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/lazyregexp/lazyregexp.go"
+func = "compileJSIgnoreCase"
+pattern = "compile-in-func"
+detail = "regexp.MustCompile"
+count = 2
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/nodesemver/semver.go"
+func = "compileExpressions"
+pattern = "compile-in-func"
+detail = "regexp.MustCompile"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/orderedjson/orderedjson.go"
+func = "Object.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "internal/pigstrip/leakgate/leakgate.go"
+func = "Names"
+pattern = "compile-in-func"
+detail = "regexp.MustCompile"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/sessionentry/entry.go"
+func = "BashExecutionEntry.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "internal/sessionentry/union.go"
+func = "DecodeSessionHeader"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: once per session file open"
+
+[[hit]]
+file = "mcp/content.go"
+func = "ContentBlock.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "mcp/jsonrpc.go"
+func = "JSONRPCID.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "mcp/jsonrpc.go"
+func = "JSONRPCMessage.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 3
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "mcp/jsonrpc.go"
+func = "JSONRPCMessage.MarshalJSON"
+pattern = "nested-marshal"
+detail = "mcp.MarshalJSON"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "mcp/oauth/discovery.go"
+func = "challengeFieldPattern"
+pattern = "compile-in-func"
+detail = "regexp.MustCompile"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "mcp/oauth/flow.go"
+func = "registrationBody"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: startup, config, registration, login, export or command code that runs once per user action"
+
+[[hit]]
+file = "mcp/oauth/jsonextra.go"
+func = "marshalWithExtra"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: startup, config, registration, login, export or command code that runs once per user action"
+
+[[hit]]
+file = "mcp/oauth/jsonextra.go"
+func = "unmarshalWithExtra"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: startup, config, registration, login, export or command code that runs once per user action"
+
+[[hit]]
+file = "mcp/oauth/provider.go"
+func = "McpOAuthState.Clone"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: MCP OAuth state copy on connect and refresh"
+
+[[hit]]
+file = "mcp/oauth/provider.go"
+func = "McpOAuthState.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "mcp/oauth/types.go"
+func = "OAuthClientInformation.MarshalJSON"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: startup, config, registration, login, export or command code that runs once per user action"
+
+[[hit]]
+file = "mcp/oauth/types.go"
+func = "OAuthClientInformation.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 2
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "mcp/oauth/types.go"
+func = "ParseClientInformation"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 3
+class = "cold: startup, config, registration, login, export or command code that runs once per user action"
+
+[[hit]]
+file = "mcp/oauth/types.go"
+func = "clientInformationExtra"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "cold: startup, config, registration, login, export or command code that runs once per user action"
+
+[[hit]]
+file = "mcp/types.go"
+func = "ClientCapabilities.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "mcp/types.go"
+func = "ToolAnnotations.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 1
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "tui/alt_screen_search.go"
+func = "findSearchCorpusMatches"
+pattern = "compile-in-func"
+detail = "regexp.MustCompile"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "tui/custom_message.go"
+func = "CustomMessageText"
+pattern = "json-roundtrip"
+detail = "marshal+unmarshal"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "tui/editor.go"
+func = "pasteMarkerRegexp"
+pattern = "compile-in-func"
+detail = "regexp.MustCompile"
+count = 1
+class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "tui/theme_loader.go"
+func = "ThemeColorValue.MarshalJSON"
+pattern = "nested-marshal"
+detail = "json.Marshal"
+count = 2
+class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
+
+[[hit]]
+file = "tui/tui.go"
+func = "TuiMainScreen.doRender"
+pattern = "chan-hop"
+detail = "go"
+count = 3
+class = "cold: the goroutines notify width and height listeners on a terminal resize, not per frame"
+
+[[hit]]
+file = "tui/tui_alt_screen.go"
+func = "TuiAltScreen.doRender"
+pattern = "chan-hop"
+detail = "go"
+count = 1
+class = "cold: the goroutine notifies resize listeners on a terminal resize, not per frame"
+
+[[hit]]
+file = "tui/tui_surface.go"
+func = "TuiSurface.doRender"
+pattern = "chan-hop"
+detail = "go"
+count = 2
+class = "cold: the goroutines notify resize listeners on a terminal resize, not per frame"
+

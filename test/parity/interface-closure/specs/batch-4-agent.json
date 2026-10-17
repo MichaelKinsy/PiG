@@ -1,0 +1,97 @@
+[
+ {
+  "ids": [
+   "pkg:agent/.#QueueMode"
+  ],
+  "targets": [
+   "agent/queue.go#QueueMode"
+  ],
+  "production": [
+   "call:agent/agent.go#Agent.SetSteeringMode"
+  ],
+  "evidence": [
+   "test:agent/agent_upstream_test.go#TestAgent_ContinueKeepsSteeringModeForAssistantTailFallback"
+  ],
+  "rationale": "agent.ts QueueMode = \"all\" | \"one-at-a-time\" is the Go string type QueueMode with the constants QueueModeAll and QueueModeOneAtATime carrying the same two values; AgentOptions and the Agent setters take it."
+ },
+ {
+  "ids": [
+   "pkg:agent/.#ToolExecutionMode"
+  ],
+  "targets": [
+   "agent/agent.go#ToolExecutionMode"
+  ],
+  "production": [
+   "call:agent/tool_execution.go#loopRun.executeToolCalls"
+  ],
+  "evidence": [
+   "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ForcesSequentialWhenToolIsSequentialUnderParallelConfig"
+  ],
+  "rationale": "types.ts ToolExecutionMode = \"sequential\" | \"parallel\" is the Go string type ToolExecutionMode with ToolModeSequential and ToolModeParallel; executeToolCalls forces sequential when the configured mode or any called tool is sequential, as the ported upstream case asserts."
+ },
+ {
+  "ids": [
+   "pkg:agent/.#AfterToolCallResult"
+  ],
+  "targets": [
+   "agent/agent.go#AfterToolCallResult"
+  ],
+  "production": [
+   "call:agent/tool_execution.go#runAfterToolCallHook"
+  ],
+  "evidence": [
+   "test:agent/agent_loop_upstream_test.go#TestRunToolCall_LetsAfterToolCallReplaceStructuredContentAndDropsItWhenOnlyContentIsReplaced"
+  ],
+  "rationale": "types.ts AfterToolCallResult: every field is optional. Go uses nil pointers and nil slices for absent (IsError, Usage, Terminate *T; Content []; Details any; StructuredContent json.RawMessage). runAfterToolCallHook applies the present fields over the result, as agent-loop.ts:617-640.",
+  "properties": {
+   "content": {
+    "targets": [
+     "agent/agent.go#AfterToolCallResult.Content"
+    ],
+    "evidence": [
+     "test:agent/tool_result_content_presence_test.go#TestToolResultContentOverridePreservesPresence"
+    ]
+   },
+   "details": {
+    "targets": [
+     "agent/agent.go#AfterToolCallResult.Details"
+    ],
+    "evidence": [
+     "test:agent/tool_result_member_order_test.go#TestAgentLoop_ToolEventsCarryTheToolsMemberOrder"
+    ]
+   },
+   "isError": {
+    "targets": [
+     "agent/agent.go#AfterToolCallResult.IsError"
+    ],
+    "evidence": [
+     "test:agent/tool_result_iserror_test.go#TestAgentLoop_ToolExecutionEndKeepsResultIsErrorApartFromTheEventFlag"
+    ]
+   },
+   "structuredContent": {
+    "targets": [
+     "agent/agent.go#AfterToolCallResult.StructuredContent"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestRunToolCall_LetsAfterToolCallReplaceStructuredContentAndDropsItWhenOnlyContentIsReplaced"
+    ]
+   },
+   "terminate": {
+    "targets": [
+     "agent/agent.go#AfterToolCallResult.Terminate"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AfterToolCallMarksBatchTerminating"
+    ]
+   },
+   "usage": {
+    "targets": [
+     "agent/agent.go#AfterToolCallResult.Usage"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_HandlesToolCallsAndResults"
+    ]
+   }
+  }
+ }
+]

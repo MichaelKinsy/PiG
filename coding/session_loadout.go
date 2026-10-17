@@ -15,7 +15,6 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
-	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/usagetotals"
 )
 
@@ -28,6 +27,8 @@ type sessionLoadoutState struct {
 	nested     atomic.Pointer[NestedToolCallRunner]
 	// hidden holds the declared tools whose declarations requests leave out, from `prepareLoadout` hooks.
 	hidden atomic.Pointer[map[string]struct{}]
+	// hiddenOrder lists hidden in the order the hooks hid them, as upstream's insertion-ordered Set (agent-session.ts _applyToolLoadout) reports them in `hiddenTools`.
+	hiddenOrder atomic.Pointer[[]string]
 	// emitMu serializes the events of nested calls, which run on tool goroutines.
 	emitMu sync.Mutex
 	// pending holds the records taken at message_start until message_end applies them to the shared message.
@@ -65,8 +66,7 @@ func toolActivatesOnRegistration(definition extension.ToolDefinition) bool {
 // upstream: agent-session.ts:3487-3506 (_refreshToolRegistry)
 func ExtensionToolStartsActive(definition extension.ToolDefinition, allowed map[string]struct{}) bool {
 	if allowed != nil {
-		_, named := allowed[definition.Name]
-		return named && toolIsDeclarable(definition)
+		return extension.ToolNameMatcher(allowed)(definition.Name) && toolIsDeclarable(definition)
 	}
 	return toolActivatesOnRegistration(definition)
 }
@@ -79,6 +79,14 @@ func (s *Session) toolDefinitionLocked(name string) (extension.ToolDefinition, b
 		}
 	}
 	return extension.ToolDefinition{}, false
+}
+
+// toolMayBeActiveLocked reports whether the tool may be active, which declares it to the model. The `--tools` allowlist keeps MCP tools it does not name registered for codemode and tool_search; only tool_search can declare them, so they may be active only when tool_search is registered and their exposure is not `direct`. The caller holds toolRegistryMu.
+//
+// upstream: agent-session.ts:1535-1538 (_isActivatable)
+func (s *Session) toolMayBeActiveLocked(definition extension.ToolDefinition) bool {
+	_, toolSearch := s.toolDefinitionLocked("tool_search")
+	return s.toolRegistry.filter.MayBeActive(definition.Name, toolExposureOf(definition), toolSearch)
 }
 
 // toolView is the read-only view of a registered tool that loadout hooks and `ctx.tools` see.
@@ -129,12 +137,14 @@ func (s *Session) applyToolLoadout(names []string) []agent.AgentTool {
 	plan := s.planToolLoadout(names)
 	var descriptions map[string]string
 	hidden := map[string]struct{}{}
+	hiddenOrder := []string{}
 	if len(plan.hooks) > 0 {
 		s.toolRegistryMu.Unlock()
-		descriptions, hidden = s.runLoadoutHooks(plan)
+		descriptions, hidden, hiddenOrder = s.runLoadoutHooks(plan)
 		s.toolRegistryMu.Lock()
 	}
 	s.loadout.hidden.Store(&hidden)
+	s.loadout.hiddenOrder.Store(&hiddenOrder)
 	result := make([]agent.AgentTool, len(plan.tools))
 	for i, tool := range plan.tools {
 		if description, ok := descriptions[tool.Name()]; ok {
@@ -176,7 +186,7 @@ func (s *Session) planToolLoadout(names []string) toolLoadoutPlan {
 		if tool == nil {
 			continue
 		}
-		if definition, ok := s.toolDefinitionLocked(name); ok && toolExposureOf(definition) == extension.ToolExposureHidden {
+		if definition, ok := s.toolDefinitionLocked(name); ok && (toolExposureOf(definition) == extension.ToolExposureHidden || !s.toolMayBeActiveLocked(definition)) {
 			continue
 		}
 		plan.tools = append(plan.tools, tool)
@@ -184,11 +194,7 @@ func (s *Session) planToolLoadout(names []string) toolLoadoutPlan {
 	for _, tool := range plan.tools {
 		for _, entry := range s.toolRegistry.entries {
 			if entry.tool.Name() == tool.Name() && entry.registration.Definition.PrepareLoadout != nil {
-				path := ""
-				if source, ok := entry.registration.SourceInfo.(icodingagent.PiSourceInfo); ok {
-					path = source.Path
-				}
-				plan.hooks = append(plan.hooks, loadoutHook{entry.registration.Definition.PrepareLoadout, path})
+				plan.hooks = append(plan.hooks, loadoutHook{entry.registration.Definition.PrepareLoadout, entry.registration.SourceInfo.Path})
 			}
 		}
 	}
@@ -209,12 +215,14 @@ func (s *Session) planToolLoadout(names []string) toolLoadoutPlan {
 	}
 	exposures := map[string]extension.ToolExposure{}
 	namespaces := map[string]*extension.ToolNamespace{}
+	guidelines := map[string][]string{}
 	for _, entry := range s.toolRegistry.entries {
 		definition := entry.registration.Definition
 		registered = append(registered, toolView(definition))
 		if _, known := exposures[definition.Name]; !known {
 			exposures[definition.Name] = toolExposureOf(definition)
 			namespaces[definition.Name] = definition.Namespace
+			guidelines[definition.Name] = normalizePromptGuidelines(definition.PromptGuidelines)
 		}
 	}
 	plan.loadout = extension.ToolLoadout{
@@ -226,14 +234,17 @@ func (s *Session) planToolLoadout(names []string) toolLoadoutPlan {
 			return extension.ToolExposureDirect
 		},
 		GetNamespace: func(name string) *extension.ToolNamespace { return namespaces[name] },
+		// upstream: agent-session.ts getPromptGuidelines: (name) => this._toolPromptGuidelines.get(name) ?? []
+		GetPromptGuidelines: func(name string) []string { return guidelines[name] },
 	}
 	return plan
 }
 
-// runLoadoutHooks runs the hooks of a plan in order and merges their changes: later descriptions win, hidden declarations add up. A failing hook is reported and changes nothing. The caller does not hold toolRegistryMu.
-func (s *Session) runLoadoutHooks(plan toolLoadoutPlan) (map[string]string, map[string]struct{}) {
+// runLoadoutHooks runs the hooks of a plan in order and merges their changes: later descriptions win, hidden declarations add up, listed in the order they were first hidden. A failing hook is reported and changes nothing. The caller does not hold toolRegistryMu.
+func (s *Session) runLoadoutHooks(plan toolLoadoutPlan) (map[string]string, map[string]struct{}, []string) {
 	descriptions := map[string]string{}
 	hidden := map[string]struct{}{}
+	order := []string{}
 	for _, h := range plan.hooks {
 		changes, err := runPrepareLoadout(h.prepare, plan.loadout)
 		if err != nil {
@@ -247,10 +258,13 @@ func (s *Session) runLoadoutHooks(plan toolLoadoutPlan) (map[string]string, map[
 		}
 		maps.Copy(descriptions, changes.Descriptions)
 		for _, name := range changes.HiddenDeclarations {
-			hidden[name] = struct{}{}
+			if _, seen := hidden[name]; !seen {
+				hidden[name] = struct{}{}
+				order = append(order, name)
+			}
 		}
 	}
-	return descriptions, hidden
+	return descriptions, hidden, order
 }
 
 // runPrepareLoadout calls a hook and reports a panic as its error, as upstream's try/catch does.
@@ -344,10 +358,10 @@ func (h sessionNestedHost) RunToolCall(ctx context.Context, toolCall agent.Agent
 		return agent.AgentToolCallOutcome{ToolCall: toolCall, Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "No assistant message issued this call"}}, Details: map[string]any{}}, IsError: true}, nil
 	}
 	hooks := agent.ToolCallHooks{
-		BeforeToolCall: append(append([]agent.BeforeToolCallHook(nil), s.callerHooks.beforeToolCall...), func(ctx context.Context, id, name string, args json.RawMessage) agent.ToolCallHookResult {
+		BeforeToolCallHooks: append(append([]agent.BeforeToolCallHook(nil), s.callerHooks.beforeToolCall...), func(ctx context.Context, id, name string, args json.RawMessage) agent.ToolCallHookResult {
 			return s.toolCallHook(ctx, id, parentToolCallID, name, args)
 		}),
-		AfterToolCall: append(append([]agent.AfterToolCallHook(nil), s.callerHooks.afterToolCall...), func(ctx context.Context, id, name string, args json.RawMessage, result agent.AgentToolResult) agent.AfterToolCallResult {
+		AfterToolCallHooks: append(append([]agent.AfterToolCallHook(nil), s.callerHooks.afterToolCall...), func(ctx context.Context, id, name string, args json.RawMessage, result agent.AgentToolResult) agent.AfterToolCallResult {
 			return s.toolResultHook(ctx, id, parentToolCallID, name, args, result)
 		}),
 		PrepareToolResult: s.prepareToolResult,
@@ -372,20 +386,11 @@ func (s *Session) nestedToolCalls() *NestedToolCallRunner {
 //
 // upstream: agent-session.ts:_executeNestedToolCall
 func (s *Session) executeNestedToolCall(ctx context.Context, callerID, name string, args json.RawMessage, options extension.ExecuteToolOptions) (extension.AgentToolCallOutcome, error) {
-	var onUpdate agent.ToolUpdateSink
-	switch callback := options.OnUpdate.(type) {
-	case agent.ToolUpdateSink:
-		onUpdate = callback
-	case agent.ToolUpdateCallback:
-		onUpdate = func(partial agent.AgentToolResult) error { callback(partial); return nil }
-	case func(agent.AgentToolResult):
-		onUpdate = func(partial agent.AgentToolResult) error { callback(partial); return nil }
-	}
-	outcome, err := s.nestedToolCalls().Execute(ctx, callerID, name, args, NestedToolCallOptions{OnUpdate: onUpdate})
+	outcome, err := s.nestedToolCalls().Execute(ctx, callerID, name, args, NestedToolCallOptions{OnUpdate: options.OnUpdate})
 	if err != nil {
 		return extension.AgentToolCallOutcome{}, err
 	}
-	return extension.AgentToolCallOutcome{ToolCall: outcome.ToolCall, Result: outcome.Result, IsError: outcome.IsError}, nil
+	return extension.AgentToolCallOutcome{ToolCall: outcome.ToolCall, Result: outcome.Result, IsError: outcome.IsError, DurationMs: outcome.DurationMs}, nil
 }
 
 // ToolActions is the ExecuteTool, GetCallableTools and AppendEntry of the extension context actions. A host that runs extensions in another process binds them to its bridge, so a nested call from a subprocess extension reaches this session; a declarative tool reaches AppendEntry through its tool context.

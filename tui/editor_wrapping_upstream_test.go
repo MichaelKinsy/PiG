@@ -137,7 +137,7 @@ func TestUpstreamEditorGraphemeWrapping(t *testing.T) {
 		e := newUpstreamWrappingEditor()
 		e.SetText("A✅B")
 		line := e.Render(20)[1]
-		if !strings.Contains(line, "\x1b[7m") {
+		if !strings.Contains(line, widthx.FakeCursorStart) {
 			t.Errorf("no reverse-video cursor in %q", line)
 		}
 		assertWrappingWidths(t, []string{line}, 20)
@@ -164,7 +164,7 @@ func TestUpstreamEditorGraphemeWrapping(t *testing.T) {
 			if len(lines) != 1 {
 				t.Fatalf("padding %d: content = %q, want one line", paddingX, lines)
 			}
-			if !strings.HasSuffix(lines[0], "\x1b[7m \x1b[0m") {
+			if !strings.HasSuffix(lines[0], widthx.RenderFakeCursor(" ")) {
 				t.Errorf("cursor not at end: %q", lines[0])
 			}
 			e.HandleInput("a")

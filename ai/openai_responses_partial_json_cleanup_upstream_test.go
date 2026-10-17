@@ -3,6 +3,7 @@ package ai
 import (
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -84,5 +85,27 @@ func assertNoPartialJSON(t *testing.T, what string, call ToolCall) {
 	}
 	if _, present := block["partialJson"]; present {
 		t.Errorf("%s still serializes partialJson: %s", what, encoded)
+	}
+}
+
+// Pi 87f9a364 (#10897): "marks malformed final arguments instead of keeping the parsed prefix".
+func TestOpenAIResponsesMarksMalformedFinalArguments(t *testing.T) {
+	const argumentsJSON = `{\"path\":\"README.md\",\"content\":\"updated\",\"mode\":.5}`
+	sse := `data: {"type":"response.output_item.added","output_index":0,"item":{"type":"function_call","id":"fc_test","call_id":"call_test","name":"edit","arguments":""}}
+
+data: {"type":"response.function_call_arguments.delta","output_index":0,"delta":"` + argumentsJSON + `"}
+
+data: {"type":"response.output_item.done","output_index":0,"item":{"type":"function_call","id":"fc_test","call_id":"call_test","name":"edit","arguments":"` + argumentsJSON + `"}}
+
+data: {"type":"response.completed","sequence_number":5,"response":{"id":"resp_test","status":"completed"}}
+
+`
+	result, _ := collectResponsesEvents(t, sse)
+	call, ok := result.Content[0].(ToolCall)
+	if !ok {
+		t.Fatalf("content[0] = %T", result.Content[0])
+	}
+	if len(call.Arguments) != 0 || !strings.HasSuffix(call.ArgumentsError, "Received arguments:\n"+`{"path":"README.md","content":"updated","mode":.5}`) {
+		t.Fatalf("arguments = %#v error = %q", call.Arguments, call.ArgumentsError)
 	}
 }

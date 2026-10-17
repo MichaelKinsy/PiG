@@ -1,0 +1,324 @@
+[
+ {
+  "upstream": "packages/coding-agent/src/core/tools/bash.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateLocalBashOperationsRunsCommandsThroughTheResolvedShell"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/bash.ts",
+  "mutation": "internal/codingagent/tools/bash_operations.go: replace `ShellName:    \"bash\",` with `ShellName:    \"sh\",`; TestCreateLocalBashOperationsRunsCommandsThroughTheResolvedShell fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/bash.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateLocalBashOperationsRunsCommandsThroughTheResolvedShell"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/bash.ts",
+  "mutation": "internal/codingagent/tools/bash_operations.go: replace `BinDir:       resolved.BinDir,` with `BinDir:       \"\",`; TestCreateLocalBashOperationsRunsCommandsThroughTheResolvedShell fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/bash.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateLocalBashOperationsRunsCommandsThroughTheResolvedShell"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/bash.ts",
+  "mutation": "internal/codingagent/tools/bash_operations.go: replace `ResolveShell: func() (ShellConfig, error) { return GetShellConfig(resolved.ShellPath) },` with `ResolveShell: func() (ShellConfig, error) { return GetShellConfig(\"\") },`; TestCreateLocalBashOperationsRunsCommandsThroughTheResolvedShell fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/bash.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateLocalBashOperationsRunsCommandsThroughTheResolvedShell"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/bash.ts",
+  "mutation": "internal/codingagent/tools/bash_operations.go: replace `if options != nil {\n\t\tresolved = *options\n\t}` with `_ = options`; TestCreateLocalBashOperationsRunsCommandsThroughTheResolvedShell fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/bash.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateLocalBashOperationsRunsCommandsThroughTheResolvedShell"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/bash.ts",
+  "mutation": "internal/codingagent/tools/bash_operations.go: replace `env := opts.Env\n\tif env == nil {\n\t\tenv = GetShellEnv(o.BinDir)\n\t}` with `env := GetShellEnv(o.BinDir)`; TestCreateLocalBashOperationsRunsCommandsThroughTheResolvedShell fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/bash.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestLocalPowerShellOperationsResolvePowerShellWhenRun"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/bash.ts",
+  "mutation": "internal/codingagent/tools/bash_operations.go: replace `shell, err := o.ResolveShell()\n\tif err != nil {\n\t\treturn BashOperationsResult{}, err\n\t}` with `shell, _ := o.ResolveShell()`; TestLocalPowerShellOperationsResolvePowerShellWhenRun fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/bash.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestCreateLocalBashOperationsRunsCommandsThroughTheResolvedShell"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/bash.ts",
+  "mutation": "internal/codingagent/tools/bash_operations.go: replace `return BashOperationsResult{}, fmt.Errorf(\"Working directory does not exist: %s\\nCannot execute %s commands.\", cwd, o.ShellName)` with `return BashOperationsResult{}, fmt.Errorf(\"Working directory does not exist: %s\\nCannot execute %s commands.\", cwd, \"shell\")`; TestCreateLocalBashOperationsRunsCommandsThroughTheResolvedShell fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/powershell.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestLocalPowerShellOperationsWrapCommandsWithTheUTF8OutputSwitch"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/powershell.ts",
+  "mutation": "internal/codingagent/tools/powershell.go: replace `ShellName:    \"PowerShell\",` with `ShellName:    \"pwsh\",`; TestLocalPowerShellOperationsWrapCommandsWithTheUTF8OutputSwitch fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/powershell.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestLocalPowerShellOperationsResolvePowerShellWhenRun"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/powershell.ts",
+  "mutation": "internal/codingagent/tools/powershell.go: replace `ResolveShell: GetPowerShellConfig,` with `ResolveShell: func() (ShellConfig, error) { return ShellConfig{Path: \"/bin/sh\"}, nil },`; TestLocalPowerShellOperationsResolvePowerShellWhenRun fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/powershell.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestLocalPowerShellOperationsWrapCommandsWithTheUTF8OutputSwitch"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/powershell.ts",
+  "mutation": "internal/codingagent/tools/powershell.go: replace `WrapCommand:  func(command string) string { return powerShellUTF8OutputPrefix + command },` with `WrapCommand:  func(command string) string { return command },`; TestLocalPowerShellOperationsWrapCommandsWithTheUTF8OutputSwitch fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/bash.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestSpawnHooksRewriteWhatRuns",
+   "TestBashSpawnHookSeesSessionEnvironmentAndSupportsOptingOut"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/bash.ts",
+  "mutation": "internal/codingagent/tools/shell_tool.go: replace `if cfg.spawnHook != nil {\n\t\tspawn = cfg.spawnHook(spawn)\n\t}` with ``; TestBashSpawnHookSeesSessionEnvironmentAndSupportsOptingOut, TestSpawnHooksRewriteWhatRuns fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/bash.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestSpawnHooksRewriteWhatRuns"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/bash.ts",
+  "mutation": "internal/codingagent/tools/shell_tool.go: replace `command, cwd, env := spawn.Command, spawn.CWD, spawn.Env` with `command, cwd, env := spawn.Command, cwd, spawn.Env`; TestSpawnHooksRewriteWhatRuns fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/bash.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestSpawnHooksRewriteWhatRuns"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/bash.ts",
+  "mutation": "internal/codingagent/tools/shell_tool.go: replace `command, cwd, env := spawn.Command, spawn.CWD, spawn.Env` with `command, cwd, env := command, spawn.CWD, spawn.Env`; TestSpawnHooksRewriteWhatRuns fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/bash.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestSpawnHooksRewriteWhatRuns"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/bash.ts",
+  "mutation": "internal/codingagent/tools/shell_tool.go: replace `command, cwd, env := spawn.Command, spawn.CWD, spawn.Env` with `command, cwd, env := spawn.Command, spawn.CWD, sessionEnvironment(ctx, cfg.exposeSessionEnvironment, cfg.binDir)`; TestSpawnHooksRewriteWhatRuns fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/find.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestFindCustomGlobRootPort",
+   "TestFindOperationsCancellationAndErrors"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/find.ts",
+  "mutation": "internal/codingagent/tools/find.go: replace `return t.findWithOperations(ctx, p.Pattern, searchPath, effectiveLimit), nil` with `return t.findWithOperations(ctx, p.Pattern, p.Pattern, effectiveLimit), nil`; TestFindCustomGlobRootPort, TestFindOperationsCancellationAndErrors fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/find.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestFindCustomGlobRootPort"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/find.ts",
+  "mutation": "internal/codingagent/tools/find.go: replace `results, err := ops.Glob(pattern, searchPath, FindGlobOptions{Ignore: []string{\"**/node_modules/**\", \"**/.git/**\"}, Limit: limit})` with `results, err := ops.Glob(pattern, searchPath, FindGlobOptions{Ignore: []string{\"**/node_modules/**\"}, Limit: limit})`; TestFindCustomGlobRootPort fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/find.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestFindCustomGlobRootPort",
+   "TestFindOperationsPreserveNumericLimitDetails"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/find.ts",
+  "mutation": "internal/codingagent/tools/find.go: replace `FindGlobOptions{Ignore: []string{\"**/node_modules/**\", \"**/.git/**\"}, Limit: limit})` with `FindGlobOptions{Ignore: []string{\"**/node_modules/**\", \"**/.git/**\"}, Limit: limit + 1})`; TestFindCustomGlobRootPort, TestFindOperationsPreserveNumericLimitDetails fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/find.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestFindCustomGlobRootPort"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/find.ts",
+  "mutation": "internal/codingagent/tools/find.go: replace `results, err := ops.Glob(pattern, searchPath,` with `results, err := ops.Glob(searchPath, pattern,`; TestFindCustomGlobRootPort fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/find.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestFindCustomGlobRootPort"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/find.ts",
+  "mutation": "internal/codingagent/tools/find.go: replace `relativized[i] = relativizeFindResultPath(result, searchPath)` with `relativized[i] = result`; TestFindCustomGlobRootPort fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/find.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestFindOperationsPreserveNumericLimitDetails"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/find.ts",
+  "mutation": "internal/codingagent/tools/find.go: replace `return formatFindResults(relativized, limit, true)` with `return formatFindResults(relativized, limit, false)`; TestFindOperationsPreserveNumericLimitDetails fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/find.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestFindOperationsCancellationAndErrors"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/find.ts",
+  "mutation": "internal/codingagent/tools/find.go: replace `results, err := ops.Glob(pattern, searchPath, FindGlobOptions{Ignore: []string{\"**/node_modules/**\", \"**/.git/**\"}, Limit: limit})\n\tif ctx.Err() != nil {\n\t\treturn findError(\"Operation aborted\")\n\t}` with `results, err := ops.Glob(pattern, searchPath, FindGlobOptions{Ignore: []string{\"**/node_modules/**\", \"**/.git/**\"}, Limit: limit})`; TestFindOperationsCancellationAndErrors fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/find.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestFindOperationsCancellationAndErrors"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/find.ts",
+  "mutation": "internal/codingagent/tools/find.go: replace `return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: \"No files found matching pattern\"}}}\n\t}\n\trelativized := make([]string, len(results))` with `}\n\trelativized := make([]string, len(results))`; TestFindOperationsCancellationAndErrors fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/grep.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestGrepOperationsIsDirectoryErrorIsPathNotFound",
+   "TestGrepToolUsesTheConfiguredOperations"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/grep.ts",
+  "mutation": "internal/codingagent/tools/grep.go: replace `isDirectory, err := ops.IsDirectory(searchPath)\n\tif err != nil {\n\t\treturn grepError(\"Path not found: \" + searchPath), nil\n\t}` with `isDirectory, _ := ops.IsDirectory(searchPath)`; TestGrepOperationsIsDirectoryErrorIsPathNotFound, TestGrepToolUsesTheConfiguredOperations fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/grep.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestGrepToolUsesTheConfiguredOperations"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/grep.ts",
+  "mutation": "internal/codingagent/tools/grep.go: replace `isDirectory, err := ops.IsDirectory(searchPath)` with `isDirectory, err := ops.IsDirectory(searchDir)`; TestGrepToolUsesTheConfiguredOperations fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/grep.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestGrepToolUsesTheConfiguredOperations"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/grep.ts",
+  "mutation": "internal/codingagent/tools/grep.go: replace `if t.Operations != nil {\n\t\treturn *t.Operations\n\t}` with `if false {\n\t\treturn *t.Operations\n\t}`; TestGrepToolUsesTheConfiguredOperations fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/bash.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestLocalShellOperationsWrapCommandBeforeTheShellRuns"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/bash.ts",
+  "mutation": "internal/codingagent/tools/bash_operations.go: replace `if o.WrapCommand != nil {\n\t\tcommand = o.WrapCommand(command)\n\t}` with ``; TestLocalShellOperationsWrapCommandBeforeTheShellRuns fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/powershell.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestLocalPowerShellOperationsResolvePowerShellWhenRun",
+   "TestGetPowerShellConfigPlatformGate"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/powershell.ts",
+  "mutation": "internal/codingagent/tools/powershell.go: replace `return powerShellConfigFor(runtime.GOOS, findExecutableOnPath)` with `_ = runtime.GOOS\n\treturn powerShellConfigFor(\"windows\", findExecutableOnPath)`; TestGetPowerShellConfigPlatformGate, TestLocalPowerShellOperationsResolvePowerShellWhenRun fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/powershell.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestLocalPowerShellOperationsResolvePowerShellWhenRun",
+   "TestGetPowerShellConfigPlatformGate"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/powershell.ts",
+  "mutation": "internal/codingagent/tools/powershell.go: replace `return powerShellConfigFor(runtime.GOOS, findExecutableOnPath)` with `_ = runtime.GOOS\n\t_ = findExecutableOnPath\n\treturn ShellConfig{}, nil`; TestGetPowerShellConfigPlatformGate, TestLocalPowerShellOperationsResolvePowerShellWhenRun fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/bash.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestBashToolCommandPrefixReachesTheSpawnHookAndOperations"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/bash.ts",
+  "mutation": "internal/codingagent/tools/shell_tool.go: replace `spawn := BashSpawnContext{Command: command, CWD: cwd, Env:` with `spawn := BashSpawnContext{Command: p.Command, CWD: cwd, Env:`; TestBashToolCommandPrefixReachesTheSpawnHookAndOperations fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/find.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestFindOperationsExistsGateGlobAndFallBackToFdWithoutGlob"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/find.ts",
+  "mutation": "internal/codingagent/tools/find.go: replace `if t.Operations != nil && t.Operations.Glob != nil {` with `if t.Operations != nil {`; TestFindOperationsExistsGateGlobAndFallBackToFdWithoutGlob fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/find.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestFindOperationsExistsGateGlobAndFallBackToFdWithoutGlob"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/find.ts",
+  "mutation": "internal/codingagent/tools/find.go: replace `if ops.Exists == nil {\n\t\treturn findError(\"ops.exists is not a function\")\n\t}` with ``; TestFindOperationsExistsGateGlobAndFallBackToFdWithoutGlob fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/find.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestFindOperationsExistsGateGlobAndFallBackToFdWithoutGlob"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/find.ts",
+  "mutation": "internal/codingagent/tools/find.go: replace `exists, err := ops.Exists(searchPath)` with `exists, err := ops.Exists(pattern)`; TestFindOperationsExistsGateGlobAndFallBackToFdWithoutGlob fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/grep.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestGrepDefaultOperationsReportDirectoriesFilesAndMissingPaths"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/grep.ts",
+  "mutation": "internal/codingagent/tools/grep.go: replace `return info.IsDir(), nil` with `return !info.IsDir(), nil`; TestGrepDefaultOperationsReportDirectoriesFilesAndMissingPaths fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/grep.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestGrepDefaultOperationsReportDirectoriesFilesAndMissingPaths"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/grep.ts",
+  "mutation": "internal/codingagent/tools/grep.go: replace `info, err := os.Stat(path)\n\t\t\tif err != nil {\n\t\t\t\treturn false, err\n\t\t\t}` with `info, err := os.Stat(path)\n\t\t\tif err != nil {\n\t\t\t\treturn true, nil\n\t\t\t}`; TestGrepDefaultOperationsReportDirectoriesFilesAndMissingPaths fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/tools/find.ts",
+  "package": "./internal/codingagent/tools",
+  "tests": [
+   "TestFindOperationsCancellationAndErrors",
+   "TestFindOperationsExistsGateGlobAndFallBackToFdWithoutGlob"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/tools/find.ts",
+  "mutation": "internal/codingagent/tools/find.go: replace `if !exists {\n\t\treturn findError(\"Path not found: \" + searchPath)\n\t}` with `_ = exists`; TestFindOperationsCancellationAndErrors, TestFindOperationsExistsGateGlobAndFallBackToFdWithoutGlob fails."
+ }
+]

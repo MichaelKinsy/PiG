@@ -1,5 +1,4 @@
 <!--
-SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 SPDX-License-Identifier: MIT
 -->
 
@@ -102,9 +101,10 @@ installing software.
 6. Implement the smallest correct change through Pi's shared data-driven paths, without uncited provider/model special cases.
 7. Run the relevant local tests early across applicable provider shapes, not only Copilot or `test-faux`.
 8. If you change exported Go API, CLI flags, settings, parity scenarios, or docs mirrors, run `make generate` and commit the result. CI's drift gates compare these files.
-9. Run `make check` before requesting review.
-10. Sign off and cryptographically sign every commit. Confirm that GitHub marks each signature **Verified**.
-11. Describe the problem, change, verification, and any divergence in the pull request.
+9. If a commit is titled as a fix (`Fix ...`, `fix: ...` or `<area>: fix ...`) and changes shipped code, or a changelog `### Fixed` section gains an item, run `make bug-ledger` and commit `docs/bug-ledger.json` and `docs/site/docs/bug-ledger.md`. `make bug-ledger-check` fails without them. A fix of something that never shipped carries a `Bug-Ledger: exempt <category>: <reason>` trailer. A follow-up of an earlier fix carries `Bug-Ledger: see <commit>`.
+10. Run `make check` before requesting review.
+11. Sign off and cryptographically sign every commit. Confirm that GitHub marks each signature **Verified**.
+12. Describe the problem, change, verification, and any divergence in the pull request.
 
 A documentation-only or mechanical change can explain why it does not need an issue.
 

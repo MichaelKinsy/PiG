@@ -91,6 +91,7 @@ func modelExtensionUserText(messages []ai.Message) string {
 	return ""
 }
 
+// Pi: packages/coding-agent/src/core/extensions/types.ts:1449 (ToolResultEventResult.usage).
 func TestSessionModelExtensionHooksUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/suite/agent-session-model-extension.test.ts:244
 	t.Run("allows extension tool_call handlers to block tool execution", func(t *testing.T) {
@@ -149,7 +150,7 @@ func TestSessionModelExtensionHooksUpstream(t *testing.T) {
 			event := args[0].(extension.ContextEvent)
 			out := append([]extension.AgentMessage(nil), event.Messages...)
 			for i, raw := range out {
-				message := raw.(agent.AgentMessage)
+				message := raw
 				if message.User != nil {
 					copy := *message.User
 					copy.Content = ai.UserContentBlocks{ai.TextContent{Text: "rewritten"}}
@@ -198,10 +199,10 @@ func TestSessionModelExtensionHooksUpstream(t *testing.T) {
 			observed = modelExtensionUserText(messages)
 			return fauxReply("done", ai.StopReasonStop, 0)(messages)
 		}, fauxReply("unexpected", ai.StopReasonStop, 0))
-		if _, err := h.session.Prompt(t.Context(), "hello"); err != nil {
+		if err := h.session.Prompt(t.Context(), "hello"); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := h.session.Prompt(t.Context(), "ping"); err != nil {
+		if err := h.session.Prompt(t.Context(), "ping"); err != nil {
 			t.Fatal(err)
 		}
 		users := 0
@@ -228,7 +229,7 @@ func TestSessionModelExtensionHooksUpstream(t *testing.T) {
 		}}}}
 		h := newModelExtensionHarness(t, []bool{false}, "", true, ext, nil)
 		for range 2 {
-			if _, err := h.session.Prompt(t.Context(), "/inspect-options"); err != nil {
+			if err := h.session.Prompt(t.Context(), "/inspect-options"); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -243,8 +244,11 @@ func TestSessionModelExtensionHooksUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/suite/agent-session-model-extension.test.ts:468
 	t.Run("allows before_agent_start handlers to inject custom messages and modify the system prompt", func(t *testing.T) {
 		ext := extension.Extension{Handlers: map[string][]extension.HandlerFn{"before_agent_start": {func(args ...any) (any, error) {
-			event := args[0].(extension.BeforeAgentStartEvent)
-			return &extension.BeforeAgentStartEventResult{Message: &extension.CustomMessageRef{CustomType: "before-start", Content: "injected", Display: true, Details: map[string]any{"injected": true}}, SystemPrompt: new(event.SystemPrompt + "\n\nextra instructions")}, nil
+			prompt, err := args[0].(extension.BeforeAgentStartEvent).SystemPrompt.Get()
+			if err != nil {
+				return nil, err
+			}
+			return &extension.BeforeAgentStartEventResult{Message: &extension.CustomMessageRef{CustomType: "before-start", Content: "injected", Display: true, Details: map[string]any{"injected": true}}, SystemPrompt: new(prompt + "\n\nextra instructions")}, nil
 		}}}}
 		var prompt string
 		injected := false

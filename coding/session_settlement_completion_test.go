@@ -12,9 +12,7 @@ import (
 func TestPromptWaitsForSettlementSubscriberWithoutExtensions(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		h := newRecoveryHarness(t, harnessOptions{}, fauxReply("done", ai.StopReasonStop, 0))
-		if err := h.session.services.Auth().Set("faux", ai.Credential{Type: ai.CredentialAPIKey, Key: "faux-key"}); err != nil {
-			t.Fatal(err)
-		}
+		configureFauxAuth(t, h.session.services)
 		entered, release := make(chan struct{}), make(chan struct{})
 		h.session.Subscribe(func(event agent.AgentEvent) {
 			if _, ok := event.(agent.AgentSettledEvent); ok {
@@ -23,7 +21,7 @@ func TestPromptWaitsForSettlementSubscriberWithoutExtensions(t *testing.T) {
 			}
 		})
 		done := make(chan error, 1)
-		go func() { _, err := h.session.Prompt(t.Context(), "hello"); done <- err }()
+		go func() { err := h.session.Prompt(t.Context(), "hello"); done <- err }()
 		synctest.Wait()
 		select {
 		case <-entered:

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"math"
 	"os"
 	"os/exec"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
@@ -38,6 +40,46 @@ type GrepTool struct {
 	CWD    string
 	RgPath string
 	Tools  *ToolsManager
+	// Operations delegates the filesystem reads; nil selects the local filesystem (upstream options.operations).
+	Operations *GrepOperations
+}
+
+// GrepOperations is upstream's GrepOperations: pluggable path and file reads for the search path and the context lines.
+// Ports packages/coding-agent/src/core/tools/grep.ts.
+type GrepOperations struct {
+	// IsDirectory reports whether the path is a directory and fails when it does not exist.
+	IsDirectory func(absolutePath string) (bool, error)
+	// ReadFile reads a file for its context lines; nil streams the local file.
+	ReadFile func(absolutePath string) (string, error)
+}
+
+func (t *GrepTool) operations() GrepOperations {
+	if t.Operations != nil {
+		return *t.Operations
+	}
+	return GrepOperations{
+		IsDirectory: func(path string) (bool, error) {
+			info, err := os.Stat(path)
+			if err != nil {
+				return false, err
+			}
+			return info.IsDir(), nil
+		},
+	}
+}
+
+// openFile opens a matched file for its context lines. The local filesystem
+// streams the file; a custom ReadFile returns the whole text, as upstream's
+// readFile does.
+func (t *GrepTool) openFile(path string) (io.ReadCloser, error) {
+	if t.Operations == nil || t.Operations.ReadFile == nil {
+		return os.Open(path)
+	}
+	text, err := t.Operations.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return io.NopCloser(strings.NewReader(text)), nil
 }
 
 func (t *GrepTool) Name() string  { return "grep" }
@@ -100,11 +142,11 @@ func (t *GrepTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 	if err != nil {
 		return agent.AgentToolResult{}, err
 	}
-	info, err := os.Stat(searchPath)
+	ops := t.operations()
+	isDirectory, err := ops.IsDirectory(searchPath)
 	if err != nil {
 		return grepError("Path not found: " + searchPath), nil
 	}
-	isDirectory := info.IsDir()
 
 	contextValue := 0.0
 	if p.Context != nil && *p.Context > 0 {
@@ -141,7 +183,7 @@ func (t *GrepTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 		return grepError("Operation aborted"), nil
 	}
 	if !run.killedDueToLimit && run.exitCode != 0 && run.exitCode != 1 {
-		msg := strings.TrimSpace(run.stderr)
+		msg := jsstring.Trim(run.stderr)
 		if msg == "" {
 			msg = fmt.Sprintf("ripgrep exited with code %d", run.exitCode)
 		}
@@ -151,15 +193,17 @@ func (t *GrepTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "No matches found"}}}, nil
 	}
 
-	f := grepFormatter{searchPath: searchPath, isDirectory: isDirectory, contextValue: contextValue, fileCache: map[string][]string{}}
-	var outputLines []string
-	for _, m := range matches {
-		outputLines = append(outputLines, f.formatMatch(m)...)
-	}
+	f := grepFormatter{searchPath: searchPath, isDirectory: isDirectory, contextValue: contextValue, openFile: t.openFile}
+	defer f.close()
 
 	// No line limit: the match limit already capped rows.
 	// Number.MAX_SAFE_INTEGER is observable in the truncation details, even though only bytes cap this tool.
-	tr := TruncateHead(strings.Join(outputLines, "\n"), DefaultMaxBytes, 1<<53-1)
+	// The output is collected head-first: lines past the 50KB the result can show are counted, not built (#9276).
+	joined := newHeadJoin(truncationLimits(DefaultMaxBytes, 1<<53-1))
+	for _, m := range matches {
+		f.emitMatch(m, joined)
+	}
+	tr := joined.Result()
 	output := tr.Content
 	var notices []string
 	details := &GrepDetails{}
@@ -179,6 +223,7 @@ func (t *GrepTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 	}
 	if len(notices) > 0 {
 		output += "\n\n[" + strings.Join(notices, ". ") + "]"
+		shareTruncatedContent(details.Truncation, output)
 	}
 	result := agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: output}}}
 	if len(notices) > 0 {
@@ -224,7 +269,7 @@ func runRipgrep(ctx context.Context, rgPath, dir string, args []string, limit fl
 	reader := bufio.NewReader(stdout)
 	for {
 		line, readErr := reader.ReadString('\n')
-		if strings.TrimSpace(line) != "" && float64(run.matchCount) < limit {
+		if jsstring.Trim(line) != "" && float64(run.matchCount) < limit {
 			if m, ok := parseRipgrepMatch(line); ok {
 				run.matchCount++
 				if m != nil {
@@ -275,6 +320,7 @@ func parseRipgrepMatch(line string) (*grepMatch, bool) {
 	if d.Path == nil || d.Path.Text == nil || *d.Path.Text == "" || d.LineNumber == nil {
 		return nil, true
 	}
+	//portlint:allow numbers ripgrep reports a line number as a small positive integer, so the conversion cannot leave the int range
 	m := &grepMatch{filePath: *d.Path.Text, lineNumber: int(*d.LineNumber)}
 	if d.Lines != nil {
 		m.lineText = d.Lines.Text
@@ -283,11 +329,16 @@ func parseRipgrepMatch(line string) (*grepMatch, bool) {
 }
 
 // grepFormatter mirrors upstream's formatPath, getFileLines and formatBlock.
+// pig divergence (D151): context lines come from a window over the
+// matched file, not a whole-file array, so memory follows the context size and
+// not the file size.
 type grepFormatter struct {
 	searchPath     string
 	isDirectory    bool
 	contextValue   float64
-	fileCache      map[string][]string
+	openFile       func(absolutePath string) (io.ReadCloser, error)
+	window         *grepLineWindow
+	windowPath     string
 	linesTruncated bool
 }
 
@@ -300,59 +351,101 @@ func (f *grepFormatter) formatPath(filePath string) string {
 	return filepath.Base(filePath)
 }
 
-func (f *grepFormatter) fileLines(filePath string) []string {
-	if lines, ok := f.fileCache[filePath]; ok {
-		return lines
+// fileWindow returns the window for filePath. Matches of one file are
+// consecutive, so only the current file's window is kept; a match above the
+// window's first line reopens the file.
+func (f *grepFormatter) fileWindow(filePath string, firstLine float64) *grepLineWindow {
+	if f.window != nil && f.windowPath == filePath && firstLine >= float64(f.window.keepFrom) {
+		return f.window
 	}
-	var lines []string
-	if data, err := os.ReadFile(filePath); err == nil {
-		var decoder utf8StreamDecoder
-		content := strings.ReplaceAll(decoder.decode(data, false), "\r\n", "\n")
-		lines = strings.Split(strings.ReplaceAll(content, "\r", "\n"), "\n")
+	f.close()
+	f.window = &grepLineWindow{open: func() (io.ReadCloser, error) { return f.openFile(filePath) }, keepFrom: 1}
+	f.windowPath = filePath
+	return f.window
+}
+
+func (f *grepFormatter) close() {
+	if f.window != nil {
+		f.window.close()
+		f.window = nil
 	}
-	f.fileCache[filePath] = lines
-	return lines
 }
 
 func (f *grepFormatter) truncate(line string) string {
-	text, wasTruncated := TruncateLine(line, GrepMaxLineLength)
+	truncated := TruncateLine(line, GrepMaxLineLength)
+	text, wasTruncated := truncated.Text, truncated.WasTruncated
 	if wasTruncated {
 		f.linesTruncated = true
 	}
 	return text
 }
 
-func (f *grepFormatter) formatMatch(m grepMatch) []string {
+// emitMatch adds the output lines of one match to out (grep.ts:198-277). Once out holds every byte its result can show, a line is only measured: its length and whether its text was cut are what the result and the notice still read.
+func (f *grepFormatter) emitMatch(m grepMatch, out *headJoin) {
 	relativePath := f.formatPath(m.filePath)
 	if f.contextValue == 0 && m.lineText != nil {
 		sanitized := strings.ReplaceAll(*m.lineText, "\r\n", "\n")
 		sanitized = strings.TrimSuffix(strings.ReplaceAll(sanitized, "\r", ""), "\n")
-		return []string{fmt.Sprintf("%s:%d: %s", relativePath, m.lineNumber, f.truncate(sanitized))}
-	}
-	lines := f.fileLines(m.filePath)
-	if len(lines) == 0 {
-		return []string{fmt.Sprintf("%s:%d: (unable to read file)", relativePath, m.lineNumber)}
+		if out.full() && !strings.Contains(sanitized, "\n") {
+			out.AddLength(len(relativePath) + 1 + decimalBytes(m.lineNumber) + 2 + f.truncatedBytes(sanitized))
+			return
+		}
+		out.Add(fmt.Sprintf("%s:%d: %s", relativePath, m.lineNumber, f.truncate(sanitized)))
+		return
 	}
 	lineNumber := float64(m.lineNumber)
 	start, end := lineNumber, lineNumber
 	if f.contextValue > 0 {
 		start = math.Max(1, lineNumber-f.contextValue)
-		end = math.Min(float64(len(lines)), lineNumber+f.contextValue)
+		end = lineNumber + f.contextValue
 	}
-	var block []string
+	w := f.fileWindow(m.filePath, start)
+	w.discardBefore(start)
+	total := w.countAtLeast(end)
+	if total == 0 {
+		out.Add(fmt.Sprintf("%s:%d: (unable to read file)", relativePath, m.lineNumber))
+		return
+	}
+	if f.contextValue > 0 {
+		end = math.Min(float64(total), end)
+	}
 	for current := start; current <= end; current++ {
 		lineText := ""
-		if current == math.Trunc(current) && current >= 1 && int(current) <= len(lines) {
-			lineText = lines[int(current)-1]
+		//portlint:allow numbers current is at most the end bound, which is at most the line count, so the conversion stays in range
+		if current == math.Trunc(current) && current >= 1 && int(current) <= total {
+			//portlint:allow numbers the guard above bounds current by the line count
+			lineText = w.line(int(current))
 		}
-		truncated := f.truncate(strings.ReplaceAll(lineText, "\r", ""))
+		lineText = strings.ReplaceAll(lineText, "\r", "")
+		if out.full() && !strings.Contains(lineText, "\n") {
+			out.AddLength(len(relativePath) + 1 + numberBytes(current) + 2 + f.truncatedBytes(lineText))
+			continue
+		}
+		truncated := f.truncate(lineText)
 		if current == lineNumber {
-			block = append(block, fmt.Sprintf("%s:%s: %s", relativePath, jsNumber(current), truncated))
+			out.Add(fmt.Sprintf("%s:%s: %s", relativePath, jsNumber(current), truncated))
 		} else {
-			block = append(block, fmt.Sprintf("%s-%s- %s", relativePath, jsNumber(current), truncated))
+			out.Add(fmt.Sprintf("%s-%s- %s", relativePath, jsNumber(current), truncated))
 		}
 	}
-	return block
+}
+
+// truncatedBytes is len(f.truncate(line)), recording a cut line as f.truncate does.
+func (f *grepFormatter) truncatedBytes(line string) int {
+	n, wasTruncated := truncatedLineBytes(line, GrepMaxLineLength)
+	if wasTruncated {
+		f.linesTruncated = true
+	}
+	return n
+}
+
+// numberBytes is len(jsNumber(v)) without the string for the whole line numbers grep writes.
+func numberBytes(v float64) int {
+	if v == math.Trunc(v) && math.Abs(v) < 1<<53 {
+		//portlint:allow numbers the guard admits only integral values below 2^53, which int holds exactly and jsNumber writes as plain decimals
+		return decimalBytes(int(v))
+	}
+	return len(jsNumber(v))
 }
 
 // GrepMaxLineLength matches upstream truncate.ts GREP_MAX_LINE_LENGTH.

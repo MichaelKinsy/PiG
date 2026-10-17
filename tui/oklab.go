@@ -16,7 +16,11 @@ package tui
 // copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
 // KIND, EXPRESS OR IMPLIED.
 
-import "math"
+import (
+	"math"
+
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
+)
 
 type vector3 [3]float64
 type matrix3 [3]vector3
@@ -24,7 +28,7 @@ type matrix3 [3]vector3
 func (m matrix3) multiply(v vector3) vector3 {
 	var out vector3
 	for i, row := range m {
-		out[i] = row[0]*v[0] + row[1]*v[1] + row[2]*v[2]
+		out[i] = float64(row[0]*v[0]) + float64(row[1]*v[1]) + float64(row[2]*v[2])
 	}
 	return out
 }
@@ -71,19 +75,19 @@ const (
 
 // OklabToOkhslLightness converts Oklab lightness to OKHSL lightness.
 func OklabToOkhslLightness(x float64) float64 {
-	t := okhslK3*x - okhslK1
-	return 0.5 * (t + math.Sqrt(t*t+4*okhslK2*okhslK3*x))
+	t := float64(okhslK3*x) - okhslK1
+	return 0.5 * (t + math.Sqrt(float64(t*t)+float64(4*okhslK2*okhslK3*x)))
 }
 
 // okhslToOklabLightness converts OKHSL lightness to Oklab lightness.
 func okhslToOklabLightness(x float64) float64 {
-	return (x*x + okhslK1*x) / (okhslK3 * (x + okhslK2))
+	return (float64(x*x) + float64(okhslK1*x)) / (okhslK3 * (x + okhslK2))
 }
 
 // linearToSrgb is the sRGB transfer function: linear to encoded channel, both 0-1.
 func linearToSrgb(value float64) float64 {
 	if value > 0.0031308 {
-		return 1.055*math.Pow(value, 1/2.4) - 0.055
+		return float64(1.055*math.Pow(value, 1/2.4)) - 0.055
 	}
 	return 12.92 * value
 }
@@ -116,43 +120,40 @@ func rgbToOklab(color RgbColor) vector3 {
 	return linearSrgbToOklab(vector3{srgbToLinear(color.R / 255), srgbToLinear(color.G / 255), srgbToLinear(color.B / 255)})
 }
 
-// jsRound is JavaScript's Math.round: halves round toward positive infinity.
-func jsRound(value float64) float64 { return math.Floor(value + 0.5) }
-
 // linearSrgbToRgb converts linear sRGB [r, g, b] to sRGB channels (0-255, rounded), clipping out-of-gamut channels.
 func linearSrgbToRgb(linear vector3) RgbColor {
 	channel := func(value float64) float64 {
-		return jsRound(math.Min(1, math.Max(0, linearToSrgb(value))) * 255)
+		return jsnumber.Round(math.Min(1, math.Max(0, linearToSrgb(value))) * 255)
 	}
 	return RgbColor{R: channel(linear[0]), G: channel(linear[1]), B: channel(linear[2])}
 }
 
 // lmsSlopes is the rate of change of each cube-root LMS component along a chroma direction (a, b).
 func lmsSlopes(a, b float64) vector3 {
-	return vector3{labToLMS[0][1]*a + labToLMS[0][2]*b, labToLMS[1][1]*a + labToLMS[1][2]*b, labToLMS[2][1]*a + labToLMS[2][2]*b}
+	return vector3{float64(labToLMS[0][1]*a) + float64(labToLMS[0][2]*b), float64(labToLMS[1][1]*a) + float64(labToLMS[1][2]*b), float64(labToLMS[2][1]*a) + float64(labToLMS[2][2]*b)}
 }
 
 func dotWeights(weights vector3, values vector3) float64 {
-	return weights[0]*values[0] + weights[1]*values[1] + weights[2]*values[2]
+	return float64(weights[0]*values[0]) + float64(weights[1]*values[1]) + float64(weights[2]*values[2])
 }
 
 // maxSaturation is the largest saturation (C/L) inside sRGB for hue (a, b): a polynomial fit plus one Halley step.
 func maxSaturation(a, b float64) float64 {
 	channel := 2
 	for index, fit := range saturationFit {
-		if index == 2 || fit.plane[0]*a+fit.plane[1]*b > 1 {
+		if index == 2 || float64(fit.plane[0]*a)+float64(fit.plane[1]*b) > 1 {
 			channel = index
 			break
 		}
 	}
 	k := saturationFit[channel].poly
 	weights := lmsToLinearSrgb[channel]
-	saturation := k[0] + k[1]*a + k[2]*b + k[3]*a*a + k[4]*a*b
+	saturation := k[0] + float64(k[1]*a) + float64(k[2]*b) + float64(k[3]*a*a) + float64(k[4]*a*b)
 
 	slopes := lmsSlopes(a, b)
 	var base, cubed, first, second vector3
 	for i := range base {
-		base[i] = 1 + saturation*slopes[i]
+		base[i] = 1 + float64(saturation*slopes[i])
 		cubed[i] = base[i] * base[i] * base[i]
 		first[i] = 3 * slopes[i] * base[i] * base[i]
 		second[i] = 6 * slopes[i] * slopes[i] * base[i]
@@ -160,7 +161,7 @@ func maxSaturation(a, b float64) float64 {
 	f := dotWeights(weights, cubed)
 	f1 := dotWeights(weights, first)
 	f2 := dotWeights(weights, second)
-	return saturation - (f*f1)/(f1*f1-0.5*f*f2)
+	return saturation - (f*f1)/(float64(f1*f1)-float64(0.5*f*f2))
 }
 
 // cusp returns the Oklab lightness and chroma of the most saturated sRGB color of hue (a, b).
@@ -182,7 +183,7 @@ func maxChroma(a, b, lightness float64, peak [2]float64) float64 {
 	slopes := lmsSlopes(a, b)
 	var lms, cubes, first, second vector3
 	for i := range lms {
-		lms[i] = lightness + t*slopes[i]
+		lms[i] = lightness + float64(t*slopes[i])
 		cubes[i] = lms[i] * lms[i] * lms[i]
 		first[i] = 3 * slopes[i] * lms[i] * lms[i]
 		second[i] = 6 * slopes[i] * slopes[i] * lms[i]
@@ -192,7 +193,7 @@ func maxChroma(a, b, lightness float64, peak [2]float64) float64 {
 		f := dotWeights(row, cubes) - 1
 		f1 := dotWeights(row, first)
 		f2 := dotWeights(row, second)
-		u := f1 / (f1*f1 - 0.5*f*f2)
+		u := f1 / (float64(f1*f1) - float64(0.5*f*f2))
 		candidate := math.MaxFloat64
 		if u >= 0 {
 			candidate = -f * u
@@ -209,16 +210,16 @@ func chromaStops(lightness, a, b float64) (c0, cMid, cMax float64) {
 	k := cMax / math.Min(lightness*(peak[1]/peak[0]), (1-lightness)*(peak[1]/(1-peak[0])))
 	midS := 0.11516993 +
 		1/(7.4477897+
-			4.1590124*b+
-			a*(-2.19557347+
-				1.75198401*b+
-				a*(-2.13704948-10.02301043*b+a*(-4.24894561+5.38770819*b+4.69891013*a))))
+			float64(4.1590124*b)+
+			float64(a*(-2.19557347+
+				float64(1.75198401*b)+
+				float64(a*(-2.13704948-float64(10.02301043*b)+float64(a*(-4.24894561+float64(5.38770819*b)+float64(4.69891013*a))))))))
 	midT := 0.11239642 +
 		1/(1.6132032-
-			0.68124379*b+
-			a*(0.40370612+
-				0.90148123*b+
-				a*(-0.27087943+0.6122399*b+a*(0.00299215-0.45399568*b-0.14661872*a))))
+			float64(0.68124379*b)+
+			float64(a*(0.40370612+
+				float64(0.90148123*b)+
+				float64(a*(-0.27087943+float64(0.6122399*b)+float64(a*(0.00299215-float64(0.45399568*b)-float64(0.14661872*a))))))))
 	cMid = 0.9 * k * math.Sqrt(math.Sqrt(1/(1/math.Pow(lightness*midS, 4)+1/math.Pow((1-lightness)*midT, 4))))
 	c0Low, c0High := lightness*0.4, (1-lightness)*0.8
 	c0 = math.Sqrt(1 / (1/(c0Low*c0Low) + 1/(c0High*c0High)))
@@ -239,11 +240,11 @@ func okhslToRgb(hue, saturation, lightness float64) RgbColor {
 		if saturation < 0.8 {
 			t := 1.25 * saturation
 			k1 := 0.8 * c0
-			chroma = (t * k1) / (1 - (1-k1/cMid)*t)
+			chroma = (t * k1) / (1 - float64((1-k1/cMid)*t))
 		} else {
 			t := 5 * (saturation - 0.8)
 			k1 := (0.2 * cMid * cMid * 1.25 * 1.25) / c0
-			chroma = cMid + (t*k1)/(1-(1-k1/(cMax-cMid))*t)
+			chroma = cMid + (t*k1)/(1-float64((1-k1/(cMax-cMid))*t))
 		}
 		lab = vector3{L, chroma * a, chroma * b}
 	}
@@ -264,12 +265,13 @@ func rgbToOkhsl(color RgbColor) OkhslChannels {
 	c0, cMid, cMax := chromaStops(L, labA/chroma, labB/chroma)
 	var saturation float64
 	if chroma < cMid {
-		k1 := 0.8 * c0
-		saturation = 0.8 * (chroma / (k1 + (1-k1/cMid)*chroma))
+		// float64() rounds k1 as JavaScript does; assigned unconverted, the compiler fuses 0.8*c0 into the addition below (arm64 FMADD).
+		k1 := float64(0.8 * c0)
+		saturation = 0.8 * (chroma / (k1 + float64((1-k1/cMid)*chroma)))
 	} else {
 		k1 := (0.2 * cMid * cMid * 1.25 * 1.25) / c0
 		offset := chroma - cMid
-		saturation = 0.8 + 0.2*(offset/(k1+(1-k1/(cMax-cMid))*offset))
+		saturation = 0.8 + float64(0.2*(offset/(k1+float64((1-k1/(cMax-cMid))*offset))))
 	}
 	return OkhslChannels{H: hue, S: math.Min(1, math.Max(0, saturation)), L: lightness}
 }

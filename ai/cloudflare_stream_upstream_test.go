@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"strings"
@@ -20,13 +21,18 @@ func TestCloudflareProviderStreamsUpstream(t *testing.T) {
 		{"keeps placeholders when the provider env does not resolve them", nil, CloudflareAIGatewayOpenAIBaseURL},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			p := NewOpenAIProvider(OpenAIConfig{APIKey: "test", Model: "model", ProviderID: "cloudflare-ai-gateway", BaseURL: CloudflareAIGatewayOpenAIBaseURL}).(*openAIProvider)
 			captured := ""
-			p.client = &http.Client{Transport: openAITestRoundTripperFunc(func(r *http.Request) (*http.Response, error) {
+			client := &http.Client{Transport: openAITestRoundTripperFunc(func(r *http.Request) (*http.Response, error) {
 				captured = r.URL.Scheme + "://" + r.URL.Host + r.URL.Path
 				return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"text/event-stream"}}, Body: io.NopCloser(strings.NewReader("data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n"))}, nil
 			})}
-			stream, err := p.Stream(t.Context(), NormalizeContext(Context{Messages: []Message{}}), StreamOptions{Env: tc.env})
+			model := &Model{ID: "model", ProviderMeta: ProviderMetadata{ProviderID: "cloudflare-ai-gateway", API: APIOpenAICompletions, BaseURL: CloudflareAIGatewayOpenAIBaseURL}}
+			inner := &ProviderStreams{StreamSimple: func(ctx context.Context, m *Model, transcript TranscriptContext, options StreamOptions) (*AssistantMessageEventStream, error) {
+				p := NewOpenAIProvider(OpenAIConfig{APIKey: "test", Model: m.ID, ProviderID: m.ProviderMeta.ProviderID, BaseURL: m.ProviderMeta.BaseURL}).(*openAIProvider)
+				p.client = client
+				return p.Stream(ctx, transcript, options)
+			}}
+			stream, err := CloudflareStreams(inner).StreamSimple(t.Context(), model, NormalizeContext(Context{Messages: []Message{}}), StreamOptions{Env: tc.env})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -36,7 +42,7 @@ func TestCloudflareProviderStreamsUpstream(t *testing.T) {
 			if captured != tc.want+"/chat/completions" {
 				t.Fatalf("endpoint=%q want %q", captured, tc.want+"/chat/completions")
 			}
-			if p.cfg.BaseURL != CloudflareAIGatewayOpenAIBaseURL {
+			if model.ProviderMeta.BaseURL != CloudflareAIGatewayOpenAIBaseURL {
 				t.Fatal("request mutated model endpoint")
 			}
 		})

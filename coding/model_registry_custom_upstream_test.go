@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
-func registryFromJSON(t *testing.T, raw string) *Services {
+func registryFromJSON(t *testing.T, raw string) *AgentSessionServices {
 	t.Helper()
 	var providers map[string]any
 	if err := json.Unmarshal([]byte(raw), &providers); err != nil {
@@ -17,7 +17,7 @@ func registryFromJSON(t *testing.T, raw string) *Services {
 	}
 	return registryTestServices(t, "", providers)
 }
-func mustRegistryModel(t *testing.T, s *Services, provider, id string) *ai.Model {
+func mustRegistryModel(t *testing.T, s *AgentSessionServices, provider, id string) *ai.Model {
 	t.Helper()
 	m := s.Registry().Find(provider, id)
 	if m == nil {
@@ -25,7 +25,7 @@ func mustRegistryModel(t *testing.T, s *Services, provider, id string) *ai.Model
 	}
 	return m
 }
-func assertRegistryNoError(t *testing.T, s *Services) {
+func assertRegistryNoError(t *testing.T, s *AgentSessionServices) {
 	t.Helper()
 	if err := s.Registry().GetError(); err != "" {
 		t.Fatal(err)
@@ -75,10 +75,10 @@ func TestModelRegistryCustomModelsUpstream(t *testing.T) {
 	})
 	// .upstream/v0.87.1/packages/coding-agent/test/model-registry.test.ts:304
 	t.Run("custom model with same id replaces built-in model by id", func(t *testing.T) {
-		s := registryTestServices(t, "", map[string]any{"openrouter": registryProviderConfig("https://my-proxy.example.com/v1", "openai-completions", "anthropic/claude-sonnet-4")})
+		s := registryTestServices(t, "", map[string]any{"openrouter": registryProviderConfig("https://my-proxy.example.com/v1", "openai-completions", "anthropic/claude-sonnet-4.5")})
 		count := 0
 		for _, m := range registryModelsForProvider(s.Registry(), "openrouter") {
-			if m.ModelID == "anthropic/claude-sonnet-4" {
+			if m.ModelID == "anthropic/claude-sonnet-4.5" {
 				count++
 				if m.BaseURL != "https://my-proxy.example.com/v1" {
 					t.Errorf("URL=%s", m.BaseURL)
@@ -193,9 +193,9 @@ func TestModelRegistryCustomModelsUpstream(t *testing.T) {
 	})
 	// .upstream/v0.87.1/packages/coding-agent/test/model-registry.test.ts:618
 	t.Run("modelOverrides still apply when provider also defines models", func(t *testing.T) {
-		s := registryFromJSON(t, `{"openrouter":{"baseUrl":"https://my-proxy.example.com/v1","apiKey":"OPENROUTER_API_KEY","api":"openai-completions","models":[{"id":"custom/openrouter-model","name":"Custom OpenRouter Model","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":128000,"maxTokens":16384}],"modelOverrides":{"anthropic/claude-sonnet-4":{"name":"Overridden Built-in Sonnet"}}}}`)
+		s := registryFromJSON(t, `{"openrouter":{"baseUrl":"https://my-proxy.example.com/v1","apiKey":"OPENROUTER_API_KEY","api":"openai-completions","models":[{"id":"custom/openrouter-model","name":"Custom OpenRouter Model","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":128000,"maxTokens":16384}],"modelOverrides":{"anthropic/claude-sonnet-4.5":{"name":"Overridden Built-in Sonnet"}}}}`)
 		mustRegistryModel(t, s, "openrouter", "custom/openrouter-model")
-		if mustRegistryModel(t, s, "openrouter", "anthropic/claude-sonnet-4").DisplayName != "Overridden Built-in Sonnet" {
+		if mustRegistryModel(t, s, "openrouter", "anthropic/claude-sonnet-4.5").DisplayName != "Overridden Built-in Sonnet" {
 			t.Fatal("builtin override missing")
 		}
 	})

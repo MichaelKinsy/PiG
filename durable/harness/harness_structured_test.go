@@ -2,6 +2,8 @@
 
 package harness
 
+// pi: packages/durable/src/harness/events.ts
+
 import (
 	"context"
 	"encoding/json"
@@ -226,9 +228,8 @@ type taskNotesState struct {
 }
 
 var taskNotesDoc = durable.DefineDoc(durable.DocDefinition[taskNotesState]{
-	CommonDocDefinition: durable.CommonDocDefinition[taskNotesState]{Kind: "test.task-notes", Version: 1},
+	CommonDocDefinition: durable.CommonDocDefinition[taskNotesState]{Kind: "test.task-notes", Version: 1, Initial: func() taskNotesState { return taskNotesState{} }},
 	DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeTask},
-	Initial:             func() taskNotesState { return taskNotesState{} },
 })
 
 var conversationOwnedTask = durable.TaskOptions{Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByConversation}}
@@ -280,7 +281,7 @@ func openNodes(t *testing.T, stores ...durable.Storage) openedNodes {
 	if len(stores) > 0 {
 		store = stores[0]
 	}
-	harness, registry, reports := openTasks(t, store, []durable.AnyTask{nodeTask})
+	harness, registry, reports := openTasks(t, store, []durable.AnyTask{nodeTask.Erased()})
 	root := must(harness.Root(testContext, nil))
 	harness.Resume()
 	return openedNodes{harness: harness, root: root, registry: registry, reports: reports}
@@ -461,7 +462,7 @@ func TestTaskOwnership(t *testing.T) {
 		}))
 		names := []string{}
 		for _, task := range page.Items {
-			names = append(names, task.Input.(map[string]any)["name"].(string))
+			names = append(names, plainObject(task.Input)["name"].(string))
 		}
 		expectEqualJSON(t, names, `["eager"]`)
 
@@ -746,7 +747,7 @@ func TestWaiting(t *testing.T) {
 			policy  durable.JoinPolicy
 			message string
 		}{
-			{"self", func(runtime nodeRuntime) []durable.TaskId { return []durable.TaskId{runtime.TaskId()} }, durable.JoinAllSettled, "cannot wait on itself or its owner"},
+			{"self", func(runtime nodeRuntime) []durable.TaskId { return []durable.TaskId{runtime.TaskId()} }, durable.JoinAllSettled, "is a wait cycle"},
 			{"missing", func(nodeRuntime) []durable.TaskId { return []durable.TaskId{999_999} }, durable.JoinAllSettled, "does not exist"},
 			{"foreign", func(nodeRuntime) []durable.TaskId { return []durable.TaskId{other} }, durable.JoinFailFast, "only on tasks it owns"},
 		} {
@@ -779,10 +780,263 @@ func TestWaiting(t *testing.T) {
 		parent := startNode(t, root, "parent")
 		expectTaskOutcomeKind(t, harness, parent, "completed")
 		outcome := must(harness.WaitForTask(testContext, children.all()[0])).State.Outcome
-		if outcome.Status != durable.OutcomeFaulted || !strings.Contains(outcome.Error.Message, "cannot wait on itself or its owner") {
+		if outcome.Status != durable.OutcomeFaulted || !strings.Contains(outcome.Error.Message, "is a wait cycle") {
 			t.Fatalf("child outcome = %s", jsonText(t, outcome))
 		}
 		openGate("other")
+		closeHarness(t, harness)
+	})
+
+	// #10411; this test and the next two are from #10533 by @odysseus0.
+	t.Run("rejects the wait that closes a cycle", func(t *testing.T) {
+		opened := openNodes(t)
+		harness, root := opened.harness, opened.root
+		ids := &namedIds{}
+		scriptNode("a", nodeBehavior{run: func(ctx context.Context, runtime nodeRuntime) error {
+			return commitNext(ctx, runtime, func(durable.Tx) (*nodeNext, error) { return waitOn(ids.of("b"), durable.JoinAllSettled), nil })
+		}})
+		scriptNode("b", nodeBehavior{run: func(ctx context.Context, runtime nodeRuntime) error {
+			return commitNext(ctx, runtime, func(durable.Tx) (*nodeNext, error) { return waitOn(ids.of("a"), durable.JoinAllSettled), nil })
+		}})
+		ids.create(t, root, "a", "b")
+		// a -> b and b -> a are waits, and whichever comes second closes the cycle.
+		outcomes := []string{outcomeOf(t, harness, ids.get("a")), outcomeOf(t, harness, ids.get("b"))}
+		slices.Sort(outcomes)
+		expectEqualJSON(t, outcomes, `["completed","faulted"]`)
+		closeHarness(t, harness)
+	})
+
+	// #10411
+	t.Run("rejects the wait that closes a cycle through a held owner", func(t *testing.T) {
+		opened := openNodes(t)
+		harness, root := opened.harness, opened.root
+		ids := &namedIds{}
+		child := &nodeIds{}
+		spawnAndResume("held", "child", child, nil)
+		scriptNode("child", nodeBehavior{run: func(ctx context.Context, runtime nodeRuntime) error {
+			return commitNext(ctx, runtime, func(durable.Tx) (*nodeNext, error) { return waitOn(ids.of("other"), durable.JoinAllSettled), nil })
+		}})
+		scriptNode("other", nodeBehavior{run: func(ctx context.Context, runtime nodeRuntime) error {
+			return commitNext(ctx, runtime, func(durable.Tx) (*nodeNext, error) { return waitOn(ids.of("held"), durable.JoinAllSettled), nil })
+		}})
+		ids.create(t, root, "held", "other")
+		// held -> child is a hold; child -> other -> held are waits, and whichever wait comes second closes the cycle.
+		if got := outcomeOf(t, harness, ids.get("held")); got != "completed" {
+			t.Fatalf("held: %s", got)
+		}
+		outcomes := []string{outcomeOf(t, harness, child.all()[0]), outcomeOf(t, harness, ids.get("other"))}
+		slices.Sort(outcomes)
+		expectEqualJSON(t, outcomes, `["completed","faulted"]`)
+		closeHarness(t, harness)
+	})
+
+	// #10411
+	t.Run("rejects a cycle through holds two levels deep", func(t *testing.T) {
+		opened := openNodes(t)
+		harness, root := opened.harness, opened.root
+		ids := &namedIds{}
+		child := &nodeIds{}
+		grandchild := &nodeIds{}
+		spawnAndResume("held", "child", child, nil)
+		spawnAndResume("child", "grandchild", grandchild, nil)
+		scriptNode("grandchild", nodeBehavior{run: func(ctx context.Context, runtime nodeRuntime) error {
+			return commitNext(ctx, runtime, func(durable.Tx) (*nodeNext, error) { return waitOn(ids.of("other"), durable.JoinAllSettled), nil })
+		}})
+		scriptNode("other", nodeBehavior{run: func(ctx context.Context, runtime nodeRuntime) error {
+			return commitNext(ctx, runtime, func(durable.Tx) (*nodeNext, error) { return waitOn(ids.of("held"), durable.JoinAllSettled), nil })
+		}})
+		ids.create(t, root, "held", "other")
+		// held -> child -> grandchild are holds; grandchild -> other -> held are waits.
+		waitFor(t, func() bool { return grandchild.len() > 0 })
+		outcomes := []string{outcomeOf(t, harness, grandchild.all()[0]), outcomeOf(t, harness, ids.get("other"))}
+		slices.Sort(outcomes)
+		expectEqualJSON(t, outcomes, `["completed","faulted"]`)
+		if got := outcomeOf(t, harness, child.all()[0]); got != "completed" {
+			t.Fatalf("child: %s", got)
+		}
+		closeHarness(t, harness)
+	})
+
+	// #10411
+	t.Run("lets a background task wait on the owner of its conversation", func(t *testing.T) {
+		opened := openNodes(t)
+		harness, root := opened.harness, opened.root
+		ids := &namedIds{}
+		scriptNode("background", nodeBehavior{run: func(ctx context.Context, runtime nodeRuntime) error {
+			return commitNext(ctx, runtime, func(durable.Tx) (*nodeNext, error) { return waitOn(ids.of("owner"), durable.JoinAllSettled), nil })
+		}})
+		background := commitValue(t, root, func(tx durable.Tx) (durable.TaskId, error) {
+			owner, err := durable.CreateTask(tx, nodeTask, nodeInput{Name: "owner"}, conversationOwnedTask)
+			if err != nil {
+				return 0, err
+			}
+			ids.set("owner", owner)
+			conversation, err := tx.CreateConversation(durable.CreateConversationOptions{Ownership: durable.ConversationOwnership{Kind: durable.ConversationOwnedByTask, TaskId: owner}})
+			if err != nil {
+				return 0, err
+			}
+			options := conversationOwnedTask
+			options.ConversationId = &conversation.Id
+			options.Background = true
+			return durable.CreateTask(tx, nodeTask, nodeInput{Name: "background"}, options)
+		})
+		// background -> owner is a wait but owner -> background is no hold, so there is no cycle.
+		waitFor(t, statusIs(t, harness, background, durable.TaskWaiting))
+		openGate("owner")
+		if got := outcomeOf(t, harness, background); got != "completed" {
+			t.Fatalf("background: %s", got)
+		}
+		closeHarness(t, harness)
+	})
+
+	// #10411: the issue's orchestrator, worker, and reviewer.
+	t.Run("rejects a cycle of a hold and two waits that each look reasonable", func(t *testing.T) {
+		opened := openNodes(t)
+		harness, root := opened.harness, opened.root
+		ids := &namedIds{}
+		// The orchestrator spawns a worker and finishes; the running worker holds it as completing.
+		scriptNode("orchestrator", nodeBehavior{run: func(ctx context.Context, runtime nodeRuntime) error {
+			return commitNext(ctx, runtime, func(tx durable.Tx) (*nodeNext, error) {
+				worker, err := spawn(tx, runtime.TaskId(), "worker")
+				if err != nil {
+					return nil, err
+				}
+				ids.set("worker", worker)
+				return resumeNext(1), nil
+			})
+		}})
+		// The reviewer waits for the orchestrator's result.
+		scriptNode("reviewer", nodeBehavior{run: func(ctx context.Context, runtime nodeRuntime) error {
+			if err := commitNext(ctx, runtime, func(durable.Tx) (*nodeNext, error) {
+				return waitOn(ids.of("orchestrator"), durable.JoinAllSettled), nil
+			}); err != nil {
+				return err
+			}
+			openGate("reviewer waits")
+			return nil
+		}})
+		// The worker waits for the reviewer, closing the cycle.
+		scriptNode("worker", nodeBehavior{run: func(ctx context.Context, runtime nodeRuntime) error {
+			if _, err := nodeGate("reviewer waits").wait(runtime.Signal()); err != nil {
+				return err
+			}
+			return commitNext(ctx, runtime, func(durable.Tx) (*nodeNext, error) { return waitOn(ids.of("reviewer"), durable.JoinAllSettled), nil })
+		}})
+		ids.set("orchestrator", startNode(t, root, "orchestrator"))
+		waitFor(t, statusIs(t, harness, ids.get("orchestrator"), durable.TaskCompleting))
+		ids.set("reviewer", startNode(t, root, "reviewer"))
+		var outcomes []string
+		for _, name := range []string{"orchestrator", "worker", "reviewer"} {
+			outcomes = append(outcomes, outcomeOf(t, harness, ids.get(name)))
+		}
+		expectEqualJSON(t, outcomes, `["completed","faulted","completed"]`)
+		worker := must(harness.WaitForTask(testContext, ids.get("worker"))).State.Outcome
+		want := fmt.Sprintf("%d -> %d -> %d -> %d is a wait cycle", ids.get("worker"), ids.get("reviewer"), ids.get("orchestrator"), ids.get("worker"))
+		if worker.Error == nil || !strings.Contains(worker.Error.Message, want) {
+			t.Fatalf("worker outcome = %s, want it to contain %q", jsonText(t, worker), want)
+		}
+		closeHarness(t, harness)
+	})
+
+	// #10411
+	t.Run("allows a diamond of waits", func(t *testing.T) {
+		opened := openNodes(t)
+		harness, root := opened.harness, opened.root
+		ids := &namedIds{}
+		// A diamond: top waits on left and right, both wait on bottom. No cycle.
+		scriptNode("top", nodeBehavior{run: func(ctx context.Context, runtime nodeRuntime) error {
+			return commitNext(ctx, runtime, func(durable.Tx) (*nodeNext, error) {
+				return waitOn(ids.of("left", "right"), durable.JoinAllSettled), nil
+			})
+		}})
+		for _, side := range []string{"left", "right"} {
+			scriptNode(side, nodeBehavior{run: func(ctx context.Context, runtime nodeRuntime) error {
+				return commitNext(ctx, runtime, func(durable.Tx) (*nodeNext, error) { return waitOn(ids.of("bottom"), durable.JoinAllSettled), nil })
+			}})
+		}
+		ids.create(t, root, "bottom", "left", "right", "top")
+		openGate("bottom")
+		if got := outcomeOf(t, harness, ids.get("top")); got != "completed" {
+			t.Fatalf("top: %s", got)
+		}
+		closeHarness(t, harness)
+	})
+
+	// #10411
+	t.Run("follows no wait of an abort-marked task, which waits only for its owned work", func(t *testing.T) {
+		opened := openNodes(t)
+		harness, root := opened.harness, opened.root
+		ids := &namedIds{}
+		// b owns c and waits on a; aborting b leaves c's cleanup pending, so b waits only for c.
+		scriptNode("b", nodeBehavior{run: func(ctx context.Context, runtime nodeRuntime) error {
+			return commitNext(ctx, runtime, func(tx durable.Tx) (*nodeNext, error) {
+				c, err := spawn(tx, runtime.TaskId(), "c")
+				if err != nil {
+					return nil, err
+				}
+				ids.set("c", c)
+				return waitOn(ids.of("a"), durable.JoinAllSettled), nil
+			})
+		}})
+		scriptNode("c", nodeBehavior{abort: func(ctx context.Context, runtime nodeRuntime) error {
+			if _, err := nodeGate("cleanup").wait(ctx); err != nil {
+				return err
+			}
+			return commitNext(ctx, runtime, func(durable.Tx) (*nodeNext, error) {
+				result := "c"
+				return &nodeNext{Status: durable.TaskTerminal, Outcome: &durable.TaskOutcome[string]{Status: durable.OutcomeAborted, Result: &result}}, nil
+			})
+		}})
+		scriptNode("a", nodeBehavior{
+			run: func(ctx context.Context, runtime nodeRuntime) error {
+				if _, err := nodeGate("a waits").wait(runtime.Signal()); err != nil {
+					return err
+				}
+				return commitNext(ctx, runtime, func(durable.Tx) (*nodeNext, error) { return waitOn(ids.of("b"), durable.JoinAllSettled), nil })
+			},
+			resume: func(ctx context.Context, runtime nodeRuntime, _ int) error {
+				return commitNext(ctx, runtime, func(durable.Tx) (*nodeNext, error) { return endNode("completed", "a"), nil })
+			},
+		})
+		ids.create(t, root, "a", "b")
+		waitFor(t, statusIs(t, harness, ids.get("b"), durable.TaskWaiting))
+		if result := must(harness.AbortTask(testContext, ids.get("b"))); result != "marked" {
+			t.Fatalf("AbortTask(b) = %q, want marked", result)
+		}
+		waitFor(t, func() bool { return logged("abort:c") })
+		// a -> b would close a -> b -> a through b's stale wait; b now waits only for c.
+		openGate("a waits")
+		waitFor(t, statusIs(t, harness, ids.get("a"), durable.TaskWaiting))
+		openGate("cleanup")
+		if got := outcomeOf(t, harness, ids.get("b")); got != "aborted" {
+			t.Fatalf("b: %s", got)
+		}
+		if got := outcomeOf(t, harness, ids.get("a")); got != "completed" {
+			t.Fatalf("a: %s", got)
+		}
+		closeHarness(t, harness)
+	})
+
+	// #10411
+	t.Run("rejects a longer cycle of waits", func(t *testing.T) {
+		opened := openNodes(t)
+		harness, root := opened.harness, opened.root
+		ids := &namedIds{}
+		names := []string{"x", "y", "z"}
+		for index, name := range names {
+			next := names[(index+1)%len(names)]
+			scriptNode(name, nodeBehavior{run: func(ctx context.Context, runtime nodeRuntime) error {
+				return commitNext(ctx, runtime, func(durable.Tx) (*nodeNext, error) { return waitOn(ids.of(next), durable.JoinAllSettled), nil })
+			}})
+		}
+		ids.create(t, root, names...)
+		counts := map[string]int{}
+		for _, name := range names {
+			counts[outcomeOf(t, harness, ids.get(name))]++
+		}
+		if counts["faulted"] != 1 || counts["completed"] != 2 {
+			t.Fatalf("outcomes %v, want one faulted and two completed", counts)
+		}
 		closeHarness(t, harness)
 	})
 
@@ -1477,7 +1731,7 @@ func structuredBlockingTool(name string) blocking {
 func toolCalls(calls ...[2]string) ai.FauxResponseStep {
 	blocks := []ai.FauxContentBlock{}
 	for _, call := range calls {
-		blocks = append(blocks, ai.FauxToolCall(call[0], map[string]any{}, call[1]))
+		blocks = append(blocks, ai.FauxToolCall(call[0], map[string]any{}, &ai.FauxToolCallOptions{ID: call[1]}))
 	}
 	return toolCallStep(blocks...)
 }
@@ -1500,6 +1754,8 @@ func scanTasks(t *testing.T, harness Harness, query durable.TaskQuery, limit int
 	})).Items
 }
 
+// Pi source: packages/durable/src/harness/types.ts
+// mutation-checked: dropping the reads and writes of GenerationHooks.AfterTools fails it
 func TestToolRounds(t *testing.T) {
 	t.Run("owns its tool tasks, waits for them, and hands the run to a conversation-owned generation", func(t *testing.T) {
 		resetNodes(t)
@@ -1593,11 +1849,11 @@ func TestToolRounds(t *testing.T) {
 	t.Run("ends a turn at the generation's hold, before its successor's turn starts", func(t *testing.T) {
 		resetNodes(t)
 		setup := chatSetup(t)
-		addTask(t, setup.Registry, nodeTask)
+		addTask(t, setup.Registry, nodeTask.Erased())
 		addTool(t, setup.Registry, noopTool("noop"))
 		// An extension's hook starts work owned by the generation, which holds it while the next turn runs.
 		var opened Harness
-		addHooks(t, setup.Registry, GenerationTask, &GenerationHooks{AfterTools: func(ctx context.Context, _ durable.EntryId, _ []durable.EntryId, api HookApi) error {
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{AfterTools: func(ctx context.Context, _ durable.EntryId, _ []durable.EntryId, api HookApi) error {
 			_, err := durable.Commit(ctx, opened, func(tx durable.Tx) (durable.TaskId, error) {
 				return durable.CreateTask(tx, nodeTask, nodeInput{Name: "hooked"}, ownedBy(api.TaskId()))
 			})
@@ -1639,7 +1895,7 @@ func TestToolRounds(t *testing.T) {
 		closeHarness(t, harness)
 	})
 
-	t.Run("keeps run control with a faulted generation until its owned work drains, and retries a rejected final commit", func(t *testing.T) {
+	t.Run("keeps run control with a faulted generation until its owned work drains, and fails the Harness on a failed final commit", func(t *testing.T) {
 		resetNodes(t)
 		setup := chatSetup(t)
 		withProvider(setup, func(provider *ai.ModelsProvider) {
@@ -1651,16 +1907,16 @@ func TestToolRounds(t *testing.T) {
 				return streamOf(fauxMessage("partial", ai.StopReasonPending), 300*time.Millisecond, final), nil
 			}
 		})
-		addTask(t, setup.Registry, nodeTask)
+		addTask(t, setup.Registry, nodeTask.Erased())
 		var opened Harness
-		addHooks(t, setup.Registry, GenerationTask, &GenerationHooks{BeforeRequest: func(ctx context.Context, _ GenerationRequest, api HookApi) (*GenerationRequest, error) {
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{BeforeRequest: func(ctx context.Context, _ GenerationRequest, api HookApi) (*GenerationRequest, error) {
 			_, err := durable.Commit(ctx, opened, func(tx durable.Tx) (durable.TaskId, error) {
 				return durable.CreateTask(tx, nodeTask, nodeInput{Name: "hooked"}, ownedBy(api.TaskId()))
 			})
 			return nil, err
 		}})
 		scriptNode("hooked", nodeBehavior{abort: gatedAbort("abort.hooked")})
-		store := &rejectingStorage{MemoryStorage: storage.NewMemoryStorage()}
+		store := &rejectingStorage{MemoryStorage: storage.NewMemoryStorage(), failure: errors.New("disk gone")}
 		harness, root := openChat(t, store, setup)
 		opened = harness
 		submission := submitInput(t, root, "hi")
@@ -1671,7 +1927,11 @@ func TestToolRounds(t *testing.T) {
 		generation := liveOf(t, harness, root.Id()).Run.TaskId
 		expectMatch(t, taskState(t, harness, generation), `{"status":"completing","outcome":{"status":"faulted"}}`)
 		waited := make(chan durable.SubmissionRecord, 1)
-		go func() { waited <- must(submission.Wait(testContext)) }()
+		go func() {
+			if record, err := submission.Wait(testContext); err == nil {
+				waited <- record
+			}
+		}()
 		flush()
 		if len(waited) != 0 || liveOf(t, harness, root.Id()).Run.TaskId != generation {
 			t.Fatal("the run left the faulted generation before its work drained")
@@ -1680,34 +1940,32 @@ func TestToolRounds(t *testing.T) {
 		waitFor(t, func() bool { return logged("abort:hooked") })
 		store.reject(generation)
 		openGate("abort.hooked")
-		// The final commit, with the run's cleanup, is rejected once: nothing of the cleanup lands.
-		waitFor(t, func() bool {
-			return slices.ContainsFunc(setup.Reports.all(), func(err error) bool {
-				var rejected *durable.StorageRejected
-				return errors.As(err, &rejected)
-			})
-		})
-		if liveOf(t, harness, root.Id()).Run.TaskId != generation {
-			t.Fatal("the run moved on after a rejected final commit")
+		// The final commit, with the run's cleanup, fails: nothing of the cleanup lands, and the Harness fails.
+		<-harness.Closed()
+		if end := harness.End(); end.Reason != durable.SessionEndFailed || !errors.Is(end.Error, store.failure) {
+			t.Fatalf("end %+v, want failed with the storage error", end)
 		}
-		expectKinds(t, allEntries(t, root), "pi.user")
-		if len(waited) != 0 {
-			t.Fatal("the submission settled after a rejected final commit")
+		_, err := submission.Wait(testContext)
+		if failed, ok := errors.AsType[*durable.SessionFailed](err); !ok || !errors.Is(failed.Cause, store.failure) {
+			t.Fatalf("submission wait: %v, want SessionFailed caused by the storage error", err)
 		}
-		// The next commit retries it; the partial becomes one aborted entry.
-		appendNote(t, root, "note")
-		expectSettled(t, <-waited, durable.SubmissionUnanswered, "faulted")
-		expectEqualJSON(t, liveOf(t, harness, root.Id()), `{}`)
-		expectKinds(t, allEntries(t, root), "pi.user", "note", "pi.assistant")
-		closeHarness(t, harness)
+		// Reopening finalizes the run; the partial becomes one aborted entry.
+		store.Reopen()
+		reopenedHarness, reopenedRoot := openChat(t, store, setup)
+		again := must(reopenedHarness.Submission(testContext, submission.Id()))
+		expectSettled(t, must(again.Wait(testContext)), durable.SubmissionUnanswered, "faulted")
+		expectEqualJSON(t, liveOf(t, reopenedHarness, reopenedRoot.Id()), `{}`)
+		expectKinds(t, allEntries(t, reopenedRoot), "pi.user", "pi.assistant")
+		closeHarness(t, reopenedHarness)
 	})
 }
 
-// rejectingStorage rejects, once, the commit that finalizes the task it is told to reject.
+// rejectingStorage fails, once, the commit that finalizes the task it is told to reject.
 type rejectingStorage struct {
 	*storage.MemoryStorage
-	mu     sync.Mutex
-	target *durable.TaskId
+	mu      sync.Mutex
+	target  *durable.TaskId
+	failure error
 }
 
 func (store *rejectingStorage) reject(id durable.TaskId) {
@@ -1728,7 +1986,7 @@ func (store *rejectingStorage) Commit(ctx context.Context, writes []durable.Stor
 	}
 	store.mu.Unlock()
 	if finalizes {
-		return 0, durable.NewStorageRejected("rejected once", nil)
+		return 0, store.failure
 	}
 	return store.MemoryStorage.Commit(ctx, writes)
 }
@@ -1805,7 +2063,7 @@ func TestDefinitionsAndWaits(t *testing.T) {
 	t.Run("keeps a waiting task blocked without its definition and resumes it migrated under a newer one", func(t *testing.T) {
 		opened := openNodes(t)
 		harness, root, registry := opened.harness, opened.root, opened.registry
-		registration := addTask(t, registry, versioned(1))
+		registration := addTask(t, registry, versioned(1).Erased())
 		other := startNode(t, root, "other")
 		waiter := commitValue(t, root, func(tx durable.Tx) (durable.TaskId, error) {
 			return durable.CreateTask(tx, versioned(1), versionedInput{On: []durable.TaskId{other}}, conversationOwnedTask)
@@ -1820,7 +2078,7 @@ func TestDefinitionsAndWaits(t *testing.T) {
 		if status := taskState(t, harness, waiter).Status; status != durable.TaskWaiting {
 			t.Fatalf("waiter = %s, want waiting", status)
 		}
-		addTask(t, registry, versioned(2))
+		addTask(t, registry, versioned(2).Erased())
 		expectEqualJSON(t, must(harness.WaitForTask(testContext, waiter)).State.Outcome, `{"status":"completed","result":"v2"}`)
 		closeHarness(t, harness)
 	})
@@ -1828,7 +2086,7 @@ func TestDefinitionsAndWaits(t *testing.T) {
 	t.Run("orphans an aborted waiting task without its definition at once, leaving the task it waits on running", func(t *testing.T) {
 		opened := openNodes(t)
 		harness, root, registry := opened.harness, opened.root, opened.registry
-		registration := addTask(t, registry, versioned(1))
+		registration := addTask(t, registry, versioned(1).Erased())
 		other := startNode(t, root, "other")
 		waiter := commitValue(t, root, func(tx durable.Tx) (durable.TaskId, error) {
 			return durable.CreateTask(tx, versioned(1), versionedInput{On: []durable.TaskId{other}}, conversationOwnedTask)
@@ -1881,13 +2139,13 @@ func TestDefinitionsAndWaits(t *testing.T) {
 				},
 			})
 		}
-		addTask(t, registry, holder(1))
+		addTask(t, registry, holder(1).Erased())
 		parent := commitValue(t, root, func(tx durable.Tx) (durable.TaskId, error) {
 			return durable.CreateTask[durable.JsonValue](tx, holder(1), nil, conversationOwnedTask)
 		})
 		waitFor(t, statusIs(t, harness, parent, durable.TaskCompleting))
 		// The same extension name replaces the old one in place.
-		addTask(t, registry, holder(2))
+		addTask(t, registry, holder(2).Erased())
 		openGate("child")
 		settledParent := must(harness.WaitForTask(testContext, parent))
 		expectEqualJSON(t, settledParent.State.Outcome, `{"status":"completed","result":"held"}`)
@@ -2025,8 +2283,8 @@ func TestConversationAbortAndBoundaries(t *testing.T) {
 		closeHarness(t, harness)
 	})
 
-	t.Run("retries a finalization the Storage rejected with the next commit", func(t *testing.T) {
-		store := &rejectingStorage{MemoryStorage: storage.NewMemoryStorage()}
+	t.Run("fails the Harness on a failed finalization, which reopening applies", func(t *testing.T) {
+		store := &rejectingStorage{MemoryStorage: storage.NewMemoryStorage(), failure: errors.New("disk gone")}
 		opened := openNodes(t, store)
 		harness, root, reports := opened.harness, opened.root, opened.reports
 		child := spawnAndFinish("parent", "child")
@@ -2034,19 +2292,19 @@ func TestConversationAbortAndBoundaries(t *testing.T) {
 		waitFor(t, statusIs(t, harness, parent, durable.TaskCompleting))
 		store.reject(parent)
 		openGate("child")
-		must(harness.WaitForTask(testContext, child.all()[0]))
-		waitFor(t, func() bool {
-			return slices.ContainsFunc(reports.all(), func(err error) bool {
-				var rejected *durable.StorageRejected
-				return errors.As(err, &rejected)
-			})
-		})
-		if status := taskState(t, harness, parent).Status; status != durable.TaskCompleting {
-			t.Fatalf("parent = %s, want completing", status)
+		<-harness.Closed()
+		if end := harness.End(); end.Reason != durable.SessionEndFailed || !errors.Is(end.Error, store.failure) {
+			t.Fatalf("end %+v, want failed with the storage error", end)
 		}
-		appendNote(t, root, "note")
-		expectTaskOutcomeKind(t, harness, parent, "completed")
-		closeHarness(t, harness)
+		if got := reports.all(); len(got) != 1 || !errors.Is(got[0], store.failure) {
+			t.Fatalf("reports %v, want the storage error once", got)
+		}
+		_ = child
+		mustClose(t, harness)
+		store.Reopen()
+		reopened := openNodes(t, store)
+		expectTaskOutcomeKind(t, reopened.harness, parent, "completed")
+		closeHarness(t, reopened.harness)
 	})
 }
 
@@ -2089,7 +2347,7 @@ func TestRecoveryThroughOwnershipEdges(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		harness, _, _ := openTasks(t, openSqlite(t, path), []durable.AnyTask{nodeTask})
+		harness, _, _ := openTasks(t, openSqlite(t, path), []durable.AnyTask{nodeTask.Erased()})
 		if state := inspectState(t, harness, tree.owner); state.Kind != TaskInspectionWaiting || !slices.Equal(state.On, []durable.TaskId{tree.inner}) {
 			t.Fatalf("inspection = %+v", state)
 		}
@@ -2274,10 +2532,10 @@ func TestToolRoundsAndEvents(t *testing.T) {
 	t.Run("emits one turn_end per generation, also for a stream attached while it holds", func(t *testing.T) {
 		resetNodes(t)
 		setup := chatSetup(t)
-		addTask(t, setup.Registry, nodeTask)
+		addTask(t, setup.Registry, nodeTask.Erased())
 		addTool(t, setup.Registry, noopTool("noop"))
 		var opened Harness
-		addHooks(t, setup.Registry, GenerationTask, &GenerationHooks{AfterTools: func(ctx context.Context, _ durable.EntryId, _ []durable.EntryId, api HookApi) error {
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{AfterTools: func(ctx context.Context, _ durable.EntryId, _ []durable.EntryId, api HookApi) error {
 			_, err := durable.Commit(ctx, opened, func(tx durable.Tx) (durable.TaskId, error) {
 				return durable.CreateTask(tx, nodeTask, nodeInput{Name: "hooked"}, ownedBy(api.TaskId()))
 			})
@@ -2306,8 +2564,8 @@ func TestToolRoundsAndEvents(t *testing.T) {
 	t.Run("lets a tool that owns live work finish its call at the hold while the generation waits for its final commit", func(t *testing.T) {
 		resetNodes(t)
 		setup := chatSetup(t)
-		addTask(t, setup.Registry, nodeTask)
-		addTool(t, setup.Registry, new(durable.ToolRegistration{ToolSchema: ai.ToolSchema{Name: "delegate", Description: "Starts work in a conversation it owns", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}}, Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+		addTask(t, setup.Registry, nodeTask.Erased())
+		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{ToolSchema: ai.ToolSchema{Name: "delegate", Description: "Starts work in a conversation it owns", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}}, Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			_, err := api.Commit(ctx, func(tx durable.Tx) (any, error) {
 				child, err := tx.CreateConversation(durable.CreateConversationOptions{Ownership: durable.ConversationOwnership{Kind: durable.ConversationOwnedByTask, TaskId: api.TaskId()}})
 				if err != nil {
@@ -2320,7 +2578,7 @@ func TestToolRoundsAndEvents(t *testing.T) {
 			if err != nil {
 				return durable.ToolExecutionResult{}, err
 			}
-			return durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "started"}}}, nil
+			return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{ai.TextContent{Text: "started"}}}, nil
 		}}))
 		setup.Faux.SetResponses([]ai.FauxResponseStep{toolCalls([2]string{"delegate", "c1"}), fauxAnswer("done")})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
@@ -2337,7 +2595,11 @@ func TestToolRoundsAndEvents(t *testing.T) {
 		}
 		waitFor(t, func() bool { return slices.Contains(found.labels(), "end:c1:true") })
 		waited := make(chan durable.SubmissionRecord, 1)
-		go func() { waited <- must(submission.Wait(testContext)) }()
+		go func() {
+			if record, err := submission.Wait(testContext); err == nil {
+				waited <- record
+			}
+		}()
 		flush()
 		if len(waited) != 0 {
 			t.Fatal("the submission settled while the tool's work runs")
@@ -2352,15 +2614,15 @@ func TestToolRoundsAndEvents(t *testing.T) {
 	t.Run("holds a faulted tool's slot and task_failed until the work it owns drained", func(t *testing.T) {
 		resetNodes(t)
 		setup := chatSetup(t)
-		addTask(t, setup.Registry, nodeTask)
+		addTask(t, setup.Registry, nodeTask.Erased())
 		scriptNode("held", nodeBehavior{abort: gatedAbort("abort.held")})
-		addTool(t, setup.Registry, new(durable.ToolRegistration{ToolSchema: ai.ToolSchema{Name: "broken", Description: "Starts owned work, then returns a result that is not strict JSON", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}}, Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{ToolSchema: ai.ToolSchema{Name: "broken", Description: "Starts owned work, then returns a result that is not strict JSON", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}}, Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			if _, err := api.Commit(ctx, func(tx durable.Tx) (any, error) {
 				return durable.CreateTask(tx, nodeTask, nodeInput{Name: "held"}, ownedBy(api.TaskId()))
 			}); err != nil {
 				return durable.ToolExecutionResult{}, err
 			}
-			return durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{}, Details: map[string]any{"fn": math.NaN()}, HasDetails: true}, nil
+			return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}, Details: map[string]any{"fn": math.NaN()}, HasDetails: true}, nil
 		}}))
 		setup.Faux.SetResponses([]ai.FauxResponseStep{toolCalls([2]string{"broken", "c1"}), fauxAnswer("done")})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
@@ -2382,5 +2644,50 @@ func TestToolRoundsAndEvents(t *testing.T) {
 		}
 		must(found.stream.Stop())
 		closeHarness(t, harness)
+	})
+}
+
+// namedIds holds task IDs by name, written by test code and read by task behaviors on other goroutines.
+type namedIds struct {
+	mu  sync.Mutex
+	ids map[string]durable.TaskId
+}
+
+func (named *namedIds) set(name string, id durable.TaskId) {
+	named.mu.Lock()
+	defer named.mu.Unlock()
+	if named.ids == nil {
+		named.ids = map[string]durable.TaskId{}
+	}
+	named.ids[name] = id
+}
+
+func (named *namedIds) get(name string) durable.TaskId {
+	named.mu.Lock()
+	defer named.mu.Unlock()
+	return named.ids[name]
+}
+
+// of returns the IDs of names, in order.
+func (named *namedIds) of(names ...string) []durable.TaskId {
+	ids := make([]durable.TaskId, 0, len(names))
+	for _, name := range names {
+		ids = append(ids, named.get(name))
+	}
+	return ids
+}
+
+// create makes a conversation-owned node task per name in one commit of conversation, recording each ID.
+func (named *namedIds) create(t *testing.T, conversation Conversation, names ...string) {
+	t.Helper()
+	commitValue(t, conversation, func(tx durable.Tx) (any, error) {
+		for _, name := range names {
+			id, err := durable.CreateTask(tx, nodeTask, nodeInput{Name: name}, conversationOwnedTask)
+			if err != nil {
+				return nil, err
+			}
+			named.set(name, id)
+		}
+		return nil, nil
 	})
 }

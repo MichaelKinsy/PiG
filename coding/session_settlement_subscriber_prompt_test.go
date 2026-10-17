@@ -22,9 +22,7 @@ func TestPublicSettlementSubscriberPromptDefersUntilDispatchCompletes(t *testing
 			h := runStateHarness(t, handlers,
 				fauxReply("first", ai.StopReasonStop, 0),
 				fauxReply("second", ai.StopReasonStop, 0))
-			if err := h.session.services.Auth().Set("faux", ai.Credential{Type: ai.CredentialAPIKey, Key: "faux-key"}); err != nil {
-				t.Fatal(err)
-			}
+			configureFauxAuth(t, h.session.services)
 			var started atomic.Bool
 			var mu sync.Mutex
 			var order []string
@@ -50,16 +48,15 @@ func TestPublicSettlementSubscriberPromptDefersUntilDispatchCompletes(t *testing
 					t.Error("public settlement callback lacks the prompt deferral guard")
 					return
 				}
-				messages, err := h.session.Prompt(t.Context(), "follow-on")
-				if err != nil || len(messages) != 0 {
-					t.Errorf("deferred Prompt = %v, %v; want no immediate messages or error", messages, err)
+				if err := h.session.Prompt(t.Context(), "follow-on"); err != nil {
+					t.Errorf("deferred Prompt = %v; want no immediate error", err)
 				}
 				if got := h.provider.callCount(); got != 1 {
 					t.Errorf("provider calls during settlement dispatch = %d, want only the first request", got)
 				}
 				record("subscriber returned")
 			})
-			if _, err := h.session.Prompt(t.Context(), "start"); err != nil {
+			if err := h.session.Prompt(t.Context(), "start"); err != nil {
 				t.Fatal(err)
 			}
 			record("outer returned")

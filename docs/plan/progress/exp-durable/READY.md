@@ -1,6 +1,6 @@
 # READY: exp-durable (partial scope, remainder in xd-* lanes)
 
-Branch `team/smc1/exp-durable`. Merged: d-foundation, d-storage, d-session, chord-100, d-harness-a, d-harness-b, d-env-tools. Not merged: d-harness-c (conflicts with d-harness-b in `durable/harness/{stubs,task_graph,tool}.go`).
+Branch `team/the bench host/exp-durable`. Merged: d-foundation, d-storage, d-session, chord-100, d-harness-a, d-harness-b, d-env-tools. Not merged: d-harness-c (conflicts with d-harness-b in `durable/harness/{stubs,task_graph,tool}.go`).
 
 ## Done (red -> green)
 

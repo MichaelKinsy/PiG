@@ -2,7 +2,7 @@
 
 PiG runs every shell command in a new, non-interactive Bash process. Non-interactive Bash does not expand aliases, and it does not read the startup files that your interactive terminal reads. An alias that works in your terminal therefore fails inside PiG until you load it.
 
-Two settings control this. `shellPath` chooses the Bash executable. `shellCommandPrefix` runs setup before every command.
+Two settings control this. `shellPath` chooses the Bash executable. `shellCommandPrefix` runs setup before every command. They work as in Pi 1.3.0 ([Pi's shell command guide](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/shell-aliases.md)).
 
 ## Which shell runs a command
 
@@ -11,8 +11,9 @@ Two settings control this. `shellPath` chooses the Bash executable. `shellComman
 | The model calls the built-in `bash` tool | The Bash executable that PiG resolves |
 | You type `!command` or `!!command` in the editor | The same Bash executable |
 | An RPC client sends the `bash` command | The same Bash executable |
-| The model calls the `powershell` tool on Windows | PowerShell |
+| The model calls the `powershell` tool | PowerShell 7 (`pwsh`), or Windows PowerShell when `pwsh` is not installed |
 | An extension provides or replaces a shell tool | Whatever that extension runs |
+| An extension's `user_bash` handler returns `{ operations }` | The extension's `exec` runs your `!` command, for example on a remote host |
 
 PiG starts Bash as `bash -c "<command>"`. It resolves the executable in this order:
 
@@ -53,8 +54,6 @@ Set `shellCommandPrefix` to run shell code before each command. PiG applies it t
 ```
 
 PiG joins the prefix and the command with a newline. The prefix runs again for every command, so keep it fast and make sure it never waits for input.
-
-PiG still reads `commandPrefix`, the former name of this setting.
 
 ## Enable aliases
 

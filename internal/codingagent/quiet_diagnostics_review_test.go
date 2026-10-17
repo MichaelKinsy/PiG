@@ -10,17 +10,23 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-// Pi resource-loader.ts:1005 uses ??, not ||: a loaded empty name and the literal "unnamed" are distinct.
-func TestLoadThemeResourcesEmptyNameIsNotUnnamed(t *testing.T) {
+// 42a3497d theme-schema.ts: ThemeJsonSchema.name is String({pattern: "^[^/]+$"}), so a user theme with an empty name is rejected with
+// a schema warning (it can no longer collide as ""), while the literal name "unnamed" is an ordinary name (resource-loader.ts uses ??, not ||).
+func TestLoadThemeResourcesRejectsAnEmptyNameAndKeepsTheLiteralUnnamed(t *testing.T) {
 	dir := t.TempDir()
 	first := writeNamedTheme(t, dir, "first.json", "")
 	named := writeNamedTheme(t, dir, "named.json", "unnamed")
 	last := writeNamedTheme(t, dir, "last.json", "")
 	registry := tui.NewThemeRegistry()
 	_, diagnostics := loadThemeResources(registry, []string{first, named, last}, tui.GetTerminalColorMode())
-	want := collisionDiagnostic("theme", "", first, last)
-	if len(diagnostics) != 1 || diagnostics[0].Message != want.Message || diagnostics[0].Collision == nil || *diagnostics[0].Collision != *want.Collision {
-		t.Fatalf("diagnostics = %+v, want %+v", diagnostics, want)
+	if len(diagnostics) != 2 {
+		t.Fatalf("diagnostics = %+v, want one warning per empty-name theme", diagnostics)
+	}
+	for i, path := range []string{first, last} {
+		want := "Invalid theme \"" + path + "\":\n\n\nOther errors:\n  - /name: must match pattern \"^[^/]+$\""
+		if diagnostics[i].Type != "warning" || diagnostics[i].Path != path || diagnostics[i].Message != want {
+			t.Fatalf("diagnostic %d = %+v, want warning %q", i, diagnostics[i], want)
+		}
 	}
 	if registry.PathOf("unnamed") != named {
 		t.Fatalf("literal unnamed theme was lost: %q", registry.PathOf("unnamed"))
@@ -41,7 +47,7 @@ func TestReloadThemeDiagnosticsReplaceResolvedSet(t *testing.T) {
 	}
 	writeNamedTheme(t, themesDir, "excluded.json", "excluded")
 	selected := writeNamedTheme(t, themesDir, "selected.json", "selected")
-	m := reloadTestMode(InteractiveOptions{AgentDir: dir, NoSkills: true, NoPromptTemplates: true, ThemePaths: []string{selected}})
+	m := reloadTestMode(InteractiveModeOptions{AgentDir: dir, NoSkills: true, NoPromptTemplates: true, ThemePaths: []string{selected}})
 	m.opts.Settings.QuietStartup = QuietStartupTrue
 	slash := m.buildSlashContext(t.Context())
 	if err := slash.Reload(); err != nil {
@@ -74,21 +80,21 @@ func TestReloadThemeDiagnosticsReplaceResolvedSet(t *testing.T) {
 	}
 }
 
-// Pi retains unnamed loaded themes for diagnostics even though setRegisteredThemes skips their empty registry keys.
+// Pi retains unnamed loaded themes for diagnostics even though setRegisteredThemes skips their empty registry keys. A user theme file can no
+// longer carry an empty name (42a3497d theme-schema.ts), so the loaded set and the collision are supplied directly.
 func TestLoadedEmptyThemeRetainsDiagnosticProvenance(t *testing.T) {
 	isolateDisplayHome(t)
 	old := tui.ActiveThemeRegistry()
 	t.Cleanup(func() { tui.SetThemeRegistry(old) })
 	dir := t.TempDir()
-	winner := writeNamedTheme(t, dir, "first.json", "")
-	loser := writeNamedTheme(t, dir, "second.json", "")
+	winner, loser := filepath.Join(dir, "first.json"), filepath.Join(dir, "second.json")
 	m := upstreamListingMode(t, false, nil)
 	m.opts.Settings.QuietStartup = QuietStartupTrue
-	m.opts.ThemePaths = []string{winner, loser}
+	m.loadedThemes = []loadedTheme{{theme: &tui.Theme{Name: ""}, path: winner}}
 	m.resourceSourceInfo = map[string]ResourceSourceInfo{
 		winner: {Path: winner, ResourceType: "themes", Enabled: true, Scope: "user", Origin: "package", Source: "npm:empty-theme", BaseDir: dir},
 	}
-	m.loadThemes()
+	m.themeDiagnostics = []extension.ResourceDiagnostic{collisionDiagnostic("theme", "", winner, loser)}
 	m.showLoadedResources(false, true)
 	want := "[Theme conflicts]\n  \"\" collision:\n    ✓ npm:empty-theme (user) first.json\n    ✗ " + filepath.ToSlash(loser) + " (skipped)"
 	if got := strings.ReplaceAll(renderListing(m), `\`, "/"); got != want {

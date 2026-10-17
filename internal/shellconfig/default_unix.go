@@ -4,22 +4,21 @@ package shellconfig
 
 import (
 	"os"
-	"os/exec"
 )
 
 // Default resolves the shell on unix, mirroring upstream getShellConfig's unix
 // branch (shell.ts). It never errors.
 func Default() (Config, error) {
-	return unixDefault(fileExists, exec.LookPath), nil
+	return unixDefault(fileExists, FindExecutableOnPath), nil
 }
 
-// unixDefault tries /bin/bash, then bash on PATH, then falls back to sh
+// unixDefault tries /bin/bash, then bash on PATH (findOnPath), then falls back to sh
 // (resolved through PATH at spawn time, like upstream's bare "sh").
-func unixDefault(exists func(string) bool, lookPath func(string) (string, error)) Config {
+func unixDefault(exists func(string) bool, findOnPath func(string) string) Config {
 	if exists("/bin/bash") {
 		return ForBash("/bin/bash")
 	}
-	if bash, err := lookPath("bash"); err == nil && bash != "" {
+	if bash := findOnPath("bash"); bash != "" {
 		return ForBash(bash)
 	}
 	return Config{Path: "sh", Args: []string{"-c"}}

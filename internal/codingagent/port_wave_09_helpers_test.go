@@ -3,6 +3,7 @@ package codingagent
 import (
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -42,8 +43,16 @@ func requirePathResult[T comparable](t *testing.T, got, want T) {
 	}
 }
 
+// realPathForTest is Pi's canonicalizePath for an existing path. On Windows that is Node's fs.realpathSync, which keeps the case and the 8.3 short names (RUNNER~1) of the components it is given, where filepath.EvalSymlinks returns the stored case and long names; the expectation there comes from Node itself.
 func realPathForTest(t *testing.T, path string) string {
 	t.Helper()
+	if runtime.GOOS == "windows" {
+		out, err := exec.CommandContext(t.Context(), "node", "-e", `process.stdout.write(require('node:fs').realpathSync(process.argv[1]))`, path).Output()
+		if err != nil {
+			t.Fatalf("node realpathSync(%q): %v", path, err)
+		}
+		return string(out)
+	}
 	realPath, err := filepath.EvalSymlinks(path)
 	if err != nil {
 		t.Fatal(err)

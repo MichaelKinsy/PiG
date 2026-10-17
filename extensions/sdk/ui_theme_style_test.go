@@ -137,3 +137,30 @@ func TestUIThemeStyleMapsOutOfGamutOklchByLosingChroma(t *testing.T) {
 		}
 	}
 }
+
+// theme.ts:361-376: fg and bg throw `Unknown theme color: <token>` for a token the palette lacks, a token of the other slot included. Before any palette arrives the zero value leaves text unstyled.
+func TestUIThemeFgAndBgPanicForAnUnknownToken(t *testing.T) {
+	theme := styleTheme(t, "truecolor")
+	for name, call := range map[string]func(){
+		"Fg unknown":           func() { _ = theme.Fg("notAToken", "x") },
+		"Fg with a background": func() { _ = theme.Fg("toolSuccessBg", "x") },
+		"Bg unknown":           func() { _ = theme.Bg("notAToken", "x") },
+		"Bg with a foreground": func() { _ = theme.Bg("success", "x") },
+	} {
+		func() {
+			defer func() {
+				err, _ := recover().(error)
+				if err == nil || !strings.HasPrefix(err.Error(), "Unknown theme color: ") {
+					t.Errorf("%s recovered %v, want an \"Unknown theme color: <token>\" error", name, err)
+				}
+			}()
+			call()
+		}()
+	}
+	if got := (UITheme{}).Fg("accent", "x"); got != "x" {
+		t.Errorf("zero-value Fg = %q, want unstyled text", got)
+	}
+	if _, err := theme.GetBgAnsi("notAToken"); err == nil || err.Error() != "Unknown theme color: notAToken" {
+		t.Errorf("GetBgAnsi error = %v, want theme.ts:374's message", err)
+	}
+}

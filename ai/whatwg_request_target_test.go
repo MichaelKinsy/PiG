@@ -10,9 +10,10 @@ import (
 )
 
 func TestWHATWGRequestTargetSurvivesGoHTTPSerialization(t *testing.T) {
-	for _, path := range []string{"/a|b/v1/chat/completions", "/a%b/v1/chat/completions", "/a%zzb/v1/chat/completions"} {
+	for _, path := range []string{"/a|b/v1/chat/completions", "/a%b/v1/chat/completions", "/a%zzb/v1/chat/completions", "/a%zz?q=1#f#g"} {
 		t.Run(path, func(t *testing.T) {
 			serialized := "http://example.test" + path
+			path, _, _ := strings.Cut(path, "#")
 			parsed, err := nodeurl.RequestURL(serialized)
 			if err != nil {
 				t.Fatal(err)

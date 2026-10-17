@@ -1,5 +1,7 @@
 package evals
 
+// pi: packages/evals/src/plan.ts
+
 // Ports packages/evals/test/plan.test.ts.
 
 import (
@@ -84,4 +86,23 @@ func TestPlanUpstream(t *testing.T) {
 		_, err = CreateTaskPlan(cases, "fixture/model", 0)
 		requireErrorContaining(t, err, "positive integer")
 	})
+}
+
+// TestCreateTaskPlanRejectsEveryMalformedModelIdentity pins plan.ts:44, which rejects a model that has no slash, starts
+// with one or ends with one (a missing provider or a missing model id). plan.test.ts:37 covers only the no-slash form.
+func TestCreateTaskPlanRejectsEveryMalformedModelIdentity(t *testing.T) {
+	cases, err := ParseDiscoveredCases(discoveredFixture())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, model := range []string{"model", "/model", "provider/", "/", ""} {
+		if _, err := CreateTaskPlan(cases, model, 1); err == nil || err.Error() != "Model identity must contain a provider and model." {
+			t.Errorf("model %q: error = %v", model, err)
+		}
+	}
+	for _, model := range []string{"provider/model", "provider/a/b"} {
+		if _, err := CreateTaskPlan(cases, model, 1); err != nil {
+			t.Errorf("model %q: %v", model, err)
+		}
+	}
 }

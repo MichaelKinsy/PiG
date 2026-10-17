@@ -26,12 +26,12 @@ type typedWireBridge struct{ actions map[string]any }
 func (probe *typedWireBridge) SetHostAction(key string, action any) { probe.actions[key] = action }
 func (*typedWireBridge) PublishModelCatalog()                       {}
 
-func wireTypedModelOperations(t *testing.T, services *Services) *typedWireBridge {
+func wireTypedModelOperations(t *testing.T, services *AgentSessionServices) *typedWireBridge {
 	t.Helper()
 	probe := &typedWireBridge{actions: make(map[string]any)}
 	runtime := services.ModelRuntime()
 	detach := icodingagent.WireModelOperations(probe, icodingagent.ModelOperationBindings{
-		ModelLookup: runtime.GetModel, ModelCatalog: runtime.GetModels, Registry: services.Registry().ModelRegistry, Classify: runtime.Classify, GenerateImages: runtime.GenerateImages,
+		ModelLookup: runtime.GetModel, ModelCatalog: func(...string) []*ai.Model { return runtime.GetModels() }, Registry: services.Registry().ModelRegistry, Classify: runtime.Classify, GenerateImages: runtime.GenerateImages,
 	})
 	t.Cleanup(detach)
 	return probe
@@ -129,7 +129,7 @@ func TestExtensionRegistryStateListsTypedModels(t *testing.T) {
 func TestExtensionGetAvailableOfTypeAction(t *testing.T) {
 	services, _ := nativeCompatServices(t, "", nil)
 	probe := wireTypedModelOperations(t, services)
-	available := probe.actions["getAvailableOfType"].(func(context.Context, string, string) ([]map[string]any, error))
+	available := probe.actions["getAvailableOfType"].(func(context.Context, string, string) ([]json.RawMessage, error))
 
 	models, err := available(t.Context(), "classifier", "typesafe")
 	if err != nil || len(models) != 0 {
@@ -137,7 +137,10 @@ func TestExtensionGetAvailableOfTypeAction(t *testing.T) {
 	}
 	services.Registry().SetRuntimeAPIKey("typesafe", "sk-typesafe")
 	models, err = available(t.Context(), "classifier", "typesafe")
-	if err != nil || len(models) != 1 || models[0]["id"] != "jev-latest" || models[0]["type"] != "classifier" || models[0]["provider"] != "typesafe" {
+	if err != nil || len(models) != 1 {
+		t.Fatalf("configured = %s, %v", models, err)
+	}
+	if got := modelObjectMembersOf(t, models[0]); got["id"] != "jev-latest" || got["type"] != "classifier" || got["provider"] != "typesafe" {
 		t.Fatalf("configured = %v, %v", models, err)
 	}
 	// Every provider when none is named; a chat model is a chat model of its provider.
@@ -309,7 +312,7 @@ func TestExtensionProviderConfigKeepsTypedModelsAndImplementations(t *testing.T)
 			return classifiersTestOKResult(model), nil
 		}}},
 	}
-	if err := services.Registry().RegisterProvider("wire-operations", config); err != nil {
+	if err := services.Registry().RegisterExtensionProvider("wire-operations", config); err != nil {
 		t.Fatal(err)
 	}
 	if got := runtime.GetModel("wire-operations", "chat-1"); got == nil || got.ProviderMeta.API != ai.APIOpenAICompletions {

@@ -1,10 +1,13 @@
-// Drives Pi 1.0.3 against the faux provider (packages/ai/src/providers/faux.ts) for every fixture.
+// Drives Pi 1.1.0 against the faux provider (packages/ai/src/providers/faux.ts) for every fixture.
 //  - `rpc`: the real CLI in `--mode rpc`; records the ordered interleaving of faux `stream.push` calls and RPC
 //    serialization of assistant records (extension.mjs).
 //  - `direct`: the real pi-ai faux core behind 0..2 `lazyStream` layers, consumed by `for await` (direct) or by
 //    pi-agent-core's `runAgentLoop` (agent). Every delivered event is copied at its delivery tick together with the
 //    number of `stream.push` calls made so far, which is the exact tick order the consumer chain adds to the producer.
 // usage: node probe.mjs <out.json> [runs]. Requires PI_PACKAGE_ROOT.
+const PIG_UPSTREAM_VERSION = process.env.PIG_UPSTREAM_VERSION; // the pin's display version, from `eval "$(python3 automation/pin/pin.py env)"`
+if (!PIG_UPSTREAM_VERSION) throw new Error('PIG_UPSTREAM_VERSION is not set: run eval "$(python3 automation/pin/pin.py env)" before the probe');
+import { PI_PACKAGE_VERSION } from "../../../../../test/parity/testdata/pi-version.mjs";
 import { spawn } from 'node:child_process';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -16,8 +19,8 @@ import { fauxResponses } from './responses.mjs';
 
 const root = process.env.PI_PACKAGE_ROOT;
 assert.ok(root, 'PI_PACKAGE_ROOT must name the pinned pi-coding-agent package');
-assert.equal(JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version, '1.0.3');
-assert.equal(JSON.parse(readFileSync(join(root, 'node_modules/@earendil-works/pi-ai/package.json'), 'utf8')).version, '1.0.3');
+assert.equal(JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version, PI_PACKAGE_VERSION);
+assert.equal(JSON.parse(readFileSync(join(root, 'node_modules/@earendil-works/pi-ai/package.json'), 'utf8')).version, PI_PACKAGE_VERSION);
 const extension = new URL('./extension.mjs', import.meta.url).pathname;
 const [out, runsArg] = process.argv.slice(2);
 const runs = Number(runsArg ?? 1);
@@ -173,4 +176,4 @@ for (const fixture of fixtures) {
   directRuns.push(await ticks(fixture));
   results.push({ fixture, rpc, direct: directRuns });
 }
-writeFileSync(out, JSON.stringify({ pi: '1.0.3', node: process.version, results, deferred: await deferredTicks() }, null, 1));
+writeFileSync(out, JSON.stringify({ pi: PIG_UPSTREAM_VERSION, node: process.version, results, deferred: await deferredTicks() }, null, 1));

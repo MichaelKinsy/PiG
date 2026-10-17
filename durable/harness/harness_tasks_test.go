@@ -214,7 +214,8 @@ func outcomeAborted(reason string) durable.TaskOutcome[durable.JsonValue] {
 
 func expectOutcome(t *testing.T, got, want durable.TaskOutcome[durable.JsonValue]) {
 	t.Helper()
-	if !reflect.DeepEqual(got, want) {
+	// toEqual: the outcomes have the same JSON members, whatever form (map or ordered object) a result's objects take.
+	if !reflect.DeepEqual(jsonOf(t, got), jsonOf(t, want)) {
 		t.Fatalf("outcome %s, want %s", describeOutcome(got), describeOutcome(want))
 	}
 }
@@ -279,7 +280,10 @@ func tkNoopAbort[I, S, R, H any](context.Context, durable.RunningTask[I, S, R], 
 	return nil
 }
 
+// Pi TaskRuntime.memo: packages/durable/src/types.ts:204.
+// Pi TaskRuntime.outcomes: packages/durable/src/types.ts:212.
 func TestTaskPhases(t *testing.T) {
+	// harness-tasks.test.ts:86 it("continues one invocation through checkpoint progress and completes with a typed result")
 	t.Run("continues one invocation through checkpoint progress and completes with a typed result", func(t *testing.T) {
 		seen := &syncList[int]{}
 		runtimes := &syncList[any]{}
@@ -302,7 +306,7 @@ func TestTaskPhases(t *testing.T) {
 			},
 			Abort: tkNoopAbort[tkCounterInput, tkCounterState, int, any],
 		})
-		opened := tkOpenRoot(t, []durable.AnyTask{counter})
+		opened := tkOpenRoot(t, []durable.AnyTask{counter.Erased()})
 		id, err := durable.Commit(testContext, opened.root, func(tx durable.Tx) (durable.TaskId, error) {
 			return durable.CreateTask(tx, counter, tkCounterInput{To: 3}, durable.TaskOptions{Ownership: conversationOwned})
 		})
@@ -331,6 +335,7 @@ func TestTaskPhases(t *testing.T) {
 		mustClose(t, opened.harness)
 	})
 
+	// harness-tasks.test.ts:120 it("faults a phase without durable progress and a throwing phase")
 	t.Run("faults a phase without durable progress and a throwing phase", func(t *testing.T) {
 		idle := tkOneStep("test.idle", func(context.Context, stepRecord, stepRuntime) error { return nil })
 		documentOnly := tkOneStep("test.document-only", func(ctx context.Context, _ stepRecord, runtime stepRuntime) error {
@@ -340,8 +345,8 @@ func TestTaskPhases(t *testing.T) {
 			})
 		})
 		throws := tkOneStep("test.throws", func(context.Context, stepRecord, stepRuntime) error { return errors.New("boom") })
-		opened := tkOpenRoot(t, []durable.AnyTask{idle, documentOnly, throws})
-		ids := []durable.TaskId{tkStart(t, opened.root, idle), tkStart(t, opened.root, documentOnly), tkStart(t, opened.root, throws)}
+		opened := tkOpenRoot(t, []durable.AnyTask{idle.Erased(), documentOnly.Erased(), throws.Erased()})
+		ids := []durable.TaskId{tkStart(t, opened.root, idle.Erased()), tkStart(t, opened.root, documentOnly.Erased()), tkStart(t, opened.root, throws.Erased())}
 		opened.harness.Resume()
 		want := []durable.TaskOutcome[durable.JsonValue]{
 			outcomeFaulted("Task test.idle phase run returned without durable progress"),
@@ -354,6 +359,7 @@ func TestTaskPhases(t *testing.T) {
 		mustClose(t, opened.harness)
 	})
 
+	// harness-tasks.test.ts:144 it("keeps a committed terminal outcome when the handler throws afterwards")
 	t.Run("keeps a committed terminal outcome when the handler throws afterwards", func(t *testing.T) {
 		lateCommit := &syncValue[error]{}
 		done := tkOneStep("test.done", func(ctx context.Context, _ stepRecordOf[string], runtime stepRuntimeOf[string]) error {
@@ -367,8 +373,8 @@ func TestTaskPhases(t *testing.T) {
 			}))
 			return errors.New("after terminal")
 		})
-		opened := tkOpenRoot(t, []durable.AnyTask{done})
-		id := tkStart(t, opened.root, done)
+		opened := tkOpenRoot(t, []durable.AnyTask{done.Erased()})
+		id := tkStart(t, opened.root, done.Erased())
 		opened.harness.Resume()
 		expectOutcome(t, tkWaitOutcome(t, opened.harness, id), outcomeCompleted("ok"))
 		eventually(t, lateCommit.isSet)
@@ -377,6 +383,7 @@ func TestTaskPhases(t *testing.T) {
 		mustClose(t, opened.harness)
 	})
 
+	// harness-tasks.test.ts:160 it("compares checkpoints by value, including arrays")
 	t.Run("compares checkpoints by value, including arrays", func(t *testing.T) {
 		type collectState struct {
 			Phase string   `json:"phase"`
@@ -401,21 +408,21 @@ func TestTaskPhases(t *testing.T) {
 			},
 			Abort: tkNoopAbort[durable.JsonValue, collectState, durable.JsonValue, any],
 		})
-		opened := tkOpenRoot(t, []durable.AnyTask{collect})
-		id := tkStart(t, opened.root, collect)
+		opened := tkOpenRoot(t, []durable.AnyTask{collect.Erased()})
+		id := tkStart(t, opened.root, collect.Erased())
 		opened.harness.Resume()
 		expectOutcome(t, tkWaitOutcome(t, opened.harness, id), outcomeFaulted("Task test.collect phase collect returned without durable progress"))
 		mustClose(t, opened.harness)
 	})
 
+	// harness-tasks.test.ts:188 it("commits results with entries atomically, keeps memos until terminal, and retires task documents")
 	t.Run("commits results with entries atomically, keeps memos until terminal, and retires task documents", func(t *testing.T) {
 		type progressState struct {
 			Lines []string `json:"lines"`
 		}
 		progress := durable.DefineDoc(durable.DocDefinition[progressState]{
-			CommonDocDefinition: durable.CommonDocDefinition[progressState]{Kind: "test.task-progress", Version: 1},
+			CommonDocDefinition: durable.CommonDocDefinition[progressState]{Kind: "test.task-progress", Version: 1, Initial: func() progressState { return progressState{Lines: []string{}} }},
 			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeTask},
-			Initial:             func() progressState { return progressState{Lines: []string{}} },
 		})
 		answer := durable.DefineEntry[durable.Never]("answer")
 		child := tkOneStep("test.child", func(ctx context.Context, _ stepRecord, runtime stepRuntime) error { return tkComplete(ctx, runtime) })
@@ -471,7 +478,7 @@ func TestTaskPhases(t *testing.T) {
 							return nil, err
 						}
 						// Task creation defaults to the task's own conversation.
-						created, err := tx.CreateTaskErased(child, nil, durable.TaskOptions{Ownership: conversationOwned})
+						created, err := tx.CreateTaskErased(child.Erased(), nil, durable.TaskOptions{Ownership: conversationOwned})
 						if err != nil {
 							return nil, err
 						}
@@ -505,12 +512,12 @@ func TestTaskPhases(t *testing.T) {
 			},
 			Abort: tkNoopAbort[durable.JsonValue, writerState, writerResult, any],
 		})
-		opened := tkOpenRoot(t, []durable.AnyTask{writer, child})
+		opened := tkOpenRoot(t, []durable.AnyTask{writer.Erased(), child.Erased()})
 		conversation, err := opened.harness.CreateConversation(testContext, ConversationCreateOptions{Ownership: ownerless})
 		if err != nil {
 			t.Fatal(err)
 		}
-		id := tkStart(t, conversation, writer)
+		id := tkStart(t, conversation, writer.Erased())
 		opened.harness.Resume()
 		receipt, err := opened.harness.WaitForTask(testContext, id)
 		if err != nil {
@@ -553,6 +560,7 @@ func TestTaskPhases(t *testing.T) {
 		mustClose(t, opened.harness)
 	})
 
+	// harness-tasks.test.ts:257 it("resumes a waiting task once every task in `on` is terminal, whatever the outcome")
 	t.Run("resumes a waiting task once every task in `on` is terminal, whatever the outcome", func(t *testing.T) {
 		gate := deferred()
 		order := &syncList[string]{}
@@ -605,12 +613,12 @@ func TestTaskPhases(t *testing.T) {
 			order.add("faulting")
 			return errors.New("fails")
 		})
-		opened := tkOpenRoot(t, []durable.AnyTask{first, faulting, waiter})
-		firstId := tkStart(t, opened.root, first)
-		faultingId := tkStart(t, opened.root, faulting)
+		opened := tkOpenRoot(t, []durable.AnyTask{first.Erased(), faulting.Erased(), waiter.Erased()})
+		firstId := tkStart(t, opened.root, first.Erased())
+		faultingId := tkStart(t, opened.root, faulting.Erased())
 		waits := []durable.TaskId{firstId, faultingId}
 		on.Store(&waits)
-		waiterId := tkStart(t, opened.root, waiter)
+		waiterId := tkStart(t, opened.root, waiter.Erased())
 		opened.harness.Resume()
 		eventually(t, func() bool { return order.len() == 3 })
 		flush()
@@ -633,6 +641,104 @@ func TestTaskPhases(t *testing.T) {
 		mustClose(t, opened.harness)
 	})
 
+	// #10549
+	// harness-tasks.test.ts:310 it("stamps startedAt at the first run and endedAt when terminal, keeping startedAt through a wait")
+	t.Run("stamps startedAt at the first run and endedAt when terminal, keeping startedAt through a wait", func(t *testing.T) {
+		var clock atomic.Int64
+		clock.Store(1_000)
+		gate := deferred()
+		var on atomic.Pointer[[]durable.TaskId]
+		type waiterState struct {
+			Phase string `json:"phase"`
+		}
+		type waiterDefinition = durable.TaskDefinition[durable.JsonValue, waiterState, durable.JsonValue, any]
+		type waiterRunning = durable.RunningTask[durable.JsonValue, waiterState, durable.JsonValue]
+		type waiterRuntime = durable.TaskRuntime[durable.JsonValue, waiterState, durable.JsonValue, any]
+		waiter := durable.DefineTask(waiterDefinition{
+			Name:    "test.timed-waiter",
+			Version: 1,
+			Initial: func(durable.JsonValue) waiterState { return waiterState{Phase: "wait"} },
+			Phases: map[string]durable.PhaseHandler[durable.JsonValue, waiterState, durable.JsonValue, any]{
+				"wait": func(ctx context.Context, _ waiterRunning, runtime waiterRuntime) error {
+					return runtime.Commit(ctx, func(durable.Tx, waiterRunning) (*durable.NextTaskState[waiterState, durable.JsonValue], error) {
+						return waitingState[waiterState, durable.JsonValue](waiterState{Phase: "resume"}, *on.Load(), durable.JoinAllSettled), nil
+					})
+				},
+				"resume": func(ctx context.Context, _ waiterRunning, runtime waiterRuntime) error {
+					return runtime.Commit(ctx, func(durable.Tx, waiterRunning) (*durable.NextTaskState[waiterState, durable.JsonValue], error) {
+						return completed[waiterState, durable.JsonValue](nil), nil
+					})
+				},
+			},
+			Abort: func(ctx context.Context, _ waiterRunning, runtime waiterRuntime) error {
+				return runtime.Commit(ctx, func(durable.Tx, waiterRunning) (*durable.NextTaskState[waiterState, durable.JsonValue], error) {
+					return abortedWith[waiterState, durable.JsonValue]("test"), nil
+				})
+			},
+		})
+		held := tkOneStep("test.timed-held", func(ctx context.Context, _ stepRecord, runtime stepRuntime) error {
+			if err := gate.wait(ctx); err != nil {
+				return err
+			}
+			return tkComplete(ctx, runtime)
+		})
+		opened := tkOpenRoot(t, []durable.AnyTask{waiter.Erased(), held.Erased()}, tkOptions{now: func() float64 { return float64(clock.Load()) }})
+		heldId := tkStart(t, opened.root, held.Erased())
+		waits := []durable.TaskId{heldId}
+		on.Store(&waits)
+		waiterId := tkStart(t, opened.root, waiter.Erased())
+		type taskTimes struct {
+			id      durable.TaskId
+			started *float64
+			ended   *float64
+		}
+		at := func(value float64) *float64 { return &value }
+		times := func() []taskTimes {
+			inspection, err := opened.harness.Inspect(testContext)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var out []taskTimes
+			for _, task := range inspection.Tasks {
+				out = append(out, taskTimes{task.Record.Id, task.Record.StartedAt, task.Record.EndedAt})
+			}
+			return out
+		}
+		if got := times(); !reflect.DeepEqual(got, []taskTimes{{heldId, nil, nil}, {waiterId, nil, nil}}) {
+			t.Fatalf("before the first run: %+v", got)
+		}
+
+		clock.Store(2_000)
+		opened.harness.Resume()
+		eventually(t, func() bool {
+			record, err := opened.harness.GetTask(testContext, waiterId)
+			return err == nil && record != nil && record.State.Status == durable.TaskWaiting
+		})
+		if got := times(); !reflect.DeepEqual(got, []taskTimes{{heldId, at(2_000), nil}, {waiterId, at(2_000), nil}}) {
+			t.Fatalf("while waiting: %+v", got)
+		}
+
+		// The waiter runs again at 5_000; its start stays the first run.
+		clock.Store(5_000)
+		gate.resolve()
+		settledWaiter, err := opened.harness.WaitForTask(testContext, waiterId)
+		if err != nil {
+			t.Fatalf("waiter: %v", err)
+		}
+		settledHeld, err := opened.harness.GetTask(testContext, heldId)
+		if err != nil || settledHeld == nil {
+			t.Fatalf("held task: %v %v", settledHeld, err)
+		}
+		if !reflect.DeepEqual([]*float64{settledHeld.StartedAt, settledHeld.EndedAt}, []*float64{at(2_000), at(5_000)}) {
+			t.Fatalf("held times %v %v", settledHeld.StartedAt, settledHeld.EndedAt)
+		}
+		if !reflect.DeepEqual([]*float64{settledWaiter.StartedAt, settledWaiter.EndedAt}, []*float64{at(2_000), at(5_000)}) {
+			t.Fatalf("waiter times %v %v", settledWaiter.StartedAt, settledWaiter.EndedAt)
+		}
+		mustClose(t, opened.harness)
+	})
+
+	// harness-tasks.test.ts:360 it("keeps one registry snapshot per phase and refreshes it at the phase boundary")
 	t.Run("keeps one registry snapshot per phase and refreshes it at the phase boundary", func(t *testing.T) {
 		type seenPhase struct {
 			phase string
@@ -679,8 +785,8 @@ func TestTaskPhases(t *testing.T) {
 			},
 			Abort: tkNoopAbort[durable.JsonValue, snapshotState, durable.JsonValue, any],
 		})
-		opened := tkOpenRoot(t, []durable.AnyTask{snapshots})
-		id := tkStart(t, opened.root, snapshots)
+		opened := tkOpenRoot(t, []durable.AnyTask{snapshots.Erased()})
+		id := tkStart(t, opened.root, snapshots.Erased())
 		opened.harness.Resume()
 		if err := entered.wait(testContext); err != nil {
 			t.Fatal(err)
@@ -695,6 +801,7 @@ func TestTaskPhases(t *testing.T) {
 		mustClose(t, opened.harness)
 	})
 
+	// harness-tasks.test.ts:409 it("resolves the agent at first use in a phase from its snapshot, keeps it for the phase, and anew at the next")
 	t.Run("resolves the agent at first use in a phase from its snapshot, keeps it for the phase, and anew at the next", func(t *testing.T) {
 		type pingHooks struct{ Ping func() }
 		pings := &syncList[string]{}
@@ -777,23 +884,23 @@ func TestTaskPhases(t *testing.T) {
 			},
 			Abort: tkNoopAbort[durable.JsonValue, agentState, durable.JsonValue, *pingHooks],
 		})
-		opened := tkOpenRoot(t, []durable.AnyTask{phases})
-		addHooks(t, opened.registry, phases, &pingHooks{Ping: func() { pings.add("before") }})
-		id := tkStart(t, opened.root, phases)
+		opened := tkOpenRoot(t, []durable.AnyTask{phases.Erased()})
+		addHooks(t, opened.registry, phases.Erased(), &pingHooks{Ping: func() { pings.add("before") }})
+		id := tkStart(t, opened.root, phases.Erased())
 		opened.harness.Resume()
 
 		// Configured during the phase but before its first use: the lazy resolution reads it.
 		if err := waitingBeforeUse.wait(testContext); err != nil {
 			t.Fatal(err)
 		}
-		mustConfigure(t, opened.root, AgentChange{ThinkingLevel: SetTo(ai.ThinkingLow)})
+		mustConfigure(t, opened.root, AgentChange{ThinkingLevel: SetTo(ai.ModelThinkingLevel(ai.ThinkingLow))})
 		beforeUse.resolve()
 		// Configured and installed after the first use: not seen until the next phase.
 		if err := waitingAfterUse.wait(testContext); err != nil {
 			t.Fatal(err)
 		}
-		addHooks(t, opened.registry, phases, &pingHooks{Ping: func() { pings.add("late") }})
-		mustConfigure(t, opened.root, AgentChange{ThinkingLevel: SetTo(ai.ThinkingHigh)})
+		addHooks(t, opened.registry, phases.Erased(), &pingHooks{Ping: func() { pings.add("late") }})
+		mustConfigure(t, opened.root, AgentChange{ThinkingLevel: SetTo(ai.ModelThinkingLevel(ai.ThinkingHigh))})
 		afterUse.resolve()
 
 		tkWaitOutcome(t, opened.harness, id)
@@ -808,6 +915,7 @@ func TestTaskPhases(t *testing.T) {
 		mustClose(t, opened.harness)
 	})
 
+	// harness-tasks.test.ts:478 it("rejects an agent() wait whose caller context is cancelled, without affecting the phase's resolution")
 	t.Run("rejects an agent() wait whose caller context is cancelled, without affecting the phase's resolution", func(t *testing.T) {
 		cancelled := &syncValue[error]{}
 		resolved := &syncValue[ai.ModelThinkingLevel]{}
@@ -823,8 +931,8 @@ func TestTaskPhases(t *testing.T) {
 			resolved.put(resolvedAgent.ThinkingLevel)
 			return tkComplete(ctx, runtime)
 		})
-		opened := tkOpenRoot(t, []durable.AnyTask{agent})
-		tkWaitOutcome(t, opened.harness, tkStart(t, opened.root, agent))
+		opened := tkOpenRoot(t, []durable.AnyTask{agent.Erased()})
+		tkWaitOutcome(t, opened.harness, tkStart(t, opened.root, agent.Erased()))
 		if err, _ := cancelled.get(); err == nil || err.Error() != "caller gone" {
 			t.Fatalf("agent wait %v, want caller gone", err)
 		}
@@ -834,6 +942,7 @@ func TestTaskPhases(t *testing.T) {
 		mustClose(t, opened.harness)
 	})
 
+	// harness-tasks.test.ts:495 it("observes a failed agent resolution whose only caller stopped waiting")
 	t.Run("observes a failed agent resolution whose only caller stopped waiting", func(t *testing.T) {
 		var fail atomic.Bool
 		settings := func() *HarnessSettings {
@@ -852,8 +961,8 @@ func TestTaskPhases(t *testing.T) {
 			resolved.put(err)
 			return tkComplete(ctx, runtime)
 		})
-		opened := tkOpenRoot(t, []durable.AnyTask{agent}, tkOptions{settings: settings})
-		tkWaitOutcome(t, opened.harness, tkStart(t, opened.root, agent))
+		opened := tkOpenRoot(t, []durable.AnyTask{agent.Erased()}, tkOptions{settings: settings})
+		tkWaitOutcome(t, opened.harness, tkStart(t, opened.root, agent.Erased()))
 		if err, _ := resolved.get(); err == nil || err.Error() != "settings broke" {
 			t.Fatalf("agent resolution %v, want settings broke", err)
 		}

@@ -1,9 +1,100 @@
 (function (bridge, toolsJson, globalsJson, storeJson) {
 	"use strict";
+
+	// Freeze every object reachable from the built-in globals, plus the intrinsics that are only
+	// reachable from instances (iterator and generator prototypes, %TypedArray%).
+	//
+	// Freezing alone breaks ordinary code through the "override mistake": a data property that is
+	// read-only on a prototype cannot be assigned on an instance either, so
+	// this.name = "MyError" in an Error subclass would throw. Commonly overridden properties
+	// become accessors whose setter defines an own property on the instance instead.
+	(function lockdown() {
+		const OVERRIDABLE = new Set(["constructor", "name", "message", "toString", "toLocaleString", "valueOf", "toJSON"]);
+		const seen = new Set([globalThis]);
+		const queue = [];
+		const add = (value) => {
+			if ((typeof value === "object" && value !== null) || typeof value === "function") {
+				if (!seen.has(value)) {
+					seen.add(value);
+					queue.push(value);
+				}
+			}
+		};
+
+		// Accessors from an object literal have no own prototype object, unlike function expressions,
+		// whose prototype.constructor would be converted again without end.
+		function allowOverride(object, key, value, enumerable) {
+			const { get, set } = Object.getOwnPropertyDescriptor(
+				{
+					get accessor() {
+						return value;
+					},
+					set accessor(next) {
+						if (this === object) {
+							throw new TypeError("Cannot assign to read only property '" + String(key) + "' of a built-in");
+						}
+						if ((typeof this !== "object" || this === null) && typeof this !== "function") return;
+						Object.defineProperty(this, key, { value: next, writable: true, enumerable: true, configurable: true });
+					},
+				},
+				"accessor",
+			);
+			Object.defineProperty(object, key, { get, set, enumerable, configurable: false });
+			add(get);
+			add(set);
+		}
+
+		for (const key of Reflect.ownKeys(globalThis)) {
+			const descriptor = Object.getOwnPropertyDescriptor(globalThis, key);
+			add(descriptor.value);
+			add(descriptor.get);
+			add(descriptor.set);
+			if ("value" in descriptor && descriptor.configurable) {
+				Object.defineProperty(globalThis, key, { writable: false, configurable: false });
+			}
+		}
+		add(Object.getPrototypeOf(function* () {}));
+		add(Object.getPrototypeOf(async function () {}));
+		add(Object.getPrototypeOf(async function* () {}));
+		add(Object.getPrototypeOf(Int8Array));
+		add(Object.getPrototypeOf([][Symbol.iterator]()));
+		add(Object.getPrototypeOf(new Map()[Symbol.iterator]()));
+		add(Object.getPrototypeOf(new Set()[Symbol.iterator]()));
+		add(Object.getPrototypeOf(""[Symbol.iterator]()));
+		add(Object.getPrototypeOf(/a/[Symbol.matchAll]("")));
+		if (typeof Iterator === "function") {
+			if (typeof Iterator.prototype.map === "function") add(Object.getPrototypeOf([].values().map((x) => x)));
+			if (typeof Iterator.from === "function") add(Object.getPrototypeOf(Iterator.from({ next() {} })));
+		}
+
+		while (queue.length > 0) {
+			const object = queue.pop();
+			add(Object.getPrototypeOf(object));
+			const descriptors = Object.getOwnPropertyDescriptors(object);
+			for (const key of Reflect.ownKeys(descriptors)) {
+				const descriptor = descriptors[key];
+				if ("value" in descriptor) {
+					add(descriptor.value);
+					if (
+						descriptor.writable &&
+						descriptor.configurable &&
+						(object === Object.prototype || OVERRIDABLE.has(key))
+					) {
+						allowOverride(object, key, descriptor.value, descriptor.enumerable);
+					}
+				} else {
+					add(descriptor.get);
+					add(descriptor.set);
+				}
+			}
+			Object.freeze(object);
+		}
+	})();
 	const stringify = JSON.stringify;
 	const parse = JSON.parse;
 	const promiseThen = Promise.prototype.then;
 	const ErrorCtor = Error;
+	const assign = Object.assign;
 	const TypeErrorCtor = TypeError;
 	const RangeErrorCtor = RangeError;
 	const pending = new Map();
@@ -22,6 +113,20 @@
 		return value === undefined ? undefined : stringify(value);
 	}
 
+	// pig divergence (D145): an Error's name and message are not enumerable, so JSON.stringify writes {}. Output and
+	// returned values keep them, followed by the Error's own enumerable fields that JSON.stringify writes (Pi #10650).
+	// A value whose prototype, name or message cannot be read is left to JSON.stringify, which writes what Pi writes.
+	function errorReplacer(key, value) {
+		try {
+			if (value instanceof ErrorCtor) return assign({ name: String(value.name), message: String(value.message) }, value);
+		} catch {}
+		return value;
+	}
+
+	function serializeOutput(value) {
+		return value === undefined ? undefined : stringify(value, errorReplacer);
+	}
+
 	// QuickJS stacks list frames only. Prefix "Name: message" like V8 so the
 	// text reads the same as a Node error, and drop this prelude's frames.
 	function errorText(error) {
@@ -37,18 +142,24 @@
 		if (typeof value === "string") return value;
 		if (value instanceof ErrorCtor) return errorText(value);
 		try {
-			const json = stringify(value);
+			const json = stringify(value, errorReplacer);
 			return json === undefined ? String(value) : json;
 		} catch {
 			return String(value);
 		}
 	}
 
+	// The host requires string fields. A script can set an error's name or message to anything, so
+	// they are coerced, and a value whose coercion throws gets a placeholder.
 	function describeError(error) {
-		if (error instanceof ErrorCtor) {
-			return stringify({ name: error.name, message: error.message, stack: errorText(error) });
+		try {
+			if (error instanceof ErrorCtor) {
+				return stringify({ name: String(error.name), message: String(error.message), stack: errorText(error) });
+			}
+			return stringify({ message: String(format(error)) });
+		} catch {
+			return stringify({ message: "The script threw a value that cannot be described" });
 		}
-		return stringify({ message: format(error) });
 	}
 
 	function caller(kind, name, spread) {
@@ -216,7 +327,7 @@
 		if (value === undefined || value === null || typeof value !== "object" && typeof value !== "function") {
 			return String(value);
 		}
-		const json = stringify(value);
+		const json = stringify(value, errorReplacer);
 		return json === undefined ? String(value) : json;
 	}
 
@@ -233,17 +344,17 @@
 	function imageUrl(value) {
 		if (typeof value === "string") return value;
 		if (typeof value !== "object" || value === null || Array.isArray(value)) {
-			throw new TypeErrorCtor("image expects a non-empty image URL string, an object with image_url, or a raw MCP image block");
+			throw new TypeErrorCtor("image expects a non-empty image URL string, an object with image_url, or an image block { type: \"image\", data, mimeType }");
 		}
 		if (value.image_url !== undefined) {
-			if (typeof value.image_url !== "string") throw new TypeErrorCtor("image expects a non-empty image URL string, an object with image_url, or a raw MCP image block");
+			if (typeof value.image_url !== "string") throw new TypeErrorCtor("image expects a non-empty image URL string, an object with image_url, or an image block { type: \"image\", data, mimeType }");
 			return value.image_url;
 		}
-		if (typeof value.type !== "string") throw new TypeErrorCtor("image expects a non-empty image URL string, an object with image_url, or a raw MCP image block");
+		if (typeof value.type !== "string") throw new TypeErrorCtor("image expects a non-empty image URL string, an object with image_url, or an image block { type: \"image\", data, mimeType }");
 		if (value.type !== "image") {
-			throw new TypeErrorCtor('image only accepts MCP image blocks, got "' + value.type + '"');
+			throw new TypeErrorCtor('image only accepts image blocks, got "' + value.type + '"');
 		}
-		if (typeof value.data !== "string" || value.data === "") throw new TypeErrorCtor("image expected MCP image data");
+		if (typeof value.data !== "string" || value.data === "") throw new TypeErrorCtor("image expected image block data");
 		if (value.data.toLowerCase().startsWith("data:")) return value.data;
 		return "data:;base64," + value.data;
 	}
@@ -259,7 +370,7 @@
 
 	function image(value) {
 		const url = imageUrl(value);
-		if (url === "") throw new TypeErrorCtor("image expects a non-empty image URL string, an object with image_url, or a raw MCP image block");
+		if (url === "") throw new TypeErrorCtor("image expects a non-empty image URL string, an object with image_url, or an image block { type: \"image\", data, mimeType }");
 		const colon = url.indexOf(":");
 		const scheme = colon === -1 ? "" : url.slice(0, colon).toLowerCase();
 		if (scheme === "http" || scheme === "https") {
@@ -300,7 +411,7 @@
 	const console = {};
 	for (const level of ["log", "info", "warn", "error", "debug"]) {
 		console[level] = (...args) => {
-			output("text", args.map(format).join(" "));
+			output("console", args.map(format).join(" "));
 		};
 	}
 	Object.freeze(console);
@@ -313,12 +424,20 @@
 	Object.defineProperty(globalThis, "exit", { value: exit, enumerable: true });
 
 	return {
-		settle(id, ok, payload) {
+		settle(id, ok, payload, propertiesJson) {
 			const entry = pending.get(id);
 			if (!entry) return;
 			pending.delete(id);
 			if (!ok) {
-				entry.reject(new ErrorCtor(payload));
+				const error = new ErrorCtor(payload);
+				if (propertiesJson !== undefined) {
+					const properties = parse(propertiesJson);
+					for (const key of Object.keys(properties)) {
+						if (key === "name" || key === "message" || key === "stack") continue;
+						Object.defineProperty(error, key, { value: properties[key], writable: true, enumerable: true, configurable: true });
+					}
+				}
+				entry.reject(error);
 				return;
 			}
 			let value;
@@ -343,7 +462,7 @@
 				(value) => {
 					let json;
 					try {
-						json = serialize(value);
+						json = serializeOutput(value);
 					} catch (error) {
 						done(false, describeError(error));
 						return;

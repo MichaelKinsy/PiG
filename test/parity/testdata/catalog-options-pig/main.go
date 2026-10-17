@@ -85,7 +85,7 @@ func run() error {
 		return err
 	}
 	defer func() { _ = os.RemoveAll(agentDir) }()
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: agentDir, AgentDir: agentDir})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: agentDir, AgentDir: agentDir})
 	if err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func run() error {
 	}
 	captured := errors.New("captured")
 	var payload map[string]any
-	result := services.ModelRuntime().CompleteSimple(context.Background(), model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Use the tool")}}}, ai.StreamOptions{APIKey: "test-key", Thinking: ai.ThinkingMax, OnPayload: func(value any, _ *ai.Model) (any, error) {
+	result := services.ModelRuntime().CompleteSimple(context.Background(), model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Use the tool")}}}, ai.StreamOptions{APIKey: "test-key", Thinking: ai.ThinkingLevelMax, OnPayload: func(value any, _ *ai.Model) (any, error) {
 		data, err := json.Marshal(value)
 		if err != nil {
 			return nil, err

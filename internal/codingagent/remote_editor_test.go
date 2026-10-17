@@ -20,7 +20,7 @@ func (f *fakeRemoteEditor) Input(data string)              { f.calls = append(f.
 func (f *fakeRemoteEditor) SetText(text string)            { f.calls = append(f.calls, "setText:"+text) }
 func (f *fakeRemoteEditor) InsertTextAtCursor(text string) { f.calls = append(f.calls, "insert:"+text) }
 func (f *fakeRemoteEditor) AddToHistory(text string)       { f.calls = append(f.calls, "history:"+text) }
-func (f *fakeRemoteEditor) Mouse(extension.RemoteEditorMouseEvent) {
+func (f *fakeRemoteEditor) Mouse(extension.RemoteMouseEvent) {
 	f.calls = append(f.calls, "mouse")
 }
 func (f *fakeRemoteEditor) Configure(config extension.RemoteEditorConfig) {
@@ -33,10 +33,13 @@ func (f *fakeRemoteEditor) Close()                               {}
 // would.
 func runPostedTasks(t *testing.T, m *InteractiveMode) {
 	t.Helper()
+	queued := func(q *remoteEventQueue) bool {
+		q.mu.Lock()
+		defer q.mu.Unlock()
+		return len(q.events) > 0
+	}
 	for {
-		m.remoteEditorEvents.mu.Lock()
-		pending := len(m.remoteEditorEvents.events) > 0
-		m.remoteEditorEvents.mu.Unlock()
+		pending := queued(&m.remoteEditorEvents) || queued(&m.frontendActions)
 		select {
 		case fn := <-m.uiTaskCh:
 			fn()
@@ -45,6 +48,7 @@ func runPostedTasks(t *testing.T, m *InteractiveMode) {
 				return
 			}
 			m.remoteEditorEvents.drain()
+			m.frontendActions.drain()
 		}
 	}
 }
@@ -133,8 +137,8 @@ func TestRemoteEditorReceivesKeysAndRunsHostHandlers(t *testing.T) {
 
 // Every handler Pi's CustomEditor can call maps to the host's handler for it.
 func TestAppActionKeyCoversPiDefaultEditorHandlers(t *testing.T) {
-	seen := map[keyAction]string{}
-	for _, action := range []string{
+	seen := map[keyAction]AppKeybinding{}
+	for _, action := range []AppKeybinding{
 		"app.interrupt", "app.exit", "app.clipboard.pasteImage", "app.clear", "app.suspend", "app.thinking.cycle",
 		"app.model.cycleForward", "app.model.cycleBackward", "app.model.select", "app.tools.expand", "app.thinking.toggle",
 		"app.editor.external", "app.message.copy", "app.message.followUp", "app.message.dequeue", "app.session.new",

@@ -1,11 +1,18 @@
+use pig_sdk::kit::{
+    Box as KitBox, Container, DynamicBorder, EventKind, HStack, Image, Lines, ListItem, Loader,
+    LoaderIndicator, Markdown, SelectItem, SelectList, SettingItem, SettingsList, Spacer, StackEntry, Text,
+    TruncatedText, VStack,
+};
+use pig_sdk::kit;
 use pig_sdk::{
-    AutocompleteItem, CommandResult, ConstrainedSampling, Extension, LoginDefinition,
+    AutocompleteItem, CommandResult, ConstrainedSampling, Extension, LoginDefinition, MouseEvent,
     OAuthCredentialStatus,
     OAuthCredentialStore, OAuthCredentials, OAuthDeviceCodeInfo, OAuthPrompt, OAuthProvider,
     ProjectTrustDecision, ProjectTrustResult, RemoteComponent, RemoteComponentInvalidate,
-    RemoteComponentResult, SpriteDefinition, TerminalInputResult, TerminalInputSubscription, ToolRenderShell,
-    ToolResult,
+    RemoteComponentResult, SpriteDefinition, TerminalInputResult, TerminalInputSubscription, ToolDefinition,
+    ToolRenderShell, ToolResult, ViewComponent,
 };
+use pig_sdk::{EditorBase, EditorComponent, JsString};
 use serde_json::{Value, json};
 use std::sync::{
     Arc, Mutex,
@@ -156,14 +163,526 @@ fn conformance_sprite_definition() -> SpriteDefinition {
     }
 }
 
+/// The component kit's conformance view (D107,
+/// docs/plan/extension-component-kit.md §10). It logs every input and view
+/// event and closes on select with the log joined by ",".
+struct KitProbe {
+    log: Vec<String>,
+}
+
+fn kit_probe_view() -> kit::View {
+    let items = (0..5)
+        .map(|i| SelectItem::new(format!("k{i}"), format!("Track {i}")).description(format!("Artist {i}")))
+        .collect();
+    let grow = StackEntry { grow: Some(1), ..StackEntry::default() };
+    kit::View::new(
+        Container::new()
+            .child(DynamicBorder::new("accent"))
+            .child(Text::new("Kit probe", 2, 0).bg("customMessageBg"))
+            .child(Markdown::new("- one\n- **two**", 1, 0))
+            .child(
+                HStack::new()
+                    .child_with(TruncatedText::new("left side", 0, 0), grow)
+                    .child_with(TruncatedText::new("right", 0, 0), grow)
+                    .gap(1),
+            )
+            .child(Spacer::new(1))
+            .child(SelectList::new("kit-tracks", items, 3).selected_index(2)),
+    )
+    .focus("kit-tracks")
+    .theme("accent", "#d75f00")
+}
+
+impl ViewComponent for KitProbe {
+    fn view(&self, _width: u32) -> kit::View {
+        kit_probe_view()
+    }
+
+    fn handle_input(&mut self, data: &pig_sdk::JsString) -> Result<RemoteComponentResult, String> {
+        self.log.push(format!("input:{}", data.to_string_lossy()));
+        Ok(RemoteComponentResult::pending())
+    }
+
+    fn handle_view_event(&mut self, event: kit::Event) -> Result<RemoteComponentResult, String> {
+        let kind = match event.kind {
+            EventKind::Select => "select",
+            EventKind::Cancel => "cancel",
+            EventKind::SelectionChange => "selectionChange",
+            EventKind::Change => "change",
+        };
+        let value = event.item.map(|item| item.value).unwrap_or_default();
+        self.log.push(format!("{kind}:{}:{value}", event.index));
+        if event.kind == EventKind::Select {
+            return Ok(RemoteComponentResult::done(Some(Value::from(self.log.join(",")))));
+        }
+        Ok(RemoteComponentResult::pending())
+    }
+}
+
+/// The extension mouse row's component: it logs every mouse event it
+/// receives, all of its fields, and closes on a click with the log joined
+/// by ",".
+struct MouseProbe {
+    log: Vec<String>,
+}
+
+impl RemoteComponent for MouseProbe {
+    fn render(&self, _width: u32) -> Vec<String> {
+        ["mouse probe", "row 1", "row 2", "row 3"].map(str::to_string).to_vec()
+    }
+
+    fn handle_input(&mut self, _data: &pig_sdk::JsString) -> Result<RemoteComponentResult, String> {
+        Ok(RemoteComponentResult::pending())
+    }
+
+    fn handles_mouse(&self) -> bool {
+        true
+    }
+
+    fn handle_mouse(&mut self, event: &MouseEvent) -> Result<RemoteComponentResult, String> {
+        let mods: String = [(event.shift, "S"), (event.alt, "A"), (event.ctrl, "C")]
+            .into_iter()
+            .filter_map(|(on, name)| on.then_some(name))
+            .collect();
+        self.log.push(format!(
+            "{}/{}/{},{}/{},{}/{}x{}/w{}/c{}/{mods}",
+            event.kind, event.button, event.x, event.y, event.screen_x, event.screen_y, event.width, event.height,
+            event.wheel_delta, event.click_count
+        ));
+        if event.kind == "click" {
+            return Ok(RemoteComponentResult::done(Some(Value::from(self.log.join(",")))));
+        }
+        Ok(RemoteComponentResult::pending())
+    }
+}
+
+/// Image n of kit-images: a 1×1 RGBA PNG whose pixel encodes n, so each n has
+/// its own bytes and ref.
+fn kit_image_png(n: u32) -> Vec<u8> {
+    fn crc32(bytes: &[u8]) -> u32 {
+        let mut crc = !0u32;
+        for &byte in bytes {
+            crc ^= u32::from(byte);
+            for _ in 0..8 {
+                crc = if crc & 1 == 1 { (crc >> 1) ^ 0xedb8_8320 } else { crc >> 1 };
+            }
+        }
+        !crc
+    }
+    fn chunk(png: &mut Vec<u8>, kind: &[u8; 4], data: &[u8]) {
+        png.extend_from_slice(&(data.len() as u32).to_be_bytes());
+        let start = png.len();
+        png.extend_from_slice(kind);
+        png.extend_from_slice(data);
+        let crc = crc32(&png[start..]);
+        png.extend_from_slice(&crc.to_be_bytes());
+    }
+    // One filter byte (none) and the pixel, in a zlib stream of one stored block.
+    let raw = [0, n as u8, (n >> 8) as u8, 0x5f, 0xff];
+    let (mut a, mut b) = (1u32, 0u32);
+    for &byte in &raw {
+        a = (a + u32::from(byte)) % 65521;
+        b = (b + a) % 65521;
+    }
+    let mut idat = vec![0x78, 0x01, 0x01, raw.len() as u8, 0, !(raw.len() as u8), 0xff];
+    idat.extend_from_slice(&raw);
+    idat.extend_from_slice(&((b << 16) | a).to_be_bytes());
+    let mut png = b"\x89PNG\r\n\x1a\n".to_vec();
+    chunk(&mut png, b"IHDR", &[0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0]);
+    chunk(&mut png, b"IDAT", &idat);
+    chunk(&mut png, b"IEND", &[]);
+    png
+}
+
+/// kit-kinds' image, a 1×1 PNG every SDK fixture embeds byte for byte.
+const KIT_KINDS_PNG: &str = "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c48900000010494441547801010500faff002a005fff026a01892888e8cd0000000049454e44ae426082";
+
 fn main() {
     let mut ext = Extension::new("rust-sdk-fixture");
+    // factory_agent_dir is get_agent_dir() while the factory runs, where Pi's extensions call it (TestConformance_HostConfigurationAgreesAcrossSDKs).
+    let factory_agent_dir = pig_sdk::get_agent_dir().unwrap_or_else(|err| format!("error: {err}"));
     let schema_rejected = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         ext.tool("schema-invalid", "Must not register", Value::Null, |_, _| ToolResult::text("bad"));
     })).is_err();
+    ext.command("language_probe", "Report the highlight language of a path", |ctx, args| {
+        let case: serde_json::Value = match serde_json::from_str(args) { Ok(case) => case, Err(err) => return CommandResult::Error(err.to_string()) };
+        let language = pig_sdk::get_language_from_path(case["path"].as_str().unwrap_or(""));
+        ctx.notify(&format!("language:{}:end", json!({"lang": language})), "info");
+        CommandResult::Ok
+    });
+    ext.command("convert_probe", "Run convertToLlm or formatDimensionNote on a JSON case and report the result", |ctx, args| {
+        let case: serde_json::Value = match serde_json::from_str(args) { Ok(case) => case, Err(err) => return CommandResult::Error(err.to_string()) };
+        let result = if case["fn"] == "convert" {
+            json!(pig_sdk::convert_to_llm(case["messages"].as_array().map(Vec::as_slice).unwrap_or(&[])))
+        } else {
+            let i = &case["image"];
+            let image = pig_sdk::ResizedImage { original_width: i["originalWidth"].as_f64().unwrap_or(0.0), original_height: i["originalHeight"].as_f64().unwrap_or(0.0), width: i["width"].as_f64().unwrap_or(0.0), height: i["height"].as_f64().unwrap_or(0.0), was_resized: i["wasResized"].as_bool().unwrap_or(false) };
+            json!(pig_sdk::format_dimension_note(&image))
+        };
+        ctx.notify(&format!("convert:{}:end", json!({"result": result})), "info");
+        CommandResult::Ok
+    });
+    // The helpers run here, while the factory runs, before the connection to the host is ready.
+    fn key_lists(value: &serde_json::Value, out: &mut Vec<String>) {
+        match value {
+            serde_json::Value::Array(items) => items.iter().for_each(|item| key_lists(item, out)),
+            serde_json::Value::Object(map) => {
+                out.push(map.keys().cloned().collect::<Vec<_>>().join(","));
+                map.values().for_each(|item| key_lists(item, out));
+            }
+            _ => {}
+        }
+    }
+    fn frontmatter_report(parsed: std::io::Result<pig_sdk::ParsedFrontmatter>) -> serde_json::Value {
+        match parsed {
+            Ok(parsed) => {
+                let mut keys = Vec::new();
+                key_lists(&parsed.frontmatter, &mut keys);
+                json!({"frontmatter": parsed.frontmatter, "body": parsed.body, "keys": keys})
+            }
+            Err(_) => json!({"error": true}),
+        }
+    }
+    fn date_report(parsed: std::io::Result<Option<f64>>) -> serde_json::Value {
+        match parsed {
+            Ok(ms) => json!({"ms": ms}),
+            Err(_) => json!({"error": true}),
+        }
+    }
+    let factory_helpers = json!({
+        "frontmatter": frontmatter_report(pig_sdk::parse_frontmatter("---\nz: 1\n10: a\n2: b\nnested:\n  y: 1\n  3: x\n  \"q r\": [1, 2]\n---\nbody text\n")),
+        "error": frontmatter_report(pig_sdk::parse_frontmatter("---\na: [\n---\nx")),
+        "date": date_report(pig_sdk::parse_date("2020-01-02T03:04:05.678Z")),
+    });
+    ext.command("helper_probe", "Run parseFrontmatter, stripFrontmatter or Date.parse on its argument", |ctx, args| {
+        let case: serde_json::Value = match serde_json::from_str(args) { Ok(case) => case, Err(err) => return CommandResult::Error(err.to_string()) };
+        let input = case["input"].as_str().unwrap_or("");
+        let out = match case["fn"].as_str().unwrap_or("") {
+            "date" => date_report(ctx.parse_date(input)),
+            "strip" => match ctx.strip_frontmatter(input) { Ok(body) => json!({"body": body}), Err(_) => json!({"error": true}) },
+            _ => frontmatter_report(ctx.parse_frontmatter(input)),
+        };
+        ctx.notify(&format!("helper:{out}:end"), "info");
+        CommandResult::Ok
+    });
+    ext.command("helper_factory_probe", "Report the helpers' results from the factory", move |ctx, _args| {
+        ctx.notify(&format!("helper-factory:{factory_helpers}:end"), "info");
+        CommandResult::Ok
+    });
+    ext.command("serialize_probe", "Run serializeConversation on JSON messages and report the text", |ctx, args| {
+        // The messages stay JSON text, so an unpaired surrogate escape reaches serialize_conversation_json as the unit it is.
+        let case: std::collections::HashMap<String, Box<serde_json::value::RawValue>> = match serde_json::from_str(args) { Ok(case) => case, Err(err) => return CommandResult::Error(err.to_string()) };
+        let messages = case.get("messages").map(|messages| messages.get()).unwrap_or("[]");
+        let out = match pig_sdk::serialize_conversation_json(messages) {
+            // A JsString serializes as a JSON string that keeps an unpaired surrogate as its escape; a serde_json::Value could not hold it.
+            Ok(text) => format!("{{\"result\":{}}}", serde_json::to_string(&text).unwrap_or_default()),
+            Err(_) => "{\"error\":true}".to_string(),
+        };
+        ctx.notify(&format!("serialize:{out}:end"), "info");
+        CommandResult::Ok
+    });
+    ext.command("branch_probe", "Run a branch summarization helper on a JSON case and report the result", |ctx, args| {
+        struct EntrySession(std::collections::HashMap<String, serde_json::Value>);
+        impl pig_sdk::SessionReader for EntrySession {
+            fn get_entry(&self, id: &str) -> std::io::Result<serde_json::Value> { Ok(self.0.get(id).cloned().unwrap_or(serde_json::Value::Null)) }
+            fn get_branch(&self, from_id: Option<&str>) -> std::io::Result<serde_json::Value> {
+                let mut path = Vec::new();
+                let mut current = from_id.and_then(|id| self.0.get(id));
+                while let Some(entry) = current {
+                    path.push(entry.clone());
+                    current = entry["parentId"].as_str().filter(|id| !id.is_empty()).and_then(|id| self.0.get(id));
+                }
+                path.reverse();
+                Ok(serde_json::Value::Array(path))
+            }
+        }
+        // The entries are read as JSON text: a JavaScript string may hold an unpaired surrogate, which a Value cannot, and only the text path keeps it.
+        let raw: std::collections::HashMap<String, Box<serde_json::value::RawValue>> = match serde_json::from_str(args) { Ok(raw) => raw, Err(err) => return CommandResult::Error(err.to_string()) };
+        // Every member but the entries holds no surrogate; the entries are parsed as Values only where a Value can hold them.
+        let member = |name: &str| raw.get(name).and_then(|member| serde_json::from_str::<serde_json::Value>(member.get()).ok()).unwrap_or(serde_json::Value::Null);
+        let mut case = serde_json::Map::new();
+        for name in ["fn", "lone", "budget", "old", "target"] {
+            case.insert(name.to_string(), member(name));
+        }
+        let case = serde_json::Value::Object(case);
+        let entries: Vec<serde_json::Value> = if case["lone"] == true { Vec::new() } else { member("entries").as_array().cloned().unwrap_or_default() };
+        let report: String = if case["fn"] == "prepare" {
+            let budget = case["budget"].as_i64().unwrap_or(0);
+            let entries_json = raw.get("entries").map_or("[]", |entries| entries.get());
+            match pig_sdk::prepare_branch_entries_json(entries_json, budget) {
+                Err(_) => json!({"error": true}).to_string(),
+                Ok(text) if case["lone"] == true => text,
+                // Where a Value can hold the input, the Value path must answer what the text path answers.
+                Ok(text) => {
+                    let plain = pig_sdk::prepare_branch_entries(&entries, budget).map(|r| json!({"messages": r.messages, "fileOps": {"read": r.file_ops.read, "written": r.file_ops.written, "edited": r.file_ops.edited}, "totalTokens": r.total_tokens}));
+                    if plain.is_ok_and(|plain| serde_json::from_str::<serde_json::Value>(&text).ok() == Some(plain)) { text } else { json!({"error": "the Value path and the text path differ"}).to_string() }
+                }
+            }
+        } else {
+            let session = EntrySession(entries.iter().filter_map(|entry| Some((entry["id"].as_str()?.to_string(), entry.clone()))).collect());
+            match pig_sdk::collect_entries_for_branch_summary(&session, case["old"].as_str(), case["target"].as_str().unwrap_or("")) {
+                Ok(r) => json!({"entries": r.entries, "commonAncestorId": r.common_ancestor_id}),
+                Err(_) => json!({"error": true}),
+            }
+            .to_string()
+        };
+        ctx.notify(&format!("branch:{report}:end"), "info");
+        CommandResult::Ok
+    });
+    ext.command("compact_usage_probe", "Run a compaction usage helper on a JSON case and report the result", |ctx, args| {
+        let case: serde_json::Value = match serde_json::from_str(args) { Ok(case) => case, Err(err) => return CommandResult::Error(err.to_string()) };
+        let result = match case["fn"].as_str().unwrap_or("") {
+            "calc" => {
+                let usage: pig_sdk::UsageInfo = match serde_json::from_value(case["usage"].clone()) { Ok(usage) => usage, Err(err) => return CommandResult::Error(err.to_string()) };
+                json!({"tokens": pig_sdk::calculate_context_tokens(&usage)})
+            }
+            "should" => {
+                let s = &case["settings"];
+                let settings = pig_sdk::CompactionSettings { enabled: s["enabled"].as_bool().unwrap_or(false), reserve_tokens: s["reserveTokens"].as_i64().unwrap_or(0), keep_recent_tokens: s["keepRecentTokens"].as_i64().unwrap_or(0) };
+                json!({"result": pig_sdk::should_compact(case["tokens"].as_i64().unwrap_or(0), case["window"].as_i64().unwrap_or(0), &settings)})
+            }
+            "last" => {
+                let entries: Vec<serde_json::Value> = case["entries"].as_array().cloned().unwrap_or_default();
+                match pig_sdk::get_last_assistant_usage(&entries) {
+                    Some(u) => json!({"usage": {"input": u.input, "output": u.output, "cacheRead": u.cache_read, "cacheWrite": u.cache_write, "totalTokens": u.total_tokens}}),
+                    None => json!({"usage": null}),
+                }
+            }
+            "cut" => {
+                let entries: Vec<serde_json::Value> = case["entries"].as_array().cloned().unwrap_or_default();
+                let cut = pig_sdk::find_cut_point(&entries, case["start"].as_u64().unwrap_or(0) as usize, case["end"].as_u64().unwrap_or(0) as usize, case["keep"].as_i64().unwrap_or(0));
+                json!({"firstKeptEntryIndex": cut.first_kept_entry_index, "turnStartIndex": cut.turn_start_index.map_or(-1, |i| i as i64), "isSplitTurn": cut.is_split_turn})
+            }
+            "turn" => {
+                let entries: Vec<serde_json::Value> = case["entries"].as_array().cloned().unwrap_or_default();
+                let found = pig_sdk::find_turn_start_index(&entries, case["index"].as_u64().unwrap_or(0) as usize, case["start"].as_u64().unwrap_or(0) as usize);
+                json!({"index": found.map_or(-1, |i| i as i64)})
+            }
+            "estimate" => json!({"tokens": pig_sdk::estimate_tokens(&case["message"])}),
+            _ => {
+                let d = pig_sdk::DEFAULT_COMPACTION_SETTINGS;
+                json!({"enabled": d.enabled, "reserveTokens": d.reserve_tokens, "keepRecentTokens": d.keep_recent_tokens})
+            }
+        };
+        ctx.notify(&format!("compact:{result}:end"), "info");
+        CommandResult::Ok
+    });
+    ext.command("skills_probe", "Run a session or skill helper on a JSON case and report the result", |ctx, args| {
+        let case: serde_json::Value = match serde_json::from_str(args) { Ok(case) => case, Err(err) => return CommandResult::Error(err.to_string()) };
+        let result = match case["fn"].as_str().unwrap_or("") {
+            "latest" => {
+                let entries: Vec<serde_json::Value> = case["entries"].as_array().cloned().unwrap_or_default();
+                json!({"entry": pig_sdk::get_latest_compaction_entry(&entries)})
+            }
+            "parse" => {
+                let block = pig_sdk::parse_skill_block(case["text"].as_str().unwrap_or(""));
+                json!({"block": block.map(|b| json!({"name": b.name, "location": b.location, "content": b.content, "userMessage": b.user_message}))})
+            }
+            "format" => {
+                let skills: Vec<serde_json::Value> = case["skills"].as_array().cloned().unwrap_or_default();
+                json!({"text": pig_sdk::format_skills_for_prompt(&skills, case["tool"].as_str().unwrap_or("read"))})
+            }
+            _ => json!({"version": pig_sdk::CURRENT_SESSION_VERSION, "virtual": pig_sdk::VIRTUAL_MODEL_STATE_ENTRY}),
+        };
+        ctx.notify(&format!("skills:{result}:end"), "info");
+        CommandResult::Ok
+    });
     ext.command("schema-probe", "Report schema rejection", move |ctx, _args| {
         ctx.notify(&format!("schema-rejected:{schema_rejected}"), "info");
         CommandResult::Ok
+    });
+    // The factory get_editor_component answered right after this extension's install: the editor-get-probe reports "installed" only for
+    // that same Arc, so a getter that builds another factory fails TestConformance_EditorComponentGetterAgreesAcrossSDKs.
+    let installed_factory: Arc<Mutex<Option<pig_sdk::EditorFactory>>> = Arc::new(Mutex::new(None));
+    let installed = installed_factory.clone();
+    ext.command("editor-install", "Install a custom editor component", move |ctx, _args| {
+        match ctx.set_editor_component(|base| Box::new(ConformanceEditor { base })) {
+            Ok(()) => {
+                *installed.lock().unwrap() = ctx.get_editor_component();
+                CommandResult::Ok
+            }
+            Err(err) => CommandResult::Error(err.to_string()),
+        }
+    });
+    // editor-get-probe and editor-clear back TestConformance_EditorComponentGetterAgreesAcrossSDKs; editor-install is above.
+    let installed = installed_factory.clone();
+    ext.command("editor-get-probe", "Report the factory get_editor_component returns", move |ctx, _args| {
+        let state = match (ctx.get_editor_component(), installed.lock().unwrap().as_ref()) {
+            (None, _) => "absent",
+            (Some(got), Some(want)) if Arc::ptr_eq(&got, want) => "installed",
+            (Some(_), _) => "other",
+        };
+        ctx.notify(&format!("editor_get:{state}:end"), "info");
+        CommandResult::Ok
+    });
+    // truncate_probe runs one SDK truncation helper on the JSON case in its argument and reports the result in Pi's shape (TestConformance_TruncationHelpersAgreeAcrossSDKs).
+    ext.command("truncate_probe", "Run a truncation helper on a JSON case and report the result", |ctx, args| {
+        let case: Value = match serde_json::from_str(&args) {
+            Ok(case) => case,
+            Err(err) => return CommandResult::Error(err.to_string()),
+        };
+        let limit = |key: &str| case.get(key).and_then(Value::as_u64).map(|n| n as usize);
+        let options = pig_sdk::TruncationOptions { max_lines: limit("maxLines"), max_bytes: limit("maxBytes") };
+        let content = case["content"].as_str().unwrap_or("");
+        let result = match case["fn"].as_str().unwrap_or("") {
+            fn_name @ ("head" | "tail") => {
+                let r = if fn_name == "head" { pig_sdk::truncate_head(content, options) } else { pig_sdk::truncate_tail(content, options) };
+                json!({"content": r.content, "truncated": r.truncated, "truncatedBy": r.truncated_by.map(|by| by.as_str()), "totalLines": r.total_lines,
+                    "totalBytes": r.total_bytes, "outputLines": r.output_lines, "outputBytes": r.output_bytes, "lastLinePartial": r.last_line_partial,
+                    "firstLineExceedsLimit": r.first_line_exceeds_limit, "maxLines": r.max_lines, "maxBytes": r.max_bytes})
+            }
+            "line" => {
+                let (text, was) = pig_sdk::truncate_line(content, limit("maxChars").unwrap_or(pig_sdk::GREP_MAX_LINE_LENGTH));
+                json!({"text": text, "wasTruncated": was})
+            }
+            _ => json!({"text": pig_sdk::format_size(limit("bytes").unwrap_or(0))}),
+        };
+        ctx.notify(&format!("truncate:{result}:end"), "info");
+        CommandResult::Ok
+    });
+    // message_probe reads the event payload in its JSON argument with the SDK's message_role and message_text helpers (TestConformance_MessageHelpersAgreeAcrossSDKs).
+    ext.command("message_probe", "Report message_role and message_text of a JSON event payload", |ctx, args| {
+        let data: Value = match serde_json::from_str(&args) {
+            Ok(data) => data,
+            Err(err) => return CommandResult::Error(err.to_string()),
+        };
+        let result = json!({"role": pig_sdk::message_role(&data).unwrap_or_default(), "text": pig_sdk::message_text(&data)});
+        ctx.notify(&format!("message:{result}:end"), "info");
+        CommandResult::Ok
+    });
+    // file_queue_probe runs the tasks in its JSON argument concurrently through the SDK's file mutation queue and reports the start/end log and the tasks that failed (TestConformance_FileMutationQueueAgreesAcrossSDKs).
+    // Tasks are ordered by waiting on each other's progress, never by sleeping through a race: waitStarted/waitCalled delay the call into the queue, holdEnded/holdCalled keep a task inside it.
+    // After a "called" signal a fixed settle time lets a task that wrongly skipped the queue show itself.
+    ext.command("file_queue_probe", "Run tasks through the file mutation queue and report the log", |ctx, args| {
+        use std::collections::HashSet;
+        use std::time::{Duration, Instant};
+        let case: Value = match serde_json::from_str(&args) {
+            Ok(case) => case,
+            Err(err) => return CommandResult::Error(err.to_string()),
+        };
+        let settle_ms = case["settleMs"].as_u64().unwrap_or(0);
+        let log = Arc::new(Mutex::new(Vec::<String>::new()));
+        let failed = Arc::new(Mutex::new(Vec::<u64>::new()));
+        let progress = Arc::new(Mutex::new(HashSet::<(String, u64)>::new()));
+        let ids_of = |task: &Value, key: &str| -> Vec<u64> { task[key].as_array().map(|ids| ids.iter().filter_map(Value::as_u64).collect()).unwrap_or_default() };
+        let handles: Vec<_> = case["tasks"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default()
+            .into_iter()
+            .map(|task| {
+                let (log, failed, progress) = (log.clone(), failed.clone(), progress.clone());
+                let (wait_started, wait_called) = (ids_of(&task, "waitStarted"), ids_of(&task, "waitCalled"));
+                let (hold_ended, hold_called) = (ids_of(&task, "holdEnded"), ids_of(&task, "holdCalled"));
+                std::thread::spawn(move || {
+                    let id = task["id"].as_u64().unwrap_or(0);
+                    let fail = task["fail"].as_bool().unwrap_or(false);
+                    let mark = |kind: &str, who: u64| {
+                        progress.lock().unwrap().insert((kind.to_string(), who));
+                    };
+                    let await_stage = |kind: &str, ids: &[u64]| {
+                        for other in ids {
+                            let deadline = Instant::now() + Duration::from_secs(20);
+                            while !progress.lock().unwrap().contains(&(kind.to_string(), *other)) {
+                                if Instant::now() > deadline {
+                                    log.lock().unwrap().push(format!("timeout:{id}:{kind}:{other}"));
+                                    return;
+                                }
+                                std::thread::sleep(Duration::from_millis(1));
+                            }
+                        }
+                    };
+                    let settle = |ids: &[u64]| {
+                        if !ids.is_empty() {
+                            std::thread::sleep(Duration::from_millis(settle_ms));
+                        }
+                    };
+                    await_stage("started", &wait_started);
+                    await_stage("called", &wait_called);
+                    settle(&wait_called);
+                    mark("called", id);
+                    let outcome = pig_sdk::with_file_mutation_queue(task["path"].as_str().unwrap_or(""), || {
+                        log.lock().unwrap().push(format!("start:{id}"));
+                        mark("started", id);
+                        await_stage("ended", &hold_ended);
+                        await_stage("called", &hold_called);
+                        settle(&hold_called);
+                        log.lock().unwrap().push(format!("end:{id}"));
+                        mark("ended", id);
+                        !fail
+                    });
+                    if !matches!(outcome, Ok(true)) {
+                        mark("ended", id);
+                        failed.lock().unwrap().push(id);
+                    }
+                })
+            })
+            .collect();
+        for handle in handles {
+            let _ = handle.join();
+        }
+        let mut failed = failed.lock().unwrap().clone();
+        failed.sort_unstable();
+        ctx.notify(&format!("file_queue:{}:end", json!({"log": *log.lock().unwrap(), "errors": failed})), "info");
+        CommandResult::Ok
+    });
+    // host_info_probe reports Pi's getAgentDir(), CONFIG_DIR_NAME and VERSION as this SDK answers them (TestConformance_HostConfigurationAgreesAcrossSDKs).
+    ext.command("host_info_probe", "Report getAgentDir, CONFIG_DIR_NAME and VERSION", move |ctx, _args| {
+        let report = (|| -> std::io::Result<Value> {
+            Ok(json!({"agentDir": pig_sdk::get_agent_dir()?, "configDirName": pig_sdk::get_config_dir_name()?, "version": pig_sdk::get_version()?, "factoryAgentDir": factory_agent_dir}))
+        })();
+        match report {
+            Ok(report) => {
+                ctx.notify(&format!("host_info:{report}:end"), "info");
+                CommandResult::Ok
+            }
+            Err(err) => CommandResult::Error(err.to_string()),
+        }
+    });
+    // ui_forward_probe calls the UI members whose host effect a conformance row records (TestConformance_UIForwardingAgreesAcrossSDKs).
+    ext.command("ui_forward_probe", "Call the working, paste, editor-text and tools-expanded UI members", |ctx, _args| {
+        ctx.set_working_message("Thinking hard");
+        ctx.set_working_message("");
+        ctx.clear_working_message();
+        let _ = ctx.set_hidden_thinking_label("Pondering");
+        let _ = ctx.set_hidden_thinking_label("");
+        let _ = ctx.clear_hidden_thinking_label();
+        ctx.set_working_visible(false);
+        if let Err(err) = ctx.set_working_indicator(json!({"frames": ["-", "+"], "intervalMs": 120})) {
+            return CommandResult::Error(err.to_string());
+        }
+        ctx.paste_to_editor("pasted \u{1F600}");
+        ctx.set_editor_text("draft");
+        ctx.set_tools_expanded(true);
+        CommandResult::Ok
+    });
+    let installed = installed_factory;
+    ext.command("editor-clear", "Restore the host's editor", move |ctx, _args| {
+        *installed.lock().unwrap() = None;
+        match ctx.clear_editor_component() {
+            Ok(()) => CommandResult::Ok,
+            Err(err) => CommandResult::Error(err.to_string()),
+        }
+    });
+    ext.command("editor-install-eager", "Install a custom editor that calls super in its factory", |ctx, _args| {
+        let notify = ctx.clone();
+        match ctx.set_editor_component(move |base| {
+            let text = base.set_text(&JsString::from("eager")).and_then(|()| base.get_text());
+            match text {
+                Ok(text) => notify.notify(&format!("eager:{}", text.to_string_lossy()), "info"),
+                Err(err) => notify.notify(&format!("eager-error:{err}"), "info"),
+            }
+            Box::new(ConformanceEditor { base })
+        }) {
+            Ok(()) => CommandResult::Ok,
+            Err(err) => CommandResult::Error(err.to_string()),
+        }
+    });
+    ext.command("editor-install-embed", "Install a custom editor that embeds the working status", |ctx, _args| {
+        match ctx.set_editor_component(|base| Box::new(EmbeddingEditor(ConformanceEditor { base }))) {
+            Ok(()) => CommandResult::Ok,
+            Err(err) => CommandResult::Error(err.to_string()),
+        }
     });
     ext.flag("flag-true", pig_sdk::FlagOptions::boolean("", true));
     ext.flag("flag-false", pig_sdk::FlagOptions::boolean("", false));
@@ -198,6 +717,65 @@ fn main() {
             }
         }
         CommandResult::Ok
+    });
+    ext.command("thinking-model", "Read the thinking level and switch the model", |ctx, _| {
+        let level = match ctx.get_thinking_level() {
+            Ok(level) => level,
+            Err(err) => return CommandResult::Error(err.to_string()),
+        };
+        ctx.set_thinking_level("high");
+        let (ok, _) = ctx.set_model("probe/model");
+        ctx.notify(&json!([level, ok]).to_string(), "info");
+        CommandResult::Ok
+    });
+    ext.command("active_tools_set", "Set the active tools to the comma-separated names", |ctx, args| {
+        let names: Vec<&str> = args.trim().split(',').collect();
+        ctx.set_active_tools(&names);
+        CommandResult::Ok
+    });
+    ext.command("session_actions_unbound", "Report what unbound session actions answer", |ctx, _| {
+        let cancelled = |name: &str, result: std::io::Result<Option<serde_json::Value>>| match result {
+            Ok(value) => format!("{name}={}", value.and_then(|v| v.get("cancelled").and_then(|c| c.as_bool())).map_or("none".to_string(), |c| c.to_string())),
+            Err(err) => format!("{name}=error:{err}"),
+        };
+        let parts = vec![
+            cancelled("new", ctx.new_session(serde_json::json!({}))),
+            cancelled("fork", ctx.fork("entry", serde_json::json!({}))),
+            cancelled("navigate", ctx.navigate_tree("entry", serde_json::json!({}))),
+            cancelled("switch", ctx.switch_session("/s.jsonl", serde_json::json!({}))),
+            match ctx.reload() {
+                Ok(()) => "reload=ok".to_string(),
+                Err(err) => format!("reload=error:{err}"),
+            },
+        ];
+        ctx.notify(&format!("unbound:{}", parts.join(",")), "info");
+        CommandResult::Ok
+    });
+    ext.command("active_tools_get", "Report the active tools", |ctx, _| match ctx.get_active_tools() {
+        Ok(names) => {
+            ctx.notify(&format!("active_tools:{}", names.join(",")), "info");
+            CommandResult::Ok
+        }
+        Err(err) => CommandResult::Error(err.to_string()),
+    });
+    ext.command("provider_probe_register", "Register a provider with one model", |ctx, _| {
+        let config: Value = serde_json::from_str(r#"{"baseUrl":"https://probe.invalid/v1","api":"openai-completions","apiKey":"probe-key","models":[{"id":"probe-model","name":"Probe Model","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000,"maxTokens":100}]}"#).unwrap();
+        match ctx.model_registry().register_provider("conformance-probe", config) {
+            Ok(_) => CommandResult::Ok,
+            Err(err) => CommandResult::Error(err.to_string()),
+        }
+    });
+    ext.command("provider_probe_unregister", "Unregister the provider", |ctx, _| match ctx.model_registry().unregister_provider("conformance-probe") {
+        Ok(_) => CommandResult::Ok,
+        Err(err) => CommandResult::Error(err.to_string()),
+    });
+    ext.command("commands-probe", "Read the host's slash commands", |ctx, _| match ctx.get_commands() {
+        Ok(commands) => {
+            let listed: Vec<Value> = commands.iter().filter(|c| c.name == "conformance-listed").map(|c| json!([c.name, c.source, c.description])).collect();
+            ctx.notify(&Value::Array(listed).to_string(), "info");
+            CommandResult::Ok
+        }
+        Err(err) => CommandResult::Error(err.to_string()),
     });
     ext.command("session-identity", "Read context identity accessors", |ctx, _| {
         let identity = (|| -> std::io::Result<Value> { Ok(json!([ctx.get_session_id()?, ctx.get_session_file()?, ctx.get_leaf_id()?, ctx.get_session_name()?])) })();
@@ -254,7 +832,27 @@ fn main() {
             options.expanded
         )])
     });
+    ext.message_view_renderer("kit-message", |_ctx, _message, _options, _width| Ok(kit_probe_view()));
+    ext.entry_view_renderer("kit-entry", |_ctx, _entry, _options, _width| Ok(kit_probe_view()));
     ext.markdown_transformer(|markdown, context| {
+        // "trace:<dir>:<name>" records the body's entry in <dir>/trace; the body named "first" returns only once <dir>/release exists.
+        if let Some(rest) = markdown.strip_prefix("trace:") {
+            // The name is the last field: a Windows <dir> contains a drive colon.
+            if let Some((dir, name)) = rest.rsplit_once(':') {
+                let append = |line: &str| {
+                    use std::io::Write;
+                    let mut file = std::fs::OpenOptions::new().create(true).append(true).open(format!("{dir}/trace")).unwrap();
+                    writeln!(file, "{line}").unwrap();
+                };
+                append(&format!("entered {name}"));
+                if name == "first" {
+                    while !std::path::Path::new(&format!("{dir}/release")).exists() {
+                        thread::sleep(Duration::from_millis(10));
+                    }
+                    append("returned first");
+                }
+            }
+        }
         Some(format!(
             "md:{markdown}:{}:streaming={}:width={}",
             context.message_type, context.is_streaming, context.available_width
@@ -269,6 +867,13 @@ fn main() {
     }
     ext.tool_renderer(|tool, next| match tool {
         "conformance_tool_renderer" => Some(resolved_line("resolved", tool)),
+        "kit_resolved_tool" => {
+            // The resolver draws a call and its result as the kit probe (D107): the view forms of ToolRendererSet.
+            let mut set = pig_sdk::ToolRendererSet::default();
+            set.call_view = Some(Arc::new(|_ctx, _args, _render, _width| Ok(kit_probe_view())));
+            set.result_view = Some(Arc::new(|_ctx, _result, _options, _render, _width| Ok(kit_probe_view())));
+            Some(set)
+        }
         "conformance_no_renderer" => None,
         "conformance_fill" => next().or_else(|| Some(resolved_line("filled", tool))),
         "conformance_wrap" => {
@@ -311,8 +916,9 @@ fn main() {
         let text = result.content[0].get("text").and_then(Value::as_str).unwrap_or("");
         let key = result.details.get("k").and_then(Value::as_str).unwrap_or("");
         let calls = render.state.get("calls").cloned().unwrap_or(Value::Null);
+        let duration = render.duration_ms.map_or("none".to_string(), |ms| ms.to_string());
         Ok(vec![format!(
-            "toolrender:result:{text}:{key}:expanded={}:calls={calls}:width={width}",
+            "toolrender:result:{text}:{key}:expanded={}:calls={calls}:width={width}:duration={duration}",
             options.expanded
         )])
     });
@@ -325,6 +931,24 @@ fn main() {
             let _ = ctx.on_update(ToolResult::Json(json!({"content": [{"type": "text", "text": "step 2"}]})));
             ToolResult::Json(json!({"content": [{"type": "text", "text": "done"}]}))
         },
+    );
+    ext.tool(
+        "big_out",
+        "Return text of the size in the argument",
+        json!({"type": "object", "properties": {}}),
+        |_ctx, params: Value| ToolResult::Json(json!({"content": [{"type": "text", "text": "a".repeat(params["n"].as_u64().unwrap_or(0) as usize)}]})),
+    );
+    ext.tool(
+        "echo_params",
+        "Return the arguments as the result details",
+        json!({"type": "object", "properties": {}}),
+        |_ctx, params: Value| ToolResult::Json(json!({"content": [{"type": "text", "text": "echoed"}], "details": params})),
+    );
+    ext.tool(
+        "nan_out",
+        "Return details holding NaN and Infinity",
+        json!({"type": "object", "properties": {}}),
+        |_ctx, _params: Value| ToolResult::Json(json!({"content": [{"type": "text", "text": "nan"}], "details": {"n": f64::NAN, "i": f64::NEG_INFINITY, "l": [f64::NAN, 2, {"d": f64::INFINITY}], "ok": 1}})),
     );
     ext.tool(
         "ordered_details",
@@ -357,6 +981,17 @@ fn main() {
             }
             abort_set.store(true, Ordering::SeqCst);
             ToolResult::text("aborted")
+        },
+    );
+    // hang_tool ignores its abort signal for longer than the host's abort grace period (D111).
+    ext.tool(
+        "hang_tool",
+        "Ignore the abort signal",
+        json!({"type": "object", "properties": {}}),
+        |ctx, _params: Value| {
+            let _ = ctx.on_update(ToolResult::Json(json!({"content": [{"type": "text", "text": "waiting"}]})));
+            thread::sleep(Duration::from_secs(8));
+            ToolResult::text("late")
         },
     );
     ext.command(
@@ -414,6 +1049,17 @@ fn main() {
         |_ctx, params: Value| {
             let number = STARTED_CALLS.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
             ToolResult::text(format!("start#{number} n={}", params.get("n").map(Value::to_string).unwrap_or_default()))
+        },
+    );
+    ext.tool(
+        "throw_probe",
+        "Throw a value of the requested kind",
+        json!({"type": "object", "properties": {"kind": {"type": "string"}}}),
+        |_ctx, params: Value| match params["kind"].as_str().unwrap_or("") {
+            "unicode" => ToolResult::Error("é😀 \n x".to_string()),
+            "empty" => ToolResult::Error(String::new()),
+            "long" => ToolResult::Error("x".repeat(100000)),
+            _ => ToolResult::Text("ok".to_string()),
         },
     );
     ext.tool(
@@ -546,6 +1192,139 @@ fn main() {
         ctx.notify("model-stream=ok", "info");
         CommandResult::Ok
     });
+    ext.command("overlay-handle-probe", "Exercise the overlay handle custom hands to on_handle", |ctx, _args| {
+        struct HandleProbe;
+        impl RemoteComponent for HandleProbe {
+            fn render(&self, _width: u32) -> Vec<String> {
+                vec!["overlay".to_string()]
+            }
+            fn handle_input(&mut self, data: &pig_sdk::JsString) -> Result<RemoteComponentResult, String> {
+                if data == "q" {
+                    return Ok(RemoteComponentResult::done(Some(json!("closed"))));
+                }
+                Ok(RemoteComponentResult::pending())
+            }
+        }
+        let failures: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+        let recorded = failures.clone();
+        let on_handle = move |handle: pig_sdk::OverlayHandle| {
+            let mut expect = |label: &str, ok: bool, detail: String| {
+                if !ok {
+                    recorded.lock().unwrap().push(format!("{label}: {detail}"));
+                }
+            };
+            expect("initial focused", handle.is_focused(), format!("{}", handle.is_focused()));
+            expect("initial hidden", !handle.is_hidden(), format!("{}", handle.is_hidden()));
+            expect("initial bounds", handle.bounds() == Some(pig_sdk::OverlayBounds { row: 3, col: 4, width: 20, height: 5 }), format!("{:?}", handle.bounds()));
+            let _ = handle.focus();
+            expect("focus", handle.is_focused(), format!("{}", handle.is_focused()));
+            let _ = handle.set_hidden(true);
+            expect("hidden", handle.is_hidden() && !handle.is_focused() && handle.bounds().is_none(), format!("{} {} {:?}", handle.is_hidden(), handle.is_focused(), handle.bounds()));
+            let _ = handle.set_hidden(false);
+            expect("shown", !handle.is_hidden() && !handle.is_focused(), format!("{} {}", handle.is_hidden(), handle.is_focused()));
+            let _ = handle.focus();
+            expect("refocus", handle.is_focused(), format!("{}", handle.is_focused()));
+            let _ = handle.unfocus();
+            expect("unfocus", !handle.is_focused(), format!("{}", handle.is_focused()));
+            let _ = handle.unfocus_target(pig_sdk::UnfocusTarget::Nothing);
+        };
+        if let Err(err) = ctx.custom_component_with_handle(HandleProbe, json!({"overlay": true}), on_handle) {
+            return CommandResult::Error(err.to_string());
+        }
+        let failures = failures.lock().unwrap();
+        if !failures.is_empty() {
+            return CommandResult::Error(failures.join("; "));
+        }
+        ctx.notify("overlay-handle=ok", "info");
+        CommandResult::Ok
+    });
+    ext.command("overlay-focus-probe", "Render the focus the host publishes to a mounted overlay", |ctx, _args| {
+        struct FocusProbe(Arc<Mutex<Option<pig_sdk::OverlayHandle>>>);
+        impl RemoteComponent for FocusProbe {
+            fn render(&self, _width: u32) -> Vec<String> {
+                match self.0.lock().unwrap().as_ref() {
+                    Some(handle) => vec![format!("focused={}", handle.is_focused())],
+                    None => vec!["focused=pending".to_string()],
+                }
+            }
+            fn handle_input(&mut self, data: &pig_sdk::JsString) -> Result<RemoteComponentResult, String> {
+                if data == "q" {
+                    return Ok(RemoteComponentResult::done(Some(json!("closed"))));
+                }
+                Ok(RemoteComponentResult::pending())
+            }
+        }
+        let handle: Arc<Mutex<Option<pig_sdk::OverlayHandle>>> = Arc::new(Mutex::new(None));
+        let mounted = handle.clone();
+        let on_handle = move |overlay: pig_sdk::OverlayHandle| {
+            *mounted.lock().unwrap() = Some(overlay);
+        };
+        if let Err(err) = ctx.custom_component_with_handle(FocusProbe(handle), json!({"overlay": true}), on_handle) {
+            return CommandResult::Error(err.to_string());
+        }
+        ctx.notify("overlay-focus=ok", "info");
+        CommandResult::Ok
+    });
+    ext.command("model-stream-fetch-probe", "Exercise the fetch option of the model registry stream", |ctx, _args| {
+        let registry = ctx.model_registry();
+        let model = json!({"provider":"conformance","id":"declared","modelId":"declared","api":"openai-responses"});
+        let request = json!({"systemPrompt":"fetch","messages":[{"role":"user","content":"hello","timestamp":1}]});
+        let seen: Arc<Mutex<Option<(String, String, Option<String>, String)>>> = Arc::new(Mutex::new(None));
+        let recorded = seen.clone();
+        let callbacks = pig_sdk::ModelStreamCallbacks::new().fetch(move |call| {
+            let host = call.headers.iter().find(|(name, _)| name == "X-Host").map(|(_, value)| value.clone());
+            *recorded.lock().unwrap() = Some((call.url, call.method, host, String::from_utf8_lossy(&call.body.unwrap_or_default()).to_string()));
+            let body: Vec<u8> = (0..70000u32).map(|index| (index % 251) as u8).collect();
+            Ok(pig_sdk::ModelFetchResponse {
+                status: 207,
+                status_text: "Answered".to_string(),
+                headers: vec![("x-sdk-fetch".to_string(), "answered".to_string())],
+                body: Some(Box::new(std::io::Cursor::new(body))),
+            })
+        });
+        let result = registry.stream_with_callbacks(model.clone(), request.clone(), json!({}), callbacks).result();
+        if result.as_ref().and_then(|value| value["stopReason"].as_str()) != Some("stop") { return CommandResult::Error(format!("fetch stream = {result:?}")); }
+        let saw = seen.lock().unwrap().clone();
+        let expected = Some(("https://fetch.invalid/v1/chat?x=1".to_string(), "POST".to_string(), Some("1".to_string()), "ping-body".to_string()));
+        if saw != expected { return CommandResult::Error(format!("fetch saw {saw:?}")); }
+        let plain = registry.stream(model, request, json!({})).result();
+        if plain.as_ref().and_then(|value| value["stopReason"].as_str()) != Some("stop") { return CommandResult::Error(format!("plain stream = {plain:?}")); }
+        ctx.notify("model-fetch=ok", "info");
+        CommandResult::Ok
+    });
+    ext.command("model-stream-callback-probe", "Exercise the provider request callbacks of the model registry stream", |ctx, _args| {
+        let registry = ctx.model_registry();
+        let model = json!({"provider":"conformance","id":"declared","modelId":"declared","api":"openai-responses"});
+        let request = json!({"systemPrompt":"callbacks","messages":[{"role":"user","content":"hello","timestamp":1}]});
+        let seen: Arc<Mutex<(Value, String, Value)>> = Arc::new(Mutex::new((Value::Null, String::new(), Value::Null)));
+        let (payload_seen, response_seen) = (seen.clone(), seen.clone());
+        let callbacks = pig_sdk::ModelStreamCallbacks::new()
+            .on_payload(move |payload, callback_model| {
+                let mut marked = payload.clone();
+                marked["mark"] = json!("on-payload");
+                let mut seen = payload_seen.lock().unwrap();
+                seen.0 = payload;
+                seen.1 = callback_model["id"].as_str().unwrap_or_default().to_string();
+                Ok(Some(marked))
+            })
+            .on_response(move |response, _model| {
+                response_seen.lock().unwrap().2 = response;
+                Ok(())
+            })
+            .transform_headers(|mut headers, _model| {
+                headers["x-transformed"] = json!("yes");
+                Ok(headers)
+            });
+        let result = registry.stream_with_callbacks(model.clone(), request.clone(), json!({}), callbacks).result();
+        if result.as_ref().and_then(|value| value["stopReason"].as_str()) != Some("stop") { return CommandResult::Error(format!("callback stream = {result:?}")); }
+        let (payload, callback_model, response) = seen.lock().unwrap().clone();
+        if payload["original"] != true || callback_model != "declared" { return CommandResult::Error(format!("onPayload saw {payload} for {callback_model}")); }
+        if response["status"] != 201 || response["headers"]["x-upstream"] != "seen" { return CommandResult::Error(format!("onResponse saw {response}")); }
+        let plain = registry.stream(model, request, json!({})).result();
+        if plain.as_ref().and_then(|value| value["stopReason"].as_str()) != Some("stop") { return CommandResult::Error(format!("plain stream = {plain:?}")); }
+        ctx.notify("model-callbacks=ok", "info");
+        CommandResult::Ok
+    });
     ext.command(
         "liveness_host_call",
         "Exercise an awaited host call",
@@ -599,12 +1378,51 @@ fn main() {
             Err(error) => CommandResult::Error(error.to_string()),
         }
     });
+    ext.command("surface_static_header", "Push static header rows", |ctx, _args| {
+        match ctx.set_header(vec![format!("static@{}", ctx.width())]) {
+            Ok(()) => CommandResult::Ok,
+            Err(error) => CommandResult::Error(error.to_string()),
+        }
+    });
+    ext.command("surface_widget_value", "Set the string list widget through the JSON content form", |ctx, _args| {
+        match ctx.set_widget_value("wide", serde_json::json!([format!("{} tail", "A".repeat(60)), "short"]), None) {
+            Ok(()) => CommandResult::Ok,
+            Err(error) => CommandResult::Error(error.to_string()),
+        }
+    });
     ext.command("surface_widget", "Set a string list widget wider than the pane", |ctx, _args| {
         match ctx.set_widget("wide", vec![format!("{} tail", "A".repeat(60)), "short".to_string()]) {
             Ok(()) => CommandResult::Ok,
             Err(error) => CommandResult::Error(error.to_string()),
         }
     });
+    // pi.on called after the extension connected returns an unsubscribe (conformance TestConformance_EventUnsubscribe): the
+    // handler reports the event's own message entry id, which no SDK fallback produces.
+    let event_probe: Arc<Mutex<Option<pig_sdk::EventSubscription>>> = Arc::new(Mutex::new(None));
+    let event_probe_for_subscribe = event_probe.clone();
+    let event_subscriber = ext.event_subscriber();
+    ext.command(
+        "event_probe_subscribe",
+        "Subscribe to turn_end after connecting",
+        move |_ctx, _args| {
+            let subscription = event_subscriber.on_event("turn_end", |ctx, data| {
+                ctx.notify(&format!("event_probe:{}", data["messageEntryId"].as_str().unwrap_or("")), "info");
+                Ok(None)
+            });
+            *event_probe_for_subscribe.lock().unwrap() = Some(subscription);
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "event_probe_unsubscribe",
+        "Remove the turn_end handler registered after connecting",
+        move |_ctx, _args| {
+            if let Some(subscription) = event_probe.lock().unwrap().take() {
+                subscription.unsubscribe();
+            }
+            CommandResult::Ok
+        },
+    );
     ext.command(
         "report_geometry",
         "Report observed terminal geometry",
@@ -735,6 +1553,29 @@ fn main() {
             }
         },
     );
+    ext.command("settings_probe", "Report the effective settings", |ctx, _args| match ctx.get_settings() {
+        Ok(settings) => {
+            ctx.notify(&format!("settings_probe:{}", settings), "info");
+            CommandResult::Ok
+        }
+        Err(err) => CommandResult::Error(err.to_string()),
+    });
+    ext.command("model_set", "Switch the model", |ctx, args| {
+        let (ok, _error) = ctx.set_model(args.trim());
+        ctx.notify(&format!("model_set:{}", ok), "info");
+        CommandResult::Ok
+    });
+    ext.command("thinking_set", "Set the thinking level", |ctx, args| {
+        ctx.set_thinking_level(args.trim());
+        CommandResult::Ok
+    });
+    ext.command("thinking_get", "Report the thinking level", |ctx, _args| match ctx.get_thinking_level() {
+        Ok(level) => {
+            ctx.notify(&format!("thinking_get:{}", level), "info");
+            CommandResult::Ok
+        }
+        Err(err) => CommandResult::Error(err.to_string()),
+    });
     ext.command(
         "set_session_name",
         "Set the session name",
@@ -743,6 +1584,219 @@ fn main() {
             Err(err) => CommandResult::Error(err.to_string()),
         },
     );
+    let event_field_subscriber = ext.event_subscriber();
+    let event_field_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> = Arc::new(Mutex::new(Vec::new()));
+    ext.command(
+        "event_field_probe",
+        "Report a field of the events named by the argument `<event> <field>`",
+        move |_ctx, args| {
+            let mut words = args.split_whitespace();
+            let (name, field) = (words.next().unwrap_or("").to_string(), words.next().unwrap_or("").to_string());
+            let reported = name.clone();
+            let subscription = event_field_subscriber.on_event(&name, move |ctx, data| {
+                let value = data.get(field.as_str()).map_or_else(|| "absent".to_string(), |value| value.to_string());
+                ctx.notify(&format!("event_field:{}.{}={}", reported, field, value), "info");
+                Ok(None)
+            });
+            event_field_subscriptions.lock().unwrap().push(subscription);
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "host_state_probe",
+        "Report the thinking level and the session commands",
+        |ctx, _args| {
+            let level = match ctx.get_thinking_level() {
+                Ok(level) => level,
+                Err(err) => return CommandResult::Error(err.to_string()),
+            };
+            let commands = match ctx.get_commands() {
+                Ok(commands) => commands,
+                Err(err) => return CommandResult::Error(err.to_string()),
+            };
+            let parts: Vec<String> = commands
+                .iter()
+                .map(|c| {
+                    [
+                        c.name.as_str(),
+                        c.description.as_str(),
+                        c.source.as_str(),
+                        c.source_info.path.as_str(),
+                        c.source_info.scope.as_str(),
+                    ]
+                    .join("|")
+                })
+                .collect();
+            ctx.notify(
+                &format!("getThinkingLevel={level};getCommands={}", parts.join(",")),
+                "info",
+            );
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "set_model",
+        "Switch to the model in the arguments",
+        |ctx, args| {
+            let (ok, error) = ctx.set_model(args);
+            if !error.is_empty() {
+                return CommandResult::Error(error);
+            }
+            ctx.notify(&format!("setModel={ok}"), "info");
+            CommandResult::Ok
+        },
+    );
+    let event_probe_on_subscriber = ext.event_subscriber();
+    let event_probe_on_subscriptions: Arc<Mutex<Vec<(String, pig_sdk::EventSubscription)>>> = Arc::new(Mutex::new(Vec::new()));
+    let event_probe_off_subscriptions = event_probe_on_subscriptions.clone();
+    let event_probe_results: Arc<Mutex<std::collections::HashMap<String, Vec<Value>>>> = Arc::new(Mutex::new(std::collections::HashMap::new()));
+    let event_probe_result_setter = event_probe_results.clone();
+    ext.command(
+        "event_probe_result",
+        "Queue the JSON result the next event_probe_on handler call of an event returns",
+        move |_ctx, args| {
+            let (name, raw) = args.trim().split_once(' ').unwrap_or((args.trim(), "null"));
+            match serde_json::from_str::<Value>(raw) {
+                Ok(value) => {
+                    event_probe_result_setter.lock().unwrap().entry(name.to_string()).or_default().push(value);
+                    CommandResult::Ok
+                }
+                Err(err) => CommandResult::Error(err.to_string()),
+            }
+        },
+    );
+    ext.command(
+        "event_probe_on",
+        "Subscribe to the event named by the argument",
+        move |_ctx, args| {
+            let name = args.trim().to_string();
+            let reported = name.clone();
+            let results = event_probe_results.clone();
+            let subscription = event_probe_on_subscriber.on_event(&name, move |ctx, data| {
+                ctx.notify(&format!("event_probe_on:{}", reported), "info");
+                // The event as the host sent it, for the tests that compare a payload field with the Go reference's.
+                ctx.notify(&format!("event_probe_data:{}:{}", reported, serde_json::to_string(&*data).unwrap()), "info");
+                // mcp_servers_change carries every registered server (types.ts:699-709): report their names, which only the host's registry knows.
+                if let Some(servers) = data.get("servers").and_then(|servers| servers.as_array()) {
+                    let names: Vec<String> = servers.iter().map(|server| server["name"].as_str().unwrap_or("").to_string()).collect();
+                    ctx.notify(&format!("event_probe_servers:{}", names.join(",")), "info");
+                }
+                ctx.notify(&format!("event_payload:{}:{}", reported, serde_json::to_string(&*data).unwrap()), "info");
+                let mut queued = results.lock().unwrap();
+                Ok(queued.get_mut(&reported).filter(|values| !values.is_empty()).map(|values| values.remove(0)))
+            });
+            event_probe_on_subscriptions.lock().unwrap().push((name, subscription));
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "event_probe_off",
+        "Unsubscribe the event_probe_on handlers of the event named by the argument",
+        move |_ctx, args| {
+            let name = args.trim();
+            let removed: Vec<(String, pig_sdk::EventSubscription)> = {
+                let mut subscriptions = event_probe_off_subscriptions.lock().unwrap();
+                let (removed, kept) = subscriptions.drain(..).partition(|(event, _)| event == name);
+                *subscriptions = kept;
+                removed
+            };
+            for (_, subscription) in removed {
+                subscription.unsubscribe();
+            }
+            CommandResult::Ok
+        },
+    );
+    let event_probe_result_subscriber = ext.event_subscriber();
+    let event_probe_result_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> = Arc::new(Mutex::new(Vec::new()));
+    ext.command(
+        "event_result_probe",
+        "Subscribe to an event with a handler that returns the given JSON",
+        move |_ctx, args| {
+            let trimmed = args.trim();
+            let (name, raw) = trimmed.split_once(' ').unwrap_or((trimmed, "null"));
+            let result: serde_json::Value = match serde_json::from_str(raw) {
+                Ok(value) => value,
+                Err(err) => return CommandResult::Error(err.to_string()),
+            };
+            let subscription = event_probe_result_subscriber.on_event(name, move |_ctx, _data| Ok(Some(result.clone())));
+            event_probe_result_subscriptions.lock().unwrap().push(subscription);
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "label_probe",
+        "Label the entry named first",
+        |ctx, args| {
+            let trimmed = args.trim();
+            let (id, label) = trimmed.split_once(' ').unwrap_or((trimmed, ""));
+            match ctx.set_label(id, label) {
+                Ok(_) => CommandResult::Ok,
+                Err(err) => CommandResult::Error(err.to_string()),
+            }
+        },
+    );
+    let tool_result_guards_subscriber = ext.event_subscriber();
+    let tool_result_guards_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> = Arc::new(Mutex::new(Vec::new()));
+    ext.command(
+        "tool_result_guards_probe",
+        "Report the tool_result guards that accept each tool_result event",
+        move |_ctx, _args| {
+            let subscription = tool_result_guards_subscriber.on_event("tool_result", move |ctx, data| {
+                let guards: [(&str, fn(&Value) -> bool); 8] = [
+                    ("bash", pig_sdk::is_bash_tool_result),
+                    ("edit", pig_sdk::is_edit_tool_result),
+                    ("find", pig_sdk::is_find_tool_result),
+                    ("grep", pig_sdk::is_grep_tool_result),
+                    ("ls", pig_sdk::is_ls_tool_result),
+                    ("powershell", pig_sdk::is_powershell_tool_result),
+                    ("read", pig_sdk::is_read_tool_result),
+                    ("write", pig_sdk::is_write_tool_result),
+                ];
+                let matched: Vec<&str> = guards.iter().filter(|(_, guard)| guard(&*data)).map(|(name, _)| *name).collect();
+                ctx.notify(&format!("tool_result_guards:{}:end", matched.join(",")), "info");
+                Ok(None)
+            });
+            tool_result_guards_subscriptions.lock().unwrap().push(subscription);
+            CommandResult::Ok
+        },
+    );
+    // tool_call_guard_probe reports which tool names isToolCallEventType accepts for each tool_call event it receives (TestConformance_ToolCallGuardAgreesAcrossSDKs).
+    let tool_call_guard_subscriber = ext.event_subscriber();
+    let tool_call_guard_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> = Arc::new(Mutex::new(Vec::new()));
+    ext.command("tool_call_guard_probe", "Report the tool names the tool_call guard accepts", move |_ctx, _args| {
+        let subscription = tool_call_guard_subscriber.on_event("tool_call", move |ctx, data| {
+            let accepted: Vec<&str> = ["bash", "read", "probe", "other"].into_iter().filter(|name| pig_sdk::is_tool_call_event_type(name, &*data)).collect();
+            ctx.notify(&format!("tool_call_guard:{}:end", accepted.join(",")), "info");
+            Ok(None)
+        });
+        tool_call_guard_subscriptions.lock().unwrap().push(subscription);
+        CommandResult::Ok
+    });
+    let event_payload_subscriber = ext.event_subscriber();
+    let event_payload_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> = Arc::new(Mutex::new(Vec::new()));
+    ext.command(
+        "event_payload_probe",
+        "Subscribe and report the payload of the event named by the argument",
+        move |_ctx, args| {
+            let name = args.trim().to_string();
+            let reported = name.clone();
+            let subscription = event_payload_subscriber.on_event(&name, move |ctx, data| {
+                ctx.notify(&format!("event_payload:{}:{}", reported, serde_json::to_string(&*data).unwrap()), "info");
+                Ok(None)
+            });
+            event_payload_subscriptions.lock().unwrap().push(subscription);
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "set_label",
+        "Set an entry label",
+        |ctx, _args| match ctx.set_label("label-entry", "conformance-label") {
+            Ok(_) => CommandResult::Ok,
+            Err(err) => CommandResult::Error(err.to_string()),
+        },
+    );
+    ext.shortcut("ctrl+alt+y", "Conformance shortcut", |_ctx| CommandResult::Ok);
     ext.command(
         "append_entry",
         "Append a custom entry",
@@ -868,6 +1922,11 @@ fn main() {
         })();
         match result { Ok(()) => CommandResult::Ok, Err(err) => CommandResult::Error(err.to_string()) }
     });
+    // Upstream ctx.cwd, ctx.mode, ctx.hasUI and ctx.model throw the stale message after invalidation (runner.ts:571-600).
+    ext.command("stale-probe", "Report cwd, mode, hasUI and model", |ctx, _args| {
+        ctx.notify(&format!("stale:{}|{}|{}|{}", ctx.cwd(), ctx.mode(), ctx.has_ui(), ctx.model()), "info");
+        CommandResult::Ok
+    });
     ext.command("signal-probe", "Report ctx.signal", |ctx, _args| {
         let state = match ctx.signal() {
             None => "none",
@@ -959,6 +2018,42 @@ fn main() {
             CommandResult::Ok
         },
     );
+    // model-info-probe: see the Go fixture.
+    ext.command("model-info-probe", "Report the typed active model", |ctx, _args| {
+        match ctx.get_model_info() {
+            Err(err) => return CommandResult::Error(err.to_string()),
+            Ok(None) => ctx.notify("modelinfo:none:end", "info"),
+            Ok(Some(m)) => ctx.notify(
+                &format!(
+                    "modelinfo:{}/{}/{}/{}/{}/{}/{}/{}/{}/{}:end",
+                    m.id, m.name, m.provider, m.context_window, m.max_output_tokens, m.reasoning, m.input_cost_per_1m, m.output_cost_per_1m, m.cache_read_cost_per_1m, m.cache_write_cost_per_1m
+                ),
+                "info",
+            ),
+        }
+        CommandResult::Ok
+    });
+    // branch-typed-probe: see the Go fixture.
+    ext.command("branch-typed-probe", "Report the typed branch entries", |ctx, _args| {
+        let branch = match ctx.get_branch() {
+            Ok(branch) => branch,
+            Err(err) => return CommandResult::Error(err.to_string()),
+        };
+        let entries: Vec<String> = branch
+            .iter()
+            .map(|entry| {
+                let calls: Vec<String> = entry.tool_calls.iter().map(|call| format!("{}={}={}", call.name, call.id, call.args)).collect();
+                let usage = entry
+                    .usage
+                    .as_ref()
+                    .map(|u| format!("{}/{}/{}/{}/{}", u.input, u.output, u.cache_read, u.cache_write, u.total_tokens))
+                    .unwrap_or_else(|| "-".to_string());
+                [entry.id.as_str(), &entry.role, &entry.content, &entry.thinking, &entry.provider, &entry.model, &calls.join(","), &usage].join("~")
+            })
+            .collect();
+        ctx.notify(&format!("branchtyped:{}:end", entries.join(" | ")), "info");
+        CommandResult::Ok
+    });
     ext.command(
         "session-log-probe",
         "Read a paged session log",
@@ -1027,6 +2122,233 @@ fn main() {
             }
         },
     );
+    ext.command("kit-probe", "Exercise the component kit (D107)", |ctx, _args| {
+        match ctx.custom_view(KitProbe { log: Vec::new() }, json!({"title": "Kit"})) {
+            Ok(result) => {
+                let text = result.map(|value| value.as_str().map_or_else(|| value.to_string(), str::to_string)).unwrap_or_default();
+                ctx.notify(&format!("kit={text}"), "info");
+                CommandResult::Ok
+            }
+            Err(err) => CommandResult::Error(err.to_string()),
+        }
+    });
+    // mouse-probe opens the mouse row's component: the host hands it
+    // fullscreen mouse events, and it closes on a click with what it got.
+    ext.command("mouse-probe", "Exercise extension mouse input", |ctx, _args| {
+        match ctx.custom_component(MouseProbe { log: Vec::new() }, json!({"overlay": true})) {
+            Ok(result) => {
+                let text = result.map(|value| value.as_str().map_or_else(|| value.to_string(), str::to_string)).unwrap_or_default();
+                ctx.notify(&format!("mouse={text}"), "info");
+                CommandResult::Ok
+            }
+            Err(err) => CommandResult::Error(err.to_string()),
+        }
+    });
+    // kit-surfaces shows the kit probe's tree on every other view surface
+    // (D107, spec §10): a pushed widget, the header, the footer and a tool
+    // result. The message renderer "kit-message" draws it too.
+    ext.command("kit-surfaces", "Show the kit probe on every view surface (D107)", |ctx, _args| {
+        let steps = || -> std::io::Result<()> {
+            ctx.set_widget_view("kit-probe", kit_probe_view(), None)?;
+            ctx.set_header_view(kit_probe_view())?;
+            ctx.set_footer_view(kit_probe_view())?;
+            let mut tool = ToolDefinition::new(
+                "kit_view_tool",
+                "kit_view_tool",
+                "Render its result as the kit probe",
+                json!({"type": "object"}),
+                |_ctx, _params| ToolResult::text("kit"),
+            );
+            tool.render_result_view = Some(Box::new(|_, _, _, _, _| Ok(kit_probe_view())));
+            ctx.register_tool(tool)
+        };
+        match steps() {
+            Ok(()) => CommandResult::Ok,
+            Err(err) => CommandResult::Error(err.to_string()),
+        }
+    });
+    // kit-images drives the image transport (D107, spec §7): step "a<k>"
+    // shows image 0 and step "b<n>" image n (1 ≤ n ≤ 64), each with its step
+    // as the text, as one ui.setWidget call on the "kit-img" widget.
+    ext.command("kit-images", "Exercise the component kit's image transport (D107)", |ctx, args| {
+        let image = match (args.get(..1), args.get(1..).and_then(|n| n.parse::<u32>().ok())) {
+            (Some("a"), Some(1..)) => 0,
+            (Some("b"), Some(n @ 1..=64)) => n,
+            _ => return CommandResult::Error(format!("kit-images: unknown step {args:?}")),
+        };
+        let view = kit::View::new(
+            Container::new().child(Image::new(kit_image_png(image), "image/png")).child(Text::new(args, 0, 0)),
+        );
+        match ctx.set_widget_view("kit-img", view, Some(json!({}))) {
+            Ok(()) => CommandResult::Ok,
+            Err(err) => CommandResult::Error(err.to_string()),
+        }
+    });
+    // kit-kinds sets the "kit-kinds" widget to the kinds kit-probe does not
+    // draw (D107, spec §10): a box, a settings list, a loader, an image and a
+    // lines node whose list annotation goes out only while a frontend draws.
+    ext.command("kit-kinds", "Show every other component kit kind (D107)", |ctx, _args| {
+        let png: Vec<u8> = (0..KIT_KINDS_PNG.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&KIT_KINDS_PNG[i..i + 2], 16).unwrap())
+            .collect();
+        let settings = SettingsList::new(
+            "kit-settings",
+            vec![
+                SettingItem::new("theme", "Theme", "dark").description("Color theme").values(vec!["dark".into(), "light".into()]),
+                SettingItem::new("wrap", "Wrap", "on").description("Wrap lines").values(vec!["on".into(), "off".into()]),
+            ],
+            3,
+        );
+        let loader = Loader::new("Working")
+            .spinner_color("accent")
+            .message_color("muted")
+            .indicator(LoaderIndicator { frames: Some(vec!["*".into()]), interval_ms: None });
+        let item = |label: &str, detail: &str| ListItem { label: label.into(), detail: Some(detail.into()), columns: None };
+        let lines = Lines::new(vec!["track one".into(), "track two".into()])
+            .list(kit::List { items: vec![item("track one", "A"), item("track two", "B")], selected: Some(1) });
+        let stack = VStack::new()
+            .child(KitBox::new(1, 0).bg("customMessageBg").child(Text::new("boxed", 0, 0)))
+            .child(settings)
+            .child(loader)
+            .child(Image::new(png, "image/png"))
+            .child(lines)
+            .gap(1);
+        match ctx.set_widget_view("kit-kinds", kit::View::new(stack).theme("accent", "#d75f00"), Some(json!({}))) {
+            Ok(()) => CommandResult::Ok,
+            Err(err) => CommandResult::Error(err.to_string()),
+        }
+    });
+    // kit-conversation sets the "kit-conversation" widget to every
+    // conversation kind (D107, spec §2.1, §10); "next" updates the nodes
+    // with an id as a Pi author updates kept components.
+    ext.command("kit-conversation", "Show Pi's conversation components (D107)", |ctx, args| {
+        use pig_sdk::kit::{
+            AssistantMessage, BashExecution, ContentBlock, Diff, Message, ToolDefinition, ToolExecution, ToolResult,
+            ToolResultContent, UserMessage,
+        };
+        let next = args == "next";
+        let text_result = |text: &str, is_error: bool| ToolResult {
+            content: vec![ToolResultContent::text(text)],
+            is_error,
+            details: None,
+            duration_ms: None,
+        };
+        let user = UserMessage::new("Fix **the** kit build\n\n- one\n- two");
+        let mut streaming = AssistantMessage::new(None).id("kit-a1");
+        let mut reply = String::from("Done. **Bold** reply\n\n1. a\n2. b");
+        if next {
+            reply.push_str("\n\nThen more kit.");
+        }
+        streaming.update_content(
+            Message {
+                content: vec![ContentBlock::thinking("Reading the *kit* file"), ContentBlock::text(reply)],
+                ..Message::default()
+            },
+            !next,
+        );
+        let mut failed = AssistantMessage::new(Some(Message {
+            content: vec![ContentBlock::thinking("secret"), ContentBlock::text("Visible kit")],
+            stop_reason: "error".into(),
+            error_message: "kit-boom-7".into(),
+        }));
+        failed.set_hide_thinking_block(true);
+        failed.set_hidden_thinking_label("Pondering kit...");
+        failed.set_output_pad(0);
+        let card = |id: &str, name: &str, call_id: &str, args: Value| {
+            let mut tool = ToolExecution::new(name, call_id, args, "/work/kit");
+            if !id.is_empty() {
+                tool = tool.id(id);
+            }
+            tool.set_args_complete();
+            tool.mark_execution_started();
+            tool
+        };
+        let mut ls = card("kit-t1", "ls", "call-1", json!({"path": "src"}));
+        ls.update_result(text_result("a.go\nb.go", false), false);
+        let mut grep = card("kit-t2", "grep", "call-2", json!({"pattern": "TODO"}));
+        if next {
+            grep.update_result(text_result("x.go:1: TODO kit\ny.go:2: TODO kit", false), false);
+        } else {
+            grep.update_result(text_result("x.go:1: TODO kit", false), true);
+        }
+        let mut read = card("", "read", "call-3", json!({"path": "missing.txt"}));
+        read.update_result(text_result("ENOENT: kit", true), false);
+        read.set_expanded(true);
+        let mut custom = card("", "kit_tool", "call-4", json!({"q": "x"})).tool_definition(ToolDefinition::Empty);
+        custom.update_result(text_result("answer 42", false), false);
+        let mut exited = BashExecution::new("ls -la", false).id("kit-b1");
+        exited.append_output("a.txt\n");
+        exited.append_output("b.txt");
+        exited.set_complete(Some(2), false, false, "");
+        exited.set_expanded(next);
+        let mut seq = BashExecution::new("seq 25", true);
+        seq.append_output(&(1..=25).map(|i| i.to_string()).collect::<Vec<_>>().join("\n"));
+        seq.set_complete(Some(0), false, false, "");
+        let diff = Diff::new(" 1 keep\n-2 old kit line\n+2 new kit line\n 3 tail").file_path("kit.go");
+        let root = Container::new()
+            .child(user)
+            .child(streaming)
+            .child(failed)
+            .child(ls)
+            .child(grep)
+            .child(read)
+            .child(custom)
+            .child(exited)
+            .child(seq)
+            .child(diff);
+        match ctx.set_widget_view("kit-conversation", kit::View::new(root), Some(json!({}))) {
+            Ok(()) => CommandResult::Ok,
+            Err(err) => CommandResult::Error(err.to_string()),
+        }
+    });
+    // kit-output-pad sets the "kit-output-pad" widget to a bash tool card and
+    // a bash command with Pi 1.1.0's outputPad 3 and a final result's
+    // durationMs 1234 (F7); "next" calls setOutputPad(2) on both and gives
+    // the result durationMs 61500.
+    ext.command("kit-output-pad", "Show Pi's outputPad and durationMs (D107)", |ctx, args| {
+        use pig_sdk::kit::{BashExecution, ToolExecution, ToolResult, ToolResultContent};
+        let next = args == "next";
+        let mut tool = ToolExecution::new("bash", "call-p1", json!({"command": "echo kit"}), "/work/kit").id("kit-p1");
+        tool.set_output_pad(3);
+        tool.set_args_complete();
+        tool.mark_execution_started();
+        tool.update_result(
+            ToolResult {
+                content: vec![ToolResultContent::text("kit out")],
+                duration_ms: Some(if next { 61500 } else { 1234 }),
+                ..ToolResult::default()
+            },
+            false,
+        );
+        let mut command = BashExecution::new("echo pad", false).id("kit-p2");
+        command.set_output_pad(3);
+        command.append_output("padded");
+        command.set_complete(Some(0), false, false, "");
+        if next {
+            tool.set_output_pad(2);
+            command.set_output_pad(2);
+        }
+        match ctx.set_widget_view("kit-output-pad", kit::View::new(Container::new().child(tool).child(command)), Some(json!({}))) {
+            Ok(()) => CommandResult::Ok,
+            Err(err) => CommandResult::Error(err.to_string()),
+        }
+    });
+    ext.command(
+        "overlay-width-probe",
+        "Report the width overlay components render at",
+        |ctx, _args| {
+            let mut widths = Vec::new();
+            for options in [json!({"overlay": true}), json!({"overlay": true, "overlayOptions": {"width": "50%"}})] {
+                match ctx.custom_component(OverlayWidthProbe::default(), options) {
+                    Ok(value) => widths.push(value.and_then(|v| v.as_u64()).unwrap_or(0)),
+                    Err(err) => return CommandResult::Error(err.to_string()),
+                }
+            }
+            ctx.notify(&format!("overlay-width default={} percent={}", widths[0], widths[1]), "info");
+            CommandResult::Ok
+        },
+    );
     ext.command(
         "timer-focused-probe",
         "Exercise timer-driven focused UI",
@@ -1052,7 +2374,7 @@ fn main() {
     // Typed tool events (upstream PowerShellToolCallEvent/BashToolCallEvent and
     // their result variants): record the input and details, block the
     // conformance sentinel command, and replace a result's content.
-    ext.on_event("user_bash", false, |_ctx, data| {
+    ext.on_event("user_bash", |ctx, data| {
         let mut value =
             json!({"result":{"output":"handled","exitCode":7,"cancelled":false,"truncated":false}});
         match data["command"].as_str().unwrap_or("") {
@@ -1064,12 +2386,13 @@ fn main() {
             }
             "invalid" => value["result"]["exitCode"] = json!("invalid"),
             "null-operations" => value["operations"] = Value::Null,
+            "operations" => return Some(ctx.bash_operations(conformance_bash_operations())),
             _ => return None,
         }
         Some(value)
     });
 
-    ext.on_event("tool_call", false, |ctx, data| {
+    ext.on_event("tool_call", |ctx, data| {
         let name = data["toolName"].as_str().unwrap_or_default().to_string();
         let name = name.as_str();
         // Pi's handler mutates event.input in place and the runner reads it back (runner.ts emitToolCall), so the rewrite is the handler's own edit to the event.
@@ -1115,7 +2438,22 @@ fn main() {
         }
         None
     });
-    ext.on_event("tool_result", false, |ctx, data| {
+    ext.on_event("tool_result", |ctx, data| {
+        let held: Vec<&str> = [
+            ("bash", pig_sdk::is_bash_tool_result as fn(&Value) -> bool),
+            ("powershell", pig_sdk::is_powershell_tool_result),
+            ("read", pig_sdk::is_read_tool_result),
+            ("edit", pig_sdk::is_edit_tool_result),
+            ("write", pig_sdk::is_write_tool_result),
+            ("grep", pig_sdk::is_grep_tool_result),
+            ("find", pig_sdk::is_find_tool_result),
+            ("ls", pig_sdk::is_ls_tool_result),
+        ]
+        .into_iter()
+        .filter(|(_, is)| is(data))
+        .map(|(name, _)| name)
+        .collect();
+        ctx.notify(&format!("tool-result-guards={}", held.join(",")), "info");
         let name = data["toolName"].as_str().unwrap_or_default();
         if name != "powershell" && name != "bash" {
             return None;
@@ -1136,12 +2474,12 @@ fn main() {
         );
         Some(json!({"content": [{"type": "text", "text": format!("{name} redacted")}]}))
     });
-    ext.on_event("after_provider_response", false, |ctx, data| {
+    ext.on_event("after_provider_response", |ctx, data| {
         ctx.notify(&format!("provider-response={}:{}:{}", data["type"].as_str().unwrap_or_default(), data["status"], data["headers"]["x-probe"].as_str().unwrap_or_default()), "info");
         Some(json!({"cancel":true}))
     });
-    ext.on_event("after_provider_response", false, |ctx, _| { ctx.notify("provider-response=second", "info"); None });
-    ext.on_event("message_update", false, |ctx, data| {
+    ext.on_event("after_provider_response", |ctx, _| { ctx.notify("provider-response=second", "info"); None });
+    ext.on_event("message_update", |ctx, data| {
         let assistant = &data["assistantMessageEvent"];
         ctx.notify(
             &format!(
@@ -1155,7 +2493,7 @@ fn main() {
         );
         None
     });
-    ext.on_event("tool_execution_update", false, |ctx, data| {
+    ext.on_event("tool_execution_update", |ctx, data| {
         if data["toolName"] == "production_tool" {
             ctx.notify(
                 &format!(
@@ -1190,7 +2528,7 @@ fn main() {
         );
         None
     });
-    ext.on_event("tool_execution_end", false, |ctx, data| {
+    ext.on_event("tool_execution_end", |ctx, data| {
         if data["toolName"] == "production_tool" {
             ctx.notify(
                 &format!(
@@ -1245,19 +2583,25 @@ fn main() {
             remember: None,
         })
     });
-    ext.on_project_trust(|_, _| {
+    ext.on_project_trust(|_, data| {
+        if data["cwd"] == json!("/probe") {
+            return Ok(ProjectTrustResult {
+                trusted: ProjectTrustDecision::Undecided,
+                remember: None,
+            });
+        }
         Ok(ProjectTrustResult {
             trusted: ProjectTrustDecision::Yes,
             remember: Some(true),
         })
     });
-    ext.on_event("cache_warming_decision", false, |_, data| {
+    ext.on_event("cache_warming_decision", |_, data| {
         if data["warmCost"] != json!(0.05) || data["missCost"] != json!(0.5) || data["continuationProbability"] != json!(0.15) || data["action"] != json!("warm") {
             return Some(json!({"error": "unexpected cache decision"}));
         }
         Some(json!({"action": "stop"}))
     });
-    ext.on_event("agent_before_settle", false, |ctx, mut data| {
+    ext.on_event("agent_before_settle", |ctx, mut data| {
         let outcome = data.get("outcome").and_then(Value::as_str).unwrap_or("");
         let entries = data.get("entries").and_then(Value::as_array).map_or(0, Vec::len);
         let continuation = data.get("continue").and_then(Value::as_bool).unwrap_or(false);
@@ -1277,11 +2621,11 @@ fn main() {
         data["entries"].as_array_mut().unwrap().push(json!({"type": "custom", "customType": "kept"}));
         None
     });
-    ext.on_event("agent_before_settle", false, |_, mut data| {
+    ext.on_event("agent_before_settle", |_, mut data| {
         data["entries"].as_array_mut().unwrap().push(json!({"type": "custom", "customType": "before-error"}));
         panic!("boundary failed");
     });
-    ext.on_event("agent_before_settle", false, |_, data| {
+    ext.on_event("agent_before_settle", |_, data| {
         assert_eq!(data["entries"].as_array().unwrap().len(), 2);
         assert_eq!(data["entries"][0]["customType"], "kept");
         assert_eq!(data["entries"][1]["customType"], "before-error");
@@ -1291,7 +2635,7 @@ fn main() {
             "continue": true
         }))
     });
-    ext.on_event("session_start", false, |ctx, data| {
+    ext.on_event("session_start", |ctx, data| {
         let reason = data.get("reason").and_then(Value::as_str).unwrap_or("");
         ctx.notify(&format!("session_start:{reason}"), "info");
         if let Some(path) = data.get("previousSessionFile").and_then(Value::as_str).filter(|s| !s.is_empty()) {
@@ -1299,7 +2643,7 @@ fn main() {
         }
         None
     });
-    ext.on_event("session_shutdown", false, |ctx, data| {
+    ext.on_event("session_shutdown", |ctx, data| {
         let reason = data.get("reason").and_then(Value::as_str).unwrap_or("");
         ctx.notify(&format!("session_shutdown:{reason}"), "info");
         if let Some(path) = data.get("targetSessionFile").and_then(Value::as_str).filter(|s| !s.is_empty()) {
@@ -1307,12 +2651,12 @@ fn main() {
         }
         None
     });
-    ext.on_event("session_info_changed", false, |ctx, data| {
+    ext.on_event("session_info_changed", |ctx, data| {
         let name = data.get("name").and_then(Value::as_str).unwrap_or("");
         ctx.notify(&format!("session_info_changed:{name}"), "info");
         None
     });
-    ext.on_event("session_before_compact", false, |ctx, data| {
+    ext.on_event("session_before_compact", |ctx, data| {
         let reason = data.get("reason").and_then(Value::as_str).unwrap_or("");
         let will_retry = data
             .get("willRetry")
@@ -1324,7 +2668,7 @@ fn main() {
         );
         None
     });
-    ext.on_event("session_compact", false, |ctx, data| {
+    ext.on_event("session_compact", |ctx, data| {
         let reason = data.get("reason").and_then(Value::as_str).unwrap_or("");
         let will_retry = data
             .get("willRetry")
@@ -1340,7 +2684,7 @@ fn main() {
         );
         None
     });
-    ext.on_event("session_compact_failed", false, |ctx, data| {
+    ext.on_event("session_compact_failed", |ctx, data| {
         let reason = data.get("reason").and_then(Value::as_str).unwrap_or("");
         let error = data
             .get("errorMessage")
@@ -1364,16 +2708,16 @@ fn main() {
         );
         None
     });
-    ext.on_event("turn_end", false, |_, data| {
+    ext.on_event("turn_end", |_, data| {
         if data["messageEntryId"] != "boundary-assistant" { return None; }
         data["entries"].as_array_mut().unwrap().push(json!({"type":"custom", "customType":"mutated"}));
         panic!("turn-boundary-failure");
     });
-    ext.on_event("turn_end", false, |_, data| {
+    ext.on_event("turn_end", |_, data| {
         if data["messageEntryId"] != "boundary-assistant" { return None; }
         Some(json!({"entries":[{"type":"custom", "customType":"turn-boundary", "data": data}], "continue":true}))
     });
-    ext.on_event("turn_end", false, |ctx, data| {
+    ext.on_event("turn_end", |ctx, data| {
         let message_id = data.get("messageEntryId").and_then(Value::as_str).unwrap_or("");
         let tool_id = data
             .get("toolResultEntryIds")
@@ -1387,7 +2731,7 @@ fn main() {
     let prompt_sequence = Arc::new(Mutex::new(0));
     for name in ["ui_prompt_start", "ui_prompt_end"] {
         let prompt_sequence = prompt_sequence.clone();
-        ext.on_event(name, false, move |ctx, data| {
+        ext.on_event(name, move |ctx, data| {
             let sequence = { let mut counter = prompt_sequence.lock().unwrap(); let n = *counter; *counter += 1; n };
             let field = |key: &str| data.get(key).and_then(Value::as_str).unwrap_or("").to_string();
             let title = data.get("title").and_then(Value::as_str).unwrap_or("(none)");
@@ -1537,4 +2881,126 @@ fn register_conformance_oauth(ext: &mut Extension) {
             credential_store: Some(Box::new(ConformanceStore)),
         },
     );
+}
+
+/// Swallows "q", rewrites "a" to "A", upper-cases the host's setText, and frames super.render.
+struct ConformanceEditor {
+    base: EditorBase,
+}
+
+impl EditorComponent for ConformanceEditor {
+    fn base(&self) -> &EditorBase {
+        &self.base
+    }
+    fn handle_input(&mut self, data: &JsString) -> Result<(), String> {
+        if data == "q" {
+            return Ok(());
+        }
+        if data == "L" {
+            let lines = self.base.get_lines().map_err(|e| e.to_string())?;
+            let mut units: Vec<u16> = "raw:lines=".encode_utf16().collect();
+            for (i, line) in lines.iter().enumerate() {
+                if i > 0 {
+                    units.push(u16::from(b'|'));
+                }
+                units.extend_from_slice(line.as_units());
+            }
+            return self.base.set_text(&JsString::from_units(units)).map_err(|e| e.to_string());
+        }
+        let data = if data == "a" { JsString::from("A") } else { data.clone() };
+        self.base.handle_input(&data).map_err(|e| e.to_string())
+    }
+    fn set_text(&mut self, text: &JsString) -> Result<(), String> {
+        if text.to_string_lossy().starts_with("raw:") {
+            return self.base.set_text(text).map_err(|e| e.to_string());
+        }
+        self.base.set_text(&JsString::from(text.to_string_lossy().to_uppercase())).map_err(|e| e.to_string())
+    }
+    fn render(&mut self, width: u32) -> Result<Vec<JsString>, String> {
+        let mut rows = vec![JsString::from("[custom editor]")];
+        rows.extend(self.base.render(width).map_err(|e| e.to_string())?);
+        Ok(rows)
+    }
+}
+
+/// Opts into the working status in its border.
+struct EmbeddingEditor(ConformanceEditor);
+
+impl EditorComponent for EmbeddingEditor {
+    fn base(&self) -> &EditorBase {
+        self.0.base()
+    }
+    fn embed_working_status(&self) -> bool {
+        true
+    }
+    fn handle_input(&mut self, data: &JsString) -> Result<(), String> {
+        self.0.handle_input(data)
+    }
+    fn set_text(&mut self, text: &JsString) -> Result<(), String> {
+        self.0.set_text(text)
+    }
+    fn render(&mut self, width: u32) -> Result<Vec<JsString>, String> {
+        self.0.render(width)
+    }
+}
+
+/// Renders the width the SDK draws it at and returns that width on Enter.
+#[derive(Default)]
+struct OverlayWidthProbe {
+    width: std::sync::atomic::AtomicU32,
+}
+
+impl pig_sdk::RemoteComponent for OverlayWidthProbe {
+    fn render(&self, width: u32) -> Vec<String> {
+        self.width.store(width, std::sync::atomic::Ordering::Release);
+        vec![format!("overlay width={width}")]
+    }
+
+    fn handle_input(&mut self, data: &pig_sdk::JsString) -> Result<pig_sdk::RemoteComponentResult, String> {
+        if *data == "\r" {
+            return Ok(pig_sdk::RemoteComponentResult::done(Some(json!(self.width.load(std::sync::atomic::Ordering::Acquire)))));
+        }
+        Ok(pig_sdk::RemoteComponentResult::pending())
+    }
+}
+
+/// The BashOperations every SDK fixture returns for the user_bash command "operations" (TestConformance_UserBashOperationsRunInTheExtension).
+fn conformance_bash_operations() -> pig_sdk::BashOperations {
+    pig_sdk::BashOperations {
+        exec: std::sync::Arc::new(|command, cwd, options| match command {
+            "echo" => {
+                (options.on_data)(format!("cmd:{command}\n").as_bytes());
+                (options.on_data)(format!("cwd:{cwd}\n").as_bytes());
+                if options.env.as_ref().is_some_and(|env| env.is_empty()) {
+                    (options.on_data)(b"env-empty\n");
+                }
+                let mut names: Vec<&String> = options.env.iter().flat_map(|env| env.keys()).collect();
+                names.sort();
+                for name in names {
+                    (options.on_data)(format!("env:{name}={}\n", options.env.as_ref().unwrap()[name]).as_bytes());
+                }
+                if let Some(timeout) = options.timeout {
+                    (options.on_data)(format!("timeout:{timeout}\n").as_bytes());
+                }
+                Ok(Some(3))
+            }
+            "chunks" => {
+                for chunk in ["a", "b", "c"] {
+                    (options.on_data)(chunk.as_bytes());
+                }
+                Ok(None)
+            }
+            "binary" => {
+                (options.on_data)(&[0xff, 0x00, 0x80]);
+                Ok(Some(0))
+            }
+            "wait" => {
+                (options.on_data)(b"waiting");
+                options.signal.wait();
+                (options.on_data)(b"stopped");
+                Err("aborted".to_string())
+            }
+            other => Err(format!("exec failed: {other}")),
+        }),
+    }
 }

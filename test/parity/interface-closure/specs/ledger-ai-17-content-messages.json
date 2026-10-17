@@ -1,0 +1,688 @@
+[
+ {
+  "ids": [
+   "pkg:ai/.#TextContent",
+   "pkg:ai/compat#TextContent"
+  ],
+  "targets": [
+   "ai/types.go#TextContent"
+  ],
+  "production": [
+   "call:agent/agent.go#Agent.Send"
+  ],
+  "evidence": [
+   "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+   "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "TextContent: every upstream property maps to a Go field (types reviewed against the upstream declaration); production and tests attributed by go/types.",
+  "properties": {
+   "text": {
+    "targets": [
+     "ai/types.go#TextContent.Text"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#Agent.Send"
+    ],
+    "rationale": "The upstream property text is the Go field TextContent.Text."
+   },
+   "textSignature": {
+    "targets": [
+     "ai/types.go#TextContent.TextSignature"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#Agent.Send"
+    ],
+    "rationale": "The upstream property textSignature is the Go field TextContent.TextSignature."
+   },
+   "type": {
+    "targets": [
+     "ai/types.go#TextContent.MarshalJSON"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#Agent.Send"
+    ],
+    "rationale": "The discriminator type is not a Go field: it is the literal the type emits as JSON through its MarshalJSON method (TestWireDiscriminatorsMatchUpstreamLiterals compares every emitted literal with the upstream one)."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ThinkingContent",
+   "pkg:ai/compat#ThinkingContent"
+  ],
+  "targets": [
+   "ai/types.go#ThinkingContent"
+  ],
+  "production": [
+   "call:agent/agent.go#agentAssistantMessage"
+  ],
+  "evidence": [
+   "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+   "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ThinkingContent: every upstream property maps to a Go field (types reviewed against the upstream declaration); production and tests attributed by go/types.",
+  "properties": {
+   "redacted": {
+    "targets": [
+     "ai/types.go#ThinkingContent.Redacted"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#agentAssistantMessage"
+    ],
+    "rationale": "The upstream property redacted is the Go field ThinkingContent.Redacted."
+   },
+   "thinking": {
+    "targets": [
+     "ai/types.go#ThinkingContent.Thinking"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#agentAssistantMessage"
+    ],
+    "rationale": "The upstream property thinking is the Go field ThinkingContent.Thinking."
+   },
+   "thinkingSignature": {
+    "targets": [
+     "ai/types.go#ThinkingContent.ThinkingSignature"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#agentAssistantMessage"
+    ],
+    "rationale": "The upstream property thinkingSignature is the Go field ThinkingContent.ThinkingSignature."
+   },
+   "type": {
+    "targets": [
+     "ai/types.go#ThinkingContent.MarshalJSON"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#agentAssistantMessage"
+    ],
+    "rationale": "The discriminator type is not a Go field: it is the literal the type emits as JSON through its MarshalJSON method (TestWireDiscriminatorsMatchUpstreamLiterals compares every emitted literal with the upstream one)."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ImageContent",
+   "pkg:ai/compat#ImageContent"
+  ],
+  "targets": [
+   "ai/types.go#ImageContent"
+  ],
+  "production": [
+   "call:agent/agent.go#ToolResultMessage.Images"
+  ],
+  "evidence": [
+   "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+   "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ImageContent: every upstream property maps to a Go field (types reviewed against the upstream declaration); production and tests attributed by go/types.",
+  "properties": {
+   "data": {
+    "targets": [
+     "ai/types.go#ImageContent.Data"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#ToolResultMessage.Images"
+    ],
+    "rationale": "The upstream property data is the Go field ImageContent.Data."
+   },
+   "mimeType": {
+    "targets": [
+     "ai/types.go#ImageContent.MimeType"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#ToolResultMessage.Images"
+    ],
+    "rationale": "The upstream property mimeType is the Go field ImageContent.MimeType."
+   },
+   "type": {
+    "targets": [
+     "ai/types.go#ImageContent.MarshalJSON"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#ToolResultMessage.Images"
+    ],
+    "rationale": "The discriminator type is not a Go field: it is the literal the type emits as JSON through its MarshalJSON method (TestWireDiscriminatorsMatchUpstreamLiterals compares every emitted literal with the upstream one)."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ToolCall",
+   "pkg:ai/compat#ToolCall"
+  ],
+  "targets": [
+   "ai/types.go#ToolCall"
+  ],
+  "production": [
+   "call:agent/agent.go#newPendingToolCall"
+  ],
+  "evidence": [
+   "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+   "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "ToolCall: every upstream property maps to a Go field (types reviewed against the upstream declaration); production and tests attributed by go/types.",
+  "properties": {
+   "arguments": {
+    "targets": [
+     "ai/types.go#ToolCall.Arguments"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#newPendingToolCall"
+    ],
+    "rationale": "The upstream property arguments is the Go field ToolCall.Arguments."
+   },
+   "id": {
+    "targets": [
+     "ai/types.go#ToolCall.ID"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#newPendingToolCall"
+    ],
+    "rationale": "The upstream property id is the Go field ToolCall.ID."
+   },
+   "name": {
+    "targets": [
+     "ai/types.go#ToolCall.Name"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#newPendingToolCall"
+    ],
+    "rationale": "The upstream property name is the Go field ToolCall.Name."
+   },
+   "namespace": {
+    "targets": [
+     "ai/types.go#ToolCall.Namespace"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#newPendingToolCall"
+    ],
+    "rationale": "The upstream property namespace is the Go field ToolCall.Namespace."
+   },
+   "thoughtSignature": {
+    "targets": [
+     "ai/types.go#ToolCall.ThoughtSignature"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#newPendingToolCall"
+    ],
+    "rationale": "The upstream property thoughtSignature is the Go field ToolCall.ThoughtSignature."
+   },
+   "type": {
+    "targets": [
+     "ai/types.go#ToolCall.MarshalJSON"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#newPendingToolCall"
+    ],
+    "rationale": "The discriminator type is not a Go field: it is the literal the type emits as JSON through its MarshalJSON method (TestWireDiscriminatorsMatchUpstreamLiterals compares every emitted literal with the upstream one)."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/.#UserMessage",
+   "pkg:ai/compat#UserMessage"
+  ],
+  "targets": [
+   "ai/messages.go#UserMessage"
+  ],
+  "production": [
+   "call:agent/messages.go#ConvertToLLM"
+  ],
+  "evidence": [
+   "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+   "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "UserMessage: every upstream property maps to a Go field (types reviewed against the upstream declaration); production and tests attributed by go/types.",
+  "properties": {
+   "content": {
+    "targets": [
+     "ai/messages.go#UserMessage.Content"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/messages.go#ConvertToLLM"
+    ],
+    "rationale": "The upstream property content is the Go field UserMessage.Content."
+   },
+   "role": {
+    "targets": [
+     "ai/messages.go#UserMessage.MarshalJSON"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/messages.go#ConvertToLLM"
+    ],
+    "rationale": "The discriminator role is not a Go field: it is the literal the type emits as JSON through its MarshalJSON method (TestWireDiscriminatorsMatchUpstreamLiterals compares every emitted literal with the upstream one)."
+   },
+   "timestamp": {
+    "targets": [
+     "ai/messages.go#UserMessage.Timestamp"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/messages.go#ConvertToLLM"
+    ],
+    "rationale": "The upstream property timestamp is the Go field UserMessage.Timestamp."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/.#SystemMessage",
+   "pkg:ai/compat#SystemMessage"
+  ],
+  "targets": [
+   "ai/messages.go#SystemMessage"
+  ],
+  "production": [
+   "call:agent/agent.go#AgentMessage.ContentBlocks"
+  ],
+  "evidence": [
+   "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+   "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "SystemMessage: every upstream property maps to a Go field (types reviewed against the upstream declaration); production and tests attributed by go/types.",
+  "properties": {
+   "content": {
+    "targets": [
+     "ai/messages.go#SystemMessage.Content"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#AgentMessage.ContentBlocks"
+    ],
+    "rationale": "The upstream property content is the Go field SystemMessage.Content."
+   },
+   "role": {
+    "targets": [
+     "ai/messages.go#SystemMessage.MarshalJSON"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#AgentMessage.ContentBlocks"
+    ],
+    "rationale": "The discriminator role is not a Go field: it is the literal the type emits as JSON through its MarshalJSON method (TestWireDiscriminatorsMatchUpstreamLiterals compares every emitted literal with the upstream one)."
+   },
+   "sections": {
+    "targets": [
+     "ai/messages.go#SystemMessage.Sections"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#AgentMessage.ContentBlocks"
+    ],
+    "rationale": "The upstream property sections is the Go field SystemMessage.Sections."
+   },
+   "timestamp": {
+    "targets": [
+     "ai/messages.go#SystemMessage.Timestamp"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#AgentMessage.ContentBlocks"
+    ],
+    "rationale": "The upstream property timestamp is the Go field SystemMessage.Timestamp."
+   },
+   "toolsAdded": {
+    "targets": [
+     "ai/messages.go#SystemMessage.ToolsAdded"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#AgentMessage.ContentBlocks"
+    ],
+    "rationale": "The upstream property toolsAdded is the Go field SystemMessage.ToolsAdded."
+   },
+   "toolsRemoved": {
+    "targets": [
+     "ai/messages.go#SystemMessage.ToolsRemoved"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#AgentMessage.ContentBlocks"
+    ],
+    "rationale": "The upstream property toolsRemoved is the Go field SystemMessage.ToolsRemoved."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/.#AssistantMessage",
+   "pkg:ai/compat#AssistantMessage"
+  ],
+  "targets": [
+   "ai/messages.go#AssistantMessage"
+  ],
+  "production": [
+   "call:agent/agent.go#Agent.consumeStream"
+  ],
+  "evidence": [
+   "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+   "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "AssistantMessage: every upstream property maps to a Go field (types reviewed against the upstream declaration); production and tests attributed by go/types.",
+  "properties": {
+   "api": {
+    "targets": [
+     "ai/messages.go#AssistantMessage.API"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#Agent.consumeStream"
+    ],
+    "rationale": "The upstream property api is the Go field AssistantMessage.API."
+   },
+   "content": {
+    "targets": [
+     "ai/messages.go#AssistantMessage.Content"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#Agent.consumeStream"
+    ],
+    "rationale": "The upstream property content is the Go field AssistantMessage.Content."
+   },
+   "deferred": {
+    "targets": [
+     "ai/messages.go#AssistantMessage.Deferred"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#Agent.consumeStream"
+    ],
+    "rationale": "The upstream property deferred is the Go field AssistantMessage.Deferred."
+   },
+   "diagnostics": {
+    "targets": [
+     "ai/messages.go#AssistantMessage.Diagnostics"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#Agent.consumeStream"
+    ],
+    "rationale": "The upstream property diagnostics is the Go field AssistantMessage.Diagnostics."
+   },
+   "endTurn": {
+    "targets": [
+     "ai/messages.go#AssistantMessage.EndTurn"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#Agent.consumeStream"
+    ],
+    "rationale": "The upstream property endTurn is the Go field AssistantMessage.EndTurn."
+   },
+   "errorMessage": {
+    "targets": [
+     "ai/messages.go#AssistantMessage.ErrorMessage"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#Agent.consumeStream"
+    ],
+    "rationale": "The upstream property errorMessage is the Go field AssistantMessage.ErrorMessage."
+   },
+   "model": {
+    "targets": [
+     "ai/messages.go#AssistantMessage.Model"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#Agent.consumeStream"
+    ],
+    "rationale": "The upstream property model is the Go field AssistantMessage.Model."
+   },
+   "provider": {
+    "targets": [
+     "ai/messages.go#AssistantMessage.Provider"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#Agent.consumeStream"
+    ],
+    "rationale": "The upstream property provider is the Go field AssistantMessage.Provider."
+   },
+   "providerThinkingLevel": {
+    "targets": [
+     "ai/messages.go#AssistantMessage.ProviderThinkingLevel"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#Agent.consumeStream"
+    ],
+    "rationale": "The upstream property providerThinkingLevel is the Go field AssistantMessage.ProviderThinkingLevel."
+   },
+   "rawStopReason": {
+    "targets": [
+     "ai/messages.go#AssistantMessage.RawStopReason"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#Agent.consumeStream"
+    ],
+    "rationale": "The upstream property rawStopReason is the Go field AssistantMessage.RawStopReason."
+   },
+   "responseId": {
+    "targets": [
+     "ai/messages.go#AssistantMessage.ResponseID"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#Agent.consumeStream"
+    ],
+    "rationale": "The upstream property responseId is the Go field AssistantMessage.ResponseID."
+   },
+   "responseModel": {
+    "targets": [
+     "ai/messages.go#AssistantMessage.ResponseModel"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#Agent.consumeStream"
+    ],
+    "rationale": "The upstream property responseModel is the Go field AssistantMessage.ResponseModel."
+   },
+   "role": {
+    "targets": [
+     "ai/messages.go#AssistantMessage.MarshalJSON"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#Agent.consumeStream"
+    ],
+    "rationale": "The discriminator role is not a Go field: it is the literal the type emits as JSON through its MarshalJSON method (TestWireDiscriminatorsMatchUpstreamLiterals compares every emitted literal with the upstream one)."
+   },
+   "stopReason": {
+    "targets": [
+     "ai/messages.go#AssistantMessage.StopReason"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#Agent.consumeStream"
+    ],
+    "rationale": "The upstream property stopReason is the Go field AssistantMessage.StopReason."
+   },
+   "thinkingLevel": {
+    "targets": [
+     "ai/messages.go#AssistantMessage.ThinkingLevel"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#Agent.consumeStream"
+    ],
+    "rationale": "The upstream property thinkingLevel is the Go field AssistantMessage.ThinkingLevel."
+   },
+   "timestamp": {
+    "targets": [
+     "ai/messages.go#AssistantMessage.Timestamp"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#Agent.consumeStream"
+    ],
+    "rationale": "The upstream property timestamp is the Go field AssistantMessage.Timestamp."
+   },
+   "usage": {
+    "targets": [
+     "ai/messages.go#AssistantMessage.Usage"
+    ],
+    "evidence": [
+     "test:ai/wire_shape_upstream_test.go#TestWireDiscriminatorsMatchUpstreamLiterals",
+     "test:ai/transcript_test.go#TestMessageJSONContainsOnlyVariantFields"
+    ],
+    "production": [
+     "call:agent/agent.go#Agent.consumeStream"
+    ],
+    "rationale": "The upstream property usage is the Go field AssistantMessage.Usage."
+   }
+  }
+ }
+]

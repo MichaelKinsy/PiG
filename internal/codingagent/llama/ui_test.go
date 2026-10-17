@@ -1,8 +1,11 @@
 package llama
 
+// pi: packages/coding-agent/src/extensions/llama/ui.ts
+
 import (
 	"context"
 	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 	"sync/atomic"
@@ -278,5 +281,50 @@ func TestCompactCountAndContextLabels(t *testing.T) {
 	}
 	if got := modelDescription(LlamaModelInfo{Status: LlamaModelInfoStatus{Value: LlamaModelStatusUnloaded}}); got != "" {
 		t.Fatalf("unloaded description = %q", got)
+	}
+}
+
+// ui.ts HuggingFaceSearch and LlamaView (Pi PR #7680, Pi #7629): the search results move a page (10 results) on
+// tui.select.pageUp and tui.select.pageDown, and the view reports that it captures those keys while a selection or the search
+// is shown, so fullscreen leaves them to the view.
+func TestHuggingFaceSearchPageKeysMoveTenResults(t *testing.T) {
+	view := NewLlamaView(func() {})
+	search := func(ctx context.Context, query string) ([]HuggingFaceModel, error) {
+		models := make([]HuggingFaceModel, 25)
+		for i := range models {
+			models[i] = HuggingFaceModel{ID: fmt.Sprintf("owner/model-%02d", i), Downloads: float64(100 + i)}
+		}
+		return models, nil
+	}
+	selections := make(chan string, 1)
+	go func() {
+		model, _ := view.SearchModels(search)
+		selections <- model
+	}()
+	waitFor(t, view, "Type at least 2 characters")
+	if !view.CapturesSelectPageInput() {
+		t.Fatal("the search view must capture the selection page keys")
+	}
+	view.HandleInput("m")
+	view.HandleInput("o")
+	text := waitFor(t, view, "owner/model-00", "(1/25)")
+	if !strings.Contains(text, "→ owner/model-00") {
+		t.Fatalf("first result is not selected:\n%s", text)
+	}
+	view.HandleInput("\x1b[6~")
+	waitFor(t, view, "→ owner/model-10", "(11/25)")
+	view.HandleInput("\x1b[6~")
+	view.HandleInput("\x1b[6~")
+	view.HandleInput("\x1b[6~")
+	waitFor(t, view, "→ owner/model-24", "(25/25)")
+	view.HandleInput("\x1b[5~")
+	waitFor(t, view, "→ owner/model-14", "(15/25)")
+	view.HandleInput(keyEnter)
+	if got := result(t, selections); got != "owner/model-14" {
+		t.Fatalf("selection = %q, want owner/model-14", got)
+	}
+	view.ShowStatus("Done", "finished")
+	if view.CapturesSelectPageInput() {
+		t.Fatal("a status view has no selection and must not capture the page keys")
 	}
 }

@@ -278,7 +278,19 @@ function classify(messages: any[]) {
       ],
     };
   }
+  // MCP tool card parity.
+  if (lastText.includes("Run: mcp search cards")) {
+    return { kind: "tool", toolCalls: [{ toolName: "mcp__docs__search", toolArgs: { query: "cards" } }] };
+  }
   // Extension tool bridge parity.
+  // Generic extension tool call: "Run: ext tool <name> [<json arguments>]" on one line. Must match ai/test_faux.go.
+  if (lastText.includes("Run: ext tool ")) {
+    const rest = lastText.split("Run: ext tool ")[1].split("\n")[0].trim();
+    const space = rest.indexOf(" ");
+    const name = space < 0 ? rest : rest.slice(0, space);
+    const args = space < 0 ? "{}" : rest.slice(space + 1).trim() || "{}";
+    return { kind: "tool", toolCalls: [{ toolName: name, toolArgs: JSON.parse(args) }] };
+  }
   if (lastText.includes("Run: extension echo hello")) {
     return { kind: "tool", toolCalls: [{ toolName: "echo_bridge", toolArgs: { text: "hello" } }] };
   }
@@ -397,6 +409,15 @@ function classify(messages: any[]) {
         return { kind: "text", text: "batched-done" };
       }
       return { kind: "error", text: "test-faux: batched mutation missing success markers" };
+    }
+    if (currentUserText.includes("Run: mcp search cards")) {
+      if (historyText.includes("mcp-hit: cards guide")) {
+        return { kind: "text", text: "mcp-search-done" };
+      }
+      return { kind: "error", text: "test-faux: mcp tool result missing the search hit" };
+    }
+    if (currentUserText.includes("Run: ext tool ")) {
+      return { kind: "text", text: (last.isError ? "ext-tool-error: " : "ext-tool-done: ") + lastText };
     }
     if (currentUserText.includes("Run: extension echo hello")) {
       if (historyText.includes("echo-bridge: hello")) {

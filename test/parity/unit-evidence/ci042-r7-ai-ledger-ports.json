@@ -1,0 +1,29 @@
+[
+ {
+  "upstream": "packages/ai/src/utils/typebox-helpers.ts",
+  "package": "./ai",
+  "tests": [
+   "TestStringEnumBuildsPiSchema"
+  ],
+  "upstream_reference": "packages/ai/src/utils/typebox-helpers.ts",
+  "mutation": "ai/typebox_helpers.go: replace '\"type\": \"string\"' with '\"type\": \"mutant\"'; compiling go test -overlay -run exact test -count=1 fails TestStringEnumBuildsPiSchema."
+ },
+ {
+  "upstream": "packages/ai/src/api/cloudflare-ai-binding.ts",
+  "package": "./ai",
+  "tests": [
+   "TestCreateAIBindingFetchPassesRequestsToTheBindingUntouched"
+  ],
+  "upstream_reference": "packages/ai/test/cloudflare-ai-binding.test.ts",
+  "mutation": "ai/cloudflare_ai_binding.go: replace '{ return bindingFetch(request) }' with '{ request.Header.Set(\"x-mutant\", \"1\"); return bindingFetch(request) }'; compiling go test -overlay -run exact test -count=1 fails TestCreateAIBindingFetchPassesRequestsToTheBindingUntouched."
+ },
+ {
+  "upstream": "packages/ai/src/api/cloudflare-ai-binding.ts",
+  "package": "./ai",
+  "tests": [
+   "TestCreateAIBindingFetchRejectsABindingWithoutFetch"
+  ],
+  "upstream_reference": "packages/ai/test/cloudflare-ai-binding.test.ts",
+  "mutation": "ai/cloudflare_ai_binding.go: replace 'does not expose fetch()' with 'mutant no fetch'; compiling go test -overlay -run exact test -count=1 fails TestCreateAIBindingFetchRejectsABindingWithoutFetch."
+ }
+]

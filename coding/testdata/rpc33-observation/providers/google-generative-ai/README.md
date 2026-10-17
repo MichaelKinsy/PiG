@@ -1,4 +1,4 @@
-# Google Generative AI oracle (Pi 1.0.3, `@google/genai` 2.21.0)
+# Google Generative AI oracle (Pi 1.1.0, `@google/genai` 2.21.0)
 
 `probe.mjs` drives Pi's real `google-generative-ai` pipeline and records what each consumer observes and when. `inputs.json` exports the axes and the exact SSE bodies. `pi.json` is the raw oracle. Do not replace either with Go output.
 

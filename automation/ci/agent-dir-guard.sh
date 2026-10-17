@@ -35,6 +35,8 @@ digest() {
 
 case "$mode" in
   seed)
+    # Create everything private to the user with the umask, not a chmod afterwards: Git Bash on Windows refuses chmod on a directory in the temporary directory ("Permission denied").
+    umask 077
     for dir in agent pi-agent pig-home pi-home; do
       mkdir -p "$root/$dir"
       printf '%s\n' "$sentinel_auth" >"$root/$dir/auth.json"
@@ -42,7 +44,6 @@ case "$mode" in
       printf '{}\n' >"$root/$dir/trust.json"
       printf '{"providers":{}}\n' >"$root/$dir/models.json"
     done
-    chmod -R go-rwx "$root"
     digest >"$manifest"
     # Backdate the tree, then the manifest, so check can list every entry modified after seed with find -newer whatever the timestamp granularity.
     find "$root" -exec touch -t 200001010000 {} +

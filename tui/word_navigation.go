@@ -74,31 +74,36 @@ func FindWordForward(text string, cursor int, options ...WordNavigationOptions) 
 		return length
 	}
 	segment, atomic := wordNavigationFunctions(options)
-	pull, stop := iter.Pull(segment(jsstring.Slice(text, cursor, length)))
-	defer stop()
-	current, ok := pull()
+	// A push loop reads the segments: iter.Pull would start a coroutine for every word-forward keystroke.
 	next := cursor
-	for ok && !atomic(current.Segment) && isWhitespaceChar(current.Segment) {
-		next += jsstring.Length(current.Segment)
-		current, ok = pull()
-	}
-	if !ok {
-		return next
-	}
-	switch {
-	case atomic(current.Segment):
-		next += jsstring.Length(current.Segment)
-	case current.IsWordLike:
-		index := strings.IndexAny(current.Segment, punctuationChars)
-		if index < 0 {
-			index = len(current.Segment)
-		}
-		next += jsstring.Length(current.Segment[:index])
-	default:
-		for ok && !atomic(current.Segment) && !current.IsWordLike && !isWhitespaceChar(current.Segment) {
+	inRun := false // the first non-whitespace segment was a non-word, non-atomic one, so the run of such segments is being consumed
+	for current := range segment(jsstring.Slice(text, cursor, length)) {
+		if inRun {
+			if atomic(current.Segment) || current.IsWordLike || isWhitespaceChar(current.Segment) {
+				break
+			}
 			next += jsstring.Length(current.Segment)
-			current, ok = pull()
+			continue
 		}
+		if !atomic(current.Segment) && isWhitespaceChar(current.Segment) {
+			next += jsstring.Length(current.Segment)
+			continue
+		}
+		switch {
+		case atomic(current.Segment):
+			next += jsstring.Length(current.Segment)
+		case current.IsWordLike:
+			index := strings.IndexAny(current.Segment, punctuationChars)
+			if index < 0 {
+				index = len(current.Segment)
+			}
+			next += jsstring.Length(current.Segment[:index])
+		default:
+			next += jsstring.Length(current.Segment)
+			inRun = true
+			continue
+		}
+		break
 	}
 	return next
 }

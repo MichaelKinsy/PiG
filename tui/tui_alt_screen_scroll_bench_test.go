@@ -18,7 +18,7 @@ func newScrollTranscriptAltScreen(messages int) (*TuiAltScreen, *ScrollView) {
 	}
 	document := NewContainer(NewText("transcript header"), chat)
 	transcript := NewScrollView(document, ScrollViewOptions{Follow: "end", Primary: true, Overscroll: "chain", Scrollbar: "auto"})
-	root := NewVStack([]StackChild{
+	root := NewVStack([]StackEntry{
 		{Component: transcript, StackEntryOptions: StackEntryOptions{Basis: new(0), Grow: new(1), Shrink: new(1), MinSize: new(1)}},
 		{Component: NewText("\x1b[2m> editor dock\x1b[0m"), StackEntryOptions: StackEntryOptions{Grow: new(0), Shrink: new(1), MinSize: new(1)}},
 	}, StackOptions{})

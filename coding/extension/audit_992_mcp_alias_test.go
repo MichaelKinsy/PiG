@@ -20,7 +20,7 @@ func TestAuditRegisteredMcpServerReportsResolvedExposureAliases(t *testing.T) {
 	if err := runtime.RegisterMcpServer("/ext/a.mjs", "auditsrv", json.RawMessage(config)); err != nil {
 		t.Fatal(err)
 	}
-	got, err := json.Marshal(runtime.McpServers())
+	got, err := json.Marshal(runtime.McpServers().List())
 	if err != nil {
 		t.Fatal(err)
 	}

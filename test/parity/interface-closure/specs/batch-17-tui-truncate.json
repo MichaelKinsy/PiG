@@ -1,0 +1,17 @@
+[
+ {
+  "ids": [
+   "pkg:tui/.#truncateToWidth"
+  ],
+  "targets": [
+   "tui/widthx/truncate.go#TruncateToWidth"
+  ],
+  "production": [
+   "call:internal/codingagent/session_selector.go#SessionSelectorComponent.renderList"
+  ],
+  "evidence": [
+   "test:tui/widthx/truncate_upstream_test.go#TestUpstreamTruncateToWidth"
+  ],
+  "rationale": "utils.ts truncateToWidth(text, maxWidth, ellipsis?, pad?): Go TruncateToWidth(text, maxWidth, ellipsis, pad) takes every parameter positionally; a caller passes the upstream default ellipsis for an absent one. Test-mapping packages/tui/test/truncate-to-width.test.ts records all 16 upstream cases ported."
+ }
+]

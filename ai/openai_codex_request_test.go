@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -36,7 +37,7 @@ func TestOpenAICodexResponses_RequestMatchesCodexProtocol(t *testing.T) {
 			t.Error(err)
 		}
 		if r.Header.Get("Content-Encoding") == "zstd" {
-			body, err = decodeZstdRawFrameForTest(body)
+			body, err = decodeZstdFrameForTest(body)
 			if err != nil {
 				t.Error(err)
 			}
@@ -61,7 +62,7 @@ func TestOpenAICodexResponses_RequestMatchesCodexProtocol(t *testing.T) {
 	})
 	stream, err := provider.Stream(context.Background(), transcript, StreamOptions{
 		MaxTokens:   1000,
-		Thinking:    ThinkingHigh,
+		Thinking:    ThinkingLevelHigh,
 		IsReasoning: true,
 		SessionID:   "sess",
 		Transport:   TransportSSE,
@@ -141,7 +142,7 @@ func TestOpenAICodexResponses_ReasoningOffUsesModelOffMapping(t *testing.T) {
 	})
 	stream, err := provider.Stream(context.Background(), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("hi")}}}), StreamOptions{
 		Transport: TransportSSE,
-		Thinking:  ThinkingOff,
+		Thinking:  "",
 		OnPayload: func(value any, _ *Model) (any, error) {
 			encoded, marshalErr := json.Marshal(value)
 			if marshalErr == nil {
@@ -180,5 +181,5 @@ func TestConvertResponsesMessages_EmptyV1TextSignatureUsesFallbackID(t *testing.
 func jsonObjectsEqual(got, want any) bool {
 	gotJSON, _ := json.Marshal(got)
 	wantJSON, _ := json.Marshal(want)
-	return string(gotJSON) == string(wantJSON)
+	return bytes.Equal(gotJSON, wantJSON)
 }

@@ -1,4 +1,5 @@
 import { anthropicMessagesApi } from "../api/anthropic-messages.lazy.js";
+import { googleGenerativeAIApi } from "../api/google-generative-ai.lazy.js";
 import { openAICompletionsApi } from "../api/openai-completions.lazy.js";
 import { openAIResponsesApi } from "../api/openai-responses.lazy.js";
 import { envApiKeyAuth } from "../auth/helpers.js";
@@ -13,6 +14,7 @@ export function opencodeGoProvider() {
         models: Object.values(OPENCODE_GO_MODELS),
         api: {
             "anthropic-messages": withOpenCodeSessionHeader(anthropicMessagesApi()),
+            "google-generative-ai": withOpenCodeSessionHeader(googleGenerativeAIApi()),
             "openai-completions": withOpenCodeSessionHeader(openAICompletionsApi()),
             "openai-responses": withOpenCodeSessionHeader(openAIResponsesApi()),
         },

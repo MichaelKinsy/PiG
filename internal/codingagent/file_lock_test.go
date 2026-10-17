@@ -6,7 +6,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -280,5 +282,120 @@ func TestSettingsUpdateKeepsMemoryWhenTheWriteFailsUpstream(t *testing.T) {
 	}
 	if errors := sm.DrainErrors(); len(errors) != 1 {
 		t.Fatalf("recorded errors = %v, want the failed write", errors)
+	}
+}
+
+// A pig killed with SIGKILL leaves agent/settings.json.lock behind. proper-lockfile treats a lock directory younger than its 10 s stale threshold as held, so the next start retries ten times, 20 ms apart, and records "Lock file is already being held" (settings-manager.ts acquireLockSyncWithRetry). That wait is Pi's behavior, not a PiG defect: Pi 1.1.0's own SettingsManager.create makes ten mkdir attempts against the same leftover, and its whole CLI makes four loads (40 attempts) where PiG makes two. A lock older than the threshold is taken over at once. This runs Pi's SettingsManager on a fresh and on a stale leftover lock, then PiG's, and compares attempts, waiting and diagnostics.
+func TestLeftoverSettingsLockWaitsLikePi(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", "extensions", "sdk-ts", "node_modules", "@earendil-works", "pi-coding-agent"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const script = `(async () => {
+  const [root, agentDir, cwd, ageMs] = process.argv.slice(1);
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const lockPath = path.join(agentDir, 'settings.json.lock');
+  let attempts = 0;
+  const mkdirSync = fs.mkdirSync;
+  fs.mkdirSync = function (p, ...rest) {
+    if (String(p) === lockPath) attempts++;
+    return mkdirSync.call(fs, p, ...rest);
+  };
+  const { SettingsManager } = await import(require('node:url').pathToFileURL(path.join(root, 'dist/core/settings-manager.js')).href);
+  // Node's startup and the module import can take longer than the margin around the stale threshold on a loaded
+  // host, so the lock gets its age only now, right before the load.
+  const stamp = (Date.now() - Number(ageMs)) / 1000;
+  fs.utimesSync(lockPath, stamp, stamp);
+  const start = process.hrtime.bigint();
+  const settings = SettingsManager.create(cwd, agentDir);
+  const ms = Number(process.hrtime.bigint() - start) / 1e6;
+  console.log(JSON.stringify({ attempts, ms, errors: settings.drainErrors().map((e) => e.error.message) }));
+})()`
+	// The retry schedule comes from Pi's shipped settings-manager.js, not from
+	// pilock, so a changed SyncDelay or SyncAttempts fails here.
+	shipped, err := os.ReadFile(filepath.Join(root, "dist", "core", "settings-manager.js"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	piConst := func(name string) int {
+		match := regexp.MustCompile(`const ` + name + ` = (\d+);`).FindSubmatch(shipped)
+		if match == nil {
+			t.Fatalf("Pi's settings-manager.js has no %s", name)
+		}
+		value, err := strconv.Atoi(string(match[1]))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return value
+	}
+	piAttempts, piDelay := piConst("maxAttempts"), time.Duration(piConst("delayMs"))*time.Millisecond
+	if pilock.SyncAttempts != piAttempts || pilock.SyncDelay != piDelay {
+		t.Fatalf("pilock retries %d times %v apart, Pi %d times %v apart", pilock.SyncAttempts, pilock.SyncDelay, piAttempts, piDelay)
+	}
+	window := time.Duration(piAttempts-1) * piDelay
+	for _, tc := range []struct {
+		name         string
+		age          time.Duration
+		wantAttempts int
+		wantWait     bool
+	}{
+		{"fresh leftover lock", 0, piAttempts, true},
+		// proper-lockfile's 10 s stale threshold, pinned from both sides: a 5 s old lock is held, an 11 s old one is taken over.
+		// The held case stays well under the threshold, because Node's start-up on a loaded Windows runner took more than 1 s
+		// and aged a 9 s old lock past it (CI 38958187385 native-3).
+		{"leftover lock 5 s old", 5 * time.Second, piAttempts, true},
+		{"leftover lock 11 s old", 11 * time.Second, 2, false}, // the mkdir that meets the old lock, then the mkdir after removing it
+		{"leftover lock older than the stale threshold", 20 * time.Second, 2, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			leave := func() (agentDir, cwd string) {
+				agentDir, cwd = t.TempDir(), t.TempDir()
+				writeSettingsFixture(t, filepath.Join(agentDir, "settings.json"), `{}`)
+				lockPath := filepath.Join(agentDir, "settings.json.lock")
+				if err := os.Mkdir(lockPath, 0o755); err != nil {
+					t.Fatal(err)
+				}
+				old := time.Now().Add(-tc.age)
+				if err := os.Chtimes(lockPath, old, old); err != nil {
+					t.Fatal(err)
+				}
+				return agentDir, cwd
+			}
+			piAgent, piCwd := leave()
+			out, err := exec.CommandContext(t.Context(), "node", "-e", script, root, piAgent, piCwd, strconv.FormatInt(tc.age.Milliseconds(), 10)).Output()
+			if err != nil {
+				t.Fatalf("node: %v", err)
+			}
+			var pi struct {
+				Attempts int      `json:"attempts"`
+				Ms       float64  `json:"ms"`
+				Errors   []string `json:"errors"`
+			}
+			if err := json.Unmarshal(out, &pi); err != nil {
+				t.Fatalf("Pi output %q: %v", out, err)
+			}
+			if pi.Attempts != tc.wantAttempts {
+				t.Fatalf("Pi made %d lock attempts, want %d (Pi: %s)", pi.Attempts, tc.wantAttempts, out)
+			}
+			if got := time.Duration(pi.Ms * float64(time.Millisecond)); tc.wantWait != (got >= window) {
+				t.Fatalf("Pi waited %v, want a wait of at least %v: %v (Pi: %s)", got, window, tc.wantWait, out)
+			}
+
+			pigAgent, pigCwd := leave()
+			start := time.Now()
+			sm := NewSettingsManagerWithProjectTrust(pigCwd, pigAgent, false)
+			waited := time.Since(start)
+			var pig []string
+			for _, drained := range sm.DrainErrors() {
+				pig = append(pig, drained.Error.Error())
+			}
+			if tc.wantWait != (waited >= window) {
+				t.Errorf("PiG waited %v, want a wait of at least %v: %v", waited, window, tc.wantWait)
+			}
+			if !slices.Equal(pig, pi.Errors) {
+				t.Errorf("PiG load errors = %q, want Pi's %q", pig, pi.Errors)
+			}
+		})
 	}
 }

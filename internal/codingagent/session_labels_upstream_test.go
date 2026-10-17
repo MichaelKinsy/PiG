@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -40,10 +39,10 @@ func upstreamSessionAssistant(t *testing.T, s *Session, text string) string {
 }
 func upstreamLabel(t *testing.T, s *Session, id, label string) string {
 	t.Helper()
-	if err := s.AppendLabelChange(id, &label); err != nil {
+	if _, err := s.AppendLabelChange(id, &label); err != nil {
 		t.Fatal(err)
 	}
-	return *s.LeafID()
+	return *s.GetLeafID()
 }
 func upstreamClone(t *testing.T, s *Session, id string) *Session {
 	t.Helper()
@@ -57,7 +56,7 @@ func sessionNode(t *testing.T, s *Session, id string) *SessionTreeNode {
 	t.Helper()
 	var walk func(*SessionTreeNode) *SessionTreeNode
 	walk = func(n *SessionTreeNode) *SessionTreeNode {
-		if n.Entry.Base.ID == id {
+		if n.Entry != nil && n.Entry.Base().ID == id {
 			return n
 		}
 		for _, child := range n.Children {
@@ -67,11 +66,11 @@ func sessionNode(t *testing.T, s *Session, id string) *SessionTreeNode {
 		}
 		return nil
 	}
-	return walk(s.Tree())
+	return walk(s.treeRoot())
 }
 func requireSessionEntry(t *testing.T, s *Session, id string) SessionEntry {
 	t.Helper()
-	e, ok := s.EntryByID(id)
+	e, ok := s.GetEntry(id)
 	if !ok {
 		t.Fatalf("missing entry %s", id)
 	}
@@ -107,7 +106,7 @@ func TestSessionLabelsUpstream(t *testing.T) {
 			if sessionNode(t, s, id).Label != "checkpoint" {
 				t.Fatal("label missing")
 			}
-			if err := s.AppendLabelChange(id, clear); err != nil {
+			if _, err := s.AppendLabelChange(id, clear); err != nil {
 				t.Fatal(err)
 			}
 			n := sessionNode(t, s, id)
@@ -124,7 +123,7 @@ func TestSessionLabelsUpstream(t *testing.T) {
 		upstreamLabel(t, s, id, "second")
 		last := upstreamLabel(t, s, id, "third")
 		n := sessionNode(t, s, id)
-		if n.Label != "third" || n.LabelTimestamp != requireSessionEntry(t, s, last).Base.Timestamp {
+		if n.Label != "third" || n.LabelTimestamp != requireSessionEntry(t, s, last).Base().Timestamp {
 			t.Fatalf("label=%+v", n)
 		}
 	})
@@ -136,7 +135,7 @@ func TestSessionLabelsUpstream(t *testing.T) {
 		la := upstreamLabel(t, s, a, "start")
 		lb := upstreamLabel(t, s, b, "response")
 		na, nb := sessionNode(t, s, a), sessionNode(t, s, b)
-		if na.Label != "start" || nb.Label != "response" || na.LabelTimestamp != requireSessionEntry(t, s, la).Base.Timestamp || nb.LabelTimestamp != requireSessionEntry(t, s, lb).Base.Timestamp || len(na.Children) != 1 || na.Children[0].Entry.Base.ID != b {
+		if na.Label != "start" || nb.Label != "response" || na.LabelTimestamp != requireSessionEntry(t, s, la).Base().Timestamp || nb.LabelTimestamp != requireSessionEntry(t, s, lb).Base().Timestamp || len(na.Children) != 1 || na.Children[0].Entry.Base().ID != b {
 			t.Fatal("tree labels")
 		}
 	})
@@ -147,15 +146,15 @@ func TestSessionLabelsUpstream(t *testing.T) {
 		b := upstreamSessionAssistant(t, s, "hi")
 		la := upstreamLabel(t, s, a, "important")
 		lb := upstreamLabel(t, s, b, "also-important")
-		ta, tb := requireSessionEntry(t, s, la).Base.Timestamp, requireSessionEntry(t, s, lb).Base.Timestamp
+		ta, tb := requireSessionEntry(t, s, la).Base().Timestamp, requireSessionEntry(t, s, lb).Base().Timestamp
 		s = upstreamClone(t, s, b)
 		na, nb := sessionNode(t, s, a), sessionNode(t, s, b)
 		if na.Label != "important" || nb.Label != "also-important" || na.LabelTimestamp != ta || nb.LabelTimestamp != tb {
 			t.Fatal("fork lost labels or timestamps")
 		}
 		n := 0
-		for _, e := range s.Entries() {
-			if e.Base.Type == "label" {
+		for _, e := range s.GetEntries() {
+			if e.Base().Type == "label" {
 				n++
 			}
 		}
@@ -168,13 +167,13 @@ func TestSessionLabelsUpstream(t *testing.T) {
 		s := NewSession("test", "/project")
 		a := upstreamSessionUser(t, s, "hello")
 		upstreamLabel(t, s, a, "checkpoint")
-		if err := s.AppendModelSwitch("anthropic", "claude-test", ""); err != nil {
+		if _, err := s.AppendModelChange("anthropic", "claude-test"); err != nil {
 			t.Fatal(err)
 		}
-		model := *s.LeafID()
+		model := *s.GetLeafID()
 		b := upstreamSessionUser(t, s, "followup")
 		s = upstreamClone(t, s, b)
-		parent := requireSessionEntry(t, s, model).Base.ParentID
+		parent := requireSessionEntry(t, s, model).Base().ParentID
 		if parent == nil || *parent != a {
 			t.Fatalf("model parent=%v", parent)
 		}
@@ -207,7 +206,7 @@ func TestSessionLabelsUpstream(t *testing.T) {
 	t.Run("throws when labeling non-existent entry", func(t *testing.T) {
 		s := NewSession("test", "/project")
 		label := "label"
-		err := s.AppendLabelChange("non-existent", &label)
+		_, err := s.AppendLabelChange("non-existent", &label)
 		if err == nil || err.Error() != "Entry non-existent not found" {
 			t.Fatalf("error=%v", err)
 		}
@@ -253,13 +252,13 @@ func BenchmarkCloneLabeledSession(b *testing.B) {
 		}
 		if i%10 == 0 {
 			label := fmt.Sprintf("checkpoint %d", i)
-			if err := source.AppendLabelChange(id, &label); err != nil {
+			if _, err := source.AppendLabelChange(id, &label); err != nil {
 				b.Fatal(err)
 			}
 		}
 	}
 	manager := NewSessionManagerWithDir("/project", b.TempDir())
-	leaf := *source.LeafID()
+	leaf := *source.GetLeafID()
 	b.ReportAllocs()
 	for b.Loop() {
 		if _, err := manager.Clone(source, leaf); err != nil {

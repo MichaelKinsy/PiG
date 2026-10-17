@@ -1,3 +1,5 @@
+//go:build !pig_strip_bedrock_converse_stream
+
 package ai
 
 import (
@@ -8,14 +10,16 @@ import (
 	"errors"
 	"fmt"
 	"hash/crc32"
-	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime/document"
-	btypes "github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
 	"github.com/aws/smithy-go"
 
+	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime/document"
+	btypes "github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime/types"
+
+	"github.com/MichaelKinsy/PiG/internal/jsjson"
 	"github.com/MichaelKinsy/PiG/internal/jsonparse"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // This file translates the pure, synchronous parts of @smithy/core 3.35.1 event streams (their modules are unchanged from 3.33.3) that Pi's Bedrock provider reads through the AWS SDK: getChunkedStream's framing (eventstream-serde-universal/getChunkedStream.js), EventStreamCodec.decode (eventstream-codec/EventStreamCodec.js, splitMessage.js, HeaderMarshaller.js parse) and the message unmarshaller (eventstream-serde-universal/getUnmarshalledStream.js getMessageUnmarshaller, EventStreamSerde.js deserializeEventStream). The awaits between these steps are modeled by bedrock_stream_pipeline.go.
@@ -145,7 +149,7 @@ func parseBedrockEventHeaders(headers []byte) (map[string]bedrockEventHeader, er
 		if !need(nameLength) {
 			return nil, errBedrockHeaderBounds
 		}
-		name := strings.ToValidUTF8(string(headers[position:position+nameLength]), "\ufffd")
+		name := jsstring.FromUTF8(headers[position : position+nameLength])
 		position += nameLength
 		if !need(1) {
 			return nil, errBedrockHeaderBounds
@@ -198,7 +202,7 @@ func parseBedrockEventHeaders(headers []byte) (map[string]bedrockEventHeader, er
 			if tag == 7 {
 				kind = "string"
 			}
-			out[name] = bedrockEventHeader{kind: kind, value: strings.ToValidUTF8(string(headers[position:position+length]), "\ufffd")}
+			out[name] = bedrockEventHeader{kind: kind, value: jsstring.FromUTF8(headers[position : position+length])}
 			position += length
 		case 9:
 			if !need(16) {
@@ -244,7 +248,7 @@ func bedrockEventDeserializer(message *bedrockEventMessage) (bedrockStreamItem, 
 		code := message.headers[":exception-type"].value
 		exception := bedrockStreamException(code, message.body)
 		if exception == nil {
-			return bedrockStreamItem{}, &smithy.GenericAPIError{Code: code, Message: strings.ToValidUTF8(string(message.body), "\ufffd")}
+			return bedrockStreamItem{}, &smithy.GenericAPIError{Code: code, Message: jsstring.FromUTF8(message.body)}
 		}
 		return bedrockStreamItem{}, exception
 	case "event":
@@ -322,15 +326,21 @@ type bedrockStreamEventBody struct {
 	} `json:"usage"`
 }
 
+// bedrockEventJSONError is the SyntaxError JSON.parse throws for an event payload.
+type bedrockEventJSONError struct{ error }
+
+func (err *bedrockEventJSONError) Unwrap() error { return err.error }
+
 // bedrockStreamEvent is the schema-driven read of one event payload (JsonShapeDeserializer2.read, then _read over the event member's schema).
 func bedrockStreamEvent(eventType string, body []byte) (bedrockStreamItem, error) {
 	var fields bedrockStreamEventBody
 	if len(body) != 0 {
 		// JsonShapeDeserializer2.read: JSON.parse(buffer) (@aws-sdk/core protocols/index.js:521).
 		if err := jsonparse.Validate(body); err != nil {
-			return bedrockStreamItem{}, err
+			return bedrockStreamItem{}, &bedrockEventJSONError{err}
 		}
-		if err := json.Unmarshal(body, &fields); err != nil {
+		// JSON.parse reads 12.0 or 1.2e1 as the number 12, which the SDK's integer members accept (smithy expectInt32).
+		if err := json.Unmarshal(jsjson.NormalizeIntegers(body), &fields); err != nil {
 			return bedrockStreamItem{}, err
 		}
 	}

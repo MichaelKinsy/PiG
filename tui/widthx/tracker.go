@@ -74,18 +74,36 @@ func (t *AnsiCodeTracker) Process(code string) {
 		return
 	}
 
-	parts := strings.Split(params, ";")
-	for i := 0; i < len(parts); {
-		c, err := strconv.Atoi(parts[i])
+	// The parameters as strings.Split(params, ";") would give them, kept as offsets so a frame's codes allocate nothing:
+	// parameter k is params[starts[k] : starts[k+1]-1]. A code with more parameters than the stack array holds spills to
+	// the heap.
+	var stack [sgrStackParams + 1]int
+	starts := append(stack[:0], 0)
+	for j := range len(params) {
+		if params[j] == ';' {
+			starts = append(starts, j+1)
+		}
+	}
+	starts = append(starts, len(params)+1)
+	n := len(starts) - 1
+	for i := 0; i < n; {
+		part := sgrParam(params, starts, i)
+		if part == "" {
+			// strconv.Atoi rejects an empty parameter; skip it without building the error.
+			i++
+			continue
+		}
+		c, err := strconv.Atoi(part)
 		if err != nil {
 			i++
 			continue
 		}
 
-		// 256-color / RGB consume multiple params.
-		if (c == 38 || c == 48) && i+1 < len(parts) {
-			if parts[i+1] == "5" && i+2 < len(parts) {
-				colorCode := parts[i] + ";" + parts[i+1] + ";" + parts[i+2]
+		// 256-color / RGB consume multiple params. The color code is the parameters joined by ";", which is the span
+		// of params they occupy.
+		if (c == 38 || c == 48) && i+1 < n {
+			if sgrParam(params, starts, i+1) == "5" && i+2 < n {
+				colorCode := params[starts[i] : starts[i+3]-1]
 				if c == 38 {
 					t.fgColor = colorCode
 				} else {
@@ -94,8 +112,8 @@ func (t *AnsiCodeTracker) Process(code string) {
 				i += 3
 				continue
 			}
-			if parts[i+1] == "2" && i+4 < len(parts) {
-				colorCode := parts[i] + ";" + parts[i+1] + ";" + parts[i+2] + ";" + parts[i+3] + ";" + parts[i+4]
+			if sgrParam(params, starts, i+1) == "2" && i+4 < n {
+				colorCode := params[starts[i] : starts[i+5]-1]
 				if c == 38 {
 					t.fgColor = colorCode
 				} else {
@@ -153,6 +171,15 @@ func (t *AnsiCodeTracker) Process(code string) {
 		}
 		i++
 	}
+}
+
+// sgrStackParams is how many SGR parameters Process walks without a heap allocation; 38;2;r;g;b and 48;2;r;g;b with a few
+// attributes fit.
+const sgrStackParams = 16
+
+// sgrParam is parameter k of params, whose parameter k starts at starts[k] and ends one byte (the ";") before starts[k+1].
+func sgrParam(params string, starts []int, k int) string {
+	return params[starts[k] : starts[k+1]-1]
 }
 
 func (t *AnsiCodeTracker) resetSGR() {

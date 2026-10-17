@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/internal/sessionentry"
+
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
@@ -33,7 +35,7 @@ func TestFoldsStoreEntriesFromTheRootIgnoringMalformedData(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		return codingagent.NewSessionEntry(raw, codingagent.SessionEntryBase{Type: "custom"})
+		return sessionentry.DecodeSessionEntry(raw)
 	}
 	got := storeOf([]codingagent.SessionEntry{
 		entry(map[string]any{"set": map[string]any{"a": 1, "b": map[string]any{"c": 2}}, "delete": []string{}}, StoreEntryType),
@@ -43,6 +45,29 @@ func TestFoldsStoreEntriesFromTheRootIgnoringMalformedData(t *testing.T) {
 	})
 	if want := map[string]json.RawMessage{"a": json.RawMessage("3")}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("store = %v, want %v", got, want)
+	}
+}
+
+// execute.ts isStoreEntryData: `delete` must be an array of strings (a null or number member rejects the entry) and `set`
+// is any non-null object, so an array applies its indexes as keys (Object.entries).
+func TestStoreEntryDataValidationFollowsIsStoreEntryData(t *testing.T) {
+	entry := func(data string) codingagent.SessionEntry {
+		raw := json.RawMessage(`{"type":"custom","customType":"codemode-store","data":` + data + `,"id":"x","parentId":null,"timestamp":"1970-01-01T00:00:00.000Z"}`)
+		return sessionentry.DecodeSessionEntry(raw)
+	}
+	for _, tc := range []struct{ name, data, want string }{
+		{"null member of delete rejects the entry", `{"set":{"a":1},"delete":[null]}`, `{}`},
+		{"number member of delete rejects the entry", `{"set":{"a":1},"delete":[7]}`, `{}`},
+		{"array set applies its indexes", `{"set":["x","y"],"delete":[]}`, `{"0":"x","1":"y"}`},
+		{"null set rejects the entry", `{"set":null,"delete":[]}`, `{}`},
+		{"string set rejects the entry", `{"set":"a","delete":[]}`, `{}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := json.Marshal(storeOf([]codingagent.SessionEntry{entry(tc.data)}))
+			if err != nil || string(got) != tc.want {
+				t.Fatalf("store = %s, %v, want %s", got, err, tc.want)
+			}
+		})
 	}
 }
 

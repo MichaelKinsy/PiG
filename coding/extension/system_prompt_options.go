@@ -32,6 +32,10 @@ type BuildSystemPromptOptions struct {
 	// SelectedTools is the list of tool names included in the prompt.
 	// Defaults upstream to [read, bash, edit, write].
 	SelectedTools []string `json:"selectedTools,omitzero"`
+	// HiddenTools are the selected tools whose declarations requests leave out (`prepareLoadout` hidden declarations). They are
+	// reachable only through another tool, so the tool list and rules leave them out too. The Session sets it before every
+	// request; an edit by a handler does not change what the request carries.
+	HiddenTools []string `json:"hiddenTools,omitzero"`
 	// ToolSnippets maps tool name → one-line description used in the
 	// "Available tools" section.
 	ToolSnippets map[string]string `json:"toolSnippets,omitzero"`
@@ -82,6 +86,7 @@ func NormalizeBuildSystemPromptOptions(input BuildSystemPromptOptions) BuildSyst
 	} else {
 		out.SelectedTools = append([]string{}, input.SelectedTools...)
 	}
+	out.HiddenTools = append([]string{}, input.HiddenTools...)
 	out.ToolSnippets = make(map[string]string, len(input.ToolSnippets))
 	maps.Copy(out.ToolSnippets, input.ToolSnippets)
 	out.ToolGuidelines = make(map[string][]string, len(input.ToolGuidelines))
@@ -126,7 +131,7 @@ type SystemPromptSkill struct {
 	Description            string     `json:"description"`
 	FilePath               string     `json:"filePath"`
 	BaseDir                string     `json:"baseDir"`
-	SourceInfo             SourceInfo `json:"sourceInfo,omitempty"`
+	SourceInfo             SourceInfo `json:"sourceInfo,omitzero"`
 	DisableModelInvocation bool       `json:"disableModelInvocation"`
 }
 
@@ -151,6 +156,7 @@ func (o BuildSystemPromptOptions) MarshalJSON() ([]byte, error) {
 		CustomPrompt       *string                   `json:"customPrompt,omitempty"`
 		ForceSystemPrompt  *string                   `json:"forceSystemPrompt,omitempty"`
 		SelectedTools      []string                  `json:"selectedTools"`
+		HiddenTools        []string                  `json:"hiddenTools"`
 		ToolSnippets       map[string]string         `json:"toolSnippets"`
 		ToolGuidelines     map[string][]string       `json:"toolGuidelines"`
 		PromptGuidelines   []string                  `json:"promptGuidelines"`
@@ -163,6 +169,7 @@ func (o BuildSystemPromptOptions) MarshalJSON() ([]byte, error) {
 		CustomPrompt:       custom,
 		ForceSystemPrompt:  o.ForceSystemPrompt,
 		SelectedTools:      nonNil(o.SelectedTools),
+		HiddenTools:        nonNil(o.HiddenTools),
 		ToolSnippets:       nonNilMap(o.ToolSnippets),
 		ToolGuidelines:     nonNilMap(o.ToolGuidelines),
 		PromptGuidelines:   nonNil(o.PromptGuidelines),

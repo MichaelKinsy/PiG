@@ -33,7 +33,7 @@ func TestRunToolCall_RejectsWithTheFirstUpdateSinkErrorAndSkipsAfterToolCall(t *
 	first, second := errors.New("first sink error"), errors.New("second sink error")
 	options := RunToolCallOptions{
 		Tools: []AgentTool{tool},
-		ToolCallHooks: ToolCallHooks{AfterToolCall: []AfterToolCallHook{func(context.Context, string, string, json.RawMessage, AgentToolResult) AfterToolCallResult {
+		ToolCallHooks: ToolCallHooks{AfterToolCallHooks: []AfterToolCallHook{func(context.Context, string, string, json.RawMessage, AgentToolResult) AfterToolCallResult {
 			note("afterToolCall")
 			return AfterToolCallResult{}
 		}}},
@@ -66,7 +66,7 @@ func TestRunToolCall_AnUpdateSinkThatSucceedsKeepsTheOutcome(t *testing.T) {
 	var hooks int
 	options := RunToolCallOptions{
 		Tools: []AgentTool{newStructuredEchoTool()},
-		ToolCallHooks: ToolCallHooks{AfterToolCall: []AfterToolCallHook{func(context.Context, string, string, json.RawMessage, AgentToolResult) AfterToolCallResult {
+		ToolCallHooks: ToolCallHooks{AfterToolCallHooks: []AfterToolCallHook{func(context.Context, string, string, json.RawMessage, AgentToolResult) AfterToolCallResult {
 			hooks++
 			return AfterToolCallResult{}
 		}}},

@@ -42,7 +42,7 @@ func inverseCells(line string) int {
 func editorCursorRow(t *testing.T, lines []string) string {
 	t.Helper()
 	for _, line := range lines {
-		if strings.Contains(line, "\x1b[7m") {
+		if strings.Contains(line, widthx.FakeCursorStart) {
 			return line
 		}
 	}
@@ -52,7 +52,7 @@ func editorCursorRow(t *testing.T, lines []string) string {
 
 // Pi's Editor.render pads every content row to the content width, so the
 // cursor's closing reset is followed by cells and survives Pi's
-// compositeTuiLine, which drops SGR codes after the last "before" cell. An
+// CompositeTuiLine, which drops SGR codes after the last "before" cell. An
 // overlay covering the editor row must leave exactly one inverse cell.
 func TestOverlayOverEditorRowKeepsOneCursorCell(t *testing.T) {
 	const width = 40
@@ -76,7 +76,8 @@ func TestOverlayOverEditorRowKeepsOneCursorCell(t *testing.T) {
 			if got := widthx.VisibleWidth(row); got != width {
 				t.Fatalf("editor row width = %d, want %d (Pi pads rows to the content width): %q", got, width, row)
 			}
-			composed := compositeTuiLine(row, "│box│", 12, 5, width)
+			// The main screen resolves fake cursors before it composites overlays (tui-main-screen.ts doRender).
+			composed := CompositeTuiLine(widthx.ResolveFakeCursors([]string{row}, false)[0], "│box│", 12, 5, width)
 			if got := inverseCells(composed); got != 1 {
 				t.Fatalf("inverse cells = %d, want 1: %q", got, composed)
 			}
@@ -95,11 +96,11 @@ func TestEditorCursorAfterLineFillingLayoutWidth(t *testing.T) {
 		width, padX int
 		want        string
 	}{
-		{name: "reserved column", text: strings.Repeat("x", 39), width: 40, want: strings.Repeat("x", 39) + "\x1b[7m \x1b[0m"},
-		{name: "right padding", text: strings.Repeat("x", 36), width: 40, padX: 2, want: "  " + strings.Repeat("x", 36) + "\x1b[7m \x1b[0m "},
-		{name: "one-column padding", text: "g", width: 3, padX: 1, want: " g\x1b[7m \x1b[0m"},
-		{name: "width 2", text: "g", width: 2, want: "g\x1b[7m \x1b[0m"},
-		{name: "combining mark", text: strings.Repeat("a", 8) + "é", width: 10, want: strings.Repeat("a", 8) + "é\x1b[7m \x1b[0m"},
+		{name: "reserved column", text: strings.Repeat("x", 39), width: 40, want: strings.Repeat("x", 39) + widthx.RenderFakeCursor(" ")},
+		{name: "right padding", text: strings.Repeat("x", 36), width: 40, padX: 2, want: "  " + strings.Repeat("x", 36) + widthx.RenderFakeCursor(" ") + " "},
+		{name: "one-column padding", text: "g", width: 3, padX: 1, want: " g" + widthx.RenderFakeCursor(" ")},
+		{name: "width 2", text: "g", width: 2, want: "g" + widthx.RenderFakeCursor(" ")},
+		{name: "combining mark", text: strings.Repeat("a", 8) + "é", width: 10, want: strings.Repeat("a", 8) + "é" + widthx.RenderFakeCursor(" ")},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			editor := NewEditor()
@@ -112,11 +113,11 @@ func TestEditorCursorAfterLineFillingLayoutWidth(t *testing.T) {
 	}
 }
 
-// At width 1 without padding Pi 0.87.1's Editor.render returns "g\x1b[7m \x1b[0m",
+// At width 1 without padding Pi 0.87.1's Editor.render returns "g" plus the fake cursor of " ",
 // two cells wide, which its main screen treats as fatal. PiG highlights the
 // final grapheme instead so the row fits (D66); an empty editor matches Pi.
 func TestEditorCursorAtWidthOneStaysInBounds(t *testing.T) {
-	for text, want := range map[string]string{"g": "\x1b[7mg\x1b[0m", "": "\x1b[7m \x1b[0m"} {
+	for text, want := range map[string]string{"g": widthx.RenderFakeCursor("g"), "": widthx.RenderFakeCursor(" ")} {
 		editor := NewEditor()
 		editor.SetText(text)
 		if got := editor.Render(1)[1]; got != want {

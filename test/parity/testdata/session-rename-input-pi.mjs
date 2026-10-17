@@ -1,11 +1,12 @@
 // Published Pi Input is the oracle, including original test bodies and raw UTF-16 units.
+import { PI_PACKAGE_VERSION } from "./pi-version.mjs";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import ts from "../interface-extractor/node_modules/typescript/lib/typescript.js";
 const root = process.env.PI_PACKAGE_ROOT ?? resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, "1.0.3");
+assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, PI_PACKAGE_VERSION);
 const tuiEntry = import.meta.resolve("@earendil-works/pi-tui", pathToFileURL(join(root, "package.json")).href);
 const tuiRoot = fileURLToPath(new URL("./", tuiEntry));
 const { Input } = await import(tuiEntry);

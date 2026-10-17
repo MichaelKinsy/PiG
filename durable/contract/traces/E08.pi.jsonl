@@ -1,0 +1,14 @@
+{"k":">","name":"harness.root","tick":195}
+{"k":"#","seq":1,"summary":"conversations:i document_revisions:i documents:i","tick":383,"begin":323}
+{"k":">","name":"harness.root().configure","tick":392}
+{"k":"#","seq":2,"summary":"document_revisions:i","tick":417,"begin":405}
+{"k":">","name":"harness.root().commit","tick":425}
+{"k":"#","seq":3,"summary":"entries:i","tick":459,"begin":448}
+{"k":">","name":"harness.createConversation","tick":467}
+{"k":"#","seq":4,"summary":"conversations:i document_revisions:i documents:i","tick":636,"begin":576}
+{"k":">","name":"harness.root().fork","tick":645}
+{"k":"#","seq":5,"summary":"conversations:i document_revisions:i documents:i","tick":844,"begin":780}
+{"k":">","name":"harness.createConversation().agent","tick":853}
+{"k":">","name":"harness.root().fork().agent","tick":855}
+{"k":">","name":"harness.conversation","tick":884}
+{"k":">","name":"harness.close","tick":897}

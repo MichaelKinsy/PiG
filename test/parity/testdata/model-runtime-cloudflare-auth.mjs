@@ -1,3 +1,4 @@
+import { PI_PACKAGE_VERSION } from "./pi-version.mjs";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -12,7 +13,7 @@ if (process.argv[2] === "pig") {
 } else {
   assert.equal(process.argv[2], "pi");
   const root = process.env.PI_PACKAGE_ROOT ?? resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-  assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, "1.0.3");
+  assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, PI_PACKAGE_VERSION);
   const { AuthStorage } = await import(pathToFileURL(join(root, "dist/core/auth-storage.js")));
   const { ModelRuntime } = await import(pathToFileURL(join(root, "dist/core/model-runtime.js")));
   const { ModelRegistry } = await import(pathToFileURL(join(root, "dist/core/model-registry.js")));

@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/utils/clipboard-image.ts
+
 import (
 	"context"
 	"errors"

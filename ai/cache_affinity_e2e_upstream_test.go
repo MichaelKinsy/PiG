@@ -69,7 +69,7 @@ func cacheAffinityFauxEndpoint(t *testing.T, codex bool) string {
 			return
 		}
 		if codex {
-			body, err = decodeZstdRawFrameForTest(body)
+			body, err = decodeZstdFrameForTest(body)
 			if err != nil {
 				t.Error(err)
 				w.WriteHeader(400)

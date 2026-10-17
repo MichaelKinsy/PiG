@@ -1,6 +1,7 @@
 package codingagent
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -53,7 +54,7 @@ export default pi => pi.on("user_bash", async (event, ctx) => {
 				}
 				ownerPID, ownerErr := os.ReadFile(filepath.Join(root, "owner.pid"))
 				peerPID, peerErr := os.ReadFile(filepath.Join(root, "peer.pid"))
-				if ownerErr != nil || peerErr != nil || string(ownerPID) != string(peerPID) {
+				if ownerErr != nil || peerErr != nil || !bytes.Equal(ownerPID, peerPID) {
 					t.Fatalf("members are not packed: owner=%s/%v peer=%s/%v", ownerPID, ownerErr, peerPID, peerErr)
 				}
 			} else {

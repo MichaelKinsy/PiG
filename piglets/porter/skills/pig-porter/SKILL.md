@@ -4,25 +4,78 @@ description: Run one bounded upstream-first Pi-to-PiG porting or verification ta
 ---
 
 <!--
-SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 SPDX-License-Identifier: MIT
 -->
 
 # Pig Porter
 
-Work against the exact Pi release in `internal/coding/pigversion/pigversion.go` (the
+Work against the exact Pi build in `.upstream/pin` (the
 pin `coding/upstream.go` re-exports). Use one mode and one bounded scope:
 
 - `inventory <family>` inspects the current frontier without changing behavior.
 - `family <family>` ports one behavior family.
 - `tighten <family>` strengthens existing evidence and fixes drift it exposes.
 - `verify <family>` runs the family acceptance ladder without changing behavior.
+- `closure <upstream-file> [part i/n]` closes the interface gap rows whose top-level symbol
+  `<upstream-file>` declares (for example `closure packages/durable/src/harness/types.ts`); a file with
+  more than 25 rows is split into parts, and a part task closes only its slice of the rows.
+- `delta <package> [part i/n]` reviews the pending `upstream-sync` files of one package
+  (for example `delta codemode`); a package with more than 8 pending files is split into parts, and a
+  part task reviews only its slice of the files.
 - `upgrade <tag>` plans an upstream-version change. It remains read-only until
   the user approves the plan.
 
-Reject a missing mode, family, or upgrade tag. Combine families only when the
+Reject a missing mode, family, file, package, or upgrade tag. Combine families only when the
 upstream contract and production call path require it. State the coupling before
 editing.
+
+## Closure and delta modes
+
+These modes drive the work list of a pin move. The pipeline (`automation/pin/follow.py`) writes one task per
+upstream file (`closure`) or package (`delta`). Run them headless: never stop to ask. When a step needs a
+decision this skill reserves for a human (a divergence, a designed-out or deferred classification, a public
+wire or API change), record the row as `BLOCKED <row> <reason>` in the report and continue with the next row.
+
+Port every row from the Pi source, never from another lane's branch. If a branch or worktree outside your own already ports a
+surface, record the row as `BLOCKED <row> already ported on <branch>` and do not copy its files (`git show`, `git checkout <ref> --`,
+`cp` from another worktree): that work is in review elsewhere and a copy conflicts with it when it merges.
+
+A closure or delta task for a followed commit is output for the pin-move branch of that commit (a later pin than the
+committed one). It edits ledgers, PORT_MAP rows and citations that name files absent at the committed pin, so it is
+correct only against the followed pin's gates (`PI_UPSTREAM_REF`); the maintainer carries it on the pin-move branch
+and never merges it to a branch that still pins the earlier Pi.
+
+`closure <upstream-file>`:
+
+1. List the rows: `python3 automation/pin/follow.py "$(python3 automation/pin/pin.py get commit)" --closure <upstream-file>` (a part task adds `--part i/n`, and closes only the rows that list prints).
+   Each line is the interface ID, the detector's reason, and the Go symbol it bound (empty when it found none).
+2. Read the complete upstream declaration in `.upstream/current` and the bound Go code.
+3. Close each row by its reason, and only from evidence:
+   - `child-gap`: close the member rows it names; the parent closes with them.
+   - `undecidable`: the detector cannot compare the two shapes. When Go matches Pi and a passing test proves it,
+     add a reviewed entry to `test/parity/interface-closure/autobind/reviewed-types.json` (the Go symbol, and a
+     reason that cites the Pi file and line and the test that proves it). Otherwise treat the row as a mismatch.
+   - `no-go-symbol`: find the Go symbol (add a rename to `autobind/renames.json`), or port the behavior test-first
+     against the pinned Pi executable. A surface Pig does not ship is `BLOCKED`.
+   - `type-mismatch`, `member-missing`, `signature-mismatch`: Go differs from Pi. Fix Go test-first; do not edit a
+     reviewed entry to make the detector agree.
+   - `not-exercised`: add the asserting test and prove it with a mutation that compiles and fails.
+   Read every test you cite. The detector lists tests that mention a symbol, not tests that assert the member you are
+   closing: the evidence for a property must be a test that exercises that property (a `signal` property needs a test that
+   cancels it), and the evidence for a changed behavior is a test that fails under a mutation you applied.
+4. Rederive: `make ledger-update` twice, then `make ledger-check`. The file's row count
+   must fall and no other file's rows may grow.
+5. Report rows closed, rows left, `BLOCKED` rows with reasons, and the commands run.
+
+`delta <package> [part i/n]`:
+
+1. List the files: `python3 automation/pin/follow.py "$(python3 automation/pin/pin.py get commit)" --delta <package>` (a part task adds `--part i/n`, and reviews only the files that list prints).
+2. For each file, diff the previous and current mirrors under `.upstream/` and read the changed callers and tests.
+3. Port what changed, test-first against the pinned Pi executable, through the family workflow. Then set the file's
+   row in `test/parity/upstream-sync/v<version>.toml` to `ported`, `designed-out`, or `divergence` with `evidence`
+   (tests that fail on a mutant) and a `rationale`. A file whose change is not observable (comments, build files,
+   docs) is `designed-out` with that rationale. Leave `pending` any file you could not finish and say why.
+4. Run `make upstream-delta` and report.
 
 ## Faithful, general implementations
 
@@ -103,7 +156,7 @@ An `upgrade <tag>` invocation first produces a read-only plan.
 
 After approval:
 
-1. Update `internal/coding/pigversion/pigversion.go` and the exact Pi dependency in
+1. Run `make pin-bump PI_UPSTREAM_REF=<tag|commit>`, which writes `.upstream/pin` and regenerates `internal/coding/pigversion/pigversion.go` and the exact Pi dependency in
    `extensions/sdk-ts`.
 2. Run `make upstream-mirror`, `make model-catalogs`, and
    `make interface-proposals`.
@@ -146,6 +199,14 @@ Do not run `family`, `tighten`, or `upgrade` concurrently. Do not modify source,
 tests, evidence, generated inventories, or Git state from a campaign worker.
 Never inspect, signal, or remove another worker's processes, tmux sessions,
 temporary files, homes, snapshots, or reports.
+
+## Session context at scale
+
+Sessions reach hundreds of megabytes and tens of thousands of entries, and the host waits on `session_start` and per-turn handlers before the UI moves on. Treat the session as large by default when porting any extension that reads session data.
+
+Prefer the context branch (what the model will see, trimmed at the last compaction) over the full history. Read the whole history only when the feature truly needs it, and never do so inside `session_start` or a per-turn handler. Defer such work to a background goroutine or task and paint from retained state first.
+
+Compute incrementally: keep running totals and update them from each new entry instead of rescanning the branch. Stream or peek (read only the fields you need, skip entries you do not care about) rather than materializing every entry. Before shipping, measure the handler on a large synthetic session (hundreds of MB, tens of thousands of entries, many compactions) and check both latency and peak memory.
 
 ## Completion report
 

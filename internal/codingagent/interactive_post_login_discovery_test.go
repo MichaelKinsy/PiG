@@ -103,7 +103,7 @@ func TestPostLoginModelDiscovery(t *testing.T) {
 				for _, id := range ids {
 					models = append(models, json.RawMessage(fmt.Sprintf(`{"id":%q,"name":%q,"provider":"radius","api":"pi-messages","baseUrl":"https://local.invalid/v1","input":["text"],"contextWindow":1000,"maxTokens":100}`, id, id)))
 				}
-				if err := store.Write(t.Context(), "radius", ai.ModelsStoreEntry{Models: models}); err != nil {
+				if err := store.Write(t.Context(), "radius", ai.ModelsStoreEntry{Models: mustStoredModels(models)}); err != nil {
 					t.Fatal(err)
 				}
 				close(blocked.release)
@@ -250,6 +250,7 @@ func BenchmarkPostLoginModelSelection(b *testing.B) {
 	}
 }
 
+// Pi: packages/coding-agent/src/core/settings-manager.ts:1429 (SettingsManager.getEnabledModels).
 func TestPostLoginPersistsDefaultIntoNonEmptyScope(t *testing.T) {
 	m := newPostLoginTestMode(t)
 	m.scopedModelIDs = []string{"openai/other"}
@@ -270,6 +271,6 @@ func TestPostLoginPersistsDefaultIntoNonEmptyScope(t *testing.T) {
 
 type postLoginFailingHandle struct{ recordingCompactHandle }
 
-func (*postLoginFailingHandle) SetModelOnMain(_ *ai.Model, _ ModelMutationOptions, dispatch func(func() error) error) error {
+func (*postLoginFailingHandle) SetModelOnMain(_ context.Context, _ *ai.Model, _ ModelMutationOptions, dispatch func(func() error) error) error {
 	return dispatch(func() error { return errors.New("cannot persist") })
 }

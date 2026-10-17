@@ -86,13 +86,21 @@ var treeHelpers = map[string]func(args []string){
 			panic(err)
 		}
 		_, _ = os.Stdout.WriteString("HEAD\n")
+		if _, err := leader.Write([]byte{'\n'}); err != nil {
+			panic(err)
+		}
+		// Exit only once the descendant has read that byte: a socket that the
+		// exit closes abortively would discard it unread.
+		if _, err := io.ReadFull(leader, make([]byte, 1)); err != nil {
+			panic(err)
+		}
 		// The descendant reads the end of leader as this process's exit: the
 		// process ends with it and the operating system closes leader.
 		defer runtime.KeepAlive(leader)
 	},
 	// late-writer ADDR LEADER: connect to the leader, write the first PRE
-	// tick, report it to the leader with one byte, and then write a PRE tick
-	// every 20 ms, so the output never idles for the grace however late the
+	// tick, report it to the leader with one byte, wait for the leader's byte
+	// that says HEAD is written, acknowledge it with one byte, and then write a PRE tick every 20 ms, so the output never idles for the grace however late the
 	// scheduler delivers the leader's exit. Once the leader's connection ends,
 	// which is its exit, write EOF and then 15 POST ticks, one chunk shorter
 	// than the grace apart and longer than the grace in total, then hold the
@@ -101,6 +109,12 @@ var treeHelpers = map[string]func(args []string){
 		conn := dial(args[0])
 		leader := dial(args[1])
 		_, _ = os.Stdout.WriteString("PRE\n")
+		if _, err := leader.Write([]byte{'\n'}); err != nil {
+			panic(err)
+		}
+		if _, err := io.ReadFull(leader, make([]byte, 1)); err != nil {
+			panic(err)
+		}
 		if _, err := leader.Write([]byte{'\n'}); err != nil {
 			panic(err)
 		}

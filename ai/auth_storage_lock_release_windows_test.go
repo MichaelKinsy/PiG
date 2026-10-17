@@ -206,7 +206,7 @@ func TestFileModelsStoreLockReleaseFailureIsIgnoredUpstream(t *testing.T) {
 			return fn(check)
 		})
 	}
-	if err := store.Write(t.Context(), "probe", ModelsStoreEntry{Models: []json.RawMessage{}}); err != nil {
+	if err := store.Write(t.Context(), "probe", ModelsStoreEntry{Models: []AnyModel{}}); err != nil {
 		t.Fatalf("Write = %v, want success with the unlock error ignored", err)
 	}
 	data, err := os.ReadFile(path)

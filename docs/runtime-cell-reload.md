@@ -1,8 +1,6 @@
 # Runtime-cell reload and operations
 
-This page covers atomic replacement, crash quarantine/fission, diagnostics, and
-the protocol boundary. Start with the
-[runtime-cell overview](extension-runtime-cells.md).
+This page covers atomic replacement, crash quarantine/fission, diagnostics, and the protocol boundary. Start with the [runtime-cell overview](extension-runtime-cells.md).
 
 ## Atomic reload
 
@@ -11,8 +9,7 @@ the protocol boundary. Start with the
 1. resolve the requested extension configs/specs;
 2. plan isolated and packed cells;
 3. reuse or build cell artifacts;
-4. start replacement cells beside current cells, for unchanged extensions too
-   (upstream reload invokes every extension factory again);
+4. start replacement cells beside current cells, for unchanged extensions too (upstream reload invokes every extension factory again);
 5. complete per-extension protocol registration;
 6. validate identities/contributions and construct the replacement registry;
 7. atomically publish the new registry;
@@ -37,7 +34,9 @@ Recovery reruns factories, not interrupted tools or callbacks. Current invocatio
 
 ## Diagnostic logs
 
-PiG captures one temporary `pig-packed-*.log` stderr file per packed process (D20) or `pig-ext-*.log` per isolated process (D56). Shutdown and reload close the process handles and remove that file. A load or crash diagnostic that names the file retains it for troubleshooting, including after reload. A cancelled load does not retain a log. Remove a retained file manually when you no longer need it.
+PiG captures one temporary `pig-packed-*.log` stderr file per packed process (D20) or `pig-ext-*.log` per isolated process (D56). Each file keeps the first 1 MiB and the last 64 KiB of the output and states how many bytes it dropped, so a startup failure and a crash line both survive a flood. Shutdown and reload close the process handles and remove that file. A load or crash diagnostic that names the file retains it for troubleshooting, including after reload. A cancelled load does not retain a log. Remove a retained file manually when you no longer need it.
+
+When a shared Go, Rust, or Python process crashes, the error for each stopped extension says that `/reload` restarts it. A Go, Rust, or Python extension that fails while it registers shows its own error in the load message, and a Rust panic shows its panic message.
 
 A socket close and process exit claim the same failed member only once. Interrupted commands, shortcuts and events keep their error result, but the lifecycle handler owns the connection failure diagnostic when a crash handler is installed. Ordinary handler errors still reach the runner's error listener. Interactive commands use that same runner path.
 
@@ -45,8 +44,7 @@ PiG does not sweep logs from earlier sessions. Their names do not identify an ow
 
 ## Reload report
 
-`Host.LastReloadReport()` returns the last placement transaction.
-`/reload --explain` renders the same facts for a user.
+`Host.LastReloadReport()` returns the last placement transaction. `/reload --explain` renders the same facts for a user.
 
 | Fact | Examples |
 |---|---|
@@ -58,8 +56,7 @@ PiG does not sweep logs from earlier sessions. Their names do not identify an ow
 
 ## Protocol boundary
 
-Every extension, including each member of a packed cell, uses the same current
-wire contract over its own connection. The wire has no independent version. Required behavior includes:
+Every extension, including each member of a packed cell, uses the same current wire contract over its own connection. The wire has no independent version. Required behavior includes:
 
 - registration with stable extension identity;
 - request/response correlation;
@@ -70,16 +67,11 @@ wire contract over its own connection. The wire has no independent version. Requ
 - startup/register timeouts;
 - error propagation without crashing the host.
 
-Packed mode must be observationally identical to isolated mode. Fix the host or
-number a divergence when a conformance difference appears; do not change SDK
-semantics to hide it.
+Packed mode must be observationally identical to isolated mode. Fix the host or number a divergence when a conformance difference appears; do not change SDK semantics to hide it.
 
 ## Oversized results and panics
 
-The host catches extension-call panics at the extension boundary and returns a
-structured internal error when a response is possible. Results above the
-protocol frame limit are replaced with a small `result_too_large` error so the
-host does not write a frame no compliant extension can read.
+The host catches extension-call panics at the extension boundary and returns a structured internal error when a response is possible. Results above the protocol frame limit are replaced with a small `result_too_large` error so the host does not write a frame no compliant extension can read.
 
 ## Piglet component runtime
 
@@ -91,8 +83,7 @@ A Piglet build/release may populate neutral runtime inputs:
 | component closure | expose exact prebuilt subprocess runners/assets to ordinary resolution |
 | fused registrations | register build-time-linked compatible Go factories |
 
-Stock Pig has no Piglet-specific registrations or closure. Runtime registration
-remains generic and does not own Piglet schema or product transport.
+Stock Pig has no Piglet-specific registrations or closure. Runtime registration remains generic and does not own Piglet schema or product transport.
 
 ## Operational boundaries
 

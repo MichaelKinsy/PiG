@@ -12,6 +12,7 @@
 import { createHash } from "node:crypto";
 import { toLlmContent, } from "../../../pi-mcp/index.js";
 import { Container, Spacer, Text } from "../../../../pi-tui.mjs";
+import { READ_MCP_RESOURCE_TOOL } from "../../core/mcp-servers.js";
 import { formatToolCallWithArgs, getTextOutput, replaceTabs } from "../../core/tools/render-utils.js";
 import { formatSize, truncateMiddle } from "../../core/tools/truncate.js";
 import { keyHint } from "../../modes/interactive/components/keybinding-hints.js";
@@ -31,7 +32,7 @@ export const MCP_OUTPUT_MAX_BYTES = 20 * 1024;
 /** Visual (wrapped) result lines shown before the output is expanded. */
 const OUTPUT_PREVIEW_LINES = 5;
 /** Tool that reads the resources named by resource links. */
-export const READ_MCP_RESOURCE_TOOL = "read_mcp_resource";
+export { READ_MCP_RESOURCE_TOOL };
 export function saveToTempFile(data, extension) {
     return writeOutputFile("pi-mcp", extension, data);
 }
@@ -55,20 +56,76 @@ function textOf(content) {
         .join("\n");
 }
 /**
- * Output schema of every MCP tool: the `CallToolResult` scripts receive, with the tool's own output
- * schema as `structuredContent`. Codemode detects this shape to render `CallToolResult<T>`
- * declarations.
+ * MCP content blocks as one compact type with the fields of text and image blocks, which scripts
+ * read most (`image(block)` takes an image block as is). Rendered into every MCP tool's declaration.
+ */
+const CONTENT_BLOCK_SCHEMA = {
+    type: "object",
+    properties: {
+        type: { enum: ["text", "image", "audio", "resource_link", "resource"] },
+        text: { type: "string" },
+        data: { type: "string" },
+        mimeType: { type: "string" },
+    },
+    required: ["type"],
+    additionalProperties: true,
+};
+/** Keywords whose values are data, so a `$ref` key in them is not a reference. */
+const SCHEMA_DATA_KEYWORDS = new Set(["const", "enum", "default", "examples"]);
+/** Keywords whose values map names to schemas, so their keys are names, not keywords. */
+const SCHEMA_MAP_KEYWORDS = new Set([
+    "properties",
+    "patternProperties",
+    "dependentSchemas",
+    "dependencies",
+    "$defs",
+    "definitions",
+]);
+/**
+ * `schema` as a subschema at the JSON pointer `pointer` (`#/properties/structuredContent`) of
+ * another schema: its local references (`#`, `#/$defs/Item`) are rewritten to point below
+ * `pointer`, so they resolve to the same subschemas as before.
+ */
+function relocateSchema(schema, pointer) {
+    if (Array.isArray(schema))
+        return schema.map((item) => relocateSchema(item, pointer));
+    if (typeof schema !== "object" || schema === null)
+        return schema;
+    const relocated = {};
+    for (const [key, value] of Object.entries(schema)) {
+        if (key === "$ref" && typeof value === "string" && (value === "#" || value.startsWith("#/"))) {
+            relocated[key] = `${pointer}${value.slice(1)}`;
+        }
+        else if (SCHEMA_DATA_KEYWORDS.has(key)) {
+            relocated[key] = value;
+        }
+        else if (SCHEMA_MAP_KEYWORDS.has(key) && typeof value === "object" && value !== null && !Array.isArray(value)) {
+            relocated[key] = Object.fromEntries(Object.entries(value).map(([name, subschema]) => [name, relocateSchema(subschema, pointer)]));
+        }
+        else {
+            relocated[key] = relocateSchema(value, pointer);
+        }
+    }
+    return relocated;
+}
+/**
+ * Output schema of every MCP tool: the `CallToolResult` scripts receive (without `_meta`, which
+ * {@link convertMcpResult} drops), with the tool's own output schema as `structuredContent`.
  */
 export function createMcpResultSchema(structuredContentSchema) {
     return {
         type: "object",
         properties: {
-            content: { type: "array", items: { type: "object" } },
-            ...(structuredContentSchema ? { structuredContent: structuredContentSchema } : {}),
+            content: { type: "array", items: CONTENT_BLOCK_SCHEMA },
+            // Servers may send structured content without declaring a schema for it, and it may be any JSON value.
+            structuredContent: structuredContentSchema
+                ? relocateSchema(structuredContentSchema, "#/properties/structuredContent")
+                : {},
             isError: { type: "boolean" },
-            _meta: { type: "object" },
         },
         required: ["content"],
+        // Fields newer protocol versions add.
+        additionalProperties: true,
     };
 }
 /**

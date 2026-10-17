@@ -84,6 +84,22 @@ func (q *PendingMessageQueue) Clear() []AgentMessage {
 	return cleared
 }
 
+// ClearUserMessages removes and returns the queued user messages and keeps every other queued message in order.
+func (q *PendingMessageQueue) ClearUserMessages() []AgentMessage {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	var cleared, kept []AgentMessage
+	for _, message := range q.messages {
+		if message.User != nil {
+			cleared = append(cleared, message)
+		} else {
+			kept = append(kept, message)
+		}
+	}
+	q.messages = kept
+	return cleared
+}
+
 // SetMode changes the drain mode.
 func (q *PendingMessageQueue) SetMode(mode QueueMode) {
 	q.mu.Lock()

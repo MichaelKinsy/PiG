@@ -47,13 +47,13 @@ func (probeTool) Execute(context.Context, string, json.RawMessage, agent.ToolUpd
 // the transcript through runTurn's error path.
 func TestInteractiveRunEndingOnUnansweredToolResultShowsError(t *testing.T) {
 	model := &ai.Model{ID: "m", DisplayName: "m", Provider: alwaysToolCallProvider{}, Capabilities: ai.ModelCapabilities{ContextWindow: 8000}}
-	m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir(), Model: model})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir(), Model: model})
 	m.chatContainer = tui.NewContainer()
 	m.statusContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
-	m.statusLine = NewStatusLine(model, "", nil)
-	m.agent = agent.NewAgent(agent.AgentOptions{Model: model, Tools: []agent.AgentTool{probeTool{}}, MaxTurns: 2})
+	m.statusLine = NewFooterComponent(model, "", nil)
+	m.agent = mustNewAgent(agent.AgentOptions{Model: model, Tools: []agent.AgentTool{probeTool{}}, MaxTurns: 2})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	m.runCtx = ctx

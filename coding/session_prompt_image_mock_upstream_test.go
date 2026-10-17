@@ -57,7 +57,7 @@ func TestUpstreamSessionPromptPreservesImageAttachmentsInProviderContext(t *test
 		}
 		return fauxReply("ok", ai.StopReasonStop, 0)(messages)
 	}}
-	if _, err := h.session.Prompt(t.Context(), "describe", &PromptOptions{Images: []ai.ImageContent{{MimeType: "image/png", Data: "ZmFrZQ=="}}}); err != nil {
+	if err := h.session.Prompt(t.Context(), "describe", &PromptOptions{Images: []ai.ImageContent{{MimeType: "image/png", Data: "ZmFrZQ=="}}}); err != nil {
 		t.Fatal(err)
 	}
 	if !sawImage {
@@ -86,7 +86,7 @@ func TestUpstreamSessionPromptUsesBeforeAgentModelForMockedImageNormalization(t 
 	strict.InputLimits = &ai.ModelInputLimits{Images: &ai.ModelImageInputLimits{Resize: resizeOptions}}
 	calls := mockPromptImageProcessor(h)
 	h.provider.responses = []scriptedResponse{fauxReply("done", ai.StopReasonStop, 0)}
-	if _, err := h.session.Prompt(t.Context(), "inspect", &PromptOptions{Images: []ai.ImageContent{{Data: promptTinyPNG, MimeType: "image/png"}}}); err != nil {
+	if err := h.session.Prompt(t.Context(), "inspect", &PromptOptions{Images: []ai.ImageContent{{Data: promptTinyPNG, MimeType: "image/png"}}}); err != nil {
 		t.Fatal(err)
 	}
 	if h.session.Model().ID != "strict" {

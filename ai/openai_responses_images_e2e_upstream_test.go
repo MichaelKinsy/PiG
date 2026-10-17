@@ -104,7 +104,7 @@ func runResponsesImageCase(t *testing.T, ctx context.Context, providerID, model,
 	})
 	options := StreamOptions{}
 	if providerID != "azure" {
-		options.Thinking = ThinkingLow
+		options.Thinking = ThinkingLevelLow
 		options.IsReasoning = true
 	}
 	if hermetic && providerID == "openai-codex" {
@@ -210,7 +210,7 @@ func responsesImageFauxEndpoint(t *testing.T, codex bool, image, requestModel st
 			return
 		}
 		if codex {
-			data, err = decodeZstdRawFrameForTest(data)
+			data, err = decodeZstdFrameForTest(data)
 			if err != nil {
 				t.Error(err)
 				http.Error(w, err.Error(), 400)

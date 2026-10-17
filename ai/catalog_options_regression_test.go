@@ -32,7 +32,7 @@ func TestCatalogReasoningEffortDetection(t *testing.T) {
 		{"custom", "https://api.ant-ling.com/v1", false},
 	} {
 		t.Run(tc.provider+"/"+tc.url, func(t *testing.T) {
-			if got := upstreamSupportsReasoningEffort(tc.provider, tc.url); got != tc.want {
+			if got := *detectOpenAICompletionsCompat(tc.provider, tc.url, "").SupportsReasoningEffort; got != tc.want {
 				t.Fatalf("got %v, want %v", got, tc.want)
 			}
 		})

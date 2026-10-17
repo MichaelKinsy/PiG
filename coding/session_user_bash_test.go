@@ -20,7 +20,7 @@ func newBashTestSession(t *testing.T, settingsJSON string) *Session {
 	if err := os.WriteFile(filepath.Join(agentDir, "settings.json"), []byte(settingsJSON), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	svcs, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	svcs, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +36,7 @@ func newBashTestSession(t *testing.T, settingsJSON string) *Session {
 // and records the command as typed.
 func TestExecuteBashAppliesShellCommandPrefix(t *testing.T) {
 	sess := newBashTestSession(t, `{"shellCommandPrefix":"X=1"}`)
-	result, err := sess.ExecuteBash(context.Background(), "echo $X", false)
+	result, err := sess.ExecuteBash(context.Background(), "echo $X", nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,11 +55,11 @@ func TestExecuteBashRunsConcurrentlyAndAbortStopsAll(t *testing.T) {
 	}
 	slow := make(chan outcome, 1)
 	go func() {
-		r, err := sess.ExecuteBash(context.Background(), "sleep 0.5; echo first", false)
+		r, err := sess.ExecuteBash(context.Background(), "sleep 0.5; echo first", nil, nil)
 		slow <- outcome{r, err}
 	}()
 	time.Sleep(100 * time.Millisecond)
-	if r, err := sess.ExecuteBash(context.Background(), "echo second", false); err != nil || strings.TrimSpace(r.Output) != "second" {
+	if r, err := sess.ExecuteBash(context.Background(), "echo second", nil, nil); err != nil || strings.TrimSpace(r.Output) != "second" {
 		t.Fatalf("second = %+v, %v", r, err)
 	}
 	first := <-slow
@@ -70,7 +70,7 @@ func TestExecuteBashRunsConcurrentlyAndAbortStopsAll(t *testing.T) {
 	done := make(chan BashResult, 2)
 	for range 2 {
 		go func() {
-			r, _ := sess.ExecuteBash(context.Background(), "sleep 30", false)
+			r, _ := sess.ExecuteBash(context.Background(), "sleep 30", nil, nil)
 			done <- r
 		}()
 	}

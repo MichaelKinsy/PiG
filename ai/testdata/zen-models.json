@@ -13,6 +13,10 @@
   },
   {
     "provider": "opencode",
+    "id": "claude-haiku-5-5"
+  },
+  {
+    "provider": "opencode",
     "id": "claude-opus-4-5"
   },
   {
@@ -97,6 +101,14 @@
   },
   {
     "provider": "opencode",
+    "id": "gemini-4-argon"
+  },
+  {
+    "provider": "opencode",
+    "id": "beam-free"
+  },
+  {
+    "provider": "opencode",
     "id": "big-pickle"
   },
   {
@@ -117,7 +129,7 @@
   },
   {
     "provider": "opencode",
-    "id": "fledge-alpha-free"
+    "id": "deepseek-v4.1-flash-free"
   },
   {
     "provider": "opencode",
@@ -141,6 +153,10 @@
   },
   {
     "provider": "opencode",
+    "id": "glm-5.3-flash-free"
+  },
+  {
+    "provider": "opencode",
     "id": "kimi-k2.5"
   },
   {
@@ -154,14 +170,6 @@
   {
     "provider": "opencode",
     "id": "kimi-k3"
-  },
-  {
-    "provider": "opencode",
-    "id": "ling-3.0-flash-fin-free"
-  },
-  {
-    "provider": "opencode",
-    "id": "ling-3.1-flash-free"
   },
   {
     "provider": "opencode",
@@ -185,11 +193,19 @@
   },
   {
     "provider": "opencode",
+    "id": "mistral-large-4"
+  },
+  {
+    "provider": "opencode",
     "id": "nemotron-3-ultra-free"
   },
   {
     "provider": "opencode",
     "id": "nemotron-3.5-lightning-free"
+  },
+  {
+    "provider": "opencode",
+    "id": "nemotron-3.5-super-vl-free"
   },
   {
     "provider": "opencode",
@@ -316,8 +332,8 @@
     "id": "muse-spark-1.3"
   },
   {
-    "provider": "opencode",
-    "id": "muse-spark-1.3-contributor-free"
+    "provider": "opencode-go",
+    "id": "claude-haiku-5-5"
   },
   {
     "provider": "opencode-go",
@@ -337,11 +353,11 @@
   },
   {
     "provider": "opencode-go",
-    "id": "deepseek-v4-flash"
+    "id": "gemini-4-argon-contributor"
   },
   {
     "provider": "opencode-go",
-    "id": "deepseek-v4-flash-vision-exp"
+    "id": "beam-free"
   },
   {
     "provider": "opencode-go",
@@ -405,11 +421,11 @@
   },
   {
     "provider": "opencode-go",
-    "id": "minimax-m2.7"
+    "id": "space-bunny"
   },
   {
     "provider": "opencode-go",
-    "id": "space-bunny-free"
+    "id": "step-5-preview"
   },
   {
     "provider": "opencode-go",
@@ -418,10 +434,6 @@
   {
     "provider": "opencode-go",
     "id": "gpt-6-luna"
-  },
-  {
-    "provider": "opencode-go",
-    "id": "grok-4.6"
   },
   {
     "provider": "opencode-go",

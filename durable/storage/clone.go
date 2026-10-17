@@ -1,150 +1,17 @@
 package storage
 
 import (
-	"reflect"
-
-	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/internal/detach"
 	"github.com/MichaelKinsy/PiG/durable/storage/internal/writes"
 )
 
 // Storage keeps values detached from callers: every write is copied before it is retained and every read returns a
 // copy. Upstream also freezes retained writes; Go has no frozen values, so a prepared commit exposes copies instead.
 
-// cloneJSON deep-copies a JSON value. JSON containers and scalars take the fast path; any other Go value is copied
-// structurally.
-func cloneJSON(value durable.JsonValue) durable.JsonValue {
-	switch typed := value.(type) {
-	case nil, bool, string, float64, int, int64:
-		return value
-	case map[string]any:
-		if typed == nil {
-			return typed
-		}
-		out := make(map[string]any, len(typed))
-		for key, item := range typed {
-			out[key] = cloneJSON(item)
-		}
-		return out
-	case []any:
-		if typed == nil {
-			return typed
-		}
-		out := make([]any, len(typed))
-		for index, item := range typed {
-			out[index] = cloneJSON(item)
-		}
-		return out
-	default:
-		return cloneValue(reflect.ValueOf(value)).Interface()
-	}
-}
-
-func cloneObject(value durable.JsonObject) durable.JsonObject {
-	if value == nil {
-		return nil
-	}
-	out, _ := cloneJSON(value).(map[string]any)
-	return out
-}
-
-// cloneValue deep-copies an arbitrary Go value: pointers, slices, maps, interfaces, and the exported fields of structs.
-func cloneValue(value reflect.Value) reflect.Value {
-	switch value.Kind() {
-	case reflect.Pointer:
-		if value.IsNil() {
-			return value
-		}
-		out := reflect.New(value.Type().Elem())
-		out.Elem().Set(cloneValue(value.Elem()))
-		return out
-	case reflect.Interface:
-		if value.IsNil() {
-			return value
-		}
-		out := reflect.New(value.Type()).Elem()
-		out.Set(cloneValue(value.Elem()))
-		return out
-	case reflect.Slice:
-		if value.IsNil() {
-			return value
-		}
-		out := reflect.MakeSlice(value.Type(), value.Len(), value.Len())
-		for index := range value.Len() {
-			out.Index(index).Set(cloneValue(value.Index(index)))
-		}
-		return out
-	case reflect.Map:
-		if value.IsNil() {
-			return value
-		}
-		out := reflect.MakeMapWithSize(value.Type(), value.Len())
-		iterator := value.MapRange()
-		for iterator.Next() {
-			out.SetMapIndex(iterator.Key(), cloneValue(iterator.Value()))
-		}
-		return out
-	case reflect.Array:
-		out := reflect.New(value.Type()).Elem()
-		for index := range value.Len() {
-			out.Index(index).Set(cloneValue(value.Index(index)))
-		}
-		return out
-	case reflect.Struct:
-		out := reflect.New(value.Type()).Elem()
-		out.Set(value)
-		for index := range value.NumField() {
-			if out.Field(index).CanSet() {
-				out.Field(index).Set(cloneValue(value.Field(index)))
-			}
-		}
-		return out
-	default:
-		return value
-	}
-}
-
-func clonePointer[T any](value *T) *T {
-	if value == nil {
-		return nil
-	}
-	copied := *value
-	return &copied
-}
-
-func cloneMessages(messages []ai.Message) []ai.Message {
-	if messages == nil {
-		return nil
-	}
-	out := make([]ai.Message, len(messages))
-	for index, message := range messages {
-		if message == nil {
-			continue
-		}
-		out[index] = cloneValue(reflect.ValueOf(message)).Interface().(ai.Message)
-	}
-	return out
-}
-
 func cloneConversation(record durable.ConversationRecord) durable.ConversationRecord {
 	record.Parent = clonePointer(record.Parent)
 	record.Owner = clonePointer(record.Owner)
-	return record
-}
-
-func cloneEntry(record durable.EntryRecord) durable.EntryRecord {
-	record.Model = cloneMessages(record.Model)
-	record.Data = cloneJSON(record.Data)
-	record.Head = clonePointer(record.Head)
-	record.ByTaskId = clonePointer(record.ByTaskId)
-	if record.Edits != nil {
-		edits := make([]durable.ContextEdit, len(record.Edits))
-		for index, edit := range record.Edits {
-			edit.Messages = cloneMessages(edit.Messages)
-			edits[index] = edit
-		}
-		record.Edits = edits
-	}
 	return record
 }
 
@@ -212,7 +79,7 @@ func cloneOps(ops []durable.Op) []durable.Op {
 	}
 	out := make([]durable.Op, len(ops))
 	for index, op := range ops {
-		copied, _ := cloneJSON([]any(op)).([]any)
+		copied, _ := detach.Document([]any(op)).([]any)
 		out[index] = durable.Op(copied)
 	}
 	return out
@@ -254,3 +121,8 @@ func cloneWrites(batch []durable.StorageWrite) []durable.StorageWrite {
 	}
 	return out
 }
+
+func cloneJSON(value durable.JsonValue) durable.JsonValue       { return detach.JSON(value) }
+func cloneObject(value durable.JsonObject) durable.JsonObject   { return detach.Object(value) }
+func cloneEntry(record durable.EntryRecord) durable.EntryRecord { return detach.Entry(record) }
+func clonePointer[T any](value *T) *T                           { return detach.Pointer(value) }

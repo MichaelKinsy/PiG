@@ -6,9 +6,11 @@
 # mode. Tests the full agent loop: provider auth, request, streaming,
 # stop, exit. The cheapest meaningful end-to-end signal.
 #
-# Tagged `live` because it makes a real LLM call. Skipped by default
-# tag filters; included when running with `-pig-parity.tags=live`
-# or no tag filter.
+# Tagged `live` and `real-llm` because it makes a real LLM call, and
+# `owner-credentials` because only the owner holds the github-copilot
+# credentials it needs: `make parity-live` names it as not run there, and
+# the owner runs it on the Mac with
+# `PIG_PARITY_REAL_AUTH=<auth.json> make parity-live-owner`.
 
 name = "01-print-mode-arithmetic"
 description = "Headless --print returns the correct answer from both systems"
@@ -19,7 +21,7 @@ covers = [
   "packages/ai/src/api/github-copilot-headers.ts",
 ]
 
-tags = ["live", "real-llm"]
+tags = ["live", "real-llm", "owner-credentials"]
 driver = "print-mode"
 model = "github-copilot/gpt-5-mini"
 

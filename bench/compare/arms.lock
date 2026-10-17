@@ -1,0 +1,205 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+#
+# Permanent comparison arms. Every downloaded artifact is verified against the sha256 recorded here
+# (and, where the project publishes one, the project's own SHA256SUMS) before it is unpacked into a
+# fresh root; a mismatch is fatal. No curl|sh installers. Source arms record the commit they build.
+# PROVISIONAL: lock entries change only with a new measured session.
+# Resolve with: python3 bench/compare/arms.py install --root DIR
+# repo = "self": a PiG commit built from this checkout's own repository, which must already hold the commit (fetch it first).
+
+[suite]
+# Pi-Bolt's published benchmark suite (MIT), run unmodified from this commit; not vendored.
+repo = "https://github.com/opensec-git/Pi-Bolt"
+commit = "6088a1fe9395b10c666f6e25ba67c44b5d6453b8" # == tag bolt-v0.7.4, bench/ identical at main on 2026-10-10
+path = "bench"
+
+[tool.bun]
+version = "1.4.2"
+kind = "zip"
+url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.2/bun-linux-x64.zip"
+sha256 = "36368faef7527875d5ffa52e53cd48021741f2a83eb6208a8dd64068d422a913" # == bun SHASUMS256.txt
+checksums = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.2/SHASUMS256.txt"
+exe = "bun-linux-x64/bun"
+
+[arm."pig-0.4.1"]
+label = "PiG 0.4.1 (release)"
+kind = "tar"
+adapter = "pig"
+url = "https://github.com/MichaelKinsy/PiG/releases/download/v0.4.1/pig-0.4.1-linux-amd64.tar.gz"
+sha256 = "3b4de3587cbfb617def483ec62dddcf35827acc3436b1454cc5694c22dcdaf3f" # == release SHA256SUMS
+checksums = "https://github.com/MichaelKinsy/PiG/releases/download/v0.4.1/SHA256SUMS"
+exe = "pig-0.4.1-linux-amd64/pig"
+version = "0.4.1+1.0.3"
+
+[arm.pig-tip]
+label = "PiG integrate-042 tip"
+kind = "go-source"
+adapter = "pig"
+repo = "self"
+commit = "274e05019f830fe3bfcd6f1a867b6fe24ba53fdd"
+package = "./cmd/pig"
+ldflags = "-s -w"
+version = "0.5.0+1.1.0"
+
+[arm.pig-perfmax]
+label = "PiG perf-max b98300bfd7 (FINDING-1 fix, in review)"
+kind = "go-source"
+adapter = "pig"
+repo = "self"
+commit = "b98300bfd7bff42fbb920fe3bd95e4e538e3b0ac"
+package = "./cmd/pig"
+ldflags = "-s -w"
+version = "perf-max"
+
+[arm.pig-audit]
+label = "PiG audit-followups-tui 5f40adae96 (FINDING-2 round 1)"
+kind = "go-source"
+adapter = "pig"
+repo = "self"
+commit = "5f40adae9600e546fe4aa9505c177bb1f7cca91f"
+package = "./cmd/pig"
+ldflags = "-s -w"
+version = "audit-followups-tui"
+
+[arm.pig-stream]
+label = "PiG integrate-042 91396b1599 (Markdown streaming fix, FINDING-4)"
+kind = "go-source"
+adapter = "pig"
+repo = "self"
+commit = "91396b159973b5c4f4d86c41716558fbd779c40d"
+package = "./cmd/pig"
+ldflags = "-s -w"
+version = "integrate-042"
+
+[arm.pig-t0753]
+label = "PiG integrate-042 tip at 075303264e (L1 baseline tip; 0.5.0 column of the 0.4.1 -> 0.5.0 rows)"
+kind = "go-source"
+adapter = "pig"
+repo = "self"
+commit = "075303264e6919feec143a5713556e8877587a09"
+package = "./cmd/pig"
+ldflags = "-s -w"
+version = "integrate-042"
+
+[arm.pig-ac18]
+label = "PiG integrate-042 tip at ac1821d616 (integrity-rule streaming run, lead ruling 15:34Z)"
+kind = "go-source"
+adapter = "pig"
+repo = "self"
+commit = "ac1821d61692e810eedaadc44f26b7be67dcdb4b"
+package = "./cmd/pig"
+ldflags = "-s -w"
+version = "integrate-042"
+
+[arm.pig-i042]
+label = "PiG integrate-042 tip at cd8f1cf524 (streaming-shapes arm)"
+kind = "go-source"
+adapter = "pig"
+repo = "self"
+commit = "cd8f1cf5244a0242e95a9fffd521ecedf6711307"
+package = "./cmd/pig"
+ldflags = "-s -w"
+version = "integrate-042"
+
+[arm."pibolt-0.7.4"]
+label = "Pi-Bolt 0.7.4"
+kind = "tar"
+adapter = "none"
+url = "https://github.com/opensec-git/Pi-Bolt/releases/download/bolt-v0.7.4/pi-bolt-linux-x64.tar.gz"
+sha256 = "cce5aefc3c3187f1c1688f9dffee0cfb8c543db5d3d4107a2dc0eb42584def33"
+checksums = "https://github.com/opensec-git/Pi-Bolt/releases/download/bolt-v0.7.4/SHA256SUMS"
+exe = "pi-bolt-linux-x64/pi"
+version = "1.1.0 (Pi-Bolt 0.7.4, linux-x64, JIT off)"
+
+[arm."pibolt-0.7.3"]
+label = "Pi-Bolt 0.7.3"
+kind = "tar"
+adapter = "none"
+url = "https://github.com/opensec-git/Pi-Bolt/releases/download/bolt-v0.7.3/pi-bolt-linux-x64.tar.gz"
+sha256 = "e56616388d9548497e3630fe269c3fa301f56915e17fec222e044bb23476cdf1"
+checksums = "https://github.com/opensec-git/Pi-Bolt/releases/download/bolt-v0.7.3/SHA256SUMS"
+exe = "pi-bolt-linux-x64/pi"
+version = "1.1.0 (Pi-Bolt 0.7.3, linux-x64, JIT off)"
+
+[arm.pi-node]
+label = "Pi 1.1.0 on Node 24"
+kind = "npm-lock"
+adapter = "none"
+base = "https://github.com/earendil-works/pi/releases/download/v1.1.0/"
+package_json_sha256 = "3ec8bbe1bccbf4284d816a7defc2185c1f7e0d81df10b8dc1fb84743f23175f9"
+lock_sha256 = "89a53fa67297177bad42d71e9eb9c7eaeb9c7fc34d3cfb6800c1b38fbc293ebb"
+checksums = "https://github.com/earendil-works/pi/releases/download/v1.1.0/SHA256SUMS"
+version = "1.1.0"
+# node is the host's Node 24; run as: node <root>/node_modules/@earendil-works/pi-coding-agent/dist/cli.js
+
+[arm.pi-bun]
+label = "Pi 1.1.0 on Bun 1.4.2 (bun build --compile --bytecode)"
+kind = "bun-compile"
+adapter = "none"
+from = "pi-node"
+asset_template = "pi-bun-release" # layout (theme, assets, wasm) comes from the release archive below
+version = "1.1.0"
+# Same recipe as Pi-Bolt's `build-pi.sh --stable` (stock Bun, bytecode, no AOT), applied to the published npm dist.
+
+[arm.pi-bun-release]
+label = "Pi 1.1.0 release binary (Bun 1.3.14 baseline)"
+kind = "tar"
+adapter = "none"
+url = "https://github.com/earendil-works/pi/releases/download/v1.1.0/pi-linux-x64.tar.gz"
+sha256 = "3faa94666cd3849d37af320ff749407d0271b07a9b94f420c87e30866e10e289"
+checksums = "https://github.com/earendil-works/pi/releases/download/v1.1.0/SHA256SUMS"
+exe = "pi/pi"
+version = "1.1.0"
+
+[arm.gi]
+label = "gi (main)"
+kind = "go-source"
+adapter = "gi"
+repo = "https://github.com/rcarmo/gi"
+commit = "7078df0d59bf4e763c9d5c80a38f309860c930de"
+submodules = true
+make = "build"
+version = "dev"
+# gi has no print mode: -p scenarios report "cannot run". Models come from models-store.json (written by the adapter).
+
+[arm.omp]
+label = "omp 18.8.8 (oh-my-pi)"
+kind = "file"
+adapter = "omp"
+url = "https://github.com/can1357/oh-my-pi/releases/download/v18.8.8/omp-linux-x64"
+sha256 = "8d804761b7ed1a6910a6283f7c4df658c8e3ebc320886472c90d626abfa2d988"
+checksums = "https://github.com/can1357/oh-my-pi/releases/download/v18.8.8/SHA256SUMS.txt"
+exe = "omp"
+version = "18.8.8"
+
+[arm.copilot]
+label = "GitHub Copilot CLI 1.0.95 (token/cost only; BYOK to the mock, COPILOT_OFFLINE=true)"
+kind = "tar"
+adapter = "none"
+tokens_only = true
+url = "https://github.com/github/copilot-cli/releases/download/v1.0.95/copilot-linux-x64.tar.gz"
+sha256 = "c91a8874f3b2bdc905c2452f9d9fc923013924feb431e256eb769ff792719d7f"
+checksums = "https://github.com/github/copilot-cli/releases/download/v1.0.95/SHA256SUMS.txt"
+exe = "copilot"
+version = "1.0.95"
+
+[arm.opencode]
+label = "OpenCode 1.18.35 (anomalyco/opencode)"
+kind = "tar"
+adapter = "opencode"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.18.35/opencode-linux-x64.tar.gz"
+sha256 = "c8f888b451f5494a18f858fffb0e0b68f4e4baa9c241761c5f206884f0fa640d"
+# The project publishes no checksum for the CLI archive (only desktop updater yml): this hash is trust-on-first-use, equal across two independent downloads on 2026-10-10 (GitHub's API digest was rate-limited).
+exe = "opencode"
+version = "1.18.35"
+
+[arm.rpi]
+label = "rpi 0.3.19 (bigfish1913/pi-rust, Rust port of Pi)"
+kind = "tar"
+adapter = "rpi"
+url = "https://github.com/bigfish1913/pi-rust/releases/download/v0.3.19/rpi-v0.3.19-x86_64-unknown-linux-gnu.tar.gz"
+sha256 = "c48ef652be3093a28f06076e5a21f2746e155959a181aadd2d17dbdb819991bd" # == the release's .sha256
+checksums = "https://github.com/bigfish1913/pi-rust/releases/download/v0.3.19/rpi-v0.3.19-x86_64-unknown-linux-gnu.tar.gz.sha256"
+exe = "rpi"
+version = "0.3.19"

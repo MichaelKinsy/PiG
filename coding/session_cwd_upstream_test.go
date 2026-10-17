@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -50,20 +49,20 @@ func TestSessionCwdHandlingUpstream(t *testing.T) {
 		if session.CWD() != fallback || icodingagent.GetMissingSessionCwdIssue(session, fallback) != nil {
 			t.Fatal("override not used")
 		}
-		if session.Header().CWD != missing {
+		if session.GetHeader().CWD != missing {
 			t.Fatal("override rewrote stored cwd")
 		}
 	})
 	// .upstream/v0.87.1/packages/coding-agent/test/session-cwd.test.ts:67
 	t.Run("throws controlled error before runtime creation when stored cwd is missing", func(t *testing.T) {
 		fallback, missing, file := sessionCwdFixture(t)
-		services, err := NewServices(ServicesOptions{CWD: fallback, AgentDir: t.TempDir()})
+		services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: fallback, AgentDir: t.TempDir()})
 		if err != nil {
 			t.Fatal(err)
 		}
 		runtime := &Runtime{services: services}
 		called := false
-		_, err = runtime.startSessionWithFactory(SessionStartOptions{ResumePath: file}, func(*Services, SessionOptions) (*Session, error) {
+		_, err = runtime.startSessionWithFactory(SessionStartOptions{ResumePath: file}, func(*AgentSessionServices, SessionOptions) (*Session, error) {
 			called = true
 			return nil, errors.New("should not be called")
 		})

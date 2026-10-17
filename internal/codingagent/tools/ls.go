@@ -1,14 +1,21 @@
 package tools
 
 import (
-	"cmp"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
+	"unicode/utf8"
+
+	"golang.org/x/text/collate"
+	"golang.org/x/text/language"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -27,6 +34,60 @@ const lsDefaultLimit = 500
 // LsTool lists directory contents.
 type LsTool struct {
 	CWD string
+	// Operations delegates the filesystem reads; nil selects the local filesystem (upstream options.operations).
+	Operations *LsOperations
+}
+
+// LsStat is the `{ isDirectory: () => boolean }` that LsOperations.stat resolves (ls.ts:34).
+type LsStat interface {
+	IsDirectory() bool
+}
+
+// fileInfoStat is the LsStat of a local file system entry.
+type fileInfoStat struct{ fs.FileInfo }
+
+func (info fileInfoStat) IsDirectory() bool { return info.IsDir() }
+
+// LsOperations is upstream's LsOperations: pluggable directory reads, for example over SSH. Each callback completes before Execute continues.
+// Ports packages/coding-agent/src/core/tools/ls.ts.
+type LsOperations struct {
+	// Exists reports whether the path exists.
+	Exists func(absolutePath string) (bool, error)
+	// Stat describes a file or directory and fails when it is not found.
+	Stat func(absolutePath string) (LsStat, error)
+	// Readdir lists the entry names of a directory.
+	Readdir func(absolutePath string) ([]string, error)
+}
+
+func (t *LsTool) operations() LsOperations {
+	if t.Operations != nil {
+		return *t.Operations
+	}
+	return LsOperations{
+		Exists: func(path string) (bool, error) { _, err := os.Stat(path); return err == nil, nil },
+		Stat: func(path string) (LsStat, error) {
+			info, err := os.Stat(path)
+			if err != nil {
+				return nil, err
+			}
+			return fileInfoStat{info}, nil
+		},
+		Readdir: func(path string) ([]string, error) {
+			dir, err := os.Open(path)
+			if err != nil {
+				return nil, err
+			}
+			defer func() { _ = dir.Close() }()
+			names, err := dir.Readdirnames(-1)
+			// fs.readdir hands JavaScript the names decoded as UTF-8: each ill-formed subpart is U+FFFD, and the stat that follows then misses the real entry, so ls skips it.
+			for i, name := range names {
+				if !utf8.ValidString(name) {
+					names[i] = jsstring.FromUTF8([]byte(name))
+				}
+			}
+			return names, err
+		},
+	}
 }
 
 func (t *LsTool) Name() string  { return "ls" }
@@ -69,27 +130,23 @@ func (t *LsTool) Execute(ctx context.Context, _ string, rawParams json.RawMessag
 	if p.Limit != nil {
 		effectiveLimit = *p.Limit
 	}
-	info, err := os.Stat(dirPath)
+	ops := t.operations()
+	if exists, err := ops.Exists(dirPath); err != nil || !exists {
+		return lsError("Path not found: " + dirPath), nil
+	}
+	info, err := ops.Stat(dirPath)
 	if err != nil {
 		return lsError("Path not found: " + dirPath), nil
 	}
-	if !info.IsDir() {
+	if !info.IsDirectory() {
 		return lsError("Not a directory: " + dirPath), nil
 	}
-	dir, err := os.Open(dirPath)
-	var entries []string
-	if err == nil {
-		entries, err = dir.Readdirnames(-1)
-		_ = dir.Close()
-	}
+	entries, err := ops.Readdir(dirPath)
 	if err != nil {
 		return lsError("Cannot read directory: " + NodeFSError(err, "scandir", dirPath)), nil
 	}
 
-	// Sort alphabetically, case-insensitive (upstream ls.ts).
-	slices.SortFunc(entries, func(a, b string) int {
-		return cmp.Compare(strings.ToLower(a), strings.ToLower(b))
-	})
+	sortEntriesLikeLocaleCompare(entries)
 	var results []string
 	entryLimitReached := false
 	for _, entry := range entries {
@@ -99,11 +156,11 @@ func (t *LsTool) Execute(ctx context.Context, _ string, rawParams json.RawMessag
 		}
 		// stat follows symlinks; entries that cannot be stat'ed (broken
 		// links) are skipped, as upstream does.
-		entryInfo, err := os.Stat(filepath.Join(dirPath, entry))
+		entryInfo, err := ops.Stat(filepath.Join(dirPath, entry))
 		if err != nil {
 			continue
 		}
-		if entryInfo.IsDir() {
+		if entryInfo.IsDirectory() {
 			entry += "/"
 		}
 		results = append(results, entry)
@@ -117,7 +174,7 @@ func (t *LsTool) Execute(ctx context.Context, _ string, rawParams json.RawMessag
 
 	// Byte truncation only; the entry count is already capped.
 	// Number.MAX_SAFE_INTEGER is observable in the truncation details, even though only bytes cap this tool.
-	tr := TruncateHead(strings.Join(results, "\n"), DefaultMaxBytes, 1<<53-1)
+	tr := TruncateHead(strings.Join(results, "\n"), truncationLimits(DefaultMaxBytes, 1<<53-1))
 	output := tr.Content
 	details := &LsDetails{}
 	var notices []string
@@ -133,6 +190,7 @@ func (t *LsTool) Execute(ctx context.Context, _ string, rawParams json.RawMessag
 	result := agent.AgentToolResult{}
 	if len(notices) > 0 {
 		output += "\n\n[" + strings.Join(notices, ". ") + "]"
+		shareTruncatedContent(details.Truncation, output)
 		result.Details = details
 	}
 	result.Content = []ai.ToolResultMessageContent{ai.TextContent{Text: output}}
@@ -141,4 +199,37 @@ func (t *LsTool) Execute(ctx context.Context, _ string, rawParams json.RawMessag
 
 func lsError(message string) agent.AgentToolResult {
 	return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: message}}, Details: map[string]any{}, IsError: true, Thrown: true}
+}
+
+// sortEntriesLikeLocaleCompare is upstream ls.ts:109 `entries.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))`:
+// localeCompare is ICU root collation, and Array.prototype.sort is stable. Each name is lowercased and weighed once: comparing collation
+// keys orders names as jsstring.Collator.CompareString does, which compares with collate.New(language.Und) unless a name holds U+FFFD
+// (TestLsCollationKeysOrderLikeCollator checks the two orders agree). Names holding U+FFFD sort by jsstring.Collator itself. Collators
+// keep scratch state, so each call owns one: ls runs in parallel mode.
+func sortEntriesLikeLocaleCompare(entries []string) {
+	type sortEntry struct {
+		name, lower string
+		key         []byte
+	}
+	sorted := make([]sortEntry, len(entries))
+	replacement := false
+	for i, entry := range entries {
+		lower := jsstring.ToLower(entry)
+		sorted[i] = sortEntry{name: entry, lower: lower}
+		replacement = replacement || strings.Contains(lower, "\uFFFD")
+	}
+	if replacement {
+		collator := jsstring.NewCollator()
+		slices.SortStableFunc(sorted, func(a, b sortEntry) int { return collator.CompareString(a.lower, b.lower) })
+	} else {
+		collator := collate.New(language.Und)
+		var buf collate.Buffer
+		for i := range sorted {
+			sorted[i].key = collator.KeyFromString(&buf, sorted[i].lower)
+		}
+		slices.SortStableFunc(sorted, func(a, b sortEntry) int { return bytes.Compare(a.key, b.key) })
+	}
+	for i := range sorted {
+		entries[i] = sorted[i].name
+	}
 }

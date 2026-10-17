@@ -22,7 +22,7 @@ func dispatchToolCalls(t *testing.T, h *harness, calls []ai.FauxContentBlock) []
 		ai.FauxStaticStep(ai.FauxResponse{Content: calls, StopReason: "toolUse"}),
 		ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}, StopReason: "stop"}),
 	})
-	a := agent.NewAgent(agent.AgentOptions{Model: &ai.Model{ID: "faux-1", Provider: provider}, Tools: tools})
+	a := mustNewAgent(agent.AgentOptions{Model: &ai.Model{ID: "faux-1", Provider: provider}, Tools: tools})
 	messages, err := a.Send(t.Context(), "go")
 	if err != nil {
 		t.Fatal(err)
@@ -59,7 +59,7 @@ func TestToolPrepareArgumentsRunsBeforeValidationAcrossSDKs(t *testing.T) {
 					h.host.Shutdown("test done")
 				}
 			})
-			results := dispatchToolCalls(t, h, []ai.FauxContentBlock{ai.FauxToolCall("prepared_tool", map[string]any{"legacy": "hello"}, "prepare-1")})
+			results := dispatchToolCalls(t, h, []ai.FauxContentBlock{ai.FauxToolCall("prepared_tool", map[string]any{"legacy": "hello"}, &ai.FauxToolCallOptions{ID: "prepare-1"})})
 			if len(results) != 1 || results[0].IsError || results[0].Text() != "prepared:hello" {
 				t.Fatalf("results = %s, want one prepared:hello: the host validated the raw arguments before the tool's prepareArguments ran", describeToolResults(results))
 			}
@@ -100,7 +100,7 @@ func TestToolBatchStartsInSourceOrderAcrossSDKs(t *testing.T) {
 			for round := range rounds {
 				calls := make([]ai.FauxContentBlock, batch)
 				for i := range batch {
-					calls[i] = ai.FauxToolCall("start_order", map[string]any{"n": i}, fmt.Sprintf("order-%d-%d", round, i))
+					calls[i] = ai.FauxToolCall("start_order", map[string]any{"n": i}, &ai.FauxToolCallOptions{ID: fmt.Sprintf("order-%d-%d", round, i)})
 				}
 				results := dispatchToolCalls(t, h, calls)
 				if len(results) != batch {
@@ -123,6 +123,57 @@ func TestToolBatchStartsInSourceOrderAcrossSDKs(t *testing.T) {
 						t.Fatalf("round %d: call %d started as #%d, want #%d: the batch did not start in source order", round, i, number, want)
 					}
 				}
+			}
+		})
+	}
+}
+
+// Upstream agent-loop.ts: a tool result's terminate flag ends the run after the current tool batch only when every result in the batch sets it
+// (shouldTerminateToolBatch); one result that does not keeps the run going so the model sees the batch. rich_tool returns terminate:true in every
+// SDK; prepared_tool does not. The host's loop owns the decision, so this proves the flag survives each SDK's wire and each realization (isolated,
+// packed and fused): a terminating batch takes no further model request, a mixed batch takes one.
+func TestToolTerminateEndsTheRunOnlyForAnAllTerminatingBatchAcrossSDKs(t *testing.T) {
+	for _, tc := range append(allHarnessCases(), packedSDKHarnessCases()...) {
+		t.Run(tc.name, func(t *testing.T) {
+			h := tc.make(t)
+			t.Cleanup(func() {
+				if h.cleanup != nil {
+					h.cleanup()
+				}
+				if h.host != nil {
+					h.host.Shutdown("test done")
+				}
+			})
+			run := func(calls ...ai.FauxContentBlock) (modelRequests int) {
+				t.Helper()
+				tools, errs := coding.BridgeNewRunnerTools(h.runner.Tools())
+				if len(errs) != 0 {
+					t.Fatal(errs)
+				}
+				provider := ai.NewFauxProvider(ai.FauxConfig{})
+				provider.SetResponses([]ai.FauxResponseStep{
+					ai.FauxStaticStep(ai.FauxResponse{Content: calls, StopReason: "toolUse"}),
+					ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}, StopReason: "stop"}),
+				})
+				a := mustNewAgent(agent.AgentOptions{Model: &ai.Model{ID: "faux-1", Provider: provider}, Tools: tools})
+				messages, err := a.Send(t.Context(), "go")
+				if err != nil {
+					t.Fatal(err)
+				}
+				for _, message := range messages {
+					if message.Assistant != nil {
+						modelRequests++
+					}
+				}
+				return modelRequests
+			}
+			rich := ai.FauxToolCall("rich_tool", map[string]any{}, &ai.FauxToolCallOptions{ID: "tc-terminate-1"})
+			plain := ai.FauxToolCall("prepared_tool", map[string]any{"legacy": "x"}, &ai.FauxToolCallOptions{ID: "tc-terminate-2"})
+			if got := run(rich); got != 1 {
+				t.Fatalf("a batch whose only result terminates took %d model requests, want 1 (the run ends after the batch)", got)
+			}
+			if got := run(rich, plain); got != 2 {
+				t.Fatalf("a mixed batch took %d model requests, want 2 (one result without terminate keeps the run going)", got)
 			}
 		})
 	}

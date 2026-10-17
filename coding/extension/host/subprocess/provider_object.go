@@ -87,7 +87,8 @@ func (h *Host) handleProviderObject(ctx context.Context, conn *Conn, call *CallP
 				return nil, err
 			}
 			method := MethodProviderObjectCallback
-			if kind.Method == "notify" {
+			// notify and getDeviceId are synchronous in Pi (auth/types.ts:160, 208); a blocked caller answers them from its synchronous pump.
+			if kind.Method == "notify" || kind.Method == "getDeviceId" {
 				method = "provider_object_callback_sync"
 			}
 			reply, err := conn.Request(ctx, &Envelope{Type: MsgRequest, ID: fmt.Sprintf("r%d", conn.nextID.Add(1)), Request: &RequestPayload{Method: method, Tool: request.CallbackID, Args: args}})

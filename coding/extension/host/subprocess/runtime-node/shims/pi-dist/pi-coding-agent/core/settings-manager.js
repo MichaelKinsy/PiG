@@ -1,4 +1,3 @@
-import { DEFAULT_MAX_AGENT_RETRY_DELAY_MS } from "../../pi-ai/sdk-bundle/index.js";
 import { randomUUID } from "crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
@@ -7,12 +6,13 @@ import { CONFIG_DIR_NAME, getAgentDir } from "../config.js";
 import { normalizePath, resolvePath } from "../utils/paths.js";
 import { stripBom } from "../utils/text.js";
 import { DEFAULT_HTTP_IDLE_TIMEOUT_MS, parseHttpIdleTimeoutMs } from "./http-dispatcher.js";
-const DEFAULT_COMPACTION_TOKEN_SETTINGS = {
-    reserveTokens: 16384,
-    keepRecentTokens: 20000,
-};
+import { SETTINGS_DEFAULTS } from "./settings-defaults.js";
 /** Cache-warming profile. "idle" also warms between agent runs. */
 export const CACHE_WARMING_MODES = ["off", "streaming", "idle"];
+const DEFAULT_COMPACTION_TOKEN_SETTINGS = {
+    reserveTokens: SETTINGS_DEFAULTS.compaction.reserveTokens,
+    keepRecentTokens: SETTINGS_DEFAULTS.compaction.keepRecentTokens,
+};
 function isMergeableObject(value) {
     return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -33,8 +33,43 @@ function deepMergeObjects(base, overrides) {
 }
 /** Tools enabled at startup when `defaultTools` does not change them. */
 export const DEFAULT_TOOL_NAMES = ["read", "bash", "edit", "write"];
-function isToolModifier(entry) {
+/** Whether a tool selection entry is a `+name` or `-name` modifier. */
+export function isToolModifier(entry) {
     return typeof entry === "string" && (entry.startsWith("+") || entry.startsWith("-"));
+}
+/**
+ * Validate a tool list from `--tools` or the SDK `tools` option. It is either an allowlist of plain
+ * names and patterns or a list of only `+name`/`-name` entries with exact names. Returns the
+ * problem, or undefined when the list is valid.
+ */
+export function getToolListError(entries) {
+    const modifiers = entries.filter(isToolModifier);
+    if (modifiers.length === 0)
+        return undefined;
+    if (modifiers.length < entries.length)
+        return "tool names cannot be mixed with +name or -name entries";
+    const pattern = modifiers.find((entry) => entry.includes("*"));
+    if (pattern)
+        return `+name and -name entries take exact tool names, not patterns: ${pattern}`;
+    return undefined;
+}
+/**
+ * Apply the `+name` and `-name` entries of `entries` to `base` in order: `+name` adds a tool and
+ * `-name` removes one. Other entries are ignored.
+ */
+export function applyToolModifiers(base, entries) {
+    const tools = [...base];
+    for (const entry of entries) {
+        if (!isToolModifier(entry))
+            continue;
+        const name = entry.slice(1);
+        const index = tools.indexOf(name);
+        if (entry.startsWith("+") && index === -1 && name)
+            tools.push(name);
+        else if (entry.startsWith("-") && index !== -1)
+            tools.splice(index, 1);
+    }
+    return tools;
 }
 /**
  * Merge `defaultTools` of two settings layers. A list with plain tool names replaces the inherited
@@ -54,18 +89,7 @@ function mergeDefaultTools(base, overrides) {
  */
 function resolveDefaultTools(entries) {
     const plain = entries.filter((entry) => !isToolModifier(entry));
-    const tools = plain.length > 0 || entries.length === 0 ? plain : [...DEFAULT_TOOL_NAMES];
-    for (const entry of entries) {
-        if (!isToolModifier(entry))
-            continue;
-        const name = entry.slice(1);
-        const index = tools.indexOf(name);
-        if (entry.startsWith("+") && index === -1 && name)
-            tools.push(name);
-        else if (entry.startsWith("-") && index !== -1)
-            tools.splice(index, 1);
-    }
-    return tools;
+    return applyToolModifiers(plain.length > 0 || entries.length === 0 ? plain : DEFAULT_TOOL_NAMES, entries);
 }
 /** Deep merge settings: project/overrides take precedence, nested objects merge recursively */
 function deepMergeSettings(base, overrides) {
@@ -524,7 +548,7 @@ export class SettingsManager {
         this.save();
     }
     getSteeringMode() {
-        return this.settings.steeringMode || "one-at-a-time";
+        return this.settings.steeringMode || SETTINGS_DEFAULTS.steeringMode;
     }
     setSteeringMode(mode) {
         this.globalSettings.steeringMode = mode;
@@ -532,7 +556,7 @@ export class SettingsManager {
         this.save();
     }
     getFollowUpMode() {
-        return this.settings.followUpMode || "one-at-a-time";
+        return this.settings.followUpMode || SETTINGS_DEFAULTS.followUpMode;
     }
     setFollowUpMode(mode) {
         this.globalSettings.followUpMode = mode;
@@ -587,15 +611,26 @@ export class SettingsManager {
         this.save();
     }
     getTransport() {
-        return this.settings.transport ?? "auto";
+        return this.settings.transport ?? SETTINGS_DEFAULTS.transport;
     }
     setTransport(transport) {
         this.globalSettings.transport = transport;
         this.markModified("transport");
         this.save();
     }
+    getSessionShareDestination() {
+        const destination = this.settings.sessionShareDestination;
+        return destination === "gist" || destination === "radius"
+            ? destination
+            : SETTINGS_DEFAULTS.sessionShareDestination;
+    }
+    setSessionShareDestination(destination) {
+        this.globalSettings.sessionShareDestination = destination;
+        this.markModified("sessionShareDestination");
+        this.save();
+    }
     getCompactionEnabled() {
-        return this.settings.compaction?.enabled ?? true;
+        return this.settings.compaction?.enabled ?? SETTINGS_DEFAULTS.compaction.enabled;
     }
     setCompactionEnabled(enabled) {
         if (!this.globalSettings.compaction) {
@@ -638,15 +673,15 @@ export class SettingsManager {
     }
     getBranchSummarySettings() {
         return {
-            reserveTokens: this.settings.branchSummary?.reserveTokens ?? 16384,
-            skipPrompt: this.settings.branchSummary?.skipPrompt ?? false,
+            reserveTokens: this.settings.branchSummary?.reserveTokens ?? SETTINGS_DEFAULTS.branchSummary.reserveTokens,
+            skipPrompt: this.settings.branchSummary?.skipPrompt ?? SETTINGS_DEFAULTS.branchSummary.skipPrompt,
         };
     }
     getBranchSummarySkipPrompt() {
-        return this.settings.branchSummary?.skipPrompt ?? false;
+        return this.settings.branchSummary?.skipPrompt ?? SETTINGS_DEFAULTS.branchSummary.skipPrompt;
     }
     getRetryEnabled() {
-        return this.settings.retry?.enabled ?? true;
+        return this.settings.retry?.enabled ?? SETTINGS_DEFAULTS.retry.enabled;
     }
     setRetryEnabled(enabled) {
         if (!this.globalSettings.retry) {
@@ -659,9 +694,9 @@ export class SettingsManager {
     getRetrySettings() {
         return {
             enabled: this.getRetryEnabled(),
-            maxRetries: this.settings.retry?.maxRetries ?? 3,
-            baseDelayMs: this.settings.retry?.baseDelayMs ?? 2000,
-            maxAgentDelayMs: this.settings.retry?.maxAgentDelayMs ?? DEFAULT_MAX_AGENT_RETRY_DELAY_MS,
+            maxRetries: this.settings.retry?.maxRetries ?? SETTINGS_DEFAULTS.retry.maxRetries,
+            baseDelayMs: this.settings.retry?.baseDelayMs ?? SETTINGS_DEFAULTS.retry.baseDelayMs,
+            maxAgentDelayMs: this.settings.retry?.maxAgentDelayMs ?? SETTINGS_DEFAULTS.retry.maxAgentDelayMs,
         };
     }
     getHttpIdleTimeoutMs() {
@@ -678,7 +713,7 @@ export class SettingsManager {
     /** Read from global settings only because warming costs money. */
     getCacheWarmingMode() {
         const mode = this.globalSettings.cacheWarming;
-        return mode !== undefined && CACHE_WARMING_MODES.includes(mode) ? mode : "streaming";
+        return mode !== undefined && CACHE_WARMING_MODES.includes(mode) ? mode : SETTINGS_DEFAULTS.cacheWarming;
     }
     setCacheWarmingMode(mode) {
         this.globalSettings.cacheWarming = mode;
@@ -689,17 +724,17 @@ export class SettingsManager {
         return {
             timeoutMs: this.settings.retry?.provider?.timeoutMs,
             maxRetries: this.settings.retry?.provider?.maxRetries,
-            maxRetryDelayMs: this.settings.retry?.provider?.maxRetryDelayMs ?? 60000,
+            maxRetryDelayMs: this.settings.retry?.provider?.maxRetryDelayMs ?? SETTINGS_DEFAULTS.retry.provider.maxRetryDelayMs,
         };
     }
     getWebSocketConnectTimeoutMs() {
         return parseTimeoutSetting(this.settings.websocketConnectTimeoutMs, "websocketConnectTimeoutMs");
     }
     getHideThinkingBlock() {
-        return this.settings.hideThinkingBlock ?? false;
+        return this.settings.hideThinkingBlock ?? SETTINGS_DEFAULTS.hideThinkingBlock;
     }
     getShowCacheMissNotices() {
-        return this.settings.showCacheMissNotices ?? false;
+        return this.settings.showCacheMissNotices ?? SETTINGS_DEFAULTS.showCacheMissNotices;
     }
     getExternalEditorCommand() {
         const configuredEditor = this.settings.externalEditor;
@@ -733,7 +768,7 @@ export class SettingsManager {
     }
     getQuietStartup() {
         const value = this.settings.quietStartup;
-        return value === true || value === "header" ? value : false;
+        return value === true || value === "header" ? value : SETTINGS_DEFAULTS.quietStartup;
     }
     setQuietStartup(quiet) {
         this.globalSettings.quietStartup = quiet;
@@ -742,7 +777,7 @@ export class SettingsManager {
     }
     getDefaultProjectTrust() {
         const value = this.globalSettings.defaultProjectTrust;
-        return value === "always" || value === "never" ? value : "ask";
+        return value === "always" || value === "never" ? value : SETTINGS_DEFAULTS.defaultProjectTrust;
     }
     setDefaultProjectTrust(defaultProjectTrust) {
         this.globalSettings.defaultProjectTrust = defaultProjectTrust;
@@ -766,7 +801,7 @@ export class SettingsManager {
         this.save();
     }
     getCollapseChangelog() {
-        return this.settings.collapseChangelog ?? false;
+        return this.settings.collapseChangelog ?? SETTINGS_DEFAULTS.collapseChangelog;
     }
     setCollapseChangelog(collapse) {
         this.globalSettings.collapseChangelog = collapse;
@@ -774,7 +809,7 @@ export class SettingsManager {
         this.save();
     }
     getEnableInstallTelemetry() {
-        return this.settings.enableInstallTelemetry ?? true;
+        return this.settings.enableInstallTelemetry ?? SETTINGS_DEFAULTS.enableInstallTelemetry;
     }
     setEnableInstallTelemetry(enabled) {
         this.globalSettings.enableInstallTelemetry = enabled;
@@ -782,7 +817,7 @@ export class SettingsManager {
         this.save();
     }
     getEnableAnalytics() {
-        return this.settings.enableAnalytics ?? false;
+        return this.settings.enableAnalytics ?? SETTINGS_DEFAULTS.enableAnalytics;
     }
     getTrackingId() {
         return this.settings.trackingId;
@@ -876,7 +911,7 @@ export class SettingsManager {
         });
     }
     getEnableSkillCommands() {
-        return this.settings.enableSkillCommands ?? true;
+        return this.settings.enableSkillCommands ?? SETTINGS_DEFAULTS.enableSkillCommands;
     }
     setEnableSkillCommands(enabled) {
         this.globalSettings.enableSkillCommands = enabled;
@@ -896,7 +931,7 @@ export class SettingsManager {
         };
     }
     getShowImages() {
-        return this.settings.terminal?.showImages ?? true;
+        return this.settings.terminal?.showImages ?? SETTINGS_DEFAULTS.terminal.showImages;
     }
     setShowImages(show) {
         if (!this.globalSettings.terminal) {
@@ -909,7 +944,7 @@ export class SettingsManager {
     getImageWidthCells() {
         const width = this.settings.terminal?.imageWidthCells;
         if (typeof width !== "number" || !Number.isFinite(width)) {
-            return 60;
+            return SETTINGS_DEFAULTS.terminal.imageWidthCells;
         }
         return Math.max(1, Math.floor(width));
     }
@@ -926,7 +961,9 @@ export class SettingsManager {
         if (this.settings.terminal?.clearOnShrink !== undefined) {
             return this.settings.terminal.clearOnShrink;
         }
-        return process.env.PI_CLEAR_ON_SHRINK === "1";
+        if (process.env.PI_CLEAR_ON_SHRINK === "1")
+            return true;
+        return SETTINGS_DEFAULTS.terminal.clearOnShrink;
     }
     setClearOnShrink(enabled) {
         if (!this.globalSettings.terminal) {
@@ -937,7 +974,7 @@ export class SettingsManager {
         this.save();
     }
     getShowTerminalProgress() {
-        return this.settings.terminal?.showTerminalProgress ?? false;
+        return this.settings.terminal?.showTerminalProgress ?? SETTINGS_DEFAULTS.terminal.showTerminalProgress;
     }
     setShowTerminalProgress(enabled) {
         if (!this.globalSettings.terminal) {
@@ -948,7 +985,7 @@ export class SettingsManager {
         this.save();
     }
     getTuiMode() {
-        return this.settings.tuiMode === "regular" ? "regular" : "fullscreen";
+        return this.settings.tuiMode === "regular" ? "regular" : SETTINGS_DEFAULTS.tuiMode;
     }
     setTuiMode(mode) {
         this.globalSettings.tuiMode = mode;
@@ -956,7 +993,9 @@ export class SettingsManager {
         this.save();
     }
     getFullscreenExitOutput() {
-        return this.settings.fullscreenExitOutput === "resume-hint" ? "resume-hint" : "transcript";
+        return this.settings.fullscreenExitOutput === "resume-hint"
+            ? "resume-hint"
+            : SETTINGS_DEFAULTS.fullscreenExitOutput;
     }
     setFullscreenExitOutput(output) {
         this.globalSettings.fullscreenExitOutput = output;
@@ -965,7 +1004,7 @@ export class SettingsManager {
     }
     getFullscreenScrollbar() {
         const mode = this.settings.fullscreenScrollbar;
-        return mode === "always" || mode === "hidden" ? mode : "auto";
+        return mode === "always" || mode === "hidden" ? mode : SETTINGS_DEFAULTS.fullscreenScrollbar;
     }
     setFullscreenScrollbar(mode) {
         this.globalSettings.fullscreenScrollbar = mode;
@@ -973,7 +1012,7 @@ export class SettingsManager {
         this.save();
     }
     getFullscreenCopyOnSelect() {
-        return this.settings.fullscreenCopyOnSelect ?? true;
+        return this.settings.fullscreenCopyOnSelect ?? SETTINGS_DEFAULTS.fullscreenCopyOnSelect;
     }
     setFullscreenCopyOnSelect(enabled) {
         this.globalSettings.fullscreenCopyOnSelect = enabled;
@@ -984,7 +1023,7 @@ export class SettingsManager {
         const lines = this.settings.fullscreenWheelScrollLines;
         return typeof lines === "number" && Number.isFinite(lines)
             ? Math.max(1, Math.min(100, Math.floor(lines)))
-            : "auto";
+            : SETTINGS_DEFAULTS.fullscreenWheelScrollLines;
     }
     setFullscreenWheelScrollLines(lines) {
         this.globalSettings.fullscreenWheelScrollLines =
@@ -993,7 +1032,7 @@ export class SettingsManager {
         this.save();
     }
     getImageAutoResize() {
-        return this.settings.images?.autoResize ?? true;
+        return this.settings.images?.autoResize ?? SETTINGS_DEFAULTS.images.autoResize;
     }
     setImageAutoResize(enabled) {
         if (!this.globalSettings.images) {
@@ -1004,7 +1043,7 @@ export class SettingsManager {
         this.save();
     }
     getBlockImages() {
-        return this.settings.images?.blockImages ?? false;
+        return this.settings.images?.blockImages ?? SETTINGS_DEFAULTS.images.blockImages;
     }
     setBlockImages(blocked) {
         if (!this.globalSettings.images) {
@@ -1030,7 +1069,7 @@ export class SettingsManager {
         this.save();
     }
     getDoubleEscapeAction() {
-        return this.settings.doubleEscapeAction ?? "tree";
+        return this.settings.doubleEscapeAction ?? SETTINGS_DEFAULTS.doubleEscapeAction;
     }
     setDoubleEscapeAction(action) {
         this.globalSettings.doubleEscapeAction = action;
@@ -1040,7 +1079,7 @@ export class SettingsManager {
     getTreeFilterMode() {
         const mode = this.settings.treeFilterMode;
         const valid = ["default", "no-tools", "user-only", "labeled-only", "all"];
-        return mode && valid.includes(mode) ? mode : "default";
+        return mode && valid.includes(mode) ? mode : SETTINGS_DEFAULTS.treeFilterMode;
     }
     setTreeFilterMode(mode) {
         this.globalSettings.treeFilterMode = mode;
@@ -1056,7 +1095,7 @@ export class SettingsManager {
         this.save();
     }
     getEditorPaddingX() {
-        return this.settings.editorPaddingX ?? 0;
+        return this.settings.editorPaddingX ?? SETTINGS_DEFAULTS.editorPaddingX;
     }
     setEditorPaddingX(padding) {
         this.globalSettings.editorPaddingX = Math.max(0, Math.min(3, Math.floor(padding)));
@@ -1064,7 +1103,7 @@ export class SettingsManager {
         this.save();
     }
     getOutputPad() {
-        return this.settings.outputPad === 0 ? 0 : 1;
+        return this.settings.outputPad === 0 ? 0 : SETTINGS_DEFAULTS.outputPad;
     }
     setOutputPad(padding) {
         this.globalSettings.outputPad = padding;
@@ -1072,7 +1111,7 @@ export class SettingsManager {
         this.save();
     }
     getAutocompleteMaxVisible() {
-        return this.settings.autocompleteMaxVisible ?? 5;
+        return this.settings.autocompleteMaxVisible ?? SETTINGS_DEFAULTS.autocompleteMaxVisible;
     }
     setAutocompleteMaxVisible(maxVisible) {
         this.globalSettings.autocompleteMaxVisible = Math.max(3, Math.min(20, Math.floor(maxVisible)));
@@ -1080,11 +1119,11 @@ export class SettingsManager {
         this.save();
     }
     getCodeBlockIndent() {
-        return this.settings.markdown?.codeBlockIndent ?? "  ";
+        return this.settings.markdown?.codeBlockIndent ?? SETTINGS_DEFAULTS.markdown.codeBlockIndent;
     }
     getMermaidRenderingMode() {
         const mode = this.settings.markdown?.mermaid;
-        return mode === "off" || mode === "final" ? mode : "streaming";
+        return mode === "off" || mode === "final" ? mode : SETTINGS_DEFAULTS.markdown.mermaid;
     }
     setMermaidRenderingMode(mode) {
         this.globalSettings.markdown ??= {};

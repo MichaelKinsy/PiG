@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright 2023-2026 SpaceXAI
 // SPDX-FileCopyrightText: Copyright 2026 Alexey Zaytsev
 // SPDX-License-Identifier: Apache-2.0 AND MIT

@@ -1,0 +1,1360 @@
+# SPDX-License-Identifier: MIT
+#
+# Any-trap ratchet (automation/ci/anytrap, `make any-trap`). Counts may only shrink: a fix lowers or deletes its entry in the same change; never add an entry for new code.
+# Regenerate the whole file with `go run ./automation/ci/anytrap -print` only when lowering counts.
+
+
+[[hit]]
+file = "agent/message_json.go"
+func = "AgentMessage.decode"
+call = "sdkjson.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "ai/anthropic.go"
+func = "decodeAnthropicEvent"
+call = "json.Unmarshal"
+dest = "any"
+count = 1
+
+[[hit]]
+file = "ai/auth_store.go"
+func = "readOnlyCredential"
+call = "sdkjson.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "ai/auth_store.go"
+func = "retainReadOnlyCredentialFields"
+call = "sdkjson.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "ai/constrained_sampling.go"
+func = "makeStrictJSONSchemaWithOrder"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "ai/credential_json.go"
+func = "unmarshalCredentialFields"
+call = "sdkjson.Unmarshal"
+dest = "any"
+count = 1
+
+[[hit]]
+file = "ai/json_repair.go"
+func = "ParseJSONWithRepair"
+call = "sdkjson.Unmarshal"
+dest = "*T"
+count = 2
+
+[[hit]]
+file = "ai/messages.go"
+func = "ToolResultMessage.UnmarshalJSON"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "ai/oauth_openai_codex.go"
+func = "CodexAccountID"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "ai/oauth_response_json.go"
+func = "oauthJSONValue"
+call = "json.Decode"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "ai/openai_codex_sse_stream.go"
+func = "codexSSEDecoder.parseNext"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "ai/openai_responses.go"
+func = "processResponsesStream"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "ai/pi_messages.go"
+func = "piMessagesEventConverter.observeEvent"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "ai/radius_config.go"
+func = "radiusGatewayModelMembers"
+call = "json.Unmarshal"
+dest = "*[]any"
+count = 1
+
+[[hit]]
+file = "ai/radius_config.go"
+func = "radiusGatewayModelMembers"
+call = "json.Unmarshal"
+dest = "any"
+count = 1
+
+[[hit]]
+file = "ai/streaming_json.go"
+func = "jsonParseValue"
+call = "sdkjson.Decode"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "ai/streaming_json.go"
+func = "parseStreamingJsonValue"
+call = "sdkjson.Unmarshal"
+dest = "*ai.JsonObject"
+count = 1
+
+[[hit]]
+file = "ai/tool_call_arguments.go"
+func = "ToolCall.SetArgumentsJSON"
+call = "sdkjson.Unmarshal"
+dest = "*ai.JsonObject"
+count = 1
+
+[[hit]]
+file = "ai/transcript.go"
+func = "normalizeJSONValue"
+call = "sdkjson.Decode"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "ai/validate.go"
+func = "parseArgumentSchema"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "ai/validate.go"
+func = "decodeSchemaInstance"
+call = "sdkjson.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "ai/validate_arguments.go"
+func = "ValidateToolArguments"
+call = "sdkjson.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "bench/k8s/cmd/k8sbench/object.go"
+func = "object.get"
+call = "json.Unmarshal"
+dest = "any"
+count = 1
+
+[[hit]]
+file = "codemode/jsvalue.go"
+func = "decodeJSON"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "coding/cli/rpc_js_fields.go"
+func = "rpcJSReceived"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "coding/cli/rpc_js_fields.go"
+func = "rpcJSValue.text"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "coding/cli/rpc_js_fields.go"
+func = "rpcJSValue.truthy"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "coding/cli/rpc_types.go"
+func = "rpcTemplateString"
+call = "sdkjson.Decode"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "coding/extension/builtin/toolsearch/toolsearch.go"
+func = "CreateDocument"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "coding/extension/host/inproc/runner.go"
+func = "coerceResult"
+call = "json.Unmarshal"
+dest = "*T"
+count = 2
+
+[[hit]]
+file = "coding/extension/host/inproc/runner.go"
+func = "coerceUserBashEventResult"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "coding/extension/host/inproc/runner.go"
+func = "isUserBashEventResult"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "coding/extension/host/inproc/runner.go"
+func = "sameMessageValues"
+call = "json.Unmarshal"
+dest = "*any"
+count = 2
+
+[[hit]]
+file = "coding/extension/host/inproc/runner.go"
+func = "typedDetails"
+call = "json.Unmarshal"
+dest = "*T"
+count = 1
+
+[[hit]]
+file = "coding/extension/host/inproc/runner.go"
+func = "typedDetails"
+call = "json.Unmarshal"
+dest = "*any"
+count = 2
+
+[[hit]]
+file = "coding/extension/host/runtimecell/cellcache.go"
+func = "readCellFailureMetadata"
+call = "json.Decode"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "coding/extension/host/subprocess/autocomplete_bridge.go"
+func = "autocompleteRequest"
+call = "sdkjson.Unmarshal"
+dest = "any"
+count = 1
+
+[[hit]]
+file = "coding/extension/host/subprocess/event_payload.go"
+func = "applyToolCallInput"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "coding/extension/host/subprocess/host.go"
+func = "Host.buildExtension"
+call = "sdkjson.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "coding/extension/host/subprocess/host.go"
+func = "validateRegisterPayload"
+call = "sdkjson.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "coding/extension/host/subprocess/host_extension_api.go"
+func = "jsonValuesEqual"
+call = "json.Decode"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "coding/extension/host/subprocess/native_provider.go"
+func = "decodeCallbackValue"
+call = "json.Unmarshal"
+dest = "any"
+count = 1
+
+[[hit]]
+file = "coding/extension/host/subprocess/native_provider_auth.go"
+func = "nativeObjectValue"
+call = "json.Unmarshal"
+dest = "*T"
+count = 1
+
+[[hit]]
+file = "coding/extension/host/subprocess/native_provider_login.go"
+func = "decodeAuthVariant"
+call = "json.Unmarshal"
+dest = "*T"
+count = 1
+
+[[hit]]
+file = "coding/extension/host/subprocess/native_provider_oauth.go"
+func = "nativeOAuthProxy.RefreshTokenContext"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "coding/extension/host/subprocess/oauth_bridge.go"
+func = "unmarshalOAuthResult"
+call = "json.Unmarshal"
+dest = "any"
+count = 1
+
+[[hit]]
+file = "coding/extension/host/subprocess/provider_operations.go"
+func = "remoteOperation"
+call = "json.Unmarshal"
+dest = "*T"
+count = 1
+
+[[hit]]
+file = "coding/extension/host/subprocess/ui_bridge.go"
+func = "UIBridge.HandleNotifyFrom"
+call = "sdkjson.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "coding/extension/host/subprocess/ui_bridge.go"
+func = "decodeModelStreamRequest"
+call = "sdkjson.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "coding/extension/host/subprocess/view_kit_conversation.go"
+func = "viewBuilder.updateToolResult"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "coding/extension/host/subprocess/xref.go"
+func = "scanXrefRefs"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "coding/extension/source/node_entries.go"
+func = "nodeManifestDeclared"
+call = "json.Unmarshal"
+dest = "*[]any"
+count = 1
+
+[[hit]]
+file = "coding/extension/tool_call_event_json.go"
+func = "CustomToolCallEvent.InputJSON"
+call = "sdkjson.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "coding/extension/tool_input_json.go"
+func = "unmarshalToolInput"
+call = "json.Unmarshal"
+dest = "any"
+count = 1
+
+[[hit]]
+file = "coding/packagecontent/packagecontent.go"
+func = "stringList.UnmarshalJSON"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "coding/packagecontent/packagecontent.go"
+func = "validateDevContainerClosure"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "coding/packagecontent/packagecontent.go"
+func = "validateResourcesIsolating"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "coding/packagecontent/pi_manifest.go"
+func = "decodeJSONStringArray"
+call = "json.Unmarshal"
+dest = "*[]any"
+count = 1
+
+[[hit]]
+file = "coding/piglet/origin.go"
+func = "rejectTrailingOriginJSON"
+call = "json.Decode"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "coding/piglet/release/index.go"
+func = "strictJSON"
+call = "json.Decode"
+dest = "any"
+count = 1
+
+[[hit]]
+file = "coding/piglet/schema.go"
+func = "pigletSchema"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "coding/piglet/schema.go"
+func = "schemaInstance"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "coding/piglet/signature/envelope.go"
+func = "strictJSON"
+call = "json.Decode"
+dest = "any"
+count = 1
+
+[[hit]]
+file = "coding/rpcclient/rpc_client.go"
+func = "RpcClient.handleLine"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "coding/rpcclient/rpc_client.go"
+func = "getData"
+call = "json.Unmarshal"
+dest = "*T"
+count = 1
+
+[[hit]]
+file = "coding/session_extension_hooks.go"
+func = "Session.toolCallHook"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "coding/session_extension_hooks.go"
+func = "Session.toolResultHook"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "coding/session_extension_hooks.go"
+func = "sameContextMessages"
+call = "json.Unmarshal"
+dest = "*any"
+count = 2
+
+[[hit]]
+file = "coding/virtual_models.go"
+func = "jsMemberString"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "durable/core/contracttest/oracle.go"
+func = "rows"
+call = "json.Unmarshal"
+dest = "*R"
+count = 1
+
+[[hit]]
+file = "durable/core/contracttest/trace.go"
+func = "DecodeParams"
+call = "json.Decode"
+dest = "*[]any"
+count = 1
+
+[[hit]]
+file = "durable/core/driver/tool.go"
+func = "Tools.run"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "durable/durabletest/durabletest.go"
+func = "Normalize"
+call = "sdkjson.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "durable/durabletest/storage_conformance.go"
+func = "CreateStorageConformance"
+call = "sdkjson.Unmarshal"
+dest = "*durable.Cursor"
+count = 1
+
+[[hit]]
+file = "durable/durabletest/storage_conformance.go"
+func = "CreateStorageConformance"
+call = "sdkjson.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "durable/durabletest/storage_conformance.go"
+func = "roundTripCursor"
+call = "sdkjson.Unmarshal"
+dest = "*durable.Cursor"
+count = 1
+
+[[hit]]
+file = "durable/harness/drafts.go"
+func = "decodeJSON"
+call = "json.Unmarshal"
+dest = "any"
+count = 1
+
+[[hit]]
+file = "durable/harness/tool.go"
+func = "prepareArguments"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "durable/json.go"
+func = "FromJsonValue"
+call = "json.Decode"
+dest = "*T"
+count = 1
+
+[[hit]]
+file = "durable/json.go"
+func = "unmarshalOrdered"
+call = "json.Unmarshal"
+dest = "any"
+count = 1
+
+[[hit]]
+file = "durable/storage/jsonl/storage.go"
+func = "decodeAs"
+call = "sdkjson.Unmarshal"
+dest = "*T"
+count = 1
+
+[[hit]]
+file = "durable/storage/sqlite/storage.go"
+func = "parseJSON"
+call = "sdkjson.Unmarshal"
+dest = "*T"
+count = 1
+
+[[hit]]
+file = "durable/tools/edit.go"
+func = "prepareEditArguments"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "env/connection.go"
+func = "Connection.readLoop"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "env/daemon/frame.go"
+func = "ReadFrame"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "internal/chord/chordjson/decode.go"
+func = "DecodeUnquoting"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "internal/codingagent/bug_report.go"
+func = "RedactBugReportJSON"
+call = "json.Decode"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "internal/codingagent/crash_log.go"
+func = "crashNotifiedTruthy"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "internal/codingagent/crash_log.go"
+func = "readCrashMember"
+call = "json.Unmarshal"
+dest = "any"
+count = 1
+
+[[hit]]
+file = "internal/codingagent/event_bridge.go"
+func = "extensionToolResult"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "internal/codingagent/event_bridge.go"
+func = "toolExecutionArgs"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "internal/codingagent/export/export.go"
+func = "FromJSONL"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "internal/codingagent/export/tool_renderer.go"
+func = "RenderCustomTools"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "internal/codingagent/extension_package_warnings.go"
+func = "ExtensionPackageWarnings"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "internal/codingagent/interactive_events.go"
+func = "InteractiveMode.handleAgentEvent"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "internal/codingagent/interactive_extensions.go"
+func = "WireModelOperations"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "internal/codingagent/interactive_extensions.go"
+func = "subprocessDecodeJSON"
+call = "json.Unmarshal"
+dest = "any"
+count = 1
+
+[[hit]]
+file = "internal/codingagent/keybindings.go"
+func = "loadKeybindingsFile"
+call = "sdkjson.Unmarshal"
+dest = "*[]any"
+count = 1
+
+[[hit]]
+file = "internal/codingagent/keybindings.go"
+func = "loadKeybindingsFile"
+call = "sdkjson.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "internal/codingagent/llama/client.go"
+func = "dispatchFrames"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "internal/codingagent/llama/fetch.go"
+func = "fetchJSON"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "internal/codingagent/session_resume.go"
+func = "ReadSessionHeader"
+call = "sdkjson.Decode"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "internal/codingagent/settings.go"
+func = "Settings.UnmarshalJSON"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "internal/codingagent/settings.go"
+func = "SettingsManager.ExtensionSettings"
+call = "json.Unmarshal"
+dest = "*extension.Settings"
+count = 1
+
+[[hit]]
+file = "internal/codingagent/settings.go"
+func = "decodeSettingJSON"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "internal/codingagent/settings.go"
+func = "parseSettingsJSON"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "internal/codingagent/settings_compaction.go"
+func = "compactionJSONText"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "internal/codingagent/tool_builtin_renderers.go"
+func = "decodeRenderArgs"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "internal/codingagent/tool_result_content.go"
+func = "toolResultBlockFields"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "internal/evals/acme_server.go"
+func = "AcmeServer.handle"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "internal/evals/cli.go"
+func = "EvalCli.RunEvalCli"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "internal/evals/docker.go"
+func = "RequireEvalAuthFile"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "internal/evals/evalsuites/tui.go"
+func = "overrideContextWindow"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "internal/evals/harness_run.go"
+func = "RunPiCodingAgent"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 2
+
+[[hit]]
+file = "internal/evals/harness_run.go"
+func = "apiKeyHandOff"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "internal/evals/judges.go"
+func = "normalizeJSON"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "internal/evals/judges.go"
+func = "structuredOutputJudge.Assess"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "internal/evals/suite.go"
+func = "Suite.applyJudges"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "internal/evals/vitest_report.go"
+func = "decodes"
+call = "json.Unmarshal"
+dest = "*T"
+count = 1
+
+[[hit]]
+file = "internal/evals/vitest_report.go"
+func = "exactMembers"
+call = "json.Unmarshal"
+dest = "any"
+count = 1
+
+[[hit]]
+file = "internal/npmpublish/npmtest/npmtest.go"
+func = "Fake.Manifest"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "internal/orderedjson/value.go"
+func = "Map"
+call = "sdkjson.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "internal/orderedjson/value.go"
+func = "UnmarshalFields"
+call = "sdkjson.Unmarshal"
+dest = "any"
+count = 1
+
+[[hit]]
+file = "internal/orderedjson/value.go"
+func = "Value"
+call = "sdkjson.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "internal/pioracle/pioracle.go"
+func = "Run"
+call = "json.Unmarshal"
+dest = "any"
+count = 1
+
+[[hit]]
+file = "mcp/client.go"
+func = "decodeItem"
+call = "json.Unmarshal"
+dest = "*T"
+count = 1
+
+[[hit]]
+file = "mcp/content.go"
+func = "jsString"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "mcp/content.go"
+func = "jsTruthy"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "mcp/oauth/jsonextra.go"
+func = "unmarshalWithExtra"
+call = "json.Unmarshal"
+dest = "any"
+count = 1
+
+[[hit]]
+file = "tui/shell_renderers.go"
+func = "FormatShellHeader"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "tui/theme_json.go"
+func = "ValidateThemeJSON"
+call = "json.Decode"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "tui/tool_execution.go"
+func = "FormatToolArgs"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+[[hit]]
+file = "tui/tool_execution.go"
+func = "FormatToolArgs"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "tui/tool_execution.go"
+func = "ToolExecutionComponent.decodedArguments"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+[[hit]]
+file = "tui/tool_execution.go"
+func = "decodeToolArgs"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+# 0.5.0 release entries (ruling 2026-10-15, tern): each decode below is not a common-path typed-decode miss; the reason is per entry.
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "agent/message_lax.go"
+func = "AgentMessage.decodeLax"
+call = "sdkjson.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "agent/message_lax.go"
+func = "holds"
+call = "sdkjson.Unmarshal"
+dest = "any"
+count = 1
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "ai/anthropic.go"
+func = "coerceAnthropicDelta"
+call = "json.Decode"
+dest = "*any"
+count = 1
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "ai/anthropic_event_jsread.go"
+func = "anthropicRecord"
+call = "json.Decode"
+dest = "*map[string]any"
+count = 1
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "ai/anthropic_event_jsread.go"
+func = "decodeAnthropicEventJS"
+call = "json.Unmarshal"
+dest = "any"
+count = 2
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "ai/anthropic_event_jsread.go"
+func = "normalizeAnthropicEventJS"
+call = "json.Decode"
+dest = "*any"
+count = 1
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "ai/gemini_chunk_jsread.go"
+func = "normalizeGeminiChunkJS"
+call = "json.Decode"
+dest = "*any"
+count = 1
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "ai/mistral_chunk_jsread.go"
+func = "jsStringFromRaw"
+call = "json.Decode"
+dest = "*any"
+count = 1
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "ai/mistral_chunk_jsread.go"
+func = "mistralContentItemJS"
+call = "json.Decode"
+dest = "*any"
+count = 1
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "ai/mistral_chunk_jsread.go"
+func = "normalizeMistralChunkJS"
+call = "json.Decode"
+dest = "*map[string]any"
+count = 1
+
+# cold path: once per login, catalog load, command or rare API request
+[[hit]]
+file = "ai/models_catalog_codec.go"
+func = "sameJSONValue"
+call = "json.Unmarshal"
+dest = "*any"
+count = 2
+
+# cold path: once per login, catalog load, command or rare API request
+[[hit]]
+file = "ai/oauth_kimi.go"
+func = "readKimiJSON"
+call = "json.Decode"
+dest = "*any"
+count = 1
+
+# cold path: once per login, catalog load, command or rare API request
+[[hit]]
+file = "ai/oauth_xai.go"
+func = "decodeXaiBody"
+call = "json.Decode"
+dest = "*any"
+count = 1
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "ai/openai_chunk_jsread.go"
+func = "normalizeOpenAIChunkJS"
+call = "json.Decode"
+dest = "*any"
+count = 1
+
+# cold path: once per login, catalog load, command or rare API request
+[[hit]]
+file = "ai/openai_codex_frames.go"
+func = "mapCodexWebSocketEventFrame"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+# cold path: once per login, catalog load, command or rare API request
+[[hit]]
+file = "ai/openai_codex_websocket.go"
+func = "codexWebSocketMessage"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "ai/openai_codex_websocket.go"
+func = "readCodexRequest"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 2
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "ai/openai_responses_jsread.go"
+func = "normalizeResponsesEventJS"
+call = "json.Decode"
+dest = "*any"
+count = 1
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "ai/openai_responses_jsread.go"
+func = "normalizeResponsesItemJS"
+call = "json.Decode"
+dest = "*any"
+count = 1
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "ai/openai_responses_jsread.go"
+func = "responsesArgumentsNotString"
+call = "json.Decode"
+dest = "*any"
+count = 1
+
+# cold path: once per login, catalog load, command or rare API request
+[[hit]]
+file = "ai/openrouter_images_chat.go"
+func = "parseOpenRouterImagesBody"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+# cold path: once per login, catalog load, command or rare API request
+[[hit]]
+file = "ai/provider_stream_event.go"
+func = "assistantStreamBuilder.observeProviderEventJSON"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+# JSON.parse, whose result is any by definition; non-object/out-of-range branches and partial string/number tokens only (0.5.1: typed string token)
+[[hit]]
+file = "ai/streaming_json.go"
+func = "jsonParseValue"
+call = "sdkjson.Unmarshal"
+dest = "*any"
+count = 1
+
+# dev/bench tooling or one-time schema compile
+[[hit]]
+file = "bench/sessionscale/cmd/sessionscale/k8s.go"
+func = "fixtureFingerprint"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+# cold path: once per login, catalog load, command or rare API request
+[[hit]]
+file = "coding/cli/provider_bridge.go"
+func = "decodeBridgeRequest"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+# cold path: once per login, catalog load, command or rare API request
+[[hit]]
+file = "coding/extension/host/subprocess/ui_bridge.go"
+func = "UIBridge.handleComplete"
+call = "sdkjson.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+# once per code-mode call or nested tool result; the value is the tool's arbitrary JSON result
+[[hit]]
+file = "durable/codemode/call.go"
+func = "call.callTool"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+# once per code-mode call or nested tool result; the value is the tool's arbitrary JSON result
+[[hit]]
+file = "durable/codemode/call.go"
+func = "call.formatAndStore"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+# once per code-mode call or nested tool result; the value is the tool's arbitrary JSON result
+[[hit]]
+file = "durable/codemode/call.go"
+func = "sameJSON"
+call = "json.Unmarshal"
+dest = "*any"
+count = 2
+
+# once per code-mode call or nested tool result; the value is the tool's arbitrary JSON result
+[[hit]]
+file = "durable/codemode/models.go"
+func = "modelResult"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+# once per code-mode call or nested tool result; the value is the tool's arbitrary JSON result
+[[hit]]
+file = "durable/codemode/tool.go"
+func = "outcomeOf"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+# once per code-mode call or nested tool result; the value is the tool's arbitrary JSON result
+[[hit]]
+file = "durable/codemode/tool.go"
+func = "storedResult.result"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+# cold path: once per login, catalog load, command or rare API request
+[[hit]]
+file = "durable/core/driver/session.go"
+func = "coreSession.argumentsHook"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1
+
+# decodes into a concrete type (a type parameter T or durable.JsonValue), not an untyped interface
+[[hit]]
+file = "durable/core/driver/session_api.go"
+func = "invocation.MemoCandidate"
+call = "json.Unmarshal"
+dest = "*durable.JsonValue"
+count = 1
+
+# decodes into a concrete type (a type parameter T or durable.JsonValue), not an untyped interface
+[[hit]]
+file = "durable/core/driver/session_api.go"
+func = "invocation.Memo"
+call = "json.Unmarshal"
+dest = "*durable.JsonValue"
+count = 1
+
+# decodes into a concrete type (a type parameter T or durable.JsonValue), not an untyped interface
+[[hit]]
+file = "durable/core/driver/session_tx.go"
+func = "decodeOptional"
+call = "json.Unmarshal"
+dest = "*T"
+count = 1
+
+# decodes into a concrete type (a type parameter T or durable.JsonValue), not an untyped interface
+[[hit]]
+file = "durable/core/driver/session_tx.go"
+func = "decode"
+call = "json.Unmarshal"
+dest = "*T"
+count = 1
+
+# decodes into a concrete type (a type parameter T or durable.JsonValue), not an untyped interface
+[[hit]]
+file = "durable/core/driver/watch.go"
+func = "typed"
+call = "json.Unmarshal"
+dest = "*T"
+count = 1
+
+# once per code-mode call or nested tool result; the value is the tool's arbitrary JSON result
+[[hit]]
+file = "durable/nested_result.go"
+func = "decodeJsonValue"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+# once per code-mode call or nested tool result; the value is the tool's arbitrary JSON result
+[[hit]]
+file = "durable/toolsearch/toolsearch.go"
+func = "searchText"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+# once per boundary preview, only for a handler that reads Go values; each source entry is arbitrary session JSON
+[[hit]]
+file = "internal/boundarywire/boundarywire.go"
+func = "Cache.Deliver"
+call = "sdkjson.Unmarshal"
+dest = "*any"
+count = 1
+
+# once per session entry at resume/load, not per turn
+[[hit]]
+file = "internal/codingagent/session_resume.go"
+func = "summaryContentText"
+call = "sdkjson.Unmarshal"
+dest = "*any"
+count = 1
+
+# once per session entry at resume/load, not per turn
+[[hit]]
+file = "internal/codingagent/session_resume.go"
+func = "summaryPartial.feedDecoded"
+call = "sdkjson.Unmarshal"
+dest = "*any"
+count = 1
+
+# once per session entry at resume/load, not per turn
+[[hit]]
+file = "internal/codingagent/session_resume.go"
+func = "summaryPartial.feedMessageLine"
+call = "sdkjson.Unmarshal"
+dest = "*any"
+count = 1
+
+# once per session entry at resume/load, not per turn
+[[hit]]
+file = "internal/codingagent/session_stats_scan.go"
+func = "walkIndexProbe"
+call = "sdkjson.Unmarshal"
+dest = "any"
+count = 1
+
+# decodes into a concrete type (a type parameter T or durable.JsonValue), not an untyped interface
+[[hit]]
+file = "internal/codingagent/settings.go"
+func = "SettingsManager.extensionSettingsEncoding"
+call = "json.Unmarshal"
+dest = "*extension.Settings"
+count = 1
+
+# runs only after the typed decode rejected the record (mistyped or legacy member)
+[[hit]]
+file = "internal/orderedjson/value.go"
+func = "unmarshalFieldsThreePass"
+call = "sdkjson.Unmarshal"
+dest = "any"
+count = 1
+
+# dev/bench tooling or one-time schema compile
+[[hit]]
+file = "internal/typebox/value.go"
+func = "compile"
+call = "json.Unmarshal"
+dest = "*any"
+count = 1
+
+# dev/bench tooling or one-time schema compile
+[[hit]]
+file = "internal/upstreammirror/upstreammirror.go"
+func = "readJSON"
+call = "json.Unmarshal"
+dest = "any"
+count = 1
+
+# decodes into a concrete type (a type parameter T or durable.JsonValue), not an untyped interface
+[[hit]]
+file = "durable/core/driver/hook.go"
+func = "decodeToolResult"
+call = "json.Unmarshal"
+dest = "*durable.JsonValue"
+count = 2
+
+# dev/bench tooling (linux-only harness, its RPC handshake reply); missed by a scan on macOS, which skips linux-only files
+[[hit]]
+file = "bench/sessionscale/cmd/sessionscale/run.go"
+func = "startRPC"
+call = "json.Unmarshal"
+dest = "*map[string]any"
+count = 1

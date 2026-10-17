@@ -39,9 +39,9 @@ def records(path: Path) -> list[Record]:
 
 def upstream_version(root: Path) -> str:
     text = (root / "internal" / "coding" / "pigversion" / "pigversion.go").read_text(encoding="utf-8")
-    match = re.search(r'const UpstreamVersion = "([^"]+)"', text)
+    match = re.search(r'const UpstreamPackageVersion = "([^"]+)"', text)
     if not match:
-        raise ValueError("internal/coding/pigversion/pigversion.go has no UpstreamVersion")
+        raise ValueError("internal/coding/pigversion/pigversion.go has no UpstreamPackageVersion")
     return match.group(1)
 
 

@@ -212,3 +212,28 @@ func TestParseSSE_EncryptedReasoningDetailRequiresData(t *testing.T) {
 		t.Fatalf("dataless encrypted detail was attached: %q", tool.ThoughtSignature)
 	}
 }
+
+// Pi 63035734 (#10926): packages/ai/test/openai-completions-reasoning-details.test.ts "reasoning and content in one delta".
+func TestParseSSE_ThinkingBeforeTextWhenOneDeltaCarriesBoth(t *testing.T) {
+	kinds := func(message *AssistantMessage) []string {
+		var out []string
+		for _, block := range message.Content {
+			out = append(out, block.contentType())
+		}
+		return out
+	}
+	message := runOpenAICompletionsSSE(t, `data: {"choices":[{"delta":{"role":"assistant","reasoning_content":"thinking","content":"answer"},"finish_reason":"stop"}]}`+"\n\ndata: [DONE]\n\n")
+	assertCompletionsJSON(t, message.Content, `[{"type":"thinking","thinking":"thinking","thinkingSignature":"reasoning_content"},{"type":"text","text":"answer"}]`)
+	message = runOpenAICompletionsSSE(t, `data: {"choices":[{"delta":{"reasoning_details":[{"type":"reasoning.text","text":"r","index":0}],"content":"answer"},"finish_reason":"stop"}]}`+"\n\ndata: [DONE]\n\n")
+	if got := strings.Join(kinds(message), ","); got != "thinking,text" {
+		t.Fatalf("kinds = %s, want thinking,text", got)
+	}
+}
+
+// Pi 63035734 handles reasoning_details before tool_calls, so a chunk whose tool_calls is not iterable still keeps its reasoning_details before the for-of throws.
+func TestParseSSE_ReasoningDetailsApplyBeforeNonIterableToolCalls(t *testing.T) {
+	message := runOpenAICompletionsSSE(t, `data: {"choices":[{"delta":{"reasoning_details":[{"type":"reasoning.text","text":"r","index":0}],"tool_calls":5},"finish_reason":"stop"}]}`+"\n\ndata: [DONE]\n\n")
+	if len(message.Content) != 1 || message.Content[0].contentType() != "thinking" || message.StopReason != StopReasonError {
+		t.Fatalf("content = %#v stop = %q", message.Content, message.StopReason)
+	}
+}

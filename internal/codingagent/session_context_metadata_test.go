@@ -11,7 +11,7 @@ func TestContextSettingsIgnoreUnrelatedEntryProperties(t *testing.T) {
 		contextFixtureEntry(t, "model", "", "model_change", map[string]any{"provider": "openai", "modelId": "chosen", "message": "not a message"}),
 		contextFixtureEntry(t, "thinking", "model", "thinking_level_change", map[string]any{"thinkingLevel": "high", "provider": map[string]any{"ignored": true}}),
 	}
-	got := BuildSessionContext(entries)
+	got := BuildSessionContext(entries, LastLeaf(), nil)
 	if got.Model == nil || got.Model.Provider != "openai" || got.Model.ModelID != "chosen" || got.ThinkingLevel != "high" {
 		t.Fatalf("context=%+v", got)
 	}

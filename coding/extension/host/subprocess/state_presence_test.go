@@ -1,3 +1,5 @@
+//go:build !pig_strip_node_extensions
+
 package subprocess
 
 import (
@@ -107,7 +109,7 @@ func TestNodeSnapshotClearsPreviousSessionState(t *testing.T) {
 			prompt := "old prompt"
 			b.SetActions(&HostCallbacks{
 				GetSessionID: func() string { return "session" }, GetSessionName: func() string { return name }, GetSessionFile: func() string { return file },
-				GetModelInfo: func() map[string]any { return model }, GetActiveTools: func() []string { return tools }, GetSystemPrompt: func() string { return prompt },
+				GetModelInfo: func() json.RawMessage { return modelJSON(model) }, GetActiveTools: func() []string { return tools }, GetSystemPrompt: func() string { return prompt },
 			})
 			entry := filepath.Join(t.TempDir(), "state.mjs")
 			write(t, entry, `export default function(pi) { pi.registerCommand("state", {handler: (args, ctx) => {

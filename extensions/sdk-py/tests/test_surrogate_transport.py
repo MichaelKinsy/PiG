@@ -45,3 +45,25 @@ def test_terminal_dispatch_round_trips_lone_units():
             send({"type": "request", "id": "input", "request": {"method": "terminal_input", "args": {"data": text, "editorText": "A\ud83d"}}})
             result = receive("response")["response"]["result"]
             assert result == {"consume": False, "data": "seen:" + text}
+
+
+def test_raising_terminal_input_handler_is_reported_and_yields_no_verdict(capsys):
+    # Pi tui.ts does not catch a throwing input listener. An out-of-process
+    # handler cannot throw into the host, so the SDK reports the failure in the
+    # extension log (stderr), as the Go and Rust SDKs do, and yields no verdict.
+    ext = pig_sdk.Extension("terminal-input-raise")
+
+    def explode(_data):
+        raise RuntimeError("handler exploded")
+
+    ext.command("subscribe", "Subscribe", lambda ctx, _: ext._add_terminal_input_handler(explode))
+    with connected_extension(ext) as (send, receive):
+        send({"type": "request", "id": "subscribe", "request": {"method": "command", "tool": "subscribe"}})
+        call = receive("call")
+        send({"type": "call_result", "id": call["id"], "call_result": {}})
+        receive("response")
+        send({"type": "request", "id": "input", "request": {"method": "terminal_input", "args": {"data": "x"}}})
+        result = receive("response")["response"]["result"]
+    assert result == {"consume": False}
+    err = capsys.readouterr().err
+    assert "terminal input handler" in err and "handler exploded" in err

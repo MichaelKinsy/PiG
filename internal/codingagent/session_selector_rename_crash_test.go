@@ -10,7 +10,7 @@ import (
 func TestUncaughtCrashPrintsRenameRejectionAsError(t *testing.T) {
 	t.Setenv("PIG_HOME", t.TempDir())
 	agentDir := t.TempDir()
-	m := NewInteractiveMode(InteractiveOptions{CWD: "/work", AgentDir: agentDir, AppVersion: "9.9.9"})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: "/work", AgentDir: agentDir, AppVersion: "9.9.9"})
 	var stderr strings.Builder
 	m.uncaughtCrash(uncaughtError{errors.New("rename denied")}, []byte("goroutine 1 [running]:\n"), &stderr)
 	out := stderr.String()

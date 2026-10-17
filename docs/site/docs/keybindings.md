@@ -1,35 +1,64 @@
 # Keybindings
 
-PiG reads keybindings from `~/.pig/agent/keybindings.json`. The file is optional.
-If it is absent, PiG uses the defaults in this page.
+PiG reads keybindings from `~/.pig/agent/keybindings.json`. The file is optional. If it is absent, PiG uses the defaults in this page. The action names and defaults are those of Pi 1.3.0 ([Pi's keybindings reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/keybindings.md)).
 
-Each entry maps one action to one or more keys. To change a binding, write the
-action name and the keys you want:
+Each entry maps one action to one key or a list of keys. To change a binding, write the action name and the keys you want:
 
 ```json
 {
-  "app.tools.expand": ["ctrl+e"],
-  "app.session.tree": ["ctrl+shift+t"]
+  "app.tools.expand": "alt+o",
+  "app.session.tree": ["ctrl+shift+t", "alt+shift+t"]
 }
 ```
 
-A binding in the file replaces the default for that action. It does not add to
-it. Bindings you do not name keep their defaults. Set an action to `[]` to leave
-the action with no key.
+A binding in the file replaces the default for that action. It does not add to it. Bindings you do not name keep their defaults. Set an action to `[]` to leave the action with no key.
 
-Set `PIG_CODING_AGENT_DIR` to read the file from a different directory.
+For validation and completion in your editor, add `"$schema": "https://pi.dev/schemas/keybindings.schema.json"` to the file. PiG ignores the `$schema` key when it loads the bindings. Pi 1.3.0 added this schema.
+
+Set `PIG_CODING_AGENT_DIR` to read the file from a different directory. After you edit the file, run `/reload` to apply the change to the running session.
 
 Use `/hotkeys` to list the keys that are active in the current session.
 
 A custom `tui.input.submit` binding submits messages and slash commands through the normal interactive handler. Enabling `PIG_DEBUG_KEYS` does not change that binding.
 
-If two actions claim the same key, PiG records the conflict and keeps both
-bindings. Both actions then answer that key, so give one of them a different key.
+If two actions claim the same key, PiG records the conflict and keeps both bindings. Both actions then answer that key, so give one of them a different key.
+
+## Worked example: move the tool-output key
+
+Tool output longer than a few lines folds, and a hint names the key that expands it. Take this request, whose command prints 30 lines. PiG shows the last five and a hint with the key (checked on PiG; `ctrl+o` is the default):
+
+```text
+ $ seq 1 30
+
+ ... (25 earlier lines, ctrl+o to expand)
+ 26
+ 27
+ 28
+ 29
+ 30
+```
+
+Put this in `~/.pig/agent/keybindings.json`, then type `/reload` (or start PiG again):
+
+```json
+{
+  "app.tools.expand": ["alt+o"]
+}
+```
+
+The hint now names the new key, and the old key stops working:
+
+```text
+ ... (25 earlier lines, alt+o to expand)
+```
+
+Pressing `alt+o` expands all 30 lines and prints `Tool output: expanded`. Pressing `ctrl+o` does nothing. `/hotkeys` lists the change as `Alt+O | Toggle tool output expansion`.
+
+Choose a key that no other action uses. The key `ctrl+e` is the editor's "End of line", so a binding of `app.tools.expand` to `ctrl+e` leaves both actions on the key (checked: `/hotkeys` listed `End/Ctrl+E` and `Ctrl+E | Toggle tool output expansion`). PiG keeps both bindings and answers with both, which is rarely what you want. Pick an unused key, and check `/hotkeys` after every change.
 
 ## Defaults
 
-The keys below are the macOS defaults. Platform differences are listed after the
-tables.
+The keys below are the macOS defaults. Platform differences are listed after the tables.
 
 ### Session control
 
@@ -56,7 +85,7 @@ tables.
 |---|---|---|
 | `app.clipboard.pasteImage` | `ctrl+v` | Paste files on macOS, images, or text from clipboard |
 | `app.editor.external` | `ctrl+g` | Open external editor |
-| `app.message.copy` | `ctrl+x` | Copy selection or last assistant message. On OAuth sign-in screens, copy the sign-in URL |
+| `app.message.copy` | `ctrl+x` | Copy the selected message in `/tree`. In fullscreen mode with `fullscreenCopyOnSelect` set to `false`, copy the active selection. Otherwise copy the last assistant message. On OAuth sign-in screens, copy the sign-in URL |
 | `app.message.dequeue` | `alt+up` | Restore queued messages |
 | `app.message.followUp` | `alt+enter` | Queue follow-up message |
 
@@ -101,14 +130,11 @@ Clipboard image helper commands reject stdout larger than 50 MiB. PiG cancels an
 | `app.tree.toggleLabelTimestamp` | `shift+t` | Toggle tree label timestamps |
 | `app.tree.unfoldOrDown` | `alt+right, ctrl+right` | Unfold tree branch or move down |
 
-Several actions share a key, such as `ctrl+s` for `app.session.toggleSort`,
-`app.models.save` and `app.thinking.save`. Each one applies only in its own
-selector, so they do not conflict.
+Several actions share a key, such as `ctrl+s` for `app.session.toggleSort`, `app.models.save` and `app.thinking.save`. Each one applies only in its own selector, so they do not conflict.
 
 ## Terminal UI actions
 
-Actions named `tui.*` control the editor, lists, and the fullscreen transcript.
-Rebind them in `keybindings.json` the same way as `app.*` actions.
+Actions named `tui.*` control the editor, lists, and the fullscreen transcript. Rebind them in `keybindings.json` the same way as `app.*` actions.
 
 ### Cursor movement
 
@@ -128,6 +154,8 @@ Rebind them in `keybindings.json` the same way as `app.*` actions.
 | `tui.editor.jumpBackward` | `ctrl+alt+]` | Jump backward to a character |
 | `tui.editor.pageUp` | `pageUp`, `ctrl+pageUp` | Scroll the editor up one page |
 | `tui.editor.pageDown` | `pageDown`, `ctrl+pageDown` | Scroll the editor down one page |
+
+The dedicated history actions browse prompt history wherever the cursor is, and they take precedence over application actions on the same key.
 
 ### Text editing
 
@@ -159,15 +187,16 @@ During initial theme detection and managed-tool setup, submitting keeps the text
 | `tui.input.copy` | `ctrl+c` | Copy selection |
 | `tui.select.up` | `up` | Move selection up |
 | `tui.select.down` | `down` | Move selection down |
-| `tui.select.pageUp` | `pageUp` | Page up in a list |
-| `tui.select.pageDown` | `pageDown` | Page down in a list |
+| `tui.select.pageUp` | `pageUp` | Move the selection up one page in a list |
+| `tui.select.pageDown` | `pageDown` | Move the selection down one page in a list |
 | `tui.select.confirm` | `enter` | Confirm selection |
 | `tui.select.cancel` | `escape`, `ctrl+c` | Cancel selection |
 
+PiG moves the selection by one visible page on PageUp and PageDown in every selection list: select and settings lists, the open autocomplete list, and the model, session, tree, OAuth, scoped-models, config, trust and extension selectors. The transcript behind an open list does not scroll. Pi 1.3.0 scrolls the fullscreen transcript on these keys while a selector is open, and lists without a page action ignore them (D155, [Pi #7629](https://github.com/earendil-works/pi/issues/7629)). An extension overlay cannot capture the page keys yet, so they still scroll the transcript there.
+
 ### Fullscreen transcript
 
-These actions apply when `tuiMode` is `fullscreen`. They take precedence over
-editor actions that use the same key.
+These actions apply when `tuiMode` is `fullscreen`. They take precedence over editor actions that use the same key.
 
 | Action | Default key | Effect |
 |---|---|---|
@@ -188,10 +217,7 @@ editor actions that use the same key.
 
 ## Platform differences
 
-Some actions use a different key on each platform, because the terminal or the
-operating system reserves the macOS key. WSL uses the Windows keys, except that
-`ctrl+z` still suspends and `alt+z` undoes. PiG detects WSL from `WSL_DISTRO_NAME`
-or `WSL_INTEROP`.
+Some actions use a different key on each platform, because the terminal or the operating system reserves the macOS key. WSL uses the Windows keys, except that `ctrl+z` still suspends and `alt+z` undoes. PiG detects WSL from `WSL_DISTRO_NAME` or `WSL_INTEROP`.
 
 | Action | macOS | Linux | WSL | Windows |
 |---|---|---|---|---|
@@ -207,10 +233,11 @@ or `WSL_INTEROP`.
 | `tui.altScreen.nextPrompt` | `ctrl+shift+down, ctrl+down` | `ctrl+shift+down, ctrl+down` | `ctrl+down` | `ctrl+down` |
 | `tui.altScreen.search` | `ctrl+shift+f` | `ctrl+shift+f` | `ctrl+f` | `ctrl+f` |
 
+On native Windows, `app.suspend` has no default because Windows terminals do not support Unix job control. If you assign it, PiG shows a status message instead of suspending.
+
 ## Actions with no default key
 
-These actions exist but have no key until you assign one. Reach them with their
-slash command, or bind them in `keybindings.json`.
+These actions exist but have no key until you assign one. Reach them with their slash command, or bind them in `keybindings.json`.
 
 | Action | Slash command |
 |---|---|
@@ -221,13 +248,21 @@ slash command, or bind them in `keybindings.json`.
 
 ## Key names
 
-Write a key as its name, or as modifiers joined to the name with `+`. Use
-`ctrl`, `alt` and `shift` for modifiers. Examples: `ctrl+o`, `shift+ctrl+p`,
-`alt+enter`, `escape`, `ctrl+backspace`.
+Write a key as its name, or as modifiers joined to the name with `+`. The modifiers are `ctrl`, `alt`, `shift` and `super`, and you can combine them. Examples: `ctrl+o`, `shift+ctrl+p`, `alt+enter`, `escape`, `ctrl+backspace`, `super+k`.
 
-Terminals do not all report the same keys. If a binding does not respond, the
-terminal usually consumed the key before PiG saw it. See
-[terminal setup](/docs/latest/terminal-setup).
+The key names are:
+
+- Letters: `a` to `z`.
+- Digits: `0` to `9`.
+- Special keys: `escape`, `esc`, `enter`, `return`, `tab`, `space`, `backspace`, `delete`, `insert`, `clear`, `home`, `end`, `pageUp`, `pageDown`, `up`, `down`, `left`, `right`.
+- Function keys: `f1` to `f12`.
+- Symbols: `` ` ``, `-`, `=`, `[`, `]`, `\`, `;`, `'`, `,`, `.`, `/`, `!`, `@`, `#`, `$`, `%`, `^`, `&`, `*`, `(`, `)`, `_`, `+`, `|`, `~`, `{`, `}`, `:`, `<`, `>`, `?`.
+
+A `super` binding needs a terminal that reports the modifier on its own, usually through the Kitty keyboard protocol.
+
+A shifted symbol such as `+` matches the character the key produces, so `ctrl++` responds under the Kitty keyboard protocol and modifyOtherKeys. Pi 1.1.0 did not match these bindings; Pi 1.3.0 does.
+
+Terminals do not all report the same keys. If a binding does not respond, the terminal usually consumed the key before PiG saw it. See [terminal setup](/docs/latest/terminal-setup).
 
 ## Related
 

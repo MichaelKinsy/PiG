@@ -1,6 +1,9 @@
 package codingagent
 
+// pi: packages/coding-agent/src/core/trust-manager.ts
+
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -209,7 +212,7 @@ func TestGetProjectTrustOptions(t *testing.T) {
 
 func TestHasTrustRequiringProjectResources_ExactProjectResources(t *testing.T) {
 	for _, entry := range []string{
-		"settings.json", "extensions", "skills", "prompts", "themes", "SYSTEM.md", "APPEND_SYSTEM.md",
+		"settings.json", "mcp.json", "extensions", "skills", "prompts", "themes", "SYSTEM.md", "APPEND_SYSTEM.md",
 	} {
 		t.Run(entry, func(t *testing.T) {
 			project := t.TempDir()
@@ -268,5 +271,138 @@ func TestHasTrustRequiringProjectResources_AncestorAgentsSkillsExcludesUserHome(
 	}
 	if !HasTrustRequiringProjectResources(project) {
 		t.Fatal("ancestor project .agents/skills should require project trust")
+	}
+}
+
+// trust-manager.test.ts:24-37 "stores decisions and inherits from parent directories": ProjectTrustDecision is boolean | null, three states. A false
+// decision on the child is its own answer, not "undecided": it overrides a trusted parent, and clearing it (null) removes the key so the parent's
+// true applies again. The file stores the booleans themselves (trust-manager.ts:228-243: decision === null deletes, else data[key] = decision).
+func TestProjectTrustDecisionHasThreeStates(t *testing.T) {
+	agentDir := t.TempDir()
+	root := t.TempDir()
+	parent := filepath.Join(root, "trusted-parent")
+	child := filepath.Join(parent, "project")
+	if err := os.MkdirAll(child, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	store := NewProjectTrustStore(agentDir)
+	decision := func(cwd string) string {
+		t.Helper()
+		got, err := store.Get(cwd)
+		if err != nil {
+			t.Fatal(err)
+		}
+		switch {
+		case got == nil:
+			return "null"
+		case *got:
+			return "true"
+		default:
+			return "false"
+		}
+	}
+	set := func(cwd string, d ProjectTrustDecision) {
+		t.Helper()
+		if err := store.Set(cwd, d); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if got := decision(child); got != "null" {
+		t.Fatalf("undecided child = %s, want null", got)
+	}
+	set(parent, new(true))
+	if got := decision(child); got != "true" {
+		t.Fatalf("child under a trusted parent = %s, want true", got)
+	}
+	set(child, new(false))
+	if got := decision(child); got != "false" {
+		t.Fatalf("distrusted child = %s, want false (its own decision overrides the parent)", got)
+	}
+	raw, err := os.ReadFile(filepath.Join(agentDir, "trust.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var stored map[string]any
+	if err := json.Unmarshal(raw, &stored); err != nil {
+		t.Fatal(err)
+	}
+	if stored[GetProjectTrustPath(parent)] != true || stored[GetProjectTrustPath(child)] != false {
+		t.Fatalf("trust.json = %s, want the parent stored as true and the child as false", raw)
+	}
+	set(child, nil)
+	if got := decision(child); got != "true" {
+		t.Fatalf("cleared child = %s, want true again from the parent", got)
+	}
+	raw, err = os.ReadFile(filepath.Join(agentDir, "trust.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored = nil
+	if err := json.Unmarshal(raw, &stored); err != nil {
+		t.Fatal(err)
+	}
+	if _, kept := stored[GetProjectTrustPath(child)]; kept {
+		t.Fatalf("trust.json = %s, a null decision must delete the child's key", raw)
+	}
+}
+
+// trust-manager.ts setMany applies every update under one lock: a decision is stored under the canonical path and a null decision removes the saved entry.
+func TestProjectTrustStoreSetManyAppliesEachDecisionAndNullRemoves(t *testing.T) {
+	store := NewProjectTrustStore(t.TempDir())
+	a, b, c := t.TempDir(), t.TempDir(), t.TempDir()
+	if err := store.SetMany([]ProjectTrustUpdate{{Path: a, Decision: new(true)}, {Path: b, Decision: new(false)}, {Path: c, Decision: new(true)}}); err != nil {
+		t.Fatal(err)
+	}
+	for path, want := range map[string]bool{a: true, b: false, c: true} {
+		got, err := store.Get(path)
+		if err != nil || got == nil || *got != want {
+			t.Fatalf("Get(%s) = %v, %v, want %v", path, got, err, want)
+		}
+	}
+	if err := store.SetMany([]ProjectTrustUpdate{{Path: a, Decision: nil}}); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := store.Get(a); err != nil || got != nil {
+		t.Fatalf("Get after a null update = %v, %v, want no decision", got, err)
+	}
+	if got, _ := store.Get(b); got == nil || *got {
+		t.Fatal("a null update for one path changed another path's decision")
+	}
+}
+
+// SetMany keys each update by the canonical path, so a decision saved through a symlink is the real directory's; the user's ~/.agents/skills is excluded when HOME is itself a symlink.
+func TestProjectTrustStoreSetManyAndUserSkillsCanonicalizeSymlinks(t *testing.T) {
+	root := t.TempDir()
+	real := filepath.Join(root, "real")
+	link := filepath.Join(root, "link")
+	if err := os.MkdirAll(filepath.Join(real, ".agents", "skills"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	testenv.RequireDirectoryLink(t, real, link)
+	store := NewProjectTrustStore(t.TempDir())
+	if err := store.SetMany([]ProjectTrustUpdate{{Path: link, Decision: new(true)}}); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := store.Get(real); err != nil || got == nil || !*got {
+		t.Fatalf("Get(real) after SetMany(symlink) = %v, %v, want trusted", got, err)
+	}
+	t.Setenv("HOME", link)
+	if HasTrustRequiringProjectResources(real) {
+		t.Fatal("the user's ~/.agents/skills reached through a symlinked HOME must not require project trust")
+	}
+}
+
+// Without HOME, Pi's homedir() reads the user database (trust-manager.ts:187), so the working directory's .agents/skills
+// still requires project trust. An empty home that resolved to the working directory took it for the user's ~/.agents/skills.
+func TestHasTrustRequiringProjectResourcesWithoutHOMEStillChecksTheWorkingDirectory(t *testing.T) {
+	project := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(project, ".agents", "skills"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(project)
+	t.Setenv("HOME", "")
+	if !HasTrustRequiringProjectResources(project) {
+		t.Fatal("the working directory's .agents/skills must require project trust when HOME is unset")
 	}
 }

@@ -24,7 +24,7 @@ for (const root of [process.argv[2], join(dirname(process.argv[2]), "pi-agent-co
   for (const file of readdirSync(root, { recursive: true }).filter(file => file.endsWith(".js") && !file.replaceAll("\\", "/").startsWith("sdk-bundle/"))) {
     const path = join(root, file);
     const original = readFileSync(path, "utf8");
-    const rewritten = original.replaceAll('/pi-ai/index.js"', '/pi-ai/sdk-bundle/index.js"').replaceAll('/pi-ai/compat.js"', '/pi-ai/sdk-bundle/compat.js"').replaceAll('/pi-ai/providers/all.js"', '/pi-ai/sdk-bundle/providers.js"');
+    const rewritten = original.replaceAll('/pi-ai/index.js"', '/pi-ai/sdk-bundle/index.js"').replaceAll('/pi-ai/compat.js"', '/pi-ai/sdk-bundle/compat.js"').replaceAll('/pi-ai/providers/all.js"', '/pi-ai/sdk-bundle/providers.js"').replaceAll('/pi-ai/providers/openrouter.js"', '/pi-ai/sdk-bundle/openrouter.js"');
     if (rewritten !== original) writeFileSync(path, rewritten);
   }
 }

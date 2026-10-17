@@ -1,0 +1,184 @@
+[
+ {
+  "ids": [
+   "pkg:ai/utils/error-body#MAX_PROVIDER_ERROR_BODY_CHARS"
+  ],
+  "targets": [
+   "ai/errors.go#MaxProviderErrorBodyChars"
+  ],
+  "production": [
+   "call:ai/errors.go#providerErrorBody"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestUpstreamLiteralConstants"
+  ],
+  "rationale": "MAX_PROVIDER_ERROR_BODY_CHARS: Go MaxProviderErrorBodyChars is declared with the same literal value as the pinned upstream constant, asserted by TestUpstreamLiteralConstants; production use attributed by name search over function bodies."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#DEFAULT_MAX_AGENT_RETRY_DELAY_MS",
+   "pkg:ai/compat#DEFAULT_MAX_AGENT_RETRY_DELAY_MS",
+   "pkg:ai/utils/retry#DEFAULT_MAX_AGENT_RETRY_DELAY_MS"
+  ],
+  "targets": [
+   "ai/assistant_retry.go#DefaultMaxAgentRetryDelayMs"
+  ],
+  "production": [
+   "call:ai/assistant_retry.go#RetryDelayMs"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestUpstreamLiteralConstants"
+  ],
+  "rationale": "DEFAULT_MAX_AGENT_RETRY_DELAY_MS: Go DefaultMaxAgentRetryDelayMs is declared with the same literal value as the pinned upstream constant, asserted by TestUpstreamLiteralConstants; production use attributed by name search over function bodies."
+ },
+ {
+  "ids": [
+   "pkg:ai/api/openai-prompt-cache#OPENAI_PROMPT_CACHE_KEY_MAX_LENGTH"
+  ],
+  "targets": [
+   "ai/openai_prompt_cache.go#openAIPromptCacheKeyMaxLength"
+  ],
+  "production": [
+   "call:ai/openai_prompt_cache.go#ClampOpenAIPromptCacheKey"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestUpstreamLiteralConstants"
+  ],
+  "rationale": "OPENAI_PROMPT_CACHE_KEY_MAX_LENGTH: Go openAIPromptCacheKeyMaxLength is declared with the same literal value as the pinned upstream constant, asserted by TestUpstreamLiteralConstants; production use attributed by name search over function bodies."
+ },
+ {
+  "ids": [
+   "pkg:ai/providers/radius-config#DEFAULT_RADIUS_GATEWAY"
+  ],
+  "targets": [
+   "ai/radius_config.go#DefaultRadiusGateway"
+  ],
+  "production": [
+   "call:ai/radius.go#NewRadiusProvider"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestUpstreamLiteralConstants"
+  ],
+  "rationale": "DEFAULT_RADIUS_GATEWAY: Go DefaultRadiusGateway is declared with the same literal value as the pinned upstream constant, asserted by TestUpstreamLiteralConstants; production use attributed by name search over function bodies."
+ },
+ {
+  "ids": [
+   "pkg:ai/utils/node-http-proxy#UNSUPPORTED_PROXY_PROTOCOL_MESSAGE"
+  ],
+  "targets": [
+   "ai/node_http_proxy.go#UnsupportedProxyProtocolMessage"
+  ],
+  "production": [
+   "call:ai/node_http_proxy.go#ResolveHTTPProxyURLForTarget"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestUpstreamLiteralConstants"
+  ],
+  "rationale": "UNSUPPORTED_PROXY_PROTOCOL_MESSAGE: Go UnsupportedProxyProtocolMessage is declared with the same literal value as the pinned upstream constant, asserted by TestUpstreamLiteralConstants; production use attributed by name search over function bodies."
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#ANTHROPIC_AUTH_TOKEN_ENV"
+  ],
+  "targets": [
+   "ai/auth_env_keys.go#AnthropicAuthTokenEnv"
+  ],
+  "production": [
+   "call:ai/auth_env_keys.go#GetEnvAPIKey"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestUpstreamLiteralConstants"
+  ],
+  "rationale": "ANTHROPIC_AUTH_TOKEN_ENV: Go AnthropicAuthTokenEnv is declared with the same literal value as the pinned upstream constant, asserted by TestUpstreamLiteralConstants; production use attributed by name search over function bodies."
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#ANTHROPIC_OAUTH_TOKEN_ENV"
+  ],
+  "targets": [
+   "ai/auth_env_keys.go#AnthropicOAuthTokenEnv"
+  ],
+  "production": [
+   "call:ai/auth_providers.go#anthropicAPIKeyAuth"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestUpstreamLiteralConstants"
+  ],
+  "rationale": "ANTHROPIC_OAUTH_TOKEN_ENV: Go AnthropicOAuthTokenEnv is declared with the same literal value as the pinned upstream constant, asserted by TestUpstreamLiteralConstants; production use attributed by name search over function bodies."
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#ANTHROPIC_API_KEY_ENV"
+  ],
+  "targets": [
+   "ai/auth_env_keys.go#AnthropicAPIKeyEnv"
+  ],
+  "production": [
+   "call:ai/auth_providers.go#anthropicAPIKeyAuth"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestUpstreamLiteralConstants"
+  ],
+  "rationale": "ANTHROPIC_API_KEY_ENV: Go AnthropicAPIKeyEnv is declared with the same literal value as the pinned upstream constant, asserted by TestUpstreamLiteralConstants; production use attributed by name search over function bodies."
+ },
+ {
+  "ids": [
+   "pkg:ai/api/cloudflare#CLOUDFLARE_WORKERS_AI_BASE_URL"
+  ],
+  "targets": [
+   "ai/cloudflare.go#CloudflareWorkersAIBaseURL"
+  ],
+  "production": [
+   "public-api:ai/cloudflare.go#CloudflareWorkersAIBaseURL"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestUpstreamLiteralConstants"
+  ],
+  "rationale": "CLOUDFLARE_WORKERS_AI_BASE_URL: Go CloudflareWorkersAIBaseURL is declared with the same literal value as the pinned upstream constant, asserted by TestUpstreamLiteralConstants; production use attributed by name search over function bodies."
+ },
+ {
+  "ids": [
+   "pkg:ai/api/cloudflare#CLOUDFLARE_AI_GATEWAY_COMPAT_BASE_URL"
+  ],
+  "targets": [
+   "ai/cloudflare.go#CloudflareAIGatewayCompatBaseURL"
+  ],
+  "production": [
+   "public-api:ai/cloudflare.go#CloudflareAIGatewayCompatBaseURL"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestUpstreamLiteralConstants"
+  ],
+  "rationale": "CLOUDFLARE_AI_GATEWAY_COMPAT_BASE_URL: Go CloudflareAIGatewayCompatBaseURL is declared with the same literal value as the pinned upstream constant, asserted by TestUpstreamLiteralConstants; production use attributed by name search over function bodies."
+ },
+ {
+  "ids": [
+   "pkg:ai/api/cloudflare#CLOUDFLARE_AI_GATEWAY_OPENAI_BASE_URL"
+  ],
+  "targets": [
+   "ai/cloudflare.go#CloudflareAIGatewayOpenAIBaseURL"
+  ],
+  "production": [
+   "public-api:ai/cloudflare.go#CloudflareAIGatewayOpenAIBaseURL"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestUpstreamLiteralConstants"
+  ],
+  "rationale": "CLOUDFLARE_AI_GATEWAY_OPENAI_BASE_URL: Go CloudflareAIGatewayOpenAIBaseURL is declared with the same literal value as the pinned upstream constant, asserted by TestUpstreamLiteralConstants; production use attributed by name search over function bodies."
+ },
+ {
+  "ids": [
+   "pkg:ai/api/cloudflare#CLOUDFLARE_AI_GATEWAY_ANTHROPIC_BASE_URL"
+  ],
+  "targets": [
+   "ai/cloudflare.go#CloudflareAIGatewayAnthropicBaseURL"
+  ],
+  "production": [
+   "public-api:ai/cloudflare.go#CloudflareAIGatewayAnthropicBaseURL"
+  ],
+  "evidence": [
+   "test:ai/interface_ledger_test.go#TestUpstreamLiteralConstants"
+  ],
+  "rationale": "CLOUDFLARE_AI_GATEWAY_ANTHROPIC_BASE_URL: Go CloudflareAIGatewayAnthropicBaseURL is declared with the same literal value as the pinned upstream constant, asserted by TestUpstreamLiteralConstants; production use attributed by name search over function bodies."
+ }
+]

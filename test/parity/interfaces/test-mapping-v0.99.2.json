@@ -1584,7 +1584,7 @@
       "upstreamTestHash": "sha256:52546fca509f7fafe48b6388104111c0f9a0894688e365d65214982038a22fc1",
       "evidence": [
         "ai/max_thinking_upstream_test.go#TestMaxThinkingUpstream",
-        "cmd/pig/max_thinking_upstream_test.go#TestMaxThinkingCodingAgentUpstream"
+        "coding/cli/max_thinking_upstream_test.go#TestMaxThinkingCodingAgentUpstream"
       ],
       "rationale": "All 4 cases; the 0.99.1 it.each row gpt-6.1-sol (:70) is in TestMaxThinkingUpstream (ai/max_thinking_upstream_test.go:69)."
     },
@@ -2416,15 +2416,15 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:26b5fee2cb64eb5df1e9accdbc478d4bc055c7110c1a66d0f01327a067e953d5",
       "evidence": [
-        "agent/validate_upstream_test.go#TestValidateToolArgumentsWithoutFunctionConstructor",
-        "agent/validate_upstream_test.go#TestValidateToolArgumentsPlainJSONPrimitiveRules",
-        "agent/validate_upstream_test.go#TestValidateToolArgumentsOptionalNullIsOmission",
-        "agent/validate_upstream_test.go#TestValidateToolArgumentsPreservesReferencedNullableOptional",
-        "agent/validate_upstream_test.go#TestValidateToolArgumentsPreservesNullableUnionArm",
-        "agent/validate_upstream_test.go#TestValidateToolArgumentsPreservesNullableOneOfArm",
-        "agent/validate_upstream_test.go#TestValidateToolArgumentsCoercesNullableUnion",
-        "agent/validate_upstream_test.go#TestValidateToolArgumentsNullableArrayWithItems",
-        "agent/validate_upstream_test.go#TestValidateToolArgumentsRejectsInvalidPlainCoercions"
+        "ai/validate_upstream_test.go#TestValidateToolArgumentsWithoutFunctionConstructor",
+        "ai/validate_upstream_test.go#TestValidateToolArgumentsPlainJSONPrimitiveRules",
+        "ai/validate_upstream_test.go#TestValidateToolArgumentsOptionalNullIsOmission",
+        "ai/validate_upstream_test.go#TestValidateToolArgumentsPreservesReferencedNullableOptional",
+        "ai/validate_upstream_test.go#TestValidateToolArgumentsPreservesNullableUnionArm",
+        "ai/validate_upstream_test.go#TestValidateToolArgumentsPreservesNullableOneOfArm",
+        "ai/validate_upstream_test.go#TestValidateToolArgumentsCoercesNullableUnion",
+        "ai/validate_upstream_test.go#TestValidateToolArgumentsNullableArrayWithItems",
+        "ai/validate_upstream_test.go#TestValidateToolArgumentsRejectsInvalidPlainCoercions"
       ],
       "rationale": "All nine upstream cases use the same inputs and expected values or validation failures. Go's validator has no Function-constructor dependency. Omitting the three pre-validation steps compiles and fails the primitive, optional-null, and union regressions, the cross-SDK agent-path test, and tools/13 and tools/14 paired scenarios. The additional Pi 0.87.1 / TypeBox 1.3.27 oracle matrix covers all seven built-in schemas and native versus plain extension schemas."
     },
@@ -2724,10 +2724,10 @@
         "test/parity/testdata/session-branching-oracle-pi.mjs",
         "test/parity/scenarios/session/25-runtime-replacements.toml",
         "docs/parity/session-runtime-helper.md",
-        "cmd/pig/session_replacement_modes_test.go#TestPrintModeNewSessionBuildsFreshExtensionInstances",
-        "cmd/pig/session_replacement_modes_test.go#TestRPCSessionCommandsReplaceThroughTheRuntimeFactory",
-        "cmd/pig/session_replacement_interactive_test.go#TestInteractiveSessionCommandsReplaceThroughTheRuntimeFactory",
-        "cmd/pig/session_replacement_interactive_test.go#TestInteractiveExtensionNewSessionKeepsTheCallerAliveUntilItReturns",
+        "coding/cli/session_replacement_modes_test.go#TestPrintModeNewSessionBuildsFreshExtensionInstances",
+        "coding/cli/session_replacement_modes_test.go#TestRPCSessionCommandsReplaceThroughTheRuntimeFactory",
+        "coding/cli/session_replacement_interactive_test.go#TestInteractiveSessionCommandsReplaceThroughTheRuntimeFactory",
+        "coding/cli/session_replacement_interactive_test.go#TestInteractiveExtensionNewSessionKeepsTheCallerAliveUntilItReturns",
         "coding/runtime_mode_hooks_test.go#TestRuntimeDrainRunsBetweenBeforeHookAndShutdown",
         "coding/runtime_mode_hooks_test.go#TestRuntimeEmitsQuitShutdownOnce"
       ],
@@ -2792,8 +2792,8 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:96f8d2678b03949a60ffc5ac82f9d992b0cda3832c2c9c1073d8ae28e3a8817b",
       "evidence": [
-        "cmd/pig/rpc_mode_test.go#SessionBeforeSwitchEvent",
-        "cmd/pig/rpc_mode_test.go#SessionBeforeForkEvent",
+        "coding/cli/rpc_mode_test.go#SessionBeforeSwitchEvent",
+        "coding/cli/rpc_mode_test.go#SessionBeforeForkEvent",
         "coding/runtime_test.go#TestRuntimeBeforeSessionInvalidateHook"
       ],
       "rationale": "all four upstream lifecycle contracts have direct Go equivalents: session_before_switch dispatch+cancel and session_before_fork dispatch+cancel are RPC-layer event tests in rpc_mode_test.go, and beforeSessionInvalidate-after-shutdown-before-rebind ordering is TestRuntimeBeforeSessionInvalidateHook"
@@ -2835,12 +2835,12 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:e418975576b51f7495c5c823e9866c38afddc91dbd54577894e7f1a31511e056",
       "evidence": [
-        "cmd/pig/args_test.go",
-        "cmd/pig/args_diagnostics_test.go",
-        "cmd/pig/args_upstream_test.go#TestArgsUpstream",
-        "cmd/pig/args_name_upstream_test.go#TestCLIRejectsEmptySessionNameUpstream",
-        "cmd/pig/args_name_upstream_test.go#TestCLINormalizesSessionNameUpstream",
-        "cmd/pig/args_name_upstream_test.go#TestCLIVersionPrecedesSessionValidationUpstream"
+        "coding/cli/args_test.go",
+        "coding/cli/args_diagnostics_test.go",
+        "coding/cli/args_upstream_test.go#TestArgsUpstream",
+        "coding/cli/args_name_upstream_test.go#TestCLIRejectsEmptySessionNameUpstream",
+        "coding/cli/args_name_upstream_test.go#TestCLINormalizesSessionNameUpstream",
+        "coding/cli/args_name_upstream_test.go#TestCLIVersionPrecedesSessionValidationUpstream"
       ],
       "rationale": "The complete pinned upstream case set is reviewed in gate-close-00 and its delivered tests are composed from 836f53b84. All named added evidence passes on the release union with Go 1.27.1, -race and -count=1; original upstream hashes and existing evidence are retained. This closes the test file, not unrelated partial or live-service obligations."
     },
@@ -2861,7 +2861,7 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:d6b568e6e8d608f5e1f06a6f43aee20645cf4dcbfaa69158359249d44cbfa3b6",
       "evidence": [
-        "cmd/pig/auth_check_test.go"
+        "coding/cli/auth_check_test.go"
       ],
       "rationale": "The command test suite names the upstream file and covers all ten ready/model/no-refresh/refresh/unknown/unresolved/malformed/no-write/options/runtime cases."
     },
@@ -3183,10 +3183,10 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:6fd2f5ad5cfaba3287808e206d2d37880146eeeb3113f8905cca34f00e50c2cf",
       "evidence": [
-        "cmd/pig/config_command_test.go",
+        "coding/cli/config_command_test.go",
         "internal/configvalue/configvalue_test.go",
         "internal/codingagent/config_upstream_test.go",
-        "cmd/pig/self_update_prefix_upstream_test.go"
+        "coding/cli/self_update_prefix_upstream_test.go"
       ],
       "rationale": "The owning gate-close Promote review closes the original case set with the listed native tests and caller guards. All listed evidence passes on the integrated union with Go 1.27.1, -race and -count=1. Existing evidence and the current upstream hash are retained; no unrelated or live-service closure is claimed."
     },
@@ -3204,7 +3204,7 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:b10cf783bc6922913511e73384c44752c6e474aeade5647fea492afcf17a3c2a",
       "evidence": [
-        "cmd/pig/credential_print_test.go"
+        "coding/cli/credential_print_test.go"
       ],
       "rationale": "The command test suite names the upstream file and directly covers all five API-key, bearer-token, refresh, unknown-option and argument/type-validation cases."
     },
@@ -3280,7 +3280,7 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:c08171973a077f4fb337d4451655516c7c920888c268565d1ece28d1c0a31b5a",
       "evidence": [
-        "cmd/pig/experimental_entry_test.go#TestStableEntryDoesNotDispatchExperimentalCommands",
+        "coding/cli/experimental_entry_test.go#TestStableEntryDoesNotDispatchExperimentalCommands",
         "cmd/pig-experimental/entry_upstream_test.go#TestDevelopmentCLIEntryUpstream"
       ],
       "rationale": "Credited at 0.99.2: all three cases keep the 0.87.1 evidence. The 0.99.2 delta (experimental-cli-entry.test.ts:5-9,24) passes the source resolver to node --import as a file URL instead of a path, which only affects the TypeScript subprocess launch; the Go tests run the compiled entry with `server --server-id invalid --version` and the same assertions. They pass (go test ./cmd/pig ./cmd/pig-experimental)."
@@ -3514,7 +3514,7 @@
         "test/parity/scenarios/extensions-runtime/43-tool-parameter-schema.toml",
         "coding/extension/host/inproc/upstream_modes_test.go",
         "coding/extension/host/inproc/context_binding_lifetime_test.go",
-        "cmd/pig/upstream_runner_modes_test.go",
+        "coding/cli/upstream_runner_modes_test.go",
         "internal/codingagent/upstream_runner_modes_test.go",
         "test/parity/scenarios/extensions-runtime/42-runner-context-modes.toml",
         "coding/extension/host/inproc/upstream_flags_test.go#TestUpstreamRunnerFlags",
@@ -3567,7 +3567,7 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:38ae7d0f1aeb002ddbe6d0f9f0820b4b09b7d25d0656bde664c88d36694eabfa",
       "evidence": [
-        "cmd/pig/first_time_fork_upstream_test.go#TestForkedDistributionDoesNotBlockOnOfficialFirstTimeSetup"
+        "coding/cli/first_time_fork_upstream_test.go#TestForkedDistributionDoesNotBlockOnOfficialFirstTimeSetup"
       ],
       "rationale": "The complete pinned upstream case set is reviewed in gate-close-00 and its delivered tests are composed from 836f53b84. All named added evidence passes on the release union with Go 1.27.1, -race and -count=1; original upstream hashes and existing evidence are retained. This closes the test file, not unrelated partial or live-service obligations."
     },
@@ -3577,7 +3577,7 @@
       "upstreamTestHash": "sha256:4d76184e78fba400d2bd7ba2d593d0fde6bc20a87c28d29cc11fec6fb338e035",
       "evidence": [
         "internal/codingagent/settings_explicit_values_test.go#TestAnalyticsSettings",
-        "cmd/pig/first_time_setup_upstream_test.go#TestFirstTimeSetupOriginalCasesAsFork"
+        "coding/cli/first_time_setup_upstream_test.go#TestFirstTimeSetupOriginalCasesAsFork"
       ],
       "rationale": "Ported with four designed-out cases (owner decision, 2026-09-29, Michael Kinsy; listed in designedOutCases, which the gate checks against the inventory): the four shouldRunFirstTimeSetup cases (:36 true for experimental/default directory/missing settings, :40 false without experimental features, :46 false with a custom directory, :52 false with existing settings) are designed out. Pi runs first-time setup only for its official distribution identity (src/cli/startup-ui.ts:122-140 requires package @earendil-works/pi-coding-agent, app pi and .pi config directory); the caller is src/main.ts:661, which gates showFirstTimeSetup. PiG is never Pi's official distribution, so the only possible port was a fabricated test-only identity, which review rejected (a test-only implementation with no production path does not close a hot-path upstream test). PORT_MAP already designs out the official-only first-time-setup component. No onboarding behavior or fake official identity is added. The remaining four analytics cases are ported and their evidence is verified by the gate, with their original assertions and source citations: disabled/no ID (:60), opt-in UUID (:67), opt-out/no ID (:76), and stable ID across toggles (:85). Both the original in-memory manager and supplemental file-backed manager pass on Linux with Go 1.27.1 and -count=1; a compiling mutation that regenerates the ID on every opt-in fails the toggle case in both managers. The real CLI fork test TestFirstTimeSetupOriginalCasesAsFork keeps the four original input combinations and asserts real Pi's non-official-distribution result (setup never shown); it is supplemental fork evidence, not a port of the official-distribution expectations.",
       "designedOutCases": [
@@ -3653,10 +3653,10 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:4281e8be2df457c6d8b026338f636f07224ee45c30f9e538463f9af5c86ee62a",
       "evidence": [
-        "cmd/pig/git_update_upstream_test.go#TestGitUpdatesUpstream",
-        "cmd/pig/package_temporary_upstream_test.go#TestTemporaryGitRefreshWhenResolvingUpstream",
-        "cmd/pig/package_temporary_upstream_test.go#TestTemporaryGitCacheBoundaries",
-        "cmd/pig/package_temporary_upstream_test.go#TestTemporaryGitInstallAndCleanup"
+        "coding/cli/git_update_upstream_test.go#TestGitUpdatesUpstream",
+        "coding/cli/package_temporary_upstream_test.go#TestTemporaryGitRefreshWhenResolvingUpstream",
+        "coding/cli/package_temporary_upstream_test.go#TestTemporaryGitCacheBoundaries",
+        "coding/cli/package_temporary_upstream_test.go#TestTemporaryGitInstallAndCleanup"
       ],
       "rationale": "All five original sites (:125,165,182,206,237) retain the upstream inputs and assertions: targeted fetch without reset/clean/npm when unchanged, latest commit and content, rewritten history, full and targeted pinned-ref updates, and stale-to-fresh temporary resolution. The temporary case failed before the fix because collectExtensionConfigs treated git sources as local paths. Resolution now waits for the shared Git update/install path before collecting resources; offline cache/miss, pinned cache, failed refresh, package provenance, fresh pinned clone, and dependency-failure cleanup have additional guards. Named tests and affected Git dependency, subdirectory, CLI discovery, and offline-refresh cases pass with Go 1.27.1, -count=1 -race. No live network is required. This row does not close other package-manager cases. The complete listed evidence and supplementary original-case tests pass on the integrated union with Go 1.27.1, -race and -count=1; existing evidence and the current upstream hash are retained."
     },
@@ -3666,7 +3666,7 @@
       "upstreamTestHash": "sha256:f378869e565c336d556ce75ceebf6eab10baccf3f58ef21260f07ca6abb5606a",
       "evidence": [
         "ai/http_dispatcher_upstream_test.go",
-        "cmd/pig/http_proxy_settings_test.go",
+        "coding/cli/http_proxy_settings_test.go",
         "test/parity/scenarios/providers-faux-streaming/19-http-proxy-connect.toml"
       ],
       "rationale": "All five cases preserve absent versus existing proxy environment values, whitespace, actual CONNECT request lines over two HTTP requests, and a per-dialer 2000ms family attempt delay without global default mutation. Additional cancellation and explicit-empty tests guard Go transport lifetime and nullish semantics. The real print CLI on both OpenAI API paths proves settings are applied before provider construction; it also exposed and fixes custom Responses API selection. Compiling omitted-proxy, overwritten-env, default-delay and wrong-provider mutations fail unit or paired observations."
@@ -3707,7 +3707,7 @@
         "internal/codingagent/tools/image_resize_callers_upstream_test.go#TestUpstreamImageResizeReadCallers",
         "internal/codingagent/image_resize_callers_upstream_test.go#TestFileProcessorOmitsImageAttachmentsWhenAutoResizeCannotProduceSafeImage",
         "internal/codingagent/image_resize_callers_upstream_test.go#TestFileProcessorCanDeferResizingFileAttachmentsUntilPromptDispatch",
-        "cmd/pig/initial_image_resize_test.go#TestPrepareInitialMessageDefersImageResizeUntilModelSelection"
+        "coding/cli/initial_image_resize_test.go#TestPrepareInitialMessageDefersImageResizeUntilModelSelection"
       ],
       "rationale": "Credited at 0.99.2: all four cases keep the 0.87.1 evidence. The 0.99.2 delta (image-resize-callers.test.ts:13,73) is type-only (ExtensionContext becomes ExtensionToolContext); the model-profile assertions (1234x1000, 500000 bytes, quality 70) are unchanged. They pass (go test ./internal/codingagent/tools ./internal/codingagent)."
     },
@@ -3716,8 +3716,8 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:8b95eb212ced64c20423f7dd5ffa9a972652f6d5ab1abb205a424cff2e17b356",
       "evidence": [
-        "cmd/pig/main_test.go#TestBuildInitialMessage_UpstreamCases",
-        "cmd/pig/main_test.go#TestBuildInitialMessage_ConcatenatesFileEnvelopeAndFirstPrompt"
+        "coding/cli/main_test.go#TestBuildInitialMessage_UpstreamCases",
+        "coding/cli/main_test.go#TestBuildInitialMessage_ConcatenatesFileEnvelopeAndFirstPrompt"
       ],
       "rationale": "TestBuildInitialMessage_UpstreamCases ports all three upstream sites (:15,26,37) with identical stdinContent, fileText and CLI messages, asserting the complete initial string and remaining messages. Upstream supplies stdinContent directly; a real stdin stream is not an obligation of this file. The production buildInitialMessage path is used. The pinned hash matches and go test -count=1 -race ./cmd/pig -run '^TestBuildInitialMessage_UpstreamCases$' passes on stable tip 4 (636bab50a9872bd92ec0d2dd4e62bf8669eec62e)."
     },
@@ -3915,7 +3915,7 @@
         "internal/codingagent/llama/host_classifier_test.go#TestHostRegistersClassifierModelsAndTheirImplementation",
         "internal/codingagent/model_registry_llama_classify_test.go#TestLlamaHostPublishesClassifierModelsAndClassifiesThroughTheRegistry"
       ],
-      "rationale": "Credited at 0.99.2 with one port added in this lane. Unchanged cases keep the 0.87.1 evidence. Changed: the stored and exposed models now include the llama-cpp-classify entries (llama-extension.test.ts:180-200,:325-328), asserted in TestRefreshModelsPersistsAndRestoresSelectableModelsForCacheOnlyStartup (provider_test.go:138,:164) and TestRefreshModelsExposesUnloadedPresetsOnlyWhenRouterAutoloadIsEnabled (:306). New: 'preserves cached llama.cpp context for unloaded autoload presets' (:205) is TestRefreshModelsPreservesCachedLlamaContextForUnloadedAutoloadPresets; 'classifies with selectable models through llama-server' (:331) is TestProviderClassifiesWithSelectableModelsThroughLlamaServer, which was red (no Provider.Classify) and is fixed in the following commit, with host and registry wiring tests. The extension name change `builtin:llama.cpp` (:49) is the source path of the hosted extension, asserted by cmd/pig/llama_test.go and extension_set_upstream_test.go. They pass (go test ./internal/codingagent/llama ./internal/codingagent)."
+      "rationale": "Credited at 0.99.2 with one port added in this lane. Unchanged cases keep the 0.87.1 evidence. Changed: the stored and exposed models now include the llama-cpp-classify entries (llama-extension.test.ts:180-200,:325-328), asserted in TestRefreshModelsPersistsAndRestoresSelectableModelsForCacheOnlyStartup (provider_test.go:138,:164) and TestRefreshModelsExposesUnloadedPresetsOnlyWhenRouterAutoloadIsEnabled (:306). New: 'preserves cached llama.cpp context for unloaded autoload presets' (:205) is TestRefreshModelsPreservesCachedLlamaContextForUnloadedAutoloadPresets; 'classifies with selectable models through llama-server' (:331) is TestProviderClassifiesWithSelectableModelsThroughLlamaServer, which was red (no Provider.Classify) and is fixed in the following commit, with host and registry wiring tests. The extension name change `builtin:llama.cpp` (:49) is the source path of the hosted extension, asserted by coding/cli/llama_test.go and extension_set_upstream_test.go. They pass (go test ./internal/codingagent/llama ./internal/codingagent)."
     },
     {
       "path": "packages/coding-agent/test/management-http.test.ts",
@@ -3934,7 +3934,7 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:01c76a966d964388bce071842d0cefc79408d43de04cef0eddecd3033a225ed5",
       "evidence": [
-        "cmd/pig/max_thinking_upstream_test.go#TestMaxThinkingCodingAgentUpstream"
+        "coding/cli/max_thinking_upstream_test.go#TestMaxThinkingCodingAgentUpstream"
       ],
       "rationale": "Both upstream cases are ported: max accepted through CLI parsing and settings flush/read, and a legacy dark theme without thinkingMax renders the same border as thinkingXhigh. Compiling fallback mutation fails the latter case."
     },
@@ -4023,10 +4023,10 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:e7f9f894799e644ef7bb414c15bb9f38580ddde19de347692d8f0c05dc82dd55",
       "evidence": [
-        "cmd/pig/model_resolver_patterns_upstream_test.go#TestModelResolverPatternsUpstream",
-        "cmd/pig/model_resolver_patterns_upstream_test.go#TestModelResolverScopeUpstream",
-        "cmd/pig/model_resolver_cli_upstream_test.go#TestModelResolverCLIUpstream",
-        "cmd/pig/model_resolver_defaults_upstream_test.go#TestModelResolverDefaultsUpstream",
+        "coding/cli/model_resolver_patterns_upstream_test.go#TestModelResolverPatternsUpstream",
+        "coding/cli/model_resolver_patterns_upstream_test.go#TestModelResolverScopeUpstream",
+        "coding/cli/model_resolver_cli_upstream_test.go#TestModelResolverCLIUpstream",
+        "coding/cli/model_resolver_defaults_upstream_test.go#TestModelResolverDefaultsUpstream",
         "coding/model_resolver_scope_upstream_test.go#TestModelResolverPersistedScopeUpstream",
         "test/parity/scenarios/model-runtime-store-catalog/23-custom-model-thinking-wire.toml",
         "test/parity/scenarios/model-runtime-store-catalog/24-persisted-model-scope.toml"
@@ -4171,28 +4171,28 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:c9ece624b4967fdbab9c26c9bc1f79cd5a1e051ebbc5861882f1fdad5eb67263",
       "evidence": [
-        "cmd/pig/package_cli_output_test.go#TestPackageRemovalProgressAndEmptySettings",
-        "cmd/pig/package_cli_parity_test.go#TestPackageCLIComparedWithPi",
-        "cmd/pig/package_commands_test.go#TestParsePackageCommand_UninstallAlias",
-        "cmd/pig/package_commands_test.go#TestAddSourceToSettings_NormalizesLocalPathsRelativeToScopeBase",
-        "cmd/pig/package_commands_test.go#TestRemoveSourceFromSettings_MatchesEquivalentLocalPaths",
-        "cmd/pig/package_commands_test.go#TestRunPackageCommand_HelpIncludesUpstreamExamples",
-        "cmd/pig/package_commands_test.go#TestRunPackageCommand_InvalidOptionMatchesUpstreamHint",
-        "cmd/pig/package_commands_test.go#TestUpdatePackages_SuggestsNpmSourcePrefix",
-        "cmd/pig/package_commands_test.go#TestRunPackageCommand_SelfUpdateTargetWithoutSourceShowsFallback",
-        "cmd/pig/package_npm_trust_test.go#TestPackageUpdateNpmCommandTrust",
-        "cmd/pig/package_npm_trust_test.go#TestPackageInstallRemoveNpmCommandTrust",
-        "cmd/pig/package_npm_trust_test.go#TestPackageLocalMutationRequiresTrustBeforeCommand",
-        "cmd/pig/port_wave_10_package_command_paths_test.go#TestPortWave10PackageCommandPaths",
-        "cmd/pig/port_wave_10_package_command_paths_test.go#TestPortWave10ModelRuntimeCreation",
-        "cmd/pig/port_wave_10_package_command_paths_test.go#TestPortWave10NativeSelfUpdate",
-        "cmd/pig/self_update_test.go#TestAC3StandaloneUpdateVerificationAndAtomicity",
-        "cmd/pig/self_update_test.go#TestAC11ForceReinstallsCurrentStandaloneRelease",
-        "cmd/pig/self_update_test.go#TestAC3StandaloneReceiptFailureRestoresPreviousExecutable",
-        "cmd/pig/self_update_test.go#TestAC11ExactReleasePlanUsesSignedReplacementPackage",
+        "coding/cli/package_cli_output_test.go#TestPackageRemovalProgressAndEmptySettings",
+        "coding/cli/package_cli_parity_test.go#TestPackageCLIComparedWithPi",
+        "coding/cli/package_commands_test.go#TestParsePackageCommand_UninstallAlias",
+        "coding/cli/package_commands_test.go#TestAddSourceToSettings_NormalizesLocalPathsRelativeToScopeBase",
+        "coding/cli/package_commands_test.go#TestRemoveSourceFromSettings_MatchesEquivalentLocalPaths",
+        "coding/cli/package_commands_test.go#TestRunPackageCommand_HelpIncludesUpstreamExamples",
+        "coding/cli/package_commands_test.go#TestRunPackageCommand_InvalidOptionMatchesUpstreamHint",
+        "coding/cli/package_commands_test.go#TestUpdatePackages_SuggestsNpmSourcePrefix",
+        "coding/cli/package_commands_test.go#TestRunPackageCommand_SelfUpdateTargetWithoutSourceShowsFallback",
+        "coding/cli/package_npm_trust_test.go#TestPackageUpdateNpmCommandTrust",
+        "coding/cli/package_npm_trust_test.go#TestPackageInstallRemoveNpmCommandTrust",
+        "coding/cli/package_npm_trust_test.go#TestPackageLocalMutationRequiresTrustBeforeCommand",
+        "coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10PackageCommandPaths",
+        "coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10ModelRuntimeCreation",
+        "coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10NativeSelfUpdate",
+        "coding/cli/self_update_test.go#TestAC3StandaloneUpdateVerificationAndAtomicity",
+        "coding/cli/self_update_test.go#TestAC11ForceReinstallsCurrentStandaloneRelease",
+        "coding/cli/self_update_test.go#TestAC3StandaloneReceiptFailureRestoresPreviousExecutable",
+        "coding/cli/self_update_test.go#TestAC11ExactReleasePlanUsesSignedReplacementPackage",
         "internal/codingagent/selfupdate_tier_test.go#TestAC4PackageManagerFailureSurfacesNoFallback",
-        "cmd/pig/config_builtin_upstream_test.go#TestUpstreamConfigTogglesBuiltinExtensionsInGlobalMode",
-        "cmd/pig/config_builtin_upstream_test.go#TestUpstreamConfigCyclesProjectBuiltinExtensionOverridesInLocalMode"
+        "coding/cli/config_builtin_upstream_test.go#TestUpstreamConfigTogglesBuiltinExtensionsInGlobalMode",
+        "coding/cli/config_builtin_upstream_test.go#TestUpstreamConfigCyclesProjectBuiltinExtensionOverridesInLocalMode"
       ],
       "rationale": "Credited at 0.99.2: the 31 cases keep the 0.87.1 evidence and its D39 equivalences. The two new cases (package-command-paths.test.ts:529 'toggles built-in extensions in config global mode', :555 'cycles project built-in extension overrides in config local mode') are TestUpstreamConfigTogglesBuiltinExtensionsInGlobalMode and TestUpstreamConfigCyclesProjectBuiltinExtensionOverridesInLocalMode: the Built-in group and llama.cpp row render, space toggles `-builtin:llama.cpp` then `+builtin:llama.cpp` in global settings, and in project mode the cycle `+builtin:mcp`, `-builtin:mcp`, none. They pass (go test ./cmd/pig)."
     },
@@ -4208,9 +4208,9 @@
       "upstreamTestHash": "sha256:963d17222f4b23acdf67598de2aea4126ef1eebb488b8ceac276aa552fdf7a3a",
       "evidence": [
         "coding/source/ref_test.go#TestParseCanonicalIdentity",
-        "cmd/pig/package_commands_test.go#TestPackageSourceIdentityUsesSharedTypedContract",
+        "coding/cli/package_commands_test.go#TestPackageSourceIdentityUsesSharedTypedContract",
         "coding/source/package_manager_ssh_upstream_test.go#TestPackageManagerSSHSourceParsingUpstream",
-        "cmd/pig/package_ssh_upstream_test.go#TestBareSCPPackageSourceRemainsLocalAtCLIAndIdentityBoundaries"
+        "coding/cli/package_ssh_upstream_test.go#TestBareSCPPackageSourceRemainsLocalAtCLIAndIdentityBoundaries"
       ],
       "rationale": "All eight original SSH source cases and the bare-SCP CLI identity/error caller pass after 6ecd03ee7; the canonical porter replay is 6b54eb586. Owner-reviewed case inputs and current upstream hashes are retained. Named evidence passes on the union with Go 1.27.1, -race and -count=1; unrelated partial and live-service obligations remain open."
     },
@@ -4219,80 +4219,80 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:1a4b2a961484af0f302c4bed5431a362ddaefd3748d705efedec8c09dc373678",
       "evidence": [
-        "cmd/pig/package_git_parity_test.go#TestGitPackageCLIComparedWithPi",
-        "cmd/pig/package_process_test.go#TestPackageSourceReplacementPreservesFilters",
-        "cmd/pig/package_process_test.go#TestPackageChildOutputDuringStdoutTakeover",
-        "cmd/pig/package_cli_output_test.go#TestPackageChildOutputAndFailure",
-        "cmd/pig/package_commands_test.go#TestNPMInstallArgsMatchUpstreamManagedInstallContract",
-        "cmd/pig/package_commands_test.go#TestGetGitDependencyInstallArgs",
-        "cmd/pig/package_npm_trust_test.go#TestPackageNpmCommandUsesResolvedTrust",
-        "cmd/pig/package_npm_trust_test.go#TestPackageNpmCommandRetainsOverrides",
-        "cmd/pig/package_npm_trust_test.go#TestPackageNpmCommandDefaultsRespectTrust",
-        "cmd/pig/package_npm_trust_test.go#TestPackageNpmCommandFailureIsReturned",
-        "cmd/pig/package_npm_trust_test.go#TestPackageRemoveRetainsCommandOverridesAndSettingsOnFailure",
-        "cmd/pig/package_registry_scope_test.go#TestNpmMetadataLookupScope",
-        "cmd/pig/package_registry_scope_test.go#TestPackageUpdatePerformsScopedMetadataLookup",
-        "cmd/pig/package_registry_scope_test.go#TestLatestNpmVersionFromJSON",
-        "cmd/pig/package_commands_test.go#TestDetectSourceKind",
-        "cmd/pig/package_commands_test.go#TestNormalizePackageSourceForSettings_UsesScopeBase",
-        "cmd/pig/configured_resources_test.go#TestCollectPackagePromptPaths_DedupesSharedPackageWithProjectPrecedence",
+        "coding/cli/package_git_parity_test.go#TestGitPackageCLIComparedWithPi",
+        "coding/cli/package_process_test.go#TestPackageSourceReplacementPreservesFilters",
+        "coding/cli/package_process_test.go#TestPackageChildOutputDuringStdoutTakeover",
+        "coding/cli/package_cli_output_test.go#TestPackageChildOutputAndFailure",
+        "coding/cli/package_commands_test.go#TestNPMInstallArgsMatchUpstreamManagedInstallContract",
+        "coding/cli/package_commands_test.go#TestGetGitDependencyInstallArgs",
+        "coding/cli/package_npm_trust_test.go#TestPackageNpmCommandUsesResolvedTrust",
+        "coding/cli/package_npm_trust_test.go#TestPackageNpmCommandRetainsOverrides",
+        "coding/cli/package_npm_trust_test.go#TestPackageNpmCommandDefaultsRespectTrust",
+        "coding/cli/package_npm_trust_test.go#TestPackageNpmCommandFailureIsReturned",
+        "coding/cli/package_npm_trust_test.go#TestPackageRemoveRetainsCommandOverridesAndSettingsOnFailure",
+        "coding/cli/package_registry_scope_test.go#TestNpmMetadataLookupScope",
+        "coding/cli/package_registry_scope_test.go#TestPackageUpdatePerformsScopedMetadataLookup",
+        "coding/cli/package_registry_scope_test.go#TestLatestNpmVersionFromJSON",
+        "coding/cli/package_commands_test.go#TestDetectSourceKind",
+        "coding/cli/package_commands_test.go#TestNormalizePackageSourceForSettings_UsesScopeBase",
+        "coding/cli/configured_resources_test.go#TestCollectPackagePromptPaths_DedupesSharedPackageWithProjectPrecedence",
         "coding/packagecontent/packagecontent_test.go#TestApplyPatternsUsesSkillDirectoryIdentity",
         "coding/packagecontent/pi_manifest_test.go#TestReadPiManifest",
-        "cmd/pig/package_resource_upstream_test.go#TestPackageResolveOriginalCases",
-        "cmd/pig/package_resource_upstream_test.go#TestPackageSkillMetadataOriginalCases",
-        "cmd/pig/package_agents_skills_upstream_test.go#TestPackageAgentsSkillDiscoveryOriginal",
-        "cmd/pig/package_local_identity_upstream_test.go#TestPackageLocalSourceResolutionUpstream",
-        "cmd/pig/package_local_identity_upstream_test.go#TestPackageCommandPreservesSpacedArgvUpstream",
-        "cmd/pig/package_local_identity_upstream_test.go#TestPackageIdentityDeduplicationUpstream",
-        "cmd/pig/package_progress_upstream_test.go#TestPackageLocalResolutionProgressUpstream",
-        "cmd/pig/package_progress_upstream_test.go#TestPackageInstallFailureProgressUpstream",
-        "cmd/pig/package_progress_upstream_test.go#TestPackageInstallCompletionProgressUpstream",
-        "cmd/pig/package_progress_upstream_test.go#TestPackageTemporaryRefreshProgressUpstream",
-        "cmd/pig/package_progress_upstream_test.go#TestPackageUpdateFailureProgressUpstream",
-        "cmd/pig/package_progress_upstream_test.go#TestPackageGitInstallRootTraversalUpstream",
-        "cmd/pig/package_npm_commands_upstream_test.go#TestPackageNpmCommandOriginal",
-        "cmd/pig/package_npm_commands_upstream_test.go#TestPackageNpmRootCommandChangesOriginal",
-        "cmd/pig/package_npm_commands_upstream_test.go#TestPackagePnpmManagedResolutionOriginal",
-        "cmd/pig/package_npm_commands_upstream_test.go#TestPackagePnpmLegacyResolutionOriginal",
-        "cmd/pig/package_npm_commands_upstream_test.go#TestPackageLegacyNpmUpdateMigratesOriginal",
-        "cmd/pig/package_git_dependencies_upstream_test.go#TestPackageGitDependenciesOriginal",
-        "cmd/pig/package_source_parsing_upstream_test.go#TestPackageSourceDocsExamplesOriginal",
-        "cmd/pig/package_source_parsing_upstream_test.go#TestPackageHTTPSParsingOriginal",
-        "cmd/pig/package_temporary_path_upstream_test.go#TestTemporaryNpmPathUnderAgentRootUpstream",
-        "cmd/pig/package_settings_upstream_test.go#TestPackageSettingsSourceNormalizationUpstream",
-        "cmd/pig/package_patterns_upstream_test.go#TestPackagePatternCasesUpstream",
-        "cmd/pig/package_manifest_patterns_upstream_test.go#TestPackageManifestPatternsUpstream",
-        "cmd/pig/package_autoload_upstream_test.go#TestPackageAutoloadDisabledOriginal",
-        "cmd/pig/package_multifile_upstream_test.go#TestPackageMultiFileExtensionDiscoveryUpstream",
-        "cmd/pig/package_reconcile_upstream_test.go#TestNpmUpdateVersionReconciliationUpstream",
-        "cmd/pig/package_reconcile_upstream_test.go#TestPackageCapturedCommandWaitsForStreamClosureUpstream",
-        "cmd/pig/package_batch_upstream_test.go#TestPackageBatchedConcurrentUpdatesOriginal",
-        "cmd/pig/package_update_cases_upstream_test.go#TestPackageUpdateLookupPrefixesOriginal",
-        "cmd/pig/package_update_cases_upstream_test.go#TestPackageOfflineResolutionOriginal",
-        "cmd/pig/package_update_cases_upstream_test.go#TestPackageAvailableUpdatesOriginal",
-        "cmd/pig/package_update_cases_upstream_test.go#TestPackageLatestVersionCommandsOriginal",
+        "coding/cli/package_resource_upstream_test.go#TestPackageResolveOriginalCases",
+        "coding/cli/package_resource_upstream_test.go#TestPackageSkillMetadataOriginalCases",
+        "coding/cli/package_agents_skills_upstream_test.go#TestPackageAgentsSkillDiscoveryOriginal",
+        "coding/cli/package_local_identity_upstream_test.go#TestPackageLocalSourceResolutionUpstream",
+        "coding/cli/package_local_identity_upstream_test.go#TestPackageCommandPreservesSpacedArgvUpstream",
+        "coding/cli/package_local_identity_upstream_test.go#TestPackageIdentityDeduplicationUpstream",
+        "coding/cli/package_progress_upstream_test.go#TestPackageLocalResolutionProgressUpstream",
+        "coding/cli/package_progress_upstream_test.go#TestPackageInstallFailureProgressUpstream",
+        "coding/cli/package_progress_upstream_test.go#TestPackageInstallCompletionProgressUpstream",
+        "coding/cli/package_progress_upstream_test.go#TestPackageTemporaryRefreshProgressUpstream",
+        "coding/cli/package_progress_upstream_test.go#TestPackageUpdateFailureProgressUpstream",
+        "coding/cli/package_progress_upstream_test.go#TestPackageGitInstallRootTraversalUpstream",
+        "coding/cli/package_npm_commands_upstream_test.go#TestPackageNpmCommandOriginal",
+        "coding/cli/package_npm_commands_upstream_test.go#TestPackageNpmRootCommandChangesOriginal",
+        "coding/cli/package_npm_commands_upstream_test.go#TestPackagePnpmManagedResolutionOriginal",
+        "coding/cli/package_npm_commands_upstream_test.go#TestPackagePnpmLegacyResolutionOriginal",
+        "coding/cli/package_npm_commands_upstream_test.go#TestPackageLegacyNpmUpdateMigratesOriginal",
+        "coding/cli/package_git_dependencies_upstream_test.go#TestPackageGitDependenciesOriginal",
+        "coding/cli/package_source_parsing_upstream_test.go#TestPackageSourceDocsExamplesOriginal",
+        "coding/cli/package_source_parsing_upstream_test.go#TestPackageHTTPSParsingOriginal",
+        "coding/cli/package_temporary_path_upstream_test.go#TestTemporaryNpmPathUnderAgentRootUpstream",
+        "coding/cli/package_settings_upstream_test.go#TestPackageSettingsSourceNormalizationUpstream",
+        "coding/cli/package_patterns_upstream_test.go#TestPackagePatternCasesUpstream",
+        "coding/cli/package_manifest_patterns_upstream_test.go#TestPackageManifestPatternsUpstream",
+        "coding/cli/package_autoload_upstream_test.go#TestPackageAutoloadDisabledOriginal",
+        "coding/cli/package_multifile_upstream_test.go#TestPackageMultiFileExtensionDiscoveryUpstream",
+        "coding/cli/package_reconcile_upstream_test.go#TestNpmUpdateVersionReconciliationUpstream",
+        "coding/cli/package_reconcile_upstream_test.go#TestPackageCapturedCommandWaitsForStreamClosureUpstream",
+        "coding/cli/package_batch_upstream_test.go#TestPackageBatchedConcurrentUpdatesOriginal",
+        "coding/cli/package_update_cases_upstream_test.go#TestPackageUpdateLookupPrefixesOriginal",
+        "coding/cli/package_update_cases_upstream_test.go#TestPackageOfflineResolutionOriginal",
+        "coding/cli/package_update_cases_upstream_test.go#TestPackageAvailableUpdatesOriginal",
+        "coding/cli/package_update_cases_upstream_test.go#TestPackageLatestVersionCommandsOriginal",
         "docs/parity/cfg-2-test-closure.md",
-        "cmd/pig/package_auto_discovery_upstream_test.go#TestPackageAutoDiscoveryLayoutUpstream",
-        "cmd/pig/package_autoload_upstream_test.go#TestPackageAutoloadRuntimeDeltaOrder",
-        "cmd/pig/package_autoload_upstream_test.go#TestPackageAutoloadDefaultsDoNotInferDeltas",
-        "cmd/pig/package_directory_link_test.go#TestPackageDirectoryLinkDoesNotSkipAssertions",
-        "cmd/pig/package_directory_link_test.go#TestPackageDirectoryLinkSurfacesFailures",
-        "cmd/pig/package_installed_version_test.go#TestEnsureConfiguredNpmVersionMatchesUpstream",
-        "cmd/pig/package_installed_version_test.go#TestEnsureConfiguredNpmMismatchOfflineAndFailure",
-        "cmd/pig/package_layered_filters_upstream_test.go#TestPackageLayeredFiltersUpstream",
-        "cmd/pig/package_manager_gaps_upstream_test.go#TestUpstreamGitInstallPathRejectsPathsOutsideRoots",
-        "cmd/pig/package_manager_gaps_upstream_test.go#TestUpstreamInstallProgressAndGitURLWithoutPrefix",
-        "cmd/pig/package_manager_gaps_upstream_test.go#TestUpstreamLocalExtensionResolutionStartsNoInstall",
-        "cmd/pig/package_reconcile_upstream_test.go#TestNpmUpdateSkipsExactVersionsAndIncludesBothScopes",
-        "cmd/pig/package_resource_upstream_test.go#TestCanonicalResourceWinnerUsesProjectAutoBeforeUserExplicit",
-        "cmd/pig/package_source_parsing_upstream_test.go#TestPackageBareSourcesNeverInvokeNpm",
-        "cmd/pig/package_update_results_test.go#TestPackageAvailableUpdatesResults",
-        "cmd/pig/skill_resource_metadata_upstream_test.go#TestSkillResourceMetadataUpstream",
-        "cmd/pig/skill_resource_metadata_upstream_test.go#TestSkillMetadataUsesFilesWithoutChangingConfigBundlePaths",
-        "cmd/pig/skill_resource_metadata_upstream_test.go#TestExplicitSkillFileMetadataWinsOverAutomaticBundle",
-        "cmd/pig/skill_resource_metadata_upstream_test.go#TestSkillMetadataProjection",
+        "coding/cli/package_auto_discovery_upstream_test.go#TestPackageAutoDiscoveryLayoutUpstream",
+        "coding/cli/package_autoload_upstream_test.go#TestPackageAutoloadRuntimeDeltaOrder",
+        "coding/cli/package_autoload_upstream_test.go#TestPackageAutoloadDefaultsDoNotInferDeltas",
+        "coding/cli/package_directory_link_test.go#TestPackageDirectoryLinkDoesNotSkipAssertions",
+        "coding/cli/package_directory_link_test.go#TestPackageDirectoryLinkSurfacesFailures",
+        "coding/cli/package_installed_version_test.go#TestEnsureConfiguredNpmVersionMatchesUpstream",
+        "coding/cli/package_installed_version_test.go#TestEnsureConfiguredNpmMismatchOfflineAndFailure",
+        "coding/cli/package_layered_filters_upstream_test.go#TestPackageLayeredFiltersUpstream",
+        "coding/cli/package_manager_gaps_upstream_test.go#TestUpstreamGitInstallPathRejectsPathsOutsideRoots",
+        "coding/cli/package_manager_gaps_upstream_test.go#TestUpstreamInstallProgressAndGitURLWithoutPrefix",
+        "coding/cli/package_manager_gaps_upstream_test.go#TestUpstreamLocalExtensionResolutionStartsNoInstall",
+        "coding/cli/package_reconcile_upstream_test.go#TestNpmUpdateSkipsExactVersionsAndIncludesBothScopes",
+        "coding/cli/package_resource_upstream_test.go#TestCanonicalResourceWinnerUsesProjectAutoBeforeUserExplicit",
+        "coding/cli/package_source_parsing_upstream_test.go#TestPackageBareSourcesNeverInvokeNpm",
+        "coding/cli/package_update_results_test.go#TestPackageAvailableUpdatesResults",
+        "coding/cli/skill_resource_metadata_upstream_test.go#TestSkillResourceMetadataUpstream",
+        "coding/cli/skill_resource_metadata_upstream_test.go#TestSkillMetadataUsesFilesWithoutChangingConfigBundlePaths",
+        "coding/cli/skill_resource_metadata_upstream_test.go#TestExplicitSkillFileMetadataWinsOverAutomaticBundle",
+        "coding/cli/skill_resource_metadata_upstream_test.go#TestSkillMetadataProjection",
         "internal/packagemanager/builtin_extensions_test.go#TestResolveBuiltinExtensionsWithUserExclusionsAndProjectOverrides",
-        "cmd/pig/package_temporary_upstream_test.go#TestPinnedTemporaryGitSourceChangingRefLoadsNewCheckout"
+        "coding/cli/package_temporary_upstream_test.go#TestPinnedTemporaryGitSourceChangingRefLoadsNewCheckout"
       ],
       "rationale": "Credited at 0.99.2: the 123 cases keep the 0.87.1 evidence. The 0.99.2 delta: built-in extension resolution with user exclusions and project overrides (package-manager.test.ts: 'should resolve built-in extensions...') is TestResolveBuiltinExtensionsWithUserExclusionsAndProjectOverrides; the git dependency install arguments (--omit=dev --legacy-peer-deps, pnpm after a separator, corepack wrapper, bun --omit=peer, wrapped pnpm on update) are the rows of TestPackageGitDependenciesOriginal (package_git_dependencies_upstream_test.go:39-41); 'should load a new checkout when a pinned temporary git source changes ref' (#9982) is TestPinnedTemporaryGitSourceChangingRefLoadsNewCheckout. They pass (go test ./cmd/pig ./internal/packagemanager)."
     },
@@ -4336,7 +4336,7 @@
       "upstreamTestHash": "sha256:c04b3602f3b11f30578f9ab3d440095ad92433e463d34b03b24b9cec4e24c13a",
       "evidence": [
         "examples/extensions/plan-mode/main_test.go#TestPlanMode",
-        "cmd/pig/plan_mode_example_test.go"
+        "coding/cli/plan_mode_example_test.go"
       ],
       "rationale": "All four cases run against the Go factory through its SDK transport: custom tool preservation and exact setActiveTools calls, no prompt without a plan, refinement followUp, and execution followUp with triggerTurn and restored tools. Each case cites the pinned upstream line. The refinement assertion rejects a compiling followUp-to-steer mutation. Run with GOWORK=off in examples/extensions/plan-mode; cmd/pig also exercises the production RPC/session path."
     },
@@ -4363,8 +4363,8 @@
       "upstreamTestHash": "sha256:e8eeb3e47b86659cb1ceb0c1bab32fc95d9318bfbda05db127d404fd2e4d52a7",
       "evidence": [
         "test/integration/signal_shutdown_test.go",
-        "cmd/pig/print_mode_upstream_test.go#TestPrintModeShutdownUpstream",
-        "cmd/pig/app_mode_binary_test.go#TestPrintModeWithoutMessageReportsLastMessage"
+        "coding/cli/print_mode_upstream_test.go#TestPrintModeShutdownUpstream",
+        "coding/cli/app_mode_binary_test.go#TestPrintModeWithoutMessageReportsLastMessage"
       ],
       "rationale": "The complete pinned upstream case set is reviewed in gate-close-00 and its delivered tests are composed from 836f53b84. All named added evidence passes on the release union with Go 1.27.1, -race and -count=1; original upstream hashes and existing evidence are retained. This closes the test file, not unrelated partial or live-service obligations."
     },
@@ -4436,52 +4436,52 @@
         "internal/codingagent/context_files_test.go#TestLoadProjectContextFiles_PrefersOverridePerDirectory",
         "internal/codingagent/context_files_test.go#TestLoadProjectContextFiles_SkipsOverrideDirectory",
         "internal/codingagent/context_files_test.go#TestLoadProjectContextFiles_AncestorWalk",
-        "cmd/pig/configured_resources_test.go#TestCollectPromptPaths_AutoDiscoveryRespectsOverridePatterns",
-        "cmd/pig/configured_resources_test.go#TestCollectExtensionConfigs_AutoDiscoveryAndOverrides",
+        "coding/cli/configured_resources_test.go#TestCollectPromptPaths_AutoDiscoveryRespectsOverridePatterns",
+        "coding/cli/configured_resources_test.go#TestCollectExtensionConfigs_AutoDiscoveryAndOverrides",
         "internal/codingagent/reload_resources_test.go#TestInteractiveModeExtendResourcesFromExtensions_MergesDiscoveredPaths",
-        "cmd/pig/configured_resources_test.go#TestResourceLoaderUpstreamSDKOptions",
-        "cmd/pig/configured_resources_test.go#TestResourceLoaderUpstreamDiscovery",
-        "cmd/pig/configured_resources_test.go#TestResourceLoaderUpstreamProjectPrecedence",
+        "coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamSDKOptions",
+        "coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamDiscovery",
+        "coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamProjectPrecedence",
         "internal/codingagent/theme_precedence_test.go#TestResourceLoaderUpstreamThemePrecedence",
-        "cmd/pig/configured_resources_test.go#TestResourceLoaderUpstreamSymlinkedExtensions",
-        "cmd/pig/configured_resources_test.go#TestResourceLoaderUpstreamPreTrustExtensions",
-        "cmd/pig/configured_resources_test.go#TestResourceLoaderUpstreamExtensionConflicts",
-        "cmd/pig/upstream_resource_context_options_test.go#TestUpstreamResourceLoaderContextOptions",
-        "cmd/pig/upstream_resource_context_options_test.go#TestUpstreamResourceLoaderUntrustedProject",
+        "coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamSymlinkedExtensions",
+        "coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamPreTrustExtensions",
+        "coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamExtensionConflicts",
+        "coding/cli/upstream_resource_context_options_test.go#TestUpstreamResourceLoaderContextOptions",
+        "coding/cli/upstream_resource_context_options_test.go#TestUpstreamResourceLoaderUntrustedProject",
         "internal/codingagent/upstream_resource_context_test.go#TestUpstreamResourceLoaderContextFiles",
-        "cmd/pig/resource_prompts_test.go#TestResourceLoaderUpstreamSystemPromptSources",
+        "coding/cli/resource_prompts_test.go#TestResourceLoaderUpstreamSystemPromptSources",
         "internal/codingagent/reload_resources_test.go#TestResourceLoaderUpstreamExtensionResources",
-        "cmd/pig/reload_resources_test.go#TestResourceLoaderUpstreamPackageMetadata",
+        "coding/cli/reload_resources_test.go#TestResourceLoaderUpstreamPackageMetadata",
         "docs/parity/resource-loader-test-review.md",
-        "cmd/pig/upstream_resource_prompt_sources_test.go#TestUpstreamResourceLoaderPromptSources",
-        "cmd/pig/upstream_resource_symlink_test.go#TestUpstreamResourceLoaderSymlinkedExtensions",
-        "cmd/pig/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderUserExtensionsBeforeTrust",
-        "cmd/pig/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts",
-        "cmd/pig/resource_discovery_upstream_test.go#TestUpstreamResourceLoaderDiscovery",
-        "cmd/pig/resource_loader_gaps_upstream_test.go#TestUpstreamResourceLoaderProjectOverUserCollisions",
-        "cmd/pig/resource_loader_gaps_upstream_test.go#TestUpstreamResourceLoaderPackageMetadata",
-        "cmd/pig/resource_loader_gaps_upstream_test.go#TestUpstreamHeadlessExtendResourcesLoadsFileURLs",
+        "coding/cli/upstream_resource_prompt_sources_test.go#TestUpstreamResourceLoaderPromptSources",
+        "coding/cli/upstream_resource_symlink_test.go#TestUpstreamResourceLoaderSymlinkedExtensions",
+        "coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderUserExtensionsBeforeTrust",
+        "coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts",
+        "coding/cli/resource_discovery_upstream_test.go#TestUpstreamResourceLoaderDiscovery",
+        "coding/cli/resource_loader_gaps_upstream_test.go#TestUpstreamResourceLoaderProjectOverUserCollisions",
+        "coding/cli/resource_loader_gaps_upstream_test.go#TestUpstreamResourceLoaderPackageMetadata",
+        "coding/cli/resource_loader_gaps_upstream_test.go#TestUpstreamHeadlessExtendResourcesLoadsFileURLs",
         "internal/codingagent/resource_extend_upstream_test.go#TestUpstreamExtendResourcesLoadsSkillsAndPromptsWithExtensionMetadata",
         "internal/codingagent/resource_extend_upstream_test.go#TestUpstreamExtendResourcesLoadsFileURLs",
         "internal/codingagent/resource_extend_upstream_test.go#TestUpstreamExtendResourcesKeepPackageMetadata",
         "internal/codingagent/resource_extend_upstream_test.go#TestThemePathsFirstPathWinsCollisions",
-        "cmd/pig/settings_file_url_upstream_test.go#TestStartupRejectsInvalidSettingsFileURL",
-        "cmd/pig/settings_file_url_upstream_test.go#TestInvalidSettingsFileURLStopsPreTrustFactories",
-        "cmd/pig/settings_file_url_upstream_test.go#TestConfiguredResourceErrorsFollowPiOrder",
-        "cmd/pig/settings_file_url_upstream_test.go#TestReloadSnapshotReportsInvalidSettingsFileURL",
+        "coding/cli/settings_file_url_upstream_test.go#TestStartupRejectsInvalidSettingsFileURL",
+        "coding/cli/settings_file_url_upstream_test.go#TestInvalidSettingsFileURLStopsPreTrustFactories",
+        "coding/cli/settings_file_url_upstream_test.go#TestConfiguredResourceErrorsFollowPiOrder",
+        "coding/cli/settings_file_url_upstream_test.go#TestReloadSnapshotReportsInvalidSettingsFileURL",
         "internal/codingagent/resource_extend_upstream_test.go#TestReloadFailureFromSettingsSnapshotShowsPiText",
-        "cmd/pig/resource_loader_gaps_upstream_test.go#TestPrintModeInvalidDiscoveredFileURLFailsBind",
-        "cmd/pig/extension_set_upstream_test.go#TestUpstreamResourceLoaderProjectManifestDoesNotOwnProjectExtension",
-        "cmd/pig/extension_set_upstream_test.go#TestUpstreamResourceLoaderWarnsAboutHostDependenciesInPackageManifest",
-        "cmd/pig/extension_set_upstream_test.go#TestUpstreamResourceLoaderFailsWhenPackageManifestCannotBeParsed",
-        "cmd/pig/extension_set_upstream_test.go#TestExtensionPackageWarningManifestShapes",
-        "cmd/pig/extension_set_upstream_test.go#TestUpstreamResourceLoaderLeavesOutReplaceableExtensions",
-        "cmd/pig/extension_set_upstream_test.go#TestUpstreamResourceLoaderSkipsBuiltinExtensionsDisabledInSettings",
-        "cmd/pig/extension_set_upstream_test.go#TestUpstreamResourceLoaderLoadsBuiltinExtensionsAfterFileExtensions",
-        "cmd/pig/extension_set_upstream_test.go#TestUpstreamResourceLoaderNoExtensionsDisablesBuiltinsUnlessLoadedExplicitly",
-        "cmd/pig/extension_set_upstream_test.go#TestUpstreamResourceLoaderAppliesProjectBuiltinOverridesAfterTrust"
+        "coding/cli/resource_loader_gaps_upstream_test.go#TestPrintModeInvalidDiscoveredFileURLFailsBind",
+        "coding/cli/extension_set_upstream_test.go#TestUpstreamResourceLoaderProjectManifestDoesNotOwnProjectExtension",
+        "coding/cli/extension_set_upstream_test.go#TestUpstreamResourceLoaderWarnsAboutHostDependenciesInPackageManifest",
+        "coding/cli/extension_set_upstream_test.go#TestUpstreamResourceLoaderFailsWhenPackageManifestCannotBeParsed",
+        "coding/cli/extension_set_upstream_test.go#TestExtensionPackageWarningManifestShapes",
+        "coding/cli/extension_set_upstream_test.go#TestUpstreamResourceLoaderLeavesOutReplaceableExtensions",
+        "coding/cli/extension_set_upstream_test.go#TestUpstreamResourceLoaderSkipsBuiltinExtensionsDisabledInSettings",
+        "coding/cli/extension_set_upstream_test.go#TestUpstreamResourceLoaderLoadsBuiltinExtensionsAfterFileExtensions",
+        "coding/cli/extension_set_upstream_test.go#TestUpstreamResourceLoaderNoExtensionsDisablesBuiltinsUnlessLoadedExplicitly",
+        "coding/cli/extension_set_upstream_test.go#TestUpstreamResourceLoaderAppliesProjectBuiltinOverridesAfterTrust"
       ],
-      "rationale": "50 case sites. The 42 sites of the 0.87.1 review (docs/parity/resource-loader-test-review.md) keep their evidence. The 8 sites added in 0.99.1 are ported in cmd/pig/extension_set_upstream_test.go with upstream's fixtures: :43 project manifest does not own a project extension (TestUpstreamResourceLoaderProjectManifestDoesNotOwnProjectExtension), :59 host dependency warning text for #9863 (...WarnsAboutHostDependenciesInPackageManifest, TestExtensionPackageWarningManifestShapes), :87 unparsable package manifest rejects (...FailsWhenPackageManifestCannotBeParsed), :1040 replaceable extensions (...LeavesOutReplaceableExtensions), :1085 builtin disabled in settings, :1107 builtin after file extensions with and without trust resolution, :1126 noExtensions with -e builtin:mcp and builtin:missing, :1149 project builtin overrides after trust. Upstream's factory-based loader options map to the native extension-set loader; the Node SDK carries the override cases as before."
+      "rationale": "50 case sites. The 42 sites of the 0.87.1 review (docs/parity/resource-loader-test-review.md) keep their evidence. The 8 sites added in 0.99.1 are ported in coding/cli/extension_set_upstream_test.go with upstream's fixtures: :43 project manifest does not own a project extension (TestUpstreamResourceLoaderProjectManifestDoesNotOwnProjectExtension), :59 host dependency warning text for #9863 (...WarnsAboutHostDependenciesInPackageManifest, TestExtensionPackageWarningManifestShapes), :87 unparsable package manifest rejects (...FailsWhenPackageManifestCannotBeParsed), :1040 replaceable extensions (...LeavesOutReplaceableExtensions), :1085 builtin disabled in settings, :1107 builtin after file extensions with and without trust resolution, :1126 noExtensions with -e builtin:mcp and builtin:missing, :1149 project builtin overrides after trust. Upstream's factory-based loader options map to the native extension-set loader; the Node SDK carries the override cases as before."
     },
     {
       "path": "packages/coding-agent/test/restore-sandbox-env.test.ts",
@@ -4521,7 +4521,7 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:4a5a9738d39bb226e12535e6acdcebcd92ea675e9b1fd5ffadbdc0d7ea4babb6",
       "evidence": [
-        "cmd/pig/rpc_jsonl_upstream_test.go#TestRPCJSONLUpstream",
+        "coding/cli/rpc_jsonl_upstream_test.go#TestRPCJSONLUpstream",
         "test/parity/scenarios/rpc/02-rpc-unknown-command.toml"
       ],
       "rationale": "All four cases are ported with the same JSONL inputs and assertions, including literal Unicode separators on output, CRLF and the unterminated final record. Escaped-backslash cases guard the serializer fix."
@@ -4531,7 +4531,7 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:314a2b5e2699303e925843b869ca49d0c0f34cb4ce0da220692ed35c53fcbfe0",
       "evidence": [
-        "cmd/pig/rpc_prompt_semantics_upstream_test.go#TestRPCPromptResponseSemanticsUpstream",
+        "coding/cli/rpc_prompt_semantics_upstream_test.go#TestRPCPromptResponseSemanticsUpstream",
         "test/parity/scenarios/rpc/25-rpc-clear-queue.toml"
       ],
       "rationale": "All 7 cases run through a real RPC process in TestRPCPromptResponseSemanticsUpstream: :197 one failure response, :237 one started response with data.disposition started (changed in 0.99.1), :259 extension command and intercepted input reported handled with no agent_start (new), :291 queued during streaming with disposition queued, :329 steer and follow_up reported handled when an extension consumes A and queues B, with the queue_update and exactly one response (new, #9803), :377 steer and follow_up reported queued after input transformation (new), :411 returns and clears queued messages with disposition queued on the clear-steering prompt. Each case cites its upstream line in the test."
@@ -4541,22 +4541,22 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:28bb4f005cac1803df42abae071301824efe481598d25f1fabd0ce144203887f",
       "evidence": [
-        "cmd/pig/rpc_upstream_test.go#TestRPCModeUpstream",
-        "cmd/pig/rpc_admission_test.go#TestRPCPromiseReactionOrder",
-        "cmd/pig/rpc_preflight_admission_test.go#TestRPCPreflightAdmission",
-        "cmd/pig/rpc_preflight_admission_test.go#TestRPCPreflightRejectionYieldsToStateResponse",
+        "coding/cli/rpc_upstream_test.go#TestRPCModeUpstream",
+        "coding/cli/rpc_admission_test.go#TestRPCPromiseReactionOrder",
+        "coding/cli/rpc_preflight_admission_test.go#TestRPCPreflightAdmission",
+        "coding/cli/rpc_preflight_admission_test.go#TestRPCPreflightRejectionYieldsToStateResponse",
         "test/parity/scenarios/rpc/35-rpc-queue-prompt-await.toml",
         "test/parity/scenarios/rpc/36-rpc-preflight-admission.toml",
-        "cmd/pig/rpc_drift_test.go#TestRPCMutationEventsPrecedeResponses",
-        "cmd/pig/rpc_queue_await_test.go#TestRPCQueueRepliesYieldToInputBatch",
-        "cmd/pig/rpc_queue_await_test.go#TestRPCQueueErrorsYieldToInputBatch",
-        "cmd/pig/rpc_queue_await_test.go#TestRPCBashCompletesWhileProviderIsPending",
-        "cmd/pig/rpc_queue_await_test.go#TestRPCEmptyPromptRetainsTextBlock",
+        "coding/cli/rpc_drift_test.go#TestRPCMutationEventsPrecedeResponses",
+        "coding/cli/rpc_queue_await_test.go#TestRPCQueueRepliesYieldToInputBatch",
+        "coding/cli/rpc_queue_await_test.go#TestRPCQueueErrorsYieldToInputBatch",
+        "coding/cli/rpc_queue_await_test.go#TestRPCBashCompletesWhileProviderIsPending",
+        "coding/cli/rpc_queue_await_test.go#TestRPCEmptyPromptRetainsTextBlock",
         "test/parity/scenarios/rpc/20-rpc-runtime-boundary-values.toml",
-        "cmd/pig/rpc_drift_test.go#TestRPCSwitchMissingCreatesExplicitSession",
-        "cmd/pig/rpc_drift_test.go#TestRPCInitialThinkingEntryMatchesState",
-        "cmd/pig/rpc_drift_test.go#TestRPCInvalidForkDiagnostic",
-        "cmd/pig/rpc_json_diagnostics_test.go#TestRPCJSONDiagnosticsMatchNode",
+        "coding/cli/rpc_drift_test.go#TestRPCSwitchMissingCreatesExplicitSession",
+        "coding/cli/rpc_drift_test.go#TestRPCInitialThinkingEntryMatchesState",
+        "coding/cli/rpc_drift_test.go#TestRPCInvalidForkDiagnostic",
+        "coding/cli/rpc_json_diagnostics_test.go#TestRPCJSONDiagnosticsMatchNode",
         "test/parity/scenarios/rpc/33-rpc-wire-mutations.toml",
         "test/parity/scenarios/rpc/34-rpc-initial-thinking.toml",
         "test/parity/scenarios/rpc/15-rpc-compaction-result.toml"
@@ -4618,7 +4618,7 @@
       "upstreamTestHash": "sha256:fdba99833bf6dd8346c3acdc7c77e156fab5ff451c3cc2b7a93295de60ac2307",
       "evidence": [
         "coding/extension/host/subprocess/runtime_node_child_session_test.go#TestNodeSDKSessionDefaultsAndSkillsMatchPi",
-        "cmd/pig/sdk_skills_upstream_test.go#TestUpstreamSDKSkillsSubprocess",
+        "coding/cli/sdk_skills_upstream_test.go#TestUpstreamSDKSkillsSubprocess",
         "docs/parity/resource-loader-test-review.md",
         "internal/codingagent/upstream_skills_test.go#TestUpstreamSDKSkillsDefaultDiscovery",
         "coding/sdk_skills_upstream_test.go#TestUpstreamSDKSkillsNativeSession",
@@ -4672,7 +4672,7 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:b32009c2d5257770b9f8f5b93f85c243cbd2755f14e8f5d4829d8f267ae16fe3",
       "evidence": [
-        "cmd/pig/session_invalid_upstream_test.go#TestInvalidSessionFilePrintsFriendlyErrorAndPreservesContent",
+        "coding/cli/session_invalid_upstream_test.go#TestInvalidSessionFilePrintsFriendlyErrorAndPreservesContent",
         "test/parity/scenarios/session/17-invalid-session-file.toml"
       ],
       "rationale": "The single case (:49) is unchanged in behavior since 0.87.1; only the harness --import argument became a file URL, which has no Go counterpart because the Go test starts the compiled binary."
@@ -4683,7 +4683,7 @@
       "upstreamTestHash": "sha256:d397b5bfb308e832ab4b8fa2e517196dc97f58eed53c25404e129697e03e547d",
       "evidence": [
         "internal/codingagent/session_test.go#TestFindByID",
-        "cmd/pig/session_id_readonly_upstream_test.go#TestUpstreamSessionIDReadonly",
+        "coding/cli/session_id_readonly_upstream_test.go#TestUpstreamSessionIDReadonly",
         "internal/codingagent/session_id_lookup_test.go#TestFindByIDDoesNotBuildFullListings"
       ],
       "rationale": "All 6 cases are unchanged in behavior since 0.87.1; only the harness --import argument became a file URL (pathToFileURL), which has no Go counterpart because the Go tests start the compiled binary."
@@ -4932,7 +4932,7 @@
         "internal/codingagent/upstream_skills_test.go#TestUpstreamCoreSkillsOptions",
         "internal/codingagent/upstream_skills_test.go#TestUpstreamCoreSkillsDetectNameCollisionsAndKeepFirst",
         "internal/codingagent/prompts/upstream_skills_test.go#TestUpstreamCoreFormatSkillsForPrompt",
-        "cmd/pig/upstream_skill_metadata_test.go#TestCLIPathSkillsUseTypedMetadata",
+        "coding/cli/upstream_skill_metadata_test.go#TestCLIPathSkillsUseTypedMetadata",
         "internal/codingagent/skill_discovery_order_test.go#TestSkillDiscoveryOrderSurvivesFrontmatterNamesAndReload",
         "test/parity/scenarios/extensions-runtime/38-discovered-skill-order.toml",
         "test/parity/scenarios/extensions-runtime/35-core-skill-metadata.toml"
@@ -4944,8 +4944,8 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:58bdbb0448eb3510d0a295f1ee1820d5012f45aaf3c11b907407b86bac7e79ea",
       "evidence": [
-        "cmd/pig/args_test.go",
-        "cmd/pig/startup_session_name_upstream_test.go#TestUpstreamStartupSessionName"
+        "coding/cli/args_test.go",
+        "coding/cli/startup_session_name_upstream_test.go#TestUpstreamStartupSessionName"
       ],
       "rationale": "The single case is unchanged in behavior since 0.87.1; only the harness --import argument became a file URL, which has no Go counterpart because the Go test starts the compiled binary."
     },
@@ -4964,7 +4964,7 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:ef34dcf8f189e69e1e9d5d634d662e167f6cf97023b6f06f84e4627942583f87",
       "evidence": [
-        "cmd/pig/stdout_cleanliness_upstream_test.go#TestStdoutCleanlinessUpstream"
+        "coding/cli/stdout_cleanliness_upstream_test.go#TestStdoutCleanlinessUpstream"
       ],
       "rationale": "Both cases are unchanged in behavior since 0.87.1; only the harness --import argument became a file URL, which has no Go counterpart because the Go test starts the compiled binary."
     },
@@ -4984,7 +4984,7 @@
         "coding/session_bash_output_test.go#TestUpstreamBashPersistenceOutputUpdates",
         "coding/session_bash_output_test.go#TestBashOutputPublishesSessionEventsBeforeReturn",
         "internal/codingagent/session_bash_entry_test.go#TestBashMessageEntryDiscriminatorSurvivesAppendAndRestore",
-        "cmd/pig/rpc_bash_updates_test.go#TestRPCBashUpdatesPrecedeResponse"
+        "coding/cli/rpc_bash_updates_test.go#TestRPCBashUpdatesPrecedeResponse"
       ],
       "rationale": "All eleven original Bash cases pass after 95db69a5e and 6a1062ed0, including exact correlated output chunks, callback-before-event order, awaited subscribers, overlap cancellation and deferred persistence. Real RPC tests preserve omitted, empty and nonempty IDs and publish updates before the response. Owner-reviewed case inputs and current upstream hashes are retained. Named evidence passes on the union with Go 1.27.1, -race and -count=1; unrelated partial and live-service obligations remain open."
     },
@@ -5124,11 +5124,11 @@
         "test/parity/scenarios/session/25-runtime-replacements.toml",
         "docs/parity/session-runtime-helper.md",
         "coding/session_import_test.go#TestImportFromJsonlPreservesSameNamedSession",
-        "cmd/pig/session_replacement_modes_test.go#TestPrintModeNewSessionBuildsFreshExtensionInstances",
-        "cmd/pig/session_replacement_modes_test.go#TestRPCSessionCommandsReplaceThroughTheRuntimeFactory",
-        "cmd/pig/session_replacement_modes_test.go#TestRPCSwitchSessionRebuildsServicesForTheDestinationCWD",
-        "cmd/pig/session_replacement_interactive_test.go#TestInteractiveSessionCommandsReplaceThroughTheRuntimeFactory",
-        "cmd/pig/session_replacement_interactive_test.go#TestInteractiveExtensionNewSessionKeepsTheCallerAliveUntilItReturns",
+        "coding/cli/session_replacement_modes_test.go#TestPrintModeNewSessionBuildsFreshExtensionInstances",
+        "coding/cli/session_replacement_modes_test.go#TestRPCSessionCommandsReplaceThroughTheRuntimeFactory",
+        "coding/cli/session_replacement_modes_test.go#TestRPCSwitchSessionRebuildsServicesForTheDestinationCWD",
+        "coding/cli/session_replacement_interactive_test.go#TestInteractiveSessionCommandsReplaceThroughTheRuntimeFactory",
+        "coding/cli/session_replacement_interactive_test.go#TestInteractiveExtensionNewSessionKeepsTheCallerAliveUntilItReturns",
         "coding/runtime_before_cancel_test.go#TestRuntimeCancelsThroughJSONBeforeResults",
         "coding/runtime_mode_hooks_test.go#TestRuntimeDrainRunsBetweenBeforeHookAndShutdown",
         "coding/runtime_mode_hooks_test.go#TestRuntimeEmitsQuitShutdownOnce",
@@ -5197,7 +5197,7 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:92f54641e61424c2e97b7155a55b9e895d4b9c6d134bd61efaec9f8ac1a85db3",
       "evidence": [
-        "cmd/pig/reload_resources_test.go#TestReloadResourceSnapshotProvider_RecomputesSettingsBackedPaths"
+        "coding/cli/reload_resources_test.go#TestReloadResourceSnapshotProvider_RecomputesSettingsBackedPaths"
       ],
       "rationale": "The Go test changes top-level prompt (and skill) settings after startup and asserts the reload snapshot applies the new settings, which is the regression's single case."
     },
@@ -5206,10 +5206,10 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:df64c1c98cbdf0e62ace26ec78bece41116105aef866463f2d85f3e29cc02b20",
       "evidence": [
-        "cmd/pig/configured_resources_test.go#TestSkillInputOrderPreservesPiCollisionPrecedence",
+        "coding/cli/configured_resources_test.go#TestSkillInputOrderPreservesPiCollisionPrecedence",
         "internal/codingagent/interactive_resource_test.go#TestResourceCollisionDiagnostics_SkillIncludesSourceInfo",
         "internal/codingagent/skill_file_metadata_test.go#TestSkillFileMetadataRetainsCollisionDiagnostics",
-        "cmd/pig/package_skill_collision_test.go#TestSkillCollisionPrecedenceUpstream"
+        "coding/cli/package_skill_collision_test.go#TestSkillCollisionPrecedenceUpstream"
       ],
       "rationale": "The complete pinned upstream case set is reviewed in gate-close-00 and its delivered tests are composed from 836f53b84. All named added evidence passes on the release union with Go 1.27.1, -race and -count=1; original upstream hashes and existing evidence are retained. This closes the test file, not unrelated partial or live-service obligations."
     },
@@ -5243,8 +5243,8 @@
         "test/parity/scenarios/session/27-replaced-session-context.toml",
         "test/parity/testdata/session-runtime-pi.mjs",
         "docs/parity/session-runtime-helper.md",
-        "cmd/pig/session_replacement_interactive_test.go#TestInteractiveExtensionNewSessionKeepsTheCallerAliveUntilItReturns",
-        "cmd/pig/session_replacement_modes_test.go#TestPrintModeNewSessionBuildsFreshExtensionInstances"
+        "coding/cli/session_replacement_interactive_test.go#TestInteractiveExtensionNewSessionKeepsTheCallerAliveUntilItReturns",
+        "coding/cli/session_replacement_modes_test.go#TestPrintModeNewSessionBuildsFreshExtensionInstances"
       ],
       "rationale": "All three sites 147/211/243 pass through real native Runtime replacement, rebind-before-callback ordering, fresh extension instances, stale pi/ctx errors of in-process extensions and awaited callback messages. The original native-system filter is retained only in this file. Session27 compares the original Pi bodies; compiling callback/order/staleness/await mutations fail the native path and pair. Context-aware command actions retain request values and cancellation. Production-mode factory routing and outgoing process lifetime are closed: print, JSON, RPC and interactive mode replace through the runtime factory (TestInteractiveExtensionNewSessionKeepsTheCallerAliveUntilItReturns keeps the outgoing extension process up until the requesting command returns; TestPrintModeNewSessionBuildsFreshExtensionInstances and the RPC and interactive lifecycle tests show fresh instances; TestPrintModeReplacedSessionHostCallsFailWithThePiStaleMessage shows that a subprocess extension's captured pi fails host calls with Pi's stale message, while SDK-local getters and fire-and-forget calls do not throw, D30 Part 1). Subprocess callback transport remains open: no extension SDK exposes withSession, so a Node, Go, Python or Rust extension cannot pass the callback that this file's native cases exercise, and this is not full-file or cross-SDK closure."
     },
@@ -5356,7 +5356,7 @@
         "internal/codingagent/upstream_signal_shutdown_test.go#TestSignalShutdownJoinsCleanupBeforeOwnerTeardown",
         "internal/codingagent/upstream_hup_shutdown_unix_test.go#TestHUPAwaitsCleanupAndRequestsOwnerTeardown",
         "internal/codingagent/modal_shutdown_test.go#TestModalSelectorsReleaseOnShutdown",
-        "cmd/pig/session_wire_lifecycle_test.go#TestModeWireLifecycle",
+        "coding/cli/session_wire_lifecycle_test.go#TestModeWireLifecycle",
         "test/parity/scenarios/model-runtime-store-catalog/23-scoped-models-shutdown.toml",
         "test/parity/scenarios/extensions-runtime/33-shutdown-order.toml"
       ],
@@ -5439,7 +5439,7 @@
       "upstreamTestHash": "sha256:914334ad9376b15ddf30e0d9f5e2576955bf66f3602aed557216b47ae6a968ef",
       "evidence": [
         "internal/codingagent/signal_handler_lifetime_upstream_test.go#TestSignalShutdownDefersTerminalCleanupUntilDisposalCompletesUpstream",
-        "cmd/pig/interactive_signal_lifetime_test.go#TestInteractiveSignalsRetainHandlersThroughDisposalAndDrain"
+        "coding/cli/interactive_signal_lifetime_test.go#TestInteractiveSignalsRetainHandlersThroughDisposalAndDrain"
       ],
       "rationale": "The complete pinned upstream case set is reviewed in gate-close-01 and its delivered tests are composed from 90e2266d3. All named added evidence passes on the release union with Go 1.27.1, -race and -count=1; original upstream hashes and existing evidence are retained. This closes the test file, not unrelated partial or live-service obligations."
     },
@@ -5448,7 +5448,7 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:8d820e03ede2d75f422a26ff68c060e58c79e34d2e22a76fb6961c39448ad3c0",
       "evidence": [
-        "cmd/pig/rpc_jsonl_upstream_test.go#TestRPCUnknownCommandPreservesRequestID",
+        "coding/cli/rpc_jsonl_upstream_test.go#TestRPCUnknownCommandPreservesRequestID",
         "test/parity/scenarios/rpc/02-rpc-unknown-command.toml"
       ],
       "rationale": "The sole case sends id=test/type=foobar through the real RPC process and requires the exact failure envelope, including the request id."
@@ -5640,7 +5640,7 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:26cbbdec4f2a1275e44c800c62f92e8d7a811ca9a293612f0ad9402a0ecb44bd",
       "evidence": [
-        "cmd/pig/rpc_ui_integration_test.go#TestRPCModePromptRejectsWhileCompactionWaitsOnExtensionUI",
+        "coding/cli/rpc_ui_integration_test.go#TestRPCModePromptRejectsWhileCompactionWaitsOnExtensionUI",
         "coding/session_prompt_disposition_upstream_test.go#TestPromptRejectedDuringManualCompactionReportsNoDisposition"
       ],
       "rationale": "The single case (:15) rejects an RPC prompt with the upstream error while manual compaction is in progress; changed in 0.99.1 so preflightResult is undefined (no disposition reported) instead of false, which TestPromptRejectedDuringManualCompactionReportsNoDisposition asserts through the Session preflight callback and the RPC test asserts through the process."
@@ -5659,7 +5659,7 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:7faca11638d719a5434fb5a8178ba2750060f9d80d1b687eda04494b499b0a1e",
       "evidence": [
-        "cmd/pig/package_manifest_startup_test.go#TestMalformedPackageManifestUpstream7187",
+        "coding/cli/package_manifest_startup_test.go#TestMalformedPackageManifestUpstream7187",
         "test/parity/scenarios/extensions-runtime/55-package-manifest-startup.toml"
       ],
       "rationale": "Exact npm:bad-package, skills string, valid prompt and skill file inputs from the upstream regression. The production startup and resource collectors retain the valid prompt and omit the malformed skills field. Additional issue #78 cases compare complete RPC commands and stderr with Pi 0.87.1."
@@ -5702,7 +5702,7 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:679b006e7ca063961eac153b8d5958c56bb5bb4ea4658415b361d01eb8817420",
       "evidence": [
-        "cmd/pig/args_end_options_upstream_test.go#TestCLIEndOfOptionsUpstream"
+        "coding/cli/args_end_options_upstream_test.go#TestCLIEndOfOptionsUpstream"
       ],
       "rationale": "The complete pinned upstream case set is reviewed in gate-close-01 and its delivered tests are composed from 90e2266d3. All named added evidence passes on the release union with Go 1.27.1, -race and -count=1; original upstream hashes and existing evidence are retained. This closes the test file, not unrelated partial or live-service obligations."
     },
@@ -5711,7 +5711,7 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:51353e72b7bd93fbade029e8c411e05f3104ffdba5bb2ff161764181df722e41",
       "evidence": [
-        "cmd/pig/json_stream_upstream_test.go#TestJSONUpdatesEmitDeltaOnlyAndScaleLinearlyUpstream"
+        "coding/cli/json_stream_upstream_test.go#TestJSONUpdatesEmitDeltaOnlyAndScaleLinearlyUpstream"
       ],
       "rationale": "The complete pinned upstream case set is reviewed in gate-close-01 and its delivered tests are composed from 90e2266d3. All named added evidence passes on the release union with Go 1.27.1, -race and -count=1; original upstream hashes and existing evidence are retained. This closes the test file, not unrelated partial or live-service obligations."
     },
@@ -5774,7 +5774,7 @@
       "upstreamTestHash": "sha256:6460c0490bd1e17a00d96b3e6e2ef909944a0f5a2b8e3f24c127788fd2220118",
       "evidence": [
         "internal/codingagent/settings_diagnostics_test.go#TestInvalidSettingsWarningRendersStartupDiagnosticsInsideTranscript",
-        "cmd/pig/settings_warning_upstream_test.go#TestInteractiveStartupSettingsWarningReachesTranscript"
+        "coding/cli/settings_warning_upstream_test.go#TestInteractiveStartupSettingsWarningReachesTranscript"
       ],
       "rationale": "The complete pinned upstream case set is reviewed in gate-close-01 and its delivered tests are composed from 90e2266d3. All named added evidence passes on the release union with Go 1.27.1, -race and -count=1; original upstream hashes and existing evidence are retained. This closes the test file, not unrelated partial or live-service obligations."
     },
@@ -5783,7 +5783,7 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:22454a026f3e7456bec9cf19934ed2ea2374250eda6574b7f58fc7d868a2f11b",
       "evidence": [
-        "cmd/pig/json_usage_upstream_test.go#TestJSONUpdatesIncludeCumulativeUsageWithoutSnapshotsUpstream"
+        "coding/cli/json_usage_upstream_test.go#TestJSONUpdatesIncludeCumulativeUsageWithoutSnapshotsUpstream"
       ],
       "rationale": "The complete pinned upstream case set is reviewed in gate-close-01 and its delivered tests are composed from 90e2266d3. All named added evidence passes on the release union with Go 1.27.1, -race and -count=1; original upstream hashes and existing evidence are retained. This closes the test file, not unrelated partial or live-service obligations."
     },
@@ -5792,7 +5792,7 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:fd05bd39358272ec460f00eb886a9d4dd8e483b19a19b0e92a61f7bd175a8599",
       "evidence": [
-        "cmd/pig/json_stream_upstream_test.go#TestJSONToolCallStartIncludesIDAndNameWithoutSnapshotsUpstream"
+        "coding/cli/json_stream_upstream_test.go#TestJSONToolCallStartIncludesIDAndNameWithoutSnapshotsUpstream"
       ],
       "rationale": "The complete pinned upstream case set is reviewed in gate-close-01 and its delivered tests are composed from 90e2266d3. All named added evidence passes on the release union with Go 1.27.1, -race and -count=1; original upstream hashes and existing evidence are retained. This closes the test file, not unrelated partial or live-service obligations."
     },
@@ -5916,7 +5916,7 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:ac50f627231a28486fb34ce8880dd994a56f6f8fcfef59ffef24fc0d07f9b07d",
       "evidence": [
-        "cmd/pig/rpc_user_bash_port_test.go#TestRPCUserBashFailurePort",
+        "coding/cli/rpc_user_bash_port_test.go#TestRPCUserBashFailurePort",
         "internal/codingagent/user_bash_port_test.go#TestInteractiveUserBashEmptyResultPort"
       ],
       "rationale": "All five table rows: real RPC/Session/Node extension execution with the exact pwd command, bash-request identity, Routing failed/invalid-result errors and extension_error events, undefined fallthrough, exact local result and invocation counts; both !pwd/!!pwd inputs dispatch exact cwd/exclusion events and start no execution for an empty result. A native Go shell spy substitutes for upstream's executor spy without excluding Windows. Compiling RPC fail-open and interactive double-bang mutations fail the respective tests. No production change."
@@ -6232,7 +6232,7 @@
         "test/parity/scenarios/tools/17-shell-operations.toml",
         "internal/codingagent/tools/tools_test.go",
         "internal/codingagent/tools/failure_details_test.go#TestBuiltinFailureDetails",
-        "cmd/pig/rpc_tool_persistence_test.go#TestRPCEmptyReadTextPersistsAndReplays"
+        "coding/cli/rpc_tool_persistence_test.go#TestRPCEmptyReadTextPersistsAndReplays"
       ],
       "rationale": "All 85 case sites. The 84 sites of the 0.87.1 review keep their evidence. Changed in 0.99.1 (TestToolsBashPort, TestToolsBashSignalsPort): :493 non-zero exit returns an error result with text \"out\\n\\n\\nCommand exited with code 3\" and structuredContent {output, truncated, exit_code, wall_time_seconds} plus the success and empty-output variants, replacing \"should handle command errors\"; :513 structured content returns up to 1 MiB of output (3000 lines whole, 300000 lines head and tail around an omission marker with full_output_path); :553 signal-killed commands are error results with partial output and exit code 137 or 143 instead of rejections. The recorded-oracle replay TestBashStructuredResultMatchesRecordedUpstream expects an oracle recorded at 0.99.2; its testdata is 0.99.1 and belongs to the oracle-golden lane, so it is not claimed here."
     },

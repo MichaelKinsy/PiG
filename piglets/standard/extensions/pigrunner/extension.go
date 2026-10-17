@@ -16,15 +16,19 @@ func Extension() *sdk.Extension {
 }
 
 func run(ctx sdk.Context, _ string) error {
-	highScore := loadHighScore(ctx.ConfigHome())
-	component := newRunnerComponent(highScore, standardlogin.ActiveVariant(ctx.ConfigHome()), ctx.Height)
+	configHome, err := ctx.ConfigHome()
+	if err != nil {
+		return err
+	}
+	highScore := loadHighScore(configHome)
+	component := newRunnerComponent(highScore, standardlogin.ActiveVariant(configHome), ctx.Height)
 	result, err := ctx.Custom(component, termgame.Overlay("PiG Runner"))
 	if err != nil {
 		return err
 	}
 
 	score, highScore := runnerScores(result, component.State())
-	if err := saveHighScore(ctx.ConfigHome(), highScore); err != nil {
+	if err := saveHighScore(configHome, highScore); err != nil {
 		return err
 	}
 	ctx.Notify(fmt.Sprintf("PiG Runner score %d · high %d", score, highScore), "info")

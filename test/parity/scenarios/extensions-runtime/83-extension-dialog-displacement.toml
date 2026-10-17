@@ -1,0 +1,63 @@
+# Behavior family: extensions-runtime
+# Surface: InteractiveMode.showExtensionSelector / showExtensionInput when a
+# dialog is already shown.
+#
+# Upstream (Pi 1.2.0 interactive-mode.ts:2690-2826): a dialog never waits for
+# or refuses another. showExtensionInput clears the editor slot, installs the
+# input and focuses it, so it displaces an open selector; the displaced
+# selector's promise stays pending. testdata/ext/dialog-displace.mjs opens a
+# selector without awaiting it, then an input, and notifies the input's
+# result. PiG rejected the second dialog ("another extension dialog is already
+# open") until runDialog installed every dialog as Pi does.
+#
+# Upstream evidence (Pi 1.2.0, parity harness, 2026-10-13, 100x32 tmux):
+#   pi --no-extensions -e ../../testdata/test-faux-provider.ts \
+#     -e testdata/ext/dialog-displace.mjs --model test-faux/faux-1
+#   keys: "/dialog-displace" Enter; wait: "Displacing input"
+#   keys: "Ada" Enter; wait: "displacing-result:Ada"
+#   crop: start="displacing-result:" end="displacing-result:Ada"
+#   raw cropped upstream block:
+#     displacing-result:Ada
+#   The displaced selector never resolved and was not on screen. PiG's crop was
+#   byte-identical; 3 of 3 declared pairs passed.
+
+name = "83-extension-dialog-displacement"
+description = "An extension input opened while a selector is shown displaces it and receives the keys"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/dialog-displace.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/dialog-displace.mjs"]
+
+[tmux]
+width = 100
+height = 32
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "displacing-result:"
+capture_end = "displacing-result:Ada"
+
+[[tmux.steps]]
+keys = ["/dialog-displace", "Enter"]
+wait_contains = ["Displacing input"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["Ada", "Enter"]
+wait_contains = ["displacing-result:Ada"]
+wait_timeout_seconds = 20
+
+[assert]
+both_reach_ready = true
+both_contain = ["displacing-result:Ada"]
+both_not_contain = ["displaced-resolved", "displaced-rejected", "displacing-rejected", "already open", "Displaced selector", "panic:"]
+output_equal = true
+runs = 3

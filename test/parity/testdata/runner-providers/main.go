@@ -35,7 +35,7 @@ func run() (resultErr error) {
 		return err
 	}
 	defer func() { resultErr = errors.Join(resultErr, os.RemoveAll(root)) }()
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: root, AgentDir: filepath.Join(root, "agent")})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: root, AgentDir: filepath.Join(root, "agent")})
 	if err != nil {
 		return err
 	}

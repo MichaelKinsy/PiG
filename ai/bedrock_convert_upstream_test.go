@@ -1,3 +1,5 @@
+//go:build !pig_strip_bedrock_converse_stream
+
 package ai
 
 import (
@@ -7,8 +9,9 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
-	btypes "github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
+
+	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime"
+	btypes "github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime/types"
 )
 
 // This test value represents upstream's untyped {type:unknown,data:foo}; it is not a production union member.
@@ -111,6 +114,77 @@ func TestBedrockUpstreamConvertMessages(t *testing.T) {
 			t.Fatalf("content=%#v", result.Value.Content)
 		}
 	})
+	// Pi 5ab7fe74 bedrock-convert-messages.test.ts:328 "moves images of error tool results after the tool results" (#10794)
+	t.Run("moves images of error tool results after the tool results", func(t *testing.T) {
+		messages, err := convertBedrockMessages([]Message{
+			AssistantMessage{API: APIBedrockConverseStream, Provider: "amazon-bedrock", Model: model, StopReason: StopReasonToolUse, Content: []AssistantContentBlock{
+				ToolCall{ID: "call-1", Name: "codemode", Arguments: JsonObject{}}, ToolCall{ID: "call-2", Name: "read", Arguments: JsonObject{}},
+			}},
+			ToolResultMessage{ToolCallID: "call-1", ToolName: "codemode", IsError: true, Content: []ToolResultMessageContent{
+				TextContent{Text: "Script failed"}, ImageContent{Data: "QUJD", MimeType: "image/png"}, TextContent{Text: "Script error"},
+			}},
+			ToolResultMessage{ToolCallID: "call-2", ToolName: "read", Content: []ToolResultMessageContent{ImageContent{Data: "QkJC", MimeType: "image/png"}}},
+		}, model, "Claude Sonnet 4.5 (US)", bedrockCacheNone, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(messages) != 2 || len(messages[1].Content) != 4 {
+			t.Fatalf("messages=%#v, want the tool results and their error images in one user message of four blocks", messages)
+		}
+		content := messages[1].Content
+		first, ok := content[0].(*btypes.ContentBlockMemberToolResult)
+		if !ok || aws.ToString(first.Value.ToolUseId) != "call-1" || first.Value.Status != btypes.ToolResultStatusError {
+			t.Fatalf("first block %#v", content[0])
+		}
+		var texts []string
+		for _, part := range first.Value.Content {
+			text, ok := part.(*btypes.ToolResultContentBlockMemberText)
+			if !ok {
+				t.Fatalf("error result part %#v is not text", part)
+			}
+			texts = append(texts, text.Value)
+		}
+		if !reflect.DeepEqual(texts, []string{"Script failed", "(image attached after the tool results)", "Script error"}) {
+			t.Fatalf("error result texts %q", texts)
+		}
+		second, ok := content[1].(*btypes.ContentBlockMemberToolResult)
+		if !ok || second.Value.Status != btypes.ToolResultStatusSuccess || len(second.Value.Content) != 1 {
+			t.Fatalf("second block %#v", content[1])
+		}
+		if image, ok := second.Value.Content[0].(*btypes.ToolResultContentBlockMemberImage); !ok || image.Value.Format != btypes.ImageFormatPng {
+			t.Fatalf("successful result part %#v is not a png image", second.Value.Content[0])
+		}
+		if caption, ok := content[2].(*btypes.ContentBlockMemberText); !ok || caption.Value != "Images from the error result of tool call call-1 (codemode):" {
+			t.Fatalf("caption %#v", content[2])
+		}
+		if image, ok := content[3].(*btypes.ContentBlockMemberImage); !ok || image.Value.Format != btypes.ImageFormatPng {
+			t.Fatalf("trailing block %#v is not a png image", content[3])
+		}
+	})
+	// Pi 5ab7fe74 bedrock-convert-messages.test.ts:375 "keeps images in error tool results for non-Claude models" (the Nova model of the file)
+	t.Run("keeps images in error tool results for non-Claude models", func(t *testing.T) {
+		messages, err := convertBedrockMessages([]Message{
+			ToolResultMessage{ToolCallID: "call-1", ToolName: "codemode", IsError: true, Content: []ToolResultMessageContent{
+				TextContent{Text: "Script failed"}, ImageContent{Data: "QUJD", MimeType: "image/png"},
+			}},
+		}, "us.amazon.nova-pro-v1:0", "Nova Pro", bedrockCacheNone, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(messages) != 1 || len(messages[0].Content) != 1 {
+			t.Fatalf("messages=%#v", messages)
+		}
+		result, ok := messages[0].Content[0].(*btypes.ContentBlockMemberToolResult)
+		if !ok || result.Value.Status != btypes.ToolResultStatusError || len(result.Value.Content) != 2 {
+			t.Fatalf("result %#v", messages[0].Content[0])
+		}
+		if text, ok := result.Value.Content[0].(*btypes.ToolResultContentBlockMemberText); !ok || text.Value != "Script failed" {
+			t.Fatalf("first part %#v", result.Value.Content[0])
+		}
+		if image, ok := result.Value.Content[1].(*btypes.ToolResultContentBlockMemberImage); !ok || image.Value.Format != btypes.ImageFormatPng {
+			t.Fatalf("second part %#v stays a png image in place", result.Value.Content[1])
+		}
+	})
 	// .upstream/v0.87.1/packages/ai/test/bedrock-convert-messages.test.ts:101
 	t.Run("gates native strict tool use by model capability", func(t *testing.T) {
 		tool := ToolSchema{Name: "lookup", Description: "Look up a value", Parameters: map[string]any{"type": "object", "properties": map[string]any{"value": map[string]any{"type": "string"}}, "required": []string{"value"}}, ConstrainedSampling: &ConstrainedSamplingConfig{Type: "json_schema", Strict: "require"}}
@@ -161,7 +235,8 @@ func TestBedrockUpstreamConvertMessages(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(messages) != 3 || len(messages[0].Content) != 1 {
+		// pig divergence (D116): Pi sends [assistant, tool result, "Continue"] as three messages; PiG merges the two user messages.
+		if len(messages) != 2 || len(messages[0].Content) != 1 || len(messages[1].Content) != 2 {
 			t.Fatalf("messages=%#v", messages)
 		}
 		tool, ok := messages[0].Content[0].(*btypes.ContentBlockMemberToolUse)

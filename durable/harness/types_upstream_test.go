@@ -1,3 +1,4 @@
+// pi: packages/durable/src/harness/types.ts
 // Ports packages/durable/test/types.test.ts :248 for the checks that name durable/harness declarations: defineExtension,
 // hook, HooksOf, Harness.waitForTask, Conversation.compact and the SubmissionDraft drafts. The rest of the case runs in
 // durable/types_upstream_test.go.
@@ -95,12 +96,16 @@ var conversation h.Conversation
 var ctx context.Context
 `
 
+// Pi source: packages/durable/src/types.ts
+// mutation-checked: zeroing the results of TaskRuntime.Hooks fails it
+// mutation-checked: dropping the reads and writes of Extension.Hooks fails it
 func TestTypesUpstreamHarness(t *testing.T) {
 	// types.test.ts:248. TaskId carries no result type in Go, so the typed TaskId<{ran}>, SettledTask<{ran}> and
 	// TaskId<CompactionResult> expectations assert the Go types of the same calls (TaskId and SettledTask[JsonValue])
 	// and decode the settled result into the stepper's type (compaction: harness_compaction_test.go decodes
-	// TaskOutcome[CompactionResult]). SubmissionDraft is one struct with every member field; its three exclusivity
-	// negatives are TestSubmissionDraftIgnoresTheFieldsOfTheOtherType (harness_submissions_test.go) and missingPhase is
+	// TaskOutcome[CompactionResult]). SubmissionDraft is one struct with every member field: inputWithModel is a compile
+	// error, as InputEntry has no Model (durable/types_upstream_test.go); writeWithContent and writeWhenBusy are
+	// TestSubmissionDraftIgnoresTheFieldsOfTheOtherType (harness_submissions_test.go); missingPhase is
 	// TestMissingPhaseHandlerFaultsTheTaskAsAThrowingHandlerDoes.
 	t.Run("types submissions, task waits, compaction, and tasks erased into extensions", func(t *testing.T) {
 		stepper := newStepper()
@@ -111,7 +116,7 @@ func TestTypesUpstreamHarness(t *testing.T) {
 			return nil
 		}})
 		// Erased into an extension, whatever its input, phases, and hooks.
-		extension := new(durable.Extension{Name: "stepper", Tasks: []durable.AnyTask{stepper}, Hooks: []durable.HookRegistration{registration}})
+		extension := new(durable.Extension{Name: "stepper", Tasks: []durable.AnyTask{stepper.Erased()}, Hooks: []durable.HookRegistration{registration}})
 		if registration.Task != "test.stepper" || reflect.TypeOf(registration.Handlers) != reflect.TypeFor[stepperHooks]() {
 			t.Fatalf("registration = %+v", registration)
 		}
@@ -136,7 +141,7 @@ func TestTypesUpstreamHarness(t *testing.T) {
 		if settled.State.Outcome == nil || settled.State.Outcome.Status != durable.OutcomeCompleted || settled.State.Outcome.Result == nil {
 			t.Fatalf("settled = %+v", settled.State)
 		}
-		if got := (*settled.State.Outcome.Result).(map[string]any); got["ran"] != float64(1) {
+		if got := plainObject(*settled.State.Outcome.Result); got["ran"] != float64(1) {
 			t.Fatalf("result = %v, want the hook at step 0 not to skip", got)
 		}
 		// TaskId<{ran}> and SettledTask<{ran}> upstream: the result type is the stepper's, so the settled outcome decodes
@@ -184,6 +189,8 @@ _, _ = d.CreateTask(tx, stepper, map[string]any{"steps": "two"}, d.TaskOptions{O
 // scheduler.ts:867 calls `phases[checkpoint.phase]!(...)`, which throws inside the phase's try block, so a checkpoint
 // whose phase has no handler is recorded as the phase's failure, as a throwing handler is. Go's scheduler reports the
 // missing handler as the phase failure through the same path; the task ends faulted, not hung and not completed.
+// Pi source: packages/durable/src/harness/types.ts
+// mutation-checked: zeroing the results of Conversation.Commit fails it
 func TestMissingPhaseHandlerFaultsTheTaskAsAThrowingHandlerDoes(t *testing.T) {
 	definition := func(throwing bool) stepperTask {
 		task := durable.DefineTask(durable.TaskDefinition[stepperInput, stepperCheckpoint, stepperResult, stepperHooks]{
@@ -210,7 +217,7 @@ func TestMissingPhaseHandlerFaultsTheTaskAsAThrowingHandlerDoes(t *testing.T) {
 		t.Helper()
 		task := definition(throwing)
 		harness, registry, _ := openTasks(t, storage.NewMemoryStorage(), nil)
-		mustInstall(t, registry, &durable.Extension{Name: "missing-phase", Tasks: []durable.AnyTask{task}})
+		mustInstall(t, registry, &durable.Extension{Name: "missing-phase", Tasks: []durable.AnyTask{task.Erased()}})
 		root, err := harness.Root(testContext, nil)
 		if err != nil {
 			t.Fatal(err)

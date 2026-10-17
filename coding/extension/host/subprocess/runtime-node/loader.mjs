@@ -1,6 +1,7 @@
 import { statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { cacheImportedModules } from "./compile-cache.mjs";
+import { moduleRegistry } from "./runtime-modules.mjs";
 
 // Node module hooks for the extension runtime. Extensions load through jiti
 // (jiti-loader.mjs), as in Pi, which serves the specifiers below as virtual
@@ -104,14 +105,39 @@ export function load(url, context, nextLoad) {
   // The stamp is taken before Node reads the source, so an edit made while it reads counts as an edit.
   const stamp = stampOf(url);
   const remember = (loaded) => {
-    loads.set(moduleKey(url), { url, format: loaded?.format, stamp });
+    recordLoad(url, loaded?.format, stamp);
     return loaded;
   };
   const result = nextLoad(url, context);
   return typeof result?.then === "function" ? result.then(remember) : remember(result);
 }
 
-// pig divergence (D93): when a reload pass starts, each extension ES module whose source changed since Node loaded it, and each extension ES module that imports one, directly or through others, gets a URL carrying the pass, so the reload evaluates them again; every other module keeps its instance and its state. A CommonJS module keeps its module, so an edit of one, or of a module only it imports, is not evaluated again. The asynchronous hooks of a Node release without module.registerHooks run in their own thread, so there the maps stay empty and every module keeps its instance, as in Pi.
+function recordLoad(url, format, stamp) {
+  loads.set(moduleKey(url), { url, format, stamp });
+}
+
+// Bun runs neither Node hook API. register-loader.mjs records the same facts from a Bun runtime plugin through the two functions below. Bun resolves a module several times before it evaluates it and adds it to its registry only once evaluated, so recorded holds each module whose current evaluation is recorded: the first resolution that finds the module outside the registry starts the record, and a reload that removes the module from the registry ends it. Bun evaluates a module again under its own URL, so each evaluation's imports replace the previous one's.
+const recorded = new Set();
+export function recordBunLoad(url, inRegistry, format) {
+  const key = moduleKey(url);
+  if (inRegistry || recorded.has(key) || !extensionModule(url)) return;
+  recorded.add(key);
+  const stamp = stampOf(url);
+  imports.delete(url);
+  recordLoad(url, format(), stamp);
+}
+
+export function recordBunImport(parentURL, url) {
+  if (!extensionModule(url) || !extensionModule(parentURL)) return;
+  if (!imports.has(parentURL)) imports.set(parentURL, new Set());
+  imports.get(parentURL).add(moduleKey(url));
+}
+
+export { extensionModule };
+
+const onBun = typeof globalThis.Bun !== "undefined";
+
+// pig divergence (D93): when a reload pass starts, each extension ES module whose source changed since Node loaded it, and each extension ES module that imports one, directly or through others, gets a URL carrying the pass, so the reload evaluates them again; every other module keeps its instance and its state. A CommonJS module keeps its module, so an edit of one, or of a module only it imports, is not evaluated again. The asynchronous hooks of a Node release without module.registerHooks run in their own thread, so there the maps stay empty and every module keeps its instance, as in Pi. On Bun the runtime plugin of register-loader.mjs fills the maps, and a module evaluated again keeps its URL.
 export function reevaluateEdited(pass) {
   const stale = new Set();
   for (const [key, loaded] of loads) {
@@ -135,6 +161,12 @@ export function reevaluateEdited(pass) {
     }
   }
   for (const key of stale) {
+    // pig divergence (D93): Bun keeps every module, ES modules included, in the registry its require.cache exposes; a module removed from it is evaluated again, from its own URL, by the next import.
+    if (onBun) {
+      delete moduleRegistry()[fileURLToPath(key)];
+      recorded.delete(key);
+      continue;
+    }
     const url = new URL(key);
     url.searchParams.set(reloadParam, pass);
     latest.set(key, url.href);

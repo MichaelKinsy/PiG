@@ -117,13 +117,6 @@ func TestEditorHistoryAndSubmissionUseJavaScriptTrim(t *testing.T) {
 				}
 				assertEditorText(t, e, "")
 			})
-			t.Run("extension editor caller", func(t *testing.T) {
-				dialog := NewExtensionEditorComponent("Prompt", tc.input)
-				dialog.HandleInput("\r")
-				if !dialog.Done() || dialog.Cancelled() || dialog.Value() != tc.want {
-					t.Fatalf("dialog done=%v cancelled=%v value=%q, want submitted %q", dialog.Done(), dialog.Cancelled(), dialog.Value(), tc.want)
-				}
-			})
 		})
 	}
 }

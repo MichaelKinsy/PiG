@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/requestvalidity"
 )
 
 // captureStreamWire drives a provider's real Stream path against an httptest
@@ -16,7 +17,17 @@ import (
 // body is captured when the HTTP request reaches the handler, so it is available
 // regardless of how the (intentionally minimal) SSE response is parsed.
 func captureStreamWire(t *testing.T, sse string, makeProvider func(baseURL string) ai.Provider, msgs []ai.Message) []byte {
+	return captureStreamWireRepair(t, sse, makeProvider, msgs, true)
+}
+
+// captureStreamWireRepair is captureStreamWire with the agent loop's RepairToolFlow request option chosen by the caller.
+func captureStreamWireRepair(t *testing.T, sse string, makeProvider func(baseURL string) ai.Provider, msgs []ai.Message, repair bool) []byte {
 	t.Helper()
+	ctx := context.Background()
+	if !repair {
+		// Pi's request keeps the orphaned result, which the request validity check reports.
+		ctx = requestvalidity.Allow(ctx)
+	}
 	var body []byte
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ = io.ReadAll(r.Body)
@@ -25,7 +36,7 @@ func captureStreamWire(t *testing.T, sse string, makeProvider func(baseURL strin
 	}))
 	defer srv.Close()
 
-	stream, err := makeProvider(srv.URL).Stream(context.Background(), ai.NormalizeContext(ai.Context{Messages: msgs}), ai.StreamOptions{})
+	stream, err := makeProvider(srv.URL).Stream(ctx, ai.NormalizeContext(ai.Context{Messages: msgs}), ai.StreamOptions{RepairToolFlow: repair})
 	if err == nil {
 		_ = stream.Result()
 	}
@@ -103,7 +114,7 @@ func providerBuilders() []struct {
 // the orphaned tool_result would reach the wire and the API would reject the whole
 // request ("No tool call found for ... call_id", "tool_use_id not found").
 func TestPoisonedHistoryProducesValidProviderRequest(t *testing.T) {
-	msgs := convertToLLM(poisonedAgentHistory(), nil)
+	msgs := ConvertToLLM(poisonedAgentHistory())
 	for _, p := range providerBuilders() {
 		t.Run(p.name, func(t *testing.T) {
 			wire := captureStreamWire(t, p.sse, p.make, msgs)
@@ -117,11 +128,23 @@ func TestPoisonedHistoryProducesValidProviderRequest(t *testing.T) {
 	}
 }
 
+// TestPoisonedHistoryReachesProviderLikePiWithoutRepair is the Pi side of D48: a direct provider call, which does not set RepairToolFlow, sends the orphaned result as Pi does.
+func TestPoisonedHistoryReachesProviderLikePiWithoutRepair(t *testing.T) {
+	msgs := ConvertToLLM(poisonedAgentHistory())
+	for _, p := range providerBuilders() {
+		t.Run(p.name, func(t *testing.T) {
+			if wire := captureStreamWireRepair(t, p.sse, p.make, msgs, false); !bytes.Contains(wire, []byte("call_x")) {
+				t.Fatalf("%s wire lost the orphaned result without RepairToolFlow: %s", p.name, wire)
+			}
+		})
+	}
+}
+
 // TestCleanToolCycleSurvivesProviderRequest proves the D48 strip is inert on a
 // well-formed session: a surviving tool cycle keeps both the tool call and its
 // matching result across all three provider conversions.
 func TestCleanToolCycleSurvivesProviderRequest(t *testing.T) {
-	msgs := convertToLLM(cleanToolCycleHistory(), nil)
+	msgs := ConvertToLLM(cleanToolCycleHistory())
 	for _, p := range providerBuilders() {
 		t.Run(p.name, func(t *testing.T) {
 			wire := captureStreamWire(t, p.sse, p.make, msgs)
@@ -168,7 +191,7 @@ data: [DONE]
 
 	provider := ai.NewOpenAIProvider(ai.OpenAIConfig{Model: "claude-sonnet-5", BaseURL: server.URL, APIKey: "k", ProviderID: "openai"})
 	tool := &fakeTool{name: "get_result", mode: ToolModeSequential, content: "satisfied"}
-	agent := NewAgent(AgentOptions{Model: fakeTestModel(provider), Tools: []AgentTool{tool}, MaxTurns: 5})
+	agent := mustNewAgent(AgentOptions{Model: fakeTestModel(provider), Tools: []AgentTool{tool}, MaxTurns: 5})
 
 	messages, err := agent.Send(context.Background(), "poll the job")
 	if err != nil {

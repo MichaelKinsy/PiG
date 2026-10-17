@@ -6,6 +6,7 @@ import (
 	"iter"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/wordsegmenter"
@@ -21,11 +22,13 @@ type editorSegment struct {
 
 // segmentLine retains the source's UTF-16 offsets, including gaps left by a base grapheme that straddles a marker's end.
 func (e *Editor) segmentLine(text string) []editorSegment {
-	return editorSegments(e.segment(text, "grapheme"))
+	return editorSegments(e.segment(text, "grapheme"), text)
 }
 
-func editorSegments(segments iter.Seq[SegmentData]) []editorSegment {
-	var result []editorSegment
+// editorSegments collects the segments of text. A text has at most one grapheme per code point, so the count sizes the result
+// once, without the doubling reallocations; it is exact for text without combining marks or joiners.
+func editorSegments(segments iter.Seq[SegmentData], text string) []editorSegment {
+	result := make([]editorSegment, 0, utf8.RuneCountInString(text))
 	for segment := range segments {
 		result = append(result, editorSegment{Text: segment.Segment, Start: segment.Index, End: segment.Index + jsstring.Length(segment.Segment), Width: widthx.VisibleWidth(segment.Segment)})
 	}
@@ -120,11 +123,30 @@ func (e *Editor) previousSegmentStart(text string, col int) int {
 	if col <= 0 {
 		return 0
 	}
-	segments := e.segmentLine(jsstring.Slice(text, 0, col))
-	if len(segments) == 0 {
-		return 0
+	last, _ := e.lastSegment(jsstring.Slice(text, 0, col))
+	return last.Start
+}
+
+// lastSegment is the last element of segmentLine(text), found without building the list when the text holds no registered paste marker.
+func (e *Editor) lastSegment(text string) (editorSegment, bool) {
+	if len(e.pastes) > 0 && strings.Contains(text, "[paste #") {
+		segments := e.segmentLine(text)
+		if len(segments) == 0 {
+			return editorSegment{}, false
+		}
+		return segments[len(segments)-1], true
 	}
-	return segments[len(segments)-1].Start
+	if text == "" {
+		return editorSegment{}, false
+	}
+	var last string
+	index, start := 0, 0
+	for rest := text; rest != ""; {
+		last, rest = widthx.FirstGrapheme(rest)
+		start = index
+		index += jsstring.Length(last)
+	}
+	return editorSegment{Text: last, Start: start, End: index, Width: widthx.VisibleWidth(last)}, true
 }
 
 func (e *Editor) nextSegmentEnd(text string, col int) int {

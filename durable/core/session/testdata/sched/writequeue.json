@@ -1,0 +1,28 @@
+{
+ "tasks": {
+  "hold": {
+   "name": "t.hold",
+   "version": 1,
+   "phases": {
+    "start": [
+     {"await": "gh"},
+     {"commit": {"next": {"status": "terminal", "outcome": {"status": "completed"}}}}
+    ]
+   },
+   "abort": [
+    {"commit": {"next": {"status": "terminal", "outcome": {"status": "aborted", "reason": "handler"}}}}
+   ]
+  }
+ },
+ "cmds": [
+  {"cmd": "commit", "ops": [{"op": "rootConversation"}]},
+  {"cmd": "open"},
+  {"cmd": "resume"},
+  {"cmd": "commit", "ops": [{"op": "createTask", "task": "hold", "opts": {"conversationId": 1}}]},
+  {"cmd": "commit", "ops": [{"op": "createConversation", "ownerTask": 2}]},
+  {"cmd": "commit", "ops": [{"op": "createSubmission", "create": {"type": "write", "conversationId": 3, "status": "queued"}}]},
+  {"cmd": "abort", "id": 2},
+  {"cmd": "release", "gate": "gh"},
+  {"cmd": "waitForIdle"}
+ ]
+}

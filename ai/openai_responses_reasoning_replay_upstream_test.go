@@ -236,8 +236,9 @@ func reasoningReplayEndpoint(t *testing.T, aborted, anthropic bool) string {
 				http.Error(w, "aborted assistant leaked into replay", 400)
 				return
 			}
-		} else if callsSeen != 1 || results != 1 || !assistantText {
-			http.Error(w, "handoff lost reasoning text or tool history", 400)
+		} else if callsSeen != 1 || results != 1 || assistantText {
+			// Pi 1.3.0 transform-messages.ts drops another model's thinking (#11000): it neither becomes assistant text nor an orphaned reasoning item.
+			http.Error(w, "handoff lost tool history or replayed the other model's thinking as text", 400)
 			return
 		}
 		text := "42"

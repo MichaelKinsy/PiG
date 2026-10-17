@@ -1,7 +1,8 @@
-// UpstreamVersion and UpstreamCommit are the exact upstream Pi pins. The CLI,
-// parity runner, source mirror, generated inventories, and Pig Porter consume
-// them. Change both together, in internal/coding/pigversion/pigversion.go, then run
-// the upgrade workflow in piglets/porter/skills/pig-porter/SKILL.md.
+// UpstreamVersion, UpstreamPackageVersion and UpstreamCommit are the exact upstream Pi pin.
+// The CLI, parity runner, source mirror, generated inventories, and Pig Porter consume
+// them. The pin lives in .upstream/pin; `make pin-bump PI_UPSTREAM_REF=<tag|commit>`
+// regenerates internal/coding/pigversion/pigversion.go and every other derived file,
+// then the upgrade workflow in piglets/porter/skills/pig-porter/SKILL.md applies.
 package coding
 
 import "github.com/MichaelKinsy/PiG/internal/coding/pigversion"
@@ -17,11 +18,20 @@ const PigVersion = pigversion.PigVersion
 // still use PigVersion itself.
 const Version = pigversion.Version
 
-// UpstreamCommit is the exact Pi release commit mirrored for UpstreamVersion.
+// UpstreamCommit is the exact Pi commit of the pin.
 const UpstreamCommit = pigversion.UpstreamCommit
 
-// UpstreamVersion is the Pi release whose behavior PiG targets.
+// UpstreamRef is the pinned tag or commit of Pi.
+const UpstreamRef = pigversion.UpstreamRef
+
+// UpstreamVersion is the pinned Pi build's display and ledger version: the
+// release version for a tag, the release version plus +<commit[:8]> for a commit
+// (Pi 1.1.0+42a3497d). Ledger files and parity inventories are named by it.
 const UpstreamVersion = pigversion.UpstreamVersion
+
+// UpstreamPackageVersion is the version Pi's package.json files and `pi --version`
+// report. It equals UpstreamVersion for a release tag.
+const UpstreamPackageVersion = pigversion.UpstreamPackageVersion
 
 // UpstreamReviewedVersion is the most recent pin whose parity ledgers carry
 // reviewed dispositions. Leap ledgers (the semantic interface delta, the

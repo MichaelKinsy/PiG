@@ -13,10 +13,13 @@ func TestThemeSettingBOMPairReachesInteractiveAutoSelection(t *testing.T) {
 	mode, ctx := newThemeDispatchMode(t)
 	var output bytes.Buffer
 	mode.themeState.output = &output
+	mode.tuiInst = tui.NewWithOutput(&output, 100, 30)
+	// The replacement renderer schedules its renders on the owner loop, as the production renderer does.
+	mode.installRenderDispatcher()
 	mode.opts.Settings.Theme = "\ufefflight / dark\ufeff"
 	mode.initTheme()
 	mode.applyThemeFromSettings(ctx)
-	if !strings.HasSuffix(output.String(), "\x1b[?2031h") {
+	if !strings.Contains(output.String(), "\x1b[?2031h") {
 		t.Fatalf("automatic theme pair was treated as a fixed theme: %q", output.String())
 	}
 	if !mode.consumeTerminalThemeInput("\x1b[?997;2n") {

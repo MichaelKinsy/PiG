@@ -296,6 +296,18 @@ func TestLlamaCppClassifyUpstream(t *testing.T) {
 			t.Error("temperature scaling differs")
 		}
 	})
+	// llama-cpp-classify.ts:437 (v1.1.0) rejects images before any request: the fallback has no image input.
+	t.Run("rejects image input before sending requests", func(t *testing.T) {
+		server := newLlamaFakeServer(t, llamaFakeServerOptions{})
+		request := llamaTestContext()
+		request.Images = []ImageContent{{Data: "aW1hZ2U=", MimeType: "image/png"}}
+
+		result := ClassifyLlamaCpp(t.Context(), llamaTestModel(), request, ClassifierOptions{Fetch: server.fetch})
+
+		if result.StopReason != "error" || !strings.Contains(result.ErrorMessage, "llama.cpp classification does not support image input") || len(server.recorded()) != 0 {
+			t.Errorf("result=%+v requests=%d", result, len(server.recorded()))
+		}
+	})
 	// .upstream/v0.99.1/packages/ai/test/llama-cpp-classify.test.ts:229
 	t.Run("rejects non-positive temperatures before sending requests", func(t *testing.T) {
 		server := newLlamaFakeServer(t, llamaFakeServerOptions{})
@@ -471,6 +483,30 @@ func TestLlamaCppClassifyUpstream(t *testing.T) {
 		got := LlamaCppAnswerFromProbabilities(ClassifierScoreQuestion{Criteria: []string{"a", "b", "c"}}, []string{"0", "1", "2"}, []float64{0.2, 0.3, 0.5})
 		if want := (ClassifierScoreAnswer{Score: 1.3, Confidence: LlamaCppPeakConfidence([]float64{0.2, 0.3, 0.5})}); got != want {
 			t.Errorf("answer=%+v want %+v", got, want)
+		}
+	})
+}
+
+// llama-cpp-classify.ts classifyQuestion: a request whose label log-probabilities all sit at or below the underflow value
+// -1e30 is an error ("gave no probability to any answer label"), while any value above it, however small, is an answer.
+func TestLlamaCppClassifyUnderflowBoundary(t *testing.T) {
+	context := ClassifierContext{State: JsonObject{"message": "x"}, Questions: ClassifierQuestions{
+		{ID: "urgent", Question: ClassifierBoolQuestion{Instructions: "Urgent?", Criteria: ClassifierBoolCriteria{True: "yes", False: "no"}}},
+	}}
+	classify := func(t *testing.T, yes, no float64) ClassifierResult {
+		server := newLlamaFakeServer(t, llamaFakeServerOptions{next: func(string, int) map[string]float64 { return map[string]float64{"Y": yes, "N": no} }, tokenize: wordTokens})
+		return ClassifyLlamaCpp(t.Context(), llamaTestModel(), context, ClassifierOptions{Fetch: server.fetch})
+	}
+	t.Run("every label at the underflow value is an error", func(t *testing.T) {
+		result := classify(t, -1e30, -1e30)
+		if result.StopReason != "error" || !strings.Contains(result.ErrorMessage, "qwen gave no probability to any answer label for urgent") {
+			t.Fatalf("result=%+v", result)
+		}
+	})
+	t.Run("labels just above the underflow value are an answer", func(t *testing.T) {
+		result := classify(t, -5e29, -5e29)
+		if result.StopReason != "stop" || clsAnswer(t, result.Answers, "urgent") != (ClassifierBoolAnswer{Probability: 0.5}) {
+			t.Fatalf("result=%+v", result)
 		}
 	})
 }

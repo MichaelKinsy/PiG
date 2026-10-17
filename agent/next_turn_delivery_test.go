@@ -63,5 +63,5 @@ func TestNextTurnDoesNotEnterTheFollowUpQueue(t *testing.T) {
 func newTestAgentForNextTurn(t *testing.T) *Agent {
 	t.Helper()
 	provider := &recordingProvider{seqs: [][]ai.AssistantMessageEvent{textSeq("")}}
-	return NewAgent(AgentOptions{Model: &ai.Model{ID: "model", Provider: provider}})
+	return mustNewAgent(AgentOptions{Model: &ai.Model{ID: "model", Provider: provider}})
 }

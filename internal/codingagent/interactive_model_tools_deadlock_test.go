@@ -22,17 +22,15 @@ func (h *toolRegisteringModelHandle) refreshFromSubprocess() error {
 	return <-result
 }
 func (h *toolRegisteringModelHandle) RefreshTools() error { return nil }
-func (h *toolRegisteringModelHandle) SetModel(model *ai.Model, opts ...ModelMutationOptions) error {
-	if err := h.refreshFromSubprocess(); err != nil {
+func (h *toolRegisteringModelHandle) SetModelOnMain(_ context.Context, model *ai.Model, options ModelMutationOptions, dispatch func(func() error) error) error {
+	if err := dispatch(func() error { return h.SetModel(model, options) }); err != nil {
 		return err
 	}
-	return h.recordingCompactHandle.SetModel(model, opts...)
+	return h.refreshFromSubprocess()
 }
-func (h *toolRegisteringModelHandle) CycleModel(direction string, opts ...ModelMutationOptions) (*ModelCycleResult, error) {
-	if err := h.refreshFromSubprocess(); err != nil {
-		return nil, err
-	}
-	return h.recordingCompactHandle.CycleModel(direction, opts...)
+func (h *toolRegisteringModelHandle) BeginModelCycleOnMain(ctx context.Context, direction string, options ModelMutationOptions) (*ModelCycleResult, func(), error) {
+	result, _, err := h.recordingCompactHandle.BeginModelCycleOnMain(ctx, direction, options)
+	return result, func() { _ = h.refreshFromSubprocess() }, err
 }
 
 func TestInteractiveModelSelectionPumpsToolRegistration(t *testing.T) {
@@ -47,16 +45,18 @@ func TestInteractiveModelSelectionPumpsToolRegistration(t *testing.T) {
 				ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 				defer cancel()
 				m.runCtx = ctx
+				m.setModalInputChannel(nil)
 				next := &ai.Model{ID: "next", ProviderMeta: ai.ProviderMetadata{ProviderID: "capture"}}
 				h := &toolRegisteringModelHandle{mode: m, recordingCompactHandle: recordingCompactHandle{agent: m.agent, cycleResults: []*ModelCycleResult{{Model: next}}}}
 				m.opts.SessionHandle = h
 				if cycle {
 					m.cycleModel(true)
-					if len(h.cycled) != 1 {
-						t.Fatal("model cycle blocked its tool-registration callback")
-					}
+					// The key handler does not await the cycle (interactive-mode.ts:3083-3084); the owner loop finishes it.
+					serveOwnerUntil(t, m, ctx, func() bool { return m.lastStatusMessage == "Switched to next" }, func() string {
+						return "model cycle blocked its tool-registration callback"
+					})
 				} else {
-					if err := m.buildSlashContext(ctx).SwitchModel("capture/next"); err != nil {
+					if err := settleSwitchModel(t, m, m.buildSlashContext(ctx), "capture/next"); err != nil {
 						t.Fatalf("model selection blocked its tool-registration callback: %v", err)
 					}
 					if len(h.switched) != 1 {

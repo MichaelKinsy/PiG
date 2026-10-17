@@ -599,7 +599,7 @@ func waitForPaneStable(ctx context.Context, session string, interval, limit time
 		}
 		time.Sleep(interval)
 		cur, _ := exec.CommandContext(ctx, "tmux", tmuxArgs("capture-pane", "-t", session, "-p")...).Output()
-		if string(cur) == string(prev) {
+		if bytes.Equal(cur, prev) {
 			return
 		}
 		prev = cur

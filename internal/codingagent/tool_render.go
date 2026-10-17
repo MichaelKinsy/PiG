@@ -15,7 +15,7 @@ import (
 )
 
 // toolBodyRendererForCall derives display-only file metadata from the retained call and result. Upstream write previews and read highlighting use call arguments, not private runtime result details.
-func toolBodyRendererForCall(call ai.ToolCall, result agent.AgentToolResult) func(int, bool) []string {
+func toolBodyRendererForCall(call ai.ToolCall, result agent.AgentToolResult, took *time.Duration) func(int, bool) []string {
 	path, _ := call.Arguments["file_path"].(string)
 	if call.Arguments["file_path"] == nil {
 		path, _ = call.Arguments["path"].(string)
@@ -44,7 +44,7 @@ func toolBodyRendererForCall(call ai.ToolCall, result agent.AgentToolResult) fun
 		details.Path = path
 		result.Details = &details
 	}
-	return toolBodyRenderer(call.Name, result, nil)
+	return toolBodyRenderer(call.Name, result, took)
 }
 
 // toolBodyRenderer returns a per-tool body renderer based on the
@@ -151,6 +151,7 @@ func renderDiffString(diffText string, width int) []string {
 	return tui.NewDiffComponent(diffText, "").Render(width)
 }
 
+// Ports packages/coding-agent/src/core/tools/render-utils.ts (replaceTabs).
 func replaceTabs(s string) string {
 	return strings.ReplaceAll(s, "\t", "   ")
 }
@@ -333,6 +334,7 @@ func truncToWidth(s string, width int) string {
 	return widthx.SliceByColumn(s, 0, width-1, true) + "\u2026"
 }
 
+// pig additive (D160): the collapsed view of a tool result is the extension's preview text.
 // makePreviewBodyRenderer produces a body renderer that uses an
 // extension-provided preview string for the collapsed view and the full
 // content for the expanded view. This gives subprocess extensions the
@@ -364,11 +366,20 @@ func makePreviewBodyRenderer(content, preview string, elapsed time.Duration) fun
 		}
 
 		if elapsed > 0 {
-			label := fmt.Sprintf("Took %.1fs", elapsed.Seconds())
-			out = append(out, "")
-			out = append(out, mutedTrunc(label, width))
+			label := "Took " + tui.FormatToolDuration(elapsed)
+			out = append(out, "", mutedTrunc(label, width))
 		}
 
 		return out
 	}
+}
+
+// recordedTook is the duration a shell tool's final result footer shows (only the bash renderers read it): the recorded execution time when the result carries one, since it is
+// monotonic and survives a reload, else the card's own clock (nil when the card did not see the call start).
+// upstream: renderers/bash.ts:101-111
+func recordedTook(toolName string, durationMs *int64, own *time.Duration) *time.Duration {
+	if durationMs == nil || !tui.IsShellTool(toolName) {
+		return own
+	}
+	return new(time.Duration(*durationMs) * time.Millisecond)
 }

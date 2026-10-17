@@ -12,8 +12,8 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
-// The recovery errors of the `models` globals and of the guarded `tools` and `models` objects match Pi 1.0.0.
-// testdata/models-argument-errors.pi-1.0.0.json is the output of testdata/models-argument-errors.js run by Pi 1.0.0's
+// The recovery errors of the `models` globals and of the guarded `tools` and `models` objects match Pi 1.1.0.
+// testdata/models-argument-errors.pi-1.1.0.json is the output of testdata/models-argument-errors.js run by Pi 1.1.0's
 // executeCodemode (dist/extensions/codemode/execute.js) over the same catalog, with Pi's CODEMODE_DOCS_PATH replaced
 // by <DOCS>. testdata/models-argument-errors.pi.mjs regenerates it from the pinned Pi package.
 //
@@ -28,7 +28,7 @@ func TestModelsGlobalArgumentErrorsMatchPi(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	golden, err := os.ReadFile("testdata/models-argument-errors.pi-1.0.0.json")
+	golden, err := os.ReadFile("testdata/models-argument-errors.pi-1.1.0.json")
 	if err != nil {
 		t.Fatal(err)
 	}

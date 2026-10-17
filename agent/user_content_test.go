@@ -44,7 +44,7 @@ func TestUserContentUnionPreservesWireAndProviderShape(t *testing.T) {
 			if string(encoded) != wire {
 				t.Fatalf("wire changed: %s want %s", encoded, wire)
 			}
-			converted := ConvertToLLM([]AgentMessage{clone}, nil)
+			converted := ConvertToLLM(NormalizeMessages([]AgentMessage{clone}, nil))
 			if len(converted) != 1 {
 				t.Fatalf("provider messages=%#v", converted)
 			}
@@ -64,7 +64,7 @@ func TestUserContentUnionPreservesWireAndProviderShape(t *testing.T) {
 
 func TestOmittedGoUserContentRemainsAnEmptyProviderArray(t *testing.T) {
 	message := AgentMessage{User: &UserMessage{Role: RoleUser}}
-	converted := ai.NormalizeContext(ai.Context{Messages: ConvertToLLM([]AgentMessage{message}, nil)}).Messages()
+	converted := ai.NormalizeContext(ai.Context{Messages: ConvertToLLM(NormalizeMessages([]AgentMessage{message}, nil))}).Messages()
 	user := converted[0].(ai.UserMessage)
 	if !reflect.DeepEqual(user.Content, ai.UserContentBlocks{}) {
 		t.Fatalf("omitted content became %#v, want an empty array", user.Content)
@@ -74,7 +74,7 @@ func TestOmittedGoUserContentRemainsAnEmptyProviderArray(t *testing.T) {
 func TestCustomStringCarriersStillConvertToTextBlocks(t *testing.T) {
 	// core/messages.ts customMessageToLlm wraps custom strings; this differs from ordinary user strings.
 	for _, content := range []any{"hello", ai.UserText("hello"), json.RawMessage(`"hello"`)} {
-		messages := ConvertToLLM([]AgentMessage{{Custom: map[string]any{"role": RoleCustom, "content": content}}}, nil)
+		messages := ConvertToLLM(NormalizeMessages([]AgentMessage{{Custom: map[string]any{"role": RoleCustom, "content": content}}}, nil))
 		want := ai.UserContentBlocks{ai.TextContent{Text: "hello"}}
 		if len(messages) != 1 || !reflect.DeepEqual(messages[0].(ai.UserMessage).Content, want) {
 			t.Fatalf("custom content %T converted to %#v", content, messages)
@@ -100,7 +100,7 @@ func BenchmarkUserContentUnion(b *testing.B) {
 				if _, err := json.Marshal(clone); err != nil {
 					b.Fatal(err)
 				}
-				if len(ConvertToLLM([]AgentMessage{clone}, nil)) != 1 {
+				if len(ConvertToLLM(NormalizeMessages([]AgentMessage{clone}, nil))) != 1 {
 					b.Fatal("lost user")
 				}
 			}

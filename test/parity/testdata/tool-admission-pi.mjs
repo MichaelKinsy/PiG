@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 import ts from "../interface-extractor/node_modules/typescript/lib/typescript.js";
 
 const root = process.env.PI_PACKAGE_ROOT ?? resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
-const pin = readFileSync("internal/coding/pigversion/pigversion.go", "utf8").match(/UpstreamVersion = "([^"]+)"/)[1];
+const pin = readFileSync("internal/coding/pigversion/pigversion.go", "utf8").match(/UpstreamPackageVersion = "([^"]+)"/)[1];
 assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version, pin);
 const resolvePackage = (specifier) => import.meta.resolve(specifier, pathToFileURL(join(root, "package.json")).href);
 const upstream = resolve(".upstream/current/packages/coding-agent");

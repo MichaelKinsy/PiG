@@ -1,0 +1,77 @@
+package tui
+
+import (
+	"strings"
+	"testing"
+)
+
+// theme.ts bold/italic/underline/inverse/strikethrough are chalk 6.0.0's applyStyle (theme.ts:378-396): the attribute and its scoped close around the text, an empty string unchanged, the style closed and re-opened around each line break (CR LF kept together) and re-opened after an inner close of the same style. The multi-line and inner-close strings were recorded from `new Chalk({level: 1})` in Pi 1.1.0's node_modules.
+func TestThemeTextAttributeHelpers(t *testing.T) {
+	theme, err := LoadBuiltinTheme("dark")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		name string
+		got  func(string) string
+		want string
+	}{
+		{"bold", theme.Bold, "\x1b[1mx\x1b[22m"},
+		{"italic", theme.Italic, "\x1b[3mx\x1b[23m"},
+		{"underline", theme.Underline, "\x1b[4mx\x1b[24m"},
+		{"inverse", theme.Inverse, "\x1b[7mx\x1b[27m"},
+		{"strikethrough", theme.Strikethrough, "\x1b[9mx\x1b[29m"},
+	}
+	for _, c := range cases {
+		if got := c.got("x"); got != c.want {
+			t.Errorf("%s(x) = %q, want %q", c.name, got, c.want)
+		}
+		if got := c.got(""); got != "" {
+			t.Errorf("%s(\"\") = %q, want empty", c.name, got)
+		}
+		open, closing, _ := strings.Cut(c.want, "x")
+		for text, want := range map[string]string{
+			"a\nb":                open + "a" + closing + "\n" + open + "b" + closing,
+			"a\r\nb":              open + "a" + closing + "\r\n" + open + "b" + closing,
+			"\n":                  open + closing + "\n" + open + closing,
+			"a" + closing + "b":   open + "a" + closing + open + "b" + closing,
+			"a" + closing + "\nb": open + "a" + closing + open + closing + "\n" + open + "b" + closing,
+		} {
+			if got := c.got(text); got != want {
+				t.Errorf("%s(%q) = %q, want %q", c.name, text, got, want)
+			}
+		}
+	}
+}
+
+// theme.ts getThinkingBorderColor maps every thinking level to its own token and any other level to thinkingOff; getBashModeBorderColor uses bashMode.
+// The distinct-color check needs truecolor: the 256-color palette (colors.ts rgbToAnsi256) maps thinkingOff and thinkingMinimal to the same index, as in Pi, so the theme is resolved in truecolor whatever terminal runs the test.
+// Pi source: packages/tui/src/terminal-colors.ts
+// mutation-checked: zeroing the results of Theme.GetBashModeBorderColor fails it
+// Pi: packages/coding-agent/src/modes/interactive/theme/theme.ts:412 (Theme.getThinkingBorderColor); packages/coding-agent/src/modes/interactive/theme/theme.ts:434 (Theme.getBashModeBorderColor).
+func TestThemeBorderColorFunctions(t *testing.T) {
+	theme, err := loadBuiltinThemeWithMode("dark", TerminalColorModeTrueColor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tokens := map[string]string{
+		"off": "thinkingOff", "minimal": "thinkingMinimal", "low": "thinkingLow", "medium": "thinkingMedium",
+		"high": "thinkingHigh", "xhigh": "thinkingXhigh", "max": "thinkingMax", "unknown": "thinkingOff", "": "thinkingOff",
+	}
+	seen := map[string]string{}
+	for level, token := range tokens {
+		got := theme.GetThinkingBorderColor(level)("x")
+		if want := theme.Fg(token, "x"); got != want {
+			t.Errorf("GetThinkingBorderColor(%q)(x) = %q, want %q", level, got, want)
+		}
+		if level != "unknown" && level != "" {
+			if prior, dup := seen[got]; dup {
+				t.Errorf("levels %q and %q share the border color %q", prior, level, got)
+			}
+			seen[got] = level
+		}
+	}
+	if got, want := theme.GetBashModeBorderColor()("x"), theme.Fg("bashMode", "x"); got != want {
+		t.Errorf("GetBashModeBorderColor()(x) = %q, want %q", got, want)
+	}
+}

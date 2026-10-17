@@ -1,0 +1,63 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSessionServices::property:cwd"
+  ],
+  "targets": [
+   "coding/services.go#Services.CWD"
+  ],
+  "production": [
+   "call:coding/session.go#NewSession"
+  ],
+  "evidence": [
+   "test:coding/services_accessors_test.go#TestServicesCarryTheirCwdAgentDirModelRuntimeAndSettingsManager"
+  ],
+  "rationale": "AgentSessionServices.cwd is Services.CWD, the project directory the Services were built for."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSessionServices::property:agentDir"
+  ],
+  "targets": [
+   "coding/services.go#Services.AgentDir"
+  ],
+  "production": [
+   "call:coding/session.go#NewSession"
+  ],
+  "evidence": [
+   "test:coding/services_accessors_test.go#TestServicesCarryTheirCwdAgentDirModelRuntimeAndSettingsManager"
+  ],
+  "rationale": "AgentSessionServices.agentDir is Services.AgentDir, the global agent directory."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSessionServices::property:modelRuntime"
+  ],
+  "targets": [
+   "coding/services.go#Services.ModelRuntime"
+  ],
+  "production": [
+   "call:coding/session.go#NewSession"
+  ],
+  "evidence": [
+   "test:coding/services_accessors_test.go#TestServicesCarryTheirCwdAgentDirModelRuntimeAndSettingsManager"
+  ],
+  "rationale": "AgentSessionServices.modelRuntime is Services.ModelRuntime, the one ModelRuntime shared by every Session built from these Services."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSessionServices::property:settingsManager"
+  ],
+  "targets": [
+   "coding/services.go#Services.SettingsManager"
+  ],
+  "production": [
+   "call:coding/session.go#NewSession"
+  ],
+  "evidence": [
+   "test:coding/services_accessors_test.go#TestServicesCarryTheirCwdAgentDirModelRuntimeAndSettingsManager",
+   "test:coding/services_accessors_test.go#TestServicesReturnTheCallerSuppliedSettingsManager"
+  ],
+  "rationale": "AgentSessionServices.settingsManager is Services.SettingsManager, the live manager (caller-supplied when given)."
+ }
+]

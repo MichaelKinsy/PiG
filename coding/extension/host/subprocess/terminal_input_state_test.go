@@ -51,7 +51,7 @@ func TestTerminalInputUsesOwnerSnapshotWithoutReadingMutableUI(t *testing.T) {
 	t.Cleanup(func() { cancel(); _ = extEnd.Close(); _ = hostEnd.Close(); <-peerDone })
 	bridge := NewUIBridge(func() {})
 	bridge.SetUIContext(ui)
-	bridge.RegisterExtConn("state-probe", conn)
+	bridge.RegisterExtConn("state-probe", conn, false)
 	if _, err := bridge.handleOnTerminalInput("state-probe", nil); err != nil {
 		t.Fatal(err)
 	}

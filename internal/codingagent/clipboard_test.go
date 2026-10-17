@@ -1,10 +1,12 @@
 package codingagent
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -74,15 +76,37 @@ func TestSaveClipboardImageToTempFile(t *testing.T) {
 	if !strings.HasSuffix(path, ".png") {
 		t.Errorf("expected .png suffix; got %s", path)
 	}
-	if !strings.Contains(filepath.Base(path), "pig-clipboard-") {
-		t.Errorf("expected pig-clipboard- prefix; got %s", path)
+	// interactive-mode.ts handleClipboardPaste: `pi-clipboard-${crypto.randomUUID()}.${ext}` in os.tmpdir().
+	if !regexp.MustCompile(`^pi-clipboard-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.png$`).MatchString(filepath.Base(path)) {
+		t.Errorf("file name %q, want pi-clipboard-<uuid>.png", filepath.Base(path))
+	}
+	if filepath.Dir(path) != filepath.Clean(os.TempDir()) {
+		t.Errorf("directory %q, want %q", filepath.Dir(path), os.TempDir())
 	}
 	got, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(got) != string(body) {
+	if !bytes.Equal(got, body) {
 		t.Errorf("file body mismatch")
+	}
+	// fs.writeFileSync's default mode is 0o666 less the umask: the file a 0o666 write creates in this process.
+	if runtime.GOOS != "windows" {
+		reference := filepath.Join(t.TempDir(), "reference")
+		if err := os.WriteFile(reference, nil, 0o666); err != nil {
+			t.Fatal(err)
+		}
+		want, err := os.Stat(reference)
+		if err != nil {
+			t.Fatal(err)
+		}
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode().Perm() != want.Mode().Perm() {
+			t.Errorf("file mode %v, want %v (0o666 less the umask)", info.Mode().Perm(), want.Mode().Perm())
+		}
 	}
 }
 
@@ -156,7 +180,7 @@ func TestReadClipboardImageLinuxWaylandFirst(t *testing.T) {
 	if mime != "image/png" {
 		t.Errorf("mime: %q want image/png", mime)
 	}
-	if string(data) != string(pngBody) {
+	if !bytes.Equal(data, pngBody) {
 		t.Errorf("body mismatch")
 	}
 	if len(fr.log) < 1 || !strings.HasPrefix(fr.log[0], "wl-paste --list-types") {
@@ -180,7 +204,7 @@ func TestReadClipboardImageLinuxFallsThroughToXclip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	if mime != "image/png" || string(data) != string(pngBody) {
+	if mime != "image/png" || !bytes.Equal(data, pngBody) {
 		t.Errorf("got mime=%q data=%q", mime, data)
 	}
 	if len(fr.log) < 1 || !strings.Contains(fr.log[0], "xclip") {

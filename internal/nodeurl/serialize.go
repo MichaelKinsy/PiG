@@ -7,11 +7,6 @@ import (
 	"strings"
 )
 
-func resolveDirectoryPath(base, relative string, file bool) string {
-	path := strings.TrimRight(SpecialPath(base, file), "/") + "/" + relative
-	return encodeURLPart(SpecialPath(path, file), false)
-}
-
 // encodeURLPart applies WHATWG's path or userinfo percent-encode set. Percent signs are preserved even when they do not start a valid escape.
 func encodeURLPart(value string, userinfo bool) string {
 	const hex = "0123456789ABCDEF"

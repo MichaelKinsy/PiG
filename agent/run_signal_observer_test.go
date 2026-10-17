@@ -8,7 +8,7 @@ import (
 // Pi's ctx.signal is `agent.signal`, a getter that reads the active run at the moment of the call (agent.ts:336-338, runner.ts:917-920): the run's signal from the instant `activeRun` is set (agent.ts:517) to the instant it is cleared (agent.ts:554-555).
 // An owner that replicates the signal elsewhere learns of both instants from ObserveRunSignal, and the state the observer reads through Signal is already the new one.
 func TestAgentObserveRunSignalReportsTheRunStartAndEnd(t *testing.T) {
-	a := NewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: replyText("ok")})})
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: replyText("ok")})})
 	var states []bool
 	a.ObserveRunSignal(func() { states = append(states, a.Signal() != nil) })
 	if len(states) != 0 {
@@ -26,11 +26,12 @@ func TestAgentObserveRunSignalReportsTheRunStartAndEnd(t *testing.T) {
 
 // A claim that fails before its run starts still ends: the observer sees the signal appear and disappear, as Pi's activeRun is set and cleared around a run that throws (agent.ts:508-555).
 func TestAgentObserveRunSignalReportsAClaimThatFailsToStart(t *testing.T) {
-	a := NewAgent(AgentOptions{})
+	a := mustNewAgent(AgentOptions{StreamFn: piStream})
+	a.SetStreamFunction(nil)
 	var states []bool
 	a.ObserveRunSignal(func() { states = append(states, a.Signal() != nil) })
 	if _, err := a.BeginSendContent(t.Context(), nil); err == nil {
-		t.Fatal("a claim without a model succeeded")
+		t.Fatal("a claim without a stream function succeeded")
 	}
 	if want := []bool{true, false}; !slices.Equal(states, want) {
 		t.Fatalf("Signal() read by the observer = %v, want %v", states, want)
@@ -38,7 +39,7 @@ func TestAgentObserveRunSignalReportsAClaimThatFailsToStart(t *testing.T) {
 }
 
 func TestAgentObserveRunSignalStopsAfterTheReturnedFunctionRuns(t *testing.T) {
-	a := NewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: replyText("ok")})})
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: replyText("ok")})})
 	var calls, other int
 	stop := a.ObserveRunSignal(func() { calls++ })
 	a.ObserveRunSignal(func() { other++ })

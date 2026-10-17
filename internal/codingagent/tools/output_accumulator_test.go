@@ -38,8 +38,8 @@ func TestUTF8StreamDecoderMatchesTextDecoder(t *testing.T) {
 func TestOutputAccumulatorKeepsCharactersSplitAcrossChunks(t *testing.T) {
 	acc := NewOutputAccumulator("pi-test")
 	data := []byte(strings.Repeat("a", 4095) + strings.Repeat("€", 50))
-	acc.Append(data[:4096]) // ends inside the first "€"
-	acc.Append(data[4096:])
+	_ = acc.Append(data[:4096]) // ends inside the first "€"
+	_ = acc.Append(data[4096:])
 	acc.Finish()
 	snap := acc.Snapshot(false)
 	if strings.ContainsRune(snap.Content, '�') || !strings.HasSuffix(snap.Content, strings.Repeat("€", 50)) {
@@ -50,7 +50,7 @@ func TestOutputAccumulatorKeepsCharactersSplitAcrossChunks(t *testing.T) {
 // Raw bytes go to the full-output file, as upstream writes the chunks.
 func TestOutputAccumulatorTempFileHoldsRawBytes(t *testing.T) {
 	acc := newOutputAccumulator(2000, 10, "pi-test")
-	acc.Append([]byte("\x1b[31mred\x1b[0m and more\n"))
+	_ = acc.Append([]byte("\x1b[31mred\x1b[0m and more\n"))
 	acc.Finish()
 	snap := acc.Snapshot(true)
 	if err := acc.CloseTempFile(); err != nil {
@@ -118,18 +118,35 @@ func TestBashMultibyteOutputAcrossReads(t *testing.T) {
 // totalBytes 1 (probed under Node). Only the first code point counts.
 func TestOutputAccumulatorStripsInitialBOMLikeTextDecoder(t *testing.T) {
 	a := NewOutputAccumulator("pi-test")
-	a.Append([]byte{0xef})
-	a.Append([]byte{0xbb})
-	a.Append([]byte{0xbf, 'x'})
+	_ = a.Append([]byte{0xef})
+	_ = a.Append([]byte{0xbb})
+	_ = a.Append([]byte{0xbf, 'x'})
 	a.Finish()
 	if got := a.Snapshot(false); got.Content != "x" || got.Truncation.TotalBytes != 1 {
 		t.Fatalf("snapshot = %+v", got)
 	}
 	later := NewOutputAccumulator("pi-test")
-	later.Append([]byte("x\xef\xbb\xbfy"))
+	_ = later.Append([]byte("x\xef\xbb\xbfy"))
 	later.Finish()
 	if got := later.Snapshot(false).Content; got != "x\uFEFFy" {
 		t.Fatalf("a BOM after the first code point must stay: %q", got)
+	}
+}
+
+// The decoder copies a run of ASCII after the first code point whole; the run ends at the first byte above 0x7F, which TextDecoder decodes as a sequence start or U+FFFD, in one chunk and across chunks.
+func TestOutputAccumulatorASCIIRunEndsAtTheFirstNonASCIIByte(t *testing.T) {
+	for _, chunks := range [][]string{
+		{"ab\x80cd\x7f\xffe\xc3\xa9f"},
+		{"ab", "\x80cd\x7f", "\xffe\xc3", "\xa9f"},
+	} {
+		a := NewOutputAccumulator("pi-test")
+		for _, chunk := range chunks {
+			_ = a.Append([]byte(chunk))
+		}
+		a.Finish()
+		if got := a.Snapshot(false).Content; got != "ab\uFFFDcd\x7f\uFFFDe\u00e9f" {
+			t.Fatalf("chunks %q decode to %q", chunks, got)
+		}
 	}
 }
 
@@ -147,5 +164,21 @@ func TestBOMHandlingByPath(t *testing.T) {
 	read := readFileTool(t, "bom.txt", []byte("\xef\xbb\xbfhello"), map[string]any{})
 	if read.Text() != "\uFEFFhello" {
 		t.Fatalf("read content = %q, want the BOM kept", read.Text())
+	}
+}
+
+// output-accumulator.ts:65-67: append() after finish() throws.
+func TestOutputAccumulatorAppendAfterFinishFails(t *testing.T) {
+	acc := NewOutputAccumulator("pi-test")
+	if err := acc.Append([]byte("before")); err != nil {
+		t.Fatalf("append before finish: %v", err)
+	}
+	acc.Finish()
+	err := acc.Append([]byte("after"))
+	if err == nil || err.Error() != "Cannot append to a finished output accumulator" {
+		t.Fatalf("append after finish error = %v", err)
+	}
+	if got := acc.Snapshot(false).Content; got != "before" {
+		t.Fatalf("content after a rejected append = %q", got)
 	}
 }

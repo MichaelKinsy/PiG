@@ -4,6 +4,7 @@ package codingagent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 
@@ -27,6 +28,15 @@ type CredentialSynchronizationError struct {
 	Credential *ai.Credential
 	Cause      error
 }
+
+// NewCredentialSynchronizationError is `new CredentialSynchronizationError(providerId, operation, credential, { cause })`.
+func NewCredentialSynchronizationError(providerID string, operation CredentialSynchronizationOperation, credential *ai.Credential, cause error) *CredentialSynchronizationError {
+	e := &CredentialSynchronizationError{ProviderID: providerID, Operation: operation, Credential: credential, Cause: cause}
+	return e
+}
+
+// Name is the `name` property, "CredentialSynchronizationError".
+func (*CredentialSynchronizationError) Name() string { return "CredentialSynchronizationError" }
 
 func (e *CredentialSynchronizationError) Error() string {
 	return fmt.Sprintf("Credential %s committed for %s, but local synchronization failed", e.Operation, e.ProviderID)
@@ -79,6 +89,14 @@ func (r *ModelRegistry) beginCredentialOperation(ctx context.Context, id string)
 func (r *ModelRegistry) synchronizeCredentialState(ctx context.Context, id string, operation CredentialSynchronizationOperation, credential *ai.Credential) error {
 	err := context.Cause(ctx)
 	if err == nil {
+		// recomposeProvider meets again the error that dropped a models.json provider at load (model-runtime.ts synchronizeCredentialState).
+		r.mu.RLock()
+		if r.config != nil && r.config.composeFailures[id] != "" {
+			err = errors.New(r.config.composeFailures[id])
+		}
+		r.mu.RUnlock()
+	}
+	if err == nil {
 		r.nativeMu.Lock()
 		base, input := r.nativeBase[id], r.nativeInputs[id]
 		r.nativeMu.Unlock()
@@ -98,7 +116,7 @@ func (r *ModelRegistry) synchronizeCredentialState(ctx context.Context, id strin
 		}
 	}
 	if err != nil {
-		return &CredentialSynchronizationError{ProviderID: id, Operation: operation, Credential: credential, Cause: err}
+		return NewCredentialSynchronizationError(id, operation, credential, err)
 	}
 	return nil
 }

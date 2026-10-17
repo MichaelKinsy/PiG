@@ -325,6 +325,8 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		result, err = me.facetBridge.handleCall(callCtx, call)
 	case call.Method == CallRegisterTool:
 		result, err = h.handleToolRegistration(callCtx, me, conn, call)
+	case call.Method == CallRegisterDeclaration:
+		result, err = h.handleDeclarationRegistration(callCtx, me, call)
 	case call.Method == callXrefHello || call.Method == callXrefOp:
 		result, err = h.handleXrefCall(callCtx, me, conn, callID, call)
 	case call.Method == callEventsOn || call.Method == callEventsOff || call.Method == callEventsEmit || call.Method == callEventsSettle:
@@ -335,6 +337,10 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		result, err = h.handleMcpServersRead()
 	case call.Method == CallCheckMcpServer:
 		result, err = h.handleMcpServerCheck(me, call)
+	case call.Method == CallParseFrontmatter:
+		result, err = h.handleParseFrontmatter(call)
+	case call.Method == CallParseDate:
+		result, err = h.handleParseDate(call)
 	case call.Method == CallLoadingExec:
 		result, err = h.handleLoadingExec(callCtx, call)
 	case call.Method == CallRegisterMcpServer || call.Method == CallUnregisterMcpServer:
@@ -347,7 +353,7 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		result, err = h.handleProviderReference(conn, call)
 	case call.Method == CallProviderObject:
 		result, err = h.handleProviderObject(callCtx, conn, call)
-	case call.Method == CallProviderPublish || call.Method == CallProviderCallback:
+	case call.Method == CallProviderCallback:
 		result, err = h.handleProviderPublication(callCtx, conn, call)
 	case call.Method == "registerProvider" || call.Method == "unregisterProvider":
 		result, err = h.handleProviderRegistrationCall(callCtx, me, conn, callID, call)
@@ -355,13 +361,25 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		result, err = h.handleProviderConfigCall(callCtx, me, conn, callID, call)
 	case strings.HasPrefix(call.Method, "oauth.cb."):
 		result, err = h.handleOAuthCallback(callCtx, me.config.Name, call)
+	case call.Method == "exec" && (h.uiBridge == nil && h.onCall == nil || h.uiBridge != nil && !h.uiBridge.hasExecAction()):
+		result, err = h.handleUnboundExec(callCtx, call)
+	case call.Method == "renderSystemPrompt" && h.uiBridge == nil:
+		// The render is a pure function of the options the call carries, so a Host with no UI bridge (an SDK session) answers it too.
+		result, err = renderSystemPromptCall(call.Args)
 	case h.uiBridge != nil:
 		result, err = h.uiBridge.handleCall(callCtx, me.config.Name, conn, call)
 	case h.onCall != nil:
 		result, err = h.onCall(me.config.Name, call)
+	case isEarlyModelStreamCall(call.Method) && earlyModelStream.Load() != nil:
+		// A Host with no UI bridge (an SDK session, the validate and login loaders) still runs the pi-ai calls a module makes while it loads.
+		result, err = h.earlyModelBridge().handleCall(callCtx, me.config.Name, conn, call)
+	default:
+		// Every call is answered: an extension waits for its result, so a call no handler takes is an error, not silence.
+		err = fmt.Errorf("the host has no handler for %s", call.Method)
 	}
-	if (call.Method == "setModel" || takesInteractiveFocus(call.Method)) && err == nil {
+	if (call.Method == "setModel" || call.Method == "appendEntry" || takesInteractiveFocus(call.Method)) && err == nil {
 		// Pi's model changes and dialogs expose current state before their Promise settles, including cancellation and dialog errors returned in the payload.
+		// upstream: agent-session.ts:3406-3411 (appendEntry): the entry is in the session log when appendEntry returns, so the caller's subscribed session mirror receives it before the call result.
 		err = h.pushStateTo(callCtx, me, conn)
 	}
 	if callID == "" {
@@ -416,7 +434,8 @@ func (h *Host) handleProviderRegistrationCall(ctx context.Context, me *managedEx
 		h.xref.unhold(conn, callID)
 		return nil, fmt.Errorf("parse %s args: %w", call.Method, err)
 	}
-	if strings.TrimSpace(request.Name) == "" {
+	// Pi's registry keys a provider by its exact name (a Map), so only the empty name is refused, as lastRegistrationWins does for the register payload.
+	if request.Name == "" {
 		h.xref.unhold(conn, callID)
 		return nil, errors.New("provider name must not be empty")
 	}
@@ -426,9 +445,9 @@ func (h *Host) handleProviderRegistrationCall(ctx context.Context, me *managedEx
 			h.mu.Unlock()
 			return nil, errors.New("extension was replaced")
 		}
-		released := h.retireNativeProviderLocked(request.Name)
+		released, retired := h.retireNativeProviderLocked(me, conn, request.Name)
 		// Pi's unregisterProvider removes the one effective registration whoever registered it (model-runtime.ts:791-797), so the caller takes every claim, including a bridged OAuth login, before releasing them.
-		notifySuperseded := h.transferProviderOwnershipLocked(me, conn, request.Name)
+		notifySuperseded := h.transferProviderOwnershipLocked(me, conn, request.Name, retired...)
 		me.providerNames = slices.DeleteFunc(me.providerNames, func(name string) bool { return name == request.Name })
 		oauth := slices.Contains(me.oauthProviderNames, request.Name)
 		me.oauthProviderNames = slices.DeleteFunc(me.oauthProviderNames, func(name string) bool { return name == request.Name })
@@ -466,7 +485,7 @@ func (h *Host) handleProviderRegistrationCall(ctx context.Context, me *managedEx
 		return nil, err
 	}
 	h.mu.Lock()
-	released := h.retireNativeProviderLocked(request.Name)
+	released, retired := h.retireNativeProviderLocked(me, conn, request.Name)
 	h.mu.Unlock()
 	h.releaseProviderCallbacks(released)
 	h.mu.Lock()
@@ -476,7 +495,7 @@ func (h *Host) handleProviderRegistrationCall(ctx context.Context, me *managedEx
 		return nil, errors.New("extension was replaced")
 	}
 	registeredOAuth := slices.Contains(me.oauthProviderNames, request.Name)
-	notifySuperseded := h.transferProviderOwnershipLocked(me, conn, request.Name)
+	notifySuperseded := h.transferProviderOwnershipLocked(me, conn, request.Name, retired...)
 	h.mu.Unlock()
 	notifySuperseded()
 	if !registeredOAuth {
@@ -490,4 +509,23 @@ func (h *Host) handleProviderRegistrationCall(ctx context.Context, me *managedEx
 		h.uiBridge.RecordProviderRegistration(request.Name, request.Config)
 	}
 	return &CallResultPayload{}, nil
+}
+
+// handleUnboundExec runs pi.exec for a call that arrives before a session binds the exec action, which is while a factory loads. Pi's pi.exec needs no session: it runs the command in the loader's working directory (core/extensions/loader.ts createExtensionAPI exec).
+func (h *Host) handleUnboundExec(ctx context.Context, call *CallPayload) (*CallResultPayload, error) {
+	var p struct {
+		Command string                 `json:"command"`
+		Args    []string               `json:"args"`
+		Options *extension.ExecOptions `json:"options,omitempty"`
+	}
+	if err := json.Unmarshal(call.Args, &p); err != nil {
+		return nil, fmt.Errorf("parse exec args: %w", err)
+	}
+	// ExecCommand reports the call initiated once its spawn was attempted, as the bound exec action does.
+	res, err := extension.ExecCommand(ctx, h.cwd, p.Command, p.Args, p.Options)
+	if err != nil {
+		return nil, err
+	}
+	result, _ := json.Marshal(res)
+	return &CallResultPayload{Result: result}, nil
 }

@@ -26,7 +26,7 @@ codemode="$agent/node_modules/@earendil-works/pi-codemode"
 mcp="$agent/node_modules/@earendil-works/pi-mcp"
 ignore="$agent/node_modules/ignore"
 jsdiff="$agent/node_modules/diff"
-shims="$root/coding/extension/host/subprocess/runtime-node/shims"
+shims=${PIG_VENDOR_SHIMS:-"$root/coding/extension/host/subprocess/runtime-node/shims"} # PIG_VENDOR_SHIMS writes the vendored runtime elsewhere, so a pin leap can try a new Pi without touching the committed one
 dist="$shims/pi-dist"
 
 # copy <package dist> <target dir> <file>...: verbatim copies, keeping paths.
@@ -82,6 +82,20 @@ sed -e 's#^import { Compile } from "typebox/compile";$#import { Compile } from "
   "$ai/dist/utils/validation.js" >"$dist/pi-ai/utils/validation.js"
 sed 's#^import { Type } from "typebox";$#import { Type } from "../../../typebox.mjs";#' \
   "$ai/dist/utils/typebox-helpers.js" >"$dist/pi-ai/utils/typebox-helpers.js"
+
+# Every other copied pi-ai module that imports typebox (the model and compat schemas, and any a later Pi adds) reaches the vendored typebox shims by its own depth.
+while IFS= read -r file; do
+  prefix="../.."
+  rest=${file%/*}
+  [ "$rest" = "$file" ] || while :; do
+    prefix="$prefix/.."
+    case "$rest" in */*) rest=${rest%/*} ;; *) break ;; esac
+  done
+  sed -i -e "s#^\(import .* from \)\"typebox\";\$#\1\"$prefix/typebox.mjs\";#" \
+    -e "s#^\(import .* from \)\"typebox/value\";\$#\1\"$prefix/typebox-value.mjs\";#" \
+    -e "s#^\(import .* from \)\"typebox/compile\";\$#\1\"$prefix/typebox-compile.mjs\";#" "$dist/pi-ai/$file"
+done < <(cd "$dist/pi-ai" && grep -lE '^import .* from "typebox(/value|/compile)?";$' -r . --include=*.js | sed 's#^\./##' | sort)
+
 
 # pi-coding-agent and pi-agent-core use their complete public module graphs.
 node "$root/automation/gen/vendor-pi-closure.mjs" "$shims" "$(cat <<JSON
@@ -153,26 +167,37 @@ cp -R "$jsdiff/libesm" "$shims/diff/libesm"
 find "$shims/diff/libesm" -name '*.d.ts' -delete -o -name '*.d.ts.map' -delete
 cp "$jsdiff/package.json" "$jsdiff/LICENSE" "$shims/diff/"
 
-# Every rewritten specifier must have matched: a pin change that alters an
-# import line fails here instead of shipping a module that cannot load.
-for check in \
-  "$dist/pi-tui/index.js:../../marked/lib/marked.esm.js" \
-  "$dist/pi-tui/utils.js:../../get-east-asian-width/index.js" \
-  "$dist/pi-tui/components/markdown.js:../../../marked/lib/marked.esm.js" \
-  "$dist/pi-ai/utils/json-parse.js:../../../partial-json/dist/index.js" \
-  "$dist/pi-ai/utils/validation.js:../../../typebox-compile.mjs" \
-  "$dist/pi-ai/utils/validation.js:../../../typebox-value.mjs" \
-  "$dist/pi-ai/utils/typebox-helpers.js:../../../typebox.mjs" \
-  "$dist/pi-ai/index.js:../../typebox.mjs" \
-  "$dist/pi-coding-agent/utils/frontmatter.js:../../../yaml/index.js" \
-  "$dist/pi-coding-agent/utils/syntax-highlight.js:../../../highlight.js/lib/core.js" \
-  "$dist/pi-coding-agent/utils/syntax-highlight.js:../../../highlight.js/lib/index.js" \
-  "$dist/pi-coding-agent/core/settings-manager.js:../../pi-ai/sdk-bundle/index.js" \
-  "$dist/pi-coding-agent/core/settings-manager.js:../../../proper-lockfile.mjs" \
-  "$dist/pi-coding-agent/core/settings-manager.js:../config.js" \
-  "$dist/pi-coding-agent/modes/interactive/components/custom-editor.js:../../../../../pi-tui.mjs"; do
-  grep -qF "\"${check#*:}\"" "${check%%:*}" || { echo "vendor-pi-dist: import rewrite failed in ${check%%:*}" >&2; exit 1; }
-done
+# Every rewritten specifier must have matched: a pin change that alters an import line fails here instead of shipping a module that cannot load.
+# The expectations derive from the pinned source: a module that still imports the original specifier must carry the rewritten one and no longer the original; a module that stopped importing it needs no rewrite.
+rewrote() {
+  local vendored=$1 source=$2 original=$3 rewritten=$4
+  [ -f "$source" ] || { echo "vendor-pi-dist: $source is gone from the pinned Pi; update the rewrite list" >&2; exit 1; }
+  if grep -qF "\"$original\"" "$source"; then
+    if ! grep -qF "\"$rewritten\"" "$vendored" || grep -qF "\"$original\"" "$vendored"; then
+      echo "vendor-pi-dist: import rewrite failed in $vendored" >&2
+      exit 1
+    fi
+  fi
+}
+rewrote "$dist/pi-tui/index.js" "$tui/dist/index.js" marked ../../marked/lib/marked.esm.js
+rewrote "$dist/pi-tui/utils.js" "$tui/dist/utils.js" get-east-asian-width ../../get-east-asian-width/index.js
+rewrote "$dist/pi-tui/components/markdown.js" "$tui/dist/components/markdown.js" marked ../../../marked/lib/marked.esm.js
+rewrote "$dist/pi-ai/utils/json-parse.js" "$ai/dist/utils/json-parse.js" partial-json ../../../partial-json/dist/index.js
+rewrote "$dist/pi-ai/utils/validation.js" "$ai/dist/utils/validation.js" typebox/compile ../../../typebox-compile.mjs
+rewrote "$dist/pi-ai/utils/validation.js" "$ai/dist/utils/validation.js" typebox/value ../../../typebox-value.mjs
+rewrote "$dist/pi-ai/utils/typebox-helpers.js" "$ai/dist/utils/typebox-helpers.js" typebox ../../../typebox.mjs
+rewrote "$dist/pi-ai/index.js" "$ai/dist/index.js" typebox ../../typebox.mjs
+rewrote "$dist/pi-coding-agent/utils/frontmatter.js" "$agent/dist/utils/frontmatter.js" yaml ../../../yaml/index.js
+rewrote "$dist/pi-coding-agent/utils/syntax-highlight.js" "$agent/dist/utils/syntax-highlight.js" highlight.js/lib/core.js ../../../highlight.js/lib/core.js
+rewrote "$dist/pi-coding-agent/core/settings-manager.js" "$agent/dist/core/settings-manager.js" proper-lockfile ../../../proper-lockfile.mjs
+rewrote "$dist/pi-coding-agent/core/settings-manager.js" "$agent/dist/core/settings-manager.js" @earendil-works/pi-ai ../../pi-ai/sdk-bundle/index.js
+rewrote "$dist/pi-coding-agent/modes/interactive/components/custom-editor.js" "$agent/dist/modes/interactive/components/custom-editor.js" @earendil-works/pi-tui ../../../../../pi-tui.mjs
+# No vendored module may keep a bare typebox import: the shims have no node_modules.
+if grep -rEq --include=*.js '^import .* from "typebox(/value|/compile)?";$' "$dist"; then
+  echo "vendor-pi-dist: a vendored module still imports typebox by its package name:" >&2
+  grep -rEl --include=*.js '^import .* from "typebox(/value|/compile)?";$' "$dist" >&2
+  exit 1
+fi
 
 # Required helpers must exist in the complete copied modules.
 for check in \

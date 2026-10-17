@@ -21,7 +21,7 @@ import (
 // environment and passes os.Executable() (this same test binary) as the
 // command, so the same test works on every OS the test binary runs on,
 // including native Windows, instead of depending on /bin/echo or a
-// cmd.exe-only builtin. Mirrors cmd/pig/testmain_test.go's identical helper.
+// cmd.exe-only builtin. Mirrors coding/cli/testmain_test.go's identical helper.
 const execEchoHelperEnv = "PIG_TEST_EXEC_ECHO_HELPER"
 
 // argvRecordEnv names a file to which this test binary, run under another program's name, appends that name and its arguments as one JSON line, then exits. A test copies the binary over a launcher such as rundll32.exe to observe exactly what production code would pass to it.
@@ -65,15 +65,15 @@ func runFakeTrash(mode string) int {
 		fmt.Fprint(os.Stderr, fakeTrashStderr)
 		return 1
 	case "overflow-combined":
-		_, _ = os.Stdout.Write([]byte(strings.Repeat("x", 768*1024)))
-		_, _ = os.Stderr.Write([]byte(strings.Repeat("x", 768*1024)))
+		_, _ = os.Stdout.WriteString(strings.Repeat("x", 768*1024))
+		_, _ = os.Stderr.WriteString(strings.Repeat("x", 768*1024))
 		return 1
 	case "overflow-stdout", "overflow-stderr":
 		out := os.Stdout
 		if mode == "overflow-stderr" {
 			out = os.Stderr
 		}
-		_, _ = out.Write([]byte(strings.Repeat("x", 2*1024*1024)))
+		_, _ = out.WriteString(strings.Repeat("x", 2*1024*1024))
 		return 1
 	case "fail-long":
 		fmt.Fprint(os.Stderr, strings.Repeat("\U0001F600", 150)+"\n")
@@ -109,16 +109,31 @@ func TestMain(m *testing.M) {
 		fmt.Println(strings.Join(os.Args[1:], " "))
 		os.Exit(0)
 	}
-	if pidFile := os.Getenv(clipboardDescendantEnv); pidFile != "" {
-		os.Exit(runClipboardDescendantHelper(pidFile))
+	if os.Getenv(externalEditorScenarioEnv) == "1" {
+		os.Exit(runExternalEditorScenario(os.Args[1:]))
 	}
-	if os.Getenv(clipboardDescendantHoldEnv) == "1" {
-		holdClipboardDescendantPipes()
+	if addr := os.Getenv(clipboardDescendantEnv); addr != "" {
+		os.Exit(runClipboardDescendantHelper(addr))
+	}
+	if addr := os.Getenv(clipboardDescendantHoldEnv); addr != "" {
+		holdClipboardDescendantPipes(addr)
 	}
 	// Package tests never reach the host's native clipboard: on macOS and
 	// Windows it is the real system pasteboard regardless of clipboardGOOS, so
 	// a test faking another platform's commands would read whatever the user
 	// last copied. Tests that exercise the native reader install a fake.
 	getNativeClipboard = func() *tui.NativeClipboard { return nil }
-	os.Exit(testenv.RunScoped(m, "pig-ca-"))
+	code := testenv.RunScoped(m, "pig-ca-")
+	if code == 0 {
+		// A test binary that passed must not end with goroutines blocked forever on primitives nothing can reach.
+		leaked, text, err := testenv.LeakedGoroutines()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			code = 1
+		} else if leaked != 0 {
+			fmt.Fprintf(os.Stderr, "FAIL: %d goroutine(s) leaked: blocked forever on a primitive no live goroutine can reach\n%s", leaked, text)
+			code = 1
+		}
+	}
+	os.Exit(code)
 }

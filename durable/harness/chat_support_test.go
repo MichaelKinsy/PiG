@@ -4,7 +4,9 @@ package harness
 
 import (
 	"context"
+	"os"
 	"slices"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -59,13 +61,23 @@ func chatSetup(t *testing.T, config ...ai.FauxConfig) *chatState {
 	faux := ai.NewFauxProvider(options)
 	models := ai.CreateModels()
 	models.SetProvider(faux.Provider())
-	return &chatState{
+	state := &chatState{
 		Faux:     faux,
 		Models:   models,
 		Registry: CreateRegistry(),
 		Reports:  &reportLog{},
 		now:      func() float64 { return float64(time.Now().UnixMilli()) },
 	}
+	// PI_DURABLE_DOCUMENT_RETENTION_MS runs the suite with the document retention of every chat set, as upstream's
+	// setup-document-retention.ts does for `npm run test:evicting` (0 evicts each unattached document right after use).
+	if forced := os.Getenv("PI_DURABLE_DOCUMENT_RETENTION_MS"); forced != "" {
+		retention, err := strconv.ParseFloat(forced, 64)
+		if err != nil {
+			t.Fatalf("PI_DURABLE_DOCUMENT_RETENTION_MS = %q: %v", forced, err)
+		}
+		state.settings.DocumentRetentionMs = &retention
+	}
+	return state
 }
 
 type openChatOptions struct {
@@ -187,10 +199,10 @@ func unanswered() unansweredStep {
 	var once sync.Once
 	return unansweredStep{
 		reached: reached,
-		step: ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+		step: ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
 			once.Do(func() { close(reached) })
 			<-options.Signal.Done()
-			return ai.FauxResponse{}, context.Cause(options.Signal)
+			return ai.FauxResponse{}.AssistantMessage(), context.Cause(options.Signal)
 		}),
 	}
 }

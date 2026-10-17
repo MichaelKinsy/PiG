@@ -56,7 +56,7 @@ func TestSessionSelectorAsyncOwnerLoops(t *testing.T) {
 				m.setModalInputChannel(input)
 				send = func(data string) { input <- []byte(data) }
 				go func() {
-					_, selected := m.runEditorSlotSessionSelector(s)
+					_, selected := m.runEditorSlotSessionSelector(s, hookSessionSelectorOutcome(s))
 					if selected {
 						done <- fmt.Errorf("cancel selected a session")
 					} else {
@@ -101,7 +101,7 @@ func TestSessionSelectorAsyncOwnerLoops(t *testing.T) {
 	}
 }
 
-func inspectSessionSelectorUntil(t *testing.T, s *sessionSelector, condition func() bool) {
+func inspectSessionSelectorUntil(t *testing.T, s *SessionSelectorComponent, condition func() bool) {
 	t.Helper()
 	timer := time.NewTimer(5 * time.Second)
 	defer timer.Stop()

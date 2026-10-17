@@ -43,7 +43,7 @@ func (t jevTool) Execute(context.Context, string, json.RawMessage, agent.ToolUpd
 
 func TestNodeJevRouterExample(t *testing.T) {
 	call := func(tool string) ai.FauxResponseStep {
-		return ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall(tool, map[string]any{"path": "a.ts"}, "")}, StopReason: "toolUse"})
+		return ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall(tool, map[string]any{"path": "a.ts"}, &ai.FauxToolCallOptions{ID: ""})}, StopReason: "toolUse"})
 	}
 	text := func(value string) ai.FauxResponseStep {
 		return ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText(value)}, StopReason: "stop"})
@@ -92,7 +92,7 @@ func newJevRouterRig(t *testing.T, complexity float64, tools []jevTool) *jevRout
 	if err := os.MkdirAll(agentDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +128,7 @@ func newJevRouterRig(t *testing.T, complexity float64, tools []jevTool) *jevRout
 	ui := newRecordingUI(notify, status)
 	bridge := subprocess.NewUIBridge(func() {})
 	bridge.SetUIContext(ui)
-	detach := codingagent.WireModelOperations(bridge, codingagent.ModelOperationBindings{ModelLookup: runtime.GetModel, ModelCatalog: runtime.GetModels, Registry: services.Registry().ModelRegistry})
+	detach := codingagent.WireModelOperations(bridge, codingagent.ModelOperationBindings{ModelLookup: runtime.GetModel, ModelCatalog: func(...string) []*ai.Model { return runtime.GetModels() }, Registry: services.Registry().ModelRegistry})
 	t.Cleanup(detach)
 	h := subprocess.NewHostWithConfigRoot(t.TempDir(), t.TempDir())
 	h.SetUIBridge(bridge)
@@ -155,7 +155,7 @@ func newJevRouterRig(t *testing.T, complexity float64, tools []jevTool) *jevRout
 		}
 	}()
 	t.Cleanup(func() { _ = session.Close(); <-done })
-	if err := session.BindExtensions(t.Context()); err != nil {
+	if err := session.BindExtensions(t.Context(), coding.ExtensionBindings{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := session.SetModel(runtime.GetModel("jev", "auto")); err != nil {
@@ -168,7 +168,7 @@ func (r *jevRouterRig) respond(steps ...ai.FauxResponseStep) { r.codex.AppendRes
 
 func (r *jevRouterRig) prompt(text string) {
 	r.t.Helper()
-	if _, err := r.session.Prompt(r.t.Context(), text); err != nil {
+	if err := r.session.Prompt(r.t.Context(), text); err != nil {
 		r.t.Fatal(err)
 	}
 }
@@ -188,7 +188,7 @@ func (r *jevRouterRig) dispatched() []string {
 func (r *jevRouterRig) phases() []string {
 	out := []string{}
 	for _, entry := range r.session.Inner().GetBranch() {
-		if entry.Base.Type != "custom" {
+		if entry.Base().Type != "custom" {
 			continue
 		}
 		var custom struct {

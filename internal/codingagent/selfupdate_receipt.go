@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/ownerfile"
@@ -80,7 +81,7 @@ func WriteStandaloneReceipt(exe, version, source string) error {
 	if transportCA != "" {
 		content += "update-ca-sha256=" + transportCA + "\n"
 	}
-	if _, err := io.WriteString(tmp, content); err != nil {
+	if _, err := tmp.WriteString(content); err != nil {
 		_ = tmp.Close()
 		return fmt.Errorf("write standalone receipt: %w", err)
 	}
@@ -155,7 +156,8 @@ func validateStandaloneReceipt(exe string) error {
 	if receipt.Kind != "standalone" {
 		return fmt.Errorf("standalone receipt kind is %q, want standalone", receipt.Kind)
 	}
-	if canonicalPath(receipt.ExecutablePath) != canonicalPath(exe) {
+	// canonicalPath is Node's realpathSync and keeps the case each path was spelled in; the receipt names an executable on a filesystem that, on Windows, does not tell `C:\Pig\pig.exe` from `c:\pig\PIG.EXE`.
+	if ownershipPath(runtime.GOOS, receipt.ExecutablePath) != ownershipPath(runtime.GOOS, exe) {
 		return fmt.Errorf("standalone receipt executable %s does not match %s", receipt.ExecutablePath, exe)
 	}
 	if InstalledPigVersion == "" {

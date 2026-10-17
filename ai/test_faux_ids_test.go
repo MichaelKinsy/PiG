@@ -72,7 +72,7 @@ func TestTestFauxToolCallIDsResume(t *testing.T) {
 				ToolResultMessage{ToolCallID: "call_test_faux_9", ToolName: "bash", Content: []ToolResultMessageContent{TextContent{Text: "orphan"}}},
 				UserMessage{Content: UserText("Run: expr 20 + 22")},
 			}
-			stream, err := p.Stream(t.Context(), NormalizeContext(Context{Messages: messages}), StreamOptions{SessionID: "resumed"})
+			stream, err := p.Stream(invalidRequest(t), NormalizeContext(Context{Messages: messages}), StreamOptions{SessionID: "resumed"})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -97,7 +97,7 @@ func TestTestFauxToolCallIDsResumeAssistantOnly(t *testing.T) {
 				AssistantMessage{StopReason: reason, Content: []AssistantContentBlock{ToolCall{ID: "call_test_faux_7", Name: "bash", Arguments: JsonObject{}}}},
 				UserMessage{Content: UserText("Run: expr 20 + 22")},
 			}
-			stream, err := p.Stream(t.Context(), NormalizeContext(Context{Messages: messages}), StreamOptions{SessionID: "resumed"})
+			stream, err := p.Stream(invalidRequest(t), NormalizeContext(Context{Messages: messages}), StreamOptions{SessionID: "resumed"})
 			if err != nil {
 				t.Fatal(err)
 			}

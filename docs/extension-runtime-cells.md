@@ -1,13 +1,8 @@
 # Extension runtime cells
 
-Pig hosts normal third-party extensions as subprocesses over the current subprocess wire. A
-**runtime cell** is the host's scheduling/process unit: one cell may run one
-extension or pack several compatible factories into one process.
+Pig hosts normal third-party extensions as subprocesses over the current subprocess wire. A **runtime cell** is the host's scheduling/process unit: one cell may run one extension or pack several compatible factories into one process.
 
-Runtime cells are internal. Authors declare extensions; Piglets and Package
-settings choose extension sets; Pig chooses cells. Read the
-[ecosystem ontology](piglet-resource-ontology.md) before mapping these internal
-process choices into Piglet artifacts.
+Runtime cells are internal. Authors declare extensions; Piglets and Package settings choose extension sets; Pig chooses cells. Read the [ecosystem ontology](piglet-resource-ontology.md) before mapping these internal process choices into Piglet artifacts.
 
 Return to the [maintainer docs router](README.md).
 
@@ -24,16 +19,13 @@ Return to the [maintainer docs router](README.md).
 ## Invariants
 
 - Normal dynamic extensions are subprocesses.
-- Pig does not add WASM, embedded JavaScript, `plugin.Open`, or dynamic Go
-  plugin runtimes.
-- Every contained extension keeps its own registration socket and
-  identity, even when several share one process.
+- Pig does not run extensions in WASM, embedded JavaScript, `plugin.Open`, or dynamic Go plugin runtimes.
+- Every contained extension keeps its own registration socket and identity, even when several share one process.
 - Packing is an optimization, never an author-facing grouping model.
 - Node crash recovery quarantines only an attributable culprit. It restarts an unknown group once, then bisects repeated failures and rejoins healthy members after identification. It never replays interrupted callbacks.
 - Incompatible or quarantined extensions run in isolated cells.
 - Reload publishes the staged replacement registry. A failed extension is reported and removed; a config-loading failure preserves the existing registry.
-- Stock Pig carries no Piglet-specific fused registrations or managed component
-  closure; generic support is inert until a Piglet build/release populates it.
+- Stock Pig carries no Piglet-specific fused registrations or managed component closure; generic support is inert until a Piglet build/release populates it.
 
 ## Terms
 
@@ -56,30 +48,20 @@ Return to the [maintainer docs router](README.md).
 | Python | yes | yes | yes with locked Python/dependencies | no |
 | Node/TypeScript | yes | yes | yes with locked Node/dependencies | no |
 
-Packing requires a conventional Go, Rust, Python, or Node factory. All exact
-standalones (including a shebang Node script) stay isolated. A Node cell packs
-without compiling anything: it caches one copy of the embedded Node runtime
-plus a manifest naming each member's resolved entry, and reads every member's
-TS/JS source fresh through the same jiti loader an isolated Node extension uses. The host admits each Node member in configured order over a private startup channel, so `[Node A, Go B, Node C]` starts factories A, B, C while A and C share one bus. Authors do not configure groups.
+Packing requires a conventional Go, Rust, Python, or Node factory. All exact standalones (including a shebang Node script) stay isolated. A Node cell packs without compiling anything: it caches one copy of the embedded Node runtime plus a manifest naming each member's resolved entry, and reads every member's TS/JS source fresh through the same jiti loader an isolated Node extension uses. The host admits each Node member in configured order over a private startup channel, so `[Node A, Go B, Node C]` starts factories A, B, C while A and C share one bus. Authors do not configure groups.
 
 ## Runtime and Piglet artifacts
 
-The same component builder can support runtime cache and Piglet release
-materialization:
+The same component builder can support runtime cache and Piglet release materialization:
 
 ```text
 source extension -> first runtime load -> cached cell
 source extension -> Piglet build      -> locked release/environment component
 ```
 
-A matching prebuilt component can satisfy a Piglet Binary request without
-rebuilding. Cache reuse is only an optimization; Piglet records preserve
-exact source/core/toolchain/target/component identity.
+A matching prebuilt component can satisfy a Piglet Binary request without rebuilding. Cache reuse is only an optimization; Piglet records preserve exact source/core/toolchain/target/component identity.
 
-Compatible Go factories may be fused as an in-process optimization. Fused and
-subprocess paths must remain observationally equivalent to the current subprocess wire and are
-governed by D31 plus extension conformance tests. The Piglet plan, not a binary
-kind or user tier, selects the realization.
+Compatible Go factories may be fused as an in-process optimization. Fused and subprocess paths must remain observationally equivalent to the current subprocess wire and are governed by D31 plus extension conformance tests. The Piglet plan, not a binary kind or user tier, selects the realization.
 
 ## Boundaries
 
@@ -90,20 +72,19 @@ Pig owns facts and runtime mechanics:
 - cell generation/build/cache;
 - startup, registration, cancellation, and reload;
 - structured validation/reload reports;
-- release-materialized/fused component support.
+- release-materialized/fused component support;
+- Piglet Binary signing (`pig piglet keygen`, `--sign-key`) and the local signer trust store (`pig piglet trust`).
 
 Consuming products own policy and transport:
 
 - source/catalog authentication;
-- signature and vulnerability policy;
+- signature policy beyond the local trust store, and vulnerability policy;
 - publication approval;
 - multi-tenant quotas;
 - build-environment scheduling;
-- artifact signing/provenance policy.
+- artifact provenance policy.
 
-Piglets are Pig-owned composition/build declarations. Product controllers may
-materialize piglets/resources and invoke Pig validation, but they do not
-duplicate fields from the conventional source and runtime registration contract.
+Piglets are Pig-owned composition/build declarations. Product controllers may materialize piglets/resources and invoke Pig validation, but they do not duplicate fields from the conventional source and runtime registration contract.
 
 ## Source and tests
 

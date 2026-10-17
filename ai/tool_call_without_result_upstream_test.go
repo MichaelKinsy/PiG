@@ -66,7 +66,7 @@ func TestToolCallWithoutResultUpstream(t *testing.T) {
 			options := StreamOptions{IsReasoning: model.Reasoning, ReasoningEffort: tc.effort, ModelCost: model.ToModel().CostRates(), Transport: TransportSSE, Env: ProviderEnv{"AWS_BEDROCK_SKIP_AUTH": "1", "AWS_REGION": "us-east-1"}}
 			request := Context{SystemPrompt: "You are a helpful assistant. Use the calculate tool when asked to perform calculations.", Tools: []ToolSchema{{Name: "calculate", Description: "Evaluate mathematical expressions", Parameters: map[string]any{"type": "object", "properties": map[string]any{"expression": map[string]any{"type": "string", "description": "The mathematical expression to evaluate"}}, "required": []string{"expression"}}}}, Messages: []Message{UserMessage{Content: UserText("Please calculate 25 * 18 using the calculate tool."), Timestamp: 1}}}
 			complete := func() *AssistantMessage {
-				stream, err := provider.Stream(t.Context(), NormalizeContext(request), options)
+				stream, err := provider.Stream(invalidRequest(t), NormalizeContext(request), options)
 				if err != nil {
 					t.Fatal(err)
 				}

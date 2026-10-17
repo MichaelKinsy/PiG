@@ -7,46 +7,51 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
-// ConvertToLLM converts AgentMessages to the wire format expected by the AI provider.
-// It calls NormalizeMessages first to filter errored/aborted assistant messages and
-// insert synthetic tool results for orphaned tool calls.
-func ConvertToLLM(msgs []AgentMessage, model *ai.Model) []ai.Message {
-	msgs = NormalizeMessages(msgs, model)
+// ConvertToLLM converts AgentMessages to the wire format expected by the AI provider (convertToLlm, messages.ts:148).
+// Like upstream it only converts: the agent loop passes the result to the stream function as it is, and a provider
+// filters errored/aborted assistant messages and closes orphaned tool calls itself (transformMessages).
+func ConvertToLLM(msgs []AgentMessage) []ai.Message {
 	out := make([]ai.Message, 0, len(msgs))
 	for _, m := range msgs {
-		switch {
-		case m.System != nil:
-			out = append(out, *m.System)
-		case m.User != nil:
-			out = append(out, m.User.LLMMessage())
-		case m.Assistant != nil:
-			message := m.Assistant.LLMMessage()
-			if len(message.Content) == 0 {
-				message.Content = []ai.AssistantContentBlock{ai.TextContent{Text: ""}}
-			}
-			out = append(out, message)
-		case m.ToolResult != nil:
-			out = append(out, ai.ToolResultMessage{
-				ToolCallID: m.ToolResult.ToolCallID, ToolName: m.ToolResult.ToolName,
-				Content: m.ToolResult.Content, Details: m.ToolResult.Details, DetailsNull: m.ToolResult.DetailsNull,
-				Usage: m.ToolResult.Usage, NestedCalls: m.ToolResult.NestedCalls, IsError: m.ToolResult.IsError,
-				Timestamp: m.ToolResult.Timestamp,
-			})
-		case m.Custom != nil:
-			if user, ok := customUserMessage(m.Custom); ok {
-				out = append(out, user)
-			}
+		out = appendLLM(out, m)
+	}
+	return out
+}
+
+// appendLLM appends the provider message of m, or nothing for a message that sends nothing.
+func appendLLM(out []ai.Message, m AgentMessage) []ai.Message {
+	switch {
+	case m.System != nil:
+		out = append(out, *m.System)
+	case m.User != nil:
+		out = append(out, m.User.LLMMessage())
+	case m.Assistant != nil:
+		out = append(out, m.Assistant.LLMMessage())
+	case m.ToolResult != nil:
+		out = append(out, toolResultLLM(m.ToolResult))
+	case m.Custom != nil:
+		if user, ok := customUserMessage(m.Custom); ok {
+			out = append(out, user)
 		}
 	}
 	return out
 }
 
-// customUserMessage is the user message convertToLLM sends for a custom
-// message, or false when the message sends nothing. It mirrors upstream
-// convertToLlm (coding-agent core/messages.ts): every known custom role becomes
-// a user message whose content is a text-block array, and "custom" block-array
-// content passes through. NormalizeMessages asks the same question to end the
-// tool flow where upstream's transformMessages sees a user message.
+// toolResultLLM is the provider form of a tool result message.
+func toolResultLLM(m *ToolResultMessage) ai.ToolResultMessage {
+	return ai.ToolResultMessage{
+		ToolCallID: m.ToolCallID, ToolName: m.ToolName,
+		Content: m.Content, Details: m.Details, DetailsNull: m.DetailsNull,
+		Usage: m.Usage, NestedCalls: m.NestedCalls, IsError: m.IsError,
+		DurationMs: m.DurationMs, Timestamp: m.Timestamp,
+	}
+}
+
+// customUserMessage is the user message convertToLlm (coding-agent core/messages.ts) sends for a custom message, or false when
+// the message sends nothing: every known custom role becomes a user message whose content is a text-block array, a "custom"
+// message's block-array content passes through, and only a bash execution excluded from context or custom content that is not
+// user content sends nothing. NormalizeMessages asks it too, because upstream runs transformMessages after convertToLlm and a
+// custom message that becomes a user message ends the tool flow.
 func customUserMessage(m map[string]any) (ai.UserMessage, bool) {
 	role, _ := m["role"].(string)
 	switch role {
@@ -56,10 +61,7 @@ func customUserMessage(m map[string]any) (ai.UserMessage, bool) {
 				return ai.UserMessage{}, false
 			}
 		}
-		return ai.UserMessage{
-			Content:   ai.UserContentBlocks{ai.TextContent{Text: customMessageText(m)}},
-			Timestamp: customTimestamp(m),
-		}, true
+		return ai.UserMessage{Content: ai.UserContentBlocks{ai.TextContent{Text: customMessageText(m)}}, Timestamp: customTimestamp(m)}, true
 	case RoleCustom:
 		if content, ok := customMessageContent(m["content"]); ok {
 			return ai.UserMessage{Content: content, Timestamp: customTimestamp(m)}, true
@@ -133,7 +135,7 @@ func (m *AssistantMessage) Observe() *AssistantMessage {
 		return nil
 	}
 	if m.streamView != nil {
-		return agentAssistantMessage(m.streamView.Observe())
+		return observedAgentAssistantMessage(m.streamView.Observe())
 	}
 	message := m.LLMMessage()
 	owned := message.Observe()
@@ -142,19 +144,45 @@ func (m *AssistantMessage) Observe() *AssistantMessage {
 	out.Diagnostics = owned.Diagnostics
 	out.Deferred = owned.Deferred
 	out.EndTurn = owned.EndTurn
+	out.DurationMs = owned.DurationMs
 	if m.Usage != nil {
 		out.Usage = &owned.Usage
 	}
 	return &out
 }
 
-// refreshed returns a copy whose exported fields equal the retained stream state at this call and that keeps its stream link. Messages without a stream view are returned unchanged.
+// ObserveProjection is Observe for a reader of block kinds, texts, thinking, tool calls, stop reason and error message (ai.AssistantMessage.ObserveProjection): it appends one projection per content block to content, returns that slice with the stop reason and error message, and copies nothing else. A streaming view projects its retained stream state; other messages their own fields.
+func (m *AssistantMessage) ObserveProjection(content []ai.AssistantContentProjection) (blocks []ai.AssistantContentProjection, stopReason ai.StopReason, errorMessage string) {
+	if m == nil {
+		return content, "", ""
+	}
+	if m.streamView != nil {
+		return m.streamView.ObserveProjection(content)
+	}
+	return (&ai.AssistantMessage{Content: m.Content, StopReason: m.StopReason, ErrorMessage: m.ErrorMessage}).ObserveProjection(content)
+}
+
+// Publication is ai.AssistantMessage.Publication for the stream state a streaming view observes: while it is unchanged, Observe returns the same message. A message without a stream view returns (0, 0).
+func (m *AssistantMessage) Publication() (cell uintptr, seq uint64) {
+	if m == nil {
+		return 0, 0
+	}
+	return m.streamView.Publication()
+}
+
+// refreshed returns a copy whose exported fields equal the retained stream state at this call and that keeps its stream link. A message whose fields were taken at the stream's current publication already holds that state and, like a message without a stream view, is returned unchanged.
 func (m *AssistantMessage) refreshed() *AssistantMessage {
 	if m == nil || m.streamView == nil {
 		return m
 	}
+	// Read before observing: a publication in between leaves streamSeq behind the fields, so the next refresh runs again.
+	cell, seq := m.streamView.Publication()
+	if cell != 0 && seq == m.streamSeq {
+		return m
+	}
 	out := m.Observe()
 	out.streamView = m.streamView
+	out.streamSeq = seq
 	return out
 }
 
@@ -189,13 +217,9 @@ func (m *AssistantMessage) LLMMessage() ai.AssistantMessage {
 		ResponseID: m.ResponseID, ProviderThinkingLevel: m.ProviderThinkingLevel, ThinkingLevel: m.ThinkingLevel,
 		Diagnostics: m.Diagnostics,
 		Usage:       usage, StopReason: m.StopReason, Deferred: m.Deferred,
-		ErrorMessage: m.ErrorMessage, RawStopReason: m.RawStopReason,
-		EndTurn: m.EndTurn, Timestamp: m.Timestamp,
+		ErrorMessage: m.ErrorMessage, ErrorBeforeTimestamp: m.ErrorBeforeTimestamp, RawStopReason: m.RawStopReason,
+		EndTurn: m.EndTurn, Timestamp: m.Timestamp, DurationMs: m.DurationMs,
 	}
-}
-
-func convertToLLM(msgs []AgentMessage, model *ai.Model) []ai.Message {
-	return ConvertToLLM(msgs, model)
 }
 
 // BranchSummaryContextText wraps a branch summary for LLM context.

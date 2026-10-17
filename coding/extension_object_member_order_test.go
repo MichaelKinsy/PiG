@@ -7,21 +7,18 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
-	"github.com/MichaelKinsy/PiG/internal/codingagent/compaction"
 )
 
 const extensionObjectValue = `{"zeta":1,"alpha":{"yy":2,"bb":3},"mid":[{"qq":1,"aa":2}]}`
 
 // A session_before_tree handler's summary `details` is a value the extension wrote; the branch summary entry and the events that report it hold it in that order (types.ts SessionBeforeTreeResult).
+// Pi: packages/coding-agent/src/core/extensions/types.ts:1479 (SessionBeforeTreeResult.summary).
 func TestExtensionTreeSummaryKeepsDetailsMemberOrder(t *testing.T) {
-	var result sessionBeforeTreeResult
+	var result extension.SessionBeforeTreeResult
 	if err := json.Unmarshal([]byte(`{"summary":{"summary":"s","details":`+extensionObjectValue+`}}`), &result); err != nil {
 		t.Fatal(err)
 	}
-	summary, err := extensionTreeSummary(&result)
-	if err != nil {
-		t.Fatal(err)
-	}
+	summary := extensionTreeSummary(result.Summary)
 	if encoded, err := json.Marshal(summary.Details); err != nil || string(encoded) != extensionObjectValue {
 		t.Fatalf("details = %s, %v, want %s", encoded, err, extensionObjectValue)
 	}
@@ -70,7 +67,7 @@ func TestExtensionCompactionDetailsKeepMemberOrder(t *testing.T) {
 	})
 	s.ReplaceRunner(inproc.NewRunner([]extension.Extension{{Path: "order", Handlers: map[string][]extension.HandlerFn{
 		"session_before_compact": {func(args ...any) (any, error) {
-			prep := args[0].(extension.SessionBeforeCompactEvent).Preparation.(*compaction.CompactionPreparation)
+			prep := args[0].(extension.SessionBeforeCompactEvent).Preparation
 			return json.RawMessage(`{"compaction":{"summary":"Custom","firstKeptEntryId":"` + prep.FirstKeptEntryID + `","tokensBefore":1,"details":` + extensionObjectValue + `}}`), nil
 		}},
 	}}}, t.TempDir()))
@@ -80,11 +77,11 @@ func TestExtensionCompactionDetailsKeepMemberOrder(t *testing.T) {
 		}
 		drainEvents(t, s)
 	}
-	if _, err := s.CompactResult(t.Context(), ""); err != nil {
+	if _, err := s.Compact(t.Context(), ""); err != nil {
 		t.Fatal(err)
 	}
-	for _, entry := range s.inner.Entries() {
-		if entry.Base.Type == "compaction" {
+	for _, entry := range s.inner.GetEntries() {
+		if entry.Base().Type == "compaction" {
 			var compacted struct {
 				Details json.RawMessage `json:"details"`
 			}

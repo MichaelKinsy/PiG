@@ -13,7 +13,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
-	"github.com/MichaelKinsy/PiG/internal/linkerexec"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime"
 )
 
 // nodeExtension is one TS/JS extension resolved for a packed Node cell.
@@ -82,24 +82,18 @@ func nodePackedLauncherManifest(binPath string) ([]nodeCellManifestEntry, bool) 
 	return manifest, true
 }
 
-func nodePackedLauncherCommand(ctx context.Context, binPath string) (*exec.Cmd, bool) {
+func nodePackedLauncherCommand(ctx context.Context, binPath string, sel tsruntime.Selection) (*exec.Cmd, bool) {
 	manifest, ok := nodePackedLauncherManifest(binPath)
 	if !ok {
 		return nil, false
 	}
 	dir := filepath.Dir(binPath)
-	loaderPath := filepath.Join(dir, "runtime", "register-loader.mjs")
-	loaderURL, urlErr := nodeFileURL(loaderPath)
-	args := []string{"--import", loaderURL, filepath.Join(dir, "runtime", "cell.mjs"), filepath.Join(dir, "manifest.json")}
+	args := []string{filepath.Join(dir, "manifest.json")}
 	// Keep member source paths visible to process inspection without shell quoting.
 	for _, member := range manifest {
 		args = append(args, member.Entry)
 	}
-	cmd := linkerexec.CommandContext(ctx, "node", args...)
-	if urlErr != nil && cmd.Err == nil {
-		cmd.Err = fmt.Errorf("node cell loader %s: %w", loaderPath, urlErr)
-	}
-	return cmd, true
+	return typeScriptRuntimeCommand(ctx, sel, filepath.Join(dir, "runtime"), "cell.mjs", "node cell loader", args), true
 }
 
 // nodePackedCellHash derives the deterministic cache key for a Node cell from

@@ -38,10 +38,12 @@ func NewPaddedBox(paddingX, paddingY int, bgFn func(string) string) *Box {
 	return &Box{PaddingX: paddingX, PaddingY: paddingY, BgFn: bgFn}
 }
 
+// AddChild, RemoveChild and Clear drop the render cache and mark the box dirty; they do not invalidate the children (box.ts addChild, removeChild,
+// clear call only invalidateCache).
 func (b *Box) AddChild(component Component) {
 	b.children = append(b.children, component)
 	b.cache = nil
-	b.Invalidate()
+	b.invalidatable.Invalidate()
 }
 
 func (b *Box) RemoveChild(component Component) {
@@ -49,7 +51,7 @@ func (b *Box) RemoveChild(component Component) {
 		if child == component {
 			b.children = append(b.children[:i], b.children[i+1:]...)
 			b.cache = nil
-			b.Invalidate()
+			b.invalidatable.Invalidate()
 			return
 		}
 	}
@@ -58,11 +60,17 @@ func (b *Box) RemoveChild(component Component) {
 func (b *Box) Clear() {
 	b.children = nil
 	b.cache = nil
-	b.Invalidate()
+	b.invalidatable.Invalidate()
 }
 
 func (b *Box) SetBgFn(bgFn func(string) string) {
 	b.BgFn = bgFn
+}
+
+// SetPaddingX sets the horizontal padding and drops the render cache (box.ts setPaddingX).
+func (b *Box) SetPaddingX(paddingX int) {
+	b.PaddingX = paddingX
+	b.cache = nil
 }
 
 func (b *Box) Invalidate() {

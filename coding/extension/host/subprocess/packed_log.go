@@ -15,6 +15,45 @@ type processStderrLog struct {
 	writer   *os.File
 	retained bool
 	removed  bool
+	// head counts the bytes Write put in the file. After the file reached stderrHeadMax, overflow counts the bytes Write received and tail holds the newest of them.
+	head     int
+	overflow int
+	tail     []byte
+}
+
+// An extension's stderr log keeps its first stderrHeadMax bytes, where a startup failure is, and its last stderrTailMax bytes, where a crash is. A flooding extension cannot fill the disk, and its pipe is always drained.
+const (
+	stderrHeadMax = 1 << 20
+	stderrTailMax = 64 << 10
+)
+
+// Write records extension stderr within the head and tail bounds. It never fails, so the pipe it drains never stops.
+func (l *processStderrLog) Write(p []byte) (int, error) {
+	n := len(p)
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.writer == nil {
+		return n, nil
+	}
+	if room := stderrHeadMax - l.head; room > 0 {
+		chunk := p[:min(len(p), room)]
+		w, _ := l.writer.Write(chunk)
+		l.head += w
+		p = p[len(chunk):]
+	}
+	if len(p) == 0 {
+		return n, nil
+	}
+	l.overflow += len(p)
+	if len(p) >= stderrTailMax {
+		l.tail = append(l.tail[:0], p[len(p)-stderrTailMax:]...)
+		return n, nil
+	}
+	l.tail = append(l.tail, p...)
+	if over := len(l.tail) - stderrTailMax; over > 0 {
+		l.tail = append(l.tail[:0], l.tail[over:]...)
+	}
+	return n, nil
 }
 
 func (l *processStderrLog) closeWriter() {
@@ -24,6 +63,13 @@ func (l *processStderrLog) closeWriter() {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if l.writer != nil {
+		if l.overflow > 0 {
+			if dropped := l.overflow - len(l.tail); dropped > 0 {
+				_, _ = fmt.Fprintf(l.writer, "\n[... %d bytes of extension stderr dropped ...]\n", dropped)
+			}
+			_, _ = l.writer.Write(l.tail)
+			l.tail, l.overflow = nil, 0
+		}
 		_ = l.writer.Close()
 		l.writer = nil
 	}

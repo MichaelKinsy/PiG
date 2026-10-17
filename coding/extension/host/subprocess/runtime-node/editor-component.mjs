@@ -17,11 +17,10 @@
 // run before handleInput returns. The host receives their original text and
 // does not replay those edits. An inputDone barrier holds the input pump until
 // the key's callbacks reach the owner loop; autocomplete is an awaited call.
-import { createRequire } from "node:module";
+import { runtimeRequire } from "./runtime-modules.mjs";
 import { matchesKey } from "./shims/pi-dist/pi-tui/keys.js";
 import { getSelectListTheme } from "./shims/pi-dist/pi-coding-agent/modes/interactive/theme/theme.js";
 
-const require = createRequire(import.meta.url);
 const RENDER_INTERVAL_MS = 16;
 
 // The app actions Pi's setupKeyHandlers binds with defaultEditor.onAction, in
@@ -146,7 +145,7 @@ export class EditorComponentHost {
       }
     }
     // ui.setFocus(editor).
-    if (require("./shims/pi-dist/pi-tui/tui.js").isFocusable(component)) component.focused = true;
+    if (runtimeRequire("./shims/pi-dist/pi-tui/tui.js").isFocusable(component)) component.focused = true;
     this.session = session;
     // The host answers with the editor text, padding, autocomplete size and
     // focus it copies, then the editor renders.
@@ -350,18 +349,22 @@ export class EditorComponentHost {
         this.run(session, (editor) => {
           if (editor.setPaddingX !== undefined) editor.setPaddingX(Number(args.paddingX || 0));
           if (editor.setAutocompleteMaxVisible !== undefined) editor.setAutocompleteMaxVisible(Number(args.autocompleteMaxVisible || 5));
-          if (require("./shims/pi-dist/pi-tui/tui.js").isFocusable(editor)) editor.focused = args.focused !== false;
+          if (runtimeRequire("./shims/pi-dist/pi-tui/tui.js").isFocusable(editor)) editor.focused = args.focused !== false;
           if (session.embedWorkingStatus) {
             const status = args.workingStatus;
             let indicator;
             if (status) {
-              const { StatusIndicator } = require("./shims/pi-dist/pi-coding-agent/modes/interactive/components/status-indicator.js");
+              const { StatusIndicator } = runtimeRequire("./shims/pi-dist/pi-coding-agent/modes/interactive/components/status-indicator.js");
               // pig divergence (D94): the host advances the animation and sends snapshots, so empty initial frames prevent a second animation timer.
-              const working = status.kind === "working";
-              // upstream: interactive-mode.ts showWorkingStatusIndicator
-              const spinnerColor = working ? (text) => editor.borderColor(text)
+              // upstream: interactive-mode.ts showWorkingStatusIndicator and, since Pi 1.2.0 (#10810), the compaction_start
+              // colorFn: an embedded working or compaction status takes the editor's border color, or the thinking level's when
+              // the editor has none. Branch summary and retry keep the host's colors.
+              const embedded = status.kind === "working" || status.kind === "compaction";
+              const theme = this.runtime.ui.theme;
+              const borderColor = (text) => (editor.borderColor ?? theme.getThinkingBorderColor(session.thinkingLevel || "off"))(text);
+              const spinnerColor = embedded ? borderColor
                 : (text) => status.spinnerColor ? status.spinnerColor + text + "\x1b[0m" : text;
-              const messageColor = working ? (text) => editor.borderColor(text)
+              const messageColor = embedded ? borderColor
                 : (text) => status.messageColor ? status.messageColor + text + "\x1b[0m" : text;
               indicator = new StatusIndicator(status.kind, undefined, spinnerColor, messageColor,
                 status.message, { frames: [] });
@@ -387,7 +390,12 @@ export class EditorComponentHost {
         return true;
       }
       case "ui.editor.closed": {
-        if (this.current(args?.key)) this.detach();
+        // The host replaced or restored this editor for another extension: Pi's getEditorComponent no longer answers this extension's factory
+        // (interactive-mode.ts setCustomEditorComponent), so the runtime forgets it as the Go, Python and Rust SDKs do.
+        if (this.current(args?.key)) {
+          this.detach();
+          this.runtime.editorFactory = undefined;
+        }
         return true;
       }
       default:

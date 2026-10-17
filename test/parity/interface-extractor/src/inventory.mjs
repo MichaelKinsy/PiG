@@ -1,12 +1,20 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
-export const TRACKED_PACKAGES = ["agent", "ai", "codemode", "coding-agent", "mcp", "tui"];
+// The one list of upstream packages that the parity tools account for (test/parity/upstreampackages/packages.json).
+export const PACKAGE_LIST = JSON.parse(
+  fs.readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../upstreampackages/packages.json"), "utf8"),
+).packages;
 
-/** Packages upstream added after 0.87.1. A source mirror or published install without one is not an error. */
-export const OPTIONAL_PACKAGES = new Set(["codemode", "mcp"]);
+export const TRACKED_PACKAGES = PACKAGE_LIST.map((entry) => entry.key);
+
+const CORE_PACKAGES = new Set(["agent", "ai", "coding-agent", "tui"]);
+
+/** Every package but the four core ones joined the inventory later. A source mirror or published install without one is not an error here; the Go validator requires the whole list in the committed inventory. */
+export const OPTIONAL_PACKAGES = new Set(TRACKED_PACKAGES.filter((key) => !CORE_PACKAGES.has(key)));
 
 export function semanticHash(value) {
   return `sha256:${crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex")}`;
@@ -25,15 +33,7 @@ function normalizePath(value) {
 }
 
 function packageKey(name) {
-  const keys = {
-    "@earendil-works/pi-agent-core": "agent",
-    "@earendil-works/pi-ai": "ai",
-    "@earendil-works/pi-codemode": "codemode",
-    "@earendil-works/pi-coding-agent": "coding-agent",
-    "@earendil-works/pi-mcp": "mcp",
-    "@earendil-works/pi-tui": "tui",
-  };
-  const key = keys[name];
+  const key = PACKAGE_LIST.find((entry) => entry.name === name)?.key;
   if (!key) {
     throw new Error(`unsupported tracked package ${JSON.stringify(name)}`);
   }
@@ -100,27 +100,26 @@ function expandTarget(packageRoot, subpath, target) {
 }
 
 function resolveSourcePackages(root) {
-  return TRACKED_PACKAGES.map((key) => ({ key, root: path.join(root, "packages", key) }));
+  return TRACKED_PACKAGES.map((key) => ({ key, root: path.join(root, "packages", key), origin: "source", base: root }));
 }
 
-function resolvePublishedPackages(codingAgentRoot) {
-  const scoped = (name) => path.join(codingAgentRoot, "node_modules", "@earendil-works", name);
-  return [
-    { key: "agent", root: scoped("pi-agent-core") },
-    { key: "ai", root: scoped("pi-ai") },
-    { key: "codemode", root: scoped("pi-codemode") },
-    { key: "coding-agent", root: codingAgentRoot },
-    { key: "mcp", root: scoped("pi-mcp") },
-    { key: "tui", root: scoped("pi-tui") },
-  ];
+/** A package that is not installed under the published root, and so is read from the pinned source tree when one is given. */
+function resolvePublishedPackages(codingAgentRoot, sourceRoot) {
+  return PACKAGE_LIST.map(({ key, name }) => {
+    const installed = key === "coding-agent" ? codingAgentRoot : path.join(codingAgentRoot, "node_modules", "@earendil-works", name.split("/")[1]);
+    if (sourceRoot && key !== "coding-agent" && !fs.existsSync(path.join(installed, "package.json"))) {
+      return { key, root: path.join(sourceRoot, "packages", key), origin: "source", base: sourceRoot };
+    }
+    return { key, root: installed, origin: "published", base: codingAgentRoot };
+  });
 }
 
-export function resolvePackages({ origin, root }) {
-  const candidates = origin === "source" ? resolveSourcePackages(root) : resolvePublishedPackages(root);
+export function resolvePackages({ origin, root, sourceRoot }) {
+  const candidates = origin === "source" ? resolveSourcePackages(root) : resolvePublishedPackages(root, sourceRoot);
   const present = candidates.filter(
     ({ key, root: packageRoot }) => !OPTIONAL_PACKAGES.has(key) || fs.existsSync(path.join(packageRoot, "package.json")),
   );
-  return present.map(({ key: expectedKey, root: packageRoot }) => {
+  return present.map(({ key: expectedKey, root: packageRoot, origin: packageOrigin, base }) => {
     const manifestPath = path.join(packageRoot, "package.json");
     if (!fs.existsSync(manifestPath)) throw new Error(`package manifest not found: ${manifestPath}`);
     const manifest = readJSON(manifestPath);
@@ -129,11 +128,35 @@ export function resolvePackages({ origin, root }) {
       throw new Error(`package name mismatch at ${manifestPath}: expected ${expectedKey}, got ${manifest.name}`);
     }
     const entrypoints = publicTargets(manifest).flatMap(({ subpath, target }) =>
-      expandTarget(packageRoot, subpath, origin === "source" ? sourceTarget(packageRoot, target) : publishedTarget(packageRoot, target)),
+      expandTarget(packageRoot, subpath, packageOrigin === "source" ? sourceTarget(packageRoot, target) : publishedTarget(packageRoot, target)),
     );
-    if (entrypoints.length === 0) throw new Error(`${manifest.name} has no public entrypoints`);
-    return { key, name: manifest.name, version: manifest.version, root: packageRoot, entrypoints };
+    // A private package, such as the evals harness, publishes no declarations and has no public interface.
+    if (entrypoints.length === 0 && manifest.private !== true) throw new Error(`${manifest.name} has no public entrypoints`);
+    return { key, name: manifest.name, version: manifest.version, root: packageRoot, origin: packageOrigin, base, entrypoints };
   }).sort((a, b) => a.key.localeCompare(b.key));
+}
+
+/** TypeScript path mappings for the packages that are not installed beside the published Pi package, built from each package's export map. */
+function unpublishedSourcePaths(root) {
+  const paths = {};
+  for (const { key, name } of PACKAGE_LIST) {
+    if (CORE_PACKAGES.has(key) || ["chord", "codemode", "mcp", "telemetry"].includes(key)) continue;
+    const packageRoot = path.join(root, "packages", key);
+    const manifestPath = path.join(packageRoot, "package.json");
+    if (!fs.existsSync(manifestPath)) continue;
+    for (const { subpath, target } of publicTargets(readJSON(manifestPath))) {
+      const specifier = subpath === "." ? name : `${name}${subpath.slice(1)}`;
+      paths[specifier] = [path.resolve(packageRoot, sourceTarget(packageRoot, target))];
+    }
+  }
+  return paths;
+}
+
+const programFiles = new Set();
+
+/** Every file the TypeScript programs of this process read (absolute paths, sorted): the footprint an incremental run validates third-party inputs against. */
+export function footprint() {
+  return [...programFiles].sort();
 }
 
 function loadProgram(entrypoints, { origin, root, dependencyRoot }) {
@@ -145,6 +168,7 @@ function loadProgram(entrypoints, { origin, root, dependencyRoot }) {
     "@earendil-works/pi-ai/*": [path.join(root, "packages/ai/src/*.ts"), path.join(root, "packages/ai/src/providers/*.ts")],
     "@earendil-works/pi-tui": [path.join(root, "packages/tui/src/index.ts")],
     "@earendil-works/pi-tui/*": [path.join(root, "packages/tui/src/*.ts"), path.join(root, "packages/tui/src/components/*.ts")],
+    ...unpublishedSourcePaths(root),
   } : undefined;
   const options = {
     target: ts.ScriptTarget.ES2022,
@@ -168,7 +192,9 @@ function loadProgram(entrypoints, { origin, root, dependencyRoot }) {
       return ts.resolveModuleName(name, path.join(dependencyRoot, "index.d.ts"), fallbackOptions, host).resolvedModule;
     });
   }
-  return ts.createProgram({ rootNames: roots, options, host });
+  const program = ts.createProgram({ rootNames: roots, options, host });
+  for (const file of program.getSourceFiles()) programFiles.add(file.fileName);
+  return program;
 }
 
 function symbolKind(symbol) {
@@ -268,12 +294,20 @@ function enumMembers(checker, symbol) {
   }));
 }
 
+/** Whether a module specifier names a tracked Pi package or one of its subpaths. */
+function trackedPackageSpecifier(specifier) {
+  return PACKAGE_LIST.some(({ name }) => specifier === name || specifier.startsWith(`${name}/`));
+}
+
 function externalAlias(symbol) {
   for (const declaration of symbol.declarations ?? []) {
     if (!ts.isExportSpecifier(declaration)) continue;
     const exportDeclaration = declaration.parent?.parent;
     const moduleSpecifier = exportDeclaration?.moduleSpecifier;
     if (!moduleSpecifier || !ts.isStringLiteral(moduleSpecifier) || moduleSpecifier.text.startsWith(".")) continue;
+    // A re-export from another tracked Pi package (durable re-exports chord/sqlite since Pi c268154c) is Pi's own API: it
+    // resolves like a relative re-export, to the declaration in that package. Only a third-party module is external.
+    if (trackedPackageSpecifier(moduleSpecifier.text)) continue;
     return { module: moduleSpecifier.text, name: declaration.propertyName?.text ?? declaration.name.text };
   }
   return undefined;
@@ -423,6 +457,13 @@ export function stableSourcePath(root, fileName) {
   const marker = "/node_modules/";
   const markerIndex = normalized.lastIndexOf(marker);
   if (markerIndex >= 0) return `node_modules/${normalized.slice(markerIndex + marker.length)}`;
+  // A workspace dependency of a source build (durable importing chord) resolves through its workspace link to the sibling package's
+  // directory; the published install holds the same files under node_modules/<name>/, so both origins name the file the same way.
+  const workspace = /\/packages\/([^/]+)\/(.+)$/.exec(normalized);
+  if (workspace) {
+    const manifestPath = path.join(normalized.slice(0, normalized.length - workspace[2].length), "package.json");
+    if (fs.existsSync(manifestPath)) return `node_modules/${readJSON(manifestPath).name}/${workspace[2]}`;
+  }
   throw new Error(`declaration source escapes inventory root without a stable dependency path: ${fileName}`);
 }
 
@@ -437,16 +478,21 @@ function sourceLocation(root, symbol, fallback) {
   };
 }
 
-export function extractInventory({ origin, root, upstreamVersion, packageKeys, dependencyRoot }) {
+// A commit pin's version is "<package version>+<commit[:8]>": Pi's package.json files report the part before the plus.
+function packageVersionOf(upstreamVersion) {
+  return upstreamVersion.split("+")[0];
+}
+
+export function extractInventory({ origin, root, sourceRoot, upstreamVersion, packageKeys, dependencyRoot }) {
   if (ts.version !== "5.9.3") throw new Error(`TypeScript version skew: got ${ts.version}, want 5.9.3`);
   // Without an explicit list, every tracked package that this release has.
-  const resolved = resolvePackages({ origin, root });
+  const resolved = resolvePackages({ origin, root, sourceRoot });
   const wanted = new Set(packageKeys ?? resolved.map((pkg) => pkg.key));
   const packages = resolved.filter((pkg) => wanted.has(pkg.key));
   if (packages.length !== wanted.size) throw new Error(`requested package set was not resolved: ${[...wanted].join(",")}`);
   for (const pkg of packages) {
-    if (pkg.version !== upstreamVersion) {
-      throw new Error(`${pkg.name} version skew: got ${pkg.version}, want ${upstreamVersion}`);
+    if (pkg.version !== packageVersionOf(upstreamVersion)) {
+      throw new Error(`${pkg.name} version skew: got ${pkg.version}, want ${packageVersionOf(upstreamVersion)}`);
     }
   }
   const interfaces = [];
@@ -454,7 +500,7 @@ export function extractInventory({ origin, root, upstreamVersion, packageKeys, d
   for (const pkg of packages) {
     for (const entrypoint of pkg.entrypoints) {
       if (process.env.PIG_INTERFACE_DEBUG === "1") process.stderr.write(`extract ${pkg.key} ${entrypoint.subpath}\n`);
-      const program = loadProgram([entrypoint], { origin, root, dependencyRoot });
+      const program = loadProgram([entrypoint], { origin: pkg.origin, root: pkg.base, dependencyRoot });
       const checker = program.getTypeChecker();
       const source = program.getSourceFile(entrypoint.file);
       if (!source) throw new Error(`TypeScript program omitted public entrypoint ${entrypoint.file}`);
@@ -475,10 +521,10 @@ export function extractInventory({ origin, root, upstreamVersion, packageKeys, d
           kind: external ? "external" : symbolKind(resolved),
           shape,
           shapeHash: semanticHash(shape),
-          source: sourceLocation(root, external ? exported : resolved, source),
+          source: sourceLocation(pkg.base, external ? exported : resolved, source),
         };
         interfaces.push(parent);
-        for (const child of childInterfaces(checker, exported, resolved, source, root, parent, shape)) {
+        for (const child of childInterfaces(checker, exported, resolved, source, pkg.base, parent, shape)) {
           if (seen.has(child.id)) throw new Error(`duplicate stable interface ID ${child.id}`);
           seen.add(child.id);
           interfaces.push(child);
@@ -495,7 +541,8 @@ export function extractInventory({ origin, root, upstreamVersion, packageKeys, d
       key: pkg.key,
       name: pkg.name,
       version: pkg.version,
-      entrypoints: pkg.entrypoints.map((entry) => ({ subpath: entry.subpath, file: normalizePath(path.relative(root, entry.file)) })),
+      origin: pkg.origin,
+      entrypoints: pkg.entrypoints.map((entry) => ({ subpath: entry.subpath, file: normalizePath(path.relative(pkg.base, entry.file)) })),
     })),
     interfaces,
   };
@@ -528,8 +575,8 @@ export function verifyPublishedSources({ publishedRoot, sourceRoot, upstreamVers
   const problems = [];
   let checked = 0;
   for (const pkg of resolvePackages({ origin: "published", root: publishedRoot })) {
-    if (pkg.version !== upstreamVersion) {
-      problems.push(`${pkg.name}: published version ${pkg.version}, want ${upstreamVersion}`);
+    if (pkg.version !== packageVersionOf(upstreamVersion)) {
+      problems.push(`${pkg.name}: published version ${pkg.version}, want ${packageVersionOf(upstreamVersion)}`);
       continue;
     }
     const dist = path.join(pkg.root, "dist");

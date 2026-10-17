@@ -575,15 +575,7 @@
         switch (name) {
           case 'read': {
             const path = shortenPath(String(args.path || args.file_path || ''));
-            const offset = args.offset;
-            const limit = args.limit;
-            let display = path;
-            if (offset !== undefined || limit !== undefined) {
-              const start = offset ?? 1;
-              const end = limit !== undefined ? start + limit - 1 : '';
-              display += `:${start}${end ? `-${end}` : ''}`;
-            }
-            return `[read: ${display}]`;
+            return `[read: ${path}${formatReadLineRange(args.offset, args.limit)}]`;
           }
           case 'write':
             return `[write: ${shortenPath(String(args.path || args.file_path || ''))}]`;
@@ -825,6 +817,23 @@
         return null;
       }
 
+      // Mirrors ../tools/render-utils.ts.
+      function parseLineNumber(value) {
+        if (typeof value === 'string' && value.trim() !== '') value = Number(value);
+        return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+      }
+
+      function formatReadLineRange(offset, limit) {
+        if (offset == null && limit == null) return '';
+        const start = offset == null ? 1 : parseLineNumber(offset);
+        if (start === undefined) return '';
+        if (limit == null) return `:${start}`;
+        const count = parseLineNumber(limit);
+        if (count === undefined) return '';
+        const end = start + count - 1;
+        return `:${start}${end ? `-${end}` : ''}`;
+      }
+
       function getLanguageFromPath(filePath) {
         const ext = filePath.split('.').pop()?.toLowerCase();
         const extToLang = {
@@ -965,14 +974,10 @@
           }
           case 'read': {
             const filePath = str(args.file_path ?? args.path);
-            const offset = args.offset;
-            const limit = args.limit;
-
+            const readLineRange = formatReadLineRange(args.offset, args.limit);
             let pathHtml = filePath === null ? invalidArg : escapeHtml(shortenPath(filePath || ''));
-            if (filePath !== null && (offset !== undefined || limit !== undefined)) {
-              const startLine = offset ?? 1;
-              const endLine = limit !== undefined ? startLine + limit - 1 : '';
-              pathHtml += `<span class="line-numbers">:${startLine}${endLine ? '-' + endLine : ''}</span>`;
+            if (filePath !== null && readLineRange) {
+              pathHtml += `<span class="line-numbers">${escapeHtml(readLineRange)}</span>`;
             }
 
             html += `<div class="tool-header"><span class="tool-name">read</span> <span class="tool-path">${pathHtml}</span></div>`;
@@ -1346,7 +1351,7 @@
         let userMessages = 0, assistantMessages = 0, toolResults = 0;
         let customMessages = 0, compactions = 0, branchSummaries = 0, toolCalls = 0;
         const tokens = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
-        const cost = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+        const cost = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 };
         const models = new Set();
 
         for (const entry of entryList) {
@@ -1362,10 +1367,18 @@
                 tokens.cacheRead += msg.usage.cacheRead || 0;
                 tokens.cacheWrite += msg.usage.cacheWrite || 0;
                 if (msg.usage.cost) {
+                  const componentTotal =
+                    (msg.usage.cost.input || 0) +
+                    (msg.usage.cost.output || 0) +
+                    (msg.usage.cost.cacheRead || 0) +
+                    (msg.usage.cost.cacheWrite || 0);
                   cost.input += msg.usage.cost.input || 0;
                   cost.output += msg.usage.cost.output || 0;
                   cost.cacheRead += msg.usage.cost.cacheRead || 0;
                   cost.cacheWrite += msg.usage.cost.cacheWrite || 0;
+                  // Provider-reported totals can intentionally differ from catalog-estimated components.
+                  // Fall back to the component sum for sessions written before cost.total was recorded.
+                  cost.total += typeof msg.usage.cost.total === 'number' ? msg.usage.cost.total : componentTotal;
                 }
               }
               toolCalls += msg.content.filter(c => c.type === 'toolCall').length;
@@ -1386,7 +1399,7 @@
       const globalStats = computeStats(entries);
 
       function renderHeader() {
-        const totalCost = globalStats.cost.input + globalStats.cost.output + globalStats.cost.cacheRead + globalStats.cost.cacheWrite;
+        const totalCost = globalStats.cost.total;
 
         const tokenParts = [];
         if (globalStats.tokens.input) tokenParts.push(`↑${formatTokens(globalStats.tokens.input)}`);

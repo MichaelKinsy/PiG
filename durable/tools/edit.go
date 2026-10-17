@@ -10,6 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/env"
+	"github.com/MichaelKinsy/PiG/internal/jsdiff"
 )
 
 // Ports packages/durable/src/tools/edit.ts.
@@ -185,17 +186,19 @@ func editFile(ctx context.Context, executionEnv env.ExecutionEnv, absolutePath s
 		return failed(errOperationAborted)
 	}
 
-	diff, firstChangedLine := GenerateDiffString(applied.baseContent, applied.newContent)
+	// One line diff serves the display diff and the patch, which upstream computes separately over the same pair.
+	lineDiff := jsdiff.DiffLineRuns(applied.baseContent, applied.newContent)
+	diff, firstChangedLine := diffStringOf(lineDiff, applied.baseContent, applied.newContent, 4)
 	details, err := durable.ToJsonValue(EditToolDetails{
 		Diff:             diff,
-		Patch:            GenerateUnifiedPatch(input.Path, applied.baseContent, applied.newContent),
+		Patch:            unifiedPatchOf(input.Path, lineDiff, 4),
 		FirstChangedLine: firstChangedLine,
 	})
 	if err != nil {
 		return failed(err)
 	}
 	return durable.ToolExecutionResult{
-		Content:    []ai.ToolResultMessageContent{ai.TextContent{Text: fmt.Sprintf("Successfully replaced %d block(s) in %s.", len(input.Edits), input.Path)}},
+		Output:     []ai.ToolResultMessageContent{ai.TextContent{Text: fmt.Sprintf("Successfully replaced %d block(s) in %s.", len(input.Edits), input.Path)}},
 		Details:    details,
 		HasDetails: true,
 	}, nil

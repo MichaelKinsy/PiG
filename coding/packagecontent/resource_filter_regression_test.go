@@ -22,7 +22,7 @@ func TestResourceEnabledUsesSharedPiPatternPhases(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			if got := ResourceEnabled(tc.path, tc.patterns); got != tc.want {
+			if got := mustResourceEnabled(t, tc.path, tc.patterns); got != tc.want {
 				t.Fatalf("ResourceEnabled(%q, %q) = %t, want %t", tc.path, tc.patterns, got, tc.want)
 			}
 		})

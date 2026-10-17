@@ -1,0 +1,6 @@
+{
+	"name": "pig-ai-oracle-sdks",
+	"private": true,
+	"description": "Pinned to the provider SDK versions in .upstream/current/packages/ai/package.json. Install with: npm ci --ignore-scripts",
+	"dependencies": { "openai": "7.19.0", "@anthropic-ai/sdk": "0.129.0", "@google/genai": "2.21.0" }
+}

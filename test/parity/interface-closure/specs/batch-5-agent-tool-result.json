@@ -1,0 +1,67 @@
+[
+ {
+  "ids": [
+   "pkg:agent/.#AgentToolResult"
+  ],
+  "targets": [
+   "agent/agent.go#AgentToolResult"
+  ],
+  "production": [
+   "call:agent/tool_execution.go#loopRun.executeToolCalls"
+  ],
+  "evidence": [
+   "test:agent/tool_result_member_order_test.go#TestAgentLoop_ToolEventsCarryTheToolsMemberOrder"
+  ],
+  "rationale": "types.ts AgentToolResult<T>: Go AgentToolResult has the same six members (Content, Details, StructuredContent, IsError, Usage, Terminate) with Details any for the generic T and IsError a bool for `isError?: boolean | undefined`. MemberOrder, Thrown, StructuredContentAppended and Preview are Go-side bookkeeping that reproduce upstream's object key order and thrown-error handling (agent-loop.ts:877-919); TestAgentLoop_ToolEventsCarryTheToolsMemberOrder asserts the serialized result.",
+  "properties": {
+   "content": {
+    "targets": [
+     "agent/agent.go#AgentToolResult.Content"
+    ],
+    "evidence": [
+     "test:agent/tool_result_member_order_test.go#TestAgentLoop_ToolEventsCarryTheToolsMemberOrder"
+    ]
+   },
+   "details": {
+    "targets": [
+     "agent/agent.go#AgentToolResult.Details"
+    ],
+    "evidence": [
+     "test:agent/tool_result_member_order_test.go#TestAgentLoop_ToolEventsCarryTheToolsMemberOrder"
+    ]
+   },
+   "structuredContent": {
+    "targets": [
+     "agent/agent.go#AgentToolResult.StructuredContent"
+    ],
+    "evidence": [
+     "test:agent/tool_result_member_order_test.go#TestAgentLoop_ToolEventsCarryTheToolsMemberOrder"
+    ]
+   },
+   "isError": {
+    "targets": [
+     "agent/agent.go#AgentToolResult.IsError"
+    ],
+    "evidence": [
+     "test:agent/tool_result_iserror_test.go#TestAgentLoop_ToolExecutionEndKeepsResultIsErrorApartFromTheEventFlag"
+    ]
+   },
+   "usage": {
+    "targets": [
+     "agent/agent.go#AgentToolResult.Usage"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_HandlesToolCallsAndResults"
+    ]
+   },
+   "terminate": {
+    "targets": [
+     "agent/agent.go#AgentToolResult.Terminate"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_StopsAfterBatchWhenEveryToolResultTerminates"
+    ]
+   }
+  }
+ }
+]

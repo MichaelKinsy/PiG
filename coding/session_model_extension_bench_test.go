@@ -9,7 +9,7 @@ import (
 )
 
 func BenchmarkSessionPromptOptionsCommand(b *testing.B) {
-	services, err := NewServices(ServicesOptions{CWD: b.TempDir(), AgentDir: b.TempDir()})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: b.TempDir(), AgentDir: b.TempDir()})
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -31,7 +31,7 @@ func BenchmarkSessionPromptOptionsCommand(b *testing.B) {
 	defer func() { _ = session.Close(); <-done }()
 	b.ReportAllocs()
 	for b.Loop() {
-		if _, err := session.Prompt(context.Background(), "/options"); err != nil {
+		if err := session.Prompt(context.Background(), "/options"); err != nil {
 			b.Fatal(err)
 		}
 	}

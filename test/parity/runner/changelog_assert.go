@@ -15,7 +15,7 @@ import (
 
 func readChangelogSource(bin BinaryRef, env []string) (string, error) {
 	if bin.Label == "pig" {
-		return pig.Changelog, nil
+		return pig.Changelog(), nil
 	}
 	var root string
 	for _, kv := range env {

@@ -59,9 +59,7 @@ func hasClosingTag(m *enhancedMatch, after int) bool {
 	return false
 }
 
-func callbackByName(value any) callback {
-	object, _ := value.(map[string]any)
-	name, _ := object["fn"].(string)
+func callbackByName(name string) callback {
 	cb, ok := callbacks[name]
 	if !ok {
 		panic("hljs: unknown callback " + name)
@@ -72,7 +70,7 @@ func callbackByName(value any) callback {
 var compilerExtensions = map[string]compilerExtension{
 	// The beforeMatch compiler extension of lib/languages/r.js: the match must be preceded by beforeMatch.
 	"r.beforeMatch": func(mode, _ *Mode) {
-		if !mode.beforeMatch.truthy() {
+		if !mode.rare().beforeMatch.truthy() {
 			return
 		}
 		if mode.starts != nil {
@@ -85,7 +83,7 @@ var compilerExtensions = map[string]compilerExtension{
 				deleteKey(mode, key)
 			}
 		}
-		beforeMatch, _ := originalMode.beforeMatch.source()
+		beforeMatch, _ := originalMode.rare().beforeMatch.source()
 		begin, _ := originalMode.begin.source()
 		mode.begin = stringPattern(beforeMatch + "(?=" + begin + ")")
 		mode.present |= keyBegin

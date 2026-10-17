@@ -93,7 +93,7 @@ func TestGenerateSystemThemeColorsMatchesUpstream(t *testing.T) {
 	if err := os.WriteFile(inputPath, input, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.CommandContext(t.Context(), "node", "testdata/system_theme_oracle.mjs", pigversion.UpstreamVersion, inputPath)
+	cmd := exec.CommandContext(t.Context(), "node", "testdata/system_theme_oracle.mjs", pigversion.UpstreamPackageVersion, inputPath)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	output, err := cmd.Output()

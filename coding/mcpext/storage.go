@@ -43,7 +43,7 @@ func (b *FileAuthStorageBackend) WithLock(fn func(current string, exists bool) (
 			return err
 		}
 	}
-	lock, err := pilock.AcquireSync(b.path)
+	lock, err := pilock.AcquireAuthSync(b.path)
 	if err != nil {
 		return err
 	}

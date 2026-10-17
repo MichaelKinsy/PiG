@@ -1,9 +1,12 @@
 package ai
 
 import (
+	"cmp"
 	"context"
-	"sort"
+	"slices"
+	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -25,6 +28,8 @@ type assistantStreamBuilder struct {
 	activeText     int
 	activeThinking int
 	toolCalls      map[int]*streamToolCall
+	// streamedBlocks appends deltas to open blocks without copying them again.
+	streamedBlocks
 
 	// modelCost is the requested model's price (StreamOptions.ModelCost).
 	modelCost          ModelCost
@@ -33,11 +38,19 @@ type assistantStreamBuilder struct {
 	errorMessage func(string) string
 	// providerEvent is the bound OnProviderStreamEvent observer, or nil.
 	providerEvent func(data any) error
+	// providerEventOption and providerEventModel are the request's OnProviderStreamEvent option and the model it receives, for an adapter that
+	// passes the option on (processResponsesStream's options.onProviderStreamEvent and model).
+	providerEventOption func(ctx context.Context, data any, model *Model) error
+	providerEventModel  *Model
+	// providerEventWanted is the request's ProviderStreamEventWanted, or nil.
+	providerEventWanted func() bool
 }
 
 type streamToolCall struct {
 	contentIndex int
 	arguments    strings.Builder
+	// parser parses arguments, which only grow, from the point the last delta reached.
+	parser streamingArgumentsParser
 }
 
 type streamToolCallDelta struct {
@@ -99,7 +112,7 @@ func (builder *assistantStreamBuilder) textBlockStartWithBlock(block TextContent
 
 func (builder *assistantStreamBuilder) textBlockDelta(contentIndex int, delta string) {
 	block := builder.partial.Content[contentIndex].(TextContent)
-	block.Text += delta
+	block.Text = builder.appendContent(contentIndex, block.Text, delta)
 	builder.partial.Content[contentIndex] = block
 	builder.push(TextDeltaEvent{ContentIndex: contentIndex, Delta: delta, Partial: builder.partial})
 }
@@ -110,6 +123,7 @@ func (builder *assistantStreamBuilder) textBlockEnd(contentIndex int, content, s
 	block.TextSignature = signature
 	block.scratch = ""
 	builder.partial.Content[contentIndex] = block
+	builder.release(contentIndex)
 	builder.push(TextEndEvent{ContentIndex: contentIndex, Content: content, Partial: builder.partial})
 }
 
@@ -127,7 +141,7 @@ func (builder *assistantStreamBuilder) thinkingBlockStartWithContent(content Thi
 
 func (builder *assistantStreamBuilder) thinkingBlockDelta(contentIndex int, delta string) {
 	block := builder.partial.Content[contentIndex].(ThinkingContent)
-	block.Thinking += delta
+	block.Thinking = builder.appendContent(contentIndex, block.Thinking, delta)
 	builder.partial.Content[contentIndex] = block
 	builder.push(ThinkingDeltaEvent{ContentIndex: contentIndex, Delta: delta, Partial: builder.partial})
 }
@@ -148,6 +162,7 @@ func (builder *assistantStreamBuilder) thinkingBlockEnd(contentIndex int, conten
 	}
 	block.scratch = ""
 	builder.partial.Content[contentIndex] = block
+	builder.release(contentIndex)
 	builder.push(ThinkingEndEvent{ContentIndex: contentIndex, Content: content, Partial: builder.partial})
 }
 
@@ -165,7 +180,7 @@ func (builder *assistantStreamBuilder) textStart(content string) {
 func (builder *assistantStreamBuilder) textDelta(delta string) {
 	builder.textStart("")
 	block := builder.partial.Content[builder.activeText].(TextContent)
-	block.Text += delta
+	block.Text = builder.appendContent(builder.activeText, block.Text, delta)
 	builder.partial.Content[builder.activeText] = block
 	builder.push(TextDeltaEvent{ContentIndex: builder.activeText, Delta: delta, Partial: builder.partial})
 }
@@ -177,6 +192,22 @@ func (builder *assistantStreamBuilder) textSignature(signature string) {
 	block := builder.partial.Content[builder.activeText].(TextContent)
 	block.TextSignature = signature
 	builder.partial.Content[builder.activeText] = block
+}
+
+// activeTextSignature is the signature of the open text block, empty when there is none.
+func (builder *assistantStreamBuilder) activeTextSignature() string {
+	if builder.activeText < 0 {
+		return ""
+	}
+	return builder.partial.Content[builder.activeText].(TextContent).TextSignature
+}
+
+// activeThinkingSignature is the signature of the open thinking block, empty when there is none.
+func (builder *assistantStreamBuilder) activeThinkingSignature() string {
+	if builder.activeThinking < 0 {
+		return ""
+	}
+	return builder.partial.Content[builder.activeThinking].(ThinkingContent).ThinkingSignature
 }
 
 func (builder *assistantStreamBuilder) thinkingStart(content ThinkingContent) {
@@ -193,7 +224,7 @@ func (builder *assistantStreamBuilder) thinkingStart(content ThinkingContent) {
 func (builder *assistantStreamBuilder) thinkingDelta(delta string, redacted bool) {
 	builder.thinkingStart(ThinkingContent{Redacted: redacted})
 	block := builder.partial.Content[builder.activeThinking].(ThinkingContent)
-	block.Thinking += delta
+	block.Thinking = builder.appendContent(builder.activeThinking, block.Thinking, delta)
 	block.Redacted = block.Redacted || redacted
 	builder.partial.Content[builder.activeThinking] = block
 	builder.push(ThinkingDeltaEvent{ContentIndex: builder.activeThinking, Delta: delta, Partial: builder.partial})
@@ -247,7 +278,12 @@ func (builder *assistantStreamBuilder) toolCallDelta(delta streamToolCallDelta) 
 	}
 	state.arguments.WriteString(delta.argumentsDelta)
 	if !block.scratch.customInput {
-		block.SetStreamingArguments(state.arguments.String())
+		if text := state.arguments.String(); text != "" && builder.publishesViews() {
+			// Only readers of the published views see the partial arguments; they parse them when they read (deferArguments).
+			block.deferArguments(text)
+		} else {
+			block.setParsedArguments(state.parser.parse(text))
+		}
 	}
 	if block.scratch.hasPartialArgs {
 		block.scratch.partialArgs = state.arguments.String()
@@ -260,7 +296,7 @@ func (builder *assistantStreamBuilder) toolCallDelta(delta streamToolCallDelta) 
 }
 
 // Finalization updates the existing output slot without replacing its streamed identity.
-func (builder *assistantStreamBuilder) setToolCallFinal(index int, namespace, arguments string) {
+func (builder *assistantStreamBuilder) setToolCallFinal(index int, namespace, arguments string, final bool) {
 	state := builder.toolCalls[index]
 	if state == nil {
 		return
@@ -271,7 +307,11 @@ func (builder *assistantStreamBuilder) setToolCallFinal(index int, namespace, ar
 	}
 	state.arguments.Reset()
 	state.arguments.WriteString(arguments)
-	block.SetStreamingArguments(arguments)
+	if final {
+		block.SetFinalArguments(arguments)
+	} else {
+		block.SetStreamingArguments(arguments)
+	}
 	if block.scratch.hasPartialJson {
 		block.scratch.partialJson = arguments
 	}
@@ -313,12 +353,30 @@ func (builder *assistantStreamBuilder) done(reason StopReason, usage *Usage, err
 }
 
 func (builder *assistantStreamBuilder) fail(reason StopReason, err error) {
+	builder.recordTransportFailure(err)
 	builder.finishBlocks()
 	builder.partial.StopReason = reason
 	if err != nil {
 		builder.partial.ErrorMessage = builder.failureMessage(err)
 	}
 	builder.push(ErrorEvent{Reason: reason, Error: builder.partial})
+}
+
+// failFaux is fail for a faux provider's failure: faux.ts createErrorMessage builds the message with errorMessage before
+// timestamp.
+func (builder *assistantStreamBuilder) failFaux(reason StopReason, err error) {
+	builder.partial.ErrorBeforeTimestamp = true
+	builder.fail(reason, err)
+}
+
+// recordTransportFailure appends the provider_transport_failure diagnostic for a transport failure; the message, stop reason and events are untouched.
+func (builder *assistantStreamBuilder) recordTransportFailure(err error) {
+	if err == nil {
+		return
+	}
+	if diagnostic, ok := transportFailureDiagnostic(err, builder.started); ok {
+		AppendAssistantMessageDiagnostic(builder.partial, diagnostic)
+	}
 }
 
 // failureMessage is the ErrorMessage recorded for err.
@@ -334,25 +392,20 @@ func (builder *assistantStreamBuilder) finishBlocks() {
 }
 
 func (builder *assistantStreamBuilder) finishBlocksWithThinking(thinkingContentIndices ...int) {
-	type activeBlock struct {
-		contentIndex int
-		kind         string
-		toolIndex    int
-	}
-	blocks := make([]activeBlock, 0, len(builder.toolCalls)+len(thinkingContentIndices)+2)
+	blocks := make([]endingBlock, 0, len(builder.toolCalls)+len(thinkingContentIndices)+2)
 	if builder.activeText >= 0 {
-		blocks = append(blocks, activeBlock{contentIndex: builder.activeText, kind: "text"})
+		blocks = append(blocks, endingBlock{contentIndex: builder.activeText, kind: "text"})
 	}
 	if builder.activeThinking >= 0 {
-		blocks = append(blocks, activeBlock{contentIndex: builder.activeThinking, kind: "thinking"})
+		blocks = append(blocks, endingBlock{contentIndex: builder.activeThinking, kind: "thinking"})
 	}
 	for _, contentIndex := range thinkingContentIndices {
-		blocks = append(blocks, activeBlock{contentIndex: contentIndex, kind: "thinkingBlock"})
+		blocks = append(blocks, endingBlock{contentIndex: contentIndex, kind: "thinkingBlock"})
 	}
 	for toolIndex, tool := range builder.toolCalls {
-		blocks = append(blocks, activeBlock{contentIndex: tool.contentIndex, kind: "tool", toolIndex: toolIndex})
+		blocks = append(blocks, endingBlock{contentIndex: tool.contentIndex, kind: "tool", toolIndex: toolIndex})
 	}
-	sort.Slice(blocks, func(i, j int) bool { return blocks[i].contentIndex < blocks[j].contentIndex })
+	sortEndingBlocks(blocks)
 	for _, block := range blocks {
 		switch block.kind {
 		case "text":
@@ -368,13 +421,29 @@ func (builder *assistantStreamBuilder) finishBlocksWithThinking(thinkingContentI
 	}
 }
 
-func (builder *assistantStreamBuilder) endToolCall(index int) {
+func (builder *assistantStreamBuilder) endToolCall(index int) { builder.endToolCallWith(index, nil) }
+
+// finalArgumentsAPI reports whether the API's tool-call end reads the complete arguments with parseToolCallArguments
+// (Pi 87f9a364: anthropic-messages, bedrock-converse-stream, mistral-conversations, openai-completions and the
+// openai-responses family). Google and faux build the whole call at once with their own fallback and keep
+// parseStreamingJson's reading, so a non-object value such as [] stays as sent.
+func finalArgumentsAPI(api API) bool {
+	switch api {
+	case APIAnthropicMessages, APIBedrockConverseStream, APIMistralConversations, APIOpenAICompletions, APIOpenAIResponses, APIAzureOpenAIResponses, APIOpenAICodexResponses:
+		return true
+	}
+	return false
+}
+
+// endToolCallWith ends a tool call; finalize, when non-nil, edits the ToolCall of the end event only, as faux.ts pushes the response block while its partial message keeps the streamed block.
+func (builder *assistantStreamBuilder) endToolCallWith(index int, finalize func(*ToolCall)) {
 	state := builder.toolCalls[index]
 	if state == nil {
 		return
 	}
 	block := builder.partial.Content[state.contentIndex].(ToolCall)
-	if block.scratch.customInput {
+	switch {
+	case block.scratch.customInput:
 		input, _ := block.Arguments[block.scratch.property].(string)
 		delta, emit, err := appendGrammarToolInputJSONDelta(&block.scratch.jsonBuffer, block.scratch.property, input, true)
 		if err != nil {
@@ -385,12 +454,22 @@ func (builder *assistantStreamBuilder) endToolCall(index int) {
 		if emit {
 			builder.push(ToolCallDeltaEvent{ContentIndex: state.contentIndex, Delta: delta, Partial: builder.partial})
 		}
-	} else {
+	case finalArgumentsAPI(builder.partial.API):
+		block.SetFinalArguments(state.arguments.String())
+	default:
 		block.SetStreamingArguments(state.arguments.String())
+	}
+	if block.ID == "" {
+		// pig divergence (D120): a call streamed without an id gets a unique one, so its tool result can name it.
+		block.ID = generatedToolCallID(block.Name)
 	}
 	block.scratch = toolCallScratch{}
 	builder.partial.Content[state.contentIndex] = block
-	builder.push(ToolCallEndEvent{ContentIndex: state.contentIndex, ToolCall: block, Partial: builder.partial})
+	ended := block
+	if finalize != nil {
+		finalize(&ended)
+	}
+	builder.push(ToolCallEndEvent{ContentIndex: state.contentIndex, ToolCall: ended, Partial: builder.partial})
 	delete(builder.toolCalls, index)
 }
 
@@ -400,6 +479,7 @@ func (builder *assistantStreamBuilder) endText() {
 	}
 	block := builder.partial.Content[builder.activeText].(TextContent)
 	builder.push(TextEndEvent{ContentIndex: builder.activeText, Content: block.Text, Partial: builder.partial})
+	builder.release(builder.activeText)
 	builder.activeText = -1
 }
 
@@ -409,6 +489,7 @@ func (builder *assistantStreamBuilder) endThinking() {
 	}
 	block := builder.partial.Content[builder.activeThinking].(ThinkingContent)
 	builder.push(ThinkingEndEvent{ContentIndex: builder.activeThinking, Content: block.Thinking, Partial: builder.partial})
+	builder.release(builder.activeThinking)
 	builder.activeThinking = -1
 }
 
@@ -422,15 +503,45 @@ func (builder *assistantStreamBuilder) publishPending() {
 	}
 }
 
+// publishesViews reports whether pushes publish live views of the partial (publish), which settle a tool call's deferred
+// arguments for each reader. A producer outside the executor pushes emission-time snapshots, whose readers read the
+// arguments directly, so its calls parse at once.
+func (builder *assistantStreamBuilder) publishesViews() bool {
+	return builder.managed && builder.turn != nil
+}
+
+// settleArguments parses the deferred arguments of the partial's tool calls, resuming each open call's parser, so the
+// final message a terminal event carries holds them as an eager parse would have left them.
+func (builder *assistantStreamBuilder) settleArguments() {
+	for index, block := range builder.partial.Content {
+		call, ok := block.(ToolCall)
+		if !ok || call.deferredArguments == "" {
+			continue
+		}
+		parser := &streamingArgumentsParser{}
+		for _, state := range builder.toolCalls {
+			if state.contentIndex == index {
+				parser = &state.parser
+			}
+		}
+		call.setParsedArguments(parser.parse(call.deferredArguments))
+		builder.partial.Content[index] = call
+	}
+}
+
 func (builder *assistantStreamBuilder) publish() *AssistantMessage {
 	builder.dirty = false
+	if !builder.publishesViews() {
+		// The construction message itself goes out (below), so its calls hold their parse, even one deferred while the builder still published views.
+		builder.settleArguments()
+	}
 	if builder.cell == nil {
 		builder.cell = newAssistantMessageCell(builder.partial)
 	} else {
 		builder.cell.publish(builder.partial, builder.replacements)
 	}
 	builder.replacements = assistantMessageReplacements{}
-	if !builder.managed || builder.turn == nil {
+	if !builder.publishesViews() {
 		// A producer outside the JavaScript-order executor pushes its construction message; Push stores an emission-time snapshot of it.
 		return builder.partial
 	}
@@ -438,6 +549,10 @@ func (builder *assistantStreamBuilder) publish() *AssistantMessage {
 }
 
 func (builder *assistantStreamBuilder) push(event AssistantMessageEvent) {
+	switch event.(type) {
+	case DoneEvent, ErrorEvent:
+		builder.settleArguments()
+	}
 	view := builder.publish()
 	if builder.partialCopy != nil {
 		view = builder.partialCopy(view)
@@ -451,6 +566,11 @@ func (builder *assistantStreamBuilder) push(event AssistantMessageEvent) {
 	if err := builder.stream.Push(event); err != nil {
 		builder.failInvariant(err)
 	}
+	// The stream timed the final message in place (event-stream.ts:127-128 mutates the same output object every earlier event shares), so the live view the earlier events retain shows durationMs too.
+	switch event.(type) {
+	case DoneEvent, ErrorEvent:
+		builder.publish()
+	}
 	if builder.afterPush != nil {
 		builder.afterPush()
 	}
@@ -462,5 +582,27 @@ func (builder *assistantStreamBuilder) failInvariant(err error) {
 	}
 	builder.partial.StopReason = StopReasonError
 	builder.partial.ErrorMessage = err.Error()
+	builder.settleArguments()
 	_ = builder.stream.Push(ErrorEvent{Reason: StopReasonError, Error: builder.partial})
+}
+
+// streamedToolCallCounter numbers the ids generatedToolCallID gives tool calls a provider streamed without one.
+var streamedToolCallCounter atomic.Int64
+
+// generatedToolCallID is the id of a tool call streamed without one: name_<epoch ms>_<counter>, the form Pi's Google adapters generate for a missing id (google-generative-ai.ts:195-200), so it is unique across turns.
+func generatedToolCallID(name string) string {
+	//portlint:allow clock the id reads the wall clock as Pi's Date.now() does (google-generative-ai.ts:200); the ai package's clock seams are OAuth provider fields that do not reach the stream builder
+	return name + "_" + strconv.FormatInt(time.Now().UnixMilli(), 10) + "_" + strconv.FormatInt(streamedToolCallCounter.Add(1), 10)
+}
+
+// endingBlock is a block still open when its stream ends.
+type endingBlock struct {
+	contentIndex int
+	kind         string
+	toolIndex    int
+}
+
+// sortEndingBlocks orders blocks by content index, the order their end events follow. Content indices are distinct, so the unstable sort is deterministic; the typed comparison avoids sort.Slice's reflective swapper, which allocates on every stream end.
+func sortEndingBlocks(blocks []endingBlock) {
+	slices.SortFunc(blocks, func(a, b endingBlock) int { return cmp.Compare(a.contentIndex, b.contentIndex) })
 }

@@ -37,6 +37,33 @@ The Python SDK is a first-class bridge into the same subprocess protocol as
 Go and Rust. When a new host API is added, update all SDKs and the parity
 matrix in the same change.
 
+## Pi helper exports
+
+The helpers Pi exports to extensions keep their names in snake case and behave like Pi's, which the conformance suite checks against Pi's own code:
+
+```python
+import os
+import pathlib
+
+import pig_sdk
+
+
+def summarize(text: str) -> str:
+    # Pi's truncateTail keeps the end of command output; the limits default to Pi's 2000 lines and 50KB.
+    output = pig_sdk.truncate_tail(text)
+    if not output.truncated:
+        return output.content
+    return f"{output.content}\n[showing {pig_sdk.format_size(output.output_bytes)} of {pig_sdk.format_size(output.total_bytes)}]"
+
+
+def save_note(text: str) -> None:
+    # Pi's withFileMutationQueue: parallel tool calls on one file run one at a time, in call order.
+    notes = os.path.join(pig_sdk.get_agent_dir(), "notes.txt")
+    pig_sdk.with_file_mutation_queue(notes, lambda: pathlib.Path(notes).write_text(text))
+```
+
+`is_tool_call_event_type(name, event)` is Pi's `isToolCallEventType` (the tool name must match exactly). `ctx.set_working_message("")` shows an empty working label and `ctx.set_working_message(None)` restores the default one, as in Pi; `set_hidden_thinking_label` follows the same rule. `truncate_head`, `truncate_tail`, `truncate_line` and `format_size` are Pi's `truncateHead`, `truncateTail`, `truncateLine` and `formatSize`; byte limits count UTF-8 bytes and `truncate_line` counts UTF-16 units like a JavaScript string. `get_agent_dir`, `get_config_dir_name` and `get_version` are Pi's `getAgentDir()`, `CONFIG_DIR_NAME` and `VERSION`; they raise `HostInfoUnavailable`, never return a made-up path, when the process was not started by a PiG host. `ctx.get_editor_component()` returns the factory this extension installed with `ctx.set_editor_component`, or `None`. Pi's `getEditorComponent` returns the factory installed by any extension, so one extension can wrap another's editor; PiG returns only the calling extension's own factory.
+
 ## Authoring a factory extension
 
 ```python
@@ -138,6 +165,8 @@ cd extensions/sdk-py
 uv run python -m ast pig_sdk/__init__.py >/dev/null
 uv run pytest
 ```
+
+From the repository root, `make test-sdk-py` runs the same suite in a cached venv with the hash-locked dev dependencies in `requirements-dev.txt`; `make check` and CI's `ci-sdk` shard include it. After changing the `dev` dependency group, regenerate the lock with the command at the top of `requirements-dev.txt`.
 
 ## License
 

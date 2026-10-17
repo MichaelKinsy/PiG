@@ -30,17 +30,23 @@ func decodeNonASCII(text string) (rune, int) {
 
 // Splice joins the prefix before start, insert, and the suffix beginning at end, using String.slice's UTF-16 offset rules.
 func Splice(text string, start, end int, insert string) string {
-	units := ToUTF16(text)
-	index := func(n int) int {
-		if n < 0 {
-			return max(0, len(units)+n)
+	if length, ok := validUnits(text); ok && utf8.ValidString(insert) {
+		if from, ok := byteOffset(text, unitIndex(start, length)); ok {
+			if to, ok := byteOffset(text, unitIndex(end, length)); ok {
+				return text[:from] + insert + text[to:]
+			}
 		}
-		return min(n, len(units))
 	}
+	return spliceUnits(text, start, end, insert)
+}
+
+func spliceUnits(text string, start, end int, insert string) string {
+	units := ToUTF16(text)
 	inserted := ToUTF16(insert)
-	result := make([]uint16, 0, index(start)+len(inserted)+len(units)-index(end))
-	result = append(result, units[:index(start)]...)
+	start, end = unitIndex(start, len(units)), unitIndex(end, len(units))
+	result := make([]uint16, 0, start+len(inserted)+len(units)-end)
+	result = append(result, units[:start]...)
 	result = append(result, inserted...)
-	result = append(result, units[index(end):]...)
+	result = append(result, units[end:]...)
 	return FromUTF16(result)
 }

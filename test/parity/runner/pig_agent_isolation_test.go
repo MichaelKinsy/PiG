@@ -3,6 +3,7 @@
 package runner
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -91,11 +92,11 @@ func TestResolvePigBinPreservesHomeOnlyScenarioOverride(t *testing.T) {
 		t.Fatalf("resolved directory=%q; want snapshotted fixture %q", output, want)
 	}
 	data, err := os.ReadFile(filepath.Join(string(output), "settings.json"))
-	if err != nil || string(data) != string(settings) {
+	if err != nil || !bytes.Equal(data, settings) {
 		t.Fatalf("settings=%q error=%v", data, err)
 	}
 	data, err = os.ReadFile(filepath.Join(fixture, "agent", "settings.json"))
-	if err != nil || string(data) != string(settings) {
+	if err != nil || !bytes.Equal(data, settings) {
 		t.Fatalf("source fixture changed: %q %v", data, err)
 	}
 }

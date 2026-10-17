@@ -21,11 +21,13 @@ To turn on `codemode` for every session, add it to the default tools in `~/.pig/
 }
 ```
 
-This keeps `read`, `bash`, `edit`, and `write` and adds `codemode`. For one invocation, list every tool, since `--tools` replaces the selection:
+This keeps `read`, `bash`, `edit`, and `write` and adds `codemode`. For one invocation, add it with `--tools`:
 
 ```sh
-pig --tools read,bash,edit,write,codemode
+pig --tools +codemode
 ```
+
+A `--tools` list of only `+name` and `-name` entries changes the default selection. A list of plain names replaces it, so name every tool you want: `pig --tools read,bash,edit,write,codemode`. `--tools` keeps MCP tools unless an entry starts with `mcp__` (see [CLI reference](cli.md)).
 
 Codemode is useful without MCP: scripts can run several tool calls in parallel, filter large output before it reaches the model, call classifier models through `models.classify()`, and generate images through `models.generateImages()` (see [Models](#models)).
 
@@ -33,18 +35,60 @@ Codemode is useful without MCP: scripts can run several tool calls in parallel, 
 
 The tool input is raw JavaScript source, not JSON and not a markdown code fence. It runs as the body of an async function in the QuickJS sandbox, so top-level `await` and `return` work. The sandbox has no Node APIs, file system, network, or timers; scripts reach the outside world only through tools and `models`.
 
-A script may start with an options line:
+A script may start with an options line. It must be the first line; an options line anywhere else fails the call before the script runs:
 
 ```js
 // @options: {"max_output_tokens": 2000, "timeout_ms": 60000}
 ```
 
-- `max_output_tokens` (default 10000) limits the output. Longer output keeps its start and end, and the full text is written to a temp file whose path is included in the result.
+- `max_output_tokens` (default 10000) limits the output. Longer output keeps its start and end, and the full text is written to a temp file whose path is included in the result. A script fails when its output passes 16777216 characters of text and base64 image data or 100000 `text()`, `image()`, and `console` calls. Write large data to a file with a tool instead.
 - `timeout_ms` is a hard deadline for the whole script. It is unset by default. Image generation can take minutes, so do not set a short deadline for scripts that generate images.
 
-The result starts with `Script completed` or `Script failed`, the wall time, and the output. A failed script keeps its partial output, followed by `Script error:` and the error. Tool calls are real: calls made before a failure are not undone. Calls still running when the script ends are cancelled, and unawaited promises are discarded.
+The result starts with `Script completed` or `Script failed`, the wall time, and the output. Text and image items appear in order, each on its own line. When the output has more than one text item (from `text()` or `return`), each starts with a `==> text N/M <==` line. `console` calls follow in one `<console_output>` block with one line per call. A failed script keeps its partial output, followed by `Script error:` and the error. Tool calls are real: calls made before a failure are not undone. Calls still running when the script ends are cancelled, and unawaited promises are discarded.
 
-The `codemode` description lists each script global in one line and points the model to this page for the details, such as the `models` API. A copy of this page ships with `pig` in `~/.pig/docs/codemode.md`, so the model can read it with the `read` tool.
+An `Error` nested in a value that `text()`, `console` or `return` writes appears as `{"name":...,"message":...}` followed by its own enumerable fields, such as `code`. For example, `text(await Promise.allSettled([...]))` shows each rejection's message. Pi writes such an `Error` as `{}` (D145, Pi #10650). An explicit `JSON.stringify` in the script and the arguments a script passes to a tool keep normal JavaScript behavior.
+
+The `codemode` description lists each script global in one line and points the model to this page for the details, such as the `models` API. A copy of this page ships with `pig` in its docs bundle under `~/.pig/docs/` (`pig docs path` prints the directory), so the model can read it with the `read` tool.
+
+## Worked example: two files in one script
+
+With `"defaultTools": ["+codemode"]` in settings, the model gets `codemode` next to `read`, `bash`, `edit` and `write` (checked: the provider request listed those five tools). Ask a question that needs two reads:
+
+```text
+How many lines are in a.txt and b.txt together?
+```
+
+The model can answer with one script instead of two separate tool turns. The test model here wrote this one. PiG shows the script, each tool call with its time, the script's result and its console output:
+
+```text
+ codemode
+ const [a, b] = await Promise.all([tools.read({ path: "a.txt" }), tools.read({ path: "b.txt" })]);
+ const count = (s) => s.trim().split("\n").length;
+ console.log("reading both files in one script");
+ return { a: count(a), b: count(b), total: count(a) + count(b) };
+ ✓ read {"path":"a.txt"} 1ms
+ ✓ read {"path":"b.txt"} 0ms
+ {"a":3,"b":2,"total":5}
+ <console_output>
+ reading both files in one script
+ </console_output>
+ a.txt has 3 lines, b.txt has 2, 5 in all.
+```
+
+The two `read` calls ran in parallel (`Promise.all`). What the model itself receives is the tool result:
+
+```text
+Script completed
+Wall time 0.5 seconds
+Output:
+
+{"a":3,"b":2,"total":5}
+<console_output>
+reading both files in one script
+</console_output>
+```
+
+The script filtered the files down to three numbers before anything reached the model, which is the point: with large files the model sees the summary, not the files.
 
 ## Globals
 
@@ -53,7 +97,7 @@ The `codemode` description lists each script global in one line and points the m
 | `tools.<name>(args)` | Call a tool. See [Call tools](#call-tools). |
 | `text(value)` | Add a text item to the output. Strings are added as is, other values as JSON. |
 | `image(value)` | Add an image to the output: a base64 `data:` URL, an `{ image_url }` object, or an image block `{ type: "image", data, mimeType }` such as those returned by MCP tools and `models.generateImages()`. Remote URLs are not supported. PNG, JPEG, GIF, and WebP are accepted. Each image is also saved to a temp file, and the result names the path before the image. |
-| `console.log(...)` | Like `text()`; `info`, `warn`, `error`, and `debug` do the same. |
+| `console.log(...)` | Add a line to the `<console_output>` block after the other output. Arguments are joined with spaces; `info`, `warn`, `error`, and `debug` do the same. |
 | `return value` | A top-level `return` adds the value like `text()`. |
 | `exit()` | End the script successfully. |
 | `store(key, value)` / `load(key)` | Keep small JSON values across `codemode` calls. See [Store values](#store-values). |
@@ -73,13 +117,14 @@ What a call resolves to depends on the tool:
 
 - Tools with an output schema resolve to a structured value. `bash` resolves to `{ output, truncated, full_output_path?, exit_code, wall_time_seconds }`, also for non-zero exit codes. Its `output` is not limited to the 2000 lines or 50KB the model sees: it holds up to 1 MiB, and longer output keeps its first and last 512 KiB around an omission marker, with `truncated` set and the full output in `full_output_path`.
 - MCP tools resolve to their `CallToolResult`, including `isError` and `structuredContent`.
-- Other tools, such as `read`, `edit`, and `write`, resolve to their text output.
+- `read` resolves to the file's text, or for an image to an image block `{ type: "image", data, mimeType, note }` that `image()` shows. `data` is the base64 image the model would see and `note` the text that goes with it, such as resize hints.
+- Other tools, such as `edit` and `write`, resolve to their text output.
 
 A call that fails, is blocked, or gets invalid arguments rejects with an `Error` that carries the tool's error text. Use `Promise.allSettled()` to keep the results of the calls that succeed.
 
 The `codemode` description lists tools with their TypeScript declarations, grouped by namespace (for example one MCP server). Tools with `deferred` exposure, which includes MCP tools with the default `codemode` exposure, are not listed, so the description stays the same while MCP servers connect. Listed declarations share a budget of 3000 estimated tokens (`codemode.inlineBudget` in [settings](settings.md#tools)). Scripts find the other tools with `searchTools()`, `describeTool()`, `describeNamespace()`, or by filtering `ALL_TOOLS`.
 
-While `codemode` is active, `codemode.mode` in [settings](settings.md#tools) decides how the other tools are presented. With `on` (default) declared tools stay declared, and their descriptions say in one line how scripts call them and what the call resolves to. With `only` they are hidden from the model and listed in the `codemode` description instead, so the model calls them through scripts.
+While `codemode` is active, `codemode.mode` in [settings](settings.md#tools) decides how the other tools are presented. With `on` (default) declared tools stay declared, and their descriptions say in one line how scripts call them and what the call resolves to. With `only` they are hidden from the model and listed in the `codemode` description instead, so the model calls them through scripts. Tool declarations in the `codemode` description, `describeTool()`, and `ALL_TOOLS` carry the tools' prompt guidelines, since the system prompt rules only cover declared tools.
 
 ## Store values
 
@@ -89,7 +134,7 @@ The store is for small state such as IDs, cursors, or summaries. One value may h
 
 ## Models
 
-`models` reaches the model catalog and runs non-LLM models with the session's credentials: classifiers, which answer typed questions about JSON state, and image models, which generate images. Chat models are listed but cannot be run from scripts. PiG lists OpenRouter's image models under the `openrouter` provider. Its built-in catalog also lists classifier models under `cloudflare-workers-ai`, `opencode`, `openrouter`, `typesafe` and `vercel-ai-gateway` (see [Providers](providers.md)); an extension can register a provider that lists more.
+`models` reaches the model catalog and runs non-LLM models with the session's credentials: classifiers, which answer typed questions about JSON state and, for some models, images, and image models, which generate images. Chat models are listed but cannot be run from scripts. PiG lists OpenRouter's image models under the `openrouter` provider. Its built-in catalog also lists classifier models under `cloudflare-workers-ai`, `opencode`, `openrouter`, `typesafe` and `vercel-ai-gateway` (see [Providers](providers.md)); an extension can register a provider that lists more.
 
 ```ts
 type ModelType = "chat" | "image" | "classifier";
@@ -130,6 +175,8 @@ Model IDs differ between providers. Use `models.getAvailableOfType(type)` to fin
 interface ClassifierContext {
   /** The data to classify. */
   state: Record<string, unknown>;
+  /** Images judged together with `state`. Only models whose `input` includes "image" accept them. */
+  images?: { type: "image"; data: string; mimeType: string }[];
   /** Questions by ID. One call answers all of them. */
   questions: Record<string, ClassifierQuestion>;
 }
@@ -193,6 +240,24 @@ return results.map((result, i) =>
 );
 ```
 
+Classifiers whose `input` includes `"image"` also judge images. `tools.read()` returns an image file as an image block that `images` accepts. Other classifiers return an error result when `images` is not empty.
+
+```js
+const luna = await models.getModelOfType("classifier", "openai", "gpt-6-luna");
+const photo = await tools.read({ path: "screenshot.png" });
+const result = await models.classify(luna, {
+  state: { task: "Settings page redesign" },
+  images: [photo],
+  questions: {
+    broken: {
+      type: "bool",
+      instructions: "Does the screenshot show a broken layout?",
+      criteria: { true: "Overlapping, cut-off, or misaligned elements", false: "Clean layout" },
+    },
+  },
+});
+```
+
 ### Generate images
 
 ```ts
@@ -236,6 +301,8 @@ Extensions generate images without codemode through `ctx.modelRegistry.generateI
 ## Limits
 
 - A script's VM has 256 MB of memory. Running out throws `InternalError: out of memory`; filter or aggregate large data instead of accumulating it.
+- Stopping a script or reaching its deadline ends the call promptly. A built-in that does not poll QuickJS's interrupt handler can keep its VM computing after that, until it returns or the VM is halted half a second after the stop.
+- At most two codemode VMs may be alive across all sessions in one pig process. A cancelled VM occupies its slot until it exits. At capacity, new scripts fail immediately without starting another VM; retry after an existing one exits.
 - A script that waits on a promise that can never settle (no tool call pending) fails immediately, since there are no timers.
 - Scripts cannot start other `codemode` scripts.
 
@@ -246,3 +313,5 @@ Extensions generate images without codemode through `ctx.modelRegistry.generateI
 ## Where the settings live
 
 `defaultTools` and `codemode` are in [settings](settings.md#tools). `--no-extensions` disables both built-in extensions; load one for a single run with `-e builtin:codemode` or `-e builtin:tool-search`. An extension that registers a tool named `codemode` or `tool_search` replaces the built-in tool with a warning.
+
+See [upstream Pi's codemode documentation](https://pi.dev/docs/latest/codemode) for the reference implementation.

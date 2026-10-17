@@ -27,7 +27,7 @@ func TestNativeAuthResultOmitsAbsentSource(t *testing.T) {
 // stored and configured credentials, and names template environment variables.
 func TestExtensionProviderAuthStatusSources(t *testing.T) {
 	registry := NewModelRegistry(t.TempDir())
-	if err := registry.RegisterProvider("fixture", extension.ProviderConfig{APIKey: "literal"}); err != nil {
+	if err := registry.RegisterExtensionProvider("fixture", extension.ProviderConfig{APIKey: "literal"}); err != nil {
 		t.Error(err)
 	}
 	if got := registry.ExtensionProviderAuthStatus("fixture"); got != (ai.AuthStatus{Configured: true, Source: ai.AuthSourceFallback}) {

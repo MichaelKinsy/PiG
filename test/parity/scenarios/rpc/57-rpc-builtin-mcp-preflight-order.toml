@@ -1,0 +1,54 @@
+# Pi 1.1.0 extensions/mcp/index.ts:1175-1181: the built-in MCP extension's before_agent_start handler awaits waitForDirectServers once, so with builtin:mcp loaded agent-session.ts prompt() reaches preflightResult five microtasks after the input line, as late as a steer or follow_up response (rpc-mode.ts:416-424). Probed with a microtask counter on Pi 1.1.0: prompt 5, steer 5, follow_up 5, prompt "/x" 6; with --no-extensions the prompt answers at 3.
+# Steer then prompt therefore answers the steer first; follow_up, prompt "/x", steer answers the prompt last. PiG answered both prompts first.
+name = "57-rpc-builtin-mcp-preflight-order"
+description = "With builtin:mcp loaded, a prompt answers after a steer or follow_up read before it in the same batch"
+covers = ["packages/coding-agent/src/modes/rpc/rpc-mode.ts", "packages/coding-agent/src/extensions/mcp/index.ts"]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 15
+[[rpc.steps]]
+line = '''{"id":"steer","type":"steer","message":"steered"}
+{"id":"prompt","type":"prompt","message":"hello"}'''
+wait_event = '{"type":"agent_settled","aborted":false}'
+wait_timeout_seconds = 10
+[[rpc.steps]]
+line = '''{"id":"follow","type":"follow_up","message":"later"}
+{"id":"slash","type":"prompt","message":"/x"}
+{"id":"steer2","type":"steer","message":"steered again"}'''
+wait_event = '{"type":"agent_settled","aborted":false}'
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--model", "test-faux/faux-1", "--no-session", "--system-prompt", "RPC runtime values.", "--no-context-files", "--no-skills"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--no-session", "--system-prompt", "RPC runtime values.", "--no-context-files", "--no-skills"]
+# The runner's baseline --no-extensions would drop builtin:mcp, whose handler is the behavior under test.
+override_base_args = true
+
+[assert]
+json_output_equal = true
+stderr_equal = true
+exit_code = 0
+runs = 3
+[[assert.json_aliases]]
+paths = ["/**/sessionId"]
+kind = "id"
+group = "session"
+pattern = '^[0-9a-f-]{36}$'
+reason = "The in-memory session UUID varies per process. A bijection preserves identity across both snapshots."
+[[assert.json_aliases]]
+paths = ["/**/sections/cwd"]
+kind = "path"
+reason = "Only the exact isolated cwd varies in the explicit system prompt; retain section structure and all other text."
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Independent entry and message clocks vary; preserve field presence, timestamp type and syntax."
+
+[[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."

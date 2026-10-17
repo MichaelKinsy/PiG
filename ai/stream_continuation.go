@@ -32,24 +32,47 @@ func (observation *StreamObservation) PrepareContinuation() *StreamContinuation 
 	return &StreamContinuation{turn: observation.turn.executor.newTurn()}
 }
 
-// Run waits for the reserved continuation, runs its synchronous callback with an observation scope, and releases ownership on return. A canceled reservation returns context.Canceled without invoking the callback.
+// Run waits for the reserved continuation, runs its synchronous callback with an observation scope, and releases ownership on return. A canceled reservation returns context.Canceled without invoking the callback. The callback runs as a coroutine turn, so a long-lived callback that awaits many times hands execution to other turns without goroutine wakes; it identifies its goroutine once.
 func (continuation *StreamContinuation) Run(body func(*StreamObservation) error) error {
 	if !continuation.started.CompareAndSwap(false, true) {
 		return errors.New("stream continuation already consumed")
 	}
 	result := error(context.Canceled)
 	continuation.turn.run(func(turn *continuationTurn) {
-		observation := &StreamObservation{turn: turn, owner: goroutineID()}
-		turn.executor.mu.Lock()
-		turn.executor.observation = observation
-		turn.executor.mu.Unlock()
-		if continuation.onReturn != nil {
-			defer continuation.onReturn()
-		}
-		defer observation.end()
-		result = body(observation)
+		result = continuation.observe(turn, currentGoroutineID(), body)
 	})
 	return result
+}
+
+// StreamOwner identifies the goroutine that runs stream callbacks, so a goroutine that runs one callback after another identifies itself once instead of at each callback.
+type StreamOwner struct{ id uint64 }
+
+// CurrentStreamOwner is the owner of the calling goroutine.
+func CurrentStreamOwner() StreamOwner { return StreamOwner{currentGoroutineID()} }
+
+// RunOwned is Run for a caller that already holds its own StreamOwner: owner must be CurrentStreamOwner() of the goroutine that calls RunOwned, which is the goroutine the callback runs on. The callback runs directly on that goroutine, for a caller that runs one short callback after another.
+func (continuation *StreamContinuation) RunOwned(owner StreamOwner, body func(*StreamObservation) error) error {
+	if !continuation.started.CompareAndSwap(false, true) {
+		return errors.New("stream continuation already consumed")
+	}
+	result := error(context.Canceled)
+	continuation.turn.runDirect(func(turn *continuationTurn) {
+		result = continuation.observe(turn, owner.id, body)
+	})
+	return result
+}
+
+// observe runs the callback under a new observation of turn that owner runs.
+func (continuation *StreamContinuation) observe(turn *continuationTurn, owner uint64, body func(*StreamObservation) error) error {
+	observation := &StreamObservation{turn: turn, owner: owner}
+	turn.executor.mu.Lock()
+	turn.executor.observation = observation
+	turn.executor.mu.Unlock()
+	if continuation.onReturn != nil {
+		defer continuation.onReturn()
+	}
+	defer observation.end()
+	return body(observation)
 }
 
 // Cancel releases an unclaimed reservation without waiting for its queue position. It returns false once Run owns the callback; that running callback must be canceled and joined by its caller.

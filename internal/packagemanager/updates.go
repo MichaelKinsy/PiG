@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Network timeout for update checks. Mirrors upstream NETWORK_TIMEOUT_MS
@@ -18,7 +19,8 @@ const UpdateCheckNetworkTimeout = 10 * time.Second
 // isOfflineModeEnabled (package-manager.ts:29).
 func IsOfflineModeEnabled() bool {
 	if value := os.Getenv("PI_OFFLINE"); value != "" {
-		return value == "1" || strings.EqualFold(value, "true") || strings.EqualFold(value, "yes")
+		lower := jsstring.ToLower(value)
+		return value == "1" || lower == "true" || lower == "yes"
 	}
 	v := strings.ToLower(strings.TrimSpace(os.Getenv("PIG_OFFLINE")))
 	return v == "1" || v == "true" || v == "yes"

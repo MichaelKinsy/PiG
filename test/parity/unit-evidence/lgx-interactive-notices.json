@@ -1,0 +1,120 @@
+[
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestInteractiveNoticesAppendSpacedPaddedBlocksToTheChat"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "mutation": "internal/codingagent/interactive_chat.go: replace `if m.chatContainer == nil {\n\t\treturn\n\t}\n\tm.appendChatBlock(themedNotice(\"error\"` with `m.appendChatBlock(themedNotice(\"error\"`; TestInteractiveNoticesAppendSpacedPaddedBlocksToTheChat fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestInteractiveNoticesAppendSpacedPaddedBlocksToTheChat"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "mutation": "internal/codingagent/interactive_chat.go: replace `themedNotice(\"error\", \"Error: \"+msg, m.outputPad)` with `themedNotice(\"error\", msg, m.outputPad)`; TestInteractiveNoticesAppendSpacedPaddedBlocksToTheChat fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestInteractiveNoticesAppendSpacedPaddedBlocksToTheChat"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "mutation": "internal/codingagent/interactive_chat.go: replace `themedNotice(\"error\", \"Error: \"+msg, m.outputPad)` with `themedNotice(\"error\", \"Error: \"+msg, 1)`; TestInteractiveNoticesAppendSpacedPaddedBlocksToTheChat fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestChatNoticesFollowThemeChangesUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "mutation": "internal/codingagent/interactive_chat.go: replace `themedNotice(\"error\", \"Error: \"+msg, m.outputPad)` with `themedNotice(\"warning\", \"Error: \"+msg, m.outputPad)`; TestChatNoticesFollowThemeChangesUpstream fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestInteractiveNoticesAppendSpacedPaddedBlocksToTheChat"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "mutation": "internal/codingagent/interactive_helpers.go: replace `themedNotice(\"warning\", \"Warning: \"+msg, 1)` with `themedNotice(\"warning\", msg, 1)`; TestInteractiveNoticesAppendSpacedPaddedBlocksToTheChat fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestInteractiveNoticesAppendSpacedPaddedBlocksToTheChat"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "mutation": "internal/codingagent/interactive_helpers.go: replace `themedNotice(\"warning\", \"Warning: \"+msg, 1)` with `themedNotice(\"warning\", \"Warning: \"+msg, m.outputPad)`; TestInteractiveNoticesAppendSpacedPaddedBlocksToTheChat fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestChatNoticesFollowThemeChangesUpstream"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "mutation": "internal/codingagent/interactive_helpers.go: replace `themedNotice(\"warning\", \"Warning: \"+msg, 1)` with `themedNotice(\"error\", \"Warning: \"+msg, 1)`; TestChatNoticesFollowThemeChangesUpstream fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestInteractiveNoticesAppendSpacedPaddedBlocksToTheChat"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "mutation": "internal/codingagent/interactive_chat.go: replace `m.appendBorderedNotice(tui.NewThemedText(func() string { return packageUpdateNoticeBody(tui.ActiveTheme(), packages) }, 1, 0))` with `m.appendBorderedNotice(tui.NewThemedText(func() string { return packageUpdateNoticeBody(tui.ActiveTheme(), nil) }, 1, 0))`; TestInteractiveNoticesAppendSpacedPaddedBlocksToTheChat fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestPackageUpdateNotificationPadsLikePi",
+   "TestShowPackageUpdateNotificationAddsTheNotice"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "mutation": "internal/codingagent/interactive_chat.go: replace `return packageUpdateNoticeBody(tui.ActiveTheme(), packages) }, 1, 0))` with `return packageUpdateNoticeBody(tui.ActiveTheme(), packages) }, 0, 0))`; TestPackageUpdateNotificationPadsLikePi, TestShowPackageUpdateNotificationAddsTheNotice fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestInteractiveNoticesAppendSpacedPaddedBlocksToTheChat"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "mutation": "internal/codingagent/interactive_chat.go: replace `m.chatContainer.Add(tui.NewSpacer(1))\n\tm.chatContainer.Add(tui.NewDynamicBorderToken(\"warning\"))\n\tfor _, b := range blocks {` with `m.chatContainer.Add(tui.NewDynamicBorderToken(\"warning\"))\n\tfor _, b := range blocks {`; TestInteractiveNoticesAppendSpacedPaddedBlocksToTheChat fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestInteractiveNoticesAppendSpacedPaddedBlocksToTheChat"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "mutation": "internal/codingagent/interactive_chat.go: replace `m.chatContainer.Add(tui.NewDynamicBorderToken(\"warning\"))\n\tm.tuiInst.Render()` with `m.tuiInst.Render()`; TestInteractiveNoticesAppendSpacedPaddedBlocksToTheChat fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestInteractiveNoticesAppendSpacedPaddedBlocksToTheChat"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "mutation": "internal/codingagent/interactive_chat.go: replace `m.chatContainer.Add(tui.NewSpacer(1))\n\tm.chatContainer.Add(comp)` with `m.chatContainer.Add(comp)`; TestInteractiveNoticesAppendSpacedPaddedBlocksToTheChat fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestClearEditorEmptiesTheEditor"
+  ],
+  "upstream_reference": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "mutation": "internal/codingagent/interactive_tui.go: replace `m.editor.Clear()\n\tm.tuiInst.Render()` with `m.tuiInst.Render()`; TestClearEditorEmptiesTheEditor fails."
+ }
+]

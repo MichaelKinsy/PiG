@@ -1,8 +1,10 @@
 package subprocess
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -10,7 +12,11 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
-const nodePreflightHelperFIFOEnv = "PIG_TEST_NODE_PREFLIGHT_FIFO"
+const (
+	nodePreflightHelperFIFOEnv  = "PIG_TEST_NODE_PREFLIGHT_FIFO"
+	fakeProviderBridgeNodeEnv   = "PIG_TEST_FAKE_PROVIDER_BRIDGE_NODE"
+	fakeProviderBridgeScriptEnv = "PIG_TEST_FAKE_PROVIDER_BRIDGE_SCRIPT"
+)
 
 var fixtureRoot string
 
@@ -29,6 +35,22 @@ func TestMain(m *testing.M) {
 		for {
 			time.Sleep(time.Hour)
 		}
+	}
+	if nodePath := os.Getenv(fakeProviderBridgeNodeEnv); nodePath != "" {
+		// `pig provider-bridge` stand-in: the shim spawns PIG_HARNESS_BINARY directly, and Windows runs only executables, not `#!/bin/sh` scripts.
+		script := os.Getenv(fakeProviderBridgeScriptEnv)
+		_ = os.Unsetenv(fakeProviderBridgeNodeEnv)
+		bridge := exec.Command(nodePath, script)
+		bridge.Stdin, bridge.Stdout, bridge.Stderr = os.Stdin, os.Stdout, os.Stderr
+		err := bridge.Run()
+		if exit, ok := errors.AsType[*exec.ExitError](err); ok {
+			os.Exit(exit.ExitCode())
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "run fake provider bridge:", err)
+			os.Exit(2)
+		}
+		os.Exit(0)
 	}
 	testRoot, err := os.MkdirTemp("", "pig-sp-")
 	if err != nil {
@@ -67,15 +89,20 @@ func TestMain(m *testing.M) {
 		}
 	}
 	fixtureRoot = filepath.Join(testRoot, "fixtures")
-	// Cargo's default target is inside each generated cell's disposable build directory. Keep dependencies for this package run, without sharing mutable outputs with another test process.
+	// Rust SDK dependencies compile once per machine into a persistent target keyed by the SDK lock, not once per package run (more than 10 minutes under load).
 	if os.Getenv("CARGO_TARGET_DIR") == "" {
-		if err := os.Setenv("CARGO_TARGET_DIR", filepath.Join(testRoot, "cargo-target")); err != nil {
+		sdk := filepath.Join(root, "extensions", "sdk-rs")
+		target, err := testenv.SharedCargoTargetDir("subprocess", filepath.Join(sdk, "Cargo.lock"), filepath.Join(sdk, "Cargo.toml"))
+		if err == nil {
+			err = os.Setenv("CARGO_TARGET_DIR", target)
+		}
+		if err != nil {
 			fmt.Fprintln(os.Stderr, "set package Cargo target:", err)
 			_ = os.RemoveAll(testRoot)
 			os.Exit(2)
 		}
 	}
-	code := m.Run()
+	code := testenv.RunWithoutGoroutineLeaks(m)
 	if err := os.RemoveAll(testRoot); err != nil {
 		fmt.Fprintln(os.Stderr, "remove isolated test home:", err)
 		if code == 0 {

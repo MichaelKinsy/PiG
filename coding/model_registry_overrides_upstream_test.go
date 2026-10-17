@@ -8,11 +8,11 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
-func registryWithOverride(t *testing.T, provider, id string, override map[string]any) *Services {
+func registryWithOverride(t *testing.T, provider, id string, override map[string]any) *AgentSessionServices {
 	return registryTestServices(t, "", map[string]any{provider: map[string]any{"modelOverrides": map[string]any{id: override}}})
 }
 func TestModelRegistryModelOverridesUpstream(t *testing.T) {
-	const sonnet = "anthropic/claude-sonnet-4"
+	const sonnet = "anthropic/claude-sonnet-4.5"
 	const opus = "anthropic/claude-opus-4.1"
 	// .upstream/v0.87.1/packages/coding-agent/test/model-registry.test.ts:689
 	t.Run("model override applies to a single built-in model", func(t *testing.T) {
@@ -41,7 +41,7 @@ func TestModelRegistryModelOverridesUpstream(t *testing.T) {
 	}
 	// .upstream/v1.0.2/packages/coding-agent/test/model-registry.test.ts:757 (Pi 1.0.2 #9776 adds samplingParamsByThinkingLevel)
 	t.Run("custom models and model overrides carry sampling params", func(t *testing.T) {
-		s := registryFromJSON(t, `{"openrouter":{"baseUrl":"https://my-proxy.example.com/v1","api":"openai-completions","models":[{"id":"custom/sampling-model","samplingParams":{"temperature":1,"top_p":0.95,"top_k":0},"samplingParamsByThinkingLevel":{"low":{"temperature":0.6,"top_p":0.95},"high":{"temperature":0.8}}}],"modelOverrides":{"custom/sampling-model":{"samplingParamsByThinkingLevel":{"low":{"temperature":0.5,"top_k":20},"max":{"temperature":1}}},"anthropic/claude-sonnet-4":{"samplingParams":{"top_p":0.9},"samplingParamsByThinkingLevel":{"high":{"temperature":0.8}}}}}}`)
+		s := registryFromJSON(t, `{"openrouter":{"baseUrl":"https://my-proxy.example.com/v1","api":"openai-completions","models":[{"id":"custom/sampling-model","samplingParams":{"temperature":1,"top_p":0.95,"top_k":0},"samplingParamsByThinkingLevel":{"low":{"temperature":0.6,"top_p":0.95},"high":{"temperature":0.8}}}],"modelOverrides":{"custom/sampling-model":{"samplingParamsByThinkingLevel":{"low":{"temperature":0.5,"top_k":20},"max":{"temperature":1}}},"anthropic/claude-sonnet-4.5":{"samplingParams":{"top_p":0.9},"samplingParamsByThinkingLevel":{"high":{"temperature":0.8}}}}}}`)
 		assertRegistryNoError(t, s)
 		custom := mustRegistryModel(t, s, "openrouter", "custom/sampling-model")
 		if !reflect.DeepEqual(custom.SamplingParams, map[string]any{"temperature": float64(1), "top_p": 0.95, "top_k": float64(0)}) {
@@ -69,7 +69,7 @@ func TestModelRegistryModelOverridesUpstream(t *testing.T) {
 	})
 	// .upstream/v0.87.1/packages/coding-agent/test/model-registry.test.ts:790
 	t.Run("custom model and model override carry prompt cache lifetimes", func(t *testing.T) {
-		s := registryFromJSON(t, `{"openrouter":{"baseUrl":"https://my-proxy.example.com/v1","api":"openai-completions","models":[{"id":"custom/cached-model","promptCache":{"short":120}}],"modelOverrides":{"anthropic/claude-sonnet-4":{"promptCache":{"short":300}}}},"anthropic":{"modelOverrides":{"claude-sonnet-4-6":{"promptCache":{"long":1800}}}}}`)
+		s := registryFromJSON(t, `{"openrouter":{"baseUrl":"https://my-proxy.example.com/v1","api":"openai-completions","models":[{"id":"custom/cached-model","promptCache":{"short":120}}],"modelOverrides":{"anthropic/claude-sonnet-4.5":{"promptCache":{"short":300}}}},"anthropic":{"modelOverrides":{"claude-sonnet-4-6":{"promptCache":{"long":1800}}}}}`)
 		assertRegistryNoError(t, s)
 		for _, tc := range []struct {
 			provider, id string
@@ -77,6 +77,20 @@ func TestModelRegistryModelOverridesUpstream(t *testing.T) {
 		}{{"openrouter", "custom/cached-model", ai.ModelPromptCache{"short": 120}}, {"openrouter", sonnet, ai.ModelPromptCache{"short": 300}}, {"openrouter", opus, nil}, {"anthropic", "claude-sonnet-4-6", ai.ModelPromptCache{"short": 300, "long": 1800}}} {
 			if actual := mustRegistryModel(t, s, tc.provider, tc.id).PromptCache; !reflect.DeepEqual(actual, tc.want) {
 				t.Errorf("%s/%s cache=%v, want %v", tc.provider, tc.id, actual, tc.want)
+			}
+		}
+	})
+	// Pi's ModelPromptCacheSchema (models.json validation) is Type.Number({ exclusiveMinimum: 0 }) per tier, so a lifetime need not be a whole number of seconds.
+	t.Run("custom model and model override keep fractional prompt cache lifetimes", func(t *testing.T) {
+		s := registryFromJSON(t, `{"openrouter":{"baseUrl":"https://my-proxy.example.com/v1","api":"openai-completions","models":[{"id":"custom/cached-model","promptCache":{"short":1.5}}],"modelOverrides":{"anthropic/claude-sonnet-4.5":{"promptCache":{"long":0.25}}}}}`)
+		assertRegistryNoError(t, s)
+		for _, tc := range []struct{ id, want string }{{"custom/cached-model", `{"short":1.5}`}, {sonnet, `{"long":0.25}`}} {
+			data, err := json.Marshal(mustRegistryModel(t, s, "openrouter", tc.id).PromptCache)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(data) != tc.want {
+				t.Errorf("%s cache=%s, want %s", tc.id, data, tc.want)
 			}
 		}
 	})
@@ -126,7 +140,7 @@ func TestModelRegistryModelOverridesUpstream(t *testing.T) {
 	}
 	// .upstream/v0.87.1/packages/coding-agent/test/model-registry.test.ts:887
 	t.Run("supportsFinishReason can be configured at provider and model levels", func(t *testing.T) {
-		s := registryFromJSON(t, `{"openrouter":{"compat":{"supportsFinishReason":true},"modelOverrides":{"anthropic/claude-sonnet-4":{"compat":{"supportsFinishReason":false}}}}}`)
+		s := registryFromJSON(t, `{"openrouter":{"compat":{"supportsFinishReason":true},"modelOverrides":{"anthropic/claude-sonnet-4.5":{"compat":{"supportsFinishReason":false}}}}}`)
 		a, b := mustRegistryModel(t, s, "openrouter", sonnet).ProviderMeta.Compat, mustRegistryModel(t, s, "openrouter", opus).ProviderMeta.Compat
 		if a == nil || a.SupportsFinishReason == nil || *a.SupportsFinishReason || b == nil || b.SupportsFinishReason == nil || !*b.SupportsFinishReason {
 			t.Fatalf("compat=%+v,%+v", a, b)
@@ -134,7 +148,7 @@ func TestModelRegistryModelOverridesUpstream(t *testing.T) {
 	})
 	// .upstream/v0.87.1/packages/coding-agent/test/model-registry.test.ts:929
 	t.Run("multiple model overrides on same provider", func(t *testing.T) {
-		s := registryFromJSON(t, `{"openrouter":{"modelOverrides":{"anthropic/claude-sonnet-4":{"compat":{"openRouterRouting":{"only":["amazon-bedrock"]}}},"anthropic/claude-opus-4.1":{"compat":{"openRouterRouting":{"only":["anthropic"]}}}}}}`)
+		s := registryFromJSON(t, `{"openrouter":{"modelOverrides":{"anthropic/claude-sonnet-4.5":{"compat":{"openRouterRouting":{"only":["amazon-bedrock"]}}},"anthropic/claude-opus-4.1":{"compat":{"openRouterRouting":{"only":["anthropic"]}}}}}}`)
 		for _, tc := range []struct{ id, want string }{{sonnet, `{"only":["amazon-bedrock"]}`}, {opus, `{"only":["anthropic"]}`}} {
 			got, err := json.Marshal(mustRegistryModel(t, s, "openrouter", tc.id).ProviderMeta.Compat.OpenRouterRouting)
 			if err != nil || string(got) != tc.want {
@@ -144,7 +158,7 @@ func TestModelRegistryModelOverridesUpstream(t *testing.T) {
 	})
 	// .upstream/v0.87.1/packages/coding-agent/test/model-registry.test.ts:955
 	t.Run("model override combined with baseUrl override", func(t *testing.T) {
-		s := registryFromJSON(t, `{"openrouter":{"baseUrl":"https://my-proxy.example.com/v1","modelOverrides":{"anthropic/claude-sonnet-4":{"name":"Proxied Sonnet"}}}}`)
+		s := registryFromJSON(t, `{"openrouter":{"baseUrl":"https://my-proxy.example.com/v1","modelOverrides":{"anthropic/claude-sonnet-4.5":{"name":"Proxied Sonnet"}}}}`)
 		a, b := mustRegistryModel(t, s, "openrouter", sonnet), mustRegistryModel(t, s, "openrouter", opus)
 		if a.ProviderMeta.BaseURL != "https://my-proxy.example.com/v1" || a.DisplayName != "Proxied Sonnet" || b.ProviderMeta.BaseURL != "https://my-proxy.example.com/v1" || b.DisplayName == "Proxied Sonnet" {
 			t.Fatal("override precedence wrong")

@@ -131,13 +131,14 @@ func main() {
 	familiesPath := flag.String("families", "test/parity/families.toml", "behavior family definitions")
 	generateMapping := flag.Bool("generate-input-mapping", false, "generate an all-pending input/render mapping")
 	previousMappingPath := flag.String("previous-input-mapping", "", "previous reviewed input/render mapping")
+	previousInventoryPath := flag.String("previous-input-inventory", "", "with -generate-input-mapping, the inventory the previous mapping reviewed: a surface identical in both keeps its reviewed entry")
 	ownerOverridesPath := flag.String("owner-overrides", "test/parity/interfaces/behavior-owner-overrides-v"+coding.UpstreamVersion+".json", "reviewed owner overrides for ambiguous new surfaces")
 	outputMappingPath := flag.String("output-input-mapping", "", "output path for generated input/render mapping")
 	strict := flag.Bool("strict", false, "reject pending and partial input-handler mappings")
 	family := flag.String("family", "", "report input-handler frontier for one owner family")
 	flag.Parse()
 	if *generateMapping {
-		if err := generatePendingInputMappingFile(*inventoryPath, *previousMappingPath, *familiesPath, *ownerOverridesPath, *outputMappingPath); err != nil {
+		if err := generatePendingInputMappingFile(*inventoryPath, *previousMappingPath, *previousInventoryPath, *familiesPath, *ownerOverridesPath, *outputMappingPath); err != nil {
 			fmt.Fprintln(os.Stderr, "behavior mapping:", err)
 			os.Exit(1)
 		}

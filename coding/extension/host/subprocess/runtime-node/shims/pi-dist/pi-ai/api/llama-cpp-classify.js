@@ -338,6 +338,8 @@ export const classify = async (model, context, options) => {
     try {
         if (model.api !== "llama-cpp-classify")
             throw new Error(`Unsupported classifier API: ${model.api}`);
+        if (context.images?.length)
+            throw new Error(`${LABEL} classification does not support image input`);
         const temperature = options?.temperature ?? 1;
         if (!(temperature > 0) || !Number.isFinite(temperature)) {
             throw new Error(`Temperature must be a positive number, got ${temperature}`);

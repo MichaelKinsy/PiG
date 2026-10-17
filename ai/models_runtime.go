@@ -54,6 +54,8 @@ type RefreshModelsContext struct {
 	AllowNetwork bool
 	Force        *bool
 	Signal       context.Context
+	// BaseURL is the base URL of the registered provider, including configuration overrides that wrappers apply outside the provider receiving this context (models.ts RefreshModelsContext.baseUrl).
+	BaseURL string
 }
 
 type ModelsRefreshOptions struct {

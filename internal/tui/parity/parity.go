@@ -5,8 +5,8 @@
 //
 //  1. Headless byte parity (`AssertByteParity`): runs a renderer function
 //     against an in-process Grid, captures the output stream, and asserts the
-//     resulting grid state matches a golden file. Used for fast unit-level
-//     parity checks of individual components.
+//     resulting grid state matches the upstream render of the same component.
+//     Used for fast unit-level parity checks of individual components.
 //
 //  2. Live tmux parity (`AssertLiveParity`): drives both `~/.local/bin/pig`
 //     and the installed upstream pi binary through a tmux scenario, captures
@@ -17,8 +17,6 @@ package parity
 
 import (
 	"bytes"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -50,33 +48,6 @@ func AssertByteParity(t *testing.T, rows, cols int, pigRender, upstreamRender fu
 		t.Errorf("byte parity failed.\n--- pig (visible) ---\n%s\n--- upstream (visible) ---\n%s",
 			withRowMarkers(gGrid.String()), withRowMarkers(uGrid.String()))
 		t.Logf("pig raw bytes: %d, upstream raw bytes: %d", len(gBytes), len(uBytes))
-	}
-}
-
-// AssertGolden compares the visible state of `render` against a golden file
-// in testdata/<name>.txt. Update goldens via UPDATE_GOLDEN=1.
-func AssertGolden(t *testing.T, name string, rows, cols int, render func(*bytes.Buffer)) {
-	t.Helper()
-	g, _ := Capture(rows, cols, render)
-	got := g.String()
-	path := filepath.Join("testdata", name+".txt")
-	if os.Getenv("UPDATE_GOLDEN") == "1" {
-		if err := os.MkdirAll("testdata", 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(path, []byte(got), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		t.Logf("golden updated: %s", path)
-		return
-	}
-	want, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("golden read %s: %v (run with UPDATE_GOLDEN=1 to create)", path, err)
-	}
-	if got != string(want) {
-		t.Errorf("golden mismatch.\n--- got ---\n%s\n--- want ---\n%s",
-			withRowMarkers(got), withRowMarkers(string(want)))
 	}
 }
 

@@ -53,6 +53,23 @@ func TestWindowsPlanCmdShimMatcherMatchesCrossSpawn(t *testing.T) {
 	}
 }
 
+// isCmdShimRegExp is /node_modules[\\/].bin[\\/][^\\/]+\.cmd$/i: a long s (U+017F) is not the s of node_modules in JavaScript, although Go's (?i) folds it.
+func TestWindowsPlanCmdShimMatcherFoldsASCIIOnly(t *testing.T) {
+	for _, tc := range []struct {
+		path string
+		want bool
+	}{
+		{`C:\p\node_modules\.bin\tool.cmd`, true},
+		{`C:\p\NODE_MODULES\.BIN\TOOL.CMD`, true},
+		{`C:\p\node_moduleſ\.bin\tool.cmd`, false},
+		{`C:\p\node_modules\.bin\tooſ.cmd`, true},
+	} {
+		if got := cmdShim.MatchString(tc.path); got != tc.want {
+			t.Errorf("cmdShim(%q) = %v, want %v", tc.path, got, tc.want)
+		}
+	}
+}
+
 func TestWindowsPlanResolvesInChildDirectory(t *testing.T) {
 	root := t.TempDir()
 	// In the parent this name is absent. In the child it needs two escaping

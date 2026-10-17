@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -13,7 +12,6 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
-	"github.com/MichaelKinsy/PiG/internal/codingagent/compaction"
 )
 
 // Matches packages/coding-agent/test/utilities.ts:135 assistantMsg, including usage.
@@ -36,10 +34,10 @@ func TestNavigateTreeRejectsNavigationBeforeActiveLeafCanChange(t *testing.T) {
 	withTreeHandlers(sess, t, map[string][]extension.HandlerFn{
 		"session_before_compact": {func(args ...any) (any, error) {
 			event := args[0].(extension.SessionBeforeCompactEvent)
-			prep := event.Preparation.(*compaction.CompactionPreparation)
+			prep := event.Preparation
 			close(started)
 			<-release
-			return extension.SessionBeforeCompactResult{Compaction: map[string]any{"summary": "summary", "firstKeptEntryId": prep.FirstKeptEntryID, "tokensBefore": prep.TokensBefore, "details": map[string]any{}}}, nil
+			return extension.SessionBeforeCompactResult{Compaction: &extension.CompactionResult{Summary: "summary", FirstKeptEntryID: prep.FirstKeptEntryID, TokensBefore: prep.TokensBefore, Details: map[string]any{}}}, nil
 		}},
 	})
 	appendTreeUser(t, sess, "first user")
@@ -48,7 +46,7 @@ func TestNavigateTreeRejectsNavigationBeforeActiveLeafCanChange(t *testing.T) {
 	original := appendUpstreamTreeAssistant(t, sess, "second assistant")
 	sess.RefreshContext()
 	compactDone := make(chan error, 1)
-	go func() { compactDone <- sess.Compact(t.Context(), "") }()
+	go func() { _, err := sess.Compact(t.Context(), ""); compactDone <- err }()
 	select {
 	case <-started:
 	case err := <-compactDone:
@@ -70,10 +68,10 @@ func TestNavigateTreeRejectsNavigationBeforeActiveLeafCanChange(t *testing.T) {
 	if err := <-compactDone; err != nil {
 		t.Fatal(err)
 	}
-	entries := sess.inner.Entries()
+	entries := sess.inner.GetEntries()
 	last := entries[len(entries)-1]
-	if last.Base.Type != "compaction" || last.Base.ParentID == nil || *last.Base.ParentID != original {
-		t.Fatalf("compaction = %+v", last.Base)
+	if last.Base().Type != "compaction" || last.Base().ParentID == nil || *last.Base().ParentID != original {
+		t.Fatalf("compaction = %+v", last.Base())
 	}
 	if got := assistantMessageTexts(sess.Messages()); !slices.Contains(got, "second assistant") {
 		t.Fatalf("retained messages = %q", got)

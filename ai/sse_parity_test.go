@@ -2,34 +2,33 @@ package ai
 
 import (
 	"context"
-	"io"
 	"strings"
 	"testing"
 )
 
-// Pi's provider SDKs accept an optional field space and join repeated data fields. Their EOF handling is not interchangeable: OpenAI's SDK does not dispatch an unterminated trailing event.
+// Pi's provider SDKs accept an optional field space and join repeated data fields. Their EOF handling is not interchangeable: OpenAI's SDK (7.19.0) dispatches an unterminated trailing event too.
 func TestProviderSSEFramingAndEOFRules(t *testing.T) {
 	t.Run("anthropic", func(t *testing.T) {
 		result, _ := runAnthropicEvents(t, strings.Join([]string{
 			"event:message_start",
-			`data:{"message":{"id":"message-1",`,
+			`data:{"type":"message_start","message":{"id":"message-1",`,
 			`data:"usage":{}}}`,
 			"",
 			"event:content_block_start",
-			`data:{"index":0,"content_block":{"type":"text"}}`,
+			`data:{"type":"content_block_start","index":0,"content_block":{"type":"text"}}`,
 			"",
 			"event:content_block_delta",
-			`data:{"index":0,"delta":{"type":"text_delta",`,
+			`data:{"type":"content_block_delta","index":0,"delta":{"type":"text_delta",`,
 			`data:"text":"hi"}}`,
 			"",
 			"event:content_block_stop",
-			`data:{"index":0}`,
+			`data:{"type":"content_block_stop","index":0}`,
 			"",
 			"event:message_delta",
-			`data:{"delta":{"stop_reason":"end_turn"},"usage":{}}`,
+			`data:{"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{}}`,
 			"",
 			"event:message_stop",
-			`data:{}`,
+			`data:{"type":"message_stop"}`,
 		}, "\n"))
 		assertSSETextResult(t, result, "hi")
 	})
@@ -56,8 +55,9 @@ func TestProviderSSEFramingAndEOFRules(t *testing.T) {
 			`data:{"type":"response.completed","response":{"status":`,
 			`data:"completed"}}`,
 		}, "\n"))
-		if result.StopReason != StopReasonError || result.ErrorMessage != "OpenAI Responses stream ended before a terminal response event" || len(result.Content) != 1 || result.Content[0].(TextContent).Text != "hi" {
-			t.Fatalf("unterminated terminal event was dispatched: %#v", result)
+		// openai 7.19.0 _iterSSEMessages delivers the unterminated last event, so the response completes.
+		if result.StopReason != StopReasonStop || len(result.Content) != 1 || result.Content[0].(TextContent).Text != "hi" {
+			t.Fatalf("unterminated terminal event was not dispatched: %#v", result)
 		}
 	})
 
@@ -68,18 +68,6 @@ func TestProviderSSEFramingAndEOFRules(t *testing.T) {
 			`data:{"candidates":[{"content":{"parts":[{"text":`,
 			`data:"hi"}]},"finishReason":"STOP"}]}`,
 		}, "\n")), builder)
-		assertSSETextResult(t, builder.stream.Result(), "hi")
-	})
-
-	t.Run("mistral", func(t *testing.T) {
-		builder := newAssistantStreamBuilder(context.Background(), APIMistralConversations, "mistral", "model")
-		provider := &mistralProvider{}
-		provider.consumeStream(context.Background(), io.NopCloser(strings.NewReader(strings.Join([]string{
-			`data:{"choices":[{"delta":{"content":`,
-			`data:"hi"},"finish_reason":"stop"}]}`,
-			"",
-			"data:[DONE]",
-		}, "\n"))), builder)
 		assertSSETextResult(t, builder.stream.Result(), "hi")
 	})
 }

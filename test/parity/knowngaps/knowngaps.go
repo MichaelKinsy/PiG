@@ -11,12 +11,12 @@ package knowngaps
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
-	"regexp"
 	"slices"
 
 	"github.com/BurntSushi/toml"
+
+	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
 
 // Path is the ledger location relative to the repository root.
@@ -25,24 +25,11 @@ const Path = "test/parity/known-gaps.toml"
 // Scopes names every gate that consumes the ledger.
 var Scopes = []string{"upstream-parity", "correspondence", "tui-keybindings", "app-keybindings"}
 
-var upstreamVersionPattern = regexp.MustCompile(`(?m)^const UpstreamVersion = "([^"]+)"`)
-
-// PinnedVersion reads coding.UpstreamVersion from
-// internal/coding/pigversion/pigversion.go under repoRoot (the literal coding.go
-// re-exports, since coding/upstream.go itself only aliases it). It parses
-// the file instead of importing the package so tests in packages that
-// coding depends on (tui, internal/codingagent) can use it.
-func PinnedVersion(repoRoot string) (string, error) {
-	data, err := os.ReadFile(filepath.Join(repoRoot, "internal", "coding", "pigversion", "pigversion.go"))
-	if err != nil {
-		return "", err
-	}
-	match := upstreamVersionPattern.FindSubmatch(data)
-	if match == nil {
-		return "", fmt.Errorf("internal/coding/pigversion/pigversion.go: UpstreamVersion not found")
-	}
-	return string(match[1]), nil
-}
+// PinnedVersion is the pin's display and ledger version (coding.UpstreamVersion).
+// It reads the leaf package internal/coding/pigversion so tests in packages
+// that coding depends on (tui, internal/codingagent) can use it, and so a
+// PI_UPSTREAM_REF run sees its own pin.
+func PinnedVersion() string { return pigversion.UpstreamVersion }
 
 // Entry is one tolerated gap.
 type Entry struct {
@@ -71,10 +58,7 @@ func Load(repoRoot string) (Ledger, error) {
 	if undecoded := meta.Undecoded(); len(undecoded) > 0 {
 		return Ledger{}, fmt.Errorf("%s: unknown fields %v", Path, undecoded)
 	}
-	pinned, err := PinnedVersion(repoRoot)
-	if err != nil {
-		return Ledger{}, err
-	}
+	pinned := PinnedVersion()
 	if ledger.PiVersion != pinned {
 		return Ledger{}, fmt.Errorf("%s: pi_version = %q, want the pinned %q; re-derive every gap against the new pin", Path, ledger.PiVersion, pinned)
 	}

@@ -74,7 +74,8 @@ const diagnostics = [];
 console.error = message => diagnostics.push(message);
 process.argv[2] = %q;
 let joined = false;
-const cell = import(pathToFileURL(%q)).then(() => { joined = true; });
+// The cell module exports served, its join: the module itself does not await serve (Bun never reaches beforeExit under a pending top-level await).
+const cell = import(pathToFileURL(%q)).then(module => module.served).then(() => { joined = true; });
 await started;
 await new Promise(setImmediate);
 assert.equal(joined, false, "cell must retain its healthy member");
@@ -120,4 +121,44 @@ func nodeCellFailureManifest(t *testing.T, names []string) (string, string) {
 		t.Fatal(err)
 	}
 	return entry, manifest
+}
+
+// cli.mjs and cell.mjs do not await serve at top level (Bun reaches beforeExit only without a pending top-level await). A serve
+// rejection must still end the process with exit code 1, as a rejected top-level await did, even when an extension registered its
+// own unhandledRejection listener, which makes the runtime's listener stand aside.
+func TestNodeLauncherServeRejectionExitsOne(t *testing.T) {
+	nodeCellRequireNode(t)
+	entry, manifest := nodeCellFailureManifest(t, []string{"member"})
+	generationsPath, err := filepath.Abs("runtime-node/generations.mjs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, launcher := range []struct{ file, arg string }{
+		{"cli.mjs", entry},
+		{"cell.mjs", manifest},
+	} {
+		t.Run(launcher.file, func(t *testing.T) {
+			launcherPath, err := filepath.Abs(filepath.Join("runtime-node", launcher.file))
+			if err != nil {
+				t.Fatal(err)
+			}
+			script := fmt.Sprintf(`
+import { pathToFileURL } from "node:url";
+const { Generations } = await import(pathToFileURL(%q));
+Generations.prototype.admit = async function () { return true; };
+Generations.prototype.serve = async function () { throw new Error("serve boom"); };
+process.on("unhandledRejection", () => {});
+process.argv[2] = %q;
+await import(pathToFileURL(%q));
+setTimeout(() => {}, 5000);
+`, generationsPath, launcher.arg, launcherPath)
+			cmd := exec.CommandContext(testbudget.Context(t), "node", "--input-type=module", "--eval", script)
+			cmd.Stdin = strings.NewReader("")
+			out, err := cmd.CombinedOutput()
+			var exitErr *exec.ExitError
+			if !errors.As(err, &exitErr) || exitErr.ExitCode() != 1 || !strings.Contains(string(out), "serve boom") {
+				t.Fatalf("serve rejection: %v, want exit 1 with the error; output: %s", err, out)
+			}
+		})
+	}
 }

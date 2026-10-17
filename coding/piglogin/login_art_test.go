@@ -10,8 +10,6 @@ package piglogin
 // and TestEveryVariantPaletteCoversItsSprite are pig-play's additions.
 
 import (
-	"flag"
-	"fmt"
 	"image/color"
 	"os"
 	"path/filepath"
@@ -19,8 +17,6 @@ import (
 	"strings"
 	"testing"
 )
-
-var updateGolden = flag.Bool("update", false, "rewrite golden login renders")
 
 // websiteArt is testdata/website-art.txt: colors sampled from the PiG
 // website art, with the SHA-256 of each source file in its header.
@@ -172,6 +168,60 @@ func TestHeroDrawsPiGWithPeriodInsideTheGrid(t *testing.T) {
 	}
 }
 
+// Every set pixel of a glyph is drawn in its ramp color (the period in the period color), and the pixel one down and one right
+// of it is the drop shadow unless another glyph pixel is there. No other cell is drawn. The rule is computed from the glyph
+// bitmaps alone, for every wordmark variant.
+func TestHeroPixelsAreTheGlyphsAndTheirDropShadow(t *testing.T) {
+	for _, variant := range Variants {
+		logo := LogoFor(variant)
+		hero, palette := heroFor(logo)
+		type cell struct{ x, y int }
+		glyph := map[cell]heroGlyph{}
+		rowOf := map[cell]int{}
+		for _, g := range heroGlyphs {
+			for y, row := range g.rows {
+				for x := range len(row) {
+					if row[x] == '1' {
+						glyph[cell{g.x + x, g.y + y}] = g
+						rowOf[cell{g.x + x, g.y + y}] = g.y + y
+					}
+				}
+			}
+		}
+		if len(glyph) == 0 {
+			t.Fatal("no glyph pixels")
+		}
+		for y, row := range hero {
+			for x := range len(row) {
+				c := cell{x, y}
+				symbol := string(row[x])
+				switch g, isGlyph := glyph[c]; {
+				case isGlyph && g.period:
+					if row[x] != heroPeriodKey || palette[symbol] != rgbaHex(logo.Period) {
+						t.Errorf("%s: period pixel (%d,%d) is %q %s", variant.ID, x, y, symbol, palette[symbol])
+					}
+				case isGlyph:
+					if want := rgbaHex(logo.Ramp[rowOf[c]]); palette[symbol] != want || row[x] == '.' || row[x] == heroShadow {
+						t.Errorf("%s: glyph pixel (%d,%d) is %q %s, want ramp row %d %s", variant.ID, x, y, symbol, palette[symbol], rowOf[c], want)
+					}
+				default:
+					_, shadowed := glyph[cell{x - 1, y - 1}]
+					want := byte('.')
+					if shadowed {
+						want = heroShadow
+					}
+					if row[x] != want {
+						t.Errorf("%s: cell (%d,%d) is %q, want %q", variant.ID, x, y, row[x], want)
+					}
+				}
+			}
+		}
+		if palette[string(heroShadow)] != rgbaHex(logo.Shadow) {
+			t.Errorf("%s: shadow color %s, want %s", variant.ID, palette[string(heroShadow)], rgbaHex(logo.Shadow))
+		}
+	}
+}
+
 // The hero and the mascot share one palette. A mascot symbol that is also a hero symbol (pigrogu's robe 'B' was the
 // hero's eleventh ramp row) would recolor the wordmark, so every hero pixel keeps its logo color in every sprite.
 func TestMascotSymbolsDoNotRecolorTheWordmark(t *testing.T) {
@@ -272,96 +322,14 @@ func TestEveryVariantPaletteCoversItsSprite(t *testing.T) {
 	}
 }
 
-// renderHeader mirrors the host's native login template (internal/codingagent
-// RenderLoginHeader): a transparent brand band is omitted, the hero starts at
-// column 0, the mascot at column 35, pixels pair into half-block cells after a
-// two-cell margin, and widths below 66 fall back to stacked text.
-func renderHeader(definition LoginDefinitionView, width int) []string {
-	margin := "  "
-	var lines []string
-	if width >= 66 {
-		scene := make([][]byte, heroHeight)
-		for y := range scene {
-			scene[y] = []byte(strings.Repeat(".", 51))
-			copy(scene[y], definition.Hero[y])
-			copy(scene[y][35:], definition.Mascot[y])
-		}
-		for y := 0; y < len(scene); y += 2 {
-			var line strings.Builder
-			line.WriteString(margin)
-			for x := range 51 {
-				top, topOK := definition.color(scene[y][x])
-				bottom, bottomOK := definition.color(scene[y+1][x])
-				switch {
-				case topOK && bottomOK:
-					fmt.Fprintf(&line, "\x1b[38;2;%d;%d;%dm\x1b[48;2;%d;%d;%dm▀", top.R, top.G, top.B, bottom.R, bottom.G, bottom.B)
-				case topOK:
-					fmt.Fprintf(&line, "\x1b[38;2;%d;%d;%dm▀", top.R, top.G, top.B)
-				case bottomOK:
-					fmt.Fprintf(&line, "\x1b[38;2;%d;%d;%dm▄", bottom.R, bottom.G, bottom.B)
-				default:
-					line.WriteByte(' ')
-				}
-				line.WriteString("\x1b[0m")
-			}
-			lines = append(lines, line.String())
-		}
-		lines = append(lines, "", margin+"\x1b[1m"+definition.Name+"\x1b[0m  "+definition.Description+"\x1b[0m", margin+"\x1b[3m"+definition.Tagline+"\x1b[0m")
-		return lines
-	}
-	for _, value := range []string{definition.Name, definition.Description, definition.Tagline} {
-		lines = append(lines, margin+value+"\x1b[0m")
-	}
-	return lines
-}
-
-// LoginDefinitionView is a resolved login definition for golden rendering.
-type LoginDefinitionView struct {
-	Hero, Mascot               []string
-	Palette                    map[string]string
-	Name, Description, Tagline string
-}
-
-func (d LoginDefinitionView) color(symbol byte) (color.RGBA, bool) {
-	value, ok := d.Palette[string(symbol)]
-	if symbol == '.' || !ok {
-		return color.RGBA{}, false
-	}
-	parsed, err := strconv.ParseUint(value[1:], 16, 32)
-	if err != nil {
-		return color.RGBA{}, false
-	}
-	return color.RGBA{uint8(parsed >> 16), uint8(parsed >> 8), uint8(parsed), 0xFF}, true
-}
-
-func TestDefaultHeaderGoldenRenders(t *testing.T) {
+// The default wordmark is PiG's own, not the classic blue Pi logo color.
+func TestDefaultWordmarkIsNotTheClassicBlue(t *testing.T) {
 	definition := LoginDefinitionFor(Default())
-	view := LoginDefinitionView{
-		Hero: definition.Hero, Mascot: definition.Mascot, Palette: definition.Palette,
-		Name: definition.Name, Description: definition.Description, Tagline: definition.Tagline,
-	}
-	for _, width := range []int{50, 66, 120} {
-		t.Run(strconv.Itoa(width), func(t *testing.T) {
-			got := strings.Join(renderHeader(view, width), "\n") + "\n"
-			path := filepath.Join("testdata", fmt.Sprintf("login-pig-default-%d.golden", width))
-			if *updateGolden {
-				if err := os.MkdirAll("testdata", 0o755); err != nil {
-					t.Fatal(err)
-				}
-				if err := os.WriteFile(path, []byte(got), 0o644); err != nil {
-					t.Fatal(err)
-				}
+	for _, row := range definition.Hero {
+		for i := range len(row) {
+			if strings.EqualFold(definition.Palette[string(row[i])], "#67E8F9") {
+				t.Fatalf("default hero row %q uses the classic blue wordmark color", row)
 			}
-			want, err := os.ReadFile(path)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if got != string(want) {
-				t.Fatalf("width %d header differs from %s\ngot:\n%s", width, path, got)
-			}
-			if strings.Contains(got, "\x1b[38;2;103;232;249m") {
-				t.Fatal("default header still uses the classic blue wordmark")
-			}
-		})
+		}
 	}
 }

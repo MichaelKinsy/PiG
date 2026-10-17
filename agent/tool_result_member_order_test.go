@@ -55,9 +55,9 @@ func TestAgentLoop_ToolEventsCarryTheToolsMemberOrder(t *testing.T) {
 	})
 	provider := &scriptedProvider{respond: toolCallsThenText(toolCall("c1", "echo", ai.JsonObject{"value": "x"}))}
 	rec := newEventRecorder(nil)
-	a := NewAgent(AgentOptions{
+	a := mustNewAgent(AgentOptions{
 		Model: scriptedModel(provider), Tools: []AgentTool{tool}, EventCh: rec.ch,
-		AfterToolCall: []AfterToolCallHook{func(context.Context, string, string, json.RawMessage, AgentToolResult) AfterToolCallResult {
+		AfterToolCallHooks: []AfterToolCallHook{func(context.Context, string, string, json.RawMessage, AgentToolResult) AfterToolCallResult {
 			return AfterToolCallResult{Details: "added"}
 		}},
 	})

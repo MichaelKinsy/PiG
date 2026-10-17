@@ -20,7 +20,7 @@ func countingNativeProvider(checks *atomic.Int32) *extension.NativeProvider {
 			return &ai.AuthResult{Auth: ai.ModelAuth{APIKey: "key"}}, nil, nil
 		},
 		ResolveRefreshCredential: func(context.Context, *ai.Credential) (*ai.Credential, *ai.Credential, error) { return nil, nil, nil },
-		Stream: func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions, bool) (*ai.AssistantMessageEventStream, error) {
+		Stream: func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 			return ai.NewAssistantMessageEventStream(), nil
 		},
 	}
@@ -83,7 +83,7 @@ func TestReloadRunsNoProviderCallbackWhileExtensionsLoad(t *testing.T) {
 			synctest.Wait()
 			duringReload = checks.Load()
 		}
-		m := reloadTestMode(InteractiveOptions{SubprocessHost: host, ModelRegistry: registry})
+		m := reloadTestMode(InteractiveModeOptions{SubprocessHost: host, ModelRegistry: registry})
 		if err := m.buildSlashContext(t.Context()).Reload(); err != nil {
 			t.Fatal(err)
 		}

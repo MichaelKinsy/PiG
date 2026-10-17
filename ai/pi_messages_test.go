@@ -172,16 +172,15 @@ func TestPiMessagesDebugAndOnResponse(t *testing.T) {
 		events:  []any{map[string]any{"type": "done", "reason": "stop", "usage": piMessagesTestUsage}},
 	})
 	var observed map[string]string
-	provider := newTestPiMessagesProvider(baseURL, func(cfg *PiMessagesConfig) {
-		cfg.Debug = true
-		cfg.ToolChoice = "auto"
-		cfg.OnResponse = func(response PiMessagesResponse) error {
-			observed = response.Headers
-			return nil
-		}
-	})
+	provider := newTestPiMessagesProvider(baseURL, nil)
 
-	_, message := collectPiMessages(t, provider, StreamOptions{})
+	_, message := collectPiMessages(t, provider, StreamOptions{Debug: true, ToolChoice: "auto", OnResponse: func(_ context.Context, response ProviderResponse, model *Model) error {
+		observed = response.Headers
+		if model == nil || model.ProviderMeta.API != APIPiMessages {
+			t.Errorf("OnResponse model = %+v", model)
+		}
+		return nil
+	}})
 
 	if message.StopReason != StopReasonStop {
 		t.Fatalf("message = %+v", message)
@@ -322,7 +321,7 @@ func TestPiMessagesThinkingRewriteAndRequestOptions(t *testing.T) {
 	}})
 	t.Setenv("PI_CACHE_RETENTION", "long")
 
-	_, message := collectPiMessages(t, newTestPiMessagesProvider(baseURL, nil), StreamOptions{Thinking: ThinkingHigh, Temperature: 0.5})
+	_, message := collectPiMessages(t, newTestPiMessagesProvider(baseURL, nil), StreamOptions{Thinking: ThinkingLevelHigh, Temperature: 0.5})
 
 	if !reflect.DeepEqual(message.Content, []AssistantContentBlock{ThinkingContent{Thinking: "hmm", ThinkingSignature: "sig", Redacted: true}}) {
 		t.Fatalf("content = %#v", message.Content)
@@ -408,5 +407,63 @@ func TestPiMessagesEndEventsForwardBackendFields(t *testing.T) {
 	}
 	if !reflect.DeepEqual(ends, want) {
 		t.Fatalf("end events = %v, want %v", ends, want)
+	}
+}
+
+// pi-messages.ts:33-37,371,384,404: PiMessagesOptions.debug, toolChoice and onResponse are per-request options, not provider configuration.
+func TestPiMessagesPerRequestDebugToolChoiceAndOnResponse(t *testing.T) {
+	baseURL, requests := startPiMessagesServer(t, piMessagesResponder{
+		headers: map[string]string{"x-pi-gateway-upstream-provider": "openai"},
+		events:  []any{map[string]any{"type": "done", "reason": "stop", "usage": piMessagesTestUsage}},
+	})
+	provider := newTestPiMessagesProvider(baseURL, nil)
+	var observed map[string]string
+	_, message := collectPiMessages(t, provider, StreamOptions{
+		Debug:      true,
+		ToolChoice: map[string]any{"type": "function", "function": map[string]any{"name": "lookup"}},
+		OnResponse: func(_ context.Context, response ProviderResponse, _ *Model) error {
+			observed = response.Headers
+			return nil
+		},
+	})
+	if message.StopReason != StopReasonStop {
+		t.Fatalf("message = %+v", message)
+	}
+	recorded := requests()
+	if recorded[0].url != "/v1/messages?debug=1" || observed["x-pi-gateway-upstream-provider"] != "openai" {
+		t.Fatalf("url = %q, headers = %v", recorded[0].url, observed)
+	}
+	choice, _ := recorded[0].body["options"].(map[string]any)["toolChoice"].(map[string]any)
+	if choice["type"] != "function" {
+		t.Fatalf("toolChoice = %v, want the request's function choice", recorded[0].body["options"])
+	}
+	_, _ = collectPiMessages(t, provider, StreamOptions{})
+	second := requests()[1]
+	if second.url != "/v1/messages" {
+		t.Fatalf("debug is off without the option: %q", second.url)
+	}
+	if options, _ := second.body["options"].(map[string]any); options["toolChoice"] != nil {
+		t.Fatalf("a request without toolChoice sends none (pi-messages.ts:384): %v", options)
+	}
+}
+
+// pi-messages.ts:184 (the event converter's partial) and :328 (the error message) copy `api: model.api`, so a selected model whose api is
+// not "pi-messages" names its own api on both the streamed answer and a failed request.
+func TestPiMessagesOutputCopiesTheSelectedModelAPI(t *testing.T) {
+	model := &Model{ID: "test-model", ProviderMeta: ProviderMetadata{API: "model-api", ProviderID: "test-provider"}}
+	okURL, _ := startPiMessagesServer(t, piMessagesResponder{events: []any{
+		map[string]any{"type": "start"},
+		map[string]any{"type": "done", "reason": "stop", "usage": piMessagesTestUsage},
+	}})
+	failURL, _ := startPiMessagesServer(t, piMessagesResponder{status: http.StatusInternalServerError, rawBody: `{"error":"boom"}`})
+	for name, baseURL := range map[string]string{"answer": okURL, "failure": failURL} {
+		provider := NewPiMessagesProvider(PiMessagesConfig{BaseURL: baseURL, APIKey: "test-key", Model: "test-model", ProviderID: "test-provider", ModelMetadata: model})
+		stream, err := provider.Stream(t.Context(), piMessagesTestContext(), StreamOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := stream.Result(); got.API != "model-api" {
+			t.Fatalf("%s: message api = %q (stop %q, error %q), want model-api", name, got.API, got.StopReason, got.ErrorMessage)
+		}
 	}
 }

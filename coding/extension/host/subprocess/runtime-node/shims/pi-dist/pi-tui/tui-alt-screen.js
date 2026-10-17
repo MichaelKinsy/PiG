@@ -130,6 +130,11 @@ export class TuiAltScreen extends TuiBase {
             return false;
         return this.copyTextToClipboard(text);
     }
+    /** Drop the text selection and multi-click history, e.g. before the host replaces the transcript. */
+    resetTextSelection() {
+        this.clearTextSelection();
+        this.lastClick = undefined;
+    }
     /** The lines of the last rendered frame, one per terminal row, as written to the terminal. */
     getScreenLines() {
         return [...this.previousScreen];
@@ -210,7 +215,7 @@ export class TuiAltScreen extends TuiBase {
         }
         else {
             const width = Math.max(1, this.terminal.columns);
-            const documentLines = this.render(width).map((line) => line.replace(OSC133_ZONE_PREFIX, ""));
+            const documentLines = this.resolveFakeCursors(this.render(width)).map((line) => line.replace(OSC133_ZONE_PREFIX, ""));
             this.lastDocument = this.applyLineResets(documentLines.map((line) => line.replaceAll(CURSOR_MARKER, ""))).map((line) => (isImageLine(line) || visibleWidth(line) <= width ? line : sliceByColumn(line, 0, width, true)));
             let buffer = `${BEGIN_SYNCHRONIZED_OUTPUT}${EXIT_ALT_SCREEN}${DISABLE_AUTOWRAP}`;
             for (let row = 0; row < this.lastDocument.length; row++) {
@@ -507,8 +512,6 @@ export class TuiAltScreen extends TuiBase {
                     this.requestRender();
                 return { consume: true };
             }
-            if (this.shouldDeferViewportInputToOverlay())
-                return undefined;
             this.routeWheel(wheelEvent, wheelDelta);
             return { consume: true };
         }
@@ -1443,7 +1446,8 @@ export class TuiAltScreen extends TuiBase {
         if (this.refreshSearch(nextLayout)) {
             nextLayout = renderLayoutFrame(root, width, height, () => this.requestRender());
         }
-        let screen = nextLayout.lines.map((line) => line.replace(OSC133_ZONE_PREFIX, ""));
+        // Resolve fake cursors before highlighting and compositing, which only track SGR codes
+        let screen = this.resolveFakeCursors(nextLayout.lines.map((line) => line.replace(OSC133_ZONE_PREFIX, "")));
         screen = this.applySearchHighlights(screen, nextLayout);
         screen = this.compositeScrollToEndIndicator(screen, nextLayout, width);
         screen = this.compositeOverlays(screen, width, height);

@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package main
@@ -403,5 +402,30 @@ func TestErrorFuncsIndexesDeclarationsAndFuncFields(t *testing.T) {
 	}
 	if !m.returnsNoError("AppendText") || !m.returnsNoError("SaveAll") {
 		t.Error("AppendText field and SaveAll should be known to return no error")
+	}
+}
+
+// A discarded panic hides a failure wherever it sits, so bare-recover scans
+// every production package, not only the hot-path prefixes.
+func TestBareRecoverScansEveryProductionPackage(t *testing.T) {
+	for _, rel := range []string{
+		"durable/env/node/watch.go",
+		"env/watch.go",
+		"extensions/sdk/extension.go",
+		"telemetry/memory.go",
+		"coding/session.go",
+		"tui/custom_message.go",
+	} {
+		if !bareRecover.Applies(rel) {
+			t.Errorf("bare-recover does not scan %s", rel)
+		}
+	}
+	src := []byte("package watch\n\nfunc f() {\n\tdefer func() { _ = recover() }()\n}\n")
+	hits, _, err := scanSource("env/watch.go", src, fixtureEnv(t), []check{bareRecover})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(hits) != 1 {
+		t.Errorf("hits = %v, want the discarded recover in env/watch.go flagged", hits)
 	}
 }

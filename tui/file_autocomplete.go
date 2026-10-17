@@ -11,11 +11,10 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/nodepath"
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
-
-	"golang.org/x/text/collate"
-	"golang.org/x/text/language"
 )
 
 // pathDelimiters defines characters that separate path tokens in the
@@ -76,18 +75,24 @@ func NewCombinedProvider(cmds []SlashCommand, baseDir, fdPath string) *CombinedP
 }
 
 // GetSuggestions implements upstream command, attachment and path matching. The Editor decides which contexts trigger queries automatically.
-func (p *CombinedProvider) GetSuggestions(lines []string, cursorLine, cursorCol int) *AutocompleteSuggestions {
-	return p.getSuggestions(lines, cursorLine, cursorCol, false)
+//
+// options.Force is upstream's {force: true}: Tab outside a slash-command-name context forces naked path completion even when the prefix does not look path-like yet. The signal is ctx; the file search that honors it runs through FileSearchTask.
+func (p *CombinedProvider) GetSuggestions(ctx context.Context, lines []string, cursorLine, cursorCol int, options AutocompleteSuggestionOptions) *AutocompleteSuggestions {
+	return p.getSuggestions(ctx, lines, cursorLine, cursorCol, options.Force)
 }
 
-// GetSuggestionsForce mirrors upstream getSuggestions(..., {force: true}).
-// Triggered by Tab outside a slash-command-name context to force naked
-// path completion even when the prefix doesn't look path-like yet.
-func (p *CombinedProvider) GetSuggestionsForce(lines []string, cursorLine, cursorCol int) *AutocompleteSuggestions {
-	return p.getSuggestions(lines, cursorLine, cursorCol, true)
+// ShouldTriggerFileCompletion reports whether Tab may force file completion at the cursor: it may not while the text before the cursor is a slash-command name (a trimmed leading "/" with no space), where the command list answers instead (upstream autocomplete.ts shouldTriggerFileCompletion). cursorCol is a byte offset into the line.
+func (p *CombinedProvider) ShouldTriggerFileCompletion(lines []string, cursorLine, cursorCol int) bool {
+	var line string
+	if cursorLine >= 0 && cursorLine < len(lines) {
+		line = lines[cursorLine]
+	}
+	before := line[:max(0, min(cursorCol, len(line)))]
+	trimmed := widthx.JSTrim(before)
+	return !strings.HasPrefix(trimmed, "/") || strings.Contains(trimmed, " ")
 }
 
-func (p *CombinedProvider) getSuggestions(lines []string, cursorLine, cursorCol int, force bool) *AutocompleteSuggestions {
+func (p *CombinedProvider) getSuggestions(ctx context.Context, lines []string, cursorLine, cursorCol int, force bool) *AutocompleteSuggestions {
 	if cursorLine < 0 || cursorLine >= len(lines) {
 		return nil
 	}
@@ -115,7 +120,7 @@ func (p *CombinedProvider) getSuggestions(lines []string, cursorLine, cursorCol 
 
 	// Slash-command branch, after leading whitespace (autocomplete.ts:338-339).
 	if !force && strings.HasPrefix(widthx.JSTrimStart(before), "/") {
-		return p.slash.GetSuggestions(lines, cursorLine, cursorCol)
+		return p.slash.GetSuggestions(ctx, lines, cursorLine, cursorCol, AutocompleteSuggestionOptions{})
 	}
 
 	// Mirrors upstream autocomplete.ts:358 + editor.ts forceFileAutocomplete.
@@ -162,7 +167,7 @@ func (p *CombinedProvider) SuggestionTask(lines []string, line, col int, force b
 			}
 			local := *p
 			local.asyncFileSearch = false
-			result := local.getSuggestions(lines, line, col, force)
+			result := local.getSuggestions(ctx, lines, line, col, force)
 			if result == nil {
 				return nil, ctx.Err()
 			}
@@ -494,7 +499,7 @@ func (p *CombinedProvider) fdFileSuggestionsCtx(ctx context.Context, rawQuery st
 		}
 	}
 
-	pathCollator := collate.New(language.Und)
+	pathCollator := jsstring.NewCollator()
 	slices.SortFunc(scoredEntries, func(a, b scoredEntry) int {
 		if a.score != b.score {
 			return b.score - a.score
@@ -615,64 +620,26 @@ func utf16Length(s string) int {
 
 // readdirFileSuggestions lists direct path matches, including .git, with directories first and request-owned collation state.
 func (p *CombinedProvider) readdirFileSuggestions(rawQuery string, isQuoted bool) []AutocompleteItem {
-	query := toDisplayPath(rawQuery)
-
-	var searchDir, searchPrefix, displayBase string
-
+	expanded := rawQuery
+	if strings.HasPrefix(expanded, "~") {
+		expanded = expandHomePath(expanded)
+	}
+	rawHome := strings.HasPrefix(rawQuery, "~")
+	var searchDir, searchPrefix string
 	switch {
-	case query == "" || query == "./" || query == "../" || query == "~/" || query == "/":
-		// Root-level: list the target directory.
-		displayBase = query
-		switch {
-		case strings.HasPrefix(query, "~/"):
-			home, _ := os.UserHomeDir()
-			searchDir = home
-		case query == "/":
-			searchDir = "/"
-		default:
-			searchDir = filepath.Join(p.baseDir, query)
+	case rawQuery == "" || rawQuery == "./" || rawQuery == "../" || rawQuery == "~" || rawQuery == "~/" || rawQuery == "/",
+		strings.HasSuffix(rawQuery, "/"):
+		if rawHome || strings.HasPrefix(expanded, "/") {
+			searchDir = expanded
+		} else {
+			searchDir = filepath.Join(p.baseDir, expanded)
 		}
-		searchPrefix = ""
-	case strings.HasSuffix(query, "/"):
-		// Dir ending with /: list contents.
-		displayBase = query
-		switch {
-		case strings.HasPrefix(query, "~/"):
-			home, _ := os.UserHomeDir()
-			searchDir = filepath.Join(home, query[2:])
-		case strings.HasPrefix(query, "/"):
-			searchDir = query
-		default:
-			searchDir = filepath.Join(p.baseDir, query)
-		}
-		searchPrefix = ""
 	default:
-		// Split into dir + prefix.
-		dir := filepath.Dir(query)
-		searchPrefix = filepath.Base(query)
-		displayBase = ""
-		switch {
-		case dir != ".":
-			displayBase = toDisplayPath(dir) + "/"
-		case strings.HasPrefix(query, "./"):
-			displayBase = "./"
-		case strings.HasPrefix(query, "../"):
-			displayBase = "../"
-		}
-		if strings.HasPrefix(query, "./") && !strings.HasPrefix(displayBase, "./") {
-			displayBase = "./" + displayBase
-		}
-		switch {
-		case strings.HasPrefix(query, "~/"):
-			home, _ := os.UserHomeDir()
-			if dir == "~" {
-				searchDir = home
-			} else {
-				searchDir = filepath.Join(home, dir[2:])
-			}
-		case strings.HasPrefix(query, "/"):
+		dir := nodepath.Dirname(expanded)
+		searchPrefix = nodepath.Basename(expanded)
+		if rawHome || strings.HasPrefix(expanded, "/") {
 			searchDir = dir
-		default:
+		} else {
 			searchDir = filepath.Join(p.baseDir, dir)
 		}
 	}
@@ -683,11 +650,15 @@ func (p *CombinedProvider) readdirFileSuggestions(rawQuery string, isQuoted bool
 	}
 
 	items := make([]AutocompleteItem, 0, len(dirEntries))
-	lowerPrefix := strings.ToLower(searchPrefix)
+	lowerPrefix := jsstring.ToLower(searchPrefix)
 
 	for _, de := range dirEntries {
+		// readdirSync decodes each name as UTF-8 (U+FFFD per ill-formed subpart) and keeps the entry; the stat below then misses the real file.
 		name := de.Name()
-		if lowerPrefix != "" && !strings.HasPrefix(strings.ToLower(name), lowerPrefix) {
+		if !utf8.ValidString(name) {
+			name = jsstring.FromUTF8([]byte(name))
+		}
+		if lowerPrefix != "" && !strings.HasPrefix(jsstring.ToLower(name), lowerPrefix) {
 			continue
 		}
 		isDir := de.IsDir()
@@ -699,11 +670,7 @@ func (p *CombinedProvider) readdirFileSuggestions(rawQuery string, isQuoted bool
 			}
 		}
 
-		relPath := name
-		if displayBase != "" {
-			relPath = displayBase + name
-		}
-		relPath = toDisplayPath(relPath)
+		relPath := toDisplayPath(readdirRelativePath(rawQuery, name))
 
 		completionPath := relPath
 		label := name
@@ -721,7 +688,7 @@ func (p *CombinedProvider) readdirFileSuggestions(rawQuery string, isQuoted bool
 
 	// Directories first, then alphabetical. Mirrors upstream sort
 	// (autocomplete.ts:607-614).
-	autocompleteCollator := collate.New(language.Und)
+	autocompleteCollator := jsstring.NewCollator()
 	slices.SortFunc(items, func(a, b AutocompleteItem) int {
 		aDir := strings.HasSuffix(a.Label, "/")
 		bDir := strings.HasSuffix(b.Label, "/")
@@ -791,8 +758,8 @@ func escapeRegex(s string) string {
 // Higher = better match. Mirrors upstream scoreEntry (autocomplete.ts:621-643).
 func scoreEntry(filePath, query string, isDirectory bool) int {
 	fileName := filepath.Base(filePath)
-	lowerFile := strings.ToLower(fileName)
-	lowerQuery := strings.ToLower(query)
+	lowerFile := jsstring.ToLower(fileName)
+	lowerQuery := jsstring.ToLower(query)
 
 	score := 0
 	switch {
@@ -802,7 +769,7 @@ func scoreEntry(filePath, query string, isDirectory bool) int {
 		score = 80
 	case strings.Contains(lowerFile, lowerQuery):
 		score = 50
-	case strings.Contains(strings.ToLower(filePath), lowerQuery):
+	case strings.Contains(jsstring.ToLower(filePath), lowerQuery):
 		score = 30
 	}
 
@@ -810,4 +777,46 @@ func scoreEntry(filePath, query string, isDirectory bool) int {
 		score += 10
 	}
 	return score
+}
+
+// expandHomePath is upstream expandHomePath: "~" and "~/..." resolve against the home directory (the trailing slash upstream keeps does not change the directory read); "~name" stays as typed.
+func expandHomePath(path string) string {
+	home, _ := os.UserHomeDir()
+	switch {
+	case strings.HasPrefix(path, "~/"):
+		return filepath.Join(home, path[2:])
+	case path == "~":
+		return home
+	}
+	return path
+}
+
+// readdirRelativePath is the path shown for an entry of the directory a typed prefix names (upstream getFileSuggestions relativePath).
+func readdirRelativePath(prefix, name string) string {
+	switch {
+	case strings.HasSuffix(prefix, "/"):
+		return prefix + name
+	case strings.Contains(prefix, "/") || strings.Contains(prefix, "\\"):
+		switch {
+		case strings.HasPrefix(prefix, "~/"):
+			dir := nodepath.Dirname(prefix[2:])
+			if dir == "." {
+				return "~/" + name
+			}
+			return "~/" + filepath.Join(dir, name)
+		case strings.HasPrefix(prefix, "/"):
+			if dir := nodepath.Dirname(prefix); dir != "/" {
+				return dir + "/" + name
+			}
+			return "/" + name
+		}
+		relative := filepath.Join(nodepath.Dirname(prefix), name)
+		if strings.HasPrefix(prefix, "./") && !strings.HasPrefix(relative, "./") {
+			relative = "./" + relative
+		}
+		return relative
+	case strings.HasPrefix(prefix, "~"):
+		return "~/" + name
+	}
+	return name
 }

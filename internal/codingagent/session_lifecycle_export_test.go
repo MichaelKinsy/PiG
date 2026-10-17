@@ -34,9 +34,14 @@ func (h *TestHarness) SeedReplacementTranscript() {
 	h.Do(func() { h.m.chatContainer.Add(tui.NewText("outgoing transient notification")) })
 }
 
-// LoadedResources returns the resource listing on the owner loop.
+// LoadedResources returns the resource listing on the owner loop, rendered 120 columns wide.
 func (h *TestHarness) LoadedResources() string {
+	return h.LoadedResourcesAt(120)
+}
+
+// LoadedResourcesAt returns the resource listing on the owner loop, rendered width columns wide.
+func (h *TestHarness) LoadedResourcesAt(width int) string {
 	var text string
-	h.Do(func() { text = strings.Join(h.m.loadedResourcesContainer.Render(120), "\n") })
+	h.Do(func() { text = strings.Join(h.m.loadedResourcesContainer.Render(width), "\n") })
 	return text
 }

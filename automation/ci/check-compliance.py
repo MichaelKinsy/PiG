@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 """Check the repository's compliance evidence locally. Behind `make compliance`.
 
@@ -32,6 +31,8 @@ import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "automation" / "pin"))
+import pinlib  # noqa: E402
 
 REQUIRED_FILES = [
     "LICENSE",
@@ -152,7 +153,17 @@ def check_pins() -> list[str]:
         "coding/extension/host/subprocess/builder_node.go",
         "minimumNodeRuntimeVersion",
     ).removesuffix(".0")
-    pi = search(r'^const UpstreamVersion = "([^"]+)"', "internal/coding/pigversion/pigversion.go", "UpstreamVersion")
+    # The one Pi pin is .upstream/pin. The package version is what npm dependencies, the oracle image and `pi --version`
+    # carry; the display version (with +<commit> for a commit pin) is what ledgers and the README badge carry.
+    pin = pinlib.committed()
+    pi = pin.package_version
+    pi_display = pin.version
+    pi_badge = pin.version.replace("+", "%2B")
+    pi_link = f"commit/{pin.commit}" if pin.kind == "commit" else f"releases/tag/{pin.tag}"
+    derived_pigversion = {
+        name: search(rf'^const {name} = "([^"]+)"', "internal/coding/pigversion/pigversion.go", name)
+        for name in ("UpstreamVersion", "UpstreamPackageVersion", "UpstreamCommit")
+    }
     rust = search(r"^\s+RUST_VERSION:\s*(\S+)", ".github/workflows/ci.yml", "RUST_VERSION")
 
     def minor(version: str) -> str:
@@ -172,7 +183,7 @@ def check_pins() -> list[str]:
         ("Node", node, ".devcontainer/devcontainer.json node feature", devcontainer["ghcr.io/devcontainers/features/node:1"]["version"]),
         ("Node", minor(node), "ci-parity image tag", re.search(r"-node([\d.]+)-", parity_tag).group(1)),
         ("Node extension runtime", node_runtime, "automation/dev/setup.sh extension runtime floor", search(r"Node >= ([\d.]+) is required", "automation/dev/setup.sh", "Node extension runtime floor")),
-        ("Node extension runtime", node_runtime, "cmd/pig/setup_command.go extension runtime floor", search(r"install Node.js ([\d.]+) or newer", "cmd/pig/setup_command.go", "Node extension runtime floor")),
+        ("Node extension runtime", node_runtime, "coding/cli/setup_command.go extension runtime floor", search(r"install Node.js ([\d.]+) or newer", "coding/cli/setup_command.go", "Node extension runtime floor")),
         ("Node extension runtime", node_runtime, "internal troubleshooting extension runtime floor", search(r"Node and TypeScript extensions \| Node.js ([\d.]+) or newer", "internal/pigdocs/content/troubleshooting.md", "Node extension runtime floor")),
         ("Node extension runtime", node_runtime, "site troubleshooting extension runtime floor", search(r"Node and TypeScript extensions \| Node.js ([\d.]+) or newer", "docs/site/docs/install-troubleshooting.md", "Node extension runtime floor")),
         ("Rust", rust, ".devcontainer/devcontainer.json rust feature", devcontainer["ghcr.io/devcontainers/features/rust:1"]["version"]),
@@ -180,19 +191,23 @@ def check_pins() -> list[str]:
         ("Pi", pi, "extensions/sdk-ts devDependency", sdk.get("devDependencies", {}).get("@earendil-works/pi-coding-agent", "")),
         ("Pi", pi, "extensions/sdk-ts peerDependency", sdk.get("peerDependencies", {}).get("@earendil-works/pi-coding-agent", "")),
         ("Pi", pi, "ci-parity Dockerfile ARG PI_VERSION", search(r"^ARG PI_VERSION=(\S+)$", "automation/images/ci-parity/Dockerfile", "PI_VERSION")),
-        ("Pi", pi, "ci-parity image tag", re.search(r"-pi([\d.]+)-", parity_tag).group(1)),
-        ("Pi", pi, "test/parity/known-gaps.toml pi_version", search(r'^pi_version = "([^"]+)"', "test/parity/known-gaps.toml", "pi_version")),
-        ("Pi", pi, "test/parity/behavior-contracts.toml upstream_version", search(r'^upstream_version = "([^"]+)"', "test/parity/behavior-contracts.toml", "upstream_version")),
-        ("Pi", pi, "README Pi pin badge", search(r"img\.shields\.io/badge/Pi%20pin-([\d.]+)-", "README.md", "Pi pin badge")),
-        ("Pi", pi, "README Pi pin badge text", search(r"\[!\[Pi pin ([\d.]+)\]", "README.md", "Pi pin badge text")),
-        ("Pi", pi, "README Pi pin badge link", search(r"earendil-works/pi/releases/tag/v([\d.]+)\)", "README.md", "Pi pin badge link")),
+        ("Pi", pin.build_metadata, "ci-parity image tag", re.search(r"-pi([0-9A-Za-z.]+)-", parity_tag).group(1)),
+        ("Pi", pin.commit if pin.kind == "commit" else "", "ci-parity Dockerfile ARG PI_COMMIT", search(r"^ARG PI_COMMIT=(\S*)$", "automation/images/ci-parity/Dockerfile", "PI_COMMIT")),
+        ("Pi", pi_display, "internal/coding/pigversion/pigversion.go UpstreamVersion", derived_pigversion["UpstreamVersion"]),
+        ("Pi", pi, "internal/coding/pigversion/pigversion.go UpstreamPackageVersion", derived_pigversion["UpstreamPackageVersion"]),
+        ("Pi", pin.commit, "internal/coding/pigversion/pigversion.go UpstreamCommit", derived_pigversion["UpstreamCommit"]),
+        ("Pi", pi_display, "test/parity/known-gaps.toml pi_version", search(r'^pi_version = "([^"]+)"', "test/parity/known-gaps.toml", "pi_version")),
+        ("Pi", pi_display, "test/parity/behavior-contracts.toml upstream_version", search(r'^upstream_version = "([^"]+)"', "test/parity/behavior-contracts.toml", "upstream_version")),
+        ("Pi", pi_badge, "README Pi pin badge", search(r"img\.shields\.io/badge/Pi%20pin-([^-)]+)-", "README.md", "Pi pin badge")),
+        ("Pi", pi_display, "README Pi pin badge text", search(r"\[!\[Pi pin ([^\]]+)\]", "README.md", "Pi pin badge text")),
+        ("Pi", pi_link, "README Pi pin badge link", search(r"earendil-works/pi/((?:releases/tag/v[\d.]+)|(?:commit/[0-9a-f]{40}))\)", "README.md", "Pi pin badge link")),
     ]
     for package in ["pi-agent-core", "pi-ai", "pi-coding-agent", "pi-tui"]:
         copies.append(("Pi", pi, f"ci-parity oracle {package}", oracle.get(f"@earendil-works/{package}", "")))
     version = r"(\d+(?:\.\d+)*)"
     for path, pattern in [
         ("docs/site/docs/containerization.md", rf"^FROM golang:{version} AS build"),
-        ("docs/site/docs/termux.md", rf"Go {version} is recommended for this build\."),
+        ("docs/site/docs/termux.md", rf"Go {version} builds PiG;"),
         ("docs/site/docs/windows.md", rf"Install Git and Go {version}\."),
         ("internal/pigdocs/content/extension-api.md", rf"Build PiG and Go extensions with Go {version}\."),
     ]:
@@ -202,24 +217,58 @@ def check_pins() -> list[str]:
         "Node": ".node-version",
         "Node extension runtime": "coding/extension/host/subprocess/builder_node.go minimumNodeRuntimeVersion",
         "Rust": ".github/workflows/ci.yml RUST_VERSION",
-        "Pi": "internal/coding/pigversion/pigversion.go UpstreamVersion",
+        "Pi": ".upstream/pin",
     }
     problems = []
     for name in ["go.mod", "go.work"]:
-        floor = search(r"^toolchain go(\S+)$", name, "toolchain directive")
-        if tuple(map(int, floor.split("."))) > tuple(map(int, go.split("."))):
-            problems.append(f"Go pin drift: {name} toolchain go{floor} is newer than {go!r} from .go-version")
-    return problems + [
+        toolchain = search(r"^toolchain go(\S+)$", name, "toolchain directive")
+        if toolchain != go:
+            problems.append(f"Go pin drift: {name} toolchain go{toolchain} differs from {go!r} from .go-version")
+    return problems + go_pin_strays(ROOT, go) + [
         f"{kind} pin drift: {where} = {value!r}, want {want!r} from {source[kind]}"
         for kind, want, where, value in copies
         if value != want
     ] + check_workflow_version_files()
 
 
-# Workflows read toolchain pins from files. The Node compatibility matrix reads
-# separate minimum/current runtime pins without changing the build runtime.
+# Files that select or install a Go release. Dated measurement records under
+# docs/ and evidence directories name the release they ran on and stay as
+# recorded; test sources use arbitrary fixture versions.
+GO_PIN_FILE = re.compile(
+    r"(^|/)(Dockerfile[^/]*|Makefile|go\.mod|go\.work|devcontainer\.json|toolchains\.lock|metadata\.env|[^/]+\.(sh|mk|ya?ml|toml|env))$"
+)
+GO_PIN_SKIP = re.compile(r"(^|/)(\.upstream|node_modules|testdata|evidence)/|(^|/)[^/]*_test\.[^/]+$")
+GO_RELEASE = re.compile(
+    r"\bgo(1\.\d+\.\d+)(?!\d)|\bgolang:(1\.\d+\.\d+)\b|(?i:\bgo[-_]?version)\s*[=:]\s*['\"]?(1\.\d+\.\d+)"
+)
+
+
+def go_pin_strays(root: pathlib.Path, go: str, files: list[str] | None = None) -> list[str]:
+    """Report every Go release other than the .go-version pin that a build, CI or setup file names."""
+    if files is None:
+        listing = subprocess.run(["git", "ls-files", "-z"], cwd=root, capture_output=True, text=True, check=True)
+        files = [name for name in listing.stdout.split("\0") if name]
+    problems = []
+    for name in files:
+        if not GO_PIN_FILE.search(name) or GO_PIN_SKIP.search(name):
+            continue
+        try:
+            text = (root / name).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        for number, line in enumerate(text.splitlines(), 1):
+            for match in GO_RELEASE.finditer(line):
+                version = next(group for group in match.groups() if group)
+                if version != go:
+                    problems.append(f"Go pin drift: {name}:{number} names Go {version}, want {go!r} from .go-version")
+    return problems
+
+
+# Workflows read toolchain pins from files. The Node compatibility runs read the
+# separate minimum/current runtime pins (automation/ci/node-*.version) without
+# changing the build runtime.
 SETUP_VERSION_FILES = {"setup-go": ("go-version", ".go-version"), "setup-node": ("node-version", ".node-version")}
-NODE_RUNTIME_MATRIX_INPUT = "node-version-file: ${{ matrix.node_version_file }}"
+NODE_COMPATIBILITY_INPUT = re.compile(r"^node-version-file: (automation/ci/node-[a-z-]+\.version)$")
 
 
 def workflow_step(lines: list[str], index: int) -> list[str]:
@@ -253,8 +302,11 @@ def check_workflow_version_files() -> list[str]:
                 continue
             key, want = SETUP_VERSION_FILES[match.group(1)]
             step = workflow_step(lines, number - 1)
-            if match.group(1) == "setup-node" and NODE_RUNTIME_MATRIX_INPUT in step:
-                continue
+            if match.group(1) == "setup-node":
+                pins = [m.group(1) for line in step if (m := NODE_COMPATIBILITY_INPUT.match(line))]
+                if pins:
+                    problems += [f"{name}:{number}: {pin} does not exist" for pin in pins if not (ROOT / pin).is_file()]
+                    continue
             if f"{key}-file: {want}" not in step:
                 problems.append(f"{name}:{number}: actions/{match.group(1)} does not set {key}-file: {want}")
     return problems

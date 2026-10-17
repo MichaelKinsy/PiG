@@ -28,7 +28,7 @@ func TestTreeTypeToSearchFiltersRows(t *testing.T) {
 		&searchableNode{id: "b", label: "B", search: "assistant run deploy"},
 		&searchableNode{id: "c", label: "C", search: "user parser error"},
 	}}
-	ts := NewTreeSelect("t", root)
+	ts := NewTreeSelectorComponent("t", root)
 	if got := len(ts.rows); got != 3 {
 		t.Fatalf("initial rows = %d, want 3", got)
 	}
@@ -49,7 +49,7 @@ func TestTreeTypeToSearchFiltersRows(t *testing.T) {
 	// Multi-token and case-insensitivity: "Parser COMPILE" (upper case).
 	// Start from a fresh selector so the query doesn't accumulate with the
 	// single-token check above.
-	ts = NewTreeSelect("t", root)
+	ts = NewTreeSelectorComponent("t", root)
 	ts.HandleInput("Parser")
 	ts.HandleInput(" ")
 	ts.HandleInput("COMPILE")
@@ -75,7 +75,7 @@ func TestTreeTypeToSearchBackspaceAndClear(t *testing.T) {
 		&searchableNode{id: "a", label: "A", search: "compile parser"},
 		&searchableNode{id: "b", label: "B", search: "deploy"},
 	}}
-	ts := NewTreeSelect("t", root)
+	ts := NewTreeSelectorComponent("t", root)
 
 	ts.HandleInput("pars")
 	if ts.searchQuery != "pars" {
@@ -121,7 +121,7 @@ func TestTreeTypeToSearchUsesSearchableTextNotLabel(t *testing.T) {
 		// label is "user:", searchable text is the message body.
 		&searchableNode{id: "a", label: "user: first step", search: "assistant 42 answer"},
 	}}
-	ts := NewTreeSelect("t", root)
+	ts := NewTreeSelectorComponent("t", root)
 
 	// The label contains "user:" but the searchable text does not; a
 	// search for "user" over the searchable text matches nothing.
@@ -130,7 +130,7 @@ func TestTreeTypeToSearchUsesSearchableTextNotLabel(t *testing.T) {
 		t.Fatalf("search 'user' should filter out row a, got %d rows", len(ts.rows))
 	}
 
-	ts = NewTreeSelect("t", root)
+	ts = NewTreeSelectorComponent("t", root)
 	ts.HandleInput("42")
 	if len(ts.rows) != 1 {
 		t.Fatalf("search '42' should match row a via searchable text, got %d rows", len(ts.rows))

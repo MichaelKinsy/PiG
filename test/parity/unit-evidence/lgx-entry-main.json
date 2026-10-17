@@ -1,0 +1,14 @@
+[
+ {
+  "upstream": "packages/coding-agent/src/main.ts",
+  "package": "./coding/cli",
+  "tests": [
+   "TestMainLoadsTheProgramsExtensionFactories",
+   "TestMainRunsTheProgramsExtensionFactoriesInTheProjectTrustPass",
+   "TestMainPassesTheProgramsExtensionFactoriesToPackageCommands",
+   "TestMainRunsAFailingProgramFactoryOnceWithAProjectTrustPass"
+  ],
+  "upstream_reference": "packages/coding-agent/src/main.ts:569-575 MainOptions.extensionFactories and main(args, options), which appends the program's factories after the built-in extensions; core/resource-loader.ts:376-377,1138-1141 names them <inline:name> or <inline:N> among the non-built-in entries",
+  "mutation": "coding/cli/main.go: in Main replace `programExtensions = options.ExtensionFactories` with `_ = options.ExtensionFactories`; PIG_KEEP_COUNT1=1 go test -count=1 ./coding/cli -run '^TestMainLoadsTheProgramsExtensionFactories$' fails (commands = [llama mcp sprite]). coding/cli/cli_runtime_build.go: replace `inline, loadErrs = builtinLoader.loadInlineExtensions()` with `_ = builtinLoader`; the same run fails the same way. coding/cli/cli_runtime_build.go: guard the pre-trust inline load with `false &&`; TestMainRunsTheProgramsExtensionFactoriesInTheProjectTrustPass fails (no project-template). Pass loadBuiltins(nil) instead of loadBuiltins(preTrustInline); the same test fails (inline-load-2). Keep the in-process extensions only when len(builtInExtensions) > 0; TestMainLoadsTheProgramsExtensionFactories/no-builtins=1 fails (commands = []). coding/cli/main.go: call runPackageCommand(args) without commandRuntime; TestMainPassesTheProgramsExtensionFactoriesToPackageCommands fails (No packages installed.). Leave preTrustInline nil when every factory failed; TestMainRunsAFailingProgramFactoryOnceWithAProjectTrustPass fails (two runs)."
+ }
+]

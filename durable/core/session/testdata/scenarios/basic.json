@@ -1,0 +1,35 @@
+{
+ "docs": {
+  "live": {"kind":"t.live","version":1,"scope":"conversation","history":"latest","fork":"initial","initial":{}},
+  "inbox": {"kind":"t.inbox","version":1,"scope":"conversation","history":"latest","fork":"initial","initial":{"items":[]},"checkpoint":"emptyItems"},
+  "usage": {"kind":"t.usage","version":1,"scope":"conversation","history":"latest","fork":"initial","initial":{"models":{},"tools":{}},"checkpoint":"always"},
+  "note": {"kind":"t.note","version":1,"scope":"conversation","history":"rewindable","fork":"asOf","initial":{"text":""}},
+  "cur": {"kind":"t.cur","version":1,"scope":"conversation","history":"rewindable","fork":"current","initial":{"n":0}},
+  "sess": {"kind":"t.sess","version":1,"scope":"session","initial":{"count":0}},
+  "tdoc": {"kind":"t.tdoc","version":1,"scope":"task","initial":{"state":"x"}},
+  "fam": {"kind":"t.fam","version":1,"scope":"session","family":true,"initial":{"v":0}}
+ },
+ "tasks": {"gen": {"name":"t.gen","version":1}},
+ "steps": [
+  {"ops":[{"op":"rootConversation"},{"op":"appendEntry","conversationId":1,"draft":{"kind":"pi.user","model":[{"role":"user","content":"hello","timestamp":1}]}}]},
+  {"ops":[{"op":"readConversation","id":1}]},
+  {"ops":[{"op":"appendEntry","conversationId":1,"draft":{"kind":"pi.system","data":{"a":[1,2]},"head":"self"}},{"op":"readTask","id":9}]},
+  {"ops":[{"op":"doc","doc":"live","owner":1,"edit":[{"path":[],"op":"set","key":"run","value":{"taskId":5,"inputs":[3]}}]},
+          {"op":"doc","doc":"inbox","owner":1,"edit":[{"path":["items"],"op":"push","values":[{"id":7,"mode":"steer","content":"hi"}]}]},
+          {"op":"doc","doc":"usage","owner":1,"edit":[{"path":["models"],"op":"set","key":"m","value":{"input":1,"output":2}}]}]},
+  {"ops":[{"op":"doc","doc":"live","owner":1,"edit":[{"path":["run"],"op":"set","key":"taskId","value":6}]},
+          {"op":"doc","doc":"inbox","owner":1,"edit":[{"path":["items"],"op":"pop"}]}]},
+  {"ops":[{"op":"createTask","task":"gen","input":{"n":1},"opts":{"conversationId":1}}]},
+  {"ops":[{"op":"updateTask","id":7,"patch":{"state":{"status":"running","checkpoint":{"phase":"start"}}}}]},
+  {"ops":[{"op":"updateTask","id":7,"patch":{"abortRequested":true}},{"op":"doc","doc":"tdoc","owner":7,"edit":[{"path":[],"op":"set","key":"state","value":"y"}]}]},
+  {"ops":[{"op":"updateTask","id":7,"patch":{"state":{"status":"terminal","outcome":{"status":"completed","result":1}}}}]},
+  {"ops":[{"op":"doc","doc":"tdoc","owner":7,"edit":[]}]},
+  {"ops":[{"op":"createSubmission","create":{"type":"input","conversationId":1,"status":"queued","requestId":"r1"}}]},
+  {"ops":[{"op":"place","id":9,"entry":3}]},
+  {"ops":[{"op":"settle","id":9,"settlement":{"status":"done","answer":4}}]},
+  {"ops":[{"op":"doc","doc":"sess","edit":[{"path":[],"op":"set","key":"count","value":1}]},{"op":"doc","doc":"fam","key":"a","seed":{"x":1},"edit":[{"path":[],"op":"set","key":"v","value":5}]}]},
+  {"ops":[{"op":"retireDoc","doc":"fam","key":"a"},{"op":"doc","doc":"fam","key":"a","seed":{"x":2}}]},
+  {"ops":[{"op":"retireDoc","doc":"note","owner":1}]},
+  {"ops":[{"op":"appendEntry","conversationId":99,"draft":{"kind":"x"}}]}
+ ]
+}

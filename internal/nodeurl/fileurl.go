@@ -18,6 +18,14 @@ type Error struct {
 
 func (e *Error) Error() string { return e.Message }
 
+// Thrown is String(e) of the error Node throws: its name, code and message, `TypeError [ERR_INVALID_FILE_URL_PATH]: File URL path must be absolute`, or `URIError: URI malformed` for the decodeURIComponent failure, which has no code. A program that does not catch it reports this headline.
+func (e *Error) Thrown() string {
+	if e.Code == "" {
+		return "URIError: " + e.Message
+	}
+	return "TypeError [" + e.Code + "]: " + e.Message
+}
+
 var (
 	errInvalidURL         = &Error{Code: "ERR_INVALID_URL", Message: "Invalid URL"}
 	errInvalidURLScheme   = &Error{Code: "ERR_INVALID_URL_SCHEME", Message: "The URL must be of scheme file"}
@@ -86,13 +94,7 @@ func DomainToUnicode(host string) string {
 
 // PrepareInput applies the URL parser's C0/space trimming and tab/newline removal.
 func PrepareInput(raw string) string {
-	input := strings.TrimFunc(raw, func(r rune) bool { return r <= 0x20 })
-	return strings.Map(func(r rune) rune {
-		if r == '\t' || r == '\n' || r == '\r' {
-			return -1
-		}
-		return r
-	}, input)
+	return removeTabAndNewline(strings.TrimFunc(raw, func(r rune) bool { return r <= 0x20 }))
 }
 
 // parseFileURL runs the WHATWG URL parser on raw far enough to return a file
@@ -186,6 +188,9 @@ func splitSegments(rest string) []string {
 func isSlash(c byte) bool { return c == '/' || c == '\\' }
 
 func isScheme(s string) bool {
+	if s == "" {
+		return false
+	}
 	for i := range len(s) {
 		c := s[i] | 0x20
 		switch {
@@ -221,8 +226,10 @@ func containsEncoded(pathname, hex string) bool {
 	return strings.Contains(strings.ToLower(pathname), "%"+hex)
 }
 
-// decodeURIComponent is JavaScript's decodeURIComponent: every %XX becomes
+// DecodeURIComponent is JavaScript's decodeURIComponent: every %XX becomes
 // its byte, and a malformed escape or invalid UTF-8 is a URIError.
+func DecodeURIComponent(s string) (string, error) { return decodeURIComponent(s) }
+
 func decodeURIComponent(s string) (string, error) {
 	if !strings.Contains(s, "%") {
 		return s, nil

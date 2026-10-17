@@ -1,13 +1,17 @@
 package tui
 
+// pi: packages/coding-agent/src/modes/interactive/components/user-message-selector.ts
+
 import (
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestUserMessageSelectorRenderMatchesUpstreamLayout(t *testing.T) {
-	sel := NewUserMessageSelector([]string{
+	sel := newUserMessageSelectorForTest([]string{
 		"reply with exactly: alpha",
 		"reply with exactly: beta",
 	})
@@ -41,7 +45,9 @@ func TestUserMessageSelectorRenderMatchesUpstreamLayout(t *testing.T) {
 }
 
 func TestUserMessageSelectorHandleInputMovesSelectionAndConfirms(t *testing.T) {
-	sel := NewUserMessageSelector([]string{"alpha", "beta"})
+	var selected []string
+	cancels := 0
+	sel := NewUserMessageSelectorComponent(userMessageItems([]string{"alpha", "beta"}), func(id string) { selected = append(selected, id) }, func() { cancels++ }, "")
 	sel.HandleInput("\x1b[A") // Up
 	got := stripUserMessageSelectorANSILines(sel.Render(40))
 	if got[8] != "› alpha" {
@@ -51,19 +57,13 @@ func TestUserMessageSelectorHandleInputMovesSelectionAndConfirms(t *testing.T) {
 		t.Fatalf("second row after Up = %q, want %q", got[11], "  beta")
 	}
 	sel.HandleInput("\r")
-	if !sel.Done() {
-		t.Fatal("selector should be done after Enter")
-	}
-	if sel.Cancelled() {
-		t.Fatal("selector should not be cancelled after Enter")
-	}
-	if sel.SelectedIndex() != 0 {
-		t.Fatalf("SelectedIndex = %d, want 0", sel.SelectedIndex())
+	if !slices.Equal(selected, []string{"0"}) || cancels != 0 {
+		t.Fatalf("callbacks after Up, Enter = select %v cancel %d, want select [0] cancel 0 (user-message-selector.ts:98-104)", selected, cancels)
 	}
 }
 
 func TestUserMessageSelectorEmptyState(t *testing.T) {
-	sel := NewUserMessageSelector(nil)
+	sel := newUserMessageSelectorForTest(nil)
 	got := stripUserMessageSelectorANSILines(sel.Render(40))
 	// Upstream: the list renders only the empty-state row, then Spacer(1) and
 	// the bottom DynamicBorder.
@@ -80,4 +80,63 @@ func stripUserMessageSelectorANSILines(lines []string) []string {
 		out[i] = strings.TrimRight(stripANSI(line), " ")
 	}
 	return out
+}
+
+// UserMessageSelectorComponent extends Container (user-message-selector.ts:92): spacer, title, description, spacer, border,
+// spacer, message list, spacer, border; a key on the selector moves the list's selection.
+func TestUserMessageSelectorComponentChildrenFollowUpstream(t *testing.T) {
+	s := newUserMessageSelectorForTest([]string{"one", "two"})
+	if got := len(s.Children()); got != 9 {
+		t.Fatalf("children = %d, want 9", got)
+	}
+	before := strings.Join(s.Render(40), "\n")
+	s.HandleInput("\x1b[A")
+	if strings.Join(s.Render(40), "\n") == before {
+		t.Fatal("up did not change the render")
+	}
+}
+
+// userMessageItems numbers texts as session entries "0", "1", ...
+func userMessageItems(texts []string) []UserMessageItem {
+	items := make([]UserMessageItem, len(texts))
+	for i, text := range texts {
+		items[i] = UserMessageItem{ID: strconv.Itoa(i), Text: text}
+	}
+	return items
+}
+
+func newUserMessageSelectorForTest(texts []string) *UserMessageSelectorComponent {
+	return NewUserMessageSelectorComponent(userMessageItems(texts), nil, nil, "")
+}
+
+// packages/coding-agent/src/modes/interactive/components/user-message-selector.ts:25-27,146-148,152 getMessageList() is the list the
+// selector shows; initialSelectedId selects that message (unknown or empty selects the newest); an empty selector cancels itself once
+// after 100ms; confirm and cancel report the entry id and the cancel.
+func TestUserMessageSelectorInitialSelectionAndAutoCancel(t *testing.T) {
+	items := userMessageItems([]string{"a", "b", "c"})
+	var selected []string
+	for id, want := range map[string]string{"": "2", "1": "1", "0": "0", "missing": "2"} {
+		selected = nil
+		sel := NewUserMessageSelectorComponent(items, func(id string) { selected = append(selected, id) }, nil, id)
+		if sel.GetMessageList() == nil || sel.GetMessageList() != sel.Children()[6] {
+			t.Fatal("GetMessageList is not the list child")
+		}
+		sel.HandleInput("\r")
+		if !slices.Equal(selected, []string{want}) {
+			t.Fatalf("initialSelectedID %q selected %v, want [%s]", id, selected, want)
+		}
+	}
+	cancelled := make(chan struct{}, 2)
+	NewUserMessageSelectorComponent(nil, nil, func() { cancelled <- struct{}{} }, "")
+	select {
+	case <-cancelled:
+	case <-time.After(5 * time.Second):
+		t.Fatal("an empty selector did not cancel itself")
+	}
+	cancels := 0
+	nonEmpty := NewUserMessageSelectorComponent(items, nil, func() { cancels++ }, "")
+	nonEmpty.HandleInput("\x1b")
+	if cancels != 1 {
+		t.Fatalf("cancel key ran onCancel %d times, want 1", cancels)
+	}
 }

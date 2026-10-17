@@ -1,0 +1,3929 @@
+[
+ {
+  "ids": [
+   "pkg:ai/compat#AnthropicAllowedFallbackModel"
+  ],
+  "targets": [
+   "ai/types.go#AnthropicAllowedFallbackModel"
+  ],
+  "production": [
+   "call:ai/anthropic.go#anthropicProvider.buildParams"
+  ],
+  "evidence": [
+   "test:ai/anthropic_fallback_request_upstream_test.go#TestAnthropicAllowedFallbackRequestUpstream",
+   "test:ai/anthropic_mid_effort_upstream_test.go#TestAnthropicUpstreamMidConversationEffort"
+  ],
+  "rationale": "AnthropicAllowedFallbackModel: Go AnthropicAllowedFallbackModel has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#AnthropicAllowedFallbackModel (identical shape and members).",
+  "properties": {
+   "cost": {
+    "targets": [
+     "ai/types.go#AnthropicAllowedFallbackModel.Cost"
+    ],
+    "evidence": [
+     "test:ai/anthropic_fallback_request_upstream_test.go#TestAnthropicAllowedFallbackRequestUpstream",
+     "test:ai/anthropic_mid_effort_upstream_test.go#TestAnthropicUpstreamMidConversationEffort"
+    ],
+    "production": [
+     "call:ai/anthropic.go#anthropicProvider.buildParams"
+    ],
+    "rationale": "AnthropicAllowedFallbackModel: Go AnthropicAllowedFallbackModel has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "model": {
+    "targets": [
+     "ai/types.go#AnthropicAllowedFallbackModel.Model"
+    ],
+    "evidence": [
+     "test:ai/anthropic_fallback_request_upstream_test.go#TestAnthropicAllowedFallbackRequestUpstream",
+     "test:ai/anthropic_mid_effort_upstream_test.go#TestAnthropicUpstreamMidConversationEffort"
+    ],
+    "production": [
+     "call:ai/anthropic.go#anthropicProvider.buildParams"
+    ],
+    "rationale": "AnthropicAllowedFallbackModel: Go AnthropicAllowedFallbackModel has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "provider": {
+    "targets": [
+     "ai/types.go#AnthropicAllowedFallbackModel.Provider"
+    ],
+    "evidence": [
+     "test:ai/anthropic_fallback_request_upstream_test.go#TestAnthropicAllowedFallbackRequestUpstream",
+     "test:ai/anthropic_mid_effort_upstream_test.go#TestAnthropicUpstreamMidConversationEffort"
+    ],
+    "production": [
+     "call:ai/anthropic.go#anthropicProvider.buildParams"
+    ],
+    "rationale": "AnthropicAllowedFallbackModel: Go AnthropicAllowedFallbackModel has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#AssistantImages"
+  ],
+  "targets": [
+   "ai/images.go#AssistantImages"
+  ],
+  "production": [
+   "call:ai/classifier_wire.go#AssistantImages.UnmarshalJSON"
+  ],
+  "evidence": [
+   "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
+   "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveImageDispatchUpstream"
+  ],
+  "rationale": "AssistantImages: Go AssistantImages has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#AssistantImages (identical shape and members).",
+  "properties": {
+   "api": {
+    "targets": [
+     "ai/images.go#AssistantImages.API"
+    ],
+    "evidence": [
+     "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
+     "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveImageDispatchUpstream"
+    ],
+    "production": [
+     "public-api:ai/images.go#AssistantImages.API"
+    ],
+    "rationale": "AssistantImages: Go AssistantImages has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "errorMessage": {
+    "targets": [
+     "ai/images.go#AssistantImages.ErrorMessage"
+    ],
+    "evidence": [
+     "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
+     "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveImageDispatchUpstream"
+    ],
+    "production": [
+     "public-api:ai/images.go#AssistantImages.ErrorMessage"
+    ],
+    "rationale": "AssistantImages: Go AssistantImages has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "model": {
+    "targets": [
+     "ai/images.go#AssistantImages.Model"
+    ],
+    "evidence": [
+     "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
+     "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveImageDispatchUpstream"
+    ],
+    "production": [
+     "public-api:ai/images.go#AssistantImages.Model"
+    ],
+    "rationale": "AssistantImages: Go AssistantImages has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "output": {
+    "targets": [
+     "ai/images.go#AssistantImages.Output"
+    ],
+    "evidence": [
+     "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
+     "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveImageDispatchUpstream"
+    ],
+    "production": [
+     "public-api:ai/images.go#AssistantImages.Output"
+    ],
+    "rationale": "AssistantImages: Go AssistantImages has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "provider": {
+    "targets": [
+     "ai/images.go#AssistantImages.Provider"
+    ],
+    "evidence": [
+     "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
+     "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveImageDispatchUpstream"
+    ],
+    "production": [
+     "public-api:ai/images.go#AssistantImages.Provider"
+    ],
+    "rationale": "AssistantImages: Go AssistantImages has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "responseId": {
+    "targets": [
+     "ai/images.go#AssistantImages.ResponseID"
+    ],
+    "evidence": [
+     "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
+     "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveImageDispatchUpstream"
+    ],
+    "production": [
+     "public-api:ai/images.go#AssistantImages.ResponseID"
+    ],
+    "rationale": "AssistantImages: Go AssistantImages has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "stopReason": {
+    "targets": [
+     "ai/images.go#AssistantImages.StopReason"
+    ],
+    "evidence": [
+     "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
+     "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveImageDispatchUpstream"
+    ],
+    "production": [
+     "public-api:ai/images.go#AssistantImages.StopReason"
+    ],
+    "rationale": "AssistantImages: Go AssistantImages has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "timestamp": {
+    "targets": [
+     "ai/images.go#AssistantImages.Timestamp"
+    ],
+    "evidence": [
+     "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
+     "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveImageDispatchUpstream"
+    ],
+    "production": [
+     "public-api:ai/images.go#AssistantImages.Timestamp"
+    ],
+    "rationale": "AssistantImages: Go AssistantImages has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "usage": {
+    "targets": [
+     "ai/images.go#AssistantImages.Usage"
+    ],
+    "evidence": [
+     "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
+     "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveImageDispatchUpstream"
+    ],
+    "production": [
+     "public-api:ai/images.go#AssistantImages.Usage"
+    ],
+    "rationale": "AssistantImages: Go AssistantImages has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#AssistantMessageDiagnostic"
+  ],
+  "targets": [
+   "ai/types.go#AssistantMessageDiagnostic"
+  ],
+  "production": [
+   "call:ai/anthropic.go#anthropicProvider.parseAnthropicSSE"
+  ],
+  "evidence": [
+   "test:ai/assistant_field_observation_test.go#TestAssistantFieldProjectionsDoNotTraverseOtherValues",
+   "test:ai/assistant_message_frame_json_test.go#TestFrameJSONRoundTripsEveryVariant"
+  ],
+  "rationale": "AssistantMessageDiagnostic: Go AssistantMessageDiagnostic has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#AssistantMessageDiagnostic (identical shape and members).",
+  "properties": {
+   "details": {
+    "targets": [
+     "ai/types.go#AssistantMessageDiagnostic.Details"
+    ],
+    "evidence": [
+     "test:ai/assistant_field_observation_test.go#TestAssistantFieldProjectionsDoNotTraverseOtherValues",
+     "test:ai/assistant_message_frame_json_test.go#TestFrameJSONRoundTripsEveryVariant"
+    ],
+    "production": [
+     "call:ai/anthropic.go#anthropicProvider.parseAnthropicSSE"
+    ],
+    "rationale": "AssistantMessageDiagnostic: Go AssistantMessageDiagnostic has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "error": {
+    "targets": [
+     "ai/types.go#AssistantMessageDiagnostic.Error"
+    ],
+    "evidence": [
+     "test:ai/assistant_field_observation_test.go#TestAssistantFieldProjectionsDoNotTraverseOtherValues",
+     "test:ai/assistant_message_frame_json_test.go#TestFrameJSONRoundTripsEveryVariant"
+    ],
+    "production": [
+     "call:ai/anthropic.go#anthropicProvider.parseAnthropicSSE"
+    ],
+    "rationale": "AssistantMessageDiagnostic: Go AssistantMessageDiagnostic has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "timestamp": {
+    "targets": [
+     "ai/types.go#AssistantMessageDiagnostic.Timestamp"
+    ],
+    "evidence": [
+     "test:ai/assistant_field_observation_test.go#TestAssistantFieldProjectionsDoNotTraverseOtherValues",
+     "test:ai/assistant_message_frame_json_test.go#TestFrameJSONRoundTripsEveryVariant"
+    ],
+    "production": [
+     "call:ai/anthropic.go#anthropicProvider.parseAnthropicSSE"
+    ],
+    "rationale": "AssistantMessageDiagnostic: Go AssistantMessageDiagnostic has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "type": {
+    "targets": [
+     "ai/types.go#AssistantMessageDiagnostic.Type"
+    ],
+    "evidence": [
+     "test:ai/assistant_field_observation_test.go#TestAssistantFieldProjectionsDoNotTraverseOtherValues",
+     "test:ai/assistant_message_frame_json_test.go#TestFrameJSONRoundTripsEveryVariant"
+    ],
+    "production": [
+     "call:ai/anthropic.go#anthropicProvider.parseAnthropicSSE"
+    ],
+    "rationale": "AssistantMessageDiagnostic: Go AssistantMessageDiagnostic has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/utils/diagnostics#AssistantMessageDiagnostic"
+  ],
+  "targets": [
+   "ai/types.go#AssistantMessageDiagnostic"
+  ],
+  "production": [
+   "call:ai/anthropic.go#anthropicProvider.parseAnthropicSSE"
+  ],
+  "evidence": [
+   "test:ai/assistant_field_observation_test.go#TestAssistantFieldProjectionsDoNotTraverseOtherValues",
+   "test:ai/assistant_message_frame_json_test.go#TestFrameJSONRoundTripsEveryVariant"
+  ],
+  "rationale": "AssistantMessageDiagnostic: Go AssistantMessageDiagnostic has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#AssistantMessageDiagnostic (identical shape and members).",
+  "properties": {
+   "details": {
+    "targets": [
+     "ai/types.go#AssistantMessageDiagnostic.Details"
+    ],
+    "evidence": [
+     "test:ai/assistant_field_observation_test.go#TestAssistantFieldProjectionsDoNotTraverseOtherValues",
+     "test:ai/assistant_message_frame_json_test.go#TestFrameJSONRoundTripsEveryVariant"
+    ],
+    "production": [
+     "call:ai/anthropic.go#anthropicProvider.parseAnthropicSSE"
+    ],
+    "rationale": "AssistantMessageDiagnostic: Go AssistantMessageDiagnostic has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "error": {
+    "targets": [
+     "ai/types.go#AssistantMessageDiagnostic.Error"
+    ],
+    "evidence": [
+     "test:ai/assistant_field_observation_test.go#TestAssistantFieldProjectionsDoNotTraverseOtherValues",
+     "test:ai/assistant_message_frame_json_test.go#TestFrameJSONRoundTripsEveryVariant"
+    ],
+    "production": [
+     "call:ai/anthropic.go#anthropicProvider.parseAnthropicSSE"
+    ],
+    "rationale": "AssistantMessageDiagnostic: Go AssistantMessageDiagnostic has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "timestamp": {
+    "targets": [
+     "ai/types.go#AssistantMessageDiagnostic.Timestamp"
+    ],
+    "evidence": [
+     "test:ai/assistant_field_observation_test.go#TestAssistantFieldProjectionsDoNotTraverseOtherValues",
+     "test:ai/assistant_message_frame_json_test.go#TestFrameJSONRoundTripsEveryVariant"
+    ],
+    "production": [
+     "call:ai/anthropic.go#anthropicProvider.parseAnthropicSSE"
+    ],
+    "rationale": "AssistantMessageDiagnostic: Go AssistantMessageDiagnostic has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "type": {
+    "targets": [
+     "ai/types.go#AssistantMessageDiagnostic.Type"
+    ],
+    "evidence": [
+     "test:ai/assistant_field_observation_test.go#TestAssistantFieldProjectionsDoNotTraverseOtherValues",
+     "test:ai/assistant_message_frame_json_test.go#TestFrameJSONRoundTripsEveryVariant"
+    ],
+    "production": [
+     "call:ai/anthropic.go#anthropicProvider.parseAnthropicSSE"
+    ],
+    "rationale": "AssistantMessageDiagnostic: Go AssistantMessageDiagnostic has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#AuthCheck"
+  ],
+  "targets": [
+   "ai/auth_resolve.go#AuthCheck"
+  ],
+  "production": [
+   "call:ai/auth_resolve.go#DefaultProviderAuthContext"
+  ],
+  "evidence": [
+   "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream"
+  ],
+  "rationale": "auth/types.ts AuthCheck {type, source?}: Go AuthCheck {Type CredentialType, Source string}. Re-export of ai/.#AuthCheck (identical shape and members).",
+  "properties": {
+   "source": {
+    "targets": [
+     "ai/auth_resolve.go#AuthCheck.Source"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream"
+    ],
+    "production": [
+     "call:ai/auth_resolve.go#DefaultProviderAuthContext"
+    ],
+    "rationale": "auth/types.ts AuthCheck {type, source?}: Go AuthCheck {Type CredentialType, Source string}."
+   },
+   "type": {
+    "targets": [
+     "ai/auth_resolve.go#AuthCheck.Type"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream"
+    ],
+    "production": [
+     "call:ai/auth_resolve.go#DefaultProviderAuthContext"
+    ],
+    "rationale": "auth/types.ts AuthCheck {type, source?}: Go AuthCheck {Type CredentialType, Source string}."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#AuthContext"
+  ],
+  "targets": [
+   "ai/auth_resolve.go#AuthContext"
+  ],
+  "production": [
+   "call:ai/auth_resolve.go#DefaultProviderAuthContext"
+  ],
+  "evidence": [
+   "test:ai/anthropic_federation_upstream_test.go#TestAnthropicAuthTreatsEmptyContextValuesAsAbsent",
+   "test:ai/anthropic_federation_upstream_test.go#TestAnthropicWorkloadIdentityFederation"
+  ],
+  "rationale": "AuthContext: Go AuthContext has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#AuthContext (identical shape and members).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "properties": {
+   "env": {
+    "targets": [
+     "ai/auth_resolve.go#AuthContext.Env"
+    ],
+    "evidence": [
+     "test:ai/anthropic_federation_upstream_test.go#TestAnthropicAuthTreatsEmptyContextValuesAsAbsent",
+     "test:ai/anthropic_federation_upstream_test.go#TestAnthropicWorkloadIdentityFederation"
+    ],
+    "production": [
+     "call:ai/auth_resolve.go#DefaultProviderAuthContext"
+    ],
+    "rationale": "AuthContext: Go AuthContext has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "fileExists": {
+    "targets": [
+     "ai/auth_resolve.go#AuthContext.FileExists"
+    ],
+    "evidence": [
+     "test:ai/anthropic_federation_upstream_test.go#TestAnthropicAuthTreatsEmptyContextValuesAsAbsent",
+     "test:ai/anthropic_federation_upstream_test.go#TestAnthropicWorkloadIdentityFederation"
+    ],
+    "production": [
+     "call:ai/auth_resolve.go#DefaultProviderAuthContext"
+    ],
+    "rationale": "AuthContext: Go AuthContext has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#AuthInfoLink"
+  ],
+  "targets": [
+   "ai/auth_interaction.go#AuthInfoLink"
+  ],
+  "production": [
+   "call:ai/provider_login.go#bedrockLogin"
+  ],
+  "evidence": [
+   "test:ai/auth_login_test.go#TestAuthInteractionDiscriminatedJSON"
+  ],
+  "rationale": "AuthInfoLink: Go AuthInfoLink has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#AuthInfoLink (identical shape and members).",
+  "properties": {
+   "label": {
+    "targets": [
+     "ai/auth_interaction.go#AuthInfoLink.Label"
+    ],
+    "evidence": [
+     "test:ai/auth_login_test.go#TestAuthInteractionDiscriminatedJSON"
+    ],
+    "production": [
+     "call:ai/provider_login.go#bedrockLogin"
+    ],
+    "rationale": "AuthInfoLink: Go AuthInfoLink has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "url": {
+    "targets": [
+     "ai/auth_interaction.go#AuthInfoLink.URL"
+    ],
+    "evidence": [
+     "test:ai/auth_login_test.go#TestAuthInteractionDiscriminatedJSON"
+    ],
+    "production": [
+     "call:ai/provider_login.go#bedrockLogin"
+    ],
+    "rationale": "AuthInfoLink: Go AuthInfoLink has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#AuthResult"
+  ],
+  "targets": [
+   "ai/auth_resolve.go#AuthResult"
+  ],
+  "production": [
+   "call:ai/auth_providers.go#EnvAPIKeyAuth"
+  ],
+  "evidence": [
+   "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+  ],
+  "rationale": "auth/types.ts AuthResult {auth, env?, source?}: Go AuthResult with Env map[string]string; SourcePresent records whether source was set. Re-export of ai/.#AuthResult (identical shape and members).",
+  "properties": {
+   "auth": {
+    "targets": [
+     "ai/auth_resolve.go#AuthResult.Auth"
+    ],
+    "evidence": [
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "call:ai/auth_providers.go#EnvAPIKeyAuth"
+    ],
+    "rationale": "auth/types.ts AuthResult {auth, env?, source?}: Go AuthResult with Env map[string]string; SourcePresent records whether source was set."
+   },
+   "env": {
+    "targets": [
+     "ai/auth_resolve.go#AuthResult.Env"
+    ],
+    "evidence": [
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "call:ai/auth_providers.go#EnvAPIKeyAuth"
+    ],
+    "rationale": "auth/types.ts AuthResult {auth, env?, source?}: Go AuthResult with Env map[string]string; SourcePresent records whether source was set."
+   },
+   "source": {
+    "targets": [
+     "ai/auth_resolve.go#AuthResult.Source"
+    ],
+    "evidence": [
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "call:ai/auth_providers.go#EnvAPIKeyAuth"
+    ],
+    "rationale": "auth/types.ts AuthResult {auth, env?, source?}: Go AuthResult with Env map[string]string; SourcePresent records whether source was set."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#ClassifierContext"
+  ],
+  "targets": [
+   "ai/classifier.go#ClassifierContext"
+  ],
+  "production": [
+   "call:ai/classifier_wire.go#ClassifierContext.UnmarshalJSON"
+  ],
+  "evidence": [
+   "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+   "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream"
+  ],
+  "rationale": "api/classifier.ts ClassifierContext {questions, state}: Go ClassifierContext {State JsonObject, Questions ClassifierQuestions}. Re-export of ai/.#ClassifierContext (identical shape and members).",
+  "properties": {
+   "questions": {
+    "targets": [
+     "ai/classifier.go#ClassifierContext.Questions"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream"
+    ],
+    "production": [
+     "call:ai/classifier_wire.go#ClassifierContext.UnmarshalJSON"
+    ],
+    "rationale": "api/classifier.ts ClassifierContext {questions, state}: Go ClassifierContext {State JsonObject, Questions ClassifierQuestions}."
+   },
+   "state": {
+    "targets": [
+     "ai/classifier.go#ClassifierContext.State"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream"
+    ],
+    "production": [
+     "call:ai/classifier_wire.go#ClassifierContext.UnmarshalJSON"
+    ],
+    "rationale": "api/classifier.ts ClassifierContext {questions, state}: Go ClassifierContext {State JsonObject, Questions ClassifierQuestions}."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#ClassifierResult"
+  ],
+  "targets": [
+   "ai/classifier.go#ClassifierResult"
+  ],
+  "production": [
+   "call:ai/classifier.go#Models.classify"
+  ],
+  "evidence": [
+   "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+   "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveClassifierDispatch"
+  ],
+  "rationale": "ClassifierResult: Go ClassifierResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#ClassifierResult (identical shape and members).",
+  "properties": {
+   "answers": {
+    "targets": [
+     "ai/classifier.go#ClassifierResult.Answers"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveClassifierDispatch"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "ClassifierResult: Go ClassifierResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "api": {
+    "targets": [
+     "ai/classifier.go#ClassifierResult.API"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveClassifierDispatch"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "ClassifierResult: Go ClassifierResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "errorMessage": {
+    "targets": [
+     "ai/classifier.go#ClassifierResult.ErrorMessage"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveClassifierDispatch"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "ClassifierResult: Go ClassifierResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "model": {
+    "targets": [
+     "ai/classifier.go#ClassifierResult.Model"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveClassifierDispatch"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "ClassifierResult: Go ClassifierResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "provider": {
+    "targets": [
+     "ai/classifier.go#ClassifierResult.Provider"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveClassifierDispatch"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "ClassifierResult: Go ClassifierResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "stopReason": {
+    "targets": [
+     "ai/classifier.go#ClassifierResult.StopReason"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveClassifierDispatch"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "ClassifierResult: Go ClassifierResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "timestamp": {
+    "targets": [
+     "ai/classifier.go#ClassifierResult.Timestamp"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveClassifierDispatch"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "ClassifierResult: Go ClassifierResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "usage": {
+    "targets": [
+     "ai/classifier.go#ClassifierResult.Usage"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveClassifierDispatch"
+    ],
+    "production": [
+     "call:ai/classifier.go#Models.classify"
+    ],
+    "rationale": "ClassifierResult: Go ClassifierResult has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#Context"
+  ],
+  "targets": [
+   "ai/transcript.go#Context"
+  ],
+  "production": [
+   "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+  ],
+  "evidence": [
+   "test:agent/proxy_upstream_test.go#TestStreamProxyEmitsAnErrorInsteadOfHangingWhenTheStreamEndsWithoutATerminalEvent",
+   "test:agent/proxy_upstream_test.go#TestStreamProxyPreservesToolCallMetadataReceivedOnlyOnToolCallEnd"
+  ],
+  "rationale": "Context: Go Context has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#Context (identical shape and members).",
+  "properties": {
+   "messages": {
+    "targets": [
+     "ai/transcript.go#Context.Messages"
+    ],
+    "evidence": [
+     "test:agent/proxy_upstream_test.go#TestStreamProxyEmitsAnErrorInsteadOfHangingWhenTheStreamEndsWithoutATerminalEvent",
+     "test:agent/proxy_upstream_test.go#TestStreamProxyPreservesToolCallMetadataReceivedOnlyOnToolCallEnd"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "Context: Go Context has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "systemPrompt": {
+    "targets": [
+     "ai/transcript.go#Context.SystemPrompt"
+    ],
+    "evidence": [
+     "test:agent/proxy_upstream_test.go#TestStreamProxyEmitsAnErrorInsteadOfHangingWhenTheStreamEndsWithoutATerminalEvent",
+     "test:agent/proxy_upstream_test.go#TestStreamProxyPreservesToolCallMetadataReceivedOnlyOnToolCallEnd"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "Context: Go Context has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "tools": {
+    "targets": [
+     "ai/transcript.go#Context.Tools"
+    ],
+    "evidence": [
+     "test:agent/proxy_upstream_test.go#TestStreamProxyEmitsAnErrorInsteadOfHangingWhenTheStreamEndsWithoutATerminalEvent",
+     "test:agent/proxy_upstream_test.go#TestStreamProxyPreservesToolCallMetadataReceivedOnlyOnToolCallEnd"
+    ],
+    "production": [
+     "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
+    ],
+    "rationale": "Context: Go Context has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#CreateModelsOptions"
+  ],
+  "targets": [
+   "ai/models_options.go#CreateModelsOptions"
+  ],
+  "production": [
+   "call:ai/models_runtime.go#createModels"
+  ],
+  "evidence": [
+   "test:ai/anthropic_federation_upstream_test.go#TestAnthropicWorkloadIdentityFederation",
+   "test:ai/auth_storage_lock_error_upstream_test.go#TestAuthStorageLockErrorIsProperLockfileErrorUpstream"
+  ],
+  "rationale": "CreateModelsOptions: Go CreateModelsOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#CreateModelsOptions (identical shape and members).",
+  "properties": {
+   "authContext": {
+    "targets": [
+     "ai/models_options.go#CreateModelsOptions.AuthContext"
+    ],
+    "evidence": [
+     "test:ai/anthropic_federation_upstream_test.go#TestAnthropicWorkloadIdentityFederation",
+     "test:ai/auth_storage_lock_error_upstream_test.go#TestAuthStorageLockErrorIsProperLockfileErrorUpstream"
+    ],
+    "production": [
+     "call:ai/models_runtime.go#createModels"
+    ],
+    "rationale": "CreateModelsOptions: Go CreateModelsOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "credentials": {
+    "targets": [
+     "ai/models_options.go#CreateModelsOptions.Credentials"
+    ],
+    "evidence": [
+     "test:ai/anthropic_federation_upstream_test.go#TestAnthropicWorkloadIdentityFederation",
+     "test:ai/auth_storage_lock_error_upstream_test.go#TestAuthStorageLockErrorIsProperLockfileErrorUpstream"
+    ],
+    "production": [
+     "call:ai/models_runtime.go#createModels"
+    ],
+    "rationale": "CreateModelsOptions: Go CreateModelsOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "modelsStore": {
+    "targets": [
+     "ai/models_options.go#CreateModelsOptions.ModelsStore"
+    ],
+    "evidence": [
+     "test:ai/anthropic_federation_upstream_test.go#TestAnthropicWorkloadIdentityFederation",
+     "test:ai/auth_storage_lock_error_upstream_test.go#TestAuthStorageLockErrorIsProperLockfileErrorUpstream"
+    ],
+    "production": [
+     "call:ai/models_runtime.go#createModels"
+    ],
+    "rationale": "CreateModelsOptions: Go CreateModelsOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#CreateProviderOptions"
+  ],
+  "targets": [
+   "ai/models_provider.go#CreateProviderOptions"
+  ],
+  "production": [
+   "public-api:ai/models_provider.go#CreateProviderOptions"
+  ],
+  "evidence": [
+   "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+   "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+  ],
+  "rationale": "CreateProviderOptions: Go CreateProviderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#CreateProviderOptions (identical shape and members).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "properties": {
+   "api": {
+    "targets": [
+     "ai/models_provider.go#CreateProviderOptions.API"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_provider.go#CreateProviderOptions.API"
+    ],
+    "rationale": "CreateProviderOptions: Go CreateProviderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "auth": {
+    "targets": [
+     "ai/models_provider.go#CreateProviderOptions.Auth"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_provider.go#CreateProviderOptions.Auth"
+    ],
+    "rationale": "CreateProviderOptions: Go CreateProviderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "baseUrl": {
+    "targets": [
+     "ai/models_provider.go#CreateProviderOptions.BaseURL"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_provider.go#CreateProviderOptions.BaseURL"
+    ],
+    "rationale": "CreateProviderOptions: Go CreateProviderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "classifiers": {
+    "targets": [
+     "ai/models_provider.go#CreateProviderOptions.Classifiers"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_provider.go#CreateProviderOptions.Classifiers"
+    ],
+    "rationale": "CreateProviderOptions: Go CreateProviderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "fetchModels": {
+    "targets": [
+     "ai/models_provider.go#CreateProviderOptions.FetchModels"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_provider.go#CreateProviderOptions.FetchModels"
+    ],
+    "rationale": "CreateProviderOptions: Go CreateProviderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "filterAllModels": {
+    "targets": [
+     "ai/models_provider.go#CreateProviderOptions.FilterAllModels"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_provider.go#CreateProviderOptions.FilterAllModels"
+    ],
+    "rationale": "CreateProviderOptions: Go CreateProviderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "filterModels": {
+    "targets": [
+     "ai/models_provider.go#CreateProviderOptions.FilterModels"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_provider.go#CreateProviderOptions.FilterModels"
+    ],
+    "rationale": "CreateProviderOptions: Go CreateProviderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "headers": {
+    "targets": [
+     "ai/models_provider.go#CreateProviderOptions.Headers"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_provider.go#CreateProviderOptions.Headers"
+    ],
+    "rationale": "CreateProviderOptions: Go CreateProviderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "id": {
+    "targets": [
+     "ai/models_provider.go#CreateProviderOptions.ID"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_provider.go#CreateProviderOptions.ID"
+    ],
+    "rationale": "CreateProviderOptions: Go CreateProviderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "images": {
+    "targets": [
+     "ai/models_provider.go#CreateProviderOptions.Images"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_provider.go#CreateProviderOptions.Images"
+    ],
+    "rationale": "CreateProviderOptions: Go CreateProviderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "models": {
+    "targets": [
+     "ai/models_provider.go#CreateProviderOptions.Models"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_provider.go#CreateProviderOptions.Models"
+    ],
+    "rationale": "CreateProviderOptions: Go CreateProviderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "name": {
+    "targets": [
+     "ai/models_provider.go#CreateProviderOptions.Name"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_provider.go#CreateProviderOptions.Name"
+    ],
+    "rationale": "CreateProviderOptions: Go CreateProviderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/models#CreateProviderOptions"
+  ],
+  "targets": [
+   "ai/models_provider.go#CreateProviderOptions"
+  ],
+  "production": [
+   "public-api:ai/models_provider.go#CreateProviderOptions"
+  ],
+  "evidence": [
+   "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+   "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+  ],
+  "rationale": "CreateProviderOptions: Go CreateProviderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#CreateProviderOptions (identical shape and members).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "properties": {
+   "api": {
+    "targets": [
+     "ai/models_provider.go#CreateProviderOptions.API"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_provider.go#CreateProviderOptions.API"
+    ],
+    "rationale": "CreateProviderOptions: Go CreateProviderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "auth": {
+    "targets": [
+     "ai/models_provider.go#CreateProviderOptions.Auth"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_provider.go#CreateProviderOptions.Auth"
+    ],
+    "rationale": "CreateProviderOptions: Go CreateProviderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "baseUrl": {
+    "targets": [
+     "ai/models_provider.go#CreateProviderOptions.BaseURL"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_provider.go#CreateProviderOptions.BaseURL"
+    ],
+    "rationale": "CreateProviderOptions: Go CreateProviderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "classifiers": {
+    "targets": [
+     "ai/models_provider.go#CreateProviderOptions.Classifiers"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_provider.go#CreateProviderOptions.Classifiers"
+    ],
+    "rationale": "CreateProviderOptions: Go CreateProviderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "fetchModels": {
+    "targets": [
+     "ai/models_provider.go#CreateProviderOptions.FetchModels"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_provider.go#CreateProviderOptions.FetchModels"
+    ],
+    "rationale": "CreateProviderOptions: Go CreateProviderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "filterAllModels": {
+    "targets": [
+     "ai/models_provider.go#CreateProviderOptions.FilterAllModels"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_provider.go#CreateProviderOptions.FilterAllModels"
+    ],
+    "rationale": "CreateProviderOptions: Go CreateProviderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "filterModels": {
+    "targets": [
+     "ai/models_provider.go#CreateProviderOptions.FilterModels"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_provider.go#CreateProviderOptions.FilterModels"
+    ],
+    "rationale": "CreateProviderOptions: Go CreateProviderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "headers": {
+    "targets": [
+     "ai/models_provider.go#CreateProviderOptions.Headers"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_provider.go#CreateProviderOptions.Headers"
+    ],
+    "rationale": "CreateProviderOptions: Go CreateProviderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "id": {
+    "targets": [
+     "ai/models_provider.go#CreateProviderOptions.ID"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_provider.go#CreateProviderOptions.ID"
+    ],
+    "rationale": "CreateProviderOptions: Go CreateProviderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "images": {
+    "targets": [
+     "ai/models_provider.go#CreateProviderOptions.Images"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_provider.go#CreateProviderOptions.Images"
+    ],
+    "rationale": "CreateProviderOptions: Go CreateProviderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "models": {
+    "targets": [
+     "ai/models_provider.go#CreateProviderOptions.Models"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_provider.go#CreateProviderOptions.Models"
+    ],
+    "rationale": "CreateProviderOptions: Go CreateProviderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "name": {
+    "targets": [
+     "ai/models_provider.go#CreateProviderOptions.Name"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_provider.go#CreateProviderOptions.Name"
+    ],
+    "rationale": "CreateProviderOptions: Go CreateProviderOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#CredentialInfo"
+  ],
+  "targets": [
+   "ai/auth_store.go#CredentialInfo"
+  ],
+  "production": [
+   "call:ai/auth_store.go#authStorageData.infos"
+  ],
+  "evidence": [
+   "test:ai/auth_storage_first_half_upstream_test.go#TestAuthStorageFirstHalfUpstream"
+  ],
+  "rationale": "auth/credential-store.ts CredentialInfo {providerId, type}: Go CredentialInfo {ProviderID, Type CredentialType} with the api_key and oauth values. Re-export of ai/.#CredentialInfo (identical shape and members).",
+  "properties": {
+   "providerId": {
+    "targets": [
+     "ai/auth_store.go#CredentialInfo.ProviderID"
+    ],
+    "evidence": [
+     "test:ai/auth_storage_first_half_upstream_test.go#TestAuthStorageFirstHalfUpstream"
+    ],
+    "production": [
+     "call:ai/auth_store.go#authStorageData.infos"
+    ],
+    "rationale": "auth/credential-store.ts CredentialInfo {providerId, type}: Go CredentialInfo {ProviderID, Type CredentialType} with the api_key and oauth values."
+   },
+   "type": {
+    "targets": [
+     "ai/auth_store.go#CredentialInfo.Type"
+    ],
+    "evidence": [
+     "test:ai/auth_storage_first_half_upstream_test.go#TestAuthStorageFirstHalfUpstream"
+    ],
+    "production": [
+     "call:ai/auth_store.go#authStorageData.infos"
+    ],
+    "rationale": "auth/credential-store.ts CredentialInfo {providerId, type}: Go CredentialInfo {ProviderID, Type CredentialType} with the api_key and oauth values."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#DeferredHandle"
+  ],
+  "targets": [
+   "ai/types.go#DeferredHandle"
+  ],
+  "production": [
+   "call:agent/message_json.go#AgentMessage.MarshalJSON"
+  ],
+  "evidence": [
+   "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
+   "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+  ],
+  "rationale": "DeferredHandle: Go DeferredHandle has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#DeferredHandle (identical shape and members).",
+  "properties": {
+   "api": {
+    "targets": [
+     "ai/types.go#DeferredHandle.API"
+    ],
+    "evidence": [
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/types.go#DeferredHandle.API"
+    ],
+    "rationale": "DeferredHandle: Go DeferredHandle has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "data": {
+    "targets": [
+     "ai/types.go#DeferredHandle.Data"
+    ],
+    "evidence": [
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/types.go#DeferredHandle.Data"
+    ],
+    "rationale": "DeferredHandle: Go DeferredHandle has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "expiresAt": {
+    "targets": [
+     "ai/types.go#DeferredHandle.ExpiresAt"
+    ],
+    "evidence": [
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/types.go#DeferredHandle.ExpiresAt"
+    ],
+    "rationale": "DeferredHandle: Go DeferredHandle has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "id": {
+    "targets": [
+     "ai/types.go#DeferredHandle.ID"
+    ],
+    "evidence": [
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/types.go#DeferredHandle.ID"
+    ],
+    "rationale": "DeferredHandle: Go DeferredHandle has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "modelId": {
+    "targets": [
+     "ai/types.go#DeferredHandle.ModelID"
+    ],
+    "evidence": [
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/types.go#DeferredHandle.ModelID"
+    ],
+    "rationale": "DeferredHandle: Go DeferredHandle has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "pollAfterMs": {
+    "targets": [
+     "ai/types.go#DeferredHandle.PollAfterMS"
+    ],
+    "evidence": [
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/types.go#DeferredHandle.PollAfterMS"
+    ],
+    "rationale": "DeferredHandle: Go DeferredHandle has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "provider": {
+    "targets": [
+     "ai/types.go#DeferredHandle.Provider"
+    ],
+    "evidence": [
+     "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/types.go#DeferredHandle.Provider"
+    ],
+    "rationale": "DeferredHandle: Go DeferredHandle has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#DiagnosticErrorInfo"
+  ],
+  "targets": [
+   "ai/types.go#DiagnosticErrorInfo"
+  ],
+  "production": [
+   "call:ai/messages.go#cloneDiagnostics"
+  ],
+  "evidence": [
+   "test:ai/pi_messages_test.go#TestPiMessagesSurfacesBackendErrorResponses"
+  ],
+  "rationale": "DiagnosticErrorInfo: Go DiagnosticErrorInfo has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#DiagnosticErrorInfo (identical shape and members).",
+  "properties": {
+   "code": {
+    "targets": [
+     "ai/types.go#DiagnosticErrorInfo.Code"
+    ],
+    "evidence": [
+     "test:ai/pi_messages_test.go#TestPiMessagesSurfacesBackendErrorResponses"
+    ],
+    "production": [
+     "call:ai/messages.go#cloneDiagnostics"
+    ],
+    "rationale": "DiagnosticErrorInfo: Go DiagnosticErrorInfo has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "message": {
+    "targets": [
+     "ai/types.go#DiagnosticErrorInfo.Message"
+    ],
+    "evidence": [
+     "test:ai/pi_messages_test.go#TestPiMessagesSurfacesBackendErrorResponses"
+    ],
+    "production": [
+     "call:ai/messages.go#cloneDiagnostics"
+    ],
+    "rationale": "DiagnosticErrorInfo: Go DiagnosticErrorInfo has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "name": {
+    "targets": [
+     "ai/types.go#DiagnosticErrorInfo.Name"
+    ],
+    "evidence": [
+     "test:ai/pi_messages_test.go#TestPiMessagesSurfacesBackendErrorResponses"
+    ],
+    "production": [
+     "call:ai/messages.go#cloneDiagnostics"
+    ],
+    "rationale": "DiagnosticErrorInfo: Go DiagnosticErrorInfo has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "stack": {
+    "targets": [
+     "ai/types.go#DiagnosticErrorInfo.Stack"
+    ],
+    "evidence": [
+     "test:ai/pi_messages_test.go#TestPiMessagesSurfacesBackendErrorResponses"
+    ],
+    "production": [
+     "call:ai/messages.go#cloneDiagnostics"
+    ],
+    "rationale": "DiagnosticErrorInfo: Go DiagnosticErrorInfo has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/utils/diagnostics#DiagnosticErrorInfo"
+  ],
+  "targets": [
+   "ai/types.go#DiagnosticErrorInfo"
+  ],
+  "production": [
+   "call:ai/messages.go#cloneDiagnostics"
+  ],
+  "evidence": [
+   "test:ai/pi_messages_test.go#TestPiMessagesSurfacesBackendErrorResponses"
+  ],
+  "rationale": "DiagnosticErrorInfo: Go DiagnosticErrorInfo has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#DiagnosticErrorInfo (identical shape and members).",
+  "properties": {
+   "code": {
+    "targets": [
+     "ai/types.go#DiagnosticErrorInfo.Code"
+    ],
+    "evidence": [
+     "test:ai/pi_messages_test.go#TestPiMessagesSurfacesBackendErrorResponses"
+    ],
+    "production": [
+     "call:ai/messages.go#cloneDiagnostics"
+    ],
+    "rationale": "DiagnosticErrorInfo: Go DiagnosticErrorInfo has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "message": {
+    "targets": [
+     "ai/types.go#DiagnosticErrorInfo.Message"
+    ],
+    "evidence": [
+     "test:ai/pi_messages_test.go#TestPiMessagesSurfacesBackendErrorResponses"
+    ],
+    "production": [
+     "call:ai/messages.go#cloneDiagnostics"
+    ],
+    "rationale": "DiagnosticErrorInfo: Go DiagnosticErrorInfo has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "name": {
+    "targets": [
+     "ai/types.go#DiagnosticErrorInfo.Name"
+    ],
+    "evidence": [
+     "test:ai/pi_messages_test.go#TestPiMessagesSurfacesBackendErrorResponses"
+    ],
+    "production": [
+     "call:ai/messages.go#cloneDiagnostics"
+    ],
+    "rationale": "DiagnosticErrorInfo: Go DiagnosticErrorInfo has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "stack": {
+    "targets": [
+     "ai/types.go#DiagnosticErrorInfo.Stack"
+    ],
+    "evidence": [
+     "test:ai/pi_messages_test.go#TestPiMessagesSurfacesBackendErrorResponses"
+    ],
+    "production": [
+     "call:ai/messages.go#cloneDiagnostics"
+    ],
+    "rationale": "DiagnosticErrorInfo: Go DiagnosticErrorInfo has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#ImagesContext"
+  ],
+  "targets": [
+   "ai/images.go#ImagesContext"
+  ],
+  "production": [
+   "call:ai/classifier_wire.go#ImagesContext.MarshalJSON"
+  ],
+  "evidence": [
+   "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream",
+   "test:ai/images_upstream_test.go#TestImagesUpstream"
+  ],
+  "rationale": "ImagesContext: Go ImagesContext has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#ImagesContext (identical shape and members).",
+  "properties": {
+   "input": {
+    "targets": [
+     "ai/images.go#ImagesContext.Input"
+    ],
+    "evidence": [
+     "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream",
+     "test:ai/images_upstream_test.go#TestImagesUpstream"
+    ],
+    "production": [
+     "public-api:ai/images.go#ImagesContext.Input"
+    ],
+    "rationale": "ImagesContext: Go ImagesContext has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#LoginOptions"
+  ],
+  "targets": [
+   "ai/auth_resolve.go#LoginOptions"
+  ],
+  "production": [
+   "call:ai/auth_native_login.go#oauthNativeLogin"
+  ],
+  "evidence": [
+   "test:ai/auth_storage_lock_failure_upstream_test.go#TestModelsGetAuthTranslatesCredentialStoreRefreshFailureUpstream",
+   "test:ai/openai_chatgpt_oauth_upstream_test.go#TestOpenAIChatGPTOAuthUpstream"
+  ],
+  "rationale": "LoginOptions: Go LoginOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#LoginOptions (identical shape and members).",
+  "properties": {
+   "getDeviceId": {
+    "targets": [
+     "ai/auth_resolve.go#LoginOptions.GetDeviceID"
+    ],
+    "evidence": [
+     "test:ai/auth_storage_lock_failure_upstream_test.go#TestModelsGetAuthTranslatesCredentialStoreRefreshFailureUpstream",
+     "test:ai/openai_chatgpt_oauth_upstream_test.go#TestOpenAIChatGPTOAuthUpstream"
+    ],
+    "production": [
+     "call:ai/auth_native_login.go#oauthNativeLogin"
+    ],
+    "rationale": "LoginOptions: Go LoginOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#ModelAuth"
+  ],
+  "targets": [
+   "ai/auth_resolve.go#ModelAuth"
+  ],
+  "production": [
+   "call:ai/auth_providers.go#EnvAPIKeyAuth"
+  ],
+  "evidence": [
+   "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream",
+   "test:ai/auth_storage_lock_failure_upstream_test.go#TestModelsGetAuthTranslatesCredentialStoreRefreshFailureUpstream"
+  ],
+  "rationale": "auth/types.ts ModelAuth {apiKey?, baseUrl?, headers?}: Go ModelAuth {APIKey, Headers, BaseURL}. Re-export of ai/.#ModelAuth (identical shape and members).",
+  "properties": {
+   "apiKey": {
+    "targets": [
+     "ai/auth_resolve.go#ModelAuth.APIKey"
+    ],
+    "evidence": [
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream",
+     "test:ai/auth_storage_lock_failure_upstream_test.go#TestModelsGetAuthTranslatesCredentialStoreRefreshFailureUpstream"
+    ],
+    "production": [
+     "call:ai/auth_providers.go#EnvAPIKeyAuth"
+    ],
+    "rationale": "auth/types.ts ModelAuth {apiKey?, baseUrl?, headers?}: Go ModelAuth {APIKey, Headers, BaseURL}."
+   },
+   "baseUrl": {
+    "targets": [
+     "ai/auth_resolve.go#ModelAuth.BaseURL"
+    ],
+    "evidence": [
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream",
+     "test:ai/auth_storage_lock_failure_upstream_test.go#TestModelsGetAuthTranslatesCredentialStoreRefreshFailureUpstream"
+    ],
+    "production": [
+     "call:ai/auth_providers.go#EnvAPIKeyAuth"
+    ],
+    "rationale": "auth/types.ts ModelAuth {apiKey?, baseUrl?, headers?}: Go ModelAuth {APIKey, Headers, BaseURL}."
+   },
+   "headers": {
+    "targets": [
+     "ai/auth_resolve.go#ModelAuth.Headers"
+    ],
+    "evidence": [
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream",
+     "test:ai/auth_storage_lock_failure_upstream_test.go#TestModelsGetAuthTranslatesCredentialStoreRefreshFailureUpstream"
+    ],
+    "production": [
+     "call:ai/auth_providers.go#EnvAPIKeyAuth"
+    ],
+    "rationale": "auth/types.ts ModelAuth {apiKey?, baseUrl?, headers?}: Go ModelAuth {APIKey, Headers, BaseURL}."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#ModelCost"
+  ],
+  "targets": [
+   "ai/types.go#ModelCost"
+  ],
+  "production": [
+   "call:ai/anthropic.go#anthropicProvider.Stream"
+  ],
+  "evidence": [
+   "test:ai/anthropic_sse_upstream_test.go#TestAnthropicUpstreamSSEParsing"
+  ],
+  "rationale": "types.ts ModelCost {input, output, cacheRead, cacheWrite, tiers?}: Go ModelCost with the same json keys; tiers is []CostTier. Re-export of ai/.#ModelCost (identical shape and members).",
+  "properties": {
+   "cacheRead": {
+    "targets": [
+     "ai/types.go#ModelCost.CacheRead"
+    ],
+    "evidence": [
+     "test:ai/anthropic_sse_upstream_test.go#TestAnthropicUpstreamSSEParsing"
+    ],
+    "production": [
+     "call:ai/anthropic.go#anthropicProvider.Stream"
+    ],
+    "rationale": "types.ts ModelCost {input, output, cacheRead, cacheWrite, tiers?}: Go ModelCost with the same json keys; tiers is []CostTier."
+   },
+   "cacheWrite": {
+    "targets": [
+     "ai/types.go#ModelCost.CacheWrite"
+    ],
+    "evidence": [
+     "test:ai/anthropic_sse_upstream_test.go#TestAnthropicUpstreamSSEParsing"
+    ],
+    "production": [
+     "call:ai/anthropic.go#anthropicProvider.Stream"
+    ],
+    "rationale": "types.ts ModelCost {input, output, cacheRead, cacheWrite, tiers?}: Go ModelCost with the same json keys; tiers is []CostTier."
+   },
+   "input": {
+    "targets": [
+     "ai/types.go#ModelCost.Input"
+    ],
+    "evidence": [
+     "test:ai/anthropic_sse_upstream_test.go#TestAnthropicUpstreamSSEParsing"
+    ],
+    "production": [
+     "call:ai/anthropic.go#anthropicProvider.Stream"
+    ],
+    "rationale": "types.ts ModelCost {input, output, cacheRead, cacheWrite, tiers?}: Go ModelCost with the same json keys; tiers is []CostTier."
+   },
+   "output": {
+    "targets": [
+     "ai/types.go#ModelCost.Output"
+    ],
+    "evidence": [
+     "test:ai/anthropic_sse_upstream_test.go#TestAnthropicUpstreamSSEParsing"
+    ],
+    "production": [
+     "call:ai/anthropic.go#anthropicProvider.Stream"
+    ],
+    "rationale": "types.ts ModelCost {input, output, cacheRead, cacheWrite, tiers?}: Go ModelCost with the same json keys; tiers is []CostTier."
+   },
+   "tiers": {
+    "targets": [
+     "ai/types.go#ModelCost.Tiers"
+    ],
+    "evidence": [
+     "test:ai/anthropic_sse_upstream_test.go#TestAnthropicUpstreamSSEParsing"
+    ],
+    "production": [
+     "call:ai/anthropic.go#anthropicProvider.Stream"
+    ],
+    "rationale": "types.ts ModelCost {input, output, cacheRead, cacheWrite, tiers?}: Go ModelCost with the same json keys; tiers is []CostTier."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#ModelImageInputLimits"
+  ],
+  "targets": [
+   "ai/types.go#ModelImageInputLimits"
+  ],
+  "production": [
+   "call:internal/codingagent/model_input_limits.go#mergeModelInputLimits"
+  ],
+  "evidence": [
+   "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream",
+   "test:coding/session_prompt_image_mock_upstream_test.go#TestUpstreamSessionPromptUsesBeforeAgentModelForMockedImageNormalization"
+  ],
+  "rationale": "ModelImageInputLimits: Go ModelImageInputLimits has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#ModelImageInputLimits (identical shape and members).",
+  "properties": {
+   "maxPerMessage": {
+    "targets": [
+     "ai/types.go#ModelImageInputLimits.MaxPerMessage"
+    ],
+    "evidence": [
+     "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream",
+     "test:coding/session_prompt_image_mock_upstream_test.go#TestUpstreamSessionPromptUsesBeforeAgentModelForMockedImageNormalization"
+    ],
+    "production": [
+     "call:internal/codingagent/model_input_limits.go#mergeModelInputLimits"
+    ],
+    "rationale": "ModelImageInputLimits: Go ModelImageInputLimits has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "maxPerRequest": {
+    "targets": [
+     "ai/types.go#ModelImageInputLimits.MaxPerRequest"
+    ],
+    "evidence": [
+     "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream",
+     "test:coding/session_prompt_image_mock_upstream_test.go#TestUpstreamSessionPromptUsesBeforeAgentModelForMockedImageNormalization"
+    ],
+    "production": [
+     "call:internal/codingagent/model_input_limits.go#mergeModelInputLimits"
+    ],
+    "rationale": "ModelImageInputLimits: Go ModelImageInputLimits has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "resize": {
+    "targets": [
+     "ai/types.go#ModelImageInputLimits.Resize"
+    ],
+    "evidence": [
+     "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream",
+     "test:coding/session_prompt_image_mock_upstream_test.go#TestUpstreamSessionPromptUsesBeforeAgentModelForMockedImageNormalization"
+    ],
+    "production": [
+     "call:internal/codingagent/model_input_limits.go#mergeModelInputLimits"
+    ],
+    "rationale": "ModelImageInputLimits: Go ModelImageInputLimits has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#ModelImageResizeOptions"
+  ],
+  "targets": [
+   "ai/types.go#ModelImageResizeOptions"
+  ],
+  "production": [
+   "call:coding/session_images.go#Session.prepareToolResult"
+  ],
+  "evidence": [
+   "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream",
+   "test:coding/session_prompt_image_mock_upstream_test.go#TestUpstreamSessionPromptUsesBeforeAgentModelForMockedImageNormalization"
+  ],
+  "rationale": "ModelImageResizeOptions: Go ModelImageResizeOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#ModelImageResizeOptions (identical shape and members).",
+  "properties": {
+   "jpegQuality": {
+    "targets": [
+     "ai/types.go#ModelImageResizeOptions.JPEGQuality"
+    ],
+    "evidence": [
+     "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream",
+     "test:coding/session_prompt_image_mock_upstream_test.go#TestUpstreamSessionPromptUsesBeforeAgentModelForMockedImageNormalization"
+    ],
+    "production": [
+     "call:coding/session_images.go#Session.prepareToolResult"
+    ],
+    "rationale": "ModelImageResizeOptions: Go ModelImageResizeOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "maxBytes": {
+    "targets": [
+     "ai/types.go#ModelImageResizeOptions.MaxBytes"
+    ],
+    "evidence": [
+     "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream",
+     "test:coding/session_prompt_image_mock_upstream_test.go#TestUpstreamSessionPromptUsesBeforeAgentModelForMockedImageNormalization"
+    ],
+    "production": [
+     "call:coding/session_images.go#Session.prepareToolResult"
+    ],
+    "rationale": "ModelImageResizeOptions: Go ModelImageResizeOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "maxHeight": {
+    "targets": [
+     "ai/types.go#ModelImageResizeOptions.MaxHeight"
+    ],
+    "evidence": [
+     "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream",
+     "test:coding/session_prompt_image_mock_upstream_test.go#TestUpstreamSessionPromptUsesBeforeAgentModelForMockedImageNormalization"
+    ],
+    "production": [
+     "call:coding/session_images.go#Session.prepareToolResult"
+    ],
+    "rationale": "ModelImageResizeOptions: Go ModelImageResizeOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "maxWidth": {
+    "targets": [
+     "ai/types.go#ModelImageResizeOptions.MaxWidth"
+    ],
+    "evidence": [
+     "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream",
+     "test:coding/session_prompt_image_mock_upstream_test.go#TestUpstreamSessionPromptUsesBeforeAgentModelForMockedImageNormalization"
+    ],
+    "production": [
+     "call:coding/session_images.go#Session.prepareToolResult"
+    ],
+    "rationale": "ModelImageResizeOptions: Go ModelImageResizeOptions has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#ModelInputLimits"
+  ],
+  "targets": [
+   "ai/types.go#ModelInputLimits"
+  ],
+  "production": [
+   "call:internal/codingagent/model_input_limits.go#mergeModelInputLimits"
+  ],
+  "evidence": [
+   "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream",
+   "test:coding/session_prompt_image_mock_upstream_test.go#TestUpstreamSessionPromptUsesBeforeAgentModelForMockedImageNormalization"
+  ],
+  "rationale": "ModelInputLimits: Go ModelInputLimits has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#ModelInputLimits (identical shape and members).",
+  "properties": {
+   "images": {
+    "targets": [
+     "ai/types.go#ModelInputLimits.Images"
+    ],
+    "evidence": [
+     "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream",
+     "test:coding/session_prompt_image_mock_upstream_test.go#TestUpstreamSessionPromptUsesBeforeAgentModelForMockedImageNormalization"
+    ],
+    "production": [
+     "call:internal/codingagent/model_input_limits.go#mergeModelInputLimits"
+    ],
+    "rationale": "ModelInputLimits: Go ModelInputLimits has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "maxRequestBytes": {
+    "targets": [
+     "ai/types.go#ModelInputLimits.MaxRequestBytes"
+    ],
+    "evidence": [
+     "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream",
+     "test:coding/session_prompt_image_mock_upstream_test.go#TestUpstreamSessionPromptUsesBeforeAgentModelForMockedImageNormalization"
+    ],
+    "production": [
+     "call:internal/codingagent/model_input_limits.go#mergeModelInputLimits"
+    ],
+    "rationale": "ModelInputLimits: Go ModelInputLimits has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ModelsApiStreamOptions"
+  ],
+  "targets": [
+   "ai/types.go#StreamOptions"
+  ],
+  "production": [
+   "call:ai/models_runtime_stream.go#Models.stream"
+  ],
+  "evidence": [
+   "test:ai/models_collection_upstream_test.go#TestModelsResolvedEnvironmentAndRequestKeyUpstream"
+  ],
+  "rationale": "ApiStreamOptions & ModelsRequestTransforms is the Go StreamOptions (one struct for every API; TransformHeaders is a field). Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface. Re-export of ai/models#ModelsApiStreamOptions (identical shape and members)."
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#ModelsApiStreamOptions"
+  ],
+  "targets": [
+   "ai/types.go#StreamOptions"
+  ],
+  "production": [
+   "call:ai/models_runtime_stream.go#Models.stream"
+  ],
+  "evidence": [
+   "test:ai/models_collection_upstream_test.go#TestModelsResolvedEnvironmentAndRequestKeyUpstream"
+  ],
+  "rationale": "ApiStreamOptions & ModelsRequestTransforms is the Go StreamOptions (one struct for every API; TransformHeaders is a field). Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface. Re-export of ai/models#ModelsApiStreamOptions (identical shape and members)."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ModelsClassifierOptions"
+  ],
+  "targets": [
+   "ai/classifier.go#ModelsClassifierOptions"
+  ],
+  "production": [
+   "call:coding/model_runtime_classify.go#ModelRuntime.Classify"
+  ],
+  "evidence": [
+   "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream"
+  ],
+  "rationale": "Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface. Re-export of ai/models#ModelsClassifierOptions (identical shape and members)."
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#ModelsClassifierOptions"
+  ],
+  "targets": [
+   "ai/classifier.go#ModelsClassifierOptions"
+  ],
+  "production": [
+   "call:coding/model_runtime_classify.go#ModelRuntime.Classify"
+  ],
+  "evidence": [
+   "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream"
+  ],
+  "rationale": "Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface. Re-export of ai/models#ModelsClassifierOptions (identical shape and members)."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ModelsDeferredCancelOptions"
+  ],
+  "targets": [
+   "ai/models_runtime.go#DeferredCancelOptions"
+  ],
+  "production": [
+   "call:ai/models_runtime_stream.go#Models.CancelDeferred"
+  ],
+  "evidence": [
+   "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream"
+  ],
+  "rationale": "DeferredCancelOptions is an alias of StreamOptions, which carries TransformHeaders. Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface. Re-export of ai/models#ModelsDeferredCancelOptions (identical shape and members)."
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#ModelsDeferredCancelOptions"
+  ],
+  "targets": [
+   "ai/models_runtime.go#DeferredCancelOptions"
+  ],
+  "production": [
+   "call:ai/models_runtime_stream.go#Models.CancelDeferred"
+  ],
+  "evidence": [
+   "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream"
+  ],
+  "rationale": "DeferredCancelOptions is an alias of StreamOptions, which carries TransformHeaders. Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface. Re-export of ai/models#ModelsDeferredCancelOptions (identical shape and members)."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ModelsDeferredFetchOptions"
+  ],
+  "targets": [
+   "ai/models_runtime.go#DeferredFetchOptions"
+  ],
+  "production": [
+   "call:ai/models_runtime_stream.go#Models.StreamDeferred"
+  ],
+  "evidence": [
+   "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+  ],
+  "rationale": "Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface. Re-export of ai/models#ModelsDeferredFetchOptions (identical shape and members)."
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#ModelsDeferredFetchOptions"
+  ],
+  "targets": [
+   "ai/models_runtime.go#DeferredFetchOptions"
+  ],
+  "production": [
+   "call:ai/models_runtime_stream.go#Models.StreamDeferred"
+  ],
+  "evidence": [
+   "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+  ],
+  "rationale": "Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface. Re-export of ai/models#ModelsDeferredFetchOptions (identical shape and members)."
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ModelsErrorCode"
+  ],
+  "targets": [
+   "ai/auth_resolve.go#ModelsErrorCode"
+  ],
+  "production": [
+   "call:ai/models_runtime_auth.go#Models.Login"
+  ],
+  "evidence": [
+   "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream",
+   "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream"
+  ],
+  "rationale": "The six upstream string literals are the six ModelsError* constants. Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface. Re-export of ai/models#ModelsErrorCode (identical shape and members)."
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#ModelsErrorCode"
+  ],
+  "targets": [
+   "ai/auth_resolve.go#ModelsErrorCode"
+  ],
+  "production": [
+   "call:ai/models_runtime_auth.go#Models.Login"
+  ],
+  "evidence": [
+   "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream",
+   "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream"
+  ],
+  "rationale": "The six upstream string literals are the six ModelsError* constants. Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface. Re-export of ai/models#ModelsErrorCode (identical shape and members)."
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#ModelsPublication"
+  ],
+  "targets": [
+   "ai/models_runtime.go#ModelsPublication"
+  ],
+  "production": [
+   "call:ai/models_runtime_refresh.go#Models.publishProviderModels"
+  ],
+  "evidence": [
+   "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+  ],
+  "rationale": "models.ts ModelsPublication {persist?, update?}: Go ModelsPublication; PersistSet distinguishes an absent persist from the explicit null. Re-export of ai/.#ModelsPublication (identical shape and members).",
+  "properties": {
+   "persist": {
+    "targets": [
+     "ai/models_runtime.go#ModelsPublication.Persist"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_runtime.go#ModelsPublication.Persist"
+    ],
+    "rationale": "models.ts ModelsPublication {persist?, update?}: Go ModelsPublication; PersistSet distinguishes an absent persist from the explicit null."
+   },
+   "update": {
+    "targets": [
+     "ai/models_runtime.go#ModelsPublication.Update"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_runtime.go#ModelsPublication.Update"
+    ],
+    "rationale": "models.ts ModelsPublication {persist?, update?}: Go ModelsPublication; PersistSet distinguishes an absent persist from the explicit null."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ModelsRefreshOptions"
+  ],
+  "targets": [
+   "ai/models_runtime.go#ModelsRefreshOptions"
+  ],
+  "production": [
+   "call:internal/codingagent/native_model_runtime.go#ModelRegistry.refreshNativeModels"
+  ],
+  "evidence": [
+   "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+  ],
+  "rationale": "Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface. Re-export of ai/models#ModelsRefreshOptions (identical shape and members).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; there is no detached goroutine.",
+  "properties": {
+   "allowNetwork": {
+    "targets": [
+     "ai/models_runtime.go#ModelsRefreshOptions.AllowNetwork"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+    ],
+    "production": [
+     "call:internal/codingagent/native_model_runtime.go#ModelRegistry.refreshNativeModels"
+    ],
+    "rationale": "Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface."
+   },
+   "force": {
+    "targets": [
+     "ai/models_runtime.go#ModelsRefreshOptions.Force"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+    ],
+    "production": [
+     "call:coding/cli/package_model_catalogs.go#refreshModelCatalogs"
+    ],
+    "rationale": "Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface."
+   },
+   "providers": {
+    "targets": [
+     "ai/models_runtime.go#ModelsRefreshOptions.Providers"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+    ],
+    "production": [
+     "call:internal/codingagent/native_credential_operations.go#ModelRegistry.synchronizeCredentialState"
+    ],
+    "rationale": "Pi refreshes the one provider whose credential changed with providers: [providerId] (model-runtime.ts:602); synchronizeCredentialState does the same. Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface."
+   },
+   "signal": {
+    "targets": [
+     "ai/models_runtime_refresh.go#Models.Refresh"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream",
+     "test:ai/models_runtime_lifetime_test.go#TestModelsCompletedRefreshSignalFollowsItsCaller"
+    ],
+    "production": [
+     "call:internal/codingagent/native_model_runtime.go#ModelRegistry.refreshNativeModels"
+    ],
+    "rationale": "AbortSignal is the context.Context first argument of Models.Refresh; it is not a field of ModelsRefreshOptions. Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#ModelsRefreshOptions"
+  ],
+  "targets": [
+   "ai/models_runtime.go#ModelsRefreshOptions"
+  ],
+  "production": [
+   "call:internal/codingagent/native_model_runtime.go#ModelRegistry.refreshNativeModels"
+  ],
+  "evidence": [
+   "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+  ],
+  "rationale": "Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface. Re-export of ai/models#ModelsRefreshOptions (identical shape and members).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; there is no detached goroutine.",
+  "properties": {
+   "allowNetwork": {
+    "targets": [
+     "ai/models_runtime.go#ModelsRefreshOptions.AllowNetwork"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+    ],
+    "production": [
+     "call:internal/codingagent/native_model_runtime.go#ModelRegistry.refreshNativeModels"
+    ],
+    "rationale": "Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface."
+   },
+   "force": {
+    "targets": [
+     "ai/models_runtime.go#ModelsRefreshOptions.Force"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+    ],
+    "production": [
+     "call:coding/cli/package_model_catalogs.go#refreshModelCatalogs"
+    ],
+    "rationale": "Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface."
+   },
+   "providers": {
+    "targets": [
+     "ai/models_runtime.go#ModelsRefreshOptions.Providers"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+    ],
+    "production": [
+     "call:internal/codingagent/native_credential_operations.go#ModelRegistry.synchronizeCredentialState"
+    ],
+    "rationale": "Pi refreshes the one provider whose credential changed with providers: [providerId] (model-runtime.ts:602); synchronizeCredentialState does the same. Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface."
+   },
+   "signal": {
+    "targets": [
+     "ai/models_runtime_refresh.go#Models.Refresh"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream",
+     "test:ai/models_runtime_lifetime_test.go#TestModelsCompletedRefreshSignalFollowsItsCaller"
+    ],
+    "production": [
+     "call:internal/codingagent/native_model_runtime.go#ModelRegistry.refreshNativeModels"
+    ],
+    "rationale": "AbortSignal is the context.Context first argument of Models.Refresh; it is not a field of ModelsRefreshOptions. Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#ModelsRefreshResult"
+  ],
+  "targets": [
+   "ai/models_runtime.go#ModelsRefreshResult"
+  ],
+  "production": [
+   "call:ai/models_runtime_refresh.go#Models.Refresh"
+  ],
+  "evidence": [
+   "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+  ],
+  "rationale": "models.ts ModelsRefreshResult {aborted, errors}: Go ModelsRefreshResult {Aborted, Errors map[string]error}; ErrorOrder records the ReadonlyMap's insertion order. Re-export of ai/.#ModelsRefreshResult (identical shape and members).",
+  "properties": {
+   "aborted": {
+    "targets": [
+     "ai/models_runtime.go#ModelsRefreshResult.Aborted"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+    ],
+    "production": [
+     "call:ai/models_runtime_refresh.go#Models.Refresh"
+    ],
+    "rationale": "models.ts ModelsRefreshResult {aborted, errors}: Go ModelsRefreshResult {Aborted, Errors map[string]error}; ErrorOrder records the ReadonlyMap's insertion order."
+   },
+   "errors": {
+    "targets": [
+     "ai/models_runtime.go#ModelsRefreshResult.Errors"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+    ],
+    "production": [
+     "call:ai/models_runtime_refresh.go#Models.Refresh"
+    ],
+    "rationale": "models.ts ModelsRefreshResult {aborted, errors}: Go ModelsRefreshResult {Aborted, Errors map[string]error}; ErrorOrder records the ReadonlyMap's insertion order."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ModelsRequestTransforms"
+  ],
+  "targets": [
+   "ai/types.go#StreamOptions.TransformHeaders",
+   "ai/models_runtime_typed.go#ModelsImagesOptions.TransformHeaders",
+   "ai/classifier.go#ModelsClassifierOptions.TransformHeaders"
+  ],
+  "production": [
+   "call:ai/models_runtime_stream.go#Models.applyAuth"
+  ],
+  "evidence": [
+   "test:ai/models_collection_upstream_test.go#TestModelsResolvedEnvironmentAndRequestKeyUpstream",
+   "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream"
+  ],
+  "rationale": "The upstream mixin is flattened into the Go option structs that carry TransformHeaders, because Go has no intersection types. Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface. Re-export of ai/models#ModelsRequestTransforms (identical shape and members).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; there is no detached goroutine.",
+  "properties": {
+   "transformHeaders": {
+    "targets": [
+     "ai/types.go#StreamOptions.TransformHeaders"
+    ],
+    "evidence": [
+     "test:ai/models_collection_upstream_test.go#TestModelsResolvedEnvironmentAndRequestKeyUpstream",
+     "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream"
+    ],
+    "production": [
+     "call:coding/services.go#ModelRuntime.prepareRequest"
+    ],
+    "rationale": "Go carries the field on StreamOptions, ModelsImagesOptions and ModelsClassifierOptions; Models.applyAuth runs it once after the configured, auth and request headers are merged and clears it before dispatch (models.ts:848-870). Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#ModelsRequestTransforms"
+  ],
+  "targets": [
+   "ai/types.go#StreamOptions.TransformHeaders",
+   "ai/models_runtime_typed.go#ModelsImagesOptions.TransformHeaders",
+   "ai/classifier.go#ModelsClassifierOptions.TransformHeaders"
+  ],
+  "production": [
+   "call:ai/models_runtime_stream.go#Models.applyAuth"
+  ],
+  "evidence": [
+   "test:ai/models_collection_upstream_test.go#TestModelsResolvedEnvironmentAndRequestKeyUpstream",
+   "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream"
+  ],
+  "rationale": "The upstream mixin is flattened into the Go option structs that carry TransformHeaders, because Go has no intersection types. Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface. Re-export of ai/models#ModelsRequestTransforms (identical shape and members).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; there is no detached goroutine.",
+  "properties": {
+   "transformHeaders": {
+    "targets": [
+     "ai/types.go#StreamOptions.TransformHeaders"
+    ],
+    "evidence": [
+     "test:ai/models_collection_upstream_test.go#TestModelsResolvedEnvironmentAndRequestKeyUpstream",
+     "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream"
+    ],
+    "production": [
+     "call:coding/services.go#ModelRuntime.prepareRequest"
+    ],
+    "rationale": "Go carries the field on StreamOptions, ModelsImagesOptions and ModelsClassifierOptions; Models.applyAuth runs it once after the configured, auth and request headers are merged and clears it before dispatch (models.ts:848-870). Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/.#ModelsSimpleStreamOptions"
+  ],
+  "targets": [
+   "ai/types.go#StreamOptions"
+  ],
+  "production": [
+   "call:ai/models_runtime_stream.go#Models.stream"
+  ],
+  "evidence": [
+   "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+  ],
+  "rationale": "SimpleStreamOptions & ModelsRequestTransforms is the Go StreamOptions. Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface. Re-export of ai/models#ModelsSimpleStreamOptions (identical shape and members)."
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#ModelsSimpleStreamOptions"
+  ],
+  "targets": [
+   "ai/types.go#StreamOptions"
+  ],
+  "production": [
+   "call:ai/models_runtime_stream.go#Models.stream"
+  ],
+  "evidence": [
+   "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream"
+  ],
+  "rationale": "SimpleStreamOptions & ModelsRequestTransforms is the Go StreamOptions. Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface. Re-export of ai/models#ModelsSimpleStreamOptions (identical shape and members)."
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#ModelsStoreEntry"
+  ],
+  "targets": [
+   "ai/models_store.go#ModelsStoreEntry"
+  ],
+  "production": [
+   "call:ai/models_catalog_codec.go#withKnownModelTypes"
+  ],
+  "evidence": [
+   "test:ai/auth_storage_lock_error_upstream_test.go#TestFileModelsStoreLockErrorIsProperLockfileErrorUpstream",
+   "test:ai/auth_storage_lock_error_upstream_test.go#TestFileModelsStoreLockWaitAbortedAfterCreatingTheStoreUpstream"
+  ],
+  "rationale": "ModelsStoreEntry: Go ModelsStoreEntry has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#ModelsStoreEntry (identical shape and members).",
+  "properties": {
+   "checkedAt": {
+    "targets": [
+     "ai/models_store.go#ModelsStoreEntry.CheckedAt"
+    ],
+    "evidence": [
+     "test:ai/auth_storage_lock_error_upstream_test.go#TestFileModelsStoreLockErrorIsProperLockfileErrorUpstream",
+     "test:ai/auth_storage_lock_error_upstream_test.go#TestFileModelsStoreLockWaitAbortedAfterCreatingTheStoreUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_store.go#ModelsStoreEntry.CheckedAt"
+    ],
+    "rationale": "ModelsStoreEntry: Go ModelsStoreEntry has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "etag": {
+    "targets": [
+     "ai/models_store.go#ModelsStoreEntry.ETag"
+    ],
+    "evidence": [
+     "test:ai/auth_storage_lock_error_upstream_test.go#TestFileModelsStoreLockErrorIsProperLockfileErrorUpstream",
+     "test:ai/auth_storage_lock_error_upstream_test.go#TestFileModelsStoreLockWaitAbortedAfterCreatingTheStoreUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_store.go#ModelsStoreEntry.ETag"
+    ],
+    "rationale": "ModelsStoreEntry: Go ModelsStoreEntry has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "lastModified": {
+    "targets": [
+     "ai/models_store.go#ModelsStoreEntry.LastModified"
+    ],
+    "evidence": [
+     "test:ai/auth_storage_lock_error_upstream_test.go#TestFileModelsStoreLockErrorIsProperLockfileErrorUpstream",
+     "test:ai/auth_storage_lock_error_upstream_test.go#TestFileModelsStoreLockWaitAbortedAfterCreatingTheStoreUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_store.go#ModelsStoreEntry.LastModified"
+    ],
+    "rationale": "ModelsStoreEntry: Go ModelsStoreEntry has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "models": {
+    "targets": [
+     "ai/models_store.go#ModelsStoreEntry.Models"
+    ],
+    "evidence": [
+     "test:ai/auth_storage_lock_error_upstream_test.go#TestFileModelsStoreLockErrorIsProperLockfileErrorUpstream",
+     "test:ai/auth_storage_lock_error_upstream_test.go#TestFileModelsStoreLockWaitAbortedAfterCreatingTheStoreUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_store.go#ModelsStoreEntry.Models"
+    ],
+    "rationale": "ModelsStoreEntry: Go ModelsStoreEntry has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#NestedToolCallRecord"
+  ],
+  "targets": [
+   "ai/messages.go#NestedToolCallRecord"
+  ],
+  "production": [
+   "call:ai/messages.go#NestedToolCallRecord.UnmarshalJSON"
+  ],
+  "evidence": [
+   "test:ai/nested_tool_call_argument_order_test.go#TestNestedToolCallRecordKeepsArgumentMemberOrderThroughJSONAndClone"
+  ],
+  "rationale": "types.ts NestedToolCallRecord {id, name, status, arguments?, argumentsBytes?, durationMs?, error?}: Go NestedToolCallRecord with the same json keys, pointers and empty values for absent. The unexported argumentOrder keeps upstream's argument member order. Re-export of ai/.#NestedToolCallRecord (identical shape and members).",
+  "properties": {
+   "arguments": {
+    "targets": [
+     "ai/messages.go#NestedToolCallRecord.Arguments"
+    ],
+    "evidence": [
+     "test:ai/nested_tool_call_argument_order_test.go#TestNestedToolCallRecordKeepsArgumentMemberOrderThroughJSONAndClone"
+    ],
+    "production": [
+     "call:ai/messages.go#NestedToolCallRecord.UnmarshalJSON"
+    ],
+    "rationale": "types.ts NestedToolCallRecord {id, name, status, arguments?, argumentsBytes?, durationMs?, error?}: Go NestedToolCallRecord with the same json keys, pointers and empty values for absent. The unexported argumentOrder keeps upstream's argument member order."
+   },
+   "argumentsBytes": {
+    "targets": [
+     "ai/messages.go#NestedToolCallRecord.ArgumentsBytes"
+    ],
+    "evidence": [
+     "test:ai/nested_tool_call_argument_order_test.go#TestNestedToolCallRecordKeepsArgumentMemberOrderThroughJSONAndClone"
+    ],
+    "production": [
+     "call:ai/messages.go#NestedToolCallRecord.UnmarshalJSON"
+    ],
+    "rationale": "types.ts NestedToolCallRecord {id, name, status, arguments?, argumentsBytes?, durationMs?, error?}: Go NestedToolCallRecord with the same json keys, pointers and empty values for absent. The unexported argumentOrder keeps upstream's argument member order."
+   },
+   "durationMs": {
+    "targets": [
+     "ai/messages.go#NestedToolCallRecord.DurationMs"
+    ],
+    "evidence": [
+     "test:ai/nested_tool_call_argument_order_test.go#TestNestedToolCallRecordKeepsArgumentMemberOrderThroughJSONAndClone"
+    ],
+    "production": [
+     "call:ai/messages.go#NestedToolCallRecord.UnmarshalJSON"
+    ],
+    "rationale": "types.ts NestedToolCallRecord {id, name, status, arguments?, argumentsBytes?, durationMs?, error?}: Go NestedToolCallRecord with the same json keys, pointers and empty values for absent. The unexported argumentOrder keeps upstream's argument member order."
+   },
+   "error": {
+    "targets": [
+     "ai/messages.go#NestedToolCallRecord.Error"
+    ],
+    "evidence": [
+     "test:ai/nested_tool_call_argument_order_test.go#TestNestedToolCallRecordKeepsArgumentMemberOrderThroughJSONAndClone"
+    ],
+    "production": [
+     "call:ai/messages.go#NestedToolCallRecord.UnmarshalJSON"
+    ],
+    "rationale": "types.ts NestedToolCallRecord {id, name, status, arguments?, argumentsBytes?, durationMs?, error?}: Go NestedToolCallRecord with the same json keys, pointers and empty values for absent. The unexported argumentOrder keeps upstream's argument member order."
+   },
+   "id": {
+    "targets": [
+     "ai/messages.go#NestedToolCallRecord.ID"
+    ],
+    "evidence": [
+     "test:ai/nested_tool_call_argument_order_test.go#TestNestedToolCallRecordKeepsArgumentMemberOrderThroughJSONAndClone"
+    ],
+    "production": [
+     "call:ai/messages.go#NestedToolCallRecord.UnmarshalJSON"
+    ],
+    "rationale": "types.ts NestedToolCallRecord {id, name, status, arguments?, argumentsBytes?, durationMs?, error?}: Go NestedToolCallRecord with the same json keys, pointers and empty values for absent. The unexported argumentOrder keeps upstream's argument member order."
+   },
+   "name": {
+    "targets": [
+     "ai/messages.go#NestedToolCallRecord.Name"
+    ],
+    "evidence": [
+     "test:ai/nested_tool_call_argument_order_test.go#TestNestedToolCallRecordKeepsArgumentMemberOrderThroughJSONAndClone"
+    ],
+    "production": [
+     "call:ai/messages.go#NestedToolCallRecord.UnmarshalJSON"
+    ],
+    "rationale": "types.ts NestedToolCallRecord {id, name, status, arguments?, argumentsBytes?, durationMs?, error?}: Go NestedToolCallRecord with the same json keys, pointers and empty values for absent. The unexported argumentOrder keeps upstream's argument member order."
+   },
+   "status": {
+    "targets": [
+     "ai/messages.go#NestedToolCallRecord.Status"
+    ],
+    "evidence": [
+     "test:ai/nested_tool_call_argument_order_test.go#TestNestedToolCallRecordKeepsArgumentMemberOrderThroughJSONAndClone"
+    ],
+    "production": [
+     "call:ai/messages.go#NestedToolCallRecord.UnmarshalJSON"
+    ],
+    "rationale": "types.ts NestedToolCallRecord {id, name, status, arguments?, argumentsBytes?, durationMs?, error?}: Go NestedToolCallRecord with the same json keys, pointers and empty values for absent. The unexported argumentOrder keeps upstream's argument member order."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#NestedToolCalls"
+  ],
+  "targets": [
+   "ai/messages.go#NestedToolCalls"
+  ],
+  "production": [
+   "call:ai/messages.go#NestedToolCallRecord.UnmarshalJSON"
+  ],
+  "evidence": [
+   "test:ai/nested_tool_call_argument_order_test.go#TestNestedToolCallRecordKeepsArgumentMemberOrderThroughJSONAndClone"
+  ],
+  "rationale": "types.ts NestedToolCalls {calls, complete}: Go NestedToolCalls {Calls []NestedToolCallRecord, Complete bool}. Re-export of ai/.#NestedToolCalls (identical shape and members).",
+  "properties": {
+   "calls": {
+    "targets": [
+     "ai/messages.go#NestedToolCalls.Calls"
+    ],
+    "evidence": [
+     "test:ai/nested_tool_call_argument_order_test.go#TestNestedToolCallRecordKeepsArgumentMemberOrderThroughJSONAndClone"
+    ],
+    "production": [
+     "call:ai/messages.go#NestedToolCallRecord.UnmarshalJSON"
+    ],
+    "rationale": "types.ts NestedToolCalls {calls, complete}: Go NestedToolCalls {Calls []NestedToolCallRecord, Complete bool}."
+   },
+   "complete": {
+    "targets": [
+     "ai/messages.go#NestedToolCalls.Complete"
+    ],
+    "evidence": [
+     "test:ai/nested_tool_call_argument_order_test.go#TestNestedToolCallRecordKeepsArgumentMemberOrderThroughJSONAndClone"
+    ],
+    "production": [
+     "call:ai/messages.go#NestedToolCallRecord.UnmarshalJSON"
+    ],
+    "rationale": "types.ts NestedToolCalls {calls, complete}: Go NestedToolCalls {Calls []NestedToolCallRecord, Complete bool}."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#OAuthAuth"
+  ],
+  "targets": [
+   "ai/auth_resolve.go#OAuthAuth"
+  ],
+  "production": [
+   "call:ai/auth_providers.go#RadiusProviderAuth"
+  ],
+  "evidence": [
+   "test:ai/auth_storage_lock_failure_upstream_test.go#TestModelsGetAuthTranslatesCredentialStoreRefreshFailureUpstream",
+   "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream"
+  ],
+  "rationale": "OAuthAuth: Go OAuthAuth has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#OAuthAuth (identical shape and members).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "properties": {
+   "isSubscription": {
+    "targets": [
+     "ai/auth_resolve.go#OAuthAuth.IsSubscription"
+    ],
+    "evidence": [
+     "test:ai/auth_storage_lock_failure_upstream_test.go#TestModelsGetAuthTranslatesCredentialStoreRefreshFailureUpstream",
+     "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream"
+    ],
+    "production": [
+     "call:ai/auth_providers.go#RadiusProviderAuth"
+    ],
+    "rationale": "OAuthAuth: Go OAuthAuth has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "login": {
+    "targets": [
+     "ai/auth_resolve.go#OAuthAuth.Login"
+    ],
+    "evidence": [
+     "test:ai/auth_storage_lock_failure_upstream_test.go#TestModelsGetAuthTranslatesCredentialStoreRefreshFailureUpstream",
+     "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream"
+    ],
+    "production": [
+     "call:ai/auth_providers.go#RadiusProviderAuth"
+    ],
+    "rationale": "OAuthAuth: Go OAuthAuth has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "loginLabel": {
+    "targets": [
+     "ai/auth_resolve.go#OAuthAuth.LoginLabel"
+    ],
+    "evidence": [
+     "test:ai/auth_storage_lock_failure_upstream_test.go#TestModelsGetAuthTranslatesCredentialStoreRefreshFailureUpstream",
+     "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream"
+    ],
+    "production": [
+     "call:ai/auth_providers.go#RadiusProviderAuth"
+    ],
+    "rationale": "OAuthAuth: Go OAuthAuth has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "name": {
+    "targets": [
+     "ai/auth_resolve.go#OAuthAuth.Name"
+    ],
+    "evidence": [
+     "test:ai/auth_storage_lock_failure_upstream_test.go#TestModelsGetAuthTranslatesCredentialStoreRefreshFailureUpstream",
+     "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream"
+    ],
+    "production": [
+     "call:ai/auth_providers.go#RadiusProviderAuth"
+    ],
+    "rationale": "OAuthAuth: Go OAuthAuth has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "refresh": {
+    "targets": [
+     "ai/auth_resolve.go#OAuthAuth.Refresh"
+    ],
+    "evidence": [
+     "test:ai/auth_storage_lock_failure_upstream_test.go#TestModelsGetAuthTranslatesCredentialStoreRefreshFailureUpstream",
+     "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream"
+    ],
+    "production": [
+     "call:ai/auth_providers.go#RadiusProviderAuth"
+    ],
+    "rationale": "OAuthAuth: Go OAuthAuth has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "toAuth": {
+    "targets": [
+     "ai/auth_resolve.go#OAuthAuth.ToAuth"
+    ],
+    "evidence": [
+     "test:ai/auth_storage_lock_failure_upstream_test.go#TestModelsGetAuthTranslatesCredentialStoreRefreshFailureUpstream",
+     "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream"
+    ],
+    "production": [
+     "call:ai/auth_providers.go#RadiusProviderAuth"
+    ],
+    "rationale": "OAuthAuth: Go OAuthAuth has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#OAuthAuthInfo"
+  ],
+  "targets": [
+   "ai/oauth_types.go#OAuthAuthInfo"
+  ],
+  "production": [
+   "call:ai/auth_native_login.go#oauthNativeLogin"
+  ],
+  "evidence": [
+   "test:ai/anthropic_oauth_upstream_test.go#TestAnthropicUpstreamOAuth"
+  ],
+  "rationale": "oauth/types.ts OAuthAuthInfo {url, instructions?}: Go OAuthAuthInfo with an empty Instructions for absent. Re-export of ai/.#OAuthAuthInfo (identical shape and members).",
+  "properties": {
+   "instructions": {
+    "targets": [
+     "ai/oauth_types.go#OAuthAuthInfo.Instructions"
+    ],
+    "evidence": [
+     "test:ai/anthropic_oauth_upstream_test.go#TestAnthropicUpstreamOAuth"
+    ],
+    "production": [
+     "call:ai/auth_native_login.go#oauthNativeLogin"
+    ],
+    "rationale": "oauth/types.ts OAuthAuthInfo {url, instructions?}: Go OAuthAuthInfo with an empty Instructions for absent."
+   },
+   "url": {
+    "targets": [
+     "ai/oauth_types.go#OAuthAuthInfo.URL"
+    ],
+    "evidence": [
+     "test:ai/anthropic_oauth_upstream_test.go#TestAnthropicUpstreamOAuth"
+    ],
+    "production": [
+     "call:ai/auth_native_login.go#oauthNativeLogin"
+    ],
+    "rationale": "oauth/types.ts OAuthAuthInfo {url, instructions?}: Go OAuthAuthInfo with an empty Instructions for absent."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/oauth#OAuthAuthInfo"
+  ],
+  "targets": [
+   "ai/oauth_types.go#OAuthAuthInfo"
+  ],
+  "production": [
+   "call:ai/auth_native_login.go#oauthNativeLogin"
+  ],
+  "evidence": [
+   "test:ai/anthropic_oauth_upstream_test.go#TestAnthropicUpstreamOAuth"
+  ],
+  "rationale": "oauth/types.ts OAuthAuthInfo {url, instructions?}: Go OAuthAuthInfo with an empty Instructions for absent. Re-export of ai/.#OAuthAuthInfo (identical shape and members).",
+  "properties": {
+   "instructions": {
+    "targets": [
+     "ai/oauth_types.go#OAuthAuthInfo.Instructions"
+    ],
+    "evidence": [
+     "test:ai/anthropic_oauth_upstream_test.go#TestAnthropicUpstreamOAuth"
+    ],
+    "production": [
+     "call:ai/auth_native_login.go#oauthNativeLogin"
+    ],
+    "rationale": "oauth/types.ts OAuthAuthInfo {url, instructions?}: Go OAuthAuthInfo with an empty Instructions for absent."
+   },
+   "url": {
+    "targets": [
+     "ai/oauth_types.go#OAuthAuthInfo.URL"
+    ],
+    "evidence": [
+     "test:ai/anthropic_oauth_upstream_test.go#TestAnthropicUpstreamOAuth"
+    ],
+    "production": [
+     "call:ai/auth_native_login.go#oauthNativeLogin"
+    ],
+    "rationale": "oauth/types.ts OAuthAuthInfo {url, instructions?}: Go OAuthAuthInfo with an empty Instructions for absent."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#OAuthCredentials"
+  ],
+  "targets": [
+   "ai/oauth_types.go#OAuthCredentials"
+  ],
+  "production": [
+   "call:ai/auth_native_login.go#oauthNativeLogin"
+  ],
+  "evidence": [
+   "test:ai/anthropic_oauth_upstream_test.go#TestAnthropicUpstreamOAuth",
+   "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+  ],
+  "rationale": "oauth/types.ts OAuthCredentials {access, refresh, expires} plus provider-specific members: Go OAuthCredentials has the three fields and keeps provider members in Extra, ProjectID, AccountID and Scope. Re-export of ai/.#OAuthCredentials (identical shape and members).",
+  "properties": {
+   "access": {
+    "targets": [
+     "ai/oauth_types.go#OAuthCredentials.Access"
+    ],
+    "evidence": [
+     "test:ai/anthropic_oauth_upstream_test.go#TestAnthropicUpstreamOAuth",
+     "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+    ],
+    "production": [
+     "call:ai/auth_native_login.go#oauthNativeLogin"
+    ],
+    "rationale": "oauth/types.ts OAuthCredentials {access, refresh, expires} plus provider-specific members: Go OAuthCredentials has the three fields and keeps provider members in Extra, ProjectID, AccountID and Scope."
+   },
+   "expires": {
+    "targets": [
+     "ai/oauth_types.go#OAuthCredentials.Expires"
+    ],
+    "evidence": [
+     "test:ai/anthropic_oauth_upstream_test.go#TestAnthropicUpstreamOAuth",
+     "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+    ],
+    "production": [
+     "call:ai/auth_native_login.go#oauthNativeLogin"
+    ],
+    "rationale": "oauth/types.ts OAuthCredentials {access, refresh, expires} plus provider-specific members: Go OAuthCredentials has the three fields and keeps provider members in Extra, ProjectID, AccountID and Scope."
+   },
+   "refresh": {
+    "targets": [
+     "ai/oauth_types.go#OAuthCredentials.Refresh"
+    ],
+    "evidence": [
+     "test:ai/anthropic_oauth_upstream_test.go#TestAnthropicUpstreamOAuth",
+     "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+    ],
+    "production": [
+     "call:ai/auth_native_login.go#oauthNativeLogin"
+    ],
+    "rationale": "oauth/types.ts OAuthCredentials {access, refresh, expires} plus provider-specific members: Go OAuthCredentials has the three fields and keeps provider members in Extra, ProjectID, AccountID and Scope."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#OAuthDeviceCodeInfo"
+  ],
+  "targets": [
+   "ai/oauth_types.go#OAuthDeviceCodeInfo"
+  ],
+  "production": [
+   "call:ai/auth_native_login.go#oauthNativeLogin"
+  ],
+  "evidence": [
+   "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotContinuesPolicyUpdatesAfterTransportFailureUpstream",
+   "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotPollTimingUpstream"
+  ],
+  "rationale": "OAuthDeviceCodeInfo: Go OAuthDeviceCodeInfo has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#OAuthDeviceCodeInfo (identical shape and members).",
+  "properties": {
+   "expiresInSeconds": {
+    "targets": [
+     "ai/oauth_types.go#OAuthDeviceCodeInfo.ExpiresInSeconds"
+    ],
+    "evidence": [
+     "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotContinuesPolicyUpdatesAfterTransportFailureUpstream",
+     "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotPollTimingUpstream"
+    ],
+    "production": [
+     "call:ai/auth_native_login.go#oauthNativeLogin"
+    ],
+    "rationale": "OAuthDeviceCodeInfo: Go OAuthDeviceCodeInfo has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "intervalSeconds": {
+    "targets": [
+     "ai/oauth_types.go#OAuthDeviceCodeInfo.IntervalSeconds"
+    ],
+    "evidence": [
+     "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotContinuesPolicyUpdatesAfterTransportFailureUpstream",
+     "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotPollTimingUpstream"
+    ],
+    "production": [
+     "call:ai/auth_native_login.go#oauthNativeLogin"
+    ],
+    "rationale": "OAuthDeviceCodeInfo: Go OAuthDeviceCodeInfo has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "userCode": {
+    "targets": [
+     "ai/oauth_types.go#OAuthDeviceCodeInfo.UserCode"
+    ],
+    "evidence": [
+     "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotContinuesPolicyUpdatesAfterTransportFailureUpstream",
+     "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotPollTimingUpstream"
+    ],
+    "production": [
+     "call:ai/auth_native_login.go#oauthNativeLogin"
+    ],
+    "rationale": "OAuthDeviceCodeInfo: Go OAuthDeviceCodeInfo has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "verificationUri": {
+    "targets": [
+     "ai/oauth_types.go#OAuthDeviceCodeInfo.VerificationURI"
+    ],
+    "evidence": [
+     "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotContinuesPolicyUpdatesAfterTransportFailureUpstream",
+     "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotPollTimingUpstream"
+    ],
+    "production": [
+     "call:ai/auth_native_login.go#oauthNativeLogin"
+    ],
+    "rationale": "OAuthDeviceCodeInfo: Go OAuthDeviceCodeInfo has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/oauth#OAuthDeviceCodeInfo"
+  ],
+  "targets": [
+   "ai/oauth_types.go#OAuthDeviceCodeInfo"
+  ],
+  "production": [
+   "call:ai/auth_native_login.go#oauthNativeLogin"
+  ],
+  "evidence": [
+   "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotContinuesPolicyUpdatesAfterTransportFailureUpstream",
+   "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotPollTimingUpstream"
+  ],
+  "rationale": "OAuthDeviceCodeInfo: Go OAuthDeviceCodeInfo has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#OAuthDeviceCodeInfo (identical shape and members).",
+  "properties": {
+   "expiresInSeconds": {
+    "targets": [
+     "ai/oauth_types.go#OAuthDeviceCodeInfo.ExpiresInSeconds"
+    ],
+    "evidence": [
+     "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotContinuesPolicyUpdatesAfterTransportFailureUpstream",
+     "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotPollTimingUpstream"
+    ],
+    "production": [
+     "call:ai/auth_native_login.go#oauthNativeLogin"
+    ],
+    "rationale": "OAuthDeviceCodeInfo: Go OAuthDeviceCodeInfo has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "intervalSeconds": {
+    "targets": [
+     "ai/oauth_types.go#OAuthDeviceCodeInfo.IntervalSeconds"
+    ],
+    "evidence": [
+     "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotContinuesPolicyUpdatesAfterTransportFailureUpstream",
+     "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotPollTimingUpstream"
+    ],
+    "production": [
+     "call:ai/auth_native_login.go#oauthNativeLogin"
+    ],
+    "rationale": "OAuthDeviceCodeInfo: Go OAuthDeviceCodeInfo has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "userCode": {
+    "targets": [
+     "ai/oauth_types.go#OAuthDeviceCodeInfo.UserCode"
+    ],
+    "evidence": [
+     "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotContinuesPolicyUpdatesAfterTransportFailureUpstream",
+     "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotPollTimingUpstream"
+    ],
+    "production": [
+     "call:ai/auth_native_login.go#oauthNativeLogin"
+    ],
+    "rationale": "OAuthDeviceCodeInfo: Go OAuthDeviceCodeInfo has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "verificationUri": {
+    "targets": [
+     "ai/oauth_types.go#OAuthDeviceCodeInfo.VerificationURI"
+    ],
+    "evidence": [
+     "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotContinuesPolicyUpdatesAfterTransportFailureUpstream",
+     "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotPollTimingUpstream"
+    ],
+    "production": [
+     "call:ai/auth_native_login.go#oauthNativeLogin"
+    ],
+    "rationale": "OAuthDeviceCodeInfo: Go OAuthDeviceCodeInfo has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#OAuthPrompt"
+  ],
+  "targets": [
+   "ai/oauth_types.go#OAuthPrompt"
+  ],
+  "production": [
+   "call:ai/auth_native_login.go#oauthNativeLogin"
+  ],
+  "evidence": [
+   "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+  ],
+  "rationale": "oauth/types.ts OAuthPrompt {message, placeholder?, allowEmpty?}: Go OAuthPrompt with an empty Placeholder and false AllowEmpty for absent. Re-export of ai/.#OAuthPrompt (identical shape and members).",
+  "properties": {
+   "allowEmpty": {
+    "targets": [
+     "ai/oauth_types.go#OAuthPrompt.AllowEmpty"
+    ],
+    "evidence": [
+     "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+    ],
+    "production": [
+     "call:ai/auth_native_login.go#oauthNativeLogin"
+    ],
+    "rationale": "oauth/types.ts OAuthPrompt {message, placeholder?, allowEmpty?}: Go OAuthPrompt with an empty Placeholder and false AllowEmpty for absent."
+   },
+   "message": {
+    "targets": [
+     "ai/oauth_types.go#OAuthPrompt.Message"
+    ],
+    "evidence": [
+     "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+    ],
+    "production": [
+     "call:ai/auth_native_login.go#oauthNativeLogin"
+    ],
+    "rationale": "oauth/types.ts OAuthPrompt {message, placeholder?, allowEmpty?}: Go OAuthPrompt with an empty Placeholder and false AllowEmpty for absent."
+   },
+   "placeholder": {
+    "targets": [
+     "ai/oauth_types.go#OAuthPrompt.Placeholder"
+    ],
+    "evidence": [
+     "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+    ],
+    "production": [
+     "call:ai/auth_native_login.go#oauthNativeLogin"
+    ],
+    "rationale": "oauth/types.ts OAuthPrompt {message, placeholder?, allowEmpty?}: Go OAuthPrompt with an empty Placeholder and false AllowEmpty for absent."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/oauth#OAuthPrompt"
+  ],
+  "targets": [
+   "ai/oauth_types.go#OAuthPrompt"
+  ],
+  "production": [
+   "call:ai/auth_native_login.go#oauthNativeLogin"
+  ],
+  "evidence": [
+   "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+  ],
+  "rationale": "oauth/types.ts OAuthPrompt {message, placeholder?, allowEmpty?}: Go OAuthPrompt with an empty Placeholder and false AllowEmpty for absent. Re-export of ai/.#OAuthPrompt (identical shape and members).",
+  "properties": {
+   "allowEmpty": {
+    "targets": [
+     "ai/oauth_types.go#OAuthPrompt.AllowEmpty"
+    ],
+    "evidence": [
+     "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+    ],
+    "production": [
+     "call:ai/auth_native_login.go#oauthNativeLogin"
+    ],
+    "rationale": "oauth/types.ts OAuthPrompt {message, placeholder?, allowEmpty?}: Go OAuthPrompt with an empty Placeholder and false AllowEmpty for absent."
+   },
+   "message": {
+    "targets": [
+     "ai/oauth_types.go#OAuthPrompt.Message"
+    ],
+    "evidence": [
+     "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+    ],
+    "production": [
+     "call:ai/auth_native_login.go#oauthNativeLogin"
+    ],
+    "rationale": "oauth/types.ts OAuthPrompt {message, placeholder?, allowEmpty?}: Go OAuthPrompt with an empty Placeholder and false AllowEmpty for absent."
+   },
+   "placeholder": {
+    "targets": [
+     "ai/oauth_types.go#OAuthPrompt.Placeholder"
+    ],
+    "evidence": [
+     "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+    ],
+    "production": [
+     "call:ai/auth_native_login.go#oauthNativeLogin"
+    ],
+    "rationale": "oauth/types.ts OAuthPrompt {message, placeholder?, allowEmpty?}: Go OAuthPrompt with an empty Placeholder and false AllowEmpty for absent."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#OAuthSelectOption"
+  ],
+  "targets": [
+   "ai/oauth_types.go#OAuthSelectOption"
+  ],
+  "production": [
+   "call:ai/oauth_openai_codex.go#CodexOAuthProvider.LoginContext"
+  ],
+  "evidence": [
+   "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+  ],
+  "rationale": "oauth/types.ts OAuthSelectOption {id, label}: Go OAuthSelectOption {ID, Label string}. Re-export of ai/.#OAuthSelectOption (identical shape and members).",
+  "properties": {
+   "id": {
+    "targets": [
+     "ai/oauth_types.go#OAuthSelectOption.ID"
+    ],
+    "evidence": [
+     "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+    ],
+    "production": [
+     "call:ai/oauth_openai_codex.go#CodexOAuthProvider.LoginContext"
+    ],
+    "rationale": "oauth/types.ts OAuthSelectOption {id, label}: Go OAuthSelectOption {ID, Label string}."
+   },
+   "label": {
+    "targets": [
+     "ai/oauth_types.go#OAuthSelectOption.Label"
+    ],
+    "evidence": [
+     "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+    ],
+    "production": [
+     "call:ai/oauth_openai_codex.go#CodexOAuthProvider.LoginContext"
+    ],
+    "rationale": "oauth/types.ts OAuthSelectOption {id, label}: Go OAuthSelectOption {ID, Label string}."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/oauth#OAuthSelectOption"
+  ],
+  "targets": [
+   "ai/oauth_types.go#OAuthSelectOption"
+  ],
+  "production": [
+   "call:ai/oauth_openai_codex.go#CodexOAuthProvider.LoginContext"
+  ],
+  "evidence": [
+   "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+  ],
+  "rationale": "oauth/types.ts OAuthSelectOption {id, label}: Go OAuthSelectOption {ID, Label string}. Re-export of ai/.#OAuthSelectOption (identical shape and members).",
+  "properties": {
+   "id": {
+    "targets": [
+     "ai/oauth_types.go#OAuthSelectOption.ID"
+    ],
+    "evidence": [
+     "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+    ],
+    "production": [
+     "call:ai/oauth_openai_codex.go#CodexOAuthProvider.LoginContext"
+    ],
+    "rationale": "oauth/types.ts OAuthSelectOption {id, label}: Go OAuthSelectOption {ID, Label string}."
+   },
+   "label": {
+    "targets": [
+     "ai/oauth_types.go#OAuthSelectOption.Label"
+    ],
+    "evidence": [
+     "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+    ],
+    "production": [
+     "call:ai/oauth_openai_codex.go#CodexOAuthProvider.LoginContext"
+    ],
+    "rationale": "oauth/types.ts OAuthSelectOption {id, label}: Go OAuthSelectOption {ID, Label string}."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#OAuthSelectPrompt"
+  ],
+  "targets": [
+   "ai/oauth_types.go#OAuthSelectPrompt"
+  ],
+  "production": [
+   "call:ai/auth_native_login.go#oauthNativeLogin"
+  ],
+  "evidence": [
+   "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+  ],
+  "rationale": "oauth/types.ts OAuthSelectPrompt {message, options}: Go OAuthSelectPrompt. Re-export of ai/.#OAuthSelectPrompt (identical shape and members).",
+  "properties": {
+   "message": {
+    "targets": [
+     "ai/oauth_types.go#OAuthSelectPrompt.Message"
+    ],
+    "evidence": [
+     "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+    ],
+    "production": [
+     "call:ai/auth_native_login.go#oauthNativeLogin"
+    ],
+    "rationale": "oauth/types.ts OAuthSelectPrompt {message, options}: Go OAuthSelectPrompt."
+   },
+   "options": {
+    "targets": [
+     "ai/oauth_types.go#OAuthSelectPrompt.Options"
+    ],
+    "evidence": [
+     "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+    ],
+    "production": [
+     "call:ai/auth_native_login.go#oauthNativeLogin"
+    ],
+    "rationale": "oauth/types.ts OAuthSelectPrompt {message, options}: Go OAuthSelectPrompt."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/oauth#OAuthSelectPrompt"
+  ],
+  "targets": [
+   "ai/oauth_types.go#OAuthSelectPrompt"
+  ],
+  "production": [
+   "call:ai/auth_native_login.go#oauthNativeLogin"
+  ],
+  "evidence": [
+   "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+  ],
+  "rationale": "oauth/types.ts OAuthSelectPrompt {message, options}: Go OAuthSelectPrompt. Re-export of ai/.#OAuthSelectPrompt (identical shape and members).",
+  "properties": {
+   "message": {
+    "targets": [
+     "ai/oauth_types.go#OAuthSelectPrompt.Message"
+    ],
+    "evidence": [
+     "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+    ],
+    "production": [
+     "call:ai/auth_native_login.go#oauthNativeLogin"
+    ],
+    "rationale": "oauth/types.ts OAuthSelectPrompt {message, options}: Go OAuthSelectPrompt."
+   },
+   "options": {
+    "targets": [
+     "ai/oauth_types.go#OAuthSelectPrompt.Options"
+    ],
+    "evidence": [
+     "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream"
+    ],
+    "production": [
+     "call:ai/auth_native_login.go#oauthNativeLogin"
+    ],
+    "rationale": "oauth/types.ts OAuthSelectPrompt {message, options}: Go OAuthSelectPrompt."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#ProviderAuth"
+  ],
+  "targets": [
+   "ai/auth_resolve.go#ProviderAuth"
+  ],
+  "production": [
+   "call:ai/api_key_providers.go#APIKeyProviders"
+  ],
+  "evidence": [
+   "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+   "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+  ],
+  "rationale": "auth/types.ts ProviderAuth {apiKey?, oauth?}: Go ProviderAuth with *APIKeyAuth and *OAuthAuth, nil for absent. Re-export of ai/.#ProviderAuth (identical shape and members).",
+  "properties": {
+   "apiKey": {
+    "targets": [
+     "ai/auth_resolve.go#ProviderAuth.APIKey"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/auth_resolve.go#ProviderAuth.APIKey"
+    ],
+    "rationale": "auth/types.ts ProviderAuth {apiKey?, oauth?}: Go ProviderAuth with *APIKeyAuth and *OAuthAuth, nil for absent."
+   },
+   "oauth": {
+    "targets": [
+     "ai/auth_resolve.go#ProviderAuth.OAuth"
+    ],
+    "evidence": [
+     "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
+     "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
+    ],
+    "production": [
+     "public-api:ai/auth_resolve.go#ProviderAuth.OAuth"
+    ],
+    "rationale": "auth/types.ts ProviderAuth {apiKey?, oauth?}: Go ProviderAuth with *APIKeyAuth and *OAuthAuth, nil for absent."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#ProviderClassifier"
+  ],
+  "targets": [
+   "ai/classifier.go#ProviderClassifier"
+  ],
+  "production": [
+   "call:ai/system_one.go#CloudflareClassifier"
+  ],
+  "evidence": [
+   "test:coding/extension_model_types_wire_test.go#TestExtensionProviderConfigKeepsTypedModelsAndImplementations"
+  ],
+  "rationale": "ProviderClassifier: Go ProviderClassifier has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#ProviderClassifier (identical shape and members).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "properties": {
+   "classify": {
+    "targets": [
+     "ai/classifier.go#ProviderClassifier.Classify"
+    ],
+    "evidence": [
+     "test:coding/extension_model_types_wire_test.go#TestExtensionProviderConfigKeepsTypedModelsAndImplementations"
+    ],
+    "production": [
+     "call:ai/system_one.go#CloudflareClassifier"
+    ],
+    "rationale": "ProviderClassifier: Go ProviderClassifier has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#ProviderImages"
+  ],
+  "targets": [
+   "ai/models_provider.go#ProviderImages"
+  ],
+  "production": [
+   "call:coding/extension/host/subprocess/provider_operations.go#Host.attachProviderOperations"
+  ],
+  "evidence": [
+   "test:coding/extension_model_types_wire_test.go#TestExtensionProviderConfigKeepsTypedModelsAndImplementations"
+  ],
+  "rationale": "ProviderImages: Go ProviderImages has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#ProviderImages (identical shape and members).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "properties": {
+   "generateImages": {
+    "targets": [
+     "ai/models_provider.go#ProviderImages.GenerateImages"
+    ],
+    "evidence": [
+     "test:coding/extension_model_types_wire_test.go#TestExtensionProviderConfigKeepsTypedModelsAndImplementations"
+    ],
+    "production": [
+     "call:coding/extension/host/subprocess/provider_operations.go#Host.attachProviderOperations"
+    ],
+    "rationale": "ProviderImages: Go ProviderImages has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#ProviderResponse"
+  ],
+  "targets": [
+   "ai/types.go#ProviderResponse"
+  ],
+  "production": [
+   "call:ai/llama_cpp_classify.go#llamaRequestContext.post"
+  ],
+  "evidence": [
+   "test:ai/mistral_http_transport_upstream_test.go#TestMistralHTTPTransportUpstream"
+  ],
+  "rationale": "types.ts ProviderResponse {status, headers}: Go ProviderResponse {Status int, Headers map[string]string}. Re-export of ai/.#ProviderResponse (identical shape and members).",
+  "properties": {
+   "headers": {
+    "targets": [
+     "ai/types.go#ProviderResponse.Headers"
+    ],
+    "evidence": [
+     "test:ai/mistral_http_transport_upstream_test.go#TestMistralHTTPTransportUpstream"
+    ],
+    "production": [
+     "public-api:ai/types.go#ProviderResponse.Headers"
+    ],
+    "rationale": "types.ts ProviderResponse {status, headers}: Go ProviderResponse {Status int, Headers map[string]string}."
+   },
+   "status": {
+    "targets": [
+     "ai/types.go#ProviderResponse.Status"
+    ],
+    "evidence": [
+     "test:ai/mistral_http_transport_upstream_test.go#TestMistralHTTPTransportUpstream"
+    ],
+    "production": [
+     "public-api:ai/types.go#ProviderResponse.Status"
+    ],
+    "rationale": "types.ts ProviderResponse {status, headers}: Go ProviderResponse {Status int, Headers map[string]string}."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#RefreshModelsContext"
+  ],
+  "targets": [
+   "ai/models_runtime.go#RefreshModelsContext"
+  ],
+  "production": [
+   "call:ai/models_runtime_refresh.go#Models.runProviderRefreshPhase"
+  ],
+  "evidence": [
+   "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+   "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+  ],
+  "rationale": "RefreshModelsContext: Go RefreshModelsContext has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#RefreshModelsContext (identical shape and members).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "properties": {
+   "allowNetwork": {
+    "targets": [
+     "ai/models_runtime.go#RefreshModelsContext.AllowNetwork"
+    ],
+    "evidence": [
+     "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+     "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_runtime.go#RefreshModelsContext.AllowNetwork"
+    ],
+    "rationale": "RefreshModelsContext: Go RefreshModelsContext has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "credential": {
+    "targets": [
+     "ai/models_runtime.go#RefreshModelsContext.Credential"
+    ],
+    "evidence": [
+     "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+     "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_runtime.go#RefreshModelsContext.Credential"
+    ],
+    "rationale": "RefreshModelsContext: Go RefreshModelsContext has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "force": {
+    "targets": [
+     "ai/models_runtime.go#RefreshModelsContext.Force"
+    ],
+    "evidence": [
+     "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+     "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_runtime.go#RefreshModelsContext.Force"
+    ],
+    "rationale": "RefreshModelsContext: Go RefreshModelsContext has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "publish": {
+    "targets": [
+     "ai/models_runtime.go#RefreshModelsContext.Publish"
+    ],
+    "evidence": [
+     "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+     "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_runtime.go#RefreshModelsContext.Publish"
+    ],
+    "rationale": "RefreshModelsContext: Go RefreshModelsContext has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "signal": {
+    "targets": [
+     "ai/models_runtime.go#RefreshModelsContext.Signal"
+    ],
+    "evidence": [
+     "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+     "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_runtime.go#RefreshModelsContext.Signal"
+    ],
+    "rationale": "RefreshModelsContext: Go RefreshModelsContext has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "stored": {
+    "targets": [
+     "ai/models_runtime.go#RefreshModelsContext.Stored"
+    ],
+    "evidence": [
+     "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+     "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+    ],
+    "production": [
+     "public-api:ai/models_runtime.go#RefreshModelsContext.Stored"
+    ],
+    "rationale": "RefreshModelsContext: Go RefreshModelsContext has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#RetryCallbacks"
+  ],
+  "targets": [
+   "ai/assistant_retry.go#RetryCallbacks"
+  ],
+  "production": [
+   "public-api:ai/assistant_retry.go#RetryCallbacks"
+  ],
+  "evidence": [
+   "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
+   "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+  ],
+  "rationale": "RetryCallbacks: Go RetryCallbacks has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#RetryCallbacks (identical shape and members).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "properties": {
+   "onRetryAttemptStart": {
+    "targets": [
+     "ai/assistant_retry.go#RetryCallbacks.OnRetryAttemptStart"
+    ],
+    "evidence": [
+     "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
+     "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+    ],
+    "production": [
+     "public-api:ai/assistant_retry.go#RetryCallbacks.OnRetryAttemptStart"
+    ],
+    "rationale": "RetryCallbacks: Go RetryCallbacks has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "onRetryFinished": {
+    "targets": [
+     "ai/assistant_retry.go#RetryCallbacks.OnRetryFinished"
+    ],
+    "evidence": [
+     "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
+     "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+    ],
+    "production": [
+     "public-api:ai/assistant_retry.go#RetryCallbacks.OnRetryFinished"
+    ],
+    "rationale": "RetryCallbacks: Go RetryCallbacks has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "onRetryScheduled": {
+    "targets": [
+     "ai/assistant_retry.go#RetryCallbacks.OnRetryScheduled"
+    ],
+    "evidence": [
+     "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
+     "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+    ],
+    "production": [
+     "public-api:ai/assistant_retry.go#RetryCallbacks.OnRetryScheduled"
+    ],
+    "rationale": "RetryCallbacks: Go RetryCallbacks has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/utils/retry#RetryCallbacks"
+  ],
+  "targets": [
+   "ai/assistant_retry.go#RetryCallbacks"
+  ],
+  "production": [
+   "public-api:ai/assistant_retry.go#RetryCallbacks"
+  ],
+  "evidence": [
+   "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
+   "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+  ],
+  "rationale": "RetryCallbacks: Go RetryCallbacks has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#RetryCallbacks (identical shape and members).",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "properties": {
+   "onRetryAttemptStart": {
+    "targets": [
+     "ai/assistant_retry.go#RetryCallbacks.OnRetryAttemptStart"
+    ],
+    "evidence": [
+     "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
+     "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+    ],
+    "production": [
+     "public-api:ai/assistant_retry.go#RetryCallbacks.OnRetryAttemptStart"
+    ],
+    "rationale": "RetryCallbacks: Go RetryCallbacks has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "onRetryFinished": {
+    "targets": [
+     "ai/assistant_retry.go#RetryCallbacks.OnRetryFinished"
+    ],
+    "evidence": [
+     "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
+     "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+    ],
+    "production": [
+     "public-api:ai/assistant_retry.go#RetryCallbacks.OnRetryFinished"
+    ],
+    "rationale": "RetryCallbacks: Go RetryCallbacks has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "onRetryScheduled": {
+    "targets": [
+     "ai/assistant_retry.go#RetryCallbacks.OnRetryScheduled"
+    ],
+    "evidence": [
+     "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
+     "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+    ],
+    "production": [
+     "public-api:ai/assistant_retry.go#RetryCallbacks.OnRetryScheduled"
+    ],
+    "rationale": "RetryCallbacks: Go RetryCallbacks has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#RetryPolicy"
+  ],
+  "targets": [
+   "ai/assistant_retry.go#RetryPolicy"
+  ],
+  "production": [
+   "public-api:ai/assistant_retry.go#RetryPolicy"
+  ],
+  "evidence": [
+   "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
+   "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+  ],
+  "rationale": "RetryPolicy: Go RetryPolicy has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#RetryPolicy (identical shape and members).",
+  "properties": {
+   "baseDelayMs": {
+    "targets": [
+     "ai/assistant_retry.go#RetryPolicy.BaseDelayMs"
+    ],
+    "evidence": [
+     "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
+     "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+    ],
+    "production": [
+     "public-api:ai/assistant_retry.go#RetryPolicy.BaseDelayMs"
+    ],
+    "rationale": "RetryPolicy: Go RetryPolicy has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "enabled": {
+    "targets": [
+     "ai/assistant_retry.go#RetryPolicy.Enabled"
+    ],
+    "evidence": [
+     "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
+     "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+    ],
+    "production": [
+     "public-api:ai/assistant_retry.go#RetryPolicy.Enabled"
+    ],
+    "rationale": "RetryPolicy: Go RetryPolicy has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "maxAgentDelayMs": {
+    "targets": [
+     "ai/assistant_retry.go#RetryPolicy.MaxAgentDelayMs"
+    ],
+    "evidence": [
+     "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
+     "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+    ],
+    "production": [
+     "public-api:ai/assistant_retry.go#RetryPolicy.MaxAgentDelayMs"
+    ],
+    "rationale": "RetryPolicy: Go RetryPolicy has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "maxRetries": {
+    "targets": [
+     "ai/assistant_retry.go#RetryPolicy.MaxRetries"
+    ],
+    "evidence": [
+     "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
+     "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+    ],
+    "production": [
+     "public-api:ai/assistant_retry.go#RetryPolicy.MaxRetries"
+    ],
+    "rationale": "RetryPolicy: Go RetryPolicy has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/utils/retry#RetryPolicy"
+  ],
+  "targets": [
+   "ai/assistant_retry.go#RetryPolicy"
+  ],
+  "production": [
+   "public-api:ai/assistant_retry.go#RetryPolicy"
+  ],
+  "evidence": [
+   "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
+   "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+  ],
+  "rationale": "RetryPolicy: Go RetryPolicy has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#RetryPolicy (identical shape and members).",
+  "properties": {
+   "baseDelayMs": {
+    "targets": [
+     "ai/assistant_retry.go#RetryPolicy.BaseDelayMs"
+    ],
+    "evidence": [
+     "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
+     "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+    ],
+    "production": [
+     "public-api:ai/assistant_retry.go#RetryPolicy.BaseDelayMs"
+    ],
+    "rationale": "RetryPolicy: Go RetryPolicy has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "enabled": {
+    "targets": [
+     "ai/assistant_retry.go#RetryPolicy.Enabled"
+    ],
+    "evidence": [
+     "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
+     "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+    ],
+    "production": [
+     "public-api:ai/assistant_retry.go#RetryPolicy.Enabled"
+    ],
+    "rationale": "RetryPolicy: Go RetryPolicy has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "maxAgentDelayMs": {
+    "targets": [
+     "ai/assistant_retry.go#RetryPolicy.MaxAgentDelayMs"
+    ],
+    "evidence": [
+     "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
+     "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+    ],
+    "production": [
+     "public-api:ai/assistant_retry.go#RetryPolicy.MaxAgentDelayMs"
+    ],
+    "rationale": "RetryPolicy: Go RetryPolicy has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "maxRetries": {
+    "targets": [
+     "ai/assistant_retry.go#RetryPolicy.MaxRetries"
+    ],
+    "evidence": [
+     "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
+     "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+    ],
+    "production": [
+     "public-api:ai/assistant_retry.go#RetryPolicy.MaxRetries"
+    ],
+    "rationale": "RetryPolicy: Go RetryPolicy has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#ThinkingBudgets"
+  ],
+  "targets": [
+   "ai/simple_options.go#ThinkingBudgets"
+  ],
+  "production": [
+   "call:ai/openai.go#openAIProvider.Stream",
+   "call:ai/google.go#buildGeminiThinkingConfig"
+  ],
+  "evidence": [
+   "test:ai/openai_thinking_budget_upstream_test.go#TestResolveClampedThinkingBudgetUpstream",
+   "test:ai/google_thinking_level_map_upstream_test.go#TestGoogleThinkingLevelMapPayloadUpstream"
+  ],
+  "rationale": "types.ts ThinkingBudgets {minimal?, low?, medium?, high?}: Go ThinkingBudgets with int fields, zero meaning absent; the OpenAI and Google providers resolve a level through it. Re-export of ai/.#ThinkingBudgets (identical shape and members).",
+  "properties": {
+   "high": {
+    "targets": [
+     "ai/simple_options.go#ThinkingBudgets.High"
+    ],
+    "evidence": [
+     "test:ai/openai_thinking_budget_upstream_test.go#TestResolveClampedThinkingBudgetUpstream",
+     "test:ai/google_thinking_level_map_upstream_test.go#TestGoogleThinkingLevelMapPayloadUpstream"
+    ],
+    "production": [
+     "call:ai/openai.go#openAIProvider.Stream",
+     "call:ai/google.go#buildGeminiThinkingConfig"
+    ],
+    "rationale": "types.ts ThinkingBudgets {minimal?, low?, medium?, high?}: Go ThinkingBudgets with int fields, zero meaning absent; the OpenAI and Google providers resolve a level through it."
+   },
+   "low": {
+    "targets": [
+     "ai/simple_options.go#ThinkingBudgets.Low"
+    ],
+    "evidence": [
+     "test:ai/openai_thinking_budget_upstream_test.go#TestResolveClampedThinkingBudgetUpstream",
+     "test:ai/google_thinking_level_map_upstream_test.go#TestGoogleThinkingLevelMapPayloadUpstream"
+    ],
+    "production": [
+     "call:ai/openai.go#openAIProvider.Stream",
+     "call:ai/google.go#buildGeminiThinkingConfig"
+    ],
+    "rationale": "types.ts ThinkingBudgets {minimal?, low?, medium?, high?}: Go ThinkingBudgets with int fields, zero meaning absent; the OpenAI and Google providers resolve a level through it."
+   },
+   "medium": {
+    "targets": [
+     "ai/simple_options.go#ThinkingBudgets.Medium"
+    ],
+    "evidence": [
+     "test:ai/openai_thinking_budget_upstream_test.go#TestResolveClampedThinkingBudgetUpstream",
+     "test:ai/google_thinking_level_map_upstream_test.go#TestGoogleThinkingLevelMapPayloadUpstream"
+    ],
+    "production": [
+     "call:ai/openai.go#openAIProvider.Stream",
+     "call:ai/google.go#buildGeminiThinkingConfig"
+    ],
+    "rationale": "types.ts ThinkingBudgets {minimal?, low?, medium?, high?}: Go ThinkingBudgets with int fields, zero meaning absent; the OpenAI and Google providers resolve a level through it."
+   },
+   "minimal": {
+    "targets": [
+     "ai/simple_options.go#ThinkingBudgets.Minimal"
+    ],
+    "evidence": [
+     "test:ai/openai_thinking_budget_upstream_test.go#TestResolveClampedThinkingBudgetUpstream",
+     "test:ai/google_thinking_level_map_upstream_test.go#TestGoogleThinkingLevelMapPayloadUpstream"
+    ],
+    "production": [
+     "call:ai/openai.go#openAIProvider.Stream",
+     "call:ai/google.go#buildGeminiThinkingConfig"
+    ],
+    "rationale": "types.ts ThinkingBudgets {minimal?, low?, medium?, high?}: Go ThinkingBudgets with int fields, zero meaning absent; the OpenAI and Google providers resolve a level through it."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#ToolReference"
+  ],
+  "targets": [
+   "ai/types.go#ToolReference"
+  ],
+  "production": [
+   "call:agent/system_state.go#decodeSystemMessage"
+  ],
+  "evidence": [
+   "test:agent/agent_transcript_upstream_test.go#TestAgent_DeclaresToolLoadoutChangesBeforeNextRequest",
+   "test:agent/agent_transcript_upstream_test.go#TestAgent_RewritesPendingToolDeclarationsToExecutableSet"
+  ],
+  "rationale": "ToolReference: Go ToolReference has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#ToolReference (identical shape and members).",
+  "properties": {
+   "name": {
+    "targets": [
+     "ai/types.go#ToolReference.Name"
+    ],
+    "evidence": [
+     "test:agent/agent_transcript_upstream_test.go#TestAgent_DeclaresToolLoadoutChangesBeforeNextRequest",
+     "test:agent/agent_transcript_upstream_test.go#TestAgent_RewritesPendingToolDeclarationsToExecutableSet"
+    ],
+    "production": [
+     "call:agent/system_state.go#decodeSystemMessage"
+    ],
+    "rationale": "ToolReference: Go ToolReference has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#ToolStateChanges"
+  ],
+  "targets": [
+   "ai/transcript.go#ToolStateChanges"
+  ],
+  "production": [
+   "call:agent/system_state.go#declareToolChanges"
+  ],
+  "evidence": [
+   "test:ai/system_message_replay_test.go#TestSystemMessageReplayToolStateChangesTreatChangedDefinitionsAsRemovalPlusAddition",
+   "test:ai/transcript_test.go#TestToolStateChangesTreatRedefinitionAsRemovalThenAddition"
+  ],
+  "rationale": "ToolStateChanges: Go ToolStateChanges has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#ToolStateChanges (identical shape and members).",
+  "properties": {
+   "toolsAdded": {
+    "targets": [
+     "ai/transcript.go#ToolStateChanges.ToolsAdded"
+    ],
+    "evidence": [
+     "test:ai/system_message_replay_test.go#TestSystemMessageReplayToolStateChangesTreatChangedDefinitionsAsRemovalPlusAddition",
+     "test:ai/transcript_test.go#TestToolStateChangesTreatRedefinitionAsRemovalThenAddition"
+    ],
+    "production": [
+     "call:agent/system_state.go#declareToolChanges"
+    ],
+    "rationale": "ToolStateChanges: Go ToolStateChanges has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "toolsRemoved": {
+    "targets": [
+     "ai/transcript.go#ToolStateChanges.ToolsRemoved"
+    ],
+    "evidence": [
+     "test:ai/system_message_replay_test.go#TestSystemMessageReplayToolStateChangesTreatChangedDefinitionsAsRemovalPlusAddition",
+     "test:ai/transcript_test.go#TestToolStateChangesTreatRedefinitionAsRemovalThenAddition"
+    ],
+    "production": [
+     "call:agent/system_state.go#declareToolChanges"
+    ],
+    "rationale": "ToolStateChanges: Go ToolStateChanges has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/utils/transcript#ToolStateChanges"
+  ],
+  "targets": [
+   "ai/transcript.go#ToolStateChanges"
+  ],
+  "production": [
+   "call:agent/system_state.go#declareToolChanges"
+  ],
+  "evidence": [
+   "test:ai/system_message_replay_test.go#TestSystemMessageReplayToolStateChangesTreatChangedDefinitionsAsRemovalPlusAddition",
+   "test:ai/transcript_test.go#TestToolStateChangesTreatRedefinitionAsRemovalThenAddition"
+  ],
+  "rationale": "ToolStateChanges: Go ToolStateChanges has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#ToolStateChanges (identical shape and members).",
+  "properties": {
+   "toolsAdded": {
+    "targets": [
+     "ai/transcript.go#ToolStateChanges.ToolsAdded"
+    ],
+    "evidence": [
+     "test:ai/system_message_replay_test.go#TestSystemMessageReplayToolStateChangesTreatChangedDefinitionsAsRemovalPlusAddition",
+     "test:ai/transcript_test.go#TestToolStateChangesTreatRedefinitionAsRemovalThenAddition"
+    ],
+    "production": [
+     "call:agent/system_state.go#declareToolChanges"
+    ],
+    "rationale": "ToolStateChanges: Go ToolStateChanges has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "toolsRemoved": {
+    "targets": [
+     "ai/transcript.go#ToolStateChanges.ToolsRemoved"
+    ],
+    "evidence": [
+     "test:ai/system_message_replay_test.go#TestSystemMessageReplayToolStateChangesTreatChangedDefinitionsAsRemovalPlusAddition",
+     "test:ai/transcript_test.go#TestToolStateChangesTreatRedefinitionAsRemovalThenAddition"
+    ],
+    "production": [
+     "call:agent/system_state.go#declareToolChanges"
+    ],
+    "rationale": "ToolStateChanges: Go ToolStateChanges has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:ai/compat#Usage"
+  ],
+  "targets": [
+   "ai/types.go#Usage"
+  ],
+  "production": [
+   "call:ai/assistant_observation.go#AssistantMessage.ObserveUsage"
+  ],
+  "evidence": [
+   "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream",
+   "test:ai/overflow_upstream_test.go#TestOverflowLengthStopsUpstream"
+  ],
+  "rationale": "Usage: Go Usage has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types. Re-export of ai/.#Usage (identical shape and members).",
+  "properties": {
+   "cacheRead": {
+    "targets": [
+     "ai/types.go#Usage.CacheRead"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream",
+     "test:ai/overflow_upstream_test.go#TestOverflowLengthStopsUpstream"
+    ],
+    "production": [
+     "call:ai/assistant_observation.go#AssistantMessage.ObserveUsage"
+    ],
+    "rationale": "Usage: Go Usage has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "cacheWrite": {
+    "targets": [
+     "ai/types.go#Usage.CacheWrite"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream",
+     "test:ai/overflow_upstream_test.go#TestOverflowLengthStopsUpstream"
+    ],
+    "production": [
+     "call:ai/assistant_observation.go#AssistantMessage.ObserveUsage"
+    ],
+    "rationale": "Usage: Go Usage has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "cacheWrite1h": {
+    "targets": [
+     "ai/types.go#Usage.CacheWrite1h"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream",
+     "test:ai/overflow_upstream_test.go#TestOverflowLengthStopsUpstream"
+    ],
+    "production": [
+     "call:ai/assistant_observation.go#AssistantMessage.ObserveUsage"
+    ],
+    "rationale": "Usage: Go Usage has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "cost": {
+    "targets": [
+     "ai/types.go#Usage.Cost"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream",
+     "test:ai/overflow_upstream_test.go#TestOverflowLengthStopsUpstream"
+    ],
+    "production": [
+     "call:ai/assistant_observation.go#AssistantMessage.ObserveUsage"
+    ],
+    "rationale": "Usage: Go Usage has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "input": {
+    "targets": [
+     "ai/types.go#Usage.Input"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream",
+     "test:ai/overflow_upstream_test.go#TestOverflowLengthStopsUpstream"
+    ],
+    "production": [
+     "call:ai/assistant_observation.go#AssistantMessage.ObserveUsage"
+    ],
+    "rationale": "Usage: Go Usage has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "output": {
+    "targets": [
+     "ai/types.go#Usage.Output"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream",
+     "test:ai/overflow_upstream_test.go#TestOverflowLengthStopsUpstream"
+    ],
+    "production": [
+     "call:ai/assistant_observation.go#AssistantMessage.ObserveUsage"
+    ],
+    "rationale": "Usage: Go Usage has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "reasoning": {
+    "targets": [
+     "ai/types.go#Usage.Reasoning"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream",
+     "test:ai/overflow_upstream_test.go#TestOverflowLengthStopsUpstream"
+    ],
+    "production": [
+     "call:ai/assistant_observation.go#AssistantMessage.ObserveUsage"
+    ],
+    "rationale": "Usage: Go Usage has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   },
+   "totalTokens": {
+    "targets": [
+     "ai/types.go#Usage.TotalTokens"
+    ],
+    "evidence": [
+     "test:ai/models_runtime_basic_upstream_test.go#TestModelsRuntimeBasicUpstream",
+     "test:ai/overflow_upstream_test.go#TestOverflowLengthStopsUpstream"
+    ],
+    "production": [
+     "call:ai/assistant_observation.go#AssistantMessage.ObserveUsage"
+    ],
+    "rationale": "Usage: Go Usage has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types."
+   }
+  }
+ }
+]

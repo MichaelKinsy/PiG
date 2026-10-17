@@ -1,6 +1,7 @@
 package codingagent
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -85,7 +86,7 @@ func TestReadClipboardImageFailedWaylandFallsThroughToXclip(t *testing.T) {
 		"xclip -selection clipboard -t image/png -o": {out: linuxClipboardPNG},
 	})
 	data, mime, err := readClipboardImageLinux()
-	if err != nil || mime != "image/png" || string(data) != string(linuxClipboardPNG) {
+	if err != nil || mime != "image/png" || !bytes.Equal(data, linuxClipboardPNG) {
 		t.Fatalf("read = %q, %q, %v; want xclip PNG", data, mime, err)
 	}
 }
@@ -171,7 +172,7 @@ func TestReadClipboardImageWSLTriesWlPasteWithoutWaylandDisplay(t *testing.T) {
 		"wl-paste --type image/png --no-newline": {out: linuxClipboardPNG},
 	})
 	data, mime, err := readClipboardImageLinux()
-	if err != nil || mime != "image/png" || string(data) != string(linuxClipboardPNG) {
+	if err != nil || mime != "image/png" || !bytes.Equal(data, linuxClipboardPNG) {
 		t.Fatalf("read = %q, %q, %v; want wl-paste PNG (calls %v)", data, mime, err, s.log)
 	}
 }
@@ -190,7 +191,7 @@ func TestReadClipboardImageWSLFallsBackToWindowsClipboard(t *testing.T) {
 		output:  "ok",
 	})
 	data, mime, err := readClipboardImageLinux()
-	if err != nil || mime != "image/png" || string(data) != string(linuxClipboardPNG) {
+	if err != nil || mime != "image/png" || !bytes.Equal(data, linuxClipboardPNG) {
 		t.Fatalf("read = %q, %q, %v; want Windows clipboard PNG (calls %v)", data, mime, err, w.log)
 	}
 	if w.ran("xclip") {
@@ -223,7 +224,7 @@ func TestReadClipboardImageWSLDetectedFromProcVersion(t *testing.T) {
 	}
 	w := withWindowsClipboard(t, &windowsClipboard{winPath: `C:\tmp\clip.png`, image: linuxClipboardPNG, output: "ok"})
 	data, mime, _ := readClipboardImageLinux()
-	if mime != "image/png" || string(data) != string(linuxClipboardPNG) {
+	if mime != "image/png" || !bytes.Equal(data, linuxClipboardPNG) {
 		t.Fatalf("read = %q, %q; want Windows clipboard PNG (calls %v)", data, mime, w.log)
 	}
 }
@@ -264,7 +265,7 @@ func TestReadClipboardImageXclipPreferredRawTypeKeepsSpelling(t *testing.T) {
 		"xclip -selection clipboard -t image/PNG -o": {out: linuxClipboardPNG},
 	})
 	data, mime, _ := readClipboardImageLinux()
-	if mime != "image/png" || string(data) != string(linuxClipboardPNG) {
+	if mime != "image/png" || !bytes.Equal(data, linuxClipboardPNG) {
 		t.Fatalf("read = %q, %q; want png", data, mime)
 	}
 	want := []string{

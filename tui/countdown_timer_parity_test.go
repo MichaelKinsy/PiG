@@ -1,5 +1,7 @@
 package tui
 
+// pi: packages/coding-agent/src/modes/interactive/components/countdown-timer.ts
+
 // countdown_timer_parity_test.go: upstream-parity transliteration of
 // countdown-timer.ts (.upstream/current/packages/coding-agent/src/modes/
 // interactive/components/countdown-timer.ts, 38 LOC). The dialogs that show

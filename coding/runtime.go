@@ -14,7 +14,7 @@ import (
 // Runtime constructs Sessions and, when created with CreateAgentSessionRuntime, owns replacement through the retained cwd-bound factory.
 type Runtime struct {
 	replacement runtimeReplacement
-	services    *Services
+	services    *AgentSessionServices
 	extCtx      *icodingagent.ExtensionContext
 
 	// beforeSessionInvalidate runs synchronously before the extension runner is
@@ -26,13 +26,15 @@ type Runtime struct {
 	// Holds tools, commands, and event handlers registered by extensions.
 	newRunner *inproc.Runner
 	newExts   []extension.Extension
+	// extensionHost is RuntimeOptions.ExtensionHost; every Session the Runtime creates carries it.
+	extensionHost ExtensionHost
 }
 
 // RuntimeOptions configures Runtime construction.
 type RuntimeOptions struct {
-	// Services is the dependency container produced by NewServices.
+	// Services is the dependency container produced by CreateAgentSessionServices.
 	// Required.
-	Services *Services
+	Services *AgentSessionServices
 
 	// NewExtensions are the extensions (`coding/extension`) to pre-load.
 	// Their tools layer into every Session created by this Runtime.
@@ -46,6 +48,9 @@ type RuntimeOptions struct {
 	// AbortContext is the parent context for the runtime's own
 	// cancellation signals. If nil, context.Background() is used.
 	AbortContext context.Context
+
+	// ExtensionHost is the extension host that loaded NewExtensions. Every Session the Runtime creates returns it from [Session.ExtensionHost]. Nil: the Sessions have none.
+	ExtensionHost ExtensionHost
 }
 
 // SessionStartOptions configures a single Session within a Runtime.
@@ -60,7 +65,7 @@ type SessionStartOptions struct {
 	Model *ai.Model
 
 	// ThinkingLevel overrides restored and configured preferences before model clamping. Empty uses the Session or settings preference.
-	ThinkingLevel ai.ThinkingLevel
+	ThinkingLevel ai.ModelThinkingLevel
 
 	// SystemPrompt is the system prompt.
 	SystemPrompt string
@@ -77,13 +82,12 @@ type SessionStartOptions struct {
 	// AllowedTools restricts which tools may execute.
 	AllowedTools map[string]struct{}
 
-	// ActiveBuiltinTools, when non-nil, restricts which built-in coding tools
-	// are active (extension/extra tools are unaffected, and a name that is
-	// not a built-in activates the extension tool of that name). nil means all
-	// built-in tools. Mirrors upstream defaultActiveToolNames (sdk.ts:244):
-	// the CLI default is [read, bash, edit, write], so grep/find/ls are
-	// registered but inactive unless requested via --tools.
-	ActiveBuiltinTools map[string]struct{}
+	// InitialActiveToolNames are the tools active at start, in this order;
+	// see SessionOptions.InitialActiveToolNames (sdk.ts:274-276).
+	InitialActiveToolNames []string
+
+	// DefaultToolModifiers are the `+name`/`-name` entries of a tool list that changed the default selection; a settings reload applies them to the new defaultTools. See SessionOptions.DefaultToolModifiers.
+	DefaultToolModifiers []string
 
 	// ExcludedTools is a denylist of tool names removed from the final tool
 	// set after allow/active filtering. Gates built-in and extension/caller
@@ -144,22 +148,23 @@ func NewRuntime(opts RuntimeOptions) (*Runtime, error) {
 		AbortFunc:   abortFn,
 	}
 
-	newRunner := inproc.NewRunner(opts.NewExtensions, opts.Services.CWD(), opts.ExtensionRuntime)
-	newRunner.BindCore(extension.ExtensionActions{}, extension.ContextActions{
+	newRunner := NewExtensionRunner(opts.NewExtensions, opts.ExtensionRuntime, opts.Services.CWD(), nil, opts.Services.Registry())
+	newRunner.BindCore(extension.ExtensionActions{GetSettings: opts.Services.SettingsManager().ExtensionSettings}, extension.ContextActions{
 		ModelRegistry:    opts.Services.Registry(),
 		IsProjectTrusted: opts.Services.SettingsManager().IsProjectTrusted,
 	}, nil)
 
 	return &Runtime{
-		services:  opts.Services,
-		extCtx:    extCtx,
-		newRunner: newRunner,
-		newExts:   opts.NewExtensions,
+		services:      opts.Services,
+		extCtx:        extCtx,
+		newRunner:     newRunner,
+		newExts:       opts.NewExtensions,
+		extensionHost: opts.ExtensionHost,
 	}, nil
 }
 
 // Services returns the underlying dependency container.
-func (rt *Runtime) Services() *Services {
+func (rt *Runtime) Services() *AgentSessionServices {
 	if current := rt.replacement.current.Load(); current != nil {
 		return current.Services
 	}
@@ -175,6 +180,24 @@ func (rt *Runtime) NewExtensionRunner() *inproc.Runner {
 		return session.currentRunner()
 	}
 	return rt.newRunner
+}
+
+// Diagnostics returns the diagnostics of the current construction; a replacement's own replace them.
+// upstream: agent-session-runtime.ts get diagnostics, apply
+func (rt *Runtime) Diagnostics() []AgentSessionRuntimeDiagnostic {
+	if current := rt.replacement.current.Load(); current != nil {
+		return current.Diagnostics
+	}
+	return nil
+}
+
+// ModelFallbackMessage returns the model fallback message of the current construction; a replacement's own replaces it.
+// upstream: agent-session-runtime.ts get modelFallbackMessage, apply
+func (rt *Runtime) ModelFallbackMessage() string {
+	if current := rt.replacement.current.Load(); current != nil {
+		return current.ModelFallbackMessage
+	}
+	return ""
 }
 
 // SetBeforeSessionInvalidate installs a synchronous teardown hook that runs
@@ -260,7 +283,7 @@ func (rt *Runtime) startSession(opts SessionStartOptions) (*Session, error) {
 	return rt.startSessionWithFactory(opts, NewSession)
 }
 
-func (rt *Runtime) startSessionWithFactory(opts SessionStartOptions, create func(*Services, SessionOptions) (*Session, error)) (*Session, error) {
+func (rt *Runtime) startSessionWithFactory(opts SessionStartOptions, create func(*AgentSessionServices, SessionOptions) (*Session, error)) (*Session, error) {
 	var resumed *icodingagent.Session
 	if opts.SessionManager == nil && opts.ResumePath != "" {
 		var override []string
@@ -277,30 +300,32 @@ func (rt *Runtime) startSessionWithFactory(opts SessionStartOptions, create func
 		resumed = target
 	}
 	return create(rt.Services(), SessionOptions{
-		resumed:               resumed,
-		SessionManager:        opts.SessionManager,
-		ScopedModels:          opts.ScopedModels,
-		Model:                 opts.Model,
-		ThinkingLevel:         opts.ThinkingLevel,
-		SystemPrompt:          opts.SystemPrompt,
-		SystemPromptSections:  opts.SystemPromptSections,
-		SystemPromptResources: opts.SystemPromptResources,
-		ResourceLoader:        opts.ResourceLoader,
-		Tools:                 opts.ExtraTools,
-		NoTools:               opts.NoTools,
-		skipExtensionTools:    opts.SkipExtensionTools,
-		AllowedTools:          opts.AllowedTools,
-		ActiveBuiltinTools:    opts.ActiveBuiltinTools,
-		ExcludedTools:         opts.ExcludedTools,
-		SkipBuiltinTools:      opts.SkipBuiltinTools,
-		BeforeToolCall:        opts.BeforeToolCall,
-		Runner:                rt.NewExtensionRunner(),
-		ResumePath:            opts.ResumePath,
-		CWDOverride:           opts.CWDOverride,
-		SessionDir:            opts.SessionDir,
-		SessionID:             opts.SessionID,
-		NoSession:             opts.NoSession,
-		Transport:             ai.Transport(rt.Services().Settings().Transport),
-		runnerShared:          true,
+		resumed:                resumed,
+		SessionManager:         opts.SessionManager,
+		ScopedModels:           opts.ScopedModels,
+		Model:                  opts.Model,
+		ThinkingLevel:          opts.ThinkingLevel,
+		SystemPrompt:           opts.SystemPrompt,
+		SystemPromptSections:   opts.SystemPromptSections,
+		SystemPromptResources:  opts.SystemPromptResources,
+		ResourceLoader:         opts.ResourceLoader,
+		Tools:                  opts.ExtraTools,
+		NoTools:                opts.NoTools,
+		skipExtensionTools:     opts.SkipExtensionTools,
+		AllowedTools:           opts.AllowedTools,
+		InitialActiveToolNames: opts.InitialActiveToolNames,
+		DefaultToolModifiers:   opts.DefaultToolModifiers,
+		ExcludedTools:          opts.ExcludedTools,
+		SkipBuiltinTools:       opts.SkipBuiltinTools,
+		BeforeToolCall:         opts.BeforeToolCall,
+		Runner:                 rt.NewExtensionRunner(),
+		ResumePath:             opts.ResumePath,
+		CWDOverride:            opts.CWDOverride,
+		SessionDir:             opts.SessionDir,
+		SessionID:              opts.SessionID,
+		NoSession:              opts.NoSession,
+		Transport:              ai.Transport(rt.Services().Settings().Transport),
+		runnerShared:           true,
+		extensionHost:          rt.extensionHost,
 	})
 }

@@ -1,0 +1,20 @@
+diff --git i/test/parity/interface-closure/autobind/engine.go w/test/parity/interface-closure/autobind/engine.go
+index 9c77c4478..471a41b3f 100644
+--- i/test/parity/interface-closure/autobind/engine.go
++++ w/test/parity/interface-closure/autobind/engine.go
+@@ -113,5 +113,15 @@ func (d *detector) registeredMember(prop *upstreamEntry, owner *sym, members []*
+ 			return m
+ 		}
+ 	}
++	// A package-level function stands for a generic method (Go has none): find its symbol among the owner's package's top level.
++	if fn, ok := obj.(*types.Func); ok {
++		if sig, ok := fn.Type().(*types.Signature); ok && sig.Recv() == nil {
++			for _, s := range d.ix.topLevel([]string{owner.Dir}) {
++				if s.Obj == obj {
++					return s
++				}
++			}
++		}
++	}
+ 	return nil
+ }

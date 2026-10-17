@@ -15,7 +15,7 @@ import (
 // upstream onCacheWarmingModeChange calls session.setCacheWarmingMode.
 func TestOnSettingAppliedReconcilesCacheWarmingMode(t *testing.T) {
 	handle := &recordingCompactHandle{}
-	mode := &InteractiveMode{opts: InteractiveOptions{SessionHandle: handle}}
+	mode := &InteractiveMode{opts: InteractiveModeOptions{SessionHandle: handle}}
 	mode.buildSlashContext(t.Context()).OnSettingApplied("cache-warming-mode", "off")
 	if len(handle.cacheWarmingModes) != 1 || handle.cacheWarmingModes[0] != "off" {
 		t.Fatalf("SetCacheWarmingMode calls = %v, want [off]", handle.cacheWarmingModes)
@@ -30,14 +30,14 @@ func cacheWarmingTestMode(t *testing.T, session *Session, notices bool) *Interac
 		t.Fatal(err)
 	}
 	mode := &InteractiveMode{
-		opts:          InteractiveOptions{SettingsManager: sm, SessionHandle: &recordingCompactHandle{inner: session}},
+		opts:          InteractiveModeOptions{SettingsManager: sm, SessionHandle: &recordingCompactHandle{inner: session}},
 		chatContainer: tui.NewContainer(),
 		tuiInst:       tui.NewWithOutput(io.Discard, 100, 30),
-		statusLine: NewStatusLine(&ai.Model{ID: "active", Capabilities: ai.ModelCapabilities{
+		statusLine: NewFooterComponent(&ai.Model{ID: "active", Capabilities: ai.ModelCapabilities{
 			CacheReadCostPer1M: 999,
 		}}, "", nil),
 	}
-	mode.statusLine.SetUsageTotalsSource(session.FooterUsageTotals)
+	mode.statusLine.SetSession(testFooterSession{totals: session.FooterUsageTotals})
 	return mode
 }
 
@@ -98,5 +98,21 @@ func TestRebuildRendersPersistedCacheWarmingUsage(t *testing.T) {
 	chat := strings.Join(mode.chatContainer.Render(100), "\n")
 	if !strings.Contains(chat, "Cache warmed (extension override): $0.010") || strings.Count(chat, "Cache warmed") != 1 {
 		t.Fatalf("rebuilt transcript = %q", chat)
+	}
+}
+
+// agent-session.ts _omitRecoveryAttempt appends a context_edit and emits entry_appended; Pi's footer re-asks getContextUsage() on its next render, so
+// the percentage drops the omitted reply's usage. Found by driving a stopReason "length" reply through both TUIs (0.7% in Pi, 0.1% in PiG).
+func TestContextEditEntryRefreshesTheFooterContextUsage(t *testing.T) {
+	model := &ai.Model{ID: "m", DisplayName: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 8000}}
+	tokens := 120
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir(), Model: model, ContextUsage: func() (*int, int) { return &tokens, 8000 }})
+	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
+	m.statusLine = NewFooterComponent(model, "", nil)
+	m.refreshFooterContextUsage()
+	tokens = 1400
+	m.handleEntryAppended(json.RawMessage(`{"type":"context_edit","id":"e1","parentId":"a1","timestamp":"2026-01-01T00:00:00Z","targetId":"a1","replacement":null}`))
+	if got := m.statusLine.contextTokens; got != 1400 {
+		t.Fatalf("footer context tokens after a context_edit entry = %d, want 1400", got)
 	}
 }

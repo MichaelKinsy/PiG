@@ -1,5 +1,7 @@
 package coding
 
+// pi: packages/coding-agent/src/core/bug-report.ts
+
 // Ports .upstream/v0.99.1/packages/coding-agent/test/suite/virtual-models.test.ts (13 cases) with the same inputs and expectations.
 // "projects the session once per request under a virtual selection" (suite/virtual-models.test.ts:291-303) spies on buildSessionProjection; the Go port counts calls through Session.BuildSessionProjectionCalls.
 
@@ -66,7 +68,7 @@ func defaultVirtualRoute(request ModelRouteRequest, find func(id string) *ai.Mod
 // ModelRoutePreviousLike is the shared shape of a request's previous and failed responses.
 type ModelRoutePreviousLike struct {
 	model *ai.Model
-	level ai.ThinkingLevel
+	level ai.ModelThinkingLevel
 }
 
 // newVirtualSuite is upstream's `createRoutedHarness` (suite/virtual-models.test.ts:39-78).
@@ -81,14 +83,15 @@ func newVirtualSuite(t *testing.T, route virtualRoute, settings string, handlers
 	if err := os.WriteFile(filepath.Join(agentDir, "settings.json"), []byte("{"+settings+"}"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	// upstream's createHarness stores the credential before it creates the model registry (suite/harness.ts:164-172), so the registry's first availability pass publishes faux as stored and registering the provider marks it configured at once. Routing reads only that published snapshot (model-runtime.ts:1032 hasConfiguredAuth).
+	if err := os.WriteFile(filepath.Join(agentDir, "auth.json"), []byte(`{"faux":{"type":"api_key","key":"faux-key"}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(services.Close)
-	if err := services.Auth().Set("faux", ai.Credential{Type: ai.CredentialAPIKey, Key: "faux-key"}); err != nil {
-		t.Fatal(err)
-	}
 	faux := ai.NewFauxProvider(ai.FauxConfig{ProviderID: "faux", Models: []ai.FauxModelDefinition{
 		{ID: "small", ContextWindow: 1000},
 		{ID: "large", ContextWindow: 50_000, MaxTokens: 4000, Reasoning: true},
@@ -101,7 +104,7 @@ func newVirtualSuite(t *testing.T, route virtualRoute, settings string, handlers
 	find := func(id string) *ai.Model { return runtime.GetModel("faux", id) }
 	extRuntime := extension.CreateExtensionRuntime()
 	if err := extRuntime.RegisterVirtualModel(VirtualModelDefinition{
-		Provider: "router", ID: "auto", Name: "Auto", ThinkingLevels: []ai.ThinkingLevel{ai.ThinkingLow, ai.ThinkingHigh}, ContextWindow: 1000,
+		Provider: "router", ID: "auto", Name: "Auto", ThinkingLevels: []ai.ModelThinkingLevel{ai.ThinkingLow, ai.ThinkingHigh}, ContextWindow: 1000,
 		Route: func(_ context.Context, request ModelRouteRequest) (ModelRoute, error) {
 			suite.mu.Lock()
 			*suite.requests = append(*suite.requests, request)
@@ -189,7 +192,7 @@ func (s *virtualSuite) compactionEnds() int {
 
 func (s *virtualSuite) prompt(t *testing.T, text string) {
 	t.Helper()
-	if _, err := s.session.Prompt(t.Context(), text); err != nil {
+	if err := s.session.Prompt(t.Context(), text); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -203,13 +206,13 @@ func fauxErrorStep(message string) ai.FauxResponseStep {
 }
 
 func fauxEchoCall() ai.FauxResponseStep {
-	return ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("echo", map[string]any{"text": "hi"}, "")}, StopReason: "toolUse"})
+	return ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("echo", map[string]any{"text": "hi"}, &ai.FauxToolCallOptions{ID: ""})}, StopReason: "toolUse"})
 }
 
 // fauxFactory scripts a response computed from the request, as upstream's `(context, options, state, model) => message`.
 func fauxFactory(f func(options ai.StreamOptions, model *ai.Model) ai.FauxResponse) ai.FauxResponseStep {
-	return ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, model *ai.Model) (ai.FauxResponse, error) {
-		return f(options, model), nil
+	return ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, model *ai.Model) (ai.AssistantMessage, error) {
+		return f(options, model).AssistantMessage(), nil
 	})
 }
 
@@ -227,7 +230,7 @@ func compactWith(summary string) map[string][]extension.HandlerFn {
 		if err := json.Unmarshal(raw, &preparation); err != nil {
 			return nil, err
 		}
-		return extension.SessionBeforeCompactResult{Compaction: map[string]any{"summary": summary, "firstKeptEntryId": preparation.FirstKeptEntryID, "tokensBefore": preparation.TokensBefore}}, nil
+		return extension.SessionBeforeCompactResult{Compaction: &extension.CompactionResult{Summary: summary, FirstKeptEntryID: preparation.FirstKeptEntryID, TokensBefore: preparation.TokensBefore}}, nil
 	}}}
 }
 
@@ -498,7 +501,7 @@ func TestVirtualSuiteStoresRouterStateOnTheBranchAndPassesItToLaterRequests(t *t
 	stored := func() []string {
 		var out []string
 		for _, entry := range s.session.Inner().GetBranch() {
-			if entry.Base.Type != "custom" {
+			if entry.Base().Type != "custom" {
 				continue
 			}
 			var custom struct {
@@ -513,7 +516,7 @@ func TestVirtualSuiteStoresRouterStateOnTheBranchAndPassesItToLaterRequests(t *t
 	}
 	assertEqual(t, "stored", stored(), []string{`{"provider":"router","modelId":"auto","state":{"turns":1}}`, `{"provider":"router","modelId":"auto","state":{"turns":2}}`})
 
-	if err := s.session.Compact(t.Context(), ""); err != nil {
+	if _, err := s.session.Compact(t.Context(), ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -537,7 +540,7 @@ func TestVirtualSuiteDoesNotRouteCompactionsThatAnExtensionSupplies(t *testing.T
 	s.prompt(t, "first")
 	s.prompt(t, "second")
 
-	result, err := s.session.CompactResult(t.Context(), "")
+	result, err := s.session.Compact(t.Context(), "")
 
 	if err != nil || result.Summary != "extension summary" {
 		t.Fatalf("result = %+v, %v", result, err)
@@ -545,8 +548,30 @@ func TestVirtualSuiteDoesNotRouteCompactionsThatAnExtensionSupplies(t *testing.T
 	assertEqual(t, "reasons", s.reasons(), []ModelRouteReason{"user", "user"})
 }
 
-// upstream suite/virtual-models.test.ts:371-396
-func TestVirtualSuiteRoutesCompactionSummariesBeforeSizingThem(t *testing.T) {
+// agent-session.ts:4307-4313 summarizeForBugReport takes _getSummarizationRequestAuth, which routes a virtual model first (agent-session.ts:570-577):
+// the bug report summary goes to the routed model with the router's thinking level, and bug-report.ts:346 sizes it from that model.
+func TestVirtualSuiteRoutesBugReportSummaries(t *testing.T) {
+	var summaries []string
+	s := newVirtualSuite(t, defaultVirtualRoute, "", nil)
+	summary := fauxFactory(func(options ai.StreamOptions, model *ai.Model) ai.FauxResponse {
+		summaries = append(summaries, model.ID+":"+string(options.Thinking)+":"+strconv.Itoa(options.MaxTokens))
+		return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("bug summary")}, StopReason: "stop"}
+	})
+	s.faux.SetResponses([]ai.FauxResponseStep{fauxText("first answer"), summary})
+	s.prompt(t, "first")
+
+	text, err := s.session.SummarizeForBugReport(t.Context(), "")
+
+	if err != nil || text != "bug summary" {
+		t.Fatalf("summary = %q, %v", text, err)
+	}
+	assertEqual(t, "reasons", s.reasons(), []ModelRouteReason{"user", "direct"})
+	assertEqual(t, "summaries", summaries, []string{"large:low:4000"})
+}
+
+// upstream suite/virtual-models.test.ts:371-396 "routes compaction summaries to the resolved model" (Pi 6fcb4867: summaries
+// set no maxTokens, so the test records the model and thinking level only).
+func TestVirtualSuiteRoutesCompactionSummariesToTheResolvedModel(t *testing.T) {
 	var summaries []string
 	s := newVirtualSuite(t, defaultVirtualRoute, `"compaction":{"keepRecentTokens":1}`, nil)
 	summary := fauxFactory(func(options ai.StreamOptions, model *ai.Model) ai.FauxResponse {
@@ -554,7 +579,7 @@ func TestVirtualSuiteRoutesCompactionSummariesBeforeSizingThem(t *testing.T) {
 		if level == "" {
 			level = "off"
 		}
-		summaries = append(summaries, model.ID+":"+level+":"+strconv.Itoa(options.MaxTokens))
+		summaries = append(summaries, model.ID+":"+level)
 		return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("summary")}, StopReason: "stop"}
 	})
 	// Compaction summarizes the history and the split turn prefix with one routed model.
@@ -562,12 +587,12 @@ func TestVirtualSuiteRoutesCompactionSummariesBeforeSizingThem(t *testing.T) {
 	s.prompt(t, "first")
 	s.prompt(t, "second")
 
-	result, err := s.session.CompactResult(t.Context(), "")
+	result, err := s.session.Compact(t.Context(), "")
 
 	if err != nil || !strings.Contains(result.Summary, "summary") {
 		t.Fatalf("result = %+v, %v", result, err)
 	}
 	assertEqual(t, "reasons", s.reasons(), []ModelRouteReason{"user", "user", "direct"})
-	// The router's thinking level applies, and the output budget respects the large model's 4000 tokens.
-	assertEqual(t, "summaries", summaries, []string{"large:low:4000", "large:low:4000"})
+	// The router's thinking level applies.
+	assertEqual(t, "summaries", summaries, []string{"large:low", "large:low"})
 }

@@ -22,13 +22,13 @@ import (
 // fails without writing.
 func TestExample20Inbox(t *testing.T) {
 	held := make(chan struct{})
-	slow := ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+	slow := ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
 		select {
 		case <-held:
 		case <-options.Signal.Done():
-			return ai.FauxResponse{}, context.Cause(options.Signal)
+			return ai.FauxResponse{}.AssistantMessage(), context.Cause(options.Signal)
 		}
-		return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("Answer to the first question.")}}, nil
+		return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("Answer to the first question.")}}.AssistantMessage(), nil
 	})
 	faux := ai.NewFauxProvider(ai.FauxConfig{})
 	faux.SetResponses([]ai.FauxResponseStep{slow, fauxAnswer("Answer to the follow-up and the steer.")})
@@ -78,8 +78,9 @@ func TestExample20Inbox(t *testing.T) {
 	for _, item := range inbox.Items {
 		modes = append(modes, item.Mode)
 	}
-	if len(inbox.Items) != 3 {
-		t.Fatalf("inbox holds %d items (%v), want the follow-up, the steer and the note", len(inbox.Items), modes)
+	// The note has only a kind and data, so it changes nothing the model sees: it is appended at once, not queued.
+	if len(inbox.Items) != 2 {
+		t.Fatalf("inbox holds %d items (%v), want the follow-up and the steer", len(inbox.Items), modes)
 	}
 
 	close(held)
@@ -124,6 +125,8 @@ func TestExample20Inbox(t *testing.T) {
 
 // 30-tool-override.ts: a conversation overrides one built-in tool by extension (a bash with a venv prefix), and a
 // wrapper times every bash call without replacing it.
+// Pi source: packages/durable/src/tools/bash.ts
+// mutation-checked: dropping the reads and writes of BashToolOptions.CommandPrefix fails it
 func TestExample30ToolOverride(t *testing.T) {
 	project := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(project, ".venv", "bin"), 0o755); err != nil {
@@ -140,7 +143,7 @@ func TestExample30ToolOverride(t *testing.T) {
 	timings := 0
 	timing := new(durable.Extension{
 		Name: "timing",
-		Wraps: []durable.Wrap{{Tool: "bash", WrapTool: func(bash *durable.ToolRegistration) *durable.ToolRegistration {
+		Wraps: []durable.Wrap{durable.ToolWrap{Tool: "bash", Wrap: func(bash *durable.ToolRegistration) *durable.ToolRegistration {
 			wrapped := *bash
 			wrapped.Execute = func(ctx context.Context, args any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 				defer func() { timings++ }()
@@ -173,7 +176,7 @@ func TestExample30ToolOverride(t *testing.T) {
 	plain := must(opened.Root(background, &harness.RootOptions{Agent: &harness.AgentChange{Model: harness.SetTo(fauxModel)}}))
 	python := must(opened.CreateConversation(background, harness.ConversationCreateOptions{
 		Ownership: ownerless.Ownership,
-		Agent:     &harness.AgentChange{Model: harness.SetTo(fauxModel), Extensions: harness.SetTo(harness.ExtensionChange{Add: []*durable.Extension{venv}})},
+		Agent:     &harness.AgentChange{Model: harness.SetTo(fauxModel), Extensions: harness.SetTo(harness.ExtensionChange{Edit: &harness.ExtensionEdit{Add: []*durable.Extension{venv}}})},
 	}))
 
 	probeBash := func(conversation harness.Conversation) string {

@@ -1,0 +1,42 @@
+# Behavior family: extensions-runtime
+# Scenario: after `await ctx.reload()` a command's captured pi and ctx throw Pi's stale message.
+#
+# Pi's reload emits session_shutdown and invalidates the old runner before the new extensions load
+# (agent-session.ts:3660-3664); every pi method and ctx member then throws the stale message
+# (loader.ts:161-198 assertActive, runner.ts:721-735 and 868-960). reload-stale-context.mjs awaits
+# ctx.reload() in a command and records, per member, whether it still answered or threw.
+#
+# Upstream evidence (2026-10-10, Pi 1.1.0):
+#   PI_CODING_AGENT_DIR=testdata/pi-agent RELOAD_STALE_LOG=/tmp/reload-stale.log pi --no-extensions \
+#     -e testdata/ext/reload-stale-context.mjs --no-session -p /reload-stale
+#   exit 0; every one of the ten members logs "threw: This extension ctx is stale after session replacement or reload".
+# Pig before the fix logged "live" for pi.getCommands, getThinkingLevel, getFlag, ctx.cwd, getSystemPrompt and
+# isProjectTrusted: the host never told the replaced generation it was stale (rev-lgx-entry-m3 F4).
+
+name = "77-reload-stale-context"
+description = "A command's captured pi and ctx throw Pi's stale message after await ctx.reload()"
+covers = [
+  "packages/coding-agent/src/core/extensions/loader.ts",
+  "packages/coding-agent/src/core/extensions/runner.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_HOME=testdata/pig-home", "RELOAD_STALE_LOG={{TEMP}}/reload-stale.log"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "RELOAD_STALE_LOG={{TEMP}}/reload-stale.log"]
+pig_extensions = ["testdata/ext/reload-stale-context.mjs"]
+pi_extensions = ["testdata/ext/reload-stale-context.mjs"]
+
+[cli]
+args = ["--no-session", "-p", "/reload-stale"]
+artifact_path = "{{TEMP}}/reload-stale.log"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_not_contain = ["Extension error"]
+artifact_equal = true
+artifact_both_contain = ["ctx.cwd threw: This extension ctx is stale", "pi.getFlag threw: This extension ctx is stale"]
+artifact_both_not_contain = [" live"]
+runs = 3

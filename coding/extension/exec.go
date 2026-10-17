@@ -60,13 +60,6 @@ func ExecCommand(ctx context.Context, cwd, command string, args []string, opts *
 		dir = opts.CWD
 	}
 
-	// exec.ts:75: `options?.timeout && options.timeout > 0` starts a Node timer. Node truncates a fractional delay and runs a delay outside [1, 2^31-1] after one millisecond.
-	if opts.Timeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, NodeTimerDelay(opts.Timeout))
-		defer cancel()
-	}
-
 	// The child writes straight into OS pipes, so Wait returns when the child
 	// exits even if a descendant still holds a write end.
 	stdoutRead, stdoutWrite, pipeErr := os.Pipe()
@@ -109,6 +102,17 @@ func ExecCommand(ctx context.Context, cwd, command string, args []string, opts *
 		// working directory) resolves with code 1 instead of failing, and an
 		// abort that came first has already set killed.
 		return ExecResult{Code: 1, Killed: ctx.Err() != nil}, nil
+	}
+
+	// exec.ts:75 starts the timer once spawn has returned, with the child
+	// running, so finding and starting the program does not use up the
+	// timeout: `options?.timeout && options.timeout > 0` starts a Node timer.
+	// Node truncates a fractional delay and runs a delay outside [1, 2^31-1]
+	// after one millisecond.
+	if opts.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, NodeTimerDelay(opts.Timeout))
+		defer cancel()
 	}
 
 	var stdout, stderr strings.Builder

@@ -1,11 +1,14 @@
 package codingagent
 
 import (
+	"context"
+	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // Ports the observable contract of getAutocompleteSourceTag and prefixAutocompleteDescription
@@ -78,7 +81,7 @@ func TestAutocompleteProviderTagsResourceCommands(t *testing.T) {
 	provider := mode.buildAutocompleteProvider()
 	described := func(prefix string) string {
 		t.Helper()
-		suggestions := provider.GetSuggestions([]string{prefix}, 0, len(prefix))
+		suggestions := provider.GetSuggestions(context.Background(), []string{prefix}, 0, len(prefix), tui.AutocompleteSuggestionOptions{})
 		if suggestions == nil || len(suggestions.Items) == 0 {
 			t.Fatalf("no suggestions for %q", prefix)
 		}
@@ -110,12 +113,95 @@ func TestAutocompleteProviderTagsLoadedPromptTemplatesByPath(t *testing.T) {
 	}
 	provider := mode.buildAutocompleteProvider()
 	for prefix, want := range map[string]string{"/usertmpl": "[u] User template", "/extratmpl": "[t] Extra template"} {
-		suggestions := provider.GetSuggestions([]string{prefix}, 0, len(prefix))
+		suggestions := provider.GetSuggestions(context.Background(), []string{prefix}, 0, len(prefix), tui.AutocompleteSuggestionOptions{})
 		if suggestions == nil || len(suggestions.Items) == 0 {
 			t.Fatalf("no suggestions for %q", prefix)
 		}
 		if got := suggestions.Items[0].Description; got != want {
 			t.Errorf("%s description = %q, want %q", prefix, got, want)
 		}
+	}
+}
+
+// Templates loaded from the session's prompt paths carry the sourceInfo Pi's resource loader gives them
+// (resource-loader.ts updatePromptsFromPaths): the recorded package or settings metadata first, then the template
+// loader's user/project/temporary classification (prompt-templates.ts getSourceInfo). A template under
+// <agentDir>/prompts is [u], one under the project prompts directory [p], a package one [u:npm:…], another [t].
+func TestAutocompleteProviderTagsTemplatesLoadedFromPromptPaths(t *testing.T) {
+	mode, _ := newCustomEditorDispatchMode(t)
+	mode.opts.AgentDir = t.TempDir()
+	mode.opts.CWD = t.TempDir()
+	write := func(path string) string {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte("Template body\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	user := write(filepath.Join(mode.opts.AgentDir, "prompts", "usertmpl.md"))
+	project := write(filepath.Join(ProjectConfigDir(mode.opts.CWD), "prompts", "projtmpl.md"))
+	packageRoot := filepath.Join(t.TempDir(), "pkg")
+	pkg := write(filepath.Join(packageRoot, "prompts", "pkgtmpl.md"))
+	extra := write(filepath.Join(t.TempDir(), "extratmpl.md"))
+	mode.resourceSourceInfo = map[string]ResourceSourceInfo{
+		pkg: {Path: pkg, ResourceType: "prompts", Enabled: true, Scope: "user", Origin: "package", Source: "npm:pkg", BaseDir: packageRoot},
+	}
+	mode.opts.PromptPaths = []string{user, project, pkg, extra}
+	mode.loadPromptTemplates()
+	provider := mode.buildAutocompleteProvider()
+	for prefix, want := range map[string]string{
+		"/usertmpl":  "[u] Template body",
+		"/projtmpl":  "[p] Template body",
+		"/pkgtmpl":   "[u:npm:pkg] Template body",
+		"/extratmpl": "[t] Template body",
+	} {
+		suggestions := provider.GetSuggestions(context.Background(), []string{prefix}, 0, len(prefix), tui.AutocompleteSuggestionOptions{})
+		if suggestions == nil || len(suggestions.Items) == 0 {
+			t.Fatalf("no suggestions for %q", prefix)
+		}
+		if got := suggestions.Items[0].Description; got != want {
+			t.Errorf("%s description = %q, want %q", prefix, got, want)
+		}
+	}
+}
+
+// interactive-mode.ts:710-727,793-799: an extension command named like a built-in gets a conflict warning that says it is skipped in
+// autocomplete, and autocomplete does skip it; the name set is BUILTIN_SLASH_COMMANDS, which has no /debug, so an extension may use that.
+func TestExtensionCommandsNamedLikeBuiltinsAreSkippedInAutocompleteAndWarned(t *testing.T) {
+	mode, _ := newCustomEditorDispatchMode(t)
+	mode.opts.AgentDir = t.TempDir()
+	mode.newRunner = inproc.NewRunner([]extension.Extension{{
+		Name:         "commands",
+		CommandOrder: []string{"model", "debug", "greet"},
+		Commands: map[string]extension.RegisteredCommand{
+			"model": {Name: "model", Description: "Ext model", SourceInfo: PiSourceInfo{Path: "/ext/model.ts", Source: "local", Scope: "user", Origin: "top-level"}},
+			"debug": {Name: "debug", Description: "Ext debug", SourceInfo: PiSourceInfo{Path: "/ext/debug.ts", Source: "local", Scope: "user", Origin: "top-level"}},
+			"greet": {Name: "greet", Description: "Ext greet", SourceInfo: PiSourceInfo{Path: "/ext/greet.ts", Source: "local", Scope: "user", Origin: "top-level"}},
+		},
+	}}, mode.opts.AgentDir)
+	diagnostics := mode.builtInCommandConflictDiagnostics()
+	if len(diagnostics) != 1 || diagnostics[0].Path != "/ext/model.ts" || diagnostics[0].Message != "Extension command '/model' conflicts with built-in interactive command. Skipping in autocomplete." {
+		t.Fatalf("conflict diagnostics = %+v, want one warning for /model only", diagnostics)
+	}
+	provider := mode.buildAutocompleteProvider()
+	suggested := func(prefix, description string) bool {
+		suggestions := provider.GetSuggestions(context.Background(), []string{prefix}, 0, len(prefix), tui.AutocompleteSuggestionOptions{})
+		if suggestions == nil {
+			return false
+		}
+		for _, item := range suggestions.Items {
+			if item.Description == description {
+				return true
+			}
+		}
+		return false
+	}
+	if suggested("/model", "[u] Ext model") {
+		t.Error("the extension /model is offered in autocomplete despite conflicting with the built-in")
+	}
+	if !suggested("/debug", "[u] Ext debug") || !suggested("/greet", "[u] Ext greet") {
+		t.Error("an extension /debug or /greet is missing from autocomplete")
 	}
 }

@@ -14,17 +14,16 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"slices"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
 
 const evidenceKind = "pig-typescript-extension-corpus"
-
-var pinPattern = regexp.MustCompile(`const\s+(UpstreamVersion|UpstreamCommit)\s*=\s*"([^"]+)"`)
 
 type identity struct {
 	UpstreamVersion  string `json:"upstreamVersion"`
@@ -132,10 +131,7 @@ func run(ctx context.Context, root, binary string, timeout time.Duration) (repor
 	if len(paths) == 0 {
 		return report{}, fmt.Errorf("no TypeScript examples found under %s", corpusRoot)
 	}
-	version, commit, err := readPin(filepath.Join(root, "internal", "coding", "pigversion", "pigversion.go"))
-	if err != nil {
-		return report{}, err
-	}
+	version, commit := pigversion.UpstreamVersion, pigversion.UpstreamCommit
 	corpusHash, err := hashFiles(corpusRoot, paths)
 	if err != nil {
 		return report{}, err
@@ -254,21 +250,6 @@ func corpusEnvironment(home string) []string {
 		return slices.ContainsFunc(blocked, func(prefix string) bool { return strings.HasPrefix(value, prefix) })
 	})
 	return append(environment, "HOME="+home, "PIG_HOME="+filepath.Join(home, ".pig"))
-}
-
-func readPin(path string) (string, string, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "", "", err
-	}
-	values := map[string]string{}
-	for _, match := range pinPattern.FindAllStringSubmatch(string(data), -1) {
-		values[match[1]] = match[2]
-	}
-	if values["UpstreamVersion"] == "" || values["UpstreamCommit"] == "" {
-		return "", "", fmt.Errorf("%s does not declare both upstream pins", path)
-	}
-	return values["UpstreamVersion"], values["UpstreamCommit"], nil
 }
 
 func sourceFiles(root string) ([]string, error) {

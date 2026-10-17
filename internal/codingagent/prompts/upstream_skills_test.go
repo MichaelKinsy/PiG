@@ -97,3 +97,20 @@ func TestUpstreamCoreFormatSkillsForPrompt(t *testing.T) {
 		t.Fatal("missing skills section")
 	})
 }
+
+// skills.ts formatSkillsForPrompt lists the visible skills in the order given (`visibleSkills.map(...)`): a skill hidden from the model is skipped without moving the others.
+func TestFormatSkillsKeepsTheGivenOrderAndSkipsHiddenSkills(t *testing.T) {
+	skills := []Skill{
+		{Name: "zeta", Description: "z", Path: "/z/SKILL.md"},
+		{Name: "hidden", Description: "h", Path: "/h/SKILL.md", DisableModelInvocation: true},
+		{Name: "alpha", Description: "a", Path: "/a/SKILL.md"},
+	}
+	got := formatSkills(skills, "read")
+	zeta, alpha := strings.Index(got, "<name>zeta</name>"), strings.Index(got, "<name>alpha</name>")
+	if zeta < 0 || alpha < 0 || zeta > alpha {
+		t.Fatalf("skills are not listed in the given order: %q", got)
+	}
+	if strings.Contains(got, "hidden") {
+		t.Fatalf("a skill with model invocation disabled is listed: %q", got)
+	}
+}

@@ -4,14 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
+	"slices"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
 func providerOptionsWire(o ai.StreamOptions) map[string]any {
 	values := map[string]any{"apiKey": o.APIKey}
-	optional := map[string]any{"reasoning": o.Thinking, "reasoningEffort": o.ReasoningEffort, "effort": o.Effort, "cacheRetention": o.CacheRetention, "sessionId": o.SessionID, "transport": o.Transport}
+	optional := map[string]any{"reasoning": o.Thinking, "reasoningEffort": o.ReasoningEffort, "effort": o.Effort, "thinkingDisplay": o.ThinkingDisplay, "cacheRetention": o.CacheRetention, "sessionId": o.SessionID, "transport": o.Transport}
 	for key, value := range optional {
 		if fmt.Sprint(value) != "" {
 			values[key] = value
@@ -60,7 +63,7 @@ func providerOptionsWire(o ai.StreamOptions) map[string]any {
 		values["samplingParams"] = o.SamplingParams
 	}
 	if o.RequestMetadata != nil {
-		values["requestMetadata"] = o.RequestMetadata
+		values["requestMetadata"] = requestMetadataWire(o.RequestMetadata, o.RequestMetadataOrder)
 	}
 	if o.Metadata != nil {
 		values["metadata"] = o.Metadata
@@ -71,13 +74,28 @@ func providerOptionsWire(o ai.StreamOptions) map[string]any {
 	return values
 }
 
+// requestMetadataWire is the requestMetadata object in its insertion order: the RequestMetadataOrder keys, then the other keys sorted.
+func requestMetadataWire(metadata map[string]string, order []string) *orderedjson.Object {
+	object := orderedjson.New()
+	for _, key := range order {
+		if value, ok := metadata[key]; ok && !object.Has(key) {
+			_ = object.SetValue(key, value)
+		}
+	}
+	for _, key := range slices.Sorted(maps.Keys(metadata)) {
+		if !object.Has(key) {
+			_ = object.SetValue(key, metadata[key])
+		}
+	}
+	return object
+}
+
 // providerStreamCallback executes the provider in its owning extension. The connection owns and joins the worker; request cancellation removes correlation and cancels the remote callback.
 // pig additive (D19): connection-owned callbacks carry legacy streamSimple execution across the SDK boundary without changing registry scope.
 func (h *Host) providerStreamCallback(me *managedExt, name string) extension.ProviderStreamSimple {
-	return func(rawModel extension.Model, rawContext extension.AIContext, rawOptions extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
-		model := rawModel.(*ai.Model)
-		transcript := rawContext.(ai.TranscriptContext)
-		options := rawOptions.(ai.StreamOptions)
+	return func(model extension.Model, rawContext extension.AIContext, rawOptions extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
+		transcript := rawContext
+		options := rawOptions
 		parent := options.Signal
 		if parent == nil {
 			parent = context.Background()
@@ -89,7 +107,8 @@ func (h *Host) providerStreamCallback(me *managedExt, name string) extension.Pro
 			_ = stream.Push(ai.ErrorEvent{Reason: reason, Error: &ai.AssistantMessage{API: model.ProviderMeta.API, Provider: model.ProviderMeta.ProviderID, Model: model.ID, Content: []ai.AssistantContentBlock{}, StopReason: reason, ErrorMessage: err.Error()}})
 			cancel()
 		}
-		args, err := json.Marshal(map[string]any{"model": extension.ModelInfo(model), "context": map[string]any{"messages": transcript.Messages()}, "options": providerOptionsWire(options)})
+		//portlint:allow mapkeyorder the positional arguments of provider.stream(model, context, options) (models.ts:213), which the runtime reads by name; the model object inside keeps Pi's member order
+		args, err := json.Marshal(map[string]any{"model": extension.ModelValue{Model: model}, "context": map[string]any{"messages": transcript.Messages()}, "options": providerOptionsWire(options)})
 		if err != nil {
 			fail(err)
 			return stream

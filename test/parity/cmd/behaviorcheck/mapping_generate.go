@@ -21,13 +21,52 @@ type ownerOverride struct {
 	OwnerFamily string `json:"ownerFamily"`
 }
 
-func generatePendingInputMapping(inventory inputInventory, previous inputMapping, families familiesConfig, overrides ownerOverrideDocument) (inputMapping, error) {
+// unchangedSurfaces names the handlers and renderers whose inventory record is identical in both inventories and whose keybindings are too, so a reviewed mapping entry for them still describes the same source. Any difference, including a moved line, leaves the surface pending.
+func unchangedSurfaces(before, after inputInventory) map[string]bool {
+	record := func(value any) string {
+		data, _ := json.Marshal(value)
+		return string(data)
+	}
+	oldRecords := make(map[string]string, len(before.Handlers)+len(before.Renderers))
+	for _, handler := range before.Handlers {
+		oldRecords[handler.ID] = record(handler)
+	}
+	for _, item := range before.Renderers {
+		oldRecords[item.ID] = record(item)
+	}
+	oldBindings := make(map[string]string, len(before.Keybindings))
+	for _, binding := range before.Keybindings {
+		oldBindings[binding.ID] = record(binding)
+	}
+	changedBindings := make(map[string]bool)
+	for _, binding := range after.Keybindings {
+		if oldBindings[binding.ID] != record(binding) {
+			changedBindings[binding.ID] = true
+		}
+	}
+	unchanged := make(map[string]bool)
+	for _, handler := range after.Handlers {
+		if oldRecords[handler.ID] == record(handler) && !slices.ContainsFunc(handler.Bindings, func(id string) bool { return changedBindings[id] }) {
+			unchanged[handler.ID] = true
+		}
+	}
+	for _, item := range after.Renderers {
+		if oldRecords[item.ID] == record(item) {
+			unchanged[item.ID] = true
+		}
+	}
+	return unchanged
+}
+
+// generatePendingInputMapping returns a mapping with every surface pending, except that a surface listed in carried keeps the reviewed entry of previous.
+func generatePendingInputMapping(inventory inputInventory, previous inputMapping, carried map[string]bool, families familiesConfig, overrides ownerOverrideDocument) (inputMapping, error) {
 	if inventory.UpstreamVersion == "" {
 		return inputMapping{}, fmt.Errorf("behavior input inventory has no upstream version")
 	}
 	if overrides.UpstreamVersion != inventory.UpstreamVersion {
 		return inputMapping{}, fmt.Errorf("owner override version = %q, want %q", overrides.UpstreamVersion, inventory.UpstreamVersion)
 	}
+	previousEntries := make(map[string]inputMappingEntry, len(previous.Mappings)+len(previous.RenderMappings))
 	previousOwners := make(map[string]string, len(previous.Mappings)+len(previous.RenderMappings))
 	for _, entry := range append(append([]inputMappingEntry{}, previous.Mappings...), previous.RenderMappings...) {
 		if entry.ID == "" || entry.OwnerFamily == "" {
@@ -37,6 +76,7 @@ func generatePendingInputMapping(inventory inputInventory, previous inputMapping
 			return inputMapping{}, fmt.Errorf("previous mapping contains duplicate id %q", entry.ID)
 		}
 		previousOwners[entry.ID] = entry.OwnerFamily
+		previousEntries[entry.ID] = entry
 	}
 	reviewedOwners := make(map[string]string, len(overrides.Owners))
 	for _, entry := range overrides.Owners {
@@ -87,6 +127,9 @@ func generatePendingInputMapping(inventory inputInventory, previous inputMapping
 			}
 		}
 		delete(reviewedOwners, id)
+		if kept, ok := previousEntries[id]; ok && carried[id] {
+			return kept, nil
+		}
 		return inputMappingEntry{
 			ID: id, OwnerFamily: owner, Disposition: "pending",
 			PigTargets: []string{}, Evidence: []string{}, Contracts: []string{},
@@ -118,7 +161,7 @@ func generatePendingInputMapping(inventory inputInventory, previous inputMapping
 	return output, nil
 }
 
-func generatePendingInputMappingFile(inventoryPath, previousPath, familiesPath, overridesPath, outputPath string) error {
+func generatePendingInputMappingFile(inventoryPath, previousPath, previousInventoryPath, familiesPath, overridesPath, outputPath string) error {
 	if inventoryPath == "" || previousPath == "" || familiesPath == "" || overridesPath == "" || outputPath == "" {
 		return fmt.Errorf("mapping generation requires inventory, previous mapping, families, owner overrides, and output paths")
 	}
@@ -138,7 +181,15 @@ func generatePendingInputMappingFile(inventoryPath, previousPath, familiesPath, 
 	if err := decodeJSONFile(overridesPath, &overrides); err != nil {
 		return err
 	}
-	mapping, err := generatePendingInputMapping(inventory, previous, families, overrides)
+	var carried map[string]bool
+	if previousInventoryPath != "" {
+		var earlier inputInventory
+		if err := decodeJSONFile(previousInventoryPath, &earlier); err != nil {
+			return err
+		}
+		carried = unchangedSurfaces(earlier, inventory)
+	}
+	mapping, err := generatePendingInputMapping(inventory, previous, carried, families, overrides)
 	if err != nil {
 		return err
 	}

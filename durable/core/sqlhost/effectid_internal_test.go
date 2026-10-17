@@ -1,0 +1,114 @@
+// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+// SPDX-License-Identifier: MIT
+
+package sqlhost
+
+import (
+	"context"
+	"errors"
+	"strings"
+	"testing"
+
+	"github.com/MichaelKinsy/PiG/durable/core/abi"
+)
+
+// effectSteps answers each event with the next step of a script: one step whose effects carry the given IDs.
+type effectSteps struct{ ids [][]uint32 }
+
+func (c *effectSteps) Step(abi.Event) *abi.Step {
+	step := &abi.Step{Status: abi.StatusOK}
+	if len(c.ids) == 0 {
+		return step
+	}
+	for _, id := range c.ids[0] {
+		step.Effects = append(step.Effects, abi.Effect{ID: id, Kind: abi.EffectTimerClear, Payload: abi.U32Payload(1)})
+	}
+	c.ids = c.ids[1:]
+	return step
+}
+
+// The host keeps one number, the last effect ID it started, instead of a set of every ID of the handle's life (ABI section 3,
+// invariant 6: effect IDs increase). A reissued ID and an ID below the last one, in the same step or a later one, discard
+// the handle; increasing IDs across steps do not.
+func TestHostDiscardsAHandleWhoseEffectIDsDoNotIncrease(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		steps [][]uint32
+		fatal bool
+	}{
+		{"increasing across steps", [][]uint32{{1, 2}, {3}, {7}}, false},
+		{"zero first", [][]uint32{{0}, {1}}, false},
+		{"reissued in one step", [][]uint32{{1, 1}}, true},
+		{"reissued in a later step", [][]uint32{{1, 2}, {2}}, true},
+		{"below the last one", [][]uint32{{4}, {3}}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := New(Options{Core: &effectSteps{ids: tc.steps}})
+			defer func() { _ = h.Close(context.Background()) }()
+			var err error
+			for range tc.steps {
+				if err = h.Send(t.Context(), abi.Event{Kind: abi.EventAPI}); err != nil {
+					break
+				}
+			}
+			var fatal *FatalError
+			switch {
+			case tc.fatal && (!errors.As(err, &fatal) || !strings.Contains(fatal.Message, "issued twice or out of order")):
+				t.Fatalf("Send = %v, want the reissued effect ID to discard the handle", err)
+			case !tc.fatal && err != nil:
+				t.Fatalf("Send = %v, want increasing effect IDs accepted", err)
+			}
+		})
+	}
+}
+
+// timerSteps arms a timer that fires at once and one an hour away, then clears the second when asked.
+type timerSteps struct {
+	fired chan struct{}
+	calls int
+}
+
+func (c *timerSteps) Step(ev abi.Event) *abi.Step {
+	step := &abi.Step{Status: abi.StatusOK}
+	if ev.Kind == abi.EventTimer {
+		close(c.fired)
+		return step
+	}
+	c.calls++
+	switch c.calls {
+	case 1:
+		step.Effects = []abi.Effect{
+			{ID: 1, Kind: abi.EffectTimer, Payload: abi.TimerEffect(1, 1000, false)},
+			{ID: 2, Kind: abi.EffectTimer, Payload: abi.TimerEffect(2, 1000+3600e3, false)},
+		}
+	case 2:
+		step.Effects = []abi.Effect{{ID: 3, Kind: abi.EffectTimerClear, Payload: abi.U32Payload(2)}}
+	}
+	return step
+}
+
+// The host's timer map holds the armed timers only: a timer leaves it when it fires and when it is cleared, so the map does
+// not grow with every timer of the handle's life (timer IDs are never reused).
+func TestHostDropsATimerWhenItFiresAndWhenItIsCleared(t *testing.T) {
+	core := &timerSteps{fired: make(chan struct{})}
+	h := New(Options{Core: core, Clock: func() float64 { return 1000 }})
+	defer func() { _ = h.Close(context.Background()) }()
+	armed := func() int {
+		n := make(chan int, 1)
+		h.enqueue(func(error) { n <- len(h.timers) })
+		return <-n
+	}
+	if err := h.Send(t.Context(), abi.Event{Kind: abi.EventAPI}); err != nil {
+		t.Fatal(err)
+	}
+	<-core.fired
+	if got := armed(); got != 1 {
+		t.Fatalf("armed timers after the first fired = %d, want 1 (the hour-away one)", got)
+	}
+	if err := h.Send(t.Context(), abi.Event{Kind: abi.EventAPI}); err != nil {
+		t.Fatal(err)
+	}
+	if got := armed(); got != 0 {
+		t.Fatalf("armed timers after the clear = %d, want 0", got)
+	}
+}

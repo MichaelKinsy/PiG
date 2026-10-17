@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 )
 
 // oauth.ts responseFromRedirectURL: a pasted redirect URL carries its `iss` parameter to the code exchange, and
@@ -33,7 +34,7 @@ func TestResponseFromRedirectURLKeepsTheIssParameter(t *testing.T) {
 // index.ts loginCommand showAuthorizationUrl (1.0.1): the notice shows the plain URL in every mode it is used in; the
 // terminal UI signs in on the manager's sign-in screen, which links the URL and copies it.
 func TestSignInNoticeShowsThePlainAuthorizationURL(t *testing.T) {
-	u, _ := url.Parse("https://as.example/authorize?client_id=c&state=s")
+	u, _ := nodeurl.ParseURL("https://as.example/authorize?client_id=c&state=s")
 	cases := []struct {
 		mode extension.ExtensionMode
 		want string

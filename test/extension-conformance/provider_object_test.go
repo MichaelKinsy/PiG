@@ -1,11 +1,14 @@
 package extensionconformance
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -26,6 +29,12 @@ func TestNodeRemoteProviderObjectCarrier(t *testing.T) {
 	testNodeProviderObjectCarrier(t, true)
 }
 
+// Pi packages/coding-agent/src/core/extensions/types.ts:1830-1831 declares registerProvider(provider: Provider) beside registerProvider(name, config): the
+// Provider-object overload. Every SDK registers a callback-bearing Provider (Go RegisterNativeProvider, Python register_native_provider, Rust
+// register_native_provider) from an extension subprocess through the host wire; the production host registry then holds its model and streams a
+// host turn through the owner's callbacks, and a second extension reads the same Provider back (model-registry.ts:101-103,165-167).
+// mutation-checked: Extension.RegisterNativeProvider in extensions/sdk/provider.go not queueing the declaration fails the go subtests (model missing from the host runtime).
+// mutation-checked: dropping the onPayload replacement (Go provider_dispatch.go, Python provider.py dispatch_provider, Rust provider.rs ProviderObjects, host native_provider.go) or ignoring onProviderStreamEvent (each SDK's dispatch, the host's declaration) fails the owner subtests of that SDK.
 func TestProviderObjectsAcrossSDKs(t *testing.T) {
 	root, err := filepath.Abs("../..")
 	if err != nil {
@@ -40,24 +49,24 @@ func TestProviderObjectsAcrossSDKs(t *testing.T) {
 			for _, role := range []string{"owner", "reader"} {
 				t.Run(language+"-"+role+"-"+placement, func(t *testing.T) {
 					t.Setenv("CARRIER_ROLE", role)
-					testProviderObjectPair(t, root, role, language, placement)
+					testProviderObjectPair(t, root, role, language, placement, "pi.registerProvider(provider)")
 				})
 			}
 		}
 	}
 }
 
-func testProviderObjectPair(t *testing.T, root, role, language, placement string) {
+func testProviderObjectPair(t *testing.T, root, role, language, placement, call string) {
 	t.Helper()
 	dir := t.TempDir()
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: dir, AgentDir: filepath.Join(dir, "agent")})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: dir, AgentDir: filepath.Join(dir, "agent")})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(services.Close)
 	host := subprocess.NewHost(dir)
 	t.Cleanup(func() { host.Shutdown("done") })
-	host.SetProviderCallbacks(services.Registry().RegisterProvider, services.Registry().UnregisterProvider)
+	host.SetProviderCallbacks(services.Registry().RegisterExtensionProvider, services.Registry().UnregisterProvider)
 	host.SetNativeProviderCallback(services.Registry().RegisterNativeProvider)
 	host.SetUIBridge(subprocess.NewUIBridge(nil))
 	owner := subprocess.ExtConfig{Name: "extension-provider-carrier-owner", Source: filepath.Join(root, "test/parity/scenarios/testdata/extension-provider-carrier-owner.mjs"), Enabled: true, Isolation: "strict"}
@@ -132,15 +141,75 @@ func testProviderObjectPair(t *testing.T, root, role, language, placement string
 	}
 	model := services.ModelRuntime().GetModel("carrier-provider", "carrier-model")
 	if model == nil {
-		t.Fatal("native provider model missing from host runtime")
+		t.Fatalf("%s: native provider model missing from host runtime", call)
 	}
-	stream := services.ModelRuntime().StreamSimple(t.Context(), model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("host turn")}}}, ai.StreamOptions{})
+	// Pi hands the caller's onPayload, onResponse and onProviderStreamEvent to Provider.stream (model-runtime.ts:671-689, sdk.ts:425-427); the Provider invokes each by name, and onPayload's replacement reaches the Provider.
+	var seen []string
+	var callbacksMu sync.Mutex
+	record := func(entry string) {
+		callbacksMu.Lock()
+		defer callbacksMu.Unlock()
+		seen = append(seen, entry)
+	}
+	options := ai.StreamOptions{
+		OnPayload: func(payload any, requested *ai.Model) (any, error) {
+			record(fmt.Sprintf("payload %v %s", payload, requested.ID))
+			return map[string]any{"text": "simple via payload"}, nil
+		},
+		OnResponse: func(_ context.Context, response ai.ProviderResponse, requested *ai.Model) error {
+			record(fmt.Sprintf("response %d %s %s", response.Status, response.Headers["x-carrier"], requested.ID))
+			return nil
+		},
+		OnProviderStreamEvent: func(_ context.Context, data any, requested *ai.Model) error {
+			record(fmt.Sprintf("event %v %s", data, requested.ID))
+			return nil
+		},
+	}
+	stream := services.ModelRuntime().StreamSimple(t.Context(), model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("host turn")}}}, options)
 	message := stream.Result()
 	if message.StopReason != ai.StopReasonStop {
 		t.Fatalf("host native stream: %+v", message)
 	}
-	if len(message.Content) != 1 || message.Content[0].(ai.TextContent).Text != "simple" {
+	if len(message.Content) != 1 || message.Content[0].(ai.TextContent).Text != "simple via payload" {
 		t.Fatalf("host native result: %+v", message)
+	}
+	if want := []string{"response 207 response carrier-model", "event map[carrier:event] carrier-model", "payload map[carrier:payload] carrier-model"}; !slices.Equal(seen, want) {
+		t.Fatalf("request callbacks = %q, want %q", seen, want)
+	}
+	// upstream: models.ts Provider.fetchDeferred / cancelDeferred through Models.fetchDeferred / cancelDeferred: the host's own runtime reaches the extension process's deferred operations, with the handle the caller passed.
+	handle := ai.DeferredHandle{Provider: "carrier-provider", ModelID: "carrier-model", API: model.ProviderMeta.API, ID: "deferred"}
+	fetched := services.ModelRuntime().FetchDeferred(t.Context(), model, handle)
+	if fetched.StopReason != ai.StopReasonStop || len(fetched.Content) != 1 || fetched.Content[0].(ai.TextContent).Text != "deferred" {
+		t.Fatalf("host deferred fetch: %+v", fetched)
+	}
+	if err := services.ModelRuntime().CancelDeferred(t.Context(), model, handle); err != nil {
+		t.Fatalf("host deferred cancel: %v", err)
+	}
+	wrong := handle
+	wrong.ID = "other"
+	if err := services.ModelRuntime().CancelDeferred(t.Context(), model, wrong); err == nil {
+		t.Fatal("host deferred cancel of another handle succeeded, want the extension's rejection")
+	}
+	// upstream: models.ts Provider.getAllModels / filterAllModels: the all-types catalog is the provider's getAllModels (it lists a model getModels does not), and the credential-specific availability across every model type is its filterAllModels, not filterModels (which, for this credential, shows none).
+	if services.ModelRuntime().GetModel("carrier-provider", "carrier-all-only") == nil {
+		t.Fatal("the model only getAllModels lists is missing from the host runtime")
+	}
+	if err := services.Auth().Set("carrier-provider", ai.Credential{Type: ai.CredentialAPIKey, Key: "all"}); err != nil {
+		t.Fatal(err)
+	}
+	services.ModelRuntime().Refresh(t.Context(), ai.ModelsRefreshOptions{AllowNetwork: new(false), Providers: []string{"carrier-provider"}})
+	available, err := services.ModelRuntime().GetAvailable(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var availableIDs []string
+	for _, candidate := range available {
+		if candidate.ProviderMeta.ProviderID == "carrier-provider" {
+			availableIDs = append(availableIDs, candidate.ID)
+		}
+	}
+	if !slices.Contains(availableIDs, "carrier-all-only") || !slices.Contains(availableIDs, "carrier-model") {
+		t.Fatalf("available carrier models = %v, want filterAllModels' result (every model for the all credential)", availableIDs)
 	}
 	path := filepath.Join(dir, "result.json")
 	for _, item := range loaded {
@@ -154,7 +223,7 @@ func testProviderObjectPair(t *testing.T, root, role, language, placement string
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{`"source":"injected:CARRIER_SOURCE"`, `"apiKey":"injected:CARRIER_KEY"`, `"key":"Carrier key"`, `"access":"rotated"`, `"persist","update"`, `"carrier-model","refreshed"`, `"text":"carrier answer"`, `"text":"simple"`, `"text":"deferred"`, `"cancelled":"aborted"`} {
+	for _, want := range []string{`"source":"injected:CARRIER_SOURCE"`, `"apiKey":"injected:CARRIER_KEY"`, `"key":"Carrier key"`, `"access":"Carrier OAuth@caller-device"`, `"access":"rotated"`, `"persist","update"`, `"carrier-model","refreshed:https://regional.invalid/v1"`, `"text":"carrier answer"`, `"text":"simple"`, `"text":"deferred"`, `"cancelled":"aborted"`} {
 		if !strings.Contains(string(data), want) {
 			t.Errorf("missing %s in %s", want, data)
 		}
@@ -197,14 +266,14 @@ func providerPeer(t *testing.T, root string, native subprocess.ExtConfig) subpro
 func testNodeProviderObjectCarrier(t *testing.T, remote bool) {
 	t.Helper()
 	dir := t.TempDir()
-	services, err := coding.NewServices(coding.ServicesOptions{CWD: dir, AgentDir: filepath.Join(dir, "agent")})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: dir, AgentDir: filepath.Join(dir, "agent")})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(services.Close)
 	host := subprocess.NewHost(dir)
 	t.Cleanup(func() { host.Shutdown("done") })
-	host.SetProviderCallbacks(services.Registry().RegisterProvider, services.Registry().UnregisterProvider)
+	host.SetProviderCallbacks(services.Registry().RegisterExtensionProvider, services.Registry().UnregisterProvider)
 	host.SetNativeProviderCallback(services.Registry().RegisterNativeProvider)
 	host.SetUIBridge(subprocess.NewUIBridge(nil))
 	var configs []subprocess.ExtConfig
@@ -242,7 +311,12 @@ func testNodeProviderObjectCarrier(t *testing.T, remote bool) {
 	if !remote && !strings.Contains(string(data), `"identity":true`) {
 		t.Fatalf("same-cell identity missing: %s", data)
 	}
-	for _, value := range []string{`"source":"injected:CARRIER_SOURCE"`, `"apiKey":"injected:CARRIER_KEY"`, `"key":"Carrier key"`, `"access":"rotated"`, `"persist","update"`, `"carrier-model","refreshed"`, `"text":"carrier answer"`, `"text":"simple"`, `"text":"deferred"`, `"cancelled":"aborted"`} {
+	// The remote reader passes baseUrl to refreshModels and the owner echoes it; the reader shared with Pi parity scenario 53 passes none, so the owner publishes the bare id.
+	refreshedModels := `"carrier-model","refreshed"`
+	if remote {
+		refreshedModels = `"carrier-model","refreshed:https://regional.invalid/v1"`
+	}
+	for _, value := range []string{`"source":"injected:CARRIER_SOURCE"`, `"apiKey":"injected:CARRIER_KEY"`, `"key":"Carrier key"`, `"access":"Carrier OAuth@caller-device"`, `"access":"rotated"`, `"persist","update"`, refreshedModels, `"text":"carrier answer"`, `"text":"simple"`, `"text":"deferred"`, `"cancelled":"aborted"`} {
 		if !strings.Contains(string(data), value) {
 			t.Errorf("missing %s in %s", value, data)
 		}

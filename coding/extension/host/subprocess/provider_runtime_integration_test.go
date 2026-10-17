@@ -1,3 +1,5 @@
+//go:build !pig_strip_node_extensions
+
 package subprocess_test
 
 import (
@@ -30,7 +32,7 @@ func TestHostProviderQueueBindsToRunnerRegistry(t *testing.T) {
 		for _, isolation := range []string{"", "isolated"} {
 			t.Run(tc.name+"/isolation="+isolation, func(t *testing.T) {
 				root := t.TempDir()
-				services, err := coding.NewServices(coding.ServicesOptions{CWD: root, AgentDir: filepath.Join(root, "agent")})
+				services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: root, AgentDir: filepath.Join(root, "agent")})
 				if err != nil {
 					t.Fatal(err)
 				}

@@ -1,0 +1,170 @@
+[
+ {
+  "ids": [
+   "pkg:tui/.#allocateImageId"
+  ],
+  "targets": [
+   "tui/terminal_image.go#AllocateImageID"
+  ],
+  "production": [
+   "call:tui/image.go#Image.Render"
+  ],
+  "evidence": [
+   "test:tui/render_state_test.go#TestTUIRestoreRenderStateBlanksImageLines",
+   "test:tui/terminal_image_test.go#TestAllocateImageID_NonZero"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "allocateImageId: Go AllocateImageID has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#fuzzyMatch"
+  ],
+  "targets": [
+   "tui/fuzzy.go#FuzzyMatchScore"
+  ],
+  "production": [
+   "call:internal/codingagent/session_selector.go#matchSession"
+  ],
+  "evidence": [
+   "test:tui/fuzzy_upstream_test.go#TestUpstreamFuzzyMatch",
+   "test:tui/autocomplete_test.go#TestFuzzyMatch_OrderedSubsequence"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "fuzzyMatch: Go FuzzyMatchScore has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#matchesKey"
+  ],
+  "targets": [
+   "tui/keybindings.go#MatchesKeyID"
+  ],
+  "production": [
+   "call:internal/codingagent/interactive.go#InteractiveMode.Run"
+  ],
+  "evidence": [
+   "test:tui/key_match_mode_test.go#TestMatchesKeyID_ModeAwareLegacyInput",
+   "test:tui/keys_alternates_test.go#TestMatchesKey_KittyAlternateKeys"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "matchesKey: Go MatchesKeyID has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#rgbColor"
+  ],
+  "targets": [
+   "tui/colors.go#NewRgbColor"
+  ],
+  "production": [
+   "call:coding/piglogin/mark.go#markColor"
+  ],
+  "evidence": [
+   "test:tui/colors_test.go#TestColorErrorsAndEdges",
+   "test:tui/system_theme_upstream_test.go#TestGenerateSystemThemeColorsUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "rgbColor: Go NewRgbColor has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#indexedColor"
+  ],
+  "targets": [
+   "tui/colors.go#NewIndexedColor"
+  ],
+  "production": [
+   "call:tui/theme.go#newTheme"
+  ],
+  "evidence": [
+   "test:tui/colors_test.go#TestColorErrorsAndEdges"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "indexedColor: Go NewIndexedColor has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#okhslColor"
+  ],
+  "targets": [
+   "tui/colors.go#NewOkhslColor"
+  ],
+  "production": [
+   "call:tui/colors.go#ParseColor"
+  ],
+  "evidence": [
+   "test:tui/theme_export_okhsl_upstream_test.go#TestThemeExportOkhslColorsUpstream",
+   "test:tui/theme_style_upstream_test.go#TestThemeStylesUpstream"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "okhslColor: Go NewOkhslColor has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#oklchColor"
+  ],
+  "targets": [
+   "tui/colors.go#NewOklchColor"
+  ],
+  "production": [
+   "call:tui/colors.go#MixColors"
+  ],
+  "evidence": [
+   "test:tui/colors_test.go#TestColorErrorsAndEdges"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "oklchColor: Go NewOklchColor has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#stripTerminalSequences"
+  ],
+  "targets": [
+   "tui/widthx/grapheme_range.go#StripTerminalSequences"
+  ],
+  "production": [
+   "call:tui/alt_screen_search.go#buildSearchCorpus"
+  ],
+  "evidence": [
+   "test:tui/input_render_upstream_test.go#TestUpstreamInputRender",
+   "test:tui/terminal_image_upstream_test.go#TestUpstreamImageFallback"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "stripTerminalSequences: Go StripTerminalSequences has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#getOsc8LinkAtColumn"
+  ],
+  "targets": [
+   "tui/widthx/grapheme_range.go#GetOsc8LinkAtColumn"
+  ],
+  "production": [
+   "call:tui/tui_alt_screen_selection.go#TuiAltScreen.handleSelectionPress"
+  ],
+  "evidence": [
+   "test:tui/tui_alt_screen_test.go#TestAltScreenClickActivatesOsc8Link",
+   "test:tui/widthx/grapheme_range_test.go#TestGetOsc8LinkAtColumn"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "getOsc8LinkAtColumn: Go GetOsc8LinkAtColumn has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#sliceByColumn"
+  ],
+  "targets": [
+   "tui/widthx/slice.go#SliceByColumn"
+  ],
+  "production": [
+   "call:internal/codingagent/tool_render.go#truncToWidth"
+  ],
+  "evidence": [
+   "test:tui/overlay_cjk_upstream_test.go#TestUpstreamOverlayCJKBoundary",
+   "test:tui/widthx/slice_by_column_ansi_order_upstream_test.go#TestUpstreamSliceByColumnANSIOrderRegression"
+  ],
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
+  "rationale": "sliceByColumn: Go SliceByColumn has the upstream parameters and result (signatures reviewed); callers attributed by go/types."
+ }
+]

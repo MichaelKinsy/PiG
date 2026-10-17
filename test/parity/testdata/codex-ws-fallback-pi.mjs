@@ -4,7 +4,7 @@ import { pathToFileURL } from "node:url";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const version = readFileSync("internal/coding/pigversion/pigversion.go", "utf8").match(/UpstreamVersion = "([^"]+)"/)[1];
+const version = readFileSync("internal/coding/pigversion/pigversion.go", "utf8").match(/UpstreamPackageVersion = "([^"]+)"/)[1];
 const install = join(homedir(), ".local/share/mise/installs/npm-earendil-works-pi-coding-agent", version);
 const root = process.env.PI_PACKAGE_ROOT ?? [
   "extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent",

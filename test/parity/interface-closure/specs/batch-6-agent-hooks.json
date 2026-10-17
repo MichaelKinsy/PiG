@@ -1,0 +1,85 @@
+[
+ {
+  "ids": [
+   "pkg:agent/.#AgentToolCallOutcome"
+  ],
+  "targets": [
+   "agent/run_tool_call.go#AgentToolCallOutcome"
+  ],
+  "production": [
+   "call:agent/run_tool_call.go#RunToolCall"
+  ],
+  "evidence": [
+   "test:agent/agent_loop_upstream_test.go#TestRunToolCall_ValidatesRunsTheHooksAndReportsFailuresAsErrorOutcomes"
+  ],
+  "rationale": "types.ts AgentToolCallOutcome {toolCall, result, isError}: Go AgentToolCallOutcome has ToolCall (AgentToolCall = ai.ToolCall), Result AgentToolResult and IsError bool. RunToolCall returns it, and the ported runToolCall case asserts the error outcomes.",
+  "properties": {
+   "toolCall": {
+    "targets": [
+     "agent/run_tool_call.go#AgentToolCallOutcome.ToolCall"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestRunToolCall_ValidatesRunsTheHooksAndReportsFailuresAsErrorOutcomes"
+    ]
+   },
+   "result": {
+    "targets": [
+     "agent/run_tool_call.go#AgentToolCallOutcome.Result"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestRunToolCall_ValidatesRunsTheHooksAndReportsFailuresAsErrorOutcomes"
+    ]
+   },
+   "isError": {
+    "targets": [
+     "agent/run_tool_call.go#AgentToolCallOutcome.IsError"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestRunToolCall_ValidatesRunsTheHooksAndReportsFailuresAsErrorOutcomes"
+    ]
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:agent/.#BeforeToolCallResult"
+  ],
+  "targets": [
+   "agent/agent.go#ToolCallHookResult"
+  ],
+  "production": [
+   "call:agent/tool_execution.go#prepareToolCall"
+  ],
+  "evidence": [
+   "test:agent/agent_loop_upstream_test.go#TestAgentLoop_StopsAfterBlockedToolCallWithTerminate"
+  ],
+  "rationale": "types.ts BeforeToolCallResult {block?, reason?, terminate?} is Go ToolCallHookResult (Block, Reason, Terminate), with the zero value as absent. Go adds Args, the hook's rewritten arguments, which upstream carries by mutating context.args. prepareToolCall applies the result as agent-loop.ts does.",
+  "properties": {
+   "block": {
+    "targets": [
+     "agent/agent.go#ToolCallHookResult.Block"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_StopsAfterBlockedToolCallWithTerminate",
+     "test:agent/agent_loop_upstream_test.go#TestRunToolCall_ValidatesRunsTheHooksAndReportsFailuresAsErrorOutcomes"
+    ]
+   },
+   "reason": {
+    "targets": [
+     "agent/agent.go#ToolCallHookResult.Reason"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_StopsAfterBlockedToolCallWithTerminate"
+    ]
+   },
+   "terminate": {
+    "targets": [
+     "agent/agent.go#ToolCallHookResult.Terminate"
+    ],
+    "evidence": [
+     "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContinuesAfterMixedBatchWithOneTerminatingBlockedCall"
+    ]
+   }
+  }
+ }
+]

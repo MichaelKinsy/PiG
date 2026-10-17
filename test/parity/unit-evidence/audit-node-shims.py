@@ -2,6 +2,7 @@
 """List baseline Node shim stand-ins against the pinned Pi source inventory."""
 import argparse
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -13,7 +14,7 @@ parser.add_argument("--output", type=Path, required=True)
 args = parser.parse_args()
 root = Path(__file__).resolve().parents[3]
 shims = "coding/extension/host/subprocess/runtime-node/shims"
-pi_version = re.search(r'^const UpstreamVersion = "([^"]+)"', (root / "internal/coding/pigversion/pigversion.go").read_text(), re.M).group(1)
+pi_version = os.environ.get("PIG_UPSTREAM_VERSION") or re.search(r'^const UpstreamVersion = "([^"]+)"', (root / "internal/coding/pigversion/pigversion.go").read_text(), re.M).group(1)
 inv = json.loads((root / f"test/parity/interfaces/upstream-v{pi_version}.json").read_text())["interfaces"]
 extra = {
     "pi-coding-agent": ["createAgentSession", "compact", "copyToClipboard", "BorderedLoader", "DynamicBorder", "initTheme", "getPackageDir", "KeybindingsManager"],

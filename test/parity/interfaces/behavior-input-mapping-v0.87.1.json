@@ -169,7 +169,7 @@
       "evidence": [],
       "contracts": [],
       "divergence": "",
-      "rationale": "PORT_MAP marks the owning file \u2705 ported (`cmd/pig/auth_commands.go + interactive.go`), but no per-input handler behavior contract (test/parity/behavior-contracts.toml) has been reviewed yet for this interaction surface at 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+      "rationale": "PORT_MAP marks the owning file \u2705 ported (`coding/cli/auth_commands.go + interactive.go`), but no per-input handler behavior contract (test/parity/behavior-contracts.toml) has been reviewed yet for this interaction surface at 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
     },
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/model-selector.ts#ModelSelectorComponent.handleInput",

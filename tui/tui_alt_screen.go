@@ -5,8 +5,8 @@ import (
 	"io"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/tui/widthx"
@@ -47,23 +47,35 @@ type cachedKittyImage struct {
 // uses it to set the fullscreen layout root. Upstream's VIEWPORT_TUI Symbol
 // brand is expressed here as a distinct Go interface.
 type ViewportTUI interface {
-	Mode() string
+	TUI
 	ViewportTop() int
 	IsFollowingOutput() bool
 	SetLayoutRoot(component Component)
 }
 
+// IsViewportTUI mirrors isViewportTUI (tui.ts:491): it reports whether the renderer owns a scrollable viewport, which only the alt-screen renderer does.
+func IsViewportTUI(renderer TUI) bool {
+	_, ok := renderer.(ViewportTUI)
+	return ok
+}
+
 // TuiAltScreen is the alternate-screen renderer. It embeds tuiBase for the shared
 // render machinery (requestRender coalescing, overlays, terminal I/O).
 type TuiAltScreen struct {
+	// logDirectory is the constructor's logDirectory (TuiBase, tui.ts:520).
+	logDirectory string
 	tuiBase
 
-	previousScreen       []string
+	previousScreen []string
+	// previousRows holds the rows of previousScreen as they were before the line resets and the width clamp.
+	previousRows         []string
 	lastDocument         []string
 	previousScreenWidth  int
 	previousScreenHeight int
-	layoutRoot           Component
-	currentLayout        *LayoutFrame
+	// previousFrameBytes is the length of the last frame written, the capacity the next frame's buffer starts with.
+	previousFrameBytes int
+	layoutRoot         Component
+	currentLayout      *LayoutFrame
 
 	// One worker coalesces pending geometry so slow callbacks cannot reorder resizes.
 	pendingWidth      int
@@ -76,6 +88,9 @@ type TuiAltScreen struct {
 
 	altScreenActive bool
 	imageProtocol   ImageProtocol
+	// wezTerm is isWezTermSession as Start read it. Upstream reads process.env each frame, a property read; a Windows
+	// environment read allocates its UTF-16 key and value, so the alt screen reads it once per start, with the capabilities.
+	wezTerm bool
 
 	// savedCapabilities holds the pre-enter terminal capabilities when the
 	// alt-screen suppressed iTerm2 inline images (they do not render correctly in
@@ -87,8 +102,6 @@ type TuiAltScreen struct {
 	// once the offscreen budget is exceeded. Mirrors upstream uploadedKittyImages.
 	uploadedKittyImages      map[int]cachedKittyImage
 	uploadedKittyImagesOrder []int
-
-	fullRedrawCount int
 
 	wheelScroll   *WheelScrollAccelerator
 	mouseEnabled  bool
@@ -111,12 +124,6 @@ type TuiAltScreen struct {
 	// flash shows a transient message; it is Flash, replaceable in tests the
 	// way upstream tests replace tui.flash.
 	flash func(message string, durationMs int)
-
-	// renderingFrame is set while doRender holds t.mu; a render requested by
-	// a scroll view during the frame is recorded in renderRequestedInFrame
-	// and issued after the lock is released.
-	renderingFrame         atomic.Bool
-	renderRequestedInFrame atomic.Bool
 
 	// Component mouse gesture state, owner-loop only (see
 	// tui_alt_screen_mouse.go).
@@ -173,7 +180,9 @@ type TuiAltScreenOptions struct {
 	Mouse *bool
 	// CopyOnSelect copies a completed text selection. The default is true.
 	CopyOnSelect *bool
-	// CopySelection writes selected text to the host clipboard. OSC 52 is used when nil.
+	// CopySelection writes selected text to the host clipboard; OSC 52 is used when it is nil. Pi's callback result `boolean | string`
+	// is the Go error: a nil error is true, a non-empty error message is that string (shown as the error flash), and an empty error
+	// message is false (a generic "Copy failed"). TestAltScreenCopySelectionResultOutcomes pins all three.
 	CopySelection func(text string) error
 	// OpenURL activates an OSC 8 hyperlink on primary-button click.
 	OpenURL func(url string)
@@ -210,10 +219,8 @@ func (d *altScreenDocument) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchRe
 }
 
 func (d *altScreenDocument) Invalidate() {
-	d.base.mu.Lock()
-	children := append([]Component(nil), d.base.children...)
-	d.base.mu.Unlock()
-	for _, child := range children {
+	// The children belong to the base Container and its lock; the renderer lock is held for a whole frame.
+	for _, child := range d.base.childSnapshot() {
 		child.Invalidate()
 	}
 }
@@ -254,18 +261,40 @@ func newTuiAltScreen(out io.Writer, showHardwareCursor bool, options TuiAltScree
 		t.searchNavigationButtonStyle = func(text string, _ bool) string { return text }
 	}
 	t.render = t.doRender
+	t.resetRenderState = t.resetRenderStateLocked
 	t.flash = t.Flash
 	t.mountedRoots = t.getMountedRoots
 	t.implicitDocument = &altScreenDocument{base: &t.tuiBase}
 	t.implicitScrollView = NewScrollView(t.implicitDocument, ScrollViewOptions{Follow: "end", Primary: true})
 	t.flashes = NewAltScreenFlashContainer(func() { t.RequestRender() })
+	// Pi registers handleViewportInput as an input listener (tui.ts TuiAltScreen).
+	viewport := TuiInputListener(func(data string) *TuiInputResult {
+		return &TuiInputResult{Consume: t.HandleViewportInput(data)}
+	})
+	t.AddInputListener(&viewport)
 	return t
 }
 
-// NewTuiAltScreen creates an alt-screen renderer writing to stdout at the current
-// terminal size. Used in production by the fullscreen driver.
-func NewTuiAltScreen(options TuiAltScreenOptions) *TuiAltScreen {
-	t := newTuiAltScreen(os.Stdout, os.Getenv("PI_HARDWARE_CURSOR") == "1", options)
+// NewTuiAltScreen is `new TuiAltScreen(terminal, showHardwareCursor, logDirectory, options = {})` (tui-alt-screen.ts:255-282): the fullscreen
+// renderer that draws on terminal and reads its size from it. A nil terminal is the process's own terminal, which the interactive driver uses. A
+// nil showHardwareCursor keeps TuiBase's default, false (tui.ts:508,536-538; only the settings getter reads PI_HARDWARE_CURSOR); logDirectory is where the differential-render overflow crash log goes, the OS
+// temp directory when empty. Only the first options value is read.
+func NewTuiAltScreen(terminal Terminal, showHardwareCursor *bool, logDirectory string, options ...TuiAltScreenOptions) *TuiAltScreen {
+	if terminal == nil {
+		terminal = processTerminal
+	}
+	var opts TuiAltScreenOptions
+	if len(options) > 0 {
+		opts = options[0]
+	}
+	hardwareCursor := false // TuiBase's default (tui.ts:508); only the settings getter reads PI_HARDWARE_CURSOR
+	if showHardwareCursor != nil {
+		hardwareCursor = *showHardwareCursor
+	}
+	t := newTuiAltScreen(terminalWriter{terminal}, hardwareCursor, opts)
+	t.direct = terminalCursorWriter{terminal}
+	t.terminal = terminal
+	t.logDirectory = logDirectory // kept as TuiBase's constructor keeps it (tui.ts:535); only the main screen writes the redraw and crash logs
 	t.updateSize()
 	t.kitty = detectKitty()
 	return t
@@ -274,14 +303,16 @@ func NewTuiAltScreen(options TuiAltScreenOptions) *TuiAltScreen {
 // NewTuiAltScreenWithOutput creates a fixed-size alt-screen renderer for tests.
 func NewTuiAltScreenWithOutput(out io.Writer, cols, rows int, options TuiAltScreenOptions) *TuiAltScreen {
 	t := newTuiAltScreen(out, os.Getenv("PI_HARDWARE_CURSOR") == "1", options)
-	t.width = cols
-	t.height = rows
 	t.fixedSize = true
+	t.setFixedDimensionsLocked(cols, rows)
 	return t
 }
 
 // Mode reports the renderer mode. Mirrors upstream `mode = "fullscreen"`.
-func (t *TuiAltScreen) Mode() string { return "fullscreen" }
+func (t *TuiAltScreen) Mode() TuiMode { return TuiModeFullscreen }
+
+// FullRedraws counts the full repaints of the screen. Mirrors upstream `fullRedraws`.
+func (t *TuiAltScreen) FullRedraws() int { return int(t.fullRedrawCount.Load()) }
 
 // ViewportTop returns the primary scroll view's current scroll offset.
 func (t *TuiAltScreen) ViewportTop() int { return t.getPrimaryScrollView().ScrollTop() }
@@ -312,6 +343,14 @@ func (t *TuiAltScreen) HasActiveSelection() bool {
 	defer t.mu.Unlock()
 	_, _, ok := t.getSelectionBounds()
 	return ok
+}
+
+// ResetTextSelection drops the text selection and multi-click history, for example before the host replaces the transcript (pi 1.1.0 tui-alt-screen.ts resetTextSelection).
+func (t *TuiAltScreen) ResetTextSelection() {
+	t.mu.Lock()
+	t.clearTextSelectionLocked()
+	t.lastClick = nil
+	t.mu.Unlock()
 }
 
 // CopyActiveSelectionToClipboard copies the current selection and reports success.
@@ -354,9 +393,25 @@ func (t *TuiAltScreen) getPrimaryScrollView() *ScrollView {
 	return t.implicitScrollView
 }
 
-// Start enters the alternate screen and begins rendering. The driver calls this
-// once at session start. Mirrors upstream beforeTerminalStart + the enter write.
+// Start enters the alternate screen and paints at once, as a live switch into
+// fullscreen needs. Mirrors upstream beforeTerminalStart + the enter write.
 func (t *TuiAltScreen) Start() {
+	t.enterAltScreen()
+	t.Render()
+}
+
+// StartRequestingRender enters the alternate screen as Start does but requests
+// the first frame instead of painting it, as Pi's TUI.start does
+// (tui.ts start(): requestRender()). The first frame has no earlier frame to
+// throttle against, so the request goes to the render dispatcher's loop at once,
+// which runs it on its next turn.
+func (t *TuiAltScreen) StartRequestingRender() {
+	t.enterAltScreen()
+	t.RequestImmediateRender()
+}
+
+// enterAltScreen is the part of start before the first frame.
+func (t *TuiAltScreen) enterAltScreen() {
 	t.mu.Lock()
 	// Upstream start() sets stopped=false first, then beforeTerminalStart resets
 	// the selection/scrollbar input state so a start->stop->start cycle resumes
@@ -370,6 +425,7 @@ func (t *TuiAltScreen) Start() {
 	t.altScreenActive = true
 	caps := GetCapabilities()
 	t.imageProtocol = caps.Images
+	t.wezTerm = t.imageProtocol == "kitty" && isWezTermSession()
 	clear(t.uploadedKittyImages)
 	t.uploadedKittyImagesOrder = nil
 	t.lastDocument = nil
@@ -409,8 +465,10 @@ func (t *TuiAltScreen) Start() {
 		enter = keyboardProtocolPop + altEnterAltScreen + kittyKeyboardProtocolPush + altDisableAutowrap + mouse + "\x1b[2J\x1b[H\x1b[?25l"
 	}
 	_, _ = fmt.Fprint(t.out, enter)
+	if t.colorSchemeNotificationsEnabled() {
+		writeColorSchemeNotifications(t.out, true)
+	}
 	t.QueryCellSize()
-	t.Render()
 }
 
 // getMountedRoots returns the layout root when set, else the base children.
@@ -447,12 +505,10 @@ type StopOptions struct {
 }
 
 // Stop tears down the alternate screen and reflows the transcript into the
-// main-screen scrollback. Satisfies the Renderer interface (matching the driver's
+// main-screen scrollback. Satisfies the TUI interface (matching the driver's
 // no-arg Stop call sites); use StopWithOptions for preserve-screen teardown.
 func (t *TuiAltScreen) Stop() { t.StopWithOptions(StopOptions{}) }
 
-// StopWithOptions tears down the alternate screen. Mirrors upstream
-// beforeTerminalStop + afterTerminalStop.
 func (t *TuiAltScreen) StopWithOptions(options StopOptions) {
 	t.closeSearch()
 	t.clearComponentMouseGesture()
@@ -463,6 +519,9 @@ func (t *TuiAltScreen) StopWithOptions(options StopOptions) {
 	if t.renderTimer != nil {
 		t.renderTimer.Stop()
 		t.renderTimer = nil
+	}
+	if t.colorSchemeNotificationsEnabled() {
+		writeColorSchemeNotifications(t.out, false)
 	}
 	t.stopSelectionAutoScrollLocked()
 	// Mirror upstream beforeTerminalStop: clear active press, hover, and drag so
@@ -541,6 +600,7 @@ func (t *TuiAltScreen) renderDocument(width int) []string {
 	} else {
 		frameLines = t.Container.Render(width)
 	}
+	frameLines = t.resolveFakeCursors(frameLines)
 	lines := make([]string, len(frameLines))
 	for i, line := range frameLines {
 		lines[i] = strings.ReplaceAll(stripOsc133ZonePrefix(line), widthx.CursorMarker, "")
@@ -554,8 +614,36 @@ func (t *TuiAltScreen) renderDocument(width int) []string {
 	return lines
 }
 
+// resetAndClampRows applies the line resets to rows and cuts each row to width: ApplyLineResets, then SliceByColumn on a
+// row wider than width. A row equal to the row at the same index in the last frame (previousRows) at the same width takes
+// that frame's result (previousScreen), which the same two steps produced, so an unchanged row costs one comparison.
+// A result equal to the last frame's was cut to the width then, so it fits now.
+func resetAndClampRows(rows, previousRows, previousScreen []string, sameWidth bool, width int) []string {
+	if len(rows) == 0 {
+		return rows
+	}
+	out := make([]string, len(rows))
+	for i, row := range rows {
+		if sameWidth && i < len(previousRows) && i < len(previousScreen) && row == previousRows[i] {
+			out[i] = previousScreen[i]
+			continue
+		}
+		line := widthx.ApplyLineReset(row)
+		if sameWidth && i < len(previousScreen) && line == previousScreen[i] {
+			out[i] = line
+			continue
+		}
+		if !widthx.IsImageLine(line) && widthx.VisibleWidth(line) > width {
+			line = widthx.SliceByColumn(line, 0, width, true)
+		}
+		out[i] = line
+	}
+	return out
+}
+
 func (t *TuiAltScreen) resetRenderStateLocked() {
 	t.previousScreen = nil
+	t.previousRows = nil
 	t.previousScreenWidth = 0
 	t.previousScreenHeight = 0
 	t.currentLayout = nil
@@ -618,24 +706,17 @@ func (t *TuiAltScreen) RepaintAll() {
 // TUI.RenderSnapshot; the alt-screen renders the layout root (or base children)
 // at natural height, matching upstream render(width).
 func (t *TuiAltScreen) RenderSnapshot(width int) []string {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+	t.lockFrame()
+	defer t.unlockFrame()
 	if t.layoutRoot != nil {
 		return t.layoutRoot.Render(width)
 	}
 	return t.Container.Render(width)
 }
 
-// SetClearOnShrink is a no-op for the alt-screen, which always repaints a
-// full-height screen (clearing via \x1b[2J on full redraw) and has no
-// clear-on-shrink heuristic. Present to satisfy the Renderer contract. Mirrors
-// TUI.SetClearOnShrink, whose shrink behavior only applies to the inline-flow
-// main-screen renderer.
-func (t *TuiAltScreen) SetClearOnShrink(bool) {}
-
-// SetShowHardwareCursor toggles the hardware cursor and repaints if already
-// rendered so the next frame emits the correct cursor visibility. Mirrors
-// TUI.SetShowHardwareCursor.
+// SetShowHardwareCursor toggles the hardware cursor and requests a frame, as
+// upstream setShowHardwareCursor does (the frame runs on the next render tick, so
+// changes made together share one). Mirrors TUI.SetShowHardwareCursor.
 func (t *TuiAltScreen) SetShowHardwareCursor(enabled bool) {
 	t.mu.Lock()
 	if t.showHardwareCursor == enabled {
@@ -649,7 +730,7 @@ func (t *TuiAltScreen) SetShowHardwareCursor(enabled bool) {
 		t.HideCursor()
 	}
 	if hasRendered {
-		t.Render()
+		t.RequestRender()
 	}
 }
 
@@ -680,7 +761,7 @@ func (t *TuiAltScreen) compositeFlashes(screen []string, width, height int) []st
 		if flashWidth == 0 {
 			continue
 		}
-		result[row] = compositeTuiLine(result[row], line, width-flashWidth, flashWidth, width)
+		result[row] = CompositeTuiLine(result[row], line, width-flashWidth, flashWidth, width)
 	}
 	return result
 }
@@ -757,27 +838,13 @@ func (t *TuiAltScreen) removeUploadedKittyOrder(imageID int) {
 	}
 }
 
-// requestRenderFromLayout is the render callback handed to scroll views. A
-// request made while doRender holds t.mu (a search reveal scrolling the
-// transcript) is deferred until the frame releases the lock.
-func (t *TuiAltScreen) requestRenderFromLayout() {
-	if t.renderingFrame.Load() {
-		t.renderRequestedInFrame.Store(true)
-		return
-	}
-	t.RequestRender()
-}
+// requestRenderFromLayout is the render callback handed to scroll views. A request made during the frame (a search reveal scrolling the transcript) is issued when the frame releases t.mu (RequestRender).
+func (t *TuiAltScreen) requestRenderFromLayout() { t.RequestRender() }
 
+//perf:hot
 func (t *TuiAltScreen) doRender() {
-	t.mu.Lock()
-	t.renderingFrame.Store(true)
-	defer func() {
-		t.renderingFrame.Store(false)
-		t.mu.Unlock()
-		if t.renderRequestedInFrame.Swap(false) {
-			t.RequestRender()
-		}
-	}()
+	t.lockFrame()
+	defer t.unlockFrame()
 	if t.stopped || !t.altScreenActive {
 		return
 	}
@@ -795,6 +862,9 @@ func (t *TuiAltScreen) doRender() {
 	for i, line := range nextLayout.Lines {
 		screen[i] = stripOsc133ZonePrefix(line)
 	}
+	// Resolve fake cursors before highlighting and compositing, which only track SGR codes (tui-alt-screen.ts). screen is this
+	// frame's own, so it is resolved in place.
+	widthx.ResolveFakeCursorsInPlace(screen, t.showHardwareCursor)
 	screen = t.applySearchHighlights(screen, &nextLayout)
 	screen = t.compositeScrollToEndIndicator(screen, &nextLayout, width)
 	screen = t.compositeOverlays(screen, width, height)
@@ -805,31 +875,26 @@ func (t *TuiAltScreen) doRender() {
 	screen = t.compositeFlashes(screen, width, height)
 
 	cursorPos, hasCursor := widthx.ExtractCursorPosition(screen, height)
-	screen = widthx.ApplyLineResets(screen)
-	for i, line := range screen {
-		if !widthx.IsImageLine(line) && widthx.VisibleWidth(line) > width {
-			screen[i] = widthx.SliceByColumn(line, 0, width, true)
-		}
-	}
+	rows := screen
+	screen = resetAndClampRows(rows, t.previousRows, t.previousScreen, t.previousScreenWidth == width, width)
 
 	fullRedraw := len(t.previousScreen) == 0 || t.previousScreenWidth != width || t.previousScreenHeight != height
-	changedRows := make([]bool, len(screen))
+	changed := func(row int) bool { return row >= len(t.previousScreen) || screen[row] != t.previousScreen[row] }
 	anyChanged := false
 	imageAnchorsNeedRedraw := false
 	for row, line := range screen {
-		var prev string
-		if row < len(t.previousScreen) {
-			prev = t.previousScreen[row]
+		if !changed(row) {
+			continue
 		}
-		changedRows[row] = row >= len(t.previousScreen) || line != prev
-		anyChanged = anyChanged || changedRows[row]
-		if changedRows[row] && (widthx.IsImageLine(line) || widthx.IsImageLine(prev)) {
+		anyChanged = true
+		if widthx.IsImageLine(line) || widthx.IsImageLine(altScreenRow(t.previousScreen, row)) {
 			imageAnchorsNeedRedraw = true
 		}
 	}
 	// WezTerm erases the Kitty image cells a row write touches, so a changed row an image covers redraws the images
 	// (upstream tui-alt-screen.ts imageCellsNeedRedraw).
-	isWezTerm := isWezTermSession()
+	// Only a Kitty frame can use the answer; Start read it (t.wezTerm), so a frame reads no environment.
+	isWezTerm := t.wezTerm
 	imageCellsNeedRedraw := false
 	if !imageAnchorsNeedRedraw && isWezTerm && t.imageProtocol == "kitty" && anyChanged {
 	rows:
@@ -838,8 +903,8 @@ func (t *TuiAltScreen) doRender() {
 			if !ok {
 				continue
 			}
-			for covered := row; covered < min(row+placementRows, len(changedRows)); covered++ {
-				if changedRows[covered] {
+			for covered := row; covered < min(row+placementRows, len(screen)); covered++ {
+				if changed(covered) {
 					imageCellsNeedRedraw = true
 					break rows
 				}
@@ -857,10 +922,12 @@ func (t *TuiAltScreen) doRender() {
 	}
 
 	var buf strings.Builder
+	// A frame is about as long as the one before; growing to that once replaces the builder's doublings.
+	buf.Grow(t.previousFrameBytes)
 	buf.WriteString(altBeginSynchronizedOutput)
 	switch {
 	case fullRedraw:
-		t.fullRedrawCount++
+		t.fullRedrawCount.Add(1) // tui-alt-screen.ts:1725
 		clearImages := t.deleteKittyImages()
 		if t.imageProtocol == "kitty" && hadUploadedKittyImages {
 			clearImages = DeleteAllKittyPlacements()
@@ -889,27 +956,31 @@ func (t *TuiAltScreen) doRender() {
 	if drawKittyImagesLast {
 		for row := range height {
 			if repaint(row) {
-				fmt.Fprintf(&buf, "\x1b[%d;1H\x1b[2K", row+1)
+				writeCursorTo(&buf, row+1, 1)
+				buf.WriteString("\x1b[2K")
 			}
 		}
 		for _, images := range []bool{false, true} {
 			for row := range height {
 				line := altScreenRow(preparedLines, row)
 				if repaint(row) && widthx.IsImageLine(line) == images {
-					fmt.Fprintf(&buf, "\x1b[%d;1H%s", row+1, line)
+					writeCursorTo(&buf, row+1, 1)
+					buf.WriteString(line)
 				}
 			}
 		}
 	} else {
 		for row := range height {
 			if repaint(row) {
-				fmt.Fprintf(&buf, "\x1b[%d;1H\x1b[2K%s", row+1, altScreenRow(preparedLines, row))
+				writeCursorTo(&buf, row+1, 1)
+				buf.WriteString("\x1b[2K")
+				buf.WriteString(altScreenRow(preparedLines, row))
 			}
 		}
 	}
 
 	if hasCursor {
-		fmt.Fprintf(&buf, "\x1b[%d;%dH", cursorPos.Row+1, min(width, cursorPos.Col)+1)
+		writeCursorTo(&buf, cursorPos.Row+1, min(width, cursorPos.Col)+1)
 		if t.showHardwareCursor {
 			buf.WriteString("\x1b[?25h")
 		} else {
@@ -919,7 +990,8 @@ func (t *TuiAltScreen) doRender() {
 		buf.WriteString("\x1b[?25l")
 	}
 	buf.WriteString(altEndSynchronizedOutput)
-	_, _ = fmt.Fprint(t.out, buf.String())
+	t.previousFrameBytes = buf.Len()
+	_, _ = io.WriteString(t.out, buf.String())
 
 	if t.previousScreenWidth > 0 && t.previousScreenWidth != width && t.onWidthChange != nil {
 		t.pendingWidth = width
@@ -932,6 +1004,7 @@ func (t *TuiAltScreen) doRender() {
 		go t.notifyGeometryChanges()
 	}
 	t.previousScreen = screen
+	t.previousRows = rows
 	t.previousScreenWidth = width
 	t.previousScreenHeight = height
 	t.currentLayout = &nextLayout
@@ -968,8 +1041,18 @@ func altScreenRow(screen []string, row int) string {
 	return ""
 }
 
-// isWezTermSession reports whether the process runs inside WezTerm, read per
-// frame as upstream reads process.env.
+// writeCursorTo writes CSI row;col H, the cursor position sequence, without fmt's boxing of each argument.
+func writeCursorTo(buf *strings.Builder, row, col int) {
+	var digits [20]byte
+	buf.WriteString("\x1b[")
+	buf.Write(strconv.AppendInt(digits[:0], int64(row), 10))
+	buf.WriteByte(';')
+	buf.Write(strconv.AppendInt(digits[:0], int64(col), 10))
+	buf.WriteByte('H')
+}
+
+// isWezTermSession reports whether the process runs inside WezTerm, from WEZTERM_PANE and TERM_PROGRAM as upstream reads
+// process.env; the alt screen reads it at Start.
 func isWezTermSession() bool {
 	return os.Getenv("WEZTERM_PANE") != "" || strings.ToLower(os.Getenv("TERM_PROGRAM")) == "wezterm"
 }

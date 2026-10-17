@@ -568,22 +568,27 @@ export async function runToolCall(toolCall, options) {
 async function executePreparedToolCall(prepared, signal, onUpdate) {
     const updateEvents = [];
     let acceptingUpdates = true;
+    const startedAt = performance.now();
+    const elapsed = () => Math.round(performance.now() - startedAt);
     try {
         const result = await prepared.tool.execute(prepared.toolCall.id, prepared.args, signal, (partialResult) => {
             if (!acceptingUpdates)
                 return;
             updateEvents.push(Promise.resolve(onUpdate(partialResult)));
         });
+        const durationMs = elapsed();
         acceptingUpdates = false;
         await Promise.all(updateEvents);
-        return { result, isError: result.isError === true };
+        return { result, isError: result.isError === true, durationMs };
     }
     catch (error) {
+        const durationMs = elapsed();
         acceptingUpdates = false;
         await Promise.all(updateEvents);
         return {
             result: createErrorToolResult(error instanceof Error ? error.message : String(error)),
             isError: true,
+            durationMs,
         };
     }
     finally {
@@ -629,6 +634,7 @@ async function finalizeExecutedToolCall(currentContext, assistantMessage, prepar
         toolCall: prepared.toolCall,
         result,
         isError,
+        durationMs: executed.durationMs,
     };
 }
 function createErrorToolResult(message) {
@@ -644,6 +650,7 @@ async function emitToolExecutionEnd(finalized, emit) {
         toolName: finalized.toolCall.name,
         result: finalized.result,
         isError: finalized.isError,
+        ...(finalized.durationMs === undefined ? {} : { durationMs: finalized.durationMs }),
     });
 }
 function createToolResultMessage(finalized) {
@@ -657,6 +664,7 @@ function createToolResultMessage(finalized) {
         details: finalized.result.details,
         usage: finalized.result.usage,
         isError: finalized.isError,
+        ...(finalized.durationMs === undefined ? {} : { durationMs: finalized.durationMs }),
         timestamp: Date.now(),
     };
 }

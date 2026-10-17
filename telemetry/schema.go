@@ -128,6 +128,22 @@ func DefineTelemetrySchema(schema *TelemetrySchemaDefinition) *TelemetrySchemaDe
 // span and a starter bound to that span for its children.
 type TypedSpanStarter func(name string, attributes SpanAttributes, callback func(span TelemetrySpan, startChildSpan TypedSpanStarter) error) error
 
+// StartTypedSpan starts a schema span through starter and returns the callback's result, as an upstream TypedSpanStarter call resolves
+// to it. A rejected callback returns its error and the zero value. The child starter passed to callback is bound to the new span.
+func StartTypedSpan[R any](starter TypedSpanStarter, name string, attributes SpanAttributes, callback func(span TelemetrySpan, startChildSpan TypedSpanStarter) (R, error)) (R, error) {
+	var result R
+	err := starter(name, attributes, func(span TelemetrySpan, startChildSpan TypedSpanStarter) error {
+		value, err := callback(span, startChildSpan)
+		result = value
+		return err
+	})
+	if err != nil {
+		var zero R
+		return zero, err
+	}
+	return result, nil
+}
+
 func bindTypedSpanStarter(telemetryContext TelemetryContext) TypedSpanStarter {
 	return func(name string, attributes SpanAttributes, callback func(TelemetrySpan, TypedSpanStarter) error) error {
 		return telemetryContext.StartSpan(SpanOptions{Name: name, Attributes: attributes}, func(span TelemetrySpan) error {
@@ -138,6 +154,7 @@ func bindTypedSpanStarter(telemetryContext TelemetryContext) TypedSpanStarter {
 
 // CreateTypedSpanStarter binds an explicit parent context to the combined span vocabulary of one or more schemas.
 // The schemas are not read: as upstream, no runtime schema validation is performed.
-func CreateTypedSpanStarter(telemetryContext TelemetryContext, _ ...*TelemetrySchemaDefinition) TypedSpanStarter {
+// At least one schema is required, as upstream's non-empty TelemetrySchemaTuple.
+func CreateTypedSpanStarter(telemetryContext TelemetryContext, _ *TelemetrySchemaDefinition, _ ...*TelemetrySchemaDefinition) TypedSpanStarter {
 	return bindTypedSpanStarter(telemetryContext)
 }

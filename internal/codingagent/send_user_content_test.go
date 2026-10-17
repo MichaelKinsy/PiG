@@ -62,9 +62,10 @@ func TestSendUserMessageStructuredActiveQueuesRawImages(t *testing.T) {
 				t.Fatal(err)
 			}
 			drainOneUITask(t, m)
-			queued := m.agent.ClearFollowUpQueue()
+			steering, followUp := m.agent.PendingMessages()
+			queued := followUp
 			if mode == extension.DeliverAsSteer {
-				queued = m.agent.ClearSteeringQueue()
+				queued = steering
 			}
 			if len(queued) != 1 || queued[0].User == nil {
 				t.Fatalf("queue %#v", queued)

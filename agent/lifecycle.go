@@ -5,6 +5,8 @@ import (
 	"slices"
 	"sync/atomic"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/ai"
 )
 
 // Ports packages/agent/src/agent.ts.
@@ -12,14 +14,34 @@ import (
 // agentListener retains subscription identity independently of callback values.
 type agentListener struct {
 	callback func(context.Context, AgentEvent) error
-	removed  atomic.Bool
+	// observesToolUpdates reports whether the listener does anything with a tool_execution_update event; nil means it always may.
+	observesToolUpdates func() bool
+	// observesMessageUpdates reports whether the listener does anything with a message_update event; nil means it always may.
+	observesMessageUpdates func() bool
+	removed                atomic.Bool
 }
 
 // Subscribe registers a lifecycle listener. Listeners run in subscription order
 // with the active run context; the run waits for each callback to return.
 // The returned function removes this subscription and can be called repeatedly.
 func (a *Agent) Subscribe(listener func(context.Context, AgentEvent) error) func() {
-	entry := &agentListener{callback: listener}
+	return a.SubscribeObserving(listener, nil)
+}
+
+// SubscribeObserving is Subscribe for a listener that can say whether it currently does anything with a
+// tool_execution_update event. observesToolUpdates is asked when a tool execution starts and again while it runs
+// (ToolUpdatesObserved); nil means the listener always may. The listener still receives every event.
+func (a *Agent) SubscribeObserving(listener func(context.Context, AgentEvent) error, observesToolUpdates func() bool) func() {
+	return a.SubscribeObservingUpdates(listener, observesToolUpdates, nil)
+}
+
+// SubscribeObservingUpdates is SubscribeObserving for a listener that can also say whether it currently does anything
+// with a message_update event. observesMessageUpdates is asked for every message_update; nil means the listener always
+// may. While neither it nor anything else the Agent delivers events to may observe one (messageUpdatesObserved), the
+// update is not delivered at all: no listener runs for it and the run does not await it. Once one may, every later update
+// reaches every listener as before.
+func (a *Agent) SubscribeObservingUpdates(listener func(context.Context, AgentEvent) error, observesToolUpdates, observesMessageUpdates func() bool) func() {
+	entry := &agentListener{callback: listener, observesToolUpdates: observesToolUpdates, observesMessageUpdates: observesMessageUpdates}
 	a.stateMu.Lock()
 	a.listeners = append(a.listeners, entry)
 	a.stateMu.Unlock()
@@ -31,6 +53,45 @@ func (a *Agent) Subscribe(listener func(context.Context, AgentEvent) error) func
 			a.listeners = slices.DeleteFunc(a.listeners, func(listener *agentListener) bool { return listener.removed.Load() })
 		}
 	}
+}
+
+// toolUpdatesObserved reports whether anything the Agent delivers events to could see a tool_execution_update: the
+// OnEvent, EventCh and AfterEvent options, or a live listener that may observe it.
+func (a *Agent) toolUpdatesObserved() bool {
+	if a.opts.OnEvent != nil || a.opts.EventCh != nil || a.opts.AfterEvent != nil {
+		return true
+	}
+	a.stateMu.RLock()
+	defer a.stateMu.RUnlock()
+	for _, listener := range a.listeners {
+		if listener.removed.Load() {
+			continue
+		}
+		if listener.observesToolUpdates == nil || listener.observesToolUpdates() {
+			return true
+		}
+	}
+	return false
+}
+
+// messageUpdatesObserved reports whether anything the Agent delivers events to could see a message_update now: the
+// OnEvent, EventCh and AfterEvent options, or a live listener that may observe it. It is asked for every update, so a
+// listener added or starting to observe during a stream sees every update from the next one on.
+func (a *Agent) messageUpdatesObserved() bool {
+	if a.opts.OnEvent != nil || a.opts.EventCh != nil || a.opts.AfterEvent != nil {
+		return true
+	}
+	a.stateMu.RLock()
+	defer a.stateMu.RUnlock()
+	for _, listener := range a.listeners {
+		if listener.removed.Load() {
+			continue
+		}
+		if listener.observesMessageUpdates == nil || listener.observesMessageUpdates() {
+			return true
+		}
+	}
+	return false
 }
 
 // runSignalWatcher retains an observer's identity independently of its callback value.
@@ -96,13 +157,35 @@ func (a *Agent) WaitForIdle() {
 
 // StreamingMessage returns a snapshot of the message currently streaming.
 func (a *Agent) StreamingMessage() *AgentMessage {
-	a.stateMu.RLock()
-	defer a.stateMu.RUnlock()
+	a.stateMu.Lock()
+	defer a.stateMu.Unlock()
 	if a.streamingMessage == nil {
 		return nil
 	}
+	if a.streamingDeferred {
+		// The last update was not delivered (reduceUnobservedUpdate): build the message it would have carried now, once.
+		a.streamingStorage = AgentMessage{Assistant: shallowAssistantMessageFrom(&a.streamingCapture)}
+		a.dropStreamingCapture()
+	}
 	message := startEventMessage(*a.streamingMessage)
 	return &message
+}
+
+// reduceUnobservedUpdate is reduceEventState for a message_update that nothing observes: the state records the capture
+// of the update's partial and StreamingMessage builds the message from it when asked, so the state reads exactly as if
+// the update had been delivered.
+func (a *Agent) reduceUnobservedUpdate(capture *ai.ShallowCapture) {
+	a.stateMu.Lock()
+	a.streamingCapture, a.streamingDeferred = *capture, true
+	a.streamingMessage = &a.streamingStorage
+	a.stateMu.Unlock()
+}
+
+// dropStreamingCapture forgets the capture of an undelivered update. The caller holds stateMu.
+func (a *Agent) dropStreamingCapture() {
+	if a.streamingDeferred {
+		a.streamingCapture, a.streamingDeferred = ai.ShallowCapture{}, false
+	}
 }
 
 // PendingToolCalls returns the active tool call IDs in start order.
@@ -145,13 +228,17 @@ func (a *Agent) reduceEventState(ev AgentEvent) {
 	defer a.stateMu.Unlock()
 	switch event := ev.(type) {
 	case MessageStartEvent:
-		message := event.Message
-		a.streamingMessage = &message
+		a.streamingStorage = event.Message
+		a.streamingMessage = &a.streamingStorage
+		a.dropStreamingCapture()
 	case MessageUpdateEvent:
-		message := event.Message
-		a.streamingMessage = &message
+		a.streamingStorage = event.Message
+		a.streamingMessage = &a.streamingStorage
+		a.dropStreamingCapture()
 	case MessageEndEvent, AgentEndEvent:
 		a.streamingMessage = nil
+		a.streamingStorage = AgentMessage{}
+		a.dropStreamingCapture()
 	case ToolExecutionStartEvent:
 		if !slices.Contains(a.pendingToolCalls, event.ToolCallID) {
 			a.pendingToolCalls = append(a.pendingToolCalls, event.ToolCallID)

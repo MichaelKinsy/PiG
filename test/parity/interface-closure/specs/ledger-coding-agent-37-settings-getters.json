@@ -1,0 +1,48 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getHttpIdleTimeoutMs"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetHttpIdleTimeoutMs"
+  ],
+  "production": [
+   "call:internal/codingagent/settings.go#SettingsManager.GetProviderRequestTimeoutMs"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager",
+   "test:internal/codingagent/settings_explicit_values_test.go#TestSettingsInvalidIdleTimeoutIsAnError"
+  ],
+  "rationale": "SettingsManager.getHttpIdleTimeoutMs is GetHttpIdleTimeoutMs() (int, error); the error stands for upstream's throw on an invalid stored value (`Invalid httpIdleTimeoutMs setting: -5`)."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getSessionDir"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetSessionDir"
+  ],
+  "production": [
+   "call:coding/cli/main.go#resolveSessionDir"
+  ],
+  "evidence": [
+   "test:internal/codingagent/settings_manager_upstream_test.go#TestUpstreamSettingsManager"
+  ],
+  "rationale": "SettingsManager.getSessionDir is GetSessionDir() (string, error): empty string for upstream undefined; the upstream test asserts unset, absolute, relative and `~` paths."
+ },
+ {
+  "ids": [
+   "pkg:coding-agent/.#SettingsManager::property:getWebSocketConnectTimeoutMs"
+  ],
+  "targets": [
+   "internal/codingagent/settings.go#SettingsManager.GetWebSocketConnectTimeoutMs"
+  ],
+  "production": [
+   "call:coding/session_cache_warming.go#Session.buildRequestOptions"
+  ],
+  "evidence": [
+   "test:internal/codingagent/sdk_timeout_options_test.go#TestWebSocketConnectTimeoutSettingPresence"
+  ],
+  "rationale": "SettingsManager.getWebSocketConnectTimeoutMs is GetWebSocketConnectTimeoutMs() (*int, error): nil for undefined, the error for an invalid stored value."
+ }
+]

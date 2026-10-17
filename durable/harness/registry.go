@@ -34,7 +34,7 @@ type Registry interface {
 
 // BuiltinTasks are the built-in task definitions every registry holds; they are not an extension and cannot be removed or replaced.
 func BuiltinTasks() []durable.AnyTask {
-	return []durable.AnyTask{GenerationTask, ToolTask, CompactionTask}
+	return []durable.AnyTask{GenerationTask.Erased(), ToolTask.Erased(), CompactionTask.Erased()}
 }
 
 // registryState is one immutable published registry state.

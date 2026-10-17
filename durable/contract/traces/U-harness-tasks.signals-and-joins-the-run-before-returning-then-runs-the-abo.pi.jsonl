@@ -1,0 +1,12 @@
+{"k":">","name":"harness.root","tick":2205359}
+{"k":"#","seq":1,"summary":"conversation document.create","tick":2205440,"begin":2205439}
+{"k":">","name":"harness.root().commit","tick":2205447}
+{"k":"#","seq":2,"summary":"task","tick":2205465,"begin":2205464}
+{"k":">","name":"harness.resume","tick":2205471}
+{"k":"#","seq":3,"summary":"task","tick":2205495,"begin":2205494}
+{"k":">","name":"harness.abortTask","tick":2205518}
+{"k":"#","seq":4,"summary":"task","tick":2205535,"begin":2205534}
+{"k":">","name":"harness.abortTask","tick":2205574}
+{"k":">","name":"harness.waitForTask","tick":2205592}
+{"k":"#","seq":5,"summary":"task","tick":2205609,"begin":2205608}
+{"k":">","name":"harness.close","tick":2205625}

@@ -13,6 +13,7 @@ override_base_args = true
 pig_bin = "/usr/bin/env"
 pi_bin = "/usr/bin/env"
 pig_args = ["bash", "./test/parity/testdata/system-prompt-pig.sh"]
+pig_go_tests = ["./internal/codingagent/prompts"]
 pi_args = ["node", "./test/parity/testdata/system-prompt-pi.mjs"]
 
 [cli]

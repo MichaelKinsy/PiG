@@ -20,7 +20,7 @@ headings() {
 markers() {
   local kind=$1
   grep -rohE "pig ${kind} \(D[0-9]+\)" \
-    --include='*.go' --include='*.mjs' --include='*.py' --include='*.rs' \
+    --include='*.go' --include='*.js' --include='*.mjs' --include='*.py' --include='*.rs' \
     --exclude='*_test.go' --exclude-dir=.git --exclude-dir=.upstream \
     --exclude-dir=.next --exclude-dir=node_modules --exclude-dir=out . \
     | grep -oE 'D[0-9]+' | sort -u || true
@@ -32,7 +32,7 @@ all=$(printf '%s\n%s\n' "$core" "$additive" | sed '/^$/d' | sort)
 divergence_refs=$(markers divergence)
 additive_refs=$(markers additive)
 untyped_markers=$(grep -RInE '^[[:space:]]*(//|#).*pig (divergence|additive)(:| [^(])' \
-  --include='*.go' --include='*.mjs' --include='*.py' --include='*.rs' \
+  --include='*.go' --include='*.js' --include='*.mjs' --include='*.py' --include='*.rs' \
   --exclude-dir=.git --exclude-dir=.upstream --exclude-dir=.next \
   --exclude-dir=node_modules --exclude-dir=out . || true)
 

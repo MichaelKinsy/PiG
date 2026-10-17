@@ -1,0 +1,338 @@
+{
+ "tasks": {
+  "x": {
+   "name": "t.x",
+   "version": 1,
+   "phases": {
+    "start": [
+     {
+      "commit": {
+       "ops": [
+        {
+         "op": "childTask",
+         "task": "y"
+        },
+        {
+         "op": "ownedConversation"
+        }
+       ],
+       "next": {
+        "status": "waiting",
+        "checkpoint": {
+         "phase": "done"
+        },
+        "on": [
+         "$c0"
+        ],
+        "policy": "allSettled"
+       }
+      }
+     }
+    ],
+    "done": [
+     {
+      "commit": {
+       "next": {
+        "status": "terminal",
+        "outcome": {
+         "status": "completed"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "abort": [
+    {
+     "commit": {
+      "next": {
+       "status": "terminal",
+       "outcome": {
+        "status": "aborted",
+        "reason": "handler"
+       }
+      }
+     }
+    }
+   ]
+  },
+  "y": {
+   "name": "t.y",
+   "version": 1,
+   "phases": {
+    "start": [
+     {
+      "commit": {
+       "ops": [
+        {
+         "op": "childTask",
+         "task": "z"
+        }
+       ],
+       "next": {
+        "status": "waiting",
+        "checkpoint": {
+         "phase": "done"
+        },
+        "on": [
+         "$c0"
+        ],
+        "policy": "allSettled"
+       }
+      }
+     }
+    ],
+    "done": [
+     {
+      "commit": {
+       "next": {
+        "status": "terminal",
+        "outcome": {
+         "status": "completed"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "abort": [
+    {
+     "commit": {
+      "next": {
+       "status": "terminal",
+       "outcome": {
+        "status": "aborted",
+        "reason": "handler"
+       }
+      }
+     }
+    }
+   ]
+  },
+  "z": {
+   "name": "t.z",
+   "version": 1,
+   "phases": {
+    "start": [
+     {
+      "await": "gz"
+     },
+     {
+      "commit": {
+       "next": {
+        "status": "terminal",
+        "outcome": {
+         "status": "completed"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "abort": [
+    {
+     "await": "gza"
+    },
+    {
+     "commit": {
+      "next": {
+       "status": "terminal",
+       "outcome": {
+        "status": "aborted"
+       }
+      }
+     }
+    }
+   ]
+  },
+  "early": {
+   "name": "t.early",
+   "version": 1,
+   "phases": {
+    "start": [
+     {
+      "commit": {
+       "ops": [
+        {
+         "op": "childTask",
+         "task": "w"
+        }
+       ],
+       "next": {
+        "status": "running",
+        "checkpoint": {
+         "phase": "two"
+        }
+       }
+      }
+     }
+    ],
+    "two": [
+     {
+      "commit": {
+       "next": {
+        "status": "terminal",
+        "outcome": {
+         "status": "completed",
+         "result": "early"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "abort": [
+    {
+     "commit": {
+      "next": {
+       "status": "terminal",
+       "outcome": {
+        "status": "aborted",
+        "reason": "handler"
+       }
+      }
+     }
+    }
+   ]
+  },
+  "w": {
+   "name": "t.w",
+   "version": 1,
+   "phases": {
+    "start": [
+     {
+      "await": "gw"
+     },
+     {
+      "commit": {
+       "next": {
+        "status": "terminal",
+        "outcome": {
+         "status": "completed",
+         "result": "w"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "abort": [
+    {
+     "commit": {
+      "next": {
+       "status": "terminal",
+       "outcome": {
+        "status": "aborted",
+        "reason": "handler"
+       }
+      }
+     }
+    }
+   ]
+  },
+  "inconv": {
+   "name": "t.inconv",
+   "version": 1,
+   "phases": {
+    "start": [
+     {
+      "await": "gi"
+     },
+     {
+      "commit": {
+       "next": {
+        "status": "terminal",
+        "outcome": {
+         "status": "completed"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "abort": [
+    {
+     "commit": {
+      "next": {
+       "status": "terminal",
+       "outcome": {
+        "status": "aborted",
+        "reason": "handler"
+       }
+      }
+     }
+    }
+   ]
+  }
+ },
+ "cmds": [
+  {
+   "cmd": "commit",
+   "ops": [
+    {
+     "op": "rootConversation"
+    }
+   ]
+  },
+  {
+   "cmd": "open"
+  },
+  {
+   "cmd": "resume"
+  },
+  {
+   "cmd": "commit",
+   "ops": [
+    {
+     "op": "createTask",
+     "task": "x",
+     "opts": {
+      "conversationId": 1
+     }
+    }
+   ]
+  },
+  {
+   "cmd": "commit",
+   "ops": [
+    {
+     "op": "createTask",
+     "task": "early",
+     "opts": {
+      "conversationId": 1
+     }
+    }
+   ]
+  },
+  {
+   "cmd": "commit",
+   "ops": [
+    {
+     "op": "createTask",
+     "task": "inconv",
+     "opts": {
+      "conversationId": 4
+     }
+    }
+   ]
+  },
+  {
+   "cmd": "abort",
+   "id": 2
+  },
+  {
+   "cmd": "release",
+   "gate": "gza"
+  },
+  {
+   "cmd": "release",
+   "gates": [
+    "gw",
+    "gi"
+   ]
+  },
+  {
+   "cmd": "waitForIdle"
+  }
+ ]
+}

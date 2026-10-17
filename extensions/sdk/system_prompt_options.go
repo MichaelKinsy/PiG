@@ -9,7 +9,7 @@ func (o SystemPromptOptions) MarshalJSON() ([]byte, error) {
 	if o.CustomPromptSet || o.CustomPrompt != "" {
 		custom = &o.CustomPrompt
 	}
-	return json.Marshal(struct {
+	return json.MarshalJS(struct {
 		fields
 		CustomPrompt *string `json:"customPrompt,omitempty"`
 	}{fields: fields(o), CustomPrompt: custom})

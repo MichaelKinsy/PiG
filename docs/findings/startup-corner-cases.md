@@ -98,7 +98,7 @@ The exit lane's before-lock executable has SHA-256 `9ee8deedeff184c590c8c9bc3112
 | Walk-scoped immutable derived state | `internal/ignorerules/ignorerules.go:14,88` | Avoids repeated compilation without retaining stale rules after reload |
 | Shared authoritative credential overlay | `ai/runtime_credentials.go:58,117`; `internal/codingagent/native_provider.go:225` | Preserves non-persistent keys without inverting registry and credential locks |
 | Warm SDK marker check | `coding/extension/pigsdk/pigsdk.go:174` | Current SDKs avoid staging work and lock acquisition |
-| Bounded, joined session-list workers | `internal/codingagent/session_listing.go:133-151` | Caps simultaneous file work and drains workers on cancellation |
+| Bounded, joined session-list workers | `internal/codingagent/session_listing.go:132-150` | Caps simultaneous file work and drains workers on cancellation |
 | Streaming session summaries | `internal/codingagent/session_resume.go:244` | Avoids retaining parsed history objects while building picker metadata |
 | Bounded header-only continue discovery | `internal/codingagent/session_resume.go:506-525` | Does not read every transcript body to choose the recent session |
 | Explicit startup lock-wait trace | `cmd/pig/startup_trace.go:70` | Makes cross-process SDK contention diagnosable |

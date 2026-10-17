@@ -1,8 +1,30 @@
 package durable
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // Ports packages/durable/src/errors.ts
+
+// ErrorMessage is the message of a thrown (panicked) value, without panicking itself (errors.ts errorMessage): formatting
+// a value can panic, as a String method that panics does (String() throws for Object.create(null) upstream), and code
+// that formats an error must not fail for the value it formats. The fallback is upstream's
+// Object.prototype.toString.call tag of an object.
+func ErrorMessage(thrown any) (message string) {
+	defer func() {
+		// upstream: packages/durable/src/errors.ts:errorMessage (its catch drops String()'s exception and returns the value's tag)
+		if recover() != nil {
+			message = "[object Object]"
+		}
+	}()
+	switch value := thrown.(type) {
+	case error:
+		return value.Error()
+	case fmt.Stringer:
+		return value.String()
+	}
+	return fmt.Sprint(thrown)
+}
 
 // ReadAfterWrite reports that a transaction read a table after its first table write. Read every required row before
 // writing.
@@ -11,28 +33,58 @@ type ReadAfterWrite struct {
 }
 
 // NewReadAfterWrite returns the error for the Tx method that read after a write.
-func NewReadAfterWrite(method string) *ReadAfterWrite { return &ReadAfterWrite{Method: method} }
+func NewReadAfterWrite(method string) *ReadAfterWrite {
+	e := &ReadAfterWrite{Method: method}
+	return e
+}
+
+// Name is the `name` property, "ReadAfterWrite".
+func (*ReadAfterWrite) Name() string { return "ReadAfterWrite" }
 
 func (e *ReadAfterWrite) Error() string {
 	return fmt.Sprintf("Tx.%s() cannot read tables after the first table write", e.Method)
 }
 
-// StorageRejected reports that storage rejected a batch before any durable effect; the owning Session may continue
-// safely.
-type StorageRejected struct {
+// StorageRequestError reports that a Storage read rejected an invalid request, such as an unknown conversation or a
+// cursor from another scan, with no durable effect. Unlike any other error a Storage returns, it fails only that read,
+// not the Session; from a commit it is fatal like any other.
+type StorageRequestError struct {
 	Message string
-	Cause   error
 }
 
-// NewStorageRejected returns a StorageRejected error; cause may be nil.
-func NewStorageRejected(message string, cause error) *StorageRejected {
-	return &StorageRejected{Message: message, Cause: cause}
+// NewStorageRequestError returns the error for a rejected read request.
+func NewStorageRequestError(message string) *StorageRequestError {
+	return &StorageRequestError{Message: message}
 }
 
-func (e *StorageRejected) Error() string { return e.Message }
+// Name is the `name` property, "StorageRequestError".
+func (*StorageRequestError) Name() string { return "StorageRequestError" }
+
+func (e *StorageRequestError) Error() string { return e.Message }
+
+// Unwrap returns nil: a StorageRequestError has no cause.
+func (*StorageRequestError) Unwrap() error { return nil }
+
+// SessionFailed reports that the Session failed, so nothing runs or commits any more. It fails when a Storage method
+// fails, a commit cannot be adopted, or the Harness's own bookkeeping fails (a scheduler commit, an internal commit
+// listener, a registry whose snapshot fails). Cause is that first error. Reopen the Session; reopening recovers from
+// what was committed.
+type SessionFailed struct {
+	Cause error
+}
+
+// NewSessionFailed returns the error for a Session that failed with cause.
+func NewSessionFailed(cause error) *SessionFailed { return &SessionFailed{Cause: cause} }
+
+// Name is the `name` property, "SessionFailed".
+func (*SessionFailed) Name() string { return "SessionFailed" }
+
+func (*SessionFailed) Error() string {
+	return "Session failed after a storage error; close and reopen it"
+}
 
 // Unwrap returns the cause.
-func (e *StorageRejected) Unwrap() error { return e.Cause }
+func (e *SessionFailed) Unwrap() error { return e.Cause }
 
 // ConversationBusy reports that a submission reached a busy conversation and was not admitted.
 type ConversationBusy struct {
@@ -41,8 +93,12 @@ type ConversationBusy struct {
 
 // NewConversationBusy returns the error for a busy conversation.
 func NewConversationBusy(conversationId ConversationId) *ConversationBusy {
-	return &ConversationBusy{ConversationId: conversationId}
+	e := &ConversationBusy{ConversationId: conversationId}
+	return e
 }
+
+// Name is the `name` property, "ConversationBusy".
+func (*ConversationBusy) Name() string { return "ConversationBusy" }
 
 func (e *ConversationBusy) Error() string {
 	return fmt.Sprintf("Conversation %d is busy", e.ConversationId)

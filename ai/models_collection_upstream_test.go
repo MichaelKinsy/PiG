@@ -47,7 +47,9 @@ func TestModelsResolvedEnvironmentAndRequestKeyUpstream(t *testing.T) {
 	}
 }
 
-// .upstream/v0.87.1/packages/ai/test/providers.test.ts:599
+// .upstream/v0.87.1/packages/ai/test/providers.test.ts:599; the 1.0.4 form of the same case passes `wait: 50` to models.fetchDeferred and expects the provider to receive it.
+// mutation-checked: dropping the reads and writes of DeferredFetchOptions.Wait fails it
+// Pi: packages/ai/test/providers.test.ts:662 (wait)
 func TestModelsDeferredResolvedRequestOptionsUpstream(t *testing.T) {
 	model := dispatchTestModel("api-a", "model-a")
 	model.ProviderMeta.ProviderID = "deferred-provider"

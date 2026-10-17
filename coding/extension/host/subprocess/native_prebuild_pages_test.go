@@ -1,29 +1,16 @@
-package subprocess_test
+//go:build !pig_strip_node_extensions
+
+package subprocess
 
 import (
-	"archive/zip"
 	"bytes"
 	"debug/elf"
-	"io"
 	"testing"
-
-	"github.com/klauspost/compress/zstd"
 )
 
-// .upstream/v0.87.1/packages/tui/test/native-platform.test.ts:8 (Linux ARM64 prebuild supports 64 KB system pages). PiG embeds Pi's prebuilt addon in runtime-node.zip, so the same ELF assertions run on the shipped bytes.
+// .upstream/v0.87.1/packages/tui/test/native-platform.test.ts:8 (Linux ARM64 prebuild supports 64 KB system pages). PiG embeds Pi's prebuilt addon in runtime-node.pack, so the same ELF assertions run on the shipped bytes.
 func TestUpstreamNativePlatformLinuxArm64PrebuildSupportsLargePages(t *testing.T) {
-	archive, err := zip.OpenReader("runtime-node.zip")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = archive.Close() }()
-	archive.RegisterDecompressor(zstd.ZipMethodWinZip, zstd.ZipDecompressor())
-	entry, err := archive.Open("runtime-node/shims/pi-dist/pi-tui/native/linux/prebuilds/linux-arm64/linux-platform-x11.node")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = entry.Close() }()
-	data, err := io.ReadAll(entry)
+	data, err := nodeRuntimeFS.ReadFile("runtime-node/shims/pi-dist/pi-tui/native/linux/prebuilds/linux-arm64/linux-platform-x11.node")
 	if err != nil {
 		t.Fatal(err)
 	}

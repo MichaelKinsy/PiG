@@ -10,8 +10,10 @@ import (
 	"slices"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/env"
+	"github.com/MichaelKinsy/PiG/durable/session"
 )
 
 // DefaultRetryPolicy is the built-in durable generation retry policy (agent.ts:18-23).
@@ -95,24 +97,37 @@ func (selection *ExtensionSelection) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// ToolSelection is the stored tools field of AgentState: an exact list (Exact), or {remove}.
+// ToolSelection is the stored tools field of AgentState: an exact list (Exact), or a filter with an optional Remove list
+// and, for modelTools, an optional Add list of the deferred tools loaded so far. A nil Remove or Add is absent.
 type ToolSelection struct {
 	Exact  bool
 	Names  []string
 	Remove []string
+	Add    []string
 }
 
-// MarshalJSON writes an exact selection as an array and a filter as {remove}.
+// MarshalJSON writes an exact selection as an array and a filter as {remove?, add?}.
 func (selection ToolSelection) MarshalJSON() ([]byte, error) {
 	if selection.Exact {
 		return json.Marshal(nonNilStrings(selection.Names))
 	}
-	return json.Marshal(struct {
-		Remove []string `json:"remove"`
-	}{Remove: nonNilStrings(selection.Remove)})
+	var buffer bytes.Buffer
+	buffer.WriteByte('{')
+	if selection.Remove != nil {
+		if err := writeMember(&buffer, "remove", selection.Remove, false); err != nil {
+			return nil, err
+		}
+	}
+	if selection.Add != nil {
+		if err := writeMember(&buffer, "add", selection.Add, selection.Remove != nil); err != nil {
+			return nil, err
+		}
+	}
+	buffer.WriteByte('}')
+	return buffer.Bytes(), nil
 }
 
-// UnmarshalJSON reads an array as an exact selection and an object as {remove}.
+// UnmarshalJSON reads an array as an exact selection and an object as {remove?, add?}.
 func (selection *ToolSelection) UnmarshalJSON(data []byte) error {
 	*selection = ToolSelection{}
 	if trimmed := bytes.TrimSpace(data); len(trimmed) > 0 && trimmed[0] == '[' {
@@ -124,12 +139,18 @@ func (selection *ToolSelection) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 	var filter struct {
-		Remove []string `json:"remove"`
+		Remove *[]string `json:"remove"`
+		Add    *[]string `json:"add"`
 	}
 	if err := json.Unmarshal(data, &filter); err != nil {
 		return err
 	}
-	selection.Remove = nonNilStrings(filter.Remove)
+	if filter.Remove != nil {
+		selection.Remove = nonNilStrings(*filter.Remove)
+	}
+	if filter.Add != nil {
+		selection.Add = nonNilStrings(*filter.Add)
+	}
 	return nil
 }
 
@@ -161,6 +182,13 @@ type AgentState struct {
 	Extensions *ExtensionSelection `json:"extensions,omitempty"`
 	// Tools filters the selected extensions' tools. An exact list offers exactly these, in order.
 	Tools *ToolSelection `json:"tools,omitempty"`
+	// ModelTools filters the enabled tools the model may call (Callers includes the model): the tools offered to it. It never
+	// widens: other tools can still call the ones it leaves out.
+	//   - Unset: every such tool except deferred ones.
+	//   - An exact list: exactly these, in order, deferred ones too.
+	//   - A filter: every such tool except deferred ones and those in Remove, in registry order, followed by the deferred tools
+	//     in Add that are not in Remove, in Add order. Names of tools that are not deferred or not registered have no effect in Add.
+	ModelTools *ToolSelection `json:"modelTools,omitempty"`
 	// Instructions render after every extension section, as the section instructions.
 	Instructions *string `json:"instructions,omitempty"`
 	// Cwd is a directory within the environment's file system, passed to HarnessOptions.Env.
@@ -173,13 +201,10 @@ var AgentDoc = durable.DefineDoc(durable.DocDefinition[AgentState]{
 		Kind:           "pi.agent",
 		Version:        1,
 		CheckpointWhen: func(AgentState, []durable.Op, durable.CheckpointInfo) bool { return true },
+
+		Initial: func() AgentState { return AgentState{} },
 	},
-	DocumentSemantics: durable.DocumentSemantics{
-		Scope:   durable.ScopeConversation,
-		History: durable.HistoryRewindable,
-		Fork:    durable.ForkAsOf,
-	},
-	Initial: func() AgentState { return AgentState{} },
+	DocumentSemantics: durable.NewRewindableConversationSemantics(durable.ForkAsOf).DocumentSemantics,
 })
 
 // Change is one field of AgentChange: unset leaves the stored field, Cleared removes it, and SetTo replaces it.
@@ -202,19 +227,28 @@ func SetTo[T any](value T) Change[T] { return Change[T]{state: changeSet, value:
 // Cleared returns a change that removes the stored field (upstream null).
 func Cleared[T any]() Change[T] { return Change[T]{state: changeClear} }
 
-// ExtensionChange is a change to the stored extension selection: an exact list, or an edit with optional Add and Remove lists; a nil Add or Remove is absent.
+// ExtensionChange is Pi's `Extension[] | { add?, remove? }`: List is the array form, a non-nil list (empty included) that replaces the selection, and Edit is the object form that edits the host default selection. Go has no sum of a list and an object, so exactly one of the two fields is set; neither set is the empty object `{}`.
 type ExtensionChange struct {
-	Exact  bool
-	List   []*durable.Extension
+	List []*durable.Extension
+	Edit *ExtensionEdit
+}
+
+// ExtensionEdit is the `{ add?, remove? }` form of an extension change; a nil Add or Remove is absent.
+type ExtensionEdit struct {
 	Add    []*durable.Extension
 	Remove []*durable.Extension
 }
 
-// ToolChange is a change to the stored tool filter: an exact list, or {remove}.
+// ToolChange is Pi's `ToolRegistration[] | { remove, add }`: List is the array form, a non-nil list (empty included) that replaces the filter, and Edit is the `{ remove, add }` form; neither set is `{ remove: [] }`.
 type ToolChange struct {
-	Exact  bool
-	List   []*durable.ToolRegistration
+	List []*durable.ToolRegistration
+	Edit *ToolEdit
+}
+
+// ToolEdit is the `{ remove, add }` form of a tool change: a nil list is absent, and the tools filter takes Remove only.
+type ToolEdit struct {
 	Remove []*durable.ToolRegistration
+	Add    []*durable.ToolRegistration
 }
 
 // AgentChange is a change to pi.agent: a set field replaces the stored one, a cleared field removes it, and an unset field changes nothing.
@@ -223,6 +257,7 @@ type AgentChange struct {
 	ThinkingLevel Change[ai.ModelThinkingLevel]
 	Extensions    Change[ExtensionChange]
 	Tools         Change[ToolChange]
+	ModelTools    Change[ToolChange]
 	Instructions  Change[string]
 	Cwd           Change[string]
 }
@@ -239,7 +274,19 @@ type HarnessSettings struct {
 	ToolExecution durable.ToolExecutionMode
 	SteeringMode  durable.QueueMode
 	FollowUpMode  durable.QueueMode
+	// ContextRetentionMs is how long an idle conversation keeps its last context read in memory, so its next run reads
+	// only newer entries. Busy conversations always keep it; 0 drops it once the conversation is idle. Nil selects the
+	// default, ten minutes.
+	ContextRetentionMs *float64
+	// DocumentRetentionMs is how long a loaded document that no watch or document state observes stays in memory after
+	// its last read or write; the next access loads it from Storage. Observed documents always stay. Nil selects the
+	// default, ten minutes; 0 drops one right after use; +Inf keeps them. Anything else that is not a number of
+	// milliseconds, 0 or more, means the default.
+	DocumentRetentionMs *float64
 }
+
+// defaultContextRetentionMs is the default of HarnessSettings.ContextRetentionMs: ten minutes.
+const defaultContextRetentionMs = 600_000
 
 // RetryPolicyPatch is Partial<ConversationRetryPolicy>; nil fields keep the defaults.
 type RetryPolicyPatch struct {
@@ -249,12 +296,15 @@ type RetryPolicyPatch struct {
 	MaxAgentDelayMs *int
 }
 
-// CompactionPolicyPatch is Partial<CompactionPolicy>; nil fields keep the defaults.
+// CompactionPolicyPatch is CompactionSettings: Partial<CompactionPolicy>, nil fields keep the defaults, plus ModelOverrides.
 type CompactionPolicyPatch struct {
 	Enabled          *bool
 	ReserveTokens    *int
 	KeepRecentTokens *int
 	BackgroundTokens *int
+	// ModelOverrides is keyed by exact "provider/modelId"; each field an entry sets replaces the Harness-wide one for that
+	// model, so small- and large-window models can share a Harness (types.ts CompactionSettings, Pi c4cf7957).
+	ModelOverrides map[string]durable.CompactionPolicyOverride
 }
 
 // ProgressPolicyPatch is Partial<ProgressPolicy>; nil fields keep the defaults.
@@ -265,14 +315,22 @@ type ProgressPolicyPatch struct {
 
 // ResolveSettings resolves host settings: every field over its built-in default, object fields merged.
 func ResolveSettings(settings *HarnessSettings) durable.Settings {
+	retry := DefaultRetryPolicy
+	// Pi spreads the default, so a resolved policy never shares storage with it.
+	retry.MaxAgentDelayMs = new(*DefaultRetryPolicy.MaxAgentDelayMs)
 	resolved := durable.Settings{
-		Retry:         DefaultRetryPolicy,
+		Retry:         retry,
 		Compaction:    DefaultCompactionPolicy,
 		Progress:      DefaultProgressPolicy,
 		ToolExecution: durable.ToolExecutionParallel,
 		SteeringMode:  durable.QueueOneAtATime,
 		FollowUpMode:  durable.QueueOneAtATime,
+
+		ContextRetentionMs: defaultContextRetentionMs,
 	}
+	resolved.DocumentRetentionMs = session.DocumentRetention(nil)
+	// The spread copies the default's values; the pointer field must not alias the shared default.
+	resolved.Retry.MaxAgentDelayMs = new(*DefaultRetryPolicy.MaxAgentDelayMs)
 	if settings == nil {
 		return resolved
 	}
@@ -293,11 +351,14 @@ func ResolveSettings(settings *HarnessSettings) durable.Settings {
 		assign(&resolved.Compaction.ReserveTokens, compaction.ReserveTokens)
 		assign(&resolved.Compaction.KeepRecentTokens, compaction.KeepRecentTokens)
 		assign(&resolved.Compaction.BackgroundTokens, compaction.BackgroundTokens)
+		resolved.Compaction.ModelOverrides = compaction.ModelOverrides
 	}
 	if progress := settings.Progress; progress != nil {
 		assign(&resolved.Progress.PartialIntervalMs, progress.PartialIntervalMs)
 		assign(&resolved.Progress.OutputIntervalMs, progress.OutputIntervalMs)
 	}
+	assign(&resolved.ContextRetentionMs, settings.ContextRetentionMs)
+	resolved.DocumentRetentionMs = session.DocumentRetention(settings.DocumentRetentionMs)
 	if settings.ToolExecution != "" {
 		resolved.ToolExecution = settings.ToolExecution
 	}
@@ -325,13 +386,57 @@ func Configure(tx durable.Tx, conversationId durable.ConversationId, change Agen
 	return applyChange(state, change)
 }
 
-// AddTools applies the addTools control of a tool round: an exact list gets each name it lacks appended, {remove} loses the names, and unset tools already offer every tool, so nothing is written.
+// AddTools applies the addTools control of a tool round to tools and modelTools, so the next request offers the tools: an
+// exact list gets each name it lacks appended, and {remove} loses the names. An unset tools already enables every tool, so
+// nothing is written for it. An unset or filter modelTools also gets each name appended to its add, which loads deferred
+// tools and has no effect for others. By name, without the registry: a tool that is not registered now, such as one of an
+// MCP server that is reconnecting, is offered once it is again.
+//
+// Ports packages/durable/src/harness/agent.ts (addTools).
 func AddTools(tx durable.Tx, conversationId durable.ConversationId, added []string) error {
 	state, err := durable.TxDoc[AgentState](tx, AgentDoc, conversationId)
 	if err != nil {
 		return err
 	}
-	if tools := state.Array("tools"); tools != nil {
+	if err := addToField(state, "tools", added); err != nil {
+		return err
+	}
+	if state.Array("modelTools") != nil {
+		return addToField(state, "modelTools", added)
+	}
+	// Assigned whole; a document write of an equal value records no change.
+	var remove, add []any
+	if filter := state.Object("modelTools"); filter != nil {
+		// A stored container reads back as a draft handle, not as a decoded slice.
+		if stored := filter.Array("remove"); stored != nil {
+			for _, name := range stored.Snapshot() {
+				if text, ok := name.(string); !ok || !slices.Contains(added, text) {
+					remove = append(remove, name)
+				}
+			}
+		}
+		if stored := filter.Array("add"); stored != nil {
+			add = stored.Snapshot()
+		}
+	}
+	for _, name := range added {
+		if !slices.Contains(add, any(name)) {
+			add = append(add, name)
+		}
+	}
+	if add == nil {
+		add = []any{}
+	}
+	next := delta.NewJsonObject(2)
+	if len(remove) > 0 {
+		next.Set("remove", remove)
+	}
+	next.Set("add", add)
+	return state.Set("modelTools", next)
+}
+
+func addToField(state durable.Draft[AgentState], field string, added []string) error {
+	if tools := state.Array(field); tools != nil {
 		for _, name := range added {
 			if !slices.Contains(tools.Snapshot(), any(name)) {
 				if _, err := tools.Push(name); err != nil {
@@ -341,7 +446,7 @@ func AddTools(tx durable.Tx, conversationId durable.ConversationId, added []stri
 		}
 		return nil
 	}
-	filter := state.Object("tools")
+	filter := state.Object(field)
 	if filter == nil {
 		return nil
 	}
@@ -363,13 +468,13 @@ func AddTools(tx durable.Tx, conversationId durable.ConversationId, added []stri
 			remaining = append(remaining, name)
 		}
 	}
-	return state.Set("tools", map[string]any{"remove": remaining})
+	return state.Set(field, delta.JsonObjectOf("remove", remaining))
 }
 
 func applyChange(state durable.Draft[AgentState], change AgentChange) error {
 	var model any
 	if change.Model.state == changeSet {
-		model = map[string]any{"provider": change.Model.value.Provider, "modelId": change.Model.value.ModelId}
+		model = delta.JsonObjectOf("provider", change.Model.value.Provider, "modelId", change.Model.value.ModelId)
 	}
 	if err := setField(state, "model", change.Model.state, model); err != nil {
 		return err
@@ -380,15 +485,17 @@ func applyChange(state durable.Draft[AgentState], change AgentChange) error {
 	var extensions any
 	if change.Extensions.state == changeSet {
 		selection := change.Extensions.value
-		if selection.Exact {
+		if selection.List != nil {
 			extensions = namesJSON(extensionNames(selection.List))
 		} else {
-			edit := map[string]any{}
-			if selection.Add != nil {
-				edit["add"] = namesJSON(extensionNames(selection.Add))
-			}
-			if selection.Remove != nil {
-				edit["remove"] = namesJSON(extensionNames(selection.Remove))
+			edit := delta.NewJsonObject(2)
+			if selection.Edit != nil {
+				if selection.Edit.Add != nil {
+					edit.Set("add", namesJSON(extensionNames(selection.Edit.Add)))
+				}
+				if selection.Edit.Remove != nil {
+					edit.Set("remove", namesJSON(extensionNames(selection.Edit.Remove)))
+				}
 			}
 			extensions = edit
 		}
@@ -396,16 +503,36 @@ func applyChange(state durable.Draft[AgentState], change AgentChange) error {
 	if err := setField(state, "extensions", change.Extensions.state, extensions); err != nil {
 		return err
 	}
-	var tools any
-	if change.Tools.state == changeSet {
-		if change.Tools.value.Exact {
-			tools = namesJSON(toolNames(change.Tools.value.List))
-		} else {
-			tools = map[string]any{"remove": namesJSON(toolNames(change.Tools.value.Remove))}
+	for _, field := range []struct {
+		key    string
+		change Change[ToolChange]
+	}{{"tools", change.Tools}, {"modelTools", change.ModelTools}} {
+		var filter any
+		if field.change.state == changeSet {
+			if field.change.value.List != nil {
+				filter = namesJSON(toolNames(field.change.value.List))
+			} else {
+				edit := field.change.value.Edit
+				if edit == nil {
+					edit = &ToolEdit{Remove: []*durable.ToolRegistration{}}
+				}
+				if field.key == "tools" {
+					filter = delta.JsonObjectOf("remove", namesJSON(toolNames(edit.Remove)))
+				} else {
+					object := delta.NewJsonObject(2)
+					if edit.Remove != nil {
+						object.Set("remove", namesJSON(toolNames(edit.Remove)))
+					}
+					if edit.Add != nil {
+						object.Set("add", namesJSON(toolNames(edit.Add)))
+					}
+					filter = object
+				}
+			}
 		}
-	}
-	if err := setField(state, "tools", change.Tools.state, tools); err != nil {
-		return err
+		if err := setField(state, field.key, field.change.state, filter); err != nil {
+			return err
+		}
 	}
 	if err := setField(state, "instructions", change.Instructions.state, change.Instructions.value); err != nil {
 		return err
@@ -469,9 +596,9 @@ func CreateAgent(tx durable.Tx, conversation durable.ConversationRecord) error {
 		return err
 	}
 	// Object.assign(agent, copy): each owner field is one assignment, in the owner's key order.
-	values := copied.(map[string]any)
+	values := copied.(*delta.JsonObject)
 	for _, key := range owner.Keys() {
-		if err := agent.Set(key, values[key]); err != nil {
+		if err := agent.Set(key, values.Value(key)); err != nil {
 			return err
 		}
 	}
@@ -512,38 +639,24 @@ func ResolveAgent(state *AgentState, snapshot durable.RegistrySnapshot, settings
 	}
 	for _, extension := range extensions {
 		for _, wrap := range extension.Wraps {
-			if wrap.WrapTool != nil {
-				applyWrap(composed, wrap.Tool, wrap.WrapTool, func(tool *durable.ToolRegistration) string { return tool.Name }, report)
-			} else if wrap.WrapSection != nil {
-				applyWrap(sections, wrap.Section, wrap.WrapSection, func(section *durable.PromptSection) string { return section.Key }, report)
+			switch wrap := wrap.(type) {
+			case durable.ToolWrap:
+				if wrap.Wrap != nil {
+					applyWrap(composed, wrap.Tool, wrap.Wrap, func(tool *durable.ToolRegistration) string { return tool.Name }, report)
+				}
+			case durable.SectionWrap:
+				if wrap.Wrap != nil {
+					applyWrap(sections, wrap.Section, wrap.Wrap, func(section *durable.PromptSection) string { return section.Key }, report)
+				}
 			}
 		}
 	}
 
-	var tools []*durable.ToolRegistration
-	switch filter := state.Tools; {
-	case filter == nil:
-		tools = composed.Values()
-	case filter.Exact:
-		tools = []*durable.ToolRegistration{}
-		seen := map[string]bool{}
-		for _, name := range filter.Names {
-			if seen[name] {
-				continue
-			}
-			seen[name] = true
-			if tool, ok := composed.Get(name); ok {
-				tools = append(tools, tool)
-			}
-		}
-	default:
-		tools = []*durable.ToolRegistration{}
-		for _, tool := range composed.Values() {
-			if !slices.Contains(filter.Remove, tool.Name) {
-				tools = append(tools, tool)
-			}
-		}
-	}
+	enabled := filterTools(composed.Values(), state.Tools)
+	modelCallable := slices.DeleteFunc(slices.Clone(enabled), func(tool *durable.ToolRegistration) bool { return !tool.CallableBy(durable.CallerModel) })
+	tools := offeredTools(modelCallable, state.ModelTools)
+	deferred := slices.DeleteFunc(slices.Clone(modelCallable), func(tool *durable.ToolRegistration) bool { return !tool.Deferred || slices.Contains(tools, tool) })
+	callable := slices.DeleteFunc(slices.Clone(enabled), func(tool *durable.ToolRegistration) bool { return !tool.CallableBy(durable.CallerTools) })
 
 	agentSections := sections.Values()
 	if state.Instructions != nil {
@@ -560,6 +673,8 @@ func ResolveAgent(state *AgentState, snapshot durable.RegistrySnapshot, settings
 		ThinkingLevel: ai.ThinkingOff,
 		Extensions:    extensions,
 		Tools:         tools,
+		Callable:      callable,
+		Deferred:      deferred,
 		Sections:      agentSections,
 	}
 	if state.Model != nil {
@@ -575,6 +690,37 @@ func ResolveAgent(state *AgentState, snapshot durable.RegistrySnapshot, settings
 		agent.Cwd = new(*state.Cwd)
 	}
 	return agent
+}
+
+// offeredTools is the tools offered to the model, as AgentState.ModelTools describes.
+//
+// Ports packages/durable/src/harness/agent.ts (offeredTools).
+func offeredTools(tools []*durable.ToolRegistration, filter *ToolSelection) []*durable.ToolRegistration {
+	if filter != nil && filter.Exact {
+		return filterTools(tools, filter)
+	}
+	var remove, add []string
+	if filter != nil {
+		remove, add = filter.Remove, filter.Add
+	}
+	kept := []*durable.ToolRegistration{}
+	for _, tool := range tools {
+		if !tool.Deferred && !slices.Contains(remove, tool.Name) {
+			kept = append(kept, tool)
+		}
+	}
+	// Loaded deferred tools follow in load order, so loading one appends to the declared tools.
+	seen := map[string]bool{}
+	for _, name := range add {
+		if seen[name] || slices.Contains(remove, name) {
+			continue
+		}
+		seen[name] = true
+		if index := slices.IndexFunc(tools, func(tool *durable.ToolRegistration) bool { return tool.Name == name }); index >= 0 && tools[index].Deferred {
+			kept = append(kept, tools[index])
+		}
+	}
+	return kept
 }
 
 // selectExtensions returns the selected installed extensions: the stored exact list, or the default selection edited by {add, remove}.
@@ -639,4 +785,32 @@ func callWrapper[T any](wrap func(T) T, nameOf func(T) string, item T, target st
 		return wrapped, fmt.Errorf("Wrapper renamed %s to %s", target, name)
 	}
 	return wrapped, nil
+}
+
+// filterTools is tools through a stored filter: an exact list selects exactly its names, in its order, a repeated name at
+// its first position; {remove} drops names.
+func filterTools(tools []*durable.ToolRegistration, filter *ToolSelection) []*durable.ToolRegistration {
+	if filter == nil {
+		return tools
+	}
+	selected := []*durable.ToolRegistration{}
+	if filter.Exact {
+		seen := map[string]bool{}
+		for _, name := range filter.Names {
+			if seen[name] {
+				continue
+			}
+			seen[name] = true
+			if index := slices.IndexFunc(tools, func(tool *durable.ToolRegistration) bool { return tool.Name == name }); index >= 0 {
+				selected = append(selected, tools[index])
+			}
+		}
+		return selected
+	}
+	for _, tool := range tools {
+		if !slices.Contains(filter.Remove, tool.Name) {
+			selected = append(selected, tool)
+		}
+	}
+	return selected
 }

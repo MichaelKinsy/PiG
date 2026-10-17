@@ -16,7 +16,7 @@ func TestSettingsReadHonorsPiWriterLock(t *testing.T) {
 	if err := os.Mkdir(path+".lock", 0o700); err != nil {
 		t.Fatal(err)
 	}
-	_, err := loadSettingsFile(path)
+	_, _, err := loadSettingsFile(path)
 	if !isProperLockfileContention(err) {
 		t.Fatalf("read parsed an active writer's partial JSON: %v, want proper-lockfile's ELOCKED error", err)
 	}
@@ -26,7 +26,7 @@ func TestSettingsReadHonorsPiWriterLock(t *testing.T) {
 	if err := os.Remove(path + ".lock"); err != nil {
 		t.Fatal(err)
 	}
-	settings, err := loadSettingsFile(path)
+	settings, _, err := loadSettingsFile(path)
 	if err != nil || settings.Theme != "light" {
 		t.Fatalf("read after writer release: %+v %v", settings, err)
 	}

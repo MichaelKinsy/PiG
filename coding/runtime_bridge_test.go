@@ -85,7 +85,7 @@ func TestRuntime_Close_InvalidatesNewRunner(t *testing.T) {
 
 	// And: any dispatch through the runner now returns the canonical
 	// stale-context sentinel.
-	_, err = r.EmitToolCall(context.Background(), extension.BashToolCallEvent{})
+	_, err = r.EmitToolCall(context.Background(), extension.CustomToolCallEvent{})
 	if !errors.Is(err, extension.ErrStaleContext) {
 		t.Errorf("EmitToolCall after Close: got err=%v, want errors.Is(extension.ErrStaleContext)", err)
 	}

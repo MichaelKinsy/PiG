@@ -164,10 +164,11 @@ func buildPiCorpus(t *testing.T) piCorpus {
 			c.Width = append(c.Width, string(cp))
 		}
 	}
-	for _, s := range rgiSequences {
+	for _, s := range &rgiSequences {
 		c.Width = append(c.Width, s)
 	}
 	c.Width = append(c.Width, curatedWidthStrings...)
+	c.Width = append(c.Width, boxDrawingWidthCases()...)
 	real := testdataLines(t)
 	c.Width = append(c.Width, real...)
 	r := rand.New(rand.NewPCG(0x5eed, 0x87_1))
@@ -337,4 +338,21 @@ func TestPiWidthDifferential(t *testing.T) {
 	if len(mism) > 0 {
 		t.Fatalf("%d mismatches against upstream pi-tui (%v)", len(mism), counts)
 	}
+}
+
+// boxDrawingWidthCases is every Box Drawing character in the contexts the width fast path must tell apart: alone, between ASCII, next to itself and to other box characters, inside escape sequences, with a tab, and followed or preceded by a character that joins into its grapheme or has its own width.
+func boxDrawingWidthCases() []string {
+	joiners := []string{"\u0301", "\ufe0f", "\ufe0e", "\u200d", "\u200b", "\u0e33", "\u3099", "\U0001f3fb", "\U0001F1E6", "\u4e2d", "é", "\u2028", "\u00ad"}
+	var out []string
+	for cp := rune(0x2500); cp <= 0x257f; cp++ {
+		b := string(cp)
+		out = append(out,
+			b, b+b, b+"a", "a"+b, "a"+b+"b", " "+b+" ", "\t"+b, b+"\t", b+"\r\n", "\r"+b,
+			"\x1b[31m"+b+"\x1b[0m", "\x1b]8;;x\x07"+b+"\x1b]8;;\x07", b+"\x1b[0m"+b,
+			b+"\u2500", "\u2502"+b+"\u253c", b+"\u2580", "\u259f"+b)
+		for _, j := range joiners {
+			out = append(out, b+j, j+b, "a"+b+j, b+j+"a", b+b+j, j+b+b)
+		}
+	}
+	return out
 }

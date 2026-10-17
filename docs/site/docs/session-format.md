@@ -2,9 +2,7 @@
 
 PiG stores each Session as JSON Lines. Line 1 is a Session header. Each later line is one entry in a tree.
 
-The format follows the pinned upstream Pi Session format. PiG preserves unknown entry fields when it reads and writes a Session.
-
-Pi also writes `context_edit` entries, which change the context an earlier entry contributes. PiG applies them as Pi does when it builds the model context: a `null` `replacement` omits the earlier entry, and a `replacement` with `content` replaces only that entry's content.
+The format is the Session format of Pi 1.3.0 ([Pi's session file format](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/session-format.md)). PiG keeps each entry's JSON as it was read, so unknown fields, unknown entry types and the member order survive when PiG loads and rewrites a Session file, as in Pi.
 
 ## File location
 
@@ -26,7 +24,7 @@ The first line has no `id` or `parentId`:
 {"type":"session","version":3,"id":"session-uuid","timestamp":"2026-01-15T14:00:00Z","cwd":"/work/project"}
 ```
 
-A cloned Session can also contain `parentSession`.
+A Session created with `/fork` or `/clone` also contains `parentSession`, the path of the original Session file.
 
 The current upstream Session schema version is 3. PiG migrates supported older upstream Session shapes when it loads them. Do not change the version field by hand.
 
@@ -59,6 +57,7 @@ A `message` entry contains one nested Agent message:
 
 Supported message roles include:
 
+- `system`;
 - `user`;
 - `assistant`;
 - `toolResult`;
@@ -66,6 +65,8 @@ Supported message roles include:
 - `custom`;
 - `branchSummary`;
 - `compactionSummary`.
+
+A `system` message carries the system prompt and the tool declarations. The first request of a Session stores one with every prompt section in `sections` and every tool in `toolsAdded`. A later change stores a system message that patches `sections` by name (`null` removes a section) and lists `toolsAdded` and `toolsRemoved`. Replaying them in order gives the current prompt and tools. A system message with an empty `sections` object stores `"sections": {}`, as Pi stores it.
 
 Content blocks use Pi's field names:
 
@@ -82,7 +83,7 @@ For example, an assistant turn that calls the `read` tool stores:
 
 Treat signatures as opaque provider data. Sessions written by older PiG versions can contain a `tool_use` block with `input` in place of `arguments`. PiG still reads that form and writes `toolCall`.
 
-A completed assistant message can contain provider, model, API, usage, diagnostics, response identity, `stopReason`, and `errorMessage` fields. Treat fields that you do not use as opaque data.
+A completed assistant message can contain provider, model, API, usage, diagnostics, response identity, `stopReason`, `errorMessage` and `durationMs` fields. `durationMs` is the time in milliseconds from the start of the request to the final message. A tool result message can contain `durationMs`, the time the tool's `execute` took, without hooks; a tool call that did not run has none. Treat fields that you do not use as opaque data.
 
 A Bash entry uses the normal outer `message` shape. Its nested role is `bashExecution`:
 
@@ -97,6 +98,16 @@ Optional Bash fields are `fullOutputPath` (the file that holds output too long t
 ```json
 {"type":"model_change","id":"c3d4e5f6","parentId":"b2c3d4e5","timestamp":"2026-01-15T14:05:00Z","provider":"openai","modelId":"gpt-5"}
 ```
+
+### Usage
+
+A `usage` entry records model usage that is not an assistant message, such as a cache-warming refresh (`"kind": "cache_warm"`). It counts toward the Session's token and cost totals. It is not model context, and the tree does not show it.
+
+```json
+{"type":"usage","id":"f6a7b8c0","parentId":"c3d4e5f6","timestamp":"2026-01-15T14:08:00Z","kind":"cache_warm","provider":"anthropic","model":"claude-sonnet-4-5","usage":{"input":0,"output":0,"cacheRead":50000,"cacheWrite":0,"totalTokens":50000,"cost":{"input":0,"output":0,"cacheRead":0.015,"cacheWrite":0,"total":0.015}}}
+```
+
+Treat an unknown `kind` as ordinary usage.
 
 ### Thinking-level change
 
@@ -150,6 +161,16 @@ A custom message can participate in model context:
 
 A `null` label clears the target label.
 
+### Context edit
+
+A `context_edit` entry changes what an earlier entry contributes to future model context. The earlier entry stays unchanged in the file, the tree, exports and usage totals.
+
+```json
+{"type":"context_edit","id":"e1f2a3b4","parentId":"c9d0e1f2","timestamp":"2026-01-15T14:32:00Z","targetId":"a1b2c3d4","replacement":null}
+```
+
+The target can be a user, assistant, tool-result or custom-message entry. A `null` `replacement` omits the target from model context. A `replacement` with `content` replaces only the target's content. When several edits target the same entry, the latest one on the active branch applies.
+
 ### Session information
 
 ```json
@@ -165,8 +186,9 @@ PiG builds model context from the active root-to-leaf branch:
 1. It finds the active branch.
 2. It applies the latest model and thinking-level entries.
 3. It applies compaction at `firstKeptEntryId`.
-4. It converts message, custom-message, branch-summary, and compaction entries to model messages.
-5. It excludes custom state entries and Bash entries marked `excludeFromContext`.
+4. It applies `context_edit` entries to their targets.
+5. It converts message, custom-message, branch-summary, and compaction entries to model messages.
+6. It excludes custom state entries, usage entries, and Bash entries marked `excludeFromContext`.
 
 Do not reconstruct model context by reading every `message` line in file order.
 
@@ -229,11 +251,12 @@ Set an explicit scanner limit. A Session line can contain a large tool result or
 
 PiG implementation:
 
+- `internal/sessionentry/union.go` defines the entry types of Pi's `SessionEntry` union.
 - `internal/codingagent/session.go` defines the durable entry shapes.
 - `internal/codingagent/session_manager.go` creates, opens, and lists Sessions.
 - `extensions/sdk/context.go` defines `BranchEntry`, `GetBranch`, and `GetEntries`.
 
-Upstream reference:
+Pi reference (1.2.0):
 
-- [Pi Session manager](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/src/core/session-manager.ts)
-- [Pi coding-agent messages](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/src/core/messages.ts)
+- [Pi Session manager](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/src/core/session-manager.ts)
+- [Pi coding-agent messages](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/src/core/messages.ts)

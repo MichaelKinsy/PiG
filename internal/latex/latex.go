@@ -13,6 +13,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
+
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
@@ -106,7 +108,7 @@ func normalizeScriptValue(value string) string {
 		switch {
 		case r == '=' || r == '+' || r == '-':
 			out = trimEndJS(out) + string(r)
-		case isJSSpace(r) && (strings.HasSuffix(out, "=") || strings.HasSuffix(out, "+") || strings.HasSuffix(out, "-")):
+		case jsstring.IsSpace(r) && (strings.HasSuffix(out, "=") || strings.HasSuffix(out, "+") || strings.HasSuffix(out, "-")):
 			continue
 		default:
 			out += string(r)
@@ -116,9 +118,9 @@ func normalizeScriptValue(value string) string {
 }
 
 func formatUnicodeScript(value, kind string) (string, bool) {
-	table := latexSuperscripts
+	table := latexSuperscripts()
 	if kind == "sub" {
-		table = latexSubscripts
+		table = latexSubscripts()
 	}
 	return replaceCharacters(normalizeScriptValue(value), table)
 }
@@ -437,7 +439,7 @@ func (p *parser) parseSequence(end rune) string {
 			}
 			continue
 		}
-		if isJSSpace(c) {
+		if jsstring.IsSpace(c) {
 			result += p.parseWhitespace()
 			continue
 		}
@@ -490,7 +492,7 @@ func (p *parser) parseScripts(initialMarker rune) string {
 	}
 	parse(initialMarker)
 	next := p.pos
-	for next < len(p.src) && isJSSpace(p.src[next]) {
+	for next < len(p.src) && jsstring.IsSpace(p.src[next]) {
 		next++
 	}
 	if marker := p.at(next); (marker == '^' || marker == '_') && marker != initialMarker {
@@ -533,7 +535,7 @@ func (p *parser) addLayoutNode(node layoutNode) string {
 }
 
 func (p *parser) parseWhitespace() string {
-	for p.pos < len(p.src) && isJSSpace(p.src[p.pos]) {
+	for p.pos < len(p.src) && jsstring.IsSpace(p.src[p.pos]) {
 		p.pos++
 	}
 	return " "
@@ -568,16 +570,16 @@ func (p *parser) parseCommand() string {
 	switch {
 	case command == "\\":
 		return "\n"
-	case latexSpacingCommands[command]:
+	case latexSpacingCommands()[command]:
 		return " "
-	case latexNegativeSpacingCommands[command]:
+	case latexNegativeSpacingCommands()[command]:
 		return negativeSpace
-	case latexFontSwitchCommands[command]:
-		for p.pos < len(p.src) && isJSSpace(p.src[p.pos]) {
+	case latexFontSwitchCommands()[command]:
+		for p.pos < len(p.src) && jsstring.IsSpace(p.src[p.pos]) {
 			p.pos++
 		}
 		return ""
-	case latexIgnoredCommands[command]:
+	case latexIgnoredCommands()[command]:
 		return ""
 	case command == "{" || command == "}" || command == "$" || command == "%" || command == "#" || command == "_" || command == "&":
 		return command
@@ -585,7 +587,7 @@ func (p *parser) parseCommand() string {
 		return "‖"
 	case command == "not":
 		value := trimJS(p.parseRequiredArgument(false))
-		if negated, ok := latexNegatedSymbols[value]; ok {
+		if negated, ok := latexNegatedSymbols()[value]; ok {
 			return " " + negated + " "
 		}
 		chars := []rune(value)
@@ -594,23 +596,23 @@ func (p *parser) parseCommand() string {
 			return ""
 		}
 		return " " + string(chars[0]) + "\u0338" + string(chars[1:]) + " "
-	case latexLimitOperators[command]:
+	case latexLimitOperators()[command]:
 		return p.parseOperator(command, "bracket", true, true)
 	}
 
-	if symbol, ok := latexSymbols[command]; ok {
-		if latexDisplayLimitSymbols[command] {
+	if symbol, ok := latexSymbols()[command]; ok {
+		if latexDisplayLimitSymbols()[command] {
 			return p.parseOperator(symbol, "script", true, false)
 		}
-		if command == "cdot" || command == "times" || latexRelationCommands[command] {
+		if command == "cdot" || command == "times" || latexRelationCommands()[command] {
 			return " " + symbol + " "
 		}
 		return symbol
 	}
-	if latexNamedOperators[command] {
+	if latexNamedOperators()[command] {
 		return namedOperatorStart + command + namedOperatorEnd
 	}
-	if latexSizeCommands[command] {
+	if latexSizeCommands()[command] {
 		return ""
 	}
 	if command == "left" || command == "middle" || command == "right" {
@@ -653,7 +655,7 @@ func (p *parser) parseCommand() string {
 	if command == "binom" || command == "dbinom" || command == "tbinom" {
 		return "(" + p.parseRequiredArgument(true) + " choose " + p.parseRequiredArgument(true) + ")"
 	}
-	if accent, ok := latexAccents[command]; ok {
+	if accent, ok := latexAccents()[command]; ok {
 		value := p.parseRequiredArgument(true)
 		if utf8.RuneCountInString(value) == 1 {
 			return value + accent
@@ -664,7 +666,7 @@ func (p *parser) parseCommand() string {
 		value := p.parseRequiredArgument(true)
 		var b strings.Builder
 		for _, r := range value {
-			if bb, ok := latexBlackboard[string(r)]; ok {
+			if bb, ok := latexBlackboard()[string(r)]; ok {
 				b.WriteString(bb)
 			} else {
 				b.WriteRune(r)
@@ -700,7 +702,7 @@ func (p *parser) parseCommand() string {
 		value := trimJS(p.parseRequiredArgument(true))
 		return value + formatScript(lower, "sub")
 	}
-	if latexPlainWrappers[command] {
+	if latexPlainWrappers()[command] {
 		value := p.parseRequiredArgument(true)
 		if strings.HasPrefix(command, "text") || command == "mbox" {
 			return value
@@ -808,7 +810,7 @@ func (p *parser) parseRequiredArgument(stackFractions bool) string {
 }
 
 func (p *parser) parseRequiredArgumentValue() string {
-	for p.pos < len(p.src) && isJSSpace(p.src[p.pos]) {
+	for p.pos < len(p.src) && jsstring.IsSpace(p.src[p.pos]) {
 		p.pos++
 	}
 	if p.pos >= len(p.src) {

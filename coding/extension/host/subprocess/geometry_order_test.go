@@ -94,7 +94,7 @@ func heightsSent(t *testing.T, conn *Conn) []int {
 	var heights []int
 	for len(conn.outCh) > 0 {
 		var env Envelope
-		if err := json.Unmarshal((<-conn.outCh).data, &env); err != nil {
+		if err := json.Unmarshal((<-conn.outCh).payloadBytes(), &env); err != nil {
 			t.Fatal(err)
 		}
 		var args struct{ Height int }

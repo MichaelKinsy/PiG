@@ -1,0 +1,183 @@
+[
+ {
+  "upstream": "packages/coding-agent/src/core/compaction/compaction.ts",
+  "package": "./agent",
+  "tests": [
+   "TestCalculateContextTokens"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/compaction/compaction.ts",
+  "mutation": "agent/context_tokens.go: replace `if usage.TotalTokens != 0 {\n\t\treturn usage.TotalTokens\n\t}` with `if usage.TotalTokens < 0 {\n\t\treturn usage.TotalTokens\n\t}`; TestCalculateContextTokens fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/compaction/compaction.ts",
+  "package": "./agent",
+  "tests": [
+   "TestCalculateContextTokens"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/compaction/compaction.ts",
+  "mutation": "agent/context_tokens.go: replace `return usage.Input + usage.Output + usage.CacheRead + usage.CacheWrite` with `return usage.Input + usage.Output + usage.CacheRead`; TestCalculateContextTokens fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/compaction/compaction.ts",
+  "package": "./agent",
+  "tests": [
+   "TestCalculateContextTokens"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/compaction/compaction.ts",
+  "mutation": "agent/context_tokens.go: replace `return usage.Input + usage.Output + usage.CacheRead + usage.CacheWrite` with `return usage.Input + usage.Output + usage.CacheWrite`; TestCalculateContextTokens fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/compaction/compaction.ts",
+  "package": "./agent",
+  "tests": [
+   "TestCalculateContextTokens"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/compaction/compaction.ts",
+  "mutation": "agent/context_tokens.go: replace `return usage.Input + usage.Output + usage.CacheRead + usage.CacheWrite` with `return usage.Output + usage.CacheRead + usage.CacheWrite`; TestCalculateContextTokens fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/compaction/compaction.ts",
+  "package": "./agent",
+  "tests": [
+   "TestCalculateContextTokens"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/compaction/compaction.ts",
+  "mutation": "agent/context_tokens.go: replace `return usage.Input + usage.Output + usage.CacheRead + usage.CacheWrite` with `return usage.Input + usage.CacheRead + usage.CacheWrite`; TestCalculateContextTokens fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/config.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestGetDocsPathIsTheAbsoluteDocsDirectoryOfTheConfigRoot"
+  ],
+  "upstream_reference": "packages/coding-agent/src/config.ts",
+  "mutation": "internal/codingagent/paths.go: replace `filepath.Join(ConfigRoot(), \"docs\")` with `filepath.Join(ConfigRoot(), \"doc\")`; TestGetDocsPathIsTheAbsoluteDocsDirectoryOfTheConfigRoot fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/config.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestGetDocsPathIsTheAbsoluteDocsDirectoryOfTheConfigRoot"
+  ],
+  "upstream_reference": "packages/coding-agent/src/config.ts",
+  "mutation": "internal/codingagent/paths.go: replace `docs := filepath.Join(ConfigRoot(), \"docs\")\n\tresolved, err := nodepath.Resolve(docs)\n\tif err != nil {\n\t\treturn docs\n\t}\n\treturn resolved` with `return filepath.Join(ConfigRoot(), \"docs\")`; TestGetDocsPathIsTheAbsoluteDocsDirectoryOfTheConfigRoot fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/config.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestGetReadmePathAndGetExamplesPath"
+  ],
+  "upstream_reference": "packages/coding-agent/src/config.ts",
+  "mutation": "internal/codingagent/paths.go: replace `filepath.Join(GetDocsPath(), \"README.md\")` with `filepath.Join(GetDocsPath(), \"readme.md\")`; TestGetReadmePathAndGetExamplesPath fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/config.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestGetReadmePathAndGetExamplesPath"
+  ],
+  "upstream_reference": "packages/coding-agent/src/config.ts",
+  "mutation": "internal/codingagent/paths.go: replace `filepath.Join(GetDocsPath(), \"README.md\")` with `filepath.Join(ConfigRoot(), \"README.md\")`; TestGetReadmePathAndGetExamplesPath fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/trust-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestProjectTrustStoreSetManyAppliesEachDecisionAndNullRemoves",
+   "TestProjectTrustStore_RoundTripAndInheritance"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/trust-manager.ts",
+  "mutation": "internal/codingagent/trust_manager.go: replace `if update.Decision == nil {\n\t\t\t\tdelete(data, key)\n\t\t\t\tcontinue\n\t\t\t}` with `if update.Decision == nil {\n\t\t\t\tcontinue\n\t\t\t}`; TestProjectTrustStoreSetManyAppliesEachDecisionAndNullRemoves, TestProjectTrustStore_RoundTripAndInheritance fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/trust-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestProjectTrustStoreSetManyAppliesEachDecisionAndNullRemoves"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/trust-manager.ts",
+  "mutation": "internal/codingagent/trust_manager.go: replace `data[key] = new(*update.Decision)\n\t\t}\n\t\treturn s.write(data)` with `data[key] = new(true)\n\t\t}\n\t\treturn s.write(data)`; TestProjectTrustStoreSetManyAppliesEachDecisionAndNullRemoves fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/trust-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestProjectTrustStoreSetManyAppliesEachDecisionAndNullRemoves"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/trust-manager.ts",
+  "mutation": "internal/codingagent/trust_manager.go: replace `for _, update := range updates {\n\t\t\tkey := normalizeTrustCwd(update.Path)` with `for _, update := range updates[:1] {\n\t\t\tkey := normalizeTrustCwd(update.Path)`; TestProjectTrustStoreSetManyAppliesEachDecisionAndNullRemoves fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/trust-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestHasTrustRequiringProjectResources_AncestorAgentsSkillsExcludesUserHome"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/trust-manager.ts",
+  "mutation": "internal/codingagent/trust_manager.go: replace `if agentsSkills != userAgentsSkills {` with `if agentsSkills != userAgentsSkills && false {`; TestHasTrustRequiringProjectResources_AncestorAgentsSkillsExcludesUserHome fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/trust-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestHasTrustRequiringProjectResources_AncestorAgentsSkillsExcludesUserHome"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/trust-manager.ts",
+  "mutation": "internal/codingagent/trust_manager.go: replace `parent := filepath.Dir(current)\n\t\tif parent == current {\n\t\t\treturn false` with `parent := filepath.Dir(current)\n\t\tif true {\n\t\t\treturn false`; TestHasTrustRequiringProjectResources_AncestorAgentsSkillsExcludesUserHome fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/trust-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestHasTrustRequiringProjectResources_IgnoresUnrelatedConfigEntries"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/trust-manager.ts",
+  "mutation": "internal/codingagent/trust_manager.go: replace `if _, err := os.Stat(filepath.Join(configDir, entry)); err == nil {\n\t\t\treturn true` with `if _, err := os.Stat(filepath.Join(configDir, entry)); err != nil {\n\t\t\treturn true`; TestHasTrustRequiringProjectResources_IgnoresUnrelatedConfigEntries fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/trust-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestProjectTrustStore_RoundTripAndInheritance"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/trust-manager.ts",
+  "mutation": "internal/codingagent/trust_manager.go: replace `return &ProjectTrustStore{trustPath: filepath.Join(abs, \"trust.json\")}` with `return &ProjectTrustStore{trustPath: filepath.Join(abs, \"trusts.json\")}`; TestProjectTrustStore_RoundTripAndInheritance fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/config.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestGetReadmePathAndGetExamplesPath"
+  ],
+  "upstream_reference": "packages/coding-agent/src/config.ts",
+  "mutation": "internal/codingagent/paths.go: replace `func GetExamplesPath() string { return prompts.PigExamplesLocation }` with `func GetExamplesPath() string { return prompts.PigExamplesLocation + \"x\" }`; TestGetReadmePathAndGetExamplesPath fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/trust-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestProjectTrustStoreSetManyAndUserSkillsCanonicalizeSymlinks"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/trust-manager.ts",
+  "mutation": "internal/codingagent/trust_manager.go: replace `key := normalizeTrustCwd(update.Path)\n\t\t\tif update.Decision == nil` with `key := update.Path\n\t\t\tif update.Decision == nil`; TestProjectTrustStoreSetManyAndUserSkillsCanonicalizeSymlinks fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/trust-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestProjectTrustStoreSetManyAndUserSkillsCanonicalizeSymlinks"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/trust-manager.ts",
+  "mutation": "internal/codingagent/trust_manager.go: replace `home = normalizeTrustCwd(home)\n\tuserAgentsSkills` with `userAgentsSkills`; TestProjectTrustStoreSetManyAndUserSkillsCanonicalizeSymlinks fails."
+ },
+ {
+  "upstream": "packages/coding-agent/src/core/trust-manager.ts",
+  "package": "./internal/codingagent",
+  "tests": [
+   "TestHasTrustRequiringProjectResources_AncestorAgentsSkillsExcludesUserHome"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/trust-manager.ts",
+  "mutation": "internal/codingagent/trust_manager.go: replace `if agentsSkills != userAgentsSkills {` with `if agentsSkills != userAgentsSkills || true {`; TestHasTrustRequiringProjectResources_AncestorAgentsSkillsExcludesUserHome fails."
+ }
+]

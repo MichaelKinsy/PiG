@@ -64,11 +64,11 @@ func ResolveBeforeAgentStartRun(base extension.BuildSystemPromptOptions, result 
 	return run, nil
 }
 
-// BaseSections builds the run's structured prompt sections from the run's options, as _preparePromptAndToolLoadout does for every mode (agent-session.ts:1669-1683), before its custom sections apply. selectedTools are the live active tools. Snippets of hidden declarations are not listed, so the tool list matches the declarations the request carries (agent-session.ts:1674-1677).
+// BaseSections builds the run's structured prompt sections from the run's options, as _preparePromptAndToolLoadout does for every mode (agent-session.ts:1669-1683), before its custom sections apply. selectedTools are the live active tools. The hidden declarations leave the tool list and rules out, so they match the declarations the request carries (agent-session.ts _preparePromptAndToolLoadout).
 func (r BeforeAgentStartRun) BaseSections(selectedTools []string, hidden map[string]struct{}) ai.OrderedSections {
 	options := r.Options
 	options.SelectedTools = selectedTools
-	options.ToolSnippets = WithoutHiddenSnippets(options.ToolSnippets, hidden)
+	options.HiddenTools = HiddenToolNames(hidden)
 	return prompts.BuildSystemPromptSections(prompts.FromExtensionOptions(options))
 }
 
@@ -77,16 +77,9 @@ func (r BeforeAgentStartRun) PromptSections(selectedTools []string, hidden map[s
 	return prompts.ApplyCustomSystemPromptSections(r.BaseSections(selectedTools, hidden), r.Sections)
 }
 
-// WithoutHiddenSnippets returns snippets without the tools whose declarations the loadout hides (agent-session.ts:1674-1677). It returns the map itself when nothing is hidden.
-func WithoutHiddenSnippets(snippets map[string]string, hidden map[string]struct{}) map[string]string {
-	if len(hidden) == 0 {
-		return snippets
-	}
-	visible := maps.Clone(snippets)
-	for name := range hidden {
-		delete(visible, name)
-	}
-	return visible
+// HiddenToolNames lists the tools whose declarations the loadout hides, sorted (agent-session.ts hiddenTools).
+func HiddenToolNames(hidden map[string]struct{}) []string {
+	return slices.Sorted(maps.Keys(hidden))
 }
 
 // NextTurnOptions refreshes a run's options before a later turn: the live tools, and the base snippets and guidelines under the run's (agent-session.ts:697-706), so a tool registered during the run is listed and an edited entry wins.

@@ -32,15 +32,17 @@ func TestModalSelectorsReleaseOnShutdown(t *testing.T) {
 							selection, ids := newScopedModelsSelection(nil, nil, nil)
 							m.runModalScopedModels(tui.NewScopedModelsList(tui.ScopedModelsConfig{EnabledModelIDs: ids}), nil, selection)
 						case "settings":
-							m.runModalSettingsList(tui.NewSettingsList(nil), func(_, value string) string { return value })
+							m.runModalSettingsSelector(func(done func()) *SettingsSelectorComponent {
+								return NewSettingsSelectorComponent(SettingsConfig{}, SettingsCallbacks{OnCancel: done})
+							})
 						case "model":
-							m.runModelSelectorInput(ctx, tui.NewModelSelector("Model", nil, nil, ""), nil)
+							m.runModelSelectorInput(ctx, tui.NewStaticModelSelectorComponent("Model", nil, nil, ""))
 						case "login":
-							m.runEditorSlotLoginDialog(tui.NewLoginDialog("Provider", nil), nil)
+							m.runEditorSlotLoginDialog(tui.NewLoginDialogComponent(nil, "Provider", nil, ""), nil)
 						case "api-key":
 							_ = m.runAPIKeyLogin(tui.OAuthProvider{ID: "openai", Name: "OpenAI"})
 						case "custom":
-							m.runEditorSlotCustom(tui.NewSettingsList(nil), nil, nil, customDone)
+							m.runEditorSlotCustom(tui.NewSettingsList(nil, 10, tui.GetSettingsListTheme(), nil, nil, tui.SettingsListOptions{EnableSearch: true}), nil, nil, customDone)
 						case "component":
 							sel := tui.NewSelectSubmenu("Choice", "", nil, "")
 							m.runEditorSlotComponent(sel, sel.HandleInput, sel.Done)

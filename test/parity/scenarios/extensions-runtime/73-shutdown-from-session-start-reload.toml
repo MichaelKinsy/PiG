@@ -1,0 +1,62 @@
+# Behavior family: extensions-runtime
+# Scenario: /reload reaches a session_start (reason "reload") handler that calls ctx.shutdown() and never settles.
+#
+# Upstream evidence (Pi 1.1.0): /reload (handleReloadCommand, interactive-mode.ts:6430) awaits session.reload()
+# (agent-session.ts:3660), which emits session_shutdown (reason "reload") to the old extensions (3663), loads the new
+# ones and awaits their session_start with reason "reload" (3695). The handler's ctx.shutdown() reaches the
+# event-context shutdownHandler, which calls shutdown() because the session is idle (interactive-mode.ts:2028-2033).
+# shutdown() (4291-4330) stops the TUI, awaits runtimeHost.dispose() (session_shutdown, reason "quit"), prints
+# "To resume this session: <cmd>" and calls process.exit(0) without awaiting the pending handler or the rest of the
+# reload.
+# Probed with Pi 1.1.0 in tmux (2026-10-13): the capture from the first SHUTDOWN_EVENT is "SHUTDOWN_EVENT quit", then
+# "To resume this session: pi --session <id>", exit 0. Pig kept the "Reloading keybindings, extensions, ..." box on
+# screen and never exited: awaitReloadStep ignored the shutdown request until the never-settling handler returned.
+# The "reload" session_shutdown line is written while the TUI still draws, which repaints over it in both hosts.
+
+name = "73-shutdown-from-session-start-reload"
+description = "ctx.shutdown() from a never-settling session_start handler during /reload emits session_shutdown, prints the resume command and exits 0"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home", "SHUTDOWN_AT=session_start", "SHUTDOWN_REASON=reload"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1", "SHUTDOWN_AT=session_start", "SHUTDOWN_REASON=reload"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/shutdown-in-awaited-phase.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/shutdown-in-awaited-phase.mjs"]
+
+[tmux]
+width = 120
+height = 30
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "SHUTDOWN_EVENT"
+
+[[tmux.steps]]
+keys = ["What is 20+22?", "Enter"]
+wait_contains = ["42"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["/reload", "Enter"]
+wait_contains = ["SHUTDOWN_EVENT quit", "To resume this session:"]
+wait_timeout_seconds = 15
+
+[assert]
+both_reach_ready = true
+exit_code = 0
+both_contain = ["SHUTDOWN_EVENT quit", "To resume this session:"]
+both_not_contain = ["panic:", "uncaughtException", "Reload failed"]
+output_normalized_equal = true
+runs = 3
+
+# normalize-rationale: the resume command names each binary and the session's random id.
+[[assert.normalize_replace]]
+pattern = 'pig? --session [0-9a-f-]{36}'
+with = '<bin> --session <session-id>'
+reason = "D2: the resume command names the host executable; the session id is random per run. The rest of the line and the session_shutdown line stay compared."

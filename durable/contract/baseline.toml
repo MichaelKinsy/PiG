@@ -1,0 +1,6 @@
+# Known failures of the differential ordering rows (lib/baseline.mjs; CONTRACT 5.9). Each row differs from Pi today and stays red in every
+# report; the gate's exit status ignores exactly these rows, fails on any other failing row, and fails when a listed row passes on
+# every build (delete its entry in the change that fixes it: the file only shrinks). Only differential rows may be listed.
+#
+# Empty: every differential ordering row passes on every build (the former causes A, client-call hop schedule, and B, tool progress commit order,
+# are closed). A row that differs from Pi again is listed here with its owner, cause and repro in the change that finds it.

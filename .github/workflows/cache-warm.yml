@@ -1,0 +1,160 @@
+# SPDX-License-Identifier: MIT
+name: Cache warm
+
+# Builds what CI restores and saves it from main, so every pull request falls back to a fresh default-branch Go build
+# cache and Pi oracle build: a pull request's own caches are visible only to later runs of that pull request. It runs
+# no gate.
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '23 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cache-warm-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    name: Warm / Linux
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Restore the Go module cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+      - name: Restore the Go build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - name: Restore the Pi oracle build
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-dev/pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
+      - name: Build the pinned Pi oracle
+        shell: bash
+        run: |
+          set -euo pipefail
+          automation/ci/install-npm-toolchain.sh
+          export PATH="$PWD/automation/ci/npm-toolchain/node_modules/.bin:$PATH"
+          python3 automation/pin/pin.py install-oracle
+      # make test-warm compiles every flag set the Linux test shards build.
+      - name: Compile every test flag set
+        env:
+          CI: '1'
+        run: make test-warm
+      - name: Save the Go build cache
+        if: ${{ !cancelled() }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+
+  windows:
+    name: Warm / Windows
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Keep Go and oracle scratch under RUNNER_TEMP
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path (Join-Path $env:RUNNER_TEMP 'go-tmp') | Out-Null
+          "GOCACHE=$(Join-Path $env:RUNNER_TEMP 'go-build')" >> $env:GITHUB_ENV
+          "GOTMPDIR=$(Join-Path $env:RUNNER_TEMP 'go-tmp')" >> $env:GITHUB_ENV
+          "PIG_PI_BUILD_STORE=$(Join-Path $env:RUNNER_TEMP 'pi-builds')" >> $env:GITHUB_ENV
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Restore the Go module cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+      - name: Restore the Go build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}\go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Restore the Pi oracle build
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}\pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
+      - name: Build the pinned Pi oracle
+        shell: bash
+        run: |
+          set -euo pipefail
+          automation/ci/install-npm-toolchain.sh
+          export PATH="$PWD/automation/ci/npm-toolchain/node_modules/.bin:$PATH"
+          py="$(command -v python3 || command -v python)"
+          "$py" automation/pin/pin.py install-oracle
+      # The Windows jobs build test binaries with the default flag set; -c -o <dir>/ writes each package's binary and runs none.
+      - name: Compile every test binary
+        shell: bash
+        run: go test -c -o "$RUNNER_TEMP/testbins/" ./...
+      - name: Save the Go build cache
+        if: ${{ !cancelled() }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}\go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+
+  macos:
+    name: Warm / macOS
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: true
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - name: Restore the Pi oracle build
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-dev/pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
+      - name: Build the pinned Pi oracle
+        shell: bash
+        run: |
+          set -euo pipefail
+          automation/ci/install-npm-toolchain.sh
+          export PATH="$PWD/automation/ci/npm-toolchain/node_modules/.bin:$PATH"
+          python3 automation/pin/pin.py install-oracle

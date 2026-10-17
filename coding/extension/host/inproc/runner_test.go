@@ -31,6 +31,7 @@ func newFakeExtension(path string) extension.Extension {
 
 // TestNewRunner_Empty: a runner with no extensions reports zero of
 // everything and is not stale.
+// Pi: packages/coding-agent/src/core/extensions/runner.ts:625 (Runner.getExtensionPaths).
 func TestNewRunner_Empty(t *testing.T) {
 	r := inproc.NewRunner(nil, "/tmp")
 

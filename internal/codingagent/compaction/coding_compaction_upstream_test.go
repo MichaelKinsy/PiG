@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
 // SPDX-License-Identifier: MIT
 
@@ -13,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -29,7 +30,7 @@ func (b *upstreamCompactionBuilder) add(kind string, fields map[string]any) codi
 	id := fmt.Sprintf("test-id-%d", len(b.entries))
 	var parent *string
 	if len(b.entries) > 0 {
-		parent = new(b.entries[len(b.entries)-1].Base.ID)
+		parent = new(b.entries[len(b.entries)-1].Base().ID)
 	}
 	fields["type"] = kind
 	fields["id"] = id
@@ -77,9 +78,10 @@ func largeUpstreamSession(t *testing.T) []codingagent.SessionEntry {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return s.Entries()
+	return s.GetEntries()
 }
 
+// Pi: packages/coding-agent/src/core/compaction/compaction.ts:425 (CutPointResult.turnStartIndex).
 func TestCodingCompactionUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/compaction.test.ts:194
 	t.Run("should calculate total context tokens from usage", func(t *testing.T) {
@@ -165,7 +167,7 @@ func TestCodingCompactionUpstream(t *testing.T) {
 		}
 		r := FindCutPoint(b.entries, 0, len(b.entries), 2500)
 		e := b.entries[r.FirstKeptEntryIndex]
-		m, ok := e.AsMessage()
+		m, ok := e.(codingagent.MessageEntry)
 		if !ok || (m.Message.Role() != "user" && m.Message.Role() != "assistant") {
 			t.Fatal(e)
 		}
@@ -199,7 +201,7 @@ func TestCodingCompactionUpstream(t *testing.T) {
 			b.assistant(fmt.Sprintf("A2-%d", i+1), piUsage(0, 100, usage, 0))
 		}
 		r := FindCutPoint(b.entries, 0, len(b.entries), 3000)
-		m, _ := b.entries[r.FirstKeptEntryIndex].AsMessage()
+		m, _ := b.entries[r.FirstKeptEntryIndex].(codingagent.MessageEntry)
 		if m.Message.Role() == "assistant" && (!r.IsSplitTurn || r.TurnStartIndex != 2) {
 			t.Fatal(r)
 		}
@@ -236,10 +238,10 @@ func TestCodingCompactionUpstream(t *testing.T) {
 		settings := DefaultCompactionSettings
 		settings.KeepRecentTokens = 1000
 		prep := PrepareCompaction(b.entries, settings)
-		a, _ := oldUser.AsMessage()
-		c, _ := oldAssistant.AsMessage()
-		u, _ := currentUser.AsMessage()
-		if prep == nil || prep.FirstKeptEntryID != callEntry.Base.ID || !reflect.DeepEqual(prep.MessagesToSummarize, []agent.AgentMessage{a.Message, c.Message}) || !reflect.DeepEqual(prep.TurnPrefixMessages, []agent.AgentMessage{u.Message}) {
+		a, _ := oldUser.(codingagent.MessageEntry)
+		c, _ := oldAssistant.(codingagent.MessageEntry)
+		u, _ := currentUser.(codingagent.MessageEntry)
+		if prep == nil || prep.FirstKeptEntryID != callEntry.Base().ID || !reflect.DeepEqual(prep.MessagesToSummarize, []agent.AgentMessage{a.Message, c.Message}) || !reflect.DeepEqual(prep.TurnPrefixMessages, []agent.AgentMessage{u.Message}) {
 			t.Fatalf("prep=%+v", prep)
 		}
 	})
@@ -250,7 +252,7 @@ func TestCodingCompactionUpstream(t *testing.T) {
 		b.assistant("a", nil)
 		b.user("2")
 		b.assistant("b", nil)
-		ctx := codingagent.BuildSessionContext(b.entries)
+		ctx := codingagent.BuildSessionContext(b.entries, codingagent.LastLeaf(), nil)
 		if len(ctx.Messages) != 4 || ctx.ThinkingLevel != "off" || !reflect.DeepEqual(ctx.Model, &codingagent.SessionContextModel{Provider: "anthropic", ModelID: "claude-sonnet-4-5"}) {
 			t.Fatal(ctx)
 		}
@@ -262,10 +264,10 @@ func TestCodingCompactionUpstream(t *testing.T) {
 		b.assistant("a", nil)
 		u2 := b.user("2")
 		b.assistant("b", nil)
-		b.compact("Summary of 1,a,2,b", u2.Base.ID)
+		b.compact("Summary of 1,a,2,b", u2.Base().ID)
 		b.user("3")
 		b.assistant("c", nil)
-		m := codingagent.BuildSessionContext(b.entries).Messages
+		m := codingagent.BuildSessionContext(b.entries, codingagent.LastLeaf(), nil).Messages
 		if len(m) != 5 || m[0].Role() != "compactionSummary" || !strings.Contains(m[0].Custom["summary"].(string), "Summary of 1,a,2,b") {
 			t.Fatal(m)
 		}
@@ -275,15 +277,15 @@ func TestCodingCompactionUpstream(t *testing.T) {
 		b := upstreamCompactionBuilder{t: t}
 		u1 := b.user("1")
 		b.assistant("a", nil)
-		b.compact("First summary", u1.Base.ID)
+		b.compact("First summary", u1.Base().ID)
 		b.user("2")
 		b.assistant("b", nil)
 		u3 := b.user("3")
 		b.assistant("c", nil)
-		b.compact("Second summary", u3.Base.ID)
+		b.compact("Second summary", u3.Base().ID)
 		b.user("4")
 		b.assistant("d", nil)
-		m := codingagent.BuildSessionContext(b.entries).Messages
+		m := codingagent.BuildSessionContext(b.entries, codingagent.LastLeaf(), nil).Messages
 		if len(m) != 5 || !strings.Contains(m[0].Custom["summary"].(string), "Second summary") {
 			t.Fatal(m)
 		}
@@ -293,10 +295,10 @@ func TestCodingCompactionUpstream(t *testing.T) {
 		b := upstreamCompactionBuilder{t: t}
 		u1 := b.user("1")
 		b.assistant("a", nil)
-		b.compact("First summary", u1.Base.ID)
+		b.compact("First summary", u1.Base().ID)
 		b.user("2")
 		b.assistant("b", nil)
-		if m := codingagent.BuildSessionContext(b.entries).Messages; len(m) != 5 {
+		if m := codingagent.BuildSessionContext(b.entries, codingagent.LastLeaf(), nil).Messages; len(m) != 5 {
 			t.Fatal(m)
 		}
 	})
@@ -307,7 +309,7 @@ func TestCodingCompactionUpstream(t *testing.T) {
 		b.add("model_change", map[string]any{"provider": "openai", "modelId": "gpt-4"})
 		b.assistant("a", nil)
 		b.add("thinking_level_change", map[string]any{"thinkingLevel": "high"})
-		ctx := codingagent.BuildSessionContext(b.entries)
+		ctx := codingagent.BuildSessionContext(b.entries, codingagent.LastLeaf(), nil)
 		if ctx.ThinkingLevel != "high" || !reflect.DeepEqual(ctx.Model, &codingagent.SessionContextModel{Provider: "anthropic", ModelID: "claude-sonnet-4-5"}) {
 			t.Fatal(ctx)
 		}
@@ -321,8 +323,8 @@ func TestCodingCompactionUpstream(t *testing.T) {
 		settings := DefaultCompactionSettings
 		settings.KeepRecentTokens = 1
 		prep := PrepareCompaction(b.entries, settings)
-		um, _ := u.AsMessage()
-		if prep == nil || prep.FirstKeptEntryID != a.Base.ID || !prep.IsSplitTurn || len(prep.MessagesToSummarize) != 0 || !reflect.DeepEqual(prep.TurnPrefixMessages, []agent.AgentMessage{um.Message}) {
+		um, _ := u.(codingagent.MessageEntry)
+		if prep == nil || prep.FirstKeptEntryID != a.Base().ID || !prep.IsSplitTurn || len(prep.MessagesToSummarize) != 0 || !reflect.DeepEqual(prep.TurnPrefixMessages, []agent.AgentMessage{um.Message}) {
 			t.Fatalf("prep=%+v", prep)
 		}
 	})
@@ -335,7 +337,7 @@ func TestCodingCompactionUpstream(t *testing.T) {
 		b.assistant("assistant msg 2", nil)
 		b.user("user msg 3 - kept by compaction1")
 		b.assistant("assistant msg 3", piUsage(5000, 1000, 0, 0))
-		b.compact("First summary", u2.Base.ID)
+		b.compact("First summary", u2.Base().ID)
 		b.user("user msg 4 (new after compaction1)")
 		b.assistant("assistant msg 4", piUsage(8000, 2000, 0, 0))
 		if prep := PrepareCompaction(b.entries, DefaultCompactionSettings); prep != nil {
@@ -351,7 +353,7 @@ func TestCodingCompactionUpstream(t *testing.T) {
 		b.assistant(strings.Repeat("assistant msg 2 ", 12), nil)
 		b.user(strings.Repeat("user msg 3 - kept by compaction1 ", 12))
 		b.assistant(strings.Repeat("assistant msg 3 ", 12), piUsage(5000, 1000, 0, 0))
-		b.compact("First summary", u2.Base.ID)
+		b.compact("First summary", u2.Base().ID)
 		b.user(strings.Repeat("user msg 4 (new after compaction1) ", 12))
 		b.assistant(strings.Repeat("assistant msg 4 ", 12), piUsage(8000, 2000, 0, 0))
 		settings := DefaultCompactionSettings
@@ -370,7 +372,7 @@ func TestCodingCompactionUpstream(t *testing.T) {
 		entries := largeUpstreamSession(t)
 		messages := 0
 		for _, e := range entries {
-			if e.Base.Type == "message" {
+			if e.Base().Type == "message" {
 				messages++
 			}
 		}
@@ -382,14 +384,14 @@ func TestCodingCompactionUpstream(t *testing.T) {
 	t.Run("should find cut point in large session", func(t *testing.T) {
 		entries := largeUpstreamSession(t)
 		r := FindCutPoint(entries, 0, len(entries), DefaultCompactionSettings.KeepRecentTokens)
-		m, ok := entries[r.FirstKeptEntryIndex].AsMessage()
+		m, ok := entries[r.FirstKeptEntryIndex].(codingagent.MessageEntry)
 		if !ok || m.Message.Role() != "user" && m.Message.Role() != "assistant" {
 			t.Fatal(r)
 		}
 	})
 	// .upstream/v0.87.1/packages/coding-agent/test/compaction.test.ts:590
 	t.Run("should load session correctly", func(t *testing.T) {
-		ctx := codingagent.BuildSessionContext(largeUpstreamSession(t))
+		ctx := codingagent.BuildSessionContext(largeUpstreamSession(t), codingagent.LastLeaf(), nil)
 		if len(ctx.Messages) <= 100 || ctx.Model == nil {
 			t.Fatalf("messages=%d model=%v", len(ctx.Messages), ctx.Model)
 		}
@@ -401,7 +403,7 @@ func TestCodingCompactionUpstream(t *testing.T) {
 		if prep == nil {
 			t.Fatal("missing preparation")
 		}
-		result, err := Compact(t.Context(), *prep, &ai.Model{Capabilities: ai.ModelCapabilities{ContextWindow: 200000, MaxOutputTokens: 8192}}, &fakeCompleter{response: strings.Repeat("Detailed fixture summary. ", 8)}, nil, "", "", nil, "")
+		result, err := CompactUsing(t.Context(), *prep, &ai.Model{Capabilities: ai.ModelCapabilities{ContextWindow: 200000, MaxOutputTokens: 8192}}, "", nil, "", "", &fakeCompleter{response: strings.Repeat("Detailed fixture summary. ", 8)}, nil, nil, nil, ai.RetryCallbacks{}, "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -412,16 +414,16 @@ func TestCodingCompactionUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/compaction.test.ts:624
 	t.Run("should produce valid session after compaction", func(t *testing.T) {
 		entries := largeUpstreamSession(t)
-		loaded := codingagent.BuildSessionContext(entries)
+		loaded := codingagent.BuildSessionContext(entries, codingagent.LastLeaf(), nil)
 		prep := PrepareCompaction(entries, DefaultCompactionSettings)
 		if prep == nil {
 			t.Fatal("missing preparation")
 		}
-		result, err := Compact(t.Context(), *prep, &ai.Model{Capabilities: ai.ModelCapabilities{ContextWindow: 200000, MaxOutputTokens: 8192}}, &fakeCompleter{response: strings.Repeat("Detailed fixture summary. ", 8)}, nil, "", "", nil, "")
+		result, err := CompactUsing(t.Context(), *prep, &ai.Model{Capabilities: ai.ModelCapabilities{ContextWindow: 200000, MaxOutputTokens: 8192}}, "", nil, "", "", &fakeCompleter{response: strings.Repeat("Detailed fixture summary. ", 8)}, nil, nil, nil, ai.RetryCallbacks{}, "")
 		if err != nil {
 			t.Fatal(err)
 		}
-		raw, err := json.Marshal(codingagent.CompactionEntry{SessionEntryBase: codingagent.SessionEntryBase{Type: "compaction", ID: "compaction-test-id", ParentID: new(entries[len(entries)-1].Base.ID), Timestamp: time.Now().UTC().Format(time.RFC3339Nano)}, Summary: result.Summary, FirstKeptEntryID: result.FirstKeptEntryID, TokensBefore: result.TokensBefore})
+		raw, err := json.Marshal(codingagent.CompactionEntry{SessionEntryBase: codingagent.SessionEntryBase{Type: "compaction", ID: "compaction-test-id", ParentID: new(entries[len(entries)-1].Base().ID), Timestamp: time.Now().UTC().Format(time.RFC3339Nano)}, Summary: result.Summary, FirstKeptEntryID: result.FirstKeptEntryID, TokensBefore: result.TokensBefore})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -429,8 +431,8 @@ func TestCodingCompactionUpstream(t *testing.T) {
 		if err := json.Unmarshal(raw, &base); err != nil {
 			t.Fatal(err)
 		}
-		entries = append(entries, codingagent.NewSessionEntry(raw, base))
-		reloaded := codingagent.BuildSessionContext(entries)
+		entries = append(entries, sessionentry.DecodeSessionEntry(raw))
+		reloaded := codingagent.BuildSessionContext(entries, codingagent.LastLeaf(), nil)
 		if len(reloaded.Messages) >= len(loaded.Messages) || reloaded.Messages[0].Role() != "compactionSummary" || !strings.Contains(reloaded.Messages[0].Custom["summary"].(string), result.Summary) {
 			t.Fatal("invalid compacted context")
 		}

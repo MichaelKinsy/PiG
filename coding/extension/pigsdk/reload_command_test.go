@@ -1,3 +1,5 @@
+//go:build !pig_strip_extension_sdk_go && !pig_strip_extension_sdk_rust && !pig_strip_extension_sdk_python
+
 package pigsdk
 
 import (
@@ -70,19 +72,23 @@ func TestReloadSDKPathAcceptsALanguage(t *testing.T) {
 	t.Setenv("PIG_HOME", root)
 
 	for _, tc := range []struct {
-		args       []string
-		wantSuffix string
+		args []string
+		lang string
 	}{
-		{[]string{"reload", "--sdk-path", "rust"}, "sdk-rs"},
-		{[]string{"reload", "--sdk-path=python"}, "sdk-py"},
-		{[]string{"reload", "--sdk-path"}, "sdk"}, // defaults to go
+		{[]string{"reload", "--sdk-path", "rust"}, "rust"},
+		{[]string{"reload", "--sdk-path=python"}, "python"},
+		{[]string{"reload", "--sdk-path"}, "go"}, // defaults to go
 	} {
 		var out, errOut bytes.Buffer
 		if code := RunCommand(tc.args, &out, &errOut); code != 0 {
 			t.Fatalf("%v: exit %d, stderr=%s", tc.args, code, errOut.String())
 		}
-		if got := strings.TrimSpace(out.String()); !strings.HasSuffix(got, tc.wantSuffix) {
-			t.Errorf("%v printed %q, want a path ending %q", tc.args, got, tc.wantSuffix)
+		want, err := SDKDirFor(root, tc.lang)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := strings.TrimSpace(out.String()); got != want {
+			t.Errorf("%v printed %q, want %q", tc.args, got, want)
 		}
 	}
 }

@@ -8,10 +8,12 @@ package tui
 // app.model.cycle, app.tree.toggle, etc.
 
 import (
+	"cmp"
 	"os"
 	"runtime"
 	"slices"
-	"strings"
+	"sync"
+	"sync/atomic"
 )
 
 // TUIKeybinding is a named action for TUI components.
@@ -164,8 +166,8 @@ func (k PlatformKeys) For(platform KeybindingPlatform) []string {
 // platform: upstream TUI_KEYBINDINGS (packages/tui/src/keybindings.ts) with
 // the per-platform tui.* defaults that coding-agent's KEYBINDINGS applies on
 // top (core/keybindings.ts). Every call returns a fresh map.
-func TUIKeybindingDefinitionsFor(platform KeybindingPlatform) map[string]TUIKeybindingDef {
-	return map[string]TUIKeybindingDef{
+func TUIKeybindingDefinitionsFor(platform KeybindingPlatform) KeybindingDefinitions {
+	return KeybindingDefinitions{
 		KBEditorCursorUp:          {DefaultKeys: []string{"up"}, Description: "Move cursor up"},
 		KBEditorCursorDown:        {DefaultKeys: []string{"down"}, Description: "Move cursor down"},
 		KBEditorHistoryPrevious:   {DefaultKeys: []string{}, Description: "Select previous prompt history entry"},
@@ -222,28 +224,85 @@ func TUIKeybindingDefinitionsFor(platform KeybindingPlatform) map[string]TUIKeyb
 	}
 }
 
-// tuiKeybindingDefs is the built-in definition table for this host.
-var tuiKeybindingDefs = TUIKeybindingDefinitionsFor(hostKeybindingPlatform)
-
-// TUIKeybindingConflict records a key bound to multiple actions.
-type TUIKeybindingConflict struct {
-	Key     string
-	Actions []string
+// TUIKeybindingOrder lists the TUI_KEYBINDINGS ids in declaration order (keybindings.ts), the order the generated keybindings schema uses.
+var TUIKeybindingOrder = []TUIKeybinding{
+	KBEditorCursorUp,
+	KBEditorCursorDown,
+	KBEditorHistoryPrevious,
+	KBEditorHistoryNext,
+	KBEditorCursorLeft,
+	KBEditorCursorRight,
+	KBEditorCursorWordLeft,
+	KBEditorCursorWordRight,
+	KBEditorCursorLineStart,
+	KBEditorCursorLineEnd,
+	KBEditorJumpForward,
+	KBEditorJumpBackward,
+	KBEditorPageUp,
+	KBEditorPageDown,
+	KBEditorDeleteCharBack,
+	KBEditorDeleteCharForward,
+	KBEditorDeleteWordBack,
+	KBEditorDeleteWordForward,
+	KBEditorDeleteToLineStart,
+	KBEditorDeleteToLineEnd,
+	KBEditorYank,
+	KBEditorYankPop,
+	KBEditorUndo,
+	KBInputNewLine,
+	KBInputSubmit,
+	KBInputTab,
+	KBInputCopy,
+	KBSelectUp,
+	KBSelectDown,
+	KBSelectPageUp,
+	KBSelectPageDown,
+	KBSelectConfirm,
+	KBSelectCancel,
+	KBAltScreenPageUp,
+	KBAltScreenPageDown,
+	KBAltScreenHalfPageUp,
+	KBAltScreenHalfPageDown,
+	KBAltScreenLineUp,
+	KBAltScreenLineDown,
+	KBAltScreenPreviousPrompt,
+	KBAltScreenNextPrompt,
+	KBAltScreenSearch,
+	KBAltScreenSearchNext,
+	KBAltScreenSearchPrevious,
+	KBAltScreenSearchClose,
+	KBAltScreenTop,
+	KBAltScreenBottom,
 }
+
+// TUIKeybindings is upstream TUI_KEYBINDINGS, the table getKeybindings() uses until an application installs its own. It has no platform column: the Windows and WSL keys are coding-agent KEYBINDINGS overrides, which the coding agent installs through its own manager. The Linux column carries none of those overrides.
+var TUIKeybindings = TUIKeybindingDefinitionsFor(KeybindingPlatformLinux)
+
+// TUIKeybindingConflict is pi-tui's KeybindingConflict: a key claimed by more than one keybinding.
+type TUIKeybindingConflict struct {
+	Key         string
+	Keybindings []string
+}
+
+// KeybindingsConfig is upstream KeybindingsConfig (keybindings.ts:69): the user's key overrides by keybinding id.
+// A single key and a one-element list are the same override.
+type KeybindingsConfig = map[string][]string
+
+// KeybindingDefinitions is upstream KeybindingDefinitions (keybindings.ts:68): each keybinding id's default keys and description.
+type KeybindingDefinitions = map[string]TUIKeybindingDef
 
 // TUIKeybindingsManager resolves keybindings for TUI components.
 // Mirrors upstream KeybindingsManager in packages/tui/src/keybindings.ts.
 type TUIKeybindingsManager struct {
-	definitions  map[string]TUIKeybindingDef
+	definitions  KeybindingDefinitions
 	userBindings map[string][]string // nil = not set (use default)
 	keysById     map[string][]string
 	conflicts    []TUIKeybindingConflict
 }
 
-// NewTUIKeybindingsManager creates a manager with the built-in TUI definitions
-// for this host and optional user overrides.
-func NewTUIKeybindingsManager(userBindings map[string][]string) *TUIKeybindingsManager {
-	return NewKeybindingsManager(tuiKeybindingDefs, userBindings)
+// NewTUIKeybindingsManager creates a manager over upstream TUI_KEYBINDINGS, the same on every platform, with optional user overrides.
+func NewTUIKeybindingsManager(userBindings KeybindingsConfig) *TUIKeybindingsManager {
+	return NewKeybindingsManager(TUIKeybindings, userBindings)
 }
 
 // NewKeybindingsManager creates a manager over an explicit definition table.
@@ -251,7 +310,7 @@ func NewTUIKeybindingsManager(userBindings map[string][]string) *TUIKeybindingsM
 // coding agent passes its merged tui.* and app.* table here so components in
 // this package resolve app actions (tree labels, thinking save) through the
 // same manager, as upstream's single KEYBINDINGS table does.
-func NewKeybindingsManager(definitions map[string]TUIKeybindingDef, userBindings map[string][]string) *TUIKeybindingsManager {
+func NewKeybindingsManager(definitions KeybindingDefinitions, userBindings KeybindingsConfig) *TUIKeybindingsManager {
 	m := &TUIKeybindingsManager{
 		definitions:  definitions,
 		userBindings: userBindings,
@@ -283,6 +342,10 @@ func (m *TUIKeybindingsManager) rebuild() {
 	// Detect user-binding conflicts.
 	userClaims := make(map[string]map[string]bool)
 	for action, keys := range m.userBindings {
+		// upstream: packages/tui/src/keybindings.ts:KeybindingsManager.rebuild skips a user id the definitions do not hold.
+		if _, ok := m.definitions[action]; !ok {
+			continue
+		}
 		for _, key := range dedupeKeys(keys) {
 			if userClaims[key] == nil {
 				userClaims[key] = make(map[string]bool)
@@ -297,9 +360,12 @@ func (m *TUIKeybindingsManager) rebuild() {
 				list = append(list, a)
 			}
 			slices.Sort(list)
-			m.conflicts = append(m.conflicts, TUIKeybindingConflict{Key: key, Actions: list})
+			m.conflicts = append(m.conflicts, TUIKeybindingConflict{Key: key, Keybindings: list})
 		}
 	}
+
+	// A Go map keeps no insertion order, so conflicts are listed by key instead of upstream's order of first claim.
+	slices.SortFunc(m.conflicts, func(a, b TUIKeybindingConflict) int { return cmp.Compare(a.Key, b.Key) })
 
 	// Resolve: user overrides if present, otherwise defaults.
 	for id, def := range m.definitions {
@@ -355,13 +421,13 @@ func (m *TUIKeybindingsManager) GetDefinition(action TUIKeybinding) (TUIKeybindi
 func (m *TUIKeybindingsManager) GetConflicts() []TUIKeybindingConflict {
 	out := make([]TUIKeybindingConflict, len(m.conflicts))
 	for i, c := range m.conflicts {
-		out[i] = TUIKeybindingConflict{Key: c.Key, Actions: slices.Clone(c.Actions)}
+		out[i] = TUIKeybindingConflict{Key: c.Key, Keybindings: slices.Clone(c.Keybindings)}
 	}
 	return out
 }
 
 // SetUserBindings replaces user overrides and rebuilds.
-func (m *TUIKeybindingsManager) SetUserBindings(bindings map[string][]string) {
+func (m *TUIKeybindingsManager) SetUserBindings(bindings KeybindingsConfig) {
 	m.userBindings = bindings
 	if m.userBindings == nil {
 		m.userBindings = make(map[string][]string)
@@ -371,7 +437,7 @@ func (m *TUIKeybindingsManager) SetUserBindings(bindings map[string][]string) {
 
 // GetUserBindings returns a defensive copy of the raw user overrides.
 // Mirrors upstream KeybindingsManager.getUserBindings().
-func (m *TUIKeybindingsManager) GetUserBindings() map[string][]string {
+func (m *TUIKeybindingsManager) GetUserBindings() KeybindingsConfig {
 	out := make(map[string][]string, len(m.userBindings))
 	for k, v := range m.userBindings {
 		out[k] = slices.Clone(v)
@@ -379,19 +445,14 @@ func (m *TUIKeybindingsManager) GetUserBindings() map[string][]string {
 	return out
 }
 
-// GetResolvedBindings returns the fully resolved binding table after applying
-// defaults and user overrides. Mirrors upstream getResolvedBindings().
-func (m *TUIKeybindingsManager) GetResolvedBindings() map[string]any {
-	resolved := make(map[string]any, len(m.definitions))
+// GetResolvedBindings returns the fully resolved binding table after applying defaults and user overrides (keybindings.ts:299
+// getResolvedBindings). Pi gives a lone key as a string and several as an array; KeybindingsConfig holds each as a key list.
+func (m *TUIKeybindingsManager) GetResolvedBindings() KeybindingsConfig {
+	resolved := make(KeybindingsConfig, len(m.definitions))
 	for id := range m.definitions {
-		keys := m.keysById[id]
-		switch len(keys) {
-		case 0:
+		resolved[id] = slices.Clone(m.keysById[id])
+		if resolved[id] == nil {
 			resolved[id] = []string{}
-		case 1:
-			resolved[id] = keys[0]
-		default:
-			resolved[id] = slices.Clone(keys)
 		}
 	}
 	return resolved
@@ -409,133 +470,136 @@ func (m *TUIKeybindingsManager) GetResolvedBindings() map[string]any {
 // tuiKeyIDInputs maps key IDs to the raw terminal sequences they produce.
 // Covers legacy terminal escapes; Kitty protocol sequences are not yet
 // supported (matching upstream's legacy-first approach for component input).
-var tuiKeyIDInputs = map[string][]string{
-	// Special keys
-	"esc":       {"\x1b"},
-	"escape":    {"\x1b"},
-	"enter":     {"\r"},
-	"return":    {"\r"},
-	"tab":       {"\t"},
-	"space":     {" "},
-	"backspace": {"\x7f", "\b"},
-	"clear":     {"\x1b[E", "\x1bOE"},
-	"delete":    {"\x1b[3~"},
-	"insert":    {"\x1b[2~"},
-	"home":      {"\x1b[H", "\x1bOH", "\x1b[1~", "\x1b[7~"},
-	"end":       {"\x1b[F", "\x1bOF", "\x1b[4~", "\x1b[8~"},
-	"pageUp":    {"\x1b[5~"},
-	"pageDown":  {"\x1b[6~"},
+// It is built on first use, not on every start.
+var tuiKeyIDInputs = sync.OnceValue(func() map[string][]string {
+	return map[string][]string{
+		// Special keys
+		"esc":       {"\x1b"},
+		"escape":    {"\x1b"},
+		"enter":     {"\r"},
+		"return":    {"\r"},
+		"tab":       {"\t"},
+		"space":     {" "},
+		"backspace": {"\x7f", "\b"},
+		"clear":     {"\x1b[E", "\x1bOE"},
+		"delete":    {"\x1b[3~"},
+		"insert":    {"\x1b[2~"},
+		"home":      {"\x1b[H", "\x1bOH", "\x1b[1~", "\x1b[7~"},
+		"end":       {"\x1b[F", "\x1bOF", "\x1b[4~", "\x1b[8~"},
+		"pageUp":    {"\x1b[5~"},
+		"pageDown":  {"\x1b[6~"},
 
-	// Arrow keys
-	"up":    {"\x1b[A", "\x1bOA"},
-	"down":  {"\x1b[B", "\x1bOB"},
-	"left":  {"\x1b[D", "\x1bOD"},
-	"right": {"\x1b[C", "\x1bOC"},
+		// Arrow keys
+		"up":    {"\x1b[A", "\x1bOA"},
+		"down":  {"\x1b[B", "\x1bOB"},
+		"left":  {"\x1b[D", "\x1bOD"},
+		"right": {"\x1b[C", "\x1bOC"},
 
-	// Shift
-	"shift+enter": {"\n", "\x1b\r", "\x1b\n", "\x1b[13;2u", "\x1b[13;2~", "\x1b[27;2;13~"},
-	"shift+tab":   {"\x1b[Z"},
-	"shift+clear": {"\x1b[e"},
+		// Shift
+		"shift+enter": {"\n", "\x1b\r", "\x1b\n", "\x1b[13;2u", "\x1b[13;2~", "\x1b[27;2;13~"},
+		"shift+tab":   {"\x1b[Z"},
+		"shift+clear": {"\x1b[e"},
 
-	// Ctrl+letter: legacy byte + Kitty CSI-u + xterm modifyOtherKeys mode 2
-	"ctrl+a": {"\x01", "\x1b[97;5u", "\x1b[27;5;97~"},
-	"ctrl+b": {"\x02", "\x1b[98;5u", "\x1b[27;5;98~"},
-	"ctrl+c": {"\x03", "\x1b[99;5u", "\x1b[27;5;99~"},
-	"ctrl+d": {"\x04", "\x1b[100;5u", "\x1b[27;5;100~"},
-	"ctrl+e": {"\x05", "\x1b[101;5u", "\x1b[27;5;101~"},
-	"ctrl+f": {"\x06", "\x1b[102;5u", "\x1b[27;5;102~"},
-	"ctrl+g": {"\x07", "\x1b[103;5u", "\x1b[27;5;103~"},
-	// ctrl+j: CSI-u form only. The legacy byte \x0a is already claimed by
-	// shift+enter (both insert a newline). Upstream 0.80.0 added ctrl+j as a
-	// newline binding; this covers the kitty / modifyOtherKeys sequences.
-	"ctrl+j": {"\x1b[106;5u", "\x1b[27;5;106~"},
-	"ctrl+k": {"\x0b", "\x1b[107;5u", "\x1b[27;5;107~"},
-	"ctrl+l": {"\x0c", "\x1b[108;5u", "\x1b[27;5;108~"},
-	"ctrl+n": {"\x0e", "\x1b[110;5u", "\x1b[27;5;110~"},
-	"ctrl+o": {"\x0f", "\x1b[111;5u", "\x1b[27;5;111~"},
-	"ctrl+p": {"\x10", "\x1b[112;5u", "\x1b[27;5;112~"},
-	"ctrl+r": {"\x12", "\x1b[114;5u", "\x1b[27;5;114~"},
-	"ctrl+s": {"\x13", "\x1b[115;5u", "\x1b[27;5;115~"},
-	"ctrl+t": {"\x14", "\x1b[116;5u", "\x1b[27;5;116~"},
-	"ctrl+u": {"\x15", "\x1b[117;5u", "\x1b[27;5;117~"},
-	"ctrl+v": {"\x16", "\x1b[118;5u", "\x1b[27;5;118~"},
-	"ctrl+w": {"\x17", "\x1b[119;5u", "\x1b[27;5;119~"},
-	"ctrl+x": {"\x18", "\x1b[120;5u", "\x1b[27;5;120~"},
-	"ctrl+y": {"\x19", "\x1b[121;5u", "\x1b[27;5;121~"},
-	"ctrl+z": {"\x1a", "\x1b[122;5u", "\x1b[27;5;122~"},
+		// Ctrl+letter: legacy byte + Kitty CSI-u + xterm modifyOtherKeys mode 2
+		"ctrl+a": {"\x01", "\x1b[97;5u", "\x1b[27;5;97~"},
+		"ctrl+b": {"\x02", "\x1b[98;5u", "\x1b[27;5;98~"},
+		"ctrl+c": {"\x03", "\x1b[99;5u", "\x1b[27;5;99~"},
+		"ctrl+d": {"\x04", "\x1b[100;5u", "\x1b[27;5;100~"},
+		"ctrl+e": {"\x05", "\x1b[101;5u", "\x1b[27;5;101~"},
+		"ctrl+f": {"\x06", "\x1b[102;5u", "\x1b[27;5;102~"},
+		"ctrl+g": {"\x07", "\x1b[103;5u", "\x1b[27;5;103~"},
+		// ctrl+j: CSI-u form only. The legacy byte \x0a is already claimed by
+		// shift+enter (both insert a newline). Upstream 0.80.0 added ctrl+j as a
+		// newline binding; this covers the kitty / modifyOtherKeys sequences.
+		"ctrl+j": {"\x1b[106;5u", "\x1b[27;5;106~"},
+		"ctrl+k": {"\x0b", "\x1b[107;5u", "\x1b[27;5;107~"},
+		"ctrl+l": {"\x0c", "\x1b[108;5u", "\x1b[27;5;108~"},
+		"ctrl+n": {"\x0e", "\x1b[110;5u", "\x1b[27;5;110~"},
+		"ctrl+o": {"\x0f", "\x1b[111;5u", "\x1b[27;5;111~"},
+		"ctrl+p": {"\x10", "\x1b[112;5u", "\x1b[27;5;112~"},
+		"ctrl+r": {"\x12", "\x1b[114;5u", "\x1b[27;5;114~"},
+		"ctrl+s": {"\x13", "\x1b[115;5u", "\x1b[27;5;115~"},
+		"ctrl+t": {"\x14", "\x1b[116;5u", "\x1b[27;5;116~"},
+		"ctrl+u": {"\x15", "\x1b[117;5u", "\x1b[27;5;117~"},
+		"ctrl+v": {"\x16", "\x1b[118;5u", "\x1b[27;5;118~"},
+		"ctrl+w": {"\x17", "\x1b[119;5u", "\x1b[27;5;119~"},
+		"ctrl+x": {"\x18", "\x1b[120;5u", "\x1b[27;5;120~"},
+		"ctrl+y": {"\x19", "\x1b[121;5u", "\x1b[27;5;121~"},
+		"ctrl+z": {"\x1a", "\x1b[122;5u", "\x1b[27;5;122~"},
 
-	// Ctrl+Shift+letter: Kitty CSI-u + xterm modifyOtherKeys mode 2
-	// modifier 6 = Shift(1) + Ctrl(4) + 1 = 6
-	"ctrl+shift+a": {"\x1b[97;6u", "\x1b[27;6;97~"},
-	"ctrl+shift+b": {"\x1b[98;6u", "\x1b[27;6;98~"},
-	"ctrl+shift+c": {"\x1b[99;6u", "\x1b[27;6;99~"},
-	"ctrl+shift+d": {"\x1b[100;6u", "\x1b[27;6;100~"},
-	"ctrl+shift+e": {"\x1b[101;6u", "\x1b[27;6;101~"},
-	"ctrl+shift+f": {"\x1b[102;6u", "\x1b[27;6;102~"},
-	"ctrl+shift+g": {"\x1b[103;6u", "\x1b[27;6;103~"},
-	"ctrl+shift+h": {"\x1b[104;6u", "\x1b[27;6;104~"},
-	"ctrl+shift+i": {"\x1b[105;6u", "\x1b[27;6;105~"},
-	"ctrl+shift+j": {"\x1b[106;6u", "\x1b[27;6;106~"},
-	"ctrl+shift+k": {"\x1b[107;6u", "\x1b[27;6;107~"},
-	"ctrl+shift+l": {"\x1b[108;6u", "\x1b[27;6;108~"},
-	"ctrl+shift+m": {"\x1b[109;6u", "\x1b[27;6;109~"},
-	"ctrl+shift+n": {"\x1b[110;6u", "\x1b[27;6;110~"},
-	"ctrl+shift+o": {"\x1b[111;6u", "\x1b[27;6;111~"},
-	"ctrl+shift+p": {"\x1b[112;6u", "\x1b[27;6;112~"},
-	"ctrl+shift+q": {"\x1b[113;6u", "\x1b[27;6;113~"},
-	"ctrl+shift+r": {"\x1b[114;6u", "\x1b[27;6;114~"},
-	"ctrl+shift+s": {"\x1b[115;6u", "\x1b[27;6;115~"},
-	"ctrl+shift+t": {"\x1b[116;6u", "\x1b[27;6;116~"},
-	"ctrl+shift+u": {"\x1b[117;6u", "\x1b[27;6;117~"},
-	"ctrl+shift+v": {"\x1b[118;6u", "\x1b[27;6;118~"},
-	"ctrl+shift+w": {"\x1b[119;6u", "\x1b[27;6;119~"},
-	"ctrl+shift+x": {"\x1b[120;6u", "\x1b[27;6;120~"},
-	"ctrl+shift+y": {"\x1b[121;6u", "\x1b[27;6;121~"},
-	"ctrl+shift+z": {"\x1b[122;6u", "\x1b[27;6;122~"},
+		// Ctrl+Shift+letter: Kitty CSI-u + xterm modifyOtherKeys mode 2
+		// modifier 6 = Shift(1) + Ctrl(4) + 1 = 6
+		"ctrl+shift+a": {"\x1b[97;6u", "\x1b[27;6;97~"},
+		"ctrl+shift+b": {"\x1b[98;6u", "\x1b[27;6;98~"},
+		"ctrl+shift+c": {"\x1b[99;6u", "\x1b[27;6;99~"},
+		"ctrl+shift+d": {"\x1b[100;6u", "\x1b[27;6;100~"},
+		"ctrl+shift+e": {"\x1b[101;6u", "\x1b[27;6;101~"},
+		"ctrl+shift+f": {"\x1b[102;6u", "\x1b[27;6;102~"},
+		"ctrl+shift+g": {"\x1b[103;6u", "\x1b[27;6;103~"},
+		"ctrl+shift+h": {"\x1b[104;6u", "\x1b[27;6;104~"},
+		"ctrl+shift+i": {"\x1b[105;6u", "\x1b[27;6;105~"},
+		"ctrl+shift+j": {"\x1b[106;6u", "\x1b[27;6;106~"},
+		"ctrl+shift+k": {"\x1b[107;6u", "\x1b[27;6;107~"},
+		"ctrl+shift+l": {"\x1b[108;6u", "\x1b[27;6;108~"},
+		"ctrl+shift+m": {"\x1b[109;6u", "\x1b[27;6;109~"},
+		"ctrl+shift+n": {"\x1b[110;6u", "\x1b[27;6;110~"},
+		"ctrl+shift+o": {"\x1b[111;6u", "\x1b[27;6;111~"},
+		"ctrl+shift+p": {"\x1b[112;6u", "\x1b[27;6;112~"},
+		"ctrl+shift+q": {"\x1b[113;6u", "\x1b[27;6;113~"},
+		"ctrl+shift+r": {"\x1b[114;6u", "\x1b[27;6;114~"},
+		"ctrl+shift+s": {"\x1b[115;6u", "\x1b[27;6;115~"},
+		"ctrl+shift+t": {"\x1b[116;6u", "\x1b[27;6;116~"},
+		"ctrl+shift+u": {"\x1b[117;6u", "\x1b[27;6;117~"},
+		"ctrl+shift+v": {"\x1b[118;6u", "\x1b[27;6;118~"},
+		"ctrl+shift+w": {"\x1b[119;6u", "\x1b[27;6;119~"},
+		"ctrl+shift+x": {"\x1b[120;6u", "\x1b[27;6;120~"},
+		"ctrl+shift+y": {"\x1b[121;6u", "\x1b[27;6;121~"},
+		"ctrl+shift+z": {"\x1b[122;6u", "\x1b[27;6;122~"},
 
-	// Ctrl+symbol
-	"ctrl+]": {"\x1d"},
-	"ctrl+-": {"\x1f"},
+		// Ctrl+symbol
+		"ctrl+]": {"\x1d"},
+		"ctrl+-": {"\x1f"},
 
-	// Alt+letter
-	"alt+b": {"\x1bb"},
-	"alt+d": {"\x1bd"},
-	"alt+f": {"\x1bf"},
-	"alt+y": {"\x1by"},
+		// Alt+letter
+		"alt+b": {"\x1bb"},
+		"alt+d": {"\x1bd"},
+		"alt+f": {"\x1bf"},
+		"alt+y": {"\x1by"},
 
-	// Alt+key
-	"alt+backspace": {"\x1b\x7f", "\x1b\b"},
-	"alt+delete":    {"\x1b[3;3~"},
-	"alt+left":      {"\x1b[1;3D", "\x1bb"},
-	"alt+right":     {"\x1b[1;3C", "\x1bf"},
-	"alt+up":        {"\x1b[1;3A", "\x1bp"},
-	"alt+down":      {"\x1b[1;3B", "\x1bn"},
-	"alt+enter":     {"\x1b[13;3u", "\x1b[27;3;13~"},
+		// Alt+key
+		"alt+backspace": {"\x1b\x7f", "\x1b\b"},
+		"alt+delete":    {"\x1b[3;3~"},
+		"alt+left":      {"\x1b[1;3D", "\x1bb"},
+		"alt+right":     {"\x1b[1;3C", "\x1bf"},
+		"alt+up":        {"\x1b[1;3A", "\x1bp"},
+		"alt+down":      {"\x1b[1;3B", "\x1bn"},
+		"alt+enter":     {"\x1b[13;3u", "\x1b[27;3;13~"},
 
-	// Ctrl+arrow
-	"ctrl+left":  {"\x1b[1;5D", "\x1bOd"},
-	"ctrl+right": {"\x1b[1;5C", "\x1bOc"},
-	"ctrl+up":    {"\x1b[1;5A", "\x1bOa"},
-	"ctrl+down":  {"\x1b[1;5B", "\x1bOb"},
-	"ctrl+clear": {"\x1bOe"},
+		// Ctrl+arrow
+		"ctrl+left":  {"\x1b[1;5D", "\x1bOd"},
+		"ctrl+right": {"\x1b[1;5C", "\x1bOc"},
+		"ctrl+up":    {"\x1b[1;5A", "\x1bOa"},
+		"ctrl+down":  {"\x1b[1;5B", "\x1bOb"},
+		"ctrl+clear": {"\x1bOe"},
 
-	// Ctrl+Alt
-	"ctrl+alt+]": {"\x1b\x1d"},
+		// Ctrl+Alt
+		"ctrl+alt+]": {"\x1b\x1d"},
 
-	// Function keys
-	"f1":  {"\x1bOP", "\x1b[11~", "\x1b[[A"},
-	"f2":  {"\x1bOQ", "\x1b[12~", "\x1b[[B"},
-	"f3":  {"\x1bOR", "\x1b[13~", "\x1b[[C"},
-	"f4":  {"\x1bOS", "\x1b[14~", "\x1b[[D"},
-	"f5":  {"\x1b[15~", "\x1b[[E"},
-	"f6":  {"\x1b[17~"},
-	"f7":  {"\x1b[18~"},
-	"f8":  {"\x1b[19~"},
-	"f9":  {"\x1b[20~"},
-	"f10": {"\x1b[21~"},
-	"f11": {"\x1b[23~"},
-	"f12": {"\x1b[24~"},
-}
+		// Function keys
+		"f1":  {"\x1bOP", "\x1b[11~", "\x1b[[A"},
+		"f2":  {"\x1bOQ", "\x1b[12~", "\x1b[[B"},
+		"f3":  {"\x1bOR", "\x1b[13~", "\x1b[[C"},
+		"f4":  {"\x1bOS", "\x1b[14~", "\x1b[[D"},
+		"f5":  {"\x1b[15~", "\x1b[[E"},
+		"f6":  {"\x1b[17~"},
+		"f7":  {"\x1b[18~"},
+		"f8":  {"\x1b[19~"},
+		"f9":  {"\x1b[20~"},
+		"f10": {"\x1b[21~"},
+		"f11": {"\x1b[23~"},
+		"f12": {"\x1b[24~"},
+	}
+})
 
 // MatchesKeyID checks if raw terminal data matches a key identifier string
 // like "ctrl+c", "ctrl+shift+z", "enter", etc. Exported for use by extension
@@ -550,48 +614,46 @@ func MatchesKeyID(data, keyID string) bool {
 // Dynamically representable keys use the protocol- and mode-aware matcher.
 // Function keys and clear fall back to their legacy sequence tables.
 func matchesKeyID(data, keyID string) bool {
-	baseKey, _, parsed := parseKeyID(keyID)
-	if parsed {
-		if _, dynamic := resolveKeyCodepoint(baseKey); dynamic {
-			return matchesKeyDynamic(data, keyID)
-		}
+	info := lookupKeyID(keyID)
+	if !info.parsed {
+		return false
+	}
+	if info.dynamic {
+		return matchesKeyInfo(data, info)
 	}
 
 	// Function keys and clear have no CSI-u codepoint in Pi's key vocabulary,
 	// so they retain their legacy lookup. Every dynamically representable key
 	// goes through the mode-aware matcher above; consulting this table first
 	// would make ambiguous legacy bytes match the wrong key while Kitty mode is
-	// active.
-	normalized := strings.ToLower(keyID)
-	if seqs, ok := tuiKeyIDInputs[keyID]; ok && slices.Contains(seqs, data) {
-		return true
+	// active. keys.ts matchesKey: a function key matches only without a
+	// modifier, and clear also with exactly shift or ctrl (lookupKeyID).
+	if !info.legacyOK {
+		return false
 	}
-	if normalized != keyID {
-		if seqs, ok := tuiKeyIDInputs[normalized]; ok && slices.Contains(seqs, data) {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(tuiKeyIDInputs()[info.legacyKey], data)
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Global TUI keybindings: mirrors upstream setKeybindings / getKeybindings.
 // ──────────────────────────────────────────────────────────────────────────────
 
-var globalTUIKeybindings *TUIKeybindingsManager
+// globalTUIKeybindings is atomic because components read it where they are built, which for extension views is off the UI
+// loop, while a keybindings reload replaces it.
+var globalTUIKeybindings atomic.Pointer[TUIKeybindingsManager]
 
 // SetKeybindings mirrors upstream setKeybindings().
 func SetKeybindings(kb *TUIKeybindingsManager) {
-	globalTUIKeybindings = kb
-
+	globalTUIKeybindings.Store(kb)
 }
 
 // GetKeybindings mirrors upstream getKeybindings().
 func GetKeybindings() *TUIKeybindingsManager {
-	if globalTUIKeybindings == nil {
-		globalTUIKeybindings = NewTUIKeybindingsManager(nil)
+	if kb := globalTUIKeybindings.Load(); kb != nil {
+		return kb
 	}
-	return globalTUIKeybindings
+	globalTUIKeybindings.CompareAndSwap(nil, NewTUIKeybindingsManager(nil))
+	return globalTUIKeybindings.Load()
 }
 
 // SetTUIKeybindings sets the global TUI keybinding manager.

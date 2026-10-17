@@ -1,0 +1,133 @@
+[
+ {
+  "ids": [
+   "pkg:mcp/.#McpClientOptions"
+  ],
+  "targets": [
+   "mcp/client.go#ClientOptions"
+  ],
+  "production": [
+   "call:coding/mcpext/runtime.go#Connection.connectOnce"
+  ],
+  "evidence": [
+   "test:mcp/client_options_test.go#TestClientInitializeCarriesTheConfiguredClientOptions"
+  ],
+  "rationale": "McpClientOptions is the Go struct ClientOptions; Go flattens name/title/version into the embedded Implementation and splits roots into Roots and RootsFunc.",
+  "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error.",
+  "properties": {
+   "capabilities": {
+    "targets": [
+     "mcp/client.go#ClientOptions.Capabilities"
+    ],
+    "evidence": [
+     "test:mcp/client_options_test.go#TestClientInitializeCarriesTheConfiguredClientOptions"
+    ],
+    "rationale": "ClientOptions.Capabilities; nil is undefined; initialize sends it and adds the roots capability when roots are configured."
+   },
+   "name": {
+    "targets": [
+     "mcp/types.go#Implementation.Name"
+    ],
+    "evidence": [
+     "test:mcp/client_options_test.go#TestClientInitializeCarriesTheConfiguredClientOptions",
+     "test:mcp/client_test.go#TestClientInitializesTheConnectionBeforeExposingServerInformation"
+    ],
+    "rationale": "Name of the Implementation embedded in ClientOptions."
+   },
+   "version": {
+    "targets": [
+     "mcp/types.go#Implementation.Version"
+    ],
+    "evidence": [
+     "test:mcp/client_options_test.go#TestClientInitializeCarriesTheConfiguredClientOptions",
+     "test:mcp/client_test.go#TestClientInitializesTheConnectionBeforeExposingServerInformation"
+    ],
+    "rationale": "Version of the embedded Implementation."
+   },
+   "title": {
+    "targets": [
+     "mcp/types.go#Implementation.Title"
+    ],
+    "evidence": [
+     "test:mcp/client_options_test.go#TestClientInitializeCarriesTheConfiguredClientOptions"
+    ],
+    "rationale": "Title of the embedded Implementation; empty is undefined."
+   },
+   "protocolVersion": {
+    "targets": [
+     "mcp/client.go#ClientOptions.ProtocolVersion"
+    ],
+    "evidence": [
+     "test:mcp/client_options_test.go#TestClientInitializeCarriesTheConfiguredClientOptions",
+     "test:mcp/client_test.go#TestClientAcceptsServersThatAnswerWithAnOlderProtocolVersion"
+    ],
+    "rationale": "ClientOptions.ProtocolVersion holds one of the supported version literals; empty is undefined and sends the latest."
+   },
+   "requestTimeoutMs": {
+    "targets": [
+     "mcp/client.go#ClientOptions.RequestTimeoutMs"
+    ],
+    "evidence": [
+     "test:mcp/client_test.go#TestClientDoesNotSendCancelledForATimedOutInitialize"
+    ],
+    "rationale": "ClientOptions.RequestTimeoutMs; zero is undefined (default 30000) and a negative value disables the timeout, a Go mechanic noted at the field."
+   },
+   "roots": {
+    "targets": [
+     "mcp/client.go#ClientOptions.Roots",
+     "mcp/client.go#ClientOptions.RootsFunc"
+    ],
+    "evidence": [
+     "test:mcp/client_options_test.go#TestClientInitializeCarriesTheConfiguredClientOptions",
+     "test:mcp/client_test.go#TestClientAnswersRootsListAndDispatchesNotifications"
+    ],
+    "rationale": "The list or function union is the pair Roots and RootsFunc; RootsFunc returns (roots, error) for the Promise and its rejection."
+   }
+  }
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#McpRequestOptions"
+  ],
+  "targets": [
+   "mcp/client.go#RequestOptions"
+  ],
+  "production": [
+   "call:coding/mcpext/resources.go#CreateMcpResourceToolDefinitions"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientRenewsTheTimeoutOnProgress"
+  ],
+  "async": "AbortSignal is the context.Context passed to the request (Client.Request, CallTool, ...); cancelling it fails the request. No detached goroutine.",
+  "rationale": "McpRequestOptions is the Go struct RequestOptions plus the ctx argument for signal; OnIssued is an extra Go field for request ordering.",
+  "properties": {
+   "onProgress": {
+    "targets": [
+     "mcp/client.go#RequestOptions.OnProgress"
+    ],
+    "evidence": [
+     "test:mcp/client_test.go#TestClientRenewsTheTimeoutOnProgress"
+    ],
+    "rationale": "RequestOptions.OnProgress."
+   },
+   "timeoutMs": {
+    "targets": [
+     "mcp/client.go#RequestOptions.TimeoutMs"
+    ],
+    "evidence": [
+     "test:mcp/client_test.go#TestClientRenewsTheTimeoutOnProgress"
+    ],
+    "rationale": "RequestOptions.TimeoutMs; zero is undefined."
+   },
+   "signal": {
+    "targets": [
+     "mcp/client.go#Client.Request"
+    ],
+    "evidence": [
+     "test:mcp/client_test.go#TestClientRenewsTheTimeoutOnProgress"
+    ],
+    "rationale": "The context.Context argument of Client.Request and the methods built on it."
+   }
+  }
+ }
+]

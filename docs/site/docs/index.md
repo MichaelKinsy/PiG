@@ -2,11 +2,14 @@
 
 PiG is a faithful Go implementation of [Pi](https://github.com/earendil-works/pi), the reference terminal coding agent. PiG follows observable Pi behavior unless a documented divergence explains a necessary difference.
 
-PiG is under active development. Install it on macOS or Linux with `curl -fsSL https://pi-in-go.dev/install.sh | sh`, on any supported platform with `npm install -g @pi-in-go/pig` or `go install github.com/MichaelKinsy/PiG/cmd/pig@latest`, or download an archive from [GitHub Releases](https://github.com/MichaelKinsy/PiG/releases). Windows support is a preview.
+PiG is under active development. Install it on macOS or Linux with `curl -fsSL https://pi-in-go.dev/install.sh | sh`, on any supported platform with `npm install -g @pi-in-go/pig` or `go install github.com/MichaelKinsy/PiG/cmd/pig@latest`, or download an archive from [GitHub Releases](https://github.com/MichaelKinsy/PiG/releases). Windows support is a preview. You run these commands in a terminal. If you have not used one before, start with [Your first ten minutes](/docs/latest/first-run).
 
 ## Start here
 
-- [Quickstart](/docs/latest/quickstart) explains how to build and start PiG.
+- [Your first ten minutes](/docs/latest/first-run) takes you from install to one finished task: choose a model, run a walkthrough, come back later. It assumes no programming experience.
+- [Quickstart](/docs/latest/quickstart) lists every install route, including a build from source.
+- [Install troubleshooting](/docs/latest/install-troubleshooting) helps when `pig` is not found or an install fails.
+- [Applied use cases](/docs/latest/applied-use-cases) are step-by-step walkthroughs for people who do not program: summarise PDFs, organise files, and how to undo.
 - [Using PiG](/docs/latest/usage) covers the normal command-line and interactive surfaces.
 - [PiG concepts](/docs/latest/concepts) explains Stock PiG, Resources, Packages, Piglets, and Piglet Binaries.
 - [Security](/docs/latest/security) explains trust and process boundaries.
@@ -38,7 +41,7 @@ Read:
 
 ## Extend PiG
 
-PiG extensions can use Go, Rust, Python, or Node. Source extensions normally use the subprocess host. Compatible Go factories can be fused into a Piglet Binary.
+PiG extensions can use Go, Rust, Python, or Node. Each language needs its own toolchain on your computer; `pig setup` shows which ones PiG finds. Source extensions normally use the subprocess host. Compatible Go factories can be fused into a Piglet Binary. [Your first extension](/docs/latest/first-extension) builds one step by step.
 
 Create and validate a Go extension:
 
@@ -76,7 +79,7 @@ PiG Standard requires every selected extension to be compiled into its Piglet Bi
 | Module | `github.com/MichaelKinsy/PiG` |
 | User configuration root | `~/.pig` or `PIG_HOME` |
 | Agent directory | `~/.pig/agent` or `PIG_CODING_AGENT_DIR` |
-| Pinned Pi release (behavior oracle) | Pi 1.0.3 |
+| Pinned Pi release (behavior oracle) | Pi 1.3.0+c268154c |
 | License | MIT |
 
 ## Upstream Pi

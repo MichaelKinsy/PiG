@@ -1,0 +1,17 @@
+[
+ {
+  "ids": [
+   "pkg:coding-agent/.#AgentSession::property:setAutoRetryEnabled"
+  ],
+  "targets": [
+   "coding/session.go#Session.SetAutoRetryEnabled"
+  ],
+  "production": [
+   "call:coding/cli/rpc_mode.go#runRPCMode"
+  ],
+  "evidence": [
+   "test:coding/session_auto_retry_setting_test.go#TestSessionSetAutoRetryEnabledWritesTheRetrySetting"
+  ],
+  "rationale": "AgentSession.setAutoRetryEnabled is Session.SetAutoRetryEnabled: it writes the global retry.enabled setting (the settings write error is returned, the persistence convention)."
+ }
+]

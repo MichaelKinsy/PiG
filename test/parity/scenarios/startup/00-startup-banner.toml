@@ -48,8 +48,8 @@ runtime_ratio_max = 1.50
 # hints, the "Press" line, the blank line and the onboarding beside the next
 # ones. The head's lines with what Pi draws beside or below its logo are
 # asserted verbatim; Pi's logo must not appear. The hints are compared with Pi
-# in 02 and 03, and the head's pixels and colors against
-# coding/piglogin/testdata/head-*.golden.
+# in 02 and 03, and the head's pixels and colors by
+# TestEveryHeadIsTheSpritesPig in coding/piglogin.
 pig_contains = [
   "    ▄▄▄▄  ▄▄▄▄    v{{VERSION}}\n",
   "   ▄▀▀▀▀▄▄▀▀▀▀▄   escape interrupt",

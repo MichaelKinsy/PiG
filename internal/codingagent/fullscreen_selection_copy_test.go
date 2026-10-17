@@ -53,11 +53,11 @@ func TestCtrlXFallsBackToLastAssistantMessageWithoutActiveSelection(t *testing.T
 		t.Run(test.name, func(t *testing.T) {
 			var copied string
 			mode := &InteractiveMode{
-				editor:            tui.NewEditor(),
-				keybindings:       DefaultKeybindingsManager(),
-				isIdle:            true,
-				lastAssistantText: "last assistant message",
-				chatContainer:     tui.NewContainer(),
+				editor:        tui.NewEditor(),
+				keybindings:   DefaultKeybindingsManager(),
+				isIdle:        true,
+				opts:          InteractiveModeOptions{SessionHandle: &recordingCompactHandle{lastAssistant: new("last assistant message")}},
+				chatContainer: tui.NewContainer(),
 				copyClipboard: func(text string) error {
 					copied = text
 					return nil
@@ -129,13 +129,13 @@ func TestCtrlXReportsCopyFailuresAsErrors(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			mode := &InteractiveMode{
-				editor:            tui.NewEditor(),
-				keybindings:       DefaultKeybindingsManager(),
-				isIdle:            true,
-				lastAssistantText: test.last,
-				chatContainer:     tui.NewContainer(),
-				tuiInst:           tui.NewWithOutput(io.Discard, 60, 6),
-				copyClipboard:     func(string) error { return test.clipboard },
+				editor:        tui.NewEditor(),
+				keybindings:   DefaultKeybindingsManager(),
+				isIdle:        true,
+				opts:          InteractiveModeOptions{SessionHandle: &recordingCompactHandle{lastAssistant: lastText(test.last)}},
+				chatContainer: tui.NewContainer(),
+				tuiInst:       tui.NewWithOutput(io.Discard, 60, 6),
+				copyClipboard: func(string) error { return test.clipboard },
 			}
 			if err := mode.dispatchKey(context.Background(), "\x18"); err != nil {
 				t.Fatal(err)
@@ -159,13 +159,13 @@ func TestCtrlXCopiesLastMessageWhenCopyOnSelectIsOn(t *testing.T) {
 	renderer.HandleViewportInput("\x1b[<32;6;1M")
 	var copied string
 	mode := &InteractiveMode{
-		tuiInst:           renderer,
-		altScreen:         renderer,
-		editor:            tui.NewEditor(),
-		keybindings:       DefaultKeybindingsManager(),
-		isIdle:            true,
-		lastAssistantText: "last assistant message",
-		chatContainer:     tui.NewContainer(),
+		tuiInst:       renderer,
+		altScreen:     renderer,
+		editor:        tui.NewEditor(),
+		keybindings:   DefaultKeybindingsManager(),
+		isIdle:        true,
+		opts:          InteractiveModeOptions{SessionHandle: &recordingCompactHandle{lastAssistant: new("last assistant message")}},
+		chatContainer: tui.NewContainer(),
 		copyClipboard: func(text string) error {
 			copied = text
 			return nil
@@ -180,4 +180,11 @@ func TestCtrlXCopiesLastMessageWhenCopyOnSelectIsOn(t *testing.T) {
 	if copied != "last assistant message" {
 		t.Fatalf("copied %q, want the last assistant message", copied)
 	}
+}
+
+func lastText(text string) *string {
+	if text == "" {
+		return nil
+	}
+	return &text
 }

@@ -475,7 +475,11 @@ func TestHost_KillingPackedProcessNeverClaimsItRemainedAlive(t *testing.T) {
 		if !strings.HasSuffix(reason, logSuffix) {
 			t.Fatalf("%s crash reason %q does not surface the stderr log path %q", name, reason, stderrLogPath)
 		}
-		plain := "packed member connection closed " + logSuffix
+		// Native packed members are not restarted automatically, so every notice names the recovery: the user sees only whichever detector won.
+		if !strings.Contains(reason, "/reload restarts") {
+			t.Fatalf("%s crash reason %q does not say that /reload restarts the stopped extension", name, reason)
+		}
+		plain := "packed member connection closed; /reload restarts it " + logSuffix
 		quarantined := strings.Contains(reason, "/reload restarts them") &&
 			(strings.Contains(reason, "kill-a, kill-b stopped") || strings.Contains(reason, name+" stopped"))
 		if reason != plain && !quarantined {
@@ -519,11 +523,12 @@ func TestHost_LoadGoPackedCellRegistersAllExtensionsAtomically(t *testing.T) {
 	}
 }
 
-func inputLimitsTestModel() map[string]any {
-	return map[string]any{"id": "limits", "provider": "conformance", "inputLimits": map[string]any{"maxRequestBytes": 12345.0, "images": map[string]any{"resize": map[string]any{"maxWidth": 321.0}}}}
+func inputLimitsTestModel() json.RawMessage {
+	return modelJSON(map[string]any{"id": "limits", "provider": "conformance", "inputLimits": map[string]any{"maxRequestBytes": 12345.0, "images": map[string]any{"resize": map[string]any{"maxWidth": 321.0}}}})
 }
 
 func TestHost_MixedFusedPackedAndIsolatedExtensions(t *testing.T) {
+	skipWithoutNodeExtensions(t)
 	if _, err := exec.LookPath("node"); err != nil {
 		t.Skipf("node not found: %v", err)
 	}
@@ -715,7 +720,7 @@ func TestHost_MixedFusedPackedAndIsolatedExtensions(t *testing.T) {
 	promptMu.Lock()
 	prompts = nil
 	promptMu.Unlock()
-	if _, err := mixedRunner.Emit(ctx, extension.TurnEndEvent{Type: "turn_end", MessageEntryID: "assistant-entry", ToolResultEntryIds: []string{"tool-entry"}}); err != nil {
+	if _, err := mixedRunner.Emit(ctx, extension.TurnEndEvent{Type: "turn_end", Message: wireMessage(map[string]any{"role": "assistant", "content": []any{}}), MessageEntryID: "assistant-entry", ToolResultEntryIds: []string{"tool-entry"}}); err != nil {
 		t.Fatal(err)
 	}
 	turnDeadline := time.Now().Add(10 * time.Second)
@@ -1092,14 +1097,14 @@ func TestPackedSDKFocusedComponentAndSessionActionsMatch(t *testing.T) {
 			runner := inproc.NewRunner(loaded, t.TempDir())
 			bridge.SetUIPromptScope(runner)
 			for _, event := range []struct {
-				value any
+				value extension.ExtensionEvent
 				want  string
 			}{
 				{extension.SessionInfoChangedEvent{Type: "session_info_changed", Name: "packed-session"}, "session-event=packed-session"},
 				{extension.SessionBeforeCompactEvent{Type: "session_before_compact", Reason: "threshold", WillRetry: true}, "session-before-compact=threshold:true"},
 				{extension.SessionCompactEvent{Type: "session_compact", Reason: "threshold", WillRetry: true, FromExtension: true}, "session-compact=threshold:true:true"},
 				{extension.SessionCompactFailedEvent{Type: "session_compact_failed", Reason: "overflow", ErrorMessage: "recovery failed", FromExtension: true}, "session-compact-failed=overflow:recovery failed:false:false:true"},
-				{extension.TurnEndEvent{Type: "turn_end", MessageEntryID: "assistant-entry", ToolResultEntryIds: []string{"tool-entry"}}, "turn-end=assistant-entry:tool-entry"},
+				{extension.TurnEndEvent{Type: "turn_end", Message: wireMessage(map[string]any{"role": "assistant", "content": []any{}}), MessageEntryID: "assistant-entry", ToolResultEntryIds: []string{"tool-entry"}}, "turn-end=assistant-entry:tool-entry"},
 			} {
 				if _, err := runner.Emit(ctx, event.value); err != nil {
 					t.Fatalf("packed event %T: %v", event.value, err)
@@ -1239,7 +1244,7 @@ func assertPackedProjectTrust(t *testing.T, host *Host) {
 	result, handlerErrors, err := inproc.EmitProjectTrust(runner, context.Background(), extension.ProjectTrustEvent{
 		Type: "project_trust",
 		Cwd:  t.TempDir(),
-	})
+	}, extension.ProjectTrustContext{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1524,20 +1529,20 @@ pub fn new_extension() -> Extension {
     ext.command("send_user_content", "send user content", |ctx, _| match ctx.send_user_message(json!([{"type":"text","text":"first"},{"type":"image","data":"aW1hZ2U=","mimeType":"image/png"},{"type":"text","text":"second"}]), "steer") { Ok(()) => CommandResult::Ok, Err(err) => CommandResult::Error(err.to_string()) });
     ext.command("session", "session actions", |ctx, _| { if ctx.get_model_info().unwrap().and_then(|model| model.input_limits) != Some(json!({"maxRequestBytes":12345,"images":{"resize":{"maxWidth":321}}})) { return CommandResult::Error("packed inputLimits mismatch".into()); } if let Err(err) = ctx.append_entry("packed-entry", json!({"value":"hello"})) { return CommandResult::Error(err.to_string()); } match ctx.set_session_name("packed-session") { Ok(()) => CommandResult::Ok, Err(err) => CommandResult::Error(err.to_string()) } });
     ext.command("model-runtime", "model runtime", |ctx, _| { let model = json!({"provider":"openrouter","modelId":"org/model/name"}); let request = json!({"messages":[{"role":"user","content":"hello"}]}); let stream = ctx.model_registry().stream(model.clone(), request.clone(), json!({})); let mut types = Vec::new(); while let Some(event) = stream.next() { types.push(event["type"].as_str().unwrap_or_default().to_string()); } if types.join(",") != "start,text_start,text_delta,text_end,done" { return CommandResult::Error(format!("stream events = {types:?}")); } if stream.result().unwrap_or_default()["content"][0]["text"] != "streamed" { return CommandResult::Error("bad stream result".into()); } let simple = ctx.model_registry().stream_simple(model, request, json!({})); let mut simple_types = Vec::new(); while let Some(event) = simple.next() { simple_types.push(event["type"].as_str().unwrap_or_default().to_string()); } if simple_types != types { return CommandResult::Error(format!("simple events = {simple_types:?}")); } if simple.result().unwrap_or_default()["content"][0]["text"] != "streamed" { return CommandResult::Error("bad simple result".into()); } ctx.notify("model=streamed", "info"); CommandResult::Ok });
-    ext.on_event("agent_before_settle", false, |ctx, mut data| { let preview = data.get("context").cloned().unwrap_or_default(); ctx.notify(&format!("agent-before-settle={}:{}:{}:{}:{}", data.get("outcome").and_then(|v| v.as_str()).unwrap_or_default(), data.get("entries").and_then(|v| v.as_array()).map_or(0, Vec::len), data.get("continue").and_then(|v| v.as_bool()).unwrap_or(false), preview.get("contextEntries").and_then(|v| v.as_array()).map_or(0, Vec::len), preview.get("canContinue").and_then(|v| v.as_bool()).unwrap_or(false)), "info"); data["entries"].as_array_mut().unwrap().push(json!({"type":"custom","customType":"kept"})); None });
-    ext.on_event("agent_before_settle", false, |_, mut data| { data["entries"].as_array_mut().unwrap().push(json!({"type":"custom","customType":"before-error"})); panic!("boundary failed"); });
-    ext.on_event("agent_before_settle", false, |_, data| { let entries = data["entries"].as_array().unwrap(); assert!(entries.len() >= 2); assert_eq!(entries[entries.len()-2]["customType"], "kept"); assert_eq!(entries[entries.len()-1]["customType"], "before-error"); assert_eq!(data["context"]["contextEntries"].as_array().unwrap().len(), entries.len()); Some(json!({"entries":[{"type":"custom","customType":"packed-boundary"}],"continue":true})) });
-    ext.on_event("session_info_changed", false, |ctx, data| { ctx.notify(&format!("session-event={}", data.get("name").and_then(|v| v.as_str()).unwrap_or_default()), "info"); None });
-    ext.on_event("session_before_compact", false, |ctx, data| { ctx.notify(&format!("session-before-compact={}:{}", data.get("reason").and_then(|v| v.as_str()).unwrap_or_default(), data.get("willRetry").and_then(|v| v.as_bool()).unwrap_or(false)), "info"); None });
-    ext.on_event("session_compact", false, |ctx, data| { ctx.notify(&format!("session-compact={}:{}:{}", data.get("reason").and_then(|v| v.as_str()).unwrap_or_default(), data.get("willRetry").and_then(|v| v.as_bool()).unwrap_or(false), data.get("fromExtension").and_then(|v| v.as_bool()).unwrap_or(false)), "info"); None });
-    ext.on_event("session_compact_failed", false, |ctx, data| { ctx.notify(&format!("session-compact-failed={}:{}:{}:{}:{}", data.get("reason").and_then(|v| v.as_str()).unwrap_or_default(), data.get("errorMessage").and_then(|v| v.as_str()).unwrap_or_default(), data.get("aborted").and_then(|v| v.as_bool()).unwrap_or(false), data.get("willRetry").and_then(|v| v.as_bool()).unwrap_or(false), data.get("fromExtension").and_then(|v| v.as_bool()).unwrap_or(false)), "info"); None });
-    ext.on_event("turn_end", false, |_, data| { if data["messageEntryId"] != "boundary-assistant" { return None; } data["entries"].as_array_mut().unwrap().push(json!({"type":"custom","customType":"mutated"})); panic!("turn-boundary-failure"); });
-    ext.on_event("turn_end", false, |_, data| { if data["messageEntryId"] != "boundary-assistant" { return None; } Some(json!({"entries":[{"type":"custom","customType":"turn-boundary","data":data}],"continue":true})) });
-    ext.on_event("turn_end", false, |ctx, data| { ctx.notify(&format!("turn-end={}:{}", data.get("messageEntryId").and_then(|v| v.as_str()).unwrap_or_default(), data.get("toolResultEntryIds").and_then(|v| v.as_array()).and_then(|ids| ids.first()).and_then(|v| v.as_str()).unwrap_or_default()), "info"); None });
-    ext.on_event("context", true, |_, mut data| { data["messages"].as_array_mut().unwrap().remove(0); Some(json!({"messages":data["messages"]})) });
-    ext.on_event("context_with_system", true, |_, mut data| { data["messages"][0]["content"]=json!("request-system"); data["messages"][0]["toolsAdded"].as_array_mut().unwrap().remove(0); Some(json!({"messages":data["messages"]})) });
+    ext.on_event("agent_before_settle", |ctx, mut data| { let preview = data.get("context").cloned().unwrap_or_default(); ctx.notify(&format!("agent-before-settle={}:{}:{}:{}:{}", data.get("outcome").and_then(|v| v.as_str()).unwrap_or_default(), data.get("entries").and_then(|v| v.as_array()).map_or(0, Vec::len), data.get("continue").and_then(|v| v.as_bool()).unwrap_or(false), preview.get("contextEntries").and_then(|v| v.as_array()).map_or(0, Vec::len), preview.get("canContinue").and_then(|v| v.as_bool()).unwrap_or(false)), "info"); data["entries"].as_array_mut().unwrap().push(json!({"type":"custom","customType":"kept"})); None });
+    ext.on_event("agent_before_settle", |_, mut data| { data["entries"].as_array_mut().unwrap().push(json!({"type":"custom","customType":"before-error"})); panic!("boundary failed"); });
+    ext.on_event("agent_before_settle", |_, data| { let entries = data["entries"].as_array().unwrap(); assert!(entries.len() >= 2); assert_eq!(entries[entries.len()-2]["customType"], "kept"); assert_eq!(entries[entries.len()-1]["customType"], "before-error"); assert_eq!(data["context"]["contextEntries"].as_array().unwrap().len(), entries.len()); Some(json!({"entries":[{"type":"custom","customType":"packed-boundary"}],"continue":true})) });
+    ext.on_event("session_info_changed", |ctx, data| { ctx.notify(&format!("session-event={}", data.get("name").and_then(|v| v.as_str()).unwrap_or_default()), "info"); None });
+    ext.on_event("session_before_compact", |ctx, data| { ctx.notify(&format!("session-before-compact={}:{}", data.get("reason").and_then(|v| v.as_str()).unwrap_or_default(), data.get("willRetry").and_then(|v| v.as_bool()).unwrap_or(false)), "info"); None });
+    ext.on_event("session_compact", |ctx, data| { ctx.notify(&format!("session-compact={}:{}:{}", data.get("reason").and_then(|v| v.as_str()).unwrap_or_default(), data.get("willRetry").and_then(|v| v.as_bool()).unwrap_or(false), data.get("fromExtension").and_then(|v| v.as_bool()).unwrap_or(false)), "info"); None });
+    ext.on_event("session_compact_failed", |ctx, data| { ctx.notify(&format!("session-compact-failed={}:{}:{}:{}:{}", data.get("reason").and_then(|v| v.as_str()).unwrap_or_default(), data.get("errorMessage").and_then(|v| v.as_str()).unwrap_or_default(), data.get("aborted").and_then(|v| v.as_bool()).unwrap_or(false), data.get("willRetry").and_then(|v| v.as_bool()).unwrap_or(false), data.get("fromExtension").and_then(|v| v.as_bool()).unwrap_or(false)), "info"); None });
+    ext.on_event("turn_end", |_, data| { if data["messageEntryId"] != "boundary-assistant" { return None; } data["entries"].as_array_mut().unwrap().push(json!({"type":"custom","customType":"mutated"})); panic!("turn-boundary-failure"); });
+    ext.on_event("turn_end", |_, data| { if data["messageEntryId"] != "boundary-assistant" { return None; } Some(json!({"entries":[{"type":"custom","customType":"turn-boundary","data":data}],"continue":true})) });
+    ext.on_event("turn_end", |ctx, data| { ctx.notify(&format!("turn-end={}:{}", data.get("messageEntryId").and_then(|v| v.as_str()).unwrap_or_default(), data.get("toolResultEntryIds").and_then(|v| v.as_array()).and_then(|ids| ids.first()).and_then(|v| v.as_str()).unwrap_or_default()), "info"); None });
+    ext.on_event("context", |_, mut data| { data["messages"].as_array_mut().unwrap().remove(0); Some(json!({"messages":data["messages"]})) });
+    ext.on_event("context_with_system", |_, mut data| { data["messages"][0]["content"]=json!("request-system"); data["messages"][0]["toolsAdded"].as_array_mut().unwrap().remove(0); Some(json!({"messages":data["messages"]})) });
     let prompt_sequence = Arc::new(Mutex::new(0));
-    for name in ["ui_prompt_start", "ui_prompt_end"] { let prompt_sequence = prompt_sequence.clone(); ext.on_event(name, false, move |ctx, data| { let sequence = { let mut n = prompt_sequence.lock().unwrap(); let value = *n; *n += 1; value }; let title = data.get("title").and_then(|v| v.as_str()).unwrap_or("(none)"); if title.starts_with("fifo:") { ctx.notify(&format!("fifo:{sequence}:{}:{title}", data["type"].as_str().unwrap()), "info"); return None; } ctx.notify(&format!("ui-prompt={}:{}:{title}", data.get("type").and_then(|v| v.as_str()).unwrap_or_default(), data.get("kind").and_then(|v| v.as_str()).unwrap_or_default()), "info"); None }); }
+    for name in ["ui_prompt_start", "ui_prompt_end"] { let prompt_sequence = prompt_sequence.clone(); ext.on_event(name, move |ctx, data| { let sequence = { let mut n = prompt_sequence.lock().unwrap(); let value = *n; *n += 1; value }; let title = data.get("title").and_then(|v| v.as_str()).unwrap_or("(none)"); if title.starts_with("fifo:") { ctx.notify(&format!("fifo:{sequence}:{}:{title}", data["type"].as_str().unwrap()), "info"); return None; } ctx.notify(&format!("ui-prompt={}:{}:{title}", data.get("type").and_then(|v| v.as_str()).unwrap_or_default(), data.get("kind").and_then(|v| v.as_str()).unwrap_or_default()), "info"); None }); }
     ext.on_project_trust(|_, _| Ok(ProjectTrustResult { trusted: ProjectTrustDecision::Undecided, remember: None }));
     ext.on_project_trust(|_, _| Ok(ProjectTrustResult { trusted: ProjectTrustDecision::Yes, remember: Some(true) }));
     ext
@@ -1638,9 +1643,9 @@ func assertRealizedContextTransform(t *testing.T, ext extension.Extension) {
 	t.Helper()
 	runner := inproc.NewRunner([]extension.Extension{ext}, t.TempDir())
 	messages := []extension.AgentMessage{
-		map[string]any{"role": "system", "content": "original", "timestamp": 0, "toolsAdded": []any{map[string]any{"name": "drop", "parameters": map[string]any{"type": "object"}}, map[string]any{"name": "keep", "parameters": map[string]any{"type": "object"}}}},
-		map[string]any{"role": "user", "content": "old", "timestamp": 0},
-		map[string]any{"role": "user", "content": "keep", "timestamp": 0},
+		wireMessage(map[string]any{"role": "system", "content": "original", "timestamp": 0, "toolsAdded": []any{map[string]any{"name": "drop", "parameters": map[string]any{"type": "object"}}, map[string]any{"name": "keep", "parameters": map[string]any{"type": "object"}}}}),
+		wireMessage(map[string]any{"role": "user", "content": "old", "timestamp": 0}),
+		wireMessage(map[string]any{"role": "user", "content": "keep", "timestamp": 0}),
 	}
 	conversation, err := runner.EmitContext(t.Context(), messages[1:])
 	if err != nil {
@@ -1668,7 +1673,34 @@ func assertRealizedContextTransform(t *testing.T, ext extension.Extension) {
 	if len(tools) != 1 || tools[0].(map[string]any)["name"] != "keep" {
 		t.Fatalf("%s tools = %s", ext.Path, encoded)
 	}
-	if messages[0].(map[string]any)["content"] != "original" {
+	if wireContent(messages[0]) != "original" {
 		t.Fatal("context changed persisted transcript")
+	}
+}
+
+// A packed member whose factory registers another identity fails with the same actionable detail as an isolated one
+// (TestHostLoadRejectsRegisteredIdentityMismatch): both identities, the source, and how to fix the selection.
+func TestHost_LoadGoPackedCellRejectsRegisteredIdentityMismatchActionably(t *testing.T) {
+	root := writePackedFactoryModule(t, "example.com/packedhost/mismatch", "pack-real", "tool_real")
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+	cell, err := runtimecell.BuildGoPackedCell(ctx, t.TempDir(), "cell:mismatch-test", []runtimecell.GoExtension{
+		{Name: "selected-name", Root: root, ModulePath: "example.com/packedhost/mismatch", Package: "example.com/packedhost/mismatch", Factory: "Extension", Hash: "hm"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := NewHost(t.TempDir())
+	t.Cleanup(func() { h.Shutdown("test done") })
+	_, err = h.LoadGoPackedCell(ctx, cell)
+	loadErr, ok := errors.AsType[*LoadError](err)
+	if !ok {
+		t.Fatalf("LoadGoPackedCell error = %v, want the member's *LoadError", err)
+	}
+	message := loadErr.Error()
+	for _, want := range []string{"name_mismatch", `selected identity "selected-name"`, `registered identity "pack-real"`, "renamed/reselected", "Package/Piglet declaration"} {
+		if !strings.Contains(message, want) {
+			t.Fatalf("member load error = %s, want actionable identity detail %q", message, want)
+		}
 	}
 }

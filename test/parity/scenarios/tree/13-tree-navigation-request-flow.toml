@@ -1,0 +1,25 @@
+# Pi 1.1.0 agent-session.ts navigateTree picks the new leaf, asks the model for the branch summary (compaction/branch-summarization.ts generateBranchSummary) and appends the summary entry; session-manager.ts buildSessionContext builds the context; messages.ts convertToLlm turns a branch summary into a user message; transform-messages.ts closes pending tool calls at the next user turn.
+# The owner's HTTP 400 ("unexpected tool_use_id found in tool_result blocks") came from /tree navigation between parallel tool calls and their results followed by a branch summary and a new prompt: PiG normalized tool results before convertToLlm and put a synthetic result behind the summary.
+# Both programs create a session on an in-memory session manager (the session records its model and thinking level), append the same forked tree (parallel calls, single calls, a branch from between parallel results and at the call message) to that manager, open a second session on it, navigate to every entry with and without a branch summary through the session's own navigateTree, send a prompt through the session to a local Anthropic-compatible server, and print the number of requests the server received, the roles, texts and tool_use/tool_result ids, error flags and texts of the prompt's request, and the Anthropic contract verdict.
+# An errored turn whose result was persisted is not in the tree: Pi sends that orphan tool_result and PiG drops it (D48), so the pair differs there by design.
+# Mutations, each red through the runner: the custom-user-message flush removed from agent.NormalizeMessages (PiG prints INVALID for eight cases); a user-message target keeping the target as leaf; the summary skipped for a single abandoned entry; one user message per Anthropic tool_result; another synthetic tool_result text; another branch-summary wrapper text.
+name = "13-tree-navigation-request-flow"
+description = "After /tree navigation, with and without a branch summary, the request sent for the next prompt keeps every tool result directly behind its tool call, as in Pi."
+covers = ["packages/coding-agent/src/core/agent-session.ts", "packages/coding-agent/src/core/messages.ts", "packages/ai/src/api/transform-messages.ts", "packages/coding-agent/src/core/compaction/branch-summarization.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/nav-wire-pig"]
+pi_args = ["node", "./test/parity/testdata/nav-wire-pi.mjs"]
+[cli]
+cwd = "../../../.."
+timeout_seconds = 120
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["entry 02 summary=true requests=2: user[text=\"start\"] assistant[tool_use:c1,tool_use:c2,tool_use:c3] user[tool_result:c1=\"result c1\",tool_result:c2:error=\"No result provided\",tool_result:c3:error=\"No result provided\"] user[text=\"The following is a summary of a branch that this conversation came back from:\\n\\n<summary>\\nThe user explored a different conversation branch before returning here.\\nSummary of that exploration:\\n\\nabandoned branch summary</summary>\"] user[text=\"next prompt\"] => valid", "entry 16 summary=false requests=1:"]
+both_not_contain = ["INVALID"]
+runs = 3

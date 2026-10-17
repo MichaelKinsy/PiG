@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
 package codingagent
@@ -20,7 +19,7 @@ func TestCompactionBillingRenderProbe(t *testing.T) {
 	if err := settings.SetShowCacheMissNotices(true); err != nil {
 		t.Fatal(err)
 	}
-	mode := &InteractiveMode{opts: InteractiveOptions{SettingsManager: settings}, chatContainer: tui.NewContainer()}
+	mode := &InteractiveMode{opts: InteractiveModeOptions{SettingsManager: settings}, chatContainer: tui.NewContainer()}
 	usage := compactionUIUsage(.125)
 	mode.addCompactionCostNotice("compaction", usage)
 	mode.addCompactionCostNotice("branch_summary", usage)
@@ -37,7 +36,7 @@ func BenchmarkCompactionBillingRows(b *testing.B) {
 	if err := settings.SetShowCacheMissNotices(true); err != nil {
 		b.Fatal(err)
 	}
-	mode := &InteractiveMode{opts: InteractiveOptions{SettingsManager: settings}, chatContainer: tui.NewContainer()}
+	mode := &InteractiveMode{opts: InteractiveModeOptions{SettingsManager: settings}, chatContainer: tui.NewContainer()}
 	usage := compactionUIUsage(.125)
 	b.ReportAllocs()
 	for b.Loop() {

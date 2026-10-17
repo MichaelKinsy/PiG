@@ -255,10 +255,7 @@ func TestInstallerReceiptFormatValidates(t *testing.T) {
 	if err := os.WriteFile(exe, []byte("pig binary"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	resolved, err := filepath.EvalSymlinks(exe)
-	if err != nil {
-		t.Fatal(err)
-	}
+	resolved := realPathForTest(t, exe)
 	sum := sha256.Sum256([]byte("pig binary"))
 	receipt := fmt.Sprintf("kind=standalone\nexecutable=%s\npig-version=%s\nsha256=%s\nupdate-source=%s\n",
 		resolved, "9.9.9", hex.EncodeToString(sum[:]), source)

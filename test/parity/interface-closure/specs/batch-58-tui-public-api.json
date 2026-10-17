@@ -1,0 +1,343 @@
+[
+ {
+  "ids": [
+   "pkg:tui/.#Box::property:handleMouse"
+  ],
+  "targets": [
+   "tui/mouse.go#Box.HandleMouse"
+  ],
+  "production": [
+   "public-api:tui/mouse.go#Box.HandleMouse"
+  ],
+  "evidence": [
+   "test:tui/mouse_test.go#TestBoxHandleMouseSkipsPadding"
+  ],
+  "rationale": "Box.handleMouse is the Go method tui.Box.HandleMouse; signature reviewed against the upstream declaration. Closed as public-api-tested: the method is exported from the public tui package and no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Image::property:invalidate"
+  ],
+  "targets": [
+   "tui/image.go#Image.Invalidate"
+  ],
+  "production": [
+   "public-api:tui/image.go#Image.Invalidate"
+  ],
+  "evidence": [
+   "test:tui/image_transcoder_upstream_test.go#TestUpstreamImageTranscoding",
+   "test:tui/loader_image_parity_test.go#TestImage_CacheAndInvalidateMirrorUpstreamComponent"
+  ],
+  "rationale": "Image.invalidate is the Go method tui.Image.Invalidate; signature reviewed against the upstream declaration. Closed as public-api-tested: the method is exported from the public tui package and no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Markdown::property:setText"
+  ],
+  "targets": [
+   "tui/markdown_options.go#Markdown.SetText"
+  ],
+  "production": [
+   "public-api:tui/markdown_options.go#Markdown.SetText"
+  ],
+  "evidence": [
+   "test:tui/markdown_upstream_test.go#TestUpstreamMarkdown"
+  ],
+  "rationale": "Markdown.setText is the Go method tui.Markdown.SetText; signature reviewed against the upstream declaration. Closed as public-api-tested: the method is exported from the public tui package and no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#StdinBuffer::property:getBuffer"
+  ],
+  "targets": [
+   "tui/stdin_buffer.go#StdinBuffer.GetBuffer"
+  ],
+  "production": [
+   "public-api:tui/stdin_buffer.go#StdinBuffer.GetBuffer"
+  ],
+  "evidence": [
+   "test:tui/stdin_buffer_first_half_upstream_test.go#TestStdinBufferFirstHalfPartialWithPendingBuffer",
+   "test:tui/stdin_buffer_second_half_upstream_test.go#TestStdinBufferSecondHalfPartialAndFlush"
+  ],
+  "rationale": "StdinBuffer.getBuffer is the Go method tui.StdinBuffer.GetBuffer; signature reviewed against the upstream declaration. Closed as public-api-tested: the method is exported from the public tui package and no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#TuiAltScreen::property:isFollowingOutput"
+  ],
+  "targets": [
+   "tui/tui_alt_screen.go#TuiAltScreen.IsFollowingOutput"
+  ],
+  "production": [
+   "public-api:tui/tui_alt_screen.go#TuiAltScreen.IsFollowingOutput"
+  ],
+  "evidence": [
+   "test:tui/tui_alt_screen_test.go#TestAltScreenScrollAndFollow",
+   "test:tui/tui_alt_screen_v087_test.go#TestAltScreenPromptJumpsWithKittyAndCtrlArrows"
+  ],
+  "rationale": "TuiAltScreen.isFollowingOutput is the Go method tui.TuiAltScreen.IsFollowingOutput; signature reviewed against the upstream declaration. Closed as public-api-tested: the method is exported from the public tui package and no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#TuiAltScreen::property:viewportTop"
+  ],
+  "targets": [
+   "tui/tui_alt_screen.go#TuiAltScreen.ViewportTop"
+  ],
+  "production": [
+   "public-api:tui/tui_alt_screen.go#TuiAltScreen.ViewportTop"
+  ],
+  "evidence": [
+   "test:tui/tui_alt_screen_test.go#TestAltScreenKeyboardPageAndEdgeScroll",
+   "test:tui/tui_alt_screen_test.go#TestAltScreenScrollAndFollow"
+  ],
+  "rationale": "TuiAltScreen.viewportTop is the Go method tui.TuiAltScreen.ViewportTop; signature reviewed against the upstream declaration. Closed as public-api-tested: the method is exported from the public tui package and no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#TUI::property:getClearOnShrink"
+  ],
+  "targets": [
+   "tui/tui.go#tuiBase.GetClearOnShrink"
+  ],
+  "production": [
+   "public-api:tui/tui_alt_screen.go#ViewportTUI.GetClearOnShrink"
+  ],
+  "evidence": [
+   "test:internal/codingagent/clear_on_shrink_test.go#TestInteractiveRendererClearOnShrinkComesFromSettings",
+   "test:tui/render_state_test.go#TestTUIClearOnShrinkIgnoresEnvironment"
+  ],
+  "rationale": "TUI.getClearOnShrink is the Go method tui.TUI.GetClearOnShrink; signature reviewed against the upstream declaration. Closed as public-api-tested: the method is exported from the public tui package and no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#TUI::property:start"
+  ],
+  "targets": [
+   "tui/tui.go#TUI.Start"
+  ],
+  "production": [
+   "public-api:tui/tui.go#TUI.Start"
+  ],
+  "evidence": [
+   "test:tui/main_screen_external_editor_test.go#TestMainScreenExternalEditorRepaint",
+   "test:tui/overlay_options_upstream_test.go#TestUpstreamOverlayOptionsHidingAfterStop"
+  ],
+  "rationale": "TUI.start is the Go method tui.TUI.Start; signature reviewed against the upstream declaration. Closed as public-api-tested: the method is exported from the public tui package and no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ProcessTerminal::property:clearFromCursor"
+  ],
+  "targets": [
+   "tui/terminal.go#ProcessTerminal.ClearFromCursor"
+  ],
+  "production": [
+   "public-api:tui/terminal.go#ProcessTerminal.ClearFromCursor"
+  ],
+  "evidence": [
+   "test:tui/terminal_test.go#TestProcessTerminal_ControlSequences"
+  ],
+  "rationale": "ProcessTerminal.clearFromCursor is the Go method tui.ProcessTerminal.ClearFromCursor; signature reviewed against the upstream declaration. Closed as public-api-tested: the method is exported from the public tui package and no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ProcessTerminal::property:clearLine"
+  ],
+  "targets": [
+   "tui/terminal.go#ProcessTerminal.ClearLine"
+  ],
+  "production": [
+   "public-api:tui/terminal.go#ProcessTerminal.ClearLine"
+  ],
+  "evidence": [
+   "test:tui/terminal_test.go#TestProcessTerminal_ControlSequences"
+  ],
+  "rationale": "ProcessTerminal.clearLine is the Go method tui.ProcessTerminal.ClearLine; signature reviewed against the upstream declaration. Closed as public-api-tested: the method is exported from the public tui package and no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ProcessTerminal::property:clearScreen"
+  ],
+  "targets": [
+   "tui/terminal.go#ProcessTerminal.ClearScreen"
+  ],
+  "production": [
+   "public-api:tui/terminal.go#ProcessTerminal.ClearScreen"
+  ],
+  "evidence": [
+   "test:tui/terminal_test.go#TestProcessTerminal_ControlSequences"
+  ],
+  "rationale": "ProcessTerminal.clearScreen is the Go method tui.ProcessTerminal.ClearScreen; signature reviewed against the upstream declaration. Closed as public-api-tested: the method is exported from the public tui package and no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ProcessTerminal::property:columns"
+  ],
+  "targets": [
+   "tui/terminal.go#ProcessTerminal.Columns"
+  ],
+  "production": [
+   "public-api:tui/terminal.go#ProcessTerminal.Columns"
+  ],
+  "evidence": [
+   "test:tui/terminal_test.go#TestProcessTerminalColumnsRowsFallback",
+   "test:tui/terminal_test.go#TestProcessTerminal_EnvFallback"
+  ],
+  "rationale": "ProcessTerminal.columns is the Go method tui.ProcessTerminal.Columns; signature reviewed against the upstream declaration. Closed as public-api-tested: the method is exported from the public tui package and no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ProcessTerminal::property:hideCursor"
+  ],
+  "targets": [
+   "tui/terminal.go#ProcessTerminal.HideCursor"
+  ],
+  "production": [
+   "public-api:tui/terminal.go#ProcessTerminal.HideCursor"
+  ],
+  "evidence": [
+   "test:tui/terminal_test.go#TestProcessTerminal_ControlSequences"
+  ],
+  "rationale": "ProcessTerminal.hideCursor is the Go method tui.ProcessTerminal.HideCursor; signature reviewed against the upstream declaration. Closed as public-api-tested: the method is exported from the public tui package and no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ProcessTerminal::property:moveBy"
+  ],
+  "targets": [
+   "tui/terminal.go#ProcessTerminal.MoveBy"
+  ],
+  "production": [
+   "public-api:tui/terminal.go#ProcessTerminal.MoveBy"
+  ],
+  "evidence": [
+   "test:tui/terminal_test.go#TestProcessTerminal_ControlSequences"
+  ],
+  "rationale": "ProcessTerminal.moveBy is the Go method tui.ProcessTerminal.MoveBy; signature reviewed against the upstream declaration. Closed as public-api-tested: the method is exported from the public tui package and no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ProcessTerminal::property:rows"
+  ],
+  "targets": [
+   "tui/terminal.go#ProcessTerminal.Rows"
+  ],
+  "production": [
+   "public-api:tui/terminal.go#ProcessTerminal.Rows"
+  ],
+  "evidence": [
+   "test:tui/terminal_test.go#TestProcessTerminalColumnsRowsFallback",
+   "test:tui/terminal_test.go#TestProcessTerminal_EnvFallback"
+  ],
+  "rationale": "ProcessTerminal.rows is the Go method tui.ProcessTerminal.Rows; signature reviewed against the upstream declaration. Closed as public-api-tested: the method is exported from the public tui package and no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#ProcessTerminal::property:showCursor"
+  ],
+  "targets": [
+   "tui/terminal.go#ProcessTerminal.ShowCursor"
+  ],
+  "production": [
+   "public-api:tui/terminal.go#ProcessTerminal.ShowCursor"
+  ],
+  "evidence": [
+   "test:tui/terminal_test.go#TestProcessTerminal_ControlSequences"
+  ],
+  "rationale": "ProcessTerminal.showCursor is the Go method tui.ProcessTerminal.ShowCursor; signature reviewed against the upstream declaration. Closed as public-api-tested: the method is exported from the public tui package and no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#KeybindingsManager::property:getConflicts"
+  ],
+  "targets": [
+   "tui/keybindings.go#TUIKeybindingsManager.GetConflicts"
+  ],
+  "production": [
+   "public-api:tui/keybindings.go#TUIKeybindingsManager.GetConflicts"
+  ],
+  "evidence": [
+   "test:tui/keybindings_test.go#TestTUIKeybindingsManager_Conflicts",
+   "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream"
+  ],
+  "rationale": "KeybindingsManager.getConflicts is the Go method tui.TUIKeybindingsManager.GetConflicts; signature reviewed against the upstream declaration. Closed as public-api-tested: the method is exported from the public tui package and no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#KeybindingsManager::property:getDefinition"
+  ],
+  "targets": [
+   "tui/keybindings.go#TUIKeybindingsManager.GetDefinition"
+  ],
+  "production": [
+   "public-api:tui/keybindings.go#TUIKeybindingsManager.GetDefinition"
+  ],
+  "evidence": [
+   "test:tui/keybindings_test.go#TestTUIKeybindingsManager_GetDefinition"
+  ],
+  "rationale": "KeybindingsManager.getDefinition is the Go method tui.TUIKeybindingsManager.GetDefinition; signature reviewed against the upstream declaration. Closed as public-api-tested: the method is exported from the public tui package and no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#KeybindingsManager::property:getResolvedBindings"
+  ],
+  "targets": [
+   "tui/keybindings.go#TUIKeybindingsManager.GetResolvedBindings"
+  ],
+  "production": [
+   "public-api:tui/keybindings.go#TUIKeybindingsManager.GetResolvedBindings"
+  ],
+  "evidence": [
+   "test:internal/codingagent/keybindings_migration_upstream_test.go#TestUpstreamKeybindingsMigration",
+   "test:tui/keybindings_test.go#TestTUIKeybindingsManager_GetUserAndResolvedBindings"
+  ],
+  "rationale": "KeybindingsManager.getResolvedBindings is the Go method tui.TUIKeybindingsManager.GetResolvedBindings; signature reviewed against the upstream declaration. Closed as public-api-tested: the method is exported from the public tui package and no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#KeybindingsManager::property:getUserBindings"
+  ],
+  "targets": [
+   "tui/keybindings.go#TUIKeybindingsManager.GetUserBindings"
+  ],
+  "production": [
+   "public-api:tui/keybindings.go#TUIKeybindingsManager.GetUserBindings"
+  ],
+  "evidence": [
+   "test:tui/keybindings_test.go#TestTUIKeybindingsManager_GetUserAndResolvedBindings"
+  ],
+  "rationale": "KeybindingsManager.getUserBindings is the Go method tui.TUIKeybindingsManager.GetUserBindings; signature reviewed against the upstream declaration. Closed as public-api-tested: the method is exported from the public tui package and no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Spacer::property:render"
+  ],
+  "targets": [
+   "tui/spacer.go#Spacer.Render"
+  ],
+  "production": [
+   "public-api:tui/spacer.go#Spacer.Render"
+  ],
+  "evidence": [
+   "test:internal/codingagent/interactive_startup_input_upstream_test.go#TestUpstreamInteractiveStartupInput",
+   "test:tui/components_parity_test.go#TestSpacer_SetLines"
+  ],
+  "rationale": "Spacer.render is the Go method tui.Spacer.Render; signature reviewed against the upstream declaration. Closed as public-api-tested: the method is exported from the public tui package and no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:tui/.#Spacer::property:setLines"
+  ],
+  "targets": [
+   "tui/spacer.go#Spacer.SetLines"
+  ],
+  "production": [
+   "public-api:tui/spacer.go#Spacer.SetLines"
+  ],
+  "evidence": [
+   "test:tui/components_parity_test.go#TestSpacer_SetLines"
+  ],
+  "rationale": "Spacer.setLines is the Go method tui.Spacer.SetLines; signature reviewed against the upstream declaration. Closed as public-api-tested: the method is exported from the public tui package and no PiG binary calls it; test callers (go/types) are the proof."
+ }
+]

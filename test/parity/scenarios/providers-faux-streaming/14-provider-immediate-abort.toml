@@ -2,6 +2,7 @@
 # Oracle probe: registerFauxProvider + compat.complete on an already-aborted signal returns aborted/empty; the next factory observes that history.
 # It also drains a paced midstream cancellation and requires the provider's partial content to survive the runtime forwarding boundary.
 # Go ModelRuntime previously changed the setup cancellation into a generic error and canceled event forwarding before receiving the provider's terminal result.
+# The immediate-abort and follow-up requests go straight to the provider like compat.ts complete (pi.mjs). Pi's Model Runtime fails an already-aborted request in lazyStream's auth setup with stopReason "error" (resolve.ts:53, lazy.ts createSetupErrorMessage; ai.TestRequestCancelledBeforeItsProviderStartsIsAPiSetupError), so driving ModelRuntime().Complete here compared different Pi paths.
 name = "14-provider-immediate-abort"
 description = "Immediate request cancellation is aborted rather than error and does not poison the next request."
 covers = ["packages/ai/src/models.ts", "packages/ai/src/providers/faux.ts"]

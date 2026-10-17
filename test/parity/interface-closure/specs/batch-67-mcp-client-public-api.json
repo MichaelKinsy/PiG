@@ -1,0 +1,49 @@
+[
+ {
+  "ids": [
+   "pkg:mcp/.#McpClient::property:onError"
+  ],
+  "targets": [
+   "mcp/client.go#Client.OnError"
+  ],
+  "production": [
+   "public-api:mcp/client.go#Client.OnError"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientReportsTransportErrorsWithoutFailingPendingRequests",
+   "test:mcp/streamable_http_test.go#TestStreamableHTTPTransportFailsOnlyTheRequestWhoseSSEStreamBreaks"
+  ],
+  "rationale": "McpClient.onError is the Go method mcp.Client.OnError; signature reviewed against the upstream declaration (undefined is the empty value or nil; the returned func is the dispose function). Closed as public-api-tested: exported from the public mcp package and no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#McpClient::property:protocolVersion"
+  ],
+  "targets": [
+   "mcp/client.go#Client.ProtocolVersion"
+  ],
+  "production": [
+   "public-api:mcp/client.go#Client.ProtocolVersion"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientAcceptsServersThatAnswerWithAnOlderProtocolVersion",
+   "test:mcp/client_test.go#TestClientInitializesTheConnectionBeforeExposingServerInformation"
+  ],
+  "rationale": "McpClient.protocolVersion is the Go method mcp.Client.ProtocolVersion; signature reviewed against the upstream declaration (undefined is the empty value or nil; the returned func is the dispose function). Closed as public-api-tested: exported from the public mcp package and no PiG binary calls it; test callers (go/types) are the proof."
+ },
+ {
+  "ids": [
+   "pkg:mcp/.#McpClient::property:serverInfo"
+  ],
+  "targets": [
+   "mcp/client.go#Client.ServerInfo"
+  ],
+  "production": [
+   "public-api:mcp/client.go#Client.ServerInfo"
+  ],
+  "evidence": [
+   "test:mcp/client_test.go#TestClientInitializesTheConnectionBeforeExposingServerInformation"
+  ],
+  "rationale": "McpClient.serverInfo is the Go method mcp.Client.ServerInfo; signature reviewed against the upstream declaration (undefined is the empty value or nil; the returned func is the dispose function). Closed as public-api-tested: exported from the public mcp package and no PiG binary calls it; test callers (go/types) are the proof."
+ }
+]

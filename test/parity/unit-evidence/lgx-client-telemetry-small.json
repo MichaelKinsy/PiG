@@ -1,0 +1,91 @@
+[
+ {
+  "upstream": "packages/telemetry/src/memory.ts",
+  "package": "./telemetry",
+  "tests": [
+   "TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus",
+   "TestTypedSpanStarterRecordsStartAttributesAndNestsByCallbackSpan"
+  ],
+  "upstream_reference": "packages/telemetry/src/memory.ts",
+  "mutation": "telemetry/memory.go: replace `span.record.ParentID = new(parent.record.ID)` with `_ = parent`; TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus, TestTypedSpanStarterRecordsStartAttributesAndNestsByCallbackSpan fails."
+ },
+ {
+  "upstream": "packages/telemetry/src/memory.ts",
+  "package": "./telemetry",
+  "tests": [
+   "TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus"
+  ],
+  "upstream_reference": "packages/telemetry/src/memory.ts",
+  "mutation": "telemetry/memory.go: replace `span.record.Events = append(span.record.Events, RecordedTelemetryEvent{Name: name, Attributes: copyAttributes(attributes)})` with `_ = name`; TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus fails."
+ },
+ {
+  "upstream": "packages/telemetry/src/memory.ts",
+  "package": "./telemetry",
+  "tests": [
+   "TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus",
+   "TestInMemoryRecordedSpanStatus",
+   "TestRecordedTelemetrySpanStatusFollowsDefaultExplicitAndAutomaticErrors"
+  ],
+  "upstream_reference": "packages/telemetry/src/memory.ts",
+  "mutation": "telemetry/memory.go: replace `span.explicitStatus = true` with `_ = status`; TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus, TestInMemoryRecordedSpanStatus, TestRecordedTelemetrySpanStatusFollowsDefaultExplicitAndAutomaticErrors fails."
+ },
+ {
+  "upstream": "packages/telemetry/src/memory.ts",
+  "package": "./telemetry",
+  "tests": [
+   "TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus"
+  ],
+  "upstream_reference": "packages/telemetry/src/memory.ts",
+  "mutation": "telemetry/memory.go: replace `span.owner.nextEndSequence++` with ``; TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus fails."
+ },
+ {
+  "upstream": "packages/telemetry/src/memory.ts",
+  "package": "./telemetry",
+  "tests": [
+   "TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus",
+   "TestInMemoryRecordedSpanStatus",
+   "TestRecordedTelemetrySpanStatusFollowsDefaultExplicitAndAutomaticErrors",
+   "TestInMemoryAutomaticErrorStatusUsesTheErrorNameAsPi"
+  ],
+  "upstream_reference": "packages/telemetry/src/memory.ts",
+  "mutation": "telemetry/memory.go: replace `span.settle(err != nil, err)` with `span.settle(false, err)`; TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus, TestInMemoryAutomaticErrorStatusUsesTheErrorNameAsPi, TestInMemoryRecordedSpanStatus, TestRecordedTelemetrySpanStatusFollowsDefaultExplicitAndAutomaticErrors fails."
+ },
+ {
+  "upstream": "packages/telemetry/src/memory.ts",
+  "package": "./telemetry",
+  "tests": [
+   "TestInMemoryRecorderIdsAttributesSnapshotsAndSettledParents"
+  ],
+  "upstream_reference": "packages/telemetry/src/memory.ts",
+  "mutation": "telemetry/memory.go: replace `ID: len(recorder.spans) + 1,` with `ID: len(recorder.spans) + 2,`; TestInMemoryRecorderIdsAttributesSnapshotsAndSettledParents fails."
+ },
+ {
+  "upstream": "packages/telemetry/src/memory.ts",
+  "package": "./telemetry",
+  "tests": [
+   "TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus",
+   "TestInMemoryRecorderIdsAttributesSnapshotsAndSettledParents"
+  ],
+  "upstream_reference": "packages/telemetry/src/memory.ts",
+  "mutation": "telemetry/memory.go: replace `maps.Copy(span.record.Attributes, copyAttributes(attributes))` with `maps.Copy(span.record.Attributes, SpanAttributes(nil))`; TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus, TestInMemoryRecorderIdsAttributesSnapshotsAndSettledParents fails."
+ },
+ {
+  "upstream": "packages/telemetry/src/memory.ts",
+  "package": "./telemetry",
+  "tests": [
+   "TestInMemoryRecorderIdsAttributesSnapshotsAndSettledParents"
+  ],
+  "upstream_reference": "packages/telemetry/src/memory.ts",
+  "mutation": "telemetry/memory.go: replace `value.Attributes = copyAttributes(value.Attributes)` with ``; TestInMemoryRecorderIdsAttributesSnapshotsAndSettledParents fails."
+ },
+ {
+  "upstream": "packages/telemetry/src/memory.ts",
+  "package": "./telemetry",
+  "tests": [
+   "TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus",
+   "TestInMemoryRecorderIdsAttributesSnapshotsAndSettledParents"
+  ],
+  "upstream_reference": "packages/telemetry/src/memory.ts",
+  "mutation": "telemetry/memory.go: replace `if parent != nil && parent.record.Settled {` with `if parent != nil && false {`; TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus, TestInMemoryRecorderIdsAttributesSnapshotsAndSettledParents fails."
+ }
+]

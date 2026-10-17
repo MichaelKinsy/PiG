@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -28,6 +29,7 @@ type manualLivenessTimer struct {
 	active   bool
 }
 
+// The manual timer keeps one channel, as a time.Timer does, and drops an unreceived fire on Stop and Reset, as Go's synchronous timers do: the heartbeat selects on the interval's channel while other goroutines stop and re-arm it.
 func (t *manualLivenessTimer) C() <-chan time.Time { return t.ch }
 func (t *manualLivenessTimer) Stop() bool {
 	t.clock.mu.Lock()
@@ -37,7 +39,35 @@ func (t *manualLivenessTimer) Stop() bool {
 	if wasActive && t.clock.requested[t.duration] > 0 {
 		t.clock.requested[t.duration]--
 	}
+	t.drain()
 	return wasActive
+}
+
+// Reset re-arms the timer as a fresh request of d.
+func (t *manualLivenessTimer) Reset(d time.Duration) {
+	c := t.clock
+	c.mu.Lock()
+	if t.active && c.requested[t.duration] > 0 {
+		c.requested[t.duration]--
+	}
+	t.drain()
+	if !slices.Contains(c.timers, t) {
+		c.timers = append(c.timers, t)
+	}
+	t.at, t.duration, t.active = c.now.Add(d), d, true
+	c.requested[d]++
+	c.mu.Unlock()
+	select {
+	case c.timerReady <- struct{}{}:
+	default:
+	}
+}
+
+func (t *manualLivenessTimer) drain() {
+	select {
+	case <-t.ch:
+	default:
+	}
 }
 
 type manualLivenessClock struct {
@@ -97,8 +127,10 @@ func (c *manualLivenessClock) elapse(d time.Duration) {
 			if c.requested[timer.duration] > 0 {
 				c.requested[timer.duration]--
 			}
-			timer.ch <- now
-			close(timer.ch)
+			select {
+			case timer.ch <- now:
+			default:
+			}
 		} else if timer.active {
 			keep = append(keep, timer)
 		}
@@ -227,15 +259,13 @@ func TestRequestLivenessOverlapsQueuedFrameOwnership(t *testing.T) {
 	}()
 
 	frame := <-conn.outCh
-	conn.workMu.Lock()
-	work := conn.work
-	conn.workMu.Unlock()
+	work := conn.work.Load()
 	if work != 2 {
 		t.Fatalf("queued Request work = %d, want frame and response ownership to overlap", work)
 	}
 
 	var request Envelope
-	if err := json.Unmarshal(frame.data, &request); err != nil {
+	if err := json.Unmarshal(frame.payloadBytes(), &request); err != nil {
 		t.Fatal(err)
 	}
 	conn.pendingMu.Lock()
@@ -252,9 +282,7 @@ func TestRequestLivenessOverlapsQueuedFrameOwnership(t *testing.T) {
 	case <-time.After(testbudget.Wait(t)):
 		t.Fatal("completed Request did not release response ownership")
 	}
-	conn.workMu.Lock()
-	work = conn.work
-	conn.workMu.Unlock()
+	work = conn.work.Load()
 	if work != 0 {
 		t.Fatalf("completed Request retained work = %d", work)
 	}
@@ -359,7 +387,7 @@ func TestRequestCancellationWinsOverLateResponse(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	result := make(chan error, 1)
 	go func() {
-		_, err := conn.Request(ctx, &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: "tool_call", Tool: "slow"}})
+		_, err := conn.Request(ctx, &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: "command", Tool: "slow"}})
 		result <- err
 	}()
 	request := readLivenessEnvelope(t, peer)
@@ -371,13 +399,69 @@ func TestRequestCancellationWinsOverLateResponse(t *testing.T) {
 	if err := <-result; !errors.Is(err, context.Canceled) {
 		t.Fatalf("request error = %v, want context.Canceled", err)
 	}
-	writeLivenessEnvelope(t, peer, Envelope{Type: MsgResponse, ID: request.ID, Response: &ResponsePayload{Result: json.RawMessage(`"late"`)}})
+	assertLateResponseDropped(t, conn, peer, request.ID)
+}
+
+// pig divergence (D111): a cancelled tool_call keeps waiting ToolAbortGrace for the tool's own answer, as Pi awaits
+// tool.execute after its signal aborts (agent-loop.ts:831-853). An answer within the grace period is the call's result;
+// when the grace period ends the call fails with ErrToolAborted and a later answer is dropped.
+func TestCancelledToolCallWaitsTheGraceForItsAnswer(t *testing.T) {
+	for _, answers := range []bool{true, false} {
+		t.Run(fmt.Sprintf("answers=%t", answers), func(t *testing.T) {
+			clock := newManualLivenessClock()
+			host, peer := net.Pipe()
+			defer func() { _ = peer.Close() }()
+			conn := newConnWithOptions("cancelled", host, connOptions{Clock: clock, HeartbeatInterval: time.Hour})
+			conn.Start(t.Context())
+			ctx, cancel := context.WithCancel(t.Context())
+			type outcome struct {
+				resp *Envelope
+				err  error
+			}
+			result := make(chan outcome, 1)
+			go func() {
+				resp, err := conn.Request(ctx, &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: MethodToolCall, Tool: "slow"}})
+				result <- outcome{resp, err}
+			}()
+			request := readLivenessEnvelope(t, peer)
+			cancel()
+			if cancelEnvelope := readLivenessEnvelope(t, peer); cancelEnvelope.Type != MsgCancel || cancelEnvelope.Cancel.RequestID != request.ID {
+				t.Fatalf("cancel envelope = %+v", cancelEnvelope)
+			}
+			clock.expectTimer(t, ToolAbortGrace)
+			if answers {
+				writeLivenessEnvelope(t, peer, Envelope{Type: MsgResponse, ID: request.ID, Response: &ResponsePayload{Result: json.RawMessage(`"settled"`)}})
+				got := <-result
+				if got.err != nil || got.resp == nil || got.resp.Response == nil || string(got.resp.Response.Result) != `"settled"` {
+					t.Fatalf("cancelled tool_call = %+v, %v; want the tool's own answer", got.resp, got.err)
+				}
+				return
+			}
+			select {
+			case got := <-result:
+				t.Fatalf("cancelled tool_call settled before its grace period: %+v, %v", got.resp, got.err)
+			default:
+			}
+			clock.elapse(ToolAbortGrace)
+			if got := <-result; !errors.Is(got.err, ErrToolAborted) || got.err.Error() != "Operation aborted" {
+				t.Fatalf("cancelled tool_call error = %v, want %q", got.err, "Operation aborted")
+			}
+			assertLateResponseDropped(t, conn, peer, request.ID)
+		})
+	}
+}
+
+// assertLateResponseDropped writes a response for a request whose caller stopped waiting and checks that it reaches neither
+// Incoming nor a pending correlation.
+func assertLateResponseDropped(t *testing.T, conn *Conn, peer net.Conn, id string) {
+	t.Helper()
+	writeLivenessEnvelope(t, peer, Envelope{Type: MsgResponse, ID: id, Response: &ResponsePayload{Result: json.RawMessage(`"late"`)}})
 	writeLivenessEnvelope(t, peer, Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: "after-late"}})
 	if incoming := <-conn.Incoming(); incoming.Type != MsgNotify || incoming.Notify == nil || incoming.Notify.Method != "after-late" {
 		t.Fatalf("late response leaked to Incoming: %+v", incoming)
 	}
 	conn.pendingMu.Lock()
-	_, retained := conn.pending[request.ID]
+	_, retained := conn.pending[id]
 	conn.pendingMu.Unlock()
 	if retained {
 		t.Fatal("late response correlation remained pending after cancellation")
@@ -495,7 +579,7 @@ func TestStalledRendererCancelsGenerationAndRetainsLastFrame(t *testing.T) {
 	conn := newConnWithOptions("renderer", host, connOptions{Clock: clock, HeartbeatInterval: time.Hour})
 	conn.Start(t.Context())
 	invalidated := make(chan struct{}, 2)
-	component := newRenderProxyComponent("renderer", "custom", map[string]any{}, extension.MessageRenderOptions{}, conn, 5*time.Second, func() { invalidated <- struct{}{} })
+	component := newRenderProxyComponent("renderer", "custom", extension.CustomMessage{}, extension.MessageRenderOptions{}, conn, 5*time.Second, func() { invalidated <- struct{}{} })
 
 	if got := component.Render(40); len(got) != 1 || got[0] != "[custom]" {
 		t.Fatalf("initial frame = %v", got)
@@ -1020,7 +1104,7 @@ func TestPackedMemberTransportClosureDoesNotProveProcessDeath(t *testing.T) {
 	// die and this handler won the race against watchPackedProcess). It must
 	// also surface the stderr log path (ATTACK-POINTS #9) instead of leaving
 	// it undiscoverable.
-	const want = "packed member connection closed (stderr: /tmp/pig-packed-cell-live-fake.log)"
+	const want = "packed member connection closed; /reload restarts it (stderr: /tmp/pig-packed-cell-live-fake.log)"
 	if got.reason != want {
 		t.Fatalf("crash reason = %q, want %q", got.reason, want)
 	}

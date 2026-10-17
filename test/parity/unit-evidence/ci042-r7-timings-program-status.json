@@ -1,0 +1,25 @@
+[
+ {
+  "upstream": "packages/coding-agent/src/core/timings.ts",
+  "package": "./internal/codingagent/timings",
+  "tests": [
+   "TestPrintTimingsWritesPisReport",
+   "TestNamespacesPrintInFirstUseOrderAndResetKeepsThePlace",
+   "TestDisabledRecorderPrintsNothingAndAnEmptyGroupIsSkipped",
+   "TestFirstMarkOfAnUnresetNamespaceIsZero"
+  ],
+  "upstream_reference": "packages/coding-agent/src/core/timings.ts",
+  "mutation": "internal/codingagent/timings/timings.go: replace 't.ms >= 0' with 't.ms > 0'; compiling go test fails TestFirstMarkOfAnUnresetNamespaceIsZero. Replace the group header format '\\n--- %s ---\\n' with '\\n-- %s --\\n'; fails TestPrintTimingsWritesPisReport, TestNamespacesPrintInFirstUseOrderAndResetKeepsThePlace and TestFirstMarkOfAnUnresetNamespaceIsZero."
+ },
+ {
+  "upstream": "packages/tui/src/program-status.ts",
+  "package": "./tui",
+  "tests": [
+   "TestFormatProgramStatusUpstream",
+   "TestIsProgramStatusReplyUpstream",
+   "TestUpstreamTerminalNegotiation"
+  ],
+  "upstream_reference": "packages/tui/test/program-status.test.ts",
+  "mutation": "tui/program_status.go: replace 'programStatusMaxMessageBytes = 2048' with 'programStatusMaxMessageBytes = 1+2048'; compiling go test -run ProgramStatus fails TestFormatProgramStatusUpstream. Replace the OSC number in ProgramStatusQuery (7501 -> 7502); go test -run 'Program|Terminal' fails TestUpstreamTerminalNegotiation."
+ }
+]

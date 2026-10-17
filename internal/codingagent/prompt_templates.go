@@ -6,7 +6,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
+
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/nodefs"
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/frontmatter"
@@ -32,6 +37,8 @@ func ParsePromptArgs(s string) []string {
 	args := make([]string, 0, 4)
 	var cur strings.Builder
 	var quote rune // 0 = not in quotes
+	// hasToken records that a token has started, so quoted empty strings ("" or '') are kept as arguments (Pi 9fe3f371).
+	hasToken := false
 	for _, char := range s {
 		if quote != 0 {
 			if char == quote {
@@ -43,18 +50,21 @@ func ParsePromptArgs(s string) []string {
 		}
 		if char == '"' || char == '\'' {
 			quote = char
+			hasToken = true
 			continue
 		}
 		if isJSWhitespace(char) {
-			if cur.Len() > 0 {
+			if hasToken {
 				args = append(args, cur.String())
 				cur.Reset()
+				hasToken = false
 			}
 			continue
 		}
 		cur.WriteRune(char)
+		hasToken = true
 	}
-	if cur.Len() > 0 {
+	if hasToken {
 		args = append(args, cur.String())
 	}
 	return args
@@ -114,7 +124,11 @@ func SubstitutePromptArgs(content string, args []string) string {
 			}
 			if sliceLength != "" {
 				length, _ := strconv.Atoi(sliceLength)
-				end := min(start+length, len(args))
+				// args.slice(start, start + length): a length past the end (up to Atoi's saturated maximum) takes the rest without overflowing.
+				end := len(args)
+				if length < len(args)-start {
+					end = start + length
+				}
 				return strings.Join(args[start:end], " ")
 			}
 			return strings.Join(args[start:], " ")
@@ -138,82 +152,154 @@ type LoadPromptTemplatesResult struct {
 	Diagnostics []extension.ResourceDiagnostic
 }
 
-// LoadPromptTemplates loads user, project, and explicit prompt paths.
+// LoadPromptTemplatesOptions are upstream's LoadPromptTemplatesOptions.
+type LoadPromptTemplatesOptions struct {
+	// Cwd is the working directory for project-local templates.
+	Cwd string
+	// AgentDir is the agent config directory for global templates.
+	AgentDir string
+	// PromptPaths are explicit prompt template paths (files or directories).
+	PromptPaths []string
+	// IncludeDefaults includes the default prompt directories.
+	IncludeDefaults bool
+}
+
+// LoadPromptTemplatesFromOptions loads prompt templates from the global `<agentDir>/prompts/` and project `<cwd>/<config dir>/prompts/` directories when IncludeDefaults is set, then from the explicit paths. Every template is returned, the same name more than once: collisions belong to the resource loader.
+//
+// upstream: prompt-templates.ts:217-266 (loadPromptTemplates)
+func LoadPromptTemplatesFromOptions(options LoadPromptTemplatesOptions) LoadPromptTemplatesResult {
+	return loadPromptTemplates(options.Cwd, options.AgentDir, options.IncludeDefaults, options.IncludeDefaults, options.PromptPaths)
+}
+
+// LoadPromptTemplates loads the user and project prompt directories when the agent directory and the working directory are given, then the explicit paths, and keeps the first template of each name, reporting the others as collisions as the resource loader does ([DedupePromptTemplates]).
 func LoadPromptTemplates(cwd, agentDir string, extraPaths ...string) LoadPromptTemplatesResult {
-	var result LoadPromptTemplatesResult
-	var all []PromptTemplate
-	add := func(r LoadPromptTemplatesResult) {
-		all = append(all, r.Templates...)
-		result.Diagnostics = append(result.Diagnostics, r.Diagnostics...)
-	}
-	if agentDir != "" {
-		userDir := filepath.Join(agentDir, "prompts")
-		add(loadTemplatesFromDir(userDir, "user"))
-	}
-	if cwd != "" {
-		add(loadTemplatesFromDir(filepath.Join(ProjectConfigDir(cwd), "prompts"), "project"))
-	}
-	for _, path := range extraPaths {
-		if path != "" {
-			add(loadTemplatesFromPath(path, "extra"))
-		}
-	}
-	// First-wins by name, matching resource-loader's ordered path precedence.
-	byName := make(map[string]PromptTemplate, len(all))
-	order := make([]string, 0, len(all))
-	for _, template := range all {
+	loaded := loadPromptTemplates(cwd, agentDir, agentDir != "", cwd != "", extraPaths)
+	templates, collisions := DedupePromptTemplates(loaded.Templates)
+	return LoadPromptTemplatesResult{Templates: templates, Diagnostics: append(loaded.Diagnostics, collisions...)}
+}
+
+// DedupePromptTemplates keeps the first template of each name, in order, and reports each later one as a collision with the first.
+//
+// upstream: resource-loader.ts:1156-1181 (dedupePrompts)
+func DedupePromptTemplates(templates []PromptTemplate) ([]PromptTemplate, []extension.ResourceDiagnostic) {
+	var kept []PromptTemplate
+	var diagnostics []extension.ResourceDiagnostic
+	byName := make(map[string]PromptTemplate, len(templates))
+	for _, template := range templates {
 		if winner, seen := byName[template.Name]; seen {
-			result.Diagnostics = append(result.Diagnostics, extension.ResourceDiagnostic{
+			diagnostics = append(diagnostics, extension.ResourceDiagnostic{
 				Type: "collision", Message: `name "/` + template.Name + `" collision`, Path: template.FilePath,
 				Collision: &extension.ResourceCollision{ResourceType: "prompt", Name: template.Name, WinnerPath: winner.FilePath, LoserPath: template.FilePath},
 			})
 			continue
 		}
-		order = append(order, template.Name)
 		byName[template.Name] = template
+		kept = append(kept, template)
 	}
-	out := make([]PromptTemplate, 0, len(order))
-	for _, n := range order {
-		out = append(out, byName[n])
+	return kept, diagnostics
+}
+
+func loadPromptTemplates(cwd, agentDir string, userDefaults, projectDefaults bool, promptPaths []string) LoadPromptTemplatesResult {
+	resolvedCwd, resolvedAgentDir := cwd, agentDir
+	if cwd != "" {
+		resolvedCwd, _ = resolvepath.Resolve(cwd, "")
 	}
-	result.Templates = out
+	if agentDir != "" {
+		resolvedAgentDir, _ = resolvepath.Resolve(agentDir, "")
+	}
+	var result LoadPromptTemplatesResult
+	add := func(loaded LoadPromptTemplatesResult) {
+		result.Templates = append(result.Templates, loaded.Templates...)
+		result.Diagnostics = append(result.Diagnostics, loaded.Diagnostics...)
+	}
+	globalPromptsDir := ""
+	if resolvedAgentDir != "" {
+		globalPromptsDir = filepath.Join(resolvedAgentDir, "prompts")
+	}
+	projectPromptsDir := ""
+	if resolvedCwd != "" {
+		projectPromptsDir = filepath.Join(resolvedCwd, ConfigDirName(), "prompts")
+	}
+	sources := promptSourceResolver{global: globalPromptsDir, project: projectPromptsDir}
+	if userDefaults && globalPromptsDir != "" {
+		add(loadTemplatesFromDir(globalPromptsDir, "user", sources))
+	}
+	if projectDefaults && projectPromptsDir != "" {
+		add(loadTemplatesFromDir(projectPromptsDir, "project", sources))
+	}
+	for _, rawPath := range promptPaths {
+		if rawPath == "" {
+			continue
+		}
+		path, err := resolvepath.ResolveTrimmed(rawPath, resolvedCwd)
+		if err != nil {
+			path = rawPath
+		}
+		add(loadTemplatesFromPath(path, "extra", sources))
+	}
 	return result
+}
+
+// promptSourceResolver is getSourceInfo of loadPromptTemplates: a path under the global prompts directory is a user resource, under the project prompts directory a project resource, and anything else a temporary resource based at its own directory.
+type promptSourceResolver struct{ global, project string }
+
+func (r promptSourceResolver) sourceInfo(path string) (PiSourceInfo, error) {
+	if r.global != "" && isUnderPath(path, r.global) {
+		return PiSourceInfo{Path: path, Source: "local", Scope: "user", Origin: "top-level", BaseDir: r.global}, nil
+	}
+	if r.project != "" && isUnderPath(path, r.project) {
+		return PiSourceInfo{Path: path, Source: "local", Scope: "project", Origin: "top-level", BaseDir: r.project}, nil
+	}
+	baseDir := filepath.Dir(path)
+	info, err := os.Stat(path)
+	if err != nil {
+		return PiSourceInfo{}, err
+	}
+	if info.IsDir() {
+		baseDir = path
+	}
+	return CreateSyntheticSourceInfo(path, SyntheticSourceInfoOptions{Source: "local", BaseDir: baseDir}), nil
 }
 
 func promptWarning(path string, err error) LoadPromptTemplatesResult {
 	return LoadPromptTemplatesResult{Diagnostics: []extension.ResourceDiagnostic{{Type: "warning", Message: err.Error(), Path: path}}}
 }
 
-func loadTemplatesFromPath(path, scope string) LoadPromptTemplatesResult {
+func loadTemplatesFromPath(path, scope string, sources promptSourceResolver) LoadPromptTemplatesResult {
 	info, err := os.Stat(path)
 	if err != nil {
 		return LoadPromptTemplatesResult{}
 	}
 	if info.IsDir() {
-		return loadTemplatesFromDir(path, scope)
+		return loadTemplatesFromDir(path, scope, sources)
 	}
 	if !info.Mode().IsRegular() || !strings.HasSuffix(path, ".md") {
 		return LoadPromptTemplatesResult{}
 	}
-	return loadTemplateFromFile(path, scope)
+	return loadTemplateFromFile(path, scope, sources)
 }
 
-func loadTemplatesFromDir(dir, scope string) LoadPromptTemplatesResult {
+func loadTemplatesFromDir(dir, scope string, sources promptSourceResolver) LoadPromptTemplatesResult {
 	var result LoadPromptTemplatesResult
-	entries, err := os.ReadDir(dir)
+	entries, err := nodefs.ReadDir(dir)
 	if err != nil {
 		return result
 	}
 	for _, entry := range entries {
-		if !strings.HasSuffix(entry.Name(), ".md") {
-			continue
-		}
 		path := filepath.Join(dir, entry.Name())
-		info, err := os.Stat(path)
-		if err != nil || !info.Mode().IsRegular() {
+		// The entry type comes from the directory entry, as in Pi; only a symlink is stat'ed, and a name Node decoded no longer names its file.
+		_, isFile, ok := nodefs.EntryKind(dir, entry)
+		if !ok {
 			continue
 		}
-		loaded := loadTemplateFromFile(path, scope)
+		if !isFile || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		// Pi resolves the source before it reads the file; a throw there (a path that no longer exists, such as a name Node decoded) ends the directory and keeps what was collected.
+		if _, err := sources.sourceInfo(path); err != nil {
+			return result
+		}
+		loaded := loadTemplateFromFile(path, scope, sources)
 		result.Templates = append(result.Templates, loaded.Templates...)
 		result.Diagnostics = append(result.Diagnostics, loaded.Diagnostics...)
 	}
@@ -225,10 +311,10 @@ func parsePromptFrontmatter(content string) (map[string]any, string, error) {
 	return doc.Frontmatter, doc.Body, doc.Err
 }
 
-func loadTemplateFromFile(path, scope string) LoadPromptTemplatesResult {
+func loadTemplateFromFile(path, scope string, sources promptSourceResolver) LoadPromptTemplatesResult {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return promptWarning(path, err)
+		return LoadPromptTemplatesResult{Diagnostics: []extension.ResourceDiagnostic{{Type: "warning", Message: tools.NodeFSError(err, "open", path), Path: path}}}
 	}
 	fields, body, err := parsePromptFrontmatter(string(data))
 	if err != nil {
@@ -237,22 +323,26 @@ func loadTemplateFromFile(path, scope string) LoadPromptTemplatesResult {
 	description, _ := fields["description"].(string)
 	if description == "" {
 		for line := range strings.SplitSeq(body, "\n") {
-			if strings.TrimSpace(line) != "" {
+			if jsTrim(line) != "" {
 				description = truncatePromptDescription(line)
 				break
 			}
 		}
 	}
 	hint, _ := fields["argument-hint"].(string)
-	return LoadPromptTemplatesResult{Templates: []PromptTemplate{{Name: strings.TrimSuffix(filepath.Base(path), ".md"), Description: description, ArgumentHint: hint, Content: body, FilePath: path, Scope: scope}}}
+	source, err := sources.sourceInfo(path)
+	if err != nil {
+		return promptWarning(path, err)
+	}
+	return LoadPromptTemplatesResult{Templates: []PromptTemplate{{Name: strings.TrimSuffix(filepath.Base(path), ".md"), Description: description, ArgumentHint: hint, Content: body, FilePath: path, Scope: scope, SourceInfo: source}}}
 }
 
+// truncatePromptDescription is `line.slice(0, 60)` plus "..." when `line.length > 60`: both count UTF-16 code units.
 func truncatePromptDescription(line string) string {
-	runes := []rune(line)
-	if len(runes) <= 60 {
+	if jsstring.Length(line) <= 60 {
 		return line
 	}
-	return string(runes[:60]) + "..."
+	return jsstring.Slice(line, 0, 60) + "..."
 }
 
 // ─── Expansion ───────────────────────────────────────────────────────────────

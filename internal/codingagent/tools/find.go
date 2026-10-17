@@ -12,6 +12,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
@@ -147,10 +148,11 @@ func (t *FindTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 	if ctx.Err() != nil {
 		return findError("Operation aborted"), nil
 	}
-	lines := readlineLines(stdout.String())
+	// readline decodes the child's bytes as UTF-8 (one U+FFFD per ill-formed subpart) before it splits them.
+	lines := readlineLines(jsstring.FromUTF8([]byte(stdout.String())))
 	output := strings.Join(lines, "\n")
 	if waitErr != nil && output == "" {
-		msg := strings.TrimSpace(stderr.String())
+		msg := jsstring.Trim(stderr.String())
 		if msg == "" {
 			code := -1
 			if exitErr, ok := errors.AsType[*exec.ExitError](waitErr); ok {
@@ -166,7 +168,7 @@ func (t *FindTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 
 	var relativized []string
 	for _, raw := range lines {
-		line := strings.TrimSpace(strings.TrimSuffix(raw, "\r"))
+		line := jsstring.Trim(strings.TrimSuffix(raw, "\r"))
 		if line == "" {
 			continue
 		}
@@ -210,7 +212,7 @@ func (t *FindTool) findWithOperations(ctx context.Context, pattern, searchPath s
 func formatFindResults(relativized []string, effectiveLimit float64, custom bool) agent.AgentToolResult {
 	resultLimitReached := float64(len(relativized)) >= effectiveLimit
 	// Number.MAX_SAFE_INTEGER is observable in the truncation details, even though only bytes cap this tool.
-	tr := TruncateHead(strings.Join(relativized, "\n"), DefaultMaxBytes, 1<<53-1)
+	tr := TruncateHead(strings.Join(relativized, "\n"), truncationLimits(DefaultMaxBytes, 1<<53-1))
 	resultOutput := tr.Content
 	details := &FindDetails{}
 	var notices []string
@@ -230,6 +232,7 @@ func formatFindResults(relativized []string, effectiveLimit float64, custom bool
 	result := agent.AgentToolResult{}
 	if len(notices) > 0 {
 		resultOutput += "\n\n[" + strings.Join(notices, ". ") + "]"
+		shareTruncatedContent(details.Truncation, resultOutput)
 		result.Details = details
 	}
 	result.Content = []ai.ToolResultMessageContent{ai.TextContent{Text: resultOutput}}
@@ -268,24 +271,27 @@ func readlineLines(output string) []string {
 	return lines
 }
 
-// relativizeFindResultPath mirrors upstream relativizeFindResultPath: an
-// absolute result becomes relative to the search root, separators become
-// "/", and a trailing separator (a directory) is kept.
+// relativizeFindResultPath mirrors upstream relativizeFindResultPath on the host's path module: an absolute result
+// becomes relative to the search root, separators become "/", and a trailing separator (a directory) is kept.
 func relativizeFindResultPath(resultPath, searchPath string) string {
-	sep := string(filepath.Separator)
+	return relativizeFindResultPathFor(resultPath, searchPath, runtime.GOOS == "windows", nodepath.Process())
+}
+
+// relativizeFindResultPathFor is relativizeFindResultPath with upstream's injectable pathModule: path.win32 when
+// windows is set, else path.posix, each reading the process state env.
+// A working directory that cannot be read leaves the result unrelativized.
+func relativizeFindResultPathFor(resultPath, searchPath string, windows bool, env nodepath.Env) string {
+	sep := "/"
+	isAbsolute, relative := nodepath.PosixIsAbsolute, nodepath.PosixRelative
+	if windows {
+		sep = `\`
+		isAbsolute, relative = nodepath.Win32IsAbsolute, nodepath.Win32Relative
+	}
 	hadTrailingSeparator := strings.HasSuffix(resultPath, sep) || (sep == `\` && strings.HasSuffix(resultPath, "/"))
 	relativePath := resultPath
-	if isNodeAbsolute(resultPath) {
-		from, fromErr := nodepath.Resolve(searchPath)
-		to, toErr := nodepath.Resolve(resultPath)
-		if fromErr == nil && toErr == nil {
-			relativePath = to
-			if rel, err := filepath.Rel(from, to); err == nil {
-				relativePath = rel
-				if rel == "." {
-					relativePath = ""
-				}
-			}
+	if isAbsolute(resultPath) {
+		if rel, err := relative(env, searchPath, resultPath); err == nil {
+			relativePath = rel
 		}
 	}
 	posixPath := strings.Join(strings.Split(relativePath, sep), "/")

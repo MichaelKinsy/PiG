@@ -53,18 +53,12 @@ func main() {
 	if err := os.Setenv("CLOUDFLARE_GATEWAY_ID", "gate"); err != nil {
 		panic(err)
 	}
-	cloudflareURL, err := ai.ResolveCloudflareBaseURL("cloudflare-ai-gateway", ai.CloudflareAIGatewayCompatBaseURL, ai.ProviderEnv{
+	cloudflareModel := &ai.Model{ProviderMeta: ai.ProviderMetadata{BaseURL: ai.CloudflareAIGatewayCompatBaseURL}}
+	cloudflareURL := ai.ResolveCloudflareModel(cloudflareModel, ai.ProviderEnv{
 		"CLOUDFLARE_ACCOUNT_ID": "acct",
 		"CLOUDFLARE_GATEWAY_ID": "gate",
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	cloudflareUnresolvedURL, err := ai.ResolveCloudflareBaseURL("cloudflare-ai-gateway", ai.CloudflareAIGatewayCompatBaseURL, nil)
-	if err != nil {
-		panic(err)
-	}
+	}).ProviderMeta.BaseURL
+	cloudflareUnresolvedURL := ai.ResolveCloudflareModel(cloudflareModel, nil).ProviderMeta.BaseURL
 
 	cleanupOrder := []string{}
 	unregisterA := ai.RegisterSessionResourceCleanup(func(id string) { cleanupOrder = append(cleanupOrder, "a:"+id) })

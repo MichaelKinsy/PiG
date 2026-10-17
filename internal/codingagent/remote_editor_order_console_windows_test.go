@@ -49,8 +49,9 @@ func handConsoleToExternalEditor(t *testing.T, result string) {
 		t.Fatal(err)
 	}
 	defer restore()
-	reader := newInteractiveTerminalReader(t.Context(), os.Stdin)
-	decoded := &decodedReaderInput{reader: reader}
+	reads := newTerminalReads()
+	reader := newInteractiveTerminalReader(t.Context(), os.Stdin, reads)
+	decoded := &decodedReaderInput{reads: reads}
 	decoded.input = tui.NewTerminalInput(func(sequence string) { decoded.typed = append(decoded.typed, sequence...) })
 	signal := func(name string) {
 		if err := os.WriteFile(result+name, nil, 0o600); err != nil {
@@ -90,20 +91,20 @@ func pauseWithin(t *testing.T, reader *interactiveTerminalReader) {
 
 // decodedReaderInput decodes the reader's chunks with TerminalInput, as the interactive input loop does. TerminalInput consumes the terminal's answers to the keyboard protocol query that raw mode sends; the Windows 10 pseudo console answers the Device Attributes query itself with ESC [ ? 1 ; 0 c ahead of any typed key.
 type decodedReaderInput struct {
-	reader *interactiveTerminalReader
-	input  *tui.TerminalInput
-	typed  []byte
+	reads *terminalReads
+	input *tui.TerminalInput
+	typed []byte
 }
 
 func (d *decodedReaderInput) receive(t *testing.T, n int) string {
 	t.Helper()
 	for len(d.typed) < n {
 		select {
-		case data := <-d.reader.data:
+		case data := <-d.reads.data:
 			d.input.Process(data)
 		case <-d.input.C:
 			d.input.Flush()
-		case err := <-d.reader.errors:
+		case err := <-d.reads.errors:
 			t.Fatalf("reader error after %q: %v", d.typed, err)
 		case <-time.After(10 * time.Second):
 			t.Fatalf("the reader delivered %q", d.typed)

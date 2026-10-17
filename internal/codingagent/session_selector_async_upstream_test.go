@@ -12,7 +12,7 @@ func scopeSession(id string) SessionInfo {
 // Upstream packages/coding-agent/test/session-selector-path-delete.test.ts:187,219 requires two further Tab inputs while the All loader is unresolved. This entry-boundary guard must pass before those scope-race cases can execute.
 func TestSessionSelectorScopeInputDoesNotAwaitLoader(t *testing.T) {
 	started, release, handled := make(chan struct{}), make(chan struct{}), make(chan struct{})
-	selector := newSessionSelector(
+	selector := newSessionSelectorFromListers(
 		func(SessionListOptions) ([]SessionInfo, error) { return []SessionInfo{scopeSession("current")}, nil },
 		func(SessionListOptions) ([]SessionInfo, error) {
 			close(started)

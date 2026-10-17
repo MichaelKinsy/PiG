@@ -1,3 +1,5 @@
+//go:build !pig_strip_bedrock_converse_stream
+
 package ai
 
 import (
@@ -11,7 +13,8 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	btypes "github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
+
+	btypes "github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime/types"
 )
 
 func TestReviewProvidersBedrockWhitespace(t *testing.T) {
@@ -48,7 +51,8 @@ func TestReviewProvidersBedrockWhitespace(t *testing.T) {
 					t.Errorf("user %T: %#v, want %q", content, messages[0].Content, want)
 				}
 			}
-			result, err := bedrockToolResultBlock(ToolResultMessage{ToolCallID: "call", Content: []ToolResultMessageContent{TextContent{Text: tc.text}}})
+			message := ToolResultMessage{ToolCallID: "call", Content: []ToolResultMessageContent{TextContent{Text: tc.text}}}
+			result, err := bedrockToolResultBlock(message, message.Content)
 			if err != nil {
 				t.Fatal(err)
 			}

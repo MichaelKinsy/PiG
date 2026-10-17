@@ -25,7 +25,7 @@ Execution placement must not change extension behavior. An extension uses the sa
 
 ## Known cross-process gaps
 
-The owner approves three visible known gaps for 0.3.x on 2026-09-28: the remaining SDK Provider surface and foreign configuration identity (D78), partial-message observation (D82), and event-bus scheduling boundaries across processes (D83, narrowed 2026-09-29). These are not claims of parity or general lifecycle waivers. See [Providers](/docs/latest/providers) and [RPC mode](/docs/latest/rpc).
+Three cross-process differences remain: the Provider object surface and foreign configuration identity (D78), partial-message observation (D82), and event-bus scheduling boundaries across processes (D83). See [Providers](/docs/latest/providers) and [RPC mode](/docs/latest/rpc).
 
 Every Node extension shares one `pi.events` bus, including explicitly isolated extensions and exact standalones. A listener in another process receives the emitter's original payload by reference: synchronous mutations, reentrant emits, retained and post-await aliases, and callbacks behave as in Pi. D83 names what differs across processes: independent tasks in different processes are ordered by timing, only a listener's first post-await continuation is ordered with the emitter's microtasks, reference cycles that cross processes are released when a process exits, and brand checks such as `util.types.isMap` fail on a foreign object, where `util.types.isProxy` also returns true. `util.inspect` with `customInspect: false` prints an empty placeholder object instead of a foreign payload, `util.inspect` with `showProxy: true` shows the Proxy wrapper, and on Node 26.0.0 and later `util.inspect` of a non-extensible foreign payload prints it inside `Proxy(...)`, because V8 offers no hook. Node 25 and earlier print that payload as Pi does. A listener that never returns blocks its emitter, as in Pi.
 
@@ -117,9 +117,11 @@ Use a Package when you need to distribute the extension to other applications. I
 
 ## MCP servers, virtual models and tool exposure
 
-An extension in any supported language can register MCP servers (`registerMcpServer`), virtual models (`registerVirtualModel`) and tools with `exposure`, `namespace`, `annotations`, `outputSchema`, `defaultActive` and `prepareLoadout`, and a tool can call other tools through `ctx.executeTool()`. See [MCP servers](mcp.md#extensions), [virtual models](virtual-models.md) and [codemode](codemode.md).
+An extension in any supported language can register MCP servers (`registerMcpServer`), virtual models (`registerVirtualModel`) and tools with `exposure`, `namespace`, `annotations`, `outputSchema`, `defaultActive`, `prepareLoadout` and `reachesTools`, and a tool can call other tools through `ctx.executeTool()`. `prepareLoadout` receives each tool's prompt guidelines (`getPromptGuidelines`); the default system prompt leaves hidden tools out of its tool list and rules, and names no tool in the skills hint when the file reader is hidden. See [MCP servers](mcp.md#extensions), [virtual models](virtual-models.md) and [codemode](codemode.md).
 
-`namespace: { name, description, instructions }` groups related tools, as MCP servers do. Codemode lists a namespace under one heading with its `description`. `instructions` holds longer usage guidance, such as MCP server instructions. It is not listed, and codemode scripts read it with `describeNamespace(name)`. A server config given to `registerMcpServer` accepts the same `description` as an `mcpServers` entry in `mcp.json`.
+A tool that reaches other tools, such as `codemode` or `tool_search`, declares which ones a call may reach with `reachesTools(input)`. It returns `"all"`, or the words of the input that may name tools. A word refers to every tool or namespace whose name contains it. `pi.getAllTools()` reports `reachesTools` for each tool. Pi 1.3.0 added `reachesTools`.
+
+`namespace: { name, aliases, description, instructions }` groups related tools, as MCP servers do. Codemode lists a namespace under one heading with its `description`. `instructions` holds longer usage guidance, such as MCP server instructions. It is not listed, and codemode scripts read it with `describeNamespace(name)`. `aliases` are other names that `describeNamespace()` and the `namespace` option of `searchTools()` accept, such as the server name `docs` for `mcp__docs`. Pi 1.3.0 added `aliases`. A server config given to `registerMcpServer` accepts the same `description` as an `mcpServers` entry in `mcp.json`.
 
 ## Markdown transformers
 
@@ -192,20 +194,13 @@ Fusion is a delivery optimization. Fused factories use the same registration and
 
 ## Session compaction events
 
-Register `session_before_compact` to inspect or replace compaction work. The
-event contains the preparation, branch entries, custom instructions, reason,
-retry state, and cancellation context. Return `cancel: true` to cancel the
-operation. Return `compaction` to provide the result without a model call.
+Register `session_before_compact` to inspect or replace compaction work. The event contains the preparation, branch entries, custom instructions, reason, retry state, and cancellation context. Return `cancel: true` to cancel the operation. Return `compaction` to provide the result without a model call.
 
-PiG persists a successful result before it emits `session_compact`. The event
-contains the persisted compaction entry, reason, retry state, and
-`fromExtension` value. Isolated, packed, and fused extensions receive the same
-events.
+PiG persists a successful result before it emits `session_compact`. The event contains the persisted compaction entry, reason, retry state, and `fromExtension` value. Isolated, packed, and fused extensions receive the same events.
 
-PiG emits `session_compact_failed` after a compaction fails or is aborted, once
-the `compaction_end` listeners have returned. The event contains the reason,
-`errorMessage` (absent when the compaction was aborted), `aborted`, retry state,
-and `fromExtension` value.
+A `session_compact` handler that calls `sendMessage({ triggerTurn: false })` during an overflow recovery has its message appended before the interrupted turn retries, so the retry sees it. Pi defers the message to the end of the run, after the retry (D138, Pi #9051).
+
+PiG emits `session_compact_failed` after a compaction fails or is aborted, once the `compaction_end` listeners have returned. The event contains the reason, `errorMessage` (absent when the compaction was aborted), `aborted`, retry state, and `fromExtension` value.
 
 PiG Standard requires every selected extension to fuse:
 
@@ -232,20 +227,27 @@ PiG instead provides a bounded failure contract:
 
 A heartbeat proves that the transport dispatcher is alive. It does not prove that an extension handler is making progress.
 
-Tools, commands, events, and shortcuts can perform long operations until they
-finish or are cancelled. Renderers use generation-scoped inactivity and retain
-the last valid frame when a new generation stalls.
+Tools, commands, events, and shortcuts can perform long operations until they finish or are cancelled. Renderers use generation-scoped inactivity and retain the last valid frame when a new generation stalls.
+
+When a run aborts while an extension tool runs, PiG cancels the tool's request, so its abort signal fires (Node `AbortSignal`, Go `ctx.Done()`, Rust and Python `is_cancelled`). A tool that settles within 3 seconds behaves as in Pi. A tool that has not settled by then fails with `Operation aborted`, the session is free again, and the tool's late answer is discarded. Pi waits for such a tool indefinitely (D111).
+
+An extension's standard error goes to its diagnostic log. The log keeps the first 1 MiB and the last 64 KiB of the output and states how many bytes it dropped. When an extension in a shared Go, Rust or Python process crashes, the error for each stopped extension says that `/reload` restarts it.
 
 ## Custom messages
 
 `pi.sendMessage(message, options)` uses the current Session in print, JSON, and RPC as well as interactive mode. An idle message with `triggerTurn: false` is persisted without starting a model turn. RPC emits its `message_start` and `message_end` before acknowledging the command that sent it. `deliverAs: "nextTurn"` defers delivery until a later prompt. Preserve omission of `triggerTurn` separately from explicit false when a run is active. The Session owns triggered work and shutdown; the bridge does not create another run owner.
 
+A run that `sendMessage({ triggerTurn: true })` starts while idle checks compaction, emits `before_agent_start`, applies its result, and delivers pending `nextTurn` messages before it starts. The event's `messageType` is `"custom"`, with `message` and no `prompt`; a user prompt has `messageType: "user"`. A handler that should act only on user prompts must check `event.messageType === "user"`. Pi 1.3.0 does the same; Pi 1.1.0 skipped these steps for such a run ([Pi #5581](https://github.com/earendil-works/pi/issues/5581)).
+
+The Session counts as busy from the moment a run starts, including while `before_agent_start` handlers run. During that time `ctx.isIdle()` returns false, `pi.sendMessage()` queues into the starting run, `pi.sendUserMessage()` requires `deliverAs`, and an abort aborts the run once it starts. This follows Pi 1.3.0. In Pi 1.1.0 a second `sendMessage` could start another run, which failed with "Agent is already processing" ([Pi #10739](https://github.com/earendil-works/pi/pull/10739)).
+
+Clearing the queue (RPC `clear_queue`, the SDK, or the interactive restore-to-editor key) removes only queued user messages. Custom messages that an extension queued with `deliverAs: "followUp"` or `"steer"` stay queued. Pi drops them without notice (D135, Pi #9886).
+
+A `waitForIdle()` call made during a run stays pending until the `agent_settled` handlers and every prompt they deferred have finished. An abort during settlement discards the deferred prompts. Pi resolves the waiter earlier and still starts a deferred prompt after an abort (D142, Pi #10704, #10705).
+
 ## Session context
 
-PiG loads session history for an extension only when the extension reads it. A
-persisted session is read from its local JSONL file and reconciled with the host
-cursor. If the file is unavailable, the host sends ordered pages of at most 4
-MB. Later appends use the same bounded path.
+PiG loads session history for an extension only when the extension reads it. A persisted session is read from its local JSONL file and reconciled with the host cursor. If the file is unavailable, the host sends ordered pages of at most 4 MB. Later appends use the same bounded path.
 
 ## Why PiG does not replay interrupted operations
 
@@ -288,7 +290,7 @@ Node also keeps native bytecode under `<config-root>/cache/node-compile` when a 
 
 ## Session replacement
 
-`/new`, `/resume`, `/fork`, `/clone`, `ctx.newSession()`, `ctx.fork()`, `ctx.switchSession()` and the RPC commands `new_session`, `switch_session`, `fork` and `clone` build the replacement Session's extensions from scratch: a new runner, new extension processes and a new `session_start`. PiG starts a fresh process where Pi calls the extension factory again inside the same Node process, so module-level state and process-wide state such as `process.env` do not carry over to the next Session (D70). The extension that requested the replacement keeps its process until its command handler returns. A `ctx` or `pi` that an extension captured before the replacement still answers local getters with the old Session's values, and its host calls are rejected with Pi's stale message without throwing at the call site: the SDK returns or raises an error or writes it to stderr, depending on the language (D30).
+`/new`, `/resume`, `/fork`, `/clone`, `ctx.newSession()`, `ctx.fork()`, `ctx.switchSession()` and the RPC commands `new_session`, `switch_session`, `fork` and `clone` build the replacement Session's extensions from scratch: a new runner, new extension processes and a new `session_start`. PiG starts a fresh process where Pi calls the extension factory again inside the same Node process, so module-level state and process-wide state such as `process.env` do not carry over to the next Session (D70). The extension that requested the replacement keeps its process until its command handler returns. A `ctx` that an extension captured before a replacement or reload raises Pi's stale message from `cwd`, `mode`, `hasUI` and `model`, as Pi throws it: Go and Rust panic with the message, and Python raises `RuntimeError`. The handler's error carries the message. Host calls through such a `ctx` or `pi` are rejected with the same message without throwing at the call site: the SDK returns or raises an error or writes it to stderr, depending on the language (D30).
 
 ## Cancellation
 
@@ -314,6 +316,8 @@ These lifetime rules belong to the multi-language bridge (D19). They do not repl
 
 Terminal listeners receive JavaScript UTF-16 strings. A printable character outside the BMP can arrive as separate high- and low-surrogate chunks, with an unmatched unit visible in the editor between them. Do not join chunks before returning a verdict. The wire uses valid JSON `\u` escapes for unmatched units.
 
+PiG's interactive driver owns terminal input. It runs the host's color and cell-size replies, the overlay fix-up and the host listener chain for each input chunk first, in Pi's order. An extension's terminal-input listener runs after them, asynchronously, and PiG keeps each chunk's place in the input order. In Pi the listener runs synchronously inside `TUI.start()`'s input handler (D105).
+
 Go SDK strings use the native editor's WTF-8 convention for unmatched units. Use `github.com/MichaelKinsy/PiG/extensions/sdk/json` instead of `encoding/json` when serializing callback text yourself. Node and Python strings retain these units naturally. Rust terminal and focused-component input callbacks receive `&JsString`, verdict `data` is `Option<JsString>`, and `get_editor_text` returns `JsString`. Use `as_units()` for lossless access, `from_units(...)` to construct a string, and `to_string_lossy()` only for display. Rust editor setters accept ordinary strings or `JsString`.
 
 ## Registration inputs
@@ -330,11 +334,23 @@ A subprocess extension can open focused custom UI. The extension renders local l
 
 One terminal gives focus to one extension dialog or overlay at a time. Other interactive calls wait outside the TUI loop. Cancellation removes a waiting call before it takes focus.
 
+A component opened as an overlay renders at the overlay's width, as in Pi: 80 columns or the available width, whichever is smaller, unless `overlayOptions` sets `width`, `minWidth` or `margin`. An inline component and a legacy titled modal (`title`, `widthFraction` or `heightFraction` without `overlayOptions`) render at the terminal width.
+
 Timer-driven render requests are available in Go, Rust, Python, and Node. PiG coalesces repeated requests, limits them to the 16 ms TUI frame interval, and sends only changed snapshots. Input-driven frames remain immediate.
+
+A component opened with `ctx.ui.custom` receives mouse events in fullscreen mode, as in Pi: clicks, presses, drags, wheel and hover, with coordinates local to the component. Implement Pi's `handleMouse` in Node, `sdk.MouseHandler` in Go, and `handle_mouse` in Rust and Python. Select and settings lists in component-kit views respond to clicks and the wheel.
 
 The host rejects stale-width, out-of-order, and late-generation frames. The SDK detaches timer invalidation before it disposes the component. Completion, cancellation, reload, disconnect, and shutdown stop component work. A callback that does not return causes a bounded cleanup error instead of concurrent disposal.
 
 PiG Standard includes PiG Runner as an ordinary Go extension. `/runner` and `/pig-runner` use the same public custom-component contract as any other extension. A Standard Binary fuses the extension without a private Stock PiG launcher.
+
+## User bash operations
+
+A `user_bash` handler can return Pi's `{ operations }` result in every SDK, for example to run `!` commands over SSH. The `BashOperations` object stays in the extension. The host runs the user's command through its `exec` with `onData`, `signal`, `timeout` and `env`. Node returns Pi's object as is, Go returns `map[string]any{"operations": sdk.BashOperations{Exec: ...}}`, Python returns an object with an `exec` method, and Rust returns `ctx.bash_operations(...)`.
+
+## Tool render context
+
+Tool renderers receive `outputPad` (`context.outputPad` in Node, `OutputPad` in Go, `output_pad` in Rust and Python) and `durationMs`, the milliseconds the tool's `execute` took. A renderer with `renderShell: "self"` applies `outputPad` itself. `ctx.ui.theme.sourcePath` reports the active theme's own source file.
 
 ## Extension-owned state
 
@@ -365,9 +381,66 @@ Before you install an extension:
 - understand its required files, commands, network access, and secrets;
 - use a container or virtual machine when you need a security boundary.
 
-## Breaking changes / Go SDK migration to 0.3.0
+## Upgrade a Go extension written for an older SDK
 
-Pi 1.0.3 represents unknown context usage as null, not zero. Go therefore keeps `ContextUsage.Tokens` as `*int` and `Percent` as `*float64`. `GetContextUsage()` returns nil when there is no usable model window, and a host failure as an error in every SDK (Go `error`, Rust `io::Result`, Python `HostCallError`). After compaction, a non-nil usage can contain nil counts. Rust uses `Option`; Python uses `None` for the same states.
+PiG compiles a Go extension against the SDK of the pig that runs it, so an SDK release can break an extension written for an earlier one (D109). Pi has no equivalent: it loads extension source in process. When a build fails on a changed SDK symbol, pig reports `go build: written for an older SDK` and names each changed API with its old and new shape, instead of printing only the compiler log:
+
+```text
+Extension "ask" was written for an older SDK:
+  Context.GetSessionID: func() string -> func() (string, error) (SDK 0.3.0)
+  SendMessageOptions.TriggerTurn: bool -> *bool (SDK 0.2.0)
+Run: pig extension upgrade /home/me/.pig/agent/extensions/ask
+```
+
+A build that also fails on an error that is not an SDK change, in the extension or in another extension of the same packed cell, keeps the plain build message.
+
+`pig extension upgrade [<name|path>...] [--all] [--dry-run] [--summary]` rewrites the extension with the rules in `extensions/sdk/upgrade`. The rules parse and type-check the Go source, edit only the SDK uses they recognize, and format the result with `go/format`. The command copies the original files to `<config root>/state/extension-upgrade/<time>-<name>/` first (`<time>-<name>-2/` and so on when that directory exists), prints a unified diff, rebuilds the extension, and reports one status per extension: `upgraded`, `up to date`, `needs manual changes`, `failed` or `skipped`. `--dry-run` prints the diff and changes nothing. `--summary` prints one line per extension. With no argument, the command upgrades every Go extension that settings, packages, the agent directory and a trusted project directory load.
+
+Before, written for SDK 0.2.0:
+
+```go
+ext.OnSessionStart(func(ctx sdk.Context, _ map[string]any) (any, error) {
+	id := ctx.GetSessionID()
+	return nil, ctx.SendMessage("note", id, true, sdk.SendMessageOptions{TriggerTurn: true})
+})
+```
+
+After `pig extension upgrade`:
+
+```go
+ext.OnSessionStart(func(ctx sdk.Context, _ map[string]any) (any, error) {
+	id, err := ctx.GetSessionID()
+	if err != nil {
+		return nil, err
+	}
+	return nil, ctx.SendMessage("note", id, true, sdk.SendMessageOptions{TriggerTurn: sdk.Bool(true)})
+})
+```
+
+The rules rewrite the host-backed getters, the optional boolean fields, and `ContextUsage.Tokens` and `Percent`. A getter call moves out of its statement, including an `if` or `switch` init statement, together with any `Cwd`, `Mode`, `HasUI`, `Width`, `Height` or `ToolCallID` call before it so the calls keep their order. A `ConfigHome` call that is the only argument of a variadic call, such as `fmt.Println(ctx.ConfigHome())`, still compiles because its value and its error both become arguments, so the error is printed or passed on instead of handled. When the extension's `go.mod` requires an SDK older than 0.5.0, the rules find that call and rewrite it the same way, and list it rather than discard its error. A call whose parameter for the error has the type `error`, such as `check(home string, errs ...error)`, already receives the error and stays. A function that returns an error returns the getter's error. In a function that does not, a host-backed getter's error is discarded with a comment, which keeps the old SDK's empty value on failure, while a `ConfigHome` call is listed for you instead: the old `ConfigHome` could not fail, and an empty configuration root would make its paths relative to the working directory. A use that cannot move without changing the order of evaluation, such as one in a `select` case, and a getter's method value passed where the old signature is wanted, are listed with the reason. A change with no safe rewrite, such as the typed `SetEditorComponent` factory, the `ToolConstrainedSampling` union, the `AutocompleteProviderFactory` type or a provider object's `*sdk.Credential`, is reported with its remedy and the file stays as it was. An upgrade is all or nothing: if writing a file or the rebuild of the upgraded extension fails, pig restores every file it changed and the report says so.
+
+Interactive startup lists a drifted extension and asks `Run pig extension upgrade <path>... now? [y/N]` before it exits. Yes upgrades and rebuilds them, then loads the extensions again in the same process and continues startup, so a `--fork`, `--session-id` or `--name` takes effect once. No exits as Pi does on an extension load error. Print, JSON and RPC modes print the command to standard error and exit 1, and write nothing to standard output.
+
+Set `extensionsAutoUpgrade` to `true` in the global settings file to run the rules at startup and after `pig update` without the question. Each upgraded extension gets a backup and one line on standard error. The setting is off by default, a project settings file cannot turn it on, and only the rules run; no agent edits an extension.
+
+When two loaded extensions register the same tool and one directory is a copy of the other, pig names both directories and suggests removing the older copy. Pi's tool-conflict error stays as it is.
+
+## SDK changes in 0.5.0
+
+These SDK changes break extensions written for 0.4.x. `pig extension upgrade` rewrites each Go change that has a safe rewrite and reports the others with their remedy (see [Upgrade a Go extension written for an older SDK](#upgrade-a-go-extension-written-for-an-older-sdk)).
+
+- `Context.SetEditorComponent` in the Go SDK takes an `sdk.EditorFactory` instead of `any`. The old `any` form accepted only nil.
+- The configuration-root getter can fail. Go `Context.ConfigHome` returns `(string, error)`, Python `config_home` raises `RuntimeError`, and Rust `Context::config_home` returns `io::Result<String>`, each when the home directory is needed and unavailable. The Rust SDK no longer reads `GOPI_HOME`; set `PIG_HOME` instead.
+- A provider object's `OAuthAuth.Login` takes the app's login options as its second argument, and a Go provider's credential is `*sdk.Credential` instead of `map[string]any`. See [Custom providers](/docs/latest/custom-provider).
+- `ProviderStreamOptions` gains `OnProviderStreamEvent` (`on_provider_stream_event`) and loses `TransformHeaders` (`transform_headers`) in Go, Python and Rust.
+- Rust `on_event` and `on_event_result`, and Python `on_event`, lose the `can_block` argument. Pi has no such concept, and the host never read it.
+- The subprocess wire type `CommandDecl` has no `Args` field. Pi's `registerCommand` has no such option.
+
+An extension that fails while registering shows its own error in the load message, also when its process has just exited. A Rust panic is reported with its message.
+
+## Go SDK changes in 0.3.0
+
+Pi 1.3.0 represents unknown context usage as null, not zero. Go therefore keeps `ContextUsage.Tokens` as `*int` and `Percent` as `*float64`. `GetContextUsage()` returns nil when there is no usable model window, and a host failure as an error in every SDK (Go `error`, Rust `io::Result`, Python `HostCallError`). After compaction, a non-nil usage can contain nil counts. Rust uses `Option`; Python uses `None` for the same states.
 
 Before:
 
@@ -423,6 +496,19 @@ Pi's exec and dialog `timeout` is a number, so fractional and very large values 
 
 Legacy `github.com/mainstai/pig/extensions/sdk` imports remain buildable in factories and exact standalones. PiG creates a private alias of the current SDK, including its subpackages and self-imports, without editing authored files (D19). Use the current `github.com/MichaelKinsy/PiG/extensions/sdk` path for new or fused extensions.
 
+## Replace the editor
+
+An extension replaces the input editor with `setEditorComponent` and reads its own replacement back with `getEditorComponent`, as in Pi. Every runtime has both calls and they behave alike:
+
+| Runtime | Install | Read back |
+|---|---|---|
+| Node | `ctx.ui.setEditorComponent(factory)` | `ctx.ui.getEditorComponent()` |
+| Go | `Context.SetEditorComponent(factory sdk.EditorFactory) error` | `Context.GetEditorComponent() any` (a non-nil result is an `sdk.EditorFactory`) |
+| Rust | `Context::set_editor_component(factory)` | `Context::get_editor_component() -> Option<EditorFactory>` |
+| Python | `Context.set_editor_component(factory)` | `Context.get_editor_component()` |
+
+The factory receives the host's default editor, which the component embeds as its `super`. A nil or `undefined` factory, or the SDK's clear call, restores the host's editor. The getter returns the factory this extension installed last. It returns nothing before an install, after the editor is cleared, with no UI, and in RPC mode, where installing does nothing, as in Pi. It never returns another extension's factory.
+
 ## SDKs
 
 PiG ships subprocess SDK bridges for:
@@ -431,9 +517,9 @@ PiG ships subprocess SDK bridges for:
 - Rust: `extensions/sdk-rs`;
 - Python: `extensions/sdk-py`.
 
-Node extensions use Pi-compatible exports through the Node runtime bridge. The
-`extensions/sdk-ts` package re-exports the pinned Pi types and declares PiG-only
-calls. It contains no runtime implementation.
+Node extensions use Pi-compatible exports through the Node runtime bridge. The `extensions/sdk-ts` package re-exports the pinned Pi types and declares PiG-only calls. It contains no runtime implementation.
+
+Runnable examples for each language are in `examples/extensions/`: `go-factory`, `rust-factory`, `python-factory` and `node-factory`.
 
 All runtime bridges target the same current extension behavior. A new capability is incomplete until each supported runtime exposes equivalent behavior and the conformance suite can detect a broken implementation.
 

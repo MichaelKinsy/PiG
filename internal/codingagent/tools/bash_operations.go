@@ -10,7 +10,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"math"
 	"os"
@@ -69,19 +68,33 @@ type LocalShellOperations struct {
 	BinDir string
 }
 
-// NewLocalBashOperations mirrors upstream createLocalBashOperations: local
-// execution through getShellConfig(settings.getShellPath()), read when a
-// command runs, so an invalid shell path fails that command.
-func NewLocalBashOperations(settings SettingsView, binDir string) *LocalShellOperations {
+// LocalBashOptions is createLocalBashOperations' `{ shellPath?: string }` (bash.ts:174). BinDir is the directory getShellEnv prepends to PATH
+// (config.ts getBinDir); Pi reads it from its process-wide agent directory, so Go carries it with the options.
+type LocalBashOptions struct {
+	// ShellPath selects the shell; empty resolves the platform default (shell.ts getShellConfig). A path that does not exist fails the command.
+	ShellPath string
+	BinDir    string
+}
+
+// CreateLocalBashOperations is upstream createLocalBashOperations(options?): local execution through getShellConfig(options.shellPath),
+// resolved when a command runs. nil options select the default shell.
+func CreateLocalBashOperations(options *LocalBashOptions) *LocalShellOperations {
+	var resolved LocalBashOptions
+	if options != nil {
+		resolved = *options
+	}
 	return &LocalShellOperations{
 		ShellName:    "bash",
-		BinDir:       binDir,
-		ResolveShell: func() (ShellConfig, error) { return GetShellConfig(settings) },
+		BinDir:       resolved.BinDir,
+		ResolveShell: func() (ShellConfig, error) { return GetShellConfig(resolved.ShellPath) },
 	}
 }
 
 // Exec runs command through the resolved shell, streaming output to
 // opts.OnData, and waits for the shell (not its background descendants).
+// The chunk OnData receives is lent for the call: the pipe reader reads
+// into one buffer, so a consumer copies what it keeps, as the bash tool's
+// accumulator and the user-bash executor do.
 func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, opts BashOperationsExecOptions) (BashOperationsResult, error) {
 	if o.WrapCommand != nil {
 		command = o.WrapCommand(command)
@@ -148,9 +161,8 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 	// byte: Git Bash parses it with MSYS2 rules, not the C runtime's.
 	nodespawn.SetProgram(cmd)
 	nodespawn.SetCommandLine(cmd)
-	// Start closes the child's ends of the pipes. Upstream tracks the child from its spawn until its wait ends, so an
-	// exit without orderly shutdown kills it.
-	if err := detachedChildren.start(cmd); err != nil {
+	// Start closes the child's ends of the pipes.
+	if err := startTrackedShell(cmd); err != nil {
 		_ = pr.Close()
 		if stdinWrite != nil {
 			_ = stdinWrite.Close()
@@ -158,14 +170,14 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 		return BashOperationsResult{}, &shellSpawnError{path: shell.Path, cause: err}
 	}
 	defer releaseProcessGroup(cmd.Process)
-	defer detachedChildren.untrack(cmd.Process)
+	defer UntrackDetachedChild(cmd.Process)
 	// os/exec copies a reader to the child's stdin the same way, and Wait
 	// waits for that copy.
 	var input sync.WaitGroup
 	if stdinWrite != nil {
 		input.Go(func() {
 			// A write error means that the shell stopped reading.
-			_, _ = io.WriteString(stdinWrite, command)
+			_, _ = stdinWrite.WriteString(command)
 			_ = stdinWrite.Close()
 		})
 	}
@@ -242,7 +254,12 @@ func (e *shellSpawnError) Error() string {
 		code = "ENOENT"
 	}
 	if code != "" {
-		return "spawn " + e.path + " " + code
+		// child_process.spawn emits these errors with the file in the syscall and throws every other errno, such as ENOTDIR for a working directory that is a file, with the bare syscall "spawn" (internal/child_process.js ChildProcess.spawn).
+		switch code {
+		case "EACCES", "EAGAIN", "EMFILE", "ENFILE", "ENOENT":
+			return "spawn " + e.path + " " + code
+		}
+		return "spawn " + code
 	}
 	return e.cause.Error()
 }
@@ -258,9 +275,27 @@ func (e *shellSpawnError) Is(target error) bool {
 // ENOENT.
 func (e *shellSpawnError) notFound() bool { return errors.Is(e.cause, exec.ErrNotFound) }
 
-// Test hooks that order the reader, the shell's exit and the grace without
+// startTrackedShell starts the shell, attaches it to its process group and tracks it. A shell that is started but
+// not yet tracked would survive KillTrackedDetachedChildren, so the kill waits for the spawn to finish tracking. The
+// deferred unlock keeps a panic here from blocking the crash handler's kill forever.
+func startTrackedShell(cmd *exec.Cmd) error {
+	trackedDetachedChildren.spawning.RLock()
+	defer trackedDetachedChildren.spawning.RUnlock()
+	if err := nodespawn.Start(cmd); err != nil {
+		return err
+	}
+	attachProcessGroup(cmd.Process)
+	if testHookAfterShellStart != nil {
+		testHookAfterShellStart()
+	}
+	TrackDetachedChild(cmd.Process)
+	return nil
+}
+
+// Test hooks that order the reader, the shell's exit, the grace and the kill without
 // sleeps. Nil outside tests.
 var (
 	testHookBeforeStdioRead   func()
 	testHookStdioGraceExpired func()
+	testHookAfterShellStart   func()
 )

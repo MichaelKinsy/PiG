@@ -9,7 +9,6 @@ export * from "./models-store.js";
 export * from "./providers/faux.js";
 export * from "./session-resources.js";
 export * from "./types.js";
-export * from "./utils/assistant-message-frame.js";
 export * from "./utils/diagnostics.js";
 export * from "./utils/event-stream.js";
 export * from "./utils/json-parse.js";

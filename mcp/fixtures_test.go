@@ -7,9 +7,12 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // The stdio fixtures of packages/mcp/test/fixtures, run as the test binary
@@ -36,6 +39,34 @@ func TestMain(m *testing.M) {
 	case "term-server":
 		runShutdownFixture(false)
 		return
+	case "cwd":
+		wd, err := os.Getwd()
+		if err != nil {
+			os.Exit(1)
+		}
+		fmt.Fprint(os.Stderr, wd)
+		return
+	case "stderr-flood":
+		// 4000 bytes of "a", then the marker; the transport keeps only the tail.
+		fmt.Fprint(os.Stderr, strings.Repeat("a", 4000)+"TAIL")
+		return
+	case "stderr-flood-default":
+		// 100 KiB of "a", then the marker: more than the default retained cap of 64 KiB.
+		fmt.Fprint(os.Stderr, strings.Repeat("a", 100*1024)+"TAIL")
+		return
+	case "stderr-invalid-utf8":
+		// Two bytes that are not UTF-8, between two words; Buffer.toString("utf8") shows each as U+FFFD.
+		fmt.Fprint(os.Stderr, "ab\xff\xfecd")
+		return
+	case "blank-lines":
+		// Lines of only JavaScript whitespace (BOM, no-break space), a notification, then a line of only U+0085, which
+		// String.prototype.trim does not remove; then wait for SIGTERM.
+		_, _ = fmt.Fprint(os.Stdout, "\ufeff\n\u00a0 \u2003\n{\"jsonrpc\":\"2.0\",\"method\":\"ping\"}\n\u0085\n")
+		sleepForever()
+	case "stdout-flood":
+		// One 3000-byte line with no newline, then wait for SIGTERM.
+		_, _ = fmt.Fprint(os.Stdout, strings.Repeat("x", 3000))
+		sleepForever()
 	case "environ":
 		// The server reports its environment, in block order, on stderr.
 		if err := json.NewEncoder(os.Stderr).Encode(os.Environ()); err != nil {
@@ -43,7 +74,7 @@ func TestMain(m *testing.M) {
 		}
 		return
 	}
-	os.Exit(m.Run())
+	os.Exit(testenv.RunWithoutGoroutineLeaks(m))
 }
 
 func writeMessage(id any, result any, errorObject any) {

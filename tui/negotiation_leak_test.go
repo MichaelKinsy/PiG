@@ -27,6 +27,8 @@ func TestReadInputStripsEveryNegotiationResponse(t *testing.T) {
 		{"flags alone then a keystroke", "\x1b[?7uc", "c"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			// The flags reply turns on the process-wide Kitty state (keys.ts setKittyProtocolActive); later tests in the package parse keys without it.
+			t.Cleanup(func() { SetKittyProtocolActive(false) })
 			r, w, err := os.Pipe()
 			if err != nil {
 				t.Fatalf("pipe: %v", err)
@@ -41,7 +43,7 @@ func TestReadInputStripsEveryNegotiationResponse(t *testing.T) {
 				// a keystroke after the responses to prove they were consumed.
 				payload += "z"
 			}
-			if _, err := w.Write([]byte(payload)); err != nil {
+			if _, err := w.WriteString(payload); err != nil {
 				t.Fatalf("write: %v", err)
 			}
 

@@ -50,7 +50,7 @@ reason = "D2: the same onboarding sentence starts with the host product name; al
 # beside the lines Pi draws below its logo. These rules remove exactly those 16 head cells (the one-cell padding,
 # 16 half-block or transparent cells and their colors) and the cell that separates them from the text; every hint,
 # its ANSI styling and spacing stay compared byte for byte. The head's pixels are pinned by
-# coding/piglogin/testdata/head-*.golden and internal/codingagent/pi_logo_upstream_test.go.
+# TestEveryHeadIsTheSharedGrid and TestEveryHeadIsTheSpritesPig in coding/piglogin and by internal/codingagent/pi_logo_upstream_test.go.
 [[assert.normalize_replace]]
 pattern = '(?m)^ (?:(?:\x1b\[[0-9;]*m)*[▀▄ ]){1,16}(?:\x1b\[[0-9;]*m)*[ ]*$'
 with = ""

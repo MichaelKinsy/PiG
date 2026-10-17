@@ -34,9 +34,15 @@ ready_timeout_seconds = 30
 capture_start = "LIFECYCLE before:at"
 capture_end = "resume:start:ok"
 
+# /clone checks that the Session file exists (agent-session-runtime.ts fork: "not been saved yet"), and both
+# programs write it on message_end, after awaiting the extensions' message_end handlers (_handleAgentEvent). The
+# answer is visible before that from message_update. Pi's handlers run in process, so its await is microtasks;
+# PiG's extensions are subprocesses, so a /clone typed the moment "42" appears could run before the write. The
+# step therefore also waits for rpc-demo.ts's turn_end status, which both programs set only after the message is
+# persisted. Only the LIFECYCLE line is compared, so this changes when /clone is typed, not what is compared.
 [[tmux.steps]]
 keys = ["What is 20+22?", "Enter"]
-wait_contains = ["42"]
+wait_contains = ["42", "Turn 1 done"]
 wait_timeout_seconds = 15
 
 [[tmux.steps]]

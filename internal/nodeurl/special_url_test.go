@@ -38,3 +38,15 @@ func TestSpecialURLPathPreservesProtocolDriveRules(t *testing.T) {
 		}
 	}
 }
+
+// Node's `new URL("https://xn--.example")` throws (measured on Node v24.19): a label that is only the xn-- prefix has no punycode to decode.
+func TestSpecialHostRejectsAnEmptyPunycodeLabel(t *testing.T) {
+	for _, host := range []string{"xn--.example", "XN--", "a.xn--", "a.xn--.b"} {
+		if got, err := SpecialHost(host); err == nil {
+			t.Errorf("SpecialHost(%q) = %q, want an error", host, got)
+		}
+	}
+	if got, err := SpecialHost("xn--mnich-kva.example"); err != nil || got != "xn--mnich-kva.example" {
+		t.Errorf("SpecialHost of a valid punycode label = %q, %v", got, err)
+	}
+}

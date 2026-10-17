@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // releaseWorkflow is the part of a GitHub Actions workflow the example's

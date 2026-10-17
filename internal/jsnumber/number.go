@@ -9,7 +9,30 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/MichaelKinsy/PiG/internal/jsparity"
 )
+
+// ParseInt is Number.parseInt(text, 10): after JavaScript whitespace and an optional sign it reads the longest run of ASCII digits, and is NaN when none follows.
+func ParseInt(text string) float64 {
+	text = strings.TrimLeftFunc(text, isWhitespace)
+	sign := 1.0
+	switch {
+	case strings.HasPrefix(text, "-"):
+		sign, text = -1, text[1:]
+	case strings.HasPrefix(text, "+"):
+		text = text[1:]
+	}
+	end := 0
+	for end < len(text) && text[end] >= '0' && text[end] <= '9' {
+		end++
+	}
+	if end == 0 {
+		return math.NaN()
+	}
+	value, _ := strconv.ParseFloat(text[:end], 64)
+	return sign * value
+}
 
 // FromJSON returns ToNumber of the value JSON.parse produces for raw. A nil or empty raw is undefined, which converts to NaN.
 func FromJSON(raw []byte) float64 {
@@ -45,6 +68,30 @@ func FromJSON(raw []byte) float64 {
 		}
 		return value
 	}
+}
+
+// StringFromJSON returns ToString (String(value)) of the value JSON.parse produces for raw. A nil or empty raw is undefined.
+func StringFromJSON(raw []byte) string {
+	raw = bytes.TrimSpace(raw)
+	if len(raw) == 0 {
+		return "undefined"
+	}
+	switch raw[0] {
+	case 'n':
+		return "null"
+	case 't', 'f':
+		return string(raw)
+	case '"':
+		var text string
+		_ = json.Unmarshal(raw, &text)
+		return text
+	case '{':
+		return "[object Object]"
+	case '[':
+		text, _ := toPrimitiveString(raw)
+		return text
+	}
+	return String(FromJSON(raw))
 }
 
 // toPrimitiveString applies Array.prototype.toString (join with ",") to a JSON array.
@@ -194,6 +241,25 @@ func isWhitespace(r rune) bool {
 	return unicode.Is(unicode.Zs, r)
 }
 
+// Round is Math.round: the integral value nearest value, with halves toward +Infinity. A value in [-0.5, 0) rounds to -0, one in
+// (0, 0.5) to +0, and NaN, infinities and zeros return unchanged. Unlike math.Floor(value+0.5), it does not round
+// 0.49999999999999994 up or move an odd integer above 2^52, where the addition itself rounds.
+func Round(value float64) float64 {
+	switch {
+	case math.IsNaN(value) || math.IsInf(value, 0) || value == 0:
+		return value
+	case value > 0 && value < 0.5:
+		return 0
+	case value < 0 && value >= -0.5:
+		return math.Copysign(0, -1)
+	}
+	rounded := math.Floor(value)
+	if value-rounded >= 0.5 {
+		rounded++
+	}
+	return rounded
+}
+
 // String implements Number::toString for base 10.
 func String(value float64) string {
 	switch {
@@ -203,11 +269,8 @@ func String(value float64) string {
 		return "Infinity"
 	case math.IsInf(value, -1):
 		return "-Infinity"
-	case value == 0:
-		return "0"
 	}
-	encoded, _ := json.Marshal(value)
-	return string(encoded)
+	return string(jsparity.AppendNumber(nil, value))
 }
 
 // JSON returns JSON.stringify(value): non-finite numbers serialize as null and -0 as 0.

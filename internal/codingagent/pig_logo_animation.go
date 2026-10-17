@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/piglogin"
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -92,7 +93,7 @@ func jsNumber(value float64) float64 { return value }
 
 var (
 	logoPuzzleStart = jsNumber(logoFlyStart) + logoFlyDuration + 3
-	logoPuzzleCycle = jsNumber(logoPuzzleStep)*logoPuzzleSteps + logoPuzzleReturn + logoPuzzleHold
+	logoPuzzleCycle = float64(jsNumber(logoPuzzleStep)*logoPuzzleSteps) + logoPuzzleReturn + logoPuzzleHold
 	// logoShuffleEnd is the end of Pi's shuffle within a cycle (PUZZLE_STEP * PUZZLE_STEPS).
 	logoShuffleEnd = jsNumber(logoPuzzleStep) * logoPuzzleSteps
 )
@@ -194,12 +195,12 @@ func jsHypot(values ...float64) float64 {
 	sum, compensation := 0.0, 0.0
 	for _, value := range values {
 		scaled := value / largest
-		summand := scaled*scaled - compensation
+		summand := float64(scaled*scaled) - compensation
 		preliminary := sum + summand
 		compensation = (preliminary - sum) - summand
 		sum = preliminary
 	}
-	return math.Sqrt(sum) * largest
+	return float64(math.Sqrt(sum) * largest)
 }
 
 func clamp01(value float64) float64 {
@@ -212,22 +213,21 @@ func clamp01(value float64) float64 {
 	return value
 }
 
-// logoSmooth is the quintic smoothstep.
+// logoSmooth is the quintic smoothstep. The result is converted so that, inlined, it stays rounded before a caller's
+// 1 - logoSmooth(x) as a JavaScript return value is, instead of fusing into that subtraction.
 func logoSmooth(value float64) float64 {
 	t := clamp01(value)
-	return t * t * t * (t*(t*6-15) + 10)
+	return float64(t * t * t * (float64(t*(float64(t*6)-15)) + 10))
 }
 
 func logoEaseOut(value float64) float64 {
 	t := 1 - clamp01(value)
-	return 1 - t*t*t
+	return 1 - float64(t*t*t)
 }
 
 func logoMix(a, b logoRgb, amount float64) logoRgb {
-	return logoRgb{a[0] + (b[0]-a[0])*amount, a[1] + (b[1]-a[1])*amount, a[2] + (b[2]-a[2])*amount}
+	return logoRgb{a[0] + float64((b[0]-a[0])*amount), a[1] + float64((b[1]-a[1])*amount), a[2] + float64((b[2]-a[2])*amount)}
 }
-
-func jsRoundFloat(value float64) float64 { return math.Floor(value + 0.5) }
 
 // jsToUint32 is ECMAScript ToUint32, the operand conversion of Math.imul and the bitwise operators.
 func jsToUint32(value float64) uint32 {
@@ -248,7 +248,7 @@ func logoHash(value float64) float64 {
 
 // logoIsLight reports whether a background is light, by relative luminance.
 func logoIsLight(c logoRgb) bool {
-	return 0.2126*c[0]+0.7152*c[1]+0.0722*c[2] > 128
+	return float64(0.2126*c[0])+float64(0.7152*c[1])+float64(0.0722*c[2]) > 128
 }
 
 func logoToRgb(color tui.Color) logoRgb {
@@ -271,30 +271,6 @@ func logoGlyphInk(text string, seed float64) int {
 	return 4 + int(math.Floor(seed*3))
 }
 
-// jsParseInt is Number.parseInt for the decimal SGR parameters: leading whitespace, an optional sign, then digits; NaN
-// when there are none.
-func jsParseInt(text string) float64 {
-	text = widthx.JSTrim(text)
-	sign := 1.0
-	if strings.HasPrefix(text, "-") {
-		sign, text = -1, text[1:]
-	} else {
-		text = strings.TrimPrefix(text, "+")
-	}
-	end := 0
-	for end < len(text) && text[end] >= '0' && text[end] <= '9' {
-		end++
-	}
-	if end == 0 {
-		return math.NaN()
-	}
-	value := 0.0
-	for _, digit := range text[:end] {
-		value = value*10 + float64(digit-'0')
-	}
-	return sign * value
-}
-
 // parseLogoScreen parses rendered lines into cells with resolved colors. Other escape sequences (OSC, APC, cursor) are
 // skipped.
 func parseLogoScreen(lines []string, width int, foreground, background logoRgb) [][]logoScreenCell {
@@ -312,7 +288,7 @@ func parseLogoScreen(lines []string, width int, foreground, background logoRgb) 
 			for i := 0; i < len(codes); i++ {
 				var parts []float64
 				for part := range strings.SplitSeq(codes[i], ":") {
-					parts = append(parts, jsParseInt(part))
+					parts = append(parts, jsnumber.ParseInt(part))
 				}
 				code := parts[0]
 				switch {
@@ -329,7 +305,7 @@ func parseLogoScreen(lines []string, width int, foreground, background logoRgb) 
 					} else {
 						kind := math.NaN()
 						if i+1 < len(codes) {
-							kind = jsParseInt(codes[i+1])
+							kind = jsnumber.ParseInt(codes[i+1])
 						}
 						count := 1
 						switch kind {
@@ -339,7 +315,7 @@ func parseLogoScreen(lines []string, width int, foreground, background logoRgb) 
 							count = 4
 						}
 						for _, part := range codes[min(i+1, len(codes)):min(i+1+count, len(codes))] {
-							args = append(args, jsParseInt(part))
+							args = append(args, jsnumber.ParseInt(part))
 						}
 						i += count
 					}
@@ -485,7 +461,7 @@ func logoMultiply(a, b [9]float64) [9]float64 {
 	var result [9]float64
 	for row := range 3 {
 		for column := range 3 {
-			result[row*3+column] = a[row*3]*b[column] + a[row*3+1]*b[3+column] + a[row*3+2]*b[6+column]
+			result[row*3+column] = float64(a[row*3]*b[column]) + float64(a[row*3+1]*b[3+column]) + float64(a[row*3+2]*b[6+column])
 		}
 	}
 	return result
@@ -499,7 +475,7 @@ const (
 
 var (
 	logoSpinSpeed      = (math.Pi * 2) / logoPuzzleCycle
-	logoFirstFrontView = logoPuzzleStart + jsNumber(logoPuzzleStep)*logoPuzzleSteps + logoPuzzleReturn + logoPuzzleHold/2
+	logoFirstFrontView = logoPuzzleStart + float64(jsNumber(logoPuzzleStep)*logoPuzzleSteps) + logoPuzzleReturn + logoPuzzleHold/2
 )
 
 // logoBaseSpinPhase is a uniform spin that accelerates from rest over logoSpinRamp, then turns at logoSpinSpeed.
@@ -511,9 +487,9 @@ func logoBaseSpinPhase(time float64) float64 {
 	u := elapsed / logoSpinRamp
 	// Integral of the quintic smoothstep ramp.
 	if u < 1 {
-		return logoSpinSpeed * logoSpinRamp * (math.Pow(u, 6) - 3*math.Pow(u, 5) + 2.5*math.Pow(u, 4))
+		return float64(logoSpinSpeed * logoSpinRamp * (math.Pow(u, 6) - float64(3*math.Pow(u, 5)) + float64(2.5*math.Pow(u, 4))))
 	}
-	return logoSpinSpeed * (logoSpinRamp*0.5 + elapsed - logoSpinRamp)
+	return float64(logoSpinSpeed * (logoSpinRamp*0.5 + elapsed - logoSpinRamp))
 }
 
 // logoSpinAlignment is extra rotation added during the flight, so the phase is a whole number of turns at every front view.
@@ -521,13 +497,13 @@ var logoSpinAlignment = math.Pi*2 - math.Mod(logoBaseSpinPhase(logoFirstFrontVie
 
 // logoSpinPhase is whole turns exactly when the pig faces the camera at home.
 func logoSpinPhase(time float64) float64 {
-	return logoBaseSpinPhase(time) + logoSpinAlignment*logoSmooth((time-logoFlyStart)/logoFlyDuration)
+	return logoBaseSpinPhase(time) + float64(logoSpinAlignment*logoSmooth((time-logoFlyStart)/logoFlyDuration))
 }
 
 // logoSpinAngle is the yaw. It matches the phase at whole turns but lingers there, so the pig reads from the front.
 func logoSpinAngle(time float64) float64 {
 	phase := logoSpinPhase(time)
-	return phase - logoSpinLinger*math.Sin(phase)
+	return phase - float64(logoSpinLinger*math.Sin(phase))
 }
 
 type logoFace struct {
@@ -644,15 +620,15 @@ func (r *logoRaster) renderLayer(width, height int, pose logoPose, boxes []logoB
 		sx := (float64(face.minX) + 0.5 - centerX) / scale
 		for dotY := face.minY; dotY <= face.maxY; dotY++ {
 			sy := (float64(dotY) + 0.5 - centerY) / scale
-			directionA := m[a]*sx + m[3+a]*sy - m[6+a]*cameraDistance
-			directionU := m[u]*sx + m[3+u]*sy - m[6+u]*cameraDistance
-			directionV := m[v]*sx + m[3+v]*sy - m[6+v]*cameraDistance
+			directionA := float64(m[a]*sx) + float64(m[3+a]*sy) - float64(m[6+a]*cameraDistance)
+			directionU := float64(m[u]*sx) + float64(m[3+u]*sy) - float64(m[6+u]*cameraDistance)
+			directionV := float64(m[v]*sx) + float64(m[3+v]*sy) - float64(m[6+v]*cameraDistance)
 			index := dotY*dotWidth + face.minX
 			for dotX := face.minX; dotX <= face.maxX; dotX, index = dotX+1, index+1 {
 				t := (face.plane - originA) / directionA
 				if t > 0 && t < float64(depth[index]) {
-					hitU := originU + t*directionU
-					hitV := originV + t*directionV
+					hitU := originU + float64(t*directionU)
+					hitV := originV + float64(t*directionV)
 					if hitU >= face.uMin && hitU <= face.uMax && hitV >= face.vMin && hitV <= face.vMax {
 						depth[index] = float32(t)
 						faceIDs[index] = uint16(faceIndex + 1)
@@ -677,7 +653,7 @@ func (r *logoRaster) renderLayer(width, height int, pose logoPose, boxes []logoB
 			}
 			face := faces[id-1]
 			// Points farther from the camera fade slightly toward the background for depth.
-			fog := clamp01(0.15 - cameraDistance*(1-float64(depth[index]))*0.12)
+			fog := clamp01(0.15 - float64(cameraDistance*(1-float64(depth[index]))*0.12))
 			if light {
 				fog *= 0.5
 			}
@@ -691,9 +667,9 @@ func (r *logoRaster) renderLayer(width, height int, pose logoPose, boxes []logoB
 			cell := cellY*width + cellX
 			bits[cell] |= logoDotBits[(dotY&3)*2+(dotX&1)]
 			counts[cell]++
-			rgb[cell*3] = float32(float64(rgb[cell*3]) + (face.red + (background[0]-face.red)*fog))
-			rgb[cell*3+1] = float32(float64(rgb[cell*3+1]) + (face.green + (background[1]-face.green)*fog))
-			rgb[cell*3+2] = float32(float64(rgb[cell*3+2]) + (face.blue + (background[2]-face.blue)*fog))
+			rgb[cell*3] = float32(float64(rgb[cell*3]) + (face.red + float64((background[0]-face.red)*fog)))
+			rgb[cell*3+1] = float32(float64(rgb[cell*3+1]) + (face.green + float64((background[1]-face.green)*fog)))
+			rgb[cell*3+2] = float32(float64(rgb[cell*3+2]) + (face.blue + float64((background[2]-face.blue)*fog)))
 			cellMinX = min(cellMinX, cellX)
 			cellMaxX = max(cellMaxX, cellX)
 			cellMinY = min(cellMinY, cellY)
@@ -768,10 +744,10 @@ func (r *logoRaster) renderHalo(strength float64) {
 					continue
 				}
 				weight := logoHaloWeightsX[dx+logoHaloRadiusX] / 8
-				coverage += float64(count) * weight
-				red += float64(rgb[source*3]) * weight
-				green += float64(rgb[source*3+1]) * weight
-				blue += float64(rgb[source*3+2]) * weight
+				coverage += float64(float64(count) * weight)
+				red += float64(float64(rgb[source*3]) * weight)
+				green += float64(float64(rgb[source*3+1]) * weight)
+				blue += float64(float64(rgb[source*3+2]) * weight)
 			}
 			target := ((y-cells.minY)*regionWidth + (x - minX)) * 4
 			horizontal[target] = float32(coverage)
@@ -792,10 +768,10 @@ func (r *logoRaster) renderHalo(strength float64) {
 				}
 				weight := logoHaloWeightsY[dy+logoHaloRadiusY]
 				source := ((sourceY-cells.minY)*regionWidth + (x - minX)) * 4
-				coverage += float64(horizontal[source]) * weight
-				red += float64(horizontal[source+1]) * weight
-				green += float64(horizontal[source+2]) * weight
-				blue += float64(horizontal[source+3]) * weight
+				coverage += float64(float64(horizontal[source]) * weight)
+				red += float64(float64(horizontal[source+1]) * weight)
+				green += float64(float64(horizontal[source+2]) * weight)
+				blue += float64(float64(horizontal[source+3]) * weight)
 			}
 			target := y*width + x
 			// Cells under the pig keep at least their own coverage, so faces stay solidly tinted.
@@ -810,14 +786,14 @@ func (r *logoRaster) renderHalo(strength float64) {
 				continue
 			}
 			// Quantized so neighboring cells usually share a background and its escape sequence.
-			amount := jsRoundFloat(strength*math.Pow(math.Min(1, coverage), 0.7)*logoHaloLevels) / logoHaloLevels
+			amount := jsnumber.Round(strength*math.Pow(math.Min(1, coverage), 0.7)*logoHaloLevels) / logoHaloLevels
 			if amount <= 0 {
 				continue
 			}
 			r.haloAmount[target] = float32(amount)
-			r.haloRgb[target*3] = float32(jsRoundFloat(red/coverage/logoColorStep) * logoColorStep)
-			r.haloRgb[target*3+1] = float32(jsRoundFloat(green/coverage/logoColorStep) * logoColorStep)
-			r.haloRgb[target*3+2] = float32(jsRoundFloat(blue/coverage/logoColorStep) * logoColorStep)
+			r.haloRgb[target*3] = float32(jsnumber.Round(red/coverage/logoColorStep) * logoColorStep)
+			r.haloRgb[target*3+1] = float32(jsnumber.Round(green/coverage/logoColorStep) * logoColorStep)
+			r.haloRgb[target*3+2] = float32(jsnumber.Round(blue/coverage/logoColorStep) * logoColorStep)
 		}
 	}
 	r.haloDirty = &logoBounds{minX: minX, minY: minY, maxX: maxX, maxY: maxY}
@@ -864,12 +840,12 @@ func (r *logoRaster) visibleFaces(m [9]float64, origin [3]float64, pose logoPose
 						corner[a] = plane
 						corner[u] = cornerU
 						corner[v] = cornerV
-						x := m[0]*corner[0] + m[1]*corner[1] + m[2]*corner[2]
-						y := m[3]*corner[0] + m[4]*corner[1] + m[5]*corner[2]
-						z := m[6]*corner[0] + m[7]*corner[1] + m[8]*corner[2]
+						x := float64(m[0]*corner[0]) + float64(m[1]*corner[1]) + float64(m[2]*corner[2])
+						y := float64(m[3]*corner[0]) + float64(m[4]*corner[1]) + float64(m[5]*corner[2])
+						z := float64(m[6]*corner[0]) + float64(m[7]*corner[1]) + float64(m[8]*corner[2])
 						perspective := (pose.scale * r.cameraDistance) / (r.cameraDistance - z)
-						screenX := pose.centerX + x*perspective
-						screenY := pose.centerY + y*perspective
+						screenX := pose.centerX + float64(x*perspective)
+						screenY := pose.centerY + float64(y*perspective)
 						minX = math.Min(minX, screenX)
 						minY = math.Min(minY, screenY)
 						maxX = math.Max(maxX, screenX)
@@ -891,24 +867,24 @@ func (r *logoRaster) visibleFaces(m [9]float64, origin [3]float64, pose logoPose
 				nx := m[a] * side
 				ny := m[3+a] * side
 				nz := m[6+a] * side
-				diffuse := math.Max(0, nx*logoLight[0]+ny*logoLight[1]+nz*logoLight[2])
-				rim := math.Max(0, nx*0.8-nz*0.3)
+				diffuse := math.Max(0, float64(nx*logoLight[0])+float64(ny*logoLight[1])+float64(nz*logoLight[2]))
+				rim := math.Max(0, float64(nx*0.8)-float64(nz*0.3))
 				// On light backgrounds, highlights toward white would vanish, so faces only get darker than the
 				// sprite's colors there.
 				specular, shade := 0.0, 0.0
 				if lightBackground {
-					shade = math.Min(1, 0.55+diffuse*0.45+rim*0.1)
+					shade = math.Min(1, 0.55+float64(diffuse*0.45)+float64(rim*0.1))
 				} else {
-					specular = math.Pow(math.Max(0, nx*logoHalfVector[0]+ny*logoHalfVector[1]+nz*logoHalfVector[2]), 24) * 0.6 * 255
-					shade = 0.45 + diffuse*0.78 + rim*0.25
+					specular = math.Pow(math.Max(0, float64(nx*logoHalfVector[0])+float64(ny*logoHalfVector[1])+float64(nz*logoHalfVector[2])), 24) * 0.6 * 255
+					shade = 0.45 + float64(diffuse*0.78) + float64(rim*0.25)
 				}
 				face.axis = a
 				face.plane = plane
 				face.uMin, face.uMax = box.min[u], box.max[u]
 				face.vMin, face.vMax = box.min[v], box.max[v]
-				face.red = math.Min(255, box.color[0]*shade+specular)
-				face.green = math.Min(255, box.color[1]*shade+specular)
-				face.blue = math.Min(255, box.color[2]*shade+specular)
+				face.red = math.Min(255, float64(box.color[0]*shade)+specular)
+				face.green = math.Min(255, float64(box.color[1]*shade)+specular)
+				face.blue = math.Min(255, float64(box.color[2]*shade)+specular)
 				faces = append(faces, face)
 			}
 		}
@@ -1144,7 +1120,7 @@ func (a *pigLogoAnimation) renderFrame(width int, runner *pigRunner) []string {
 		settle := 1 - logoSmooth(landing)
 		dissolveTime = math.Min(a.exit.time, logoDissolveEnd) * (1 - progress)
 		pose = a.pose(width, height, a.flyProgress(a.exit.time)*settle, a.exit.time)
-		pose.yaw = a.exit.yaw + (a.exit.targetYaw-a.exit.yaw)*logoEaseOut(landing)
+		pose.yaw = a.exit.yaw + float64((a.exit.targetYaw-a.exit.yaw)*logoEaseOut(landing))
 		pose.pitch *= settle
 		pose.roll *= settle
 		hintAlpha = a.hintAlpha(a.exit.time) * (1 - logoSmooth(progress/0.2))
@@ -1173,8 +1149,8 @@ func (a *pigLogoAnimation) renderFrame(width int, runner *pigRunner) []string {
 		pixel, centerX, centerY := a.model.pixel, a.model.centerX(), a.model.centerY()
 		for index, block := range a.blocks {
 			offset := offsets[index]
-			x := block.home[0]*pixel - centerX + offset[0]*pixel
-			y := block.home[1]*pixel - centerY + offset[1]*pixel
+			x := float64(block.home[0]*pixel) - centerX + float64(offset[0]*pixel)
+			y := float64(block.home[1]*pixel) - centerY + float64(offset[1]*pixel)
 			a.boxes = append(a.boxes, logoBox{
 				min:   [3]float64{x, y, offset[2] - logoDepth/2},
 				max:   [3]float64{x + pixel, y + pixel, offset[2] + logoDepth/2},
@@ -1210,7 +1186,7 @@ func (a *pigLogoAnimation) renderFrame(width int, runner *pigRunner) []string {
 		return logoMix(base, logoRgb{float64(color[index*3]), float64(color[index*3+1]), float64(color[index*3+2])}, amount), true
 	}
 	backgroundFade := logoSmooth(dissolveTime / logoBackgroundFade)
-	textFade := logoSmooth(dissolveTime/0.6) * 0.3
+	textFade := float64(logoSmooth(dissolveTime/0.6) * 0.3)
 	// Once the screen has fully dissolved, the text layer is empty and can be skipped.
 	textActive := dissolveTime < logoDissolveEnd || backgroundFade < 1
 	hint := a.hint(width, height, hintAlpha, background)
@@ -1218,7 +1194,7 @@ func (a *pigLogoAnimation) renderFrame(width int, runner *pigRunner) []string {
 	now := a.elapsed()
 	// Star brightness is quantized, so a row only changes when one of its stars steps to another level instead of on
 	// every frame.
-	starLevel := jsRoundFloat(starAlpha*logoStarAlphaLevels) / logoStarAlphaLevels
+	starLevel := jsnumber.Round(starAlpha*logoStarAlphaLevels) / logoStarAlphaLevels
 	starfield := func(index int) (string, logoRgb, bool) {
 		if starLevel <= 0 || index >= len(a.stars) {
 			return "", logoRgb{}, false
@@ -1227,8 +1203,8 @@ func (a *pigLogoAnimation) renderFrame(width int, runner *pigRunner) []string {
 		if star == nil {
 			return "", logoRgb{}, false
 		}
-		flicker := jsRoundFloat((0.5+0.5*math.Sin(now*star.speed+star.phase))*logoStarFlickerLevel) / logoStarFlickerLevel
-		return star.glyph, logoMix(background, logoMix(foreground, star.tint, 0.5), star.strength*(0.7+0.3*flicker)*starLevel), true
+		flicker := jsnumber.Round((0.5+float64(0.5*math.Sin(float64(now*star.speed)+star.phase)))*logoStarFlickerLevel) / logoStarFlickerLevel
+		return star.glyph, logoMix(background, logoMix(foreground, star.tint, 0.5), star.strength*(0.7+float64(0.3*flicker))*starLevel), true
 	}
 	lines := make([]string, 0, height)
 	var line strings.Builder
@@ -1291,9 +1267,9 @@ func (a *pigLogoAnimation) renderFrame(width int, runner *pigRunner) []string {
 				step := float64(logoColorStep * int(logo.counts[index]))
 				rgb := logo.rgb
 				color := logoRgb{
-					jsRoundFloat(float64(rgb[index*3])/step) * logoColorStep,
-					jsRoundFloat(float64(rgb[index*3+1])/step) * logoColorStep,
-					jsRoundFloat(float64(rgb[index*3+2])/step) * logoColorStep,
+					jsnumber.Round(float64(rgb[index*3])/step) * logoColorStep,
+					jsnumber.Round(float64(rgb[index*3+1])/step) * logoColorStep,
+					jsnumber.Round(float64(rgb[index*3+2])/step) * logoColorStep,
 				}
 				emit(logoBraille[dots], color, true, cellBg, hasCellBg)
 				continue
@@ -1318,7 +1294,7 @@ func (a *pigLogoAnimation) renderFrame(width int, runner *pigRunner) []string {
 			}
 			dotCount := cell.ink
 			if dust >= 0 {
-				dotCount = int(jsRoundFloat(float64(cell.ink) * (1 - clamp01(dust))))
+				dotCount = int(jsnumber.Round(float64(cell.ink) * (1 - clamp01(dust))))
 			}
 			if dotCount <= 0 {
 				glyph, fg, ok := starfield(index)
@@ -1332,14 +1308,14 @@ func (a *pigLogoAnimation) renderFrame(width int, runner *pigRunner) []string {
 			var bits uint8
 			placed := 0
 			for attempt := 0; placed < dotCount && attempt < 32; attempt++ {
-				bit := logoDotBits[int(math.Floor(logoHash(float64(cell.seed)*7919+frame*131+float64(attempt))*8))]
+				bit := logoDotBits[int(math.Floor(logoHash(float64(float64(cell.seed)*7919)+float64(frame*131)+float64(attempt))*8))]
 				if bits&bit != 0 {
 					continue
 				}
 				bits |= bit
 				placed++
 			}
-			fade := textFade + (1-textFade)*math.Pow(clamp01(dust), 0.8)
+			fade := textFade + float64((1-textFade)*math.Pow(clamp01(dust), 0.8))
 			emit(logoBraille[bits], logoMix(cell.fg, background, fade), true, cellBg, hasCellBg)
 		}
 		line.WriteString("\x1b[0m")
@@ -1386,18 +1362,18 @@ func (a *pigLogoAnimation) pose(width, height int, progress, time float64) logoP
 	// Lifting off, the front face must cover exactly the half-block cells (2x2 dots per pixel) despite the perspective.
 	model := &a.model
 	startScale := model.startScale
-	endScale := math.Max(startScale, math.Min(float64(width)*2*model.widthShare, (float64(height)*4-8)*0.48)/model.reach)
+	endScale := math.Max(startScale, math.Min(float64(width)*2*model.widthShare, (float64(float64(height)*4)-8)*0.48)/model.reach)
 	endX := float64(width)
-	endY := float64(height)*2 - 2
+	endY := float64(float64(height)*2) - 2
 	startX, startY := endX, endY
 	if model.origin {
-		startX = float64(a.options.logoColumn*2) + model.centerX()*(2/model.pixel)
-		startY = float64(a.options.logoRow*4) + model.centerY()*(2/model.pixel)
+		startX = float64(a.options.logoColumn*2) + float64(model.centerX()*(2/model.pixel))
+		startY = float64(a.options.logoRow*4) + float64(model.centerY()*(2/model.pixel))
 	}
 	phase := logoSpinPhase(time)
 	return logoPose{
-		centerX: startX + (endX-startX)*progress,
-		centerY: startY + (endY-startY)*progress,
+		centerX: startX + float64((endX-startX)*progress),
+		centerY: startY + float64((endY-startY)*progress),
 		// Interpolate the zoom geometrically so it feels uniform.
 		scale: startScale * math.Pow(endScale/startScale, progress),
 		yaw:   logoSpinAngle(time),
@@ -1421,7 +1397,7 @@ func (a *pigLogoAnimation) hint(width, height int, alpha float64, background log
 	if len(text) > width {
 		return nil
 	}
-	colors := tui.ActiveTheme().ColorValues()
+	colors := tui.ActiveTheme().Colors()
 	return &logoHint{
 		row:       height - 2,
 		start:     (width - len(text)) / 2,
@@ -1443,9 +1419,9 @@ func (a *pigLogoAnimation) prepareStars(width, height int) []*logoStar {
 		stars[index] = &logoStar{
 			glyph:    logoBraille[logoDotBits[int(math.Floor(random(1)*8))]],
 			tint:     logoStarTints[int(math.Floor(random(2)*float64(len(logoStarTints))))],
-			strength: 0.1 + random(3)*0.12,
+			strength: 0.1 + float64(random(3)*0.12),
 			phase:    random(4) * math.Pi * 2,
-			speed:    0.4 + random(5)*0.8,
+			speed:    0.4 + float64(random(5)*0.8),
 		}
 	}
 	return stars
@@ -1472,7 +1448,7 @@ func (a *pigLogoAnimation) prepareCells(width int, foreground logoRgb) [][]logoS
 			seed := logoHash(float64(row*65_537 + column))
 			if cell.width != 0 {
 				distance := jsHypot(float64(column)-centerX, (float64(row)-centerY)*2) / farthest
-				cell.delay = logoFlyStart + distance*logoWaveSpread + seed*logoWaveJitter
+				cell.delay = logoFlyStart + float64(distance*logoWaveSpread) + float64(seed*logoWaveJitter)
 			} else {
 				cell.delay = owner.delay
 			}
@@ -1501,7 +1477,7 @@ func (a *pigLogoAnimation) prepareCells(width int, foreground logoRgb) [][]logoS
 }
 
 func logoPack(color logoRgb) int {
-	return int(jsRoundFloat(color[0]))<<16 | int(jsRoundFloat(color[1]))<<8 | int(jsRoundFloat(color[2]))
+	return int(jsnumber.Round(color[0]))<<16 | int(jsnumber.Round(color[1]))<<8 | int(jsnumber.Round(color[2]))
 }
 
 func (a *pigLogoAnimation) ansi(key int, isBackground bool) string {
@@ -1513,7 +1489,7 @@ func (a *pigLogoAnimation) ansi(key int, isBackground bool) string {
 		return value
 	}
 	color := tui.RgbColorValue{R: float64((key >> 16) & 255), G: float64((key >> 8) & 255), B: float64(key & 255)}
-	mode := tui.ActiveTheme().ColorMode()
+	mode := tui.ActiveTheme().GetColorMode()
 	var value string
 	if isBackground {
 		value = tui.BackgroundAnsi(color, mode)

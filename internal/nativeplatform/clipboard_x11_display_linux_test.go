@@ -20,13 +20,13 @@ func TestX11DisplayTransportPrefixes(t *testing.T) {
 		input string
 		want  x11Display
 	}{
-		{":3.1", x11Display{number: "3", screen: 1, local: true}},
-		{"127.0.0.1:2", x11Display{host: "127.0.0.1", number: "2"}},
-		{"tcp/127.0.0.1:2", x11Display{host: "127.0.0.1", number: "2"}},
-		{"[::1]:2", x11Display{host: "::1", number: "2"}},
-		{"tcp/[::1]:2.3", x11Display{host: "::1", number: "2", screen: 3}},
-		{"unix/:2", x11Display{host: "unix", number: "2", local: true}},
-		{"host/unix:2", x11Display{host: "unix", number: "2", local: true}},
+		{":3.1", x11Display{number: 3, screen: 1, local: true}},
+		{"127.0.0.1:2", x11Display{host: "127.0.0.1", number: 2}},
+		{"tcp/127.0.0.1:2", x11Display{host: "127.0.0.1", number: 2}},
+		{"[::1]:2", x11Display{host: "::1", number: 2}},
+		{"tcp/[::1]:2.3", x11Display{host: "::1", number: 2, screen: 3}},
+		{"unix/:2", x11Display{host: "unix", number: 2, local: true}},
+		{"host/unix:2", x11Display{host: "unix", number: 2, local: true}},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			got, err := parseX11Display(tc.input)

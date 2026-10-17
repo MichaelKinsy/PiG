@@ -1,0 +1,27 @@
+# Behavior family: project-trust (system prompt sections: project context)
+# Pi 1.1.0 probe: system-prompt.ts buildSystemPromptSections (renderProjectContext, buildRules, skills, cwd, addendum and custom sections) over 1500 seeded probes: tool selections (hidden, with and without
+# snippets and guidelines, bash, PowerShell, grep, find and ls rule variants), guidelines that differ by JavaScript whitespace, an appended prompt, custom sections (a name once; invalid names throw), context
+# files with quotes, backslashes and non-ASCII paths and contents, skills with markup characters, and cwd with backslashes. Each probe's ordered sections are compared as one JSON line, without the
+# product preamble and the docs section (D22, D92). The Go test TestSystemPromptSectionsMatchPi runs the same corpus against the vendored Pi module; this scenario compares the two printed streams.
+name = "23-system-prompt-sections"
+description = "The structured system prompt, including the project instructions, is the same sections as Pi's for every probe."
+covers = ["packages/coding-agent/src/core/system-prompt.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/system-prompt-sections-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/system-prompt-sections-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 240
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['project_context', '<project_instructions path=', 'Project-specific instructions and guidelines:', '"rules"', '"skills"', '"cwd"']
+runs = 2

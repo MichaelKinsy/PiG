@@ -33,7 +33,149 @@ func Value(raw []byte) any {
 }
 
 // UnmarshalFields decodes data into v, a pointer to a struct, like encoding/json, then replaces each named member of an `any` field with [Value] of its raw JSON, so an object an extension supplied is not reordered by a Go map. A named member absent from data leaves its field as it is. v must not have an UnmarshalJSON method that calls UnmarshalFields: decode into a local alias type.
+//
+// It decodes data once: each named field (an `any` holding nil) is pointed at a placeholder that keeps the decoder from building the member
+// as a map, and the member's raw JSON is found by a walk over the top-level object. Anything that walk cannot settle exactly as the three
+// decodes did (an error, a field already set or not an `any`, a key that matches a member only case-insensitively) takes those decodes.
 func UnmarshalFields(data []byte, v any, members ...string) error {
+	target := reflect.ValueOf(v)
+	if target.Kind() != reflect.Pointer || target.IsNil() || target.Elem().Kind() != reflect.Struct || len(members) > maxSinglePassMembers {
+		return unmarshalFieldsThreePass(data, v, members)
+	}
+	structure := target.Elem()
+	var fieldArray [maxSinglePassMembers]reflect.Value
+	fields := fieldArray[:len(members)]
+	for i, member := range members {
+		field, ok := fieldByJSONName(structure, member)
+		if !ok || field.Kind() != reflect.Interface || field.NumMethod() != 0 || !field.IsNil() {
+			return unmarshalFieldsThreePass(data, v, members)
+		}
+		fields[i] = field
+	}
+	placeholder := reflect.ValueOf(&skipMember{})
+	for _, field := range fields {
+		field.Set(placeholder)
+	}
+	err := json.Unmarshal(data, v)
+	var rawArray [maxSinglePassMembers][]byte
+	raws := rawArray[:len(members)]
+	if err != nil || !lastMembers(data, members, raws) {
+		for _, field := range fields {
+			field.SetZero()
+		}
+		return unmarshalFieldsThreePass(data, v, members)
+	}
+	for i, field := range fields {
+		// An absent member leaves the field the nil it held; null and invalid JSON are Value's nil.
+		if decoded := Value(raws[i]); decoded == nil {
+			field.SetZero()
+		} else {
+			field.Set(reflect.ValueOf(decoded))
+		}
+	}
+	return nil
+}
+
+// maxSinglePassMembers is the most named members UnmarshalFields decodes in one pass; callers name one or two.
+const maxSinglePassMembers = 4
+
+// skipMember is the placeholder a named field holds while data decodes: the decoder hands it the member's raw JSON, which it ignores.
+type skipMember struct{}
+
+func (*skipMember) UnmarshalJSON([]byte) error { return nil }
+
+// lastMembers sets raws[i] to the raw JSON of the last member of the top-level object in data whose key is members[i] (nil when there is
+// none), as a map[string]json.RawMessage decode keeps it. data is valid JSON. It reports false when a key matches a member only
+// case-insensitively, which encoding/json decodes into that member's field.
+func lastMembers(data []byte, members []string, raws [][]byte) bool {
+	i := skipSpace(data, 0)
+	if i >= len(data) || data[i] != '{' {
+		return true
+	}
+	i = skipSpace(data, i+1)
+	for i < len(data) && data[i] != '}' {
+		keyEnd := stringEnd(data, i)
+		key := data[i+1 : keyEnd-1]
+		if bytes.IndexByte(key, '\\') >= 0 {
+			var unquoted string
+			if json.Unmarshal(data[i:keyEnd], &unquoted) != nil {
+				return false
+			}
+			key = []byte(unquoted)
+		}
+		start := skipSpace(data, skipSpace(data, keyEnd)+1) // past the colon
+		i = valueEnd(data, start)
+		for m, member := range members {
+			if string(key) == member {
+				raws[m] = data[start:i]
+			} else if bytes.EqualFold(key, []byte(member)) {
+				return false
+			}
+		}
+		if i = skipSpace(data, i); i < len(data) && data[i] == ',' {
+			i = skipSpace(data, i+1)
+		}
+	}
+	return true
+}
+
+func skipSpace(data []byte, i int) int {
+	for i < len(data) && (data[i] == ' ' || data[i] == '\t' || data[i] == '\n' || data[i] == '\r') {
+		i++
+	}
+	return i
+}
+
+// stringEnd is the index just past the string token that starts at data[i].
+func stringEnd(data []byte, i int) int {
+	for j := i + 1; ; {
+		quote := bytes.IndexByte(data[j:], '"')
+		if quote < 0 {
+			return len(data)
+		}
+		j += quote
+		backslashes := 0
+		for k := j - 1; k > i && data[k] == '\\'; k-- {
+			backslashes++
+		}
+		if backslashes%2 == 0 {
+			return j + 1
+		}
+		j++
+	}
+}
+
+// valueEnd is the index just past the value token that starts at data[i].
+func valueEnd(data []byte, i int) int {
+	switch data[i] {
+	case '"':
+		return stringEnd(data, i)
+	case '{', '[':
+		depth := 0
+		for i < len(data) {
+			switch data[i] {
+			case '"':
+				i = stringEnd(data, i)
+				continue
+			case '{', '[':
+				depth++
+			case '}', ']':
+				if depth--; depth == 0 {
+					return i + 1
+				}
+			}
+			i++
+		}
+		return i
+	}
+	for i < len(data) && data[i] != ',' && data[i] != '}' && data[i] != ']' && data[i] != ' ' && data[i] != '\t' && data[i] != '\n' && data[i] != '\r' {
+		i++
+	}
+	return i
+}
+
+// unmarshalFieldsThreePass is UnmarshalFields by three decodes: the struct, the members again as raw JSON, then Value of each named member.
+func unmarshalFieldsThreePass(data []byte, v any, members []string) error {
 	if err := json.Unmarshal(data, v); err != nil {
 		return err
 	}

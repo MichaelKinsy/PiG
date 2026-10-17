@@ -1,7 +1,6 @@
 package mcp
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"strconv"
@@ -101,23 +100,22 @@ func ConsumeSSEStream(r io.Reader, options ConsumeSSEOptions) error {
 		return nil
 	}
 
-	var buffered []byte
+	var lines lineSplitter
 	chunk := make([]byte, 32*1024)
 	for {
 		n, readErr := r.Read(chunk)
 		if n > 0 {
-			buffered = append(buffered, chunk[:n]...)
+			lines.write(chunk[:n])
 			for {
-				newline := bytes.IndexByte(buffered, '\n')
-				if newline < 0 {
+				line, ok := lines.next()
+				if !ok {
 					break
 				}
-				if err := processLine(string(buffered[:newline])); err != nil {
+				if err := processLine(string(line)); err != nil {
 					return err
 				}
-				buffered = buffered[newline+1:]
 			}
-			if len(buffered) > maxEventBytes {
+			if lines.pendingLen() > maxEventBytes {
 				return &sseTooLargeError{maxEventBytes}
 			}
 		}
@@ -128,8 +126,8 @@ func ConsumeSSEStream(r io.Reader, options ConsumeSSEOptions) error {
 			return readErr
 		}
 	}
-	if len(buffered) > 0 {
-		if err := processLine(string(buffered)); err != nil {
+	if rest := lines.pending(); len(rest) > 0 {
+		if err := processLine(string(rest)); err != nil {
 			return err
 		}
 	}

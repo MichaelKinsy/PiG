@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -8,14 +9,16 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/url"
-	"reflect"
+	"slices"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
+	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 )
 
 const (
@@ -24,6 +27,103 @@ const (
 	codexWebSocketCacheTTL       = 5 * time.Minute
 	codexWebSocketMaxAge         = 55 * time.Minute
 )
+
+// codexWebSocketError is a WebSocket transport failure as Node's WebSocket reports it to openai-codex-responses.ts: extractWebSocketError's "WebSocket error" for a failed handshake or a dropped connection, and extractWebSocketCloseError's WebSocketCloseError, with the close code, for a close frame (openai-codex-responses.ts:1250-1288).
+type codexWebSocketError struct {
+	name    string
+	message string
+	code    *int
+	cause   error
+}
+
+func (e *codexWebSocketError) Error() string { return e.message }
+func (e *codexWebSocketError) Name() string  { return e.name }
+func (e *codexWebSocketError) Unwrap() error { return e.cause }
+
+// DiagnosticCode is WebSocketCloseError's `code`, the close code.
+func (e *codexWebSocketError) DiagnosticCode() any {
+	if e.code == nil {
+		return nil
+	}
+	return *e.code
+}
+
+// nodeWebSocketError maps a gorilla dial, write or read failure to the error Node's WebSocket gives. Node fires `error` before `close` for a connection that ends without a close frame (1006), so only a received close frame is a WebSocketCloseError.
+func nodeWebSocketError(err error) error {
+	if closeError, ok := errors.AsType[*websocket.CloseError](err); ok && closeError.Code != websocket.CloseAbnormalClosure {
+		code := closeError.Code
+		message := "WebSocket closed " + strconv.Itoa(code)
+		if closeError.Text != "" {
+			message += " " + closeError.Text
+		} else if code == websocket.CloseMessageTooBig {
+			message += " message too big"
+		}
+		return &codexWebSocketError{name: "WebSocketCloseError", message: message, code: &code, cause: err}
+	}
+	return &codexWebSocketError{name: "Error", message: "WebSocket error", cause: err}
+}
+
+// codexAPIError is CodexApiError, the error mapCodexEvents throws for an `error` event (openai-codex-responses.ts:682-693).
+type codexAPIError struct {
+	message string
+	code    string
+}
+
+func (e *codexAPIError) Error() string { return e.message }
+func (e *codexAPIError) Name() string  { return "CodexApiError" }
+func (e *codexAPIError) DiagnosticCode() any {
+	if e.code == "" {
+		return nil
+	}
+	return e.code
+}
+
+// codexWebSocketTransportFailure marks a read failure after the message stream started, so the parser records the transport failure before it ends the message.
+type codexWebSocketTransportFailure struct{ err error }
+
+func (e *codexWebSocketTransportFailure) Error() string { return e.err.Error() }
+func (e *codexWebSocketTransportFailure) Unwrap() error { return e.err }
+
+// codexTransportFailureDiagnostic is the provider_transport_failure diagnostic openai-codex-responses.ts:356-365 appends when the WebSocket transport fails: before the message stream started the request falls back to SSE, after it the error ends the message.
+func codexTransportFailureDiagnostic(failure error, transport Transport, started bool, requestBytes int) AssistantMessageDiagnostic {
+	configured := string(transport)
+	if configured == "" {
+		configured = string(TransportAuto)
+	}
+	phase := "before_message_stream_start"
+	if started {
+		phase = "after_message_stream_start"
+	}
+	details := newDiagnosticDetails()
+	details.set("configuredTransport", configured, nil)
+	if !started {
+		details.set("fallbackTransport", "sse", nil)
+	}
+	details.set("eventsEmitted", started, nil)
+	details.set("phase", phase, nil)
+	details.set("requestBytes", requestBytes, nil)
+	return details.attach(CreateAssistantMessageDiagnostic("provider_transport_failure", failure, nil))
+}
+
+// codexTransportFailureReader appends the after-start transport failure diagnostic to the message, on the parser's goroutine, when the WebSocket feed fails.
+type codexTransportFailureReader struct {
+	io.Reader
+	ctx          context.Context
+	builder      *assistantStreamBuilder
+	transport    Transport
+	requestBytes int
+	recorded     bool
+}
+
+func (r *codexTransportFailureReader) Read(p []byte) (int, error) {
+	n, err := r.Reader.Read(p)
+	if failure, ok := errors.AsType[*codexWebSocketTransportFailure](err); ok && !r.recorded && r.ctx.Err() == nil {
+		r.recorded = true
+		AppendAssistantMessageDiagnostic(r.builder.partial, codexTransportFailureDiagnostic(failure.err, r.transport, true, r.requestBytes))
+		r.builder.touch()
+	}
+	return n, err
+}
 
 // OpenAICodexWebSocketDebugStats reports connection and continuation behavior
 // for one logical Codex session.
@@ -44,10 +144,15 @@ type OpenAICodexWebSocketDebugStats struct {
 	LastWebSocketError      string
 }
 
+// codexWebSocketContinuation is what the next request on the connection is compared with (openai-codex-responses.ts
+// getCachedWebSocketInputDelta). Pi compares JSON.stringify texts, so the previous request is kept as the text of its members and
+// input items, not as a decoded tree.
 type codexWebSocketContinuation struct {
-	lastRequestBody   map[string]any
-	lastResponseID    string
-	lastResponseItems []any
+	// lastRest is the previous request's members other than input and previous_response_id, in its order.
+	lastRest       []jsonMember
+	lastResponseID string
+	// baseline is the previous request's input items, then the items of its response.
+	baseline []json.RawMessage
 }
 
 type codexWebSocketEntry struct {
@@ -179,25 +284,43 @@ func codexWebSocketFallbackActive(sessionID string) bool {
 	return codexWebSocketSessions.fallback[sessionID]
 }
 
+// resolveCodexWebSocketURL is resolveCodexWebSocketUrl for an endpoint that resolveCodexURL has produced: `new URL(endpoint)` with https: switched to wss: and http: to ws:. Pi's WebSocket constructor rejects any other
+// scheme when it connects; the dial here fails earlier with an unsupported-scheme error.
 func resolveCodexWebSocketURL(endpoint string) (string, error) {
-	parsed, err := url.Parse(endpoint)
+	href, err := codexWebSocketHref(endpoint)
 	if err != nil {
 		return "", err
 	}
-	switch parsed.Scheme {
-	case "https":
-		parsed.Scheme = "wss"
-	case "http":
-		parsed.Scheme = "ws"
-	case "wss", "ws":
-	default:
-		return "", fmt.Errorf("openai-codex-responses: unsupported WebSocket URL scheme %q", parsed.Scheme)
+	if strings.HasPrefix(href, "wss:") || strings.HasPrefix(href, "ws:") {
+		return href, nil
 	}
-	return parsed.String(), nil
+	scheme, _, _ := strings.Cut(href, ":")
+	return "", fmt.Errorf("openai-codex-responses: unsupported WebSocket URL scheme %q", scheme)
+}
+
+// codexWebSocketHref is `new URL(endpoint)` with the protocol setter applied for https: and http:, and serialized. Its error is the constructor's TypeError message, "Invalid URL".
+func codexWebSocketHref(endpoint string) (string, error) {
+	parsed, err := nodeurl.ParseURL(endpoint)
+	if err != nil {
+		return "", err
+	}
+	href := parsed.Href()
+	switch parsed.Protocol {
+	case "https:":
+		return "wss:" + strings.TrimPrefix(href, "https:"), nil
+	case "http:":
+		return "ws:" + strings.TrimPrefix(href, "http:"), nil
+	}
+	return href, nil
 }
 
 func codexWebSocketHeaders(base map[string]string, options ProviderHeaders, token, accountID, requestID string) http.Header {
-	headers := make(http.Header, len(base)+5)
+	headers := make(http.Header, len(base)+7)
+	// Defaults first so model and caller headers override them (buildBaseCodexHeaders, #10429).
+	// pig divergence (D26): PiG names itself as the Codex originator.
+	headers.Set("originator", pigidentity.CodexOriginator)
+	// pig divergence (D65): the default User-Agent is PiG's product identity.
+	headers.Set("User-Agent", PiUserAgent())
 	for name, value := range base {
 		headers.Set(name, value)
 	}
@@ -210,11 +333,6 @@ func codexWebSocketHeaders(base map[string]string, options ProviderHeaders, toke
 	}
 	headers.Set("Authorization", "Bearer "+token)
 	headers.Set("chatgpt-account-id", accountID)
-	// pig divergence (D26): PiG names itself as the Codex originator.
-	headers.Set("originator", pigidentity.CodexOriginator)
-	// pig divergence (D65): Codex applies PiG's product identity after model
-	// and request headers, preserving upstream precedence.
-	headers.Set("User-Agent", PiUserAgent())
 	headers.Set("OpenAI-Beta", codexWebSocketBeta)
 	headers.Set("x-client-request-id", requestID)
 	headers.Set("session-id", requestID)
@@ -288,7 +406,7 @@ func acquireCodexWebSocket(ctx context.Context, endpoint string, headers http.He
 	}
 	var connectionMu sync.Mutex
 	var dialingConnection net.Conn
-	dialer := websocket.Dialer{Proxy: http.ProxyFromEnvironment, HandshakeTimeout: connectTimeout}
+	dialer := websocket.Dialer{Proxy: proxyFromEnvironment, HandshakeTimeout: connectTimeout}
 	dialer.NetDialContext = func(dialCtx context.Context, network, address string) (net.Conn, error) {
 		connection, dialErr := (&net.Dialer{}).DialContext(dialCtx, network, address)
 		connectionMu.Lock()
@@ -322,7 +440,7 @@ func acquireCodexWebSocket(ctx context.Context, endpoint string, headers http.He
 		if errors.As(err, &networkError) && networkError.Timeout() {
 			return nil, fmt.Errorf("WebSocket connect timeout after %dms", connectTimeout.Milliseconds())
 		}
-		return nil, err
+		return nil, nodeWebSocketError(err)
 	}
 	acquired := &acquiredCodexWebSocket{connection: connection, sessionID: sessionID, accountID: accountID}
 	if !cacheNewConnection {
@@ -409,7 +527,10 @@ func readCodexWebSocket(ctx context.Context, connection *websocket.Conn, timeout
 	if errors.As(err, &networkError) && networkError.Timeout() {
 		return 0, nil, fmt.Errorf("WebSocket idle timeout after %dms", timeout.Milliseconds())
 	}
-	return messageType, data, err
+	if err != nil {
+		return 0, nil, nodeWebSocketError(err)
+	}
+	return messageType, data, nil
 }
 
 func closeCodexWebSocket(connection *websocket.Conn, reason string) {
@@ -421,66 +542,187 @@ func closeCodexWebSocket(connection *websocket.Conn, reason string) {
 	_ = connection.Close()
 }
 
-func cloneCodexRequestBody(body map[string]any) map[string]any {
-	encoded, _ := json.Marshal(body)
-	var clone map[string]any
-	_ = json.Unmarshal(encoded, &clone)
-	return clone
+// codexRequest is a Codex request body read as the members of its text. The body is JSON.stringify text (marshalRequestBody or a
+// replacement's canonical form), so the text of a member is JSON.stringify of its value.
+type codexRequest struct {
+	// members is the body's members in the order the text has them; nil for a null body.
+	members []jsonMember
+	// input is the items of the input member; inputArray is false when the body has an input that is neither an array nor null.
+	input      []json.RawMessage
+	inputArray bool
 }
 
-func codexRequestWithoutInput(body map[string]any) map[string]any {
-	clone := cloneCodexRequestBody(body)
-	delete(clone, "input")
-	delete(clone, "previous_response_id")
-	return clone
+// readCodexRequest reads the body the WebSocket sends. A body that is not a JSON object or null fails as decoding it into an
+// object does.
+func readCodexRequest(body []byte) (codexRequest, error) {
+	request := codexRequest{inputArray: true}
+	if trimmed := bytes.TrimSpace(body); string(trimmed) == "null" {
+		return request, nil
+	} else if len(trimmed) == 0 || trimmed[0] != '{' {
+		var object map[string]any
+		err := json.Unmarshal(body, &object)
+		if err == nil {
+			err = errors.New("not a JSON object")
+		}
+		return codexRequest{}, err
+	}
+	members, err := readJSONObjectMembers(body)
+	if err != nil {
+		var object map[string]any
+		if decodeErr := json.Unmarshal(body, &object); decodeErr != nil {
+			return codexRequest{}, decodeErr
+		}
+		return codexRequest{}, err
+	}
+	request.members = members
+	if value, ok := request.member("input"); ok && string(value) != "null" {
+		if json.Unmarshal(value, &request.input) != nil {
+			request.input, request.inputArray = nil, false
+		}
+	}
+	return request, nil
 }
 
-func codexInputItems(body map[string]any) []any {
-	items, _ := body["input"].([]any)
-	return items
+// member returns the text of the body's member key.
+func (request codexRequest) member(key string) (json.RawMessage, bool) {
+	for _, member := range request.members {
+		if member.key == key {
+			return member.value, true
+		}
+	}
+	return nil, false
 }
 
-func buildCachedCodexRequestBody(entry *codexWebSocketEntry, body map[string]any) map[string]any {
-	request := cloneCodexRequestBody(body)
+// rest is requestBodyWithoutInput: the members other than input and previous_response_id.
+func (request codexRequest) rest() []jsonMember {
+	rest := make([]jsonMember, 0, len(request.members))
+	for _, member := range request.members {
+		if member.key != "input" && member.key != "previous_response_id" {
+			rest = append(rest, member)
+		}
+	}
+	return rest
+}
+
+// codexDelta is a request continued from the previous response: previous_response_id names it, and input is the last count items.
+type codexDelta struct {
+	previousResponseID string
+	count              int
+}
+
+// cachedCodexDelta is buildCachedWebSocketRequestBody (openai-codex-responses.ts): the delta of a request whose members other than
+// input equal the previous request's and whose input starts with the previous input and response items, compared as
+// JSON.stringify texts. Any other request ends the continuation and is sent whole (nil).
+func cachedCodexDelta(entry *codexWebSocketEntry, request codexRequest) *codexDelta {
 	if entry == nil || entry.continuation == nil {
-		return request
+		return nil
 	}
 	continuation := entry.continuation
-	if !reflect.DeepEqual(codexRequestWithoutInput(body), codexRequestWithoutInput(continuation.lastRequestBody)) {
+	if !sameJSONMembers(request.rest(), continuation.lastRest) || !request.inputArray || len(request.input) < len(continuation.baseline) {
 		entry.continuation = nil
-		return request
+		return nil
 	}
-	baseline := append([]any{}, codexInputItems(continuation.lastRequestBody)...)
-	baseline = append(baseline, continuation.lastResponseItems...)
-	current := codexInputItems(body)
-	if len(current) < len(baseline) || !reflect.DeepEqual(current[:len(baseline)], baseline) {
-		entry.continuation = nil
-		return request
+	for index, item := range continuation.baseline {
+		if !bytes.Equal(request.input[index], item) {
+			entry.continuation = nil
+			return nil
+		}
 	}
-	request["previous_response_id"] = continuation.lastResponseID
-	request["input"] = append([]any(nil), current[len(baseline):]...)
-	return request
+	return &codexDelta{previousResponseID: continuation.lastResponseID, count: len(request.input) - len(continuation.baseline)}
 }
 
-func (p *openAIResponsesProvider) startCodexWebSocket(ctx context.Context, endpoint string, body []byte, apiKey, accountID, cacheSessionID string, grammarProps map[string]string, opts StreamOptions) (*AssistantMessageEventStream, error) {
+// sameJSONMembers reports whether two member lists stringify alike: the same keys in the same order with the same texts.
+func sameJSONMembers(a, b []jsonMember) bool {
+	return slices.EqualFunc(a, b, func(x, y jsonMember) bool { return x.key == y.key && bytes.Equal(x.value, y.value) })
+}
+
+// codexWebSocketMessage is JSON.stringify({ type: "response.create", ...requestBody }) (openai-codex-responses.ts:1542): type first, with the body's own type value
+// when it has one, then the members of the request body in the order the body text has them. requestBody is the body after the cached continuation
+// (cachedCodexDelta): a continuation replaces input with its tail and sets previous_response_id, as `{ ...body, previous_response_id, input: delta }`
+// does, in place for a member the body has and last for one it lacks. Without one, a previous_response_id the body has is written as it decodes.
+func codexWebSocketMessage(request codexRequest, delta *codexDelta) ([]byte, error) {
+	out := make([]jsonMember, 1, len(request.members)+3)
+	out[0] = jsonMember{key: "type", value: json.RawMessage(`"response.create"`)}
+	hasPrevious, hasInput := delta != nil, delta != nil
+	for _, member := range request.members {
+		switch member.key {
+		case "type":
+			out[0].value = member.value
+			continue
+		case "previous_response_id":
+			var previousID any
+			if hasPrevious {
+				previousID, hasPrevious = delta.previousResponseID, false
+			} else if err := json.Unmarshal(member.value, &previousID); err != nil {
+				return nil, err
+			}
+			encoded, err := marshalRequestBody(previousID)
+			if err != nil {
+				return nil, err
+			}
+			member.value = encoded
+		case "input":
+			if hasInput {
+				hasInput = false
+				// The delta is a tail of the body's input items; its items keep the body's text.
+				if items := request.input; delta.count < len(items) {
+					member.value = joinJSONArray(items[len(items)-delta.count:])
+				}
+			}
+		}
+		out = append(out, member)
+	}
+	if hasPrevious {
+		encoded, err := marshalRequestBody(delta.previousResponseID)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, jsonMember{key: "previous_response_id", value: encoded})
+	}
+	if hasInput {
+		// A body without input continues with `input: []` (body.input ?? []).
+		out = append(out, jsonMember{key: "input", value: json.RawMessage("[]")})
+	}
+	return writeJSONObjectMembers(out)
+}
+
+// joinJSONArray is the JSON array of items' texts.
+func joinJSONArray(items []json.RawMessage) json.RawMessage {
+	size := 2
+	for _, item := range items {
+		size += len(item) + 1
+	}
+	out := make([]byte, 0, size)
+	out = append(out, '[')
+	for index, item := range items {
+		if index > 0 {
+			out = append(out, ',')
+		}
+		out = append(out, item...)
+	}
+	return append(out, ']')
+}
+
+// startCodexWebSocket streams the request over the Codex WebSocket. A nil stream with a nil error falls back to SSE; fallback is the transport failure that caused it, or nil when the session's WebSocket is already disabled.
+func (p *openAIResponsesProvider) startCodexWebSocket(ctx context.Context, endpoint string, body []byte, apiKey, accountID, cacheSessionID string, grammarProps map[string]string, opts StreamOptions) (stream *AssistantMessageEventStream, fallback, err error) {
 	return p.startCodexWebSocketAttempt(ctx, endpoint, body, apiKey, accountID, cacheSessionID, grammarProps, opts, true, true)
 }
 
-func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context, endpoint string, body []byte, apiKey, accountID, cacheSessionID string, grammarProps map[string]string, opts StreamOptions, retryConnectionLimit, retryMissingContinuation bool) (*AssistantMessageEventStream, error) {
+func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context, endpoint string, body []byte, apiKey, accountID, cacheSessionID string, grammarProps map[string]string, opts StreamOptions, retryConnectionLimit, retryMissingContinuation bool) (stream *AssistantMessageEventStream, fallback, err error) {
 	if codexWebSocketFallbackActive(cacheSessionID) {
 		recordCodexWebSocketSSEFallback(cacheSessionID)
-		return nil, nil
+		return nil, nil, nil
 	}
-	var fullBody map[string]any
-	if err := json.Unmarshal(body, &fullBody); err != nil {
-		return nil, fmt.Errorf("openai-codex-responses: WebSocket payload: %w", err)
+	request, err := readCodexRequest(body)
+	if err != nil {
+		return nil, nil, fmt.Errorf("openai-codex-responses: WebSocket payload: %w", err)
 	}
 	requestID := ClampOpenAIPromptCacheKey(cacheSessionID)
 	if requestID == "" {
 		// upstream: packages/ai/src/api/openai-codex-responses.ts: websocketRequestId = codexSessionId || uuidv7()
 		id, err := UUIDv7(nil)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		requestID = id
 	}
@@ -492,37 +734,39 @@ func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context
 	acquired, err := acquireCodexWebSocket(ctx, endpoint, headers, cacheSessionID, accountID, connectTimeout)
 	if err != nil {
 		if ctx.Err() != nil {
-			return nil, ctx.Err()
+			// connectWebSocket's onAbort rejects with "Request was aborted" (openai-codex-responses.ts:1134-1136, 1148-1150), and an aborted
+			// WebSocket attempt is rethrown, not retried over SSE (:343-355).
+			return nil, nil, errCodexAborted
 		}
 		recordCodexWebSocketFailure(cacheSessionID, err)
 		recordCodexWebSocketSSEFallback(cacheSessionID)
-		return nil, nil
+		return nil, err, nil
 	}
 	// Empty transport has upstream's default "auto" behavior, including cached
 	// continuation when a cache session id is available.
 	useCachedContext := opts.Transport == TransportWebSocketCached || opts.Transport == TransportAuto || opts.Transport == ""
-	requestBody := cloneCodexRequestBody(fullBody)
+	var delta *codexDelta
 	if useCachedContext {
-		requestBody = buildCachedCodexRequestBody(acquired.entry, fullBody)
+		delta = cachedCodexDelta(acquired.entry, request)
 	}
-	requestBody["type"] = "response.create"
-	encoded, err := json.Marshal(requestBody)
+	encoded, err := codexWebSocketMessage(request, delta)
 	if err != nil {
 		acquired.release(false)
-		return nil, err
+		return nil, nil, err
 	}
-	if err := acquired.connection.WriteMessage(websocket.TextMessage, encoded); err != nil {
+	if writeErr := acquired.connection.WriteMessage(websocket.TextMessage, encoded); writeErr != nil {
+		err := nodeWebSocketError(writeErr)
 		wasReused := acquired.reused
 		acquired.release(false)
 		if ctx.Err() != nil {
-			return nil, ctx.Err()
+			return nil, nil, errCodexAborted
 		}
 		if wasReused {
 			return p.startCodexWebSocketAttempt(ctx, endpoint, body, apiKey, accountID, cacheSessionID, grammarProps, opts, retryConnectionLimit, retryMissingContinuation)
 		}
 		recordCodexWebSocketFailure(cacheSessionID, err)
 		recordCodexWebSocketSSEFallback(cacheSessionID)
-		return nil, nil
+		return nil, err, nil
 	}
 
 	if cacheSessionID != "" {
@@ -537,13 +781,19 @@ func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context
 		if useCachedContext {
 			stats.CachedContextRequests++
 		}
-		if requestBody["store"] == true {
+		if store, _ := request.member("store"); string(store) == "true" {
 			stats.StoreTrueRequests++
 		}
-		stats.LastInputItems = len(codexInputItems(requestBody))
-		if previous, _ := requestBody["previous_response_id"].(string); previous != "" {
+		inputItems, previous := len(request.input), ""
+		if delta != nil {
+			inputItems, previous = delta.count, delta.previousResponseID
+		} else if raw, ok := request.member("previous_response_id"); ok {
+			_ = json.Unmarshal(raw, &previous)
+		}
+		stats.LastInputItems = inputItems
+		if previous != "" {
 			stats.DeltaRequests++
-			count := len(codexInputItems(requestBody))
+			count := inputItems
 			stats.LastDeltaInputItems = &count
 			stats.LastPreviousResponseId = previous
 		} else {
@@ -556,7 +806,7 @@ func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context
 
 	builder := newAssistantStreamBuilder(ctx, APIOpenAICodexResponses, p.cfg.ProviderID, p.cfg.Model)
 	builder.modelCost = opts.ModelCost
-	builder.requestServiceTier, _ = opts.SamplingParams["service_tier"].(string)
+	builder.requestServiceTier = requestServiceTierOf(opts)
 	builder.setProviderEventObserver(opts, providerEventModel(p.cfg.ModelMetadata, APIOpenAICodexResponses, p.cfg.ProviderID, p.cfg.Model))
 	var messageType int
 	var first []byte
@@ -571,7 +821,7 @@ func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context
 			if observeErr := builder.observeCodexFrame(first); observeErr != nil {
 				acquired.release(false)
 				builder.failUnfinished(StopReasonError, observeErr)
-				return builder.stream, nil
+				return builder.stream, nil, nil
 			}
 		}
 		var event struct {
@@ -585,21 +835,21 @@ func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context
 		wasReused := acquired.reused
 		acquired.release(false)
 		if ctx.Err() != nil {
-			return nil, ctx.Err()
+			return nil, nil, errCodexAborted
 		}
 		if wasReused {
 			return p.startCodexWebSocketAttempt(ctx, endpoint, body, apiKey, accountID, cacheSessionID, grammarProps, opts, retryConnectionLimit, retryMissingContinuation)
 		}
 		recordCodexWebSocketFailure(cacheSessionID, err)
 		recordCodexWebSocketSSEFallback(cacheSessionID)
-		return nil, nil
+		return nil, err, nil
 	}
 	if messageType != websocket.TextMessage && messageType != websocket.BinaryMessage {
 		acquired.release(false)
 		err := fmt.Errorf("openai-codex-responses: unexpected WebSocket message type %d", messageType)
 		recordCodexWebSocketFailure(cacheSessionID, err)
 		recordCodexWebSocketSSEFallback(cacheSessionID)
-		return nil, nil
+		return nil, err, nil
 	}
 	code := codexWebSocketEventErrorCode(first)
 	if code == "previous_response_not_found" && retryMissingContinuation {
@@ -614,17 +864,18 @@ func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context
 		if retryConnectionLimit {
 			return p.startCodexWebSocketAttempt(ctx, endpoint, body, apiKey, accountID, cacheSessionID, grammarProps, opts, false, retryMissingContinuation)
 		}
-		_, eventErr := mapCodexWebSocketEventFrame(first)
-		if eventErr == nil {
-			eventErr = errors.New("Codex error: websocket_connection_limit_reached")
+		message := "Codex error: websocket_connection_limit_reached"
+		if _, mapped := mapCodexWebSocketEventFrame(first); mapped != nil {
+			message = mapped.Error()
 		}
+		eventErr := &codexAPIError{message: message, code: code}
 		recordCodexWebSocketFailure(cacheSessionID, eventErr)
 		recordCodexWebSocketSSEFallback(cacheSessionID)
-		return nil, nil
+		return nil, eventErr, nil
 	}
 
-	go p.consumeCodexWebSocket(ctx, acquired, first, fullBody, grammarProps, useCachedContext, builder, opts)
-	return builder.stream, nil
+	go p.consumeCodexWebSocket(ctx, acquired, first, request, len(body), grammarProps, useCachedContext, builder, opts)
+	return builder.stream, nil, nil
 }
 
 func markCodexWebSocketFinishing(entry *codexWebSocketEntry) {
@@ -636,7 +887,7 @@ func markCodexWebSocketFinishing(entry *codexWebSocketEntry) {
 	codexWebSocketSessions.mu.Unlock()
 }
 
-func (p *openAIResponsesProvider) consumeCodexWebSocket(ctx context.Context, acquired *acquiredCodexWebSocket, first []byte, fullBody map[string]any, grammarProps map[string]string, useCachedContext bool, builder *assistantStreamBuilder, opts StreamOptions) {
+func (p *openAIResponsesProvider) consumeCodexWebSocket(ctx context.Context, acquired *acquiredCodexWebSocket, first []byte, request codexRequest, requestBytes int, grammarProps map[string]string, useCachedContext bool, builder *assistantStreamBuilder, opts StreamOptions) {
 	reader, writer := io.Pipe()
 	feedDone := make(chan struct{})
 	parseDone := make(chan struct{})
@@ -691,6 +942,7 @@ func (p *openAIResponsesProvider) consumeCodexWebSocket(ctx context.Context, acq
 			if err != nil {
 				if ctx.Err() == nil {
 					recordCodexWebSocketFailure(acquired.sessionID, err)
+					err = &codexWebSocketTransportFailure{err: err}
 				}
 				_ = writer.CloseWithError(err)
 				return
@@ -703,9 +955,9 @@ func (p *openAIResponsesProvider) consumeCodexWebSocket(ctx context.Context, acq
 		}
 	}()
 
-	decoder := newSSEDecoder(reader)
+	decoder := newSSEDecoder(&codexTransportFailureReader{Reader: reader, ctx: ctx, builder: builder, transport: opts.Transport, requestBytes: requestBytes})
 	decoder.beforeNext = func() {
-		builder.publish()
+		builder.publishPending()
 		select {
 		case pull <- struct{}{}:
 		case <-feedDone:
@@ -719,15 +971,23 @@ func (p *openAIResponsesProvider) consumeCodexWebSocket(ctx context.Context, acq
 	keep := result != nil && result.StopReason != StopReasonError && result.StopReason != StopReasonAborted
 	if keep && useCachedContext && acquired.entry != nil && result.ResponseID != "" {
 		responseItems, err := p.convertAnchoredMessages([]Message{*result}, grammarProps, false)
+		baseline := make([]json.RawMessage, len(request.input), len(request.input)+len(responseItems))
+		copy(baseline, request.input)
+		// Each response item as the next request's body writes it: JSON.stringify text, compared byte for byte.
+		for _, item := range responseItems {
+			if err != nil {
+				break
+			}
+			var encoded []byte
+			encoded, err = marshalRequestBody(item)
+			baseline = append(baseline, encoded)
+		}
 		if err == nil {
-			encoded, _ := json.Marshal(responseItems)
-			var items []any
-			_ = json.Unmarshal(encoded, &items)
 			codexWebSocketSessions.mu.Lock()
 			acquired.entry.continuation = &codexWebSocketContinuation{
-				lastRequestBody:   cloneCodexRequestBody(fullBody),
-				lastResponseID:    result.ResponseID,
-				lastResponseItems: items,
+				lastRest:       request.rest(),
+				lastResponseID: result.ResponseID,
+				baseline:       baseline,
 			}
 			codexWebSocketSessions.mu.Unlock()
 		}

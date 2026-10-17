@@ -1,4 +1,3 @@
-# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 """Command line for pigeval. See `make help` (group Evals) for the usual invocations."""
 import argparse

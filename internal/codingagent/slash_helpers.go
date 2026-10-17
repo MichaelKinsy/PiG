@@ -2,6 +2,8 @@ package codingagent
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 	"time"
 
@@ -37,11 +39,12 @@ func formatCostSummary(snap agent.TimingSnapshot, model *ai.Model) string {
 		fmt.Fprintf(&b, "  Model: %s\n", model.DisplayName)
 	}
 	fmt.Fprintf(&b, "  Wall-clock: %s\n", snap.Total.Round(time.Millisecond))
-	fmt.Fprintf(&b, "  Turns: %d\n", len(snap.Turns))
+	fmt.Fprintf(&b, "  Turns: %d\n", snap.TurnCount)
 	if len(snap.ToolTotals) > 0 {
 		b.WriteString("  Tools:\n")
-		for name, total := range snap.ToolTotals {
-			fmt.Fprintf(&b, "    %s: %d call(s), %s\n", name, snap.ToolCounts[name], total.Round(time.Millisecond))
+		// Go map order is random; list the tools by name so /cost prints the same text for the same snapshot.
+		for _, name := range slices.Sorted(maps.Keys(snap.ToolTotals)) {
+			fmt.Fprintf(&b, "    %s: %d call(s), %s\n", name, snap.ToolCounts[name], snap.ToolTotals[name].Round(time.Millisecond))
 		}
 	}
 	return b.String()

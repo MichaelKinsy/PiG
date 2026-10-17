@@ -84,6 +84,39 @@ func TestListIncludesBinaryOnlyPiglet(t *testing.T) {
 	}
 }
 
+// An updated pulled Piglet keeps its earlier release beside the new one. Both releases, or two
+// builds from different sources, belong to one binary-only Piglet: before, each record was its own
+// Piglet, so `pig piglet list` printed the name twice and `pig piglet show` printed only the first
+// release, not the one the update installed. The list names the shared target once.
+func TestListGroupsBinaryOnlyRecordsOfOnePiglet(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("PIG_HOME", root)
+	t.Chdir(t.TempDir())
+	writeRecordFixtureWithPigletDigest(t, root, "binary-only", strings.Repeat("a", 64))
+	writeRecordFixtureWithPigletDigest(t, root, "binary-only", strings.Repeat("b", 64))
+	piglets, err := List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(piglets) != 1 || piglets[0].Name != "binary-only" || piglets[0].Location != "binary" || len(piglets[0].Records) != 2 {
+		t.Fatalf("piglets = %#v", piglets)
+	}
+	var out, errOut strings.Builder
+	if code := cmdList(nil, &out, &errOut); code != 0 || strings.Count(out.String(), "binary-only") != 1 || strings.Count(out.String(), "linux/amd64") != 1 {
+		t.Fatalf("list code=%d out=%s err=%s", code, out.String(), errOut.String())
+	}
+	out.Reset()
+	errOut.Reset()
+	if code := cmdShow([]string{"binary-only"}, &out, &errOut); code != 0 {
+		t.Fatalf("show code=%d out=%s err=%s", code, out.String(), errOut.String())
+	}
+	for _, record := range piglets[0].Records {
+		if !strings.Contains(out.String(), "record="+record.Path+"\n") {
+			t.Fatalf("show omits the record %s:\n%s", record.Path, out.String())
+		}
+	}
+}
+
 func TestListRejectsTamperedManagedArtifact(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv("PIG_HOME", root)
@@ -256,6 +289,13 @@ func writeRecordFixture(t *testing.T, root, name string) string {
 
 func writeRecordFixtureWithPigletDigest(t *testing.T, root, name, pigletDigest string) string {
 	t.Helper()
+	return writeRecordFixtureWith(t, root, name, pigletDigest, func(*artifact.BinaryInput) {})
+}
+
+// writeRecordFixtureWith writes a managed Binary record whose input edit
+// adjusts (for example its strip lists).
+func writeRecordFixtureWith(t *testing.T, root, name, pigletDigest string, edit func(*artifact.BinaryInput)) string {
+	t.Helper()
 	artifactData := []byte("fixture binary")
 	artifactSum := sha256.Sum256(artifactData)
 	artifactDigest := hex.EncodeToString(artifactSum[:])
@@ -278,13 +318,15 @@ func writeRecordFixtureWithPigletDigest(t *testing.T, root, name, pigletDigest s
 	if err != nil {
 		t.Fatal(err)
 	}
-	binary, err := artifact.NewBinaryRecord(name, "1.0.0", time.Unix(2, 0), resolution, artifact.BinaryInput{
+	input := artifact.BinaryInput{
 		Target: "linux/amd64", PigVersion: "0.1.1", PigSourceRevision: "revision",
 		PigSourceDigest: "sha256:" + strings.Repeat("d", 64), Builder: "native", BuilderIdentity: "native:revision",
 		Toolchains:   map[string]string{"go": "go version test"},
 		Artifact:     artifact.Artifact{Digest: "sha256:" + artifactDigest, Size: int64(len(artifactData)), FileName: artifactName},
 		Verification: artifact.Verification{Policy: "basic", Passed: true, Checks: []string{"artifact-sha256", "artifact-version-smoke"}},
-	})
+	}
+	edit(&input)
+	binary, err := artifact.NewBinaryRecord(name, "1.0.0", time.Unix(2, 0), resolution, input)
 	if err != nil {
 		t.Fatal(err)
 	}

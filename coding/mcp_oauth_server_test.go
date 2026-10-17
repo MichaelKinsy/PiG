@@ -33,8 +33,43 @@ type mcpOAuthServer struct {
 	challenges    map[string]string
 	issued        int
 	origin        string
+	// deletes are the access tokens of session DELETE requests: the MCP endpoint assigns a session, so closing a
+	// connection sends one.
+	deletes []string
+	// stall holds the paths that accept requests and never answer them, like an unresponsive server. stalled are those
+	// requests; closed ends once the client gave up on one.
+	stall   map[string]bool
+	stalled []*stalledRequest
 	// registrations are the client metadata of dynamic client registrations (`registrations` of mcp-oauth-server.ts).
 	registrations []map[string]any
+}
+
+// stalledRequest is a request to a stalled path.
+type stalledRequest struct {
+	path string
+	// closed is closed when the client gave up on the request (the connection ended).
+	closed chan struct{}
+}
+
+// stallPath makes the path accept requests and never answer them.
+func (s *mcpOAuthServer) stallPath(path string) {
+	s.mu.Lock()
+	s.stall[path] = true
+	s.mu.Unlock()
+}
+
+// stalledRequests are the requests to stalled paths so far.
+func (s *mcpOAuthServer) stalledRequests() []*stalledRequest {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.stalled)
+}
+
+// deleteTokens are the access tokens of the session DELETE requests so far.
+func (s *mcpOAuthServer) deleteTokens() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.deletes)
 }
 
 // registrationClientNames are the `client_name` values of the dynamic client registrations so far.
@@ -92,6 +127,11 @@ func mcpReadBody(r *http.Request) string {
 }
 
 func (s *mcpOAuthServer) handleMcp(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodDelete {
+		s.mu.Lock()
+		s.deletes = append(s.deletes, strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+		s.mu.Unlock()
+	}
 	if r.Method != http.MethodPost {
 		if r.Method == http.MethodGet {
 			w.WriteHeader(405)
@@ -135,10 +175,24 @@ func (s *mcpOAuthServer) handleMcp(w http.ResponseWriter, r *http.Request) {
 	default:
 		result = map[string]any{}
 	}
-	mcpWriteJSON(w, 200, map[string]any{"jsonrpc": "2.0", "id": message.ID, "result": result}, nil)
+	mcpWriteJSON(w, 200, map[string]any{"jsonrpc": "2.0", "id": message.ID, "result": result}, map[string]string{"Mcp-Session-Id": "session-1"})
 }
 
 func (s *mcpOAuthServer) handle(w http.ResponseWriter, r *http.Request) {
+	s.mu.Lock()
+	stalls := s.stall[r.URL.Path]
+	s.mu.Unlock()
+	if stalls {
+		// The server notices a closed connection once the request is read.
+		_, _ = io.Copy(io.Discard, r.Body)
+		request := &stalledRequest{path: r.URL.Path, closed: make(chan struct{})}
+		s.mu.Lock()
+		s.stalled = append(s.stalled, request)
+		s.mu.Unlock()
+		<-r.Context().Done()
+		close(request.closed)
+		return
+	}
 	origin := s.origin
 	switch r.URL.Path {
 	case "/mcp":
@@ -208,7 +262,7 @@ func (s *mcpOAuthServer) handle(w http.ResponseWriter, r *http.Request) {
 
 func startMcpOAuthServer(t *testing.T) *mcpOAuthServer {
 	t.Helper()
-	s := &mcpOAuthServer{validTokens: map[string]bool{}, refreshTokens: map[string]bool{}, challenges: map[string]string{}}
+	s := &mcpOAuthServer{validTokens: map[string]bool{}, refreshTokens: map[string]bool{}, challenges: map[string]string{}, stall: map[string]bool{}}
 	s.server = httptest.NewServer(http.HandlerFunc(s.handle))
 	s.origin = s.server.URL
 	s.URL = s.origin + "/mcp"

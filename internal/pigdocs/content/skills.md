@@ -55,7 +55,7 @@ config tree (`~/.pig/skills/<name>/SKILL.md`).
 
 Beyond explicit `--skill` and piglet entries, pig can discover skills already sitting in a project or your home dir. Treat discovery as a local convenience, not as the dependency contract for an agent you hand to someone else: portable piglets should declare skill origins.
 
-Pig scans:
+PiG scans:
 
 - `.agents/skills/` at each directory from the workspace up to its root,
 - `~/.agents/skills/` for user-level skills,

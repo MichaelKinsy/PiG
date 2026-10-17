@@ -2,8 +2,8 @@
 
 package codingagent
 
-import "path/filepath"
+import "github.com/MichaelKinsy/PiG/internal/realpath"
 
 func evalCanonicalPath(path string) (string, error) {
-	return filepath.EvalSymlinks(path)
+	return realpath.EvalSymlinks(path)
 }

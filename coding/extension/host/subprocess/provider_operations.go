@@ -38,8 +38,11 @@ func imagesOptionsWire(o ai.ImagesOptions) map[string]any {
 	if o.TimeoutMs != 0 {
 		values["timeoutMs"] = o.TimeoutMs
 	}
-	if o.MaxRetries != 0 {
-		values["maxRetries"] = o.MaxRetries
+	if o.MaxRetries != nil {
+		values["maxRetries"] = *o.MaxRetries
+	}
+	if o.MaxRetryDelayMs != nil {
+		values["maxRetryDelayMs"] = *o.MaxRetryDelayMs
 	}
 	return values
 }
@@ -80,7 +83,7 @@ func (h *Host) attachProviderOperations(me *managedExt, provider ProviderDecl, c
 		cfg.Images = make(ai.ProviderImageAPIMap, len(provider.ImageAPIs))
 		for _, api := range provider.ImageAPIs {
 			cfg.Images[ai.ImageAPI(api)] = &ai.ProviderImages{GenerateImages: func(ctx context.Context, model *ai.ImageModel, request ai.ImagesContext, options ai.ImagesOptions) (ai.AssistantImages, error) {
-				return remoteOperation[ai.AssistantImages](ctx, me, provider.Name, ProviderOperationImages, api, extension.AnyModelInfo(model), request, imagesOptionsWire(options))
+				return remoteOperation[ai.AssistantImages](ctx, me, provider.Name, ProviderOperationImages, api, extension.ModelValue{Model: model}, request, imagesOptionsWire(options))
 			}}
 		}
 	}
@@ -88,13 +91,13 @@ func (h *Host) attachProviderOperations(me *managedExt, provider ProviderDecl, c
 		cfg.Classifiers = make(ai.ProviderClassifierMap, len(provider.ClassifierAPIs))
 		for _, api := range provider.ClassifierAPIs {
 			cfg.Classifiers[ai.ClassifierAPI(api)] = &ai.ProviderClassifier{Classify: func(ctx context.Context, model *ai.ClassifierModel, request ai.ClassifierContext, options ai.ClassifierOptions) (ai.ClassifierResult, error) {
-				return remoteOperation[ai.ClassifierResult](ctx, me, provider.Name, ProviderOperationClassifiers, api, extension.AnyModelInfo(model), request, classifierOptionsWire(options))
+				return remoteOperation[ai.ClassifierResult](ctx, me, provider.Name, ProviderOperationClassifiers, api, extension.ModelValue{Model: model}, request, classifierOptionsWire(options))
 			}}
 		}
 	}
 }
 
-func remoteOperation[T any](ctx context.Context, me *managedExt, provider, kind, api string, model map[string]any, request any, options map[string]any) (T, error) {
+func remoteOperation[T any](ctx context.Context, me *managedExt, provider, kind, api string, model extension.ModelValue, request any, options map[string]any) (T, error) {
 	var result T
 	args, err := json.Marshal(map[string]any{"kind": kind, "api": api, "model": model, "context": request, "options": options})
 	if err != nil {
@@ -120,12 +123,12 @@ func remoteOperation[T any](ctx context.Context, me *managedExt, provider, kind,
 
 // generateImages runs the provider object's generateImages in its extension.
 func (p *nativeProviderProxy) generateImages(ctx context.Context, model *ai.ImageModel, request ai.ImagesContext, options ai.ImagesOptions) (ai.AssistantImages, error) {
-	return nativeObjectValue[ai.AssistantImages](p, ctx, "generateImages", map[string]any{"model": extension.AnyModelInfo(model), "context": request, "options": imagesOptionsWire(options)}, nil)
+	return nativeObjectValue[ai.AssistantImages](p, ctx, "generateImages", map[string]any{"model": extension.ModelValue{Model: model}, "context": request, "options": imagesOptionsWire(options)}, nil)
 }
 
 // classify runs the provider object's classify in its extension.
 func (p *nativeProviderProxy) classify(ctx context.Context, model *ai.ClassifierModel, request ai.ClassifierContext, options ai.ClassifierOptions) (ai.ClassifierResult, error) {
-	return nativeObjectValue[ai.ClassifierResult](p, ctx, "classify", map[string]any{"model": extension.AnyModelInfo(model), "context": request, "options": classifierOptionsWire(options)}, nil)
+	return nativeObjectValue[ai.ClassifierResult](p, ctx, "classify", map[string]any{"model": extension.ModelValue{Model: model}, "context": request, "options": classifierOptionsWire(options)}, nil)
 }
 
 // operations wires the image and classifier methods a provider object declares.
@@ -135,5 +138,20 @@ func (p *nativeProviderProxy) operations(carrier *extension.NativeProvider) {
 	}
 	if slices.Contains(p.declaration.Methods, "classify") {
 		carrier.Classify = p.classify
+	}
+	if slices.Contains(p.declaration.Methods, "getModels") {
+		carrier.GetModels = p.getModels
+	}
+	if slices.Contains(p.declaration.Methods, "getAllModels") {
+		carrier.GetAllModels = p.allModels
+	}
+	if slices.Contains(p.declaration.Methods, "filterAllModels") {
+		carrier.FilterAllModels = p.filterAllModels
+	}
+	if slices.Contains(p.declaration.Methods, "fetchDeferred") {
+		carrier.FetchDeferred = p.fetchDeferred
+	}
+	if slices.Contains(p.declaration.Methods, "cancelDeferred") {
+		carrier.CancelDeferred = p.cancelDeferred
 	}
 }

@@ -111,11 +111,12 @@ func TestParentCancellationQueuesTheCancelBeforeCancellingItsHostCalls(t *testin
 	callCtx, release := conn.hostCallContext(parent.ID, "child-call")
 	defer release()
 
-	// The peer stops reading: the writer holds one frame and the queue fills, so the cancel frame cannot be queued.
+	// The peer stops reading: the writer holds the batch it took from the queue (up to writeBatchFrames frames it coalesces into one
+	// write) and the queue fills behind it, so the cancel frame cannot be queued. One more filler waits to be queued.
 	filled := make(chan struct{})
 	go func() {
 		defer close(filled)
-		for range cap(conn.outCh) + 2 {
+		for range cap(conn.outCh) + writeBatchFrames + 1 {
 			if conn.Send(&Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: "filler"}}) != nil {
 				return
 			}

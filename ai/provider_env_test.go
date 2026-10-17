@@ -22,31 +22,23 @@ func TestGetProviderEnvValue(t *testing.T) {
 	}
 }
 
-// TestResolveCloudflareBaseURL_UsesProviderEnv verifies explicit provider-scoped values replace endpoint placeholders while missing values remain unresolved, as in cloudflare-stream.ts.
-func TestResolveCloudflareBaseURL_UsesProviderEnv(t *testing.T) {
+// TestResolveCloudflareModel_UsesProviderEnv verifies explicit provider-scoped values replace endpoint placeholders while missing values remain unresolved, as in cloudflare-stream.ts.
+func TestResolveCloudflareModel_UsesProviderEnv(t *testing.T) {
 	const tmpl = "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1"
 	t.Setenv("CLOUDFLARE_ACCOUNT_ID", "from-process")
 
 	// scoped value wins
-	got, err := ResolveCloudflareBaseURL("cloudflare-workers-ai", tmpl, ProviderEnv{"CLOUDFLARE_ACCOUNT_ID": "scoped-acct"})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got != "https://api.cloudflare.com/client/v4/accounts/scoped-acct/ai/v1" {
+	if got := cloudflareResolve(tmpl, ProviderEnv{"CLOUDFLARE_ACCOUNT_ID": "scoped-acct"}); got != "https://api.cloudflare.com/client/v4/accounts/scoped-acct/ai/v1" {
 		t.Errorf("scoped env not used: got %q", got)
 	}
 
 	// The endpoint wrapper does not consult process.env.
-	got, err = ResolveCloudflareBaseURL("cloudflare-workers-ai", tmpl, nil)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got != tmpl {
+	if got := cloudflareResolve(tmpl, nil); got != tmpl {
 		t.Errorf("nil env resolved a placeholder: got %q", got)
 	}
 
 	t.Setenv("CLOUDFLARE_ACCOUNT_ID", "")
-	if got, err := ResolveCloudflareBaseURL("cloudflare-workers-ai", tmpl, nil); err != nil || got != tmpl {
-		t.Errorf("missing env = %q, %v; want unresolved template", got, err)
+	if got := cloudflareResolve(tmpl, nil); got != tmpl {
+		t.Errorf("missing env = %q; want unresolved template", got)
 	}
 }

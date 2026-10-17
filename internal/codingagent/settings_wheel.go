@@ -2,12 +2,12 @@
 package codingagent
 
 import (
-	"encoding/json"
 	"math"
 	"slices"
 	"strconv"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -16,7 +16,7 @@ func wheelScrollLinesLabel(lines WheelScrollLines) string {
 	if lines.Auto {
 		return "auto"
 	}
-	return strconv.FormatFloat(lines.Lines, 'f', -1, 64)
+	return jsnumber.String(lines.Lines)
 }
 
 // wheelScrollLinesValues lists "auto" first, then 1, 2, 3, 5, 10 and the current count in ascending order without duplicates (settings-selector.ts:739-745).
@@ -28,7 +28,7 @@ func wheelScrollLinesValues(current WheelScrollLines) []string {
 	slices.Sort(counts)
 	values := []string{"auto"}
 	for _, count := range counts {
-		values = append(values, strconv.FormatFloat(count, 'f', -1, 64))
+		values = append(values, jsnumber.String(count))
 	}
 	return values
 }
@@ -51,18 +51,6 @@ func parseWheelScrollLines(value string) WheelScrollLines {
 		lines = math.NaN()
 	}
 	return WheelScrollLines{Lines: lines}
-}
-
-// wheelScrollLinesJSON is the stored value setFullscreenWheelScrollLines writes (settings-manager.ts:1394-1399).
-func wheelScrollLinesJSON(lines WheelScrollLines) json.RawMessage {
-	if lines.Auto {
-		return json.RawMessage(`"auto"`)
-	}
-	clamped := clampWheelScrollLines(lines.Lines)
-	if math.IsNaN(clamped) {
-		return json.RawMessage("null")
-	}
-	return json.RawMessage(strconv.FormatFloat(clamped, 'f', -1, 64))
 }
 
 // tuiWheelScrollLines converts a stored setting to the renderer's option.

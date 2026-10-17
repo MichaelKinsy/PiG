@@ -44,7 +44,7 @@ both_contain = [
 ]
 both_match_regex = [
   # bash.ts:392 rounds the measured wall clock to 0.1 s: the field's number shape is the contract, not its value.
-  '"details":\{"note":"kept"\},"structuredContent":\{"output":"out\\n","truncated":false,"exit_code":3,"wall_time_seconds":[0-9]+(\.[0-9])?\},"isError":true\},"isError":true\}',
+  '"details":\{"note":"kept"\},"structuredContent":\{"output":"out\\n","truncated":false,"exit_code":3,"wall_time_seconds":[0-9]+(\.[0-9])?\},"isError":true\},"isError":true,"durationMs":[0-9]+\}',
 ]
 
 # normalize-rationale: Only independent clocks, the header UUID, the isolated cwd identity and bash's rounded wall clock vary; retain every other byte and property order.
@@ -57,6 +57,10 @@ pattern = '"timestamp":[0-9]+'
 with = '"timestamp":0'
 reason = "Independent numeric wall clocks vary; retain field placement, type and every other byte."
 [[assert.normalize_replace]]
+pattern = '"durationMs":[0-9]+'
+with = '"durationMs":0'
+reason = "Pi 1.1.0 times each response and tool run with a monotonic clock, so the whole-millisecond value differs between runs; retain the field's presence, placement and number spelling."
+[[assert.normalize_replace]]
 pattern = '"timestamp":"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z"'
 with = '"timestamp":"2000-01-01T00:00:00.000Z"'
 reason = "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
@@ -68,3 +72,8 @@ reason = "The header UUID is independently generated; no message content or prop
 pattern = '"wall_time_seconds":[0-9.]+'
 with = '"wall_time_seconds":0'
 reason = "bash rounds wall time to 0.1 s (bash.ts:392), so a slow runner can differ by one step; the key, its type and its position stay."
+
+[[assert.normalize_replace]]
+pattern = '"durationMs":[0-9]+'
+with = '"durationMs":0'
+reason = "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain field placement, type and every other byte."

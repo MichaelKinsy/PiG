@@ -30,6 +30,19 @@ linters:
     # positives). Preserve upstream-faithful user-visible strings via
     # settings.misspell.ignore-words rather than editing them to match US spelling.
     - misspell
+  settings:
+    gocritic:
+      # The default checks stay on. These performance checks find appends that can combine, conversions that copy,
+      # case-insensitive comparisons that allocate, and writes that build a string only to write it. hugeParam and
+      # rangeValCopy (copies of value-typed parameters and range values) are not enabled: they fire hundreds of times
+      # on copies that cost nothing measurable.
+      enabled-checks:
+        - appendCombine
+        - equalFold
+        - preferDecodeRune
+        - preferStringWriter
+        - rangeExprCopy
+        - stringXbytes
   exclusions:
     # Rules here are programmatic suppressions for audited false-positive
     # classes. Site-specific false positives should generally live beside the
@@ -128,6 +141,8 @@ linters:
         text: "inline: Call of ai.ptrString"
     paths:
       - .upstream
+      # Vendored third-party module source (third_party/jsonschema/FORK.md); its style is upstream's.
+      - third_party
 
 formatters:
   enable:

@@ -76,14 +76,14 @@ func TestThemeColorModeUsesTerminalCapabilitiesUpstream(t *testing.T) {
 	SetCapabilities(TerminalCapabilities{TrueColor: false})
 	SetTheme("dark")
 	ansi256 := ActiveTheme()
-	if ansi256.ColorMode() != TerminalColorMode256 || !regexp.MustCompile(`^\x1b\[38;5;\d+m$`).MatchString(ansi256.Fg("accent")) {
-		t.Fatalf("256color theme: mode=%s accent=%q", ansi256.ColorMode(), ansi256.Fg("accent"))
+	if ansi256.GetColorMode() != TerminalColorMode256 || !regexp.MustCompile(`^\x1b\[38;5;\d+m$`).MatchString(ansi256.GetFgAnsi("accent")) {
+		t.Fatalf("256color theme: mode=%s accent=%q", ansi256.GetColorMode(), ansi256.GetFgAnsi("accent"))
 	}
 	SetCapabilities(TerminalCapabilities{TrueColor: true})
 	SetTheme("dark")
 	truecolor := ActiveTheme()
-	if truecolor.ColorMode() != TerminalColorModeTrueColor || !regexp.MustCompile(`^\x1b\[38;2;\d+;\d+;\d+m$`).MatchString(truecolor.Fg("accent")) {
-		t.Fatalf("truecolor theme: mode=%s accent=%q", truecolor.ColorMode(), truecolor.Fg("accent"))
+	if truecolor.GetColorMode() != TerminalColorModeTrueColor || !regexp.MustCompile(`^\x1b\[38;2;\d+;\d+;\d+m$`).MatchString(truecolor.GetFgAnsi("accent")) {
+		t.Fatalf("truecolor theme: mode=%s accent=%q", truecolor.GetColorMode(), truecolor.GetFgAnsi("accent"))
 	}
 }
 

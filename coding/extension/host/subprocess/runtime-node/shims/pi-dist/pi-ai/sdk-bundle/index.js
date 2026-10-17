@@ -1,6 +1,5 @@
 import {
   AssistantMessageEventStream,
-  AssistantMessageFrameEncoder,
   DEFAULT_MAX_AGENT_RETRY_DELAY_MS,
   EventStream,
   StringEnum,
@@ -21,7 +20,7 @@ import {
   lazyStream,
   parseJsonWithRepair,
   parseStreamingJson,
-  reduceAssistantMessageFrames,
+  parseToolCallArguments,
   registerSessionResourceCleanup,
   repairJson,
   retryAssistantCall,
@@ -29,7 +28,7 @@ import {
   uuidv7,
   validateToolArguments,
   validateToolCall
-} from "./chunk-5YY4OANL.js";
+} from "./chunk-CJFE2WDE.js";
 import {
   envApiKeyAuth,
   lazyOAuth
@@ -71,11 +70,10 @@ import {
   resolveTranscriptTools,
   toToolDeclaration,
   withoutInitialSystemMessage
-} from "./chunk-Y5ITVTK2.js";
+} from "./chunk-6C2VLFYL.js";
 import "./chunk-SHUYVCID.js";
 export {
   AssistantMessageEventStream,
-  AssistantMessageFrameEncoder,
   DEFAULT_MAX_AGENT_RETRY_DELAY_MS,
   EventStream,
   InMemoryCredentialStore,
@@ -129,7 +127,7 @@ export {
   normalizeContext,
   parseJsonWithRepair,
   parseStreamingJson,
-  reduceAssistantMessageFrames,
+  parseToolCallArguments,
   registerSessionResourceCleanup,
   renderSystemMessageUpdate,
   repairJson,

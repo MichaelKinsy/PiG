@@ -6,17 +6,19 @@ package tui
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"math"
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"golang.org/x/term"
@@ -34,39 +36,13 @@ const (
 // byte and high-latency transports split them. Mirrors upstream
 // resolveEscapeTimeoutMs (terminal.ts).
 func ResolveEscapeTimeoutMs(getenv func(string) string) float64 {
-	if configured, ok := jsNumber(getenv("PI_TUI_ESC_TIMEOUT")); ok && !math.IsInf(configured, 0) && configured > 0 {
+	if configured := jsnumber.Parse(getenv("PI_TUI_ESC_TIMEOUT")); !math.IsInf(configured, 0) && configured > 0 {
 		return configured
 	}
 	if getenv("SSH_CONNECTION") != "" || getenv("SSH_TTY") != "" {
 		return defaultSSHEscapeTimeoutMs
 	}
 	return defaultEscapeTimeoutMs
-}
-
-// jsNumber mirrors JavaScript Number(text) for environment values; ok is false
-// when the result is NaN.
-func jsNumber(text string) (float64, bool) {
-	trimmed := strings.TrimSpace(text)
-	if trimmed == "" {
-		return 0, true
-	}
-	for prefix, base := range map[string]int{"0x": 16, "0X": 16, "0o": 8, "0O": 8, "0b": 2, "0B": 2} {
-		if digits, ok := strings.CutPrefix(trimmed, prefix); ok {
-			value, err := strconv.ParseUint(digits, base, 64)
-			return float64(value), err == nil
-		}
-	}
-	switch trimmed {
-	case "Infinity", "+Infinity":
-		return math.Inf(1), true
-	case "-Infinity":
-		return math.Inf(-1), true
-	}
-	if strings.ContainsAny(trimmed, "_xXpPiInN") {
-		return 0, false
-	}
-	value, err := strconv.ParseFloat(trimmed, 64)
-	return value, err == nil
 }
 
 // Terminal mirrors the control surface of upstream `terminal.ts` in Go form.
@@ -79,7 +55,7 @@ func jsNumber(text string) (float64, bool) {
 // can use `Start`/`Stop` for a behavior-equivalent surface to upstream.
 type Terminal interface {
 	// Start owns input framing, negotiation filtering and native normalization before invoking onInput for each event. The resize callback follows terminal dimension changes.
-	Start(onInput func([]byte), onResize func()) error
+	Start(onInput func(string), onResize func()) error
 
 	// Stop reverses Start: cancels and joins the input goroutine, removes the
 	// resize handler, and restores cooked mode without draining unread input.
@@ -99,6 +75,11 @@ type Terminal interface {
 	ClearScreen()
 	SetTitle(title string)
 	SetProgress(active bool)
+
+	// SetProgramStatus reports what the program is doing (OSC 7501). It is sent only to terminals that support it; the
+	// latest status is sent again when support is confirmed or the terminal restarts.
+	// upstream: terminal.ts Terminal.setProgramStatus
+	SetProgramStatus(status ProgramStatus)
 }
 
 // ProcessTerminal is the concrete terminal control implementation backed by
@@ -108,6 +89,8 @@ type ProcessTerminal struct {
 	stdout *os.File
 	out    io.Writer
 	outMu  sync.Mutex
+	// writeLog receives every Write when PI_TUI_WRITE_LOG names a log.
+	writeLog *terminalWriteLog
 
 	// startMu guards reader, resize and protocol-query ownership. Start is idempotent until Stop releases that ownership.
 	startMu         sync.Mutex
@@ -124,6 +107,19 @@ type ProcessTerminal struct {
 	progressStop      chan struct{}
 	progressDone      chan struct{}
 	progressKeepalive time.Duration
+
+	// programStatusMu guards the OSC 7501 state below. The input goroutine confirms support while the owner loop reports.
+	programStatusMu sync.Mutex
+	// programStatus is the latest status, kept across Stop so Start can report it again.
+	programStatus *ProgramStatus
+	// programStatusSupported is whether the terminal confirmed OSC 7501 support since the last start, or PI_PROGRAM_STATUS=1.
+	programStatusSupported bool
+	// programStatusQueryPending is whether the support query was sent and its DA1 sentinel has not arrived yet.
+	programStatusQueryPending bool
+	// programStatusElsewhere is whether a frontend session shows the status instead (SetProgramStatusElsewhere).
+	programStatusElsewhere bool
+	// sizeCache is the window size kept between SIGWINCHs while the interactive resize handler holds it.
+	sizeCache terminalSizeCache
 }
 
 const (
@@ -131,6 +127,11 @@ const (
 	terminalProgressActiveSeq = "\x1b]9;4;3\x07"
 	terminalProgressClearSeq  = "\x1b]9;4;0\x07"
 )
+
+// NewStdioProcessTerminal is `new ProcessTerminal()` (terminal.ts): a terminal over the process's own standard input and output.
+func NewStdioProcessTerminal() *ProcessTerminal {
+	return NewProcessTerminal(os.Stdin, os.Stdout)
+}
 
 // NewProcessTerminal constructs a terminal helper around the provided stdin and
 // stdout files.
@@ -153,11 +154,12 @@ func newProcessTerminal(stdin, stdout *os.File, out io.Writer) *ProcessTerminal 
 		stdin:             stdin,
 		stdout:            stdout,
 		out:               out,
+		writeLog:          newTerminalWriteLog(),
 		progressKeepalive: terminalProgressKeepalive,
 	}
 }
 
-var processTerminal = NewProcessTerminal(os.Stdin, os.Stdout)
+var processTerminal = NewStdioProcessTerminal()
 
 var kittyProtocolActive atomic.Bool
 var modifyOtherKeysActive atomic.Bool
@@ -195,13 +197,17 @@ func IsKittyProtocolActive() bool {
 // event types, alternate keys) onto the active screen's stack.
 const kittyKeyboardProtocolPush = "\x1b[>7u"
 
-// kittyKeyboardProtocolQuery pushes the flags, queries the resulting flags,
-// then sends Device Attributes as a sentinel. A terminal without Kitty still
-// answers DA, which enables modifyOtherKeys without a startup timer.
-const kittyKeyboardProtocolQuery = kittyKeyboardProtocolPush + "\x1b[?u\x1b[c"
+// kittyKeyboardProtocolQuery pushes the flags and queries the resulting flags. The Device Attributes sentinel follows
+// it, after the optional program status query.
+const kittyKeyboardProtocolQuery = kittyKeyboardProtocolPush + "\x1b[?u"
 
-// extendedKeyInit enables bracketed paste, then runs kittyKeyboardProtocolQuery.
-const extendedKeyInit = "\x1b[?2004h" + kittyKeyboardProtocolQuery
+// deviceAttributesQuery is the sentinel that ends the startup queries. A terminal without Kitty still answers DA, which
+// enables modifyOtherKeys without a startup timer, and a terminal that supports OSC 7501 replies to its query before it.
+const deviceAttributesQuery = "\x1b[c"
+
+// extendedKeyInit enables bracketed paste, then runs the Kitty keyboard query and the sentinel, without the program
+// status query that PI_PROGRAM_STATUS skips.
+const extendedKeyInit = "\x1b[?2004h" + kittyKeyboardProtocolQuery + deviceAttributesQuery
 
 func (t *ProcessTerminal) queryAndEnableKittyProtocol() {
 	SetKittyProtocolActive(false)
@@ -209,7 +215,116 @@ func (t *ProcessTerminal) queryAndEnableKittyProtocol() {
 	t.protocolQueried = true
 	keyboardProtocolPushed.Store(true)
 	t.pendingKeyboardProtocolDeviceAttributes.Add(1)
-	t.Write(kittyKeyboardProtocolQuery)
+	// The OSC 7501 support query shares the DA sentinel: a terminal that supports it replies before DA.
+	t.programStatusMu.Lock()
+	query := t.startProgramStatusLocked()
+	t.programStatusMu.Unlock()
+	t.writeUnlogged(kittyKeyboardProtocolQuery + query + deviceAttributesQuery)
+	t.writeProgramStatus()
+}
+
+// startProgramStatusLocked starts OSC 7501 support detection and returns the support query to send, if any.
+// PI_PROGRAM_STATUS=1 or 0 skips the query.
+func (t *ProcessTerminal) startProgramStatusLocked() string {
+	override := os.Getenv("PI_PROGRAM_STATUS")
+	if t.programStatusElsewhere {
+		override = "0"
+	}
+	t.programStatusSupported = override == "1"
+	t.programStatusQueryPending = override != "1" && override != "0"
+	if t.programStatusQueryPending {
+		return ProgramStatusQuery
+	}
+	return ""
+}
+
+// pig additive (D91): while a frontend session may draw the run, the session
+// is the terminal that shows the program status, through the Terminal of the
+// renderer that draws on it (TuiSurface). The process terminal then sends no
+// OSC 7501 query and no report to stdout.
+
+// SetProgramStatusElsewhere turns the process terminal's own OSC 7501 support
+// detection and reports off, before raw mode starts for a run a frontend
+// session may draw, or back on once no session draws. Turned back on in raw
+// mode, it queries support then, as raw mode would have.
+func SetProgramStatusElsewhere(elsewhere bool) {
+	processTerminal.setProgramStatusElsewhere(elsewhere)
+}
+
+func (t *ProcessTerminal) setProgramStatusElsewhere(elsewhere bool) {
+	t.programStatusMu.Lock()
+	if t.programStatusElsewhere == elsewhere {
+		t.programStatusMu.Unlock()
+		return
+	}
+	t.programStatusElsewhere = elsewhere
+	query := ""
+	if elsewhere {
+		t.programStatusSupported = false
+		t.programStatusQueryPending = false
+	} else if t.protocolQueried {
+		query = t.startProgramStatusLocked()
+	}
+	t.programStatusMu.Unlock()
+	if query != "" {
+		// The query brings its own DA sentinel, which is consumed as a keyboard query's is.
+		t.pendingKeyboardProtocolDeviceAttributes.Add(1)
+		t.writeUnlogged(query + deviceAttributesQuery)
+	}
+	t.writeProgramStatus()
+}
+
+// SetProgramStatus implements [Terminal]: it records status and, once the terminal supports OSC 7501, writes it.
+func (t *ProcessTerminal) SetProgramStatus(status ProgramStatus) {
+	t.programStatusMu.Lock()
+	defer t.programStatusMu.Unlock()
+	if status.State == ProgramStateClear {
+		t.programStatus = nil
+	} else {
+		t.programStatus = &status
+	}
+	if t.programStatusSupported {
+		t.writeUnlogged(FormatProgramStatus(status))
+	}
+}
+
+// writeProgramStatus sends the latest status when the terminal supports it.
+func (t *ProcessTerminal) writeProgramStatus() {
+	t.programStatusMu.Lock()
+	defer t.programStatusMu.Unlock()
+	if t.programStatusSupported && t.programStatus != nil {
+		t.writeUnlogged(FormatProgramStatus(*t.programStatus))
+	}
+}
+
+// handleProgramStatusReply consumes the reply to the OSC 7501 query and reports whether sequence was one. A reply that
+// arrives while no query is pending, for example after the DA sentinel, is swallowed without enabling reports.
+func (t *ProcessTerminal) handleProgramStatusReply(sequence string) bool {
+	if !IsProgramStatusReply(sequence) {
+		return false
+	}
+	t.programStatusMu.Lock()
+	confirmed := t.programStatusQueryPending
+	if confirmed {
+		t.programStatusQueryPending = false
+		t.programStatusSupported = true
+	}
+	t.programStatusMu.Unlock()
+	if confirmed {
+		t.writeProgramStatus()
+	}
+	return true
+}
+
+// stopProgramStatus removes the status while stopped, for example after exit or while suspended. Start reports it again.
+func (t *ProcessTerminal) stopProgramStatus() {
+	t.programStatusMu.Lock()
+	defer t.programStatusMu.Unlock()
+	if t.programStatusSupported && t.programStatus != nil {
+		t.writeUnlogged(FormatProgramStatus(ProgramStatus{State: ProgramStateClear}))
+	}
+	t.programStatusSupported = false
+	t.programStatusQueryPending = false
 }
 
 // EnterRawMode puts stdin into raw mode and returns a restore function.
@@ -220,13 +335,13 @@ func EnterRawMode() (restore func(), err error) {
 	return processTerminal.EnterRawMode()
 }
 
-// EnterRawModeWithDrain separates process-shutdown input draining from cooked-mode restoration. A renderer drains first, stops while output is still raw, then restores cooked mode. Temporary terminal handoffs call only restore.
-func EnterRawModeWithDrain() (restore func(), drain func(), err error) {
+// EnterRawModeWithDrain separates process-shutdown input draining from cooked-mode restoration. A renderer drains first, stops while output is still raw, then restores cooked mode. Temporary terminal handoffs call only restore. drain returns DrainInput's error, so a caller can treat a terminal that went away as Pi's stdin error handler does.
+func EnterRawModeWithDrain() (restore func(), drain func() error, err error) {
 	restore, err = EnterRawModeForHandoff()
 	if err != nil {
 		return nil, nil, err
 	}
-	return restore, func() { _ = processTerminal.DrainInput(time.Second, 50*time.Millisecond) }, nil
+	return restore, func() error { return processTerminal.DrainInput(time.Second, 50*time.Millisecond) }, nil
 }
 
 // EnterRawModeForHandoff enters raw mode with a restore closure that leaves unread input for the next terminal owner. The caller must join its reader before restoring and drain late releases separately on final shutdown.
@@ -253,9 +368,10 @@ func (t *ProcessTerminal) enterRawMode(drainOnRestore bool) (restore func(), err
 	// On Windows, enable VT output processing so pig's ANSI renderer displays;
 	// term.MakeRaw only configures raw input. No-op on unix.
 	vtRestore := t.enableVTProcessing()
-	t.Write("\x1b[?2004h")
+	t.writeUnlogged("\x1b[?2004h")
 	t.queryAndEnableKittyProtocol()
 	return func() {
+		t.stopProgramStatus()
 		// Stop the terminal generating extended-key sequences before anything
 		// else, so the drain below has a finite amount of input to consume.
 		t.disableKeyboardProtocol()
@@ -263,7 +379,7 @@ func (t *ProcessTerminal) enterRawMode(drainOnRestore bool) (restore func(), err
 		// is exiting the interactive process drains late key releases; a
 		// ProcessTerminal Stop preserves unread input for the next consumer,
 		// matching upstream stop().
-		t.Write("\x1b[?2004l")
+		t.writeUnlogged("\x1b[?2004l")
 		if drainOnRestore {
 			_ = t.DrainInput(time.Second, 50*time.Millisecond)
 		}
@@ -309,30 +425,40 @@ func (t *ProcessTerminal) handleKeyboardProtocolNegotiationSequence(sequence str
 		return true
 	}
 	if deviceAttributesResponse.MatchString(sequence) && deviceAttributesResponse.FindString(sequence) == sequence {
-		if t.pendingKeyboardProtocolDeviceAttributes.Load() == 0 {
-			return false
-		}
-		t.pendingKeyboardProtocolDeviceAttributes.Add(-1)
-		if !IsKittyProtocolActive() {
-			t.enableModifyOtherKeys()
-		}
-		return true
+		return t.consumeOwedDeviceAttributesReply()
 	}
 	return false
+}
+
+// consumeOwedDeviceAttributesReply settles one DA reply owed to a keyboard protocol query and reports whether one was owed.
+func (t *ProcessTerminal) consumeOwedDeviceAttributesReply() bool {
+	if t.pendingKeyboardProtocolDeviceAttributes.Load() == 0 {
+		return false
+	}
+	// The last owed DA answers the latest query, which got no program status reply first. Earlier DA replies belong to queries from before a restart.
+	if t.pendingKeyboardProtocolDeviceAttributes.Add(-1) == 0 {
+		t.programStatusMu.Lock()
+		t.programStatusQueryPending = false
+		t.programStatusMu.Unlock()
+	}
+	if !IsKittyProtocolActive() {
+		t.enableModifyOtherKeys()
+	}
+	return true
 }
 
 func (t *ProcessTerminal) enableModifyOtherKeys() {
 	if IsKittyProtocolActive() || modifyOtherKeysActive.Swap(true) {
 		return
 	}
-	t.Write(modifyOtherKeysEnable)
+	t.writeUnlogged(modifyOtherKeysEnable)
 }
 
 func (t *ProcessTerminal) disableModifyOtherKeys() {
-	if !modifyOtherKeysActive.Swap(false) {
+	if !t.ModifyOtherKeysActive() || !modifyOtherKeysActive.Swap(false) {
 		return
 	}
-	t.Write(modifyOtherKeysDisable)
+	t.writeUnlogged(modifyOtherKeysDisable)
 }
 
 // disableKeyboardProtocol returns the keyboard to the mode the terminal had
@@ -371,8 +497,12 @@ func (t *ProcessTerminal) disableKeyboardProtocol() {
 // Use [ProcessTerminal.StartWithReadError] to distinguish terminal closure from user input. Caller-owned loops use EnterRawMode, ReadInputStream and TerminalInput instead.
 //
 // Calling Start twice without an intervening Stop is a no-op.
-func (t *ProcessTerminal) Start(onInput func([]byte), onResize func()) error {
-	return t.StartWithReadError(onInput, onResize, nil)
+func (t *ProcessTerminal) Start(onInput func(string), onResize func()) error {
+	var forward func([]byte)
+	if onInput != nil {
+		forward = func(data []byte) { onInput(string(data)) }
+	}
+	return t.StartWithReadError(forward, onResize, nil)
 }
 
 // StartWithReadError starts terminal input and reports the error that ends the
@@ -472,7 +602,7 @@ func (t *ProcessTerminal) Stop() {
 	t.startMu.Lock()
 	defer t.startMu.Unlock()
 	if t.clearProgressInterval() {
-		t.Write(terminalProgressClearSeq)
+		t.writeUnlogged(terminalProgressClearSeq)
 	}
 	if t.stopReader != nil {
 		t.stopReader()
@@ -490,7 +620,8 @@ func (t *ProcessTerminal) Stop() {
 		t.stopRestore()
 		t.stopRestore = nil
 	} else if t.protocolQueried {
-		t.Write("\x1b[?2004l")
+		t.stopProgramStatus()
+		t.writeUnlogged("\x1b[?2004l")
 		t.disableKeyboardProtocol()
 		t.protocolQueried = false
 	}
@@ -498,7 +629,9 @@ func (t *ProcessTerminal) Stop() {
 
 // DrainInput drains pending stdin bytes for up to maxWait, exiting early once
 // no new bytes arrive within idleWait. This mirrors upstream's slow-SSH guard
-// against key release sequences leaking into the parent shell on exit.
+// against key release sequences leaking into the parent shell on exit. A read
+// that fails (EOF from a hung-up terminal, EIO) ends the drain with that error,
+// as Pi's stdin reports it to its error handler.
 //
 // Disables the extended-key protocols first, as upstream's drainInput does: a
 // drain that runs while the terminal is still reporting key events has no
@@ -545,7 +678,7 @@ func (t *ProcessTerminal) DrainInput(maxWait, idleWait time.Duration) error {
 			if isEINTR(err) {
 				continue
 			}
-			return nil
+			return err
 		}
 		lastData = time.Now()
 	}
@@ -560,6 +693,19 @@ func minDuration(a, b time.Duration) time.Duration {
 
 // Write emits data to the terminal output.
 func (t *ProcessTerminal) Write(data string) {
+	// process.stdout.write and appendFileSync(..., "utf8") send a lone surrogate, which PiG strings carry as WTF-8, as U+FFFD.
+	data = jsstring.StreamText(data)
+	t.outMu.Lock()
+	defer t.outMu.Unlock()
+	t.write(data)
+	if t.writeLog != nil {
+		t.writeLog.append([]byte(data))
+	}
+}
+
+// writeUnlogged emits control bytes the way upstream's cursor, title, progress, start and stop methods do, straight to stdout: PI_TUI_WRITE_LOG records only Write.
+func (t *ProcessTerminal) writeUnlogged(data string) {
+	data = jsstring.StreamText(data)
 	t.outMu.Lock()
 	defer t.outMu.Unlock()
 	t.write(data)
@@ -574,66 +720,109 @@ func (t *ProcessTerminal) write(data string) {
 
 // Columns returns the terminal width, falling back to COLUMNS or 80 when unavailable.
 func (t *ProcessTerminal) Columns() int {
-	if t.stdout != nil {
-		if width, _, err := term.GetSize(int(t.stdout.Fd())); err == nil && width > 0 {
-			return width
-		}
-	}
-	if width, err := strconv.Atoi(os.Getenv("COLUMNS")); err == nil && width > 0 {
+	if width, _, err := t.size(); err == nil && width > 0 {
 		return width
 	}
-	return 80
+	return envTerminalSize("COLUMNS", 80)
+}
+
+// envTerminalSize is `Number(process.env[name]) || fallback`: JS number syntax (surrounding JS whitespace, 0x/0o/0b, exponents), and 0 or NaN give the fallback.
+// A fraction is truncated; a negative, infinite or beyond-int value gives the fallback where Pi would return it (handoffs/owner-signoff.md, "COLUMNS and LINES that are not positive integers").
+func envTerminalSize(name string, fallback int) int {
+	value := jsnumber.Parse(os.Getenv(name))
+	if value >= 1 && value <= math.MaxInt32 {
+		//portlint:allow numbers the guard admits only finite values in [1, 2^31-1]; Number(process.env.COLUMNS) (terminal.ts:533-537) outside it is the documented fallback
+		return int(value)
+	}
+	return fallback
 }
 
 // Rows returns the terminal height, falling back to LINES or 24 when unavailable.
 func (t *ProcessTerminal) Rows() int {
-	if t.stdout != nil {
-		if _, height, err := term.GetSize(int(t.stdout.Fd())); err == nil && height > 0 {
-			return height
-		}
-	}
-	if height, err := strconv.Atoi(os.Getenv("LINES")); err == nil && height > 0 {
+	if _, height, err := t.size(); err == nil && height > 0 {
 		return height
 	}
-	return 24
+	return envTerminalSize("LINES", 24)
+}
+
+// terminalGetSize is term.GetSize, the TIOCGWINSZ ioctl; a test counts the reads through it.
+var terminalGetSize = term.GetSize
+
+// terminalSizeCache is the size a ProcessTerminal last read while a resize handler keeps it (CacheSizeUntilResize).
+type terminalSizeCache struct {
+	mu            sync.Mutex
+	holders       int    // CacheSizeUntilResize holders not yet stopped
+	generation    uint64 // advanced by every invalidation, so a read that raced one is not kept
+	valid         bool
+	width, height int
+}
+
+var errNoTerminalStdout = errors.New("tui: terminal has no stdout")
+
+// size is the window size of stdout: the kept one while a resize handler keeps it, otherwise a TIOCGWINSZ read.
+func (t *ProcessTerminal) size() (width, height int, err error) {
+	if t.stdout == nil {
+		return 0, 0, errNoTerminalStdout
+	}
+	cache := &t.sizeCache
+	cache.mu.Lock()
+	if cache.valid {
+		width, height = cache.width, cache.height
+		cache.mu.Unlock()
+		return width, height, nil
+	}
+	keep, generation := cache.holders > 0, cache.generation
+	cache.mu.Unlock()
+	width, height, err = terminalGetSize(int(t.stdout.Fd()))
+	if err == nil && keep {
+		cache.mu.Lock()
+		if cache.holders > 0 && cache.generation == generation {
+			cache.valid, cache.width, cache.height = true, width, height
+		}
+		cache.mu.Unlock()
+	}
+	return width, height, err
 }
 
 // KittyProtocolActive reports whether this raw-mode session received non-zero
 // Kitty keyboard protocol flags.
 func (*ProcessTerminal) KittyProtocolActive() bool { return IsKittyProtocolActive() }
 
+// ModifyOtherKeysActive reports whether modifyOtherKeys is enabled for this raw-mode session (terminal.ts: modifyOtherKeysActive getter).
+func (*ProcessTerminal) ModifyOtherKeysActive() bool { return modifyOtherKeysActive.Load() }
+
 // MoveBy moves the cursor relative to its current row.
 func (t *ProcessTerminal) MoveBy(lines int) {
 	switch {
 	case lines > 0:
-		t.Write(fmt.Sprintf("\x1b[%dB", lines))
+		t.writeUnlogged(fmt.Sprintf("\x1b[%dB", lines))
 	case lines < 0:
-		t.Write(fmt.Sprintf("\x1b[%dA", -lines))
+		t.writeUnlogged(fmt.Sprintf("\x1b[%dA", -lines))
 	}
 }
 
 // HideCursor hides the terminal cursor.
-func (t *ProcessTerminal) HideCursor() { t.Write("\x1b[?25l") }
+func (t *ProcessTerminal) HideCursor() { t.writeUnlogged("\x1b[?25l") }
 
 // ShowCursor shows the terminal cursor.
-func (t *ProcessTerminal) ShowCursor() { t.Write("\x1b[?25h") }
+func (t *ProcessTerminal) ShowCursor() { t.writeUnlogged("\x1b[?25h") }
 
 // ClearLine clears from the cursor to the end of the current line.
-func (t *ProcessTerminal) ClearLine() { t.Write("\x1b[K") }
+func (t *ProcessTerminal) ClearLine() { t.writeUnlogged("\x1b[K") }
 
 // ClearFromCursor clears from the cursor to the end of the screen.
-func (t *ProcessTerminal) ClearFromCursor() { t.Write("\x1b[J") }
+func (t *ProcessTerminal) ClearFromCursor() { t.writeUnlogged("\x1b[J") }
 
 // ClearScreen clears the screen and homes the cursor.
-func (t *ProcessTerminal) ClearScreen() { t.Write("\x1b[2J\x1b[H") }
+func (t *ProcessTerminal) ClearScreen() { t.writeUnlogged("\x1b[2J\x1b[H") }
 
 // SetTitle writes an OSC 0 title update sequence.
-func (t *ProcessTerminal) SetTitle(title string) { t.Write("\x1b]0;" + title + "\x07") }
+func (t *ProcessTerminal) SetTitle(title string) { t.writeUnlogged("\x1b]0;" + title + "\x07") }
 
 // SetProgress writes the OSC 9;4 progress indicator and keeps it alive during agent work. Clearing stops the keepalive and writes OSC 9;4;0 followed directly by BEL.
 func (t *ProcessTerminal) SetProgress(active bool) {
 	if active {
-		t.Write(terminalProgressActiveSeq)
+		t.writeUnlogged(terminalProgressActiveSeq)
 		t.progressMu.Lock()
 		defer t.progressMu.Unlock()
 		if t.progressTicker != nil {
@@ -661,14 +850,14 @@ func (t *ProcessTerminal) SetProgress(active bool) {
 						return
 					default:
 					}
-					t.Write(terminalProgressActiveSeq)
+					t.writeUnlogged(terminalProgressActiveSeq)
 				}
 			}
 		}()
 		return
 	}
 	t.clearProgressInterval()
-	t.Write(terminalProgressClearSeq)
+	t.writeUnlogged(terminalProgressClearSeq)
 }
 
 func (t *ProcessTerminal) clearProgressInterval() bool {
@@ -690,6 +879,11 @@ func (t *ProcessTerminal) clearProgressInterval() bool {
 // window title. An empty title clears back to terminal default.
 func SetTerminalTitle(title string) {
 	processTerminal.SetTitle(title)
+}
+
+// SetTerminalProgramStatus reports program status (OSC 7501) on the process terminal.
+func SetTerminalProgramStatus(status ProgramStatus) {
+	processTerminal.SetProgramStatus(status)
 }
 
 // SetTerminalProgress toggles the OSC 9;4 terminal progress indicator.
@@ -715,3 +909,7 @@ func codingAgentAppTitle() string {
 	// Keep terminal package decoupled from internal/codingagent to avoid an import cycle.
 	return "pig"
 }
+
+// OutputTerminalHungUp reports whether the terminal the process writes to has been hung up, as when the master side of
+// its pseudo-terminal closed. Such a terminal can still answer TIOCGWINSZ while its hang-up completes.
+func OutputTerminalHungUp() bool { return terminalHungUp(os.Stdout) }

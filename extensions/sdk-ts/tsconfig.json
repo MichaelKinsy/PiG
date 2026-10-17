@@ -6,7 +6,12 @@
     "moduleResolution": "Node16",
     "target": "ES2022",
     "resolveJsonModule": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "paths": {
+      "@earendil-works/pi-tui": [
+        "./node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-tui/dist/index.d.ts"
+      ]
+    }
   },
   "files": [
     "index.d.ts",

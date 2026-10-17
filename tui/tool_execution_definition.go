@@ -15,13 +15,23 @@ import (
 // ToolRenderInput is the card state upstream ToolExecutionComponent passes to
 // a registered tool definition's renderers.
 type ToolRenderInput struct {
-	Args             json.RawMessage
+	// ToolCallID is the card's tool call id (tool-execution.ts toolCallId).
+	ToolCallID string
+	// Args is the call's arguments as JSON text. It is nil while Fields is set.
+	Args json.RawMessage
+	// Fields is the decoded argument object of a call whose arguments are still streaming, as the streaming parser holds
+	// it, for a Call that reads it (ToolDefinitionRenderers.CallReadsFields); nil otherwise. A renderer must not modify it.
+	Fields           map[string]any
 	ExecutionStarted bool
 	ArgsComplete     bool
 	IsPartial        bool
 	Expanded         bool
 	ShowImages       bool
 	IsError          bool
+	OutputPad        int
+	// DurationMs is the recorded execution time of a final result in milliseconds; nil while the result is partial.
+	// upstream: tool-execution.ts:137 durationMs: this.isPartial ? undefined : this.result?.durationMs
+	DurationMs *int64
 }
 
 // ToolDefinitionRenderers is a registered tool definition as the card draws
@@ -33,6 +43,9 @@ type ToolDefinitionRenderers struct {
 	Self   bool
 	Call   func(ToolRenderInput) (Component, bool)
 	Result func(ToolRenderInput) (Component, bool)
+	// CallReadsFields reports that Call reads a streaming call's arguments from ToolRenderInput.Fields: the card then
+	// hands it the decoded arguments and no text, so a frame does not encode arguments that grow with every delta.
+	CallReadsFields bool
 }
 
 // RendererFallback is implemented by a renderer component whose rendering can
@@ -53,7 +66,8 @@ const fallbackResultPreviewLines = 10
 // current arguments. A nil definition returns the card to that presentation.
 func (c *ToolExecutionComponent) SetDefinition(definition *ToolDefinitionRenderers, args json.RawMessage) {
 	c.definition = definition
-	if len(args) > 0 && json.Valid(args) {
+	if len(args) > 0 && mayBeCompleteJSON(args) && json.Valid(args) {
+		c.clearStreamedArgs()
 		c.definitionArgs = append(c.definitionArgs[:0], args...)
 	}
 	c.Invalidate()
@@ -70,7 +84,9 @@ func (c *ToolExecutionComponent) SetStructuredArgs(args json.RawMessage) {
 // SetDefinitionArgs replaces the arguments the definition's renderers
 // receive, as upstream updateArgs does.
 func (c *ToolExecutionComponent) SetDefinitionArgs(args json.RawMessage) {
-	if len(args) > 0 && json.Valid(args) {
+	// A caller may pass argument text that is still arriving; mayBeCompleteJSON keeps a half-received value from being validated from its first byte each time. Streamed partial arguments arrive through SetStreamedArgs instead.
+	if len(args) > 0 && mayBeCompleteJSON(args) && json.Valid(args) {
+		c.clearStreamedArgs()
 		c.definitionArgs = append(c.definitionArgs[:0], args...)
 	}
 	c.Invalidate()
@@ -95,8 +111,16 @@ func (c *ToolExecutionComponent) definitionHasResult() bool {
 	return c.State != ToolStateRunning || c.definitionResult != nil || c.Output != ""
 }
 
-func (c *ToolExecutionComponent) definitionInput() ToolRenderInput {
-	return ToolRenderInput{
+// definitionInput is the renderers' input. Streamed arguments reach a Call that reads them decoded as Fields, and any other
+// renderer as their text.
+func (c *ToolExecutionComponent) definitionInput(fields bool) ToolRenderInput {
+	var durationMs *int64
+	if !c.IsPartial {
+		durationMs = c.DurationMs
+	}
+	input := ToolRenderInput{
+		ToolCallID:       c.ToolCallID,
+		DurationMs:       durationMs,
 		Args:             c.definitionArgs,
 		ExecutionStarted: c.executionStarted,
 		ArgsComplete:     c.argsComplete,
@@ -104,7 +128,26 @@ func (c *ToolExecutionComponent) definitionInput() ToolRenderInput {
 		Expanded:         !c.Collapsed,
 		ShowImages:       c.ShowImages,
 		IsError:          c.State == ToolStateError,
+		OutputPad:        c.outputPad,
 	}
+	if c.streamed != nil {
+		if fields && c.streamedFields != nil {
+			input.Args, input.Fields = nil, c.streamedFields
+		} else {
+			input.Args = c.definitionArgsJSON()
+		}
+	}
+	return input
+}
+
+// definitionArgsJSON is the arguments the renderers receive as text: the streamed ones while the call streams.
+func (c *ToolExecutionComponent) definitionArgsJSON() json.RawMessage {
+	if c.streamed != nil {
+		if raw := c.streamedArgsJSON(); raw != nil {
+			return raw
+		}
+	}
+	return c.definitionArgs
 }
 
 // updateDefinition is upstream updateDisplay for a card with a definition: it
@@ -112,10 +155,10 @@ func (c *ToolExecutionComponent) definitionInput() ToolRenderInput {
 // the fallbacks in place of a missing or failed renderer.
 func (c *ToolExecutionComponent) updateDefinition() {
 	c.definitionDirty.Store(false)
-	input := c.definitionInput()
+	defer c.fillDefinitionShell()
 	c.definitionCall = nil
 	if c.definition.Call != nil {
-		if component, ok := c.definition.Call(input); ok && component != nil {
+		if component, ok := c.definition.Call(c.definitionInput(c.definition.CallReadsFields)); ok && component != nil {
 			c.definitionCall = component
 		}
 	}
@@ -130,7 +173,7 @@ func (c *ToolExecutionComponent) updateDefinition() {
 		return
 	}
 	if c.definition.Result != nil {
-		if component, ok := c.definition.Result(input); ok && component != nil {
+		if component, ok := c.definition.Result(c.definitionInput(false)); ok && component != nil {
 			c.definitionResultComponent = component
 			if fallback, ok := component.(RendererFallback); ok {
 				fallback.SetRendererFallback(func(width int) []string {
@@ -148,10 +191,23 @@ func (c *ToolExecutionComponent) updateDefinition() {
 	}
 }
 
+// fillDefinitionShell replaces the shell container's children with the current call and result regions (tool-execution.ts updateDisplay: clear, then addChild).
+func (c *ToolExecutionComponent) fillDefinitionShell() {
+	components := c.definitionComponents()
+	if c.definition.Self {
+		c.selfRenderContainer.SetChildren(components...)
+		return
+	}
+	c.contentBox.Clear()
+	for _, component := range components {
+		c.contentBox.AddChild(component)
+	}
+}
+
 // callFallback is upstream createCallFallback: the tool name in toolTitle followed by its arguments, on the title line
 // while collapsed and one per line when expanded (tool-execution.ts:155-157).
 func (c *ToolExecutionComponent) callFallback() Component {
-	return NewPaddedText(FormatToolCallWithArgs(c.Name, c.definitionArgs, ActiveTheme(), !c.Collapsed), 0, 0, nil)
+	return NewPaddedText(FormatToolCallWithArgs(c.Name, c.definitionArgsJSON(), ActiveTheme(), !c.Collapsed), 0, 0, nil)
 }
 
 // resultFallback is upstream createResultFallback: the first ten output
@@ -169,17 +225,18 @@ func (c *ToolExecutionComponent) resultFallback() Component {
 	}
 	styled := make([]string, len(display))
 	for i, line := range display {
-		styled[i] = theme.FgText("toolOutput", line)
+		styled[i] = theme.Fg("toolOutput", line)
 	}
 	text := strings.Join(styled, "\n")
 	if remaining := len(lines) - len(display); remaining > 0 {
-		text += theme.FgText("muted", "\n... ("+strconv.Itoa(remaining)+" more lines,") + " " +
-			theme.FgText("dim", AppKeyText("app.tools.expand", "ctrl+o")) + theme.FgText("muted", " to expand") +
-			theme.FgText("muted", ")")
+		text += theme.Fg("muted", "\n... ("+strconv.Itoa(remaining)+" more lines,") + " " +
+			theme.Fg("dim", AppKeyText("app.tools.expand", "ctrl+o")) + theme.Fg("muted", " to expand") +
+			theme.Fg("muted", ")")
 	}
 	return NewPaddedText(text, 0, 0, nil)
 }
 
+// definitionComponents wraps the call and result components in the regions that toggle the card on click (createResultRegion).
 func (c *ToolExecutionComponent) definitionComponents() []Component {
 	components := []Component{NewMouseRegion(c.definitionCall, c.handleResultMouse)}
 	if c.definitionResultComponent != nil {
@@ -210,38 +267,21 @@ func (c *ToolExecutionComponent) definitionBg() func(string) string {
 	case c.State == ToolStateError:
 		token = "toolErrorBg"
 	}
-	open := theme.Bg(token)
+	open := theme.GetBgAnsi(token)
 	return func(text string) string { return open + text + SGRBgReset }
 }
 
-// renderDefinition is upstream render for a card with a definition: the
-// default shell is a spacer over a padded Box in the lifecycle background;
-// renderShell "self" draws the components after one blank line, and nothing
-// when they draw nothing. Images follow either shell.
-func (c *ToolExecutionComponent) renderDefinition(width int) []string {
-	if c.definitionDirty.Load() || c.definitionCall == nil {
-		c.updateDefinition()
-	}
+// renderSelfShell is upstream render for renderShell "self": the components after one blank row, or nothing when they draw nothing. Images follow.
+func (c *ToolExecutionComponent) renderSelfShell(width int) []string {
 	images := c.renderImages(width)
-	if c.definition.Self {
-		container := NewContainer(c.definitionComponents()...)
-		content := container.Render(width)
-		c.mouseChild, c.mouseWidth, c.mouseHeight = container, width, len(content)
-		if len(content) == 0 && len(images) == 0 {
-			return []string{}
-		}
-		var out []string
-		if len(content) > 0 {
-			out = append([]string{""}, content...)
-		}
-		return append(out, images...)
+	content := c.selfRenderContainer.Render(width)
+	c.mouseChild, c.mouseWidth, c.mouseHeight = c.selfRenderContainer, width, len(content)
+	if len(content) == 0 && len(images) == 0 {
+		return []string{}
 	}
-	box := NewPaddedBox(1, 1, c.definitionBg())
-	for _, component := range c.definitionComponents() {
-		box.AddChild(component)
+	var out []string
+	if len(content) > 0 {
+		out = append([]string{""}, content...)
 	}
-	content := box.Render(width)
-	c.mouseChild, c.mouseWidth, c.mouseHeight = box, width, len(content)
-	out := append([]string{""}, content...)
 	return append(out, images...)
 }

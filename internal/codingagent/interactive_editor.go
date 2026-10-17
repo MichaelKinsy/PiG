@@ -7,19 +7,22 @@ import (
 )
 
 func (m *InteractiveMode) openExternalEditor(ctx context.Context) {
-	m.openExternalEditorBuffer(ctx, m.editor.GetExpandedText(), m.editor.SetText)
+	m.openExternalEditorBuffer(ctx, m.externalEditorCommand(), m.editor.GetExpandedText(), m.editor.SetText)
 }
 
 // openExternalEditorBuffer hands terminal input and output to the child off the UI loop. Completion returns to the owner loop and only a successful edit replaces the caller's buffer.
-func (m *InteractiveMode) openExternalEditorBuffer(ctx context.Context, initial string, apply func(string)) {
+func (m *InteractiveMode) openExternalEditorBuffer(ctx context.Context, command, initial string, apply func(string)) {
 	if m.externalEditorActive {
 		return
 	}
 	m.externalEditorActive = true
-	if m.themeState.autoSyncEnabled.Load() {
-		m.writeThemeNotifications(false)
+	if m.surface != nil {
+		// pig additive (D91): the frontend session keeps its frames while
+		// the editor owns the terminal and learns of the handoff.
+		m.surface.Suspend()
+	} else {
+		m.tuiInst.Stop()
 	}
-	m.tuiInst.Stop()
 	if m.inputReader != nil {
 		m.inputReader.pause()
 	}
@@ -27,10 +30,6 @@ func (m *InteractiveMode) openExternalEditorBuffer(ctx context.Context, initial 
 		m.rawRestore()
 		m.rawRestore = nil
 		m.rawDrain = nil
-	}
-	command := ""
-	if m.opts.SettingsManager != nil {
-		command = m.opts.SettingsManager.GetExternalEditorCommand()
 	}
 	ownerCtx := m.runCtx
 	if ownerCtx == nil {
@@ -54,11 +53,14 @@ func (m *InteractiveMode) openExternalEditorBuffer(ctx context.Context, initial 
 			if runErr == nil && ctx.Err() == nil {
 				apply(result)
 			}
-			m.tuiInst.Start()
-			if m.themeState.autoSyncEnabled.Load() {
-				m.writeThemeNotifications(true)
+			if m.surface != nil {
+				// pig additive (D91): the frame after the handoff carries
+				// only what changed, such as the edited text.
+				m.surface.Resume()
+			} else {
+				m.tuiInst.Start()
+				m.tuiInst.RepaintAll()
 			}
-			m.tuiInst.RepaintAll()
 			if m.inputReader != nil {
 				m.inputReader.resume()
 			}
@@ -105,3 +107,11 @@ func (m *InteractiveMode) setAllToolsExpanded(expanded bool) {
 
 // rebuildChatFromSession rebuilds the visible conversation from the active
 // path-to-leaf messages.
+
+// externalEditorCommand is the settings' externalEditor command (settings-manager.ts getExternalEditorCommand), "" when no settings are loaded.
+func (m *InteractiveMode) externalEditorCommand() string {
+	if m.opts.SettingsManager == nil {
+		return ""
+	}
+	return m.opts.SettingsManager.GetExternalEditorCommand()
+}
