@@ -138,7 +138,7 @@ func TestWindowsShardsTestEverySelectedPackage(t *testing.T) {
 	shards, cliPkg := cliShards(t)
 	cliPkg = strings.TrimPrefix(cliPkg, "./")
 	// Every unit runs in exactly one job: the native and extension units each on their own job, the cmd/pig shards paired so a job builds the test binary once.
-	wantUnits := []string{"native-1", "native-2", "native-3"}
+	wantUnits := []string{"native-1", "native-2", "native-3", "native-4"}
 	for shard := 1; shard <= shards; shard++ {
 		wantUnits = append(wantUnits, "cli-"+strconv.Itoa(shard))
 	}
@@ -273,7 +273,7 @@ func TestWindowsNativeShardsPartitionTheSelectedPackages(t *testing.T) {
 		}
 	}
 	seen := map[string]int{}
-	for shard := 1; shard <= 3; shard++ {
+	for shard := 1; shard <= 4; shard++ {
 		cmd := testenv.ScriptCommand(t, filepath.Join(root, "automation", "ci", "windows-native-shard.sh"), strconv.Itoa(shard))
 		var stderr strings.Builder
 		cmd.Stderr = &stderr
@@ -316,7 +316,7 @@ func TestWindowsNativeShardChecksALongPackageListWithoutSIGPIPE(t *testing.T) {
 		t.Fatal(err)
 	}
 	var list strings.Builder
-	for _, pkg := range []string{"ai", "coding", "tui"} {
+	for _, pkg := range []string{"ai", "coding", "internal/codingagent", "tui"} {
 		list.WriteString(modulePath + "/" + pkg + "\n")
 	}
 	var padding []string
@@ -334,14 +334,14 @@ func TestWindowsNativeShardChecksALongPackageListWithoutSIGPIPE(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cmd := testenv.ScriptCommand(t, filepath.Join(ci, "windows-native-shard.sh"), "3")
+	cmd := testenv.ScriptCommand(t, filepath.Join(ci, "windows-native-shard.sh"), "4")
 	var stderr strings.Builder
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()
 	if err != nil {
-		t.Fatalf("windows-native-shard.sh 3: %v\nstderr:\n%s", err, stderr.String())
+		t.Fatalf("windows-native-shard.sh 4: %v\nstderr:\n%s", err, stderr.String())
 	}
 	if got := strings.Fields(string(out)); !slices.Equal(got, padding) {
-		t.Fatalf("shard 3 printed %d packages, want the %d unnamed ones", len(got), len(padding))
+		t.Fatalf("shard 4 printed %d packages, want the %d unnamed ones", len(got), len(padding))
 	}
 }

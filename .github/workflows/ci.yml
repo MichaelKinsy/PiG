@@ -449,14 +449,14 @@ jobs:
       matrix:
         # extension-host: the extension host packages (runtimecell and
         # subprocess). extension-conformance: every SDK against the in-process
-        # reference. native-1 to native-3: the smoke run (native-1) and every other
-        # package that carries Windows tests, in three parallel jobs
+        # reference. native-1 to native-4: the smoke run (native-1) and every other
+        # package that carries Windows tests, in four parallel jobs
         # (automation/ci/windows-native-shard.sh). The eight cmd/pig shards share four
         # jobs, paired longest with shortest from measured run times, so each job builds
         # the test binary once. The two extension shards were one shard whose extension
         # step took 49 of the job's 60 minutes, and native with cmd/pig reached the
         # 60-minute limit. Longest jobs first.
-        shard: [native-3, cli-2 cli-5, cli-1 cli-3, cli-4 cli-7, cli-6 cli-8, extension-conformance-2, native-1, native-2, extension-conformance-1, extension-host-1, extension-host-2, extension-host-3]
+        shard: [cli-2 cli-5, cli-1 cli-3, cli-4 cli-7, cli-6 cli-8, extension-conformance-2, native-3, native-2, native-1, extension-conformance-1, extension-host-1, native-4, extension-host-2, extension-host-3]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
