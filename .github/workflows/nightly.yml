@@ -19,13 +19,14 @@ concurrency:
 
 jobs:
   race:
-    name: Race / ${{ matrix.os }}
+    name: Race / ${{ matrix.os }} / ${{ matrix.group }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, macos-15]
+        group: [ai, rest]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -68,6 +69,7 @@ jobs:
       - name: Race and goroutine-leak gate
         env:
           CI: '1'
+          PIG_RACE_GROUP: ${{ matrix.group }}
         run: make test-race-nightly
 
   fuzz:

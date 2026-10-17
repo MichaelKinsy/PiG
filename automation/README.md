@@ -83,7 +83,7 @@ The automation writes only where the environment allows. Set these when the defa
 | `test-shard-pattern.sh` | Prints the `go test -run` pattern for one shard of a package's tests. `make test-cli` and the Windows `cli-1` to `cli-8` jobs run `cmd/pig` in these shards, each shard in its own parallel job, `go test` process and timeout. |
 | `test-fixtures.sh` | Builds the Go and Rust extension fixtures tests load. |
 | `test-race.sh` | Race and goroutine-leak gate for the TUI concurrency model. |
-| `test-race-nightly.sh` | Whole-package `-race` on the packages that own concurrency (`agent`, `ai`, `tui`, `internal/codingagent`, `durable/harness`, the subprocess extension host). Behind `make test-race-nightly` and the nightly workflow. |
+| `test-race-nightly.sh` | Whole-package `-race` on the packages that own concurrency (`agent`, `ai`, `tui`, `internal/codingagent`, `durable/harness`, the subprocess extension host). Behind `make test-race-nightly` and the nightly workflow, which runs `ai` and the rest as separate jobs (`PIG_RACE_GROUP`). |
 | `fuzz-nightly.sh` | Runs every `Fuzz` target for `PIG_FUZZ_TIME` (default 30s) with `PIG_FUZZ_PARALLEL` workers (default 4); a package whose targets cannot be listed fails the run. Behind `make fuzz-nightly` and the nightly workflow. |
 | `integration-tests.sh` | The tmux integration tier, split by category. |
 | `qc-smoke.sh` | Smoke checks against a freshly built pig. Behind `make qc`. |
