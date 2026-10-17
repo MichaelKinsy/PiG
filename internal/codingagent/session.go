@@ -1360,10 +1360,44 @@ func (s *Session) generateEntryID() (string, error) {
 	return generateUniqueEntryID(func(id string) bool { _, exists := s.slotOf(id); return exists })
 }
 
+// entryIDPool serves the random bytes of entry IDs a pool at a time: every message appended to a Session takes an ID, and one getrandom
+// system call per ID is the cost of the ID, not of the randomness. A pool is 64 IDs of four bytes, drawn from fill.
+type entryIDPool struct {
+	fill func([]byte) (int, error)
+	mu   sync.Mutex
+	buf  [256]byte
+	next int
+}
+
+// read fills b, at most the pool's size, from the pool and refills the pool from fill when it runs dry.
+func (pool *entryIDPool) read(b []byte) error {
+	pool.mu.Lock()
+	defer pool.mu.Unlock()
+	if pool.next == 0 || pool.next+len(b) > len(pool.buf) {
+		pool.next = 0
+		if _, err := pool.fill(pool.buf[:]); err != nil {
+			return err
+		}
+	}
+	pool.next += copy(b, pool.buf[pool.next:])
+	return nil
+}
+
+// entryIDRandom is the pool of this process's entry IDs, drawn from crypto/rand.
+var entryIDRandom = entryIDPool{fill: rand.Read}
+
+// systemRandomType is the type of crypto/rand.Reader as the process starts: the system source. A different type is a source installed by a
+// test, which supplies the bytes of each ID itself, so the pool does not stand between the source and the ID.
+var systemRandomType = reflect.TypeOf(rand.Reader)
+
 // generateEntryID returns an eight-character lowercase hexadecimal entry ID.
 func generateEntryID() (string, error) {
 	var b [4]byte
-	if _, err := rand.Read(b[:]); err != nil {
+	if reflect.TypeOf(rand.Reader) == systemRandomType {
+		if err := entryIDRandom.read(b[:]); err != nil {
+			return "", err
+		}
+	} else if _, err := rand.Read(b[:]); err != nil {
 		return "", err
 	}
 	return hex.EncodeToString(b[:]), nil
