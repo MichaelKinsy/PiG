@@ -19,6 +19,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/test/parity/internal/ledgertarget"
 )
 
 // The shared derivation cache. Every ledger lane derives the same 12k rows from nearly the same tree, and the two expensive stages are
@@ -245,10 +247,12 @@ func upstreamPin(root string) (string, error) {
 	return keyOf(append([]string{"mirror"}, lines...)...), nil
 }
 
-// goEnv is the toolchain identity both keys include.
+// goEnv is the toolchain identity both keys include: the ledger target's GOOS and GOARCH (ledgertarget), not the host's, so a
+// derivation on any host shares the cache of CI's.
 func goEnv(root string) (string, error) {
 	cmd := exec.Command("go", "env", "GOVERSION", "GOOS", "GOARCH", "CGO_ENABLED", "GOFLAGS", "GOEXPERIMENT")
 	cmd.Dir = root
+	cmd.Env = ledgertarget.Env()
 	out, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("go env: %w", err)

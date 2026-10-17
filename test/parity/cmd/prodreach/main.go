@@ -33,6 +33,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/MichaelKinsy/PiG/test/parity/internal/ledgertarget"
+
 	"golang.org/x/tools/go/callgraph"
 	"golang.org/x/tools/go/callgraph/rta"
 	"golang.org/x/tools/go/packages"
@@ -98,7 +100,7 @@ func reachableUnion(dir string, patterns, libraries, tags []string) ([]string, e
 // reachable loads the main packages matched by patterns and the library packages in dir, built with the comma-separated tags (none
 // when empty), and returns the sorted entries of every function the walk reaches.
 func reachable(dir string, patterns, libraries []string, tags string) ([]string, error) {
-	cfg := &packages.Config{Mode: packages.LoadAllSyntax, Tests: false, Dir: dir}
+	cfg := &packages.Config{Mode: packages.LoadAllSyntax, Tests: false, Dir: dir, Env: ledgertarget.Env()}
 	if tags != "" {
 		cfg.BuildFlags = []string{"-tags=" + tags}
 	}
@@ -113,7 +115,7 @@ func reachable(dir string, patterns, libraries []string, tags string) ([]string,
 	}
 	libraryPaths := map[string]bool{}
 	if len(libraries) > 0 {
-		listed, err := packages.Load(&packages.Config{Mode: packages.NeedName, Dir: dir, BuildFlags: cfg.BuildFlags}, libraries...)
+		listed, err := packages.Load(&packages.Config{Mode: packages.NeedName, Dir: dir, BuildFlags: cfg.BuildFlags, Env: cfg.Env}, libraries...)
 		if err != nil {
 			return nil, err
 		}

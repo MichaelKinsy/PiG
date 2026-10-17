@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/test/parity/internal/ledgertarget"
+
 	"golang.org/x/tools/go/packages"
 )
 
@@ -109,6 +111,7 @@ func buildIndex(root string, reach map[string]bool, patterns []string) (*index, 
 		Mode:  packages.NeedName | packages.NeedFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports | packages.NeedDeps,
 		Tests: true,
 		Dir:   root,
+		Env:   ledgertarget.Env(),
 	}
 	loaded, err := packages.Load(cfg, patterns...)
 	if err != nil {
