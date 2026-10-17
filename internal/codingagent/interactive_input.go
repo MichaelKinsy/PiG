@@ -26,6 +26,14 @@ import (
 func (m *InteractiveMode) exitIfDeadTerminal(err error) {
 	cause := err
 	if errors.Is(err, io.EOF) {
+		// The reader turns a read that fails with EIO on a hung-up terminal into EOF. The device can still answer
+		// TIOCGWINSZ then (strace on a CI-like loaded host: read(0)=EIO, POLLHUP, ioctl(1,TIOCGWINSZ)=0), so the size
+		// probe below saw a live terminal, the session kept running without input, and the parity probe timed out
+		// (10-terminal-disconnect-exit). A hung-up terminal is gone: Pi's stdin error handler exits 129 on that EIO.
+		if tui.StdinHungUp() {
+			m.emergencyTerminalExit("terminal gone: " + cause.Error() + " (hung up)")
+			return
+		}
 		// ENOTTY here only says stdout is not a terminal, as under a pipe or a test, not that the terminal went away.
 		if _, _, err = term.GetSize(int(os.Stdout.Fd())); errors.Is(err, syscall.ENOTTY) {
 			return

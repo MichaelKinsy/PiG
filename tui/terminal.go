@@ -909,3 +909,8 @@ func codingAgentAppTitle() string {
 	// Keep terminal package decoupled from internal/codingagent to avoid an import cycle.
 	return "pig"
 }
+
+// StdinHungUp reports whether the process terminal's input has been hung up, as when the master side of its
+// pseudo-terminal closed. A read racing the hang-up reports EOF, and the device can still answer TIOCGWINSZ, so this is
+// the check that tells a dead terminal from a closed pipe.
+func StdinHungUp() bool { return terminalHungUp(os.Stdin) }
