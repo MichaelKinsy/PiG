@@ -350,3 +350,21 @@ func TestTheMessageCacheServesAMessageWithoutAllocating(t *testing.T) {
 		})
 	}
 }
+
+// A short request is one segment, so net/http sends it in the write of its headers (requestBody.reader). Messages served from the cache once left it in several, which a server that answers without reading the body saw as unread bytes and closed with a reset.
+func TestShortCachedRequestBodyIsOneSegment(t *testing.T) {
+	cache := newQuotedStringCache(1 << 30)
+	request := oaiHistory(3)
+	for range 2 {
+		body, err := marshalSpliced(request, cache, marshalRequestBody)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if body.size > requestSpliceMinBytes {
+			t.Fatalf("fixture body is %d bytes, want a short one", body.size)
+		}
+		if len(body.segments) != 1 {
+			t.Fatalf("a %d-byte body has %d segments, want 1", body.size, len(body.segments))
+		}
+	}
+}

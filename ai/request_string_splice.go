@@ -352,5 +352,10 @@ func (s *stringSplice) join(skeleton []byte) (*requestBody, bool) {
 		rest = rest[end+1:]
 	}
 	body.add(rest)
+	if body.size <= requestSpliceMinBytes && len(body.segments) > 1 {
+		// A body of one segment goes out in the same write as the request headers (requestBody.reader); a short body of cached messages must too. Sent apart, a server that answers without reading the body closes on unread request bytes, and the client reads a connection reset where Pi's fetch reads the server's own end of the stream.
+		whole := body.Bytes()
+		body = &requestBody{segments: [][]byte{whole}, size: len(whole)}
+	}
 	return body, true
 }
